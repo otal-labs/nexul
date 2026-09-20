@@ -42,6 +42,13 @@ Starlight autogenerates a sidebar group per directory under
 separate sidebar config file to keep in sync — add a markdown file with
 frontmatter and it appears.
 
+## Installer downloads
+
+`public/install.sh` and `public/install.ps1` are served directly at the site root.
+They bootstrap a fresh clone and delegate setup to the repository installers.
+Keep provisioning logic in the root scripts. Run `bun run test` before changing
+the download entry points.
+
 ## Styling
 
 The documentation theme lives in `website/src/styles/mono-console.css`.
