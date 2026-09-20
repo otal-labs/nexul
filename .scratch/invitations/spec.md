@@ -33,6 +33,9 @@ already authenticated.
 - Creation returns the complete link once. Lists expose the invitation id,
   creator, creation and expiry times, and grant summaries, but never the raw
   token or its hash.
+- If the creation response is lost, the link cannot be recovered. The active
+  list still exposes the Invitation id so the manager can revoke it and create
+  a replacement.
 - Revocation deletes the active invitation. Expired invitations and
   invitations whose creator no longer has `members:write` in every grant are
   deleted when encountered by list, preview, or redemption.
@@ -63,26 +66,46 @@ already authenticated.
 - Authentication remains OAuth-only through the owner-configured GitHub,
   Google, and Discord providers. This feature adds no password, magic-link,
   or outbound-email system.
-- OAuth state and the invitation cookie are independent. The raw invitation
+- Starting OAuth creates a short-lived server-side handoff bound to the exact
+  OAuth state, Invitation, and provider. A second tab cannot replace the
+  Invitation associated with an in-flight OAuth callback. The raw Invitation
   token never enters OAuth `state`, provider URLs, callback URLs, session
   claims, logs, local storage, or query strings.
-- A new provider identity is inserted only while a valid invitation is being
-  redeemed, in the same SQLite transaction as instance admission, all missing
-  memberships, new workspace overwrites, invitation consumption, and outbox
-  events. A failed redemption leaves no user or partial membership behind.
-- An existing active user can redeem after OAuth or from an authenticated
-  invite page. Existing memberships, roles, and overwrites are preserved;
-  only missing memberships receive the invitation's role and overwrites. The
-  link is consumed even if every membership already existed.
+- The OAuth callback authenticates the provider identity but does not create a
+  User, change a membership, apply a Permission overwrite, or consume the
+  Invitation. It replaces the OAuth-start handoff with a short-lived random
+  acceptance credential and redirects to `/invite` with that credential in a
+  URL fragment. The browser removes the fragment after exchanging it for the
+  authenticated Invitation details.
+- The authenticated acceptance screen shows the full Workspace grants,
+  including Permission overwrites. Only **Accept invitation** performs
+  redemption. Decline, OAuth failure, closing the page, and handoff expiry
+  change nothing.
+- A new provider identity is inserted only when the person accepts a valid
+  Invitation, in the same SQLite transaction as instance admission, all
+  missing memberships, new Workspace overwrites, Invitation consumption, and
+  outbox events. A failed redemption leaves no User or partial membership
+  behind.
+- An existing active User can accept after OAuth or from an already
+  authenticated Invitation page. Redemption preserves memberships, Roles, and
+  Permission overwrites the User already holds; only missing memberships
+  receive the Invitation's Role and overwrites. The Invitation is consumed
+  even if every membership already existed.
 - All grants validate before any write. One missing workspace, deleted role,
   Owner role, invalid permission, or unauthorized creator deletes the active
   invitation and applies nothing.
-- The shared SQLite write serializer and one conditional consume enforce one
-  successful redeemer. Concurrent losers receive the generic invalid result.
-- Failed OAuth, explicit decline, and closing the page do not consume the
-  invitation. Successful redemption clears the invitation cookie, refreshes
-  the workspace list, selects the first granted workspace, and lands in the
-  normal application.
+- The transaction validates all grants, then conditionally marks the active
+  Invitation redeemed before it writes a User, membership, overwrite, or
+  event. It checks that exactly one row changed. Zero rows aborts and rolls
+  back the whole transaction. The shared SQLite write serializer therefore
+  gives one winner; concurrent losers receive the generic invalid result.
+- A redeemed Invitation retains its hash, grants, `redeemed_at`, and
+  `redeemed_by` as an idempotency receipt. Public preview treats it as invalid.
+  A retry by the same authenticated identity returns the original successful
+  result; a different identity receives the generic invalid result.
+- Successful redemption deletes the OAuth handoff, clears the Invitation
+  cookie, refreshes the Workspace list, selects the first granted Workspace,
+  and lands in the normal application.
 
 ### Instance admission and account administration
 
@@ -91,8 +114,10 @@ already authenticated.
 - Existing user rows migrate as active. Existing allowlist rows and old
   login-keyed pending workspace invites do not become bearer invitations and
   are removed by the migration.
-- A known active provider identity signs in without an invitation. Disabled
-  and removed identities cannot sign in or use an existing session or PAT.
+- A known active provider identity signs in without an Invitation. A stale,
+  expired, or revoked Invitation cookie cannot block an ordinary login; it is
+  cleared and ignored when no valid OAuth handoff exists. Disabled and removed
+  identities cannot sign in or use an existing session or PAT.
   Auth middleware already reloads the user row on every request, so status
   changes invalidate stateless sessions immediately without a session table.
 - The first identity on an empty instance remains the bootstrap exception. It
@@ -131,29 +156,52 @@ CREATE TABLE invitations (
     token_hash  TEXT NOT NULL UNIQUE,
     invited_by  TEXT NOT NULL REFERENCES users(id),
     created_at  INTEGER NOT NULL,
-    expires_at  INTEGER NOT NULL
+    expires_at  INTEGER NOT NULL,
+    redeemed_at INTEGER,
+    redeemed_by TEXT REFERENCES users(id)
 );
 
 CREATE TABLE invitation_grants (
     invitation_id TEXT NOT NULL REFERENCES invitations(id) ON DELETE CASCADE,
-    workspace_id  TEXT NOT NULL REFERENCES workspaces(id),
+    workspace_id  TEXT NOT NULL,
     role_id       TEXT NOT NULL,
     allow_json    TEXT NOT NULL DEFAULT '[]',
     deny_json     TEXT NOT NULL DEFAULT '[]',
     PRIMARY KEY (invitation_id, workspace_id)
 );
+
+CREATE TABLE invitation_oauth_handoffs (
+    id                  TEXT PRIMARY KEY,
+    invitation_id       TEXT NOT NULL REFERENCES invitations(id) ON DELETE CASCADE,
+    oauth_state_hash    TEXT UNIQUE,
+    acceptance_hash     TEXT UNIQUE,
+    provider            TEXT NOT NULL,
+    provider_user_id    TEXT,
+    login               TEXT,
+    name                TEXT,
+    avatar_url          TEXT,
+    existing_user_id    TEXT REFERENCES users(id),
+    created_at          INTEGER NOT NULL,
+    expires_at          INTEGER NOT NULL
+);
 ```
 
-`role_id` deliberately has no foreign key. Deleting a role must invalidate
-and delete the complete invitation rather than block role deletion or silently
-drop one grant. Redemption resolves the current role, so role permission
-changes before redemption take effect normally.
+Grant Workspace and Role ids deliberately have no foreign keys. Deleting a
+Workspace or Role must make validation delete the complete Invitation rather
+than block deletion or silently remove one grant. Creation and redemption
+must verify that each Role exists, belongs to its selected Workspace, and is
+not Owner. Role permissions remain dynamic because a membership stores the
+Role id; `can_create_workspace` is an Auth field and cannot appear in a Role
+or Permission overwrite.
 
-A specialized storage repository owns the aggregate transaction. It uses
-`sqlcgen.New(tx)` inside the shared serializer to validate, register a new
-identity when needed, add missing memberships and overwrites, consume the
-invitation, and enqueue events. It does not nest calls to other repository
-methods that start their own transactions.
+A platform storage admission repository owns the aggregate transaction and
+implements narrow consumer-side interfaces declared by Auth and Tenancy. Auth
+still defines provider-identity uniqueness, account status, and first-user
+rules; Tenancy still defines Invitation and membership rules. The repository
+uses `sqlcgen.New(tx)` inside the shared serializer to enforce both domains'
+validated contract, register a new identity when needed, add missing
+memberships and overwrites, consume the Invitation, and enqueue events. It
+does not nest calls to repository methods that start their own transactions.
 
 No scheduler is required for correctness. Reads and mutations prune expired
 or invalid invitations before returning.
@@ -166,6 +214,11 @@ Public routes:
   token, sets the HttpOnly invitation cookie, and returns public preview data.
 - `GET /api/invitations/preview` reads the invitation cookie after an OAuth
   redirect and returns the same preview.
+- `POST /api/invitations/oauth/{provider}` starts OAuth for the cookie-held
+  Invitation and creates the state-bound server handoff.
+- The OAuth callback returns a short-lived acceptance credential in the
+  `/invite` URL fragment. `POST /api/invitations/acceptance` exchanges it for
+  the full authenticated grant details and an HttpOnly acceptance cookie.
 
 Authenticated routes:
 
@@ -173,23 +226,24 @@ Authenticated routes:
 - `GET /api/invitations` lists bundles the actor may manage without a raw
   token or hash.
 - `DELETE /api/invitations/{id}` revokes a bundle.
-- `POST /api/invitations/redeem` redeems the cookie-held credential for the
-  authenticated account.
+- `POST /api/invitations/redeem` accepts the cookie-held credential, atomically
+  admits or updates the User, and returns the normal session token.
 - `GET /api/auth/accounts` lists registered accounts for an instance admin.
 - `PATCH /api/auth/accounts/{id}` changes status between active and disabled
   or restores removed to active.
 - `DELETE /api/auth/accounts/{id}` tombstones the account.
 
-The OAuth start and callback handlers read the invitation cookie when present.
-The callback admits or redeems before minting a session and redirects back to
-`/invite` so the page can show success. All token failures use one stable
-machine code and generic message.
+The OAuth callback only records the verified provider identity in its exact
+state-bound handoff. It never admits a User or redeems an Invitation. All
+credential failures use one stable machine code and generic message.
 
 ## MCP and events
 
 Tenancy exposes `create_invitation`, `list_invitations`, and
-`revoke_invitation`. They call the same service methods as HTTP. Creation is
-the only MCP result containing the complete link.
+`revoke_invitation`. Auth exposes `list_accounts`, `disable_account`,
+`reactivate_account`, `remove_account`, and `restore_account`. They call the
+same service methods as HTTP. Creation is the only MCP result containing the
+complete link.
 
 The catalog gains additive topics:
 
@@ -289,7 +343,8 @@ Always:
 - Hash the bearer token, redact it everywhere, and use a generic public error.
 - Commit user admission, memberships, overwrites, consumption, and events in
   one SQLite transaction.
-- Preserve existing memberships and overwrites.
+- During redemption, preserve memberships and Permission overwrites the User
+  already holds. Account removal deliberately deletes them.
 - Keep browser and MCP behavior behind one use-case layer.
 
 Ask first:
