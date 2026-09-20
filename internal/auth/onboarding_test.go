@@ -383,6 +383,23 @@ func TestAccountLifecycle_RequiresAdminAndRestoresWithoutAccess(t *testing.T) {
 	assert.Equal(t, AccountActive, restored.AccountStatus)
 }
 
+func TestAccountLifecycle_WrongOperationDoesNotChangeState(t *testing.T) {
+	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
+	token, err := s.Login(context.Background(), "good-code")
+	require.NoError(t, err)
+	ownerID := mustVerify(t, s, token)
+	require.NoError(t, s.CompleteOwnerWizard(context.Background(), ownerID, "https://deploy.example.com"))
+	_, _, err = users.UpsertUser(context.Background(), &User{ID: "member-id", Provider: ProviderGitHub, ProviderUserID: "2", Login: "member"})
+	require.NoError(t, err)
+	require.NoError(t, s.DisableAccount(context.Background(), ownerID, "member-id"))
+	require.ErrorIs(t, s.RestoreAccount(context.Background(), ownerID, "member-id"), apperrs.ErrInvalid)
+	member, err := users.GetUserByID(context.Background(), "member-id")
+	require.NoError(t, err)
+	assert.Equal(t, AccountDisabled, member.AccountStatus)
+	require.NoError(t, s.RemoveAccount(context.Background(), ownerID, "member-id"))
+	require.ErrorIs(t, s.ReactivateAccount(context.Background(), ownerID, "member-id"), apperrs.ErrInvalid)
+}
+
 func TestParseConnectionToken_RejectsBad(t *testing.T) {
 	s, _, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
 	token, err := s.Login(context.Background(), "good-code")

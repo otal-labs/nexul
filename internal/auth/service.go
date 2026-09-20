@@ -373,9 +373,9 @@ func (s *Service) StartInvitationOAuth(ctx context.Context, provider Provider, r
 	if _, ok := signInProviders[provider]; !ok {
 		return nil, invalidInvitationError()
 	}
-	invitationID, err := s.cfg.Invitations.InvitationIDForToken(ctx, hashCredential(rawToken), s.cfg.Now())
+	invitation, err := s.cfg.Invitations.GetInvitationByToken(ctx, rawToken, s.cfg.Now())
 	if err != nil {
-		return nil, invalidInvitationError()
+		return nil, classifyInvitationError(err)
 	}
 	state, err := s.NewState()
 	if err != nil {
@@ -386,7 +386,7 @@ func (s *Service) StartInvitationOAuth(ctx context.Context, provider Provider, r
 	if err != nil {
 		return nil, err
 	}
-	handoff := &OAuthHandoff{ID: newUserID(), InvitationID: invitationID, OAuthStateHash: stateHash, Provider: provider, CreatedAt: s.cfg.Now(), ExpiresAt: s.cfg.Now().Add(stateMaxAge)}
+	handoff := &OAuthHandoff{ID: newUserID(), InvitationID: invitation.InvitationID, OAuthStateHash: stateHash, Provider: provider, CreatedAt: s.cfg.Now(), ExpiresAt: s.cfg.Now().Add(stateMaxAge)}
 	if err := s.cfg.OAuthHandoffs.StartOAuthHandoff(ctx, handoff); err != nil {
 		return nil, fmt.Errorf("start invitation OAuth: %w", err)
 	}
@@ -425,32 +425,107 @@ func (s *Service) CompleteInvitationOAuth(ctx context.Context, provider Provider
 	}
 	identity := OAuthHandoffIdentity{Provider: provider, ProviderUserID: providerUser.ID, Login: providerUser.Login, Name: providerUser.Name, AvatarURL: providerUser.AvatarURL, ExistingUserID: existingID}
 	if _, err := s.cfg.OAuthHandoffs.CompleteOAuthCallback(ctx, hashCredential(state), hashCredential(acceptance), identity, s.cfg.Now().Add(stateMaxAge), s.cfg.Now()); err != nil {
-		return "", invalidInvitationError()
+		return "", classifyInvitationError(err)
 	}
 	return acceptance, nil
 }
 
-// RedeemInvitation admits the callback identity and returns a normal session token.
-func (s *Service) RedeemInvitation(ctx context.Context, acceptance string) (string, error) {
+// PrepareAuthenticatedAcceptance creates an acceptance handoff for an active user without OAuth.
+func (s *Service) PrepareAuthenticatedAcceptance(ctx context.Context, userID, rawToken string) (*InvitationAcceptance, error) {
 	if s.cfg.Invitations == nil || s.cfg.OAuthHandoffs == nil {
-		return "", invalidInvitationError()
+		return nil, fmt.Errorf("%w: invitation acceptance is unavailable", apperrs.ErrInvalid)
+	}
+	user, err := s.cfg.Users.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if !accountIsActive(user.AccountStatus) {
+		return nil, apperrs.ErrUnauthorized
+	}
+	details, err := s.cfg.Invitations.GetInvitationByToken(ctx, rawToken, s.cfg.Now())
+	if err != nil {
+		return nil, classifyInvitationError(err)
+	}
+	state, err := s.NewState()
+	if err != nil {
+		return nil, err
+	}
+	acceptance, err := newCredential()
+	if err != nil {
+		return nil, err
+	}
+	handoff := &OAuthHandoff{ID: newUserID(), InvitationID: details.InvitationID, OAuthStateHash: hashCredential(state), Provider: user.Provider, CreatedAt: s.cfg.Now(), ExpiresAt: s.cfg.Now().Add(stateMaxAge)}
+	if err := s.cfg.OAuthHandoffs.StartOAuthHandoff(ctx, handoff); err != nil {
+		return nil, err
+	}
+	identity := OAuthHandoffIdentity{Provider: user.Provider, ProviderUserID: user.ProviderUserID, Login: user.Login, Name: user.Name, AvatarURL: user.AvatarURL, ExistingUserID: user.ID}
+	if _, err := s.cfg.OAuthHandoffs.CompleteOAuthCallback(ctx, hashCredential(state), hashCredential(acceptance), identity, s.cfg.Now().Add(stateMaxAge), s.cfg.Now()); err != nil {
+		return nil, classifyInvitationError(err)
+	}
+	details.AuthenticatedUser = &InvitationAuthenticatedUser{ID: user.ID, Provider: user.Provider, Login: user.Login, Name: user.Name, AvatarURL: user.AvatarURL}
+	return s.acceptanceDetails(acceptance, details)
+}
+
+// GetInvitationAcceptance resolves a short-lived acceptance credential without mutating membership.
+func (s *Service) GetInvitationAcceptance(ctx context.Context, acceptance string) (*InvitationAcceptance, error) {
+	if s.cfg.Invitations == nil || s.cfg.OAuthHandoffs == nil {
+		return nil, invalidInvitationError()
 	}
 	handoff, err := s.cfg.OAuthHandoffs.GetOAuthHandoffByAcceptanceHash(ctx, hashCredential(acceptance), s.cfg.Now())
-	if err != nil || handoff.ProviderUserID == "" {
-		return "", invalidInvitationError()
+	if err != nil {
+		return nil, classifyInvitationError(err)
+	}
+	details, err := s.cfg.Invitations.GetInvitationByAcceptance(ctx, hashCredential(acceptance), s.cfg.Now())
+	if err != nil {
+		return nil, classifyInvitationError(err)
+	}
+	return s.acceptanceDetails(acceptance, detailsWithHandoff(details, handoff))
+}
+
+func (s *Service) acceptanceDetails(acceptance string, details *InvitationAcceptance) (*InvitationAcceptance, error) {
+	if details == nil {
+		return nil, invalidInvitationError()
+	}
+	details.AcceptanceToken = acceptance
+	return details, nil
+}
+
+func detailsWithHandoff(details *InvitationAcceptance, handoff *OAuthHandoff) *InvitationAcceptance {
+	if handoff == nil {
+		return details
+	}
+	details.AuthenticatedUser = &InvitationAuthenticatedUser{ID: handoff.ExistingUserID, Provider: handoff.Provider, Login: handoff.Login, Name: handoff.Name, AvatarURL: handoff.AvatarURL}
+	if handoff.AdmittedUserID != "" {
+		details.AuthenticatedUser.ID = handoff.AdmittedUserID
+	}
+	return details
+}
+
+// RedeemInvitation admits the callback identity and returns a normal session token.
+func (s *Service) RedeemInvitation(ctx context.Context, acceptance string) (InvitationRedeemResult, error) {
+	if s.cfg.Invitations == nil || s.cfg.OAuthHandoffs == nil {
+		return InvitationRedeemResult{}, invalidInvitationError()
+	}
+	handoff, err := s.cfg.OAuthHandoffs.GetOAuthHandoffByAcceptanceHash(ctx, hashCredential(acceptance), s.cfg.Now())
+	if err != nil {
+		return InvitationRedeemResult{}, classifyInvitationError(err)
+	}
+	if handoff.ProviderUserID == "" {
+		return InvitationRedeemResult{}, invalidInvitationError()
 	}
 	identity := InvitationIdentity{ID: newUserID(), Provider: handoff.Provider, ProviderUserID: handoff.ProviderUserID, Login: handoff.Login, Name: handoff.Name, AvatarURL: handoff.AvatarURL}
 	if handoff.ExistingUserID != "" {
 		identity.ID = handoff.ExistingUserID
 	}
-	admission, err := s.cfg.Invitations.RedeemInvitation(ctx, hashCredential(acceptance), identity, s.cfg.Now(), eventbus.OutboxEvent{ID: newUserID(), Topic: TopicAccountAdmitted, Payload: AccountLifecycleEvent{AccountID: identity.ID}})
+	admission, err := s.cfg.Invitations.RedeemInvitation(ctx, hashCredential(acceptance), identity, s.cfg.Now())
 	if err != nil {
-		return "", invalidInvitationError()
+		return InvitationRedeemResult{}, classifyInvitationError(err)
 	}
-	if err := s.cfg.OAuthHandoffs.CompleteOAuthRedemption(ctx, hashCredential(acceptance), admission.UserID, s.cfg.Now()); err != nil {
-		return "", invalidInvitationError()
+	token, err := s.Sign(admission.UserID)
+	if err != nil {
+		return InvitationRedeemResult{}, err
 	}
-	return s.Sign(admission.UserID)
+	return InvitationRedeemResult{Token: token, WorkspaceIDs: admission.WorkspaceIDs}, nil
 }
 
 func newCredential() (string, error) {
@@ -472,6 +547,22 @@ func invitationStateCookie(stateHash string) string {
 
 func invalidInvitationError() error {
 	return fmt.Errorf("%w: invitation is invalid or expired", apperrs.ErrNotFound)
+}
+
+func classifyInvitationError(err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return invalidInvitationError()
+	}
+	if errors.Is(err, apperrs.ErrInvalid) {
+		message := strings.ToLower(err.Error())
+		if strings.Contains(message, "invitation") || strings.Contains(message, "credential") || strings.Contains(message, "acceptance") {
+			return invalidInvitationError()
+		}
+	}
+	return err
 }
 
 // Login is LoginWith for GitHub.
@@ -529,7 +620,7 @@ func (s *Service) findOrCreateLoginUser(ctx context.Context, identity *User) (*U
 	if count != 0 {
 		return nil, fmt.Errorf("%w: invitation required", apperrs.ErrUnauthorized)
 	}
-	user, err = s.cfg.Users.CreateFirstUser(ctx, identity)
+	user, err = s.cfg.Users.CreateFirstUser(ctx, identity, eventbus.OutboxEvent{ID: newUserID(), Topic: TopicAccountAdmitted, Payload: AccountLifecycleEvent{AccountID: identity.ID}})
 	if err != nil {
 		if errors.Is(err, apperrs.ErrConflict) {
 			return nil, fmt.Errorf("%w: invitation required", apperrs.ErrUnauthorized)
@@ -729,6 +820,21 @@ func (s *Service) InstanceURL(ctx context.Context) string {
 	return st.InstanceURL
 }
 
+func (s *Service) secureCookie(ctx context.Context, requestTLS bool) bool {
+	if requestTLS {
+		return true
+	}
+	if s.cfg.Settings == nil {
+		return false
+	}
+	settings, err := s.cfg.Settings.Get(ctx)
+	if err != nil {
+		return false
+	}
+	parsed, err := url.Parse(settings.InstanceURL)
+	return err == nil && strings.EqualFold(parsed.Scheme, "https")
+}
+
 // VerifyInstanceURL is the bootstrap ticker's reachability row: this server fetches its own bootstrap-status through
 // the pasted URL, proving DNS, the proxy, and TLS before the URL is stored and every callback gets derived from it.
 // Gated like the other checks, so a live instance never fetches URLs on a stranger's behalf.
@@ -894,25 +1000,25 @@ func (s *Service) ListAccounts(ctx context.Context, actorID string) ([]*User, er
 
 // DisableAccount blocks authentication while preserving the account's memberships and credentials.
 func (s *Service) DisableAccount(ctx context.Context, actorID, targetID string) error {
-	return s.changeAccountStatus(ctx, actorID, targetID, AccountDisabled, TopicAccountDisabled)
+	return s.changeAccountStatus(ctx, actorID, targetID, AccountDisabled, AccountActive, TopicAccountDisabled)
 }
 
 // ReactivateAccount restores an intentionally disabled account.
 func (s *Service) ReactivateAccount(ctx context.Context, actorID, targetID string) error {
-	return s.changeAccountStatus(ctx, actorID, targetID, AccountActive, TopicAccountReactivated)
+	return s.changeAccountStatus(ctx, actorID, targetID, AccountActive, AccountDisabled, TopicAccountReactivated)
 }
 
 // RemoveAccount tombstones an account and removes its access credentials and memberships.
 func (s *Service) RemoveAccount(ctx context.Context, actorID, targetID string) error {
-	return s.changeAccountStatus(ctx, actorID, targetID, AccountRemoved, TopicAccountRemoved)
+	return s.changeAccountStatus(ctx, actorID, targetID, AccountRemoved, AccountActive, TopicAccountRemoved)
 }
 
 // RestoreAccount reactivates a removed account without restoring deleted access.
 func (s *Service) RestoreAccount(ctx context.Context, actorID, targetID string) error {
-	return s.changeAccountStatus(ctx, actorID, targetID, AccountActive, TopicAccountRestored)
+	return s.changeAccountStatus(ctx, actorID, targetID, AccountActive, AccountRemoved, TopicAccountRestored)
 }
 
-func (s *Service) changeAccountStatus(ctx context.Context, actorID, targetID string, status AccountStatus, topic string) error {
+func (s *Service) changeAccountStatus(ctx context.Context, actorID, targetID string, status, expectedFrom AccountStatus, topic string) error {
 	if err := s.requireCanCreateWorkspace(ctx, actorID); err != nil {
 		return err
 	}
@@ -923,17 +1029,15 @@ func (s *Service) changeAccountStatus(ctx context.Context, actorID, targetID str
 	if err != nil {
 		return fmt.Errorf("get account %s: %w", targetID, err)
 	}
-	if status == AccountDisabled && target.AccountStatus == AccountDisabled {
-		return nil
+	current := target.AccountStatus
+	if current == "" {
+		current = AccountActive
 	}
-	if status == AccountActive && target.AccountStatus == AccountActive {
-		return nil
+	if status == AccountRemoved && (current == AccountDisabled || current == AccountActive) {
+		expectedFrom = current
 	}
-	if status == AccountDisabled && target.AccountStatus == AccountRemoved {
-		return fmt.Errorf("%w: removed accounts must be restored", apperrs.ErrInvalid)
-	}
-	if status == AccountActive && target.AccountStatus != AccountDisabled && target.AccountStatus != AccountRemoved {
-		return fmt.Errorf("%w: account cannot be reactivated", apperrs.ErrInvalid)
+	if current != expectedFrom {
+		return fmt.Errorf("%w: account transition from %s to %s is not allowed", apperrs.ErrInvalid, current, status)
 	}
 	payload := AccountLifecycleEvent{AccountID: targetID, ActorID: actorID}
 	return s.cfg.Users.SetAccountStatus(ctx, targetID, status, eventbus.OutboxEvent{ID: newUserID(), Topic: topic, Payload: payload})

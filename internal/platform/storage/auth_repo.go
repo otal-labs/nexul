@@ -70,7 +70,7 @@ func (r *UsersRepo) UpsertUser(ctx context.Context, u *auth.User) (*auth.User, b
 }
 
 // CreateFirstUser admits the first provider identity while holding the shared write serializer.
-func (r *UsersRepo) CreateFirstUser(ctx context.Context, u *auth.User) (*auth.User, error) {
+func (r *UsersRepo) CreateFirstUser(ctx context.Context, u *auth.User, events ...eventbus.OutboxEvent) (*auth.User, error) {
 	var persisted *auth.User
 	err := r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
@@ -87,6 +87,11 @@ func (r *UsersRepo) CreateFirstUser(ctx context.Context, u *auth.User) (*auth.Us
 			Login: u.Login, Name: u.Name, AvatarUrl: u.AvatarURL, CreatedAt: now, UpdatedAt: now,
 		}); err != nil {
 			return fmt.Errorf("insert first user: %w", err)
+		}
+		for _, event := range events {
+			if err := insertOutboxRow(ctx, tx, event.ID, event.Topic, event.Payload); err != nil {
+				return fmt.Errorf("write first-user event: %w", err)
+			}
 		}
 		persisted, err = r.getByProvider(ctx, q, u.Provider, u.ProviderUserID)
 		return err

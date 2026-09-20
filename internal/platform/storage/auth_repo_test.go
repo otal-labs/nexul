@@ -35,6 +35,21 @@ func TestUsersRepo_UpsertUser_Create(t *testing.T) {
 	assert.False(t, u.CreatedAt.IsZero())
 }
 
+func TestUsersRepo_CreateFirstUser_WritesAdmissionEventAtomically(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	u, err := s.Users.CreateFirstUser(ctx, newTestUser("u1", "42", "first"), eventbus.OutboxEvent{ID: "account-admitted", Topic: auth.TopicAccountAdmitted, Payload: map[string]string{"account_id": "u1"}})
+	require.NoError(t, err)
+	assert.Equal(t, "u1", u.ID)
+	entries, err := s.Outbox.Unpublished(ctx, 10)
+	require.NoError(t, err)
+	require.Len(t, entries, 1)
+	assert.Equal(t, "account-admitted", entries[0].ID)
+	_, err = s.Users.CreateFirstUser(ctx, newTestUser("u2", "43", "second"))
+	assert.ErrorIs(t, err, apperrs.ErrConflict)
+}
+
 func TestUsersRepo_UpsertUser_UpdatesProviderFieldsNotFlags(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

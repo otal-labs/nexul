@@ -10,7 +10,7 @@ import (
 // UserStore persists user records; UpsertUser returns the record, permission/sync columns included, plus created.
 type UserStore interface {
 	UpsertUser(ctx context.Context, u *User) (*User, bool, error)
-	CreateFirstUser(ctx context.Context, u *User) (*User, error)
+	CreateFirstUser(ctx context.Context, u *User, events ...eventbus.OutboxEvent) (*User, error)
 	GetUserByID(ctx context.Context, id string) (*User, error)
 	GetUserByProvider(ctx context.Context, provider Provider, providerUserID string) (*User, error)
 	// GetUserByLogin looks up a user by login (ErrNotFound if none); tenancy checks if a login already has a User.
@@ -35,7 +35,8 @@ type OAuthHandoffStore interface {
 
 // InvitationGate is the auth-side slice of invitation storage. Raw credentials are hashed before they cross this seam.
 type InvitationGate interface {
-	InvitationIDForToken(ctx context.Context, tokenHash string, now time.Time) (string, error)
+	GetInvitationByToken(ctx context.Context, rawToken string, now time.Time) (*InvitationAcceptance, error)
+	GetInvitationByAcceptance(ctx context.Context, acceptanceHash string, now time.Time) (*InvitationAcceptance, error)
 	RedeemInvitation(ctx context.Context, acceptanceHash string, identity InvitationIdentity, now time.Time, events ...eventbus.OutboxEvent) (InvitationAdmission, error)
 }
 

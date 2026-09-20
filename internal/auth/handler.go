@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/httpx"
@@ -35,6 +36,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /auth/discord", h.startOAuth(ProviderDiscord))
 	mux.HandleFunc("GET /auth/discord/callback", h.callbackGET(ProviderDiscord))
 	mux.HandleFunc("POST /api/invitations/oauth", h.startInvitationOAuth)
+	mux.HandleFunc("POST /api/invitations/acceptance", h.acceptInvitation)
 	mux.HandleFunc("POST /api/invitations/redeem", h.redeemInvitation)
 	mux.HandleFunc("GET /api/auth/bootstrap-status", h.bootstrapStatus)
 	mux.HandleFunc("POST /api/auth/bootstrap", h.bootstrap)
@@ -201,7 +203,7 @@ func (h *Handler) startOAuth(provider Provider) http.HandlerFunc {
 			MaxAge:   int(stateMaxAge.Seconds()),
 			HttpOnly: true,
 			SameSite: http.SameSiteLaxMode,
-			Secure:   r.TLS != nil,
+			Secure:   h.svc.secureCookie(r.Context(), r.TLS != nil),
 		})
 		http.Redirect(w, r, url, http.StatusFound)
 	}
@@ -213,36 +215,78 @@ type invitationOAuthRequest struct {
 }
 
 func (h *Handler) startInvitationOAuth(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
 	var req invitationOAuthRequest
 	if err := httpx.DecodeJSON(r, &req); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
-	start, err := h.svc.StartInvitationOAuth(r.Context(), req.Provider, req.Token)
+	start, err := h.svc.StartInvitationOAuth(ctx, req.Provider, req.Token)
 	if err != nil {
-		httpx.WriteError(w, invalidInvitationError())
+		httpx.WriteError(w, classifyInvitationError(err))
 		return
 	}
-	http.SetCookie(w, &http.Cookie{Name: start.CookieName, Value: start.State, Path: "/", MaxAge: int(stateMaxAge.Seconds()), HttpOnly: true, SameSite: http.SameSiteLaxMode, Secure: r.TLS != nil})
+	http.SetCookie(w, &http.Cookie{Name: start.CookieName, Value: start.State, Path: "/", MaxAge: int(stateMaxAge.Seconds()), HttpOnly: true, SameSite: http.SameSiteLaxMode, Secure: h.svc.secureCookie(ctx, r.TLS != nil)})
 	httpx.WriteJSON(w, http.StatusOK, map[string]string{"url": start.URL})
 }
 
 type invitationRedeemRequest struct {
-	Acceptance string `json:"acceptance"`
+	AcceptanceToken string `json:"acceptance_token"`
 }
 
 func (h *Handler) redeemInvitation(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
 	var req invitationRedeemRequest
 	if err := httpx.DecodeJSON(r, &req); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
-	token, err := h.svc.RedeemInvitation(r.Context(), req.Acceptance)
+	result, err := h.svc.RedeemInvitation(ctx, req.AcceptanceToken)
 	if err != nil {
+		httpx.WriteError(w, classifyInvitationError(err))
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, result)
+}
+
+type invitationAcceptanceRequest struct {
+	Token           string `json:"token"`
+	AcceptanceToken string `json:"acceptance_token"`
+}
+
+func (h *Handler) acceptInvitation(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+	var req invitationAcceptanceRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	if (req.Token == "" && req.AcceptanceToken == "") || (req.Token != "" && req.AcceptanceToken != "") {
 		httpx.WriteError(w, invalidInvitationError())
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]string{"token": token})
+	var details *InvitationAcceptance
+	var err error
+	if req.Token != "" {
+		rawAuth := strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
+		user, authErr := h.svc.authenticate(r.WithContext(ctx), rawAuth)
+		if authErr != nil || user == nil {
+			httpx.WriteError(w, apperrs.ErrUnauthorized)
+			return
+		}
+		details, err = h.svc.PrepareAuthenticatedAcceptance(ctx, user.ID, req.Token)
+	}
+	if req.AcceptanceToken != "" {
+		details, err = h.svc.GetInvitationAcceptance(ctx, req.AcceptanceToken)
+	}
+	if err != nil {
+		httpx.WriteError(w, classifyInvitationError(err))
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, details)
 }
 
 func (h *Handler) providerConfigured(r *http.Request, provider Provider) (bool, error) {
@@ -252,6 +296,8 @@ func (h *Handler) providerConfigured(r *http.Request, provider Provider) (bool, 
 // callbackGET verifies the CSRF cookie, exchanges the code, and redirects to the SPA with a session token in the URL.
 func (h *Handler) callbackGET(provider Provider) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+		defer cancel()
 		state := r.URL.Query().Get("state")
 		if state != "" {
 			if cookie, cookieErr := r.Cookie(invitationStateCookie(hashCredential(state))); cookieErr == nil && cookie.Value == state {
@@ -260,12 +306,12 @@ func (h *Handler) callbackGET(provider Provider) http.HandlerFunc {
 					httpx.WriteError(w, invalidInvitationError())
 					return
 				}
-				acceptance, err := h.svc.CompleteInvitationOAuth(r.Context(), provider, state, code)
+				acceptance, err := h.svc.CompleteInvitationOAuth(ctx, provider, state, code)
 				if err != nil {
-					httpx.WriteError(w, invalidInvitationError())
+					httpx.WriteError(w, classifyInvitationError(err))
 					return
 				}
-				http.SetCookie(w, &http.Cookie{Name: invitationStateCookie(hashCredential(state)), Value: "", MaxAge: -1, Path: "/", HttpOnly: true})
+				http.SetCookie(w, &http.Cookie{Name: invitationStateCookie(hashCredential(state)), Value: "", MaxAge: -1, Path: "/", HttpOnly: true, Secure: h.svc.secureCookie(ctx, r.TLS != nil)})
 				http.Redirect(w, r, h.spaOrigin(r)+"/invite#"+acceptance, http.StatusFound)
 				return
 			}
@@ -285,7 +331,7 @@ func (h *Handler) callbackGET(provider Provider) http.HandlerFunc {
 			httpx.WriteError(w, err)
 			return
 		}
-		http.SetCookie(w, &http.Cookie{Name: stateCookie, Value: "", MaxAge: -1, Path: "/", HttpOnly: true})
+		http.SetCookie(w, &http.Cookie{Name: stateCookie, Value: "", MaxAge: -1, Path: "/", HttpOnly: true, Secure: h.svc.secureCookie(ctx, r.TLS != nil)})
 		http.Redirect(w, r, h.spaOrigin(r)+"/login?token="+token, http.StatusFound)
 	}
 }
@@ -576,7 +622,9 @@ func (h *Handler) removeMember(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) listAccounts(w http.ResponseWriter, r *http.Request) {
-	accounts, err := h.svc.ListAccounts(r.Context(), currentUserID(r))
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+	accounts, err := h.svc.ListAccounts(ctx, currentUserID(r))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -585,7 +633,9 @@ func (h *Handler) listAccounts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) disableAccount(w http.ResponseWriter, r *http.Request) {
-	if err := h.svc.DisableAccount(r.Context(), currentUserID(r), r.PathValue("id")); err != nil {
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+	if err := h.svc.DisableAccount(ctx, currentUserID(r), r.PathValue("id")); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
@@ -593,7 +643,9 @@ func (h *Handler) disableAccount(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) reactivateAccount(w http.ResponseWriter, r *http.Request) {
-	if err := h.svc.ReactivateAccount(r.Context(), currentUserID(r), r.PathValue("id")); err != nil {
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+	if err := h.svc.ReactivateAccount(ctx, currentUserID(r), r.PathValue("id")); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
@@ -601,7 +653,9 @@ func (h *Handler) reactivateAccount(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) removeAccount(w http.ResponseWriter, r *http.Request) {
-	if err := h.svc.RemoveAccount(r.Context(), currentUserID(r), r.PathValue("id")); err != nil {
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+	if err := h.svc.RemoveAccount(ctx, currentUserID(r), r.PathValue("id")); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
@@ -609,7 +663,9 @@ func (h *Handler) removeAccount(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) restoreAccount(w http.ResponseWriter, r *http.Request) {
-	if err := h.svc.RestoreAccount(r.Context(), currentUserID(r), r.PathValue("id")); err != nil {
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+	if err := h.svc.RestoreAccount(ctx, currentUserID(r), r.PathValue("id")); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}

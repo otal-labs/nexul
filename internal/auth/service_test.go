@@ -236,6 +236,43 @@ func TestLogin_DisabledUserCannotResignIn(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrUnauthorized)
 }
 
+func TestInvitationOAuthCallback_DoesNotCreateUser(t *testing.T) {
+	s, users, _, settings := newTestHarness(&fakeGitHub{token: "at", user: ghUser("provider-1", "new-user")})
+	settings.st.InstanceURL = "https://nexul.example"
+	settings.st.GitHubOAuthClientID = "client"
+	settings.st.GitHubOAuthClientSecret = "secret"
+	gate := &fakeInvitationGate{token: "raw-invitation", invitation: &InvitationAcceptance{InvitationID: "inv-1"}}
+	handoffs := &fakeOAuthHandoffStore{}
+	s.SetInvitationGate(gate)
+	s.SetOAuthHandoffStore(handoffs)
+	start, err := s.StartInvitationOAuth(context.Background(), ProviderGitHub, "raw-invitation")
+	require.NoError(t, err)
+	acceptance, err := s.CompleteInvitationOAuth(context.Background(), ProviderGitHub, start.State, "good-code")
+	require.NoError(t, err)
+	assert.NotEmpty(t, acceptance)
+	registered, err := users.ListUsers(context.Background())
+	require.NoError(t, err)
+	assert.Empty(t, registered)
+}
+
+func TestAuthenticatedAcceptance_DoesNotNeedOAuth(t *testing.T) {
+	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
+	owner, err := s.Login(context.Background(), "good-code")
+	require.NoError(t, err)
+	ownerID := mustVerify(t, s, owner)
+	gate := &fakeInvitationGate{token: "raw-invitation", invitation: &InvitationAcceptance{InvitationID: "inv-1", InstanceName: "Nexul"}}
+	s.SetInvitationGate(gate)
+	s.SetOAuthHandoffStore(&fakeOAuthHandoffStore{})
+	details, err := s.PrepareAuthenticatedAcceptance(context.Background(), ownerID, "raw-invitation")
+	require.NoError(t, err)
+	assert.Equal(t, "inv-1", details.InvitationID)
+	assert.Equal(t, ownerID, details.AuthenticatedUser.ID)
+	assert.NotEmpty(t, details.AcceptanceToken)
+	registered, err := users.ListUsers(context.Background())
+	require.NoError(t, err)
+	assert.Len(t, registered, 1)
+}
+
 func TestConfigured(t *testing.T) {
 	s, _, _, settings := newTestHarness(&fakeGitHub{user: ghUser("1", "x")})
 	settings.st.GitHubOAuthClientID = "client"
