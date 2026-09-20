@@ -332,9 +332,8 @@ func TestParseDeployStatus(t *testing.T) {
   for the philosophy.
 - Run locally: `go test -coverprofile=coverage.out ./... && go tool cover -func=coverage.out`
 - `make coverage` filters the coverage profile before computing the
-  percentage, dropping `cmd/`, `testutil/`, `node_modules/`, and generated
-  code matched as `*.pb.go`, `*.connect.go`, `zz_generated*`, and
-  `sqlcgen/`.
+  percentage, dropping paths containing `/cmd/`, `/testutil/`, or
+  `/sqlcgen/`.
 - Packages with no executable statements, such as wire-type-only packages,
   never appear in the coverage profile at all, so they never count against
   the denominator.
