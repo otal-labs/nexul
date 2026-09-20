@@ -10,6 +10,7 @@ import (
 	"github.com/otal-labs/nexul/internal/auth"
 	"github.com/otal-labs/nexul/internal/platform/crypto"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
 )
 
@@ -68,12 +69,49 @@ func (r *UsersRepo) UpsertUser(ctx context.Context, u *auth.User) (*auth.User, b
 	return persisted, created, nil
 }
 
+// CreateFirstUser admits the first provider identity while holding the shared write serializer.
+func (r *UsersRepo) CreateFirstUser(ctx context.Context, u *auth.User, events ...eventbus.OutboxEvent) (*auth.User, error) {
+	var persisted *auth.User
+	err := r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		q := r.q.WithTx(tx)
+		count, err := q.CountUsers(ctx)
+		if err != nil {
+			return fmt.Errorf("count users: %w", err)
+		}
+		if count != 0 {
+			return apperrs.ErrConflict
+		}
+		now := time.Now().Unix()
+		if err := q.InsertUser(ctx, sqlcgen.InsertUserParams{
+			ID: u.ID, Provider: string(u.Provider), ProviderUserID: u.ProviderUserID,
+			Login: u.Login, Name: u.Name, AvatarUrl: u.AvatarURL, CreatedAt: now, UpdatedAt: now,
+		}); err != nil {
+			return fmt.Errorf("insert first user: %w", err)
+		}
+		for _, event := range events {
+			if err := insertOutboxRow(ctx, tx, event.ID, event.Topic, event.Payload); err != nil {
+				return fmt.Errorf("write first-user event: %w", err)
+			}
+		}
+		persisted, err = r.getByProvider(ctx, q, u.Provider, u.ProviderUserID)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	return persisted, nil
+}
+
 func (r *UsersRepo) GetUserByID(ctx context.Context, id string) (*auth.User, error) {
 	row, err := r.q.GetUserByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("get user %s: %w", id, notFoundIfNoRows(err))
 	}
 	return toUser(row), nil
+}
+
+func (r *UsersRepo) GetUserByProvider(ctx context.Context, provider auth.Provider, providerUserID string) (*auth.User, error) {
+	return userRow(r.q.GetUserByProvider(ctx, sqlcgen.GetUserByProviderParams{Provider: string(provider), ProviderUserID: providerUserID}))
 }
 
 func (r *UsersRepo) CanCreateWorkspaceExists(ctx context.Context) (bool, error) {
@@ -97,6 +135,106 @@ func (r *UsersRepo) SetCanCreateWorkspace(ctx context.Context, id string, can bo
 		}
 		return nil
 	})
+}
+
+func (r *UsersRepo) SetAccountStatus(ctx context.Context, id string, status auth.AccountStatus, events ...eventbus.OutboxEvent) error {
+	if !validAccountStatus(status) {
+		return fmt.Errorf("%w: invalid account status %q", apperrs.ErrInvalid, status)
+	}
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		q := r.q.WithTx(tx)
+		user, err := q.GetUserByID(ctx, id)
+		if err != nil {
+			return fmt.Errorf("get account %s: %w", id, notFoundIfNoRows(err))
+		}
+		if err := protectLastActiveAdmin(ctx, q, user, status); err != nil {
+			return err
+		}
+		now := time.Now().Unix()
+		if status == auth.AccountRemoved {
+			if err := removeAccountAccess(ctx, q, id, now); err != nil {
+				return err
+			}
+		}
+		n, err := q.SetAccountStatus(ctx, sqlcgen.SetAccountStatusParams{
+			AccountStatus: string(status), UpdatedAt: now, ID: id,
+		})
+		if err != nil {
+			return fmt.Errorf("set account status %s: %w", id, err)
+		}
+		if n == 0 {
+			return fmt.Errorf("set account status %s: %w", id, apperrs.ErrNotFound)
+		}
+		return enqueueAccountEvents(ctx, tx, id, events)
+	})
+}
+
+func validAccountStatus(status auth.AccountStatus) bool {
+	return status == auth.AccountActive || status == auth.AccountDisabled || status == auth.AccountRemoved
+}
+
+func protectLastActiveAdmin(ctx context.Context, q *sqlcgen.Queries, user sqlcgen.User, status auth.AccountStatus) error {
+	if user.CanCreateWorkspace == 0 || user.AccountStatus != string(auth.AccountActive) || status == auth.AccountActive {
+		return nil
+	}
+	activeAdmins, err := q.CountActiveAdmins(ctx)
+	if err != nil {
+		return fmt.Errorf("count active instance admins: %w", err)
+	}
+	if activeAdmins <= 1 {
+		return fmt.Errorf("%w: cannot change the last active instance admin", apperrs.ErrConflict)
+	}
+	return nil
+}
+
+func removeAccountAccess(ctx context.Context, q *sqlcgen.Queries, id string, now int64) error {
+	steps := []struct {
+		name string
+		run  func() error
+	}{
+		{"memberships", func() error { return q.DeleteAccountMemberships(ctx, id) }},
+		{"overwrites", func() error { return q.DeleteAccountOverwrites(ctx, id) }},
+		{"tokens", func() error {
+			return q.RevokeAccountPATs(ctx, sqlcgen.RevokeAccountPATsParams{RevokedAt: sql.NullInt64{Int64: now, Valid: true}, UserID: id})
+		}},
+		{"pairing defaults", func() error { return q.DeleteAccountPairingDefaults(ctx, id) }},
+		{"pairing computers", func() error { return q.DeleteAccountPairingComputers(ctx, id) }},
+		{"invitations", func() error { return q.DeleteAccountInvitations(ctx, id) }},
+	}
+	for _, step := range steps {
+		if err := step.run(); err != nil {
+			return fmt.Errorf("remove account %s %s: %w", id, step.name, err)
+		}
+	}
+	if _, err := q.SetCanCreateWorkspace(ctx, sqlcgen.SetCanCreateWorkspaceParams{CanCreateWorkspace: 0, UpdatedAt: now, ID: id}); err != nil {
+		return fmt.Errorf("clear account admin %s: %w", id, err)
+	}
+	return nil
+}
+
+func enqueueAccountEvents(ctx context.Context, tx *sql.Tx, id string, events []eventbus.OutboxEvent) error {
+	for _, event := range events {
+		if err := insertOutboxRow(ctx, tx, event.ID, event.Topic, event.Payload); err != nil {
+			return fmt.Errorf("write account event %s: %w", id, err)
+		}
+	}
+	return nil
+}
+
+func (r *UsersRepo) CountUsers(ctx context.Context) (int, error) {
+	n, err := r.q.CountUsers(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("count users: %w", err)
+	}
+	return int(n), nil
+}
+
+func (r *UsersRepo) CountActiveAdmins(ctx context.Context) (int, error) {
+	n, err := r.q.CountActiveAdmins(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("count active instance admins: %w", err)
+	}
+	return int(n), nil
 }
 
 func (r *UsersRepo) MarkFirstLoginDone(ctx context.Context, id string) error {
@@ -173,6 +311,7 @@ func toUser(row sqlcgen.User) *auth.User {
 		AvatarURL:          row.AvatarUrl,
 		CanCreateWorkspace: row.CanCreateWorkspace != 0,
 		FirstLoginDone:     row.FirstLoginDone != 0,
+		AccountStatus:      auth.AccountStatus(row.AccountStatus),
 		CreatedAt:          time.Unix(row.CreatedAt, 0).UTC(),
 		UpdatedAt:          time.Unix(row.UpdatedAt, 0).UTC(),
 	}

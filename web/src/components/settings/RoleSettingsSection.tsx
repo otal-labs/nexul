@@ -13,7 +13,7 @@ import { useCreateWorkspaceRole, useFetchWorkspaceRoles } from "@/hooks/RoleHook
 import { useFetchPermissionCatalog } from "@/hooks/PermissionHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
-// Gated on roles:write, same gate-in-parent pattern as AllowlistSection.
+// Gated on roles:write, same gate-in-parent pattern as account management.
 export const RoleSettingsSection = () => {
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const { data: roles, isPending: rolesPending, error: rolesError } = useFetchWorkspaceRoles(workspaceId);

@@ -14,17 +14,6 @@ export const useFetchWorkspaceMembers = (workspaceId: string) =>
     enabled: workspaceId !== "",
   });
 
-export const useInviteWorkspaceMember = (workspaceId: string) => {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ login, roleId }: { login: string; roleId: string }) =>
-      api.post(`/api/workspaces/${workspaceId}/members`, { login, role_id: roleId }),
-    onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: [getWorkspaceMembersKey, workspaceId] });
-    },
-    onError: (error) => toast.error(errorMessage(error)),
-  });
-};
 
 export const useRemoveWorkspaceMember = (workspaceId: string) => {
   const client = useQueryClient();
@@ -39,18 +28,6 @@ export const useRemoveWorkspaceMember = (workspaceId: string) => {
   });
 };
 
-export const useCancelWorkspaceInvite = (workspaceId: string) => {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: async (login: string) =>
-      api.delete(`/api/workspaces/${workspaceId}/invites/${encodeURIComponent(login)}`),
-    onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: [getWorkspaceMembersKey, workspaceId] });
-      toast.success("Invite withdrawn");
-    },
-    onError: (error) => toast.error(errorMessage(error)),
-  });
-};
 
 export const useChangeWorkspaceMemberRole = (workspaceId: string) => {
   const client = useQueryClient();

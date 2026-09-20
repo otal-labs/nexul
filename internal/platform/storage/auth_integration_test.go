@@ -58,10 +58,8 @@ func (fakePendingInviteResolver) ResolvePendingInvites(context.Context, string, 
 	return nil
 }
 
-// TestAuthIntegration_OwnerBootstrapAndAllowlist drives the owner-bootstrap and allowlist flow end to
-// end against a real migrated SQLite store: first sign-in → owner wizard →
-// allowlist membership → second-user sign-in gate.
-func TestAuthIntegration_OwnerBootstrapAndAllowlist(t *testing.T) {
+// TestAuthIntegration_OwnerBootstrapAndAdmission drives first-user bootstrap and known-user admission against SQLite.
+func TestAuthIntegration_OwnerBootstrapAndAdmission(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
 
@@ -99,7 +97,7 @@ func TestAuthIntegration_OwnerBootstrapAndAllowlist(t *testing.T) {
 		assert.Equal(t, "https://deploy.example.com", claims.InstanceURL)
 	})
 
-	t.Run("second user rejected until allowlisted", func(t *testing.T) {
+	t.Run("known active user signs in without allowlist", func(t *testing.T) {
 		owner := &auth.User{ID: "owner-id", Provider: auth.ProviderGitHub, ProviderUserID: "1", Login: "owner"}
 		ownerRec, _, err := store.Users.UpsertUser(ctx, owner)
 		require.NoError(t, err)
@@ -111,10 +109,6 @@ func TestAuthIntegration_OwnerBootstrapAndAllowlist(t *testing.T) {
 
 		gh.userLogin = "member"
 		gh.userID = "2"
-		_, err = svc.Login(ctx, "good")
-		require.ErrorIs(t, err, apperrs.ErrUnauthorized)
-
-		require.NoError(t, svc.AddMember(ctx, ownerRec.ID, "member"))
 		token, err := svc.Login(ctx, "good")
 		require.NoError(t, err)
 		userID, err := svc.Verify(token)

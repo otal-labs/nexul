@@ -7,6 +7,7 @@ import (
 	"log/slog"
 
 	"github.com/otal-labs/nexul/internal/access"
+	"github.com/otal-labs/nexul/internal/auth"
 	"github.com/otal-labs/nexul/internal/automations"
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/codereview"
@@ -22,6 +23,7 @@ import (
 	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/repository"
 	"github.com/otal-labs/nexul/internal/runner"
+	"github.com/otal-labs/nexul/internal/tenancy"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/topology"
 	"github.com/otal-labs/nexul/internal/workspace"
@@ -43,6 +45,8 @@ type RegistryOptions struct {
 	DNS           *dns.Service
 	Automations   *automations.Service
 	Access        *access.Service
+	Auth          *auth.Service
+	Invitations   *tenancy.InvitationService
 	Mentions      *mentions.Service
 	Chat          *chat.Service
 	Plays         *plays.Service
@@ -128,15 +132,25 @@ func registerDomainTools(s *Server, opts RegistryOptions) {
 	if opts.Access != nil {
 		s.tools = append(s.tools, access.MCPTools(opts.Access)...)
 	}
+	registerIdentityTools(s, opts)
+	registerPlaysTools(s, opts)
+	if opts.Memories != nil {
+		s.tools = append(s.tools, memories.MCPTools(opts.Memories)...)
+	}
+}
+
+func registerIdentityTools(s *Server, opts RegistryOptions) {
+	if opts.Auth != nil {
+		s.tools = append(s.tools, auth.MCPTools(opts.Auth)...)
+	}
+	if opts.Invitations != nil {
+		s.tools = append(s.tools, tenancy.MCPTools(opts.Invitations)...)
+	}
 	if opts.Mentions != nil {
 		s.tools = append(s.tools, mentions.MCPTools(opts.Mentions)...)
 	}
 	if opts.Chat != nil {
 		s.tools = append(s.tools, chat.MCPTools(opts.Chat)...)
-	}
-	registerPlaysTools(s, opts)
-	if opts.Memories != nil {
-		s.tools = append(s.tools, memories.MCPTools(opts.Memories)...)
 	}
 }
 

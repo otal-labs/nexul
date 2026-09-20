@@ -1,4 +1,4 @@
-import { AllowlistSection } from "@/components/settings/AllowlistSection";
+import { AccountsSection } from "@/components/settings/AccountsSection";
 import { AppearanceSection } from "@/components/settings/AppearanceSection";
 import { AutomationSecretsSection } from "@/components/settings/AutomationSecretsSection";
 import { ComputersSection } from "@/components/settings/ComputersSection";
@@ -49,7 +49,7 @@ const TokensPanel = ({ settings }: { settings: InstanceSettings | undefined }) =
 );
 
 const AccessPanel = ({ isInstanceAdmin }: { isInstanceAdmin: boolean }) => (
-  <>{isInstanceAdmin && <AllowlistSection />}</>
+  <>{isInstanceAdmin && <AccountsSection />}</>
 );
 
 const DangerPanel = ({ settings }: { settings: InstanceSettings | undefined }) => (

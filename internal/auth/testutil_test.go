@@ -8,6 +8,7 @@ import (
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 )
 
 // fakeGitHub implements GitHubClient without network access.
@@ -67,10 +68,42 @@ func (f *fakeUserStore) UpsertUser(_ context.Context, u *User) (*User, bool, err
 		f.seq++
 		u.ID = fmt.Sprintf("user-%d", f.seq)
 	}
+	if u.AccountStatus == "" {
+		u.AccountStatus = AccountActive
+	}
 	cp := *u
 	f.byKey[key] = cp.ID
 	f.byID[cp.ID] = &cp
 	return &cp, true, nil
+}
+
+func (f *fakeUserStore) CreateFirstUser(_ context.Context, u *User, _ ...eventbus.OutboxEvent) (*User, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if len(f.byID) != 0 {
+		return nil, apperrs.ErrConflict
+	}
+	if u.ID == "" {
+		f.seq++
+		u.ID = fmt.Sprintf("user-%d", f.seq)
+	}
+	if u.AccountStatus == "" {
+		u.AccountStatus = AccountActive
+	}
+	cp := *u
+	f.byKey[userKey(u.Provider, u.ProviderUserID)] = cp.ID
+	f.byID[cp.ID] = &cp
+	return &cp, nil
+}
+
+func (f *fakeUserStore) GetUserByProvider(_ context.Context, provider Provider, providerUserID string) (*User, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	id, ok := f.byKey[userKey(provider, providerUserID)]
+	if !ok {
+		return nil, apperrs.ErrNotFound
+	}
+	return f.byID[id], nil
 }
 
 func (f *fakeUserStore) GetUserByID(_ context.Context, id string) (*User, error) {
@@ -124,6 +157,35 @@ func (f *fakeUserStore) SetCanCreateWorkspace(_ context.Context, id string, can 
 	}
 	u.CanCreateWorkspace = can
 	return nil
+}
+
+func (f *fakeUserStore) SetAccountStatus(_ context.Context, id string, status AccountStatus, _ ...eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	u, ok := f.byID[id]
+	if !ok {
+		return apperrs.ErrNotFound
+	}
+	u.AccountStatus = status
+	return nil
+}
+
+func (f *fakeUserStore) CountUsers(_ context.Context) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return len(f.byID), nil
+}
+
+func (f *fakeUserStore) CountActiveAdmins(_ context.Context) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	count := 0
+	for _, u := range f.byID {
+		if u.CanCreateWorkspace && u.AccountStatus == AccountActive {
+			count++
+		}
+	}
+	return count, nil
 }
 
 func (f *fakeUserStore) MarkFirstLoginDone(_ context.Context, id string) error {
@@ -376,6 +438,84 @@ type fakePendingInviteResolver struct {
 	mu         sync.Mutex
 	resolved   [][2]string // [login, userID]
 	resolveErr error
+}
+
+type fakeInvitationGate struct {
+	invitation *InvitationAcceptance
+	token      string
+	acceptance string
+	admission  InvitationAdmission
+	err        error
+}
+
+func (f *fakeInvitationGate) GetInvitationByToken(_ context.Context, token string, _ time.Time) (*InvitationAcceptance, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	if token != f.token {
+		return nil, apperrs.ErrNotFound
+	}
+	return f.invitation, nil
+}
+
+func (f *fakeInvitationGate) GetInvitationByAcceptance(_ context.Context, acceptanceHash string, _ time.Time) (*InvitationAcceptance, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	if acceptanceHash != hashCredential(f.acceptance) {
+		return nil, apperrs.ErrNotFound
+	}
+	return f.invitation, nil
+}
+
+func (f *fakeInvitationGate) RedeemInvitation(_ context.Context, acceptanceHash string, _ InvitationIdentity, _ time.Time, _ ...eventbus.OutboxEvent) (InvitationAdmission, error) {
+	if f.err != nil {
+		return InvitationAdmission{}, f.err
+	}
+	if acceptanceHash != hashCredential(f.acceptance) {
+		return InvitationAdmission{}, apperrs.ErrNotFound
+	}
+	return f.admission, nil
+}
+
+type fakeOAuthHandoffStore struct {
+	handoff *OAuthHandoff
+}
+
+func (f *fakeOAuthHandoffStore) StartOAuthHandoff(_ context.Context, handoff *OAuthHandoff) error {
+	f.handoff = handoff
+	return nil
+}
+
+func (f *fakeOAuthHandoffStore) CompleteOAuthCallback(_ context.Context, stateHash, acceptanceHash string, identity OAuthHandoffIdentity, expiresAt, _ time.Time) (*OAuthHandoff, error) {
+	if f.handoff == nil || f.handoff.OAuthStateHash != stateHash {
+		return nil, apperrs.ErrNotFound
+	}
+	f.handoff.OAuthStateHash = ""
+	f.handoff.AcceptanceHash = acceptanceHash
+	f.handoff.ProviderUserID = identity.ProviderUserID
+	f.handoff.Login = identity.Login
+	f.handoff.Name = identity.Name
+	f.handoff.AvatarURL = identity.AvatarURL
+	f.handoff.ExistingUserID = identity.ExistingUserID
+	f.handoff.ExpiresAt = expiresAt
+	return f.handoff, nil
+}
+
+func (f *fakeOAuthHandoffStore) GetOAuthHandoffByAcceptanceHash(_ context.Context, acceptanceHash string, _ time.Time) (*OAuthHandoff, error) {
+	if f.handoff == nil || f.handoff.AcceptanceHash != acceptanceHash {
+		return nil, apperrs.ErrNotFound
+	}
+	return f.handoff, nil
+}
+
+func (f *fakeOAuthHandoffStore) CompleteOAuthRedemption(_ context.Context, _, admittedUserID string, now time.Time) error {
+	if f.handoff == nil || f.handoff.AdmittedUserID != "" && f.handoff.AdmittedUserID != admittedUserID {
+		return apperrs.ErrNotFound
+	}
+	f.handoff.AdmittedUserID = admittedUserID
+	f.handoff.CompletedAt = &now
+	return nil
 }
 
 func (f *fakePendingInviteResolver) ResolvePendingInvites(_ context.Context, login, userID string) error {

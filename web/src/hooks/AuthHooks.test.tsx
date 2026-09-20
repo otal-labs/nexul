@@ -5,15 +5,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import {
-  useAddMember,
   useCompleteFirstLogin,
   useCompleteOwnerWizard,
   useFetchMe,
-  useFetchMembers,
   useFetchSettings,
   useGenerateConnectionToken,
-  useLookupMembers,
-  useRemoveMember,
   useUpdateMentionChipTemplate,
   useUpdateSettings,
 } from "@/hooks/AuthHooks";
@@ -153,66 +149,5 @@ describe("useGenerateConnectionToken", () => {
     const { result } = renderHook(() => useGenerateConnectionToken(), { wrapper });
     await result.current.mutateAsync();
     expect(api.post).toHaveBeenCalledWith("/api/auth/connection-token");
-  });
-});
-
-describe("useFetchMembers", () => {
-  it("loads the allowlist", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: { members: ["alice", "bob"] } });
-    const { result } = renderHook(() => useFetchMembers(), { wrapper });
-    await waitFor(() => expect(result.current.data).toEqual({ members: ["alice", "bob"] }));
-    expect(api.get).toHaveBeenCalledWith("/api/auth/members");
-  });
-});
-
-describe("useAddMember", () => {
-  it("posts a member and returns the list", async () => {
-    vi.mocked(api.post).mockResolvedValue({ data: { members: ["bob"] } });
-    const { result } = renderHook(() => useAddMember(), { wrapper });
-    await result.current.mutateAsync("bob");
-    expect(api.post).toHaveBeenCalledWith("/api/auth/members", { login: "bob" });
-  });
-});
-
-describe("useRemoveMember", () => {
-  it("deletes a member by login", async () => {
-    vi.mocked(api.delete).mockResolvedValue({ data: { members: [] } });
-    const { result } = renderHook(() => useRemoveMember(), { wrapper });
-    await result.current.mutateAsync("bob");
-    expect(api.delete).toHaveBeenCalledWith("/api/auth/members/bob");
-  });
-});
-
-describe("useLookupMembers", () => {
-  it("looks up GitHub username matches", async () => {
-    vi.mocked(api.get).mockResolvedValue({
-      data: { matches: [{ login: "octocat", avatar_url: "https://avatar/octocat" }] },
-    });
-    const { result } = renderHook(() => useLookupMembers("oct"), { wrapper });
-    await waitFor(() =>
-      expect(result.current.data).toEqual({ matches: [{ login: "octocat", avatar_url: "https://avatar/octocat" }] }),
-    );
-    expect(api.get).toHaveBeenCalledWith("/api/auth/members/lookup", expect.objectContaining({ params: { q: "oct" } }));
-  });
-
-  it("only fetches the last query when the text changes inside the debounce window", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: { matches: [] } });
-    const { result, rerender } = renderHook(({ q }) => useLookupMembers(q), { wrapper, initialProps: { q: "oc" } });
-    rerender({ q: "oct" });
-    await waitFor(() => expect(result.current.data).toEqual({ matches: [] }));
-    expect(api.get).toHaveBeenCalledTimes(1);
-    expect(api.get).toHaveBeenCalledWith("/api/auth/members/lookup", expect.objectContaining({ params: { q: "oct" } }));
-  });
-
-  it("is disabled for a query shorter than 2 characters", () => {
-    const { result } = renderHook(() => useLookupMembers("o"), { wrapper });
-    expect(result.current.isFetching).toBe(false);
-    expect(api.get).not.toHaveBeenCalled();
-  });
-
-  it("is disabled for an email-shaped query", () => {
-    const { result } = renderHook(() => useLookupMembers("client@example.com"), { wrapper });
-    expect(result.current.isFetching).toBe(false);
-    expect(api.get).not.toHaveBeenCalled();
   });
 });

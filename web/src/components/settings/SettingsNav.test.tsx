@@ -37,7 +37,7 @@ describe("SettingsNav", () => {
 
   it("hides gated sections until their flag is set", () => {
     renderNav();
-    expect(screen.queryByRole("link", { name: "Instance access" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Registered accounts" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Roles" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Plays" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Mention chips" })).not.toBeInTheDocument();
@@ -45,7 +45,7 @@ describe("SettingsNav", () => {
 
   it("shows gated sections when their flag is set", () => {
     renderNav({ showInstanceAccess: true, showRoles: true, showPlays: true, showMentionLayout: true });
-    expect(screen.getByRole("link", { name: "Instance access" })).toHaveAttribute("href", "/settings?section=access");
+    expect(screen.getByRole("link", { name: "Registered accounts" })).toHaveAttribute("href", "/settings?section=access");
     expect(screen.getByRole("link", { name: "Roles" })).toHaveAttribute("href", "/settings?section=roles");
     expect(screen.getByRole("link", { name: "Plays" })).toHaveAttribute("href", "/settings?section=plays");
     expect(screen.getByRole("link", { name: "Mention chips" })).toHaveAttribute("href", "/settings?section=mentions");

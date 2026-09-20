@@ -1,5 +1,8 @@
 # Sign-in is provider OAuth only, and the provider credentials live in the database
 
+ADR 0061 supersedes the allowlist paragraph below. Provider OAuth and
+database-backed provider configuration remain unchanged.
+
 Nexul has no username/password and stores no passwords: a person signs
 in through GitHub, or through the optional Google/Discord providers an owner
 turns on later. Nothing to hash, nothing to reset, no credential store to

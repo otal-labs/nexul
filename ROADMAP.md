@@ -29,8 +29,8 @@ with a SQLite spine.
 
 Every domain built out:
 
-- **Identity & workspace** — users, owner/first-login wizards, the member
-  allowlist, projects + membership, categories + a swimlane board.
+- **Identity & workspace** — users, owner/first-login wizards, private
+  invitation links, projects + membership, categories + a swimlane board.
 - **The event-driven middle** — full GitHub event normalization, automations
   with `ticket.finished`, notifications.
 - **Deploy & runner** — service definitions, runner visibility, repo-driven

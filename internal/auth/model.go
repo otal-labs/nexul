@@ -15,6 +15,15 @@ const (
 	ProviderDev Provider = "dev"
 )
 
+// AccountStatus controls whether a provider identity may authenticate or use the instance.
+type AccountStatus string
+
+const (
+	AccountActive   AccountStatus = "active"
+	AccountDisabled AccountStatus = "disabled"
+	AccountRemoved  AccountStatus = "removed"
+)
+
 // User is the persistent identity record, keyed by provider + user ID because a login can be renamed; login/name/avatar sync each sign-in.
 type User struct {
 	ID             string   `json:"id"`
@@ -24,14 +33,45 @@ type User struct {
 	Name           string   `json:"name"`
 	AvatarURL      string   `json:"avatar_url"`
 	// CanCreateWorkspace is the instance-level bit gating workspace creation and, by default, settings/allowlist.
-	CanCreateWorkspace bool      `json:"can_create_workspace"`
-	FirstLoginDone     bool      `json:"first_login_done"`
-	CreatedAt          time.Time `json:"created_at"`
-	UpdatedAt          time.Time `json:"updated_at"`
+	CanCreateWorkspace bool          `json:"can_create_workspace"`
+	FirstLoginDone     bool          `json:"first_login_done"`
+	AccountStatus      AccountStatus `json:"account_status"`
+	CreatedAt          time.Time     `json:"created_at"`
+	UpdatedAt          time.Time     `json:"updated_at"`
 
 	// DisplayName and AvatarOverrideURL are the manual override, untouched by UpsertUser's sync, surviving sign-in.
 	DisplayName       *string `json:"display_name,omitempty"`
 	AvatarOverrideURL *string `json:"avatar_override_url,omitempty"`
+}
+
+// InvitationAcceptance is the non-secret invitation detail shown after preview or OAuth authentication.
+type InvitationAcceptance struct {
+	InvitationID      string                       `json:"invitation_id"`
+	InstanceName      string                       `json:"instance_name"`
+	InstanceURL       string                       `json:"instance_url"`
+	ExpiresAt         time.Time                    `json:"expires_at"`
+	Grants            []InvitationGrant            `json:"grants"`
+	AuthenticatedUser *InvitationAuthenticatedUser `json:"authenticated_user,omitempty"`
+	AcceptanceToken   string                       `json:"acceptance_token,omitempty"`
+}
+
+// InvitationGrant mirrors tenancy grant data without importing tenancy into auth.
+type InvitationGrant struct {
+	WorkspaceID   string   `json:"workspace_id"`
+	WorkspaceName string   `json:"workspace_name"`
+	RoleID        string   `json:"role_id"`
+	RoleName      string   `json:"role_name"`
+	Allow         []string `json:"allow"`
+	Deny          []string `json:"deny"`
+}
+
+// InvitationAuthenticatedUser is provider identity or an admitted user shown on acceptance.
+type InvitationAuthenticatedUser struct {
+	ID        string   `json:"id,omitempty"`
+	Provider  Provider `json:"provider"`
+	Login     string   `json:"login"`
+	Name      string   `json:"name"`
+	AvatarURL string   `json:"avatar_url"`
 }
 
 // ProviderUser is the identity a provider returns: ID is its stable key, Login is what the allowlist matches.
@@ -40,6 +80,62 @@ type ProviderUser struct {
 	Login     string
 	Name      string
 	AvatarURL string
+}
+
+type OAuthHandoff struct {
+	ID             string     `json:"-"`
+	InvitationID   string     `json:"-"`
+	OAuthStateHash string     `json:"-"`
+	AcceptanceHash string     `json:"-"`
+	Provider       Provider   `json:"provider"`
+	ProviderUserID string     `json:"-"`
+	Login          string     `json:"login"`
+	Name           string     `json:"name"`
+	AvatarURL      string     `json:"avatar_url"`
+	ExistingUserID string     `json:"-"`
+	AdmittedUserID string     `json:"-"`
+	CompletedAt    *time.Time `json:"completed_at,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
+	ExpiresAt      time.Time  `json:"expires_at"`
+}
+
+type OAuthHandoffIdentity struct {
+	Provider       Provider
+	ProviderUserID string
+	Login          string
+	Name           string
+	AvatarURL      string
+	ExistingUserID string
+}
+
+// InvitationOAuthStart contains the redirect and state cookie material for an invitation flow.
+type InvitationOAuthStart struct {
+	URL        string
+	State      string
+	CookieName string
+}
+
+// InvitationIdentity carries the provider identity into atomic invitation redemption.
+type InvitationIdentity struct {
+	ID             string
+	Provider       Provider
+	ProviderUserID string
+	Login          string
+	Name           string
+	AvatarURL      string
+}
+
+// InvitationAdmission reports the user admitted by an invitation.
+type InvitationAdmission struct {
+	UserID       string
+	Created      bool
+	WorkspaceIDs []string
+}
+
+// InvitationRedeemResult is the normal session plus the workspaces granted by redemption.
+type InvitationRedeemResult struct {
+	Token        string   `json:"token"`
+	WorkspaceIDs []string `json:"workspace_ids"`
 }
 
 // GitHubUser is ProviderUser under its original name.

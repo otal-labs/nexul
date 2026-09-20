@@ -94,6 +94,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	mountGateway(apiMux, "/api/ticket-types", withUserID(workspace.WithUserID)(workspace.NewHandler(svc.workspaceSvc).Routes()))
 	mountGateway(apiMux, "/api/statuses", withUserID(workspace.WithUserID)(workspace.NewHandler(svc.workspaceSvc).Routes()))
 	mountGateway(apiMux, "/api/workspaces", withUserID(tenancy.WithUserID)(tenancy.NewHandler(svc.tenancySvc).Routes()))
+	mountGateway(apiMux, "/api/invitations", withUserID(tenancy.WithUserID)(svc.invitationHandler.Routes()))
 	mountGateway(apiMux, "/api/workspaces/{workspaceID}/roles", withUserID(roles.WithUserID)(roles.NewHandler(svc.rolesSvc).Routes()))
 	mountGateway(apiMux, "/api/workspaces/{workspaceID}/plays", plays.NewHandler(svc.playsSvc).Routes())
 	mountGateway(apiMux, "/api/plays", plays.NewRunHandler(svc.playsRunner).Routes())
@@ -149,6 +150,8 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 		DNS:           svc.dnsSvc,
 		Automations:   svc.automationsSvc,
 		Access:        svc.accessSvc,
+		Auth:          svc.authSvc,
+		Invitations:   svc.invitationSvc,
 		Mentions:      svc.mentionsSvc,
 		Chat:          svc.chatSvc,
 		Plays:         svc.playsSvc,
@@ -168,6 +171,10 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	httpMux.Handle("GET /api/auth/bootstrap-status", svc.authHandler.Routes())
 	httpMux.Handle("POST /api/auth/bootstrap", svc.authHandler.Routes())
 	httpMux.Handle("POST /api/auth/bootstrap/verify", svc.authHandler.Routes())
+	httpMux.Handle("POST /api/invitations/preview", svc.invitationHandler.PublicRoutes())
+	httpMux.Handle("POST /api/invitations/oauth", svc.authHandler.Routes())
+	httpMux.Handle("POST /api/invitations/acceptance", svc.authHandler.Routes())
+	httpMux.Handle("POST /api/invitations/redeem", svc.authHandler.Routes())
 	// Automation tokens, then integration tokens, then session/PAT — one audit-logged handler underneath all three.
 	userAuth := func(h http.Handler) http.Handler { return svc.authSvc.RequireAuth(withIdentity(h)) }
 	httpMux.Handle("/api/", svc.automationsSvc.RequireAutomation(

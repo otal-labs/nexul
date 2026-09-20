@@ -51,6 +51,9 @@ func (s *Service) authenticate(r *http.Request, token string) (*User, error) {
 		if err != nil {
 			return nil, err
 		}
+		if !accountIsActive(user.AccountStatus) {
+			return nil, apperrs.ErrUnauthorized
+		}
 		return user, nil
 	}
 	userID, err := s.Verify(token)
@@ -60,6 +63,9 @@ func (s *Service) authenticate(r *http.Request, token string) (*User, error) {
 	user, err := s.cfg.Users.GetUserByID(r.Context(), userID)
 	if err != nil {
 		return nil, err
+	}
+	if !accountIsActive(user.AccountStatus) {
+		return nil, apperrs.ErrUnauthorized
 	}
 	return user, nil
 }

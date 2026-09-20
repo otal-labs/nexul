@@ -1,5 +1,8 @@
 # Sign-in, instance admin, and workspace membership are three separate layers
 
+The first rule below is superseded by ADR 0061. Instance administration and
+per-Workspace Roles remain separate as described here.
+
 An instance hosts many workspaces, and three different things decide what a
 person can reach:
 

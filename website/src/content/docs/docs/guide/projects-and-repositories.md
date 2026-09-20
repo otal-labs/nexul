@@ -41,7 +41,8 @@ Beyond Owner, roles are fully custom: anyone holding `roles:write` can create as
 To invite someone to a workspace:
 
 1. Open **Members** (`/members`).
-2. Add their GitHub login and pick a role from the workspace's own role catalog. The Owner role itself isn't offered here — transferring ownership is a separate action.
-3. If the login has never signed in before, the invite waits as pending; it resolves into real membership the moment that person first signs in.
+2. Create an invitation, choose one or more workspaces, and select a role for each. The Owner role isn't offered here — transferring ownership is a separate action.
+3. Copy the generated link and send it through any channel you trust. Nexul shows it once.
+4. The recipient opens the link, signs in through one of the instance's configured OAuth providers, reviews the access package, and accepts it.
 
-A login has to already be allowed to sign in to the instance before it can be invited into a workspace — inviting someone to a workspace never grants them sign-in access on its own; that's a separate, instance-level allowlist under **Settings**.
+The link grants both first admission to the private instance and the selected workspace memberships. It expires after one or seven days and stops working after one successful acceptance.

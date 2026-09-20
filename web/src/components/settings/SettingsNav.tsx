@@ -33,13 +33,13 @@ const sectionLabels: Record<SettingsSection, string> = {
   connectors: "Connectors",
   dns: "DNS",
   "automation-secrets": "Automation secrets",
-  access: "Instance access",
+  access: "Registered accounts",
   danger: "Danger zone",
 };
 
 interface SettingsNavProps {
   active: SettingsSection;
-  // AllowlistSection only renders for admins — the nav must not link to an empty section.
+  // Account management only renders for admins — the nav must not link to an empty section.
   showInstanceAccess: boolean;
   // RoleSettingsSection only renders for roles:write holders — same "no empty link" rule.
   showRoles: boolean;

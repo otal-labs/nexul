@@ -63,8 +63,8 @@ export const OAuthProviderSection = ({ provider, settings }: OAuthProviderSectio
       description={
         <>
           Lets people without a GitHub account — clients, stakeholders — sign in with {copy.label}. {copy.console} and
-          register <code className="font-mono text-xs">{callback}</code> as its redirect URI. Allowlist their email
-          under Instance access.
+          register <code className="font-mono text-xs">{callback}</code> as its redirect URI. They can enter through
+          an invitation link when this provider is enabled.
           {configured && " Currently enabled."}
         </>
       }

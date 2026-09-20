@@ -24,6 +24,17 @@ func (q *Queries) AddAllowlistMember(ctx context.Context, arg AddAllowlistMember
 	return err
 }
 
+const countActiveAdmins = `-- name: CountActiveAdmins :one
+SELECT COUNT(*) FROM users WHERE can_create_workspace = 1 AND account_status = 'active'
+`
+
+func (q *Queries) CountActiveAdmins(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countActiveAdmins)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countAllowlistMember = `-- name: CountAllowlistMember :one
 SELECT COUNT(*) FROM allowlist WHERE login = ?
 `
@@ -44,6 +55,62 @@ func (q *Queries) CountCanCreateWorkspace(ctx context.Context) (int64, error) {
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const countUsers = `-- name: CountUsers :one
+SELECT COUNT(*) FROM users
+`
+
+func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countUsers)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const deleteAccountInvitations = `-- name: DeleteAccountInvitations :exec
+DELETE FROM invitations WHERE invited_by = ? AND redeemed_at IS NULL
+`
+
+func (q *Queries) DeleteAccountInvitations(ctx context.Context, invitedBy string) error {
+	_, err := q.db.ExecContext(ctx, deleteAccountInvitations, invitedBy)
+	return err
+}
+
+const deleteAccountMemberships = `-- name: DeleteAccountMemberships :exec
+DELETE FROM workspace_members WHERE user_id = ?
+`
+
+func (q *Queries) DeleteAccountMemberships(ctx context.Context, userID string) error {
+	_, err := q.db.ExecContext(ctx, deleteAccountMemberships, userID)
+	return err
+}
+
+const deleteAccountOverwrites = `-- name: DeleteAccountOverwrites :exec
+DELETE FROM permission_overwrites WHERE user_id = ?
+`
+
+func (q *Queries) DeleteAccountOverwrites(ctx context.Context, userID string) error {
+	_, err := q.db.ExecContext(ctx, deleteAccountOverwrites, userID)
+	return err
+}
+
+const deleteAccountPairingComputers = `-- name: DeleteAccountPairingComputers :exec
+DELETE FROM pairing_computers WHERE user_id = ?
+`
+
+func (q *Queries) DeleteAccountPairingComputers(ctx context.Context, userID string) error {
+	_, err := q.db.ExecContext(ctx, deleteAccountPairingComputers, userID)
+	return err
+}
+
+const deleteAccountPairingDefaults = `-- name: DeleteAccountPairingDefaults :exec
+DELETE FROM pairing_user_defaults WHERE user_id = ?
+`
+
+func (q *Queries) DeleteAccountPairingDefaults(ctx context.Context, userID string) error {
+	_, err := q.db.ExecContext(ctx, deleteAccountPairingDefaults, userID)
+	return err
 }
 
 const getSettings = `-- name: GetSettings :one
@@ -71,7 +138,7 @@ func (q *Queries) GetSettings(ctx context.Context) (InstanceSetting, error) {
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, provider, provider_user_id, login, name, avatar_url, first_login_done, created_at, updated_at, can_create_workspace, display_name, avatar_override_url FROM users WHERE id = ?
+SELECT id, provider, provider_user_id, login, name, avatar_url, first_login_done, created_at, updated_at, can_create_workspace, display_name, avatar_override_url, account_status FROM users WHERE id = ?
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id string) (User, error) {
@@ -90,12 +157,13 @@ func (q *Queries) GetUserByID(ctx context.Context, id string) (User, error) {
 		&i.CanCreateWorkspace,
 		&i.DisplayName,
 		&i.AvatarOverrideUrl,
+		&i.AccountStatus,
 	)
 	return i, err
 }
 
 const getUserByLogin = `-- name: GetUserByLogin :one
-SELECT id, provider, provider_user_id, login, name, avatar_url, first_login_done, created_at, updated_at, can_create_workspace, display_name, avatar_override_url FROM users WHERE lower(login) = lower(?)
+SELECT id, provider, provider_user_id, login, name, avatar_url, first_login_done, created_at, updated_at, can_create_workspace, display_name, avatar_override_url, account_status FROM users WHERE lower(login) = lower(?)
 `
 
 func (q *Queries) GetUserByLogin(ctx context.Context, lower string) (User, error) {
@@ -114,12 +182,13 @@ func (q *Queries) GetUserByLogin(ctx context.Context, lower string) (User, error
 		&i.CanCreateWorkspace,
 		&i.DisplayName,
 		&i.AvatarOverrideUrl,
+		&i.AccountStatus,
 	)
 	return i, err
 }
 
 const getUserByProvider = `-- name: GetUserByProvider :one
-SELECT id, provider, provider_user_id, login, name, avatar_url, first_login_done, created_at, updated_at, can_create_workspace, display_name, avatar_override_url FROM users WHERE provider = ? AND provider_user_id = ?
+SELECT id, provider, provider_user_id, login, name, avatar_url, first_login_done, created_at, updated_at, can_create_workspace, display_name, avatar_override_url, account_status FROM users WHERE provider = ? AND provider_user_id = ?
 `
 
 type GetUserByProviderParams struct {
@@ -143,6 +212,7 @@ func (q *Queries) GetUserByProvider(ctx context.Context, arg GetUserByProviderPa
 		&i.CanCreateWorkspace,
 		&i.DisplayName,
 		&i.AvatarOverrideUrl,
+		&i.AccountStatus,
 	)
 	return i, err
 }
@@ -221,7 +291,7 @@ func (q *Queries) ListAllowlist(ctx context.Context) ([]string, error) {
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, provider, provider_user_id, login, name, avatar_url, first_login_done, created_at, updated_at, can_create_workspace, display_name, avatar_override_url FROM users ORDER BY login
+SELECT id, provider, provider_user_id, login, name, avatar_url, first_login_done, created_at, updated_at, can_create_workspace, display_name, avatar_override_url, account_status FROM users ORDER BY login
 `
 
 func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
@@ -246,6 +316,7 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 			&i.CanCreateWorkspace,
 			&i.DisplayName,
 			&i.AvatarOverrideUrl,
+			&i.AccountStatus,
 		); err != nil {
 			return nil, err
 		}
@@ -283,6 +354,38 @@ DELETE FROM allowlist WHERE login = ?
 
 func (q *Queries) RemoveAllowlistMember(ctx context.Context, login string) (int64, error) {
 	result, err := q.db.ExecContext(ctx, removeAllowlistMember, login)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const revokeAccountPATs = `-- name: RevokeAccountPATs :exec
+UPDATE personal_access_tokens SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL
+`
+
+type RevokeAccountPATsParams struct {
+	RevokedAt sql.NullInt64
+	UserID    string
+}
+
+func (q *Queries) RevokeAccountPATs(ctx context.Context, arg RevokeAccountPATsParams) error {
+	_, err := q.db.ExecContext(ctx, revokeAccountPATs, arg.RevokedAt, arg.UserID)
+	return err
+}
+
+const setAccountStatus = `-- name: SetAccountStatus :execrows
+UPDATE users SET account_status = ?, updated_at = ? WHERE id = ?
+`
+
+type SetAccountStatusParams struct {
+	AccountStatus string
+	UpdatedAt     int64
+	ID            string
+}
+
+func (q *Queries) SetAccountStatus(ctx context.Context, arg SetAccountStatusParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, setAccountStatus, arg.AccountStatus, arg.UpdatedAt, arg.ID)
 	if err != nil {
 		return 0, err
 	}

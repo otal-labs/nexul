@@ -1,6 +1,11 @@
 package tenancy
 
-import "context"
+import (
+	"context"
+	"time"
+
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
+)
 
 // Repo is the consumer-side persistence contract for workspaces; implemented in internal/platform/storage.
 type Repo interface {
@@ -29,6 +34,15 @@ type InviteRepo interface {
 	Delete(ctx context.Context, workspaceID, login string) error
 	ListByWorkspace(ctx context.Context, workspaceID string) ([]*Invite, error)
 	ListByLogin(ctx context.Context, login string) ([]*Invite, error)
+}
+
+type InvitationRepo interface {
+	Create(ctx context.Context, invitation *Invitation, tokenHash string, events ...eventbus.OutboxEvent) error
+	GetByTokenHash(ctx context.Context, tokenHash string, now time.Time) (*Invitation, error)
+	GetByAcceptanceHash(ctx context.Context, acceptanceHash string, now time.Time) (*Invitation, error)
+	List(ctx context.Context, actorID string, now time.Time) ([]*Invitation, error)
+	Revoke(ctx context.Context, actorID, invitationID string, now time.Time, events ...eventbus.OutboxEvent) error
+	Redeem(ctx context.Context, acceptanceHash string, identity InvitationIdentity, now time.Time, events ...eventbus.OutboxEvent) (*InvitationAdmission, error)
 }
 
 // RoleGate creates a new workspace's Owner role without tenancy importing roles (ADR 0017).

@@ -60,8 +60,10 @@ type coreServices struct {
 	automationSeeder      *automations.Seeder
 	automationRunsSvc     *automations.RunsService
 
-	authSvc     *auth.Service
-	authHandler *auth.Handler
+	authSvc           *auth.Service
+	authHandler       *auth.Handler
+	invitationSvc     *tenancy.InvitationService
+	invitationHandler *tenancy.InvitationHandler
 
 	connectorsSvc     *connectors.Service
 	connectorsHandler *connectors.Handler
@@ -128,6 +130,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		Secret:        []byte(cfg.AuthSecret),
 		SPAOrigin:     cfg.SPAOrigin,
 		Users:         store.Users,
+		OAuthHandoffs: store.OAuthHandoffs,
 		Allowlist:     store.Allowlist,
 		Settings:      store.Settings,
 		PATs:          store.PATs,
@@ -137,6 +140,9 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		DevLogin:      cfg.DevLogin,
 	})
 	authHandler := auth.NewHandler(authSvc)
+	invitationSvc := tenancy.NewInvitationService(store.Invitations, authSvc)
+	invitationHandler := tenancy.NewInvitationHandler(invitationSvc)
+	authSvc.SetInvitationGate(invitationAuthGate{svc: invitationSvc})
 	// Built before dnsSvc since dns's Cloudflare token comes from connectorsSvc; livekit gets a Verifier, not OAuth.
 	connectorsRegistry := connectors.Registry()
 	wireConnectorOAuth(connectorsRegistry, store)
@@ -245,8 +251,10 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		automationSeeder:      automationSeeder,
 		automationRunsSvc:     automationRunsSvc,
 
-		authSvc:     authSvc,
-		authHandler: authHandler,
+		authSvc:           authSvc,
+		authHandler:       authHandler,
+		invitationSvc:     invitationSvc,
+		invitationHandler: invitationHandler,
 
 		connectorsSvc:     connectorsSvc,
 		connectorsHandler: connectorsHandler,
