@@ -43,7 +43,7 @@ jobs:
       previous_tag: ${{ steps.resolve.outputs.previous_tag }}
       stable_exists: ${{ steps.resolve.outputs.stable_exists }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - id: resolve
@@ -126,7 +126,7 @@ jobs:
     needs: resolve
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.resolve.outputs.ref }}
       - uses: oven-sh/setup-bun@v2
@@ -154,10 +154,10 @@ jobs:
           - { goos: darwin, goarch: arm64, ext: "" }
           - { goos: windows, goarch: amd64, ext: ".exe" }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.resolve.outputs.ref }}
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
       - uses: actions/download-artifact@v8
@@ -212,11 +212,11 @@ jobs:
           - { name: web, context: ./web, dockerfile: ./web/Dockerfile }
           - { name: automations, context: ./automations, dockerfile: ./automations/Dockerfile }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.resolve.outputs.ref }}
-      - uses: docker/setup-qemu-action@v3
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
       - uses: docker/login-action@v4
         with:
           registry: ghcr.io
@@ -237,7 +237,7 @@ jobs:
             printf '%s\n' "${tags[@]}"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: ${{ matrix.context }}
           # Unused by web's Dockerfile; buildx ignores a named context nothing references.
@@ -294,7 +294,7 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GH_REPO: ${{ github.repository }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.resolve.outputs.ref }}
       - uses: actions/download-artifact@v8
@@ -327,7 +327,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: master
       - name: Bump VERSION
