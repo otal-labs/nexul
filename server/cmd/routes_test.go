@@ -27,4 +27,11 @@ func TestRegisterOpenAPIRoutes_IncludesMountedRoutes(t *testing.T) {
 	}
 	require.NoError(t, json.Unmarshal(doc, &parsed))
 	require.Contains(t, parsed.Paths, "/api/new-route")
+	require.NotContains(t, parsed.Paths, "/api/docs")
+}
+
+func TestMountGateway_RequiresTrackedAPIRoutes(t *testing.T) {
+	require.Panics(t, func() {
+		mountGateway(httpx.NewServeMux(), "/api/untracked", http.NewServeMux())
+	})
 }

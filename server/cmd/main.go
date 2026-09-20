@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -154,6 +155,11 @@ func serveHTTP(srv *http.Server, logger *slog.Logger, stop context.CancelFunc) {
 
 // mountGateway registers both the exact prefix and its trailing-slash subtree; a bare path alone 307s to the slash.
 func mountGateway(mux *httpx.ServeMux, prefix string, h http.Handler) {
+	if prefix == "/api" || strings.HasPrefix(prefix, "/api/") {
+		if httpx.RoutesOf(h) == nil {
+			panic("API gateway handlers must expose tracked routes")
+		}
+	}
 	mux.Mount(prefix, h)
 }
 

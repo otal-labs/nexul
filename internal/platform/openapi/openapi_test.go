@@ -60,6 +60,8 @@ func TestReplaceRegistration(t *testing.T) {
 func TestRegisterMountedRoutes(t *testing.T) {
 	s := New(Info{Title: "x", Version: "1"})
 	s.RegisterMountedRoutes([]httpx.Route{{Method: http.MethodGet, Path: "/api/new-route"}})
+	s.Register("GET", "/api/new-route", "Mounted summary", "custom")
+	s.Register("GET", "/api/removed-route", "Stale summary", "custom")
 
 	doc, err := s.JSON()
 	require.NoError(t, err)
@@ -69,7 +71,8 @@ func TestRegisterMountedRoutes(t *testing.T) {
 	require.NoError(t, json.Unmarshal(doc, &parsed))
 
 	require.NotNil(t, parsed.Paths["/api/new-route"])
-	assert.Equal(t, "API operation", parsed.Paths["/api/new-route"].Get.Summary)
+	assert.Equal(t, "Mounted summary", parsed.Paths["/api/new-route"].Get.Summary)
+	assert.NotContains(t, parsed.Paths, "/api/removed-route")
 }
 
 func TestDefaultResponses(t *testing.T) {
