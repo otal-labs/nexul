@@ -78,6 +78,29 @@ type OAuthHandoffIdentity struct {
 	ExistingUserID string
 }
 
+// InvitationOAuthStart contains the redirect and state cookie material for an invitation flow.
+type InvitationOAuthStart struct {
+	URL        string
+	State      string
+	CookieName string
+}
+
+// InvitationIdentity carries the provider identity into atomic invitation redemption.
+type InvitationIdentity struct {
+	ID             string
+	Provider       Provider
+	ProviderUserID string
+	Login          string
+	Name           string
+	AvatarURL      string
+}
+
+// InvitationAdmission reports the user admitted by an invitation.
+type InvitationAdmission struct {
+	UserID  string
+	Created bool
+}
+
 // GitHubUser is ProviderUser under its original name.
 type GitHubUser = ProviderUser
 

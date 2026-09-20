@@ -65,6 +65,9 @@ func (s *Service) AuthenticatePAT(ctx context.Context, raw string) (*User, error
 	if err != nil {
 		return nil, apperrs.ErrUnauthorized
 	}
+	if !accountIsActive(user.AccountStatus) {
+		return nil, apperrs.ErrUnauthorized
+	}
 	// Best-effort last-used stamp; a write failure must not reject an otherwise valid request.
 	_ = s.cfg.PATs.TouchLastUsed(ctx, pat.ID)
 	return user, nil

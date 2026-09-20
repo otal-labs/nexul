@@ -57,6 +57,62 @@ func (q *Queries) CountCanCreateWorkspace(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const countUsers = `-- name: CountUsers :one
+SELECT COUNT(*) FROM users
+`
+
+func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countUsers)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const deleteAccountInvitations = `-- name: DeleteAccountInvitations :exec
+DELETE FROM invitations WHERE invited_by = ? AND redeemed_at IS NULL
+`
+
+func (q *Queries) DeleteAccountInvitations(ctx context.Context, invitedBy string) error {
+	_, err := q.db.ExecContext(ctx, deleteAccountInvitations, invitedBy)
+	return err
+}
+
+const deleteAccountMemberships = `-- name: DeleteAccountMemberships :exec
+DELETE FROM workspace_members WHERE user_id = ?
+`
+
+func (q *Queries) DeleteAccountMemberships(ctx context.Context, userID string) error {
+	_, err := q.db.ExecContext(ctx, deleteAccountMemberships, userID)
+	return err
+}
+
+const deleteAccountOverwrites = `-- name: DeleteAccountOverwrites :exec
+DELETE FROM permission_overwrites WHERE user_id = ?
+`
+
+func (q *Queries) DeleteAccountOverwrites(ctx context.Context, userID string) error {
+	_, err := q.db.ExecContext(ctx, deleteAccountOverwrites, userID)
+	return err
+}
+
+const deleteAccountPairingComputers = `-- name: DeleteAccountPairingComputers :exec
+DELETE FROM pairing_computers WHERE user_id = ?
+`
+
+func (q *Queries) DeleteAccountPairingComputers(ctx context.Context, userID string) error {
+	_, err := q.db.ExecContext(ctx, deleteAccountPairingComputers, userID)
+	return err
+}
+
+const deleteAccountPairingDefaults = `-- name: DeleteAccountPairingDefaults :exec
+DELETE FROM pairing_user_defaults WHERE user_id = ?
+`
+
+func (q *Queries) DeleteAccountPairingDefaults(ctx context.Context, userID string) error {
+	_, err := q.db.ExecContext(ctx, deleteAccountPairingDefaults, userID)
+	return err
+}
+
 const getSettings = `-- name: GetSettings :one
 SELECT id, instance_url, settings_version, updated_at, github_oauth_client_id, github_oauth_client_secret, mention_chip_template, google_oauth_client_id, google_oauth_client_secret, discord_oauth_client_id, discord_oauth_client_secret, runner_secret FROM instance_settings WHERE id = 1
 `
@@ -302,6 +358,20 @@ func (q *Queries) RemoveAllowlistMember(ctx context.Context, login string) (int6
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+const revokeAccountPATs = `-- name: RevokeAccountPATs :exec
+UPDATE personal_access_tokens SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL
+`
+
+type RevokeAccountPATsParams struct {
+	RevokedAt sql.NullInt64
+	UserID    string
+}
+
+func (q *Queries) RevokeAccountPATs(ctx context.Context, arg RevokeAccountPATsParams) error {
+	_, err := q.db.ExecContext(ctx, revokeAccountPATs, arg.RevokedAt, arg.UserID)
+	return err
 }
 
 const setAccountStatus = `-- name: SetAccountStatus :execrows

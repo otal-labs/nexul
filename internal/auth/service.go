@@ -21,6 +21,7 @@ import (
 	"github.com/google/uuid"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/oauthx"
 )
 
@@ -130,12 +131,14 @@ type Config struct {
 	SPAOrigin string
 	GitHub    ProviderClient
 	// Google/Discord, like GitHub, are test/dev overrides; nil means build the client from Settings per request.
-	Google    ProviderClient
-	Discord   ProviderClient
-	Users     UserStore
-	Allowlist AllowlistStore
-	Settings  SettingsStore
-	PATs      PATStore
+	Google        ProviderClient
+	Discord       ProviderClient
+	Users         UserStore
+	Invitations   InvitationGate
+	OAuthHandoffs OAuthHandoffStore
+	Allowlist     AllowlistStore
+	Settings      SettingsStore
+	PATs          PATStore
 	// MentionLayout gates SetMentionChipTemplate on workspaces:write; nil fails closed with ErrForbidden.
 	MentionLayout MentionLayoutGate
 	// DefaultWorkspace binds the wizard's completing user to the default workspace; wired later via SetDefaultWorkspace.
@@ -245,6 +248,16 @@ func (s *Service) SetPendingInviteResolver(r PendingInviteResolver) {
 	s.cfg.PendingInvites = r
 }
 
+// SetInvitationGate wires invitation admission after the tenancy service is constructed.
+func (s *Service) SetInvitationGate(g InvitationGate) {
+	s.cfg.Invitations = g
+}
+
+// SetOAuthHandoffStore wires the state-bound invitation OAuth handoff store.
+func (s *Service) SetOAuthHandoffStore(store OAuthHandoffStore) {
+	s.cfg.OAuthHandoffs = store
+}
+
 // resolvePendingInvitesIfNew resolves pending invites into memberships for a new user; a no-op for returning users.
 func (s *Service) resolvePendingInvitesIfNew(ctx context.Context, user *User, created bool) error {
 	if !created {
@@ -303,31 +316,16 @@ func (s *Service) DevLoginEnabled() bool {
 
 // DevLogin mints a session for a fixed local identity, skipping the GitHub round trip, via Login's upsert-then-sign.
 func (s *Service) DevLogin(ctx context.Context) (string, error) {
-	user, created, err := s.cfg.Users.UpsertUser(ctx, &User{
+	identity := &User{
 		ID:             newUserID(),
 		Provider:       ProviderDev,
 		ProviderUserID: "dev",
 		Login:          "dev",
 		Name:           "Dev User",
-	})
-	if err != nil {
-		return "", fmt.Errorf("upsert dev user: %w", err)
 	}
-	if err := s.resolvePendingInvitesIfNew(ctx, user, created); err != nil {
+	user, err := s.findOrCreateLoginUser(ctx, identity)
+	if err != nil {
 		return "", err
-	}
-	adminExists, err := s.cfg.Users.CanCreateWorkspaceExists(ctx)
-	if err != nil {
-		return "", fmt.Errorf("check instance admin: %w", err)
-	}
-	if adminExists && !user.CanCreateWorkspace {
-		allowed, err := s.cfg.Allowlist.Contains(ctx, strings.ToLower(user.Login))
-		if err != nil {
-			return "", fmt.Errorf("check allowlist: %w", err)
-		}
-		if !allowed {
-			return "", fmt.Errorf("%w: dev is not on this instance's allowlist", apperrs.ErrUnauthorized)
-		}
 	}
 	return s.Sign(user.ID)
 }
@@ -364,12 +362,124 @@ func (s *Service) NewState() (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
+// StartInvitationOAuth validates a bearer invitation and creates a state-bound OAuth handoff.
+func (s *Service) StartInvitationOAuth(ctx context.Context, provider Provider, rawToken string) (*InvitationOAuthStart, error) {
+	if s.cfg.Invitations == nil || s.cfg.OAuthHandoffs == nil {
+		return nil, fmt.Errorf("%w: invitation OAuth is unavailable", apperrs.ErrInvalid)
+	}
+	if strings.TrimSpace(rawToken) == "" {
+		return nil, invalidInvitationError()
+	}
+	if _, ok := signInProviders[provider]; !ok {
+		return nil, invalidInvitationError()
+	}
+	invitationID, err := s.cfg.Invitations.InvitationIDForToken(ctx, hashCredential(rawToken), s.cfg.Now())
+	if err != nil {
+		return nil, invalidInvitationError()
+	}
+	state, err := s.NewState()
+	if err != nil {
+		return nil, err
+	}
+	stateHash := hashCredential(state)
+	url, err := s.AuthorizeURLFor(ctx, provider, state)
+	if err != nil {
+		return nil, err
+	}
+	handoff := &OAuthHandoff{ID: newUserID(), InvitationID: invitationID, OAuthStateHash: stateHash, Provider: provider, CreatedAt: s.cfg.Now(), ExpiresAt: s.cfg.Now().Add(stateMaxAge)}
+	if err := s.cfg.OAuthHandoffs.StartOAuthHandoff(ctx, handoff); err != nil {
+		return nil, fmt.Errorf("start invitation OAuth: %w", err)
+	}
+	return &InvitationOAuthStart{URL: url, State: state, CookieName: invitationStateCookie(stateHash)}, nil
+}
+
+// CompleteInvitationOAuth authenticates an invitation handoff without creating or mutating a User.
+func (s *Service) CompleteInvitationOAuth(ctx context.Context, provider Provider, state, code string) (string, error) {
+	if s.cfg.OAuthHandoffs == nil {
+		return "", invalidInvitationError()
+	}
+	if strings.TrimSpace(state) == "" || strings.TrimSpace(code) == "" {
+		return "", invalidInvitationError()
+	}
+	client, err := s.providerClient(ctx, provider)
+	if err != nil {
+		return "", err
+	}
+	accessToken, err := client.Exchange(ctx, code)
+	if err != nil {
+		return "", err
+	}
+	providerUser, err := client.FetchUser(ctx, accessToken)
+	if err != nil {
+		return "", err
+	}
+	existingID := ""
+	if user, lookupErr := s.cfg.Users.GetUserByProvider(ctx, provider, providerUser.ID); lookupErr == nil {
+		existingID = user.ID
+	} else if !errors.Is(lookupErr, apperrs.ErrNotFound) {
+		return "", fmt.Errorf("find invitation user: %w", lookupErr)
+	}
+	acceptance, err := newCredential()
+	if err != nil {
+		return "", err
+	}
+	identity := OAuthHandoffIdentity{Provider: provider, ProviderUserID: providerUser.ID, Login: providerUser.Login, Name: providerUser.Name, AvatarURL: providerUser.AvatarURL, ExistingUserID: existingID}
+	if _, err := s.cfg.OAuthHandoffs.CompleteOAuthCallback(ctx, hashCredential(state), hashCredential(acceptance), identity, s.cfg.Now().Add(stateMaxAge), s.cfg.Now()); err != nil {
+		return "", invalidInvitationError()
+	}
+	return acceptance, nil
+}
+
+// RedeemInvitation admits the callback identity and returns a normal session token.
+func (s *Service) RedeemInvitation(ctx context.Context, acceptance string) (string, error) {
+	if s.cfg.Invitations == nil || s.cfg.OAuthHandoffs == nil {
+		return "", invalidInvitationError()
+	}
+	handoff, err := s.cfg.OAuthHandoffs.GetOAuthHandoffByAcceptanceHash(ctx, hashCredential(acceptance), s.cfg.Now())
+	if err != nil || handoff.ProviderUserID == "" {
+		return "", invalidInvitationError()
+	}
+	identity := InvitationIdentity{ID: newUserID(), Provider: handoff.Provider, ProviderUserID: handoff.ProviderUserID, Login: handoff.Login, Name: handoff.Name, AvatarURL: handoff.AvatarURL}
+	if handoff.ExistingUserID != "" {
+		identity.ID = handoff.ExistingUserID
+	}
+	admission, err := s.cfg.Invitations.RedeemInvitation(ctx, hashCredential(acceptance), identity, s.cfg.Now(), eventbus.OutboxEvent{ID: newUserID(), Topic: TopicAccountAdmitted, Payload: AccountLifecycleEvent{AccountID: identity.ID}})
+	if err != nil {
+		return "", invalidInvitationError()
+	}
+	if err := s.cfg.OAuthHandoffs.CompleteOAuthRedemption(ctx, hashCredential(acceptance), admission.UserID, s.cfg.Now()); err != nil {
+		return "", invalidInvitationError()
+	}
+	return s.Sign(admission.UserID)
+}
+
+func newCredential() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("generate credential: %w", err)
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
+}
+
+func hashCredential(raw string) string {
+	sum := sha256.Sum256([]byte(raw))
+	return hex.EncodeToString(sum[:])
+}
+
+func invitationStateCookie(stateHash string) string {
+	return "nexul_invite_oauth_" + stateHash[:16]
+}
+
+func invalidInvitationError() error {
+	return fmt.Errorf("%w: invitation is invalid or expired", apperrs.ErrNotFound)
+}
+
 // Login is LoginWith for GitHub.
 func (s *Service) Login(ctx context.Context, code string) (string, error) {
 	return s.LoginWith(ctx, ProviderGitHub, code)
 }
 
-// LoginWith exchanges a code for identity, upserts the user, enforces the allowlist if an owner exists, mints a token.
+// LoginWith exchanges a code for identity, admits only known active users or the first instance user, and mints a token.
 func (s *Service) LoginWith(ctx context.Context, provider Provider, code string) (string, error) {
 	client, err := s.providerClient(ctx, provider)
 	if err != nil {
@@ -383,7 +493,7 @@ func (s *Service) LoginWith(ctx context.Context, provider Provider, code string)
 	if err != nil {
 		return "", err
 	}
-	user, created, err := s.cfg.Users.UpsertUser(ctx, &User{
+	user, err := s.findOrCreateLoginUser(ctx, &User{
 		ID:             newUserID(),
 		Provider:       provider,
 		ProviderUserID: pu.ID,
@@ -392,25 +502,45 @@ func (s *Service) LoginWith(ctx context.Context, provider Provider, code string)
 		AvatarURL:      pu.AvatarURL,
 	})
 	if err != nil {
-		return "", fmt.Errorf("upsert user: %w", err)
-	}
-	if err := s.resolvePendingInvitesIfNew(ctx, user, created); err != nil {
 		return "", err
 	}
-	adminExists, err := s.cfg.Users.CanCreateWorkspaceExists(ctx)
-	if err != nil {
-		return "", fmt.Errorf("check instance admin: %w", err)
-	}
-	if adminExists && !user.CanCreateWorkspace {
-		allowed, err := s.cfg.Allowlist.Contains(ctx, strings.ToLower(user.Login))
-		if err != nil {
-			return "", fmt.Errorf("check allowlist: %w", err)
-		}
-		if !allowed {
-			return "", fmt.Errorf("%w: %s is not on this instance's allowlist — ask the workspace owner to add you", apperrs.ErrUnauthorized, user.Login)
-		}
-	}
 	return s.Sign(user.ID)
+}
+
+func (s *Service) findOrCreateLoginUser(ctx context.Context, identity *User) (*User, error) {
+	user, err := s.cfg.Users.GetUserByProvider(ctx, identity.Provider, identity.ProviderUserID)
+	if err == nil {
+		if !accountIsActive(user.AccountStatus) {
+			return nil, fmt.Errorf("%w: account is not active", apperrs.ErrUnauthorized)
+		}
+		updated, _, err := s.cfg.Users.UpsertUser(ctx, identity)
+		if err != nil {
+			return nil, fmt.Errorf("sync user: %w", err)
+		}
+		return updated, nil
+	}
+	if !errors.Is(err, apperrs.ErrNotFound) {
+		return nil, fmt.Errorf("find user by provider: %w", err)
+	}
+	count, err := s.cfg.Users.CountUsers(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("count users: %w", err)
+	}
+	if count != 0 {
+		return nil, fmt.Errorf("%w: invitation required", apperrs.ErrUnauthorized)
+	}
+	user, err = s.cfg.Users.CreateFirstUser(ctx, identity)
+	if err != nil {
+		if errors.Is(err, apperrs.ErrConflict) {
+			return nil, fmt.Errorf("%w: invitation required", apperrs.ErrUnauthorized)
+		}
+		return nil, fmt.Errorf("create first user: %w", err)
+	}
+	return user, nil
+}
+
+func accountIsActive(status AccountStatus) bool {
+	return status == "" || status == AccountActive
 }
 
 // Sign mints a session token for a user ID, valid for TokenTTL (ADR 0041).
@@ -754,6 +884,61 @@ func (s *Service) ListUsers(ctx context.Context) ([]*User, error) {
 	return s.cfg.Users.ListUsers(ctx)
 }
 
+// ListAccounts returns every registered account to an active instance administrator.
+func (s *Service) ListAccounts(ctx context.Context, actorID string) ([]*User, error) {
+	if err := s.requireCanCreateWorkspace(ctx, actorID); err != nil {
+		return nil, err
+	}
+	return s.cfg.Users.ListUsers(ctx)
+}
+
+// DisableAccount blocks authentication while preserving the account's memberships and credentials.
+func (s *Service) DisableAccount(ctx context.Context, actorID, targetID string) error {
+	return s.changeAccountStatus(ctx, actorID, targetID, AccountDisabled, TopicAccountDisabled)
+}
+
+// ReactivateAccount restores an intentionally disabled account.
+func (s *Service) ReactivateAccount(ctx context.Context, actorID, targetID string) error {
+	return s.changeAccountStatus(ctx, actorID, targetID, AccountActive, TopicAccountReactivated)
+}
+
+// RemoveAccount tombstones an account and removes its access credentials and memberships.
+func (s *Service) RemoveAccount(ctx context.Context, actorID, targetID string) error {
+	return s.changeAccountStatus(ctx, actorID, targetID, AccountRemoved, TopicAccountRemoved)
+}
+
+// RestoreAccount reactivates a removed account without restoring deleted access.
+func (s *Service) RestoreAccount(ctx context.Context, actorID, targetID string) error {
+	return s.changeAccountStatus(ctx, actorID, targetID, AccountActive, TopicAccountRestored)
+}
+
+func (s *Service) changeAccountStatus(ctx context.Context, actorID, targetID string, status AccountStatus, topic string) error {
+	if err := s.requireCanCreateWorkspace(ctx, actorID); err != nil {
+		return err
+	}
+	if strings.TrimSpace(targetID) == "" {
+		return fmt.Errorf("%w: account id is required", apperrs.ErrInvalid)
+	}
+	target, err := s.cfg.Users.GetUserByID(ctx, targetID)
+	if err != nil {
+		return fmt.Errorf("get account %s: %w", targetID, err)
+	}
+	if status == AccountDisabled && target.AccountStatus == AccountDisabled {
+		return nil
+	}
+	if status == AccountActive && target.AccountStatus == AccountActive {
+		return nil
+	}
+	if status == AccountDisabled && target.AccountStatus == AccountRemoved {
+		return fmt.Errorf("%w: removed accounts must be restored", apperrs.ErrInvalid)
+	}
+	if status == AccountActive && target.AccountStatus != AccountDisabled && target.AccountStatus != AccountRemoved {
+		return fmt.Errorf("%w: account cannot be reactivated", apperrs.ErrInvalid)
+	}
+	payload := AccountLifecycleEvent{AccountID: targetID, ActorID: actorID}
+	return s.cfg.Users.SetAccountStatus(ctx, targetID, status, eventbus.OutboxEvent{ID: newUserID(), Topic: topic, Payload: payload})
+}
+
 // ListMembers returns the allowlist (owner only, ADR 0040).
 func (s *Service) ListMembers(ctx context.Context, userID string) ([]string, error) {
 	if err := s.requireCanCreateWorkspace(ctx, userID); err != nil {
@@ -832,7 +1017,7 @@ func (s *Service) requireCanCreateWorkspace(ctx context.Context, userID string) 
 	if err != nil {
 		return fmt.Errorf("get user %s: %w", userID, err)
 	}
-	if !user.CanCreateWorkspace {
+	if !accountIsActive(user.AccountStatus) || !user.CanCreateWorkspace {
 		return fmt.Errorf("%w: can_create_workspace permission required", apperrs.ErrForbidden)
 	}
 	return nil

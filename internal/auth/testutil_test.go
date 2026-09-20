@@ -8,6 +8,7 @@ import (
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 )
 
 // fakeGitHub implements GitHubClient without network access.
@@ -76,6 +77,25 @@ func (f *fakeUserStore) UpsertUser(_ context.Context, u *User) (*User, bool, err
 	return &cp, true, nil
 }
 
+func (f *fakeUserStore) CreateFirstUser(_ context.Context, u *User) (*User, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if len(f.byID) != 0 {
+		return nil, apperrs.ErrConflict
+	}
+	if u.ID == "" {
+		f.seq++
+		u.ID = fmt.Sprintf("user-%d", f.seq)
+	}
+	if u.AccountStatus == "" {
+		u.AccountStatus = AccountActive
+	}
+	cp := *u
+	f.byKey[userKey(u.Provider, u.ProviderUserID)] = cp.ID
+	f.byID[cp.ID] = &cp
+	return &cp, nil
+}
+
 func (f *fakeUserStore) GetUserByProvider(_ context.Context, provider Provider, providerUserID string) (*User, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -139,7 +159,7 @@ func (f *fakeUserStore) SetCanCreateWorkspace(_ context.Context, id string, can 
 	return nil
 }
 
-func (f *fakeUserStore) SetAccountStatus(_ context.Context, id string, status AccountStatus) error {
+func (f *fakeUserStore) SetAccountStatus(_ context.Context, id string, status AccountStatus, _ ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	u, ok := f.byID[id]
@@ -148,6 +168,12 @@ func (f *fakeUserStore) SetAccountStatus(_ context.Context, id string, status Ac
 	}
 	u.AccountStatus = status
 	return nil
+}
+
+func (f *fakeUserStore) CountUsers(_ context.Context) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return len(f.byID), nil
 }
 
 func (f *fakeUserStore) CountActiveAdmins(_ context.Context) (int, error) {

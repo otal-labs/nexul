@@ -10,6 +10,7 @@ import (
 	"github.com/otal-labs/nexul/internal/auth"
 	"github.com/otal-labs/nexul/internal/platform/crypto"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
 )
 
@@ -68,6 +69,34 @@ func (r *UsersRepo) UpsertUser(ctx context.Context, u *auth.User) (*auth.User, b
 	return persisted, created, nil
 }
 
+// CreateFirstUser admits the first provider identity while holding the shared write serializer.
+func (r *UsersRepo) CreateFirstUser(ctx context.Context, u *auth.User) (*auth.User, error) {
+	var persisted *auth.User
+	err := r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		q := r.q.WithTx(tx)
+		count, err := q.CountUsers(ctx)
+		if err != nil {
+			return fmt.Errorf("count users: %w", err)
+		}
+		if count != 0 {
+			return apperrs.ErrConflict
+		}
+		now := time.Now().Unix()
+		if err := q.InsertUser(ctx, sqlcgen.InsertUserParams{
+			ID: u.ID, Provider: string(u.Provider), ProviderUserID: u.ProviderUserID,
+			Login: u.Login, Name: u.Name, AvatarUrl: u.AvatarURL, CreatedAt: now, UpdatedAt: now,
+		}); err != nil {
+			return fmt.Errorf("insert first user: %w", err)
+		}
+		persisted, err = r.getByProvider(ctx, q, u.Provider, u.ProviderUserID)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	return persisted, nil
+}
+
 func (r *UsersRepo) GetUserByID(ctx context.Context, id string) (*auth.User, error) {
 	row, err := r.q.GetUserByID(ctx, id)
 	if err != nil {
@@ -103,7 +132,7 @@ func (r *UsersRepo) SetCanCreateWorkspace(ctx context.Context, id string, can bo
 	})
 }
 
-func (r *UsersRepo) SetAccountStatus(ctx context.Context, id string, status auth.AccountStatus) error {
+func (r *UsersRepo) SetAccountStatus(ctx context.Context, id string, status auth.AccountStatus, events ...eventbus.OutboxEvent) error {
 	if status != auth.AccountActive && status != auth.AccountDisabled && status != auth.AccountRemoved {
 		return fmt.Errorf("%w: invalid account status %q", apperrs.ErrInvalid, status)
 	}
@@ -122,6 +151,29 @@ func (r *UsersRepo) SetAccountStatus(ctx context.Context, id string, status auth
 				return fmt.Errorf("%w: cannot change the last active instance admin", apperrs.ErrConflict)
 			}
 		}
+		if status == auth.AccountRemoved {
+			if err := q.DeleteAccountMemberships(ctx, id); err != nil {
+				return fmt.Errorf("remove account memberships %s: %w", id, err)
+			}
+			if err := q.DeleteAccountOverwrites(ctx, id); err != nil {
+				return fmt.Errorf("remove account overwrites %s: %w", id, err)
+			}
+			if err := q.RevokeAccountPATs(ctx, sqlcgen.RevokeAccountPATsParams{RevokedAt: sql.NullInt64{Int64: time.Now().Unix(), Valid: true}, UserID: id}); err != nil {
+				return fmt.Errorf("revoke account tokens %s: %w", id, err)
+			}
+			if err := q.DeleteAccountPairingDefaults(ctx, id); err != nil {
+				return fmt.Errorf("remove account pairing defaults %s: %w", id, err)
+			}
+			if err := q.DeleteAccountPairingComputers(ctx, id); err != nil {
+				return fmt.Errorf("remove account pairing computers %s: %w", id, err)
+			}
+			if err := q.DeleteAccountInvitations(ctx, id); err != nil {
+				return fmt.Errorf("remove account invitations %s: %w", id, err)
+			}
+			if _, err := q.WithTx(tx).SetCanCreateWorkspace(ctx, sqlcgen.SetCanCreateWorkspaceParams{CanCreateWorkspace: 0, UpdatedAt: time.Now().Unix(), ID: id}); err != nil {
+				return fmt.Errorf("clear account admin %s: %w", id, err)
+			}
+		}
 		n, err := q.SetAccountStatus(ctx, sqlcgen.SetAccountStatusParams{
 			AccountStatus: string(status), UpdatedAt: time.Now().Unix(), ID: id,
 		})
@@ -131,8 +183,21 @@ func (r *UsersRepo) SetAccountStatus(ctx context.Context, id string, status auth
 		if n == 0 {
 			return fmt.Errorf("set account status %s: %w", id, apperrs.ErrNotFound)
 		}
+		for _, event := range events {
+			if err := insertOutboxRow(ctx, tx, event.ID, event.Topic, event.Payload); err != nil {
+				return fmt.Errorf("write account event %s: %w", id, err)
+			}
+		}
 		return nil
 	})
+}
+
+func (r *UsersRepo) CountUsers(ctx context.Context) (int, error) {
+	n, err := r.q.CountUsers(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("count users: %w", err)
+	}
+	return int(n), nil
 }
 
 func (r *UsersRepo) CountActiveAdmins(ctx context.Context) (int, error) {

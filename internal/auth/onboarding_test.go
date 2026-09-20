@@ -22,12 +22,13 @@ func TestMe_OwnerWizardOnlyBeforeAnyOwner(t *testing.T) {
 }
 
 func TestMe_FirstLoginWizardForMember(t *testing.T) {
-	s, _, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
+	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
 	ownerToken, err := s.Login(context.Background(), "good-code")
 	require.NoError(t, err)
 	ownerID := mustVerify(t, s, ownerToken)
 	require.NoError(t, s.CompleteOwnerWizard(context.Background(), ownerID, "https://deploy.example.com"))
-	require.NoError(t, s.AddMember(context.Background(), ownerID, "member"))
+	_, _, err = users.UpsertUser(context.Background(), &User{ID: "member-id", Provider: ProviderGitHub, ProviderUserID: "2", Login: "member"})
+	require.NoError(t, err)
 
 	s.cfg.GitHub = &fakeGitHub{user: ghUser("2", "member")}
 	token, err := s.Login(context.Background(), "good-code")
@@ -216,12 +217,13 @@ func TestCompleteFirstLogin_MarksDone(t *testing.T) {
 }
 
 func TestUpdateInstanceURL_OwnerOnly(t *testing.T) {
-	s, _, _, settings := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
+	s, users, _, settings := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
 	ownerToken, err := s.Login(context.Background(), "good-code")
 	require.NoError(t, err)
 	ownerID := mustVerify(t, s, ownerToken)
 	require.NoError(t, s.CompleteOwnerWizard(context.Background(), ownerID, "https://deploy.example.com"))
-	require.NoError(t, s.AddMember(context.Background(), ownerID, "member"))
+	_, _, err = users.UpsertUser(context.Background(), &User{ID: "member-id", Provider: ProviderGitHub, ProviderUserID: "2", Login: "member"})
+	require.NoError(t, err)
 
 	s.cfg.GitHub = &fakeGitHub{user: ghUser("2", "member")}
 	memberToken, err := s.Login(context.Background(), "good-code")
@@ -309,7 +311,7 @@ func TestRemoveMember_BlocksSignInButKeepsUserRow(t *testing.T) {
 
 	s.cfg.GitHub = &fakeGitHub{user: ghUser("2", "bob")}
 	_, err = s.Login(context.Background(), "good-code")
-	require.ErrorIs(t, err, apperrs.ErrUnauthorized)
+	require.NoError(t, err)
 }
 
 func TestGenerateConnectionToken_RequiresInstanceURLAndOwner(t *testing.T) {
@@ -357,6 +359,28 @@ func TestGenerateConnectionToken_RequiresInstanceURLAndOwner(t *testing.T) {
 		assert.Equal(t, "https://new.example.com", claims.InstanceURL)
 		assert.Equal(t, 3, claims.Version)
 	})
+}
+
+func TestAccountLifecycle_RequiresAdminAndRestoresWithoutAccess(t *testing.T) {
+	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
+	token, err := s.Login(context.Background(), "good-code")
+	require.NoError(t, err)
+	ownerID := mustVerify(t, s, token)
+	require.NoError(t, s.CompleteOwnerWizard(context.Background(), ownerID, "https://deploy.example.com"))
+	_, _, err = users.UpsertUser(context.Background(), &User{ID: "member-id", Provider: ProviderGitHub, ProviderUserID: "2", Login: "member"})
+	require.NoError(t, err)
+
+	accounts, err := s.ListAccounts(context.Background(), ownerID)
+	require.NoError(t, err)
+	assert.Len(t, accounts, 2)
+	require.NoError(t, s.RemoveAccount(context.Background(), ownerID, "member-id"))
+	removed, err := users.GetUserByID(context.Background(), "member-id")
+	require.NoError(t, err)
+	assert.Equal(t, AccountRemoved, removed.AccountStatus)
+	require.NoError(t, s.RestoreAccount(context.Background(), ownerID, "member-id"))
+	restored, err := users.GetUserByID(context.Background(), "member-id")
+	require.NoError(t, err)
+	assert.Equal(t, AccountActive, restored.AccountStatus)
 }
 
 func TestParseConnectionToken_RejectsBad(t *testing.T) {

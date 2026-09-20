@@ -34,6 +34,8 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /auth/google/callback", h.callbackGET(ProviderGoogle))
 	mux.HandleFunc("GET /auth/discord", h.startOAuth(ProviderDiscord))
 	mux.HandleFunc("GET /auth/discord/callback", h.callbackGET(ProviderDiscord))
+	mux.HandleFunc("POST /api/invitations/oauth", h.startInvitationOAuth)
+	mux.HandleFunc("POST /api/invitations/redeem", h.redeemInvitation)
 	mux.HandleFunc("GET /api/auth/bootstrap-status", h.bootstrapStatus)
 	mux.HandleFunc("POST /api/auth/bootstrap", h.bootstrap)
 	mux.HandleFunc("POST /api/auth/bootstrap/verify", h.bootstrapVerify)
@@ -159,6 +161,11 @@ func (h *Handler) ProtectedRoutes() http.Handler {
 	mux.HandleFunc("GET /api/auth/members/lookup", h.lookupMembers)
 	mux.HandleFunc("POST /api/auth/members", h.addMember)
 	mux.HandleFunc("DELETE /api/auth/members/{login}", h.removeMember)
+	mux.HandleFunc("GET /api/auth/accounts", h.listAccounts)
+	mux.HandleFunc("POST /api/auth/accounts/{id}/disable", h.disableAccount)
+	mux.HandleFunc("POST /api/auth/accounts/{id}/reactivate", h.reactivateAccount)
+	mux.HandleFunc("DELETE /api/auth/accounts/{id}", h.removeAccount)
+	mux.HandleFunc("POST /api/auth/accounts/{id}/restore", h.restoreAccount)
 	return mux
 }
 
@@ -200,6 +207,44 @@ func (h *Handler) startOAuth(provider Provider) http.HandlerFunc {
 	}
 }
 
+type invitationOAuthRequest struct {
+	Provider Provider `json:"provider"`
+	Token    string   `json:"token"`
+}
+
+func (h *Handler) startInvitationOAuth(w http.ResponseWriter, r *http.Request) {
+	var req invitationOAuthRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	start, err := h.svc.StartInvitationOAuth(r.Context(), req.Provider, req.Token)
+	if err != nil {
+		httpx.WriteError(w, invalidInvitationError())
+		return
+	}
+	http.SetCookie(w, &http.Cookie{Name: start.CookieName, Value: start.State, Path: "/", MaxAge: int(stateMaxAge.Seconds()), HttpOnly: true, SameSite: http.SameSiteLaxMode, Secure: r.TLS != nil})
+	httpx.WriteJSON(w, http.StatusOK, map[string]string{"url": start.URL})
+}
+
+type invitationRedeemRequest struct {
+	Acceptance string `json:"acceptance"`
+}
+
+func (h *Handler) redeemInvitation(w http.ResponseWriter, r *http.Request) {
+	var req invitationRedeemRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	token, err := h.svc.RedeemInvitation(r.Context(), req.Acceptance)
+	if err != nil {
+		httpx.WriteError(w, invalidInvitationError())
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]string{"token": token})
+}
+
 func (h *Handler) providerConfigured(r *http.Request, provider Provider) (bool, error) {
 	return h.svc.ProviderConfigured(r.Context(), provider)
 }
@@ -207,8 +252,26 @@ func (h *Handler) providerConfigured(r *http.Request, provider Provider) (bool, 
 // callbackGET verifies the CSRF cookie, exchanges the code, and redirects to the SPA with a session token in the URL.
 func (h *Handler) callbackGET(provider Provider) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		state := r.URL.Query().Get("state")
+		if state != "" {
+			if cookie, cookieErr := r.Cookie(invitationStateCookie(hashCredential(state))); cookieErr == nil && cookie.Value == state {
+				code := r.URL.Query().Get("code")
+				if code == "" {
+					httpx.WriteError(w, invalidInvitationError())
+					return
+				}
+				acceptance, err := h.svc.CompleteInvitationOAuth(r.Context(), provider, state, code)
+				if err != nil {
+					httpx.WriteError(w, invalidInvitationError())
+					return
+				}
+				http.SetCookie(w, &http.Cookie{Name: invitationStateCookie(hashCredential(state)), Value: "", MaxAge: -1, Path: "/", HttpOnly: true})
+				http.Redirect(w, r, h.spaOrigin(r)+"/invite#"+acceptance, http.StatusFound)
+				return
+			}
+		}
 		cookie, err := r.Cookie(stateCookie)
-		if err != nil || cookie.Value == "" || cookie.Value != r.URL.Query().Get("state") {
+		if err != nil || cookie.Value == "" || cookie.Value != state {
 			httpx.WriteError(w, fmt.Errorf("%w: oauth state mismatch", apperrs.ErrUnauthorized))
 			return
 		}
@@ -510,6 +573,47 @@ func (h *Handler) removeMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string][]string{"members": members})
+}
+
+func (h *Handler) listAccounts(w http.ResponseWriter, r *http.Request) {
+	accounts, err := h.svc.ListAccounts(r.Context(), currentUserID(r))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"accounts": accounts})
+}
+
+func (h *Handler) disableAccount(w http.ResponseWriter, r *http.Request) {
+	if err := h.svc.DisableAccount(r.Context(), currentUserID(r), r.PathValue("id")); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) reactivateAccount(w http.ResponseWriter, r *http.Request) {
+	if err := h.svc.ReactivateAccount(r.Context(), currentUserID(r), r.PathValue("id")); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) removeAccount(w http.ResponseWriter, r *http.Request) {
+	if err := h.svc.RemoveAccount(r.Context(), currentUserID(r), r.PathValue("id")); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) restoreAccount(w http.ResponseWriter, r *http.Request) {
+	if err := h.svc.RestoreAccount(r.Context(), currentUserID(r), r.PathValue("id")); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func currentUserID(r *http.Request) string {
