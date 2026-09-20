@@ -19,11 +19,6 @@ CREATE TABLE IF NOT EXISTS invitation_grants (
     PRIMARY KEY (invitation_id, workspace_id)
 );
 
--- ListInvitationGrantsByInvitation and creator-authority validation.
-CREATE INDEX IF NOT EXISTS idx_invitation_grants_invitation ON invitation_grants(invitation_id, workspace_id);
--- ListInvitationsForActor and expiry pruning.
-CREATE INDEX IF NOT EXISTS idx_invitations_invited_by_expiry ON invitations(invited_by, expires_at, id);
-
 CREATE TABLE IF NOT EXISTS invitation_oauth_handoffs (
     id                TEXT PRIMARY KEY,
     invitation_id     TEXT NOT NULL REFERENCES invitations(id) ON DELETE CASCADE,
@@ -40,8 +35,3 @@ CREATE TABLE IF NOT EXISTS invitation_oauth_handoffs (
     created_at        INTEGER NOT NULL,
     expires_at        INTEGER NOT NULL
 );
-
--- GetOAuthHandoffByState and state-bound callback completion.
-CREATE INDEX IF NOT EXISTS idx_invitation_oauth_handoffs_state ON invitation_oauth_handoffs(oauth_state_hash);
--- GetOAuthHandoffByAcceptanceHash and acceptance completion.
-CREATE INDEX IF NOT EXISTS idx_invitation_oauth_handoffs_acceptance ON invitation_oauth_handoffs(acceptance_hash);

@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"context"
 	"database/sql"
 	"errors"
 	"sync"
@@ -21,12 +20,12 @@ import (
 
 func seedInvitationWorkspace(t *testing.T, s *Store, workspaceID, name, roleID string, owner bool, actorID string) {
 	t.Helper()
-	require.NoError(t, s.Workspaces.Create(context.Background(), newTestWorkspace(workspaceID, name)))
-	_, _, err := s.Users.UpsertUser(context.Background(), newTestUser(actorID, actorID, actorID))
+	require.NoError(t, s.Workspaces.Create(t.Context(), newTestWorkspace(workspaceID, name)))
+	_, _, err := s.Users.UpsertUser(t.Context(), newTestUser(actorID, actorID, actorID))
 	require.NoError(t, err)
 	role := &roles.Role{ID: roleID, WorkspaceID: workspaceID, Name: "Editors", IsOwnerRole: owner, Permissions: permissions.SetOf(permissions.MembersWrite), CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC()}
-	require.NoError(t, s.Roles.Create(context.Background(), role))
-	require.NoError(t, s.WorkspaceMembers.AddMember(context.Background(), &tenancy.Member{UserID: actorID, WorkspaceID: workspaceID, RoleID: roleID, CreatedAt: time.Now().UTC()}))
+	require.NoError(t, s.Roles.Create(t.Context(), role))
+	require.NoError(t, s.WorkspaceMembers.AddMember(t.Context(), &tenancy.Member{UserID: actorID, WorkspaceID: workspaceID, RoleID: roleID, CreatedAt: time.Now().UTC()}))
 }
 
 func newInvitation(id, actorID, workspaceID, roleID string, createdAt time.Time, lifetime time.Duration) *tenancy.Invitation {
@@ -50,8 +49,8 @@ func createAcceptanceHandoff(t *testing.T, s *Store, invitationID string, now ti
 	_, acceptanceHash := invitationToken(t, "f"+suffix[1:])
 	handoffClock := time.Now().UTC()
 	handoff := &auth.OAuthHandoff{ID: "handoff-" + invitationID + "-" + suffix, InvitationID: invitationID, OAuthStateHash: stateHash, Provider: auth.Provider(identity.Provider), CreatedAt: handoffClock, ExpiresAt: handoffClock.Add(10 * time.Minute)}
-	require.NoError(t, s.OAuthHandoffs.StartOAuthHandoff(context.Background(), handoff))
-	_, err := s.OAuthHandoffs.CompleteOAuthCallback(context.Background(), stateHash, acceptanceHash, auth.OAuthHandoffIdentity{Provider: auth.Provider(identity.Provider), ProviderUserID: identity.ProviderUserID, Login: identity.Login, Name: identity.Name, AvatarURL: identity.AvatarURL}, handoffClock.Add(10*time.Minute))
+	require.NoError(t, s.OAuthHandoffs.StartOAuthHandoff(t.Context(), handoff))
+	_, err := s.OAuthHandoffs.CompleteOAuthCallback(t.Context(), stateHash, acceptanceHash, auth.OAuthHandoffIdentity{Provider: auth.Provider(identity.Provider), ProviderUserID: identity.ProviderUserID, Login: identity.Login, Name: identity.Name, AvatarURL: identity.AvatarURL}, handoffClock.Add(10*time.Minute), handoffClock)
 	require.NoError(t, err)
 	return acceptanceHash
 }
@@ -59,7 +58,7 @@ func createAcceptanceHandoff(t *testing.T, s *Store, invitationID string, now ti
 func TestInvitationsRepo_CreateAndGet_DoesNotExposeRawToken(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
-	ctx := context.Background()
+	ctx := t.Context()
 	now := time.Date(2026, 9, 20, 12, 0, 0, 0, time.UTC)
 	seedInvitationWorkspace(t, s, "ws-1", "Acme", "role-editor", false, "actor")
 
@@ -90,7 +89,6 @@ func TestInvitationsRepo_CreateAndGet_DoesNotExposeRawToken(t *testing.T) {
 	assert.Equal(t, want.ID, got.ID)
 	assert.Equal(t, want.ExpiresAt, got.ExpiresAt)
 	assert.Equal(t, permissions.SetOf(permissions.DocsRead), got.Grants[0].Allow)
-	assert.NotContains(t, got.TokenHash, rawToken)
 
 	_, err = s.Invitations.GetByTokenHash(ctx, rawToken, now)
 	assert.ErrorIs(t, err, apperrs.ErrNotFound)
@@ -99,14 +97,14 @@ func TestInvitationsRepo_CreateAndGet_DoesNotExposeRawToken(t *testing.T) {
 func TestInvitationsRepo_GetByTokenHash_RejectsInvalidTokenShape(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
-	_, err := s.Invitations.GetByTokenHash(context.Background(), "not-a-uuid", time.Now())
+	_, err := s.Invitations.GetByTokenHash(t.Context(), "not-a-uuid", time.Now())
 	assert.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
 func TestUsersRepo_AccountStatus_RoundTrip(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
-	ctx := context.Background()
+	ctx := t.Context()
 	_, _, err := s.Users.UpsertUser(ctx, newTestUser("u-1", "provider-1", "alice"))
 	require.NoError(t, err)
 
@@ -123,7 +121,7 @@ func TestUsersRepo_AccountStatus_RoundTrip(t *testing.T) {
 func TestMigration_PrivateInvitationFoundation_IsPresentAndBackfillsActiveUsers(t *testing.T) {
 	t.Parallel()
 	db := newTestDB(t)
-	ctx := context.Background()
+	ctx := t.Context()
 	_, err := db.ExecContext(ctx, `INSERT INTO users (id, provider, provider_user_id, login, created_at, updated_at) VALUES ('u-1', 'github', 'provider-1', 'alice', 1, 1)`)
 	require.NoError(t, err)
 	var status string
@@ -141,7 +139,7 @@ func TestMigration_PrivateInvitationFoundation_IsPresentAndBackfillsActiveUsers(
 func TestInvitationsRepo_Create_RollsBackOutboxWithInvitation(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
-	ctx := context.Background()
+	ctx := t.Context()
 	now := time.Now().UTC()
 	seedInvitationWorkspace(t, s, "ws-1", "Acme", "role-editor", false, "actor")
 	tokenHash, err := tenancy.HashInvitationToken("4d2f3f29-2a43-4ae7-b2d4-0b6f1a7f4c11")
@@ -162,7 +160,7 @@ func TestInvitationsRepo_Create_RollsBackOutboxWithInvitation(t *testing.T) {
 func TestInvitationsRepo_Redeem_NewUserIsAtomicAndWritesOutbox(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
-	ctx := context.Background()
+	ctx := t.Context()
 	now := time.Date(2026, 9, 20, 12, 0, 0, 0, time.UTC)
 	seedInvitationWorkspace(t, s, "ws-1", "Acme", "role-editor", false, "actor")
 	_, tokenHash := invitationToken(t, "12")
@@ -195,7 +193,7 @@ func TestInvitationsRepo_Redeem_NewUserIsAtomicAndWritesOutbox(t *testing.T) {
 func TestInvitationsRepo_Redeem_ExistingMembershipPreservesRoleAndOverwrite(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
-	ctx := context.Background()
+	ctx := t.Context()
 	now := time.Date(2026, 9, 20, 12, 0, 0, 0, time.UTC)
 	seedInvitationWorkspace(t, s, "ws-1", "Acme", "role-editor", false, "actor")
 	_, _, err := s.Users.UpsertUser(ctx, newTestUser("user-existing", "provider-existing", "existing"))
@@ -225,7 +223,7 @@ func TestInvitationsRepo_Redeem_ExistingMembershipPreservesRoleAndOverwrite(t *t
 func TestInvitationsRepo_Redeem_InvalidGrantRollsBackNewUser(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
-	ctx := context.Background()
+	ctx := t.Context()
 	now := time.Date(2026, 9, 20, 12, 0, 0, 0, time.UTC)
 	seedInvitationWorkspace(t, s, "ws-1", "Acme", "role-editor", false, "actor")
 	seedInvitationWorkspace(t, s, "ws-2", "Beta", "role-manager", false, "actor")
@@ -251,7 +249,7 @@ func TestInvitationsRepo_Redeem_InvalidGrantRollsBackNewUser(t *testing.T) {
 func TestInvitationsRepo_Redeem_ConcurrentConsumptionHasOneWinner(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
-	ctx := context.Background()
+	ctx := t.Context()
 	now := time.Date(2026, 9, 20, 12, 0, 0, 0, time.UTC)
 	seedInvitationWorkspace(t, s, "ws-1", "Acme", "role-editor", false, "actor")
 	_, tokenHash := invitationToken(t, "15")
@@ -266,12 +264,10 @@ func TestInvitationsRepo_Redeem_ConcurrentConsumptionHasOneWinner(t *testing.T) 
 		firstIdentity,
 		{ID: "user-2", Provider: "github", ProviderUserID: "provider-2", Login: "two"},
 	} {
-		wg.Add(1)
-		go func(identity tenancy.InvitationIdentity) {
-			defer wg.Done()
+		wg.Go(func() {
 			_, err := s.Invitations.Redeem(ctx, acceptanceHash, identity, now)
 			results <- err
-		}(identity)
+		})
 	}
 	wg.Wait()
 	close(results)
@@ -290,7 +286,7 @@ func TestInvitationsRepo_Redeem_ConcurrentConsumptionHasOneWinner(t *testing.T) 
 func TestInvitationsRepo_GetByTokenHash_ExpiryDeletesActiveRow(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
-	ctx := context.Background()
+	ctx := t.Context()
 	now := time.Date(2026, 9, 20, 12, 0, 0, 0, time.UTC)
 	seedInvitationWorkspace(t, s, "ws-1", "Acme", "role-editor", false, "actor")
 	_, oneDayHash := invitationToken(t, "16")
@@ -311,7 +307,7 @@ func TestInvitationsRepo_GetByTokenHash_ExpiryDeletesActiveRow(t *testing.T) {
 func TestOAuthHandoffs_StateBoundAcceptance_IsolatedAndHashed(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
-	ctx := context.Background()
+	ctx := t.Context()
 	now := time.Now().UTC()
 	seedInvitationWorkspace(t, s, "ws-1", "Acme", "role-editor", false, "actor")
 	_, tokenHash := invitationToken(t, "22")
@@ -336,7 +332,7 @@ func TestOAuthHandoffs_StateBoundAcceptance_IsolatedAndHashed(t *testing.T) {
 func TestInvitationsRepo_Redeem_DisabledAfterOAuthIsRejected(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
-	ctx := context.Background()
+	ctx := t.Context()
 	now := time.Date(2026, 9, 20, 12, 0, 0, 0, time.UTC)
 	seedInvitationWorkspace(t, s, "ws-1", "Acme", "role-editor", false, "actor")
 	_, _, err := s.Users.UpsertUser(ctx, newTestUser("user-existing", "provider-existing", "existing"))
@@ -358,7 +354,7 @@ func TestInvitationsRepo_Redeem_DisabledAfterOAuthIsRejected(t *testing.T) {
 func TestInvitationsRepo_Redeem_ConsumeBeforeWriteRollsBackOnOutboxFailure(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
-	ctx := context.Background()
+	ctx := t.Context()
 	now := time.Date(2026, 9, 20, 12, 0, 0, 0, time.UTC)
 	seedInvitationWorkspace(t, s, "ws-1", "Acme", "role-editor", false, "actor")
 	_, tokenHash := invitationToken(t, "27")
@@ -381,7 +377,7 @@ func TestInvitationsRepo_Redeem_ConsumeBeforeWriteRollsBackOnOutboxFailure(t *te
 func TestInvitationsRepo_Redeem_RetainsReceiptAndRetriesSameIdentity(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
-	ctx := context.Background()
+	ctx := t.Context()
 	now := time.Date(2026, 9, 20, 12, 0, 0, 0, time.UTC)
 	seedInvitationWorkspace(t, s, "ws-1", "Acme", "role-editor", false, "actor")
 	_, tokenHash := invitationToken(t, "29")
@@ -409,7 +405,7 @@ func TestInvitationsRepo_Redeem_RetainsReceiptAndRetriesSameIdentity(t *testing.
 func TestInvitationsRepo_Redeem_DifferentIdentityCannotUseCompletedHandoff(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
-	ctx := context.Background()
+	ctx := t.Context()
 	now := time.Date(2026, 9, 20, 12, 0, 0, 0, time.UTC)
 	seedInvitationWorkspace(t, s, "ws-1", "Acme", "role-editor", false, "actor")
 	_, tokenHash := invitationToken(t, "31")

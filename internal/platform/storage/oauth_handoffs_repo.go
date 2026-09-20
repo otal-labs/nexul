@@ -37,7 +37,7 @@ func (r *OAuthHandoffsRepo) StartOAuthHandoff(ctx context.Context, handoff *auth
 	})
 }
 
-func (r *OAuthHandoffsRepo) CompleteOAuthCallback(ctx context.Context, oauthStateHash, acceptanceHash string, identity auth.OAuthHandoffIdentity, expiresAt time.Time) (*auth.OAuthHandoff, error) {
+func (r *OAuthHandoffsRepo) CompleteOAuthCallback(ctx context.Context, oauthStateHash, acceptanceHash string, identity auth.OAuthHandoffIdentity, expiresAt, now time.Time) (*auth.OAuthHandoff, error) {
 	if !validTokenHash(oauthStateHash) || !validTokenHash(acceptanceHash) || identity.Provider == "" || identity.ProviderUserID == "" {
 		return nil, fmt.Errorf("%w: OAuth handoff completion is invalid", apperrs.ErrInvalid)
 	}
@@ -51,7 +51,7 @@ func (r *OAuthHandoffsRepo) CompleteOAuthCallback(ctx context.Context, oauthStat
 		if err != nil {
 			return fmt.Errorf("get OAuth handoff by state: %w", err)
 		}
-		if row.Provider != string(identity.Provider) || row.ExpiresAt <= time.Now().Unix() {
+		if row.Provider != string(identity.Provider) || row.ExpiresAt <= now.Unix() {
 			return apperrs.ErrNotFound
 		}
 		changed, err := q.CompleteOAuthHandoffTransition(ctx, sqlcgen.CompleteOAuthHandoffTransitionParams{
@@ -63,7 +63,7 @@ func (r *OAuthHandoffsRepo) CompleteOAuthCallback(ctx context.Context, oauthStat
 			ExistingUserID: sql.NullString{String: identity.ExistingUserID, Valid: identity.ExistingUserID != ""},
 			ExpiresAt:      expiresAt.Unix(),
 			OauthStateHash: sql.NullString{String: oauthStateHash, Valid: true},
-			ExpiresAt_2:    time.Now().Unix(),
+			ExpiresAt_2:    now.Unix(),
 		})
 		if err != nil {
 			return fmt.Errorf("complete OAuth handoff: %w", err)

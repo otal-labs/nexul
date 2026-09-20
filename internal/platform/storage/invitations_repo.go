@@ -443,7 +443,7 @@ func readInvitation(ctx context.Context, q *sqlcgen.Queries, row sqlcgen.Invitat
 	if err != nil {
 		return nil, fmt.Errorf("list invitation grants: %w", err)
 	}
-	invitation := &tenancy.Invitation{ID: row.ID, InvitedBy: row.InvitedBy, CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), ExpiresAt: time.Unix(row.ExpiresAt, 0).UTC(), TokenHash: row.TokenHash}
+	invitation := &tenancy.Invitation{ID: row.ID, InvitedBy: row.InvitedBy, CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), ExpiresAt: time.Unix(row.ExpiresAt, 0).UTC()}
 	if row.RedeemedAt.Valid {
 		redeemedAt := time.Unix(row.RedeemedAt.Int64, 0).UTC()
 		invitation.RedeemedAt = &redeemedAt

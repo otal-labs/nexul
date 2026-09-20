@@ -108,7 +108,21 @@ func (r *UsersRepo) SetAccountStatus(ctx context.Context, id string, status auth
 		return fmt.Errorf("%w: invalid account status %q", apperrs.ErrInvalid, status)
 	}
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		n, err := r.q.WithTx(tx).SetAccountStatus(ctx, sqlcgen.SetAccountStatusParams{
+		q := r.q.WithTx(tx)
+		user, err := q.GetUserByID(ctx, id)
+		if err != nil {
+			return fmt.Errorf("get account %s: %w", id, notFoundIfNoRows(err))
+		}
+		if user.CanCreateWorkspace != 0 && user.AccountStatus == string(auth.AccountActive) && status != auth.AccountActive {
+			activeAdmins, err := q.CountActiveAdmins(ctx)
+			if err != nil {
+				return fmt.Errorf("count active instance admins: %w", err)
+			}
+			if activeAdmins <= 1 {
+				return fmt.Errorf("%w: cannot change the last active instance admin", apperrs.ErrConflict)
+			}
+		}
+		n, err := q.SetAccountStatus(ctx, sqlcgen.SetAccountStatusParams{
 			AccountStatus: string(status), UpdatedAt: time.Now().Unix(), ID: id,
 		})
 		if err != nil {

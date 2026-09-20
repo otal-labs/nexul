@@ -37,7 +37,6 @@ type Invitation struct {
 	InvitedBy  string             `json:"invited_by"`
 	CreatedAt  time.Time          `json:"created_at"`
 	ExpiresAt  time.Time          `json:"expires_at"`
-	TokenHash  string             `json:"-"`
 	RedeemedAt *time.Time         `json:"-"`
 	RedeemedBy string             `json:"-"`
 	Grants     []*InvitationGrant `json:"grants"`

@@ -89,6 +89,36 @@ func TestUsersRepo_SetCanCreateWorkspace_MissingUser(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
+func TestUsersRepo_SetAccountStatus_LastActiveAdmin_IsRejectedAtomically(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	_, _, err := s.Users.UpsertUser(ctx, newTestUser("u1", "1", "owner"))
+	require.NoError(t, err)
+	require.NoError(t, s.Users.SetCanCreateWorkspace(ctx, "u1", true))
+
+	err = s.Users.SetAccountStatus(ctx, "u1", auth.AccountDisabled)
+	require.ErrorIs(t, err, apperrs.ErrConflict)
+	user, err := s.Users.GetUserByID(ctx, "u1")
+	require.NoError(t, err)
+	assert.Equal(t, auth.AccountActive, user.AccountStatus)
+}
+
+func TestUsersRepo_SetAccountStatus_AllowsChangingWhenAnotherAdminIsActive(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	for _, id := range []string{"u1", "u2"} {
+		_, _, err := s.Users.UpsertUser(ctx, newTestUser(id, id, id))
+		require.NoError(t, err)
+		require.NoError(t, s.Users.SetCanCreateWorkspace(ctx, id, true))
+	}
+	require.NoError(t, s.Users.SetAccountStatus(ctx, "u1", auth.AccountDisabled))
+	count, err := s.Users.CountActiveAdmins(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, count)
+}
+
 func TestUsersRepo_MarkFirstLoginDone_MissingUser(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

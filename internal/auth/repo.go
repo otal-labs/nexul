@@ -24,7 +24,7 @@ type UserStore interface {
 
 type OAuthHandoffStore interface {
 	StartOAuthHandoff(ctx context.Context, handoff *OAuthHandoff) error
-	CompleteOAuthCallback(ctx context.Context, oauthStateHash, acceptanceHash string, identity OAuthHandoffIdentity, expiresAt time.Time) (*OAuthHandoff, error)
+	CompleteOAuthCallback(ctx context.Context, oauthStateHash, acceptanceHash string, identity OAuthHandoffIdentity, expiresAt, now time.Time) (*OAuthHandoff, error)
 	GetOAuthHandoffByAcceptanceHash(ctx context.Context, acceptanceHash string, now time.Time) (*OAuthHandoff, error)
 	CompleteOAuthRedemption(ctx context.Context, acceptanceHash, admittedUserID string, now time.Time) error
 }
