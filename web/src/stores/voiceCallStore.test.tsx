@@ -17,19 +17,21 @@ const on = vi.fn();
 const setMicrophoneEnabled = vi.fn(async () => undefined);
 
 vi.mock("livekit-client", () => ({
-  Room: vi.fn().mockImplementation(() => ({
-    connect,
-    disconnect,
-    on,
-    localParticipant: {
-      isMicrophoneEnabled: true,
-      isCameraEnabled: false,
-      isScreenShareEnabled: false,
-      setMicrophoneEnabled,
-      setCameraEnabled: vi.fn(),
-      setScreenShareEnabled: vi.fn(),
-    },
-  })),
+  Room: vi.fn().mockImplementation(function () {
+    return {
+      connect,
+      disconnect,
+      on,
+      localParticipant: {
+        isMicrophoneEnabled: true,
+        isCameraEnabled: false,
+        isScreenShareEnabled: false,
+        setMicrophoneEnabled,
+        setCameraEnabled: vi.fn(),
+        setScreenShareEnabled: vi.fn(),
+      },
+    };
+  }),
   RoomEvent: { Disconnected: "disconnected" },
   DisconnectReason: { CLIENT_INITIATED: 0 },
   setLogLevel: vi.fn(),
