@@ -31,7 +31,7 @@ type playRequest struct {
 
 // Routes are mounted under the tenancy domain's /api/workspaces prefix.
 func (h *Handler) Routes() http.Handler {
-	mux := http.NewServeMux()
+	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /api/workspaces/{workspaceID}/plays", h.list)
 	mux.HandleFunc("GET /api/workspaces/{workspaceID}/plays/applicable", h.listApplicable)
 	mux.HandleFunc("POST /api/workspaces/{workspaceID}/plays", h.create)

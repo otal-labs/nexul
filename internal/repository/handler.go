@@ -18,7 +18,7 @@ func NewHandler(s Scanner) *Handler {
 
 // Routes returns the repository REST endpoints.
 func (h *Handler) Routes() http.Handler {
-	mux := http.NewServeMux()
+	mux := httpx.NewServeMux()
 	mux.HandleFunc("POST /api/repositories/scan", h.scan)
 	mux.HandleFunc("GET /api/repositories", h.list)
 	return mux

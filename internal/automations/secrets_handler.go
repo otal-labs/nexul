@@ -18,7 +18,7 @@ func NewSecretsHandler(svc *SecretsService) *SecretsHandler {
 
 // Routes returns the workspace secrets REST endpoints (list/set/delete by name).
 func (h *SecretsHandler) Routes() http.Handler {
-	mux := http.NewServeMux()
+	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /api/automation-secrets", h.list)
 	mux.HandleFunc("PUT /api/automation-secrets/{name}", h.set)
 	mux.HandleFunc("DELETE /api/automation-secrets/{name}", h.delete)

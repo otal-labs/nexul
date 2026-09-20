@@ -37,7 +37,7 @@ type cloneMemoryRequest struct {
 // Routes returns the memories REST endpoints. Browser calls never carry MCP provenance, so every use-case
 // call here passes an empty via.
 func (h *Handler) Routes() http.Handler {
-	mux := http.NewServeMux()
+	mux := httpx.NewServeMux()
 	mux.HandleFunc("POST /api/memories", h.create)
 	mux.HandleFunc("GET /api/memories", h.list)
 	mux.HandleFunc("GET /api/memories/{id}", h.get)

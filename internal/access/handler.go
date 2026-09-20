@@ -22,7 +22,7 @@ func NewHandler(svc *Service) *Handler {
 
 // Routes returns the permissions REST endpoints.
 func (h *Handler) Routes() http.Handler {
-	mux := http.NewServeMux()
+	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /api/permissions", h.listGrants)
 	mux.HandleFunc("GET /api/permissions/catalog", h.catalog)
 	mux.HandleFunc("GET /api/permissions/users", h.listUsers)

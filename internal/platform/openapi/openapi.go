@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+
+	"github.com/otal-labs/nexul/internal/platform/httpx"
 )
 
 // Info is the OpenAPI top-level metadata block.
@@ -68,6 +70,24 @@ func (s *Spec) Register(method, path, summary string, tags ...string) {
 			s.tags[tag] = ""
 		}
 	}
+}
+
+// RegisterMountedRoutes adds every method-bearing route collected from the HTTP gateway.
+func (s *Spec) RegisterMountedRoutes(routes []httpx.Route) {
+	for _, route := range routes {
+		s.Register(route.Method, route.Path, "API operation", routeTag(route.Path))
+	}
+}
+
+func routeTag(path string) string {
+	path = strings.TrimPrefix(path, "/api/")
+	if path == "" {
+		return ""
+	}
+	if tag, _, ok := strings.Cut(path, "/"); ok {
+		return tag
+	}
+	return path
 }
 
 // SetTagDescription annotates a tag shown in the Swagger UI grouping.

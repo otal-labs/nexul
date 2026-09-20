@@ -20,7 +20,7 @@ func NewHandler(svc *Service) *Handler {
 
 // Routes returns the dns REST endpoints; credential connect/disconnect lives on the connectors surface, not here.
 func (h *Handler) Routes() http.Handler {
-	mux := http.NewServeMux()
+	mux := httpx.NewServeMux()
 	mux.HandleFunc("POST /api/dns/verify", h.verify)
 	mux.HandleFunc("GET /api/dns/zones", h.listZones)
 	mux.HandleFunc("GET /api/dns/zones/{zoneID}/records", h.listRecords)

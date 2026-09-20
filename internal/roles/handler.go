@@ -40,7 +40,7 @@ type roleRequest struct {
 
 // Routes are wrapped with the auth-user-id injection adapter before mounting behind RequireAuth.
 func (h *Handler) Routes() http.Handler {
-	mux := http.NewServeMux()
+	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /api/workspaces/{workspaceID}/roles", h.list)
 	mux.HandleFunc("POST /api/workspaces/{workspaceID}/roles", h.create)
 	mux.HandleFunc("GET /api/workspaces/{workspaceID}/roles/{roleID}", h.get)

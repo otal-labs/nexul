@@ -8,6 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/otal-labs/nexul/internal/platform/httpx"
 )
 
 func TestRegisterAndJSON(t *testing.T) {
@@ -53,6 +55,21 @@ func TestReplaceRegistration(t *testing.T) {
 	}
 	require.NoError(t, json.Unmarshal(doc, &parsed))
 	assert.Equal(t, "second", parsed.Paths["/api/x"].Get.Summary)
+}
+
+func TestRegisterMountedRoutes(t *testing.T) {
+	s := New(Info{Title: "x", Version: "1"})
+	s.RegisterMountedRoutes([]httpx.Route{{Method: http.MethodGet, Path: "/api/new-route"}})
+
+	doc, err := s.JSON()
+	require.NoError(t, err)
+	var parsed struct {
+		Paths map[string]*PathItem `json:"paths"`
+	}
+	require.NoError(t, json.Unmarshal(doc, &parsed))
+
+	require.NotNil(t, parsed.Paths["/api/new-route"])
+	assert.Equal(t, "API operation", parsed.Paths["/api/new-route"].Get.Summary)
 }
 
 func TestDefaultResponses(t *testing.T) {

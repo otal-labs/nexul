@@ -27,7 +27,7 @@ func (h *Handler) WithVersions(svc *VersionsService) *Handler {
 
 // Routes returns the automations REST endpoints (CRUD + enable/disable + token mint/revoke).
 func (h *Handler) Routes() http.Handler {
-	mux := http.NewServeMux()
+	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /api/automations", h.list)
 	mux.HandleFunc("POST /api/automations", h.create)
 	mux.HandleFunc("GET /api/automations/{id}", h.get)

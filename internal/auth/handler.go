@@ -26,7 +26,7 @@ type callbackRequest struct {
 
 // Routes returns the public auth endpoints; /auth/dev-login only registers with DevLogin enabled.
 func (h *Handler) Routes() http.Handler {
-	mux := http.NewServeMux()
+	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /auth/github", h.startOAuth(ProviderGitHub))
 	mux.HandleFunc("GET /auth/callback", h.callbackGET(ProviderGitHub))
 	mux.HandleFunc("POST /auth/callback", h.callbackPOST)
@@ -142,7 +142,7 @@ func (h *Handler) spaOrigin(r *http.Request) string {
 
 // ProtectedRoutes returns the authenticated auth endpoints, mounted behind RequireAuth at /api/auth.
 func (h *Handler) ProtectedRoutes() http.Handler {
-	mux := http.NewServeMux()
+	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /api/auth/me", h.me)
 	mux.HandleFunc("PUT /api/auth/profile", h.updateProfile)
 	mux.HandleFunc("POST /api/auth/onboarding/owner", h.completeOwnerWizard)

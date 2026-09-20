@@ -18,7 +18,7 @@ func NewHandler(svc *Service) *Handler {
 
 // Routes returns the topology REST endpoints; environment defaults to the canonical one when absent.
 func (h *Handler) Routes() http.Handler {
-	mux := http.NewServeMux()
+	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /api/topology", h.get)
 	mux.HandleFunc("PUT /api/topology", h.update)
 	mux.HandleFunc("POST /api/topology/nodes", h.addNode)

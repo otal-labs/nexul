@@ -25,7 +25,7 @@ func NewHandler(svc *Service) *Handler {
 
 // Routes returns the attachments endpoints: multipart upload, owner-scoped list, raw bytes, delete.
 func (h *Handler) Routes() http.Handler {
-	mux := http.NewServeMux()
+	mux := httpx.NewServeMux()
 	mux.HandleFunc("POST /api/attachments", h.upload)
 	mux.HandleFunc("GET /api/attachments", h.list)
 	mux.HandleFunc("GET /api/attachments/{id}", h.serve)

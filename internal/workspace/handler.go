@@ -88,7 +88,7 @@ type saveStatusRequest struct {
 
 // Routes returns the workspace REST endpoints, mounted behind RequireAuth by the composition root.
 func (h *Handler) Routes() http.Handler {
-	mux := http.NewServeMux()
+	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /api/projects", h.list)
 	mux.HandleFunc("POST /api/projects", h.create)
 	mux.HandleFunc("POST /api/projects/reorder", h.reorder)
