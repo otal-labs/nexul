@@ -59,12 +59,9 @@ h1, h2, h3 { text-wrap: balance; }
 .nav-inner nav > .nav-detail { display: none !important; }
 .hero { padding-top: 48px; }
 .brand-mark { width: 6px; height: 6px; background: var(--page-fg); }
-.hero-heading { margin-bottom: 24px; }
-.hero-install { max-width: 560px; margin-bottom: 32px; }
+.hero-heading { margin-bottom: 32px; }
+.hero-install { min-width: 0; max-width: 560px; margin-top: 24px; }
 h1 { margin: 0; font-size: 36px; font-weight: 500; line-height: 1.08; letter-spacing: -.055em; }
-.hero-description { margin-top: 24px; }
-.hero-description > p { font-size: 16px; line-height: 1.7; color: var(--page-muted); margin: 0; }
-.desktop-break { display: none; }
 .hero-footnote { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; font: 10px/1.7 var(--page-mono); color: var(--page-muted); margin-top: 20px; }
 .separator { margin: 0 6px; color: var(--page-muted); }
 .product-section { padding-block: 80px; }
@@ -150,9 +147,7 @@ h2 { margin: 0; font-size: 32px; font-weight: 500; line-height: 1.12; letter-spa
 	.eyebrow { font-size: 11px; margin-bottom: 24px; }
 	h1 { font-size: 60px; }
 	h2 { font-size: 40px; }
-	.hero-heading { margin-bottom: 32px; }
-	.hero-install { margin-bottom: 48px; }
-	.hero-description { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+	.hero-heading { margin-bottom: 48px; }
 	.hero-footnote { font-size: 11px; }
 	.nav-inner nav > .nav-detail { display: inline-flex !important; }
 	.workflow-steps { grid-template-columns: repeat(2, 1fr); }
@@ -173,12 +168,10 @@ h2 { margin: 0; font-size: 32px; font-weight: 500; line-height: 1.12; letter-spa
 	.nav-inner nav { gap: 32px; }
 	.nav-inner nav > a:not(.button) { font-size: 13px; }
 	.hero { padding-top: 88px; }
-	h1 { font-size: 72px; }
+	h1 { font-size: clamp(60px, 5vw, 72px); }
 	h2 { font-size: 48px; }
-	.hero-heading { display: grid; grid-template-columns: 1.6fr 1fr; align-items: end; gap: 48px; margin-bottom: 32px; }
-	.hero-description { display: block; margin: 0 0 4px; }
-	.hero-description > p { font-size: 17px; }
-	.desktop-break { display: initial; }
+	.hero-heading { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(440px, 1fr); align-items: center; gap: 48px; margin-bottom: 56px; }
+	.hero-install { margin-top: 0; }
 	.hero-footnote { margin-top: 24px; }
 	.section-intro { display: flex; justify-content: space-between; align-items: end; gap: 64px; }
 	.section-description { margin: 0 0 4px; }
