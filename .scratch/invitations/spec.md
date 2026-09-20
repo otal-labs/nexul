@@ -52,9 +52,11 @@ already authenticated.
   the credential out of HTTP request paths, reverse-proxy logs, referrers, and
   OAuth provider URLs.
 - The public `/invite` page posts the fragment token once to the public preview
-  endpoint. The server validates it, stores it in a short-lived HttpOnly,
-  Secure when HTTPS, SameSite=Lax cookie, and returns non-secret preview data.
-  The browser immediately removes the fragment from the address bar.
+  endpoint. The server validates it and returns non-secret preview data. The
+  browser immediately removes the fragment from the address bar and keeps the
+  token only in that tab's component memory. It never writes an Invitation or
+  acceptance credential to a cookie, local storage, session storage, or a URL
+  after removing the fragment.
 - Public preview shows the configured instance host, workspace names, role
   names, expiry, and enabled OAuth providers. It does not expose permission
   overwrites.
@@ -66,17 +68,20 @@ already authenticated.
 - Authentication remains OAuth-only through the owner-configured GitHub,
   Google, and Discord providers. This feature adds no password, magic-link,
   or outbound-email system.
-- Starting OAuth creates a short-lived server-side handoff bound to the exact
-  OAuth state, Invitation, and provider. A second tab cannot replace the
-  Invitation associated with an in-flight OAuth callback. The raw Invitation
-  token never enters OAuth `state`, provider URLs, callback URLs, session
-  claims, logs, local storage, or query strings.
+- Starting OAuth posts the provider and raw Invitation token in the request
+  body. The server creates a short-lived handoff bound to the exact OAuth
+  state, Invitation, and provider, then returns the provider authorization
+  URL. OAuth state uses a state-specific CSRF cookie, so another tab can start
+  a different flow without replacing this one. The raw Invitation token never
+  enters OAuth `state`, provider URLs, callback URLs, session claims, logs,
+  cookies, local storage, or query strings.
 - The OAuth callback authenticates the provider identity but does not create a
   User, change a membership, apply a Permission overwrite, or consume the
   Invitation. It replaces the OAuth-start handoff with a short-lived random
   acceptance credential and redirects to `/invite` with that credential in a
   URL fragment. The browser removes the fragment after exchanging it for the
-  authenticated Invitation details.
+  authenticated Invitation details and keeps the credential only in that
+  tab's component memory.
 - The authenticated acceptance screen shows the full Workspace grants,
   including Permission overwrites. Only **Accept invitation** performs
   redemption. Decline, OAuth failure, closing the page, and handoff expiry
@@ -87,7 +92,10 @@ already authenticated.
   outbox events. A failed redemption leaves no User or partial membership
   behind.
 - An existing active User can accept after OAuth or from an already
-  authenticated Invitation page. Redemption preserves memberships, Roles, and
+  authenticated Invitation page. The acceptance transaction re-reads the
+  User by provider identity and requires `active`, so an administrator can
+  disable or remove the User between OAuth and acceptance without a stale
+  handoff restoring access. Redemption preserves memberships, Roles, and
   Permission overwrites the User already holds; only missing memberships
   receive the Invitation's Role and overwrites. The Invitation is consumed
   even if every membership already existed.
@@ -103,9 +111,12 @@ already authenticated.
   `redeemed_by` as an idempotency receipt. Public preview treats it as invalid.
   A retry by the same authenticated identity returns the original successful
   result; a different identity receives the generic invalid result.
-- Successful redemption deletes the OAuth handoff, clears the Invitation
-  cookie, refreshes the Workspace list, selects the first granted Workspace,
-  and lands in the normal application.
+- Successful redemption marks the OAuth handoff completed and records the
+  admitted User id but retains it until its short expiry. A retry with the same
+  acceptance credential rechecks that the User is active, mints a fresh
+  session token, and returns the same grant result. Success clears the
+  in-memory credential, refreshes the Workspace list, selects the first
+  granted Workspace, and lands in the normal application.
 
 ### Instance admission and account administration
 
@@ -114,10 +125,10 @@ already authenticated.
 - Existing user rows migrate as active. Existing allowlist rows and old
   login-keyed pending workspace invites do not become bearer invitations and
   are removed by the migration.
-- A known active provider identity signs in without an Invitation. A stale,
-  expired, or revoked Invitation cookie cannot block an ordinary login; it is
-  cleared and ignored when no valid OAuth handoff exists. Disabled and removed
-  identities cannot sign in or use an existing session or PAT.
+- A known active provider identity signs in without an Invitation. Invitation
+  state exists only inside an explicit state-bound flow, so stale Invitation
+  state cannot block an ordinary login. Disabled and removed identities cannot
+  sign in or use an existing session or PAT.
   Auth middleware already reloads the user row on every request, so status
   changes invalidate stateless sessions immediately without a session table.
 - The first identity on an empty instance remains the bootstrap exception. It
@@ -181,6 +192,8 @@ CREATE TABLE invitation_oauth_handoffs (
     name                TEXT,
     avatar_url          TEXT,
     existing_user_id    TEXT REFERENCES users(id),
+    admitted_user_id    TEXT REFERENCES users(id),
+    completed_at        INTEGER,
     created_at          INTEGER NOT NULL,
     expires_at          INTEGER NOT NULL
 );
@@ -211,14 +224,17 @@ or invalid invitations before returning.
 Public routes:
 
 - `POST /api/invitations/preview` with `{ "token": "..." }` validates the
-  token, sets the HttpOnly invitation cookie, and returns public preview data.
-- `GET /api/invitations/preview` reads the invitation cookie after an OAuth
-  redirect and returns the same preview.
-- `POST /api/invitations/oauth/{provider}` starts OAuth for the cookie-held
-  Invitation and creates the state-bound server handoff.
+  token and returns public preview data without storing browser state.
+- `POST /api/invitations/oauth` with `{ "provider": "...", "token": "..." }`
+  creates the state-bound server handoff and returns the provider authorization
+  URL. The token is accepted only in the JSON body.
 - The OAuth callback returns a short-lived acceptance credential in the
-  `/invite` URL fragment. `POST /api/invitations/acceptance` exchanges it for
-  the full authenticated grant details and an HttpOnly acceptance cookie.
+  `/invite` URL fragment. `POST /api/invitations/acceptance` with the
+  credential in its JSON body returns the full authenticated grant details.
+- An already authenticated User posts the raw Invitation token to
+  `POST /api/invitations/acceptance` instead; the server creates the same kind
+  of short-lived acceptance handoff bound to that User and returns full
+  details.
 
 Authenticated routes:
 
@@ -226,8 +242,9 @@ Authenticated routes:
 - `GET /api/invitations` lists bundles the actor may manage without a raw
   token or hash.
 - `DELETE /api/invitations/{id}` revokes a bundle.
-- `POST /api/invitations/redeem` accepts the cookie-held credential, atomically
-  admits or updates the User, and returns the normal session token.
+- `POST /api/invitations/redeem` accepts the in-memory acceptance credential in
+  its JSON body, atomically admits or updates the User, and returns the normal
+  session token.
 - `GET /api/auth/accounts` lists registered accounts for an instance admin.
 - `PATCH /api/auth/accounts/{id}` changes status between active and disabled
   or restores removed to active.
