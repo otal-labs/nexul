@@ -183,7 +183,7 @@ func TestClient_Latest_DifferentChannelsCacheIndependently(t *testing.T) {
 	assert.Equal(t, 1, listReqs)
 }
 
-func TestClient_Latest_404HintsAtMissingAccess(t *testing.T) {
+func TestClient_Latest_404ReportsMissingRelease(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
@@ -193,7 +193,8 @@ func TestClient_Latest_404HintsAtMissingAccess(t *testing.T) {
 	_, err := c.Latest(context.Background(), "stable")
 	require.Error(t, err)
 	assert.ErrorIs(t, err, apperrs.ErrNotFound)
-	assert.Contains(t, err.Error(), "connect GitHub")
+	assert.Contains(t, err.Error(), "release or asset not found")
+	assert.NotContains(t, err.Error(), "GitHub App")
 }
 
 func TestClient_Latest_NonNotFoundStatusIsRetryable(t *testing.T) {

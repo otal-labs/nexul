@@ -305,10 +305,10 @@ func (c *Client) token(ctx context.Context) string {
 	return token
 }
 
-// statusError names the status; a 404 gets the operator hint for missing repository access.
+// statusError names the status; a 404 reports that the release or asset is missing.
 func statusError(status int, action string) error {
 	if status == http.StatusNotFound {
-		return fmt.Errorf("%s: status %d, connect GitHub with the app installed on the release repository: %w", action, status, apperrs.ErrNotFound)
+		return fmt.Errorf("%s: status %d, release or asset not found: %w", action, status, apperrs.ErrNotFound)
 	}
 	return fmt.Errorf("%s: status %d: %w", action, status, apperrs.ErrRetryable)
 }
