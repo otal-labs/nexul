@@ -38,3 +38,7 @@ Tickets live on one Kanban board per project — there's no combined all-project
 ## Attachments, one mechanism everywhere
 
 Docs, tickets, and chat messages share the same attachment mechanism: a file uploads once to `/api/attachments/<id>`, and whatever it's attached to — a doc body, a ticket description, a chat message — references it by that stable URL rather than storing the bytes inline. Deleting the owning doc or ticket cascades to its files.
+
+Chat has its own page with channels, direct messages, document threads, and
+voice channels. See [Chat and voice](/docs/guide/chat-and-voice/). A ticket's
+thread stays on the ticket page, where a ticket play's trail appears as well.

@@ -7,10 +7,10 @@ sidebar:
 
 ## Prerequisites
 
-- **Go** — the version pinned in `go.mod` (`go 1.25.0`).
-- **Bun** — no version is pinned; CI installs the latest via
-  `oven-sh/setup-bun`. Used for `web/`, `desktop/`, `sdk/`, and
-  `automations/`.
+- **Go** — use the versions in `go.mod`: Go 1.26.0 with toolchain
+  `go1.26.6`. The file is the source of truth.
+- **Bun** — CI pins Bun 1.3.11 with `oven-sh/setup-bun`. Use it for
+  `web/`, `desktop/`, `sdk/`, and `automations/` as well.
 
 ## Make targets
 
@@ -25,7 +25,7 @@ make build-single    # single-binary server, web assets embedded via go:embed
 make test           # go test ./...
 make vet            # go vet ./...
 make coverage       # go test -race with the 80% gate
-make sqlc           # regenerate internal/platform/storage/sqlcgen from queries/*.sql
+make sqlc           # regenerate sqlcgen from internal/platform/storage/queries/*.sql
 make sqlc-check     # sqlc vet + sqlc diff — fails if generated code is stale
 ```
 
@@ -96,10 +96,10 @@ bun run --cwd automations test # automations, bun test
 make coverage
 ```
 
-It runs `go test -coverprofile=coverage.out -covermode=atomic ./...`, drops
-exempt paths from the denominator (`cmd/*`, `testutil/`, `node_modules/`,
-generated code, `sqlcgen/`), computes the percentage over what's left, and
-fails below the threshold. It writes `coverage.filtered.out` and
-`coverage.html` — the same artifacts CI uploads. See
+It runs `go test -race -coverprofile=coverage.out -covermode=atomic ./...`.
+The Makefile filters `cmd/*`, `testutil/`, and `sqlcgen/` from the profile,
+computes the percentage over the remaining statements, and fails below 80%.
+It writes `coverage.filtered.out` and `coverage.html`, the same artifacts CI
+uploads. See
 [Coding Standards](/docs/contributing/coding-standards/) for what the gate
 expects beyond the number.

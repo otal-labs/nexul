@@ -22,6 +22,10 @@ Then, as you need them:
 
 - [Projects and repositories](/docs/guide/projects-and-repositories/)
 - [Docs, tickets, and the board](/docs/guide/docs-tickets-and-board/)
+- [Chat and voice](/docs/guide/chat-and-voice/)
+- [Paired computers](/docs/guide/paired-computers/)
+- [Plays](/docs/guide/plays/)
+- [Memories](/docs/guide/memories/)
 - [MCP server](/docs/guide/mcp-server/)
 - [Automations](/docs/guide/automations/)
 - [API and tokens](/docs/guide/api-and-tokens/)

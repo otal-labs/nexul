@@ -37,7 +37,10 @@ S="<secret>" && curl -fsSL -H "Authorization: Bearer $S" \
   NEXUL_GIT_TOKEN="<github-token>" ./nexul-runner
 ```
 
-The download comes from your own instance, which proxies the matching GitHub release using the connected GitHub App's token — so while the Nexul repository is private, make sure the App is installed on it (see [GitHub App](/docs/guide/github-app/)).
+The download comes from your own instance, which serves the matching runner
+asset for the instance release. The GitHub App installation is used when a
+runner clones a private application repository, not for this runner download.
+See [GitHub App](/docs/guide/github-app/) for the repository permission setup.
 
 The shared runner secret is generated on first start and lives in instance settings; seed it yourself with `NEXUL_RUNNER_SECRET` if you need a fixed value ahead of time.
 
