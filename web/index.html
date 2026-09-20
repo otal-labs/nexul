@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0a0f1c" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>Nexul</title>
+    <script>
+      // One coalesced theme write before first paint: no flash, no double
+      // apply. Dark-first ("The Midnight Console"): the persisted store wins,
+      // otherwise the app boots dark. The persisted store uses the same
+      // "theme" localStorage key as zustand/persist, so toggle writes stay
+      // in sync with this bootstrap.
+      // ponytail: named-theme color overrides (Ember/Ocean/Grove) still
+      // apply post-mount via themeStore's rehydration, not here — a brief
+      // flash of Console's colors is an accepted corner for a settings
+      // feature; duplicate the palette in this script if that flash matters.
+      try {
+        var stored = JSON.parse(localStorage.getItem("theme") || "{}");
+        var mode = stored.state && stored.state.appearanceMode;
+        var theme = stored.state && stored.state.theme;
+        var isDark;
+        if (mode === "light") isDark = false;
+        else if (mode === "dark") isDark = true;
+        else if (mode === "system") isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        // No stored preference → boot dark (the console is the brand).
+        else isDark = theme ? theme === "dark" : true;
+        document.documentElement.classList.toggle("dark", isDark);
+      } catch (e) {
+        document.documentElement.classList.add("dark");
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

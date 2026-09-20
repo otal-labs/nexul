@@ -1,0 +1,28 @@
+{
+  "name": "@nexul/sdk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "nexul": "./bin/cli.ts"
+  },
+  "exports": {
+    "./automation": "./src/define-automation.ts",
+    "./client": "./src/client.ts",
+    "./api-client": "./src/api-client.ts",
+    "./events": "./src/events.generated.ts",
+    "./context": "./src/context.ts",
+    "./testing": "./src/testing.ts"
+  },
+  "scripts": {
+    "generate:events": "bun run tools/generate-events.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.2",
+    "typescript": "7.0.2",
+    "vitest": "5.0.0"
+  }
+}

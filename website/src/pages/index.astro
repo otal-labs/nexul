@@ -1,0 +1,148 @@
+---
+import '@fontsource-variable/inter';
+import '@fontsource-variable/jetbrains-mono';
+import '../styles/landing.css';
+import interWoff2 from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url';
+import monoWoff2 from '@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2?url';
+import Feature from '../components/Feature.astro';
+import Panel from '../components/Panel.astro';
+import InstallCommand from '../components/InstallCommand.astro';
+
+import Icon from '../components/Icon.astro';
+const github = 'https://github.com/otal-labs/nexul';
+const install = `git clone ${github}.git && cd nexul && ./install.sh`;
+const tools = [
+	['docs', ['doc_create', 'doc_get', 'doc_search', 'doc_update']],
+	['tickets', ['ticket_create', 'ticket_update_status', 'ticket_link_pr', 'ticket_search']],
+	['deploy', ['stack_create', 'stack_deploy', 'stack_rollback', 'deploy_list_by_status']],
+	['topology', ['topology_get', 'topology_add_node', 'topology_add_edge']],
+	['runners', ['runner_list', 'runner_queue', 'machine_discover']],
+	['events', ['list_dead_letters', 'replay_dead_letter']],
+];
+const loop = ['docs', 'tickets', 'code + pull requests', 'review', 'deploy', 'index everything', 'next loop'];
+---
+
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Nexul — Deploy Applications with Ordinary Servers</title>
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="description" content="Self-hosted docs, tickets, CI runners, and deployment to your own servers, with an MCP server over the whole domain." />
+		<link rel="preload" as="font" type="font/woff2" href={interWoff2} crossorigin />
+		<link rel="preload" as="font" type="font/woff2" href={monoWoff2} crossorigin />
+		<link rel="preload" as="image" href="/topology.png" />
+	</head>
+	<body>
+		<header class="nav">
+			<a class="wordmark" href="/"><Icon /> Nexul</a>
+			<nav>
+				<a href="/docs/">Docs</a>
+				<a href={github}>GitHub</a>
+				<a class="btn" href="#install">Install</a>
+			</nav>
+		</header>
+
+		<main>
+			<section class="hero">
+				<div class="wrap hero-copy">
+					<h1>One loop from docs to deploy, on servers you own.</h1>
+					<p class="sub">Documentation, tickets, CI runners, and deployment to your own machines in one self-hosted platform, with an MCP server over the whole domain.</p>
+					<div class="cta">
+						<a class="btn" href="/docs/">Read the docs</a>
+						<InstallCommand command={install} />
+					</div>
+				</div>
+				<div class="wrap frame">
+					<img src="/topology.png" width="1920" height="960" alt="The topology canvas: a hostname pill, a gateway row, and services inside one docker network" loading="eager" decoding="async" />
+				</div>
+			</section>
+
+			<div class="wrap">
+				<Feature eyebrow="Docs as source of truth" heading="Tickets come from documents, and deploys link back to both.">
+					<p slot="body">Documents are versioned and are where work starts: a doc spawns scoped tickets, each ticket links to its branch, pull request, and deploy, and all of it is indexed so the next piece of work starts with the full trail instead of a blank page.</p>
+					<Panel label="A doc linked to a ticket, a pull request, and a deploy">
+						<div class="rows">
+							<div class="row"><span>doc</span><span>payments-spec, version 4</span></div>
+							<div class="row"><span>ticket</span><span>PAY-12, derived from payments-spec</span></div>
+							<div class="row"><span>pr</span><span>#88, linked to PAY-12</span></div>
+							<div class="row"><span>deploy</span><span>api on vps-1, linked to #88</span></div>
+						</div>
+					</Panel>
+				</Feature>
+
+				<Feature eyebrow="MCP server" heading="Every use case is an MCP tool, because the web app calls the same layer." flip>
+					<p slot="body">The domain layer is the single source of behavior. The HTTP gateway for the web app and the MCP server are two thin adapters over it, so an LLM agent gets doc search, ticket creation, topology, deploys, run logs, and dead-letter replay by construction. There is no shadow API to keep in sync.</p>
+					<Panel label="MCP tool names grouped by domain">
+						{tools.map(([domain, names]) => (
+							<div class="group">
+								<span class="group-name">{domain}</span>
+								<div class="tools">{names.map((n) => <span>{n}</span>)}</div>
+							</div>
+						))}
+					</Panel>
+				</Feature>
+
+				<Feature eyebrow="Ordinary servers" heading="SSH, Docker, and a runner binary. No Kubernetes.">
+					<p slot="body">The server stack is one docker compose file. Runners are Go host binaries that connect out to the server over a WebSocket, mount the Docker socket, and build and deploy on the machine they run on: a VPS, bare metal, or the same host as the server. SQLite is the only database, and it lives on the data volume.</p>
+					<Panel label="One Go binary per role: server, runner, and mcpstdio">
+						<div class="rows">
+							<div class="row"><span>server</span><span>API, web app, and MCP endpoint; SQLite with WAL and FTS5, no external database</span></div>
+							<div class="row"><span>runner</span><span>Host agent that builds and deploys, connected to the server over a WebSocket</span></div>
+							<div class="row"><span>mcpstdio</span><span>Proxies stdin/stdout MCP JSON-RPC to a running server for local agent clients</span></div>
+						</div>
+					</Panel>
+				</Feature>
+
+				<section class="strip">
+					<p class="eyebrow">How it fits together</p>
+					<p class="loop">{loop.map((s, i) => <>{i > 0 && <span class="arrow">→</span>}<span>{s}</span></>)}</p>
+				</section>
+
+				<section class="install" id="install">
+					<p class="eyebrow">Install</p>
+					<Panel label="Output of install.sh on a fresh host" title="install.sh">
+						<div class="line"><span class="muted">$</span> ./install.sh</div>
+						<div class="line muted">Password for the logs UI (user nexul@nexul.local), blank to generate one:</div>
+						<div class="line">Nexul is starting.</div>
+						<div class="line">  Setup wizard:  http://10.0.0.12/</div>
+						<div class="line">  Logs UI:       http://10.0.0.12:5080  (user nexul@nexul.local)</div>
+						<div class="line">  Logs password: mUq3zYx8ZbWnP1kQ  (generated; also in .env)</div>
+						<div class="line muted">Put a tunnel or a TLS proxy in front for a public domain, then enter that https:// address as the instance URL in the wizard.</div>
+					</Panel>
+					<p class="note">The script installs Docker if it is missing, asks for a logs password, starts the stack with one runner on the same host, and prints the setup wizard URL. <a href="/docs/guide/install/">Installation guide</a></p>
+				</section>
+
+				<section class="license">
+					<p>Open core, one repository, two licenses. Everything outside <code>ee/</code> is AGPL-3.0-or-later: run it, modify it, and self-host it at any company size.</p>
+					<p>Everything inside <code>ee/</code> is under a commercial license; the code is public to read and patch, running it in production needs a subscription. <a href="/docs/contributing/licensing/">Licensing</a></p>
+				</section>
+			</div>
+		</main>
+
+		<footer>
+			<div class="wrap foot">
+				<span class="wordmark">Nexul</span>
+				<nav>
+					<a href="/docs/">Docs</a>
+					<a href={github}>GitHub</a>
+					<a href={`${github}/blob/master/LICENSE`}>License</a>
+				</nav>
+				<p>Deploy Applications with Ordinary Servers.</p>
+			</div>
+		</footer>
+
+		<script is:inline>
+			document.querySelector('[data-copy]').addEventListener('click', async (e) => {
+				const b = e.currentTarget;
+				await navigator.clipboard.writeText(b.dataset.copy);
+				b.setAttribute('data-copied', '');
+				setTimeout(() => b.removeAttribute('data-copied'), 1500);
+			});
+			const nav = document.querySelector('.nav');
+			const onScroll = () => nav.classList.toggle('scrolled', scrollY > 8);
+			addEventListener('scroll', onScroll, { passive: true });
+			onScroll();
+		</script>
+	</body>
+</html>

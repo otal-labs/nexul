@@ -1,0 +1,34 @@
+name: Security report
+description: A vulnerability in Nexul. Issues are public, so describe the impact and say you have a working exploit rather than pasting it.
+labels: [security]
+body:
+  - type: markdown
+    attributes:
+      value: Read [SECURITY.md](https://github.com/otal-labs/nexul/blob/master/SECURITY.md) first. Keep exploit code and live instance details out of this form; a maintainer will follow up with a private channel.
+  - type: textarea
+    id: impact
+    attributes:
+      label: What can an attacker do
+      description: The affected component and the impact, without the exploit itself.
+    validations:
+      required: true
+  - type: textarea
+    id: conditions
+    attributes:
+      label: Conditions
+      description: What access or configuration is needed (unauthenticated, a workspace member, a runner token, a specific setting ...).
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Nexul version
+      description: The version chip in the web UI, or `GET /api/version` on your instance.
+    validations:
+      required: true
+  - type: checkboxes
+    id: exploit
+    attributes:
+      label: Reproduction
+      options:
+        - label: I have reproduction steps or a working exploit and can share them privately.

@@ -1,0 +1,70 @@
+---
+interface Props {
+	eyebrow: string;
+	heading: string;
+	flip?: boolean;
+}
+const { eyebrow, heading, flip = false } = Astro.props;
+---
+
+<section class:list={['feature', { flip }]}>
+	<div class="text">
+		<p class="eyebrow">{eyebrow}</p>
+		<h2>{heading}</h2>
+		<slot name="body" />
+	</div>
+	<div class="visual"><slot /></div>
+</section>
+
+<style>
+	.feature {
+		display: grid;
+		gap: 32px;
+		padding: 64px 0;
+		border-top: 1px solid var(--page-border);
+	}
+	.eyebrow {
+		margin: 0 0 12px;
+		font-size: 12px;
+		font-weight: 500;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--page-muted);
+	}
+	h2 {
+		margin: 0 0 16px;
+		font-size: 26px;
+		font-weight: 500;
+		line-height: 1.15;
+		letter-spacing: -0.022em;
+		text-wrap: balance;
+	}
+	.text :global(p:not(.eyebrow)) {
+		margin: 0;
+		font-size: 16px;
+		line-height: 1.6;
+		color: var(--page-muted);
+		max-width: 48ch;
+	}
+	.visual {
+		min-width: 0;
+	}
+	@media (min-width: 768px) {
+		.feature {
+			padding: 80px 0;
+		}
+		h2 {
+			font-size: 32px;
+		}
+	}
+	@media (min-width: 1024px) {
+		.feature {
+			grid-template-columns: 55fr 45fr;
+			align-items: center;
+			gap: 64px;
+		}
+		.flip .text {
+			order: 2;
+		}
+	}
+</style>

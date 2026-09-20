@@ -1,0 +1,31 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - ineffassign
+    - unused
+    - gocyclo
+  settings:
+    gocyclo:
+      min-complexity: 15
+  exclusions:
+    paths:
+      - internal/platform/storage/sqlcgen
+      - node_modules
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/otal-labs/nexul
+  exclusions:
+    paths:
+      - internal/platform/storage/sqlcgen
+      - node_modules

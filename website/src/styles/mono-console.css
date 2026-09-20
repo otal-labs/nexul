@@ -1,0 +1,59 @@
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/jetbrains-mono';
+
+/* Mono Console tokens (see the coding standards, design language section) mapped onto Starlight's variables; Starlight exposes no radius variable, so the 6px/8px scale stops at the docs shell. */
+
+:root {
+	--sl-font: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+	--sl-font-mono: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
+
+	/* dark (default) — mirrors web/src/index.css .dark */
+	--sl-color-white: #f5f5f5;
+	--sl-color-gray-1: #f5f5f5;
+	--sl-color-gray-2: #d4d4d4;
+	--sl-color-gray-3: #9a9a9a;
+	--sl-color-gray-4: #656565;
+	--sl-color-gray-5: #333333;
+	--sl-color-gray-6: #111111;
+	--sl-color-black: #050505;
+
+	/* no accent hue — near-white, same as `primary`/`ring` in the web app */
+	--sl-color-accent-low: #262626;
+	--sl-color-accent: #f5f5f5;
+	--sl-color-accent-high: #f5f5f5;
+	--sl-color-text-invert: #0a0a0a;
+
+	--sl-color-bg: #050505;
+	--sl-color-bg-nav: #0a0a0a;
+	--sl-color-bg-sidebar: #0a0a0a;
+	--sl-color-bg-inline-code: #111111;
+	--sl-color-hairline-light: #262626;
+	--sl-color-hairline: #262626;
+	--sl-color-hairline-shade: #262626;
+}
+
+:root[data-theme='light'] {
+	/* light — true inversion, mirrors web/src/index.css :root */
+	--sl-color-white: #0a0a0a;
+	--sl-color-gray-1: #0a0a0a;
+	--sl-color-gray-2: #2b2b2b;
+	--sl-color-gray-3: #656565;
+	--sl-color-gray-4: #999999;
+	--sl-color-gray-5: #cccccc;
+	--sl-color-gray-6: #f6f6f6;
+	--sl-color-gray-7: #f1f1f1;
+	--sl-color-black: #ececec;
+
+	--sl-color-accent-low: #d9d9d9;
+	--sl-color-accent: #0a0a0a;
+	--sl-color-accent-high: #0a0a0a;
+	--sl-color-text-invert: #f5f5f5;
+
+	--sl-color-bg: #ececec;
+	--sl-color-bg-nav: #f1f1f1;
+	--sl-color-bg-sidebar: #f1f1f1;
+	--sl-color-bg-inline-code: #f6f6f6;
+	--sl-color-hairline-light: #d9d9d9;
+	--sl-color-hairline: #d9d9d9;
+	--sl-color-hairline-shade: #d9d9d9;
+}

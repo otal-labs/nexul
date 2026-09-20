@@ -1,0 +1,64 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+/nexul
+/server/server
+/runner/runner
+dist/
+
+# Go
+coverage.out
+coverage.filtered.out
+coverage.html
+
+# Web
+web/node_modules
+web/dist/
+web/.vite/
+web/coverage/
+server/webui/dist/
+
+# Desktop
+desktop/node_modules
+desktop/dist/
+desktop/dist-electron/
+desktop/release/
+desktop/coverage/
+desktop/.vite/
+
+# SDK
+sdk/node_modules
+sdk/coverage/
+
+# Website
+website/node_modules
+website/dist/
+website/.astro/
+
+# Automations
+automations/node_modules
+
+# Data / secrets
+*.db
+*.db-wal
+*.db-shm
+/data/
+.env
+.env.local
+
+# Editor / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Debug
+__debug_bin*
+/node_modules
+.scratch/*.log
+

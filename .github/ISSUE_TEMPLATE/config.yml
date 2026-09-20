@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://nexul.io/docs/
+    about: Install guide, setup wizard, runners, MCP server, and contributor docs.
+  - name: Questions and ideas
+    url: https://github.com/otal-labs/nexul/discussions
+    about: Ask a question or float an idea before it becomes an issue.

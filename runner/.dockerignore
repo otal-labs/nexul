@@ -1,0 +1,5 @@
+# Runner build context (./runner). The `root` named context supplies
+# go.mod/go.sum/internal; this context is runner/cmd.
+*.md
+Dockerfile
+dist/

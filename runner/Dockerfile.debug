@@ -1,0 +1,12 @@
+# Build context: ./runner (see docker-compose.debug.yml). Source is bind-
+# mounted over /src at container start, so this image only needs the
+# toolchain — no COPY, no build step here.
+FROM golang:1.26-alpine
+# docker-cli/docker-compose: the runner shells out to docker over the mounted socket, same as the release image.
+RUN apk add --no-cache ca-certificates git docker-cli docker-compose && go install github.com/go-delve/delve/cmd/dlv@latest
+WORKDIR /src
+EXPOSE 2346
+# --continue: run immediately instead of halting until a debugger client
+# attaches — attach later on :2346 to set breakpoints (--accept-multiclient).
+# -buildvcs=false: with git in the image, go would stamp VCS info from the bind-mounted repo and fail on its ownership.
+ENTRYPOINT ["dlv", "debug", "--check-go-version=false", "--headless", "--listen=:2346", "--api-version=2", "--accept-multiclient", "--continue", "--build-flags=-buildvcs=false", "./runner/cmd"]
