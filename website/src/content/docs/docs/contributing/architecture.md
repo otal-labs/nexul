@@ -33,9 +33,9 @@ call it, and neither duplicates it:
   drive the product: search docs, create tickets, read topology, trigger
   deploys, replay a dead letter.
 
-If a capability exists in the UI, it exists in MCP by construction, and vice
-versa. Neither adapter carries business logic of its own — each parses
-input, calls the use-case, and formats the output.
+Capabilities belong in the use-case layer. A feature is not complete until
+both applicable adapters expose it. Neither adapter carries business logic of
+its own; each parses input, calls the use-case, and formats the output.
 
 ## SQLite is the spine
 

@@ -63,10 +63,11 @@ all of it, so an agent can run the whole loop without leaving the system.
 -> Index everything -> the next loop starts with full context
 ```
 
-Every step is a use case. The web app reaches it through an HTTP gateway and
-agents reach it through the MCP server, so anything a person can do in the
-browser an agent can do with a personal access token, with that user's
-permissions. There is no second API to keep in sync.
+Every step is a use case. The web app reaches the use-case layer through an
+HTTP gateway, and MCP exposes its registered tools through the same layer. A
+personal access token carries the user's permissions, and calls made through
+it are attributed to that user. The adapters are separate surfaces over one
+source of behavior.
 
 ## Who it's for
 

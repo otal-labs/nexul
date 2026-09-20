@@ -5,7 +5,8 @@ sidebar:
   order: 13
 ---
 
-Every capability the web UI uses is also available as a plain HTTP/JSON API under `/api` — the same use-case layer the MCP server calls, just with a REST-shaped adapter instead. Nothing is MCP-exclusive and nothing is UI-exclusive.
+The web UI uses the plain HTTP/JSON API under `/api`. MCP is a separate
+adapter over the same use-case layer.
 
 ## OpenAPI
 

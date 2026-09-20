@@ -6,8 +6,8 @@ sidebar:
 ---
 
 Nexul ships an MCP server over the same use-case layer as the web UI. The
-registry exposes one tool per current use case, and every call is attributed
-to the user whose token authenticates the connection.
+registry exposes the tools listed below, and every call is attributed to the
+user whose token authenticates the connection.
 
 ## What it exposes
 
