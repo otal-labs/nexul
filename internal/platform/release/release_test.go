@@ -183,7 +183,7 @@ func TestClient_Latest_DifferentChannelsCacheIndependently(t *testing.T) {
 	assert.Equal(t, 1, listReqs)
 }
 
-func TestClient_Latest_404HintsAtPrivateRepo(t *testing.T) {
+func TestClient_Latest_404HintsAtMissingAccess(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	}))

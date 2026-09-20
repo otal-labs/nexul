@@ -7,9 +7,8 @@
 
 ## First
 
-- [ ] Make the repository public and give `install.sh` a public URL, so a
-  fresh host installs Nexul with one command instead of cloning a private
-  repository. The README's install section stays out until this is done.
+- [x] Make the repository public and give `install.sh` a public URL, so a
+  fresh host installs Nexul with one command from the public repository.
 - [ ] Decide whether an `architecture.md` at the repository root is worth
   keeping, or whether the docs site's architecture page and the ADRs are
   enough. The README no longer carries the architecture table.
