@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { CreateInvitationFormSchema, hasDuplicateInvitationWorkspaces } from "@/models/Invitation";
+import { CreateInvitationFormSchema, hasDuplicateInvitationWorkspaces, parseInvitationFragment } from "@/models/Invitation";
 
 describe("CreateInvitationFormSchema", () => {
   it("accepts one or more grants with the fixed expiry choices", () => {
@@ -14,5 +14,10 @@ describe("CreateInvitationFormSchema", () => {
 
   it("detects duplicate workspace grants before submission", () => {
     expect(hasDuplicateInvitationWorkspaces([{ workspace_id: "ws-1", role_id: "r-1", allow: [], deny: [] }, { workspace_id: "ws-1", role_id: "r-2", allow: [], deny: [] }])).toBe(true);
+  });
+
+  it("reports malformed fragments without throwing", () => {
+    expect(parseInvitationFragment("#%E0%A4%A")).toEqual({ token: "", acceptance: false, malformed: true });
+    expect(parseInvitationFragment("#acceptance-token=abc")).toEqual({ token: "abc", acceptance: true, malformed: false });
   });
 });

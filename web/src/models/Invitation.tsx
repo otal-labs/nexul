@@ -6,6 +6,9 @@ export const InvitationProvider = {
   Discord: "discord",
 } as const;
 
+export const getInvitationPreviewKey = "getInvitationPreview";
+export const getAccountsKey = "getAccounts";
+
 export type InvitationProvider = (typeof InvitationProvider)[keyof typeof InvitationProvider];
 
 export interface InvitationGrant {
@@ -85,3 +88,22 @@ export interface Account {
   can_create_workspace: boolean;
   created_at: string;
 }
+
+export interface InvitationFragment {
+  token: string;
+  acceptance: boolean;
+  malformed: boolean;
+}
+
+export const parseInvitationFragment = (hash: string): InvitationFragment => {
+  const fragment = hash.startsWith("#") ? hash.slice(1) : hash;
+  if (!fragment) return { token: "", acceptance: false, malformed: false };
+  const acceptance = fragment.startsWith("acceptance-token=");
+  const prefixedInvite = fragment.startsWith("invite-token=");
+  const encodedToken = acceptance ? fragment.slice("acceptance-token=".length) : prefixedInvite ? fragment.slice("invite-token=".length) : fragment;
+  try {
+    return { token: decodeURIComponent(encodedToken), acceptance, malformed: false };
+  } catch {
+    return { token: "", acceptance: false, malformed: true };
+  }
+};

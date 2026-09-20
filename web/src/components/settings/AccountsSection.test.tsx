@@ -22,4 +22,23 @@ describe("AccountsSection", () => {
     await user.click(screen.getByRole("button", { name: "Disable" }));
     expect(mocks.patch).toHaveBeenCalledWith("/api/auth/accounts/u-1", { status: "disabled" });
   });
+
+  it("restores a removed account", async () => {
+    mocks.get.mockResolvedValue({ data: [{ id: "u-2", provider: "github", login: "bob", name: "Bob", avatar_url: "", status: "removed", can_create_workspace: false, created_at: "" }] });
+    mocks.patch.mockResolvedValue({ data: {} });
+    const user = userEvent.setup();
+    renderSection();
+    await user.click(await screen.findByRole("button", { name: "Restore" }));
+    expect(mocks.patch).toHaveBeenCalledWith("/api/auth/accounts/u-2", { status: "active" });
+  });
+
+  it("removes an active account after the destructive confirmation", async () => {
+    mocks.get.mockResolvedValue({ data: [{ id: "u-3", provider: "github", login: "carol", name: "Carol", avatar_url: "", status: "active", can_create_workspace: false, created_at: "" }] });
+    mocks.delete.mockResolvedValue({ data: {} });
+    const user = userEvent.setup();
+    renderSection();
+    await user.click(await screen.findByRole("button", { name: "Remove account" }));
+    await user.click(screen.getByRole("button", { name: "Confirm" }));
+    expect(mocks.delete).toHaveBeenCalledWith("/api/auth/accounts/u-3");
+  });
 });

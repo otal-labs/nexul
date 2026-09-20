@@ -2,12 +2,14 @@ import { useState } from "react";
 import { Check, Copy, Plus } from "lucide-react";
 
 import { useFormDialog } from "@/hooks/useFormDialog";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { CreateInvitationFormSchema, type CreateInvitationFormData, type CreatedInvitation } from "@/models/Invitation";
 import { Button } from "@/components/ui/button";
 import { CreateInvitationForm } from "@/components/member/CreateInvitationForm";
 
 export const CreateInvitationDialog = () => {
   const { open } = useFormDialog();
+  const selectedWorkspaceId = useWorkspaceStore((state) => state.selectedWorkspaceId);
   const [created, setCreated] = useState<CreatedInvitation | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -20,7 +22,7 @@ export const CreateInvitationDialog = () => {
       schema: CreateInvitationFormSchema,
       okLabel: "Create link",
       form: <CreateInvitationForm onCreated={setCreated} />,
-      formOptions: { defaultValues: { expires_in_days: 7, grants: [{ workspace_id: "", role_id: "", allow: [], deny: [] }] } },
+      formOptions: { defaultValues: { expires_in_days: 7, grants: [{ workspace_id: selectedWorkspaceId, role_id: "", allow: [], deny: [] }] } },
       dialogClassName: "max-w-2xl",
     });
   };

@@ -6,9 +6,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MembersPage } from "@/pages/MembersPage";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
-const mocks = vi.hoisted(() => ({ get: vi.fn() }));
+const mocks = vi.hoisted(() => ({ get: vi.fn(), open: vi.fn() }));
 vi.mock("@/api/client", () => ({ api: { get: mocks.get, post: vi.fn(), patch: vi.fn(), delete: vi.fn() }, errorMessage: vi.fn() }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("@/hooks/useFormDialog", () => ({ useFormDialog: () => ({ open: mocks.open }) }));
 
 describe("MembersPage", () => {
   beforeEach(() => {
@@ -21,6 +22,7 @@ describe("MembersPage", () => {
       return Promise.reject(new Error(`unexpected GET ${url}`));
     });
     useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
+    mocks.open.mockResolvedValue({ success: false, data: null });
   });
 
   it("offers link invitations and no identifier input", async () => {
@@ -28,5 +30,13 @@ describe("MembersPage", () => {
     render(<QueryClientProvider client={client}><MemoryRouter><MembersPage /></MemoryRouter></QueryClientProvider>);
     expect(await screen.findByRole("button", { name: "Invite" })).toBeInTheDocument();
     expect(screen.queryByLabelText(/github username/i)).not.toBeInTheDocument();
+  });
+
+  it("preselects the current workspace when opening an invitation", async () => {
+    const user = (await import("@testing-library/user-event")).default.setup();
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(<QueryClientProvider client={client}><MemoryRouter><MembersPage /></MemoryRouter></QueryClientProvider>);
+    await user.click(await screen.findByRole("button", { name: "Invite" }));
+    expect(mocks.open).toHaveBeenCalledWith(expect.objectContaining({ formOptions: expect.objectContaining({ defaultValues: expect.objectContaining({ grants: [expect.objectContaining({ workspace_id: "ws-1" })] }) }) }));
   });
 });

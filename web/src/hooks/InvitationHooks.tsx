@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
+import { getAccountsKey, getInvitationPreviewKey } from "@/models/Invitation";
 import type {
   Account,
   ActiveInvitation,
@@ -14,7 +15,6 @@ import type {
 } from "@/models/Invitation";
 
 export const getInvitationsKey = "getInvitations";
-export const getAccountsKey = "getAccounts";
 
 export const useFetchInvitations = () =>
   useQuery({
@@ -52,7 +52,7 @@ export const useRevokeInvitation = () => {
 
 export const useFetchInvitationPreview = (token: string) =>
   useQuery({
-    queryKey: ["getInvitationPreview", token],
+    queryKey: [getInvitationPreviewKey, token],
     queryFn: async () => (await api.post<InvitationPreview>("/api/invitations/preview", { token })).data,
     enabled: token !== "",
     retry: false,

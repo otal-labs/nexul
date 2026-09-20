@@ -15,6 +15,7 @@ export const InvitationRow = ({ invitation, onRevoke, disabled }: InvitationRowP
     <div className="min-w-0 flex-1">
       <p className="font-mono text-sm font-medium">Invitation {invitation.id.slice(0, 8)}</p>
       <p className="text-xs text-muted-foreground">{invitation.grants.map((grant) => `${grant.workspace_name} · ${grant.role_name}`).join(" · ")}</p>
+      <p className="text-xs text-muted-foreground">by {invitation.invited_by} · created {new Date(invitation.created_at).toLocaleString()}</p>
       <p className="font-mono text-xs text-muted-foreground">expires {new Date(invitation.expires_at).toLocaleString()}</p>
     </div>
     <ConfirmDestroyButton icon={Link2Off} idleLabel="Revoke invitation" onConfirm={() => onRevoke(invitation.id)} disabled={disabled} />
