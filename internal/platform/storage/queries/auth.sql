@@ -1,6 +1,9 @@
 -- name: GetUserIDByProvider :one
 SELECT id FROM users WHERE provider = ? AND provider_user_id = ?;
 
+-- name: CountUsers :one
+SELECT COUNT(*) FROM users;
+
 -- name: InsertUser :exec
 INSERT INTO users (id, provider, provider_user_id, login, name, avatar_url, can_create_workspace, first_login_done, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?, ?);
@@ -16,6 +19,24 @@ UPDATE users SET account_status = ?, updated_at = ? WHERE id = ?;
 
 -- name: CountActiveAdmins :one
 SELECT COUNT(*) FROM users WHERE can_create_workspace = 1 AND account_status = 'active';
+
+-- name: DeleteAccountMemberships :exec
+DELETE FROM workspace_members WHERE user_id = ?;
+
+-- name: DeleteAccountOverwrites :exec
+DELETE FROM permission_overwrites WHERE user_id = ?;
+
+-- name: RevokeAccountPATs :exec
+UPDATE personal_access_tokens SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL;
+
+-- name: DeleteAccountPairingComputers :exec
+DELETE FROM pairing_computers WHERE user_id = ?;
+
+-- name: DeleteAccountPairingDefaults :exec
+DELETE FROM pairing_user_defaults WHERE user_id = ?;
+
+-- name: DeleteAccountInvitations :exec
+DELETE FROM invitations WHERE invited_by = ? AND redeemed_at IS NULL;
 
 -- name: GetUserByID :one
 SELECT * FROM users WHERE id = ?;

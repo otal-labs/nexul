@@ -67,6 +67,42 @@ func TestHandler_StartOAuth(t *testing.T) {
 	assert.Equal(t, stateCookie, cookies[0].Name)
 }
 
+func TestHandler_AuthenticatedAcceptance_ReturnsGrantDetails(t *testing.T) {
+	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
+	session, err := s.Login(context.Background(), "good-code")
+	require.NoError(t, err)
+	userID := mustVerify(t, s, session)
+	s.SetInvitationGate(&fakeInvitationGate{token: "raw-token", invitation: &InvitationAcceptance{InvitationID: "inv-1", InstanceName: "Nexul"}})
+	s.SetOAuthHandoffStore(&fakeOAuthHandoffStore{})
+	h := NewHandler(s).Routes()
+	req := httptest.NewRequest(http.MethodPost, "/api/invitations/acceptance", strings.NewReader(`{"token":"raw-token"}`))
+	req.Header.Set("Authorization", "Bearer "+session)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+	var body InvitationAcceptance
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&body))
+	assert.Equal(t, "inv-1", body.InvitationID)
+	assert.NotEmpty(t, body.AcceptanceToken)
+	assert.Equal(t, userID, body.AuthenticatedUser.ID)
+	_, err = users.GetUserByID(context.Background(), userID)
+	require.NoError(t, err)
+}
+
+func TestHandler_StartOAuth_UsesConfiguredHTTPSForSecureCookie(t *testing.T) {
+	s, _, _, settings := newTestHarness(&fakeGitHub{user: ghUser("1", "onik97")})
+	settings.st.GitHubOAuthClientID = "client"
+	settings.st.GitHubOAuthClientSecret = "secret"
+	settings.st.InstanceURL = "https://nexul.example"
+	h := NewHandler(s).Routes()
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/auth/github", nil))
+	require.Equal(t, http.StatusFound, rec.Code)
+	require.Len(t, rec.Result().Cookies(), 1)
+	assert.True(t, rec.Result().Cookies()[0].Secure)
+}
+
 func TestHandler_CallbackGET_StateMismatch(t *testing.T) {
 	s, _, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "onik97")})
 	h := NewHandler(s).Routes()

@@ -3,11 +3,14 @@ package auth
 import (
 	"context"
 	"time"
+
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 )
 
 // UserStore persists user records; UpsertUser returns the record, permission/sync columns included, plus created.
 type UserStore interface {
 	UpsertUser(ctx context.Context, u *User) (*User, bool, error)
+	CreateFirstUser(ctx context.Context, u *User, events ...eventbus.OutboxEvent) (*User, error)
 	GetUserByID(ctx context.Context, id string) (*User, error)
 	GetUserByProvider(ctx context.Context, provider Provider, providerUserID string) (*User, error)
 	// GetUserByLogin looks up a user by login (ErrNotFound if none); tenancy checks if a login already has a User.
@@ -15,7 +18,8 @@ type UserStore interface {
 	ListUsers(ctx context.Context) ([]*User, error)
 	CanCreateWorkspaceExists(ctx context.Context) (bool, error)
 	SetCanCreateWorkspace(ctx context.Context, id string, can bool) error
-	SetAccountStatus(ctx context.Context, id string, status AccountStatus) error
+	SetAccountStatus(ctx context.Context, id string, status AccountStatus, events ...eventbus.OutboxEvent) error
+	CountUsers(ctx context.Context) (int, error)
 	CountActiveAdmins(ctx context.Context) (int, error)
 	MarkFirstLoginDone(ctx context.Context, id string) error
 	// SetProfileOverride sets the caller's profile override; nil clears to provider-sourced; UpsertUser never calls this.
@@ -27,6 +31,13 @@ type OAuthHandoffStore interface {
 	CompleteOAuthCallback(ctx context.Context, oauthStateHash, acceptanceHash string, identity OAuthHandoffIdentity, expiresAt, now time.Time) (*OAuthHandoff, error)
 	GetOAuthHandoffByAcceptanceHash(ctx context.Context, acceptanceHash string, now time.Time) (*OAuthHandoff, error)
 	CompleteOAuthRedemption(ctx context.Context, acceptanceHash, admittedUserID string, now time.Time) error
+}
+
+// InvitationGate is the auth-side slice of invitation storage. Raw credentials are hashed before they cross this seam.
+type InvitationGate interface {
+	GetInvitationByToken(ctx context.Context, rawToken string, now time.Time) (*InvitationAcceptance, error)
+	GetInvitationByAcceptance(ctx context.Context, acceptanceHash string, now time.Time) (*InvitationAcceptance, error)
+	RedeemInvitation(ctx context.Context, acceptanceHash string, identity InvitationIdentity, now time.Time, events ...eventbus.OutboxEvent) (InvitationAdmission, error)
 }
 
 // DefaultWorkspaceBinder is tenancy's slice the Owner Wizard needs (ADR 0017) to bind its user to the default workspace.

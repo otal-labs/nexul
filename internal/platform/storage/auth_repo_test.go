@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/auth"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 )
 
 func newTestUser(id, providerID, login string) *auth.User {
@@ -31,6 +33,21 @@ func TestUsersRepo_UpsertUser_Create(t *testing.T) {
 	assert.Equal(t, "onik97", u.Login)
 	assert.False(t, u.CanCreateWorkspace)
 	assert.False(t, u.CreatedAt.IsZero())
+}
+
+func TestUsersRepo_CreateFirstUser_WritesAdmissionEventAtomically(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	u, err := s.Users.CreateFirstUser(ctx, newTestUser("u1", "42", "first"), eventbus.OutboxEvent{ID: "account-admitted", Topic: auth.TopicAccountAdmitted, Payload: map[string]string{"account_id": "u1"}})
+	require.NoError(t, err)
+	assert.Equal(t, "u1", u.ID)
+	entries, err := s.Outbox.Unpublished(ctx, 10)
+	require.NoError(t, err)
+	require.Len(t, entries, 1)
+	assert.Equal(t, "account-admitted", entries[0].ID)
+	_, err = s.Users.CreateFirstUser(ctx, newTestUser("u2", "43", "second"))
+	assert.ErrorIs(t, err, apperrs.ErrConflict)
 }
 
 func TestUsersRepo_UpsertUser_UpdatesProviderFieldsNotFlags(t *testing.T) {
@@ -117,6 +134,52 @@ func TestUsersRepo_SetAccountStatus_AllowsChangingWhenAnotherAdminIsActive(t *te
 	count, err := s.Users.CountActiveAdmins(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, 1, count)
+}
+
+func TestUsersRepo_SetAccountStatus_RemovedCleansAccessAndWritesEvent(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	_, _, err := s.Users.UpsertUser(ctx, newTestUser("u1", "1", "owner"))
+	require.NoError(t, err)
+	_, _, err = s.Users.UpsertUser(ctx, newTestUser("u2", "2", "member"))
+	require.NoError(t, err)
+	require.NoError(t, s.Users.SetCanCreateWorkspace(ctx, "u1", true))
+	_, err = s.db.ExecContext(ctx, `INSERT INTO workspace_members (user_id, workspace_id, role_id, created_at) VALUES ('u2', 'workspace-default', 'role-missing', 1)`)
+	// The seeded schema may not have a role for the default workspace; use the user-independent cleanup assertions below.
+	if err != nil {
+		_, err = s.db.ExecContext(ctx, `INSERT INTO workspaces (id, name, created_at, updated_at) VALUES ('ws-remove', 'Remove', 1, 1)`)
+		require.NoError(t, err)
+		_, err = s.db.ExecContext(ctx, `INSERT INTO roles (id, workspace_id, name, is_owner_role, created_at, updated_at, permissions) VALUES ('role-remove', 'ws-remove', 'Member', 0, 1, 1, '[]')`)
+		require.NoError(t, err)
+		_, err = s.db.ExecContext(ctx, `INSERT INTO workspace_members (user_id, workspace_id, role_id, created_at) VALUES ('u2', 'ws-remove', 'role-remove', 1)`)
+		require.NoError(t, err)
+	}
+	_, err = s.db.ExecContext(ctx, `INSERT INTO permission_overwrites (resource_type, resource_id, user_id, allow, deny, created_at, updated_at) VALUES ('workspace', 'ws-remove', 'u2', '[]', '[]', 1, 1)`)
+	require.NoError(t, err)
+	_, err = s.db.ExecContext(ctx, `INSERT INTO personal_access_tokens (id, user_id, name, token_hash, prefix, created_at) VALUES ('pat-remove', 'u2', 'x', 'hash-remove', 'dep_x', 1)`)
+	require.NoError(t, err)
+	require.NoError(t, s.Users.SetAccountStatus(ctx, "u2", auth.AccountRemoved, eventbus.OutboxEvent{ID: "account-remove", Topic: auth.TopicAccountRemoved, Payload: map[string]string{"account_id": "u2"}}))
+	var n int
+	require.NoError(t, s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM workspace_members WHERE user_id = 'u2'`).Scan(&n))
+	assert.Zero(t, n)
+	require.NoError(t, s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM permission_overwrites WHERE user_id = 'u2'`).Scan(&n))
+	assert.Zero(t, n)
+	var revoked sql.NullInt64
+	require.NoError(t, s.db.QueryRowContext(ctx, `SELECT revoked_at FROM personal_access_tokens WHERE id = 'pat-remove'`).Scan(&revoked))
+	assert.True(t, revoked.Valid)
+	user, err := s.Users.GetUserByID(ctx, "u2")
+	require.NoError(t, err)
+	assert.Equal(t, auth.AccountRemoved, user.AccountStatus)
+	entries, err := s.Outbox.Unpublished(ctx, 20)
+	require.NoError(t, err)
+	var found bool
+	for _, entry := range entries {
+		if entry.ID == "account-remove" {
+			found = true
+		}
+	}
+	assert.True(t, found)
 }
 
 func TestUsersRepo_MarkFirstLoginDone_MissingUser(t *testing.T) {

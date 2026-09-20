@@ -88,6 +88,25 @@ func TestRequireAuth_Rejections(t *testing.T) {
 	}
 }
 
+func TestRequireAuth_DisabledUserCannotUseExistingCredentials(t *testing.T) {
+	s, users, _ := newPATHarness()
+	u := seedPATUser(t, users)
+	session, err := s.Sign(u)
+	require.NoError(t, err)
+	raw, _, err := s.MintPAT(context.Background(), u, "ci")
+	require.NoError(t, err)
+	require.NoError(t, users.SetAccountStatus(context.Background(), u, AccountDisabled))
+
+	h := s.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) }))
+	for _, token := range []string{session, raw} {
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	}
+}
+
 func TestRequireAuth_NoPATStoreConfigured(t *testing.T) {
 	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
 	_, _, err := users.UpsertUser(context.Background(), &User{ID: "u1", Provider: ProviderGitHub, ProviderUserID: "1", Login: "owner"})

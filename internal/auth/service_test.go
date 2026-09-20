@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -113,6 +114,33 @@ func TestLogin_FreshInstanceFirstSignInUnrestricted(t *testing.T) {
 	assert.False(t, st.NeedsFirstLoginWizard)
 }
 
+func TestLogin_FirstUserRace_AllowsOneUser(t *testing.T) {
+	ctx := t.Context()
+	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "first-user")})
+	other := NewService(Config{Secret: []byte("test-secret"), Users: users, GitHub: &fakeGitHub{user: ghUser("2", "second-user")}, Settings: newFakeSettings(), Allowlist: newFakeAllowlist(), Now: time.Now})
+	results := make(chan error, 2)
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		_, err := s.Login(ctx, "good-code")
+		results <- err
+	})
+	wg.Go(func() {
+		_, err := other.Login(ctx, "good-code")
+		results <- err
+	})
+	wg.Wait()
+	var successes int
+	for range 2 {
+		if err := <-results; err == nil {
+			successes++
+		}
+	}
+	assert.Equal(t, 1, successes)
+	accounts, err := users.ListUsers(ctx)
+	require.NoError(t, err)
+	assert.Len(t, accounts, 1)
+}
+
 func TestLogin_RejectsNonAllowlistedUser(t *testing.T) {
 	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
 	ownerToken, err := s.Login(context.Background(), "good-code")
@@ -120,21 +148,20 @@ func TestLogin_RejectsNonAllowlistedUser(t *testing.T) {
 	ownerID := mustVerify(t, s, ownerToken)
 	require.NoError(t, s.CompleteOwnerWizard(context.Background(), ownerID, "https://deploy.example.com"))
 
-	_, _, err = users.UpsertUser(context.Background(), &User{ID: "bob-id", Provider: ProviderGitHub, ProviderUserID: "2", Login: "bob"})
-	require.NoError(t, err)
-
 	s.cfg.GitHub = &fakeGitHub{user: ghUser("2", "bob")}
 	_, err = s.Login(context.Background(), "good-code")
 	require.ErrorIs(t, err, apperrs.ErrUnauthorized)
-	assert.Contains(t, err.Error(), "allowlist")
+	_, err = users.GetUserByProvider(context.Background(), ProviderGitHub, "2")
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
 func TestLogin_AllowlistedUserPasses(t *testing.T) {
-	s, _, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
+	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
 	ownerToken, err := s.Login(context.Background(), "good-code")
 	require.NoError(t, err)
 	require.NoError(t, s.CompleteOwnerWizard(context.Background(), mustVerify(t, s, ownerToken), "https://deploy.example.com"))
-	require.NoError(t, s.AddMember(context.Background(), mustVerify(t, s, ownerToken), "bob"))
+	_, _, err = users.UpsertUser(context.Background(), &User{ID: "bob-id", Provider: ProviderGitHub, ProviderUserID: "2", Login: "bob"})
+	require.NoError(t, err)
 
 	s.cfg.GitHub = &fakeGitHub{user: ghUser("2", "bob")}
 	token, err := s.Login(context.Background(), "good-code")
@@ -198,21 +225,58 @@ func TestLogin_ResolvesPendingInvitesForNewUser(t *testing.T) {
 	require.NoError(t, err)
 	ownerID := mustVerify(t, s, ownerToken)
 	require.NoError(t, s.CompleteOwnerWizard(context.Background(), ownerID, "https://deploy.example.com"))
-	require.NoError(t, s.AddMember(context.Background(), ownerID, "bob"))
-
 	s.cfg.GitHub = &fakeGitHub{user: ghUser("2", "bob")}
+	_, err = s.Login(context.Background(), "good-code")
+	require.ErrorIs(t, err, apperrs.ErrUnauthorized)
+}
+
+func TestLogin_DisabledUserCannotResignIn(t *testing.T) {
+	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
 	token, err := s.Login(context.Background(), "good-code")
 	require.NoError(t, err)
-	bobID := mustVerify(t, s, token)
-
-	resolver := s.cfg.PendingInvites.(*fakePendingInviteResolver)
-	require.Len(t, resolver.resolved, 2, "the owner's own first login also creates a new User")
-	assert.Equal(t, [2]string{"bob", bobID}, resolver.resolved[1])
-
-	// A second login for the same (returning) bob must not re-resolve.
+	userID := mustVerify(t, s, token)
+	require.NoError(t, users.SetAccountStatus(context.Background(), userID, AccountDisabled))
 	_, err = s.Login(context.Background(), "good-code")
+	require.ErrorIs(t, err, apperrs.ErrUnauthorized)
+}
+
+func TestInvitationOAuthCallback_DoesNotCreateUser(t *testing.T) {
+	ctx := t.Context()
+	s, users, _, settings := newTestHarness(&fakeGitHub{token: "at", user: ghUser("provider-1", "new-user")})
+	settings.st.InstanceURL = "https://nexul.example"
+	settings.st.GitHubOAuthClientID = "client"
+	settings.st.GitHubOAuthClientSecret = "secret"
+	gate := &fakeInvitationGate{token: "raw-invitation", invitation: &InvitationAcceptance{InvitationID: "inv-1"}}
+	handoffs := &fakeOAuthHandoffStore{}
+	s.SetInvitationGate(gate)
+	s.SetOAuthHandoffStore(handoffs)
+	start, err := s.StartInvitationOAuth(ctx, ProviderGitHub, "raw-invitation")
 	require.NoError(t, err)
-	assert.Len(t, resolver.resolved, 2)
+	acceptance, err := s.CompleteInvitationOAuth(ctx, ProviderGitHub, start.State, "good-code")
+	require.NoError(t, err)
+	assert.NotEmpty(t, acceptance)
+	registered, err := users.ListUsers(ctx)
+	require.NoError(t, err)
+	assert.Empty(t, registered)
+}
+
+func TestAuthenticatedAcceptance_DoesNotNeedOAuth(t *testing.T) {
+	ctx := t.Context()
+	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
+	owner, err := s.Login(ctx, "good-code")
+	require.NoError(t, err)
+	ownerID := mustVerify(t, s, owner)
+	gate := &fakeInvitationGate{token: "raw-invitation", invitation: &InvitationAcceptance{InvitationID: "inv-1", InstanceName: "Nexul"}}
+	s.SetInvitationGate(gate)
+	s.SetOAuthHandoffStore(&fakeOAuthHandoffStore{})
+	details, err := s.PrepareAuthenticatedAcceptance(ctx, ownerID, "raw-invitation")
+	require.NoError(t, err)
+	assert.Equal(t, "inv-1", details.InvitationID)
+	assert.Equal(t, ownerID, details.AuthenticatedUser.ID)
+	assert.NotEmpty(t, details.AcceptanceToken)
+	registered, err := users.ListUsers(ctx)
+	require.NoError(t, err)
+	assert.Len(t, registered, 1)
 }
 
 func TestConfigured(t *testing.T) {
@@ -457,7 +521,7 @@ func mustVerify(t *testing.T, s *Service, token string) string {
 
 // TestLoginWith_Google proves the second provider (ADR 0040) follows the same upsert → allowlist → sign path as GitHub, keyed by provider=google with the email as login so the owner allowlists clients by email.
 func TestLoginWith_Google(t *testing.T) {
-	s, users, allowlist, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
+	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
 	ownerToken, err := s.Login(context.Background(), "good-code")
 	require.NoError(t, err)
 	ownerID, err := s.Verify(ownerToken)
@@ -466,10 +530,8 @@ func TestLoginWith_Google(t *testing.T) {
 
 	s.cfg.Google = &fakeGitHub{token: "at", user: &ProviderUser{ID: "sub-9", Login: "client@example.com", Name: "Client"}}
 
-	_, err = s.LoginWith(context.Background(), ProviderGoogle, "good-code")
-	assert.ErrorIs(t, err, apperrs.ErrUnauthorized, "google user must be allowlisted like anyone else")
-
-	require.NoError(t, allowlist.Add(context.Background(), "client@example.com"))
+	_, _, err = users.UpsertUser(context.Background(), &User{ID: "google-id", Provider: ProviderGoogle, ProviderUserID: "sub-9", Login: "client@example.com"})
+	require.NoError(t, err)
 	token, err := s.LoginWith(context.Background(), ProviderGoogle, "good-code")
 	require.NoError(t, err)
 	id, err := s.Verify(token)
@@ -539,7 +601,7 @@ func TestSetProviderOAuth(t *testing.T) {
 }
 
 func TestLoginWith_Discord(t *testing.T) {
-	s, users, allowlist, settings := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
+	s, users, _, settings := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
 	ownerToken, err := s.Login(context.Background(), "good-code")
 	require.NoError(t, err)
 	ownerID, err := s.Verify(ownerToken)
@@ -563,9 +625,8 @@ func TestLoginWith_Discord(t *testing.T) {
 	assert.True(t, ok)
 
 	s.cfg.Discord = &fakeGitHub{token: "at", user: &ProviderUser{ID: "snowflake", Login: "client@example.com"}}
-	_, err = s.LoginWith(context.Background(), ProviderDiscord, "good-code")
-	assert.ErrorIs(t, err, apperrs.ErrUnauthorized, "must be allowlisted")
-	require.NoError(t, allowlist.Add(context.Background(), "client@example.com"))
+	_, _, err = users.UpsertUser(context.Background(), &User{ID: "discord-id", Provider: ProviderDiscord, ProviderUserID: "snowflake", Login: "client@example.com"})
+	require.NoError(t, err)
 	token, err := s.LoginWith(context.Background(), ProviderDiscord, "good-code")
 	require.NoError(t, err)
 	id, err := s.Verify(token)
