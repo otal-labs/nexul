@@ -39,6 +39,7 @@ type InviteRepo interface {
 type InvitationRepo interface {
 	Create(ctx context.Context, invitation *Invitation, tokenHash string, events ...eventbus.OutboxEvent) error
 	GetByTokenHash(ctx context.Context, tokenHash string, now time.Time) (*Invitation, error)
+	GetByAcceptanceHash(ctx context.Context, acceptanceHash string, now time.Time) (*Invitation, error)
 	List(ctx context.Context, actorID string, now time.Time) ([]*Invitation, error)
 	Revoke(ctx context.Context, actorID, invitationID string, now time.Time, events ...eventbus.OutboxEvent) error
 	Redeem(ctx context.Context, acceptanceHash string, identity InvitationIdentity, now time.Time, events ...eventbus.OutboxEvent) (*InvitationAdmission, error)

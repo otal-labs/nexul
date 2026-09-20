@@ -48,3 +48,11 @@ func TestAllTopics_IncludesPlayRuns(t *testing.T) {
 	assert.Contains(t, topics, "play.run_finished")
 	assert.NotContains(t, topics, "play.run", "the live topic is ephemeral, never catalogued")
 }
+
+func TestAllTopics_IncludesInvitationLifecycle(t *testing.T) {
+	topics := AllTopics()
+	assert.Contains(t, topics, "invitation.created")
+	assert.Contains(t, topics, "invitation.deleted")
+	assert.Contains(t, topics, "account.admitted")
+	assert.Contains(t, topics, "workspace.member.added")
+}

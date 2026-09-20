@@ -10,6 +10,7 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
 	"github.com/otal-labs/nexul/internal/tenancy"
@@ -71,7 +72,7 @@ func (r *InvitationsRepo) GetByTokenHash(ctx context.Context, tokenHash string, 
 		candidate, err := readInvitation(ctx, q, row)
 		if err != nil {
 			if errors.Is(err, apperrs.ErrInvalid) {
-				if deleteErr := deleteInvitation(ctx, q, row.ID); deleteErr != nil {
+				if deleteErr := deleteInvitation(ctx, q, tx, row.ID, "invalid grant"); deleteErr != nil {
 					return deleteErr
 				}
 				invalidated = true
@@ -80,14 +81,14 @@ func (r *InvitationsRepo) GetByTokenHash(ctx context.Context, tokenHash string, 
 			return err
 		}
 		if err := validateInvitationPackage(ctx, q, candidate, candidate.InvitedBy); err != nil {
-			if deleteErr := deleteInvitation(ctx, q, candidate.ID); deleteErr != nil {
+			if deleteErr := deleteInvitation(ctx, q, tx, candidate.ID, "creator authority or grant invalid"); deleteErr != nil {
 				return deleteErr
 			}
 			invalidated = true
 			return nil
 		}
 		if !now.Before(candidate.ExpiresAt) {
-			if err := deleteInvitation(ctx, q, candidate.ID); err != nil {
+			if err := deleteInvitation(ctx, q, tx, candidate.ID, "expired"); err != nil {
 				return err
 			}
 			invalidated = true
@@ -105,6 +106,40 @@ func (r *InvitationsRepo) GetByTokenHash(ctx context.Context, tokenHash string, 
 	return invitation, nil
 }
 
+func (r *InvitationsRepo) GetByAcceptanceHash(ctx context.Context, acceptanceHash string, now time.Time) (*tenancy.Invitation, error) {
+	if !validTokenHash(acceptanceHash) {
+		return nil, invalidInvitation()
+	}
+	handoff, err := r.q.GetOAuthHandoffByAcceptanceHash(ctx, sql.NullString{String: acceptanceHash, Valid: true})
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, invalidInvitation()
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get OAuth handoff by acceptance hash: %w", err)
+	}
+	if handoff.ExpiresAt <= now.Unix() || handoff.CompletedAt.Valid {
+		return nil, invalidInvitation()
+	}
+	row, err := r.q.GetInvitationByID(ctx, handoff.InvitationID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, invalidInvitation()
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get invitation for acceptance: %w", err)
+	}
+	if row.RedeemedAt.Valid || row.ExpiresAt <= now.Unix() {
+		return nil, invalidInvitation()
+	}
+	invitation, err := readInvitation(ctx, r.q, row)
+	if err != nil {
+		if errors.Is(err, apperrs.ErrInvalid) {
+			return nil, invalidInvitation()
+		}
+		return nil, err
+	}
+	return invitation, nil
+}
+
 func (r *InvitationsRepo) List(ctx context.Context, actorID string, now time.Time) ([]*tenancy.Invitation, error) {
 	if actorID == "" {
 		return nil, fmt.Errorf("%w: actor is required", apperrs.ErrInvalid)
@@ -112,7 +147,7 @@ func (r *InvitationsRepo) List(ctx context.Context, actorID string, now time.Tim
 	var invitations []*tenancy.Invitation
 	err := r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
-		rows, err := q.ListAllInvitations(ctx)
+		rows, err := q.ListManageableInvitationHeaders(ctx, sqlcgen.ListManageableInvitationHeadersParams{ExpiresAt: now.Unix(), UserID: actorID, Limit: maxInvitationList})
 		if err != nil {
 			return fmt.Errorf("list invitations: %w", err)
 		}
@@ -123,7 +158,7 @@ func (r *InvitationsRepo) List(ctx context.Context, actorID string, now time.Tim
 			invitation, err := readInvitation(ctx, q, row)
 			if err != nil {
 				if errors.Is(err, apperrs.ErrInvalid) {
-					if deleteErr := deleteInvitation(ctx, q, row.ID); deleteErr != nil {
+					if deleteErr := deleteInvitation(ctx, q, tx, row.ID, "invalid grant"); deleteErr != nil {
 						return deleteErr
 					}
 					continue
@@ -131,18 +166,12 @@ func (r *InvitationsRepo) List(ctx context.Context, actorID string, now time.Tim
 				return err
 			}
 			if !now.Before(invitation.ExpiresAt) || validateInvitationPackage(ctx, q, invitation, invitation.InvitedBy) != nil {
-				if err := deleteInvitation(ctx, q, invitation.ID); err != nil {
+				if err := deleteInvitation(ctx, q, tx, invitation.ID, "expired or invalid"); err != nil {
 					return err
 				}
 				continue
 			}
-			allowed, err := actorCanManage(ctx, q, actorID, invitation.Grants)
-			if err != nil {
-				return err
-			}
-			if allowed {
-				invitations = append(invitations, invitation)
-			}
+			invitations = append(invitations, invitation)
 		}
 		return nil
 	})
@@ -165,30 +194,41 @@ func (r *InvitationsRepo) Revoke(ctx context.Context, actorID, invitationID stri
 		if err != nil {
 			return fmt.Errorf("get invitation %s: %w", invitationID, err)
 		}
-		if row.RedeemedAt.Valid {
-			return apperrs.ErrNotFound
-		}
-		invitation, err := readInvitation(ctx, q, row)
+		grantRows, err := q.ListInvitationGrantsByInvitation(ctx, invitationID)
 		if err != nil {
-			if errors.Is(err, apperrs.ErrInvalid) {
-				return deleteInvitation(ctx, q, invitationID)
-			}
-			return err
+			return fmt.Errorf("list invitation grants %s: %w", invitationID, err)
 		}
-		if !now.Before(invitation.ExpiresAt) {
-			return deleteInvitation(ctx, q, invitationID)
+		grantRefs := make([]*tenancy.InvitationGrant, 0, len(grantRows))
+		for _, grant := range grantRows {
+			grantRefs = append(grantRefs, &tenancy.InvitationGrant{WorkspaceID: grant.WorkspaceID, RoleID: grant.RoleID})
 		}
-		if err := validateInvitationPackage(ctx, q, invitation, invitation.InvitedBy); err != nil {
-			return deleteInvitation(ctx, q, invitationID)
+		if len(grantRefs) == 0 {
+			return fmt.Errorf("%w: members:write required in every invited workspace", apperrs.ErrForbidden)
 		}
-		allowed, err := actorCanManage(ctx, q, actorID, invitation.Grants)
+		allowed, err := actorCanManage(ctx, q, actorID, grantRefs)
 		if err != nil {
 			return err
 		}
 		if !allowed {
 			return fmt.Errorf("%w: members:write required in every invited workspace", apperrs.ErrForbidden)
 		}
-		if err := deleteInvitation(ctx, q, invitationID); err != nil {
+		if row.RedeemedAt.Valid {
+			return apperrs.ErrNotFound
+		}
+		invitation, err := readInvitation(ctx, q, row)
+		if err != nil {
+			if errors.Is(err, apperrs.ErrInvalid) {
+				return deleteInvitation(ctx, q, tx, invitationID, "invalid grant")
+			}
+			return err
+		}
+		if !now.Before(invitation.ExpiresAt) {
+			return deleteInvitation(ctx, q, tx, invitationID, "expired")
+		}
+		if err := validateInvitationPackage(ctx, q, invitation, invitation.InvitedBy); err != nil {
+			return deleteInvitation(ctx, q, tx, invitationID, "creator authority or grant invalid")
+		}
+		if err := removeInvitation(ctx, q, invitationID); err != nil {
 			return err
 		}
 		return enqueueInvitationEvents(ctx, tx, events)
@@ -232,7 +272,7 @@ func (r *InvitationsRepo) Redeem(ctx context.Context, acceptanceHash string, ide
 			return invalidInvitation()
 		}
 		if invitationRow.ExpiresAt <= now.Unix() {
-			if err := deleteInvitation(ctx, q, handoff.InvitationID); err != nil {
+			if err := deleteInvitation(ctx, q, tx, handoff.InvitationID, "expired"); err != nil {
 				return err
 			}
 			invalidatedInvitationID = handoff.InvitationID
@@ -240,14 +280,14 @@ func (r *InvitationsRepo) Redeem(ctx context.Context, acceptanceHash string, ide
 		}
 		invitation, err := readInvitation(ctx, q, invitationRow)
 		if err != nil {
-			if deleteErr := deleteInvitation(ctx, q, handoff.InvitationID); deleteErr != nil {
+			if deleteErr := deleteInvitation(ctx, q, tx, handoff.InvitationID, "invalid grant"); deleteErr != nil {
 				return deleteErr
 			}
 			invalidatedInvitationID = handoff.InvitationID
 			return nil
 		}
 		if err := validateInvitationPackage(ctx, q, invitation, invitation.InvitedBy); err != nil {
-			if deleteErr := deleteInvitation(ctx, q, invitation.ID); deleteErr != nil {
+			if deleteErr := deleteInvitation(ctx, q, tx, invitation.ID, "creator authority or grant invalid"); deleteErr != nil {
 				return deleteErr
 			}
 			invalidatedInvitationID = invitation.ID
@@ -277,6 +317,10 @@ func (r *InvitationsRepo) Redeem(ctx context.Context, acceptanceHash string, ide
 				return err
 			}
 		}
+		redemptionEvents := append([]eventbus.OutboxEvent{{ID: ids.New(), Topic: tenancy.TopicInvitationRedeemed, Payload: tenancy.InvitationEvent{InvitationID: invitation.ID, UserID: userID}}}, events...)
+		if !existing {
+			redemptionEvents = append(redemptionEvents, eventbus.OutboxEvent{ID: ids.New(), Topic: tenancy.TopicAccountAdmitted, Payload: tenancy.InvitationEvent{InvitationID: invitation.ID, UserID: userID}})
+		}
 		for _, grant := range invitation.Grants {
 			_, err := q.GetInvitationMember(ctx, sqlcgen.GetInvitationMemberParams{WorkspaceID: grant.WorkspaceID, UserID: userID})
 			if err == nil {
@@ -288,6 +332,7 @@ func (r *InvitationsRepo) Redeem(ctx context.Context, acceptanceHash string, ide
 			if err := q.AddInvitationMember(ctx, sqlcgen.AddInvitationMemberParams{UserID: userID, WorkspaceID: grant.WorkspaceID, RoleID: grant.RoleID, CreatedAt: now.Unix()}); err != nil {
 				return fmt.Errorf("add invitation membership: %w", classifyWriteErr(err))
 			}
+			redemptionEvents = append(redemptionEvents, eventbus.OutboxEvent{ID: ids.New(), Topic: tenancy.TopicWorkspaceMemberAdded, Payload: tenancy.InvitationEvent{InvitationID: invitation.ID, UserID: userID, WorkspaceID: grant.WorkspaceID}})
 			if len(grant.Allow) == 0 && len(grant.Deny) == 0 {
 				continue
 			}
@@ -307,7 +352,7 @@ func (r *InvitationsRepo) Redeem(ctx context.Context, acceptanceHash string, ide
 		if completed != 1 {
 			return invalidInvitation()
 		}
-		if err := enqueueInvitationEvents(ctx, tx, events); err != nil {
+		if err := enqueueInvitationEvents(ctx, tx, redemptionEvents); err != nil {
 			return err
 		}
 		admission = &tenancy.InvitationAdmission{UserID: userID, Created: !existing}
@@ -483,7 +528,21 @@ func insertInvitation(ctx context.Context, q *sqlcgen.Queries, invitation *tenan
 	return q.CreateInvitation(ctx, sqlcgen.CreateInvitationParams{ID: invitation.ID, TokenHash: tokenHash, InvitedBy: invitation.InvitedBy, CreatedAt: invitation.CreatedAt.Unix(), ExpiresAt: invitation.ExpiresAt.Unix()})
 }
 
-func deleteInvitation(ctx context.Context, q *sqlcgen.Queries, id string) error {
+func deleteInvitation(ctx context.Context, q *sqlcgen.Queries, tx *sql.Tx, id, reason string) error {
+	deleted, err := q.DeleteInvitation(ctx, id)
+	if err != nil {
+		return fmt.Errorf("delete invitation %s: %w", id, err)
+	}
+	if deleted == 0 {
+		return nil
+	}
+	if err := insertOutboxRow(ctx, tx, ids.New(), tenancy.TopicInvitationDeleted, tenancy.InvitationEvent{InvitationID: id, Reason: reason}); err != nil {
+		return fmt.Errorf("record invitation deletion %s: %w", id, err)
+	}
+	return nil
+}
+
+func removeInvitation(ctx context.Context, q *sqlcgen.Queries, id string) error {
 	_, err := q.DeleteInvitation(ctx, id)
 	if err != nil {
 		return fmt.Errorf("delete invitation %s: %w", id, err)
@@ -514,6 +573,8 @@ func validInvitationLifetime(createdAt, expiresAt time.Time) bool {
 }
 
 const sha256HexLength = 64
+
+const maxInvitationList = 100
 
 func invalidInvitation() error {
 	return fmt.Errorf("%w: invitation is invalid or expired", apperrs.ErrNotFound)

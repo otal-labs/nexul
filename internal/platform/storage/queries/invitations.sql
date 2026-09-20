@@ -27,6 +27,40 @@ SELECT id, token_hash, invited_by, created_at, expires_at, redeemed_at, redeemed
 FROM invitations
 ORDER BY created_at, id;
 
+-- name: ListManageableInvitationHeaders :many
+SELECT i.id, i.token_hash, i.invited_by, i.created_at, i.expires_at, i.redeemed_at, i.redeemed_by
+FROM invitations i
+WHERE i.redeemed_at IS NULL
+  AND i.expires_at > ?
+  AND NOT EXISTS (
+      SELECT 1
+      FROM invitation_grants g
+      WHERE g.invitation_id = i.id
+        AND NOT EXISTS (
+            SELECT 1
+            FROM workspace_members m
+            JOIN roles r ON r.id = m.role_id
+            LEFT JOIN permission_overwrites po
+              ON po.resource_type = 'workspace'
+             AND po.resource_id = g.workspace_id
+             AND po.user_id = m.user_id
+            WHERE m.workspace_id = g.workspace_id
+              AND m.user_id = ?
+              AND (
+                  r.is_owner_role = 1
+                  OR (
+                      instr(COALESCE(po.deny, '[]'), '"members:write"') = 0
+                      AND (
+                          instr(r.permissions, '"members:write"') > 0
+                          OR instr(COALESCE(po.allow, '[]'), '"members:write"') > 0
+                      )
+                  )
+              )
+        )
+  )
+ORDER BY i.created_at, i.id
+LIMIT ?;
+
 -- name: ListInvitationGrantsByInvitation :many
 SELECT invitation_id, workspace_id, role_id, allow_json, deny_json
 FROM invitation_grants

@@ -15,6 +15,7 @@ import (
 	"github.com/otal-labs/nexul/internal/runner"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/topology"
+	"github.com/otal-labs/nexul/internal/tenancy"
 	"github.com/otal-labs/nexul/internal/voice"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
@@ -33,6 +34,7 @@ func AllTopics() []string {
 		gitprovider.Topics(),
 		topology.Topics(),
 		voice.Topics(),
+		tenancy.Topics(),
 		chat.Topics(),
 		workspace.Topics(),
 		plays.Topics(),
