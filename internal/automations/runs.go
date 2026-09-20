@@ -122,7 +122,7 @@ const defaultRunsLimit = 50
 
 // Routes returns the run-history REST endpoints, both gated on automations:read.
 func (h *RunsHandler) Routes() http.Handler {
-	mux := http.NewServeMux()
+	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /api/automations/{id}/runs", h.list)
 	mux.HandleFunc("GET /api/automations/{id}/runs/{runID}", h.get)
 	return mux

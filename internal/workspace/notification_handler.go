@@ -21,7 +21,7 @@ func NewNotificationHandler(svc *NotificationService, currentUser func(*http.Req
 
 // Routes returns the notifications REST endpoints.
 func (h *NotificationHandler) Routes() http.Handler {
-	mux := http.NewServeMux()
+	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /api/notifications", h.list)
 	mux.HandleFunc("GET /api/notifications/unread-count", h.unreadCount)
 	mux.HandleFunc("POST /api/notifications/{id}/read", h.markRead)

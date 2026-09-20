@@ -38,7 +38,7 @@ type createWorkspaceRequest struct {
 
 // Routes are wrapped with the auth-user-id injection adapter before mounting behind RequireAuth.
 func (h *Handler) Routes() http.Handler {
-	mux := http.NewServeMux()
+	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /api/workspaces", h.list)
 	mux.HandleFunc("POST /api/workspaces", h.create)
 	mux.HandleFunc("PATCH /api/workspaces/{workspaceID}", h.rename)

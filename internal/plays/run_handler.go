@@ -32,7 +32,7 @@ type runRequest struct {
 // Routes returns the run endpoints. Latest choices take the play as a query parameter because a
 // `{id}/latest-choices` pattern would conflict with `runs/{trailID}` in the mux.
 func (h *RunHandler) Routes() http.Handler {
-	mux := http.NewServeMux()
+	mux := httpx.NewServeMux()
 	mux.HandleFunc("POST /api/plays/{id}/run", h.run)
 	mux.HandleFunc("GET /api/plays/runs", h.list)
 	mux.HandleFunc("GET /api/plays/runs/active", h.active)

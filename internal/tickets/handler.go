@@ -90,7 +90,7 @@ type labelColorsRequest struct {
 
 // Routes returns the tickets REST endpoints.
 func (h *Handler) Routes() http.Handler {
-	mux := http.NewServeMux()
+	mux := httpx.NewServeMux()
 	mux.HandleFunc("POST /api/tickets", h.create)
 	mux.HandleFunc("GET /api/tickets", h.list)
 	mux.HandleFunc("GET /api/tickets/search", h.search)

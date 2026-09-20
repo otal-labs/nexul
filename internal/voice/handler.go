@@ -35,7 +35,7 @@ func NewHandler(svc *Service) *Handler {
 
 // Routes returns voice's authed REST endpoints (mounted under /api/voice).
 func (h *Handler) Routes() http.Handler {
-	mux := http.NewServeMux()
+	mux := httpx.NewServeMux()
 	mux.HandleFunc("POST /api/voice/{conversationID}/token", h.join)
 	mux.HandleFunc("POST /api/voice/{conversationID}/leave", h.leave)
 	mux.HandleFunc("GET /api/voice/occupancy", h.occupancy)

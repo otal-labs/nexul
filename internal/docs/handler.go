@@ -31,7 +31,7 @@ type namedVersionRequest struct {
 
 // Routes returns the docs REST endpoints; literals outrank the {id} wildcard so they don't collide with a lookup.
 func (h *Handler) Routes() http.Handler {
-	mux := http.NewServeMux()
+	mux := httpx.NewServeMux()
 	mux.HandleFunc("POST /api/docs/import", h.importDoc)
 	mux.HandleFunc("POST /api/docs", h.create)
 	mux.HandleFunc("GET /api/docs", h.list)

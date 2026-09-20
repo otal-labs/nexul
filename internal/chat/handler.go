@@ -59,7 +59,7 @@ type postMessageRequest struct {
 
 // Routes returns the chat REST endpoints.
 func (h *Handler) Routes() http.Handler {
-	mux := http.NewServeMux()
+	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /api/chat/conversations", h.listConversations)
 	mux.HandleFunc("POST /api/chat/channels", h.createChannel)
 	mux.HandleFunc("POST /api/chat/voice-channels", h.createVoiceChannel)
