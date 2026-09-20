@@ -21,10 +21,10 @@ export interface InvitationGrant {
 }
 
 export interface InvitationPreview {
-  instance_name: string;
+  instance_name?: string;
+  instance_url?: string;
   grants: InvitationGrant[];
   expires_at: string;
-  providers: InvitationProvider[];
 }
 
 export interface InvitationAcceptance extends InvitationPreview {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 )
 

@@ -27,6 +27,8 @@ user whose token authenticates the connection.
 | Automations | `automation_create`, `automation_list`, `automation_get`, `automation_update_config`, `automation_set_enabled`, `automation_delete`, `automation_mint_token`, `automation_revoke_token` |
 | Notifications | `notification_list`, `notification_mark_read`, `notification_mark_all_read` |
 | Access | `access_list_grants`, `access_set_grants` |
+| Invitations | `create_invitation`, `list_invitations`, `revoke_invitation` |
+| Accounts | `list_accounts`, `disable_account`, `reactivate_account`, `remove_account`, `restore_account` |
 | Plays | `play_list`, `play_create`, `play_update`, `play_delete`, `play_run`, `play_run_get`, `play_run_stop`, `play_run_answer`, `play_list_runs` |
 | Memories | `memory_list`, `memory_get`, `memory_create`, `memory_update`, `memory_delete`, `memory_list_versions`, `memory_revert`, `memory_clone` |
 | Search and operations | `search_docs`, `search_tickets`, `list_dead_letters`, `replay_dead_letter` |

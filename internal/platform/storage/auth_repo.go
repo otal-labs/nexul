@@ -138,7 +138,7 @@ func (r *UsersRepo) SetCanCreateWorkspace(ctx context.Context, id string, can bo
 }
 
 func (r *UsersRepo) SetAccountStatus(ctx context.Context, id string, status auth.AccountStatus, events ...eventbus.OutboxEvent) error {
-	if status != auth.AccountActive && status != auth.AccountDisabled && status != auth.AccountRemoved {
+	if !validAccountStatus(status) {
 		return fmt.Errorf("%w: invalid account status %q", apperrs.ErrInvalid, status)
 	}
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
@@ -147,40 +147,17 @@ func (r *UsersRepo) SetAccountStatus(ctx context.Context, id string, status auth
 		if err != nil {
 			return fmt.Errorf("get account %s: %w", id, notFoundIfNoRows(err))
 		}
-		if user.CanCreateWorkspace != 0 && user.AccountStatus == string(auth.AccountActive) && status != auth.AccountActive {
-			activeAdmins, err := q.CountActiveAdmins(ctx)
-			if err != nil {
-				return fmt.Errorf("count active instance admins: %w", err)
-			}
-			if activeAdmins <= 1 {
-				return fmt.Errorf("%w: cannot change the last active instance admin", apperrs.ErrConflict)
-			}
+		if err := protectLastActiveAdmin(ctx, q, user, status); err != nil {
+			return err
 		}
+		now := time.Now().Unix()
 		if status == auth.AccountRemoved {
-			if err := q.DeleteAccountMemberships(ctx, id); err != nil {
-				return fmt.Errorf("remove account memberships %s: %w", id, err)
-			}
-			if err := q.DeleteAccountOverwrites(ctx, id); err != nil {
-				return fmt.Errorf("remove account overwrites %s: %w", id, err)
-			}
-			if err := q.RevokeAccountPATs(ctx, sqlcgen.RevokeAccountPATsParams{RevokedAt: sql.NullInt64{Int64: time.Now().Unix(), Valid: true}, UserID: id}); err != nil {
-				return fmt.Errorf("revoke account tokens %s: %w", id, err)
-			}
-			if err := q.DeleteAccountPairingDefaults(ctx, id); err != nil {
-				return fmt.Errorf("remove account pairing defaults %s: %w", id, err)
-			}
-			if err := q.DeleteAccountPairingComputers(ctx, id); err != nil {
-				return fmt.Errorf("remove account pairing computers %s: %w", id, err)
-			}
-			if err := q.DeleteAccountInvitations(ctx, id); err != nil {
-				return fmt.Errorf("remove account invitations %s: %w", id, err)
-			}
-			if _, err := q.WithTx(tx).SetCanCreateWorkspace(ctx, sqlcgen.SetCanCreateWorkspaceParams{CanCreateWorkspace: 0, UpdatedAt: time.Now().Unix(), ID: id}); err != nil {
-				return fmt.Errorf("clear account admin %s: %w", id, err)
+			if err := removeAccountAccess(ctx, q, id, now); err != nil {
+				return err
 			}
 		}
 		n, err := q.SetAccountStatus(ctx, sqlcgen.SetAccountStatusParams{
-			AccountStatus: string(status), UpdatedAt: time.Now().Unix(), ID: id,
+			AccountStatus: string(status), UpdatedAt: now, ID: id,
 		})
 		if err != nil {
 			return fmt.Errorf("set account status %s: %w", id, err)
@@ -188,13 +165,60 @@ func (r *UsersRepo) SetAccountStatus(ctx context.Context, id string, status auth
 		if n == 0 {
 			return fmt.Errorf("set account status %s: %w", id, apperrs.ErrNotFound)
 		}
-		for _, event := range events {
-			if err := insertOutboxRow(ctx, tx, event.ID, event.Topic, event.Payload); err != nil {
-				return fmt.Errorf("write account event %s: %w", id, err)
-			}
-		}
-		return nil
+		return enqueueAccountEvents(ctx, tx, id, events)
 	})
+}
+
+func validAccountStatus(status auth.AccountStatus) bool {
+	return status == auth.AccountActive || status == auth.AccountDisabled || status == auth.AccountRemoved
+}
+
+func protectLastActiveAdmin(ctx context.Context, q *sqlcgen.Queries, user sqlcgen.User, status auth.AccountStatus) error {
+	if user.CanCreateWorkspace == 0 || user.AccountStatus != string(auth.AccountActive) || status == auth.AccountActive {
+		return nil
+	}
+	activeAdmins, err := q.CountActiveAdmins(ctx)
+	if err != nil {
+		return fmt.Errorf("count active instance admins: %w", err)
+	}
+	if activeAdmins <= 1 {
+		return fmt.Errorf("%w: cannot change the last active instance admin", apperrs.ErrConflict)
+	}
+	return nil
+}
+
+func removeAccountAccess(ctx context.Context, q *sqlcgen.Queries, id string, now int64) error {
+	steps := []struct {
+		name string
+		run  func() error
+	}{
+		{"memberships", func() error { return q.DeleteAccountMemberships(ctx, id) }},
+		{"overwrites", func() error { return q.DeleteAccountOverwrites(ctx, id) }},
+		{"tokens", func() error {
+			return q.RevokeAccountPATs(ctx, sqlcgen.RevokeAccountPATsParams{RevokedAt: sql.NullInt64{Int64: now, Valid: true}, UserID: id})
+		}},
+		{"pairing defaults", func() error { return q.DeleteAccountPairingDefaults(ctx, id) }},
+		{"pairing computers", func() error { return q.DeleteAccountPairingComputers(ctx, id) }},
+		{"invitations", func() error { return q.DeleteAccountInvitations(ctx, id) }},
+	}
+	for _, step := range steps {
+		if err := step.run(); err != nil {
+			return fmt.Errorf("remove account %s %s: %w", id, step.name, err)
+		}
+	}
+	if _, err := q.SetCanCreateWorkspace(ctx, sqlcgen.SetCanCreateWorkspaceParams{CanCreateWorkspace: 0, UpdatedAt: now, ID: id}); err != nil {
+		return fmt.Errorf("clear account admin %s: %w", id, err)
+	}
+	return nil
+}
+
+func enqueueAccountEvents(ctx context.Context, tx *sql.Tx, id string, events []eventbus.OutboxEvent) error {
+	for _, event := range events {
+		if err := insertOutboxRow(ctx, tx, event.ID, event.Topic, event.Payload); err != nil {
+			return fmt.Errorf("write account event %s: %w", id, err)
+		}
+	}
+	return nil
 }
 
 func (r *UsersRepo) CountUsers(ctx context.Context) (int, error) {

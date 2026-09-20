@@ -287,11 +287,16 @@ or on one resource. Most-specific wins; deny beats allow inside a layer. The
 workspace Owner bypasses all of it.
 _Avoid_: Grant, share, ACL
 
-**Allowlist**:
-Who may sign in to the instance at all, listed by the login their provider
-yields: a GitHub username or a verified email, in one list. Enforced at
-sign-in, separate from workspace membership and from roles.
-_Avoid_: Whitelist, invite list, members list
+**Invitation**:
+A single-use bearer link that admits one person to the instance and grants a
+chosen Role plus optional Permission overwrites in one or more Workspaces. The
+link expires after one or seven days and is not bound to a provider identity.
+_Avoid_: Allowlist entry, invite code, join link
+
+**Account status**:
+Whether a registered User may authenticate to the Instance: active, disabled,
+or removed. Workspace membership and Roles remain separate.
+_Avoid_: Allowlist status, membership status
 
 **Personal access token**:
 A long-lived, revocable credential (`dep_`) carrying exactly one user's own
@@ -319,7 +324,7 @@ permission is `<domain>:<read|write|delete>` (`docs:write`,
 (`plays:run`, `memories:clone`, `docs:thread`), one vocabulary shared by
 roles, token scopes, and the agent. Distinct from auth.
 
-**Auth** — who a user is. Identity and sessions, via GitHub OAuth.
+**Auth** — who a user is. Identity and sessions, via an owner-configured OAuth provider.
 Distinct from access.
 
 **Automations** — event-driven code: Default and Custom automations run

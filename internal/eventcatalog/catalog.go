@@ -4,6 +4,7 @@ package eventcatalog
 import (
 	"slices"
 
+	"github.com/otal-labs/nexul/internal/auth"
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/codereview"
 	"github.com/otal-labs/nexul/internal/deploy"
@@ -13,9 +14,9 @@ import (
 	"github.com/otal-labs/nexul/internal/memories"
 	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/runner"
+	"github.com/otal-labs/nexul/internal/tenancy"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/topology"
-	"github.com/otal-labs/nexul/internal/tenancy"
 	"github.com/otal-labs/nexul/internal/voice"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
@@ -25,6 +26,7 @@ func AllTopics() []string {
 	var all []string
 	for _, topics := range [][]string{
 		docs.Topics(),
+		auth.Topics(),
 		memories.Topics(),
 		tickets.Topics(),
 		deploy.Topics(),

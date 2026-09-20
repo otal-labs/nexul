@@ -8,9 +8,9 @@ import { api } from "@/api/client";
 import { InvitePreviewPage } from "@/pages/InvitePreviewPage";
 import { useSessionStore } from "@/stores/sessionStore";
 
-const mocks = vi.hoisted(() => ({ post: vi.fn() }));
+const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }));
 const originalLocation = window.location;
-vi.mock("@/api/client", () => ({ api: { post: mocks.post, get: vi.fn(), patch: vi.fn(), delete: vi.fn() }, errorMessage: vi.fn() }));
+vi.mock("@/api/client", () => ({ api: { post: mocks.post, get: mocks.get, patch: vi.fn(), delete: vi.fn() }, errorMessage: vi.fn() }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const renderPage = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter initialEntries={[`/invite${window.location.hash}`]}><Routes><Route path="/invite" element={<InvitePreviewPage />} /><Route path="/" element={<div>home</div>} /></Routes></MemoryRouter></QueryClientProvider>);
@@ -21,6 +21,8 @@ describe("InvitePreviewPage", () => {
   });
   beforeEach(() => {
     mocks.post.mockReset();
+    mocks.get.mockReset();
+    mocks.get.mockResolvedValue({ data: { configured: true, google_configured: false, discord_configured: false } });
     useSessionStore.setState({ token: null, isLoggedIn: false });
     window.history.replaceState(null, "", "/invite#raw-token");
   });

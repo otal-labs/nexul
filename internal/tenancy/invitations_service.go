@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/ids"
@@ -49,6 +50,10 @@ type InvitationService struct {
 
 func NewInvitationService(repo InvitationRepo, instanceURL InstanceURLGate) *InvitationService {
 	return &InvitationService{repo: repo, instanceURL: instanceURL, now: time.Now}
+}
+
+func (s *InvitationService) InstanceURL(ctx context.Context) string {
+	return strings.TrimRight(strings.TrimSpace(s.instanceURL.InstanceURL(ctx)), "/")
 }
 
 func (s *InvitationService) Create(ctx context.Context, actorID string, input CreateInvitationInput) (*CreatedInvitation, error) {

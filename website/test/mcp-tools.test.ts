@@ -19,6 +19,9 @@ const productionToolNames = async (): Promise<string[]> => {
     for (const match of source.matchAll(/^\s*Name:\s*"([a-z][a-z_]*)"/gm)) {
       if (match[1]) names.push(match[1]);
     }
+    for (const match of source.matchAll(/accountStatusTool\("([a-z][a-z_]*)"/g)) {
+      if (match[1]) names.push(match[1]);
+    }
   }
   return sortedUnique(names);
 };

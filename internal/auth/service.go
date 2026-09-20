@@ -258,17 +258,6 @@ func (s *Service) SetOAuthHandoffStore(store OAuthHandoffStore) {
 	s.cfg.OAuthHandoffs = store
 }
 
-// resolvePendingInvitesIfNew resolves pending invites into memberships for a new user; a no-op for returning users.
-func (s *Service) resolvePendingInvitesIfNew(ctx context.Context, user *User, created bool) error {
-	if !created {
-		return nil
-	}
-	if err := s.cfg.PendingInvites.ResolvePendingInvites(ctx, user.Login, user.ID); err != nil {
-		return fmt.Errorf("resolve pending invites for %s: %w", user.Login, err)
-	}
-	return nil
-}
-
 // Configured drives the /auth/github 503 gate; reads live DB state, no restart needed.
 func (s *Service) Configured(ctx context.Context) (bool, error) {
 	if s.cfg.Settings == nil {

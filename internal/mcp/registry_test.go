@@ -25,6 +25,7 @@ import (
 	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/repository"
 	"github.com/otal-labs/nexul/internal/runner"
+	"github.com/otal-labs/nexul/internal/tenancy"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/topology"
 	"github.com/otal-labs/nexul/internal/workspace"
@@ -205,6 +206,10 @@ func (workspaceMembersStoreFake) ListMemberUserIDs(context.Context, string) ([]s
 	return nil, nil
 }
 
+type registryInstanceURL struct{}
+
+func (registryInstanceURL) InstanceURL(context.Context) string { return "https://nexul.example" }
+
 // registryNotificationPermGate mirrors server/cmd/wire_gates.go's notificationPermissionGate adapter.
 type registryNotificationPermGate struct {
 	svc *access.Service
@@ -230,6 +235,8 @@ func newRegistryServer(t *testing.T) (*Server, *storage.Store, *fakePublisher) {
 	pub := &fakePublisher{}
 	accessSvc := newAccess(t, store)
 	ownerID := seedOwner(t, store)
+	authSvc := auth.NewService(auth.Config{Secret: []byte("registry-test"), Users: store.Users})
+	invitationSvc := tenancy.NewInvitationService(store.Invitations, registryInstanceURL{})
 	return New(RegistryOptions{
 		Docs:          docs.NewService(store.Docs, accessSvc),
 		Memories:      memories.NewService(store.Memories, testMemoriesPermission{accessSvc}, testProjectLookup{store.Projects}, nil, nil),
@@ -244,6 +251,8 @@ func newRegistryServer(t *testing.T) (*Server, *storage.Store, *fakePublisher) {
 		Runner:        runner.NewService(store.Runners, fakeDispatch{}),
 		Automations:   automations.NewService(store.Automations, nil),
 		Access:        accessSvc,
+		Auth:          authSvc,
+		Invitations:   invitationSvc,
 		Plays:         plays.NewService(store.Plays, registryPlaysPermGate{svc: accessSvc}),
 		PlayRuns:      plays.NewRunner(plays.RunnerConfig{Plays: store.Plays, Trails: store.PlayTrails, Perm: registryPlaysPermGate{svc: accessSvc}}),
 		DeadLetter:    store.DeadLetters,
@@ -256,7 +265,7 @@ func newRegistryServer(t *testing.T) (*Server, *storage.Store, *fakePublisher) {
 
 func TestRegistry_ToolsComplete(t *testing.T) {
 	srv, _, _ := newRegistryServer(t)
-	require.Len(t, srv.tools, 114)
+	require.Len(t, srv.tools, 122)
 	names := make(map[string]bool)
 	for _, tool := range srv.tools {
 		require.NotEmpty(t, tool.Name, "every tool must be named")
@@ -293,6 +302,8 @@ func TestRegistry_ToolsComplete(t *testing.T) {
 		"play_list", "play_create", "play_update", "play_delete",
 		"play_run", "play_run_get", "play_run_stop", "play_run_answer", "play_list_runs",
 		"memory_list", "memory_get", "memory_create", "memory_update", "memory_delete",
+		"create_invitation", "list_invitations", "revoke_invitation",
+		"list_accounts", "disable_account", "reactivate_account", "remove_account", "restore_account",
 	}
 	for _, name := range expected {
 		assert.True(t, names[name], "missing tool %s", name)

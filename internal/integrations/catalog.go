@@ -11,6 +11,10 @@ var catalogSchemas = map[string]string{
 	"invitation.redeemed":    `{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","properties":{"invitation_id":{"type":"string"},"user_id":{"type":"string"}}}`,
 	"invitation.deleted":     `{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","properties":{"invitation_id":{"type":"string"},"reason":{"type":"string"}}}`,
 	"account.admitted":       `{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","properties":{"invitation_id":{"type":"string"},"user_id":{"type":"string"}}}`,
+	"account.disabled":       `{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","required":["account_id"],"properties":{"account_id":{"type":"string"},"actor_id":{"type":"string"}}}`,
+	"account.reactivated":    `{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","required":["account_id"],"properties":{"account_id":{"type":"string"},"actor_id":{"type":"string"}}}`,
+	"account.removed":        `{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","required":["account_id"],"properties":{"account_id":{"type":"string"},"actor_id":{"type":"string"}}}`,
+	"account.restored":       `{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","required":["account_id"],"properties":{"account_id":{"type":"string"},"actor_id":{"type":"string"}}}`,
 	"workspace.member.added": `{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","properties":{"invitation_id":{"type":"string"},"user_id":{"type":"string"},"workspace_id":{"type":"string"}}}`,
 	"doc.created": `{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",

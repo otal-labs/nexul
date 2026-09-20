@@ -47,7 +47,7 @@ func (h *InvitationHandler) create(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	created, err := h.svc.Create(ctx, UserIDFromCtx(r.Context()), CreateInvitationInput{Grants: req.Grants, ExpiresInDays: req.ExpiresInDays})
+	created, err := h.svc.Create(ctx, UserIDFromCtx(r.Context()), CreateInvitationInput(req))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

@@ -14,7 +14,8 @@ export const AccountsSection = () => {
 
   const toggle = async (account: Parameters<typeof AccountRow>[0]["account"]) => {
     const next = account.status === "active" ? "disabled" : "active";
-    const ok = await confirm({ title: `${next === "disabled" ? "Disable" : "Reactivate"} account?`, message: `${account.name || account.login} will ${next === "disabled" ? "no longer be able to sign in" : "be able to sign in again"}.`, destructive: next === "disabled" });
+    const action = next === "disabled" ? "Disable" : account.status === "removed" ? "Restore" : "Reactivate";
+    const ok = await confirm({ title: `${action} account?`, message: `${account.name || account.login} will ${next === "disabled" ? "no longer be able to sign in" : "be able to sign in again"}.`, destructive: next === "disabled" });
     if (ok) update.mutate({ id: account.id, status: next });
   };
 

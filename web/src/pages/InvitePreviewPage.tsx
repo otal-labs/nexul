@@ -14,6 +14,7 @@ import {
   useRedeemInvitation,
   useStartInvitationOAuth,
 } from "@/hooks/InvitationHooks";
+import { useBootstrapStatus } from "@/hooks/AuthHooks";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { parseInvitationFragment, type InvitationAcceptance, type InvitationProvider } from "@/models/Invitation";
@@ -34,6 +35,7 @@ export const InvitePreviewPage = () => {
   const exchange = useCreateInvitationAcceptance();
   const oauth = useStartInvitationOAuth();
   const redeem = useRedeemInvitation();
+  const { data: bootstrapStatus } = useBootstrapStatus();
 
   useEffect(() => {
     if (!location.hash) return;
@@ -51,6 +53,11 @@ export const InvitePreviewPage = () => {
 
   const publicPreview = preview.data;
   const details = acceptance ?? publicPreview;
+  const providers: InvitationProvider[] = [];
+  if (bootstrapStatus?.configured) providers.push("github");
+  if (bootstrapStatus?.google_configured) providers.push("google");
+  if (bootstrapStatus?.discord_configured) providers.push("discord");
+  const instanceName = details?.instance_name ?? (details?.instance_url ? new URL(details.instance_url).host : "this instance");
   const invalid = fragment.malformed || Boolean((fragment.token === "" && !publicPreview && !exchange.isPending) || preview.error || exchange.error);
 
   const startOAuth = (provider: InvitationProvider) => {
@@ -75,14 +82,14 @@ export const InvitePreviewPage = () => {
         <div className="w-full space-y-6">
           <header className="space-y-2 text-center">
             <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-primary/80">Nexul invitation</p>
-            <h1 className="text-2xl font-semibold tracking-tight">Join {details?.instance_name ?? "this instance"}</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">Join {instanceName}</h1>
             <p className="text-sm text-muted-foreground">This one-use link expires {details ? new Date(details.expires_at).toLocaleString() : "soon"}.</p>
           </header>
           {(preview.isPending || exchange.isPending) && <LoadingDisplay label="Checking invitation…" />}
           {invalid && <div className="space-y-3"><ErrorDisplay title={INVALID_MESSAGE} /><Button type="button" variant="outline" onClick={() => window.location.reload()}>Try again</Button></div>}
           {!invalid && details && <InvitationGrantSummary invitation={details} detailed={acceptance != null} />}
           {!invalid && acceptance && <InvitationAcceptancePanel pending={redeem.isPending} onAccept={accept} onDecline={() => navigate("/", { replace: true })} />}
-          {!invalid && !acceptance && publicPreview && <InvitationProviderList providers={publicPreview.providers} disabled={oauth.isPending} onSelect={startOAuth} />}
+          {!invalid && !acceptance && publicPreview && <InvitationProviderList providers={providers} disabled={oauth.isPending} onSelect={startOAuth} />}
         </div>
       </Container>
     </div>

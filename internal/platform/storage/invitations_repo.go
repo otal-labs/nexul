@@ -194,47 +194,56 @@ func (r *InvitationsRepo) Revoke(ctx context.Context, actorID, invitationID stri
 		if err != nil {
 			return fmt.Errorf("get invitation %s: %w", invitationID, err)
 		}
-		grantRows, err := q.ListInvitationGrantsByInvitation(ctx, invitationID)
-		if err != nil {
-			return fmt.Errorf("list invitation grants %s: %w", invitationID, err)
-		}
-		grantRefs := make([]*tenancy.InvitationGrant, 0, len(grantRows))
-		for _, grant := range grantRows {
-			grantRefs = append(grantRefs, &tenancy.InvitationGrant{WorkspaceID: grant.WorkspaceID, RoleID: grant.RoleID})
-		}
-		if len(grantRefs) == 0 {
-			return fmt.Errorf("%w: members:write required in every invited workspace", apperrs.ErrForbidden)
-		}
-		allowed, err := actorCanManage(ctx, q, actorID, grantRefs)
-		if err != nil {
+		if err := requireInvitationManager(ctx, q, actorID, invitationID); err != nil {
 			return err
 		}
-		if !allowed {
-			return fmt.Errorf("%w: members:write required in every invited workspace", apperrs.ErrForbidden)
-		}
-		if row.RedeemedAt.Valid {
-			return apperrs.ErrNotFound
-		}
-		invitation, err := readInvitation(ctx, q, row)
-		if err != nil {
-			if errors.Is(err, apperrs.ErrInvalid) {
-				return deleteInvitation(ctx, q, tx, invitationID, "invalid grant")
-			}
-			return err
-		}
-		if !now.Before(invitation.ExpiresAt) {
-			return deleteInvitation(ctx, q, tx, invitationID, "expired")
-		}
-		if err := validateInvitationPackage(ctx, q, invitation, invitation.InvitedBy); err != nil {
-			return deleteInvitation(ctx, q, tx, invitationID, "creator authority or grant invalid")
-		}
-		if err := removeInvitation(ctx, q, invitationID); err != nil {
-			return err
-		}
-		return enqueueInvitationEvents(ctx, tx, events)
+		return revokeInvitationRow(ctx, q, tx, row, now, events)
 	})
 }
 
+func requireInvitationManager(ctx context.Context, q *sqlcgen.Queries, actorID, invitationID string) error {
+	grantRows, err := q.ListInvitationGrantsByInvitation(ctx, invitationID)
+	if err != nil {
+		return fmt.Errorf("list invitation grants %s: %w", invitationID, err)
+	}
+	grants := make([]*tenancy.InvitationGrant, 0, len(grantRows))
+	for _, grant := range grantRows {
+		grants = append(grants, &tenancy.InvitationGrant{WorkspaceID: grant.WorkspaceID, RoleID: grant.RoleID})
+	}
+	allowed, err := actorCanManage(ctx, q, actorID, grants)
+	if err != nil {
+		return err
+	}
+	if len(grants) == 0 || !allowed {
+		return fmt.Errorf("%w: members:write required in every invited workspace", apperrs.ErrForbidden)
+	}
+	return nil
+}
+
+func revokeInvitationRow(ctx context.Context, q *sqlcgen.Queries, tx *sql.Tx, row sqlcgen.Invitation, now time.Time, events []eventbus.OutboxEvent) error {
+	if row.RedeemedAt.Valid {
+		return apperrs.ErrNotFound
+	}
+	invitation, err := readInvitation(ctx, q, row)
+	if err != nil {
+		if errors.Is(err, apperrs.ErrInvalid) {
+			return deleteInvitation(ctx, q, tx, row.ID, "invalid grant")
+		}
+		return err
+	}
+	if !now.Before(invitation.ExpiresAt) {
+		return deleteInvitation(ctx, q, tx, row.ID, "expired")
+	}
+	if err := validateInvitationPackage(ctx, q, invitation, invitation.InvitedBy); err != nil {
+		return deleteInvitation(ctx, q, tx, row.ID, "creator authority or grant invalid")
+	}
+	if err := removeInvitation(ctx, q, row.ID); err != nil {
+		return err
+	}
+	return enqueueInvitationEvents(ctx, tx, events)
+}
+
+//nolint:gocyclo // Redemption stays in one transaction so every identity, membership, receipt, and outbox write rolls back together.
 func (r *InvitationsRepo) Redeem(ctx context.Context, acceptanceHash string, identity tenancy.InvitationIdentity, now time.Time, events ...eventbus.OutboxEvent) (*tenancy.InvitationAdmission, error) {
 	if !validTokenHash(acceptanceHash) || identity.Provider == "" || identity.ProviderUserID == "" || identity.ID == "" || identity.Login == "" {
 		return nil, invalidInvitation()

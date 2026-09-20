@@ -166,6 +166,7 @@ func (h *Handler) ProtectedRoutes() http.Handler {
 	mux.HandleFunc("GET /api/auth/accounts", h.listAccounts)
 	mux.HandleFunc("POST /api/auth/accounts/{id}/disable", h.disableAccount)
 	mux.HandleFunc("POST /api/auth/accounts/{id}/reactivate", h.reactivateAccount)
+	mux.HandleFunc("PATCH /api/auth/accounts/{id}", h.updateAccountStatus)
 	mux.HandleFunc("DELETE /api/auth/accounts/{id}", h.removeAccount)
 	mux.HandleFunc("POST /api/auth/accounts/{id}/restore", h.restoreAccount)
 	return mux
@@ -629,7 +630,62 @@ func (h *Handler) listAccounts(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"accounts": accounts})
+	out := make([]accountResponse, 0, len(accounts))
+	for _, account := range accounts {
+		out = append(out, accountResponse{
+			ID: account.ID, Provider: account.Provider, Login: account.Login, Name: account.Name,
+			AvatarURL: account.AvatarURL, Status: account.AccountStatus,
+			CanCreateWorkspace: account.CanCreateWorkspace, CreatedAt: account.CreatedAt,
+		})
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"accounts": out})
+}
+
+type accountResponse struct {
+	ID                 string        `json:"id"`
+	Provider           Provider      `json:"provider"`
+	Login              string        `json:"login"`
+	Name               string        `json:"name"`
+	AvatarURL          string        `json:"avatar_url"`
+	Status             AccountStatus `json:"status"`
+	CanCreateWorkspace bool          `json:"can_create_workspace"`
+	CreatedAt          time.Time     `json:"created_at"`
+}
+
+type updateAccountStatusRequest struct {
+	Status AccountStatus `json:"status"`
+}
+
+func (h *Handler) updateAccountStatus(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+	var req updateAccountStatusRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	target, err := h.svc.GetUserByID(ctx, r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	if req.Status == AccountDisabled {
+		err = h.svc.DisableAccount(ctx, currentUserID(r), target.ID)
+	}
+	if req.Status == AccountActive && target.AccountStatus == AccountDisabled {
+		err = h.svc.ReactivateAccount(ctx, currentUserID(r), target.ID)
+	}
+	if req.Status == AccountActive && target.AccountStatus == AccountRemoved {
+		err = h.svc.RestoreAccount(ctx, currentUserID(r), target.ID)
+	}
+	if req.Status != AccountActive && req.Status != AccountDisabled {
+		err = fmt.Errorf("%w: account status must be active or disabled", apperrs.ErrInvalid)
+	}
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) disableAccount(w http.ResponseWriter, r *http.Request) {
