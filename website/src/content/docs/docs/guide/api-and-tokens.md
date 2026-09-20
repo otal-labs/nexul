@@ -5,18 +5,25 @@ sidebar:
   order: 13
 ---
 
-Every capability the web UI uses is also available as a plain HTTP/JSON API under `/api` — the same use-case layer the MCP server calls, just with a REST-shaped adapter instead. Nothing is MCP-exclusive and nothing is UI-exclusive.
+The web UI uses the plain HTTP/JSON API under `/api`. MCP is a separate
+adapter over the same use-case layer.
 
 ## OpenAPI
 
-The API is documented as an OpenAPI 3.x spec, generated directly from the routes the gateway actually mounts — never hand-written, so it can't drift out of sync.
+The server builds an OpenAPI 3.x document from the gateway's tracked mounted
+routes. Maintained summaries and tags are applied as annotations to those
+routes. The document is not a manually aligned route manifest or a separate
+YAML file.
 
 - `/openapi.json` — the raw spec.
 - `/swagger` — a Swagger UI browsing it.
 
 ## Permissions
 
-One vocabulary covers every actor: a permission is `<domain>:<action>`, where the action is `read`, `write`, or `delete`, and the domain is one of the API's own domains — `docs`, `tickets`, `stacks`, `topology`, `projects`, `workspaces`, `members`, `roles`, `dns`, `automations`, `integrations`, and more. The full catalog (26 domains) is served at:
+One vocabulary covers every actor: a permission is `<domain>:<action>`, where
+the action is usually `read`, `write`, or `delete`. Some domains also declare
+a verb: `docs:thread`, `plays:run`, and `memories:clone`. The full catalog is
+served at:
 
 ```
 GET /api/permissions/catalog

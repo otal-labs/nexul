@@ -19,7 +19,7 @@ func NewHandler(svc *Service) *Handler {
 
 // Routes returns the deploy and stack REST endpoints.
 func (h *Handler) Routes() http.Handler {
-	mux := http.NewServeMux()
+	mux := httpx.NewServeMux()
 	mux.HandleFunc("POST /api/deploys", h.deploy)
 	mux.HandleFunc("GET /api/deploys", h.list)
 	mux.HandleFunc("GET /api/deploys/{id}", h.get)
@@ -34,7 +34,7 @@ func (h *Handler) Routes() http.Handler {
 
 // mountStackRoutes registers the stack CRUD + sub-resource endpoints under prefix, so /api/stacks and its
 // deprecated /api/services alias share one set of handler functions.
-func (h *Handler) mountStackRoutes(mux *http.ServeMux, prefix string) {
+func (h *Handler) mountStackRoutes(mux *httpx.ServeMux, prefix string) {
 	mux.HandleFunc("POST "+prefix, h.createStack)
 	mux.HandleFunc("GET "+prefix, h.listStacks)
 	mux.HandleFunc("GET "+prefix+"/{id}", h.getStack)

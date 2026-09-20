@@ -73,7 +73,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	mux.Handle("/ws/runner", wsHandler)
 	wsServer = &http.Server{Addr: cfg.WSAddr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 
-	apiMux := http.NewServeMux()
+	apiMux := httpx.NewServeMux()
 	mountGateway(apiMux, "/api/docs", docs.NewHandler(svc.docsSvc).Routes())
 	mountGateway(apiMux, "/api/memories", memories.NewHandler(svc.memoriesSvc).Routes())
 	mountGateway(apiMux, "/api/attachments", attachments.NewHandler(svc.attachmentsSvc).Routes())
@@ -131,10 +131,8 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	apiMux.HandleFunc("GET /api/instance/upgrade", instanceUpgradeGetHandler(runnerSvc, instanceAdmin))
 	apiMux.HandleFunc("POST /api/instance/upgrade", instanceUpgradePostHandler(runnerSvc, instanceAdmin))
 
-	// Generated from the gateway by registering the mounted routes, never hand-written.
 	spec := openapi.New(openapi.Info{Title: "Nexul API", Version: "v1"})
 	spec.AddSecuritySchemes()
-	registerOpenAPIRoutes(spec)
 
 	mcpServer := mcp.New(mcp.RegistryOptions{
 		Docs:          svc.docsSvc,
@@ -161,7 +159,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 		Actor:         mcpActor,
 	})
 
-	httpMux := http.NewServeMux()
+	httpMux := httpx.NewServeMux()
 	mountGateway(httpMux, "/auth", svc.authHandler.Routes())
 	httpMux.Handle("/auth/connectors/", svc.connectorsHandler.PublicRoutes())
 	// Authenticates with the runner secret, not the browser session — a fresh machine's curl carries no session token.
@@ -186,6 +184,8 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	httpMux.Handle("/mcp", svc.authSvc.RequireAuth(mcpServer))
 	httpMux.Handle("/hooks/github", gitprovider.NewWebhookHandler(cfg.AuthSecret, bus))
 	httpMux.Handle("/hooks/livekit", svc.voiceWebhookHandler)
+	routes := append(httpx.RoutesOf(apiMux), httpx.RoutesOf(httpMux)...)
+	registerOpenAPIRoutes(spec, routes)
 	httpMux.Handle("/openapi.json", spec.Handler())
 	httpMux.Handle("/swagger", spec.Handler())
 	httpMux.Handle("/", webui.Handler(webui.Assets()))
@@ -206,8 +206,9 @@ func shutdownServers(wsServer, mcpServerHTTP, httpServer *http.Server) {
 	_ = httpServer.Shutdown(shutdown)
 }
 
-// registerOpenAPIRoutes mirrors the mounted gateway into the OpenAPI spec; new routes get a Register line here too.
-func registerOpenAPIRoutes(spec *openapi.Spec) {
+// registerOpenAPIRoutes adds mounted operations and applies the maintained summaries.
+func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
+	spec.RegisterMountedRoutes(routes)
 	spec.SetTagDescription("auth", "Identity, onboarding, settings, members")
 	spec.SetTagDescription("docs", "Documents and version history")
 	spec.SetTagDescription("attachments", "Files attached to docs and tickets")

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -111,7 +112,7 @@ func requestUserID(r *http.Request) string {
 // withUserID injects the user id via setCtx (each domain's own WithUserID) so writes attribute without importing auth.
 func withUserID(setCtx func(context.Context, string) context.Context) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		wrapped := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			userID := requestUserID(r)
 			if userID == "" {
 				httpx.WriteError(w, apperrs.ErrUnauthorized)
@@ -119,6 +120,7 @@ func withUserID(setCtx func(context.Context, string) context.Context) func(http.
 			}
 			next.ServeHTTP(w, r.WithContext(setCtx(r.Context(), userID)))
 		})
+		return httpx.WithRoutes(wrapped, httpx.RoutesOf(next))
 	}
 }
 
@@ -152,9 +154,13 @@ func serveHTTP(srv *http.Server, logger *slog.Logger, stop context.CancelFunc) {
 }
 
 // mountGateway registers both the exact prefix and its trailing-slash subtree; a bare path alone 307s to the slash.
-func mountGateway(mux *http.ServeMux, prefix string, h http.Handler) {
-	mux.Handle(prefix, h)
-	mux.Handle(prefix+"/", h)
+func mountGateway(mux *httpx.ServeMux, prefix string, h http.Handler) {
+	if prefix == "/api" || strings.HasPrefix(prefix, "/api/") {
+		if httpx.RoutesOf(h) == nil {
+			panic("API gateway handlers must expose tracked routes")
+		}
+	}
+	mux.Mount(prefix, h)
 }
 
 // withIdentity attaches the user as the acting identity so permission checks (docs, access) see who is calling.

@@ -47,7 +47,7 @@ coverage:
 	LC_ALL=C awk '/^mode:/ { next } { total += $$2; if ($$3 > 0) covered += $$2 } END { c = total ? covered * 100 / total : 100; printf "Coverage (exempt paths excluded): %.1f%% (threshold 80%%)\n", c; exit !(c >= 80) }' coverage.filtered.out
 	go tool cover -html=coverage.filtered.out -o coverage.html
 
-# Regenerates internal/platform/storage/sqlcgen from queries/*.sql against the migrations.
+# Regenerates internal/platform/storage/sqlcgen from internal/platform/storage/queries/*.sql against the migrations.
 sqlc:
 	$(SQLC) generate
 

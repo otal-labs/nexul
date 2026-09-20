@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+
+	"github.com/otal-labs/nexul/internal/platform/httpx"
 )
 
 // Info is the OpenAPI top-level metadata block.
@@ -22,6 +24,12 @@ type Spec struct {
 	paths    map[string]*PathItem
 	tags     map[string]string // tag -> description
 	security bool
+	mounted  map[routeKey]struct{}
+}
+
+type routeKey struct {
+	method string
+	path   string
 }
 
 // New starts an empty spec with the given info.
@@ -39,9 +47,18 @@ func (s *Spec) AddSecuritySchemes() {
 	s.security = true
 }
 
-// Register adds one operation to the spec; a repeat method+path replaces the summary but keeps tag order stable.
+// Register adds one operation to the spec; after mounted routes are loaded, it annotates only those operations.
 func (s *Spec) Register(method, path, summary string, tags ...string) {
 	method = strings.ToUpper(method)
+	if s.mounted != nil {
+		if _, ok := s.mounted[routeKey{method: method, path: path}]; !ok {
+			return
+		}
+	}
+	s.register(method, path, summary, tags...)
+}
+
+func (s *Spec) register(method, path, summary string, tags ...string) {
 	item, ok := s.paths[path]
 	if !ok {
 		item = &PathItem{}
@@ -68,6 +85,31 @@ func (s *Spec) Register(method, path, summary string, tags ...string) {
 			s.tags[tag] = ""
 		}
 	}
+}
+
+// RegisterMountedRoutes adds every method-bearing route collected from the HTTP gateway.
+func (s *Spec) RegisterMountedRoutes(routes []httpx.Route) {
+	s.paths = make(map[string]*PathItem)
+	s.mounted = make(map[routeKey]struct{}, len(routes))
+	for _, route := range routes {
+		method := strings.ToUpper(route.Method)
+		s.mounted[routeKey{method: method, path: route.Path}] = struct{}{}
+	}
+	for _, route := range routes {
+		method := strings.ToUpper(route.Method)
+		s.register(method, route.Path, "API operation", routeTag(route.Path))
+	}
+}
+
+func routeTag(path string) string {
+	path = strings.TrimPrefix(path, "/api/")
+	if path == "" {
+		return ""
+	}
+	if tag, _, ok := strings.Cut(path, "/"); ok {
+		return tag
+	}
+	return path
 }
 
 // SetTagDescription annotates a tag shown in the Swagger UI grouping.

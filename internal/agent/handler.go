@@ -22,7 +22,7 @@ func NewHandler(svc *Service) *Handler {
 
 // Routes returns the agent REST endpoints.
 func (h *Handler) Routes() http.Handler {
-	mux := http.NewServeMux()
+	mux := httpx.NewServeMux()
 	mux.HandleFunc("POST /api/agent/conversations/{id}/interrupt", h.interrupt)
 	mux.HandleFunc("POST /api/agent/conversations/{id}/answer", h.answer)
 	return mux

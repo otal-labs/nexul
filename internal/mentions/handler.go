@@ -19,7 +19,7 @@ func NewHandler(svc *Service) *Handler {
 
 // Routes returns the mentions REST endpoints.
 func (h *Handler) Routes() http.Handler {
-	mux := http.NewServeMux()
+	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /api/mentions/search", h.search)
 	mux.HandleFunc("POST /api/mentions/resolve", h.resolve)
 	return mux

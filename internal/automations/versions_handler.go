@@ -7,7 +7,7 @@ import (
 )
 
 // versionRoutes registers the version-history endpoints, called only when a VersionsService is wired.
-func (h *Handler) versionRoutes(mux *http.ServeMux) {
+func (h *Handler) versionRoutes(mux *httpx.ServeMux) {
 	mux.HandleFunc("POST /api/automations/{id}/versions", h.pushVersion)
 	mux.HandleFunc("GET /api/automations/{id}/versions", h.listVersions)
 	mux.HandleFunc("GET /api/automations/{id}/versions/diff", h.diffVersions)

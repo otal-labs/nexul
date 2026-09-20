@@ -25,7 +25,7 @@ func NewHTTPHandler(svc *Service) *HTTPHandler {
 
 // Routes returns the runner REST endpoints mounted behind the user session.
 func (h *HTTPHandler) Routes() http.Handler {
-	mux := http.NewServeMux()
+	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /api/runners", h.list)
 	mux.HandleFunc("GET /api/runners/queue", h.queue)
 	mux.HandleFunc("GET /api/runners/install", h.install)
@@ -38,7 +38,7 @@ func (h *HTTPHandler) Routes() http.Handler {
 
 // PublicRoutes returns the runner download endpoint, auth'd by the runner secret, so it must sit outside RequireAuth.
 func (h *HTTPHandler) PublicRoutes() http.Handler {
-	mux := http.NewServeMux()
+	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /api/runners/download/{target}", h.download)
 	return mux
 }

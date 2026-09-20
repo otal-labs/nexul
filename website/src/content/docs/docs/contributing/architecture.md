@@ -6,10 +6,10 @@ sidebar:
 ---
 
 Nexul is one Go module (`github.com/otal-labs/nexul`) that builds a
-`server` binary and a `runner` binary, with a `cli` binary planned for the
-same module. Around them sit a React web app, a thin Electron desktop shell,
-a TypeScript SDK, and a small automations host — all in the same repository
-so the seams between them stay explicit instead of accidental.
+`server` binary and a `runner` binary. The repository also contains a React
+web app, a thin Electron desktop shell, a TypeScript SDK, a Bun CLI exposed as
+`nexul`, and a small automations host. Keeping these surfaces in one repository
+makes the seams between them explicit.
 
 ## The domain layer
 
@@ -33,9 +33,9 @@ call it, and neither duplicates it:
   drive the product: search docs, create tickets, read topology, trigger
   deploys, replay a dead letter.
 
-If a capability exists in the UI, it exists in MCP by construction, and vice
-versa. Neither adapter carries business logic of its own — each parses
-input, calls the use-case, and formats the output.
+Capabilities belong in the use-case layer. A feature is not complete until
+both applicable adapters expose it. Neither adapter carries business logic of
+its own; each parses input, calls the use-case, and formats the output.
 
 ## SQLite is the spine
 
@@ -71,8 +71,9 @@ connection token and otherwise stays out of the way.
 
 ## SDK and automations
 
-`sdk/` is the TypeScript package automations are written against — a client,
-an API client, generated event types, a config schema, and a testing
-surface. `automations/` is the small container bundled with every
-instance that runs Default automations and small Custom ones; bigger Custom
-automations run wherever their owner deploys them.
+`sdk/` is the TypeScript package automations are written against. It contains
+the API client, generated event types, config schema, testing surface, and a
+Bun CLI with `nexul init`, `nexul dev`, `nexul push`, and `nexul pull`.
+`automations/` is the small container bundled with every instance that runs
+Default automations and small Custom ones. Bigger Custom automations run
+wherever their owner deploys them.

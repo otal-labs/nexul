@@ -5,7 +5,10 @@ sidebar:
   order: 4
 ---
 
-Nexul talks to GitHub through a single GitHub App. It signs people in, connects your workspace to GitHub, lets runners clone private repositories to build them, and — while your instance's own repository is private — downloads runner binaries from its releases. You create this App once, then paste its details into the [setup wizard](/docs/guide/setup-wizard/).
+Nexul talks to GitHub through a single GitHub App. It signs people in,
+connects your workspace to GitHub, and lets runners clone private application
+repositories to build them. You create this App once, then paste its details
+into the [setup wizard](/docs/guide/setup-wizard/).
 
 ## Why a GitHub App and not an OAuth App
 
@@ -39,7 +42,7 @@ Generate a **client secret** on the App's page and save it. GitHub only shows it
 
 ## 2. Install it
 
-On the App's page, click Install App, choose your account, and pick **All repositories**. Every repository you want to deploy needs the App installed on it — including your Nexul instance's own repository, while it's private, since the runner install command downloads release binaries through the connector's token.
+On the App's page, click Install App, choose your account, and pick **All repositories**, or select the repositories you need. Every private application repository you want to deploy needs the App installed on it. Public repositories do not need an installation for cloning.
 
 ## 3. Paste it into Nexul
 

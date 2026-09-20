@@ -44,7 +44,7 @@ func NewHandler(svc *Service) *Handler {
 
 // Routes returns the connectors REST endpoints, mounted behind RequireAuth at /api/connectors.
 func (h *Handler) Routes() http.Handler {
-	mux := http.NewServeMux()
+	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /api/connectors", h.list)
 	mux.HandleFunc("GET /api/connectors/{id}/oauth/start", h.oauthStart)
 	mux.HandleFunc("POST /api/connectors/{id}/manual/verify", h.verifyManual)

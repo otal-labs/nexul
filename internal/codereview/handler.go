@@ -21,7 +21,7 @@ func NewHandler(svc *Service) *Handler {
 
 // Routes' List filters by query param (ticket_id or repo+number), so the collection route stays free for /{id}.
 func (h *Handler) Routes() http.Handler {
-	mux := http.NewServeMux()
+	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /api/reviews", h.list)
 	mux.HandleFunc("GET /api/reviews/{id}", h.get)
 	return mux

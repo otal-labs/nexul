@@ -38,7 +38,7 @@ on the docs site is a digest of them.
   `.scratch/`.
 - Go changes keep the coverage gate green (`make coverage`). Web changes pass
   `bun run --cwd web lint` and `bun run --cwd web test`.
-- SQL lives in `queries/*.sql`; run `make sqlc` and commit the generated code.
+- SQL lives in `internal/platform/storage/queries/*.sql`; run `make sqlc` and commit the generated code.
 
 ## Pull requests
 

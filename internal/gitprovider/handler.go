@@ -21,7 +21,7 @@ func NewHandler(p GitProvider) *Handler {
 
 // Routes returns the gitprovider REST endpoints.
 func (h *Handler) Routes() http.Handler {
-	mux := http.NewServeMux()
+	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /api/repos/{owner}/{repo}/prs", h.listPRs)
 	mux.HandleFunc("GET /api/repos/{owner}/{repo}/prs/{number}", h.getPR)
 	mux.HandleFunc("GET /api/repos/{owner}/{repo}", h.getRepo)

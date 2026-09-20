@@ -39,7 +39,7 @@ type subscribeRequest struct {
 
 // Routes returns the integrations REST endpoints.
 func (h *Handler) Routes() http.Handler {
-	mux := http.NewServeMux()
+	mux := httpx.NewServeMux()
 	mux.HandleFunc("POST /api/integrations", h.install)
 	mux.HandleFunc("GET /api/integrations", h.list)
 	mux.HandleFunc("GET /api/integrations/{id}", h.get)

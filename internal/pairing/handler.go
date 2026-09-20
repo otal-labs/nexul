@@ -21,7 +21,7 @@ func NewHandler(svc *Service) *Handler {
 
 // Routes returns the pairing REST endpoints, mounted behind RequireAuth at /api/pairing.
 func (h *Handler) Routes() http.Handler {
-	mux := http.NewServeMux()
+	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /api/pairing/computers", h.listComputers)
 	mux.HandleFunc("POST /api/pairing/computers", h.pair)
 	mux.HandleFunc("POST /api/pairing/computers/{id}/repair", h.repair)
