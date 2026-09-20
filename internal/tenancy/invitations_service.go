@@ -166,6 +166,9 @@ func cloneInvitationGrants(grants []*InvitationGrant) []*InvitationGrant {
 }
 
 func invitationDuration(days int) (time.Duration, error) {
+	if days == 0 {
+		days = 7
+	}
 	if days == 1 {
 		return 24 * time.Hour, nil
 	}

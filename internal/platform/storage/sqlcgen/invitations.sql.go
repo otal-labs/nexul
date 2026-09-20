@@ -609,6 +609,78 @@ func (q *Queries) ListInvitationsByActor(ctx context.Context, invitedBy string) 
 	return items, nil
 }
 
+const listManageableInvitationHeaders = `-- name: ListManageableInvitationHeaders :many
+SELECT i.id, i.token_hash, i.invited_by, i.created_at, i.expires_at, i.redeemed_at, i.redeemed_by
+FROM invitations i
+WHERE i.redeemed_at IS NULL
+  AND i.expires_at > ?
+  AND NOT EXISTS (
+      SELECT 1
+      FROM invitation_grants g
+      WHERE g.invitation_id = i.id
+        AND NOT EXISTS (
+            SELECT 1
+            FROM workspace_members m
+            JOIN roles r ON r.id = m.role_id
+            LEFT JOIN permission_overwrites po
+              ON po.resource_type = 'workspace'
+             AND po.resource_id = g.workspace_id
+             AND po.user_id = m.user_id
+            WHERE m.workspace_id = g.workspace_id
+              AND m.user_id = ?
+              AND (
+                  r.is_owner_role = 1
+                  OR (
+                      instr(COALESCE(po.deny, '[]'), '"members:write"') = 0
+                      AND (
+                          instr(r.permissions, '"members:write"') > 0
+                          OR instr(COALESCE(po.allow, '[]'), '"members:write"') > 0
+                      )
+                  )
+              )
+        )
+  )
+ORDER BY i.created_at, i.id
+LIMIT ?
+`
+
+type ListManageableInvitationHeadersParams struct {
+	ExpiresAt int64
+	UserID    string
+	Limit     int64
+}
+
+func (q *Queries) ListManageableInvitationHeaders(ctx context.Context, arg ListManageableInvitationHeadersParams) ([]Invitation, error) {
+	rows, err := q.db.QueryContext(ctx, listManageableInvitationHeaders, arg.ExpiresAt, arg.UserID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Invitation
+	for rows.Next() {
+		var i Invitation
+		if err := rows.Scan(
+			&i.ID,
+			&i.TokenHash,
+			&i.InvitedBy,
+			&i.CreatedAt,
+			&i.ExpiresAt,
+			&i.RedeemedAt,
+			&i.RedeemedBy,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const markInvitationRedeemed = `-- name: MarkInvitationRedeemed :execrows
 UPDATE invitations
 SET redeemed_at = ?, redeemed_by = ?

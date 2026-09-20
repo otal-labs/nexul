@@ -27,6 +27,7 @@ type invitationRepoFake struct {
 	listErr      error
 	previewErr   error
 	redeemErr    error
+	revokeErr    error
 	redeemed     []InvitationIdentity
 }
 
@@ -68,6 +69,9 @@ func (f *invitationRepoFake) List(_ context.Context, _ string, _ time.Time) ([]*
 }
 
 func (f *invitationRepoFake) Revoke(_ context.Context, _ string, _ string, _ time.Time, events ...eventbus.OutboxEvent) error {
+	if f.revokeErr != nil {
+		return f.revokeErr
+	}
 	f.events = append(f.events, events...)
 	return nil
 }
@@ -112,6 +116,15 @@ func TestInvitationService_Create_OneTimeURLAndLifetime(t *testing.T) {
 	assert.Equal(t, uuid.Version(4), parsed.Version())
 	assert.Equal(t, 7*24*time.Hour, repo.created[0].ExpiresAt.Sub(repo.created[0].CreatedAt))
 	assert.NotContains(t, created.URL, repo.created[0].ID)
+}
+
+func TestInvitationService_Create_OmittedLifetimeDefaultsToSevenDays(t *testing.T) {
+	t.Parallel()
+	svc, repo := newInvitationServiceFixture()
+	_, err := svc.Create(t.Context(), "actor", CreateInvitationInput{Grants: []*InvitationGrant{{WorkspaceID: "ws-1", RoleID: "role-editor"}}})
+	require.NoError(t, err)
+	require.Len(t, repo.created, 1)
+	assert.Equal(t, 7*24*time.Hour, repo.created[0].ExpiresAt.Sub(repo.created[0].CreatedAt))
 }
 
 func TestInvitationService_Create_RejectsUnsupportedLifetime(t *testing.T) {

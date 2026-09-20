@@ -3,6 +3,7 @@ package tenancy
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -30,6 +31,18 @@ func TestInvitationHandler_CreateAndList_UseInvitationService(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 }
 
+func TestInvitationHandler_Create_OmittedLifetimeDefaultsToSevenDays(t *testing.T) {
+	t.Parallel()
+	svc, repo := newInvitationServiceFixture()
+	h := NewInvitationHandler(svc)
+	req := httptest.NewRequest(http.MethodPost, "/api/invitations", bytes.NewBufferString(`{"grants":[{"workspace_id":"ws-1","role_id":"role-editor"}]}`)).WithContext(WithUserID(t.Context(), "actor"))
+	rec := httptest.NewRecorder()
+	h.Routes().ServeHTTP(rec, req)
+	require.Equal(t, http.StatusCreated, rec.Code)
+	require.Len(t, repo.created, 1)
+	assert.Equal(t, 7*24*time.Hour, repo.created[0].ExpiresAt.Sub(repo.created[0].CreatedAt))
+}
+
 func TestInvitationHandler_Preview_ReturnsMetadataOnly(t *testing.T) {
 	t.Parallel()
 	svc, repo := newInvitationServiceFixture()
@@ -46,4 +59,28 @@ func TestInvitationHandler_Preview_ReturnsMetadataOnly(t *testing.T) {
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
 	require.Len(t, body.Grants, 1)
 	assert.Equal(t, "Acme", body.Grants[0].WorkspaceName)
+}
+
+func TestInvitationHandler_DecodeAndServiceErrors_ReturnJSONErrors(t *testing.T) {
+	t.Parallel()
+	svc, repo := newInvitationServiceFixture()
+	h := NewInvitationHandler(svc)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/invitations", bytes.NewBufferString("{"))
+	req = req.WithContext(WithUserID(req.Context(), "actor"))
+	rec := httptest.NewRecorder()
+	h.Routes().ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+
+	repo.listErr = errors.New("list failed")
+	req = httptest.NewRequest(http.MethodGet, "/api/invitations", nil).WithContext(WithUserID(t.Context(), "actor"))
+	rec = httptest.NewRecorder()
+	h.Routes().ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+
+	repo.revokeErr = errors.New("revoke failed")
+	req = httptest.NewRequest(http.MethodDelete, "/api/invitations/inv-1", nil).WithContext(WithUserID(t.Context(), "actor"))
+	rec = httptest.NewRecorder()
+	h.Routes().ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 }

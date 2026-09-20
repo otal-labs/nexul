@@ -3,6 +3,8 @@ package storage
 import (
 	"database/sql"
 	"errors"
+	"fmt"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -318,6 +320,72 @@ func TestInvitationsRepo_LazyExpiryDeletion_WritesDeletionEvent(t *testing.T) {
 	var topic string
 	require.NoError(t, s.db.QueryRowContext(ctx, `SELECT topic FROM outbox WHERE topic = ? ORDER BY created_at DESC LIMIT 1`, tenancy.TopicInvitationDeleted).Scan(&topic))
 	assert.Equal(t, tenancy.TopicInvitationDeleted, topic)
+}
+
+func TestInvitationsRepo_GetByAcceptanceHash_StorageErrorIsNotInvalidInvitation(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	require.NoError(t, s.db.Close())
+	_, err := s.Invitations.GetByAcceptanceHash(t.Context(), strings.Repeat("a", 64), time.Now().UTC())
+	require.Error(t, err)
+	assert.False(t, errors.Is(err, apperrs.ErrNotFound))
+}
+
+func TestInvitationsRepo_Revoke_UnauthorizedCallerCannotCleanupExpiredInvitation(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	now := time.Date(2026, 9, 20, 12, 0, 0, 0, time.UTC)
+	seedInvitationWorkspace(t, s, "ws-1", "Acme", "role-editor", false, "owner")
+	_, _, err := s.Users.UpsertUser(ctx, newTestUser("intruder", "intruder-provider", "intruder"))
+	require.NoError(t, err)
+	_, tokenHash := invitationToken(t, "34")
+	require.NoError(t, s.Invitations.Create(ctx, newInvitation("inv-1", "owner", "ws-1", "role-editor", now, 24*time.Hour), tokenHash))
+
+	err = s.Invitations.Revoke(ctx, "intruder", "inv-1", now.Add(48*time.Hour))
+	assert.ErrorIs(t, err, apperrs.ErrForbidden)
+	var count int
+	require.NoError(t, s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM invitations WHERE id = 'inv-1'`).Scan(&count))
+	assert.Equal(t, 1, count)
+}
+
+func TestInvitationsRepo_Revoke_UnauthorizedCallerCannotCleanupInvalidGrant(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	now := time.Date(2026, 9, 20, 12, 0, 0, 0, time.UTC)
+	seedInvitationWorkspace(t, s, "ws-1", "Acme", "role-manager", false, "owner")
+	require.NoError(t, s.Roles.Create(ctx, &roles.Role{ID: "role-reviewer", WorkspaceID: "ws-1", Name: "Reviewer", CreatedAt: now, UpdatedAt: now}))
+	_, _, err := s.Users.UpsertUser(ctx, newTestUser("intruder", "intruder-provider", "intruder"))
+	require.NoError(t, err)
+	_, tokenHash := invitationToken(t, "35")
+	invitation := newInvitation("inv-1", "owner", "ws-1", "role-reviewer", now, 7*24*time.Hour)
+	require.NoError(t, s.Invitations.Create(ctx, invitation, tokenHash))
+	require.NoError(t, s.Roles.Delete(ctx, "role-reviewer"))
+
+	err = s.Invitations.Revoke(ctx, "intruder", "inv-1", now)
+	assert.ErrorIs(t, err, apperrs.ErrForbidden)
+	var count int
+	require.NoError(t, s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM invitations WHERE id = 'inv-1'`).Scan(&count))
+	assert.Equal(t, 1, count)
+}
+
+func TestInvitationsRepo_List_IsBoundedToOneHundredManageableInvitations(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	now := time.Date(2026, 9, 20, 12, 0, 0, 0, time.UTC)
+	seedInvitationWorkspace(t, s, "ws-1", "Acme", "role-editor", false, "owner")
+	for i := range 101 {
+		raw := fmt.Sprintf("4d2f3f29-2a43-4ae7-b2d4-0b6f1a7f4c%02x", i)
+		tokenHash, err := tenancy.HashInvitationToken(raw)
+		require.NoError(t, err)
+		invitation := newInvitation(fmt.Sprintf("inv-%03d", i), "owner", "ws-1", "role-editor", now.Add(time.Duration(i)*time.Second), 7*24*time.Hour)
+		require.NoError(t, s.Invitations.Create(ctx, invitation, tokenHash))
+	}
+	invitations, err := s.Invitations.List(ctx, "owner", now)
+	require.NoError(t, err)
+	assert.Len(t, invitations, 100)
 }
 
 func TestOAuthHandoffs_StateBoundAcceptance_IsolatedAndHashed(t *testing.T) {

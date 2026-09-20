@@ -17,15 +17,19 @@ func MCPTools(s *InvitationService) []mcptool.Tool {
 			InputSchema: map[string]any{"type": "object", "properties": map[string]any{
 				"grants":          map[string]any{"type": "array", "items": map[string]any{"type": "object"}},
 				"expires_in_days": map[string]any{"type": "integer", "enum": []int{1, 7}},
-			}, "required": []string{"grants", "expires_in_days"}},
+			}, "required": []string{"grants"}},
 			Call: func(ctx context.Context, args map[string]any) (any, error) {
 				grants, err := parseInvitationGrants(args["grants"])
 				if err != nil {
 					return nil, err
 				}
-				days, ok := args["expires_in_days"].(float64)
-				if !ok {
-					return nil, fmt.Errorf("expires_in_days is required")
+				days := float64(7)
+				if rawDays, present := args["expires_in_days"]; present {
+					var ok bool
+					days, ok = rawDays.(float64)
+					if !ok {
+						return nil, fmt.Errorf("expires_in_days must be a number")
+					}
 				}
 				return s.Create(ctx, actorID(ctx), CreateInvitationInput{Grants: grants, ExpiresInDays: int(days)})
 			},

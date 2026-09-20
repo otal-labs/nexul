@@ -1,7 +1,9 @@
 package tenancy
 
 import (
+	"context"
 	"net/http"
+	"time"
 
 	"github.com/otal-labs/nexul/internal/platform/httpx"
 )
@@ -38,12 +40,14 @@ type invitationPreviewRequest struct {
 }
 
 func (h *InvitationHandler) create(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := invitationRequestContext(r)
+	defer cancel()
 	var req createInvitationRequest
 	if err := httpx.DecodeJSON(r, &req); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
-	created, err := h.svc.Create(r.Context(), UserIDFromCtx(r.Context()), CreateInvitationInput{Grants: req.Grants, ExpiresInDays: req.ExpiresInDays})
+	created, err := h.svc.Create(ctx, UserIDFromCtx(r.Context()), CreateInvitationInput{Grants: req.Grants, ExpiresInDays: req.ExpiresInDays})
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -52,7 +56,9 @@ func (h *InvitationHandler) create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *InvitationHandler) list(w http.ResponseWriter, r *http.Request) {
-	invitations, err := h.svc.List(r.Context(), UserIDFromCtx(r.Context()))
+	ctx, cancel := invitationRequestContext(r)
+	defer cancel()
+	invitations, err := h.svc.List(ctx, UserIDFromCtx(r.Context()))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -61,7 +67,9 @@ func (h *InvitationHandler) list(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *InvitationHandler) revoke(w http.ResponseWriter, r *http.Request) {
-	if err := h.svc.Revoke(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("invitationID")); err != nil {
+	ctx, cancel := invitationRequestContext(r)
+	defer cancel()
+	if err := h.svc.Revoke(ctx, UserIDFromCtx(r.Context()), r.PathValue("invitationID")); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
@@ -69,15 +77,21 @@ func (h *InvitationHandler) revoke(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *InvitationHandler) preview(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := invitationRequestContext(r)
+	defer cancel()
 	var req invitationPreviewRequest
 	if err := httpx.DecodeJSON(r, &req); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
-	preview, err := h.svc.Preview(r.Context(), req.Token)
+	preview, err := h.svc.Preview(ctx, req.Token)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, preview)
+}
+
+func invitationRequestContext(r *http.Request) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(r.Context(), 10*time.Second)
 }
