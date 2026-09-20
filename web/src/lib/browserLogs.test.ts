@@ -11,7 +11,7 @@ const post = vi.mocked(api.post);
 describe("installBrowserLogs", () => {
   const originalError = console.error;
   const originalWarn = console.warn;
-  let errorSpy: ReturnType<typeof vi.fn>;
+  let errorSpy: ReturnType<typeof vi.fn<(...data: unknown[]) => void>>;
 
   beforeEach(() => {
     vi.useFakeTimers();
