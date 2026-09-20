@@ -168,9 +168,9 @@ h2 { margin: 0; font-size: 32px; font-weight: 500; line-height: 1.12; letter-spa
 	.nav-inner nav { gap: 32px; }
 	.nav-inner nav > a:not(.button) { font-size: 13px; }
 	.hero { padding-top: 88px; }
-	h1 { font-size: 72px; }
+	h1 { font-size: clamp(60px, 5vw, 72px); }
 	h2 { font-size: 48px; }
-	.hero-heading { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); align-items: center; gap: 48px; margin-bottom: 56px; }
+	.hero-heading { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(440px, 1fr); align-items: center; gap: 48px; margin-bottom: 56px; }
 	.hero-install { margin-top: 0; }
 	.hero-footnote { margin-top: 24px; }
 	.section-intro { display: flex; justify-content: space-between; align-items: end; gap: 64px; }
