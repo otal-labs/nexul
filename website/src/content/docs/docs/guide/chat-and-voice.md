@@ -13,7 +13,7 @@ The conversation list has two groups:
 
 - **Chats** contains channels, voice channels, and direct messages.
 - **Threads** contains document threads. Ticket threads stay on their ticket
-  page, and channel threads are reached from their parent conversation.
+  page.
 
 Use the **New conversation** menu to create a channel, a voice channel, or a
 direct message. Channel names are stored in lower case. Every workspace gets a

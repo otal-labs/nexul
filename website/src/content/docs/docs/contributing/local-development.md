@@ -7,10 +7,10 @@ sidebar:
 
 ## Prerequisites
 
-- **Go** — use the versions in `go.mod`: Go 1.26.0 with toolchain
-  `go1.26.6`. The file is the source of truth.
-- **Bun** — CI pins Bun 1.3.11 with `oven-sh/setup-bun`. Use it for
-  `web/`, `desktop/`, `sdk/`, and `automations/` as well.
+- **Go** — `go.mod` pins the Go language version and exact toolchain. Use
+  those values rather than a separately maintained version list.
+- **Bun** — CI pins the version in `.github/workflows/ci.yml`. Use that same
+  version for `web/`, `desktop/`, `sdk/`, and `automations/`.
 
 ## Make targets
 

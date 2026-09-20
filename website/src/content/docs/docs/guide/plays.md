@@ -40,10 +40,13 @@ Use the play button on a ticket or document. The run dialog can choose:
 - the ticket column to move to on success;
 - a paired computer, provider, and model.
 
-The last three choices default from the project link or the user's pairing
-defaults. A run needs a usable computer. If no computer is paired, expired,
-offline, missing a T3 project, or ambiguous because no default was chosen, the
-UI shows the reason instead of firing a turn.
+The memory selection and success column start with the starter's latest
+choices for this play and project. Custom instructions start blank. The
+harness choice also reuses the starter's latest choice; if there is no prior
+choice, it falls back to the resolved project or user pairing choice. A run
+needs a usable computer. If no computer is paired, expired, offline, missing
+a T3 project, or ambiguous because no default was chosen, the UI shows the
+reason instead of firing a turn.
 
 Each press creates a persisted **Trail**. It records the starter, target,
 selected memories, instructions, resolved Harness choice, structured activity,

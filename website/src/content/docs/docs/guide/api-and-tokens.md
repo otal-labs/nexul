@@ -9,10 +9,10 @@ Every capability the web UI uses is also available as a plain HTTP/JSON API unde
 
 ## OpenAPI
 
-The server builds an OpenAPI 3.x document from the route registrations kept
-with the gateway composition root. It is a code-defined route manifest, not a
-separate YAML file. The manifest must stay aligned with the handlers mounted
-under `/api`.
+The server builds an OpenAPI 3.x document from the gateway's tracked mounted
+routes. Maintained summaries and tags are applied as annotations to those
+routes. The document is not a manually aligned route manifest or a separate
+YAML file.
 
 - `/openapi.json` — the raw spec.
 - `/swagger` — a Swagger UI browsing it.
@@ -20,9 +20,9 @@ under `/api`.
 ## Permissions
 
 One vocabulary covers every actor: a permission is `<domain>:<action>`, where
-the action is usually `read`, `write`, or `delete`. The catalog currently has
-28 domains. Three domains also declare a verb: `docs:thread`, `plays:run`,
-and `memories:clone`. The full catalog is served at:
+the action is usually `read`, `write`, or `delete`. Some domains also declare
+a verb: `docs:thread`, `plays:run`, and `memories:clone`. The full catalog is
+served at:
 
 ```
 GET /api/permissions/catalog
