@@ -32,9 +32,9 @@ function run(directory: string, bin: string) {
 }
 
 function runPipedWithPty(directory: string, bin: string) {
-  return spawnSync('/usr/bin/script', ['-qefc', `/bin/cat ${script} | /bin/bash`, '/dev/null'], {
+  return spawnSync('/usr/bin/script', ['-qefc', '/bin/cat "$NEXUL_BOOTSTRAP_TEST_SCRIPT" | /bin/bash', '/dev/null'], {
     cwd: directory,
-    env: { ...process.env, PATH: bin },
+    env: { ...process.env, PATH: bin, NEXUL_BOOTSTRAP_TEST_SCRIPT: script },
     input: 'interactive input\n',
     encoding: 'utf8',
   });

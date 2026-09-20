@@ -1,13 +1,14 @@
 ---
 interface Props {
 	command: string;
+	platform: string;
 }
-const { command } = Astro.props;
+const { command, platform } = Astro.props;
 ---
 
 <div class="cmd">
-	<code>{command}</code>
-	<button type="button" data-copy-command aria-label="Copy install command">
+	<pre tabindex="0" role="region" aria-label={`${platform} installation command`}><code>{command}</code></pre>
+	<button type="button" data-copy-command aria-label="Copy install command" title="Copy command" disabled>
 		<svg class="icon-copy" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
 			<rect x="5.5" y="5.5" width="8" height="8" rx="1.5" />
 			<path d="M10.5 5.5v-2a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2" />
@@ -15,83 +16,79 @@ const { command } = Astro.props;
 		<svg class="icon-done" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
 			<path d="M3 8.5l3 3 7-7" />
 		</svg>
-		<span data-copy-label>Copy</span>
 	</button>
 	<span class="copy-status" role="status" aria-live="polite" aria-atomic="true"></span>
 </div>
 
 <style>
 	.cmd {
+		position: relative;
 		display: flex;
-		align-items: stretch;
-		flex-direction: column-reverse;
+		align-items: center;
 		gap: 8px;
 		min-width: 0;
-		max-width: 100%;
-		padding: 8px 16px 20px;
+		min-height: 54px;
+		padding: 4px 6px 4px 16px;
 		border: 1px solid var(--page-border);
 		border-radius: 6px;
 		background: var(--page-card);
-		font-family: var(--page-mono);
-		font-size: 13px;
-		line-height: 1.5;
 	}
-	code {
-		align-self: stretch;
+	pre {
 		flex: 1;
 		min-width: 0;
-		white-space: pre-wrap;
-		overflow-wrap: anywhere;
+		margin: 0;
+		padding-block: 8px;
+		overflow-x: auto;
+		scrollbar-width: thin;
+		font: 13px/24px var(--page-mono);
+		white-space: pre;
 	}
+	pre:focus-visible { outline: 2px solid var(--page-fg); outline-offset: 2px; }
 	button {
 		display: grid;
-		grid-template-columns: 16px auto;
 		place-items: center;
-		align-self: flex-end;
-		flex: none;
-		gap: 6px;
-		min-width: 116px;
-		min-height: 44px;
-		padding: 0 10px;
+		flex: 0 0 44px;
+		width: 44px;
+		height: 44px;
+		padding: 0;
 		border: 0;
-		border-radius: 6px;
+		border-radius: 4px;
 		background: transparent;
 		color: var(--page-muted);
-		font: inherit;
 		cursor: pointer;
+		touch-action: manipulation;
 	}
+	button:disabled { opacity: .4; cursor: default; }
+	button[data-copied] { color: var(--page-fg); }
 	@media (hover: hover) and (pointer: fine) {
-		button:hover {
-			color: var(--page-fg);
-			background: var(--page-popover);
-		}
+		button:not(:disabled):hover { color: var(--page-fg); background: var(--page-popover); }
 	}
-	@media (prefers-reduced-motion: no-preference) {
-		button {
-			transition: color 150ms, background-color 150ms;
-		}
-	}
-	button:focus-visible {
-		outline: 2px solid var(--page-fg);
-		outline-offset: 1px;
-	}
-	.icon-done,
-	button[data-copied] .icon-copy {
-		display: none;
-	}
-	button[data-copied] .icon-done {
-		display: block;
-	}
+	button:focus-visible { outline: 2px solid var(--page-fg); outline-offset: 1px; }
+	.icon-done, button[data-copied] .icon-copy { display: none; }
+	button[data-copied] .icon-done { display: block; }
 	.copy-status {
 		position: absolute;
 		width: 1px;
 		height: 1px;
-		padding: 0;
-		margin: -1px;
 		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
+		clip-path: inset(50%);
 		white-space: nowrap;
-		border: 0;
+	}
+	button[data-copy-failed] + .copy-status {
+		top: calc(100% + 4px);
+		right: 0;
+		z-index: 2;
+		width: auto;
+		height: auto;
+		max-width: 100%;
+		padding: 8px 12px;
+		border: 1px solid var(--page-border);
+		border-radius: 6px;
+		background: var(--page-popover);
+		color: var(--page-fg);
+		font-size: 12px;
+		clip-path: none;
+		white-space: normal;
 	}
 </style>
 
@@ -101,15 +98,15 @@ const { command } = Astro.props;
 	const copyAttempts = new WeakMap<HTMLButtonElement, number>();
 
 	for (const button of copyButtons) {
+		button.disabled = false;
 		button.addEventListener('click', () => copyCommand(button));
 	}
 
 	async function copyCommand(button: HTMLButtonElement) {
 		const command = button.closest('.cmd')?.querySelector('code')?.textContent;
-		const label = button.querySelector<HTMLElement>('[data-copy-label]');
 		const status = button.closest('.cmd')?.querySelector<HTMLElement>('.copy-status');
 
-		if (command == null || !label || !status) return;
+		if (command == null || !status) return;
 
 		const attempt = (copyAttempts.get(button) ?? 0) + 1;
 		copyAttempts.set(button, attempt);
@@ -122,18 +119,21 @@ const { command } = Astro.props;
 			await navigator.clipboard.writeText(command);
 			if (copyAttempts.get(button) !== attempt) return;
 			button.dataset.copied = '';
-			label.textContent = 'Copied';
+			delete button.dataset.copyFailed;
+			button.title = 'Copied';
 			status.textContent = 'Copied to clipboard';
 		} catch {
 			if (copyAttempts.get(button) !== attempt) return;
 			delete button.dataset.copied;
-			label.textContent = 'Copy failed';
+			button.dataset.copyFailed = '';
+			button.title = 'Copy failed';
 			status.textContent = 'Copy failed. Select and copy the command manually.';
 		}
 
 		resetTimers.set(button, window.setTimeout(() => {
 			delete button.dataset.copied;
-			label.textContent = 'Copy';
+			delete button.dataset.copyFailed;
+			button.title = 'Copy command';
 			status.textContent = '';
 		}, 2000));
 	}
