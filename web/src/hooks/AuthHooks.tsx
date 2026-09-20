@@ -1,4 +1,4 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
@@ -7,7 +7,6 @@ import type {
   BootstrapStatus,
   ConnectionToken,
   InstanceSettings,
-  LoginMatch,
   MeResponse,
   MintPATResponse,
   OptionalProvider,
@@ -17,8 +16,6 @@ import type {
 
 export const getMeKey = "getMe";
 const getSettingsKey = "getSettings";
-const getMembersKey = "getMembers";
-const lookupMembersKey = "lookupMembers";
 const getPATsKey = "getPATs";
 const getBootstrapStatusKey = "getBootstrapStatus";
 
@@ -162,67 +159,6 @@ export const useRevokePAT = () => {
     onError: (error) => toast.error(errorMessage(error)),
   });
 };
-
-export const useFetchMembers = () =>
-  useQuery({
-    queryKey: [getMembersKey],
-    queryFn: async () => (await api.get<{ members: string[] }>("/api/auth/members")).data,
-  });
-
-export const useAddMember = () => {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: async (login: string) =>
-      (await api.post<{ members: string[] }>("/api/auth/members", { login })).data,
-    onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: [getMembersKey] });
-      toast.success("Member added");
-    },
-    onError: (error) => toast.error(errorMessage(error)),
-  });
-};
-
-export const useRemoveMember = () => {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: async (login: string) =>
-      (await api.delete<{ members: string[] }>(`/api/auth/members/${encodeURIComponent(login)}`)).data,
-    onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: [getMembersKey] });
-      toast.success("Member removed");
-    },
-    onError: (error) => toast.error(errorMessage(error)),
-  });
-};
-
-const LOOKUP_DEBOUNCE_MS = 300;
-
-// Rejects with the cancel reason if aborted first, so the fetch never fires.
-const sleepUnlessAborted = (ms: number, signal: AbortSignal) =>
-  new Promise<void>((resolve, reject) => {
-    const timer = setTimeout(resolve, ms);
-    signal.addEventListener(
-      "abort",
-      () => {
-        clearTimeout(timer);
-        reject(signal.reason);
-      },
-      { once: true },
-    );
-  });
-
-// Debounced via the queryFn's own sleep (F5), aborted by `signal` on each keystroke; disabled for emails (GitHub-only).
-export const useLookupMembers = (q: string) =>
-  useQuery({
-    queryKey: [lookupMembersKey, q],
-    queryFn: async ({ signal }) => {
-      await sleepUnlessAborted(LOOKUP_DEBOUNCE_MS, signal);
-      return (await api.get<{ matches: LoginMatch[] }>("/api/auth/members/lookup", { params: { q }, signal })).data;
-    },
-    enabled: q.trim().length >= 2 && !q.includes("@"),
-    staleTime: 60_000,
-    placeholderData: keepPreviousData,
-  });
 
 // Public and unauthenticated: decides whether to show the bootstrap page before any login is reachable.
 export const useBootstrapStatus = () =>

@@ -112,18 +112,6 @@ export const InstanceBootstrapFormSchema = z.object({
 
 export type InstanceBootstrapFormData = z.infer<typeof InstanceBootstrapFormSchema>;
 
-export const AddMemberFormSchema = z.object({
-  login: z.string().trim().min(1, "GitHub username or Google/Discord email is required"),
-});
-
-export type AddMemberFormData = z.infer<typeof AddMemberFormSchema>;
-
-// Only GitHub exposes a user-search API, so Google/Discord emails never get typeahead suggestions.
-export interface LoginMatch {
-  login: string;
-  avatar_url: string;
-}
-
 export const OAuthProviderFormSchema = z
   .object({
     client_id: z.string().trim(),
