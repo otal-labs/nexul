@@ -9,7 +9,8 @@ import WorkflowPreview from '../components/WorkflowPreview.astro';
 import Icon from '../components/Icon.astro';
 
 const github = 'https://github.com/otal-labs/nexul';
-const install = `git clone ${github}.git\ncd nexul\n./install.sh`;
+const install = 'curl -fsSLo install-nexul.sh https://nexul.io/install.sh && bash install-nexul.sh';
+const installWindows = '& { Invoke-WebRequest https://nexul.io/install.ps1 -OutFile install-nexul.ps1 -ErrorAction Stop; & .\\install-nexul.ps1 }';
 const steps = [
 	{ number: '01', title: 'Start with a document.', body: 'Write the plan together. Keep decisions, revisions, and the discussion in one place.', href: '/docs/guide/docs-tickets-and-board/#docs', link: 'Docs & collaboration' },
 	{ number: '02', title: 'Turn the plan into work.', body: 'Scope tickets, move them across the board, and link the branches and pull requests.', href: '/docs/guide/docs-tickets-and-board/#tickets', link: 'Tickets & boards' },
@@ -111,8 +112,8 @@ const capabilities = [
 
 			<section class="install-section" id="install" aria-labelledby="install-title">
 				<div class="wrap install-grid">
-					<div><p class="eyebrow">Make it your workspace</p><h2 id="install-title">Your next project<br />starts here.</h2><p>Clone the repository, run the installer, and open the setup wizard.</p><a class="text-link" href="/docs/guide/install/">Full installation guide <span aria-hidden="true">↗</span></a></div>
-					<div class="installation"><div class="install-label"><span class="technical">TERMINAL</span><span>Linux / macOS</span></div><InstallCommand command={install} /><p class="install-note">The installer starts the stack with Docker Compose. For Windows or a single-binary setup, follow the <a href="/docs/guide/install/">installation guide</a>.</p><p class="beta-note"><span class="beta-dot"></span><span>Currently in beta. Expect rough edges and breaking changes.</span></p></div>
+					<div><p class="eyebrow">Make it your workspace</p><h2 id="install-title">Your next project<br />starts here.</h2><p>Run the installer and open the setup wizard.</p><a class="text-link" href="/docs/guide/install/">Full installation guide <span aria-hidden="true">↗</span></a></div>
+					<div class="installation"><div class="install-label"><span class="technical">LINUX / MACOS</span><a href="/install.sh">View script ↗</a></div><InstallCommand command={install} /><div class="install-label"><span class="technical">WINDOWS / POWERSHELL</span><a href="/install.ps1">View script ↗</a></div><InstallCommand command={installWindows} /><p class="install-note">Requires Git. Downloads Nexul into a new <code>nexul</code> folder and starts the stack with Docker Compose. See the <a href="/docs/guide/install/">installation guide</a> for prerequisites and upgrades.</p><p class="beta-note"><span class="beta-dot"></span><span>Currently in beta. Expect rough edges and breaking changes.</span></p></div>
 				</div>
 			</section>
 		</main>

@@ -125,6 +125,8 @@ h2 { margin: 0; font-size: 32px; font-weight: 500; line-height: 1.12; letter-spa
 .install-grid { display: grid; gap: 40px; }
 .installation { min-width: 0; }
 .install-label { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 16px; color: var(--page-muted); font-size: 11px; }
+.cmd + .install-label { margin-top: 24px; }
+.install-label a { display: inline-flex; align-items: center; min-height: 44px; text-decoration: underline; text-underline-offset: 3px; }
 .install-note { font-size: 12px; line-height: 1.7; color: var(--page-muted); margin-top: 16px; }
 .install-note a { color: var(--page-fg); text-decoration: underline; text-underline-offset: 3px; }
 .beta-note { display: flex; align-items: baseline; gap: 8px; font-size: 11px; line-height: 1.7; color: var(--page-muted); margin: 24px 0 0; }

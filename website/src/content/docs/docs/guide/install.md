@@ -11,13 +11,23 @@ Nexul runs as a self-hosted instance on your own machine or server. There are tw
 
 This is the fastest path and starts everything you need: the server, the web UI, the logs stack, the automations host, and one runner on the same host. The stack pulls prebuilt images from GHCR rather than building from source — see [Upgrade](/docs/guide/upgrade/) for how those images get updated later.
 
+Install [Git](https://git-scm.com/downloads) first. Run these commands in the directory where you want a new `nexul` folder.
+
+Linux / macOS:
+
 ```sh
-./install.sh        # Linux / macOS
+curl -fsSLo install-nexul.sh https://nexul.io/install.sh && bash install-nexul.sh
 ```
 
+Windows, in PowerShell:
+
 ```powershell
-.\install.ps1       # Windows, with Docker Desktop
+& { Invoke-WebRequest https://nexul.io/install.ps1 -OutFile install-nexul.ps1 -ErrorAction Stop; & .\install-nexul.ps1 }
 ```
+
+You can read the scripts at [nexul.io/install.sh](/install.sh) and [nexul.io/install.ps1](/install.ps1). They clone the repository and run its installer, with your terminal available for the password prompt. An existing `nexul` folder is left untouched.
+
+Already cloned the repository? Run `./install.sh` on Linux / macOS or `.\install.ps1` in PowerShell from inside it. Use these repository scripts again for upgrades or to continue setup after starting Docker Desktop.
 
 The script:
 

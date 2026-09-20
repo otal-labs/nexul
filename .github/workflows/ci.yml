@@ -112,6 +112,8 @@ jobs:
           bun-version: 1.3.11
       - run: bun install --frozen-lockfile
         working-directory: website
+      - run: bun run test
+        working-directory: website
       - run: bun run build
         working-directory: website
 
