@@ -15,6 +15,7 @@ import { ErrorPage } from "@/pages/ErrorPage";
 import { FirstLoginWizardPage } from "@/pages/FirstLoginWizardPage";
 import { HomePage } from "@/pages/HomePage";
 import { InboxPage } from "@/pages/InboxPage";
+import { InvitePreviewPage } from "@/pages/InvitePreviewPage";
 import { InstanceBootstrapPage } from "@/pages/InstanceBootstrapPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { MembersPage } from "@/pages/MembersPage";
@@ -44,6 +45,7 @@ const buildRoutes = (loggedIn: boolean): RouteObject[] => [
     errorElement: <ErrorPage />,
     children: [
       { path: "/login", element: <LoginPage /> },
+      { path: "/invite", element: <InvitePreviewPage /> },
       // Re-entry to bootstrap for a wrong GitHub App; the API only accepts it while no user exists.
       { path: "/setup", element: <InstanceBootstrapPage /> },
       ...(loggedIn
