@@ -18,8 +18,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 )
 
-// repo is the GitHub repo releases are published to; the repo is private, so every call carries a token when one
-// is available.
+// repo is the GitHub repository releases are published to; calls carry a token when one is available.
 const repo = "otal-labs/nexul"
 
 // latestTTL bounds how long a channel's resolved latest release is served before re-checking GitHub.
@@ -306,10 +305,10 @@ func (c *Client) token(ctx context.Context) string {
 	return token
 }
 
-// statusError names the status; a 404 means "private repo, no valid token" and gets the operator hint.
+// statusError names the status; a 404 reports that the release or asset is missing.
 func statusError(status int, action string) error {
 	if status == http.StatusNotFound {
-		return fmt.Errorf("%s: status %d, connect GitHub with the app installed on the release repo (it is private): %w", action, status, apperrs.ErrNotFound)
+		return fmt.Errorf("%s: status %d, release or asset not found: %w", action, status, apperrs.ErrNotFound)
 	}
 	return fmt.Errorf("%s: status %d: %w", action, status, apperrs.ErrRetryable)
 }

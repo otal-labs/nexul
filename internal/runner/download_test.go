@@ -149,7 +149,7 @@ func TestService_Download(t *testing.T) {
 		assert.ErrorIs(t, err, apperrs.ErrNotFound)
 	})
 
-	t.Run("404 from github hints at the release token", func(t *testing.T) {
+	t.Run("404 from github reports a missing release", func(t *testing.T) {
 		withVersion(t, "dev")
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNotFound)
@@ -160,7 +160,8 @@ func TestService_Download(t *testing.T) {
 		_, err := svc.Download(context.Background(), "linux-amd64", "")
 		require.Error(t, err)
 		assert.ErrorIs(t, err, apperrs.ErrNotFound)
-		assert.Contains(t, err.Error(), "connect GitHub")
+		assert.Contains(t, err.Error(), "release or asset not found")
+		assert.NotContains(t, err.Error(), "GitHub App")
 	})
 }
 

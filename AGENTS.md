@@ -169,7 +169,7 @@ calls what, `search_graph` to disambiguate an overloaded name. Reindex
 1. Create `internal/<domain>/` with `model.go`, `repo.go`, `usecase.go`,
    `handler.go`, `events.go`, and `mcp.go` if it exposes tools.
 2. Add the repo implementation in `internal/platform/storage/`, with the
-   queries in `queries/<table>.sql` and `make sqlc`.
+   queries in `internal/platform/storage/queries/<table>.sql` and `make sqlc`.
 3. Register the domain's topics in its `Topics()` function; the catalog
    aggregates them (`practices/architecture.md`, section 2).
 4. Add the MCP tools, one per use-case, named `<verb>_<object>`.

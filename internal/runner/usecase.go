@@ -38,7 +38,7 @@ type SettingsReader interface {
 type InstallConfig struct {
 	// Settings resolves the instance URL; nil falls back to the request host.
 	Settings SettingsReader
-	// Release wires the GitHub release lookups behind GET /api/runners/download/{target} (the repo is private)
+	// Release wires the GitHub release lookups behind GET /api/runners/download/{target}
 	// and the runner's own LatestVersion/Download; also shared with the /api/version handler for one cache.
 	Release *release.Client
 }
