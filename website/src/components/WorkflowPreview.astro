@@ -1,0 +1,129 @@
+---
+import Icon from './Icon.astro';
+const tasks = [
+	['NX-42', 'Add the release endpoint', 'Merged'],
+	['NX-43', 'Write the release notes', 'In progress'],
+	['NX-44', 'Verify the rollback', 'Backlog'],
+];
+---
+
+<figure class="workflow-preview" aria-label="Example workflow connecting a release document, project tickets, and a deployment">
+	<figcaption class="preview-bar">
+		<span class="preview-project"><Icon /> <strong>Acme</strong><span class="breadcrumb">/</span> Release workspace</span>
+		<span class="example-label">Example workflow</span>
+	</figcaption>
+	<div class="preview-columns">
+		<section class="preview-doc">
+			<div class="panel-label"><span class="step-number">01</span> Document <span class="panel-meta">v.4</span></div>
+			<div class="doc-body">
+				<span class="technical muted">PRODUCT / RELEASES</span>
+				<h2>A better way<br />to ship a release.</h2>
+				<p>Keep every release connected to the work that made it happen.</p>
+				<div class="doc-rule"></div>
+				<h3>The plan</h3>
+				<ul class="checklist">
+					<li><span class="checked" aria-hidden="true">✓</span> Define the release endpoint</li>
+					<li><span class="checked" aria-hidden="true">✓</span> Link the implementation</li>
+					<li><span class="unchecked" aria-hidden="true"></span> Verify rollback on staging</li>
+				</ul>
+				<div class="doc-link"><span class="technical">↗</span> 3 linked tickets <span class="muted">→</span></div>
+			</div>
+			<div class="panel-footer"><span class="tiny-square"></span> Versioned. Linked. Searchable.</div>
+		</section>
+		<section class="preview-tickets">
+			<div class="panel-label"><span class="step-number">02</span> Tickets <span class="panel-meta">3</span></div>
+			<div class="ticket-body">
+				<div class="ticket-section-label">Release / Implementation</div>
+				{tasks.map(([id, title, status], i) => (
+					<div class:list={['example-ticket', { 'ticket-active': i === 0 }]}>
+						<div class="ticket-meta"><span>{id}</span><span class:list={['ticket-state', { complete: i === 0 }]}><span class="state-dot"></span>{status}</span></div>
+						<h3>{title}</h3>
+						{i === 0 && <div class="pull-request"><span aria-hidden="true">⑂</span> #28 · feat/release-endpoint <span class="complete">✓</span></div>}
+					</div>
+				))}
+			</div>
+			<div class="panel-footer"><span class="tiny-square"></span> Context travels with the work.</div>
+		</section>
+		<section class="preview-deploy">
+			<div class="panel-label"><span class="step-number">03</span> Deployment <span class="panel-meta"><span class="health-dot"></span> Running</span></div>
+			<div class="deploy-body">
+				<div class="machine-title"><span class="server-glyph" aria-hidden="true"><i></i><i></i></span><div><h3>staging-01</h3><span class="technical muted">Your server</span></div></div>
+				<div class="service-route"><span class="route-label">HOSTNAME</span><span>app.example.com</span><div class="route-wire"></div><div class="running-service"><span class="health-dot"></span><strong>release-api</strong><span class="technical muted">:8080</span></div></div>
+				<div class="deploy-log"><div><span class="complete">✓</span> Image built</div><div><span class="complete">✓</span> Container started</div><div><span class="complete">✓</span> Health check passed</div></div>
+			</div>
+			<div class="panel-footer"><span class="health-dot"></span> Same project. Now running.</div>
+		</section>
+	</div>
+</figure>
+
+<style>
+	.workflow-preview { margin: 0; border: 1px solid var(--page-border); border-radius: 8px; overflow: hidden; background: var(--page-surface); text-align: left; }
+	.preview-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; min-height: 64px; padding: 16px; border-bottom: 1px solid var(--page-border); font-size: 12px; color: var(--page-muted); }
+	.preview-project { display: flex; align-items: center; gap: 8px; }
+	.preview-project strong { color: var(--page-fg); font-weight: 500; }
+	.breadcrumb { margin: 0 4px; color: var(--page-muted); }
+	.example-label { font: 10px var(--page-mono); letter-spacing: .04em; }
+	.preview-columns { display: grid; }
+	.preview-columns > section { min-width: 0; display: flex; flex-direction: column; }
+	.preview-columns > section + section { border-top: 1px solid var(--page-border); }
+	.panel-label { min-height: 48px; padding: 12px 16px; display: flex; align-items: center; gap: 8px; font-size: 12px; border-bottom: 1px solid var(--page-border); }
+	.step-number { font: 10px var(--page-mono); color: var(--page-muted); margin-right: 4px; }
+	.panel-meta { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; color: var(--page-muted); font: 10px var(--page-mono); }
+	.doc-body, .ticket-body, .deploy-body { padding: 24px 16px; flex: 1; }
+	.technical { font-family: var(--page-mono); font-size: 10px; }
+	.muted { color: var(--page-muted); }
+	.doc-body > .technical { letter-spacing: .07em; }
+	h2 { font-size: 24px; letter-spacing: -.04em; font-weight: 500; line-height: 1.15; margin: 20px 0 12px; }
+	.doc-body > p { font-size: 12px; color: var(--page-muted); line-height: 1.7; max-width: 32ch; margin: 0; }
+	.doc-rule { height: 1px; background: var(--page-border); margin: 24px 0 20px; }
+	h3 { font-size: 12px; font-weight: 500; margin: 0; }
+	.checklist { list-style: none; padding: 0; margin: 16px 0 24px; font-size: 11px; display: grid; gap: 12px; }
+	.checklist li { display: flex; align-items: center; gap: 8px; }
+	.checked, .unchecked { flex: none; width: 12px; height: 12px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--page-muted); border-radius: 2px; font-size: 9px; }
+	.checked { background: var(--page-fg); color: var(--page-bg); border-color: var(--page-fg); }
+	.doc-link { display: flex; align-items: center; gap: 8px; font-size: 11px; }
+	.doc-link > :last-child { margin-left: auto; }
+	.panel-footer { border-top: 1px solid var(--page-border); padding: 12px 16px; display: flex; align-items: center; gap: 8px; color: var(--page-muted); font-size: 10px; }
+	.tiny-square { width: 5px; height: 5px; background: var(--page-muted); }
+	.ticket-section-label { color: var(--page-muted); font-size: 11px; margin-bottom: 20px; }
+	.example-ticket { padding: 16px 12px; border-bottom: 1px solid var(--page-border); }
+	.ticket-active { background: var(--page-card); border: 1px solid var(--page-border); border-radius: 6px; margin-bottom: 8px; }
+	.ticket-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--page-muted); font: 9px var(--page-mono); margin-bottom: 12px; }
+	.ticket-state { display: flex; align-items: center; gap: 4px; }
+	.state-dot, .health-dot { display: inline-block; flex: none; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+	.health-dot { background: var(--page-success); }
+	.complete { color: var(--page-success); }
+	.pull-request { margin-top: 20px; border-top: 1px solid var(--page-border); padding-top: 12px; color: var(--page-muted); display: flex; align-items: center; gap: 6px; font: 9px var(--page-mono); }
+	.pull-request > :last-child { margin-left: auto; }
+	.machine-title { display: flex; align-items: center; gap: 12px; }
+	.machine-title h3 { font-size: 14px; margin-bottom: 4px; }
+	.server-glyph { display: grid; gap: 3px; width: 28px; }
+	.server-glyph i { height: 10px; border: 1px solid var(--page-muted); border-radius: 2px; position: relative; }
+	.server-glyph i::after { content: ''; position: absolute; right: 4px; top: 3px; width: 2px; height: 2px; background: var(--page-muted); }
+	.service-route { margin-top: 28px; padding: 16px 12px; background: var(--page-card); border-radius: 6px; border: 1px solid var(--page-border); display: flex; flex-direction: column; align-items: center; font: 11px var(--page-mono); }
+	.route-label { color: var(--page-muted); font-size: 9px; letter-spacing: .08em; margin-bottom: 8px; }
+	.route-wire { width: 1px; height: 28px; background: var(--page-border); margin-top: 12px; }
+	.running-service { display: flex; align-items: center; gap: 8px; width: 100%; justify-content: center; border-top: 1px solid var(--page-border); padding: 16px 0 0; }
+	.running-service strong { font-weight: 400; }
+	.deploy-log { display: grid; gap: 10px; font: 10px var(--page-mono); color: var(--page-muted); margin-top: 24px; }
+	.deploy-log div { display: flex; gap: 8px; }
+	@media (min-width: 768px) {
+		.preview-bar { padding: 16px 24px; }
+		.preview-columns { grid-template-columns: 1.05fr 1fr 1fr; }
+		.preview-columns > section + section { border-top: 0; border-left: 1px solid var(--page-border); }
+		.doc-body, .ticket-body, .deploy-body { padding: 24px 16px; }
+		h2 { font-size: 24px; }
+		.checklist { font-size: 10px; }
+		.pull-request { flex-wrap: wrap; line-height: 1.5; }
+	}
+	@media (min-width: 1024px) {
+		.panel-label { padding: 16px 24px; }
+		.doc-body, .ticket-body, .deploy-body { padding: 32px 24px; }
+		h2 { font-size: 30px; }
+		.doc-body > p, h3 { font-size: 13px; }
+		.checklist { font-size: 12px; }
+		.ticket-meta, .pull-request { font-size: 10px; }
+		.example-ticket { padding: 20px 16px; }
+		.panel-footer { padding: 16px 24px; font-size: 11px; }
+	}
+</style>

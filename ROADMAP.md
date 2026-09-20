@@ -13,10 +13,9 @@
 - [ ] Decide whether an `architecture.md` at the repository root is worth
   keeping, or whether the docs site's architecture page and the ADRs are
   enough. The README no longer carries the architecture table.
-- [ ] Retake the screenshots on a clean instance once the repository is
-  public. The only one in the tree, `website/public/topology.png`, still
-  shows the old product name in the sidebar and real hostnames, and it sits
-  on the website hero. The README carries no screenshot until then.
+- [ ] Take product screenshots on a clean instance once the repository is
+  public. The website uses an illustrated example workflow; the README
+  carries no screenshot until clean captures are available.
 
 ---
 

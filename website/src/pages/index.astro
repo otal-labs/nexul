@@ -4,145 +4,121 @@ import '@fontsource-variable/jetbrains-mono';
 import '../styles/landing.css';
 import interWoff2 from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url';
 import monoWoff2 from '@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2?url';
-import Feature from '../components/Feature.astro';
-import Panel from '../components/Panel.astro';
 import InstallCommand from '../components/InstallCommand.astro';
-
+import WorkflowPreview from '../components/WorkflowPreview.astro';
 import Icon from '../components/Icon.astro';
+
 const github = 'https://github.com/otal-labs/nexul';
-const install = `git clone ${github}.git && cd nexul && ./install.sh`;
-const tools = [
-	['docs', ['doc_create', 'doc_get', 'doc_search', 'doc_update']],
-	['tickets', ['ticket_create', 'ticket_update_status', 'ticket_link_pr', 'ticket_search']],
-	['deploy', ['stack_create', 'stack_deploy', 'stack_rollback', 'deploy_list_by_status']],
-	['topology', ['topology_get', 'topology_add_node', 'topology_add_edge']],
-	['runners', ['runner_list', 'runner_queue', 'machine_discover']],
-	['events', ['list_dead_letters', 'replay_dead_letter']],
+const install = `git clone ${github}.git\ncd nexul\n./install.sh`;
+const steps = [
+	{ number: '01', title: 'Start with a document.', body: 'Write the plan together. Keep decisions, revisions, and the discussion in one place.', href: '/docs/guide/docs-tickets-and-board/#docs', link: 'Docs & collaboration' },
+	{ number: '02', title: 'Turn the plan into work.', body: 'Scope tickets, move them across the board, and link the branches and pull requests.', href: '/docs/guide/docs-tickets-and-board/#tickets', link: 'Tickets & boards' },
+	{ number: '03', title: 'Ship to your servers.', body: 'Let a runner build and deploy your stack. Inspect the logs. Roll back when you need to.', href: '/docs/guide/stacks-and-deploys/', link: 'Stacks & deployments' },
+	{ number: '04', title: 'Keep the context.', body: 'Search the docs and tickets. Follow the conversation. Start the next piece of work informed.', href: '/docs/guide/mcp-server/', link: 'Explore the workflow' },
 ];
-const loop = ['docs', 'tickets', 'code + pull requests', 'review', 'deploy', 'index everything', 'next loop'];
+const capabilities = [
+	['Docs & tickets', 'The plan and the work, linked.', '/docs/guide/docs-tickets-and-board/'],
+	['Chat & collaboration', 'Conversations alongside the work.', '/docs/guide/docs-tickets-and-board/'],
+	['Automations', 'Your events. Your TypeScript.', '/docs/guide/automations/'],
+	['Topology & DNS', 'See where every service runs.', '/docs/guide/topology-and-dns/'],
+	['Runners & logs', 'Build, deploy, and see what happened.', '/docs/guide/runners/'],
+	['API & access', 'Scoped tokens and shared permissions.', '/docs/guide/api-and-tokens/'],
+];
 ---
 
+<!doctype html>
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<title>Nexul — Deploy Applications with Ordinary Servers</title>
+		<title>Nexul · From docs to deploy, on your servers</title>
+		<meta name="description" content="Bring docs, tickets, chat, and deployments into one self-hosted workspace. One MCP server connects your coding tools to the whole workflow. Your work, on your servers." />
+		<meta property="og:title" content="Nexul · From docs to deploy, on your servers" />
+		<meta property="og:description" content="Docs, tickets, chat, and deployments in one self-hosted workspace. Keep the whole loop connected." />
+		<meta property="og:type" content="website" />
+		<meta name="theme-color" content="#050505" media="(prefers-color-scheme: dark)" />
+		<meta name="theme-color" content="#ececec" media="(prefers-color-scheme: light)" />
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<meta name="description" content="Self-hosted docs, tickets, CI runners, and deployment to your own servers, with an MCP server over the whole domain." />
 		<link rel="preload" as="font" type="font/woff2" href={interWoff2} crossorigin />
 		<link rel="preload" as="font" type="font/woff2" href={monoWoff2} crossorigin />
-		<link rel="preload" as="image" href="/topology.png" />
 	</head>
 	<body>
-		<header class="nav">
-			<a class="wordmark" href="/"><Icon /> Nexul</a>
-			<nav>
-				<a href="/docs/">Docs</a>
-				<a href={github}>GitHub</a>
-				<a class="btn" href="#install">Install</a>
-			</nav>
+		<a class="skip-link" href="#main">Skip to content</a>
+		<header class="site-header">
+			<div class="wrap nav-inner">
+				<a class="wordmark" href="/" aria-label="Nexul home"><Icon /> Nexul</a>
+				<nav aria-label="Main navigation">
+					<a class="nav-detail" href="#product">Product</a>
+					<a class="nav-detail" href="#developers">Developers</a>
+					<a href="/docs/">Docs</a>
+					<a class="nav-detail" href={github}>GitHub <span aria-hidden="true">↗</span></a>
+					<a class="button button-small" href="#install">Get started <span aria-hidden="true">↗</span></a>
+				</nav>
+			</div>
 		</header>
 
-		<main>
-			<section class="hero">
-				<div class="wrap hero-copy">
-					<h1>One loop from docs to deploy, on servers you own.</h1>
-					<p class="sub">Documentation, tickets, CI runners, and deployment to your own machines in one self-hosted platform, with an MCP server over the whole domain.</p>
-					<div class="cta">
-						<a class="btn" href="/docs/">Read the docs</a>
-						<InstallCommand command={install} />
+		<main id="main">
+			<section class="hero wrap" aria-labelledby="hero-title">
+				<p class="eyebrow"><span class="brand-mark"></span> The self-hosted software workspace</p>
+				<div class="hero-heading">
+					<h1 id="hero-title">From the first doc<br />to the next deploy<span class="muted">.</span></h1>
+					<div class="hero-description">
+						<p>Docs, tickets, chat, and deployments.<br class="desktop-break" /> Together on servers you own.</p>
+						<div class="hero-actions"><a class="button" href="#install">Install Nexul <span aria-hidden="true">↗</span></a><a class="text-link" href="#product">See how it works <span aria-hidden="true">↓</span></a></div>
 					</div>
 				</div>
-				<div class="wrap frame">
-					<img src="/topology.png" width="1920" height="960" alt="The topology canvas: a hostname pill, a gateway row, and services inside one docker network" loading="eager" decoding="async" />
+				<WorkflowPreview />
+				<div class="hero-footnote"><span>One project. The whole trail.</span><span>Open core <span class="separator">/</span> Self-hosted <span class="separator">/</span> In beta</span></div>
+			</section>
+
+			<section class="product-section wrap" id="product" aria-labelledby="product-title">
+				<div class="section-intro">
+					<div><p class="eyebrow">The work stays connected</p><h2 id="product-title">Less switching tools.<br />More moving forward.</h2></div>
+					<p class="section-description">The idea, the implementation, and the running software belong in the same story. Nexul keeps the links between them.</p>
+				</div>
+				<div class="workflow-steps">
+					{steps.map((step) => <article class="workflow-step"><span class="step-index">{step.number}<span aria-hidden="true">↗</span></span><h3>{step.title}</h3><p>{step.body}</p><a class="detail-link" href={step.href}>{step.link}<span aria-hidden="true">→</span></a></article>)}
 				</div>
 			</section>
 
-			<div class="wrap">
-				<Feature eyebrow="Docs as source of truth" heading="Tickets come from documents, and deploys link back to both.">
-					<p slot="body">Documents are versioned and are where work starts: a doc spawns scoped tickets, each ticket links to its branch, pull request, and deploy, and all of it is indexed so the next piece of work starts with the full trail instead of a blank page.</p>
-					<Panel label="A doc linked to a ticket, a pull request, and a deploy">
-						<div class="rows">
-							<div class="row"><span>doc</span><span>payments-spec, version 4</span></div>
-							<div class="row"><span>ticket</span><span>PAY-12, derived from payments-spec</span></div>
-							<div class="row"><span>pr</span><span>#88, linked to PAY-12</span></div>
-							<div class="row"><span>deploy</span><span>api on vps-1, linked to #88</span></div>
-						</div>
-					</Panel>
-				</Feature>
+			<section class="developer-section" id="developers" aria-labelledby="developer-title">
+				<div class="wrap developer-grid">
+					<div class="developer-copy"><p class="eyebrow">Built for the way you work now</p><h2 id="developer-title">Your tools get<br />the whole picture.</h2><p>Connect your coding tools to one MCP server. Search a doc, create a ticket, inspect a stack, or start a deploy with the same permissions you have in the app.</p><p class="muted">Your context stays in your workspace. Your tools can act on it.</p><a class="text-link" href="/docs/guide/mcp-server/">Explore the MCP server <span aria-hidden="true">↗</span></a></div>
+					<div class="tool-console" role="group" aria-label="Example of the tools available through the Nexul MCP server">
+						<div class="console-header"><span class="connection-dot"></span><span>nexul / mcp</span><span class="console-label">EXAMPLE</span></div>
+						<div class="console-prompt"><span aria-hidden="true">›</span><p>Find the release spec and the tickets that came from it.</p></div>
+						<div class="tool-call"><span class="tool-symbol" aria-hidden="true">↳</span><div><span class="tool-name">doc_search</span><code>"release spec"</code></div><span class="tool-check" aria-hidden="true">✓</span></div>
+						<div class="tool-result"><span class="file-outline" aria-hidden="true"></span><div><strong>A better way to ship a release</strong><span>Document · version 4</span></div></div>
+						<div class="tool-call"><span class="tool-symbol" aria-hidden="true">↳</span><div><span class="tool-name">ticket_search</span><code>"release"</code></div><span class="tool-check" aria-hidden="true">✓</span></div>
+						<div class="tool-result result-tickets"><span>NX-42</span><span>Add the release endpoint</span><span>NX-43</span><span>Write the release notes</span><span>NX-44</span><span>Verify the rollback</span></div>
+						<div class="console-footer"><Icon /><span>One workspace. One set of permissions.</span></div>
+					</div>
+				</div>
+			</section>
 
-				<Feature eyebrow="MCP server" heading="Every use case is an MCP tool, because the web app calls the same layer." flip>
-					<p slot="body">The domain layer is the single source of behavior. The HTTP gateway for the web app and the MCP server are two thin adapters over it, so an LLM agent gets doc search, ticket creation, topology, deploys, run logs, and dead-letter replay by construction. There is no shadow API to keep in sync.</p>
-					<Panel label="MCP tool names grouped by domain">
-						{tools.map(([domain, names]) => (
-							<div class="group">
-								<span class="group-name">{domain}</span>
-								<div class="tools">{names.map((n) => <span>{n}</span>)}</div>
-							</div>
-						))}
-					</Panel>
-				</Feature>
+			<section class="hosting-section wrap" aria-labelledby="hosting-title">
+				<div class="hosting-grid">
+					<div class="hosting-copy"><p class="eyebrow">Ordinary servers. Your servers.</p><h2 id="hosting-title">Keep your work.<br />Own where it runs.</h2><p>A Docker Compose stack for your workspace. A lightweight runner on each machine you deploy to. Start on one server and connect more when you need them.</p><a class="text-link" href="/docs/guide/install/">Read the self-hosting guide <span aria-hidden="true">↗</span></a></div>
+					<div class="infrastructure" role="img" aria-label="A Nexul instance connects to runners on your own servers. Runners connect outbound; the instance holds no SSH keys.">
+						<div class="instance-node"><span class="instance-icon"><Icon /></span><span><strong>Your Nexul instance</strong><small>Docs · Tickets · Chat · MCP</small></span><span class="node-caption">YOU OWN THIS</span></div>
+						<div class="network-lines"></div>
+						<div class="server-nodes"><div><span class="technical muted">RUNNER / 01</span><strong>Any VPS</strong><span class="node-services"><i></i><i></i><i></i></span></div><div><span class="technical muted">RUNNER / 02</span><strong>Your hardware</strong><span class="node-services"><i></i><i></i><i></i></span></div></div>
+						<p class="infrastructure-note">Outbound connections. No SSH keys to hand over.</p>
+					</div>
+				</div>
+				<div class="capability-list">{capabilities.map(([title, description, href]) => <a class="capability" href={href}><span><strong>{title}</strong><span>{description}</span></span><span class="capability-arrow" aria-hidden="true">↗</span></a>)}</div>
+			</section>
 
-				<Feature eyebrow="Ordinary servers" heading="SSH, Docker, and a runner binary. No Kubernetes.">
-					<p slot="body">The server stack is one docker compose file. Runners are Go host binaries that connect out to the server over a WebSocket, mount the Docker socket, and build and deploy on the machine they run on: a VPS, bare metal, or the same host as the server. SQLite is the only database, and it lives on the data volume.</p>
-					<Panel label="One Go binary per role: server, runner, and mcpstdio">
-						<div class="rows">
-							<div class="row"><span>server</span><span>API, web app, and MCP endpoint; SQLite with WAL and FTS5, no external database</span></div>
-							<div class="row"><span>runner</span><span>Host agent that builds and deploys, connected to the server over a WebSocket</span></div>
-							<div class="row"><span>mcpstdio</span><span>Proxies stdin/stdout MCP JSON-RPC to a running server for local agent clients</span></div>
-						</div>
-					</Panel>
-				</Feature>
-
-				<section class="strip">
-					<p class="eyebrow">How it fits together</p>
-					<p class="loop">{loop.map((s, i) => <>{i > 0 && <span class="arrow">→</span>}<span>{s}</span></>)}</p>
-				</section>
-
-				<section class="install" id="install">
-					<p class="eyebrow">Install</p>
-					<Panel label="Output of install.sh on a fresh host" title="install.sh">
-						<div class="line"><span class="muted">$</span> ./install.sh</div>
-						<div class="line muted">Password for the logs UI (user nexul@nexul.local), blank to generate one:</div>
-						<div class="line">Nexul is starting.</div>
-						<div class="line">  Setup wizard:  http://10.0.0.12/</div>
-						<div class="line">  Logs UI:       http://10.0.0.12:5080  (user nexul@nexul.local)</div>
-						<div class="line">  Logs password: mUq3zYx8ZbWnP1kQ  (generated; also in .env)</div>
-						<div class="line muted">Put a tunnel or a TLS proxy in front for a public domain, then enter that https:// address as the instance URL in the wizard.</div>
-					</Panel>
-					<p class="note">The script installs Docker if it is missing, asks for a logs password, starts the stack with one runner on the same host, and prints the setup wizard URL. <a href="/docs/guide/install/">Installation guide</a></p>
-				</section>
-
-				<section class="license">
-					<p>Open core, one repository, two licenses. Everything outside <code>ee/</code> is AGPL-3.0-or-later: run it, modify it, and self-host it at any company size.</p>
-					<p>Everything inside <code>ee/</code> is under a commercial license; the code is public to read and patch, running it in production needs a subscription. <a href="/docs/contributing/licensing/">Licensing</a></p>
-				</section>
-			</div>
+			<section class="install-section" id="install" aria-labelledby="install-title">
+				<div class="wrap install-grid">
+					<div><p class="eyebrow">Make it your workspace</p><h2 id="install-title">Your next project<br />starts here.</h2><p>Clone the repository, run the installer, and open the setup wizard.</p><a class="text-link" href="/docs/guide/install/">Full installation guide <span aria-hidden="true">↗</span></a></div>
+					<div class="installation"><div class="install-label"><span class="technical">TERMINAL</span><span>Linux / macOS</span></div><InstallCommand command={install} /><p class="install-note">The installer starts the stack with Docker Compose. For Windows or a single-binary setup, follow the <a href="/docs/guide/install/">installation guide</a>.</p><p class="beta-note"><span class="beta-dot"></span><span>Currently in beta. Expect rough edges and breaking changes.</span></p></div>
+				</div>
+			</section>
 		</main>
 
-		<footer>
-			<div class="wrap foot">
-				<span class="wordmark">Nexul</span>
-				<nav>
-					<a href="/docs/">Docs</a>
-					<a href={github}>GitHub</a>
-					<a href={`${github}/blob/master/LICENSE`}>License</a>
-				</nav>
-				<p>Deploy Applications with Ordinary Servers.</p>
-			</div>
+		<footer class="site-footer">
+			<div class="wrap"><div class="footer-top"><a class="wordmark" href="/" aria-label="Nexul home"><Icon /> Nexul</a><p>One loop from docs to deploy.</p><nav aria-label="Footer navigation"><a href="/docs/">Documentation</a><a href={github}>GitHub <span aria-hidden="true">↗</span></a><a href="/docs/contributing/licensing/">License</a></nav></div><div class="footer-bottom"><span>Your work. Your servers.</span><p>AGPL-3.0 core. Commercial features live in <code>ee/</code>. <a href="/docs/contributing/licensing/">How licensing works <span aria-hidden="true">↗</span></a></p></div></div>
 		</footer>
-
-		<script is:inline>
-			document.querySelector('[data-copy]').addEventListener('click', async (e) => {
-				const b = e.currentTarget;
-				await navigator.clipboard.writeText(b.dataset.copy);
-				b.setAttribute('data-copied', '');
-				setTimeout(() => b.removeAttribute('data-copied'), 1500);
-			});
-			const nav = document.querySelector('.nav');
-			const onScroll = () => nav.classList.toggle('scrolled', scrollY > 8);
-			addEventListener('scroll', onScroll, { passive: true });
-			onScroll();
-		</script>
 	</body>
 </html>
