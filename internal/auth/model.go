@@ -15,6 +15,15 @@ const (
 	ProviderDev Provider = "dev"
 )
 
+// AccountStatus controls whether a provider identity may authenticate or use the instance.
+type AccountStatus string
+
+const (
+	AccountActive   AccountStatus = "active"
+	AccountDisabled AccountStatus = "disabled"
+	AccountRemoved  AccountStatus = "removed"
+)
+
 // User is the persistent identity record, keyed by provider + user ID because a login can be renamed; login/name/avatar sync each sign-in.
 type User struct {
 	ID             string   `json:"id"`
@@ -24,10 +33,11 @@ type User struct {
 	Name           string   `json:"name"`
 	AvatarURL      string   `json:"avatar_url"`
 	// CanCreateWorkspace is the instance-level bit gating workspace creation and, by default, settings/allowlist.
-	CanCreateWorkspace bool      `json:"can_create_workspace"`
-	FirstLoginDone     bool      `json:"first_login_done"`
-	CreatedAt          time.Time `json:"created_at"`
-	UpdatedAt          time.Time `json:"updated_at"`
+	CanCreateWorkspace bool          `json:"can_create_workspace"`
+	FirstLoginDone     bool          `json:"first_login_done"`
+	AccountStatus      AccountStatus `json:"account_status"`
+	CreatedAt          time.Time     `json:"created_at"`
+	UpdatedAt          time.Time     `json:"updated_at"`
 
 	// DisplayName and AvatarOverrideURL are the manual override, untouched by UpsertUser's sync, surviving sign-in.
 	DisplayName       *string `json:"display_name,omitempty"`
@@ -40,6 +50,32 @@ type ProviderUser struct {
 	Login     string
 	Name      string
 	AvatarURL string
+}
+
+type OAuthHandoff struct {
+	ID             string     `json:"-"`
+	InvitationID   string     `json:"-"`
+	OAuthStateHash string     `json:"-"`
+	AcceptanceHash string     `json:"-"`
+	Provider       Provider   `json:"provider"`
+	ProviderUserID string     `json:"-"`
+	Login          string     `json:"login"`
+	Name           string     `json:"name"`
+	AvatarURL      string     `json:"avatar_url"`
+	ExistingUserID string     `json:"-"`
+	AdmittedUserID string     `json:"-"`
+	CompletedAt    *time.Time `json:"completed_at,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
+	ExpiresAt      time.Time  `json:"expires_at"`
+}
+
+type OAuthHandoffIdentity struct {
+	Provider       Provider
+	ProviderUserID string
+	Login          string
+	Name           string
+	AvatarURL      string
+	ExistingUserID string
 }
 
 // GitHubUser is ProviderUser under its original name.

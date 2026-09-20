@@ -41,6 +41,8 @@ type Store struct {
 	Workspaces            *WorkspacesRepo
 	WorkspaceMembers      *WorkspaceMembersRepo
 	WorkspaceInvites      *WorkspaceInvitesRepo
+	Invitations           *InvitationsRepo
+	OAuthHandoffs         *OAuthHandoffsRepo
 	Roles                 *RolesRepo
 	Plays                 *PlaysRepo
 	PlayTrails            *PlayTrailsRepo
@@ -99,6 +101,8 @@ func New(db *sql.DB, encKey []byte) *Store {
 		Workspaces:            &WorkspacesRepo{db: db, w: w, q: q},
 		WorkspaceMembers:      &WorkspaceMembersRepo{db: db, w: w, q: q},
 		WorkspaceInvites:      &WorkspaceInvitesRepo{db: db, w: w, q: q},
+		Invitations:           &InvitationsRepo{db: db, w: w, q: q},
+		OAuthHandoffs:         &OAuthHandoffsRepo{db: db, w: w, q: q},
 		Roles:                 &RolesRepo{db: db, w: w, q: q},
 		Plays:                 &PlaysRepo{db: db, w: w, q: q},
 		PlayTrails:            &PlayTrailsRepo{db: db, w: w, q: q},

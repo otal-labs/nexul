@@ -363,6 +363,41 @@ type IntegrationToken struct {
 	RevokedAt  sql.NullInt64
 }
 
+type Invitation struct {
+	ID         string
+	TokenHash  string
+	InvitedBy  string
+	CreatedAt  int64
+	ExpiresAt  int64
+	RedeemedAt sql.NullInt64
+	RedeemedBy sql.NullString
+}
+
+type InvitationGrant struct {
+	InvitationID string
+	WorkspaceID  string
+	RoleID       string
+	AllowJson    string
+	DenyJson     string
+}
+
+type InvitationOauthHandoff struct {
+	ID             string
+	InvitationID   string
+	OauthStateHash sql.NullString
+	AcceptanceHash sql.NullString
+	Provider       string
+	ProviderUserID sql.NullString
+	Login          sql.NullString
+	Name           sql.NullString
+	AvatarUrl      sql.NullString
+	ExistingUserID sql.NullString
+	AdmittedUserID sql.NullString
+	CompletedAt    sql.NullInt64
+	CreatedAt      int64
+	ExpiresAt      int64
+}
+
 type LabelColor struct {
 	ProjectID string
 	Label     string
@@ -705,6 +740,7 @@ type User struct {
 	CanCreateWorkspace int64
 	DisplayName        sql.NullString
 	AvatarOverrideUrl  sql.NullString
+	AccountStatus      string
 }
 
 type Workspace struct {

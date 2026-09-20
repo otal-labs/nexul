@@ -54,6 +54,21 @@ func TestPending_FullyMigratedDB_IsEmpty(t *testing.T) {
 	assert.Empty(t, pending)
 }
 
+func TestMigrate_Twice_AppliesPrivateInvitationMigrationOnceAndPreservesActiveStatus(t *testing.T) {
+	db := freshDB(t)
+	require.NoError(t, Migrate(db))
+	_, err := db.ExecContext(t.Context(), `INSERT INTO users (id, provider, provider_user_id, login, created_at, updated_at) VALUES ('u-1', 'github', 'provider-1', 'alice', 1, 1)`)
+	require.NoError(t, err)
+	require.NoError(t, Migrate(db))
+
+	var applied int
+	require.NoError(t, db.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM schema_migrations WHERE version = '0002_private_invitations'`).Scan(&applied))
+	assert.Equal(t, 1, applied, "schema_migrations is the idempotence guard for the SQLite ADD COLUMN in 0002")
+	var status string
+	require.NoError(t, db.QueryRowContext(t.Context(), `SELECT account_status FROM users WHERE id = 'u-1'`).Scan(&status))
+	assert.Equal(t, "active", status)
+}
+
 func TestMigrateWithBackup_WritesABackupOnlyWhenMigrationsArePending(t *testing.T) {
 	db := freshDB(t)
 	dir := filepath.Join(t.TempDir(), "backups")
