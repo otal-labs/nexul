@@ -146,7 +146,10 @@ already authenticated.
   Authored content and the provider identity remain attached to the tombstone.
   Restoring permits sign-in again but does not restore removed memberships or
   credentials.
-- The last active instance administrator cannot be disabled or removed.
+- The last active instance administrator cannot be disabled or removed. The
+  count check and status mutation run in the same serialized SQLite
+  transaction, so concurrent requests cannot remove the final two
+  administrators together.
 - An active account with no workspace membership may sign in and sees an empty
   workspace state.
 
@@ -261,6 +264,12 @@ Tenancy exposes `create_invitation`, `list_invitations`, and
 `reactivate_account`, `remove_account`, and `restore_account`. They call the
 same service methods as HTTP. Creation is the only MCP result containing the
 complete link.
+
+MCP parity applies to authenticated management operations. Preview,
+OAuth handoff, acceptance, and redemption are browser authentication steps,
+like OAuth sign-in itself, and are not MCP tools. An authenticated MCP user
+creates or revokes a link; the person receiving it proves their provider
+identity and accepts it in the browser.
 
 The catalog gains additive topics:
 
