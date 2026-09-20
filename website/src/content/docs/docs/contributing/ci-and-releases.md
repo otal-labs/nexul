@@ -9,7 +9,7 @@ sidebar:
 
 CI runs on pushes and pull requests against `master`, and it only runs the
 jobs a change actually touches. A `dorny/paths-filter` step tags the diff
-against four filters, and each job is gated on its own tag:
+against six filters, and each job is gated on its own tag:
 
 | Filter | Paths | Job |
 |---|---|---|
@@ -17,6 +17,8 @@ against four filters, and each job is gated on its own tag:
 | `web` | `web/**` | `web-test` |
 | `desktop` | `desktop/**` | `desktop-test` |
 | `website` | `website/**` | `website-build` |
+| `sdk` | `sdk/**`, `internal/integrations/catalog.go` | `sdk-test` |
+| `automations` | `automations/**` | `automations-test` |
 
 - **`go-test`** — checks the committed `sqlcgen` output is current
   (`sqlc vet` + `sqlc diff`), builds, vets, then runs the coverage gate
@@ -28,8 +30,12 @@ against four filters, and each job is gated on its own tag:
 - **`desktop-test`** — same shape as `web-test`, with
   `ELECTRON_SKIP_BINARY_DOWNLOAD=1` so CI never downloads the Electron
   binary — the desktop unit tests never launch it.
-- **`website-build`** — installs with a frozen lockfile and runs the
-  Astro build, so a broken page or frontmatter fails the check.
+- **`website-build`** — installs with a frozen lockfile, runs `bun run test`,
+  then runs `bun run build`, so a broken page or frontmatter fails the check.
+- **`sdk-test`** — installs with a frozen lockfile, runs the SDK typecheck,
+  then runs its Vitest suite.
+- **`automations-test`** — installs with a frozen lockfile, runs the
+  automations host typecheck, then runs its Bun test suite.
 
 A change that touches only `web/` never spins up a Go job, and vice versa.
 
