@@ -44,10 +44,17 @@ frontmatter and it appears.
 
 ## Styling
 
-The site's CSS lives in `website/src/styles/mono-console.css` — it carries
-the same visual language as the product itself (see
-[Coding Standards](/docs/contributing/coding-standards/) → Mono Console),
-not a separate theme.
+The documentation theme lives in `website/src/styles/mono-console.css`.
+The homepage uses `website/src/styles/landing.css`, with its example workflow
+in `website/src/components/WorkflowPreview.astro`. Both use the product's
+monochrome surfaces and locally bundled fonts (see
+[Coding Standards](/docs/contributing/coding-standards/)).
+
+The workflow is an illustration with example data, not a live instance.
+Keep its documents, ticket states, and deployment details consistent with
+the product when editing it. Verify the homepage at 320, 375, 414, and 768px
+in both color schemes, including keyboard navigation and installation-command
+copy feedback.
 
 ## Hosting
 

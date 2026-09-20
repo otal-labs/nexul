@@ -24,10 +24,11 @@ const { command } = Astro.props;
 	.cmd {
 		display: flex;
 		align-items: stretch;
+		flex-direction: column-reverse;
 		gap: 8px;
 		min-width: 0;
 		max-width: 100%;
-		padding: 8px 8px 8px 14px;
+		padding: 8px 16px 20px;
 		border: 1px solid var(--page-border);
 		border-radius: 6px;
 		background: var(--page-card);
@@ -36,7 +37,7 @@ const { command } = Astro.props;
 		line-height: 1.5;
 	}
 	code {
-		align-self: center;
+		align-self: stretch;
 		flex: 1;
 		min-width: 0;
 		white-space: pre-wrap;
@@ -46,10 +47,10 @@ const { command } = Astro.props;
 		display: grid;
 		grid-template-columns: 16px auto;
 		place-items: center;
-		align-self: center;
+		align-self: flex-end;
 		flex: none;
 		gap: 6px;
-		min-width: 44px;
+		min-width: 116px;
 		min-height: 44px;
 		padding: 0 10px;
 		border: 0;
@@ -108,7 +109,7 @@ const { command } = Astro.props;
 		const label = button.querySelector<HTMLElement>('[data-copy-label]');
 		const status = button.closest('.cmd')?.querySelector<HTMLElement>('.copy-status');
 
-		if (command === undefined || !label || !status) return;
+		if (command == null || !label || !status) return;
 
 		const attempt = (copyAttempts.get(button) ?? 0) + 1;
 		copyAttempts.set(button, attempt);
