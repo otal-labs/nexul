@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -114,17 +115,20 @@ func TestLogin_FreshInstanceFirstSignInUnrestricted(t *testing.T) {
 }
 
 func TestLogin_FirstUserRace_AllowsOneUser(t *testing.T) {
+	ctx := t.Context()
 	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "first-user")})
 	other := NewService(Config{Secret: []byte("test-secret"), Users: users, GitHub: &fakeGitHub{user: ghUser("2", "second-user")}, Settings: newFakeSettings(), Allowlist: newFakeAllowlist(), Now: time.Now})
 	results := make(chan error, 2)
-	go func() {
-		_, err := s.Login(context.Background(), "good-code")
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		_, err := s.Login(ctx, "good-code")
 		results <- err
-	}()
-	go func() {
-		_, err := other.Login(context.Background(), "good-code")
+	})
+	wg.Go(func() {
+		_, err := other.Login(ctx, "good-code")
 		results <- err
-	}()
+	})
+	wg.Wait()
 	var successes int
 	for range 2 {
 		if err := <-results; err == nil {
@@ -132,7 +136,7 @@ func TestLogin_FirstUserRace_AllowsOneUser(t *testing.T) {
 		}
 	}
 	assert.Equal(t, 1, successes)
-	accounts, err := users.ListUsers(context.Background())
+	accounts, err := users.ListUsers(ctx)
 	require.NoError(t, err)
 	assert.Len(t, accounts, 1)
 }
@@ -237,6 +241,7 @@ func TestLogin_DisabledUserCannotResignIn(t *testing.T) {
 }
 
 func TestInvitationOAuthCallback_DoesNotCreateUser(t *testing.T) {
+	ctx := t.Context()
 	s, users, _, settings := newTestHarness(&fakeGitHub{token: "at", user: ghUser("provider-1", "new-user")})
 	settings.st.InstanceURL = "https://nexul.example"
 	settings.st.GitHubOAuthClientID = "client"
@@ -245,30 +250,31 @@ func TestInvitationOAuthCallback_DoesNotCreateUser(t *testing.T) {
 	handoffs := &fakeOAuthHandoffStore{}
 	s.SetInvitationGate(gate)
 	s.SetOAuthHandoffStore(handoffs)
-	start, err := s.StartInvitationOAuth(context.Background(), ProviderGitHub, "raw-invitation")
+	start, err := s.StartInvitationOAuth(ctx, ProviderGitHub, "raw-invitation")
 	require.NoError(t, err)
-	acceptance, err := s.CompleteInvitationOAuth(context.Background(), ProviderGitHub, start.State, "good-code")
+	acceptance, err := s.CompleteInvitationOAuth(ctx, ProviderGitHub, start.State, "good-code")
 	require.NoError(t, err)
 	assert.NotEmpty(t, acceptance)
-	registered, err := users.ListUsers(context.Background())
+	registered, err := users.ListUsers(ctx)
 	require.NoError(t, err)
 	assert.Empty(t, registered)
 }
 
 func TestAuthenticatedAcceptance_DoesNotNeedOAuth(t *testing.T) {
+	ctx := t.Context()
 	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
-	owner, err := s.Login(context.Background(), "good-code")
+	owner, err := s.Login(ctx, "good-code")
 	require.NoError(t, err)
 	ownerID := mustVerify(t, s, owner)
 	gate := &fakeInvitationGate{token: "raw-invitation", invitation: &InvitationAcceptance{InvitationID: "inv-1", InstanceName: "Nexul"}}
 	s.SetInvitationGate(gate)
 	s.SetOAuthHandoffStore(&fakeOAuthHandoffStore{})
-	details, err := s.PrepareAuthenticatedAcceptance(context.Background(), ownerID, "raw-invitation")
+	details, err := s.PrepareAuthenticatedAcceptance(ctx, ownerID, "raw-invitation")
 	require.NoError(t, err)
 	assert.Equal(t, "inv-1", details.InvitationID)
 	assert.Equal(t, ownerID, details.AuthenticatedUser.ID)
 	assert.NotEmpty(t, details.AcceptanceToken)
-	registered, err := users.ListUsers(context.Background())
+	registered, err := users.ListUsers(ctx)
 	require.NoError(t, err)
 	assert.Len(t, registered, 1)
 }
