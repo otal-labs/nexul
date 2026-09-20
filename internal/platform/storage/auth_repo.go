@@ -76,6 +76,10 @@ func (r *UsersRepo) GetUserByID(ctx context.Context, id string) (*auth.User, err
 	return toUser(row), nil
 }
 
+func (r *UsersRepo) GetUserByProvider(ctx context.Context, provider auth.Provider, providerUserID string) (*auth.User, error) {
+	return userRow(r.q.GetUserByProvider(ctx, sqlcgen.GetUserByProviderParams{Provider: string(provider), ProviderUserID: providerUserID}))
+}
+
 func (r *UsersRepo) CanCreateWorkspaceExists(ctx context.Context) (bool, error) {
 	n, err := r.q.CountCanCreateWorkspace(ctx)
 	if err != nil {
@@ -97,6 +101,32 @@ func (r *UsersRepo) SetCanCreateWorkspace(ctx context.Context, id string, can bo
 		}
 		return nil
 	})
+}
+
+func (r *UsersRepo) SetAccountStatus(ctx context.Context, id string, status auth.AccountStatus) error {
+	if status != auth.AccountActive && status != auth.AccountDisabled && status != auth.AccountRemoved {
+		return fmt.Errorf("%w: invalid account status %q", apperrs.ErrInvalid, status)
+	}
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		n, err := r.q.WithTx(tx).SetAccountStatus(ctx, sqlcgen.SetAccountStatusParams{
+			AccountStatus: string(status), UpdatedAt: time.Now().Unix(), ID: id,
+		})
+		if err != nil {
+			return fmt.Errorf("set account status %s: %w", id, err)
+		}
+		if n == 0 {
+			return fmt.Errorf("set account status %s: %w", id, apperrs.ErrNotFound)
+		}
+		return nil
+	})
+}
+
+func (r *UsersRepo) CountActiveAdmins(ctx context.Context) (int, error) {
+	n, err := r.q.CountActiveAdmins(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("count active instance admins: %w", err)
+	}
+	return int(n), nil
 }
 
 func (r *UsersRepo) MarkFirstLoginDone(ctx context.Context, id string) error {
@@ -173,6 +203,7 @@ func toUser(row sqlcgen.User) *auth.User {
 		AvatarURL:          row.AvatarUrl,
 		CanCreateWorkspace: row.CanCreateWorkspace != 0,
 		FirstLoginDone:     row.FirstLoginDone != 0,
+		AccountStatus:      auth.AccountStatus(row.AccountStatus),
 		CreatedAt:          time.Unix(row.CreatedAt, 0).UTC(),
 		UpdatedAt:          time.Unix(row.UpdatedAt, 0).UTC(),
 	}

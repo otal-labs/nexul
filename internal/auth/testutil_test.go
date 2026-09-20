@@ -67,10 +67,23 @@ func (f *fakeUserStore) UpsertUser(_ context.Context, u *User) (*User, bool, err
 		f.seq++
 		u.ID = fmt.Sprintf("user-%d", f.seq)
 	}
+	if u.AccountStatus == "" {
+		u.AccountStatus = AccountActive
+	}
 	cp := *u
 	f.byKey[key] = cp.ID
 	f.byID[cp.ID] = &cp
 	return &cp, true, nil
+}
+
+func (f *fakeUserStore) GetUserByProvider(_ context.Context, provider Provider, providerUserID string) (*User, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	id, ok := f.byKey[userKey(provider, providerUserID)]
+	if !ok {
+		return nil, apperrs.ErrNotFound
+	}
+	return f.byID[id], nil
 }
 
 func (f *fakeUserStore) GetUserByID(_ context.Context, id string) (*User, error) {
@@ -124,6 +137,29 @@ func (f *fakeUserStore) SetCanCreateWorkspace(_ context.Context, id string, can 
 	}
 	u.CanCreateWorkspace = can
 	return nil
+}
+
+func (f *fakeUserStore) SetAccountStatus(_ context.Context, id string, status AccountStatus) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	u, ok := f.byID[id]
+	if !ok {
+		return apperrs.ErrNotFound
+	}
+	u.AccountStatus = status
+	return nil
+}
+
+func (f *fakeUserStore) CountActiveAdmins(_ context.Context) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	count := 0
+	for _, u := range f.byID {
+		if u.CanCreateWorkspace && u.AccountStatus == AccountActive {
+			count++
+		}
+	}
+	return count, nil
 }
 
 func (f *fakeUserStore) MarkFirstLoginDone(_ context.Context, id string) error {

@@ -11,6 +11,12 @@ UPDATE users SET login = ?, name = ?, avatar_url = ?, updated_at = ? WHERE id = 
 -- name: GetUserByProvider :one
 SELECT * FROM users WHERE provider = ? AND provider_user_id = ?;
 
+-- name: SetAccountStatus :execrows
+UPDATE users SET account_status = ?, updated_at = ? WHERE id = ?;
+
+-- name: CountActiveAdmins :one
+SELECT COUNT(*) FROM users WHERE can_create_workspace = 1 AND account_status = 'active';
+
 -- name: GetUserByID :one
 SELECT * FROM users WHERE id = ?;
 

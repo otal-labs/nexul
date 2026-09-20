@@ -1,7 +1,11 @@
 // Package tenancy implements Workspace; named "tenancy" since internal/workspace already claimed that name.
 package tenancy
 
-import "time"
+import (
+	"time"
+
+	"github.com/otal-labs/nexul/internal/platform/permissions"
+)
 
 // Workspace's Owner implicitly has full access to everything inside it.
 type Workspace struct {
@@ -26,6 +30,40 @@ type Invite struct {
 	RoleID      string    `json:"role_id"`
 	InvitedBy   string    `json:"invited_by"`
 	CreatedAt   time.Time `json:"created_at"`
+}
+
+type Invitation struct {
+	ID         string             `json:"id"`
+	InvitedBy  string             `json:"invited_by"`
+	CreatedAt  time.Time          `json:"created_at"`
+	ExpiresAt  time.Time          `json:"expires_at"`
+	TokenHash  string             `json:"-"`
+	RedeemedAt *time.Time         `json:"-"`
+	RedeemedBy string             `json:"-"`
+	Grants     []*InvitationGrant `json:"grants"`
+}
+
+type InvitationGrant struct {
+	WorkspaceID   string          `json:"workspace_id"`
+	WorkspaceName string          `json:"workspace_name,omitempty"`
+	RoleID        string          `json:"role_id"`
+	RoleName      string          `json:"role_name,omitempty"`
+	Allow         permissions.Set `json:"allow"`
+	Deny          permissions.Set `json:"deny"`
+}
+
+type InvitationIdentity struct {
+	ID             string
+	Provider       string
+	ProviderUserID string
+	Login          string
+	Name           string
+	AvatarURL      string
+}
+
+type InvitationAdmission struct {
+	UserID  string
+	Created bool
 }
 
 // MemberView adds login for the roster, since Member alone only carries the UserID.
