@@ -31,6 +31,15 @@ function run(directory: string, bin: string) {
   });
 }
 
+function runPipedWithPty(directory: string, bin: string) {
+  return spawnSync('/usr/bin/script', ['-qefc', '/bin/cat "$NEXUL_BOOTSTRAP_TEST_SCRIPT" | /bin/bash', '/dev/null'], {
+    cwd: directory,
+    env: { ...process.env, PATH: bin, NEXUL_BOOTSTRAP_TEST_SCRIPT: script },
+    input: 'interactive input\n',
+    encoding: 'utf8',
+  });
+}
+
 afterEach(() => {
   for (const directory of directories.splice(0)) rmSync(directory, { recursive: true, force: true });
 });
@@ -62,6 +71,12 @@ test('fresh installation clones the official repository and preserves interactiv
   const { directory, bin } = setup();
   expect(run(directory, bin).status).toBe(0);
   expect(await Bun.file(join(directory, 'clone-args')).text()).toBe('clone https://github.com/otal-labs/nexul.git nexul\n');
+  expect(await Bun.file(join(directory, 'installed')).text()).toBe('interactive input');
+});
+
+test('piped installation reads interactive input from the controlling terminal', async () => {
+  const { directory, bin } = setup();
+  expect(runPipedWithPty(directory, bin).status).toBe(0);
   expect(await Bun.file(join(directory, 'installed')).text()).toBe('interactive input');
 });
 

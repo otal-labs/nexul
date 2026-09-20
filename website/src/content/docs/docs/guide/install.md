@@ -16,13 +16,13 @@ Install [Git](https://git-scm.com/downloads) first. Run these commands in the di
 Linux / macOS:
 
 ```sh
-curl -fsSLo install-nexul.sh https://nexul.io/install.sh && bash install-nexul.sh
+curl -fsSL https://nexul.io/install.sh | bash
 ```
 
 Windows, in PowerShell:
 
 ```powershell
-& { Invoke-WebRequest https://nexul.io/install.ps1 -OutFile install-nexul.ps1 -ErrorAction Stop; & .\install-nexul.ps1 }
+irm https://nexul.io/install.ps1 | iex
 ```
 
 You can read the scripts at [nexul.io/install.sh](/install.sh) and [nexul.io/install.ps1](/install.ps1). They clone the repository and run its installer, with your terminal available for the password prompt. An existing `nexul` folder is left untouched.
