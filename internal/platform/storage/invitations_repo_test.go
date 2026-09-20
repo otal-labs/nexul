@@ -304,6 +304,22 @@ func TestInvitationsRepo_GetByTokenHash_ExpiryDeletesActiveRow(t *testing.T) {
 	assert.Equal(t, "inv-2", got.ID)
 }
 
+func TestInvitationsRepo_LazyExpiryDeletion_WritesDeletionEvent(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	now := time.Date(2026, 9, 20, 12, 0, 0, 0, time.UTC)
+	seedInvitationWorkspace(t, s, "ws-1", "Acme", "role-editor", false, "actor")
+	_, tokenHash := invitationToken(t, "33")
+	invitation := newInvitation("inv-1", "actor", "ws-1", "role-editor", now, 24*time.Hour)
+	require.NoError(t, s.Invitations.Create(ctx, invitation, tokenHash))
+	_, err := s.Invitations.GetByTokenHash(ctx, tokenHash, now.Add(24*time.Hour))
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
+	var topic string
+	require.NoError(t, s.db.QueryRowContext(ctx, `SELECT topic FROM outbox WHERE topic = ? ORDER BY created_at DESC LIMIT 1`, tenancy.TopicInvitationDeleted).Scan(&topic))
+	assert.Equal(t, tenancy.TopicInvitationDeleted, topic)
+}
+
 func TestOAuthHandoffs_StateBoundAcceptance_IsolatedAndHashed(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
