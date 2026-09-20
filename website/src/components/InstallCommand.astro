@@ -1,0 +1,72 @@
+---
+interface Props {
+	command: string;
+}
+const { command } = Astro.props;
+---
+
+<div class="cmd">
+	<code>{command}</code>
+	<button type="button" data-copy={command} aria-label="Copy install command">
+		<svg class="icon-copy" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+			<rect x="5.5" y="5.5" width="8" height="8" rx="1.5" />
+			<path d="M10.5 5.5v-2a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2" />
+		</svg>
+		<svg class="icon-done" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+			<path d="M3 8.5l3 3 7-7" />
+		</svg>
+	</button>
+</div>
+
+<style>
+	.cmd {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		min-width: 0;
+		max-width: 100%;
+		height: 40px;
+		padding: 0 6px 0 14px;
+		border: 1px solid var(--page-border);
+		border-radius: 6px;
+		background: var(--page-card);
+		font-family: var(--page-mono);
+		font-size: 13px;
+	}
+	code {
+		flex: 1;
+		min-width: 0;
+		overflow-x: auto;
+		white-space: nowrap;
+		scrollbar-width: none;
+	}
+	button {
+		display: grid;
+		place-items: center;
+		flex: none;
+		width: 28px;
+		height: 28px;
+		padding: 0;
+		border: 0;
+		border-radius: 6px;
+		background: transparent;
+		color: var(--page-muted);
+		cursor: pointer;
+		transition: color 150ms, background-color 150ms;
+	}
+	button:hover {
+		color: var(--page-fg);
+		background: var(--page-popover);
+	}
+	button:focus-visible {
+		outline: 2px solid var(--page-fg);
+		outline-offset: 1px;
+	}
+	.icon-done,
+	button[data-copied] .icon-copy {
+		display: none;
+	}
+	button[data-copied] .icon-done {
+		display: block;
+	}
+</style>

@@ -1,0 +1,22 @@
+# Root .dockerignore. This governs the `root` named context used by the
+# server/runner builds (which COPY go.mod, go.sum, and internal/ from it) and
+# any build that uses the repo root as context. Keep go files and source; drop
+# generated and heavyweight paths so the context stays lean.
+.git
+.github
+docs
+practices
+*.md
+node_modules
+dist/
+data/
+coverage.*
+.env
+.env.local
+*.db
+*.db-wal
+*.db-shm
+web/node_modules
+web/dist
+web/coverage
+web/.vite

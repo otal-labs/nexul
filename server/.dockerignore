@@ -1,0 +1,6 @@
+# Server build context (./server). The `root` named context supplies
+# go.mod/go.sum/internal; this context is server/cmd + server/webui.
+*.md
+Dockerfile
+webui/dist
+dist/

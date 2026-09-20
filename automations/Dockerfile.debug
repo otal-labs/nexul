@@ -1,0 +1,10 @@
+# Build context: ./automations (see docker-compose.debug.yml). Source
+# is bind-mounted over /app at container start, so this image only installs
+# deps — no COPY of source. The `root` named context supplies sdk/ so
+# package.json's file:../sdk dependency resolves the same as on a checkout.
+FROM oven/bun:1
+WORKDIR /app
+COPY --from=root sdk/ /sdk/
+COPY package.json bun.lock* ./
+RUN bun install
+ENTRYPOINT ["bun", "run", "--watch", "src/main.ts"]

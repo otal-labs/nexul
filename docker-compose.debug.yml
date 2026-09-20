@@ -1,0 +1,119 @@
+services:
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile.debug
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+      - "8082:8082"
+      - "2345:2345"
+    environment:
+      NEXUL_DB_PATH: /data/nexul.db
+      # Pinned in the debug stack so the dev DB's encrypted rows stay readable; production generates it.
+      NEXUL_AUTH_SECRET: ${NEXUL_AUTH_SECRET:-dev-secret-rotate-me}
+      NEXUL_LOG_LEVEL: debug
+      # Debug stack only — GET /auth/dev-login skips GitHub entirely. Never in docker-compose.yml.
+      NEXUL_DEV_LOGIN: ${NEXUL_DEV_LOGIN:-true}
+      # Post-login redirect target. Debug stack serves the SPA via Vite on
+      # :5173, not nginx on :80 — .env's default (http://localhost) would
+      # otherwise bounce the browser to the bare server on :8080, which 404s
+      # (no embedded web assets in the debug build).
+      NEXUL_SPA_ORIGIN: http://localhost:5173
+      NEXUL_AUTOMATIONS_HOST_TOKENS_PATH: /data/automations-tokens.json
+      NEXUL_OTLP_ENDPOINT: http://openobserve:5080/api/default
+      NEXUL_OTLP_USER: ${NEXUL_LOGS_EMAIL:-nexul@nexul.local}
+      NEXUL_OTLP_TOKEN: ${NEXUL_LOGS_TOKEN:-dev-logs-token-rotate-me}
+    volumes:
+      - .:/src
+      - nexul-debug-data:/data
+    depends_on:
+      - openobserve
+
+  # Same as docker-compose.yml, on its own volume for the same reason as
+  # nexul-debug-data below. UI and MCP (/api/default/mcp) on :5080,
+  # both with the email + password; the token only authenticates ingest.
+  # Pinned to match docker-compose.yml — bump deliberately in both files.
+  openobserve:
+    image: openobserve/openobserve:v1.0.0
+    ports:
+      - "5080:5080"
+    environment:
+      ZO_ROOT_USER_EMAIL: ${NEXUL_LOGS_EMAIL:-nexul@nexul.local}
+      ZO_ROOT_USER_PASSWORD: ${NEXUL_LOGS_PASSWORD:-DevLogs-rotate-me-1}
+      ZO_ROOT_USER_TOKEN: ${NEXUL_LOGS_TOKEN:-dev-logs-token-rotate-me}
+      ZO_TELEMETRY: "false"
+    volumes:
+      - openobserve-debug-data:/data
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+
+  automations:
+    build:
+      context: ./automations
+      dockerfile: Dockerfile.debug
+      additional_contexts:
+        root: .
+    environment:
+      NEXUL_SERVER_URL: http://server:8080
+      NEXUL_AUTOMATIONS_TOKENS_PATH: /data/automations-tokens.json
+    volumes:
+      - ./automations:/app
+      - automations-node-modules:/app/node_modules
+      - nexul-debug-data:/data:ro
+    depends_on:
+      - server
+
+  # The instance-host runner, same as docker-compose.yml, built from source with dlv on :2346.
+  runner:
+    build:
+      context: ./runner
+      dockerfile: Dockerfile.debug
+    ports:
+      - "2346:2346"
+    environment:
+      NEXUL_SERVER_WS: ws://server:8081/ws/runner
+      # The server publishes the runner secret next to its DB; read it off the same volume.
+      NEXUL_RUNNER_SECRET_FILE: /secrets/runner-secret
+      NEXUL_RUNNER_ID: instance
+      NEXUL_RUNNER_NAME: instance
+      NEXUL_MACHINE: instance
+      NEXUL_GIT_TOKEN: ${NEXUL_GIT_TOKEN:-}
+    volumes:
+      - .:/src
+      - nexul-debug-data:/secrets:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Same path inside and outside: the host daemon resolves compose bind mounts from a stack's checkout.
+      - ${NEXUL_STACK_ROOT:-/data/nexul}:/data/nexul
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile.debug
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_PROXY_HOST: server
+      # Without this, the SPA falls back to an absolute http://localhost:8080
+      # base (web/src/api/client.tsx) instead of same-origin /api — bypassing
+      # Vite's proxy and hitting the Go server cross-origin, which sends no
+      # CORS headers by design (nginx/Vite proxy same-origin in every other
+      # mode). Matches VITE_API_URL=/ from the production build.
+      VITE_API_URL: /
+    volumes:
+      - ./web:/app
+      - web-node-modules:/app/node_modules
+    depends_on:
+      - server
+
+volumes:
+  # Own volume, not the prod stack's nexul-data — this stack always
+  # runs freshly-built code (dlv compiles current source on start), so a
+  # shared file could drift out of sync with whatever's built into the prod
+  # image and turn a schema mismatch into 500s across every endpoint.
+  nexul-debug-data:
+  openobserve-debug-data:
+  web-node-modules:
+  automations-node-modules:

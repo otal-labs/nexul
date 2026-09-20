@@ -1,0 +1,121 @@
+services:
+  # No secrets to set: the server generates its auth secret and the runner
+  # secret on first start and keeps both on the data volume; everything else
+  # (instance URL, GitHub App, connectors) is entered in the setup wizard.
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+      target: release
+      additional_contexts:
+        root: .
+    # `docker compose up --build` still builds from source; `pull` (install.sh's
+    # path) takes this prebuilt tag, pinned by NEXUL_VERSION.
+    image: ghcr.io/otal-labs/nexul-server:${NEXUL_VERSION:-latest}
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+      - "8082:8082"
+    environment:
+      NEXUL_DB_PATH: /data/nexul.db
+      NEXUL_LOG_LEVEL: info
+      # Where the seeder drops raw dial-in tokens for freshly-created default
+      # automations (internal/automations/host_tokens.go) — the automations
+      # host below reads the same path off the same volume (AM3, ticket 12).
+      NEXUL_AUTOMATIONS_HOST_TOKENS_PATH: /data/automations-tokens.json
+      # Ship every server log line to OpenObserve as well as stderr.
+      NEXUL_OTLP_ENDPOINT: http://openobserve:5080/api/default
+      NEXUL_OTLP_USER: ${NEXUL_LOGS_EMAIL:-nexul@nexul.local}
+      NEXUL_OTLP_TOKEN: ${NEXUL_LOGS_TOKEN:-dev-logs-token-rotate-me}
+    volumes:
+      - nexul-data:/data
+    restart: unless-stopped
+    depends_on:
+      - openobserve
+
+  # Logs, metrics, traces and their MCP server in one binary. The UI and the
+  # MCP endpoint (http://<host>:5080/api/default/mcp) both take
+  # NEXUL_LOGS_EMAIL / NEXUL_LOGS_PASSWORD as basic auth; the
+  # token only authenticates ingest. OpenObserve sizes its caches to the
+  # memory it can see, so the limit below is what keeps it small.
+  # Pinned, not `latest`: an unannounced OpenObserve upgrade shouldn't silently
+  # change the logs stack under an install. Bump deliberately, in both compose files.
+  openobserve:
+    image: openobserve/openobserve:v1.0.0
+    ports:
+      - "5080:5080"
+    environment:
+      ZO_ROOT_USER_EMAIL: ${NEXUL_LOGS_EMAIL:-nexul@nexul.local}
+      ZO_ROOT_USER_PASSWORD: ${NEXUL_LOGS_PASSWORD:-DevLogs-rotate-me-1}
+      ZO_ROOT_USER_TOKEN: ${NEXUL_LOGS_TOKEN:-dev-logs-token-rotate-me}
+      ZO_TELEMETRY: "false"
+    volumes:
+      - openobserve-data:/data
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    restart: unless-stopped
+
+  # Runs the shipped default automations (AM3/AM9) out of the box — one
+  # worker_thread per automation, see automations/src.
+  automations:
+    build:
+      context: ./automations
+      dockerfile: Dockerfile
+      additional_contexts:
+        root: .
+    image: ghcr.io/otal-labs/nexul-automations:${NEXUL_VERSION:-latest}
+    environment:
+      NEXUL_SERVER_URL: http://server:8080
+      NEXUL_AUTOMATIONS_TOKENS_PATH: /data/automations-tokens.json
+    volumes:
+      - nexul-data:/data:ro
+    restart: unless-stopped
+    depends_on:
+      - server
+
+  # Runner is a host binary (ADR 0032), not a container; this is the one
+  # runner every install starts on the instance host itself, so a fresh
+  # instance can deploy before any machine is configured. Additional
+  # runners on other servers are added via the web UI's Runners page -> "Add
+  # runner" and run as the standalone ./nexul-runner binary.
+  runner:
+    build:
+      context: ./runner
+      dockerfile: Dockerfile
+      target: release
+      additional_contexts:
+        root: .
+    image: ghcr.io/otal-labs/nexul-runner:${NEXUL_VERSION:-latest}
+    environment:
+      NEXUL_SERVER_WS: ws://server:8081/ws/runner
+      # The server publishes the runner secret next to its DB; read it off the same volume.
+      NEXUL_RUNNER_SECRET_FILE: /secrets/runner-secret
+      NEXUL_RUNNER_ID: instance
+      NEXUL_RUNNER_NAME: instance
+      NEXUL_MACHINE: instance
+      NEXUL_GIT_TOKEN: ${NEXUL_GIT_TOKEN:-}
+    volumes:
+      - nexul-data:/secrets:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Same path inside and outside: the host daemon resolves compose bind mounts from a stack's checkout.
+      - ${NEXUL_STACK_ROOT:-/data/nexul}:/data/nexul
+    restart: unless-stopped
+    depends_on:
+      - server
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      target: release
+    image: ghcr.io/otal-labs/nexul-web:${NEXUL_VERSION:-latest}
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+
+volumes:
+  nexul-data:
+  openobserve-data:

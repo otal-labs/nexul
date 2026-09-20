@@ -1,0 +1,344 @@
+name: Release
+
+# One product version, cut from one commit (ADR 0051, 0053). Every push to
+# master cuts a beta prerelease, numbered after the newest beta already
+# published; stable never builds master directly, it promotes whatever commit
+# the newest beta already shipped. A tag push builds that exact tag as a
+# stable release by hand.
+on:
+  push:
+    branches: [master]
+    tags:
+      - "v*.*.*"
+      - "!v*-*"
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: Release channel
+        type: choice
+        options: [stable, beta]
+        default: stable
+      version:
+        description: Version override (stable only, e.g. 0.2.1); defaults to the VERSION file without its -beta suffix
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.event_name == 'push' && (github.ref_type == 'tag' && 'stable' || 'beta') || inputs.channel }}
+  cancel-in-progress: false
+
+jobs:
+  # Decides what commit and version every other job builds. Isolated here so
+  # the beta numbering and stable-promotes-a-beta logic exists in one place.
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      ref: ${{ steps.resolve.outputs.ref }}
+      version: ${{ steps.resolve.outputs.version }}
+      channel: ${{ steps.resolve.outputs.channel }}
+      is_prerelease: ${{ steps.resolve.outputs.is_prerelease }}
+      previous_tag: ${{ steps.resolve.outputs.previous_tag }}
+      stable_exists: ${{ steps.resolve.outputs.stable_exists }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: resolve
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_CHANNEL: ${{ inputs.channel }}
+          INPUT_VERSION: ${{ inputs.version }}
+          REF_NAME: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          newest_release() {
+            # $1: jq boolean expression over each release object
+            # --slurp joins the pages into one array; gh's own --jq runs per page and would emit one tag per page.
+            gh api "repos/${REPO}/releases" --paginate --slurp | jq -r \
+              "add | [.[] | select(.draft == false and ($1))] | sort_by(.created_at) | last | .tag_name // empty"
+          }
+
+          is_prerelease=false
+          previous_tag=""
+          # A stable tag is bare semver (v0.2.0); anything with a dash after the
+          # numbers is a beta (v0.2.0-beta-003). Same rule as version.Channel().
+          is_beta='(.tag_name | test("^v[0-9]+\\.[0-9]+\\.[0-9]+-"))'
+          # Until the first stable release exists, betas also carry the moving
+          # `latest` image tag so a default install pulls the newest beta.
+          stable_exists=false
+          [[ -n "$(newest_release "$is_beta | not")" ]] && stable_exists=true
+
+          if [[ "$EVENT_NAME" == "push" && "$REF_TYPE" == "tag" ]]; then
+            channel=stable
+            ref="$SHA"
+            version="$REF_NAME"
+            previous_tag=$(newest_release "$is_beta | not")
+
+          elif [[ "$EVENT_NAME" == "push" || "$INPUT_CHANNEL" == "beta" ]]; then
+            channel=beta
+            is_prerelease=true
+            ref="$SHA"
+            previous_tag=$(newest_release "$is_beta")
+            # Next number = newest published beta on this VERSION line + 1, read
+            # from the releases rather than a file, so two queued runs can never
+            # both claim the same number.
+            prefix="v$(cat VERSION)-"
+            last=$(gh api "repos/${REPO}/releases" --paginate --slurp | jq -r --arg p "$prefix" \
+              'add | [.[] | .tag_name | select(startswith($p)) | ltrimstr($p) | select(test("^[0-9]+$")) | tonumber] | max // 0')
+            version=$(printf '%s%03d' "$prefix" $((last + 1)))
+
+          else
+            channel=stable
+            previous_tag=$(newest_release "$is_beta | not")
+            newest_beta=$(newest_release "$is_beta")
+            if [[ -z "$newest_beta" ]]; then
+              echo "::error::No beta release exists yet to promote to stable." >&2
+              exit 1
+            fi
+            ref=$(gh api "repos/${REPO}/releases/tags/${newest_beta}" --jq '.target_commitish')
+            if [[ -n "$INPUT_VERSION" ]]; then
+              version="v${INPUT_VERSION#v}"
+            else
+              line=$(git show "${ref}:VERSION")
+              version="v${line%%-*}"
+            fi
+          fi
+
+          {
+            echo "channel=$channel"
+            echo "ref=$ref"
+            echo "version=$version"
+            echo "is_prerelease=$is_prerelease"
+            echo "previous_tag=$previous_tag"
+            echo "stable_exists=$stable_exists"
+          } >> "$GITHUB_OUTPUT"
+
+  # Built once; the server embeds this same tree for every OS/arch in `binaries`.
+  web:
+    needs: resolve
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.ref }}
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+        working-directory: web
+      - run: VITE_API_URL=/ bun run build
+        working-directory: web
+      - uses: actions/upload-artifact@v7
+        with:
+          name: web-dist
+          path: web/dist
+          retention-days: 1
+
+  binaries:
+    needs: [resolve, web]
+    name: binaries-${{ matrix.goos }}-${{ matrix.goarch }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - { goos: linux, goarch: amd64, ext: "" }
+          - { goos: linux, goarch: arm64, ext: "" }
+          - { goos: darwin, goarch: amd64, ext: "" }
+          - { goos: darwin, goarch: arm64, ext: "" }
+          - { goos: windows, goarch: amd64, ext: ".exe" }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.ref }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/download-artifact@v8
+        with:
+          name: web-dist
+          path: web/dist
+      - name: Build runner
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          EXT: ${{ matrix.ext }}
+          VERSION: ${{ needs.resolve.outputs.version }}
+        run: |
+          mkdir -p dist
+          CGO_ENABLED=0 go build -trimpath \
+            -ldflags="-s -w -X github.com/otal-labs/nexul/internal/platform/version.Version=${VERSION}" \
+            -o "dist/nexul-runner-${GOOS}-${GOARCH}${EXT}" ./runner/cmd
+      - name: Build single-binary server
+        # Mirrors the Makefile's build-single target: embed web/dist via go:embed, -tags embed.
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          EXT: ${{ matrix.ext }}
+          VERSION: ${{ needs.resolve.outputs.version }}
+        run: |
+          rm -rf server/webui/dist
+          mkdir -p server/webui/dist
+          cp -r web/dist/. server/webui/dist/
+          CGO_ENABLED=0 go build -tags embed -trimpath \
+            -ldflags="-s -w -X github.com/otal-labs/nexul/internal/platform/version.Version=${VERSION}" \
+            -o "dist/nexul-server-${GOOS}-${GOARCH}${EXT}" ./server/cmd
+          tar -C dist -czf "dist/nexul-server-${GOOS}-${GOARCH}.tar.gz" "nexul-server-${GOOS}-${GOARCH}${EXT}"
+          rm "dist/nexul-server-${GOOS}-${GOARCH}${EXT}"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/*
+          retention-days: 1
+
+  images:
+    needs: resolve
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - { name: server, context: ./server, dockerfile: ./server/Dockerfile }
+          - { name: runner, context: ./runner, dockerfile: ./runner/Dockerfile }
+          - { name: web, context: ./web, dockerfile: ./web/Dockerfile }
+          - { name: automations, context: ./automations, dockerfile: ./automations/Dockerfile }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.ref }}
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: tags
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+          CHANNEL: ${{ needs.resolve.outputs.channel }}
+          STABLE_EXISTS: ${{ needs.resolve.outputs.stable_exists }}
+        run: |
+          image="ghcr.io/otal-labs/nexul-${{ matrix.name }}"
+          tags=("${image}:${VERSION#v}")
+          [[ "$CHANNEL" == "beta" ]] && tags+=("${image}:beta")
+          [[ "$CHANNEL" == "stable" || "$STABLE_EXISTS" != "true" ]] && tags+=("${image}:latest")
+          {
+            echo "tags<<EOF"
+            printf '%s\n' "${tags[@]}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          # Unused by web's Dockerfile; buildx ignores a named context nothing references.
+          build-contexts: root=.
+          file: ${{ matrix.dockerfile }}
+          target: release
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.tags.outputs.tags }}
+          build-args: |
+            VERSION=${{ needs.resolve.outputs.version }}
+
+  # Beta only: a beta per merge means old beta image tags accumulate forever
+  # otherwise. actions/delete-package-versions can't do this safely here —
+  # for container packages its ignore-versions regex matches the version's
+  # digest (`.name`), not its tags, so it can't tell a "latest"/stable tag
+  # apart from a beta one; a blind min-versions-to-keep could delete the
+  # wrong image. List and delete by tag instead.
+  prune:
+    needs: [resolve, images]
+    if: needs.resolve.outputs.channel == 'beta'
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      OWNER: ${{ github.repository_owner }}
+    steps:
+      - name: Delete old beta image versions
+        run: |
+          set -euo pipefail
+          for pkg in nexul-server nexul-web nexul-automations nexul-runner; do
+            echo "Pruning ${pkg}..."
+            # Keep the 10 newest tagged versions and anything tagged latest or
+            # a stable semver; untagged multi-arch manifest children are left
+            # alone since a kept manifest list may still reference them.
+            ids=$(gh api --paginate --slurp "/users/${OWNER}/packages/container/${pkg}/versions" | jq -r '
+              add | [.[] | {id, created_at, tags: (.metadata.container.tags // [])}]
+              | map(select((.tags | length) > 0))
+              | map(select((.tags | any(. == "latest" or test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))) | not))
+              | sort_by(.created_at) | reverse | .[10:] | .[].id')
+            for id in $ids; do
+              echo "  deleting version $id"
+              gh api --method DELETE "/users/${OWNER}/packages/container/${pkg}/versions/${id}"
+            done
+          done
+
+  release:
+    needs: [resolve, binaries, images]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.ref }}
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: dist-*
+          path: dist
+          merge-multiple: true
+      - name: Checksums
+        run: cd dist && sha256sum nexul-runner-* nexul-server-*.tar.gz > checksums.txt
+      - name: Create release
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+          REF: ${{ needs.resolve.outputs.ref }}
+          PRERELEASE: ${{ needs.resolve.outputs.is_prerelease }}
+          CHANNEL: ${{ needs.resolve.outputs.channel }}
+          PREVIOUS_TAG: ${{ needs.resolve.outputs.previous_tag }}
+        run: |
+          args=(dist/* --target "$REF" --title "Nexul $VERSION" --generate-notes)
+          [[ -n "$PREVIOUS_TAG" ]] && args+=(--notes-start-tag "$PREVIOUS_TAG")
+          [[ "$PRERELEASE" == "true" ]] && args+=(--prerelease)
+          [[ "$CHANNEL" == "stable" ]] && args+=(--latest)
+          gh release create "$VERSION" "${args[@]}"
+
+  # Stable-only, and only for the promote-a-beta flow: a hand-pushed tag
+  # can target an old commit, so it must never move VERSION forward.
+  finalize:
+    needs: [resolve, release]
+    if: needs.resolve.outputs.channel == 'stable' && github.event_name != 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+      - name: Bump VERSION
+        run: |
+          # 0.2.0-beta -> 0.2.1-beta: bump the patch, keep the prerelease suffix.
+          line=$(cat VERSION)
+          stable=${line%%-*}
+          next=$(echo "$stable" | awk -F. '{printf "%d.%d.%d", $1, $2, $3+1}')
+          echo "${next}${line#"$stable"}" > VERSION
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add VERSION
+          git commit -m "chore(release): prepare next version"
+          git push origin master

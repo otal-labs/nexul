@@ -1,0 +1,103 @@
+# End-to-end stack: server + web + the Vitest/Playwright runner, all on an
+# internal network with NO host ports — no collisions with a dev stack.
+# Usage:
+#   docker compose -f docker-compose.e2e.yml up --build --abort-on-container-exit
+#   docker compose -f docker-compose.e2e.yml down -v
+services:
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+      target: release
+      additional_contexts:
+        root: .
+    environment:
+      NEXUL_DB_PATH: /data/nexul.db
+      NEXUL_AUTH_SECRET: dev-secret-rotate-me
+      NEXUL_RUNNER_SECRET: dev-runner-secret-rotate-me
+      NEXUL_LOG_LEVEL: warn
+      NEXUL_SPA_ORIGIN: http://localhost
+      NEXUL_AUTOMATIONS_HOST_TOKENS_PATH: /data/automations-tokens.json
+    volumes:
+      - e2e-data:/data
+    networks:
+      - e2e-net
+
+  automations:
+    build:
+      context: ./automations
+      dockerfile: Dockerfile
+      additional_contexts:
+        root: .
+    environment:
+      NEXUL_SERVER_URL: http://server:8080
+      NEXUL_AUTOMATIONS_TOKENS_PATH: /data/automations-tokens.json
+      NEXUL_LOG_LEVEL: warn
+    volumes:
+      - e2e-data:/data:ro
+    networks:
+      - e2e-net
+    depends_on:
+      - server
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      target: release
+    networks:
+      - e2e-net
+
+  # A real runner against the host docker daemon: it claims deploy jobs and
+  # executes them for real (docker pull / docker run via the socket). Deployed
+  # containers join the e2e-net docker network, so specs verify them by
+  # container name without publishing any host port.
+  runner:
+    build:
+      context: ./runner
+      dockerfile: Dockerfile
+      target: release
+      additional_contexts:
+        root: .
+    environment:
+      NEXUL_SERVER_WS: ws://server:8081/ws/runner
+      NEXUL_RUNNER_SECRET: dev-runner-secret-rotate-me
+      NEXUL_RUNNER_ID: e2e-runner-1
+      NEXUL_RUNNER_NAME: e2e-runner
+      NEXUL_GIT_TOKEN: e2e-dummy
+      NEXUL_LOG_LEVEL: warn
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - e2e-net
+    depends_on:
+      - server
+
+  e2e:
+    build:
+      context: ./web
+      dockerfile: e2e.Dockerfile
+    environment:
+      NEXUL_BASE_URL: http://web
+      NEXUL_AUTH_SECRET: dev-secret-rotate-me
+      NEXUL_E2E_DB: /data/nexul.db
+    volumes:
+      # live-mount the web source so spec/config edits don't need a rebuild;
+      # node_modules is preserved via a named volume seeded from the image
+      - ./web:/e2e
+      - e2e-node-modules:/e2e/node_modules
+      - e2e-data:/data
+    networks:
+      - e2e-net
+    depends_on:
+      - server
+      - web
+      - runner
+
+networks:
+  e2e-net:
+    name: e2e-net
+
+volumes:
+  e2e-data:
+  e2e-node-modules:

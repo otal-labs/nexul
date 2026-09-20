@@ -1,0 +1,6 @@
+# Web build context (./web).
+node_modules
+dist
+coverage
+Dockerfile
+*.md

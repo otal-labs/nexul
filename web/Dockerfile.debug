@@ -1,0 +1,19 @@
+# Build context: ./web (see docker-compose.debug.yml). Source is bind-
+# mounted over /app at container start, so this image only installs deps —
+# no COPY of source, no build step here.
+FROM oven/bun:alpine
+WORKDIR /app
+COPY package.json bun.lock* ./
+RUN bun install --frozen-lockfile || bun install
+# Real Node for the dev server. The bun image has no node, so vite's
+# `#!/usr/bin/env node` shebang resolves to Bun's node-fallback shim — and
+# under Bun, node-http-proxy (vite's server.proxy) never gets the client
+# 'upgrade' event, so every proxied WebSocket (browser → vite → Go server)
+# hangs in CONNECTING forever while the server logs a successful accept
+# (oven-sh/bun#10441). Bun stays for dependency install only.
+RUN apk add --no-cache nodejs
+EXPOSE 5173
+# Source is bind-mounted over /app in the debug compose stack, so Vite HMR
+# picks up changes live — no image rebuild needed. --host so the container's
+# port mapping can reach it.
+ENTRYPOINT ["node", "node_modules/vite/bin/vite.js", "--host", "0.0.0.0"]

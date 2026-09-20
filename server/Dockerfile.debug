@@ -1,0 +1,12 @@
+# Build context: ./server (see docker-compose.debug.yml). Source is bind-
+# mounted over /src at container start, so this image only needs the
+# toolchain — no COPY, no build step here.
+FROM golang:1.26-alpine
+RUN apk add --no-cache ca-certificates && go install github.com/go-delve/delve/cmd/dlv@latest
+WORKDIR /src
+EXPOSE 8080 8081 8082 2345
+# dlv debug compiles from the mounted source, so source changes are picked up
+# on container restart (hot reload). --continue: run immediately instead of
+# halting until a debugger client attaches — attach later on :2345 to set
+# breakpoints against the already-running process (--accept-multiclient).
+ENTRYPOINT ["dlv", "debug", "--check-go-version=false", "--headless", "--listen=:2345", "--api-version=2", "--accept-multiclient", "--continue", "./server/cmd"]

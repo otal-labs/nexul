@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640">
+  <rect width="1280" height="640" fill="#050505"/>
+  <g transform="translate(160 200) scale(10)">
+    <rect width="24" height="24" rx="5" fill="#fff"/>
+    <g transform="translate(4 4) scale(0.6667)" fill="none" stroke="#000" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="8.5"/>
+    <path d="M7.6 7.6L12 12l4.4 4.4"/>
+    <circle cx="12" cy="12" r="2.8" fill="#000" stroke="none"/>
+    <circle cx="6" cy="6" r="2.2"/>
+    <circle cx="18" cy="18" r="2.2"/>
+    </g>
+  </g>
+  <text x="460" y="296" font-family="Inter, DejaVu Sans, sans-serif" font-weight="700" font-size="112" fill="#f5f5f5">Nexul</text>
+  <text x="464" y="362" font-family="Inter, DejaVu Sans, sans-serif" font-size="38" fill="#9a9a9a">One loop from docs to deploy,</text>
+  <text x="464" y="412" font-family="Inter, DejaVu Sans, sans-serif" font-size="38" fill="#9a9a9a">on servers you own.</text>
+</svg>
