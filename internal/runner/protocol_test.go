@@ -74,6 +74,13 @@ func TestFrame_Encode(t *testing.T) {
 			want: `{"type":"deploy_result","id":"deploy-456","status":"failed","error":"no space"}`,
 		},
 		{
+			name: "deploy_log wire shape",
+			got: func() Frame {
+				return Frame{Type: FrameDeployLog, ID: "deploy-456", Phase: LogPhaseCheckout, Log: "line1\nline2", TS: 1695379028112}
+			},
+			want: `{"type":"deploy_log","id":"deploy-456","ts":1695379028112,"log":"line1\nline2","phase":"checkout"}`,
+		},
+		{
 			name: "assign_deploy carries the gateway join step",
 			got: func() Frame {
 				return Frame{Type: FrameAssignDeploy, ID: "deploy-456", Service: "api", Image: "ghcr.io/org/api:1.0", GatewayContainer: "gw", JoinNetworks: []string{"api_default"}}
@@ -128,6 +135,9 @@ func TestFrame_Encode_Invalid(t *testing.T) {
 		{name: "build_result bad status", f: Frame{Type: FrameBuildResult, ID: "b1", Status: "meh"}},
 		{name: "deploy_progress bad phase", f: Frame{Type: FrameDeployProgress, ID: "d1", Phase: "draining"}},
 		{name: "deploy_result bad status", f: Frame{Type: FrameDeployResult, ID: "d1", Status: "running"}},
+		{name: "deploy_log missing id", f: Frame{Type: FrameDeployLog, Phase: LogPhaseBuild, Log: "x"}},
+		{name: "deploy_log empty log", f: Frame{Type: FrameDeployLog, ID: "d1", Phase: LogPhaseBuild}},
+		{name: "deploy_log bad phase", f: Frame{Type: FrameDeployLog, ID: "d1", Phase: "pulling", Log: "x"}},
 		{name: "join_networks missing gateway_container", f: Frame{Type: FrameJoinNetworks, JoinNetworks: []string{"net1"}}},
 		{name: "join_networks missing networks", f: Frame{Type: FrameJoinNetworks, GatewayContainer: "gw"}},
 		{name: "join_networks_result missing gateway_container", f: Frame{Type: FrameJoinNetworksResult, Status: BuildStatusSuccess}},
@@ -151,6 +161,7 @@ func TestParseFrame(t *testing.T) {
 			{Type: FrameCancel, ID: "b1"},
 			{Type: FrameBuildProgress, ID: "b1", Step: 1, Total: 2, Log: "x"},
 			{Type: FrameBuildResult, ID: "b1", Status: BuildStatusFailed, Error: "boom"},
+			{Type: FrameDeployLog, ID: "d1", Phase: LogPhaseDeploy, Log: "docker pull img\n", TS: 1695379028112},
 			{Type: FrameJoinNetworks, GatewayContainer: "gw", JoinNetworks: []string{"net1"}},
 			{Type: FrameJoinNetworksResult, GatewayContainer: "gw", Status: BuildStatusSuccess},
 			{Type: FrameUpdate, Version: "v0.2.0", URL: "https://instance/download", Sha256: "abc123"},

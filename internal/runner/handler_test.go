@@ -57,6 +57,7 @@ func TestHandler_dispatchFrame(t *testing.T) {
 		{name: "later build_progress", frame: Frame{Type: FrameBuildProgress, ID: "b1", Step: 2, Total: 2}, wantTopic: TopicDeployBuildProgress},
 		{name: "build_result", frame: Frame{Type: FrameBuildResult, ID: "b1", Status: BuildStatusFailed, Error: "boom"}, wantTopic: TopicDeployBuildCompleted},
 		{name: "deploy_progress", frame: Frame{Type: FrameDeployProgress, ID: "d1", Phase: DeployPhasePulling}, wantTopic: TopicDeployDeployProgress},
+		{name: "deploy_log", frame: Frame{Type: FrameDeployLog, ID: "d1", Phase: LogPhaseBuild, Log: "Step 1/4", TS: 1695379028112}, wantTopic: TopicDeployLog},
 		{name: "deploy_result", frame: Frame{Type: FrameDeployResult, ID: "d1", Status: DeployStatusFailed, Error: "oom"}, wantTopic: TopicDeployStatusChanged},
 	}
 	for _, tt := range tests {
@@ -98,6 +99,19 @@ func TestHandler_dispatchFrame_Payloads(t *testing.T) {
 		got := decodeEvent[BuildCompletedEvent](t, evs[0])
 		assert.Equal(t, BuildStatusSuccess, got.Status)
 		assert.Equal(t, []string{"bin/api"}, got.Artifacts)
+	})
+
+	t.Run("deploy_log carries phase, lines and millisecond timestamp", func(t *testing.T) {
+		bus := newFakeBus()
+		h := newTestHandler(bus, newFakeRunnerRepo())
+		f := Frame{Type: FrameDeployLog, ID: "d1", Phase: LogPhaseCheckout, Log: "clone org/app@main\nCloning into '/data/repo'...\n", TS: 1695379028112}
+
+		require.NoError(t, h.dispatchFrame(context.Background(), newTestConn(), f))
+		evs := bus.topicEvents(TopicDeployLog)
+		require.Len(t, evs, 1)
+		got := decodeEvent[DeployLogEvent](t, evs[0])
+		assert.Equal(t, DeployLogEvent{ID: "d1", Phase: "checkout", Log: "clone org/app@main\nCloning into '/data/repo'...\n", TS: 1695379028112}, got)
+		assert.JSONEq(t, `{"id":"d1","phase":"checkout","log":"clone org/app@main\nCloning into '/data/repo'...\n","ts":1695379028112}`, string(evs[0].Payload))
 	})
 
 	t.Run("deploy_result carries status and address", func(t *testing.T) {

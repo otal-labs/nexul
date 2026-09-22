@@ -481,7 +481,8 @@ func (s *Service) HandleStatusChanged(ctx context.Context, ev eventbus.Event) er
 		return apperrs.Fatal(fmt.Errorf("%w: unknown deploy status %q", apperrs.ErrInvalid, p.Status))
 	}
 	if p.Error != "" {
-		if err := s.repo.AppendLog(ctx, p.ID, "deploy failed: "+p.Error+"\n"); err != nil {
+		line := LogLine{TS: s.now().UnixMilli(), Text: "deploy failed: " + p.Error}
+		if err := s.repo.AppendLogLines(ctx, p.ID, []LogLine{line}); err != nil {
 			return fmt.Errorf("append deploy %s log: %w", p.ID, err)
 		}
 	}
@@ -499,6 +500,45 @@ func (s *Service) HandleStatusChanged(ctx context.Context, ev eventbus.Event) er
 		}
 	}
 	return nil
+}
+
+// HandleLog is the deploy.log consumer: one row per line of the runner's batch, all stamped with the batch's
+// phase and time. A missing deploy is fatal, since the row is written before deploy.requested ever leaves the outbox.
+func (s *Service) HandleLog(ctx context.Context, ev eventbus.Event) error {
+	var p DeployLogEvent
+	if err := json.Unmarshal(ev.Payload, &p); err != nil {
+		return apperrs.Fatal(fmt.Errorf("parse deploy.log: %w", err))
+	}
+	if p.ID == "" {
+		return apperrs.Fatal(fmt.Errorf("%w: deploy.log requires id", apperrs.ErrInvalid))
+	}
+	lines := p.lines()
+	if len(lines) == 0 {
+		return nil
+	}
+	err := s.repo.AppendLogLines(ctx, p.ID, lines)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return apperrs.Fatal(fmt.Errorf("append deploy %s log: %w", p.ID, err))
+	}
+	if err != nil {
+		return fmt.Errorf("append deploy %s log: %w", p.ID, err)
+	}
+	return nil
+}
+
+// Log returns a deploy's output ordered by time, never nil, so the gateway serialises an empty log as [].
+func (s *Service) Log(ctx context.Context, id string) ([]LogLine, error) {
+	if _, err := s.Get(ctx, id); err != nil {
+		return nil, err
+	}
+	lines, err := s.repo.ListLogLines(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("list deploy %s log: %w", id, err)
+	}
+	if lines == nil {
+		return []LogLine{}, nil
+	}
+	return lines, nil
 }
 
 // reconcileServices lands the runner's observation report onto the deploying stack's containers (spec §4 step 3):

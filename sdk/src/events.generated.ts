@@ -3,6 +3,11 @@
 // Regenerate: bun run generate:events (from sdk/).
 
 export interface EventPayloads {
+  "account.admitted": { "invitation_id"?: string; "user_id"?: string; };
+  "account.disabled": { "account_id": string; "actor_id"?: string; };
+  "account.reactivated": { "account_id": string; "actor_id"?: string; };
+  "account.removed": { "account_id": string; "actor_id"?: string; };
+  "account.restored": { "account_id": string; "actor_id"?: string; };
   "category.created": { "category": Record<string, unknown>; };
   "category.deleted": { "category": Record<string, unknown>; };
   "category.updated": { "category": Record<string, unknown>; };
@@ -15,6 +20,7 @@ export interface EventPayloads {
   "deploy.build_started": { "id": string; "total": number; "log"?: string; };
   "deploy.cancel_requested": { "id": string; };
   "deploy.deploy_progress": { "id": string; "phase": string; "log"?: string; };
+  "deploy.log": { "id": string; "phase": "checkout" | "build" | "deploy"; "log": string; "ts": number; };
   "deploy.requested": { "id": string; "kind": "build" | "deploy"; "service"?: string; "target"?: string; "image"?: string; "env"?: Record<string, string>; "strategy"?: string; "repo"?: string; "ref"?: string; "compose_dir"?: string; "network"?: string; "ports"?: string[]; "mounts"?: string[]; "dockerfile"?: string; "compose_path"?: string; "health_check"?: Record<string, unknown>; };
   "deploy.status_changed": { "id": string; "status": "pending" | "running" | "healthy" | "failed"; "error"?: string; };
   "dns.exposure_changed": { "exposure_id": string; "gateway_id": string; "hostname"?: string; "service"?: string; "port"?: number; "action": "created" | "deleted"; };
@@ -34,6 +40,10 @@ export interface EventPayloads {
   "git.push": { "owner": string; "repo": string; "branch": string; "sha": string; "pusher"?: string; };
   "instance.upgrade_changed": { "id": string; "from_version": string; "to_version": string; "status": "pending" | "started" | "completed" | "failed"; "error"?: string; "requested_by"?: string; "created_at"?: string; "updated_at"?: string; };
   "instance.upgrade_requested": { "id": string; "version": string; };
+  "invitation.created": { "invitation_id"?: string; "actor_id"?: string; };
+  "invitation.deleted": { "invitation_id"?: string; "reason"?: string; };
+  "invitation.redeemed": { "invitation_id"?: string; "user_id"?: string; };
+  "invitation.revoked": { "invitation_id"?: string; "actor_id"?: string; };
   "memory.created": { "memory": { "id": string; "workspace_id": string; "project_id": string; "title": string; "when_to_use"?: string; "always_included"?: boolean; "updated_at"?: string; }; "author_id": string; };
   "memory.deleted": { "id": string; "title": string; "author_id": string; };
   "memory.updated": { "memory": { "id": string; "workspace_id": string; "project_id": string; "title": string; "when_to_use"?: string; "always_included"?: boolean; "updated_at"?: string; }; "author_id": string; };
@@ -66,11 +76,17 @@ export interface EventPayloads {
   "ticket_type.updated": { "ticket_type": Record<string, unknown>; };
   "topology.updated": { "environment": string; "canvas"?: Record<string, unknown>; };
   "voice.occupancy.changed": { "conversation_id": string; "occupants": { "identity": string; "name": string; }[]; };
+  "workspace.member.added": { "invitation_id"?: string; "user_id"?: string; "workspace_id"?: string; };
 }
 
 export type Topic = keyof EventPayloads;
 
 export const TOPICS: Topic[] = [
+  "account.admitted",
+  "account.disabled",
+  "account.reactivated",
+  "account.removed",
+  "account.restored",
   "category.created",
   "category.deleted",
   "category.updated",
@@ -83,6 +99,7 @@ export const TOPICS: Topic[] = [
   "deploy.build_started",
   "deploy.cancel_requested",
   "deploy.deploy_progress",
+  "deploy.log",
   "deploy.requested",
   "deploy.status_changed",
   "dns.exposure_changed",
@@ -102,6 +119,10 @@ export const TOPICS: Topic[] = [
   "git.push",
   "instance.upgrade_changed",
   "instance.upgrade_requested",
+  "invitation.created",
+  "invitation.deleted",
+  "invitation.redeemed",
+  "invitation.revoked",
   "memory.created",
   "memory.deleted",
   "memory.updated",
@@ -134,9 +155,15 @@ export const TOPICS: Topic[] = [
   "ticket_type.updated",
   "topology.updated",
   "voice.occupancy.changed",
+  "workspace.member.added",
 ];
 
 export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
+  "account.admitted": {"invitation_id":"fixture-invitation_id","user_id":"fixture-user_id"},
+  "account.disabled": {"account_id":"fixture-account_id","actor_id":"fixture-actor_id"},
+  "account.reactivated": {"account_id":"fixture-account_id","actor_id":"fixture-actor_id"},
+  "account.removed": {"account_id":"fixture-account_id","actor_id":"fixture-actor_id"},
+  "account.restored": {"account_id":"fixture-account_id","actor_id":"fixture-actor_id"},
   "category.created": {"category":{}},
   "category.deleted": {"category":{}},
   "category.updated": {"category":{}},
@@ -149,6 +176,7 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "deploy.build_started": {"id":"fixture-id","total":1,"log":"fixture-log"},
   "deploy.cancel_requested": {"id":"fixture-id"},
   "deploy.deploy_progress": {"id":"fixture-id","phase":"fixture-phase","log":"fixture-log"},
+  "deploy.log": {"id":"fixture-id","phase":"checkout","log":"fixture-log","ts":1},
   "deploy.requested": {"id":"fixture-id","kind":"build","service":"fixture-service","target":"fixture-target","image":"fixture-image","env":{},"strategy":"fixture-strategy","repo":"fixture-repo","ref":"fixture-ref","compose_dir":"fixture-compose_dir","network":"fixture-network","ports":["fixture-ports"],"mounts":["fixture-mounts"],"dockerfile":"fixture-dockerfile","compose_path":"fixture-compose_path","health_check":{}},
   "deploy.status_changed": {"id":"fixture-id","status":"pending","error":"fixture-error"},
   "dns.exposure_changed": {"exposure_id":"fixture-exposure_id","gateway_id":"fixture-gateway_id","hostname":"fixture-hostname","service":"fixture-service","port":1,"action":"created"},
@@ -168,6 +196,10 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "git.push": {"owner":"fixture-owner","repo":"fixture-repo","branch":"fixture-branch","sha":"fixture-sha","pusher":"fixture-pusher"},
   "instance.upgrade_changed": {"id":"fixture-id","from_version":"fixture-from_version","to_version":"fixture-to_version","status":"pending","error":"fixture-error","requested_by":"fixture-requested_by","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"},
   "instance.upgrade_requested": {"id":"fixture-id","version":"fixture-version"},
+  "invitation.created": {"invitation_id":"fixture-invitation_id","actor_id":"fixture-actor_id"},
+  "invitation.deleted": {"invitation_id":"fixture-invitation_id","reason":"fixture-reason"},
+  "invitation.redeemed": {"invitation_id":"fixture-invitation_id","user_id":"fixture-user_id"},
+  "invitation.revoked": {"invitation_id":"fixture-invitation_id","actor_id":"fixture-actor_id"},
   "memory.created": {"memory":{"id":"fixture-id","workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","title":"fixture-title","when_to_use":"fixture-when_to_use","always_included":false,"updated_at":"2026-01-01T00:00:00Z"},"author_id":"fixture-author_id"},
   "memory.deleted": {"id":"fixture-id","title":"fixture-title","author_id":"fixture-author_id"},
   "memory.updated": {"memory":{"id":"fixture-id","workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","title":"fixture-title","when_to_use":"fixture-when_to_use","always_included":false,"updated_at":"2026-01-01T00:00:00Z"},"author_id":"fixture-author_id"},
@@ -200,4 +232,5 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "ticket_type.updated": {"ticket_type":{}},
   "topology.updated": {"environment":"fixture-environment","canvas":{}},
   "voice.occupancy.changed": {"conversation_id":"fixture-conversation_id","occupants":[{"identity":"fixture-identity","name":"fixture-name"}]},
+  "workspace.member.added": {"invitation_id":"fixture-invitation_id","user_id":"fixture-user_id","workspace_id":"fixture-workspace_id"},
 };

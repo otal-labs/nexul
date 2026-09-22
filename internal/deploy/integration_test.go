@@ -134,8 +134,8 @@ func TestIntegration_OneActivePerStack(t *testing.T) {
 	assert.Equal(t, deploy.StatusPending, second.Status)
 }
 
-// TestIntegration_RunnerFailurePath lands a runner-reported failure, including
-// the error detail appended to the deploy log.
+// TestIntegration_RunnerFailurePath lands a runner-reported failure: the streamed output stays in time order
+// and the error detail lands as the last log line.
 func TestIntegration_RunnerFailurePath(t *testing.T) {
 	store := openStore(t)
 	svc := newService(t, store)
@@ -144,6 +144,9 @@ func TestIntegration_RunnerFailurePath(t *testing.T) {
 	got, err := svc.Deploy(context.Background(), deploy.DeployRequest{StackID: "svc-1", Image: "ghcr.io/onik/api:v1"})
 	require.NoError(t, err)
 
+	require.NoError(t, svc.HandleLog(context.Background(), eventbus.Event{
+		Payload: json.RawMessage(`{"id":"` + got.ID + `","phase":"deploy","log":"docker pull ghcr.io/onik/api:v1\ncontainer exited 1\n","ts":1695379028112}`),
+	}))
 	require.NoError(t, svc.HandleStatusChanged(context.Background(), eventbus.Event{
 		Payload: json.RawMessage(`{"id":"` + got.ID + `","status":"failed","error":"container exited 1"}`),
 	}))
@@ -151,7 +154,14 @@ func TestIntegration_RunnerFailurePath(t *testing.T) {
 	stored, err := store.Deploys.GetByID(context.Background(), got.ID)
 	require.NoError(t, err)
 	assert.Equal(t, deploy.StatusFailed, stored.Status)
-	assert.Contains(t, stored.Log, "container exited 1")
+	lines, err := svc.Log(context.Background(), got.ID)
+	require.NoError(t, err)
+	require.Len(t, lines, 3)
+	assert.Equal(t, "docker pull ghcr.io/onik/api:v1", lines[0].Text)
+	assert.Equal(t, "deploy", lines[0].Phase)
+	assert.Equal(t, "container exited 1", lines[1].Text)
+	assert.Equal(t, "deploy failed: container exited 1", lines[2].Text)
+	assert.Equal(t, "", lines[2].Phase)
 }
 
 // TestIntegration_RollbackAndStackEvents covers the one-click rollback

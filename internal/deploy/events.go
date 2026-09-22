@@ -1,5 +1,7 @@
 package deploy
 
+import "strings"
+
 // Topics the deploy domain publishes onto the bus; shapes mirror the runner's contracts (ADR 0017).
 // Topic strings keep their original "service.*" names so existing bus consumers keep matching.
 const (
@@ -9,6 +11,8 @@ const (
 	TopicStackCreated          = "service.created"
 	TopicStackUpdated          = "service.updated"
 	TopicStackDeleted          = "service.deleted"
+	// TopicDeployLog is consumed, not published: the runner domain streams output batches on it.
+	TopicDeployLog = "deploy.log"
 )
 
 // Topics returns every topic the deploy domain publishes.
@@ -69,6 +73,29 @@ type DeployStatusChangedEvent struct {
 	// Services is the observation report: one entry per container
 	// the stack started, reconciled into the services table by HandleStatusChanged.
 	Services []ObservedService `json:"services,omitempty"`
+}
+
+// DeployLogEvent mirrors the runner's deploy.log payload independently (ADR 0017): a batch of newline-joined
+// output lines from one phase, stamped in unix milliseconds when the runner flushed it.
+type DeployLogEvent struct {
+	ID    string `json:"id"`
+	Phase string `json:"phase"`
+	Log   string `json:"log"`
+	TS    int64  `json:"ts"`
+}
+
+// lines splits the batch into rows; the trailing newline every streamed line carries never becomes an empty row.
+func (e DeployLogEvent) lines() []LogLine {
+	text := strings.TrimSuffix(e.Log, "\n")
+	if text == "" {
+		return nil
+	}
+	parts := strings.Split(text, "\n")
+	out := make([]LogLine, 0, len(parts))
+	for _, p := range parts {
+		out = append(out, LogLine{TS: e.TS, Phase: e.Phase, Text: p})
+	}
+	return out
 }
 
 // ObservedService is one container in a deploy_result's observation report; mirrors runner.Service

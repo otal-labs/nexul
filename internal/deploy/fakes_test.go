@@ -20,10 +20,11 @@ type fakeRepo struct {
 	updateErr error
 	appendErr error
 	cancelErr error
+	logs      map[string][]LogLine
 }
 
 func newFakeRepo() *fakeRepo {
-	return &fakeRepo{stored: map[string]*Deploy{}}
+	return &fakeRepo{stored: map[string]*Deploy{}, logs: map[string][]LogLine{}}
 }
 
 func (f *fakeRepo) Create(_ context.Context, d *Deploy, evts ...eventbus.OutboxEvent) error {
@@ -180,18 +181,26 @@ func (f *fakeRepo) SetAddress(_ context.Context, id, address string) error {
 	return nil
 }
 
-func (f *fakeRepo) AppendLog(_ context.Context, id, entry string) error {
+func (f *fakeRepo) AppendLogLines(_ context.Context, id string, lines []LogLine) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.appendErr != nil {
 		return f.appendErr
 	}
-	d, ok := f.stored[id]
-	if !ok {
+	if _, ok := f.stored[id]; !ok {
 		return apperrs.ErrNotFound
 	}
-	d.Log += entry
+	for _, l := range lines {
+		l.Seq = int64(len(f.logs[id]) + 1)
+		f.logs[id] = append(f.logs[id], l)
+	}
 	return nil
+}
+
+func (f *fakeRepo) ListLogLines(_ context.Context, id string) ([]LogLine, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]LogLine{}, f.logs[id]...), nil
 }
 
 // fakeStackRepo is an in-memory deploy.StackRepo for use-case tests.

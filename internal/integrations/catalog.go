@@ -325,6 +325,17 @@ var catalogSchemas = map[string]string{
 			"log": {"type": "string"}
 		}
 	}`,
+	"deploy.log": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["id", "phase", "log", "ts"],
+		"properties": {
+			"id": {"type": "string"},
+			"phase": {"type": "string", "enum": ["checkout", "build", "deploy"]},
+			"log": {"type": "string"},
+			"ts": {"type": "integer"}
+		}
+	}`,
 	"dns.record_changed": `{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",
 		"type": "object",

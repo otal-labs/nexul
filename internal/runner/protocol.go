@@ -19,6 +19,9 @@ const (
 	FrameBuildResult    FrameType = "build_result"
 	FrameDeployProgress FrameType = "deploy_progress"
 	FrameDeployResult   FrameType = "deploy_result"
+	// FrameDeployLog (runner -> server) streams a batch of newline-joined output lines from one phase of a
+	// deploy job; its ts is unix milliseconds, unlike heartbeat's seconds.
+	FrameDeployLog FrameType = "deploy_log"
 	// FrameDiscover (server -> runner) and FrameDiscoverResult (runner -> server) are the machine-discovery
 	// job pair (spec §3, §8): scan the host's containers and networks for the import wizard.
 	FrameDiscover       FrameType = "discover"
@@ -52,6 +55,11 @@ const (
 	DeployPhasePulling  = "pulling"
 	DeployPhaseStarting = "starting"
 	DeployPhaseHealthy  = "healthy"
+
+	// Log phases group a deploy_log batch: git clone/fetch, image or compose build, then start and network join.
+	LogPhaseCheckout = "checkout"
+	LogPhaseBuild    = "build"
+	LogPhaseDeploy   = "deploy"
 
 	UpgradeStatusStarted = "started"
 	UpgradeStatusFailed  = "failed"
@@ -143,6 +151,7 @@ var frameValidators = map[FrameType]func(*Frame) error{
 	FrameBuildResult:        (*Frame).validateBuildResult,
 	FrameDeployProgress:     (*Frame).validateDeployProgress,
 	FrameDeployResult:       (*Frame).validateDeployResult,
+	FrameDeployLog:          (*Frame).validateDeployLog,
 	FrameDiscover:           (*Frame).validateDiscover,
 	FrameDiscoverResult:     (*Frame).validateDiscoverResult,
 	FrameJoinNetworks:       (*Frame).validateJoinNetworks,
@@ -217,6 +226,13 @@ func (f *Frame) validateDeployProgress() error {
 func (f *Frame) validateDeployResult() error {
 	if f.ID == "" || !oneOf(f.Status, DeployStatusHealthy, DeployStatusFailed) {
 		return fmt.Errorf("%w: deploy_result requires id and a valid status", apperrs.ErrInvalid)
+	}
+	return nil
+}
+
+func (f *Frame) validateDeployLog() error {
+	if f.ID == "" || f.Log == "" || !oneOf(f.Phase, LogPhaseCheckout, LogPhaseBuild, LogPhaseDeploy) {
+		return fmt.Errorf("%w: deploy_log requires id, log and a valid phase", apperrs.ErrInvalid)
 	}
 	return nil
 }
