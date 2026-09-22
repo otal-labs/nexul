@@ -56,3 +56,7 @@ func TestAllTopics_IncludesInvitationLifecycle(t *testing.T) {
 	assert.Contains(t, topics, "account.admitted")
 	assert.Contains(t, topics, "workspace.member.added")
 }
+
+func TestAllTopics_IncludesDeployLog(t *testing.T) {
+	assert.Contains(t, AllTopics(), "deploy.log")
+}
