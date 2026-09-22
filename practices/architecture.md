@@ -267,7 +267,7 @@ with a `type` discriminator, declared in `internal/runner/protocol.go`:
 
 - Server to runner: `assign_build`, `assign_deploy`, `cancel`.
 - Runner to server: `heartbeat`, `build_progress`, `build_result`,
-  `deploy_progress`, `deploy_result`.
+  `deploy_log`, `deploy_progress`, `deploy_result`.
 
 The server-side handler translates runner frames into bus events. It is a
 producer on the bus, not the bus.
