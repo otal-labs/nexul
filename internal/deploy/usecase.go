@@ -516,7 +516,14 @@ func (s *Service) HandleLog(ctx context.Context, ev eventbus.Event) error {
 	if len(lines) == 0 {
 		return nil
 	}
-	err := s.repo.AppendLogLines(ctx, p.ID, lines)
+	cur, err := s.repo.GetByID(ctx, p.ID)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return apperrs.Fatal(fmt.Errorf("append deploy %s log: %w", p.ID, err))
+	}
+	if err != nil {
+		return fmt.Errorf("append deploy %s log: %w", p.ID, err)
+	}
+	err = s.repo.AppendLogLines(ctx, p.ID, lines, s.updatedEvent(p.ID, cur.Status))
 	if errors.Is(err, apperrs.ErrNotFound) {
 		return apperrs.Fatal(fmt.Errorf("append deploy %s log: %w", p.ID, err))
 	}
@@ -602,10 +609,15 @@ func (s *Service) transition(ctx context.Context, id string, to Status) error {
 		}
 		return fmt.Errorf("%w: cannot transition deploy %s from %s to %s", apperrs.ErrInvalid, id, cur.Status, to)
 	}
-	if err := s.repo.UpdateStatus(ctx, id, to); err != nil {
+	if err := s.repo.UpdateStatus(ctx, id, to, s.updatedEvent(id, to)); err != nil {
 		return fmt.Errorf("transition deploy %s: %w", id, err)
 	}
 	return nil
+}
+
+// updatedEvent is the deploy.updated outbox row a status or log write commits alongside itself.
+func (s *Service) updatedEvent(id string, status Status) eventbus.OutboxEvent {
+	return eventbus.OutboxEvent{ID: ids.New(), Topic: TopicDeployUpdated, Payload: DeployUpdatedEvent{ID: id, Status: string(status)}}
 }
 
 // Cancel's terminal state still arrives via status_changed, not from this call.

@@ -48,12 +48,7 @@ func (r *DeploysRepo) Create(ctx context.Context, d *deploy.Deploy, evts ...even
 		if err != nil {
 			return fmt.Errorf("insert deploy %s: %w", d.ID, classifyWriteErr(err))
 		}
-		for _, evt := range evts {
-			if err := insertOutboxRow(ctx, tx, evt.ID, evt.Topic, evt.Payload); err != nil {
-				return err
-			}
-		}
-		return nil
+		return insertOutboxRows(ctx, tx, evts)
 	})
 }
 
@@ -123,7 +118,7 @@ func (r *DeploysRepo) LastHealthy(ctx context.Context, stackID string) (*deploy.
 	return toDeploy(row), nil
 }
 
-func (r *DeploysRepo) UpdateStatus(ctx context.Context, id string, status deploy.Status) error {
+func (r *DeploysRepo) UpdateStatus(ctx context.Context, id string, status deploy.Status, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).UpdateDeployStatus(ctx, sqlcgen.UpdateDeployStatusParams{
 			Status: string(status), UpdatedAt: time.Now().Unix(), ID: id,
@@ -134,7 +129,7 @@ func (r *DeploysRepo) UpdateStatus(ctx context.Context, id string, status deploy
 		if n == 0 {
 			return fmt.Errorf("update deploy %s status: %w", id, apperrs.ErrNotFound)
 		}
-		return nil
+		return insertOutboxRows(ctx, tx, evts)
 	})
 }
 
@@ -156,7 +151,7 @@ func (r *DeploysRepo) SetAddress(ctx context.Context, id, address string) error 
 
 // AppendLogLines inserts one row per line inside one transaction; the deploy FK maps a missing deploy onto
 // ErrNotFound, since the only constraint the insert can violate is that one.
-func (r *DeploysRepo) AppendLogLines(ctx context.Context, id string, lines []deploy.LogLine) error {
+func (r *DeploysRepo) AppendLogLines(ctx context.Context, id string, lines []deploy.LogLine, evts ...eventbus.OutboxEvent) error {
 	if len(lines) == 0 {
 		return nil
 	}
@@ -172,8 +167,17 @@ func (r *DeploysRepo) AppendLogLines(ctx context.Context, id string, lines []dep
 			}
 			return fmt.Errorf("append deploy %s log: %w", id, err)
 		}
-		return nil
+		return insertOutboxRows(ctx, tx, evts)
 	})
+}
+
+func insertOutboxRows(ctx context.Context, tx *sql.Tx, evts []eventbus.OutboxEvent) error {
+	for _, evt := range evts {
+		if err := insertOutboxRow(ctx, tx, evt.ID, evt.Topic, evt.Payload); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (r *DeploysRepo) ListLogLines(ctx context.Context, id string) ([]deploy.LogLine, error) {
