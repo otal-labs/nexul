@@ -1,0 +1,20 @@
+# 11 — Done as an index of the why
+
+**Type:** grilling
+**Status:** open
+**Blocked by:** None — can start immediately
+
+## Question
+
+The owner's step 7: when a ticket is done and tested, its purpose is to be
+indexed so anyone — human or LLM — can later see *why* the work happened.
+Today the chain doc→ticket→branch→PR already exists and search covers doc
+and ticket text. What does "indexed" add beyond that?
+
+- Is the why already carried by the existing links plus the ticket's spec,
+  and this step is just making sure agents *read* that chain (a retrieval
+  concern, maybe an MCP tool that walks a ticket's full context)?
+- Or does done trigger something new — a closing summary written onto the
+  ticket, a memory, the trail kept?
+- What should an agent starting the next loop actually receive when it asks
+  "why does this code exist"?
