@@ -9,6 +9,7 @@ import { AutomationPage } from "@/pages/AutomationPage";
 import { AutomationsPage } from "@/pages/AutomationsPage";
 import { BoardPage } from "@/pages/BoardPage";
 import { ChatPage } from "@/pages/ChatPage";
+import { DeployPage } from "@/pages/DeployPage";
 import { DocsPage } from "@/pages/DocsPage";
 import { DnsOnboardingPage } from "@/pages/DnsOnboardingPage";
 import { ErrorPage } from "@/pages/ErrorPage";
@@ -122,6 +123,7 @@ const buildRoutes = (loggedIn: boolean): RouteObject[] => [
                 { path: "/automations/:id", element: <AutomationPage /> },
                 { path: "/services/:serviceId", element: <ServicePage /> },
                 { path: "/stacks/:stackId", element: <StackPage /> },
+                { path: "/stacks/:stackId/deploys/:deployId", element: <DeployPage /> },
                 { path: "/members", element: <MembersPage /> },
                 { path: "/settings", element: <SettingsPage /> },
                 { path: "/projects/:projectId/settings", element: <ProjectSettingsPage /> },

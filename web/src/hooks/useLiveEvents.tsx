@@ -8,12 +8,14 @@ import {
   type ServerFrame,
 } from "@/api/ws";
 import { useFlowStore } from "@/stores/flowStore";
+import { getDeployKey, getDeployLogKey } from "@/hooks/DeployHooks";
 import { getDnsExposuresKey, getDnsGatewaysKey } from "@/hooks/DnsHooks";
 import { getDocKey, getDocsKey } from "@/hooks/DocHooks";
 import { getInstanceUpgradeKey } from "@/hooks/InstanceUpgradeHooks";
 import { getNotificationsKey, getUnreadCountKey } from "@/hooks/NotificationHooks";
 import { getRunnerQueueKey, getRunnersKey } from "@/hooks/RunnerHooks";
 import { getServiceDeploysKey, getServicesKey } from "@/hooks/ServiceHooks";
+import { getStackDeploysKey } from "@/hooks/StackHooks";
 import { getCategoriesKey, getProjectCategoriesKey } from "@/hooks/CategoryHooks";
 import { getProjectTicketTypesKey, getTicketTypesKey } from "@/hooks/TicketTypeHooks";
 import { getProjectStatusesKey, getStatusesKey } from "@/hooks/StatusHooks";
@@ -39,11 +41,13 @@ import type { VoiceOccupant } from "@/models/Voice";
 const pushTopics: Record<string, string[]> = {
   "runner.connected": [getRunnersKey],
   "runner.disconnected": [getRunnersKey],
-  "deploy.build_started": [getRunnersKey, getRunnerQueueKey],
-  "deploy.build_progress": [getRunnersKey],
-  "deploy.build_completed": [getRunnersKey, getRunnerQueueKey],
-  "deploy.deploy_progress": [getRunnersKey],
-  "deploy.status_changed": [getRunnersKey, getRunnerQueueKey, getServiceDeploysKey],
+  "deploy.build_started": [getRunnersKey, getRunnerQueueKey, getDeployKey],
+  "deploy.build_progress": [getRunnersKey, getDeployKey],
+  "deploy.build_completed": [getRunnersKey, getRunnerQueueKey, getDeployKey],
+  "deploy.deploy_progress": [getRunnersKey, getDeployKey],
+  "deploy.status_changed": [getRunnersKey, getRunnerQueueKey, getServiceDeploysKey, getStackDeploysKey, getDeployKey],
+  // ponytail: whole-log refetch per batch (≤ 4/s); append the frame's lines into the cache if logs get large.
+  "deploy.log": [getDeployLogKey],
   "service.created": [getServicesKey],
   "service.updated": [getServicesKey],
   "service.deleted": [getServicesKey],

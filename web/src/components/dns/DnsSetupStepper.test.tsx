@@ -97,7 +97,7 @@ describe("DnsSetupStepper", () => {
       if (url === "/api/projects") return { data: projects };
       if (url === "/api/runners") return { data: runners };
       if (url === "/api/dns/tunnels/t1/status") return { data: { id: "t1", name: "instance", status: tunnelStatus } };
-      if (url === "/api/services/svc-1/deploys") return { data: [{ id: "d1", status: "healthy", created_at: "2026-09-07T10:00:00Z", log: "" }] };
+      if (url === "/api/services/svc-1/deploys") return { data: [{ id: "d1", status: "healthy", created_at: "2026-09-07T10:00:00Z" }] };
       return { data: [] };
     });
     mocks.post.mockImplementation(async (url: string) => {
@@ -147,7 +147,8 @@ describe("DnsSetupStepper", () => {
       if (url === "/api/projects") return { data: projects };
       if (url === "/api/runners") return { data: runners };
       if (url === "/api/dns/tunnels/t1/status") return { data: { id: "t1", name: "instance", status: "inactive" } };
-      if (url === "/api/services/svc-1/deploys") return { data: [{ id: "d1", status: "failed", created_at: "2026-09-07T10:00:00Z", log: "pull access denied" }] };
+      if (url === "/api/services/svc-1/deploys") return { data: [{ id: "d1", status: "failed", created_at: "2026-09-07T10:00:00Z" }] };
+      if (url === "/api/deploys/d1/log") return { data: [{ seq: 1, ts: 1, phase: "deploy", text: "pull access denied" }] };
       return { data: [] };
     });
     mocks.post.mockImplementation(async (url: string) => {

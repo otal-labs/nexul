@@ -238,7 +238,6 @@ describe("StackPage", () => {
               image: "ghcr.io/onik/api:v1",
               status: "healthy",
               strategy: "compose",
-              log: "",
               created_at: "2026-08-12T09:00:00Z",
               updated_at: "2026-08-12T09:00:00Z",
             },

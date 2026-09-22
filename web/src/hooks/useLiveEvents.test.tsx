@@ -81,6 +81,25 @@ describe("useLiveEvents dispatch", () => {
     );
     expect(spy).toHaveBeenCalledWith({ queryKey: ["runners"] });
     expect(spy).toHaveBeenCalledWith({ queryKey: ["runnerQueue"] });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["getStackDeploys"] });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["getDeploy"] });
+  });
+
+  it("refetches the deploy log on a deploy.log push and the deploy on progress pushes", async () => {
+    setup();
+    const socket = await connectedSocket();
+    const spy = invalidate();
+    act(() =>
+      socket.message(JSON.stringify({ topic: "deploy.log", type: "event", payload: { id: "d-1", phase: "build", log: "…", ts: 1 } })),
+    );
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["getDeployLog"] });
+    expect(spy).not.toHaveBeenCalledWith({ queryKey: ["getDeploy"] });
+
+    spy.mockClear();
+    for (const topic of ["deploy.build_started", "deploy.build_progress", "deploy.build_completed", "deploy.deploy_progress"]) {
+      act(() => socket.message(JSON.stringify({ topic, type: "event", payload: { id: "d-1" } })));
+    }
+    expect(spy.mock.calls.filter(([arg]) => arg?.queryKey?.[0] === "getDeploy")).toHaveLength(4);
   });
 
   it("invalidates the tickets queries on ticket lifecycle topics", async () => {
