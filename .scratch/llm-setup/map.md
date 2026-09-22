@@ -67,6 +67,12 @@ no users yet, move quick):
   (no exempt category — all six discover skills), the confirm call is honor
   system taking the computer's id, the un-confirm path exists, and the
   schema uses nullable confirmed-at timestamps written only by MCP use-cases.
+- [The setup flow itself](issues/05-setup-flow.md) — the wizard fires a
+  built-in setup turn through the paired harness, the one run exempt from
+  the block; coarse pre-selection (whole mattpocock set, both install
+  locations); confirmation needs files present plus the harness re-reporting
+  each driver's discovered skills, recorded on confirm; re-enterable and
+  idempotent; nexul.io points at the wizard.
 - [Which skill sets "setup" installs](issues/03-which-skill-sets.md) —
   mattpocock/skills is the default the wizard installs (users may amend their
   copies); pstack is a README credit only; no Nexul-shipped skill for now —
@@ -76,14 +82,6 @@ no users yet, move quick):
 
 ## Not yet specified
 
-- Exact MCP tool names and shapes for reading and confirming setup state
-  (one per use case, `<verb>_<object>`) — hangs on the setup-flow decision.
-- Schema migration for the new state and how it hangs off `pairing.Computer`
-  — hangs on the data-model decision.
-- The wizard's pre-selection catalog: which parts of the default set are
-  toggleable, and the later optional pstack complement (Lauren's principle
-  skills, `architect`, `interrogate`, curated around the `tdd`/`teach`
-  collisions) — hangs on the setup-flow decision.
 - How "amend the flow per project" concretely manifests (plays the user
   edits + memories the interview seeds, or something more) — hangs on the
   step-0 and lifecycle tickets.
@@ -95,4 +93,10 @@ no users yet, move quick):
 
 ## Out of scope
 
-<!-- work consciously ruled beyond the destination; nothing ruled out yet -->
+<!-- work consciously ruled beyond the destination -->
+
+- Per-skill pre-selection and the optional pstack complement (Lauren's
+  principle skills, `architect`, `interrogate`, curated around the
+  `tdd`/`teach` collisions) — the first cut installs the whole default set
+  ([The setup flow itself](issues/05-setup-flow.md)); a later effort adds
+  choice.

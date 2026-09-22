@@ -21,3 +21,11 @@ Where does setup state show, and what does an unconfirmed setup change?
   change other surfaces may care about)?
 - Permissions: which `<domain>:<action>` gates the read and the confirm
   tools — pairing's existing vocabulary, or a new action?
+
+## Comments
+
+From the setup-flow grilling (2026-09-22): the wizard's built-in setup turn
+is the one run exempt from the block, so wherever the block bites it must
+let a setup-marked turn through (ticket 12 defines the marking). The refusal
+should lead straight to the wizard, which is re-enterable from the
+computer's row in pairing settings.
