@@ -4,13 +4,24 @@
 
 ## Destination
 
-A locked design, ready to slice into implementation tickets: the MCP server
-owns setup state for every paired computer (an overall "setup confirmed"
-boolean plus one "skills installed" boolean per provider inside the harness),
-false by default and writable only through MCP tools, so a new user's agent
-performs the skill installation, verifies it, and confirms it — and plays run
-as well on their machine as on the owner's. The README's inspiration section
-also credits the second skill set.
+A locked design, ready to slice into implementation tickets, in two halves
+(the owner folded the lifecycle vision into this one map on 2026-09-22 —
+no users yet, move quick):
+
+1. **Machine setup.** The MCP server owns setup state for every paired
+   computer: an overall "setup confirmed" boolean plus one boolean per
+   provider, false by default, writable only through MCP tools, and
+   **enforcing** — a provider on a computer cannot run agent work until its
+   boolean is true. Nexul's own step-by-step wizard walks a new user through
+   setting the harness up, installing the default skill set
+   (mattpocock/skills) with pre-selections. The README credits pstack.
+2. **The guided lifecycle.** Nexul guides every project through the loop so
+   cheaper models write trustworthy code: a step-0 onboarding interview that
+   writes a project's first memories (tech, paradigm, testing strategy,
+   principles), shaping and flow via the skills, bug tickets that always link
+   the ticket they came from, a testing step that serves testers and QA (not
+   just devs), and "done" that indexes the why. Memories accumulate and the
+   flow gets amendable per project.
 
 ## Notes
 
@@ -22,6 +33,11 @@ also credits the second skill set.
   to false and can be flipped **only via MCP** — never from the web UI —
   because the point is that an LLM assessed the machine and confirmed the
   setup actually works.
+- Also fixed by the owner: nothing auto-flips a boolean to false — not a
+  skills release, not re-pairing, not a nightly update. State is per
+  computer; a new computer or a newly appearing provider starts at false.
+- No "v1"/version framing anywhere — Nexul has no versioned feature tiers;
+  say "for now" or "first cut".
 - HITL tickets run `/grilling` and `/domain-modeling`. Questions to the owner
   in plain language, never spec codes.
 - README ticket: the inspiration section may name open-source repos
@@ -44,21 +60,31 @@ also credits the second skill set.
   portable, but no non-Cursor install path exists, and its `tdd` and `teach`
   skills collide by name with mattpocock/skills — a second set only with
   curation, never a flat merge.
+- [Which skill sets "setup" installs](issues/03-which-skill-sets.md) —
+  mattpocock/skills is the default the wizard installs (users may amend their
+  copies); pstack is a README credit only; no Nexul-shipped skill for now —
+  Nexul's own step-by-step wizard is the setup surface; "setup done" means
+  the wizard completed on that computer; booleans never auto-flip and are
+  enforcing (an unconfirmed provider cannot run agent work).
 
 ## Not yet specified
 
 - Exact MCP tool names and shapes for reading and confirming setup state
-  (one per use case, `<verb>_<object>`), and whether a workflow prompt guides
-  the installing agent — hangs on the setup-flow decision.
+  (one per use case, `<verb>_<object>`) — hangs on the setup-flow decision.
 - Schema migration for the new state and how it hangs off `pairing.Computer`
   — hangs on the data-model decision.
-- Whether unconfirmed setup feeds the existing `NotConfiguredReason` path
-  that @Agent replies with, or only the plays surface — hangs on the
-  surfaces decision.
-- Whether the install instructions themselves ship as a seeded play, a
-  workflow prompt, or docs on nexul.io — hangs on the setup-flow decision.
-- CONTEXT.md vocabulary and any ADR for the MCP-only write rule — written
-  once the decisions above resolve.
+- The wizard's pre-selection catalog: which parts of the default set are
+  toggleable, and the later optional pstack complement (Lauren's principle
+  skills, `architect`, `interrogate`, curated around the `tdd`/`teach`
+  collisions) — hangs on the setup-flow decision.
+- How "amend the flow per project" concretely manifests (plays the user
+  edits + memories the interview seeds, or something more) — hangs on the
+  step-0 and lifecycle tickets.
+- Whether shaping/flow (the owner's steps 1–2) need anything Nexul-side
+  beyond the installed skills and the existing plays — hangs on step 0 and
+  the testing-step ticket.
+- CONTEXT.md vocabulary and any ADR for the MCP-only write rule and the
+  enforcement block — written once the decisions above resolve.
 
 ## Out of scope
 

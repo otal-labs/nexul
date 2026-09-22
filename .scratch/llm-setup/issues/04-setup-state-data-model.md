@@ -24,3 +24,16 @@ Where does setup state live and what shape does it take?
 
 Both booleans default to false and are writable only via MCP — that part is
 fixed (see the map's Notes), not up for grilling.
+
+## Comments
+
+From the ticket 03 grilling (2026-09-22), the owner settled parts of this:
+state is **per computer** (a new computer starts at false and needs its own
+setup); the grain is **per provider** in T3 Code, so a newly appearing
+provider simply shows up with its own false boolean; nothing ever auto-flips
+to false — no skills release, no re-pair, no nightly update. Still open here:
+whether the overall boolean derives from the per-provider ones or is asserted
+independently by the wizard, and the concrete schema off `pairing.Computer`.
+Note the tension with ticket 01's finding (install locations are shared:
+`~/.claude/skills/` serves two providers) — per-provider booleans mean one
+install can justify confirming two providers at once, and that is fine.

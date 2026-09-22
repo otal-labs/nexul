@@ -10,10 +10,11 @@ Where does setup state show, and what does an unconfirmed setup change?
 
 - Pairing settings UI: show the overall boolean and the per-provider ones on
   each computer row? Read-only there by design (writes are MCP-only).
-- Do plays and @Agent **block** on an unconfirmed computer, or run with a
-  warning? A hard block makes the boolean load-bearing; a warning keeps it
-  informational. The owner's framing ("with me it's fine but for others it
-  isn't") suggests at least a visible nudge before the first play.
+- ~~Block or warn?~~ **Decided in the ticket 03 grilling (2026-09-22): hard
+  block.** A provider on a computer cannot be used for agent runs until its
+  boolean is true. Left to design here: where the block bites (target
+  resolution? turn start?), what the refusal tells the user, and how the
+  user gets from the refusal to the wizard.
 - Does unconfirmed setup surface through the existing pairing
   `NotConfiguredReason` reply path, so @Agent tells the user what to do?
 - Events: does confirming setup publish to the event catalog (it is a state
