@@ -319,7 +319,7 @@ func defaultPrompts() []Prompt {
 			Description: "Investigate a failed deploy end to end.",
 			Arguments:   []PromptArgument{{Name: "deploy_id", Description: "The failed deploy id", Required: true}},
 			Messages: func(args map[string]string) []PromptMessage {
-				text := interpolate("Investigate failed deploy {{deploy_id}}: read its history and log, list the stack's containers with service_list, check the topology, list related dead letters, and propose a fix as a new ticket.", args)
+				text := interpolate("Investigate failed deploy {{deploy_id}}: read it with deploy_get and its output with deploy_log, list the stack's containers with service_list, check the topology, list related dead letters, and propose a fix as a new ticket.", args)
 				return []PromptMessage{{Role: "user", Content: text}}
 			},
 		},

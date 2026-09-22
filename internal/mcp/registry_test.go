@@ -265,7 +265,7 @@ func newRegistryServer(t *testing.T) (*Server, *storage.Store, *fakePublisher) {
 
 func TestRegistry_ToolsComplete(t *testing.T) {
 	srv, _, _ := newRegistryServer(t)
-	require.Len(t, srv.tools, 122)
+	require.Len(t, srv.tools, 123)
 	names := make(map[string]bool)
 	for _, tool := range srv.tools {
 		require.NotEmpty(t, tool.Name, "every tool must be named")
@@ -282,7 +282,7 @@ func TestRegistry_ToolsComplete(t *testing.T) {
 		"ticket_add_label", "ticket_remove_label", "ticket_list_labels", "ticket_list_all_labels",
 		"ticket_search",
 		"topology_get", "topology_add_node", "topology_remove_node", "topology_add_edge", "topology_remove_edge",
-		"deploy_get", "deploy_list", "deploy_list_by_service", "deploy_list_by_status", "deploy_cancel",
+		"deploy_get", "deploy_log", "deploy_list", "deploy_list_by_service", "deploy_list_by_status", "deploy_cancel",
 		"service_list", "stack_create", "stack_deploy", "stack_get", "stack_list", "stack_update",
 		"stack_delete", "stack_rollback", "machine_import",
 		"runner_list", "runner_queue", "machine_list", "machine_discover",

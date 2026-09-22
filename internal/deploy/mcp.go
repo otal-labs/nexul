@@ -31,6 +31,24 @@ func MCPTools(s *Service) []mcptool.Tool {
 			},
 		},
 		{
+			Name:        "deploy_log",
+			Description: "Fetch a deploy's streamed output as lines (seq, ts in unix milliseconds, phase, text), oldest first. Empty for a deploy that has not produced output yet.",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"id": map[string]any{"type": "string"},
+				},
+				"required": []string{"id"},
+			},
+			Call: func(ctx context.Context, args map[string]any) (any, error) {
+				id, err := mcptool.RequiredString(args, "id")
+				if err != nil {
+					return nil, err
+				}
+				return s.Log(ctx, id)
+			},
+		},
+		{
 			Name:        "deploy_list",
 			Description: "List all deploys, oldest first.",
 			InputSchema: map[string]any{
