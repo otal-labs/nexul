@@ -1,7 +1,7 @@
 # 04 — Setup-state data model
 
 **Type:** grilling
-**Status:** open
+**Status:** resolved
 **Blocked by:** 01
 
 ## Question
@@ -37,3 +37,34 @@ independently by the wizard, and the concrete schema off `pairing.Computer`.
 Note the tension with ticket 01's finding (install locations are shared:
 `~/.claude/skills/` serves two providers) — per-provider booleans mean one
 install can justify confirming two providers at once, and that is fine.
+
+## Answer
+
+Grilled with the owner 2026-09-22; a re-verification of driver skill support
+landed the last piece.
+
+- **Overall boolean: stored, not derived.** The wizard's last step sets it
+  via MCP; the UI only ever reads. A user may finish the wizard while
+  skipping a provider they never use — the per-provider block covers the
+  skipped one.
+- **Per-provider state keyed by driver kind** (`claude`, `codex`, `opencode`,
+  `cursor`, `grok`, …), never by T3 instance id (ids churn on reinstall; two
+  instances of one driver share the same skills on disk).
+- **No exempt category.** The re-verification (see the research addendum in
+  [research/skill-discovery-per-provider.md](../research/skill-discovery-per-provider.md))
+  proved the owner right: Cursor and Grok both discover skills natively —
+  Cursor scans `.cursor/`, `.claude/`, `.agents/`, and `.codex/` skill dirs;
+  Grok reads `~/.grok/skills/` plus `~/.agents/skills/`. Every driver is
+  skill-capable, so every provider gets a boolean and the hard block is
+  universal. The minimal two locations (`~/.claude/skills/` +
+  `~/.agents/skills/`) cover five of six drivers; Antigravity alone has a
+  separate mechanism.
+- **Honor system** on the confirm call: it takes the computer's id, and the
+  LLM's assessment is the trust anchor — no machine attestation. Add a
+  handshake only if real misuse appears.
+- **The un-confirm path exists**: the same MCP surface sets a boolean back to
+  false; it is the only way down (nothing auto-flips, per ticket 03).
+- Schema sketch for the implementation tickets: nullable `confirmed_at`
+  timestamps rather than raw booleans (same read, richer audit) — one column
+  on the computer for the overall state, one row per (computer, driver kind)
+  for the providers, written only by the MCP use-cases.
