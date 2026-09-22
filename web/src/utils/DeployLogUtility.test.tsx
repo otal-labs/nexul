@@ -108,7 +108,8 @@ describe("deriveDeployProgress", () => {
   });
 
   it("treats a missing kind as an image-only deploy", () => {
-    const { kind: _kind, ...kindless } = deploy({ status: DeployStatus.Healthy, updated_at: iso(7) });
+    const kindless = deploy({ status: DeployStatus.Healthy, updated_at: iso(7) });
+    delete kindless.kind;
     const progress = deriveDeployProgress(kindless, [], at(99));
     expect(progress.steps.map((s) => [s.key, s.state, formatStepDuration(s.durationMs)])).toEqual([
       ["wait", "done", "7s"],

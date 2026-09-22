@@ -142,7 +142,7 @@ describe("DeployPage", () => {
     expect(writeText).toHaveBeenCalledTimes(1);
     const text = writeText.mock.calls[0]?.[0] as string;
     expect(text.split("\n")).toHaveLength(2);
-    expect(text).toMatch(/^\d{2}:\d{2}:\d{2}\.\d{3}  Cloning into 'api'\.\.\.\n/);
+    expect(text).toMatch(/^\d{2}:\d{2}:\d{2}\.\d{3} {2}Cloning into 'api'\.\.\.\n/);
     await vi.waitFor(() => expect(toast.success).toHaveBeenCalledWith("Log copied"));
   });
 
