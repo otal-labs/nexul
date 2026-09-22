@@ -19,7 +19,10 @@ type Repo interface {
 	UpdateStatus(ctx context.Context, id string, status Status) error
 	// SetAddress records the container's address on its docker network, reported by the runner at start.
 	SetAddress(ctx context.Context, id, address string) error
-	AppendLog(ctx context.Context, id, entry string) error
+	// AppendLogLines stores the lines in order under one deploy; Seq is assigned by the store.
+	AppendLogLines(ctx context.Context, id string, lines []LogLine) error
+	// ListLogLines returns a deploy's log ordered by ts then seq; a deploy with no output yields an empty slice.
+	ListLogLines(ctx context.Context, id string) ([]LogLine, error)
 	// CancelRequested enqueues a cancel_requested row; no local row, so this just makes the enqueue transactional.
 	CancelRequested(ctx context.Context, evt eventbus.OutboxEvent) error
 }

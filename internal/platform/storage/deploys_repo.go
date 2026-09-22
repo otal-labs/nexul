@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -35,7 +36,6 @@ func (r *DeploysRepo) Create(ctx context.Context, d *deploy.Deploy, evts ...even
 			Image:       d.Image,
 			Status:      string(d.Status),
 			Strategy:    string(d.Strategy),
-			Log:         d.Log,
 			TriggeredBy: d.TriggeredBy,
 			RuleID:      d.RuleID,
 			RuleName:    d.RuleName,
@@ -154,19 +154,38 @@ func (r *DeploysRepo) SetAddress(ctx context.Context, id, address string) error 
 	})
 }
 
-func (r *DeploysRepo) AppendLog(ctx context.Context, id, entry string) error {
+// AppendLogLines inserts one row per line inside one transaction; the deploy FK maps a missing deploy onto
+// ErrNotFound, since the only constraint the insert can violate is that one.
+func (r *DeploysRepo) AppendLogLines(ctx context.Context, id string, lines []deploy.LogLine) error {
+	if len(lines) == 0 {
+		return nil
+	}
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		n, err := r.q.WithTx(tx).AppendDeployLog(ctx, sqlcgen.AppendDeployLogParams{
-			Log: entry, UpdatedAt: time.Now().Unix(), ID: id,
-		})
-		if err != nil {
+		q := r.q.WithTx(tx)
+		for _, l := range lines {
+			err := q.InsertDeployLogLine(ctx, sqlcgen.InsertDeployLogLineParams{DeployID: id, Ts: l.TS, Phase: l.Phase, Line: l.Text})
+			if err == nil {
+				continue
+			}
+			if errors.Is(classifyWriteErr(err), apperrs.ErrConflict) {
+				return fmt.Errorf("append deploy %s log: %w", id, apperrs.ErrNotFound)
+			}
 			return fmt.Errorf("append deploy %s log: %w", id, err)
-		}
-		if n == 0 {
-			return fmt.Errorf("append deploy %s log: %w", id, apperrs.ErrNotFound)
 		}
 		return nil
 	})
+}
+
+func (r *DeploysRepo) ListLogLines(ctx context.Context, id string) ([]deploy.LogLine, error) {
+	rows, err := r.q.ListDeployLogLines(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("list deploy %s log: %w", id, err)
+	}
+	out := make([]deploy.LogLine, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, deploy.LogLine{Seq: row.Seq, TS: row.Ts, Phase: row.Phase, Text: row.Line})
+	}
+	return out, nil
 }
 
 func toDeploy(row sqlcgen.Deploy) *deploy.Deploy {
@@ -180,7 +199,6 @@ func toDeploy(row sqlcgen.Deploy) *deploy.Deploy {
 		Image:       row.Image,
 		Status:      deploy.Status(row.Status),
 		Strategy:    deploy.Strategy(row.Strategy),
-		Log:         row.Log,
 		Address:     row.Address,
 		TriggeredBy: row.TriggeredBy,
 		RuleID:      row.RuleID,

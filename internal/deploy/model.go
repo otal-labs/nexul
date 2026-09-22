@@ -51,7 +51,6 @@ type Deploy struct {
 	Image     string   `json:"image"`
 	Status    Status   `json:"status"`
 	Strategy  Strategy `json:"strategy"`
-	Log       string   `json:"log"`
 	// Address is the container's address on its docker network, reported by the runner at start.
 	Address string `json:"address,omitempty"`
 	// TriggeredBy/RuleID/RuleName/TicketID/PRNumber record who/what triggered the deploy.
@@ -62,6 +61,15 @@ type Deploy struct {
 	PRNumber    int       `json:"pr_number,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// LogLine is one line of a deploy's checkout, build, or deploy output; TS is unix milliseconds and Seq is the
+// insertion order that breaks ties between lines stamped in the same millisecond.
+type LogLine struct {
+	Seq   int64  `json:"seq"`
+	TS    int64  `json:"ts"`
+	Phase string `json:"phase"`
+	Text  string `json:"text"`
 }
 
 // DeployRequest is the input to Service.Deploy: the stack plus a pre-built Image or a Ref to build from.

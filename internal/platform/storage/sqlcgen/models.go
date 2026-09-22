@@ -188,7 +188,6 @@ type Deploy struct {
 	Image       string
 	Status      string
 	Strategy    string
-	Log         string
 	CreatedAt   int64
 	UpdatedAt   int64
 	StackID     sql.NullString
@@ -200,6 +199,14 @@ type Deploy struct {
 	PrNumber    int64
 	Kind        string
 	Address     string
+}
+
+type DeployLogLine struct {
+	Seq      int64
+	DeployID string
+	Ts       int64
+	Phase    string
+	Line     string
 }
 
 type DnsExposure struct {

@@ -23,6 +23,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("POST /api/deploys", h.deploy)
 	mux.HandleFunc("GET /api/deploys", h.list)
 	mux.HandleFunc("GET /api/deploys/{id}", h.get)
+	mux.HandleFunc("GET /api/deploys/{id}/log", h.log)
 	mux.HandleFunc("POST /api/deploys/{id}/cancel", h.cancel)
 	h.mountStackRoutes(mux, "/api/stacks")
 	// /api/services stays mounted through the same handlers for one release (2026-09-10): the pre-rename web
@@ -113,6 +114,15 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, d)
+}
+
+func (h *Handler) log(w http.ResponseWriter, r *http.Request) {
+	lines, err := h.svc.Log(r.Context(), r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, lines)
 }
 
 func (h *Handler) cancel(w http.ResponseWriter, r *http.Request) {

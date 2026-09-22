@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 )
 
@@ -84,6 +85,37 @@ func TestDeployRoutes_Get_NotFound(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/deploys/nope", nil))
 	assert.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+func TestDeployRoutes_Log(t *testing.T) {
+	t.Run("unknown deploy is 404", func(t *testing.T) {
+		h := newDeployHandler(t).Routes()
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/deploys/nope/log", nil))
+		assert.Equal(t, http.StatusNotFound, rec.Code)
+	})
+
+	t.Run("a deploy with no output is an empty array, not null", func(t *testing.T) {
+		repo := newFakeRepo()
+		require.NoError(t, repo.Create(context.Background(), &Deploy{ID: "d1", Status: StatusPending}))
+		h := NewHandler(newTestService(repo, newFakeBus())).Routes()
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/deploys/d1/log", nil))
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, "[]", strings.TrimSpace(rec.Body.String()))
+	})
+
+	t.Run("lines come back in time order with their seq, phase and text", func(t *testing.T) {
+		repo := newFakeRepo()
+		require.NoError(t, repo.Create(context.Background(), &Deploy{ID: "d1", Status: StatusRunning}))
+		s := newTestService(repo, newFakeBus())
+		require.NoError(t, s.HandleLog(context.Background(), eventbus.Event{Payload: mustMarshal(t, DeployLogEvent{ID: "d1", Phase: "checkout", Log: "Cloning into '/data/repo'...", TS: 1695379028112})}))
+		h := NewHandler(s).Routes()
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/deploys/d1/log", nil))
+		require.Equal(t, http.StatusOK, rec.Code)
+		assert.JSONEq(t, `[{"seq":1,"ts":1695379028112,"phase":"checkout","text":"Cloning into '/data/repo'..."}]`, rec.Body.String())
+	})
 }
 
 func TestDeployRoutes_ListByStatus_Invalid(t *testing.T) {
