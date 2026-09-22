@@ -72,7 +72,7 @@ describe("useLiveEvents dispatch", () => {
     expect(spy).toHaveBeenCalledWith({ queryKey: ["runners"] });
   });
 
-  it("invalidates runners and queue on a deploy.status_changed push", async () => {
+  it("invalidates only runners and queue on a deploy.status_changed push, never the deploy reads", async () => {
     setup();
     const socket = await connectedSocket();
     const spy = invalidate();
@@ -81,6 +81,35 @@ describe("useLiveEvents dispatch", () => {
     );
     expect(spy).toHaveBeenCalledWith({ queryKey: ["runners"] });
     expect(spy).toHaveBeenCalledWith({ queryKey: ["runnerQueue"] });
+    expect(spy).not.toHaveBeenCalledWith({ queryKey: ["getStackDeploys"] });
+    expect(spy).not.toHaveBeenCalledWith({ queryKey: ["getServiceDeploys"] });
+    expect(spy).not.toHaveBeenCalledWith({ queryKey: ["getDeploy"] });
+  });
+
+  it("refetches the deploy, its log, and the deploy histories on a deploy.updated push", async () => {
+    setup();
+    const socket = await connectedSocket();
+    const spy = invalidate();
+    act(() =>
+      socket.message(JSON.stringify({ topic: "deploy.updated", type: "event", payload: { id: "d-1", status: "failed" } })),
+    );
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["getDeploy"] });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["getDeployLog"] });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["getStackDeploys"] });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["getServiceDeploys"] });
+    expect(spy).not.toHaveBeenCalledWith({ queryKey: ["runners"] });
+  });
+
+  it("leaves the deploy reads alone on the runner's progress pushes", async () => {
+    setup();
+    const socket = await connectedSocket();
+    const spy = invalidate();
+    for (const topic of ["deploy.build_started", "deploy.build_progress", "deploy.build_completed", "deploy.deploy_progress"]) {
+      act(() => socket.message(JSON.stringify({ topic, type: "event", payload: { id: "d-1" } })));
+    }
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["runners"] });
+    expect(spy).not.toHaveBeenCalledWith({ queryKey: ["getDeploy"] });
+    expect(spy).not.toHaveBeenCalledWith({ queryKey: ["getDeployLog"] });
   });
 
   it("invalidates the tickets queries on ticket lifecycle topics", async () => {

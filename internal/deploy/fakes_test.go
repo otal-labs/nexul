@@ -20,10 +20,11 @@ type fakeRepo struct {
 	updateErr error
 	appendErr error
 	cancelErr error
+	logs      map[string][]LogLine
 }
 
 func newFakeRepo() *fakeRepo {
-	return &fakeRepo{stored: map[string]*Deploy{}}
+	return &fakeRepo{stored: map[string]*Deploy{}, logs: map[string][]LogLine{}}
 }
 
 func (f *fakeRepo) Create(_ context.Context, d *Deploy, evts ...eventbus.OutboxEvent) error {
@@ -153,7 +154,7 @@ func (f *fakeRepo) LastHealthy(_ context.Context, stackID string) (*Deploy, erro
 	return newest, nil
 }
 
-func (f *fakeRepo) UpdateStatus(_ context.Context, id string, status Status) error {
+func (f *fakeRepo) UpdateStatus(_ context.Context, id string, status Status, evts ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.updateErr != nil {
@@ -165,6 +166,7 @@ func (f *fakeRepo) UpdateStatus(_ context.Context, id string, status Status) err
 	}
 	d.Status = status
 	d.UpdatedAt = time.Now().UTC()
+	f.outbox = append(f.outbox, evts...)
 	return nil
 }
 
@@ -180,18 +182,41 @@ func (f *fakeRepo) SetAddress(_ context.Context, id, address string) error {
 	return nil
 }
 
-func (f *fakeRepo) AppendLog(_ context.Context, id, entry string) error {
+func (f *fakeRepo) AppendLogLines(_ context.Context, id string, lines []LogLine, evts ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.appendErr != nil {
 		return f.appendErr
 	}
-	d, ok := f.stored[id]
-	if !ok {
+	if _, ok := f.stored[id]; !ok {
 		return apperrs.ErrNotFound
 	}
-	d.Log += entry
+	for _, l := range lines {
+		l.Seq = int64(len(f.logs[id]) + 1)
+		f.logs[id] = append(f.logs[id], l)
+	}
+	f.outbox = append(f.outbox, evts...)
 	return nil
+}
+
+// updatedEvents decodes every deploy.updated outbox row, in the order enqueued.
+func (f *fakeRepo) updatedEvents() []DeployUpdatedEvent {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []DeployUpdatedEvent
+	for _, e := range f.outbox {
+		if e.Topic != TopicDeployUpdated {
+			continue
+		}
+		out = append(out, e.Payload.(DeployUpdatedEvent))
+	}
+	return out
+}
+
+func (f *fakeRepo) ListLogLines(_ context.Context, id string) ([]LogLine, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]LogLine{}, f.logs[id]...), nil
 }
 
 // fakeStackRepo is an in-memory deploy.StackRepo for use-case tests.

@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -10,13 +11,14 @@ import (
 
 	"github.com/otal-labs/nexul/internal/deploy"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 )
 
 func newTestDeploy(id string) *deploy.Deploy {
 	now := time.Date(2026, 8, 2, 12, 0, 0, 0, time.UTC)
 	return &deploy.Deploy{
 		ID: id, Service: "api", Target: "10.0.0.1:22", Image: "ghcr.io/onik/api:v1",
-		Status: deploy.StatusPending, Strategy: deploy.StrategyCompose, Log: "",
+		Status: deploy.StatusPending, Strategy: deploy.StrategyCompose,
 		CreatedAt: now, UpdatedAt: now,
 	}
 }
@@ -128,6 +130,31 @@ func TestDeploysRepo_UpdateStatus_Persists(t *testing.T) {
 	assert.Equal(t, deploy.StatusHealthy, got.Status)
 }
 
+func TestDeploysRepo_UpdateStatus_WritesOutboxInSameTx(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	require.NoError(t, s.Deploys.Create(context.Background(), newTestDeploy("dep-1")))
+	evt := eventbus.OutboxEvent{ID: "evt-status", Topic: deploy.TopicDeployUpdated, Payload: deploy.DeployUpdatedEvent{ID: "dep-1", Status: "healthy"}}
+	require.NoError(t, s.Deploys.UpdateStatus(context.Background(), "dep-1", deploy.StatusHealthy, evt))
+
+	var raw []byte
+	require.NoError(t, s.db.QueryRowContext(context.Background(), `SELECT payload FROM outbox WHERE id = 'evt-status'`).Scan(&raw))
+	var e deploy.DeployUpdatedEvent
+	require.NoError(t, json.Unmarshal(raw, &e))
+	assert.Equal(t, deploy.DeployUpdatedEvent{ID: "dep-1", Status: "healthy"}, e)
+}
+
+func TestDeploysRepo_UpdateStatus_NotFound_WritesNoOutbox(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	evt := eventbus.OutboxEvent{ID: "evt-missing", Topic: deploy.TopicDeployUpdated, Payload: deploy.DeployUpdatedEvent{ID: "missing"}}
+	require.ErrorIs(t, s.Deploys.UpdateStatus(context.Background(), "missing", deploy.StatusHealthy, evt), apperrs.ErrNotFound)
+
+	var n int
+	require.NoError(t, s.db.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM outbox WHERE id = 'evt-missing'`).Scan(&n))
+	assert.Equal(t, 0, n)
+}
+
 func TestDeploysRepo_SetAddress_NotFound(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -146,21 +173,68 @@ func TestDeploysRepo_SetAddress_RoundTrip(t *testing.T) {
 	assert.Equal(t, "172.18.0.4", got.Address)
 }
 
-func TestDeploysRepo_AppendLog_NotFound(t *testing.T) {
+func TestDeploysRepo_AppendLogLines_NotFound(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
-	err := s.Deploys.AppendLog(context.Background(), "missing", "line")
+	err := s.Deploys.AppendLogLines(context.Background(), "missing", []deploy.LogLine{{TS: 1, Text: "line"}})
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
-func TestDeploysRepo_AppendLog_Appends(t *testing.T) {
+func TestDeploysRepo_AppendLogLines_WritesOutboxInSameTx(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
 	require.NoError(t, s.Deploys.Create(context.Background(), newTestDeploy("dep-1")))
-	require.NoError(t, s.Deploys.AppendLog(context.Background(), "dep-1", "pulling image\n"))
-	require.NoError(t, s.Deploys.AppendLog(context.Background(), "dep-1", "container healthy\n"))
+	evt := eventbus.OutboxEvent{ID: "evt-log", Topic: deploy.TopicDeployUpdated, Payload: deploy.DeployUpdatedEvent{ID: "dep-1", Status: "pending"}}
+	require.NoError(t, s.Deploys.AppendLogLines(context.Background(), "dep-1", []deploy.LogLine{{TS: 1, Phase: "build", Text: "Step 1/3"}}, evt))
 
-	got, err := s.Deploys.GetByID(context.Background(), "dep-1")
+	var topic string
+	require.NoError(t, s.db.QueryRowContext(context.Background(), `SELECT topic FROM outbox WHERE id = 'evt-log'`).Scan(&topic))
+	assert.Equal(t, deploy.TopicDeployUpdated, topic)
+}
+
+func TestDeploysRepo_AppendLogLines_NotFound_WritesNoOutbox(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	evt := eventbus.OutboxEvent{ID: "evt-orphan", Topic: deploy.TopicDeployUpdated, Payload: deploy.DeployUpdatedEvent{ID: "missing"}}
+	require.ErrorIs(t, s.Deploys.AppendLogLines(context.Background(), "missing", []deploy.LogLine{{TS: 1, Text: "line"}}, evt), apperrs.ErrNotFound)
+
+	var n int
+	require.NoError(t, s.db.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM outbox WHERE id = 'evt-orphan'`).Scan(&n))
+	assert.Equal(t, 0, n)
+}
+
+func TestDeploysRepo_AppendLogLines_NoLines_IsNoop(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	require.NoError(t, s.Deploys.AppendLogLines(context.Background(), "missing", nil))
+}
+
+func TestDeploysRepo_ListLogLines_OrdersByTimeThenSeq(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	require.NoError(t, s.Deploys.Create(context.Background(), newTestDeploy("dep-1")))
+	require.NoError(t, s.Deploys.Create(context.Background(), newTestDeploy("dep-2")))
+	require.NoError(t, s.Deploys.AppendLogLines(context.Background(), "dep-1", []deploy.LogLine{
+		{TS: 20, Phase: "build", Text: "Step 1/3"},
+		{TS: 20, Phase: "build", Text: "Step 2/3"},
+	}))
+	require.NoError(t, s.Deploys.AppendLogLines(context.Background(), "dep-1", []deploy.LogLine{{TS: 10, Phase: "checkout", Text: "late arrival"}}))
+	require.NoError(t, s.Deploys.AppendLogLines(context.Background(), "dep-2", []deploy.LogLine{{TS: 1, Text: "other deploy"}}))
+
+	got, err := s.Deploys.ListLogLines(context.Background(), "dep-1")
 	require.NoError(t, err)
-	assert.Equal(t, "pulling image\ncontainer healthy\n", got.Log)
+	require.Len(t, got, 3)
+	assert.Equal(t, deploy.LogLine{Seq: 3, TS: 10, Phase: "checkout", Text: "late arrival"}, got[0])
+	assert.Equal(t, deploy.LogLine{Seq: 1, TS: 20, Phase: "build", Text: "Step 1/3"}, got[1])
+	assert.Equal(t, deploy.LogLine{Seq: 2, TS: 20, Phase: "build", Text: "Step 2/3"}, got[2])
+}
+
+func TestDeploysRepo_ListLogLines_Empty(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	require.NoError(t, s.Deploys.Create(context.Background(), newTestDeploy("dep-1")))
+	got, err := s.Deploys.ListLogLines(context.Background(), "dep-1")
+	require.NoError(t, err)
+	assert.NotNil(t, got)
+	assert.Empty(t, got)
 }

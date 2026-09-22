@@ -98,7 +98,6 @@ export interface Deploy {
   image: string;
   status: DeployStatus;
   strategy: DeployStrategy;
-  log: string;
   // The container's address on its docker network, reported by the runner at start.
   address?: string;
   triggered_by?: string;
@@ -113,6 +112,20 @@ export interface Deploy {
 // Newest deploy by creation time; the API's order is not part of its contract.
 export const latestDeploy = (deploys: Deploy[] | undefined): Deploy | undefined =>
   deploys?.reduce<Deploy | undefined>((best, d) => (!best || d.created_at > best.created_at ? d : best), undefined);
+
+export const deployPath = (deploy: Pick<Deploy, "id" | "stack_id">): string =>
+  `/stacks/${deploy.stack_id}/deploys/${deploy.id}`;
+
+// "" is a line outside any phase (the final "deploy failed: …"); it belongs to whichever phase was last active.
+export type DeployPhase = "checkout" | "build" | "deploy" | "";
+
+// One line of GET /api/deploys/{id}/log, oldest first; ts is unix milliseconds.
+export interface DeployLogLine {
+  seq: number;
+  ts: number;
+  phase: DeployPhase;
+  text: string;
+}
 
 // Declared is the compose/run parse's view of a container, before anything has been observed running.
 export interface Declared {

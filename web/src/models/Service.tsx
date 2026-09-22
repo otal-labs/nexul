@@ -76,7 +76,6 @@ export interface Deploy {
   image: string;
   status: DeployStatus;
   strategy: DeployStrategy;
-  log: string;
   triggered_by?: string;
   rule_id?: string;
   rule_name?: string;

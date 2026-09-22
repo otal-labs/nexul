@@ -1,7 +1,7 @@
 -- name: CreateDeploy :exec
-INSERT INTO deploys (id, kind, stack_id, service_id, service, target, image, status, strategy, log,
+INSERT INTO deploys (id, kind, stack_id, service_id, service, target, image, status, strategy,
     triggered_by, rule_id, rule_name, ticket_id, pr_number, created_at, updated_at, address)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetDeploy :one
 SELECT * FROM deploys WHERE id = ?;
@@ -29,6 +29,3 @@ UPDATE deploys SET status = ?, updated_at = ? WHERE id = ?;
 
 -- name: SetDeployAddress :execrows
 UPDATE deploys SET address = ?, updated_at = ? WHERE id = ?;
-
--- name: AppendDeployLog :execrows
-UPDATE deploys SET log = log || ?, updated_at = ? WHERE id = ?;

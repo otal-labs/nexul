@@ -192,6 +192,7 @@ var livePushTopics = []string{
 	runner.TopicDeployBuildCompleted,
 	runner.TopicDeployDeployProgress,
 	runner.TopicDeployStatusChanged,
+	deploy.TopicDeployUpdated,
 	deploy.TopicStackCreated,
 	deploy.TopicStackUpdated,
 	deploy.TopicStackDeleted,

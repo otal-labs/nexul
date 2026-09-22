@@ -486,6 +486,8 @@ func (h *Handler) dispatchFrame(ctx context.Context, c *runnerConn, f Frame) err
 		return h.bus.Publish(ctx, TopicDeployBuildCompleted, BuildCompletedEvent{ID: f.ID, Status: f.Status, Artifacts: f.Artifacts, Error: f.Error})
 	case FrameDeployProgress:
 		return h.bus.Publish(ctx, TopicDeployDeployProgress, DeployProgressEvent{ID: f.ID, Phase: f.Phase, Log: f.Log})
+	case FrameDeployLog:
+		return h.bus.Publish(ctx, TopicDeployLog, DeployLogEvent{ID: f.ID, Phase: f.Phase, Log: f.Log, TS: f.TS})
 	case FrameDeployResult:
 		c.clearJob(f.ID)
 		h.dispatchPending(ctx, c)

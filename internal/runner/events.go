@@ -18,6 +18,7 @@ const (
 	TopicDeployBuildProgress   = "deploy.build_progress"
 	TopicDeployBuildCompleted  = "deploy.build_completed"
 	TopicDeployDeployProgress  = "deploy.deploy_progress"
+	TopicDeployLog             = "deploy.log"
 	TopicDeployStatusChanged   = "deploy.status_changed"
 	// TopicInstanceUpgradeRequested is the Service -> Handler dispatch edge (instance-upgrade spec): mirrors
 	// deploy.requested's own bus-topic handoff instead of a direct method call, so Run's existing Subscribe
@@ -36,6 +37,7 @@ func Topics() []string {
 		TopicDeployBuildProgress,
 		TopicDeployBuildCompleted,
 		TopicDeployDeployProgress,
+		TopicDeployLog,
 		TopicDeployStatusChanged,
 		TopicInstanceUpgradeRequested,
 		TopicInstanceUpgradeChanged,
@@ -211,6 +213,14 @@ type DeployProgressEvent struct {
 	ID    string `json:"id"`
 	Phase string `json:"phase"`
 	Log   string `json:"log,omitempty"`
+}
+
+// DeployLogEvent is one deploy_log batch: newline-joined output lines from one phase, TS in unix milliseconds.
+type DeployLogEvent struct {
+	ID    string `json:"id"`
+	Phase string `json:"phase"`
+	Log   string `json:"log"`
+	TS    int64  `json:"ts"`
 }
 
 // DeployStatusChangedEvent is the terminal deploy state; the runner is the only entity that observes container health.

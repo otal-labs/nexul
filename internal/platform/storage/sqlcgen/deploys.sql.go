@@ -10,24 +10,6 @@ import (
 	"database/sql"
 )
 
-const appendDeployLog = `-- name: AppendDeployLog :execrows
-UPDATE deploys SET log = log || ?, updated_at = ? WHERE id = ?
-`
-
-type AppendDeployLogParams struct {
-	Log       string
-	UpdatedAt int64
-	ID        string
-}
-
-func (q *Queries) AppendDeployLog(ctx context.Context, arg AppendDeployLogParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, appendDeployLog, arg.Log, arg.UpdatedAt, arg.ID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
-}
-
 const countActiveDeploys = `-- name: CountActiveDeploys :one
 SELECT COUNT(*) FROM deploys WHERE stack_id = ? AND status IN ('pending', 'running')
 `
@@ -40,9 +22,9 @@ func (q *Queries) CountActiveDeploys(ctx context.Context, stackID sql.NullString
 }
 
 const createDeploy = `-- name: CreateDeploy :exec
-INSERT INTO deploys (id, kind, stack_id, service_id, service, target, image, status, strategy, log,
+INSERT INTO deploys (id, kind, stack_id, service_id, service, target, image, status, strategy,
     triggered_by, rule_id, rule_name, ticket_id, pr_number, created_at, updated_at, address)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateDeployParams struct {
@@ -55,7 +37,6 @@ type CreateDeployParams struct {
 	Image       string
 	Status      string
 	Strategy    string
-	Log         string
 	TriggeredBy string
 	RuleID      string
 	RuleName    string
@@ -77,7 +58,6 @@ func (q *Queries) CreateDeploy(ctx context.Context, arg CreateDeployParams) erro
 		arg.Image,
 		arg.Status,
 		arg.Strategy,
-		arg.Log,
 		arg.TriggeredBy,
 		arg.RuleID,
 		arg.RuleName,
@@ -91,7 +71,7 @@ func (q *Queries) CreateDeploy(ctx context.Context, arg CreateDeployParams) erro
 }
 
 const getDeploy = `-- name: GetDeploy :one
-SELECT id, service, target, image, status, strategy, log, created_at, updated_at, stack_id, service_id, triggered_by, rule_id, rule_name, ticket_id, pr_number, kind, address FROM deploys WHERE id = ?
+SELECT id, service, target, image, status, strategy, created_at, updated_at, stack_id, service_id, triggered_by, rule_id, rule_name, ticket_id, pr_number, kind, address FROM deploys WHERE id = ?
 `
 
 func (q *Queries) GetDeploy(ctx context.Context, id string) (Deploy, error) {
@@ -104,7 +84,6 @@ func (q *Queries) GetDeploy(ctx context.Context, id string) (Deploy, error) {
 		&i.Image,
 		&i.Status,
 		&i.Strategy,
-		&i.Log,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.StackID,
@@ -121,7 +100,7 @@ func (q *Queries) GetDeploy(ctx context.Context, id string) (Deploy, error) {
 }
 
 const lastHealthyDeploy = `-- name: LastHealthyDeploy :one
-SELECT id, service, target, image, status, strategy, log, created_at, updated_at, stack_id, service_id, triggered_by, rule_id, rule_name, ticket_id, pr_number, kind, address FROM deploys WHERE stack_id = ? AND status = 'healthy' ORDER BY created_at DESC LIMIT 1
+SELECT id, service, target, image, status, strategy, created_at, updated_at, stack_id, service_id, triggered_by, rule_id, rule_name, ticket_id, pr_number, kind, address FROM deploys WHERE stack_id = ? AND status = 'healthy' ORDER BY created_at DESC LIMIT 1
 `
 
 func (q *Queries) LastHealthyDeploy(ctx context.Context, stackID sql.NullString) (Deploy, error) {
@@ -134,7 +113,6 @@ func (q *Queries) LastHealthyDeploy(ctx context.Context, stackID sql.NullString)
 		&i.Image,
 		&i.Status,
 		&i.Strategy,
-		&i.Log,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.StackID,
@@ -151,7 +129,7 @@ func (q *Queries) LastHealthyDeploy(ctx context.Context, stackID sql.NullString)
 }
 
 const listDeploys = `-- name: ListDeploys :many
-SELECT id, service, target, image, status, strategy, log, created_at, updated_at, stack_id, service_id, triggered_by, rule_id, rule_name, ticket_id, pr_number, kind, address FROM deploys ORDER BY created_at
+SELECT id, service, target, image, status, strategy, created_at, updated_at, stack_id, service_id, triggered_by, rule_id, rule_name, ticket_id, pr_number, kind, address FROM deploys ORDER BY created_at
 `
 
 func (q *Queries) ListDeploys(ctx context.Context) ([]Deploy, error) {
@@ -170,7 +148,6 @@ func (q *Queries) ListDeploys(ctx context.Context) ([]Deploy, error) {
 			&i.Image,
 			&i.Status,
 			&i.Strategy,
-			&i.Log,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.StackID,
@@ -197,7 +174,7 @@ func (q *Queries) ListDeploys(ctx context.Context) ([]Deploy, error) {
 }
 
 const listDeploysByService = `-- name: ListDeploysByService :many
-SELECT id, service, target, image, status, strategy, log, created_at, updated_at, stack_id, service_id, triggered_by, rule_id, rule_name, ticket_id, pr_number, kind, address FROM deploys WHERE service = ? ORDER BY created_at DESC
+SELECT id, service, target, image, status, strategy, created_at, updated_at, stack_id, service_id, triggered_by, rule_id, rule_name, ticket_id, pr_number, kind, address FROM deploys WHERE service = ? ORDER BY created_at DESC
 `
 
 func (q *Queries) ListDeploysByService(ctx context.Context, service string) ([]Deploy, error) {
@@ -216,7 +193,6 @@ func (q *Queries) ListDeploysByService(ctx context.Context, service string) ([]D
 			&i.Image,
 			&i.Status,
 			&i.Strategy,
-			&i.Log,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.StackID,
@@ -243,7 +219,7 @@ func (q *Queries) ListDeploysByService(ctx context.Context, service string) ([]D
 }
 
 const listDeploysByStackID = `-- name: ListDeploysByStackID :many
-SELECT id, service, target, image, status, strategy, log, created_at, updated_at, stack_id, service_id, triggered_by, rule_id, rule_name, ticket_id, pr_number, kind, address FROM deploys WHERE stack_id = ? ORDER BY created_at DESC
+SELECT id, service, target, image, status, strategy, created_at, updated_at, stack_id, service_id, triggered_by, rule_id, rule_name, ticket_id, pr_number, kind, address FROM deploys WHERE stack_id = ? ORDER BY created_at DESC
 `
 
 func (q *Queries) ListDeploysByStackID(ctx context.Context, stackID sql.NullString) ([]Deploy, error) {
@@ -262,7 +238,6 @@ func (q *Queries) ListDeploysByStackID(ctx context.Context, stackID sql.NullStri
 			&i.Image,
 			&i.Status,
 			&i.Strategy,
-			&i.Log,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.StackID,
@@ -289,7 +264,7 @@ func (q *Queries) ListDeploysByStackID(ctx context.Context, stackID sql.NullStri
 }
 
 const listDeploysByStatus = `-- name: ListDeploysByStatus :many
-SELECT id, service, target, image, status, strategy, log, created_at, updated_at, stack_id, service_id, triggered_by, rule_id, rule_name, ticket_id, pr_number, kind, address FROM deploys WHERE status = ? ORDER BY created_at DESC
+SELECT id, service, target, image, status, strategy, created_at, updated_at, stack_id, service_id, triggered_by, rule_id, rule_name, ticket_id, pr_number, kind, address FROM deploys WHERE status = ? ORDER BY created_at DESC
 `
 
 func (q *Queries) ListDeploysByStatus(ctx context.Context, status string) ([]Deploy, error) {
@@ -308,7 +283,6 @@ func (q *Queries) ListDeploysByStatus(ctx context.Context, status string) ([]Dep
 			&i.Image,
 			&i.Status,
 			&i.Strategy,
-			&i.Log,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.StackID,

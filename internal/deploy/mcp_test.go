@@ -17,7 +17,7 @@ import (
 
 func TestMCPTools_Shape(t *testing.T) {
 	tools := MCPTools(newTestService(newFakeRepo(), newFakeBus()))
-	require.Len(t, tools, 14)
+	require.Len(t, tools, 15)
 	var names []string
 	for _, tool := range tools {
 		names = append(names, tool.Name)
@@ -26,7 +26,7 @@ func TestMCPTools_Shape(t *testing.T) {
 		assert.NotNil(t, tool.Call)
 	}
 	assert.ElementsMatch(t, []string{
-		"deploy_get", "deploy_list", "deploy_list_by_service", "deploy_list_by_status", "deploy_cancel",
+		"deploy_get", "deploy_log", "deploy_list", "deploy_list_by_service", "deploy_list_by_status", "deploy_cancel",
 		"service_list", "stack_create", "stack_deploy", "stack_get", "stack_list", "stack_update",
 		"stack_delete", "stack_rollback", "machine_import",
 	}, names)
@@ -55,6 +55,44 @@ func TestMCPTools_Get(t *testing.T) {
 	})
 	t.Run("unknown deploy is not found", func(t *testing.T) {
 		call := toolByName(t, MCPTools(newTestService(newFakeRepo(), newFakeBus())), "deploy_get").Call
+		_, err := call(context.Background(), map[string]any{"id": "nope"})
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
+	})
+}
+
+func TestMCPTools_Log(t *testing.T) {
+	t.Run("happy path returns the lines oldest first", func(t *testing.T) {
+		repo := newFakeRepo()
+		seedDeploy(t, repo, &Deploy{ID: "d1", Service: "api", Status: StatusRunning, CreatedAt: time.Now(), UpdatedAt: time.Now()})
+		require.NoError(t, repo.AppendLogLines(context.Background(), "d1", []LogLine{
+			{TS: 10, Phase: "checkout", Text: "clone org/app@main"},
+			{TS: 20, Phase: "build", Text: "Step 1/3"},
+		}))
+		call := toolByName(t, MCPTools(newTestService(repo, newFakeBus())), "deploy_log").Call
+		got, err := call(context.Background(), map[string]any{"id": "d1"})
+		require.NoError(t, err)
+		assert.Equal(t, []LogLine{
+			{Seq: 1, TS: 10, Phase: "checkout", Text: "clone org/app@main"},
+			{Seq: 2, TS: 20, Phase: "build", Text: "Step 1/3"},
+		}, got)
+	})
+	t.Run("a deploy without output returns an empty list, not null", func(t *testing.T) {
+		repo := newFakeRepo()
+		seedDeploy(t, repo, &Deploy{ID: "d1", Status: StatusPending, CreatedAt: time.Now(), UpdatedAt: time.Now()})
+		call := toolByName(t, MCPTools(newTestService(repo, newFakeBus())), "deploy_log").Call
+		got, err := call(context.Background(), map[string]any{"id": "d1"})
+		require.NoError(t, err)
+		assert.Equal(t, []LogLine{}, got)
+	})
+	t.Run("missing id is invalid", func(t *testing.T) {
+		call := toolByName(t, MCPTools(newTestService(newFakeRepo(), newFakeBus())), "deploy_log").Call
+		_, err := call(context.Background(), map[string]any{})
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
+	})
+	t.Run("unknown deploy is not found", func(t *testing.T) {
+		call := toolByName(t, MCPTools(newTestService(newFakeRepo(), newFakeBus())), "deploy_log").Call
 		_, err := call(context.Background(), map[string]any{"id": "nope"})
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrNotFound))

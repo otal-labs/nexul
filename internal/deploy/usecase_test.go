@@ -684,7 +684,7 @@ func TestHandleStatusChanged(t *testing.T) {
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrFatal))
 	})
-	t.Run("healthy lands the record", func(t *testing.T) {
+	t.Run("healthy lands the record and enqueues deploy.updated with the status", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo, newFakeBus())
 		require.NoError(t, repo.Create(context.Background(), &Deploy{ID: "d1", Status: StatusPending}))
@@ -693,8 +693,9 @@ func TestHandleStatusChanged(t *testing.T) {
 		got, err := repo.GetByID(context.Background(), "d1")
 		require.NoError(t, err)
 		assert.Equal(t, StatusHealthy, got.Status)
+		assert.Equal(t, []DeployUpdatedEvent{{ID: "d1", Status: "healthy"}}, repo.updatedEvents())
 	})
-	t.Run("failed appends the error to the log", func(t *testing.T) {
+	t.Run("failed appends the error as a phase-less log line", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo, newFakeBus())
 		require.NoError(t, repo.Create(context.Background(), &Deploy{ID: "d1", Status: StatusPending}))
@@ -703,7 +704,18 @@ func TestHandleStatusChanged(t *testing.T) {
 		got, err := repo.GetByID(context.Background(), "d1")
 		require.NoError(t, err)
 		assert.Equal(t, StatusFailed, got.Status)
-		assert.Contains(t, got.Log, "oom-killed")
+		lines, err := s.Log(context.Background(), "d1")
+		require.NoError(t, err)
+		require.Len(t, lines, 1)
+		assert.Equal(t, LogLine{Seq: 1, TS: s.now().UnixMilli(), Phase: "", Text: "deploy failed: oom-killed"}, lines[0])
+	})
+	t.Run("failed with a log write error is reported", func(t *testing.T) {
+		repo := newFakeRepo()
+		repo.appendErr = errors.New("disk full")
+		s := newTestService(repo, newFakeBus())
+		require.NoError(t, repo.Create(context.Background(), &Deploy{ID: "d1", Status: StatusPending}))
+		err := s.HandleStatusChanged(context.Background(), eventbus.Event{Payload: mustMarshal(t, DeployStatusChangedEvent{ID: "d1", Status: string(StatusFailed), Error: "oom-killed"})})
+		require.ErrorContains(t, err, "disk full")
 	})
 	t.Run("invalid transition is rejected", func(t *testing.T) {
 		repo := newFakeRepo()
@@ -723,6 +735,7 @@ func TestHandleStatusChanged(t *testing.T) {
 		got, err := repo.GetByID(context.Background(), "d1")
 		require.NoError(t, err)
 		assert.Equal(t, StatusFailed, got.Status)
+		assert.Empty(t, repo.updatedEvents(), "an unchanged status announces nothing")
 	})
 	t.Run("missing deploy is an error", func(t *testing.T) {
 		s := newTestService(newFakeRepo(), newFakeBus())
@@ -875,6 +888,96 @@ func TestService_Reads(t *testing.T) {
 		_, err := s.ListByStatus(context.Background(), Status("bogus"))
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
+	})
+}
+
+func TestHandleLog(t *testing.T) {
+	t.Run("splits the batch into one row per line and drops the trailing newline", func(t *testing.T) {
+		repo := newFakeRepo()
+		s := newTestService(repo, newFakeBus())
+		require.NoError(t, repo.Create(context.Background(), &Deploy{ID: "d1", Status: StatusRunning}))
+		ev := DeployLogEvent{ID: "d1", Phase: "checkout", Log: "clone org/app@main\nCloning into '/data/repo'...\n", TS: 1695379028112}
+		require.NoError(t, s.HandleLog(context.Background(), eventbus.Event{Payload: mustMarshal(t, ev)}))
+
+		lines, err := s.Log(context.Background(), "d1")
+		require.NoError(t, err)
+		assert.Equal(t, []LogLine{
+			{Seq: 1, TS: 1695379028112, Phase: "checkout", Text: "clone org/app@main"},
+			{Seq: 2, TS: 1695379028112, Phase: "checkout", Text: "Cloning into '/data/repo'..."},
+		}, lines)
+		assert.Equal(t, []DeployUpdatedEvent{{ID: "d1", Status: "running"}}, repo.updatedEvents(), "the batch commits with its own deploy.updated row")
+	})
+	t.Run("a blank line inside the batch is kept, only the trailing one is dropped", func(t *testing.T) {
+		repo := newFakeRepo()
+		s := newTestService(repo, newFakeBus())
+		require.NoError(t, repo.Create(context.Background(), &Deploy{ID: "d1", Status: StatusRunning}))
+		ev := DeployLogEvent{ID: "d1", Phase: "build", Log: "a\n\nb", TS: 5}
+		require.NoError(t, s.HandleLog(context.Background(), eventbus.Event{Payload: mustMarshal(t, ev)}))
+
+		lines, err := s.Log(context.Background(), "d1")
+		require.NoError(t, err)
+		require.Len(t, lines, 3)
+		assert.Equal(t, "", lines[1].Text)
+	})
+	t.Run("an empty batch writes nothing", func(t *testing.T) {
+		repo := newFakeRepo()
+		s := newTestService(repo, newFakeBus())
+		require.NoError(t, repo.Create(context.Background(), &Deploy{ID: "d1", Status: StatusRunning}))
+		require.NoError(t, s.HandleLog(context.Background(), eventbus.Event{Payload: mustMarshal(t, DeployLogEvent{ID: "d1", Phase: "build", Log: "\n"})}))
+		lines, err := s.Log(context.Background(), "d1")
+		require.NoError(t, err)
+		assert.Empty(t, lines)
+		assert.Empty(t, repo.updatedEvents())
+	})
+	t.Run("a read error before the append is returned for retry", func(t *testing.T) {
+		repo := newFakeRepo()
+		repo.getErr = errors.New("locked")
+		s := newTestService(repo, newFakeBus())
+		err := s.HandleLog(context.Background(), eventbus.Event{Payload: mustMarshal(t, DeployLogEvent{ID: "d1", Phase: "build", Log: "x"})})
+		require.ErrorContains(t, err, "locked")
+		assert.False(t, errors.Is(err, apperrs.ErrFatal))
+	})
+	t.Run("malformed payload is fatal", func(t *testing.T) {
+		s := newTestService(newFakeRepo(), newFakeBus())
+		err := s.HandleLog(context.Background(), eventbus.Event{Payload: json.RawMessage(`{`)})
+		assert.True(t, errors.Is(err, apperrs.ErrFatal))
+	})
+	t.Run("missing id is fatal", func(t *testing.T) {
+		s := newTestService(newFakeRepo(), newFakeBus())
+		err := s.HandleLog(context.Background(), eventbus.Event{Payload: mustMarshal(t, DeployLogEvent{Log: "x"})})
+		assert.True(t, errors.Is(err, apperrs.ErrFatal))
+	})
+	t.Run("unknown deploy is fatal, not retried", func(t *testing.T) {
+		s := newTestService(newFakeRepo(), newFakeBus())
+		err := s.HandleLog(context.Background(), eventbus.Event{Payload: mustMarshal(t, DeployLogEvent{ID: "nope", Phase: "build", Log: "x"})})
+		assert.True(t, errors.Is(err, apperrs.ErrFatal))
+		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
+	})
+	t.Run("a transient write error is returned for retry", func(t *testing.T) {
+		repo := newFakeRepo()
+		repo.appendErr = errors.New("locked")
+		s := newTestService(repo, newFakeBus())
+		require.NoError(t, repo.Create(context.Background(), &Deploy{ID: "d1", Status: StatusRunning}))
+		err := s.HandleLog(context.Background(), eventbus.Event{Payload: mustMarshal(t, DeployLogEvent{ID: "d1", Phase: "build", Log: "x"})})
+		require.ErrorContains(t, err, "locked")
+		assert.False(t, errors.Is(err, apperrs.ErrFatal))
+	})
+}
+
+func TestLog(t *testing.T) {
+	t.Run("unknown deploy is not found", func(t *testing.T) {
+		s := newTestService(newFakeRepo(), newFakeBus())
+		_, err := s.Log(context.Background(), "nope")
+		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
+	})
+	t.Run("a deploy with no output yields an empty, non-nil slice", func(t *testing.T) {
+		repo := newFakeRepo()
+		s := newTestService(repo, newFakeBus())
+		require.NoError(t, repo.Create(context.Background(), &Deploy{ID: "d1", Status: StatusPending}))
+		lines, err := s.Log(context.Background(), "d1")
+		require.NoError(t, err)
+		assert.NotNil(t, lines)
+		assert.Empty(t, lines)
 	})
 }
 

@@ -8,12 +8,14 @@ import {
   type ServerFrame,
 } from "@/api/ws";
 import { useFlowStore } from "@/stores/flowStore";
+import { getDeployKey, getDeployLogKey } from "@/hooks/DeployHooks";
 import { getDnsExposuresKey, getDnsGatewaysKey } from "@/hooks/DnsHooks";
 import { getDocKey, getDocsKey } from "@/hooks/DocHooks";
 import { getInstanceUpgradeKey } from "@/hooks/InstanceUpgradeHooks";
 import { getNotificationsKey, getUnreadCountKey } from "@/hooks/NotificationHooks";
 import { getRunnerQueueKey, getRunnersKey } from "@/hooks/RunnerHooks";
 import { getServiceDeploysKey, getServicesKey } from "@/hooks/ServiceHooks";
+import { getStackDeploysKey } from "@/hooks/StackHooks";
 import { getCategoriesKey, getProjectCategoriesKey } from "@/hooks/CategoryHooks";
 import { getProjectTicketTypesKey, getTicketTypesKey } from "@/hooks/TicketTypeHooks";
 import { getProjectStatusesKey, getStatusesKey } from "@/hooks/StatusHooks";
@@ -43,7 +45,11 @@ const pushTopics: Record<string, string[]> = {
   "deploy.build_progress": [getRunnersKey],
   "deploy.build_completed": [getRunnersKey, getRunnerQueueKey],
   "deploy.deploy_progress": [getRunnersKey],
-  "deploy.status_changed": [getRunnersKey, getRunnerQueueKey, getServiceDeploysKey],
+  "deploy.status_changed": [getRunnersKey, getRunnerQueueKey],
+  // Deploy reads refetch only on deploy.updated: the runner topics above fire before the deploy domain has
+  // committed, so a refetch on them can read the record from before the change.
+  // ponytail: whole-log refetch per batch (≤ 4/s); append lines into the cache if logs get large.
+  "deploy.updated": [getDeployKey, getDeployLogKey, getStackDeploysKey, getServiceDeploysKey],
   "service.created": [getServicesKey],
   "service.updated": [getServicesKey],
   "service.deleted": [getServicesKey],

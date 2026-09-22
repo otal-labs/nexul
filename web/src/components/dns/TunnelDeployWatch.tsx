@@ -2,6 +2,7 @@ import { CheckCircle2, Loader2 } from "lucide-react";
 import { useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useFetchDeployLog } from "@/hooks/DeployHooks";
 import { useFetchTunnelStatus } from "@/hooks/DnsHooks";
 import { useFetchServiceDeploys } from "@/hooks/ServiceHooks";
 import type { TunnelDeployment } from "@/models/DNS";
@@ -13,6 +14,8 @@ interface TunnelDeployWatchProps {
   onRetry: () => void;
 }
 
+const FAILURE_TAIL_LINES = 5;
+
 // Watches the runner's deploy and Cloudflare's connector state; the rung completes only once cloudflared is connected.
 export const TunnelDeployWatch = ({ deployment, onConnected, onRetry }: TunnelDeployWatchProps) => {
   const { data: deploys } = useFetchServiceDeploys(deployment.serviceId, 3000);
@@ -20,6 +23,8 @@ export const TunnelDeployWatch = ({ deployment, onConnected, onRetry }: TunnelDe
   const deploy = latestDeploy(deploys);
   const failed = deploy?.status === "failed";
   const connected = tunnel?.status === "healthy";
+  const { data: logLines } = useFetchDeployLog(failed ? deploy.id : undefined);
+  const logTail = (logLines ?? []).slice(-FAILURE_TAIL_LINES).map((line) => line.text).join("\n");
 
   // Side effect on an external event (Cloudflare reporting the connector), not derived state.
   useEffect(() => {
@@ -37,9 +42,9 @@ export const TunnelDeployWatch = ({ deployment, onConnected, onRetry }: TunnelDe
         {connected && `Tunnel ${deployment.tunnelName} is connected.`}
         {failed && `The deploy on ${deployment.target} failed.`}
       </p>
-      {failed && deploy?.log && (
+      {failed && logTail && (
         <pre className="max-h-40 overflow-auto rounded-md border border-border bg-muted/40 p-3 font-mono text-xs text-muted-foreground">
-          {deploy.log}
+          {logTail}
         </pre>
       )}
       {failed && (

@@ -1,12 +1,13 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { HammerIcon, Loader2, RefreshCwIcon, RocketIcon } from "lucide-react";
 import { useForm } from "react-hook-form";
+import { useNavigate } from "react-router";
 
 import { FormInput } from "@/components/FormInput";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { Button } from "@/components/ui/button";
 import { useDeployStack, useRollbackStack } from "@/hooks/StackHooks";
-import { DeployRefFormSchema, type Deploy, type DeployRefFormData, type Stack } from "@/models/Stack";
+import { DeployRefFormSchema, deployPath, type Deploy, type DeployRefFormData, type Stack } from "@/models/Stack";
 
 interface StackDeployActionsProps {
   stack: Stack;
@@ -31,10 +32,12 @@ const BuildRefForm = ({ stack, deploy }: BuildRefFormProps) => {
     resolver: zodResolver(DeployRefFormSchema),
   });
   const isDeploying = deploy.isPending && !!deploy.variables?.ref;
+  const navigate = useNavigate();
 
   const onSubmit = async ({ ref }: DeployRefFormData) => {
     try {
-      await deploy.mutateAsync({ stackId: stack.id, ref });
+      const created = await deploy.mutateAsync({ stackId: stack.id, ref });
+      await navigate(deployPath(created));
     } catch {
       // Error is surfaced by the hook's toast.
     }
@@ -63,6 +66,7 @@ interface RedeployRowProps {
 // The runner's pre-built-image path only knows the run strategy: it removes the container and runs the image again.
 const RedeployRow = ({ stack, image, deploy }: RedeployRowProps) => {
   const isDeploying = deploy.isPending && !!deploy.variables?.image;
+  const navigate = useNavigate();
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="min-w-0 space-y-1">
@@ -71,7 +75,11 @@ const RedeployRow = ({ stack, image, deploy }: RedeployRowProps) => {
         </p>
         <p className="text-xs text-muted-foreground">Pulls the image again and restarts the container.</p>
       </div>
-      <Button type="button" disabled={deploy.isPending} onClick={() => deploy.mutate({ stackId: stack.id, image })}>
+      <Button
+        type="button"
+        disabled={deploy.isPending}
+        onClick={() => deploy.mutate({ stackId: stack.id, image }, { onSuccess: (created) => void navigate(deployPath(created)) })}
+      >
         {isDeploying && <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden />}
         {!isDeploying && <RocketIcon className="size-4" aria-hidden />}
         {isDeploying ? "Redeploying…" : "Redeploy"}
@@ -88,20 +96,23 @@ interface RollbackButtonProps {
   rollback: RollbackMutation;
 }
 
-const RollbackButton = ({ stack, lastHealthy, canRollback, deployPending, rollback }: RollbackButtonProps) => (
-  <Button
-    type="button"
-    variant="outline"
-    size="sm"
-    onClick={() => void rollback.mutate(stack.id)}
-    disabled={!canRollback || deployPending || rollback.isPending}
-    title={canRollback ? `Roll back to ${lastHealthy?.image}` : "No healthy deploy to roll back to"}
-  >
-    {rollback.isPending && <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden />}
-    {!rollback.isPending && <RefreshCwIcon className="size-4" aria-hidden />}
-    {rollback.isPending ? "Rolling back…" : "Rollback"}
-  </Button>
-);
+const RollbackButton = ({ stack, lastHealthy, canRollback, deployPending, rollback }: RollbackButtonProps) => {
+  const navigate = useNavigate();
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      onClick={() => rollback.mutate(stack.id, { onSuccess: (created) => void navigate(deployPath(created)) })}
+      disabled={!canRollback || deployPending || rollback.isPending}
+      title={canRollback ? `Roll back to ${lastHealthy?.image}` : "No healthy deploy to roll back to"}
+    >
+      {rollback.isPending && <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden />}
+      {!rollback.isPending && <RefreshCwIcon className="size-4" aria-hidden />}
+      {rollback.isPending ? "Rolling back…" : "Rollback"}
+    </Button>
+  );
+};
 
 // One way to get the next version per stack shape: build from a ref (repo attached), redeploy the running image
 // (run stack, no repo), or nothing until a repository is attached (compose always deploys from its repo).

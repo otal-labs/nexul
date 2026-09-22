@@ -206,6 +206,7 @@ func wireDomainEventSubscriptions(ctx context.Context, bus *inprocess.Bus, svc *
 
 	// Deploy terminal states drive the anchored node's badge.
 	mustSubscribe(ctx, bus, "deploy.live_status", deploy.TopicDeployStatusChanged, "", topologyDeployStatusHandler(svc.deploySvc, svc.topoSvc))
+	mustSubscribe(ctx, bus, "deploy.log", deploy.TopicDeployLog, "", svc.deploySvc.HandleLog)
 
 	// Notification IDs derive from the source event, so redeliveries are idempotent.
 	mustSubscribe(ctx, bus, "notifications", tickets.TopicCreated, "", func(ctx context.Context, ev eventbus.Event) error {

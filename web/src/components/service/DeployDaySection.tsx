@@ -11,7 +11,7 @@ export const DeployDaySection = ({ label, deploys }: DeployDaySectionProps) => (
     <h3 className="mb-2 font-mono text-[11px] font-medium tracking-[0.18em] text-muted-foreground uppercase">
       {label}
     </h3>
-    <ul className="divide-y divide-border rounded-lg border border-border">
+    <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border">
       {deploys.map((deploy) => (
         <DeployRow key={deploy.id} deploy={deploy} />
       ))}
