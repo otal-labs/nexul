@@ -40,7 +40,6 @@ const deploy = (overrides: Partial<Deploy>): Deploy => ({
   image: "ghcr.io/onik/api:v1",
   status: DeployStatus.Healthy,
   strategy: DeployStrategy.Compose,
-  log: "",
   created_at: NOW,
   updated_at: NOW,
   ...overrides,
