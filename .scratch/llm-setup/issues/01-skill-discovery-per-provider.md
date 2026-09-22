@@ -29,18 +29,25 @@ the data model (ticket 04) and the install steps (ticket 05).
 Full findings: [research/skill-discovery-per-provider.md](../research/skill-discovery-per-provider.md)
 
 - T3 Code ships six drivers (Claude, Codex, OpenCode, Cursor, Grok,
-  Antigravity); only Claude, Codex, and OpenCode discover skills. T3 Code
-  adds no layer of its own — it republishes what each CLI's native discovery
+  Antigravity) and **every one discovers skills** (the first pass wrongly
+  said Cursor and Grok did not; the 2026-09-22 addendum in the research file
+  corrects it from the T3 Code driver source and vendor docs). T3 Code adds
+  no layer of its own — it republishes what each CLI's native discovery
   reports, so installing for the CLI is sufficient.
 - Claude Code reads `~/.claude/skills/` + project `.claude/skills/` +
   plugins. Codex reads `~/.agents/skills/` + repo `.agents/skills/` +
   `/etc/codex/skills`. opencode natively scans **both** conventions plus its
   own `~/.config/opencode/skills/` — the owner's hunch was right: opencode
-  is covered by the Claude location alone.
-- Minimal install set for all three skill-capable providers:
-  `~/.claude/skills/` (covers Claude + opencode) plus `~/.agents/skills/`
-  (covers Codex). So "installed" is per *install location*, not strictly per
-  provider — two locations flip three providers. Feeds ticket 04's grain
-  question directly.
-- Unverified edge: opencode's precedence when the same skill name exists in
-  several of its roots is undocumented.
+  is covered by the Claude location alone. Cursor scans `.cursor/`,
+  `.claude/`, `.agents/`, and `.codex/` skill dirs (home and project). Grok
+  reads `~/.grok/skills/` plus `~/.agents/skills/`. Antigravity uses its own
+  separate mechanism under `~/.gemini`.
+- Minimal install set: `~/.claude/skills/` + `~/.agents/skills/` together
+  cover five of the six drivers (Claude, opencode, Codex, Cursor, Grok);
+  only Antigravity needs anything extra. So "installed" is per *install
+  location*, not strictly per provider — two locations flip five providers.
+  Feeds ticket 04's grain question directly.
+- Unverified edges: opencode's precedence when the same skill name exists in
+  several of its roots is undocumented, and whether Cursor marketplace
+  *plugins* (as opposed to skill folders) reach its CLI is worth a live
+  re-check.

@@ -50,16 +50,23 @@ no users yet, move quick):
 <!-- one line per resolved ticket: gist plus link -->
 
 - [How each T3 Code provider discovers skills](issues/01-skill-discovery-per-provider.md)
-  — two install locations cover all three skill-capable providers:
-  `~/.claude/skills/` serves Claude Code **and** opencode (which scans it
-  natively), `~/.agents/skills/` serves Codex; T3 Code adds no layer of its
-  own, and Cursor/Grok drivers have no skill discovery at all.
+  — every T3 Code driver discovers skills natively (a first pass wrongly
+  exempted Cursor and Grok; corrected 2026-09-22), and two install locations
+  cover five of the six: `~/.claude/skills/` serves Claude, opencode, and
+  Cursor; `~/.agents/skills/` serves Codex, Cursor, and Grok; only
+  Antigravity has a separate mechanism. T3 Code adds no layer of its own.
 - [What cursor/plugins pstack is](issues/02-pstack-contents.md) — an
   MIT-licensed engineering-discipline pack (38 skills, `poteto-mode` router)
   in Cursor's plugin marketplace; standard SKILL.md format so the content is
   portable, but no non-Cursor install path exists, and its `tdd` and `teach`
   skills collide by name with mattpocock/skills — a second set only with
   curation, never a flat merge.
+- [Setup-state data model](issues/04-setup-state-data-model.md) — the
+  overall boolean is stored (wizard-set via MCP, UI read-only), provider
+  state is keyed by driver kind not instance id, every driver gets a boolean
+  (no exempt category — all six discover skills), the confirm call is honor
+  system taking the computer's id, the un-confirm path exists, and the
+  schema uses nullable confirmed-at timestamps written only by MCP use-cases.
 - [Which skill sets "setup" installs](issues/03-which-skill-sets.md) —
   mattpocock/skills is the default the wizard installs (users may amend their
   copies); pstack is a README credit only; no Nexul-shipped skill for now —
