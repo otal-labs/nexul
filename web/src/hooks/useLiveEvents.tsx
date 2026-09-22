@@ -41,13 +41,15 @@ import type { VoiceOccupant } from "@/models/Voice";
 const pushTopics: Record<string, string[]> = {
   "runner.connected": [getRunnersKey],
   "runner.disconnected": [getRunnersKey],
-  "deploy.build_started": [getRunnersKey, getRunnerQueueKey, getDeployKey],
-  "deploy.build_progress": [getRunnersKey, getDeployKey],
-  "deploy.build_completed": [getRunnersKey, getRunnerQueueKey, getDeployKey],
-  "deploy.deploy_progress": [getRunnersKey, getDeployKey],
-  "deploy.status_changed": [getRunnersKey, getRunnerQueueKey, getServiceDeploysKey, getStackDeploysKey, getDeployKey],
-  // ponytail: whole-log refetch per batch (≤ 4/s); append the frame's lines into the cache if logs get large.
-  "deploy.log": [getDeployLogKey],
+  "deploy.build_started": [getRunnersKey, getRunnerQueueKey],
+  "deploy.build_progress": [getRunnersKey],
+  "deploy.build_completed": [getRunnersKey, getRunnerQueueKey],
+  "deploy.deploy_progress": [getRunnersKey],
+  "deploy.status_changed": [getRunnersKey, getRunnerQueueKey],
+  // Deploy reads refetch only on deploy.updated: the runner topics above fire before the deploy domain has
+  // committed, so a refetch on them can read the record from before the change.
+  // ponytail: whole-log refetch per batch (≤ 4/s); append lines into the cache if logs get large.
+  "deploy.updated": [getDeployKey, getDeployLogKey, getStackDeploysKey, getServiceDeploysKey],
   "service.created": [getServicesKey],
   "service.updated": [getServicesKey],
   "service.deleted": [getServicesKey],

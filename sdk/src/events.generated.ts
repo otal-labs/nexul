@@ -23,6 +23,7 @@ export interface EventPayloads {
   "deploy.log": { "id": string; "phase": "checkout" | "build" | "deploy"; "log": string; "ts": number; };
   "deploy.requested": { "id": string; "kind": "build" | "deploy"; "service"?: string; "target"?: string; "image"?: string; "env"?: Record<string, string>; "strategy"?: string; "repo"?: string; "ref"?: string; "compose_dir"?: string; "network"?: string; "ports"?: string[]; "mounts"?: string[]; "dockerfile"?: string; "compose_path"?: string; "health_check"?: Record<string, unknown>; };
   "deploy.status_changed": { "id": string; "status": "pending" | "running" | "healthy" | "failed"; "error"?: string; };
+  "deploy.updated": { "id": string; "status": "pending" | "running" | "healthy" | "failed"; };
   "dns.exposure_changed": { "exposure_id": string; "gateway_id": string; "hostname"?: string; "service"?: string; "port"?: number; "action": "created" | "deleted"; };
   "dns.gateway_changed": { "gateway_id": string; "kind"?: string; "docker_network"?: string; "action": "created" | "deleted"; };
   "dns.record_changed": { "zone_id": string; "zone"?: string; "record_id"?: string; "action": "created" | "updated" | "deleted"; "type"?: string; "name"?: string; "service"?: string; };
@@ -102,6 +103,7 @@ export const TOPICS: Topic[] = [
   "deploy.log",
   "deploy.requested",
   "deploy.status_changed",
+  "deploy.updated",
   "dns.exposure_changed",
   "dns.gateway_changed",
   "dns.record_changed",
@@ -179,6 +181,7 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "deploy.log": {"id":"fixture-id","phase":"checkout","log":"fixture-log","ts":1},
   "deploy.requested": {"id":"fixture-id","kind":"build","service":"fixture-service","target":"fixture-target","image":"fixture-image","env":{},"strategy":"fixture-strategy","repo":"fixture-repo","ref":"fixture-ref","compose_dir":"fixture-compose_dir","network":"fixture-network","ports":["fixture-ports"],"mounts":["fixture-mounts"],"dockerfile":"fixture-dockerfile","compose_path":"fixture-compose_path","health_check":{}},
   "deploy.status_changed": {"id":"fixture-id","status":"pending","error":"fixture-error"},
+  "deploy.updated": {"id":"fixture-id","status":"pending"},
   "dns.exposure_changed": {"exposure_id":"fixture-exposure_id","gateway_id":"fixture-gateway_id","hostname":"fixture-hostname","service":"fixture-service","port":1,"action":"created"},
   "dns.gateway_changed": {"gateway_id":"fixture-gateway_id","kind":"fixture-kind","docker_network":"fixture-docker_network","action":"created"},
   "dns.record_changed": {"zone_id":"fixture-zone_id","zone":"fixture-zone","record_id":"fixture-record_id","action":"created","type":"fixture-type","name":"fixture-name","service":"fixture-service"},

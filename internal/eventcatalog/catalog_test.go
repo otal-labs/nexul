@@ -59,4 +59,5 @@ func TestAllTopics_IncludesInvitationLifecycle(t *testing.T) {
 
 func TestAllTopics_IncludesDeployLog(t *testing.T) {
 	assert.Contains(t, AllTopics(), "deploy.log")
+	assert.Contains(t, AllTopics(), "deploy.updated")
 }

@@ -16,11 +16,13 @@ type Repo interface {
 	ListByStatus(ctx context.Context, status Status) ([]*Deploy, error)
 	HasActive(ctx context.Context, stackID string) (bool, error)
 	LastHealthy(ctx context.Context, stackID string) (*Deploy, error)
-	UpdateStatus(ctx context.Context, id string, status Status) error
+	// UpdateStatus sets the status and writes evts in the same transaction.
+	UpdateStatus(ctx context.Context, id string, status Status, evts ...eventbus.OutboxEvent) error
 	// SetAddress records the container's address on its docker network, reported by the runner at start.
 	SetAddress(ctx context.Context, id, address string) error
-	// AppendLogLines stores the lines in order under one deploy; Seq is assigned by the store.
-	AppendLogLines(ctx context.Context, id string, lines []LogLine) error
+	// AppendLogLines stores the lines in order under one deploy and writes evts in the same transaction;
+	// Seq is assigned by the store.
+	AppendLogLines(ctx context.Context, id string, lines []LogLine, evts ...eventbus.OutboxEvent) error
 	// ListLogLines returns a deploy's log ordered by ts then seq; a deploy with no output yields an empty slice.
 	ListLogLines(ctx context.Context, id string) ([]LogLine, error)
 	// CancelRequested enqueues a cancel_requested row; no local row, so this just makes the enqueue transactional.

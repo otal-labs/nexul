@@ -8,9 +8,12 @@ const (
 	TopicDeployRequested       = "deploy.requested"
 	TopicDeployCancelRequested = "deploy.cancel_requested"
 	TopicDeployStatusChanged   = "deploy.status_changed"
-	TopicStackCreated          = "service.created"
-	TopicStackUpdated          = "service.updated"
-	TopicStackDeleted          = "service.deleted"
+	// TopicDeployUpdated fires from the same transaction as the write it announces, so a reader who refetches
+	// on it never sees the record from before the change.
+	TopicDeployUpdated = "deploy.updated"
+	TopicStackCreated  = "service.created"
+	TopicStackUpdated  = "service.updated"
+	TopicStackDeleted  = "service.deleted"
 	// TopicDeployLog is consumed, not published: the runner domain streams output batches on it.
 	TopicDeployLog = "deploy.log"
 )
@@ -21,10 +24,17 @@ func Topics() []string {
 		TopicDeployRequested,
 		TopicDeployCancelRequested,
 		TopicDeployStatusChanged,
+		TopicDeployUpdated,
 		TopicStackCreated,
 		TopicStackUpdated,
 		TopicStackDeleted,
 	}
+}
+
+// DeployUpdatedEvent is the deploy.updated payload: the record's status or its log changed.
+type DeployUpdatedEvent struct {
+	ID     string `json:"id"`
+	Status string `json:"status"`
 }
 
 // DeployCancelRequestedEvent asks the runner to stop a queued or running job.

@@ -162,6 +162,7 @@ func TestIntegration_RunnerFailurePath(t *testing.T) {
 	assert.Equal(t, "container exited 1", lines[1].Text)
 	assert.Equal(t, "deploy failed: container exited 1", lines[2].Text)
 	assert.Equal(t, "", lines[2].Phase)
+	assert.True(t, outboxTopics(t, store)[deploy.TopicDeployUpdated], "deploy.updated written via the outbox")
 }
 
 // TestIntegration_RollbackAndStackEvents covers the one-click rollback
