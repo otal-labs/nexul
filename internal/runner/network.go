@@ -25,9 +25,12 @@ func (e *ShellExecutor) JoinNetworks(ctx context.Context, gatewayContainer strin
 
 // joinGatewayNetworks runs the deploy's last step: join req.GatewayContainer onto req.JoinNetworks. Errors
 // are logged, not surfaced — a routing nicety must never fail a deploy that otherwise succeeded.
-func (e *ShellExecutor) joinGatewayNetworks(ctx context.Context, req DeployRequestedEvent) {
+func (e *ShellExecutor) joinGatewayNetworks(ctx context.Context, req DeployRequestedEvent, logs *logStream) {
+	defer logs.flush()
+	stream := logs.step(LogPhaseDeploy, "docker network connect "+strings.Join(req.JoinNetworks, ",")+" "+req.GatewayContainer)
 	if err := joinNetworks(ctx, e.cmd, req.GatewayContainer, req.JoinNetworks); err != nil {
 		e.log.Warn("gateway network join failed", "id", req.ID, "gateway_container", req.GatewayContainer, "error", err)
+		stream("gateway network join failed: " + err.Error() + "\n")
 	}
 }
 

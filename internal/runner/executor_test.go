@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 
@@ -37,6 +38,8 @@ type fakeCmd struct {
 	// runOut/runErr canned-answer `docker run ...` (the upgrade helper's stdout is its container id).
 	runOut string
 	runErr error
+	// stdout is streamed through logf by every non-canned command, so tests can watch output reach the log.
+	stdout string
 }
 
 func (f *fakeCmd) run(ctx context.Context, dir string, logf func(string), name string, args ...string) error {
@@ -58,6 +61,9 @@ func (f *fakeCmd) run(ctx context.Context, dir string, logf func(string), name s
 		}
 		logf(out)
 		return nil
+	}
+	if f.stdout != "" {
+		logf(f.stdout)
 	}
 	if fail {
 		return f.err
@@ -139,6 +145,38 @@ func (r *frameRecorder) all() []Frame {
 	return out
 }
 
+// lifecycle is every frame except deploy_log: the progress and result sequence positional assertions index.
+func (r *frameRecorder) lifecycle() []Frame {
+	var out []Frame
+	for _, f := range r.all() {
+		if f.Type != FrameDeployLog {
+			out = append(out, f)
+		}
+	}
+	return out
+}
+
+func (r *frameRecorder) logs() []Frame {
+	var out []Frame
+	for _, f := range r.all() {
+		if f.Type == FrameDeployLog {
+			out = append(out, f)
+		}
+	}
+	return out
+}
+
+// logText joins every deploy_log batch for one phase.
+func (r *frameRecorder) logText(phase string) string {
+	var b strings.Builder
+	for _, f := range r.logs() {
+		if f.Phase == phase {
+			b.WriteString(f.Log)
+		}
+	}
+	return b.String()
+}
+
 func (r *frameRecorder) last() Frame {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -185,12 +223,12 @@ func buildRequest(t *testing.T, id string) DeployRequestedEvent {
 func TestShellExecutor_Build_RepoDriven_RunStrategy(t *testing.T) {
 	cmd := &fakeCmd{inspectByName: map[string]string{
 		"api": `{"Config":{"Image":"api:b1"},"State":{"Status":"running"},"NetworkSettings":{"Networks":{"app-net":{"IPAddress":"172.18.0.4"}},"Ports":{"80/tcp":[{"HostPort":"8080"}]}}}`,
-	}}
+	}, stdout: "output line\n"}
 	e := newTestExecutor(cmd.run)
 	rec := &frameRecorder{}
 	e.Build(context.Background(), buildRequest(t, "b1"), rec.send)
 
-	frames := rec.all()
+	frames := rec.lifecycle()
 	require.Len(t, frames, 8)
 	assert.Equal(t, FrameBuildProgress, frames[0].Type)
 	assert.Equal(t, 1, frames[0].Step)
@@ -224,6 +262,19 @@ func TestShellExecutor_Build_RepoDriven_RunStrategy(t *testing.T) {
 	assert.Equal(t, []string{"network", "create", "app-net"}, cmd.argsFor("docker")[2], "a run stack's network is created before docker run needs it")
 	assert.Equal(t, []string{"run", "-d", "--restart", "unless-stopped", "--name", "api", "--network", "app-net", "-e", "A=1", "-e", "B=2", "api:b1"}, cmd.argsFor("docker")[3])
 	assert.Equal(t, []string{"inspect", "--format", "{{json .}}", "api"}, cmd.argsFor("docker")[4])
+
+	// Every step announces itself, then streams its output under its phase; the rm/network probes stay silent.
+	assert.Equal(t, "clone org/app@main\noutput line\n", rec.logText(LogPhaseCheckout))
+	assert.Equal(t, "docker build api:b1\noutput line\n", rec.logText(LogPhaseBuild))
+	assert.Equal(t, "docker run --name api api:b1\n", rec.logText(LogPhaseDeploy))
+	for _, f := range rec.logs() {
+		assert.Equal(t, "b1", f.ID)
+		assert.Positive(t, f.TS)
+		assert.NoError(t, f.Validate())
+	}
+	all := rec.all()
+	assert.Equal(t, FrameDeployLog, all[1].Type, "a step's output batch lands before its closing progress frame")
+	assert.Equal(t, FrameDeployResult, all[len(all)-1].Type, "nothing is sent after the terminal result")
 }
 
 func TestShellExecutor_Build_RepoDriven_ComposeStrategy(t *testing.T) {
@@ -242,18 +293,25 @@ func TestShellExecutor_Build_RepoDriven_ComposeStrategy(t *testing.T) {
 	req.Network = "" // compose takes its networks from the compose file, not the Network field.
 	e.Build(context.Background(), req, rec.send)
 
-	frames := rec.all()
-	require.GreaterOrEqual(t, len(frames), 5)
-	assert.Equal(t, FrameBuildResult, frames[2].Type)
-	assert.Equal(t, BuildStatusSuccess, frames[2].Status)
+	frames := rec.lifecycle()
+	require.GreaterOrEqual(t, len(frames), 7)
+	assert.Equal(t, FrameBuildProgress, frames[2].Type)
+	assert.Equal(t, 2, frames[2].Step)
+	assert.Equal(t, "docker compose -p api -f compose/docker-compose.yml build", frames[2].Log)
+	assert.Equal(t, FrameBuildResult, frames[4].Type)
+	assert.Equal(t, BuildStatusSuccess, frames[4].Status)
 	assert.Equal(t, DeployStatusHealthy, rec.last().Status)
 	assert.Equal(t, FrameDeployResult, rec.last().Type)
 
-	// One clone step, then compose runs as a named project from the checkout (up --build rebuilds from it — the
-	// compose file is the source of truth), then the report lists it by `docker compose ps` and inspects each.
+	// One clone step, then compose builds as a named project from the checkout (the compose file is the source
+	// of truth) as its own build step, `up` starts it in the deploy phase, then the report lists it by
+	// `docker compose ps` and inspects each container.
 	assert.Len(t, cmd.argsFor("git"), 1)
-	assert.Equal(t, []string{"compose", "-p", "api", "-f", "compose/docker-compose.yml", "up", "-d", "--build", "--remove-orphans"}, cmd.argsFor("docker")[0])
-	assert.Equal(t, []string{"compose", "-p", "api", "ps", "-a", "--format", "json"}, cmd.argsFor("docker")[1])
+	assert.Equal(t, []string{"compose", "-p", "api", "-f", "compose/docker-compose.yml", "build"}, cmd.argsFor("docker")[0])
+	assert.Equal(t, []string{"compose", "-p", "api", "-f", "compose/docker-compose.yml", "up", "-d", "--remove-orphans"}, cmd.argsFor("docker")[1])
+	assert.Equal(t, []string{"compose", "-p", "api", "ps", "-a", "--format", "json"}, cmd.argsFor("docker")[2])
+	assert.Equal(t, "docker compose -p api -f compose/docker-compose.yml build\n", rec.logText(LogPhaseBuild))
+	assert.Equal(t, "docker compose -p api -f compose/docker-compose.yml up -d --remove-orphans\n", rec.logText(LogPhaseDeploy))
 
 	require.Len(t, rec.last().Services, 2)
 	assert.Equal(t, ObservedService{
@@ -267,10 +325,40 @@ func TestShellExecutor_Build_RepoDriven_ComposeStrategy(t *testing.T) {
 	}, rec.last().Services[1])
 	assert.Equal(t, "172.18.0.2", rec.last().Address, "the primary address falls back to the first reported container")
 
-	// The stack's env lands in a .env beside the compose file: interpolation and `env_file: .env` both read it.
+	// The stack's env lands in a .env beside the compose file before the build: interpolation and `env_file:
+	// .env` both read it.
 	envFile, err := os.ReadFile(filepath.Join(req.StackRoot, "stacks", "api", "repo", "compose", ".env"))
 	require.NoError(t, err)
 	assert.Equal(t, "A=1\nB=2\n", string(envFile))
+}
+
+func TestShellExecutor_Build_RepoDriven_ComposeBuildFailure_StopsBeforeUp(t *testing.T) {
+	cmd := &fakeCmd{}
+	var mu sync.Mutex
+	var docker [][]string
+	cmdFn := func(ctx context.Context, dir string, logf func(string), name string, args ...string) error {
+		if name == "docker" {
+			mu.Lock()
+			docker = append(docker, args)
+			mu.Unlock()
+			logf("failed to solve: Dockerfile missing\n")
+			return assert.AnError
+		}
+		return cmd.run(ctx, dir, logf, name, args...)
+	}
+	e := newTestExecutor(cmdFn)
+	rec := &frameRecorder{}
+	req := buildRequest(t, "b1")
+	req.Strategy = "compose"
+	e.Build(context.Background(), req, rec.send)
+
+	assert.Equal(t, DeployStatusFailed, rec.last().Status)
+	mu.Lock()
+	defer mu.Unlock()
+	require.Len(t, docker, 1, "up never runs after a failed compose build")
+	assert.Equal(t, "build", docker[0][len(docker[0])-1])
+	assert.Equal(t, "docker compose -p api build\nfailed to solve: Dockerfile missing\n", rec.logText(LogPhaseBuild))
+	assert.Empty(t, rec.logText(LogPhaseDeploy))
 }
 
 func TestWriteComposeEnv_NoEnv(t *testing.T) {
@@ -304,6 +392,11 @@ func TestShellExecutor_Build_RepoDriven_CloneAuth(t *testing.T) {
 	assert.Equal(t, "-c", args[0])
 	assert.Equal(t, "http.extraheader=Authorization: Basic eC1hY2Nlc3MtdG9rZW46Z2hwX3NlY3JldA==", args[1])
 	assert.Equal(t, "https://github.com/org/app.git", args[7], "the token rides the header, never the URL")
+	for _, f := range rec.logs() {
+		assert.NotContains(t, f.Log, "ghp_secret")
+		assert.NotContains(t, f.Log, "Authorization")
+	}
+	assert.Equal(t, "clone org/app@main\n", rec.logText(LogPhaseCheckout), "the label names the repo and ref, not the git args")
 }
 
 func TestShellExecutor_Build_RepoDriven_ErrorPaths(t *testing.T) {
@@ -437,7 +530,7 @@ func TestShellExecutor_Build_HappyPath(t *testing.T) {
 	req := DeployRequestedEvent{ID: "b1", Kind: RequestBuild, Steps: []string{"go build", "go test"}}
 	e.Build(context.Background(), req, rec.send)
 
-	frames := rec.all()
+	frames := rec.lifecycle()
 	require.Len(t, frames, 5)
 	assert.Equal(t, FrameBuildProgress, frames[0].Type)
 	assert.Equal(t, 1, frames[0].Step)
@@ -448,6 +541,7 @@ func TestShellExecutor_Build_HappyPath(t *testing.T) {
 	assert.Equal(t, 2, frames[2].Step)
 	assert.Equal(t, FrameBuildResult, frames[4].Type)
 	assert.Equal(t, BuildStatusSuccess, frames[4].Status)
+	assert.Equal(t, "go build\ngo test\n", rec.logText(LogPhaseBuild), "each step announces its command")
 }
 
 func TestShellExecutor_Build_StepsRunInTempDir(t *testing.T) {
@@ -523,13 +617,13 @@ func TestShellExecutor_Deploy_ErrorPaths(t *testing.T) {
 
 func TestShellExecutor_Deploy_HappyPaths(t *testing.T) {
 	t.Run("run strategy pulls and starts with env", func(t *testing.T) {
-		cmd := &fakeCmd{}
+		cmd := &fakeCmd{stdout: "Status: Downloaded newer image\n"}
 		e := newTestExecutor(cmd.run)
 		rec := &frameRecorder{}
 		req := DeployRequestedEvent{ID: "d1", Kind: RequestDeploy, Service: "api", StackSlug: "api", Image: "img:1", Env: map[string]string{"B": "2", "A": "1"}, Strategy: "run"}
 		e.Deploy(context.Background(), req, rec.send)
 
-		frames := rec.all()
+		frames := rec.lifecycle()
 		require.Len(t, frames, 4)
 		assert.Equal(t, FrameDeployProgress, frames[0].Type)
 		assert.Equal(t, DeployPhasePulling, frames[0].Phase)
@@ -543,6 +637,11 @@ func TestShellExecutor_Deploy_HappyPaths(t *testing.T) {
 		assert.Equal(t, []string{"pull", "img:1"}, cmd.argsFor("docker")[0])
 		assert.Equal(t, []string{"rm", "-f", "api"}, cmd.argsFor("docker")[1])
 		assert.Equal(t, []string{"run", "-d", "--restart", "unless-stopped", "--name", "api", "-e", "A=1", "-e", "B=2", "img:1"}, cmd.argsFor("docker")[2])
+
+		// The pull streams under the deploy phase; the run label names the container and image, never the env.
+		assert.Equal(t, "docker pull img:1\nStatus: Downloaded newer image\ndocker run --name api img:1\n", rec.logText(LogPhaseDeploy))
+		assert.NotContains(t, rec.logText(LogPhaseDeploy), "A=1")
+		assert.Equal(t, FrameDeployResult, rec.all()[len(rec.all())-1].Type)
 	})
 
 	t.Run("run strategy publishes ports", func(t *testing.T) {

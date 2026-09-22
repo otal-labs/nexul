@@ -103,6 +103,8 @@ func (e *ShellExecutor) repoBuildAndDeploy(ctx context.Context, req DeployReques
 		e.failBuild(ctx, req, send, err)
 		return
 	}
+	logs := newLogStream(req.ID, send)
+	defer logs.close()
 	for i, st := range steps {
 		if ctx.Err() != nil {
 			send(Frame{Type: FrameBuildResult, ID: req.ID, Status: BuildStatusFailed, Error: "cancelled"})
@@ -110,8 +112,13 @@ func (e *ShellExecutor) repoBuildAndDeploy(ctx context.Context, req DeployReques
 		}
 		send(Frame{Type: FrameBuildProgress, ID: req.ID, Step: i + 1, Total: len(steps), Log: st.label})
 		var buf bytes.Buffer
-		logStep := func(s string) { _, _ = buf.WriteString(s) }
+		stream := logs.step(st.phase, st.label)
+		logStep := func(s string) {
+			_, _ = buf.WriteString(s)
+			stream(s)
+		}
 		stepErr := st.run(ctx, logStep)
+		logs.flush()
 		log := tailString(buf.String(), maxLogLen)
 		if stepErr != nil {
 			e.log.Warn("build step failed", "id", req.ID, "step", st.label, "error", stepErr)
@@ -127,7 +134,7 @@ func (e *ShellExecutor) repoBuildAndDeploy(ctx context.Context, req DeployReques
 	}
 	send(Frame{Type: FrameBuildResult, ID: req.ID, Status: BuildStatusSuccess, Artifacts: []string{tag}})
 
-	e.deployBuilt(ctx, req, tag, checkout, send)
+	e.deployBuilt(ctx, req, tag, checkout, send, logs)
 }
 
 // checkoutPath resolves the persistent checkout dir for a repo-driven request: "<stack_root>/stacks/<slug>/repo",
@@ -139,7 +146,8 @@ func (e *ShellExecutor) checkoutPath(req DeployRequestedEvent) (string, error) {
 	return filepath.Join(req.StackRoot, "stacks", req.StackSlug, "repo"), nil
 }
 
-// buildSteps: compose skips an explicit build, `compose up -d --build` builds from the repo's compose file.
+// buildSteps: the checkout, then the image build; compose builds every service from the repo's compose file
+// as its own step so the build output streams like the run strategy's, with `up` left to the deploy phase.
 func (e *ShellExecutor) buildSteps(req DeployRequestedEvent, checkout, tag string) ([]buildStep, error) {
 	if err := os.MkdirAll(filepath.Dir(checkout), 0o755); err != nil {
 		return nil, fmt.Errorf("create stack root: %w", err)
@@ -147,8 +155,21 @@ func (e *ShellExecutor) buildSteps(req DeployRequestedEvent, checkout, tag strin
 	steps := []buildStep{e.checkoutStep(req, checkout)}
 	switch req.Strategy {
 	case "compose":
+		args := composeArgs(req, "build")
+		steps = append(steps, buildStep{
+			phase: LogPhaseBuild,
+			label: cmdString("docker", args),
+			run: func(ctx context.Context, logf func(string)) error {
+				// The .env must exist before build, not just up: compose interpolates build args from it too.
+				if err := writeComposeEnv(checkout, req); err != nil {
+					return err
+				}
+				return e.cmd(ctx, checkout, logf, "docker", args...)
+			},
+		})
 	case "run", "":
 		steps = append(steps, buildStep{
+			phase: LogPhaseBuild,
 			label: "docker build " + tag,
 			run: func(ctx context.Context, logf func(string)) error {
 				args := []string{"build"}
@@ -191,6 +212,7 @@ func (e *ShellExecutor) authArgs(req DeployRequestedEvent, args []string) []stri
 // cloneStep injects the git token via http.extraheader, never the URL, so it can't leak into process listings.
 func (e *ShellExecutor) cloneStep(req DeployRequestedEvent, checkout string) buildStep {
 	return buildStep{
+		phase: LogPhaseCheckout,
 		label: "clone " + req.Repo + "@" + req.Ref,
 		run: func(ctx context.Context, logf func(string)) error {
 			url := "https://github.com/" + req.Repo + ".git"
@@ -203,6 +225,7 @@ func (e *ShellExecutor) cloneStep(req DeployRequestedEvent, checkout string) bui
 // fetchStep refreshes an existing persistent checkout in place: fetch the ref, then force-checkout it (spec §4).
 func (e *ShellExecutor) fetchStep(req DeployRequestedEvent, checkout string) buildStep {
 	return buildStep{
+		phase: LogPhaseCheckout,
 		label: "fetch " + req.Repo + "@" + req.Ref,
 		run: func(ctx context.Context, logf func(string)) error {
 			args := e.authArgs(req, []string{"fetch", "--depth", "1", "origin", req.Ref})
@@ -215,10 +238,10 @@ func (e *ShellExecutor) fetchStep(req DeployRequestedEvent, checkout string) bui
 }
 
 // deployBuilt starts the locally-built image on this runner; no registry hop.
-func (e *ShellExecutor) deployBuilt(ctx context.Context, req DeployRequestedEvent, tag, checkout string, send func(Frame)) {
+func (e *ShellExecutor) deployBuilt(ctx context.Context, req DeployRequestedEvent, tag, checkout string, send func(Frame), logs *logStream) {
 	req.Image = tag
 	send(Frame{Type: FrameDeployProgress, ID: req.ID, Phase: DeployPhaseStarting})
-	if err := e.startBuilt(ctx, req, checkout); err != nil {
+	if err := e.startBuilt(ctx, req, checkout, logs); err != nil {
 		e.log.Warn("deploy start failed", "id", req.ID, "error", err)
 		if ctx.Err() != nil {
 			// A cancel frame already reports terminal state; reporting again would double-transition it.
@@ -229,7 +252,7 @@ func (e *ShellExecutor) deployBuilt(ctx context.Context, req DeployRequestedEven
 	}
 	send(Frame{Type: FrameDeployProgress, ID: req.ID, Phase: DeployPhaseHealthy})
 	if req.GatewayContainer != "" {
-		e.joinGatewayNetworks(ctx, req)
+		e.joinGatewayNetworks(ctx, req, logs)
 	}
 	services := e.observe(ctx, req)
 	send(Frame{Type: FrameDeployResult, ID: req.ID, Status: DeployStatusHealthy, Address: primaryAddress(services, req.Network), Services: services})
@@ -237,26 +260,41 @@ func (e *ShellExecutor) deployBuilt(ctx context.Context, req DeployRequestedEven
 
 // startBuilt runs the freshly checked-out stack: compose as a named project from the checkout directory (so
 // bind mounts resolve against it), or a run-strategy container named after the slug (spec §4 step 2).
-func (e *ShellExecutor) startBuilt(ctx context.Context, req DeployRequestedEvent, checkout string) error {
+func (e *ShellExecutor) startBuilt(ctx context.Context, req DeployRequestedEvent, checkout string, logs *logStream) error {
 	switch req.Strategy {
 	case "compose":
-		if err := writeComposeEnv(checkout, req); err != nil {
-			return err
-		}
-		args := []string{"compose", "-p", req.StackSlug}
-		if req.ComposePath != "" {
-			args = append(args, "-f", req.ComposePath)
-		}
-		args = append(args, "up", "-d", "--build", "--remove-orphans")
-		return e.cmd(ctx, checkout, discardLog, "docker", args...)
+		args := composeArgs(req, "up", "-d", "--remove-orphans")
+		return e.runStreamed(ctx, checkout, logs, cmdString("docker", args), "docker", args...)
 	case "run", "":
-		// A redeploy must replace the previous container (see start).
-		_ = e.cmd(ctx, "", discardLog, "docker", "rm", "-f", req.StackSlug)
-		e.ensureNetwork(ctx, req.Network)
-		return e.cmd(ctx, "", discardLog, "docker", runArgs(req)...)
+		return e.runContainer(ctx, req, logs)
 	default:
 		return fmt.Errorf("unsupported deploy strategy %q", req.Strategy)
 	}
+}
+
+// composeArgs renders `compose -p <slug> [-f <path>] <verb...>`, the project flags every compose call shares.
+func composeArgs(req DeployRequestedEvent, verb ...string) []string {
+	args := []string{"compose", "-p", req.StackSlug}
+	if req.ComposePath != "" {
+		args = append(args, "-f", req.ComposePath)
+	}
+	return append(args, verb...)
+}
+
+// runContainer replaces the slug's previous container with a fresh `docker run`; only the run itself is
+// streamed, since the rm and network probes are expected to fail on a first deploy and say nothing useful.
+// The label names the container and image but never the args: env values ride `-e` and are secrets.
+func (e *ShellExecutor) runContainer(ctx context.Context, req DeployRequestedEvent, logs *logStream) error {
+	_ = e.cmd(ctx, "", discardLog, "docker", "rm", "-f", req.StackSlug)
+	e.ensureNetwork(ctx, req.Network)
+	label := "docker run --name " + req.StackSlug + " " + req.Image
+	return e.runStreamed(ctx, "", logs, label, "docker", runArgs(req)...)
+}
+
+// runStreamed runs one deploy-phase command with its output streamed under label, flushing when it ends.
+func (e *ShellExecutor) runStreamed(ctx context.Context, dir string, logs *logStream, label, name string, args ...string) error {
+	defer logs.flush()
+	return e.cmd(ctx, dir, logs.step(LogPhaseDeploy, label), name, args...)
 }
 
 // ensureNetwork creates the run stack's docker network when it does not exist yet: a fresh run stack names its
@@ -323,8 +361,9 @@ func (e *ShellExecutor) failBuild(ctx context.Context, req DeployRequestedEvent,
 	}
 }
 
-// buildStep is one ordered command in a build phase, labelled for progress frames.
+// buildStep is one ordered command in a build phase, labelled for progress frames and the deploy log.
 type buildStep struct {
+	phase string
 	label string
 	run   func(ctx context.Context, logf func(string)) error
 }
@@ -347,6 +386,8 @@ func (e *ShellExecutor) stepBuild(ctx context.Context, req DeployRequestedEvent,
 		}
 	}()
 
+	logs := newLogStream(req.ID, send)
+	defer logs.close()
 	for i, step := range req.Steps {
 		if ctx.Err() != nil {
 			send(Frame{Type: FrameBuildResult, ID: req.ID, Status: BuildStatusFailed, Error: "cancelled"})
@@ -354,8 +395,13 @@ func (e *ShellExecutor) stepBuild(ctx context.Context, req DeployRequestedEvent,
 		}
 		send(Frame{Type: FrameBuildProgress, ID: req.ID, Step: i + 1, Total: len(req.Steps)})
 		var buf bytes.Buffer
-		logStep := func(s string) { _, _ = buf.WriteString(s) }
+		stream := logs.step(LogPhaseBuild, step)
+		logStep := func(s string) {
+			_, _ = buf.WriteString(s)
+			stream(s)
+		}
 		stepErr := e.cmd(ctx, workdir, logStep, "sh", "-c", step)
+		logs.flush()
 		progress := Frame{Type: FrameBuildProgress, ID: req.ID, Step: i + 1, Total: len(req.Steps), Log: tailString(buf.String(), maxLogLen)}
 		send(progress)
 		if stepErr != nil {
@@ -370,21 +416,23 @@ func (e *ShellExecutor) stepBuild(ctx context.Context, req DeployRequestedEvent,
 // Deploy pulls the image, starts the service, then reports the phases and a terminal deploy_result.
 func (e *ShellExecutor) Deploy(ctx context.Context, req DeployRequestedEvent, send func(Frame)) {
 	defer e.recoverAndReport(send, Frame{Type: FrameDeployResult, ID: req.ID})
+	logs := newLogStream(req.ID, send)
+	defer logs.close()
 	send(Frame{Type: FrameDeployProgress, ID: req.ID, Phase: DeployPhasePulling})
-	if err := e.cmd(ctx, "", discardLog, "docker", "pull", req.Image); err != nil {
+	if err := e.runStreamed(ctx, "", logs, "docker pull "+req.Image, "docker", "pull", req.Image); err != nil {
 		e.log.Warn("deploy pull failed", "id", req.ID, "error", err)
 		send(Frame{Type: FrameDeployResult, ID: req.ID, Status: DeployStatusFailed, Error: err.Error()})
 		return
 	}
 	send(Frame{Type: FrameDeployProgress, ID: req.ID, Phase: DeployPhaseStarting})
-	if err := e.start(ctx, req); err != nil {
+	if err := e.start(ctx, req, logs); err != nil {
 		e.log.Warn("deploy start failed", "id", req.ID, "error", err)
 		send(Frame{Type: FrameDeployResult, ID: req.ID, Status: DeployStatusFailed, Error: err.Error()})
 		return
 	}
 	send(Frame{Type: FrameDeployProgress, ID: req.ID, Phase: DeployPhaseHealthy})
 	if req.GatewayContainer != "" {
-		e.joinGatewayNetworks(ctx, req)
+		e.joinGatewayNetworks(ctx, req, logs)
 	}
 	services := e.observe(ctx, req)
 	send(Frame{Type: FrameDeployResult, ID: req.ID, Status: DeployStatusHealthy, Address: primaryAddress(services, req.Network), Services: services})
@@ -442,13 +490,10 @@ func runArgs(req DeployRequestedEvent) []string {
 
 // start runs a pre-built image directly (no repo, no checkout). Compose always needs its repo's compose file, so
 // a plain (non-repo-driven) deploy only ever supports the run strategy; compose goes through Build.
-func (e *ShellExecutor) start(ctx context.Context, req DeployRequestedEvent) error {
+func (e *ShellExecutor) start(ctx context.Context, req DeployRequestedEvent, logs *logStream) error {
 	switch req.Strategy {
 	case "run", "":
-		// A redeploy must replace the previous container: docker run refuses a name already in use.
-		_ = e.cmd(ctx, "", discardLog, "docker", "rm", "-f", req.StackSlug)
-		e.ensureNetwork(ctx, req.Network)
-		return e.cmd(ctx, "", discardLog, "docker", runArgs(req)...)
+		return e.runContainer(ctx, req, logs)
 	default:
 		return fmt.Errorf("unsupported deploy strategy %q", req.Strategy)
 	}
