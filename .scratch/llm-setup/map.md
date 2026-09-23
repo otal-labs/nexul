@@ -96,7 +96,9 @@ no users yet, move quick):
   filed); the fixing agent gets one hop of origin context; humans and agents
   file bugs; every ticket gets a reporter (agents show as "Nexul · for
   <person>"); "blocked by" links with a board icon and a play confirm, never
-  a gate. Signals over gates, room for mistakes.
+  a gate. Signals over gates, room for mistakes. Every ticket type carries a
+  body template (bug: steps, expected, actual, screenshot; feature and task
+  seeded too), edited on the type in project settings.
 - [Which skill sets "setup" installs](issues/03-which-skill-sets.md) —
   mattpocock/skills is the default the wizard installs (users may amend their
   copies); pstack is a README credit only; no Nexul-shipped skill for now —
