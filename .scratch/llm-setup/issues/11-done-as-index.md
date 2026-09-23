@@ -18,3 +18,20 @@ and ticket text. What does "indexed" add beyond that?
   ticket, a memory, the trail kept?
 - What should an agent starting the next loop actually receive when it asks
   "why does this code exist"?
+
+## Comments
+
+From the interview grilling (2026-09-23), the owner wants a **decisions
+log** memory beside the interview memory: the project's history of what
+changed and why. Agreed shape:
+
+- Written **only when a ticket changes how the project works** — a new
+  pattern, a dropped library, a reversed decision. Routine tickets add
+  nothing, so it never becomes a changelog. (Owner agreed explicitly.)
+- **Indexed, not included every turn**: it sits in the memory index and is
+  pulled when relevant, since the interview memory already takes the
+  every-turn slot and the per-ticket why stays on the ticket's own links to
+  its doc and PR. (Proposed; the owner did not object.)
+
+This ticket decides who writes an entry (the finishing agent, at done?) and
+what an entry holds.
