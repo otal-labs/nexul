@@ -83,6 +83,13 @@ no users yet, move quick):
 - [README credits pstack](issues/07-readme-pstack-mention.md) — added as a
   closing paragraph in "Where the idea comes from": a set worth keeping beside
   mattpocock/skills, not one of the two repositories that shaped Nexul.
+- [Step 0: the project onboarding interview](issues/08-project-onboarding-interview.md)
+  — the Interview play writes one project interview memory (rules, length
+  capped) included in every agent turn; each project's Interview page views
+  and edits it and hosts the play; the agent may scan the codebase then
+  grill to verify; a workspace Interview template seeds the questions;
+  offered in the project wizard with an "are you sure?" on skip and a banner
+  until done, never blocking; re-runs amend.
 - [Which skill sets "setup" installs](issues/03-which-skill-sets.md) —
   mattpocock/skills is the default the wizard installs (users may amend their
   copies); pstack is a README credit only; no Nexul-shipped skill for now —
@@ -92,9 +99,10 @@ no users yet, move quick):
 
 ## Not yet specified
 
-- How "amend the flow per project" concretely manifests (plays the user
-  edits + memories the interview seeds, or something more) — hangs on the
-  step-0 and lifecycle tickets.
+- Whether "amend the flow per project" needs anything beyond what is now
+  settled (editable plays, the workspace Interview template, interview
+  re-runs, the decisions log) — revisit once the remaining lifecycle
+  tickets resolve.
 - Whether shaping/flow (the owner's steps 1–2) need anything Nexul-side
   beyond the installed skills and the existing plays — hangs on step 0 and
   the testing-step ticket.
