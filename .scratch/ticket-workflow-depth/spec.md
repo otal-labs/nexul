@@ -2,6 +2,11 @@
 
 **Status:** needs-triage
 
+> Dependencies and the bug type (its template and required relation) moved to
+> `.scratch/llm-setup/` on 2026-09-23 and were decided there with a lighter
+> rule: a blocked ticket shows an icon and never refuses to move. Only
+> comments and activity, and custom fields, remain for triage here.
+
 Carried over from the retired tickets requirements document. Everything here
 was specified before the board was built and none of it shipped; it needs
 re-confirming against the product as it stands today before any of it is
