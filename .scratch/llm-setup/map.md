@@ -90,6 +90,13 @@ no users yet, move quick):
   grill to verify; a workspace Interview template seeds the questions;
   offered in the project wizard with an "are you sure?" on skip and a banner
   until done, never blocking; re-runs amend.
+- [Bugs and the done boundary](issues/09-bugs-and-the-done-boundary.md) —
+  bugs require a "found in" link and carry a template; done is never
+  reopened (before done the card moves back, after done a linked bug is
+  filed); the fixing agent gets one hop of origin context; humans and agents
+  file bugs; every ticket gets a reporter (agents show as "Nexul · for
+  <person>"); "blocked by" links with a board icon and a play confirm, never
+  a gate. Signals over gates, room for mistakes.
 - [Which skill sets "setup" installs](issues/03-which-skill-sets.md) —
   mattpocock/skills is the default the wizard installs (users may amend their
   copies); pstack is a README credit only; no Nexul-shipped skill for now —

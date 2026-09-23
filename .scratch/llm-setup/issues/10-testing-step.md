@@ -20,3 +20,11 @@ testing step add on top?
   a deploy link on the ticket, an assigned tester?
 - How a failed test feeds ticket 09's bug flow, and how a passed test moves
   the ticket toward done.
+
+## Comments
+
+Facts and decisions to start from (2026-09-23): the board already has a
+fixed `testing` stage between review and done. The bugs grilling settled
+that a bug found before done moves the card back to progress, a bug found
+after done is a new ticket with a required "found in" link, and agents may
+file bugs as QA — reported as "Nexul · for <person>".
