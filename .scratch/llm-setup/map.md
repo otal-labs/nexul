@@ -73,6 +73,13 @@ no users yet, move quick):
   locations); confirmation needs files present plus the harness re-reporting
   each driver's discovered skills, recorded on confirm; re-enterable and
   idempotent; nexul.io points at the wizard.
+- [Surfaces and consequences of setup state](issues/06-surfaces-and-consequences.md)
+  — a run needs the computer's and the provider's boolean both true; the
+  block sits at target resolution (one guard for @Agent and plays); the
+  refusal is a new not-configured reply linking to the wizard, plays fail on
+  press rather than greying out; the pairing row shows badge, per-provider
+  lines, and a Set up button opening the wizard dialog; pickers tag
+  unconfirmed providers "needs setup"; owner-only, with events and live push.
 - [Which skill sets "setup" installs](issues/03-which-skill-sets.md) —
   mattpocock/skills is the default the wizard installs (users may amend their
   copies); pstack is a README credit only; no Nexul-shipped skill for now —

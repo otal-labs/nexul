@@ -25,8 +25,9 @@ How does the installing agent actually run, and what earns the confirmation?
 
 Grilled with the owner 2026-09-22.
 
-- **Nexul drives the setup turn.** The wizard is a page reached from the
-  computer's row in pairing settings; it fires a built-in setup turn through
+- **Nexul drives the setup turn.** The wizard is a dialog (the same family
+  as the Add runner dialog) opened from the computer's row in pairing
+  settings; it fires a built-in setup turn through
   the paired harness, whose instructions walk the install and verification.
   **The setup turn is the one run exempt from the unconfirmed-provider
   block** — its only purpose is to end that state. The user never configures
