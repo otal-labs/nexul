@@ -47,6 +47,10 @@ and how much that changes the way code should be written. Nexul takes both
 ideas and applies them to the whole software delivery loop, from the doc to
 the deploy, on your own servers.
 
+[pstack](https://github.com/cursor/plugins/tree/main/pstack) is worth keeping
+beside mattpocock/skills. It is Lauren Tan's engineering-discipline pack:
+short principle skills and playbooks an agent checks its own work against.
+
 ## The core idea
 
 Every piece of work is linked and searchable in one place: docs, tickets,
