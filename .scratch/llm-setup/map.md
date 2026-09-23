@@ -80,6 +80,9 @@ no users yet, move quick):
   press rather than greying out; the pairing row shows badge, per-provider
   lines, and a Set up button opening the wizard dialog; pickers tag
   unconfirmed providers "needs setup"; owner-only, with events and live push.
+- [README credits pstack](issues/07-readme-pstack-mention.md) — added as a
+  closing paragraph in "Where the idea comes from": a set worth keeping beside
+  mattpocock/skills, not one of the two repositories that shaped Nexul.
 - [Which skill sets "setup" installs](issues/03-which-skill-sets.md) —
   mattpocock/skills is the default the wizard installs (users may amend their
   copies); pstack is a README credit only; no Nexul-shipped skill for now —
