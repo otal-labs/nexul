@@ -54,3 +54,25 @@ restrictions, room for mistakes — signals over gates.
   and what it waits on, the ticket page shows both directions. Not a gate:
   cards still move freely; plays ask "are you sure?" on a blocked ticket,
   and the agent's context lists each blocker and whether it is done.
+
+### Addition: a body template on every ticket type (owner, 2026-09-23)
+
+Every ticket type carries a **body template** that pre-fills the description
+when a ticket of that type is created. Types are per project (each project
+starts with task, bug, and feature, with only a name and a color today), so
+the template is edited on the type in project settings, beside its name and
+color. Seeded templates:
+
+- **Bug** (the owner's wording):
+  Steps to reproduce / Expected result / Actual result / Provide screenshot.
+  The screenshot section is a prompt; images attach the way ticket
+  attachments already do.
+- **Feature** (proposed): Why (the problem it solves) / What done looks like
+  / Out of scope.
+- **Task** (proposed): What needs doing / Done when.
+
+Applies to every way a ticket is born: the create dialog, Report a bug, and
+the MCP create tool, which hands the template to the agent so an agent-filed
+bug fills the same sections a person's would. Switching type in the create
+dialog swaps the template only while the body is still untouched. A
+template is guidance, never validated — consistent with signals over gates.
