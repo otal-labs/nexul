@@ -37,7 +37,7 @@ func (q *Queries) DeletePairingProjectLink(ctx context.Context, projectID string
 }
 
 const getPairingComputer = `-- name: GetPairingComputer :one
-SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at FROM pairing_computers WHERE id = ? AND user_id = ?
+SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id FROM pairing_computers WHERE id = ? AND user_id = ?
 `
 
 type GetPairingComputerParams struct {
@@ -60,12 +60,17 @@ func (q *Queries) GetPairingComputer(ctx context.Context, arg GetPairingComputer
 		&i.UpdatedAt,
 		&i.Kind,
 		&i.SetupConfirmedAt,
+		&i.TunnelID,
+		&i.TunnelHostname,
+		&i.TunnelZoneID,
+		&i.TunnelRecordID,
+		&i.TunnelAccessAppID,
 	)
 	return i, err
 }
 
 const getPairingComputerByID = `-- name: GetPairingComputerByID :one
-SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at FROM pairing_computers WHERE id = ?
+SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id FROM pairing_computers WHERE id = ?
 `
 
 func (q *Queries) GetPairingComputerByID(ctx context.Context, id string) (PairingComputer, error) {
@@ -83,6 +88,11 @@ func (q *Queries) GetPairingComputerByID(ctx context.Context, id string) (Pairin
 		&i.UpdatedAt,
 		&i.Kind,
 		&i.SetupConfirmedAt,
+		&i.TunnelID,
+		&i.TunnelHostname,
+		&i.TunnelZoneID,
+		&i.TunnelRecordID,
+		&i.TunnelAccessAppID,
 	)
 	return i, err
 }
@@ -129,7 +139,7 @@ func (q *Queries) GetPairingProjectLink(ctx context.Context, projectID string) (
 }
 
 const listPairingComputers = `-- name: ListPairingComputers :many
-SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at FROM pairing_computers WHERE user_id = ? ORDER BY created_at DESC
+SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id FROM pairing_computers WHERE user_id = ? ORDER BY created_at DESC
 `
 
 func (q *Queries) ListPairingComputers(ctx context.Context, userID string) ([]PairingComputer, error) {
@@ -153,6 +163,11 @@ func (q *Queries) ListPairingComputers(ctx context.Context, userID string) ([]Pa
 			&i.UpdatedAt,
 			&i.Kind,
 			&i.SetupConfirmedAt,
+			&i.TunnelID,
+			&i.TunnelHostname,
+			&i.TunnelZoneID,
+			&i.TunnelRecordID,
+			&i.TunnelAccessAppID,
 		); err != nil {
 			return nil, err
 		}
@@ -200,27 +215,45 @@ func (q *Queries) ListPairingProviderSetups(ctx context.Context, computerID stri
 	return items, nil
 }
 
+const pairingComputerTunnelHostnameExists = `-- name: PairingComputerTunnelHostnameExists :one
+SELECT EXISTS (SELECT 1 FROM pairing_computers WHERE tunnel_hostname = ? AND tunnel_hostname != '')
+`
+
+func (q *Queries) PairingComputerTunnelHostnameExists(ctx context.Context, tunnelHostname string) (bool, error) {
+	row := q.db.QueryRowContext(ctx, pairingComputerTunnelHostnameExists, tunnelHostname)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const savePairingComputer = `-- name: SavePairingComputer :exec
-INSERT INTO pairing_computers (id, user_id, kind, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO pairing_computers (id, user_id, kind, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at,
+  tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(id) DO UPDATE SET
   kind = excluded.kind, name = excluded.name, server_url = excluded.server_url, bearer_token = excluded.bearer_token,
   token_expires_at = excluded.token_expires_at, harness_version = excluded.harness_version, updated_at = excluded.updated_at
 `
 
 type SavePairingComputerParams struct {
-	ID             string
-	UserID         string
-	Kind           string
-	Name           string
-	ServerUrl      string
-	BearerToken    string
-	TokenExpiresAt int64
-	HarnessVersion string
-	CreatedAt      int64
-	UpdatedAt      int64
+	ID                string
+	UserID            string
+	Kind              string
+	Name              string
+	ServerUrl         string
+	BearerToken       string
+	TokenExpiresAt    int64
+	HarnessVersion    string
+	CreatedAt         int64
+	UpdatedAt         int64
+	TunnelID          string
+	TunnelHostname    string
+	TunnelZoneID      string
+	TunnelRecordID    string
+	TunnelAccessAppID string
 }
 
+// The tunnel columns are written on insert only, so re-pairing never drops a computer's tunnel.
 func (q *Queries) SavePairingComputer(ctx context.Context, arg SavePairingComputerParams) error {
 	_, err := q.db.ExecContext(ctx, savePairingComputer,
 		arg.ID,
@@ -233,6 +266,11 @@ func (q *Queries) SavePairingComputer(ctx context.Context, arg SavePairingComput
 		arg.HarnessVersion,
 		arg.CreatedAt,
 		arg.UpdatedAt,
+		arg.TunnelID,
+		arg.TunnelHostname,
+		arg.TunnelZoneID,
+		arg.TunnelRecordID,
+		arg.TunnelAccessAppID,
 	)
 	return err
 }
