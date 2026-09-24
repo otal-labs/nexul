@@ -180,6 +180,25 @@ func TestTicketTypesRepo_DeleteInUseConflict(t *testing.T) {
 	assert.Equal(t, 1, count)
 }
 
+func TestTicketTypesRepo_TemplateEdit_LeavesExistingTicketsAlone(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := context.Background()
+	bug, err := s.TicketTypes.Get(ctx, "ticket-type-bug")
+	require.NoError(t, err)
+	require.NoError(t, s.Tickets.Create(ctx, &tickets.Ticket{
+		ID: "t-1", ProjectID: "project-general", TypeID: bug.ID, Title: "x", Body: bug.BodyTemplate, Status: "open", CreatedAt: time.Now(), UpdatedAt: time.Now(),
+	}))
+
+	edited := *bug
+	edited.BodyTemplate = "## Something else\n\n"
+	require.NoError(t, s.TicketTypes.Update(ctx, &edited))
+
+	got, err := s.Tickets.GetByID(ctx, "t-1")
+	require.NoError(t, err)
+	assert.Equal(t, bug.BodyTemplate, got.Body)
+}
+
 func TestStatusesRepo_RoundTrip(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -391,6 +410,14 @@ func TestTicketTypesRepo_UpdateDeleteReorder(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "ops", got.Name)
 	assert.Equal(t, colors.Emerald, got.Color)
+
+	updated.BodyTemplate = "## What needs doing\n\n"
+	require.NoError(t, s.TicketTypes.Update(ctx, &updated))
+	template, err := s.TicketTypes.BodyTemplate(ctx, "tt-9")
+	require.NoError(t, err)
+	assert.Equal(t, "## What needs doing\n\n", template)
+	_, err = s.TicketTypes.BodyTemplate(ctx, "nope")
+	assert.True(t, errors.Is(err, apperrs.ErrNotFound))
 
 	other := &workspace.TicketType{ID: "tt-10", ProjectID: "project-general", Name: "docs", Position: 6, CreatedAt: now, UpdatedAt: now}
 	require.NoError(t, s.TicketTypes.Create(ctx, other))

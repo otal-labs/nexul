@@ -24,6 +24,11 @@ type UserLogins interface {
 	LoginForUserID(ctx context.Context, userID string) (string, error)
 }
 
+// TypeTemplates is workspace's ticket types, read for a type's body template without importing workspace (ADR 0017).
+type TypeTemplates interface {
+	BodyTemplate(ctx context.Context, typeID string) (string, error)
+}
+
 // Repo is the consumer-side persistence contract for tickets; mutations carry outbox events.
 type Repo interface {
 	Create(ctx context.Context, t *Ticket, evts ...eventbus.OutboxEvent) error

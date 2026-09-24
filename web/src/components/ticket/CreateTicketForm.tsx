@@ -1,8 +1,8 @@
 import { useEffect, useRef, type RefObject } from "react";
-import type { UseFormSetValue } from "react-hook-form";
 
 import { useFormDialogContext } from "@/components/dialogs/FormDialogContext";
 import { NoDataDisplay } from "@/components/NoDataDisplay";
+import { selectTicketType, type TicketTypeForm } from "@/components/ticket/selectTicketType";
 import { CategoryPill, DocChip, PersonPill, TypePill } from "@/components/ticket/TicketMetadataPills";
 import { useFetchCategories } from "@/hooks/CategoryHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
@@ -44,7 +44,7 @@ type SeedState = { seeded: boolean; projectId: string | null };
 
 // First mount of a fresh dialog: seeds project/type/doc/category from the opening props.
 const seedInitialValues = (
-  setValue: UseFormSetValue<SaveTicketFormData>,
+  form: TicketTypeForm,
   seedState: RefObject<SeedState>,
   props: {
     defaultProjectId: string;
@@ -56,15 +56,15 @@ const seedInitialValues = (
 ) => {
   const seededProjectId = (props.defaultProjectId || props.projects?.[0]?.id) ?? "";
   seedState.current = { seeded: true, projectId: seededProjectId };
-  setValue("project_id", seededProjectId);
-  setValue("type_id", props.ticketTypes?.[0]?.id ?? "");
-  setValue("doc_id", props.docId);
-  if (props.defaultCategoryId) setValue("category_id", props.defaultCategoryId);
+  form.setValue("project_id", seededProjectId);
+  selectTicketType(form, props.ticketTypes ?? [], props.ticketTypes?.[0]?.id ?? "");
+  form.setValue("doc_id", props.docId);
+  if (props.defaultCategoryId) form.setValue("category_id", props.defaultCategoryId);
 };
 
 // On a later project switch: re-seeds type and drops a category that belonged to the old project.
 const reseedOnProjectSwitch = (
-  setValue: UseFormSetValue<SaveTicketFormData>,
+  form: TicketTypeForm,
   seedState: RefObject<SeedState>,
   projectId: string,
   ticketTypes: TicketType[] | undefined,
@@ -73,13 +73,13 @@ const reseedOnProjectSwitch = (
 ) => {
   if (seedState.current.projectId === projectId) return;
   seedState.current.projectId = projectId;
-  setValue("type_id", ticketTypes?.[0]?.id ?? "");
+  selectTicketType(form, ticketTypes ?? [], ticketTypes?.[0]?.id ?? "");
   const currentCategory = (categories ?? []).find((c) => c.id === categoryId);
-  if (currentCategory && currentCategory.project_id !== projectId) setValue("category_id", "");
+  if (currentCategory && currentCategory.project_id !== projectId) form.setValue("category_id", "");
 };
 
 export const CreateTicketForm = ({ docId = "", defaultProjectId = "", defaultCategoryId = "" }: CreateTicketFormProps) => {
-  const { register, watch, setValue, formState, onSubmit, setLoading, submit } =
+  const { register, watch, setValue, getValues, formState, onSubmit, setLoading, submit } =
     useFormDialogContext<SaveTicketFormData>();
   const createTicket = useCreateTicket();
   const { data: projects } = useFetchProjects();
@@ -102,10 +102,10 @@ export const CreateTicketForm = ({ docId = "", defaultProjectId = "", defaultCat
   useEffect(() => {
     if (!ready) return;
     if (!seedState.current.seeded) {
-      seedInitialValues(setValue, seedState, { defaultProjectId, projects, ticketTypes, docId, defaultCategoryId });
+      seedInitialValues({ setValue, getValues }, seedState, { defaultProjectId, projects, ticketTypes, docId, defaultCategoryId });
       return;
     }
-    reseedOnProjectSwitch(setValue, seedState, projectId, ticketTypes, categories, categoryId);
+    reseedOnProjectSwitch({ setValue, getValues }, seedState, projectId, ticketTypes, categories, categoryId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, projectId, ticketTypes]);
 

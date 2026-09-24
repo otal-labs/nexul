@@ -329,6 +329,12 @@ A ticket's link to another ticket that must reach done first. It shows on
 the card and warns before a play runs, but never stops a card moving.
 _Avoid_: Depends on, dependency, blocker stage
 
+**Body template**:
+The markdown sections a ticket type pre-fills into a new ticket's body, edited
+on the type in project settings. Guidance only: never validated, and editing
+it never rewrites a ticket already born from it.
+_Avoid_: Ticket template, form, checklist
+
 ### Identity and access
 
 **Permission**:

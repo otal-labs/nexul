@@ -267,7 +267,7 @@ func newRegistryServer(t *testing.T) (*Server, *storage.Store, *fakePublisher) {
 
 func TestRegistry_ToolsComplete(t *testing.T) {
 	srv, _, _ := newRegistryServer(t)
-	require.Len(t, srv.tools, 131)
+	require.Len(t, srv.tools, 132)
 	names := make(map[string]bool)
 	for _, tool := range srv.tools {
 		require.NotEmpty(t, tool.Name, "every tool must be named")
@@ -297,7 +297,7 @@ func TestRegistry_ToolsComplete(t *testing.T) {
 		"project_list_repos", "project_move_ticket",
 		"category_create", "category_get", "category_list", "category_rename", "category_delete",
 		"category_reorder", "category_move_ticket", "category_clear_ticket",
-		"ticket_type_create", "ticket_type_list", "ticket_type_rename", "ticket_type_delete",
+		"ticket_type_create", "ticket_type_list", "ticket_type_rename", "ticket_type_set_template", "ticket_type_delete",
 		"status_create", "status_list", "status_rename", "status_reorder", "status_delete",
 		"notification_list", "notification_mark_read", "notification_mark_all_read",
 		"access_list_grants", "access_set_grants",

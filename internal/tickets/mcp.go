@@ -22,7 +22,7 @@ func ticketCoreMCPTools(s *Service) []mcptool.Tool {
 	return []mcptool.Tool{
 		{
 			Name:        "ticket_create",
-			Description: "Create a ticket in a project, optionally derived from a doc, and return it. developer and tester are member logins; the reporter is recorded as Nexul on behalf of the calling user.",
+			Description: "Create a ticket in a project, optionally derived from a doc, and return it. developer and tester are member logins; the reporter is recorded as Nexul on behalf of the calling user. Fill the type's body_template (from ticket_type_list) as the body; an empty body with a type_id is created from that template.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{

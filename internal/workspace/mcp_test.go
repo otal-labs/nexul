@@ -28,7 +28,7 @@ func TestMCPTools_Shape(t *testing.T) {
 	s, repo, _ := newOwnerRepo(t, true)
 	repo.projects["p-1"] = &Project{ID: "p-1", Name: "Backend"}
 	tools := MCPTools(s)
-	require.Len(t, tools, 28)
+	require.Len(t, tools, 29)
 	for _, tool := range tools {
 		assert.NotEmpty(t, tool.Name)
 		assert.NotEmpty(t, tool.Description)
@@ -558,6 +558,14 @@ func TestMCPTools_TicketTypeDetailErrors(t *testing.T) {
 		_, err := call(context.Background(), map[string]any{"id": "tt-1", "name": "defect", "color": "bogus"})
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
+	})
+	t.Run("ticket_type_set_template happy + missing id", func(t *testing.T) {
+		call := wsToolByName(t, MCPTools(s), "ticket_type_set_template").Call
+		got, err := call(context.Background(), map[string]any{"id": "tt-1", "body_template": "## Why\n\n"})
+		require.NoError(t, err)
+		assert.Equal(t, "## Why\n\n", got.(*TicketType).BodyTemplate)
+		_, err = call(context.Background(), map[string]any{})
+		require.Error(t, err)
 	})
 	t.Run("ticket_type_delete happy + missing id", func(t *testing.T) {
 		call := wsToolByName(t, MCPTools(s), "ticket_type_delete").Call
