@@ -52,3 +52,10 @@ Grilled with the owner 2026-09-22.
 - **The booleans are enforcing, not informational**: a provider on a computer
   cannot be used for agent runs until its boolean is true. Recorded on
   ticket 06, which designs the surfaces around that block.
+
+## Comments
+
+Amended 2026-09-24: a Nexul skill already exists — **nexul-memory**, the
+shared-memory protocol, pasted in by hand from settings today. The wizard
+installs it alongside the default set and the copy-paste box goes. No other
+Nexul skill is planned.

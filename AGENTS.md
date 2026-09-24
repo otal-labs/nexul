@@ -172,7 +172,7 @@ calls what, `search_graph` to disambiguate an overloaded name. Reindex
    queries in `internal/platform/storage/queries/<table>.sql` and `make sqlc`.
 3. Register the domain's topics in its `Topics()` function; the catalog
    aggregates them (`practices/architecture.md`, section 2).
-4. Add the MCP tools, one per use-case, named `<verb>_<object>`.
+4. Add the MCP tools, one per use-case, named `<object>_<verb>`.
 5. Add the HTTP routes in `server/cmd/` or a router package.
 6. Add the frontend: model, hooks, components, page, route.
 7. Add tests: unit (table-driven) and integration (real SQLite).

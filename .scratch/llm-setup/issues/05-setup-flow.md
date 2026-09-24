@@ -47,3 +47,12 @@ Grilled with the owner 2026-09-22.
   same surface after an un-confirm or when a new provider appears at false.
 - **Instructions live in the wizard**; nexul.io gets one short page that
   points at it rather than duplicating steps.
+
+## Comments
+
+Amended by the MCP-surface grilling (2026-09-24): the wizard's first step now
+connects Nexul's MCP server to each provider with a dedicated per-computer
+token, and the wizard runs one setup turn per provider so each confirms
+itself. The token is hidden in the saved transcript. See
+[The setup MCP surface](12-setup-mcp-surface.md). How a remote Nexul reaches
+the harness at all is open in tickets 14 and 15.
