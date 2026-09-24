@@ -1,7 +1,7 @@
 # 11 — Done as an index of the why
 
 **Type:** grilling
-**Status:** open
+**Status:** resolved
 **Blocked by:** None — can start immediately
 
 ## Question
@@ -35,3 +35,32 @@ changed and why. Agreed shape:
 
 This ticket decides who writes an entry (the finishing agent, at done?) and
 what an entry holds.
+
+## Answer
+
+Grilled with the owner 2026-09-24.
+
+- **Every ticket reaching done gets the agent's judgement** — "did this
+  change how the project works?" — whoever built it (owner: people forget).
+  A built-in **decisions check** play fires by itself when a card enters a
+  done-stage column. It runs on the paired computer of the person who moved
+  the card (like any person-started play); when a merged PR moves the card,
+  on the ticket's Developer's computer. It reads the ticket, its PR, and the
+  current decisions log, then writes an entry, supersedes one, or does
+  nothing. If that person has no confirmed computer it never fails silently:
+  the done ticket shows "Decisions check didn't run" with a button to run it.
+- **An entry** is at most three lines: date, the decision in one line, why,
+  and a link to the ticket (which links its doc and PR). When a new decision
+  reverses an old one, the old line is marked "superseded by …" so the log
+  reads as what is true now.
+- **"Why does this code exist"** is one MCP tool: given a commit or PR
+  number (from `git blame`; every master commit carries its PR number), it
+  returns the PR, its tickets, their docs, bugs found after done, and the
+  decisions-log entries citing those tickets. Its name is settled with the
+  rest of the MCP surface.
+- **Done writes nothing else** — no closing summary. The PR description,
+  ticket, thread, and play transcript already hold what happened; a summary
+  would be another copy that drifts.
+- The decisions log itself stays as agreed in the interview grilling: a
+  project memory, entries only for tickets that change how the project
+  works, pulled from the memory index rather than sent every turn.
