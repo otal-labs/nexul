@@ -1,8 +1,9 @@
-import { useEffect, useRef, type RefObject } from "react";
+import { useEffect, useMemo, useRef, type RefObject } from "react";
 
 import { useFormDialogContext } from "@/components/dialogs/FormDialogContext";
 import { NoDataDisplay } from "@/components/NoDataDisplay";
-import { selectTicketType, type TicketTypeForm } from "@/components/ticket/selectTicketType";
+import { FoundInPill } from "@/components/ticket/FoundInPill";
+import { offeredTicketTypes, selectTicketType, type TicketTypeForm } from "@/components/ticket/selectTicketType";
 import { CategoryPill, DocChip, PersonPill, TypePill } from "@/components/ticket/TicketMetadataPills";
 import { useFetchCategories } from "@/hooks/CategoryHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
@@ -17,6 +18,9 @@ interface CreateTicketFormProps {
   docId?: string;
   defaultProjectId?: string;
   defaultCategoryId?: string;
+  // Report a bug: only the bug type is offered and the found-in pill shows; allowOriginUnknown adds its checkbox.
+  bug?: boolean;
+  allowOriginUnknown?: boolean;
 }
 
 export const emptyTicketForm = (): SaveTicketFormData => ({
@@ -78,7 +82,13 @@ const reseedOnProjectSwitch = (
   if (currentCategory && currentCategory.project_id !== projectId) form.setValue("category_id", "");
 };
 
-export const CreateTicketForm = ({ docId = "", defaultProjectId = "", defaultCategoryId = "" }: CreateTicketFormProps) => {
+export const CreateTicketForm = ({
+  docId = "",
+  defaultProjectId = "",
+  defaultCategoryId = "",
+  bug = false,
+  allowOriginUnknown = false,
+}: CreateTicketFormProps) => {
   const { register, watch, setValue, getValues, formState, onSubmit, setLoading, submit } =
     useFormDialogContext<SaveTicketFormData>();
   const createTicket = useCreateTicket();
@@ -88,7 +98,8 @@ export const CreateTicketForm = ({ docId = "", defaultProjectId = "", defaultCat
   const categoryId = watch("category_id");
   const docIdValue = watch("doc_id");
   const activeProjectId = resolveActiveProjectId(projectId, defaultProjectId, projects);
-  const { data: ticketTypes } = useFetchProjectTicketTypes(activeProjectId);
+  const { data: projectTypes } = useFetchProjectTicketTypes(activeProjectId);
+  const ticketTypes = useMemo(() => projectTypes && offeredTicketTypes(projectTypes, bug), [projectTypes, bug]);
 
   const noProjects = projects != null && projects.length === 0;
   const ready = isReferenceDataReady(projects, categories, noProjects, ticketTypes);
@@ -159,6 +170,7 @@ export const CreateTicketForm = ({ docId = "", defaultProjectId = "", defaultCat
             <CategoryPill categories={projectCategories} />
             <PersonPill field="developer" label="Developer" />
             <PersonPill field="tester" label="Tester" />
+            {bug && <FoundInPill allowUnknown={allowOriginUnknown} />}
             {docIdValue && <DocChip docId={docIdValue} />}
           </div>
         </div>

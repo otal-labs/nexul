@@ -2,7 +2,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
+import { RepoRole, TestsLocation } from "@/enums/Project";
 import type { DeleteImpact, Project, RepoRef } from "@/models/Project";
+import type { Repo } from "@/models/Repository";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 export const getProjectsKey = "getProjects";
@@ -116,6 +118,41 @@ export const useAddProjectRepo = () => {
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getProjectReposKey] });
       toast.success("Repository added");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
+interface SaveTestsAnswerInput {
+  projectId: string;
+  testsLocation: TestsLocation;
+  testsRepo: Repo | null;
+  attached: RepoRef[];
+}
+
+// Attaching a tests repository records "separate" server-side; every other answer is recorded as it stands.
+export const useSaveTestsAnswer = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ projectId, testsLocation, testsRepo, attached }: SaveTestsAnswerInput) => {
+      const attach =
+        testsLocation === TestsLocation.Separate &&
+        testsRepo &&
+        !attached.some((r) => r.owner === testsRepo.owner && r.name === testsRepo.name && r.role === RepoRole.Tests);
+      if (attach) {
+        await api.post(`/api/projects/${projectId}/repos`, {
+          owner: testsRepo.owner,
+          name: testsRepo.name,
+          connector_id: "github",
+          role: RepoRole.Tests,
+        });
+        return;
+      }
+      await api.put(`/api/projects/${projectId}/tests-location`, { tests_location: testsLocation });
+    },
+    onSuccess: async (_, { projectId }) => {
+      await client.invalidateQueries({ queryKey: [getProjectReposKey, projectId] });
+      await client.invalidateQueries({ queryKey: ["getProject", projectId] });
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

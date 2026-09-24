@@ -13,6 +13,7 @@ import {
   useFetchProjects,
   useRemoveProjectRepo,
   useRenameProject,
+  useSaveTestsAnswer,
 } from "@/hooks/ProjectHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
@@ -21,6 +22,7 @@ vi.mock("@/api/client", () => ({
     get: vi.fn(),
     post: vi.fn(),
     patch: vi.fn(),
+    put: vi.fn(),
     delete: vi.fn(),
   },
   errorMessage: vi.fn(),
@@ -41,6 +43,7 @@ beforeEach(() => {
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
   vi.mocked(api.patch).mockReset();
+  vi.mocked(api.put).mockReset();
   vi.mocked(api.delete).mockReset();
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
 });
@@ -133,3 +136,26 @@ describe("useRemoveProjectRepo", () => {
   });
 });
 
+describe("useSaveTestsAnswer", () => {
+  const e2e = { id: 7, owner: "acme", name: "e2e", full_name: "acme/e2e", default_branch: "main", html_url: "" };
+
+  it("records the answer when the tests repository is already attached", async () => {
+    vi.mocked(api.put).mockResolvedValue({ data: {} });
+    const { result } = renderHook(() => useSaveTestsAnswer(), { wrapper });
+    await result.current.mutateAsync({
+      projectId: "p-1",
+      testsLocation: "separate",
+      testsRepo: e2e,
+      attached: [{ owner: "acme", name: "e2e", full_name: "acme/e2e", connector_id: "github", role: "tests" }],
+    });
+    expect(api.post).not.toHaveBeenCalled();
+    expect(api.put).toHaveBeenCalledWith("/api/projects/p-1/tests-location", { tests_location: "separate" });
+  });
+
+  it("records a separate answer with no repository picked yet", async () => {
+    vi.mocked(api.put).mockResolvedValue({ data: {} });
+    const { result } = renderHook(() => useSaveTestsAnswer(), { wrapper });
+    await result.current.mutateAsync({ projectId: "p-1", testsLocation: "separate", testsRepo: null, attached: [] });
+    expect(api.put).toHaveBeenCalledWith("/api/projects/p-1/tests-location", { tests_location: "separate" });
+  });
+});

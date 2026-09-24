@@ -329,21 +329,29 @@ func TestRunTurn_EmptyFinalizeFrameDoesNotWipeTheReply(t *testing.T) {
 
 func TestRunTurn_ResolveTargetNotConfigured_PostsSystemReply(t *testing.T) {
 	cases := []struct {
-		reason pairing.NotConfiguredReason
-		want   string
+		err  *pairing.NotConfiguredError
+		want string
 	}{
-		{pairing.ReasonUnpaired, "connect one in Settings"},
-		{pairing.ReasonExpiredToken, "re-pair it"},
-		{pairing.ReasonNoDefault, "link one in this project's settings"},
-		{pairing.ReasonNoDefaultComputer, "pick a default one"},
+		{&pairing.NotConfiguredError{Reason: pairing.ReasonUnpaired}, "connect one in Settings"},
+		{&pairing.NotConfiguredError{Reason: pairing.ReasonExpiredToken}, "re-pair it"},
+		{&pairing.NotConfiguredError{Reason: pairing.ReasonNoDefault}, "link one in this project's settings"},
+		{&pairing.NotConfiguredError{Reason: pairing.ReasonNoDefaultComputer}, "pick a default one"},
+		{
+			&pairing.NotConfiguredError{Reason: pairing.ReasonSetupRequired, Provider: "Codex", Computer: "Onik's laptop"},
+			"@Agent can't use Codex on Onik's laptop until its setup is done — run setup for Onik's laptop in Settings → Pairing.",
+		},
+		{
+			&pairing.NotConfiguredError{Reason: pairing.ReasonOffline, Computer: "Onik's laptop"},
+			"@Agent can't reach Onik's laptop — is T3 Code running there?",
+		},
 	}
 	for _, tc := range cases {
-		t.Run(string(tc.reason), func(t *testing.T) {
+		t.Run(string(tc.err.Reason), func(t *testing.T) {
 			conv := newFakeConversations(Conversation{ID: "conv-1"})
 			client := &fakeHarness{}
 			svc := NewService(Config{
 				Conversations: conv,
-				Targets:       &fakeTargets{err: &pairing.NotConfiguredError{Reason: tc.reason}},
+				Targets:       &fakeTargets{err: tc.err},
 				Harnesses:     registryOf(client),
 				Live:          &fakeLive{},
 			})

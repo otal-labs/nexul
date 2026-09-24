@@ -24,6 +24,9 @@ func (h *Handler) Routes() http.Handler {
 	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /api/pairing/computers", h.listComputers)
 	mux.HandleFunc("POST /api/pairing/computers", h.pair)
+	mux.HandleFunc("POST /api/pairing/computers/tunnel", h.createTunnel)
+	mux.HandleFunc("GET /api/pairing/computers/{id}/tunnel/status", h.tunnelStatus)
+	mux.HandleFunc("GET /api/pairing/computers/{id}/tunnel/token", h.tunnelToken)
 	mux.HandleFunc("POST /api/pairing/computers/{id}/repair", h.repair)
 	mux.HandleFunc("DELETE /api/pairing/computers/{id}", h.deleteComputer)
 	mux.HandleFunc("GET /api/pairing/computers/{id}/projects", h.listProjects)
@@ -66,9 +69,6 @@ func (h *Handler) listProviders(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	if providers == nil {
-		providers = []harness.Provider{}
-	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"providers": providers})
 }
 
@@ -106,6 +106,60 @@ func (h *Handler) pair(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusCreated, c)
 }
 
+type createTunnelRequest struct {
+	Kind harness.Kind `json:"kind"`
+	Name string       `json:"name"`
+	Port int          `json:"port"`
+}
+
+func (h *Handler) createTunnel(w http.ResponseWriter, r *http.Request) {
+	var req createTunnelRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	if req.Kind == "" {
+		req.Kind = harness.KindT3Code
+	}
+	if req.Port == 0 {
+		req.Port = DefaultT3CodePort
+	}
+	c, err := h.svc.CreateComputerTunnel(r.Context(), actorID(r), req.Kind, req.Name, req.Port)
+	if err != nil {
+		writeTunnelError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusCreated, c)
+}
+
+func (h *Handler) tunnelStatus(w http.ResponseWriter, r *http.Request) {
+	status, err := h.svc.ComputerTunnelStatus(r.Context(), actorID(r), r.PathValue("id"))
+	if err != nil {
+		writeTunnelError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, status)
+}
+
+func (h *Handler) tunnelToken(w http.ResponseWriter, r *http.Request) {
+	token, err := h.svc.ComputerTunnelToken(r.Context(), actorID(r), r.PathValue("id"))
+	if err != nil {
+		writeTunnelError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]string{"token": token})
+}
+
+// writeTunnelError adds the missing prerequisite's reason to the error envelope, so the dialog can show its fix.
+func writeTunnelError(w http.ResponseWriter, err error) {
+	var pe *PrerequisiteError
+	if errors.As(err, &pe) {
+		httpx.WriteJSON(w, http.StatusBadRequest, map[string]string{"message": pe.Error(), "code": "INVALID", "reason": string(pe.Reason)})
+		return
+	}
+	httpx.WriteError(w, err)
+}
+
 func (h *Handler) repair(w http.ResponseWriter, r *http.Request) {
 	var req pairRequest
 	if err := httpx.DecodeJSON(r, &req); err != nil {
@@ -130,7 +184,7 @@ func (h *Handler) deleteComputer(w http.ResponseWriter, r *http.Request) {
 
 // resolve answers whether the caller can run a play right now, without starting a turn or leaking the bearer token.
 func (h *Handler) resolve(w http.ResponseWriter, r *http.Request) {
-	target, err := h.svc.ResolveTarget(r.Context(), actorID(r), r.URL.Query().Get("project_id"))
+	target, err := h.svc.PreviewTarget(r.Context(), actorID(r), r.URL.Query().Get("project_id"))
 	if err != nil {
 		var nc *NotConfiguredError
 		if errors.As(err, &nc) {

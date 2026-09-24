@@ -212,6 +212,13 @@ addresses, published ports. The only source of a service's observed facts;
 the compose file remains the only source of its declared ones.
 _Avoid_: Status report, inspect result
 
+**Tests repository**:
+A second repository a project may attach to hold its tests. Never deployed:
+no stack builds from it, so a project still has one repository that ships.
+Its presence, or the answer that tests live in the deployed repository, is
+what the interview starts from on testing.
+_Avoid_: E2E repo, QA repo, test project
+
 **Service** (deploy):
 One running container Nexul keeps a record of: name, image, networks,
 address, status. A stack deploy creates or updates one service per
@@ -321,7 +328,8 @@ _Avoid_: Assignee, owner, creator
 **Found in**:
 A bug's link to the ticket it was found in, carried by every bug unless its
 reporter marked the origin unknown. A done ticket is never reopened; a bug
-found after done is a new ticket found in it.
+found after done is a new ticket found in it. A bug is a ticket whose type is
+named `bug`; a type renamed away from it is an ordinary type.
 _Avoid_: Regression of, caused by, parent
 
 **Blocked by**:

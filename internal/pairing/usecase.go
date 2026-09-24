@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/otal-labs/nexul/internal/harness"
@@ -28,6 +29,8 @@ type Config struct {
 	OnComputersChanged func(userID string)
 	// Tunnels creates and removes computer tunnels; nil leaves only URL pairing working.
 	Tunnels Tunnels
+	// Bus carries the tunnel watch's status changes; nil keeps the watch silent.
+	Bus Publisher
 }
 
 // Service is the pairing use-case layer (ADR 0019); bearer tokens never leave it except encrypted at rest.
@@ -38,6 +41,9 @@ type Service struct {
 	now       func() time.Time
 	changed   func(userID string)
 	tunnels   Tunnels
+	bus       Publisher
+	watchMu   sync.Mutex
+	watching  map[string]tunnelWatch
 }
 
 // NewService wires the pairing use-cases.
@@ -45,7 +51,10 @@ func NewService(cfg Config) *Service {
 	if cfg.Now == nil {
 		cfg.Now = time.Now
 	}
-	return &Service{repo: cfg.Repo, harnesses: cfg.Harnesses, key: cfg.EncryptionKey, now: cfg.Now, changed: cfg.OnComputersChanged, tunnels: cfg.Tunnels}
+	return &Service{
+		repo: cfg.Repo, harnesses: cfg.Harnesses, key: cfg.EncryptionKey, now: cfg.Now, changed: cfg.OnComputersChanged,
+		tunnels: cfg.Tunnels, bus: cfg.Bus, watching: map[string]tunnelWatch{},
+	}
 }
 
 // client returns the registered client for kind; an unregistered kind on a stored computer is a wiring bug.
@@ -119,12 +128,29 @@ func (s *Service) ListProjects(ctx context.Context, userID, computerID string) (
 	return projects, nil
 }
 
-// ListProviders fetches a paired computer's usable provider instances and models.
-func (s *Service) ListProviders(ctx context.Context, userID, computerID string) ([]harness.Provider, error) {
+// ListProviders fetches a paired computer's usable provider instances and models, each tagged with whether it needs setup.
+func (s *Service) ListProviders(ctx context.Context, userID, computerID string) ([]ProviderOption, error) {
 	session, err := s.sessionComputer(ctx, userID, computerID)
 	if err != nil {
 		return nil, err
 	}
+	providers, err := s.harnessProviders(ctx, session)
+	if err != nil {
+		return nil, err
+	}
+	setups, err := s.repo.ListProviderSetups(ctx, session.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list provider setups for %s: %w", session.ID, err)
+	}
+	out := make([]ProviderOption, 0, len(providers))
+	for _, p := range providers {
+		out = append(out, ProviderOption{Provider: p, NeedsSetup: !setupConfirmed(session, setups, p.Driver)})
+	}
+	return out, nil
+}
+
+// harnessProviders asks a decrypted computer's harness for its provider instances.
+func (s *Service) harnessProviders(ctx context.Context, session Computer) ([]harness.Provider, error) {
 	client, err := s.client(session.Kind)
 	if err != nil {
 		return nil, err
@@ -344,8 +370,82 @@ type ResolvedTarget struct {
 	Model            string
 }
 
-// ResolveTarget picks the computer/harness project/provider/model a mention runs against (resolution order).
+// ResolveTarget picks the computer/harness project/provider/model a mention runs against, behind the setup gate.
 func (s *Service) ResolveTarget(ctx context.Context, userID, projectID string) (*ResolvedTarget, error) {
+	target, err := s.resolveTarget(ctx, userID, projectID)
+	if err != nil {
+		return nil, err
+	}
+	return s.requireSetup(ctx, target)
+}
+
+// ResolveTargetOverride resolves a run's pinned computer, provider, and model, behind the same setup gate.
+func (s *Service) ResolveTargetOverride(ctx context.Context, userID, projectID, computerID, provider, model string) (*ResolvedTarget, error) {
+	target, err := s.resolveTargetOverride(ctx, userID, projectID, computerID, provider, model)
+	if err != nil {
+		return nil, err
+	}
+	return s.requireSetup(ctx, target)
+}
+
+// PreviewTarget is ResolveTarget without the gate or bearer token, so readiness never greys a play that refuses on press.
+func (s *Service) PreviewTarget(ctx context.Context, userID, projectID string) (*ResolvedTarget, error) {
+	target, err := s.resolveTarget(ctx, userID, projectID)
+	if err != nil {
+		return nil, err
+	}
+	target.Computer.BearerToken = ""
+	return target, nil
+}
+
+// ResolveSetupTurnTarget skips the setup gate for the wizard's setup turn only; TestResolveSetupTurnTarget_OnlyTheWizardCallsIt guards it.
+func (s *Service) ResolveSetupTurnTarget(ctx context.Context, userID, computerID, provider string) (*ResolvedTarget, error) {
+	if strings.TrimSpace(computerID) == "" {
+		return nil, fmt.Errorf("%w: a setup turn needs its computer", apperrs.ErrInvalid)
+	}
+	return s.resolveTargetOverride(ctx, userID, "", computerID, provider, "")
+}
+
+// requireSetup is the setup gate (ADR 0063); an empty provider is pinned to the harness's first so the checked one runs.
+func (s *Service) requireSetup(ctx context.Context, target *ResolvedTarget) (*ResolvedTarget, error) {
+	client, err := s.client(target.Computer.Kind)
+	if err != nil {
+		return nil, err
+	}
+	providers, err := client.ListProviders(ctx, target.Computer.Session())
+	if err != nil {
+		return nil, &NotConfiguredError{Reason: ReasonOffline, Computer: target.Computer.Name, Err: err}
+	}
+	provider, err := pickProvider(providers, target.Provider)
+	if err != nil {
+		return nil, err
+	}
+	setups, err := s.repo.ListProviderSetups(ctx, target.Computer.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list provider setups for %s: %w", target.Computer.ID, err)
+	}
+	if !setupConfirmed(target.Computer, setups, provider.Driver) {
+		return nil, &NotConfiguredError{Reason: ReasonSetupRequired, Provider: provider.Name, Computer: target.Computer.Name}
+	}
+	target.Provider = provider.ID
+	return target, nil
+}
+
+// pickProvider finds the stored instance id among the harness's providers, or the harness default for an empty one.
+func pickProvider(providers []harness.Provider, id string) (harness.Provider, error) {
+	for _, p := range providers {
+		if id == "" || p.ID == id {
+			return p, nil
+		}
+	}
+	if id == "" {
+		return harness.Provider{}, fmt.Errorf("%w: the harness lists no usable provider", apperrs.ErrInvalid)
+	}
+	return harness.Provider{}, fmt.Errorf("%w: provider %s is not available on this computer", apperrs.ErrInvalid, id)
+}
+
+// resolveTarget is the resolution order with no setup gate; only the gated and preview entry points call it.
+func (s *Service) resolveTarget(ctx context.Context, userID, projectID string) (*ResolvedTarget, error) {
 	if strings.TrimSpace(userID) == "" {
 		return nil, fmt.Errorf("%w: user is required", apperrs.ErrUnauthorized)
 	}
@@ -409,14 +509,14 @@ func (s *Service) resolveTargetSource(ctx context.Context, userID, projectID str
 	return computers[0].ID, harnessProjectID, provider, model, false, nil
 }
 
-// ResolveTargetOverride resolves a run's pinned computer, provider, and model (ticket 31): the computer must
+// resolveTargetOverride resolves a pinned computer, provider, and model with no setup gate: the computer must
 // be the caller's own; the harness project and any blank provider/model come from the project link when it
 // names this computer, else the caller's own fallback when this is their default computer — the same sources
-// ResolveTarget's own resolution order reads, just checked against the caller's explicit choice of computer.
-func (s *Service) ResolveTargetOverride(ctx context.Context, userID, projectID, computerID, provider, model string) (*ResolvedTarget, error) {
+// resolveTarget's own resolution order reads, just checked against the caller's explicit choice of computer.
+func (s *Service) resolveTargetOverride(ctx context.Context, userID, projectID, computerID, provider, model string) (*ResolvedTarget, error) {
 	computerID = strings.TrimSpace(computerID)
 	if computerID == "" {
-		return s.ResolveTarget(ctx, userID, projectID)
+		return s.resolveTarget(ctx, userID, projectID)
 	}
 	if strings.TrimSpace(userID) == "" {
 		return nil, fmt.Errorf("%w: user is required", apperrs.ErrUnauthorized)

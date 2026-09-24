@@ -11,7 +11,7 @@ import (
 )
 
 const addProjectRepo = `-- name: AddProjectRepo :exec
-INSERT INTO project_repos (project_id, owner, name, full_name, connector_id, added_at) VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO project_repos (project_id, owner, name, full_name, connector_id, role, added_at) VALUES (?, ?, ?, ?, ?, ?, ?)
 `
 
 type AddProjectRepoParams struct {
@@ -20,6 +20,7 @@ type AddProjectRepoParams struct {
 	Name        string
 	FullName    string
 	ConnectorID string
+	Role        string
 	AddedAt     int64
 }
 
@@ -30,6 +31,7 @@ func (q *Queries) AddProjectRepo(ctx context.Context, arg AddProjectRepoParams) 
 		arg.Name,
 		arg.FullName,
 		arg.ConnectorID,
+		arg.Role,
 		arg.AddedAt,
 	)
 	return err
@@ -77,7 +79,7 @@ func (q *Queries) DeleteProject(ctx context.Context, id string) (int64, error) {
 }
 
 const getProject = `-- name: GetProject :one
-SELECT id, name, prefix, position, workspace_id, created_at, updated_at, icon FROM projects WHERE id = ?
+SELECT id, name, prefix, position, workspace_id, created_at, updated_at, icon, tests_location FROM projects WHERE id = ?
 `
 
 func (q *Queries) GetProject(ctx context.Context, id string) (Project, error) {
@@ -92,12 +94,13 @@ func (q *Queries) GetProject(ctx context.Context, id string) (Project, error) {
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Icon,
+		&i.TestsLocation,
 	)
 	return i, err
 }
 
 const getProjectRepoByOwnerAndName = `-- name: GetProjectRepoByOwnerAndName :one
-SELECT owner, name, full_name, connector_id FROM project_repos WHERE owner = ? AND name = ?
+SELECT owner, name, full_name, connector_id, role FROM project_repos WHERE owner = ? AND name = ?
 `
 
 type GetProjectRepoByOwnerAndNameParams struct {
@@ -110,6 +113,7 @@ type GetProjectRepoByOwnerAndNameRow struct {
 	Name        string
 	FullName    string
 	ConnectorID string
+	Role        string
 }
 
 func (q *Queries) GetProjectRepoByOwnerAndName(ctx context.Context, arg GetProjectRepoByOwnerAndNameParams) (GetProjectRepoByOwnerAndNameRow, error) {
@@ -120,12 +124,13 @@ func (q *Queries) GetProjectRepoByOwnerAndName(ctx context.Context, arg GetProje
 		&i.Name,
 		&i.FullName,
 		&i.ConnectorID,
+		&i.Role,
 	)
 	return i, err
 }
 
 const listProjectRepos = `-- name: ListProjectRepos :many
-SELECT owner, name, full_name, connector_id FROM project_repos WHERE project_id = ? ORDER BY name
+SELECT owner, name, full_name, connector_id, role FROM project_repos WHERE project_id = ? ORDER BY name
 `
 
 type ListProjectReposRow struct {
@@ -133,6 +138,7 @@ type ListProjectReposRow struct {
 	Name        string
 	FullName    string
 	ConnectorID string
+	Role        string
 }
 
 func (q *Queries) ListProjectRepos(ctx context.Context, projectID string) ([]ListProjectReposRow, error) {
@@ -149,6 +155,7 @@ func (q *Queries) ListProjectRepos(ctx context.Context, projectID string) ([]Lis
 			&i.Name,
 			&i.FullName,
 			&i.ConnectorID,
+			&i.Role,
 		); err != nil {
 			return nil, err
 		}
@@ -164,7 +171,7 @@ func (q *Queries) ListProjectRepos(ctx context.Context, projectID string) ([]Lis
 }
 
 const listProjectsByWorkspace = `-- name: ListProjectsByWorkspace :many
-SELECT id, name, prefix, position, workspace_id, created_at, updated_at, icon FROM projects WHERE workspace_id = ? ORDER BY position, id
+SELECT id, name, prefix, position, workspace_id, created_at, updated_at, icon, tests_location FROM projects WHERE workspace_id = ? ORDER BY position, id
 `
 
 func (q *Queries) ListProjectsByWorkspace(ctx context.Context, workspaceID string) ([]Project, error) {
@@ -185,6 +192,7 @@ func (q *Queries) ListProjectsByWorkspace(ctx context.Context, workspaceID strin
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Icon,
+			&i.TestsLocation,
 		); err != nil {
 			return nil, err
 		}
@@ -303,15 +311,16 @@ func (q *Queries) SeedProjectTicketType(ctx context.Context, arg SeedProjectTick
 }
 
 const updateProject = `-- name: UpdateProject :execrows
-UPDATE projects SET name = ?, prefix = ?, icon = ?, updated_at = ? WHERE id = ?
+UPDATE projects SET name = ?, prefix = ?, icon = ?, tests_location = ?, updated_at = ? WHERE id = ?
 `
 
 type UpdateProjectParams struct {
-	Name      string
-	Prefix    string
-	Icon      string
-	UpdatedAt int64
-	ID        string
+	Name          string
+	Prefix        string
+	Icon          string
+	TestsLocation string
+	UpdatedAt     int64
+	ID            string
 }
 
 func (q *Queries) UpdateProject(ctx context.Context, arg UpdateProjectParams) (int64, error) {
@@ -319,6 +328,7 @@ func (q *Queries) UpdateProject(ctx context.Context, arg UpdateProjectParams) (i
 		arg.Name,
 		arg.Prefix,
 		arg.Icon,
+		arg.TestsLocation,
 		arg.UpdatedAt,
 		arg.ID,
 	)

@@ -60,6 +60,11 @@ type addRepoRequest struct {
 	Owner       string `json:"owner"`
 	Name        string `json:"name"`
 	ConnectorID string `json:"connector_id"`
+	Role        string `json:"role"`
+}
+
+type setTestsLocationRequest struct {
+	TestsLocation string `json:"tests_location"`
 }
 
 type saveCategoryRequest struct {
@@ -99,6 +104,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/projects/{id}", h.get)
 	mux.HandleFunc("PATCH /api/projects/{id}", h.rename)
 	mux.HandleFunc("POST /api/projects/{id}/prefix", h.setPrefix)
+	mux.HandleFunc("PUT /api/projects/{id}/tests-location", h.setTestsLocation)
 	mux.HandleFunc("DELETE /api/projects/{id}", h.delete)
 	mux.HandleFunc("GET /api/projects/{id}/impact", h.impact)
 	mux.HandleFunc("GET /api/projects/{id}/repos", h.listRepos)
@@ -192,6 +198,20 @@ func (h *Handler) setPrefix(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, p)
 }
 
+func (h *Handler) setTestsLocation(w http.ResponseWriter, r *http.Request) {
+	var req setTestsLocationRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	p, err := h.svc.SetTestsLocation(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("id"), TestsLocation(req.TestsLocation))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, p)
+}
+
 func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 	if err := h.svc.Delete(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("id")); err != nil {
 		httpx.WriteError(w, err)
@@ -237,7 +257,7 @@ func (h *Handler) addRepo(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	if err := h.svc.AddRepo(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("id"), req.Owner, req.Name, req.ConnectorID); err != nil {
+	if err := h.svc.AddRepo(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("id"), req.Owner, req.Name, req.ConnectorID, RepoRole(req.Role)); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}

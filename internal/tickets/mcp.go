@@ -23,18 +23,20 @@ func ticketCoreMCPTools(s *Service) []mcptool.Tool {
 	return []mcptool.Tool{
 		{
 			Name:        "ticket_create",
-			Description: "Create a ticket in a project, optionally derived from a doc, and return it. developer and tester are member logins; the reporter is recorded as Nexul on behalf of the calling user. Fill the type's body_template (from ticket_type_list) as the body; an empty body with a type_id is created from that template.",
+			Description: "Create a ticket in a project, optionally derived from a doc, and return it. developer and tester are member logins; the reporter is recorded as Nexul on behalf of the calling user. Fill the type's body_template (from ticket_type_list) as the body; an empty body with a type_id is created from that template. A bug (the type named bug) needs origin_id, the ticket it was found in, or origin_unknown true when nobody knows; never guess an origin.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
-					"project_id":  map[string]any{"type": "string"},
-					"title":       map[string]any{"type": "string"},
-					"body":        map[string]any{"type": "string"},
-					"doc_id":      map[string]any{"type": "string"},
-					"developer":   map[string]any{"type": "string"},
-					"tester":      map[string]any{"type": "string"},
-					"category_id": map[string]any{"type": "string"},
-					"type_id":     map[string]any{"type": "string"},
+					"project_id":     map[string]any{"type": "string"},
+					"title":          map[string]any{"type": "string"},
+					"body":           map[string]any{"type": "string"},
+					"doc_id":         map[string]any{"type": "string"},
+					"developer":      map[string]any{"type": "string"},
+					"tester":         map[string]any{"type": "string"},
+					"category_id":    map[string]any{"type": "string"},
+					"type_id":        map[string]any{"type": "string"},
+					"origin_id":      map[string]any{"type": "string", "description": "The ticket this bug was found in."},
+					"origin_unknown": map[string]any{"type": "boolean", "description": "True when nobody knows which ticket the bug came from."},
 				},
 				"required": []string{"project_id", "title"},
 			},
@@ -44,11 +46,14 @@ func ticketCoreMCPTools(s *Service) []mcptool.Tool {
 					return nil, err
 				}
 				projectID, title := vals[0], vals[1]
+				unknown, _ := args["origin_unknown"].(bool)
 				return s.Create(ctx, projectID, title, mcptool.OptionalString(args["body"]), mcptool.OptionalString(args["doc_id"]), mcptool.OptionalString(args["developer"]), CreateOptions{
-					CategoryID: mcptool.OptionalString(args["category_id"]),
-					TypeID:     mcptool.OptionalString(args["type_id"]),
-					Tester:     mcptool.OptionalString(args["tester"]),
-					ViaMCP:     true,
+					CategoryID:    mcptool.OptionalString(args["category_id"]),
+					TypeID:        mcptool.OptionalString(args["type_id"]),
+					Tester:        mcptool.OptionalString(args["tester"]),
+					ViaMCP:        true,
+					OriginID:      mcptool.OptionalString(args["origin_id"]),
+					OriginUnknown: unknown,
 				})
 			},
 		},

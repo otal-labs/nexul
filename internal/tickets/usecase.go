@@ -2,6 +2,7 @@ package tickets
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -15,11 +16,11 @@ import (
 
 // Service is the tickets use-case layer (ADR 0019); mutations enqueue events into the transactional outbox.
 type Service struct {
-	repo      Repo
-	statuses  StatusStore
-	users     UserLogins
-	templates TypeTemplates
-	now       func() time.Time
+	repo     Repo
+	statuses StatusStore
+	users    UserLogins
+	types    TicketTypes
+	now      func() time.Time
 }
 
 // NewService wires the tickets use-cases; users resolves the reporter's login and may be nil, recording the user id.
@@ -27,15 +28,17 @@ func NewService(repo Repo, statuses StatusStore, users UserLogins) *Service {
 	return &Service{repo: repo, statuses: statuses, users: users, now: time.Now}
 }
 
-// SetTypeTemplates wires the body-template lookup; unset, an MCP-filed ticket keeps the body it was given.
-func (s *Service) SetTypeTemplates(t TypeTemplates) { s.templates = t }
+// SetTicketTypes wires the type lookup; unset, an MCP-filed ticket keeps the body it was given and no type counts as a bug.
+func (s *Service) SetTicketTypes(t TicketTypes) { s.types = t }
 
-// CreateOptions carries the optional metadata for a new ticket; ViaMCP marks a ticket filed through an MCP tool call.
+// CreateOptions carries a new ticket's optional metadata; a bug needs OriginID (where it was found) or OriginUnknown.
 type CreateOptions struct {
-	CategoryID string
-	TypeID     string
-	Tester     string
-	ViaMCP     bool
+	CategoryID    string
+	TypeID        string
+	Tester        string
+	ViaMCP        bool
+	OriginID      string
+	OriginUnknown bool
 }
 
 // Create persists a new open ticket and enqueues ticket.created; a workspace needs a project first.
@@ -51,6 +54,10 @@ func (s *Service) Create(ctx context.Context, projectID, title, body, docID, dev
 	var opt CreateOptions
 	if len(opts) > 0 {
 		opt = opts[0]
+	}
+	opt.OriginID = strings.TrimSpace(opt.OriginID)
+	if err := s.checkFoundIn(ctx, opt); err != nil {
+		return nil, fmt.Errorf("create ticket: %w", err)
 	}
 	body, err := s.defaultBody(ctx, body, opt)
 	if err != nil {
@@ -72,10 +79,10 @@ func (s *Service) Create(ctx context.Context, projectID, title, body, docID, dev
 		CreatedAt:  now,
 		UpdatedAt:  now,
 	}
-	// Position is assigned atomically in its own transaction (ADR 0002); re-fetch to return the persisted value.
-	if err := s.repo.Create(ctx, t, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicCreated, Payload: CreatedEvent{Ticket: *t}}); err != nil {
+	if err := s.persist(ctx, t, opt); err != nil {
 		return nil, fmt.Errorf("create ticket: %w", err)
 	}
+	// Position is assigned atomically in its own transaction (ADR 0002); re-fetch to return the persisted value.
 	created, err := s.repo.GetByID(ctx, t.ID)
 	if err != nil {
 		return nil, fmt.Errorf("create ticket: %w", err)
@@ -83,13 +90,68 @@ func (s *Service) Create(ctx context.Context, projectID, title, body, docID, dev
 	return created, nil
 }
 
+// persist writes the ticket, and its found-in link in the same transaction when it was filed with one.
+func (s *Service) persist(ctx context.Context, t *Ticket, opt CreateOptions) error {
+	created := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicCreated, Payload: CreatedEvent{Ticket: *t}}
+	if opt.OriginID == "" && !opt.OriginUnknown {
+		return s.repo.Create(ctx, t, created)
+	}
+	link := TicketLink{TicketID: t.ID, Kind: LinkFoundIn, TargetID: opt.OriginID, CreatedAt: t.CreatedAt}
+	return s.repo.CreateWithLink(ctx, t, link, created, linkEvent(TopicLinkCreated, link))
+}
+
+// checkFoundIn holds a new bug to ADR 0064: it names the ticket it was found in, or its reporter marks the origin unknown.
+func (s *Service) checkFoundIn(ctx context.Context, opt CreateOptions) error {
+	if opt.OriginID != "" && opt.OriginUnknown {
+		return fmt.Errorf("%w: give an origin_id or mark the origin unknown, not both", apperrs.ErrInvalid)
+	}
+	if opt.OriginID != "" {
+		return s.originExists(ctx, opt.OriginID)
+	}
+	if opt.OriginUnknown {
+		return nil
+	}
+	bug, err := s.isBug(ctx, opt.TypeID)
+	if err != nil {
+		return err
+	}
+	if bug {
+		return fmt.Errorf("%w: a bug needs the ticket it was found in (origin_id), or origin_unknown when nobody knows", apperrs.ErrInvalid)
+	}
+	return nil
+}
+
+// originExists reports a missing origin as invalid input, not a missing ticket being created.
+func (s *Service) originExists(ctx context.Context, originID string) error {
+	_, err := s.repo.GetByID(ctx, originID)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return fmt.Errorf("%w: found-in ticket %s does not exist", apperrs.ErrInvalid, originID)
+	}
+	return err
+}
+
+func (s *Service) isBug(ctx context.Context, typeID string) (bool, error) {
+	typeID = strings.TrimSpace(typeID)
+	if s.types == nil || typeID == "" {
+		return false, nil
+	}
+	name, err := s.types.TypeName(ctx, typeID)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return false, fmt.Errorf("%w: ticket type %s does not exist", apperrs.ErrInvalid, typeID)
+	}
+	if err != nil {
+		return false, fmt.Errorf("ticket type %s: %w", typeID, err)
+	}
+	return IsBugType(name), nil
+}
+
 // defaultBody hands an agent's empty MCP ticket its type's template, so it carries the same sections a person's would.
 func (s *Service) defaultBody(ctx context.Context, body string, opt CreateOptions) (string, error) {
 	typeID := strings.TrimSpace(opt.TypeID)
-	if !opt.ViaMCP || s.templates == nil || typeID == "" || strings.TrimSpace(body) != "" {
+	if !opt.ViaMCP || s.types == nil || typeID == "" || strings.TrimSpace(body) != "" {
 		return body, nil
 	}
-	template, err := s.templates.BodyTemplate(ctx, typeID)
+	template, err := s.types.BodyTemplate(ctx, typeID)
 	if err != nil {
 		return "", fmt.Errorf("body template for type %s: %w", typeID, err)
 	}

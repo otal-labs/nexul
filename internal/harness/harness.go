@@ -42,9 +42,10 @@ type ProviderModel struct {
 	IsDefault bool   `json:"is_default,omitempty"`
 }
 
-// Provider is a usable provider instance; ID is what a turn routes on.
+// Provider is a usable provider instance; ID is what a turn routes on, Driver the kind setup is confirmed under.
 type Provider struct {
 	ID     string          `json:"id"`
+	Driver string          `json:"driver"`
 	Name   string          `json:"name"`
 	Models []ProviderModel `json:"models"`
 }

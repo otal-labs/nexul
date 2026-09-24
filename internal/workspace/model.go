@@ -16,16 +16,46 @@ type Project struct {
 	// WorkspaceID nests this project under a Workspace; immutable once set.
 	WorkspaceID string      `json:"workspace_id"`
 	Icon        ProjectIcon `json:"icon"`
-	CreatedAt   time.Time   `json:"created_at"`
-	UpdatedAt   time.Time   `json:"updated_at"`
+	// TestsLocation is the project wizard's answer the interview starts from; "" means not answered yet.
+	TestsLocation TestsLocation `json:"tests_location"`
+	CreatedAt     time.Time     `json:"created_at"`
+	UpdatedAt     time.Time     `json:"updated_at"`
+}
+
+// TestsLocation says whether a project's tests live in its deployed repository or in a separate tests repository.
+type TestsLocation string
+
+const (
+	TestsLocationUnset    TestsLocation = ""
+	TestsLocationSame     TestsLocation = "same"
+	TestsLocationSeparate TestsLocation = "separate"
+)
+
+// Valid reports a known answer, unset included so an answer can be withdrawn.
+func (l TestsLocation) Valid() bool {
+	return l == TestsLocationUnset || l == TestsLocationSame || l == TestsLocationSeparate
 }
 
 // RepoRef is a git repository associated with a project (a repository belongs to exactly one project).
 type RepoRef struct {
-	Owner       string `json:"owner"`
-	Name        string `json:"name"`
-	FullName    string `json:"full_name"`
-	ConnectorID string `json:"connector_id"`
+	Owner       string   `json:"owner"`
+	Name        string   `json:"name"`
+	FullName    string   `json:"full_name"`
+	ConnectorID string   `json:"connector_id"`
+	Role        RepoRole `json:"role"`
+}
+
+// RepoRole is what a project's repository is for; a tests repository never builds a stack or deploys.
+type RepoRole string
+
+const (
+	RepoRoleApp   RepoRole = "app"
+	RepoRoleTests RepoRole = "tests"
+)
+
+// Valid reports a known role.
+func (r RepoRole) Valid() bool {
+	return r == RepoRoleApp || r == RepoRoleTests
 }
 
 // Category groups tickets inside a project; a ticket belongs to at most one, uncategorized is allowed.

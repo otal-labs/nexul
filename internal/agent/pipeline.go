@@ -628,6 +628,8 @@ func (s *Service) replyNotConfigured(ctx context.Context, conversationID, viaUse
 		msg = "@Agent needs a project on the paired computer to run against — link one in this project's settings, or set a fallback in Settings → Pairing."
 	case pairing.ReasonNoDefaultComputer:
 		msg = "@Agent found several paired computers — pick a default one in Settings → Pairing."
+	case pairing.ReasonSetupRequired, pairing.ReasonOffline:
+		msg = nc.Error()
 	}
 	s.postSystemNote(ctx, conversationID, viaUserID, msg)
 }

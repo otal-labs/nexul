@@ -439,13 +439,15 @@ func (f *fakeContainerRepo) DeleteByStack(_ context.Context, stackID string) err
 
 // fakeProjects is an in-memory deploy.ProjectStore for use-case tests.
 type fakeProjects struct {
-	exists  map[string]bool
-	repos   map[string][]string // projectID -> "owner/name"
-	repoErr error
+	exists   map[string]bool
+	repos    map[string][]string // projectID -> "owner/name"
+	tests    map[string]bool     // "owner/name" attached as a tests repository
+	repoErr  error
+	testsErr error
 }
 
 func newFakeProjects() *fakeProjects {
-	return &fakeProjects{exists: map[string]bool{}, repos: map[string][]string{}}
+	return &fakeProjects{exists: map[string]bool{}, repos: map[string][]string{}, tests: map[string]bool{}}
 }
 
 func (f *fakeProjects) ProjectExists(_ context.Context, projectID string) (bool, error) {
@@ -464,6 +466,13 @@ func (f *fakeProjects) LinkRepo(_ context.Context, projectID, owner, name string
 	}
 	f.repos[projectID] = append(f.repos[projectID], full)
 	return nil
+}
+
+func (f *fakeProjects) IsTestsRepo(_ context.Context, owner, name string) (bool, error) {
+	if f.testsErr != nil {
+		return false, f.testsErr
+	}
+	return f.tests[owner+"/"+name], nil
 }
 
 func (f *fakeProjects) RepoInProject(_ context.Context, projectID, owner, name string) (bool, error) {

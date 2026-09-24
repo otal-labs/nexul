@@ -14,6 +14,8 @@ import { cn } from "@/lib/utils";
 export interface ComboboxOption {
   value: string;
   label: string;
+  /** Muted text after the label for a state that doesn't stop the option being picked, e.g. "needs setup". */
+  hint?: string;
 }
 
 interface FormComboboxProps<T extends FieldValues> {
@@ -92,7 +94,10 @@ export const FormCombobox = <T extends FieldValues>({
                   selected ? "text-foreground" : "text-muted-foreground",
                 )}
               >
-                <span className="truncate">{selected?.label ?? placeholder ?? "Select…"}</span>
+                <span className="truncate">
+                  {selected?.label ?? placeholder ?? "Select…"}
+                  {selected?.hint && <span className="ml-1.5 text-muted-foreground">{selected.hint}</span>}
+                </span>
                 <ChevronDownIcon className="size-3.5 text-muted-foreground" aria-hidden />
               </PopoverTrigger>
               <PopoverContent className="w-auto min-w-[var(--radix-popover-trigger-width)] max-w-[var(--radix-popover-content-available-width)] p-1">
@@ -139,6 +144,7 @@ export const FormCombobox = <T extends FieldValues>({
                       selected={option.value === field.value}
                       highlighted={index === highlighted}
                       onPick={() => pick(option.value)}
+                      hint={option.hint}
                     >
                       {option.label}
                     </ComboboxRow>
@@ -168,10 +174,11 @@ interface ComboboxRowProps {
   selected: boolean;
   highlighted: boolean;
   onPick: () => void;
+  hint?: string | undefined;
   children: React.ReactNode;
 }
 
-const ComboboxRow = ({ selected, highlighted, onPick, children }: ComboboxRowProps) => (
+const ComboboxRow = ({ selected, highlighted, onPick, hint, children }: ComboboxRowProps) => (
   <button
     type="button"
     role="option"
@@ -186,7 +193,10 @@ const ComboboxRow = ({ selected, highlighted, onPick, children }: ComboboxRowPro
       highlighted && "bg-accent text-accent-foreground",
     )}
   >
-    <span className="truncate">{children}</span>
+    <span className="truncate">
+      {children}
+      {hint && <span className="ml-1.5 text-muted-foreground">{hint}</span>}
+    </span>
     {selected && (
       <span className="absolute right-2 flex size-3.5 items-center justify-center">
         <CheckIcon className="size-3.5" aria-hidden />

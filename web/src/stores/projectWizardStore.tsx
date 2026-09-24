@@ -1,5 +1,6 @@
 import { create } from "zustand";
 
+import type { TestsLocation } from "@/enums/Project";
 import type { Candidate, Repo, ScanResult } from "@/models/Repository";
 
 // Everything the project wizard accumulates across its steps; only the current step lives in the URL
@@ -16,6 +17,9 @@ export type ProjectWizardStore = {
   // to, rather than creating a new one. Set once the stack loads, unset for doors 1 and 2.
   attachStackId: string | null;
   repository: Repo | null;
+  // The repository step's tests question: null until answered; testsRepo only counts when tests live separately.
+  testsLocation: TestsLocation | null;
+  testsRepo: Repo | null;
   scanResult: ScanResult | null;
   candidate: Candidate | null;
   name: string;
@@ -29,6 +33,8 @@ export type ProjectWizardStore = {
   setProjectId: (projectId: string, projectName: string, preselected?: boolean) => void;
   setAttachStackId: (attachStackId: string | null) => void;
   setRepository: (repository: Repo) => void;
+  setTestsLocation: (testsLocation: TestsLocation) => void;
+  setTestsRepo: (testsRepo: Repo) => void;
   setScanResult: (scanResult: ScanResult) => void;
   setCandidate: (candidate: Candidate) => void;
   setName: (name: string) => void;
@@ -47,6 +53,8 @@ const initialState: Pick<
   | "projectPreselected"
   | "attachStackId"
   | "repository"
+  | "testsLocation"
+  | "testsRepo"
   | "scanResult"
   | "candidate"
   | "name"
@@ -62,6 +70,8 @@ const initialState: Pick<
   projectPreselected: false,
   attachStackId: null,
   repository: null,
+  testsLocation: null,
+  testsRepo: null,
   scanResult: null,
   candidate: null,
   name: "",
@@ -79,6 +89,8 @@ export const useProjectWizardStore = create<ProjectWizardStore>((set) => ({
     set({ projectId, projectName, projectPreselected: preselected }),
   setAttachStackId: (attachStackId) => set({ attachStackId }),
   setRepository: (repository) => set({ repository, name: repository.name }),
+  setTestsLocation: (testsLocation) => set({ testsLocation }),
+  setTestsRepo: (testsRepo) => set({ testsRepo }),
   setScanResult: (scanResult) => set({ scanResult }),
   setCandidate: (candidate) => set({ candidate, name: candidate.name }),
   setName: (name) => set({ name }),

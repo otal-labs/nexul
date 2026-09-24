@@ -357,7 +357,7 @@ func (s *Service) resolveToken(ctx context.Context) (string, error) {
 		if errors.Is(err, apperrs.ErrNotFound) {
 			// Not an auth failure: the workspace simply hasn't connected Cloudflare yet.
 			return "", apperrs.Fatal(fmt.Errorf(
-				"%w: Cloudflare is not connected — connect it in Settings", apperrs.ErrRetryable))
+				"%w: %w — connect it in Settings", apperrs.ErrRetryable, ErrCloudflareNotConnected))
 		}
 		return "", apperrs.Fatal(fmt.Errorf("%w: resolve cloudflare access token: %v", apperrs.ErrRetryable, err))
 	}

@@ -180,7 +180,7 @@ func projectRepoMCPTools(s *Service) []mcptool.Tool {
 	return []mcptool.Tool{
 		{
 			Name:        "project_add_repo",
-			Description: "Associate a repository with a project (a repository belongs to exactly one project). connector_id names which connected git connector hosts it; omit it to default to \"github\".",
+			Description: "Associate a repository with a project (a repository belongs to exactly one project). connector_id names which connected git connector hosts it; omit it to default to \"github\". role is \"app\" (the default, the repository stacks build from) or \"tests\" (a tests repository, never deployed; adding one records the project's tests location as separate).",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -188,6 +188,7 @@ func projectRepoMCPTools(s *Service) []mcptool.Tool {
 					"owner":        map[string]any{"type": "string"},
 					"name":         map[string]any{"type": "string"},
 					"connector_id": map[string]any{"type": "string"},
+					"role":         map[string]any{"type": "string", "enum": []string{string(RepoRoleApp), string(RepoRoleTests)}},
 				},
 				"required": []string{"project_id", "owner", "name"},
 			},
@@ -198,7 +199,8 @@ func projectRepoMCPTools(s *Service) []mcptool.Tool {
 				}
 				projectID, owner, name := vals[0], vals[1], vals[2]
 				connectorID := mcptool.OptionalString(args["connector_id"])
-				if err := s.AddRepo(ctx, "", projectID, owner, name, connectorID); err != nil {
+				role := RepoRole(mcptool.OptionalString(args["role"]))
+				if err := s.AddRepo(ctx, "", projectID, owner, name, connectorID, role); err != nil {
 					return nil, err
 				}
 				return map[string]string{"project_id": projectID, "owner": owner, "name": name}, nil
@@ -229,7 +231,7 @@ func projectRepoMCPTools(s *Service) []mcptool.Tool {
 		},
 		{
 			Name:        "project_list_repos",
-			Description: "List the repositories associated with a project.",
+			Description: "List the repositories associated with a project, each with its role (\"app\" or \"tests\").",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -243,6 +245,28 @@ func projectRepoMCPTools(s *Service) []mcptool.Tool {
 					return nil, err
 				}
 				return s.ListRepos(ctx, projectID)
+			},
+		},
+		{
+			Name:        "project_set_tests_location",
+			Description: "Record where a project's tests live: \"same\" (in the repository that deploys), \"separate\" (in a tests repository, attached with project_add_repo role \"tests\"), or \"\" to withdraw the answer. The interview reads it.",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"project_id":     map[string]any{"type": "string"},
+					"tests_location": map[string]any{"type": "string", "enum": []string{"", string(TestsLocationSame), string(TestsLocationSeparate)}},
+				},
+				"required": []string{"project_id", "tests_location"},
+			},
+			Call: func(ctx context.Context, args map[string]any) (any, error) {
+				projectID, err := mcptool.RequiredString(args, "project_id")
+				if err != nil {
+					return nil, err
+				}
+				if _, ok := args["tests_location"]; !ok {
+					return nil, fmt.Errorf("%w: tests_location is required", apperrs.ErrInvalid)
+				}
+				return s.SetTestsLocation(ctx, "", projectID, TestsLocation(mcptool.OptionalString(args["tests_location"])))
 			},
 		},
 		{

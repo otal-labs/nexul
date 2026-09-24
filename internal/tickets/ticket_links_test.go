@@ -53,6 +53,19 @@ func (f *fakeRepo) BlockerIDs(_ context.Context, id string) ([]string, error) {
 	return out, nil
 }
 
+func (f *fakeRepo) CreateWithLink(ctx context.Context, t *Ticket, link TicketLink, evts ...eventbus.OutboxEvent) error {
+	if f.ticketLinkErr != nil {
+		return f.ticketLinkErr
+	}
+	if err := f.Create(ctx, t, evts...); err != nil {
+		return err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.ticketLinks = append(f.ticketLinks, link)
+	return nil
+}
+
 func (f *fakeRepo) PutLink(_ context.Context, link TicketLink, evts ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()

@@ -17,7 +17,7 @@ user whose token authenticates the connection.
 |---|---|
 | Docs | `doc_create`, `doc_get`, `doc_search`, `doc_update`, `doc_archive`, `doc_restore` |
 | Tickets | `ticket_create`, `ticket_get`, `ticket_update`, `ticket_update_status`, `ticket_set_type`, `ticket_set_developer`, `ticket_set_tester`, `ticket_add_label`, `ticket_remove_label`, `ticket_list_labels`, `ticket_list_all_labels`, `ticket_set_label_color`, `ticket_label_colors`, `ticket_search`, `ticket_link_pr`, `ticket_link_branch`, `ticket_get_links`, `ticket_get_ticket_links`, `ticket_set_found_in`, `ticket_remove_found_in`, `ticket_add_blocker`, `ticket_remove_blocker`, `ticket_list_blocked` |
-| Projects and board | `project_create`, `project_get`, `project_list`, `project_rename`, `project_delete`, `project_reorder`, `project_delete_impact`, `project_add_repo`, `project_remove_repo`, `project_list_repos`, `project_move_ticket`, `category_create`, `category_get`, `category_list`, `category_rename`, `category_delete`, `category_reorder`, `category_move_ticket`, `category_clear_ticket`, `ticket_type_create`, `ticket_type_list`, `ticket_type_rename`, `ticket_type_set_template`, `ticket_type_delete`, `status_create`, `status_list`, `status_rename`, `status_reorder`, `status_delete` |
+| Projects and board | `project_create`, `project_get`, `project_list`, `project_rename`, `project_delete`, `project_reorder`, `project_delete_impact`, `project_add_repo`, `project_remove_repo`, `project_list_repos`, `project_set_tests_location`, `project_move_ticket`, `category_create`, `category_get`, `category_list`, `category_rename`, `category_delete`, `category_reorder`, `category_move_ticket`, `category_clear_ticket`, `ticket_type_create`, `ticket_type_list`, `ticket_type_rename`, `ticket_type_set_template`, `ticket_type_delete`, `status_create`, `status_list`, `status_rename`, `status_reorder`, `status_delete` |
 | Deploys and stacks | `deploy_get`, `deploy_log`, `deploy_list`, `deploy_list_by_service`, `deploy_list_by_status`, `deploy_cancel`, `service_list`, `machine_import`, `stack_create`, `stack_deploy`, `stack_get`, `stack_list`, `stack_update`, `stack_delete`, `stack_rollback` |
 | Repositories, runners, and machines | `repository_list`, `repository_scan`, `runner_list`, `runner_queue`, `machine_list`, `machine_discover`, `instance_upgrade_status`, `instance_upgrade` |
 | DNS and gateways | `dns_verify_credentials`, `dns_list_zones`, `dns_list_records`, `dns_create_record`, `dns_update_record`, `dns_delete_record`, `dns_check_propagation`, `dns_list_service_hostnames`, `dns_get_service_hostname`, `dns_set_service_hostname`, `dns_remove_service_hostname`, `dns_tunnel_create`, `dns_tunnel_list`, `dns_tunnel_get`, `dns_tunnel_route`, `dns_tunnel_rotate`, `dns_tunnel_delete`, `dns_tunnel_provision_agent`, `dns_provision_reverse_proxy`, `dns_gateway_create`, `dns_gateway_list`, `dns_gateway_delete`, `exposure_create`, `dns_exposure_list`, `exposure_delete` |
@@ -29,6 +29,7 @@ user whose token authenticates the connection.
 | Access | `access_list_grants`, `access_set_grants` |
 | Invitations | `create_invitation`, `list_invitations`, `revoke_invitation` |
 | Accounts | `account_whoami`, `list_accounts`, `disable_account`, `reactivate_account`, `remove_account`, `restore_account` |
+| Computer tunnels | `computer_tunnel_create`, `computer_tunnel_status_get`, `computer_tunnel_token_get` |
 | Computer setup | `computer_setup_get`, `computer_setup_confirm_provider`, `computer_setup_unconfirm_provider`, `computer_setup_confirm`, `computer_setup_unconfirm` |
 | Plays | `play_list`, `play_create`, `play_update`, `play_delete`, `play_run`, `play_run_get`, `play_run_stop`, `play_run_answer`, `play_list_runs` |
 | Memories | `memory_list`, `memory_get`, `memory_create`, `memory_update`, `memory_delete`, `memory_list_versions`, `memory_revert`, `memory_clone` |
@@ -37,6 +38,10 @@ user whose token authenticates the connection.
 The workflow prompts are not tools. They template common sequences and are
 listed separately below. Deploys and rollbacks started through MCP are
 attributed to the token's user, with the source suffixed `:mcp`.
+
+`ticket_create` files a bug (a ticket of the type named `bug`) only with
+`origin_id`, the ticket it was found in, or `origin_unknown` set to true, the
+same rule the web app applies.
 
 **Resources** expose readable entities by URI: `docs://{id}`, `tickets://{id}`, and `topology://current`.
 

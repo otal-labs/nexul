@@ -16,7 +16,8 @@ vi.mock("@/api/client", () => ({
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const repos: RepoRef[] = [
-  { owner: "onik97", name: "nexul", full_name: "onik97/nexul", connector_id: "github" },
+  { owner: "onik97", name: "nexul", full_name: "onik97/nexul", connector_id: "github", role: "app" },
+  { owner: "onik97", name: "nexul-e2e", full_name: "onik97/nexul-e2e", connector_id: "github", role: "tests" },
 ];
 
 const renderRepos = (list: RepoRef[] = repos) => {
@@ -54,6 +55,12 @@ describe("ProjectRepos", () => {
       name: "api",
       connector_id: "github",
     });
+  });
+
+  it("marks the tests repository and only that one", async () => {
+    renderRepos();
+    expect(await screen.findByText("onik97/nexul-e2e")).toBeInTheDocument();
+    expect(screen.getAllByText("tests")).toHaveLength(1);
   });
 
   it("shows an empty state when there are no repos", async () => {

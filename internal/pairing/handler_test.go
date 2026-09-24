@@ -339,3 +339,58 @@ func TestHandler_Resolve_NoIdentity_Unauthorized(t *testing.T) {
 	rec := doRequest(h.Routes(), http.MethodGet, "/api/pairing/resolve", "", nil)
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
 }
+
+func TestHandler_ComputerTunnel_CreateStatusAndToken(t *testing.T) {
+	t.Parallel()
+	tunnels := &fakeTunnels{status: "inactive"}
+	svc, _ := newTunnelService(newFakeRepo(), &fakeExchanger{}, tunnels)
+	routes := NewHandler(svc).Routes()
+
+	rec := doRequest(routes, http.MethodPost, "/api/pairing/computers/tunnel", "u1", createTunnelRequest{Name: "Laptop"})
+	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
+	var created Computer
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &created))
+	assert.Equal(t, harness.KindT3Code, created.Kind)
+	assert.Equal(t, "laptop-ab12cd34.example.com", created.Tunnel.Hostname)
+
+	rec = doRequest(routes, http.MethodGet, "/api/pairing/computers/"+created.ID+"/tunnel/status", "u1", nil)
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.JSONEq(t, `{"tunnel":"inactive","harness_reachable":false}`, rec.Body.String())
+
+	rec = doRequest(routes, http.MethodGet, "/api/pairing/computers/"+created.ID+"/tunnel/token", "u1", nil)
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.JSONEq(t, `{"token":"connector-token-tun-1"}`, rec.Body.String())
+
+	rec = doRequest(routes, http.MethodGet, "/api/pairing/computers/"+created.ID+"/tunnel/token", "u2", nil)
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	rec = doRequest(routes, http.MethodGet, "/api/pairing/computers/"+created.ID+"/tunnel/status", "u2", nil)
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+func TestHandler_ComputerTunnel_Errors(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name       string
+		body       any
+		createErr  error
+		wantCode   int
+		wantReason string
+	}{
+		{"malformed body", "not json", nil, http.StatusBadRequest, ""},
+		{"blank name", createTunnelRequest{Name: " "}, nil, http.StatusBadRequest, ""},
+		{"zero trust disabled", createTunnelRequest{Name: "Laptop"}, &PrerequisiteError{Reason: ReasonZeroTrustDisabled, Err: errBoom}, http.StatusBadRequest, "zero_trust_disabled"},
+		{"cloudflare not connected", createTunnelRequest{Name: "Laptop"}, &PrerequisiteError{Reason: ReasonCloudflareNotConnected, Err: errBoom}, http.StatusBadRequest, "cloudflare_not_connected"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			svc, _ := newTunnelService(newFakeRepo(), &fakeExchanger{}, &fakeTunnels{createErr: tt.createErr})
+			rec := doRequest(NewHandler(svc).Routes(), http.MethodPost, "/api/pairing/computers/tunnel", "u1", tt.body)
+			require.Equal(t, tt.wantCode, rec.Code)
+			var body map[string]string
+			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
+			assert.Equal(t, tt.wantReason, body["reason"])
+			assert.NotEmpty(t, body["message"])
+		})
+	}
+}

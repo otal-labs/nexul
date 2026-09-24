@@ -769,6 +769,18 @@ var catalogSchemas = map[string]string{
 			"hostname": {"type": "string"}
 		}
 	}`,
+	"computer.tunnel_status_changed": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["computer_id", "user_id", "tunnel", "harness_reachable"],
+		"properties": {
+			"computer_id": {"type": "string"},
+			"user_id": {"type": "string"},
+			"tunnel": {"type": "string"},
+			"harness_reachable": {"type": "boolean"},
+			"harness_version": {"type": "string"}
+		}
+	}`,
 	"ticket.category_changed": `{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",
 		"type": "object",

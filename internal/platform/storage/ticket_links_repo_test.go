@@ -90,3 +90,46 @@ func TestTicketLinks_Integration_BlockedClearsOnDoneStageAndCascades(t *testing.
 	require.NoError(t, err)
 	assert.Nil(t, set.FoundIn)
 }
+
+func TestTicketLinks_Integration_BugFiledWithFoundIn(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	require.NoError(t, s.Projects.Create(ctx, newTestProject("p-bugs", "Bugs", 0)))
+	types, err := s.TicketTypes.ListByProject(ctx, "p-bugs")
+	require.NoError(t, err)
+	bugType := ""
+	for _, tt := range types {
+		if tickets.IsBugType(tt.Name) {
+			bugType = tt.ID
+		}
+	}
+	require.NotEmpty(t, bugType, "every project is seeded with a bug type")
+
+	svc := tickets.NewService(s.Tickets, s.Statuses, nil)
+	svc.SetTicketTypes(s.TicketTypes)
+	origin, err := svc.Create(ctx, "p-bugs", "login page", "", "", "")
+	require.NoError(t, err)
+
+	_, err = svc.Create(ctx, "p-bugs", "login 500s", "", "", "", tickets.CreateOptions{TypeID: bugType})
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
+
+	bug, err := svc.Create(ctx, "p-bugs", "login 500s", "", "", "", tickets.CreateOptions{TypeID: bugType, OriginID: origin.ID})
+	require.NoError(t, err)
+	set, err := svc.Links(ctx, bug.ID)
+	require.NoError(t, err)
+	require.NotNil(t, set.FoundIn)
+	assert.Equal(t, origin.ID, set.FoundIn.ID)
+
+	unknown, err := svc.Create(ctx, "p-bugs", "random crash", "", "", "", tickets.CreateOptions{TypeID: bugType, OriginUnknown: true})
+	require.NoError(t, err)
+	set, err = svc.Links(ctx, unknown.ID)
+	require.NoError(t, err)
+	assert.True(t, set.OriginUnknown)
+
+	_, err = svc.Create(ctx, "p-bugs", "dangling", "", "", "", tickets.CreateOptions{TypeID: bugType, OriginID: "ghost"})
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
+	all, err := svc.ListByProject(ctx, "p-bugs")
+	require.NoError(t, err)
+	assert.Len(t, all, 3, "a refused bug leaves no ticket behind")
+}

@@ -228,6 +228,7 @@ var livePushTopics = []string{
 	voice.TopicOccupancyChanged,
 	pairing.TopicSetupConfirmed,
 	pairing.TopicSetupUnconfirmed,
+	pairing.TopicTunnelStatusChanged,
 }
 
 func fail(err error) {

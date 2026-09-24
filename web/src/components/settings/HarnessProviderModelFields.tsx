@@ -13,7 +13,7 @@ interface HarnessProviderModelFieldsProps<T extends FieldValues> {
   setModel: (value: PathValue<T, Path<T>>) => void;
 }
 
-// Fed by the computer's live provider registry; optional — empty means "T3's default".
+// Fed by the computer's live provider registry; empty means "T3's default"; a needs-setup provider stays pickable, the run refuses it.
 export const HarnessProviderModelFields = <T extends FieldValues>({
   control,
   providerName,
@@ -33,7 +33,7 @@ export const HarnessProviderModelFields = <T extends FieldValues>({
           name={providerName}
           label="Provider"
           placeholder="Computer default"
-          options={providers.data.map((p) => ({ value: p.id, label: p.name }))}
+          options={providers.data.map((p) => ({ value: p.id, label: p.name, ...(p.needs_setup && { hint: "needs setup" }) }))}
           onChangeValue={() => setModel("" as PathValue<T, Path<T>>)}
         />
         {selected ? (

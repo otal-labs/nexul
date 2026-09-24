@@ -26,43 +26,62 @@ type TicketsRepo struct {
 // Create appends the ticket to its (status, category) order and assigns the next number in one transaction.
 func (r *TicketsRepo) Create(ctx context.Context, t *tickets.Ticket, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		q := r.q.WithTx(tx)
-		pos, err := nextTicketPosition(ctx, tx, string(t.Status), t.CategoryID)
-		if err != nil {
-			return err
-		}
-		num, err := nextTicketNumber(ctx, tx, t.ProjectID)
-		if err != nil {
-			return err
-		}
-		err = q.CreateTicket(ctx, sqlcgen.CreateTicketParams{
-			ID:                     t.ID,
-			Title:                  t.Title,
-			Body:                   t.Body,
-			Status:                 string(t.Status),
-			Position:               int64(pos),
-			Number:                 int64(num),
-			DocID:                  sql.NullString{String: t.DocID, Valid: t.DocID != ""},
-			ProjectID:              sql.NullString{String: t.ProjectID, Valid: t.ProjectID != ""},
-			CategoryID:             sql.NullString{String: t.CategoryID, Valid: t.CategoryID != ""},
-			TypeID:                 sql.NullString{String: defaultType(t.TypeID), Valid: true},
-			Developer:              t.Developer,
-			Tester:                 t.Tester,
-			ReporterKind:           t.Reporter.Kind,
-			ReporterLogin:          t.Reporter.Login,
-			ReporterAutomationID:   t.Reporter.AutomationID,
-			ReporterAutomationName: t.Reporter.AutomationName,
-			CreatedAt:              t.CreatedAt.Unix(),
-			UpdatedAt:              t.UpdatedAt.Unix(),
-		})
-		if err != nil {
-			return fmt.Errorf("insert ticket %s: %w", t.ID, classifyWriteErr(err))
-		}
-		if err := insertTicketLabels(ctx, tx, t.ID, t.Labels); err != nil {
+		if err := r.insertTicket(ctx, tx, t); err != nil {
 			return err
 		}
 		return enqueueTicketsOutbox(ctx, tx, evts)
 	})
+}
+
+// CreateWithLink inserts the ticket and a link it holds in one transaction.
+func (r *TicketsRepo) CreateWithLink(ctx context.Context, t *tickets.Ticket, link tickets.TicketLink, evts ...eventbus.OutboxEvent) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		if err := r.insertTicket(ctx, tx, t); err != nil {
+			return err
+		}
+		err := r.q.WithTx(tx).InsertTicketLink(ctx, sqlcgen.InsertTicketLinkParams{
+			TicketID: link.TicketID, Kind: string(link.Kind), TargetID: nullStringOrNil(link.TargetID), CreatedAt: link.CreatedAt.Unix(),
+		})
+		if err != nil {
+			return fmt.Errorf("insert %s link on ticket %s: %w", link.Kind, link.TicketID, classifyWriteErr(err))
+		}
+		return enqueueTicketsOutbox(ctx, tx, evts)
+	})
+}
+
+func (r *TicketsRepo) insertTicket(ctx context.Context, tx *sql.Tx, t *tickets.Ticket) error {
+	pos, err := nextTicketPosition(ctx, tx, string(t.Status), t.CategoryID)
+	if err != nil {
+		return err
+	}
+	num, err := nextTicketNumber(ctx, tx, t.ProjectID)
+	if err != nil {
+		return err
+	}
+	err = r.q.WithTx(tx).CreateTicket(ctx, sqlcgen.CreateTicketParams{
+		ID:                     t.ID,
+		Title:                  t.Title,
+		Body:                   t.Body,
+		Status:                 string(t.Status),
+		Position:               int64(pos),
+		Number:                 int64(num),
+		DocID:                  sql.NullString{String: t.DocID, Valid: t.DocID != ""},
+		ProjectID:              sql.NullString{String: t.ProjectID, Valid: t.ProjectID != ""},
+		CategoryID:             sql.NullString{String: t.CategoryID, Valid: t.CategoryID != ""},
+		TypeID:                 sql.NullString{String: defaultType(t.TypeID), Valid: true},
+		Developer:              t.Developer,
+		Tester:                 t.Tester,
+		ReporterKind:           t.Reporter.Kind,
+		ReporterLogin:          t.Reporter.Login,
+		ReporterAutomationID:   t.Reporter.AutomationID,
+		ReporterAutomationName: t.Reporter.AutomationName,
+		CreatedAt:              t.CreatedAt.Unix(),
+		UpdatedAt:              t.UpdatedAt.Unix(),
+	})
+	if err != nil {
+		return fmt.Errorf("insert ticket %s: %w", t.ID, classifyWriteErr(err))
+	}
+	return insertTicketLabels(ctx, tx, t.ID, t.Labels)
 }
 
 func (r *TicketsRepo) GetByID(ctx context.Context, id string) (*tickets.Ticket, error) {

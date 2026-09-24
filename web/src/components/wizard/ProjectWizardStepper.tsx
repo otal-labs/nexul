@@ -10,6 +10,7 @@ import { WizardReachStep } from "@/components/wizard/WizardReachStep";
 import { WizardRepositoryStep } from "@/components/wizard/WizardRepositoryStep";
 import { WizardServiceStep } from "@/components/wizard/WizardServiceStep";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
+import { TestsLocation } from "@/enums/Project";
 
 export const WizardSteps = ["project", "repository", "service", "env", "reach", "branches", "done"] as const;
 export type WizardStepId = (typeof WizardSteps)[number];
@@ -29,6 +30,8 @@ export const ProjectWizardStepper = ({ step }: ProjectWizardStepperProps) => {
     projectPreselected,
     attachStackId,
     repository,
+    testsLocation,
+    testsRepo,
     scanResult,
     candidate,
     name,
@@ -42,6 +45,8 @@ export const ProjectWizardStepper = ({ step }: ProjectWizardStepperProps) => {
       projectPreselected: s.projectPreselected,
       attachStackId: s.attachStackId,
       repository: s.repository,
+      testsLocation: s.testsLocation,
+      testsRepo: s.testsRepo,
       scanResult: s.scanResult,
       candidate: s.candidate,
       name: s.name,
@@ -67,6 +72,10 @@ export const ProjectWizardStepper = ({ step }: ProjectWizardStepperProps) => {
     return isAttach ? "branches" : "reach";
   };
   const afterEnv = isAttach ? "branches" : "reach";
+  const repositorySummary =
+    repository && testsLocation === TestsLocation.Separate && testsRepo
+      ? `${repository.full_name} · tests in ${testsRepo.full_name}`
+      : repository?.full_name;
 
   const goTo = (next: WizardStepId) => {
     const query = searchParams.toString();
@@ -93,7 +102,7 @@ export const ProjectWizardStepper = ({ step }: ProjectWizardStepperProps) => {
         title="Repository"
         description="Pick the repository to deploy; Nexul reads its Dockerfile or compose file."
         state={stateFor("repository")}
-        summary={repository?.full_name}
+        summary={repositorySummary}
         onChange={() => goTo("repository")}
       >
         <WizardRepositoryStep onDone={() => goTo("service")} />

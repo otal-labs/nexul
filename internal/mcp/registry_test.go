@@ -139,6 +139,10 @@ func (p testDeployProjects) RepoInProject(_ context.Context, _ string, _ string,
 	return true, nil
 }
 
+func (p testDeployProjects) IsTestsRepo(_ context.Context, _ string, _ string) (bool, error) {
+	return false, nil
+}
+
 // testMemoriesPermission adapts access's HasPermission to memories' PermissionGate seam (mirror of the server/cmd adapter).
 type testMemoriesPermission struct {
 	svc *access.Service
@@ -267,7 +271,7 @@ func newRegistryServer(t *testing.T) (*Server, *storage.Store, *fakePublisher) {
 
 func TestRegistry_ToolsComplete(t *testing.T) {
 	srv, _, _ := newRegistryServer(t)
-	require.Len(t, srv.tools, 138)
+	require.Len(t, srv.tools, 142)
 	names := make(map[string]bool)
 	for _, tool := range srv.tools {
 		require.NotEmpty(t, tool.Name, "every tool must be named")
@@ -296,7 +300,7 @@ func TestRegistry_ToolsComplete(t *testing.T) {
 		"git_list_prs", "git_get_pr",
 		"project_create", "project_get", "project_list", "project_rename", "project_delete",
 		"project_reorder", "project_delete_impact", "project_add_repo", "project_remove_repo",
-		"project_list_repos", "project_move_ticket",
+		"project_list_repos", "project_set_tests_location", "project_move_ticket",
 		"category_create", "category_get", "category_list", "category_rename", "category_delete",
 		"category_reorder", "category_move_ticket", "category_clear_ticket",
 		"ticket_type_create", "ticket_type_list", "ticket_type_rename", "ticket_type_set_template", "ticket_type_delete",
@@ -310,6 +314,7 @@ func TestRegistry_ToolsComplete(t *testing.T) {
 		"account_whoami", "list_accounts", "disable_account", "reactivate_account", "remove_account", "restore_account",
 		"computer_setup_get", "computer_setup_confirm_provider", "computer_setup_unconfirm_provider",
 		"computer_setup_confirm", "computer_setup_unconfirm",
+		"computer_tunnel_create", "computer_tunnel_status_get", "computer_tunnel_token_get",
 	}
 	for _, name := range expected {
 		assert.True(t, names[name], "missing tool %s", name)

@@ -127,6 +127,7 @@ func (f *fakeRepo) Update(_ context.Context, p *Project) error {
 	}
 	cur.Name = p.Name
 	cur.Prefix = p.Prefix
+	cur.TestsLocation = p.TestsLocation
 	cur.UpdatedAt = p.UpdatedAt
 	return nil
 }
@@ -1012,19 +1013,19 @@ func TestDelete(t *testing.T) {
 func TestAddRepo(t *testing.T) {
 	t.Run("non-owner is forbidden", func(t *testing.T) {
 		s, _, _ := newOwnerRepo(t, false)
-		err := s.AddRepo(context.Background(), "u-1", "p-1", "acme", "app", "")
+		err := s.AddRepo(context.Background(), "u-1", "p-1", "acme", "app", "", "")
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
 	})
 	t.Run("empty owner or name is invalid", func(t *testing.T) {
 		s, _, _ := newOwnerRepo(t, true)
-		err := s.AddRepo(context.Background(), "u-1", "p-1", "  ", "app", "")
+		err := s.AddRepo(context.Background(), "u-1", "p-1", "  ", "app", "", "")
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 	})
 	t.Run("missing project is not found", func(t *testing.T) {
 		s, _, _ := newOwnerRepo(t, true)
-		err := s.AddRepo(context.Background(), "u-1", "nope", "acme", "app", "")
+		err := s.AddRepo(context.Background(), "u-1", "nope", "acme", "app", "", "")
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
 	})
@@ -1032,14 +1033,14 @@ func TestAddRepo(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)
 		repo.projects["p-1"] = &Project{ID: "p-1", Name: "A"}
 		repo.repoErr = errors.New("db down")
-		err := s.AddRepo(context.Background(), "u-1", "p-1", "acme", "app", "")
+		err := s.AddRepo(context.Background(), "u-1", "p-1", "acme", "app", "", "")
 		require.Error(t, err)
 		assert.ErrorIs(t, err, repo.repoErr)
 	})
 	t.Run("associates a repo with a project", func(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)
 		repo.projects["p-1"] = &Project{ID: "p-1", Name: "A"}
-		require.NoError(t, s.AddRepo(context.Background(), "u-1", "p-1", "acme", "app", ""))
+		require.NoError(t, s.AddRepo(context.Background(), "u-1", "p-1", "acme", "app", "", ""))
 		repos, err := s.ListRepos(context.Background(), "p-1")
 		require.NoError(t, err)
 		require.Len(t, repos, 1)
@@ -1048,7 +1049,7 @@ func TestAddRepo(t *testing.T) {
 	t.Run("empty connector id defaults to github", func(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)
 		repo.projects["p-1"] = &Project{ID: "p-1", Name: "A"}
-		require.NoError(t, s.AddRepo(context.Background(), "u-1", "p-1", "acme", "app", "  "))
+		require.NoError(t, s.AddRepo(context.Background(), "u-1", "p-1", "acme", "app", "  ", ""))
 		repos, err := s.ListRepos(context.Background(), "p-1")
 		require.NoError(t, err)
 		require.Len(t, repos, 1)
@@ -1057,7 +1058,7 @@ func TestAddRepo(t *testing.T) {
 	t.Run("persists the given connector id", func(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)
 		repo.projects["p-1"] = &Project{ID: "p-1", Name: "A"}
-		require.NoError(t, s.AddRepo(context.Background(), "u-1", "p-1", "acme", "app", "gitlab-self-hosted"))
+		require.NoError(t, s.AddRepo(context.Background(), "u-1", "p-1", "acme", "app", "gitlab-self-hosted", ""))
 		repos, err := s.ListRepos(context.Background(), "p-1")
 		require.NoError(t, err)
 		require.Len(t, repos, 1)

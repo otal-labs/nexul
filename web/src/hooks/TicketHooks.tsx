@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
+import { getTicketLinkSetKey } from "@/hooks/TicketLinkHooks";
 import {
   TicketRole,
   type LinkBranchFormData,
@@ -54,6 +55,7 @@ export const useCreateTicket = () => {
       await client.invalidateQueries({ queryKey: [getTicketsKey] });
       if (vars.doc_id) await client.invalidateQueries({ queryKey: [getTicketsByDocKey, vars.doc_id] });
       if (vars.project_id) await client.invalidateQueries({ queryKey: [getTicketsByProjectKey, vars.project_id] });
+      if (vars.origin_id) await client.invalidateQueries({ queryKey: [getTicketLinkSetKey, vars.origin_id] });
       toast.success("Ticket created");
     },
     onError: (error) => toast.error(errorMessage(error)),

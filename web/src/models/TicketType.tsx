@@ -12,6 +12,9 @@ export interface TicketType {
   updated_at: string;
 }
 
+// Mirrors the server's rule: the type named "bug" (any case) must carry a found-in link; a renamed type is ordinary.
+export const isBugType = (name: string): boolean => name.trim().toLowerCase() === "bug";
+
 export const SaveTicketTypeFormSchema = z.object({
   name: z.string().trim().min(1, "Type name is required"),
 });

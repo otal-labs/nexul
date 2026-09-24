@@ -13,6 +13,7 @@ import { getDnsExposuresKey, getDnsGatewaysKey } from "@/hooks/DnsHooks";
 import { getDocKey, getDocsKey } from "@/hooks/DocHooks";
 import { getInstanceUpgradeKey } from "@/hooks/InstanceUpgradeHooks";
 import { getNotificationsKey, getUnreadCountKey } from "@/hooks/NotificationHooks";
+import { getHarnessProvidersKey } from "@/hooks/PairingHooks";
 import { getRunnerQueueKey, getRunnersKey } from "@/hooks/RunnerHooks";
 import { getServiceDeploysKey, getServicesKey } from "@/hooks/ServiceHooks";
 import { getStackDeploysKey } from "@/hooks/StackHooks";
@@ -30,6 +31,7 @@ import {
 } from "@/hooks/ChatHooks";
 import type { Message } from "@/models/Chat";
 import { getServerVersionKey, notifyIfServerUpdated } from "@/hooks/VersionHooks";
+import { setCachedTunnelStatus, type TunnelStatusChangedPayload } from "@/hooks/PairingHooks";
 import { getApplicablePlaysKey, getWorkspacePlaysKey } from "@/hooks/PlayHooks";
 import { getActiveTrailsKey, getTrailKey, getTrailsKey } from "@/hooks/TrailHooks";
 import { useAgentStreamStore } from "@/stores/agentStreamStore";
@@ -57,6 +59,9 @@ const pushTopics: Record<string, string[]> = {
   "dns.gateway_changed": [getDnsGatewaysKey],
   "dns.exposure_changed": [getDnsExposuresKey],
   "notification.created": [getNotificationsKey, getUnreadCountKey],
+  // The pickers' "needs setup" tags follow a setup turn confirming or withdrawing a provider.
+  "computer.setup_confirmed": [getHarnessProvidersKey],
+  "computer.setup_unconfirmed": [getHarnessProvidersKey],
   "category.created": [getCategoriesKey, getProjectCategoriesKey],
   "category.updated": [getCategoriesKey, getProjectCategoriesKey],
   "category.deleted": [getCategoriesKey, getProjectCategoriesKey],
@@ -168,6 +173,10 @@ const dispatch = (client: ReturnType<typeof useQueryClient>) => (frame: ServerFr
   if (frame.topic === "chat.message.deleted") {
     const p = frame.payload as MessageDeletedPayload;
     if (p.message_id) markCachedMessageDeleted(client, p.conversation_id, p.message_id, p.deleted_at);
+  }
+  if (frame.topic === "computer.tunnel_status_changed") {
+    setCachedTunnelStatus(client, frame.payload as TunnelStatusChangedPayload);
+    return;
   }
   if (frame.topic === "voice.occupancy.changed") {
     const p = frame.payload as OccupancyChangedPayload;

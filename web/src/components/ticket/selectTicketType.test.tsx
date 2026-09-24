@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { bodyForType } from "@/components/ticket/selectTicketType";
+import { bodyForType, offeredTicketTypes } from "@/components/ticket/selectTicketType";
 import type { TicketType } from "@/models/TicketType";
 
 const type = (id: string, body_template: string): TicketType => ({
@@ -25,5 +25,23 @@ describe("bodyForType", () => {
     ["an unknown type leaves an empty body", "", "missing", ""],
   ])("%s", (_name, body, typeId, want) => {
     expect(bodyForType(body, types, typeId)).toBe(want);
+  });
+});
+
+describe("offeredTicketTypes", () => {
+  const withBug = [type("task", ""), type("Bug", ""), type("feature", "")];
+
+  it("leaves the bug type out of the normal dialog", () => {
+    expect(offeredTicketTypes(withBug, false).map((t) => t.id)).toEqual(["task", "feature"]);
+  });
+
+  it("offers only the bug type when reporting a bug", () => {
+    expect(offeredTicketTypes(withBug, true).map((t) => t.id)).toEqual(["Bug"]);
+  });
+
+  it("offers every type to a bug report in a project with no bug type", () => {
+    const renamed = [type("task", ""), type("defect", "")];
+    expect(offeredTicketTypes(renamed, true)).toEqual(renamed);
+    expect(offeredTicketTypes(renamed, false)).toEqual(renamed);
   });
 });

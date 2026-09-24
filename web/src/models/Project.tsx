@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import type { RepoRole, TestsLocation } from "@/enums/Project";
+
 // Values are lucide-react component names stored verbatim, looked up directly wherever an icon renders.
 export const PROJECT_ICON_NAMES = [
   "Box",
@@ -26,6 +28,8 @@ export interface Project {
   position: number;
   /** Owner-configured lucide-react icon name, "" when unset — falls back to prefix-only rendering. */
   icon: string;
+  /** Where the project's tests live, as answered in the project wizard; the interview starts from it. */
+  tests_location: TestsLocation;
   created_at: string;
   updated_at: string;
 }
@@ -59,6 +63,7 @@ export interface RepoRef {
   full_name: string;
   /** Which connected git connector hosts this repo; "github" is the only real option today. */
   connector_id: string;
+  role: RepoRole;
 }
 
 export interface DeleteImpact {

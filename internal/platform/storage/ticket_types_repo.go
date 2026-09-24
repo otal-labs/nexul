@@ -105,13 +105,22 @@ func (r *TicketTypesRepo) CountTickets(ctx context.Context, typeID string) (int,
 	return int(n), nil
 }
 
-// BodyTemplate returns a type's body template; satisfies tickets' consumer-side TypeTemplates seam.
+// BodyTemplate returns a type's body template; satisfies tickets' consumer-side TicketTypes seam.
 func (r *TicketTypesRepo) BodyTemplate(ctx context.Context, typeID string) (string, error) {
 	t, err := r.Get(ctx, typeID)
 	if err != nil {
 		return "", err
 	}
 	return t.BodyTemplate, nil
+}
+
+// TypeName returns a type's name, which tickets reads to recognise the bug type.
+func (r *TicketTypesRepo) TypeName(ctx context.Context, typeID string) (string, error) {
+	t, err := r.Get(ctx, typeID)
+	if err != nil {
+		return "", err
+	}
+	return t.Name, nil
 }
 
 func toTicketType(row sqlcgen.TicketType) *workspace.TicketType {

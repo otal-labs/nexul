@@ -143,6 +143,14 @@ export const SaveTicketFormSchema = z.object({
   tester: z.string().optional(),
   category_id: z.string().optional(),
   type_id: z.string().optional(),
+  // The ticket a bug was found in; origin_unknown records that nobody knows instead of a guessed link.
+  origin_id: z.string().optional(),
+  origin_unknown: z.boolean().optional(),
 });
 
 export type SaveTicketFormData = z.infer<typeof SaveTicketFormSchema>;
+
+export const ReportBugFormSchema = SaveTicketFormSchema.refine((d) => !!d.origin_id || d.origin_unknown === true, {
+  message: "Pick the ticket this bug was found in, or tick Origin unknown",
+  path: ["origin_id"],
+});

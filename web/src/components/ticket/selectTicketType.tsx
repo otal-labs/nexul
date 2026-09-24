@@ -1,7 +1,7 @@
 import type { UseFormReturn } from "react-hook-form";
 
 import type { SaveTicketFormData } from "@/models/Ticket";
-import type { TicketType } from "@/models/TicketType";
+import { isBugType, type TicketType } from "@/models/TicketType";
 
 export type TicketTypeForm = Pick<UseFormReturn<SaveTicketFormData>, "setValue" | "getValues">;
 
@@ -15,4 +15,11 @@ export const bodyForType = (body: string, ticketTypes: TicketType[], typeId: str
 export const selectTicketType = (form: TicketTypeForm, ticketTypes: TicketType[], typeId: string) => {
   form.setValue("type_id", typeId);
   form.setValue("body", bodyForType(form.getValues("body"), ticketTypes, typeId));
+};
+
+// Bugs are filed through Report a bug, so the normal dialog offers every other type; a project with no bug type offers all.
+export const offeredTicketTypes = (ticketTypes: TicketType[], bug: boolean): TicketType[] => {
+  if (!bug) return ticketTypes.filter((t) => !isBugType(t.name));
+  const bugTypes = ticketTypes.filter((t) => isBugType(t.name));
+  return bugTypes.length > 0 ? bugTypes : ticketTypes;
 };

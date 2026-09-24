@@ -24,9 +24,10 @@ type UserLogins interface {
 	LoginForUserID(ctx context.Context, userID string) (string, error)
 }
 
-// TypeTemplates is workspace's ticket types, read for a type's body template without importing workspace (ADR 0017).
-type TypeTemplates interface {
+// TicketTypes is workspace's ticket types, read for a type's name and body template without importing workspace (ADR 0017).
+type TicketTypes interface {
 	BodyTemplate(ctx context.Context, typeID string) (string, error)
+	TypeName(ctx context.Context, typeID string) (string, error)
 }
 
 // LinkRepo persists found-in and blocked-by links; writes carry outbox events.
@@ -35,6 +36,8 @@ type LinkRepo interface {
 	ListLinkEnds(ctx context.Context, id string) (from, to []LinkEnd, err error)
 	// BlockerIDs returns the ids a ticket is directly blocked by, for the cycle walk.
 	BlockerIDs(ctx context.Context, id string) ([]string, error)
+	// CreateWithLink inserts a ticket and a link it holds in one transaction, so a bug is never stored without its found-in.
+	CreateWithLink(ctx context.Context, t *Ticket, link TicketLink, evts ...eventbus.OutboxEvent) error
 	// PutLink inserts a link; a found_in link replaces any found-in the ticket already holds.
 	PutLink(ctx context.Context, link TicketLink, evts ...eventbus.OutboxEvent) error
 	// DeleteLink returns false when no such link existed; a found_in link is matched by ticket alone.

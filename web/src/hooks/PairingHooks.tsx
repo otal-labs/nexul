@@ -1,10 +1,12 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import type { AxiosError } from "axios";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
 import {
   HARNESS_READINESS_COPY,
   type Computer,
+  type CreateComputerTunnelFormData,
   type HarnessProject,
   type HarnessProvider,
   type HarnessReadiness,
@@ -13,6 +15,8 @@ import {
   type PairingDefaultsFormData,
   type ProjectLink,
   type ProjectLinkFormData,
+  type TunnelPrerequisite,
+  type TunnelStatus,
 } from "@/models/Pairing";
 
 export const getComputersKey = "getComputers";
@@ -22,6 +26,8 @@ export const getHarnessProjectsKey = "getHarnessProjects";
 export const getPairingPresenceKey = "getPairingPresence";
 export const getHarnessProvidersKey = "getHarnessProviders";
 export const getHarnessResolveKey = "getHarnessResolve";
+export const getTunnelStatusKey = "getTunnelStatus";
+export const getTunnelTokenKey = "getTunnelToken";
 
 // The four NotConfiguredReason values internal/pairing.ResolveTarget can fail with, mapped onto HarnessReadiness states.
 const RESOLVE_REASON_TO_STATE: Record<string, Exclude<HarnessReadiness["state"], "ready" | "offline">> = {
@@ -55,6 +61,53 @@ export const usePairComputer = () => {
       toast.success("Computer paired");
     },
     onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
+// No error toast: a missing prerequisite renders as the step's own alert card, anything else inline under the form.
+export const useCreateComputerTunnel = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CreateComputerTunnelFormData) =>
+      (await api.post<Computer>("/api/pairing/computers/tunnel", input)).data,
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: [getComputersKey] });
+    },
+  });
+};
+
+// Read once; every later change arrives as a computer.tunnel_status_changed frame patched in by setCachedTunnelStatus.
+export const useFetchTunnelStatus = (computerId: string) =>
+  useQuery({
+    queryKey: [getTunnelStatusKey, computerId],
+    queryFn: async () => (await api.get<TunnelStatus>(`/api/pairing/computers/${computerId}/tunnel/status`)).data,
+    enabled: !!computerId,
+  });
+
+export const useFetchTunnelToken = (computerId: string) =>
+  useQuery({
+    queryKey: [getTunnelTokenKey, computerId],
+    queryFn: async () => (await api.get<{ token: string }>(`/api/pairing/computers/${computerId}/tunnel/token`)).data.token,
+    enabled: !!computerId,
+    staleTime: Infinity,
+  });
+
+// The tunnel routes add a reason to the error envelope when an instance prerequisite is missing.
+export const tunnelPrerequisite = (error: unknown): TunnelPrerequisite | undefined => {
+  const reason = (error as AxiosError<{ reason?: string }> | null)?.response?.data?.reason;
+  if (reason === "cloudflare_not_connected" || reason === "zero_trust_disabled") return reason;
+  return undefined;
+};
+
+export interface TunnelStatusChangedPayload extends TunnelStatus {
+  computer_id: string;
+}
+
+export const setCachedTunnelStatus = (client: QueryClient, p: TunnelStatusChangedPayload) => {
+  client.setQueryData<TunnelStatus>([getTunnelStatusKey, p.computer_id], {
+    tunnel: p.tunnel,
+    harness_reachable: p.harness_reachable,
+    ...(p.harness_version && { harness_version: p.harness_version }),
   });
 };
 

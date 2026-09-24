@@ -408,6 +408,7 @@ func TestService_ResolveToken(t *testing.T) {
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrFatal))
 		assert.True(t, errors.Is(err, apperrs.ErrRetryable))
+		assert.ErrorIs(t, err, ErrCloudflareNotConnected)
 	})
 	t.Run("token provider failure is fatal retryable", func(t *testing.T) {
 		s := newTestService(newFakeRepo(), nil, &fakeTokenProvider{err: errBoom})

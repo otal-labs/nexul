@@ -1,5 +1,6 @@
 import { AlertCircle, ExternalLink, SearchIcon } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 
 import { errorMessage } from "@/api/client";
 import { EmptyState } from "@/components/EmptyState";
@@ -7,9 +8,12 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TestsLocationChoice } from "@/components/wizard/TestsLocationChoice";
+import { useFetchProjectRepos, useSaveTestsAnswer } from "@/hooks/ProjectHooks";
 import { useFetchRepositories, useScanRepository } from "@/hooks/RepositoryHooks";
 import { manualCandidate, parseInstallUrl, type Repo } from "@/models/Repository";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
+import { TestsLocation } from "@/enums/Project";
 
 interface RepositoryRowProps {
   repo: Repo;
@@ -46,6 +50,18 @@ export const WizardRepositoryStep = ({ onDone }: WizardRepositoryStepProps) => {
   const setRepository = useProjectWizardStore((s) => s.setRepository);
   const setScanResult = useProjectWizardStore((s) => s.setScanResult);
   const setCandidate = useProjectWizardStore((s) => s.setCandidate);
+  const { projectId, attachStackId, testsLocation, testsRepo } = useProjectWizardStore(
+    useShallow((s) => ({
+      projectId: s.projectId,
+      attachStackId: s.attachStackId,
+      testsLocation: s.testsLocation,
+      testsRepo: s.testsRepo,
+    })),
+  );
+  const { data: projectRepos } = useFetchProjectRepos(projectId ?? undefined);
+  const saveTestsAnswer = useSaveTestsAnswer();
+  const asksTests = !!projectId && !attachStackId;
+  const separateTestsRepo = testsLocation === TestsLocation.Separate ? testsRepo : null;
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<Repo | null>(null);
   const [dockerfilePath, setDockerfilePath] = useState("Dockerfile");
@@ -53,9 +69,18 @@ export const WizardRepositoryStep = ({ onDone }: WizardRepositoryStepProps) => {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!repos) return [];
-    if (!q) return repos;
-    return repos.filter((r) => r.full_name.toLowerCase().includes(q));
-  }, [repos, query]);
+    const deployable = repos.filter((r) => r.id !== separateTestsRepo?.id);
+    if (!q) return deployable;
+    return deployable.filter((r) => r.full_name.toLowerCase().includes(q));
+  }, [repos, query, separateTestsRepo]);
+
+  // The answer is saved on the way out so it lands whichever way the step is left; a failed save is toasted.
+  const advance = async () => {
+    if (asksTests && testsLocation) {
+      await saveTestsAnswer.mutateAsync({ projectId, testsLocation, testsRepo, attached: projectRepos ?? [] });
+    }
+    onDone();
+  };
 
   const scan = async (repo: Repo) => {
     setPicked(repo);
@@ -66,18 +91,19 @@ export const WizardRepositoryStep = ({ onDone }: WizardRepositoryStepProps) => {
       if (result.candidates.length > 0) {
         const preferred = result.candidates.find((c) => c.kind === "compose") ?? result.candidates[0]!;
         setCandidate(preferred);
-        onDone();
+        await advance();
       }
     } catch {
-      // Rendered inline below (not-installed vs generic failure vs empty candidates); no toast for this one.
+      // Scan failures render inline below; a failed tests-answer save was already toasted by its hook.
     }
   };
 
-  const continueManually = () => {
+  const continueManually = async () => {
     if (!picked || !dockerfilePath.trim()) return;
     setRepository(picked);
     setCandidate(manualCandidate(picked.name, dockerfilePath.trim()));
-    onDone();
+    // A failed tests-answer save was already toasted by its hook; the step stays put.
+    await advance().catch(() => undefined);
   };
 
   const notInstalled =
@@ -88,6 +114,8 @@ export const WizardRepositoryStep = ({ onDone }: WizardRepositoryStepProps) => {
 
   return (
     <div className="space-y-4">
+      {asksTests && <TestsLocationChoice />}
+      {asksTests && <p className="text-sm font-medium">Repository to deploy</p>}
       <div className="relative">
         <SearchIcon
           className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
@@ -151,7 +179,7 @@ export const WizardRepositoryStep = ({ onDone }: WizardRepositoryStepProps) => {
                 aria-label="Dockerfile path"
                 className="h-8 w-40"
               />
-              <Button size="sm" onClick={continueManually} disabled={!dockerfilePath.trim()}>
+              <Button size="sm" onClick={() => void continueManually()} disabled={!dockerfilePath.trim()}>
                 Continue manually
               </Button>
             </div>

@@ -23,6 +23,8 @@ Tickets don't have to come from a document — you can create one directly — b
 
 - **Types.** Owners define ticket types (`bug`, `feature`, `task`, or anything project-specific), each with its own icon and color.
 - **Branches and PRs.** From a ticket's Development section you can create a new branch (choosing repository and base branch) or link an existing branch or PR. A branch or PR can link to more than one ticket. Pull requests live here, on the ticket page — there's no separate pull requests page.
+- **Bugs.** A bug is a ticket of the type named `bug`, and it always says which ticket it was found in. Use **Report a bug** on the ticket page to file one linked to that ticket, or **Report a bug** in the board's add menu, where you can tick **Origin unknown** instead. The normal New ticket dialog offers every other type. A done ticket is never reopened: a bug found after done is a new ticket, and the done ticket's page lists it under **Bugs found after done**. A type renamed away from `bug` stops being treated as one.
+- **Blocked by.** A ticket can wait on others. Its card shows a blocked icon until every blocker reaches a done column, but it still moves freely. A play on a blocked ticket asks you to confirm first.
 - **Finishing.** A ticket is finished once it has at least one linked PR, none of its linked PRs are still open, and at least one was merged. PRs closed without merging don't block or count toward this.
 - **Attachments.** Same file list as a document — paste, drop, or `/image` into the description, and the ticket's Attachments list tracks everything added.
 

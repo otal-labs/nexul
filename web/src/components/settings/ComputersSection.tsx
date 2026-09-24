@@ -1,5 +1,6 @@
-import { PlusIcon } from "lucide-react";
+import { LinkIcon } from "lucide-react";
 
+import { PairComputerDialog } from "@/components/pairing/PairComputerDialog";
 import { ComputerRow } from "@/components/settings/ComputerRow";
 import { HarnessReadinessLine } from "@/components/settings/HarnessReadinessLine";
 import { PairComputerForm } from "@/components/settings/PairComputerForm";
@@ -17,9 +18,10 @@ export const ComputersSection = () => {
   const presence = useFetchPresence();
   const { open: openPair } = useFormDialog();
 
-  const pair = async () => {
+  // For a machine the server can already reach (a VPS, the LAN), no tunnel needed.
+  const pairByUrl = async () => {
     await openPair<PairComputerFormData>({
-      title: "Pair a computer",
+      title: "Pair by URL",
       description: "Run `t3 pair` on the machine, then paste the printed one-time token here.",
       schema: PairComputerFormSchema,
       okLabel: "Pair",
@@ -38,10 +40,13 @@ export const ComputersSection = () => {
     >
       <div className="space-y-4">
         <HarnessReadinessLine />
-        <Button type="button" onClick={pair}>
-          <PlusIcon className="size-4" />
-          Pair a computer
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <PairComputerDialog />
+          <Button type="button" variant="outline" onClick={pairByUrl}>
+            <LinkIcon className="size-4" aria-hidden />
+            Pair by URL
+          </Button>
+        </div>
         {isPending && <LoadingDisplay />}
         {error && <ErrorDisplay error={error} />}
         {computers && computers.length === 0 && <NoDataDisplay message="No computers paired yet" />}

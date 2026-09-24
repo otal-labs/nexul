@@ -28,7 +28,7 @@ func TestMCPTools_Shape(t *testing.T) {
 	s, repo, _ := newOwnerRepo(t, true)
 	repo.projects["p-1"] = &Project{ID: "p-1", Name: "Backend"}
 	tools := MCPTools(s)
-	require.Len(t, tools, 29)
+	require.Len(t, tools, 30)
 	for _, tool := range tools {
 		assert.NotEmpty(t, tool.Name)
 		assert.NotEmpty(t, tool.Description)

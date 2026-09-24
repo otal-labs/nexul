@@ -2,6 +2,7 @@ package tickets
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/otal-labs/nexul/internal/platform/colors"
@@ -131,6 +132,12 @@ const (
 	RoleDeveloper Role = "developer"
 	RoleTester    Role = "tester"
 )
+
+// BugTypeName is the ticket type that must carry a found-in link; matched by name, so renaming the type away drops the rule.
+const BugTypeName = "bug"
+
+// IsBugType reports whether a ticket type name is the bug type, ignoring case and surrounding space.
+func IsBugType(name string) bool { return strings.EqualFold(strings.TrimSpace(name), BugTypeName) }
 
 // LinkKind names a ticket-to-ticket link: found_in points a bug at its origin, blocked_by at a ticket that must reach done first.
 type LinkKind string

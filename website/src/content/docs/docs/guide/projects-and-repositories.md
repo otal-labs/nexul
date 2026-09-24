@@ -14,7 +14,7 @@ Each project gets its own board, its own docs list, and its own settings. Nothin
 Open the sidebar and pick **New project**. This starts the project wizard, which walks you straight from an empty project to a deployed service:
 
 1. **Project** — name and prefix (2-5 letters, used to render ticket ids like `BE-42`).
-2. **Repository** — pick one of your installed GitHub repositories (see [GitHub App](/docs/guide/github-app/)).
+2. **Repository** — say where the project's tests live, in the repository you deploy or in a separate one (see [A tests repository](#a-tests-repository)), then pick one of your installed GitHub repositories to deploy (see [GitHub App](/docs/guide/github-app/)).
 3. **Service** — the wizard scans the repository for a Dockerfile or compose file and proposes a candidate; pick the machine to deploy it on (see [Runners](/docs/guide/runners/)).
 4. **Env** — only shown if the repository has a `.env.example`; fill in the values it lists.
 5. **Reach** — optionally expose the service at a hostname.
@@ -32,6 +32,12 @@ The repository step isn't the only door in:
 - **Import from this machine** — from the [Runners](/docs/guide/runners/) page, next to a machine. This reads what's already running there (containers, networks, reverse proxies) and adopts it as unmanaged stacks. An unmanaged stack has no repository attached yet; use **Attach repository** on it to link one and make it a managed, deployable stack.
 
 Whichever door you use, a repository always ends up attached to exactly one project — the same repository can't be linked into two projects at once. Linking a repository that's already attached elsewhere is rejected outright instead of failing later during a deploy.
+
+## A tests repository
+
+A project deploys from one repository. If its end-to-end or other tests live in a repository of their own, attach that one as the project's **tests repository**: the repository step asks where tests live and, for a separate repository, lets you pick it. A tests repository is never deployed. Nexul refuses to build a stack from it or run a deploy of it, so the project keeps one deployable repository.
+
+The answer is stored on the project as its tests location (`same` or `separate`), and the interview starts from it. It shows in the project's **Repositories** list, where the tests repository carries a `tests` marker and can be removed like any other. Over MCP, `project_add_repo` takes `role: "tests"` (which also records the location as `separate`), `project_list_repos` returns each repository's role, and `project_set_tests_location` records or withdraws the answer.
 
 ## Members and roles
 

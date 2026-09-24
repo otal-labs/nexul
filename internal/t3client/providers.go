@@ -44,7 +44,7 @@ func (c *Client) Providers() ([]harness.Provider, error) {
 			}
 			models = append(models, harness.ProviderModel{Slug: m.Slug, Name: m.Name, IsDefault: m.IsDefault})
 		}
-		providers = append(providers, harness.Provider{ID: p.InstanceID, Name: name, Models: models})
+		providers = append(providers, harness.Provider{ID: p.InstanceID, Driver: p.Driver, Name: name, Models: models})
 	}
 	return providers, nil
 }

@@ -64,6 +64,10 @@ func (p *testProjects) RepoInProject(_ context.Context, _ string, _ string, _ st
 	return true, nil
 }
 
+func (p *testProjects) IsTestsRepo(_ context.Context, _ string, _ string) (bool, error) {
+	return false, nil
+}
+
 func seedStack(t *testing.T, store *storage.Store) *deploy.Stack {
 	t.Helper()
 	stack := &deploy.Stack{
