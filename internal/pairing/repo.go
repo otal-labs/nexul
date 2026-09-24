@@ -11,14 +11,14 @@ import (
 type Repo interface {
 	SetupStore
 
-	// SaveComputer upserts a computer row (create on first pairing, update in place on re-pair).
-	SaveComputer(ctx context.Context, c Computer) error
+	// SaveComputer upserts a computer and its events in one transaction; the tunnel is written on create only.
+	SaveComputer(ctx context.Context, c Computer, evts ...eventbus.OutboxEvent) error
 	// GetComputer returns one of userID's own computers, or ErrNotFound, never leaking a mismatched owner's row.
 	GetComputer(ctx context.Context, userID, id string) (*Computer, error)
 	// ListComputers returns userID's paired computers, newest first.
 	ListComputers(ctx context.Context, userID string) ([]Computer, error)
-	// DeleteComputer removes one of userID's own computers, or ErrNotFound.
-	DeleteComputer(ctx context.Context, userID, id string) error
+	// DeleteComputer removes one of userID's own computers and writes its events in one transaction, or ErrNotFound.
+	DeleteComputer(ctx context.Context, userID, id string, evts ...eventbus.OutboxEvent) error
 
 	// GetDefaults returns userID's defaults, or a zero Defaults if never set (not an error, defaults are optional).
 	GetDefaults(ctx context.Context, userID string) (Defaults, error)

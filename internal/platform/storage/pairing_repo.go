@@ -25,18 +25,33 @@ type PairingRepo struct {
 	q  *sqlcgen.Queries
 }
 
-func (r *PairingRepo) SaveComputer(ctx context.Context, c pairing.Computer) error {
+func (r *PairingRepo) SaveComputer(ctx context.Context, c pairing.Computer, evts ...eventbus.OutboxEvent) error {
+	var t pairing.ComputerTunnel
+	if c.Tunnel != nil {
+		t = *c.Tunnel
+	}
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		err := r.q.WithTx(tx).SavePairingComputer(ctx, sqlcgen.SavePairingComputerParams{
 			ID: c.ID, UserID: c.UserID, Kind: string(c.Kind), Name: c.Name, ServerUrl: c.ServerURL, BearerToken: c.BearerToken,
 			TokenExpiresAt: c.TokenExpiresAt.Unix(), HarnessVersion: c.HarnessVersion,
 			CreatedAt: c.CreatedAt.Unix(), UpdatedAt: c.UpdatedAt.Unix(),
+			TunnelID: t.TunnelID, TunnelHostname: t.Hostname, TunnelZoneID: t.ZoneID, TunnelRecordID: t.RecordID,
+			TunnelAccessAppID: t.AccessAppID,
 		})
 		if err != nil {
 			return fmt.Errorf("save computer %s: %w", c.ID, classifyWriteErr(err))
 		}
-		return nil
+		return insertOutboxRows(ctx, tx, evts)
 	})
+}
+
+// ComputerTunnelHostnameExists reports whether host is a computer tunnel's hostname, the only hosts the Access headers go to.
+func (r *PairingRepo) ComputerTunnelHostnameExists(ctx context.Context, host string) (bool, error) {
+	exists, err := r.q.PairingComputerTunnelHostnameExists(ctx, host)
+	if err != nil {
+		return false, fmt.Errorf("look up computer tunnel hostname: %w", err)
+	}
+	return exists, nil
 }
 
 func (r *PairingRepo) GetComputer(ctx context.Context, userID, id string) (*pairing.Computer, error) {
@@ -60,7 +75,7 @@ func (r *PairingRepo) ListComputers(ctx context.Context, userID string) ([]pairi
 	return out, nil
 }
 
-func (r *PairingRepo) DeleteComputer(ctx context.Context, userID, id string) error {
+func (r *PairingRepo) DeleteComputer(ctx context.Context, userID, id string, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).DeletePairingComputer(ctx, sqlcgen.DeletePairingComputerParams{ID: id, UserID: userID})
 		if err != nil {
@@ -69,7 +84,7 @@ func (r *PairingRepo) DeleteComputer(ctx context.Context, userID, id string) err
 		if n == 0 {
 			return fmt.Errorf("delete computer %s: %w", id, apperrs.ErrNotFound)
 		}
-		return nil
+		return insertOutboxRows(ctx, tx, evts)
 	})
 }
 
@@ -204,6 +219,17 @@ func toPairingComputer(row sqlcgen.PairingComputer) pairing.Computer {
 		TokenExpiresAt: time.Unix(row.TokenExpiresAt, 0).UTC(), HarnessVersion: row.HarnessVersion,
 		SetupConfirmedAt: unixPtrFromNull(row.SetupConfirmedAt),
 		CreatedAt:        time.Unix(row.CreatedAt, 0).UTC(), UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
+		Tunnel: toComputerTunnel(row),
+	}
+}
+
+func toComputerTunnel(row sqlcgen.PairingComputer) *pairing.ComputerTunnel {
+	if row.TunnelID == "" {
+		return nil
+	}
+	return &pairing.ComputerTunnel{
+		TunnelID: row.TunnelID, Hostname: row.TunnelHostname, ZoneID: row.TunnelZoneID, RecordID: row.TunnelRecordID,
+		AccessAppID: row.TunnelAccessAppID,
 	}
 }
 

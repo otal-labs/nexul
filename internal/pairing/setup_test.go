@@ -158,9 +158,9 @@ func TestSetup_RePair_KeepsTheConfirmation(t *testing.T) {
 	assert.NotNil(t, setup.ConfirmedAt)
 }
 
-func TestTopics_ListsBothSetupTopics(t *testing.T) {
+func TestTopics_ListsSetupAndTunnelTopics(t *testing.T) {
 	t.Parallel()
-	assert.Equal(t, []string{"computer.setup_confirmed", "computer.setup_unconfirmed"}, Topics())
+	assert.Equal(t, []string{"computer.setup_confirmed", "computer.setup_unconfirmed", "computer.tunnel_created", "computer.tunnel_removed"}, Topics())
 }
 
 func toolNamed(t *testing.T, tools []mcptool.Tool, name string) mcptool.Tool {

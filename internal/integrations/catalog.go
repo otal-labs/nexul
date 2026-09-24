@@ -711,6 +711,28 @@ var catalogSchemas = map[string]string{
 			"skills": {"type": "array", "items": {"type": "string"}}
 		}
 	}`,
+	"computer.tunnel_created": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["computer_id", "user_id", "tunnel_id", "hostname"],
+		"properties": {
+			"computer_id": {"type": "string"},
+			"user_id": {"type": "string"},
+			"tunnel_id": {"type": "string"},
+			"hostname": {"type": "string"}
+		}
+	}`,
+	"computer.tunnel_removed": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["computer_id", "user_id", "tunnel_id", "hostname"],
+		"properties": {
+			"computer_id": {"type": "string"},
+			"user_id": {"type": "string"},
+			"tunnel_id": {"type": "string"},
+			"hostname": {"type": "string"}
+		}
+	}`,
 	"ticket.category_changed": `{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",
 		"type": "object",

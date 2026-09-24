@@ -178,13 +178,17 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	deploySvc.SetGatewayJoin(deployGatewayJoinAdapter{dns: dnsSvc})
 	deploySvc.SetGatewayAdopter(deployGatewayAdopterAdapter{dns: dnsSvc})
 	// One client per harness kind; the real ones talk to the user's own machines, never reachable in tests.
-	harnesses := harness.Registry{harness.KindT3Code: t3client.NewHarness(t3client.Options{Logger: logger})}
+	harnessHTTP := &http.Client{Transport: &cloudflare.AccessTransport{
+		Credentials: computerTunnelAccess{hosts: store.Pairing, dns: dnsSvc}.Credentials,
+	}}
+	harnesses := harness.Registry{harness.KindT3Code: t3client.NewHarness(t3client.Options{Logger: logger, HTTPClient: harnessHTTP})}
 	var presenceKeeper *presence.Keeper // constructed below; pairing only fires the callback after requests start flowing
 	pairingSvc := pairing.NewService(pairing.Config{
 		Repo:               store.Pairing,
 		Harnesses:          harnesses,
 		EncryptionKey:      encKey,
 		OnComputersChanged: func(userID string) { presenceKeeper.Refresh(userID) },
+		Tunnels:            pairingTunnels{dns: dnsSvc},
 	})
 	presenceKeeper = presence.New(presence.Config{
 		Sessions:  pairingSvc.ActiveSessions,
