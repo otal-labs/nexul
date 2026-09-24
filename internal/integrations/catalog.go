@@ -71,6 +71,7 @@ var catalogSchemas = map[string]string{
 					"body": {"type": "string"},
 					"status": {"type": "string", "enum": ["open", "in_progress", "done", "closed"]},
 					"doc_id": {"type": "string"},
+					"assignee": {"type": "string", "deprecated": true, "description": "Deprecated in favour of developer; always carries the same value."},
 					"developer": {"type": "string"},
 					"tester": {"type": "string"},
 					"reporter": {
@@ -476,6 +477,17 @@ var catalogSchemas = map[string]string{
 		"type": "object",
 		"required": ["ticket"],
 		"properties": {"ticket": {"type": "object"}}
+	}`,
+	"ticket.assignee_changed": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"description": "Deprecated in favour of ticket.developer_changed; still published with the same payload whenever the developer changes.",
+		"required": ["ticket", "from", "to"],
+		"properties": {
+			"ticket": {"type": "object"},
+			"from": {"type": "string"},
+			"to": {"type": "string"}
+		}
 	}`,
 	"ticket.developer_changed": `{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",

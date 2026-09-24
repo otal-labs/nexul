@@ -5,6 +5,7 @@ const (
 	TopicCreated          = "ticket.created"
 	TopicUpdated          = "ticket.updated"
 	TopicStatusChanged    = "ticket.status_changed"
+	TopicAssigneeChanged  = "ticket.assignee_changed" // deprecated alias of TopicDeveloperChanged, still published (ADR 0044)
 	TopicDeveloperChanged = "ticket.developer_changed"
 	TopicTesterChanged    = "ticket.tester_changed"
 	TopicFinished         = "ticket.finished"
@@ -13,7 +14,7 @@ const (
 
 // Topics returns every topic the tickets domain publishes.
 func Topics() []string {
-	return []string{TopicCreated, TopicUpdated, TopicStatusChanged, TopicDeveloperChanged, TopicTesterChanged, TopicFinished, TopicDeleted}
+	return []string{TopicCreated, TopicUpdated, TopicStatusChanged, TopicAssigneeChanged, TopicDeveloperChanged, TopicTesterChanged, TopicFinished, TopicDeleted}
 }
 
 // CreatedEvent field names are part of the published contract (ADR 0044) and are additive-only.
@@ -37,6 +38,13 @@ type StatusChangedEvent struct {
 
 // PersonChangedEvent is the payload for ticket.developer_changed and ticket.tester_changed; empty From/To mean nobody.
 type PersonChangedEvent struct {
+	Ticket Ticket `json:"ticket"`
+	From   string `json:"from"`
+	To     string `json:"to"`
+}
+
+// AssigneeChangedEvent is ticket.assignee_changed's unchanged payload, published beside ticket.developer_changed.
+type AssigneeChangedEvent struct {
 	Ticket Ticket `json:"ticket"`
 	From   string `json:"from"`
 	To     string `json:"to"`

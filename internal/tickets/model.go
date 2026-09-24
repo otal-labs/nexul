@@ -1,6 +1,7 @@
 package tickets
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/otal-labs/nexul/internal/platform/colors"
@@ -36,6 +37,15 @@ type Ticket struct {
 	UpdatedAt  time.Time  `json:"updated_at"`
 	FinishedAt *time.Time `json:"finished_at,omitempty"`
 	Labels     []string   `json:"labels"`
+}
+
+// MarshalJSON adds the deprecated assignee field, always equal to developer, so the published payload stays additive (ADR 0044).
+func (t Ticket) MarshalJSON() ([]byte, error) {
+	type plain Ticket
+	return json.Marshal(struct {
+		plain
+		Assignee string `json:"assignee"`
+	}{plain(t), t.Developer})
 }
 
 // CanTransition allows any status pair; a same-status move is a no-op, not an error.

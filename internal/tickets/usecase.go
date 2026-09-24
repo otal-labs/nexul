@@ -194,8 +194,11 @@ func (s *Service) SetPerson(ctx context.Context, id string, role Role, login str
 	}
 	*field = login
 	updated.UpdatedAt = s.now().UTC()
-	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: personTopic(role), Payload: PersonChangedEvent{Ticket: updated, From: previous, To: login}}
-	if err := s.repo.UpdatePerson(ctx, id, role, login, evt); err != nil {
+	evts := []eventbus.OutboxEvent{{ID: ids.New(), Topic: personTopic(role), Payload: PersonChangedEvent{Ticket: updated, From: previous, To: login}}}
+	if role == RoleDeveloper {
+		evts = append(evts, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicAssigneeChanged, Payload: AssigneeChangedEvent{Ticket: updated, From: previous, To: login}})
+	}
+	if err := s.repo.UpdatePerson(ctx, id, role, login, evts...); err != nil {
 		return nil, fmt.Errorf("set %s on ticket %s: %w", role, id, err)
 	}
 	return &updated, nil

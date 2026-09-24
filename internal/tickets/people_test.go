@@ -2,6 +2,7 @@ package tickets
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -74,6 +75,24 @@ func TestSetPerson(t *testing.T) {
 			})
 		})
 	}
+	t.Run("a developer change still publishes the deprecated ticket.assignee_changed", func(t *testing.T) {
+		repo := newFakeRepo()
+		s := newTestService(repo)
+		created, err := s.Create(t.Context(), "p-1", "ticket", "", "", "lena")
+		require.NoError(t, err)
+		_, err = s.SetPerson(t.Context(), created.ID, RoleDeveloper, "onik97")
+		require.NoError(t, err)
+		evts := repo.eventsFor(TopicAssigneeChanged)
+		require.Len(t, evts, 1)
+		e := evts[0].Payload.(AssigneeChangedEvent)
+		assert.Equal(t, "lena", e.From)
+		assert.Equal(t, "onik97", e.To)
+		assert.Equal(t, "onik97", e.Ticket.Developer)
+
+		_, err = s.SetPerson(t.Context(), created.ID, RoleTester, "lena")
+		require.NoError(t, err)
+		assert.Len(t, repo.eventsFor(TopicAssigneeChanged), 1, "a tester change is not an assignee change")
+	})
 	t.Run("unknown role is invalid", func(t *testing.T) {
 		_, err := newTestService(newFakeRepo()).SetPerson(t.Context(), "t-1", Role("owner"), "onik97")
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
@@ -87,6 +106,19 @@ func TestSetPerson(t *testing.T) {
 		assert.Equal(t, "onik97", got.Developer)
 		assert.Equal(t, "lena", got.Tester)
 	})
+}
+
+func TestTicketJSON_KeepsDeprecatedAssignee(t *testing.T) {
+	raw, err := json.Marshal(CreatedEvent{Ticket: Ticket{ID: "t-1", Developer: "onik97", Tester: "lena"}})
+	require.NoError(t, err)
+	var got struct {
+		Ticket map[string]any `json:"ticket"`
+	}
+	require.NoError(t, json.Unmarshal(raw, &got))
+	assert.Equal(t, "onik97", got.Ticket["assignee"])
+	assert.Equal(t, "onik97", got.Ticket["developer"])
+	assert.Equal(t, "lena", got.Ticket["tester"])
+	assert.Equal(t, "t-1", got.Ticket["id"])
 }
 
 func TestCreate_Reporter(t *testing.T) {
