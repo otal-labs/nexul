@@ -1,7 +1,7 @@
 # 15 — How a remote Nexul connects to a user's harness
 
 **Type:** grilling
-**Status:** open
+**Status:** claimed
 **Blocked by:** 14
 
 ## Question
