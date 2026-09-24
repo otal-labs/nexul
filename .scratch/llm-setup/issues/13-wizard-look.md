@@ -52,8 +52,8 @@ the repo in the owner's design-reference log, with notes.
 | The two checks | codedvisuals `status-health-check` | `items` from tunnel status and the T3 probe |
 | Install commands | codedvisuals `code-terminal` | Static lines (`animated={false}`), copy button; matches the terminal motif |
 | Setup runs | codedvisuals `ai-tools` | One row per provider; status from setup-turn events, not its demo timeline |
-| Dialog frame, step tabs | shadcncraft `modal-1`, `progress-3` | **Pro items; no licence key is configured.** With a key, add the registry header; without one, fall back per the rule |
-| Fallback frame | shadcn/ui `dialog`, `drawer`, `tabs`, `checkbox` | Dialog on desktop, drawer/sheet on mobile |
+| Dialog frame, step tabs | shadcncraft `modal-1`, `progress-3` | Pro items, rebuilt from their live demos: read each block's page for its dependency list, structure, spacing, and transition timings, then build it on shadcn/ui primitives (`dialog`, `drawer` for the mobile sheet, `tabs`) in Mono Console tokens |
+| Pre-selection checkboxes | shadcn/ui `checkbox` | Neither paid source has a better fit |
 
 codedvisuals components install as owned source files (React + Motion) and
 all take data through props. Re-skin every one in Mono Console tokens:
