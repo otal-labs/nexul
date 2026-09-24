@@ -79,8 +79,6 @@ func TestTokenVerifier_NamesTheMissingPermission(t *testing.T) {
 		{"zone read", "zones", "Zone → Zone: Read"},
 		{"dns edit", "zones/z1/dns_records", "Zone → DNS: Edit"},
 		{"tunnel edit", "accounts/acct-1/cfd_tunnel", "Account → Cloudflare Tunnel: Edit"},
-		{"access apps edit", "accounts/acct-1/access/apps", "Account → Access: Apps and Policies: Edit"},
-		{"access tokens edit", "accounts/acct-1/access/service_tokens", "Account → Access: Service Tokens: Edit"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -133,8 +131,14 @@ func TestTokenVerifier_ProbesWithAWriteNotARead(t *testing.T) {
 	t.Cleanup(func() { apiBaseURL = prev })
 
 	require.NoError(t, NewTokenVerifier(nil).Verify(context.Background(), map[string]string{"api_token": "tok"}))
-	assert.Equal(t, []string{"POST /zones/z1/dns_records", "POST /accounts/acct-1/cfd_tunnel",
-		"DELETE /accounts/acct-1/access/apps/" + nilUUID, "DELETE /accounts/acct-1/access/service_tokens/" + nilUUID}, methods,
+	assert.Equal(t, []string{"POST /zones/z1/dns_records", "POST /accounts/acct-1/cfd_tunnel"}, methods,
+		"the advisory Access checks never gate saving")
+
+	methods = nil
+	fields := map[string]string{"api_token": "tok"}
+	require.NoError(t, NewTokenVerifier(nil).VerifyCheck(context.Background(), fields, "access_apps_edit"))
+	require.NoError(t, NewTokenVerifier(nil).VerifyCheck(context.Background(), fields, "access_tokens_edit"))
+	assert.Equal(t, []string{"DELETE /accounts/acct-1/access/apps/" + nilUUID, "DELETE /accounts/acct-1/access/service_tokens/" + nilUUID}, methods,
 		"the Access probes delete an object that cannot exist, so verifying never mints a token")
 }
 
@@ -143,6 +147,11 @@ func TestTokenVerifier_ProviderOutageIsNotInvalid(t *testing.T) {
 	err := NewTokenVerifier(nil).Verify(context.Background(), map[string]string{"api_token": "tok"})
 	require.Error(t, err)
 	assert.False(t, errors.Is(err, apperrs.ErrInvalid))
+}
+
+func TestTokenVerifier_Verify_IgnoresAccessPermissions(t *testing.T) {
+	stubAPI(t, map[string]int{"accounts/acct-1/access": http.StatusForbidden}, "active")
+	require.NoError(t, NewTokenVerifier(nil).Verify(context.Background(), map[string]string{"api_token": "tok"}))
 }
 
 func TestTokenVerifier_AccessChecks(t *testing.T) {

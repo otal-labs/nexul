@@ -340,6 +340,45 @@ describe("ConnectorsSection", () => {
     expect(within(dialog).getByRole("button", { name: /^verify$/i })).toBeEnabled();
   });
 
+  it("shows a failed advisory check as a warning and still unlocks Confirm", async () => {
+    mocks.get.mockResolvedValue({
+      data: [
+        connectorEntry({
+          connector: {
+            id: "cloudflare",
+            name: "Cloudflare",
+            description: "Manages DNS records and tunnels for your deployed services",
+            category: "infrastructure",
+            icon: "cloudflare",
+            manual: [{ key: "api_token", label: "API token", secret: true }],
+            checks: [
+              { key: "dns_edit", label: "Zone → DNS: Edit" },
+              { key: "access_apps_edit", label: "Account → Access: Apps and Policies: Edit", advisory: true },
+            ],
+          },
+        }),
+      ],
+    });
+    mocks.post.mockImplementation(async (_url: string, _body: unknown, config?: { params?: { check?: string } }) => {
+      if (config?.params?.check === "access_apps_edit") throw new Error("zero trust");
+      return { data: undefined };
+    });
+    mocks.errorMessage.mockReturnValue("Zero Trust is not enabled on this Cloudflare account");
+    const user = userEvent.setup();
+    renderSection();
+
+    await user.click(await screen.findByRole("button", { name: /^connect$/i }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText(/api token/i), "tok-1");
+    await user.click(within(dialog).getByRole("button", { name: /^verify$/i }));
+
+    const advisory = await within(dialog).findByText("Account → Access: Apps and Policies: Edit");
+    await vi.waitFor(() => expect(advisory.closest("li")).toHaveAttribute("data-state", "warning"));
+    expect(within(dialog).getByText(/Zero Trust is not enabled/)).toBeInTheDocument();
+    expect(within(dialog).getByText("Zone → DNS: Edit").closest("li")).toHaveAttribute("data-state", "ok");
+    expect(await within(dialog).findByRole("button", { name: /^confirm$/i })).toBeEnabled();
+  });
+
   it("puts the green light out again when a field changes after Verify", async () => {
     mocks.get.mockResolvedValue({
       data: [

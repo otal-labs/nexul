@@ -31,7 +31,8 @@ func NewTokenVerifier(hc *http.Client) *TokenVerifier {
 	return &TokenVerifier{httpc: hc}
 }
 
-// Verify walks the calls the product will make later, so a token missing a permission fails here, not on the first deploy.
+// Verify walks the calls DNS and tunnels will make, so a token missing one fails here, not on the first deploy; the advisory
+// Access checks run only through VerifyCheck, so they never block saving.
 func (v *TokenVerifier) Verify(ctx context.Context, fields map[string]string) error {
 	token := fields["api_token"]
 	if err := v.verifyActive(ctx, token); err != nil {
@@ -44,13 +45,7 @@ func (v *TokenVerifier) Verify(ctx context.Context, fields map[string]string) er
 	if err := v.requireWrite(ctx, token, "zones/"+url.PathEscape(zone.ID)+"/dns_records", "Zone → DNS: Edit"); err != nil {
 		return err
 	}
-	if err := v.requireWrite(ctx, token, "accounts/"+url.PathEscape(zone.Account.ID)+"/cfd_tunnel", "Account → Cloudflare Tunnel: Edit"); err != nil {
-		return err
-	}
-	if err := v.requireAccessEdit(ctx, token, zone.Account.ID, "apps", accessAppsPermission); err != nil {
-		return err
-	}
-	return v.requireAccessEdit(ctx, token, zone.Account.ID, "service_tokens", accessTokensPermission)
+	return v.requireWrite(ctx, token, "accounts/"+url.PathEscape(zone.Account.ID)+"/cfd_tunnel", "Account → Cloudflare Tunnel: Edit")
 }
 
 // VerifyCheck implements connectors.CheckVerifier; every permission check first needs the zone it runs against.
@@ -156,12 +151,12 @@ func (v *TokenVerifier) requireAccessEdit(ctx context.Context, token, accountID,
 		return err
 	}
 	if env != nil && slices.ContainsFunc(env.Errors, func(e apiError) bool { return zeroTrustMissing(e.Message) }) {
-		return fmt.Errorf("%w: Zero Trust is not enabled on this Cloudflare account — enable it once in the Cloudflare dashboard (pick a team name and the Free plan), then verify again", apperrs.ErrInvalid)
+		return fmt.Errorf("%w: Zero Trust is not enabled on this Cloudflare account, which pairing computers by tunnel needs — enable it once in the Cloudflare dashboard (pick a team name and the Free plan), then verify again", apperrs.ErrInvalid)
 	}
 	denied := env != nil && !env.Success && status == http.StatusOK
 	switch {
 	case denied || status == http.StatusForbidden || status == http.StatusUnauthorized:
-		return fmt.Errorf("%w: the token is missing %s", apperrs.ErrInvalid, permission)
+		return fmt.Errorf("%w: the token is missing %s, needed only to pair computers by tunnel", apperrs.ErrInvalid, permission)
 	case status == http.StatusNotFound, status == http.StatusBadRequest, status < 300:
 		return nil
 	default:

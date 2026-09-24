@@ -41,10 +41,15 @@ Create the token in the Cloudflare dashboard with these permissions. The connect
 | Zone → Zone: Read | Lists your zones and finds the account your tunnels live in. |
 | Zone → DNS: Edit | Creates and updates the records that point your hostnames at Nexul. |
 | Account → Cloudflare Tunnel: Edit | Creates tunnels and issues the token `cloudflared` runs with. |
+
+Two more permissions are needed for pairing computers by tunnel. Without them the connector still connects; the dialog shows a warning on each missing one.
+
+| Permission | What Nexul uses it for |
+| --- | --- |
 | Account → Access: Apps and Policies: Edit | Puts an Access rule on each paired computer's hostname so only this instance can reach it. |
 | Account → Access: Service Tokens: Edit | Issues the one service token this instance presents to pass those Access rules. |
 
-The two Access permissions only work once Zero Trust is enabled on the Cloudflare account. Enable it once in the Cloudflare dashboard: pick a team name and the Free plan. Cloudflare asks for payment details even on the Free plan, but does not charge for it. Until then, the connector dialog reports that Zero Trust is not enabled. Checking these permissions never creates a token or an Access rule.
+These two also need Zero Trust enabled on the Cloudflare account. Enable it once in the Cloudflare dashboard: pick a team name and the Free plan. Cloudflare asks for payment details even on the Free plan, but does not charge for it. Until then, the dialog warns that Zero Trust is not enabled. Checking these permissions never creates a token or an Access rule.
 
 ### 1. Choose an entry path
 
