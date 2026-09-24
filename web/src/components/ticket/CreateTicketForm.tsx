@@ -152,7 +152,7 @@ export const CreateTicketForm = ({ docId = "", defaultProjectId = "", defaultCat
             aria-label="Body"
             rows={4}
             placeholder="Add description…"
-            className="quiet-focus w-full resize-none border-0 bg-transparent p-0 text-sm text-foreground caret-primary outline-none placeholder:text-muted-foreground"
+            className="quiet-focus field-sizing-content max-h-[40dvh] min-h-20 w-full resize-none overflow-y-auto border-0 bg-transparent p-0 text-sm text-foreground caret-primary outline-none placeholder:text-muted-foreground"
           />
           <div className="flex flex-wrap items-center gap-1.5">
             <TypePill ticketTypes={ticketTypes ?? []} />
