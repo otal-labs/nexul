@@ -50,9 +50,9 @@ type CredentialCheck struct {
 	Advisory bool `json:"advisory,omitempty"`
 }
 
-// CheckVerifier is an optional Verifier extension that can run a single named check, so the dialog can fan them out in parallel.
+// CheckVerifier runs a single named check so the dialog can fan them out in parallel; a pass may return a line for its row.
 type CheckVerifier interface {
-	VerifyCheck(ctx context.Context, fields map[string]string, key string) error
+	VerifyCheck(ctx context.Context, fields map[string]string, key string) (string, error)
 }
 
 // NotInstalledError is Exchange's "authorized but not installed" outcome, carrying the install URL to forward to.

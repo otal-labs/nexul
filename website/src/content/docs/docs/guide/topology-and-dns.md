@@ -34,7 +34,7 @@ DNS setup asks a stepped series of questions, either from the owner wizard's opt
 
 ### Cloudflare API token permissions
 
-Create the token in the Cloudflare dashboard with these permissions. The connector dialog checks each one and names any that are missing.
+Create the token in the Cloudflare dashboard with these permissions. The connector dialog checks each one and names any that are missing. The DNS check tries every zone the token can see and lists the domains it can edit, plus any it can only read; it passes when at least one is editable, so make sure the domain you plan to use is on the editable list.
 
 | Permission | What Nexul uses it for |
 | --- | --- |

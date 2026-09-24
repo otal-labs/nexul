@@ -115,8 +115,10 @@ MCP-first backend.
    check in parallel, and a Continue/Confirm that only unlocks once every row
    is green. Build it from `useTicker` (`hooks/useTicker.ts`) + `TickerRow`
    (`components/TickerRow.tsx`); the backend exposes the checks as
-   `POST …/verify?check=<key>` returning 204 or the provider's error, and
-   stores nothing. Examples: `ManualConnectorDialog`, `InstanceBootstrapPage`.
+   `POST …/verify?check=<key>` returning 204, 200 with a `detail` line shown
+   under the green row (the domains a Cloudflare token can edit), or the
+   provider's error, and stores nothing. Examples: `ManualConnectorDialog`,
+   `InstanceBootstrapPage`.
    Never collapse the checks into one request: a single red line can't tell
    the user which permission is missing.
 

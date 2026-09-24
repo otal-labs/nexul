@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { useSaveManualCredentials, useVerifyManualCredentials } from "@/hooks/ConnectorsHooks";
 import { useTicker } from "@/hooks/useTicker";
-import type { Connector, CredentialCheck } from "@/models/Connectors";
+import type { CheckResult, Connector, CredentialCheck } from "@/models/Connectors";
 
 interface ManualConnectorDialogProps {
   connector: Connector;
@@ -52,7 +52,9 @@ export const ManualConnectorDialog = ({ connector }: ManualConnectorDialogProps)
     (key, data) =>
       key === ""
         ? verifyAll.mutateAsync({ id: connector.id, fields: data })
-        : api.post(`/api/connectors/${connector.id}/manual/verify`, data, { params: { check: key } }),
+        : api
+            .post<CheckResult>(`/api/connectors/${connector.id}/manual/verify`, data, { params: { check: key } })
+            .then((r) => r.data?.detail),
   );
 
   const onConfirm = async (data: FormData) => {

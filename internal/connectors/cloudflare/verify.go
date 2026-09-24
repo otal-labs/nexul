@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -38,40 +39,72 @@ func (v *TokenVerifier) Verify(ctx context.Context, fields map[string]string) er
 	if err := v.verifyActive(ctx, token); err != nil {
 		return err
 	}
-	zone, err := v.firstZone(ctx, token)
+	zones, err := v.zones(ctx, token)
 	if err != nil {
 		return err
 	}
-	if err := v.requireWrite(ctx, token, "zones/"+url.PathEscape(zone.ID)+"/dns_records", "Zone → DNS: Edit"); err != nil {
+	if _, err := v.dnsEdit(ctx, token, zones); err != nil {
 		return err
 	}
-	return v.requireWrite(ctx, token, "accounts/"+url.PathEscape(zone.Account.ID)+"/cfd_tunnel", "Account → Cloudflare Tunnel: Edit")
+	return v.requireWrite(ctx, token, "accounts/"+url.PathEscape(zones[0].Account.ID)+"/cfd_tunnel", "Account → Cloudflare Tunnel: Edit")
 }
 
-// VerifyCheck implements connectors.CheckVerifier; every permission check first needs the zone it runs against.
-func (v *TokenVerifier) VerifyCheck(ctx context.Context, fields map[string]string, key string) error {
+// VerifyCheck implements connectors.CheckVerifier; every permission check first needs the zones it runs against.
+func (v *TokenVerifier) VerifyCheck(ctx context.Context, fields map[string]string, key string) (string, error) {
 	token := fields["api_token"]
 	if key == "token" {
-		return v.verifyActive(ctx, token)
+		return "", v.verifyActive(ctx, token)
 	}
-	zone, err := v.firstZone(ctx, token)
+	zones, err := v.zones(ctx, token)
 	if err != nil {
-		return err
+		return "", err
 	}
+	account := zones[0].Account.ID
 	switch key {
 	case "zone_read":
-		return nil
+		return "", nil
 	case "dns_edit":
-		return v.requireWrite(ctx, token, "zones/"+url.PathEscape(zone.ID)+"/dns_records", "Zone → DNS: Edit")
+		return v.dnsEdit(ctx, token, zones)
 	case "tunnel_edit":
-		return v.requireWrite(ctx, token, "accounts/"+url.PathEscape(zone.Account.ID)+"/cfd_tunnel", "Account → Cloudflare Tunnel: Edit")
+		return "", v.requireWrite(ctx, token, "accounts/"+url.PathEscape(account)+"/cfd_tunnel", "Account → Cloudflare Tunnel: Edit")
 	case "access_apps_edit":
-		return v.requireAccessEdit(ctx, token, zone.Account.ID, "apps", accessAppsPermission)
+		return "", v.requireAccessEdit(ctx, token, account, "apps", accessAppsPermission)
 	case "access_tokens_edit":
-		return v.requireAccessEdit(ctx, token, zone.Account.ID, "service_tokens", accessTokensPermission)
+		return "", v.requireAccessEdit(ctx, token, account, "service_tokens", accessTokensPermission)
 	default:
-		return fmt.Errorf("%w: unknown check %q", apperrs.ErrInvalid, key)
+		return "", fmt.Errorf("%w: unknown check %q", apperrs.ErrInvalid, key)
 	}
+}
+
+// dnsEdit probes DNS Edit on every zone in parallel and names the domains the token can edit, and any it only reads.
+func (v *TokenVerifier) dnsEdit(ctx context.Context, token string, zones []verifyZone) (string, error) {
+	errs := make([]error, len(zones))
+	var wg sync.WaitGroup
+	for i, z := range zones {
+		wg.Go(func() {
+			errs[i] = v.requireWrite(ctx, token, "zones/"+url.PathEscape(z.ID)+"/dns_records", dnsEditPermission)
+		})
+	}
+	wg.Wait()
+	var editable, readOnly []string
+	for i, err := range errs {
+		if err == nil {
+			editable = append(editable, zones[i].Name)
+			continue
+		}
+		if !errors.Is(err, apperrs.ErrInvalid) {
+			return "", err
+		}
+		readOnly = append(readOnly, zones[i].Name)
+	}
+	if len(editable) == 0 {
+		return "", fmt.Errorf("%w: the token is missing %s on %s", apperrs.ErrInvalid, dnsEditPermission, strings.Join(readOnly, ", "))
+	}
+	detail := "Can edit DNS on " + strings.Join(editable, ", ")
+	if len(readOnly) > 0 {
+		detail += "; read-only on " + strings.Join(readOnly, ", ")
+	}
+	return detail, nil
 }
 
 type verifyZone struct {
@@ -100,23 +133,23 @@ func (v *TokenVerifier) verifyActive(ctx context.Context, token string) error {
 	return nil
 }
 
-// firstZone proves "Zone → Zone: Read" and yields the zone and account the other checks run against.
-func (v *TokenVerifier) firstZone(ctx context.Context, token string) (verifyZone, error) {
+// zones proves "Zone → Zone: Read" and lists the token's first 50 zones (one page); the first names the checks' account.
+func (v *TokenVerifier) zones(ctx context.Context, token string) ([]verifyZone, error) {
 	var zones []verifyZone
-	status, err := v.get(ctx, token, "zones?per_page=1", &zones)
+	status, err := v.get(ctx, token, "zones?per_page=50", &zones)
 	if err != nil {
-		return verifyZone{}, err
+		return nil, err
 	}
 	if status == http.StatusForbidden || status == http.StatusUnauthorized {
-		return verifyZone{}, fmt.Errorf("%w: the token cannot list zones — add Zone → Zone: Read", apperrs.ErrInvalid)
+		return nil, fmt.Errorf("%w: the token cannot list zones — add Zone → Zone: Read", apperrs.ErrInvalid)
 	}
 	if status != http.StatusOK {
-		return verifyZone{}, fmt.Errorf("cloudflare zones: status %d", status)
+		return nil, fmt.Errorf("cloudflare zones: status %d", status)
 	}
 	if len(zones) == 0 {
-		return verifyZone{}, fmt.Errorf("%w: the token can see no zone — include your zone under Zone → Zone: Read", apperrs.ErrInvalid)
+		return nil, fmt.Errorf("%w: the token can see no zone — include your zone under Zone → Zone: Read", apperrs.ErrInvalid)
 	}
-	return zones[0], nil
+	return zones, nil
 }
 
 // requireWrite proves an Edit permission without changing anything: Cloudflare authorises before it validates, so an
@@ -137,6 +170,7 @@ func (v *TokenVerifier) requireWrite(ctx context.Context, token, path, permissio
 }
 
 const (
+	dnsEditPermission      = "Zone → DNS: Edit"
 	accessAppsPermission   = "Account → Access: Apps and Policies: Edit"
 	accessTokensPermission = "Account → Access: Service Tokens: Edit"
 	// nilUUID names no real app or token, so the delete probe cannot change or mint anything.

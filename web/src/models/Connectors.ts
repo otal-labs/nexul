@@ -33,6 +33,11 @@ export interface CredentialCheck {
   advisory?: boolean;
 }
 
+// A passing check's answer; detail is a line for its row, such as the domains a token can edit, and absent on a 204.
+export interface CheckResult {
+  detail?: string;
+}
+
 export interface CredentialStatus {
   configured: boolean;
   connected_by?: string;

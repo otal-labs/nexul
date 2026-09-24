@@ -180,11 +180,16 @@ func (h *Handler) verifyManual(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if key := r.URL.Query().Get("check"); key != "" {
-		if err := h.svc.VerifyManualCheck(r.Context(), r.PathValue("id"), fields, key); err != nil {
+		detail, err := h.svc.VerifyManualCheck(r.Context(), r.PathValue("id"), fields, key)
+		if err != nil {
 			httpx.WriteError(w, err)
 			return
 		}
-		w.WriteHeader(http.StatusNoContent)
+		if detail == "" {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		httpx.WriteJSON(w, http.StatusOK, map[string]string{"detail": detail})
 		return
 	}
 	if err := h.svc.VerifyManualCredentials(r.Context(), r.PathValue("id"), fields); err != nil {
