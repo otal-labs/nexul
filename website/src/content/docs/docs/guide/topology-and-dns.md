@@ -32,6 +32,20 @@ An **exposure** routes one hostname through a gateway to one of a stack's contai
 
 DNS setup asks a stepped series of questions, either from the owner wizard's optional last step or from Settings → DNS if you skipped it. It needs the Cloudflare connector connected first (see [GitHub App](/docs/guide/github-app/) for connecting the equivalent GitHub connector — Cloudflare connects with an API token the same way, from Settings → Connectors).
 
+### Cloudflare API token permissions
+
+Create the token in the Cloudflare dashboard with these permissions. The connector dialog checks each one and names any that are missing.
+
+| Permission | What Nexul uses it for |
+| --- | --- |
+| Zone → Zone: Read | Lists your zones and finds the account your tunnels live in. |
+| Zone → DNS: Edit | Creates and updates the records that point your hostnames at Nexul. |
+| Account → Cloudflare Tunnel: Edit | Creates tunnels and issues the token `cloudflared` runs with. |
+| Account → Access: Apps and Policies: Edit | Puts an Access rule on each paired computer's hostname so only this instance can reach it. |
+| Account → Access: Service Tokens: Edit | Issues the one service token this instance presents to pass those Access rules. |
+
+The two Access permissions only work once Zero Trust is enabled on the Cloudflare account. Enable it once in the Cloudflare dashboard: pick a team name and the Free plan. Cloudflare asks for payment details even on the Free plan, but does not charge for it. Until then, the connector dialog reports that Zero Trust is not enabled. Checking these permissions never creates a token or an Access rule.
+
 ### 1. Choose an entry path
 
 | Path | What it does |

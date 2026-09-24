@@ -83,3 +83,16 @@ SELECT * FROM dns_exposures WHERE service = ? ORDER BY created_at;
 
 -- name: DeleteExposure :execrows
 DELETE FROM dns_exposures WHERE id = ?;
+
+-- name: SaveAccessServiceToken :exec
+INSERT INTO dns_access_service_token (id, token_id, client_id, client_secret, created_at, updated_at)
+VALUES (1, ?, ?, ?, ?, ?)
+ON CONFLICT(id) DO UPDATE SET
+  token_id = excluded.token_id, client_id = excluded.client_id,
+  client_secret = excluded.client_secret, updated_at = excluded.updated_at;
+
+-- name: GetAccessServiceToken :one
+SELECT * FROM dns_access_service_token WHERE id = 1;
+
+-- name: DeleteAccessServiceToken :execrows
+DELETE FROM dns_access_service_token WHERE id = 1;

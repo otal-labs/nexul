@@ -29,6 +29,13 @@ type Repo interface {
 	// DeleteTunnel removes a tunnel row and its outbox events in one transaction.
 	DeleteTunnel(ctx context.Context, tunnelID string, evts ...eventbus.OutboxEvent) error
 
+	// SaveAccessServiceToken upserts the instance's one Access service token; the secret arrives already encrypted.
+	SaveAccessServiceToken(ctx context.Context, t ServiceToken) error
+	// GetAccessServiceToken returns the stored service token, or ErrNotFound.
+	GetAccessServiceToken(ctx context.Context) (*ServiceToken, error)
+	// DeleteAccessServiceToken removes the stored service token, or returns ErrNotFound.
+	DeleteAccessServiceToken(ctx context.Context) error
+
 	// SaveGateway upserts a gateway row and its outbox events in one transaction.
 	SaveGateway(ctx context.Context, g Gateway, evts ...eventbus.OutboxEvent) error
 	// GetGateway returns one gateway row, or ErrNotFound.

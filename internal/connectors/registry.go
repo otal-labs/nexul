@@ -33,6 +33,8 @@ var registry = map[string]Connector{
 			{Key: "zone_read", Label: "Zone → Zone: Read", Why: "Lists your zones so you can pick one, and finds the account the tunnel lives in."},
 			{Key: "dns_edit", Label: "Zone → DNS: Edit", Why: "Creates and updates the records that point your hostnames at this instance."},
 			{Key: "tunnel_edit", Label: "Account → Cloudflare Tunnel: Edit", Why: "Creates the tunnel and issues the token cloudflared runs with."},
+			{Key: "access_apps_edit", Label: "Account → Access: Apps and Policies: Edit", Why: "Closes each paired computer's hostname to everything but this instance. Needs Zero Trust enabled once on the account."},
+			{Key: "access_tokens_edit", Label: "Account → Access: Service Tokens: Edit", Why: "Issues the one service token this instance uses to pass those Access rules."},
 		},
 		OAuth: nil,
 	},

@@ -364,3 +364,40 @@ func toServiceHostnames(rows []sqlcgen.DnsServiceHostname) []*dns.ServiceHostnam
 	}
 	return out
 }
+
+func (r *DNSRepo) SaveAccessServiceToken(ctx context.Context, t dns.ServiceToken) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		err := r.q.WithTx(tx).SaveAccessServiceToken(ctx, sqlcgen.SaveAccessServiceTokenParams{
+			TokenID: t.ID, ClientID: t.ClientID, ClientSecret: t.ClientSecret,
+			CreatedAt: t.CreatedAt.Unix(), UpdatedAt: t.UpdatedAt.Unix(),
+		})
+		if err != nil {
+			return fmt.Errorf("save access service token: %w", classifyWriteErr(err))
+		}
+		return nil
+	})
+}
+
+func (r *DNSRepo) GetAccessServiceToken(ctx context.Context) (*dns.ServiceToken, error) {
+	row, err := r.q.GetAccessServiceToken(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get access service token: %w", notFoundIfNoRows(err))
+	}
+	return &dns.ServiceToken{
+		ID: row.TokenID, ClientID: row.ClientID, ClientSecret: row.ClientSecret,
+		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
+	}, nil
+}
+
+func (r *DNSRepo) DeleteAccessServiceToken(ctx context.Context) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		n, err := r.q.WithTx(tx).DeleteAccessServiceToken(ctx)
+		if err != nil {
+			return fmt.Errorf("delete access service token: %w", err)
+		}
+		if n == 0 {
+			return fmt.Errorf("delete access service token: %w", apperrs.ErrNotFound)
+		}
+		return nil
+	})
+}
