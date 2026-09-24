@@ -133,7 +133,7 @@ func (a agentMemories) ListMemories(ctx context.Context, workspaceID, projectID 
 func toAgentMemoryItems(items []memories.MemoryItem) []agent.MemoryItem {
 	out := make([]agent.MemoryItem, len(items))
 	for i, m := range items {
-		out[i] = agent.MemoryItem{Name: m.Title, WhenToUse: m.WhenToUse, AlwaysIncluded: m.AlwaysIncluded, Body: m.Body}
+		out[i] = agent.MemoryItem{Name: m.Title, WhenToUse: m.WhenToUse, AlwaysIncluded: m.AlwaysIncluded, Interview: m.Kind == memories.KindInterview, Body: m.Body}
 	}
 	return out
 }

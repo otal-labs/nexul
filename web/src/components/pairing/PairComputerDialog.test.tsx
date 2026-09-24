@@ -28,7 +28,8 @@ const created = {
   tunnel: { tunnel_id: "tun-1", hostname: "work-laptop-ab12cd34.example.com" },
 };
 
-const apiError = (body: Record<string, string>) => Object.assign(new Error("request failed"), { response: { data: body } });
+const apiError = (body: Record<string, string>, errors?: Record<string, string[]>) =>
+  Object.assign(new Error("request failed"), { response: { data: { ...body, ...(errors && { errors }) } } });
 
 const renderDialog = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -46,6 +47,15 @@ const nameTheComputer = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(screen.getByRole("button", { name: /pair a computer/i }));
   await user.type(await screen.findByLabelText(/computer name/i), "Work laptop");
   await user.click(screen.getByRole("button", { name: /create tunnel/i }));
+};
+
+const reachPairStep = async (user: ReturnType<typeof userEvent.setup>, client: QueryClient) => {
+  mocks.post.mockResolvedValueOnce({ data: created });
+  await nameTheComputer(user);
+  await screen.findByText(/waiting for connection/i);
+  act(() => setCachedTunnelStatus(client, { computer_id: "c1", tunnel: "healthy", harness_reachable: true }));
+  await user.click(await screen.findByRole("button", { name: /^next$/i }));
+  await screen.findByLabelText(/one-time pairing token/i);
 };
 
 describe("PairComputerDialog", () => {
@@ -85,7 +95,91 @@ describe("PairComputerDialog", () => {
     expect(screen.getByText("T3 Code 0.0.40")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /^next$/i }));
-    expect(await screen.findByText(/pairing t3 code over this computer's hostname/i)).toBeInTheDocument();
+    expect(await screen.findByLabelText(/one-time pairing token/i)).toBeInTheDocument();
+  });
+
+  it("pairs T3 Code over the verified hostname with only the token typed, then moves on to Set up", async () => {
+    const user = userEvent.setup();
+    const client = renderDialog();
+    await reachPairStep(user, client);
+
+    expect(screen.getByLabelText(/^name$/i)).toHaveValue("Work laptop");
+    expect(screen.getByLabelText(/^name$/i)).toHaveAttribute("readonly");
+    expect(screen.getByLabelText(/t3 server url/i)).toHaveValue("https://work-laptop-ab12cd34.example.com");
+    expect(screen.getByLabelText(/t3 server url/i)).toHaveAttribute("readonly");
+    expect(screen.getByText("t3 pair")).toBeInTheDocument();
+
+    mocks.post.mockResolvedValueOnce({ data: { ...created, token_expires_at: "2026-10-24T00:00:00Z", harness_version: "0.0.40" } });
+    await user.type(screen.getByLabelText(/one-time pairing token/i), "t3-pair-token");
+    await user.click(screen.getByRole("button", { name: /pair t3 code/i }));
+
+    await waitFor(() => expect(mocks.post).toHaveBeenLastCalledWith("/api/pairing/computers/c1/pair", { token: "t3-pair-token" }));
+    expect(await screen.findByText(/work laptop is paired/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^done$/i })).toBeInTheDocument();
+  });
+
+  it("shows a refused token on the token field and an unreachable harness on the URL field", async () => {
+    const user = userEvent.setup();
+    const client = renderDialog();
+    await reachPairStep(user, client);
+
+    const refused = "the harness refused this token, run t3 pair for a fresh one";
+    mocks.post.mockRejectedValueOnce(apiError({ message: refused, code: "INVALID" }, { token: [refused] }));
+    await user.type(screen.getByLabelText(/one-time pairing token/i), "stale");
+    await user.click(screen.getByRole("button", { name: /pair t3 code/i }));
+    expect(await screen.findByText(refused)).toBeInTheDocument();
+    expect(screen.getByLabelText(/one-time pairing token/i)).toHaveAttribute("aria-invalid", "true");
+
+    const unreachable = "couldn't reach the harness";
+    mocks.post.mockRejectedValueOnce(apiError({ message: unreachable, code: "RETRYABLE" }, { server_url: [unreachable] }));
+    await user.click(screen.getByRole("button", { name: /pair t3 code/i }));
+    expect(await screen.findByText(unreachable)).toBeInTheDocument();
+    expect(screen.getByLabelText(/t3 server url/i)).toHaveAttribute("aria-invalid", "true");
+    expect(screen.queryByText(/is paired/i)).not.toBeInTheDocument();
+  });
+
+  it("pairs a machine the server can already reach by URL, from Advanced", async () => {
+    const user = userEvent.setup();
+    renderDialog();
+
+    await user.click(screen.getByRole("button", { name: /pair a computer/i }));
+    await user.click(await screen.findByRole("button", { name: /advanced options/i }));
+    await user.click(screen.getByRole("button", { name: /pair by url/i }));
+
+    await user.click(screen.getByRole("button", { name: /pair t3 code/i }));
+    expect(await screen.findByText(/computer name is required/i)).toBeInTheDocument();
+    expect(mocks.post).not.toHaveBeenCalled();
+
+    await user.type(screen.getByLabelText(/^name$/i), "VPS");
+    await user.type(screen.getByLabelText(/t3 server url/i), "https://vps.example.com");
+    await user.type(screen.getByLabelText(/one-time pairing token/i), "t3-pair-token");
+    mocks.post.mockResolvedValueOnce({ data: { ...created, id: "c2", name: "VPS", tunnel: undefined } });
+    await user.click(screen.getByRole("button", { name: /pair t3 code/i }));
+
+    await waitFor(() =>
+      expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers", {
+        name: "VPS",
+        server_url: "https://vps.example.com",
+        token: "t3-pair-token",
+      }),
+    );
+    expect(await screen.findByText(/vps is paired/i)).toBeInTheDocument();
+  });
+
+  it("shows a failure with no field under the form", async () => {
+    const user = userEvent.setup();
+    renderDialog();
+
+    await user.click(screen.getByRole("button", { name: /pair a computer/i }));
+    await user.click(await screen.findByRole("button", { name: /advanced options/i }));
+    await user.click(screen.getByRole("button", { name: /pair by url/i }));
+    await user.type(screen.getByLabelText(/^name$/i), "VPS");
+    await user.type(screen.getByLabelText(/t3 server url/i), "https://vps.example.com");
+    await user.type(screen.getByLabelText(/one-time pairing token/i), "t3-pair-token");
+    mocks.post.mockRejectedValueOnce(apiError({ message: "internal error", code: "INTERNAL" }));
+    await user.click(screen.getByRole("button", { name: /pair t3 code/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("internal error");
   });
 
   it.each([

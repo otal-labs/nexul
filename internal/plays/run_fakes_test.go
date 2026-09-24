@@ -2,6 +2,7 @@ package plays
 
 import (
 	"context"
+	"encoding/json"
 	"slices"
 	"sort"
 	"sync"
@@ -236,9 +237,17 @@ type fakeLive struct {
 func (f *fakeLive) Publish(_ context.Context, topic string, payload any) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if topic == TopicPlayRun {
-		f.frames = append(f.frames, payload.(RunFrame))
+	if topic != TopicPlayRun {
+		return nil
 	}
+	if raw, ok := payload.(json.RawMessage); ok {
+		var frame RunFrame
+		if err := json.Unmarshal(raw, &frame); err != nil {
+			return err
+		}
+		payload = frame
+	}
+	f.frames = append(f.frames, payload.(RunFrame))
 	return nil
 }
 

@@ -683,6 +683,7 @@ var catalogSchemas = map[string]string{
 					"id": {"type": "string"},
 					"workspace_id": {"type": "string"},
 					"project_id": {"type": "string"},
+					"kind": {"type": "string"},
 					"title": {"type": "string"},
 					"when_to_use": {"type": "string"},
 					"always_included": {"type": "boolean"},
@@ -704,6 +705,7 @@ var catalogSchemas = map[string]string{
 					"id": {"type": "string"},
 					"workspace_id": {"type": "string"},
 					"project_id": {"type": "string"},
+					"kind": {"type": "string"},
 					"title": {"type": "string"},
 					"when_to_use": {"type": "string"},
 					"always_included": {"type": "boolean"},
@@ -721,6 +723,28 @@ var catalogSchemas = map[string]string{
 			"id": {"type": "string"},
 			"title": {"type": "string"},
 			"author_id": {"type": "string"}
+		}
+	}`,
+	"interview_template.updated": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["workspace_id", "author_id"],
+		"properties": {
+			"workspace_id": {"type": "string"},
+			"author_id": {"type": "string"},
+			"updated_at": {"type": "string", "format": "date-time"}
+		}
+	}`,
+	"computer.paired": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["computer_id", "user_id", "server_url", "token_expires_at"],
+		"properties": {
+			"computer_id": {"type": "string"},
+			"user_id": {"type": "string"},
+			"server_url": {"type": "string"},
+			"harness_version": {"type": "string"},
+			"token_expires_at": {"type": "string", "format": "date-time"}
 		}
 	}`,
 	"computer.setup_confirmed": `{
@@ -779,6 +803,28 @@ var catalogSchemas = map[string]string{
 			"tunnel": {"type": "string"},
 			"harness_reachable": {"type": "boolean"},
 			"harness_version": {"type": "string"}
+		}
+	}`,
+	"personal_access_token.minted": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["token_id", "user_id", "name"],
+		"properties": {
+			"token_id": {"type": "string"},
+			"user_id": {"type": "string"},
+			"name": {"type": "string"},
+			"computer_id": {"type": "string"}
+		}
+	}`,
+	"personal_access_token.revoked": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["token_id", "user_id", "name"],
+		"properties": {
+			"token_id": {"type": "string"},
+			"user_id": {"type": "string"},
+			"name": {"type": "string"},
+			"computer_id": {"type": "string"}
 		}
 	}`,
 	"ticket.category_changed": `{

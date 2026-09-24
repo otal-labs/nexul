@@ -2,15 +2,20 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tansta
 import type { AxiosError } from "axios";
 import { toast } from "sonner";
 
-import { api, errorMessage } from "@/api/client";
+import { api, errorMessage, type ApiErrorBody } from "@/api/client";
+import { getPATsKey } from "@/hooks/AuthHooks";
 import {
   HARNESS_READINESS_COPY,
+  PAIR_FIELDS,
   type Computer,
   type CreateComputerTunnelFormData,
   type HarnessProject,
   type HarnessProvider,
   type HarnessReadiness,
+  type MCPToken,
+  type MintedMCPToken,
   type PairComputerFormData,
+  type PairField,
   type PairingDefaults,
   type PairingDefaultsFormData,
   type ProjectLink,
@@ -28,6 +33,7 @@ export const getHarnessProvidersKey = "getHarnessProviders";
 export const getHarnessResolveKey = "getHarnessResolve";
 export const getTunnelStatusKey = "getTunnelStatus";
 export const getTunnelTokenKey = "getTunnelToken";
+export const getMCPTokenKey = "getMCPToken";
 
 // The four NotConfiguredReason values internal/pairing.ResolveTarget can fail with, mapped onto HarnessReadiness states.
 const RESOLVE_REASON_TO_STATE: Record<string, Exclude<HarnessReadiness["state"], "ready" | "offline">> = {
@@ -51,16 +57,33 @@ export const useListComputers = () =>
     queryFn: async () => (await api.get<{ computers: Computer[] }>("/api/pairing/computers")).data.computers,
   });
 
+interface PairComputerInput {
+  // Set for a computer that already has a row (a computer tunnel): pairs at its own address.
+  computerId?: string | undefined;
+  form: PairComputerFormData;
+}
+
+// No error toast: the pairing form shows each failure on the field that caused it.
 export const usePairComputer = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (input: PairComputerFormData) =>
-      (await api.post<Computer>("/api/pairing/computers", input)).data,
+    mutationFn: async ({ computerId, form }: PairComputerInput) => {
+      if (computerId) return (await api.post<Computer>(`/api/pairing/computers/${computerId}/pair`, { token: form.token })).data;
+      return (await api.post<Computer>("/api/pairing/computers", form)).data;
+    },
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getComputersKey] });
       toast.success("Computer paired");
     },
-    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
+// The field each failure belongs to, from the error envelope's errors map; empty when the failure has no field.
+export const pairFieldErrors = (error: unknown): [PairField, string][] => {
+  const errors = (error as AxiosError<ApiErrorBody> | null)?.response?.data?.errors ?? {};
+  return PAIR_FIELDS.flatMap((field): [PairField, string][] => {
+    const message = errors[field]?.[0];
+    return message ? [[field, message]] : [];
   });
 };
 
@@ -132,7 +155,48 @@ export const useDeleteComputer = () => {
     },
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getComputersKey] });
+      await client.invalidateQueries({ queryKey: [getPATsKey] });
       toast.success("Computer removed");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
+// Metadata only; the raw token exists solely on the mint mutation's data.
+export const useFetchMCPToken = (computerId: string) =>
+  useQuery({
+    queryKey: [getMCPTokenKey, computerId],
+    queryFn: async () =>
+      (await api.get<{ mcp_token: MCPToken | null }>(`/api/pairing/computers/${computerId}/mcp-token`)).data.mcp_token,
+  });
+
+const invalidateMCPToken = async (client: QueryClient, computerId: string) => {
+  await client.invalidateQueries({ queryKey: [getMCPTokenKey, computerId] });
+  await client.invalidateQueries({ queryKey: [getPATsKey] });
+};
+
+export const useMintMCPToken = (computerId: string) => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async () =>
+      (await api.post<MintedMCPToken>(`/api/pairing/computers/${computerId}/mcp-token`)).data,
+    onSuccess: async () => {
+      await invalidateMCPToken(client, computerId);
+      toast.success("MCP token created — copy it now, it won't be shown again");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
+export const useRevokeMCPToken = (computerId: string) => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      await api.delete(`/api/pairing/computers/${computerId}/mcp-token`);
+    },
+    onSuccess: async () => {
+      await invalidateMCPToken(client, computerId);
+      toast.success("MCP token revoked");
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

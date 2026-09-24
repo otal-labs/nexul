@@ -14,6 +14,20 @@ export interface Computer {
   tunnel?: ComputerTunnel;
 }
 
+// A computer's own personal access token, "Nexul MCP on <computer>"; never carries the secret.
+export interface MCPToken {
+  id: string;
+  name: string;
+  prefix: string;
+  created_at: string;
+  last_used_at?: string | null;
+}
+
+// Only the mint response carries the raw token.
+export interface MintedMCPToken extends MCPToken {
+  token: string;
+}
+
 export interface ComputerTunnel {
   tunnel_id: string;
   hostname: string;
@@ -25,6 +39,9 @@ export interface TunnelStatus {
   harness_reachable: boolean;
   harness_version?: string;
 }
+
+// Go's zero time: a computer tunnel holds no session until T3 Code pairs over its hostname.
+export const stillPairing = (computer: Computer) => !(Date.parse(computer.token_expires_at) > 0);
 
 export const tunnelOnline = (status: TunnelStatus) => status.tunnel === "healthy" || status.tunnel === "degraded";
 export const tunnelConnected = (status: TunnelStatus) => tunnelOnline(status) && status.harness_reachable;
@@ -99,6 +116,10 @@ export const PairComputerFormSchema = z.object({
 });
 
 export type PairComputerFormData = z.infer<typeof PairComputerFormSchema>;
+
+// The inputs the pairing routes key a failure under, so it shows on the field that caused it.
+export const PAIR_FIELDS = ["name", "server_url", "token"] as const satisfies readonly (keyof PairComputerFormData)[];
+export type PairField = (typeof PAIR_FIELDS)[number];
 
 export const PairingDefaultsFormSchema = z.object({
   default_computer_id: z.string(),

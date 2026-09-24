@@ -24,7 +24,7 @@ func toolByName(t *testing.T, tools []mcptool.Tool, name string) mcptool.Tool {
 
 func TestMCPTools_Shape(t *testing.T) {
 	tools := MCPTools(newTestService(newFakeRepo()))
-	require.Len(t, tools, 8)
+	require.Len(t, tools, 11)
 	var names []string
 	for _, tool := range tools {
 		names = append(names, tool.Name)
@@ -35,6 +35,7 @@ func TestMCPTools_Shape(t *testing.T) {
 	assert.ElementsMatch(t, []string{
 		"memory_list", "memory_get", "memory_create", "memory_update", "memory_delete",
 		"memory_list_versions", "memory_revert", "memory_clone",
+		"memory_create_interview", "interview_template_get", "interview_template_update",
 	}, names)
 }
 

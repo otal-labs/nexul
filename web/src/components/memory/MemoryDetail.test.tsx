@@ -23,6 +23,7 @@ const memory: Memory = {
   id: "mem-1",
   workspace_id: "ws-1",
   project_id: "project-1",
+  kind: "",
   title: "Deploy quirks",
   when_to_use: "when deploying",
   body: "body",
@@ -100,5 +101,18 @@ describe("MemoryDetail", () => {
   it("hides the Workspace pill for a project-scoped memory", () => {
     renderDetail();
     expect(screen.queryByText("Workspace")).not.toBeInTheDocument();
+  });
+
+  it("locks the interview memory on and counts it against the cap", () => {
+    renderDetail({ canWrite: true, memory: { ...memory, kind: "interview", always_included: true, body: "x".repeat(8001) } });
+    expect(screen.queryByLabelText("Always included")).not.toBeInTheDocument();
+    expect(screen.getByText(/can't be switched off/)).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("8,001 / 8,000 characters");
+  });
+
+  it("shows no cap for an ordinary memory", () => {
+    renderDetail({ canWrite: true });
+    expect(screen.getByLabelText("Always included")).toBeInTheDocument();
+    expect(screen.queryByText(/characters/)).not.toBeInTheDocument();
   });
 });

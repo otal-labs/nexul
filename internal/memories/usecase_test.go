@@ -22,15 +22,17 @@ var fixedNow = time.Date(2026, 9, 16, 12, 0, 0, 0, time.UTC)
 
 // fakeRepo is an in-memory memories.Repo for use-case tests.
 type fakeRepo struct {
-	mu        sync.Mutex
-	memories  map[string]*Memory
-	versions  map[string][]*MemoryVersion
-	events    []eventbus.OutboxEvent
-	createErr error
-	getErr    error
-	listErr   error
-	updateErr error
-	deleteErr error
+	mu          sync.Mutex
+	memories    map[string]*Memory
+	versions    map[string][]*MemoryVersion
+	events      []eventbus.OutboxEvent
+	createErr   error
+	getErr      error
+	listErr     error
+	updateErr   error
+	deleteErr   error
+	templates   map[string]*InterviewTemplate
+	templateErr error
 }
 
 func newFakeRepo() *fakeRepo {

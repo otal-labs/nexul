@@ -3,9 +3,10 @@ import { useState } from "react";
 
 import { ConnectStep } from "@/components/pairing/ConnectStep";
 import { PairingStepTabs } from "@/components/pairing/PairingStepTabs";
+import { PairT3CodeStep } from "@/components/pairing/PairT3CodeStep";
 import { EmptyRow } from "@/components/EmptyRow";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { useFetchTunnelStatus } from "@/hooks/PairingHooks";
 import { tunnelConnected, type Computer, type PairingStep } from "@/models/Pairing";
@@ -28,17 +29,31 @@ const NextButton = ({ computerId, onNext }: NextButtonProps) => {
   );
 };
 
-// Pair a computer: connect its tunnel, pair T3 Code over it, then set it up. Only Connect is live so far.
+// The furthest step the tabs may open: Set up only once paired, Pair T3 Code only once Next or Pair by URL led there.
+const reachableStep = (step: PairingStep, paired: Computer | undefined): PairingStep => {
+  if (paired) return "setup";
+  if (step === "connect") return "connect";
+  return "pair";
+};
+
+// Pair a computer: connect its tunnel, pair T3 Code over it, then set it up. Set up's content is still to come.
 export const PairComputerDialog = () => {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<PairingStep>("connect");
   const [computer, setComputer] = useState<Computer>();
+  const [paired, setPaired] = useState<Computer>();
 
   const onOpenChange = (next: boolean) => {
     setOpen(next);
     if (next) return;
     setStep("connect");
     setComputer(undefined);
+    setPaired(undefined);
+  };
+
+  const onPaired = (c: Computer) => {
+    setPaired(c);
+    setStep("setup");
   };
 
   return (
@@ -56,20 +71,32 @@ export const PairComputerDialog = () => {
             <DialogDescription>
               The computer keeps a tunnel open to this instance's Cloudflare, so Nexul can reach T3 Code on it from anywhere.
             </DialogDescription>
-            <PairingStepTabs step={step} reachable={step === "connect" ? "connect" : "pair"} />
+            <PairingStepTabs step={step} reachable={reachableStep(step, paired)} />
           </DialogHeader>
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
             <TabsContent value="connect">
-              <ConnectStep computer={computer} onCreated={setComputer} />
+              <ConnectStep computer={computer} onCreated={setComputer} onPairByUrl={() => setStep("pair")} />
             </TabsContent>
             <TabsContent value="pair">
-              <EmptyRow>Pairing T3 Code over this computer's hostname comes next.</EmptyRow>
+              <PairT3CodeStep computer={computer} onPaired={onPaired} />
+            </TabsContent>
+            <TabsContent value="setup">
+              <EmptyRow>{paired?.name} is paired. Setting up its providers and skills comes next.</EmptyRow>
             </TabsContent>
           </div>
         </Tabs>
-        <div className="flex justify-end gap-2 border-t border-border px-4 py-3 sm:px-6">
-          {step === "connect" && <NextButton computerId={computer?.id ?? ""} onNext={() => setStep("pair")} />}
-        </div>
+        {step === "connect" && (
+          <div className="flex justify-end gap-2 border-t border-border px-4 py-3 sm:px-6">
+            <NextButton computerId={computer?.id ?? ""} onNext={() => setStep("pair")} />
+          </div>
+        )}
+        {step === "setup" && (
+          <div className="flex justify-end gap-2 border-t border-border px-4 py-3 sm:px-6">
+            <DialogClose asChild>
+              <Button type="button">Done</Button>
+            </DialogClose>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

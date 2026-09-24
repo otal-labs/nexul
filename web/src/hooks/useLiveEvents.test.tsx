@@ -408,6 +408,19 @@ describe("useLiveEvents dispatch", () => {
     expect(client.getQueryData(["getTunnelStatus", "c1"])).toEqual({ tunnel: "down", harness_reachable: false });
   });
 
+  it("refreshes the computer rows and readiness when a computer finishes pairing", async () => {
+    setup();
+    const socket = await connectedSocket();
+    const spy = invalidate();
+    act(() =>
+      socket.message(
+        JSON.stringify({ topic: "computer.paired", type: "event", payload: { computer_id: "c1", user_id: "u1", server_url: "https://h", token_expires_at: "2026-10-24T00:00:00Z" } }),
+      ),
+    );
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["getComputers"] });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["getHarnessResolve"] });
+  });
+
   it("applies a topology canvas patch to the flow store on a topology push", async () => {
     setup();
     const socket = await connectedSocket();

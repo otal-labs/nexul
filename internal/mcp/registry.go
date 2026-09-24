@@ -66,7 +66,7 @@ type Publisher interface {
 	PublishWithID(ctx context.Context, id, topic string, payload any) error
 }
 
-// New assembles the default MCP server: every domain's MCPTools, day-1 search/list/replay tools, and resources.
+// New assembles the default MCP server: every domain's MCPTools, the dead-letter tools, and resources.
 func New(opts RegistryOptions) *Server {
 	s := &Server{}
 	registerDocsTools(s, opts.Docs)
@@ -77,7 +77,7 @@ func New(opts RegistryOptions) *Server {
 	}
 	registerDomainTools(s, opts)
 	if opts.DeadLetter != nil && opts.Publisher != nil {
-		s.tools = append(s.tools, listDeadLettersTool(opts.DeadLetter), replayDeadLetterTool(opts.DeadLetter, opts.Publisher))
+		s.tools = append(s.tools, deadLetterListTool(opts.DeadLetter), deadLetterReplayTool(opts.DeadLetter, opts.Publisher))
 	}
 	s.actor = opts.Actor
 	s.prompts = defaultPrompts()
@@ -89,7 +89,6 @@ func registerDocsTools(s *Server, svc *docs.Service) {
 		return
 	}
 	s.tools = append(s.tools, docs.MCPTools(svc)...)
-	s.tools = append(s.tools, searchDocsTool(svc))
 	s.templates = append(s.templates, docResource(svc))
 }
 
@@ -98,7 +97,6 @@ func registerTicketsTools(s *Server, svc *tickets.Service) {
 		return
 	}
 	s.tools = append(s.tools, tickets.MCPTools(svc)...)
-	s.tools = append(s.tools, searchTicketsTool(svc))
 	s.templates = append(s.templates, ticketResource(svc))
 }
 
@@ -168,46 +166,9 @@ func registerPlaysTools(s *Server, opts RegistryOptions) {
 	}
 }
 
-// searchDocsTool is the ws-08 day-1 tool (AC list) over the docs use-case.
-func searchDocsTool(s *docs.Service) Tool {
+func deadLetterListTool(store deadletter.Storer) Tool {
 	return Tool{
-		Name:        "search_docs",
-		Description: "Full-text search over doc titles and bodies.",
-		InputSchema: objectSchema(map[string]any{
-			"query": map[string]any{"type": "string"},
-			"limit": map[string]any{"type": "integer"},
-		}, "query"),
-		Call: func(ctx context.Context, args map[string]any) (any, error) {
-			q, err := mcptool.RequiredString(args, "query")
-			if err != nil {
-				return nil, err
-			}
-			return s.Search(ctx, q, intArg(args["limit"]))
-		},
-	}
-}
-
-func searchTicketsTool(s *tickets.Service) Tool {
-	return Tool{
-		Name:        "search_tickets",
-		Description: "Full-text search over ticket titles and bodies.",
-		InputSchema: objectSchema(map[string]any{
-			"query": map[string]any{"type": "string"},
-			"limit": map[string]any{"type": "integer"},
-		}, "query"),
-		Call: func(ctx context.Context, args map[string]any) (any, error) {
-			q, err := mcptool.RequiredString(args, "query")
-			if err != nil {
-				return nil, err
-			}
-			return s.Search(ctx, q, intArg(args["limit"]))
-		},
-	}
-}
-
-func listDeadLettersTool(store deadletter.Storer) Tool {
-	return Tool{
-		Name:        "list_dead_letters",
+		Name:        "dead_letter_list",
 		Description: "List events that exhausted retries or failed permanently.",
 		InputSchema: objectSchema(map[string]any{
 			"limit":  map[string]any{"type": "integer"},
@@ -223,9 +184,9 @@ func listDeadLettersTool(store deadletter.Storer) Tool {
 	}
 }
 
-func replayDeadLetterTool(store deadletter.Storer, p Publisher) Tool {
+func deadLetterReplayTool(store deadletter.Storer, p Publisher) Tool {
 	return Tool{
-		Name:        "replay_dead_letter",
+		Name:        "dead_letter_replay",
 		Description: "Republish a dead letter to its original topic and remove it from the store.",
 		InputSchema: objectSchema(map[string]any{
 			"id": map[string]any{"type": "string"},

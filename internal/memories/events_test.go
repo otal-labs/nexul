@@ -7,5 +7,5 @@ import (
 )
 
 func TestTopics(t *testing.T) {
-	assert.ElementsMatch(t, []string{TopicCreated, TopicUpdated, TopicDeleted}, Topics())
+	assert.ElementsMatch(t, []string{TopicCreated, TopicUpdated, TopicDeleted, TopicInterviewTemplateUpdated}, Topics())
 }

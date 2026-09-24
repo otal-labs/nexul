@@ -336,18 +336,21 @@ func (f *fakeMentionLayoutGate) SetAllowed(allowed bool) {
 
 // fakePATStore is an in-memory PATStore that mimics the real repo's contract: only hashes are stored and revoke is user-scoped + idempotent-once.
 type fakePATStore struct {
-	mu   sync.Mutex
-	seq  int
-	byID map[string]*PersonalAccessToken
+	mu     sync.Mutex
+	seq    int
+	byID   map[string]*PersonalAccessToken
+	outbox []eventbus.OutboxEvent
+	getErr error
 }
 
 func newFakePATStore() *fakePATStore {
 	return &fakePATStore{byID: map[string]*PersonalAccessToken{}}
 }
 
-func (f *fakePATStore) Create(_ context.Context, p *PersonalAccessToken) error {
+func (f *fakePATStore) Create(_ context.Context, p *PersonalAccessToken, evts ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.outbox = append(f.outbox, evts...)
 	if p.ID == "" {
 		f.seq++
 		p.ID = fmt.Sprintf("pat-%d", f.seq)
@@ -384,7 +387,7 @@ func (f *fakePATStore) ListByUser(_ context.Context, userID string) ([]PersonalA
 	return out, nil
 }
 
-func (f *fakePATStore) Revoke(_ context.Context, id, userID string) error {
+func (f *fakePATStore) Revoke(_ context.Context, id, userID string, evts ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	p, ok := f.byID[id]
@@ -393,7 +396,33 @@ func (f *fakePATStore) Revoke(_ context.Context, id, userID string) error {
 	}
 	now := time.Unix(1_700_000_100, 0)
 	p.RevokedAt = &now
+	f.outbox = append(f.outbox, evts...)
 	return nil
+}
+
+func (f *fakePATStore) GetActiveForComputer(_ context.Context, userID, computerID string) (*PersonalAccessToken, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.getErr != nil {
+		return nil, f.getErr
+	}
+	for _, p := range f.byID {
+		if p.UserID == userID && p.ComputerID == computerID && p.RevokedAt == nil {
+			cp := *p
+			return &cp, nil
+		}
+	}
+	return nil, apperrs.ErrNotFound
+}
+
+func (f *fakePATStore) topics() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make([]string, 0, len(f.outbox))
+	for _, e := range f.outbox {
+		out = append(out, e.Topic)
+	}
+	return out
 }
 
 func (f *fakePATStore) TouchLastUsed(_ context.Context, id string) error {

@@ -76,6 +76,27 @@ func (e *PrerequisiteError) Error() string { return e.Err.Error() }
 
 func (e *PrerequisiteError) Unwrap() error { return apperrs.ErrInvalid }
 
+// FieldError names the pairing input a failure belongs to (name, server_url, or token), so a form can show it on that field.
+type FieldError struct {
+	Field string
+	Err   error
+}
+
+func (e *FieldError) Error() string { return e.Err.Error() }
+
+func (e *FieldError) Unwrap() error { return e.Err }
+
+// Paired reports whether the computer holds a harness session; a computer tunnel has none until T3 Code pairs over it.
+func (c Computer) Paired() bool { return !c.TokenExpiresAt.IsZero() }
+
+// address is where the harness answers: the tunnel hostname when the computer has one, else its server URL.
+func (c Computer) address() string {
+	if c.Tunnel != nil {
+		return "https://" + c.Tunnel.Hostname
+	}
+	return c.ServerURL
+}
+
 // Session is the harness-facing view of a computer; only call it on a decrypted copy.
 func (c Computer) Session() harness.Session {
 	return harness.Session{Name: c.Name, ServerURL: c.ServerURL, BearerToken: c.BearerToken}

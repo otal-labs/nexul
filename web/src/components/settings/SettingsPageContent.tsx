@@ -6,6 +6,7 @@ import { ConnectionTokenSection } from "@/components/settings/ConnectionTokenSec
 import { ConnectorsSettingsPanel } from "@/components/settings/ConnectorsSettingsPanel";
 import { DangerZoneSection } from "@/components/settings/DangerZoneSection";
 import { GatewaysSection } from "@/components/dns/GatewaysSection";
+import { InterviewTemplateSection } from "@/components/settings/InterviewTemplateSection";
 import { InstanceSettingsPanel } from "@/components/settings/InstanceSettingsPanel";
 import { McpConfigSection } from "@/components/settings/McpConfigSection";
 import { MemorySkillSection } from "@/components/settings/MemorySkillSection";
@@ -86,6 +87,7 @@ export const SettingsPageContent = ({
     {section === "plays" && (
       <PlaysPanel canReadPlays={canReadPlays} canWritePlays={canWritePlays} canDeletePlays={canDeletePlays} />
     )}
+    {section === "interview" && <InterviewTemplateSection />}
     {section === "mentions" && (
       <MentionsPanel settings={settings} canManageMentionLayout={canManageMentionLayout} />
     )}

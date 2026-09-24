@@ -16,7 +16,7 @@ const viaMCP = "mcp"
 
 // MCPTools returns the memories tool definitions (named domain_action).
 func MCPTools(s *Service) []mcptool.Tool {
-	return []mcptool.Tool{
+	return append([]mcptool.Tool{
 		{
 			Name:        "memory_list",
 			Description: "List memories (title and when-to-use only, no body). With project_id, returns the project's workspace memories first, then its own. With no project_id, workspace_id is required and returns that workspace's workspace-scoped memories only.",
@@ -84,7 +84,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 		},
 		{
 			Name:        "memory_update",
-			Description: "Update a memory's title, when-to-use, body (markdown), and always-included flag.",
+			Description: "Update a memory's title, when-to-use, body (markdown), and always-included flag. The interview memory (kind \"interview\") stays always included whatever the flag says, and its body is capped at 8,000 characters of markdown.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -194,6 +194,71 @@ func MCPTools(s *Service) []mcptool.Tool {
 					return nil, err
 				}
 				return memoryToMarkdown(m)
+			},
+		},
+	}, interviewTools(s)...)
+}
+
+// interviewTools are the interview memory and Interview template tools (ADR 0065).
+func interviewTools(s *Service) []mcptool.Tool {
+	return []mcptool.Tool{
+		{
+			Name:        "memory_create_interview",
+			Description: "Return the project's interview memory, the rules sent in full with every agent turn in the project, creating it from the workspace's Interview template if it does not exist yet. Edit it with memory_update; its body is capped at 8,000 characters of markdown.",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"project_id": map[string]any{"type": "string"},
+				},
+				"required": []string{"project_id"},
+			},
+			Call: func(ctx context.Context, args map[string]any) (any, error) {
+				projectID, err := mcptool.RequiredString(args, "project_id")
+				if err != nil {
+					return nil, err
+				}
+				m, err := s.CreateInterview(ctx, projectID, viaMCP)
+				if err != nil {
+					return nil, err
+				}
+				return memoryToMarkdown(m)
+			},
+		},
+		{
+			Name:        "interview_template_get",
+			Description: "Get the workspace's Interview template (markdown), the starting point each new project's interview memory is copied from.",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"workspace_id": map[string]any{"type": "string"},
+				},
+				"required": []string{"workspace_id"},
+			},
+			Call: func(ctx context.Context, args map[string]any) (any, error) {
+				workspaceID, err := mcptool.RequiredString(args, "workspace_id")
+				if err != nil {
+					return nil, err
+				}
+				return s.InterviewTemplate(ctx, workspaceID)
+			},
+		},
+		{
+			Name:        "interview_template_update",
+			Description: "Replace the workspace's Interview template (markdown, at most 8,000 characters). Existing interview memories are not changed.",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"workspace_id": map[string]any{"type": "string"},
+					"body":         map[string]any{"type": "string", "description": "Markdown body"},
+				},
+				"required": []string{"workspace_id"},
+			},
+			Call: func(ctx context.Context, args map[string]any) (any, error) {
+				workspaceID, err := mcptool.RequiredString(args, "workspace_id")
+				if err != nil {
+					return nil, err
+				}
+				return s.SaveInterviewTemplate(ctx, workspaceID, mcptool.OptionalString(args["body"]))
 			},
 		},
 	}

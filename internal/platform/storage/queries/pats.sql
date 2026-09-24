@@ -1,6 +1,6 @@
 -- name: CreatePAT :exec
-INSERT INTO personal_access_tokens (id, user_id, name, token_hash, prefix, created_at)
-VALUES (?, ?, ?, ?, ?, ?);
+INSERT INTO personal_access_tokens (id, user_id, name, token_hash, prefix, created_at, computer_id)
+VALUES (?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetPATByHash :one
 SELECT * FROM personal_access_tokens WHERE token_hash = ?;
@@ -13,3 +13,7 @@ UPDATE personal_access_tokens SET revoked_at = ? WHERE id = ? AND user_id = ? AN
 
 -- name: TouchPATLastUsed :exec
 UPDATE personal_access_tokens SET last_used_at = ? WHERE id = ? AND revoked_at IS NULL;
+
+-- name: GetActiveComputerPAT :one
+SELECT * FROM personal_access_tokens
+WHERE user_id = ? AND computer_id = ? AND computer_id != '' AND revoked_at IS NULL;

@@ -45,6 +45,19 @@ func TestWriteError_MapsSentinelsToC2(t *testing.T) {
 	}
 }
 
+func TestWriteFieldError_KeysTheMessageUnderTheField(t *testing.T) {
+	rec := httptest.NewRecorder()
+	WriteFieldError(rec, fmt.Errorf("%w: token refused", apperrs.ErrInvalid), "token")
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.JSONEq(t, `{"message":"invalid: token refused","code":"INVALID","errors":{"token":["invalid: token refused"]}}`, rec.Body.String())
+}
+
+func TestWriteError_OmitsFieldErrors(t *testing.T) {
+	rec := httptest.NewRecorder()
+	WriteError(rec, apperrs.ErrInvalid)
+	assert.NotContains(t, rec.Body.String(), "errors")
+}
+
 func TestWriteError_UnknownErrorDoesNotLeakMessage(t *testing.T) {
 	rec := httptest.NewRecorder()
 	WriteError(rec, errors.New("secret internal detail"))

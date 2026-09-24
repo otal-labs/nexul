@@ -236,7 +236,7 @@ func toMemoryItems(ms []*Memory) ([]MemoryItem, error) {
 // toMemoryItem renders one memory as a lean index entry, except an always-included memory, which also carries
 // its full markdown body since the turn inlines it (ticket 27).
 func toMemoryItem(m *Memory) (MemoryItem, error) {
-	item := MemoryItem{ID: m.ID, Title: m.Title, WhenToUse: m.WhenToUse, AlwaysIncluded: m.AlwaysIncluded}
+	item := MemoryItem{ID: m.ID, Title: m.Title, WhenToUse: m.WhenToUse, AlwaysIncluded: m.AlwaysIncluded, Kind: m.Kind}
 	if !m.AlwaysIncluded {
 		return item, nil
 	}
@@ -272,6 +272,13 @@ func (s *Service) Update(ctx context.Context, id, title, whenToUse, body string,
 	normalized, err := richtext.Normalize(body)
 	if err != nil {
 		return nil, fmt.Errorf("%w: body is not valid document content", apperrs.ErrInvalid)
+	}
+	// The interview memory is never switched off and stays under its cap (ADR 0065).
+	if current.Kind == KindInterview {
+		alwaysIncluded = true
+		if err := checkInterviewBody(normalized); err != nil {
+			return nil, err
+		}
 	}
 	current.Title = title
 	current.WhenToUse = capWhenToUse(whenToUse)

@@ -1,15 +1,17 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router";
 
 import { AttachmentsSection } from "@/components/attachment/AttachmentsSection";
 import { DocBodyView } from "@/components/doc/DocBodyView";
 import { RichTextEditor } from "@/components/doc/RichTextEditor";
 import { CloneMemoryDialog } from "@/components/memory/CloneMemoryDialog";
+import { InterviewLengthMeter } from "@/components/memory/InterviewLengthMeter";
 import { MemoryVersionsFeed } from "@/components/memory/MemoryVersionsFeed";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { isWorkspaceMemory, type Memory } from "@/models/Memory";
+import { isInterviewMemory, isWorkspaceMemory, type Memory } from "@/models/Memory";
+import { bodyToMarkdown } from "@/utils/RichtextUtility";
 
 interface MemoryDetailProps {
   memory: Memory;
@@ -28,6 +30,8 @@ export const MemoryDetail = ({ memory, canWrite, canDelete, canClone, onSave, on
   const [alwaysIncluded, setAlwaysIncluded] = useState(memory.always_included);
   const [body, setBody] = useState(memory.body);
   const [cloneOpen, setCloneOpen] = useState(false);
+  const interview = isInterviewMemory(memory);
+  const interviewLength = useMemo(() => (interview ? bodyToMarkdown(body).length : 0), [interview, body]);
 
   const dirty =
     title !== memory.title ||
@@ -86,10 +90,17 @@ export const MemoryDetail = ({ memory, canWrite, canDelete, canClone, onSave, on
               aria-label="When to use"
               className="text-sm"
             />
-            <label className="flex items-center gap-2 text-sm font-medium">
-              <Switch checked={alwaysIncluded} onCheckedChange={setAlwaysIncluded} aria-label="Always included" />
-              Always included in every turn
-            </label>
+            {!interview && (
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <Switch checked={alwaysIncluded} onCheckedChange={setAlwaysIncluded} aria-label="Always included" />
+                Always included in every turn
+              </label>
+            )}
+            {interview && (
+              <p className="text-sm text-muted-foreground">
+                Always included in every agent turn in this project; it can't be switched off.
+              </p>
+            )}
           </div>
         )}
         {!canWrite && memory.when_to_use !== "" && (
@@ -100,7 +111,8 @@ export const MemoryDetail = ({ memory, canWrite, canDelete, canClone, onSave, on
         {!canWrite && <DocBodyView body={memory.body} />}
 
         {canWrite && (
-          <div className="mt-6 flex justify-end">
+          <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
+            {interview && <InterviewLengthMeter length={interviewLength} />}
             <Button
               disabled={!dirty || saving}
               onClick={() => onSave({ title, when_to_use: whenToUse, body, always_included: alwaysIncluded })}

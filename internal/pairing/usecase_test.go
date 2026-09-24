@@ -20,6 +20,7 @@ func newTestService(repo *fakeRepo, exch *fakeExchanger) *Service {
 		Harnesses:     registry(exch),
 		EncryptionKey: testEncKey,
 		Now:           func() time.Time { return time.Date(2026, 8, 26, 12, 0, 0, 0, time.UTC) },
+		Tokens:        newFakeTokens(),
 	})
 }
 
@@ -194,6 +195,7 @@ func TestService_OnComputersChanged_FiresOnPairRepairDelete(t *testing.T) {
 		Harnesses:          registry(exch),
 		EncryptionKey:      testEncKey,
 		OnComputersChanged: func(userID string) { changed = append(changed, userID) },
+		Tokens:             newFakeTokens(),
 	})
 
 	c, err := svc.Pair(context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")

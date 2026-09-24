@@ -153,7 +153,7 @@ CREATE TABLE dead_letters (
 );
 ```
 
-The MCP server exposes `list_dead_letters` and `replay_dead_letter`, so an
+The MCP server exposes `dead_letter_list` and `dead_letter_replay`, so an
 agent can inspect and replay failures without a database shell.
 
 ## 5. Resilience middleware

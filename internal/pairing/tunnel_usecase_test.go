@@ -59,7 +59,7 @@ func (f *fakeTunnels) TunnelToken(_ context.Context, tunnelID string) (string, e
 func newTunnelService(repo *fakeRepo, exch *fakeExchanger, tunnels Tunnels) (*Service, *[]string) {
 	var changed []string
 	svc := NewService(Config{
-		Repo: repo, Harnesses: registry(exch), EncryptionKey: testEncKey, Tunnels: tunnels,
+		Repo: repo, Harnesses: registry(exch), EncryptionKey: testEncKey, Tunnels: tunnels, Tokens: newFakeTokens(),
 		Now:                func() time.Time { return time.Date(2026, 9, 24, 12, 0, 0, 0, time.UTC) },
 		OnComputersChanged: func(userID string) { changed = append(changed, userID) },
 	})

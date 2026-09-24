@@ -8,6 +8,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/auth"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
 )
 
@@ -20,21 +21,30 @@ type PATsRepo struct {
 	q  *sqlcgen.Queries
 }
 
-func (r *PATsRepo) Create(ctx context.Context, p *auth.PersonalAccessToken) error {
+func (r *PATsRepo) Create(ctx context.Context, p *auth.PersonalAccessToken, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		err := r.q.WithTx(tx).CreatePAT(ctx, sqlcgen.CreatePATParams{
-			ID:        p.ID,
-			UserID:    p.UserID,
-			Name:      p.Name,
-			TokenHash: p.TokenHash,
-			Prefix:    p.Prefix,
-			CreatedAt: p.CreatedAt.Unix(),
+			ID:         p.ID,
+			UserID:     p.UserID,
+			Name:       p.Name,
+			TokenHash:  p.TokenHash,
+			Prefix:     p.Prefix,
+			CreatedAt:  p.CreatedAt.Unix(),
+			ComputerID: p.ComputerID,
 		})
 		if err != nil {
 			return fmt.Errorf("insert pat %s: %w", p.ID, classifyWriteErr(err))
 		}
-		return nil
+		return insertOutboxRows(ctx, tx, evts)
 	})
+}
+
+func (r *PATsRepo) GetActiveForComputer(ctx context.Context, userID, computerID string) (*auth.PersonalAccessToken, error) {
+	row, err := r.q.GetActiveComputerPAT(ctx, sqlcgen.GetActiveComputerPATParams{UserID: userID, ComputerID: computerID})
+	if err != nil {
+		return nil, fmt.Errorf("get active pat for computer %s: %w", computerID, notFoundIfNoRows(err))
+	}
+	return toPAT(row), nil
 }
 
 func (r *PATsRepo) GetByHash(ctx context.Context, hash string) (*auth.PersonalAccessToken, error) {
@@ -57,7 +67,7 @@ func (r *PATsRepo) ListByUser(ctx context.Context, userID string) ([]auth.Person
 	return out, nil
 }
 
-func (r *PATsRepo) Revoke(ctx context.Context, id, userID string) error {
+func (r *PATsRepo) Revoke(ctx context.Context, id, userID string, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).RevokePAT(ctx, sqlcgen.RevokePATParams{
 			RevokedAt: nullUnixNow(), ID: id, UserID: userID,
@@ -68,7 +78,7 @@ func (r *PATsRepo) Revoke(ctx context.Context, id, userID string) error {
 		if n == 0 {
 			return fmt.Errorf("revoke pat %s: %w", id, apperrs.ErrNotFound)
 		}
-		return nil
+		return insertOutboxRows(ctx, tx, evts)
 	})
 }
 
@@ -86,12 +96,13 @@ func (r *PATsRepo) TouchLastUsed(ctx context.Context, id string) error {
 
 func toPAT(row sqlcgen.PersonalAccessToken) *auth.PersonalAccessToken {
 	p := &auth.PersonalAccessToken{
-		ID:        row.ID,
-		UserID:    row.UserID,
-		Name:      row.Name,
-		TokenHash: row.TokenHash,
-		Prefix:    row.Prefix,
-		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(),
+		ID:         row.ID,
+		UserID:     row.UserID,
+		Name:       row.Name,
+		TokenHash:  row.TokenHash,
+		Prefix:     row.Prefix,
+		CreatedAt:  time.Unix(row.CreatedAt, 0).UTC(),
+		ComputerID: row.ComputerID,
 	}
 	if row.LastUsedAt.Valid {
 		t := time.Unix(row.LastUsedAt.Int64, 0).UTC()

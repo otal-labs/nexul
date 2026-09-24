@@ -215,7 +215,9 @@ type PersonalAccessToken struct {
 	CreatedAt  time.Time  `json:"created_at"`
 	LastUsedAt *time.Time `json:"last_used_at,omitempty"`
 	RevokedAt  *time.Time `json:"revoked_at,omitempty"`
-	TokenHash  string     `json:"-"`
+	// ComputerID names the paired computer the token was minted for; empty for a token the user named themselves.
+	ComputerID string `json:"computer_id,omitempty"`
+	TokenHash  string `json:"-"`
 }
 
 // LoginMatch is one GitHub login suggestion for the allowlist typeahead (ADR 0040); only GitHub exposes a user-search API.

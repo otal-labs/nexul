@@ -37,6 +37,8 @@ A role, a personal access token, and an automation's scoped token are all checke
 
 Mint one from **Settings → Personal access tokens**. A PAT is long-lived, revocable, and carries exactly your own permissions — it's the credential an agent or a personal integration uses to act as you, including for the [MCP server](/docs/guide/mcp-server/). The raw token (prefixed `dep_`) is shown once at creation and can never be retrieved again; revoking it cuts access immediately.
 
+A paired computer gets its own PAT, "Nexul MCP on <computer>", minted from the computer's row in **Settings → Pairing**. It is listed here marked as the computer's, one is active per computer, and un-confirming the computer's setup or removing the computer revokes it.
+
 ## Connection tokens
 
 A **connection token** is different: it carries no identity or credentials at all, just server information (the instance URL, derived MCP endpoint, and basic settings) as a signed JWT. It exists so a standalone client — the [desktop app](/docs/guide/desktop-app/) today — can be pointed at your instance without you typing a URL by hand. Generate one from **Settings → Connection token**; after importing it, the client still signs you in through the normal GitHub OAuth flow.

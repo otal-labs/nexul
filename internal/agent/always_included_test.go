@@ -64,7 +64,7 @@ func TestRunTurn_TicketThread_AlwaysIncludedMemoryInlinedInFullInBothPrompts(t *
 	svc.RunTurn(context.Background(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent go"})
 
 	for _, prompt := range []string{got.Full, got.Incremental} {
-		assert.Contains(t, prompt, "Always-included memories, workspace then project, follow them:")
+		assert.Contains(t, prompt, "Always-included memories, follow them:")
 		assert.Contains(t, prompt, "### Working in this project\nStanding rule body text.")
 	}
 }
@@ -81,7 +81,7 @@ func TestRunTurn_ChannelWithNoProject_InlinesWorkspaceAlwaysIncludedMemories(t *
 	svc.RunTurn(context.Background(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent go"})
 
 	for _, prompt := range []string{got.Full, got.Incremental} {
-		assert.Contains(t, prompt, "Always-included memories, workspace then project, follow them:")
+		assert.Contains(t, prompt, "Always-included memories, follow them:")
 		assert.Contains(t, prompt, "### Team tone\nStanding rule body text.")
 	}
 }
@@ -97,7 +97,7 @@ func TestRunTurn_ChannelWithNoProjectOrWorkspace_InlinesNoAlwaysIncludedMemories
 
 	svc.RunTurn(context.Background(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent go"})
 
-	assert.NotContains(t, got.Full, "Always-included memories, workspace then project, follow them:")
+	assert.NotContains(t, got.Full, "Always-included memories, follow them:")
 	assert.NotContains(t, got.Full, "Standing rule body text")
 	assert.NotContains(t, got.Incremental, "Standing rule body text")
 }
@@ -184,4 +184,19 @@ func TestRunTurn_AlwaysIncludedMemoryImage_TravelsAsAttachment(t *testing.T) {
 	assert.Equal(t, "diagram.png", got.Attachments[0].Name)
 	assert.Contains(t, got.Full, "Layout: [image: diagram.png, attached to this turn] end")
 	assert.Contains(t, got.Incremental, "Layout: [image: diagram.png, attached to this turn] end")
+}
+
+func TestSplitAlwaysIncluded_InterviewLeads_SoATrimNeverDropsIt(t *testing.T) {
+	_, always := splitAlwaysIncluded(MemoriesIndex{
+		Workspace: []MemoryItem{{Name: "Team tone", AlwaysIncluded: true, Body: strings.Repeat("w", MaxMemoryChars)}},
+		Project: []MemoryItem{
+			{Name: "Working here", AlwaysIncluded: true, Body: "p"},
+			{Name: "Interview", AlwaysIncluded: true, Interview: true, Body: "Go only."},
+		},
+	})
+	require.Len(t, always, 3)
+	assert.Equal(t, "Interview", always[0].Title)
+
+	block := InlineMemoriesTrimmed(always, InlineLimits{PerMemory: MaxMemoryChars, PerRun: MaxMemoryChars}, slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)))
+	assert.Contains(t, block, "### Interview\nGo only.")
 }

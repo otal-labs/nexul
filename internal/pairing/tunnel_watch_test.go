@@ -50,7 +50,7 @@ func newWatchFixture(t *testing.T) watchFixture {
 	f := watchFixture{repo: newFakeRepo(), tunnels: &fakeTunnels{status: "inactive"}, exch: &fakeExchanger{version: "0.0.40"}, bus: &fakeBus{}, now: &now}
 	f.svc = NewService(Config{
 		Repo: f.repo, Harnesses: registry(f.exch), EncryptionKey: testEncKey, Tunnels: f.tunnels, Bus: f.bus,
-		Now: func() time.Time { return *f.now },
+		Tokens: newFakeTokens(), Now: func() time.Time { return *f.now },
 	})
 	return f
 }

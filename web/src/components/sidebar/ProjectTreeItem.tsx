@@ -1,4 +1,4 @@
-import { ChevronDownIcon, LayoutDashboardIcon, PlusIcon, SettingsIcon } from "lucide-react";
+import { ChevronDownIcon, ClipboardListIcon, LayoutDashboardIcon, PlusIcon, SettingsIcon } from "lucide-react";
 import { NavLink } from "react-router";
 
 import { ProjectCollapsiblePanel } from "@/components/project/ProjectCollapsiblePanel";
@@ -6,7 +6,7 @@ import { navLinkClass } from "@/components/SidebarNav";
 import { ProjectDocsRow } from "@/components/sidebar/ProjectDocsRow";
 import { ProjectMemoriesRow } from "@/components/sidebar/ProjectMemoriesRow";
 import { cn } from "@/lib/utils";
-import { boardPath, projectSettingsPath, projectToken, type Project } from "@/models/Project";
+import { boardPath, interviewPath, projectSettingsPath, projectToken, type Project } from "@/models/Project";
 
 interface ProjectTreeItemProps {
   project: Project;
@@ -47,6 +47,13 @@ export const ProjectTreeItem = ({
                 title="Board"
               >
                 <LayoutDashboardIcon className="size-4 shrink-0" aria-hidden />
+              </NavLink>
+              <NavLink
+                to={interviewPath(projectToken(project))}
+                className={({ isActive }) => cn(navLinkClass({ isActive }), "justify-center")}
+                title="Interview"
+              >
+                <ClipboardListIcon className="size-4 shrink-0" aria-hidden />
               </NavLink>
               <ProjectDocsRow project={project} collapsed />
               <ProjectMemoriesRow project={project} collapsed />
@@ -98,6 +105,10 @@ export const ProjectTreeItem = ({
               <NavLink to={boardPath(project)} className={navLinkClass}>
                 <LayoutDashboardIcon className="size-4 shrink-0" aria-hidden />
                 <span className="truncate">Board</span>
+              </NavLink>
+              <NavLink to={interviewPath(projectToken(project))} className={navLinkClass}>
+                <ClipboardListIcon className="size-4 shrink-0" aria-hidden />
+                <span className="truncate">Interview</span>
               </NavLink>
               <ProjectDocsRow project={project} />
               <ProjectMemoriesRow project={project} />

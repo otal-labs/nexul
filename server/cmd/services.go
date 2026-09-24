@@ -191,6 +191,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		OnComputersChanged: func(userID string) { presenceKeeper.Refresh(userID) },
 		Tunnels:            pairingTunnels{dns: dnsSvc},
 		Bus:                bus,
+		Tokens:             pairingMCPTokens{auth: authSvc},
 	})
 	presenceKeeper = presence.New(presence.Config{
 		Sessions:  pairingSvc.ActiveSessions,

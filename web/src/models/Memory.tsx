@@ -4,6 +4,8 @@ export interface Memory {
   id: string;
   workspace_id: string;
   project_id: string;
+  /** "" for an ordinary memory; "interview" for the project's interview memory, one per project. */
+  kind: string;
   title: string;
   when_to_use: string;
   body: string;
@@ -35,3 +37,10 @@ export const emptyCreateMemoryForm = (): CreateMemoryFormData => ({
 });
 
 export const isWorkspaceMemory = (memory: Memory): boolean => memory.project_id === "";
+
+export const INTERVIEW_KIND = "interview";
+
+// Mirrors memories.MaxInterviewChars; the server refuses a save over it.
+export const MAX_INTERVIEW_CHARS = 8000;
+
+export const isInterviewMemory = (memory: Memory): boolean => memory.kind === INTERVIEW_KIND;
