@@ -70,3 +70,11 @@ heavy dependency tree, and a UDP port on the server).
 
 Facts still to verify are in ticket 16; if any fails, this ticket reopens.
 An ADR records the decision when the map is sliced.
+
+## Comments
+
+Verified 2026-09-24 ([ticket 16](16-verify-tunnel-per-computer.md)): the
+Access service token is **one per instance**, admitted by every computer's
+Access app (Cloudflare caps service tokens at 50 per account), and the owner
+must enable Zero Trust once in the Cloudflare dashboard before pairing by
+tunnel works.

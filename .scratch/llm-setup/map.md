@@ -134,6 +134,12 @@ no users yet, move quick):
   to a service token only the server holds; pairing's first step installs
   the tunnel and waits until it is verified; harness-neutral; URL pairing
   stays Advanced; a Nexul-built relay and Tailcat are set aside.
+- [Verify the tunnel-per-computer path](issues/16-verify-tunnel-per-computer.md)
+  — all facts hold: existing tunnel code routes to a laptop, Access works by
+  API on the free plan with one instance-wide service token, T3 Code needs
+  nothing special; Access app before CNAME, ordered teardown, two added
+  connector permissions, Zero Trust enabled once by the owner, "online"
+  means tunnel healthy plus a T3 probe through the hostname.
 - [Which skill sets "setup" installs](issues/03-which-skill-sets.md) —
   mattpocock/skills is the default the wizard installs (users may amend their
   copies); pstack is a README credit only; no Nexul-shipped skill for now —
