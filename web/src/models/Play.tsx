@@ -1,7 +1,14 @@
 import { z } from "zod";
 
-export const PLAY_TYPES = ["ticket", "doc"] as const;
+// An interview play runs on a project's Interview page; its run target id is the project id.
+export const PLAY_TYPES = ["ticket", "doc", "interview"] as const;
 export type PlayType = (typeof PLAY_TYPES)[number];
+
+export const PLAY_TYPE_LABELS: Record<PlayType, string> = {
+  ticket: "Ticket",
+  doc: "Doc",
+  interview: "Interview",
+};
 
 // Mirrors the Go backend's five fixed board stages (ADR 0022); a ticket play shows on exactly one.
 export const PLAY_STAGES = ["backlog", "progress", "review", "testing", "done"] as const;
@@ -30,7 +37,7 @@ export interface Play {
   updated_at: string;
 }
 
-// show_when_stage is "" for no stage (a doc play) rather than null, so it plugs straight into FormSelect's
+// show_when_stage is "" for no stage (any play but a ticket play) rather than null, so it plugs straight into FormSelect's
 // empty-value sentinel; the refine below is the client-side half of the same rule the API enforces.
 export const SavePlayFormSchema = z
   .object({
@@ -48,7 +55,7 @@ export const SavePlayFormSchema = z
         ? (PLAY_STAGES as readonly string[]).includes(data.show_when_stage)
         : data.show_when_stage === "",
     {
-      message: "A ticket play needs exactly one show-when stage; a doc play can't have one",
+      message: "A ticket play needs exactly one show-when stage; other plays can't have one",
       path: ["show_when_stage"],
     },
   );

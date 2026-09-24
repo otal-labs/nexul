@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -235,6 +236,24 @@ func (f *fakeRepo) MarkPRState(_ context.Context, owner, repo string, number int
 		}
 	}
 	return affected, nil
+}
+
+func (f *fakeRepo) ListIDsByPR(_ context.Context, owner, repo string, number int) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.prLinksErr != nil {
+		return nil, f.prLinksErr
+	}
+	var ids []string
+	for id, links := range f.prLinks {
+		for _, l := range links {
+			if l.Owner == owner && l.Repo == repo && l.Number == number && !contains(ids, id) {
+				ids = append(ids, id)
+			}
+		}
+	}
+	sort.Strings(ids)
+	return ids, nil
 }
 
 func (f *fakeRepo) SetFinishedAt(_ context.Context, id string, at time.Time, evts ...eventbus.OutboxEvent) (bool, error) {
@@ -1098,4 +1117,62 @@ func TestCanTransition(t *testing.T) {
 			assert.Equal(t, tt.want, CanTransition(tt.from, tt.to))
 		})
 	}
+}
+
+func TestUpdateStatus_UserRequestRecordsTheMoversUserID(t *testing.T) {
+	repo := newFakeRepo()
+	s := newTestService(repo)
+	created, err := s.Create(context.Background(), "p-1", "ticket", "", "", "")
+	require.NoError(t, err)
+
+	_, err = s.UpdateStatus(identity.WithActor(context.Background(), identity.Actor{ID: "u-7"}), created.ID, StatusDone)
+	require.NoError(t, err)
+
+	evts := repo.eventsFor(TopicStatusChanged)
+	require.Len(t, evts, 1)
+	e, ok := evts[0].Payload.(StatusChangedEvent)
+	require.True(t, ok)
+	assert.Equal(t, Actor{Kind: ActorKindUser, UserID: "u-7"}, e.Actor)
+}
+
+func TestListByPR(t *testing.T) {
+	repo := newFakeRepo()
+	s := newTestService(repo)
+	a, err := s.Create(context.Background(), "p-1", "first", "", "", "")
+	require.NoError(t, err)
+	b, err := s.Create(context.Background(), "p-1", "second", "", "", "")
+	require.NoError(t, err)
+	ref := PRRef{Owner: "o", Repo: "r", Number: 7}
+	require.NoError(t, s.LinkPR(context.Background(), a.ID, ref))
+	require.NoError(t, s.LinkPR(context.Background(), b.ID, ref))
+	require.NoError(t, s.LinkPR(context.Background(), b.ID, PRRef{Owner: "o", Repo: "r", Number: 8}))
+
+	got, err := s.ListByPR(context.Background(), "o", "r", 7)
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{a.ID, b.ID}, []string{got[0].ID, got[1].ID})
+
+	none, err := s.ListByPR(context.Background(), "o", "r", 9)
+	require.NoError(t, err)
+	assert.Empty(t, none)
+}
+
+func TestListByPR_Errors(t *testing.T) {
+	t.Run("invalid input", func(t *testing.T) {
+		_, err := newTestService(newFakeRepo()).ListByPR(context.Background(), "o", "", 1)
+		require.ErrorIs(t, err, apperrs.ErrInvalid)
+		_, err = newTestService(newFakeRepo()).ListByPR(context.Background(), "o", "r", 0)
+		require.ErrorIs(t, err, apperrs.ErrInvalid)
+	})
+	t.Run("link lookup fails", func(t *testing.T) {
+		repo := newFakeRepo()
+		repo.prLinksErr = errors.New("disk")
+		_, err := newTestService(repo).ListByPR(context.Background(), "o", "r", 1)
+		require.Error(t, err)
+	})
+	t.Run("a linked ticket is gone", func(t *testing.T) {
+		repo := newFakeRepo()
+		repo.prLinks["t-gone"] = []PRLink{{PRRef: PRRef{Owner: "o", Repo: "r", Number: 1}}}
+		_, err := newTestService(repo).ListByPR(context.Background(), "o", "r", 1)
+		require.ErrorIs(t, err, apperrs.ErrNotFound)
+	})
 }

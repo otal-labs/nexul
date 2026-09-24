@@ -19,7 +19,7 @@ Open the sidebar and pick **New project**. This starts the project wizard, which
 4. **Env** — only shown if the repository has a `.env.example`; fill in the values it lists.
 5. **Reach** — optionally expose the service at a hostname.
 6. **Deploy branches** — optionally deploy other branches, like `feature/*` or `staging`, as their own copies (see [Stacks and Deploys](/docs/guide/stacks-and-deploys/#branch-deploys)).
-7. **Done** — lands on the topology canvas showing what was just deployed (see [Stacks and Deploys](/docs/guide/stacks-and-deploys/)).
+7. **Done** — offers the project's interview while it has none, then lands on the topology canvas showing what was just deployed (see [Stacks and Deploys](/docs/guide/stacks-and-deploys/)). Skipping the interview asks "are you sure?" first, and a banner stays on the project's board until the interview exists (see [The Interview play](/docs/guide/plays/#the-interview-play)).
 
 The same wizard reopens later from a project's **Add service** button, or from the Topology page's empty state, to attach another repository or add another service to an existing project.
 

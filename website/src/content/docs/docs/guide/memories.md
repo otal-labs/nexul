@@ -37,7 +37,10 @@ Each project has one **interview memory**: its stack, paradigm, testing
 strategy, principles, and vocabulary, written as rules. Open it from
 **Interview** under the project in the sidebar (`/projects/<prefix>/interview`).
 Until it exists the page offers **Start from the template**, which copies the
-workspace's Interview template into a new interview memory.
+workspace's Interview template into a new interview memory. The page's
+**Run the interview** button runs the workspace's Interview play instead: an
+Agent asks one question at a time and writes the memory for you, and
+**Re-run the interview** amends it later. See [Plays](/docs/guide/plays/).
 
 The interview memory is sent in full with every Agent turn in the project,
 every play and every `@Agent` mention, ahead of the other always-included
@@ -55,6 +58,22 @@ the same cap, and **Reset to default** restores the seeded categories. A
 project's interview copies the template once, so editing the template never
 changes an existing interview, and editing an interview never changes the
 template.
+
+## The decisions log
+
+Each project can hold one **decisions log**: the tickets that changed how the
+project works, a new pattern, a dropped library, a reversed decision, and why.
+Routine tickets add nothing, so it never becomes a changelog. An entry is at
+most three lines: the date and the decision, `Why:` in one line, and a link to
+the ticket, which links its doc and pull request. When a later decision
+reverses an entry, the old entry stays and its first line is marked
+`(superseded by <ticket>)`, so the log reads as what is true now.
+
+The log is written by the decisions check (see Plays), not by hand, though it
+edits, versions, and reverts like any memory. It is created on its first
+entry. It is never always included: it sits in the memory index and an Agent
+reads it when it needs the why, since the interview already takes the
+every-turn slot.
 
 ## Edit and version
 
@@ -83,5 +102,10 @@ project's interview), and `/api/memories/interview-template`. MCP registers
 `memory_delete`, `memory_list_versions`, `memory_revert`, `memory_clone`,
 `memory_create_interview`, `interview_template_get`, and
 `interview_template_update`. A memory's `kind` is `interview` for the
-interview memory and empty otherwise; `memory.created` and `memory.updated`
-carry it, and saving the template publishes `interview_template.updated`.
+interview memory, `decisions_log` for the decisions log, and empty otherwise;
+`memory.created` and `memory.updated` carry it, and saving the template
+publishes `interview_template.updated`. `memory_create` and
+`POST /api/memories` take `kind: "decisions_log"` to create a project's log;
+a second one is refused, and `memory_update` adds to the existing one.
+`memory.created`, `memory.updated`, and `memory.deleted` also reach the browser
+live, so the Interview page shows the Agent's writes as they land.

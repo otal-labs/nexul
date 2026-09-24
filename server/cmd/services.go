@@ -192,6 +192,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		Tunnels:            pairingTunnels{dns: dnsSvc},
 		Bus:                bus,
 		Tokens:             pairingMCPTokens{auth: authSvc},
+		Instance:           dnsSettingsAdapter{store.Settings},
 	})
 	presenceKeeper = presence.New(presence.Config{
 		Sessions:  pairingSvc.ActiveSessions,
@@ -225,6 +226,11 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	accessSvc.SetPlayWorkspaces(accessPlayWorkspaceResolver{plays: store.Plays})
 	// accessSvc.Can already matches chat.DocAccess's shape (ADR 0017 seam), so it wires in directly.
 	chatSvc.SetDocAccess(accessSvc)
+	ticketsSvc.SetTesting(tickets.Testing{
+		Stages:  ticketStages{statuses: store.Statuses},
+		Threads: ticketThreads{chat: chatSvc, projects: store.Projects},
+		Targets: ticketTestTargets{deploy: deploySvc},
+	})
 	// gitRouter resolves per-repo since different projects' repos can live on different git hosts.
 	gitRouter := gitProviderRouter{workspace: workspaceSvc, connectors: connectorsSvc, appConfigs: store.ConnectorAppConfig}
 	repoScanner := repositoryScanner{git: gitRouter, appConfigs: store.ConnectorAppConfig}

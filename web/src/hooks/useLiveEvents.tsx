@@ -12,6 +12,7 @@ import { getDeployKey, getDeployLogKey } from "@/hooks/DeployHooks";
 import { getDnsExposuresKey, getDnsGatewaysKey } from "@/hooks/DnsHooks";
 import { getDocKey, getDocsKey } from "@/hooks/DocHooks";
 import { getInstanceUpgradeKey } from "@/hooks/InstanceUpgradeHooks";
+import { getMemoriesKey, getMemoryKey, getMemoryVersionsKey } from "@/hooks/MemoryHooks";
 import { getNotificationsKey, getUnreadCountKey } from "@/hooks/NotificationHooks";
 import { getComputersKey, getHarnessProvidersKey, getHarnessResolveKey } from "@/hooks/PairingHooks";
 import { getRunnerQueueKey, getRunnersKey } from "@/hooks/RunnerHooks";
@@ -94,6 +95,9 @@ const pushTopics: Record<string, string[]> = {
   "play.created": [getWorkspacePlaysKey, getApplicablePlaysKey],
   "play.updated": [getWorkspacePlaysKey, getApplicablePlaysKey],
   "play.deleted": [getWorkspacePlaysKey, getApplicablePlaysKey],
+  "memory.created": [getMemoriesKey],
+  "memory.updated": [getMemoriesKey, getMemoryKey, getMemoryVersionsKey],
+  "memory.deleted": [getMemoriesKey, getMemoryKey],
 };
 
 // A full-text-replace snapshot of the in-progress @Agent turn bubble, keyed by conversation + message id.

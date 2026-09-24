@@ -12,7 +12,7 @@ import (
 )
 
 const createConversation = `-- name: CreateConversation :exec
-INSERT INTO conversations (id, workspace_id, kind, name, ticket_id, doc_id, parent_message_id, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO conversations (id, workspace_id, kind, name, ticket_id, doc_id, project_id, parent_message_id, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateConversationParams struct {
@@ -22,6 +22,7 @@ type CreateConversationParams struct {
 	Name            string
 	TicketID        sql.NullString
 	DocID           sql.NullString
+	ProjectID       sql.NullString
 	ParentMessageID string
 	CreatedBy       string
 	CreatedAt       int64
@@ -36,6 +37,7 @@ func (q *Queries) CreateConversation(ctx context.Context, arg CreateConversation
 		arg.Name,
 		arg.TicketID,
 		arg.DocID,
+		arg.ProjectID,
 		arg.ParentMessageID,
 		arg.CreatedBy,
 		arg.CreatedAt,
@@ -94,7 +96,7 @@ func (q *Queries) DeleteMessage(ctx context.Context, arg DeleteMessageParams) (i
 }
 
 const getChannelByName = `-- name: GetChannelByName :one
-SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id FROM conversations WHERE workspace_id = ? AND kind = 'channel' AND name = ?
+SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id FROM conversations WHERE workspace_id = ? AND kind = 'channel' AND name = ?
 `
 
 type GetChannelByNameParams struct {
@@ -118,12 +120,13 @@ func (q *Queries) GetChannelByName(ctx context.Context, arg GetChannelByNamePara
 		&i.AgentThreadID,
 		&i.AgentSyncedAt,
 		&i.DocID,
+		&i.ProjectID,
 	)
 	return i, err
 }
 
 const getConversation = `-- name: GetConversation :one
-SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id FROM conversations WHERE id = ?
+SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id FROM conversations WHERE id = ?
 `
 
 func (q *Queries) GetConversation(ctx context.Context, id string) (Conversation, error) {
@@ -142,12 +145,13 @@ func (q *Queries) GetConversation(ctx context.Context, id string) (Conversation,
 		&i.AgentThreadID,
 		&i.AgentSyncedAt,
 		&i.DocID,
+		&i.ProjectID,
 	)
 	return i, err
 }
 
 const getDocThread = `-- name: GetDocThread :one
-SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id FROM conversations WHERE doc_id = ?
+SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id FROM conversations WHERE doc_id = ?
 `
 
 func (q *Queries) GetDocThread(ctx context.Context, docID sql.NullString) (Conversation, error) {
@@ -166,6 +170,32 @@ func (q *Queries) GetDocThread(ctx context.Context, docID sql.NullString) (Conve
 		&i.AgentThreadID,
 		&i.AgentSyncedAt,
 		&i.DocID,
+		&i.ProjectID,
+	)
+	return i, err
+}
+
+const getInterviewThread = `-- name: GetInterviewThread :one
+SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id FROM conversations WHERE project_id = ?
+`
+
+func (q *Queries) GetInterviewThread(ctx context.Context, projectID sql.NullString) (Conversation, error) {
+	row := q.db.QueryRowContext(ctx, getInterviewThread, projectID)
+	var i Conversation
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Kind,
+		&i.Name,
+		&i.TicketID,
+		&i.ParentMessageID,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.AgentThreadID,
+		&i.AgentSyncedAt,
+		&i.DocID,
+		&i.ProjectID,
 	)
 	return i, err
 }
@@ -194,7 +224,7 @@ func (q *Queries) GetMessage(ctx context.Context, id string) (Message, error) {
 }
 
 const getTicketThread = `-- name: GetTicketThread :one
-SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id FROM conversations WHERE ticket_id = ?
+SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id FROM conversations WHERE ticket_id = ?
 `
 
 func (q *Queries) GetTicketThread(ctx context.Context, ticketID sql.NullString) (Conversation, error) {
@@ -213,6 +243,7 @@ func (q *Queries) GetTicketThread(ctx context.Context, ticketID sql.NullString) 
 		&i.AgentThreadID,
 		&i.AgentSyncedAt,
 		&i.DocID,
+		&i.ProjectID,
 	)
 	return i, err
 }
@@ -234,7 +265,7 @@ func (q *Queries) InsertConversationParticipant(ctx context.Context, arg InsertC
 }
 
 const listConversationsForUser = `-- name: ListConversationsForUser :many
-SELECT DISTINCT c.id, c.workspace_id, c.kind, c.name, c.ticket_id, c.parent_message_id, c.created_by, c.created_at, c.updated_at, c.agent_thread_id, c.agent_synced_at, c.doc_id FROM conversations c
+SELECT DISTINCT c.id, c.workspace_id, c.kind, c.name, c.ticket_id, c.parent_message_id, c.created_by, c.created_at, c.updated_at, c.agent_thread_id, c.agent_synced_at, c.doc_id, c.project_id FROM conversations c
 LEFT JOIN conversation_participants p ON p.conversation_id = c.id AND p.user_id = ?
 WHERE c.workspace_id = ? AND (c.kind IN ('channel', 'voice_channel', 'doc_thread') OR p.user_id IS NOT NULL)
 ORDER BY c.created_at
@@ -267,6 +298,7 @@ func (q *Queries) ListConversationsForUser(ctx context.Context, arg ListConversa
 			&i.AgentThreadID,
 			&i.AgentSyncedAt,
 			&i.DocID,
+			&i.ProjectID,
 		); err != nil {
 			return nil, err
 		}

@@ -83,7 +83,9 @@ The conversation that establishes a project's rules for agents: its stack,
 paradigm, testing strategy, principles, and vocabulary, asked one question
 at a time by the Interview play and answered by a person, with the agent
 able to read the codebase for answers first. Its questions start from the
-workspace's Interview template.
+workspace's Interview template. It happens in the project's interview
+thread, a conversation of its own shown on the project's Interview page.
+Re-running it amends the interview memory rather than starting over.
 _Avoid_: Onboarding, questionnaire, setup
 
 **Interview memory**:
@@ -98,17 +100,28 @@ superseded so it reads as what is true now. Pulled from the memory index
 when relevant, never sent every turn.
 _Avoid_: Changelog, history, release notes
 
+**Decisions check**:
+The built-in play that fires by itself, once, when a ticket enters a
+done-stage column: on the paired computer of the person who moved the card,
+or the ticket's developer's when an automation moved it. It adds a
+decisions-log entry, marks an older one superseded, or leaves the log alone.
+A check that cannot start stays on the ticket as "Decisions check didn't run"
+with a way to run it again.
+_Avoid_: Closing summary, retrospective, done hook
+
 **Play**:
-A pre-configured Agent turn a user fires from a ticket page or a doc page
-with one button ("Fix with AI", "To tickets via AI"). Defined per workspace
-with a label, a type (ticket or doc), a one-line description, base
+A pre-configured Agent turn a user fires from a ticket page, a doc page, or
+a project's Interview page with one button ("Fix with AI", "To tickets via
+AI", "Run the interview"). Defined per workspace with a label, a type
+(ticket, doc, or interview), a one-line description, base
 instructions, an enabled switch, and an excluded-projects list; a ticket
 play also names the one stage it shows in. No default memories live on the
 definition — the run dialog picks those per run. Runs on the clicking
 user's own paired harness and posts into the target's thread; the column
 the ticket moves to on success is chosen at run time. Every workspace,
-new or existing, is seeded with the same pair, "Fix with AI" (ticket,
-progress stage) and "To tickets via AI" (doc), as ordinary plays a member
+new or existing, is seeded with the same three, "Fix with AI" (ticket,
+progress stage), "To tickets via AI" (doc), and "Interview" (interview), as
+ordinary plays a member
 may edit or delete. Seen and fired with `plays:run`, managed with
 `plays:read`, `plays:write`, `plays:delete`. A named user can be excluded
 from one play: a permission overwrite denying that user `plays:run` on the
@@ -116,8 +129,8 @@ play, set from the play's own settings page.
 _Avoid_: Agent action, button, automation (that is event-driven code)
 
 **Trail**:
-What one press of a play leaves behind: who started it, on which ticket
-or doc, with which memories and instructions, every step the Agent took,
+What one press of a play leaves behind: who started it, on which ticket,
+doc, or project interview, with which memories and instructions, every step the Agent took,
 and how it ended. A step is structured (tool call, tool result, question,
 or assistant text, with the tool name, an argument preview, the raw detail,
 and its time), never a bare line, so the trail reads as a transcript. The
@@ -128,7 +141,7 @@ its command, a file change its path), the question card and the answer
 where they happened, the final reply as prose, and the runner's own notes
 (a skipped move, a stop) as muted lines.
 Persisted, never ephemeral; the "Trail" section on a
-ticket or doc lists them, and the target's thread shows the same turn
+ticket, doc, or Interview page lists them, and the target's thread shows the same turn
 groups above the Agent's reply, question, or closing note, so the run reads
 the same way in the conversation it landed in. States: `starting` at the press, `running` once
 the harness accepts, `waiting` while the Agent's question to the starter is
@@ -190,6 +203,13 @@ a derived clone service record.
 **Preview deployment**:
 A branch deployment spawned by a *wildcard* branch deploy rule — one clone
 per matching branch, torn down when the branch is deleted.
+
+**Test target**:
+Where a tester checks a ticket in a testing-stage column: the preview
+deployment of a branch linked to it, else a shared test environment other
+work also lands on. Never production, meaning the default branch's own
+deployment or a branch deployment on its network with nothing overridden.
+_Avoid_: Test URL, staging
 
 **Stack**:
 One repository's worth of deployable containers: a compose file, or a

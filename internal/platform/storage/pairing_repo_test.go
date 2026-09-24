@@ -431,3 +431,76 @@ func TestPairingRepo_ComputerTunnel_HostnameIsUnique(t *testing.T) {
 	err = s.Pairing.SaveComputer(ctx, withTunnel(newTestComputer("c2", "u1", "b"), "same.example.com"))
 	require.ErrorIs(t, err, apperrs.ErrConflict)
 }
+
+func TestPairingRepo_SetSetupMCPToken_SurvivesRePairAndChecksOwner(t *testing.T) {
+	t.Parallel()
+	s := newSetupTestStore(t)
+
+	require.ErrorIs(t, s.Pairing.SetSetupMCPToken(t.Context(), "u2", "c1", "sealed"), apperrs.ErrNotFound)
+	require.NoError(t, s.Pairing.SetSetupMCPToken(t.Context(), "u1", "c1", "sealed"))
+	require.NoError(t, s.Pairing.SaveComputer(t.Context(), newTestComputer("c1", "u1", "renamed")))
+
+	got, err := s.Pairing.GetComputer(t.Context(), "u1", "c1")
+	require.NoError(t, err)
+	assert.Equal(t, "sealed", got.SetupMCPToken)
+}
+
+func TestPairingRepo_SaveSetupTurn_UpsertsWithItsEvents(t *testing.T) {
+	t.Parallel()
+	s := newSetupTestStore(t)
+	started := time.Unix(1_700_000_000, 0).UTC()
+	turn := pairing.SetupTurn{
+		ID: "t1", RunID: "r1", ComputerID: "c1", UserID: "u1", Provider: "codex", ProviderName: "Codex",
+		State: pairing.SetupTurnRunning, Status: "Installing", StartedAt: started,
+	}
+	evt := eventbus.OutboxEvent{ID: "e1", Topic: pairing.TopicSetupTurnChanged, Payload: pairing.SetupTurnChangedEvent{TurnID: "t1"}}
+	require.NoError(t, s.Pairing.SaveSetupTurn(t.Context(), turn, evt))
+
+	ended := started.Add(time.Minute)
+	turn.State, turn.Status, turn.EndedAt = pairing.SetupTurnConfirmed, "Confirmed", &ended
+	turn.Transcript = []harness.Activity{{Kind: harness.ActivityText, Summary: "done"}}
+	evt.ID = "e2"
+	require.NoError(t, s.Pairing.SaveSetupTurn(t.Context(), turn, evt))
+
+	var state, transcript string
+	var endedAt int64
+	row := s.db.QueryRowContext(t.Context(), `SELECT state, transcript, ended_at FROM pairing_setup_turns WHERE id = 't1'`)
+	require.NoError(t, row.Scan(&state, &transcript, &endedAt))
+	assert.Equal(t, "confirmed", state)
+	assert.Contains(t, transcript, `"Summary":"done"`)
+	assert.Equal(t, ended.Unix(), endedAt)
+	entries, err := s.Outbox.Unpublished(t.Context(), 10)
+	require.NoError(t, err)
+	assert.Len(t, entries, 2)
+
+	turn.ComputerID = "missing"
+	turn.ID = "t2"
+	require.Error(t, s.Pairing.SaveSetupTurn(t.Context(), turn), "a turn needs its computer")
+}
+
+func TestPairingRepo_ListLatestSetupTurns_NewestPerProvider(t *testing.T) {
+	t.Parallel()
+	s := newSetupTestStore(t)
+	at := time.Unix(1_700_000_000, 0).UTC()
+	save := func(id, run, provider string, state pairing.SetupTurnState, started time.Time) {
+		t.Helper()
+		require.NoError(t, s.Pairing.SaveSetupTurn(t.Context(), pairing.SetupTurn{
+			ID: id, RunID: run, ComputerID: "c1", UserID: "u1", Provider: provider, ProviderName: provider,
+			State: state, Status: string(state), StartedAt: started, UpdatedAt: started.Add(time.Second),
+		}))
+	}
+	save("t1", "r1", "codex", pairing.SetupTurnFailed, at)
+	save("t2", "r1", "claudeagent", pairing.SetupTurnConfirmed, at.Add(time.Minute))
+	save("t3", "r2", "codex", pairing.SetupTurnConfirmed, at.Add(time.Hour))
+
+	got, err := s.Pairing.ListLatestSetupTurns(t.Context(), "c1")
+	require.NoError(t, err)
+	require.Len(t, got, 2)
+	assert.Equal(t, pairing.SetupTurnSummary{RunID: "r1", TurnID: "t2", Provider: "claudeagent", ProviderName: "claudeagent", State: pairing.SetupTurnConfirmed, Status: "confirmed", UpdatedAt: at.Add(time.Minute + time.Second)}, got[0])
+	assert.Equal(t, "t3", got[1].TurnID)
+	assert.Equal(t, "r2", got[1].RunID)
+
+	none, err := s.Pairing.ListLatestSetupTurns(t.Context(), "other")
+	require.NoError(t, err)
+	assert.Empty(t, none)
+}

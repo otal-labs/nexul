@@ -54,10 +54,11 @@ type TargetReader interface {
 	GetStatus(ctx context.Context, id string) (StatusTarget, error)
 }
 
-// PlayActor is the provenance a play's ticket move carries: the play's label, the trail, and how the run was started.
+// PlayActor is the provenance a play's ticket move carries: the play's label, the trail, who started it, and how.
 type PlayActor struct {
 	PlayLabel string
 	TrailID   string
+	StarterID string
 	Via       Via
 }
 
@@ -66,9 +67,16 @@ type StatusMover interface {
 	MoveTicket(ctx context.Context, ticketID, statusID string, actor PlayActor) error
 }
 
-// ProjectLookup resolves a project's workspace, so a play is checked against the target's own workspace.
+// ProjectTarget is the slice of a project an interview run needs; TestsLocation is the wizard's answer, "" when unanswered.
+type ProjectTarget struct {
+	Name          string
+	TestsLocation string
+}
+
+// ProjectLookup resolves a project's workspace for the play check and reads the project an interview run targets.
 type ProjectLookup interface {
 	WorkspaceForProject(ctx context.Context, projectID string) (string, error)
+	GetProject(ctx context.Context, projectID string) (ProjectTarget, error)
 }
 
 // HarnessChoice is the computer, provider, and model a run uses: either the caller's pick from the run
@@ -102,6 +110,7 @@ type MemoryReader interface {
 type Threads interface {
 	GetOrCreateTicketThread(ctx context.Context, workspaceID, ticketID, userID string) (string, error)
 	GetOrCreateDocThread(ctx context.Context, workspaceID, docID, userID string) (string, error)
+	GetOrCreateInterviewThread(ctx context.Context, workspaceID, projectID, userID string) (string, error)
 	PostMessage(ctx context.Context, conversationID, authorID, body string) (string, error)
 	PostSystemNote(ctx context.Context, conversationID, viaUserID, body string) error
 }
@@ -122,9 +131,10 @@ type LivePublisher interface {
 	Publish(ctx context.Context, topic string, payload any) error
 }
 
-// UserReader resolves the starter's login for the custom-instructions block.
+// UserReader resolves the starter's login for the custom-instructions block, and a developer's login to the user the decisions check runs as.
 type UserReader interface {
 	Login(ctx context.Context, userID string) (string, error)
+	UserID(ctx context.Context, login string) (string, error)
 }
 
 // RunnerConfig wires the run pipeline.
@@ -221,11 +231,12 @@ type Choices struct {
 	Model          string   `json:"model"`
 }
 
-// target is what the runner read about a ticket or doc at press time.
+// target is what the runner read about a ticket, doc, or interview at press time.
 type target struct {
-	projectID string
-	stage     Stage
-	title     string
+	projectID     string
+	stage         Stage
+	title         string
+	testsLocation string
 }
 
 // Run checks the play, the target, the caller, and the harness, then starts the turn in the background and
@@ -246,43 +257,58 @@ func (r *Runner) Run(ctx context.Context, in RunInput) (*Trail, error) {
 		CustomInstructions: strings.TrimSpace(in.CustomInstructions), MoveToStatusID: strings.TrimSpace(in.MoveToStatusID),
 		State: TrailStarting, StartedAt: r.now().UTC(), Activity: []ActivityEntry{},
 	}
-	choice, err := r.harness.ResolveTarget(ctx, starter, tgt.projectID, HarnessChoice{ComputerID: in.ComputerID, Provider: in.Provider, Model: in.Model})
+	return r.launch(ctx, play, trail, tgt, HarnessChoice{ComputerID: in.ComputerID, Provider: in.Provider, Model: in.Model}, false)
+}
+
+// launch resolves the harness and starts the turn; a harness refusal is always kept as a failed trail, recordRefusals keeps the rest too.
+func (r *Runner) launch(ctx context.Context, play *Play, trail *Trail, tgt target, pick HarnessChoice, recordRefusals bool) (*Trail, error) {
+	targetTitle := tgt.title
+	refuse := func(err error) (*Trail, error) {
+		if recordRefusals {
+			r.createFailed(ctx, trail, targetTitle, err.Error())
+		}
+		return nil, err
+	}
+	choice, err := r.harness.ResolveTarget(ctx, trail.StarterID, trail.ProjectID, pick)
 	if err != nil {
-		r.createFailed(ctx, trail, tgt.title, err.Error())
+		r.createFailed(ctx, trail, targetTitle, err.Error())
 		return nil, err
 	}
 	trail.ComputerID, trail.Provider, trail.Model = choice.ComputerID, choice.Provider, choice.Model
 	if err := r.refuseIfActive(ctx, trail.TargetType, trail.TargetID); err != nil {
-		return nil, err
+		return refuse(err)
 	}
-	memoriesBlock, memoryIDs, memoryAttachments, err := r.inlineMemories(ctx, tgt.projectID, trail.SelectedMemoryIDs)
+	memoriesBlock, memoryIDs, memoryAttachments, err := r.inlineMemories(ctx, trail.ProjectID, trail.SelectedMemoryIDs)
 	if err != nil {
-		return nil, err
+		return refuse(err)
 	}
 	trail.SelectedMemoryIDs = memoryIDs
 	links, err := r.linkBlocks(ctx, trail.TargetType, trail.TargetID)
 	if err != nil {
-		return nil, err
+		return refuse(err)
 	}
-	conversationID, err := r.openThread(ctx, play.WorkspaceID, trail.TargetType, trail.TargetID, starter)
+	if trail.TargetType == TargetInterview {
+		links = append(links, interviewBlock(tgt))
+	}
+	conversationID, err := r.openThread(ctx, play.WorkspaceID, trail.TargetType, trail.TargetID, trail.StarterID)
 	if err != nil {
-		return nil, err
+		return refuse(err)
 	}
 	trail.ConversationID = conversationID
 	if err := r.trails.CreateTrail(ctx, trail); err != nil {
 		return nil, fmt.Errorf("create trail for play %s: %w", play.ID, err)
 	}
 	body := startedMessage(play.Label, trail.CustomInstructions)
-	if _, err := r.threads.PostMessage(ctx, conversationID, starter, body); err != nil {
+	if _, err := r.threads.PostMessage(ctx, conversationID, trail.StarterID, body); err != nil {
 		reason := "post started message: " + err.Error()
-		r.finish(ctx, trail, tgt.title, harness.TurnResult{State: harness.TurnError, LastError: reason}, "", "Run failed: "+reason)
+		r.finish(ctx, trail, targetTitle, harness.TurnResult{State: harness.TurnError, LastError: reason}, "", "Run failed: "+reason)
 		return nil, fmt.Errorf("post started message: %w", err)
 	}
 	// Copied before the turn starts: from here on the observer's goroutine owns trail.
 	snapshot := *trail
-	r.startTurn(ctx, trail, tgt.title, agent.TurnRequest{
-		ConversationID: conversationID, ViaUserID: starter, RequestBody: body, Attachments: memoryAttachments,
-		ExtraRequestBlocks: requestBlocks(play, links, memoriesBlock, r.login(ctx, starter), trail.CustomInstructions),
+	r.startTurn(ctx, trail, targetTitle, agent.TurnRequest{
+		ConversationID: conversationID, ViaUserID: trail.StarterID, RequestBody: body, Attachments: memoryAttachments,
+		ExtraRequestBlocks: requestBlocks(play, links, memoriesBlock, r.login(ctx, trail.StarterID), trail.CustomInstructions),
 		Target:             &agent.TargetOverride{ComputerID: choice.ComputerID, Provider: choice.Provider, Model: choice.Model},
 	}, false)
 	return &snapshot, nil
@@ -342,7 +368,7 @@ func (r *Runner) Answer(ctx context.Context, trailID string, answer harness.Ques
 // exclusion, the caller's plays:run on this play, and a ticket play's stage.
 func (r *Runner) checkPlayAndTarget(ctx context.Context, starter string, in RunInput) (*Play, target, error) {
 	if !in.TargetType.valid() {
-		return nil, target{}, fmt.Errorf("%w: target type must be ticket or doc", apperrs.ErrInvalid)
+		return nil, target{}, fmt.Errorf("%w: target type must be ticket, doc, or interview", apperrs.ErrInvalid)
 	}
 	if strings.TrimSpace(in.TargetID) == "" {
 		return nil, target{}, fmt.Errorf("%w: target id is required", apperrs.ErrInvalid)
@@ -355,7 +381,7 @@ func (r *Runner) checkPlayAndTarget(ctx context.Context, starter string, in RunI
 		return nil, target{}, fmt.Errorf("get play %s: %w", in.PlayID, err)
 	}
 	if string(play.Type) != string(in.TargetType) {
-		return nil, target{}, fmt.Errorf("%w: a %s play needs a %s target", apperrs.ErrInvalid, play.Type, play.Type)
+		return nil, target{}, fmt.Errorf("%w: %s plays run on %s targets", apperrs.ErrInvalid, play.Type, play.Type)
 	}
 	tgt, err := r.readTarget(ctx, in.TargetType, strings.TrimSpace(in.TargetID))
 	if err != nil {
@@ -391,6 +417,13 @@ func (r *Runner) checkPlay(ctx context.Context, starter string, play *Play, proj
 }
 
 func (r *Runner) readTarget(ctx context.Context, targetType TargetType, targetID string) (target, error) {
+	if targetType == TargetInterview {
+		p, err := r.projects.GetProject(ctx, targetID)
+		if err != nil {
+			return target{}, fmt.Errorf("get project %s: %w", targetID, err)
+		}
+		return target{projectID: targetID, title: p.Name, testsLocation: p.TestsLocation}, nil
+	}
 	if targetType == TargetDoc {
 		d, err := r.targets.GetDoc(ctx, targetID)
 		if err != nil {
@@ -473,6 +506,13 @@ func (r *Runner) inlineMemories(ctx context.Context, projectID string, selected 
 }
 
 func (r *Runner) openThread(ctx context.Context, workspaceID string, targetType TargetType, targetID, starter string) (string, error) {
+	if targetType == TargetInterview {
+		id, err := r.threads.GetOrCreateInterviewThread(ctx, workspaceID, targetID, starter)
+		if err != nil {
+			return "", fmt.Errorf("open interview thread for project %s: %w", targetID, err)
+		}
+		return id, nil
+	}
 	if targetType == TargetDoc {
 		id, err := r.threads.GetOrCreateDocThread(ctx, workspaceID, targetID, starter)
 		if err != nil {
@@ -725,7 +765,7 @@ func (r *Runner) moveOnDone(ctx context.Context, trail *Trail) string {
 	if slices.Index(stages, column.Stage) < slices.Index(stages, ticket.Stage) {
 		return fmt.Sprintf("Ticket is already in %s; not moving it back to %s", ticket.Stage, column.Name)
 	}
-	actor := PlayActor{PlayLabel: trail.PlayLabel, TrailID: trail.ID, Via: trail.Via}
+	actor := PlayActor{PlayLabel: trail.PlayLabel, TrailID: trail.ID, StarterID: trail.StarterID, Via: trail.Via}
 	if err := r.tickets.MoveTicket(ctx, trail.TargetID, trail.MoveToStatusID, actor); err != nil {
 		r.log.Error("plays: move-to failed", "trail", trail.ID, "status", trail.MoveToStatusID, "error", err)
 		return fmt.Sprintf("Could not move the ticket to %s: %v", column.Name, err)
@@ -736,7 +776,12 @@ func (r *Runner) moveOnDone(ctx context.Context, trail *Trail) string {
 func (r *Runner) createFailed(ctx context.Context, trail *Trail, targetTitle, reason string) {
 	now := r.now().UTC()
 	trail.State, trail.EndedAt, trail.LastError = TrailFailed, &now, reason
-	if err := r.trails.CreateTrail(ctx, trail, r.finishedEvent(trail, targetTitle)); err != nil {
+	var evts []eventbus.OutboxEvent
+	// play.run_finished names its starter; a check nobody could run on is kept on the ticket alone.
+	if trail.StarterID != "" {
+		evts = append(evts, r.finishedEvent(trail, targetTitle))
+	}
+	if err := r.trails.CreateTrail(ctx, trail, evts...); err != nil {
 		r.log.Error("plays: record failed trail", "trail", trail.ID, "error", err)
 	}
 	r.publishLive(ctx, trail)
@@ -832,6 +877,18 @@ func requestBlocks(play *Play, links []string, memoriesBlock, login, custom stri
 	return blocks
 }
 
+// interviewBlock names the project an interview run is for and the answers the project already records.
+func interviewBlock(tgt target) string {
+	tests := "not answered yet; ask it"
+	if tgt.testsLocation == "same" {
+		tests = "in the deployed repository"
+	}
+	if tgt.testsLocation == "separate" {
+		tests = "in a separate tests repository"
+	}
+	return fmt.Sprintf("Interview for project %q (project id %s).\nWhere its tests live, as answered in the project wizard: %s.", tgt.title, tgt.projectID, tests)
+}
+
 func stageName(s *Stage) string {
 	if s == nil {
 		return "(none)"
@@ -880,7 +937,7 @@ func (r *Runner) GetTrail(ctx context.Context, id string) (*Trail, error) {
 func (r *Runner) ListTrails(ctx context.Context, targetType TargetType, targetID string) ([]*Trail, error) {
 	targetID = strings.TrimSpace(targetID)
 	if !targetType.valid() || targetID == "" {
-		return nil, fmt.Errorf("%w: target type (ticket or doc) and target id are required", apperrs.ErrInvalid)
+		return nil, fmt.Errorf("%w: target type (ticket, doc, or interview) and target id are required", apperrs.ErrInvalid)
 	}
 	list, err := r.trails.ListTrailsByTarget(ctx, targetType, targetID)
 	if err != nil {
@@ -898,7 +955,7 @@ func (r *Runner) ListTrails(ctx context.Context, targetType TargetType, targetID
 // ActiveTrails maps each target with an active trail to its id; targets the caller cannot read are left out, not refused.
 func (r *Runner) ActiveTrails(ctx context.Context, targetType TargetType, targetIDs []string) (map[string]string, error) {
 	if !targetType.valid() {
-		return nil, fmt.Errorf("%w: target type (ticket or doc) is required", apperrs.ErrInvalid)
+		return nil, fmt.Errorf("%w: target type (ticket, doc, or interview) is required", apperrs.ErrInvalid)
 	}
 	ids := make([]string, 0, len(targetIDs))
 	for _, id := range targetIDs {

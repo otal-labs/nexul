@@ -11,16 +11,17 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 )
 
-// Type distinguishes a play fired from a ticket from one fired from a doc (extensible per the spec).
+// Type says what a play is fired from: a ticket, a doc, or a project's interview.
 type Type string
 
 const (
-	TypeTicket Type = "ticket"
-	TypeDoc    Type = "doc"
+	TypeTicket    Type = "ticket"
+	TypeDoc       Type = "doc"
+	TypeInterview Type = "interview"
 )
 
 func (t Type) valid() bool {
-	return t == TypeTicket || t == TypeDoc
+	return t == TypeTicket || t == TypeDoc || t == TypeInterview
 }
 
 // Stage mirrors the five fixed board stages (ADR 0022); plays never import internal/workspace for it (ADR 0017).
@@ -61,16 +62,17 @@ type Play struct {
 	UpdatedAt          time.Time `json:"updated_at"`
 }
 
-// TargetType names what a play was fired from; it pairs with Type (a ticket play takes a ticket target).
+// TargetType names what a play was fired from and pairs with Type; an interview target's id is its project's id.
 type TargetType string
 
 const (
-	TargetTicket TargetType = "ticket"
-	TargetDoc    TargetType = "doc"
+	TargetTicket    TargetType = "ticket"
+	TargetDoc       TargetType = "doc"
+	TargetInterview TargetType = "interview"
 )
 
 func (t TargetType) valid() bool {
-	return t == TargetTicket || t == TargetDoc
+	return t == TargetTicket || t == TargetDoc || t == TargetInterview
 }
 
 // Via records which adapter started a run, the provenance ADR 0049 asks for.
@@ -185,13 +187,13 @@ func (t *Trail) AppendActivity(e ActivityEntry) {
 	}
 }
 
-// Validate enforces ticket 02's column rule: a ticket play carries exactly one show-when stage, a doc play none.
+// Validate enforces ticket 02's column rule: a ticket play carries exactly one show-when stage, any other play none.
 func (p *Play) Validate() error {
 	if strings.TrimSpace(p.Label) == "" {
 		return fmt.Errorf("%w: label is required", apperrs.ErrInvalid)
 	}
 	if !p.Type.valid() {
-		return fmt.Errorf("%w: type must be ticket or doc", apperrs.ErrInvalid)
+		return fmt.Errorf("%w: type must be ticket, doc, or interview", apperrs.ErrInvalid)
 	}
 	if p.Type == TypeTicket {
 		if p.ShowWhenStage == nil {
@@ -201,8 +203,8 @@ func (p *Play) Validate() error {
 			return fmt.Errorf("%w: show-when stage must be one of backlog, progress, review, testing, done", apperrs.ErrInvalid)
 		}
 	}
-	if p.Type == TypeDoc && p.ShowWhenStage != nil {
-		return fmt.Errorf("%w: a doc play cannot have a show-when stage", apperrs.ErrInvalid)
+	if p.Type != TypeTicket && p.ShowWhenStage != nil {
+		return fmt.Errorf("%w: a %s play cannot have a show-when stage", apperrs.ErrInvalid, p.Type)
 	}
 	return nil
 }

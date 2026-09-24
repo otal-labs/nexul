@@ -10,7 +10,7 @@ import { MemoryVersionsFeed } from "@/components/memory/MemoryVersionsFeed";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { isInterviewMemory, isWorkspaceMemory, type Memory } from "@/models/Memory";
+import { isDecisionsLogMemory, isInterviewMemory, isWorkspaceMemory, type Memory } from "@/models/Memory";
 import { bodyToMarkdown } from "@/utils/RichtextUtility";
 
 interface MemoryDetailProps {
@@ -31,6 +31,7 @@ export const MemoryDetail = ({ memory, canWrite, canDelete, canClone, onSave, on
   const [body, setBody] = useState(memory.body);
   const [cloneOpen, setCloneOpen] = useState(false);
   const interview = isInterviewMemory(memory);
+  const decisionsLog = isDecisionsLogMemory(memory);
   const interviewLength = useMemo(() => (interview ? bodyToMarkdown(body).length : 0), [interview, body]);
 
   const dirty =
@@ -90,7 +91,7 @@ export const MemoryDetail = ({ memory, canWrite, canDelete, canClone, onSave, on
               aria-label="When to use"
               className="text-sm"
             />
-            {!interview && (
+            {!interview && !decisionsLog && (
               <label className="flex items-center gap-2 text-sm font-medium">
                 <Switch checked={alwaysIncluded} onCheckedChange={setAlwaysIncluded} aria-label="Always included" />
                 Always included in every turn
@@ -99,6 +100,11 @@ export const MemoryDetail = ({ memory, canWrite, canDelete, canClone, onSave, on
             {interview && (
               <p className="text-sm text-muted-foreground">
                 Always included in every agent turn in this project; it can't be switched off.
+              </p>
+            )}
+            {decisionsLog && (
+              <p className="text-sm text-muted-foreground">
+                Pulled from the memory index when an agent needs the why; never sent in every turn.
               </p>
             )}
           </div>

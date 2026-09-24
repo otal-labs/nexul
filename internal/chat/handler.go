@@ -67,6 +67,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("POST /api/chat/tickets/{ticketID}/thread", h.getOrCreateTicketThread)
 	mux.HandleFunc("GET /api/chat/tickets/thread-status", h.hasTicketThreads)
 	mux.HandleFunc("POST /api/chat/docs/{docID}/thread", h.getOrCreateDocThread)
+	mux.HandleFunc("POST /api/chat/projects/{projectID}/interview-thread", h.getOrCreateInterviewThread)
 	mux.HandleFunc("GET /api/chat/conversations/{id}/messages", h.listMessages)
 	mux.HandleFunc("POST /api/chat/conversations/{id}/messages", h.postMessage)
 	mux.HandleFunc("POST /api/chat/conversations/{id}/read", h.markRead)
@@ -148,6 +149,20 @@ func (h *Handler) getOrCreateDocThread(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	c, err := h.svc.GetOrCreateDocThread(r.Context(), req.WorkspaceID, r.PathValue("docID"), UserIDFromCtx(r.Context()))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, c)
+}
+
+func (h *Handler) getOrCreateInterviewThread(w http.ResponseWriter, r *http.Request) {
+	var req ticketThreadRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	c, err := h.svc.GetOrCreateInterviewThread(r.Context(), req.WorkspaceID, r.PathValue("projectID"), UserIDFromCtx(r.Context()))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

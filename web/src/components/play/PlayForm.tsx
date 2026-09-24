@@ -8,12 +8,9 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useCreatePlay, useUpdatePlay } from "@/hooks/PlayHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
-import { PLAY_STAGE_LABELS, PLAY_STAGES, type Play, type SavePlayFormData } from "@/models/Play";
+import { PLAY_STAGE_LABELS, PLAY_STAGES, PLAY_TYPE_LABELS, PLAY_TYPES, type Play, type SavePlayFormData } from "@/models/Play";
 
-const TYPE_OPTIONS = [
-  { value: "ticket", label: "Ticket" },
-  { value: "doc", label: "Doc" },
-];
+const TYPE_OPTIONS = PLAY_TYPES.map((type) => ({ value: type, label: PLAY_TYPE_LABELS[type] }));
 
 const STAGE_OPTIONS = PLAY_STAGES.map((stage) => ({ value: stage, label: PLAY_STAGE_LABELS[stage] }));
 
@@ -55,13 +52,13 @@ export const PlayForm = ({ workspaceId, editing }: PlayFormProps) => {
           name="type"
           label="Type"
           options={TYPE_OPTIONS}
-          // A doc play carries no stage and a ticket play always needs one; switching type keeps that in sync.
+          // Only a ticket play carries a stage, and it always needs one; switching type keeps that in sync.
           onChangeValue={(value) => setValue("show_when_stage", value === "ticket" ? "progress" : "")}
         />
       )}
       {editing && (
         <p className="text-sm text-muted-foreground">
-          Type: <span className="font-medium text-foreground">{editing.type === "ticket" ? "Ticket" : "Doc"}</span>
+          Type: <span className="font-medium text-foreground">{PLAY_TYPE_LABELS[editing.type]}</span>
           {" — can't change after create"}
         </p>
       )}

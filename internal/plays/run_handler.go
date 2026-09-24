@@ -40,7 +40,26 @@ func (h *RunHandler) Routes() http.Handler {
 	mux.HandleFunc("POST /api/plays/runs/{trailID}/stop", h.stop)
 	mux.HandleFunc("POST /api/plays/runs/{trailID}/answer", h.answer)
 	mux.HandleFunc("GET /api/plays/latest-choices", h.latestChoices)
+	mux.HandleFunc("POST /api/plays/decisions-check", h.retryDecisionsCheck)
 	return mux
+}
+
+type decisionsCheckRequest struct {
+	TicketID string `json:"ticket_id"`
+}
+
+func (h *RunHandler) retryDecisionsCheck(w http.ResponseWriter, r *http.Request) {
+	var req decisionsCheckRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	trail, err := h.runner.RetryDecisionsCheck(r.Context(), req.TicketID, ViaWeb)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusAccepted, trail)
 }
 
 func (h *RunHandler) stop(w http.ResponseWriter, r *http.Request) {

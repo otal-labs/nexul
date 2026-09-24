@@ -24,6 +24,8 @@ func TestPlay_Validate(t *testing.T) {
 		{"ticket play missing stage", Play{Label: "Fix", Type: TypeTicket}, true},
 		{"ticket play invalid stage", Play{Label: "Fix", Type: TypeTicket, ShowWhenStage: &bogus}, true},
 		{"doc play with stage", Play{Label: "Doc", Type: TypeDoc, ShowWhenStage: &progress}, true},
+		{"valid interview play", Play{Label: "Interview", Type: TypeInterview}, false},
+		{"interview play with stage", Play{Label: "Interview", Type: TypeInterview, ShowWhenStage: &progress}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

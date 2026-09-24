@@ -29,6 +29,7 @@ func (r *ChatRepo) CreateConversation(ctx context.Context, c *chat.Conversation,
 			ID: c.ID, WorkspaceID: c.WorkspaceID, Kind: string(c.Kind), Name: c.Name,
 			TicketID:        sql.NullString{String: c.TicketID, Valid: c.TicketID != ""},
 			DocID:           sql.NullString{String: c.DocID, Valid: c.DocID != ""},
+			ProjectID:       sql.NullString{String: c.ProjectID, Valid: c.ProjectID != ""},
 			ParentMessageID: c.ParentMessageID, CreatedBy: c.CreatedBy,
 			CreatedAt: c.CreatedAt.Unix(), UpdatedAt: c.UpdatedAt.Unix(),
 		})
@@ -74,6 +75,14 @@ func (r *ChatRepo) GetDocThread(ctx context.Context, docID string) (*chat.Conver
 	row, err := r.q.GetDocThread(ctx, nullString(docID))
 	if err != nil {
 		return nil, fmt.Errorf("get doc thread for doc %s: %w", docID, notFoundIfNoRows(err))
+	}
+	return toConversation(row), nil
+}
+
+func (r *ChatRepo) GetInterviewThread(ctx context.Context, projectID string) (*chat.Conversation, error) {
+	row, err := r.q.GetInterviewThread(ctx, nullString(projectID))
+	if err != nil {
+		return nil, fmt.Errorf("get interview thread for project %s: %w", projectID, notFoundIfNoRows(err))
 	}
 	return toConversation(row), nil
 }
@@ -270,7 +279,7 @@ func (r *ChatRepo) UnreadCounts(ctx context.Context, workspaceID, userID string)
 func toConversation(row sqlcgen.Conversation) *chat.Conversation {
 	return &chat.Conversation{
 		ID: row.ID, WorkspaceID: row.WorkspaceID, Kind: chat.Kind(row.Kind), Name: row.Name,
-		TicketID: row.TicketID.String, DocID: row.DocID.String, ParentMessageID: row.ParentMessageID, CreatedBy: row.CreatedBy,
+		TicketID: row.TicketID.String, DocID: row.DocID.String, ProjectID: row.ProjectID.String, ParentMessageID: row.ParentMessageID, CreatedBy: row.CreatedBy,
 		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
 		AgentThreadID: row.AgentThreadID, AgentSyncedAt: time.Unix(row.AgentSyncedAt, 0).UTC(),
 	}

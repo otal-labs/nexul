@@ -33,6 +33,8 @@ type Config struct {
 	Bus Publisher
 	// Tokens mints and revokes each computer's MCP token.
 	Tokens MCPTokens
+	// Instance reads the instance URL the setup turns point each provider's MCP entry at.
+	Instance InstanceSettings
 }
 
 // Service is the pairing use-case layer (ADR 0019); bearer tokens never leave it except encrypted at rest.
@@ -45,8 +47,12 @@ type Service struct {
 	tunnels   Tunnels
 	bus       Publisher
 	tokens    MCPTokens
+	instance  InstanceSettings
 	watchMu   sync.Mutex
 	watching  map[string]tunnelWatch
+	setupMu   sync.Mutex
+	settingUp map[string]bool
+	setupRuns sync.WaitGroup
 }
 
 // NewService wires the pairing use-cases.
@@ -56,7 +62,7 @@ func NewService(cfg Config) *Service {
 	}
 	return &Service{
 		repo: cfg.Repo, harnesses: cfg.Harnesses, key: cfg.EncryptionKey, now: cfg.Now, changed: cfg.OnComputersChanged,
-		tunnels: cfg.Tunnels, bus: cfg.Bus, tokens: cfg.Tokens, watching: map[string]tunnelWatch{},
+		tunnels: cfg.Tunnels, bus: cfg.Bus, tokens: cfg.Tokens, instance: cfg.Instance, watching: map[string]tunnelWatch{}, settingUp: map[string]bool{},
 	}
 }
 
@@ -424,7 +430,32 @@ func (s *Service) ResolveSetupTurnTarget(ctx context.Context, userID, computerID
 	if strings.TrimSpace(computerID) == "" {
 		return nil, fmt.Errorf("%w: a setup turn needs its computer", apperrs.ErrInvalid)
 	}
-	return s.resolveTargetOverride(ctx, userID, "", computerID, provider, "")
+	target, err := s.resolveTargetOverride(ctx, userID, "", computerID, provider, "")
+	var nc *NotConfiguredError
+	if !errors.As(err, &nc) || nc.Reason != ReasonNoDefault {
+		return target, err
+	}
+	return s.setupTurnInFirstProject(ctx, userID, computerID, provider)
+}
+
+// setupTurnInFirstProject runs a setup turn in the harness's first project when none is linked: it only touches user-level files.
+func (s *Service) setupTurnInFirstProject(ctx context.Context, userID, computerID, provider string) (*ResolvedTarget, error) {
+	session, err := s.sessionComputer(ctx, userID, computerID)
+	if err != nil {
+		return nil, err
+	}
+	client, err := s.client(session.Kind)
+	if err != nil {
+		return nil, err
+	}
+	projects, err := client.ListProjects(ctx, session.Session())
+	if err != nil {
+		return nil, fmt.Errorf("list projects on %s: %w", session.Name, err)
+	}
+	if len(projects) == 0 {
+		return nil, fmt.Errorf("%w: open any project in T3 Code on %s first; setup runs its turns inside one", apperrs.ErrInvalid, session.Name)
+	}
+	return &ResolvedTarget{Computer: session, HarnessProjectID: projects[0].ID, Provider: strings.TrimSpace(provider)}, nil
 }
 
 // requireSetup is the setup gate (ADR 0063); an empty provider is pinned to the harness's first so the checked one runs.
@@ -656,7 +687,11 @@ func (s *Service) GetSetup(ctx context.Context, userID, computerID string) (Setu
 	if err != nil {
 		return Setup{}, fmt.Errorf("list provider setups for %s: %w", computer.ID, err)
 	}
-	return Setup{ComputerID: computer.ID, ConfirmedAt: computer.SetupConfirmedAt, Providers: providers}, nil
+	turns, err := s.repo.ListLatestSetupTurns(ctx, computer.ID)
+	if err != nil {
+		return Setup{}, fmt.Errorf("list setup turns for %s: %w", computer.ID, err)
+	}
+	return Setup{ComputerID: computer.ID, ConfirmedAt: computer.SetupConfirmedAt, Providers: providers, Turns: turns}, nil
 }
 
 // ConfirmSetup records the caller's computer as set up overall; independent of any provider's confirmation.

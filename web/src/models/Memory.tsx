@@ -4,7 +4,7 @@ export interface Memory {
   id: string;
   workspace_id: string;
   project_id: string;
-  /** "" for an ordinary memory; "interview" for the project's interview memory, one per project. */
+  /** "" for an ordinary memory; "interview" or "decisions_log" for one of a project's two special memories. */
   kind: string;
   title: string;
   when_to_use: string;
@@ -44,3 +44,10 @@ export const INTERVIEW_KIND = "interview";
 export const MAX_INTERVIEW_CHARS = 8000;
 
 export const isInterviewMemory = (memory: Memory): boolean => memory.kind === INTERVIEW_KIND;
+
+export const hasInterview = (memories: Memory[], projectId: string): boolean =>
+  memories.some((memory) => isInterviewMemory(memory) && memory.project_id === projectId);
+
+export const DECISIONS_LOG_KIND = "decisions_log";
+
+export const isDecisionsLogMemory = (memory: Memory): boolean => memory.kind === DECISIONS_LOG_KIND;

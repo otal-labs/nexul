@@ -103,6 +103,14 @@ func (g gitProviderRouter) GetPR(ctx context.Context, owner, name string, number
 	return p.GetPR(ctx, owner, name, number)
 }
 
+func (g gitProviderRouter) PRsForCommit(ctx context.Context, owner, name, sha string) ([]*gitprovider.PR, error) {
+	p, err := g.resolve(ctx, owner, name)
+	if err != nil {
+		return nil, err
+	}
+	return p.PRsForCommit(ctx, owner, name, sha)
+}
+
 func (g gitProviderRouter) CreateWebhook(ctx context.Context, owner, name string, cfg gitprovider.WebhookConfig) (string, error) {
 	p, err := g.resolve(ctx, owner, name)
 	if err != nil {

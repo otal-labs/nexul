@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -21,14 +22,16 @@ type fakeRepo struct {
 	defaults     map[string]Defaults
 	projectLinks map[string]ProjectLink
 	setups       map[string][]ProviderSetup
+	turns        map[string]SetupTurn
 	outbox       []eventbus.OutboxEvent
 	saveErr      error
 	getErr       error
 	listSetupErr error
+	listTurnsErr error
 }
 
 func newFakeRepo() *fakeRepo {
-	return &fakeRepo{computers: map[string]Computer{}, defaults: map[string]Defaults{}, projectLinks: map[string]ProjectLink{}, setups: map[string][]ProviderSetup{}}
+	return &fakeRepo{computers: map[string]Computer{}, defaults: map[string]Defaults{}, projectLinks: map[string]ProjectLink{}, setups: map[string][]ProviderSetup{}, turns: map[string]SetupTurn{}}
 }
 
 func (f *fakeRepo) SaveComputer(_ context.Context, c Computer, evts ...eventbus.OutboxEvent) error {
@@ -170,6 +173,54 @@ func (f *fakeRepo) SaveProviderSetup(_ context.Context, computerID string, p Pro
 	return nil
 }
 
+func (f *fakeRepo) SaveSetupTurn(_ context.Context, t SetupTurn, evts ...eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.saveErr != nil {
+		return f.saveErr
+	}
+	t.Transcript = slices.Clone(t.Transcript)
+	f.turns[t.ID] = t
+	f.outbox = append(f.outbox, evts...)
+	return nil
+}
+
+func (f *fakeRepo) ListLatestSetupTurns(_ context.Context, computerID string) ([]SetupTurnSummary, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.listTurnsErr != nil {
+		return nil, f.listTurnsErr
+	}
+	latest := map[string]SetupTurn{}
+	for _, t := range f.turns {
+		if t.ComputerID != computerID {
+			continue
+		}
+		if prev, ok := latest[t.Provider]; ok && (prev.StartedAt.After(t.StartedAt) || (prev.StartedAt.Equal(t.StartedAt) && prev.ID > t.ID)) {
+			continue
+		}
+		latest[t.Provider] = t
+	}
+	out := []SetupTurnSummary{}
+	for _, t := range latest {
+		out = append(out, SetupTurnSummary{RunID: t.RunID, TurnID: t.ID, Provider: t.Provider, ProviderName: t.ProviderName, State: t.State, Status: t.Status, UpdatedAt: t.UpdatedAt})
+	}
+	slices.SortFunc(out, func(a, b SetupTurnSummary) int { return strings.Compare(a.Provider, b.Provider) })
+	return out, nil
+}
+
+func (f *fakeRepo) SetSetupMCPToken(_ context.Context, userID, computerID, sealed string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	c, ok := f.computers[computerID]
+	if !ok || c.UserID != userID {
+		return apperrs.ErrNotFound
+	}
+	c.SetupMCPToken = sealed
+	f.computers[computerID] = c
+	return nil
+}
+
 // fakeExchanger scripts the pairing half of a harness.Client; the listing half comes from the embedded harnesstest.Client.
 type fakeExchanger struct {
 	harnesstest.Client
@@ -233,9 +284,10 @@ func (f *fakeTokens) MintComputerToken(_ context.Context, userID, computerID, co
 		f.revoked = append(f.revoked, old.ID)
 	}
 	f.seq++
-	token := MCPToken{ID: fmt.Sprintf("pat-%d", f.seq), Name: "Nexul MCP on " + computerName, Prefix: "abc123"}
+	raw := fmt.Sprintf("dep_%043d", f.seq)
+	token := MCPToken{ID: fmt.Sprintf("pat-%d", f.seq), Name: "Nexul MCP on " + computerName, Prefix: raw[len(raw)-6:]}
 	f.active[userID+"/"+computerID] = token
-	return fmt.Sprintf("dep_raw-%d", f.seq), &token, nil
+	return raw, &token, nil
 }
 
 func (f *fakeTokens) ComputerToken(_ context.Context, userID, computerID string) (*MCPToken, error) {

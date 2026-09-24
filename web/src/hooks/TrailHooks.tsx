@@ -7,7 +7,7 @@ import { useFetchTicketsByProject } from "@/hooks/TicketHooks";
 import { conversationPlayTarget, type Conversation } from "@/models/Chat";
 import type { PlayType } from "@/models/Play";
 import type { QuestionAnswers } from "@/models/Question";
-import { isTrailActive, mergeLiveSteps, type ActivityEntry, type LatestChoices, type RunPlayInput, type Trail, type TrailQuestion } from "@/models/Trail";
+import { DECISIONS_CHECK_PLAY_ID, isTrailActive, mergeLiveSteps, type ActivityEntry, type LatestChoices, type RunPlayInput, type Trail, type TrailQuestion } from "@/models/Trail";
 import { targetKey, usePlayRunStore } from "@/stores/playRunStore";
 import { threadTrailBlocks, type ThreadTrailBlocks } from "@/utils/ThreadTrailUtility";
 
@@ -69,6 +69,32 @@ export const useRunPlay = () => {
       toast.success(`${trail.play_label} started`);
     },
   });
+};
+
+export const useRunDecisionsCheck = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (ticketId: string) => (await api.post<Trail>("/api/plays/decisions-check", { ticket_id: ticketId })).data,
+    onSuccess: async (trail) => {
+      client.setQueryData<Trail[]>([getTrailsKey, trail.target_type, trail.target_id], (old) => [
+        trail,
+        ...(old ?? []).filter((t) => t.id !== trail.id),
+      ]);
+      await client.invalidateQueries({ queryKey: [getTrailsKey, trail.target_type, trail.target_id] });
+      await client.invalidateQueries({ queryKey: [getActiveTrailsKey] });
+      toast.success("Decisions check started");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
+// The ticket's latest decisions check when it failed, so the page can offer to run it again; trails come newest first.
+export const useMissedDecisionsCheck = (ticketId: string): Trail | undefined => {
+  const { data: trails } = useFetchTrails("ticket", ticketId);
+  const frames = usePlayRunStore((s) => s.frames);
+  const latest = trails?.find((t) => t.play_id === DECISIONS_CHECK_PLAY_ID);
+  if (!latest || (frames[latest.id]?.state ?? latest.state) !== "failed") return undefined;
+  return latest;
 };
 
 export const useStopTrail = () => {

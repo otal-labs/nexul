@@ -302,6 +302,14 @@ func (r *TicketsRepo) MarkPRState(ctx context.Context, owner, repo string, numbe
 	return affected, nil
 }
 
+func (r *TicketsRepo) ListIDsByPR(ctx context.Context, owner, repo string, number int) ([]string, error) {
+	ids, err := r.q.ListTicketIDsByPR(ctx, sqlcgen.ListTicketIDsByPRParams{PrOwner: owner, PrRepo: repo, PrNumber: int64(number)})
+	if err != nil {
+		return nil, fmt.Errorf("list tickets for pr %s/%s#%d: %w", owner, repo, number, err)
+	}
+	return ids, nil
+}
+
 func (r *TicketsRepo) SetFinishedAt(ctx context.Context, id string, at time.Time, evts ...eventbus.OutboxEvent) (bool, error) {
 	var set bool
 	err := r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {

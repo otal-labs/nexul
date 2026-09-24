@@ -5,6 +5,9 @@ import "time"
 // KindInterview marks a project's interview memory: one per project, always included, capped (ADR 0065).
 const KindInterview = "interview"
 
+// KindDecisionsLog marks a project's decisions log: one per project, pulled from the memory index, never sent every turn.
+const KindDecisionsLog = "decisions_log"
+
 // MaxInterviewChars caps the interview memory and the Interview template, measured as exported markdown.
 const MaxInterviewChars = 8_000
 

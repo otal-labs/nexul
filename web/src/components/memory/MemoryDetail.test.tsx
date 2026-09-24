@@ -110,6 +110,12 @@ describe("MemoryDetail", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("8,001 / 8,000 characters");
   });
 
+  it("keeps the decisions log out of every turn, with no switch to turn it on", () => {
+    renderDetail({ canWrite: true, memory: { ...memory, kind: "decisions_log" } });
+    expect(screen.queryByLabelText("Always included")).not.toBeInTheDocument();
+    expect(screen.getByText(/never sent in every turn/)).toBeInTheDocument();
+  });
+
   it("shows no cap for an ordinary memory", () => {
     renderDetail({ canWrite: true });
     expect(screen.getByLabelText("Always included")).toBeInTheDocument();

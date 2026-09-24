@@ -64,6 +64,9 @@ export interface Trail {
   question?: TrailQuestion | null;
 }
 
+// Mirrors internal/plays.DecisionsCheckPlayID: the built-in check's trails carry it, no workspace play does.
+export const DECISIONS_CHECK_PLAY_ID = "decisions-check";
+
 // Mirrors internal/plays.RunFrame, the live-hub payload on topic play.run.
 export interface RunFrame {
   trail_id: string;

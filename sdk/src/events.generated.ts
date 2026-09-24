@@ -17,6 +17,9 @@ export interface EventPayloads {
   "chat.message.updated": { "message": Record<string, unknown>; };
   "computer.paired": { "computer_id": string; "user_id": string; "server_url": string; "harness_version"?: string; "token_expires_at": string; };
   "computer.setup_confirmed": { "computer_id": string; "user_id": string; "provider"?: string; "confirmed_at"?: string; "skills"?: string[]; };
+  "computer.setup_finished": { "computer_id": string; "user_id": string; "run_id": string; "confirmed": boolean; "providers": { "provider": string; "state": "running" | "confirmed" | "failed"; "status": string; }[]; };
+  "computer.setup_turn_activity": { "computer_id": string; "user_id": string; "run_id": string; "turn_id": string; "provider": string; "status": string; };
+  "computer.setup_turn_changed": { "computer_id": string; "user_id": string; "run_id": string; "turn_id": string; "provider": string; "provider_name": string; "state": "running" | "confirmed" | "failed"; "status": string; "started_at": string; "ended_at"?: string; };
   "computer.setup_unconfirmed": { "computer_id": string; "user_id": string; "provider"?: string; "confirmed_at"?: string; "skills"?: string[]; };
   "computer.tunnel_created": { "computer_id": string; "user_id": string; "tunnel_id": string; "hostname": string; };
   "computer.tunnel_removed": { "computer_id": string; "user_id": string; "tunnel_id": string; "hostname": string; };
@@ -60,9 +63,9 @@ export interface EventPayloads {
   "personal_access_token.revoked": { "token_id": string; "user_id": string; "name": string; "computer_id"?: string; };
   "play.created": { "play": { "id": string; "workspace_id": string; "label": string; "type": string; "description"?: string; "instructions"?: string; "enabled"?: boolean; "show_when_stage"?: string | null; "excluded_project_ids"?: string[]; "created_by"?: string; "created_at"?: string; "updated_at"?: string; }; };
   "play.deleted": { "id": string; "label": string; };
-  "play.run_finished": { "trail_id": string; "play_id": string; "play_label": string; "target_type": "ticket" | "doc"; "target_id": string; "target_title"?: string; "starter_id": string; "via": "web" | "mcp"; "outcome": "done" | "failed" | "interrupted"; "last_error"?: string; "reply_message_id"?: string; };
-  "play.run_started": { "trail_id": string; "play_id": string; "play_label": string; "target_type": "ticket" | "doc"; "target_id": string; "target_title"?: string; "starter_id": string; "via": "web" | "mcp"; "harness_session_id"?: string; };
-  "play.run_waiting": { "trail_id": string; "play_id": string; "play_label": string; "target_type": "ticket" | "doc"; "target_id": string; "target_title"?: string; "starter_id": string; "via": "web" | "mcp"; };
+  "play.run_finished": { "trail_id": string; "play_id": string; "play_label": string; "target_type": "ticket" | "doc" | "interview"; "target_id": string; "target_title"?: string; "starter_id": string; "via": "web" | "mcp"; "outcome": "done" | "failed" | "interrupted"; "last_error"?: string; "reply_message_id"?: string; };
+  "play.run_started": { "trail_id": string; "play_id": string; "play_label": string; "target_type": "ticket" | "doc" | "interview"; "target_id": string; "target_title"?: string; "starter_id": string; "via": "web" | "mcp"; "harness_session_id"?: string; };
+  "play.run_waiting": { "trail_id": string; "play_id": string; "play_label": string; "target_type": "ticket" | "doc" | "interview"; "target_id": string; "target_title"?: string; "starter_id": string; "via": "web" | "mcp"; };
   "play.updated": { "play": { "id": string; "workspace_id": string; "label": string; "type": string; "description"?: string; "instructions"?: string; "enabled"?: boolean; "show_when_stage"?: string | null; "excluded_project_ids"?: string[]; "created_by"?: string; "created_at"?: string; "updated_at"?: string; }; };
   "review.status_changed": { "id": string; "repo": string; "pr_number": number; "status": string; "reviewer"?: string; };
   "runner.connected": { "runner_id": string; "name"?: string; };
@@ -82,7 +85,9 @@ export interface EventPayloads {
   "ticket.finished": { "ticket": Record<string, unknown>; };
   "ticket.link_created": { "link": { "ticket_id": string; "kind": "found_in" | "blocked_by"; "target_id": string; "created_at"?: string; }; };
   "ticket.link_deleted": { "link": { "ticket_id": string; "kind": "found_in" | "blocked_by"; "target_id": string; "created_at"?: string; }; };
-  "ticket.status_changed": { "ticket": Record<string, unknown>; "from": string; "to": string; "actor"?: { "kind"?: "user" | "automation" | "play" | "play:mcp"; "automation_id"?: string; "automation_name"?: string; "play_label"?: string; "trail_id"?: string; }; "execution_id"?: string; };
+  "ticket.status_changed": { "ticket": Record<string, unknown>; "from": string; "to": string; "actor"?: { "kind"?: "user" | "automation" | "play" | "play:mcp"; "automation_id"?: string; "automation_name"?: string; "play_label"?: string; "trail_id"?: string; "user_id"?: string; }; "execution_id"?: string; };
+  "ticket.test_failed": { "ticket": Record<string, unknown>; "tester": string; "report": string; };
+  "ticket.test_passed": { "ticket": Record<string, unknown>; "tester": string; };
   "ticket.tester_changed": { "ticket": Record<string, unknown>; "from": string; "to": string; };
   "ticket.updated": { "ticket": Record<string, unknown>; };
   "ticket_type.created": { "ticket_type": Record<string, unknown>; };
@@ -110,6 +115,9 @@ export const TOPICS: Topic[] = [
   "chat.message.updated",
   "computer.paired",
   "computer.setup_confirmed",
+  "computer.setup_finished",
+  "computer.setup_turn_activity",
+  "computer.setup_turn_changed",
   "computer.setup_unconfirmed",
   "computer.tunnel_created",
   "computer.tunnel_removed",
@@ -176,6 +184,8 @@ export const TOPICS: Topic[] = [
   "ticket.link_created",
   "ticket.link_deleted",
   "ticket.status_changed",
+  "ticket.test_failed",
+  "ticket.test_passed",
   "ticket.tester_changed",
   "ticket.updated",
   "ticket_type.created",
@@ -201,6 +211,9 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "chat.message.updated": {"message":{}},
   "computer.paired": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","server_url":"fixture-server_url","harness_version":"fixture-harness_version","token_expires_at":"2026-01-01T00:00:00Z"},
   "computer.setup_confirmed": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","provider":"fixture-provider","confirmed_at":"2026-01-01T00:00:00Z","skills":["fixture-skills"]},
+  "computer.setup_finished": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","run_id":"fixture-run_id","confirmed":false,"providers":[{"provider":"fixture-provider","state":"running","status":"fixture-status"}]},
+  "computer.setup_turn_activity": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","run_id":"fixture-run_id","turn_id":"fixture-turn_id","provider":"fixture-provider","status":"fixture-status"},
+  "computer.setup_turn_changed": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","run_id":"fixture-run_id","turn_id":"fixture-turn_id","provider":"fixture-provider","provider_name":"fixture-provider_name","state":"running","status":"fixture-status","started_at":"2026-01-01T00:00:00Z","ended_at":"2026-01-01T00:00:00Z"},
   "computer.setup_unconfirmed": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","provider":"fixture-provider","confirmed_at":"2026-01-01T00:00:00Z","skills":["fixture-skills"]},
   "computer.tunnel_created": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","tunnel_id":"fixture-tunnel_id","hostname":"fixture-hostname"},
   "computer.tunnel_removed": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","tunnel_id":"fixture-tunnel_id","hostname":"fixture-hostname"},
@@ -266,7 +279,9 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "ticket.finished": {"ticket":{}},
   "ticket.link_created": {"link":{"ticket_id":"fixture-ticket_id","kind":"found_in","target_id":"fixture-target_id","created_at":"2026-01-01T00:00:00Z"}},
   "ticket.link_deleted": {"link":{"ticket_id":"fixture-ticket_id","kind":"found_in","target_id":"fixture-target_id","created_at":"2026-01-01T00:00:00Z"}},
-  "ticket.status_changed": {"ticket":{},"from":"fixture-from","to":"fixture-to","actor":{"kind":"user","automation_id":"fixture-automation_id","automation_name":"fixture-automation_name","play_label":"fixture-play_label","trail_id":"fixture-trail_id"},"execution_id":"fixture-execution_id"},
+  "ticket.status_changed": {"ticket":{},"from":"fixture-from","to":"fixture-to","actor":{"kind":"user","automation_id":"fixture-automation_id","automation_name":"fixture-automation_name","play_label":"fixture-play_label","trail_id":"fixture-trail_id","user_id":"fixture-user_id"},"execution_id":"fixture-execution_id"},
+  "ticket.test_failed": {"ticket":{},"tester":"fixture-tester","report":"fixture-report"},
+  "ticket.test_passed": {"ticket":{},"tester":"fixture-tester"},
   "ticket.tester_changed": {"ticket":{},"from":"fixture-from","to":"fixture-to"},
   "ticket.updated": {"ticket":{}},
   "ticket_type.created": {"ticket_type":{}},

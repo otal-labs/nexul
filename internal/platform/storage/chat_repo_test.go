@@ -92,6 +92,31 @@ func TestChatRepo_GetDocThread_NotFound(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
+func TestChatRepo_InterviewThread_OnePerProject(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	seedChatUser(t, s, "u-1")
+	_, err := s.Chat.GetInterviewThread(context.Background(), "p-1")
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
+	require.NoError(t, s.Projects.Create(context.Background(), newTestProject("p-1", "Backend", 0)))
+	thread := func(id string) *chat.Conversation {
+		return &chat.Conversation{
+			ID: id, WorkspaceID: "workspace-default", Kind: chat.KindInterviewThread, ProjectID: "p-1",
+			CreatedBy: "u-1", CreatedAt: chatFixedNow, UpdatedAt: chatFixedNow,
+		}
+	}
+
+	require.NoError(t, s.Chat.CreateConversation(context.Background(), thread("conv-1"), []string{"u-1"}))
+	err = s.Chat.CreateConversation(context.Background(), thread("conv-2"), []string{"u-1"})
+	require.ErrorIs(t, err, apperrs.ErrConflict)
+
+	got, err := s.Chat.GetInterviewThread(context.Background(), "p-1")
+	require.NoError(t, err)
+	assert.Equal(t, "conv-1", got.ID)
+	assert.Equal(t, chat.KindInterviewThread, got.Kind)
+	assert.Equal(t, "p-1", got.ProjectID)
+}
+
 func TestChatRepo_CreateConversation_DocThread_DuplicateDoc_Conflict(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

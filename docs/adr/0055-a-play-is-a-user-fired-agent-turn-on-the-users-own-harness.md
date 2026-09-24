@@ -1,7 +1,8 @@
 # 0055. A play is a user-fired Agent turn that runs on the user's own harness
 
-A play is a pre-configured Agent turn a user fires from a ticket or a doc
-with one button: "Fix with AI", "To tickets via AI". It is not an automation
+A play is a pre-configured Agent turn a user fires from a ticket, a doc, or
+a project's interview with one button: "Fix with AI", "To tickets via AI",
+"Run the interview". It is not an automation
 (nothing fires it but a person) and not a chat mention (nothing is typed).
 It runs on the clicking user's own paired harness with that user's
 permissions, exactly as an `@Agent` mention does (ADR 0029), and it posts

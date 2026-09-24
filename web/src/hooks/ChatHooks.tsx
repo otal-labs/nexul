@@ -108,6 +108,16 @@ export const useFetchOrCreateTicketThread = (workspaceId: string, ticketId: stri
     enabled: enabled && !!ticketId,
   });
 
+// A project's interview thread renders inline on its Interview page, loaded once a run has created it.
+export const useFetchOrCreateInterviewThread = (workspaceId: string, projectId: string, enabled: boolean) =>
+  useQuery({
+    queryKey: ["getOrCreateInterviewThread", workspaceId, projectId],
+    queryFn: async () =>
+      (await api.post<Conversation>(`/api/chat/projects/${projectId}/interview-thread`, { workspace_id: workspaceId }))
+        .data,
+    enabled: enabled && workspaceId !== "" && projectId !== "",
+  });
+
 // The doc thread's Thread button navigates to the chat page (ADR 0060) rather than rendering inline like a ticket's,
 // so this is a mutation triggered by the click, not a query loaded on mount.
 export const useGetOrCreateDocThread = (workspaceId: string) => {

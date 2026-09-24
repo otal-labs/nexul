@@ -19,7 +19,7 @@ func TestRunMCPTools_Shape(t *testing.T) {
 		assert.NotNil(t, tool.InputSchema)
 		assert.NotNil(t, tool.Call)
 	}
-	assert.ElementsMatch(t, []string{"play_run", "play_run_get", "play_run_stop", "play_run_answer", "play_list_runs"}, names)
+	assert.ElementsMatch(t, []string{"play_run", "play_run_get", "play_run_stop", "play_run_answer", "decisions_check_run", "play_list_runs"}, names)
 }
 
 func TestRunMCPTools_Stop(t *testing.T) {

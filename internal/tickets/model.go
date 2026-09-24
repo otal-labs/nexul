@@ -107,6 +107,8 @@ type Actor struct {
 	AutomationName string `json:"automation_name,omitempty"`
 	PlayLabel      string `json:"play_label,omitempty"`
 	TrailID        string `json:"trail_id,omitempty"`
+	// UserID is the person behind a user or play move, empty for an automation's.
+	UserID string `json:"user_id,omitempty"`
 }
 
 // Actor kinds; a play started through MCP carries the ":mcp" provenance suffix (ADR 0049), as executions do.

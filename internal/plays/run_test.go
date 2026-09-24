@@ -28,6 +28,7 @@ const (
 	projectID  = "proj-1"
 	fixPlayID  = "play-fix"
 	docPlayID  = "play-doc"
+	intPlayID  = "play-interview"
 	alwaysMem  = "m-always"
 	pickedMem  = "m-pick"
 	otherMem   = "m-other"
@@ -85,10 +86,14 @@ func newRunnerFixture() *runnerFixture {
 	stage := StageProgress
 	f.plays.byID[fixPlayID] = &Play{ID: fixPlayID, WorkspaceID: workspaceID, Label: "Fix with AI", Type: TypeTicket, Instructions: "Fix the ticket.", Enabled: true, ShowWhenStage: &stage}
 	f.plays.byID[docPlayID] = &Play{ID: docPlayID, WorkspaceID: workspaceID, Label: "To tickets via AI", Type: TypeDoc, Instructions: "Split the doc.", Enabled: true}
+	f.plays.byID[intPlayID] = &Play{ID: intPlayID, WorkspaceID: workspaceID, Label: "Interview", Type: TypeInterview, Instructions: "Interview them.", Enabled: true}
 	f.runner = NewRunner(RunnerConfig{
 		Plays: f.plays, Trails: f.trails, Perm: f.perm, Targets: f.targets,
-		Projects: &fakeProjects{workspaces: map[string]string{projectID: workspaceID, otherProj: workspaceID, foreignPrj: foreignWS}},
-		Harness:  f.harness, Memories: f.mems, Threads: f.threads, Turns: f.turns, Tickets: f.mover, Live: f.live, Users: fakeUsers{},
+		Projects: &fakeProjects{
+			workspaces: map[string]string{projectID: workspaceID, otherProj: workspaceID, foreignPrj: foreignWS},
+			projects:   map[string]ProjectTarget{projectID: {Name: "Nexul", TestsLocation: "separate"}, otherProj: {Name: "Other"}},
+		},
+		Harness: f.harness, Memories: f.mems, Threads: f.threads, Turns: f.turns, Tickets: f.mover, Live: f.live, Users: fakeUsers{},
 		Now: func() time.Time { return f.clock },
 	})
 	return f
@@ -116,7 +121,7 @@ func TestRun_Refusals_LeaveNoTrail(t *testing.T) {
 		{"missing target id", nil, func() RunInput { in := ticketRun(); in.TargetID = " "; return in }, apperrs.ErrInvalid, "target id"},
 		{"missing play id", nil, func() RunInput { in := ticketRun(); in.PlayID = ""; return in }, apperrs.ErrInvalid, "play id"},
 		{"unknown play", nil, func() RunInput { in := ticketRun(); in.PlayID = "nope"; return in }, apperrs.ErrNotFound, ""},
-		{"ticket play on a doc target", nil, func() RunInput { in := ticketRun(); in.TargetType, in.TargetID = TargetDoc, docID; return in }, apperrs.ErrInvalid, "a ticket play needs a ticket target"},
+		{"ticket play on a doc target", nil, func() RunInput { in := ticketRun(); in.TargetType, in.TargetID = TargetDoc, docID; return in }, apperrs.ErrInvalid, "ticket plays run on ticket targets"},
 		{"unknown ticket", nil, func() RunInput { in := ticketRun(); in.TargetID = "t-missing"; return in }, apperrs.ErrNotFound, ""},
 		{"play from another workspace", nil, func() RunInput { in := ticketRun(); in.TargetID = "t-foreign"; return in }, apperrs.ErrNotFound, ""},
 		{"disabled", func(f *runnerFixture) { f.plays.byID[fixPlayID].Enabled = false }, ticketRun, apperrs.ErrInvalid, "is disabled"},
@@ -128,6 +133,13 @@ func TestRun_Refusals_LeaveNoTrail(t *testing.T) {
 		{"doc thread refused", func(f *runnerFixture) { f.threads.docErr = apperrs.ErrForbidden }, func() RunInput {
 			return RunInput{PlayID: docPlayID, TargetType: TargetDoc, TargetID: docID}
 		}, apperrs.ErrForbidden, ""},
+		{"interview play on a ticket target", nil, func() RunInput { in := ticketRun(); in.PlayID = intPlayID; return in }, apperrs.ErrInvalid, "interview plays run on interview targets"},
+		{"unknown interview project", nil, func() RunInput {
+			return RunInput{PlayID: intPlayID, TargetType: TargetInterview, TargetID: "proj-missing"}
+		}, apperrs.ErrNotFound, "get project proj-missing"},
+		{"interview thread refused", func(f *runnerFixture) { f.threads.interviewErr = apperrs.ErrForbidden }, func() RunInput {
+			return RunInput{PlayID: intPlayID, TargetType: TargetInterview, TargetID: projectID}
+		}, apperrs.ErrForbidden, "open interview thread"},
 		{"memories lookup failed", func(f *runnerFixture) { f.mems.err = errors.New("db down") }, ticketRun, nil, "db down"},
 		{"trail list failed", func(f *runnerFixture) { f.trails.listErr = errors.New("db down") }, ticketRun, nil, "db down"},
 	}
@@ -391,6 +403,35 @@ func TestRun_DocPlay_UsesDocThread(t *testing.T) {
 	assert.Equal(t, "conv-doc-"+docID, trail.ConversationID)
 	assert.Equal(t, ViaMCP, trail.Via)
 	assert.Equal(t, TargetDoc, trail.TargetType)
+}
+
+func TestRun_InterviewPlay_PostsInTheInterviewThreadWithTheProjectsAnswers(t *testing.T) {
+	tests := []struct {
+		name, project, testsLocation, want string
+	}{
+		{"separate tests repository", projectID, "separate", "in a separate tests repository"},
+		{"same repository", projectID, "same", "in the deployed repository"},
+		{"not answered", otherProj, "", "not answered yet; ask it"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := newRunnerFixture()
+			projects := f.runner.projects.(*fakeProjects)
+			p := projects.projects[tt.project]
+			p.TestsLocation = tt.testsLocation
+			projects.projects[tt.project] = p
+			trail, err := f.runner.Run(ctxAs(starter), RunInput{PlayID: intPlayID, TargetType: TargetInterview, TargetID: tt.project, Via: ViaWeb})
+			require.NoError(t, err)
+			<-f.turns.done
+			assert.Equal(t, "conv-interview-"+tt.project, trail.ConversationID)
+			assert.Equal(t, TargetInterview, trail.TargetType)
+			assert.Equal(t, tt.project, trail.ProjectID)
+			blocks := strings.Join(f.turns.last().ExtraRequestBlocks, "\n")
+			assert.Contains(t, blocks, "Play: Interview\nInterview them.")
+			assert.Contains(t, blocks, fmt.Sprintf("(project id %s)", tt.project))
+			assert.Contains(t, blocks, "Where its tests live, as answered in the project wizard: "+tt.want+".")
+		})
+	}
 }
 
 // newHarnessRunner swaps the fake turn runner for the real pipeline over harnesstest.Client.

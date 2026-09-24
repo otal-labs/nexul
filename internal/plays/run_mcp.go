@@ -12,13 +12,14 @@ func RunMCPTools(r *Runner) []mcptool.Tool {
 	return []mcptool.Tool{
 		{
 			Name: "play_run",
-			Description: "Run a play on a ticket or a doc as the calling user, on that user's own paired harness. " +
+			Description: "Run a play on a ticket, a doc, or a project's interview (target_type interview, target_id the project id) " +
+				"as the calling user, on that user's own paired harness. " +
 				"Returns the trail in state starting; poll play_run_get for its outcome. Memories are inlined in " +
 				"full (the project's always-included ones first); custom instructions win over the play's where they conflict. " +
 				"computer_id, provider, and model are optional; left unset, the run resolves the caller's own project link or pairing defaults.",
 			InputSchema: objectSchema(map[string]any{
 				"play_id":             map[string]any{"type": "string"},
-				"target_type":         map[string]any{"type": "string", "enum": []string{"ticket", "doc"}},
+				"target_type":         map[string]any{"type": "string", "enum": targetTypeNames},
 				"target_id":           map[string]any{"type": "string"},
 				"memory_ids":          map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
 				"custom_instructions": map[string]any{"type": "string"},
@@ -91,10 +92,27 @@ func RunMCPTools(r *Runner) []mcptool.Tool {
 			},
 		},
 		{
-			Name:        "play_list_runs",
-			Description: "List a ticket's or a doc's play runs, newest first.",
+			Name: "decisions_check_run",
+			Description: "Run the built-in decisions check on a done ticket again, as the calling user on their own paired harness: it reads " +
+				"the ticket, its pull requests, and the project's decisions log, then adds a three-line entry, marks a reversed one " +
+				"superseded, or leaves the log alone. Use it when the ticket shows the decisions check didn't run. Returns the trail in " +
+				"state starting; poll play_run_get for its outcome.",
 			InputSchema: objectSchema(map[string]any{
-				"target_type": map[string]any{"type": "string", "enum": []string{"ticket", "doc"}},
+				"ticket_id": map[string]any{"type": "string"},
+			}, "ticket_id"),
+			Call: func(ctx context.Context, args map[string]any) (any, error) {
+				id, err := mcptool.RequiredString(args, "ticket_id")
+				if err != nil {
+					return nil, err
+				}
+				return r.RetryDecisionsCheck(ctx, id, ViaMCP)
+			},
+		},
+		{
+			Name:        "play_list_runs",
+			Description: "List the play runs on a ticket, a doc, or a project's interview (target_id the project id), newest first.",
+			InputSchema: objectSchema(map[string]any{
+				"target_type": map[string]any{"type": "string", "enum": targetTypeNames},
 				"target_id":   map[string]any{"type": "string"},
 			}, "target_type", "target_id"),
 			Call: func(ctx context.Context, args map[string]any) (any, error) {

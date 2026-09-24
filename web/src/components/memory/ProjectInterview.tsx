@@ -1,10 +1,14 @@
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { InterviewEmptyState } from "@/components/memory/InterviewEmptyState";
+import { InterviewRunButton } from "@/components/memory/InterviewRunButton";
+import { InterviewThreadSection } from "@/components/memory/InterviewThreadSection";
 import { MemoryDetail } from "@/components/memory/MemoryDetail";
 import { PageHeader } from "@/components/PageHeader";
+import { TrailSection } from "@/components/play/TrailSection";
 import { useDeleteMemory, useFetchMemoriesByProject, useUpdateMemory } from "@/hooks/MemoryHooks";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { isInterviewMemory } from "@/models/Memory";
 import type { Project } from "@/models/Project";
 
@@ -16,6 +20,7 @@ export const ProjectInterview = ({ project }: ProjectInterviewProps) => {
   const canWrite = useHasPermission("memories:write");
   const canDelete = useHasPermission("memories:delete");
   const canClone = useHasPermission("memories:clone");
+  const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const { data: memories, error, isPending } = useFetchMemoriesByProject(project.id);
   const updateMemory = useUpdateMemory();
   const deleteMemory = useDeleteMemory();
@@ -27,7 +32,9 @@ export const ProjectInterview = ({ project }: ProjectInterviewProps) => {
         eyebrow={project.name}
         title="Interview"
         subtitle="The rules every agent turn in this project follows: stack, paradigm, testing, principles, and vocabulary."
+        actions={memories && <InterviewRunButton projectId={project.id} hasInterview={interview !== undefined} />}
       />
+      <InterviewThreadSection projectId={project.id} />
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {memories && !interview && <InterviewEmptyState projectId={project.id} canWrite={canWrite} />}
@@ -43,6 +50,7 @@ export const ProjectInterview = ({ project }: ProjectInterviewProps) => {
           onDelete={() => deleteMemory.mutate(interview.id)}
         />
       )}
+      <TrailSection workspaceId={workspaceId} targetType="interview" targetId={project.id} />
     </div>
   );
 };

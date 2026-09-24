@@ -11,7 +11,8 @@ import (
 
 // Handler adapts the gitprovider use-cases to the HTTP/JSON gateway (ADR 0019); the browser never talks to MCP directly.
 type Handler struct {
-	p GitProvider
+	p  GitProvider
+	cc ChangeContextReader
 }
 
 // NewHandler wires the gitprovider REST gateway over the given provider.
@@ -19,9 +20,18 @@ func NewHandler(p GitProvider) *Handler {
 	return &Handler{p: p}
 }
 
+// WithChangeContext adds the change-context route, which walks a PR or commit back to its tickets and decisions.
+func (h *Handler) WithChangeContext(cc ChangeContextReader) *Handler {
+	h.cc = cc
+	return h
+}
+
 // Routes returns the gitprovider REST endpoints.
 func (h *Handler) Routes() http.Handler {
 	mux := httpx.NewServeMux()
+	if h.cc != nil {
+		mux.HandleFunc("GET /api/repos/{owner}/{repo}/change-context", h.changeContext)
+	}
 	mux.HandleFunc("GET /api/repos/{owner}/{repo}/prs", h.listPRs)
 	mux.HandleFunc("GET /api/repos/{owner}/{repo}/prs/{number}", h.getPR)
 	mux.HandleFunc("GET /api/repos/{owner}/{repo}", h.getRepo)
@@ -60,4 +70,23 @@ func (h *Handler) getRepo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, repo)
+}
+
+// changeContext takes ?pr=<number> or ?commit=<sha>.
+func (h *Handler) changeContext(w http.ResponseWriter, r *http.Request) {
+	ref := ChangeRef{Owner: r.PathValue("owner"), Repo: r.PathValue("repo"), Commit: r.URL.Query().Get("commit")}
+	if raw := r.URL.Query().Get("pr"); raw != "" {
+		number, err := strconv.Atoi(raw)
+		if err != nil || number < 1 {
+			httpx.WriteError(w, fmt.Errorf("%w: pr must be a positive integer", apperrs.ErrInvalid))
+			return
+		}
+		ref.Number = number
+	}
+	out, err := GetChangeContext(r.Context(), h.p, h.cc, ref)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, out)
 }

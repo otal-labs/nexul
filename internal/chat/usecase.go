@@ -174,6 +174,45 @@ func (s *Service) GetOrCreateDocThread(ctx context.Context, workspaceID, docID, 
 	return existing, nil
 }
 
+// GetOrCreateInterviewThread lazily creates a project's interview thread; a losing race just re-fetches.
+func (s *Service) GetOrCreateInterviewThread(ctx context.Context, workspaceID, projectID, creatorUserID string) (*Conversation, error) {
+	projectID = strings.TrimSpace(projectID)
+	if projectID == "" {
+		return nil, fmt.Errorf("%w: project id is required", apperrs.ErrInvalid)
+	}
+	existing, err := s.repo.GetInterviewThread(ctx, projectID)
+	if err == nil {
+		return existing, nil
+	}
+	if !errors.Is(err, apperrs.ErrNotFound) {
+		return nil, fmt.Errorf("get interview thread for project %s: %w", projectID, err)
+	}
+	workspaceID, creatorUserID = strings.TrimSpace(workspaceID), strings.TrimSpace(creatorUserID)
+	if workspaceID == "" {
+		return nil, fmt.Errorf("%w: workspace id is required", apperrs.ErrInvalid)
+	}
+	if creatorUserID == "" {
+		return nil, fmt.Errorf("%w: creator id is required", apperrs.ErrInvalid)
+	}
+	created, err := s.createConversation(ctx, &Conversation{
+		WorkspaceID: workspaceID,
+		Kind:        KindInterviewThread,
+		ProjectID:   projectID,
+		CreatedBy:   creatorUserID,
+	}, []string{creatorUserID})
+	if err == nil {
+		return created, nil
+	}
+	if !errors.Is(err, apperrs.ErrConflict) {
+		return nil, err
+	}
+	existing, getErr := s.repo.GetInterviewThread(ctx, projectID)
+	if getErr != nil {
+		return nil, fmt.Errorf("get interview thread for project %s after conflict: %w", projectID, getErr)
+	}
+	return existing, nil
+}
+
 // canThread reports whether userID holds docs:thread on docID; a service with no wired DocAccess fails closed.
 func (s *Service) canThread(ctx context.Context, userID, docID string) bool {
 	if s.docAccess == nil || userID == "" || docID == "" {

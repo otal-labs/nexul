@@ -1,5 +1,5 @@
 -- name: CreateConversation :exec
-INSERT INTO conversations (id, workspace_id, kind, name, ticket_id, doc_id, parent_message_id, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO conversations (id, workspace_id, kind, name, ticket_id, doc_id, project_id, parent_message_id, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: InsertConversationParticipant :exec
 INSERT INTO conversation_participants (conversation_id, user_id, created_at) VALUES (?, ?, ?)
@@ -16,6 +16,9 @@ SELECT * FROM conversations WHERE ticket_id = ?;
 
 -- name: GetDocThread :one
 SELECT * FROM conversations WHERE doc_id = ?;
+
+-- name: GetInterviewThread :one
+SELECT * FROM conversations WHERE project_id = ?;
 
 -- name: ListTicketIDsWithThreads :many
 SELECT ticket_id FROM conversations WHERE ticket_id IN (sqlc.slice('ids'));

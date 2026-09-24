@@ -160,7 +160,10 @@ func TestSetup_RePair_KeepsTheConfirmation(t *testing.T) {
 
 func TestTopics_ListsSetupAndTunnelTopics(t *testing.T) {
 	t.Parallel()
-	assert.Equal(t, []string{"computer.paired", "computer.setup_confirmed", "computer.setup_unconfirmed", "computer.tunnel_created", "computer.tunnel_removed", "computer.tunnel_status_changed"}, Topics())
+	assert.Equal(t, []string{
+		"computer.paired", "computer.setup_confirmed", "computer.setup_unconfirmed", "computer.tunnel_created", "computer.tunnel_removed", "computer.tunnel_status_changed",
+		"computer.setup_turn_changed", "computer.setup_finished", "computer.setup_turn_activity",
+	}, Topics())
 }
 
 func toolNamed(t *testing.T, tools []mcptool.Tool, name string) mcptool.Tool {
@@ -199,7 +202,7 @@ func TestMCPTools_Shape(t *testing.T) {
 	assert.ElementsMatch(t, []string{
 		"computer_tunnel_create", "computer_tunnel_status_get", "computer_tunnel_token_get", "computer_pair",
 		"computer_setup_get", "computer_setup_confirm_provider", "computer_setup_unconfirm_provider",
-		"computer_setup_confirm", "computer_setup_unconfirm",
+		"computer_setup_confirm", "computer_setup_unconfirm", "computer_setup_start", "computer_setup_retry_provider",
 		"computer_mcp_token_get", "computer_mcp_token_mint", "computer_mcp_token_revoke",
 	}, names)
 }
@@ -284,7 +287,7 @@ func TestHandler_GetSetup(t *testing.T) {
 
 	rec := doRequest(routes, http.MethodGet, "/api/pairing/computers/c1/setup", "u1", nil)
 	require.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `{"computer_id":"c1","confirmed_at":null,"providers":[]}`, rec.Body.String())
+	assert.JSONEq(t, `{"computer_id":"c1","confirmed_at":null,"providers":[],"turns":[]}`, rec.Body.String())
 
 	rec = doRequest(routes, http.MethodGet, "/api/pairing/computers/c1/setup", "u2", nil)
 	assert.Equal(t, http.StatusNotFound, rec.Code, "another user's computer is invisible")

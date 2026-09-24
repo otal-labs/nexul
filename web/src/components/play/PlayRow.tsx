@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { useDeletePlay } from "@/hooks/PlayHooks";
 import { useFetchGrants } from "@/hooks/PermissionHooks";
-import { PLAY_STAGE_LABELS, type Play } from "@/models/Play";
+import { PLAY_STAGE_LABELS, PLAY_TYPE_LABELS, type Play } from "@/models/Play";
 
 interface PlayRowProps {
   play: Play;
@@ -38,7 +38,7 @@ export const PlayRow = ({ play, workspaceId, canWrite, canDelete, onEdit }: Play
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-medium">{play.label}</span>
-          <NoFillBadge color="text-muted-foreground">{play.type === "ticket" ? "Ticket" : "Doc"}</NoFillBadge>
+          <NoFillBadge color="text-muted-foreground">{PLAY_TYPE_LABELS[play.type]}</NoFillBadge>
           {play.type === "ticket" && play.show_when_stage && (
             <NoFillBadge color="text-muted-foreground">{PLAY_STAGE_LABELS[play.show_when_stage]}</NoFillBadge>
           )}

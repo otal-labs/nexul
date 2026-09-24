@@ -55,7 +55,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 		},
 		{
 			Name:        "memory_create",
-			Description: "Create a memory from a markdown body and return it as markdown. Omit project_id to save at workspace scope, in which case workspace_id is required.",
+			Description: "Create a memory from a markdown body and return it as markdown. Omit project_id to save at workspace scope, in which case workspace_id is required. With kind \"decisions_log\" it creates the project's decisions log (project_id required, one per project, pulled from the memory index and never sent every turn); a project that already has one refuses, so add to it with memory_update.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -65,6 +65,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 					"when_to_use":     map[string]any{"type": "string", "description": "One-line hint for when this memory applies"},
 					"body":            map[string]any{"type": "string", "description": "Markdown body"},
 					"always_included": map[string]any{"type": "boolean"},
+					"kind":            map[string]any{"type": "string", "enum": []string{KindDecisionsLog}, "description": "Omit for an ordinary memory"},
 				},
 				"required": []string{"title"},
 			},
@@ -75,7 +76,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 				}
 				projectID := mcptool.OptionalString(args["project_id"])
 				workspaceID := mcptool.OptionalString(args["workspace_id"])
-				m, err := s.Create(ctx, projectID, workspaceID, title, mcptool.OptionalString(args["when_to_use"]), mcptool.OptionalString(args["body"]), boolArg(args["always_included"]), viaMCP)
+				m, err := s.CreateWithKind(ctx, mcptool.OptionalString(args["kind"]), projectID, workspaceID, title, mcptool.OptionalString(args["when_to_use"]), mcptool.OptionalString(args["body"]), boolArg(args["always_included"]), viaMCP)
 				if err != nil {
 					return nil, err
 				}
@@ -84,7 +85,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 		},
 		{
 			Name:        "memory_update",
-			Description: "Update a memory's title, when-to-use, body (markdown), and always-included flag. The interview memory (kind \"interview\") stays always included whatever the flag says, and its body is capped at 8,000 characters of markdown.",
+			Description: "Update a memory's title, when-to-use, body (markdown), and always-included flag. The interview memory (kind \"interview\") stays always included whatever the flag says, and its body is capped at 8,000 characters of markdown; the decisions log (kind \"decisions_log\") is never always included.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{

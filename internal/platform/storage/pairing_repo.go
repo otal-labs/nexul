@@ -213,12 +213,60 @@ func (r *PairingRepo) SaveProviderSetup(ctx context.Context, computerID string, 
 	})
 }
 
+func (r *PairingRepo) SaveSetupTurn(ctx context.Context, t pairing.SetupTurn, evts ...eventbus.OutboxEvent) error {
+	transcript, err := json.Marshal(t.Transcript)
+	if err != nil {
+		return fmt.Errorf("encode setup turn %s transcript: %w", t.ID, err)
+	}
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		err := r.q.WithTx(tx).SavePairingSetupTurn(ctx, sqlcgen.SavePairingSetupTurnParams{
+			ID: t.ID, RunID: t.RunID, ComputerID: t.ComputerID, Provider: t.Provider, ProviderName: t.ProviderName,
+			State: string(t.State), Status: t.Status, Transcript: string(transcript), StartedAt: t.StartedAt.Unix(),
+			UpdatedAt: t.UpdatedAt.Unix(), EndedAt: nullUnixPtr(t.EndedAt),
+		})
+		if err != nil {
+			return fmt.Errorf("save setup turn %s: %w", t.ID, classifyWriteErr(err))
+		}
+		return insertOutboxRows(ctx, tx, evts)
+	})
+}
+
+func (r *PairingRepo) ListLatestSetupTurns(ctx context.Context, computerID string) ([]pairing.SetupTurnSummary, error) {
+	rows, err := r.q.ListPairingSetupTurnsLatest(ctx, computerID)
+	if err != nil {
+		return nil, fmt.Errorf("list setup turns for %s: %w", computerID, err)
+	}
+	out := make([]pairing.SetupTurnSummary, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, pairing.SetupTurnSummary{
+			RunID: row.RunID, TurnID: row.ID, Provider: row.Provider, ProviderName: row.ProviderName,
+			State: pairing.SetupTurnState(row.State), Status: row.Status, UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
+		})
+	}
+	return out, nil
+}
+
+func (r *PairingRepo) SetSetupMCPToken(ctx context.Context, userID, computerID, sealed string) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		n, err := r.q.WithTx(tx).SetPairingComputerSetupMCPToken(ctx, sqlcgen.SetPairingComputerSetupMCPTokenParams{
+			SetupMcpToken: sealed, ID: computerID, UserID: userID,
+		})
+		if err != nil {
+			return fmt.Errorf("set setup mcp token for %s: %w", computerID, err)
+		}
+		if n == 0 {
+			return fmt.Errorf("set setup mcp token for %s: %w", computerID, apperrs.ErrNotFound)
+		}
+		return nil
+	})
+}
+
 func toPairingComputer(row sqlcgen.PairingComputer) pairing.Computer {
 	return pairing.Computer{
 		ID: row.ID, UserID: row.UserID, Kind: harness.Kind(row.Kind), Name: row.Name, ServerURL: row.ServerUrl, BearerToken: row.BearerToken,
 		TokenExpiresAt: time.Unix(row.TokenExpiresAt, 0).UTC(), HarnessVersion: row.HarnessVersion,
-		SetupConfirmedAt: unixPtrFromNull(row.SetupConfirmedAt),
-		CreatedAt:        time.Unix(row.CreatedAt, 0).UTC(), UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
+		SetupConfirmedAt: unixPtrFromNull(row.SetupConfirmedAt), SetupMCPToken: row.SetupMcpToken,
+		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
 		Tunnel: toComputerTunnel(row),
 	}
 }

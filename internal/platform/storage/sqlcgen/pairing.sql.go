@@ -37,7 +37,7 @@ func (q *Queries) DeletePairingProjectLink(ctx context.Context, projectID string
 }
 
 const getPairingComputer = `-- name: GetPairingComputer :one
-SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id FROM pairing_computers WHERE id = ? AND user_id = ?
+SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, setup_mcp_token FROM pairing_computers WHERE id = ? AND user_id = ?
 `
 
 type GetPairingComputerParams struct {
@@ -65,12 +65,13 @@ func (q *Queries) GetPairingComputer(ctx context.Context, arg GetPairingComputer
 		&i.TunnelZoneID,
 		&i.TunnelRecordID,
 		&i.TunnelAccessAppID,
+		&i.SetupMcpToken,
 	)
 	return i, err
 }
 
 const getPairingComputerByID = `-- name: GetPairingComputerByID :one
-SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id FROM pairing_computers WHERE id = ?
+SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, setup_mcp_token FROM pairing_computers WHERE id = ?
 `
 
 func (q *Queries) GetPairingComputerByID(ctx context.Context, id string) (PairingComputer, error) {
@@ -93,6 +94,7 @@ func (q *Queries) GetPairingComputerByID(ctx context.Context, id string) (Pairin
 		&i.TunnelZoneID,
 		&i.TunnelRecordID,
 		&i.TunnelAccessAppID,
+		&i.SetupMcpToken,
 	)
 	return i, err
 }
@@ -139,7 +141,7 @@ func (q *Queries) GetPairingProjectLink(ctx context.Context, projectID string) (
 }
 
 const listPairingComputers = `-- name: ListPairingComputers :many
-SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id FROM pairing_computers WHERE user_id = ? ORDER BY created_at DESC
+SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, setup_mcp_token FROM pairing_computers WHERE user_id = ? ORDER BY created_at DESC
 `
 
 func (q *Queries) ListPairingComputers(ctx context.Context, userID string) ([]PairingComputer, error) {
@@ -168,6 +170,7 @@ func (q *Queries) ListPairingComputers(ctx context.Context, userID string) ([]Pa
 			&i.TunnelZoneID,
 			&i.TunnelRecordID,
 			&i.TunnelAccessAppID,
+			&i.SetupMcpToken,
 		); err != nil {
 			return nil, err
 		}
@@ -200,6 +203,57 @@ func (q *Queries) ListPairingProviderSetups(ctx context.Context, computerID stri
 			&i.Provider,
 			&i.ConfirmedAt,
 			&i.SkillsJson,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPairingSetupTurnsLatest = `-- name: ListPairingSetupTurnsLatest :many
+SELECT t.id, t.run_id, t.provider, t.provider_name, t.state, t.status, t.updated_at FROM pairing_setup_turns t
+WHERE t.computer_id = ?1 AND t.id = (
+  SELECT l.id FROM pairing_setup_turns l WHERE l.computer_id = ?1 AND l.provider = t.provider
+  ORDER BY l.started_at DESC, l.id DESC LIMIT 1
+)
+ORDER BY t.provider
+`
+
+type ListPairingSetupTurnsLatestRow struct {
+	ID           string
+	RunID        string
+	Provider     string
+	ProviderName string
+	State        string
+	Status       string
+	UpdatedAt    int64
+}
+
+// The newest turn of each provider on a computer, whichever run it belongs to, so a retry sits beside the rest.
+func (q *Queries) ListPairingSetupTurnsLatest(ctx context.Context, computerID string) ([]ListPairingSetupTurnsLatestRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPairingSetupTurnsLatest, computerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPairingSetupTurnsLatestRow
+	for rows.Next() {
+		var i ListPairingSetupTurnsLatestRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.RunID,
+			&i.Provider,
+			&i.ProviderName,
+			&i.State,
+			&i.Status,
 			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -357,6 +411,45 @@ func (q *Queries) SavePairingProviderSetup(ctx context.Context, arg SavePairingP
 	return err
 }
 
+const savePairingSetupTurn = `-- name: SavePairingSetupTurn :exec
+INSERT INTO pairing_setup_turns (id, run_id, computer_id, provider, provider_name, state, status, transcript, started_at, updated_at, ended_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(id) DO UPDATE SET
+  state = excluded.state, status = excluded.status, transcript = excluded.transcript, updated_at = excluded.updated_at,
+  ended_at = excluded.ended_at
+`
+
+type SavePairingSetupTurnParams struct {
+	ID           string
+	RunID        string
+	ComputerID   string
+	Provider     string
+	ProviderName string
+	State        string
+	Status       string
+	Transcript   string
+	StartedAt    int64
+	UpdatedAt    int64
+	EndedAt      sql.NullInt64
+}
+
+func (q *Queries) SavePairingSetupTurn(ctx context.Context, arg SavePairingSetupTurnParams) error {
+	_, err := q.db.ExecContext(ctx, savePairingSetupTurn,
+		arg.ID,
+		arg.RunID,
+		arg.ComputerID,
+		arg.Provider,
+		arg.ProviderName,
+		arg.State,
+		arg.Status,
+		arg.Transcript,
+		arg.StartedAt,
+		arg.UpdatedAt,
+		arg.EndedAt,
+	)
+	return err
+}
+
 const setPairingComputerSetupConfirmedAt = `-- name: SetPairingComputerSetupConfirmedAt :execrows
 UPDATE pairing_computers SET setup_confirmed_at = ? WHERE id = ? AND user_id = ?
 `
@@ -369,6 +462,24 @@ type SetPairingComputerSetupConfirmedAtParams struct {
 
 func (q *Queries) SetPairingComputerSetupConfirmedAt(ctx context.Context, arg SetPairingComputerSetupConfirmedAtParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, setPairingComputerSetupConfirmedAt, arg.SetupConfirmedAt, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const setPairingComputerSetupMCPToken = `-- name: SetPairingComputerSetupMCPToken :execrows
+UPDATE pairing_computers SET setup_mcp_token = ? WHERE id = ? AND user_id = ?
+`
+
+type SetPairingComputerSetupMCPTokenParams struct {
+	SetupMcpToken string
+	ID            string
+	UserID        string
+}
+
+func (q *Queries) SetPairingComputerSetupMCPToken(ctx context.Context, arg SetPairingComputerSetupMCPTokenParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, setPairingComputerSetupMCPToken, arg.SetupMcpToken, arg.ID, arg.UserID)
 	if err != nil {
 		return 0, err
 	}

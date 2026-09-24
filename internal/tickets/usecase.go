@@ -20,6 +20,7 @@ type Service struct {
 	statuses StatusStore
 	users    UserLogins
 	types    TicketTypes
+	testing  Testing
 	now      func() time.Time
 }
 
@@ -422,14 +423,15 @@ func (s *Service) LabelColors(ctx context.Context, projectID string, labels []st
 
 // UpdateStatus records the automation as actor for an automation-token request, else the user.
 func (s *Service) UpdateStatus(ctx context.Context, id string, to Status) (*Ticket, error) {
-	if actor, ok := identity.ActorFromCtx(ctx); ok && actor.Automation != nil {
-		return s.transition(ctx, id, to, Actor{
-			Kind:           ActorKindAutomation,
-			AutomationID:   actor.Automation.ID,
-			AutomationName: actor.Automation.Name,
-		}, "")
+	return s.transition(ctx, id, to, statusActor(ctx), "")
+}
+
+func statusActor(ctx context.Context) Actor {
+	actor, _ := identity.ActorFromCtx(ctx)
+	if actor.Automation != nil {
+		return Actor{Kind: ActorKindAutomation, AutomationID: actor.Automation.ID, AutomationName: actor.Automation.Name}
 	}
-	return s.transition(ctx, id, to, Actor{Kind: ActorKindUser}, "")
+	return Actor{Kind: ActorKindUser, UserID: actor.ID}
 }
 
 // SetStatusAs records the given actor (an automation with its run id, or a play with its trail id on the actor).
@@ -437,7 +439,8 @@ func (s *Service) SetStatusAs(ctx context.Context, id string, to Status, actor A
 	return s.transition(ctx, id, to, actor, runID)
 }
 
-func (s *Service) transition(ctx context.Context, id string, to Status, actor Actor, runID string) (*Ticket, error) {
+// transition publishes each extra event, built from the moved ticket, in the same transaction as the move.
+func (s *Service) transition(ctx context.Context, id string, to Status, actor Actor, runID string, extra ...func(Ticket) eventbus.OutboxEvent) (*Ticket, error) {
 	if strings.TrimSpace(id) == "" {
 		return nil, fmt.Errorf("%w: id is required", apperrs.ErrInvalid)
 	}
@@ -461,9 +464,12 @@ func (s *Service) transition(ctx context.Context, id string, to Status, actor Ac
 	updated := *current
 	updated.Status = to
 	updated.UpdatedAt = s.now().UTC()
-	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicStatusChanged, Payload: StatusChangedEvent{Ticket: updated, From: current.Status, To: to, Actor: actor, RunID: runID}}
+	evts := []eventbus.OutboxEvent{{ID: ids.New(), Topic: TopicStatusChanged, Payload: StatusChangedEvent{Ticket: updated, From: current.Status, To: to, Actor: actor, RunID: runID}}}
+	for _, build := range extra {
+		evts = append(evts, build(updated))
+	}
 	// Position is assigned atomically in its own transaction (ADR 0002); re-fetch to return the persisted value.
-	if err := s.repo.UpdateStatus(ctx, id, to, evt); err != nil {
+	if err := s.repo.UpdateStatus(ctx, id, to, evts...); err != nil {
 		return nil, fmt.Errorf("update ticket %s status: %w", id, err)
 	}
 	fresh, err := s.repo.GetByID(ctx, id)
@@ -558,6 +564,26 @@ func (s *Service) LinkBranch(ctx context.Context, id, owner, repo, branch string
 		return fmt.Errorf("link branch to ticket %s: %w", id, err)
 	}
 	return nil
+}
+
+// ListByPR returns the tickets a pull request is linked to.
+func (s *Service) ListByPR(ctx context.Context, owner, repo string, number int) ([]*Ticket, error) {
+	if owner == "" || repo == "" || number < 1 {
+		return nil, fmt.Errorf("%w: owner, repo, and a positive PR number are required", apperrs.ErrInvalid)
+	}
+	ids, err := s.repo.ListIDsByPR(ctx, owner, repo, number)
+	if err != nil {
+		return nil, fmt.Errorf("list tickets for PR %s/%s#%d: %w", owner, repo, number, err)
+	}
+	out := make([]*Ticket, 0, len(ids))
+	for _, id := range ids {
+		t, err := s.repo.GetByID(ctx, id)
+		if err != nil {
+			return nil, fmt.Errorf("list tickets for PR %s/%s#%d: %w", owner, repo, number, err)
+		}
+		out = append(out, t)
+	}
+	return out, nil
 }
 
 // ListLinks returns the PR and branch links recorded against a ticket (development section).

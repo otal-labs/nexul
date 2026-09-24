@@ -60,6 +60,35 @@ func MCPTools(p GitProvider) []mcptool.Tool {
 	}
 }
 
+// ChangeContextTools returns git_get_change_context, the "why does this code exist" walk.
+func ChangeContextTools(p GitProvider, cc ChangeContextReader) []mcptool.Tool {
+	return []mcptool.Tool{
+		{
+			Name: "git_get_change_context",
+			Description: "Explain why a change exists. Given a pull request number, or a commit SHA (from git blame; " +
+				"a squash-merged commit resolves to the PR that introduced it), return the PR, the tickets it is linked to, " +
+				"each ticket's doc and the bugs found in it after it was done, and the project's decisions-log entries citing those tickets.",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"owner":  map[string]any{"type": "string"},
+					"repo":   map[string]any{"type": "string"},
+					"number": map[string]any{"type": "integer", "description": "The pull request number; omit when passing commit"},
+					"commit": map[string]any{"type": "string", "description": "A commit SHA; used when number is omitted"},
+				},
+				"required": []string{"owner", "repo"},
+			},
+			Call: func(ctx context.Context, args map[string]any) (any, error) {
+				owner, repo, err := ownerRepoArgs(args)
+				if err != nil {
+					return nil, err
+				}
+				return GetChangeContext(ctx, p, cc, ChangeRef{Owner: owner, Repo: repo, Number: intArg(args["number"]), Commit: strArg(args["commit"], "")})
+			},
+		},
+	}
+}
+
 func ownerRepoArgs(args map[string]any) (owner, repo string, err error) {
 	owner, ok := args["owner"].(string)
 	if !ok || owner == "" {

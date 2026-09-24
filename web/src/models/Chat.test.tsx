@@ -5,6 +5,7 @@ import {
   buildMentionCandidates,
   composeMessageBody,
   conversationLabel,
+  conversationPlayTarget,
   findMentionTrigger,
   groupConversations,
   matchesMentionPrefix,
@@ -194,5 +195,19 @@ describe("composeMessageBody", () => {
 
   it("produces text-only output when there are no attachments", () => {
     expect(composeMessageBody("hello", [])).toBe("hello");
+  });
+});
+
+describe("conversationPlayTarget", () => {
+  it("maps an interview thread to its project's interview", () => {
+    expect(conversationPlayTarget(conversation({ kind: "interview_thread", project_id: "p-1" }))).toEqual({
+      type: "interview",
+      id: "p-1",
+    });
+    expect(conversationLabel(conversation({ kind: "interview_thread", project_id: "p-1" }))).toBe("Interview");
+  });
+
+  it("maps nothing for a channel", () => {
+    expect(conversationPlayTarget(conversation({ kind: "channel", name: "general" }))).toBeNull();
   });
 });

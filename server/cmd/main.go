@@ -19,6 +19,7 @@ import (
 	"github.com/otal-labs/nexul/internal/dns"
 	"github.com/otal-labs/nexul/internal/docs"
 	"github.com/otal-labs/nexul/internal/integrations"
+	"github.com/otal-labs/nexul/internal/memories"
 	"github.com/otal-labs/nexul/internal/pairing"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/httpx"
@@ -232,6 +233,12 @@ var livePushTopics = []string{
 	pairing.TopicComputerPaired,
 	pairing.TopicTunnelCreated,
 	pairing.TopicTunnelRemoved,
+	memories.TopicCreated,
+	memories.TopicUpdated,
+	memories.TopicDeleted,
+	pairing.TopicSetupTurnChanged,
+	pairing.TopicSetupFinished,
+	pairing.TopicSetupTurnActivity,
 }
 
 func fail(err error) {

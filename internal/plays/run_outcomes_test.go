@@ -37,7 +37,7 @@ func TestFinish_Done_MovesToTheChosenLaterColumn(t *testing.T) {
 
 	moves := f.mover.snapshot()
 	require.Len(t, moves, 1)
-	assert.Equal(t, fakeMove{ticketID, "st-review", PlayActor{PlayLabel: "Fix with AI", TrailID: trail.ID, Via: ViaWeb}}, moves[0])
+	assert.Equal(t, fakeMove{ticketID, "st-review", PlayActor{PlayLabel: "Fix with AI", TrailID: trail.ID, StarterID: starter, Via: ViaWeb}}, moves[0])
 	assert.Empty(t, f.threads.noteBodies(), "a clean move needs no note")
 }
 

@@ -30,6 +30,7 @@ func (a agentConversations) GetConversation(ctx context.Context, id string) (age
 		TicketID:       c.TicketID,
 		IsDocThread:    c.Kind == chat.KindDocThread,
 		DocID:          c.DocID,
+		ProjectID:      c.ProjectID,
 		ThreadID:       c.AgentThreadID,
 		SyncedAt:       c.AgentSyncedAt,
 	}, nil
@@ -115,6 +116,14 @@ func (a agentUserReader) Login(ctx context.Context, userID string) (string, erro
 		return "", err
 	}
 	return u.Login, nil
+}
+
+func (a agentUserReader) UserID(ctx context.Context, login string) (string, error) {
+	u, err := a.users.GetUserByLogin(ctx, login)
+	if err != nil {
+		return "", err
+	}
+	return u.ID, nil
 }
 
 // agentMemories adapts memories.Service to the agent pipeline's MemoriesReader seam (ADR 0017: agent never imports memories).
