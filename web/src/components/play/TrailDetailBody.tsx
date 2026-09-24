@@ -6,10 +6,12 @@ import {
   MessageScrollerViewport,
 } from "@/components/ui/message-scroller";
 
+import { SetupRefusalLink } from "@/components/pairing/SetupRefusalLink";
 import { TrailFacts } from "@/components/play/TrailFacts";
 import { TrailStateIcon } from "@/components/play/TrailStateIcon";
 import { TrailTranscript } from "@/components/play/TrailTranscript";
 import { useLiveTrailActivity, useLiveTrailQuestion, useLiveTrailState, useLiveTrailSteps } from "@/hooks/TrailHooks";
+import { SETUP_REQUIRED_REASON } from "@/models/Pairing";
 import { trailSummary, type Trail } from "@/models/Trail";
 
 interface TrailDetailBodyProps {
@@ -38,6 +40,7 @@ export const TrailDetailBody = ({ trail }: TrailDetailBodyProps) => {
           <section className="space-y-1">
             <h3 className={microheaderClass}>Last error</h3>
             <p className="text-sm text-destructive">{trail.last_error}</p>
+            {trail.failure_reason === SETUP_REQUIRED_REASON && <SetupRefusalLink computerId={trail.computer_id} />}
           </section>
         )}
       </div>

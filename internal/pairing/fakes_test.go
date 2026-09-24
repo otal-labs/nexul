@@ -203,7 +203,7 @@ func (f *fakeRepo) ListLatestSetupTurns(_ context.Context, computerID string) ([
 	}
 	out := []SetupTurnSummary{}
 	for _, t := range latest {
-		out = append(out, SetupTurnSummary{RunID: t.RunID, TurnID: t.ID, Provider: t.Provider, ProviderName: t.ProviderName, State: t.State, Status: t.Status, UpdatedAt: t.UpdatedAt})
+		out = append(out, SetupTurnSummary{RunID: t.RunID, TurnID: t.ID, Provider: t.Provider, ProviderName: t.ProviderName, Model: t.Model, State: t.State, Status: t.Status, UpdatedAt: t.UpdatedAt})
 	}
 	slices.SortFunc(out, func(a, b SetupTurnSummary) int { return strings.Compare(a.Provider, b.Provider) })
 	return out, nil

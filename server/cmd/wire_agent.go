@@ -11,11 +11,13 @@ import (
 	"github.com/otal-labs/nexul/internal/memories"
 	"github.com/otal-labs/nexul/internal/platform/storage"
 	"github.com/otal-labs/nexul/internal/tickets"
+	"github.com/otal-labs/nexul/internal/workspace"
 )
 
 // agentConversations adapts chat.Service to the agent pipeline's Conversations seam (ADR 0017: agent never imports chat).
 type agentConversations struct {
-	svc *chat.Service
+	svc      *chat.Service
+	projects *workspace.Service
 }
 
 func (a agentConversations) GetConversation(ctx context.Context, id string) (agent.Conversation, error) {
@@ -24,6 +26,8 @@ func (a agentConversations) GetConversation(ctx context.Context, id string) (age
 		return agent.Conversation{}, err
 	}
 	return agent.Conversation{
+		ProjectName:    a.projectName(ctx, c),
+		Name:           c.Name,
 		ID:             c.ID,
 		WorkspaceID:    c.WorkspaceID,
 		IsTicketThread: c.Kind == chat.KindTicketThread,
@@ -34,6 +38,18 @@ func (a agentConversations) GetConversation(ctx context.Context, id string) (age
 		ThreadID:       c.AgentThreadID,
 		SyncedAt:       c.AgentSyncedAt,
 	}, nil
+}
+
+// projectName reads an interview thread's project name for its session title; a failed read only costs the title.
+func (a agentConversations) projectName(ctx context.Context, c *chat.Conversation) string {
+	if c.Kind != chat.KindInterviewThread || c.ProjectID == "" || a.projects == nil {
+		return ""
+	}
+	p, err := a.projects.Get(ctx, c.ProjectID)
+	if err != nil {
+		return ""
+	}
+	return p.Name
 }
 
 func (a agentConversations) MessagesSince(ctx context.Context, conversationID string, since time.Time) ([]agent.ConversationMessage, error) {

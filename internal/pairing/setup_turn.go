@@ -24,21 +24,21 @@ type InstanceSettings interface {
 	GetInstanceURL(ctx context.Context) (string, error)
 }
 
-// StartSetup runs one setup turn per provider the computer's harness lists, one after another, in the background.
-func (s *Service) StartSetup(ctx context.Context, userID, computerID string) (*SetupRun, error) {
-	return s.startSetup(ctx, userID, computerID, "")
+// StartSetup runs one setup turn per provider in the background, each on its models entry (by driver), else the provider's default.
+func (s *Service) StartSetup(ctx context.Context, userID, computerID string, models map[string]string) (*SetupRun, error) {
+	return s.startSetup(ctx, userID, computerID, "", models)
 }
 
-// RetrySetupProvider runs one provider's setup turn alone; on a confirmed provider it re-verifies.
-func (s *Service) RetrySetupProvider(ctx context.Context, userID, computerID, provider string) (*SetupRun, error) {
+// RetrySetupProvider runs one provider's setup turn alone on model, empty for its default; on a confirmed provider it re-verifies.
+func (s *Service) RetrySetupProvider(ctx context.Context, userID, computerID, provider, model string) (*SetupRun, error) {
 	provider, err := validateProvider(provider)
 	if err != nil {
 		return nil, err
 	}
-	return s.startSetup(ctx, userID, computerID, provider)
+	return s.startSetup(ctx, userID, computerID, provider, map[string]string{provider: model})
 }
 
-func (s *Service) startSetup(ctx context.Context, userID, computerID, only string) (*SetupRun, error) {
+func (s *Service) startSetup(ctx context.Context, userID, computerID, only string, models map[string]string) (*SetupRun, error) {
 	session, err := s.sessionComputer(ctx, userID, computerID)
 	if err != nil {
 		return nil, err
@@ -65,15 +65,25 @@ func (s *Service) startSetup(ctx context.Context, userID, computerID, only strin
 	}
 	run := &SetupRun{RunID: ids.New(), ComputerID: session.ID, Providers: make([]SetupProvider, 0, len(providers))}
 	for _, p := range providers {
-		run.Providers = append(run.Providers, SetupProvider{Provider: strings.ToLower(p.Driver), Name: p.Name})
+		run.Providers = append(run.Providers, SetupProvider{Provider: strings.ToLower(p.Driver), Name: p.Name, Model: setupModel(models, p)})
 	}
 	prompt := setupPrompt{ComputerID: session.ID, ComputerName: session.Name, MCPURL: mcpURL, Token: token}
 	runCtx := context.WithoutCancel(ctx)
 	s.setupRuns.Go(func() {
 		defer s.releaseSetup(session.ID)
-		s.runSetup(runCtx, userID, run.RunID, session.ID, providers, prompt)
+		s.runSetup(runCtx, userID, *run, providers, prompt)
 	})
 	return run, nil
+}
+
+// setupModel is the model picked for p by driver kind or instance id, any case; "" leaves the provider on its own default.
+func setupModel(models map[string]string, p harness.Provider) string {
+	for key, model := range models {
+		if strings.EqualFold(key, p.Driver) || strings.EqualFold(key, p.ID) {
+			return strings.TrimSpace(model)
+		}
+	}
+	return ""
 }
 
 // setupProviders keeps one instance per driver, since a confirmation is per driver; only narrows it to one driver or instance.
@@ -169,12 +179,13 @@ func (s *Service) releaseSetup(computerID string) {
 }
 
 // runSetup runs the turns in order, so two providers never install into the shared skill locations at once.
-func (s *Service) runSetup(ctx context.Context, userID, runID, computerID string, providers []harness.Provider, prompt setupPrompt) {
+func (s *Service) runSetup(ctx context.Context, userID string, run SetupRun, providers []harness.Provider, prompt setupPrompt) {
+	runID, computerID := run.RunID, run.ComputerID
 	outcomes := make([]SetupTurnOutcome, 0, len(providers))
 	for i, p := range providers {
 		last := i == len(providers)-1
 		prompt.Driver, prompt.ProviderName = p.Driver, p.Name
-		turn := s.runSetupTurn(ctx, userID, runID, computerID, p, prompt)
+		turn := s.runSetupTurn(ctx, userID, runID, computerID, p, run.Providers[i].Model, prompt)
 		outcomes = append(outcomes, SetupTurnOutcome{Provider: turn.Provider, State: turn.State, Status: turn.Status})
 		if !last {
 			s.saveSetupTurn(ctx, turn)
@@ -187,9 +198,9 @@ func (s *Service) runSetup(ctx context.Context, userID, runID, computerID string
 }
 
 // runSetupTurn is a prepare session that connects MCP and installs skills, then a fresh session that loads them and confirms.
-func (s *Service) runSetupTurn(ctx context.Context, userID, runID, computerID string, p harness.Provider, prompt setupPrompt) SetupTurn {
+func (s *Service) runSetupTurn(ctx context.Context, userID, runID, computerID string, p harness.Provider, model string, prompt setupPrompt) SetupTurn {
 	turn := SetupTurn{
-		ID: ids.New(), RunID: runID, ComputerID: computerID, UserID: userID, Provider: strings.ToLower(p.Driver), ProviderName: p.Name,
+		ID: ids.New(), RunID: runID, ComputerID: computerID, UserID: userID, Provider: strings.ToLower(p.Driver), ProviderName: p.Name, Model: model,
 		State: SetupTurnRunning, Status: "Connecting Nexul and installing skills", Transcript: []harness.Activity{}, StartedAt: s.now().UTC(),
 	}
 	s.saveSetupTurn(ctx, turn)
@@ -201,7 +212,8 @@ func (s *Service) runSetupTurn(ctx context.Context, userID, runID, computerID st
 	if err != nil {
 		return s.endSetupTurn(turn, SetupTurnFailed, err.Error())
 	}
-	ht := harness.Target{Session: target.Computer.Session(), ProjectID: target.HarnessProjectID, Provider: target.Provider, Model: target.Model}
+	// Both sessions run on the picked model only: the pairing defaults' model belongs to one provider, not every provider.
+	ht := harness.Target{Session: target.Computer.Session(), ProjectID: target.HarnessProjectID, Provider: target.Provider, Model: model}
 	if reason := s.runSetupSession(ctx, client, ht, &turn, "Nexul setup: "+p.Name, prepareInstructions(prompt)); reason != "" {
 		return s.endSetupTurn(turn, SetupTurnFailed, reason)
 	}
@@ -282,12 +294,13 @@ func (s *Service) setupUpdate(ctx context.Context, turn *SetupTurn, u harness.Up
 // recordSetupActivity hides tokens as the step enters the transcript, so neither the saved turn nor the live line carries one.
 func (s *Service) recordSetupActivity(ctx context.Context, turn *SetupTurn, a harness.Activity) {
 	a.Summary, a.Detail = redact.Tokens(a.Summary), redact.Tokens(a.Detail)
-	turn.Transcript = append(turn.Transcript, a)
+	turn.appendStep(a)
 	if s.bus == nil || a.Summary == "" {
 		return
 	}
 	err := s.bus.Publish(ctx, TopicSetupTurnActivity, SetupTurnActivityEvent{
-		ComputerID: turn.ComputerID, UserID: turn.UserID, RunID: turn.RunID, TurnID: turn.ID, Provider: turn.Provider, Status: harness.Preview(a.Summary, 120),
+		ComputerID: turn.ComputerID, UserID: turn.UserID, RunID: turn.RunID, TurnID: turn.ID, Provider: turn.Provider,
+		Status: harness.Preview(a.Summary, 120), CallID: a.CallID,
 	})
 	if err != nil {
 		logging.FromCtx(ctx).Warn("publish setup turn activity", "computer_id", turn.ComputerID, "error", err)
@@ -336,7 +349,7 @@ func (s *Service) saveSetupTurn(ctx context.Context, turn SetupTurn, evts ...eve
 	turn.Status, turn.UpdatedAt = redact.Tokens(turn.Status), s.now().UTC()
 	changed := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicSetupTurnChanged, Payload: SetupTurnChangedEvent{
 		ComputerID: turn.ComputerID, UserID: turn.UserID, RunID: turn.RunID, TurnID: turn.ID, Provider: turn.Provider,
-		ProviderName: turn.ProviderName, State: turn.State, Status: turn.Status, StartedAt: turn.StartedAt, EndedAt: turn.EndedAt,
+		ProviderName: turn.ProviderName, Model: turn.Model, State: turn.State, Status: turn.Status, StartedAt: turn.StartedAt, EndedAt: turn.EndedAt,
 	}}
 	if err := s.repo.SaveSetupTurn(ctx, turn, append([]eventbus.OutboxEvent{changed}, evts...)...); err != nil {
 		logging.FromCtx(ctx).Error("save setup turn", "computer_id", turn.ComputerID, "provider", turn.Provider, "error", err)

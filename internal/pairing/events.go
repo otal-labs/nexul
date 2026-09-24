@@ -68,6 +68,7 @@ type SetupTurnChangedEvent struct {
 	TurnID       string         `json:"turn_id"`
 	Provider     string         `json:"provider"`
 	ProviderName string         `json:"provider_name"`
+	Model        string         `json:"model,omitempty"`
 	State        SetupTurnState `json:"state"`
 	Status       string         `json:"status"`
 	StartedAt    time.Time      `json:"started_at"`
@@ -98,4 +99,6 @@ type SetupTurnActivityEvent struct {
 	TurnID     string `json:"turn_id"`
 	Provider   string `json:"provider"`
 	Status     string `json:"status"`
+	// CallID names the tool call the step belongs to, so a consumer updates that step's line instead of adding one.
+	CallID string `json:"call_id,omitempty"`
 }

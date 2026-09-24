@@ -121,7 +121,9 @@ type SetupTurnSummary struct {
 	ProviderName string         `json:"provider_name"`
 	State        SetupTurnState `json:"state"`
 	Status       string         `json:"status"`
-	UpdatedAt    time.Time      `json:"updated_at"`
+	// Model is the model slug the turn ran on; empty means the provider's own default.
+	Model     string    `json:"model"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // ProviderSetup is one provider's confirmation on a computer, keyed by the provider's driver kind, never its instance id.
@@ -148,6 +150,7 @@ type SetupTurn struct {
 	UserID       string
 	Provider     string
 	ProviderName string
+	Model        string
 	State        SetupTurnState
 	// Status is the short line the setup dialog shows under the provider.
 	Status     string
@@ -157,6 +160,19 @@ type SetupTurn struct {
 	EndedAt    *time.Time
 }
 
+// appendStep replaces the step of the same tool call, so a call's start and finish are one step, else appends.
+func (t *SetupTurn) appendStep(a harness.Activity) {
+	if a.CallID != "" {
+		for i := len(t.Transcript) - 1; i >= 0; i-- {
+			if t.Transcript[i].CallID == a.CallID {
+				t.Transcript[i] = a
+				return
+			}
+		}
+	}
+	t.Transcript = append(t.Transcript, a)
+}
+
 // SetupRun is what starting setup hands back: the run and the providers it sets up, in order.
 type SetupRun struct {
 	RunID      string          `json:"run_id"`
@@ -164,10 +180,11 @@ type SetupRun struct {
 	Providers  []SetupProvider `json:"providers"`
 }
 
-// SetupProvider is one provider a setup run covers, by driver kind and display name.
+// SetupProvider is one provider a setup run covers, by driver kind and display name, with the model its turn runs on.
 type SetupProvider struct {
 	Provider string `json:"provider"`
 	Name     string `json:"name"`
+	Model    string `json:"model,omitempty"`
 }
 
 // ProviderOption is a provider instance as the pickers list it: still selectable while it needs setup.
@@ -228,6 +245,9 @@ type NotConfiguredError struct {
 	// Provider and Computer are display names, set for ReasonSetupRequired and ReasonOffline so the refusal names them.
 	Provider string
 	Computer string
+	// ComputerID and ProviderID carry the same refusal structurally, so a client can link to the fix.
+	ComputerID string
+	ProviderID string
 	// Err is the harness failure behind ReasonOffline.
 	Err error
 }
@@ -235,12 +255,26 @@ type NotConfiguredError struct {
 // Error is the user-facing refusal for the gate's reasons, so chat, the play run dialog, and MCP all read the same line.
 func (e *NotConfiguredError) Error() string {
 	if e.Reason == ReasonSetupRequired {
-		return fmt.Sprintf("@Agent can't use %s on %s until its setup is done — run setup for %s in Settings → Pairing.", e.Provider, e.Computer, e.Computer)
+		return fmt.Sprintf("@Agent can't use %s on %s until its setup is done — run setup for %s in Settings → T3 pairing.", e.Provider, e.Computer, e.Computer)
 	}
 	if e.Reason == ReasonOffline {
 		return fmt.Sprintf("@Agent can't reach %s — is T3 Code running there?", e.Computer)
 	}
 	return fmt.Sprintf("pairing not configured: %s", e.Reason)
+}
+
+// RefusalDetails is a NotConfiguredError's machine-readable side, carried beside the message in the error envelope.
+type RefusalDetails struct {
+	Reason     NotConfiguredReason `json:"reason"`
+	ComputerID string              `json:"computer_id,omitempty"`
+	Computer   string              `json:"computer,omitempty"`
+	ProviderID string              `json:"provider_id,omitempty"`
+	Provider   string              `json:"provider,omitempty"`
+}
+
+// ErrorDetails satisfies httpx.DetailedError.
+func (e *NotConfiguredError) ErrorDetails() any {
+	return RefusalDetails{Reason: e.Reason, ComputerID: e.ComputerID, Computer: e.Computer, ProviderID: e.ProviderID, Provider: e.Provider}
 }
 
 func (e *NotConfiguredError) Unwrap() []error {

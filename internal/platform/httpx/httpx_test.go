@@ -58,6 +58,32 @@ func TestWriteError_OmitsFieldErrors(t *testing.T) {
 	assert.NotContains(t, rec.Body.String(), "errors")
 }
 
+type detailedErr struct{ err error }
+
+func (e detailedErr) Error() string     { return e.err.Error() }
+func (e detailedErr) Unwrap() error     { return e.err }
+func (e detailedErr) ErrorDetails() any { return map[string]string{"computer_id": "c-1"} }
+
+func TestWriteError_Details(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want string
+	}{
+		{"detailed domain error", detailedErr{apperrs.ErrInvalid}, `{"message":"invalid","code":"INVALID","details":{"computer_id":"c-1"}}`},
+		{"wrapped detailed error", fmt.Errorf("run: %w", detailedErr{apperrs.ErrInvalid}), `{"message":"run: invalid","code":"INVALID","details":{"computer_id":"c-1"}}`},
+		{"plain error", apperrs.ErrInvalid, `{"message":"invalid","code":"INVALID"}`},
+		{"internal error hides details", detailedErr{errors.New("boom")}, `{"message":"internal error","code":"INTERNAL"}`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			WriteError(rec, tt.err)
+			assert.JSONEq(t, tt.want, rec.Body.String())
+		})
+	}
+}
+
 func TestWriteError_UnknownErrorDoesNotLeakMessage(t *testing.T) {
 	rec := httptest.NewRecorder()
 	WriteError(rec, errors.New("secret internal detail"))

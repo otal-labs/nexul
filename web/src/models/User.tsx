@@ -41,8 +41,6 @@ export interface InstanceSettings {
   oauth_callback: string;
   // A free-text template with {ticket.Field} placeholders; any user can read it, only managers can change it.
   mention_chip_template: string;
-  // Shared by the connection-token flow and the pairing settings snippet; empty until an instance URL is set.
-  mcp_url?: string;
   // The client ID is public, the secret is never sent — only whether one is stored.
   google_oauth_client_id?: string;
   google_oauth_callback?: string;

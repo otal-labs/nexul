@@ -10,7 +10,7 @@ interface PairComputerFormProps {
 // Re-pairs a computer in place; a computer tunnel keeps its hostname, so only the URL of a computer paired by URL can change.
 export const PairComputerForm = ({ computer }: PairComputerFormProps) => {
   const { control, onSubmit } = useFormDialogContext<PairComputerFormData>();
-  const repair = useRepairComputer(computer.id);
+  const repair = useRepairComputer(computer);
 
   onSubmit(async (input) => {
     const repaired = await repair.mutateAsync(input);

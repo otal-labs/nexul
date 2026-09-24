@@ -1,9 +1,9 @@
 import { useState } from "react";
 
-import { errorMessage } from "@/api/client";
 import { EmptyRow } from "@/components/EmptyRow";
 import { HarnessPickerPill, type HarnessPick } from "@/components/play/HarnessPickerPill";
 import { MemoryPickRow } from "@/components/play/MemoryPickRow";
+import { PlayRunError } from "@/components/play/PlayRunError";
 import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -159,11 +159,7 @@ export const PlayRunForm = ({
         </section>
       )}
 
-      {runPlay.error && (
-        <p role="alert" className="text-sm text-destructive">
-          {errorMessage(runPlay.error)}
-        </p>
-      )}
+      {runPlay.error && <PlayRunError error={runPlay.error} />}
 
       <div className="flex justify-start">
         <HarnessPickerPill value={harness} onChange={setHarness} />

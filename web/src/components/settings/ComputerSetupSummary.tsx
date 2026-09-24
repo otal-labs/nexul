@@ -1,4 +1,5 @@
 import { Wrench } from "lucide-react";
+import { useSearchParams } from "react-router";
 
 import { Button } from "@/components/ui/button";
 import { PairComputerDialog } from "@/components/pairing/PairComputerDialog";
@@ -35,6 +36,11 @@ const ProviderLine = ({ line }: ProviderLineProps) => (
   </li>
 );
 
+const withoutSetup = (params: URLSearchParams) => {
+  params.delete("setup");
+  return params;
+};
+
 interface SetupDetailsProps {
   computer: Computer;
   setup: ComputerSetup;
@@ -42,6 +48,7 @@ interface SetupDetailsProps {
 
 // Read-only by design: the button only opens the dialog, and an agent alone changes a confirmation through MCP.
 const SetupDetails = ({ computer, setup }: SetupDetailsProps) => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const lines = providerSetupLines(setup);
   const confirmed = setup.confirmed_at !== null;
   return (
@@ -61,6 +68,8 @@ const SetupDetails = ({ computer, setup }: SetupDetailsProps) => {
       </div>
       <PairComputerDialog
         setupFor={computer}
+        defaultOpen={searchParams.get("setup") === computer.id}
+        onClosed={() => setSearchParams((params) => withoutSetup(params), { replace: true })}
         trigger={
           <Button type="button" variant="outline" size="sm">
             <Wrench className="size-4" aria-hidden />

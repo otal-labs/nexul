@@ -261,7 +261,7 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 
 	// In-progress reply text pushes to liveHub as ephemeral frames; only the final reply is durable, via PostAgentReply.
 	agentSvc := agent.NewService(agent.Config{
-		Conversations: agentConversations{svc: svc.chatSvc},
+		Conversations: agentConversations{svc: svc.chatSvc, projects: svc.workspaceSvc},
 		Targets:       svc.pairingSvc,
 		Harnesses:     svc.harnesses,
 		Tickets:       agentTicketReader{svc: svc.ticketsSvc},

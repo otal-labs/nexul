@@ -59,6 +59,8 @@ export interface Trail {
   started_at: string;
   ended_at: string | null;
   last_error: string;
+  // Mirrors plays.Trail.FailureReason: the harness refusal's reason (pairing's NotConfiguredReason), "" otherwise.
+  failure_reason: string;
   reply_message_id: string;
   activity: ActivityEntry[];
   question?: TrailQuestion | null;

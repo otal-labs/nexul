@@ -65,6 +65,8 @@ func requireSetupRefusal(t *testing.T, err error, provider string) {
 	assert.Equal(t, ReasonSetupRequired, nc.Reason)
 	assert.Equal(t, provider, nc.Provider)
 	assert.Equal(t, "Onik's laptop", nc.Computer)
+	assert.NotEmpty(t, nc.ComputerID)
+	assert.Equal(t, RefusalDetails{Reason: ReasonSetupRequired, ComputerID: nc.ComputerID, Computer: "Onik's laptop", ProviderID: "codex-main", Provider: provider}, nc.ErrorDetails())
 	assert.ErrorIs(t, err, apperrs.ErrInvalid)
 }
 

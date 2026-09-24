@@ -2,11 +2,11 @@ import { Check, ChevronRight, RotateCcw, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useSetupActivityStore } from "@/stores/setupActivityStore";
+import { useSetupActivityStore, type SetupActivityStep } from "@/stores/setupActivityStore";
 import type { SetupRunRow as Row } from "@/models/Pairing";
 import { cn } from "@/lib/utils";
 
-const EMPTY: string[] = [];
+const EMPTY: SetupActivityStep[] = [];
 
 interface SetupCommentaryProps {
   turnId: string;
@@ -14,19 +14,19 @@ interface SetupCommentaryProps {
 
 // The agent's steps for the running turn, folded by default and set quieter than the rows above it.
 const SetupCommentary = ({ turnId }: SetupCommentaryProps) => {
-  const lines = useSetupActivityStore((s) => s.lines[turnId] ?? EMPTY);
-  if (lines.length === 0) return null;
+  const steps = useSetupActivityStore((s) => s.steps[turnId] ?? EMPTY);
+  if (steps.length === 0) return null;
   return (
     <Collapsible className="mt-1.5">
       <CollapsibleTrigger className="group flex items-center gap-1 rounded-sm text-[11px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/30">
         <ChevronRight className="size-3 transition-transform duration-150 ease-standard group-data-[state=open]:rotate-90" aria-hidden />
-        Agent steps ({lines.length})
+        Agent steps ({steps.length})
       </CollapsibleTrigger>
       <CollapsibleContent>
         <ul className="mt-1 space-y-0.5 border-l border-border pl-2.5" aria-live="polite">
-          {lines.map((line, i) => (
+          {steps.map((step, i) => (
             <li key={i} className="font-mono text-[11px] break-words text-muted-foreground">
-              {line}
+              {step.line}
             </li>
           ))}
         </ul>
@@ -76,7 +76,10 @@ const SetupRunRow = ({ row, index, retryDisabled, onRetry }: SetupRunRowProps) =
           {row.name}
           <span className="sr-only">: {STATE_LABEL[row.state]}</span>
         </p>
-        <p className="text-xs break-words text-muted-foreground">{row.status}</p>
+        <p className="text-xs break-words text-muted-foreground">
+          {row.status}
+          {row.model && <span className="font-mono whitespace-nowrap"> · {row.model}</span>}
+        </p>
         {row.state === "running" && row.turnId && <SetupCommentary turnId={row.turnId} />}
       </div>
       {row.state === "failed" && (

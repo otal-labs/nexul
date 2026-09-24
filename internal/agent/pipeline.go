@@ -43,8 +43,11 @@ type Conversation struct {
 	DocID          string
 	// ProjectID is set for a thread that belongs to a project directly (an interview thread) rather than through a ticket or doc.
 	ProjectID string
-	ThreadID  string
-	SyncedAt  time.Time
+	// ProjectName is ProjectID's project name, "" when unread; Name is a channel's name, "" for any other kind.
+	ProjectName string
+	Name        string
+	ThreadID    string
+	SyncedAt    time.Time
 }
 
 // ConversationMessage is one prior message, before its author's display name is resolved.
@@ -324,13 +327,7 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 		return
 	}
 
-	title := conversationID
-	if ticket != nil && ticket.Title != "" {
-		title = ticket.Title
-	}
-	if doc != nil && doc.Title != "" {
-		title = doc.Title
-	}
+	title := threadTitle(conv, ticket, doc)
 
 	turn := activeTurn{client: client, target: harness.Target{
 		Session:   target.Computer.Session(),
@@ -358,6 +355,23 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 	}
 
 	s.finishTurn(ctx, conversationID, viaUserID, finalText, term, obs)
+}
+
+// threadTitle names a freshly created harness session after what the conversation is about, never its raw id.
+func threadTitle(conv Conversation, ticket *TicketContext, doc *DocContext) string {
+	if ticket != nil && ticket.Title != "" {
+		return ticket.Title
+	}
+	if doc != nil && doc.Title != "" {
+		return doc.Title
+	}
+	if conv.ProjectName != "" {
+		return "Interview: " + conv.ProjectName
+	}
+	if conv.Name != "" {
+		return "#" + conv.Name
+	}
+	return "Nexul chat"
 }
 
 // resolveTarget honors an override, if given, over the caller's own project link or pairing defaults.

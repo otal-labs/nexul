@@ -42,12 +42,15 @@ interface PairComputerDialogProps {
   trigger: ReactNode;
   // A paired computer's row opens the dialog straight at Set up for it, with the earlier steps done.
   setupFor?: Computer | undefined;
+  // Opens on mount, for a link straight to a computer's Set up step; onClosed lets that link's URL forget it.
+  defaultOpen?: boolean | undefined;
+  onClosed?: (() => void) | undefined;
 }
 
 // Pair a computer: connect its tunnel, pair T3 Code over it, then set it up.
-export const PairComputerDialog = ({ trigger, setupFor }: PairComputerDialogProps) => {
+export const PairComputerDialog = ({ trigger, setupFor, defaultOpen = false, onClosed }: PairComputerDialogProps) => {
   const first: PairingStep = setupFor ? "setup" : "connect";
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const [step, setStep] = useState<PairingStep>(first);
   const [computer, setComputer] = useState<Computer | undefined>(setupFor);
   const [paired, setPaired] = useState<Computer | undefined>(setupFor);
@@ -55,6 +58,7 @@ export const PairComputerDialog = ({ trigger, setupFor }: PairComputerDialogProp
   const onOpenChange = (next: boolean) => {
     setOpen(next);
     if (next) return;
+    onClosed?.();
     setStep(first);
     setComputer(setupFor);
     setPaired(setupFor);

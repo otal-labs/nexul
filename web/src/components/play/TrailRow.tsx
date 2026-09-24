@@ -1,7 +1,9 @@
 import { formatUpdatedAgo } from "@/components/doc/docTime";
+import { SetupRefusalLink } from "@/components/pairing/SetupRefusalLink";
 import { TrailStateIcon } from "@/components/play/TrailStateIcon";
 import { useChatAuthorLookup } from "@/hooks/ChatHooks";
 import { useLiveTrailActivity, useLiveTrailState } from "@/hooks/TrailHooks";
+import { SETUP_REQUIRED_REASON } from "@/models/Pairing";
 import { trailSummary, type Trail } from "@/models/Trail";
 
 interface TrailRowProps {
@@ -22,7 +24,7 @@ export const TrailRow = ({ workspaceId, trail, onOpen }: TrailRowProps) => {
       <button
         type="button"
         onClick={() => onOpen(trail.id)}
-        className="flex w-full items-center gap-2 border-b border-border px-2 py-1.5 text-left transition-colors duration-150 ease-standard last:border-b-0 hover:bg-accent/40"
+        className="flex w-full items-center gap-2 px-2 py-1.5 text-left transition-colors duration-150 ease-standard hover:bg-accent/40"
       >
         <TrailStateIcon state={state} />
         <span className="min-w-0 flex-1 truncate text-xs">
@@ -33,6 +35,11 @@ export const TrailRow = ({ workspaceId, trail, onOpen }: TrailRowProps) => {
           {resolveLogin(trail.starter_id)} · {formatUpdatedAgo(trail.started_at)}
         </span>
       </button>
+      {trail.failure_reason === SETUP_REQUIRED_REASON && (
+        <div className="px-2 pb-1.5">
+          <SetupRefusalLink computerId={trail.computer_id} />
+        </div>
+      )}
     </li>
   );
 };

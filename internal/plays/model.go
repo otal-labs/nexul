@@ -144,29 +144,31 @@ func DecodeActivity(raw []byte) ([]ActivityEntry, error) {
 
 // Trail is the persisted record of one play run (ADR 0055): what was pressed, on what, by whom, and how it went.
 type Trail struct {
-	ID                 string          `json:"id"`
-	WorkspaceID        string          `json:"workspace_id"`
-	PlayID             string          `json:"play_id"`
-	PlayLabel          string          `json:"play_label"`
-	TargetType         TargetType      `json:"target_type"`
-	TargetID           string          `json:"target_id"`
-	ProjectID          string          `json:"project_id"`
-	ConversationID     string          `json:"conversation_id"`
-	StarterID          string          `json:"starter_id"`
-	Via                Via             `json:"via"`
-	SelectedMemoryIDs  []string        `json:"selected_memory_ids"`
-	CustomInstructions string          `json:"custom_instructions"`
-	MoveToStatusID     string          `json:"move_to_status_id"`
-	ComputerID         string          `json:"computer_id"`
-	Provider           string          `json:"provider"`
-	Model              string          `json:"model"`
-	HarnessSessionID   string          `json:"harness_session_id"`
-	State              TrailState      `json:"state"`
-	StartedAt          time.Time       `json:"started_at"`
-	EndedAt            *time.Time      `json:"ended_at"`
-	LastError          string          `json:"last_error"`
-	ReplyMessageID     string          `json:"reply_message_id"`
-	Activity           []ActivityEntry `json:"activity"`
+	ID                 string     `json:"id"`
+	WorkspaceID        string     `json:"workspace_id"`
+	PlayID             string     `json:"play_id"`
+	PlayLabel          string     `json:"play_label"`
+	TargetType         TargetType `json:"target_type"`
+	TargetID           string     `json:"target_id"`
+	ProjectID          string     `json:"project_id"`
+	ConversationID     string     `json:"conversation_id"`
+	StarterID          string     `json:"starter_id"`
+	Via                Via        `json:"via"`
+	SelectedMemoryIDs  []string   `json:"selected_memory_ids"`
+	CustomInstructions string     `json:"custom_instructions"`
+	MoveToStatusID     string     `json:"move_to_status_id"`
+	ComputerID         string     `json:"computer_id"`
+	Provider           string     `json:"provider"`
+	Model              string     `json:"model"`
+	HarnessSessionID   string     `json:"harness_session_id"`
+	State              TrailState `json:"state"`
+	StartedAt          time.Time  `json:"started_at"`
+	EndedAt            *time.Time `json:"ended_at"`
+	LastError          string     `json:"last_error"`
+	// FailureReason is the harness refusal's reason (HarnessRefusal), "" for a run that failed any other way.
+	FailureReason  string          `json:"failure_reason"`
+	ReplyMessageID string          `json:"reply_message_id"`
+	Activity       []ActivityEntry `json:"activity"`
 	// Question is the latest question the run stopped on, nil for a run that never asked one.
 	Question *TrailQuestion `json:"question"`
 }

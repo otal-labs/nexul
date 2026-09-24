@@ -172,13 +172,15 @@ type fakeHarness struct {
 	interruptCh     chan struct{}
 	interruptErr    error
 	lastTarget      harness.Target
+	lastTitle       string
 	lastPrompt      string
 	lastIncremental string
 }
 
-func (f *fakeHarness) StartTurn(_ context.Context, target harness.Target, _ string, prompts harness.TurnPrompts) (harness.StartResult, error) {
+func (f *fakeHarness) StartTurn(_ context.Context, target harness.Target, title string, prompts harness.TurnPrompts) (harness.StartResult, error) {
 	f.mu.Lock()
 	f.lastTarget = target
+	f.lastTitle = title
 	f.lastPrompt = prompts.Full
 	f.lastIncremental = prompts.Incremental
 	f.mu.Unlock()
@@ -345,7 +347,7 @@ func TestRunTurn_ResolveTargetNotConfigured_PostsSystemReply(t *testing.T) {
 		{&pairing.NotConfiguredError{Reason: pairing.ReasonNoDefaultComputer}, "pick a default one"},
 		{
 			&pairing.NotConfiguredError{Reason: pairing.ReasonSetupRequired, Provider: "Codex", Computer: "Onik's laptop"},
-			"@Agent can't use Codex on Onik's laptop until its setup is done — run setup for Onik's laptop in Settings → Pairing.",
+			"@Agent can't use Codex on Onik's laptop until its setup is done — run setup for Onik's laptop in Settings → T3 pairing.",
 		},
 		{
 			&pairing.NotConfiguredError{Reason: pairing.ReasonOffline, Computer: "Onik's laptop"},
@@ -606,6 +608,39 @@ func TestRunTurn_InterviewThread_LoadsItsProjectsMemories(t *testing.T) {
 	mem.mu.Lock()
 	defer mem.mu.Unlock()
 	assert.Equal(t, "proj-7", mem.calledProject)
+}
+
+func TestRunTurn_SessionTitle_NamesWhatTheConversationIsAbout(t *testing.T) {
+	tests := []struct {
+		name string
+		conv Conversation
+		want string
+	}{
+		{"ticket thread", Conversation{ID: "conv-1", IsTicketThread: true, TicketID: "t-1"}, "Login broken"},
+		{"doc thread", Conversation{ID: "conv-1", IsDocThread: true, DocID: "doc-1"}, "Runbook"},
+		{"interview thread", Conversation{ID: "conv-1", ProjectID: "proj-1", ProjectName: "Shopkeepers"}, "Interview: Shopkeepers"},
+		{"channel", Conversation{ID: "conv-1", Name: "general"}, "#general"},
+		{"anything else never shows its id", Conversation{ID: "conv-1"}, "Nexul chat"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := &fakeHarness{startResult: harness.StartResult{SessionID: "t-1", Updates: updatesChan(harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}})}}
+			svc := NewService(Config{
+				Conversations: newFakeConversations(tt.conv),
+				Targets:       &fakeTargets{target: testTarget()},
+				Harnesses:     registryOf(client),
+				Tickets:       &fakeTickets{ticket: Ticket{ProjectID: "proj-1", Title: "Login broken"}},
+				Docs:          &fakeDocs{doc: Doc{ProjectID: "proj-1", Title: "Runbook"}},
+				Live:          &fakeLive{},
+			})
+
+			svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent go"})
+
+			client.mu.Lock()
+			defer client.mu.Unlock()
+			assert.Equal(t, tt.want, client.lastTitle)
+		})
+	}
 }
 
 // --- doc thread context ---------------------------------------------------------

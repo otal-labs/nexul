@@ -1,11 +1,13 @@
 import { Play } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { SetupModelPicks } from "@/components/pairing/SetupModelPicks";
 import { SetupPreselection } from "@/components/pairing/SetupPreselection";
 import { SetupRunRows } from "@/components/pairing/SetupRunRows";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { useFetchComputerSetup, useRunSetup } from "@/hooks/PairingHooks";
+import { useSetupModels } from "@/hooks/useSetupModels";
 import { setupRunRows, setupRunning, type Computer, type ComputerSetup } from "@/models/Pairing";
 import { formatRelativeTime } from "@/utils/TimeUtility";
 
@@ -17,13 +19,15 @@ interface SetupRunSectionProps {
 // Start, then the rows: the run just started lists its providers at once, a reopened dialog shows each provider's newest turn.
 const SetupRunSection = ({ computerId, setup }: SetupRunSectionProps) => {
   const run = useRunSetup(computerId);
+  const { choices, models, pick } = useSetupModels(computerId);
   const rows = setupRunRows(setup.turns, run.data);
   const busy = run.isPending || setupRunning(rows);
   const startLabel = setup.turns.length > 0 ? "Re-run setup" : "Start setup";
   return (
     <div className="space-y-4">
+      {choices.length > 0 && <SetupModelPicks choices={choices} models={models} disabled={busy} onPick={pick} />}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <Button type="button" onClick={() => run.mutate(undefined)} disabled={busy}>
+        <Button type="button" onClick={() => run.mutate({ models })} disabled={busy}>
           <Play className="size-4" aria-hidden />
           {startLabel}
         </Button>
@@ -34,7 +38,7 @@ const SetupRunSection = ({ computerId, setup }: SetupRunSectionProps) => {
           </span>
         )}
       </div>
-      {rows.length > 0 && <SetupRunRows rows={rows} retryDisabled={busy} onRetry={(provider) => run.mutate(provider)} />}
+      {rows.length > 0 && <SetupRunRows rows={rows} retryDisabled={busy} onRetry={(provider) => run.mutate({ models, provider })} />}
     </div>
   );
 };

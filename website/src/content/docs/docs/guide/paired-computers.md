@@ -51,6 +51,14 @@ re-paired. **Remove** deletes the pairing from Nexul, revokes the computer's MCP
 token, and for a computer tunnel also deletes its tunnel, hostname, and Access
 rule.
 
+Neither **Remove** nor **Re-pair** ends Nexul's session in T3 Code itself,
+because T3 Code gives a paired client no way to revoke its own session. The
+old session stays valid until its expiry date, which the confirmation toast
+shows. To end it sooner, run `t3 auth session list` on the computer, find the
+`Nexul` entry (after a re-pair, the older of the two), and run
+`t3 auth session revoke <id>`. For a removed computer tunnel the session is
+already unreachable from outside, since its hostname is gone.
+
 **MCP token** mints the computer its own personal access token, "Nexul MCP on
 <computer>", for its providers' MCP configs. The token is shown once; minting
 again replaces it, and **Revoke** on the row cuts it off. Un-confirming the
@@ -64,7 +72,8 @@ not usable even if its row remains.
 
 A provider cannot run `@Agent` or a play on a computer until an agent confirms
 its setup there. The dialog's **Set up** step runs that setup for you: one
-turn per provider, one after another. Each turn connects Nexul's MCP server to
+turn per provider, one after another, each on the model picked for it in the
+step (its own default unless you pick another). Each turn connects Nexul's MCP server to
 its provider with the computer's MCP token, installs the default skill set
 (mattpocock/skills) and the nexul-memory skill into `~/.claude/skills/` and
 `~/.agents/skills/`, and confirms the provider with the skills it discovered.
@@ -72,7 +81,8 @@ Each confirmed turn also confirms the computer, so one failed provider never
 blocks the others. A failed provider can be retried on its own.
 
 The step shows one row per provider: waiting, running with the agent's steps
-folded under it, confirmed, or failed with **Retry**. Each computer row in
+folded under it (one line per step, updated as it finishes), confirmed, or
+failed with **Retry**. Each computer row in
 **Settings → T3 pairing** shows **Setup confirmed** or **Needs setup**, one line
 per provider with its confirmed-at time, and **Set up** or **Re-run setup**,
 which opens the dialog at this step. The row only shows the state; an agent

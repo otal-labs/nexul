@@ -17,6 +17,13 @@ type Envelope struct {
 	Code    string `json:"code"`
 	// Errors keys the message under the input that caused it, so a form can show it on that field.
 	Errors map[string][]string `json:"errors,omitempty"`
+	// Details is the error's structured side when it has one (DetailedError), so a client never parses the message.
+	Details any `json:"details,omitempty"`
+}
+
+// DetailedError is a domain error that carries structured fields for the envelope's details.
+type DetailedError interface {
+	ErrorDetails() any
 }
 
 // WriteJSON marshals a nil slice as [] instead of null, since the frontend expects arrays.
@@ -103,13 +110,22 @@ func normalizeNilSliceMap(rv reflect.Value) reflect.Value {
 // WriteError maps a domain error to its status + envelope and writes it.
 func WriteError(w http.ResponseWriter, err error) {
 	status, code, message := mapError(err)
-	WriteJSON(w, status, Envelope{Message: message, Code: code})
+	WriteJSON(w, status, Envelope{Message: message, Code: code, Details: details(status, err)})
 }
 
 // WriteFieldError is WriteError with the message also keyed under the input field that caused it.
 func WriteFieldError(w http.ResponseWriter, err error, field string) {
 	status, code, message := mapError(err)
-	WriteJSON(w, status, Envelope{Message: message, Code: code, Errors: map[string][]string{field: {message}}})
+	WriteJSON(w, status, Envelope{Message: message, Code: code, Errors: map[string][]string{field: {message}}, Details: details(status, err)})
+}
+
+// details stays empty on a 500, whose message is hidden too.
+func details(status int, err error) any {
+	var d DetailedError
+	if status == http.StatusInternalServerError || !errors.As(err, &d) {
+		return nil
+	}
+	return d.ErrorDetails()
 }
 
 // DecodeJSON reads a JSON request body, rejecting malformed bodies as

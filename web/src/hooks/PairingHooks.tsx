@@ -7,6 +7,7 @@ import { getPATsKey } from "@/hooks/AuthHooks";
 import {
   HARNESS_READINESS_COPY,
   PAIR_FIELDS,
+  leftoverSessionNote,
   type Computer,
   type ComputerSetup,
   type CreateComputerTunnelFormData,
@@ -137,14 +138,17 @@ export const setCachedTunnelStatus = (client: QueryClient, p: TunnelStatusChange
   });
 };
 
-export const useRepairComputer = (id: string) => {
+// The note carries commands to copy, so it stays until closed.
+const sessionNoteToast = (note?: string) => (note ? { description: note, duration: Infinity, closeButton: true } : undefined);
+
+export const useRepairComputer = (computer: Computer) => {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async (input: PairComputerFormData) =>
-      (await api.post<Computer>(`/api/pairing/computers/${id}/repair`, input)).data,
+      (await api.post<Computer>(`/api/pairing/computers/${computer.id}/repair`, input)).data,
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getComputersKey] });
-      toast.success("Computer re-paired");
+      toast.success("Computer re-paired", sessionNoteToast(leftoverSessionNote(computer, true)));
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
@@ -153,13 +157,13 @@ export const useRepairComputer = (id: string) => {
 export const useDeleteComputer = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      await api.delete(`/api/pairing/computers/${id}`);
+    mutationFn: async (computer: Computer) => {
+      await api.delete(`/api/pairing/computers/${computer.id}`);
     },
-    onSuccess: async () => {
+    onSuccess: async (_, computer) => {
       await client.invalidateQueries({ queryKey: [getComputersKey] });
       await client.invalidateQueries({ queryKey: [getPATsKey] });
-      toast.success("Computer removed");
+      toast.success("Computer removed", sessionNoteToast(leftoverSessionNote(computer)));
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
@@ -173,15 +177,22 @@ export const useFetchComputerSetup = (computerId: string) =>
     enabled: !!computerId,
   });
 
-// Without a provider it starts setup for every provider; with one it re-runs only that provider.
+// Model slugs keyed by driver kind; a provider left out or set to "" runs on its own default.
+export interface RunSetupInput {
+  models: Record<string, string>;
+  provider?: string;
+}
+
+// Without a provider it starts setup for every provider; with one it re-runs only that provider, on its picked model.
 export const useRunSetup = (computerId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (provider?: string) => {
-      const url = provider
-        ? `/api/pairing/computers/${computerId}/setup/providers/${encodeURIComponent(provider)}/retry`
-        : `/api/pairing/computers/${computerId}/setup/runs`;
-      return (await api.post<SetupRun>(url)).data;
+    mutationFn: async ({ models, provider }: RunSetupInput) => {
+      if (provider) {
+        const url = `/api/pairing/computers/${computerId}/setup/providers/${encodeURIComponent(provider)}/retry`;
+        return (await api.post<SetupRun>(url, { model: models[provider] ?? "" })).data;
+      }
+      return (await api.post<SetupRun>(`/api/pairing/computers/${computerId}/setup/runs`, { models })).data;
     },
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getComputerSetupKey, computerId] });

@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { providerSetupLines, setupRunRows, setupRunning, type ComputerSetup, type SetupTurnSummary } from "@/models/Pairing";
+import {
+  providerSetupLines,
+  setupModelChoices,
+  setupRunRows,
+  setupRunning,
+  type ComputerSetup,
+  type HarnessProvider,
+  type SetupTurnSummary,
+} from "@/models/Pairing";
 
 const turn = (overrides: Partial<SetupTurnSummary>): SetupTurnSummary => ({
   run_id: "r0",
@@ -38,6 +46,16 @@ describe("setupRunRows", () => {
       ["codex", "queued", undefined],
     ]);
     expect(setupRunning(rows)).toBe(true);
+  });
+
+  it("carries the model each turn ran on, or the one the run just picked, empty for the provider default", () => {
+    const run = { run_id: "r1", computer_id: "c1", providers: [{ provider: "claudeagent", name: "Claude", model: "claude-haiku" }] };
+    const rows = setupRunRows([turn({ model: "gpt-mini" }), turn({ provider: "opencode", turn_id: "t1" })], run);
+    expect(rows.map((r) => [r.provider, r.model])).toEqual([
+      ["claudeagent", "claude-haiku"],
+      ["codex", "gpt-mini"],
+      ["opencode", ""],
+    ]);
   });
 
   it("keeps the other providers' rows when a retry covers only one", () => {
@@ -78,5 +96,35 @@ describe("providerSetupLines", () => {
       setup({ providers: [{ provider: "codex", confirmed_at: "2026-09-20T00:00:00Z", skills: [] }], turns: [turn({ state: "failed" })] }),
     );
     expect(lines).toEqual([{ provider: "codex", name: "Codex", state: "confirmed", confirmedAt: "2026-09-20T00:00:00Z" }]);
+  });
+});
+
+describe("setupModelChoices", () => {
+  const provider = (id: string, driver: string, models: HarnessProvider["models"]): HarnessProvider => ({ id, driver, name: id, models, needs_setup: true });
+  const providers = [
+    provider("claude", "claudeAgent", [
+      { slug: "claude-big", name: "Big" },
+      { slug: "claude-small", name: "Small", is_default: true },
+    ]),
+    provider("claude-work", "claudeAgent", []),
+    provider("opencode", "opencode", [
+      { slug: "pickle", name: "Pickle", is_default: true },
+      { slug: "gpt", name: "GPT" },
+    ]),
+    provider("grok", "grok", [{ slug: "grok-1", name: "Grok 1" }]),
+  ];
+
+  it("offers one choice per driver, the defaults' model on the default provider and each other provider's own default", () => {
+    const choices = setupModelChoices(providers, { provider: "claude", model: "claude-big" });
+    expect(choices.map((c) => [c.provider, c.preselected])).toEqual([
+      ["claudeagent", "claude-big"],
+      ["opencode", "pickle"],
+      ["grok", ""],
+    ]);
+  });
+
+  it("falls back to the provider's own default when the defaults name a model it does not list", () => {
+    expect(setupModelChoices(providers, { provider: "claude", model: "gone" })[0]?.preselected).toBe("claude-small");
+    expect(setupModelChoices(providers, undefined)[0]?.preselected).toBe("claude-small");
   });
 });

@@ -91,6 +91,10 @@ type playsHarnessResolver struct {
 
 func (a playsHarnessResolver) ResolveTarget(ctx context.Context, userID, projectID string, choice plays.HarnessChoice) (plays.HarnessChoice, error) {
 	target, err := a.svc.ResolveTargetOverride(ctx, userID, projectID, choice.ComputerID, choice.Provider, choice.Model)
+	var nc *pairing.NotConfiguredError
+	if errors.As(err, &nc) {
+		return plays.HarnessChoice{}, &plays.HarnessRefusal{Reason: string(nc.Reason), ComputerID: nc.ComputerID, Provider: nc.ProviderID, Err: err}
+	}
 	if err != nil {
 		return plays.HarnessChoice{}, err
 	}
