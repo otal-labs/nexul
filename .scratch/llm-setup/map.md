@@ -108,6 +108,12 @@ no users yet, move quick):
   an optional never-deployed tests repository; and a project-wizard deploy
   branches step with a per-row network, optional overrides, and URL-safe
   hostnames.
+- [Done as an index of the why](issues/11-done-as-index.md) — every
+  ticket entering done fires a decisions check play (on the mover's
+  computer, the Developer's when a merge moved it; a visible "didn't run"
+  retry otherwise) that writes, supersedes, or skips a three-line
+  decisions-log entry; one MCP tool walks commit or PR → tickets → docs →
+  bugs → log entries; done writes nothing else.
 - [Which skill sets "setup" installs](issues/03-which-skill-sets.md) —
   mattpocock/skills is the default the wizard installs (users may amend their
   copies); pstack is a README credit only; no Nexul-shipped skill for now —
