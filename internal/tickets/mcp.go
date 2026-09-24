@@ -15,6 +15,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 	tools = append(tools, ticketCoreMCPTools(s)...)
 	tools = append(tools, ticketLabelMCPTools(s)...)
 	tools = append(tools, ticketSearchLinkMCPTools(s)...)
+	tools = append(tools, ticketLinkMCPTools(s)...)
 	return tools
 }
 

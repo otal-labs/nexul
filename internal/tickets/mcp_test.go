@@ -26,7 +26,7 @@ func toolByName(t *testing.T, tools []mcptool.Tool, name string) mcptool.Tool {
 
 func TestMCPTools_Shape(t *testing.T) {
 	tools := MCPTools(newTestService(newFakeRepo()))
-	require.Len(t, tools, 17)
+	require.Len(t, tools, 23)
 	var names []string
 	for _, tool := range tools {
 		names = append(names, tool.Name)
@@ -40,6 +40,8 @@ func TestMCPTools_Shape(t *testing.T) {
 		"ticket_add_label", "ticket_remove_label", "ticket_list_labels", "ticket_list_all_labels",
 		"ticket_set_label_color", "ticket_label_colors",
 		"ticket_search", "ticket_link_pr", "ticket_link_branch", "ticket_get_links",
+		"ticket_get_ticket_links", "ticket_set_found_in", "ticket_remove_found_in",
+		"ticket_add_blocker", "ticket_remove_blocker", "ticket_list_blocked",
 	}, names)
 }
 

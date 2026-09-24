@@ -84,6 +84,7 @@ const mockApi = () =>
   vi.mocked(api.get).mockImplementation((url: string) => {
     if (url === "/api/notifications") return Promise.resolve({ data: [ticketNotification, docNotification] });
     if (url === "/api/tickets/t-1") return Promise.resolve({ data: ticketData });
+    if (url === "/api/tickets/t-1/ticket-links") return Promise.resolve({ data: { found_in: null, origin_unknown: false, bugs_found: [], blocked_by: [], blocks: [], blocked: false } });
     if (url === "/api/docs/doc-1") return Promise.resolve({ data: docData });
     if (url === "/api/pairing/presence") return Promise.resolve({ data: { computers: {} } });
     return Promise.resolve({ data: [] });
