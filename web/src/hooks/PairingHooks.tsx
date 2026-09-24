@@ -8,6 +8,7 @@ import {
   HARNESS_READINESS_COPY,
   PAIR_FIELDS,
   type Computer,
+  type ComputerSetup,
   type CreateComputerTunnelFormData,
   type HarnessProject,
   type HarnessProvider,
@@ -20,6 +21,7 @@ import {
   type PairingDefaultsFormData,
   type ProjectLink,
   type ProjectLinkFormData,
+  type SetupRun,
   type TunnelPrerequisite,
   type TunnelStatus,
 } from "@/models/Pairing";
@@ -34,6 +36,7 @@ export const getHarnessResolveKey = "getHarnessResolve";
 export const getTunnelStatusKey = "getTunnelStatus";
 export const getTunnelTokenKey = "getTunnelToken";
 export const getMCPTokenKey = "getMCPToken";
+export const getComputerSetupKey = "getComputerSetup";
 
 // The four NotConfiguredReason values internal/pairing.ResolveTarget can fail with, mapped onto HarnessReadiness states.
 const RESOLVE_REASON_TO_STATE: Record<string, Exclude<HarnessReadiness["state"], "ready" | "offline">> = {
@@ -157,6 +160,32 @@ export const useDeleteComputer = () => {
       await client.invalidateQueries({ queryKey: [getComputersKey] });
       await client.invalidateQueries({ queryKey: [getPATsKey] });
       toast.success("Computer removed");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
+// Read once; setup turn and confirmation pushes invalidate it, so the row and the Set up step follow a run live.
+export const useFetchComputerSetup = (computerId: string) =>
+  useQuery({
+    queryKey: [getComputerSetupKey, computerId],
+    queryFn: async () => (await api.get<ComputerSetup>(`/api/pairing/computers/${computerId}/setup`)).data,
+    enabled: !!computerId,
+  });
+
+// Without a provider it starts setup for every provider; with one it re-runs only that provider.
+export const useRunSetup = (computerId: string) => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (provider?: string) => {
+      const url = provider
+        ? `/api/pairing/computers/${computerId}/setup/providers/${encodeURIComponent(provider)}/retry`
+        : `/api/pairing/computers/${computerId}/setup/runs`;
+      return (await api.post<SetupRun>(url)).data;
+    },
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: [getComputerSetupKey, computerId] });
+      toast.success("Setup started");
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

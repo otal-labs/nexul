@@ -161,7 +161,7 @@ func TestDelete_WithoutPlaysDelete_ReturnsForbidden(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrForbidden)
 }
 
-func TestSeedDefaults_CreatesFixWithAIToTicketsViaAIAndInterview(t *testing.T) {
+func TestSeedDefaults_CreatesTheFourDefaultPlays(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo, newFakePerm(nil)) // no permission gate needed; SeedDefaults bypasses it
 
@@ -170,30 +170,35 @@ func TestSeedDefaults_CreatesFixWithAIToTicketsViaAIAndInterview(t *testing.T) {
 
 	list, err := repo.List(context.Background(), workspaceID)
 	require.NoError(t, err)
-	require.Len(t, list, 3)
+	require.Len(t, list, 4)
 	byLabel := map[string]*Play{}
 	for _, p := range list {
 		byLabel[p.Label] = p
 	}
-	fix := byLabel["Fix with AI"]
-	require.NotNil(t, fix)
-	assert.Equal(t, TypeTicket, fix.Type)
-	require.NotNil(t, fix.ShowWhenStage)
-	assert.Equal(t, StageProgress, *fix.ShowWhenStage)
-	assert.True(t, fix.Enabled)
-
-	toTickets := byLabel["To tickets via AI"]
-	require.NotNil(t, toTickets)
-	assert.Equal(t, TypeDoc, toTickets.Type)
-	assert.Nil(t, toTickets.ShowWhenStage)
-
-	interview := byLabel["Interview"]
-	require.NotNil(t, interview)
-	assert.Equal(t, TypeInterview, interview.Type)
-	assert.Nil(t, interview.ShowWhenStage)
-	assert.True(t, interview.Enabled)
-	assert.Contains(t, interview.Instructions, "memory_create_interview")
-	assert.Contains(t, interview.Instructions, "one question at a time")
+	progress, testingStage := StageProgress, StageTesting
+	tests := []struct {
+		label    string
+		wantType Type
+		wantShow *Stage
+		mentions []string
+	}{
+		{"Fix with AI", TypeTicket, &progress, []string{"ticket_link_pr"}},
+		{"To tickets via AI", TypeDoc, nil, []string{"ticket_create"}},
+		{"Interview", TypeInterview, nil, []string{"memory_create_interview", "one question at a time"}},
+		{"Test with AI", TypeTicket, &testingStage, []string{"ticket_get_test_target", "project_list_repos", "ticket_test_pass", "ticket_test_fail", "never production"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.label, func(t *testing.T) {
+			p := byLabel[tt.label]
+			require.NotNil(t, p)
+			assert.Equal(t, tt.wantType, p.Type)
+			assert.Equal(t, tt.wantShow, p.ShowWhenStage)
+			assert.True(t, p.Enabled)
+			for _, m := range tt.mentions {
+				assert.Contains(t, p.Instructions, m)
+			}
+		})
+	}
 }
 
 func TestNormalizeProjectIDs_TrimsDropsEmptyDedupesAndSorts(t *testing.T) {
@@ -386,5 +391,5 @@ func TestSeedDefaults_AlreadySeeded_IsANoOp(t *testing.T) {
 
 	list, err := repo.List(context.Background(), workspaceID)
 	require.NoError(t, err)
-	assert.Len(t, list, 3)
+	assert.Len(t, list, 4)
 }

@@ -1,10 +1,9 @@
-import { PlusIcon } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { ConnectStep } from "@/components/pairing/ConnectStep";
 import { PairingStepTabs } from "@/components/pairing/PairingStepTabs";
 import { PairT3CodeStep } from "@/components/pairing/PairT3CodeStep";
-import { EmptyRow } from "@/components/EmptyRow";
+import { SetupStep } from "@/components/pairing/SetupStep";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
@@ -36,19 +35,29 @@ const reachableStep = (step: PairingStep, paired: Computer | undefined): Pairing
   return "pair";
 };
 
-// Pair a computer: connect its tunnel, pair T3 Code over it, then set it up. Set up's content is still to come.
-export const PairComputerDialog = () => {
+const PAIR_LEAD = "The computer keeps a tunnel open to this instance's Cloudflare, so Nexul can reach T3 Code on it from anywhere.";
+const SETUP_LEAD = "Agent work runs on this computer once each provider on it is set up and confirmed.";
+
+interface PairComputerDialogProps {
+  trigger: ReactNode;
+  // A paired computer's row opens the dialog straight at Set up for it, with the earlier steps done.
+  setupFor?: Computer | undefined;
+}
+
+// Pair a computer: connect its tunnel, pair T3 Code over it, then set it up.
+export const PairComputerDialog = ({ trigger, setupFor }: PairComputerDialogProps) => {
+  const first: PairingStep = setupFor ? "setup" : "connect";
   const [open, setOpen] = useState(false);
-  const [step, setStep] = useState<PairingStep>("connect");
-  const [computer, setComputer] = useState<Computer>();
-  const [paired, setPaired] = useState<Computer>();
+  const [step, setStep] = useState<PairingStep>(first);
+  const [computer, setComputer] = useState<Computer | undefined>(setupFor);
+  const [paired, setPaired] = useState<Computer | undefined>(setupFor);
 
   const onOpenChange = (next: boolean) => {
     setOpen(next);
     if (next) return;
-    setStep("connect");
-    setComputer(undefined);
-    setPaired(undefined);
+    setStep(first);
+    setComputer(setupFor);
+    setPaired(setupFor);
   };
 
   const onPaired = (c: Computer) => {
@@ -58,20 +67,13 @@ export const PairComputerDialog = () => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger asChild>
-        <Button type="button">
-          <PlusIcon className="size-4" aria-hidden />
-          Pair a computer
-        </Button>
-      </DialogTrigger>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className={FRAME}>
         <Tabs value={step} onValueChange={(v) => setStep(v as PairingStep)} className="flex min-h-0 flex-1 flex-col gap-0">
           <DialogHeader className="gap-3 border-b border-border px-4 pt-5 pb-4 text-left sm:px-6">
-            <DialogTitle className="pr-8">Pair a computer</DialogTitle>
-            <DialogDescription>
-              The computer keeps a tunnel open to this instance's Cloudflare, so Nexul can reach T3 Code on it from anywhere.
-            </DialogDescription>
-            <PairingStepTabs step={step} reachable={reachableStep(step, paired)} />
+            <DialogTitle className="pr-8">{setupFor ? `Set up ${setupFor.name}` : "Pair a computer"}</DialogTitle>
+            <DialogDescription>{setupFor ? SETUP_LEAD : PAIR_LEAD}</DialogDescription>
+            <PairingStepTabs step={step} reachable={reachableStep(step, paired)} earliest={first} />
           </DialogHeader>
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
             <TabsContent value="connect">
@@ -81,7 +83,7 @@ export const PairComputerDialog = () => {
               <PairT3CodeStep computer={computer} onPaired={onPaired} />
             </TabsContent>
             <TabsContent value="setup">
-              <EmptyRow>{paired?.name} is paired. Setting up its providers and skills comes next.</EmptyRow>
+              {paired && <SetupStep computer={paired} />}
             </TabsContent>
           </div>
         </Tabs>

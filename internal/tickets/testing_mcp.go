@@ -27,19 +27,19 @@ func ticketTestingMCPTools(s *Service) []mcptool.Tool {
 		},
 		{
 			Name:        "ticket_test_pass",
-			Description: "Record that a ticket passed testing against its acceptance criteria: it moves to the project's first done-stage column, the caller becomes its tester only when none is assigned, and \"Passed by <login>\" with the test URL is posted to its thread.",
+			Description: "Record that a ticket passed testing against its acceptance criteria: it moves to the project's first done-stage column, the caller becomes its tester only when none is assigned, and \"Passed by Nexul · for <login>\" with the test URL is posted to its thread.",
 			InputSchema: idOnly,
 			Call: func(ctx context.Context, args map[string]any) (any, error) {
 				id, err := mcptool.RequiredString(args, "id")
 				if err != nil {
 					return nil, err
 				}
-				return s.TestPass(ctx, id)
+				return s.TestPass(ctx, id, true)
 			},
 		},
 		{
 			Name:        "ticket_test_fail",
-			Description: "Record that a ticket failed testing: posts the bug report (steps to reproduce, expected result, actual result, screenshots as ticket attachment ids) to the ticket's thread and moves it back to the project's first progress-stage column. No bug ticket is created. A done ticket is refused; file a bug found in it with ticket_create instead.",
+			Description: "Record that a ticket failed testing: posts the bug report, headed \"Test failed by Nexul · for <login>\" (steps to reproduce, expected result, actual result, screenshots as ticket attachment ids) to the ticket's thread and moves it back to the project's first progress-stage column. No bug ticket is created. A done ticket is refused; file a bug found in it with ticket_create instead.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -66,7 +66,7 @@ func ticketTestingMCPTools(s *Service) []mcptool.Tool {
 						return nil, err
 					}
 				}
-				return s.TestFail(ctx, id, report)
+				return s.TestFail(ctx, id, report, true)
 			},
 		},
 	}

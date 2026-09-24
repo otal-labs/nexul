@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ContextAwareConfirmation } from "react-confirm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -38,14 +38,24 @@ const computer = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
+const unconfirmed = { computer_id: "c1", confirmed_at: null, providers: [], turns: [] };
+let setup: Record<string, unknown> = unconfirmed;
+
+const serveComputers = (computers: unknown[]) =>
+  mocks.get.mockImplementation(async (url: string) => {
+    if (url.endsWith("/setup")) return { data: setup };
+    return { data: computerList(computers) };
+  });
+
 const renderSection = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  const view = render(
     <QueryClientProvider client={client}>
       <ContextAwareConfirmation.ConfirmationRoot />
       <ComputersSection />
     </QueryClientProvider>,
   );
+  return { ...view, client };
 };
 
 describe("ComputersSection", () => {
@@ -56,7 +66,7 @@ describe("ComputersSection", () => {
     mocks.patch.mockReset();
     mocks.del.mockReset();
     mocks.errorMessage.mockClear();
-    mocks.get.mockResolvedValue({ data: computerList([]) });
+    serveComputers([]);
   });
 
   it("shows an empty state when there are no computers", async () => {
@@ -65,7 +75,7 @@ describe("ComputersSection", () => {
   });
 
   it("lists paired computers", async () => {
-    mocks.get.mockResolvedValue({ data: computerList([computer()]) });
+    serveComputers([computer()]);
     renderSection();
 
     expect(await screen.findByText("Home")).toBeInTheDocument();
@@ -74,7 +84,7 @@ describe("ComputersSection", () => {
 
   it("flags a computer expiring within the warning window", async () => {
     const soon = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
-    mocks.get.mockResolvedValue({ data: computerList([computer({ token_expires_at: soon })]) });
+    serveComputers([computer({ token_expires_at: soon })]);
     renderSection();
 
     expect(await screen.findByText(/expires in \dd/)).toBeInTheDocument();
@@ -82,28 +92,65 @@ describe("ComputersSection", () => {
 
   it("flags an expired computer as acting like unpaired", async () => {
     const past = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    mocks.get.mockResolvedValue({ data: computerList([computer({ token_expires_at: past })]) });
+    serveComputers([computer({ token_expires_at: past })]);
     renderSection();
 
     expect(await screen.findByText(/acts as unpaired/i)).toBeInTheDocument();
   });
 
   it("reads a computer tunnel with no session yet as pairing in progress, not expired", async () => {
-    mocks.get.mockResolvedValue({
-      data: computerList([
-        computer({
-          server_url: "https://laptop-ab12cd34.example.com",
-          token_expires_at: "0001-01-01T00:00:00Z",
-          harness_version: "",
-          tunnel: { tunnel_id: "tun-1", hostname: "laptop-ab12cd34.example.com" },
-        }),
-      ]),
-    });
+    serveComputers([
+      computer({
+        server_url: "https://laptop-ab12cd34.example.com",
+        token_expires_at: "0001-01-01T00:00:00Z",
+        harness_version: "",
+        tunnel: { tunnel_id: "tun-1", hostname: "laptop-ab12cd34.example.com" },
+      }),
+    ]);
     renderSection();
 
     expect(await screen.findByText(/pairing in progress/i)).toBeInTheDocument();
     expect(screen.queryByText(/acts as unpaired/i)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^pair$/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /set up/i })).not.toBeInTheDocument();
+  });
+
+  it("badges an unconfirmed computer and opens the dialog straight at Set up for it", async () => {
+    serveComputers([computer()]);
+    const user = userEvent.setup();
+    renderSection();
+
+    expect(await screen.findByText("Needs setup")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^set up$/i }));
+    expect(await screen.findByRole("dialog", { name: /set up home/i })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /start setup/i })).toBeInTheDocument();
+  });
+
+  it("lists each provider with its confirmed-at time and follows a setup push without a refresh, changing nothing itself", async () => {
+    const at = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+    setup = {
+      computer_id: "c1",
+      confirmed_at: at,
+      providers: [{ provider: "codex", confirmed_at: at, skills: ["tdd"] }],
+      turns: [{ run_id: "r0", turn_id: "t0", provider: "codex", provider_name: "Codex", state: "confirmed", status: "Confirmed", updated_at: at }],
+    };
+    serveComputers([computer()]);
+    const { client } = renderSection();
+
+    expect(await screen.findByText("Setup confirmed")).toBeInTheDocument();
+    expect(screen.getByText("Codex")).toBeInTheDocument();
+    expect(screen.getByText("confirmed 2d ago")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /re-run setup/i })).toBeInTheDocument();
+
+    setup = {
+      ...setup,
+      turns: [{ run_id: "r1", turn_id: "t1", provider: "codex", provider_name: "Codex", state: "running", status: "Installing", updated_at: at }],
+    };
+    await act(() => client.invalidateQueries({ queryKey: ["getComputerSetup"] }));
+    expect(await screen.findByText("setting up…")).toBeInTheDocument();
+    expect(mocks.post).not.toHaveBeenCalled();
+    expect(mocks.put).not.toHaveBeenCalled();
+    expect(mocks.del).not.toHaveBeenCalled();
   });
 
   it("has no separate Pair by URL button; URL pairing lives in the dialog", async () => {
@@ -122,7 +169,7 @@ describe("ComputersSection", () => {
   });
 
   it("re-pairs an existing computer, pre-filled with its name and URL", async () => {
-    mocks.get.mockResolvedValue({ data: computerList([computer()]) });
+    serveComputers([computer()]);
     mocks.post.mockResolvedValue({ data: computer({ harness_version: "0.0.35" }) });
     const user = userEvent.setup();
     renderSection();
@@ -146,7 +193,7 @@ describe("ComputersSection", () => {
   });
 
   it("removes a computer after arming the confirm step", async () => {
-    mocks.get.mockResolvedValue({ data: computerList([computer()]) });
+    serveComputers([computer()]);
     mocks.del.mockResolvedValue({ data: {} });
     const user = userEvent.setup();
     renderSection();

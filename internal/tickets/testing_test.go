@@ -114,7 +114,7 @@ func eventOf(t *testing.T, evts []eventbus.OutboxEvent, topic string) eventbus.O
 func TestTestPass_MovesToFirstDoneColumnAndRecordsTester(t *testing.T) {
 	f := newTestingFixture("qa")
 
-	got, err := f.svc.TestPass(asUser(t.Context()), "t1")
+	got, err := f.svc.TestPass(asUser(t.Context()), "t1", false)
 
 	require.NoError(t, err)
 	assert.Equal(t, Status("shipped"), got.Status)
@@ -132,7 +132,7 @@ func TestTestPass_KeepsAssignedTesterAndNamesTheTarget(t *testing.T) {
 	f.repo.tickets["t1"].Tester = "qa-lead"
 	f.targets.target = TestTarget{URL: "https://login.example.com", Kind: "preview"}
 
-	got, err := f.svc.TestPass(asUser(t.Context()), "t1")
+	got, err := f.svc.TestPass(asUser(t.Context()), "t1", false)
 
 	require.NoError(t, err)
 	assert.Equal(t, "qa-lead", got.Tester)
@@ -145,44 +145,44 @@ func TestTestPass_KeepsAssignedTesterAndNamesTheTarget(t *testing.T) {
 
 func TestTestPass_Errors(t *testing.T) {
 	t.Run("no signed-in tester", func(t *testing.T) {
-		_, err := newTestingFixture("qa").svc.TestPass(t.Context(), "t1")
+		_, err := newTestingFixture("qa").svc.TestPass(t.Context(), "t1", false)
 		assert.ErrorIs(t, err, apperrs.ErrUnauthorized)
 	})
 	t.Run("missing ticket", func(t *testing.T) {
-		_, err := newTestingFixture("qa").svc.TestPass(asUser(t.Context()), "nope")
+		_, err := newTestingFixture("qa").svc.TestPass(asUser(t.Context()), "nope", false)
 		assert.ErrorIs(t, err, apperrs.ErrNotFound)
 	})
 	t.Run("project without a done column", func(t *testing.T) {
 		f := newTestingFixture("qa")
 		f.svc.testing.Stages = fakeStages{stages: map[string]string{"qa": "testing"}, order: []string{"qa"}}
-		_, err := f.svc.TestPass(asUser(t.Context()), "t1")
+		_, err := f.svc.TestPass(asUser(t.Context()), "t1", false)
 		assert.ErrorIs(t, err, apperrs.ErrInvalid)
 		assert.ErrorContains(t, err, "no done-stage column")
 	})
 	t.Run("column lookup fails", func(t *testing.T) {
 		f := newTestingFixture("qa")
 		f.svc.testing.Stages = fakeStages{firstErr: errors.New("db down")}
-		_, err := f.svc.TestPass(asUser(t.Context()), "t1")
+		_, err := f.svc.TestPass(asUser(t.Context()), "t1", false)
 		assert.ErrorContains(t, err, "db down")
 	})
 	t.Run("test target lookup fails before moving", func(t *testing.T) {
 		f := newTestingFixture("qa")
 		f.targets.err = errors.New("stacks down")
-		_, err := f.svc.TestPass(asUser(t.Context()), "t1")
+		_, err := f.svc.TestPass(asUser(t.Context()), "t1", false)
 		assert.ErrorContains(t, err, "stacks down")
 		assert.Equal(t, Status("qa"), f.repo.tickets["t1"].Status)
 	})
 	t.Run("move fails", func(t *testing.T) {
 		f := newTestingFixture("qa")
 		f.repo.statusErr = errors.New("write failed")
-		_, err := f.svc.TestPass(asUser(t.Context()), "t1")
+		_, err := f.svc.TestPass(asUser(t.Context()), "t1", false)
 		assert.ErrorContains(t, err, "write failed")
 		assert.Empty(t, f.threads.posts)
 	})
 	t.Run("posting fails", func(t *testing.T) {
 		f := newTestingFixture("qa")
 		f.threads.err = errors.New("chat down")
-		_, err := f.svc.TestPass(asUser(t.Context()), "t1")
+		_, err := f.svc.TestPass(asUser(t.Context()), "t1", false)
 		assert.ErrorContains(t, err, "chat down")
 	})
 }
@@ -191,7 +191,7 @@ func TestTestFail_PostsReportAndMovesBackToProgress(t *testing.T) {
 	f := newTestingFixture("qa")
 	report := TestReport{Steps: "Open /login", Expected: "A form", Actual: "A blank page", Screenshots: []string{"att-1"}}
 
-	got, err := f.svc.TestFail(asUser(t.Context()), "t1", report)
+	got, err := f.svc.TestFail(asUser(t.Context()), "t1", report, false)
 
 	require.NoError(t, err)
 	assert.Equal(t, Status("build"), got.Status)
@@ -210,7 +210,7 @@ func TestTestFail_PostsReportAndMovesBackToProgress(t *testing.T) {
 func TestTestFail_LeavesOutEmptySections(t *testing.T) {
 	f := newTestingFixture("qa")
 
-	_, err := f.svc.TestFail(asUser(t.Context()), "t1", TestReport{Actual: "  crashes  "})
+	_, err := f.svc.TestFail(asUser(t.Context()), "t1", TestReport{Actual: "  crashes  "}, false)
 
 	require.NoError(t, err)
 	assert.Equal(t, "Test failed\n\n## Actual result\ncrashes", f.threads.posts[0].body)
@@ -219,16 +219,16 @@ func TestTestFail_LeavesOutEmptySections(t *testing.T) {
 func TestTestFail_Errors(t *testing.T) {
 	report := TestReport{Actual: "broken"}
 	t.Run("no actual result", func(t *testing.T) {
-		_, err := newTestingFixture("qa").svc.TestFail(asUser(t.Context()), "t1", TestReport{Steps: "x"})
+		_, err := newTestingFixture("qa").svc.TestFail(asUser(t.Context()), "t1", TestReport{Steps: "x"}, false)
 		assert.ErrorIs(t, err, apperrs.ErrInvalid)
 	})
 	t.Run("screenshot that is not an attachment id", func(t *testing.T) {
-		_, err := newTestingFixture("qa").svc.TestFail(asUser(t.Context()), "t1", TestReport{Actual: "x", Screenshots: []string{"a)\n![x](https://evil)"}})
+		_, err := newTestingFixture("qa").svc.TestFail(asUser(t.Context()), "t1", TestReport{Actual: "x", Screenshots: []string{"a)\n![x](https://evil)"}}, false)
 		assert.ErrorIs(t, err, apperrs.ErrInvalid)
 	})
 	t.Run("done ticket is never reopened", func(t *testing.T) {
 		f := newTestingFixture("shipped")
-		_, err := f.svc.TestFail(asUser(t.Context()), "t1", report)
+		_, err := f.svc.TestFail(asUser(t.Context()), "t1", report, false)
 		assert.ErrorIs(t, err, apperrs.ErrInvalid)
 		assert.ErrorContains(t, err, "never reopened")
 		assert.Equal(t, Status("shipped"), f.repo.tickets["t1"].Status)
@@ -237,45 +237,86 @@ func TestTestFail_Errors(t *testing.T) {
 	t.Run("stage lookup fails", func(t *testing.T) {
 		f := newTestingFixture("qa")
 		f.svc.testing.Stages = fakeStages{stageErr: errors.New("db down")}
-		_, err := f.svc.TestFail(asUser(t.Context()), "t1", report)
+		_, err := f.svc.TestFail(asUser(t.Context()), "t1", report, false)
 		assert.ErrorContains(t, err, "db down")
 	})
 	t.Run("missing ticket", func(t *testing.T) {
-		_, err := newTestingFixture("qa").svc.TestFail(asUser(t.Context()), "nope", report)
+		_, err := newTestingFixture("qa").svc.TestFail(asUser(t.Context()), "nope", report, false)
 		assert.ErrorIs(t, err, apperrs.ErrNotFound)
 	})
 	t.Run("project without a progress column", func(t *testing.T) {
 		f := newTestingFixture("qa")
 		f.svc.testing.Stages = fakeStages{stages: map[string]string{"qa": "testing"}, order: []string{"qa"}}
-		_, err := f.svc.TestFail(asUser(t.Context()), "t1", report)
+		_, err := f.svc.TestFail(asUser(t.Context()), "t1", report, false)
 		assert.ErrorContains(t, err, "no progress-stage column")
 	})
 	t.Run("no signed-in tester", func(t *testing.T) {
 		f := newTestingFixture("qa")
-		_, err := f.svc.TestFail(t.Context(), "t1", report)
+		_, err := f.svc.TestFail(t.Context(), "t1", report, false)
 		assert.ErrorIs(t, err, apperrs.ErrUnauthorized)
 		assert.Equal(t, Status("qa"), f.repo.tickets["t1"].Status)
 	})
 	t.Run("move fails", func(t *testing.T) {
 		f := newTestingFixture("qa")
 		f.repo.statusErr = errors.New("write failed")
-		_, err := f.svc.TestFail(asUser(t.Context()), "t1", report)
+		_, err := f.svc.TestFail(asUser(t.Context()), "t1", report, false)
 		assert.ErrorContains(t, err, "write failed")
 		assert.Empty(t, f.threads.posts)
 	})
 	t.Run("posting fails", func(t *testing.T) {
 		f := newTestingFixture("qa")
 		f.threads.err = errors.New("chat down")
-		_, err := f.svc.TestFail(asUser(t.Context()), "t1", report)
+		_, err := f.svc.TestFail(asUser(t.Context()), "t1", report, false)
 		assert.ErrorContains(t, err, "chat down")
 	})
+}
+
+func TestTestResult_SignsByPath(t *testing.T) {
+	pass := func(viaMCP bool) func(context.Context, *Service) error {
+		return func(ctx context.Context, s *Service) error {
+			_, err := s.TestPass(ctx, "t1", viaMCP)
+			return err
+		}
+	}
+	fail := func(viaMCP bool) func(context.Context, *Service) error {
+		return func(ctx context.Context, s *Service) error {
+			_, err := s.TestFail(ctx, "t1", TestReport{Actual: "broken"}, viaMCP)
+			return err
+		}
+	}
+	tests := []struct {
+		name      string
+		record    func(context.Context, *Service) error
+		topic     string
+		wantPost  string
+		wantActor Actor
+	}{
+		{"pass over HTTP", pass(false), TopicTestPassed, "Passed by onik97", Actor{Kind: ActorKindUser, UserID: "u-1"}},
+		{"pass over MCP", pass(true), TopicTestPassed, "Passed by Nexul · for onik97", Actor{Kind: ActorKindUserMCP, UserID: "u-1"}},
+		{"fail over HTTP", fail(false), TopicTestFailed, "Test failed\n\n## Actual result\nbroken", Actor{Kind: ActorKindUser, UserID: "u-1"}},
+		{"fail over MCP", fail(true), TopicTestFailed, "Test failed by Nexul · for onik97\n\n## Actual result\nbroken", Actor{Kind: ActorKindUserMCP, UserID: "u-1"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := newTestingFixture("qa")
+
+			err := tt.record(asUser(t.Context()), f.svc)
+
+			require.NoError(t, err)
+			require.Len(t, f.threads.posts, 1)
+			assert.Equal(t, tt.wantPost, f.threads.posts[0].body)
+			assert.Equal(t, "u-1", f.threads.posts[0].authorID)
+			assert.Equal(t, "onik97", eventOf(t, f.repo.events, tt.topic).Payload.(TestedEvent).Tester)
+			assert.Equal(t, tt.wantActor, eventOf(t, f.repo.events, TopicStatusChanged).Payload.(StatusChangedEvent).Actor)
+		})
+	}
 }
 
 func TestTestFail_StatusOutsideAnyColumnIsNotDone(t *testing.T) {
 	f := newTestingFixture(StatusOpen)
 	f.repo.tickets["t1"].Status = "legacy"
 
-	_, err := f.svc.TestFail(asUser(t.Context()), "t1", TestReport{Actual: "broken"})
+	_, err := f.svc.TestFail(asUser(t.Context()), "t1", TestReport{Actual: "broken"}, false)
 
 	require.NoError(t, err)
 }
@@ -339,6 +380,7 @@ func TestTestingRoutes(t *testing.T) {
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &passed))
 	assert.Equal(t, Status("shipped"), passed.Status)
 	assert.Equal(t, "onik97", passed.Tester)
+	assert.Equal(t, []string{"Test failed\n\n## Actual result\nblank page", "Passed by onik97 on https://qa.example.com"}, []string{f.threads.posts[0].body, f.threads.posts[1].body})
 
 	assert.Equal(t, http.StatusNotFound, serve(http.MethodGet, "/api/tickets/nope/test-target", "").Code)
 	assert.Equal(t, http.StatusNotFound, serve(http.MethodPost, "/api/tickets/nope/test/pass", "").Code)
@@ -366,10 +408,12 @@ func TestTestingMCPTools(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, Status("build"), failed.(*Ticket).Status)
 	assert.Contains(t, f.threads.posts[0].body, "![screenshot](/api/attachments/att-9)")
+	assert.True(t, strings.HasPrefix(f.threads.posts[0].body, "Test failed by Nexul · for onik97\n"))
 
 	_, err = tools["ticket_test_pass"](ctx, map[string]any{})
 	assert.ErrorIs(t, err, apperrs.ErrInvalid)
 	passed, err := tools["ticket_test_pass"](ctx, map[string]any{"id": "t1"})
 	require.NoError(t, err)
 	assert.Equal(t, Status("shipped"), passed.(*Ticket).Status)
+	assert.Equal(t, "Passed by Nexul · for onik97", f.threads.posts[1].body)
 }

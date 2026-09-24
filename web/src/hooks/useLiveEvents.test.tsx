@@ -7,6 +7,7 @@ import { useLiveEvents } from "@/hooks/useLiveEvents";
 import { useAgentStreamStore } from "@/stores/agentStreamStore";
 import { useFlowStore } from "@/stores/flowStore";
 import { usePlayRunStore } from "@/stores/playRunStore";
+import { useSetupActivityStore } from "@/stores/setupActivityStore";
 import { useVoiceOccupancyStore } from "@/stores/voiceOccupancyStore";
 
 class FakeSocket implements LiveSocket {
@@ -406,6 +407,36 @@ describe("useLiveEvents dispatch", () => {
       ),
     );
     expect(client.getQueryData(["getTunnelStatus", "c1"])).toEqual({ tunnel: "down", harness_reachable: false });
+  });
+
+  it("refreshes every computer's setup read as a setup turn changes or a run finishes", async () => {
+    setup();
+    const socket = await connectedSocket();
+    const spy = invalidate();
+    act(() =>
+      socket.message(
+        JSON.stringify({ topic: "computer.setup_turn_changed", type: "event", payload: { computer_id: "c1", provider: "codex", state: "running" } }),
+      ),
+    );
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["getComputerSetup"] });
+
+    spy.mockClear();
+    act(() => socket.message(JSON.stringify({ topic: "computer.setup_finished", type: "event", payload: { computer_id: "c1", confirmed: true } })));
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["getComputerSetup"] });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["getHarnessProviders"] });
+  });
+
+  it("appends a setup turn's commentary line to the activity store without refetching", async () => {
+    useSetupActivityStore.setState({ lines: {} });
+    setup();
+    const socket = await connectedSocket();
+    const spy = invalidate();
+    const activity = (status: string) =>
+      JSON.stringify({ topic: "computer.setup_turn_activity", type: "event", payload: { computer_id: "c1", turn_id: "t1", provider: "codex", status } });
+    act(() => socket.message(activity("Installing skills")));
+    act(() => socket.message(activity("Checking files")));
+    expect(useSetupActivityStore.getState().lines.t1).toEqual(["Installing skills", "Checking files"]);
+    expect(spy).not.toHaveBeenCalled();
   });
 
   it("refreshes the computer rows and readiness when a computer finishes pairing", async () => {

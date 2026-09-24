@@ -8,12 +8,15 @@ interface PairingStepTabsProps {
   step: PairingStep;
   // The furthest step the user may open; everything after it reads as upcoming.
   reachable: PairingStep;
+  // The first step the user may open; a dialog opened for a paired computer starts at Set up.
+  earliest?: PairingStep;
 }
 
 // Segmented step track: done, current, and upcoming read by contrast alone; below 640px it is one line of text.
-export const PairingStepTabs = ({ step, reachable }: PairingStepTabsProps) => {
+export const PairingStepTabs = ({ step, reachable, earliest = "connect" }: PairingStepTabsProps) => {
   const current = PAIRING_STEPS.findIndex((s) => s.value === step);
   const furthest = PAIRING_STEPS.findIndex((s) => s.value === reachable);
+  const first = PAIRING_STEPS.findIndex((s) => s.value === earliest);
   return (
     <>
       <p className="text-xs text-muted-foreground sm:hidden">
@@ -24,7 +27,7 @@ export const PairingStepTabs = ({ step, reachable }: PairingStepTabsProps) => {
           <TabsTrigger
             key={s.value}
             value={s.value}
-            disabled={i > furthest}
+            disabled={i > furthest || i < first}
             className={cn("text-xs", i < current && "text-foreground dark:text-foreground")}
           >
             {i < current && <Check className="size-3.5" aria-hidden />}
