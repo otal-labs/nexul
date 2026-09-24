@@ -518,6 +518,42 @@ var catalogSchemas = map[string]string{
 			"title": {"type": "string"}
 		}
 	}`,
+	"ticket.link_created": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"description": "A found-in or blocked-by link was added; ticket_id is found in or blocked by target_id, and an empty target_id on found_in marks the origin unknown.",
+		"required": ["link"],
+		"properties": {
+			"link": {
+				"type": "object",
+				"required": ["ticket_id", "kind", "target_id"],
+				"properties": {
+					"ticket_id": {"type": "string"},
+					"kind": {"type": "string", "enum": ["found_in", "blocked_by"]},
+					"target_id": {"type": "string"},
+					"created_at": {"type": "string", "format": "date-time"}
+				}
+			}
+		}
+	}`,
+	"ticket.link_deleted": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"description": "A found-in or blocked-by link was removed, or replaced by a new found-in.",
+		"required": ["link"],
+		"properties": {
+			"link": {
+				"type": "object",
+				"required": ["ticket_id", "kind", "target_id"],
+				"properties": {
+					"ticket_id": {"type": "string"},
+					"kind": {"type": "string", "enum": ["found_in", "blocked_by"]},
+					"target_id": {"type": "string"},
+					"created_at": {"type": "string", "format": "date-time"}
+				}
+			}
+		}
+	}`,
 	"doc.deleted": `{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",
 		"type": "object",

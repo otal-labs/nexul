@@ -5,6 +5,7 @@ import { useNavigate } from "react-router";
 
 import { PersonAvatar } from "@/components/PersonAvatar";
 import type { DropTargetData } from "@/components/board/dragMove";
+import { TicketBlockedLine } from "@/components/board/TicketBlockedLine";
 import { labelDotColor, pillClass, ticketTypeColor } from "@/components/board/ticketTypeColor";
 import { ticketTypeIcon } from "@/components/board/ticketTypeIcon";
 import { useFetchChatThreadIndicators } from "@/hooks/ChatHooks";
@@ -61,6 +62,7 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
           <MessageSquare className="size-3.5 shrink-0 text-muted-foreground" role="img" aria-label="Has a chat thread" />
         )}
       </span>
+      <TicketBlockedLine ticketId={ticket.id} />
       {/* Tinted pills for type and labels, ticket id on the right; color stays inside the pills, never on the card. */}
       <span className="flex items-end justify-between gap-2">
         <span className="flex min-w-0 flex-wrap items-center gap-1.5">

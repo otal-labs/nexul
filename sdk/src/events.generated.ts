@@ -75,6 +75,8 @@ export interface EventPayloads {
   "ticket.deleted": { "id": string; "title": string; };
   "ticket.developer_changed": { "ticket": Record<string, unknown>; "from": string; "to": string; };
   "ticket.finished": { "ticket": Record<string, unknown>; };
+  "ticket.link_created": { "link": { "ticket_id": string; "kind": "found_in" | "blocked_by"; "target_id": string; "created_at"?: string; }; };
+  "ticket.link_deleted": { "link": { "ticket_id": string; "kind": "found_in" | "blocked_by"; "target_id": string; "created_at"?: string; }; };
   "ticket.status_changed": { "ticket": Record<string, unknown>; "from": string; "to": string; "actor"?: { "kind"?: "user" | "automation" | "play" | "play:mcp"; "automation_id"?: string; "automation_name"?: string; "play_label"?: string; "trail_id"?: string; }; "execution_id"?: string; };
   "ticket.tester_changed": { "ticket": Record<string, unknown>; "from": string; "to": string; };
   "ticket.updated": { "ticket": Record<string, unknown>; };
@@ -161,6 +163,8 @@ export const TOPICS: Topic[] = [
   "ticket.deleted",
   "ticket.developer_changed",
   "ticket.finished",
+  "ticket.link_created",
+  "ticket.link_deleted",
   "ticket.status_changed",
   "ticket.tester_changed",
   "ticket.updated",
@@ -245,6 +249,8 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "ticket.deleted": {"id":"fixture-id","title":"fixture-title"},
   "ticket.developer_changed": {"ticket":{},"from":"fixture-from","to":"fixture-to"},
   "ticket.finished": {"ticket":{}},
+  "ticket.link_created": {"link":{"ticket_id":"fixture-ticket_id","kind":"found_in","target_id":"fixture-target_id","created_at":"2026-01-01T00:00:00Z"}},
+  "ticket.link_deleted": {"link":{"ticket_id":"fixture-ticket_id","kind":"found_in","target_id":"fixture-target_id","created_at":"2026-01-01T00:00:00Z"}},
   "ticket.status_changed": {"ticket":{},"from":"fixture-from","to":"fixture-to","actor":{"kind":"user","automation_id":"fixture-automation_id","automation_name":"fixture-automation_name","play_label":"fixture-play_label","trail_id":"fixture-trail_id"},"execution_id":"fixture-execution_id"},
   "ticket.tester_changed": {"ticket":{},"from":"fixture-from","to":"fixture-to"},
   "ticket.updated": {"ticket":{}},

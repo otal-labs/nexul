@@ -39,6 +39,9 @@ type fakeRepo struct {
 	positionErr   error
 	labelColorErr error
 	updateErr     error
+	ticketLinks   []TicketLink
+	ticketLinkErr error
+	doneStatuses  map[Status]bool
 }
 
 func newFakeRepo() *fakeRepo {

@@ -729,6 +729,13 @@ type TicketLabel struct {
 	Label    string
 }
 
+type TicketLink struct {
+	TicketID  string
+	Kind      string
+	TargetID  sql.NullString
+	CreatedAt int64
+}
+
 type TicketPrLink struct {
 	TicketID string
 	PrOwner  string

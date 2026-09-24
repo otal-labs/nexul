@@ -145,6 +145,18 @@ describe("useLiveEvents dispatch", () => {
     expect(spy).toHaveBeenCalledWith({ queryKey: ["getTrails"] });
   });
 
+  it("refreshes link sets and the board's blockers on link changes and blocker moves", async () => {
+    setup();
+    const socket = await connectedSocket();
+    const spy = invalidate();
+    for (const topic of ["ticket.link_created", "ticket.link_deleted", "ticket.status_changed"]) {
+      spy.mockClear();
+      act(() => socket.message(JSON.stringify({ topic, type: "event", payload: {} })));
+      expect(spy).toHaveBeenCalledWith({ queryKey: ["getTicketLinkSet"] });
+      expect(spy).toHaveBeenCalledWith({ queryKey: ["getBlockers"] });
+    }
+  });
+
   it("invalidates by topic for topics without a mapping", async () => {
     setup();
     const socket = await connectedSocket();

@@ -29,8 +29,23 @@ type TypeTemplates interface {
 	BodyTemplate(ctx context.Context, typeID string) (string, error)
 }
 
+// LinkRepo persists found-in and blocked-by links; writes carry outbox events.
+type LinkRepo interface {
+	// ListLinkEnds returns the links a ticket holds and the links other tickets hold against it.
+	ListLinkEnds(ctx context.Context, id string) (from, to []LinkEnd, err error)
+	// BlockerIDs returns the ids a ticket is directly blocked by, for the cycle walk.
+	BlockerIDs(ctx context.Context, id string) ([]string, error)
+	// PutLink inserts a link; a found_in link replaces any found-in the ticket already holds.
+	PutLink(ctx context.Context, link TicketLink, evts ...eventbus.OutboxEvent) error
+	// DeleteLink returns false when no such link existed; a found_in link is matched by ticket alone.
+	DeleteLink(ctx context.Context, link TicketLink, evts ...eventbus.OutboxEvent) (bool, error)
+	// UnclearedBlockers maps each blocked ticket id to its blockers not yet in a done-stage status.
+	UnclearedBlockers(ctx context.Context) (map[string][]LinkedTicket, error)
+}
+
 // Repo is the consumer-side persistence contract for tickets; mutations carry outbox events.
 type Repo interface {
+	LinkRepo
 	Create(ctx context.Context, t *Ticket, evts ...eventbus.OutboxEvent) error
 	GetByID(ctx context.Context, id string) (*Ticket, error)
 	List(ctx context.Context) ([]*Ticket, error)

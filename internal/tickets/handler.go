@@ -99,6 +99,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("POST /api/tickets/labels/colors", h.labelColors)
 	mux.HandleFunc("PUT /api/tickets/labels/{label}/color", h.setLabelColor)
 	mux.HandleFunc("POST /api/tickets/dev-status", h.devStatus)
+	mux.HandleFunc("GET /api/tickets/blockers", h.unclearedBlockers)
 	mux.HandleFunc("GET /api/tickets/{id}", h.get)
 	mux.HandleFunc("PATCH /api/tickets/{id}", h.update)
 	mux.HandleFunc("PATCH /api/tickets/{id}/status", h.updateStatus)
@@ -113,6 +114,11 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/tickets/{id}/links", h.listLinks)
 	mux.HandleFunc("POST /api/tickets/{id}/prs", h.linkPR)
 	mux.HandleFunc("POST /api/tickets/{id}/branches", h.linkBranch)
+	mux.HandleFunc("GET /api/tickets/{id}/ticket-links", h.ticketLinks)
+	mux.HandleFunc("PUT /api/tickets/{id}/found-in", h.setFoundIn)
+	mux.HandleFunc("DELETE /api/tickets/{id}/found-in", h.removeFoundIn)
+	mux.HandleFunc("POST /api/tickets/{id}/blocked-by", h.addBlocker)
+	mux.HandleFunc("DELETE /api/tickets/{id}/blocked-by/{blockerId}", h.removeBlocker)
 	return mux
 }
 
