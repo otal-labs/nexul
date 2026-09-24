@@ -213,6 +213,8 @@ var livePushTopics = []string{
 	tickets.TopicDeveloperChanged,
 	tickets.TopicTesterChanged,
 	tickets.TopicFinished,
+	tickets.TopicLinkCreated,
+	tickets.TopicLinkDeleted,
 	workspace.TopicTicketTypeCreated,
 	workspace.TopicTicketTypeUpdated,
 	workspace.TopicTicketTypeDeleted,

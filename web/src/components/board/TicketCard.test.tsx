@@ -121,6 +121,25 @@ describe("TicketCard", () => {
     expect(screen.queryByTitle("lena")).not.toBeInTheDocument();
   });
 
+  it("shows what a blocked card waits on, and nothing once its blockers are done", async () => {
+    const base = vi.mocked(api.get).getMockImplementation()!;
+    vi.mocked(api.get).mockImplementation(async (url, config) => {
+      if (url === "/api/tickets/blockers") {
+        return { data: { "t-1": [{ id: "t-7", project_id: "p-1", prefix: "REF", number: 7, title: "API", status: "open", done: false }] } };
+      }
+      return base(url, config);
+    });
+    renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
+    expect(await screen.findByText("REF-7")).toBeInTheDocument();
+    expect(screen.getByText(/Blocked by/)).toBeInTheDocument();
+  });
+
+  it("shows no blocked line for a ticket with no uncleared blockers", async () => {
+    renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
+    expect(await screen.findByText("REF-142")).toBeInTheDocument();
+    expect(screen.queryByText(/Blocked by/)).not.toBeInTheDocument();
+  });
+
   it("switches to the tester's avatar in a testing-stage column", async () => {
     const base = vi.mocked(api.get).getMockImplementation()!;
     vi.mocked(api.get).mockImplementation(async (url, config) => {

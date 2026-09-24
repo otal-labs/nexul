@@ -368,3 +368,66 @@ func TestPairingRepo_ListProviderSetups_CorruptSkills_Error(t *testing.T) {
 	_, err = s.Pairing.ListProviderSetups(t.Context(), "c1")
 	require.Error(t, err)
 }
+
+func withTunnel(c pairing.Computer, hostname string) pairing.Computer {
+	c.Tunnel = &pairing.ComputerTunnel{TunnelID: "tun-" + c.ID, Hostname: hostname, ZoneID: "z1", RecordID: "rec-" + c.ID, AccessAppID: "app-" + c.ID}
+	return c
+}
+
+func TestPairingRepo_ComputerTunnel_SurvivesRepairAndMarksItsHostname(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	_, _, err := s.Users.UpsertUser(ctx, newTestUser("u1", "42", "onik97"))
+	require.NoError(t, err)
+	c := withTunnel(newTestComputer("c1", "u1", "laptop"), "laptop-ab12cd34.example.com")
+	created := eventbus.OutboxEvent{ID: "evt-created", Topic: pairing.TopicTunnelCreated, Payload: map[string]string{"computer_id": "c1"}}
+	require.NoError(t, s.Pairing.SaveComputer(ctx, c, created))
+
+	repaired := newTestComputer("c1", "u1", "laptop")
+	repaired.BearerToken = "encrypted-new"
+	require.NoError(t, s.Pairing.SaveComputer(ctx, repaired))
+
+	got, err := s.Pairing.GetComputer(ctx, "u1", "c1")
+	require.NoError(t, err)
+	assert.Equal(t, "encrypted-new", got.BearerToken)
+	assert.Equal(t, c.Tunnel, got.Tunnel, "re-pairing never drops the tunnel")
+
+	plain := newTestComputer("c2", "u1", "vps")
+	require.NoError(t, s.Pairing.SaveComputer(ctx, plain))
+	got, err = s.Pairing.GetComputer(ctx, "u1", "c2")
+	require.NoError(t, err)
+	assert.Nil(t, got.Tunnel)
+
+	for host, want := range map[string]bool{"laptop-ab12cd34.example.com": true, "vps.example.com": false, "": false} {
+		exists, err := s.Pairing.ComputerTunnelHostnameExists(ctx, host)
+		require.NoError(t, err)
+		assert.Equal(t, want, exists, host)
+	}
+
+	removed := eventbus.OutboxEvent{ID: "evt-removed", Topic: pairing.TopicTunnelRemoved, Payload: map[string]string{"computer_id": "c1"}}
+	require.NoError(t, s.Pairing.DeleteComputer(ctx, "u1", "c1", removed))
+	exists, err := s.Pairing.ComputerTunnelHostnameExists(ctx, "laptop-ab12cd34.example.com")
+	require.NoError(t, err)
+	assert.False(t, exists)
+
+	pending, err := s.Outbox.Unpublished(ctx, 10)
+	require.NoError(t, err)
+	topics := make([]string, 0, len(pending))
+	for _, p := range pending {
+		topics = append(topics, p.Topic)
+	}
+	assert.Equal(t, []string{pairing.TopicTunnelCreated, pairing.TopicTunnelRemoved}, topics)
+}
+
+func TestPairingRepo_ComputerTunnel_HostnameIsUnique(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	_, _, err := s.Users.UpsertUser(ctx, newTestUser("u1", "42", "onik97"))
+	require.NoError(t, err)
+	require.NoError(t, s.Pairing.SaveComputer(ctx, withTunnel(newTestComputer("c1", "u1", "a"), "same.example.com")))
+
+	err = s.Pairing.SaveComputer(ctx, withTunnel(newTestComputer("c2", "u1", "b"), "same.example.com"))
+	require.ErrorIs(t, err, apperrs.ErrConflict)
+}

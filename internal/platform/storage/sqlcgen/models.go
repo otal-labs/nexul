@@ -493,17 +493,22 @@ type Outbox struct {
 }
 
 type PairingComputer struct {
-	ID               string
-	UserID           string
-	Name             string
-	ServerUrl        string
-	BearerToken      string
-	TokenExpiresAt   int64
-	HarnessVersion   string
-	CreatedAt        int64
-	UpdatedAt        int64
-	Kind             string
-	SetupConfirmedAt sql.NullInt64
+	ID                string
+	UserID            string
+	Name              string
+	ServerUrl         string
+	BearerToken       string
+	TokenExpiresAt    int64
+	HarnessVersion    string
+	CreatedAt         int64
+	UpdatedAt         int64
+	Kind              string
+	SetupConfirmedAt  sql.NullInt64
+	TunnelID          string
+	TunnelHostname    string
+	TunnelZoneID      string
+	TunnelRecordID    string
+	TunnelAccessAppID string
 }
 
 type PairingProjectLink struct {
@@ -724,6 +729,13 @@ type TicketLabel struct {
 	Label    string
 }
 
+type TicketLink struct {
+	TicketID  string
+	Kind      string
+	TargetID  sql.NullString
+	CreatedAt int64
+}
+
 type TicketPrLink struct {
 	TicketID string
 	PrOwner  string
@@ -736,13 +748,14 @@ type TicketPrLink struct {
 }
 
 type TicketType struct {
-	ID        string
-	ProjectID string
-	Name      string
-	Position  int64
-	Color     string
-	CreatedAt int64
-	UpdatedAt int64
+	ID           string
+	ProjectID    string
+	Name         string
+	Position     int64
+	Color        string
+	CreatedAt    int64
+	UpdatedAt    int64
+	BodyTemplate string
 }
 
 type TicketsFt struct {

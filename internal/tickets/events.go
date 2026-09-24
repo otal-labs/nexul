@@ -10,11 +10,13 @@ const (
 	TopicTesterChanged    = "ticket.tester_changed"
 	TopicFinished         = "ticket.finished"
 	TopicDeleted          = "ticket.deleted"
+	TopicLinkCreated      = "ticket.link_created"
+	TopicLinkDeleted      = "ticket.link_deleted"
 )
 
 // Topics returns every topic the tickets domain publishes.
 func Topics() []string {
-	return []string{TopicCreated, TopicUpdated, TopicStatusChanged, TopicAssigneeChanged, TopicDeveloperChanged, TopicTesterChanged, TopicFinished, TopicDeleted}
+	return []string{TopicCreated, TopicUpdated, TopicStatusChanged, TopicAssigneeChanged, TopicDeveloperChanged, TopicTesterChanged, TopicFinished, TopicDeleted, TopicLinkCreated, TopicLinkDeleted}
 }
 
 // CreatedEvent field names are part of the published contract (ADR 0044) and are additive-only.
@@ -67,4 +69,9 @@ type FinishedEvent struct {
 type DeletedEvent struct {
 	ID    string `json:"id"`
 	Title string `json:"title"`
+}
+
+// LinkEvent is the payload for ticket.link_created and ticket.link_deleted.
+type LinkEvent struct {
+	Link TicketLink `json:"link"`
 }

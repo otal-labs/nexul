@@ -17,6 +17,8 @@ export interface EventPayloads {
   "chat.message.updated": { "message": Record<string, unknown>; };
   "computer.setup_confirmed": { "computer_id": string; "user_id": string; "provider"?: string; "confirmed_at"?: string; "skills"?: string[]; };
   "computer.setup_unconfirmed": { "computer_id": string; "user_id": string; "provider"?: string; "confirmed_at"?: string; "skills"?: string[]; };
+  "computer.tunnel_created": { "computer_id": string; "user_id": string; "tunnel_id": string; "hostname": string; };
+  "computer.tunnel_removed": { "computer_id": string; "user_id": string; "tunnel_id": string; "hostname": string; };
   "deploy.build_completed": { "id": string; "status": string; "artifacts"?: string[]; "error"?: string; };
   "deploy.build_progress": { "id": string; "step": number; "total": number; "log"?: string; };
   "deploy.build_started": { "id": string; "total": number; "log"?: string; };
@@ -73,6 +75,8 @@ export interface EventPayloads {
   "ticket.deleted": { "id": string; "title": string; };
   "ticket.developer_changed": { "ticket": Record<string, unknown>; "from": string; "to": string; };
   "ticket.finished": { "ticket": Record<string, unknown>; };
+  "ticket.link_created": { "link": { "ticket_id": string; "kind": "found_in" | "blocked_by"; "target_id": string; "created_at"?: string; }; };
+  "ticket.link_deleted": { "link": { "ticket_id": string; "kind": "found_in" | "blocked_by"; "target_id": string; "created_at"?: string; }; };
   "ticket.status_changed": { "ticket": Record<string, unknown>; "from": string; "to": string; "actor"?: { "kind"?: "user" | "automation" | "play" | "play:mcp"; "automation_id"?: string; "automation_name"?: string; "play_label"?: string; "trail_id"?: string; }; "execution_id"?: string; };
   "ticket.tester_changed": { "ticket": Record<string, unknown>; "from": string; "to": string; };
   "ticket.updated": { "ticket": Record<string, unknown>; };
@@ -101,6 +105,8 @@ export const TOPICS: Topic[] = [
   "chat.message.updated",
   "computer.setup_confirmed",
   "computer.setup_unconfirmed",
+  "computer.tunnel_created",
+  "computer.tunnel_removed",
   "deploy.build_completed",
   "deploy.build_progress",
   "deploy.build_started",
@@ -157,6 +163,8 @@ export const TOPICS: Topic[] = [
   "ticket.deleted",
   "ticket.developer_changed",
   "ticket.finished",
+  "ticket.link_created",
+  "ticket.link_deleted",
   "ticket.status_changed",
   "ticket.tester_changed",
   "ticket.updated",
@@ -183,6 +191,8 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "chat.message.updated": {"message":{}},
   "computer.setup_confirmed": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","provider":"fixture-provider","confirmed_at":"2026-01-01T00:00:00Z","skills":["fixture-skills"]},
   "computer.setup_unconfirmed": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","provider":"fixture-provider","confirmed_at":"2026-01-01T00:00:00Z","skills":["fixture-skills"]},
+  "computer.tunnel_created": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","tunnel_id":"fixture-tunnel_id","hostname":"fixture-hostname"},
+  "computer.tunnel_removed": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","tunnel_id":"fixture-tunnel_id","hostname":"fixture-hostname"},
   "deploy.build_completed": {"id":"fixture-id","status":"fixture-status","artifacts":["fixture-artifacts"],"error":"fixture-error"},
   "deploy.build_progress": {"id":"fixture-id","step":1,"total":1,"log":"fixture-log"},
   "deploy.build_started": {"id":"fixture-id","total":1,"log":"fixture-log"},
@@ -239,6 +249,8 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "ticket.deleted": {"id":"fixture-id","title":"fixture-title"},
   "ticket.developer_changed": {"ticket":{},"from":"fixture-from","to":"fixture-to"},
   "ticket.finished": {"ticket":{}},
+  "ticket.link_created": {"link":{"ticket_id":"fixture-ticket_id","kind":"found_in","target_id":"fixture-target_id","created_at":"2026-01-01T00:00:00Z"}},
+  "ticket.link_deleted": {"link":{"ticket_id":"fixture-ticket_id","kind":"found_in","target_id":"fixture-target_id","created_at":"2026-01-01T00:00:00Z"}},
   "ticket.status_changed": {"ticket":{},"from":"fixture-from","to":"fixture-to","actor":{"kind":"user","automation_id":"fixture-automation_id","automation_name":"fixture-automation_name","play_label":"fixture-play_label","trail_id":"fixture-trail_id"},"execution_id":"fixture-execution_id"},
   "ticket.tester_changed": {"ticket":{},"from":"fixture-from","to":"fixture-to"},
   "ticket.updated": {"ticket":{}},

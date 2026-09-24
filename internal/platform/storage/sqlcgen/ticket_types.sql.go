@@ -22,17 +22,18 @@ func (q *Queries) CountTicketTypeTickets(ctx context.Context, typeID sql.NullStr
 }
 
 const createTicketType = `-- name: CreateTicketType :exec
-INSERT INTO ticket_types (id, project_id, name, position, color, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO ticket_types (id, project_id, name, position, color, body_template, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateTicketTypeParams struct {
-	ID        string
-	ProjectID string
-	Name      string
-	Position  int64
-	Color     string
-	CreatedAt int64
-	UpdatedAt int64
+	ID           string
+	ProjectID    string
+	Name         string
+	Position     int64
+	Color        string
+	BodyTemplate string
+	CreatedAt    int64
+	UpdatedAt    int64
 }
 
 func (q *Queries) CreateTicketType(ctx context.Context, arg CreateTicketTypeParams) error {
@@ -42,6 +43,7 @@ func (q *Queries) CreateTicketType(ctx context.Context, arg CreateTicketTypePara
 		arg.Name,
 		arg.Position,
 		arg.Color,
+		arg.BodyTemplate,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -61,7 +63,7 @@ func (q *Queries) DeleteTicketType(ctx context.Context, id string) (int64, error
 }
 
 const getTicketType = `-- name: GetTicketType :one
-SELECT id, project_id, name, position, color, created_at, updated_at FROM ticket_types WHERE id = ?
+SELECT id, project_id, name, position, color, created_at, updated_at, body_template FROM ticket_types WHERE id = ?
 `
 
 func (q *Queries) GetTicketType(ctx context.Context, id string) (TicketType, error) {
@@ -75,12 +77,13 @@ func (q *Queries) GetTicketType(ctx context.Context, id string) (TicketType, err
 		&i.Color,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.BodyTemplate,
 	)
 	return i, err
 }
 
 const listTicketTypesByProject = `-- name: ListTicketTypesByProject :many
-SELECT id, project_id, name, position, color, created_at, updated_at FROM ticket_types WHERE project_id = ? ORDER BY position, id
+SELECT id, project_id, name, position, color, created_at, updated_at, body_template FROM ticket_types WHERE project_id = ? ORDER BY position, id
 `
 
 func (q *Queries) ListTicketTypesByProject(ctx context.Context, projectID string) ([]TicketType, error) {
@@ -100,6 +103,7 @@ func (q *Queries) ListTicketTypesByProject(ctx context.Context, projectID string
 			&i.Color,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.BodyTemplate,
 		); err != nil {
 			return nil, err
 		}
@@ -139,20 +143,22 @@ func (q *Queries) ReorderTicketTypePosition(ctx context.Context, arg ReorderTick
 }
 
 const updateTicketTypeMeta = `-- name: UpdateTicketTypeMeta :execrows
-UPDATE ticket_types SET name = ?, color = ?, updated_at = ? WHERE id = ?
+UPDATE ticket_types SET name = ?, color = ?, body_template = ?, updated_at = ? WHERE id = ?
 `
 
 type UpdateTicketTypeMetaParams struct {
-	Name      string
-	Color     string
-	UpdatedAt int64
-	ID        string
+	Name         string
+	Color        string
+	BodyTemplate string
+	UpdatedAt    int64
+	ID           string
 }
 
 func (q *Queries) UpdateTicketTypeMeta(ctx context.Context, arg UpdateTicketTypeMetaParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, updateTicketTypeMeta,
 		arg.Name,
 		arg.Color,
+		arg.BodyTemplate,
 		arg.UpdatedAt,
 		arg.ID,
 	)

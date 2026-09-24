@@ -36,6 +36,11 @@ const ticketTypes = [
   { id: "ticket-type-bug", name: "bug", position: 1, created_at: "", updated_at: "" },
 ];
 
+const templatedTypes = [
+  { id: "tt-task", name: "task", position: 0, body_template: "## What needs doing\n\n", created_at: "", updated_at: "" },
+  { id: "tt-bug", name: "bug", position: 1, body_template: "## Steps to reproduce\n\n", created_at: "", updated_at: "" },
+];
+
 const members = [
   { user_id: "u-alice", login: "alice", role_id: "role-1" },
   { user_id: "u-bob", login: "bob", role_id: "role-1" },
@@ -292,6 +297,55 @@ describe("CreateTicketForm", () => {
     await user.keyboard("{Control>}{Enter}{/Control}");
 
     expect(await screen.findByText("t-14")).toBeInTheDocument();
+  });
+
+  it("pre-fills the body from the type and swaps it on a type change while untouched", async () => {
+    const user = userEvent.setup();
+    mockReferenceData({ ticketTypes: templatedTypes });
+    renderWithRoot(<TicketHarness />);
+
+    await user.click(screen.getByRole("button", { name: "Open" }));
+    await vi.waitFor(() => expect(screen.getByLabelText("Body")).toHaveValue("## What needs doing\n\n"));
+    await user.click(await screen.findByRole("button", { name: "task" }));
+    await user.click(await screen.findByRole("button", { name: "bug" }));
+
+    expect(screen.getByLabelText("Body")).toHaveValue("## Steps to reproduce\n\n");
+    await user.keyboard("{Escape}");
+  });
+
+  it("keeps an edited body on a type change", async () => {
+    const user = userEvent.setup();
+    mockReferenceData({ ticketTypes: templatedTypes });
+    renderWithRoot(<TicketHarness />);
+
+    await user.click(screen.getByRole("button", { name: "Open" }));
+    const body = await screen.findByLabelText("Body");
+    await vi.waitFor(() => expect(body).toHaveValue("## What needs doing\n\n"));
+    await user.type(body, "ship it");
+    await user.click(await screen.findByRole("button", { name: "task" }));
+    await user.click(await screen.findByRole("button", { name: "bug" }));
+
+    expect(body).toHaveValue("## What needs doing\n\nship it");
+    await user.keyboard("{Escape}");
+  });
+
+  it("resets the body to the type's template after a Create more submit", async () => {
+    const user = userEvent.setup();
+    mockReferenceData({ ticketTypes: templatedTypes });
+    vi.mocked(api.post).mockResolvedValue({ data: { id: "t-16" } });
+    renderWithRoot(<TicketHarness />);
+
+    await user.click(screen.getByRole("button", { name: "Open" }));
+    await user.click(await screen.findByRole("checkbox", { name: "Create more" }));
+    const body = await screen.findByLabelText("Body");
+    await vi.waitFor(() => expect(body).toHaveValue("## What needs doing\n\n"));
+    await user.type(await screen.findByLabelText("Title"), "First ticket");
+    await user.type(body, "done");
+    await user.click(screen.getByRole("button", { name: "Create" }));
+
+    await vi.waitFor(() => expect(api.post).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() => expect(screen.getByLabelText("Body")).toHaveValue("## What needs doing\n\n"));
+    await user.keyboard("{Escape}");
   });
 
   it("keeps the dialog open, clears title/body, and keeps everything else when Create more is checked", async () => {

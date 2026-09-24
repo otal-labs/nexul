@@ -471,7 +471,7 @@ func ticketTypeMCPTools(s *Service) []mcptool.Tool {
 		},
 		{
 			Name:        "ticket_type_list",
-			Description: "List a project's ticket types.",
+			Description: "List a project's ticket types. Each carries body_template, the markdown sections a new ticket of that type fills in; pass it, filled, as ticket_create's body.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -507,6 +507,25 @@ func ticketTypeMCPTools(s *Service) []mcptool.Tool {
 				id, name := vals[0], vals[1]
 				color := mcptool.OptionalString(args["color"])
 				return s.RenameTicketType(ctx, "", id, name, colors.Color(color))
+			},
+		},
+		{
+			Name:        "ticket_type_set_template",
+			Description: "Replace a ticket type's body template (markdown pre-filled into new tickets of the type). Existing tickets are never rewritten; an empty template clears it.",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"id":            map[string]any{"type": "string"},
+					"body_template": map[string]any{"type": "string"},
+				},
+				"required": []string{"id"},
+			},
+			Call: func(ctx context.Context, args map[string]any) (any, error) {
+				id, err := mcptool.RequiredString(args, "id")
+				if err != nil {
+					return nil, err
+				}
+				return s.SetTicketTypeTemplate(ctx, "", id, mcptool.OptionalString(args["body_template"]))
 			},
 		},
 		{

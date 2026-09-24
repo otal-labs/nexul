@@ -4,6 +4,7 @@ import { PlaysBottomBar } from "@/components/play/PlaysBottomBar";
 import { PlaysRailSection } from "@/components/play/PlaysRailSection";
 import { TrailSection } from "@/components/play/TrailSection";
 import { TicketDetail } from "@/components/ticket/TicketDetail";
+import { TicketLinksSection } from "@/components/ticket/TicketLinksSection";
 import { TicketPropertiesPanel } from "@/components/ticket/TicketPropertiesPanel";
 import type { Project } from "@/models/Project";
 import type { Ticket, TicketStatus as TicketStatusType } from "@/models/Ticket";
@@ -32,6 +33,7 @@ export const TicketPageBody = ({
   <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_18rem]">
     <div className="min-w-0 space-y-8">
       <TicketDetail key={ticket.id} ticket={ticket} {...(project ? { project } : {})} onSave={onSave} />
+      <TicketLinksSection ticketId={ticket.id} />
       {workspaceId && <TrailSection workspaceId={workspaceId} targetType="ticket" targetId={ticket.id} />}
       {workspaceId && <TicketThreadSection workspaceId={workspaceId} ticketId={ticket.id} />}
     </div>

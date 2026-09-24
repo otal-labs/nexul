@@ -20,6 +20,7 @@ import { getCategoriesKey, getProjectCategoriesKey } from "@/hooks/CategoryHooks
 import { getProjectTicketTypesKey, getTicketTypesKey } from "@/hooks/TicketTypeHooks";
 import { getProjectStatusesKey, getStatusesKey } from "@/hooks/StatusHooks";
 import { getTicketKey, getTicketLinksKey, getTicketsKey } from "@/hooks/TicketHooks";
+import { getBlockersKey, getTicketLinkSetKey } from "@/hooks/TicketLinkHooks";
 import {
   getChatConversationsKey,
   getChatTicketThreadStatusKey,
@@ -62,8 +63,11 @@ const pushTopics: Record<string, string[]> = {
   "doc.created": [getDocsKey],
   "doc.updated": [getDocsKey, getDocKey],
   "ticket.created": [getTicketsKey],
-  "ticket.updated": [getTicketsKey, getTicketKey, getTicketLinksKey, getTrailsKey],
-  "ticket.status_changed": [getTicketsKey, getTicketKey, getTicketLinksKey, getTrailsKey],
+  "ticket.updated": [getTicketsKey, getTicketKey, getTicketLinksKey, getTrailsKey, getTicketLinkSetKey, getBlockersKey],
+  // A blocker reaching a done-stage column clears the blocked card the moment it moves.
+  "ticket.status_changed": [getTicketsKey, getTicketKey, getTicketLinksKey, getTrailsKey, getTicketLinkSetKey, getBlockersKey],
+  "ticket.link_created": [getTicketLinkSetKey, getBlockersKey],
+  "ticket.link_deleted": [getTicketLinkSetKey, getBlockersKey],
   "ticket.developer_changed": [getTicketsKey, getTicketKey],
   "ticket.tester_changed": [getTicketsKey, getTicketKey],
   "ticket.finished": [getTicketsKey],
@@ -72,7 +76,7 @@ const pushTopics: Record<string, string[]> = {
   "ticket_type.updated": [getTicketTypesKey, getProjectTicketTypesKey],
   "ticket_type.deleted": [getTicketTypesKey, getProjectTicketTypesKey],
   "status.created": [getStatusesKey, getProjectStatusesKey, getTicketsKey],
-  "status.updated": [getStatusesKey, getProjectStatusesKey, getTicketsKey],
+  "status.updated": [getStatusesKey, getProjectStatusesKey, getTicketsKey, getTicketLinkSetKey, getBlockersKey],
   "status.deleted": [getStatusesKey, getProjectStatusesKey, getTicketsKey],
   "chat.conversation.created": [getChatConversationsKey],
   "chat.message.created": [getChatConversationsKey, getChatUnreadKey],

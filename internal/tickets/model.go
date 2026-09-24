@@ -131,3 +131,46 @@ const (
 	RoleDeveloper Role = "developer"
 	RoleTester    Role = "tester"
 )
+
+// LinkKind names a ticket-to-ticket link: found_in points a bug at its origin, blocked_by at a ticket that must reach done first.
+type LinkKind string
+
+const (
+	LinkFoundIn   LinkKind = "found_in"
+	LinkBlockedBy LinkKind = "blocked_by"
+)
+
+// TicketLink is a directed link record; an empty TargetID on a found_in link marks the origin unknown.
+type TicketLink struct {
+	TicketID  string    `json:"ticket_id"`
+	Kind      LinkKind  `json:"kind"`
+	TargetID  string    `json:"target_id"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// LinkedTicket is the ticket at the other end of a link; Done reads its status stage, never the column name.
+type LinkedTicket struct {
+	ID        string `json:"id"`
+	ProjectID string `json:"project_id"`
+	Prefix    string `json:"prefix"`
+	Number    int    `json:"number"`
+	Title     string `json:"title"`
+	Status    Status `json:"status"`
+	Done      bool   `json:"done"`
+}
+
+// LinkEnd is one stored link seen from a ticket; Ticket is nil for a found-in whose origin is unknown.
+type LinkEnd struct {
+	Kind   LinkKind
+	Ticket *LinkedTicket
+}
+
+// LinkSet is both directions of a ticket's links; Blocked holds while any blocker is outside a done-stage status.
+type LinkSet struct {
+	FoundIn       *LinkedTicket  `json:"found_in"`
+	OriginUnknown bool           `json:"origin_unknown"`
+	BugsFound     []LinkedTicket `json:"bugs_found"`
+	BlockedBy     []LinkedTicket `json:"blocked_by"`
+	Blocks        []LinkedTicket `json:"blocks"`
+	Blocked       bool           `json:"blocked"`
+}

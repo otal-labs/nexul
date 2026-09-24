@@ -1,5 +1,6 @@
 import {
   Controller,
+  get,
   useFormState,
   type Control,
   type FieldValues,
@@ -38,7 +39,7 @@ export const FormSelect = <T extends FieldValues>({
   onChangeValue,
 }: FormSelectProps<T>) => {
   const { errors } = useFormState({ control });
-  const message = (errors[name]?.message as string | undefined) ?? undefined;
+  const message = (get(errors, name)?.message as string | undefined) ?? undefined;
   const labelId = `${name}-label`;
 
   return (

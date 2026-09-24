@@ -26,6 +26,8 @@ type Config struct {
 	Now func() time.Time
 	// OnComputersChanged lets the presence keeper reconcile without waiting for a browser reconnect. Optional.
 	OnComputersChanged func(userID string)
+	// Tunnels creates and removes computer tunnels; nil leaves only URL pairing working.
+	Tunnels Tunnels
 }
 
 // Service is the pairing use-case layer (ADR 0019); bearer tokens never leave it except encrypted at rest.
@@ -35,6 +37,7 @@ type Service struct {
 	key       []byte
 	now       func() time.Time
 	changed   func(userID string)
+	tunnels   Tunnels
 }
 
 // NewService wires the pairing use-cases.
@@ -42,7 +45,7 @@ func NewService(cfg Config) *Service {
 	if cfg.Now == nil {
 		cfg.Now = time.Now
 	}
-	return &Service{repo: cfg.Repo, harnesses: cfg.Harnesses, key: cfg.EncryptionKey, now: cfg.Now, changed: cfg.OnComputersChanged}
+	return &Service{repo: cfg.Repo, harnesses: cfg.Harnesses, key: cfg.EncryptionKey, now: cfg.Now, changed: cfg.OnComputersChanged, tunnels: cfg.Tunnels}
 }
 
 // client returns the registered client for kind; an unregistered kind on a stored computer is a wiring bug.
@@ -206,18 +209,6 @@ func (s *Service) pair(ctx context.Context, userID, id string, kind harness.Kind
 	s.notifyComputersChanged(userID)
 	computer.BearerToken = ""
 	return &computer, nil
-}
-
-// DeleteComputer removes a paired computer; a mismatched id is ErrNotFound, never a permission leak.
-func (s *Service) DeleteComputer(ctx context.Context, userID, id string) error {
-	if strings.TrimSpace(userID) == "" {
-		return fmt.Errorf("%w: user is required", apperrs.ErrUnauthorized)
-	}
-	if err := s.repo.DeleteComputer(ctx, userID, id); err != nil {
-		return fmt.Errorf("delete computer %s: %w", id, err)
-	}
-	s.notifyComputersChanged(userID)
-	return nil
 }
 
 // ActiveSessions hands out plaintext bearer tokens for the presence keeper; never expose on a response.

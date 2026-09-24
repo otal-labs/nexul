@@ -26,7 +26,7 @@ func (r *TicketTypesRepo) Create(ctx context.Context, t *workspace.TicketType, e
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		err := r.q.WithTx(tx).CreateTicketType(ctx, sqlcgen.CreateTicketTypeParams{
 			ID: t.ID, ProjectID: t.ProjectID, Name: t.Name, Position: int64(t.Position),
-			Color: string(t.Color), CreatedAt: t.CreatedAt.Unix(), UpdatedAt: t.UpdatedAt.Unix(),
+			Color: string(t.Color), BodyTemplate: t.BodyTemplate, CreatedAt: t.CreatedAt.Unix(), UpdatedAt: t.UpdatedAt.Unix(),
 		})
 		if err != nil {
 			return fmt.Errorf("insert ticket type %s: %w", t.ID, classifyWriteErr(err))
@@ -54,7 +54,7 @@ func (r *TicketTypesRepo) ListByProject(ctx context.Context, projectID string) (
 func (r *TicketTypesRepo) Update(ctx context.Context, t *workspace.TicketType, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).UpdateTicketTypeMeta(ctx, sqlcgen.UpdateTicketTypeMetaParams{
-			Name: t.Name, Color: string(t.Color), UpdatedAt: t.UpdatedAt.Unix(), ID: t.ID,
+			Name: t.Name, Color: string(t.Color), BodyTemplate: t.BodyTemplate, UpdatedAt: t.UpdatedAt.Unix(), ID: t.ID,
 		})
 		if err != nil {
 			return fmt.Errorf("update ticket type %s: %w", t.ID, err)
@@ -105,15 +105,25 @@ func (r *TicketTypesRepo) CountTickets(ctx context.Context, typeID string) (int,
 	return int(n), nil
 }
 
+// BodyTemplate returns a type's body template; satisfies tickets' consumer-side TypeTemplates seam.
+func (r *TicketTypesRepo) BodyTemplate(ctx context.Context, typeID string) (string, error) {
+	t, err := r.Get(ctx, typeID)
+	if err != nil {
+		return "", err
+	}
+	return t.BodyTemplate, nil
+}
+
 func toTicketType(row sqlcgen.TicketType) *workspace.TicketType {
 	return &workspace.TicketType{
-		ID:        row.ID,
-		ProjectID: row.ProjectID,
-		Name:      row.Name,
-		Position:  int(row.Position),
-		Color:     colors.Color(row.Color),
-		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(),
-		UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
+		ID:           row.ID,
+		ProjectID:    row.ProjectID,
+		Name:         row.Name,
+		Position:     int(row.Position),
+		Color:        colors.Color(row.Color),
+		BodyTemplate: row.BodyTemplate,
+		CreatedAt:    time.Unix(row.CreatedAt, 0).UTC(),
+		UpdatedAt:    time.Unix(row.UpdatedAt, 0).UTC(),
 	}
 }
 

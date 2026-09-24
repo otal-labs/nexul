@@ -603,6 +603,25 @@ func (s *Service) RenameTicketType(ctx context.Context, userID, id, name string,
 	return &updated, nil
 }
 
+// SetTicketTypeTemplate replaces a type's body template (owner only); existing tickets keep the body they were born with.
+func (s *Service) SetTicketTypeTemplate(ctx context.Context, userID, id, template string) (*TicketType, error) {
+	if err := s.requireOwner(ctx, userID); err != nil {
+		return nil, err
+	}
+	current, err := s.types.Get(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("set ticket type template %s: %w", id, err)
+	}
+	updated := *current
+	updated.BodyTemplate = template
+	updated.UpdatedAt = s.now().UTC()
+	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicTicketTypeUpdated, Payload: TicketTypeEvent{TicketType: updated}}
+	if err := s.types.Update(ctx, &updated, evt); err != nil {
+		return nil, fmt.Errorf("set ticket type template %s: %w", id, err)
+	}
+	return &updated, nil
+}
+
 // ReorderTicketTypes sets a project's ticket type display order (owner only); every type appears exactly once.
 func (s *Service) ReorderTicketTypes(ctx context.Context, userID, projectID string, ids []string) error {
 	if err := s.requireOwner(ctx, userID); err != nil {

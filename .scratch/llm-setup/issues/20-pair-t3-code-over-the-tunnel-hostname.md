@@ -9,6 +9,11 @@
 
 Second step of the dialog: pair T3 Code over the verified hostname with the fields pre-filled, so the user only pastes the `t3 pair` token. Keep today's URL pairing as an Advanced option for machines the server can already reach.
 
+The computer row already exists from the Connect step (created with the
+tunnel, with an empty session and its server URL set to the tunnel hostname),
+so pairing here fills in that row's session rather than creating a new one.
+Until then the row must read as "pairing in progress", not "expired".
+
 ## Acceptance criteria
 
 - [ ] A computer pairs end to end through its tunnel hostname

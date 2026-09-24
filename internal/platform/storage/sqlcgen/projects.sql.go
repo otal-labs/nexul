@@ -276,16 +276,17 @@ func (q *Queries) SeedProjectStatus(ctx context.Context, arg SeedProjectStatusPa
 }
 
 const seedProjectTicketType = `-- name: SeedProjectTicketType :exec
-INSERT INTO ticket_types (id, project_id, name, position, color, created_at, updated_at) VALUES (?, ?, ?, ?, '', ?, ?)
+INSERT INTO ticket_types (id, project_id, name, position, color, body_template, created_at, updated_at) VALUES (?, ?, ?, ?, '', ?, ?, ?)
 `
 
 type SeedProjectTicketTypeParams struct {
-	ID        string
-	ProjectID string
-	Name      string
-	Position  int64
-	CreatedAt int64
-	UpdatedAt int64
+	ID           string
+	ProjectID    string
+	Name         string
+	Position     int64
+	BodyTemplate string
+	CreatedAt    int64
+	UpdatedAt    int64
 }
 
 func (q *Queries) SeedProjectTicketType(ctx context.Context, arg SeedProjectTicketTypeParams) error {
@@ -294,6 +295,7 @@ func (q *Queries) SeedProjectTicketType(ctx context.Context, arg SeedProjectTick
 		arg.ProjectID,
 		arg.Name,
 		arg.Position,
+		arg.BodyTemplate,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)

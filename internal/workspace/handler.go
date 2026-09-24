@@ -79,6 +79,10 @@ type saveTicketTypeRequest struct {
 	Color     string `json:"color"`
 }
 
+type setTicketTypeTemplateRequest struct {
+	BodyTemplate string `json:"body_template"`
+}
+
 type saveStatusRequest struct {
 	ProjectID string `json:"project_id"`
 	Name      string `json:"name"`
@@ -116,6 +120,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("POST /api/ticket-types/reorder", h.reorderTicketTypes)
 	mux.HandleFunc("GET /api/ticket-types/{id}", h.getTicketType)
 	mux.HandleFunc("PATCH /api/ticket-types/{id}", h.renameTicketType)
+	mux.HandleFunc("PUT /api/ticket-types/{id}/template", h.setTicketTypeTemplate)
 	mux.HandleFunc("DELETE /api/ticket-types/{id}", h.deleteTicketType)
 
 	mux.HandleFunc("GET /api/statuses", h.listStatuses)
@@ -386,6 +391,20 @@ func (h *Handler) renameTicketType(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	tt, err := h.svc.RenameTicketType(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("id"), req.Name, colors.Color(req.Color))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, tt)
+}
+
+func (h *Handler) setTicketTypeTemplate(w http.ResponseWriter, r *http.Request) {
+	var req setTicketTypeTemplateRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	tt, err := h.svc.SetTicketTypeTemplate(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("id"), req.BodyTemplate)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

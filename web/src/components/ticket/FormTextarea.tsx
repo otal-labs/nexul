@@ -1,6 +1,7 @@
 import type { ComponentProps } from "react";
 import {
   Controller,
+  get,
   useFormState,
   type Control,
   type FieldValues,
@@ -24,7 +25,7 @@ export const FormTextarea = <T extends FieldValues>({
   ...props
 }: FormTextareaProps<T>) => {
   const { errors } = useFormState({ control });
-  const message = (errors[name]?.message as string | undefined) ?? undefined;
+  const message = (get(errors, name)?.message as string | undefined) ?? undefined;
 
   return (
     <div className="space-y-2">

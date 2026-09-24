@@ -1,6 +1,8 @@
 -- name: SavePairingComputer :exec
-INSERT INTO pairing_computers (id, user_id, kind, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+-- The tunnel columns are written on insert only, so re-pairing never drops a computer's tunnel.
+INSERT INTO pairing_computers (id, user_id, kind, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at,
+  tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(id) DO UPDATE SET
   kind = excluded.kind, name = excluded.name, server_url = excluded.server_url, bearer_token = excluded.bearer_token,
   token_expires_at = excluded.token_expires_at, harness_version = excluded.harness_version, updated_at = excluded.updated_at;
@@ -13,6 +15,9 @@ SELECT * FROM pairing_computers WHERE id = ?;
 
 -- name: ListPairingComputers :many
 SELECT * FROM pairing_computers WHERE user_id = ? ORDER BY created_at DESC;
+
+-- name: PairingComputerTunnelHostnameExists :one
+SELECT EXISTS (SELECT 1 FROM pairing_computers WHERE tunnel_hostname = ? AND tunnel_hostname != '');
 
 -- name: DeletePairingComputer :execrows
 DELETE FROM pairing_computers WHERE id = ? AND user_id = ?;

@@ -176,12 +176,12 @@ func (s *Service) deployUnlessConflict(ctx context.Context, target *Stack, req D
 	return nil
 }
 
-// ensureBranchExposure exposes target's hostname (rule template + branch slug) on the rule's configured port.
+// ensureBranchExposure exposes target's hostname (rule template + HostnameLabel) on the rule's configured port.
 func (s *Service) ensureBranchExposure(ctx context.Context, target *Stack, rule BranchDeployRule, branch string) error {
 	if s.exposures == nil {
 		return nil
 	}
-	hostname := strings.ReplaceAll(rule.HostnameTemplate, "{branch}", Slug(branch, dnsLabelMaxLen))
+	hostname := strings.ReplaceAll(rule.HostnameTemplate, "{branch}", rule.HostnameLabel(branch))
 	if err := s.exposures.EnsureExposure(ctx, hostname, target.Name, rule.Port, rule.DockerNetwork); err != nil {
 		return fmt.Errorf("expose %s at %s: %w", target.Name, hostname, err)
 	}

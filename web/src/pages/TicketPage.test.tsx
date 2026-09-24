@@ -67,6 +67,7 @@ const mockTicket = () => vi.mocked(api.get).mockImplementation((url: string) => 
   if (url === "/api/tickets/t-1") return Promise.resolve({ data: ticketData });
   if (url.startsWith("/api/projects")) return Promise.resolve({ data: projectData });
   if (url === "/api/tickets/t-1/links") return Promise.resolve({ data: { prs: [], branches: [] } });
+  if (url === "/api/tickets/t-1/ticket-links") return Promise.resolve({ data: { found_in: null, origin_unknown: false, bugs_found: [], blocked_by: [], blocks: [], blocked: false } });
   return Promise.resolve({ data: [] });
 });
 
@@ -93,6 +94,7 @@ describe("TicketPage", () => {
     vi.mocked(api.get).mockImplementation((url: string) => {
       if (url === "/api/tickets/t-1") return Promise.resolve({ data: ticketData });
       if (url === "/api/tickets/t-1/links") return Promise.resolve({ data: { prs: [], branches: [] } });
+      if (url === "/api/tickets/t-1/ticket-links") return Promise.resolve({ data: { found_in: null, origin_unknown: false, bugs_found: [], blocked_by: [], blocks: [], blocked: false } });
       if (url === "/api/reviews") return Promise.resolve({ data: reviewData });
       if (url === "/api/tickets/labels") return Promise.resolve({ data: [] });
       if (url === "/api/ticket-types") return Promise.resolve({ data: [] });
@@ -121,6 +123,7 @@ describe("TicketPage", () => {
       if (url === "/api/tickets") return Promise.resolve({ data: [ticketData] });
       if (url === "/api/tickets/t-1") return Promise.resolve({ data: ticketData });
       if (url === "/api/tickets/t-1/links") return Promise.resolve({ data: { prs: [], branches: [] } });
+      if (url === "/api/tickets/t-1/ticket-links") return Promise.resolve({ data: { found_in: null, origin_unknown: false, bugs_found: [], blocked_by: [], blocks: [], blocked: false } });
       if (url.startsWith("/api/projects")) return Promise.resolve({ data: projectData });
       return Promise.resolve({ data: [] });
     });

@@ -27,6 +27,25 @@ type Computer struct {
 	UpdatedAt        time.Time  `json:"updated_at"`
 	// BearerToken is encrypted at rest; the `-` tag keeps it off every HTTP response.
 	BearerToken string `json:"-"`
+	// Tunnel is nil for a computer paired by URL (ADR 0062).
+	Tunnel *ComputerTunnel `json:"tunnel,omitempty"`
+}
+
+// ComputerTunnel is a computer's own tunnel on the instance's Cloudflare, with what teardown needs to remove it.
+type ComputerTunnel struct {
+	TunnelID    string `json:"tunnel_id"`
+	Hostname    string `json:"hostname"`
+	ZoneID      string `json:"-"`
+	RecordID    string `json:"-"`
+	AccessAppID string `json:"-"`
+}
+
+// TunnelStatus is a computer tunnel's two checks: Cloudflare's connector status and the harness answering through it.
+type TunnelStatus struct {
+	// Tunnel is Cloudflare's status: inactive, healthy, degraded, or down.
+	Tunnel           string `json:"tunnel"`
+	HarnessReachable bool   `json:"harness_reachable"`
+	HarnessVersion   string `json:"harness_version,omitempty"`
 }
 
 // Session is the harness-facing view of a computer; only call it on a decrypted copy.
@@ -133,6 +152,14 @@ func validateName(name string) (string, error) {
 		return "", fmt.Errorf("%w: computer name is required", apperrs.ErrInvalid)
 	}
 	return name, nil
+}
+
+// validatePort rejects a local harness port outside the TCP range.
+func validatePort(port int) error {
+	if port < 1 || port > 65535 {
+		return fmt.Errorf("%w: local harness port %d is not between 1 and 65535", apperrs.ErrInvalid, port)
+	}
+	return nil
 }
 
 // validateServerURL rejects non-http(s) origins and trims a trailing slash so clients can concatenate paths.

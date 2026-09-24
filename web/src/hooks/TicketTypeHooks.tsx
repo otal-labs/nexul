@@ -44,6 +44,20 @@ export const useRenameTicketType = () => {
   });
 };
 
+export const useSetTicketTypeTemplate = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, body_template }: { id: string; body_template: string }) =>
+      (await api.put<TicketType>(`/api/ticket-types/${id}/template`, { body_template })).data,
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: [getTicketTypesKey] });
+      await client.invalidateQueries({ queryKey: [getProjectTicketTypesKey] });
+      toast.success("Template saved");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
 export const useDeleteTicketType = () => {
   const client = useQueryClient();
   return useMutation({

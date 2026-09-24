@@ -1,8 +1,11 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
+import { useFetchGateways } from "@/hooks/DnsHooks";
 import { latestDeploy, type Container, type CreateStackInput, type CreateStackResponse, type Deploy, type Stack, type StackWithBranches } from "@/models/Stack";
+import { machineNetworks, type MachineNetwork } from "@/utils/MachineNetworkUtility";
 
 export const getStacksKey = "getStacks";
 export const getStackKey = "getStack";
@@ -114,6 +117,23 @@ export const useFetchAllContainers = () => {
   const data = results.every((r) => r.data) ? results.flatMap((r) => r.data ?? []) : undefined;
 
   return { data, isPending, error };
+};
+
+// A machine's docker networks with what runs on each and whether a gateway serves it; ownNetwork always appears.
+export const useFetchMachineNetworks = (machine: string, ownNetwork: string) => {
+  const stacks = useFetchStacks();
+  const containers = useFetchAllContainers();
+  const gateways = useFetchGateways();
+  const data = useMemo<MachineNetwork[] | undefined>(() => {
+    if (!stacks.data || !containers.data || !gateways.data) return undefined;
+    const gatewayNetworks = new Set(gateways.data.map((g) => g.docker_network));
+    return machineNetworks(stacks.data, containers.data, machine, ownNetwork, gatewayNetworks);
+  }, [machine, stacks.data, containers.data, gateways.data, ownNetwork]);
+  return {
+    data,
+    isPending: containers.isPending || gateways.isPending,
+    error: containers.error ?? gateways.error,
+  };
 };
 
 export const useUpdateStackEnv = () => {

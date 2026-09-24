@@ -30,13 +30,17 @@ func newFakeRepo() *fakeRepo {
 	return &fakeRepo{computers: map[string]Computer{}, defaults: map[string]Defaults{}, projectLinks: map[string]ProjectLink{}, setups: map[string][]ProviderSetup{}}
 }
 
-func (f *fakeRepo) SaveComputer(_ context.Context, c Computer) error {
+func (f *fakeRepo) SaveComputer(_ context.Context, c Computer, evts ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.saveErr != nil {
 		return f.saveErr
 	}
+	if existing, ok := f.computers[c.ID]; ok {
+		c.Tunnel = existing.Tunnel
+	}
 	f.computers[c.ID] = c
+	f.outbox = append(f.outbox, evts...)
 	return nil
 }
 
@@ -66,7 +70,7 @@ func (f *fakeRepo) ListComputers(_ context.Context, userID string) ([]Computer, 
 	return out, nil
 }
 
-func (f *fakeRepo) DeleteComputer(_ context.Context, userID, id string) error {
+func (f *fakeRepo) DeleteComputer(_ context.Context, userID, id string, evts ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	c, ok := f.computers[id]
@@ -74,6 +78,7 @@ func (f *fakeRepo) DeleteComputer(_ context.Context, userID, id string) error {
 		return apperrs.ErrNotFound
 	}
 	delete(f.computers, id)
+	f.outbox = append(f.outbox, evts...)
 	return nil
 }
 
@@ -171,6 +176,7 @@ type fakeExchanger struct {
 	exchangeErr error
 	version     string
 	versionErr  error
+	probedURL   string
 }
 
 func (f *fakeExchanger) Pair(_ context.Context, _, _ string) (harness.PairResult, error) {
@@ -185,7 +191,8 @@ func (f *fakeExchanger) Pair(_ context.Context, _, _ string) (harness.PairResult
 	return r, nil
 }
 
-func (f *fakeExchanger) Version(_ context.Context, _ string) (string, error) {
+func (f *fakeExchanger) Version(_ context.Context, serverURL string) (string, error) {
+	f.probedURL = serverURL
 	if f.versionErr != nil {
 		return "", f.versionErr
 	}

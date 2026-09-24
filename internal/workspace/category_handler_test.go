@@ -155,6 +155,25 @@ func TestHandler_TicketTypes(t *testing.T) {
 		rec := do(t, h.Routes(), http.MethodPost, "/api/ticket-types", `{"project_id":"p-1","name":"bug"}`, "u-1")
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 	})
+	t.Run("sets a body template", func(t *testing.T) {
+		h, _ := newTestHandler(t, true)
+		h.svc.types.(*fakeTicketTypeRepo).types["tt-1"] = &TicketType{ID: "tt-1", Name: "bug"}
+		rec := do(t, h.Routes(), http.MethodPut, "/api/ticket-types/tt-1/template", `{"body_template":"## Why\n\n"}`, "u-1")
+		require.Equal(t, http.StatusOK, rec.Code)
+		var tt TicketType
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &tt))
+		assert.Equal(t, "## Why\n\n", tt.BodyTemplate)
+	})
+	t.Run("set template with a bad body is 400", func(t *testing.T) {
+		h, _ := newTestHandler(t, true)
+		rec := do(t, h.Routes(), http.MethodPut, "/api/ticket-types/tt-1/template", `{`, "u-1")
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+	t.Run("set template on a missing type is 404", func(t *testing.T) {
+		h, _ := newTestHandler(t, true)
+		rec := do(t, h.Routes(), http.MethodPut, "/api/ticket-types/nope/template", `{"body_template":""}`, "u-1")
+		assert.Equal(t, http.StatusNotFound, rec.Code)
+	})
 }
 
 func TestHandler_Statuses(t *testing.T) {

@@ -106,6 +106,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	// The hub relays/persists Y.js updates and commits via the docs use-case layer (ADR 0017 seam, collab never imports docs).
 	collabHub := collab.NewHub(logger, store.Collab, accessSvc, collabDocWriter{docsSvc})
 	ticketsSvc := tickets.NewService(store.Tickets, store.Statuses, workspaceUserStore{users: store.Users})
+	ticketsSvc.SetTypeTemplates(store.TicketTypes)
 	mentionsSvc := mentions.New(mentions.Config{
 		Tickets:     mentionTicketSource{repo: store.Tickets},
 		Docs:        mentionDocSource{repo: store.Docs},
@@ -178,13 +179,17 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	deploySvc.SetGatewayJoin(deployGatewayJoinAdapter{dns: dnsSvc})
 	deploySvc.SetGatewayAdopter(deployGatewayAdopterAdapter{dns: dnsSvc})
 	// One client per harness kind; the real ones talk to the user's own machines, never reachable in tests.
-	harnesses := harness.Registry{harness.KindT3Code: t3client.NewHarness(t3client.Options{Logger: logger})}
+	harnessHTTP := &http.Client{Transport: &cloudflare.AccessTransport{
+		Credentials: computerTunnelAccess{hosts: store.Pairing, dns: dnsSvc}.Credentials,
+	}}
+	harnesses := harness.Registry{harness.KindT3Code: t3client.NewHarness(t3client.Options{Logger: logger, HTTPClient: harnessHTTP})}
 	var presenceKeeper *presence.Keeper // constructed below; pairing only fires the callback after requests start flowing
 	pairingSvc := pairing.NewService(pairing.Config{
 		Repo:               store.Pairing,
 		Harnesses:          harnesses,
 		EncryptionKey:      encKey,
 		OnComputersChanged: func(userID string) { presenceKeeper.Refresh(userID) },
+		Tunnels:            pairingTunnels{dns: dnsSvc},
 	})
 	presenceKeeper = presence.New(presence.Config{
 		Sessions:  pairingSvc.ActiveSessions,
