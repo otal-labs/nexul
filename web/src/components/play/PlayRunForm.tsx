@@ -9,6 +9,7 @@ import { DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useRunPlay } from "@/hooks/TrailHooks";
+import { useConfirmBlockedRun } from "@/hooks/useConfirmBlockedRun";
 import { isWorkspaceMemory, type Memory } from "@/models/Memory";
 import type { Play, PlayType } from "@/models/Play";
 import type { BoardStatus } from "@/models/Status";
@@ -45,6 +46,7 @@ export const PlayRunForm = ({
   onDone,
 }: PlayRunFormProps) => {
   const runPlay = useRunPlay();
+  const confirmBlocked = useConfirmBlockedRun(targetType, targetId);
   const [selected, setSelected] = useState<string[]>(() =>
     choices.memory_ids.filter((id) => memories.some((m) => m.id === id && !m.always_included)),
   );
@@ -68,7 +70,8 @@ export const PlayRunForm = ({
   const toggle = (id: string) =>
     setSelected((current) => (current.includes(id) ? current.filter((m) => m !== id) : [...current, id]));
 
-  const submit = () =>
+  const submit = async () => {
+    if (!(await confirmBlocked(play.label))) return;
     runPlay.mutate(
       {
         playId: play.id,
@@ -85,6 +88,7 @@ export const PlayRunForm = ({
       },
       { onSuccess: onDone },
     );
+  };
 
   return (
     <>
@@ -169,7 +173,7 @@ export const PlayRunForm = ({
         <Button variant="ghost" onClick={onDone}>
           Cancel
         </Button>
-        <Button onClick={submit} disabled={runPlay.isPending}>
+        <Button onClick={() => void submit()} disabled={runPlay.isPending}>
           {confirmLabel}
         </Button>
       </DialogFooter>

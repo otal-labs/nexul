@@ -33,7 +33,7 @@ export const TicketPageBody = ({
   <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_18rem]">
     <div className="min-w-0 space-y-8">
       <TicketDetail key={ticket.id} ticket={ticket} {...(project ? { project } : {})} onSave={onSave} />
-      <TicketLinksSection ticketId={ticket.id} />
+      <TicketLinksSection ticket={ticket} />
       {workspaceId && <TrailSection workspaceId={workspaceId} targetType="ticket" targetId={ticket.id} />}
       {workspaceId && <TicketThreadSection workspaceId={workspaceId} ticketId={ticket.id} />}
     </div>

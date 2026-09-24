@@ -56,6 +56,7 @@ const project: Project = {
   prefix: "BE",
   position: 0,
   icon: "",
+  tests_location: "",
   created_at: "",
   updated_at: "",
 };

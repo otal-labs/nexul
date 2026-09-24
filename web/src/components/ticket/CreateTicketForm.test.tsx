@@ -34,11 +34,13 @@ const categories = [
 const ticketTypes = [
   { id: "ticket-type-task", name: "task", position: 0, created_at: "", updated_at: "" },
   { id: "ticket-type-bug", name: "bug", position: 1, created_at: "", updated_at: "" },
+  { id: "ticket-type-feature", name: "feature", position: 2, created_at: "", updated_at: "" },
 ];
 
 const templatedTypes = [
   { id: "tt-task", name: "task", position: 0, body_template: "## What needs doing\n\n", created_at: "", updated_at: "" },
   { id: "tt-bug", name: "bug", position: 1, body_template: "## Steps to reproduce\n\n", created_at: "", updated_at: "" },
+  { id: "tt-feature", name: "feature", position: 2, body_template: "## Why\n\n", created_at: "", updated_at: "" },
 ];
 
 const members = [
@@ -197,13 +199,14 @@ describe("CreateTicketForm", () => {
     renderWithRoot(<TicketHarness />);
 
     await user.click(screen.getByRole("button", { name: "Open" }));
-    await user.type(await screen.findByLabelText("Title"), "A bug");
+    await user.type(await screen.findByLabelText("Title"), "A feature");
     await user.click(await screen.findByRole("button", { name: "task" }));
-    await user.click(await screen.findByRole("button", { name: "bug" }));
+    expect(screen.queryByRole("button", { name: "bug" })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole("button", { name: "feature" }));
     await user.click(screen.getByRole("button", { name: "Create" }));
 
     await vi.waitFor(() =>
-      expect(api.post).toHaveBeenCalledWith("/api/tickets", expect.objectContaining({ type_id: "ticket-type-bug" })),
+      expect(api.post).toHaveBeenCalledWith("/api/tickets", expect.objectContaining({ type_id: "ticket-type-feature" })),
     );
   });
 
@@ -307,9 +310,9 @@ describe("CreateTicketForm", () => {
     await user.click(screen.getByRole("button", { name: "Open" }));
     await vi.waitFor(() => expect(screen.getByLabelText("Body")).toHaveValue("## What needs doing\n\n"));
     await user.click(await screen.findByRole("button", { name: "task" }));
-    await user.click(await screen.findByRole("button", { name: "bug" }));
+    await user.click(await screen.findByRole("button", { name: "feature" }));
 
-    expect(screen.getByLabelText("Body")).toHaveValue("## Steps to reproduce\n\n");
+    expect(screen.getByLabelText("Body")).toHaveValue("## Why\n\n");
     await user.keyboard("{Escape}");
   });
 
@@ -323,7 +326,7 @@ describe("CreateTicketForm", () => {
     await vi.waitFor(() => expect(body).toHaveValue("## What needs doing\n\n"));
     await user.type(body, "ship it");
     await user.click(await screen.findByRole("button", { name: "task" }));
-    await user.click(await screen.findByRole("button", { name: "bug" }));
+    await user.click(await screen.findByRole("button", { name: "feature" }));
 
     expect(body).toHaveValue("## What needs doing\n\nship it");
     await user.keyboard("{Escape}");

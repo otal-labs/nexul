@@ -20,6 +20,8 @@ type ProjectStore interface {
 	RepoInProject(ctx context.Context, projectID, owner, name string) (bool, error)
 	// LinkRepo attaches a repository to a project; linking one already attached is a no-op.
 	LinkRepo(ctx context.Context, projectID, owner, name string) error
+	// IsTestsRepo reports a project's tests repository, which never builds a stack or deploys.
+	IsTestsRepo(ctx context.Context, owner, name string) (bool, error)
 }
 
 // GatewayLookup is the dns seam checking a rule's network has a gateway before its hostname template resolves (ADR 0017).
@@ -90,6 +92,9 @@ func (s *Service) Deploy(ctx context.Context, req DeployRequest) (*Deploy, error
 	stack, err := s.stacks.GetByID(ctx, req.StackID)
 	if err != nil {
 		return nil, fmt.Errorf("deploy %s: %w", req.StackID, err)
+	}
+	if err := s.checkNotTestsRepo(ctx, stack); err != nil {
+		return nil, fmt.Errorf("deploy %s: %w", stack.Name, err)
 	}
 	kind := KindDeploy
 	if req.Ref != "" {
@@ -377,6 +382,22 @@ func (s *Service) checkProject(ctx context.Context, stack *Stack) error {
 		if !in {
 			return fmt.Errorf("%w: repository %s/%s is not in project %s", apperrs.ErrInvalid, bs.RepoOwner, bs.RepoName, stack.ProjectID)
 		}
+	}
+	return s.checkNotTestsRepo(ctx, stack)
+}
+
+// checkNotTestsRepo keeps a tests repository from ever building a stack or deploying.
+func (s *Service) checkNotTestsRepo(ctx context.Context, stack *Stack) error {
+	bs := stack.BuildSource
+	if s.projects == nil || bs == nil || bs.RepoOwner == "" {
+		return nil
+	}
+	tests, err := s.projects.IsTestsRepo(ctx, bs.RepoOwner, bs.RepoName)
+	if err != nil {
+		return fmt.Errorf("check repo %s/%s: %w", bs.RepoOwner, bs.RepoName, err)
+	}
+	if tests {
+		return fmt.Errorf("%w: repository %s/%s is a tests repository and is never deployed", apperrs.ErrInvalid, bs.RepoOwner, bs.RepoName)
 	}
 	return nil
 }

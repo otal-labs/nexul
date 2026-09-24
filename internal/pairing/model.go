@@ -48,6 +48,34 @@ type TunnelStatus struct {
 	HarnessVersion   string `json:"harness_version,omitempty"`
 }
 
+// Connected reports both checks passing: the connector is up and the harness answers behind it.
+func (t TunnelStatus) Connected() bool {
+	return (t.Tunnel == "healthy" || t.Tunnel == "degraded") && t.HarnessReachable
+}
+
+// DefaultT3CodePort is the port T3 Code serves on unless started with another.
+const DefaultT3CodePort = 3773
+
+// PrerequisiteReason names what the instance needs before any computer can be reached through a tunnel.
+type PrerequisiteReason string
+
+const (
+	// ReasonCloudflareNotConnected: the instance has no Cloudflare connection to create tunnels with.
+	ReasonCloudflareNotConnected PrerequisiteReason = "cloudflare_not_connected"
+	// ReasonZeroTrustDisabled: the Cloudflare account has never enabled Zero Trust, so no Access app can close a hostname.
+	ReasonZeroTrustDisabled PrerequisiteReason = "zero_trust_disabled"
+)
+
+// PrerequisiteError unwraps to ErrInvalid; Reason tells the caller which fix to show.
+type PrerequisiteError struct {
+	Reason PrerequisiteReason
+	Err    error
+}
+
+func (e *PrerequisiteError) Error() string { return e.Err.Error() }
+
+func (e *PrerequisiteError) Unwrap() error { return apperrs.ErrInvalid }
+
 // Session is the harness-facing view of a computer; only call it on a decrypted copy.
 func (c Computer) Session() harness.Session {
 	return harness.Session{Name: c.Name, ServerURL: c.ServerURL, BearerToken: c.BearerToken}
@@ -65,6 +93,21 @@ type ProviderSetup struct {
 	Provider    string     `json:"provider"`
 	ConfirmedAt *time.Time `json:"confirmed_at"`
 	Skills      []string   `json:"skills"`
+}
+
+// ProviderOption is a provider instance as the pickers list it: still selectable while it needs setup.
+type ProviderOption struct {
+	harness.Provider
+	NeedsSetup bool `json:"needs_setup"`
+}
+
+// setupConfirmed is the gate's rule: the computer's overall confirmation and the driver's own are both set.
+func setupConfirmed(c Computer, setups []ProviderSetup, driver string) bool {
+	if c.SetupConfirmedAt == nil {
+		return false
+	}
+	driver = strings.ToLower(strings.TrimSpace(driver))
+	return slices.ContainsFunc(setups, func(p ProviderSetup) bool { return p.Provider == driver && p.ConfirmedAt != nil })
 }
 
 // Defaults are a user's pairing-settings defaults for non-project chat contexts; every field is optional.
@@ -98,18 +141,39 @@ const (
 	ReasonNoDefault NotConfiguredReason = "no_default"
 	// ReasonNoDefaultComputer: several paired computers, none picked as default; the fix is choosing one.
 	ReasonNoDefaultComputer NotConfiguredReason = "no_default_computer"
+	// ReasonSetupRequired: the computer or the provider the run lands on has no setup confirmation (ADR 0063).
+	ReasonSetupRequired NotConfiguredReason = "setup_required"
+	// ReasonOffline: the resolved computer's harness did not answer, so the setup gate could not check its providers.
+	ReasonOffline NotConfiguredReason = "offline"
 )
 
 // NotConfiguredError unwraps to ErrInvalid; Reason carries the specific fix.
 type NotConfiguredError struct {
 	Reason NotConfiguredReason
+	// Provider and Computer are display names, set for ReasonSetupRequired and ReasonOffline so the refusal names them.
+	Provider string
+	Computer string
+	// Err is the harness failure behind ReasonOffline.
+	Err error
 }
 
+// Error is the user-facing refusal for the gate's reasons, so chat, the play run dialog, and MCP all read the same line.
 func (e *NotConfiguredError) Error() string {
+	if e.Reason == ReasonSetupRequired {
+		return fmt.Sprintf("@Agent can't use %s on %s until its setup is done — run setup for %s in Settings → Pairing.", e.Provider, e.Computer, e.Computer)
+	}
+	if e.Reason == ReasonOffline {
+		return fmt.Sprintf("@Agent can't reach %s — is T3 Code running there?", e.Computer)
+	}
 	return fmt.Sprintf("pairing not configured: %s", e.Reason)
 }
 
-func (e *NotConfiguredError) Unwrap() error { return apperrs.ErrInvalid }
+func (e *NotConfiguredError) Unwrap() []error {
+	if e.Err == nil {
+		return []error{apperrs.ErrInvalid}
+	}
+	return []error{apperrs.ErrInvalid, e.Err}
+}
 
 // validateHarnessProjectID rejects a blank harness-side project id.
 func validateHarnessProjectID(id string) (string, error) {

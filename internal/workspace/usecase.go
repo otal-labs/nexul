@@ -271,8 +271,8 @@ func (s *Service) Delete(ctx context.Context, userID, id string) error {
 // defaultConnectorID is assumed when the caller doesn't say; github is the only real connector today.
 const defaultConnectorID = "github"
 
-// AddRepo associates a repository with a project (owner only); an already-owned repo conflicts.
-func (s *Service) AddRepo(ctx context.Context, userID, projectID, owner, name, connectorID string) error {
+// AddRepo associates a repository with a project (owner only); a tests repository also records tests as separate.
+func (s *Service) AddRepo(ctx context.Context, userID, projectID, owner, name, connectorID string, role RepoRole) error {
 	if err := s.requireOwner(ctx, userID); err != nil {
 		return err
 	}
@@ -285,13 +285,50 @@ func (s *Service) AddRepo(ctx context.Context, userID, projectID, owner, name, c
 	if connectorID == "" {
 		connectorID = defaultConnectorID
 	}
-	if _, err := s.repo.Get(ctx, projectID); err != nil {
+	if role == "" {
+		role = RepoRoleApp
+	}
+	if !role.Valid() {
+		return fmt.Errorf("%w: repo role must be %q or %q", apperrs.ErrInvalid, RepoRoleApp, RepoRoleTests)
+	}
+	project, err := s.repo.Get(ctx, projectID)
+	if err != nil {
 		return fmt.Errorf("add repo to project %s: %w", projectID, err)
 	}
-	if err := s.repo.AddRepo(ctx, projectID, RepoRef{Owner: owner, Name: name, FullName: owner + "/" + name, ConnectorID: connectorID}); err != nil {
+	if err := s.repo.AddRepo(ctx, projectID, RepoRef{Owner: owner, Name: name, FullName: owner + "/" + name, ConnectorID: connectorID, Role: role}); err != nil {
 		return fmt.Errorf("add repo %s/%s: %w", owner, name, err)
 	}
-	return nil
+	if role != RepoRoleTests || project.TestsLocation == TestsLocationSeparate {
+		return nil
+	}
+	_, err = s.saveTestsLocation(ctx, project, TestsLocationSeparate)
+	return err
+}
+
+// SetTestsLocation records where a project's tests live (owner only); "" withdraws the answer.
+func (s *Service) SetTestsLocation(ctx context.Context, userID, projectID string, location TestsLocation) (*Project, error) {
+	if err := s.requireOwner(ctx, userID); err != nil {
+		return nil, err
+	}
+	location = TestsLocation(strings.TrimSpace(string(location)))
+	if !location.Valid() {
+		return nil, fmt.Errorf("%w: tests location must be %q, %q, or empty", apperrs.ErrInvalid, TestsLocationSame, TestsLocationSeparate)
+	}
+	project, err := s.repo.Get(ctx, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("set tests location for project %s: %w", projectID, err)
+	}
+	return s.saveTestsLocation(ctx, project, location)
+}
+
+func (s *Service) saveTestsLocation(ctx context.Context, project *Project, location TestsLocation) (*Project, error) {
+	updated := *project
+	updated.TestsLocation = location
+	updated.UpdatedAt = s.now().UTC()
+	if err := s.repo.Update(ctx, &updated); err != nil {
+		return nil, fmt.Errorf("set tests location for project %s: %w", project.ID, err)
+	}
+	return &updated, nil
 }
 
 // RemoveRepo dissociates a repository from its project (owner only).

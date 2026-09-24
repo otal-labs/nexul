@@ -14,7 +14,7 @@ SELECT * FROM projects WHERE id = ?;
 SELECT * FROM projects WHERE workspace_id = ? ORDER BY position, id;
 
 -- name: UpdateProject :execrows
-UPDATE projects SET name = ?, prefix = ?, icon = ?, updated_at = ? WHERE id = ?;
+UPDATE projects SET name = ?, prefix = ?, icon = ?, tests_location = ?, updated_at = ? WHERE id = ?;
 
 -- name: DeleteProject :execrows
 DELETE FROM projects WHERE id = ?;
@@ -23,16 +23,16 @@ DELETE FROM projects WHERE id = ?;
 UPDATE projects SET position = ?, updated_at = ? WHERE id = ?;
 
 -- name: AddProjectRepo :exec
-INSERT INTO project_repos (project_id, owner, name, full_name, connector_id, added_at) VALUES (?, ?, ?, ?, ?, ?);
+INSERT INTO project_repos (project_id, owner, name, full_name, connector_id, role, added_at) VALUES (?, ?, ?, ?, ?, ?, ?);
 
 -- name: RemoveProjectRepo :execrows
 DELETE FROM project_repos WHERE owner = ? AND name = ?;
 
 -- name: ListProjectRepos :many
-SELECT owner, name, full_name, connector_id FROM project_repos WHERE project_id = ? ORDER BY name;
+SELECT owner, name, full_name, connector_id, role FROM project_repos WHERE project_id = ? ORDER BY name;
 
 -- name: GetProjectRepoByOwnerAndName :one
-SELECT owner, name, full_name, connector_id FROM project_repos WHERE owner = ? AND name = ?;
+SELECT owner, name, full_name, connector_id, role FROM project_repos WHERE owner = ? AND name = ?;
 
 -- name: MoveTicketProject :execrows
 UPDATE tickets SET project_id = ? WHERE id = ?;

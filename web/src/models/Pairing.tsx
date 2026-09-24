@@ -10,7 +10,46 @@ export interface Computer {
   harness_version: string;
   created_at: string;
   updated_at: string;
+  // Absent for a computer paired by URL.
+  tunnel?: ComputerTunnel;
 }
+
+export interface ComputerTunnel {
+  tunnel_id: string;
+  hostname: string;
+}
+
+// A computer tunnel's two checks; tunnel is Cloudflare's connector status: inactive, healthy, degraded, or down.
+export interface TunnelStatus {
+  tunnel: string;
+  harness_reachable: boolean;
+  harness_version?: string;
+}
+
+export const tunnelOnline = (status: TunnelStatus) => status.tunnel === "healthy" || status.tunnel === "degraded";
+export const tunnelConnected = (status: TunnelStatus) => tunnelOnline(status) && status.harness_reachable;
+
+// The pair-a-computer dialog's steps, in order.
+export const PAIRING_STEPS = [
+  { value: "connect", label: "Connect" },
+  { value: "pair", label: "Pair T3 Code" },
+  { value: "setup", label: "Set up" },
+] as const;
+
+export type PairingStep = (typeof PAIRING_STEPS)[number]["value"];
+
+// What the instance needs before any computer can be reached through a tunnel; mirrors pairing.PrerequisiteReason.
+export type TunnelPrerequisite = "cloudflare_not_connected" | "zero_trust_disabled";
+
+// The Go default in pairing.DefaultT3CodePort; the port T3 Code serves on unless started with another.
+export const DEFAULT_T3_CODE_PORT = 3773;
+
+export const CreateComputerTunnelFormSchema = z.object({
+  name: z.string().trim().min(1, "Name this computer"),
+  port: z.coerce.number<number>().int("Enter a whole port number").min(1, "Enter a port between 1 and 65535").max(65535, "Enter a port between 1 and 65535"),
+});
+
+export type CreateComputerTunnelFormData = z.infer<typeof CreateComputerTunnelFormSchema>;
 
 // Labels for the harness kinds a computer can be paired with; keys match the Go harness.Kind values.
 export const HARNESS_LABELS: Record<string, string> = { t3code: "T3 Code" };
@@ -44,11 +83,13 @@ export interface HarnessProviderModel {
   is_default?: boolean;
 }
 
-// A usable provider instance on a paired computer; id is the instanceId CreateThread routes on.
+// A usable provider instance; id is the instanceId CreateThread routes on, driver the kind setup is confirmed under.
 export interface HarnessProvider {
   id: string;
+  driver: string;
   name: string;
   models: HarnessProviderModel[];
+  needs_setup: boolean;
 }
 
 export const PairComputerFormSchema = z.object({

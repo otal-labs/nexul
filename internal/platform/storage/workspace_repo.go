@@ -110,7 +110,8 @@ func (r *ProjectsRepo) List(ctx context.Context, workspaceID string) ([]*workspa
 func (r *ProjectsRepo) Update(ctx context.Context, p *workspace.Project) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).UpdateProject(ctx, sqlcgen.UpdateProjectParams{
-			Name: p.Name, Prefix: p.Prefix, Icon: string(p.Icon), UpdatedAt: p.UpdatedAt.Unix(), ID: p.ID,
+			Name: p.Name, Prefix: p.Prefix, Icon: string(p.Icon), TestsLocation: string(p.TestsLocation),
+			UpdatedAt: p.UpdatedAt.Unix(), ID: p.ID,
 		})
 		if err != nil {
 			return fmt.Errorf("update project %s: %w", p.ID, classifyWriteErr(err))
@@ -178,7 +179,7 @@ func (r *ProjectsRepo) AddRepo(ctx context.Context, projectID string, ref worksp
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		err := r.q.WithTx(tx).AddProjectRepo(ctx, sqlcgen.AddProjectRepoParams{
 			ProjectID: projectID, Owner: ref.Owner, Name: ref.Name, FullName: ref.FullName,
-			ConnectorID: ref.ConnectorID, AddedAt: time.Now().Unix(),
+			ConnectorID: ref.ConnectorID, Role: string(ref.Role), AddedAt: time.Now().Unix(),
 		})
 		if err != nil {
 			return fmt.Errorf("add repo %s/%s to project %s: %w", ref.Owner, ref.Name, projectID, classifyWriteErr(err))
@@ -207,7 +208,7 @@ func (r *ProjectsRepo) ListRepos(ctx context.Context, projectID string) ([]works
 	}
 	var out []workspace.RepoRef
 	for _, row := range rows {
-		out = append(out, workspace.RepoRef{Owner: row.Owner, Name: row.Name, FullName: row.FullName, ConnectorID: row.ConnectorID})
+		out = append(out, workspace.RepoRef{Owner: row.Owner, Name: row.Name, FullName: row.FullName, ConnectorID: row.ConnectorID, Role: workspace.RepoRole(row.Role)})
 	}
 	return out, nil
 }
@@ -218,7 +219,7 @@ func (r *ProjectsRepo) GetRepoByFullName(ctx context.Context, owner, name string
 	if err != nil {
 		return workspace.RepoRef{}, fmt.Errorf("get repo %s/%s: %w", owner, name, notFoundIfNoRows(err))
 	}
-	return workspace.RepoRef{Owner: row.Owner, Name: row.Name, FullName: row.FullName, ConnectorID: row.ConnectorID}, nil
+	return workspace.RepoRef{Owner: row.Owner, Name: row.Name, FullName: row.FullName, ConnectorID: row.ConnectorID, Role: workspace.RepoRole(row.Role)}, nil
 }
 
 // MoveTicket updates a ticket's project in place; the FK guarantees only an existing project can be referenced.
@@ -239,14 +240,15 @@ func (r *ProjectsRepo) MoveTicket(ctx context.Context, ticketID, projectID strin
 
 func toProject(row sqlcgen.Project) *workspace.Project {
 	return &workspace.Project{
-		ID:          row.ID,
-		Name:        row.Name,
-		Prefix:      row.Prefix,
-		Position:    int(row.Position),
-		WorkspaceID: row.WorkspaceID,
-		Icon:        workspace.ProjectIcon(row.Icon),
-		CreatedAt:   time.Unix(row.CreatedAt, 0).UTC(),
-		UpdatedAt:   time.Unix(row.UpdatedAt, 0).UTC(),
+		ID:            row.ID,
+		Name:          row.Name,
+		Prefix:        row.Prefix,
+		Position:      int(row.Position),
+		WorkspaceID:   row.WorkspaceID,
+		Icon:          workspace.ProjectIcon(row.Icon),
+		TestsLocation: workspace.TestsLocation(row.TestsLocation),
+		CreatedAt:     time.Unix(row.CreatedAt, 0).UTC(),
+		UpdatedAt:     time.Unix(row.UpdatedAt, 0).UTC(),
 	}
 }
 

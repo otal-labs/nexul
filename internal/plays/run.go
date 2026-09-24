@@ -140,6 +140,8 @@ type RunnerConfig struct {
 	Tickets  StatusMover
 	Live     LivePublisher
 	Users    UserReader
+	// Links is optional; nil means a ticket play runs without its found-in and blocked-by context.
+	Links LinkReader
 	// Attachments is optional; nil means images embedded in an inlined memory are left as markdown, unresolved.
 	Attachments agent.AttachmentReader
 	Logger      *slog.Logger
@@ -162,6 +164,7 @@ type Runner struct {
 	tickets     StatusMover
 	live        LivePublisher
 	users       UserReader
+	links       LinkReader
 	attachments agent.AttachmentReader
 	log         *slog.Logger
 	now         func() time.Time
@@ -185,7 +188,7 @@ func NewRunner(cfg RunnerConfig) *Runner {
 	return &Runner{
 		plays: cfg.Plays, trails: cfg.Trails, perm: cfg.Perm, targets: cfg.Targets, projects: cfg.Projects,
 		harness: cfg.Harness, memories: cfg.Memories, threads: cfg.Threads, turns: cfg.Turns, tickets: cfg.Tickets,
-		live: cfg.Live, users: cfg.Users, attachments: cfg.Attachments, log: cfg.Logger, now: cfg.Now, silence: cfg.SilenceTimeout,
+		live: cfg.Live, users: cfg.Users, links: cfg.Links, attachments: cfg.Attachments, log: cfg.Logger, now: cfg.Now, silence: cfg.SilenceTimeout,
 		runs: map[string]*trailObserver{},
 	}
 }
@@ -253,6 +256,10 @@ func (r *Runner) Run(ctx context.Context, in RunInput) (*Trail, error) {
 		return nil, err
 	}
 	trail.SelectedMemoryIDs = memoryIDs
+	links, err := r.linkBlocks(ctx, trail.TargetType, trail.TargetID)
+	if err != nil {
+		return nil, err
+	}
 	conversationID, err := r.openThread(ctx, play.WorkspaceID, trail.TargetType, trail.TargetID, starter)
 	if err != nil {
 		return nil, err
@@ -271,7 +278,7 @@ func (r *Runner) Run(ctx context.Context, in RunInput) (*Trail, error) {
 	snapshot := *trail
 	r.startTurn(ctx, trail, tgt.title, agent.TurnRequest{
 		ConversationID: conversationID, ViaUserID: starter, RequestBody: body, Attachments: memoryAttachments,
-		ExtraRequestBlocks: requestBlocks(play, memoriesBlock, r.login(ctx, starter), trail.CustomInstructions),
+		ExtraRequestBlocks: requestBlocks(play, links, memoriesBlock, r.login(ctx, starter), trail.CustomInstructions),
 		Target:             &agent.TargetOverride{ComputerID: choice.ComputerID, Provider: choice.Provider, Model: choice.Model},
 	}, false)
 	return &snapshot, nil
@@ -810,8 +817,8 @@ func startedMessage(label, custom string) string {
 }
 
 // requestBlocks is the play material that rides inside the request block: play, memories, custom, in that order.
-func requestBlocks(play *Play, memoriesBlock, login, custom string) []string {
-	blocks := []string{"Play: " + play.Label + "\n" + play.Instructions}
+func requestBlocks(play *Play, links []string, memoriesBlock, login, custom string) []string {
+	blocks := append([]string{"Play: " + play.Label + "\n" + play.Instructions}, links...)
 	if memoriesBlock != "" {
 		blocks = append(blocks, "Memories the user selected for this run, follow them:\n"+memoriesBlock)
 	}

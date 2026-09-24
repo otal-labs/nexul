@@ -1,8 +1,9 @@
-import { PlusIcon, TagIcon, TicketIcon } from "lucide-react";
+import { Bug, PlusIcon, TagIcon, TicketIcon } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useReportBugDialog } from "@/hooks/useReportBugDialog";
 import { cn } from "@/lib/utils";
 
 interface BoardCreateMenuProps {
@@ -17,6 +18,7 @@ const menuItemClass =
 // One "+" entry point: separate buttons read as unrelated when both just add something to the board.
 export const BoardCreateMenu = ({ onNewTicket, onNewCategory, className }: BoardCreateMenuProps) => {
   const [open, setOpen] = useState(false);
+  const reportBug = useReportBugDialog();
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -37,6 +39,17 @@ export const BoardCreateMenu = ({ onNewTicket, onNewCategory, className }: Board
           >
             <TicketIcon className="size-4 shrink-0" aria-hidden />
             New ticket
+          </button>
+          <button
+            type="button"
+            className={menuItemClass}
+            onClick={() => {
+              setOpen(false);
+              void reportBug();
+            }}
+          >
+            <Bug className="size-4 shrink-0" aria-hidden />
+            Report a bug
           </button>
           <button
             type="button"

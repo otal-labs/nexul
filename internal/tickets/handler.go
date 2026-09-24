@@ -20,14 +20,16 @@ func NewHandler(svc *Service) *Handler {
 }
 
 type saveTicketRequest struct {
-	Title      string `json:"title"`
-	Body       string `json:"body"`
-	DocID      string `json:"doc_id"`
-	Developer  string `json:"developer"`
-	Tester     string `json:"tester"`
-	ProjectID  string `json:"project_id"`
-	CategoryID string `json:"category_id"`
-	TypeID     string `json:"type_id"`
+	Title         string `json:"title"`
+	Body          string `json:"body"`
+	DocID         string `json:"doc_id"`
+	Developer     string `json:"developer"`
+	Tester        string `json:"tester"`
+	ProjectID     string `json:"project_id"`
+	CategoryID    string `json:"category_id"`
+	TypeID        string `json:"type_id"`
+	OriginID      string `json:"origin_id"`
+	OriginUnknown bool   `json:"origin_unknown"`
 }
 
 type updateStatusRequest struct {
@@ -128,7 +130,9 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	t, err := h.svc.Create(r.Context(), req.ProjectID, req.Title, req.Body, req.DocID, req.Developer, CreateOptions{CategoryID: req.CategoryID, TypeID: req.TypeID, Tester: req.Tester})
+	t, err := h.svc.Create(r.Context(), req.ProjectID, req.Title, req.Body, req.DocID, req.Developer, CreateOptions{
+		CategoryID: req.CategoryID, TypeID: req.TypeID, Tester: req.Tester, OriginID: req.OriginID, OriginUnknown: req.OriginUnknown,
+	})
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

@@ -266,6 +266,26 @@ h3 {
   color: #8b96ab;
 }
 
+.terminal-window__action {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: var(--radius-md);
+  color: #8b96ab;
+  transition: color 150ms var(--ease-standard), background-color 150ms var(--ease-standard);
+}
+
+.terminal-window__action:hover {
+  color: #dbe4f5;
+  background: #1d2a45;
+}
+
+.terminal-window__prompt {
+  color: #8b96ab;
+  user-select: none;
+}
+
 .terminal-window__body {
   padding: 1rem 1.125rem;
   font-family: var(--font-mono-stack);

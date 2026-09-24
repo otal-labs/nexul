@@ -323,7 +323,7 @@ func TestService_ResolveTarget_UsesProjectLinkOverDefaults(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	target, err := svc.ResolveTarget(context.Background(), "u1", "proj-1")
+	target, err := svc.resolveTarget(context.Background(), "u1", "proj-1")
 	require.NoError(t, err)
 	assert.Equal(t, linked.ID, target.Computer.ID)
 	assert.Equal(t, "linked-proj", target.HarnessProjectID)
@@ -342,7 +342,7 @@ func TestService_ResolveTarget_FallsBackToUserDefaults(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	target, err := svc.ResolveTarget(context.Background(), "u1", "")
+	target, err := svc.resolveTarget(context.Background(), "u1", "")
 	require.NoError(t, err)
 	assert.Equal(t, fallback.ID, target.Computer.ID)
 	assert.Equal(t, "default-proj", target.HarnessProjectID)
@@ -358,7 +358,7 @@ func TestService_ResolveTarget_ProjectLinkedComputerNotOwnedByCaller(t *testing.
 	_, err = svc.SetProjectLink(context.Background(), "u2", "proj-1", ProjectLink{ComputerID: linked.ID, HarnessProjectID: "proj"})
 	require.NoError(t, err)
 
-	target, err := svc.ResolveTarget(context.Background(), "u1", "proj-1")
+	target, err := svc.resolveTarget(context.Background(), "u1", "proj-1")
 	require.NoError(t, err, "a project-linked computer resolves for any mentioning user, not just its owner")
 	assert.Equal(t, linked.ID, target.Computer.ID)
 }
@@ -468,7 +468,7 @@ func TestService_ResolveTargetOverride_EmptyComputerFallsBackToResolveTarget(t *
 	_, err = svc.SetDefaults(context.Background(), "u1", Defaults{DefaultComputerID: c.ID, FallbackProjectID: "p", Provider: "opencode", Model: "gpt"})
 	require.NoError(t, err)
 
-	target, err := svc.ResolveTargetOverride(context.Background(), "u1", "", "", "", "")
+	target, err := svc.resolveTargetOverride(context.Background(), "u1", "", "", "", "")
 	require.NoError(t, err)
 	assert.Equal(t, c.ID, target.Computer.ID)
 	assert.Equal(t, "opencode", target.Provider)
@@ -483,7 +483,7 @@ func TestService_ResolveTargetOverride_PinnedComputerWithExplicitProviderAndMode
 	_, err = svc.SetProjectLink(context.Background(), "u1", "proj-1", ProjectLink{ComputerID: c.ID, HarnessProjectID: "linked-proj"})
 	require.NoError(t, err)
 
-	target, err := svc.ResolveTargetOverride(context.Background(), "u1", "proj-1", c.ID, "claude", "sonnet-5")
+	target, err := svc.resolveTargetOverride(context.Background(), "u1", "proj-1", c.ID, "claude", "sonnet-5")
 	require.NoError(t, err)
 	assert.Equal(t, c.ID, target.Computer.ID)
 	assert.Equal(t, "linked-proj", target.HarnessProjectID)
@@ -501,7 +501,7 @@ func TestService_ResolveTargetOverride_BlankProviderAndModelFillFromTheMatchingP
 	_, err = svc.SetProjectLink(context.Background(), "u1", "proj-1", ProjectLink{ComputerID: c.ID, HarnessProjectID: "linked-proj", Provider: "claude", Model: "sonnet"})
 	require.NoError(t, err)
 
-	target, err := svc.ResolveTargetOverride(context.Background(), "u1", "proj-1", c.ID, "", "")
+	target, err := svc.resolveTargetOverride(context.Background(), "u1", "proj-1", c.ID, "", "")
 	require.NoError(t, err)
 	assert.Equal(t, "linked-proj", target.HarnessProjectID)
 	assert.Equal(t, "claude", target.Provider)
@@ -517,7 +517,7 @@ func TestService_ResolveTargetOverride_BlankFieldsFillFromDefaultsWhenTheCompute
 	_, err = svc.SetDefaults(context.Background(), "u1", Defaults{DefaultComputerID: c.ID, FallbackProjectID: "default-proj", Provider: "opencode", Model: "gpt"})
 	require.NoError(t, err)
 
-	target, err := svc.ResolveTargetOverride(context.Background(), "u1", "", c.ID, "", "")
+	target, err := svc.resolveTargetOverride(context.Background(), "u1", "", c.ID, "", "")
 	require.NoError(t, err)
 	assert.Equal(t, "default-proj", target.HarnessProjectID)
 	assert.Equal(t, "opencode", target.Provider)

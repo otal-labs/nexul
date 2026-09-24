@@ -418,6 +418,11 @@ func TestTicketTypesRepo_UpdateDeleteReorder(t *testing.T) {
 	assert.Equal(t, "## What needs doing\n\n", template)
 	_, err = s.TicketTypes.BodyTemplate(ctx, "nope")
 	assert.True(t, errors.Is(err, apperrs.ErrNotFound))
+	name, err := s.TicketTypes.TypeName(ctx, "tt-9")
+	require.NoError(t, err)
+	assert.Equal(t, "ops", name)
+	_, err = s.TicketTypes.TypeName(ctx, "nope")
+	assert.True(t, errors.Is(err, apperrs.ErrNotFound))
 
 	other := &workspace.TicketType{ID: "tt-10", ProjectID: "project-general", Name: "docs", Position: 6, CreatedAt: now, UpdatedAt: now}
 	require.NoError(t, s.TicketTypes.Create(ctx, other))

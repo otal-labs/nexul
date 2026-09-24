@@ -49,6 +49,25 @@ const PROVIDERS = {
 };
 
 describe("HarnessProviderModelFields", () => {
+  it("tags a provider that needs setup and keeps it selectable", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(api, "get").mockResolvedValueOnce({
+      data: {
+        providers: [
+          { id: "codex", driver: "codex", name: "Codex", models: [], needs_setup: true },
+          { id: "claude", driver: "claudeAgent", name: "Claude Code", models: [], needs_setup: false },
+        ],
+      },
+    } as never);
+    renderFields("comp-1");
+
+    const provider = await screen.findByRole("combobox", { name: "Provider" });
+    await user.click(provider);
+    expect(screen.getByRole("option", { name: "Claude Code" })).toBeInTheDocument();
+    await user.click(screen.getByRole("option", { name: "Codex needs setup" }));
+    expect(provider).toHaveTextContent("needs setup");
+  });
+
   it("offers providers from the registry, then that provider's models", async () => {
     const user = userEvent.setup();
     vi.spyOn(api, "get").mockResolvedValueOnce(PROVIDERS as never);

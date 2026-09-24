@@ -26,6 +26,7 @@ func TestClient_Providers_ParsesConfig(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, providers, 1, "unavailable and disabled instances are dropped")
 	assert.Equal(t, "claude", providers[0].ID)
+	assert.Equal(t, "claude-code", providers[0].Driver, "the driver kind travels beside the instance id for the setup gate")
 	assert.Equal(t, "Claude Code", providers[0].Name)
 	assert.Equal(t, []harness.ProviderModel{{Slug: "claude-sonnet-4-5", Name: "Sonnet 4.5", IsDefault: true}}, providers[0].Models, "legacy models are dropped")
 }

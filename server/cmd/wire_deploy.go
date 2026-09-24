@@ -40,11 +40,23 @@ func (a deployProjectStore) RepoInProject(ctx context.Context, projectID, owner,
 	return false, nil
 }
 
+// IsTestsRepo reports whether owner/name is attached to a project as its tests repository; an unlinked repo is not.
+func (a deployProjectStore) IsTestsRepo(ctx context.Context, owner, name string) (bool, error) {
+	ref, err := a.projects.GetRepoByFullName(ctx, owner, name)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return ref.Role == workspace.RepoRoleTests, nil
+}
+
 // LinkRepo attaches a repository under the GitHub connector. A repository belongs to exactly one project, so a
 // conflict is fine only when it is already this project's (the wizard re-running its service step); otherwise
 // it surfaces, naming the clash, instead of letting CreateStack fail with a misleading "not in project".
 func (a deployProjectStore) LinkRepo(ctx context.Context, projectID, owner, name string) error {
-	err := a.projects.AddRepo(ctx, projectID, workspace.RepoRef{Owner: owner, Name: name, FullName: owner + "/" + name, ConnectorID: "github"})
+	err := a.projects.AddRepo(ctx, projectID, workspace.RepoRef{Owner: owner, Name: name, FullName: owner + "/" + name, ConnectorID: "github", Role: workspace.RepoRoleApp})
 	if err == nil {
 		return nil
 	}

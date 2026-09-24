@@ -68,6 +68,7 @@ func (s *Service) CreateComputerTunnel(ctx context.Context, userID string, kind 
 		return nil, errors.Join(fmt.Errorf("save computer: %w", err), tunnels.DeleteTunnel(ctx, *t))
 	}
 	s.notifyComputersChanged(userID)
+	s.watchTunnel(userID, computer.ID)
 	return &computer, nil
 }
 
@@ -84,8 +85,20 @@ func (s *Service) ComputerTunnelToken(ctx context.Context, userID, computerID st
 	return token, nil
 }
 
-// ComputerTunnelStatus reports the tunnel's connector status and whether the harness answers through the hostname.
+// ComputerTunnelStatus reports the tunnel's two checks and, until both pass, keeps pushing their changes live.
 func (s *Service) ComputerTunnelStatus(ctx context.Context, userID, computerID string) (TunnelStatus, error) {
+	status, err := s.tunnelStatus(ctx, userID, computerID)
+	if err != nil {
+		return TunnelStatus{}, err
+	}
+	if !status.Connected() {
+		s.watchTunnel(userID, computerID)
+	}
+	return status, nil
+}
+
+// tunnelStatus reads Cloudflare's connector status, then probes the harness through the hostname.
+func (s *Service) tunnelStatus(ctx context.Context, userID, computerID string) (TunnelStatus, error) {
 	computer, tunnels, err := s.tunnelComputer(ctx, userID, computerID)
 	if err != nil {
 		return TunnelStatus{}, err

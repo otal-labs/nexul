@@ -1,11 +1,13 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { ContextAwareConfirmation } from "react-confirm";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import { TicketLinksSection } from "@/components/ticket/TicketLinksSection";
+import type { Ticket } from "@/models/Ticket";
 import type { LinkedTicket, TicketLinkSet } from "@/models/TicketLink";
 
 vi.mock("@/api/client", () => ({
@@ -35,23 +37,52 @@ const emptySet: TicketLinkSet = {
   blocked: false,
 };
 
+const ticket: Ticket = {
+  id: "t-1",
+  project_id: "p-1",
+  category_id: "",
+  type_id: "tt-task",
+  title: "frontend /books",
+  body: "",
+  status: "st-progress" as Ticket["status"],
+  position: 0,
+  number: 1,
+  doc_id: "",
+  developer: "",
+  tester: "",
+  reporter: { kind: "user", login: "onik97" },
+  created_at: "2026-09-01T00:00:00Z",
+  updated_at: "2026-09-01T00:00:00Z",
+  labels: null,
+};
+
+const statuses = [
+  { id: "st-progress", name: "Doing", kind: "progress" },
+  { id: "st-shipped", name: "Shipped", kind: "done" },
+];
+
 const mockApi = (set: TicketLinkSet) => {
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/tickets/t-1/ticket-links") return { data: set };
+    if (url === "/api/statuses") return { data: statuses };
+    if (url === "/api/ticket-types") {
+      return { data: [{ id: "tt-task", name: "task", body_template: "" }, { id: "tt-bug", name: "Bug", body_template: "## Steps" }] };
+    }
     if (url === "/api/tickets") {
       return { data: [{ id: "t-1", project_id: "p-1", number: 1, title: "frontend /books" }, { id: "t-2", project_id: "p-1", number: 2, title: "backend /books" }] };
     }
-    if (url === "/api/projects") return { data: [{ id: "p-1", prefix: "BKS" }] };
+    if (url === "/api/projects") return { data: [{ id: "p-1", prefix: "BKS", name: "Books" }] };
     return { data: [] };
   });
 };
 
-const renderSection = () => {
+const renderSection = (overrides: Partial<Ticket> = {}) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
-        <TicketLinksSection ticketId="t-1" />
+        <TicketLinksSection ticket={{ ...ticket, ...overrides }} />
+        <ContextAwareConfirmation.ConfirmationRoot />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -134,5 +165,32 @@ describe("TicketLinksSection", () => {
     await user.click(await screen.findByRole("button", { name: /BKS-2/ }));
     expect(api.put).toHaveBeenCalledWith("/api/tickets/t-1/found-in", { origin_id: "t-2" });
     await vi.waitFor(() => expect(toast.error).toHaveBeenCalledWith("that would form a cycle"));
+  });
+
+  it("titles a done ticket's bugs as found after done", async () => {
+    mockApi({ ...emptySet, bugs_found: [linked("t-6", 6, "books 500s")] });
+    renderSection({ status: "st-shipped" as Ticket["status"] });
+    expect(await screen.findByText("Bugs found after done")).toBeInTheDocument();
+    expect(screen.queryByText("Bugs found in this")).not.toBeInTheDocument();
+  });
+
+  it("reports a bug found in this ticket with the link pre-filled and the bug template", async () => {
+    mockApi(emptySet);
+    vi.mocked(api.post).mockResolvedValue({ data: { id: "t-9" } });
+    const user = userEvent.setup();
+    renderSection();
+    await user.click(await screen.findByRole("button", { name: "Report a bug" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(await within(dialog).findByRole("button", { name: /Found in BKS-1/ })).toBeInTheDocument();
+    expect(within(dialog).queryByRole("checkbox", { name: "Origin unknown" })).not.toBeInTheDocument();
+    await vi.waitFor(() => expect(within(dialog).getByRole("textbox", { name: "Body" })).toHaveValue("## Steps"));
+    await user.type(within(dialog).getByRole("textbox", { name: "Title" }), "books 500s");
+    await user.click(within(dialog).getByRole("button", { name: "Report bug" }));
+    await vi.waitFor(() =>
+      expect(api.post).toHaveBeenCalledWith(
+        "/api/tickets",
+        expect.objectContaining({ title: "books 500s", type_id: "tt-bug", origin_id: "t-1", project_id: "p-1" }),
+      ),
+    );
   });
 });

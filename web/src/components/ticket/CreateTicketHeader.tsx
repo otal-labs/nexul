@@ -7,8 +7,12 @@ import { menuItemClass, pillTriggerClass } from "@/components/ticket/ticketFormP
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import type { SaveTicketFormData } from "@/models/Ticket";
 
+interface CreateTicketHeaderProps {
+  title?: string;
+}
+
 // Shares CreateTicketForm's form instance, so picking a project here drives its re-seed effect.
-export const CreateTicketHeader = () => {
+export const CreateTicketHeader = ({ title = "New ticket" }: CreateTicketHeaderProps) => {
   const { watch, setValue } = useFormDialogContext<SaveTicketFormData>();
   const { data: projects } = useFetchProjects();
   const [open, setOpen] = useState(false);
@@ -42,7 +46,7 @@ export const CreateTicketHeader = () => {
         </PopoverContent>
       </Popover>
       <ChevronRightIcon className="size-3.5 text-muted-foreground" aria-hidden />
-      <span className="text-sm font-medium text-foreground">New ticket</span>
+      <span className="text-sm font-medium text-foreground">{title}</span>
     </div>
   );
 };

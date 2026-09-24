@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/otal-labs/nexul/internal/chat"
@@ -9,6 +10,7 @@ import (
 	"github.com/otal-labs/nexul/internal/docs/richtext"
 	"github.com/otal-labs/nexul/internal/memories"
 	"github.com/otal-labs/nexul/internal/pairing"
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/workspace"
@@ -135,4 +137,66 @@ func (a playsThreads) PostMessage(ctx context.Context, conversationID, authorID,
 func (a playsThreads) PostSystemNote(ctx context.Context, conversationID, viaUserID, body string) error {
 	_, err := a.svc.PostSystemMessage(ctx, conversationID, viaUserID, body)
 	return err
+}
+
+// playsLinkReader adapts tickets and docs to the runner's LinkReader seam: one hop, so the origin's own found-in is never read.
+type playsLinkReader struct {
+	tickets *tickets.Service
+	docs    agentDocReader
+}
+
+func (a playsLinkReader) TicketLinks(ctx context.Context, id string) (plays.TicketLinks, error) {
+	set, err := a.tickets.Links(ctx, id)
+	if err != nil {
+		return plays.TicketLinks{}, err
+	}
+	out := plays.TicketLinks{OriginUnknown: set.OriginUnknown}
+	for _, b := range set.BlockedBy {
+		out.Blockers = append(out.Blockers, playsLinkedTicket(b))
+	}
+	if set.FoundIn == nil {
+		return out, nil
+	}
+	origin, err := a.origin(ctx, *set.FoundIn)
+	if err != nil {
+		return plays.TicketLinks{}, err
+	}
+	out.Origin = origin
+	return out, nil
+}
+
+func (a playsLinkReader) origin(ctx context.Context, linked tickets.LinkedTicket) (*plays.OriginContext, error) {
+	t, err := a.tickets.Get(ctx, linked.ID)
+	if err != nil {
+		return nil, err
+	}
+	prs, _, err := a.tickets.ListLinks(ctx, linked.ID)
+	if err != nil {
+		return nil, err
+	}
+	o := &plays.OriginContext{LinkedTicket: playsLinkedTicket(linked), Body: t.Body}
+	for _, pr := range prs {
+		o.PRs = append(o.PRs, plays.PullRequest{Owner: pr.Owner, Repo: pr.Repo, Number: pr.Number, Title: pr.Title, State: string(pr.State)})
+	}
+	if t.DocID == "" {
+		return o, nil
+	}
+	d, err := a.docs.Get(ctx, t.DocID)
+	// A doc the starter cannot read, or one since deleted, is left out rather than failing the run.
+	if errors.Is(err, apperrs.ErrForbidden) || errors.Is(err, apperrs.ErrNotFound) {
+		return o, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	o.DocTitle, o.DocBody = d.Title, d.BodyMarkdown
+	return o, nil
+}
+
+func playsLinkedTicket(t tickets.LinkedTicket) plays.LinkedTicket {
+	key := t.ID
+	if t.Prefix != "" {
+		key = fmt.Sprintf("%s-%d", t.Prefix, t.Number)
+	}
+	return plays.LinkedTicket{Key: key, Title: t.Title, Done: t.Done}
 }

@@ -281,6 +281,29 @@ func TestProjectsRepo_AddRepo_PersistsConnectorID(t *testing.T) {
 	assert.Equal(t, "gitlab-self-hosted", got[0].ConnectorID)
 }
 
+func TestProjectsRepo_TestsRepository_RoundTrips(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	p := newTestProject("p-1", "A", 0)
+	require.NoError(t, s.Projects.Create(ctx, p))
+	require.NoError(t, s.Projects.AddRepo(ctx, "p-1",
+		workspace.RepoRef{Owner: "acme", Name: "e2e", FullName: "acme/e2e", ConnectorID: "github", Role: workspace.RepoRoleTests}))
+	p.TestsLocation = workspace.TestsLocationSeparate
+	require.NoError(t, s.Projects.Update(ctx, p))
+
+	repos, err := s.Projects.ListRepos(ctx, "p-1")
+	require.NoError(t, err)
+	require.Len(t, repos, 1)
+	assert.Equal(t, workspace.RepoRoleTests, repos[0].Role)
+	ref, err := s.Projects.GetRepoByFullName(ctx, "acme", "e2e")
+	require.NoError(t, err)
+	assert.Equal(t, workspace.RepoRoleTests, ref.Role)
+	got, err := s.Projects.Get(ctx, "p-1")
+	require.NoError(t, err)
+	assert.Equal(t, workspace.TestsLocationSeparate, got.TestsLocation)
+}
+
 func TestProjectsRepo_MoveTicket_PersistsAndNotFound(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

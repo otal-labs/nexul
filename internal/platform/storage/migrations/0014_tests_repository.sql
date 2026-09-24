@@ -1,0 +1,2 @@
+ALTER TABLE project_repos ADD COLUMN role TEXT NOT NULL DEFAULT 'app';
+ALTER TABLE projects ADD COLUMN tests_location TEXT NOT NULL DEFAULT '';

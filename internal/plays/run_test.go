@@ -149,6 +149,36 @@ func TestRun_Refusals_LeaveNoTrail(t *testing.T) {
 	}
 }
 
+func TestRun_SetupNotConfirmed_FailsOnPressWithTheChatRefusal(t *testing.T) {
+	f := newRunnerFixture()
+	f.harness.err = &pairing.NotConfiguredError{Reason: pairing.ReasonSetupRequired, Provider: "Codex", Computer: "Onik's laptop"}
+	want := "@Agent can't use Codex on Onik's laptop until its setup is done — run setup for Onik's laptop in Settings → Pairing."
+
+	_, err := f.runner.Run(ctxAs(starter), ticketRun())
+
+	require.ErrorIs(t, err, apperrs.ErrInvalid, "the HTTP and MCP adapters surface it as a bad request carrying the message")
+	assert.Equal(t, want, err.Error())
+	trails := f.trails.all()
+	require.Len(t, trails, 1)
+	assert.Equal(t, TrailFailed, trails[0].State)
+	assert.Equal(t, want, trails[0].LastError)
+	assert.Empty(t, f.threads.snapshot(), "nothing reaches the harness or the thread")
+}
+
+func TestRun_HarnessOffline_FailsOnPressWithTheChatRefusal(t *testing.T) {
+	f := newRunnerFixture()
+	f.harness.err = &pairing.NotConfiguredError{Reason: pairing.ReasonOffline, Computer: "Onik's laptop"}
+
+	_, err := f.runner.Run(ctxAs(starter), ticketRun())
+
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
+	assert.Equal(t, "@Agent can't reach Onik's laptop — is T3 Code running there?", err.Error())
+	trails := f.trails.all()
+	require.Len(t, trails, 1)
+	assert.Equal(t, TrailFailed, trails[0].State)
+	assert.Equal(t, err.Error(), trails[0].LastError)
+}
+
 func TestRun_HarnessNotReady_ReturnsReasonAndLeavesFailedTrail(t *testing.T) {
 	for _, reason := range []pairing.NotConfiguredReason{pairing.ReasonUnpaired, pairing.ReasonExpiredToken, pairing.ReasonNoDefault, pairing.ReasonNoDefaultComputer} {
 		t.Run(string(reason), func(t *testing.T) {

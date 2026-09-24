@@ -48,6 +48,13 @@ needs a usable computer. If no computer is paired, expired, offline, missing
 a T3 project, or ambiguous because no default was chosen, the UI shows the
 reason instead of firing a turn.
 
+A ticket play also tells the Agent about the ticket's links. On a bug it
+receives one hop of origin context: the body of the ticket the bug was found
+in, that ticket's doc, and its pull requests, never the origin's own origin.
+A bug filed with its origin unknown is run with that said plainly. A play on a
+blocked ticket asks "are you sure?" before it runs, and the Agent is told each
+blocker and whether it is done.
+
 Each press creates a persisted **Trail**. It records the starter, target,
 selected memories, instructions, resolved Harness choice, structured activity,
 the Agent reply, and the outcome. The trail is visible from the target and its

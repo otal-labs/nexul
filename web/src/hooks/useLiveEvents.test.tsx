@@ -384,6 +384,30 @@ describe("useLiveEvents dispatch", () => {
     expect(useVoiceOccupancyStore.getState().occupancy.c1).toBeUndefined();
   });
 
+  it("replaces a computer's cached tunnel checks on a computer.tunnel_status_changed push", async () => {
+    setup();
+    const socket = await connectedSocket();
+    const spy = invalidate();
+    act(() =>
+      socket.message(
+        JSON.stringify({
+          topic: "computer.tunnel_status_changed",
+          type: "event",
+          payload: { computer_id: "c1", user_id: "u1", tunnel: "healthy", harness_reachable: true, harness_version: "0.0.40" },
+        }),
+      ),
+    );
+    expect(client.getQueryData(["getTunnelStatus", "c1"])).toEqual({ tunnel: "healthy", harness_reachable: true, harness_version: "0.0.40" });
+    expect(spy).not.toHaveBeenCalled();
+
+    act(() =>
+      socket.message(
+        JSON.stringify({ topic: "computer.tunnel_status_changed", type: "event", payload: { computer_id: "c1", user_id: "u1", tunnel: "down", harness_reachable: false } }),
+      ),
+    );
+    expect(client.getQueryData(["getTunnelStatus", "c1"])).toEqual({ tunnel: "down", harness_reachable: false });
+  });
+
   it("applies a topology canvas patch to the flow store on a topology push", async () => {
     setup();
     const socket = await connectedSocket();

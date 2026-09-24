@@ -8,11 +8,13 @@ const (
 	TopicSetupUnconfirmed = "computer.setup_unconfirmed"
 	TopicTunnelCreated    = "computer.tunnel_created"
 	TopicTunnelRemoved    = "computer.tunnel_removed"
+	// TopicTunnelStatusChanged is ephemeral: published straight to the bus, never through the outbox.
+	TopicTunnelStatusChanged = "computer.tunnel_status_changed"
 )
 
 // Topics returns every topic the pairing domain publishes.
 func Topics() []string {
-	return []string{TopicSetupConfirmed, TopicSetupUnconfirmed, TopicTunnelCreated, TopicTunnelRemoved}
+	return []string{TopicSetupConfirmed, TopicSetupUnconfirmed, TopicTunnelCreated, TopicTunnelRemoved, TopicTunnelStatusChanged}
 }
 
 // SetupChangedEvent is the payload for both setup topics; an empty Provider means the overall confirmation.
@@ -30,4 +32,13 @@ type TunnelChangedEvent struct {
 	UserID     string `json:"user_id"`
 	TunnelID   string `json:"tunnel_id"`
 	Hostname   string `json:"hostname"`
+}
+
+// TunnelStatusChangedEvent carries a watched tunnel's two checks whole, so a consumer replaces its view instead of refetching.
+type TunnelStatusChangedEvent struct {
+	ComputerID       string `json:"computer_id"`
+	UserID           string `json:"user_id"`
+	Tunnel           string `json:"tunnel"`
+	HarnessReachable bool   `json:"harness_reachable"`
+	HarnessVersion   string `json:"harness_version,omitempty"`
 }

@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { ContextAwareConfirmation } from "react-confirm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
@@ -254,5 +255,39 @@ describe("PlayRunDialog", () => {
     const vps = await screen.findByRole("option", { name: /VPS/ });
     expect(vps).toHaveTextContent("Offline");
     expect(vps).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("asks before running on a blocked ticket, naming what it still waits on", async () => {
+    mockApi(["plays:run", "tickets:write"]);
+    const base = vi.mocked(api.get).getMockImplementation()!;
+    const blocker = { id: "t-2", project_id: "p-1", prefix: "BKS", number: 2, title: "backend", status: "open", done: false };
+    const cleared = { ...blocker, id: "t-3", number: 3, done: true };
+    vi.mocked(api.get).mockImplementation(async (url: string, config?: unknown) => {
+      if (url === "/api/tickets/t-1/ticket-links") {
+        return { data: { found_in: null, origin_unknown: false, bugs_found: [], blocks: [], blocked_by: [blocker, cleared], blocked: true } };
+      }
+      return base(url, config as never);
+    });
+    vi.mocked(api.post).mockResolvedValue({ data: { id: "tr-9", target_type: "ticket", target_id: "t-1", play_label: "Fix with AI" } });
+    const user = userEvent.setup();
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <PlayRunDialog play={play} projectId="p-1" targetType="ticket" targetId="t-1" open onClose={vi.fn()} />
+        <ContextAwareConfirmation.ConfirmationRoot />
+      </QueryClientProvider>,
+    );
+
+    const run = await screen.findByRole("button", { name: "Run Fix with AI · then In review" });
+    await user.click(run);
+    expect(await screen.findByText("This ticket is blocked")).toBeInTheDocument();
+    expect(screen.getByText("It still waits on BKS-2. Run Fix with AI anyway?")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByText("This ticket is blocked")).not.toBeInTheDocument());
+    expect(api.post).not.toHaveBeenCalled();
+
+    await user.click(run);
+    await user.click(await screen.findByRole("button", { name: "Run anyway" }));
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith("/api/plays/play-1/run", expect.objectContaining({ target_id: "t-1" })));
   });
 });

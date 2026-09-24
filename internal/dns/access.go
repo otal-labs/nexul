@@ -6,6 +6,9 @@ import (
 	"time"
 )
 
+// ErrCloudflareNotConnected marks an instance with no Cloudflare connection, so no DNS, tunnel, or Access call can work.
+var ErrCloudflareNotConnected = errors.New("cloudflare is not connected")
+
 // ErrZeroTrustDisabled marks a Cloudflare account that has no Zero Trust organization yet, so no Access call can work.
 var ErrZeroTrustDisabled = errors.New("zero trust is not enabled on the cloudflare account")
 

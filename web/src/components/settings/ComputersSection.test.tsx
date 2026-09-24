@@ -86,12 +86,12 @@ describe("ComputersSection", () => {
     expect(await screen.findByText(/acts as unpaired/i)).toBeInTheDocument();
   });
 
-  it("pairs a new computer through the dialog", async () => {
+  it("pairs a computer by URL through the form dialog", async () => {
     mocks.post.mockResolvedValue({ data: computer() });
     const user = userEvent.setup();
     renderSection();
 
-    await user.click(await screen.findByRole("button", { name: /pair a computer/i }));
+    await user.click(await screen.findByRole("button", { name: /pair by url/i }));
     await user.type(screen.getByLabelText(/^name$/i), "Home");
     await user.type(screen.getByLabelText(/t3 server url/i), "https://home.example.com");
     await user.type(screen.getByLabelText(/one-time pairing token/i), "one-time-tok");
@@ -104,6 +104,15 @@ describe("ComputersSection", () => {
         token: "one-time-tok",
       }),
     );
+  });
+
+  it("opens the pair-a-computer dialog on its Connect step", async () => {
+    const user = userEvent.setup();
+    renderSection();
+
+    await user.click(await screen.findByRole("button", { name: /pair a computer/i }));
+    expect(await screen.findByRole("dialog", { name: /pair a computer/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/computer name/i)).toBeInTheDocument();
   });
 
   it("re-pairs an existing computer, pre-filled with its name and URL", async () => {

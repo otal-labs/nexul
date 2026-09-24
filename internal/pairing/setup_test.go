@@ -160,7 +160,7 @@ func TestSetup_RePair_KeepsTheConfirmation(t *testing.T) {
 
 func TestTopics_ListsSetupAndTunnelTopics(t *testing.T) {
 	t.Parallel()
-	assert.Equal(t, []string{"computer.setup_confirmed", "computer.setup_unconfirmed", "computer.tunnel_created", "computer.tunnel_removed"}, Topics())
+	assert.Equal(t, []string{"computer.setup_confirmed", "computer.setup_unconfirmed", "computer.tunnel_created", "computer.tunnel_removed", "computer.tunnel_status_changed"}, Topics())
 }
 
 func toolNamed(t *testing.T, tools []mcptool.Tool, name string) mcptool.Tool {
@@ -186,9 +186,14 @@ func TestMCPTools_Shape(t *testing.T) {
 		names = append(names, tool.Name)
 		assert.NotEmpty(t, tool.Description)
 		assert.NotNil(t, tool.Call)
+		if tool.Name == "computer_tunnel_create" {
+			assert.Contains(t, tool.InputSchema["required"], "name")
+			continue
+		}
 		assert.Contains(t, tool.InputSchema["required"], "computer_id")
 	}
 	assert.ElementsMatch(t, []string{
+		"computer_tunnel_create", "computer_tunnel_status_get", "computer_tunnel_token_get",
 		"computer_setup_get", "computer_setup_confirm_provider", "computer_setup_unconfirm_provider",
 		"computer_setup_confirm", "computer_setup_unconfirm",
 	}, names)
@@ -206,6 +211,9 @@ func TestMCPTools_ArgumentErrors(t *testing.T) {
 		{"confirm provider without skills", "computer_setup_confirm_provider", map[string]any{"computer_id": "c1", "provider": "claude"}},
 		{"confirm provider with a non-string skill", "computer_setup_confirm_provider", map[string]any{"computer_id": "c1", "provider": "claude", "skills": []any{"tdd", 3.0}}},
 		{"unconfirm provider without provider", "computer_setup_unconfirm_provider", map[string]any{"computer_id": "c1"}},
+		{"tunnel create without name", "computer_tunnel_create", map[string]any{}},
+		{"tunnel status without computer", "computer_tunnel_status_get", map[string]any{}},
+		{"tunnel token without computer", "computer_tunnel_token_get", map[string]any{}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -221,6 +229,9 @@ func TestMCPTools_OwnerOnly(t *testing.T) {
 	t.Parallel()
 	svc, repo := newSetupService(t)
 	for _, tool := range MCPTools(svc) {
+		if tool.Name == "computer_tunnel_create" {
+			continue
+		}
 		_, err := tool.Call(actorCtx(t, "u2"), map[string]any{"computer_id": "c1", "provider": "claude", "skills": []any{"tdd"}})
 		assert.ErrorIs(t, err, apperrs.ErrNotFound, tool.Name)
 		_, err = tool.Call(t.Context(), map[string]any{"computer_id": "c1", "provider": "claude", "skills": []any{"tdd"}})

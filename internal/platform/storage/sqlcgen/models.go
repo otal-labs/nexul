@@ -605,14 +605,15 @@ type ProcessedEvent struct {
 }
 
 type Project struct {
-	ID          string
-	Name        string
-	Prefix      string
-	Position    int64
-	WorkspaceID string
-	CreatedAt   int64
-	UpdatedAt   int64
-	Icon        string
+	ID            string
+	Name          string
+	Prefix        string
+	Position      int64
+	WorkspaceID   string
+	CreatedAt     int64
+	UpdatedAt     int64
+	Icon          string
+	TestsLocation string
 }
 
 type ProjectRepo struct {
@@ -622,6 +623,7 @@ type ProjectRepo struct {
 	FullName    string
 	AddedAt     int64
 	ConnectorID string
+	Role        string
 }
 
 type Role struct {
