@@ -1,9 +1,16 @@
 package pairing
 
-import "context"
+import (
+	"context"
+	"time"
+
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
+)
 
 // Repo is the slice of SQLite the pairing domain needs; bearer tokens arrive already encrypted.
 type Repo interface {
+	SetupStore
+
 	// SaveComputer upserts a computer row (create on first pairing, update in place on re-pair).
 	SaveComputer(ctx context.Context, c Computer) error
 	// GetComputer returns one of userID's own computers, or ErrNotFound, never leaking a mismatched owner's row.
@@ -27,4 +34,14 @@ type Repo interface {
 	SaveProjectLink(ctx context.Context, link ProjectLink) error
 	// DeleteProjectLink clears projectID's link. A no-op if the project was never linked.
 	DeleteProjectLink(ctx context.Context, projectID string) error
+}
+
+// SetupStore persists setup confirmations; each write carries its event for the outbox in the same transaction.
+type SetupStore interface {
+	// SetSetupConfirmedAt sets or clears (nil) one of userID's own computers' overall confirmation, or ErrNotFound.
+	SetSetupConfirmedAt(ctx context.Context, userID, computerID string, at *time.Time, evt eventbus.OutboxEvent) error
+	// ListProviderSetups returns a computer's per-provider rows, ordered by provider.
+	ListProviderSetups(ctx context.Context, computerID string) ([]ProviderSetup, error)
+	// SaveProviderSetup upserts one provider's row on a computer; a nil ConfirmedAt records an un-confirmation.
+	SaveProviderSetup(ctx context.Context, computerID string, p ProviderSetup, updatedAt time.Time, evt eventbus.OutboxEvent) error
 }

@@ -15,6 +15,8 @@ export interface EventPayloads {
   "chat.message.created": { "message": Record<string, unknown>; };
   "chat.message.deleted": { "conversation_id": string; "message_id": string; "deleted_at": string; };
   "chat.message.updated": { "message": Record<string, unknown>; };
+  "computer.setup_confirmed": { "computer_id": string; "user_id": string; "provider"?: string; "confirmed_at"?: string; "skills"?: string[]; };
+  "computer.setup_unconfirmed": { "computer_id": string; "user_id": string; "provider"?: string; "confirmed_at"?: string; "skills"?: string[]; };
   "deploy.build_completed": { "id": string; "status": string; "artifacts"?: string[]; "error"?: string; };
   "deploy.build_progress": { "id": string; "step": number; "total": number; "log"?: string; };
   "deploy.build_started": { "id": string; "total": number; "log"?: string; };
@@ -95,6 +97,8 @@ export const TOPICS: Topic[] = [
   "chat.message.created",
   "chat.message.deleted",
   "chat.message.updated",
+  "computer.setup_confirmed",
+  "computer.setup_unconfirmed",
   "deploy.build_completed",
   "deploy.build_progress",
   "deploy.build_started",
@@ -173,6 +177,8 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "chat.message.created": {"message":{}},
   "chat.message.deleted": {"conversation_id":"fixture-conversation_id","message_id":"fixture-message_id","deleted_at":"2026-01-01T00:00:00Z"},
   "chat.message.updated": {"message":{}},
+  "computer.setup_confirmed": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","provider":"fixture-provider","confirmed_at":"2026-01-01T00:00:00Z","skills":["fixture-skills"]},
+  "computer.setup_unconfirmed": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","provider":"fixture-provider","confirmed_at":"2026-01-01T00:00:00Z","skills":["fixture-skills"]},
   "deploy.build_completed": {"id":"fixture-id","status":"fixture-status","artifacts":["fixture-artifacts"],"error":"fixture-error"},
   "deploy.build_progress": {"id":"fixture-id","step":1,"total":1,"log":"fixture-log"},
   "deploy.build_started": {"id":"fixture-id","total":1,"log":"fixture-log"},

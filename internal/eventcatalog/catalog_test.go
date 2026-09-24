@@ -41,6 +41,12 @@ func TestAllTopics_IncludesMemories(t *testing.T) {
 	assert.Contains(t, topics, "memory.deleted")
 }
 
+func TestAllTopics_IncludesComputerSetup(t *testing.T) {
+	topics := AllTopics()
+	assert.Contains(t, topics, "computer.setup_confirmed")
+	assert.Contains(t, topics, "computer.setup_unconfirmed")
+}
+
 func TestAllTopics_IncludesPlayRuns(t *testing.T) {
 	topics := AllTopics()
 	assert.Contains(t, topics, "play.run_started")

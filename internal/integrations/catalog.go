@@ -654,6 +654,30 @@ var catalogSchemas = map[string]string{
 			"author_id": {"type": "string"}
 		}
 	}`,
+	"computer.setup_confirmed": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["computer_id", "user_id"],
+		"properties": {
+			"computer_id": {"type": "string"},
+			"user_id": {"type": "string"},
+			"provider": {"type": "string"},
+			"confirmed_at": {"type": "string", "format": "date-time"},
+			"skills": {"type": "array", "items": {"type": "string"}}
+		}
+	}`,
+	"computer.setup_unconfirmed": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["computer_id", "user_id"],
+		"properties": {
+			"computer_id": {"type": "string"},
+			"user_id": {"type": "string"},
+			"provider": {"type": "string"},
+			"confirmed_at": {"type": "string", "format": "date-time"},
+			"skills": {"type": "array", "items": {"type": "string"}}
+		}
+	}`,
 	"ticket.category_changed": `{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",
 		"type": "object",

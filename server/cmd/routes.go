@@ -156,6 +156,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 		Chat:          svc.chatSvc,
 		Plays:         svc.playsSvc,
 		PlayRuns:      svc.playsRunner,
+		Pairing:       svc.pairingSvc,
 		DeadLetter:    store.DeadLetters,
 		Publisher:     bus,
 		Logger:        logger,

@@ -16,6 +16,7 @@ import (
 	"github.com/otal-labs/nexul/internal/docs"
 	"github.com/otal-labs/nexul/internal/gitprovider"
 	"github.com/otal-labs/nexul/internal/memories"
+	"github.com/otal-labs/nexul/internal/pairing"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/deadletter"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/testutil"
@@ -255,6 +256,7 @@ func newRegistryServer(t *testing.T) (*Server, *storage.Store, *fakePublisher) {
 		Invitations:   invitationSvc,
 		Plays:         plays.NewService(store.Plays, registryPlaysPermGate{svc: accessSvc}),
 		PlayRuns:      plays.NewRunner(plays.RunnerConfig{Plays: store.Plays, Trails: store.PlayTrails, Perm: registryPlaysPermGate{svc: accessSvc}}),
+		Pairing:       pairing.NewService(pairing.Config{Repo: store.Pairing}),
 		DeadLetter:    store.DeadLetters,
 		Publisher:     pub,
 		Actor: func(context.Context) identity.Actor {
@@ -265,7 +267,7 @@ func newRegistryServer(t *testing.T) (*Server, *storage.Store, *fakePublisher) {
 
 func TestRegistry_ToolsComplete(t *testing.T) {
 	srv, _, _ := newRegistryServer(t)
-	require.Len(t, srv.tools, 123)
+	require.Len(t, srv.tools, 129)
 	names := make(map[string]bool)
 	for _, tool := range srv.tools {
 		require.NotEmpty(t, tool.Name, "every tool must be named")
@@ -303,7 +305,9 @@ func TestRegistry_ToolsComplete(t *testing.T) {
 		"play_run", "play_run_get", "play_run_stop", "play_run_answer", "play_list_runs",
 		"memory_list", "memory_get", "memory_create", "memory_update", "memory_delete",
 		"create_invitation", "list_invitations", "revoke_invitation",
-		"list_accounts", "disable_account", "reactivate_account", "remove_account", "restore_account",
+		"account_whoami", "list_accounts", "disable_account", "reactivate_account", "remove_account", "restore_account",
+		"computer_setup_get", "computer_setup_confirm_provider", "computer_setup_unconfirm_provider",
+		"computer_setup_confirm", "computer_setup_unconfirm",
 	}
 	for _, name := range expected {
 		assert.True(t, names[name], "missing tool %s", name)

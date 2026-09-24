@@ -17,7 +17,7 @@ func TestComposePrompt_IncludesInstructionsContextAndRequest(t *testing.T) {
 		RequestAuthor: "onik97",
 		RequestBody:   "@Agent do the thing",
 	})
-	assert.Contains(t, out, "whoami-style tool")
+	assert.Contains(t, out, "account_whoami tool")
 	assert.Contains(t, out, "memories index")
 	assert.Contains(t, out, "onik97: first message")
 	assert.Contains(t, out, "Agent: previous reply")

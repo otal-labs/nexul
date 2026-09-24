@@ -49,9 +49,10 @@ nothing.
 Which domains this covers, as the tree stands:
 
 - Full five-file shape: `chat`, `codereview`, `deploy`, `dns`, `docs`,
-  `memories`, `plays`, `runner`, `tickets`, `topology`, `workspace`.
+  `memories`, `pairing`, `plays`, `runner`, `tickets`, `topology`,
+  `workspace`.
 - No `events.go` yet: `access`, `attachments`, `automations`, `connectors`,
-  `integrations`, `pairing`, `roles`, `tenancy`. The file is added with the
+  `integrations`, `roles`, `tenancy`. The file is added with the
   domain's first published event, never before, because an empty catalog entry
   is a contract nobody asked for.
 - Thin variants: `mentions` and `repository` have no `repo.go` (they read

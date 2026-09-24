@@ -4,6 +4,7 @@ package pairing
 import (
 	"fmt"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 
@@ -20,8 +21,10 @@ type Computer struct {
 	ServerURL      string       `json:"server_url"`
 	TokenExpiresAt time.Time    `json:"token_expires_at"`
 	HarnessVersion string       `json:"harness_version"`
-	CreatedAt      time.Time    `json:"created_at"`
-	UpdatedAt      time.Time    `json:"updated_at"`
+	// SetupConfirmedAt is the overall setup confirmation (ADR 0063); nil means unconfirmed.
+	SetupConfirmedAt *time.Time `json:"setup_confirmed_at"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
 	// BearerToken is encrypted at rest; the `-` tag keeps it off every HTTP response.
 	BearerToken string `json:"-"`
 }
@@ -29,6 +32,20 @@ type Computer struct {
 // Session is the harness-facing view of a computer; only call it on a decrypted copy.
 func (c Computer) Session() harness.Session {
 	return harness.Session{Name: c.Name, ServerURL: c.ServerURL, BearerToken: c.BearerToken}
+}
+
+// Setup is a computer's setup confirmation, overall and per provider (ADR 0063).
+type Setup struct {
+	ComputerID  string          `json:"computer_id"`
+	ConfirmedAt *time.Time      `json:"confirmed_at"`
+	Providers   []ProviderSetup `json:"providers"`
+}
+
+// ProviderSetup is one provider's confirmation on a computer, keyed by the provider's driver kind, never its instance id.
+type ProviderSetup struct {
+	Provider    string     `json:"provider"`
+	ConfirmedAt *time.Time `json:"confirmed_at"`
+	Skills      []string   `json:"skills"`
 }
 
 // Defaults are a user's pairing-settings defaults for non-project chat contexts; every field is optional.
@@ -82,6 +99,31 @@ func validateHarnessProjectID(id string) (string, error) {
 		return "", fmt.Errorf("%w: harness project id is required", apperrs.ErrInvalid)
 	}
 	return id, nil
+}
+
+// validateProvider normalizes a provider driver kind (claude, codex, opencode, …) and rejects a blank one.
+func validateProvider(provider string) (string, error) {
+	provider = strings.ToLower(strings.TrimSpace(provider))
+	if provider == "" {
+		return "", fmt.Errorf("%w: provider is required", apperrs.ErrInvalid)
+	}
+	return provider, nil
+}
+
+// validateSkills trims and de-duplicates the reported skills; a confirmation with none verified is rejected.
+func validateSkills(skills []string) ([]string, error) {
+	out := make([]string, 0, len(skills))
+	for _, skill := range skills {
+		skill = strings.TrimSpace(skill)
+		if skill == "" || slices.Contains(out, skill) {
+			continue
+		}
+		out = append(out, skill)
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("%w: at least one reported skill is required", apperrs.ErrInvalid)
+	}
+	return out, nil
 }
 
 // validateName rejects a blank computer name.

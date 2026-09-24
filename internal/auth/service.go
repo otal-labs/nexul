@@ -662,6 +662,18 @@ func (s *Service) Verify(token string) (string, error) {
 	return claims.UserID, nil
 }
 
+// Whoami returns the caller's own account, so an MCP client can confirm which user its token acts as.
+func (s *Service) Whoami(ctx context.Context, userID string) (*User, error) {
+	if userID == "" {
+		return nil, fmt.Errorf("%w: user is required", apperrs.ErrUnauthorized)
+	}
+	user, err := s.cfg.Users.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("get user %s: %w", userID, err)
+	}
+	return user, nil
+}
+
 // Me returns the user plus which onboarding wizard applies: owner wizard if fresh, first-login otherwise.
 func (s *Service) Me(ctx context.Context, userID string) (*OnboardingStatus, error) {
 	user, err := s.cfg.Users.GetUserByID(ctx, userID)

@@ -28,6 +28,8 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("DELETE /api/pairing/computers/{id}", h.deleteComputer)
 	mux.HandleFunc("GET /api/pairing/computers/{id}/projects", h.listProjects)
 	mux.HandleFunc("GET /api/pairing/computers/{id}/providers", h.listProviders)
+	// Read-only on purpose: a setup confirmation is written only through MCP (ADR 0063).
+	mux.HandleFunc("GET /api/pairing/computers/{id}/setup", h.getSetup)
 	mux.HandleFunc("GET /api/pairing/resolve", h.resolve)
 	mux.HandleFunc("GET /api/pairing/defaults", h.getDefaults)
 	mux.HandleFunc("PUT /api/pairing/defaults", h.setDefaults)
@@ -68,6 +70,15 @@ func (h *Handler) listProviders(w http.ResponseWriter, r *http.Request) {
 		providers = []harness.Provider{}
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"providers": providers})
+}
+
+func (h *Handler) getSetup(w http.ResponseWriter, r *http.Request) {
+	setup, err := h.svc.GetSetup(r.Context(), actorID(r), r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, setup)
 }
 
 type pairRequest struct {

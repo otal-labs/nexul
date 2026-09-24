@@ -17,6 +17,7 @@ import (
 	"github.com/otal-labs/nexul/internal/gitprovider"
 	"github.com/otal-labs/nexul/internal/memories"
 	"github.com/otal-labs/nexul/internal/mentions"
+	"github.com/otal-labs/nexul/internal/pairing"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/deadletter"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
@@ -51,6 +52,7 @@ type RegistryOptions struct {
 	Chat          *chat.Service
 	Plays         *plays.Service
 	PlayRuns      *plays.Runner
+	Pairing       *pairing.Service
 	DeadLetter    deadletter.Storer
 	Publisher     Publisher
 	Logger        *slog.Logger
@@ -151,6 +153,9 @@ func registerIdentityTools(s *Server, opts RegistryOptions) {
 	}
 	if opts.Chat != nil {
 		s.tools = append(s.tools, chat.MCPTools(opts.Chat)...)
+	}
+	if opts.Pairing != nil {
+		s.tools = append(s.tools, pairing.MCPTools(opts.Pairing)...)
 	}
 }
 
