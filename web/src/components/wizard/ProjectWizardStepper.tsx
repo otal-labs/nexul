@@ -2,6 +2,7 @@ import { useNavigate, useSearchParams } from "react-router";
 import { useShallow } from "zustand/react/shallow";
 
 import { DnsStep, type DnsStepState } from "@/components/dns/DnsStep";
+import { WizardBranchesStep } from "@/components/wizard/WizardBranchesStep";
 import { WizardDoneStep } from "@/components/wizard/WizardDoneStep";
 import { WizardEnvStep } from "@/components/wizard/WizardEnvStep";
 import { WizardProjectStep } from "@/components/wizard/WizardProjectStep";
@@ -10,7 +11,7 @@ import { WizardRepositoryStep } from "@/components/wizard/WizardRepositoryStep";
 import { WizardServiceStep } from "@/components/wizard/WizardServiceStep";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
 
-export const WizardSteps = ["project", "repository", "service", "env", "reach", "done"] as const;
+export const WizardSteps = ["project", "repository", "service", "env", "reach", "branches", "done"] as const;
 export type WizardStepId = (typeof WizardSteps)[number];
 
 interface ProjectWizardStepperProps {
@@ -33,6 +34,7 @@ export const ProjectWizardStepper = ({ step }: ProjectWizardStepperProps) => {
     name,
     machine,
     exposureHostname,
+    branchesSummary,
     stackId,
   } = useProjectWizardStore(
     useShallow((s) => ({
@@ -45,6 +47,7 @@ export const ProjectWizardStepper = ({ step }: ProjectWizardStepperProps) => {
       name: s.name,
       machine: s.machine,
       exposureHostname: s.exposureHostname,
+      branchesSummary: s.branchesSummary,
       stackId: s.stackId,
     })),
   );
@@ -58,12 +61,12 @@ export const ProjectWizardStepper = ({ step }: ProjectWizardStepperProps) => {
     if (isAttach) return candidate ? `${candidate.kind === "compose" ? "Compose" : "Dockerfile"} · ${candidate.path}` : undefined;
     return machine ? `${name} on ${machine}` : name;
   };
-  // Attach mode skips the Reach rung (the stack already has hostnames), so service and env land on "done".
+  // Attach mode skips the Reach rung (the stack already has hostnames), so service and env land on "branches".
   const afterService = (): WizardStepId => {
     if (showEnv) return "env";
-    return isAttach ? "done" : "reach";
+    return isAttach ? "branches" : "reach";
   };
-  const afterEnv = isAttach ? "done" : "reach";
+  const afterEnv = isAttach ? "branches" : "reach";
 
   const goTo = (next: WizardStepId) => {
     const query = searchParams.toString();
@@ -116,9 +119,18 @@ export const ProjectWizardStepper = ({ step }: ProjectWizardStepperProps) => {
           summary={exposureHostname ?? "Skipped"}
           onChange={() => goTo("reach")}
         >
-          <WizardReachStep onDone={() => goTo("done")} onSkip={() => goTo("done")} />
+          <WizardReachStep onDone={() => goTo("branches")} onSkip={() => goTo("branches")} />
         </DnsStep>
       )}
+      <DnsStep
+        title="Deploy branches"
+        description="Optional — deploy other branches as their own copies, each at its own URL."
+        state={stateFor("branches")}
+        summary={branchesSummary ?? "Skipped"}
+        onChange={() => goTo("branches")}
+      >
+        <WizardBranchesStep onDone={() => goTo("done")} onSkip={() => goTo("done")} />
+      </DnsStep>
       <DnsStep title="Done" state={stateFor("done")} last>
         {stackId && <WizardDoneStep />}
       </DnsStep>

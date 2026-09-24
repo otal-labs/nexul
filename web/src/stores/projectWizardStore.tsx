@@ -24,6 +24,7 @@ export type ProjectWizardStore = {
   stackId: string | null;
   exposureId: string | null;
   exposureHostname: string | null;
+  branchesSummary: string | null;
 
   setProjectId: (projectId: string, projectName: string, preselected?: boolean) => void;
   setAttachStackId: (attachStackId: string | null) => void;
@@ -35,6 +36,7 @@ export type ProjectWizardStore = {
   setEnvValues: (envValues: Record<string, string>) => void;
   setStackId: (stackId: string) => void;
   setExposure: (exposureId: string, hostname: string) => void;
+  setBranchesSummary: (branchesSummary: string) => void;
   reset: () => void;
 };
 
@@ -53,6 +55,7 @@ const initialState: Pick<
   | "stackId"
   | "exposureId"
   | "exposureHostname"
+  | "branchesSummary"
 > = {
   projectId: null,
   projectName: null,
@@ -67,6 +70,7 @@ const initialState: Pick<
   stackId: null,
   exposureId: null,
   exposureHostname: null,
+  branchesSummary: null,
 };
 
 export const useProjectWizardStore = create<ProjectWizardStore>((set) => ({
@@ -82,5 +86,6 @@ export const useProjectWizardStore = create<ProjectWizardStore>((set) => ({
   setEnvValues: (envValues) => set({ envValues }),
   setStackId: (stackId) => set({ stackId }),
   setExposure: (exposureId, exposureHostname) => set({ exposureId, exposureHostname }),
+  setBranchesSummary: (branchesSummary) => set({ branchesSummary }),
   reset: () => set(initialState),
 }));

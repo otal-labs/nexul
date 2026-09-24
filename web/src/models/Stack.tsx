@@ -61,6 +61,10 @@ export interface BranchDeployRule {
 export const derivesClone = (rule: Pick<BranchDeployRule, "pattern" | "name_suffix">): boolean =>
   rule.pattern.trim().endsWith("*") || !!rule.name_suffix?.trim();
 
+// Mirrors deploy.Stack.DefaultNetwork: the network the stack's own containers join.
+export const defaultNetwork = (stack: Pick<Stack, "strategy" | "slug" | "docker_network">): string =>
+  stack.strategy === "run" ? (stack.docker_network ?? "") : `${stack.slug}_default`;
+
 // Stack is a deploy stack definition (spec §2): a workload owned by one project, on one machine, with a strategy.
 export interface Stack {
   id: string;

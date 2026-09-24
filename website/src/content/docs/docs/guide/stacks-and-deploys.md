@@ -22,7 +22,8 @@ A **stack** is one repository's worth of deployable containers — a compose fil
 3. **Service** — name the stack and pick the [machine](/docs/guide/runners/) it deploys to. A compose file becomes a `compose` stack; a Dockerfile becomes a `run` stack.
 4. **Environment** — only shown when the scan found `.env.example` keys. Values are optional; the first deploy waits until this step is done, since a compose file's `env_file: .env` or `${VAR}` needs the values in place first.
 5. **Reach** — optional. Give the service a hostname now (see [Topology and DNS](/docs/guide/topology-and-dns/)), or skip it and do it later from the stack page.
-6. **Done** — a link to the stack's page, and a link to see it on the topology canvas.
+6. **Deploy branches** — optional. The first row is the repository's default branch, redeployed in place on every push at the service's hostname. Add rows like `feature/*` or `staging`: each deploys its own copy, shows the URL an example branch would get (`feature/security-test` → `security-test.example.com`), and picks a network from the machine's networks, listed with what runs on each. Under **Advanced options**, a row's overrides replace the default branch's environment values for that branch. A row on the default branch's network with no overrides uses production's services, including its database, and is never offered to testers. The rows save as the stack's branch deploy rules.
+7. **Done** — a link to the stack's page, and a link to see it on the topology canvas.
 
 ## The stack page
 
@@ -56,6 +57,8 @@ A **branch deploy rule** maps a branch pattern — an exact name like `main`, or
 
 - An **exact** rule with no name suffix redeploys the base stack itself in place.
 - A **wildcard** rule spawns a **preview deployment**: one clone per matching branch, on its own network and (if a hostname template is set) its own hostname, torn down automatically when the branch is deleted.
+
+In a hostname template, `{branch}` becomes the branch as a hostname label: for a wildcard rule, only the part the wildcard matched, so `feature/dot.test` under `feature/*` with `{branch}.example.com` is served at `dot-test.example.com`. Dots, slashes, and capitals become dashes and lowercase, trimmed to 63 characters.
 
 A rule that deploys its own copy (a wildcard, or an exact name with a name suffix) can carry **overrides**: `KEY=value` lines that replace the base stack's environment values for that branch only, like a `DATABASE_URL` pointing at a QA database. The copy runs with the overrides while the base keeps its own values. Remove an override and the next deploy of that branch goes back to the base value. An in-place rule deploys the base stack itself, so it has nothing to override; edit the base stack's environment instead. Edit overrides from a rule's **Overrides** button, or pass `overrides` on a rule in the `stack_update` MCP tool. Override values are stored and handled like the stack's own environment values.
 

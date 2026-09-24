@@ -472,7 +472,7 @@ func branchDeployRulesSchema() map[string]any {
 			"properties": map[string]any{
 				"pattern":           map[string]any{"type": "string", "description": "An exact branch name, or a single trailing wildcard like feature/*."},
 				"docker_network":    map[string]any{"type": "string"},
-				"hostname_template": map[string]any{"type": "string", "description": "{branch} is replaced by the branch slug."},
+				"hostname_template": map[string]any{"type": "string", "description": "{branch} is replaced by the branch as a hostname label: the part a wildcard matched (feature/dot.test under feature/* becomes dot-test), or the whole branch for an exact pattern."},
 				"port":              map[string]any{"type": "integer", "description": "Required with a hostname template."},
 				"name_suffix":       map[string]any{"type": "string", "description": "Exact patterns only; derives a clone instead of redeploying the base in place."},
 				"overrides": map[string]any{

@@ -70,6 +70,7 @@ describe("ProjectWizardPage", () => {
     expect(rung(/^repository$/i)).toHaveAttribute("data-state", "upcoming");
     expect(rung(/^service$/i)).toHaveAttribute("data-state", "upcoming");
     expect(rung(/^reach$/i)).toHaveAttribute("data-state", "upcoming");
+    expect(rung(/^deploy branches$/i)).toHaveAttribute("data-state", "upcoming");
     expect(rung(/^done$/i)).toHaveAttribute("data-state", "upcoming");
   });
 
