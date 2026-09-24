@@ -7,7 +7,7 @@
 
 ## What to build
 
-Build the first step of the pair-a-computer dialog in the locked design: step tabs, per-OS install commands for `cloudflared` as a service with the computer's tunnel token, a live *this computer ↔ Nexul* panel, and two checks (tunnel online, T3 Code answering) pushed live. An alert card explains a missing prerequisite with its fix (Cloudflare not connected, Zero Trust not enabled). Next stays disabled until both checks pass. Source components in the owner's order: codedvisuals, then shadcncraft, then shadcn/ui, as mapped in ticket 13. The dialog frame and step tabs are shadcncraft Pro blocks (`modal-1`, `progress-3`): rebuild them from their live demos (inspect the block pages in the browser for structure, spacing, and transition timings) rather than falling back to plain shadcn/ui.
+Build the first step of the pair-a-computer dialog in the locked design: step tabs, per-OS install commands for `cloudflared` as a service with the computer's tunnel token, a live *this computer ↔ Nexul* panel, and two checks (tunnel online, T3 Code answering) pushed live. An alert card explains a missing prerequisite with its fix (Cloudflare not connected, Zero Trust not enabled). Next stays disabled until both checks pass. Source every piece from the locked component map for this dialog (kept outside the repo; see ticket 13): registry components for the panel, checks, and command blocks, and the dialog frame and step tabs rebuilt from their reference blocks rather than a plain dialog.
 
 ## Acceptance criteria
 

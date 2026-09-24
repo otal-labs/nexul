@@ -18,9 +18,10 @@ refusals show, so this one follows it.
 ## Answer
 
 Design session 2026-09-24. The owner delegated the pick ("I trust you in
-terms of design") and set the component rule: codedvisuals first, then
-shadcncraft, then shadcn/ui. The three locked references are saved outside
-the repo in the owner's design-reference log, with notes.
+terms of design") and set the rule that components come from the paid
+registries first, then the primitives. The locked references and the exact
+component map live outside the repo, in the owner's design-reference log and
+project memory.
 
 **The look.** One dark dialog with segmented step tabs across the top —
 **Connect → Pair T3 Code → Set up** — that becomes a full-screen sheet at
@@ -44,20 +45,13 @@ the repo in the owner's design-reference log, with notes.
   row pattern — setup badge, one line per provider, Set up / Re-run setup
   opening this dialog.
 
-**Components, in the owner's source order.**
-
-| Piece | Source | Notes |
-|---|---|---|
-| Connection panel | codedvisuals `connections-sync` | Drive idle vs connected from live state; pulse only once connected |
-| The two checks | codedvisuals `status-health-check` | `items` from tunnel status and the T3 probe |
-| Install commands | codedvisuals `code-terminal` | Static lines (`animated={false}`), copy button; matches the terminal motif |
-| Setup runs | codedvisuals `ai-tools` | One row per provider; status from setup-turn events, not its demo timeline |
-| Dialog frame, step tabs | shadcncraft `modal-1`, `progress-3` | Pro items, rebuilt from their live demos: read each block's page for its dependency list, structure, spacing, and transition timings, then build it on shadcn/ui primitives (`dialog`, `drawer` for the mobile sheet, `tabs`) in Mono Console tokens |
-| Pre-selection checkboxes | shadcn/ui `checkbox` | Neither paid source has a better fit |
-
-codedvisuals components install as owned source files (React + Motion) and
-all take data through props. Re-skin every one in Mono Console tokens:
-`gradient`, `glow`, `particles`, and `isometric` off; monochrome except
-status colour; reduced motion honoured. Register the codedvisuals registry
-in `web/components.json` with the `${CODEDVISUALS_TOKEN}` placeholder when
-building. Motion tuning goes through animation-mode once the look is built.
+**Components.** Each piece is sourced from the locked component map (kept
+outside the repo): the connection panel, the two checks, the terminal
+command block, and the per-provider run rows are animated registry
+components installed as owned source and driven by live state; the dialog
+frame and step tabs are rebuilt from a stepped-modal and a horizontal-stepper
+block on the existing `dialog`, `drawer` (mobile sheet), and `tabs`
+primitives; the pre-selection uses `checkbox`. Re-skin everything in Mono
+Console tokens — no gradients, glow, particles, or isometric views,
+monochrome except status colour, reduced motion honoured. Motion tuning goes
+through animation-mode once the look is built.
