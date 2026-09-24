@@ -140,6 +140,12 @@ no users yet, move quick):
   nothing special; Access app before CNAME, ordered teardown, two added
   connector permissions, Zero Trust enabled once by the owner, "online"
   means tunnel healthy plus a T3 probe through the hostname.
+- [The setup wizard's look](issues/13-wizard-look.md) — one dark dialog
+  with step tabs (Connect → Pair T3 Code → Set up), a full-screen sheet on
+  mobile; commands beside a live *this computer ↔ Nexul* panel, one live
+  row per provider for the setup runs; codedvisuals supplies the panel,
+  checks, terminal, and run rows, the frame falls back to shadcn/ui unless a
+  shadcncraft Pro key is added.
 - [Which skill sets "setup" installs](issues/03-which-skill-sets.md) —
   mattpocock/skills is the default the wizard installs (users may amend their
   copies); pstack is a README credit only; no Nexul-shipped skill for now —
