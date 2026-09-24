@@ -133,6 +133,28 @@ func TestBranchDeployRule_DerivesCloneAndCloneSuffix(t *testing.T) {
 	})
 }
 
+func TestBranchDeployRule_HostnameLabel(t *testing.T) {
+	tests := []struct {
+		name    string
+		pattern string
+		branch  string
+		want    string
+	}{
+		{"wildcard keeps only the matched part", "feature/*", "feature/security-test", "security-test"},
+		{"dots and capitals become dashes and lowercase", "feature/*", "feature/Dot.Test", "dot-test"},
+		{"nested slashes become dashes", "staging/*", "staging/eu/west", "eu-west"},
+		{"empty match falls back to the whole branch", "feature/*", "feature/", "feature"},
+		{"exact rule uses the whole branch", "release/v1.2", "release/v1.2", "release-v1-2"},
+		{"long branch is trimmed to a DNS label", "feature/*", "feature/" + strings.Repeat("a", 70), strings.Repeat("a", 63)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := BranchDeployRule{Pattern: tt.pattern, DockerNetwork: "app-net"}
+			assert.Equal(t, tt.want, r.HostnameLabel(tt.branch))
+		})
+	}
+}
+
 func TestStack_Validate_BranchDeployRules(t *testing.T) {
 	t.Run("wildcard rule requires a build source", func(t *testing.T) {
 		stack := validStack()

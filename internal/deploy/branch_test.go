@@ -281,7 +281,7 @@ func TestHandlePush_HostnameTemplate_EnsuresExposure(t *testing.T) {
 
 	got, ok := exposures.get("api-feature-x")
 	require.True(t, ok)
-	assert.Equal(t, "feature-x.example.com", got.hostname)
+	assert.Equal(t, "x.example.com", got.hostname)
 	assert.Equal(t, 8080, got.port)
 	assert.Equal(t, "app-net", got.network)
 	assert.Equal(t, 1, exposures.ensureCalls)
