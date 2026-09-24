@@ -2,6 +2,7 @@ package deploy
 
 import (
 	"fmt"
+	"maps"
 	"regexp"
 	"strings"
 	"time"
@@ -142,6 +143,8 @@ type BranchDeployRule struct {
 	NameSuffix       string `json:"name_suffix,omitempty"`
 	// Port is the container port HostnameTemplate exposes; required whenever HostnameTemplate is set.
 	Port int `json:"port,omitempty"`
+	// Overrides replace the base stack's env values in this rule's branch deployments only.
+	Overrides map[string]string `json:"overrides,omitempty"`
 }
 
 // Validate rejects a rule that cannot be evaluated or saved.
@@ -169,7 +172,34 @@ func (r BranchDeployRule) Validate() error {
 	if r.HostnameTemplate != "" && r.Port <= 0 {
 		return fmt.Errorf("%w: branch deploy rule %q's hostname template requires a port", apperrs.ErrInvalid, r.Pattern)
 	}
+	return r.validateOverrides()
+}
+
+// validateOverrides rejects overrides on an in-place rule, whose deployment is the base stack itself.
+func (r BranchDeployRule) validateOverrides() error {
+	if len(r.Overrides) == 0 {
+		return nil
+	}
+	if !r.DerivesClone() {
+		return fmt.Errorf("%w: branch deploy rule %q deploys the base stack in place, so it cannot override its settings; set a name suffix or edit the base stack's env", apperrs.ErrInvalid, r.Pattern)
+	}
+	for k := range r.Overrides {
+		if strings.TrimSpace(k) == "" {
+			return fmt.Errorf("%w: branch deploy rule %q has an override with an empty key", apperrs.ErrInvalid, r.Pattern)
+		}
+	}
 	return nil
+}
+
+// ApplyOverrides returns base's env with the rule's overrides on top; base itself is never modified.
+func (r BranchDeployRule) ApplyOverrides(base map[string]string) map[string]string {
+	if len(r.Overrides) == 0 {
+		return base
+	}
+	env := make(map[string]string, len(base)+len(r.Overrides))
+	maps.Copy(env, base)
+	maps.Copy(env, r.Overrides)
+	return env
 }
 
 // IsWildcard reports whether the pattern ends in a single trailing wildcard.

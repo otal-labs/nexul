@@ -196,7 +196,7 @@ func TestStacksRepo_BranchDeployRules_RoundTrip(t *testing.T) {
 	stack.BuildSource = &deploy.BuildSource{RepoOwner: "acme", RepoName: "api", Dockerfile: "Dockerfile"}
 	stack.BranchDeployRules = []deploy.BranchDeployRule{
 		{Pattern: "main", DockerNetwork: "app-net"},
-		{Pattern: "feature/*", DockerNetwork: "app-net", HostnameTemplate: "{branch}.example.com", Port: 8080},
+		{Pattern: "feature/*", DockerNetwork: "app-net", HostnameTemplate: "{branch}.example.com", Port: 8080, Overrides: map[string]string{"DATABASE_URL": "postgres://qa"}},
 	}
 	require.NoError(t, s.Stacks.Create(context.Background(), stack))
 
@@ -207,6 +207,7 @@ func TestStacksRepo_BranchDeployRules_RoundTrip(t *testing.T) {
 	assert.Equal(t, "feature/*", got.BranchDeployRules[1].Pattern)
 	assert.Equal(t, "{branch}.example.com", got.BranchDeployRules[1].HostnameTemplate)
 	assert.Equal(t, 8080, got.BranchDeployRules[1].Port)
+	assert.Equal(t, map[string]string{"DATABASE_URL": "postgres://qa"}, got.BranchDeployRules[1].Overrides)
 }
 
 func TestStacksRepo_DerivedFromAndBranch_RoundTrip(t *testing.T) {
