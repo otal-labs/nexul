@@ -59,7 +59,7 @@ func ticketToMentionTicket(t *tickets.Ticket) *mentions.Ticket {
 		Number:    t.Number,
 		ProjectID: t.ProjectID,
 		TypeID:    t.TypeID,
-		Assignee:  t.Assignee,
+		Developer: t.Developer,
 	}
 }
 

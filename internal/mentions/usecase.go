@@ -189,16 +189,16 @@ func (s *Service) resolveTicket(ctx context.Context, id string) (Chip, error) {
 	}
 	prefix := s.projectPrefix(ctx, t.ProjectID)
 	return Chip{
-		Type:          string(KindTicket),
-		ID:            t.ID,
-		Title:         t.Title,
-		Status:        t.Status,
-		StatusLabel:   s.statusLabel(ctx, t.Status),
-		CanOpen:       true,
-		ProjectPrefix: prefix,
-		ProjectNumber: t.Number,
-		TypeLabel:     s.typeLabel(ctx, t.TypeID),
-		AssigneeLabel: t.Assignee,
+		Type:           string(KindTicket),
+		ID:             t.ID,
+		Title:          t.Title,
+		Status:         t.Status,
+		StatusLabel:    s.statusLabel(ctx, t.Status),
+		CanOpen:        true,
+		ProjectPrefix:  prefix,
+		ProjectNumber:  t.Number,
+		TypeLabel:      s.typeLabel(ctx, t.TypeID),
+		DeveloperLabel: t.Developer,
 	}, nil
 }
 

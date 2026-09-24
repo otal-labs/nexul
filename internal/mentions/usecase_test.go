@@ -180,7 +180,7 @@ func TestResolve_TicketChip(t *testing.T) {
 // TestResolve_TicketChip_ExtraFields proves the chip template's extra fields (spec.md section 6, ticket 05) are populated from the ticket plus its project and type.
 func TestResolve_TicketChip_ExtraFields(t *testing.T) {
 	tickets := &fakeTicketSource{tickets: map[string]Ticket{
-		"t-1": {ID: "t-1", Title: "Fix the bug", Status: "open", Number: 7, ProjectID: "p-1", TypeID: "type-bug", Assignee: "onik97"},
+		"t-1": {ID: "t-1", Title: "Fix the bug", Status: "open", Number: 7, ProjectID: "p-1", TypeID: "type-bug", Developer: "onik97"},
 	}}
 	statuses := &fakeStatusSource{statuses: map[string]Status{"open": {ID: "open", Name: "Open"}}}
 	projects := &fakeProjectSource{projects: map[string]Project{"p-1": {ID: "p-1", Prefix: "ERF"}}}
@@ -196,7 +196,7 @@ func TestResolve_TicketChip_ExtraFields(t *testing.T) {
 	assert.Equal(t, "ERF", chips[0].ProjectPrefix)
 	assert.Equal(t, 7, chips[0].ProjectNumber)
 	assert.Equal(t, "Bug", chips[0].TypeLabel)
-	assert.Equal(t, "onik97", chips[0].AssigneeLabel)
+	assert.Equal(t, "onik97", chips[0].DeveloperLabel)
 	assert.Equal(t, "", chips[0].DueLabel, "no due-date concept exists yet (ticket 05 flagged decision)")
 }
 

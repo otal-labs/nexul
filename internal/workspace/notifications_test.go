@@ -438,18 +438,20 @@ func TestHandleTicketCreated(t *testing.T) {
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrFatal))
 	})
-	t.Run("fans out to assignee and mentions", func(t *testing.T) {
+	t.Run("fans out to developer and mentions", func(t *testing.T) {
 		repo := newFakeNotifRepo()
-		users := newFakeNotifUsers(notifUser("u1", "onik97"), notifUser("u2", "alice"))
+		users := newFakeNotifUsers(notifUser("u1", "onik97"), notifUser("u2", "alice"), notifUser("u3", "lena"))
 		s := newTestNotifService(repo, users)
 		payload := map[string]any{
 			"ticket": map[string]any{
-				"id": "t-1", "title": "Fix @alice bug", "body": "@onik97 please triage", "assignee": "onik97",
+				"id": "t-1", "title": "Fix @alice bug", "body": "@onik97 please triage", "developer": "onik97", "tester": "lena",
 			},
 		}
 		require.NoError(t, HandleTicketCreated(context.Background(), s, notifEvFor(t, "ticket.created", payload)))
 
 		onik := repo.notifsFor("u1")
+		require.Len(t, repo.notifsFor("u3"), 1)
+		assert.Equal(t, KindTicketAssigned, repo.notifsFor("u3")[0].Kind)
 		require.Len(t, onik, 1)
 		assert.Equal(t, KindTicketAssigned, onik[0].Kind)
 		assert.Equal(t, SubjectTicket, onik[0].SubjectType)
@@ -465,12 +467,12 @@ func TestHandleTicketCreated(t *testing.T) {
 
 		assert.Equal(t, []string{TopicNotificationCreated}, repo.topics())
 	})
-	t.Run("unknown assignee and mentions are skipped", func(t *testing.T) {
+	t.Run("unknown people and mentions are skipped", func(t *testing.T) {
 		repo := newFakeNotifRepo()
 		users := newFakeNotifUsers(notifUser("u1", "onik97"))
 		s := newTestNotifService(repo, users)
 		payload := map[string]any{
-			"ticket": map[string]any{"id": "t-1", "title": "@ghost bug", "body": "@nobody", "assignee": "ghost"},
+			"ticket": map[string]any{"id": "t-1", "title": "@ghost bug", "body": "@nobody", "developer": "ghost", "tester": "phantom"},
 		}
 		require.NoError(t, HandleTicketCreated(context.Background(), s, notifEvFor(t, "ticket.created", payload)))
 		assert.Empty(t, repo.notifsFor("u1"))
@@ -487,7 +489,7 @@ func TestHandleTicketCreated(t *testing.T) {
 		repo := newFakeNotifRepo()
 		repo.createErr = errors.New("db down")
 		s := newTestNotifService(repo, newFakeNotifUsers(notifUser("u1", "onik97")))
-		payload := map[string]any{"ticket": map[string]any{"id": "t-1", "assignee": "onik97"}}
+		payload := map[string]any{"ticket": map[string]any{"id": "t-1", "developer": "onik97"}}
 		err := HandleTicketCreated(context.Background(), s, notifEvFor(t, "ticket.created", payload))
 		require.Error(t, err)
 		assert.ErrorIs(t, err, repo.createErr)
@@ -495,12 +497,12 @@ func TestHandleTicketCreated(t *testing.T) {
 }
 
 func TestHandleTicketStatusChanged(t *testing.T) {
-	t.Run("fans out to assignee and mentions", func(t *testing.T) {
+	t.Run("fans out to developer and mentions", func(t *testing.T) {
 		repo := newFakeNotifRepo()
 		users := newFakeNotifUsers(notifUser("u1", "onik97"), notifUser("u2", "alice"))
 		s := newTestNotifService(repo, users)
 		payload := map[string]any{
-			"ticket": map[string]any{"id": "t-1", "title": "Fix @alice", "assignee": "onik97"},
+			"ticket": map[string]any{"id": "t-1", "title": "Fix @alice", "developer": "onik97"},
 		}
 		require.NoError(t, HandleTicketStatusChanged(context.Background(), s, notifEvFor(t, "ticket.status_changed", payload)))
 		require.Len(t, repo.notifsFor("u1"), 1)
@@ -508,17 +510,18 @@ func TestHandleTicketStatusChanged(t *testing.T) {
 		require.Len(t, repo.notifsFor("u2"), 1)
 		assert.Equal(t, KindTicketStatus, repo.notifsFor("u2")[0].Kind)
 	})
-	t.Run("mention matching the assignee is not duplicated", func(t *testing.T) {
+	t.Run("mention matching the developer or tester is not duplicated", func(t *testing.T) {
 		repo := newFakeNotifRepo()
-		users := newFakeNotifUsers(notifUser("u1", "onik97"))
+		users := newFakeNotifUsers(notifUser("u1", "onik97"), notifUser("u2", "alice"))
 		s := newTestNotifService(repo, users)
 		payload := map[string]any{
-			"ticket": map[string]any{"id": "t-1", "title": "@onik97 fix", "assignee": "onik97"},
+			"ticket": map[string]any{"id": "t-1", "title": "@onik97 @alice fix", "developer": "onik97", "tester": "alice"},
 		}
 		require.NoError(t, HandleTicketStatusChanged(context.Background(), s, notifEvFor(t, "ticket.status_changed", payload)))
 		require.Len(t, repo.notifsFor("u1"), 1)
+		require.Len(t, repo.notifsFor("u2"), 1)
 	})
-	t.Run("no assignee and no mentions is a no-op", func(t *testing.T) {
+	t.Run("no people and no mentions is a no-op", func(t *testing.T) {
 		repo := newFakeNotifRepo()
 		s := newTestNotifService(repo, newFakeNotifUsers(notifUser("u1", "onik97")))
 		payload := map[string]any{"ticket": map[string]any{"id": "t-1", "title": "x"}}

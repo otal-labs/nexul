@@ -16,7 +16,7 @@ export interface MentionChipData {
   project_prefix?: string;
   project_number?: number;
   type_label?: string;
-  assignee_label?: string;
+  developer_label?: string;
   due_label?: string;
 }
 

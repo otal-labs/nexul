@@ -71,7 +71,18 @@ var catalogSchemas = map[string]string{
 					"body": {"type": "string"},
 					"status": {"type": "string", "enum": ["open", "in_progress", "done", "closed"]},
 					"doc_id": {"type": "string"},
-					"assignee": {"type": "string"},
+					"developer": {"type": "string"},
+					"tester": {"type": "string"},
+					"reporter": {
+						"type": "object",
+						"required": ["kind"],
+						"properties": {
+							"kind": {"type": "string", "enum": ["user", "user:mcp", "automation"]},
+							"login": {"type": "string"},
+							"automation_id": {"type": "string"},
+							"automation_name": {"type": "string"}
+						}
+					},
 					"created_at": {"type": "string", "format": "date-time"},
 					"updated_at": {"type": "string", "format": "date-time"},
 					"finished_at": {"type": ["string", "null"], "format": "date-time"}
@@ -466,7 +477,17 @@ var catalogSchemas = map[string]string{
 		"required": ["ticket"],
 		"properties": {"ticket": {"type": "object"}}
 	}`,
-	"ticket.assignee_changed": `{
+	"ticket.developer_changed": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["ticket", "from", "to"],
+		"properties": {
+			"ticket": {"type": "object"},
+			"from": {"type": "string"},
+			"to": {"type": "string"}
+		}
+	}`,
+	"ticket.tester_changed": `{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",
 		"type": "object",
 		"required": ["ticket", "from", "to"],

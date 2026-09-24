@@ -24,7 +24,7 @@ vi.mock("react-router", async () => {
   return { ...actual, useNavigate: () => mockNavigate };
 });
 
-const ticket = (id: string, title: string, status: string, assignee = "onik97"): Ticket => ({
+const ticket = (id: string, title: string, status: string, developer = "onik97", tester = "lena"): Ticket => ({
   id,
   project_id: "p-1",
   category_id: "c-1",
@@ -35,7 +35,9 @@ const ticket = (id: string, title: string, status: string, assignee = "onik97"):
   position: 0,
   number: 142,
   doc_id: "",
-  assignee,
+  developer,
+  tester,
+  reporter: { kind: "user", login: "onik97" },
   created_at: "2026-08-02T12:00:00Z",
   updated_at: "2026-08-02T12:00:00Z",
   labels: [],
@@ -112,14 +114,27 @@ describe("TicketCard", () => {
     expect(screen.getByText("Fix login")).toBeInTheDocument();
   });
 
-  it("renders the assignee's GitHub avatar", () => {
+  it("renders the developer's GitHub avatar outside testing columns", () => {
     renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
+    expect(screen.getByRole("img", { name: "developer onik97" })).toBeInTheDocument();
     expect(screen.getByTitle("onik97")).toHaveAttribute("src", "https://github.com/onik97.png");
+    expect(screen.queryByTitle("lena")).not.toBeInTheDocument();
   });
 
-  it("renders no avatar when there is no assignee", () => {
-    renderCard(<TicketCard ticket={{ ...ticket("t-1", "Fix login", "open"), assignee: "" }} />);
-    expect(screen.queryByTitle("", { exact: false })).not.toBeInTheDocument();
+  it("switches to the tester's avatar in a testing-stage column", async () => {
+    const base = vi.mocked(api.get).getMockImplementation()!;
+    vi.mocked(api.get).mockImplementation(async (url, config) => {
+      if (url === "/api/statuses") return { data: [{ id: "qa", name: "QA", kind: "testing", icon: "Circle", position: 0 }] };
+      return base(url, config);
+    });
+    renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "qa")} />);
+    expect(await screen.findByRole("img", { name: "tester lena" })).toBeInTheDocument();
+    expect(screen.queryByTitle("onik97")).not.toBeInTheDocument();
+  });
+
+  it("renders no avatar when the column's person is unset", () => {
+    renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open", "")} />);
+    expect(screen.queryByRole("img", { name: /developer/ })).not.toBeInTheDocument();
   });
 
   it("shows a chat indicator when the ticket has a thread", async () => {

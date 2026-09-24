@@ -105,7 +105,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 
 	// The hub relays/persists Y.js updates and commits via the docs use-case layer (ADR 0017 seam, collab never imports docs).
 	collabHub := collab.NewHub(logger, store.Collab, accessSvc, collabDocWriter{docsSvc})
-	ticketsSvc := tickets.NewService(store.Tickets, store.Statuses)
+	ticketsSvc := tickets.NewService(store.Tickets, store.Statuses, workspaceUserStore{users: store.Users})
 	mentionsSvc := mentions.New(mentions.Config{
 		Tickets:     mentionTicketSource{repo: store.Tickets},
 		Docs:        mentionDocSource{repo: store.Docs},

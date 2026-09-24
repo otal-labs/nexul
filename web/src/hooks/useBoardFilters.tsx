@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 
 import type { BoardFilters } from "@/components/board/BoardFilterBar";
+import { useFetchMe } from "@/hooks/AuthHooks";
+import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
+import { StatusKind } from "@/models/Status";
 import type { Ticket } from "@/models/Ticket";
 
 const EMPTY_FILTERS: BoardFilters = {
@@ -9,7 +12,8 @@ const EMPTY_FILTERS: BoardFilters = {
   labels: [],
   typeId: null,
   statusIds: [],
-  assignees: [],
+  developers: [],
+  waitingForMeToTest: false,
 };
 
 const matchesCategory = (ticket: Ticket, categoryId: BoardFilters["categoryId"]) => {
@@ -24,13 +28,16 @@ const ticketMatchesFilters = (ticket: Ticket, filters: BoardFilters, sets: Filte
   (!filters.typeId || ticket.type_id === filters.typeId) &&
   (filters.statusIds.length === 0 || sets.statusIds.has(ticket.status)) &&
   (filters.labels.length === 0 || (ticket.labels ?? []).some((l) => sets.labels.has(l))) &&
-  (filters.assignees.length === 0 || sets.assignees.has(ticket.assignee));
+  (filters.developers.length === 0 || sets.developers.has(ticket.developer)) &&
+  (!filters.waitingForMeToTest || (ticket.tester === sets.myLogin && sets.testingStatusIds.has(ticket.status)));
 
 interface FilterSets {
   projectIds: Set<string>;
   labels: Set<string>;
   statusIds: Set<string>;
-  assignees: Set<string>;
+  developers: Set<string>;
+  testingStatusIds: Set<string>;
+  myLogin: string;
 }
 
 // projectId, when given, locks the board to that project, seeded into initial state so the URL is the source of truth.
@@ -44,20 +51,30 @@ export const useBoardFilters = (tickets: Ticket[] | undefined, projectId?: strin
     if (projectId) setFilters((current) => ({ ...current, projectIds: [projectId] }));
   }, [projectId]);
 
-  const assignees = useMemo(() => {
-    const set = new Set((tickets ?? []).map((t) => t.assignee).filter((a) => a !== ""));
+  const { data: me } = useFetchMe();
+  const { data: statuses } = useFetchProjectStatuses(projectId);
+  const myLogin = me?.user.login ?? "";
+
+  const developers = useMemo(() => {
+    const set = new Set((tickets ?? []).map((t) => t.developer).filter((d) => d !== ""));
     return Array.from(set).sort();
   }, [tickets]);
+
+  // Offered once the signed-in member tests anything here, and kept while on so it can be switched off.
+  const showWaitingForMeToTest =
+    filters.waitingForMeToTest || (myLogin !== "" && (tickets ?? []).some((t) => t.tester === myLogin));
 
   const filteredTickets = useMemo(() => {
     const sets: FilterSets = {
       projectIds: new Set(filters.projectIds),
       labels: new Set(filters.labels),
       statusIds: new Set(filters.statusIds),
-      assignees: new Set(filters.assignees),
+      developers: new Set(filters.developers),
+      testingStatusIds: new Set((statuses ?? []).filter((s) => s.kind === StatusKind.Testing).map((s) => s.id)),
+      myLogin,
     };
     return (tickets ?? []).filter((t) => ticketMatchesFilters(t, filters, sets));
-  }, [tickets, filters]);
+  }, [tickets, filters, statuses, myLogin]);
 
   const toggleProject = (projectId: string) =>
     setFilters((current) => ({
@@ -92,13 +109,16 @@ export const useBoardFilters = (tickets: Ticket[] | undefined, projectId?: strin
         : [...current.statusIds, statusId],
     }));
 
-  const toggleAssignee = (assignee: string) =>
+  const toggleDeveloper = (developer: string) =>
     setFilters((current) => ({
       ...current,
-      assignees: current.assignees.includes(assignee)
-        ? current.assignees.filter((a) => a !== assignee)
-        : [...current.assignees, assignee],
+      developers: current.developers.includes(developer)
+        ? current.developers.filter((d) => d !== developer)
+        : [...current.developers, developer],
     }));
+
+  const toggleWaitingForMeToTest = () =>
+    setFilters((current) => ({ ...current, waitingForMeToTest: !current.waitingForMeToTest }));
 
   // Resets what the user picked, never the URL's project scope, or the view would leak every project's tickets.
   const clearAll = () =>
@@ -106,14 +126,16 @@ export const useBoardFilters = (tickets: Ticket[] | undefined, projectId?: strin
 
   return {
     filters,
-    assignees,
+    developers,
+    showWaitingForMeToTest,
     filteredTickets,
     toggleProject,
     toggleCategory,
     toggleLabel,
     selectType,
     toggleStatus,
-    toggleAssignee,
+    toggleDeveloper,
+    toggleWaitingForMeToTest,
     clearAll,
   };
 };

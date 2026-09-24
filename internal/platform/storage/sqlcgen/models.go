@@ -672,20 +672,25 @@ type Status struct {
 }
 
 type Ticket struct {
-	ID         string
-	Title      string
-	Body       string
-	Status     string
-	DocID      sql.NullString
-	Assignee   string
-	CreatedAt  int64
-	UpdatedAt  int64
-	ProjectID  sql.NullString
-	CategoryID sql.NullString
-	TypeID     sql.NullString
-	FinishedAt sql.NullInt64
-	Position   int64
-	Number     int64
+	ID                     string
+	Title                  string
+	Body                   string
+	Status                 string
+	DocID                  sql.NullString
+	Developer              string
+	CreatedAt              int64
+	UpdatedAt              int64
+	ProjectID              sql.NullString
+	CategoryID             sql.NullString
+	TypeID                 sql.NullString
+	FinishedAt             sql.NullInt64
+	Position               int64
+	Number                 int64
+	Tester                 string
+	ReporterKind           string
+	ReporterLogin          string
+	ReporterAutomationID   string
+	ReporterAutomationName string
 }
 
 type TicketBranchLink struct {

@@ -36,19 +36,24 @@ func (r *TicketsRepo) Create(ctx context.Context, t *tickets.Ticket, evts ...eve
 			return err
 		}
 		err = q.CreateTicket(ctx, sqlcgen.CreateTicketParams{
-			ID:         t.ID,
-			Title:      t.Title,
-			Body:       t.Body,
-			Status:     string(t.Status),
-			Position:   int64(pos),
-			Number:     int64(num),
-			DocID:      sql.NullString{String: t.DocID, Valid: t.DocID != ""},
-			ProjectID:  sql.NullString{String: t.ProjectID, Valid: t.ProjectID != ""},
-			CategoryID: sql.NullString{String: t.CategoryID, Valid: t.CategoryID != ""},
-			TypeID:     sql.NullString{String: defaultType(t.TypeID), Valid: true},
-			Assignee:   t.Assignee,
-			CreatedAt:  t.CreatedAt.Unix(),
-			UpdatedAt:  t.UpdatedAt.Unix(),
+			ID:                     t.ID,
+			Title:                  t.Title,
+			Body:                   t.Body,
+			Status:                 string(t.Status),
+			Position:               int64(pos),
+			Number:                 int64(num),
+			DocID:                  sql.NullString{String: t.DocID, Valid: t.DocID != ""},
+			ProjectID:              sql.NullString{String: t.ProjectID, Valid: t.ProjectID != ""},
+			CategoryID:             sql.NullString{String: t.CategoryID, Valid: t.CategoryID != ""},
+			TypeID:                 sql.NullString{String: defaultType(t.TypeID), Valid: true},
+			Developer:              t.Developer,
+			Tester:                 t.Tester,
+			ReporterKind:           t.Reporter.Kind,
+			ReporterLogin:          t.Reporter.Login,
+			ReporterAutomationID:   t.Reporter.AutomationID,
+			ReporterAutomationName: t.Reporter.AutomationName,
+			CreatedAt:              t.CreatedAt.Unix(),
+			UpdatedAt:              t.UpdatedAt.Unix(),
 		})
 		if err != nil {
 			return fmt.Errorf("insert ticket %s: %w", t.ID, classifyWriteErr(err))
@@ -340,18 +345,24 @@ func (r *TicketsRepo) UpdateType(ctx context.Context, id, typeID string) error {
 	})
 }
 
-// UpdateAssignee changes a ticket's assignee in place, enqueueing the given
-// outbox events in the same transaction; an empty string unassigns.
-func (r *TicketsRepo) UpdateAssignee(ctx context.Context, id, assignee string, evts ...eventbus.OutboxEvent) error {
+// UpdatePerson sets a ticket's developer or tester, enqueueing evts in the same transaction; empty clears it.
+func (r *TicketsRepo) UpdatePerson(ctx context.Context, id string, role tickets.Role, login string, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		n, err := r.q.WithTx(tx).UpdateTicketAssignee(ctx, sqlcgen.UpdateTicketAssigneeParams{
-			Assignee: assignee, UpdatedAt: time.Now().Unix(), ID: id,
-		})
+		q := r.q.WithTx(tx)
+		now := time.Now().Unix()
+		var n int64
+		var err error
+		switch role {
+		case tickets.RoleTester:
+			n, err = q.UpdateTicketTester(ctx, sqlcgen.UpdateTicketTesterParams{Tester: login, UpdatedAt: now, ID: id})
+		default:
+			n, err = q.UpdateTicketDeveloper(ctx, sqlcgen.UpdateTicketDeveloperParams{Developer: login, UpdatedAt: now, ID: id})
+		}
 		if err != nil {
-			return fmt.Errorf("update ticket %s assignee: %w", id, classifyWriteErr(err))
+			return fmt.Errorf("update ticket %s %s: %w", id, role, classifyWriteErr(err))
 		}
 		if n == 0 {
-			return fmt.Errorf("update ticket %s assignee: %w", id, apperrs.ErrNotFound)
+			return fmt.Errorf("update ticket %s %s: %w", id, role, apperrs.ErrNotFound)
 		}
 		return enqueueTicketsOutbox(ctx, tx, evts)
 	})
@@ -519,9 +530,16 @@ func toTicket(row sqlcgen.Ticket) *tickets.Ticket {
 		ProjectID:  row.ProjectID.String,
 		CategoryID: row.CategoryID.String,
 		TypeID:     row.TypeID.String,
-		Assignee:   row.Assignee,
-		CreatedAt:  time.Unix(row.CreatedAt, 0).UTC(),
-		UpdatedAt:  time.Unix(row.UpdatedAt, 0).UTC(),
+		Developer:  row.Developer,
+		Tester:     row.Tester,
+		Reporter: tickets.Reporter{
+			Kind:           row.ReporterKind,
+			Login:          row.ReporterLogin,
+			AutomationID:   row.ReporterAutomationID,
+			AutomationName: row.ReporterAutomationName,
+		},
+		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(),
+		UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
 	}
 	if row.FinishedAt.Valid {
 		t.FinishedAt = atPtr(time.Unix(row.FinishedAt.Int64, 0).UTC())

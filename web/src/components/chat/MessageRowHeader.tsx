@@ -1,6 +1,6 @@
 import { Bot } from "lucide-react";
 
-import { AssigneeAvatar } from "@/components/AssigneeAvatar";
+import { PersonAvatar } from "@/components/PersonAvatar";
 import { Badge } from "@/components/ui/badge";
 import { MessageHeader } from "@/components/ui/message";
 import type { Message as ChatMessage } from "@/models/Chat";
@@ -15,7 +15,7 @@ export const MessageRowAvatar = ({ isAgent, authorLogin }: { isAgent: boolean; a
         <Bot className="size-3.5" aria-hidden />
       </span>
     )}
-    {!isAgent && <AssigneeAvatar login={authorLogin} className="size-6" />}
+    {!isAgent && <PersonAvatar login={authorLogin} className="size-6" />}
   </>
 );
 

@@ -1,6 +1,6 @@
 -- name: CreateTicket :exec
-INSERT INTO tickets (id, title, body, status, position, number, doc_id, project_id, category_id, type_id, assignee, created_at, updated_at, finished_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO tickets (id, title, body, status, position, number, doc_id, project_id, category_id, type_id, developer, tester, reporter_kind, reporter_login, reporter_automation_id, reporter_automation_name, created_at, updated_at, finished_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetTicket :one
 SELECT * FROM tickets WHERE id = ?;
@@ -64,8 +64,11 @@ SELECT branch_owner, branch_repo, branch_name FROM ticket_branch_links WHERE tic
 -- name: UpdateTicketType :execrows
 UPDATE tickets SET type_id = ?, updated_at = ? WHERE id = ?;
 
--- name: UpdateTicketAssignee :execrows
-UPDATE tickets SET assignee = ?, updated_at = ? WHERE id = ?;
+-- name: UpdateTicketDeveloper :execrows
+UPDATE tickets SET developer = ?, updated_at = ? WHERE id = ?;
+
+-- name: UpdateTicketTester :execrows
+UPDATE tickets SET tester = ?, updated_at = ? WHERE id = ?;
 
 -- name: UpdateTicketTitleBody :execrows
 UPDATE tickets SET title = ?, body = ?, updated_at = ? WHERE id = ?;

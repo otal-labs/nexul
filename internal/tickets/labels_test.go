@@ -44,65 +44,6 @@ func TestSetType(t *testing.T) {
 	})
 }
 
-func TestSetAssignee(t *testing.T) {
-	t.Run("empty id is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.SetAssignee(context.Background(), "", "onik97")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("missing ticket is not found", func(t *testing.T) {
-		s := newTestService(newFakeRepo())
-		_, err := s.SetAssignee(context.Background(), "nope", "onik97")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
-	t.Run("sets the assignee in place", func(t *testing.T) {
-		repo := newFakeRepo()
-		s := newTestService(repo)
-		created, err := s.Create(context.Background(), "p-1", "ticket", "", "", "")
-		require.NoError(t, err)
-		got, err := s.SetAssignee(context.Background(), created.ID, "onik97")
-		require.NoError(t, err)
-		assert.Equal(t, "onik97", got.Assignee)
-		assert.Equal(t, created.ID, got.ID)
-	})
-	t.Run("empty string unassigns", func(t *testing.T) {
-		repo := newFakeRepo()
-		s := newTestService(repo)
-		created, err := s.Create(context.Background(), "p-1", "ticket", "", "", "onik97")
-		require.NoError(t, err)
-		got, err := s.SetAssignee(context.Background(), created.ID, "")
-		require.NoError(t, err)
-		assert.Equal(t, "", got.Assignee)
-	})
-	t.Run("enqueues ticket.assignee_changed", func(t *testing.T) {
-		repo := newFakeRepo()
-		s := newTestService(repo)
-		created, err := s.Create(context.Background(), "p-1", "ticket", "", "", "lena")
-		require.NoError(t, err)
-		_, err = s.SetAssignee(context.Background(), created.ID, "onik97")
-		require.NoError(t, err)
-		evts := repo.eventsFor(TopicAssigneeChanged)
-		require.Len(t, evts, 1)
-		e, ok := evts[0].Payload.(AssigneeChangedEvent)
-		require.True(t, ok, "payload should be an AssigneeChangedEvent")
-		assert.Equal(t, "lena", e.From)
-		assert.Equal(t, "onik97", e.To)
-		assert.Equal(t, "onik97", e.Ticket.Assignee)
-	})
-	t.Run("same assignee is a no-op without an event", func(t *testing.T) {
-		repo := newFakeRepo()
-		s := newTestService(repo)
-		created, err := s.Create(context.Background(), "p-1", "ticket", "", "", "onik97")
-		require.NoError(t, err)
-		got, err := s.SetAssignee(context.Background(), created.ID, "onik97")
-		require.NoError(t, err)
-		assert.Equal(t, "onik97", got.Assignee)
-		assert.Empty(t, repo.eventsFor(TopicAssigneeChanged))
-	})
-}
-
 func TestAddLabel(t *testing.T) {
 	t.Run("empty id is invalid", func(t *testing.T) {
 		s := newTestService(newFakeRepo())
@@ -273,7 +214,7 @@ func TestLabelColors(t *testing.T) {
 func TestUpdateStatus_ConfiguredOnly(t *testing.T) {
 	t.Run("status store error is retried", func(t *testing.T) {
 		repo := newFakeRepo()
-		s := NewService(repo, fakeStatusStore{err: errors.New("db down")})
+		s := NewService(repo, fakeStatusStore{err: errors.New("db down")}, nil)
 		s.now = func() time.Time { return fixedNow }
 		created, err := s.Create(context.Background(), "p-1", "ticket", "", "", "")
 		require.NoError(t, err)

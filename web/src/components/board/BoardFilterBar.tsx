@@ -1,6 +1,5 @@
-import { FilterIcon } from "lucide-react";
+import { FilterIcon, FlaskConicalIcon } from "lucide-react";
 
-import { AssigneeStack } from "@/components/board/AssigneeStack";
 import { BoardCreateMenu } from "@/components/board/BoardCreateMenu";
 import { BoardFilterMenu } from "@/components/board/BoardFilterMenu";
 import {
@@ -14,6 +13,7 @@ import {
   countActiveFilters,
   type BoardFilters,
 } from "@/components/board/boardFilterChipBuilders";
+import { DeveloperStack } from "@/components/board/DeveloperStack";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverTrigger } from "@/components/ui/popover";
 import { useFetchCategories } from "@/hooks/CategoryHooks";
@@ -30,14 +30,16 @@ interface BoardFilterBarProps {
   /** Hides the Projects filter row/toggle on a /board/:projectId view, where the URL already scopes to one project. */
   hideProjectFilter?: boolean;
   /** Derived client-side from the page's own ticket set (useBoardFilters); shown as the avatar stack, not as popover chips. */
-  assignees: string[];
+  developers: string[];
+  showWaitingForMeToTest: boolean;
   filters: BoardFilters;
   onToggleProject: (projectId: string) => void;
   onToggleCategory: (categoryId: string | null) => void;
   onToggleLabel: (label: string) => void;
   onSelectType: (typeId: string | null) => void;
   onToggleStatus: (statusId: string) => void;
-  onToggleAssignee: (assignee: string) => void;
+  onToggleDeveloper: (developer: string) => void;
+  onToggleWaitingForMeToTest: () => void;
   onClear: () => void;
   onNewTicket: () => void;
   onNewCategory: () => void;
@@ -47,14 +49,16 @@ interface BoardFilterBarProps {
 export const BoardFilterBar = ({
   projectId,
   hideProjectFilter = false,
-  assignees,
+  developers,
+  showWaitingForMeToTest,
   filters,
   onToggleProject,
   onToggleCategory,
   onToggleLabel,
   onSelectType,
   onToggleStatus,
-  onToggleAssignee,
+  onToggleDeveloper,
+  onToggleWaitingForMeToTest,
   onClear,
   onNewTicket,
   onNewCategory,
@@ -93,8 +97,20 @@ export const BoardFilterBar = ({
         </PopoverTrigger>
         <BoardFilterMenu filterRows={filterRows} activeCount={activeCount} onClear={onClear} />
       </Popover>
-      {assignees.length > 0 && (
-        <AssigneeStack assignees={assignees} selected={filters.assignees} onToggle={onToggleAssignee} />
+      {developers.length > 0 && (
+        <DeveloperStack developers={developers} selected={filters.developers} onToggle={onToggleDeveloper} />
+      )}
+      {showWaitingForMeToTest && (
+        <Button
+          variant={filters.waitingForMeToTest ? "default" : "outline"}
+          size="sm"
+          aria-pressed={filters.waitingForMeToTest}
+          onClick={onToggleWaitingForMeToTest}
+          className="h-9 px-3 text-xs"
+        >
+          <FlaskConicalIcon className="size-3.5" />
+          Waiting for me to test
+        </Button>
       )}
       {summaryLabel && <span className="whitespace-nowrap text-xs text-muted-foreground">{summaryLabel}</span>}
       <BoardCreateMenu onNewTicket={onNewTicket} onNewCategory={onNewCategory} className="ml-auto" />

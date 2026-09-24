@@ -3,17 +3,18 @@ import { LoaderCircle, MessageSquare } from "lucide-react";
 import { memo, useRef, type CSSProperties } from "react";
 import { useNavigate } from "react-router";
 
-import { AssigneeAvatar } from "@/components/AssigneeAvatar";
+import { PersonAvatar } from "@/components/PersonAvatar";
 import type { DropTargetData } from "@/components/board/dragMove";
 import { labelDotColor, pillClass, ticketTypeColor } from "@/components/board/ticketTypeColor";
 import { ticketTypeIcon } from "@/components/board/ticketTypeIcon";
 import { useFetchChatThreadIndicators } from "@/hooks/ChatHooks";
 import { useFetchProject } from "@/hooks/ProjectHooks";
+import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
 import { useFetchLabelColors } from "@/hooks/TicketHooks";
 import { useFetchProjectTicketTypes } from "@/hooks/TicketTypeHooks";
 import { useIsTicketRunActive } from "@/hooks/TrailHooks";
 import { cn } from "@/lib/utils";
-import { ticketPath, type Ticket } from "@/models/Ticket";
+import { cardPerson, ticketPath, type Ticket } from "@/models/Ticket";
 
 interface TicketCardProps {
   ticket: Ticket;
@@ -31,11 +32,13 @@ interface TicketCardBodyProps {
 
 // Shared with TicketCardOverlay; memoized because dnd-kit re-renders every sortable on each pointer move.
 export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
-  // All four queries are cached/deduped across every mounted TicketCard, so a column of 50 fires one request each.
+  // All five queries are cached/deduped across every mounted TicketCard, so a column of 50 fires one request each.
   const { data: project } = useFetchProject(ticket.project_id);
   const { data: ticketTypes } = useFetchProjectTicketTypes(ticket.project_id);
   const { data: labelColors } = useFetchLabelColors(ticket.project_id);
   const { data: threadIndicators } = useFetchChatThreadIndicators(ticket.project_id);
+  const { data: statuses } = useFetchProjectStatuses(ticket.project_id);
+  const person = cardPerson(ticket, statuses?.find((s) => s.id === ticket.status)?.kind);
   const hasThread = threadIndicators?.[ticket.id] === true;
   const runActive = useIsTicketRunActive(ticket.project_id, ticket.id);
   const prefix = project?.prefix ?? "";
@@ -48,7 +51,11 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
     <>
       {/* The whole card is the drag handle and click target; a still click never activates dnd-kit, so no inner handler is needed. */}
       <span className="flex items-center gap-2.5">
-        {ticket.assignee && <AssigneeAvatar login={ticket.assignee} className="size-7 text-[10px]" />}
+        {person.login && (
+          <span role="img" aria-label={`${person.role} ${person.login}`} className="shrink-0">
+            <PersonAvatar login={person.login} className="size-7 text-[10px]" />
+          </span>
+        )}
         <span className="min-w-0 flex-1 text-sm font-medium leading-snug">{ticket.title}</span>
         {hasThread && (
           <MessageSquare className="size-3.5 shrink-0 text-muted-foreground" role="img" aria-label="Has a chat thread" />

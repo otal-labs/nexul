@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { AssigneeAvatar } from "@/components/AssigneeAvatar";
+import { PersonAvatar } from "@/components/PersonAvatar";
 import { Input } from "@/components/ui/input";
 import { useFetchWorkspaceMembers } from "@/hooks/MemberHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
@@ -8,12 +8,12 @@ import { useWorkspaceStore } from "@/stores/workspaceStore";
 const menuItemClass =
   "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-xs text-foreground outline-none transition-colors duration-150 ease-standard hover:bg-accent/60 focus-visible:bg-accent/60";
 
-interface AssigneePickerListProps {
+interface PersonPickerListProps {
   onSelect: (login: string) => void;
 }
 
-// Shared assignee list body for every popover; callers own the Popover/trigger around it.
-export const AssigneePickerList = ({ onSelect }: AssigneePickerListProps) => {
+// Shared member list body for every popover; callers own the Popover/trigger around it.
+export const PersonPickerList = ({ onSelect }: PersonPickerListProps) => {
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const { data: membersList } = useFetchWorkspaceMembers(workspaceId);
   const [search, setSearch] = useState("");
@@ -32,7 +32,7 @@ export const AssigneePickerList = ({ onSelect }: AssigneePickerListProps) => {
       />
       <div className="flex max-h-56 flex-col gap-0.5 overflow-y-auto">
         <button type="button" className={menuItemClass} onClick={() => onSelect("")}>
-          Unassigned
+          No one
         </button>
         {filtered.map((member) => (
           <button
@@ -41,7 +41,7 @@ export const AssigneePickerList = ({ onSelect }: AssigneePickerListProps) => {
             className={menuItemClass}
             onClick={() => onSelect(member.login)}
           >
-            <AssigneeAvatar login={member.login} />
+            <PersonAvatar login={member.login} />
             {member.login}
           </button>
         ))}

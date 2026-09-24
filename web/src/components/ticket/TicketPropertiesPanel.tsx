@@ -2,18 +2,18 @@ import type { ReactNode } from "react";
 
 import { AttachmentsSection } from "@/components/attachment/AttachmentsSection";
 import { DevelopmentSection } from "@/components/ticket/DevelopmentSection";
-import { TicketAssigneeRow } from "@/components/ticket/TicketAssigneeRow";
 import { TicketLabelsRow } from "@/components/ticket/TicketLabelsRow";
+import { TicketPersonRow } from "@/components/ticket/TicketPersonRow";
+import { TicketReporterRow } from "@/components/ticket/TicketReporterRow";
 import { TicketStatusRow } from "@/components/ticket/TicketStatusRow";
 import { TicketTypeRow } from "@/components/ticket/TicketTypeRow";
-import type { Ticket, TicketStatus as TicketStatusType } from "@/models/Ticket";
+import { TicketRole, type Ticket, type TicketStatus as TicketStatusType } from "@/models/Ticket";
 
 interface TicketPropertiesPanelProps {
   ticket: Ticket;
   /** Extra rail sections rendered below Attachments (e.g. the ticket page's review list). */
   children?: ReactNode;
   onTransition?: (status: TicketStatusType) => Promise<void> | void;
-  onSetAssignee?: (ticketId: string, assignee: string) => Promise<void> | void;
   onSetType?: (ticketId: string, typeId: string) => Promise<void> | void;
   onAddLabel?: (ticketId: string, label: string) => Promise<void> | void;
   onRemoveLabel?: (ticketId: string, label: string) => Promise<void> | void;
@@ -29,7 +29,6 @@ export const TicketPropertiesPanel = ({
   ticket,
   children,
   onTransition,
-  onSetAssignee,
   onSetType,
   onAddLabel,
   onRemoveLabel,
@@ -39,7 +38,9 @@ export const TicketPropertiesPanel = ({
       <h2 className={microheaderClass}>Properties</h2>
       <div className="flex flex-col">
         <TicketStatusRow ticket={ticket} {...(onTransition ? { onTransition } : {})} />
-        <TicketAssigneeRow ticket={ticket} {...(onSetAssignee ? { onSetAssignee } : {})} />
+        <TicketPersonRow ticket={ticket} role={TicketRole.Developer} />
+        <TicketPersonRow ticket={ticket} role={TicketRole.Tester} />
+        <TicketReporterRow ticket={ticket} />
         <TicketLabelsRow
           ticket={ticket}
           {...(onAddLabel ? { onAddLabel } : {})}

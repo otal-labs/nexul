@@ -56,20 +56,23 @@ const filters = (overrides: Partial<BoardFilters> = {}): BoardFilters => ({
   labels: [],
   typeId: null,
   statusIds: [],
-  assignees: [],
+  developers: [],
+  waitingForMeToTest: false,
   ...overrides,
 });
 
 const baseProps = {
   projectId: "p-1",
-  assignees: [] as string[],
+  developers: [] as string[],
+  showWaitingForMeToTest: false,
   filters: filters(),
   onToggleProject: () => {},
   onToggleCategory: () => {},
   onToggleLabel: () => {},
   onSelectType: () => {},
   onToggleStatus: () => {},
-  onToggleAssignee: () => {},
+  onToggleDeveloper: () => {},
+  onToggleWaitingForMeToTest: () => {},
   onClear: () => {},
   onNewTicket: () => {},
   onNewCategory: () => {},
@@ -140,18 +143,18 @@ describe("BoardFilterBar", () => {
     expect(onClear).toHaveBeenCalled();
   });
 
-  it("renders label, type, and status chips, leaving assignees to the avatar stack", async () => {
+  it("renders label, type, and status chips, leaving developers to the avatar stack", async () => {
     const user = userEvent.setup();
     mockReferenceData({ labels: ["bug"] });
     renderFilterBar({
-      assignees: ["alice"],
-      filters: filters({ labels: ["bug"], typeId: "ticket-type-task", statusIds: ["open"], assignees: ["alice"] }),
+      developers: ["alice"],
+      filters: filters({ labels: ["bug"], typeId: "ticket-type-task", statusIds: ["open"], developers: ["alice"] }),
     });
     await openFilterPopover(user);
     expect(await screen.findByRole("button", { name: "bug" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "task" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Open" })).toBeInTheDocument();
-    expect(screen.queryByText("Assignee")).not.toBeInTheDocument();
+    expect(screen.queryByText("Developer")).not.toBeInTheDocument();
   });
 
   it("shows no projects state", async () => {
@@ -160,38 +163,58 @@ describe("BoardFilterBar", () => {
     expect(await screen.findByText("No projects yet")).toBeInTheDocument();
   });
 
-  it("shows the assignee stack beside the filter trigger, marking the selected ones", async () => {
+  it("shows the developer stack beside the filter trigger, marking the selected ones", async () => {
     const user = userEvent.setup();
-    const onToggleAssignee = vi.fn();
-    renderFilterBar({ assignees: ["alice", "bob"], filters: filters({ assignees: ["alice"] }), onToggleAssignee });
-    expect(await screen.findByRole("button", { name: "Assignee alice" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("button", { name: "Assignee bob" })).toHaveAttribute("aria-pressed", "false");
-    await user.click(screen.getByRole("button", { name: "Assignee bob" }));
-    expect(onToggleAssignee).toHaveBeenCalledWith("bob");
+    const onToggleDeveloper = vi.fn();
+    renderFilterBar({ developers: ["alice", "bob"], filters: filters({ developers: ["alice"] }), onToggleDeveloper });
+    expect(await screen.findByRole("button", { name: "Developer alice" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Developer bob" })).toHaveAttribute("aria-pressed", "false");
+    await user.click(screen.getByRole("button", { name: "Developer bob" }));
+    expect(onToggleDeveloper).toHaveBeenCalledWith("bob");
   });
 
-  it("collapses assignees past the fifth into a count that opens the rest", async () => {
+  it("collapses developers past the fifth into a count that opens the rest", async () => {
     const user = userEvent.setup();
-    const onToggleAssignee = vi.fn();
-    renderFilterBar({ assignees: ["a", "b", "c", "d", "e", "f", "g"], onToggleAssignee });
-    const more = await screen.findByRole("button", { name: "2 more assignees" });
+    const onToggleDeveloper = vi.fn();
+    renderFilterBar({ developers: ["a", "b", "c", "d", "e", "f", "g"], onToggleDeveloper });
+    const more = await screen.findByRole("button", { name: "2 more developers" });
     expect(more).toHaveTextContent("+2");
-    expect(screen.queryByRole("button", { name: "Assignee f" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Developer f" })).not.toBeInTheDocument();
     await user.click(more);
-    await user.click(await screen.findByRole("button", { name: "Assignee f" }));
-    expect(onToggleAssignee).toHaveBeenCalledWith("f");
+    await user.click(await screen.findByRole("button", { name: "Developer f" }));
+    expect(onToggleDeveloper).toHaveBeenCalledWith("f");
   });
 
-  it("moves a selected assignee into the visible stack even when they'd otherwise overflow", async () => {
-    renderFilterBar({ assignees: ["a", "b", "c", "d", "e", "f", "g"], filters: filters({ assignees: ["g"] }) });
-    expect(await screen.findByRole("button", { name: "Assignee g" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.queryByRole("button", { name: "Assignee e" })).not.toBeInTheDocument();
+  it("moves a selected developer into the visible stack even when they'd otherwise overflow", async () => {
+    renderFilterBar({ developers: ["a", "b", "c", "d", "e", "f", "g"], filters: filters({ developers: ["g"] }) });
+    expect(await screen.findByRole("button", { name: "Developer g" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByRole("button", { name: "Developer e" })).not.toBeInTheDocument();
   });
 
-  it("renders no stack when no ticket has an assignee", async () => {
-    renderFilterBar({ assignees: [] });
+  it("offers the waiting-for-me-to-test toggle only when asked, and reports its state", async () => {
+    const user = userEvent.setup();
+    const onToggleWaitingForMeToTest = vi.fn();
+    const { unmount } = renderFilterBar();
     await screen.findByRole("button", { name: /^Filter/ });
-    expect(screen.queryByRole("group", { name: "Filter by assignee" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Waiting for me to test/ })).not.toBeInTheDocument();
+    unmount();
+
+    renderFilterBar({
+      showWaitingForMeToTest: true,
+      filters: filters({ waitingForMeToTest: true }),
+      onToggleWaitingForMeToTest,
+    });
+    const toggle = await screen.findByRole("button", { name: /Waiting for me to test/ });
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Filter (1)" })).toBeInTheDocument();
+    await user.click(toggle);
+    expect(onToggleWaitingForMeToTest).toHaveBeenCalled();
+  });
+
+  it("renders no stack when no ticket has a developer", async () => {
+    renderFilterBar({ developers: [] });
+    await screen.findByRole("button", { name: /^Filter/ });
+    expect(screen.queryByRole("group", { name: "Filter by developer" })).not.toBeInTheDocument();
   });
 });
 
@@ -203,14 +226,14 @@ describe("BoardFilterBar interactions", () => {
     const onToggleLabel = vi.fn();
     const onSelectType = vi.fn();
     const onToggleStatus = vi.fn();
-    const onToggleAssignee = vi.fn();
+    const onToggleDeveloper = vi.fn();
     renderFilterBar({
-      assignees: ["alice"],
+      developers: ["alice"],
       onToggleCategory,
       onToggleLabel,
       onSelectType,
       onToggleStatus,
-      onToggleAssignee,
+      onToggleDeveloper,
     });
     await openFilterPopover(user);
     await user.click(await screen.findByRole("button", { name: "Sprint 1" }));
@@ -221,8 +244,8 @@ describe("BoardFilterBar interactions", () => {
     expect(onSelectType).toHaveBeenCalledWith("ticket-type-task");
     await user.click(screen.getByRole("button", { name: "Open" }));
     expect(onToggleStatus).toHaveBeenCalledWith("open");
-    await user.click(screen.getByRole("button", { name: "Assignee alice" }));
-    expect(onToggleAssignee).toHaveBeenCalledWith("alice");
+    await user.click(screen.getByRole("button", { name: "Developer alice" }));
+    expect(onToggleDeveloper).toHaveBeenCalledWith("alice");
   });
 
   it("toggles the Uncategorized chip", async () => {

@@ -26,7 +26,9 @@ const ticket = (id: string, title: string) => ({
   body: "",
   status: "open",
   doc_id: "doc-1",
-  assignee: "",
+  developer: "",
+  tester: "",
+  reporter: { kind: "user", login: "onik97" },
   created_at: "2026-08-02T12:00:00Z",
   updated_at: "2026-08-02T12:00:00Z",
 });

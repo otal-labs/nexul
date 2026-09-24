@@ -8,7 +8,6 @@ import {
   useAddLabel,
   useFetchTicket,
   useRemoveLabel,
-  useSetTicketAssignee,
   useSetTicketType,
   useUpdateTicket,
   useUpdateTicketStatus,
@@ -31,7 +30,6 @@ export const TicketPage = ({ ticketId: ticketIdProp }: TicketPageProps = {}) => 
   const { data, error, isPending } = useFetchTicket(ticketId);
   const updateStatus = useUpdateTicketStatus();
   const updateTicket = useUpdateTicket();
-  const setAssignee = useSetTicketAssignee();
   const setType = useSetTicketType();
   const addLabel = useAddLabel();
   const removeLabel = useRemoveLabel();
@@ -53,9 +51,6 @@ export const TicketPage = ({ ticketId: ticketIdProp }: TicketPageProps = {}) => 
           }}
           onTransition={async (status) => {
             await updateStatus.mutateAsync({ id: data.id, status });
-          }}
-          onSetAssignee={async (id, assignee) => {
-            await setAssignee.mutateAsync({ id, assignee });
           }}
           onSetType={async (id, typeId) => {
             await setType.mutateAsync({ id, typeId });

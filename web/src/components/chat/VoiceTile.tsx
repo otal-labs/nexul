@@ -1,6 +1,6 @@
 import { ParticipantTile, isTrackReference, useIsSpeaking, useMaybeTrackRefContext } from "@livekit/components-react";
 
-import { AssigneeAvatar } from "@/components/AssigneeAvatar";
+import { PersonAvatar } from "@/components/PersonAvatar";
 import { cn } from "@/lib/utils";
 
 interface VoiceTileProps {
@@ -21,7 +21,7 @@ export const VoiceTile = ({ resolveLogin }: VoiceTileProps) => {
       {isVideo && <ParticipantTile />}
       {!isVideo && (
         <div className="flex h-full flex-col items-center justify-center gap-2 rounded-md bg-muted/40 p-2" title={name}>
-          <AssigneeAvatar
+          <PersonAvatar
             login={resolveLogin(identity)}
             className={cn("size-14 text-base ring-2 ring-transparent transition-shadow duration-150 ease-standard", speaking && "ring-primary")}
           />

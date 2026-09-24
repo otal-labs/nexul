@@ -65,12 +65,13 @@ export interface EventPayloads {
   "status.created": { "status": Record<string, unknown>; };
   "status.deleted": { "status": Record<string, unknown>; };
   "status.updated": { "status": Record<string, unknown>; };
-  "ticket.assignee_changed": { "ticket": Record<string, unknown>; "from": string; "to": string; };
   "ticket.category_changed": { "ticket_id": string; "category_id": string; };
-  "ticket.created": { "ticket": { "id": string; "project_id"?: string; "title": string; "body"?: string; "status": "open" | "in_progress" | "done" | "closed"; "doc_id"?: string; "assignee"?: string; "created_at"?: string; "updated_at"?: string; "finished_at"?: string | null; }; };
+  "ticket.created": { "ticket": { "id": string; "project_id"?: string; "title": string; "body"?: string; "status": "open" | "in_progress" | "done" | "closed"; "doc_id"?: string; "developer"?: string; "tester"?: string; "reporter"?: { "kind": "user" | "user:mcp" | "automation"; "login"?: string; "automation_id"?: string; "automation_name"?: string; }; "created_at"?: string; "updated_at"?: string; "finished_at"?: string | null; }; };
   "ticket.deleted": { "id": string; "title": string; };
+  "ticket.developer_changed": { "ticket": Record<string, unknown>; "from": string; "to": string; };
   "ticket.finished": { "ticket": Record<string, unknown>; };
   "ticket.status_changed": { "ticket": Record<string, unknown>; "from": string; "to": string; "actor"?: { "kind"?: "user" | "automation" | "play" | "play:mcp"; "automation_id"?: string; "automation_name"?: string; "play_label"?: string; "trail_id"?: string; }; "execution_id"?: string; };
+  "ticket.tester_changed": { "ticket": Record<string, unknown>; "from": string; "to": string; };
   "ticket.updated": { "ticket": Record<string, unknown>; };
   "ticket_type.created": { "ticket_type": Record<string, unknown>; };
   "ticket_type.deleted": { "ticket_type": Record<string, unknown>; };
@@ -145,12 +146,13 @@ export const TOPICS: Topic[] = [
   "status.created",
   "status.deleted",
   "status.updated",
-  "ticket.assignee_changed",
   "ticket.category_changed",
   "ticket.created",
   "ticket.deleted",
+  "ticket.developer_changed",
   "ticket.finished",
   "ticket.status_changed",
+  "ticket.tester_changed",
   "ticket.updated",
   "ticket_type.created",
   "ticket_type.deleted",
@@ -223,12 +225,13 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "status.created": {"status":{}},
   "status.deleted": {"status":{}},
   "status.updated": {"status":{}},
-  "ticket.assignee_changed": {"ticket":{},"from":"fixture-from","to":"fixture-to"},
   "ticket.category_changed": {"ticket_id":"fixture-ticket_id","category_id":"fixture-category_id"},
-  "ticket.created": {"ticket":{"id":"fixture-id","project_id":"fixture-project_id","title":"fixture-title","body":"fixture-body","status":"open","doc_id":"fixture-doc_id","assignee":"fixture-assignee","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z","finished_at":"2026-01-01T00:00:00Z"}},
+  "ticket.created": {"ticket":{"id":"fixture-id","project_id":"fixture-project_id","title":"fixture-title","body":"fixture-body","status":"open","doc_id":"fixture-doc_id","developer":"fixture-developer","tester":"fixture-tester","reporter":{"kind":"user","login":"fixture-login","automation_id":"fixture-automation_id","automation_name":"fixture-automation_name"},"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z","finished_at":"2026-01-01T00:00:00Z"}},
   "ticket.deleted": {"id":"fixture-id","title":"fixture-title"},
+  "ticket.developer_changed": {"ticket":{},"from":"fixture-from","to":"fixture-to"},
   "ticket.finished": {"ticket":{}},
   "ticket.status_changed": {"ticket":{},"from":"fixture-from","to":"fixture-to","actor":{"kind":"user","automation_id":"fixture-automation_id","automation_name":"fixture-automation_name","play_label":"fixture-play_label","trail_id":"fixture-trail_id"},"execution_id":"fixture-execution_id"},
+  "ticket.tester_changed": {"ticket":{},"from":"fixture-from","to":"fixture-to"},
   "ticket.updated": {"ticket":{}},
   "ticket_type.created": {"ticket_type":{}},
   "ticket_type.deleted": {"ticket_type":{}},

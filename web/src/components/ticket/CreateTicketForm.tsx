@@ -3,7 +3,7 @@ import type { UseFormSetValue } from "react-hook-form";
 
 import { useFormDialogContext } from "@/components/dialogs/FormDialogContext";
 import { NoDataDisplay } from "@/components/NoDataDisplay";
-import { AssigneePill, CategoryPill, DocChip, TypePill } from "@/components/ticket/TicketMetadataPills";
+import { CategoryPill, DocChip, PersonPill, TypePill } from "@/components/ticket/TicketMetadataPills";
 import { useFetchCategories } from "@/hooks/CategoryHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { useCreateTicket } from "@/hooks/TicketHooks";
@@ -24,7 +24,8 @@ export const emptyTicketForm = (): SaveTicketFormData => ({
   body: "",
   project_id: "",
   doc_id: "",
-  assignee: "",
+  developer: "",
+  tester: "",
   category_id: "",
   type_id: "",
 });
@@ -156,7 +157,8 @@ export const CreateTicketForm = ({ docId = "", defaultProjectId = "", defaultCat
           <div className="flex flex-wrap items-center gap-1.5">
             <TypePill ticketTypes={ticketTypes ?? []} />
             <CategoryPill categories={projectCategories} />
-            <AssigneePill />
+            <PersonPill field="developer" label="Developer" />
+            <PersonPill field="tester" label="Tester" />
             {docIdValue && <DocChip docId={docIdValue} />}
           </div>
         </div>

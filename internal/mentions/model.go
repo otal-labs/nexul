@@ -31,10 +31,10 @@ type Chip struct {
 	CanOpen     bool   `json:"can_open"`
 
 	// Back the chip template's tokens (spec.md 6); Prefix+Number stay split (ADR 0004) for independent substitution.
-	ProjectPrefix string `json:"project_prefix,omitempty"`
-	ProjectNumber int    `json:"project_number,omitempty"`
-	TypeLabel     string `json:"type_label,omitempty"`
-	AssigneeLabel string `json:"assignee_label,omitempty"`
+	ProjectPrefix  string `json:"project_prefix,omitempty"`
+	ProjectNumber  int    `json:"project_number,omitempty"`
+	TypeLabel      string `json:"type_label,omitempty"`
+	DeveloperLabel string `json:"developer_label,omitempty"`
 	// DueLabel backs {ticket.Due}; always empty until tickets gain a due-date field, renders as "" not an error.
 	DueLabel string `json:"due_label,omitempty"`
 }
@@ -57,7 +57,7 @@ type Ticket struct {
 	Number    int
 	ProjectID string
 	TypeID    string
-	Assignee  string
+	Developer string
 }
 
 // Project is the slice of a project record the resolver needs, its Prefix for the PREFIX-NUMBER id (ADR 0004).
