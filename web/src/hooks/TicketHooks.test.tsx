@@ -34,7 +34,9 @@ const ticket = {
   body: "write migrations",
   status: TicketStatus.Open,
   doc_id: "doc-1",
-  assignee: "onik97",
+  developer: "onik97",
+  tester: "",
+  reporter: { kind: "user", login: "onik97" },
   created_at: "2026-08-02T12:00:00Z",
   updated_at: "2026-08-02T12:00:00Z",
 };
@@ -84,13 +86,13 @@ describe("useCreateTicket", () => {
   it("posts and invalidates", async () => {
     vi.mocked(api.post).mockResolvedValue({ data: ticket });
     const { result } = renderHook(() => useCreateTicket(), { wrapper });
-    await result.current.mutateAsync({ title: "Fix storage", body: "write migrations", project_id: "p-1", doc_id: "doc-1", assignee: "onik97" });
+    await result.current.mutateAsync({ title: "Fix storage", body: "write migrations", project_id: "p-1", doc_id: "doc-1", developer: "onik97" });
     expect(api.post).toHaveBeenCalledWith("/api/tickets", {
       title: "Fix storage",
       body: "write migrations",
       project_id: "p-1",
       doc_id: "doc-1",
-      assignee: "onik97",
+      developer: "onik97",
     });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
   });

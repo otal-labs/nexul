@@ -23,7 +23,7 @@ const renderTicketTemplate = (template: string, chip: MentionChipData | undefine
     Ticket: title,
     Status: chip?.status_label ?? "",
     Type: chip?.type_label ?? "",
-    Assignee: chip?.assignee_label ?? "",
+    Developer: chip?.developer_label ?? "",
     Due: chip?.due_label ?? "",
   };
   return template.replace(/\{ticket\.(\w+)\}/g, (match, key: string) => values[key] ?? match);

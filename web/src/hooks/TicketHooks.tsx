@@ -2,7 +2,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
-import type { LinkBranchFormData, LinkPRFormData, SaveTicketFormData, Ticket, TicketLinks, TicketStatus } from "@/models/Ticket";
+import {
+  TicketRole,
+  type LinkBranchFormData,
+  type LinkPRFormData,
+  type SaveTicketFormData,
+  type Ticket,
+  type TicketLinks,
+  type TicketStatus,
+} from "@/models/Ticket";
 
 export const getTicketsKey = "getTickets";
 export const getTicketKey = "getTicket";
@@ -86,15 +94,15 @@ export const useUpdateTicketStatus = () => {
   });
 };
 
-export const useSetTicketAssignee = () => {
+export const useSetTicketPerson = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, assignee }: { id: string; assignee: string }) =>
-      (await api.patch<Ticket>(`/api/tickets/${id}/assignee`, { assignee })).data,
+    mutationFn: async ({ id, role, login }: { id: string; role: TicketRole; login: string }) =>
+      (await api.patch<Ticket>(`/api/tickets/${id}/${role}`, { login })).data,
     onSuccess: async (_, vars) => {
       await client.invalidateQueries({ queryKey: [getTicketsKey] });
       await client.invalidateQueries({ queryKey: [getTicketKey, vars.id] });
-      toast.success("Assignee updated");
+      toast.success(vars.role === TicketRole.Tester ? "Tester updated" : "Developer updated");
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

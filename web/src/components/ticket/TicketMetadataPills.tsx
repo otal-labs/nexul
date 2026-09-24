@@ -1,10 +1,10 @@
 import { FileIcon, TagIcon, UserIcon, XIcon } from "lucide-react";
 import { useState } from "react";
 
-import { AssigneeAvatar } from "@/components/AssigneeAvatar";
+import { PersonAvatar } from "@/components/PersonAvatar";
 import { ticketTypeIcon } from "@/components/board/ticketTypeIcon";
 import { useFormDialogContext } from "@/components/dialogs/FormDialogContext";
-import { AssigneePickerList } from "@/components/ticket/AssigneePickerList";
+import { PersonPickerList } from "@/components/ticket/PersonPickerList";
 import { menuItemClass, pillTriggerClass } from "@/components/ticket/ticketFormPillStyles";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -123,25 +123,30 @@ export const CategoryPill = ({ categories }: CategoryPillProps) => {
   );
 };
 
-export const AssigneePill = () => {
+interface PersonPillProps {
+  field: "developer" | "tester";
+  label: string;
+}
+
+export const PersonPill = ({ field, label }: PersonPillProps) => {
   const { watch, setValue } = useFormDialogContext<SaveTicketFormData>();
   const [open, setOpen] = useState(false);
   // Submits the member's login verbatim — the same value rendered elsewhere as display name.
-  const assignee = watch("assignee");
+  const login = watch(field);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button type="button" className={pillTriggerClass}>
-          {!assignee && <UserIcon className="size-3.5 text-muted-foreground" aria-hidden />}
-          {assignee && <AssigneeAvatar login={assignee} className="size-4 text-[8px]" />}
-          {assignee || "Assignee"}
+        <button type="button" aria-label={`${label}: ${login || "no one"}`} className={pillTriggerClass}>
+          {!login && <UserIcon className="size-3.5 text-muted-foreground" aria-hidden />}
+          {login && <PersonAvatar login={login} className="size-4 text-[8px]" />}
+          {login || label}
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-56 p-1.5">
-        <AssigneePickerList
-          onSelect={(login) => {
-            setValue("assignee", login);
+        <PersonPickerList
+          onSelect={(next) => {
+            setValue(field, next);
             setOpen(false);
           }}
         />

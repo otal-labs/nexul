@@ -858,26 +858,20 @@ func (s *NotificationService) MarkAllRead(ctx context.Context, userID string) er
 	return nil
 }
 
-// onTicketCreated fans out ticket.assigned to the assignee and ticket.mentioned to every @-mentioned user.
+// onTicketCreated fans out ticket.assigned to the developer and tester and ticket.mentioned to every @-mentioned user.
 func (s *NotificationService) onTicketCreated(ctx context.Context, t ticketRef) error {
-	var recipients []recipient
-	if t.Assignee != "" {
-		recipients = append(recipients, recipient{Login: t.Assignee, Kind: KindTicketAssigned})
-	}
+	recipients := []recipient{{Login: t.Developer, Kind: KindTicketAssigned}, {Login: t.Tester, Kind: KindTicketAssigned}}
 	for _, login := range extractMentions(t.Title + " " + t.Body) {
 		recipients = append(recipients, recipient{Login: login, Kind: KindTicketMentioned})
 	}
 	return s.fanOut(ctx, evtKey(ctx), SubjectTicket, t.ID, t.Title, recipients)
 }
 
-// onTicketStatusChanged fans out ticket.status_changed to the assignee and @-mentioned users of the ticket.
+// onTicketStatusChanged fans out ticket.status_changed to the developer, tester, and @-mentioned users of the ticket.
 func (s *NotificationService) onTicketStatusChanged(ctx context.Context, t ticketRef) error {
-	var recipients []recipient
-	if t.Assignee != "" {
-		recipients = append(recipients, recipient{Login: t.Assignee, Kind: KindTicketStatus})
-	}
+	recipients := []recipient{{Login: t.Developer, Kind: KindTicketStatus}, {Login: t.Tester, Kind: KindTicketStatus}}
 	for _, login := range extractMentions(t.Title + " " + t.Body) {
-		if strings.EqualFold(login, t.Assignee) {
+		if strings.EqualFold(login, t.Developer) || strings.EqualFold(login, t.Tester) {
 			continue
 		}
 		recipients = append(recipients, recipient{Login: login, Kind: KindTicketStatus})

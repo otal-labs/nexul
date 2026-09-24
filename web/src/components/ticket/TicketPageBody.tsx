@@ -14,7 +14,6 @@ interface TicketPageBodyProps {
   workspaceId: string;
   onSave: (title: string, body: string) => Promise<void>;
   onTransition: (status: TicketStatusType) => Promise<void>;
-  onSetAssignee: (ticketId: string, assignee: string) => Promise<void>;
   onSetType: (ticketId: string, typeId: string) => Promise<void>;
   onAddLabel: (ticketId: string, label: string) => Promise<void>;
   onRemoveLabel: (ticketId: string, label: string) => Promise<void>;
@@ -26,7 +25,6 @@ export const TicketPageBody = ({
   workspaceId,
   onSave,
   onTransition,
-  onSetAssignee,
   onSetType,
   onAddLabel,
   onRemoveLabel,
@@ -40,7 +38,6 @@ export const TicketPageBody = ({
     <TicketPropertiesPanel
       ticket={ticket}
       onTransition={onTransition}
-      onSetAssignee={onSetAssignee}
       onSetType={onSetType}
       onAddLabel={onAddLabel}
       onRemoveLabel={onRemoveLabel}

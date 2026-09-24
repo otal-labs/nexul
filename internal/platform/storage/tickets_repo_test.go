@@ -19,7 +19,8 @@ func newTestTicket(id, docID string) *tickets.Ticket {
 	now := time.Date(2026, 8, 2, 12, 0, 0, 0, time.UTC)
 	return &tickets.Ticket{
 		ID: id, Title: "Fix storage", Body: "Write migrations", Status: tickets.StatusOpen,
-		DocID: docID, ProjectID: "project-general", Assignee: "onik97", CreatedAt: now, UpdatedAt: now,
+		DocID: docID, ProjectID: "project-general", Developer: "onik97", Tester: "lena", CreatedAt: now, UpdatedAt: now,
+		Reporter: tickets.Reporter{Kind: tickets.ActorKindAutomation, AutomationID: "a-1", AutomationName: "Triage"},
 	}
 }
 
@@ -83,7 +84,26 @@ func TestTicketsRepo_Create_GetByID_RoundTrip(t *testing.T) {
 	assert.Equal(t, want.Title, got.Title)
 	assert.Equal(t, tickets.StatusOpen, got.Status)
 	assert.Equal(t, "doc-1", got.DocID)
-	assert.Equal(t, "onik97", got.Assignee)
+	assert.Equal(t, "onik97", got.Developer)
+	assert.Equal(t, "lena", got.Tester)
+	assert.Equal(t, want.Reporter, got.Reporter)
+}
+
+func TestTicketsRepo_UpdatePerson(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	require.NoError(t, s.Docs.Create(t.Context(), newTestDoc("doc-1")))
+	require.NoError(t, s.Tickets.Create(t.Context(), newTestTicket("t-1", "doc-1")))
+
+	require.NoError(t, s.Tickets.UpdatePerson(t.Context(), "t-1", tickets.RoleDeveloper, "alice"))
+	require.NoError(t, s.Tickets.UpdatePerson(t.Context(), "t-1", tickets.RoleTester, ""))
+	got, err := s.Tickets.GetByID(t.Context(), "t-1")
+	require.NoError(t, err)
+	assert.Equal(t, "alice", got.Developer)
+	assert.Equal(t, "", got.Tester)
+	assert.Equal(t, tickets.ActorKindAutomation, got.Reporter.Kind, "reporter is never touched by a people edit")
+
+	require.ErrorIs(t, s.Tickets.UpdatePerson(t.Context(), "missing", tickets.RoleTester, "x"), apperrs.ErrNotFound)
 }
 
 func TestTicketsRepo_List_ReturnsAll(t *testing.T) {

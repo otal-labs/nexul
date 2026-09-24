@@ -17,13 +17,15 @@ interface ProjectBoardSectionProps {
   swimlanes: Swimlane[];
   columns: BoardStatus[];
   filters: BoardFilters;
-  assignees: string[];
+  developers: string[];
+  showWaitingForMeToTest: boolean;
   onToggleProject: (projectId: string) => void;
   onToggleCategory: (categoryId: string | null) => void;
   onToggleLabel: (label: string) => void;
   onSelectType: (typeId: string | null) => void;
   onToggleStatus: (statusId: string) => void;
-  onToggleAssignee: (assignee: string) => void;
+  onToggleDeveloper: (developer: string) => void;
+  onToggleWaitingForMeToTest: () => void;
   onClear: () => void;
   onNewTicket: () => void;
   onNewCategory: () => void;
@@ -42,13 +44,15 @@ export const ProjectBoardSection = ({
   swimlanes,
   columns,
   filters,
-  assignees,
+  developers,
+  showWaitingForMeToTest,
   onToggleProject,
   onToggleCategory,
   onToggleLabel,
   onSelectType,
   onToggleStatus,
-  onToggleAssignee,
+  onToggleDeveloper,
+  onToggleWaitingForMeToTest,
   onClear,
   onNewTicket,
   onNewCategory,
@@ -65,14 +69,16 @@ export const ProjectBoardSection = ({
       <BoardFilterBar
         projectId={projectId}
         hideProjectFilter
-        assignees={assignees}
+        developers={developers}
+        showWaitingForMeToTest={showWaitingForMeToTest}
         filters={filters}
         onToggleProject={onToggleProject}
         onToggleCategory={onToggleCategory}
         onToggleLabel={onToggleLabel}
         onSelectType={onSelectType}
         onToggleStatus={onToggleStatus}
-        onToggleAssignee={onToggleAssignee}
+        onToggleDeveloper={onToggleDeveloper}
+        onToggleWaitingForMeToTest={onToggleWaitingForMeToTest}
         onClear={onClear}
         onNewTicket={onNewTicket}
         onNewCategory={onNewCategory}
@@ -84,7 +90,8 @@ export const ProjectBoardSection = ({
           // projectIds is the route's scope here, not a user-picked filter (same rule as BoardFilterBar's count).
           filters.categoryId ||
           filters.typeId ||
-          filters.labels.length + filters.statusIds.length + filters.assignees.length > 0
+          filters.waitingForMeToTest ||
+          filters.labels.length + filters.statusIds.length + filters.developers.length > 0
             ? "No tickets match the active filters."
             : "No tickets yet — create the first one."
         }

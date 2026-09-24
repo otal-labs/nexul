@@ -57,8 +57,8 @@ describe("MentionChipLayoutSection", () => {
     const user = userEvent.setup();
     renderSection({ mention_chip_template: "" });
 
-    await user.click(screen.getByRole("button", { name: "{ticket.Assignee}" }));
-    expect(screen.getByLabelText("Format")).toHaveValue("{ticket.Assignee}");
+    await user.click(screen.getByRole("button", { name: "{ticket.Developer}" }));
+    expect(screen.getByLabelText("Format")).toHaveValue("{ticket.Developer}");
   });
 
   it("saves the template via PATCH on submit", async () => {

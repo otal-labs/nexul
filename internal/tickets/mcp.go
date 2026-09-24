@@ -22,7 +22,7 @@ func ticketCoreMCPTools(s *Service) []mcptool.Tool {
 	return []mcptool.Tool{
 		{
 			Name:        "ticket_create",
-			Description: "Create a ticket in a project, optionally derived from a doc, and return it.",
+			Description: "Create a ticket in a project, optionally derived from a doc, and return it. developer and tester are member logins; the reporter is recorded as Nexul on behalf of the calling user.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -30,7 +30,8 @@ func ticketCoreMCPTools(s *Service) []mcptool.Tool {
 					"title":       map[string]any{"type": "string"},
 					"body":        map[string]any{"type": "string"},
 					"doc_id":      map[string]any{"type": "string"},
-					"assignee":    map[string]any{"type": "string"},
+					"developer":   map[string]any{"type": "string"},
+					"tester":      map[string]any{"type": "string"},
 					"category_id": map[string]any{"type": "string"},
 					"type_id":     map[string]any{"type": "string"},
 				},
@@ -42,7 +43,12 @@ func ticketCoreMCPTools(s *Service) []mcptool.Tool {
 					return nil, err
 				}
 				projectID, title := vals[0], vals[1]
-				return s.Create(ctx, projectID, title, mcptool.OptionalString(args["body"]), mcptool.OptionalString(args["doc_id"]), mcptool.OptionalString(args["assignee"]), CreateOptions{CategoryID: mcptool.OptionalString(args["category_id"]), TypeID: mcptool.OptionalString(args["type_id"])})
+				return s.Create(ctx, projectID, title, mcptool.OptionalString(args["body"]), mcptool.OptionalString(args["doc_id"]), mcptool.OptionalString(args["developer"]), CreateOptions{
+					CategoryID: mcptool.OptionalString(args["category_id"]),
+					TypeID:     mcptool.OptionalString(args["type_id"]),
+					Tester:     mcptool.OptionalString(args["tester"]),
+					ViaMCP:     true,
+				})
 			},
 		},
 		{
@@ -104,6 +110,8 @@ func ticketCoreMCPTools(s *Service) []mcptool.Tool {
 				return s.UpdateStatus(ctx, id, Status(status))
 			},
 		},
+		ticketSetPersonTool(s, RoleDeveloper, "ticket_set_developer", "Set the member login who builds a ticket; an empty login clears it."),
+		ticketSetPersonTool(s, RoleTester, "ticket_set_tester", "Set the member login who tests a ticket in its testing stage; an empty login clears it."),
 		{
 			Name:        "ticket_set_type",
 			Description: "Set a ticket's type id (list configured types with ticket_type_list).",
@@ -123,6 +131,28 @@ func ticketCoreMCPTools(s *Service) []mcptool.Tool {
 				id, typeID := vals[0], vals[1]
 				return s.SetType(ctx, id, typeID)
 			},
+		},
+	}
+}
+
+func ticketSetPersonTool(s *Service, role Role, name, description string) mcptool.Tool {
+	return mcptool.Tool{
+		Name:        name,
+		Description: description,
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"id":    map[string]any{"type": "string"},
+				"login": map[string]any{"type": "string"},
+			},
+			"required": []string{"id"},
+		},
+		Call: func(ctx context.Context, args map[string]any) (any, error) {
+			id, err := mcptool.RequiredString(args, "id")
+			if err != nil {
+				return nil, err
+			}
+			return s.SetPerson(ctx, id, role, mcptool.OptionalString(args["login"]))
 		},
 	}
 }

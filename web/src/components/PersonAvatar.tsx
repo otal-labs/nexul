@@ -2,13 +2,13 @@ import { useState } from "react";
 
 import { cn, initials } from "@/lib/utils";
 
-interface AssigneeAvatarProps {
+interface PersonAvatarProps {
   login: string;
   className?: string;
 }
 
 // github.com/<login>.png resolves the avatar with no API round-trip; the initials circle covers 404s.
-export const AssigneeAvatar = ({ login, className }: AssigneeAvatarProps) => {
+export const PersonAvatar = ({ login, className }: PersonAvatarProps) => {
   const [failed, setFailed] = useState(false);
 
   if (failed) {

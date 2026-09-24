@@ -56,7 +56,7 @@ func TestIntegration_MentionsOverRealStorage(t *testing.T) {
 	require.NoError(t, s.Docs.Create(ctx, &docs.Doc{ID: "d-locked", Title: "Secret vault", Body: `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"hi"}]}]}`, Version: 1}))
 	require.NoError(t, s.Access.Set(ctx, "doc", "d-open", "u-alice", permissions.SetOf(permissions.DocsRead), nil))
 
-	ticket := &tickets.Ticket{ID: "tk-1", ProjectID: "project-general", Title: "Fix the bug", Body: "body", Status: tickets.StatusOpen, Assignee: "onik97"}
+	ticket := &tickets.Ticket{ID: "tk-1", ProjectID: "project-general", Title: "Fix the bug", Body: "body", Status: tickets.StatusOpen, Developer: "onik97"}
 	require.NoError(t, s.Tickets.Create(ctx, ticket))
 	require.NoError(t, s.Tickets.UpdateStatus(ctx, ticket.ID, tickets.StatusOpen))
 
@@ -87,7 +87,7 @@ func TestIntegration_MentionsOverRealStorage(t *testing.T) {
 		assert.Equal(t, "", chips[0].ProjectPrefix)
 		assert.Equal(t, 1, chips[0].ProjectNumber)
 		assert.Equal(t, "task", chips[0].TypeLabel)
-		assert.Equal(t, "onik97", chips[0].AssigneeLabel)
+		assert.Equal(t, "onik97", chips[0].DeveloperLabel)
 		assert.Equal(t, "", chips[0].DueLabel, "no due-date concept exists yet (ticket 05 flagged decision)")
 
 		assert.Equal(t, "Architecture notes", chips[1].Title)

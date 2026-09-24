@@ -1,4 +1,4 @@
-import { AssigneeAvatar } from "@/components/AssigneeAvatar";
+import { PersonAvatar } from "@/components/PersonAvatar";
 import { cn } from "@/lib/utils";
 import type { VoiceOccupant } from "@/models/Voice";
 
@@ -17,7 +17,7 @@ export const VoiceOccupantList = ({ occupants, resolveLogin, className }: VoiceO
     <div className={cn("flex flex-col gap-0.5 pb-1", className)} aria-label={`In call: ${occupants.map((o) => o.name).join(", ")}`}>
       {occupants.map((occupant) => (
         <div key={occupant.identity} className="flex min-w-0 items-center gap-1.5 py-0.5" title={occupant.name}>
-          <AssigneeAvatar login={resolveLogin(occupant.identity)} className="size-4 text-[8px]" />
+          <PersonAvatar login={resolveLogin(occupant.identity)} className="size-4 text-[8px]" />
           <span className="min-w-0 truncate text-xs text-muted-foreground">{occupant.name}</span>
         </div>
       ))}

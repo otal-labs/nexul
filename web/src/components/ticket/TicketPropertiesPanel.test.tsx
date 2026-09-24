@@ -26,7 +26,9 @@ const ticket: Ticket = {
   position: 0,
   number: 1,
   doc_id: "doc-1",
-  assignee: "onik97",
+  developer: "onik97",
+  tester: "",
+  reporter: { kind: "user", login: "onik97" },
   labels: ["backend", "migrations"],
   created_at: "2026-08-02T12:00:00Z",
   updated_at: "2026-08-02T12:00:00Z",
@@ -93,28 +95,41 @@ describe("TicketPropertiesPanel", () => {
     expect(screen.queryByRole("button", { name: /in progress/i })).not.toBeInTheDocument();
   });
 
-  it("renders the assignee avatar + mono name, and falls back to Unassigned", () => {
+  it("renders the developer and tester rows, falling back to No one", () => {
     const { rerenderWithTicket } = renderPanel();
-    expect(screen.getAllByText("onik97").length).toBeGreaterThan(0);
-    expect(screen.getByLabelText("onik97")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Developer: onik97" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Tester: no one" })).toBeInTheDocument();
 
-    rerenderWithTicket({ ...ticket, assignee: "" });
-    expect(screen.getByText("Unassigned")).toBeInTheDocument();
+    rerenderWithTicket({ ...ticket, developer: "", tester: "lena" });
+    expect(screen.getByRole("button", { name: "Developer: no one" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Tester: lena" })).toBeInTheDocument();
   });
 
-  it("does not render an assignee popover trigger when no handler is wired", () => {
-    renderPanel();
-    expect(screen.queryByRole("button", { name: "Unassigned" })).not.toBeInTheDocument();
-  });
-
-  it("opens the assignee popover and clears the assignee via Unassigned", async () => {
+  it("sets the tester from the member picker through the tester route", async () => {
     const user = userEvent.setup();
-    const onSetAssignee = vi.fn();
-    renderPanel({ onSetAssignee });
+    vi.mocked(api.patch).mockResolvedValue({ data: { ...ticket, tester: "" } });
+    renderPanel();
 
-    await user.click(screen.getByRole("button", { name: /onik97/i }));
-    await user.click(await screen.findByRole("button", { name: "Unassigned" }));
-    expect(onSetAssignee).toHaveBeenCalledWith("t-1", "");
+    await user.click(screen.getByRole("button", { name: "Tester: no one" }));
+    await user.click(await screen.findByRole("button", { name: "No one" }));
+    expect(api.patch).toHaveBeenCalledWith("/api/tickets/t-1/tester", { login: "" });
+  });
+
+  it("shows a person reporter by login", () => {
+    renderPanel();
+    expect(screen.getByText("Reporter")).toBeInTheDocument();
+    expect(screen.getAllByText("onik97").length).toBeGreaterThan(0);
+  });
+
+  it("shows Nexul with the person it filed for, or the automation's name", () => {
+    const { rerenderWithTicket } = renderPanel();
+    rerenderWithTicket({ ...ticket, reporter: { kind: "user:mcp", login: "lena" } });
+    expect(screen.getByText("Nexul")).toBeInTheDocument();
+    expect(screen.getByText("for lena")).toBeInTheDocument();
+
+    rerenderWithTicket({ ...ticket, reporter: { kind: "automation", automation_id: "a-1", automation_name: "Triage" } });
+    expect(screen.getByText("Nexul")).toBeInTheDocument();
+    expect(screen.getByText("Triage")).toBeInTheDocument();
   });
 
   it("renders labels as chips and shows None when there are no labels", () => {

@@ -42,7 +42,9 @@ const ticket: Ticket = {
   position: 0,
   number: 1,
   doc_id: "doc-1",
-  assignee: "onik97",
+  developer: "onik97",
+  tester: "",
+  reporter: { kind: "user", login: "onik97" },
   labels: [],
   created_at: "2026-08-02T12:00:00Z",
   updated_at: "2026-08-02T12:00:00Z",
@@ -64,6 +66,14 @@ describe("TicketDetail", () => {
     expect(screen.getByRole("heading", { name: "Write migrations" })).toBeInTheDocument();
     expect(await screen.findByText("Add the migration runner.")).toBeInTheDocument();
     expect(screen.queryByRole("textbox", { name: "Ticket title" })).not.toBeInTheDocument();
+  });
+
+  it("names the reporter in the meta line, as Nexul for a person when an agent filed it", () => {
+    const { unmount } = renderDetail(ticket);
+    expect(screen.getByText(/ by onik97 · updated/)).toBeInTheDocument();
+    unmount();
+    renderDetail({ ...ticket, reporter: { kind: "user:mcp", login: "lena" } });
+    expect(screen.getByText(/ by Nexul · for lena · updated/)).toBeInTheDocument();
   });
 
   it("falls back to the raw ticket id when no project is provided", () => {

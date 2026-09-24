@@ -241,7 +241,7 @@ func newRegistryServer(t *testing.T) (*Server, *storage.Store, *fakePublisher) {
 	return New(RegistryOptions{
 		Docs:          docs.NewService(store.Docs, accessSvc),
 		Memories:      memories.NewService(store.Memories, testMemoriesPermission{accessSvc}, testProjectLookup{store.Projects}, nil, nil),
-		Tickets:       tickets.NewService(store.Tickets, store.Statuses),
+		Tickets:       tickets.NewService(store.Tickets, store.Statuses, nil),
 		Topology:      topology.NewService(store.Topology),
 		Deploy:        deploy.NewService(store.Deploys, store.Stacks, store.Services, testDeployProjects{store.Projects}),
 		Reviews:       codereview.NewService(store.CodeReviews),
@@ -267,7 +267,7 @@ func newRegistryServer(t *testing.T) (*Server, *storage.Store, *fakePublisher) {
 
 func TestRegistry_ToolsComplete(t *testing.T) {
 	srv, _, _ := newRegistryServer(t)
-	require.Len(t, srv.tools, 129)
+	require.Len(t, srv.tools, 131)
 	names := make(map[string]bool)
 	for _, tool := range srv.tools {
 		require.NotEmpty(t, tool.Name, "every tool must be named")
@@ -280,7 +280,7 @@ func TestRegistry_ToolsComplete(t *testing.T) {
 	expected := []string{
 		"search_docs", "search_tickets", "list_dead_letters", "replay_dead_letter",
 		"doc_create", "doc_get", "doc_search", "doc_update", "doc_archive", "doc_restore",
-		"ticket_create", "ticket_get", "ticket_update", "ticket_update_status", "ticket_set_type",
+		"ticket_create", "ticket_get", "ticket_update", "ticket_update_status", "ticket_set_type", "ticket_set_developer", "ticket_set_tester",
 		"ticket_add_label", "ticket_remove_label", "ticket_list_labels", "ticket_list_all_labels",
 		"ticket_search",
 		"topology_get", "topology_add_node", "topology_remove_node", "topology_add_edge", "topology_remove_edge",

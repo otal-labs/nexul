@@ -23,7 +23,8 @@ type saveTicketRequest struct {
 	Title      string `json:"title"`
 	Body       string `json:"body"`
 	DocID      string `json:"doc_id"`
-	Assignee   string `json:"assignee"`
+	Developer  string `json:"developer"`
+	Tester     string `json:"tester"`
 	ProjectID  string `json:"project_id"`
 	CategoryID string `json:"category_id"`
 	TypeID     string `json:"type_id"`
@@ -42,8 +43,8 @@ type setTypeRequest struct {
 	TypeID string `json:"type_id"`
 }
 
-type setAssigneeRequest struct {
-	Assignee string `json:"assignee"`
+type setPersonRequest struct {
+	Login string `json:"login"`
 }
 
 type updatePositionRequest struct {
@@ -103,7 +104,8 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("PATCH /api/tickets/{id}/status", h.updateStatus)
 	mux.HandleFunc("PATCH /api/tickets/{id}/position", h.updatePosition)
 	mux.HandleFunc("PATCH /api/tickets/{id}/type", h.setType)
-	mux.HandleFunc("PATCH /api/tickets/{id}/assignee", h.setAssignee)
+	mux.HandleFunc("PATCH /api/tickets/{id}/developer", h.setPerson(RoleDeveloper))
+	mux.HandleFunc("PATCH /api/tickets/{id}/tester", h.setPerson(RoleTester))
 	mux.HandleFunc("GET /api/tickets/{id}/labels", h.listLabels)
 	mux.HandleFunc("POST /api/tickets/{id}/labels", h.addLabel)
 	mux.HandleFunc("DELETE /api/tickets/{id}/labels/{label}", h.removeLabel)
@@ -120,7 +122,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	t, err := h.svc.Create(r.Context(), req.ProjectID, req.Title, req.Body, req.DocID, req.Assignee, CreateOptions{CategoryID: req.CategoryID, TypeID: req.TypeID})
+	t, err := h.svc.Create(r.Context(), req.ProjectID, req.Title, req.Body, req.DocID, req.Developer, CreateOptions{CategoryID: req.CategoryID, TypeID: req.TypeID, Tester: req.Tester})
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -237,18 +239,20 @@ func (h *Handler) setType(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, t)
 }
 
-func (h *Handler) setAssignee(w http.ResponseWriter, r *http.Request) {
-	var req setAssigneeRequest
-	if err := httpx.DecodeJSON(r, &req); err != nil {
-		httpx.WriteError(w, err)
-		return
+func (h *Handler) setPerson(role Role) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req setPersonRequest
+		if err := httpx.DecodeJSON(r, &req); err != nil {
+			httpx.WriteError(w, err)
+			return
+		}
+		t, err := h.svc.SetPerson(r.Context(), r.PathValue("id"), role, req.Login)
+		if err != nil {
+			httpx.WriteError(w, err)
+			return
+		}
+		httpx.WriteJSON(w, http.StatusOK, t)
 	}
-	t, err := h.svc.SetAssignee(r.Context(), r.PathValue("id"), req.Assignee)
-	if err != nil {
-		httpx.WriteError(w, err)
-		return
-	}
-	httpx.WriteJSON(w, http.StatusOK, t)
 }
 
 func (h *Handler) listLabels(w http.ResponseWriter, r *http.Request) {

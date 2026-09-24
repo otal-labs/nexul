@@ -26,7 +26,7 @@ func toolByName(t *testing.T, tools []mcptool.Tool, name string) mcptool.Tool {
 
 func TestMCPTools_Shape(t *testing.T) {
 	tools := MCPTools(newTestService(newFakeRepo()))
-	require.Len(t, tools, 15)
+	require.Len(t, tools, 17)
 	var names []string
 	for _, tool := range tools {
 		names = append(names, tool.Name)
@@ -36,6 +36,7 @@ func TestMCPTools_Shape(t *testing.T) {
 	}
 	assert.ElementsMatch(t, []string{
 		"ticket_create", "ticket_get", "ticket_update", "ticket_update_status", "ticket_set_type",
+		"ticket_set_developer", "ticket_set_tester",
 		"ticket_add_label", "ticket_remove_label", "ticket_list_labels", "ticket_list_all_labels",
 		"ticket_set_label_color", "ticket_label_colors",
 		"ticket_search", "ticket_link_pr", "ticket_link_branch", "ticket_get_links",
@@ -114,7 +115,7 @@ func TestMCPTools_TicketCreate(t *testing.T) {
 	call := toolByName(t, tools, "ticket_create").Call
 
 	t.Run("happy path links to doc", func(t *testing.T) {
-		got, err := call(context.Background(), map[string]any{"project_id": "p-1", "title": "Fix", "body": "b", "doc_id": "doc-1", "assignee": "onik97"})
+		got, err := call(context.Background(), map[string]any{"project_id": "p-1", "title": "Fix", "body": "b", "doc_id": "doc-1", "developer": "onik97", "tester": "lena"})
 		require.NoError(t, err)
 		tk, ok := got.(*Ticket)
 		require.True(t, ok)

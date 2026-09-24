@@ -56,7 +56,7 @@ func TestIntegration_PROPened_CreatesPerPRReviewShownOnTickets(t *testing.T) {
 	db := newDB(t)
 	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
 
-	tkSvc := tickets.NewService(s.Tickets, s.Statuses)
+	tkSvc := tickets.NewService(s.Tickets, s.Statuses, nil)
 	bus := newReviewBus(t, s)
 	reviewSvc := codereview.NewService(s.CodeReviews)
 	subscribeReviewHandlers(t, bus, reviewSvc)

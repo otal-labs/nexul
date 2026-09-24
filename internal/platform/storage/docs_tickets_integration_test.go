@@ -106,7 +106,7 @@ func TestIntegration_DocsToTicketFlowPublishesEvents(t *testing.T) {
 	db := newDB(t)
 	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
 	docsSvc := docs.NewService(s.Docs, allowAll{})
-	ticketsSvc := tickets.NewService(s.Tickets, s.Statuses)
+	ticketsSvc := tickets.NewService(s.Tickets, s.Statuses, nil)
 
 	doc, err := docsSvc.Create(ctx, "project-general", "Storage Spine", "SQLite migrations and FTS5 indexing")
 	require.NoError(t, err)
@@ -162,7 +162,7 @@ func TestIntegration_TicketLinksPRAndFinishes(t *testing.T) {
 	ctx := context.Background()
 	db := newDB(t)
 	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
-	svc := tickets.NewService(s.Tickets, s.Statuses)
+	svc := tickets.NewService(s.Tickets, s.Statuses, nil)
 
 	tk, err := svc.Create(ctx, "project-general", "Fix login", "", "", "")
 	require.NoError(t, err)
@@ -203,7 +203,7 @@ func TestIntegration_TicketDevStatusBatchesAcrossTickets(t *testing.T) {
 	ctx := context.Background()
 	db := newDB(t)
 	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
-	svc := tickets.NewService(s.Tickets, s.Statuses)
+	svc := tickets.NewService(s.Tickets, s.Statuses, nil)
 
 	a, err := svc.Create(ctx, "project-general", "A", "", "", "")
 	require.NoError(t, err)
@@ -232,7 +232,7 @@ func TestIntegration_TicketPositionPersistsAndResetsOnMove(t *testing.T) {
 	ctx := context.Background()
 	db := newDB(t)
 	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
-	ticketsSvc := tickets.NewService(s.Tickets, s.Statuses)
+	ticketsSvc := tickets.NewService(s.Tickets, s.Statuses, nil)
 
 	now := time.Now()
 	require.NoError(t, s.Categories.Create(ctx, &workspace.Category{
@@ -316,7 +316,7 @@ func TestIntegration_CreateTicketWithUnknownDocIsConflict(t *testing.T) {
 	ctx := context.Background()
 	db := newDB(t)
 	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
-	svc := tickets.NewService(s.Tickets, s.Statuses)
+	svc := tickets.NewService(s.Tickets, s.Statuses, nil)
 
 	_, err := svc.Create(ctx, "project-general", "orphan", "", "does-not-exist", "")
 	require.Error(t, err)
@@ -326,7 +326,7 @@ func TestIntegration_TicketStatusChangePublishesFromStatusToStatus(t *testing.T)
 	ctx := context.Background()
 	db := newDB(t)
 	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
-	svc := tickets.NewService(s.Tickets, s.Statuses)
+	svc := tickets.NewService(s.Tickets, s.Statuses, nil)
 
 	tk, err := svc.Create(ctx, "project-general", "Fix", "", "", "")
 	require.NoError(t, err)

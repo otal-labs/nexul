@@ -19,7 +19,7 @@ var fixedNow = time.Date(2026, 8, 2, 12, 0, 0, 0, time.UTC)
 func mustCreateTicket(t *testing.T, s *Store, id string) string {
 	t.Helper()
 	ctx := context.Background()
-	svc := tickets.NewService(s.Tickets, s.Statuses)
+	svc := tickets.NewService(s.Tickets, s.Statuses, nil)
 	tk, err := svc.Create(ctx, "project-general", "ticket "+id, "", "", "")
 	require.NoError(t, err)
 	return tk.ID

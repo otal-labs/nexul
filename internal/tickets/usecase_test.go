@@ -296,7 +296,7 @@ func (f *fakeRepo) eventsFor(topic string) []eventbus.OutboxEvent {
 }
 
 func newTestService(repo *fakeRepo) *Service {
-	s := NewService(repo, fakeStatusStore{})
+	s := NewService(repo, fakeStatusStore{}, nil)
 	s.now = func() time.Time { return fixedNow }
 	return s
 }
@@ -328,14 +328,19 @@ func (f *fakeRepo) UpdateType(_ context.Context, id, typeID string) error {
 	return nil
 }
 
-func (f *fakeRepo) UpdateAssignee(_ context.Context, id, assignee string, evts ...eventbus.OutboxEvent) error {
+func (f *fakeRepo) UpdatePerson(_ context.Context, id string, role Role, login string, evts ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	t, ok := f.tickets[id]
 	if !ok {
 		return apperrs.ErrNotFound
 	}
-	t.Assignee = assignee
+	if role == RoleTester {
+		t.Tester = login
+	}
+	if role == RoleDeveloper {
+		t.Developer = login
+	}
 	f.events = append(f.events, evts...)
 	return nil
 }

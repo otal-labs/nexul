@@ -41,7 +41,7 @@ const ticket = (
   title: string,
   status: string,
   categoryId = "",
-  assignee = "",
+  developer = "",
 ) => ({
   id,
   project_id: projectId,
@@ -53,7 +53,9 @@ const ticket = (
   position: 0,
   number: 1,
   doc_id: "",
-  assignee,
+  developer,
+  tester: "",
+  reporter: { kind: "user", login: "onik97" },
   created_at: "2026-08-02T12:00:00Z",
   updated_at: "2026-08-02T12:00:00Z",
   labels: [],
@@ -86,6 +88,7 @@ const renderPage = (initialPath = "/board/p-1") => {
 const mockGet = (tickets: unknown[], projectList: typeof projects = projects, categoryList: typeof categories = categories) => {
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/projects") return { data: projectList };
+    if (url === "/api/auth/me") return { data: { user: { login: "onik97" } } };
     const projectMatch = /^\/api\/projects\/([^/]+)$/.exec(url);
     if (projectMatch) return { data: projectList.find((p) => p.id === projectMatch[1]) };
     if (url.startsWith("/api/categories")) return { data: categoryList };
@@ -179,7 +182,8 @@ describe("BoardPage", () => {
       body: "",
       project_id: "p-1",
       doc_id: "",
-      assignee: "",
+      developer: "",
+      tester: "",
       category_id: "",
       type_id: "ticket-type-task",
     });
@@ -190,6 +194,7 @@ describe("BoardPage", () => {
     // Reassigned (not pushed) on create so the refetch returns a fresh array — React Query's structural sharing would swallow an in-place mutation of the same reference.
     let currentCategories = [...categories];
     vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === "/api/auth/me") return { data: { user: { login: "onik97" } } };
       if (url.startsWith("/api/projects")) return { data: projects };
       if (url.startsWith("/api/categories")) return { data: currentCategories };
       if (url.startsWith("/api/statuses")) return { data: statuses };
@@ -226,6 +231,7 @@ describe("BoardPage", () => {
     const user = userEvent.setup();
     let currentCategories = [...categories];
     vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === "/api/auth/me") return { data: { user: { login: "onik97" } } };
       if (url.startsWith("/api/projects")) return { data: projects };
       if (url.startsWith("/api/categories")) return { data: currentCategories };
       if (url.startsWith("/api/statuses")) return { data: statuses };
@@ -277,6 +283,7 @@ describe("BoardPage", () => {
 
   it("does not show the empty state while tickets are still loading", async () => {
     vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === "/api/auth/me") return { data: { user: { login: "onik97" } } };
       if (url.startsWith("/api/projects")) return { data: projects };
       if (url.startsWith("/api/categories")) return { data: categories };
       if (url.startsWith("/api/statuses")) return { data: statuses };
@@ -369,15 +376,15 @@ describe("BoardPage filters", () => {
     expect(screen.queryByText("Fix login")).not.toBeInTheDocument();
   });
 
-  it("filters by assignee", async () => {
+  it("filters by developer", async () => {
     const user = userEvent.setup();
     mockGet([
       ticket("t-1", "p-1", "Fix login", "open", "c-1", "alice"),
       ticket("t-2", "p-1", "Wire FTS", "open", "c-1", "bob"),
     ]);
     renderPage();
-    // Assignees filter from the avatar stack beside the Filter button, not from the popover.
-    await user.click(await screen.findByRole("button", { name: "Assignee alice" }));
+    // Developers filter from the avatar stack beside the Filter button, not from the popover.
+    await user.click(await screen.findByRole("button", { name: "Developer alice" }));
     expect(screen.getByText("Fix login")).toBeInTheDocument();
     expect(screen.queryByText("Wire FTS")).not.toBeInTheDocument();
   });
@@ -401,6 +408,7 @@ describe("BoardPage label filter", () => {
   it("filters by label", async () => {
     const user = userEvent.setup();
     vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === "/api/auth/me") return { data: { user: { login: "onik97" } } };
       if (url.startsWith("/api/projects")) return { data: projects };
       if (url.startsWith("/api/categories")) return { data: categories };
       if (url.startsWith("/api/statuses")) return { data: statuses };

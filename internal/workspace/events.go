@@ -85,10 +85,11 @@ type ticketStatusChangedEvent struct {
 
 // ticketRef is the slice of a ticket the generation rules need.
 type ticketRef struct {
-	ID       string `json:"id"`
-	Title    string `json:"title"`
-	Body     string `json:"body"`
-	Assignee string `json:"assignee"`
+	ID        string `json:"id"`
+	Title     string `json:"title"`
+	Body      string `json:"body"`
+	Developer string `json:"developer"`
+	Tester    string `json:"tester"`
 }
 
 // docEvent mirrors the docs domain's doc.created / doc.updated payloads.
@@ -153,7 +154,7 @@ func HandlePlayRunWaiting(ctx context.Context, svc *NotificationService, ev even
 	return svc.onPlayRunWaiting(CtxWithEventKey(ctx, ev.ID), e)
 }
 
-// HandleTicketCreated notifies the assignee and every user @-mentioned in the title or body.
+// HandleTicketCreated notifies the developer, the tester, and every user @-mentioned in the title or body.
 func HandleTicketCreated(ctx context.Context, svc *NotificationService, ev eventbus.Event) error {
 	var e ticketCreatedEvent
 	if err := json.Unmarshal(ev.Payload, &e); err != nil {
@@ -165,7 +166,7 @@ func HandleTicketCreated(ctx context.Context, svc *NotificationService, ev event
 	return svc.onTicketCreated(CtxWithEventKey(ctx, ev.ID), e.Ticket)
 }
 
-// HandleTicketStatusChanged notifies the assignee and @-mentioned users of that ticket.
+// HandleTicketStatusChanged notifies the developer, the tester, and @-mentioned users of that ticket.
 func HandleTicketStatusChanged(ctx context.Context, svc *NotificationService, ev eventbus.Event) error {
 	var e ticketStatusChangedEvent
 	if err := json.Unmarshal(ev.Payload, &e); err != nil {

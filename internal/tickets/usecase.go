@@ -17,22 +17,25 @@ import (
 type Service struct {
 	repo     Repo
 	statuses StatusStore
+	users    UserLogins
 	now      func() time.Time
 }
 
-// NewService wires the tickets use-cases over the given repo and status store.
-func NewService(repo Repo, statuses StatusStore) *Service {
-	return &Service{repo: repo, statuses: statuses, now: time.Now}
+// NewService wires the tickets use-cases; users resolves the reporter's login and may be nil, recording the user id.
+func NewService(repo Repo, statuses StatusStore, users UserLogins) *Service {
+	return &Service{repo: repo, statuses: statuses, users: users, now: time.Now}
 }
 
-// CreateOptions carries the optional board metadata for a new ticket: its category and type.
+// CreateOptions carries the optional metadata for a new ticket; ViaMCP marks a ticket filed through an MCP tool call.
 type CreateOptions struct {
 	CategoryID string
 	TypeID     string
+	Tester     string
+	ViaMCP     bool
 }
 
 // Create persists a new open ticket and enqueues ticket.created; a workspace needs a project first.
-func (s *Service) Create(ctx context.Context, projectID, title, body, docID, assignee string, opts ...CreateOptions) (*Ticket, error) {
+func (s *Service) Create(ctx context.Context, projectID, title, body, docID, developer string, opts ...CreateOptions) (*Ticket, error) {
 	projectID = strings.TrimSpace(projectID)
 	if projectID == "" {
 		return nil, fmt.Errorf("%w: project id is required — create a project before creating tickets", apperrs.ErrInvalid)
@@ -55,7 +58,9 @@ func (s *Service) Create(ctx context.Context, projectID, title, body, docID, ass
 		Body:       body,
 		Status:     StatusOpen,
 		DocID:      strings.TrimSpace(docID),
-		Assignee:   assignee,
+		Developer:  strings.TrimSpace(developer),
+		Tester:     strings.TrimSpace(opt.Tester),
+		Reporter:   s.reporter(ctx, opt.ViaMCP),
 		CreatedAt:  now,
 		UpdatedAt:  now,
 	}
@@ -68,6 +73,34 @@ func (s *Service) Create(ctx context.Context, projectID, title, body, docID, ass
 		return nil, fmt.Errorf("create ticket: %w", err)
 	}
 	return created, nil
+}
+
+// reporter prefers the automation behind an automation token; a person acting through MCP is recorded as user:mcp.
+func (s *Service) reporter(ctx context.Context, viaMCP bool) Reporter {
+	actor, ok := identity.ActorFromCtx(ctx)
+	if ok && actor.Automation != nil {
+		return Reporter{Kind: ActorKindAutomation, AutomationID: actor.Automation.ID, AutomationName: actor.Automation.Name}
+	}
+	kind := ActorKindUser
+	if viaMCP {
+		kind = ActorKindUserMCP
+	}
+	if !ok || actor.ID == "" {
+		return Reporter{Kind: kind}
+	}
+	return Reporter{Kind: kind, Login: s.login(ctx, actor.ID)}
+}
+
+// login falls back to the user id when no lookup is wired or it fails, so a reporter is never lost.
+func (s *Service) login(ctx context.Context, userID string) string {
+	if s.users == nil {
+		return userID
+	}
+	login, err := s.users.LoginForUserID(ctx, userID)
+	if err != nil || login == "" {
+		return userID
+	}
+	return login
 }
 
 // Get returns a ticket by id.
@@ -137,24 +170,36 @@ func (s *Service) SetType(ctx context.Context, id, typeID string) (*Ticket, erro
 	return &updated, nil
 }
 
-// SetAssignee changes a ticket's assignee in place; the ticket must exist. An empty string unassigns.
-func (s *Service) SetAssignee(ctx context.Context, id, assignee string) (*Ticket, error) {
+// SetPerson sets a ticket's developer or tester to a member login in place; an empty login clears the role.
+func (s *Service) SetPerson(ctx context.Context, id string, role Role, login string) (*Ticket, error) {
 	if strings.TrimSpace(id) == "" {
 		return nil, fmt.Errorf("%w: id is required", apperrs.ErrInvalid)
 	}
+	if role != RoleDeveloper && role != RoleTester {
+		return nil, fmt.Errorf("%w: role must be developer or tester", apperrs.ErrInvalid)
+	}
+	login = strings.TrimSpace(login)
 	current, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("set assignee on ticket %s: %w", id, err)
-	}
-	if current.Assignee == assignee {
-		return current, nil
+		return nil, fmt.Errorf("set %s on ticket %s: %w", role, id, err)
 	}
 	updated := *current
-	updated.Assignee = assignee
+	field := &updated.Developer
+	if role == RoleTester {
+		field = &updated.Tester
+	}
+	previous := *field
+	if previous == login {
+		return current, nil
+	}
+	*field = login
 	updated.UpdatedAt = s.now().UTC()
-	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicAssigneeChanged, Payload: AssigneeChangedEvent{Ticket: updated, From: current.Assignee, To: assignee}}
-	if err := s.repo.UpdateAssignee(ctx, id, assignee, evt); err != nil {
-		return nil, fmt.Errorf("set assignee on ticket %s: %w", id, err)
+	evts := []eventbus.OutboxEvent{{ID: ids.New(), Topic: personTopic(role), Payload: PersonChangedEvent{Ticket: updated, From: previous, To: login}}}
+	if role == RoleDeveloper {
+		evts = append(evts, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicAssigneeChanged, Payload: AssigneeChangedEvent{Ticket: updated, From: previous, To: login}})
+	}
+	if err := s.repo.UpdatePerson(ctx, id, role, login, evts...); err != nil {
+		return nil, fmt.Errorf("set %s on ticket %s: %w", role, id, err)
 	}
 	return &updated, nil
 }

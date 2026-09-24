@@ -10,7 +10,7 @@ interface MentionChipLayoutSectionProps {
   settings: InstanceSettings;
 }
 
-const TEMPLATE_TOKENS = ["Project", "Ticket", "Status", "Type", "Assignee", "Due"] as const;
+const TEMPLATE_TOKENS = ["Project", "Ticket", "Status", "Type", "Developer", "Due"] as const;
 
 // Fake preview data only — this never renders a live chip, so no API call is needed.
 const PREVIEW_VALUES: Record<(typeof TEMPLATE_TOKENS)[number], string> = {
@@ -18,7 +18,7 @@ const PREVIEW_VALUES: Record<(typeof TEMPLATE_TOKENS)[number], string> = {
   Ticket: "Fix login redirect loop",
   Status: "In progress",
   Type: "bug",
-  Assignee: "Sam",
+  Developer: "Sam",
   Due: "Aug 30",
 };
 
