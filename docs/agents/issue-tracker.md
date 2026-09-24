@@ -53,11 +53,12 @@ git history, and anything durable it decided is an ADR.
 
 - `.scratch/latent-bugs/` — small defects seen in passing, one heading each
   in `spec.md`; no tickets, fix and delete the heading.
-- `.scratch/llm-setup/` — wayfinder map, charted 2026-09-22, being worked:
-  MCP-owned setup state per paired computer (enforcing, MCP-only writes), a
-  harness-setup wizard installing the default skill set, and the guided
-  lifecycle (project onboarding interview, bug→origin links, testing step,
-  done-as-index). Research findings in `research/`.
+- `.scratch/llm-setup/` — wayfinder map complete 2026-09-24 (decisions
+  01–16, ADRs 0062–0065) and sliced into implementation tickets 17–38:
+  reaching a remote harness through a per-computer tunnel, the MCP-only
+  setup gate and its wizard, and the guided lifecycle (ticket people and
+  templates, found-in and blocked-by, the testing step, the interview, the
+  decisions check). Research findings in `research/`.
 - `.scratch/integrations/` — three tracks: Cloudflare deploy→domain,
   branch-driven deployments, LiveKit voice channels. Implemented; tickets 04
   and 11 await the owner's reaction to the built UI. Research findings in
