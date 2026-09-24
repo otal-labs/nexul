@@ -217,10 +217,11 @@ every resource maps to a read query. So:
 - Operational internals (dead letters, run logs, topology mutation) are
   exposed to agents because they are just use-cases.
 
-Tool names are `<verb>_<object>`: `search_docs`, `replay_dead_letter`,
-`create_ticket_from_doc`, `deploy_stack`. Verb first matches how agents read a
-tool list and how the wider MCP ecosystem names tools, so an agent's prior
-carries over. Composite tools that cross domains live in
+Tool names are `<object>_<verb>`: `doc_search`, `ticket_get`,
+`memory_revert`, `stack_deploy`. Object first keeps each domain's tools
+together wherever a tool list is sorted, so an agent finds every ticket
+operation in one place. Workflow prompts are not tools and keep their own
+names (`create_ticket_from_doc`, `deploy_stack`). Composite tools that cross domains live in
 `internal/mcp/registry.go`; domain-owned tools live in the domain's `mcp.go`.
 
 Domain errors map to JSON-RPC codes in `internal/mcp/errors.go`:

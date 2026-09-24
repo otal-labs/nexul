@@ -114,6 +114,13 @@ no users yet, move quick):
   retry otherwise) that writes, supersedes, or skips a three-line
   decisions-log entry; one MCP tool walks commit or PR → tickets → docs →
   bugs → log entries; done writes nothing else.
+- [The setup MCP surface](issues/12-setup-mcp-surface.md) — tools are
+  `<object>_<verb>` (docs fixed, a dozen stragglers to rename); connecting
+  Nexul MCP is the wizard's first step via a per-computer token, one setup
+  turn per provider confirms itself; token hidden in saved transcripts; the
+  wizard installs nexul-memory; setup tools, `account_whoami`, and
+  `git_get_change_context` listed; owner-only, events with live push; the
+  setup turn's exemption comes only from the wizard's server path.
 - [Which skill sets "setup" installs](issues/03-which-skill-sets.md) —
   mattpocock/skills is the default the wizard installs (users may amend their
   copies); pstack is a README credit only; no Nexul-shipped skill for now —
