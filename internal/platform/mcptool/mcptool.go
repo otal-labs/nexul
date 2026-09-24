@@ -17,6 +17,18 @@ type Tool struct {
 	Call        func(ctx context.Context, args map[string]any) (any, error)
 }
 
+// ObjectSchema is the JSON Schema for a tool's arguments object; nil properties become {}, since clients reject a null.
+func ObjectSchema(properties map[string]any, required ...string) map[string]any {
+	if properties == nil {
+		properties = map[string]any{}
+	}
+	schema := map[string]any{"type": "object", "properties": properties}
+	if len(required) > 0 {
+		schema["required"] = required
+	}
+	return schema
+}
+
 // RequiredString returns args[key] as a non-empty string, or an ErrInvalid
 // error naming the key when it is missing, not a string, or empty.
 func RequiredString(args map[string]any, key string) (string, error) {

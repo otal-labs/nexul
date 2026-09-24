@@ -174,7 +174,7 @@ func deadLetterListTool(store deadletter.Storer) Tool {
 	return Tool{
 		Name:        "dead_letter_list",
 		Description: "List events that exhausted retries or failed permanently.",
-		InputSchema: objectSchema(map[string]any{
+		InputSchema: mcptool.ObjectSchema(map[string]any{
 			"limit":  map[string]any{"type": "integer"},
 			"offset": map[string]any{"type": "integer"},
 		}),
@@ -192,7 +192,7 @@ func deadLetterReplayTool(store deadletter.Storer, p Publisher) Tool {
 	return Tool{
 		Name:        "dead_letter_replay",
 		Description: "Republish a dead letter to its original topic and remove it from the store.",
-		InputSchema: objectSchema(map[string]any{
+		InputSchema: mcptool.ObjectSchema(map[string]any{
 			"id": map[string]any{"type": "string"},
 		}, "id"),
 		Call: func(ctx context.Context, args map[string]any) (any, error) {
@@ -317,14 +317,6 @@ func defaultPrompts() []Prompt {
 			},
 		},
 	}
-}
-
-func objectSchema(properties map[string]any, required ...string) map[string]any {
-	schema := map[string]any{"type": "object", "properties": properties}
-	if len(required) > 0 {
-		schema["required"] = required
-	}
-	return schema
 }
 
 func intArg(v any) int {

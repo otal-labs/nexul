@@ -17,7 +17,7 @@ func RunMCPTools(r *Runner) []mcptool.Tool {
 				"Returns the trail in state starting; poll play_run_get for its outcome. Memories are inlined in " +
 				"full (the project's always-included ones first); custom instructions win over the play's where they conflict. " +
 				"computer_id, provider, and model are optional; left unset, the run resolves the caller's own project link or pairing defaults.",
-			InputSchema: objectSchema(map[string]any{
+			InputSchema: mcptool.ObjectSchema(map[string]any{
 				"play_id":             map[string]any{"type": "string"},
 				"target_type":         map[string]any{"type": "string", "enum": targetTypeNames},
 				"target_id":           map[string]any{"type": "string"},
@@ -48,7 +48,7 @@ func RunMCPTools(r *Runner) []mcptool.Tool {
 		{
 			Name:        "play_run_get",
 			Description: "Get one play run's trail: state, harness session, activity lines, outcome, and reply message id.",
-			InputSchema: objectSchema(map[string]any{
+			InputSchema: mcptool.ObjectSchema(map[string]any{
 				"id": map[string]any{"type": "string"},
 			}, "id"),
 			Call: func(ctx context.Context, args map[string]any) (any, error) {
@@ -63,7 +63,7 @@ func RunMCPTools(r *Runner) []mcptool.Tool {
 			Name: "play_run_stop",
 			Description: "Stop an active play run: interrupts the harness turn and ends the trail as interrupted, keeping " +
 				"its activity lines. Allowed for the run's starter or a plays:write holder in its workspace.",
-			InputSchema: objectSchema(map[string]any{
+			InputSchema: mcptool.ObjectSchema(map[string]any{
 				"id": map[string]any{"type": "string"},
 			}, "id"),
 			Call: func(ctx context.Context, args map[string]any) (any, error) {
@@ -79,7 +79,7 @@ func RunMCPTools(r *Runner) []mcptool.Tool {
 			Description: "Answer the question a waiting play run stopped on. answers maps each question id to the chosen " +
 				"option label (an array for a multi-select) or free text; the run continues on the same trail and session. " +
 				"Allowed for the run's starter or a plays:write holder in its workspace.",
-			InputSchema: objectSchema(map[string]any{
+			InputSchema: mcptool.ObjectSchema(map[string]any{
 				"id":      map[string]any{"type": "string"},
 				"answers": map[string]any{"type": "object", "additionalProperties": map[string]any{"type": []string{"string", "array"}}},
 			}, "id", "answers"),
@@ -97,7 +97,7 @@ func RunMCPTools(r *Runner) []mcptool.Tool {
 				"the ticket, its pull requests, and the project's decisions log, then adds a three-line entry, marks a reversed one " +
 				"superseded, or leaves the log alone. Use it when the ticket shows the decisions check didn't run. Returns the trail in " +
 				"state starting; poll play_run_get for its outcome.",
-			InputSchema: objectSchema(map[string]any{
+			InputSchema: mcptool.ObjectSchema(map[string]any{
 				"ticket_id": map[string]any{"type": "string"},
 			}, "ticket_id"),
 			Call: func(ctx context.Context, args map[string]any) (any, error) {
@@ -111,7 +111,7 @@ func RunMCPTools(r *Runner) []mcptool.Tool {
 		{
 			Name:        "play_list_runs",
 			Description: "List the play runs on a ticket, a doc, or a project's interview (target_id the project id), newest first.",
-			InputSchema: objectSchema(map[string]any{
+			InputSchema: mcptool.ObjectSchema(map[string]any{
 				"target_type": map[string]any{"type": "string", "enum": targetTypeNames},
 				"target_id":   map[string]any{"type": "string"},
 			}, "target_type", "target_id"),

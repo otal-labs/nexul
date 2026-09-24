@@ -18,7 +18,7 @@ func crudTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "automation_create",
 			Description: "Create a new Custom automation shell and mint its scoped token (returned once).",
-			InputSchema: objectSchema(map[string]any{
+			InputSchema: mcptool.ObjectSchema(map[string]any{
 				"name":   map[string]any{"type": "string"},
 				"scopes": map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
 			}, "name", "scopes"),
@@ -41,7 +41,7 @@ func crudTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "automation_list",
 			Description: "List all automations, defaults included.",
-			InputSchema: objectSchema(map[string]any{}),
+			InputSchema: mcptool.ObjectSchema(map[string]any{}),
 			Call: func(ctx context.Context, args map[string]any) (any, error) {
 				return s.List(ctx, actorIDFromCtx(ctx))
 			},
@@ -49,7 +49,7 @@ func crudTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "automation_get",
 			Description: "Fetch a single automation by id.",
-			InputSchema: objectSchema(map[string]any{"id": map[string]any{"type": "string"}}, "id"),
+			InputSchema: mcptool.ObjectSchema(map[string]any{"id": map[string]any{"type": "string"}}, "id"),
 			Call: func(ctx context.Context, args map[string]any) (any, error) {
 				id, err := mcptool.RequiredString(args, "id")
 				if err != nil {
@@ -61,7 +61,7 @@ func crudTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "automation_update_config",
 			Description: "Replace an automation's owner-edited config values.",
-			InputSchema: objectSchema(map[string]any{
+			InputSchema: mcptool.ObjectSchema(map[string]any{
 				"id":            map[string]any{"type": "string"},
 				"config_values": map[string]any{"type": "object"},
 			}, "id", "config_values"),
@@ -84,7 +84,7 @@ func crudTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "automation_set_enabled",
 			Description: "Enable or disable an automation.",
-			InputSchema: objectSchema(map[string]any{
+			InputSchema: mcptool.ObjectSchema(map[string]any{
 				"id":      map[string]any{"type": "string"},
 				"enabled": map[string]any{"type": "boolean"},
 			}, "id", "enabled"),
@@ -100,7 +100,7 @@ func crudTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "automation_delete",
 			Description: "Delete an automation and revoke its token.",
-			InputSchema: objectSchema(map[string]any{"id": map[string]any{"type": "string"}}, "id"),
+			InputSchema: mcptool.ObjectSchema(map[string]any{"id": map[string]any{"type": "string"}}, "id"),
 			Call: func(ctx context.Context, args map[string]any) (any, error) {
 				id, err := mcptool.RequiredString(args, "id")
 				if err != nil {
@@ -120,7 +120,7 @@ func tokenTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "automation_mint_token",
 			Description: "Rotate an automation's token; the previous token stops authenticating immediately.",
-			InputSchema: objectSchema(map[string]any{"id": map[string]any{"type": "string"}}, "id"),
+			InputSchema: mcptool.ObjectSchema(map[string]any{"id": map[string]any{"type": "string"}}, "id"),
 			Call: func(ctx context.Context, args map[string]any) (any, error) {
 				id, err := mcptool.RequiredString(args, "id")
 				if err != nil {
@@ -136,7 +136,7 @@ func tokenTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "automation_revoke_token",
 			Description: "Revoke an automation's token immediately.",
-			InputSchema: objectSchema(map[string]any{"id": map[string]any{"type": "string"}}, "id"),
+			InputSchema: mcptool.ObjectSchema(map[string]any{"id": map[string]any{"type": "string"}}, "id"),
 			Call: func(ctx context.Context, args map[string]any) (any, error) {
 				id, err := mcptool.RequiredString(args, "id")
 				if err != nil {
@@ -146,14 +146,6 @@ func tokenTools(s *Service) []mcptool.Tool {
 			},
 		},
 	}
-}
-
-func objectSchema(properties map[string]any, required ...string) map[string]any {
-	schema := map[string]any{"type": "object", "properties": properties}
-	if len(required) > 0 {
-		schema["required"] = required
-	}
-	return schema
 }
 
 func actorIDFromCtx(ctx context.Context) string {
