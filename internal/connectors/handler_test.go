@@ -454,14 +454,15 @@ func TestVerifyManual_ProviderRejects_400(t *testing.T) {
 	}
 }
 
-// fakeCheckVerifier answers one named check at a time; failing lists the keys that should fail.
+// fakeCheckVerifier answers one named check at a time; failing lists the keys that should fail, details the passing rows' lines.
 type fakeCheckVerifier struct {
 	failing map[string]error
+	details map[string]string
 }
 
 func (f *fakeCheckVerifier) Verify(context.Context, map[string]string) error { return nil }
-func (f *fakeCheckVerifier) VerifyCheck(_ context.Context, _ map[string]string, key string) error {
-	return f.failing[key]
+func (f *fakeCheckVerifier) VerifyCheck(_ context.Context, _ map[string]string, key string) (string, error) {
+	return f.details[key], f.failing[key]
 }
 
 func TestVerifyManual_SingleCheck(t *testing.T) {
@@ -471,8 +472,11 @@ func TestVerifyManual_SingleCheck(t *testing.T) {
 		Registry: []connectors.Connector{
 			{ID: "cloudflare", Name: "Cloudflare", Description: "d", Category: "infrastructure",
 				Manual: []connectors.CredentialField{{Key: "api_token", Label: "API token", Secret: true}},
-				Checks: []connectors.CredentialCheck{{Key: "token", Label: "Token is active"}, {Key: "dns_edit", Label: "Zone → DNS: Edit"}},
-				Verify: &fakeCheckVerifier{failing: map[string]error{"dns_edit": errors.New("the token is missing Zone → DNS: Edit")}},
+				Checks: []connectors.CredentialCheck{{Key: "token", Label: "Token is active"}, {Key: "dns_edit", Label: "Zone → DNS: Edit"}, {Key: "zone_read", Label: "Zone → Zone: Read"}},
+				Verify: &fakeCheckVerifier{
+					failing: map[string]error{"dns_edit": errors.New("the token is missing Zone → DNS: Edit")},
+					details: map[string]string{"zone_read": "Can edit DNS on example.com"},
+				},
 			},
 		},
 	})
@@ -487,6 +491,11 @@ func TestVerifyManual_SingleCheck(t *testing.T) {
 	authed.ServeHTTP(rec, httptest.NewRequest("POST", "/api/connectors/cloudflare/manual/verify?check=dns_edit", strings.NewReader(`{"api_token":"tok"}`)))
 	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "DNS: Edit") {
 		t.Fatalf("check dns_edit = %d %s, want 400 naming the permission", rec.Code, rec.Body.String())
+	}
+	rec = httptest.NewRecorder()
+	authed.ServeHTTP(rec, httptest.NewRequest("POST", "/api/connectors/cloudflare/manual/verify?check=zone_read", strings.NewReader(`{"api_token":"tok"}`)))
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"detail":"Can edit DNS on example.com"`) {
+		t.Fatalf("check zone_read = %d %s, want 200 carrying the detail line", rec.Code, rec.Body.String())
 	}
 	rec = httptest.NewRecorder()
 	authed.ServeHTTP(rec, httptest.NewRequest("POST", "/api/connectors/cloudflare/manual/verify?check=nope", strings.NewReader(`{"api_token":"tok"}`)))

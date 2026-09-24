@@ -24,8 +24,9 @@ export const useTicker = (
 
   const runCheck = async ({ key, advisory }: CredentialCheck, data: Fields) => {
     try {
-      await run(key, data);
-      setOutcomes((prev) => ({ ...prev, [key]: { state: "ok" } }));
+      const detail = await run(key, data);
+      const outcome: CheckOutcome = typeof detail === "string" ? { state: "ok", message: detail } : { state: "ok" };
+      setOutcomes((prev) => ({ ...prev, [key]: outcome }));
     } catch (err) {
       const state = advisory ? "warning" : "failed";
       setOutcomes((prev) => ({ ...prev, [key]: { state, message: errorMessage(err) } }));

@@ -210,30 +210,31 @@ func (s *Service) VerifyManualCredentials(ctx context.Context, connectorID strin
 }
 
 // VerifyManualCheck runs one named permission check, so the dialog can fan the checks out in parallel and tick each row.
-func (s *Service) VerifyManualCheck(ctx context.Context, connectorID string, fields map[string]string, key string) error {
+func (s *Service) VerifyManualCheck(ctx context.Context, connectorID string, fields map[string]string, key string) (string, error) {
 	c, ok := s.registry[connectorID]
 	if !ok {
-		return fmt.Errorf("%w: unknown connector %q", apperrs.ErrNotFound, connectorID)
+		return "", fmt.Errorf("%w: unknown connector %q", apperrs.ErrNotFound, connectorID)
 	}
 	if !slices.ContainsFunc(c.Checks, func(ch CredentialCheck) bool { return ch.Key == key }) {
-		return fmt.Errorf("%w: %s has no check %q", apperrs.ErrInvalid, connectorID, key)
+		return "", fmt.Errorf("%w: %s has no check %q", apperrs.ErrInvalid, connectorID, key)
 	}
 	cv, ok := c.Verify.(CheckVerifier)
 	if !ok {
-		return fmt.Errorf("%w: %s cannot verify checks one at a time", apperrs.ErrInvalid, c.Name)
+		return "", fmt.Errorf("%w: %s cannot verify checks one at a time", apperrs.ErrInvalid, c.Name)
 	}
 	clean := make(map[string]string, len(c.Manual))
 	for _, f := range c.Manual {
 		v := strings.TrimSpace(fields[f.Key])
 		if v == "" {
-			return fmt.Errorf("%w: %s is required", apperrs.ErrInvalid, f.Label)
+			return "", fmt.Errorf("%w: %s is required", apperrs.ErrInvalid, f.Label)
 		}
 		clean[f.Key] = v
 	}
-	if err := cv.VerifyCheck(ctx, clean, key); err != nil {
-		return asInvalid(err)
+	detail, err := cv.VerifyCheck(ctx, clean, key)
+	if err != nil {
+		return "", asInvalid(err)
 	}
-	return nil
+	return detail, nil
 }
 
 // asInvalid surfaces a provider's verdict as bad input without stacking a second "invalid:" prefix on one it already carries.

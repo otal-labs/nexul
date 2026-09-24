@@ -95,10 +95,14 @@ func TestTokenVerifier_VerifyCheck_IsolatesOnePermission(t *testing.T) {
 	stubAPI(t, map[string]int{"accounts/acct-1/cfd_tunnel": http.StatusForbidden}, "active")
 	v := NewTokenVerifier(nil)
 	fields := map[string]string{"api_token": "tok"}
-	require.NoError(t, v.VerifyCheck(context.Background(), fields, "token"))
-	require.NoError(t, v.VerifyCheck(context.Background(), fields, "zone_read"))
-	require.NoError(t, v.VerifyCheck(context.Background(), fields, "dns_edit"))
-	err := v.VerifyCheck(context.Background(), fields, "tunnel_edit")
+	_, err := v.VerifyCheck(context.Background(), fields, "token")
+	require.NoError(t, err)
+	_, err = v.VerifyCheck(context.Background(), fields, "zone_read")
+	require.NoError(t, err)
+	detail, err := v.VerifyCheck(context.Background(), fields, "dns_edit")
+	require.NoError(t, err)
+	assert.Equal(t, "Can edit DNS on example.com", detail)
+	_, err = v.VerifyCheck(context.Background(), fields, "tunnel_edit")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Cloudflare Tunnel: Edit")
 }
@@ -136,8 +140,10 @@ func TestTokenVerifier_ProbesWithAWriteNotARead(t *testing.T) {
 
 	methods = nil
 	fields := map[string]string{"api_token": "tok"}
-	require.NoError(t, NewTokenVerifier(nil).VerifyCheck(context.Background(), fields, "access_apps_edit"))
-	require.NoError(t, NewTokenVerifier(nil).VerifyCheck(context.Background(), fields, "access_tokens_edit"))
+	_, err := NewTokenVerifier(nil).VerifyCheck(context.Background(), fields, "access_apps_edit")
+	require.NoError(t, err)
+	_, err = NewTokenVerifier(nil).VerifyCheck(context.Background(), fields, "access_tokens_edit")
+	require.NoError(t, err)
 	assert.Equal(t, []string{"DELETE /accounts/acct-1/access/apps/" + nilUUID, "DELETE /accounts/acct-1/access/service_tokens/" + nilUUID}, methods,
 		"the Access probes delete an object that cannot exist, so verifying never mints a token")
 }
@@ -183,7 +189,7 @@ func TestTokenVerifier_AccessChecks(t *testing.T) {
 
 			fields := map[string]string{"api_token": "tok"}
 			for _, key := range []string{"access_apps_edit", "access_tokens_edit"} {
-				err := NewTokenVerifier(nil).VerifyCheck(t.Context(), fields, key)
+				_, err := NewTokenVerifier(nil).VerifyCheck(t.Context(), fields, key)
 				if tt.expect == "" {
 					require.NoError(t, err)
 					continue
@@ -201,7 +207,64 @@ func TestTokenVerifier_UnreachableCloudflare(t *testing.T) {
 	prev := apiBaseURL
 	apiBaseURL = srv.URL
 	t.Cleanup(func() { apiBaseURL = prev })
-	err := NewTokenVerifier(nil).VerifyCheck(t.Context(), map[string]string{"api_token": "tok"}, "token")
+	_, err := NewTokenVerifier(nil).VerifyCheck(t.Context(), map[string]string{"api_token": "tok"}, "token")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "reach cloudflare")
+}
+
+// stubTwoZones lists a.com and b.com and answers each zone's DNS write probe with its status, 400 meaning allowed.
+func stubTwoZones(t *testing.T, dnsStatus map[string]int) {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/zones"):
+			_, _ = w.Write([]byte(`{"success":true,"result":[{"id":"za","name":"a.com","account":{"id":"acct-1"}},{"id":"zb","name":"b.com","account":{"id":"acct-1"}}]}`))
+		case strings.HasSuffix(r.URL.Path, "/dns_records"):
+			zone := strings.Split(r.URL.Path, "/")[2]
+			w.WriteHeader(dnsStatus[zone])
+			_, _ = w.Write([]byte(`{"success":false,"errors":[{"code":10000,"message":"probe"}]}`))
+		case r.Method == http.MethodPost:
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"success":false,"errors":[{"code":1004,"message":"validation"}]}`))
+		default:
+			_, _ = w.Write([]byte(`{"success":true,"result":{"status":"active"}}`))
+		}
+	}))
+	t.Cleanup(srv.Close)
+	prev := apiBaseURL
+	apiBaseURL = srv.URL
+	t.Cleanup(func() { apiBaseURL = prev })
+}
+
+func TestTokenVerifier_DNSEdit_NamesEveryZone(t *testing.T) {
+	tests := []struct {
+		name        string
+		dnsStatus   map[string]int
+		wantDetail  string
+		wantErr     string
+		wantInvalid bool
+	}{
+		{"every zone editable", map[string]int{"za": 400, "zb": 400}, "Can edit DNS on a.com, b.com", "", false},
+		{"one zone read-only", map[string]int{"za": 400, "zb": 403}, "Can edit DNS on a.com; read-only on b.com", "", false},
+		{"no zone editable", map[string]int{"za": 403, "zb": 401}, "", "Zone → DNS: Edit on a.com, b.com", true},
+		{"outage on one zone", map[string]int{"za": 400, "zb": 502}, "", "status 502", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stubTwoZones(t, tt.dnsStatus)
+			fields := map[string]string{"api_token": "tok"}
+			detail, err := NewTokenVerifier(nil).VerifyCheck(t.Context(), fields, "dns_edit")
+			saveErr := NewTokenVerifier(nil).Verify(t.Context(), fields)
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+				require.NoError(t, saveErr, "saving needs one editable zone, not all of them")
+				assert.Equal(t, tt.wantDetail, detail)
+				return
+			}
+			require.Error(t, err)
+			require.Error(t, saveErr)
+			assert.Contains(t, err.Error(), tt.wantErr)
+			assert.Equal(t, tt.wantInvalid, errors.Is(err, apperrs.ErrInvalid))
+		})
+	}
 }

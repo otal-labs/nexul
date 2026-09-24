@@ -379,6 +379,43 @@ describe("ConnectorsSection", () => {
     expect(await within(dialog).findByRole("button", { name: /^confirm$/i })).toBeEnabled();
   });
 
+  it("lists the domains a passing DNS check can edit under its row", async () => {
+    mocks.get.mockResolvedValue({
+      data: [
+        connectorEntry({
+          connector: {
+            id: "cloudflare",
+            name: "Cloudflare",
+            description: "Manages DNS records and tunnels for your deployed services",
+            category: "infrastructure",
+            icon: "cloudflare",
+            manual: [{ key: "api_token", label: "API token", secret: true }],
+            checks: [
+              { key: "token", label: "Token is active" },
+              { key: "dns_edit", label: "Zone → DNS: Edit" },
+            ],
+          },
+        }),
+      ],
+    });
+    mocks.post.mockImplementation(async (_url: string, _body: unknown, config?: { params?: { check?: string } }) => {
+      if (config?.params?.check === "dns_edit") return { data: { detail: "Can edit DNS on nexul.io, otal.dev" } };
+      return { data: "" };
+    });
+    const user = userEvent.setup();
+    renderSection();
+
+    await user.click(await screen.findByRole("button", { name: /^connect$/i }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText(/api token/i), "tok-1");
+    await user.click(within(dialog).getByRole("button", { name: /^verify$/i }));
+
+    expect(await within(dialog).findByText("Can edit DNS on nexul.io, otal.dev")).toBeInTheDocument();
+    expect(within(dialog).getByText("Zone → DNS: Edit").closest("li")).toHaveAttribute("data-state", "ok");
+    expect(within(dialog).getByText("Token is active").closest("li")).toHaveAttribute("data-state", "ok");
+    expect(await within(dialog).findByRole("button", { name: /^confirm$/i })).toBeEnabled();
+  });
+
   it("puts the green light out again when a field changes after Verify", async () => {
     mocks.get.mockResolvedValue({
       data: [

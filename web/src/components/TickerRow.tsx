@@ -11,7 +11,7 @@ interface TickerRowProps {
   outcome: CheckOutcome;
 }
 
-// One ticker row: its why up front, then a spinner, a tick, a warning for an advisory check, or a cross with the reason.
+// One ticker row: its why up front, then a spinner, a tick with any detail the check returned, a warning, or a cross with the reason.
 export const TickerRow = ({ label, why, outcome }: TickerRowProps) => (
   <li role="status" className="flex items-start gap-2 text-sm" data-state={outcome.state}>
     <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center">
@@ -40,6 +40,7 @@ export const TickerRow = ({ label, why, outcome }: TickerRowProps) => (
       {why && outcome.state !== "failed" && outcome.state !== "warning" && (
         <span className="block text-xs text-muted-foreground">{why}</span>
       )}
+      {outcome.state === "ok" && outcome.message && <span className="block text-xs text-foreground">{outcome.message}</span>}
     </span>
   </li>
 );
