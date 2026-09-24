@@ -27,6 +27,8 @@ type Computer struct {
 	UpdatedAt        time.Time  `json:"updated_at"`
 	// BearerToken is encrypted at rest; the `-` tag keeps it off every HTTP response.
 	BearerToken string `json:"-"`
+	// SetupMCPToken is the encrypted MCP token the setup turns wrote into the providers' configs.
+	SetupMCPToken string `json:"-"`
 	// Tunnel is nil for a computer paired by URL (ADR 0062).
 	Tunnel *ComputerTunnel `json:"tunnel,omitempty"`
 }
@@ -107,6 +109,19 @@ type Setup struct {
 	ComputerID  string          `json:"computer_id"`
 	ConfirmedAt *time.Time      `json:"confirmed_at"`
 	Providers   []ProviderSetup `json:"providers"`
+	// Turns is each provider's newest setup turn, for a setup dialog opened mid-run.
+	Turns []SetupTurnSummary `json:"turns"`
+}
+
+// SetupTurnSummary is one provider's newest setup turn without its transcript.
+type SetupTurnSummary struct {
+	RunID        string         `json:"run_id"`
+	TurnID       string         `json:"turn_id"`
+	Provider     string         `json:"provider"`
+	ProviderName string         `json:"provider_name"`
+	State        SetupTurnState `json:"state"`
+	Status       string         `json:"status"`
+	UpdatedAt    time.Time      `json:"updated_at"`
 }
 
 // ProviderSetup is one provider's confirmation on a computer, keyed by the provider's driver kind, never its instance id.
@@ -114,6 +129,45 @@ type ProviderSetup struct {
 	Provider    string     `json:"provider"`
 	ConfirmedAt *time.Time `json:"confirmed_at"`
 	Skills      []string   `json:"skills"`
+}
+
+// SetupTurnState is where one provider's setup turn stands.
+type SetupTurnState string
+
+const (
+	SetupTurnRunning   SetupTurnState = "running"
+	SetupTurnConfirmed SetupTurnState = "confirmed"
+	SetupTurnFailed    SetupTurnState = "failed"
+)
+
+// SetupTurn is one provider's setup on a computer: a prepare session and a confirm session, one transcript.
+type SetupTurn struct {
+	ID           string
+	RunID        string
+	ComputerID   string
+	UserID       string
+	Provider     string
+	ProviderName string
+	State        SetupTurnState
+	// Status is the short line the setup dialog shows under the provider.
+	Status     string
+	Transcript []harness.Activity
+	StartedAt  time.Time
+	UpdatedAt  time.Time
+	EndedAt    *time.Time
+}
+
+// SetupRun is what starting setup hands back: the run and the providers it sets up, in order.
+type SetupRun struct {
+	RunID      string          `json:"run_id"`
+	ComputerID string          `json:"computer_id"`
+	Providers  []SetupProvider `json:"providers"`
+}
+
+// SetupProvider is one provider a setup run covers, by driver kind and display name.
+type SetupProvider struct {
+	Provider string `json:"provider"`
+	Name     string `json:"name"`
 }
 
 // ProviderOption is a provider instance as the pickers list it: still selectable while it needs setup.

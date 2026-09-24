@@ -129,14 +129,14 @@ func TestPlaysRepo_Delete(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
-func TestPlaysRepo_Migration_SeedsDefaultWorkspaceWithBothDefaultPlays(t *testing.T) {
+func TestPlaysRepo_Migration_SeedsDefaultWorkspaceWithTheDefaultPlays(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
 	got, err := s.Plays.List(context.Background(), "workspace-default")
 	require.NoError(t, err)
-	require.Len(t, got, 2)
-	labels := []string{got[0].Label, got[1].Label}
-	assert.ElementsMatch(t, []string{"Fix with AI", "To tickets via AI"}, labels)
+	require.Len(t, got, 3)
+	labels := []string{got[0].Label, got[1].Label, got[2].Label}
+	assert.ElementsMatch(t, []string{"Fix with AI", "To tickets via AI", "Interview"}, labels)
 	for _, p := range got {
 		if p.Label == "Fix with AI" {
 			assert.Equal(t, plays.TypeTicket, p.Type)
@@ -146,6 +146,11 @@ func TestPlaysRepo_Migration_SeedsDefaultWorkspaceWithBothDefaultPlays(t *testin
 		if p.Label == "To tickets via AI" {
 			assert.Equal(t, plays.TypeDoc, p.Type)
 			assert.Nil(t, p.ShowWhenStage)
+		}
+		if p.Label == "Interview" {
+			assert.Equal(t, plays.TypeInterview, p.Type)
+			assert.Nil(t, p.ShowWhenStage)
+			assert.Contains(t, p.Instructions, "memory_create_interview")
 		}
 		assert.True(t, p.Enabled)
 	}

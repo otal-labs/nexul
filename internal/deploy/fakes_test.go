@@ -227,6 +227,7 @@ type fakeStackRepo struct {
 	getErr    error
 	updateErr error
 	deleteErr error
+	listErr   error
 	outbox    []eventbus.OutboxEvent
 }
 
@@ -290,6 +291,9 @@ func (f *fakeStackRepo) GetByName(_ context.Context, name string) (*Stack, error
 func (f *fakeStackRepo) ListByProject(_ context.Context, projectID string) ([]*Stack, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.listErr != nil {
+		return nil, f.listErr
+	}
 	var out []*Stack
 	for _, stack := range f.stored {
 		if projectID == "" || stack.ProjectID == projectID {

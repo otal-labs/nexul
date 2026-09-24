@@ -199,8 +199,8 @@ func TestResolveSetupTurnTarget_UnconfirmedComputer_ResolvesWithoutTheGate(t *te
 	assert.Equal(t, ReasonUnpaired, nc.Reason, "only the computer's owner runs its setup")
 }
 
-// wizardSetupTurnCallers lists the files allowed to call ResolveSetupTurnTarget: the setup wizard's own use-case, once it exists.
-var wizardSetupTurnCallers = map[string]bool{}
+// wizardSetupTurnCallers lists the files allowed to call ResolveSetupTurnTarget: the setup wizard's own use-case.
+var wizardSetupTurnCallers = map[string]bool{"../../internal/pairing/setup_turn.go": true}
 
 func TestResolveSetupTurnTarget_OnlyTheWizardCallsIt(t *testing.T) {
 	t.Parallel()

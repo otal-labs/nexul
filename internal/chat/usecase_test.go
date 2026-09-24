@@ -51,25 +51,9 @@ func (f *fakeRepo) CreateConversation(_ context.Context, c *Conversation, partic
 	if f.createConversationErr != nil {
 		return f.createConversationErr
 	}
-	if c.Kind == KindChannel {
-		for _, existing := range f.conversations {
-			if existing.WorkspaceID == c.WorkspaceID && existing.Kind == KindChannel && existing.Name == c.Name {
-				return apperrs.ErrConflict
-			}
-		}
-	}
-	if c.Kind == KindTicketThread {
-		for _, existing := range f.conversations {
-			if existing.TicketID == c.TicketID {
-				return apperrs.ErrConflict
-			}
-		}
-	}
-	if c.Kind == KindDocThread {
-		for _, existing := range f.conversations {
-			if existing.DocID == c.DocID {
-				return apperrs.ErrConflict
-			}
+	for _, existing := range f.conversations {
+		if duplicateConversation(existing, c) {
+			return apperrs.ErrConflict
 		}
 	}
 	cp := *c
@@ -81,6 +65,21 @@ func (f *fakeRepo) CreateConversation(_ context.Context, c *Conversation, partic
 	f.participants[c.ID] = set
 	f.events = append(f.events, evts...)
 	return nil
+}
+
+// duplicateConversation mirrors the unique indexes: a channel name per workspace, one thread per ticket, doc, or project.
+func duplicateConversation(existing, c *Conversation) bool {
+	switch c.Kind {
+	case KindChannel:
+		return existing.WorkspaceID == c.WorkspaceID && existing.Kind == KindChannel && existing.Name == c.Name
+	case KindTicketThread:
+		return existing.TicketID == c.TicketID
+	case KindDocThread:
+		return existing.DocID == c.DocID
+	case KindInterviewThread:
+		return existing.ProjectID == c.ProjectID
+	}
+	return false
 }
 
 func (f *fakeRepo) GetConversation(_ context.Context, id string) (*Conversation, error) {
@@ -120,6 +119,17 @@ func (f *fakeRepo) GetDocThread(_ context.Context, docID string) (*Conversation,
 	defer f.mu.Unlock()
 	for _, c := range f.conversations {
 		if c.Kind == KindDocThread && c.DocID == docID {
+			return c, nil
+		}
+	}
+	return nil, apperrs.ErrNotFound
+}
+
+func (f *fakeRepo) GetInterviewThread(_ context.Context, projectID string) (*Conversation, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, c := range f.conversations {
+		if c.Kind == KindInterviewThread && c.ProjectID == projectID {
 			return c, nil
 		}
 	}
@@ -584,6 +594,56 @@ func TestGetOrCreateDocThread(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, existing.ID, refetched.ID)
 		assert.Nil(t, got)
+	})
+}
+
+func TestGetOrCreateInterviewThread(t *testing.T) {
+	tests := []struct {
+		name                            string
+		workspaceID, projectID, creator string
+		wantErr                         error
+	}{
+		{"empty project id is invalid", "w-1", "", "u-1", apperrs.ErrInvalid},
+		{"empty workspace id is invalid", "", "p-1", "u-1", apperrs.ErrInvalid},
+		{"empty creator is invalid", "w-1", "p-1", "", apperrs.ErrInvalid},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := newTestService(newFakeRepo()).GetOrCreateInterviewThread(context.Background(), tt.workspaceID, tt.projectID, tt.creator)
+			require.ErrorIs(t, err, tt.wantErr)
+		})
+	}
+	t.Run("creates one thread per project and returns it on every later call", func(t *testing.T) {
+		repo := newFakeRepo()
+		s := newTestService(repo)
+		first, err := s.GetOrCreateInterviewThread(context.Background(), "w-1", "p-1", "u-1")
+		require.NoError(t, err)
+		assert.Equal(t, KindInterviewThread, first.Kind)
+		assert.Equal(t, "p-1", first.ProjectID)
+		again, err := s.GetOrCreateInterviewThread(context.Background(), "w-1", "p-1", "u-2")
+		require.NoError(t, err)
+		assert.Equal(t, first.ID, again.ID)
+		other, err := s.GetOrCreateInterviewThread(context.Background(), "w-1", "p-2", "u-1")
+		require.NoError(t, err)
+		assert.NotEqual(t, first.ID, other.ID)
+		assert.Len(t, repo.eventsFor(TopicConversationCreated), 2)
+	})
+	t.Run("a losing race re-fetches the winner's thread instead of erroring", func(t *testing.T) {
+		repo := newFakeRepo()
+		s := newTestService(repo)
+		existing, err := s.GetOrCreateInterviewThread(context.Background(), "w-1", "p-1", "u-1")
+		require.NoError(t, err)
+		_, err = s.createConversation(context.Background(), &Conversation{WorkspaceID: "w-1", Kind: KindInterviewThread, ProjectID: "p-1", CreatedBy: "u-2"}, []string{"u-2"})
+		require.ErrorIs(t, err, apperrs.ErrConflict)
+		refetched, err := s.GetOrCreateInterviewThread(context.Background(), "w-1", "p-1", "u-2")
+		require.NoError(t, err)
+		assert.Equal(t, existing.ID, refetched.ID)
+	})
+	t.Run("a create failure other than a conflict surfaces", func(t *testing.T) {
+		repo := newFakeRepo()
+		repo.createConversationErr = errors.New("disk full")
+		_, err := newTestService(repo).GetOrCreateInterviewThread(context.Background(), "w-1", "p-1", "u-1")
+		require.ErrorContains(t, err, "disk full")
 	})
 }
 

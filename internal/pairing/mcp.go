@@ -153,7 +153,7 @@ func setupTools(s *Service) []mcptool.Tool {
 	return []mcptool.Tool{
 		{
 			Name:        "computer_setup_get",
-			Description: "Read one of your paired computers' setup confirmation: the overall one and one per provider, each with its confirmed_at (null means unconfirmed) and the skills reported when it was confirmed.",
+			Description: "Read one of your paired computers' setup confirmation: the overall one and one per provider, each with its confirmed_at (null means unconfirmed) and the skills reported when it was confirmed; turns is each provider's newest setup turn with its run_id, state (running, confirmed, or failed), status line, and updated_at.",
 			InputSchema: computerOnly,
 			Call: func(ctx context.Context, args map[string]any) (any, error) {
 				return withComputer(ctx, args, s.GetSetup)
@@ -182,6 +182,30 @@ func setupTools(s *Service) []mcptool.Tool {
 			InputSchema: providerOnly,
 			Call: func(ctx context.Context, args map[string]any) (any, error) {
 				return withProvider(ctx, args, s.UnconfirmProviderSetup)
+			},
+		},
+		{
+			Name:        "computer_setup_start",
+			Description: "Start setup on one of your paired computers: Nexul mints or reuses the computer's MCP token, then runs one setup turn per provider its harness lists, one after another. Each turn connects Nexul's MCP server to its provider, installs the default skills and nexul-memory, and confirms the provider and the computer. Returns at once with the run and its providers; progress arrives as computer.setup_turn_changed events and a final computer.setup_finished. Re-running re-verifies without undoing anything.",
+			InputSchema: computerOnly,
+			Call: func(ctx context.Context, args map[string]any) (any, error) {
+				computerID, err := mcptool.RequiredString(args, "computer_id")
+				if err != nil {
+					return nil, err
+				}
+				return s.StartSetup(ctx, mcpActorID(ctx), computerID)
+			},
+		},
+		{
+			Name:        "computer_setup_retry_provider",
+			Description: "Run one provider's setup turn again on one of your paired computers, alone, after it failed; on a confirmed provider it re-verifies. Like every setup turn, it also confirms the computer once the provider is confirmed.",
+			InputSchema: providerOnly,
+			Call: func(ctx context.Context, args map[string]any) (any, error) {
+				vals, err := mcptool.RequiredStrings(args, "computer_id", "provider")
+				if err != nil {
+					return nil, err
+				}
+				return s.RetrySetupProvider(ctx, mcpActorID(ctx), vals[0], vals[1])
 			},
 		},
 		{

@@ -31,6 +31,16 @@ const (
 		"context, acceptance criteria, and a pointer to the doc section it came from. Create each with " +
 		"`ticket_create`, passing the doc id so the ticket links back. Put them in the backlog column. Reply " +
 		"with the list of tickets created and anything in the doc you deliberately did not turn into a ticket."
+	interviewInstructions = "Run this project's interview, the conversation that records its rules for agents; the project and the answers it already records are named below. " +
+		"Start by calling `memory_create_interview` with the project id: it returns the interview memory, created from the workspace's Interview template the first time. " +
+		"If the memory already holds rules, this is a re-run: amend it, never start over. Ask first what has changed, keep every rule that still holds, and change only what the answers change. " +
+		"Ask one question at a time with your question tool, never a batch, and give every question your recommended answer as its first option, labelled (Recommended), so the person can accept it or type their own. " +
+		"Your first question asks whether to scan the codebase for answers first. If they say yes, read the checkout you are running in (manifests and lockfiles, CI config, linter and formatter config, tests, README, docs and decision records), draft an answer for each category, then grill them on it: one question per finding, saying what you found and where, until each is confirmed or corrected. Never record a finding they have not confirmed. " +
+		"Work through the categories in the interview's headings in order. Do not ask again what the project already records, such as where its tests live, unless the person changes it; record a change there with `project_set_tests_location` as well. " +
+		"Save the interview with `memory_update` after each category, passing its id, title, when-to-use, and the full markdown body, so progress survives a stop. " +
+		"Write rules, not a transcript: short imperative lines under each heading, with no questions, answers, or narration. Replace each heading's prompt line with its rules, and leave out a heading the project has no rule for. " +
+		"The body is capped at 8,000 characters of markdown and every agent turn in the project carries it in full, so keep it well under the cap: tighten wording and drop what a linter or the code already enforces. " +
+		"Reply with a short summary of what the interview now says and what this run changed."
 )
 
 // Service is the plays use-case layer: workspace-scoped play definitions (ADR 0055).
@@ -84,14 +94,14 @@ func (s *Service) List(ctx context.Context, workspaceID string) ([]*Play, error)
 
 // ListApplicable returns workspaceID's enabled plays of playType that apply to a run on projectID for userID:
 // not excluded for that project, matching stage for a ticket play, and not denied plays:run (ticket 21). Unlike
-// List, this skips the plays:read gate: any viewer of the ticket or doc may see the buttons they hold plays:run for.
+// List, this skips the plays:read gate: any viewer of the target may see the buttons they hold plays:run for.
 func (s *Service) ListApplicable(ctx context.Context, workspaceID, userID, projectID string, playType Type, stage *Stage) ([]*Play, error) {
 	workspaceID = strings.TrimSpace(workspaceID)
 	if workspaceID == "" {
 		return nil, fmt.Errorf("%w: workspace id is required", apperrs.ErrInvalid)
 	}
 	if !playType.valid() {
-		return nil, fmt.Errorf("%w: type must be ticket or doc", apperrs.ErrInvalid)
+		return nil, fmt.Errorf("%w: type must be ticket, doc, or interview", apperrs.ErrInvalid)
 	}
 	list, err := s.repo.List(ctx, workspaceID)
 	if err != nil {
@@ -197,9 +207,9 @@ func (s *Service) Delete(ctx context.Context, workspaceID, id string) error {
 	return nil
 }
 
-// SeedDefaults creates the two out-of-the-box plays for a fresh workspace (ticket 02); no permission gate,
+// SeedDefaults creates the three out-of-the-box plays for a fresh workspace (ticket 02); no permission gate,
 // the same way CreateOwnerRole seeds a workspace's first role: there is no member yet to hold plays:write.
-// Idempotent: the default workspace already carries its pair from migration 0138 by the time the Owner
+// Idempotent: the default workspace already carries its plays from migrations by the time the Owner
 // Wizard binds someone to it, so a workspace that already has plays is left alone.
 func (s *Service) SeedDefaults(ctx context.Context, workspaceID string) error {
 	existing, err := s.repo.List(ctx, workspaceID)
@@ -222,6 +232,12 @@ func (s *Service) SeedDefaults(ctx context.Context, workspaceID string) error {
 			ID: ids.New(), WorkspaceID: workspaceID, Label: "To tickets via AI", Type: TypeDoc,
 			Description:  "Splits a doc into tickets a developer could pick up independently.",
 			Instructions: toTicketsInstructions, Enabled: true,
+			CreatedAt: now, UpdatedAt: now,
+		},
+		{
+			ID: ids.New(), WorkspaceID: workspaceID, Label: "Interview", Type: TypeInterview,
+			Description:  "Asks one question at a time to record this project's rules for agents, and amends them on a re-run.",
+			Instructions: interviewInstructions, Enabled: true,
 			CreatedAt: now, UpdatedAt: now,
 		},
 	}

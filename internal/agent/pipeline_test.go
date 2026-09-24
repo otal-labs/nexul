@@ -586,6 +586,28 @@ func TestRunTurn_ContextMessagesAreCapped(t *testing.T) {
 	assert.LessOrEqual(t, len(client.lastPrompt), MaxPromptChars)
 }
 
+func TestRunTurn_InterviewThread_LoadsItsProjectsMemories(t *testing.T) {
+	conv := newFakeConversations(Conversation{ID: "conv-1", WorkspaceID: "workspace-default", ProjectID: "proj-7"})
+	client := &fakeHarness{startResult: harness.StartResult{
+		Updates: updatesChan(harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}}),
+	}}
+	mem := &fakeMemories{}
+	svc := NewService(Config{
+		Conversations: conv,
+		Targets:       &fakeTargets{target: testTarget()},
+		Harnesses:     registryOf(client),
+		Memories:      mem,
+		Live:          &fakeLive{},
+	})
+
+	require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
+	waitFor(t, time.Second, func() bool { return client.snapshotPrompt() != "" })
+
+	mem.mu.Lock()
+	defer mem.mu.Unlock()
+	assert.Equal(t, "proj-7", mem.calledProject)
+}
+
 // --- doc thread context ---------------------------------------------------------
 
 func TestRunTurn_DocThread_PromptIncludesDocTitleAndBody(t *testing.T) {

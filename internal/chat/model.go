@@ -16,6 +16,8 @@ const (
 	KindChannelThread Kind = "channel_thread"
 	KindTicketThread  Kind = "ticket_thread"
 	KindDocThread     Kind = "doc_thread"
+	// KindInterviewThread is a project's interview conversation, where the Interview play asks its questions.
+	KindInterviewThread Kind = "interview_thread"
 	// KindVoiceChannel is a real conversation like any channel; internal/voice owns the LiveKit side.
 	KindVoiceChannel Kind = "voice_channel"
 )
@@ -37,6 +39,8 @@ type Conversation struct {
 	TicketID string `json:"ticket_id,omitempty"`
 	// DocID is set only for KindDocThread; the unique index on it enforces one thread per doc.
 	DocID string `json:"doc_id,omitempty"`
+	// ProjectID is set only for KindInterviewThread; the unique index on it enforces one interview thread per project.
+	ProjectID string `json:"project_id,omitempty"`
 	// ParentMessageID is set only for KindChannelThread; no create use-case sets it yet.
 	ParentMessageID string    `json:"parent_message_id,omitempty"`
 	CreatedBy       string    `json:"created_by"`

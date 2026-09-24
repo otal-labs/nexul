@@ -273,6 +273,10 @@ func (s *Service) Update(ctx context.Context, id, title, whenToUse, body string,
 	if err != nil {
 		return nil, fmt.Errorf("%w: body is not valid document content", apperrs.ErrInvalid)
 	}
+	// The decisions log is pulled from the index, never sent every turn (ADR 0065).
+	if current.Kind == KindDecisionsLog {
+		alwaysIncluded = false
+	}
 	// The interview memory is never switched off and stays under its cap (ADR 0065).
 	if current.Kind == KindInterview {
 		alwaysIncluded = true

@@ -41,6 +41,7 @@ type RegistryOptions struct {
 	Workspace     *workspace.Service
 	Notifications *workspace.NotificationService
 	Git           gitprovider.GitProvider
+	ChangeContext gitprovider.ChangeContextReader
 	Repository    repository.Scanner
 	Runner        *runner.Service
 	DNS           *dns.Service
@@ -119,6 +120,9 @@ func registerDomainTools(s *Server, opts RegistryOptions) {
 	}
 	if opts.Git != nil {
 		s.tools = append(s.tools, gitprovider.MCPTools(opts.Git)...)
+	}
+	if opts.Git != nil && opts.ChangeContext != nil {
+		s.tools = append(s.tools, gitprovider.ChangeContextTools(opts.Git, opts.ChangeContext)...)
 	}
 	if opts.Repository != nil {
 		s.tools = append(s.tools, repository.MCPTools(opts.Repository)...)

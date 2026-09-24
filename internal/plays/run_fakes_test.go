@@ -3,8 +3,10 @@ package plays
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"slices"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -259,6 +261,15 @@ func (f *fakeLive) snapshot() []RunFrame {
 
 type fakeProjects struct {
 	workspaces map[string]string
+	projects   map[string]ProjectTarget
+}
+
+func (f *fakeProjects) GetProject(_ context.Context, projectID string) (ProjectTarget, error) {
+	p, ok := f.projects[projectID]
+	if !ok {
+		return ProjectTarget{}, apperrs.ErrNotFound
+	}
+	return p, nil
 }
 
 func (f *fakeProjects) WorkspaceForProject(_ context.Context, projectID string) (string, error) {
@@ -315,12 +326,13 @@ type fakePost struct {
 }
 
 type fakeThreads struct {
-	mu        sync.Mutex
-	docErr    error
-	ticketErr error
-	postErr   error
-	posts     []fakePost
-	notes     []fakePost
+	mu           sync.Mutex
+	docErr       error
+	ticketErr    error
+	interviewErr error
+	postErr      error
+	posts        []fakePost
+	notes        []fakePost
 }
 
 func (f *fakeThreads) GetOrCreateTicketThread(_ context.Context, _, ticketID, _ string) (string, error) {
@@ -335,6 +347,13 @@ func (f *fakeThreads) GetOrCreateDocThread(_ context.Context, _, docID, _ string
 		return "", f.docErr
 	}
 	return "conv-doc-" + docID, nil
+}
+
+func (f *fakeThreads) GetOrCreateInterviewThread(_ context.Context, _, projectID, _ string) (string, error) {
+	if f.interviewErr != nil {
+		return "", f.interviewErr
+	}
+	return "conv-interview-" + projectID, nil
 }
 
 func (f *fakeThreads) PostMessage(_ context.Context, conversationID, authorID, body string) (string, error) {
@@ -437,6 +456,17 @@ type fakeUsers struct{}
 
 func (fakeUsers) Login(_ context.Context, userID string) (string, error) {
 	return "login-" + userID, nil
+}
+
+// UserID maps "login-<id>" back to "<id>"; "broken" fails and anything else is unknown.
+func (fakeUsers) UserID(_ context.Context, login string) (string, error) {
+	if login == "broken" {
+		return "", errors.New("users table unavailable")
+	}
+	if id, ok := strings.CutPrefix(login, "login-"); ok {
+		return id, nil
+	}
+	return "", apperrs.ErrNotFound
 }
 
 // --- the agent pipeline's own seams, for the happy path against harnesstest.Client -------------------------

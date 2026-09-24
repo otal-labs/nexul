@@ -17,7 +17,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 			InputSchema: objectSchema(map[string]any{
 				"workspace_id": map[string]any{"type": "string"},
 				"project_id":   map[string]any{"type": "string"},
-				"type":         map[string]any{"type": "string", "enum": []string{"ticket", "doc"}},
+				"type":         map[string]any{"type": "string", "enum": targetTypeNames},
 				"stage":        map[string]any{"type": "string", "enum": stageNames()},
 			}, "workspace_id"),
 			Call: func(ctx context.Context, args map[string]any) (any, error) {
@@ -34,12 +34,12 @@ func MCPTools(s *Service) []mcptool.Tool {
 		},
 		{
 			Name: "play_create",
-			Description: "Create a play in a workspace: label (button text), type (ticket or doc), description, " +
+			Description: "Create a play in a workspace: label (button text), type (ticket, doc, or interview), description, " +
 				"instructions, enabled, show-when stage (ticket plays only), excluded projects.",
 			InputSchema: objectSchema(map[string]any{
 				"workspace_id":         map[string]any{"type": "string"},
 				"label":                map[string]any{"type": "string"},
-				"type":                 map[string]any{"type": "string", "enum": []string{"ticket", "doc"}},
+				"type":                 map[string]any{"type": "string", "enum": targetTypeNames},
 				"description":          map[string]any{"type": "string"},
 				"instructions":         map[string]any{"type": "string"},
 				"enabled":              map[string]any{"type": "boolean"},
@@ -123,6 +123,9 @@ func requiredWorkspaceAndLabel(args map[string]any) (string, string, error) {
 	}
 	return vals[0], vals[1], nil
 }
+
+// targetTypeNames lists the play types, which are also the run target types.
+var targetTypeNames = []string{string(TypeTicket), string(TypeDoc), string(TypeInterview)}
 
 func stageNames() []string {
 	out := make([]string, len(stages))

@@ -50,7 +50,7 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, list)
 }
 
-// listApplicable serves a ticket or doc's Plays section: the run buttons the caller may see and fire.
+// listApplicable serves a target's Plays section: the run buttons the caller may see and fire.
 func (h *Handler) listApplicable(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	typeStr := q.Get("type")

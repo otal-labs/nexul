@@ -25,7 +25,8 @@ three steps.
    token it prints. The name and the tunnel hostname are already filled in.
    A refused token shows on the token field, so run `t3 pair` again for a
    fresh one. An unreachable T3 Code shows on the URL field.
-3. **Set up.** The computer is paired. Setting up its providers follows here.
+3. **Set up.** The computer is paired. Nexul sets up its providers next; see
+   [Set up a computer](#set-up-a-computer).
 
 Until step 2 succeeds, the computer's row reads `pairing in progress`. Select
 **Pair** on the row to finish pairing it without starting over.
@@ -58,6 +59,22 @@ computer's setup revokes it too.
 Each row reports the harness version and one presence state: **Connected**,
 **Connecting**, or **Not connected**. A computer whose session is expired is
 not usable even if its row remains.
+
+## Set up a computer
+
+A provider cannot run `@Agent` or a play on a computer until an agent confirms
+its setup there. The dialog's **Set up** step runs that setup for you: one
+turn per provider, one after another. Each turn connects Nexul's MCP server to
+its provider with the computer's MCP token, installs the default skill set
+(mattpocock/skills) and the nexul-memory skill into `~/.claude/skills/` and
+`~/.agents/skills/`, and confirms the provider with the skills it discovered.
+Each confirmed turn also confirms the computer, so one failed provider never
+blocks the others. A failed provider can be retried on its own.
+
+Setup never overwrites an installed skill and keeps the token the providers
+already hold, so re-running it on a confirmed computer only re-checks. Turns
+run in the linked or fallback T3 project, else the first project T3 Code
+lists, and their transcripts are kept with the token hidden.
 
 ## Choose defaults
 
@@ -99,7 +116,8 @@ rewrite the run's history.
 
 The pairing API is authenticated per user. Its routes include
 `/api/pairing/computers`, `/api/pairing/computers/tunnel`,
-`/api/pairing/computers/{id}/pair`, `/api/pairing/defaults`,
+`/api/pairing/computers/{id}/pair`, `/api/pairing/computers/{id}/setup/runs`,
+`/api/pairing/computers/{id}/setup/providers/{provider}/retry`, `/api/pairing/defaults`,
 `/api/pairing/projects/{id}`, and `/api/pairing/resolve`. A pairing failure
 names the input it belongs to (`name`, `server_url`, or `token`) in the error
 body's `errors` map.

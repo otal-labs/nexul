@@ -19,6 +19,8 @@ interface PlayButtonProps {
   targetType: PlayType;
   targetId: string;
   variant?: "outline" | "ghost" | "default";
+  // Replaces the play's own label on the idle button, as the Interview page's Run and Re-run do.
+  label?: string;
   className?: string;
 }
 
@@ -30,7 +32,7 @@ const disabledReason = (running: boolean, waiting: boolean, readiness: HarnessRe
 };
 
 // Hidden without plays:run; the starter or a plays:write holder gets Stop while a run occupies the target.
-export const PlayButton = ({ play, projectId, targetType, targetId, variant = "outline", className }: PlayButtonProps) => {
+export const PlayButton = ({ play, projectId, targetType, targetId, variant = "outline", label, className }: PlayButtonProps) => {
   const canRun = useHasPermission("plays:run");
   const canWrite = useHasPermission("plays:write");
   const { data: me } = useFetchMe();
@@ -103,7 +105,7 @@ export const PlayButton = ({ play, projectId, targetType, targetId, variant = "o
         >
           {running && <LoaderCircle className="size-3.5 animate-spin text-warning" aria-hidden />}
           {!running && <Sparkles className="size-3.5" aria-hidden />}
-          {play.label}
+          {label ?? play.label}
         </Button>
       )}
       {!waiting && !canStop && reason !== "" && <span className="font-mono text-[11px] text-muted-foreground">{reason}</span>}

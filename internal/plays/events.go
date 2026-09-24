@@ -1,6 +1,14 @@
 package plays
 
-import "time"
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"time"
+
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
+)
 
 // Topics published by the plays domain through the outbox.
 const (
@@ -97,4 +105,19 @@ func runFrame(t *Trail) RunFrame {
 		TrailID: t.ID, PlayID: t.PlayID, TargetType: t.TargetType, TargetID: t.TargetID,
 		State: t.State, Activity: activity, Question: t.Question, EndedAt: t.EndedAt, LastError: t.LastError,
 	}
+}
+
+// HandleTicketStatusChanged is registered on ticket.status_changed: a ticket entering done fires the decisions check.
+func (r *Runner) HandleTicketStatusChanged(ctx context.Context, ev eventbus.Event) error {
+	var m ticketMove
+	if err := json.Unmarshal(ev.Payload, &m); err != nil {
+		return apperrs.Fatal(fmt.Errorf("parse ticket.status_changed: %w", err))
+	}
+	if m.Ticket.ID == "" || m.To == "" {
+		return apperrs.Fatal(fmt.Errorf("ticket.status_changed missing ticket id or destination status"))
+	}
+	if err := r.onTicketMoved(ctx, m); err != nil {
+		return apperrs.Retryable(err)
+	}
+	return nil
 }

@@ -56,6 +56,19 @@ func (a playsTargetReader) GetStatus(ctx context.Context, id string) (plays.Stat
 	return plays.StatusTarget{Name: st.Name, Stage: plays.Stage(st.Kind)}, nil
 }
 
+// playsProjectLookup adds the project read an interview run needs to the workspace lookup plays shares with memories.
+type playsProjectLookup struct {
+	memoriesProjectLookup
+}
+
+func (a playsProjectLookup) GetProject(ctx context.Context, projectID string) (plays.ProjectTarget, error) {
+	p, err := a.svc.Get(ctx, projectID)
+	if err != nil {
+		return plays.ProjectTarget{}, err
+	}
+	return plays.ProjectTarget{Name: p.Name, TestsLocation: string(p.TestsLocation)}, nil
+}
+
 // playsStatusMover adapts tickets' status setter to the runner's move-to seam; an MCP-started run carries the :mcp suffix (ADR 0049).
 type playsStatusMover struct {
 	svc *tickets.Service
@@ -66,7 +79,7 @@ func (a playsStatusMover) MoveTicket(ctx context.Context, ticketID, statusID str
 	if actor.Via == plays.ViaMCP {
 		kind += ":mcp"
 	}
-	_, err := a.svc.SetStatusAs(ctx, ticketID, tickets.Status(statusID), tickets.Actor{Kind: kind, PlayLabel: actor.PlayLabel, TrailID: actor.TrailID}, "")
+	_, err := a.svc.SetStatusAs(ctx, ticketID, tickets.Status(statusID), tickets.Actor{Kind: kind, PlayLabel: actor.PlayLabel, TrailID: actor.TrailID, UserID: actor.StarterID}, "")
 	return err
 }
 
@@ -120,6 +133,14 @@ func (a playsThreads) GetOrCreateTicketThread(ctx context.Context, workspaceID, 
 
 func (a playsThreads) GetOrCreateDocThread(ctx context.Context, workspaceID, docID, userID string) (string, error) {
 	c, err := a.svc.GetOrCreateDocThread(ctx, workspaceID, docID, userID)
+	if err != nil {
+		return "", err
+	}
+	return c.ID, nil
+}
+
+func (a playsThreads) GetOrCreateInterviewThread(ctx context.Context, workspaceID, projectID, userID string) (string, error) {
+	c, err := a.svc.GetOrCreateInterviewThread(ctx, workspaceID, projectID, userID)
 	if err != nil {
 		return "", err
 	}

@@ -41,8 +41,10 @@ type Conversation struct {
 	TicketID       string
 	IsDocThread    bool
 	DocID          string
-	ThreadID       string
-	SyncedAt       time.Time
+	// ProjectID is set for a thread that belongs to a project directly (an interview thread) rather than through a ticket or doc.
+	ProjectID string
+	ThreadID  string
+	SyncedAt  time.Time
 }
 
 // ConversationMessage is one prior message, before its author's display name is resolved.
@@ -295,6 +297,9 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 	doc, docProjectID := s.loadDocContext(ctx, conv, viaUserID)
 	if projectID == "" {
 		projectID = docProjectID
+	}
+	if projectID == "" {
+		projectID = conv.ProjectID
 	}
 
 	target, err := s.resolveTarget(ctx, viaUserID, projectID, req.Target)

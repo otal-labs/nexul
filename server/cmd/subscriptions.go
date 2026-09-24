@@ -280,7 +280,7 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 		Trails:      store.PlayTrails,
 		Perm:        playsPermissionGate{svc: svc.accessSvc},
 		Targets:     playsTargetReader{tickets: svc.ticketsSvc, docs: svc.docsSvc, workspace: svc.workspaceSvc},
-		Projects:    memoriesProjectLookup{svc: svc.workspaceSvc},
+		Projects:    playsProjectLookup{memoriesProjectLookup{svc: svc.workspaceSvc}},
 		Harness:     playsHarnessResolver{svc: svc.pairingSvc},
 		Memories:    playsMemoryReader{svc: svc.memoriesSvc},
 		Threads:     playsThreads{svc: svc.chatSvc},
@@ -292,6 +292,9 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 		Attachments: agentAttachmentReader{svc: svc.attachmentsSvc},
 		Logger:      logger,
 	})
+
+	// A ticket entering done fires the built-in decisions check on the mover's or the developer's harness.
+	mustSubscribe(ctx, bus, "plays.decisions_check", tickets.TopicStatusChanged, "", svc.playsRunner.HandleTicketStatusChanged)
 
 	// A bad frame here only costs one live patch, so missing/wrong-shaped payloads are dropped rather than fatal.
 	mustSubscribe(ctx, bus, "topology.live_canvas", topology.TopicUpdated, " for live push", func(ctx context.Context, ev eventbus.Event) error {

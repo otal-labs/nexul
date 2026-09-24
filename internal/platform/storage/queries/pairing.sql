@@ -56,3 +56,22 @@ INSERT INTO pairing_provider_setups (computer_id, provider, confirmed_at, skills
 VALUES (?, ?, ?, ?, ?)
 ON CONFLICT(computer_id, provider) DO UPDATE SET
   confirmed_at = excluded.confirmed_at, skills_json = excluded.skills_json, updated_at = excluded.updated_at;
+
+-- name: SetPairingComputerSetupMCPToken :execrows
+UPDATE pairing_computers SET setup_mcp_token = ? WHERE id = ? AND user_id = ?;
+
+-- name: SavePairingSetupTurn :exec
+INSERT INTO pairing_setup_turns (id, run_id, computer_id, provider, provider_name, state, status, transcript, started_at, updated_at, ended_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(id) DO UPDATE SET
+  state = excluded.state, status = excluded.status, transcript = excluded.transcript, updated_at = excluded.updated_at,
+  ended_at = excluded.ended_at;
+
+-- name: ListPairingSetupTurnsLatest :many
+-- The newest turn of each provider on a computer, whichever run it belongs to, so a retry sits beside the rest.
+SELECT t.id, t.run_id, t.provider, t.provider_name, t.state, t.status, t.updated_at FROM pairing_setup_turns t
+WHERE t.computer_id = sqlc.arg(computer_id) AND t.id = (
+  SELECT l.id FROM pairing_setup_turns l WHERE l.computer_id = sqlc.arg(computer_id) AND l.provider = t.provider
+  ORDER BY l.started_at DESC, l.id DESC LIMIT 1
+)
+ORDER BY t.provider;

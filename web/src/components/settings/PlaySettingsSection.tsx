@@ -56,8 +56,8 @@ export const PlaySettingsSection = ({ canWrite, canDelete }: PlaySettingsSection
     <SettingsCard
       id="plays"
       title="Plays"
-      description="Pre-configured Agent turns members can fire from a ticket or a doc. Seeded with two defaults;
-        editable and deletable like any other play."
+      description="Pre-configured Agent turns members can fire from a ticket, a doc, or a project's Interview page.
+        Seeded with three defaults; editable and deletable like any other play."
       footer={
         canWrite && (
           <Button type="button" onClick={() => void openDialog(null)}>

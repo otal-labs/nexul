@@ -11,11 +11,18 @@ const (
 	TopicTunnelRemoved    = "computer.tunnel_removed"
 	// TopicTunnelStatusChanged is ephemeral: published straight to the bus, never through the outbox.
 	TopicTunnelStatusChanged = "computer.tunnel_status_changed"
+	TopicSetupTurnChanged    = "computer.setup_turn_changed"
+	TopicSetupFinished       = "computer.setup_finished"
+	// TopicSetupTurnActivity is ephemeral: the running turn's latest step, never written to the outbox.
+	TopicSetupTurnActivity = "computer.setup_turn_activity"
 )
 
 // Topics returns every topic the pairing domain publishes.
 func Topics() []string {
-	return []string{TopicComputerPaired, TopicSetupConfirmed, TopicSetupUnconfirmed, TopicTunnelCreated, TopicTunnelRemoved, TopicTunnelStatusChanged}
+	return []string{
+		TopicComputerPaired, TopicSetupConfirmed, TopicSetupUnconfirmed, TopicTunnelCreated, TopicTunnelRemoved, TopicTunnelStatusChanged,
+		TopicSetupTurnChanged, TopicSetupFinished, TopicSetupTurnActivity,
+	}
 }
 
 // SetupChangedEvent is the payload for both setup topics; an empty Provider means the overall confirmation.
@@ -51,4 +58,44 @@ type ComputerPairedEvent struct {
 	ServerURL      string    `json:"server_url"`
 	HarnessVersion string    `json:"harness_version,omitempty"`
 	TokenExpiresAt time.Time `json:"token_expires_at"`
+}
+
+// SetupTurnChangedEvent is one provider's setup turn starting, confirming, or failing, with its short status line.
+type SetupTurnChangedEvent struct {
+	ComputerID   string         `json:"computer_id"`
+	UserID       string         `json:"user_id"`
+	RunID        string         `json:"run_id"`
+	TurnID       string         `json:"turn_id"`
+	Provider     string         `json:"provider"`
+	ProviderName string         `json:"provider_name"`
+	State        SetupTurnState `json:"state"`
+	Status       string         `json:"status"`
+	StartedAt    time.Time      `json:"started_at"`
+	EndedAt      *time.Time     `json:"ended_at,omitempty"`
+}
+
+// SetupFinishedEvent closes a setup run: each provider's outcome and whether the computer ended confirmed overall.
+type SetupFinishedEvent struct {
+	ComputerID string             `json:"computer_id"`
+	UserID     string             `json:"user_id"`
+	RunID      string             `json:"run_id"`
+	Confirmed  bool               `json:"confirmed"`
+	Providers  []SetupTurnOutcome `json:"providers"`
+}
+
+// SetupTurnOutcome is one provider's end state in a finished setup run.
+type SetupTurnOutcome struct {
+	Provider string         `json:"provider"`
+	State    SetupTurnState `json:"state"`
+	Status   string         `json:"status"`
+}
+
+// SetupTurnActivityEvent is the running turn's latest step as one line, for the commentary under its row.
+type SetupTurnActivityEvent struct {
+	ComputerID string `json:"computer_id"`
+	UserID     string `json:"user_id"`
+	RunID      string `json:"run_id"`
+	TurnID     string `json:"turn_id"`
+	Provider   string `json:"provider"`
+	Status     string `json:"status"`
 }

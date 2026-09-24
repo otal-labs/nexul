@@ -30,7 +30,7 @@ func withActor(userID string) context.Context {
 
 func TestMCPTools_Shape(t *testing.T) {
 	tools := MCPTools(newTestService(newFakeRepo()))
-	require.Len(t, tools, 4)
+	require.Len(t, tools, 5)
 	var names []string
 	for _, tool := range tools {
 		names = append(names, tool.Name)
@@ -38,7 +38,7 @@ func TestMCPTools_Shape(t *testing.T) {
 		assert.NotNil(t, tool.InputSchema)
 		assert.NotNil(t, tool.Call)
 	}
-	assert.ElementsMatch(t, []string{"chat_list_conversations", "chat_list_messages", "chat_post_message", "doc_thread_get"}, names)
+	assert.ElementsMatch(t, []string{"chat_list_conversations", "chat_list_messages", "chat_post_message", "doc_thread_get", "interview_thread_get"}, names)
 }
 
 func TestMCPTools_ListConversations(t *testing.T) {
@@ -123,6 +123,19 @@ func TestMCPTools_PostMessage(t *testing.T) {
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 	})
+}
+
+func TestMCPTools_InterviewThreadGet(t *testing.T) {
+	call := toolByName(t, MCPTools(newTestService(newFakeRepo())), "interview_thread_get").Call
+	got, err := call(withActor("owner"), map[string]any{"workspace_id": "w-1", "project_id": "p-1"})
+	require.NoError(t, err)
+	c, ok := got.(*Conversation)
+	require.True(t, ok)
+	assert.Equal(t, KindInterviewThread, c.Kind)
+	assert.Equal(t, "p-1", c.ProjectID)
+
+	_, err = call(withActor("owner"), map[string]any{"workspace_id": "w-1"})
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
 }
 
 func TestMCPTools_DocThreadGet(t *testing.T) {

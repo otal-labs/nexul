@@ -5,8 +5,11 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
+import type { Conversation } from "@/models/Chat";
 import type { Memory } from "@/models/Memory";
+import type { Play } from "@/models/Play";
 import { InterviewPage } from "@/pages/InterviewPage";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
@@ -14,6 +17,11 @@ vi.mock("@/api/client", () => ({
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("@/hooks/WorkspaceHooks", () => ({ useHasPermission: () => true }));
+vi.mock("@/components/chat/ConversationThread", () => ({
+  ConversationThread: ({ conversation }: { conversation: Conversation }) => (
+    <div data-testid="conversation">{conversation.id}</div>
+  ),
+}));
 vi.mock("@/components/memory/MemoryDetail", () => ({
   MemoryDetail: ({ memory }: { memory: Memory }) => <div data-testid="memory-detail">{memory.title}</div>,
 }));
@@ -49,16 +57,33 @@ const renderPage = (entry = "/projects/BE/interview") => {
   );
 };
 
-const mockMemories = (memories: Memory[]) =>
+const interviewPlay: Play = {
+  id: "play-interview",
+  workspace_id: "ws-1",
+  label: "Interview",
+  type: "interview",
+  description: "Asks one question at a time.",
+  instructions: "",
+  enabled: true,
+  show_when_stage: null,
+  excluded_project_ids: [],
+  created_by: "",
+  created_at: "",
+  updated_at: "",
+};
+
+const mockMemories = (memories: Memory[], extra: Record<string, unknown> = {}) =>
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/projects") return { data: [project] };
     if (url === "/api/memories") return { data: memories };
+    if (url in extra) return { data: extra[url] };
     return { data: [] };
   });
 
 beforeEach(() => {
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
 });
 
 describe("InterviewPage", () => {
@@ -89,5 +114,37 @@ describe("InterviewPage", () => {
     renderPage();
     expect(await screen.findByTestId("memory-detail")).toHaveTextContent("Interview");
     expect(screen.queryByText("No interview yet")).not.toBeInTheDocument();
+  });
+
+  it("offers to run the interview when the workspace's interview play applies", async () => {
+    mockMemories([], { "/api/workspaces/ws-1/plays/applicable": [interviewPlay] });
+    renderPage();
+    expect(await screen.findByRole("button", { name: /Run the interview/ })).toBeInTheDocument();
+    expect(api.get).toHaveBeenCalledWith("/api/workspaces/ws-1/plays/applicable", {
+      params: { project_id: "p-1", type: "interview" },
+    });
+  });
+
+  it("offers a re-run once the interview exists", async () => {
+    mockMemories([interview], { "/api/workspaces/ws-1/plays/applicable": [interviewPlay] });
+    renderPage();
+    expect(await screen.findByRole("button", { name: /Re-run the interview/ })).toBeInTheDocument();
+  });
+
+  it("shows no run button without an applicable interview play", async () => {
+    mockMemories([interview]);
+    renderPage();
+    await screen.findByTestId("memory-detail");
+    expect(screen.queryByRole("button", { name: /the interview/ })).not.toBeInTheDocument();
+  });
+
+  it("shows the interview conversation once a run has created it", async () => {
+    const trail = { id: "tr-1", play_id: "play-interview", play_label: "Interview", target_type: "interview", target_id: "p-1", state: "done", activity: [], started_at: "", ended_at: "" };
+    mockMemories([interview], { "/api/plays/runs": [trail] });
+    vi.mocked(api.post).mockResolvedValue({ data: { id: "conv-i", kind: "interview_thread", project_id: "p-1" } });
+    renderPage();
+
+    expect(await screen.findByTestId("conversation")).toHaveTextContent("conv-i");
+    expect(api.post).toHaveBeenCalledWith("/api/chat/projects/p-1/interview-thread", { workspace_id: "ws-1" });
   });
 });

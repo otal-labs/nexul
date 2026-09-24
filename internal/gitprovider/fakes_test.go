@@ -109,6 +109,13 @@ func (f *fakeProvider) GetPR(context.Context, string, string, int) (*PR, error) 
 	return f.pr, nil
 }
 
+func (f *fakeProvider) PRsForCommit(context.Context, string, string, string) ([]*PR, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	return f.prs, nil
+}
+
 func (f *fakeProvider) CreateWebhook(context.Context, string, string, WebhookConfig) (string, error) {
 	if f.err != nil {
 		return "", f.err

@@ -164,6 +164,24 @@ func TestGetPR(t *testing.T) {
 	})
 }
 
+func TestPRsForCommit(t *testing.T) {
+	t.Run("lists the PRs carrying the commit", func(t *testing.T) {
+		c := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/repos/acme/app/commits/abc123/pulls", r.URL.Path)
+			_, _ = fmt.Fprintln(w, "["+prJSON(7, "Fix login", "", "closed", true)+"]") // test server: write errors are irrelevant
+		}))
+		prs, err := c.PRsForCommit(context.Background(), "acme", "app", "abc123")
+		require.NoError(t, err)
+		require.Len(t, prs, 1)
+		assert.Equal(t, 7, prs[0].Number)
+	})
+	t.Run("not found maps to ErrNotFound", func(t *testing.T) {
+		c := newTestClient(t, errorHandler(http.StatusNotFound))
+		_, err := c.PRsForCommit(context.Background(), "acme", "app", "abc123")
+		assertErrorIs(t, err, apperrs.ErrNotFound)
+	})
+}
+
 func TestCreateWebhook(t *testing.T) {
 	t.Run("success returns hook id", func(t *testing.T) {
 		c := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

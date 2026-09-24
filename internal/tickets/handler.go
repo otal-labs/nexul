@@ -121,6 +121,9 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("DELETE /api/tickets/{id}/found-in", h.removeFoundIn)
 	mux.HandleFunc("POST /api/tickets/{id}/blocked-by", h.addBlocker)
 	mux.HandleFunc("DELETE /api/tickets/{id}/blocked-by/{blockerId}", h.removeBlocker)
+	mux.HandleFunc("GET /api/tickets/{id}/test-target", h.testTarget)
+	mux.HandleFunc("POST /api/tickets/{id}/test/pass", h.testPass)
+	mux.HandleFunc("POST /api/tickets/{id}/test/fail", h.testFail)
 	return mux
 }
 

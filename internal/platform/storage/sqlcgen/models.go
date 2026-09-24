@@ -158,6 +158,7 @@ type Conversation struct {
 	AgentThreadID   string
 	AgentSyncedAt   int64
 	DocID           sql.NullString
+	ProjectID       sql.NullString
 }
 
 type ConversationParticipant struct {
@@ -517,6 +518,7 @@ type PairingComputer struct {
 	TunnelZoneID      string
 	TunnelRecordID    string
 	TunnelAccessAppID string
+	SetupMcpToken     string
 }
 
 type PairingProjectLink struct {
@@ -534,6 +536,20 @@ type PairingProviderSetup struct {
 	ConfirmedAt sql.NullInt64
 	SkillsJson  string
 	UpdatedAt   int64
+}
+
+type PairingSetupTurn struct {
+	ID           string
+	RunID        string
+	ComputerID   string
+	Provider     string
+	ProviderName string
+	State        string
+	Status       string
+	Transcript   string
+	StartedAt    int64
+	UpdatedAt    int64
+	EndedAt      sql.NullInt64
 }
 
 type PairingUserDefault struct {

@@ -53,6 +53,15 @@ func TestMCPTools_MemoryCreate(t *testing.T) {
 		assert.Equal(t, "**bold**", m.Body)
 		assert.True(t, m.AlwaysIncluded)
 	})
+	t.Run("kind decisions_log creates the project's decisions log", func(t *testing.T) {
+		got, err := call(testCtx(), map[string]any{"project_id": "project-2", "title": "Decisions log", "kind": KindDecisionsLog, "body": "2026-09-24 — x", "always_included": true})
+		require.NoError(t, err)
+		m := got.(*Memory)
+		assert.Equal(t, KindDecisionsLog, m.Kind)
+		assert.False(t, m.AlwaysIncluded)
+		_, err = call(testCtx(), map[string]any{"project_id": "project-2", "title": "Decisions log", "kind": KindDecisionsLog})
+		require.ErrorIs(t, err, apperrs.ErrConflict)
+	})
 	t.Run("missing project_id and workspace_id is invalid", func(t *testing.T) {
 		_, err := call(testCtx(), map[string]any{"title": "Title"})
 		require.Error(t, err)

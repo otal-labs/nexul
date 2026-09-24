@@ -161,7 +161,7 @@ func TestDelete_WithoutPlaysDelete_ReturnsForbidden(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrForbidden)
 }
 
-func TestSeedDefaults_CreatesFixWithAIAndToTicketsViaAI(t *testing.T) {
+func TestSeedDefaults_CreatesFixWithAIToTicketsViaAIAndInterview(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo, newFakePerm(nil)) // no permission gate needed; SeedDefaults bypasses it
 
@@ -170,7 +170,7 @@ func TestSeedDefaults_CreatesFixWithAIAndToTicketsViaAI(t *testing.T) {
 
 	list, err := repo.List(context.Background(), workspaceID)
 	require.NoError(t, err)
-	require.Len(t, list, 2)
+	require.Len(t, list, 3)
 	byLabel := map[string]*Play{}
 	for _, p := range list {
 		byLabel[p.Label] = p
@@ -186,6 +186,14 @@ func TestSeedDefaults_CreatesFixWithAIAndToTicketsViaAI(t *testing.T) {
 	require.NotNil(t, toTickets)
 	assert.Equal(t, TypeDoc, toTickets.Type)
 	assert.Nil(t, toTickets.ShowWhenStage)
+
+	interview := byLabel["Interview"]
+	require.NotNil(t, interview)
+	assert.Equal(t, TypeInterview, interview.Type)
+	assert.Nil(t, interview.ShowWhenStage)
+	assert.True(t, interview.Enabled)
+	assert.Contains(t, interview.Instructions, "memory_create_interview")
+	assert.Contains(t, interview.Instructions, "one question at a time")
 }
 
 func TestNormalizeProjectIDs_TrimsDropsEmptyDedupesAndSorts(t *testing.T) {
@@ -227,6 +235,22 @@ func TestListApplicable_TicketPlay_MatchesEnabledStageAndPermission(t *testing.T
 	require.NoError(t, err)
 	require.Len(t, list, 1)
 	assert.Equal(t, fix.ID, list[0].ID)
+}
+
+func TestListApplicable_InterviewPlay_ListsOnlyForTheInterviewType(t *testing.T) {
+	repo := newFakeRepo()
+	s := newTestService(repo, runnerPerm("alice"))
+	interview, err := s.Create(ctxAs("owner"), workspaceID, CreateInput{Label: "Interview", Type: TypeInterview, Enabled: true})
+	require.NoError(t, err)
+
+	list, err := s.ListApplicable(context.Background(), workspaceID, "alice", "proj-1", TypeInterview, nil)
+	require.NoError(t, err)
+	require.Len(t, list, 1)
+	assert.Equal(t, interview.ID, list[0].ID)
+
+	docs, err := s.ListApplicable(context.Background(), workspaceID, "alice", "proj-1", TypeDoc, nil)
+	require.NoError(t, err)
+	assert.Empty(t, docs)
 }
 
 func TestListApplicable_DisabledPlay_NeverLists(t *testing.T) {
@@ -362,5 +386,5 @@ func TestSeedDefaults_AlreadySeeded_IsANoOp(t *testing.T) {
 
 	list, err := repo.List(context.Background(), workspaceID)
 	require.NoError(t, err)
-	assert.Len(t, list, 2)
+	assert.Len(t, list, 3)
 }

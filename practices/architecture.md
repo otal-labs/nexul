@@ -250,6 +250,7 @@ type GitProvider interface {
     GetRepo(ctx context.Context, owner, name string) (*Repo, error)
     ListPRs(ctx context.Context, owner, name string, opts PROpts) ([]*PR, error)
     GetPR(ctx context.Context, owner, name string, number int) (*PR, error)
+    PRsForCommit(ctx context.Context, owner, name, sha string) ([]*PR, error)
     CreateWebhook(ctx context.Context, owner, name string, cfg WebhookConfig) (string, error)
     DeleteWebhook(ctx context.Context, owner, name, hookID string) error
     ListInstallationRepos(ctx context.Context) ([]*Repo, error)

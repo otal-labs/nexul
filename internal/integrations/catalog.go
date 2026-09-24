@@ -106,7 +106,8 @@ var catalogSchemas = map[string]string{
 					"automation_id": {"type": "string"},
 					"automation_name": {"type": "string"},
 					"play_label": {"type": "string"},
-					"trail_id": {"type": "string"}
+					"trail_id": {"type": "string"},
+					"user_id": {"type": "string"}
 				}
 			},
 			"execution_id": {"type": "string"}
@@ -554,6 +555,27 @@ var catalogSchemas = map[string]string{
 			}
 		}
 	}`,
+	"ticket.test_passed": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"description": "A ticket passed testing and moved to a done-stage column; tester is the login of whoever passed it.",
+		"required": ["ticket", "tester"],
+		"properties": {
+			"ticket": {"type": "object"},
+			"tester": {"type": "string"}
+		}
+	}`,
+	"ticket.test_failed": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"description": "A ticket failed testing and moved back to a progress-stage column; report is the bug report posted to its thread.",
+		"required": ["ticket", "tester", "report"],
+		"properties": {
+			"ticket": {"type": "object"},
+			"tester": {"type": "string"},
+			"report": {"type": "string"}
+		}
+	}`,
 	"doc.deleted": `{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",
 		"type": "object",
@@ -630,7 +652,7 @@ var catalogSchemas = map[string]string{
 			"trail_id": {"type": "string"},
 			"play_id": {"type": "string"},
 			"play_label": {"type": "string"},
-			"target_type": {"type": "string", "enum": ["ticket", "doc"]},
+			"target_type": {"type": "string", "enum": ["ticket", "doc", "interview"]},
 			"target_id": {"type": "string"},
 			"target_title": {"type": "string"},
 			"starter_id": {"type": "string"},
@@ -646,7 +668,7 @@ var catalogSchemas = map[string]string{
 			"trail_id": {"type": "string"},
 			"play_id": {"type": "string"},
 			"play_label": {"type": "string"},
-			"target_type": {"type": "string", "enum": ["ticket", "doc"]},
+			"target_type": {"type": "string", "enum": ["ticket", "doc", "interview"]},
 			"target_id": {"type": "string"},
 			"target_title": {"type": "string"},
 			"starter_id": {"type": "string"},
@@ -661,7 +683,7 @@ var catalogSchemas = map[string]string{
 			"trail_id": {"type": "string"},
 			"play_id": {"type": "string"},
 			"play_label": {"type": "string"},
-			"target_type": {"type": "string", "enum": ["ticket", "doc"]},
+			"target_type": {"type": "string", "enum": ["ticket", "doc", "interview"]},
 			"target_id": {"type": "string"},
 			"target_title": {"type": "string"},
 			"starter_id": {"type": "string"},
@@ -803,6 +825,59 @@ var catalogSchemas = map[string]string{
 			"tunnel": {"type": "string"},
 			"harness_reachable": {"type": "boolean"},
 			"harness_version": {"type": "string"}
+		}
+	}`,
+	"computer.setup_turn_changed": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["computer_id", "user_id", "run_id", "turn_id", "provider", "provider_name", "state", "status", "started_at"],
+		"properties": {
+			"computer_id": {"type": "string"},
+			"user_id": {"type": "string"},
+			"run_id": {"type": "string"},
+			"turn_id": {"type": "string"},
+			"provider": {"type": "string"},
+			"provider_name": {"type": "string"},
+			"state": {"type": "string", "enum": ["running", "confirmed", "failed"]},
+			"status": {"type": "string"},
+			"started_at": {"type": "string", "format": "date-time"},
+			"ended_at": {"type": "string", "format": "date-time"}
+		}
+	}`,
+	"computer.setup_finished": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["computer_id", "user_id", "run_id", "confirmed", "providers"],
+		"properties": {
+			"computer_id": {"type": "string"},
+			"user_id": {"type": "string"},
+			"run_id": {"type": "string"},
+			"confirmed": {"type": "boolean"},
+			"providers": {
+				"type": "array",
+				"items": {
+					"type": "object",
+					"required": ["provider", "state", "status"],
+					"properties": {
+						"provider": {"type": "string"},
+						"state": {"type": "string", "enum": ["running", "confirmed", "failed"]},
+						"status": {"type": "string"}
+					}
+				}
+			}
+		}
+	}`,
+	"computer.setup_turn_activity": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["computer_id", "user_id", "run_id", "turn_id", "provider", "status"],
+		"properties": {
+			"computer_id": {"type": "string"},
+			"user_id": {"type": "string"},
+			"run_id": {"type": "string"},
+			"turn_id": {"type": "string"},
+			"provider": {"type": "string"},
+			"status": {"type": "string"}
 		}
 	}`,
 	"personal_access_token.minted": `{

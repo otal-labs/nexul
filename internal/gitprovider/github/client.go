@@ -89,6 +89,19 @@ func (c *Client) GetPR(ctx context.Context, owner, name string, number int) (*gi
 	return toPR(p), nil
 }
 
+// PRsForCommit implements gitprovider.GitProvider.
+func (c *Client) PRsForCommit(ctx context.Context, owner, name, sha string) ([]*gitprovider.PR, error) {
+	prs, _, err := c.gh.PullRequests.ListPullRequestsWithCommit(ctx, owner, name, sha, nil)
+	if err != nil {
+		return nil, fmt.Errorf("list PRs for commit %s in %s/%s: %w", sha, owner, name, mapErr(err))
+	}
+	out := make([]*gitprovider.PR, 0, len(prs))
+	for _, p := range prs {
+		out = append(out, toPR(p))
+	}
+	return out, nil
+}
+
 // CreateWebhook implements gitprovider.GitProvider, returning the hook id.
 func (c *Client) CreateWebhook(ctx context.Context, owner, name string, cfg gitprovider.WebhookConfig) (string, error) {
 	hook, _, err := c.gh.Repositories.CreateHook(ctx, owner, name, &githubapi.Hook{

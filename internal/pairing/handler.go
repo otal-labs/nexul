@@ -37,6 +37,9 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/pairing/computers/{id}/providers", h.listProviders)
 	// Read-only on purpose: a setup confirmation is written only through MCP (ADR 0063).
 	mux.HandleFunc("GET /api/pairing/computers/{id}/setup", h.getSetup)
+	mux.HandleFunc("POST /api/pairing/computers/{id}/setup/runs", h.startSetup)
+	mux.HandleFunc("POST /api/pairing/computers/{id}/setup/providers/{provider}/retry", h.retrySetupProvider)
+	mux.HandleFunc("GET /api/pairing/memory-skill", h.memorySkill)
 	mux.HandleFunc("GET /api/pairing/resolve", h.resolve)
 	mux.HandleFunc("GET /api/pairing/defaults", h.getDefaults)
 	mux.HandleFunc("PUT /api/pairing/defaults", h.setDefaults)
@@ -83,6 +86,29 @@ func (h *Handler) getSetup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, setup)
+}
+
+func (h *Handler) startSetup(w http.ResponseWriter, r *http.Request) {
+	run, err := h.svc.StartSetup(r.Context(), actorID(r), r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusAccepted, run)
+}
+
+func (h *Handler) retrySetupProvider(w http.ResponseWriter, r *http.Request) {
+	run, err := h.svc.RetrySetupProvider(r.Context(), actorID(r), r.PathValue("id"), r.PathValue("provider"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusAccepted, run)
+}
+
+// memorySkill serves the nexul-memory skill file the setup turns install, so the settings page never keeps its own copy.
+func (h *Handler) memorySkill(w http.ResponseWriter, _ *http.Request) {
+	httpx.WriteJSON(w, http.StatusOK, map[string]string{"skill": memorySkill})
 }
 
 type pairRequest struct {

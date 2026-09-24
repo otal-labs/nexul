@@ -44,4 +44,10 @@ type SetupStore interface {
 	ListProviderSetups(ctx context.Context, computerID string) ([]ProviderSetup, error)
 	// SaveProviderSetup upserts one provider's row on a computer; a nil ConfirmedAt records an un-confirmation.
 	SaveProviderSetup(ctx context.Context, computerID string, p ProviderSetup, updatedAt time.Time, evt eventbus.OutboxEvent) error
+	// SaveSetupTurn upserts one provider's setup turn and its events; the transcript arrives redacted.
+	SaveSetupTurn(ctx context.Context, t SetupTurn, evts ...eventbus.OutboxEvent) error
+	// ListLatestSetupTurns returns each provider's newest setup turn on a computer, ordered by provider.
+	ListLatestSetupTurns(ctx context.Context, computerID string) ([]SetupTurnSummary, error)
+	// SetSetupMCPToken stores one of userID's own computers' encrypted setup MCP token, or ErrNotFound.
+	SetSetupMCPToken(ctx context.Context, userID, computerID, sealed string) error
 }

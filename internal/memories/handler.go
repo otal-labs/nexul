@@ -26,6 +26,8 @@ type saveMemoryRequest struct {
 	WhenToUse      string `json:"when_to_use"`
 	Body           string `json:"body"`
 	AlwaysIncluded bool   `json:"always_included"`
+	// Kind is empty for an ordinary memory or decisions_log for the project's decisions log; create only.
+	Kind string `json:"kind"`
 }
 
 type cloneMemoryRequest struct {
@@ -59,7 +61,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	m, err := h.svc.Create(r.Context(), req.ProjectID, req.WorkspaceID, req.Title, req.WhenToUse, req.Body, req.AlwaysIncluded, "")
+	m, err := h.svc.CreateWithKind(r.Context(), req.Kind, req.ProjectID, req.WorkspaceID, req.Title, req.WhenToUse, req.Body, req.AlwaysIncluded, "")
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

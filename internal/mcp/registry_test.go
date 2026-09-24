@@ -45,6 +45,22 @@ func (fakeGitProvider) ListPRs(context.Context, string, string, gitprovider.PROp
 func (fakeGitProvider) GetPR(context.Context, string, string, int) (*gitprovider.PR, error) {
 	return &gitprovider.PR{Number: 1}, nil
 }
+
+// fakeChangeContext stubs the change-context seam for registry tests.
+type fakeChangeContext struct{}
+
+func (fakeChangeContext) TicketsForPR(context.Context, string, string, int) ([]gitprovider.ChangeTicket, error) {
+	return nil, nil
+}
+
+func (fakeChangeContext) DecisionEntries(context.Context, string, []string) ([]string, error) {
+	return nil, nil
+}
+
+func (fakeGitProvider) PRsForCommit(context.Context, string, string, string) ([]*gitprovider.PR, error) {
+	return nil, nil
+}
+
 func (fakeGitProvider) CreateWebhook(context.Context, string, string, gitprovider.WebhookConfig) (string, error) {
 	return "h1", nil
 }
@@ -253,6 +269,7 @@ func newRegistryServer(t *testing.T) (*Server, *storage.Store, *fakePublisher) {
 		Workspace:     workspace.NewService(store.Projects, store.Categories, store.TicketTypes, store.Statuses, nil, nil),
 		Notifications: workspace.NewNotificationService(store.Notifications, workspaceUserStoreFake{}, workspaceMembersStoreFake{}, registryNotificationPermGate{svc: accessSvc}),
 		Git:           fakeGitProvider{},
+		ChangeContext: fakeChangeContext{},
 		Repository:    fakeScanner{},
 		Runner:        runner.NewService(store.Runners, fakeDispatch{}),
 		Automations:   automations.NewService(store.Automations, nil),
@@ -274,7 +291,7 @@ var verbFirst = []string{"add", "cancel", "check", "clear", "clone", "create", "
 
 func TestRegistry_ToolsComplete(t *testing.T) {
 	srv, _, _ := newRegistryServer(t)
-	require.Len(t, srv.tools, 147)
+	require.Len(t, srv.tools, 154)
 	names := make(map[string]bool)
 	for _, tool := range srv.tools {
 		require.NotEmpty(t, tool.Name, "every tool must be named")
@@ -293,6 +310,7 @@ func TestRegistry_ToolsComplete(t *testing.T) {
 		"ticket_search",
 		"ticket_get_ticket_links", "ticket_set_found_in", "ticket_remove_found_in",
 		"ticket_add_blocker", "ticket_remove_blocker", "ticket_list_blocked",
+		"ticket_get_test_target", "ticket_test_pass", "ticket_test_fail",
 		"topology_get", "topology_add_node", "topology_remove_node", "topology_add_edge", "topology_remove_edge",
 		"deploy_get", "deploy_log", "deploy_list", "deploy_list_by_service", "deploy_list_by_status", "deploy_cancel",
 		"service_list", "stack_create", "stack_deploy", "stack_get", "stack_list", "stack_update",
@@ -301,7 +319,7 @@ func TestRegistry_ToolsComplete(t *testing.T) {
 		"instance_upgrade_status", "instance_upgrade",
 		"repository_list", "repository_scan",
 		"review_list_by_ticket", "review_get",
-		"git_list_prs", "git_get_pr",
+		"git_list_prs", "git_get_pr", "git_get_change_context",
 		"project_create", "project_get", "project_list", "project_rename", "project_delete",
 		"project_reorder", "project_delete_impact", "project_add_repo", "project_remove_repo",
 		"project_list_repos", "project_set_tests_location", "project_move_ticket",
@@ -312,13 +330,13 @@ func TestRegistry_ToolsComplete(t *testing.T) {
 		"notification_list", "notification_mark_read", "notification_mark_all_read",
 		"access_list_grants", "access_set_grants",
 		"play_list", "play_create", "play_update", "play_delete",
-		"play_run", "play_run_get", "play_run_stop", "play_run_answer", "play_list_runs",
+		"play_run", "play_run_get", "play_run_stop", "play_run_answer", "play_list_runs", "decisions_check_run",
 		"memory_list", "memory_get", "memory_create", "memory_update", "memory_delete",
 		"memory_create_interview", "interview_template_get", "interview_template_update",
 		"invitation_create", "invitation_list", "invitation_revoke",
 		"account_whoami", "account_list", "account_disable", "account_reactivate", "account_remove", "account_restore",
 		"computer_setup_get", "computer_setup_confirm_provider", "computer_setup_unconfirm_provider",
-		"computer_setup_confirm", "computer_setup_unconfirm",
+		"computer_setup_confirm", "computer_setup_unconfirm", "computer_setup_start", "computer_setup_retry_provider",
 		"computer_tunnel_create", "computer_tunnel_status_get", "computer_tunnel_token_get", "computer_pair",
 		"computer_mcp_token_get", "computer_mcp_token_mint", "computer_mcp_token_revoke",
 	}

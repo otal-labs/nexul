@@ -67,6 +67,25 @@ func MCPTools(s *Service) []mcptool.Tool {
 			},
 		},
 		{
+			Name:        "interview_thread_get",
+			Description: "Get or lazily create a project's interview thread, the conversation the Interview play asks its questions in.",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"workspace_id": map[string]any{"type": "string"},
+					"project_id":   map[string]any{"type": "string"},
+				},
+				"required": []string{"workspace_id", "project_id"},
+			},
+			Call: func(ctx context.Context, args map[string]any) (any, error) {
+				vals, err := mcptool.RequiredStrings(args, "workspace_id", "project_id")
+				if err != nil {
+					return nil, err
+				}
+				return s.GetOrCreateInterviewThread(ctx, vals[0], vals[1], actorIDFromCtx(ctx))
+			},
+		},
+		{
 			Name:        "chat_post_message",
 			Description: "Post a markdown message to a conversation as the authenticated user, parsing @user/@Agent mentions.",
 			InputSchema: map[string]any{

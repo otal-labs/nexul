@@ -5,7 +5,14 @@ import type { MemberView } from "@/models/Member";
 import type { PlayType } from "@/models/Play";
 
 // "voice_channel" is a real conversation that internal/voice attaches a LiveKit room to.
-export type ConversationKind = "channel" | "dm" | "channel_thread" | "ticket_thread" | "doc_thread" | "voice_channel";
+export type ConversationKind =
+  | "channel"
+  | "dm"
+  | "channel_thread"
+  | "ticket_thread"
+  | "doc_thread"
+  | "interview_thread"
+  | "voice_channel";
 
 export interface Conversation {
   id: string;
@@ -14,6 +21,8 @@ export interface Conversation {
   name?: string;
   ticket_id?: string;
   doc_id?: string;
+  // Only set on an interview thread.
+  project_id?: string;
   parent_message_id?: string;
   created_by: string;
   created_at: string;
@@ -22,10 +31,11 @@ export interface Conversation {
   participant_ids?: string[];
 }
 
-// The ticket or doc a thread belongs to, as a play target; null for a conversation no play can run on.
+// The ticket, doc, or project interview a thread belongs to, as a play target; null for a conversation no play can run on.
 export const conversationPlayTarget = (c: Conversation): { type: PlayType; id: string } | null => {
   if (c.kind === "ticket_thread" && c.ticket_id) return { type: "ticket", id: c.ticket_id };
   if (c.kind === "doc_thread" && c.doc_id) return { type: "doc", id: c.doc_id };
+  if (c.kind === "interview_thread" && c.project_id) return { type: "interview", id: c.project_id };
   return null;
 };
 
@@ -75,6 +85,7 @@ export const conversationLabel = (c: Conversation, dmCtx?: DMLabelContext): stri
   }
   if (c.kind === "ticket_thread") return "Ticket thread";
   if (c.kind === "doc_thread") return "Doc thread";
+  if (c.kind === "interview_thread") return "Interview";
   return "Thread";
 };
 
