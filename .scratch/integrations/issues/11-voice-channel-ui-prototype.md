@@ -12,7 +12,7 @@ tiles, screen share, camera, mute/deafen, and how this coexists with
 CH4's floating thread dock and the dedicated chat page.
 
 Raise fidelity with a cheap concrete artifact to react to — run
-design-mode (Refero top-10 → the owner picks → save the pick as the locked reference) for
+design-mode (top-10 references → the owner picks → save the pick as the locked reference) for
 the look, then a throwaway prototype of the in-call layout and channel-list
 occupancy. The lock is placement/structure in Mono Console tokens, per the
 chat surfaces precedent (CH4).
