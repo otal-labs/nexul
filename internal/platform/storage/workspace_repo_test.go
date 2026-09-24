@@ -78,6 +78,36 @@ func TestProjectsRepo_Create_SeedsDefaultBoard(t *testing.T) {
 	assert.ElementsMatch(t, []string{"task", "bug", "feature"}, names)
 }
 
+func TestProjectsRepo_Create_SeedsBodyTemplates(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	require.NoError(t, s.Projects.Create(context.Background(), newTestProject("p-1", "Backend", 0)))
+
+	types, err := s.TicketTypes.ListByProject(context.Background(), "p-1")
+	require.NoError(t, err)
+	require.Len(t, types, len(workspace.DefaultTicketTypes))
+	for i, want := range workspace.DefaultTicketTypes {
+		assert.Equal(t, want.Name, types[i].Name)
+		assert.Equal(t, want.BodyTemplate, types[i].BodyTemplate)
+	}
+	assert.Contains(t, types[1].BodyTemplate, "## Steps to reproduce")
+}
+
+func TestMigration_BackfillsGeneralProjectTemplates_MatchingTheSeed(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+
+	types, err := s.TicketTypes.ListByProject(context.Background(), "project-general")
+	require.NoError(t, err)
+	byName := map[string]string{}
+	for _, tt := range types {
+		byName[tt.Name] = tt.BodyTemplate
+	}
+	for _, want := range workspace.DefaultTicketTypes {
+		assert.Equal(t, want.BodyTemplate, byName[want.Name], "migration 0009 and DefaultTicketTypes drifted for %s", want.Name)
+	}
+}
+
 func TestProjectsRepo_Create_Duplicate_Conflict(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

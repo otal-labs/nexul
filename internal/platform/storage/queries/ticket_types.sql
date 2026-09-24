@@ -1,5 +1,5 @@
 -- name: CreateTicketType :exec
-INSERT INTO ticket_types (id, project_id, name, position, color, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?);
+INSERT INTO ticket_types (id, project_id, name, position, color, body_template, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetTicketType :one
 SELECT * FROM ticket_types WHERE id = ?;
@@ -8,7 +8,7 @@ SELECT * FROM ticket_types WHERE id = ?;
 SELECT * FROM ticket_types WHERE project_id = ? ORDER BY position, id;
 
 -- name: UpdateTicketTypeMeta :execrows
-UPDATE ticket_types SET name = ?, color = ?, updated_at = ? WHERE id = ?;
+UPDATE ticket_types SET name = ?, color = ?, body_template = ?, updated_at = ? WHERE id = ?;
 
 -- name: DeleteTicketType :execrows
 DELETE FROM ticket_types WHERE id = ?;

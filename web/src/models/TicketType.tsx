@@ -6,6 +6,8 @@ export interface TicketType {
   position: number;
   /** Owner-configured suggested-palette hue, "" when unset; the board falls back to ticketTypeColor.tsx's hash. */
   color: string;
+  /** Markdown pre-filled into a new ticket's body; guidance only, "" when the type has none. */
+  body_template: string;
   created_at: string;
   updated_at: string;
 }
@@ -15,3 +17,9 @@ export const SaveTicketTypeFormSchema = z.object({
 });
 
 export type SaveTicketTypeFormData = z.infer<typeof SaveTicketTypeFormSchema>;
+
+export const SaveTicketTypeTemplateFormSchema = z.object({
+  body_template: z.string(),
+});
+
+export type SaveTicketTypeTemplateFormData = z.infer<typeof SaveTicketTypeTemplateFormSchema>;

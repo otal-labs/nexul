@@ -736,13 +736,14 @@ type TicketPrLink struct {
 }
 
 type TicketType struct {
-	ID        string
-	ProjectID string
-	Name      string
-	Position  int64
-	Color     string
-	CreatedAt int64
-	UpdatedAt int64
+	ID           string
+	ProjectID    string
+	Name         string
+	Position     int64
+	Color        string
+	CreatedAt    int64
+	UpdatedAt    int64
+	BodyTemplate string
 }
 
 type TicketsFt struct {

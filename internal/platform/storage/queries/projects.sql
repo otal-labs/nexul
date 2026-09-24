@@ -5,7 +5,7 @@ INSERT INTO projects (id, name, prefix, position, workspace_id, icon, created_at
 INSERT INTO statuses (id, project_id, name, position, kind, icon, created_at, updated_at) VALUES (?, ?, ?, ?, ?, '', ?, ?);
 
 -- name: SeedProjectTicketType :exec
-INSERT INTO ticket_types (id, project_id, name, position, color, created_at, updated_at) VALUES (?, ?, ?, ?, '', ?, ?);
+INSERT INTO ticket_types (id, project_id, name, position, color, body_template, created_at, updated_at) VALUES (?, ?, ?, ?, '', ?, ?, ?);
 
 -- name: GetProject :one
 SELECT * FROM projects WHERE id = ?;

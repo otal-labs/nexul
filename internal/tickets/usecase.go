@@ -15,16 +15,20 @@ import (
 
 // Service is the tickets use-case layer (ADR 0019); mutations enqueue events into the transactional outbox.
 type Service struct {
-	repo     Repo
-	statuses StatusStore
-	users    UserLogins
-	now      func() time.Time
+	repo      Repo
+	statuses  StatusStore
+	users     UserLogins
+	templates TypeTemplates
+	now       func() time.Time
 }
 
 // NewService wires the tickets use-cases; users resolves the reporter's login and may be nil, recording the user id.
 func NewService(repo Repo, statuses StatusStore, users UserLogins) *Service {
 	return &Service{repo: repo, statuses: statuses, users: users, now: time.Now}
 }
+
+// SetTypeTemplates wires the body-template lookup; unset, an MCP-filed ticket keeps the body it was given.
+func (s *Service) SetTypeTemplates(t TypeTemplates) { s.templates = t }
 
 // CreateOptions carries the optional metadata for a new ticket; ViaMCP marks a ticket filed through an MCP tool call.
 type CreateOptions struct {
@@ -47,6 +51,10 @@ func (s *Service) Create(ctx context.Context, projectID, title, body, docID, dev
 	var opt CreateOptions
 	if len(opts) > 0 {
 		opt = opts[0]
+	}
+	body, err := s.defaultBody(ctx, body, opt)
+	if err != nil {
+		return nil, fmt.Errorf("create ticket: %w", err)
 	}
 	now := s.now().UTC()
 	t := &Ticket{
@@ -73,6 +81,19 @@ func (s *Service) Create(ctx context.Context, projectID, title, body, docID, dev
 		return nil, fmt.Errorf("create ticket: %w", err)
 	}
 	return created, nil
+}
+
+// defaultBody hands an agent's empty MCP ticket its type's template, so it carries the same sections a person's would.
+func (s *Service) defaultBody(ctx context.Context, body string, opt CreateOptions) (string, error) {
+	typeID := strings.TrimSpace(opt.TypeID)
+	if !opt.ViaMCP || s.templates == nil || typeID == "" || strings.TrimSpace(body) != "" {
+		return body, nil
+	}
+	template, err := s.templates.BodyTemplate(ctx, typeID)
+	if err != nil {
+		return "", fmt.Errorf("body template for type %s: %w", typeID, err)
+	}
+	return template, nil
 }
 
 // reporter prefers the automation behind an automation token; a person acting through MCP is recorded as user:mcp.

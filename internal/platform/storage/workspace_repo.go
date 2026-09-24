@@ -54,12 +54,12 @@ func seedProjectDefaults(ctx context.Context, q *sqlcgen.Queries, workspaceID, p
 			return fmt.Errorf("seed status %q for project %s: %w", st.name, projectID, err)
 		}
 	}
-	types := []string{"task", "bug", "feature"}
-	for i, name := range types {
+	for i, tt := range workspace.DefaultTicketTypes {
 		if err := q.SeedProjectTicketType(ctx, sqlcgen.SeedProjectTicketTypeParams{
-			ID: uuid.NewString(), ProjectID: projectID, Name: name, Position: int64(i), CreatedAt: at, UpdatedAt: at,
+			ID: uuid.NewString(), ProjectID: projectID, Name: tt.Name, Position: int64(i),
+			BodyTemplate: tt.BodyTemplate, CreatedAt: at, UpdatedAt: at,
 		}); err != nil {
-			return fmt.Errorf("seed ticket type %q for project %s: %w", name, projectID, err)
+			return fmt.Errorf("seed ticket type %q for project %s: %w", tt.Name, projectID, err)
 		}
 	}
 	memoryID := uuid.NewString()

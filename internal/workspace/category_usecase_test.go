@@ -395,6 +395,37 @@ func TestRenameTicketType(t *testing.T) {
 	})
 }
 
+func TestSetTicketTypeTemplate(t *testing.T) {
+	t.Run("non-owner is forbidden", func(t *testing.T) {
+		s, _, _ := newOwnerRepo(t, false)
+		_, err := s.SetTicketTypeTemplate(context.Background(), "u-1", "t-1", "## Why")
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
+	})
+	t.Run("missing type is not found", func(t *testing.T) {
+		s, _, _ := newOwnerRepo(t, true)
+		_, err := s.SetTicketTypeTemplate(context.Background(), "u-1", "nope", "## Why")
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
+	})
+	t.Run("replaces the template and keeps name and color", func(t *testing.T) {
+		s, _, _ := newOwnerRepo(t, true)
+		typeRepo(s).types["t-1"] = &TicketType{ID: "t-1", Name: "bug", Color: colors.Cyan, BodyTemplate: "## Old"}
+		tt, err := s.SetTicketTypeTemplate(context.Background(), "u-1", "t-1", "## Steps to reproduce\n\n")
+		require.NoError(t, err)
+		assert.Equal(t, "## Steps to reproduce\n\n", tt.BodyTemplate)
+		assert.Equal(t, "bug", tt.Name)
+		assert.Equal(t, colors.Cyan, tt.Color)
+	})
+	t.Run("rename keeps the template", func(t *testing.T) {
+		s, _, _ := newOwnerRepo(t, true)
+		typeRepo(s).types["t-1"] = &TicketType{ID: "t-1", Name: "bug", BodyTemplate: "## Steps"}
+		tt, err := s.RenameTicketType(context.Background(), "u-1", "t-1", "defect", "")
+		require.NoError(t, err)
+		assert.Equal(t, "## Steps", tt.BodyTemplate)
+	})
+}
+
 func TestDeleteTicketType(t *testing.T) {
 	t.Run("in-use type is conflict", func(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)

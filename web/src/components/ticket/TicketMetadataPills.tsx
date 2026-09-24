@@ -5,6 +5,7 @@ import { PersonAvatar } from "@/components/PersonAvatar";
 import { ticketTypeIcon } from "@/components/board/ticketTypeIcon";
 import { useFormDialogContext } from "@/components/dialogs/FormDialogContext";
 import { PersonPickerList } from "@/components/ticket/PersonPickerList";
+import { selectTicketType } from "@/components/ticket/selectTicketType";
 import { menuItemClass, pillTriggerClass } from "@/components/ticket/ticketFormPillStyles";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -18,7 +19,7 @@ interface TypePillProps {
 }
 
 export const TypePill = ({ ticketTypes }: TypePillProps) => {
-  const { watch, setValue } = useFormDialogContext<SaveTicketFormData>();
+  const { watch, setValue, getValues } = useFormDialogContext<SaveTicketFormData>();
   const [open, setOpen] = useState(false);
   const typeId = watch("type_id");
   const current = ticketTypes.find((t) => t.id === typeId);
@@ -40,7 +41,7 @@ export const TypePill = ({ ticketTypes }: TypePillProps) => {
               type="button"
               className={menuItemClass}
               onClick={() => {
-                setValue("type_id", type.id);
+                selectTicketType({ setValue, getValues }, ticketTypes, type.id);
                 setOpen(false);
               }}
             >
