@@ -121,6 +121,12 @@ no users yet, move quick):
   wizard installs nexul-memory; setup tools, `account_whoami`, and
   `git_get_change_context` listed; owner-only, events with live push; the
   setup turn's exemption comes only from the wizard's server path.
+- [How a remote Nexul can reach a user's T3 Code](issues/14-t3-remote-reach-facts.md)
+  — T3 Connect admits only T3's own apps (blocker); Tailscale, a reachable
+  address, or a user-run Cloudflare Tunnel work with today's URL pairing at
+  an operational or exposure cost; an outbound relay must multiplex several
+  two-way streams and can plug into t3client's custom HTTP client; the
+  runner channel and the desktop app can't host it as they stand.
 - [Which skill sets "setup" installs](issues/03-which-skill-sets.md) —
   mattpocock/skills is the default the wizard installs (users may amend their
   copies); pstack is a README credit only; no Nexul-shipped skill for now —
