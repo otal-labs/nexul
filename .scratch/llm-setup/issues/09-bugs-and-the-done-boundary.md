@@ -67,9 +67,13 @@ color. Seeded templates:
   Steps to reproduce / Expected result / Actual result / Provide screenshot.
   The screenshot section is a prompt; images attach the way ticket
   attachments already do.
-- **Feature** (proposed): Why (the problem it solves) / What done looks like
-  / Out of scope.
-- **Task** (proposed): What needs doing / Done when.
+- **Feature**: Why (the problem it solves) / Acceptance criteria / Out of
+  scope.
+- **Task**: What needs doing / Acceptance criteria.
+
+(Both originally proposed with "What done looks like" / "Done when"; renamed
+to Acceptance criteria in the testing grilling, 2026-09-24, so every
+non-bug ticket carries what a tester tests against.)
 
 Applies to every way a ticket is born: the create dialog, Report a bug, and
 the MCP create tool, which hands the template to the agent so an agent-filed

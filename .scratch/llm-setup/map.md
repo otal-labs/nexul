@@ -99,6 +99,14 @@ no users yet, move quick):
   a gate. Signals over gates, room for mistakes. Every ticket type carries a
   body template (bug: steps, expected, actual, screenshot; feature and task
   seeded too), edited on the type in project settings.
+- [The testing step](issues/10-testing-step.md) — a Test this panel (live
+  URL, acceptance criteria, Pass/Fail) in testing columns; Fail opens the bug
+  template, posts to the ticket thread, and moves the card back; tickets get
+  Developer (renamed Assignee), Tester, and Reporter; bugs leave the create
+  dialog (Report a bug, Fail, or "origin unknown"); a Test with AI play;
+  an optional never-deployed tests repository; and a project-wizard deploy
+  branches step with a per-row network, optional overrides, and URL-safe
+  hostnames.
 - [Which skill sets "setup" installs](issues/03-which-skill-sets.md) —
   mattpocock/skills is the default the wizard installs (users may amend their
   copies); pstack is a README credit only; no Nexul-shipped skill for now —
