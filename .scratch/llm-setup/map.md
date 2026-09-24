@@ -155,19 +155,47 @@ no users yet, move quick):
 
 ## Not yet specified
 
-- Whether "amend the flow per project" needs anything beyond what is now
-  settled (editable plays, the workspace Interview template, interview
-  re-runs, the decisions log) — revisit once the remaining lifecycle
-  tickets resolve.
-- Whether shaping/flow (the owner's steps 1–2) need anything Nexul-side
-  beyond the installed skills and the existing plays — hangs on step 0 and
-  the testing-step ticket.
-- CONTEXT.md vocabulary and any ADR for the MCP-only write rule and the
-  enforcement block — written once the decisions above resolve.
+Nothing: the destination is reached (2026-09-24). Every decision ticket is
+resolved, the hard-to-reverse calls are ADRs 0062–0065, the new terms are
+in `CONTEXT.md`, and the work is sliced into implementation tickets below.
+
+## Implementation
+
+Tickets 17–38, all `ready-for-agent`; each names its blocking tickets, the
+decision tickets it builds, and the practices files to read first.
+
+**Phase 1 — Reach a remote harness** (the blocker for anyone but the owner):
+17 Cloudflare Access client → 18 per-computer tunnel → 19 Connect step →
+20 pair T3 Code over the tunnel.
+
+**Phase 2 — Setup and its gate**: 21 setup state and MCP tools (can start
+now) → 22 the setup gate, 23 per-computer MCP token → 24 setup turns →
+25 Set up step and pairing row.
+
+*Checkpoint:* the owner pairs a laptop to a remote instance through the
+tunnel, runs setup, and a play runs on it; an unconfirmed provider is
+refused with a link to the wizard.
+
+**Phase 3 — Tickets** (independent of 1–2, can run in parallel): 26 people
+on tickets, 27 type templates, 28 found-in and blocked-by → 29 bug flows.
+
+**Phase 4 — Testing**: 30 per-branch overrides → 31 deploy branches wizard
+step; 32 tests repository; 33 Test this panel (after 26, 27, 30).
+
+**Phase 5 — Agent context**: 34 interview memory and page → 35 Interview
+play (after 32); 36 Test with AI (after 33, 34); 37 decisions check and
+change context (after 26); 38 MCP renames (any time).
+
+*Checkpoint:* a new project goes wizard → interview → ticket → Fix with AI
+→ Test with AI → done, and the decisions check writes or skips its entry.
 
 ## Out of scope
 
 <!-- work consciously ruled beyond the destination -->
+
+- Nexul-side support for shaping and flow beyond the installed skills and
+  the existing plays — the skill set and plays already carry the owner's
+  steps 1 and 2; revisit as its own effort if real use shows a gap.
 
 - Per-skill pre-selection and the optional pstack complement (Lauren's
   principle skills, `architect`, `interrogate`, curated around the

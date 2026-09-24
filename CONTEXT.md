@@ -47,6 +47,25 @@ harness as an attachment, capped at 10 MiB per image and 25 MiB per turn; an
 oversized or non-image reference becomes an "attachment omitted" note.
 _Avoid_: Backend (that is the Go server), Runtime, Driver
 
+**Paired computer**:
+A user's own machine running a harness, attached to their Nexul account.
+It is reached through its computer tunnel, or, for a machine the server can
+already reach, by URL. Owned by one user; nobody else can run on it.
+_Avoid_: Device, host, runner (a runner builds and deploys)
+
+**Computer tunnel**:
+The outbound connection a paired computer keeps open to the instance's own
+Cloudflare account, giving it a hostname made from the computer's name plus
+eight random characters, which only the Nexul server may reach.
+_Avoid_: Relay, VPN, proxy
+
+**Setup confirmation**:
+An agent's assessment, recorded through MCP and nowhere else, that a paired
+computer is ready for agent work: once overall, and once per provider on
+that computer. Unconfirmed means the provider cannot run agent work there.
+Nothing ever withdraws it except an agent un-confirming it through MCP.
+_Avoid_: Onboarded, verified, setup flag
+
 **Memory**:
 A note written for agents, not people: a title, a one-line when-to-use
 phrase, and a rich-text body, belonging to the workspace or to one project.
@@ -58,6 +77,26 @@ Agents may write memories too. Every save appends a version with its
 author, and any version can be reverted to. Cloned, never shared, to
 another project or to a workspace. Plural in the UI: "memories".
 _Avoid_: Doc (docs are for clients and requirements), skill, note
+
+**Interview**:
+The conversation that establishes a project's rules for agents: its stack,
+paradigm, testing strategy, principles, and vocabulary, asked one question
+at a time by the Interview play and answered by a person, with the agent
+able to read the codebase for answers first. Its questions start from the
+workspace's Interview template.
+_Avoid_: Onboarding, questionnaire, setup
+
+**Interview memory**:
+The project memory an interview produces, written as rules and kept short,
+and included in full in every agent turn in that project.
+_Avoid_: Practices doc, guidelines, rules file
+
+**Decisions log**:
+A project memory recording only the tickets that changed how the project
+works, three lines at most per entry, with reversed decisions marked
+superseded so it reads as what is true now. Pulled from the memory index
+when relevant, never sent every turn.
+_Avoid_: Changelog, history, release notes
 
 **Play**:
 A pre-configured Agent turn a user fires from a ticket page or a doc page
@@ -139,7 +178,8 @@ base service itself.
 **Branch deploy rule**:
 A base service's mapping from a branch pattern (`main`, or a single trailing
 wildcard like `feature/*`) to a docker network, optional hostname template,
-and derived-service name suffix. Evaluated on every push; there is no
+derived-service name suffix, and optional overrides of the base's settings
+for that branch. Evaluated on every push; there is no
 separate "environment" concept — `dev` → QA and `main` → prod are just rules.
 
 **Branch deployment**:
@@ -270,6 +310,24 @@ _Avoid_: Kind, phase, state
 A ticket with at least one linked PR, none still open, and at least one
 merged. PRs closed unmerged are ignored. Publishes `ticket.finished`.
 _Avoid_: Done (a status column's name), closed, completed
+
+**Developer / Tester / Reporter**:
+The three people on a ticket. The developer builds it and the tester checks
+it, one person each and both optional. The reporter filed it, is set once,
+and shows as Nexul on behalf of a person when an agent or automation filed
+it.
+_Avoid_: Assignee, owner, creator
+
+**Found in**:
+A bug's link to the ticket it was found in, carried by every bug unless its
+reporter marked the origin unknown. A done ticket is never reopened; a bug
+found after done is a new ticket found in it.
+_Avoid_: Regression of, caused by, parent
+
+**Blocked by**:
+A ticket's link to another ticket that must reach done first. It shows on
+the card and warns before a play runs, but never stops a card moving.
+_Avoid_: Depends on, dependency, blocker stage
 
 ### Identity and access
 
