@@ -229,6 +229,9 @@ var livePushTopics = []string{
 	pairing.TopicSetupConfirmed,
 	pairing.TopicSetupUnconfirmed,
 	pairing.TopicTunnelStatusChanged,
+	pairing.TopicComputerPaired,
+	pairing.TopicTunnelCreated,
+	pairing.TopicTunnelRemoved,
 }
 
 func fail(err error) {

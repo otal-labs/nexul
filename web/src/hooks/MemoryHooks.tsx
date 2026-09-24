@@ -3,6 +3,7 @@ import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
 import { useFetchWorkspaces } from "@/hooks/WorkspaceHooks";
+import type { InterviewTemplate } from "@/models/InterviewTemplate";
 import type { CreateMemoryFormData, Memory } from "@/models/Memory";
 import type { MemoryVersion } from "@/models/MemoryVersion";
 import type { Project } from "@/models/Project";
@@ -11,6 +12,7 @@ import type { Workspace } from "@/models/Workspace";
 export const getMemoriesKey = "getMemories";
 export const getMemoryKey = "getMemory";
 export const getMemoryVersionsKey = "getMemoryVersions";
+export const getInterviewTemplateKey = "getInterviewTemplate";
 const getProjectsKeyForClone = "getProjectsForClone";
 
 // Workspace-wide list for the Memories page; the page groups these by project client-side.
@@ -97,6 +99,7 @@ export const useRevertMemory = () => {
     mutationFn: async ({ id, version }: { id: string; version: number }) =>
       (await api.post<Memory>(`/api/memories/${id}/revert`, { version })).data,
     onSuccess: async (_, { id }) => {
+      await client.invalidateQueries({ queryKey: [getMemoriesKey] });
       await client.invalidateQueries({ queryKey: [getMemoryKey, id] });
       await client.invalidateQueries({ queryKey: [getMemoryVersionsKey, id] });
       toast.success("Memory reverted");
@@ -115,6 +118,42 @@ export const useCloneMemory = () => {
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getMemoriesKey] });
       toast.success("Memory cloned");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
+// Returns the project's interview memory, creating it from the workspace's Interview template the first time.
+export const useCreateInterview = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (projectId: string) =>
+      (await api.post<Memory>("/api/memories/interview", { project_id: projectId })).data,
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: [getMemoriesKey] });
+      toast.success("Interview started from the template");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
+export const useFetchInterviewTemplate = (workspaceId: string) =>
+  useQuery({
+    queryKey: [getInterviewTemplateKey, workspaceId],
+    queryFn: async () =>
+      (await api.get<InterviewTemplate>("/api/memories/interview-template", { params: { workspace_id: workspaceId } }))
+        .data,
+    enabled: workspaceId !== "",
+  });
+
+export const useSaveInterviewTemplate = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ workspaceId, body }: { workspaceId: string; body: string }) =>
+      (await api.put<InterviewTemplate>("/api/memories/interview-template", { workspace_id: workspaceId, body })).data,
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: [getInterviewTemplateKey] });
+      toast.success("Interview template saved");
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

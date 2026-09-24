@@ -15,6 +15,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/identity"
+	"github.com/otal-labs/nexul/internal/platform/redact"
 )
 
 // TopicAgentStream is the live-hub topic for ephemeral turn snapshots; never persisted.
@@ -192,7 +193,7 @@ func NewService(cfg Config) *Service {
 		cfg.Now = time.Now
 	}
 	return &Service{
-		conversations: cfg.Conversations,
+		conversations: redactedConversations{cfg.Conversations},
 		targets:       cfg.Targets,
 		harnesses:     cfg.Harnesses,
 		tickets:       cfg.Tickets,
@@ -200,7 +201,7 @@ func NewService(cfg Config) *Service {
 		users:         cfg.Users,
 		memories:      cfg.Memories,
 		attachments:   cfg.Attachments,
-		live:          cfg.Live,
+		live:          redact.Live{Publisher: cfg.Live},
 		log:           cfg.Logger,
 		now:           cfg.Now,
 		active:        map[string]activeTurn{},
@@ -454,7 +455,7 @@ func (s *Service) splitMemories(ctx context.Context, workspaceID, projectID stri
 			attachments = append(attachments, atts...)
 		}
 	}
-	return index, "Always-included memories, workspace then project, follow them:\n" + InlineMemoriesTrimmed(always, DefaultInlineLimits(), s.log), attachments
+	return index, "Always-included memories, follow them:\n" + InlineMemoriesTrimmed(always, DefaultInlineLimits(), s.log), attachments
 }
 
 // prependBlock puts b first among extra request blocks, if non-empty; a play run's own blocks follow it.

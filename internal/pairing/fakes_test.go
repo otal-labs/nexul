@@ -3,6 +3,7 @@ package pairing
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"sync"
 	"time"
@@ -177,9 +178,11 @@ type fakeExchanger struct {
 	version     string
 	versionErr  error
 	probedURL   string
+	pairedURL   string
 }
 
-func (f *fakeExchanger) Pair(_ context.Context, _, _ string) (harness.PairResult, error) {
+func (f *fakeExchanger) Pair(_ context.Context, serverURL, _ string) (harness.PairResult, error) {
+	f.pairedURL = serverURL
 	if f.exchangeErr != nil {
 		return harness.PairResult{}, f.exchangeErr
 	}
@@ -205,3 +208,55 @@ func registry(exch *fakeExchanger) harness.Registry {
 }
 
 var errBoom = errors.New("boom")
+
+// fakeTokens is an in-memory MCPTokens: one active token per user's computer, revoked on replace like auth's.
+type fakeTokens struct {
+	mu        sync.Mutex
+	active    map[string]MCPToken
+	seq       int
+	revoked   []string
+	mintErr   error
+	revokeErr error
+}
+
+func newFakeTokens() *fakeTokens {
+	return &fakeTokens{active: map[string]MCPToken{}}
+}
+
+func (f *fakeTokens) MintComputerToken(_ context.Context, userID, computerID, computerName string) (string, *MCPToken, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.mintErr != nil {
+		return "", nil, f.mintErr
+	}
+	if old, ok := f.active[userID+"/"+computerID]; ok {
+		f.revoked = append(f.revoked, old.ID)
+	}
+	f.seq++
+	token := MCPToken{ID: fmt.Sprintf("pat-%d", f.seq), Name: "Nexul MCP on " + computerName, Prefix: "abc123"}
+	f.active[userID+"/"+computerID] = token
+	return fmt.Sprintf("dep_raw-%d", f.seq), &token, nil
+}
+
+func (f *fakeTokens) ComputerToken(_ context.Context, userID, computerID string) (*MCPToken, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	token, ok := f.active[userID+"/"+computerID]
+	if !ok {
+		return nil, nil
+	}
+	return &token, nil
+}
+
+func (f *fakeTokens) RevokeComputerToken(_ context.Context, userID, computerID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.revokeErr != nil {
+		return f.revokeErr
+	}
+	if old, ok := f.active[userID+"/"+computerID]; ok {
+		f.revoked = append(f.revoked, old.ID)
+		delete(f.active, userID+"/"+computerID)
+	}
+	return nil
+}

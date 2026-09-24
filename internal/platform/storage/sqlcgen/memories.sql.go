@@ -11,14 +11,15 @@ import (
 )
 
 const createMemory = `-- name: CreateMemory :exec
-INSERT INTO memories (id, workspace_id, project_id, title, when_to_use, body, always_included, version, created_by, created_at, updated_by, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO memories (id, workspace_id, project_id, kind, title, when_to_use, body, always_included, version, created_by, created_at, updated_by, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateMemoryParams struct {
 	ID             string
 	WorkspaceID    string
 	ProjectID      sql.NullString
+	Kind           string
 	Title          string
 	WhenToUse      string
 	Body           string
@@ -35,6 +36,7 @@ func (q *Queries) CreateMemory(ctx context.Context, arg CreateMemoryParams) erro
 		arg.ID,
 		arg.WorkspaceID,
 		arg.ProjectID,
+		arg.Kind,
 		arg.Title,
 		arg.WhenToUse,
 		arg.Body,
@@ -60,8 +62,24 @@ func (q *Queries) DeleteMemory(ctx context.Context, id string) (int64, error) {
 	return result.RowsAffected()
 }
 
+const getInterviewTemplate = `-- name: GetInterviewTemplate :one
+SELECT workspace_id, body, updated_by, updated_at FROM interview_templates WHERE workspace_id = ?
+`
+
+func (q *Queries) GetInterviewTemplate(ctx context.Context, workspaceID string) (InterviewTemplate, error) {
+	row := q.db.QueryRowContext(ctx, getInterviewTemplate, workspaceID)
+	var i InterviewTemplate
+	err := row.Scan(
+		&i.WorkspaceID,
+		&i.Body,
+		&i.UpdatedBy,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getMemory = `-- name: GetMemory :one
-SELECT id, workspace_id, project_id, title, when_to_use, body, always_included, version, created_by, created_at, updated_by, updated_at FROM memories WHERE id = ?
+SELECT id, workspace_id, project_id, title, when_to_use, body, always_included, version, created_by, created_at, updated_by, updated_at, kind FROM memories WHERE id = ?
 `
 
 func (q *Queries) GetMemory(ctx context.Context, id string) (Memory, error) {
@@ -80,6 +98,37 @@ func (q *Queries) GetMemory(ctx context.Context, id string) (Memory, error) {
 		&i.CreatedAt,
 		&i.UpdatedBy,
 		&i.UpdatedAt,
+		&i.Kind,
+	)
+	return i, err
+}
+
+const getMemoryByProjectKind = `-- name: GetMemoryByProjectKind :one
+SELECT id, workspace_id, project_id, title, when_to_use, body, always_included, version, created_by, created_at, updated_by, updated_at, kind FROM memories WHERE project_id = ? AND kind = ?
+`
+
+type GetMemoryByProjectKindParams struct {
+	ProjectID sql.NullString
+	Kind      string
+}
+
+func (q *Queries) GetMemoryByProjectKind(ctx context.Context, arg GetMemoryByProjectKindParams) (Memory, error) {
+	row := q.db.QueryRowContext(ctx, getMemoryByProjectKind, arg.ProjectID, arg.Kind)
+	var i Memory
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.ProjectID,
+		&i.Title,
+		&i.WhenToUse,
+		&i.Body,
+		&i.AlwaysIncluded,
+		&i.Version,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedBy,
+		&i.UpdatedAt,
+		&i.Kind,
 	)
 	return i, err
 }
@@ -147,7 +196,7 @@ func (q *Queries) InsertMemoryVersion(ctx context.Context, arg InsertMemoryVersi
 }
 
 const listMemoriesByProject = `-- name: ListMemoriesByProject :many
-SELECT id, workspace_id, project_id, title, when_to_use, body, always_included, version, created_by, created_at, updated_by, updated_at FROM memories
+SELECT id, workspace_id, project_id, title, when_to_use, body, always_included, version, created_by, created_at, updated_by, updated_at, kind FROM memories
 WHERE project_id = ? OR (project_id IS NULL AND workspace_id = ?)
 ORDER BY project_id IS NOT NULL, project_id, created_at
 `
@@ -180,6 +229,7 @@ func (q *Queries) ListMemoriesByProject(ctx context.Context, arg ListMemoriesByP
 			&i.CreatedAt,
 			&i.UpdatedBy,
 			&i.UpdatedAt,
+			&i.Kind,
 		); err != nil {
 			return nil, err
 		}
@@ -195,7 +245,7 @@ func (q *Queries) ListMemoriesByProject(ctx context.Context, arg ListMemoriesByP
 }
 
 const listMemoriesByWorkspace = `-- name: ListMemoriesByWorkspace :many
-SELECT id, workspace_id, project_id, title, when_to_use, body, always_included, version, created_by, created_at, updated_by, updated_at FROM memories WHERE workspace_id = ? ORDER BY project_id IS NOT NULL, project_id, created_at
+SELECT id, workspace_id, project_id, title, when_to_use, body, always_included, version, created_by, created_at, updated_by, updated_at, kind FROM memories WHERE workspace_id = ? ORDER BY project_id IS NOT NULL, project_id, created_at
 `
 
 func (q *Queries) ListMemoriesByWorkspace(ctx context.Context, workspaceID string) ([]Memory, error) {
@@ -220,6 +270,7 @@ func (q *Queries) ListMemoriesByWorkspace(ctx context.Context, workspaceID strin
 			&i.CreatedAt,
 			&i.UpdatedBy,
 			&i.UpdatedAt,
+			&i.Kind,
 		); err != nil {
 			return nil, err
 		}
@@ -274,7 +325,7 @@ func (q *Queries) ListMemoryVersions(ctx context.Context, memoryID string) ([]Me
 }
 
 const listWorkspaceScopedMemories = `-- name: ListWorkspaceScopedMemories :many
-SELECT id, workspace_id, project_id, title, when_to_use, body, always_included, version, created_by, created_at, updated_by, updated_at FROM memories WHERE workspace_id = ? AND project_id IS NULL ORDER BY created_at
+SELECT id, workspace_id, project_id, title, when_to_use, body, always_included, version, created_by, created_at, updated_by, updated_at, kind FROM memories WHERE workspace_id = ? AND project_id IS NULL ORDER BY created_at
 `
 
 func (q *Queries) ListWorkspaceScopedMemories(ctx context.Context, workspaceID string) ([]Memory, error) {
@@ -299,6 +350,7 @@ func (q *Queries) ListWorkspaceScopedMemories(ctx context.Context, workspaceID s
 			&i.CreatedAt,
 			&i.UpdatedBy,
 			&i.UpdatedAt,
+			&i.Kind,
 		); err != nil {
 			return nil, err
 		}
@@ -343,4 +395,26 @@ func (q *Queries) UpdateMemory(ctx context.Context, arg UpdateMemoryParams) (int
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+const upsertInterviewTemplate = `-- name: UpsertInterviewTemplate :exec
+INSERT INTO interview_templates (workspace_id, body, updated_by, updated_at) VALUES (?, ?, ?, ?)
+ON CONFLICT (workspace_id) DO UPDATE SET body = excluded.body, updated_by = excluded.updated_by, updated_at = excluded.updated_at
+`
+
+type UpsertInterviewTemplateParams struct {
+	WorkspaceID string
+	Body        string
+	UpdatedBy   string
+	UpdatedAt   int64
+}
+
+func (q *Queries) UpsertInterviewTemplate(ctx context.Context, arg UpsertInterviewTemplateParams) error {
+	_, err := q.db.ExecContext(ctx, upsertInterviewTemplate,
+		arg.WorkspaceID,
+		arg.Body,
+		arg.UpdatedBy,
+		arg.UpdatedAt,
+	)
+	return err
 }

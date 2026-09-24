@@ -28,6 +28,7 @@ func (r *MemoriesRepo) Create(ctx context.Context, m *memories.Memory, authorVia
 			ID:             m.ID,
 			WorkspaceID:    m.WorkspaceID,
 			ProjectID:      sql.NullString{String: m.ProjectID, Valid: m.ProjectID != ""},
+			Kind:           m.Kind,
 			Title:          m.Title,
 			WhenToUse:      m.WhenToUse,
 			Body:           m.Body,
@@ -54,6 +55,36 @@ func (r *MemoriesRepo) GetByID(ctx context.Context, id string) (*memories.Memory
 		return nil, fmt.Errorf("get memory %s: %w", id, notFoundIfNoRows(err))
 	}
 	return toMemory(row), nil
+}
+
+func (r *MemoriesRepo) GetByProjectKind(ctx context.Context, projectID, kind string) (*memories.Memory, error) {
+	row, err := r.q.GetMemoryByProjectKind(ctx, sqlcgen.GetMemoryByProjectKindParams{ProjectID: nullString(projectID), Kind: kind})
+	if err != nil {
+		return nil, fmt.Errorf("get %s memory for project %s: %w", kind, projectID, notFoundIfNoRows(err))
+	}
+	return toMemory(row), nil
+}
+
+func (r *MemoriesRepo) GetInterviewTemplate(ctx context.Context, workspaceID string) (*memories.InterviewTemplate, error) {
+	row, err := r.q.GetInterviewTemplate(ctx, workspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("get interview template for workspace %s: %w", workspaceID, notFoundIfNoRows(err))
+	}
+	return &memories.InterviewTemplate{
+		WorkspaceID: row.WorkspaceID, Body: row.Body, UpdatedBy: row.UpdatedBy, UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
+	}, nil
+}
+
+func (r *MemoriesRepo) SaveInterviewTemplate(ctx context.Context, t *memories.InterviewTemplate, evts ...eventbus.OutboxEvent) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		err := r.q.WithTx(tx).UpsertInterviewTemplate(ctx, sqlcgen.UpsertInterviewTemplateParams{
+			WorkspaceID: t.WorkspaceID, Body: t.Body, UpdatedBy: t.UpdatedBy, UpdatedAt: t.UpdatedAt.Unix(),
+		})
+		if err != nil {
+			return fmt.Errorf("save interview template for workspace %s: %w", t.WorkspaceID, classifyWriteErr(err))
+		}
+		return enqueueMemoriesOutbox(ctx, tx, evts)
+	})
 }
 
 func (r *MemoriesRepo) ListByWorkspace(ctx context.Context, workspaceID string) ([]*memories.Memory, error) {
@@ -177,6 +208,7 @@ func toMemory(row sqlcgen.Memory) *memories.Memory {
 		ID:             row.ID,
 		WorkspaceID:    row.WorkspaceID,
 		ProjectID:      row.ProjectID.String,
+		Kind:           row.Kind,
 		Title:          row.Title,
 		WhenToUse:      row.WhenToUse,
 		Body:           row.Body,

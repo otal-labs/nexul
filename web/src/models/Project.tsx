@@ -51,6 +51,8 @@ export const boardPath = (project: Project): string => `/board/${projectToken(pr
 
 export const projectSettingsPath = (token: string): string => `/projects/${token}/settings`;
 
+export const interviewPath = (token: string): string => `/projects/${token}/interview`;
+
 export const docPath = (token: string, docId: string): string => `/docs/${token}/${docId}`;
 
 // token "" is a workspace-scoped memory: the bare, project-less route.

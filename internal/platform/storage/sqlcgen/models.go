@@ -379,6 +379,13 @@ type IntegrationToken struct {
 	RevokedAt  sql.NullInt64
 }
 
+type InterviewTemplate struct {
+	WorkspaceID string
+	Body        string
+	UpdatedBy   string
+	UpdatedAt   int64
+}
+
 type Invitation struct {
 	ID         string
 	TokenHash  string
@@ -444,6 +451,7 @@ type Memory struct {
 	CreatedAt      int64
 	UpdatedBy      string
 	UpdatedAt      int64
+	Kind           string
 }
 
 type MemoryVersion struct {
@@ -555,6 +563,7 @@ type PersonalAccessToken struct {
 	CreatedAt  int64
 	LastUsedAt sql.NullInt64
 	RevokedAt  sql.NullInt64
+	ComputerID string
 }
 
 type Play struct {

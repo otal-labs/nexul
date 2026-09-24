@@ -4,6 +4,7 @@ import "time"
 
 // Topics published by the pairing domain.
 const (
+	TopicComputerPaired   = "computer.paired"
 	TopicSetupConfirmed   = "computer.setup_confirmed"
 	TopicSetupUnconfirmed = "computer.setup_unconfirmed"
 	TopicTunnelCreated    = "computer.tunnel_created"
@@ -14,7 +15,7 @@ const (
 
 // Topics returns every topic the pairing domain publishes.
 func Topics() []string {
-	return []string{TopicSetupConfirmed, TopicSetupUnconfirmed, TopicTunnelCreated, TopicTunnelRemoved, TopicTunnelStatusChanged}
+	return []string{TopicComputerPaired, TopicSetupConfirmed, TopicSetupUnconfirmed, TopicTunnelCreated, TopicTunnelRemoved, TopicTunnelStatusChanged}
 }
 
 // SetupChangedEvent is the payload for both setup topics; an empty Provider means the overall confirmation.
@@ -41,4 +42,13 @@ type TunnelStatusChangedEvent struct {
 	Tunnel           string `json:"tunnel"`
 	HarnessReachable bool   `json:"harness_reachable"`
 	HarnessVersion   string `json:"harness_version,omitempty"`
+}
+
+// ComputerPairedEvent is a computer gaining a harness session, whether first paired, re-paired, or paired over its tunnel.
+type ComputerPairedEvent struct {
+	ComputerID     string    `json:"computer_id"`
+	UserID         string    `json:"user_id"`
+	ServerURL      string    `json:"server_url"`
+	HarnessVersion string    `json:"harness_version,omitempty"`
+	TokenExpiresAt time.Time `json:"token_expires_at"`
 }

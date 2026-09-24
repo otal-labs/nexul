@@ -22,6 +22,8 @@ vi.mock("@/api/client", () => ({
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
+vi.mock("@/components/settings/ComputerMCPToken", () => ({ ComputerMCPToken: () => null }));
+
 const computerList = (computers: unknown[]) => ({ computers });
 
 const computer = (overrides: Record<string, unknown> = {}) => ({
@@ -86,24 +88,28 @@ describe("ComputersSection", () => {
     expect(await screen.findByText(/acts as unpaired/i)).toBeInTheDocument();
   });
 
-  it("pairs a computer by URL through the form dialog", async () => {
-    mocks.post.mockResolvedValue({ data: computer() });
-    const user = userEvent.setup();
+  it("reads a computer tunnel with no session yet as pairing in progress, not expired", async () => {
+    mocks.get.mockResolvedValue({
+      data: computerList([
+        computer({
+          server_url: "https://laptop-ab12cd34.example.com",
+          token_expires_at: "0001-01-01T00:00:00Z",
+          harness_version: "",
+          tunnel: { tunnel_id: "tun-1", hostname: "laptop-ab12cd34.example.com" },
+        }),
+      ]),
+    });
     renderSection();
 
-    await user.click(await screen.findByRole("button", { name: /pair by url/i }));
-    await user.type(screen.getByLabelText(/^name$/i), "Home");
-    await user.type(screen.getByLabelText(/t3 server url/i), "https://home.example.com");
-    await user.type(screen.getByLabelText(/one-time pairing token/i), "one-time-tok");
-    await user.click(screen.getByRole("button", { name: /^pair$/i }));
+    expect(await screen.findByText(/pairing in progress/i)).toBeInTheDocument();
+    expect(screen.queryByText(/acts as unpaired/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^pair$/i })).toBeInTheDocument();
+  });
 
-    await waitFor(() =>
-      expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers", {
-        name: "Home",
-        server_url: "https://home.example.com",
-        token: "one-time-tok",
-      }),
-    );
+  it("has no separate Pair by URL button; URL pairing lives in the dialog", async () => {
+    renderSection();
+    await screen.findByText(/no computers paired yet/i);
+    expect(screen.queryByRole("button", { name: /pair by url/i })).not.toBeInTheDocument();
   });
 
   it("opens the pair-a-computer dialog on its Connect step", async () => {

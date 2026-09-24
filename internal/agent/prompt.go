@@ -37,7 +37,9 @@ type MemoryItem struct {
 	Name           string
 	WhenToUse      string
 	AlwaysIncluded bool
-	Body           string
+	// Interview marks the project's interview memory, inlined first so a trim never drops it (ADR 0065).
+	Interview bool
+	Body      string
 }
 
 // MemoriesIndex is every memory available to a turn: the workspace's workspace-scoped memories, reaching
@@ -50,7 +52,7 @@ type MemoriesIndex struct {
 	Project   []MemoryItem
 }
 
-// splitAlwaysIncluded separates a turn's always-included memories from the index of the rest, workspace first.
+// splitAlwaysIncluded separates always-included memories from the index; the project's interview leads them.
 func splitAlwaysIncluded(mem MemoriesIndex) (index MemoriesIndex, always []InlinedMemory) {
 	for _, m := range mem.Workspace {
 		if !m.AlwaysIncluded {
@@ -62,6 +64,10 @@ func splitAlwaysIncluded(mem MemoriesIndex) (index MemoriesIndex, always []Inlin
 	for _, m := range mem.Project {
 		if !m.AlwaysIncluded {
 			index.Project = append(index.Project, m)
+			continue
+		}
+		if m.Interview {
+			always = append([]InlinedMemory{{Title: m.Name, Body: m.Body}}, always...)
 			continue
 		}
 		always = append(always, InlinedMemory{Title: m.Name, Body: m.Body})

@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -269,20 +270,23 @@ func newRegistryServer(t *testing.T) (*Server, *storage.Store, *fakePublisher) {
 	}), store, pub
 }
 
+var verbFirst = []string{"add", "cancel", "check", "clear", "clone", "create", "delete", "disable", "discover", "get", "import", "investigate", "link", "list", "mark", "mint", "move", "provision", "reactivate", "remove", "rename", "reorder", "replay", "restore", "revert", "revoke", "rotate", "run", "scan", "search", "set", "ship", "update", "verify"}
+
 func TestRegistry_ToolsComplete(t *testing.T) {
 	srv, _, _ := newRegistryServer(t)
-	require.Len(t, srv.tools, 142)
+	require.Len(t, srv.tools, 147)
 	names := make(map[string]bool)
 	for _, tool := range srv.tools {
 		require.NotEmpty(t, tool.Name, "every tool must be named")
 		require.False(t, names[tool.Name], "duplicate tool %s", tool.Name)
 		names[tool.Name] = true
+		assert.NotContains(t, verbFirst, strings.SplitN(tool.Name, "_", 2)[0], "tool %s must be named <object>_<verb>", tool.Name)
 		assert.NotEmpty(t, tool.Description)
 		assert.NotNil(t, tool.InputSchema)
 		assert.NotNil(t, tool.Call)
 	}
 	expected := []string{
-		"search_docs", "search_tickets", "list_dead_letters", "replay_dead_letter",
+		"dead_letter_list", "dead_letter_replay",
 		"doc_create", "doc_get", "doc_search", "doc_update", "doc_archive", "doc_restore",
 		"ticket_create", "ticket_get", "ticket_update", "ticket_update_status", "ticket_set_type", "ticket_set_developer", "ticket_set_tester",
 		"ticket_add_label", "ticket_remove_label", "ticket_list_labels", "ticket_list_all_labels",
@@ -310,11 +314,13 @@ func TestRegistry_ToolsComplete(t *testing.T) {
 		"play_list", "play_create", "play_update", "play_delete",
 		"play_run", "play_run_get", "play_run_stop", "play_run_answer", "play_list_runs",
 		"memory_list", "memory_get", "memory_create", "memory_update", "memory_delete",
-		"create_invitation", "list_invitations", "revoke_invitation",
-		"account_whoami", "list_accounts", "disable_account", "reactivate_account", "remove_account", "restore_account",
+		"memory_create_interview", "interview_template_get", "interview_template_update",
+		"invitation_create", "invitation_list", "invitation_revoke",
+		"account_whoami", "account_list", "account_disable", "account_reactivate", "account_remove", "account_restore",
 		"computer_setup_get", "computer_setup_confirm_provider", "computer_setup_unconfirm_provider",
 		"computer_setup_confirm", "computer_setup_unconfirm",
-		"computer_tunnel_create", "computer_tunnel_status_get", "computer_tunnel_token_get",
+		"computer_tunnel_create", "computer_tunnel_status_get", "computer_tunnel_token_get", "computer_pair",
+		"computer_mcp_token_get", "computer_mcp_token_mint", "computer_mcp_token_revoke",
 	}
 	for _, name := range expected {
 		assert.True(t, names[name], "missing tool %s", name)
@@ -339,7 +345,7 @@ func TestRegistry_ResourcesAndPrompts(t *testing.T) {
 	assert.ElementsMatch(t, []string{"create_ticket_from_doc", "deploy_stack", "investigate_failure", "ship_repository"}, prompts)
 }
 
-func TestRegistry_SearchDocsTool(t *testing.T) {
+func TestRegistry_DocSearchTool(t *testing.T) {
 	srv, store, _ := newRegistryServer(t)
 	ownerID := seedOwner(t, store)
 	ds := docs.NewService(store.Docs, newAccess(t, store))
@@ -347,7 +353,7 @@ func TestRegistry_SearchDocsTool(t *testing.T) {
 	_, err := ds.Create(ctx, "project-general", "Storage Spine", "SQLite migrations and FTS5")
 	require.NoError(t, err)
 
-	resp := dispatch(t, srv, 1, MethodToolsCall, map[string]any{"name": "search_docs", "arguments": map[string]any{"query": "sqlite"}})
+	resp := dispatch(t, srv, 1, MethodToolsCall, map[string]any{"name": "doc_search", "arguments": map[string]any{"query": "sqlite"}})
 	require.Nil(t, resp.Error)
 	result := decodeResult[toolCallResult](t, resp)
 	require.Len(t, result.Content, 1)
@@ -386,19 +392,19 @@ func TestRegistry_TopologyResource(t *testing.T) {
 	assert.Equal(t, "application/json", result.Contents[0].MIMEType)
 }
 
-func TestRegistry_ReplayDeadLetter(t *testing.T) {
+func TestRegistry_DeadLetterReplay(t *testing.T) {
 	srv, store, pub := newRegistryServer(t)
 	adapter := store.DeadLetters
 	require.NoError(t, adapter.Put(context.Background(), deadletter.DeadLetter{
 		ID: "dl-1", Topic: "doc.created", Payload: []byte(`{"doc":{"id":"x"}}`), Error: "boom", Attempts: 3,
 	}))
 
-	listResp := dispatch(t, srv, 1, MethodToolsCall, map[string]any{"name": "list_dead_letters"})
+	listResp := dispatch(t, srv, 1, MethodToolsCall, map[string]any{"name": "dead_letter_list"})
 	require.Nil(t, listResp.Error)
 	listResult := decodeResult[toolCallResult](t, listResp)
 	assert.Contains(t, listResult.Content[0].Text, "dl-1")
 
-	replayResp := dispatch(t, srv, 2, MethodToolsCall, map[string]any{"name": "replay_dead_letter", "arguments": map[string]any{"id": "dl-1"}})
+	replayResp := dispatch(t, srv, 2, MethodToolsCall, map[string]any{"name": "dead_letter_replay", "arguments": map[string]any{"id": "dl-1"}})
 	require.Nil(t, replayResp.Error)
 	replayResult := decodeResult[toolCallResult](t, replayResp)
 	assert.Contains(t, replayResult.Content[0].Text, "replayed")
@@ -407,7 +413,7 @@ func TestRegistry_ReplayDeadLetter(t *testing.T) {
 	_, err := adapter.Get(context.Background(), "dl-1")
 	require.Error(t, err)
 
-	replayMissing := dispatch(t, srv, 3, MethodToolsCall, map[string]any{"name": "replay_dead_letter", "arguments": map[string]any{"id": "dl-1"}})
+	replayMissing := dispatch(t, srv, 3, MethodToolsCall, map[string]any{"name": "dead_letter_replay", "arguments": map[string]any{"id": "dl-1"}})
 	require.NotNil(t, replayMissing.Error)
 	assert.Equal(t, CodeNotFound, replayMissing.Error.Code)
 }

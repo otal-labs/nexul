@@ -66,6 +66,15 @@ describe("PersonalAccessTokensSection", () => {
     ).toBeInTheDocument();
   });
 
+  it("marks a paired computer's own token as belonging to it", async () => {
+    mocks.get.mockResolvedValue({
+      data: patList([token({ name: "Nexul MCP on Home", computer_id: "c1" }), token({ id: "pat-2" })]),
+    });
+    renderSection();
+    expect(await screen.findByText("Nexul MCP on Home")).toBeInTheDocument();
+    expect(screen.getAllByText("paired computer")).toHaveLength(1);
+  });
+
   it("does not show the empty state while tokens are still loading", () => {
     mocks.get.mockReturnValue(new Promise(() => {}));
     renderSection();

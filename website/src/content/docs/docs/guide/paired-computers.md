@@ -10,17 +10,50 @@ Runner builds and deploys stacks. It is a different product surface.
 
 ## Pair a computer
 
-Open **Settings → T3 pairing** and select **Pair a computer**. On the machine
-running T3 Code, run `t3 pair`, then enter these values:
+Open **Settings → T3 pairing** and select **Pair a computer**. The dialog has
+three steps.
+
+1. **Connect.** Name the computer and select **Create tunnel**. Nexul creates
+   a tunnel for it on the instance's Cloudflare, with a hostname made from the
+   name plus eight random characters that only the Nexul server can reach.
+   Run the commands shown for your operating system on the computer; they
+   install `cloudflared` as a background service. The dialog waits until the
+   tunnel is online and T3 Code answers through it, then **Next** unlocks.
+   The instance needs Cloudflare connected and Zero Trust enabled once; the
+   dialog explains either missing piece with its fix.
+2. **Pair T3 Code.** Run `t3 pair` on the computer and paste the one-time
+   token it prints. The name and the tunnel hostname are already filled in.
+   A refused token shows on the token field, so run `t3 pair` again for a
+   fresh one. An unreachable T3 Code shows on the URL field.
+3. **Set up.** The computer is paired. Setting up its providers follows here.
+
+Until step 2 succeeds, the computer's row reads `pairing in progress`. Select
+**Pair** on the row to finish pairing it without starting over.
+
+### Pair by URL
+
+For a machine the server can already reach, such as a VPS or a computer on
+the same network, no tunnel is needed. On the **Connect** step open
+**Advanced options** and select **Pair by URL**. Then enter:
 
 - **Name**, such as `Home` or `VPS`.
-- **T3 server URL**, the URL printed or configured for that T3 Code instance.
+- **T3 server URL**, the URL the server reaches that T3 Code instance at.
 - **One-time pairing token**, copied from `t3 pair`.
+
+### Sessions
 
 The token is exchanged for a bearer session and the bearer is encrypted before
 Nexul stores it. A pairing lasts 30 days because the upstream session has no
 refresh flow. Select **Re-pair** before it expires, or when the row says
-`expired · acts as unpaired`. **Remove** deletes the pairing from Nexul.
+`expired · acts as unpaired`. A computer tunnel keeps its hostname when it is
+re-paired. **Remove** deletes the pairing from Nexul, revokes the computer's MCP
+token, and for a computer tunnel also deletes its tunnel, hostname, and Access
+rule.
+
+**MCP token** mints the computer its own personal access token, "Nexul MCP on
+<computer>", for its providers' MCP configs. The token is shown once; minting
+again replaces it, and **Revoke** on the row cuts it off. Un-confirming the
+computer's setup revokes it too.
 
 Each row reports the harness version and one presence state: **Connected**,
 **Connecting**, or **Not connected**. A computer whose session is expired is
@@ -52,7 +85,8 @@ user's defaults again.
 The browser resolves a target before a play or chat mention starts. The UI
 reports the reason when it cannot run:
 
-- `unpaired`: pair a computer in Settings.
+- `unpaired`: pair a computer in Settings, or finish pairing one still in
+  progress.
 - `expired`: re-pair the expired computer.
 - `no_harness_project`: select a project link or set a fallback project.
 - `no_default_computer`: choose a default when more than one computer is
@@ -64,5 +98,8 @@ The selected values are saved on the trail so later settings changes do not
 rewrite the run's history.
 
 The pairing API is authenticated per user. Its routes include
-`/api/pairing/computers`, `/api/pairing/defaults`,
-`/api/pairing/projects/{id}`, and `/api/pairing/resolve`.
+`/api/pairing/computers`, `/api/pairing/computers/tunnel`,
+`/api/pairing/computers/{id}/pair`, `/api/pairing/defaults`,
+`/api/pairing/projects/{id}`, and `/api/pairing/resolve`. A pairing failure
+names the input it belongs to (`name`, `server_url`, or `token`) in the error
+body's `errors` map.

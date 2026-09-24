@@ -1,6 +1,6 @@
 -- name: CreateMemory :exec
-INSERT INTO memories (id, workspace_id, project_id, title, when_to_use, body, always_included, version, created_by, created_at, updated_by, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO memories (id, workspace_id, project_id, kind, title, when_to_use, body, always_included, version, created_by, created_at, updated_by, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetMemory :one
 SELECT * FROM memories WHERE id = ?;
@@ -34,3 +34,13 @@ FROM memory_versions WHERE memory_id = ? ORDER BY version DESC;
 -- name: GetMemoryVersion :one
 SELECT id, memory_id, version, title, when_to_use, body, always_included, author_id, author_via, created_at
 FROM memory_versions WHERE memory_id = ? AND version = ?;
+
+-- name: GetMemoryByProjectKind :one
+SELECT * FROM memories WHERE project_id = ? AND kind = ?;
+
+-- name: GetInterviewTemplate :one
+SELECT * FROM interview_templates WHERE workspace_id = ?;
+
+-- name: UpsertInterviewTemplate :exec
+INSERT INTO interview_templates (workspace_id, body, updated_by, updated_at) VALUES (?, ?, ?, ?)
+ON CONFLICT (workspace_id) DO UPDATE SET body = excluded.body, updated_by = excluded.updated_by, updated_at = excluded.updated_at;

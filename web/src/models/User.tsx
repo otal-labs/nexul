@@ -68,6 +68,8 @@ export interface PersonalAccessToken {
   created_at: string;
   last_used_at?: string | null;
   revoked_at?: string | null;
+  // Set when the token was minted for a paired computer's MCP connection.
+  computer_id?: string;
 }
 
 export interface MintPATResponse {

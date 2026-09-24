@@ -81,9 +81,11 @@ type MentionLayoutGate interface {
 
 // PATStore persists PATs; only the hash reaches the store; Revoke is user-scoped, a repeat is ErrNotFound.
 type PATStore interface {
-	Create(ctx context.Context, pat *PersonalAccessToken) error
+	Create(ctx context.Context, pat *PersonalAccessToken, evts ...eventbus.OutboxEvent) error
 	GetByHash(ctx context.Context, hash string) (*PersonalAccessToken, error)
 	ListByUser(ctx context.Context, userID string) ([]PersonalAccessToken, error)
-	Revoke(ctx context.Context, id, userID string) error
+	Revoke(ctx context.Context, id, userID string, evts ...eventbus.OutboxEvent) error
 	TouchLastUsed(ctx context.Context, id string) error
+	// GetActiveForComputer returns the computer's unrevoked token, or ErrNotFound.
+	GetActiveForComputer(ctx context.Context, userID, computerID string) (*PersonalAccessToken, error)
 }

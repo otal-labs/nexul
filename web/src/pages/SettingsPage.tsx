@@ -19,6 +19,7 @@ export const SettingsPage = () => {
   const canWritePlays = useHasPermission("plays:write");
   const canDeletePlays = useHasPermission("plays:delete");
   const canManageMentionLayout = useHasPermission("workspaces:write");
+  const canReadMemories = useHasPermission("memories:read");
   const isInstanceAdmin = me?.user?.can_create_workspace ?? false;
 
   const [searchParams] = useSearchParams();
@@ -40,6 +41,7 @@ export const SettingsPage = () => {
           showRoles={canManageRoles}
           showPlays={canReadPlays}
           showMentionLayout={canManageMentionLayout}
+          showInterviewTemplate={canReadMemories}
         />
         <div className="min-w-0 flex-1 space-y-6">
           {isPending && <LoadingDisplay />}

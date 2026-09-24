@@ -47,6 +47,9 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/memories/{id}/versions/{version}", h.getVersion)
 	mux.HandleFunc("POST /api/memories/{id}/revert", h.revert)
 	mux.HandleFunc("POST /api/memories/{id}/clone", h.clone)
+	mux.HandleFunc("POST /api/memories/interview", h.createInterview)
+	mux.HandleFunc("GET /api/memories/interview-template", h.getInterviewTemplate)
+	mux.HandleFunc("PUT /api/memories/interview-template", h.saveInterviewTemplate)
 	return mux
 }
 
@@ -167,4 +170,50 @@ func (h *Handler) clone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusCreated, m)
+}
+
+type interviewRequest struct {
+	ProjectID string `json:"project_id"`
+}
+
+func (h *Handler) createInterview(w http.ResponseWriter, r *http.Request) {
+	var req interviewRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	m, err := h.svc.CreateInterview(r.Context(), req.ProjectID, "")
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, m)
+}
+
+func (h *Handler) getInterviewTemplate(w http.ResponseWriter, r *http.Request) {
+	t, err := h.svc.InterviewTemplate(r.Context(), r.URL.Query().Get("workspace_id"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, t)
+}
+
+type interviewTemplateRequest struct {
+	WorkspaceID string `json:"workspace_id"`
+	Body        string `json:"body"`
+}
+
+func (h *Handler) saveInterviewTemplate(w http.ResponseWriter, r *http.Request) {
+	var req interviewTemplateRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	t, err := h.svc.SaveInterviewTemplate(r.Context(), req.WorkspaceID, req.Body)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, t)
 }

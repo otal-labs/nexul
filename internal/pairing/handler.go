@@ -27,8 +27,12 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("POST /api/pairing/computers/tunnel", h.createTunnel)
 	mux.HandleFunc("GET /api/pairing/computers/{id}/tunnel/status", h.tunnelStatus)
 	mux.HandleFunc("GET /api/pairing/computers/{id}/tunnel/token", h.tunnelToken)
+	mux.HandleFunc("POST /api/pairing/computers/{id}/pair", h.pairComputer)
 	mux.HandleFunc("POST /api/pairing/computers/{id}/repair", h.repair)
 	mux.HandleFunc("DELETE /api/pairing/computers/{id}", h.deleteComputer)
+	mux.HandleFunc("GET /api/pairing/computers/{id}/mcp-token", h.getMCPToken)
+	mux.HandleFunc("POST /api/pairing/computers/{id}/mcp-token", h.mintMCPToken)
+	mux.HandleFunc("DELETE /api/pairing/computers/{id}/mcp-token", h.revokeMCPToken)
 	mux.HandleFunc("GET /api/pairing/computers/{id}/projects", h.listProjects)
 	mux.HandleFunc("GET /api/pairing/computers/{id}/providers", h.listProviders)
 	// Read-only on purpose: a setup confirmation is written only through MCP (ADR 0063).
@@ -100,10 +104,39 @@ func (h *Handler) pair(w http.ResponseWriter, r *http.Request) {
 	}
 	c, err := h.svc.Pair(r.Context(), actorID(r), req.Kind, req.Name, req.ServerURL, req.Token)
 	if err != nil {
-		httpx.WriteError(w, err)
+		writePairError(w, err)
 		return
 	}
 	httpx.WriteJSON(w, http.StatusCreated, c)
+}
+
+type pairComputerRequest struct {
+	Token string `json:"token"`
+}
+
+// pairComputer pairs an existing computer at its own address, which for a computer tunnel is its hostname.
+func (h *Handler) pairComputer(w http.ResponseWriter, r *http.Request) {
+	var req pairComputerRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	c, err := h.svc.PairComputer(r.Context(), actorID(r), r.PathValue("id"), req.Token)
+	if err != nil {
+		writePairError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, c)
+}
+
+// writePairError keys a failure under the input that caused it, so the pairing form shows it on that field.
+func writePairError(w http.ResponseWriter, err error) {
+	var fe *FieldError
+	if errors.As(err, &fe) {
+		httpx.WriteFieldError(w, err, fe.Field)
+		return
+	}
+	httpx.WriteError(w, err)
 }
 
 type createTunnelRequest struct {
@@ -168,7 +201,7 @@ func (h *Handler) repair(w http.ResponseWriter, r *http.Request) {
 	}
 	c, err := h.svc.Repair(r.Context(), actorID(r), r.PathValue("id"), req.Name, req.ServerURL, req.Token)
 	if err != nil {
-		httpx.WriteError(w, err)
+		writePairError(w, err)
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, c)
@@ -180,6 +213,33 @@ func (h *Handler) deleteComputer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
+}
+
+func (h *Handler) getMCPToken(w http.ResponseWriter, r *http.Request) {
+	token, err := h.svc.GetMCPToken(r.Context(), actorID(r), r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"mcp_token": token})
+}
+
+// mintMCPToken is the one response that carries the raw token; nothing lists it again.
+func (h *Handler) mintMCPToken(w http.ResponseWriter, r *http.Request) {
+	minted, err := h.svc.MintMCPToken(r.Context(), actorID(r), r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusCreated, minted)
+}
+
+func (h *Handler) revokeMCPToken(w http.ResponseWriter, r *http.Request) {
+	if err := h.svc.RevokeMCPToken(r.Context(), actorID(r), r.PathValue("id")); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]string{"status": "revoked"})
 }
 
 // resolve answers whether the caller can run a play right now, without starting a turn or leaking the bearer token.

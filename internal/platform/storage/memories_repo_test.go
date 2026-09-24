@@ -252,3 +252,44 @@ func TestProjectsRepo_Create_SeedsAnAlwaysIncludedMemory(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, versions, 1)
 }
+
+func TestMemoriesRepo_GetByProjectKind_FindsTheInterviewAndRefusesASecond(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := context.Background()
+	_, err := s.Memories.GetByProjectKind(ctx, "project-general", memories.KindInterview)
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
+
+	interview := newTestMemory("mem-interview", "project-general")
+	interview.Kind = memories.KindInterview
+	require.NoError(t, s.Memories.Create(ctx, interview, ""))
+	got, err := s.Memories.GetByProjectKind(ctx, "project-general", memories.KindInterview)
+	require.NoError(t, err)
+	assert.Equal(t, "mem-interview", got.ID)
+	assert.Equal(t, memories.KindInterview, got.Kind)
+
+	second := newTestMemory("mem-interview-2", "project-general")
+	second.Kind = memories.KindInterview
+	require.ErrorIs(t, s.Memories.Create(ctx, second, ""), apperrs.ErrConflict)
+	require.NoError(t, s.Memories.Create(ctx, newTestMemory("mem-plain", "project-general"), ""))
+}
+
+func TestMemoriesRepo_InterviewTemplate_SaveUpsertsAndReadsBack(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := context.Background()
+	_, err := s.Memories.GetInterviewTemplate(ctx, "workspace-default")
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
+
+	at := time.Date(2026, 9, 24, 12, 0, 0, 0, time.UTC)
+	require.NoError(t, s.Memories.SaveInterviewTemplate(ctx, &memories.InterviewTemplate{WorkspaceID: "workspace-default", Body: "## One", UpdatedBy: "user-1", UpdatedAt: at}))
+	require.NoError(t, s.Memories.SaveInterviewTemplate(ctx, &memories.InterviewTemplate{WorkspaceID: "workspace-default", Body: "## Two", UpdatedBy: "user-2", UpdatedAt: at}))
+
+	got, err := s.Memories.GetInterviewTemplate(ctx, "workspace-default")
+	require.NoError(t, err)
+	assert.Equal(t, "## Two", got.Body)
+	assert.Equal(t, "user-2", got.UpdatedBy)
+	assert.Equal(t, at, got.UpdatedAt)
+
+	require.Error(t, s.Memories.SaveInterviewTemplate(ctx, &memories.InterviewTemplate{WorkspaceID: "no-such-workspace", Body: "x", UpdatedAt: at}))
+}

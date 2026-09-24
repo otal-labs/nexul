@@ -27,12 +27,13 @@ const TunnelConnection = ({ computer }: TunnelConnectionProps) => {
 interface ConnectStepProps {
   computer: Computer | undefined;
   onCreated: (computer: Computer) => void;
+  onPairByUrl: () => void;
 }
 
 // Step one of pairing: name the computer, install its tunnel, and wait until the tunnel and the harness both answer.
-export const ConnectStep = ({ computer, onCreated }: ConnectStepProps) => (
+export const ConnectStep = ({ computer, onCreated, onPairByUrl }: ConnectStepProps) => (
   <div className="@container">
-    {!computer && <NameComputerForm onCreated={onCreated} />}
+    {!computer && <NameComputerForm onCreated={onCreated} onPairByUrl={onPairByUrl} />}
     {computer && (
       <div className="grid grid-cols-1 gap-5 @2xl:grid-cols-[minmax(0,1fr)_16rem]">
         <TunnelConnection computer={computer} />

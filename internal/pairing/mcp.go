@@ -3,6 +3,7 @@ package pairing
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/otal-labs/nexul/internal/harness"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -10,9 +11,84 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 )
 
-// MCPTools returns the computer tunnel tools and the setup confirmation tools (ADR 0063); MCP is the only surface that writes a confirmation.
+// MCPTools returns the computer tunnel, setup confirmation (ADR 0063), and MCP token tools; only MCP writes a confirmation.
 func MCPTools(s *Service) []mcptool.Tool {
-	return append(tunnelTools(s), setupTools(s)...)
+	return slices.Concat(tunnelTools(s), []mcptool.Tool{pairTool(s)}, setupTools(s), mcpTokenTools(s))
+}
+
+func pairTool(s *Service) mcptool.Tool {
+	return mcptool.Tool{
+		Name:        "computer_pair",
+		Description: "Pair T3 Code on a computer with the one-time token `t3 pair` prints there. Pass computer_id to pair a computer tunnel over its hostname once computer_tunnel_status_get reports both checks, or to re-pair any computer at its known address. For a machine this server can already reach, pass name and server_url instead.",
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"token":       map[string]any{"type": "string", "description": "The one-time token printed by t3 pair"},
+				"computer_id": map[string]any{"type": "string", "description": "An existing computer to pair, such as the one computer_tunnel_create returned"},
+				"name":        map[string]any{"type": "string", "description": "The new computer's name, when pairing by URL"},
+				"server_url":  map[string]any{"type": "string", "description": "The T3 Code server URL this server reaches, when pairing by URL"},
+			},
+			"required": []string{"token"},
+		},
+		Call: func(ctx context.Context, args map[string]any) (any, error) {
+			token, err := mcptool.RequiredString(args, "token")
+			if err != nil {
+				return nil, err
+			}
+			if computerID := mcptool.OptionalString(args["computer_id"]); computerID != "" {
+				return s.PairComputer(ctx, mcpActorID(ctx), computerID, token)
+			}
+			return s.Pair(ctx, mcpActorID(ctx), harness.KindT3Code, mcptool.OptionalString(args["name"]), mcptool.OptionalString(args["server_url"]), token)
+		},
+	}
+}
+
+func mcpTokenTools(s *Service) []mcptool.Tool {
+	return []mcptool.Tool{
+		{
+			Name:        "computer_mcp_token_get",
+			Description: "Read one of your paired computers' own MCP token, \"Nexul MCP on <computer>\": its id, name, prefix, and when it was created and last used, never the secret. Null means the computer has none.",
+			InputSchema: computerSchema(nil),
+			Call: func(ctx context.Context, args map[string]any) (any, error) {
+				computerID, err := mcptool.RequiredString(args, "computer_id")
+				if err != nil {
+					return nil, err
+				}
+				token, err := s.GetMCPToken(ctx, mcpActorID(ctx), computerID)
+				if err != nil {
+					return nil, err
+				}
+				return map[string]any{"mcp_token": token}, nil
+			},
+		},
+		{
+			Name:        "computer_mcp_token_mint",
+			Description: "Mint one of your paired computers its own personal access token, \"Nexul MCP on <computer>\", for its providers' MCP configs; it replaces and revokes the one the computer had. The token is returned only in this response and is hidden in saved transcripts; show it only to the computer's owner.",
+			InputSchema: computerSchema(nil),
+			Call: func(ctx context.Context, args map[string]any) (any, error) {
+				computerID, err := mcptool.RequiredString(args, "computer_id")
+				if err != nil {
+					return nil, err
+				}
+				return s.MintMCPToken(ctx, mcpActorID(ctx), computerID)
+			},
+		},
+		{
+			Name:        "computer_mcp_token_revoke",
+			Description: "Revoke one of your paired computers' MCP token. Its providers lose Nexul's MCP server until a new token is minted.",
+			InputSchema: computerSchema(nil),
+			Call: func(ctx context.Context, args map[string]any) (any, error) {
+				computerID, err := mcptool.RequiredString(args, "computer_id")
+				if err != nil {
+					return nil, err
+				}
+				if err := s.RevokeMCPToken(ctx, mcpActorID(ctx), computerID); err != nil {
+					return nil, err
+				}
+				return map[string]string{"computer_id": computerID, "status": "revoked"}, nil
+			},
+		},
+	}
 }
 
 func tunnelTools(s *Service) []mcptool.Tool {

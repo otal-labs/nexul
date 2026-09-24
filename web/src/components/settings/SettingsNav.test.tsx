@@ -13,6 +13,7 @@ const renderNav = (overrides: Partial<Parameters<typeof SettingsNav>[0]> = {}) =
         showRoles={false}
         showPlays={false}
         showMentionLayout={false}
+        showInterviewTemplate={false}
         {...overrides}
       />
     </MemoryRouter>,
@@ -41,10 +42,12 @@ describe("SettingsNav", () => {
     expect(screen.queryByRole("link", { name: "Roles" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Plays" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Mention chips" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Interview template" })).not.toBeInTheDocument();
   });
 
   it("shows gated sections when their flag is set", () => {
-    renderNav({ showInstanceAccess: true, showRoles: true, showPlays: true, showMentionLayout: true });
+    renderNav({ showInstanceAccess: true, showRoles: true, showPlays: true, showMentionLayout: true, showInterviewTemplate: true });
+    expect(screen.getByRole("link", { name: "Interview template" })).toHaveAttribute("href", "/settings?section=interview");
     expect(screen.getByRole("link", { name: "Registered accounts" })).toHaveAttribute("href", "/settings?section=access");
     expect(screen.getByRole("link", { name: "Roles" })).toHaveAttribute("href", "/settings?section=roles");
     expect(screen.getByRole("link", { name: "Plays" })).toHaveAttribute("href", "/settings?section=plays");
@@ -54,7 +57,7 @@ describe("SettingsNav", () => {
 
 describe("isSettingsSection", () => {
   it("accepts every known section", () => {
-    for (const section of ["instance", "roles", "plays", "mentions", "appearance", "tokens", "pairing", "connectors", "access", "danger"]) {
+    for (const section of ["instance", "roles", "plays", "interview", "mentions", "appearance", "tokens", "pairing", "connectors", "access", "danger"]) {
       expect(isSettingsSection(section)).toBe(true);
     }
   });

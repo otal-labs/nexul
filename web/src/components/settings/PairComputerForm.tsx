@@ -1,21 +1,20 @@
 import { useFormDialogContext } from "@/components/dialogs/FormDialogContext";
 import { FormInput } from "@/components/FormInput";
-import { usePairComputer, useRepairComputer } from "@/hooks/PairingHooks";
-import type { PairComputerFormData } from "@/models/Pairing";
+import { useRepairComputer } from "@/hooks/PairingHooks";
+import type { Computer, PairComputerFormData } from "@/models/Pairing";
 
 interface PairComputerFormProps {
-  // Set only for re-pair: routes submit through useRepairComputer(id) instead of usePairComputer.
-  computerId?: string;
+  computer: Computer;
 }
 
-export const PairComputerForm = ({ computerId }: PairComputerFormProps) => {
+// Re-pairs a computer in place; a computer tunnel keeps its hostname, so only the URL of a computer paired by URL can change.
+export const PairComputerForm = ({ computer }: PairComputerFormProps) => {
   const { control, onSubmit } = useFormDialogContext<PairComputerFormData>();
-  const pair = usePairComputer();
-  const repair = useRepairComputer(computerId ?? "");
+  const repair = useRepairComputer(computer.id);
 
   onSubmit(async (input) => {
-    const computer = computerId ? await repair.mutateAsync(input) : await pair.mutateAsync(input);
-    return { name: computer.name, server_url: computer.server_url, token: "" };
+    const repaired = await repair.mutateAsync(input);
+    return { name: repaired.name, server_url: repaired.server_url, token: "" };
   });
 
   return (
@@ -26,12 +25,15 @@ export const PairComputerForm = ({ computerId }: PairComputerFormProps) => {
         name="server_url"
         label="T3 server URL"
         placeholder="https://your-t3-host:port"
+        readOnly={!!computer.tunnel}
+        className="font-mono text-xs"
       />
       <FormInput
         control={control}
         name="token"
         label="One-time pairing token"
         placeholder="Paste the token printed by `t3 pair`"
+        autoComplete="off"
       />
     </div>
   );

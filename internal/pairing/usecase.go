@@ -31,6 +31,8 @@ type Config struct {
 	Tunnels Tunnels
 	// Bus carries the tunnel watch's status changes; nil keeps the watch silent.
 	Bus Publisher
+	// Tokens mints and revokes each computer's MCP token.
+	Tokens MCPTokens
 }
 
 // Service is the pairing use-case layer (ADR 0019); bearer tokens never leave it except encrypted at rest.
@@ -42,6 +44,7 @@ type Service struct {
 	changed   func(userID string)
 	tunnels   Tunnels
 	bus       Publisher
+	tokens    MCPTokens
 	watchMu   sync.Mutex
 	watching  map[string]tunnelWatch
 }
@@ -53,7 +56,7 @@ func NewService(cfg Config) *Service {
 	}
 	return &Service{
 		repo: cfg.Repo, harnesses: cfg.Harnesses, key: cfg.EncryptionKey, now: cfg.Now, changed: cfg.OnComputersChanged,
-		tunnels: cfg.Tunnels, bus: cfg.Bus, watching: map[string]tunnelWatch{},
+		tunnels: cfg.Tunnels, bus: cfg.Bus, tokens: cfg.Tokens, watching: map[string]tunnelWatch{},
 	}
 }
 
@@ -98,6 +101,9 @@ func (s *Service) sessionComputer(ctx context.Context, userID, computerID string
 	computer, err := s.repo.GetComputer(ctx, userID, computerID)
 	if err != nil {
 		return Computer{}, fmt.Errorf("get computer %s: %w", computerID, err)
+	}
+	if !computer.Paired() {
+		return Computer{}, fmt.Errorf("%w: this computer is still pairing — pair T3 Code on it first", apperrs.ErrInvalid)
 	}
 	if computer.TokenExpiresAt.Before(s.now()) {
 		return Computer{}, fmt.Errorf("%w: this computer's session has expired — re-pair it first", apperrs.ErrInvalid)
@@ -164,77 +170,92 @@ func (s *Service) harnessProviders(ctx context.Context, session Computer) ([]har
 
 // Pair trades a harness-specific secret (T3: the `t3 pair` token) for a bearer session; nothing persists until it succeeds.
 func (s *Service) Pair(ctx context.Context, userID string, kind harness.Kind, name, serverURL, secret string) (*Computer, error) {
-	return s.pair(ctx, userID, "", kind, name, serverURL, secret)
+	if strings.TrimSpace(userID) == "" {
+		return nil, fmt.Errorf("%w: user is required", apperrs.ErrUnauthorized)
+	}
+	return s.pair(ctx, Computer{UserID: userID, Kind: kind, Name: name}, serverURL, secret)
+}
+
+// PairComputer pairs the harness at an existing computer's own address, over its tunnel hostname when it has one.
+func (s *Service) PairComputer(ctx context.Context, userID, computerID, secret string) (*Computer, error) {
+	existing, err := s.ownComputer(ctx, userID, computerID)
+	if err != nil {
+		return nil, err
+	}
+	return s.pair(ctx, *existing, existing.address(), secret)
 }
 
 // Repair re-runs the pairing flow against an existing computer row, updating it in place; the kind never changes.
 func (s *Service) Repair(ctx context.Context, userID, id, name, serverURL, secret string) (*Computer, error) {
-	if strings.TrimSpace(userID) == "" {
-		return nil, fmt.Errorf("%w: user is required", apperrs.ErrUnauthorized)
-	}
-	if strings.TrimSpace(id) == "" {
-		return nil, fmt.Errorf("%w: computer id is required", apperrs.ErrInvalid)
-	}
-	existing, err := s.repo.GetComputer(ctx, userID, id)
-	if err != nil {
-		return nil, fmt.Errorf("get computer %s: %w", id, err)
-	}
-	return s.pair(ctx, userID, existing.ID, existing.Kind, name, serverURL, secret)
-}
-
-func (s *Service) pair(ctx context.Context, userID, id string, kind harness.Kind, name, serverURL, secret string) (*Computer, error) {
-	if strings.TrimSpace(userID) == "" {
-		return nil, fmt.Errorf("%w: user is required", apperrs.ErrUnauthorized)
-	}
-	client, ok := s.harnesses[kind]
-	if !ok {
-		return nil, fmt.Errorf("%w: unsupported harness kind %q", apperrs.ErrInvalid, kind)
-	}
-	name, err := validateName(name)
+	existing, err := s.ownComputer(ctx, userID, id)
 	if err != nil {
 		return nil, err
+	}
+	if existing.Tunnel != nil && strings.TrimRight(strings.TrimSpace(serverURL), "/") != existing.address() {
+		return nil, &FieldError{Field: "server_url", Err: fmt.Errorf("%w: %s is reached through its tunnel at %s", apperrs.ErrInvalid, existing.Name, existing.address())}
+	}
+	existing.Name = name
+	return s.pair(ctx, *existing, serverURL, secret)
+}
+
+// pair exchanges the secret at serverURL and saves base with the new session; base keeps its id, tunnel, and setup.
+func (s *Service) pair(ctx context.Context, base Computer, serverURL, secret string) (*Computer, error) {
+	client, ok := s.harnesses[base.Kind]
+	if !ok {
+		return nil, fmt.Errorf("%w: unsupported harness kind %q", apperrs.ErrInvalid, base.Kind)
+	}
+	name, err := validateName(base.Name)
+	if err != nil {
+		return nil, &FieldError{Field: "name", Err: err}
 	}
 	serverURL, err = validateServerURL(serverURL)
 	if err != nil {
-		return nil, err
+		return nil, &FieldError{Field: "server_url", Err: err}
 	}
 	secret = strings.TrimSpace(secret)
 	if secret == "" {
-		return nil, fmt.Errorf("%w: pairing token is required", apperrs.ErrInvalid)
+		return nil, &FieldError{Field: "token", Err: fmt.Errorf("%w: pairing token is required", apperrs.ErrInvalid)}
 	}
 	if len(s.key) == 0 {
 		return nil, apperrs.Fatal(fmt.Errorf("%w: pairing encryption key is not configured", apperrs.ErrFatal))
 	}
 	result, err := client.Pair(ctx, serverURL, secret)
 	if err != nil {
-		return nil, fmt.Errorf("pair %s: %w", kind, err)
+		return nil, pairFailure(serverURL, err)
 	}
 	encrypted, err := crypto.Encrypt(s.key, []byte(result.BearerToken))
 	if err != nil {
 		return nil, fmt.Errorf("encrypt bearer token: %w", err)
 	}
 	now := s.now().UTC()
-	computer := Computer{
-		ID:             id,
-		UserID:         userID,
-		Kind:           kind,
-		Name:           name,
-		ServerURL:      serverURL,
-		BearerToken:    encrypted,
-		TokenExpiresAt: now.Add(result.ExpiresIn),
-		HarnessVersion: result.Version,
-		CreatedAt:      now,
-		UpdatedAt:      now,
-	}
+	computer := base
+	computer.Name = name
+	computer.ServerURL = serverURL
+	computer.BearerToken = encrypted
+	computer.TokenExpiresAt = now.Add(result.ExpiresIn)
+	computer.HarnessVersion = result.Version
+	computer.UpdatedAt = now
 	if computer.ID == "" {
 		computer.ID = ids.New()
+		computer.CreatedAt = now
 	}
-	if err := s.repo.SaveComputer(ctx, computer); err != nil {
+	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicComputerPaired, Payload: ComputerPairedEvent{
+		ComputerID: computer.ID, UserID: computer.UserID, ServerURL: serverURL, HarnessVersion: result.Version, TokenExpiresAt: computer.TokenExpiresAt,
+	}}
+	if err := s.repo.SaveComputer(ctx, computer, evt); err != nil {
 		return nil, fmt.Errorf("save computer: %w", err)
 	}
-	s.notifyComputersChanged(userID)
+	s.notifyComputersChanged(computer.UserID)
 	computer.BearerToken = ""
 	return &computer, nil
+}
+
+// pairFailure blames the address when the harness could not be reached, and the token when it answered and refused.
+func pairFailure(serverURL string, err error) error {
+	if errors.Is(err, apperrs.ErrRetryable) {
+		return &FieldError{Field: "server_url", Err: fmt.Errorf("couldn't reach the harness at %s: %w", serverURL, err)}
+	}
+	return &FieldError{Field: "token", Err: fmt.Errorf("the harness refused this token, run t3 pair for a fresh one: %w", err)}
 }
 
 // ActiveSessions hands out plaintext bearer tokens for the presence keeper; never expose on a response.
@@ -593,6 +614,9 @@ func (s *Service) fetchTargetComputer(ctx context.Context, userID, computerID st
 		}
 		return nil, fmt.Errorf("get computer %s: %w", computerID, err)
 	}
+	if !computer.Paired() {
+		return nil, &NotConfiguredError{Reason: ReasonUnpaired}
+	}
 	if computer.TokenExpiresAt.Before(s.now()) {
 		return nil, &NotConfiguredError{Reason: ReasonExpiredToken}
 	}
@@ -641,9 +665,16 @@ func (s *Service) ConfirmSetup(ctx context.Context, userID, computerID string) (
 	return s.setOverallSetup(ctx, userID, computerID, &now)
 }
 
-// UnconfirmSetup withdraws the caller's computer's overall confirmation, the only way it ever goes back down.
+// UnconfirmSetup withdraws the caller's computer's overall confirmation and revokes its MCP token first.
 func (s *Service) UnconfirmSetup(ctx context.Context, userID, computerID string) (Setup, error) {
-	return s.setOverallSetup(ctx, userID, computerID, nil)
+	computer, err := s.ownComputer(ctx, userID, computerID)
+	if err != nil {
+		return Setup{}, err
+	}
+	if err := s.revokeMCPToken(ctx, *computer); err != nil {
+		return Setup{}, err
+	}
+	return s.setOverallSetup(ctx, userID, computer.ID, nil)
 }
 
 func (s *Service) setOverallSetup(ctx context.Context, userID, computerID string, at *time.Time) (Setup, error) {

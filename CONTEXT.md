@@ -372,7 +372,10 @@ _Avoid_: Allowlist status, membership status
 
 **Personal access token**:
 A long-lived, revocable credential (`dep_`) carrying exactly one user's own
-permissions. What an agent authenticates its MCP connection with.
+permissions. What an agent authenticates its MCP connection with. A paired
+computer has at most one of its own, "Nexul MCP on <computer>", revoked when
+its setup is un-confirmed or it is removed; a saved transcript shows any
+personal access token as `[redacted token]`.
 
 **Scoped token**:
 The credential an integration (`int_`) or an automation (`dat_`) acts with,

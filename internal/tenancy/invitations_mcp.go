@@ -12,7 +12,7 @@ import (
 func MCPTools(s *InvitationService) []mcptool.Tool {
 	return []mcptool.Tool{
 		{
-			Name:        "create_invitation",
+			Name:        "invitation_create",
 			Description: "Create a single-use invitation link for one or more workspaces.",
 			InputSchema: map[string]any{"type": "object", "properties": map[string]any{
 				"grants":          map[string]any{"type": "array", "items": map[string]any{"type": "object"}},
@@ -35,7 +35,7 @@ func MCPTools(s *InvitationService) []mcptool.Tool {
 			},
 		},
 		{
-			Name:        "list_invitations",
+			Name:        "invitation_list",
 			Description: "List active invitation bundles the authenticated user may manage.",
 			InputSchema: map[string]any{"type": "object", "properties": map[string]any{}},
 			Call: func(ctx context.Context, _ map[string]any) (any, error) {
@@ -43,7 +43,7 @@ func MCPTools(s *InvitationService) []mcptool.Tool {
 			},
 		},
 		{
-			Name:        "revoke_invitation",
+			Name:        "invitation_revoke",
 			Description: "Revoke an active invitation bundle.",
 			InputSchema: map[string]any{"type": "object", "properties": map[string]any{"invitation_id": map[string]any{"type": "string"}}, "required": []string{"invitation_id"}},
 			Call: func(ctx context.Context, args map[string]any) (any, error) {

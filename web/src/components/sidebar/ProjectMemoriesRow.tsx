@@ -3,7 +3,7 @@ import { NavLink } from "react-router";
 
 import { navLinkClass } from "@/components/SidebarNav";
 import { useFetchMemoriesByProject } from "@/hooks/MemoryHooks";
-import { isWorkspaceMemory } from "@/models/Memory";
+import { isInterviewMemory, isWorkspaceMemory } from "@/models/Memory";
 import { memoryPath, projectToken, type Project } from "@/models/Project";
 import { cn } from "@/lib/utils";
 
@@ -14,10 +14,10 @@ interface ProjectMemoriesRowProps {
 }
 
 // Mirrors ProjectDocsRow exactly: each memory title is a direct sibling row, no intermediate "Memories" label.
-// The fetch also returns workspace-scoped memories (see MemoryHooks); this rail is this project's own only.
+// The fetch also returns workspace-scoped memories; this rail is the project's own, minus the interview's own row.
 export const ProjectMemoriesRow = ({ project, collapsed = false }: ProjectMemoriesRowProps) => {
   const { data: memories = [] } = useFetchMemoriesByProject(project.id);
-  const projectMemories = memories.filter((memory) => !isWorkspaceMemory(memory));
+  const projectMemories = memories.filter((memory) => !isWorkspaceMemory(memory) && !isInterviewMemory(memory));
 
   return (
     <>

@@ -206,6 +206,13 @@ type fakeLive struct {
 func (f *fakeLive) Publish(_ context.Context, _ string, payload any) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if raw, ok := payload.(json.RawMessage); ok {
+		var frame StreamFrame
+		if err := json.Unmarshal(raw, &frame); err != nil {
+			return err
+		}
+		payload = frame
+	}
 	f.frames = append(f.frames, payload.(StreamFrame))
 	return nil
 }

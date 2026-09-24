@@ -13,7 +13,7 @@ import { getDnsExposuresKey, getDnsGatewaysKey } from "@/hooks/DnsHooks";
 import { getDocKey, getDocsKey } from "@/hooks/DocHooks";
 import { getInstanceUpgradeKey } from "@/hooks/InstanceUpgradeHooks";
 import { getNotificationsKey, getUnreadCountKey } from "@/hooks/NotificationHooks";
-import { getHarnessProvidersKey } from "@/hooks/PairingHooks";
+import { getComputersKey, getHarnessProvidersKey, getHarnessResolveKey } from "@/hooks/PairingHooks";
 import { getRunnerQueueKey, getRunnersKey } from "@/hooks/RunnerHooks";
 import { getServiceDeploysKey, getServicesKey } from "@/hooks/ServiceHooks";
 import { getStackDeploysKey } from "@/hooks/StackHooks";
@@ -62,6 +62,10 @@ const pushTopics: Record<string, string[]> = {
   // The pickers' "needs setup" tags follow a setup turn confirming or withdrawing a provider.
   "computer.setup_confirmed": [getHarnessProvidersKey],
   "computer.setup_unconfirmed": [getHarnessProvidersKey],
+  // A computer row goes from pairing in progress to paired, or appears and leaves, without a refresh.
+  "computer.paired": [getComputersKey, getHarnessResolveKey],
+  "computer.tunnel_created": [getComputersKey],
+  "computer.tunnel_removed": [getComputersKey, getHarnessResolveKey],
   "category.created": [getCategoriesKey, getProjectCategoriesKey],
   "category.updated": [getCategoriesKey, getProjectCategoriesKey],
   "category.deleted": [getCategoriesKey, getProjectCategoriesKey],

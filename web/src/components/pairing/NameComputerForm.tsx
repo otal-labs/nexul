@@ -1,4 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { LinkIcon } from "lucide-react";
 import { useForm } from "react-hook-form";
 
 import { AdvancedFields } from "@/components/dns/AdvancedFields";
@@ -16,10 +17,11 @@ import {
 
 interface NameComputerFormProps {
   onCreated: (computer: Computer) => void;
+  onPairByUrl: () => void;
 }
 
 // Naming the computer creates its tunnel; a missing instance prerequisite shows its fix right here.
-export const NameComputerForm = ({ onCreated }: NameComputerFormProps) => {
+export const NameComputerForm = ({ onCreated, onPairByUrl }: NameComputerFormProps) => {
   const create = useCreateComputerTunnel();
   const form = useForm<CreateComputerTunnelFormData>({
     resolver: zodResolver(CreateComputerTunnelFormSchema),
@@ -37,6 +39,15 @@ export const NameComputerForm = ({ onCreated }: NameComputerFormProps) => {
       <FormInput control={form.control} name="name" label="Computer name" placeholder="e.g. Work laptop" autoFocus />
       <AdvancedFields>
         <FormInput control={form.control} name="port" label="T3 Code port" type="number" inputMode="numeric" />
+        <div className="space-y-2 border-t border-border pt-4">
+          <p className="text-sm text-muted-foreground">
+            This server can already reach the machine, such as a VPS or a computer on the same network? Skip the tunnel.
+          </p>
+          <Button type="button" variant="outline" onClick={onPairByUrl}>
+            <LinkIcon className="size-4" aria-hidden />
+            Pair by URL
+          </Button>
+        </div>
       </AdvancedFields>
       {create.error && !prerequisite && (
         <p role="alert" className="text-sm text-destructive">

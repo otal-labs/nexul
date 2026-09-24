@@ -126,10 +126,13 @@ func (s *Service) tunnelStatus(ctx context.Context, userID, computerID string) (
 	return out, nil
 }
 
-// DeleteComputer removes a paired computer and tears down its tunnel; a mismatched id is ErrNotFound, never a permission leak.
+// DeleteComputer revokes a paired computer's MCP token, tears down its tunnel, then removes it; a mismatched id is ErrNotFound.
 func (s *Service) DeleteComputer(ctx context.Context, userID, id string) error {
 	computer, err := s.ownComputer(ctx, userID, id)
 	if err != nil {
+		return err
+	}
+	if err := s.revokeMCPToken(ctx, *computer); err != nil {
 		return err
 	}
 	var evts []eventbus.OutboxEvent

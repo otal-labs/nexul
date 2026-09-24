@@ -15,6 +15,7 @@ export interface EventPayloads {
   "chat.message.created": { "message": Record<string, unknown>; };
   "chat.message.deleted": { "conversation_id": string; "message_id": string; "deleted_at": string; };
   "chat.message.updated": { "message": Record<string, unknown>; };
+  "computer.paired": { "computer_id": string; "user_id": string; "server_url": string; "harness_version"?: string; "token_expires_at": string; };
   "computer.setup_confirmed": { "computer_id": string; "user_id": string; "provider"?: string; "confirmed_at"?: string; "skills"?: string[]; };
   "computer.setup_unconfirmed": { "computer_id": string; "user_id": string; "provider"?: string; "confirmed_at"?: string; "skills"?: string[]; };
   "computer.tunnel_created": { "computer_id": string; "user_id": string; "tunnel_id": string; "hostname": string; };
@@ -46,14 +47,17 @@ export interface EventPayloads {
   "git.push": { "owner": string; "repo": string; "branch": string; "sha": string; "pusher"?: string; };
   "instance.upgrade_changed": { "id": string; "from_version": string; "to_version": string; "status": "pending" | "started" | "completed" | "failed"; "error"?: string; "requested_by"?: string; "created_at"?: string; "updated_at"?: string; };
   "instance.upgrade_requested": { "id": string; "version": string; };
+  "interview_template.updated": { "workspace_id": string; "author_id": string; "updated_at"?: string; };
   "invitation.created": { "invitation_id"?: string; "actor_id"?: string; };
   "invitation.deleted": { "invitation_id"?: string; "reason"?: string; };
   "invitation.redeemed": { "invitation_id"?: string; "user_id"?: string; };
   "invitation.revoked": { "invitation_id"?: string; "actor_id"?: string; };
-  "memory.created": { "memory": { "id": string; "workspace_id": string; "project_id": string; "title": string; "when_to_use"?: string; "always_included"?: boolean; "updated_at"?: string; }; "author_id": string; };
+  "memory.created": { "memory": { "id": string; "workspace_id": string; "project_id": string; "kind"?: string; "title": string; "when_to_use"?: string; "always_included"?: boolean; "updated_at"?: string; }; "author_id": string; };
   "memory.deleted": { "id": string; "title": string; "author_id": string; };
-  "memory.updated": { "memory": { "id": string; "workspace_id": string; "project_id": string; "title": string; "when_to_use"?: string; "always_included"?: boolean; "updated_at"?: string; }; "author_id": string; };
+  "memory.updated": { "memory": { "id": string; "workspace_id": string; "project_id": string; "kind"?: string; "title": string; "when_to_use"?: string; "always_included"?: boolean; "updated_at"?: string; }; "author_id": string; };
   "notification.created": Record<string, unknown>;
+  "personal_access_token.minted": { "token_id": string; "user_id": string; "name": string; "computer_id"?: string; };
+  "personal_access_token.revoked": { "token_id": string; "user_id": string; "name": string; "computer_id"?: string; };
   "play.created": { "play": { "id": string; "workspace_id": string; "label": string; "type": string; "description"?: string; "instructions"?: string; "enabled"?: boolean; "show_when_stage"?: string | null; "excluded_project_ids"?: string[]; "created_by"?: string; "created_at"?: string; "updated_at"?: string; }; };
   "play.deleted": { "id": string; "label": string; };
   "play.run_finished": { "trail_id": string; "play_id": string; "play_label": string; "target_type": "ticket" | "doc"; "target_id": string; "target_title"?: string; "starter_id": string; "via": "web" | "mcp"; "outcome": "done" | "failed" | "interrupted"; "last_error"?: string; "reply_message_id"?: string; };
@@ -104,6 +108,7 @@ export const TOPICS: Topic[] = [
   "chat.message.created",
   "chat.message.deleted",
   "chat.message.updated",
+  "computer.paired",
   "computer.setup_confirmed",
   "computer.setup_unconfirmed",
   "computer.tunnel_created",
@@ -135,6 +140,7 @@ export const TOPICS: Topic[] = [
   "git.push",
   "instance.upgrade_changed",
   "instance.upgrade_requested",
+  "interview_template.updated",
   "invitation.created",
   "invitation.deleted",
   "invitation.redeemed",
@@ -143,6 +149,8 @@ export const TOPICS: Topic[] = [
   "memory.deleted",
   "memory.updated",
   "notification.created",
+  "personal_access_token.minted",
+  "personal_access_token.revoked",
   "play.created",
   "play.deleted",
   "play.run_finished",
@@ -191,6 +199,7 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "chat.message.created": {"message":{}},
   "chat.message.deleted": {"conversation_id":"fixture-conversation_id","message_id":"fixture-message_id","deleted_at":"2026-01-01T00:00:00Z"},
   "chat.message.updated": {"message":{}},
+  "computer.paired": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","server_url":"fixture-server_url","harness_version":"fixture-harness_version","token_expires_at":"2026-01-01T00:00:00Z"},
   "computer.setup_confirmed": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","provider":"fixture-provider","confirmed_at":"2026-01-01T00:00:00Z","skills":["fixture-skills"]},
   "computer.setup_unconfirmed": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","provider":"fixture-provider","confirmed_at":"2026-01-01T00:00:00Z","skills":["fixture-skills"]},
   "computer.tunnel_created": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","tunnel_id":"fixture-tunnel_id","hostname":"fixture-hostname"},
@@ -222,14 +231,17 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "git.push": {"owner":"fixture-owner","repo":"fixture-repo","branch":"fixture-branch","sha":"fixture-sha","pusher":"fixture-pusher"},
   "instance.upgrade_changed": {"id":"fixture-id","from_version":"fixture-from_version","to_version":"fixture-to_version","status":"pending","error":"fixture-error","requested_by":"fixture-requested_by","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"},
   "instance.upgrade_requested": {"id":"fixture-id","version":"fixture-version"},
+  "interview_template.updated": {"workspace_id":"fixture-workspace_id","author_id":"fixture-author_id","updated_at":"2026-01-01T00:00:00Z"},
   "invitation.created": {"invitation_id":"fixture-invitation_id","actor_id":"fixture-actor_id"},
   "invitation.deleted": {"invitation_id":"fixture-invitation_id","reason":"fixture-reason"},
   "invitation.redeemed": {"invitation_id":"fixture-invitation_id","user_id":"fixture-user_id"},
   "invitation.revoked": {"invitation_id":"fixture-invitation_id","actor_id":"fixture-actor_id"},
-  "memory.created": {"memory":{"id":"fixture-id","workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","title":"fixture-title","when_to_use":"fixture-when_to_use","always_included":false,"updated_at":"2026-01-01T00:00:00Z"},"author_id":"fixture-author_id"},
+  "memory.created": {"memory":{"id":"fixture-id","workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","kind":"fixture-kind","title":"fixture-title","when_to_use":"fixture-when_to_use","always_included":false,"updated_at":"2026-01-01T00:00:00Z"},"author_id":"fixture-author_id"},
   "memory.deleted": {"id":"fixture-id","title":"fixture-title","author_id":"fixture-author_id"},
-  "memory.updated": {"memory":{"id":"fixture-id","workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","title":"fixture-title","when_to_use":"fixture-when_to_use","always_included":false,"updated_at":"2026-01-01T00:00:00Z"},"author_id":"fixture-author_id"},
+  "memory.updated": {"memory":{"id":"fixture-id","workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","kind":"fixture-kind","title":"fixture-title","when_to_use":"fixture-when_to_use","always_included":false,"updated_at":"2026-01-01T00:00:00Z"},"author_id":"fixture-author_id"},
   "notification.created": {},
+  "personal_access_token.minted": {"token_id":"fixture-token_id","user_id":"fixture-user_id","name":"fixture-name","computer_id":"fixture-computer_id"},
+  "personal_access_token.revoked": {"token_id":"fixture-token_id","user_id":"fixture-user_id","name":"fixture-name","computer_id":"fixture-computer_id"},
   "play.created": {"play":{"id":"fixture-id","workspace_id":"fixture-workspace_id","label":"fixture-label","type":"fixture-type","description":"fixture-description","instructions":"fixture-instructions","enabled":false,"show_when_stage":"fixture-show_when_stage","excluded_project_ids":["fixture-excluded_project_ids"],"created_by":"fixture-created_by","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"}},
   "play.deleted": {"id":"fixture-id","label":"fixture-label"},
   "play.run_finished": {"trail_id":"fixture-trail_id","play_id":"fixture-play_id","play_label":"fixture-play_label","target_type":"ticket","target_id":"fixture-target_id","target_title":"fixture-target_title","starter_id":"fixture-starter_id","via":"web","outcome":"done","last_error":"fixture-last_error","reply_message_id":"fixture-reply_message_id"},

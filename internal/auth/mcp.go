@@ -19,17 +19,17 @@ func MCPTools(s *Service) []mcptool.Tool {
 			},
 		},
 		{
-			Name:        "list_accounts",
+			Name:        "account_list",
 			Description: "List registered instance accounts.",
 			InputSchema: objectSchema(nil),
 			Call: func(ctx context.Context, _ map[string]any) (any, error) {
 				return s.ListAccounts(ctx, actorIDFromContext(ctx))
 			},
 		},
-		accountStatusTool("disable_account", "Disable an instance account.", s.DisableAccount),
-		accountStatusTool("reactivate_account", "Reactivate a disabled instance account.", s.ReactivateAccount),
-		accountStatusTool("remove_account", "Remove an instance account while preserving authored content.", s.RemoveAccount),
-		accountStatusTool("restore_account", "Restore a removed instance account without restoring access.", s.RestoreAccount),
+		accountStatusTool("account_disable", "Disable an instance account.", s.DisableAccount),
+		accountStatusTool("account_reactivate", "Reactivate a disabled instance account.", s.ReactivateAccount),
+		accountStatusTool("account_remove", "Remove an instance account while preserving authored content.", s.RemoveAccount),
+		accountStatusTool("account_restore", "Restore a removed instance account without restoring access.", s.RestoreAccount),
 	}
 }
 

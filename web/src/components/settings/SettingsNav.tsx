@@ -4,6 +4,7 @@ export const SETTINGS_SECTIONS = [
   "instance",
   "roles",
   "plays",
+  "interview",
   "mentions",
   "appearance",
   "tokens",
@@ -26,6 +27,7 @@ const sectionLabels: Record<SettingsSection, string> = {
   instance: "Instance",
   roles: "Roles",
   plays: "Plays",
+  interview: "Interview template",
   mentions: "Mention chips",
   appearance: "Appearance",
   tokens: "Tokens",
@@ -47,6 +49,8 @@ interface SettingsNavProps {
   showPlays: boolean;
   // MentionChipLayoutSection gates on workspaces:write.
   showMentionLayout: boolean;
+  // InterviewTemplateSection reads through memories:read.
+  showInterviewTemplate: boolean;
 }
 
 export const SettingsNav = ({
@@ -55,11 +59,13 @@ export const SettingsNav = ({
   showRoles,
   showPlays,
   showMentionLayout,
+  showInterviewTemplate,
 }: SettingsNavProps) => {
   const items: SettingsSectionNavItem[] = SETTINGS_SECTIONS.filter((section) => {
     if (section === "roles") return showRoles;
     if (section === "plays") return showPlays;
     if (section === "mentions") return showMentionLayout;
+    if (section === "interview") return showInterviewTemplate;
     if (section === "access") return showInstanceAccess;
     return true;
   }).map((section) => ({ section, label: sectionLabels[section], danger: section === "danger" }));

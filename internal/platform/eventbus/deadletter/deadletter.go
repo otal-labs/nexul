@@ -7,8 +7,7 @@ import (
 	"time"
 )
 
-// DeadLetter is a persisted failed event, queryable via the future MCP tools
-// list_dead_letters / replay_dead_letter.
+// DeadLetter is a persisted failed event, listed and replayed by the dead_letter_list and dead_letter_replay MCP tools.
 type DeadLetter struct {
 	ID        string
 	Topic     string

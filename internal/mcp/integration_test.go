@@ -24,12 +24,12 @@ import (
 	"github.com/otal-labs/nexul/internal/topology"
 )
 
-// TestIntegration_StdioSearchDocs is the ws-08 AC integration test: a real
+// TestIntegration_StdioDocSearch is the ws-08 AC integration test: a real
 // SQLite store, real in-process bus, outbox relay, and indexing subscriber,
 // driven over the stdio transport. Creating a doc publishes doc.created (outbox
-// -> relay -> bus -> indexer) while the FTS trigger indexes it; search_docs
+// -> relay -> bus -> indexer) while the FTS trigger indexes it; doc_search
 // must then return it over stdio.
-func TestIntegration_StdioSearchDocs(t *testing.T) {
+func TestIntegration_StdioDocSearch(t *testing.T) {
 	ctx := context.Background()
 	store := testutil.NewStore(t)
 	logger := testutil.DiscardLogger()
@@ -113,8 +113,8 @@ func TestIntegration_StdioSearchDocs(t *testing.T) {
 	initResult := decodeResult[initializeResult](t, &initResp)
 	assert.Equal(t, ProtocolVersion, initResult.ProtocolVersion)
 
-	// search_docs returns the doc the FTS trigger indexed
-	searchResp := stdioCall(t, enc, dec, 2, MethodToolsCall, map[string]any{"name": "search_docs", "arguments": map[string]any{"query": "sqlite"}})
+	// doc_search returns the doc the FTS trigger indexed
+	searchResp := stdioCall(t, enc, dec, 2, MethodToolsCall, map[string]any{"name": "doc_search", "arguments": map[string]any{"query": "sqlite"}})
 	require.Nil(t, searchResp.Error)
 	searchResult := decodeResult[toolCallResult](t, &searchResp)
 	require.Len(t, searchResult.Content, 1)
@@ -127,7 +127,7 @@ func TestIntegration_StdioSearchDocs(t *testing.T) {
 	}, 3*time.Second, 20*time.Millisecond)
 
 	// indexer acked the events, so the dead letter store stayed empty and search stays queryable end to end
-	searchResp = stdioCall(t, enc, dec, 3, MethodToolsCall, map[string]any{"name": "search_tickets", "arguments": map[string]any{"query": "auth"}})
+	searchResp = stdioCall(t, enc, dec, 3, MethodToolsCall, map[string]any{"name": "ticket_search", "arguments": map[string]any{"query": "auth"}})
 	require.Nil(t, searchResp.Error)
 	searchResult = decodeResult[toolCallResult](t, &searchResp)
 	require.Len(t, searchResult.Content, 1)

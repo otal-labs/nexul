@@ -27,17 +27,23 @@ user whose token authenticates the connection.
 | Automations | `automation_create`, `automation_list`, `automation_get`, `automation_update_config`, `automation_set_enabled`, `automation_delete`, `automation_mint_token`, `automation_revoke_token` |
 | Notifications | `notification_list`, `notification_mark_read`, `notification_mark_all_read` |
 | Access | `access_list_grants`, `access_set_grants` |
-| Invitations | `create_invitation`, `list_invitations`, `revoke_invitation` |
-| Accounts | `account_whoami`, `list_accounts`, `disable_account`, `reactivate_account`, `remove_account`, `restore_account` |
-| Computer tunnels | `computer_tunnel_create`, `computer_tunnel_status_get`, `computer_tunnel_token_get` |
+| Invitations | `invitation_create`, `invitation_list`, `invitation_revoke` |
+| Accounts | `account_whoami`, `account_list`, `account_disable`, `account_reactivate`, `account_remove`, `account_restore` |
+| Computer pairing | `computer_tunnel_create`, `computer_tunnel_status_get`, `computer_tunnel_token_get`, `computer_pair` |
 | Computer setup | `computer_setup_get`, `computer_setup_confirm_provider`, `computer_setup_unconfirm_provider`, `computer_setup_confirm`, `computer_setup_unconfirm` |
+| Computer MCP tokens | `computer_mcp_token_get`, `computer_mcp_token_mint`, `computer_mcp_token_revoke` |
 | Plays | `play_list`, `play_create`, `play_update`, `play_delete`, `play_run`, `play_run_get`, `play_run_stop`, `play_run_answer`, `play_list_runs` |
-| Memories | `memory_list`, `memory_get`, `memory_create`, `memory_update`, `memory_delete`, `memory_list_versions`, `memory_revert`, `memory_clone` |
-| Search and operations | `search_docs`, `search_tickets`, `list_dead_letters`, `replay_dead_letter` |
+| Memories | `memory_list`, `memory_get`, `memory_create`, `memory_update`, `memory_delete`, `memory_list_versions`, `memory_revert`, `memory_clone`, `memory_create_interview`, `interview_template_get`, `interview_template_update` |
+| Dead letters | `dead_letter_list`, `dead_letter_replay` |
 
 The workflow prompts are not tools. They template common sequences and are
 listed separately below. Deploys and rollbacks started through MCP are
 attributed to the token's user, with the source suffixed `:mcp`.
+
+`computer_pair` takes the one-time token `t3 pair` prints. With `computer_id`
+it pairs a computer tunnel over its hostname, once `computer_tunnel_status_get`
+reports both checks passing. With `name` and `server_url` instead, it pairs a
+machine the server can already reach by URL.
 
 `ticket_create` files a bug (a ticket of the type named `bug`) only with
 `origin_id`, the ticket it was found in, or `origin_unknown` set to true, the
@@ -61,6 +67,12 @@ for the permission vocabulary. Mint one:
 
 1. Open **Settings → Personal access tokens**.
 2. Give it a name and create it. The raw token (`dep_…`) is shown once — copy it now, it can't be listed again later.
+
+For a paired computer, mint its own token instead: **MCP token** on the computer's
+row in **Settings → Pairing** creates "Nexul MCP on <computer>", replacing the one
+it had. Un-confirming the computer's setup or removing the computer revokes it.
+Nexul replaces any `dep_` token with `[redacted token]` before it saves a play's
+trail or an agent's reply.
 
 ### Claude Code
 

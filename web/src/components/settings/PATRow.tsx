@@ -1,4 +1,4 @@
-import { Trash2 } from "lucide-react";
+import { Monitor, Trash2 } from "lucide-react";
 
 import { ConfirmDestroyButton } from "@/components/settings/ConfirmDestroyButton";
 import { useRevokePAT } from "@/hooks/AuthHooks";
@@ -17,6 +17,12 @@ export const PATRow = ({ token }: PATRowProps) => {
       <div className="min-w-0">
         <p className="truncate text-sm font-medium">
           {token.name}
+          {token.computer_id && (
+            <span className="ml-2 inline-flex items-center gap-1 text-xs font-normal text-muted-foreground">
+              <Monitor className="size-3" aria-hidden />
+              paired computer
+            </span>
+          )}
           {token.revoked_at && (
             <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
               revoked

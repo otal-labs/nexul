@@ -11,17 +11,18 @@ import (
 )
 
 const createPAT = `-- name: CreatePAT :exec
-INSERT INTO personal_access_tokens (id, user_id, name, token_hash, prefix, created_at)
-VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO personal_access_tokens (id, user_id, name, token_hash, prefix, created_at, computer_id)
+VALUES (?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreatePATParams struct {
-	ID        string
-	UserID    string
-	Name      string
-	TokenHash string
-	Prefix    string
-	CreatedAt int64
+	ID         string
+	UserID     string
+	Name       string
+	TokenHash  string
+	Prefix     string
+	CreatedAt  int64
+	ComputerID string
 }
 
 func (q *Queries) CreatePAT(ctx context.Context, arg CreatePATParams) error {
@@ -32,12 +33,40 @@ func (q *Queries) CreatePAT(ctx context.Context, arg CreatePATParams) error {
 		arg.TokenHash,
 		arg.Prefix,
 		arg.CreatedAt,
+		arg.ComputerID,
 	)
 	return err
 }
 
+const getActiveComputerPAT = `-- name: GetActiveComputerPAT :one
+SELECT id, user_id, name, token_hash, prefix, created_at, last_used_at, revoked_at, computer_id FROM personal_access_tokens
+WHERE user_id = ? AND computer_id = ? AND computer_id != '' AND revoked_at IS NULL
+`
+
+type GetActiveComputerPATParams struct {
+	UserID     string
+	ComputerID string
+}
+
+func (q *Queries) GetActiveComputerPAT(ctx context.Context, arg GetActiveComputerPATParams) (PersonalAccessToken, error) {
+	row := q.db.QueryRowContext(ctx, getActiveComputerPAT, arg.UserID, arg.ComputerID)
+	var i PersonalAccessToken
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.TokenHash,
+		&i.Prefix,
+		&i.CreatedAt,
+		&i.LastUsedAt,
+		&i.RevokedAt,
+		&i.ComputerID,
+	)
+	return i, err
+}
+
 const getPATByHash = `-- name: GetPATByHash :one
-SELECT id, user_id, name, token_hash, prefix, created_at, last_used_at, revoked_at FROM personal_access_tokens WHERE token_hash = ?
+SELECT id, user_id, name, token_hash, prefix, created_at, last_used_at, revoked_at, computer_id FROM personal_access_tokens WHERE token_hash = ?
 `
 
 func (q *Queries) GetPATByHash(ctx context.Context, tokenHash string) (PersonalAccessToken, error) {
@@ -52,12 +81,13 @@ func (q *Queries) GetPATByHash(ctx context.Context, tokenHash string) (PersonalA
 		&i.CreatedAt,
 		&i.LastUsedAt,
 		&i.RevokedAt,
+		&i.ComputerID,
 	)
 	return i, err
 }
 
 const listPATsByUser = `-- name: ListPATsByUser :many
-SELECT id, user_id, name, token_hash, prefix, created_at, last_used_at, revoked_at FROM personal_access_tokens WHERE user_id = ? ORDER BY created_at DESC
+SELECT id, user_id, name, token_hash, prefix, created_at, last_used_at, revoked_at, computer_id FROM personal_access_tokens WHERE user_id = ? ORDER BY created_at DESC
 `
 
 func (q *Queries) ListPATsByUser(ctx context.Context, userID string) ([]PersonalAccessToken, error) {
@@ -78,6 +108,7 @@ func (q *Queries) ListPATsByUser(ctx context.Context, userID string) ([]Personal
 			&i.CreatedAt,
 			&i.LastUsedAt,
 			&i.RevokedAt,
+			&i.ComputerID,
 		); err != nil {
 			return nil, err
 		}

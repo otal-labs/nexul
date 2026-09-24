@@ -160,7 +160,7 @@ func TestSetup_RePair_KeepsTheConfirmation(t *testing.T) {
 
 func TestTopics_ListsSetupAndTunnelTopics(t *testing.T) {
 	t.Parallel()
-	assert.Equal(t, []string{"computer.setup_confirmed", "computer.setup_unconfirmed", "computer.tunnel_created", "computer.tunnel_removed", "computer.tunnel_status_changed"}, Topics())
+	assert.Equal(t, []string{"computer.paired", "computer.setup_confirmed", "computer.setup_unconfirmed", "computer.tunnel_created", "computer.tunnel_removed", "computer.tunnel_status_changed"}, Topics())
 }
 
 func toolNamed(t *testing.T, tools []mcptool.Tool, name string) mcptool.Tool {
@@ -190,12 +190,17 @@ func TestMCPTools_Shape(t *testing.T) {
 			assert.Contains(t, tool.InputSchema["required"], "name")
 			continue
 		}
+		if tool.Name == "computer_pair" {
+			assert.Equal(t, []string{"token"}, tool.InputSchema["required"])
+			continue
+		}
 		assert.Contains(t, tool.InputSchema["required"], "computer_id")
 	}
 	assert.ElementsMatch(t, []string{
-		"computer_tunnel_create", "computer_tunnel_status_get", "computer_tunnel_token_get",
+		"computer_tunnel_create", "computer_tunnel_status_get", "computer_tunnel_token_get", "computer_pair",
 		"computer_setup_get", "computer_setup_confirm_provider", "computer_setup_unconfirm_provider",
 		"computer_setup_confirm", "computer_setup_unconfirm",
+		"computer_mcp_token_get", "computer_mcp_token_mint", "computer_mcp_token_revoke",
 	}, names)
 }
 
@@ -214,6 +219,10 @@ func TestMCPTools_ArgumentErrors(t *testing.T) {
 		{"tunnel create without name", "computer_tunnel_create", map[string]any{}},
 		{"tunnel status without computer", "computer_tunnel_status_get", map[string]any{}},
 		{"tunnel token without computer", "computer_tunnel_token_get", map[string]any{}},
+		{"pair without token", "computer_pair", map[string]any{"computer_id": "c1"}},
+		{"mcp token without computer", "computer_mcp_token_get", map[string]any{}},
+		{"mint mcp token without computer", "computer_mcp_token_mint", map[string]any{}},
+		{"revoke mcp token without computer", "computer_mcp_token_revoke", map[string]any{}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -232,9 +241,9 @@ func TestMCPTools_OwnerOnly(t *testing.T) {
 		if tool.Name == "computer_tunnel_create" {
 			continue
 		}
-		_, err := tool.Call(actorCtx(t, "u2"), map[string]any{"computer_id": "c1", "provider": "claude", "skills": []any{"tdd"}})
+		_, err := tool.Call(actorCtx(t, "u2"), map[string]any{"computer_id": "c1", "provider": "claude", "skills": []any{"tdd"}, "token": "tok"})
 		assert.ErrorIs(t, err, apperrs.ErrNotFound, tool.Name)
-		_, err = tool.Call(t.Context(), map[string]any{"computer_id": "c1", "provider": "claude", "skills": []any{"tdd"}})
+		_, err = tool.Call(t.Context(), map[string]any{"computer_id": "c1", "provider": "claude", "skills": []any{"tdd"}, "token": "tok"})
 		assert.ErrorIs(t, err, apperrs.ErrUnauthorized, tool.Name)
 	}
 	assert.Empty(t, repo.outbox)

@@ -35,6 +35,7 @@ import { useSessionStore } from "@/stores/sessionStore";
 // Lazy-loaded: together their deps would double the main bundle, and most sessions never visit either route.
 const DocPage = lazy(() => import("@/pages/DocPage").then((m) => ({ default: m.DocPage })));
 const MemoryPage = lazy(() => import("@/pages/MemoryPage").then((m) => ({ default: m.MemoryPage })));
+const InterviewPage = lazy(() => import("@/pages/InterviewPage").then((m) => ({ default: m.InterviewPage })));
 const TopologyPage = lazy(() =>
   import("@/pages/TopologyPage").then((m) => ({ default: m.TopologyPage })),
 );
@@ -127,6 +128,14 @@ const buildRoutes = (loggedIn: boolean): RouteObject[] => [
                 { path: "/members", element: <MembersPage /> },
                 { path: "/settings", element: <SettingsPage /> },
                 { path: "/projects/:projectId/settings", element: <ProjectSettingsPage /> },
+                {
+                  path: "/projects/:projectId/interview",
+                  element: (
+                    <Suspense fallback={<LoadingDisplay />}>
+                      <InterviewPage />
+                    </Suspense>
+                  ),
+                },
               ],
             },
           ]

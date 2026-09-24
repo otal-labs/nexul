@@ -16,6 +16,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
+	"github.com/otal-labs/nexul/internal/platform/redact"
 )
 
 // Resource types the access overwrite table keys per-resource permissions on; they mirror access's own.
@@ -185,9 +186,12 @@ func NewRunner(cfg RunnerConfig) *Runner {
 	if cfg.SilenceTimeout <= 0 {
 		cfg.SilenceTimeout = HarnessSilenceTimeout
 	}
+	if cfg.Live != nil {
+		cfg.Live = redact.Live{Publisher: cfg.Live}
+	}
 	return &Runner{
-		plays: cfg.Plays, trails: cfg.Trails, perm: cfg.Perm, targets: cfg.Targets, projects: cfg.Projects,
-		harness: cfg.Harness, memories: cfg.Memories, threads: cfg.Threads, turns: cfg.Turns, tickets: cfg.Tickets,
+		plays: cfg.Plays, trails: redactedTrails{cfg.Trails}, perm: cfg.Perm, targets: cfg.Targets, projects: cfg.Projects,
+		harness: cfg.Harness, memories: cfg.Memories, threads: redactedThreads{cfg.Threads}, turns: cfg.Turns, tickets: cfg.Tickets,
 		live: cfg.Live, users: cfg.Users, links: cfg.Links, attachments: cfg.Attachments, log: cfg.Logger, now: cfg.Now, silence: cfg.SilenceTimeout,
 		runs: map[string]*trailObserver{},
 	}
