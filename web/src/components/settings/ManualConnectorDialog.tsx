@@ -114,7 +114,7 @@ export const ManualConnectorDialog = ({ connector }: ManualConnectorDialogProps)
             </div>
           ))}
           {(named || fresh) && (
-            <ul className="space-y-2" aria-label={named ? "Required permissions" : "Verification"}>
+            <ul className="space-y-2" aria-label={named ? "Permissions" : "Verification"}>
               {checks.map((c) => (
                 <TickerRow
                   key={c.key}

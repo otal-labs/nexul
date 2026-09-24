@@ -100,3 +100,24 @@ func TestGitProviderFlag(t *testing.T) {
 		t.Errorf("cloudflare.GitProvider = true, want false")
 	}
 }
+
+func TestCloudflareEntry_OnlyAccessChecksAreAdvisory(t *testing.T) {
+	advisory := map[string]bool{}
+	for _, ch := range registry["cloudflare"].Checks {
+		advisory[ch.Key] = ch.Advisory
+	}
+	want := map[string]bool{
+		"token": false, "zone_read": false, "dns_edit": false, "tunnel_edit": false,
+		"access_apps_edit": true, "access_tokens_edit": true,
+	}
+	for key, wantAdvisory := range want {
+		got, ok := advisory[key]
+		if !ok {
+			t.Errorf("cloudflare is missing check %q", key)
+			continue
+		}
+		if got != wantAdvisory {
+			t.Errorf("cloudflare check %q advisory = %v, want %v", key, got, wantAdvisory)
+		}
+	}
+}

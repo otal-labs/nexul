@@ -10,6 +10,18 @@ import (
 	"database/sql"
 )
 
+const deleteAccessServiceToken = `-- name: DeleteAccessServiceToken :execrows
+DELETE FROM dns_access_service_token WHERE id = 1
+`
+
+func (q *Queries) DeleteAccessServiceToken(ctx context.Context) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteAccessServiceToken)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const deleteExposure = `-- name: DeleteExposure :execrows
 DELETE FROM dns_exposures WHERE id = ?
 `
@@ -56,6 +68,24 @@ func (q *Queries) DeleteTunnel(ctx context.Context, id string) (int64, error) {
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+const getAccessServiceToken = `-- name: GetAccessServiceToken :one
+SELECT id, token_id, client_id, client_secret, created_at, updated_at FROM dns_access_service_token WHERE id = 1
+`
+
+func (q *Queries) GetAccessServiceToken(ctx context.Context) (DnsAccessServiceToken, error) {
+	row := q.db.QueryRowContext(ctx, getAccessServiceToken)
+	var i DnsAccessServiceToken
+	err := row.Scan(
+		&i.ID,
+		&i.TokenID,
+		&i.ClientID,
+		&i.ClientSecret,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const getExposure = `-- name: GetExposure :one
@@ -489,6 +519,33 @@ func (q *Queries) ListTunnels(ctx context.Context) ([]DnsTunnel, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const saveAccessServiceToken = `-- name: SaveAccessServiceToken :exec
+INSERT INTO dns_access_service_token (id, token_id, client_id, client_secret, created_at, updated_at)
+VALUES (1, ?, ?, ?, ?, ?)
+ON CONFLICT(id) DO UPDATE SET
+  token_id = excluded.token_id, client_id = excluded.client_id,
+  client_secret = excluded.client_secret, updated_at = excluded.updated_at
+`
+
+type SaveAccessServiceTokenParams struct {
+	TokenID      string
+	ClientID     string
+	ClientSecret string
+	CreatedAt    int64
+	UpdatedAt    int64
+}
+
+func (q *Queries) SaveAccessServiceToken(ctx context.Context, arg SaveAccessServiceTokenParams) error {
+	_, err := q.db.ExecContext(ctx, saveAccessServiceToken,
+		arg.TokenID,
+		arg.ClientID,
+		arg.ClientSecret,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+	)
+	return err
 }
 
 const saveExposure = `-- name: SaveExposure :exec

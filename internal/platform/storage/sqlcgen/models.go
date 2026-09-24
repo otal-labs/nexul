@@ -209,6 +209,15 @@ type DeployLogLine struct {
 	Line     string
 }
 
+type DnsAccessServiceToken struct {
+	ID           int64
+	TokenID      string
+	ClientID     string
+	ClientSecret string
+	CreatedAt    int64
+	UpdatedAt    int64
+}
+
 type DnsExposure struct {
 	ID        string
 	GatewayID string

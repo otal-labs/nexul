@@ -29,6 +29,8 @@ export interface CredentialCheck {
   label: string;
   // Shown under the permission so a red row also explains what Nexul needs it for.
   why?: string;
+  // An advisory check that fails shows a warning but never blocks Confirm.
+  advisory?: boolean;
 }
 
 export interface CredentialStatus {
