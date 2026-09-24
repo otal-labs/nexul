@@ -39,10 +39,15 @@ to check (the ticket's **acceptance criteria** — every feature and task
 template now carries that section, see the rename below), and **Pass** /
 **Fail**.
 
-- **Which URL**: the branch's own preview deployment if a wildcard rule made
-  one; otherwise the shared environment the branch deploys to, labelled
-  "shared, may include other changes"; otherwise none, with a nudge to add a
-  deploy branch. Never a block.
+- **Which URL — never production** (owner, 2026-09-24: testers do not test
+  on prod). The panel offers only a deployment that does not touch
+  production's services: the branch's own preview deployment, or failing
+  that the shared test environment the branch deploys to (labelled "shared,
+  may include other changes"). A deployment counts as production-touching
+  when it is the default branch's own, or when its row shares the default
+  branch's network with no overrides; those are never offered. With nothing
+  safe, the panel says there is no test environment and nudges to add a
+  deploy branch on its own network.
 - **Pass** moves the card to the first done-stage column and records who
   tested it.
 - **Fail** opens a dialog with the bug template (steps, expected, actual,
@@ -102,6 +107,7 @@ serve:
   branch's values for that branch only — the per-branch overrides ADR 0036
   anticipated.
 - A row sharing the default branch's network with no overrides shows a
-  warning: "Uses main's services, including its database — testers can
-  change real data."
+  warning: "Uses production's services, including its database — testers
+  are never sent here." Such a row still deploys; it just never becomes a
+  test target.
 - Skippable, like every wizard step.

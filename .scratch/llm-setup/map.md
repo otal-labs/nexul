@@ -100,7 +100,8 @@ no users yet, move quick):
   body template (bug: steps, expected, actual, screenshot; feature and task
   seeded too), edited on the type in project settings.
 - [The testing step](issues/10-testing-step.md) — a Test this panel (live
-  URL, acceptance criteria, Pass/Fail) in testing columns; Fail opens the bug
+  URL, never production or anything sharing its services; acceptance
+  criteria; Pass/Fail) in testing columns; Fail opens the bug
   template, posts to the ticket thread, and moves the card back; tickets get
   Developer (renamed Assignee), Tester, and Reporter; bugs leave the create
   dialog (Report a bug, Fail, or "origin unknown"); a Test with AI play;
