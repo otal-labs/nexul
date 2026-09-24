@@ -41,6 +41,14 @@ const (
 		"Write rules, not a transcript: short imperative lines under each heading, with no questions, answers, or narration. Replace each heading's prompt line with its rules, and leave out a heading the project has no rule for. " +
 		"The body is capped at 8,000 characters of markdown and every agent turn in the project carries it in full, so keep it well under the cap: tighten wording and drop what a linter or the code already enforces. " +
 		"Reply with a short summary of what the interview now says and what this run changed."
+	testWithAIInstructions = "Test this ticket the way a tester would, then pass or fail it. Read it with `ticket_get` and its links with `ticket_get_links`; its acceptance criteria are what you test against. " +
+		"Follow the testing strategy in this project's interview memory, which comes with this run. With no interview, check each criterion on the live URL and run the tests the project already has, and add none. " +
+		"Get where to test with `ticket_get_test_target`. Test nowhere else: never production, and never anything that shares production's services. If its url is empty, the only place to test is production: stop without passing or failing the ticket, and reply that it needs a deploy branch on its own network. " +
+		"Open the url and check it against each acceptance criterion in turn, noting what you did and what you saw. " +
+		"Run the project's tests. List its repositories with `project_list_repos`: when one has the role tests, run them from that repository, cloning it if the checkout you are running in is not it; otherwise run them in this checkout on the ticket's linked branch. " +
+		"Where the interview calls for an automated end-to-end suite, add or extend a test covering the ticket's acceptance criteria, run it against the url, commit it, and push: to the ticket's linked branch, or in a tests repository to a branch named `<ticket key>-<short-slug>` with a pull request whose title starts with the ticket key. " +
+		"Then record the result exactly as a person would. If every criterion holds and the tests pass, call `ticket_test_pass`. Otherwise call `ticket_test_fail` with the bug template filled: the steps to reproduce, the expected result the criterion promises, and the actual result you saw. It posts them to the ticket's thread and moves the ticket back to progress. " +
+		"Reply with each criterion and whether it held, the tests you ran and added, and the result you recorded. If you cannot reach the url or run the tests, say what blocked you instead of passing or failing the ticket."
 )
 
 // Service is the plays use-case layer: workspace-scoped play definitions (ADR 0055).
@@ -207,7 +215,7 @@ func (s *Service) Delete(ctx context.Context, workspaceID, id string) error {
 	return nil
 }
 
-// SeedDefaults creates the three out-of-the-box plays for a fresh workspace (ticket 02); no permission gate,
+// SeedDefaults creates the four out-of-the-box plays for a fresh workspace (ticket 02); no permission gate,
 // the same way CreateOwnerRole seeds a workspace's first role: there is no member yet to hold plays:write.
 // Idempotent: the default workspace already carries its plays from migrations by the time the Owner
 // Wizard binds someone to it, so a workspace that already has plays is left alone.
@@ -220,7 +228,7 @@ func (s *Service) SeedDefaults(ctx context.Context, workspaceID string) error {
 		return nil
 	}
 	now := s.now().UTC()
-	progress := StageProgress
+	progress, testingStage := StageProgress, StageTesting
 	seeds := []*Play{
 		{
 			ID: ids.New(), WorkspaceID: workspaceID, Label: "Fix with AI", Type: TypeTicket,
@@ -238,6 +246,12 @@ func (s *Service) SeedDefaults(ctx context.Context, workspaceID string) error {
 			ID: ids.New(), WorkspaceID: workspaceID, Label: "Interview", Type: TypeInterview,
 			Description:  "Asks one question at a time to record this project's rules for agents, and amends them on a re-run.",
 			Instructions: interviewInstructions, Enabled: true,
+			CreatedAt: now, UpdatedAt: now,
+		},
+		{
+			ID: ids.New(), WorkspaceID: workspaceID, Label: "Test with AI", Type: TypeTicket,
+			Description:  "Tests the ticket on its test environment against its acceptance criteria, then passes or fails it.",
+			Instructions: testWithAIInstructions, Enabled: true, ShowWhenStage: &testingStage,
 			CreatedAt: now, UpdatedAt: now,
 		},
 	}

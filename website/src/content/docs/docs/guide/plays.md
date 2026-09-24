@@ -12,11 +12,12 @@ project's interview.
 
 ## Configure a play
 
-Open **Settings → Plays**. Every workspace starts with three ordinary plays:
+Open **Settings → Plays**. Every workspace starts with four ordinary plays:
 
 - **Fix with AI** is a ticket play shown in the In progress stage.
 - **To tickets via AI** is a document play.
 - **Interview** is an interview play, run from a project's Interview page.
+- **Test with AI** is a ticket play shown in the Testing stage.
 
 The same screen can create, edit, exclude users from, and delete plays. A play
 has these fields:
@@ -100,6 +101,27 @@ none. Skipping it, or leaving the wizard without starting it, asks "are you
 sure?" and says what agents lose without it. A project without an interview is
 never blocked: its board shows a banner linking to the Interview page until
 the interview memory exists, which can be dismissed for the browser session.
+
+## The Test with AI play
+
+Test with AI is offered on a ticket in a Testing column. It tests the ticket
+the way a person pressing **Pass** or **Fail** in the Test this panel would.
+The Agent follows the testing strategy in the project's interview memory. It
+reads the ticket's acceptance criteria and asks `ticket_get_test_target` where
+to test, which is never production. When there is no safe test environment
+it stops without a result and says a deploy branch on its own network is
+needed. Otherwise it checks the live URL against each criterion and runs the
+project's tests, from the tests repository when the project has one. Where the
+interview calls for an automated end-to-end suite, it also adds or extends a
+test covering the criteria.
+
+It then records the result with `ticket_test_pass` or `ticket_test_fail`,
+which do what the panel's buttons do, signed "Nexul · for" the person who ran
+the play. A pass posts "Passed by Nexul · for <login>" and moves the card to
+the first Done column. A fail posts the bug template (steps to reproduce,
+expected result, actual result) under "Test failed by Nexul · for <login>" to
+the ticket's thread and moves the card back to In progress. Leave the run dialog's success column empty for this play, because
+the result already moves the card.
 
 ## The decisions check
 

@@ -16,7 +16,7 @@ func (h *Handler) testTarget(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) testPass(w http.ResponseWriter, r *http.Request) {
-	t, err := h.svc.TestPass(r.Context(), r.PathValue("id"))
+	t, err := h.svc.TestPass(r.Context(), r.PathValue("id"), false)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -30,7 +30,7 @@ func (h *Handler) testFail(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	t, err := h.svc.TestFail(r.Context(), r.PathValue("id"), req)
+	t, err := h.svc.TestFail(r.Context(), r.PathValue("id"), req, false)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

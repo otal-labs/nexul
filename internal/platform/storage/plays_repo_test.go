@@ -134,25 +134,32 @@ func TestPlaysRepo_Migration_SeedsDefaultWorkspaceWithTheDefaultPlays(t *testing
 	s := newTestStore(t)
 	got, err := s.Plays.List(context.Background(), "workspace-default")
 	require.NoError(t, err)
-	require.Len(t, got, 3)
-	labels := []string{got[0].Label, got[1].Label, got[2].Label}
-	assert.ElementsMatch(t, []string{"Fix with AI", "To tickets via AI", "Interview"}, labels)
+	require.Len(t, got, 4)
+	byLabel := map[string]*plays.Play{}
 	for _, p := range got {
-		if p.Label == "Fix with AI" {
-			assert.Equal(t, plays.TypeTicket, p.Type)
-			require.NotNil(t, p.ShowWhenStage)
-			assert.Equal(t, plays.StageProgress, *p.ShowWhenStage)
-		}
-		if p.Label == "To tickets via AI" {
-			assert.Equal(t, plays.TypeDoc, p.Type)
-			assert.Nil(t, p.ShowWhenStage)
-		}
-		if p.Label == "Interview" {
-			assert.Equal(t, plays.TypeInterview, p.Type)
-			assert.Nil(t, p.ShowWhenStage)
-			assert.Contains(t, p.Instructions, "memory_create_interview")
-		}
-		assert.True(t, p.Enabled)
+		byLabel[p.Label] = p
+	}
+	progress, testingStage := plays.StageProgress, plays.StageTesting
+	tests := []struct {
+		label    string
+		wantType plays.Type
+		wantShow *plays.Stage
+		mention  string
+	}{
+		{"Fix with AI", plays.TypeTicket, &progress, "ticket_link_pr"},
+		{"To tickets via AI", plays.TypeDoc, nil, "ticket_create"},
+		{"Interview", plays.TypeInterview, nil, "memory_create_interview"},
+		{"Test with AI", plays.TypeTicket, &testingStage, "ticket_test_fail"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.label, func(t *testing.T) {
+			p := byLabel[tt.label]
+			require.NotNil(t, p)
+			assert.Equal(t, tt.wantType, p.Type)
+			assert.Equal(t, tt.wantShow, p.ShowWhenStage)
+			assert.Contains(t, p.Instructions, tt.mention)
+			assert.True(t, p.Enabled)
+		})
 	}
 }
 

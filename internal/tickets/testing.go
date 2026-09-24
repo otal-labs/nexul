@@ -65,11 +65,11 @@ type TestReport struct {
 var attachmentID = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 
 // markdown renders the report as the thread message; empty sections are left out, the actual result never is.
-func (r TestReport) markdown() (string, error) {
+func (r TestReport) markdown(heading string) (string, error) {
 	if strings.TrimSpace(r.Actual) == "" {
 		return "", fmt.Errorf("%w: actual result is required: say what went wrong", apperrs.ErrInvalid)
 	}
-	parts := []string{"Test failed"}
+	parts := []string{heading}
 	for _, sec := range [][2]string{{"Steps to reproduce", r.Steps}, {"Expected result", r.Expected}, {"Actual result", r.Actual}} {
 		if text := strings.TrimSpace(sec[1]); text != "" {
 			parts = append(parts, "## "+sec[0]+"\n"+text)
@@ -106,7 +106,7 @@ func (s *Service) TestTarget(ctx context.Context, id string) (TestTarget, error)
 }
 
 // TestPass moves the ticket to the first done-stage column, fills an empty Tester, and posts who passed it to its thread.
-func (s *Service) TestPass(ctx context.Context, id string) (*Ticket, error) {
+func (s *Service) TestPass(ctx context.Context, id string, viaMCP bool) (*Ticket, error) {
 	t, err := s.Get(ctx, id)
 	if err != nil {
 		return nil, err
@@ -128,12 +128,12 @@ func (s *Service) TestPass(ctx context.Context, id string) (*Ticket, error) {
 			return nil, err
 		}
 	}
-	moved, err := s.transition(ctx, id, done, statusActor(ctx), "", testedEvent(TopicTestPassed, tester, ""))
+	moved, err := s.transition(ctx, id, done, testActor(ctx, viaMCP), "", testedEvent(TopicTestPassed, tester, ""))
 	if err != nil {
 		return nil, err
 	}
 	actor, _ := identity.ActorFromCtx(ctx)
-	if err := s.testing.Threads.PostToTicketThread(ctx, moved, actor.ID, passedNote(tester, target.URL)); err != nil {
+	if err := s.testing.Threads.PostToTicketThread(ctx, moved, actor.ID, passedNote(signedBy(tester, viaMCP), target.URL)); err != nil {
 		return nil, fmt.Errorf("post test result to ticket %s: %w", id, err)
 	}
 	return moved, nil
@@ -147,8 +147,16 @@ func passedNote(tester, url string) string {
 }
 
 // TestFail moves the ticket back to progress and posts the report to its thread; a done ticket is never reopened (ADR 0064).
-func (s *Service) TestFail(ctx context.Context, id string, report TestReport) (*Ticket, error) {
-	body, err := report.markdown()
+func (s *Service) TestFail(ctx context.Context, id string, report TestReport, viaMCP bool) (*Ticket, error) {
+	tester, err := s.caller(ctx)
+	if err != nil {
+		return nil, err
+	}
+	heading := "Test failed"
+	if viaMCP {
+		heading += " by " + signedBy(tester, viaMCP)
+	}
+	body, err := report.markdown(heading)
 	if err != nil {
 		return nil, err
 	}
@@ -163,12 +171,8 @@ func (s *Service) TestFail(ctx context.Context, id string, report TestReport) (*
 	if err != nil {
 		return nil, err
 	}
-	tester, err := s.caller(ctx)
-	if err != nil {
-		return nil, err
-	}
 	actor, _ := identity.ActorFromCtx(ctx)
-	moved, err := s.transition(ctx, id, progress, statusActor(ctx), "", testedEvent(TopicTestFailed, tester, body))
+	moved, err := s.transition(ctx, id, progress, testActor(ctx, viaMCP), "", testedEvent(TopicTestFailed, tester, body))
 	if err != nil {
 		return nil, err
 	}
@@ -210,6 +214,23 @@ func (s *Service) caller(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("%w: a test result needs a signed-in tester", apperrs.ErrUnauthorized)
 	}
 	return s.login(ctx, actor.ID), nil
+}
+
+// signedBy names a test result's tester; through MCP it reads as Nexul acting for them, as a reporter does.
+func signedBy(tester string, viaMCP bool) string {
+	if viaMCP {
+		return "Nexul · for " + tester
+	}
+	return tester
+}
+
+// testActor records a move made through MCP as user:mcp, the kind reporter gives a ticket filed that way.
+func testActor(ctx context.Context, viaMCP bool) Actor {
+	actor := statusActor(ctx)
+	if viaMCP && actor.Kind == ActorKindUser {
+		actor.Kind = ActorKindUserMCP
+	}
+	return actor
 }
 
 func testedEvent(topic, tester, report string) func(Ticket) eventbus.OutboxEvent {

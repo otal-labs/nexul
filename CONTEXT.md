@@ -119,9 +119,9 @@ play also names the one stage it shows in. No default memories live on the
 definition — the run dialog picks those per run. Runs on the clicking
 user's own paired harness and posts into the target's thread; the column
 the ticket moves to on success is chosen at run time. Every workspace,
-new or existing, is seeded with the same three, "Fix with AI" (ticket,
-progress stage), "To tickets via AI" (doc), and "Interview" (interview), as
-ordinary plays a member
+new or existing, is seeded with the same four, "Fix with AI" (ticket,
+progress stage), "To tickets via AI" (doc), "Interview" (interview), and
+"Test with AI" (ticket, testing stage), as ordinary plays a member
 may edit or delete. Seen and fired with `plays:run`, managed with
 `plays:read`, `plays:write`, `plays:delete`. A named user can be excluded
 from one play: a permission overwrite denying that user `plays:run` on the

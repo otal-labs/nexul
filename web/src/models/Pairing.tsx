@@ -55,6 +55,90 @@ export const PAIRING_STEPS = [
 
 export type PairingStep = (typeof PAIRING_STEPS)[number]["value"];
 
+export type SetupTurnState = "running" | "confirmed" | "failed";
+
+export interface SetupTurnSummary {
+  run_id: string;
+  turn_id: string;
+  provider: string;
+  provider_name: string;
+  state: SetupTurnState;
+  status: string;
+  updated_at: string;
+}
+
+// Keyed by the provider's driver kind; a null confirmed_at means unconfirmed.
+export interface ProviderSetup {
+  provider: string;
+  confirmed_at: string | null;
+  skills: string[];
+}
+
+// Read-only in the browser: confirmations are written only by an agent through MCP (ADR 0063).
+export interface ComputerSetup {
+  computer_id: string;
+  confirmed_at: string | null;
+  providers: ProviderSetup[];
+  turns: SetupTurnSummary[];
+}
+
+export interface SetupRun {
+  run_id: string;
+  computer_id: string;
+  providers: { provider: string; name: string }[];
+}
+
+// Queued: in the run just started, its turn not begun yet.
+export interface SetupRunRow {
+  provider: string;
+  name: string;
+  state: SetupTurnState | "queued";
+  status: string;
+  turnId?: string;
+}
+
+const turnRow = (t: SetupTurnSummary): SetupRunRow => ({
+  provider: t.provider,
+  name: t.provider_name || t.provider,
+  state: t.state,
+  status: t.status,
+  turnId: t.turn_id,
+});
+
+// The run's providers in order, each at its turn in that run or queued, then any other provider's newest turn.
+export const setupRunRows = (turns: SetupTurnSummary[], run: SetupRun | undefined): SetupRunRow[] => {
+  const inRun = (run?.providers ?? []).map((p): SetupRunRow => {
+    const turn = turns.find((t) => t.provider === p.provider && t.run_id === run?.run_id);
+    if (turn) return turnRow(turn);
+    return { provider: p.provider, name: p.name, state: "queued", status: "Waiting for its turn" };
+  });
+  const rest = turns.filter((t) => !inRun.some((r) => r.provider === t.provider)).map(turnRow);
+  return [...inRun, ...rest];
+};
+
+export const setupRunning = (rows: SetupRunRow[]) => rows.some((r) => r.state === "running" || r.state === "queued");
+
+export interface ProviderSetupLine {
+  provider: string;
+  name: string;
+  state: SetupTurnState | "unconfirmed";
+  confirmedAt: string | null;
+}
+
+// One line per provider the computer has a confirmation row or a setup turn for; a running turn wins over the stored state.
+export const providerSetupLines = (setup: ComputerSetup): ProviderSetupLine[] => {
+  const providers = [...new Set([...setup.providers.map((p) => p.provider), ...setup.turns.map((t) => t.provider)])];
+  return providers.map((provider) => {
+    const turn = setup.turns.find((t) => t.provider === provider);
+    const confirmedAt = setup.providers.find((p) => p.provider === provider)?.confirmed_at ?? null;
+    const base = { provider, name: turn?.provider_name || provider, confirmedAt };
+    if (turn?.state === "running") return { ...base, state: "running" };
+    if (confirmedAt) return { ...base, state: "confirmed" };
+    if (turn?.state === "failed") return { ...base, state: "failed" };
+    return { ...base, state: "unconfirmed" };
+  });
+};
+
 // What the instance needs before any computer can be reached through a tunnel; mirrors pairing.PrerequisiteReason.
 export type TunnelPrerequisite = "cloudflare_not_connected" | "zero_trust_disabled";
 

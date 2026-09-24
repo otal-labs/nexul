@@ -25,8 +25,8 @@ three steps.
    token it prints. The name and the tunnel hostname are already filled in.
    A refused token shows on the token field, so run `t3 pair` again for a
    fresh one. An unreachable T3 Code shows on the URL field.
-3. **Set up.** The computer is paired. Nexul sets up its providers next; see
-   [Set up a computer](#set-up-a-computer).
+3. **Set up.** Select **Start setup** to set up each provider on the
+   computer; see [Set up a computer](#set-up-a-computer).
 
 Until step 2 succeeds, the computer's row reads `pairing in progress`. Select
 **Pair** on the row to finish pairing it without starting over.
@@ -70,6 +70,13 @@ its provider with the computer's MCP token, installs the default skill set
 `~/.agents/skills/`, and confirms the provider with the skills it discovered.
 Each confirmed turn also confirms the computer, so one failed provider never
 blocks the others. A failed provider can be retried on its own.
+
+The step shows one row per provider: waiting, running with the agent's steps
+folded under it, confirmed, or failed with **Retry**. Each computer row in
+**Settings → T3 pairing** shows **Setup confirmed** or **Needs setup**, one line
+per provider with its confirmed-at time, and **Set up** or **Re-run setup**,
+which opens the dialog at this step. The row only shows the state; an agent
+changes a confirmation through MCP and nowhere else.
 
 Setup never overwrites an installed skill and keeps the token the providers
 already hold, so re-running it on a confirmed computer only re-checks. Turns

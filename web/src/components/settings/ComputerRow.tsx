@@ -1,6 +1,7 @@
 import { Clock3, RefreshCwIcon, Trash2 } from "lucide-react";
 
 import { ComputerMCPToken } from "@/components/settings/ComputerMCPToken";
+import { ComputerSetupSummary } from "@/components/settings/ComputerSetupSummary";
 import { ConfirmDestroyButton } from "@/components/settings/ConfirmDestroyButton";
 import { PairComputerForm } from "@/components/settings/PairComputerForm";
 import { Button } from "@/components/ui/button";
@@ -93,6 +94,7 @@ export const ComputerRow = ({ computer, presence }: ComputerRowProps) => {
           />
         </span>
       </div>
+      {!pairing && <ComputerSetupSummary computer={computer} />}
       <ComputerMCPToken computerId={computer.id} />
     </li>
   );

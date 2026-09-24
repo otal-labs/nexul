@@ -48,7 +48,7 @@ func TestIntegration_TicketTesting(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, tickets.TestTarget{URL: "https://login.example.com", Kind: "preview", Branch: "feature/login"}, target)
 
-	failed, err := svc.TestFail(aliceCtx, tk.ID, tickets.TestReport{Steps: "Open /login", Actual: "Blank page"})
+	failed, err := svc.TestFail(aliceCtx, tk.ID, tickets.TestReport{Steps: "Open /login", Actual: "Blank page"}, false)
 	require.NoError(t, err)
 	assert.Equal(t, tickets.Status("in_progress"), failed.Status)
 	thread, err := s.Chat.GetTicketThread(ctx, tk.ID)
@@ -62,7 +62,7 @@ func TestIntegration_TicketTesting(t *testing.T) {
 
 	_, err = svc.UpdateStatus(ctx, tk.ID, "qa")
 	require.NoError(t, err)
-	passed, err := svc.TestPass(aliceCtx, tk.ID)
+	passed, err := svc.TestPass(aliceCtx, tk.ID, false)
 	require.NoError(t, err)
 	assert.Equal(t, tickets.Status("done"), passed.Status)
 	assert.Equal(t, "u-alice", passed.Tester)
@@ -72,6 +72,6 @@ func TestIntegration_TicketTesting(t *testing.T) {
 	bodies := []string{msgs[0].Body, msgs[1].Body}
 	assert.Contains(t, bodies, "Passed by u-alice on https://login.example.com")
 
-	_, err = svc.TestFail(aliceCtx, tk.ID, tickets.TestReport{Actual: "Still blank"})
+	_, err = svc.TestFail(aliceCtx, tk.ID, tickets.TestReport{Actual: "Still blank"}, false)
 	require.ErrorContains(t, err, "never reopened")
 }

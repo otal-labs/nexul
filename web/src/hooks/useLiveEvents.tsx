@@ -14,7 +14,7 @@ import { getDocKey, getDocsKey } from "@/hooks/DocHooks";
 import { getInstanceUpgradeKey } from "@/hooks/InstanceUpgradeHooks";
 import { getMemoriesKey, getMemoryKey, getMemoryVersionsKey } from "@/hooks/MemoryHooks";
 import { getNotificationsKey, getUnreadCountKey } from "@/hooks/NotificationHooks";
-import { getComputersKey, getHarnessProvidersKey, getHarnessResolveKey } from "@/hooks/PairingHooks";
+import { getComputerSetupKey, getComputersKey, getHarnessProvidersKey, getHarnessResolveKey } from "@/hooks/PairingHooks";
 import { getRunnerQueueKey, getRunnersKey } from "@/hooks/RunnerHooks";
 import { getServiceDeploysKey, getServicesKey } from "@/hooks/ServiceHooks";
 import { getStackDeploysKey } from "@/hooks/StackHooks";
@@ -37,6 +37,7 @@ import { getApplicablePlaysKey, getWorkspacePlaysKey } from "@/hooks/PlayHooks";
 import { getActiveTrailsKey, getTrailKey, getTrailsKey } from "@/hooks/TrailHooks";
 import { useAgentStreamStore } from "@/stores/agentStreamStore";
 import { usePlayRunStore } from "@/stores/playRunStore";
+import { useSetupActivityStore } from "@/stores/setupActivityStore";
 import { useVoiceOccupancyStore } from "@/stores/voiceOccupancyStore";
 import { isTrailActive, type ActivityKind, type RunFrame } from "@/models/Trail";
 import type { VoiceOccupant } from "@/models/Voice";
@@ -61,8 +62,11 @@ const pushTopics: Record<string, string[]> = {
   "dns.exposure_changed": [getDnsExposuresKey],
   "notification.created": [getNotificationsKey, getUnreadCountKey],
   // The pickers' "needs setup" tags follow a setup turn confirming or withdrawing a provider.
-  "computer.setup_confirmed": [getHarnessProvidersKey],
-  "computer.setup_unconfirmed": [getHarnessProvidersKey],
+  "computer.setup_confirmed": [getHarnessProvidersKey, getComputerSetupKey],
+  "computer.setup_unconfirmed": [getHarnessProvidersKey, getComputerSetupKey],
+  // The Set up step's rows and each computer row's provider lines follow a run turn by turn.
+  "computer.setup_turn_changed": [getComputerSetupKey],
+  "computer.setup_finished": [getComputerSetupKey, getHarnessProvidersKey],
   // A computer row goes from pairing in progress to paired, or appears and leaves, without a refresh.
   "computer.paired": [getComputersKey, getHarnessResolveKey],
   "computer.tunnel_created": [getComputersKey],
@@ -120,6 +124,12 @@ interface MessageDeletedPayload {
   conversation_id: string;
   message_id: string;
   deleted_at: string;
+}
+
+// The running setup turn's latest step as one line, for the commentary under its row.
+interface SetupTurnActivityPayload {
+  turn_id: string;
+  status: string;
 }
 
 // One voice channel's full occupant list after a change, applied wholesale.
@@ -184,6 +194,11 @@ const dispatch = (client: ReturnType<typeof useQueryClient>) => (frame: ServerFr
   }
   if (frame.topic === "computer.tunnel_status_changed") {
     setCachedTunnelStatus(client, frame.payload as TunnelStatusChangedPayload);
+    return;
+  }
+  if (frame.topic === "computer.setup_turn_activity") {
+    const p = frame.payload as SetupTurnActivityPayload;
+    useSetupActivityStore.getState().push(p.turn_id, p.status);
     return;
   }
   if (frame.topic === "voice.occupancy.changed") {

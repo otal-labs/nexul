@@ -9,7 +9,6 @@ import { GatewaysSection } from "@/components/dns/GatewaysSection";
 import { InterviewTemplateSection } from "@/components/settings/InterviewTemplateSection";
 import { InstanceSettingsPanel } from "@/components/settings/InstanceSettingsPanel";
 import { McpConfigSection } from "@/components/settings/McpConfigSection";
-import { MemorySkillSection } from "@/components/settings/MemorySkillSection";
 import { MentionChipLayoutSection } from "@/components/settings/MentionChipLayoutSection";
 import { PairingDefaultsSection } from "@/components/settings/PairingDefaultsSection";
 import { PersonalAccessTokensSection } from "@/components/settings/PersonalAccessTokensSection";
@@ -98,7 +97,6 @@ export const SettingsPageContent = ({
         <ComputersSection />
         <PairingDefaultsSection />
         <McpConfigSection />
-        <MemorySkillSection />
       </>
     )}
     {section === "connectors" && <ConnectorsSettingsPanel isInstanceAdmin={isInstanceAdmin} />}

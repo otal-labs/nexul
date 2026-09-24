@@ -71,11 +71,13 @@ changes. It never returns production, meaning the default branch's
 deployment or any branch deployment on production's network with nothing
 overridden; an empty `url` means no safe environment exists yet.
 `ticket_test_pass` moves the ticket to the first done-stage column, makes the
-caller its tester only when none is assigned, and posts who passed it, with
-the test URL, to the ticket's thread. `ticket_test_fail` posts the steps, expected
-result, actual result, and screenshot attachment ids to the ticket's thread
-and moves it back to the first progress-stage column; it refuses a done
-ticket, which takes a new bug found in it instead.
+caller its tester only when none is assigned, and posts "Passed by Nexul · for
+<login>", with the test URL, to the ticket's thread. `ticket_test_fail` posts
+the steps, expected result, actual result, and screenshot attachment ids to
+the ticket's thread under "Test failed by Nexul · for <login>" and moves it
+back to the first progress-stage column; it refuses a done ticket, which takes
+a new bug found in it instead. Both record the move as made by `user:mcp`. The
+Pass and Fail buttons sign with the person's own login instead.
 
 **Resources** expose readable entities by URI: `docs://{id}`, `tickets://{id}`, and `topology://current`.
 
@@ -96,9 +98,12 @@ for the permission vocabulary. Mint one:
 1. Open **Settings → Personal access tokens**.
 2. Give it a name and create it. The raw token (`dep_…`) is shown once — copy it now, it can't be listed again later.
 
-For a paired computer, mint its own token instead: **MCP token** on the computer's
-row in **Settings → Pairing** creates "Nexul MCP on <computer>", replacing the one
-it had. Un-confirming the computer's setup or removing the computer revokes it.
+A paired computer needs none of the steps below: its
+[setup wizard](/docs/guide/computer-setup/) connects each provider with the
+computer's own token, "Nexul MCP on <computer>", and installs the skills. The
+token is listed as **MCP token** on the computer's row in **Settings → T3
+pairing**. Un-confirming the computer's setup or removing the computer revokes
+it.
 Nexul replaces any `dep_` token with `[redacted token]` before it saves a play's
 trail or an agent's reply.
 

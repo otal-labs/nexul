@@ -5,7 +5,10 @@ import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PairComputerDialog } from "@/components/pairing/PairComputerDialog";
+import { Button } from "@/components/ui/button";
 import { setCachedTunnelStatus } from "@/hooks/PairingHooks";
+import { useSetupActivityStore } from "@/stores/setupActivityStore";
+import type { Computer, ComputerSetup, SetupTurnState } from "@/models/Pairing";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }));
 
@@ -31,12 +34,14 @@ const created = {
 const apiError = (body: Record<string, string>, errors?: Record<string, string[]>) =>
   Object.assign(new Error("request failed"), { response: { data: { ...body, ...(errors && { errors }) } } });
 
-const renderDialog = () => {
+const emptySetup: ComputerSetup = { computer_id: "c1", confirmed_at: null, providers: [], turns: [] };
+
+const renderDialog = (setupFor?: Computer) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
-        <PairComputerDialog />
+        <PairComputerDialog setupFor={setupFor} trigger={<Button type="button">{setupFor ? "Set up" : "Pair a computer"}</Button>} />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -65,6 +70,7 @@ describe("PairComputerDialog", () => {
     mocks.get.mockImplementation(async (url: string) => {
       if (url.endsWith("/tunnel/token")) return { data: { token: "eyJ-connector-token" } };
       if (url.endsWith("/tunnel/status")) return { data: { tunnel: "inactive", harness_reachable: false } };
+      if (url.endsWith("/setup")) return { data: emptySetup };
       return { data: { computers: [] } };
     });
   });
@@ -114,7 +120,10 @@ describe("PairComputerDialog", () => {
     await user.click(screen.getByRole("button", { name: /pair t3 code/i }));
 
     await waitFor(() => expect(mocks.post).toHaveBeenLastCalledWith("/api/pairing/computers/c1/pair", { token: "t3-pair-token" }));
-    expect(await screen.findByText(/work laptop is paired/i)).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /start setup/i })).toBeInTheDocument();
+    expect(screen.getByText(/one short setup turn per provider on work laptop/i)).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: /~\/\.claude\/skills\//i })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /~\/\.agents\/skills\//i })).toBeChecked();
     expect(screen.getByRole("button", { name: /^done$/i })).toBeInTheDocument();
   });
 
@@ -163,7 +172,7 @@ describe("PairComputerDialog", () => {
         token: "t3-pair-token",
       }),
     );
-    expect(await screen.findByText(/vps is paired/i)).toBeInTheDocument();
+    expect(await screen.findByText(/one short setup turn per provider on vps/i)).toBeInTheDocument();
   });
 
   it("shows a failure with no field under the form", async () => {
@@ -236,5 +245,82 @@ describe("PairComputerDialog", () => {
     await user.click(screen.getByRole("button", { name: /close/i }));
     await user.click(screen.getByRole("button", { name: /pair a computer/i }));
     expect(await screen.findByLabelText(/computer name/i)).toBeInTheDocument();
+  });
+});
+
+describe("PairComputerDialog opened at Set up", () => {
+  const paired: Computer = { ...created, token_expires_at: "2026-10-24T00:00:00Z", harness_version: "0.0.40" };
+  const turn = (provider: string, name: string, state: SetupTurnState, status: string, run_id = "r0", turn_id = `t-${provider}`) => ({
+    run_id,
+    turn_id,
+    provider,
+    provider_name: name,
+    state,
+    status,
+    updated_at: "2026-09-24T00:00:00Z",
+  });
+  let setup: ComputerSetup;
+
+  beforeEach(() => {
+    mocks.get.mockReset();
+    mocks.post.mockReset();
+    useSetupActivityStore.setState({ lines: {} });
+    setup = emptySetup;
+    mocks.get.mockImplementation(async (url: string) => {
+      if (url.endsWith("/setup")) return { data: setup };
+      return { data: { computers: [] } };
+    });
+  });
+
+  it("starts at Set up with the earlier steps locked, shows each provider's newest turn, and retries only the failed one", async () => {
+    setup = {
+      ...emptySetup,
+      confirmed_at: "2026-09-24T00:00:00Z",
+      turns: [turn("codex", "Codex", "confirmed", "Confirmed with 12 skills"), turn("opencode", "opencode", "failed", "No result within 10m0s")],
+    };
+    mocks.post.mockResolvedValue({ data: { run_id: "r1", computer_id: "c1", providers: [{ provider: "opencode", name: "opencode" }] } });
+    const user = userEvent.setup();
+    renderDialog(paired);
+
+    await user.click(screen.getByRole("button", { name: /^set up$/i }));
+    expect(await screen.findByRole("heading", { name: /set up work laptop/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /connect/i })).toBeDisabled();
+    expect(await screen.findByText("Confirmed with 12 skills")).toBeInTheDocument();
+    expect(screen.getByText("No result within 10m0s")).toBeInTheDocument();
+    expect(screen.getByText("1/2 confirmed")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /retry/i }));
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/providers/opencode/retry"));
+    expect(mocks.post).toHaveBeenCalledTimes(1);
+  });
+
+  it("lists every provider of a started run at once, with the running turn's commentary folded under it", async () => {
+    mocks.post.mockImplementation(async () => {
+      setup = { ...emptySetup, turns: [turn("claudeagent", "Claude", "running", "Connecting Nexul and installing skills", "r1", "t2")] };
+      return {
+        data: {
+          run_id: "r1",
+          computer_id: "c1",
+          providers: [
+            { provider: "claudeagent", name: "Claude" },
+            { provider: "codex", name: "Codex" },
+          ],
+        },
+      };
+    });
+    const user = userEvent.setup();
+    renderDialog(paired);
+
+    await user.click(screen.getByRole("button", { name: /^set up$/i }));
+    await user.click(await screen.findByRole("button", { name: /start setup/i }));
+
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/runs"));
+    expect(await screen.findByText("Connecting Nexul and installing skills")).toBeInTheDocument();
+    expect(screen.getByText("Waiting for its turn")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /re-run setup/i })).toBeDisabled();
+
+    act(() => useSetupActivityStore.getState().push("t2", "Wrote ~/.codex/config.toml"));
+    await user.click(await screen.findByRole("button", { name: /agent steps \(1\)/i }));
+    expect(screen.getByText("Wrote ~/.codex/config.toml")).toBeInTheDocument();
   });
 });

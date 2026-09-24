@@ -473,7 +473,7 @@ func TestSetupTurn_SaveFailure_IsLoggedAndTheRunCarriesOn(t *testing.T) {
 	assert.Len(t, f.sessionTitles(), 8, "every session still ran")
 }
 
-func TestSetupHandlers_StartRetryAndMemorySkill(t *testing.T) {
+func TestSetupHandlers_StartAndRetry(t *testing.T) {
 	t.Parallel()
 	f := newSetupFixture(t)
 	routes := NewHandler(f.svc).Routes()
@@ -492,11 +492,6 @@ func TestSetupHandlers_StartRetryAndMemorySkill(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, rec.Code, "only the owner starts a computer's setup")
 	rec = doRequest(routes, http.MethodPost, "/api/pairing/computers/"+f.computer.ID+"/setup/providers/grok/retry", "u1", nil)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
-
-	rec = doRequest(routes, http.MethodGet, "/api/pairing/memory-skill", "u1", nil)
-	require.Equal(t, http.StatusOK, rec.Code)
-	assert.Contains(t, rec.Body.String(), "name: nexul-memory")
-	assert.Contains(t, rec.Body.String(), "memory_create")
 }
 
 func TestSetupMCPTools_StartAndRetry(t *testing.T) {

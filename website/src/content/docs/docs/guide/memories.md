@@ -27,9 +27,10 @@ the Agent can select one when it needs the body. A single full memory is capped
 at 20,000 characters, and selected memories in a play run are capped at 60,000
 characters together.
 
-The memory skill card in **Settings → T3 pairing** contains the same protocol
-for a user's local T3 sessions. It points agents to `memory_list` and
-`memory_get`, and tells them when to use `memory_create` or `memory_update`.
+The [setup wizard](/docs/guide/computer-setup/) installs the nexul-memory
+skill, which carries the same protocol, on every paired computer. It points
+agents to `memory_list` and `memory_get`, and tells them when to use
+`memory_create` or `memory_update`.
 
 ## The interview
 

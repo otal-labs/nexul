@@ -1,3 +1,6 @@
+import { PlusIcon } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
 import { PairComputerDialog } from "@/components/pairing/PairComputerDialog";
 import { ComputerRow } from "@/components/settings/ComputerRow";
 import { HarnessReadinessLine } from "@/components/settings/HarnessReadinessLine";
@@ -22,7 +25,14 @@ export const ComputersSection = () => {
       <div className="space-y-4">
         <HarnessReadinessLine />
         <div className="flex flex-wrap gap-2">
-          <PairComputerDialog />
+          <PairComputerDialog
+            trigger={
+              <Button type="button">
+                <PlusIcon className="size-4" aria-hidden />
+                Pair a computer
+              </Button>
+            }
+          />
         </div>
         {isPending && <LoadingDisplay />}
         {error && <ErrorDisplay error={error} />}
