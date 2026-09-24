@@ -186,6 +186,35 @@ func TestHandlePush_WildcardRule_CreatesDerivedClone(t *testing.T) {
 	assert.Equal(t, derived.ID, branches[0].ID)
 }
 
+func TestHandlePush_RuleOverrides_ApplyToCloneOnly(t *testing.T) {
+	ctx := t.Context()
+	s, stacks, deploys := newBranchTestService()
+	base := validRunStack()
+	base.Env = map[string]string{"PORT": "8080", "DATABASE_URL": "postgres://prod"}
+	base.BranchDeployRules = []BranchDeployRule{{Pattern: "feature/*", DockerNetwork: "qa-net", Overrides: map[string]string{"DATABASE_URL": "postgres://qa"}}}
+	require.NoError(t, stacks.Create(ctx, &base))
+
+	require.NoError(t, s.HandlePush(ctx, pushEvent(t, PushTrigger{Owner: "acme", Repo: "api", Branch: "feature/x", SHA: "sha1"})))
+
+	derived, err := stacks.GetBySlugAndMachine(ctx, "api-feature-x", base.Machine)
+	require.NoError(t, err)
+	assert.Equal(t, map[string]string{"PORT": "8080", "DATABASE_URL": "postgres://qa"}, derived.Env)
+	stored, err := stacks.GetByID(ctx, base.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "postgres://prod", stored.Env["DATABASE_URL"], "the base keeps its own value")
+	assert.Equal(t, map[string]string{"PORT": "", "DATABASE_URL": ""}, deployRequestedPayload(t, deploys.of(TopicDeployRequested)).Env,
+		"the bus event carries override keys, never their values")
+
+	stored.BranchDeployRules[0].Overrides = nil
+	_, err = s.UpdateStack(ctx, *stored)
+	require.NoError(t, err)
+	require.NoError(t, s.HandlePush(ctx, pushEvent(t, PushTrigger{Owner: "acme", Repo: "api", Branch: "feature/x", SHA: "sha2"})))
+
+	derived, err = stacks.GetBySlugAndMachine(ctx, "api-feature-x", base.Machine)
+	require.NoError(t, err)
+	assert.Equal(t, "postgres://prod", derived.Env["DATABASE_URL"], "removing the override restores the base value on the next deploy")
+}
+
 func TestHandlePush_WildcardRule_RepeatedPushUpdatesNotDuplicates(t *testing.T) {
 	s, stacks, deploys := newBranchTestService()
 	base := validRunStack()

@@ -57,6 +57,8 @@ A **branch deploy rule** maps a branch pattern — an exact name like `main`, or
 - An **exact** rule with no name suffix redeploys the base stack itself in place.
 - A **wildcard** rule spawns a **preview deployment**: one clone per matching branch, on its own network and (if a hostname template is set) its own hostname, torn down automatically when the branch is deleted.
 
+A rule that deploys its own copy (a wildcard, or an exact name with a name suffix) can carry **overrides**: `KEY=value` lines that replace the base stack's environment values for that branch only, like a `DATABASE_URL` pointing at a QA database. The copy runs with the overrides while the base keeps its own values. Remove an override and the next deploy of that branch goes back to the base value. An in-place rule deploys the base stack itself, so it has nothing to override; edit the base stack's environment instead. Edit overrides from a rule's **Overrides** button, or pass `overrides` on a rule in the `stack_update` MCP tool. Override values are stored and handled like the stack's own environment values.
+
 A stack that is itself a branch deployment (`derived_from` is set) has no rules of its own — it inherits from whatever created it.
 
 ## Next steps

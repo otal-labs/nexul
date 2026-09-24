@@ -53,7 +53,13 @@ export interface BranchDeployRule {
   name_suffix?: string;
   // Port the hostname template exposes; required whenever hostname_template is set (spec §3).
   port?: number;
+  // Env values that replace the base stack's in this rule's branch deployments only.
+  overrides?: Record<string, string>;
 }
+
+// An in-place rule redeploys the base stack itself, so it has no deployment of its own to override.
+export const derivesClone = (rule: Pick<BranchDeployRule, "pattern" | "name_suffix">): boolean =>
+  rule.pattern.trim().endsWith("*") || !!rule.name_suffix?.trim();
 
 // Stack is a deploy stack definition (spec §2): a workload owned by one project, on one machine, with a strategy.
 export interface Stack {
@@ -163,9 +169,15 @@ export const RuleFormSchema = z.object({
   hostname_template: z.string().trim(),
   name_suffix: z.string().trim(),
   port: z.string().trim(),
+  // KEY=value lines, the same text block the env editors use.
+  overrides: z.string(),
 });
 
 export type RuleFormData = z.infer<typeof RuleFormSchema>;
+
+export const RuleOverridesFormSchema = z.object({ overrides: z.string() });
+
+export type RuleOverridesFormData = z.infer<typeof RuleOverridesFormSchema>;
 
 export const DeployRefFormSchema = z.object({
   ref: z.string().trim().min(1, "Ref is required"),
