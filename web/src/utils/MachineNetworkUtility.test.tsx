@@ -33,14 +33,22 @@ describe("machineNetworks", () => {
   ];
 
   it("lists each network on the machine with what runs on it, skipping docker's built-in ones", () => {
-    expect(machineNetworks(stacks, containers, "prod", "web_default")).toEqual([
-      { name: "qa_default", services: ["postgres", "redis"] },
-      { name: "web_default", services: [] },
+    expect(machineNetworks(stacks, containers, "prod", "web_default", new Set(["web_default"]))).toEqual([
+      { name: "qa_default", services: ["postgres", "redis"], hasGateway: false },
+      { name: "web_default", services: [], hasGateway: true },
     ]);
   });
 
   it("labels a network with its services, or just its name when nothing was seen on it", () => {
-    expect(networkLabel({ name: "qa_default", services: ["postgres", "redis"] })).toBe("qa_default — postgres, redis");
-    expect(networkLabel({ name: "web_default", services: [] })).toBe("web_default");
+    expect(networkLabel({ name: "qa_default", services: ["postgres", "redis"], hasGateway: true })).toBe(
+      "qa_default — postgres, redis",
+    );
+    expect(networkLabel({ name: "web_default", services: [], hasGateway: true })).toBe("web_default");
+  });
+
+  it("labels a network without a gateway as unable to serve hostnames", () => {
+    expect(networkLabel({ name: "qa_default", services: ["postgres", "redis"], hasGateway: false })).toBe(
+      "qa_default — postgres, redis · no gateway, hostnames unavailable",
+    );
   });
 });

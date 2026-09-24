@@ -4,41 +4,54 @@ import type { BranchDeployRule } from "@/models/Stack";
 import { formatEnv, parseEnv } from "@/lib/env";
 import { slugify } from "@/utils/SlugUtility";
 
-// One non-default row of the wizard's deploy branches step; the default branch's row is fixed, not a form row.
-export const BranchRowSchema = z
-  .object({
-    pattern: z
-      .string()
-      .trim()
-      .min(1, "Branch is required")
-      .regex(/^[^*]*\*?$/, "Use one * at the end, like feature/*"),
-    // * marks where the branch goes, like *.example.com.
-    hostname: z.string().trim(),
-    network: z.string().trim().min(1, "Choose a network"),
-    port: z.string().trim(),
-    // KEY=value lines, the same text block the env editors use.
-    overrides: z.string(),
-  })
-  .superRefine((row, ctx) => {
-    if (!row.hostname) return;
-    if (row.pattern.endsWith("*") && !row.hostname.includes("*")) {
-      ctx.addIssue({ code: "custom", path: ["hostname"], message: "Put * where the branch goes, like *.example.com" });
-      return;
-    }
-    if (!/^[1-9]\d*$/.test(row.port)) {
-      ctx.addIssue({ code: "custom", path: ["hostname"], message: "Set a port under Advanced options to serve a hostname" });
-    }
-  });
+// One non-default row of the wizard's deploy branches step; the default branch's row is its deployDefault switch.
+const BranchRowShape = z.object({
+  pattern: z
+    .string()
+    .trim()
+    .min(1, "Branch is required")
+    .regex(/^[^*]*\*?$/, "Use one * at the end, like feature/*"),
+  // * marks where the branch goes, like *.example.com.
+  hostname: z.string().trim(),
+  network: z.string().trim().min(1, "Choose a network"),
+  port: z.string().trim(),
+  // KEY=value lines, the same text block the env editors use.
+  overrides: z.string(),
+});
 
-export const BranchRowsFormSchema = z.object({ rows: z.array(BranchRowSchema) });
+export type BranchRow = z.infer<typeof BranchRowShape>;
 
-export type BranchRow = z.infer<typeof BranchRowSchema>;
-export type BranchRowsFormData = z.infer<typeof BranchRowsFormSchema>;
+export const duplicateHostnameMessage = "Another branch row already uses this hostname pattern";
+
+// A row's hostname only counts on a network with a gateway; elsewhere its field is disabled and never saved.
+export const branchRowsFormSchema = (gatewayNetworks: Set<string>) =>
+  z
+    .object({ deployDefault: z.boolean(), rows: z.array(BranchRowShape) })
+    .superRefine((form, ctx) => {
+      const seen = new Set<string>();
+      form.rows.forEach((row, i) => {
+        if (!row.hostname || !gatewayNetworks.has(row.network)) return;
+        const path = ["rows", i, "hostname"];
+        if (row.pattern.endsWith("*") && !row.hostname.includes("*")) {
+          ctx.addIssue({ code: "custom", path, message: "Put * where the branch goes, like *.example.com" });
+          return;
+        }
+        if (!/^[1-9]\d*$/.test(row.port)) {
+          ctx.addIssue({ code: "custom", path, message: "Set a port under Advanced options to serve a hostname" });
+          return;
+        }
+        const key = row.hostname.toLowerCase();
+        if (seen.has(key)) ctx.addIssue({ code: "custom", path, message: duplicateHostnameMessage });
+        seen.add(key);
+      });
+    });
+
+export type BranchRowsFormData = z.infer<ReturnType<typeof branchRowsFormSchema>>;
 
 // Every non-default row derives its own copy (a wildcard, or a name suffix) so its network and overrides apply.
-export const ruleFromRow = (row: BranchRow): BranchDeployRule => {
+export const ruleFromRow = (row: BranchRow, served: boolean): BranchDeployRule => {
   const pattern = row.pattern.trim();
-  const hostname = row.hostname.trim();
+  const hostname = served ? row.hostname.trim() : "";
   const overrides = parseEnv(row.overrides);
   return {
     pattern,

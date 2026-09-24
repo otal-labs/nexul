@@ -8,32 +8,48 @@ import { FormSelect } from "@/components/ticket/FormSelect";
 import { FormTextarea } from "@/components/ticket/FormTextarea";
 import { sharesProduction, type BranchRowsFormData } from "@/models/BranchRow";
 import { exampleBranch, previewHostname } from "@/utils/BranchHostnameUtility";
+import { networkLabel, noGatewayReason, type MachineNetwork } from "@/utils/MachineNetworkUtility";
 
 interface BranchRuleRowProps {
   control: Control<BranchRowsFormData>;
   index: number;
-  networkOptions: { value: string; label: string }[];
+  networks: MachineNetwork[];
   productionNetwork: string;
   onRemove: () => void;
 }
 
-export const BranchRuleRow = ({ control, index, networkOptions, productionNetwork, onRemove }: BranchRuleRowProps) => {
+export const BranchRuleRow = ({ control, index, networks, productionNetwork, onRemove }: BranchRuleRowProps) => {
   const row = useWatch({ control, name: `rows.${index}` });
   const pattern = row.pattern.trim();
   const branch = exampleBranch(pattern);
-  const hostname = row.hostname.trim();
+  // An unknown or unpicked network is not flagged; only a network the machine lists without a gateway is.
+  const unserved = networks.some((n) => n.name === row.network && !n.hasGateway);
+  const hostname = unserved ? "" : row.hostname.trim();
   const url = hostname ? previewHostname(hostname, pattern, branch) : "no hostname";
 
   return (
     <li className="relative animate-in fade-in-0 slide-in-from-bottom-1 space-y-4 py-4 duration-200 ease-out">
       <FormInput control={control} name={`rows.${index}.pattern`} label="Branch" placeholder="feature/*" />
-      <FormInput control={control} name={`rows.${index}.hostname`} label="Hostname" placeholder="*.example.com" />
+      <div className="space-y-2">
+        <FormInput
+          control={control}
+          name={`rows.${index}.hostname`}
+          label="Hostname"
+          placeholder="*.example.com"
+          disabled={unserved}
+        />
+        {unserved && (
+          <p className="text-xs text-muted-foreground">
+            {row.network}: {noGatewayReason}.
+          </p>
+        )}
+      </div>
       <FormSelect
         control={control}
         name={`rows.${index}.network`}
         label="Network"
         placeholder="Choose a network…"
-        options={networkOptions}
+        options={networks.map((n) => ({ value: n.name, label: networkLabel(n) }))}
       />
       {pattern && (
         <p className="font-mono text-xs wrap-break-word text-muted-foreground">
