@@ -127,6 +127,13 @@ no users yet, move quick):
   an operational or exposure cost; an outbound relay must multiplex several
   two-way streams and can plug into t3client's custom HTTP client; the
   runner channel and the desktop app can't host it as they stand.
+- [How a remote Nexul connects to a user's harness](issues/15-remote-harness-connection.md)
+  — copy T3 Connect on the instance's own Cloudflare: each computer runs
+  `cloudflared` with a Nexul-created tunnel, hostname
+  `<computer-slug>-<8 random>.<instance domain>`, locked by an Access rule
+  to a service token only the server holds; pairing's first step installs
+  the tunnel and waits until it is verified; harness-neutral; URL pairing
+  stays Advanced; a Nexul-built relay and Tailcat are set aside.
 - [Which skill sets "setup" installs](issues/03-which-skill-sets.md) —
   mattpocock/skills is the default the wizard installs (users may amend their
   copies); pstack is a README credit only; no Nexul-shipped skill for now —
