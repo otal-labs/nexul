@@ -2,6 +2,7 @@ package deploy
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 
@@ -227,18 +228,19 @@ func stackTools(s *Service) []mcptool.Tool {
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
-					"project_id":     map[string]any{"type": "string"},
-					"name":           map[string]any{"type": "string"},
-					"machine":        map[string]any{"type": "string"},
-					"strategy":       map[string]any{"type": "string", "enum": []string{"compose", "run"}},
-					"compose_path":   map[string]any{"type": "string"},
-					"env":            map[string]any{"type": "object", "additionalProperties": map[string]any{"type": "string"}},
-					"docker_network": map[string]any{"type": "string"},
-					"ports":          map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
-					"build_source":   buildSourceSchema(),
-					"candidate":      candidateSchema(),
-					"deploy":         map[string]any{"type": "boolean"},
-					"ref":            map[string]any{"type": "string"},
+					"project_id":          map[string]any{"type": "string"},
+					"name":                map[string]any{"type": "string"},
+					"machine":             map[string]any{"type": "string"},
+					"strategy":            map[string]any{"type": "string", "enum": []string{"compose", "run"}},
+					"compose_path":        map[string]any{"type": "string"},
+					"env":                 map[string]any{"type": "object", "additionalProperties": map[string]any{"type": "string"}},
+					"docker_network":      map[string]any{"type": "string"},
+					"ports":               map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+					"build_source":        buildSourceSchema(),
+					"branch_deploy_rules": branchDeployRulesSchema(),
+					"candidate":           candidateSchema(),
+					"deploy":              map[string]any{"type": "boolean"},
+					"ref":                 map[string]any{"type": "string"},
 				},
 				"required": []string{"project_id", "machine"},
 			},
@@ -320,20 +322,21 @@ func stackTools(s *Service) []mcptool.Tool {
 		},
 		{
 			Name:        "stack_update",
-			Description: "Update a stack by id.",
+			Description: "Update a stack by id. Omitting branch_deploy_rules keeps the stack's current rules.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
-					"id":             map[string]any{"type": "string"},
-					"project_id":     map[string]any{"type": "string"},
-					"name":           map[string]any{"type": "string"},
-					"machine":        map[string]any{"type": "string"},
-					"strategy":       map[string]any{"type": "string", "enum": []string{"compose", "run"}},
-					"compose_path":   map[string]any{"type": "string"},
-					"env":            map[string]any{"type": "object", "additionalProperties": map[string]any{"type": "string"}},
-					"docker_network": map[string]any{"type": "string"},
-					"ports":          map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
-					"build_source":   buildSourceSchema(),
+					"id":                  map[string]any{"type": "string"},
+					"project_id":          map[string]any{"type": "string"},
+					"name":                map[string]any{"type": "string"},
+					"machine":             map[string]any{"type": "string"},
+					"strategy":            map[string]any{"type": "string", "enum": []string{"compose", "run"}},
+					"compose_path":        map[string]any{"type": "string"},
+					"env":                 map[string]any{"type": "object", "additionalProperties": map[string]any{"type": "string"}},
+					"docker_network":      map[string]any{"type": "string"},
+					"ports":               map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+					"build_source":        buildSourceSchema(),
+					"branch_deploy_rules": branchDeployRulesSchema(),
 				},
 				"required": []string{"id"},
 			},
@@ -347,6 +350,13 @@ func stackTools(s *Service) []mcptool.Tool {
 					return nil, err
 				}
 				stack.ID = id
+				if _, ok := args["branch_deploy_rules"]; !ok {
+					existing, err := s.GetStack(ctx, id)
+					if err != nil {
+						return nil, err
+					}
+					stack.BranchDeployRules = existing.BranchDeployRules
+				}
 				return s.UpdateStack(ctx, stack)
 			},
 		},
@@ -432,6 +442,9 @@ func stackFromArgs(args map[string]any) (Stack, error) {
 	if raw, ok := args["build_source"].(map[string]any); ok {
 		stack.BuildSource = buildSourceFromArgs(raw)
 	}
+	if stack.BranchDeployRules, err = branchDeployRulesFromArgs(args["branch_deploy_rules"]); err != nil {
+		return stack, err
+	}
 	strat, err := mcptool.RequiredString(args, "strategy")
 	if err != nil {
 		return stack, err
@@ -448,6 +461,45 @@ func buildSourceFromArgs(raw map[string]any) *BuildSource {
 		Dockerfile:  mcptool.OptionalString(raw["dockerfile"]),
 		ComposePath: mcptool.OptionalString(raw["compose_path"]),
 	}
+}
+
+func branchDeployRulesSchema() map[string]any {
+	return map[string]any{
+		"type":        "array",
+		"description": "The stack's full list of branch deploy rules, replacing the current list.",
+		"items": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"pattern":           map[string]any{"type": "string", "description": "An exact branch name, or a single trailing wildcard like feature/*."},
+				"docker_network":    map[string]any{"type": "string"},
+				"hostname_template": map[string]any{"type": "string", "description": "{branch} is replaced by the branch slug."},
+				"port":              map[string]any{"type": "integer", "description": "Required with a hostname template."},
+				"name_suffix":       map[string]any{"type": "string", "description": "Exact patterns only; derives a clone instead of redeploying the base in place."},
+				"overrides": map[string]any{
+					"type":                 "object",
+					"additionalProperties": map[string]any{"type": "string"},
+					"description":          "Env values that replace the base stack's for this rule's branch deployments only; not allowed on an in-place rule.",
+				},
+			},
+			"required": []string{"pattern", "docker_network"},
+		},
+	}
+}
+
+// branchDeployRulesFromArgs decodes the rules through JSON, so the tool accepts exactly the HTTP gateway's shape.
+func branchDeployRulesFromArgs(raw any) ([]BranchDeployRule, error) {
+	if raw == nil {
+		return nil, nil
+	}
+	b, err := json.Marshal(raw)
+	if err != nil {
+		return nil, fmt.Errorf("%w: branch_deploy_rules: %w", apperrs.ErrInvalid, err)
+	}
+	var rules []BranchDeployRule
+	if err := json.Unmarshal(b, &rules); err != nil {
+		return nil, fmt.Errorf("%w: branch_deploy_rules must be a list of rules: %w", apperrs.ErrInvalid, err)
+	}
+	return rules, nil
 }
 
 func stringSliceFromArgs(raw []any) []string {
@@ -517,7 +569,8 @@ func stackBaseFromCandidateArgs(args map[string]any) (Stack, error) {
 		}
 		stack.Env = env
 	}
-	return stack, nil
+	stack.BranchDeployRules, err = branchDeployRulesFromArgs(args["branch_deploy_rules"])
+	return stack, err
 }
 
 // applyCandidateKind sets stack's strategy fields from candidate's kind (compose or dockerfile) and returns the

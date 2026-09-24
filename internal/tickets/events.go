@@ -2,17 +2,19 @@ package tickets
 
 // Topics published by the tickets domain.
 const (
-	TopicCreated         = "ticket.created"
-	TopicUpdated         = "ticket.updated"
-	TopicStatusChanged   = "ticket.status_changed"
-	TopicAssigneeChanged = "ticket.assignee_changed"
-	TopicFinished        = "ticket.finished"
-	TopicDeleted         = "ticket.deleted"
+	TopicCreated          = "ticket.created"
+	TopicUpdated          = "ticket.updated"
+	TopicStatusChanged    = "ticket.status_changed"
+	TopicAssigneeChanged  = "ticket.assignee_changed" // deprecated alias of TopicDeveloperChanged, still published (ADR 0044)
+	TopicDeveloperChanged = "ticket.developer_changed"
+	TopicTesterChanged    = "ticket.tester_changed"
+	TopicFinished         = "ticket.finished"
+	TopicDeleted          = "ticket.deleted"
 )
 
 // Topics returns every topic the tickets domain publishes.
 func Topics() []string {
-	return []string{TopicCreated, TopicUpdated, TopicStatusChanged, TopicAssigneeChanged, TopicFinished, TopicDeleted}
+	return []string{TopicCreated, TopicUpdated, TopicStatusChanged, TopicAssigneeChanged, TopicDeveloperChanged, TopicTesterChanged, TopicFinished, TopicDeleted}
 }
 
 // CreatedEvent field names are part of the published contract (ADR 0044) and are additive-only.
@@ -34,11 +36,26 @@ type StatusChangedEvent struct {
 	RunID  string `json:"run_id,omitempty"`
 }
 
-// AssigneeChangedEvent's empty From/To mean unassigned.
+// PersonChangedEvent is the payload for ticket.developer_changed and ticket.tester_changed; empty From/To mean nobody.
+type PersonChangedEvent struct {
+	Ticket Ticket `json:"ticket"`
+	From   string `json:"from"`
+	To     string `json:"to"`
+}
+
+// AssigneeChangedEvent is ticket.assignee_changed's unchanged payload, published beside ticket.developer_changed.
 type AssigneeChangedEvent struct {
 	Ticket Ticket `json:"ticket"`
 	From   string `json:"from"`
 	To     string `json:"to"`
+}
+
+// personTopic maps a role to the topic its change publishes on.
+func personTopic(role Role) string {
+	if role == RoleTester {
+		return TopicTesterChanged
+	}
+	return TopicDeveloperChanged
 }
 
 // FinishedEvent publishes exactly once per ticket, once a PR merges and none remain open.

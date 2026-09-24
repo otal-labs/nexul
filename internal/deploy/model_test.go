@@ -68,6 +68,38 @@ func TestBranchDeployRule_Validate(t *testing.T) {
 	t.Run("a hostname template with a port is valid", func(t *testing.T) {
 		assert.NoError(t, BranchDeployRule{Pattern: "main", DockerNetwork: "app-net", HostnameTemplate: "{branch}.example.com", Port: 8080}.Validate())
 	})
+	t.Run("overrides on an in-place rule are invalid", func(t *testing.T) {
+		err := BranchDeployRule{Pattern: "main", DockerNetwork: "app-net", Overrides: map[string]string{"DATABASE_URL": "x"}}.Validate()
+		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
+	})
+	t.Run("an override with an empty key is invalid", func(t *testing.T) {
+		err := BranchDeployRule{Pattern: "feature/*", DockerNetwork: "app-net", Overrides: map[string]string{" ": "x"}}.Validate()
+		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
+	})
+	t.Run("overrides on a cloning rule are valid", func(t *testing.T) {
+		assert.NoError(t, BranchDeployRule{Pattern: "dev", DockerNetwork: "qa-net", NameSuffix: "qa", Overrides: map[string]string{"DATABASE_URL": "x"}}.Validate())
+		assert.NoError(t, BranchDeployRule{Pattern: "feature/*", DockerNetwork: "qa-net", Overrides: map[string]string{"DATABASE_URL": "x"}}.Validate())
+	})
+}
+
+func TestBranchDeployRule_ApplyOverrides(t *testing.T) {
+	base := map[string]string{"PORT": "8080", "DATABASE_URL": "postgres://prod"}
+	tests := []struct {
+		name      string
+		overrides map[string]string
+		want      map[string]string
+	}{
+		{"no overrides keeps the base values", nil, map[string]string{"PORT": "8080", "DATABASE_URL": "postgres://prod"}},
+		{"an override replaces the base value", map[string]string{"DATABASE_URL": "postgres://qa"}, map[string]string{"PORT": "8080", "DATABASE_URL": "postgres://qa"}},
+		{"an override adds a key the base lacks", map[string]string{"DEBUG": "1"}, map[string]string{"PORT": "8080", "DATABASE_URL": "postgres://prod", "DEBUG": "1"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := BranchDeployRule{Pattern: "feature/*", Overrides: tt.overrides}.ApplyOverrides(base)
+			assert.Equal(t, tt.want, got)
+			assert.Equal(t, "postgres://prod", base["DATABASE_URL"], "the base map is never modified")
+		})
+	}
 }
 
 func TestBranchDeployRule_Matches(t *testing.T) {

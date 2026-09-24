@@ -4,7 +4,7 @@ interface ReviewerAvatarsProps {
   names: string[];
 }
 
-// Names are GitHub logins (same as AssigneeAvatar); per-avatar failed state so one 404 doesn't degrade the whole stack.
+// Names are GitHub logins (same as PersonAvatar); per-avatar failed state so one 404 doesn't degrade the whole stack.
 const AvatarFace = ({ name }: { name: string }) => {
   const [failed, setFailed] = useState(false);
 

@@ -27,25 +27,30 @@ func (q *Queries) AddTicketLabel(ctx context.Context, arg AddTicketLabelParams) 
 }
 
 const createTicket = `-- name: CreateTicket :exec
-INSERT INTO tickets (id, title, body, status, position, number, doc_id, project_id, category_id, type_id, assignee, created_at, updated_at, finished_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO tickets (id, title, body, status, position, number, doc_id, project_id, category_id, type_id, developer, tester, reporter_kind, reporter_login, reporter_automation_id, reporter_automation_name, created_at, updated_at, finished_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateTicketParams struct {
-	ID         string
-	Title      string
-	Body       string
-	Status     string
-	Position   int64
-	Number     int64
-	DocID      sql.NullString
-	ProjectID  sql.NullString
-	CategoryID sql.NullString
-	TypeID     sql.NullString
-	Assignee   string
-	CreatedAt  int64
-	UpdatedAt  int64
-	FinishedAt sql.NullInt64
+	ID                     string
+	Title                  string
+	Body                   string
+	Status                 string
+	Position               int64
+	Number                 int64
+	DocID                  sql.NullString
+	ProjectID              sql.NullString
+	CategoryID             sql.NullString
+	TypeID                 sql.NullString
+	Developer              string
+	Tester                 string
+	ReporterKind           string
+	ReporterLogin          string
+	ReporterAutomationID   string
+	ReporterAutomationName string
+	CreatedAt              int64
+	UpdatedAt              int64
+	FinishedAt             sql.NullInt64
 }
 
 func (q *Queries) CreateTicket(ctx context.Context, arg CreateTicketParams) error {
@@ -60,7 +65,12 @@ func (q *Queries) CreateTicket(ctx context.Context, arg CreateTicketParams) erro
 		arg.ProjectID,
 		arg.CategoryID,
 		arg.TypeID,
-		arg.Assignee,
+		arg.Developer,
+		arg.Tester,
+		arg.ReporterKind,
+		arg.ReporterLogin,
+		arg.ReporterAutomationID,
+		arg.ReporterAutomationName,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 		arg.FinishedAt,
@@ -81,7 +91,7 @@ func (q *Queries) DeleteTicket(ctx context.Context, id string) (int64, error) {
 }
 
 const getTicket = `-- name: GetTicket :one
-SELECT id, title, body, status, doc_id, assignee, created_at, updated_at, project_id, category_id, type_id, finished_at, position, number FROM tickets WHERE id = ?
+SELECT id, title, body, status, doc_id, developer, created_at, updated_at, project_id, category_id, type_id, finished_at, position, number, tester, reporter_kind, reporter_login, reporter_automation_id, reporter_automation_name FROM tickets WHERE id = ?
 `
 
 func (q *Queries) GetTicket(ctx context.Context, id string) (Ticket, error) {
@@ -93,7 +103,7 @@ func (q *Queries) GetTicket(ctx context.Context, id string) (Ticket, error) {
 		&i.Body,
 		&i.Status,
 		&i.DocID,
-		&i.Assignee,
+		&i.Developer,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ProjectID,
@@ -102,12 +112,17 @@ func (q *Queries) GetTicket(ctx context.Context, id string) (Ticket, error) {
 		&i.FinishedAt,
 		&i.Position,
 		&i.Number,
+		&i.Tester,
+		&i.ReporterKind,
+		&i.ReporterLogin,
+		&i.ReporterAutomationID,
+		&i.ReporterAutomationName,
 	)
 	return i, err
 }
 
 const getTicketByPrefixAndNumber = `-- name: GetTicketByPrefixAndNumber :one
-SELECT tickets.id, tickets.title, tickets.body, tickets.status, tickets.doc_id, tickets.assignee, tickets.created_at, tickets.updated_at, tickets.project_id, tickets.category_id, tickets.type_id, tickets.finished_at, tickets.position, tickets.number FROM tickets JOIN projects ON tickets.project_id = projects.id WHERE projects.prefix = ? AND tickets.number = ?
+SELECT tickets.id, tickets.title, tickets.body, tickets.status, tickets.doc_id, tickets.developer, tickets.created_at, tickets.updated_at, tickets.project_id, tickets.category_id, tickets.type_id, tickets.finished_at, tickets.position, tickets.number, tickets.tester, tickets.reporter_kind, tickets.reporter_login, tickets.reporter_automation_id, tickets.reporter_automation_name FROM tickets JOIN projects ON tickets.project_id = projects.id WHERE projects.prefix = ? AND tickets.number = ?
 `
 
 type GetTicketByPrefixAndNumberParams struct {
@@ -124,7 +139,7 @@ func (q *Queries) GetTicketByPrefixAndNumber(ctx context.Context, arg GetTicketB
 		&i.Body,
 		&i.Status,
 		&i.DocID,
-		&i.Assignee,
+		&i.Developer,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ProjectID,
@@ -133,6 +148,11 @@ func (q *Queries) GetTicketByPrefixAndNumber(ctx context.Context, arg GetTicketB
 		&i.FinishedAt,
 		&i.Position,
 		&i.Number,
+		&i.Tester,
+		&i.ReporterKind,
+		&i.ReporterLogin,
+		&i.ReporterAutomationID,
+		&i.ReporterAutomationName,
 	)
 	return i, err
 }
@@ -511,7 +531,7 @@ func (q *Queries) ListTicketPRLinksBatch(ctx context.Context, ids []string) ([]L
 }
 
 const listTickets = `-- name: ListTickets :many
-SELECT id, title, body, status, doc_id, assignee, created_at, updated_at, project_id, category_id, type_id, finished_at, position, number FROM tickets ORDER BY created_at
+SELECT id, title, body, status, doc_id, developer, created_at, updated_at, project_id, category_id, type_id, finished_at, position, number, tester, reporter_kind, reporter_login, reporter_automation_id, reporter_automation_name FROM tickets ORDER BY created_at
 `
 
 func (q *Queries) ListTickets(ctx context.Context) ([]Ticket, error) {
@@ -529,7 +549,7 @@ func (q *Queries) ListTickets(ctx context.Context) ([]Ticket, error) {
 			&i.Body,
 			&i.Status,
 			&i.DocID,
-			&i.Assignee,
+			&i.Developer,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.ProjectID,
@@ -538,6 +558,11 @@ func (q *Queries) ListTickets(ctx context.Context) ([]Ticket, error) {
 			&i.FinishedAt,
 			&i.Position,
 			&i.Number,
+			&i.Tester,
+			&i.ReporterKind,
+			&i.ReporterLogin,
+			&i.ReporterAutomationID,
+			&i.ReporterAutomationName,
 		); err != nil {
 			return nil, err
 		}
@@ -553,7 +578,7 @@ func (q *Queries) ListTickets(ctx context.Context) ([]Ticket, error) {
 }
 
 const listTicketsByDoc = `-- name: ListTicketsByDoc :many
-SELECT id, title, body, status, doc_id, assignee, created_at, updated_at, project_id, category_id, type_id, finished_at, position, number FROM tickets WHERE doc_id = ? ORDER BY created_at
+SELECT id, title, body, status, doc_id, developer, created_at, updated_at, project_id, category_id, type_id, finished_at, position, number, tester, reporter_kind, reporter_login, reporter_automation_id, reporter_automation_name FROM tickets WHERE doc_id = ? ORDER BY created_at
 `
 
 func (q *Queries) ListTicketsByDoc(ctx context.Context, docID sql.NullString) ([]Ticket, error) {
@@ -571,7 +596,7 @@ func (q *Queries) ListTicketsByDoc(ctx context.Context, docID sql.NullString) ([
 			&i.Body,
 			&i.Status,
 			&i.DocID,
-			&i.Assignee,
+			&i.Developer,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.ProjectID,
@@ -580,6 +605,11 @@ func (q *Queries) ListTicketsByDoc(ctx context.Context, docID sql.NullString) ([
 			&i.FinishedAt,
 			&i.Position,
 			&i.Number,
+			&i.Tester,
+			&i.ReporterKind,
+			&i.ReporterLogin,
+			&i.ReporterAutomationID,
+			&i.ReporterAutomationName,
 		); err != nil {
 			return nil, err
 		}
@@ -595,7 +625,7 @@ func (q *Queries) ListTicketsByDoc(ctx context.Context, docID sql.NullString) ([
 }
 
 const listTicketsByProject = `-- name: ListTicketsByProject :many
-SELECT id, title, body, status, doc_id, assignee, created_at, updated_at, project_id, category_id, type_id, finished_at, position, number FROM tickets WHERE project_id = ? ORDER BY created_at
+SELECT id, title, body, status, doc_id, developer, created_at, updated_at, project_id, category_id, type_id, finished_at, position, number, tester, reporter_kind, reporter_login, reporter_automation_id, reporter_automation_name FROM tickets WHERE project_id = ? ORDER BY created_at
 `
 
 func (q *Queries) ListTicketsByProject(ctx context.Context, projectID sql.NullString) ([]Ticket, error) {
@@ -613,7 +643,7 @@ func (q *Queries) ListTicketsByProject(ctx context.Context, projectID sql.NullSt
 			&i.Body,
 			&i.Status,
 			&i.DocID,
-			&i.Assignee,
+			&i.Developer,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.ProjectID,
@@ -622,6 +652,11 @@ func (q *Queries) ListTicketsByProject(ctx context.Context, projectID sql.NullSt
 			&i.FinishedAt,
 			&i.Position,
 			&i.Number,
+			&i.Tester,
+			&i.ReporterKind,
+			&i.ReporterLogin,
+			&i.ReporterAutomationID,
+			&i.ReporterAutomationName,
 		); err != nil {
 			return nil, err
 		}
@@ -760,18 +795,18 @@ func (q *Queries) SetTicketPosition(ctx context.Context, arg SetTicketPositionPa
 	return result.RowsAffected()
 }
 
-const updateTicketAssignee = `-- name: UpdateTicketAssignee :execrows
-UPDATE tickets SET assignee = ?, updated_at = ? WHERE id = ?
+const updateTicketDeveloper = `-- name: UpdateTicketDeveloper :execrows
+UPDATE tickets SET developer = ?, updated_at = ? WHERE id = ?
 `
 
-type UpdateTicketAssigneeParams struct {
-	Assignee  string
+type UpdateTicketDeveloperParams struct {
+	Developer string
 	UpdatedAt int64
 	ID        string
 }
 
-func (q *Queries) UpdateTicketAssignee(ctx context.Context, arg UpdateTicketAssigneeParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, updateTicketAssignee, arg.Assignee, arg.UpdatedAt, arg.ID)
+func (q *Queries) UpdateTicketDeveloper(ctx context.Context, arg UpdateTicketDeveloperParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateTicketDeveloper, arg.Developer, arg.UpdatedAt, arg.ID)
 	if err != nil {
 		return 0, err
 	}
@@ -817,6 +852,24 @@ func (q *Queries) UpdateTicketStatus(ctx context.Context, arg UpdateTicketStatus
 		arg.UpdatedAt,
 		arg.ID,
 	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const updateTicketTester = `-- name: UpdateTicketTester :execrows
+UPDATE tickets SET tester = ?, updated_at = ? WHERE id = ?
+`
+
+type UpdateTicketTesterParams struct {
+	Tester    string
+	UpdatedAt int64
+	ID        string
+}
+
+func (q *Queries) UpdateTicketTester(ctx context.Context, arg UpdateTicketTesterParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateTicketTester, arg.Tester, arg.UpdatedAt, arg.ID)
 	if err != nil {
 		return 0, err
 	}

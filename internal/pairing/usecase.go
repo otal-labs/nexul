@@ -10,6 +10,7 @@ import (
 	"github.com/otal-labs/nexul/internal/harness"
 	"github.com/otal-labs/nexul/internal/platform/crypto"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/ids"
 )
 
@@ -512,4 +513,99 @@ func (s *Service) getComputerFor(ctx context.Context, userID, computerID string,
 		return s.repo.GetComputerByID(ctx, computerID)
 	}
 	return s.repo.GetComputer(ctx, userID, computerID)
+}
+
+// ownComputer returns one of userID's own computers; another user's id is ErrNotFound, never a permission leak.
+func (s *Service) ownComputer(ctx context.Context, userID, computerID string) (*Computer, error) {
+	if strings.TrimSpace(userID) == "" {
+		return nil, fmt.Errorf("%w: user is required", apperrs.ErrUnauthorized)
+	}
+	computerID = strings.TrimSpace(computerID)
+	if computerID == "" {
+		return nil, fmt.Errorf("%w: computer id is required", apperrs.ErrInvalid)
+	}
+	computer, err := s.repo.GetComputer(ctx, userID, computerID)
+	if err != nil {
+		return nil, fmt.Errorf("get computer %s: %w", computerID, err)
+	}
+	return computer, nil
+}
+
+// GetSetup returns the caller's own computer's overall and per-provider setup confirmation.
+func (s *Service) GetSetup(ctx context.Context, userID, computerID string) (Setup, error) {
+	computer, err := s.ownComputer(ctx, userID, computerID)
+	if err != nil {
+		return Setup{}, err
+	}
+	providers, err := s.repo.ListProviderSetups(ctx, computer.ID)
+	if err != nil {
+		return Setup{}, fmt.Errorf("list provider setups for %s: %w", computer.ID, err)
+	}
+	return Setup{ComputerID: computer.ID, ConfirmedAt: computer.SetupConfirmedAt, Providers: providers}, nil
+}
+
+// ConfirmSetup records the caller's computer as set up overall; independent of any provider's confirmation.
+func (s *Service) ConfirmSetup(ctx context.Context, userID, computerID string) (Setup, error) {
+	now := s.now().UTC()
+	return s.setOverallSetup(ctx, userID, computerID, &now)
+}
+
+// UnconfirmSetup withdraws the caller's computer's overall confirmation, the only way it ever goes back down.
+func (s *Service) UnconfirmSetup(ctx context.Context, userID, computerID string) (Setup, error) {
+	return s.setOverallSetup(ctx, userID, computerID, nil)
+}
+
+func (s *Service) setOverallSetup(ctx context.Context, userID, computerID string, at *time.Time) (Setup, error) {
+	computer, err := s.ownComputer(ctx, userID, computerID)
+	if err != nil {
+		return Setup{}, err
+	}
+	evt := setupEvent(SetupChangedEvent{ComputerID: computer.ID, UserID: userID, ConfirmedAt: at})
+	if err := s.repo.SetSetupConfirmedAt(ctx, userID, computer.ID, at, evt); err != nil {
+		return Setup{}, fmt.Errorf("set setup confirmation for %s: %w", computer.ID, err)
+	}
+	return s.GetSetup(ctx, userID, computer.ID)
+}
+
+// ConfirmProviderSetup records a provider as set up on the caller's computer, with the skills its harness reported.
+func (s *Service) ConfirmProviderSetup(ctx context.Context, userID, computerID, provider string, skills []string) (Setup, error) {
+	provider, err := validateProvider(provider)
+	if err != nil {
+		return Setup{}, err
+	}
+	skills, err = validateSkills(skills)
+	if err != nil {
+		return Setup{}, err
+	}
+	now := s.now().UTC()
+	return s.saveProviderSetup(ctx, userID, computerID, ProviderSetup{Provider: provider, ConfirmedAt: &now, Skills: skills})
+}
+
+// UnconfirmProviderSetup withdraws a provider's confirmation on the caller's computer and clears its skills list.
+func (s *Service) UnconfirmProviderSetup(ctx context.Context, userID, computerID, provider string) (Setup, error) {
+	provider, err := validateProvider(provider)
+	if err != nil {
+		return Setup{}, err
+	}
+	return s.saveProviderSetup(ctx, userID, computerID, ProviderSetup{Provider: provider, Skills: []string{}})
+}
+
+func (s *Service) saveProviderSetup(ctx context.Context, userID, computerID string, p ProviderSetup) (Setup, error) {
+	computer, err := s.ownComputer(ctx, userID, computerID)
+	if err != nil {
+		return Setup{}, err
+	}
+	evt := setupEvent(SetupChangedEvent{ComputerID: computer.ID, UserID: userID, Provider: p.Provider, ConfirmedAt: p.ConfirmedAt, Skills: p.Skills})
+	if err := s.repo.SaveProviderSetup(ctx, computer.ID, p, s.now().UTC(), evt); err != nil {
+		return Setup{}, fmt.Errorf("save %s setup for %s: %w", p.Provider, computer.ID, err)
+	}
+	return s.GetSetup(ctx, userID, computer.ID)
+}
+
+func setupEvent(e SetupChangedEvent) eventbus.OutboxEvent {
+	topic := TopicSetupConfirmed
+	if e.ConfirmedAt == nil {
+		topic = TopicSetupUnconfirmed
+	}
+	return eventbus.OutboxEvent{ID: ids.New(), Topic: topic, Payload: e}
 }

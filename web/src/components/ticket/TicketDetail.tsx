@@ -7,7 +7,7 @@ import { formatUpdatedAgo } from "@/components/doc/docTime";
 import { TicketStatusBadge } from "@/components/ticket/TicketStatusBadge";
 import { Input } from "@/components/ui/input";
 import type { Project } from "@/models/Project";
-import type { Ticket } from "@/models/Ticket";
+import { reporterLabel, type Ticket } from "@/models/Ticket";
 import { parseBodyToJSON } from "@/utils/RichtextUtility";
 
 const AUTOSAVE_DEBOUNCE_MS = 800;
@@ -33,6 +33,7 @@ export const TicketDetail = ({ ticket, project, onSave }: TicketDetailProps) => 
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onSaveRef = useRef(onSave);
   onSaveRef.current = onSave;
+  const reporter = reporterLabel(ticket.reporter);
 
   const flush = async () => {
     if (timer.current) {
@@ -104,7 +105,8 @@ export const TicketDetail = ({ ticket, project, onSave }: TicketDetailProps) => 
         )}
         {!onSave && <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{ticket.title}</h1>}
         <p className="font-mono text-xs text-muted-foreground">
-          created {formatUpdatedAgo(ticket.created_at)} · updated {formatUpdatedAgo(ticket.updated_at)}
+          created {formatUpdatedAgo(ticket.created_at)}
+          {reporter && ` by ${reporter}`} · updated {formatUpdatedAgo(ticket.updated_at)}
           {saveState === "saving" && " · saving…"}
           {saveState === "saved" && " · saved"}
         </p>

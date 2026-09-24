@@ -24,6 +24,8 @@ type fakeRepo struct {
 	exposureErr error
 	outbox      []eventbus.OutboxEvent
 	outboxErr   error
+	svcToken    *ServiceToken
+	svcTokenErr error
 }
 
 func newFakeRepo() *fakeRepo {
@@ -801,3 +803,110 @@ func itoa(n int) string {
 }
 
 var errBoom = errors.New("boom")
+
+func (f *fakeRepo) SaveAccessServiceToken(_ context.Context, t ServiceToken) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.svcTokenErr != nil {
+		return f.svcTokenErr
+	}
+	f.svcToken = &t
+	return nil
+}
+
+func (f *fakeRepo) GetAccessServiceToken(_ context.Context) (*ServiceToken, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.svcTokenErr != nil {
+		return nil, f.svcTokenErr
+	}
+	if f.svcToken == nil {
+		return nil, apperrs.ErrNotFound
+	}
+	t := *f.svcToken
+	return &t, nil
+}
+
+func (f *fakeRepo) DeleteAccessServiceToken(_ context.Context) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.svcTokenErr != nil {
+		return f.svcTokenErr
+	}
+	if f.svcToken == nil {
+		return apperrs.ErrNotFound
+	}
+	f.svcToken = nil
+	return nil
+}
+
+// fakeAccessProvider is an in-memory Cloudflare Access account; err fails every call.
+type fakeAccessProvider struct {
+	mu      sync.Mutex
+	err     error
+	apps    map[string]string
+	tokens  map[string]string
+	minted  int
+	deleted []string
+}
+
+func newFakeAccessProvider() *fakeAccessProvider {
+	return &fakeAccessProvider{apps: map[string]string{}, tokens: map[string]string{}}
+}
+
+func (f *fakeAccessProvider) CreateAccessApp(_ context.Context, hostname, serviceTokenID string) (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.err != nil {
+		return "", f.err
+	}
+	id := "app-" + hostname
+	f.apps[id] = serviceTokenID
+	return id, nil
+}
+
+func (f *fakeAccessProvider) DeleteAccessApp(_ context.Context, appID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.err != nil {
+		return f.err
+	}
+	delete(f.apps, appID)
+	return nil
+}
+
+func (f *fakeAccessProvider) CreateServiceToken(_ context.Context, _ string) (*ServiceToken, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.err != nil {
+		return nil, f.err
+	}
+	f.minted++
+	id := "st-" + itoa(f.minted)
+	f.tokens[id] = "secret-" + itoa(f.minted)
+	return &ServiceToken{ID: id, ClientID: "cid-" + id, ClientSecret: f.tokens[id]}, nil
+}
+
+func (f *fakeAccessProvider) RotateServiceToken(_ context.Context, tokenID string) (*ServiceToken, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.err != nil {
+		return nil, f.err
+	}
+	if _, ok := f.tokens[tokenID]; !ok {
+		return nil, apperrs.ErrNotFound
+	}
+	f.tokens[tokenID] = "rotated-" + tokenID
+	return &ServiceToken{ID: tokenID, ClientID: "cid-" + tokenID, ClientSecret: f.tokens[tokenID]}, nil
+}
+
+func (f *fakeAccessProvider) DeleteServiceToken(_ context.Context, tokenID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.err != nil {
+		return f.err
+	}
+	delete(f.tokens, tokenID)
+	f.deleted = append(f.deleted, tokenID)
+	return nil
+}

@@ -117,7 +117,7 @@ func (s *Service) upsertBranchDeployment(ctx context.Context, base *Stack, rule 
 			Machine:       base.Machine,
 			Strategy:      base.Strategy,
 			ComposePath:   base.ComposePath,
-			Env:           base.Env,
+			Env:           rule.ApplyOverrides(base.Env),
 			DockerNetwork: rule.DockerNetwork,
 			BuildSource:   base.BuildSource,
 			DerivedFrom:   base.ID,
@@ -133,7 +133,7 @@ func (s *Service) upsertBranchDeployment(ctx context.Context, base *Stack, rule 
 	}
 	existing.Strategy = base.Strategy
 	existing.ComposePath = base.ComposePath
-	existing.Env = base.Env
+	existing.Env = rule.ApplyOverrides(base.Env)
 	existing.DockerNetwork = rule.DockerNetwork
 	existing.BuildSource = base.BuildSource
 	updated, err := s.UpdateStack(ctx, *existing)

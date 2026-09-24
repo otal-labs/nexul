@@ -306,6 +306,53 @@ func TestMCPTools_StackUpdate(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "api-v2", got.(*Stack).Name)
 	})
+	t.Run("sets branch deploy rules with overrides, and omitting them keeps the rules", func(t *testing.T) {
+		ctx := t.Context()
+		stacks := newFakeStackRepo()
+		projects := newFakeProjects()
+		projects.exists["proj-1"] = true
+		s := newTestServiceWith(newFakeRepo(), stacks, newFakeContainerRepo(), projects, newFakeBus())
+		input := validStack()
+		input.ID = ""
+		created, err := s.CreateStack(ctx, input, nil)
+		require.NoError(t, err)
+		call := toolByName(t, MCPTools(s), "stack_update").Call
+		args := map[string]any{
+			"id": created.ID, "project_id": "proj-1", "name": "api", "machine": "10.0.0.1:22", "strategy": "compose",
+			"branch_deploy_rules": []any{map[string]any{
+				"pattern": "dev", "docker_network": "qa-net", "name_suffix": "qa",
+				"overrides": map[string]any{"DATABASE_URL": "postgres://qa"},
+			}},
+		}
+		got, err := call(ctx, args)
+		require.NoError(t, err)
+		require.Len(t, got.(*Stack).BranchDeployRules, 1)
+		assert.Equal(t, map[string]string{"DATABASE_URL": "postgres://qa"}, got.(*Stack).BranchDeployRules[0].Overrides)
+
+		delete(args, "branch_deploy_rules")
+		args["env"] = map[string]any{"PORT": "9090"}
+		got, err = call(ctx, args)
+		require.NoError(t, err)
+		assert.Len(t, got.(*Stack).BranchDeployRules, 1)
+	})
+	t.Run("malformed branch deploy rules are invalid", func(t *testing.T) {
+		call := toolByName(t, MCPTools(newTestService(newFakeRepo(), newFakeBus())), "stack_update").Call
+		_, err := call(t.Context(), map[string]any{
+			"id": "svc-1", "project_id": "proj-1", "name": "api", "machine": "m", "strategy": "compose",
+			"branch_deploy_rules": "feature/*",
+		})
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
+	})
+	t.Run("overrides on an in-place rule are invalid", func(t *testing.T) {
+		call := toolByName(t, MCPTools(newTestService(newFakeRepo(), newFakeBus())), "stack_update").Call
+		_, err := call(t.Context(), map[string]any{
+			"id": "svc-1", "project_id": "proj-1", "name": "api", "machine": "m", "strategy": "compose",
+			"branch_deploy_rules": []any{map[string]any{"pattern": "main", "docker_network": "n", "overrides": map[string]any{"A": "b"}}},
+		})
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
+	})
 }
 
 func TestMCPTools_StackDelete(t *testing.T) {

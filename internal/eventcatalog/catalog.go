@@ -12,6 +12,7 @@ import (
 	"github.com/otal-labs/nexul/internal/docs"
 	"github.com/otal-labs/nexul/internal/gitprovider"
 	"github.com/otal-labs/nexul/internal/memories"
+	"github.com/otal-labs/nexul/internal/pairing"
 	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/runner"
 	"github.com/otal-labs/nexul/internal/tenancy"
@@ -40,6 +41,7 @@ func AllTopics() []string {
 		chat.Topics(),
 		workspace.Topics(),
 		plays.Topics(),
+		pairing.Topics(),
 	} {
 		all = append(all, topics...)
 	}

@@ -19,6 +19,11 @@ type StatusStore interface {
 	Exists(ctx context.Context, id string) (bool, error)
 }
 
+// UserLogins resolves a user id to the member login tickets store for people, without importing auth (ADR 0017).
+type UserLogins interface {
+	LoginForUserID(ctx context.Context, userID string) (string, error)
+}
+
 // Repo is the consumer-side persistence contract for tickets; mutations carry outbox events.
 type Repo interface {
 	Create(ctx context.Context, t *Ticket, evts ...eventbus.OutboxEvent) error
@@ -30,8 +35,8 @@ type Repo interface {
 	UpdateStatus(ctx context.Context, id string, status Status, evts ...eventbus.OutboxEvent) error
 	// UpdateType changes a ticket's type id in place; the ticket keeps its identity.
 	UpdateType(ctx context.Context, id, typeID string) error
-	// UpdateAssignee enqueues the given outbox events in the same transaction; empty string unassigns.
-	UpdateAssignee(ctx context.Context, id, assignee string, evts ...eventbus.OutboxEvent) error
+	// UpdatePerson sets the ticket's developer or tester, enqueueing evts in the same transaction; empty clears it.
+	UpdatePerson(ctx context.Context, id string, role Role, login string, evts ...eventbus.OutboxEvent) error
 	// UpdateTicket edits a ticket's title and body in place, keeping its identity; the ticket must exist.
 	UpdateTicket(ctx context.Context, id, title, body string, evts ...eventbus.OutboxEvent) error
 	// SetPosition orders a ticket within its current (status, category) pair (ADR 0002).

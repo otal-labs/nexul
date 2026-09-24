@@ -32,14 +32,16 @@ export const BoardPage = () => {
 
   const {
     filters,
-    assignees,
+    developers,
+    showWaitingForMeToTest,
     filteredTickets,
     toggleProject,
     toggleCategory,
     toggleLabel,
     selectType,
     toggleStatus,
-    toggleAssignee,
+    toggleDeveloper,
+    toggleWaitingForMeToTest,
     clearAll,
   } = useBoardFilters(tickets, scopedProjectId);
 
@@ -77,13 +79,15 @@ export const BoardPage = () => {
             swimlanes={swimlanes}
             columns={statuses}
             filters={filters}
-            assignees={assignees}
+            developers={developers}
+            showWaitingForMeToTest={showWaitingForMeToTest}
             onToggleProject={toggleProject}
             onToggleCategory={toggleCategory}
             onToggleLabel={toggleLabel}
             onSelectType={selectType}
             onToggleStatus={toggleStatus}
-            onToggleAssignee={toggleAssignee}
+            onToggleDeveloper={toggleDeveloper}
+            onToggleWaitingForMeToTest={toggleWaitingForMeToTest}
             onClear={clearAll}
             onNewTicket={() => void openCreateTicketDialog()}
             onNewCategory={() => void openCreateCategoryDialog()}

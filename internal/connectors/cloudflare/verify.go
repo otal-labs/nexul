@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 
@@ -30,7 +31,8 @@ func NewTokenVerifier(hc *http.Client) *TokenVerifier {
 	return &TokenVerifier{httpc: hc}
 }
 
-// Verify walks the calls the product will make later, so a token missing a permission fails here, not on the first deploy.
+// Verify walks the calls DNS and tunnels will make, so a token missing one fails here, not on the first deploy; the advisory
+// Access checks run only through VerifyCheck, so they never block saving.
 func (v *TokenVerifier) Verify(ctx context.Context, fields map[string]string) error {
 	token := fields["api_token"]
 	if err := v.verifyActive(ctx, token); err != nil {
@@ -63,6 +65,10 @@ func (v *TokenVerifier) VerifyCheck(ctx context.Context, fields map[string]strin
 		return v.requireWrite(ctx, token, "zones/"+url.PathEscape(zone.ID)+"/dns_records", "Zone → DNS: Edit")
 	case "tunnel_edit":
 		return v.requireWrite(ctx, token, "accounts/"+url.PathEscape(zone.Account.ID)+"/cfd_tunnel", "Account → Cloudflare Tunnel: Edit")
+	case "access_apps_edit":
+		return v.requireAccessEdit(ctx, token, zone.Account.ID, "apps", accessAppsPermission)
+	case "access_tokens_edit":
+		return v.requireAccessEdit(ctx, token, zone.Account.ID, "service_tokens", accessTokensPermission)
 	default:
 		return fmt.Errorf("%w: unknown check %q", apperrs.ErrInvalid, key)
 	}
@@ -130,47 +136,100 @@ func (v *TokenVerifier) requireWrite(ctx context.Context, token, path, permissio
 	}
 }
 
+const (
+	accessAppsPermission   = "Account → Access: Apps and Policies: Edit"
+	accessTokensPermission = "Account → Access: Service Tokens: Edit"
+	// nilUUID names no real app or token, so the delete probe cannot change or mint anything.
+	nilUUID = "00000000-0000-0000-0000-000000000000"
+)
+
+// requireAccessEdit proves an Access Edit permission by deleting an object that cannot exist: 404 means allowed.
+func (v *TokenVerifier) requireAccessEdit(ctx context.Context, token, accountID, resource, permission string) error {
+	path := "accounts/" + url.PathEscape(accountID) + "/access/" + resource + "/" + nilUUID
+	status, env, err := v.send(ctx, http.MethodDelete, token, path)
+	if err != nil {
+		return err
+	}
+	if env != nil && slices.ContainsFunc(env.Errors, func(e apiError) bool { return zeroTrustMissing(e.Message) }) {
+		return fmt.Errorf("%w: Zero Trust is not enabled on this Cloudflare account, which pairing computers by tunnel needs — enable it once in the Cloudflare dashboard (pick a team name and the Free plan), then verify again", apperrs.ErrInvalid)
+	}
+	denied := env != nil && !env.Success && status == http.StatusOK
+	switch {
+	case denied || status == http.StatusForbidden || status == http.StatusUnauthorized:
+		return fmt.Errorf("%w: the token is missing %s, needed only to pair computers by tunnel", apperrs.ErrInvalid, permission)
+	case status == http.StatusNotFound, status == http.StatusBadRequest, status < 300:
+		return nil
+	default:
+		return fmt.Errorf("cloudflare %s: status %d", path, status)
+	}
+}
+
+// zeroTrustMissing matches Cloudflare's "no Access organization" errors by phrase; the exact wording is unverified live.
+func zeroTrustMissing(msg string) bool {
+	msg = strings.ToLower(msg)
+	for _, phrase := range []string{"access organization", "organization not found", "organization_not_found", "not enabled"} {
+		if strings.Contains(msg, phrase) {
+			return true
+		}
+	}
+	return false
+}
+
 // get performs one authenticated GET and decodes the envelope's result when the body is readable.
 func (v *TokenVerifier) get(ctx context.Context, token, path string, result any) (int, error) {
 	return v.call(ctx, http.MethodGet, token, path, result)
 }
 
+type apiError struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+}
+
+type apiEnvelope struct {
+	Success bool            `json:"success"`
+	Result  json.RawMessage `json:"result"`
+	Errors  []apiError      `json:"errors"`
+}
+
 // call performs one authenticated request; a success:false envelope on 200 is reported as 403, the way Cloudflare means it.
-func (v *TokenVerifier) call(ctx context.Context, method, token, path string, result any) (status int, err error) {
+func (v *TokenVerifier) call(ctx context.Context, method, token, path string, result any) (int, error) {
+	status, envelope, err := v.send(ctx, method, token, path)
+	if err != nil || envelope == nil {
+		return status, err
+	}
+	if !envelope.Success && status == http.StatusOK {
+		return http.StatusForbidden, nil
+	}
+	if len(envelope.Result) > 0 && result != nil {
+		if err := json.Unmarshal(envelope.Result, result); err != nil {
+			return status, fmt.Errorf("decode cloudflare %s: %w", path, err)
+		}
+	}
+	return status, nil
+}
+
+// send performs one authenticated request; the envelope is nil when the body is unreadable, leaving the status to speak.
+func (v *TokenVerifier) send(ctx context.Context, method, token, path string) (status int, envelope *apiEnvelope, err error) {
 	var body io.Reader
-	if method != http.MethodGet {
+	if method == http.MethodPost {
 		body = strings.NewReader("{}")
 	}
 	req, err := http.NewRequestWithContext(ctx, method, apiBaseURL+"/"+path, body)
 	if err != nil {
-		return 0, fmt.Errorf("build cloudflare request: %w", err)
+		return 0, nil, fmt.Errorf("build cloudflare request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := v.httpc.Do(req)
 	if err != nil {
-		return 0, fmt.Errorf("reach cloudflare: %w", err)
+		return 0, nil, fmt.Errorf("reach cloudflare: %w", err)
 	}
 	defer func() {
 		err = errors.Join(err, resp.Body.Close())
 	}()
-	var envelope struct {
-		Success bool            `json:"success"`
-		Result  json.RawMessage `json:"result"`
+	var env apiEnvelope
+	if json.NewDecoder(resp.Body).Decode(&env) != nil {
+		return resp.StatusCode, nil, nil
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&envelope); err != nil {
-		return resp.StatusCode, nil
-	}
-	if !envelope.Success && resp.StatusCode == http.StatusOK {
-		return http.StatusForbidden, nil
-	}
-	if !envelope.Success && resp.StatusCode == http.StatusBadRequest {
-		return http.StatusBadRequest, nil
-	}
-	if len(envelope.Result) > 0 && result != nil {
-		if err := json.Unmarshal(envelope.Result, result); err != nil {
-			return resp.StatusCode, fmt.Errorf("decode cloudflare %s: %w", path, err)
-		}
-	}
-	return resp.StatusCode, nil
+	return resp.StatusCode, &env, nil
 }

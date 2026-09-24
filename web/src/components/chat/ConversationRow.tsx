@@ -1,6 +1,6 @@
 import { Hash } from "lucide-react";
 
-import { AssigneeAvatar } from "@/components/AssigneeAvatar";
+import { PersonAvatar } from "@/components/PersonAvatar";
 import { cn } from "@/lib/utils";
 import { conversationLabel, type Conversation, type DMLabelContext } from "@/models/Chat";
 
@@ -37,7 +37,7 @@ export const ConversationRow = ({ conversation, unreadCount, selected, onSelect,
       aria-current={selected ? "true" : undefined}
       className={conversationRowClass(selected)}
     >
-      {isDM && <AssigneeAvatar login={avatarLogin} className="size-7 text-[10px]" />}
+      {isDM && <PersonAvatar login={avatarLogin} className="size-7 text-[10px]" />}
       {!isDM && (
         <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
           <Hash className="size-3.5" aria-hidden />

@@ -16,7 +16,7 @@ user whose token authenticates the connection.
 | Domain | Tools |
 |---|---|
 | Docs | `doc_create`, `doc_get`, `doc_search`, `doc_update`, `doc_archive`, `doc_restore` |
-| Tickets | `ticket_create`, `ticket_get`, `ticket_update`, `ticket_update_status`, `ticket_set_type`, `ticket_add_label`, `ticket_remove_label`, `ticket_list_labels`, `ticket_list_all_labels`, `ticket_set_label_color`, `ticket_label_colors`, `ticket_search`, `ticket_link_pr`, `ticket_link_branch`, `ticket_get_links` |
+| Tickets | `ticket_create`, `ticket_get`, `ticket_update`, `ticket_update_status`, `ticket_set_type`, `ticket_set_developer`, `ticket_set_tester`, `ticket_add_label`, `ticket_remove_label`, `ticket_list_labels`, `ticket_list_all_labels`, `ticket_set_label_color`, `ticket_label_colors`, `ticket_search`, `ticket_link_pr`, `ticket_link_branch`, `ticket_get_links` |
 | Projects and board | `project_create`, `project_get`, `project_list`, `project_rename`, `project_delete`, `project_reorder`, `project_delete_impact`, `project_add_repo`, `project_remove_repo`, `project_list_repos`, `project_move_ticket`, `category_create`, `category_get`, `category_list`, `category_rename`, `category_delete`, `category_reorder`, `category_move_ticket`, `category_clear_ticket`, `ticket_type_create`, `ticket_type_list`, `ticket_type_rename`, `ticket_type_delete`, `status_create`, `status_list`, `status_rename`, `status_reorder`, `status_delete` |
 | Deploys and stacks | `deploy_get`, `deploy_log`, `deploy_list`, `deploy_list_by_service`, `deploy_list_by_status`, `deploy_cancel`, `service_list`, `machine_import`, `stack_create`, `stack_deploy`, `stack_get`, `stack_list`, `stack_update`, `stack_delete`, `stack_rollback` |
 | Repositories, runners, and machines | `repository_list`, `repository_scan`, `runner_list`, `runner_queue`, `machine_list`, `machine_discover`, `instance_upgrade_status`, `instance_upgrade` |
@@ -28,7 +28,8 @@ user whose token authenticates the connection.
 | Notifications | `notification_list`, `notification_mark_read`, `notification_mark_all_read` |
 | Access | `access_list_grants`, `access_set_grants` |
 | Invitations | `create_invitation`, `list_invitations`, `revoke_invitation` |
-| Accounts | `list_accounts`, `disable_account`, `reactivate_account`, `remove_account`, `restore_account` |
+| Accounts | `account_whoami`, `list_accounts`, `disable_account`, `reactivate_account`, `remove_account`, `restore_account` |
+| Computer setup | `computer_setup_get`, `computer_setup_confirm_provider`, `computer_setup_unconfirm_provider`, `computer_setup_confirm`, `computer_setup_unconfirm` |
 | Plays | `play_list`, `play_create`, `play_update`, `play_delete`, `play_run`, `play_run_get`, `play_run_stop`, `play_run_answer`, `play_list_runs` |
 | Memories | `memory_list`, `memory_get`, `memory_create`, `memory_update`, `memory_delete`, `memory_list_versions`, `memory_revert`, `memory_clone` |
 | Search and operations | `search_docs`, `search_tickets`, `list_dead_letters`, `replay_dead_letter` |

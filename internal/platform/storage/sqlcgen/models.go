@@ -209,6 +209,15 @@ type DeployLogLine struct {
 	Line     string
 }
 
+type DnsAccessServiceToken struct {
+	ID           int64
+	TokenID      string
+	ClientID     string
+	ClientSecret string
+	CreatedAt    int64
+	UpdatedAt    int64
+}
+
 type DnsExposure struct {
 	ID        string
 	GatewayID string
@@ -484,16 +493,17 @@ type Outbox struct {
 }
 
 type PairingComputer struct {
-	ID             string
-	UserID         string
-	Name           string
-	ServerUrl      string
-	BearerToken    string
-	TokenExpiresAt int64
-	HarnessVersion string
-	CreatedAt      int64
-	UpdatedAt      int64
-	Kind           string
+	ID               string
+	UserID           string
+	Name             string
+	ServerUrl        string
+	BearerToken      string
+	TokenExpiresAt   int64
+	HarnessVersion   string
+	CreatedAt        int64
+	UpdatedAt        int64
+	Kind             string
+	SetupConfirmedAt sql.NullInt64
 }
 
 type PairingProjectLink struct {
@@ -503,6 +513,14 @@ type PairingProjectLink struct {
 	Provider         string
 	Model            string
 	UpdatedAt        int64
+}
+
+type PairingProviderSetup struct {
+	ComputerID  string
+	Provider    string
+	ConfirmedAt sql.NullInt64
+	SkillsJson  string
+	UpdatedAt   int64
 }
 
 type PairingUserDefault struct {
@@ -672,20 +690,25 @@ type Status struct {
 }
 
 type Ticket struct {
-	ID         string
-	Title      string
-	Body       string
-	Status     string
-	DocID      sql.NullString
-	Assignee   string
-	CreatedAt  int64
-	UpdatedAt  int64
-	ProjectID  sql.NullString
-	CategoryID sql.NullString
-	TypeID     sql.NullString
-	FinishedAt sql.NullInt64
-	Position   int64
-	Number     int64
+	ID                     string
+	Title                  string
+	Body                   string
+	Status                 string
+	DocID                  sql.NullString
+	Developer              string
+	CreatedAt              int64
+	UpdatedAt              int64
+	ProjectID              sql.NullString
+	CategoryID             sql.NullString
+	TypeID                 sql.NullString
+	FinishedAt             sql.NullInt64
+	Position               int64
+	Number                 int64
+	Tester                 string
+	ReporterKind           string
+	ReporterLogin          string
+	ReporterAutomationID   string
+	ReporterAutomationName string
 }
 
 type TicketBranchLink struct {

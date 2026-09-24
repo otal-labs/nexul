@@ -1,6 +1,7 @@
 package tickets
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/otal-labs/nexul/internal/platform/colors"
@@ -26,13 +27,25 @@ type Ticket struct {
 	// Position: status/category moves append to the end; SetPosition reorders directly (ADR 0002).
 	Position int `json:"position"`
 	// Number combines with the project's Prefix to render PREFIX-NUMBER; ID remains the real primary key.
-	Number     int        `json:"number"`
-	DocID      string     `json:"doc_id"`
-	Assignee   string     `json:"assignee"`
+	Number int    `json:"number"`
+	DocID  string `json:"doc_id"`
+	// Developer and Tester are member logins, both optional; Reporter is set once at creation and never edited.
+	Developer  string     `json:"developer"`
+	Tester     string     `json:"tester"`
+	Reporter   Reporter   `json:"reporter"`
 	CreatedAt  time.Time  `json:"created_at"`
 	UpdatedAt  time.Time  `json:"updated_at"`
 	FinishedAt *time.Time `json:"finished_at,omitempty"`
 	Labels     []string   `json:"labels"`
+}
+
+// MarshalJSON adds the deprecated assignee field, always equal to developer, so the published payload stays additive (ADR 0044).
+func (t Ticket) MarshalJSON() ([]byte, error) {
+	type plain Ticket
+	return json.Marshal(struct {
+		plain
+		Assignee string `json:"assignee"`
+	}{plain(t), t.Developer})
 }
 
 // CanTransition allows any status pair; a same-status move is a no-op, not an error.
@@ -98,6 +111,23 @@ type Actor struct {
 // Actor kinds; a play started through MCP carries the ":mcp" provenance suffix (ADR 0049), as executions do.
 const (
 	ActorKindUser       = "user"
+	ActorKindUserMCP    = ActorKindUser + ":mcp"
 	ActorKindAutomation = "automation"
 	ActorKindPlay       = "play"
+)
+
+// Reporter is who filed a ticket: a person (user), Nexul for a person via MCP (user:mcp), or an automation.
+type Reporter struct {
+	Kind           string `json:"kind"`
+	Login          string `json:"login,omitempty"`
+	AutomationID   string `json:"automation_id,omitempty"`
+	AutomationName string `json:"automation_name,omitempty"`
+}
+
+// Role names one of the two editable people on a ticket.
+type Role string
+
+const (
+	RoleDeveloper Role = "developer"
+	RoleTester    Role = "tester"
 )

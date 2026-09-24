@@ -25,8 +25,10 @@ automations engine would make a core deploy path depend on a user-editable
 rule that can be deleted. Automations keeps its own separate ability to
 trigger a deploy.
 
-Consequence: there is nowhere to hang per-environment configuration. A branch
-deployment copies the base stack's env verbatim, so a preview shares the base's
-database until per-branch overrides are built.
+Consequence: there is nowhere to hang per-environment configuration except the
+rule itself. A branch deployment copies the base stack's env, with the rule's
+optional key = value overrides on top, so a preview shares the base's database
+unless its rule overrides the connection setting. An in-place rule deploys the
+base itself and so cannot carry overrides.
 
 Decided: 2026-08-27

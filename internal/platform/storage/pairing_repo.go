@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/otal-labs/nexul/internal/harness"
 	"github.com/otal-labs/nexul/internal/pairing"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
 )
 
@@ -148,10 +150,68 @@ func (r *PairingRepo) SaveDefaults(ctx context.Context, d pairing.Defaults) erro
 	})
 }
 
+func (r *PairingRepo) SetSetupConfirmedAt(ctx context.Context, userID, computerID string, at *time.Time, evt eventbus.OutboxEvent) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		n, err := r.q.WithTx(tx).SetPairingComputerSetupConfirmedAt(ctx, sqlcgen.SetPairingComputerSetupConfirmedAtParams{
+			SetupConfirmedAt: nullUnixPtr(at), ID: computerID, UserID: userID,
+		})
+		if err != nil {
+			return fmt.Errorf("set setup confirmation for %s: %w", computerID, err)
+		}
+		if n == 0 {
+			return fmt.Errorf("set setup confirmation for %s: %w", computerID, apperrs.ErrNotFound)
+		}
+		return insertOutboxRows(ctx, tx, []eventbus.OutboxEvent{evt})
+	})
+}
+
+func (r *PairingRepo) ListProviderSetups(ctx context.Context, computerID string) ([]pairing.ProviderSetup, error) {
+	rows, err := r.q.ListPairingProviderSetups(ctx, computerID)
+	if err != nil {
+		return nil, fmt.Errorf("list provider setups for %s: %w", computerID, err)
+	}
+	out := make([]pairing.ProviderSetup, 0, len(rows))
+	for _, row := range rows {
+		var skills []string
+		if err := json.Unmarshal([]byte(row.SkillsJson), &skills); err != nil {
+			return nil, fmt.Errorf("decode %s skills for %s: %w", row.Provider, computerID, err)
+		}
+		out = append(out, pairing.ProviderSetup{Provider: row.Provider, ConfirmedAt: unixPtrFromNull(row.ConfirmedAt), Skills: skills})
+	}
+	return out, nil
+}
+
+func (r *PairingRepo) SaveProviderSetup(ctx context.Context, computerID string, p pairing.ProviderSetup, updatedAt time.Time, evt eventbus.OutboxEvent) error {
+	skills, err := json.Marshal(p.Skills)
+	if err != nil {
+		return fmt.Errorf("encode %s skills: %w", p.Provider, err)
+	}
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		err := r.q.WithTx(tx).SavePairingProviderSetup(ctx, sqlcgen.SavePairingProviderSetupParams{
+			ComputerID: computerID, Provider: p.Provider, ConfirmedAt: nullUnixPtr(p.ConfirmedAt),
+			SkillsJson: string(skills), UpdatedAt: updatedAt.Unix(),
+		})
+		if err != nil {
+			return fmt.Errorf("save %s setup for %s: %w", p.Provider, computerID, classifyWriteErr(err))
+		}
+		return insertOutboxRows(ctx, tx, []eventbus.OutboxEvent{evt})
+	})
+}
+
 func toPairingComputer(row sqlcgen.PairingComputer) pairing.Computer {
 	return pairing.Computer{
 		ID: row.ID, UserID: row.UserID, Kind: harness.Kind(row.Kind), Name: row.Name, ServerURL: row.ServerUrl, BearerToken: row.BearerToken,
 		TokenExpiresAt: time.Unix(row.TokenExpiresAt, 0).UTC(), HarnessVersion: row.HarnessVersion,
-		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
+		SetupConfirmedAt: unixPtrFromNull(row.SetupConfirmedAt),
+		CreatedAt:        time.Unix(row.CreatedAt, 0).UTC(), UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
 	}
+}
+
+// unixPtrFromNull is nullUnixPtr's inverse: SQL NULL reads back as nil.
+func unixPtrFromNull(v sql.NullInt64) *time.Time {
+	if !v.Valid {
+		return nil
+	}
+	t := time.Unix(v.Int64, 0).UTC()
+	return &t
 }

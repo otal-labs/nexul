@@ -95,3 +95,30 @@ func TestDNSRepo_TunnelDelete(t *testing.T) {
 	err = repo.DeleteTunnel(ctx, "t1")
 	assert.True(t, errors.Is(err, apperrs.ErrNotFound), "deleting an absent tunnel is an error")
 }
+
+func TestDNSRepo_AccessServiceTokenRoundTrip(t *testing.T) {
+	repo := openDNSStore(t).DNS
+	ctx := t.Context()
+
+	_, err := repo.GetAccessServiceToken(ctx)
+	assert.ErrorIs(t, err, apperrs.ErrNotFound, "no token before save")
+	assert.ErrorIs(t, repo.DeleteAccessServiceToken(ctx), apperrs.ErrNotFound, "deleting nothing reports it")
+
+	created := time.Date(2026, 9, 24, 12, 0, 0, 0, time.UTC)
+	require.NoError(t, repo.SaveAccessServiceToken(ctx, dns.ServiceToken{
+		ID: "st-1", ClientID: "cid", ClientSecret: "cipher-1", CreatedAt: created, UpdatedAt: created,
+	}))
+	rotated := created.Add(time.Hour)
+	require.NoError(t, repo.SaveAccessServiceToken(ctx, dns.ServiceToken{
+		ID: "st-1", ClientID: "cid", ClientSecret: "cipher-2", CreatedAt: rotated, UpdatedAt: rotated,
+	}))
+
+	got, err := repo.GetAccessServiceToken(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, dns.ServiceToken{ID: "st-1", ClientID: "cid", ClientSecret: "cipher-2", CreatedAt: created, UpdatedAt: rotated}, *got,
+		"a second save replaces the one row and keeps its creation time")
+
+	require.NoError(t, repo.DeleteAccessServiceToken(ctx))
+	_, err = repo.GetAccessServiceToken(ctx)
+	assert.ErrorIs(t, err, apperrs.ErrNotFound)
+}

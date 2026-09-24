@@ -6,7 +6,8 @@ import type { CredentialCheck } from "@/models/Connectors";
 
 type Fields = Record<string, string>;
 
-// The ticker: Verify fans one request per check out in parallel and ticks each TickerRow as it lands; Continue unlocks once all are green.
+// The ticker: Verify fans one request per check out in parallel and ticks each TickerRow as it lands; Continue unlocks once
+// every required check is green, while a failed advisory check only warns.
 // Derived, not an effect: the rows stay lit only while every verified field still matches what the provider accepted.
 export const useTicker = (
   checks: CredentialCheck[],
@@ -17,22 +18,24 @@ export const useTicker = (
   const [outcomes, setOutcomes] = useState<Record<string, CheckOutcome>>({});
   const fresh =
     verifiedFor !== null && Object.entries(verifiedFor).every(([key, value]) => value === current[key]?.trim());
-  const verified = fresh && checks.every((c) => outcomes[c.key]?.state === "ok");
+  const verified =
+    fresh && checks.every((c) => outcomes[c.key]?.state === "ok" || outcomes[c.key]?.state === "warning");
   const verifying = fresh && checks.some((c) => outcomes[c.key]?.state === "pending");
 
-  const runCheck = async (key: string, data: Fields) => {
+  const runCheck = async ({ key, advisory }: CredentialCheck, data: Fields) => {
     try {
       await run(key, data);
       setOutcomes((prev) => ({ ...prev, [key]: { state: "ok" } }));
     } catch (err) {
-      setOutcomes((prev) => ({ ...prev, [key]: { state: "failed", message: errorMessage(err) } }));
+      const state = advisory ? "warning" : "failed";
+      setOutcomes((prev) => ({ ...prev, [key]: { state, message: errorMessage(err) } }));
     }
   };
 
   const verify = async (data: Fields) => {
     setVerifiedFor(data);
     setOutcomes(Object.fromEntries(checks.map((c) => [c.key, { state: "pending" }])));
-    await Promise.all(checks.map((c) => runCheck(c.key, data)));
+    await Promise.all(checks.map((c) => runCheck(c, data)));
   };
 
   const reset = () => {

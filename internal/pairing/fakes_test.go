@@ -3,11 +3,14 @@ package pairing
 import (
 	"context"
 	"errors"
+	"slices"
 	"sync"
+	"time"
 
 	"github.com/otal-labs/nexul/internal/harness"
 	"github.com/otal-labs/nexul/internal/harness/harnesstest"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 )
 
 // fakeRepo is an in-memory pairing.Repo for use-case tests.
@@ -16,12 +19,15 @@ type fakeRepo struct {
 	computers    map[string]Computer
 	defaults     map[string]Defaults
 	projectLinks map[string]ProjectLink
+	setups       map[string][]ProviderSetup
+	outbox       []eventbus.OutboxEvent
 	saveErr      error
 	getErr       error
+	listSetupErr error
 }
 
 func newFakeRepo() *fakeRepo {
-	return &fakeRepo{computers: map[string]Computer{}, defaults: map[string]Defaults{}, projectLinks: map[string]ProjectLink{}}
+	return &fakeRepo{computers: map[string]Computer{}, defaults: map[string]Defaults{}, projectLinks: map[string]ProjectLink{}, setups: map[string][]ProviderSetup{}}
 }
 
 func (f *fakeRepo) SaveComputer(_ context.Context, c Computer) error {
@@ -118,6 +124,43 @@ func (f *fakeRepo) DeleteProjectLink(_ context.Context, projectID string) error 
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	delete(f.projectLinks, projectID)
+	return nil
+}
+
+func (f *fakeRepo) SetSetupConfirmedAt(_ context.Context, userID, computerID string, at *time.Time, evt eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.saveErr != nil {
+		return f.saveErr
+	}
+	c, ok := f.computers[computerID]
+	if !ok || c.UserID != userID {
+		return apperrs.ErrNotFound
+	}
+	c.SetupConfirmedAt = at
+	f.computers[computerID] = c
+	f.outbox = append(f.outbox, evt)
+	return nil
+}
+
+func (f *fakeRepo) ListProviderSetups(_ context.Context, computerID string) ([]ProviderSetup, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.listSetupErr != nil {
+		return nil, f.listSetupErr
+	}
+	return slices.Clone(f.setups[computerID]), nil
+}
+
+func (f *fakeRepo) SaveProviderSetup(_ context.Context, computerID string, p ProviderSetup, _ time.Time, evt eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.saveErr != nil {
+		return f.saveErr
+	}
+	rows := slices.DeleteFunc(f.setups[computerID], func(existing ProviderSetup) bool { return existing.Provider == p.Provider })
+	f.setups[computerID] = append(rows, p)
+	f.outbox = append(f.outbox, evt)
 	return nil
 }
 

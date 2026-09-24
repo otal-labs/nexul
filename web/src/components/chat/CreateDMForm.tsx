@@ -1,6 +1,6 @@
 import { Controller } from "react-hook-form";
 
-import { AssigneeAvatar } from "@/components/AssigneeAvatar";
+import { PersonAvatar } from "@/components/PersonAvatar";
 import { useFormDialogContext } from "@/components/dialogs/FormDialogContext";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useFetchMe } from "@/hooks/AuthHooks";
@@ -54,7 +54,7 @@ export const CreateDMForm = ({ workspaceId, onCreated }: CreateDMFormProps) => {
                       )
                     }
                   />
-                  <AssigneeAvatar login={member.login} />
+                  <PersonAvatar login={member.login} />
                   {member.login}
                   {member.user_id === me?.user.id && <span className="text-muted-foreground">(you)</span>}
                 </label>

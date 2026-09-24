@@ -16,6 +16,7 @@ import (
 	"github.com/otal-labs/nexul/internal/docs"
 	"github.com/otal-labs/nexul/internal/gitprovider"
 	"github.com/otal-labs/nexul/internal/memories"
+	"github.com/otal-labs/nexul/internal/pairing"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/deadletter"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/testutil"
@@ -240,7 +241,7 @@ func newRegistryServer(t *testing.T) (*Server, *storage.Store, *fakePublisher) {
 	return New(RegistryOptions{
 		Docs:          docs.NewService(store.Docs, accessSvc),
 		Memories:      memories.NewService(store.Memories, testMemoriesPermission{accessSvc}, testProjectLookup{store.Projects}, nil, nil),
-		Tickets:       tickets.NewService(store.Tickets, store.Statuses),
+		Tickets:       tickets.NewService(store.Tickets, store.Statuses, nil),
 		Topology:      topology.NewService(store.Topology),
 		Deploy:        deploy.NewService(store.Deploys, store.Stacks, store.Services, testDeployProjects{store.Projects}),
 		Reviews:       codereview.NewService(store.CodeReviews),
@@ -255,6 +256,7 @@ func newRegistryServer(t *testing.T) (*Server, *storage.Store, *fakePublisher) {
 		Invitations:   invitationSvc,
 		Plays:         plays.NewService(store.Plays, registryPlaysPermGate{svc: accessSvc}),
 		PlayRuns:      plays.NewRunner(plays.RunnerConfig{Plays: store.Plays, Trails: store.PlayTrails, Perm: registryPlaysPermGate{svc: accessSvc}}),
+		Pairing:       pairing.NewService(pairing.Config{Repo: store.Pairing}),
 		DeadLetter:    store.DeadLetters,
 		Publisher:     pub,
 		Actor: func(context.Context) identity.Actor {
@@ -265,7 +267,7 @@ func newRegistryServer(t *testing.T) (*Server, *storage.Store, *fakePublisher) {
 
 func TestRegistry_ToolsComplete(t *testing.T) {
 	srv, _, _ := newRegistryServer(t)
-	require.Len(t, srv.tools, 123)
+	require.Len(t, srv.tools, 131)
 	names := make(map[string]bool)
 	for _, tool := range srv.tools {
 		require.NotEmpty(t, tool.Name, "every tool must be named")
@@ -278,7 +280,7 @@ func TestRegistry_ToolsComplete(t *testing.T) {
 	expected := []string{
 		"search_docs", "search_tickets", "list_dead_letters", "replay_dead_letter",
 		"doc_create", "doc_get", "doc_search", "doc_update", "doc_archive", "doc_restore",
-		"ticket_create", "ticket_get", "ticket_update", "ticket_update_status", "ticket_set_type",
+		"ticket_create", "ticket_get", "ticket_update", "ticket_update_status", "ticket_set_type", "ticket_set_developer", "ticket_set_tester",
 		"ticket_add_label", "ticket_remove_label", "ticket_list_labels", "ticket_list_all_labels",
 		"ticket_search",
 		"topology_get", "topology_add_node", "topology_remove_node", "topology_add_edge", "topology_remove_edge",
@@ -303,7 +305,9 @@ func TestRegistry_ToolsComplete(t *testing.T) {
 		"play_run", "play_run_get", "play_run_stop", "play_run_answer", "play_list_runs",
 		"memory_list", "memory_get", "memory_create", "memory_update", "memory_delete",
 		"create_invitation", "list_invitations", "revoke_invitation",
-		"list_accounts", "disable_account", "reactivate_account", "remove_account", "restore_account",
+		"account_whoami", "list_accounts", "disable_account", "reactivate_account", "remove_account", "restore_account",
+		"computer_setup_get", "computer_setup_confirm_provider", "computer_setup_unconfirm_provider",
+		"computer_setup_confirm", "computer_setup_unconfirm",
 	}
 	for _, name := range expected {
 		assert.True(t, names[name], "missing tool %s", name)

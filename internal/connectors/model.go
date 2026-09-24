@@ -46,6 +46,8 @@ type CredentialCheck struct {
 	Key   string `json:"key"`
 	Label string `json:"label"`
 	Why   string `json:"why,omitempty"`
+	// Advisory checks warn in the dialog but never block saving; Verify leaves them out.
+	Advisory bool `json:"advisory,omitempty"`
 }
 
 // CheckVerifier is an optional Verifier extension that can run a single named check, so the dialog can fan them out in parallel.

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -35,6 +36,10 @@ type Config struct {
 	TunnelProvider TunnelProvider
 	// NewTunnelProvider builds a tunnel-capable provider for a freshly-resolved access token.
 	NewTunnelProvider func(ctx context.Context, token string) (TunnelProvider, error)
+	// AccessProvider is a fixed Access provider for tests; when set, NewAccessProvider is ignored.
+	AccessProvider AccessProvider
+	// NewAccessProvider builds a Cloudflare Access provider for a freshly-resolved access token.
+	NewAccessProvider func(ctx context.Context, token string) (AccessProvider, error)
 	// Provisioner creates service definitions for entry-path agents; nil makes provisioning use-cases fail fatally.
 	Provisioner ServiceProvisioner
 	// Containers resolves the container an exposure targets, or a gateway's own backing container.
@@ -59,6 +64,10 @@ type Service struct {
 	newProvider func(ctx context.Context, token string) (DNSProvider, error)
 	tunnel      TunnelProvider
 	newTunnel   func(ctx context.Context, token string) (TunnelProvider, error)
+	access      AccessProvider
+	newAccess   func(ctx context.Context, token string) (AccessProvider, error)
+	// accessMu keeps concurrent callers from minting two instance service tokens.
+	accessMu    sync.Mutex
 	provisioner ServiceProvisioner
 	containers  ContainerLookup
 	runnerJoin  RunnerJoiner
@@ -79,6 +88,8 @@ func NewService(cfg Config) *Service {
 		newProvider: cfg.NewProvider,
 		tunnel:      cfg.TunnelProvider,
 		newTunnel:   cfg.NewTunnelProvider,
+		access:      cfg.AccessProvider,
+		newAccess:   cfg.NewAccessProvider,
 		provisioner: cfg.Provisioner,
 		containers:  cfg.Containers,
 		runnerJoin:  cfg.RunnerJoin,

@@ -137,7 +137,8 @@ describe("CreateTicketForm", () => {
       body: "",
       project_id: "p-1",
       doc_id: "",
-      assignee: "",
+      developer: "",
+      tester: "",
       category_id: "",
       type_id: "ticket-type-task",
     });
@@ -159,7 +160,8 @@ describe("CreateTicketForm", () => {
         body: "",
         project_id: "p-2",
         doc_id: "doc-9",
-        assignee: "",
+        developer: "",
+        tester: "",
         category_id: "",
         type_id: "ticket-type-task",
       }),
@@ -200,7 +202,7 @@ describe("CreateTicketForm", () => {
     );
   });
 
-  it("lets the user search and pick an assignee, storing their login", async () => {
+  it("lets the user search and pick a developer and a tester, storing their logins", async () => {
     const user = userEvent.setup();
     mockReferenceData();
     vi.mocked(api.post).mockResolvedValue({ data: { id: "t-13" } });
@@ -208,14 +210,19 @@ describe("CreateTicketForm", () => {
 
     await user.click(screen.getByRole("button", { name: "Open" }));
     await user.type(await screen.findByLabelText("Title"), "Needs an owner");
-    await user.click(await screen.findByRole("button", { name: "Assignee" }));
+    await user.click(await screen.findByRole("button", { name: "Developer: no one" }));
     await user.type(await screen.findByLabelText("Search people"), "bo");
     expect(screen.queryByRole("button", { name: /alice/ })).not.toBeInTheDocument();
     await user.click(await screen.findByRole("button", { name: /bob/ }));
+    await user.click(await screen.findByRole("button", { name: "Tester: no one" }));
+    await user.click(await screen.findByRole("button", { name: /alice/ }));
     await user.click(screen.getByRole("button", { name: "Create" }));
 
     await vi.waitFor(() =>
-      expect(api.post).toHaveBeenCalledWith("/api/tickets", expect.objectContaining({ assignee: "bob" })),
+      expect(api.post).toHaveBeenCalledWith(
+        "/api/tickets",
+        expect.objectContaining({ developer: "bob", tester: "alice" }),
+      ),
     );
   });
 

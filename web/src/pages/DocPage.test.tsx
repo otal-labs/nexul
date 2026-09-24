@@ -53,7 +53,9 @@ const ticketData = (id: string, title: string, docId: string) => ({
   body: "",
   status: "open",
   doc_id: docId,
-  assignee: "",
+  developer: "",
+  tester: "",
+  reporter: { kind: "user", login: "onik97" },
   created_at: "2026-08-02T12:00:00Z",
   updated_at: "2026-08-02T12:00:00Z",
 });
@@ -108,7 +110,8 @@ describe("DocPage", () => {
       body: "",
       project_id: "p-1",
       doc_id: "doc-1",
-      assignee: "",
+      developer: "",
+      tester: "",
       category_id: "",
       type_id: "ticket-type-task",
     });

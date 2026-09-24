@@ -42,7 +42,7 @@ func TestIntegration_StdioSearchDocs(t *testing.T) {
 	defer func() { require.NoError(t, bus.Close()) }()
 
 	docsSvc := docs.NewService(store.Docs, access.NewService(store.Access, testUsers{store.Users}))
-	ticketsSvc := tickets.NewService(store.Tickets, store.Statuses)
+	ticketsSvc := tickets.NewService(store.Tickets, store.Statuses, nil)
 	topoSvc := topology.NewService(store.Topology)
 	deploySvc := deploy.NewService(store.Deploys, store.Stacks, store.Services, testDeployProjects{store.Projects})
 	reviewSvc := codereview.NewService(store.CodeReviews)

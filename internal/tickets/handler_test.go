@@ -40,7 +40,7 @@ func TestTicketsHandler_Create(t *testing.T) {
 	h := newTicketsHandler()
 
 	t.Run("creates a ticket", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPost, "/api/tickets", `{"title":"Fix","body":"b","doc_id":"doc-1","assignee":"onik97","project_id":"p-1"}`)
+		rec := serve(t, h, http.MethodPost, "/api/tickets", `{"title":"Fix","body":"b","doc_id":"doc-1","developer":"onik97","tester":"lena","project_id":"p-1"}`)
 		require.Equal(t, http.StatusCreated, rec.Code)
 		tk := decodeTicket(t, rec)
 		assert.Equal(t, "Fix", tk.Title)

@@ -5,7 +5,7 @@ import { InstanceUpgradeSchema, isUpgradeInProgress, UpgradeRecordStatus } from 
 import { NotificationKind, SubjectType } from "@/models/Notification";
 import { SaveDocFormSchema } from "@/models/Doc";
 import { QueuedJobSchema, RequestKind, RunnerSchema } from "@/models/Runner";
-import { SaveTicketFormSchema, TicketStatus } from "@/models/Ticket";
+import { cardPerson, reporterLabel, SaveTicketFormSchema, TicketStatus, type Ticket } from "@/models/Ticket";
 import { VersionSchema } from "@/models/Version";
 
 describe("ReviewStatus", () => {
@@ -188,12 +188,29 @@ describe("SaveDocFormSchema", () => {
   });
 });
 
+describe("ticket people", () => {
+  it("labels each reporter kind", () => {
+    expect(reporterLabel({ kind: "user", login: "onik97" })).toBe("onik97");
+    expect(reporterLabel({ kind: "user:mcp", login: "onik97" })).toBe("Nexul · for onik97");
+    expect(reporterLabel({ kind: "automation", automation_name: "Triage" })).toBe("Nexul · Triage");
+    expect(reporterLabel({ kind: "user:mcp" })).toBe("Nexul");
+  });
+
+  it("puts the tester on the card only in a testing stage", () => {
+    const t = { developer: "dev", tester: "qa" } as Ticket;
+    expect(cardPerson(t, "testing")).toEqual({ role: "tester", login: "qa" });
+    expect(cardPerson(t, "review")).toEqual({ role: "developer", login: "dev" });
+    expect(cardPerson(t, undefined)).toEqual({ role: "developer", login: "dev" });
+  });
+});
+
 describe("SaveTicketFormSchema", () => {
   it("accepts a ticket with optional fields", () => {
-    const data = SaveTicketFormSchema.parse({ title: "Fix", body: "b", project_id: "p-1", doc_id: "doc-1", assignee: "onik97" });
+    const data = SaveTicketFormSchema.parse({ title: "Fix", body: "b", project_id: "p-1", doc_id: "doc-1", developer: "onik97", tester: "lena" });
     expect(data.project_id).toBe("p-1");
     expect(data.doc_id).toBe("doc-1");
-    expect(data.assignee).toBe("onik97");
+    expect(data.developer).toBe("onik97");
+    expect(data.tester).toBe("lena");
   });
 
   it("requires a project", () => {

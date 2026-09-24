@@ -15,6 +15,8 @@ export interface EventPayloads {
   "chat.message.created": { "message": Record<string, unknown>; };
   "chat.message.deleted": { "conversation_id": string; "message_id": string; "deleted_at": string; };
   "chat.message.updated": { "message": Record<string, unknown>; };
+  "computer.setup_confirmed": { "computer_id": string; "user_id": string; "provider"?: string; "confirmed_at"?: string; "skills"?: string[]; };
+  "computer.setup_unconfirmed": { "computer_id": string; "user_id": string; "provider"?: string; "confirmed_at"?: string; "skills"?: string[]; };
   "deploy.build_completed": { "id": string; "status": string; "artifacts"?: string[]; "error"?: string; };
   "deploy.build_progress": { "id": string; "step": number; "total": number; "log"?: string; };
   "deploy.build_started": { "id": string; "total": number; "log"?: string; };
@@ -67,10 +69,12 @@ export interface EventPayloads {
   "status.updated": { "status": Record<string, unknown>; };
   "ticket.assignee_changed": { "ticket": Record<string, unknown>; "from": string; "to": string; };
   "ticket.category_changed": { "ticket_id": string; "category_id": string; };
-  "ticket.created": { "ticket": { "id": string; "project_id"?: string; "title": string; "body"?: string; "status": "open" | "in_progress" | "done" | "closed"; "doc_id"?: string; "assignee"?: string; "created_at"?: string; "updated_at"?: string; "finished_at"?: string | null; }; };
+  "ticket.created": { "ticket": { "id": string; "project_id"?: string; "title": string; "body"?: string; "status": "open" | "in_progress" | "done" | "closed"; "doc_id"?: string; "assignee"?: string; "developer"?: string; "tester"?: string; "reporter"?: { "kind": "user" | "user:mcp" | "automation"; "login"?: string; "automation_id"?: string; "automation_name"?: string; }; "created_at"?: string; "updated_at"?: string; "finished_at"?: string | null; }; };
   "ticket.deleted": { "id": string; "title": string; };
+  "ticket.developer_changed": { "ticket": Record<string, unknown>; "from": string; "to": string; };
   "ticket.finished": { "ticket": Record<string, unknown>; };
   "ticket.status_changed": { "ticket": Record<string, unknown>; "from": string; "to": string; "actor"?: { "kind"?: "user" | "automation" | "play" | "play:mcp"; "automation_id"?: string; "automation_name"?: string; "play_label"?: string; "trail_id"?: string; }; "execution_id"?: string; };
+  "ticket.tester_changed": { "ticket": Record<string, unknown>; "from": string; "to": string; };
   "ticket.updated": { "ticket": Record<string, unknown>; };
   "ticket_type.created": { "ticket_type": Record<string, unknown>; };
   "ticket_type.deleted": { "ticket_type": Record<string, unknown>; };
@@ -95,6 +99,8 @@ export const TOPICS: Topic[] = [
   "chat.message.created",
   "chat.message.deleted",
   "chat.message.updated",
+  "computer.setup_confirmed",
+  "computer.setup_unconfirmed",
   "deploy.build_completed",
   "deploy.build_progress",
   "deploy.build_started",
@@ -149,8 +155,10 @@ export const TOPICS: Topic[] = [
   "ticket.category_changed",
   "ticket.created",
   "ticket.deleted",
+  "ticket.developer_changed",
   "ticket.finished",
   "ticket.status_changed",
+  "ticket.tester_changed",
   "ticket.updated",
   "ticket_type.created",
   "ticket_type.deleted",
@@ -173,6 +181,8 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "chat.message.created": {"message":{}},
   "chat.message.deleted": {"conversation_id":"fixture-conversation_id","message_id":"fixture-message_id","deleted_at":"2026-01-01T00:00:00Z"},
   "chat.message.updated": {"message":{}},
+  "computer.setup_confirmed": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","provider":"fixture-provider","confirmed_at":"2026-01-01T00:00:00Z","skills":["fixture-skills"]},
+  "computer.setup_unconfirmed": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","provider":"fixture-provider","confirmed_at":"2026-01-01T00:00:00Z","skills":["fixture-skills"]},
   "deploy.build_completed": {"id":"fixture-id","status":"fixture-status","artifacts":["fixture-artifacts"],"error":"fixture-error"},
   "deploy.build_progress": {"id":"fixture-id","step":1,"total":1,"log":"fixture-log"},
   "deploy.build_started": {"id":"fixture-id","total":1,"log":"fixture-log"},
@@ -225,10 +235,12 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "status.updated": {"status":{}},
   "ticket.assignee_changed": {"ticket":{},"from":"fixture-from","to":"fixture-to"},
   "ticket.category_changed": {"ticket_id":"fixture-ticket_id","category_id":"fixture-category_id"},
-  "ticket.created": {"ticket":{"id":"fixture-id","project_id":"fixture-project_id","title":"fixture-title","body":"fixture-body","status":"open","doc_id":"fixture-doc_id","assignee":"fixture-assignee","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z","finished_at":"2026-01-01T00:00:00Z"}},
+  "ticket.created": {"ticket":{"id":"fixture-id","project_id":"fixture-project_id","title":"fixture-title","body":"fixture-body","status":"open","doc_id":"fixture-doc_id","assignee":"fixture-assignee","developer":"fixture-developer","tester":"fixture-tester","reporter":{"kind":"user","login":"fixture-login","automation_id":"fixture-automation_id","automation_name":"fixture-automation_name"},"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z","finished_at":"2026-01-01T00:00:00Z"}},
   "ticket.deleted": {"id":"fixture-id","title":"fixture-title"},
+  "ticket.developer_changed": {"ticket":{},"from":"fixture-from","to":"fixture-to"},
   "ticket.finished": {"ticket":{}},
   "ticket.status_changed": {"ticket":{},"from":"fixture-from","to":"fixture-to","actor":{"kind":"user","automation_id":"fixture-automation_id","automation_name":"fixture-automation_name","play_label":"fixture-play_label","trail_id":"fixture-trail_id"},"execution_id":"fixture-execution_id"},
+  "ticket.tester_changed": {"ticket":{},"from":"fixture-from","to":"fixture-to"},
   "ticket.updated": {"ticket":{}},
   "ticket_type.created": {"ticket_type":{}},
   "ticket_type.deleted": {"ticket_type":{}},
