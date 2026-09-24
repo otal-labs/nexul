@@ -1,6 +1,7 @@
 import type { ComponentProps } from "react";
 import {
   Controller,
+  get,
   useFormState,
   type Control,
   type FieldValues,
@@ -28,7 +29,7 @@ export const FormInput = <T extends FieldValues>({
   ...props
 }: FormInputProps<T>) => {
   const { errors } = useFormState({ control });
-  const message = (errors[name]?.message as string | undefined) ?? undefined;
+  const message = (get(errors, name)?.message as string | undefined) ?? undefined;
   const fieldId = id ?? name;
 
   return (

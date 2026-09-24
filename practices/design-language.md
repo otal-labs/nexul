@@ -190,7 +190,7 @@ the top), then the next body rises in (200ms, 4px, with a 180ms delay only
 when it follows a drawn rail). `DnsSetupStepper` is the reference.
 
 Project wizard. The `/wizard/project/<step>` flow (project, repository,
-service, env, reach, done) reuses the setup stepper wholesale: `DnsStep` rungs
+service, env, reach, deploy branches, done) reuses the setup stepper wholesale: `DnsStep` rungs
 inside `WizardLayout`, with the URL step deciding which rung is open. A rung's
 state is its position relative to the current step, so moving forward
 collapses everything before it to done with a `Change` summary and lights the

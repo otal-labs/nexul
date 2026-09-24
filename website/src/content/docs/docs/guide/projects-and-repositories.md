@@ -18,7 +18,8 @@ Open the sidebar and pick **New project**. This starts the project wizard, which
 3. **Service** — the wizard scans the repository for a Dockerfile or compose file and proposes a candidate; pick the machine to deploy it on (see [Runners](/docs/guide/runners/)).
 4. **Env** — only shown if the repository has a `.env.example`; fill in the values it lists.
 5. **Reach** — optionally expose the service at a hostname.
-6. **Done** — lands on the topology canvas showing what was just deployed (see [Stacks and Deploys](/docs/guide/stacks-and-deploys/)).
+6. **Deploy branches** — optionally deploy other branches, like `feature/*` or `staging`, as their own copies (see [Stacks and Deploys](/docs/guide/stacks-and-deploys/#branch-deploys)).
+7. **Done** — lands on the topology canvas showing what was just deployed (see [Stacks and Deploys](/docs/guide/stacks-and-deploys/)).
 
 The same wizard reopens later from a project's **Add service** button, or from the Topology page's empty state, to attach another repository or add another service to an existing project.
 

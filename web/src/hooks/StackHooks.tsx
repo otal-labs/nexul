@@ -1,8 +1,10 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
 import { latestDeploy, type Container, type CreateStackInput, type CreateStackResponse, type Deploy, type Stack, type StackWithBranches } from "@/models/Stack";
+import { machineNetworks, type MachineNetwork } from "@/utils/MachineNetworkUtility";
 
 export const getStacksKey = "getStacks";
 export const getStackKey = "getStack";
@@ -114,6 +116,18 @@ export const useFetchAllContainers = () => {
   const data = results.every((r) => r.data) ? results.flatMap((r) => r.data ?? []) : undefined;
 
   return { data, isPending, error };
+};
+
+// The docker networks on machine with what the runner observed on each; ownNetwork always appears.
+export const useFetchMachineNetworks = (machine: string, ownNetwork: string) => {
+  const stacks = useFetchStacks();
+  const containers = useFetchAllContainers();
+  const data = useMemo<MachineNetwork[] | undefined>(
+    () =>
+      stacks.data && containers.data ? machineNetworks(stacks.data, containers.data, machine, ownNetwork) : undefined,
+    [machine, stacks.data, containers.data, ownNetwork],
+  );
+  return { data, isPending: containers.isPending, error: containers.error };
 };
 
 export const useUpdateStackEnv = () => {
