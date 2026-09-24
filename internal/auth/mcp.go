@@ -13,7 +13,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "account_whoami",
 			Description: "Return the account this MCP connection acts as. Call it first to confirm Nexul is reachable.",
-			InputSchema: objectSchema(nil),
+			InputSchema: mcptool.ObjectSchema(nil),
 			Call: func(ctx context.Context, _ map[string]any) (any, error) {
 				return s.Whoami(ctx, actorIDFromContext(ctx))
 			},
@@ -21,7 +21,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "account_list",
 			Description: "List registered instance accounts.",
-			InputSchema: objectSchema(nil),
+			InputSchema: mcptool.ObjectSchema(nil),
 			Call: func(ctx context.Context, _ map[string]any) (any, error) {
 				return s.ListAccounts(ctx, actorIDFromContext(ctx))
 			},
@@ -37,7 +37,7 @@ func accountStatusTool(name, description string, action func(context.Context, st
 	return mcptool.Tool{
 		Name:        name,
 		Description: description,
-		InputSchema: objectSchema(map[string]any{"id": map[string]any{"type": "string"}}, "id"),
+		InputSchema: mcptool.ObjectSchema(map[string]any{"id": map[string]any{"type": "string"}}, "id"),
 		Call: func(ctx context.Context, args map[string]any) (any, error) {
 			id, err := mcptool.RequiredString(args, "id")
 			if err != nil {
@@ -56,12 +56,4 @@ func actorIDFromContext(ctx context.Context) string {
 		return actor.ID
 	}
 	return ""
-}
-
-func objectSchema(properties map[string]any, required ...string) map[string]any {
-	schema := map[string]any{"type": "object", "properties": properties}
-	if len(required) > 0 {
-		schema["required"] = required
-	}
-	return schema
 }

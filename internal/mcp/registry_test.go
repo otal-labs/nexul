@@ -300,6 +300,8 @@ func TestRegistry_ToolsComplete(t *testing.T) {
 		assert.NotContains(t, verbFirst, strings.SplitN(tool.Name, "_", 2)[0], "tool %s must be named <object>_<verb>", tool.Name)
 		assert.NotEmpty(t, tool.Description)
 		assert.NotNil(t, tool.InputSchema)
+		assert.IsType(t, map[string]any{}, tool.InputSchema["properties"], "tool %s: properties must be an object, never null", tool.Name)
+		assert.NotNil(t, tool.InputSchema["properties"], "tool %s: properties must be an object, never null", tool.Name)
 		assert.NotNil(t, tool.Call)
 	}
 	expected := []string{

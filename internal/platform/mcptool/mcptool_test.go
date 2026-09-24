@@ -1,8 +1,12 @@
 package mcptool
 
 import (
+	"encoding/json"
 	"errors"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 )
@@ -85,6 +89,28 @@ func TestOptionalString(t *testing.T) {
 			if got := OptionalString(tt.v); got != tt.want {
 				t.Fatalf("OptionalString(%v) = %q, want %q", tt.v, got, tt.want)
 			}
+		})
+	}
+}
+
+func TestObjectSchema(t *testing.T) {
+	tests := []struct {
+		name       string
+		properties map[string]any
+		required   []string
+		want       map[string]any
+	}{
+		{"nil properties become an empty object", nil, nil, map[string]any{"type": "object", "properties": map[string]any{}}},
+		{"required is kept", map[string]any{"id": map[string]any{"type": "string"}}, []string{"id"},
+			map[string]any{"type": "object", "properties": map[string]any{"id": map[string]any{"type": "string"}}, "required": []string{"id"}}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ObjectSchema(tt.properties, tt.required...)
+			assert.Equal(t, tt.want, got)
+			raw, err := json.Marshal(got)
+			require.NoError(t, err)
+			assert.NotContains(t, string(raw), "null")
 		})
 	}
 }

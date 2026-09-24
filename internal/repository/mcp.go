@@ -12,7 +12,7 @@ func MCPTools(s Scanner) []mcptool.Tool {
 		{
 			Name:        "repository_list",
 			Description: "List repositories visible through the connected git provider installation.",
-			InputSchema: objectSchema(nil),
+			InputSchema: mcptool.ObjectSchema(nil),
 			Call: func(ctx context.Context, _ map[string]any) (any, error) {
 				return ListRepos(ctx, s)
 			},
@@ -20,7 +20,7 @@ func MCPTools(s Scanner) []mcptool.Tool {
 		{
 			Name:        "repository_scan",
 			Description: "Scan a repository's tree for deployable candidates (compose stacks, standalone Dockerfiles) and env keys.",
-			InputSchema: objectSchema(map[string]any{
+			InputSchema: mcptool.ObjectSchema(map[string]any{
 				"owner": map[string]any{"type": "string"},
 				"name":  map[string]any{"type": "string"},
 				"ref":   map[string]any{"type": "string"},
@@ -34,15 +34,4 @@ func MCPTools(s Scanner) []mcptool.Tool {
 			},
 		},
 	}
-}
-
-func objectSchema(properties map[string]any, required ...string) map[string]any {
-	if properties == nil {
-		properties = map[string]any{}
-	}
-	schema := map[string]any{"type": "object", "properties": properties}
-	if len(required) > 0 {
-		schema["required"] = required
-	}
-	return schema
 }

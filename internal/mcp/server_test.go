@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/mcptool"
 )
 
 // newTestServer builds a Server with hand-rolled tools/resources/prompts so
@@ -20,7 +21,7 @@ func newTestServer() *Server {
 		{
 			Name:        "echo",
 			Description: "echo a string back",
-			InputSchema: objectSchema(map[string]any{"value": map[string]any{"type": "string"}}, "value"),
+			InputSchema: mcptool.ObjectSchema(map[string]any{"value": map[string]any{"type": "string"}}, "value"),
 			Call: func(_ context.Context, args map[string]any) (any, error) {
 				return args["value"], nil
 			},
@@ -28,7 +29,7 @@ func newTestServer() *Server {
 		{
 			Name:        "boom",
 			Description: "always returns not found",
-			InputSchema: objectSchema(map[string]any{}),
+			InputSchema: mcptool.ObjectSchema(map[string]any{}),
 			Call: func(_ context.Context, _ map[string]any) (any, error) {
 				return nil, apperrs.ErrNotFound
 			},
@@ -36,7 +37,7 @@ func newTestServer() *Server {
 		{
 			Name:        "invalid",
 			Description: "always returns invalid",
-			InputSchema: objectSchema(map[string]any{}),
+			InputSchema: mcptool.ObjectSchema(map[string]any{}),
 			Call: func(_ context.Context, _ map[string]any) (any, error) {
 				return nil, apperrs.ErrInvalid
 			},

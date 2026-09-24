@@ -26,7 +26,7 @@ func zoneTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "dns_verify_credentials",
 			Description: "Verify the configured DNS provider credentials are valid.",
-			InputSchema: objectSchema(nil),
+			InputSchema: mcptool.ObjectSchema(nil),
 			Call: func(ctx context.Context, _ map[string]any) (any, error) {
 				if err := s.VerifyCredentials(ctx); err != nil {
 					return nil, err
@@ -37,7 +37,7 @@ func zoneTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "dns_list_zones",
 			Description: "List the DNS zones the connected credentials can edit.",
-			InputSchema: objectSchema(nil),
+			InputSchema: mcptool.ObjectSchema(nil),
 			Call: func(ctx context.Context, _ map[string]any) (any, error) {
 				return s.ListZones(ctx)
 			},
@@ -50,7 +50,7 @@ func recordTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "dns_list_records",
 			Description: "List the DNS records in a zone.",
-			InputSchema: objectSchema(map[string]any{
+			InputSchema: mcptool.ObjectSchema(map[string]any{
 				"zone_id": map[string]any{"type": "string"},
 			}, "zone_id"),
 			Call: func(ctx context.Context, args map[string]any) (any, error) {
@@ -64,7 +64,7 @@ func recordTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "dns_create_record",
 			Description: "Create a DNS record (A, AAAA, CNAME, TXT) in a zone.",
-			InputSchema: objectSchema(map[string]any{
+			InputSchema: mcptool.ObjectSchema(map[string]any{
 				"zone_id": map[string]any{"type": "string"},
 				"type":    map[string]any{"type": "string", "enum": []string{"A", "AAAA", "CNAME", "TXT"}},
 				"name":    map[string]any{"type": "string"},
@@ -85,7 +85,7 @@ func recordTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "dns_update_record",
 			Description: "Update a DNS record's content in a zone.",
-			InputSchema: objectSchema(map[string]any{
+			InputSchema: mcptool.ObjectSchema(map[string]any{
 				"zone_id":   map[string]any{"type": "string"},
 				"record_id": map[string]any{"type": "string"},
 				"type":      map[string]any{"type": "string", "enum": []string{"A", "AAAA", "CNAME", "TXT"}},
@@ -107,7 +107,7 @@ func recordTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "dns_delete_record",
 			Description: "Delete a DNS record from a zone (idempotent).",
-			InputSchema: objectSchema(map[string]any{
+			InputSchema: mcptool.ObjectSchema(map[string]any{
 				"zone_id":   map[string]any{"type": "string"},
 				"record_id": map[string]any{"type": "string"},
 			}, "zone_id", "record_id"),
@@ -126,7 +126,7 @@ func recordTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "dns_check_propagation",
 			Description: "Verify a record has propagated to public DNS.",
-			InputSchema: objectSchema(map[string]any{
+			InputSchema: mcptool.ObjectSchema(map[string]any{
 				"zone_id":   map[string]any{"type": "string"},
 				"record_id": map[string]any{"type": "string"},
 			}, "zone_id", "record_id"),
@@ -159,7 +159,7 @@ func serviceHostnameTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "dns_list_service_hostnames",
 			Description: "List the hostname associations for deployed services.",
-			InputSchema: objectSchema(nil),
+			InputSchema: mcptool.ObjectSchema(nil),
 			Call: func(ctx context.Context, _ map[string]any) (any, error) {
 				return s.ListServiceHostnames(ctx)
 			},
@@ -167,7 +167,7 @@ func serviceHostnameTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "dns_get_service_hostname",
 			Description: "Get one service's hostname association.",
-			InputSchema: objectSchema(map[string]any{
+			InputSchema: mcptool.ObjectSchema(map[string]any{
 				"service": map[string]any{"type": "string"},
 			}, "service"),
 			Call: func(ctx context.Context, args map[string]any) (any, error) {
@@ -181,7 +181,7 @@ func serviceHostnameTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "dns_set_service_hostname",
 			Description: "Create a DNS record for a deployed service's hostname and associate it.",
-			InputSchema: objectSchema(map[string]any{
+			InputSchema: mcptool.ObjectSchema(map[string]any{
 				"service":  map[string]any{"type": "string"},
 				"hostname": map[string]any{"type": "string"},
 				"zone_id":  map[string]any{"type": "string"},
@@ -204,7 +204,7 @@ func serviceHostnameTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "dns_remove_service_hostname",
 			Description: "Delete a service's DNS record and drop its hostname association.",
-			InputSchema: objectSchema(map[string]any{
+			InputSchema: mcptool.ObjectSchema(map[string]any{
 				"service": map[string]any{"type": "string"},
 			}, "service"),
 			Call: func(ctx context.Context, args map[string]any) (any, error) {
@@ -226,7 +226,7 @@ func tunnelProvisioningTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "dns_tunnel_create",
 			Description: "Create a Cloudflare tunnel and store its credentials.",
-			InputSchema: objectSchema(map[string]any{
+			InputSchema: mcptool.ObjectSchema(map[string]any{
 				"name": map[string]any{"type": "string"},
 			}, "name"),
 			Call: func(ctx context.Context, args map[string]any) (any, error) {
@@ -240,7 +240,7 @@ func tunnelProvisioningTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "dns_tunnel_list",
 			Description: "List the locally-tracked Cloudflare tunnels.",
-			InputSchema: objectSchema(nil),
+			InputSchema: mcptool.ObjectSchema(nil),
 			Call: func(ctx context.Context, _ map[string]any) (any, error) {
 				return s.ListTunnels(ctx)
 			},
@@ -248,7 +248,7 @@ func tunnelProvisioningTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "dns_tunnel_get",
 			Description: "Get one locally-tracked Cloudflare tunnel.",
-			InputSchema: objectSchema(map[string]any{
+			InputSchema: mcptool.ObjectSchema(map[string]any{
 				"tunnel_id": map[string]any{"type": "string"},
 			}, "tunnel_id"),
 			Call: func(ctx context.Context, args map[string]any) (any, error) {
@@ -262,7 +262,7 @@ func tunnelProvisioningTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "dns_tunnel_route",
 			Description: "Route a public hostname into a Cloudflare tunnel (ingress + CNAME record).",
-			InputSchema: objectSchema(map[string]any{
+			InputSchema: mcptool.ObjectSchema(map[string]any{
 				"tunnel_id": map[string]any{"type": "string"},
 				"hostname":  map[string]any{"type": "string"},
 				"zone_id":   map[string]any{"type": "string"},
@@ -283,7 +283,7 @@ func tunnelProvisioningTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "dns_tunnel_rotate",
 			Description: "Rotate a tunnel's credentials and store the new token.",
-			InputSchema: objectSchema(map[string]any{
+			InputSchema: mcptool.ObjectSchema(map[string]any{
 				"tunnel_id": map[string]any{"type": "string"},
 			}, "tunnel_id"),
 			Call: func(ctx context.Context, args map[string]any) (any, error) {
@@ -297,7 +297,7 @@ func tunnelProvisioningTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "dns_tunnel_delete",
 			Description: "Delete a Cloudflare tunnel and its local association (idempotent).",
-			InputSchema: objectSchema(map[string]any{
+			InputSchema: mcptool.ObjectSchema(map[string]any{
 				"tunnel_id": map[string]any{"type": "string"},
 			}, "tunnel_id"),
 			Call: func(ctx context.Context, args map[string]any) (any, error) {
@@ -314,7 +314,7 @@ func tunnelProvisioningTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "dns_tunnel_provision_agent",
 			Description: "Provision the cloudflared service definition for a tunnel, feeding it the tunnel token.",
-			InputSchema: objectSchema(map[string]any{
+			InputSchema: mcptool.ObjectSchema(map[string]any{
 				"tunnel_id":      map[string]any{"type": "string"},
 				"project_id":     map[string]any{"type": "string"},
 				"target":         map[string]any{"type": "string"},
@@ -344,7 +344,7 @@ func tunnelProvisioningTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "dns_provision_reverse_proxy",
 			Description: "Provision a reverse-proxy service definition (Traefik) as a Nexul service.",
-			InputSchema: objectSchema(map[string]any{
+			InputSchema: mcptool.ObjectSchema(map[string]any{
 				"project_id":     map[string]any{"type": "string"},
 				"target":         map[string]any{"type": "string"},
 				"name":           map[string]any{"type": "string"},
@@ -383,7 +383,7 @@ func gatewayTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "dns_gateway_create",
 			Description: "Create a gateway (tunnel or proxy) giving a docker network internet reachability; provisions the backing service.",
-			InputSchema: objectSchema(map[string]any{
+			InputSchema: mcptool.ObjectSchema(map[string]any{
 				"kind":           map[string]any{"type": "string", "enum": []string{"tunnel", "proxy"}},
 				"docker_network": map[string]any{"type": "string"},
 				"zone_id":        map[string]any{"type": "string"},
@@ -410,7 +410,7 @@ func gatewayTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "dns_gateway_list",
 			Description: "List the locally-tracked gateways.",
-			InputSchema: objectSchema(nil),
+			InputSchema: mcptool.ObjectSchema(nil),
 			Call: func(ctx context.Context, _ map[string]any) (any, error) {
 				return s.ListGateways(ctx)
 			},
@@ -418,7 +418,7 @@ func gatewayTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "dns_gateway_delete",
 			Description: "Delete a gateway (deprovisions its backing service). Fails if it still has exposures.",
-			InputSchema: objectSchema(map[string]any{
+			InputSchema: mcptool.ObjectSchema(map[string]any{
 				"gateway_id": map[string]any{"type": "string"},
 			}, "gateway_id"),
 			Call: func(ctx context.Context, args map[string]any) (any, error) {
@@ -443,7 +443,7 @@ func exposureTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "exposure_create",
 			Description: "Route a hostname through a gateway to a container (ingress rule + CNAME for a tunnel gateway, A/AAAA record for a proxy gateway). Without gateway_id, reuses or provisions one on the container's machine.",
-			InputSchema: objectSchema(map[string]any{
+			InputSchema: mcptool.ObjectSchema(map[string]any{
 				"gateway_id": map[string]any{"type": "string"},
 				"hostname":   map[string]any{"type": "string"},
 				"service_id": map[string]any{"type": "string"},
@@ -469,7 +469,7 @@ func exposureTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "dns_exposure_list",
 			Description: "List the locally-tracked exposures.",
-			InputSchema: objectSchema(nil),
+			InputSchema: mcptool.ObjectSchema(nil),
 			Call: func(ctx context.Context, _ map[string]any) (any, error) {
 				return s.ListExposures(ctx)
 			},
@@ -477,7 +477,7 @@ func exposureTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "exposure_delete",
 			Description: "Remove an exposure (ingress rule / DNS record) and its local association.",
-			InputSchema: objectSchema(map[string]any{
+			InputSchema: mcptool.ObjectSchema(map[string]any{
 				"exposure_id": map[string]any{"type": "string"},
 			}, "exposure_id"),
 			Call: func(ctx context.Context, args map[string]any) (any, error) {
@@ -513,14 +513,6 @@ func stringSliceArg(v any) []string {
 		}
 	}
 	return out
-}
-
-func objectSchema(properties map[string]any, required ...string) map[string]any {
-	schema := map[string]any{"type": "object", "properties": properties}
-	if len(required) > 0 {
-		schema["required"] = required
-	}
-	return schema
 }
 
 func intArg(v any) int {

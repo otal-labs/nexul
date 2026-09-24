@@ -16,7 +16,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "access_list_grants",
 			Description: "List permission grants on a document, or the user exclusions on a play (resource_type: play).",
-			InputSchema: objectSchema(map[string]any{
+			InputSchema: mcptool.ObjectSchema(map[string]any{
 				"doc_id":        map[string]any{"type": "string"},
 				"resource_type": map[string]any{"type": "string", "enum": []string{"doc", "play"}},
 				"resource_id":   map[string]any{"type": "string"},
@@ -44,7 +44,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 			Name: "access_set_grants",
 			Description: "Grant or revoke permission actions on documents for users, or deny/undeny plays:run " +
 				"on plays (resource_type: play, resource_ids), in one operation.",
-			InputSchema: objectSchema(map[string]any{
+			InputSchema: mcptool.ObjectSchema(map[string]any{
 				"resource_type": map[string]any{"type": "string", "enum": []string{"doc", "play"}},
 				"doc_ids":       map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
 				"resource_ids":  map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
@@ -91,14 +91,6 @@ func MCPTools(s *Service) []mcptool.Tool {
 			},
 		},
 	}
-}
-
-func objectSchema(properties map[string]any, required ...string) map[string]any {
-	schema := map[string]any{"type": "object", "properties": properties}
-	if len(required) > 0 {
-		schema["required"] = required
-	}
-	return schema
 }
 
 func actorIDFromCtx(ctx context.Context) string {

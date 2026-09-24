@@ -14,7 +14,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 			Description: "List a workspace's plays, sorted by label. Pass type (and project_id, stage for a " +
 				"ticket play) to switch to the applicable list for the caller: enabled, not excluded for the " +
 				"project, matching stage, and not denied plays:run.",
-			InputSchema: objectSchema(map[string]any{
+			InputSchema: mcptool.ObjectSchema(map[string]any{
 				"workspace_id": map[string]any{"type": "string"},
 				"project_id":   map[string]any{"type": "string"},
 				"type":         map[string]any{"type": "string", "enum": targetTypeNames},
@@ -36,7 +36,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 			Name: "play_create",
 			Description: "Create a play in a workspace: label (button text), type (ticket, doc, or interview), description, " +
 				"instructions, enabled, show-when stage (ticket plays only), excluded projects.",
-			InputSchema: objectSchema(map[string]any{
+			InputSchema: mcptool.ObjectSchema(map[string]any{
 				"workspace_id":         map[string]any{"type": "string"},
 				"label":                map[string]any{"type": "string"},
 				"type":                 map[string]any{"type": "string", "enum": targetTypeNames},
@@ -64,7 +64,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 			Name: "play_update",
 			Description: "Replace a play's owner-edited fields: label, description, instructions, enabled, " +
 				"show-when stage (ticket plays only), excluded projects. Type is immutable after create.",
-			InputSchema: objectSchema(map[string]any{
+			InputSchema: mcptool.ObjectSchema(map[string]any{
 				"workspace_id":         map[string]any{"type": "string"},
 				"id":                   map[string]any{"type": "string"},
 				"label":                map[string]any{"type": "string"},
@@ -94,7 +94,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "play_delete",
 			Description: "Delete a play.",
-			InputSchema: objectSchema(map[string]any{
+			InputSchema: mcptool.ObjectSchema(map[string]any{
 				"workspace_id": map[string]any{"type": "string"},
 				"id":           map[string]any{"type": "string"},
 			}, "workspace_id", "id"),
@@ -161,12 +161,4 @@ func stringsArg(v any) []string {
 		}
 	}
 	return out
-}
-
-func objectSchema(properties map[string]any, required ...string) map[string]any {
-	schema := map[string]any{"type": "object", "properties": properties}
-	if len(required) > 0 {
-		schema["required"] = required
-	}
-	return schema
 }
