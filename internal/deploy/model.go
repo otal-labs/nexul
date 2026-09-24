@@ -226,8 +226,7 @@ func (r BranchDeployRule) CloneSuffix(branch string) string {
 	return r.NameSuffix
 }
 
-// HostnameLabel is what a hostname template's {branch} becomes: the slug of the part a wildcard matched
-// (feature/dot.test under feature/* is dot-test), or of the whole branch for an exact rule or an empty match.
+// HostnameLabel slugs the part a wildcard matched (feature/dot.test under feature/* is dot-test), else the whole branch.
 func (r BranchDeployRule) HostnameLabel(branch string) string {
 	if r.IsWildcard() {
 		if label := Slug(strings.TrimPrefix(branch, strings.TrimSuffix(r.Pattern, "*")), dnsLabelMaxLen); label != "" {

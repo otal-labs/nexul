@@ -119,8 +119,7 @@ export const useFetchAllContainers = () => {
   return { data, isPending, error };
 };
 
-// The docker networks on machine with what the runner observed on each and whether a gateway serves it;
-// ownNetwork always appears.
+// A machine's docker networks with what runs on each and whether a gateway serves it; ownNetwork always appears.
 export const useFetchMachineNetworks = (machine: string, ownNetwork: string) => {
   const stacks = useFetchStacks();
   const containers = useFetchAllContainers();

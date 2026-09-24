@@ -9,8 +9,7 @@ export interface MachineNetwork {
 
 const builtinNetworks = new Set(["bridge", "host", "none"]);
 
-// Every docker network the runner has seen a container join on machine, with the services on it, sorted by name.
-// always is listed even before anything on it has been observed (a stack whose first deploy is still running).
+// Observed docker networks with their services, sorted; `always` is listed even before its first deploy lands.
 export const machineNetworks = (
   stacks: Stack[],
   containers: Container[],
