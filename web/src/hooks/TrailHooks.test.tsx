@@ -45,6 +45,7 @@ const trail = (overrides: Partial<Trail> = {}): Trail => ({
   started_at: "2026-09-17T10:00:00Z",
   ended_at: "2026-09-17T10:05:00Z",
   last_error: "",
+  failure_reason: "",
   reply_message_id: "",
   activity: [],
   ...overrides,

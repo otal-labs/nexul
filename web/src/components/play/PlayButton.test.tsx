@@ -54,6 +54,7 @@ const runningTrail = (starterId: string): Trail => ({
   started_at: "2026-09-17T10:00:00Z",
   ended_at: null,
   last_error: "",
+  failure_reason: "",
   reply_message_id: "",
   activity: [],
 });

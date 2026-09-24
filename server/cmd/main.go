@@ -239,6 +239,8 @@ var livePushTopics = []string{
 	pairing.TopicSetupTurnChanged,
 	pairing.TopicSetupFinished,
 	pairing.TopicSetupTurnActivity,
+	auth.TopicTokenMinted,
+	auth.TopicTokenRevoked,
 }
 
 func fail(err error) {

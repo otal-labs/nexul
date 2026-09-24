@@ -68,9 +68,9 @@ func (v *TokenVerifier) VerifyCheck(ctx context.Context, fields map[string]strin
 	case "tunnel_edit":
 		return "", v.requireWrite(ctx, token, "accounts/"+url.PathEscape(account)+"/cfd_tunnel", "Account → Cloudflare Tunnel: Edit")
 	case "access_apps_edit":
-		return "", v.requireAccessEdit(ctx, token, account, "apps", accessAppsPermission)
+		return "", v.requireAccessEdit(ctx, token, http.MethodPost, "accounts/"+url.PathEscape(account)+"/access/apps", accessAppsPermission)
 	case "access_tokens_edit":
-		return "", v.requireAccessEdit(ctx, token, account, "service_tokens", accessTokensPermission)
+		return "", v.requireAccessEdit(ctx, token, http.MethodDelete, "accounts/"+url.PathEscape(account)+"/access/service_tokens/"+nilUUID, accessTokensPermission)
 	default:
 		return "", fmt.Errorf("%w: unknown check %q", apperrs.ErrInvalid, key)
 	}
@@ -173,14 +173,13 @@ const (
 	dnsEditPermission      = "Zone → DNS: Edit"
 	accessAppsPermission   = "Account → Access: Apps and Policies: Edit"
 	accessTokensPermission = "Account → Access: Service Tokens: Edit"
-	// nilUUID names no real app or token, so the delete probe cannot change or mint anything.
+	// nilUUID names no real service token, so the delete probe cannot change or mint anything.
 	nilUUID = "00000000-0000-0000-0000-000000000000"
 )
 
-// requireAccessEdit proves an Access Edit permission by deleting an object that cannot exist: 404 means allowed.
-func (v *TokenVerifier) requireAccessEdit(ctx context.Context, token, accountID, resource, permission string) error {
-	path := "accounts/" + url.PathEscape(accountID) + "/access/" + resource + "/" + nilUUID
-	status, env, err := v.send(ctx, http.MethodDelete, token, path)
+// requireAccessEdit probes Access Edit with a request Cloudflare authorises before validating (not an app delete, which 404s unpermitted).
+func (v *TokenVerifier) requireAccessEdit(ctx context.Context, token, method, path, permission string) error {
+	status, env, err := v.send(ctx, method, token, path)
 	if err != nil {
 		return err
 	}

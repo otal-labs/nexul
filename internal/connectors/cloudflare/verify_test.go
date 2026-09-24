@@ -144,8 +144,8 @@ func TestTokenVerifier_ProbesWithAWriteNotARead(t *testing.T) {
 	require.NoError(t, err)
 	_, err = NewTokenVerifier(nil).VerifyCheck(context.Background(), fields, "access_tokens_edit")
 	require.NoError(t, err)
-	assert.Equal(t, []string{"DELETE /accounts/acct-1/access/apps/" + nilUUID, "DELETE /accounts/acct-1/access/service_tokens/" + nilUUID}, methods,
-		"the Access probes delete an object that cannot exist, so verifying never mints a token")
+	assert.Equal(t, []string{"POST /accounts/acct-1/access/apps", "DELETE /accounts/acct-1/access/service_tokens/" + nilUUID}, methods,
+		"apps take an empty create, since deleting a missing app answers 404 even without the permission; tokens a delete of one that cannot exist")
 }
 
 func TestTokenVerifier_ProviderOutageIsNotInvalid(t *testing.T) {
@@ -168,9 +168,11 @@ func TestTokenVerifier_AccessChecks(t *testing.T) {
 		expect string
 	}{
 		{"zero trust disabled", http.StatusNotFound, `{"success":false,"errors":[{"code":9999,"message":"Unable to find your Access organization"}]}`, "Zero Trust is not enabled"},
+		{"forbidden", http.StatusForbidden, `{"success":false,"errors":[{"code":1010,"error":"auth.forbidden"}]}`, "the token is missing Account → Access"},
 		{"denied on 200", http.StatusOK, `{"success":false,"errors":[{"code":10000,"message":"Authentication error"}]}`, "the token is missing Account → Access"},
 		{"outage", http.StatusBadGateway, `<html>bad gateway</html>`, "status 502"},
 		{"allowed", http.StatusNotFound, `{"success":false,"errors":[{"code":12135,"message":"access.api.error.not_found"}]}`, ""},
+		{"allowed, empty create rejected", http.StatusBadRequest, `{"success":false,"errors":[{"code":12130,"message":"access.api.error.invalid_request: app type is missing or invalid"}]}`, ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

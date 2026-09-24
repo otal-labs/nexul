@@ -6,6 +6,8 @@ export interface ApiErrorBody {
   message: string;
   code: string;
   errors?: Record<string, string[]>;
+  // Mirrors httpx.Envelope.Details: the error's structured side, shaped per error (for example pairing.RefusalDetails).
+  details?: unknown;
 }
 
 const DEFAULT_API_URL = "http://localhost:8080";

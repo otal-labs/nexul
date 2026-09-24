@@ -51,6 +51,19 @@ func TestPlayTrailsRepo_Create_Get_RoundTrip(t *testing.T) {
 	assert.Empty(t, got.HarnessSessionID)
 }
 
+func TestPlayTrailsRepo_Create_FailureReasonRoundTrips(t *testing.T) {
+	t.Parallel()
+	s := newTrailStore(t)
+	tr := newTestTrail("tr-1", time.Date(2026, 9, 17, 9, 0, 0, 0, time.UTC))
+	tr.State, tr.FailureReason, tr.Provider = plays.TrailFailed, "setup_required", "codex"
+	require.NoError(t, s.PlayTrails.CreateTrail(context.Background(), tr))
+
+	got, err := s.PlayTrails.GetTrail(context.Background(), "tr-1")
+	require.NoError(t, err)
+	assert.Equal(t, "setup_required", got.FailureReason)
+	assert.Equal(t, "codex", got.Provider)
+}
+
 func TestPlayTrailsRepo_Create_EmptyMoveTo_IsNull(t *testing.T) {
 	t.Parallel()
 	s := newTrailStore(t)

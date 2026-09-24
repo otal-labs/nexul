@@ -838,6 +838,7 @@ var catalogSchemas = map[string]string{
 			"turn_id": {"type": "string"},
 			"provider": {"type": "string"},
 			"provider_name": {"type": "string"},
+			"model": {"type": "string"},
 			"state": {"type": "string", "enum": ["running", "confirmed", "failed"]},
 			"status": {"type": "string"},
 			"started_at": {"type": "string", "format": "date-time"},
@@ -877,7 +878,8 @@ var catalogSchemas = map[string]string{
 			"run_id": {"type": "string"},
 			"turn_id": {"type": "string"},
 			"provider": {"type": "string"},
-			"status": {"type": "string"}
+			"status": {"type": "string"},
+			"call_id": {"type": "string"}
 		}
 	}`,
 	"personal_access_token.minted": `{

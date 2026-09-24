@@ -35,6 +35,7 @@ const trail = (overrides: Partial<Trail>): Trail => ({
   started_at: "2026-09-24T10:00:00Z",
   ended_at: "2026-09-24T10:00:00Z",
   last_error: "the provider is not confirmed on this computer",
+  failure_reason: "",
   reply_message_id: "",
   activity: [],
   ...overrides,

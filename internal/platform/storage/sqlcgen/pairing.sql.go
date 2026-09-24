@@ -219,7 +219,7 @@ func (q *Queries) ListPairingProviderSetups(ctx context.Context, computerID stri
 }
 
 const listPairingSetupTurnsLatest = `-- name: ListPairingSetupTurnsLatest :many
-SELECT t.id, t.run_id, t.provider, t.provider_name, t.state, t.status, t.updated_at FROM pairing_setup_turns t
+SELECT t.id, t.run_id, t.provider, t.provider_name, t.model, t.state, t.status, t.updated_at FROM pairing_setup_turns t
 WHERE t.computer_id = ?1 AND t.id = (
   SELECT l.id FROM pairing_setup_turns l WHERE l.computer_id = ?1 AND l.provider = t.provider
   ORDER BY l.started_at DESC, l.id DESC LIMIT 1
@@ -232,6 +232,7 @@ type ListPairingSetupTurnsLatestRow struct {
 	RunID        string
 	Provider     string
 	ProviderName string
+	Model        string
 	State        string
 	Status       string
 	UpdatedAt    int64
@@ -252,6 +253,7 @@ func (q *Queries) ListPairingSetupTurnsLatest(ctx context.Context, computerID st
 			&i.RunID,
 			&i.Provider,
 			&i.ProviderName,
+			&i.Model,
 			&i.State,
 			&i.Status,
 			&i.UpdatedAt,
@@ -412,8 +414,8 @@ func (q *Queries) SavePairingProviderSetup(ctx context.Context, arg SavePairingP
 }
 
 const savePairingSetupTurn = `-- name: SavePairingSetupTurn :exec
-INSERT INTO pairing_setup_turns (id, run_id, computer_id, provider, provider_name, state, status, transcript, started_at, updated_at, ended_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO pairing_setup_turns (id, run_id, computer_id, provider, provider_name, model, state, status, transcript, started_at, updated_at, ended_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(id) DO UPDATE SET
   state = excluded.state, status = excluded.status, transcript = excluded.transcript, updated_at = excluded.updated_at,
   ended_at = excluded.ended_at
@@ -425,6 +427,7 @@ type SavePairingSetupTurnParams struct {
 	ComputerID   string
 	Provider     string
 	ProviderName string
+	Model        string
 	State        string
 	Status       string
 	Transcript   string
@@ -440,6 +443,7 @@ func (q *Queries) SavePairingSetupTurn(ctx context.Context, arg SavePairingSetup
 		arg.ComputerID,
 		arg.Provider,
 		arg.ProviderName,
+		arg.Model,
 		arg.State,
 		arg.Status,
 		arg.Transcript,

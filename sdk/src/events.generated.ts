@@ -18,8 +18,8 @@ export interface EventPayloads {
   "computer.paired": { "computer_id": string; "user_id": string; "server_url": string; "harness_version"?: string; "token_expires_at": string; };
   "computer.setup_confirmed": { "computer_id": string; "user_id": string; "provider"?: string; "confirmed_at"?: string; "skills"?: string[]; };
   "computer.setup_finished": { "computer_id": string; "user_id": string; "run_id": string; "confirmed": boolean; "providers": { "provider": string; "state": "running" | "confirmed" | "failed"; "status": string; }[]; };
-  "computer.setup_turn_activity": { "computer_id": string; "user_id": string; "run_id": string; "turn_id": string; "provider": string; "status": string; };
-  "computer.setup_turn_changed": { "computer_id": string; "user_id": string; "run_id": string; "turn_id": string; "provider": string; "provider_name": string; "state": "running" | "confirmed" | "failed"; "status": string; "started_at": string; "ended_at"?: string; };
+  "computer.setup_turn_activity": { "computer_id": string; "user_id": string; "run_id": string; "turn_id": string; "provider": string; "status": string; "call_id"?: string; };
+  "computer.setup_turn_changed": { "computer_id": string; "user_id": string; "run_id": string; "turn_id": string; "provider": string; "provider_name": string; "model"?: string; "state": "running" | "confirmed" | "failed"; "status": string; "started_at": string; "ended_at"?: string; };
   "computer.setup_unconfirmed": { "computer_id": string; "user_id": string; "provider"?: string; "confirmed_at"?: string; "skills"?: string[]; };
   "computer.tunnel_created": { "computer_id": string; "user_id": string; "tunnel_id": string; "hostname": string; };
   "computer.tunnel_removed": { "computer_id": string; "user_id": string; "tunnel_id": string; "hostname": string; };
@@ -212,8 +212,8 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "computer.paired": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","server_url":"fixture-server_url","harness_version":"fixture-harness_version","token_expires_at":"2026-01-01T00:00:00Z"},
   "computer.setup_confirmed": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","provider":"fixture-provider","confirmed_at":"2026-01-01T00:00:00Z","skills":["fixture-skills"]},
   "computer.setup_finished": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","run_id":"fixture-run_id","confirmed":false,"providers":[{"provider":"fixture-provider","state":"running","status":"fixture-status"}]},
-  "computer.setup_turn_activity": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","run_id":"fixture-run_id","turn_id":"fixture-turn_id","provider":"fixture-provider","status":"fixture-status"},
-  "computer.setup_turn_changed": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","run_id":"fixture-run_id","turn_id":"fixture-turn_id","provider":"fixture-provider","provider_name":"fixture-provider_name","state":"running","status":"fixture-status","started_at":"2026-01-01T00:00:00Z","ended_at":"2026-01-01T00:00:00Z"},
+  "computer.setup_turn_activity": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","run_id":"fixture-run_id","turn_id":"fixture-turn_id","provider":"fixture-provider","status":"fixture-status","call_id":"fixture-call_id"},
+  "computer.setup_turn_changed": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","run_id":"fixture-run_id","turn_id":"fixture-turn_id","provider":"fixture-provider","provider_name":"fixture-provider_name","model":"fixture-model","state":"running","status":"fixture-status","started_at":"2026-01-01T00:00:00Z","ended_at":"2026-01-01T00:00:00Z"},
   "computer.setup_unconfirmed": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","provider":"fixture-provider","confirmed_at":"2026-01-01T00:00:00Z","skills":["fixture-skills"]},
   "computer.tunnel_created": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","tunnel_id":"fixture-tunnel_id","hostname":"fixture-hostname"},
   "computer.tunnel_removed": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","tunnel_id":"fixture-tunnel_id","hostname":"fixture-hostname"},

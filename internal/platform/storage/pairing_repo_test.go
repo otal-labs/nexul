@@ -492,10 +492,14 @@ func TestPairingRepo_ListLatestSetupTurns_NewestPerProvider(t *testing.T) {
 	save("t1", "r1", "codex", pairing.SetupTurnFailed, at)
 	save("t2", "r1", "claudeagent", pairing.SetupTurnConfirmed, at.Add(time.Minute))
 	save("t3", "r2", "codex", pairing.SetupTurnConfirmed, at.Add(time.Hour))
+	picked := pairing.SetupTurn{ID: "t4", RunID: "r3", ComputerID: "c1", UserID: "u1", Provider: "opencode", ProviderName: "OpenCode", Model: "big-pickle",
+		State: pairing.SetupTurnRunning, StartedAt: at, UpdatedAt: at}
+	require.NoError(t, s.Pairing.SaveSetupTurn(t.Context(), picked))
 
 	got, err := s.Pairing.ListLatestSetupTurns(t.Context(), "c1")
 	require.NoError(t, err)
-	require.Len(t, got, 2)
+	require.Len(t, got, 3)
+	assert.Equal(t, "big-pickle", got[2].Model, "the picked model reads back with the turn")
 	assert.Equal(t, pairing.SetupTurnSummary{RunID: "r1", TurnID: "t2", Provider: "claudeagent", ProviderName: "claudeagent", State: pairing.SetupTurnConfirmed, Status: "confirmed", UpdatedAt: at.Add(time.Minute + time.Second)}, got[0])
 	assert.Equal(t, "t3", got[1].TurnID)
 	assert.Equal(t, "r2", got[1].RunID)

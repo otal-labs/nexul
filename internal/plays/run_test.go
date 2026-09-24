@@ -164,7 +164,7 @@ func TestRun_Refusals_LeaveNoTrail(t *testing.T) {
 func TestRun_SetupNotConfirmed_FailsOnPressWithTheChatRefusal(t *testing.T) {
 	f := newRunnerFixture()
 	f.harness.err = &pairing.NotConfiguredError{Reason: pairing.ReasonSetupRequired, Provider: "Codex", Computer: "Onik's laptop"}
-	want := "@Agent can't use Codex on Onik's laptop until its setup is done — run setup for Onik's laptop in Settings → Pairing."
+	want := "@Agent can't use Codex on Onik's laptop until its setup is done — run setup for Onik's laptop in Settings → T3 pairing."
 
 	_, err := f.runner.Run(ctxAs(starter), ticketRun())
 
@@ -175,6 +175,38 @@ func TestRun_SetupNotConfirmed_FailsOnPressWithTheChatRefusal(t *testing.T) {
 	assert.Equal(t, TrailFailed, trails[0].State)
 	assert.Equal(t, want, trails[0].LastError)
 	assert.Empty(t, f.threads.snapshot(), "nothing reaches the harness or the thread")
+}
+
+func TestRun_HarnessRefusal_KeepsTheFixOnTheFailedTrail(t *testing.T) {
+	setup := &pairing.NotConfiguredError{Reason: pairing.ReasonSetupRequired, Provider: "Codex", Computer: "mint", ComputerID: "c-mint", ProviderID: "codex"}
+	tests := []struct {
+		name         string
+		err          error
+		wantReason   string
+		wantComputer string
+		wantProvider string
+	}{
+		{"setup refusal", &HarnessRefusal{Reason: "setup_required", ComputerID: "c-mint", Provider: "codex", Err: setup}, "setup_required", "c-mint", "codex"},
+		{"wrapped refusal", fmt.Errorf("resolve: %w", &HarnessRefusal{Reason: "unpaired", Err: errors.New("no computer")}), "unpaired", "", ""},
+		{"plain error", errors.New("db down"), "", "", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := newRunnerFixture()
+			f.harness.err = tt.err
+
+			_, err := f.runner.Run(ctxAs(starter), ticketRun())
+
+			require.Error(t, err)
+			trails := f.trails.all()
+			require.Len(t, trails, 1)
+			assert.Equal(t, TrailFailed, trails[0].State)
+			assert.Equal(t, tt.err.Error(), trails[0].LastError)
+			assert.Equal(t, tt.wantReason, trails[0].FailureReason)
+			assert.Equal(t, tt.wantComputer, trails[0].ComputerID)
+			assert.Equal(t, tt.wantProvider, trails[0].Provider)
+		})
+	}
 }
 
 func TestRun_HarnessOffline_FailsOnPressWithTheChatRefusal(t *testing.T) {

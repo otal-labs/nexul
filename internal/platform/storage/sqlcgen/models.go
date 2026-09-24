@@ -550,6 +550,7 @@ type PairingSetupTurn struct {
 	StartedAt    int64
 	UpdatedAt    int64
 	EndedAt      sql.NullInt64
+	Model        string
 }
 
 type PairingUserDefault struct {
@@ -622,6 +623,7 @@ type PlayTrail struct {
 	Provider           string
 	Model              string
 	Question           sql.NullString
+	FailureReason      string
 }
 
 type ProcessedEvent struct {

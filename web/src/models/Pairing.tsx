@@ -1,4 +1,7 @@
+import type { AxiosError } from "axios";
 import { z } from "zod";
+
+import type { ApiErrorBody } from "@/api/client";
 
 // The bearer token never reaches the browser — only the metadata settings needs.
 export interface Computer {
@@ -43,6 +46,15 @@ export interface TunnelStatus {
 // Go's zero time: a computer tunnel holds no session until T3 Code pairs over its hostname.
 export const stillPairing = (computer: Computer) => !(Date.parse(computer.token_expires_at) > 0);
 
+// T3 Code lets no client end its own session, so a removed or replaced pairing's session lives on until it expires.
+export const leftoverSessionNote = (computer: Computer, replaced = false): string | undefined => {
+  const expiresAt = Date.parse(computer.token_expires_at);
+  if (!(expiresAt > Date.now())) return undefined;
+  const which = replaced ? "previous session" : "session";
+  const until = new Date(expiresAt).toLocaleDateString();
+  return `Nexul's ${which} on this computer stays valid until ${until}. Revoke it on the computer with \`t3 auth session list\`, then \`t3 auth session revoke <id>\`.`;
+};
+
 export const tunnelOnline = (status: TunnelStatus) => status.tunnel === "healthy" || status.tunnel === "degraded";
 export const tunnelConnected = (status: TunnelStatus) => tunnelOnline(status) && status.harness_reachable;
 
@@ -64,6 +76,8 @@ export interface SetupTurnSummary {
   provider_name: string;
   state: SetupTurnState;
   status: string;
+  // The model slug the turn ran on; empty means the provider's own default.
+  model?: string;
   updated_at: string;
 }
 
@@ -85,7 +99,7 @@ export interface ComputerSetup {
 export interface SetupRun {
   run_id: string;
   computer_id: string;
-  providers: { provider: string; name: string }[];
+  providers: { provider: string; name: string; model?: string }[];
 }
 
 // Queued: in the run just started, its turn not begun yet.
@@ -94,6 +108,7 @@ export interface SetupRunRow {
   name: string;
   state: SetupTurnState | "queued";
   status: string;
+  model: string;
   turnId?: string;
 }
 
@@ -102,6 +117,7 @@ const turnRow = (t: SetupTurnSummary): SetupRunRow => ({
   name: t.provider_name || t.provider,
   state: t.state,
   status: t.status,
+  model: t.model ?? "",
   turnId: t.turn_id,
 });
 
@@ -110,11 +126,28 @@ export const setupRunRows = (turns: SetupTurnSummary[], run: SetupRun | undefine
   const inRun = (run?.providers ?? []).map((p): SetupRunRow => {
     const turn = turns.find((t) => t.provider === p.provider && t.run_id === run?.run_id);
     if (turn) return turnRow(turn);
-    return { provider: p.provider, name: p.name, state: "queued", status: "Waiting for its turn" };
+    return { provider: p.provider, name: p.name, state: "queued", status: "Waiting for its turn", model: p.model ?? "" };
   });
   const rest = turns.filter((t) => !inRun.some((r) => r.provider === t.provider)).map(turnRow);
   return [...inRun, ...rest];
 };
+
+// One provider the Set up step picks a model for, keyed by driver kind like the setup turns; "" is the provider's own default.
+export interface SetupModelChoice {
+  provider: string;
+  name: string;
+  models: HarnessProviderModel[];
+  preselected: string;
+}
+
+// The harness's first instance of each driver, as setup runs them; the defaults' model wins on the default provider.
+export const setupModelChoices = (providers: HarnessProvider[], defaults: PairingDefaults | undefined): SetupModelChoice[] =>
+  providers.flatMap((p, i) => {
+    if (providers.findIndex((o) => o.driver.toLowerCase() === p.driver.toLowerCase()) !== i) return [];
+    const fromDefaults = defaults?.provider === p.id ? p.models.find((m) => m.slug === defaults.model)?.slug : undefined;
+    const preselected = fromDefaults ?? p.models.find((m) => m.is_default)?.slug ?? "";
+    return [{ provider: p.driver.toLowerCase(), name: p.name, models: p.models, preselected }];
+  });
 
 export const setupRunning = (rows: SetupRunRow[]) => rows.some((r) => r.state === "running" || r.state === "queued");
 
@@ -137,6 +170,29 @@ export const providerSetupLines = (setup: ComputerSetup): ProviderSetupLine[] =>
     if (turn?.state === "failed") return { ...base, state: "failed" };
     return { ...base, state: "unconfirmed" };
   });
+};
+
+// Mirrors pairing.RefusalDetails, the error envelope's details when agent work is refused at target resolution.
+export interface RefusalDetails {
+  reason: string;
+  computer_id?: string;
+  computer?: string;
+  provider_id?: string;
+  provider?: string;
+}
+
+// Mirrors pairing.ReasonSetupRequired, the refusal whose fix is running setup on the computer it names.
+export const SETUP_REQUIRED_REASON = "setup_required";
+
+// Settings → T3 pairing with the computer's Set up step open.
+export const computerSetupPath = (computerId: string) =>
+  `/settings?section=pairing&setup=${encodeURIComponent(computerId)}`;
+
+// The computer a setup refusal names, read from the error envelope's details; undefined for any other error.
+export const setupRefusalComputerId = (error: unknown): string | undefined => {
+  const details = (error as AxiosError<ApiErrorBody> | undefined)?.response?.data?.details as RefusalDetails | undefined;
+  if (details?.reason !== SETUP_REQUIRED_REASON) return undefined;
+  return details.computer_id;
 };
 
 // What the instance needs before any computer can be reached through a tunnel; mirrors pairing.PrerequisiteReason.

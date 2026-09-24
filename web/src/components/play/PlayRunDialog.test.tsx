@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ContextAwareConfirmation } from "react-confirm";
+import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
@@ -202,6 +203,46 @@ describe("PlayRunDialog", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("over the 60,000 per-run ceiling");
     expect(onClose).not.toHaveBeenCalled();
     expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("offers the refused computer's setup when the run is refused for setup", async () => {
+    const user = userEvent.setup();
+    mockApi(["plays:run", "tickets:write"]);
+    vi.mocked(api.post).mockRejectedValue({
+      response: {
+        status: 400,
+        data: {
+          message: "@Agent can't use Claude on Onik's PC until its setup is done — run setup for Onik's PC in Settings → T3 pairing.",
+          code: "INVALID",
+          details: { reason: "setup_required", computer_id: "c-1", computer: "Onik's PC", provider_id: "claude", provider: "Claude" },
+        },
+      },
+    });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <MemoryRouter>
+        <QueryClientProvider client={client}>
+          <PlayRunDialog play={play} projectId="p-1" targetType="ticket" targetId="t-1" open onClose={vi.fn()} />
+        </QueryClientProvider>
+      </MemoryRouter>,
+    );
+
+    await user.click(await screen.findByRole("button", { name: "Run Fix with AI · then In review" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("until its setup is done");
+    expect(screen.getByRole("link", { name: "Set up Onik's PC" })).toHaveAttribute("href", "/settings?section=pairing&setup=c-1");
+  });
+
+  it("offers no setup link for a refusal that names no computer to set up", async () => {
+    const user = userEvent.setup();
+    mockApi(["plays:run", "tickets:write"]);
+    vi.mocked(api.post).mockRejectedValue({
+      response: { status: 400, data: { message: "pairing not configured: unpaired", code: "INVALID", details: { reason: "unpaired" } } },
+    });
+    renderDialog();
+
+    await user.click(await screen.findByRole("button", { name: "Run Fix with AI · then In review" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("pairing not configured");
+    expect(screen.queryByRole("link", { name: /Set up/ })).not.toBeInTheDocument();
   });
 
   it("preselects the resolved harness when the caller never ran this play here before", async () => {

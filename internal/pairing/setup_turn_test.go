@@ -52,6 +52,7 @@ type setupFixture struct {
 	mu          sync.Mutex
 	titles      []string
 	prompts     []string
+	models      []string
 	fail        map[string]harness.Update
 	skipConfirm map[string]bool
 	interrupted int
@@ -104,6 +105,7 @@ func (f *setupFixture) startTurn(ctx context.Context, target harness.Target, tit
 	f.mu.Lock()
 	f.titles = append(f.titles, title)
 	f.prompts = append(f.prompts, prompts.Full)
+	f.models = append(f.models, target.Provider+"="+target.Model)
 	last, failing := f.fail[title]
 	skip := f.skipConfirm[title]
 	f.mu.Unlock()
@@ -182,7 +184,7 @@ func (f *setupFixture) resolveForPlay(t *testing.T, provider string) error {
 
 func (f *setupFixture) start(t *testing.T) *SetupRun {
 	t.Helper()
-	run, err := f.svc.StartSetup(t.Context(), "u1", f.computer.ID)
+	run, err := f.svc.StartSetup(t.Context(), "u1", f.computer.ID, nil)
 	require.NoError(t, err)
 	f.svc.setupRuns.Wait()
 	return run
@@ -272,7 +274,7 @@ func TestStartSetup_OneProviderFails_OthersConfirmAndItRetriesAlone(t *testing.T
 
 	delete(f.fail, "Nexul setup: Codex")
 	before := len(f.sessionTitles())
-	retry, err := f.svc.RetrySetupProvider(t.Context(), "u1", f.computer.ID, "Codex")
+	retry, err := f.svc.RetrySetupProvider(t.Context(), "u1", f.computer.ID, "Codex", "")
 	require.NoError(t, err)
 	f.svc.setupRuns.Wait()
 
@@ -389,7 +391,7 @@ func TestStartSetup_ErrorPaths(t *testing.T) {
 		wantErr error
 	}{
 		{"another user's computer", nil, func(ctx context.Context, f *setupFixture) error {
-			_, err := f.svc.StartSetup(ctx, "u2", f.computer.ID)
+			_, err := f.svc.StartSetup(ctx, "u2", f.computer.ID, nil)
 			return err
 		}, apperrs.ErrNotFound},
 		{"no instance url", func(f *setupFixture) { f.svc.instance = fakeInstance{} }, nil, apperrs.ErrInvalid},
@@ -402,11 +404,11 @@ func TestStartSetup_ErrorPaths(t *testing.T) {
 			f.exch.ListProvidersFn = func(context.Context, harness.Session) ([]harness.Provider, error) { return nil, nil }
 		}, nil, apperrs.ErrInvalid},
 		{"retry a provider the harness does not list", nil, func(ctx context.Context, f *setupFixture) error {
-			_, err := f.svc.RetrySetupProvider(ctx, "u1", f.computer.ID, "grok")
+			_, err := f.svc.RetrySetupProvider(ctx, "u1", f.computer.ID, "grok", "")
 			return err
 		}, apperrs.ErrInvalid},
 		{"retry without a provider", nil, func(ctx context.Context, f *setupFixture) error {
-			_, err := f.svc.RetrySetupProvider(ctx, "u1", f.computer.ID, " ")
+			_, err := f.svc.RetrySetupProvider(ctx, "u1", f.computer.ID, " ", "")
 			return err
 		}, apperrs.ErrInvalid},
 		{"token mint fails", func(f *setupFixture) { f.tokens.mintErr = errBoom }, nil, errBoom},
@@ -425,7 +427,7 @@ func TestStartSetup_ErrorPaths(t *testing.T) {
 			call := tt.call
 			if call == nil {
 				call = func(ctx context.Context, f *setupFixture) error {
-					_, err := f.svc.StartSetup(ctx, "u1", f.computer.ID)
+					_, err := f.svc.StartSetup(ctx, "u1", f.computer.ID, nil)
 					return err
 				}
 			}
@@ -446,15 +448,15 @@ func TestStartSetup_WhileRunning_IsAConflict(t *testing.T) {
 		<-release
 		return start(ctx, target, title, prompts)
 	}
-	_, err := f.svc.StartSetup(t.Context(), "u1", f.computer.ID)
+	_, err := f.svc.StartSetup(t.Context(), "u1", f.computer.ID, nil)
 	require.NoError(t, err)
 
-	_, err = f.svc.RetrySetupProvider(t.Context(), "u1", f.computer.ID, "codex")
+	_, err = f.svc.RetrySetupProvider(t.Context(), "u1", f.computer.ID, "codex", "")
 	require.ErrorIs(t, err, apperrs.ErrConflict)
 
 	close(release)
 	f.svc.setupRuns.Wait()
-	_, err = f.svc.StartSetup(t.Context(), "u1", f.computer.ID)
+	_, err = f.svc.StartSetup(t.Context(), "u1", f.computer.ID, nil)
 	require.NoError(t, err, "a finished run frees the computer")
 	f.svc.setupRuns.Wait()
 }
@@ -467,7 +469,7 @@ func TestSetupTurn_SaveFailure_IsLoggedAndTheRunCarriesOn(t *testing.T) {
 	f.repo.saveErr = errBoom
 	f.repo.mu.Unlock()
 
-	_, err := f.svc.StartSetup(t.Context(), "u1", f.computer.ID)
+	_, err := f.svc.StartSetup(t.Context(), "u1", f.computer.ID, nil)
 	require.NoError(t, err)
 	f.svc.setupRuns.Wait()
 	assert.Len(t, f.sessionTitles(), 8, "every session still ran")
@@ -588,7 +590,7 @@ func TestGetSetup_Turns_ShowEachProviderNewestTurnOverHTTPAndMCP(t *testing.T) {
 	f.fail["Nexul setup: Codex"] = harness.Update{Terminal: &harness.TurnResult{State: harness.TurnError, LastError: "npx: command not found"}}
 	first := f.start(t)
 	delete(f.fail, "Nexul setup: Codex")
-	retry, err := f.svc.RetrySetupProvider(t.Context(), "u1", f.computer.ID, "codex")
+	retry, err := f.svc.RetrySetupProvider(t.Context(), "u1", f.computer.ID, "codex", "")
 	require.NoError(t, err)
 	f.svc.setupRuns.Wait()
 
@@ -625,4 +627,120 @@ func TestGetSetup_Turns_ShowEachProviderNewestTurnOverHTTPAndMCP(t *testing.T) {
 	f.repo.mu.Unlock()
 	_, err = f.svc.GetSetup(t.Context(), "u1", f.computer.ID)
 	require.ErrorIs(t, err, errBoom)
+}
+
+func (f *setupFixture) sessionModels() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]string(nil), f.models...)
+}
+
+func TestStartSetup_PickedModels_RunBothSessionsOnThemAndAreRecorded(t *testing.T) {
+	t.Parallel()
+	f := newSetupFixture(t)
+	_, err := f.svc.SetDefaults(t.Context(), "u1", Defaults{DefaultComputerID: f.computer.ID, FallbackProjectID: "t3-home", Provider: "claude", Model: "claude-default"})
+	require.NoError(t, err)
+
+	run, err := f.svc.StartSetup(t.Context(), "u1", f.computer.ID, map[string]string{"Codex": " gpt-mini ", "grok": "ignored"})
+	require.NoError(t, err)
+	f.svc.setupRuns.Wait()
+
+	assert.Equal(t, []SetupProvider{{Provider: "codex", Name: "Codex", Model: "gpt-mini"}, {Provider: "claudeagent", Name: "Claude"}}, run.Providers)
+	assert.Equal(t, []string{"codex-main=gpt-mini", "codex-main=gpt-mini", "claude=", "claude="}, f.sessionModels(),
+		"an unpicked provider runs on its own default, never the pairing defaults' model")
+	turns := f.turns(run.RunID)
+	assert.Equal(t, "gpt-mini", turns["codex"].Model)
+	assert.Empty(t, turns["claudeagent"].Model)
+	for _, e := range f.outboxTopic(TopicSetupTurnChanged) {
+		if p := e.Payload.(SetupTurnChangedEvent); p.Provider == "codex" && p.RunID == run.RunID {
+			assert.Equal(t, "gpt-mini", p.Model)
+		}
+	}
+
+	before := len(f.sessionModels())
+	retry, err := f.svc.RetrySetupProvider(t.Context(), "u1", f.computer.ID, "claudeAgent", "claude-haiku")
+	require.NoError(t, err)
+	f.svc.setupRuns.Wait()
+	assert.Equal(t, "claude-haiku", retry.Providers[0].Model)
+	assert.Equal(t, []string{"claude=claude-haiku", "claude=claude-haiku"}, f.sessionModels()[before:])
+	assert.Equal(t, "claude-haiku", f.turns(retry.RunID)["claudeagent"].Model)
+}
+
+func TestStartSetup_ToolCallUpdates_AreOneStep(t *testing.T) {
+	t.Parallel()
+	f := newSetupFixture(t)
+	start := f.exch.StartTurnFn
+	f.exch.StartTurnFn = func(ctx context.Context, target harness.Target, title string, prompts harness.TurnPrompts) (harness.StartResult, error) {
+		res, err := start(ctx, target, title, prompts)
+		if err != nil {
+			return res, err
+		}
+		updates := make(chan harness.Update, 8)
+		updates <- harness.Update{Activity: &harness.Activity{Kind: harness.ActivityToolCall, CallID: "call-" + title, Summary: "Ran command started"}}
+		updates <- harness.Update{Activity: &harness.Activity{Kind: harness.ActivityToolResult, CallID: "call-" + title, Summary: "Ran command"}}
+		for u := range res.Updates {
+			updates <- u
+		}
+		close(updates)
+		res.Updates = updates
+		return res, nil
+	}
+
+	run := f.start(t)
+
+	codex := f.turns(run.RunID)["codex"]
+	var calls []string
+	for _, a := range codex.Transcript {
+		if a.CallID != "" {
+			calls = append(calls, a.Summary)
+		}
+	}
+	assert.Equal(t, []string{"Ran command", "Ran command"}, calls, "one step per tool call in each session, at its latest state")
+	f.bus.mu.Lock()
+	defer f.bus.mu.Unlock()
+	assert.Equal(t, "call-Nexul setup: Codex", f.bus.frames[0].CallID)
+	assert.Equal(t, f.bus.frames[0].CallID, f.bus.frames[1].CallID, "the live frames name the call, so the dialog updates its line")
+}
+
+func TestSetupHandlers_ModelChoice(t *testing.T) {
+	t.Parallel()
+	f := newSetupFixture(t)
+	routes := NewHandler(f.svc).Routes()
+
+	rec := doRequest(routes, http.MethodPost, "/api/pairing/computers/"+f.computer.ID+"/setup/runs", "u1", map[string]any{"models": map[string]string{"codex": "gpt-mini"}})
+	require.Equal(t, http.StatusAccepted, rec.Code, rec.Body.String())
+	assert.Contains(t, rec.Body.String(), `"model":"gpt-mini"`)
+	f.svc.setupRuns.Wait()
+
+	rec = doRequest(routes, http.MethodPost, "/api/pairing/computers/"+f.computer.ID+"/setup/providers/codex/retry", "u1", map[string]any{"model": "gpt-big"})
+	require.Equal(t, http.StatusAccepted, rec.Code, rec.Body.String())
+	assert.Contains(t, rec.Body.String(), `"model":"gpt-big"`)
+	f.svc.setupRuns.Wait()
+
+	rec = doRequest(routes, http.MethodPost, "/api/pairing/computers/"+f.computer.ID+"/setup/runs", "u1", map[string]any{"models": "gpt-mini"})
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	rec = doRequest(routes, http.MethodPost, "/api/pairing/computers/"+f.computer.ID+"/setup/providers/codex/retry", "u1", map[string]any{"model": 7})
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestSetupMCPTools_ModelChoice(t *testing.T) {
+	t.Parallel()
+	f := newSetupFixture(t)
+	ctx := identity.WithActor(t.Context(), identity.Actor{ID: "u1"})
+	tools := MCPTools(f.svc)
+
+	out, err := toolNamed(t, tools, "computer_setup_start").Call(ctx, map[string]any{"computer_id": f.computer.ID, "models": map[string]any{"codex": "gpt-mini"}})
+	require.NoError(t, err)
+	assert.Equal(t, "gpt-mini", out.(*SetupRun).Providers[0].Model)
+	f.svc.setupRuns.Wait()
+
+	out, err = toolNamed(t, tools, "computer_setup_retry_provider").Call(ctx, map[string]any{"computer_id": f.computer.ID, "provider": "codex", "model": "gpt-big"})
+	require.NoError(t, err)
+	assert.Equal(t, "gpt-big", out.(*SetupRun).Providers[0].Model)
+	f.svc.setupRuns.Wait()
+
+	_, err = toolNamed(t, tools, "computer_setup_start").Call(ctx, map[string]any{"computer_id": f.computer.ID, "models": "gpt-mini"})
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
+	_, err = toolNamed(t, tools, "computer_setup_start").Call(ctx, map[string]any{"computer_id": f.computer.ID, "models": map[string]any{"codex": 7}})
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
 }

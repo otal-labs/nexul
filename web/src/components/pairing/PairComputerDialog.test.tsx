@@ -8,7 +8,8 @@ import { PairComputerDialog } from "@/components/pairing/PairComputerDialog";
 import { Button } from "@/components/ui/button";
 import { setCachedTunnelStatus } from "@/hooks/PairingHooks";
 import { useSetupActivityStore } from "@/stores/setupActivityStore";
-import type { Computer, ComputerSetup, SetupTurnState } from "@/models/Pairing";
+import type { Computer, ComputerSetup, HarnessProvider, PairingDefaults, SetupTurnState } from "@/models/Pairing";
+import { pickOption } from "@/test/pickOption";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }));
 
@@ -260,14 +261,20 @@ describe("PairComputerDialog opened at Set up", () => {
     updated_at: "2026-09-24T00:00:00Z",
   });
   let setup: ComputerSetup;
+  let providers: HarnessProvider[];
+  let defaults: PairingDefaults;
 
   beforeEach(() => {
     mocks.get.mockReset();
     mocks.post.mockReset();
-    useSetupActivityStore.setState({ lines: {} });
+    useSetupActivityStore.setState({ steps: {} });
     setup = emptySetup;
+    providers = [];
+    defaults = {};
     mocks.get.mockImplementation(async (url: string) => {
       if (url.endsWith("/setup")) return { data: setup };
+      if (url.endsWith("/providers")) return { data: { providers } };
+      if (url.endsWith("/defaults")) return { data: defaults };
       return { data: { computers: [] } };
     });
   });
@@ -290,7 +297,7 @@ describe("PairComputerDialog opened at Set up", () => {
     expect(screen.getByText("1/2 confirmed")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /retry/i }));
-    await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/providers/opencode/retry"));
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/providers/opencode/retry", { model: "" }));
     expect(mocks.post).toHaveBeenCalledTimes(1);
   });
 
@@ -314,13 +321,49 @@ describe("PairComputerDialog opened at Set up", () => {
     await user.click(screen.getByRole("button", { name: /^set up$/i }));
     await user.click(await screen.findByRole("button", { name: /start setup/i }));
 
-    await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/runs"));
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/runs", { models: {} }));
     expect(await screen.findByText("Connecting Nexul and installing skills")).toBeInTheDocument();
     expect(screen.getByText("Waiting for its turn")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /re-run setup/i })).toBeDisabled();
 
-    act(() => useSetupActivityStore.getState().push("t2", "Wrote ~/.codex/config.toml"));
+    act(() => useSetupActivityStore.getState().push("t2", "Ran command started", "call-1"));
+    act(() => useSetupActivityStore.getState().push("t2", "Wrote ~/.codex/config.toml", "call-1"));
     await user.click(await screen.findByRole("button", { name: /agent steps \(1\)/i }));
     expect(screen.getByText("Wrote ~/.codex/config.toml")).toBeInTheDocument();
+    expect(screen.queryByText("Ran command started")).not.toBeInTheDocument();
+  });
+
+  it("picks a model per provider, preselected from the defaults, and sends it with Start and Retry", async () => {
+    providers = [
+      { id: "claude", driver: "claudeAgent", name: "Claude", needs_setup: true, models: [{ slug: "claude-big", name: "Big" }, { slug: "claude-small", name: "Small", is_default: true }] },
+      { id: "opencode", driver: "opencode", name: "OpenCode", needs_setup: true, models: [{ slug: "pickle", name: "Pickle", is_default: true }, { slug: "gpt", name: "GPT" }] },
+    ];
+    defaults = { provider: "claude", model: "claude-big" };
+    mocks.post.mockImplementation(async () => {
+      setup = {
+        ...emptySetup,
+        turns: [
+          { ...turn("claudeagent", "Claude", "confirmed", "Confirmed with 12 skills", "r1", "t2"), model: "claude-big" },
+          turn("opencode", "OpenCode", "failed", "npx: command not found", "r1", "t3"),
+        ],
+      };
+      return { data: { run_id: "r1", computer_id: "c1", providers: [{ provider: "claudeagent", name: "Claude", model: "claude-big" }, { provider: "opencode", name: "OpenCode" }] } };
+    });
+    const user = userEvent.setup();
+    renderDialog(paired);
+
+    await user.click(screen.getByRole("button", { name: /^set up$/i }));
+    expect(await screen.findByRole("combobox", { name: "Claude" })).toHaveTextContent("Big");
+    expect(screen.getByRole("combobox", { name: "OpenCode" })).toHaveTextContent("Pickle");
+    await pickOption(user, "OpenCode", "Provider default");
+    await user.click(screen.getByRole("button", { name: /start setup/i }));
+    await waitFor(() =>
+      expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/runs", { models: { claudeagent: "claude-big", opencode: "" } }),
+    );
+    expect(await screen.findByText("claude-big", { exact: false })).toBeInTheDocument();
+
+    await pickOption(user, "OpenCode", "GPT");
+    await user.click(await screen.findByRole("button", { name: /retry/i }));
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/providers/opencode/retry", { model: "gpt" }));
   });
 });

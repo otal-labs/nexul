@@ -47,7 +47,10 @@ machine the server can already reach by URL.
 
 `computer_setup_start` runs the same setup turns as the **Set up** step of the
 pairing dialog and returns at once; `computer_setup_retry_provider` runs one
-provider's turn again. Progress arrives as `computer.setup_turn_changed` and
+provider's turn again. `computer_setup_start` takes an optional `models` object
+mapping a provider's driver kind to a model slug, and
+`computer_setup_retry_provider` an optional `model`; a provider without one
+runs on its own default. Progress arrives as `computer.setup_turn_changed` and
 `computer.setup_finished` events. The confirmations themselves are still made
 only by the agent in each turn, through the confirm tools.
 
@@ -154,9 +157,6 @@ Add an MCP server entry to `~/.codex/config.toml`:
 url = "https://your-instance.example.com/mcp"
 http_headers = { Authorization = "Bearer dep_your_token_here" }
 ```
-
-Settings also shows ready-to-copy client snippets once you have set an instance
-URL. Paste the minted token into the snippet for your client.
 
 ## Protocol revisions
 

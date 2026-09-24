@@ -87,8 +87,18 @@ func (h *Handler) getSetup(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, setup)
 }
 
+// startSetupRequest's Models maps a provider's driver kind to the model its setup turn runs on.
+type startSetupRequest struct {
+	Models map[string]string `json:"models"`
+}
+
 func (h *Handler) startSetup(w http.ResponseWriter, r *http.Request) {
-	run, err := h.svc.StartSetup(r.Context(), actorID(r), r.PathValue("id"))
+	var req startSetupRequest
+	if err := optionalJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	run, err := h.svc.StartSetup(r.Context(), actorID(r), r.PathValue("id"), req.Models)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -96,13 +106,30 @@ func (h *Handler) startSetup(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusAccepted, run)
 }
 
+type retrySetupRequest struct {
+	Model string `json:"model"`
+}
+
 func (h *Handler) retrySetupProvider(w http.ResponseWriter, r *http.Request) {
-	run, err := h.svc.RetrySetupProvider(r.Context(), actorID(r), r.PathValue("id"), r.PathValue("provider"))
+	var req retrySetupRequest
+	if err := optionalJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	run, err := h.svc.RetrySetupProvider(r.Context(), actorID(r), r.PathValue("id"), r.PathValue("provider"), req.Model)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
 	httpx.WriteJSON(w, http.StatusAccepted, run)
+}
+
+// optionalJSON decodes the body when there is one; a bodiless POST keeps every field at its default.
+func optionalJSON(r *http.Request, v any) error {
+	if r.ContentLength == 0 {
+		return nil
+	}
+	return httpx.DecodeJSON(r, v)
 }
 
 type pairRequest struct {

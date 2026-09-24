@@ -14,7 +14,14 @@ import { getDocKey, getDocsKey } from "@/hooks/DocHooks";
 import { getInstanceUpgradeKey } from "@/hooks/InstanceUpgradeHooks";
 import { getMemoriesKey, getMemoryKey, getMemoryVersionsKey } from "@/hooks/MemoryHooks";
 import { getNotificationsKey, getUnreadCountKey } from "@/hooks/NotificationHooks";
-import { getComputerSetupKey, getComputersKey, getHarnessProvidersKey, getHarnessResolveKey } from "@/hooks/PairingHooks";
+import { getPATsKey } from "@/hooks/AuthHooks";
+import {
+  getComputerSetupKey,
+  getComputersKey,
+  getHarnessProvidersKey,
+  getHarnessResolveKey,
+  getMCPTokenKey,
+} from "@/hooks/PairingHooks";
 import { getRunnerQueueKey, getRunnersKey } from "@/hooks/RunnerHooks";
 import { getServiceDeploysKey, getServicesKey } from "@/hooks/ServiceHooks";
 import { getStackDeploysKey } from "@/hooks/StackHooks";
@@ -71,6 +78,9 @@ const pushTopics: Record<string, string[]> = {
   "computer.paired": [getComputersKey, getHarnessResolveKey],
   "computer.tunnel_created": [getComputersKey],
   "computer.tunnel_removed": [getComputersKey, getHarnessResolveKey],
+  // A computer row's MCP token line follows a mint or revoke from setup, the row, or an MCP tool.
+  "personal_access_token.minted": [getMCPTokenKey, getPATsKey],
+  "personal_access_token.revoked": [getMCPTokenKey, getPATsKey],
   "category.created": [getCategoriesKey, getProjectCategoriesKey],
   "category.updated": [getCategoriesKey, getProjectCategoriesKey],
   "category.deleted": [getCategoriesKey, getProjectCategoriesKey],
@@ -130,6 +140,7 @@ interface MessageDeletedPayload {
 interface SetupTurnActivityPayload {
   turn_id: string;
   status: string;
+  call_id?: string;
 }
 
 // One voice channel's full occupant list after a change, applied wholesale.
@@ -198,7 +209,7 @@ const dispatch = (client: ReturnType<typeof useQueryClient>) => (frame: ServerFr
   }
   if (frame.topic === "computer.setup_turn_activity") {
     const p = frame.payload as SetupTurnActivityPayload;
-    useSetupActivityStore.getState().push(p.turn_id, p.status);
+    useSetupActivityStore.getState().push(p.turn_id, p.status, p.call_id);
     return;
   }
   if (frame.topic === "voice.occupancy.changed") {

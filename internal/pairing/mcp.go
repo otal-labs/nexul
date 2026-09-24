@@ -187,25 +187,29 @@ func setupTools(s *Service) []mcptool.Tool {
 		{
 			Name:        "computer_setup_start",
 			Description: "Start setup on one of your paired computers: Nexul mints or reuses the computer's MCP token, then runs one setup turn per provider its harness lists, one after another. Each turn connects Nexul's MCP server to its provider, installs the default skills and nexul-memory, and confirms the provider and the computer. Returns at once with the run and its providers; progress arrives as computer.setup_turn_changed events and a final computer.setup_finished. Re-running re-verifies without undoing anything.",
-			InputSchema: computerOnly,
+			InputSchema: computerSchema(map[string]any{"models": modelsProperty}),
 			Call: func(ctx context.Context, args map[string]any) (any, error) {
 				computerID, err := mcptool.RequiredString(args, "computer_id")
 				if err != nil {
 					return nil, err
 				}
-				return s.StartSetup(ctx, mcpActorID(ctx), computerID)
+				models, err := modelsArg(args)
+				if err != nil {
+					return nil, err
+				}
+				return s.StartSetup(ctx, mcpActorID(ctx), computerID, models)
 			},
 		},
 		{
 			Name:        "computer_setup_retry_provider",
 			Description: "Run one provider's setup turn again on one of your paired computers, alone, after it failed; on a confirmed provider it re-verifies. Like every setup turn, it also confirms the computer once the provider is confirmed.",
-			InputSchema: providerOnly,
+			InputSchema: computerSchema(map[string]any{"provider": providerProperty, "model": modelProperty}, "provider"),
 			Call: func(ctx context.Context, args map[string]any) (any, error) {
 				vals, err := mcptool.RequiredStrings(args, "computer_id", "provider")
 				if err != nil {
 					return nil, err
 				}
-				return s.RetrySetupProvider(ctx, mcpActorID(ctx), vals[0], vals[1])
+				return s.RetrySetupProvider(ctx, mcpActorID(ctx), vals[0], vals[1], mcptool.OptionalString(args["model"]))
 			},
 		},
 		{
@@ -228,6 +232,35 @@ func setupTools(s *Service) []mcptool.Tool {
 }
 
 var providerProperty = map[string]any{"type": "string", "description": "The provider's driver kind, such as claude, codex, or opencode"}
+
+var modelProperty = map[string]any{"type": "string", "description": "The model slug the setup turn runs on, as the harness lists it for the provider; omit it for the provider's own default"}
+
+var modelsProperty = map[string]any{
+	"type":                 "object",
+	"additionalProperties": map[string]any{"type": "string"},
+	"description":          "The model slug each provider's setup turn runs on, keyed by driver kind; a provider left out runs on its own default",
+}
+
+// modelsArg reads the optional models map; a non-string model is invalid rather than silently dropped.
+func modelsArg(args map[string]any) (map[string]string, error) {
+	raw, ok := args["models"]
+	if !ok || raw == nil {
+		return nil, nil
+	}
+	entries, ok := raw.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("%w: models must be an object of model slugs keyed by provider", apperrs.ErrInvalid)
+	}
+	models := make(map[string]string, len(entries))
+	for provider, v := range entries {
+		model, ok := v.(string)
+		if !ok {
+			return nil, fmt.Errorf("%w: the model for %s must be a string", apperrs.ErrInvalid, provider)
+		}
+		models[provider] = model
+	}
+	return models, nil
+}
 
 func computerSchema(extra map[string]any, required ...string) map[string]any {
 	properties := map[string]any{"computer_id": map[string]any{"type": "string"}}

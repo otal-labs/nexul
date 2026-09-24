@@ -2,6 +2,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ContextAwareConfirmation } from "react-confirm";
+import { MemoryRouter, useLocation } from "react-router";
+import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ComputersSection } from "@/components/settings/ComputersSection";
@@ -47,15 +49,23 @@ const serveComputers = (computers: unknown[]) =>
     return { data: computerList(computers) };
   });
 
-const renderSection = () => {
+const renderSection = (url = "/settings?section=pairing") => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const location: { search: string } = { search: "" };
+  const LocationProbe = () => {
+    location.search = useLocation().search;
+    return null;
+  };
   const view = render(
-    <QueryClientProvider client={client}>
-      <ContextAwareConfirmation.ConfirmationRoot />
-      <ComputersSection />
-    </QueryClientProvider>,
+    <MemoryRouter initialEntries={[url]}>
+      <QueryClientProvider client={client}>
+        <ContextAwareConfirmation.ConfirmationRoot />
+        <ComputersSection />
+        <LocationProbe />
+      </QueryClientProvider>
+    </MemoryRouter>,
   );
-  return { ...view, client };
+  return { ...view, client, location };
 };
 
 describe("ComputersSection", () => {
@@ -126,6 +136,18 @@ describe("ComputersSection", () => {
     expect(await screen.findByRole("button", { name: /start setup/i })).toBeInTheDocument();
   });
 
+  it("opens the named computer's Set up step from the setup link, and closing it forgets the link", async () => {
+    serveComputers([computer(), computer({ id: "c2", name: "Mint" })]);
+    const user = userEvent.setup();
+    const { location } = renderSection("/settings?section=pairing&setup=c2");
+
+    expect(await screen.findByRole("dialog", { name: /set up mint/i })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: /set up home/i })).not.toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(location.search).toBe("?section=pairing");
+  });
+
   it("lists each provider with its confirmed-at time and follows a setup push without a refresh, changing nothing itself", async () => {
     const at = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
     setup = {
@@ -190,6 +212,12 @@ describe("ComputersSection", () => {
         token: "fresh-tok",
       }),
     );
+    await waitFor(() =>
+      expect(toast.success).toHaveBeenLastCalledWith(
+        "Computer re-paired",
+        expect.objectContaining({ description: expect.stringMatching(/previous session on this computer stays valid/) }),
+      ),
+    );
   });
 
   it("removes a computer after arming the confirm step", async () => {
@@ -203,5 +231,22 @@ describe("ComputersSection", () => {
 
     await user.click(screen.getByRole("button", { name: /^confirm$/i }));
     await waitFor(() => expect(mocks.del).toHaveBeenCalledWith("/api/pairing/computers/c1"));
+    await waitFor(() =>
+      expect(toast.success).toHaveBeenLastCalledWith(
+        "Computer removed",
+        expect.objectContaining({ description: expect.stringMatching(/session on this computer stays valid until .*t3 auth session revoke/) }),
+      ),
+    );
+  });
+
+  it("removes a computer still pairing without a leftover-session note", async () => {
+    serveComputers([computer({ token_expires_at: "0001-01-01T00:00:00Z" })]);
+    mocks.del.mockResolvedValue({ data: {} });
+    const user = userEvent.setup();
+    renderSection();
+
+    await user.click(await screen.findByRole("button", { name: /^remove$/i }));
+    await user.click(screen.getByRole("button", { name: /^confirm$/i }));
+    await waitFor(() => expect(toast.success).toHaveBeenLastCalledWith("Computer removed", undefined));
   });
 });

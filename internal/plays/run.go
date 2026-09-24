@@ -93,6 +93,18 @@ type HarnessResolver interface {
 	ResolveTarget(ctx context.Context, userID, projectID string, choice HarnessChoice) (HarnessChoice, error)
 }
 
+// HarnessRefusal is a resolver refusal naming its computer and provider, kept on the failed trail so the web can offer the fix.
+type HarnessRefusal struct {
+	Reason     string
+	ComputerID string
+	Provider   string
+	Err        error
+}
+
+func (e *HarnessRefusal) Error() string { return e.Err.Error() }
+
+func (e *HarnessRefusal) Unwrap() error { return e.Err }
+
 // Memory is the slice of a memory the runner inlines, its body already exported to markdown.
 type Memory struct {
 	ID             string
@@ -271,6 +283,10 @@ func (r *Runner) launch(ctx context.Context, play *Play, trail *Trail, tgt targe
 	}
 	choice, err := r.harness.ResolveTarget(ctx, trail.StarterID, trail.ProjectID, pick)
 	if err != nil {
+		var refusal *HarnessRefusal
+		if errors.As(err, &refusal) {
+			trail.FailureReason, trail.ComputerID, trail.Provider = refusal.Reason, refusal.ComputerID, refusal.Provider
+		}
 		r.createFailed(ctx, trail, targetTitle, err.Error())
 		return nil, err
 	}

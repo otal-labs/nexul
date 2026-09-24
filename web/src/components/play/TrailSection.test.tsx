@@ -1,10 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import { TrailSection } from "@/components/play/TrailSection";
+import { getComputersKey } from "@/hooks/PairingHooks";
 import type { ActivityEntry, Trail } from "@/models/Trail";
 import { usePlayRunStore } from "@/stores/playRunStore";
 
@@ -46,6 +48,7 @@ const trail = (overrides: Partial<Trail>): Trail => ({
   started_at: new Date(Date.now() - 3 * 60_000).toISOString(),
   ended_at: new Date().toISOString(),
   last_error: "",
+  failure_reason: "",
   reply_message_id: "",
   activity: [readStep, replyStep],
   ...overrides,
@@ -82,6 +85,37 @@ beforeEach(() => {
 });
 
 describe("TrailSection", () => {
+  it.each([
+    ["the starter's own computer", [{ id: "c-mint", name: "onik-mint" }], true],
+    ["a computer the viewer doesn't own", [], false],
+  ])("a setup refusal on %s links to its setup: %s", async (_label, computers, offered) => {
+    const refused = trail({
+      id: "tr-setup", state: "failed", activity: [], computer_id: "c-mint", provider: "codex", failure_reason: "setup_required",
+      last_error: "@Agent can't use Codex on onik-mint until its setup is done — run setup for onik-mint in Settings → T3 pairing.",
+    });
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === "/api/plays/runs") return { data: [refused] };
+      if (url === "/api/pairing/computers") return { data: { computers } };
+      return { data: [] };
+    });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <MemoryRouter>
+        <QueryClientProvider client={client}>
+          <TrailSection workspaceId="ws-1" targetType="ticket" targetId="t-1" />
+        </QueryClientProvider>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/until its setup is done/)).toBeInTheDocument();
+    await waitFor(() => expect(client.getQueryData([getComputersKey])).toBeDefined());
+    if (!offered) {
+      expect(screen.queryByRole("link", { name: /Set up/ })).not.toBeInTheDocument();
+      return;
+    }
+    expect(await screen.findByRole("link", { name: "Set up onik-mint" })).toHaveAttribute("href", "/settings?section=pairing&setup=c-mint");
+  });
+
   it("renders nothing when the ticket has no trails", async () => {
     mockApi([]);
     const { container } = renderSection();

@@ -466,7 +466,7 @@ func (s *Service) requireSetup(ctx context.Context, target *ResolvedTarget) (*Re
 	}
 	providers, err := client.ListProviders(ctx, target.Computer.Session())
 	if err != nil {
-		return nil, &NotConfiguredError{Reason: ReasonOffline, Computer: target.Computer.Name, Err: err}
+		return nil, &NotConfiguredError{Reason: ReasonOffline, Computer: target.Computer.Name, ComputerID: target.Computer.ID, Err: err}
 	}
 	provider, err := pickProvider(providers, target.Provider)
 	if err != nil {
@@ -477,7 +477,9 @@ func (s *Service) requireSetup(ctx context.Context, target *ResolvedTarget) (*Re
 		return nil, fmt.Errorf("list provider setups for %s: %w", target.Computer.ID, err)
 	}
 	if !setupConfirmed(target.Computer, setups, provider.Driver) {
-		return nil, &NotConfiguredError{Reason: ReasonSetupRequired, Provider: provider.Name, Computer: target.Computer.Name}
+		return nil, &NotConfiguredError{
+			Reason: ReasonSetupRequired, Provider: provider.Name, Computer: target.Computer.Name, ProviderID: provider.ID, ComputerID: target.Computer.ID,
+		}
 	}
 	target.Provider = provider.ID
 	return target, nil

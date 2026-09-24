@@ -426,16 +426,17 @@ describe("useLiveEvents dispatch", () => {
     expect(spy).toHaveBeenCalledWith({ queryKey: ["getHarnessProviders"] });
   });
 
-  it("appends a setup turn's commentary line to the activity store without refetching", async () => {
-    useSetupActivityStore.setState({ lines: {} });
+  it("appends a setup turn's steps to the activity store without refetching, one line per tool call", async () => {
+    useSetupActivityStore.setState({ steps: {} });
     setup();
     const socket = await connectedSocket();
     const spy = invalidate();
-    const activity = (status: string) =>
-      JSON.stringify({ topic: "computer.setup_turn_activity", type: "event", payload: { computer_id: "c1", turn_id: "t1", provider: "codex", status } });
-    act(() => socket.message(activity("Installing skills")));
-    act(() => socket.message(activity("Checking files")));
-    expect(useSetupActivityStore.getState().lines.t1).toEqual(["Installing skills", "Checking files"]);
+    const activity = (status: string, call_id?: string) =>
+      JSON.stringify({ topic: "computer.setup_turn_activity", type: "event", payload: { computer_id: "c1", turn_id: "t1", provider: "codex", status, call_id } });
+    act(() => socket.message(activity("Ran command started", "call-1")));
+    act(() => socket.message(activity("Ran command", "call-1")));
+    act(() => socket.message(activity("All set.")));
+    expect(useSetupActivityStore.getState().steps.t1?.map((s) => s.line)).toEqual(["Ran command", "All set."]);
     expect(spy).not.toHaveBeenCalled();
   });
 
@@ -450,6 +451,19 @@ describe("useLiveEvents dispatch", () => {
     );
     expect(spy).toHaveBeenCalledWith({ queryKey: ["getComputers"] });
     expect(spy).toHaveBeenCalledWith({ queryKey: ["getHarnessResolve"] });
+  });
+
+  it("refreshes the computer MCP token and token list when a token is minted or revoked", async () => {
+    setup();
+    const socket = await connectedSocket();
+    const spy = invalidate();
+    const payload = { token_id: "t1", user_id: "u1", name: "Nexul MCP on Laptop", computer_id: "c1" };
+    for (const topic of ["personal_access_token.minted", "personal_access_token.revoked"]) {
+      spy.mockClear();
+      act(() => socket.message(JSON.stringify({ topic, type: "event", payload })));
+      expect(spy).toHaveBeenCalledWith({ queryKey: ["getMCPToken"] });
+      expect(spy).toHaveBeenCalledWith({ queryKey: ["getPATs"] });
+    }
   });
 
   it("applies a topology canvas patch to the flow store on a topology push", async () => {
