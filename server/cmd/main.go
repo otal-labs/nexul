@@ -19,6 +19,7 @@ import (
 	"github.com/otal-labs/nexul/internal/dns"
 	"github.com/otal-labs/nexul/internal/docs"
 	"github.com/otal-labs/nexul/internal/integrations"
+	"github.com/otal-labs/nexul/internal/pairing"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/httpx"
 	"github.com/otal-labs/nexul/internal/platform/identity"
@@ -221,6 +222,8 @@ var livePushTopics = []string{
 	chat.TopicMessageUpdated,
 	chat.TopicMessageDeleted,
 	voice.TopicOccupancyChanged,
+	pairing.TopicSetupConfirmed,
+	pairing.TopicSetupUnconfirmed,
 }
 
 func fail(err error) {

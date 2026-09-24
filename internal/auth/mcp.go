@@ -7,9 +7,17 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 )
 
-// MCPTools exposes account administration through the same use-cases as HTTP.
+// MCPTools exposes the caller's own account and account administration through the same use-cases as HTTP.
 func MCPTools(s *Service) []mcptool.Tool {
 	return []mcptool.Tool{
+		{
+			Name:        "account_whoami",
+			Description: "Return the account this MCP connection acts as. Call it first to confirm Nexul is reachable.",
+			InputSchema: objectSchema(nil),
+			Call: func(ctx context.Context, _ map[string]any) (any, error) {
+				return s.Whoami(ctx, actorIDFromContext(ctx))
+			},
+		},
 		{
 			Name:        "list_accounts",
 			Description: "List registered instance accounts.",

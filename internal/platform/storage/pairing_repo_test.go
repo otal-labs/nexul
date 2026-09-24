@@ -11,6 +11,7 @@ import (
 	"github.com/otal-labs/nexul/internal/harness"
 	"github.com/otal-labs/nexul/internal/pairing"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 )
 
 func newTestComputer(id, userID, name string) pairing.Computer {
@@ -270,4 +271,100 @@ func TestPairingRepo_SaveDefaults_UpsertUpdatesInPlace(t *testing.T) {
 	got, err := s.Pairing.GetDefaults(ctx, "u1")
 	require.NoError(t, err)
 	assert.Equal(t, "opencode", got.Provider)
+}
+
+func newSetupTestStore(t *testing.T) *Store {
+	t.Helper()
+	s := newTestStore(t)
+	_, _, err := s.Users.UpsertUser(t.Context(), newTestUser("u1", "42", "onik97"))
+	require.NoError(t, err)
+	require.NoError(t, s.Pairing.SaveComputer(t.Context(), newTestComputer("c1", "u1", "home")))
+	return s
+}
+
+func setupEvt(id string) eventbus.OutboxEvent {
+	return eventbus.OutboxEvent{ID: id, Topic: pairing.TopicSetupConfirmed, Payload: pairing.SetupChangedEvent{ComputerID: "c1", UserID: "u1"}}
+}
+
+func TestPairingRepo_SetSetupConfirmedAt_WrongOwner_NotFoundAndNoEvent(t *testing.T) {
+	t.Parallel()
+	s := newSetupTestStore(t)
+	at := time.Unix(1_700_000_000, 0).UTC()
+
+	err := s.Pairing.SetSetupConfirmedAt(t.Context(), "u2", "c1", &at, setupEvt("e1"))
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
+
+	entries, err := s.Outbox.Unpublished(t.Context(), 10)
+	require.NoError(t, err)
+	assert.Empty(t, entries, "the outbox write rolls back with the missed update")
+}
+
+func TestPairingRepo_SetSetupConfirmedAt_SetClearAndSurvivesRePair(t *testing.T) {
+	t.Parallel()
+	s := newSetupTestStore(t)
+	at := time.Unix(1_700_000_000, 0).UTC()
+
+	require.NoError(t, s.Pairing.SetSetupConfirmedAt(t.Context(), "u1", "c1", &at, setupEvt("e1")))
+	require.NoError(t, s.Pairing.SaveComputer(t.Context(), newTestComputer("c1", "u1", "renamed")))
+	got, err := s.Pairing.GetComputer(t.Context(), "u1", "c1")
+	require.NoError(t, err)
+	require.NotNil(t, got.SetupConfirmedAt, "a re-pair never withdraws the confirmation")
+	assert.Equal(t, at, *got.SetupConfirmedAt)
+
+	require.NoError(t, s.Pairing.SetSetupConfirmedAt(t.Context(), "u1", "c1", nil, setupEvt("e2")))
+	got, err = s.Pairing.GetComputer(t.Context(), "u1", "c1")
+	require.NoError(t, err)
+	assert.Nil(t, got.SetupConfirmedAt)
+
+	entries, err := s.Outbox.Unpublished(t.Context(), 10)
+	require.NoError(t, err)
+	require.Len(t, entries, 2)
+	assert.Equal(t, pairing.TopicSetupConfirmed, entries[0].Topic)
+}
+
+func TestPairingRepo_ProviderSetups_UpsertListAndCascade(t *testing.T) {
+	t.Parallel()
+	s := newSetupTestStore(t)
+	ctx := t.Context()
+	at := time.Unix(1_700_000_000, 0).UTC()
+
+	empty, err := s.Pairing.ListProviderSetups(ctx, "c1")
+	require.NoError(t, err)
+	assert.Empty(t, empty)
+
+	require.NoError(t, s.Pairing.SaveProviderSetup(ctx, "c1", pairing.ProviderSetup{Provider: "codex", ConfirmedAt: &at, Skills: []string{"tdd"}}, at, setupEvt("e1")))
+	require.NoError(t, s.Pairing.SaveProviderSetup(ctx, "c1", pairing.ProviderSetup{Provider: "claude", ConfirmedAt: &at, Skills: []string{"tdd", "diagnose"}}, at, setupEvt("e2")))
+	require.NoError(t, s.Pairing.SaveProviderSetup(ctx, "c1", pairing.ProviderSetup{Provider: "codex", Skills: []string{}}, at, setupEvt("e3")))
+
+	got, err := s.Pairing.ListProviderSetups(ctx, "c1")
+	require.NoError(t, err)
+	assert.Equal(t, []pairing.ProviderSetup{
+		{Provider: "claude", ConfirmedAt: &at, Skills: []string{"tdd", "diagnose"}},
+		{Provider: "codex", Skills: []string{}},
+	}, got)
+
+	entries, err := s.Outbox.Unpublished(ctx, 10)
+	require.NoError(t, err)
+	assert.Len(t, entries, 3)
+
+	require.NoError(t, s.Pairing.DeleteComputer(ctx, "u1", "c1"))
+	got, err = s.Pairing.ListProviderSetups(ctx, "c1")
+	require.NoError(t, err)
+	assert.Empty(t, got, "unpairing drops the computer's provider rows")
+}
+
+func TestPairingRepo_SaveProviderSetup_UnknownComputerRejected(t *testing.T) {
+	t.Parallel()
+	s := newSetupTestStore(t)
+	err := s.Pairing.SaveProviderSetup(t.Context(), "missing", pairing.ProviderSetup{Provider: "claude", Skills: []string{}}, time.Now(), setupEvt("e1"))
+	require.Error(t, err)
+}
+
+func TestPairingRepo_ListProviderSetups_CorruptSkills_Error(t *testing.T) {
+	t.Parallel()
+	s := newSetupTestStore(t)
+	_, err := s.db.Exec(`INSERT INTO pairing_provider_setups (computer_id, provider, skills_json, updated_at) VALUES ('c1', 'claude', 'not json', 0)`)
+	require.NoError(t, err)
+	_, err = s.Pairing.ListProviderSetups(t.Context(), "c1")
+	require.Error(t, err)
 }

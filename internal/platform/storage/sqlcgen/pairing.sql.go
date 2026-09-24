@@ -37,7 +37,7 @@ func (q *Queries) DeletePairingProjectLink(ctx context.Context, projectID string
 }
 
 const getPairingComputer = `-- name: GetPairingComputer :one
-SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind FROM pairing_computers WHERE id = ? AND user_id = ?
+SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at FROM pairing_computers WHERE id = ? AND user_id = ?
 `
 
 type GetPairingComputerParams struct {
@@ -59,12 +59,13 @@ func (q *Queries) GetPairingComputer(ctx context.Context, arg GetPairingComputer
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Kind,
+		&i.SetupConfirmedAt,
 	)
 	return i, err
 }
 
 const getPairingComputerByID = `-- name: GetPairingComputerByID :one
-SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind FROM pairing_computers WHERE id = ?
+SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at FROM pairing_computers WHERE id = ?
 `
 
 func (q *Queries) GetPairingComputerByID(ctx context.Context, id string) (PairingComputer, error) {
@@ -81,6 +82,7 @@ func (q *Queries) GetPairingComputerByID(ctx context.Context, id string) (Pairin
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Kind,
+		&i.SetupConfirmedAt,
 	)
 	return i, err
 }
@@ -127,7 +129,7 @@ func (q *Queries) GetPairingProjectLink(ctx context.Context, projectID string) (
 }
 
 const listPairingComputers = `-- name: ListPairingComputers :many
-SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind FROM pairing_computers WHERE user_id = ? ORDER BY created_at DESC
+SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at FROM pairing_computers WHERE user_id = ? ORDER BY created_at DESC
 `
 
 func (q *Queries) ListPairingComputers(ctx context.Context, userID string) ([]PairingComputer, error) {
@@ -150,6 +152,40 @@ func (q *Queries) ListPairingComputers(ctx context.Context, userID string) ([]Pa
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Kind,
+			&i.SetupConfirmedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPairingProviderSetups = `-- name: ListPairingProviderSetups :many
+SELECT computer_id, provider, confirmed_at, skills_json, updated_at FROM pairing_provider_setups WHERE computer_id = ? ORDER BY provider
+`
+
+func (q *Queries) ListPairingProviderSetups(ctx context.Context, computerID string) ([]PairingProviderSetup, error) {
+	rows, err := q.db.QueryContext(ctx, listPairingProviderSetups, computerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PairingProviderSetup
+	for rows.Next() {
+		var i PairingProviderSetup
+		if err := rows.Scan(
+			&i.ComputerID,
+			&i.Provider,
+			&i.ConfirmedAt,
+			&i.SkillsJson,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -255,4 +291,48 @@ func (q *Queries) SavePairingProjectLink(ctx context.Context, arg SavePairingPro
 		arg.UpdatedAt,
 	)
 	return err
+}
+
+const savePairingProviderSetup = `-- name: SavePairingProviderSetup :exec
+INSERT INTO pairing_provider_setups (computer_id, provider, confirmed_at, skills_json, updated_at)
+VALUES (?, ?, ?, ?, ?)
+ON CONFLICT(computer_id, provider) DO UPDATE SET
+  confirmed_at = excluded.confirmed_at, skills_json = excluded.skills_json, updated_at = excluded.updated_at
+`
+
+type SavePairingProviderSetupParams struct {
+	ComputerID  string
+	Provider    string
+	ConfirmedAt sql.NullInt64
+	SkillsJson  string
+	UpdatedAt   int64
+}
+
+func (q *Queries) SavePairingProviderSetup(ctx context.Context, arg SavePairingProviderSetupParams) error {
+	_, err := q.db.ExecContext(ctx, savePairingProviderSetup,
+		arg.ComputerID,
+		arg.Provider,
+		arg.ConfirmedAt,
+		arg.SkillsJson,
+		arg.UpdatedAt,
+	)
+	return err
+}
+
+const setPairingComputerSetupConfirmedAt = `-- name: SetPairingComputerSetupConfirmedAt :execrows
+UPDATE pairing_computers SET setup_confirmed_at = ? WHERE id = ? AND user_id = ?
+`
+
+type SetPairingComputerSetupConfirmedAtParams struct {
+	SetupConfirmedAt sql.NullInt64
+	ID               string
+	UserID           string
+}
+
+func (q *Queries) SetPairingComputerSetupConfirmedAt(ctx context.Context, arg SetPairingComputerSetupConfirmedAtParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, setPairingComputerSetupConfirmedAt, arg.SetupConfirmedAt, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }

@@ -484,16 +484,17 @@ type Outbox struct {
 }
 
 type PairingComputer struct {
-	ID             string
-	UserID         string
-	Name           string
-	ServerUrl      string
-	BearerToken    string
-	TokenExpiresAt int64
-	HarnessVersion string
-	CreatedAt      int64
-	UpdatedAt      int64
-	Kind           string
+	ID               string
+	UserID           string
+	Name             string
+	ServerUrl        string
+	BearerToken      string
+	TokenExpiresAt   int64
+	HarnessVersion   string
+	CreatedAt        int64
+	UpdatedAt        int64
+	Kind             string
+	SetupConfirmedAt sql.NullInt64
 }
 
 type PairingProjectLink struct {
@@ -503,6 +504,14 @@ type PairingProjectLink struct {
 	Provider         string
 	Model            string
 	UpdatedAt        int64
+}
+
+type PairingProviderSetup struct {
+	ComputerID  string
+	Provider    string
+	ConfirmedAt sql.NullInt64
+	SkillsJson  string
+	UpdatedAt   int64
 }
 
 type PairingUserDefault struct {
