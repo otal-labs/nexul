@@ -45,11 +45,14 @@ A change that touches only `web/` never spins up a Go job, and vice versa.
 Nexul has one version for the whole product, and git tags are that version
 (ADR 0070). There is no version file in the repository.
 
-- **Beta** runs on every push to `master`, so every squash-merge is a
-  release. It tags the pushed commit `v<next>-beta.<n>`: `<next>` is the
-  newest stable tag with its patch bumped (`0.2.0` while no stable release
-  exists) and `<n>` is one more than the highest beta already tagged on that
-  line (`v0.2.1-beta.1`, `v0.2.1-beta.2`, ...).
+- **Beta** runs once a day at 03:17 UTC (ADR 0071). When `master` has moved
+  since its last release, it tags the head `v<next>-beta.<n>`: `<next>` is
+  the newest stable tag with its patch bumped (`0.2.0` while no stable
+  release exists) and `<n>` is one more than the highest beta already tagged
+  on that line (`v0.2.1-beta.1`, `v0.2.1-beta.2`, ...). When `master` hasn't
+  moved, the run stops before building anything. A beta's release notes list
+  every pull request merged since the previous beta. To cut one now, run the
+  workflow by hand with `channel: beta`.
 - **Stable** is a manual run (`channel: stable`) with a `bump` input:
   `patch`, `minor` or `major`, counted from the last stable release. It
   builds the commit of the newest beta, so stable only ever ships a commit a
