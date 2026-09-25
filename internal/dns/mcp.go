@@ -2,522 +2,206 @@ package dns
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"slices"
+	"strings"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 )
 
-// MCPTools returns the dns tool definitions (named domain_action); credentials come from connectors, not this package.
+// MCPTools returns the DNS record, gateway, exposure, and tunnel tools; Cloudflare credentials come from connectors.
 func MCPTools(s *Service) []mcptool.Tool {
-	return slices.Concat(
-		zoneTools(s),
-		recordTools(s),
-		serviceHostnameTools(s),
-		tunnelProvisioningTools(s),
-		gatewayTools(s),
-		exposureTools(s),
-	)
+	tools := slices.Concat(recordTools(s), gatewayTools(s), exposureTools(s), tunnelTools(s))
+	for i := range tools {
+		tools[i].Call = explainNotConnected(tools[i].Call)
+	}
+	return tools
 }
 
-func zoneTools(s *Service) []mcptool.Tool {
-	return []mcptool.Tool{
-		{
-			Name:        "dns_verify_credentials",
-			Description: "Verify the configured DNS provider credentials are valid.",
-			InputSchema: mcptool.ObjectSchema(nil),
-			Call: func(ctx context.Context, _ map[string]any) (any, error) {
-				if err := s.VerifyCredentials(ctx); err != nil {
-					return nil, err
-				}
-				return map[string]string{"status": "ok"}, nil
-			},
-		},
-		{
-			Name:        "dns_list_zones",
-			Description: "List the DNS zones the connected credentials can edit.",
-			InputSchema: mcptool.ObjectSchema(nil),
-			Call: func(ctx context.Context, _ map[string]any) (any, error) {
-				return s.ListZones(ctx)
-			},
-		},
+// explainNotConnected names the fix for a missing Cloudflare connection, which the adapter would hide as internal.
+func explainNotConnected(call func(context.Context, json.RawMessage) (any, error)) func(context.Context, json.RawMessage) (any, error) {
+	return func(ctx context.Context, args json.RawMessage) (any, error) {
+		out, err := call(ctx, args)
+		if errors.Is(err, ErrCloudflareNotConnected) {
+			return nil, fmt.Errorf("%w: Cloudflare is not connected to this instance; an owner connects it in Settings, then retry",
+				apperrs.ErrInvalid)
+		}
+		return out, err
 	}
+}
+
+// overlay applies one patch field: a field the caller omitted keeps its current value.
+func overlay[T any](dst *T, v *T) {
+	if v != nil {
+		*dst = *v
+	}
+}
+
+// recordResult is a record as the model reads it; Propagated is set only when the caller asked for the check.
+type recordResult struct {
+	ID         string     `json:"id"`
+	ZoneID     string     `json:"zone_id"`
+	Type       RecordType `json:"type"`
+	Name       string     `json:"name"`
+	Content    string     `json:"content"`
+	TTL        int        `json:"ttl"`
+	Proxied    bool       `json:"proxied"`
+	Propagated *bool      `json:"propagated,omitempty"`
+}
+
+func toRecordResult(r Record) recordResult {
+	return recordResult{ID: r.ID, ZoneID: r.ZoneID, Type: r.Type, Name: r.Name, Content: r.Content, TTL: r.TTL, Proxied: r.Proxied}
+}
+
+type zoneListIn struct {
+	mcptool.PageArgs
+}
+
+type recordListIn struct {
+	ZoneID           string     `json:"zone_id" jsonschema:"The zone's id, from dns_zone_list."`
+	ID               string     `json:"id,omitempty" jsonschema:"Only the record with this id."`
+	Name             string     `json:"name,omitempty" jsonschema:"Only records with this full name, for example api.example.com."`
+	Type             RecordType `json:"type,omitempty" jsonschema:"Only records of this type: A, AAAA, CNAME, or TXT."`
+	CheckPropagation bool       `json:"check_propagation,omitempty" jsonschema:"Also resolve each returned record through public DNS and set propagated. Defaults to false."`
+	mcptool.PageArgs
+}
+
+func (in recordListIn) matches(r Record) bool {
+	if in.ID != "" && r.ID != in.ID {
+		return false
+	}
+	if in.Name != "" && !strings.EqualFold(strings.TrimSuffix(r.Name, "."), strings.TrimSuffix(in.Name, ".")) {
+		return false
+	}
+	return in.Type == "" || r.Type == in.Type
+}
+
+type recordCreateIn struct {
+	ZoneID  string     `json:"zone_id" jsonschema:"The zone's id, from dns_zone_list."`
+	Type    RecordType `json:"type" jsonschema:"The record type: A, AAAA, CNAME, or TXT."`
+	Name    string     `json:"name" jsonschema:"The record name, relative to the zone or in full, for example api or api.example.com; @ is the zone apex."`
+	Content string     `json:"content" jsonschema:"What the record answers: an IPv4 address for A, an IPv6 address for AAAA, a hostname for CNAME, text for TXT."`
+	TTL     int        `json:"ttl,omitzero" jsonschema:"Time to live in seconds, 60 to 86400. Defaults to 1, the provider's automatic TTL."`
+	Proxied bool       `json:"proxied,omitempty" jsonschema:"Route traffic through Cloudflare's proxy. Defaults to false; a CNAME to a tunnel (*.cfargotunnel.com) resolves only when proxied."`
+}
+
+type recordUpdateIn struct {
+	ZoneID  string      `json:"zone_id" jsonschema:"The zone's id, from dns_zone_list."`
+	ID      string      `json:"id" jsonschema:"The record's id, from dns_record_list."`
+	Type    *RecordType `json:"type,omitempty" jsonschema:"New record type: A, AAAA, CNAME, or TXT. Omit to keep it."`
+	Name    *string     `json:"name,omitempty" jsonschema:"New record name, for example api.example.com. Omit to keep it."`
+	Content *string     `json:"content,omitempty" jsonschema:"New content, for example 203.0.113.10. Omit to keep it."`
+	TTL     *int        `json:"ttl,omitempty" jsonschema:"New time to live in seconds; 1 is automatic. Omit to keep it."`
+	Proxied *bool       `json:"proxied,omitempty" jsonschema:"Whether Cloudflare's proxy serves the record. Omit to keep it."`
+}
+
+type recordDeleteIn struct {
+	ZoneID string `json:"zone_id" jsonschema:"The zone's id, from dns_zone_list."`
+	ID     string `json:"id" jsonschema:"The record's id, from dns_record_list."`
 }
 
 func recordTools(s *Service) []mcptool.Tool {
 	return []mcptool.Tool{
-		{
-			Name:        "dns_list_records",
-			Description: "List the DNS records in a zone.",
-			InputSchema: mcptool.ObjectSchema(map[string]any{
-				"zone_id": map[string]any{"type": "string"},
-			}, "zone_id"),
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				zoneID, err := mcptool.RequiredString(args, "zone_id")
+		mcptool.New("dns_zone_list", "List DNS zones",
+			"Lists the DNS zones the connected Cloudflare account can edit, with each zone's id and domain name. "+
+				"Call it first: dns_record_list, dns_record_create, gateway_create, and exposure_create all take a zone "+
+				"id and name from it. A successful call also confirms the Cloudflare credentials work; a missing or "+
+				"rejected token returns an error instead.",
+			mcptool.Hints{ReadOnly: true},
+			func(ctx context.Context, in zoneListIn) (any, error) {
+				zones, err := s.ListZones(ctx)
 				if err != nil {
 					return nil, err
 				}
-				return s.ListRecords(ctx, zoneID)
-			},
-		},
-		{
-			Name:        "dns_create_record",
-			Description: "Create a DNS record (A, AAAA, CNAME, TXT) in a zone.",
-			InputSchema: mcptool.ObjectSchema(map[string]any{
-				"zone_id": map[string]any{"type": "string"},
-				"type":    map[string]any{"type": "string", "enum": []string{"A", "AAAA", "CNAME", "TXT"}},
-				"name":    map[string]any{"type": "string"},
-				"content": map[string]any{"type": "string"},
-				"ttl":     map[string]any{"type": "integer"},
-			}, "zone_id", "type", "name", "content"),
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				vals, err := mcptool.RequiredStrings(args, "zone_id", "type", "name", "content")
+				return mcptool.Paginate(zones, in.PageArgs), nil
+			}),
+		mcptool.New("dns_record_list", "List DNS records",
+			"Lists a zone's DNS records at Cloudflare, optionally narrowed by id, name, or type. With "+
+				"check_propagation it also resolves each returned record through public DNS and sets propagated, "+
+				"which is how to confirm a new or changed record is live; a proxied record never reports propagated, "+
+				"because public DNS answers with Cloudflare's own addresses. Records an exposure or tunnel created "+
+				"appear here too; change those through exposure_delete or dns_tunnel_update so Nexul's own view stays true.",
+			mcptool.Hints{ReadOnly: true},
+			func(ctx context.Context, in recordListIn) (any, error) {
+				records, err := s.ListRecords(ctx, in.ZoneID)
 				if err != nil {
 					return nil, err
 				}
-				zoneID, recType, name, content := vals[0], vals[1], vals[2], vals[3]
-				return s.CreateRecord(ctx, zoneID, RecordInput{
-					Type: RecordType(recType), Name: name, Content: content, TTL: intArg(args["ttl"]),
-				})
-			},
-		},
-		{
-			Name:        "dns_update_record",
-			Description: "Update a DNS record's content in a zone.",
-			InputSchema: mcptool.ObjectSchema(map[string]any{
-				"zone_id":   map[string]any{"type": "string"},
-				"record_id": map[string]any{"type": "string"},
-				"type":      map[string]any{"type": "string", "enum": []string{"A", "AAAA", "CNAME", "TXT"}},
-				"name":      map[string]any{"type": "string"},
-				"content":   map[string]any{"type": "string"},
-				"ttl":       map[string]any{"type": "integer"},
-			}, "zone_id", "record_id", "type", "name", "content"),
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				vals, err := mcptool.RequiredStrings(args, "zone_id", "record_id", "type", "name", "content")
-				if err != nil {
-					return nil, err
-				}
-				zoneID, recordID, recType, name, content := vals[0], vals[1], vals[2], vals[3], vals[4]
-				return s.UpdateRecord(ctx, zoneID, recordID, RecordInput{
-					Type: RecordType(recType), Name: name, Content: content, TTL: intArg(args["ttl"]),
-				})
-			},
-		},
-		{
-			Name:        "dns_delete_record",
-			Description: "Delete a DNS record from a zone (idempotent).",
-			InputSchema: mcptool.ObjectSchema(map[string]any{
-				"zone_id":   map[string]any{"type": "string"},
-				"record_id": map[string]any{"type": "string"},
-			}, "zone_id", "record_id"),
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				vals, err := mcptool.RequiredStrings(args, "zone_id", "record_id")
-				if err != nil {
-					return nil, err
-				}
-				zoneID, recordID := vals[0], vals[1]
-				if err := s.DeleteRecord(ctx, zoneID, recordID); err != nil {
-					return nil, err
-				}
-				return map[string]string{"status": "deleted"}, nil
-			},
-		},
-		{
-			Name:        "dns_check_propagation",
-			Description: "Verify a record has propagated to public DNS.",
-			InputSchema: mcptool.ObjectSchema(map[string]any{
-				"zone_id":   map[string]any{"type": "string"},
-				"record_id": map[string]any{"type": "string"},
-			}, "zone_id", "record_id"),
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				vals, err := mcptool.RequiredStrings(args, "zone_id", "record_id")
-				if err != nil {
-					return nil, err
-				}
-				zoneID, recordID := vals[0], vals[1]
-				records, err := s.ListRecords(ctx, zoneID)
-				if err != nil {
-					return nil, err
-				}
-				for i := range records {
-					if records[i].ID == recordID {
-						if err := s.CheckPropagation(ctx, zoneID, records[i]); err != nil {
-							return nil, err
-						}
-						return map[string]string{"status": "propagated"}, nil
+				var matched []Record
+				for _, r := range records {
+					if in.matches(r) {
+						matched = append(matched, r)
 					}
 				}
-				return nil, fmt.Errorf("%w: record %s not found in zone", apperrs.ErrNotFound, recordID)
-			},
-		},
-	}
-}
-
-func serviceHostnameTools(s *Service) []mcptool.Tool {
-	return []mcptool.Tool{
-		{
-			Name:        "dns_list_service_hostnames",
-			Description: "List the hostname associations for deployed services.",
-			InputSchema: mcptool.ObjectSchema(nil),
-			Call: func(ctx context.Context, _ map[string]any) (any, error) {
-				return s.ListServiceHostnames(ctx)
-			},
-		},
-		{
-			Name:        "dns_get_service_hostname",
-			Description: "Get one service's hostname association.",
-			InputSchema: mcptool.ObjectSchema(map[string]any{
-				"service": map[string]any{"type": "string"},
-			}, "service"),
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				service, err := mcptool.RequiredString(args, "service")
-				if err != nil {
-					return nil, err
+				page := mcptool.Paginate(matched, in.PageArgs)
+				out := mcptool.Page[recordResult]{Items: make([]recordResult, 0, len(page.Items)),
+					Total: page.Total, HasMore: page.HasMore, NextOffset: page.NextOffset}
+				for _, r := range page.Items {
+					res := toRecordResult(r)
+					if in.CheckPropagation {
+						propagated := s.CheckPropagation(ctx, in.ZoneID, r) == nil
+						res.Propagated = &propagated
+					}
+					out.Items = append(out.Items, res)
 				}
-				return s.GetServiceHostname(ctx, service)
-			},
-		},
-		{
-			Name:        "dns_set_service_hostname",
-			Description: "Create a DNS record for a deployed service's hostname and associate it.",
-			InputSchema: mcptool.ObjectSchema(map[string]any{
-				"service":  map[string]any{"type": "string"},
-				"hostname": map[string]any{"type": "string"},
-				"zone_id":  map[string]any{"type": "string"},
-				"zone":     map[string]any{"type": "string"},
-				"type":     map[string]any{"type": "string", "enum": []string{"A", "AAAA", "CNAME", "TXT"}},
-				"target":   map[string]any{"type": "string"},
-			}, "service", "hostname", "zone_id", "zone", "type", "target"),
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				vals, err := mcptool.RequiredStrings(args, "service", "hostname", "zone_id", "zone", "type", "target")
-				if err != nil {
-					return nil, err
+				return out, nil
+			}),
+		mcptool.New("dns_record_create", "Create DNS record",
+			"Creates an A, AAAA, CNAME, or TXT record in a zone at Cloudflare and returns it with its id. Use it for "+
+				"records Nexul does not manage on its own, such as the instance's own hostname; to make a deployed "+
+				"container reachable use exposure_create, which creates its record itself. It never replaces a record: "+
+				"a name another record already holds fails or adds a second answer, and dns_record_update changes an "+
+				"existing one.",
+			mcptool.Hints{Additive: true},
+			func(ctx context.Context, in recordCreateIn) (any, error) {
+				ttl := in.TTL
+				if ttl == 0 {
+					ttl = 1
 				}
-				service, hostname, zoneID, zone, recType, target := vals[0], vals[1], vals[2], vals[3], vals[4], vals[5]
-				return s.SetServiceHostname(ctx, ServiceHostnameInput{
-					Service: service, Hostname: hostname, ZoneID: zoneID, Zone: zone,
-					Type: RecordType(recType), Target: target,
+				rec, err := s.CreateRecord(ctx, in.ZoneID, RecordInput{
+					Type: in.Type, Name: in.Name, Content: in.Content, TTL: ttl, Proxied: in.Proxied,
 				})
-			},
-		},
-		{
-			Name:        "dns_remove_service_hostname",
-			Description: "Delete a service's DNS record and drop its hostname association.",
-			InputSchema: mcptool.ObjectSchema(map[string]any{
-				"service": map[string]any{"type": "string"},
-			}, "service"),
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				service, err := mcptool.RequiredString(args, "service")
 				if err != nil {
 					return nil, err
 				}
-				if err := s.RemoveServiceHostname(ctx, service); err != nil {
+				return toRecordResult(*rec), nil
+			}),
+		mcptool.New("dns_record_update", "Update DNS record",
+			"Changes a DNS record at Cloudflare; only the fields you pass change, and every omitted field, proxied "+
+				"included, keeps its current value. Find the record's id with dns_record_list. Returns the record as "+
+				"stored after the change. A record an exposure or tunnel owns changes through exposure_delete and "+
+				"exposure_create or dns_tunnel_update instead.",
+			mcptool.Hints{Idempotent: true},
+			func(ctx context.Context, in recordUpdateIn) (any, error) {
+				cur, err := s.GetRecord(ctx, in.ZoneID, in.ID)
+				if err != nil {
 					return nil, err
 				}
-				return map[string]string{"status": "deleted"}, nil
-			},
-		},
+				patch := RecordInput{Type: cur.Type, Name: cur.Name, Content: cur.Content, TTL: cur.TTL, Proxied: cur.Proxied}
+				overlay(&patch.Type, in.Type)
+				overlay(&patch.Name, in.Name)
+				overlay(&patch.Content, in.Content)
+				overlay(&patch.TTL, in.TTL)
+				overlay(&patch.Proxied, in.Proxied)
+				rec, err := s.UpdateRecord(ctx, in.ZoneID, in.ID, patch)
+				if err != nil {
+					return nil, err
+				}
+				return toRecordResult(*rec), nil
+			}),
+		mcptool.New("dns_record_delete", "Delete DNS record",
+			"Deletes a DNS record from a zone at Cloudflare and returns its id with deleted set. Deleting a record "+
+				"that is already gone succeeds, so a repeat is safe. To take down a hostname an exposure routes, use "+
+				"exposure_delete, which removes the record and the exposure together.",
+			mcptool.Hints{Idempotent: true},
+			func(ctx context.Context, in recordDeleteIn) (any, error) {
+				if err := s.DeleteRecord(ctx, in.ZoneID, in.ID); err != nil {
+					return nil, err
+				}
+				return mcptool.Gone(in.ID), nil
+			}),
 	}
-}
-
-func tunnelProvisioningTools(s *Service) []mcptool.Tool {
-	return []mcptool.Tool{
-		{
-			Name:        "dns_tunnel_create",
-			Description: "Create a Cloudflare tunnel and store its credentials.",
-			InputSchema: mcptool.ObjectSchema(map[string]any{
-				"name": map[string]any{"type": "string"},
-			}, "name"),
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				name, err := mcptool.RequiredString(args, "name")
-				if err != nil {
-					return nil, err
-				}
-				return s.CreateTunnel(ctx, CreateTunnelInput{Name: name})
-			},
-		},
-		{
-			Name:        "dns_tunnel_list",
-			Description: "List the locally-tracked Cloudflare tunnels.",
-			InputSchema: mcptool.ObjectSchema(nil),
-			Call: func(ctx context.Context, _ map[string]any) (any, error) {
-				return s.ListTunnels(ctx)
-			},
-		},
-		{
-			Name:        "dns_tunnel_get",
-			Description: "Get one locally-tracked Cloudflare tunnel.",
-			InputSchema: mcptool.ObjectSchema(map[string]any{
-				"tunnel_id": map[string]any{"type": "string"},
-			}, "tunnel_id"),
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				id, err := mcptool.RequiredString(args, "tunnel_id")
-				if err != nil {
-					return nil, err
-				}
-				return s.GetTunnel(ctx, id)
-			},
-		},
-		{
-			Name:        "dns_tunnel_route",
-			Description: "Route a public hostname into a Cloudflare tunnel (ingress + CNAME record).",
-			InputSchema: mcptool.ObjectSchema(map[string]any{
-				"tunnel_id": map[string]any{"type": "string"},
-				"hostname":  map[string]any{"type": "string"},
-				"zone_id":   map[string]any{"type": "string"},
-				"zone":      map[string]any{"type": "string"},
-				"service":   map[string]any{"type": "string"},
-			}, "tunnel_id", "hostname", "zone_id", "zone", "service"),
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				vals, err := mcptool.RequiredStrings(args, "tunnel_id", "hostname", "zone_id", "zone", "service")
-				if err != nil {
-					return nil, err
-				}
-				tunnelID, hostname, zoneID, zone, service := vals[0], vals[1], vals[2], vals[3], vals[4]
-				return s.RouteTunnelHostname(ctx, RouteTunnelInput{
-					TunnelID: tunnelID, Hostname: hostname, ZoneID: zoneID, Zone: zone, Service: service,
-				})
-			},
-		},
-		{
-			Name:        "dns_tunnel_rotate",
-			Description: "Rotate a tunnel's credentials and store the new token.",
-			InputSchema: mcptool.ObjectSchema(map[string]any{
-				"tunnel_id": map[string]any{"type": "string"},
-			}, "tunnel_id"),
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				id, err := mcptool.RequiredString(args, "tunnel_id")
-				if err != nil {
-					return nil, err
-				}
-				return s.RotateTunnelCredentials(ctx, id)
-			},
-		},
-		{
-			Name:        "dns_tunnel_delete",
-			Description: "Delete a Cloudflare tunnel and its local association (idempotent).",
-			InputSchema: mcptool.ObjectSchema(map[string]any{
-				"tunnel_id": map[string]any{"type": "string"},
-			}, "tunnel_id"),
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				id, err := mcptool.RequiredString(args, "tunnel_id")
-				if err != nil {
-					return nil, err
-				}
-				if err := s.DeleteTunnel(ctx, id); err != nil {
-					return nil, err
-				}
-				return map[string]string{"status": "deleted"}, nil
-			},
-		},
-		{
-			Name:        "dns_tunnel_provision_agent",
-			Description: "Provision the cloudflared service definition for a tunnel, feeding it the tunnel token.",
-			InputSchema: mcptool.ObjectSchema(map[string]any{
-				"tunnel_id":      map[string]any{"type": "string"},
-				"project_id":     map[string]any{"type": "string"},
-				"target":         map[string]any{"type": "string"},
-				"name":           map[string]any{"type": "string"},
-				"strategy":       map[string]any{"type": "string"},
-				"docker_network": map[string]any{"type": "string"},
-				"ports":          map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
-				"health_url":     map[string]any{"type": "string"},
-			}, "tunnel_id", "project_id", "target"),
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				vals, err := mcptool.RequiredStrings(args, "tunnel_id", "project_id", "target")
-				if err != nil {
-					return nil, err
-				}
-				tunnelID, projectID, target := vals[0], vals[1], vals[2]
-				spec := AgentSpec{
-					ProjectID:     projectID,
-					Target:        target,
-					Name:          strArg(args["name"]),
-					Strategy:      strArg(args["strategy"]),
-					DockerNetwork: strArg(args["docker_network"]),
-					HealthURL:     strArg(args["health_url"]),
-				}
-				return s.ProvisionTunnelAgent(ctx, tunnelID, spec)
-			},
-		},
-		{
-			Name:        "dns_provision_reverse_proxy",
-			Description: "Provision a reverse-proxy service definition (Traefik) as a Nexul service.",
-			InputSchema: mcptool.ObjectSchema(map[string]any{
-				"project_id":     map[string]any{"type": "string"},
-				"target":         map[string]any{"type": "string"},
-				"name":           map[string]any{"type": "string"},
-				"strategy":       map[string]any{"type": "string"},
-				"compose_dir":    map[string]any{"type": "string"},
-				"docker_network": map[string]any{"type": "string"},
-				"ports":          map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
-				"image":          map[string]any{"type": "string"},
-				"health_url":     map[string]any{"type": "string"},
-			}, "project_id", "target"),
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				vals, err := mcptool.RequiredStrings(args, "project_id", "target")
-				if err != nil {
-					return nil, err
-				}
-				projectID, target := vals[0], vals[1]
-				spec := AgentSpec{
-					ProjectID:     projectID,
-					Target:        target,
-					Name:          strArg(args["name"]),
-					Strategy:      strArg(args["strategy"]),
-					ComposeDir:    strArg(args["compose_dir"]),
-					DockerNetwork: strArg(args["docker_network"]),
-					Ports:         stringSliceArg(args["ports"]),
-					Image:         strArg(args["image"]),
-					HealthURL:     strArg(args["health_url"]),
-				}
-				return s.ProvisionReverseProxy(ctx, spec)
-			},
-		},
-	}
-}
-
-func gatewayTools(s *Service) []mcptool.Tool {
-	return []mcptool.Tool{
-		{
-			Name:        "dns_gateway_create",
-			Description: "Create a gateway (tunnel or proxy) giving a docker network internet reachability; provisions the backing service.",
-			InputSchema: mcptool.ObjectSchema(map[string]any{
-				"kind":           map[string]any{"type": "string", "enum": []string{"tunnel", "proxy"}},
-				"docker_network": map[string]any{"type": "string"},
-				"zone_id":        map[string]any{"type": "string"},
-				"zone":           map[string]any{"type": "string"},
-				"tunnel_id":      map[string]any{"type": "string"},
-				"server_address": map[string]any{"type": "string"},
-				"project_id":     map[string]any{"type": "string"},
-				"target":         map[string]any{"type": "string"},
-				"name":           map[string]any{"type": "string"},
-			}, "kind", "docker_network", "zone_id", "zone", "project_id", "target"),
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				vals, err := mcptool.RequiredStrings(args, "kind", "docker_network", "zone_id", "zone", "project_id", "target")
-				if err != nil {
-					return nil, err
-				}
-				kind, network, zoneID, zone, projectID, target := vals[0], vals[1], vals[2], vals[3], vals[4], vals[5]
-				return s.CreateGateway(ctx, CreateGatewayInput{
-					Kind: GatewayKind(kind), DockerNetwork: network, ZoneID: zoneID, Zone: zone,
-					TunnelID: strArg(args["tunnel_id"]), ServerAddress: strArg(args["server_address"]),
-					ProjectID: projectID, Target: target, Name: strArg(args["name"]),
-				})
-			},
-		},
-		{
-			Name:        "dns_gateway_list",
-			Description: "List the locally-tracked gateways.",
-			InputSchema: mcptool.ObjectSchema(nil),
-			Call: func(ctx context.Context, _ map[string]any) (any, error) {
-				return s.ListGateways(ctx)
-			},
-		},
-		{
-			Name:        "dns_gateway_delete",
-			Description: "Delete a gateway (deprovisions its backing service). Fails if it still has exposures.",
-			InputSchema: mcptool.ObjectSchema(map[string]any{
-				"gateway_id": map[string]any{"type": "string"},
-			}, "gateway_id"),
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				id, err := mcptool.RequiredString(args, "gateway_id")
-				if err != nil {
-					return nil, err
-				}
-				if err := s.DeleteGateway(ctx, id); err != nil {
-					return nil, err
-				}
-				return map[string]string{"status": "deleted"}, nil
-			},
-		},
-	}
-}
-
-// exposureTools' create/delete are named after the entity, not the dns package (spec §9: exposure_create,
-// exposure_delete), matching stack_* in the deploy domain; dns_exposure_list keeps the package prefix since
-// the spec's MCP tool list doesn't name it.
-func exposureTools(s *Service) []mcptool.Tool {
-	return []mcptool.Tool{
-		{
-			Name:        "exposure_create",
-			Description: "Route a hostname through a gateway to a container (ingress rule + CNAME for a tunnel gateway, A/AAAA record for a proxy gateway). Without gateway_id, reuses or provisions one on the container's machine.",
-			InputSchema: mcptool.ObjectSchema(map[string]any{
-				"gateway_id": map[string]any{"type": "string"},
-				"hostname":   map[string]any{"type": "string"},
-				"service_id": map[string]any{"type": "string"},
-				"service":    map[string]any{"type": "string"},
-				"port":       map[string]any{"type": "integer"},
-				"zone_id":    map[string]any{"type": "string"},
-				"zone":       map[string]any{"type": "string"},
-				"kind":       map[string]any{"type": "string", "enum": []string{"tunnel", "proxy"}},
-			}, "hostname", "port", "zone_id", "zone"),
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				vals, err := mcptool.RequiredStrings(args, "hostname", "zone_id", "zone")
-				if err != nil {
-					return nil, err
-				}
-				hostname, zoneID, zone := vals[0], vals[1], vals[2]
-				return s.CreateExposure(ctx, CreateExposureInput{
-					GatewayID: strArg(args["gateway_id"]), Hostname: hostname,
-					ServiceID: strArg(args["service_id"]), Service: strArg(args["service"]),
-					Port: intArg(args["port"]), ZoneID: zoneID, Zone: zone, Kind: GatewayKind(strArg(args["kind"])),
-				})
-			},
-		},
-		{
-			Name:        "dns_exposure_list",
-			Description: "List the locally-tracked exposures.",
-			InputSchema: mcptool.ObjectSchema(nil),
-			Call: func(ctx context.Context, _ map[string]any) (any, error) {
-				return s.ListExposures(ctx)
-			},
-		},
-		{
-			Name:        "exposure_delete",
-			Description: "Remove an exposure (ingress rule / DNS record) and its local association.",
-			InputSchema: mcptool.ObjectSchema(map[string]any{
-				"exposure_id": map[string]any{"type": "string"},
-			}, "exposure_id"),
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				id, err := mcptool.RequiredString(args, "exposure_id")
-				if err != nil {
-					return nil, err
-				}
-				if err := s.DeleteExposure(ctx, id); err != nil {
-					return nil, err
-				}
-				return map[string]string{"status": "deleted"}, nil
-			},
-		},
-	}
-}
-
-func strArg(v any) string {
-	if s, ok := v.(string); ok {
-		return s
-	}
-	return ""
-}
-
-func stringSliceArg(v any) []string {
-	raw, ok := v.([]any)
-	if !ok {
-		return nil
-	}
-	out := make([]string, 0, len(raw))
-	for _, item := range raw {
-		if s, ok := item.(string); ok {
-			out = append(out, s)
-		}
-	}
-	return out
-}
-
-func intArg(v any) int {
-	if f, ok := v.(float64); ok && f > 0 {
-		return int(f)
-	}
-	return 0
 }

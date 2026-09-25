@@ -206,6 +206,29 @@ func (s *Service) DeleteRecord(ctx context.Context, zoneID, recordID string) err
 	return nil
 }
 
+// GetRecord returns one of a zone's records; an id the zone does not hold is ErrNotFound.
+func (s *Service) GetRecord(ctx context.Context, zoneID, recordID string) (*Record, error) {
+	records, err := s.ListRecords(ctx, zoneID)
+	if err != nil {
+		return nil, err
+	}
+	for i := range records {
+		if records[i].ID == recordID {
+			return &records[i], nil
+		}
+	}
+	return nil, fmt.Errorf("%w: record %s not found in zone", apperrs.ErrNotFound, recordID)
+}
+
+// CheckRecordPropagation verifies one of a zone's records has propagated to public DNS.
+func (s *Service) CheckRecordPropagation(ctx context.Context, zoneID, recordID string) error {
+	rec, err := s.GetRecord(ctx, zoneID, recordID)
+	if err != nil {
+		return err
+	}
+	return s.CheckPropagation(ctx, zoneID, *rec)
+}
+
 // CheckPropagation verifies a record has propagated to public DNS.
 func (s *Service) CheckPropagation(ctx context.Context, zoneID string, rec Record) error {
 	if strings.TrimSpace(zoneID) == "" || rec.ID == "" {

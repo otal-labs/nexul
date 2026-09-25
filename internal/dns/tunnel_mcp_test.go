@@ -1,10 +1,7 @@
 package dns
 
 import (
-	"context"
-	"errors"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -13,111 +10,114 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 )
 
-func tunnelTools(repo *fakeRepo, tunnel *fakeTunnelProvider, prov *fakeProvisioner) []mcptool.Tool {
-	return MCPTools(newTunnelService(repo, tunnel, prov))
-}
+const routeT1Args = `{"id":"t1","hostname":"nexul.example.com","zone_id":"z1","zone":"example.com","service":"http://web:80"}`
 
-func TestMCPTools_TunnelCreate(t *testing.T) {
-	repo := newFakeRepo()
-	call := toolCall(t, "dns_tunnel_create", tunnelTools(repo, newFakeTunnelProvider(), nil)...)
-	got, err := call(context.Background(), map[string]any{"name": "tunnel-1"})
-	require.NoError(t, err)
-	tunnel, ok := got.(*Tunnel)
-	require.True(t, ok)
-	assert.Equal(t, "tunnel-1", tunnel.Name)
-	assert.NotContains(t, tunnel.Token, "tunnel-token", "token never echoed")
-	_, err = repo.GetTunnel(context.Background(), "tunnel-1")
-	require.NoError(t, err)
-}
-
-func TestMCPTools_TunnelCreate_MissingNameIsInvalid(t *testing.T) {
-	call := toolCall(t, "dns_tunnel_create", tunnelTools(newFakeRepo(), newFakeTunnelProvider(), nil)...)
-	_, err := call(context.Background(), map[string]any{})
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-}
-
-func TestMCPTools_TunnelListAndGet(t *testing.T) {
-	repo := newFakeRepo()
-	require.NoError(t, repo.SaveTunnel(context.Background(), Tunnel{ID: "t1", Name: "one", CreatedAt: time.Now()}))
-	tools := tunnelTools(repo, newFakeTunnelProvider(), nil)
-
-	list := toolCall(t, "dns_tunnel_list", tools...)
-	got, err := list(context.Background(), map[string]any{})
-	require.NoError(t, err)
-	assert.Len(t, got, 1)
-
-	get := toolCall(t, "dns_tunnel_get", tools...)
-	gotT, err := get(context.Background(), map[string]any{"tunnel_id": "t1"})
-	require.NoError(t, err)
-	tunnel, ok := gotT.(*Tunnel)
-	require.True(t, ok)
-	assert.Equal(t, "t1", tunnel.ID)
-}
-
-func TestMCPTools_TunnelRoute(t *testing.T) {
-	repo := newFakeRepo()
-	require.NoError(t, repo.SaveTunnel(context.Background(), Tunnel{ID: "t1", Name: "one"}))
-	call := toolCall(t, "dns_tunnel_route", tunnelTools(repo, newFakeTunnelProvider(), nil)...)
-	got, err := call(context.Background(), map[string]any{
-		"tunnel_id": "t1", "hostname": "app.example.com", "zone_id": "z1", "zone": "example.com", "service": "http://localhost:80",
+func TestTunnelTools_Errors(t *testing.T) {
+	runToolErrors(t, []toolError{
+		{name: "create without a name is invalid", tool: "dns_tunnel_create", args: `{}`, want: apperrs.ErrInvalid},
+		{name: "the old tunnel_id argument is rejected", tool: "dns_tunnel_delete", args: `{"tunnel_id":"t1"}`, want: apperrs.ErrInvalid},
+		{name: "live status of an unknown tunnel is not found", tool: "dns_tunnel_list", args: `{"id":"ghost"}`, want: apperrs.ErrNotFound},
+		{name: "updating an unknown tunnel is not found", tool: "dns_tunnel_update", args: `{"id":"ghost","rotate_credentials":true}`, want: apperrs.ErrNotFound},
+		{name: "a route without a hostname is invalid", tool: "dns_tunnel_update", args: `{"id":"t1","service":"http://web:80"}`, want: apperrs.ErrInvalid},
+		{name: "deleting an unknown tunnel is not found", tool: "dns_tunnel_delete", args: `{"id":"ghost"}`, want: apperrs.ErrNotFound},
+		{name: "a tunnel the token may not create is forbidden", tool: "dns_tunnel_create", args: `{"name":"edge"}`, want: apperrs.ErrForbidden,
+			setup: func(f *toolFakes) { f.tunnels.createErr = apperrs.ErrForbidden }},
+		{name: "a tunnel delete the token may not make is forbidden", tool: "dns_tunnel_delete", args: `{"id":"t1"}`,
+			want: apperrs.ErrForbidden, setup: func(f *toolFakes) { f.tunnels.deleteErr = apperrs.ErrForbidden }},
+		{name: "a failed tunnel read surfaces", tool: "dns_tunnel_list", args: `{}`, want: errBoom,
+			setup: func(f *toolFakes) { f.repo.tunnelErr = errBoom }},
+		{name: "no Cloudflare connection is invalid", tool: "dns_tunnel_list", args: `{"id":"t1"}`, want: apperrs.ErrInvalid,
+			setup: func(f *toolFakes) { f.disconnected = true }},
 	})
-	require.NoError(t, err)
-	tunnel, ok := got.(*Tunnel)
-	require.True(t, ok)
-	assert.Equal(t, "app.example.com", tunnel.Hostname)
 }
 
-func TestMCPTools_TunnelRotate(t *testing.T) {
-	repo := newFakeRepo()
-	require.NoError(t, repo.SaveTunnel(context.Background(), Tunnel{ID: "t1", Name: "one"}))
-	call := toolCall(t, "dns_tunnel_rotate", tunnelTools(repo, newFakeTunnelProvider(), nil)...)
-	got, err := call(context.Background(), map[string]any{"tunnel_id": "t1"})
-	require.NoError(t, err)
-	tunnel, ok := got.(*Tunnel)
-	require.True(t, ok)
-	assert.Equal(t, "t1", tunnel.ID)
+func TestTunnelUpdate_AFailedRouteStopsBeforeRotation(t *testing.T) {
+	f := newToolFakes(t)
+	f.tunnels.routeErr = apperrs.ErrForbidden
+	before := f.repo.tunnels["t1"].Token
+	_, err := f.call(t, "dns_tunnel_update", `{"id":"t1","hostname":"nexul.example.com","zone_id":"z1","zone":"example.com","service":"http://web:80","rotate_credentials":true}`)
+	require.ErrorIs(t, err, apperrs.ErrForbidden)
+	assert.Equal(t, before, f.repo.tunnels["t1"].Token, "rotation never ran")
 }
 
-func TestMCPTools_TunnelDelete(t *testing.T) {
-	repo := newFakeRepo()
-	require.NoError(t, repo.SaveTunnel(context.Background(), Tunnel{ID: "t1", Name: "one"}))
-	call := toolCall(t, "dns_tunnel_delete", tunnelTools(repo, newFakeTunnelProvider(), nil)...)
-	got, err := call(context.Background(), map[string]any{"tunnel_id": "t1"})
+func TestTunnelCreate_NeverReturnsTheToken(t *testing.T) {
+	f := newToolFakes(t)
+	got, err := f.call(t, "dns_tunnel_create", `{"name":"edge"}`)
 	require.NoError(t, err)
-	assert.Equal(t, map[string]string{"status": "deleted"}, got)
-	_, err = repo.GetTunnel(context.Background(), "t1")
-	require.Error(t, err)
+	created := got.(*Tunnel)
+	assert.Equal(t, "edge", created.Name)
+	assert.NotContains(t, asJSON(t, got), "tunnel-token")
+	assert.NotContains(t, asJSON(t, got), created.Token, "the ciphertext stays out of the result too")
+
+	again, err := f.call(t, "dns_tunnel_create", `{"name":"edge"}`)
+	require.NoError(t, err)
+	assert.Equal(t, created.ID, again.(*Tunnel).ID, "a retry returns the tunnel it already made")
 }
 
-func TestMCPTools_TunnelProvisionAgent(t *testing.T) {
-	repo := newFakeRepo()
-	enc, err := encryptTunnelTokenForTest(testKey(), "the-tunnel-secret")
+func TestTunnelList(t *testing.T) {
+	f := newToolFakes(t)
+	got, err := f.call(t, "dns_tunnel_list", `{}`)
 	require.NoError(t, err)
-	require.NoError(t, repo.SaveTunnel(context.Background(), Tunnel{ID: "t1", Name: "one", Token: enc}))
-	prov := &fakeProvisioner{}
-	call := toolCall(t, "dns_tunnel_provision_agent", tunnelTools(repo, newFakeTunnelProvider(), prov)...)
-	got, err := call(context.Background(), map[string]any{
-		"tunnel_id": "t1", "project_id": "p1", "target": "10.0.0.1",
-	})
+	page := got.(mcptool.Page[*Tunnel])
+	require.Len(t, page.Items, 1)
+	assert.Empty(t, page.Items[0].Status, "the list reads only Nexul's records")
+	assert.NotContains(t, asJSON(t, got), page.Items[0].Token)
+
+	got, err = f.call(t, "dns_tunnel_list", `{"id":"t1"}`)
 	require.NoError(t, err)
-	provisioned, ok := got.(*AgentProvisioned)
-	require.True(t, ok)
-	assert.Equal(t, "svc-1", provisioned.ServiceID)
-	require.Len(t, prov.calls, 1)
-	assert.Equal(t, "the-tunnel-secret", prov.calls[0].Env["TUNNEL_TOKEN"])
+	page = got.(mcptool.Page[*Tunnel])
+	require.Len(t, page.Items, 1)
+	assert.Equal(t, "healthy", page.Items[0].Status, "an id reads the live status")
 }
 
-func TestMCPTools_ProvisionReverseProxy(t *testing.T) {
-	prov := &fakeProvisioner{}
-	call := toolCall(t, "dns_provision_reverse_proxy", tunnelTools(newFakeRepo(), newFakeTunnelProvider(), prov)...)
-	got, err := call(context.Background(), map[string]any{
-		"project_id": "p1", "target": "10.0.0.1", "strategy": "run", "ports": []any{"80:80", "443:443"}, "image": "traefik:v3",
-	})
+func TestTunnelUpdate_OmittedRouteFieldsKeepTheirValue(t *testing.T) {
+	f := newToolFakes(t)
+	_, err := f.call(t, "dns_tunnel_update", routeT1Args)
 	require.NoError(t, err)
-	provisioned, ok := got.(*AgentProvisioned)
-	require.True(t, ok)
-	assert.Equal(t, "svc-1", provisioned.ServiceID)
-	require.Len(t, prov.calls, 1)
-	assert.Equal(t, []string{"80:80", "443:443"}, prov.calls[0].Ports)
+
+	got, err := f.call(t, "dns_tunnel_update", `{"id":"t1","service":"http://web:8080"}`)
+	require.NoError(t, err)
+	res := got.(tunnelUpdateResult)
+	assert.Equal(t, []string{"route"}, res.Applied)
+	assert.Equal(t, "nexul.example.com", res.Tunnel.Hostname)
+	assert.Equal(t, "z1", res.Tunnel.ZoneID)
+	assert.Equal(t, "http://web:8080", res.Tunnel.Service)
+	assert.Equal(t, routeCall{TunnelID: "t1", Hostname: "nexul.example.com", Service: "http://web:8080"}, f.tunnels.routeCalls[1])
+	assert.Len(t, f.records.records["z1"], 4, "re-pointing updates the tunnel's record in place")
+}
+
+func TestTunnelUpdate_RotatesAfterRouting(t *testing.T) {
+	f := newToolFakes(t)
+	before := f.repo.tunnels["t1"].Token
+	got, err := f.call(t, "dns_tunnel_update", `{"id":"t1","hostname":"nexul.example.com","zone_id":"z1","zone":"example.com","service":"http://web:80","rotate_credentials":true}`)
+	require.NoError(t, err)
+	res := got.(tunnelUpdateResult)
+	assert.Equal(t, []string{"route", "rotate_credentials"}, res.Applied)
+	assert.NotEqual(t, before, f.repo.tunnels["t1"].Token)
+	assert.NotContains(t, asJSON(t, got), "rotated-token")
+}
+
+func TestTunnelUpdate_SaysWhatAppliedWhenRotationFails(t *testing.T) {
+	f := newToolFakes(t)
+	f.tunnels.rotateErr = apperrs.ErrForbidden
+	_, err := f.call(t, "dns_tunnel_update", `{"id":"t1","hostname":"nexul.example.com","zone_id":"z1","zone":"example.com","service":"http://web:80","rotate_credentials":true}`)
+	require.ErrorIs(t, err, apperrs.ErrForbidden)
+	assert.Contains(t, err.Error(), "applied [route]")
+	assert.Equal(t, "nexul.example.com", f.repo.tunnels["t1"].Hostname, "the route stays applied")
+}
+
+func TestTunnelUpdate_NothingToChangeReturnsTheTunnel(t *testing.T) {
+	got, err := newToolFakes(t).call(t, "dns_tunnel_update", `{"id":"t1"}`)
+	require.NoError(t, err)
+	res := got.(tunnelUpdateResult)
+	assert.Empty(t, res.Applied)
+	assert.Equal(t, "t1", res.Tunnel.ID)
+}
+
+func TestTunnelDelete(t *testing.T) {
+	f := newToolFakes(t)
+	got, err := f.call(t, "dns_tunnel_delete", `{"id":"t1"}`)
+	require.NoError(t, err)
+	assert.Equal(t, mcptool.Gone("t1"), got)
+	assert.Empty(t, f.repo.tunnels)
 }

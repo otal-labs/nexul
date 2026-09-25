@@ -418,7 +418,7 @@ func (f *fakeProvider) CreateRecord(_ context.Context, zoneID string, in RecordI
 		return nil, f.createErr
 	}
 	f.nextID++
-	rec := &Record{ID: "r" + itoa(f.nextID), ZoneID: zoneID, Type: in.Type, Name: in.Name, Content: in.Content, TTL: in.TTL}
+	rec := &Record{ID: "r" + itoa(f.nextID), ZoneID: zoneID, Type: in.Type, Name: in.Name, Content: in.Content, TTL: in.TTL, Proxied: in.Proxied}
 	f.records[zoneID] = append(f.records[zoneID], *rec)
 	return rec, nil
 }

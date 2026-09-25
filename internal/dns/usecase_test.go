@@ -223,6 +223,37 @@ func TestService_CheckPropagation(t *testing.T) {
 	})
 }
 
+func TestService_CheckRecordPropagation(t *testing.T) {
+	p := newFakeProvider()
+	rec, err := p.CreateRecord(t.Context(), "z1", RecordInput{Type: RecordA, Name: "api", Content: "1.2.3.4", TTL: 1})
+	require.NoError(t, err)
+	tests := []struct {
+		name     string
+		zoneID   string
+		recordID string
+		listErr  error
+		propErr  error
+		want     error
+	}{
+		{"missing zone is invalid", "", rec.ID, nil, nil, apperrs.ErrInvalid},
+		{"a record the zone lacks is not found", "z1", "ghost", nil, nil, apperrs.ErrNotFound},
+		{"a failed listing surfaces", "z1", rec.ID, apperrs.Retryable(errBoom), nil, apperrs.ErrRetryable},
+		{"not propagated yet is retryable", "z1", rec.ID, nil, apperrs.Retryable(errBoom), apperrs.ErrRetryable},
+		{"propagated", "z1", rec.ID, nil, nil, nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p.listErr, p.propagateErr = tt.listErr, tt.propErr
+			err := newTestService(newFakeRepo(), p, nil).CheckRecordPropagation(t.Context(), tt.zoneID, tt.recordID)
+			if tt.want == nil {
+				require.NoError(t, err)
+				return
+			}
+			require.ErrorIs(t, err, tt.want)
+		})
+	}
+}
+
 func TestService_CreateInstanceRecord(t *testing.T) {
 	t.Run("missing zone is invalid", func(t *testing.T) {
 		s := newTestService(newFakeRepo(), newFakeProvider(), nil)
