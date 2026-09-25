@@ -26,8 +26,9 @@ for a newer revision.
 - A domain's `mcp.go` declares that domain's tools: a typed input, one or more
   use-case calls, and a shaped output. It holds no business rule; a rule in
   `mcp.go` is a rule the HTTP gateway does not have (ADR 0019).
-- A tool that composes two domains lives in `internal/mcp/`, because domains
-  never import each other.
+- A tool that composes two domains lives in `internal/mcp/composite/`,
+  because domains never import each other; the package imports only the
+  domains it composes, so it builds and tests on its own.
 
 ---
 
