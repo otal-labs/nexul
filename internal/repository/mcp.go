@@ -6,32 +6,43 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 )
 
-// MCPTools returns the repository tool definitions: the wizard's first two steps, list and scan.
+// MCPTools returns the repository tools: the project wizard's first two steps, list and scan.
 func MCPTools(s Scanner) []mcptool.Tool {
-	return []mcptool.Tool{
-		{
-			Name:        "repository_list",
-			Description: "List repositories visible through the connected git provider installation.",
-			InputSchema: mcptool.ObjectSchema(nil),
-			Call: func(ctx context.Context, _ map[string]any) (any, error) {
-				return ListRepos(ctx, s)
-			},
-		},
-		{
-			Name:        "repository_scan",
-			Description: "Scan a repository's tree for deployable candidates (compose stacks, standalone Dockerfiles) and env keys.",
-			InputSchema: mcptool.ObjectSchema(map[string]any{
-				"owner": map[string]any{"type": "string"},
-				"name":  map[string]any{"type": "string"},
-				"ref":   map[string]any{"type": "string"},
-			}, "owner", "name"),
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				vals, err := mcptool.RequiredStrings(args, "owner", "name")
-				if err != nil {
-					return nil, err
-				}
-				return Scan(ctx, s, vals[0], vals[1], mcptool.OptionalString(args["ref"]))
-			},
-		},
-	}
+	return []mcptool.Tool{repositoryListTool(s), repositoryScanTool(s)}
+}
+
+type repositoryListIn struct {
+	mcptool.PageArgs
+}
+
+func repositoryListTool(s Scanner) mcptool.Tool {
+	return mcptool.New("repository_list", "List repositories",
+		"Lists the repositories the connected git provider installation can read, with owner, name, and default "+
+			"branch. Use it to pick a repository for repository_scan or pull_request_list. Returns at most 100 per page.",
+		mcptool.Hints{ReadOnly: true},
+		func(ctx context.Context, in repositoryListIn) (any, error) {
+			repos, err := ListRepos(ctx, s)
+			if err != nil {
+				return nil, err
+			}
+			return mcptool.Paginate(repos, in.PageArgs), nil
+		})
+}
+
+type repositoryScanIn struct {
+	Owner string `json:"owner" jsonschema:"The repository's owner, for example acme."`
+	Repo  string `json:"repo" jsonschema:"The repository's name, for example api."`
+	Ref   string `json:"ref,omitempty" jsonschema:"The branch, tag, or commit to scan, for example main. Defaults to the repository's default branch."`
+}
+
+func repositoryScanTool(s Scanner) mcptool.Tool {
+	return mcptool.New("repository_scan", "Scan repository",
+		"Reads a repository's file tree and proposes deployable candidates: one per compose file and one per "+
+			"standalone Dockerfile, each with its services, ports, and env keys, plus the env keys of any "+
+			".env.example. Pass a candidate unchanged to stack_create to create a stack from it. Reads the git "+
+			"provider only; nothing is created.",
+		mcptool.Hints{ReadOnly: true},
+		func(ctx context.Context, in repositoryScanIn) (any, error) {
+			return Scan(ctx, s, in.Owner, in.Repo, in.Ref)
+		})
 }

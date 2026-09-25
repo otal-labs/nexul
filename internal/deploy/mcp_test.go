@@ -3,7 +3,6 @@ package deploy
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"testing"
 	"time"
 
@@ -15,599 +14,391 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 )
 
-func TestMCPTools_Shape(t *testing.T) {
-	tools := MCPTools(newTestService(newFakeRepo(), newFakeBus()))
-	require.Len(t, tools, 15)
-	var names []string
-	for _, tool := range tools {
-		names = append(names, tool.Name)
-		assert.NotEmpty(t, tool.Description)
-		assert.NotNil(t, tool.InputSchema)
-		assert.NotNil(t, tool.Call)
-	}
-	assert.ElementsMatch(t, []string{
-		"deploy_get", "deploy_log", "deploy_list", "deploy_list_by_service", "deploy_list_by_status", "deploy_cancel",
-		"service_list", "stack_create", "stack_deploy", "stack_get", "stack_list", "stack_update",
-		"stack_delete", "stack_rollback", "machine_import",
-	}, names)
-}
-
-func seedDeploy(t *testing.T, repo *fakeRepo, d *Deploy) {
+func call(t *testing.T, s *Service, name, args string) (any, error) {
 	t.Helper()
-	require.NoError(t, repo.Create(context.Background(), d))
+	return callAs(t, t.Context(), s, name, args)
 }
 
-func TestMCPTools_Get(t *testing.T) {
-	t.Run("happy path", func(t *testing.T) {
-		repo := newFakeRepo()
-		d := &Deploy{ID: "d1", Service: "api", Status: StatusHealthy, CreatedAt: time.Now(), UpdatedAt: time.Now()}
-		seedDeploy(t, repo, d)
-		call := toolByName(t, MCPTools(newTestService(repo, newFakeBus())), "deploy_get").Call
-		got, err := call(context.Background(), map[string]any{"id": "d1"})
-		require.NoError(t, err)
-		assert.Equal(t, "api", got.(*Deploy).Service)
-	})
-	t.Run("missing id is invalid", func(t *testing.T) {
-		call := toolByName(t, MCPTools(newTestService(newFakeRepo(), newFakeBus())), "deploy_get").Call
-		_, err := call(context.Background(), map[string]any{})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("unknown deploy is not found", func(t *testing.T) {
-		call := toolByName(t, MCPTools(newTestService(newFakeRepo(), newFakeBus())), "deploy_get").Call
-		_, err := call(context.Background(), map[string]any{"id": "nope"})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
-}
-
-func TestMCPTools_Log(t *testing.T) {
-	t.Run("happy path returns the lines oldest first", func(t *testing.T) {
-		repo := newFakeRepo()
-		seedDeploy(t, repo, &Deploy{ID: "d1", Service: "api", Status: StatusRunning, CreatedAt: time.Now(), UpdatedAt: time.Now()})
-		require.NoError(t, repo.AppendLogLines(context.Background(), "d1", []LogLine{
-			{TS: 10, Phase: "checkout", Text: "clone org/app@main"},
-			{TS: 20, Phase: "build", Text: "Step 1/3"},
-		}))
-		call := toolByName(t, MCPTools(newTestService(repo, newFakeBus())), "deploy_log").Call
-		got, err := call(context.Background(), map[string]any{"id": "d1"})
-		require.NoError(t, err)
-		assert.Equal(t, []LogLine{
-			{Seq: 1, TS: 10, Phase: "checkout", Text: "clone org/app@main"},
-			{Seq: 2, TS: 20, Phase: "build", Text: "Step 1/3"},
-		}, got)
-	})
-	t.Run("a deploy without output returns an empty list, not null", func(t *testing.T) {
-		repo := newFakeRepo()
-		seedDeploy(t, repo, &Deploy{ID: "d1", Status: StatusPending, CreatedAt: time.Now(), UpdatedAt: time.Now()})
-		call := toolByName(t, MCPTools(newTestService(repo, newFakeBus())), "deploy_log").Call
-		got, err := call(context.Background(), map[string]any{"id": "d1"})
-		require.NoError(t, err)
-		assert.Equal(t, []LogLine{}, got)
-	})
-	t.Run("missing id is invalid", func(t *testing.T) {
-		call := toolByName(t, MCPTools(newTestService(newFakeRepo(), newFakeBus())), "deploy_log").Call
-		_, err := call(context.Background(), map[string]any{})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("unknown deploy is not found", func(t *testing.T) {
-		call := toolByName(t, MCPTools(newTestService(newFakeRepo(), newFakeBus())), "deploy_log").Call
-		_, err := call(context.Background(), map[string]any{"id": "nope"})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
-}
-
-func TestMCPTools_List(t *testing.T) {
-	repo := newFakeRepo()
-	seedDeploy(t, repo, &Deploy{ID: "d1", Service: "api", Status: StatusHealthy, CreatedAt: time.Now(), UpdatedAt: time.Now()})
-	call := toolByName(t, MCPTools(newTestService(repo, newFakeBus())), "deploy_list").Call
-	got, err := call(context.Background(), map[string]any{})
-	require.NoError(t, err)
-	assert.Len(t, got.([]*Deploy), 1)
-}
-
-func TestMCPTools_ListByService(t *testing.T) {
-	t.Run("happy path", func(t *testing.T) {
-		repo := newFakeRepo()
-		seedDeploy(t, repo, &Deploy{ID: "d1", Service: "api", Status: StatusHealthy, CreatedAt: time.Now(), UpdatedAt: time.Now()})
-		seedDeploy(t, repo, &Deploy{ID: "d2", Service: "web", Status: StatusFailed, CreatedAt: time.Now(), UpdatedAt: time.Now()})
-		call := toolByName(t, MCPTools(newTestService(repo, newFakeBus())), "deploy_list_by_service").Call
-		got, err := call(context.Background(), map[string]any{"service": "api"})
-		require.NoError(t, err)
-		ds := got.([]*Deploy)
-		require.Len(t, ds, 1)
-		assert.Equal(t, "d1", ds[0].ID)
-	})
-	t.Run("missing service is invalid", func(t *testing.T) {
-		call := toolByName(t, MCPTools(newTestService(newFakeRepo(), newFakeBus())), "deploy_list_by_service").Call
-		_, err := call(context.Background(), map[string]any{})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-}
-
-func TestMCPTools_ListByStatus(t *testing.T) {
-	t.Run("happy path", func(t *testing.T) {
-		repo := newFakeRepo()
-		seedDeploy(t, repo, &Deploy{ID: "d1", Service: "api", Status: StatusFailed, CreatedAt: time.Now(), UpdatedAt: time.Now()})
-		seedDeploy(t, repo, &Deploy{ID: "d2", Service: "web", Status: StatusHealthy, CreatedAt: time.Now(), UpdatedAt: time.Now()})
-		call := toolByName(t, MCPTools(newTestService(repo, newFakeBus())), "deploy_list_by_status").Call
-		got, err := call(context.Background(), map[string]any{"status": "failed"})
-		require.NoError(t, err)
-		ds := got.([]*Deploy)
-		require.Len(t, ds, 1)
-		assert.Equal(t, "d1", ds[0].ID)
-	})
-	t.Run("missing status is invalid", func(t *testing.T) {
-		call := toolByName(t, MCPTools(newTestService(newFakeRepo(), newFakeBus())), "deploy_list_by_status").Call
-		_, err := call(context.Background(), map[string]any{})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-}
-
-func TestMCPTools_Cancel(t *testing.T) {
-	t.Run("queued deploy publishes cancel_requested", func(t *testing.T) {
-		repo := newFakeRepo()
-		bus := newFakeBus()
-		seedDeploy(t, repo, &Deploy{ID: "d1", Service: "api", Status: StatusPending, CreatedAt: time.Now(), UpdatedAt: time.Now()})
-		call := toolByName(t, MCPTools(newTestService(repo, bus)), "deploy_cancel").Call
-		got, err := call(context.Background(), map[string]any{"id": "d1"})
-		require.NoError(t, err)
-		body := got.(map[string]string)
-		assert.Equal(t, "d1", body["id"])
-		assert.Equal(t, "cancelling", body["status"])
-		b, err := json.Marshal(repo.of(TopicDeployCancelRequested).Payload)
-		require.NoError(t, err)
-		var ev DeployCancelRequestedEvent
-		require.NoError(t, json.Unmarshal(b, &ev))
-		assert.Equal(t, "d1", ev.ID)
-	})
-	t.Run("missing id is invalid", func(t *testing.T) {
-		call := toolByName(t, MCPTools(newTestService(newFakeRepo(), newFakeBus())), "deploy_cancel").Call
-		_, err := call(context.Background(), map[string]any{})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("terminal deploy is a conflict", func(t *testing.T) {
-		repo := newFakeRepo()
-		seedDeploy(t, repo, &Deploy{ID: "d1", Service: "api", Status: StatusHealthy, CreatedAt: time.Now(), UpdatedAt: time.Now()})
-		call := toolByName(t, MCPTools(newTestService(repo, newFakeBus())), "deploy_cancel").Call
-		_, err := call(context.Background(), map[string]any{"id": "d1"})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrConflict))
-	})
-}
-
-func TestMCPTools_StackCreate(t *testing.T) {
-	t.Run("creates a stack", func(t *testing.T) {
-		stacks := newFakeStackRepo()
-		projects := newFakeProjects()
-		projects.exists["proj-1"] = true
-		projects.repos["proj-1"] = []string{"acme/api"}
-		s := newTestServiceWith(newFakeRepo(), stacks, newFakeContainerRepo(), projects, newFakeBus())
-		call := toolByName(t, MCPTools(s), "stack_create").Call
-		got, err := call(context.Background(), map[string]any{
-			"project_id": "proj-1", "name": "api", "machine": "10.0.0.1:22",
-			"strategy": "compose", "compose_path": "/srv/api/docker-compose.yml",
-			"env":          map[string]any{"PORT": "8080"},
-			"build_source": map[string]any{"repo_owner": "acme", "repo_name": "api", "branch": "main", "dockerfile": "Dockerfile"},
-		})
-		require.NoError(t, err)
-		gotStack := got.(*Stack)
-		assert.Equal(t, "api", gotStack.Name)
-		assert.Equal(t, "api", gotStack.Slug)
-		assert.Equal(t, map[string]string{"PORT": "8080"}, gotStack.Env)
-		require.NotNil(t, gotStack.BuildSource)
-		assert.Equal(t, "acme", gotStack.BuildSource.RepoOwner)
-		assert.Equal(t, "Dockerfile", gotStack.BuildSource.Dockerfile)
-	})
-	t.Run("run strategy with docker network", func(t *testing.T) {
-		stacks := newFakeStackRepo()
-		projects := newFakeProjects()
-		projects.exists["proj-1"] = true
-		s := newTestServiceWith(newFakeRepo(), stacks, newFakeContainerRepo(), projects, newFakeBus())
-		call := toolByName(t, MCPTools(s), "stack_create").Call
-		got, err := call(context.Background(), map[string]any{
-			"project_id": "proj-1", "name": "worker", "machine": "10.0.0.2:22",
-			"strategy": "run", "docker_network": "net1",
-		})
-		require.NoError(t, err)
-		assert.Equal(t, StrategyRun, got.(*Stack).Strategy)
-		assert.Equal(t, "net1", got.(*Stack).DockerNetwork)
-	})
-	t.Run("missing project is invalid", func(t *testing.T) {
-		s := newTestService(newFakeRepo(), newFakeBus())
-		call := toolByName(t, MCPTools(s), "stack_create").Call
-		_, err := call(context.Background(), map[string]any{"name": "api", "machine": "h:22", "strategy": "run", "docker_network": "net"})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("repo error propagates", func(t *testing.T) {
-		stacks := newFakeStackRepo()
-		projects := newFakeProjects()
-		projects.exists["proj-1"] = true
-		projects.repoErr = errors.New("db down")
-		s := newTestServiceWith(newFakeRepo(), stacks, newFakeContainerRepo(), projects, newFakeBus())
-		call := toolByName(t, MCPTools(s), "stack_create").Call
-		_, err := call(context.Background(), map[string]any{
-			"project_id": "proj-1", "name": "api", "machine": "10.0.0.1:22",
-			"strategy": "compose", "compose_path": "/srv/api/docker-compose.yml",
-			"build_source": map[string]any{"repo_owner": "acme", "repo_name": "api"},
-		})
-		require.Error(t, err)
-		assert.ErrorIs(t, err, projects.repoErr)
-	})
-}
-
-func TestMCPTools_StackGet(t *testing.T) {
-	t.Run("happy path", func(t *testing.T) {
-		stacks := newFakeStackRepo()
-		projects := newFakeProjects()
-		projects.exists["proj-1"] = true
-		s := newTestServiceWith(newFakeRepo(), stacks, newFakeContainerRepo(), projects, newFakeBus())
-		input := validStack()
-		input.ID = ""
-		created, err := s.CreateStack(context.Background(), input, nil)
-		require.NoError(t, err)
-		call := toolByName(t, MCPTools(s), "stack_get").Call
-		got, err := call(context.Background(), map[string]any{"id": created.ID})
-		require.NoError(t, err)
-		assert.Equal(t, "api", got.(*Stack).Name)
-	})
-	t.Run("missing id is invalid", func(t *testing.T) {
-		call := toolByName(t, MCPTools(newTestService(newFakeRepo(), newFakeBus())), "stack_get").Call
-		_, err := call(context.Background(), map[string]any{})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-}
-
-func TestMCPTools_StackList(t *testing.T) {
-	t.Run("scopes to project", func(t *testing.T) {
-		stacks := newFakeStackRepo()
-		projects := newFakeProjects()
-		projects.exists["proj-1"] = true
-		s := newTestServiceWith(newFakeRepo(), stacks, newFakeContainerRepo(), projects, newFakeBus())
-		input := validStack()
-		input.ID = ""
-		_, err := s.CreateStack(context.Background(), input, nil)
-		require.NoError(t, err)
-		call := toolByName(t, MCPTools(s), "stack_list").Call
-		got, err := call(context.Background(), map[string]any{"project_id": "proj-1"})
-		require.NoError(t, err)
-		require.Len(t, got.([]*Stack), 1)
-	})
-	t.Run("missing project is invalid", func(t *testing.T) {
-		call := toolByName(t, MCPTools(newTestService(newFakeRepo(), newFakeBus())), "stack_list").Call
-		_, err := call(context.Background(), map[string]any{})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-}
-
-func TestMCPTools_StackUpdate(t *testing.T) {
-	t.Run("updates the stack", func(t *testing.T) {
-		stacks := newFakeStackRepo()
-		projects := newFakeProjects()
-		projects.exists["proj-1"] = true
-		s := newTestServiceWith(newFakeRepo(), stacks, newFakeContainerRepo(), projects, newFakeBus())
-		input := validStack()
-		input.ID = ""
-		created, err := s.CreateStack(context.Background(), input, nil)
-		require.NoError(t, err)
-		call := toolByName(t, MCPTools(s), "stack_update").Call
-		got, err := call(context.Background(), map[string]any{
-			"id": created.ID, "project_id": "proj-1", "name": "api-v2", "machine": "10.0.0.1:22",
-			"strategy": "compose", "compose_path": "/srv/api/docker-compose.yml",
-		})
-		require.NoError(t, err)
-		assert.Equal(t, "api-v2", got.(*Stack).Name)
-	})
-	t.Run("sets branch deploy rules with overrides, and omitting them keeps the rules", func(t *testing.T) {
-		ctx := t.Context()
-		stacks := newFakeStackRepo()
-		projects := newFakeProjects()
-		projects.exists["proj-1"] = true
-		s := newTestServiceWith(newFakeRepo(), stacks, newFakeContainerRepo(), projects, newFakeBus())
-		input := validStack()
-		input.ID = ""
-		created, err := s.CreateStack(ctx, input, nil)
-		require.NoError(t, err)
-		call := toolByName(t, MCPTools(s), "stack_update").Call
-		args := map[string]any{
-			"id": created.ID, "project_id": "proj-1", "name": "api", "machine": "10.0.0.1:22", "strategy": "compose",
-			"branch_deploy_rules": []any{map[string]any{
-				"pattern": "dev", "docker_network": "qa-net", "name_suffix": "qa",
-				"overrides": map[string]any{"DATABASE_URL": "postgres://qa"},
-			}},
-		}
-		got, err := call(ctx, args)
-		require.NoError(t, err)
-		require.Len(t, got.(*Stack).BranchDeployRules, 1)
-		assert.Equal(t, map[string]string{"DATABASE_URL": "postgres://qa"}, got.(*Stack).BranchDeployRules[0].Overrides)
-
-		delete(args, "branch_deploy_rules")
-		args["env"] = map[string]any{"PORT": "9090"}
-		got, err = call(ctx, args)
-		require.NoError(t, err)
-		assert.Len(t, got.(*Stack).BranchDeployRules, 1)
-	})
-	t.Run("malformed branch deploy rules are invalid", func(t *testing.T) {
-		call := toolByName(t, MCPTools(newTestService(newFakeRepo(), newFakeBus())), "stack_update").Call
-		_, err := call(t.Context(), map[string]any{
-			"id": "svc-1", "project_id": "proj-1", "name": "api", "machine": "m", "strategy": "compose",
-			"branch_deploy_rules": "feature/*",
-		})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("overrides on an in-place rule are invalid", func(t *testing.T) {
-		call := toolByName(t, MCPTools(newTestService(newFakeRepo(), newFakeBus())), "stack_update").Call
-		_, err := call(t.Context(), map[string]any{
-			"id": "svc-1", "project_id": "proj-1", "name": "api", "machine": "m", "strategy": "compose",
-			"branch_deploy_rules": []any{map[string]any{"pattern": "main", "docker_network": "n", "overrides": map[string]any{"A": "b"}}},
-		})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-}
-
-func TestMCPTools_StackDelete(t *testing.T) {
-	t.Run("deletes the stack", func(t *testing.T) {
-		stacks := newFakeStackRepo()
-		projects := newFakeProjects()
-		projects.exists["proj-1"] = true
-		s := newTestServiceWith(newFakeRepo(), stacks, newFakeContainerRepo(), projects, newFakeBus())
-		input := validStack()
-		input.ID = ""
-		created, err := s.CreateStack(context.Background(), input, nil)
-		require.NoError(t, err)
-		call := toolByName(t, MCPTools(s), "stack_delete").Call
-		_, err = call(context.Background(), map[string]any{"id": created.ID})
-		require.NoError(t, err)
-		_, err = s.GetStack(context.Background(), created.ID)
-		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-	})
-}
-
-func TestMCPTools_StackRollback(t *testing.T) {
-	t.Run("rolls back to last healthy image", func(t *testing.T) {
-		repo := newFakeRepo()
-		now := time.Date(2026, 8, 2, 12, 0, 0, 0, time.UTC)
-		seedDeploy(t, repo, &Deploy{ID: "d1", StackID: "svc-1", Service: "api", Image: "img:v1", Status: StatusHealthy, CreatedAt: now, UpdatedAt: now})
-		s := newTestService(repo, newFakeBus())
-		call := toolByName(t, MCPTools(s), "stack_rollback").Call
-		got, err := call(context.Background(), map[string]any{"stack_id": "svc-1"})
-		require.NoError(t, err)
-		assert.Equal(t, "img:v1", got.(*Deploy).Image)
-	})
-	t.Run("missing stack is invalid", func(t *testing.T) {
-		call := toolByName(t, MCPTools(newTestService(newFakeRepo(), newFakeBus())), "stack_rollback").Call
-		_, err := call(context.Background(), map[string]any{})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("provenance records the mcp source", func(t *testing.T) {
-		repo := newFakeRepo()
-		now := time.Date(2026, 8, 2, 12, 0, 0, 0, time.UTC)
-		seedDeploy(t, repo, &Deploy{ID: "d1", StackID: "svc-1", Service: "api", Image: "img:v1", Status: StatusHealthy, CreatedAt: now, UpdatedAt: now})
-		s := newTestService(repo, newFakeBus())
-		call := toolByName(t, MCPTools(s), "stack_rollback").Call
-		ctx := identity.WithActor(context.Background(), identity.Actor{ID: "user-1"})
-		got, err := call(ctx, map[string]any{"stack_id": "svc-1"})
-		require.NoError(t, err)
-		assert.Equal(t, "user-1:mcp", got.(*Deploy).TriggeredBy)
-	})
-}
-
-func TestMCPTools_StackDeploy(t *testing.T) {
-	t.Run("builds from a ref", func(t *testing.T) {
-		stacks := newFakeStackRepo()
-		projects := newFakeProjects()
-		projects.exists["proj-1"] = true
-		projects.repos["proj-1"] = []string{"acme/api"}
-		s := newTestServiceWith(newFakeRepo(), stacks, newFakeContainerRepo(), projects, newFakeBus())
-		input := validStack()
-		input.ID = ""
-		input.BuildSource = &BuildSource{RepoOwner: "acme", RepoName: "api", Dockerfile: "Dockerfile"}
-		created, err := s.CreateStack(context.Background(), input, nil)
-		require.NoError(t, err)
-		call := toolByName(t, MCPTools(s), "stack_deploy").Call
-		ctx := identity.WithActor(context.Background(), identity.Actor{ID: "user-1"})
-		got, err := call(ctx, map[string]any{"stack_id": created.ID, "ref": "main"})
-		require.NoError(t, err)
-		d := got.(*Deploy)
-		assert.Equal(t, KindBuild, d.Kind)
-		assert.Equal(t, "user-1:mcp", d.TriggeredBy)
-	})
-	t.Run("redeploys an image", func(t *testing.T) {
-		s := newTestService(newFakeRepo(), newFakeBus())
-		call := toolByName(t, MCPTools(s), "stack_deploy").Call
-		got, err := call(context.Background(), map[string]any{"stack_id": "svc-1", "image": "img:v2"})
-		require.NoError(t, err)
-		assert.Equal(t, KindDeploy, got.(*Deploy).Kind)
-	})
-	t.Run("missing stack id is invalid", func(t *testing.T) {
-		call := toolByName(t, MCPTools(newTestService(newFakeRepo(), newFakeBus())), "stack_deploy").Call
-		_, err := call(context.Background(), map[string]any{"image": "img:v2"})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-}
-
-func TestMCPTools_StackCreate_FromCandidate(t *testing.T) {
-	t.Run("compose candidate", func(t *testing.T) {
-		stacks := newFakeStackRepo()
-		projects := newFakeProjects()
-		projects.exists["proj-1"] = true
-		projects.repos["proj-1"] = []string{"acme/api"}
-		s := newTestServiceWith(newFakeRepo(), stacks, newFakeContainerRepo(), projects, newFakeBus())
-		call := toolByName(t, MCPTools(s), "stack_create").Call
-		got, err := call(context.Background(), map[string]any{
-			"project_id": "proj-1", "machine": "10.0.0.1:22",
-			"build_source": map[string]any{"repo_owner": "acme", "repo_name": "api", "branch": "main"},
-			"candidate": map[string]any{
-				"kind": "compose", "path": "docker-compose.yml",
-				"services": []any{
-					map[string]any{"name": "web", "image": "nginx", "ports": []any{float64(80)}},
-				},
-			},
-		})
-		require.NoError(t, err)
-		stack := got.(*Stack)
-		assert.Equal(t, "api", stack.Name)
-		assert.Equal(t, StrategyCompose, stack.Strategy)
-		assert.Equal(t, "docker-compose.yml", stack.ComposePath)
-		svcs, err := s.ListServices(context.Background(), stack.ID)
-		require.NoError(t, err)
-		require.Len(t, svcs, 1)
-		assert.Equal(t, "web", svcs[0].Name)
-		assert.Equal(t, "nginx", svcs[0].Declared.Image)
-	})
-	t.Run("dockerfile candidate is a stack of one, named after the slug", func(t *testing.T) {
-		stacks := newFakeStackRepo()
-		projects := newFakeProjects()
-		projects.exists["proj-1"] = true
-		s := newTestServiceWith(newFakeRepo(), stacks, newFakeContainerRepo(), projects, newFakeBus())
-		call := toolByName(t, MCPTools(s), "stack_create").Call
-		got, err := call(context.Background(), map[string]any{
-			"project_id": "proj-1", "machine": "10.0.0.1:22", "name": "worker", "docker_network": "net1",
-			"candidate": map[string]any{
-				"kind": "dockerfile", "path": "Dockerfile",
-				"services": []any{map[string]any{"name": "worker", "build": map[string]any{"dockerfile": "Dockerfile"}}},
-			},
-		})
-		require.NoError(t, err)
-		stack := got.(*Stack)
-		assert.Equal(t, StrategyRun, stack.Strategy)
-		svcs, err := s.ListServices(context.Background(), stack.ID)
-		require.NoError(t, err)
-		require.Len(t, svcs, 1)
-		assert.Equal(t, stack.Slug, svcs[0].Name)
-		assert.Equal(t, "Dockerfile", svcs[0].Declared.Build)
-	})
-	t.Run("deploy true enqueues the first deploy", func(t *testing.T) {
-		stacks := newFakeStackRepo()
-		projects := newFakeProjects()
-		projects.exists["proj-1"] = true
-		projects.repos["proj-1"] = []string{"acme/api"}
-		s := newTestServiceWith(newFakeRepo(), stacks, newFakeContainerRepo(), projects, newFakeBus())
-		call := toolByName(t, MCPTools(s), "stack_create").Call
-		got, err := call(context.Background(), map[string]any{
-			"project_id": "proj-1", "machine": "10.0.0.1:22", "deploy": true,
-			"build_source": map[string]any{"repo_owner": "acme", "repo_name": "api", "branch": "main", "dockerfile": "Dockerfile"},
-			"candidate": map[string]any{
-				"kind": "compose", "path": "docker-compose.yml",
-				"services": []any{map[string]any{"name": "web", "image": "nginx"}},
-			},
-		})
-		require.NoError(t, err)
-		stack := got.(*Stack)
-		deploys, err := s.ListByStackID(context.Background(), stack.ID)
-		require.NoError(t, err)
-		require.Len(t, deploys, 1)
-		assert.Equal(t, KindBuild, deploys[0].Kind)
-		assert.Equal(t, stack.ID, deploys[0].StackID)
-	})
-	t.Run("deploy true without a ref is invalid", func(t *testing.T) {
-		stacks := newFakeStackRepo()
-		projects := newFakeProjects()
-		projects.exists["proj-1"] = true
-		s := newTestServiceWith(newFakeRepo(), stacks, newFakeContainerRepo(), projects, newFakeBus())
-		call := toolByName(t, MCPTools(s), "stack_create").Call
-		_, err := call(context.Background(), map[string]any{
-			"project_id": "proj-1", "machine": "10.0.0.1:22", "deploy": true,
-			"candidate": map[string]any{
-				"kind": "compose", "path": "docker-compose.yml",
-				"services": []any{map[string]any{"name": "web", "image": "nginx"}},
-			},
-		})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("no name and no build source is invalid", func(t *testing.T) {
-		s := newTestServiceWith(newFakeRepo(), newFakeStackRepo(), newFakeContainerRepo(), newFakeProjects(), newFakeBus())
-		call := toolByName(t, MCPTools(s), "stack_create").Call
-		_, err := call(context.Background(), map[string]any{
-			"project_id": "proj-1", "machine": "10.0.0.1:22",
-			"candidate": map[string]any{"kind": "compose", "path": "docker-compose.yml"},
-		})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("unknown candidate kind is invalid", func(t *testing.T) {
-		s := newTestServiceWith(newFakeRepo(), newFakeStackRepo(), newFakeContainerRepo(), newFakeProjects(), newFakeBus())
-		call := toolByName(t, MCPTools(s), "stack_create").Call
-		_, err := call(context.Background(), map[string]any{
-			"project_id": "proj-1", "machine": "10.0.0.1:22", "name": "x",
-			"candidate": map[string]any{"kind": "helm", "path": "chart"},
-		})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-}
-
-func TestMCPTools_ServiceList(t *testing.T) {
-	stacks := newFakeStackRepo()
-	projects := newFakeProjects()
-	projects.exists["proj-1"] = true
-	containers := newFakeContainerRepo()
-	s := newTestServiceWith(newFakeRepo(), stacks, containers, projects, newFakeBus())
-	input := validStack()
-	input.ID = ""
-	created, err := s.CreateStack(context.Background(), input, map[string]Declared{"api": {Image: "img"}})
-	require.NoError(t, err)
-	call := toolByName(t, MCPTools(s), "service_list").Call
-	got, err := call(context.Background(), map[string]any{"stack_id": created.ID})
-	require.NoError(t, err)
-	require.Len(t, got.([]*Container), 1)
-	assert.Equal(t, "api", got.([]*Container)[0].Name)
-}
-
-func TestMCPTools_MachineImport(t *testing.T) {
-	t.Run("happy path", func(t *testing.T) {
-		s, stacks, _ := newImportTestService([]DiscoveredContainer{
-			{Name: "myapp-web-1", Image: "nginx:latest", Status: "running"},
-		})
-		call := toolByName(t, MCPTools(s), "machine_import").Call
-		got, err := call(context.Background(), map[string]any{
-			"machine_id": "m-1", "project_id": "proj-1",
-			"stacks": []any{
-				map[string]any{"project": "myapp", "containers": []any{"myapp-web-1"}},
-			},
-		})
-		require.NoError(t, err)
-		result := got.(*ImportResult)
-		require.Len(t, result.Stacks, 1)
-		assert.Equal(t, "myapp", result.Stacks[0].Name)
-		require.Len(t, stacks.stored, 1)
-	})
-	t.Run("missing machine id is invalid", func(t *testing.T) {
-		s, _, _ := newImportTestService(nil)
-		call := toolByName(t, MCPTools(s), "machine_import").Call
-		_, err := call(context.Background(), map[string]any{"project_id": "proj-1"})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("missing project id is invalid", func(t *testing.T) {
-		s, _, _ := newImportTestService(nil)
-		call := toolByName(t, MCPTools(s), "machine_import").Call
-		_, err := call(context.Background(), map[string]any{"machine_id": "m-1"})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-}
-
-func toolByName(t *testing.T, tools []mcptool.Tool, name string) mcptool.Tool {
+func callAs(t *testing.T, ctx context.Context, s *Service, name, args string) (any, error) {
 	t.Helper()
-	for _, tool := range tools {
+	for _, tool := range MCPTools(s) {
 		if tool.Name == name {
-			return tool
+			return tool.Call(ctx, json.RawMessage(args))
 		}
 	}
 	t.Fatalf("tool %s not found", name)
-	return mcptool.Tool{}
+	return nil, nil
+}
+
+// asJSON renders a result the way the adapter sends it, so a test can assert on what the model reads.
+func asJSON(t *testing.T, v any) string {
+	t.Helper()
+	b, err := json.Marshal(v)
+	require.NoError(t, err)
+	return string(b)
+}
+
+func at(minute int) time.Time { return time.Date(2026, 9, 1, 12, minute, 0, 0, time.UTC) }
+
+// stackFixture is a service with project proj-1 (repository acme/api) and one created compose stack.
+func stackFixture(t *testing.T) (*Service, *Stack, *fakeRepo) {
+	t.Helper()
+	repo := newFakeRepo()
+	projects := newFakeProjects()
+	projects.exists["proj-1"] = true
+	projects.repos["proj-1"] = []string{"acme/api"}
+	s := newTestServiceWith(repo, newFakeStackRepo(), newFakeContainerRepo(), projects, newFakeBus())
+	in := validStack()
+	in.ID = ""
+	in.Env = map[string]string{"PORT": "8080", "TUNNEL_TOKEN": "secret-token"}
+	in.Mounts = []string{"/srv:/srv"}
+	in.Command = []string{"serve"}
+	in.BuildSource = &BuildSource{RepoOwner: "acme", RepoName: "api", Branch: "main", Dockerfile: "Dockerfile"}
+	in.BranchDeployRules = []BranchDeployRule{{Pattern: "dev", DockerNetwork: "qa", NameSuffix: "qa", Overrides: map[string]string{"DB": "postgres://qa"}}}
+	created, err := s.CreateStack(t.Context(), in, map[string]Declared{"api": {Image: "img"}})
+	require.NoError(t, err)
+	return s, created, repo
+}
+
+func TestMCPTools_Surface(t *testing.T) {
+	var names []string
+	for _, tool := range MCPTools(newTestService(newFakeRepo(), newFakeBus())) {
+		names = append(names, tool.Name)
+		assert.NotEmpty(t, tool.Title, tool.Name)
+		assert.NotEmpty(t, tool.Description, tool.Name)
+		assert.Equal(t, "object", tool.InputSchema.Type, tool.Name)
+	}
+	assert.Equal(t, []string{
+		"deploy_list", "deploy_get", "deploy_cancel", "stack_list", "stack_get", "stack_create", "stack_update",
+		"stack_delete", "stack_deploy", "machine_import",
+	}, names)
+}
+
+func TestMCPTools_Errors(t *testing.T) {
+	s, stack, repo := stackFixture(t)
+	seedDeploy(t, repo, &Deploy{ID: "done", StackID: stack.ID, Status: StatusHealthy, CreatedAt: at(1)})
+	tests := []struct {
+		name, tool, args string
+		want             error
+		msg              string
+	}{
+		{"deploy_list rejects an unknown status", "deploy_list", `{"status":"queued"}`, apperrs.ErrInvalid, "pending, running, healthy, failed"},
+		{"deploy_list rejects an unknown key", "deploy_list", `{"service":"api"}`, apperrs.ErrInvalid, ""},
+		{"deploy_get needs an id", "deploy_get", `{}`, apperrs.ErrInvalid, ""},
+		{"deploy_get of a missing deploy", "deploy_get", `{"id":"nope"}`, apperrs.ErrNotFound, "deploy_list"},
+		{"deploy_cancel of a missing deploy", "deploy_cancel", `{"id":"nope"}`, apperrs.ErrNotFound, "deploy_list"},
+		{"deploy_cancel of a finished deploy", "deploy_cancel", `{"id":"done"}`, apperrs.ErrConflict, ""},
+		{"stack_get of a missing stack", "stack_get", `{"id":"nope"}`, apperrs.ErrNotFound, "stack_list"},
+		{"stack_update of a missing stack", "stack_update", `{"id":"nope","name":"x"}`, apperrs.ErrNotFound, "stack_list"},
+		{"stack_update rejects an unknown strategy", "stack_update", `{"id":"` + stack.ID + `","strategy":"helm"}`, apperrs.ErrInvalid, ""},
+		{"stack_update rejects a wrongly typed field", "stack_update", `{"id":"` + stack.ID + `","ports":"8080:80"}`, apperrs.ErrInvalid, ""},
+		{"stack_update rejects an in-place rule with overrides", "stack_update", `{"id":"` + stack.ID + `","branch_deploy_rules":[{"pattern":"main","docker_network":"n","overrides":{"A":"b"}}]}`, apperrs.ErrInvalid, ""},
+		{"stack_delete of a missing stack", "stack_delete", `{"id":"nope"}`, apperrs.ErrNotFound, "stack_list"},
+		{"stack_deploy needs ref, image, or rollback", "stack_deploy", `{"id":"` + stack.ID + `"}`, apperrs.ErrInvalid, "rollback"},
+		{"stack_deploy rollback takes no ref", "stack_deploy", `{"id":"` + stack.ID + `","rollback":true,"ref":"main"}`, apperrs.ErrInvalid, ""},
+		{"stack_deploy of a missing stack", "stack_deploy", `{"id":"nope","image":"img:1"}`, apperrs.ErrNotFound, "stack_list"},
+		{"stack_create needs a strategy without a candidate", "stack_create", `{"project_id":"proj-1","machine":"m","name":"x"}`, apperrs.ErrInvalid, "compose or run"},
+		{"stack_create needs a machine", "stack_create", `{"project_id":"proj-1","name":"x","strategy":"compose"}`, apperrs.ErrInvalid, ""},
+		{"stack_create of an unknown project", "stack_create", `{"project_id":"ghost","machine":"m","name":"x","strategy":"compose"}`, apperrs.ErrInvalid, ""},
+		{"stack_create rejects an unknown candidate kind", "stack_create", `{"project_id":"proj-1","machine":"m","name":"x","candidate":{"kind":"helm","path":"chart"}}`, apperrs.ErrInvalid, "compose or dockerfile"},
+		{"stack_create from a candidate needs a name", "stack_create", `{"project_id":"proj-1","machine":"m","candidate":{"kind":"compose","path":"docker-compose.yml"}}`, apperrs.ErrInvalid, "name"},
+		{"machine_import needs a project", "machine_import", `{"id":"m-1"}`, apperrs.ErrInvalid, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := call(t, s, tt.tool, tt.args)
+			require.ErrorIs(t, err, tt.want)
+			assert.Contains(t, err.Error(), tt.msg)
+		})
+	}
+}
+
+func TestDeployList(t *testing.T) {
+	repo := newFakeRepo()
+	seedDeploy(t, repo, &Deploy{ID: "d1", StackID: "s1", Status: StatusHealthy, CreatedAt: at(1)})
+	seedDeploy(t, repo, &Deploy{ID: "d2", StackID: "s2", Status: StatusFailed, CreatedAt: at(2)})
+	seedDeploy(t, repo, &Deploy{ID: "d3", StackID: "s1", Status: StatusFailed, CreatedAt: at(3)})
+	s := newTestService(repo, newFakeBus())
+	ids := func(page mcptool.Page[deployResult]) []string {
+		var out []string
+		for _, d := range page.Items {
+			out = append(out, d.ID)
+		}
+		return out
+	}
+	tests := []struct {
+		name string
+		args string
+		want []string
+	}{
+		{"everything, newest first", `{}`, []string{"d3", "d2", "d1"}},
+		{"one stack", `{"stack_id":"s1"}`, []string{"d1", "d3"}},
+		{"one status", `{"status":"healthy"}`, []string{"d1"}},
+		{"a stack and a status", `{"stack_id":"s1","status":"failed"}`, []string{"d3"}},
+		{"a page", `{"limit":1,"offset":1}`, []string{"d2"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := call(t, s, "deploy_list", tt.args)
+			require.NoError(t, err)
+			assert.ElementsMatch(t, tt.want, ids(got.(mcptool.Page[deployResult])))
+		})
+	}
+	got, err := call(t, s, "deploy_list", `{}`)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"d3", "d2", "d1"}, ids(got.(mcptool.Page[deployResult])), "newest first")
+}
+
+func TestDeployGet_ReturnsTheLogTail(t *testing.T) {
+	repo := newFakeRepo()
+	seedDeploy(t, repo, &Deploy{ID: "d1", StackID: "s1", Service: "api", Target: "prod", Status: StatusRunning, CreatedAt: at(1)})
+	require.NoError(t, repo.AppendLogLines(t.Context(), "d1", []LogLine{
+		{TS: 10, Phase: "checkout", Text: "clone"}, {TS: 20, Phase: "build", Text: "step 1"}, {TS: 30, Phase: "build", Text: "step 2"},
+	}))
+	s := newTestService(repo, newFakeBus())
+
+	got, err := call(t, s, "deploy_get", `{"id":"d1","log_lines":2}`)
+	require.NoError(t, err)
+	d := got.(deployDetail)
+	assert.Equal(t, "api", d.Stack)
+	assert.Equal(t, "prod", d.Machine)
+	assert.Equal(t, 3, d.LogTotal)
+	require.Len(t, d.Log, 2)
+	assert.Equal(t, "step 2", d.Log[1].Text)
+
+	got, err = call(t, s, "deploy_get", `{"id":"d1"}`)
+	require.NoError(t, err)
+	assert.Len(t, got.(deployDetail).Log, 3, "the default tail covers a short log")
+}
+
+func TestDeployCancel_EnqueuesTheCancel(t *testing.T) {
+	repo := newFakeRepo()
+	seedDeploy(t, repo, &Deploy{ID: "d1", Status: StatusPending, CreatedAt: at(1)})
+	got, err := call(t, newTestService(repo, newFakeBus()), "deploy_cancel", `{"id":"d1"}`)
+	require.NoError(t, err)
+	assert.Equal(t, map[string]string{"id": "d1", "status": "cancelling"}, got)
+	assert.Equal(t, TopicDeployCancelRequested, repo.of(TopicDeployCancelRequested).Topic)
+}
+
+func TestStackList(t *testing.T) {
+	s, stack, _ := stackFixture(t)
+	got, err := call(t, s, "stack_list", `{"project_id":"proj-1"}`)
+	require.NoError(t, err)
+	page := got.(mcptool.Page[stackSummary])
+	require.Len(t, page.Items, 1)
+	assert.Equal(t, stack.ID, page.Items[0].ID)
+	assert.NotContains(t, asJSON(t, got), "secret-token")
+
+	got, err = call(t, s, "stack_list", `{"project_id":"other"}`)
+	require.NoError(t, err)
+	assert.Empty(t, got.(mcptool.Page[stackSummary]).Items)
+}
+
+func TestStackGet_CarriesServicesDeploysAndOnlyEnvKeys(t *testing.T) {
+	s, stack, repo := stackFixture(t)
+	for i := range 12 {
+		seedDeploy(t, repo, &Deploy{ID: "d" + string(rune('a'+i)), StackID: stack.ID, Status: StatusHealthy, CreatedAt: at(i)})
+	}
+	got, err := call(t, s, "stack_get", `{"id":"`+stack.ID+`"}`)
+	require.NoError(t, err)
+	d := got.(stackDetail)
+	assert.Equal(t, "api", d.Name)
+	require.Len(t, d.Services, 1)
+	assert.Equal(t, "api", d.Services[0].Name)
+	assert.Len(t, d.RecentDeploys, recentDeploys)
+	assert.Equal(t, []string{"PORT", "TUNNEL_TOKEN"}, d.EnvKeys)
+	require.Len(t, d.BranchDeployRules, 1)
+	assert.Equal(t, []string{"DB"}, d.BranchDeployRules[0].OverrideKeys)
+	out := asJSON(t, got)
+	assert.NotContains(t, out, "secret-token")
+	assert.NotContains(t, out, "postgres://qa")
+}
+
+func TestStackCreate(t *testing.T) {
+	newService := func() (*Service, *fakeProjects) {
+		projects := newFakeProjects()
+		projects.exists["proj-1"] = true
+		projects.repos["proj-1"] = []string{"acme/api"}
+		return newTestServiceWith(newFakeRepo(), newFakeStackRepo(), newFakeContainerRepo(), projects, newFakeBus()), projects
+	}
+
+	t.Run("explicit fields, env values withheld from the result", func(t *testing.T) {
+		s, _ := newService()
+		got, err := call(t, s, "stack_create", `{"project_id":"proj-1","machine":"prod","name":"worker","strategy":"run",
+			"docker_network":"net1","mounts":["/a:/a"],"command":["tunnel","run"],"env":{"TOKEN":"secret"}}`)
+		require.NoError(t, err)
+		created := got.(stackCreated)
+		assert.Equal(t, StrategyRun, created.Stack.Strategy)
+		assert.Equal(t, []string{"tunnel", "run"}, created.Stack.Command)
+		assert.Equal(t, []string{"TOKEN"}, created.Stack.EnvKeys)
+		assert.Nil(t, created.Deploy)
+		assert.NotContains(t, asJSON(t, got), "secret")
+	})
+	t.Run("a repository_scan candidate passes unchanged and deploys", func(t *testing.T) {
+		s, _ := newService()
+		ctx := identity.WithActor(t.Context(), identity.Actor{ID: "user-1"})
+		args := `{"project_id":"proj-1","machine":"prod","deploy":true,
+			"build_source":{"repo_owner":"acme","repo_name":"api","branch":"main","dockerfile":"Dockerfile"},
+			"candidate":{"kind":"compose","path":"docker-compose.yml","name":"api",
+				"services":[{"name":"web","image":"nginx","ports":[80],"expose":[],"env_keys":["PORT"]}],
+				"reachable":{"service":"web","port":80}}}`
+		got, err := callAs(t, ctx, s, "stack_create", args)
+		require.NoError(t, err)
+		created := got.(stackCreated)
+		assert.Equal(t, "api", created.Stack.Name, "the name falls back to the repository")
+		assert.Equal(t, StrategyCompose, created.Stack.Strategy)
+		require.NotNil(t, created.Deploy)
+		assert.Equal(t, KindBuild, created.Deploy.Kind)
+		assert.Equal(t, "user-1:mcp", created.Deploy.TriggeredBy)
+		svcs, err := s.ListServices(t.Context(), created.Stack.ID)
+		require.NoError(t, err)
+		require.Len(t, svcs, 1)
+		assert.Equal(t, Declared{Image: "nginx", Ports: []string{"80"}, EnvKeys: []string{"PORT"}}, svcs[0].Declared)
+	})
+	t.Run("a dockerfile candidate is a stack of one named after the slug", func(t *testing.T) {
+		s, _ := newService()
+		got, err := call(t, s, "stack_create", `{"project_id":"proj-1","machine":"prod","name":"Worker","docker_network":"net1",
+			"candidate":{"kind":"dockerfile","path":"Dockerfile","services":[{"name":"worker","build":{"context":".","dockerfile":"Dockerfile"}}]}}`)
+		require.NoError(t, err)
+		created := got.(stackCreated)
+		svcs, err := s.ListServices(t.Context(), created.Stack.ID)
+		require.NoError(t, err)
+		require.Len(t, svcs, 1)
+		assert.Equal(t, "worker", svcs[0].Name)
+		assert.Equal(t, "Dockerfile", svcs[0].Declared.Build)
+	})
+	t.Run("link_repository attaches a repository the project lacks", func(t *testing.T) {
+		s, projects := newService()
+		_, err := call(t, s, "stack_create", `{"project_id":"proj-1","machine":"prod","name":"web","strategy":"compose",
+			"link_repository":true,"build_source":{"repo_owner":"acme","repo_name":"web"}}`)
+		require.NoError(t, err)
+		assert.Contains(t, projects.repos["proj-1"], "acme/web")
+	})
+	t.Run("a deploy that cannot start still reports the created stack", func(t *testing.T) {
+		s, _ := newService()
+		_, err := call(t, s, "stack_create", `{"project_id":"proj-1","machine":"prod","name":"web","strategy":"compose","deploy":true}`)
+		require.ErrorIs(t, err, apperrs.ErrInvalid)
+		assert.Contains(t, err.Error(), "was created with id")
+		stacks, err := s.ListStacks(t.Context(), "proj-1")
+		require.NoError(t, err)
+		assert.Len(t, stacks, 1)
+	})
+}
+
+func TestStackUpdate_OmittedFieldsKeepTheirValues(t *testing.T) {
+	s, stack, _ := stackFixture(t)
+	got, err := call(t, s, "stack_update", `{"id":"`+stack.ID+`","name":"api-v2"}`)
+	require.NoError(t, err)
+	assert.Equal(t, "api-v2", got.(stackResult).Name)
+
+	after, err := s.GetStack(t.Context(), stack.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "api-v2", after.Name)
+	assert.Equal(t, stack.Slug, after.Slug)
+	assert.Equal(t, stack.Env, after.Env)
+	assert.Equal(t, stack.Mounts, after.Mounts)
+	assert.Equal(t, stack.Command, after.Command)
+	assert.Equal(t, stack.BuildSource, after.BuildSource)
+	assert.Equal(t, stack.BranchDeployRules, after.BranchDeployRules)
+}
+
+func TestStackUpdate_Patches(t *testing.T) {
+	tests := []struct {
+		name  string
+		patch string
+		check func(t *testing.T, before, after *Stack)
+	}{
+		{"env set and unset keep the other keys", `"env":{"set":{"LOG":"debug"},"unset":["PORT"]}`, func(t *testing.T, _, after *Stack) {
+			assert.Equal(t, map[string]string{"LOG": "debug", "TUNNEL_TOKEN": "secret-token"}, after.Env)
+		}},
+		{"an empty list clears", `"mounts":[]`, func(t *testing.T, before, after *Stack) {
+			assert.Empty(t, after.Mounts)
+			assert.Equal(t, before.Command, after.Command)
+		}},
+		{"build source fields patch one by one", `"build_source":{"branch":"release","dockerfile":""}`, func(t *testing.T, _, after *Stack) {
+			assert.Equal(t, &BuildSource{RepoOwner: "acme", RepoName: "api", Branch: "release"}, after.BuildSource)
+		}},
+		{"a rule without overrides keeps them", `"branch_deploy_rules":[{"pattern":"dev","docker_network":"qa2","name_suffix":"qa"}]`, func(t *testing.T, _, after *Stack) {
+			require.Len(t, after.BranchDeployRules, 1)
+			assert.Equal(t, "qa2", after.BranchDeployRules[0].DockerNetwork)
+			assert.Equal(t, map[string]string{"DB": "postgres://qa"}, after.BranchDeployRules[0].Overrides)
+		}},
+		{"empty overrides clear them", `"branch_deploy_rules":[{"pattern":"dev","docker_network":"qa","name_suffix":"qa","overrides":{}}]`, func(t *testing.T, _, after *Stack) {
+			assert.Empty(t, after.BranchDeployRules[0].Overrides)
+		}},
+		{"an empty rule list removes every rule", `"branch_deploy_rules":[]`, func(t *testing.T, _, after *Stack) {
+			assert.Empty(t, after.BranchDeployRules)
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s, stack, _ := stackFixture(t)
+			_, err := call(t, s, "stack_update", `{"id":"`+stack.ID+`",`+tt.patch+`}`)
+			require.NoError(t, err)
+			after, err := s.GetStack(t.Context(), stack.ID)
+			require.NoError(t, err)
+			tt.check(t, stack, after)
+		})
+	}
+}
+
+func TestStackDelete_ReturnsGone(t *testing.T) {
+	s, stack, _ := stackFixture(t)
+	got, err := call(t, s, "stack_delete", `{"id":"`+stack.ID+`"}`)
+	require.NoError(t, err)
+	assert.Equal(t, mcptool.Gone(stack.ID), got)
+	_, err = s.GetStack(t.Context(), stack.ID)
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
+}
+
+func TestStackDeploy(t *testing.T) {
+	tests := []struct {
+		name     string
+		args     string
+		wantKind Kind
+		image    string
+	}{
+		{"a ref builds", `"ref":"main"`, KindBuild, ""},
+		{"an image redeploys", `"image":"img:2"`, KindDeploy, "img:2"},
+		{"a rollback redeploys the last healthy image", `"rollback":true`, KindDeploy, "img:1"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s, stack, repo := stackFixture(t)
+			seedDeploy(t, repo, &Deploy{ID: "old", StackID: stack.ID, Image: "img:1", Status: StatusHealthy, CreatedAt: at(1)})
+			ctx := identity.WithActor(t.Context(), identity.Actor{ID: "user-1"})
+			got, err := callAs(t, ctx, s, "stack_deploy", `{"id":"`+stack.ID+`",`+tt.args+`}`)
+			require.NoError(t, err)
+			d := got.(deployResult)
+			assert.Equal(t, tt.wantKind, d.Kind)
+			assert.Equal(t, tt.image, d.Image)
+			assert.Equal(t, "user-1:mcp", d.TriggeredBy)
+		})
+	}
+	t.Run("a second deploy while one is active is a conflict", func(t *testing.T) {
+		s, stack, _ := stackFixture(t)
+		_, err := call(t, s, "stack_deploy", `{"id":"`+stack.ID+`","ref":"main"}`)
+		require.NoError(t, err)
+		_, err = call(t, s, "stack_deploy", `{"id":"`+stack.ID+`","ref":"main"}`)
+		require.ErrorIs(t, err, apperrs.ErrConflict)
+	})
+}
+
+func TestMachineImport(t *testing.T) {
+	t.Run("an unknown machine is not found", func(t *testing.T) {
+		s, _, _ := newImportTestService(nil)
+		_, err := call(t, s, "machine_import", `{"id":"ghost","project_id":"proj-1"}`)
+		require.ErrorIs(t, err, apperrs.ErrNotFound)
+		assert.Contains(t, err.Error(), "machine_list")
+	})
+	t.Run("adopts a compose project as one stack", func(t *testing.T) {
+		s, stacks, _ := newImportTestService([]DiscoveredContainer{{Name: "myapp-web-1", Image: "nginx:latest", Status: "running"}})
+		got, err := call(t, s, "machine_import", `{"id":"m-1","project_id":"proj-1","stacks":[{"project":"myapp","containers":["myapp-web-1"]}]}`)
+		require.NoError(t, err)
+		result := got.(importResult)
+		require.Len(t, result.Stacks, 1)
+		assert.Equal(t, "myapp", result.Stacks[0].Name)
+		assert.False(t, result.Stacks[0].Managed)
+		assert.Len(t, stacks.stored, 1)
+	})
 }

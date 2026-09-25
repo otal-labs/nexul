@@ -123,19 +123,3 @@ func TestGitHandler_ChangeContext(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, serve(t, h, http.MethodGet, "/api/repos/acme/app/change-context").Code)
 	assert.Equal(t, http.StatusNotFound, serve(t, NewHandler(p).Routes(), http.MethodGet, "/api/repos/acme/app/change-context?pr=7").Code, "no reader wired, no route")
 }
-
-func TestChangeContextTools(t *testing.T) {
-	p, r := changeFixture()
-	tools := ChangeContextTools(p, r)
-	require.Len(t, tools, 1)
-	assert.Equal(t, "git_get_change_context", tools[0].Name)
-
-	got, err := tools[0].Call(context.Background(), map[string]any{"owner": "acme", "repo": "app", "number": float64(7)})
-	require.NoError(t, err)
-	assert.Len(t, got.(*ChangeContext).Tickets, 3)
-
-	_, err = tools[0].Call(context.Background(), map[string]any{"owner": "acme", "repo": "app", "commit": "abc"})
-	require.NoError(t, err)
-	_, err = tools[0].Call(context.Background(), map[string]any{"owner": "acme"})
-	require.ErrorIs(t, err, apperrs.ErrInvalid)
-}

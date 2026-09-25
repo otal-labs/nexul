@@ -41,6 +41,18 @@ func (s *Service) Get(ctx context.Context, environment string) (*Canvas, error) 
 	return c, nil
 }
 
+// HasCanvas reports whether a canvas has ever been saved for environment.
+func (s *Service) HasCanvas(ctx context.Context, environment string) (bool, error) {
+	_, err := s.repo.Get(ctx, environment)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("get topology %s: %w", environment, err)
+	}
+	return true, nil
+}
+
 // Update persists a full canvas; service nodes are auto-managed, so stored ones are merged back in.
 func (s *Service) Update(ctx context.Context, environment string, c *Canvas) (*Canvas, error) {
 	if environment == "" {
