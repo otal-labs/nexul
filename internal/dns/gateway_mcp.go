@@ -20,11 +20,34 @@ type gatewayCreateIn struct {
 	Zone          string      `json:"zone" jsonschema:"That zone's domain name, for example example.com."`
 	TunnelID      string      `json:"tunnel_id,omitempty" jsonschema:"Required for kind tunnel: the tunnel cloudflared connects to, from dns_tunnel_list or dns_tunnel_create."`
 	ServerAddress string      `json:"server_address,omitempty" jsonschema:"Required for kind proxy: the machine's public IP address or hostname that exposure records point at, for example 203.0.113.10."`
-	Name          string      `json:"name,omitempty" jsonschema:"The backing stack's name. Defaults to cloudflared-<tunnel name> or traefik-<random>."`
+	StackName     string      `json:"stack_name,omitempty" jsonschema:"The backing stack's name. Defaults to cloudflared-<tunnel name> or traefik-<random>."`
 }
 
 type gatewayDeleteIn struct {
 	ID string `json:"id" jsonschema:"The gateway's id, from gateway_list."`
+}
+
+// gatewayResult names the backing stack as a stack; the domain type calls its id a service id.
+type gatewayResult struct {
+	ID            string      `json:"id"`
+	Kind          GatewayKind `json:"kind"`
+	Machine       string      `json:"machine"`
+	DockerNetwork string      `json:"docker_network"`
+	Networks      []string    `json:"networks,omitempty"`
+	StackID       string      `json:"stack_id,omitempty"`
+	StackName     string      `json:"stack_name,omitempty"`
+	TunnelID      string      `json:"tunnel_id,omitempty"`
+	ZoneID        string      `json:"zone_id"`
+	Zone          string      `json:"zone"`
+	ServerAddress string      `json:"server_address,omitempty"`
+}
+
+func toGatewayResult(g *Gateway) gatewayResult {
+	return gatewayResult{
+		ID: g.ID, Kind: g.Kind, Machine: g.Machine, DockerNetwork: g.DockerNetwork, Networks: g.Networks,
+		StackID: g.ServiceID, StackName: g.ServiceName, TunnelID: g.TunnelID,
+		ZoneID: g.ZoneID, Zone: g.Zone, ServerAddress: g.ServerAddress,
+	}
 }
 
 func gatewayTools(s *Service) []mcptool.Tool {
@@ -40,22 +63,26 @@ func gatewayTools(s *Service) []mcptool.Tool {
 				if err != nil {
 					return nil, err
 				}
-				return mcptool.Paginate(gws, in.PageArgs), nil
+				return mcptool.Paginate(shapeAll(gws, toGatewayResult), in.PageArgs), nil
 			}),
 		mcptool.New("gateway_create", "Create gateway",
 			"Creates a gateway, the service giving one docker network's containers internet reachability, and "+
 				"deploys its backing stack on the machine: cloudflared for kind tunnel, Traefik for kind proxy. "+
 				"exposure_create already reuses or deploys a gateway on the container's machine, so use this to choose "+
-				"the kind, network, or tunnel yourself, or to give the instance its own entry path. A tunnel gateway "+
+				"the kind, network, or tunnel yourself, or to give the instance's own network a gateway. A tunnel gateway "+
 				"needs a tunnel_id from dns_tunnel_create or dns_tunnel_list, and a proxy gateway needs the machine's "+
 				"public server_address. A network that already has a gateway fails with a conflict; gateway_list shows it.",
 			mcptool.Hints{},
 			func(ctx context.Context, in gatewayCreateIn) (any, error) {
-				return s.CreateGateway(ctx, CreateGatewayInput{
+				g, err := s.CreateGateway(ctx, CreateGatewayInput{
 					Kind: in.Kind, DockerNetwork: in.DockerNetwork, ZoneID: in.ZoneID, Zone: in.Zone,
 					TunnelID: in.TunnelID, ServerAddress: in.ServerAddress,
-					ProjectID: in.ProjectID, Target: in.Machine, Name: in.Name,
+					ProjectID: in.ProjectID, Target: in.Machine, Name: in.StackName,
 				})
+				if err != nil {
+					return nil, listedBy(err, "dns_tunnel_list lists tunnels, project_list projects, and machine_list machines")
+				}
+				return toGatewayResult(g), nil
 			}),
 		mcptool.New("gateway_delete", "Delete gateway",
 			"Deletes a gateway and tears down its backing stack, returning its id with deleted set. It refuses while "+
@@ -65,7 +92,7 @@ func gatewayTools(s *Service) []mcptool.Tool {
 			mcptool.Hints{Idempotent: true},
 			func(ctx context.Context, in gatewayDeleteIn) (any, error) {
 				if err := s.DeleteGateway(ctx, in.ID); err != nil {
-					return nil, err
+					return nil, listedBy(err, "gateway_list lists gateways")
 				}
 				return mcptool.Gone(in.ID), nil
 			}),
@@ -92,13 +119,32 @@ type exposureDeleteIn struct {
 	ID string `json:"id" jsonschema:"The exposure's id, from exposure_list."`
 }
 
+type exposureResult struct {
+	ID          string `json:"id"`
+	Hostname    string `json:"hostname"`
+	GatewayID   string `json:"gateway_id"`
+	ServiceID   string `json:"service_id,omitempty"`
+	ServiceName string `json:"service_name,omitempty"`
+	Port        int    `json:"port"`
+	ZoneID      string `json:"zone_id"`
+	Zone        string `json:"zone"`
+	RecordID    string `json:"record_id,omitempty"`
+}
+
+func toExposureResult(e *Exposure) exposureResult {
+	return exposureResult{
+		ID: e.ID, Hostname: e.Hostname, GatewayID: e.GatewayID, ServiceID: e.ServiceID, ServiceName: e.Service,
+		Port: e.Port, ZoneID: e.ZoneID, Zone: e.Zone, RecordID: e.RecordID,
+	}
+}
+
 func exposureTools(s *Service) []mcptool.Tool {
 	return []mcptool.Tool{
 		mcptool.New("exposure_list", "List exposures",
 			"Lists exposures, the hostnames Nexul routes through a gateway to a container, oldest first, optionally "+
 				"narrowed to one container or one gateway. Each carries its hostname, gateway_id, the container's "+
-				"service_id and name, the port, and the id of the DNS record behind it. Use it to find where a service "+
-				"is reachable, or the exposure id exposure_delete needs.",
+				"service_id and service_name, the port, and the record_id of the DNS record behind it. Use it to find "+
+				"where a service is reachable, or the exposure id exposure_delete needs.",
 			mcptool.Hints{ReadOnly: true, Local: true},
 			func(ctx context.Context, in exposureListIn) (any, error) {
 				exps, err := s.ListExposures(ctx)
@@ -108,7 +154,7 @@ func exposureTools(s *Service) []mcptool.Tool {
 				exps = slices.DeleteFunc(exps, func(e *Exposure) bool {
 					return (in.ServiceID != "" && e.ServiceID != in.ServiceID) || (in.GatewayID != "" && e.GatewayID != in.GatewayID)
 				})
-				return mcptool.Paginate(exps, in.PageArgs), nil
+				return mcptool.Paginate(shapeAll(exps, toExposureResult), in.PageArgs), nil
 			}),
 		mcptool.New("exposure_create", "Expose container",
 			"Makes a container reachable at a hostname: routes the hostname through a gateway to the container's "+
@@ -119,10 +165,14 @@ func exposureTools(s *Service) []mcptool.Tool {
 				"the exposure; exposure_delete reverses it.",
 			mcptool.Hints{},
 			func(ctx context.Context, in exposureCreateIn) (any, error) {
-				return s.CreateExposure(ctx, CreateExposureInput{
+				e, err := s.CreateExposure(ctx, CreateExposureInput{
 					GatewayID: in.GatewayID, Hostname: in.Hostname, ServiceID: in.ServiceID, Port: in.Port,
 					ZoneID: in.ZoneID, Zone: in.Zone, Kind: in.Kind,
 				})
+				if err != nil {
+					return nil, listedBy(err, "stack_get lists a stack's services and gateway_list the gateways")
+				}
+				return toExposureResult(e), nil
 			}),
 		mcptool.New("exposure_delete", "Delete exposure",
 			"Removes an exposure and returns its id with deleted set. It deletes the tunnel's ingress rule for the "+
@@ -132,7 +182,7 @@ func exposureTools(s *Service) []mcptool.Tool {
 			mcptool.Hints{Idempotent: true},
 			func(ctx context.Context, in exposureDeleteIn) (any, error) {
 				if err := s.DeleteExposure(ctx, in.ID); err != nil {
-					return nil, err
+					return nil, listedBy(err, "exposure_list lists exposures")
 				}
 				return mcptool.Gone(in.ID), nil
 			}),

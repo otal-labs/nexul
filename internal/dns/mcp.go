@@ -33,11 +33,27 @@ func explainNotConnected(call func(context.Context, json.RawMessage) (any, error
 	}
 }
 
+// listedBy points a not-found error at the tool that lists valid ids; the sentinel stays for the adapter.
+func listedBy(err error, lister string) error {
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return fmt.Errorf("%w; %s", err, lister)
+	}
+	return err
+}
+
 // overlay applies one patch field: a field the caller omitted keeps its current value.
 func overlay[T any](dst *T, v *T) {
 	if v != nil {
 		*dst = *v
 	}
+}
+
+func shapeAll[T, R any](items []T, shape func(T) R) []R {
+	out := make([]R, 0, len(items))
+	for _, item := range items {
+		out = append(out, shape(item))
+	}
+	return out
 }
 
 // recordResult is a record as the model reads it; Propagated is set only when the caller asked for the check.
@@ -128,7 +144,7 @@ func recordTools(s *Service) []mcptool.Tool {
 			func(ctx context.Context, in recordListIn) (any, error) {
 				records, err := s.ListRecords(ctx, in.ZoneID)
 				if err != nil {
-					return nil, err
+					return nil, listedBy(err, "dns_zone_list lists zones")
 				}
 				var matched []Record
 				for _, r := range records {
@@ -165,7 +181,7 @@ func recordTools(s *Service) []mcptool.Tool {
 					Type: in.Type, Name: in.Name, Content: in.Content, TTL: ttl, Proxied: in.Proxied,
 				})
 				if err != nil {
-					return nil, err
+					return nil, listedBy(err, "dns_zone_list lists zones")
 				}
 				return toRecordResult(*rec), nil
 			}),
@@ -178,7 +194,7 @@ func recordTools(s *Service) []mcptool.Tool {
 			func(ctx context.Context, in recordUpdateIn) (any, error) {
 				cur, err := s.GetRecord(ctx, in.ZoneID, in.ID)
 				if err != nil {
-					return nil, err
+					return nil, listedBy(err, "dns_record_list lists the zone's records")
 				}
 				patch := RecordInput{Type: cur.Type, Name: cur.Name, Content: cur.Content, TTL: cur.TTL, Proxied: cur.Proxied}
 				overlay(&patch.Type, in.Type)

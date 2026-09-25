@@ -19,47 +19,69 @@ type tunnelCreateIn struct {
 type tunnelUpdateIn struct {
 	ID                string  `json:"id" jsonschema:"The tunnel's id, from dns_tunnel_list."`
 	Hostname          *string `json:"hostname,omitempty" jsonschema:"The public hostname to route into the tunnel, for example nexul.example.com. Omit to keep the current one."`
-	ZoneID            *string `json:"zone_id,omitempty" jsonschema:"The hostname's zone, from dns_zone_list. Omit to keep the current one."`
+	ZoneID            *string `json:"zone_id,omitempty" jsonschema:"The hostname's zone, from dns_zone_list; pass zone with it. Omit to keep the current one."`
 	Zone              *string `json:"zone,omitempty" jsonschema:"That zone's domain name, for example example.com. Omit to keep the current one."`
-	Service           *string `json:"service,omitempty" jsonschema:"The local URL cloudflared forwards the hostname to, for example http://web:80. Omit to keep the current one."`
+	OriginURL         *string `json:"origin_url,omitempty" jsonschema:"The local URL cloudflared forwards the hostname to, for example http://web:80. Omit to keep the current one."`
 	RotateCredentials bool    `json:"rotate_credentials,omitempty" jsonschema:"Issue the tunnel a new token and store it. Defaults to false."`
 }
 
 func (in tunnelUpdateIn) routes() bool {
-	return in.Hostname != nil || in.ZoneID != nil || in.Zone != nil || in.Service != nil
+	return in.Hostname != nil || in.ZoneID != nil || in.Zone != nil || in.OriginURL != nil
 }
 
 type tunnelDeleteIn struct {
 	ID string `json:"id" jsonschema:"The tunnel's id, from dns_tunnel_list."`
 }
 
+// tunnelResult carries status only when read live; the stored status is never refreshed.
+type tunnelResult struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Status    string `json:"status,omitempty"`
+	Hostname  string `json:"hostname,omitempty"`
+	ZoneID    string `json:"zone_id,omitempty"`
+	Zone      string `json:"zone,omitempty"`
+	RecordID  string `json:"record_id,omitempty"`
+	OriginURL string `json:"origin_url,omitempty"`
+	StackID   string `json:"stack_id,omitempty"`
+}
+
+func toTunnelResult(t *Tunnel) tunnelResult {
+	return tunnelResult{
+		ID: t.ID, Name: t.Name, Hostname: t.Hostname, ZoneID: t.ZoneID, Zone: t.Zone,
+		RecordID: t.RecordID, OriginURL: t.Service, StackID: t.AgentServiceID,
+	}
+}
+
 // tunnelUpdateResult names the changes that took effect, since routing and rotation commit separately.
 type tunnelUpdateResult struct {
-	Tunnel  *Tunnel  `json:"tunnel"`
-	Applied []string `json:"applied"`
+	Tunnel  tunnelResult `json:"tunnel"`
+	Applied []string     `json:"applied"`
 }
 
 func tunnelTools(s *Service) []mcptool.Tool {
 	return []mcptool.Tool{
 		mcptool.New("dns_tunnel_list", "List tunnels",
 			"Lists the Cloudflare tunnels Nexul manages, oldest first, with the hostname each routes, its zone, the "+
-				"local service cloudflared forwards to, and the stack running cloudflared. With an id it returns only "+
-				"that tunnel with its live status read from Cloudflare, healthy once cloudflared is connected, which is "+
-				"how to wait for a new tunnel gateway to come up. Tunnel tokens are never returned.",
+				"origin_url cloudflared forwards to, and the stack_id of the stack running cloudflared. With an id it "+
+				"returns only that tunnel with its live status read from Cloudflare, healthy once cloudflared is "+
+				"connected, which is how to wait for a new tunnel gateway to come up. Tunnel tokens are never returned.",
 			mcptool.Hints{ReadOnly: true},
 			func(ctx context.Context, in tunnelListIn) (any, error) {
 				if in.ID != "" {
 					t, err := s.TunnelStatus(ctx, in.ID)
 					if err != nil {
-						return nil, err
+						return nil, listedBy(err, "dns_tunnel_list without an id lists tunnels")
 					}
-					return mcptool.Paginate([]*Tunnel{t}, in.PageArgs), nil
+					res := toTunnelResult(t)
+					res.Status = t.Status
+					return mcptool.Paginate([]tunnelResult{res}, in.PageArgs), nil
 				}
 				tunnels, err := s.ListTunnels(ctx)
 				if err != nil {
 					return nil, err
 				}
-				return mcptool.Paginate(tunnels, in.PageArgs), nil
+				return mcptool.Paginate(shapeAll(tunnels, toTunnelResult), in.PageArgs), nil
 			}),
 		mcptool.New("dns_tunnel_create", "Create tunnel",
 			"Creates a Cloudflare tunnel and stores its token encrypted; the token is never returned. A name Nexul "+
@@ -68,12 +90,16 @@ func tunnelTools(s *Service) []mcptool.Tool {
 				"dns_tunnel_update.",
 			mcptool.Hints{Additive: true, Idempotent: true},
 			func(ctx context.Context, in tunnelCreateIn) (any, error) {
-				return s.CreateTunnel(ctx, CreateTunnelInput(in))
+				t, err := s.CreateTunnel(ctx, CreateTunnelInput(in))
+				if err != nil {
+					return nil, err
+				}
+				return toTunnelResult(t), nil
 			}),
 		mcptool.New("dns_tunnel_update", "Update tunnel",
 			"Routes a public hostname into a tunnel, rotates its credentials, or both. Routing sets the ingress rule "+
-				"sending hostname to service plus a proxied CNAME pointing hostname at the tunnel, and route fields you "+
-				"omit keep their current values, so passing only service re-points the current hostname; for a "+
+				"sending hostname to origin_url plus a proxied CNAME pointing hostname at the tunnel, and route fields you "+
+				"omit keep their current values, so passing only origin_url re-points the current hostname; for a "+
 				"container Nexul deploys, use exposure_create instead. rotate_credentials issues and stores a new "+
 				"token: a running cloudflared keeps its connection, but its stack still holds the old token, so its "+
 				"next reconnect fails until the gateway is recreated. Routing runs before rotation, a failure stops "+
@@ -82,7 +108,7 @@ func tunnelTools(s *Service) []mcptool.Tool {
 			func(ctx context.Context, in tunnelUpdateIn) (any, error) {
 				t, err := s.GetTunnel(ctx, in.ID)
 				if err != nil {
-					return nil, err
+					return nil, listedBy(err, "dns_tunnel_list lists tunnels")
 				}
 				applied := []string{}
 				if in.routes() {
@@ -90,7 +116,7 @@ func tunnelTools(s *Service) []mcptool.Tool {
 					overlay(&route.Hostname, in.Hostname)
 					overlay(&route.ZoneID, in.ZoneID)
 					overlay(&route.Zone, in.Zone)
-					overlay(&route.Service, in.Service)
+					overlay(&route.Service, in.OriginURL)
 					if t, err = s.RouteTunnelHostname(ctx, route); err != nil {
 						return nil, err
 					}
@@ -102,7 +128,7 @@ func tunnelTools(s *Service) []mcptool.Tool {
 					}
 					applied = append(applied, "rotate_credentials")
 				}
-				return tunnelUpdateResult{Tunnel: t, Applied: applied}, nil
+				return tunnelUpdateResult{Tunnel: toTunnelResult(t), Applied: applied}, nil
 			}),
 		mcptool.New("dns_tunnel_delete", "Delete tunnel",
 			"Deletes a Cloudflare tunnel and Nexul's record of it, returning its id with deleted set. Gateways and "+
@@ -111,7 +137,7 @@ func tunnelTools(s *Service) []mcptool.Tool {
 			mcptool.Hints{Idempotent: true},
 			func(ctx context.Context, in tunnelDeleteIn) (any, error) {
 				if err := s.DeleteTunnel(ctx, in.ID); err != nil {
-					return nil, err
+					return nil, listedBy(err, "dns_tunnel_list lists tunnels")
 				}
 				return mcptool.Gone(in.ID), nil
 			}),

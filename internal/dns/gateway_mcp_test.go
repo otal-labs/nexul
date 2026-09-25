@@ -66,9 +66,10 @@ func TestGatewayCreate_TunnelDeploysCloudflaredOnTheMachine(t *testing.T) {
 	f := newToolFakes(t)
 	got, err := f.call(t, "gateway_create", tunnelGatewayArgs)
 	require.NoError(t, err)
-	g := got.(*Gateway)
+	g := got.(gatewayResult)
 	assert.Equal(t, GatewayTunnel, g.Kind)
 	assert.Equal(t, "host1", g.Machine)
+	assert.Equal(t, "cloudflared-prod", g.StackName)
 	require.Len(t, f.prov.calls, 1)
 	assert.Equal(t, "host1", f.prov.calls[0].Target)
 	assert.Equal(t, "net1", f.prov.calls[0].DockerNetwork)
@@ -79,10 +80,14 @@ func TestGatewayCreate_TunnelDeploysCloudflaredOnTheMachine(t *testing.T) {
 func TestGatewayCreate_ProxyDeploysTraefik(t *testing.T) {
 	f := newToolFakes(t)
 	got, err := f.call(t, "gateway_create",
-		`{"kind":"proxy","machine":"host1","docker_network":"net1","project_id":"p1","zone_id":"z1","zone":"example.com","server_address":"203.0.113.10"}`)
+		`{"kind":"proxy","machine":"host1","docker_network":"net1","project_id":"p1","zone_id":"z1","zone":"example.com","server_address":"203.0.113.10","stack_name":"edge"}`)
 	require.NoError(t, err)
-	assert.Equal(t, "203.0.113.10", got.(*Gateway).ServerAddress)
+	assert.Equal(t, gatewayResult{
+		ID: got.(gatewayResult).ID, Kind: GatewayProxy, Machine: "host1", DockerNetwork: "net1", Networks: []string{"net1"},
+		StackID: "svc-1", StackName: "edge", ZoneID: "z1", Zone: "example.com", ServerAddress: "203.0.113.10",
+	}, got)
 	require.Len(t, f.prov.calls, 1)
+	assert.Equal(t, "edge", f.prov.calls[0].Name)
 	assert.Equal(t, traefikImage, f.prov.calls[0].Image)
 	assert.Equal(t, []string{"80:80", "443:443"}, f.prov.calls[0].Ports)
 }
@@ -93,9 +98,11 @@ func TestGatewayListAndDelete(t *testing.T) {
 
 	got, err := f.call(t, "gateway_list", `{}`)
 	require.NoError(t, err)
-	page := got.(mcptool.Page[*Gateway])
+	page := got.(mcptool.Page[gatewayResult])
 	require.Len(t, page.Items, 1)
 	assert.Equal(t, "g1", page.Items[0].ID)
+	assert.Equal(t, "s-gw", page.Items[0].StackID, "the backing stack is named as a stack")
+	assert.NotContains(t, asJSON(t, got), "service_id")
 
 	got, err = f.call(t, "gateway_delete", `{"id":"g1"}`)
 	require.NoError(t, err)
@@ -110,9 +117,11 @@ func TestExposureLifecycle(t *testing.T) {
 	got, err := f.call(t, "exposure_create",
 		`{"hostname":"App.example.com","service_id":"c-app","port":8080,"zone_id":"z1","zone":"example.com"}`)
 	require.NoError(t, err)
-	e := got.(*Exposure)
+	e := got.(exposureResult)
 	assert.Equal(t, "g1", e.GatewayID, "without gateway_id the machine's gateway is reused")
 	assert.Equal(t, "app.example.com", e.Hostname)
+	assert.Equal(t, "c-app", e.ServiceID)
+	assert.Equal(t, "app", e.ServiceName)
 	assert.Equal(t, []routeCall{{TunnelID: "t1", Hostname: "app.example.com", Service: "http://app:8080"}}, f.tunnels.routeCalls)
 
 	got, err = f.call(t, "exposure_delete", `{"id":"`+e.ID+`"}`)
@@ -141,7 +150,7 @@ func TestExposureList_Filters(t *testing.T) {
 			got, err := f.call(t, "exposure_list", tt.args)
 			require.NoError(t, err)
 			var ids []string
-			for _, e := range got.(mcptool.Page[*Exposure]).Items {
+			for _, e := range got.(mcptool.Page[exposureResult]).Items {
 				ids = append(ids, e.ID)
 			}
 			assert.ElementsMatch(t, tt.wantIDs, ids)

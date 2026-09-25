@@ -151,6 +151,30 @@ func TestMCPTools_NotConnectedNamesTheFix(t *testing.T) {
 	assert.Contains(t, err.Error(), "Cloudflare is not connected")
 }
 
+func TestMCPTools_NotFoundNamesTheLister(t *testing.T) {
+	tests := []struct {
+		tool   string
+		args   string
+		lister string
+	}{
+		{"dns_record_update", `{"zone_id":"z1","id":"ghost","ttl":60}`, "dns_record_list"},
+		{"gateway_create", `{"kind":"tunnel","machine":"host1","docker_network":"net1","project_id":"p1","zone_id":"z1","zone":"example.com","tunnel_id":"ghost"}`, "dns_tunnel_list"},
+		{"gateway_delete", `{"id":"ghost"}`, "gateway_list"},
+		{"exposure_create", `{"hostname":"app.example.com","service_id":"ghost","port":80,"zone_id":"z1","zone":"example.com"}`, "stack_get"},
+		{"exposure_delete", `{"id":"ghost"}`, "exposure_list"},
+		{"dns_tunnel_list", `{"id":"ghost"}`, "dns_tunnel_list without an id"},
+		{"dns_tunnel_update", `{"id":"ghost"}`, "dns_tunnel_list"},
+		{"dns_tunnel_delete", `{"id":"ghost"}`, "dns_tunnel_list"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.tool, func(t *testing.T) {
+			_, err := newToolFakes(t).call(t, tt.tool, tt.args)
+			require.ErrorIs(t, err, apperrs.ErrNotFound)
+			assert.Contains(t, err.Error(), tt.lister)
+		})
+	}
+}
+
 func TestRecordUpdate_OmittedFieldsKeepTheirValue(t *testing.T) {
 	f := newToolFakes(t)
 	got, err := f.call(t, "dns_record_update", `{"zone_id":"z1","id":"r1","content":"t2.cfargotunnel.com"}`)
