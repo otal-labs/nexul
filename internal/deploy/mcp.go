@@ -285,7 +285,7 @@ func stackCreateTool(s *Service) mcptool.Tool {
 			"source, exactly as the project wizard does. Set deploy to also start its first deploy, then poll "+
 			"deploy_get; use stack_deploy for later deploys and stack_update to change it. Returns the stack and the "+
 			"started deploy; if the stack is created but its first deploy cannot start, the error says so.",
-		mcptool.Hints{Additive: true},
+		mcptool.Hints{},
 		func(ctx context.Context, in stackCreateIn) (any, error) {
 			stack, declared, err := stackFromCreate(in)
 			if err != nil {
@@ -294,7 +294,10 @@ func stackCreateTool(s *Service) mcptool.Tool {
 			opts := CreateStackOptions{LinkRepository: in.LinkRepository, Deploy: in.Deploy, Ref: in.Ref, TriggeredBy: mcpTriggeredBy(ctx)}
 			created, d, err := s.CreateStackWithOptions(ctx, stack, declared, opts)
 			if err != nil && created != nil {
-				return nil, fmt.Errorf("stack %s was created with id %s, but its first deploy did not start (retry with stack_deploy): %w", created.Name, created.ID, err)
+				return nil, &mcptool.PartialError{
+					Applied: []string{fmt.Sprintf("created stack %s (id %s)", created.Name, created.ID)},
+					Err:     fmt.Errorf("its first deploy did not start (retry with stack_deploy): %w", err),
+				}
 			}
 			if err != nil {
 				return nil, err
@@ -494,14 +497,15 @@ func toBranchRules(in []branchRuleIn, cur []BranchDeployRule) []BranchDeployRule
 	}
 	out := make([]BranchDeployRule, 0, len(in))
 	for _, r := range in {
-		overrides := r.Overrides
-		if overrides == nil {
-			overrides = kept[r.Pattern]
-		}
-		out = append(out, BranchDeployRule{
+		rule := BranchDeployRule{
 			Pattern: r.Pattern, DockerNetwork: r.DockerNetwork, HostnameTemplate: r.HostnameTemplate,
-			Port: r.Port, NameSuffix: r.NameSuffix, Overrides: overrides,
-		})
+			Port: r.Port, NameSuffix: r.NameSuffix, Overrides: r.Overrides,
+		}
+		// Only a rule that deploys its own copy can carry overrides, so an in-place rule drops the stored ones.
+		if rule.Overrides == nil && rule.DerivesClone() {
+			rule.Overrides = kept[r.Pattern]
+		}
+		out = append(out, rule)
 	}
 	return out
 }

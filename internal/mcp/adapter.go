@@ -9,10 +9,12 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 	"golang.org/x/time/rate"
 
@@ -56,6 +58,7 @@ func (s server) handler(instanceURL func(context.Context) (string, error)) http.
 		},
 		SetCacheable: setCacheable,
 	})
+	srv.AddReceivingMiddleware(recoverPanics(logger))
 	limits := &limiters{byActor: map[string]*rate.Limiter{}}
 	for _, t := range s.tools {
 		srv.AddTool(sdkTool(t), toolHandler(t, limits, logger))
@@ -74,6 +77,32 @@ func (s server) handler(instanceURL func(context.Context) (string, error)) http.
 		DisableLocalhostProtection: true,
 	})
 	return originGuard(instanceURL, h)
+}
+
+// recoverPanics keeps one handler's panic from taking the process down: the SDK runs handlers on goroutines with no
+// recover of their own, unlike net/http.
+func recoverPanics(logger *slog.Logger) sdk.Middleware {
+	return func(next sdk.MethodHandler) sdk.MethodHandler {
+		return func(ctx context.Context, method string, req sdk.Request) (result sdk.Result, err error) {
+			defer func() {
+				p := recover()
+				if p == nil {
+					return
+				}
+				traceID := logging.TraceIDFromCtx(ctx)
+				if traceID == "" {
+					traceID = logging.NewTraceID()
+				}
+				logger.Error("mcp handler panicked", "trace_id", traceID, "method", method, "panic", p, "stack", string(debug.Stack()))
+				if method == "tools/call" {
+					result, err = errorResult(internalMessage(traceID)), nil
+					return
+				}
+				result, err = nil, &jsonrpc.Error{Code: jsonrpc.CodeInternalError, Message: internalMessage(traceID)}
+			}()
+			return next(ctx, method, req)
+		}
+	}
 }
 
 func sdkTool(t mcptool.Tool) *sdk.Tool {
@@ -112,11 +141,12 @@ func toolHandler(t mcptool.Tool, limits *limiters, logger *slog.Logger) sdk.Tool
 		out, err := t.Call(logging.CtxWithLogger(ctx, log), req.Params.Arguments)
 		if err != nil {
 			message, internal := toolErrorMessage(err, traceID)
-			logAt := log.Info
 			if internal {
-				logAt = log.Error
+				log.Error("mcp tool call failed", "duration", time.Since(start), "err", err)
+				return errorResult(message), nil
 			}
-			logAt("mcp tool call failed", "duration", time.Since(start), "err", err)
+			// A domain error's text can quote the arguments, which carry bodies and secrets; log only its class.
+			log.Info("mcp tool call refused", "duration", time.Since(start), "outcome", errorClass(err))
 			return errorResult(message), nil
 		}
 		text, err := resultText(out)
@@ -146,6 +176,15 @@ func toolErrorMessage(err error, traceID string) (message string, internal bool)
 		}
 	}
 	return internalMessage(traceID), true
+}
+
+func errorClass(err error) string {
+	for _, known := range []error{apperrs.ErrInvalid, apperrs.ErrNotFound, apperrs.ErrConflict, apperrs.ErrForbidden, apperrs.ErrUnauthorized} {
+		if errors.Is(err, known) {
+			return known.Error()
+		}
+	}
+	return "internal"
 }
 
 func internalMessage(traceID string) string {

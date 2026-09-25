@@ -275,7 +275,7 @@ func TestTicketUpdate_EveryField(t *testing.T) {
 		"link_pr":{"owner":"otal-labs","repo":"nexul","number":7},"link_branch":{"owner":"otal-labs","repo":"nexul","branch":"fix/x"}}`)
 	require.NoError(t, err)
 	res := got.(ticketUpdateResult)
-	assert.Equal(t, []string{"title, body", "status_id", "position", "type_id", "category_id", "developer", "tester",
+	assert.Equal(t, []string{"title, body", "status_id", "type_id", "category_id", "position", "developer", "tester",
 		"add_labels[0]", "remove_labels[0]", "found_in", "add_blocker_ids[0]", "remove_blocker_ids[0]", "link_pr", "link_branch"}, res.Applied)
 	tk := res.Ticket
 	assert.Equal(t, "New", tk.Title)
@@ -349,4 +349,21 @@ func TestTools_StorageFailuresPropagate(t *testing.T) {
 			require.ErrorIs(t, err, errBoom)
 		})
 	}
+}
+
+func TestTicketUpdate_PositionIsAnIndexInTheCell(t *testing.T) {
+	f := newFixture(t)
+	f.w.addTicket(&tickets.Ticket{ID: "t-3", ProjectID: "p-1", Title: "Second", Status: "st-todo", CategoryID: "c-1", Position: 1})
+	f.w.addTicket(&tickets.Ticket{ID: "t-4", ProjectID: "p-1", Title: "Third", Status: "st-todo", CategoryID: "c-1", Position: 1})
+	f.w.addTicket(&tickets.Ticket{ID: "t-5", ProjectID: "p-1", Title: "Other lane", Status: "st-todo", Position: 7})
+
+	_, err := call(t, asUser(t.Context()), f.ticketTools(), "ticket_update", `{"id":"t-4","position":0}`)
+	require.NoError(t, err)
+
+	positions := map[string]int{}
+	for _, id := range []string{"t-1", "t-3", "t-4", "t-5"} {
+		positions[id] = f.w.tickets[id].Position
+	}
+	assert.Equal(t, map[string]int{"t-4": 0, "t-1": 1, "t-3": 2, "t-5": 7}, positions,
+		"the cell is renumbered so no two cards tie, and other cells are untouched")
 }

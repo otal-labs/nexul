@@ -280,7 +280,7 @@ func TestStackCreate(t *testing.T) {
 		s, _ := newService()
 		_, err := call(t, s, "stack_create", `{"project_id":"proj-1","machine":"prod","name":"web","strategy":"compose","deploy":true}`)
 		require.ErrorIs(t, err, apperrs.ErrInvalid)
-		assert.Contains(t, err.Error(), "was created with id")
+		assert.Contains(t, err.Error(), "already applied: created stack web (id ")
 		stacks, err := s.ListStacks(t.Context(), "proj-1")
 		require.NoError(t, err)
 		assert.Len(t, stacks, 1)
@@ -326,6 +326,11 @@ func TestStackUpdate_Patches(t *testing.T) {
 			assert.Equal(t, map[string]string{"DB": "postgres://qa"}, after.BranchDeployRules[0].Overrides)
 		}},
 		{"empty overrides clear them", `"branch_deploy_rules":[{"pattern":"dev","docker_network":"qa","name_suffix":"qa","overrides":{}}]`, func(t *testing.T, _, after *Stack) {
+			assert.Empty(t, after.BranchDeployRules[0].Overrides)
+		}},
+		{"a clone rule turned in-place drops its overrides", `"branch_deploy_rules":[{"pattern":"dev","docker_network":"qa"}]`, func(t *testing.T, _, after *Stack) {
+			require.Len(t, after.BranchDeployRules, 1)
+			assert.False(t, after.BranchDeployRules[0].DerivesClone())
 			assert.Empty(t, after.BranchDeployRules[0].Overrides)
 		}},
 		{"an empty rule list removes every rule", `"branch_deploy_rules":[]`, func(t *testing.T, _, after *Stack) {

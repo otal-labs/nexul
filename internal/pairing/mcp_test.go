@@ -3,6 +3,7 @@ package pairing
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"regexp"
 	"testing"
 
@@ -288,6 +289,22 @@ func TestComputerList_ShowsSetupTokenMetadataAndLiveTunnelStatus(t *testing.T) {
 	require.NoError(t, err)
 	one := out.(mcptool.Page[computerResult]).Items[0]
 	assert.Equal(t, &TunnelStatus{Tunnel: "inactive"}, one.TunnelStatus)
+}
+
+func TestComputerList_ALiveTunnelFailureStillReturnsTheComputer(t *testing.T) {
+	t.Parallel()
+	tunnels := &fakeTunnels{status: "inactive"}
+	svc, _ := newTunnelService(newFakeRepo(), &fakeExchanger{}, tunnels)
+	id := tunnelComputer(t, svc)
+	tunnels.readErr = errors.New("cloudflare: 502 bad gateway")
+
+	out, err := callTool(t, actorCtx(t, "u1"), svc, "computer_list", `{"id": "`+id+`"}`)
+	require.NoError(t, err)
+	one := out.(mcptool.Page[computerResult]).Items[0]
+	assert.Nil(t, one.TunnelStatus)
+	require.NotNil(t, one.Setup, "the stored setup state still comes back")
+	assert.Contains(t, one.TunnelStatusError, "unavailable")
+	assert.NotContains(t, one.TunnelStatusError, "502", "a provider's raw error stays in the log")
 }
 
 func TestComputerSetupRun_EveryProviderOrOneWithItsModel(t *testing.T) {

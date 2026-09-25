@@ -189,8 +189,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	httpMux.Handle("GET /ws/collab/{docID}", svc.authSvc.RequireWS(withIdentity(svc.collabHub)))
 	// The SDK derives this from the instance URL, so it must share the API's origin, not the runner's WS listener.
 	httpMux.Handle("/ws/automations", automationsDialin)
-	// Also on the main listener: the install command and the MCP URL are derived from the instance URL, so a proxy
-	// (or the single binary) only has to forward one origin; the dedicated listeners below stay for direct access.
+	// Also on the main listener, so a proxy forwards one origin; the runner's own WS listener stays for direct access.
 	httpMux.Handle("/ws/runner", wsHandler)
 	httpMux.Handle("/mcp", svc.authSvc.RequireAuth(withIdentity(mcpServer)))
 	// No OAuth authorization server: a client probing OAuth discovery gets a clean 404, not the web app's HTML.

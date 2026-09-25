@@ -15,7 +15,9 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 )
 
-type fakeDeadLetters struct{ letters map[string]deadletter.DeadLetter }
+type fakeDeadLetters struct {
+	letters map[string]deadletter.DeadLetter
+}
 
 func (f *fakeDeadLetters) Put(_ context.Context, dl deadletter.DeadLetter) error {
 	f.letters[dl.ID] = dl
@@ -57,7 +59,9 @@ func (p *fakePublisher) PublishWithID(_ context.Context, _, topic string, _ any)
 
 type admins map[string]bool
 
-func (a admins) CanCreateWorkspace(_ context.Context, userID string) (bool, error) { return a[userID], nil }
+func (a admins) CanCreateWorkspace(_ context.Context, userID string) (bool, error) {
+	return a[userID], nil
+}
 
 func deadLetterFixture() (map[string]mcptool.Tool, *fakeDeadLetters, *fakePublisher) {
 	store := &fakeDeadLetters{letters: map[string]deadletter.DeadLetter{

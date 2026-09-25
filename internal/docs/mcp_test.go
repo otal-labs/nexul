@@ -108,10 +108,12 @@ func TestDocUpdate_OmittedFieldsKeepTheirValues(t *testing.T) {
 }
 
 func TestArchiveErr_SaysWhatWasSaved(t *testing.T) {
-	assert.Equal(t, apperrs.ErrForbidden, archiveErr(false, apperrs.ErrForbidden))
-	err := archiveErr(true, apperrs.ErrForbidden)
+	assert.Equal(t, apperrs.ErrForbidden, archiveErr(nil, apperrs.ErrForbidden))
+	err := archiveErr([]string{"title"}, apperrs.ErrForbidden)
 	require.ErrorIs(t, err, apperrs.ErrForbidden)
-	assert.Contains(t, err.Error(), "the title and body were saved")
+	assert.Contains(t, err.Error(), "already applied: title")
+	var partial *mcptool.PartialError
+	assert.ErrorAs(t, err, &partial, "the adapter shows what was saved even when it hides the failure")
 }
 
 func TestDocGetAndCreate_SpeakMarkdown(t *testing.T) {

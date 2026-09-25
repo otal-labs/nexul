@@ -501,7 +501,7 @@ func TestHandler_ConnectionToken(t *testing.T) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		var ct ConnectionToken
 		require.NoError(t, decodeJSON(rec, &ct))
-		claims, err := s.ParseConnectionToken(ct.Token)
+		claims, err := parseConnectionToken(s, ct.Token)
 		require.NoError(t, err)
 		assert.Equal(t, "https://deploy.example.com", claims.InstanceURL)
 	})

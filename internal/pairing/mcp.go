@@ -3,6 +3,7 @@ package pairing
 import (
 	"cmp"
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/otal-labs/nexul/internal/harness"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
+	"github.com/otal-labs/nexul/internal/platform/logging"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 )
 
@@ -62,17 +64,18 @@ type computerSetupUpdateIn struct {
 
 // computerResult is a computer as an agent reads it: no bearer token, and its setup and MCP token only on a list.
 type computerResult struct {
-	ID               string          `json:"id"`
-	Name             string          `json:"name"`
-	Kind             harness.Kind    `json:"kind"`
-	ServerURL        string          `json:"server_url"`
-	Paired           bool            `json:"paired"`
-	SessionExpiresAt *time.Time      `json:"session_expires_at,omitempty"`
-	HarnessVersion   string          `json:"harness_version,omitempty"`
-	Tunnel           *ComputerTunnel `json:"tunnel,omitempty"`
-	TunnelStatus     *TunnelStatus   `json:"tunnel_status,omitempty"`
-	Setup            *Setup          `json:"setup,omitempty"`
-	MCPToken         *MCPToken       `json:"mcp_token,omitempty"`
+	ID                string          `json:"id"`
+	Name              string          `json:"name"`
+	Kind              harness.Kind    `json:"kind"`
+	ServerURL         string          `json:"server_url"`
+	Paired            bool            `json:"paired"`
+	SessionExpiresAt  *time.Time      `json:"session_expires_at,omitempty"`
+	HarnessVersion    string          `json:"harness_version,omitempty"`
+	Tunnel            *ComputerTunnel `json:"tunnel,omitempty"`
+	TunnelStatus      *TunnelStatus   `json:"tunnel_status,omitempty"`
+	TunnelStatusError string          `json:"tunnel_status_error,omitempty"`
+	Setup             *Setup          `json:"setup,omitempty"`
+	MCPToken          *MCPToken       `json:"mcp_token,omitempty"`
 }
 
 func toComputerResult(c Computer) computerResult {
@@ -132,7 +135,13 @@ func listedComputer(ctx context.Context, s *Service, userID string, c Computer, 
 	}
 	status, err := s.ComputerTunnelStatus(ctx, userID, c.ID)
 	if err != nil {
-		return r, err
+		// The live check is the one part that reaches Cloudflare; its failure must not hide the stored setup and token state.
+		logging.FromCtx(ctx).Warn("computer tunnel status unavailable", "computer_id", c.ID, "err", err)
+		r.TunnelStatusError = "Cloudflare tunnel status is unavailable right now; the rest of this computer's state is current."
+		if errors.Is(err, apperrs.ErrInvalid) {
+			r.TunnelStatusError = err.Error()
+		}
+		return r, nil
 	}
 	r.TunnelStatus = &status
 	return r, nil

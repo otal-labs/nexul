@@ -148,12 +148,13 @@ func TestClient_ListRecords(t *testing.T) {
 }
 
 func TestClient_CreateRecord(t *testing.T) {
-	api := &fakeAPI{records: map[string]any{"id": "r1", "type": "A", "name": "api", "content": "1.2.3.4", "ttl": 300}}
+	api := &fakeAPI{records: map[string]any{"id": "r1", "type": "A", "name": "api", "content": "1.2.3.4", "ttl": 300, "proxied": true}}
 	c, srv := newTestClient(t, api)
 	defer srv.Close()
 	rec, err := c.CreateRecord(context.Background(), "z1", dns.RecordInput{Type: dns.RecordA, Name: "api", Content: "1.2.3.4", TTL: 300, Proxied: true})
 	require.NoError(t, err)
 	assert.Equal(t, "r1", rec.ID)
+	assert.True(t, rec.Proxied, "the response's proxied flag is decoded, not dropped")
 	assert.Equal(t, "z1", rec.ZoneID)
 	assert.Contains(t, api.mu[0], "POST /client/v4/zones/z1/dns_records")
 	assert.Contains(t, api.bodies[0], `"proxied":true`)

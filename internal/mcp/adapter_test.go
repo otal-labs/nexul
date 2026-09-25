@@ -41,6 +41,11 @@ func fakeServer() server {
 					a, _ := identity.ActorFromCtx(ctx)
 					return map[string]string{"actor": a.ID}, nil
 				}),
+			mcptool.New("thing_explode", "Explode thing", "Panics. Used by the adapter tests. Never returns.",
+				mcptool.Hints{ReadOnly: true, Local: true},
+				func(context.Context, struct{}) (any, error) {
+					panic("tool bug")
+				}),
 			mcptool.New("thing_delete", "Delete thing", "Deletes a thing. Used by the adapter tests. Always succeeds.",
 				mcptool.Hints{Idempotent: true},
 				func(context.Context, struct{}) (any, error) { return mcptool.Gone("t-1"), nil }),
@@ -129,8 +134,20 @@ func TestAdapter_ToolFailuresAreResultsTheModelCanRead(t *testing.T) {
 
 func TestAdapter_UnknownToolIsAProtocolError(t *testing.T) {
 	session := connect(t, newTestEndpoint(t).URL+"/mcp", revisions[0])
-	_, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "thing_explode"})
+	_, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "thing_vanish"})
 	require.Error(t, err)
+}
+
+func TestAdapter_APanickingToolFailsAloneAndTheServerKeepsServing(t *testing.T) {
+	session := connect(t, newTestEndpoint(t).URL+"/mcp", revisions[0])
+	res, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "thing_explode", Arguments: map[string]any{}})
+	require.NoError(t, err)
+	assert.True(t, res.IsError)
+	assert.Contains(t, textOf(t, res), "internal error (trace ")
+
+	res, err = session.CallTool(t.Context(), &sdk.CallToolParams{Name: "thing_get", Arguments: map[string]any{}})
+	require.NoError(t, err)
+	assert.False(t, res.IsError)
 }
 
 func TestAdapter_ToolsRunAsTheCaller(t *testing.T) {

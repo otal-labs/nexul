@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -527,9 +528,10 @@ func (u ticketUpdate) steps(in ticketUpdateIn) []step {
 		{in.StatusID != nil, step{"status_id", idHint, func(ctx context.Context) error {
 			return discard(u.t.UpdateStatus(ctx, u.id, tickets.Status(*in.StatusID)))
 		}}},
-		{in.Position != nil, step{"position", "", func(ctx context.Context) error { return discard(u.t.SetPosition(ctx, u.id, *in.Position)) }}},
 		{in.TypeID != nil, step{"type_id", idHint, func(ctx context.Context) error { return discard(u.t.SetType(ctx, u.id, *in.TypeID)) }}},
 		{in.CategoryID != nil, step{"category_id", idHint, func(ctx context.Context) error { return u.w.MoveTicketToCategory(ctx, u.id, *in.CategoryID) }}},
+		// Last of the placement steps: a status or category move sends the ticket to the bottom first.
+		{in.Position != nil, step{"position", "", func(ctx context.Context) error { return u.place(ctx, *in.Position) }}},
 		{in.Developer != nil, step{"developer", "", func(ctx context.Context) error {
 			return discard(u.t.SetPerson(ctx, u.id, tickets.RoleDeveloper, *in.Developer))
 		}}},
@@ -545,6 +547,42 @@ func (u ticketUpdate) steps(in ticketUpdateIn) []step {
 	steps = append(steps, u.labelSteps(in)...)
 	steps = append(steps, u.linkSteps(in)...)
 	return steps
+}
+
+// place puts the ticket at index in its column cell and renumbers the cell, as the board does when a card is dragged.
+func (u ticketUpdate) place(ctx context.Context, index int) error {
+	current, err := u.t.Get(ctx, u.id)
+	if err != nil {
+		return err
+	}
+	all, err := u.t.ListByProject(ctx, current.ProjectID)
+	if err != nil {
+		return err
+	}
+	cell := slices.DeleteFunc(slices.Clone(all), func(t *tickets.Ticket) bool {
+		return t.Status != current.Status || t.CategoryID != current.CategoryID
+	})
+	slices.SortStableFunc(cell, func(a, b *tickets.Ticket) int {
+		if a.Position != b.Position {
+			return a.Position - b.Position
+		}
+		return a.CreatedAt.Compare(b.CreatedAt)
+	})
+	ids := make([]string, 0, len(cell))
+	positions := map[string]int{}
+	for _, t := range cell {
+		ids = append(ids, t.ID)
+		positions[t.ID] = t.Position
+	}
+	for i, id := range moveTo(ids, u.id, index) {
+		if positions[id] == i {
+			continue
+		}
+		if _, err := u.t.SetPosition(ctx, id, i); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // content overlays the sent title and body on the stored ones, since the use-case replaces both.

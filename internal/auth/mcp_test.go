@@ -68,6 +68,8 @@ func TestAccountTools_ErrorPaths(t *testing.T) {
 		{"member gets another account", "member", "account_get", `{"id": "admin"}`, apperrs.ErrForbidden},
 		{"member lists accounts", "member", "account_list", `{}`, apperrs.ErrForbidden},
 		{"member disables an account", "member", "account_update", `{"id": "admin", "status": "disabled"}`, apperrs.ErrForbidden},
+		{"member probes an unknown account", "member", "account_update", `{"id": "ghost", "status": "active"}`, apperrs.ErrForbidden},
+		{"member re-activates an active account", "member", "account_update", `{"id": "admin", "status": "active"}`, apperrs.ErrForbidden},
 		{"member removes an account", "member", "account_delete", `{"id": "admin"}`, apperrs.ErrForbidden},
 	}
 	for _, tt := range tests {
@@ -128,6 +130,7 @@ func TestAccountUpdate_ActivePicksReactivateOrRestore(t *testing.T) {
 	}
 
 	assert.Equal(t, AccountDisabled, status(`{"id": "member", "status": "disabled"}`))
+	assert.Equal(t, AccountDisabled, status(`{"id": "member", "status": "disabled"}`), "disabling a disabled account changes nothing")
 	assert.Equal(t, AccountActive, status(`{"id": "member", "status": "active"}`), "a disabled account is reactivated")
 	assert.Equal(t, AccountActive, status(`{"id": "member", "status": "active"}`), "an active account stays active")
 

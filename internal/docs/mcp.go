@@ -146,8 +146,14 @@ func docUpdateTool(s *Service) mcptool.Tool {
 			if err != nil {
 				return nil, err
 			}
-			saved := in.Title != nil || in.Body != nil
-			if saved {
+			var saved []string
+			if in.Title != nil {
+				saved = append(saved, "title")
+			}
+			if in.Body != nil {
+				saved = append(saved, "body")
+			}
+			if len(saved) > 0 {
 				if d, err = s.Update(ctx, in.ID, deref(in.Title, d.Title), deref(in.Body, d.Body)); err != nil {
 					return nil, err
 				}
@@ -168,12 +174,12 @@ func setArchived(ctx context.Context, s *Service, id string, archived bool) (*Do
 	return s.Restore(ctx, id)
 }
 
-// archiveErr says the title and body were already saved when only the archive step failed.
-func archiveErr(saved bool, err error) error {
-	if saved {
-		return fmt.Errorf("the title and body were saved, but changing archived failed: %w", err)
+// archiveErr says which fields were already saved when only the archive step failed, even when err is hidden.
+func archiveErr(saved []string, err error) error {
+	if len(saved) == 0 {
+		return err
 	}
-	return err
+	return &mcptool.PartialError{Applied: saved, Err: fmt.Errorf("archived: %w", err)}
 }
 
 func deref[T any](p *T, fallback T) T {

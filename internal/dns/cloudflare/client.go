@@ -266,12 +266,13 @@ func decodeRecord(zoneID string, raw json.RawMessage) (*dns.Record, error) {
 		Name    string `json:"name"`
 		Content string `json:"content"`
 		TTL     int    `json:"ttl"`
+		Proxied bool   `json:"proxied"`
 	}
 	if err := json.Unmarshal(raw, &r); err != nil {
 		return nil, fmt.Errorf("decode record: %w", err)
 	}
 	return &dns.Record{
-		ID: r.ID, ZoneID: zoneID, Type: dns.RecordType(r.Type), Name: r.Name, Content: r.Content, TTL: r.TTL,
+		ID: r.ID, ZoneID: zoneID, Type: dns.RecordType(r.Type), Name: r.Name, Content: r.Content, TTL: r.TTL, Proxied: r.Proxied,
 	}, nil
 }
 

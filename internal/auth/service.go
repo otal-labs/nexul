@@ -1008,9 +1008,16 @@ func (s *Service) GetAccount(ctx context.Context, actorID, id string) (*User, er
 
 // UpdateAccountStatus moves an account to active or disabled; active reactivates a disabled account and restores a removed one.
 func (s *Service) UpdateAccountStatus(ctx context.Context, actorID, targetID string, status AccountStatus) error {
+	// The admin check comes first, so a non-admin cannot tell a real account id from an unknown one.
+	if err := s.requireCanCreateWorkspace(ctx, actorID); err != nil {
+		return err
+	}
 	target, err := s.cfg.Users.GetUserByID(ctx, targetID)
 	if err != nil {
-		return err
+		return fmt.Errorf("get account %s: %w", targetID, err)
+	}
+	if status == AccountDisabled && target.AccountStatus == AccountDisabled {
+		return nil
 	}
 	if status == AccountDisabled {
 		return s.DisableAccount(ctx, actorID, target.ID)

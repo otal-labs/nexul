@@ -79,6 +79,7 @@ func TestMCPTools_Errors(t *testing.T) {
 		{"list messages with two targets", as("u-1"), "message_list", `{"doc_id":"doc-1","ticket_id":"t-1"}`, apperrs.ErrInvalid},
 		{"list a ticket thread by the ticket's key", as("u-1"), "message_list", `{"ticket_id":"REF-102"}`, apperrs.ErrInvalid},
 		{"post to a ticket thread by the ticket's key", as("u-1"), "message_post", `{"ticket_id":"REF-102","workspace_id":"w-1","body":"hi"}`, apperrs.ErrInvalid},
+		{"a lowercase key is still a key", as("u-1"), "message_list", `{"ticket_id":"ref-102"}`, apperrs.ErrInvalid},
 		{"post without a body", as("u-1"), "message_post", `{"ticket_id":"t-1"}`, apperrs.ErrInvalid},
 		{"post a blank body", as("owner"), "message_post", `{"conversation_id":"` + docThread.ID + `","body":"  "}`, apperrs.ErrInvalid},
 		{"post to a new thread without a workspace", as("u-1"), "message_post", `{"ticket_id":"t-9","body":"hi"}`, apperrs.ErrInvalid},

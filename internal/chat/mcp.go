@@ -31,7 +31,7 @@ type messageTarget struct {
 }
 
 // ticketKey matches a ticket's human key; chat cannot resolve one, and a missing ticket's thread would list as empty.
-var ticketKey = regexp.MustCompile(`^[A-Z]{2,5}-\d+$`)
+var ticketKey = regexp.MustCompile(`(?i)^[a-z]{2,5}-\d+$`)
 
 type messageListIn struct {
 	messageTarget
@@ -137,7 +137,7 @@ func messagePostTool(s *Service) mcptool.Tool {
 			"starting that thread if it does not exist yet (which needs workspace_id). "+
 			"Name the target the same way as message_list: conversation_id, or exactly one of doc_id, ticket_id, or project_id. "+
 			"Mentioning @Agent starts an agent turn on your own paired computer. Returns the posted message and its conversation_id.",
-		mcptool.Hints{Additive: true},
+		mcptool.Hints{},
 		func(ctx context.Context, in messagePostIn) (any, error) {
 			caller, err := callerID(ctx)
 			if err != nil {

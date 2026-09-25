@@ -291,3 +291,25 @@ func TestTicketsRepo_Delete_RemovesTicket(t *testing.T) {
 	_, err := s.Tickets.GetByID(context.Background(), "t-1")
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
+
+func TestTicketsRepo_GetByPrefixAndNumber_AmbiguousKeyIsAConflict(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := context.Background()
+	now := time.Date(2026, 8, 12, 9, 0, 0, 0, time.UTC)
+	for _, p := range []*workspace.Project{
+		{ID: "p-erf", Name: "Engineering", Prefix: "ERF", WorkspaceID: "workspace-default", CreatedAt: now, UpdatedAt: now},
+		{ID: "p-oth", Name: "Other", Prefix: "OTH", WorkspaceID: "workspace-default", CreatedAt: now, UpdatedAt: now},
+	} {
+		require.NoError(t, s.Projects.Create(ctx, p))
+	}
+	require.NoError(t, s.Docs.Create(ctx, newTestDoc("doc-1")))
+	first, moved := newTestTicket("t-1", "doc-1"), newTestTicket("t-2", "doc-1")
+	first.ProjectID, moved.ProjectID = "p-erf", "p-oth"
+	require.NoError(t, s.Tickets.Create(ctx, first))
+	require.NoError(t, s.Tickets.Create(ctx, moved))
+	require.NoError(t, s.Projects.MoveTicket(ctx, "t-2", "p-erf"))
+
+	_, err := s.Tickets.GetByPrefixAndNumber(ctx, "ERF", 1)
+	require.ErrorIs(t, err, apperrs.ErrConflict, "a moved ticket keeps its number, so ERF-1 names two tickets")
+}
