@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"testing"
@@ -99,6 +98,12 @@ func TestAccountGet_WithoutIDIsTheCaller(t *testing.T) {
 	got, err = callAccountTool(t, s, "admin", "account_get", `{"id": "member"}`)
 	require.NoError(t, err)
 	assert.Equal(t, "member", got.(accountResult).Login)
+
+	_, err = s.UpdateProfileOverride(t.Context(), "member", "Mem", "")
+	require.NoError(t, err)
+	got, err = callAccountTool(t, s, "member", "account_get", `{}`)
+	require.NoError(t, err)
+	assert.Equal(t, "Mem", got.(accountResult).DisplayName, "the chosen display name sits beside the provider's name")
 }
 
 func TestAccountList_PagesEveryAccount(t *testing.T) {
@@ -146,7 +151,7 @@ func TestHandler_UpdateAccountStatus_UsesTheSameRule(t *testing.T) {
 		return doRequest(routes, http.MethodPatch, "/api/auth/accounts/"+id, "Bearer "+token, body).Code
 	}
 
-	require.NoError(t, s.RemoveAccount(context.Background(), "admin", "member"))
+	require.NoError(t, s.RemoveAccount(t.Context(), "admin", "member"))
 	assert.Equal(t, http.StatusNoContent, patch("member", `{"status":"active"}`))
 	restored, err := users.GetUserByID(t.Context(), "member")
 	require.NoError(t, err)

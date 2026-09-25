@@ -230,6 +230,37 @@ func TestComputerPair_ByURL_AddsAComputerWithoutATunnel(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrInvalid, "a computer paired by URL has no tunnel token")
 }
 
+func TestComputerPair_WithID_RenamesOrMovesAndKeepsWhatIsOmitted(t *testing.T) {
+	t.Parallel()
+	exch := pairedExchanger()
+	svc, _ := newTunnelService(newFakeRepo(), exch, &fakeTunnels{})
+	ctx := actorCtx(t, "u1")
+	pair := func(args string) computerResult {
+		t.Helper()
+		out, err := callTool(t, ctx, svc, "computer_pair", args)
+		require.NoError(t, err)
+		return out.(computerResult)
+	}
+	vps := pair(`{"name": "VPS", "server_url": "https://vps.example.com", "token": "tok"}`)
+
+	got := pair(`{"id": "` + vps.ID + `", "token": "tok"}`)
+	assert.Equal(t, "VPS", got.Name, "an omitted name survives a re-pair")
+	assert.Equal(t, "https://vps.example.com", got.ServerURL, "an omitted server_url survives a re-pair")
+
+	got = pair(`{"id": "` + vps.ID + `", "token": "tok", "server_url": "https://vps2.example.com"}`)
+	assert.Equal(t, "VPS", got.Name)
+	assert.Equal(t, "https://vps2.example.com", exch.pairedURL)
+
+	got = pair(`{"id": "` + vps.ID + `", "token": "tok", "name": "Box"}`)
+	assert.Equal(t, vps.ID, got.ID)
+	assert.Equal(t, "Box", got.Name)
+	assert.Equal(t, "https://vps2.example.com", got.ServerURL)
+
+	tunnelID := tunnelComputer(t, svc)
+	_, err := callTool(t, ctx, svc, "computer_pair", `{"id": "`+tunnelID+`", "token": "tok", "server_url": "https://elsewhere.example.com"}`)
+	require.ErrorIs(t, err, apperrs.ErrInvalid, "a tunnel computer only pairs over its own hostname")
+}
+
 func TestComputerList_ShowsSetupTokenMetadataAndLiveTunnelStatus(t *testing.T) {
 	t.Parallel()
 	svc, _ := newTunnelService(newFakeRepo(), &fakeExchanger{}, &fakeTunnels{status: "inactive"})

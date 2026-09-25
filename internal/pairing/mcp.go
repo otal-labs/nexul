@@ -1,6 +1,7 @@
 package pairing
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"slices"
@@ -32,9 +33,9 @@ type computerCreateIn struct {
 
 type computerPairIn struct {
 	Token     string `json:"token" jsonschema:"The one-time token t3 pair prints on the computer."`
-	ID        string `json:"id,omitempty" jsonschema:"An existing computer to pair or re-pair at its own address, for example the one computer_create returned. Omit it to pair a new computer by name and server_url."`
-	Name      string `json:"name,omitempty" jsonschema:"The new computer's name, when pairing by URL."`
-	ServerURL string `json:"server_url,omitempty" jsonschema:"The T3 Code server URL this server reaches, when pairing by URL, for example https://vps.example.com:3773."`
+	ID        string `json:"id,omitempty" jsonschema:"One of your computers to pair or re-pair, for example the one computer_create returned. Omit it to pair a new computer by name and server_url."`
+	Name      string `json:"name,omitempty" jsonschema:"The computer's name, for example Onik Laptop. Required without id; with id it renames the computer, and omitting it keeps the name."`
+	ServerURL string `json:"server_url,omitempty" jsonschema:"The T3 Code server URL this server reaches, for example https://vps.example.com:3773. Required without id; with id it moves a computer paired by URL, and omitting it keeps the address. A tunnel computer always pairs over its own hostname."`
 }
 
 type computerDeleteIn struct {
@@ -161,9 +162,10 @@ func computerCreateTool(s *Service) mcptool.Tool {
 func computerPairTool(s *Service) mcptool.Tool {
 	return mcptool.New("computer_pair", "Pair computer",
 		"Pairs T3 Code on a computer with the one-time token t3 pair prints there, giving Nexul a harness session on it. "+
-			"Pass id to pair a computer computer_create made, over its tunnel hostname, or to re-pair any of your "+
-			"computers at its known address; pass name and server_url instead to pair a new machine this server can "+
-			"already reach. Returns the paired computer; run computer_setup_run next so agent work can use it.",
+			"Pass id to pair a computer computer_create made, over its tunnel hostname, or to re-pair one of your "+
+			"computers after its session expired; with id, name renames it and server_url moves a computer paired "+
+			"by URL, and an omitted one keeps its value. Without id, name and server_url pair a new machine this "+
+			"server can already reach. Returns the paired computer; run computer_setup_run next so agent work can use it.",
 		mcptool.Hints{},
 		func(ctx context.Context, in computerPairIn) (any, error) {
 			c, err := pairComputer(ctx, s, in)
@@ -175,17 +177,23 @@ func computerPairTool(s *Service) mcptool.Tool {
 }
 
 func pairComputer(ctx context.Context, s *Service, in computerPairIn) (*Computer, error) {
-	if in.ID != "" {
-		return s.PairComputer(ctx, mcpActorID(ctx), in.ID, in.Token)
+	userID := mcpActorID(ctx)
+	if in.ID == "" {
+		return s.Pair(ctx, userID, harness.KindT3Code, in.Name, in.ServerURL, in.Token)
 	}
-	return s.Pair(ctx, mcpActorID(ctx), harness.KindT3Code, in.Name, in.ServerURL, in.Token)
+	current, err := s.ownComputer(ctx, userID, in.ID)
+	if err != nil {
+		return nil, err
+	}
+	return s.Repair(ctx, userID, current.ID, cmp.Or(in.Name, current.Name), cmp.Or(in.ServerURL, current.address()), in.Token)
 }
 
 func computerDeleteTool(s *Service) mcptool.Tool {
 	return mcptool.New("computer_delete", "Delete computer",
 		"Removes one of your computers: revokes its MCP token, tears down its tunnel, DNS record, and Access app on "+
 			"Cloudflare, then deletes it. Agent work can no longer run there; pair it again with computer_create or "+
-			"computer_pair. A failed Cloudflare teardown keeps the computer, so calling this again retries it.",
+			"computer_pair. A failed Cloudflare teardown keeps the computer, so calling this again retries it. "+
+			"Returns {id, deleted: true}.",
 		mcptool.Hints{Idempotent: true},
 		func(ctx context.Context, in computerDeleteIn) (any, error) {
 			if err := s.DeleteComputer(ctx, mcpActorID(ctx), in.ID); err != nil {

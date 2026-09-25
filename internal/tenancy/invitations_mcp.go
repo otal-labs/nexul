@@ -71,7 +71,7 @@ func invitationDeleteTool(s *InvitationService) mcptool.Tool {
 	return mcptool.New("invitation_delete", "Revoke invitation",
 		"Revokes an unredeemed invitation so its link stops working. You need members:write in every workspace it "+
 			"grants. An invitation already redeemed, expired, or revoked is not found; invitation_list shows the "+
-			"ones still open.",
+			"ones still open. Returns {id, deleted: true}.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in invitationDeleteIn) (any, error) {
 			if err := s.Revoke(ctx, actorID(ctx), in.ID); err != nil {

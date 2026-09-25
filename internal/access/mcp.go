@@ -24,7 +24,7 @@ type accessGrantListIn struct {
 type accessGrantUpdateIn struct {
 	ResourceType string   `json:"resource_type" jsonschema:"doc or play."`
 	ResourceIDs  []string `json:"resource_ids" jsonschema:"The docs' or plays' ids; every one gets the same change."`
-	UserIDs      []string `json:"user_ids" jsonschema:"The account ids the change applies to."`
+	UserIDs      []string `json:"user_ids" jsonschema:"The account ids the change applies to, as access_grant_list or account_list shows them."`
 	Actions      []string `json:"actions" jsonschema:"Permissions to grant or revoke, each <domain>:<action>, for example [\"docs:read\", \"docs:write\"]. On a play only plays:run."`
 	Grant        bool     `json:"grant" jsonschema:"true grants the actions (on a play, lifts the users' exclusion); false revokes them (on a play, excludes the users from running it)."`
 }
@@ -32,6 +32,8 @@ type accessGrantUpdateIn struct {
 // grantResult is one user's overwrite on the resource that was asked for.
 type grantResult struct {
 	UserID string          `json:"user_id"`
+	Login  string          `json:"login,omitempty"`
+	Name   string          `json:"name,omitempty"`
 	Allow  permissions.Set `json:"allow"`
 	Deny   permissions.Set `json:"deny"`
 }
@@ -40,16 +42,25 @@ func accessGrantListTool(s *Service) mcptool.Tool {
 	return mcptool.New("access_grant_list", "List access grants",
 		"Lists the per-user permission overwrites on one doc or play: on a doc, who was granted which docs "+
 			"actions; on a play, which users are excluded from running it (plays:run in deny). Needs "+
-			"permissions:write on the doc, or plays:write on the play. Change them with access_grant_update.",
+			"permissions:write on the doc, or plays:write on the play. Returns each user's id, login, and name with "+
+			"their allow and deny sets; change them with access_grant_update.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in accessGrantListIn) (any, error) {
 			grants, err := listGrants(ctx, s, in)
 			if err != nil {
 				return nil, err
 			}
+			accounts, err := s.accountsByID(ctx)
+			if err != nil {
+				return nil, err
+			}
 			out := make([]grantResult, 0, len(grants))
 			for _, g := range grants {
-				out = append(out, grantResult{UserID: g.UserID, Allow: g.Allow, Deny: g.Deny})
+				r := grantResult{UserID: g.UserID, Allow: g.Allow, Deny: g.Deny}
+				if u, ok := accounts[g.UserID]; ok {
+					r.Login, r.Name = u.Login, u.Name
+				}
+				out = append(out, r)
 			}
 			return mcptool.Paginate(out, in.PageArgs), nil
 		})
@@ -83,7 +94,7 @@ func accessGrantUpdateTool(s *Service) mcptool.Tool {
 func setGrants(ctx context.Context, s *Service, in accessGrantUpdateIn) error {
 	actions, err := parseActions(in.Actions)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w; a permission is <domain>:<action>, for example docs:read", err)
 	}
 	if in.ResourceType == resourceTypeDoc {
 		return s.SetGrants(ctx, actorIDFromCtx(ctx), in.ResourceIDs, in.UserIDs, actions, in.Grant)

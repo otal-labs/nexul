@@ -1,8 +1,8 @@
 package access
 
 import (
-	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"testing"
 
@@ -76,7 +76,7 @@ func TestGrantTools_ErrorPaths(t *testing.T) {
 			svc, repo := newGrantsHarness(t)
 			_, err := callGrantTool(t, svc, tt.actor, tt.tool, tt.args)
 			require.ErrorIs(t, err, tt.wantErr)
-			_, err = repo.Get(context.Background(), resourceTypeDoc, "doc-1", "alice")
+			_, err = repo.Get(t.Context(), resourceTypeDoc, "doc-1", "alice")
 			require.ErrorIs(t, err, apperrs.ErrNotFound, "a refused call grants nothing")
 		})
 	}
@@ -94,12 +94,12 @@ func TestGrantUpdate_OnlyTheNamedActionsChange(t *testing.T) {
 
 	update(`["docs:read", "docs:write"]`, true)
 	update(`["docs:delete"]`, true)
-	g, err := repo.Get(context.Background(), resourceTypeDoc, "doc-1", "alice")
+	g, err := repo.Get(t.Context(), resourceTypeDoc, "doc-1", "alice")
 	require.NoError(t, err)
 	assert.Equal(t, permissions.SetOf(permissions.DocsRead, permissions.DocsWrite, permissions.DocsDelete), g.Allow, "a later grant keeps the earlier ones")
 
 	update(`["docs:write"]`, false)
-	g, err = repo.Get(context.Background(), resourceTypeDoc, "doc-1", "alice")
+	g, err = repo.Get(t.Context(), resourceTypeDoc, "doc-1", "alice")
 	require.NoError(t, err)
 	assert.Equal(t, permissions.SetOf(permissions.DocsRead, permissions.DocsDelete), g.Allow, "revoking one action keeps the rest")
 }
@@ -113,9 +113,20 @@ func TestGrantList_ShowsEachUsersOverwrite(t *testing.T) {
 	require.NoError(t, err)
 	page := got.(mcptool.Page[grantResult])
 	assert.ElementsMatch(t, []grantResult{
-		{UserID: "owner", Allow: permissions.SetOf(permissions.PermissionsWrite)},
-		{UserID: "alice", Allow: permissions.SetOf(permissions.DocsRead)},
+		{UserID: "owner", Login: "owner", Allow: permissions.SetOf(permissions.PermissionsWrite)},
+		{UserID: "alice", Login: "alice", Allow: permissions.SetOf(permissions.DocsRead)},
 	}, page.Items)
+}
+
+func TestGrantList_AccountLookupFails_ReturnsTheError(t *testing.T) {
+	t.Parallel()
+	svc, repo, users := newAccessHarness()
+	setOverwrite(repo, resourceTypeDoc, "doc-1", "owner", permissions.SetOf(permissions.PermissionsWrite))
+	boom := errors.New("users unavailable")
+	users.listErr = boom
+
+	_, err := callGrantTool(t, svc, "owner", "access_grant_list", `{"resource_type": "doc", "resource_id": "doc-1"}`)
+	require.ErrorIs(t, err, boom)
 }
 
 func TestGrantTools_PlayExclusion(t *testing.T) {
@@ -125,11 +136,11 @@ func TestGrantTools_PlayExclusion(t *testing.T) {
 
 	_, err := callGrantTool(t, svc, "owner", "access_grant_update", exclude)
 	require.NoError(t, err)
-	g, err := repo.Get(context.Background(), resourceTypePlay, "play-1", "alice")
+	g, err := repo.Get(t.Context(), resourceTypePlay, "play-1", "alice")
 	require.NoError(t, err)
 	assert.Equal(t, permissions.SetOf(permissions.PlaysRun), g.Deny)
 
 	got, err := callGrantTool(t, svc, "owner", "access_grant_list", `{"resource_type": "play", "resource_id": "play-1"}`)
 	require.NoError(t, err)
-	assert.Contains(t, got.(mcptool.Page[grantResult]).Items, grantResult{UserID: "alice", Deny: permissions.SetOf(permissions.PlaysRun)})
+	assert.Contains(t, got.(mcptool.Page[grantResult]).Items, grantResult{UserID: "alice", Login: "alice", Deny: permissions.SetOf(permissions.PlaysRun)})
 }
