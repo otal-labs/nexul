@@ -6,6 +6,9 @@ import (
 	"net/http/httptest"
 	"testing"
 	"testing/fstest"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func newAssets() fs.FS {
@@ -84,6 +87,27 @@ func TestHandler_UnknownRoute_FallsBackToIndex(t *testing.T) {
 			if rec.Body.String() != "<html>root</html>" {
 				t.Fatalf("path %q: body = %q, want index.html", tt.path, rec.Body.String())
 			}
+		})
+	}
+}
+
+func TestHandler_CacheHeaders(t *testing.T) {
+	tests := []struct {
+		name string
+		path string
+		want string
+	}{
+		{"fingerprinted asset is cached for a year", "/assets/app.js", "public, max-age=31536000, immutable"},
+		{"index is revalidated on every load", "/", "no-cache"},
+		{"client route serves the revalidated index", "/docs/guide", "no-cache"},
+		{"index by name serves the revalidated index", "/index.html", "no-cache"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			Handler(newAssets()).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tt.path, nil))
+			require.Equal(t, http.StatusOK, rec.Code)
+			assert.Equal(t, tt.want, rec.Header().Get("Cache-Control"))
 		})
 	}
 }

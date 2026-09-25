@@ -1,0 +1,7 @@
+# The released image: GoReleaser builds the binary (web UI embedded) and stages it per platform in the context.
+FROM alpine:3.22
+ARG TARGETPLATFORM
+COPY $TARGETPLATFORM/nexul /usr/local/bin/nexul
+EXPOSE 8080
+ENTRYPOINT ["nexul"]
+CMD ["serve"]

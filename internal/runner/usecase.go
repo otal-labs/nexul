@@ -410,7 +410,7 @@ func (s *Service) latestUpgrade(ctx context.Context) (*Upgrade, error) {
 }
 
 // resolveOne applies the boot/lazy resolution rule to one record: a match on the running version completes it;
-// anything else unresolved past upgradeResolveWindow fails it with the docker-logs hint. An already-resolved
+// anything else unresolved past upgradeResolveWindow fails it with the journal hint. An already-resolved
 // record, or one still within the window, passes through unchanged.
 func (s *Service) resolveOne(ctx context.Context, u *Upgrade) (*Upgrade, error) {
 	if !u.unresolved() {
@@ -420,7 +420,7 @@ func (s *Service) resolveOne(ctx context.Context, u *Upgrade) (*Upgrade, error) 
 		return s.transitionUpgrade(ctx, u, UpgradeStatusCompleted, "")
 	}
 	if s.now().Sub(u.UpdatedAt) > upgradeResolveWindow {
-		msg := fmt.Sprintf("instance is still on %s; run docker logs nexul-upgrade on the host", version.Version)
+		msg := fmt.Sprintf("instance is still on %s; run journalctl -u nexul-upgrade on the host", version.Version)
 		return s.transitionUpgrade(ctx, u, UpgradeStatusFailed, msg)
 	}
 	return u, nil
@@ -474,8 +474,8 @@ func (s *Service) RequestUpgrade(ctx context.Context, actor string) (Upgrade, er
 }
 
 // ResolvePendingUpgrade applies the boot-time resolution to every unresolved record (server/cmd/bootstrap.go,
-// called after migrations): the instance may have restarted on the new version, or the helper container may
-// have failed silently, and the booted version is the only signal either way.
+// called after migrations): the instance may have restarted on the new version, or the update may have failed
+// silently, and the booted version is the only signal either way.
 func (s *Service) ResolvePendingUpgrade(ctx context.Context) error {
 	if s.upgrades == nil {
 		return nil

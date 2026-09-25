@@ -1,0 +1,59 @@
+# Builds every release: the two binaries for each platform, checksums.txt, the nexul image, and the GitHub
+# release. release.yml picks the tag and builds the web UI into server/webui/dist before this runs.
+version: 2
+project_name: nexul
+
+builds:
+  - id: nexul
+    main: ./server/cmd
+    binary: nexul
+    tags: [embed]
+    env: [CGO_ENABLED=0]
+    flags: [-trimpath]
+    ldflags: ["-s -w -X github.com/otal-labs/nexul/internal/platform/version.Version={{ .Tag }}"]
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ignore:
+      - { goos: windows, goarch: arm64 }
+  - id: nexul-runner
+    main: ./runner/cmd
+    binary: nexul-runner
+    env: [CGO_ENABLED=0]
+    flags: [-trimpath]
+    ldflags: ["-s -w -X github.com/otal-labs/nexul/internal/platform/version.Version={{ .Tag }}"]
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ignore:
+      - { goos: windows, goarch: arm64 }
+
+# Raw binaries named <binary>-<os>-<arch>: the installer, the runner download proxy and runner self-update fetch
+# them by exactly this name and verify them against checksums.txt.
+archives:
+  - formats: [binary]
+    name_template: "{{ .Binary }}-{{ .Os }}-{{ .Arch }}"
+
+checksum:
+  name_template: checksums.txt
+
+dockers_v2:
+  - ids: [nexul]
+    images: [ghcr.io/otal-labs/nexul]
+    dockerfile: server/Dockerfile.release
+    platforms: [linux/amd64, linux/arm64]
+    tags:
+      - "{{ .Version }}"
+      - "{{ if .Prerelease }}beta{{ end }}"
+      - "{{ if or (not .Prerelease) (eq .Env.STABLE_EXISTS \"false\") }}latest{{ end }}"
+    labels:
+      org.opencontainers.image.source: https://github.com/otal-labs/nexul
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+
+release:
+  prerelease: auto
+  make_latest: "{{ not .Prerelease }}"
+  target_commitish: "{{ .FullCommit }}"
+  name_template: "Nexul {{ .Tag }}"
+
+changelog:
+  use: github-native

@@ -44,10 +44,10 @@ frontmatter and it appears.
 
 ## Installer downloads
 
-`public/install.sh` and `public/install.ps1` are served directly at the site root.
-They bootstrap a fresh clone and delegate setup to the repository installers.
-Keep provisioning logic in the root scripts. Run `bun run test` before changing
-the download entry points.
+`public/install.sh` is served directly at the site root. It only downloads the
+`nexul` binary, checks its checksum and runs `nexul install`; everything else
+lives in the binary (`internal/install/`). Run `bun run test` before changing
+it.
 
 ## Styling
 
@@ -61,9 +61,8 @@ The workflow is an illustration with example data, not a live instance.
 Keep its documents, ticket states, and deployment details consistent with
 the product when editing it. Verify the homepage at 320, 375, 414, and 768px
 in both color schemes, including keyboard navigation and installation-command
-copy feedback. The same platform switcher appears in the hero and closing
-install section. Keep both commands on one line and the copy control inline.
-Platform selection also works without JavaScript.
+copy feedback. The same install block appears in the hero and the closing
+install section. Keep the command on one line and the copy control inline.
 
 ## Hosting
 

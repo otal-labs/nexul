@@ -70,9 +70,10 @@ git history, and anything durable it decided is an ADR.
   on a paired harness (28) and the five follow-ups it produced (29–33).
   Delete the directory once the owner has reacted to the live UI. Research
   findings in `research/`.
-- `.scratch/instance-upgrade/` — the in-place instance upgrade through a
-  helper container run by the instance runner. Built; the directory goes once
-  the owner has run a real upgrade against public packages.
+- `.scratch/instance-upgrade/` — the in-place instance upgrade from the UI,
+  now `nexul upgrade` started by the instance runner (ADR 0069). Built; the
+  directory goes once the owner has run a real upgrade against public
+  packages.
 - `.scratch/bots/` — bots: a named poster in any conversation that outside
   systems drive through a Discord-compatible webhook URL. Wayfinder map
   charted 2026-09-16, tickets 01 to 03 resolved, parked 2026-09-20 until the

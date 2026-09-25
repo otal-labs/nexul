@@ -1,5 +1,7 @@
 # Each service gets its own Dockerfile even though compose runs them collapsed
 
+Superseded in part by ADR 0069: the server embeds the web UI, so there is no web image, and releases ship the runner as a host binary.
+
 Server, runner, and web each have a Dockerfile with `release` and `debug`
 targets, while the compose stack runs everything on one host. The boundaries
 are drawn in the build now precisely because they are cheap to draw now:

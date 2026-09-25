@@ -153,7 +153,7 @@ describe("InstanceVersionSection", () => {
     expect(screen.getByRole("button", { name: "Upgrade to v0.2.0-beta-005" })).toBeEnabled();
   });
 
-  it("shows the error and the docker logs hint when the upgrade failed", async () => {
+  it("shows the error and the journal hint when the upgrade failed", async () => {
     mocks.get.mockResolvedValue({
       data: {
         version: "v0.2.0-beta-003",
@@ -167,7 +167,7 @@ describe("InstanceVersionSection", () => {
           from_version: "v0.2.0-beta-003",
           to_version: "v0.2.0-beta-004",
           status: "failed",
-          error: "instance is still on v0.2.0-beta-003; run docker logs nexul-upgrade on the host",
+          error: "instance is still on v0.2.0-beta-003; run journalctl -u nexul-upgrade on the host",
           requested_by: "user-1",
           created_at: "2026-09-15T00:00:00Z",
           updated_at: "2026-09-15T00:00:00Z",
@@ -177,7 +177,7 @@ describe("InstanceVersionSection", () => {
     renderSection();
 
     await screen.findByText(/instance is still on v0.2.0-beta-003/);
-    expect(screen.getByText("docker logs nexul-upgrade")).toBeInTheDocument();
+    expect(screen.getByText("journalctl -u nexul-upgrade")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Upgrade to v0.2.0-beta-004" })).toBeEnabled();
   });
 

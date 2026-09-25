@@ -30,9 +30,12 @@ jobs:
               - 'server/**'
               - 'runner/**'
               - 'internal/**'
+              - '*.go'
+              - 'docker-compose.yml'
               - 'go.mod'
               - 'go.sum'
               - 'sqlc.yaml'
+              - '.goreleaser.yaml'
             web:
               - 'web/**'
             desktop:
@@ -68,6 +71,11 @@ jobs:
         with:
           version: v2.13.2
       - run: go tool govulncheck ./...
+      - name: Release config is valid
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          version: "~> v2"
+          args: check
       - name: Test with coverage gate
         run: make coverage
       - uses: actions/upload-artifact@v7

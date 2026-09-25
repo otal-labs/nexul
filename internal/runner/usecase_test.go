@@ -232,7 +232,7 @@ func TestService_UpgradeStatus_LazyResolution(t *testing.T) {
 		assert.Len(t, bus.topicEvents(TopicInstanceUpgradeChanged), 1)
 	})
 
-	t.Run("a record stuck past the window fails with the docker logs hint", func(t *testing.T) {
+	t.Run("a record stuck past the window fails with the journal hint", func(t *testing.T) {
 		withVersion(t, "v0.2.0")
 		srv := fakeGitHub(t, "v0.2.1", "x")
 		upgrades := newFakeUpgradeRepo()
@@ -248,7 +248,7 @@ func TestService_UpgradeStatus_LazyResolution(t *testing.T) {
 		require.NotNil(t, status.Upgrade)
 		assert.Equal(t, UpgradeStatusFailed, status.Upgrade.Status)
 		assert.Contains(t, status.Upgrade.Error, "instance is still on v0.2.0")
-		assert.Contains(t, status.Upgrade.Error, "docker logs nexul-upgrade")
+		assert.Contains(t, status.Upgrade.Error, "journalctl -u nexul-upgrade")
 	})
 
 	t.Run("a record still within the window stays unresolved", func(t *testing.T) {

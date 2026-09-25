@@ -735,163 +735,78 @@ func TestShellExecutor_Deploy_ReportsServices(t *testing.T) {
 	})
 }
 
-// realisticUpgradeInspect is a docker inspect --format '{{json .}}' answer for a container the "nexul" compose
-// project started, with two config files (the debug stack's own pattern).
-const realisticUpgradeInspect = `{"Config":{"Image":"ghcr.io/otal-labs/nexul-runner:v0.2.0-beta-003","Labels":{` +
-	`"com.docker.compose.project":"nexul",` +
-	`"com.docker.compose.project.working_dir":"/opt/nexul",` +
-	`"com.docker.compose.project.config_files":"docker-compose.yml,docker-compose.debug.yml"}}}`
-
-func wantUpgradeRunArgs() []string {
-	script := "set -e; docker compose -p 'nexul' -f '/opt/nexul/docker-compose.yml' -f '/opt/nexul/docker-compose.debug.yml' pull; " +
-		"docker compose -p 'nexul' -f '/opt/nexul/docker-compose.yml' -f '/opt/nexul/docker-compose.debug.yml' up -d --remove-orphans"
-	return []string{
-		"run", "-d", "--name", "nexul-upgrade",
-		"-v", "/var/run/docker.sock:/var/run/docker.sock",
-		"-v", "/opt/nexul:/opt/nexul",
-		"-w", "/opt/nexul",
-		"-e", "NEXUL_VERSION=0.2.0-beta-004",
-		"--entrypoint", "sh",
-		"ghcr.io/otal-labs/nexul-runner:v0.2.0-beta-003",
-		"-c", script,
-	}
-}
-
-func findDockerArgs(cmd *fakeCmd, verb string) []string {
-	for _, args := range cmd.argsFor("docker") {
-		if len(args) > 0 && args[0] == verb {
-			return args
+// withNexulOnPath makes lookPathFn resolve the nexul command to path, or fail when path is empty.
+func withNexulOnPath(t *testing.T, path string) {
+	t.Helper()
+	orig := lookPathFn
+	lookPathFn = func(string) (string, error) {
+		if path == "" {
+			return "", errors.New("not found")
 		}
+		return path, nil
 	}
-	return nil
+	t.Cleanup(func() { lookPathFn = orig })
 }
 
 func TestShellExecutor_Upgrade(t *testing.T) {
-	t.Run("resolves compose labels and starts the helper with the exact docker arguments", func(t *testing.T) {
-		t.Setenv("NEXUL_RUNNER_CONTAINER", "self-1")
-		cmd := &fakeCmd{
-			inspectByName: map[string]string{"self-1": realisticUpgradeInspect},
-			runOut:        "abc123helper\n",
-		}
+	t.Run("starts nexul upgrade in its own systemd unit and reports started", func(t *testing.T) {
+		withNexulOnPath(t, "/usr/local/bin/nexul")
+		cmd := &fakeCmd{}
 		e := newTestExecutor(cmd.run)
 		var frames []Frame
 		send := func(fr Frame) error { frames = append(frames, fr); return nil }
 
-		err := e.Upgrade(context.Background(), Frame{Type: FrameAssignUpgrade, ID: "up-1", Version: "v0.2.0-beta-004"}, send)
+		err := e.Upgrade(t.Context(), Frame{Type: FrameAssignUpgrade, ID: "up-1", Version: "v0.2.2"}, send)
 		require.NoError(t, err)
 
-		require.Len(t, frames, 4)
+		assert.Equal(t, [][]string{{"--unit", "nexul-upgrade", "--collect", "--quiet", "/usr/local/bin/nexul", "upgrade", "--version", "v0.2.2"}}, cmd.argsFor("systemd-run"))
+		require.Len(t, frames, 2)
 		assert.Equal(t, FrameUpgradeProgress, frames[0].Type)
-		assert.Equal(t, "resolved compose project nexul at /opt/nexul", frames[0].Log)
-		assert.Equal(t, FrameUpgradeProgress, frames[1].Type)
-		assert.Equal(t, "removed previous helper", frames[1].Log)
-		assert.Equal(t, FrameUpgradeProgress, frames[2].Type)
-		assert.Equal(t, "helper started: abc123helper", frames[2].Log)
-		assert.Equal(t, FrameUpgradeResult, frames[3].Type)
-		assert.Equal(t, UpgradeStatusStarted, frames[3].Status)
-		assert.Equal(t, "abc123helper", frames[3].Log)
-
-		assert.Equal(t, []string{"rm", "-f", "nexul-upgrade"}, findDockerArgs(cmd, "rm"))
-		assert.Equal(t, wantUpgradeRunArgs(), findDockerArgs(cmd, "run"))
-		inspectArgs := findDockerArgs(cmd, "inspect")
-		assert.Equal(t, []string{"inspect", "--format", "{{json .}}", "self-1"}, inspectArgs)
+		assert.Equal(t, "started nexul-upgrade.service", frames[0].Log)
+		assert.Equal(t, FrameUpgradeResult, frames[1].Type)
+		assert.Equal(t, UpgradeStatusStarted, frames[1].Status)
 	})
 
-	t.Run("an absolute config file is used as-is", func(t *testing.T) {
-		t.Setenv("NEXUL_RUNNER_CONTAINER", "self-abs")
-		inspect := `{"Config":{"Image":"img","Labels":{` +
-			`"com.docker.compose.project":"nexul",` +
-			`"com.docker.compose.project.working_dir":"/opt/nexul",` +
-			`"com.docker.compose.project.config_files":"/etc/nexul/compose.yml"}}}`
-		cmd := &fakeCmd{inspectByName: map[string]string{"self-abs": inspect}, runOut: "id"}
-		e := newTestExecutor(cmd.run)
-		send := func(fr Frame) error { return nil }
-
-		require.NoError(t, e.Upgrade(context.Background(), Frame{Type: FrameAssignUpgrade, ID: "up", Version: "v1"}, send))
-
-		runArgs := findDockerArgs(cmd, "run")
-		require.NotEmpty(t, runArgs)
-		script := runArgs[len(runArgs)-1]
-		assert.Contains(t, script, "-f '/etc/nexul/compose.yml'")
-		assert.NotContains(t, script, "/opt/nexul/etc")
-	})
-
-	t.Run("missing compose labels fails without touching docker beyond the inspect", func(t *testing.T) {
-		t.Setenv("NEXUL_RUNNER_CONTAINER", "self-2")
-		cmd := &fakeCmd{inspectByName: map[string]string{"self-2": `{"Config":{"Image":"img","Labels":{}}}`}}
+	t.Run("a host without the nexul command fails without running anything", func(t *testing.T) {
+		withNexulOnPath(t, "")
+		cmd := &fakeCmd{}
 		e := newTestExecutor(cmd.run)
 		var frames []Frame
 		send := func(fr Frame) error { frames = append(frames, fr); return nil }
 
-		err := e.Upgrade(context.Background(), Frame{Type: FrameAssignUpgrade, ID: "up-2", Version: "v1"}, send)
-		require.NoError(t, err)
-
-		require.Len(t, frames, 1)
-		assert.Equal(t, FrameUpgradeResult, frames[0].Type)
-		assert.Equal(t, UpgradeStatusFailed, frames[0].Status)
-		assert.Equal(t, "instance runner is not managed by docker compose", frames[0].Error)
-		assert.Len(t, cmd.argsFor("docker"), 1, "only the inspect call should have happened")
-	})
-
-	t.Run("a docker inspect failure reports upgrade_result failed", func(t *testing.T) {
-		t.Setenv("NEXUL_RUNNER_CONTAINER", "self-3")
-		cmd := &fakeCmd{inspectErr: errors.New("docker: no such container: self-3")}
-		e := newTestExecutor(cmd.run)
-		var frames []Frame
-		send := func(fr Frame) error { frames = append(frames, fr); return nil }
-
-		err := e.Upgrade(context.Background(), Frame{Type: FrameAssignUpgrade, ID: "up-3", Version: "v1"}, send)
-		require.NoError(t, err)
+		require.NoError(t, e.Upgrade(t.Context(), Frame{Type: FrameAssignUpgrade, ID: "up-2", Version: "v1"}, send))
 
 		require.Len(t, frames, 1)
 		assert.Equal(t, UpgradeStatusFailed, frames[0].Status)
-		assert.Contains(t, frames[0].Error, "no such container")
+		assert.Contains(t, frames[0].Error, "nexul install")
+		assert.Empty(t, cmd.names())
 	})
 
-	t.Run("a docker run failure reports upgrade_result failed with the error text", func(t *testing.T) {
-		t.Setenv("NEXUL_RUNNER_CONTAINER", "self-4")
-		cmd := &fakeCmd{
-			inspectByName: map[string]string{"self-4": realisticUpgradeInspect},
-			runErr:        errors.New("docker: no such image"),
-		}
+	t.Run("a systemd-run failure reports upgrade_result failed with the error text", func(t *testing.T) {
+		withNexulOnPath(t, "/usr/local/bin/nexul")
+		cmd := &fakeCmd{failNext: 1, err: errors.New("Unit nexul-upgrade.service already exists")}
 		e := newTestExecutor(cmd.run)
 		var frames []Frame
 		send := func(fr Frame) error { frames = append(frames, fr); return nil }
 
-		err := e.Upgrade(context.Background(), Frame{Type: FrameAssignUpgrade, ID: "up-4", Version: "v1"}, send)
-		require.NoError(t, err)
+		require.NoError(t, e.Upgrade(t.Context(), Frame{Type: FrameAssignUpgrade, ID: "up-3", Version: "v1"}, send))
 
-		last := frames[len(frames)-1]
-		assert.Equal(t, FrameUpgradeResult, last.Type)
-		assert.Equal(t, UpgradeStatusFailed, last.Status)
-		assert.Equal(t, "docker: no such image", last.Error)
+		require.Len(t, frames, 1)
+		assert.Equal(t, UpgradeStatusFailed, frames[0].Status)
+		assert.Equal(t, "Unit nexul-upgrade.service already exists", frames[0].Error)
 	})
 
-	t.Run("a send failure short-circuits before the remaining docker calls", func(t *testing.T) {
-		t.Setenv("NEXUL_RUNNER_CONTAINER", "self-5")
-		cmd := &fakeCmd{inspectByName: map[string]string{"self-5": realisticUpgradeInspect}}
-		e := newTestExecutor(cmd.run)
+	t.Run("a send failure stops before the result frame", func(t *testing.T) {
+		withNexulOnPath(t, "/usr/local/bin/nexul")
+		e := newTestExecutor((&fakeCmd{}).run)
 		sendErr := errors.New("write failed")
-		send := func(fr Frame) error { return sendErr }
+		sent := 0
+		send := func(fr Frame) error { sent++; return sendErr }
 
-		err := e.Upgrade(context.Background(), Frame{Type: FrameAssignUpgrade, ID: "up-5", Version: "v1"}, send)
+		err := e.Upgrade(t.Context(), Frame{Type: FrameAssignUpgrade, ID: "up-4", Version: "v1"}, send)
 
 		assert.Equal(t, sendErr, err)
-		assert.Len(t, cmd.argsFor("docker"), 1, "rm/run must not run once the first progress send fails")
-	})
-
-	t.Run("defaults the inspected container to the hostname when NEXUL_RUNNER_CONTAINER is unset", func(t *testing.T) {
-		host, hostErr := os.Hostname()
-		require.NoError(t, hostErr)
-		cmd := &fakeCmd{inspectByName: map[string]string{host: realisticUpgradeInspect}, runOut: "id"}
-		e := newTestExecutor(cmd.run)
-		send := func(fr Frame) error { return nil }
-
-		require.NoError(t, e.Upgrade(context.Background(), Frame{Type: FrameAssignUpgrade, ID: "up-6", Version: "v1"}, send))
-
-		inspectArgs := findDockerArgs(cmd, "inspect")
-		require.NotEmpty(t, inspectArgs)
-		assert.Equal(t, host, inspectArgs[len(inspectArgs)-1])
+		assert.Equal(t, 1, sent)
 	})
 }
 

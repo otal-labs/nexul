@@ -1,5 +1,7 @@
 # Runners update themselves: server-pushed, re-exec in place
 
+ADR 0069 made the instance runner a host binary, so it updates this way too; only a runner in a container does not.
+
 A runner reports its version on every connect. When the server is a real release build and a connected runner
 reports a different real version, the server sends it an `update` frame naming the version, a download URL back
 to the server's own download route, and the release's sha256. The runner downloads the matching binary,

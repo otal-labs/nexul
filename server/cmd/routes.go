@@ -67,12 +67,8 @@ func liveEventsHandler(presenceKeeper *presence.Keeper, liveHub *live.Hub) http.
 	})
 }
 
-// buildRoutes wires the runner WS listener, the HTTP gateway (ADR 0019), and the MCP HTTP transport.
-func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, svc *coreServices, wsHandler *runner.Handler, runnerSvc *runner.Service, runnerHTTP *runner.HTTPHandler, automationsDialin *automations.DialinHandler, liveHub *live.Hub, agentHandler *agent.Handler, logger *slog.Logger) (wsServer, httpServer *http.Server) {
-	mux := http.NewServeMux()
-	mux.Handle("/ws/runner", wsHandler)
-	wsServer = &http.Server{Addr: cfg.WSAddr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
-
+// buildRoutes wires the HTTP gateway (ADR 0019), the runner and browser WebSockets, the MCP HTTP transport, and the web UI on one listener.
+func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, svc *coreServices, wsHandler *runner.Handler, runnerSvc *runner.Service, runnerHTTP *runner.HTTPHandler, automationsDialin *automations.DialinHandler, liveHub *live.Hub, agentHandler *agent.Handler, logger *slog.Logger) *http.Server {
 	apiMux := httpx.NewServeMux()
 	mountGateway(apiMux, "/api/docs", docs.NewHandler(svc.docsSvc).Routes())
 	mountGateway(apiMux, "/api/memories", memories.NewHandler(svc.memoriesSvc).Routes())
@@ -187,9 +183,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	))
 	httpMux.Handle("/ws/events", svc.authSvc.RequireWS(liveEventsHandler(svc.presenceKeeper, liveHub)))
 	httpMux.Handle("GET /ws/collab/{docID}", svc.authSvc.RequireWS(withIdentity(svc.collabHub)))
-	// The SDK derives this from the instance URL, so it must share the API's origin, not the runner's WS listener.
 	httpMux.Handle("/ws/automations", automationsDialin)
-	// Also on the main listener, so a proxy forwards one origin; the runner's own WS listener stays for direct access.
 	httpMux.Handle("/ws/runner", wsHandler)
 	httpMux.Handle("/mcp", svc.authSvc.RequireAuth(withIdentity(mcpServer)))
 	// No OAuth authorization server: a client probing OAuth discovery gets a clean 404, not the web app's HTML.
@@ -201,16 +195,13 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	httpMux.Handle("/openapi.json", spec.Handler())
 	httpMux.Handle("/swagger", spec.Handler())
 	httpMux.Handle("/", webui.Handler(webui.Assets()))
-	httpServer = &http.Server{Addr: cfg.HTTPAddr, Handler: httpMux, ReadHeaderTimeout: 10 * time.Second}
-
-	return wsServer, httpServer
+	return &http.Server{Addr: cfg.HTTPAddr, Handler: httpMux, ReadHeaderTimeout: 10 * time.Second}
 }
 
-// shutdownServers gives the WS and HTTP servers a bounded window to drain (graceful shutdown).
-func shutdownServers(wsServer, httpServer *http.Server) {
+// shutdownServer gives the HTTP server a bounded window to drain (graceful shutdown).
+func shutdownServer(httpServer *http.Server) {
 	shutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	_ = wsServer.Shutdown(shutdown)
 	_ = httpServer.Shutdown(shutdown)
 }
 
