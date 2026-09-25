@@ -181,8 +181,8 @@ decide whether an agent picks the right tool.
 - **The verb comes from a small set.** `list`, `get`, `create`, `update`,
   `delete`, plus a domain verb only for an action that is not one of those
   (`deploy`, `cancel`, `run`, `upgrade`, `scan`, `discover`, `import`,
-  `replay`, `resolve`, `search`, `post`). Two tools never use different
-  verbs for the same operation.
+  `replay`, `search`, `post`, `pair`, `report`). Two tools never use
+  different verbs for the same operation.
 - **Characters and length.** `[a-z0-9_]`, unique, and at most 52
   characters, so the client's `mcp__nexul__` prefix plus the name fits a
   64-character limit. The specification allows dots and dashes; some model
