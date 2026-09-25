@@ -31,7 +31,7 @@ func (s *Service) CreateWithKind(ctx context.Context, kind, projectID, workspace
 	case KindDecisionsLog:
 		return s.createDecisionsLog(ctx, projectID, title, whenToUse, body, via)
 	}
-	return nil, fmt.Errorf("%w: kind must be empty or %s; the interview memory is created with memory_create_interview", apperrs.ErrInvalid, KindDecisionsLog)
+	return nil, fmt.Errorf("%w: kind must be empty or %s; for the interview memory, call memory_create with kind %s, which returns it and creates it the first time", apperrs.ErrInvalid, KindDecisionsLog, KindInterview)
 }
 
 // createDecisionsLog creates the project's decisions log on its first entry; a project holds at most one.

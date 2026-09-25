@@ -213,6 +213,33 @@ func (s *Service) GetOrCreateInterviewThread(ctx context.Context, workspaceID, p
 	return existing, nil
 }
 
+// ExistingThread returns a doc, ticket, or interview thread without creating it, ErrNotFound until one exists; doc threads need docs:thread.
+func (s *Service) ExistingThread(ctx context.Context, kind Kind, targetID, callerID string) (*Conversation, error) {
+	targetID = strings.TrimSpace(targetID)
+	if targetID == "" {
+		return nil, fmt.Errorf("%w: target id is required", apperrs.ErrInvalid)
+	}
+	var c *Conversation
+	var err error
+	switch kind {
+	case KindDocThread:
+		if !s.canThread(ctx, callerID, targetID) {
+			return nil, fmt.Errorf("%w: docs:thread required on doc %s", apperrs.ErrForbidden, targetID)
+		}
+		c, err = s.repo.GetDocThread(ctx, targetID)
+	case KindTicketThread:
+		c, err = s.repo.GetTicketThread(ctx, targetID)
+	case KindInterviewThread:
+		c, err = s.repo.GetInterviewThread(ctx, targetID)
+	default:
+		return nil, fmt.Errorf("%w: %s conversations are not threads of a doc, ticket, or project", apperrs.ErrInvalid, kind)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get %s for %s: %w", kind, targetID, err)
+	}
+	return c, nil
+}
+
 // canThread reports whether userID holds docs:thread on docID; a service with no wired DocAccess fails closed.
 func (s *Service) canThread(ctx context.Context, userID, docID string) bool {
 	if s.docAccess == nil || userID == "" || docID == "" {
