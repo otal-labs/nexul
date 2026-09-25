@@ -42,7 +42,7 @@ type Tunnel struct {
 	// AgentServiceID is the service definition running cloudflared for this tunnel, if provisioned.
 	AgentServiceID string `json:"agent_service_id,omitempty"`
 	// Token is the cloudflared tunnel token, encrypted at rest; never serialized, logged, or put on events.
-	Token     string
+	Token     string    `json:"-"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }

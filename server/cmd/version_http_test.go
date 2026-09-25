@@ -18,8 +18,7 @@ import (
 	"github.com/otal-labs/nexul/internal/runner"
 )
 
-// fakeUpgradeGate is a minimal upgradeAdminGate for HTTP-layer tests, standing in for instanceAdminGate without
-// a real auth.Service.
+// fakeUpgradeGate stands in for instanceAdminGate without a real auth.Service.
 type fakeUpgradeGate struct {
 	allow bool
 	err   error
@@ -27,30 +26,6 @@ type fakeUpgradeGate struct {
 
 func (f fakeUpgradeGate) CanCreateWorkspace(context.Context, string) (bool, error) {
 	return f.allow, f.err
-}
-
-func TestCheckInstanceAdmin(t *testing.T) {
-	tests := []struct {
-		name    string
-		userID  string
-		gate    fakeUpgradeGate
-		wantErr error
-	}{
-		{"no user is unauthorized", "", fakeUpgradeGate{allow: true}, apperrs.ErrUnauthorized},
-		{"non-admin is forbidden", "user-1", fakeUpgradeGate{allow: false}, apperrs.ErrForbidden},
-		{"gate lookup failure propagates", "user-1", fakeUpgradeGate{err: assert.AnError}, assert.AnError},
-		{"admin passes", "user-1", fakeUpgradeGate{allow: true}, nil},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := checkInstanceAdmin(context.Background(), tt.gate, tt.userID)
-			if tt.wantErr == nil {
-				require.NoError(t, err)
-				return
-			}
-			require.ErrorIs(t, err, tt.wantErr)
-		})
-	}
 }
 
 // noopRunnerRepo satisfies runner.Repo without touching storage; UpgradeStatus/RequestUpgrade never call it.
@@ -147,7 +122,7 @@ func fakeReleaseServer(t *testing.T, tag string) *httptest.Server {
 	return srv
 }
 
-func newTestUpgradeService(t *testing.T, tag string, connected bool) *runner.Service {
+func newTestUpgradeService(t *testing.T, tag string, connected, admin bool) *runner.Service {
 	t.Helper()
 	srv := fakeReleaseServer(t, tag)
 	client := release.New(release.Config{APIBase: srv.URL})
@@ -158,7 +133,8 @@ func newTestUpgradeService(t *testing.T, tag string, connected bool) *runner.Ser
 	return runner.NewService(noopRunnerRepo{}, fakeUpgradeDispatch{runners: runners}).
 		WithInstall(runner.InstallConfig{Release: client}).
 		WithUpgrades(newMemUpgradeRepo()).
-		WithBus(noopPublisher{})
+		WithBus(noopPublisher{}).
+		WithAdminGate(fakeUpgradeGate{allow: admin})
 }
 
 func withVersion(t *testing.T, v string) {
@@ -171,31 +147,31 @@ func withVersion(t *testing.T, v string) {
 func TestInstanceUpgradeGetHandler(t *testing.T) {
 	t.Run("no signed-in user is unauthorized", func(t *testing.T) {
 		withVersion(t, "v0.2.0")
-		svc := newTestUpgradeService(t, "v0.2.1", true)
+		svc := newTestUpgradeService(t, "v0.2.1", true, true)
 		req := httptest.NewRequest(http.MethodGet, "/api/instance/upgrade", nil)
 		rec := httptest.NewRecorder()
 
-		instanceUpgradeGetHandler(svc, fakeUpgradeGate{allow: true}).ServeHTTP(rec, req)
+		instanceUpgradeGetHandler(svc).ServeHTTP(rec, req)
 		assert.Equal(t, http.StatusUnauthorized, rec.Code)
 	})
 
 	t.Run("non-admin is forbidden", func(t *testing.T) {
 		withVersion(t, "v0.2.0")
-		svc := newTestUpgradeService(t, "v0.2.1", true)
+		svc := newTestUpgradeService(t, "v0.2.1", true, false)
 		req := withActor(httptest.NewRequest(http.MethodGet, "/api/instance/upgrade", nil), "user-1")
 		rec := httptest.NewRecorder()
 
-		instanceUpgradeGetHandler(svc, fakeUpgradeGate{allow: false}).ServeHTTP(rec, req)
+		instanceUpgradeGetHandler(svc).ServeHTTP(rec, req)
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 	})
 
 	t.Run("admin gets the facts row", func(t *testing.T) {
 		withVersion(t, "v0.2.0")
-		svc := newTestUpgradeService(t, "v0.2.1", true)
+		svc := newTestUpgradeService(t, "v0.2.1", true, true)
 		req := withActor(httptest.NewRequest(http.MethodGet, "/api/instance/upgrade", nil), "user-1")
 		rec := httptest.NewRecorder()
 
-		instanceUpgradeGetHandler(svc, fakeUpgradeGate{allow: true}).ServeHTTP(rec, req)
+		instanceUpgradeGetHandler(svc).ServeHTTP(rec, req)
 		require.Equal(t, http.StatusOK, rec.Code)
 		var status runner.UpgradeStatus
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &status))
@@ -208,11 +184,11 @@ func TestInstanceUpgradeGetHandler(t *testing.T) {
 func TestInstanceUpgradePostHandler(t *testing.T) {
 	t.Run("202 with the new record", func(t *testing.T) {
 		withVersion(t, "v0.2.0")
-		svc := newTestUpgradeService(t, "v0.2.1", true)
+		svc := newTestUpgradeService(t, "v0.2.1", true, true)
 		req := withActor(httptest.NewRequest(http.MethodPost, "/api/instance/upgrade", nil), "user-1")
 		rec := httptest.NewRecorder()
 
-		instanceUpgradePostHandler(svc, fakeUpgradeGate{allow: true}).ServeHTTP(rec, req)
+		instanceUpgradePostHandler(svc).ServeHTTP(rec, req)
 		require.Equal(t, http.StatusAccepted, rec.Code)
 		var got runner.Upgrade
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
@@ -222,11 +198,11 @@ func TestInstanceUpgradePostHandler(t *testing.T) {
 
 	t.Run("409 with the reason when can_upgrade is false", func(t *testing.T) {
 		withVersion(t, "dev")
-		svc := newTestUpgradeService(t, "v0.2.1", true)
+		svc := newTestUpgradeService(t, "v0.2.1", true, true)
 		req := withActor(httptest.NewRequest(http.MethodPost, "/api/instance/upgrade", nil), "user-1")
 		rec := httptest.NewRecorder()
 
-		instanceUpgradePostHandler(svc, fakeUpgradeGate{allow: true}).ServeHTTP(rec, req)
+		instanceUpgradePostHandler(svc).ServeHTTP(rec, req)
 		require.Equal(t, http.StatusConflict, rec.Code)
 		var body map[string]string
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
@@ -235,11 +211,11 @@ func TestInstanceUpgradePostHandler(t *testing.T) {
 
 	t.Run("non-admin is forbidden", func(t *testing.T) {
 		withVersion(t, "v0.2.0")
-		svc := newTestUpgradeService(t, "v0.2.1", true)
+		svc := newTestUpgradeService(t, "v0.2.1", true, false)
 		req := withActor(httptest.NewRequest(http.MethodPost, "/api/instance/upgrade", nil), "user-1")
 		rec := httptest.NewRecorder()
 
-		instanceUpgradePostHandler(svc, fakeUpgradeGate{allow: false}).ServeHTTP(rec, req)
+		instanceUpgradePostHandler(svc).ServeHTTP(rec, req)
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 	})
 }

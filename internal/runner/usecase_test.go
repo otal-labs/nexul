@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/release"
 )
 
@@ -97,7 +98,20 @@ func newUpgradeService(apiBase string, upgrades UpgradeRepo, bus Publisher, disp
 	return NewService(newFakeRunnerRepo(), dispatch).
 		WithInstall(InstallConfig{Release: client}).
 		WithUpgrades(upgrades).
-		WithBus(bus)
+		WithBus(bus).
+		WithAdminGate(fakeAdminGate{admins: map[string]bool{"admin-1": true}})
+}
+
+// fakeAdminGate stands in for the auth-backed instance-admin fact.
+type fakeAdminGate struct{ admins map[string]bool }
+
+func (g fakeAdminGate) CanCreateWorkspace(_ context.Context, userID string) (bool, error) {
+	return g.admins[userID], nil
+}
+
+// asAdmin is a context carrying the instance admin newUpgradeService recognizes.
+func asAdmin() context.Context {
+	return identity.WithActor(context.Background(), identity.Actor{ID: "admin-1"})
 }
 
 func TestService_UpgradeStatus_ReasonPrecedence(t *testing.T) {
@@ -106,7 +120,7 @@ func TestService_UpgradeStatus_ReasonPrecedence(t *testing.T) {
 		srv := fakeGitHub(t, "v0.2.0-beta-330", "x")
 		svc := newUpgradeService(srv.URL, newFakeUpgradeRepo(), newFakeBus(), &fakeDispatch{})
 
-		status, err := svc.UpgradeStatus(context.Background())
+		status, err := svc.UpgradeStatus(asAdmin())
 		require.NoError(t, err)
 		assert.False(t, status.CanUpgrade)
 		assert.Equal(t, "dev build", status.Reason)
@@ -120,7 +134,7 @@ func TestService_UpgradeStatus_ReasonPrecedence(t *testing.T) {
 		srv.Close() // every lookup now fails to connect
 		svc := newUpgradeService(srv.URL, newFakeUpgradeRepo(), newFakeBus(), &fakeDispatch{})
 
-		status, err := svc.UpgradeStatus(context.Background())
+		status, err := svc.UpgradeStatus(asAdmin())
 		require.NoError(t, err)
 		assert.False(t, status.CanUpgrade)
 		assert.Equal(t, "release lookup failed", status.Reason)
@@ -132,7 +146,7 @@ func TestService_UpgradeStatus_ReasonPrecedence(t *testing.T) {
 		srv := fakeGitHub(t, "v0.2.0", "x")
 		svc := newUpgradeService(srv.URL, newFakeUpgradeRepo(), newFakeBus(), &fakeDispatch{})
 
-		status, err := svc.UpgradeStatus(context.Background())
+		status, err := svc.UpgradeStatus(asAdmin())
 		require.NoError(t, err)
 		assert.False(t, status.CanUpgrade)
 		assert.Equal(t, "already on the newest release", status.Reason)
@@ -150,7 +164,7 @@ func TestService_UpgradeStatus_ReasonPrecedence(t *testing.T) {
 		}))
 		svc := newUpgradeService(srv.URL, upgrades, newFakeBus(), &fakeDispatch{})
 
-		status, err := svc.UpgradeStatus(context.Background())
+		status, err := svc.UpgradeStatus(asAdmin())
 		require.NoError(t, err)
 		assert.False(t, status.CanUpgrade)
 		assert.Equal(t, "an upgrade is already in progress", status.Reason)
@@ -161,7 +175,7 @@ func TestService_UpgradeStatus_ReasonPrecedence(t *testing.T) {
 		srv := fakeGitHub(t, "v0.2.1", "x")
 		svc := newUpgradeService(srv.URL, newFakeUpgradeRepo(), newFakeBus(), &fakeDispatch{})
 
-		status, err := svc.UpgradeStatus(context.Background())
+		status, err := svc.UpgradeStatus(asAdmin())
 		require.NoError(t, err)
 		assert.False(t, status.CanUpgrade)
 		assert.Equal(t, "instance runner is not connected", status.Reason)
@@ -173,7 +187,7 @@ func TestService_UpgradeStatus_ReasonPrecedence(t *testing.T) {
 		dispatch := &fakeDispatch{runners: []RunnerStatus{{RunnerID: instanceRunnerID, RunningJob: &RunningJob{ID: "d-1"}}}}
 		svc := newUpgradeService(srv.URL, newFakeUpgradeRepo(), newFakeBus(), dispatch)
 
-		status, err := svc.UpgradeStatus(context.Background())
+		status, err := svc.UpgradeStatus(asAdmin())
 		require.NoError(t, err)
 		assert.False(t, status.CanUpgrade)
 		assert.Equal(t, "instance runner is busy", status.Reason)
@@ -185,7 +199,7 @@ func TestService_UpgradeStatus_ReasonPrecedence(t *testing.T) {
 		dispatch := &fakeDispatch{runners: []RunnerStatus{{RunnerID: instanceRunnerID}}}
 		svc := newUpgradeService(srv.URL, newFakeUpgradeRepo(), newFakeBus(), dispatch)
 
-		status, err := svc.UpgradeStatus(context.Background())
+		status, err := svc.UpgradeStatus(asAdmin())
 		require.NoError(t, err)
 		assert.True(t, status.CanUpgrade)
 		assert.Empty(t, status.Reason)
@@ -207,7 +221,7 @@ func TestService_UpgradeStatus_LazyResolution(t *testing.T) {
 		}))
 		svc := newUpgradeService(srv.URL, upgrades, bus, &fakeDispatch{})
 
-		status, err := svc.UpgradeStatus(context.Background())
+		status, err := svc.UpgradeStatus(asAdmin())
 		require.NoError(t, err)
 		require.NotNil(t, status.Upgrade)
 		assert.Equal(t, UpgradeStatusCompleted, status.Upgrade.Status)
@@ -229,7 +243,7 @@ func TestService_UpgradeStatus_LazyResolution(t *testing.T) {
 		}))
 		svc := newUpgradeService(srv.URL, upgrades, newFakeBus(), &fakeDispatch{})
 
-		status, err := svc.UpgradeStatus(context.Background())
+		status, err := svc.UpgradeStatus(asAdmin())
 		require.NoError(t, err)
 		require.NotNil(t, status.Upgrade)
 		assert.Equal(t, UpgradeStatusFailed, status.Upgrade.Status)
@@ -248,11 +262,26 @@ func TestService_UpgradeStatus_LazyResolution(t *testing.T) {
 		}))
 		svc := newUpgradeService(srv.URL, upgrades, newFakeBus(), &fakeDispatch{})
 
-		status, err := svc.UpgradeStatus(context.Background())
+		status, err := svc.UpgradeStatus(asAdmin())
 		require.NoError(t, err)
 		require.NotNil(t, status.Upgrade)
 		assert.Equal(t, UpgradeStatusStarted, status.Upgrade.Status)
 	})
+}
+
+func TestService_Upgrade_RequiresInstanceAdmin(t *testing.T) {
+	withVersion(t, "v0.2.0")
+	srv := fakeGitHub(t, "v0.2.1", "x")
+	dispatch := &fakeDispatch{runners: []RunnerStatus{{RunnerID: instanceRunnerID}}}
+	svc := newUpgradeService(srv.URL, newFakeUpgradeRepo(), newFakeBus(), dispatch)
+	member := identity.WithActor(context.Background(), identity.Actor{ID: "member-1"})
+
+	_, err := svc.UpgradeStatus(member)
+	require.ErrorIs(t, err, apperrs.ErrForbidden)
+	_, err = svc.RequestUpgrade(member, "member-1")
+	require.ErrorIs(t, err, apperrs.ErrForbidden)
+	_, err = svc.RequestUpgrade(context.Background(), "")
+	require.ErrorIs(t, err, apperrs.ErrUnauthorized)
 }
 
 func TestService_RequestUpgrade(t *testing.T) {
@@ -261,7 +290,7 @@ func TestService_RequestUpgrade(t *testing.T) {
 		srv := fakeGitHub(t, "v0.2.0", "x")
 		svc := newUpgradeService(srv.URL, newFakeUpgradeRepo(), newFakeBus(), &fakeDispatch{})
 
-		_, err := svc.RequestUpgrade(context.Background(), "user-1")
+		_, err := svc.RequestUpgrade(asAdmin(), "user-1")
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrConflict))
 		var blocked *UpgradeBlockedError
@@ -277,7 +306,7 @@ func TestService_RequestUpgrade(t *testing.T) {
 		dispatch := &fakeDispatch{runners: []RunnerStatus{{RunnerID: instanceRunnerID}}}
 		svc := newUpgradeService(srv.URL, upgrades, bus, dispatch)
 
-		got, err := svc.RequestUpgrade(context.Background(), "user-1")
+		got, err := svc.RequestUpgrade(asAdmin(), "user-1")
 		require.NoError(t, err)
 		assert.Equal(t, UpgradeStatusPending, got.Status)
 		assert.Equal(t, "v0.2.0", got.FromVersion)

@@ -100,7 +100,10 @@ func TestMCPTools_InstanceUpgradeStatus(t *testing.T) {
 	svc := newUpgradeService(srv.URL, newFakeUpgradeRepo(), newFakeBus(), &fakeDispatch{})
 	call := toolByName(t, MCPTools(svc), "instance_upgrade_status").Call
 
-	got, err := call(context.Background(), map[string]any{})
+	_, err := call(identity.WithActor(context.Background(), identity.Actor{ID: "member-1"}), map[string]any{})
+	require.ErrorIs(t, err, apperrs.ErrForbidden, "a non-admin gets the same answer the settings page gives")
+
+	got, err := call(asAdmin(), map[string]any{})
 	require.NoError(t, err)
 	status, ok := got.(UpgradeStatus)
 	require.True(t, ok)
@@ -115,12 +118,11 @@ func TestMCPTools_InstanceUpgrade(t *testing.T) {
 		svc := newUpgradeService(srv.URL, newFakeUpgradeRepo(), newFakeBus(), dispatch)
 		call := toolByName(t, MCPTools(svc), "instance_upgrade").Call
 
-		ctx := identity.WithActor(context.Background(), identity.Actor{ID: "user-1"})
-		got, err := call(ctx, map[string]any{})
+		got, err := call(asAdmin(), map[string]any{})
 		require.NoError(t, err)
 		upgrade, ok := got.(Upgrade)
 		require.True(t, ok)
-		assert.Equal(t, "user-1:mcp", upgrade.RequestedBy)
+		assert.Equal(t, "admin-1:mcp", upgrade.RequestedBy)
 	})
 
 	t.Run("blocked can_upgrade surfaces as a conflict", func(t *testing.T) {
@@ -129,9 +131,20 @@ func TestMCPTools_InstanceUpgrade(t *testing.T) {
 		svc := newUpgradeService(srv.URL, newFakeUpgradeRepo(), newFakeBus(), &fakeDispatch{})
 		call := toolByName(t, MCPTools(svc), "instance_upgrade").Call
 
-		_, err := call(context.Background(), map[string]any{})
+		_, err := call(asAdmin(), map[string]any{})
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrConflict))
+	})
+
+	t.Run("a non-admin cannot upgrade", func(t *testing.T) {
+		withVersion(t, "v0.2.0")
+		srv := fakeGitHub(t, "v0.2.1", "x")
+		dispatch := &fakeDispatch{runners: []RunnerStatus{{RunnerID: instanceRunnerID}}}
+		svc := newUpgradeService(srv.URL, newFakeUpgradeRepo(), newFakeBus(), dispatch)
+		call := toolByName(t, MCPTools(svc), "instance_upgrade").Call
+
+		_, err := call(identity.WithActor(context.Background(), identity.Actor{ID: "member-1"}), map[string]any{})
+		require.ErrorIs(t, err, apperrs.ErrForbidden)
 	})
 }
 

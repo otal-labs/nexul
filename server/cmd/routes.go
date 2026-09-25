@@ -129,9 +129,8 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	// The web UI's console errors and uncaught exceptions ride the server's logger into the same sinks (ADR 0008).
 	apiMux.Handle("POST /api/logs", logging.BrowserHandler(logger, currentUserID))
 	apiMux.HandleFunc("GET /api/version", versionHandler(runnerSvc))
-	instanceAdmin := instanceAdminGate{svc: svc.authSvc}
-	apiMux.HandleFunc("GET /api/instance/upgrade", instanceUpgradeGetHandler(runnerSvc, instanceAdmin))
-	apiMux.HandleFunc("POST /api/instance/upgrade", instanceUpgradePostHandler(runnerSvc, instanceAdmin))
+	apiMux.HandleFunc("GET /api/instance/upgrade", instanceUpgradeGetHandler(runnerSvc))
+	apiMux.HandleFunc("POST /api/instance/upgrade", instanceUpgradePostHandler(runnerSvc))
 
 	spec := openapi.New(openapi.Info{Title: "Nexul API", Version: "v1"})
 	spec.AddSecuritySchemes()
@@ -160,6 +159,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 		PlayRuns:      svc.playsRunner,
 		Pairing:       svc.pairingSvc,
 		DeadLetter:    store.DeadLetters,
+		InstanceAdmin: instanceAdminGate{svc: svc.authSvc},
 		Publisher:     bus,
 		Logger:        logger,
 		Actor:         mcpActor,

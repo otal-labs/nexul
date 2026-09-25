@@ -8,6 +8,7 @@ import (
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/release"
 	"github.com/otal-labs/nexul/internal/platform/version"
@@ -53,6 +54,7 @@ type Service struct {
 	tunnels  TunnelDescriber
 	upgrades UpgradeRepo
 	bus      Publisher
+	admin    identity.InstanceAdmin
 	// now is the clock UpgradeStatus/ResolvePendingUpgrade check the 15-minute timeout against; overridden only
 	// in tests to exercise the expiry without sleeping.
 	now func() time.Time
@@ -327,9 +329,23 @@ func InstallDownloadURL(instanceURL, requestHost string, requestTLS bool) string
 // restart, so the booted version is the only signal, checked lazily and at boot.
 const upgradeResolveWindow = 15 * time.Minute
 
+// WithAdminGate attaches the instance-admin fact the upgrade use-cases require of their caller.
+func (s *Service) WithAdminGate(admin identity.InstanceAdmin) *Service {
+	s.admin = admin
+	return s
+}
+
 // UpgradeStatus reports the running version, the channel's newest release, and whether an upgrade can start now.
-// It also lazily resolves the latest upgrade record, so a stuck upgrade fails without waiting for a reboot.
+// Only an instance admin may read it.
 func (s *Service) UpgradeStatus(ctx context.Context) (UpgradeStatus, error) {
+	if err := identity.RequireInstanceAdmin(ctx, s.admin); err != nil {
+		return UpgradeStatus{}, err
+	}
+	return s.upgradeStatus(ctx)
+}
+
+// upgradeStatus also lazily resolves the latest upgrade record, so a stuck upgrade fails without waiting for a reboot.
+func (s *Service) upgradeStatus(ctx context.Context) (UpgradeStatus, error) {
 	latest, err := s.latestUpgrade(ctx)
 	if err != nil {
 		return UpgradeStatus{}, err
@@ -423,12 +439,15 @@ func (s *Service) transitionUpgrade(ctx context.Context, u *Upgrade, status, err
 	return &updated, nil
 }
 
-// RequestUpgrade starts an upgrade to the channel's newest release: UpgradeStatus is the single source of the
+// RequestUpgrade starts an upgrade to the channel's newest release: upgradeStatus is the single source of the
 // can_upgrade decision, so RequestUpgrade re-runs it rather than duplicating the reason precedence. A pending
 // record is written, then instance.upgrade_requested asks Handler.Run's subscription to dispatch assign_upgrade
 // — the same bus-topic handoff deploy.requested already uses, so dispatch has one entry point, not two.
 func (s *Service) RequestUpgrade(ctx context.Context, actor string) (Upgrade, error) {
-	status, err := s.UpgradeStatus(ctx)
+	if err := identity.RequireInstanceAdmin(ctx, s.admin); err != nil {
+		return Upgrade{}, err
+	}
+	status, err := s.upgradeStatus(ctx)
 	if err != nil {
 		return Upgrade{}, err
 	}
