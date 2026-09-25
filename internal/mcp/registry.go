@@ -55,6 +55,8 @@ type RegistryOptions struct {
 	PlayRuns      *plays.Runner
 	Pairing       *pairing.Service
 	DeadLetter    deadletter.Storer
+	// InstanceAdmin gates the dead-letter tools, which read and replay every domain's failed events.
+	InstanceAdmin identity.InstanceAdmin
 	Publisher     Publisher
 	Logger        *slog.Logger
 	// Actor resolves the acting user; when nil, tool calls carry no identity and permission checks deny.
@@ -78,7 +80,7 @@ func New(opts RegistryOptions) *Server {
 	}
 	registerDomainTools(s, opts)
 	if opts.DeadLetter != nil && opts.Publisher != nil {
-		s.tools = append(s.tools, deadLetterListTool(opts.DeadLetter), deadLetterReplayTool(opts.DeadLetter, opts.Publisher))
+		s.tools = append(s.tools, deadLetterListTool(opts.DeadLetter, opts.InstanceAdmin), deadLetterReplayTool(opts.DeadLetter, opts.Publisher, opts.InstanceAdmin))
 	}
 	s.actor = opts.Actor
 	s.prompts = defaultPrompts()
@@ -170,15 +172,18 @@ func registerPlaysTools(s *Server, opts RegistryOptions) {
 	}
 }
 
-func deadLetterListTool(store deadletter.Storer) Tool {
+func deadLetterListTool(store deadletter.Storer, admin identity.InstanceAdmin) Tool {
 	return Tool{
 		Name:        "dead_letter_list",
-		Description: "List events that exhausted retries or failed permanently.",
+		Description: "List events that exhausted retries or failed permanently. Instance admins only: payloads hold every domain's data.",
 		InputSchema: mcptool.ObjectSchema(map[string]any{
 			"limit":  map[string]any{"type": "integer"},
 			"offset": map[string]any{"type": "integer"},
 		}),
 		Call: func(ctx context.Context, args map[string]any) (any, error) {
+			if err := identity.RequireInstanceAdmin(ctx, admin); err != nil {
+				return nil, err
+			}
 			limit := intArg(args["limit"])
 			if limit < 1 {
 				limit = 50
@@ -188,14 +193,17 @@ func deadLetterListTool(store deadletter.Storer) Tool {
 	}
 }
 
-func deadLetterReplayTool(store deadletter.Storer, p Publisher) Tool {
+func deadLetterReplayTool(store deadletter.Storer, p Publisher, admin identity.InstanceAdmin) Tool {
 	return Tool{
 		Name:        "dead_letter_replay",
-		Description: "Republish a dead letter to its original topic and remove it from the store.",
+		Description: "Republish a dead letter to its original topic and remove it from the store. Instance admins only.",
 		InputSchema: mcptool.ObjectSchema(map[string]any{
 			"id": map[string]any{"type": "string"},
 		}, "id"),
 		Call: func(ctx context.Context, args map[string]any) (any, error) {
+			if err := identity.RequireInstanceAdmin(ctx, admin); err != nil {
+				return nil, err
+			}
 			id, err := mcptool.RequiredString(args, "id")
 			if err != nil {
 				return nil, err

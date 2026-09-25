@@ -3,25 +3,25 @@ package workspace
 import (
 	"context"
 
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 )
 
-// NotificationMCPTools takes user_id explicitly so an agent acting as a user sees that user's inbox.
+// NotificationMCPTools act on the caller's own inbox, the same one the web app's bell shows.
 func NotificationMCPTools(s *NotificationService) []mcptool.Tool {
 	return []mcptool.Tool{
 		{
 			Name:        "notification_list",
-			Description: "List a user's notifications, newest first (unread state included).",
+			Description: "List your notifications, newest first (unread state included).",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
-					"user_id": map[string]any{"type": "string"},
-					"limit":   map[string]any{"type": "integer"},
+					"limit": map[string]any{"type": "integer"},
 				},
-				"required": []string{"user_id"},
 			},
 			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				userID, err := mcptool.RequiredString(args, "user_id")
+				userID, err := callerID(ctx)
 				if err != nil {
 					return nil, err
 				}
@@ -30,17 +30,16 @@ func NotificationMCPTools(s *NotificationService) []mcptool.Tool {
 		},
 		{
 			Name:        "notification_mark_read",
-			Description: "Mark a single notification as read.",
+			Description: "Mark one of your notifications as read.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
-					"user_id": map[string]any{"type": "string"},
-					"id":      map[string]any{"type": "string"},
+					"id": map[string]any{"type": "string"},
 				},
-				"required": []string{"user_id", "id"},
+				"required": []string{"id"},
 			},
 			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				userID, err := mcptool.RequiredString(args, "user_id")
+				userID, err := callerID(ctx)
 				if err != nil {
 					return nil, err
 				}
@@ -56,16 +55,10 @@ func NotificationMCPTools(s *NotificationService) []mcptool.Tool {
 		},
 		{
 			Name:        "notification_mark_all_read",
-			Description: "Mark every notification of a user as read.",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"user_id": map[string]any{"type": "string"},
-				},
-				"required": []string{"user_id"},
-			},
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				userID, err := mcptool.RequiredString(args, "user_id")
+			Description: "Mark every one of your notifications as read.",
+			InputSchema: mcptool.ObjectSchema(nil),
+			Call: func(ctx context.Context, _ map[string]any) (any, error) {
+				userID, err := callerID(ctx)
 				if err != nil {
 					return nil, err
 				}
@@ -76,6 +69,15 @@ func NotificationMCPTools(s *NotificationService) []mcptool.Tool {
 			},
 		},
 	}
+}
+
+// callerID is the authenticated user; an argument never names whose inbox a tool touches.
+func callerID(ctx context.Context) (string, error) {
+	a, ok := identity.ActorFromCtx(ctx)
+	if !ok || a.ID == "" {
+		return "", apperrs.ErrUnauthorized
+	}
+	return a.ID, nil
 }
 
 // notifIntArg is named distinctly from intArg in the projects MCP file since both live in this package.

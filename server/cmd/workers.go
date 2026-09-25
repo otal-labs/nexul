@@ -65,7 +65,7 @@ func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *stor
 	runnerSvc = runner.NewService(store.Runners, wsHandler).WithMachines(store.Machines).WithManaged(store.Services).WithTunnelDescriber(runnerTunnelDescriberAdapter{dns: svc.dnsSvc}).WithInstall(runner.InstallConfig{
 		Settings: dnsSettingsAdapter{store.Settings},
 		Release:  releaseClient,
-	}).WithUpgrades(store.InstanceUpgrades).WithBus(bus)
+	}).WithUpgrades(store.InstanceUpgrades).WithBus(bus).WithAdminGate(instanceAdminGate{svc: svc.authSvc})
 	// The update frame needs the same settings reader and release client, only available once runnerSvc exists.
 	wsHandler.SetUpdateSource(dnsSettingsAdapter{store.Settings}, releaseClient)
 	runnerHTTP = runner.NewHTTPHandler(runnerSvc)

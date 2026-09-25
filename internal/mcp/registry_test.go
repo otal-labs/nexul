@@ -280,11 +280,19 @@ func newRegistryServer(t *testing.T) (*Server, *storage.Store, *fakePublisher) {
 		PlayRuns:      plays.NewRunner(plays.RunnerConfig{Plays: store.Plays, Trails: store.PlayTrails, Perm: registryPlaysPermGate{svc: accessSvc}}),
 		Pairing:       pairing.NewService(pairing.Config{Repo: store.Pairing}),
 		DeadLetter:    store.DeadLetters,
+		InstanceAdmin: registryAdmins{ownerID: true},
 		Publisher:     pub,
 		Actor: func(context.Context) identity.Actor {
 			return identity.Actor{ID: ownerID, CanCreateWorkspace: true}
 		},
 	}), store, pub
+}
+
+// registryAdmins is the instance-admin fact for the registry tests: the seeded owner is the admin.
+type registryAdmins map[string]bool
+
+func (a registryAdmins) CanCreateWorkspace(_ context.Context, userID string) (bool, error) {
+	return a[userID], nil
 }
 
 var verbFirst = []string{"add", "cancel", "check", "clear", "clone", "create", "delete", "disable", "discover", "get", "import", "investigate", "link", "list", "mark", "mint", "move", "provision", "reactivate", "remove", "rename", "reorder", "replay", "restore", "revert", "revoke", "rotate", "run", "scan", "search", "set", "ship", "update", "verify"}
@@ -436,4 +444,30 @@ func TestRegistry_DeadLetterReplay(t *testing.T) {
 	replayMissing := dispatch(t, srv, 3, MethodToolsCall, map[string]any{"name": "dead_letter_replay", "arguments": map[string]any{"id": "dl-1"}})
 	require.NotNil(t, replayMissing.Error)
 	assert.Equal(t, CodeNotFound, replayMissing.Error.Code)
+}
+
+func TestRegistry_DeadLetters_AreInstanceAdminOnly(t *testing.T) {
+	store := testutil.NewStore(t)
+	require.NoError(t, store.DeadLetters.Put(context.Background(), deadletter.DeadLetter{
+		ID: "dl-1", Topic: "doc.created", Payload: []byte(`{}`), Error: "boom", Attempts: 3,
+	}))
+	pub := &fakePublisher{}
+	srv := New(RegistryOptions{
+		DeadLetter:    store.DeadLetters,
+		InstanceAdmin: registryAdmins{"admin-1": true},
+		Publisher:     pub,
+		Actor:         func(context.Context) identity.Actor { return identity.Actor{ID: "member-1"} },
+	})
+
+	for i, call := range []map[string]any{
+		{"name": "dead_letter_list"},
+		{"name": "dead_letter_replay", "arguments": map[string]any{"id": "dl-1"}},
+	} {
+		resp := dispatch(t, srv, i+1, MethodToolsCall, call)
+		require.NotNil(t, resp.Error, call["name"])
+		assert.Equal(t, CodeUnauthorized, resp.Error.Code)
+	}
+	assert.Empty(t, pub.published)
+	_, err := store.DeadLetters.Get(context.Background(), "dl-1")
+	require.NoError(t, err, "a refused replay leaves the dead letter in place")
 }
