@@ -14,6 +14,7 @@ const fakeNexul = (installerExit: number) =>
 interface Options {
   os?: string;
   machine?: string;
+  uid?: number;
   checksum?: string;
   installerExit?: number;
   latest?: string;
@@ -30,15 +31,16 @@ function setup(options: Options = {}) {
   mkdirSync(bin);
   mkdirSync(release);
   const binary = fakeNexul(options.installerExit ?? 0);
-  writeFileSync(join(release, 'nexul-linux-amd64'), binary);
-  writeFileSync(join(release, 'nexul-linux-arm64'), binary);
+  const assets = ['nexul-linux-amd64', 'nexul-linux-arm64', 'nexul-darwin-arm64'];
+  for (const asset of assets) writeFileSync(join(release, asset), binary);
   const sum = options.checksum ?? createHash('sha256').update(binary).digest('hex');
-  writeFileSync(join(release, 'checksums.txt'), `${sum}  nexul-linux-amd64\n${sum}  nexul-linux-arm64\n`);
+  writeFileSync(join(release, 'checksums.txt'), assets.map((asset) => `${sum}  ${asset}\n`).join(''));
   writeFileSync(join(directory, 'latest.json'), options.latest ?? '{"message":"Not Found"}');
   writeFileSync(join(directory, 'releases.json'), options.releases ?? '[{"tag_name": "v0.2.0-beta.4"}]');
   const executables: Record<string, string> = {
     uname: `#!/bin/sh\n[ "$1" = -s ] && echo ${options.os ?? 'Linux'} || echo ${options.machine ?? 'x86_64'}\n`,
-    id: '#!/bin/sh\necho 0\n',
+    id: `#!/bin/sh\necho ${options.uid ?? 0}\n`,
+    sudo: '#!/bin/sh\nprintf \'%s\\n\' "$*" >> "$NEXUL_TEST_DIR/sudo"\nexec "$@"\n',
     curl: `#!/bin/sh
 out=""; url=""
 while [ $# -gt 0 ]; do
@@ -82,12 +84,22 @@ afterEach(() => {
   for (const directory of directories.splice(0)) rmSync(directory, { recursive: true, force: true });
 });
 
-test('a non-Linux machine stops before downloading anything', async () => {
-  const { directory, env } = setup({ os: 'Darwin' });
+test('an unsupported OS stops before downloading anything and points Windows at its script', async () => {
+  const { directory, env } = setup({ os: 'FreeBSD' });
   const result = run(env);
   expect(result.status).not.toBe(0);
-  expect(result.stderr).toContain('nexul serve');
+  expect(result.stderr).toContain('install.ps1');
   expect(await exists(directory, 'urls')).toBe(false);
+});
+
+test('a Mac installs the darwin build with sudo but runs the installer as the user', async () => {
+  const { directory, env } = setup({ os: 'Darwin', machine: 'arm64', uid: 501 });
+  expect(run(env).status).toBe(0);
+  expect(await read(directory, 'urls')).toContain('/nexul-darwin-arm64');
+  const sudo = await read(directory, 'sudo');
+  expect(sudo).toContain('install -m 0755');
+  expect(sudo).not.toContain('nexul install');
+  expect(await read(directory, 'args')).toBe('install\n');
 });
 
 test('an unsupported CPU stops before downloading anything', async () => {

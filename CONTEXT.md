@@ -264,9 +264,10 @@ UI or MCP upgrade and resolves the record when it boots on the target version.
 _Avoid_: Update (that word is the runner's own binary swap), deploy
 
 **Install directory**:
-Where `nexul install` puts an instance, `/data/nexul` by default: the compose
-file, the generated `.env`, `data/` and `logs/`. Uninstall keeps it unless
-purged, and installing into it again brings the same instance back.
+Where `nexul install` puts an instance: `/data/nexul` on a Linux server, with
+the compose file, the generated `.env`, `data/` and `logs/`; `~/nexul` on a Mac
+or Windows PC, where the data lives in Docker volumes instead. Uninstall keeps
+it unless purged, and installing into it again brings the same instance back.
 _Avoid_: Checkout (there is no git checkout of Nexul on a server)
 
 **Machine**:

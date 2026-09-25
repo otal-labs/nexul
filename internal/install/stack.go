@@ -84,17 +84,15 @@ func (h *Host) requireInstall() (*installed, error) {
 // writeStack writes the compose file and .env into the install directory, keeping any secret already in .env, and
 // records the directory in the config file.
 func (h *Host) writeStack(o Options, prev *installed, tag string) (map[string]string, error) {
-	for _, sub := range []string{"data", "logs"} {
-		if err := os.MkdirAll(filepath.Join(o.Dir, sub), 0o750); err != nil {
-			return nil, fmt.Errorf("create %s: %w", sub, err)
-		}
-	}
-	if err := os.WriteFile(filepath.Join(o.Dir, "docker-compose.yml"), nexul.Compose, 0o644); err != nil {
-		return nil, fmt.Errorf("write compose file: %w", err)
+	if err := h.writeComposeFiles(o.Dir); err != nil {
+		return nil, err
 	}
 	env := map[string]string{}
 	if prev != nil && prev.Dir == o.Dir {
 		env = prev.Env
+	}
+	for k, v := range h.platformEnv(o.Dir) {
+		env[k] = v
 	}
 	env["NEXUL_VERSION"] = strings.TrimPrefix(tag, "v")
 	env["NEXUL_PORT"] = strconv.Itoa(o.Port)
@@ -114,6 +112,44 @@ func (h *Host) writeStack(o Options, prev *installed, tag string) (map[string]st
 		return nil, fmt.Errorf("create %s: %w", filepath.Dir(h.Paths.Config), err)
 	}
 	return env, writeEnvFile(h.Paths.Config, map[string]string{"NEXUL_DIR": o.Dir})
+}
+
+// writeComposeFiles writes the stack's compose file, plus the desktop overlay on macOS and Windows; a Linux install
+// also gets the data and logs folders its bind mounts point at.
+func (h *Host) writeComposeFiles(dir string) error {
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		return fmt.Errorf("create %s: %w", dir, err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "docker-compose.yml"), nexul.Compose, 0o644); err != nil {
+		return fmt.Errorf("write compose file: %w", err)
+	}
+	if h.desktop() {
+		if err := os.WriteFile(filepath.Join(dir, desktopComposeFile), nexul.DesktopCompose, 0o644); err != nil {
+			return fmt.Errorf("write desktop compose file: %w", err)
+		}
+		return nil
+	}
+	for _, sub := range []string{"data", "logs"} {
+		if err := os.MkdirAll(filepath.Join(dir, sub), 0o750); err != nil {
+			return fmt.Errorf("create %s: %w", sub, err)
+		}
+	}
+	return nil
+}
+
+const desktopComposeFile = "docker-compose.desktop.yml"
+
+// platformEnv is the part of .env that differs by platform. On macOS and Windows COMPOSE_FILE layers the desktop
+// overlay, which compose reads from .env, and NEXUL_STACK_ROOT is a path both the runner container and the Docker
+// VM can see: the install directory on macOS, where the home directory is shared, and a VM path on Windows.
+func (h *Host) platformEnv(dir string) map[string]string {
+	if h.GOOS == "darwin" {
+		return map[string]string{"COMPOSE_FILE": "docker-compose.yml:" + desktopComposeFile, "NEXUL_STACK_ROOT": dir}
+	}
+	if h.GOOS == "windows" {
+		return map[string]string{"COMPOSE_FILE": "docker-compose.yml;" + desktopComposeFile, "NEXUL_STACK_ROOT": DefaultDir}
+	}
+	return map[string]string{}
 }
 
 // compose runs a docker compose subcommand against the install directory's project.

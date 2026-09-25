@@ -39,8 +39,9 @@ type MachineRepo interface {
 // ensureMachine resolves the machine a connecting runner belongs to (issue 05 handshake): a runner that
 // already has one keeps its machine and id — renaming only ever happens through the UI, never a reconnect —
 // and the freshly reported name is recorded as a hint via Touch. A runner without one yet is linked to a
-// machine found-or-created by the reported name (falling back to the runner id when nothing was reported).
-func ensureMachine(ctx context.Context, machines MachineRepo, runners Repo, runnerID, reportedName string, now time.Time) (string, error) {
+// machine found-or-created by the reported name (falling back to the runner id when nothing was reported). A
+// created machine takes the runner's reported stack root, else the default; an existing one keeps its own.
+func ensureMachine(ctx context.Context, machines MachineRepo, runners Repo, runnerID, reportedName, stackRoot string, now time.Time) (string, error) {
 	r, err := runners.GetByID(ctx, runnerID)
 	if err != nil {
 		return "", fmt.Errorf("get runner %s: %w", runnerID, err)
@@ -60,8 +61,11 @@ func ensureMachine(ctx context.Context, machines MachineRepo, runners Repo, runn
 		if !errors.Is(err, apperrs.ErrNotFound) {
 			return "", fmt.Errorf("get machine %s: %w", name, err)
 		}
+		if stackRoot == "" {
+			stackRoot = defaultStackRoot
+		}
 		m = &Machine{
-			ID: ids.New(), Name: name, StackRoot: defaultStackRoot,
+			ID: ids.New(), Name: name, StackRoot: stackRoot,
 			ReportedHostname: reportedName, FirstSeen: now, LastSeen: now,
 		}
 		if err := machines.Create(ctx, m); err != nil {

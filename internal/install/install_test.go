@@ -21,7 +21,7 @@ func TestRun_UnknownCommand_ReturnsErrUnknownCommand(t *testing.T) {
 	require.ErrorIs(t, err, ErrUnknownCommand)
 }
 
-func TestRequireRoot(t *testing.T) {
+func TestCheckUser(t *testing.T) {
 	tests := []struct {
 		name    string
 		goos    string
@@ -29,13 +29,16 @@ func TestRequireRoot(t *testing.T) {
 		wantErr string
 	}{
 		{"linux as root", "linux", 0, ""},
-		{"not linux", "darwin", 0, "nexul serve"},
-		{"not root", "linux", 1000, "as root"},
+		{"linux not root", "linux", 1000, "as root"},
+		{"macOS as the user", "darwin", 501, ""},
+		{"macOS with sudo", "darwin", 0, "not with sudo"},
+		{"windows", "windows", -1, ""},
+		{"another OS", "freebsd", 0, "nexul serve"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			h := &Host{GOOS: tt.goos, Getuid: func() int { return tt.uid }}
-			err := h.requireRoot()
+			err := h.checkUser()
 			if tt.wantErr == "" {
 				require.NoError(t, err)
 				return

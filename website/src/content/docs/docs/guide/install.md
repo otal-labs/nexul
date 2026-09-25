@@ -1,11 +1,11 @@
 ---
 title: Install
-description: Put Nexul on a Linux server with one command, or run the single binary anywhere.
+description: Put Nexul on a Linux server, a Mac or a Windows PC with one command.
 sidebar:
   order: 1
 ---
 
-Nexul runs as a self-hosted instance on your own server. On a Linux server, one command sets up everything; on macOS or Windows, run the single binary.
+Nexul runs as a self-hosted instance on your own server. One command sets it up on a Linux server, and the same command on a Mac or Windows PC gives you an instance to try on your own computer first.
 
 ## On a Linux server
 
@@ -100,9 +100,42 @@ nexul uninstall --purge   # also delete the install directory
 
 `nexul uninstall` asks before it removes anything, and it leaves the stacks you deployed running. Installing again with `nexul install --dir <the same directory>` brings the same instance back.
 
-## On macOS or Windows: the single binary
+## On a Mac
 
-Download `nexul-<os>-<arch>` for your platform from the latest [release](https://github.com/otal-labs/nexul/releases) and run it:
+Run this in Terminal as yourself, not with `sudo`:
+
+```sh
+curl -fsSL https://nexul.io/install.sh | sh
+```
+
+It asks for your password once, to put the `nexul` command in `/usr/local/bin`. Then `nexul install` sets up Docker the way your Mac allows:
+
+- **Docker already running** (Docker Desktop, Colima or another engine): used as it is.
+- **Installed but stopped:** Colima is started, or Docker Desktop is opened, and the installer waits for it.
+- **No Docker at all:** it installs [Colima](https://github.com/abiosoft/colima), a free Docker engine without a desktop app, with the Docker CLI and Compose through Homebrew, and sets Colima to start when you log in. If Homebrew itself is missing, Homebrew's installer runs first and asks for your password.
+
+The install directory defaults to `~/nexul`, because Docker on a Mac only shares your home folder with its VM.
+
+## On Windows
+
+Install [Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-install/) first (or run `winget install -e --id Docker.DockerDesktop`), start it, and wait until it shows the engine running. Then, in PowerShell:
+
+```powershell
+irm https://nexul.io/install.ps1 | iex
+```
+
+You can [read the script](/install.ps1) first. It downloads `nexul.exe`, checks it against the release's `checksums.txt`, puts it in `%LOCALAPPDATA%\Programs\Nexul` on your PATH, and runs `nexul install`. The installer doesn't install Docker Desktop for you: if Docker is missing, stopped or has no Compose plugin, it stops and says what to do. The install directory defaults to `%USERPROFILE%\nexul`.
+
+### How a Mac or Windows install differs
+
+- The instance runner runs as a container in the stack, because these systems have no systemd.
+- The database and logs live in Docker volumes (`nexul_nexul-data`, `nexul_nexul-logs`), not in the install directory, which holds only the compose files and `.env`.
+- The **Upgrade** button in the web UI can't upgrade these installs; run `nexul upgrade` in a terminal instead.
+- `nexul uninstall --purge` also removes the Docker volumes.
+
+## The single binary
+
+Any platform can also run just the server: download `nexul-<os>-<arch>` from the latest [release](https://github.com/otal-labs/nexul/releases) and run it:
 
 ```sh
 ./nexul serve

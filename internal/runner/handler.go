@@ -181,10 +181,21 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	conn.SetReadLimit(h.cfg.ReadLimit)
-	h.handleConn(r.Context(), runnerID, q.Get("name"), q.Get("version"), q.Get("machine"), q.Get("os"), q.Get("arch"), conn)
+	h.handleConn(r.Context(), runnerID, connectInfo{
+		name: q.Get("name"), version: q.Get("version"), machine: q.Get("machine"),
+		os: q.Get("os"), arch: q.Get("arch"), stackRoot: q.Get("stack_root"),
+	}, conn)
 }
 
-func (h *Handler) handleConn(ctx context.Context, runnerID, name, reportedVersion, machine, osName, arch string, ws *websocket.Conn) {
+// connectInfo is what a runner reports about itself in its connection URL.
+type connectInfo struct {
+	name, version, machine, os, arch string
+	// stackRoot is where this runner keeps checkouts (NEXUL_STACK_ROOT); it seeds a new machine's stack root.
+	stackRoot string
+}
+
+func (h *Handler) handleConn(ctx context.Context, runnerID string, info connectInfo, ws *websocket.Conn) {
+	name, reportedVersion, machine := info.name, info.version, info.machine
 	ctx, cancel := context.WithCancel(ctx)
 	c := &runnerConn{id: runnerID, name: name, machine: machine, ws: ws, ctx: ctx, cancel: cancel, lastHeartbeat: time.Now()}
 	c.touchHeartbeat()
@@ -201,8 +212,8 @@ func (h *Handler) handleConn(ctx context.Context, runnerID, name, reportedVersio
 	if err := h.registerRunner(ctx, runnerID, name, reportedVersion); err != nil {
 		h.log.Warn("runner repo register failed", "runner_id", runnerID, "error", err)
 	}
-	h.sendUpdateIfNeeded(ctx, c, runnerID, reportedVersion, osName, arch)
-	h.resolveMachine(ctx, runnerID, machine)
+	h.sendUpdateIfNeeded(ctx, c, runnerID, reportedVersion, info.os, info.arch)
+	h.resolveMachine(ctx, runnerID, machine, info.stackRoot)
 	h.publish(ctx, TopicRunnerConnected, RunnerConnectedEvent{RunnerID: runnerID, Name: name})
 
 	h.dispatchPending(ctx, c)
@@ -259,11 +270,11 @@ func (h *Handler) updateChecksum(ctx context.Context, rel *release.Client, runne
 
 // resolveMachine upserts and links the connecting runner's machine (issue 05); best-effort like registerRunner
 // — a lookup failure never blocks the connection, since dispatch pooling only needs the reported name on c.
-func (h *Handler) resolveMachine(ctx context.Context, runnerID, machine string) {
+func (h *Handler) resolveMachine(ctx context.Context, runnerID, machine, stackRoot string) {
 	if h.cfg.Machines == nil {
 		return
 	}
-	if _, err := ensureMachine(ctx, h.cfg.Machines, h.repo, runnerID, machine, time.Now().UTC()); err != nil {
+	if _, err := ensureMachine(ctx, h.cfg.Machines, h.repo, runnerID, machine, stackRoot, time.Now().UTC()); err != nil {
 		h.log.Warn("runner machine resolve failed", "runner_id", runnerID, "machine", machine, "error", err)
 	}
 }

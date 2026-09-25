@@ -735,9 +735,10 @@ func TestShellExecutor_Deploy_ReportsServices(t *testing.T) {
 	})
 }
 
-// withNexulOnPath makes lookPathFn resolve the nexul command to path, or fail when path is empty.
+// withNexulOnPath makes lookPathFn resolve the nexul command to path, or fail when path is empty, on a host runner.
 func withNexulOnPath(t *testing.T, path string) {
 	t.Helper()
+	onHost(t)
 	orig := lookPathFn
 	lookPathFn = func(string) (string, error) {
 		if path == "" {
@@ -817,4 +818,20 @@ func TestTailString(t *testing.T) {
 	assert.Equal(t, 11, len(got), "3-byte ellipsis plus the 8-byte tail")
 	assert.Contains(t, got, "89abcdef")
 	assert.Equal(t, "", tailString("   \n", 4))
+}
+
+func TestShellExecutor_Upgrade_ContainerRunnerPointsAtTheTerminal(t *testing.T) {
+	withNexulOnPath(t, "/usr/local/bin/nexul")
+	inContainer(t)
+	cmd := &fakeCmd{}
+	e := newTestExecutor(cmd.run)
+	var frames []Frame
+	send := func(fr Frame) error { frames = append(frames, fr); return nil }
+
+	require.NoError(t, e.Upgrade(t.Context(), Frame{Type: FrameAssignUpgrade, ID: "up-c", Version: "v1"}, send))
+
+	require.Len(t, frames, 1)
+	assert.Equal(t, UpgradeStatusFailed, frames[0].Status)
+	assert.Contains(t, frames[0].Error, "nexul upgrade")
+	assert.Empty(t, cmd.names())
 }

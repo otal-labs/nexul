@@ -506,6 +506,9 @@ var lookPathFn = exec.LookPath
 // Upgrade starts `nexul upgrade` for req.Version in its own transient systemd unit, so the upgrade outlives this
 // runner's connection while the server restarts, then reports started (ADR 0069).
 func (e *ShellExecutor) Upgrade(ctx context.Context, req Frame, send func(Frame) error) error {
+	if isContainerRunner() {
+		return send(upgradeFailed(req, "this install runs its runner in a container (macOS and Windows installs); upgrade from a terminal with nexul upgrade"))
+	}
 	nexul, err := lookPathFn("nexul")
 	if err != nil {
 		return send(upgradeFailed(req, "the nexul command is not on this host; upgrading from the UI needs an install made with nexul install"))

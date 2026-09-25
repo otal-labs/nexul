@@ -1,5 +1,5 @@
-// Package install puts a Nexul instance on a Linux host and keeps it current: the nexul CLI's install, update,
-// status and uninstall commands.
+// Package install puts a Nexul instance on a Linux server, a Mac or a Windows PC and keeps it current: the nexul
+// CLI's install, upgrade, status and uninstall commands.
 package install
 
 import (
@@ -7,6 +7,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/otal-labs/nexul/internal/platform/version"
@@ -15,7 +16,12 @@ import (
 // ErrUnknownCommand reports a command name the installer does not own.
 var ErrUnknownCommand = errors.New("unknown command")
 
-// DefaultDir is where an install keeps its compose file, .env, data, logs and stack checkouts.
+// ExitCodeError carries the exit code of a command that already reported its own failure to the terminal.
+type ExitCodeError struct{ Code int }
+
+func (e *ExitCodeError) Error() string { return fmt.Sprintf("exit status %d", e.Code) }
+
+// DefaultDir is where a Linux install keeps its compose file, .env, data, logs and stack checkouts.
 const DefaultDir = "/data/nexul"
 
 const (
@@ -53,7 +59,7 @@ func (h *Host) runInstall(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("install", flag.ContinueOnError)
 	fs.SetOutput(h.Out)
 	var o Options
-	fs.StringVar(&o.Dir, "dir", "", "install directory (default "+DefaultDir+")")
+	fs.StringVar(&o.Dir, "dir", "", "install directory (default "+h.defaultDir()+")")
 	fs.IntVar(&o.Port, "port", 0, "port the web UI and API listen on (default 80)")
 	fs.IntVar(&o.LogsPort, "logs-port", 0, "port the logs UI listens on (default 5080)")
 	fs.StringVar(&o.Version, "version", "", "release to install (default: this binary's version)")
@@ -68,7 +74,7 @@ func (h *Host) runInstall(ctx context.Context, args []string) error {
 // Install brings the host to a running instance: Docker, Compose, git, the stack and the instance runner. Re-running
 // it keeps the existing secrets and choices, so it doubles as a repair.
 func (h *Host) Install(ctx context.Context, o Options) error {
-	if err := h.requireRoot(); err != nil {
+	if err := h.checkUser(); err != nil {
 		return err
 	}
 	tag, err := installTag(o.Version)
@@ -107,7 +113,7 @@ func (h *Host) choose(o Options, prev *installed) (Options, *installed, error) {
 		o.Dir = prev.Dir
 	}
 	if o.Dir == "" {
-		o.Dir = DefaultDir
+		o.Dir = h.defaultDir()
 	}
 	var err error
 	if interactive {
@@ -132,14 +138,10 @@ func (h *Host) choose(o Options, prev *installed) (Options, *installed, error) {
 
 // install runs the steps in order and returns the .env it wrote; the first failing step stops the rest.
 func (h *Host) install(ctx context.Context, o Options, prev *installed, tag string) (map[string]string, error) {
-	if err := h.step("Docker", func() (string, error) { return h.ensureDocker(ctx) }); err != nil {
-		return nil, err
-	}
-	if err := h.step("Docker Compose", func() (string, error) { return h.ensureCompose(ctx) }); err != nil {
-		return nil, err
-	}
-	if err := h.step("Git", func() (string, error) { return h.ensurePackage(ctx, "git") }); err != nil {
-		return nil, err
+	for _, s := range h.prerequisites(ctx) {
+		if err := h.step(s.label, s.run); err != nil {
+			return nil, err
+		}
 	}
 	var env map[string]string
 	if err := h.step("Files", func() (string, error) {
@@ -159,6 +161,33 @@ func (h *Host) install(ctx context.Context, o Options, prev *installed, tag stri
 		return nil, err
 	}
 	return env, nil
+}
+
+type prerequisite struct {
+	label string
+	run   func() (string, error)
+}
+
+// prerequisites are what each platform needs before the stack: a Linux server gets Docker, Compose and git
+// installed; a Mac gets its Docker engine started or Colima installed; Windows is told what to install.
+func (h *Host) prerequisites(ctx context.Context) []prerequisite {
+	if h.GOOS == "darwin" {
+		return []prerequisite{
+			{"Docker", func() (string, error) { return h.ensureDockerMac(ctx) }},
+			{"Docker Compose", func() (string, error) { return h.ensureComposeMac(ctx) }},
+		}
+	}
+	if h.GOOS == "windows" {
+		return []prerequisite{
+			{"Docker", func() (string, error) { return h.ensureDockerWindows(ctx) }},
+			{"Docker Compose", func() (string, error) { return h.ensureComposeWindows(ctx) }},
+		}
+	}
+	return []prerequisite{
+		{"Docker", func() (string, error) { return h.ensureDocker(ctx) }},
+		{"Docker Compose", func() (string, error) { return h.ensureCompose(ctx) }},
+		{"Git", func() (string, error) { return h.ensurePackage(ctx, "git") }},
+	}
 }
 
 // startStack pulls the images and brings the stack up, then waits until the server answers.
@@ -213,19 +242,26 @@ func (h *Host) step(label string, fn func() (string, error)) error {
 
 func (h *Host) printSummary(o Options, tag string, env map[string]string) {
 	host := h.PublicIP()
+	data := fmt.Sprintf("%s  (back this folder up)", o.Dir)
+	next := []string{
+		"Next: point a domain at this server and put HTTPS in front of it, then enter the",
+		"https:// address as the instance URL in the setup wizard.",
+	}
+	if h.desktop() {
+		data = "Docker volumes nexul_nexul-data and nexul_nexul-logs; settings in " + o.Dir
+		next = []string{"This instance runs on this computer. To put Nexul on a server, run the same install there."}
+	}
 	lines := []string{
 		"",
 		fmt.Sprintf("Nexul %s is running.", tag),
 		fmt.Sprintf("  Setup wizard   %s", siteURL(host, o.Port)),
-		fmt.Sprintf("  Data           %s  (back this folder up)", o.Dir),
+		fmt.Sprintf("  Data           %s", data),
 		fmt.Sprintf("  Logs UI        %s  user %s", siteURL(host, o.LogsPort), logsEmail),
-		fmt.Sprintf("  Logs password  %s  (also in %s/.env)", env["NEXUL_LOGS_PASSWORD"], o.Dir),
+		fmt.Sprintf("  Logs password  %s  (also in %s)", env["NEXUL_LOGS_PASSWORD"], filepath.Join(o.Dir, ".env")),
 		"  Upgrade        nexul upgrade",
 		"  Status         nexul status",
-		"Next: point a domain at this server and put HTTPS in front of it, then enter the",
-		"https:// address as the instance URL in the setup wizard.",
 	}
-	h.printf("%s\n", strings.Join(lines, "\n"))
+	h.printf("%s\n", strings.Join(append(lines, next...), "\n"))
 }
 
 func siteURL(host string, port int) string {

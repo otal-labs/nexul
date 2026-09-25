@@ -28,7 +28,7 @@ func (h *Host) runUpgrade(ctx context.Context, args []string) error {
 // this binary for that release's first and re-runs the upgrade with it, so the new version's compose file is what
 // gets written. Rolling back is the same call with an older target.
 func (h *Host) Upgrade(ctx context.Context, target string) error {
-	if err := h.requireRoot(); err != nil {
+	if err := h.checkUser(); err != nil {
 		return err
 	}
 	prev, err := h.requireInstall()
@@ -100,31 +100,39 @@ func (h *Host) runUninstall(ctx context.Context, args []string) error {
 // Uninstall stops the stack and removes what install put on the host. The install directory stays unless purge is
 // set, so `nexul install --dir <dir>` brings the same instance back.
 func (h *Host) Uninstall(ctx context.Context, purge, yes bool) error {
-	if err := h.requireRoot(); err != nil {
+	if err := h.checkUser(); err != nil {
 		return err
 	}
 	prev, err := h.requireInstall()
 	if err != nil {
 		return err
 	}
-	h.printf("This stops Nexul and removes the instance runner service. Stacks you deployed keep running.\n")
+	h.printf("This stops Nexul and removes the instance runner. Stacks you deployed keep running.\n")
 	if purge {
-		h.printf("It also DELETES %s: the database, the logs and every stack checkout.\n", prev.Dir)
+		h.printf("It also DELETES %s and the database, the logs and every stack checkout.\n", prev.Dir)
 	}
 	if !purge {
-		h.printf("%s is kept; `nexul install --dir %s` brings this instance back.\n", prev.Dir, prev.Dir)
+		h.printf("The data is kept; `nexul install --dir %s` brings this instance back.\n", prev.Dir)
 	}
 	if err := h.confirm(yes); err != nil {
 		return err
 	}
 	h.printf("\n")
 
-	if err := h.step("Stack", func() (string, error) {
-		return "stopped", h.compose(ctx, prev.Dir, "down", "--remove-orphans")
-	}); err != nil {
+	down := []string{"down", "--remove-orphans"}
+	if purge {
+		// A desktop install keeps its database and logs in Docker volumes rather than the directory.
+		down = append(down, "--volumes")
+	}
+	if err := h.step("Stack", func() (string, error) { return "stopped", h.compose(ctx, prev.Dir, down...) }); err != nil {
 		return err
 	}
-	if err := h.step("Runner", func() (string, error) { return "removed", h.removeRunner(ctx) }); err != nil {
+	if err := h.step("Runner", func() (string, error) {
+		if h.desktop() {
+			return "removed with the stack", nil
+		}
+		return "removed", h.removeRunner(ctx)
+	}); err != nil {
 		return err
 	}
 	if err := h.step("Files", func() (string, error) { return h.removeFiles(prev.Dir, purge) }); err != nil {
@@ -152,20 +160,28 @@ func (h *Host) confirm(yes bool) error {
 }
 
 func (h *Host) removeFiles(dir string, purge bool) (string, error) {
-	paths := []string{h.Paths.Config, filepath.Join(h.Paths.BinDir, "nexul")}
+	paths := []string{h.Paths.Config}
+	// Windows cannot delete the executable that is running this uninstall; the summary names it instead.
+	if h.GOOS != "windows" {
+		paths = append(paths, filepath.Join(h.Paths.BinDir, h.commandName()))
+	}
 	for _, path := range paths {
 		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
 			return "", fmt.Errorf("remove %s: %w", path, err)
 		}
 	}
 	_ = os.Remove(filepath.Dir(h.Paths.Config)) // removes the config directory only when nothing else lives in it
+	kept := ""
+	if h.GOOS == "windows" {
+		kept = "; delete " + filepath.Join(h.Paths.BinDir, h.commandName()) + " yourself"
+	}
 	if !purge {
-		return "kept " + dir, nil
+		return "kept " + dir + kept, nil
 	}
 	if err := os.RemoveAll(dir); err != nil {
 		return "", fmt.Errorf("remove %s: %w", dir, err)
 	}
-	return "deleted " + dir, nil
+	return "deleted " + dir + kept, nil
 }
 
 // Status prints the installed version, where it lives, and whether each part is running.
@@ -174,7 +190,11 @@ func (h *Host) Status(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	runner, _ := h.Exec.Run(ctx, "systemctl", "is-active", runnerService) // is-active exits non-zero for any state but active; its output is the answer
+	runner := "container (see Services)"
+	if !h.desktop() {
+		state, _ := h.Exec.Run(ctx, "systemctl", "is-active", runnerService) // is-active exits non-zero for any state but active; its output is the answer
+		runner = state + " (" + runnerService + ")"
+	}
 	services, err := h.Exec.Run(ctx, "docker", "compose", "--project-directory", prev.Dir, "ps", "--all", "--format", "{{.Service}}\t{{.State}}\t{{.Status}}")
 	if err != nil {
 		services = "unavailable: " + err.Error()
@@ -182,7 +202,7 @@ func (h *Host) Status(ctx context.Context) error {
 	h.printf("Nexul %s\n", "v"+prev.Env["NEXUL_VERSION"])
 	h.printf("  Directory  %s\n", prev.Dir)
 	h.printf("  Web UI     %s\n", siteURL(h.PublicIP(), prev.intEnv("NEXUL_PORT", defaultPort)))
-	h.printf("  Runner     %s (%s)\n", runner, runnerService)
+	h.printf("  Runner     %s\n", runner)
 	h.printf("  Command    %s\n", version.Version)
 	h.printf("  Services\n")
 	for _, line := range strings.Split(services, "\n") {

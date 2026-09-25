@@ -11,15 +11,18 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
-	"syscall"
 	"time"
 )
 
-// Commander runs a system command and returns its combined output.
+// Commander runs system commands.
 type Commander interface {
+	// Run returns the command's combined output.
 	Run(ctx context.Context, name string, args ...string) (string, error)
+	// RunAttached gives the command this terminal, for installers that ask the user something (a password).
+	RunAttached(ctx context.Context, name string, args ...string) error
 }
 
 // Paths are the host locations the installer writes outside the install directory.
@@ -29,7 +32,10 @@ type Paths struct {
 	Unit         string
 	ComposePlugs string
 	SystemdProbe string
-	DockerEnv    string
+	// UserPlugins is the per-user Docker CLI plugins directory, where macOS links Homebrew's compose plugin.
+	UserPlugins string
+	// DockerApp is Docker Desktop's app bundle on macOS, started when it is installed but not running.
+	DockerApp string
 }
 
 // Host is everything the installer touches on the machine, swappable in tests.
@@ -47,13 +53,19 @@ type Host struct {
 	DockerScriptURL string
 	ComposeURL      string
 	Paths           Paths
-	GOOS            string
-	GOARCH          string
-	Getuid          func() int
-	PortFree        func(port int) bool
-	LookPath        func(file string) (string, error)
-	Executable      func() (string, error)
-	Reexec          func(path string, args []string) error
+	// BrewInstallURL is Homebrew's install script, run on macOS when Docker and Homebrew are both missing.
+	BrewInstallURL string
+	// Home is the user's home directory; macOS and Windows installs live under it.
+	Home string
+	// PrependPath puts a directory in front of this process's PATH, for tools installed while it runs.
+	PrependPath func(dir string)
+	GOOS        string
+	GOARCH      string
+	Getuid      func() int
+	PortFree    func(port int) bool
+	LookPath    func(file string) (string, error)
+	Executable  func() (string, error)
+	Reexec      func(path string, args []string) error
 	// HealthTimeout bounds how long the installer waits for the server to answer after starting the stack.
 	HealthTimeout time.Duration
 	PollInterval  time.Duration
@@ -67,6 +79,7 @@ func NewHost() *Host {
 	if releaseURL == "" {
 		releaseURL = "https://github.com/otal-labs/nexul/releases/download"
 	}
+	home, _ := os.UserHomeDir() // empty only on a host without a home, where the Linux defaults below apply anyway
 	return &Host{
 		Exec:            execCommander{},
 		HTTP:            &http.Client{Timeout: 10 * time.Minute},
@@ -76,13 +89,11 @@ func NewHost() *Host {
 		ReleaseURL:      strings.TrimSuffix(releaseURL, "/"),
 		DockerScriptURL: "https://get.docker.com",
 		ComposeURL:      "https://github.com/docker/compose/releases/latest/download",
-		Paths: Paths{
-			Config:       "/etc/nexul/nexul.conf",
-			BinDir:       "/usr/local/bin",
-			Unit:         "/etc/systemd/system/nexul-runner.service",
-			ComposePlugs: "/usr/local/lib/docker/cli-plugins",
-			SystemdProbe: "/run/systemd/system",
-			DockerEnv:    "/.dockerenv",
+		BrewInstallURL:  "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh",
+		Paths:           pathsFor(runtime.GOOS, home),
+		Home:            home,
+		PrependPath: func(dir string) {
+			_ = os.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH")) // Setenv fails only on an invalid key
 		},
 		GOOS:          runtime.GOOS,
 		GOARCH:        runtime.GOARCH,
@@ -90,10 +101,45 @@ func NewHost() *Host {
 		PortFree:      portFree,
 		LookPath:      exec.LookPath,
 		Executable:    os.Executable,
-		Reexec:        func(path string, args []string) error { return syscall.Exec(path, args, os.Environ()) },
+		Reexec:        reexec,
 		HealthTimeout: 3 * time.Minute,
 		PollInterval:  2 * time.Second,
 	}
+}
+
+// pathsFor places the config and the nexul command where each OS expects them without extra privileges.
+func pathsFor(goos, home string) Paths {
+	p := Paths{
+		Config:       "/etc/nexul/nexul.conf",
+		BinDir:       "/usr/local/bin",
+		Unit:         "/etc/systemd/system/nexul-runner.service",
+		ComposePlugs: "/usr/local/lib/docker/cli-plugins",
+		SystemdProbe: "/run/systemd/system",
+		UserPlugins:  filepath.Join(home, ".docker", "cli-plugins"),
+		DockerApp:    "/Applications/Docker.app",
+	}
+	if goos == "darwin" {
+		p.Config = filepath.Join(home, "Library", "Application Support", "nexul", "nexul.conf")
+	}
+	if goos == "windows" {
+		p.Config = filepath.Join(home, "AppData", "Roaming", "nexul", "nexul.conf")
+		p.BinDir = filepath.Join(home, "AppData", "Local", "Programs", "Nexul")
+	}
+	return p
+}
+
+// desktop reports a macOS or Windows host, where Docker runs in a VM and there is no systemd.
+func (h *Host) desktop() bool {
+	return h.GOOS == "darwin" || h.GOOS == "windows"
+}
+
+// defaultDir is /data/nexul on a Linux server and a nexul folder in the home directory elsewhere, because Docker
+// on macOS only shares the home directory into its VM.
+func (h *Host) defaultDir() string {
+	if h.desktop() {
+		return filepath.Join(h.Home, "nexul")
+	}
+	return DefaultDir
 }
 
 // printf writes to the terminal; a failed terminal write has nowhere to be reported.
@@ -101,9 +147,17 @@ func (h *Host) printf(format string, a ...any) {
 	_, _ = fmt.Fprintf(h.Out, format, a...)
 }
 
-func (h *Host) requireRoot() error {
+// checkUser refuses a user the platform's tools cannot work as: Linux needs root for Docker and systemd, and macOS
+// must not be root because Homebrew refuses to run as root.
+func (h *Host) checkUser() error {
+	if h.GOOS == "darwin" && h.Getuid() == 0 {
+		return errors.New("run this as your own user, not with sudo; it asks for your password when it needs it")
+	}
+	if h.desktop() {
+		return nil
+	}
 	if h.GOOS != "linux" {
-		return fmt.Errorf("nexul install supports Linux servers; on %s, run the single binary with `nexul serve`", h.GOOS)
+		return fmt.Errorf("nexul install supports Linux, macOS and Windows, not %s; run the binary with `nexul serve`", h.GOOS)
 	}
 	if h.Getuid() != 0 {
 		return errors.New("run this as root, for example with sudo")
@@ -112,7 +166,11 @@ func (h *Host) requireRoot() error {
 }
 
 // PublicIP is the address other machines most likely reach this host on: the source address of the default route.
+// A desktop install is for the person at the keyboard, so it is localhost there.
 func (h *Host) PublicIP() string {
+	if h.desktop() {
+		return "localhost"
+	}
 	conn, err := net.Dial("udp", "1.1.1.1:53")
 	if err != nil {
 		return "localhost"
@@ -165,6 +223,17 @@ func childEnv(environ []string) []string {
 		}
 	}
 	return out
+}
+
+// RunAttached runs name with this process's terminal, so the command can prompt.
+func (execCommander) RunAttached(ctx context.Context, name string, args ...string) error {
+	cmd := exec.CommandContext(ctx, name, args...)
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+	cmd.Env = childEnv(os.Environ())
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("%s %s: %w", name, strings.Join(args, " "), err)
+	}
+	return nil
 }
 
 // tail keeps the last n lines of s, where a failing command prints its reason.

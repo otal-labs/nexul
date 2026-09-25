@@ -33,6 +33,7 @@ body:
       label: How is it installed
       options:
         - nexul install (Linux server)
+        - nexul install (Mac or Windows)
         - Single binary
         - Debug compose stack (developing Nexul)
     validations:

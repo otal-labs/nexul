@@ -1,0 +1,47 @@
+---
+import InstallCommand from './InstallCommand.astro';
+interface Props {
+	id: string;
+}
+const { id } = Astro.props;
+---
+
+<fieldset class="install-switcher" data-install-switcher>
+	<legend>Installation platform</legend>
+	<div class="platforms">
+		<label><input type="radio" name={`${id}-platform`} value="unix" checked /><span>macOS / Linux</span></label>
+		<label><input type="radio" name={`${id}-platform`} value="windows" /><span>Windows</span></label>
+	</div>
+	<div class="unix-command"><InstallCommand command="curl -fsSL https://nexul.io/install.sh | sh" platform="macOS or Linux" /></div>
+	<div class="windows-command"><InstallCommand command="irm https://nexul.io/install.ps1 | iex" platform="Windows" /></div>
+	<div class="install-meta"><span class="unix-note">Sets up Docker for you</span><span class="windows-note">Needs Docker Desktop</span><a href="/docs/guide/install/">Installation guide <span aria-hidden="true">↗</span></a></div>
+</fieldset>
+
+<style>
+	.install-switcher { border: 0; padding: 0; margin: 0; min-width: 0; }
+	legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+	.platforms { display: inline-flex; align-items: center; padding-inline: 4px; margin-bottom: 12px; background: var(--page-bg); border-radius: 6px; }
+	label { position: relative; display: inline-flex; align-items: center; min-height: 44px; cursor: pointer; }
+	input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; touch-action: manipulation; }
+	label > span { display: block; padding: 6px 12px; border-radius: 4px; color: var(--page-muted); font-size: 12px; font-weight: 500; }
+	input:checked + span { color: var(--page-fg); background: var(--page-border); }
+	input:focus-visible + span { outline: 2px solid var(--page-fg); outline-offset: 2px; }
+	.windows-command, .windows-note { display: none; }
+	.install-switcher:has(input[value="windows"]:checked) .windows-command { display: block; }
+	.install-switcher:has(input[value="windows"]:checked) .windows-note { display: inline; }
+	.install-switcher:has(input[value="windows"]:checked) :is(.unix-command, .unix-note) { display: none; }
+	.install-meta { display: flex; align-items: center; justify-content: space-between; gap: 16px; color: var(--page-muted); font-size: 11px; }
+	.install-meta a { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; }
+	@media (hover: hover) and (pointer: fine) {
+		label:hover > span, .install-meta a:hover { color: var(--page-fg); }
+	}
+</style>
+
+<script>
+	const platformInputs = document.querySelectorAll<HTMLInputElement>('[data-install-switcher] input');
+	for (const input of platformInputs) {
+		input.addEventListener('change', () => {
+			for (const peer of platformInputs) peer.checked = peer.value === input.value;
+		});
+	}
+</script>

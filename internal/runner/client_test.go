@@ -89,6 +89,18 @@ func TestClient_wsURL_Version(t *testing.T) {
 	assert.Equal(t, "v0.1.6", u.Query().Get("version"))
 }
 
+func TestClient_wsURL_StackRoot(t *testing.T) {
+	c := newTestClient("ws://server:8080/ws/runner", &fakeExecutor{})
+	u, err := url.Parse(c.wsURL())
+	require.NoError(t, err)
+	assert.False(t, u.Query().Has("stack_root"), "no stack root configured means the server's default")
+
+	c.cfg.StackRoot = "/Users/onik/nexul"
+	u, err = url.Parse(c.wsURL())
+	require.NoError(t, err)
+	assert.Equal(t, "/Users/onik/nexul", u.Query().Get("stack_root"))
+}
+
 func TestClient_SendsHeartbeat(t *testing.T) {
 	beats := make(chan Frame, 10)
 	srv := wsTestServer(t, func(ctx context.Context, conn *websocket.Conn) {

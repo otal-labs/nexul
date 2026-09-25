@@ -57,6 +57,10 @@ func main() {
 			usage(os.Stderr)
 			os.Exit(2)
 		}
+		var exit *install.ExitCodeError
+		if errors.As(err, &exit) {
+			os.Exit(exit.Code)
+		}
 		fail(err)
 	}
 }

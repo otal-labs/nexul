@@ -1,5 +1,7 @@
 # One binary installs, upgrades and removes an instance
 
+ADR 0072 extends this to macOS and Windows, where the runner is a container and data lives in Docker volumes.
+
 Supersedes ADR 0054 and the bundled-runner exception in ADR 0032; supersedes ADR 0015 in part.
 
 An instance is installed by the `nexul` binary itself: `curl -fsSL https://nexul.io/install.sh | sh` downloads the

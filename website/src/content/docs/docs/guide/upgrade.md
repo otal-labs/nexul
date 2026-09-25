@@ -19,7 +19,7 @@ If the instance is still on the old version fifteen minutes later, the section r
 journalctl -u nexul-upgrade
 ```
 
-The UI upgrade needs an install made with `nexul install`, which is what gives the server an `instance` runner and the `nexul` command.
+The UI upgrade needs a Linux server installed with `nexul install`, which is what gives the server an `instance` runner and the `nexul` command on the host. On a Mac or Windows install, the runner is a container and can't upgrade the host, so run `nexul upgrade` in a terminal instead.
 
 ## From the server
 

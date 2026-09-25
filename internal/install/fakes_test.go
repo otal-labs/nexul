@@ -56,6 +56,12 @@ func (f *fakeExec) Run(_ context.Context, name string, args ...string) (string, 
 	return answer.out, answer.err
 }
 
+// RunAttached records the command like Run; the attached terminal makes no difference to a fake.
+func (f *fakeExec) RunAttached(ctx context.Context, name string, args ...string) error {
+	_, err := f.Run(ctx, name, args...)
+	return err
+}
+
 func (f *fakeExec) ran(prefix string) bool {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -153,7 +159,11 @@ func newTestHost(t *testing.T) *testHost {
 			Unit:         filepath.Join(root, "systemd", "nexul-runner.service"),
 			ComposePlugs: filepath.Join(root, "cli-plugins"),
 			SystemdProbe: systemd,
+			UserPlugins:  filepath.Join(root, "home", ".docker", "cli-plugins"),
+			DockerApp:    filepath.Join(root, "Applications", "Docker.app"),
 		},
+		Home:          filepath.Join(root, "home"),
+		PrependPath:   func(string) {},
 		GOOS:          "linux",
 		GOARCH:        "amd64",
 		Getuid:        func() int { return 0 },

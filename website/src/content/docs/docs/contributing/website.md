@@ -44,10 +44,10 @@ frontmatter and it appears.
 
 ## Installer downloads
 
-`public/install.sh` is served directly at the site root. It only downloads the
-`nexul` binary, checks its checksum and runs `nexul install`; everything else
-lives in the binary (`internal/install/`). Run `bun run test` before changing
-it.
+`public/install.sh` (Linux and macOS) and `public/install.ps1` (Windows) are
+served directly at the site root. They only download the `nexul` binary, check
+its checksum and run `nexul install`; everything else lives in the binary
+(`internal/install/`). Run `bun run test` before changing `install.sh`.
 
 ## Styling
 

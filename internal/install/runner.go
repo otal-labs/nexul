@@ -14,6 +14,9 @@ const runnerService = "nexul-runner.service"
 // installRunner puts the instance runner on the host as a systemd service: it drives the host's Docker daemon and
 // checks stacks out onto the host filesystem, which is why it is not a container (ADR 0032).
 func (h *Host) installRunner(ctx context.Context, o Options, tag string) (string, error) {
+	if h.desktop() {
+		return "container, part of the stack", nil
+	}
 	if _, err := os.Stat(h.Paths.SystemdProbe); err != nil {
 		return "", errors.New("the instance runner runs as a systemd service, and this host is not running systemd")
 	}
@@ -44,13 +47,14 @@ Environment=NEXUL_RUNNER_SECRET_FILE=%s
 Environment=NEXUL_RUNNER_ID=instance
 Environment=NEXUL_RUNNER_NAME=instance
 Environment=NEXUL_MACHINE=instance
+Environment=NEXUL_STACK_ROOT=%s
 ExecStart=%s
 Restart=always
 RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
-`, o.Port, filepath.Join(o.Dir, "data", "runner-secret"), bin)
+`, o.Port, filepath.Join(o.Dir, "data", "runner-secret"), o.Dir, bin)
 }
 
 // removeRunner stops and deletes the runner service and binary; a host without them is already in that state.
@@ -66,20 +70,32 @@ func (h *Host) removeRunner(ctx context.Context) error {
 	return err
 }
 
-// installSelf copies the running binary to the bin directory, so `nexul upgrade` and `nexul status` are on the PATH.
+// installSelf copies the running binary to the bin directory, so `nexul upgrade` and `nexul status` are on the
+// PATH. The instance already runs by then, so a copy that fails is reported rather than failing the install.
 func (h *Host) installSelf() (string, error) {
 	exe, err := h.executable()
 	if err != nil {
 		return "", err
 	}
-	dest := filepath.Join(h.Paths.BinDir, "nexul")
+	dest := filepath.Join(h.Paths.BinDir, h.commandName())
 	if exe == dest {
 		return dest, nil
 	}
+	if err := os.MkdirAll(h.Paths.BinDir, 0o755); err != nil {
+		return "left at " + exe + " (" + err.Error() + ")", nil
+	}
 	if err := copyFile(exe, dest); err != nil {
-		return "", err
+		return "left at " + exe + " (" + err.Error() + ")", nil
 	}
 	return dest, nil
+}
+
+// commandName is the nexul binary's file name on this OS.
+func (h *Host) commandName() string {
+	if h.GOOS == "windows" {
+		return "nexul.exe"
+	}
+	return "nexul"
 }
 
 // executable resolves the running binary's real path, following symlinks.
@@ -111,8 +127,5 @@ func copyFile(src, dest string) error {
 	if err := errors.Join(copyErr, out.Close()); err != nil {
 		return errors.Join(fmt.Errorf("copy to %s: %w", tmp, err), os.Remove(tmp))
 	}
-	if err := os.Rename(tmp, dest); err != nil {
-		return fmt.Errorf("install %s: %w", dest, err)
-	}
-	return nil
+	return replaceFile(tmp, dest)
 }
