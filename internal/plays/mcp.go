@@ -2,163 +2,182 @@ package plays
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 )
 
-// MCPTools returns the play definition tools (named domain_action); the run tools live in RunMCPTools.
+// playResult is a play as the model reads it; audit timestamps are left out.
+type playResult struct {
+	ID                 string   `json:"id"`
+	WorkspaceID        string   `json:"workspace_id"`
+	Label              string   `json:"label"`
+	Type               Type     `json:"type"`
+	Description        string   `json:"description"`
+	Instructions       string   `json:"instructions"`
+	Enabled            bool     `json:"enabled"`
+	ShowWhenStage      *Stage   `json:"show_when_stage,omitempty"`
+	ExcludedProjectIDs []string `json:"excluded_project_ids"`
+}
+
+func toPlayResult(p *Play) playResult {
+	return playResult{
+		ID: p.ID, WorkspaceID: p.WorkspaceID, Label: p.Label, Type: p.Type, Description: p.Description,
+		Instructions: p.Instructions, Enabled: p.Enabled, ShowWhenStage: p.ShowWhenStage, ExcludedProjectIDs: p.ExcludedProjectIDs,
+	}
+}
+
+type playListIn struct {
+	WorkspaceID string `json:"workspace_id" jsonschema:"The workspace's id (a UUID); project_list shows it on every project."`
+	Type        Type   `json:"type,omitempty" jsonschema:"ticket, doc, or interview. When set, lists only the plays the caller may run on such a target: enabled, not excluded from project_id, and for ticket plays showing in stage."`
+	ProjectID   string `json:"project_id,omitempty" jsonschema:"With type: the target's project id, so plays excluded from that project are left out."`
+	Stage       Stage  `json:"stage,omitempty" jsonschema:"With type ticket: the ticket's board stage (backlog, progress, review, testing, or done); only plays showing in that stage are listed."`
+	mcptool.PageArgs
+}
+
+type playCreateIn struct {
+	WorkspaceID        string   `json:"workspace_id" jsonschema:"The workspace's id (a UUID); project_list shows it on every project."`
+	Label              string   `json:"label" jsonschema:"The button text people press, for example Fix with AI."`
+	Type               Type     `json:"type" jsonschema:"What the play runs on: ticket, doc, or interview. Fixed once created."`
+	Description        string   `json:"description,omitempty" jsonschema:"One line saying what the play does, shown under the button."`
+	Instructions       string   `json:"instructions,omitempty" jsonschema:"The base instructions the Agent gets on every run, as markdown."`
+	Enabled            bool     `json:"enabled,omitempty" jsonschema:"Whether the play shows and can run. Defaults to false."`
+	ShowWhenStage      Stage    `json:"show_when_stage,omitempty" jsonschema:"Required for a ticket play and refused for any other: the board stage (backlog, progress, review, testing, or done) whose tickets show the button."`
+	ExcludedProjectIDs []string `json:"excluded_project_ids,omitempty" jsonschema:"Ids of projects where the play never shows, from project_list."`
+}
+
+type playUpdateIn struct {
+	WorkspaceID        string    `json:"workspace_id" jsonschema:"The workspace's id (a UUID); project_list shows it on every project."`
+	ID                 string    `json:"id" jsonschema:"The play's id, from play_list."`
+	Label              *string   `json:"label,omitempty" jsonschema:"New button text; omit to keep it."`
+	Description        *string   `json:"description,omitempty" jsonschema:"New one-line description; omit to keep it, an empty string clears it."`
+	Instructions       *string   `json:"instructions,omitempty" jsonschema:"New base instructions as markdown, replacing the old ones whole; omit to keep them."`
+	Enabled            *bool     `json:"enabled,omitempty" jsonschema:"true shows the play and lets it run, false hides it; omit to keep it."`
+	ShowWhenStage      *Stage    `json:"show_when_stage,omitempty" jsonschema:"Ticket plays only: the board stage (backlog, progress, review, testing, or done) whose tickets show the button; omit to keep it."`
+	ExcludedProjectIDs *[]string `json:"excluded_project_ids,omitempty" jsonschema:"Ids of projects where the play never shows, replacing the whole list; an empty list clears it, omit to keep it."`
+}
+
+type playDeleteIn struct {
+	WorkspaceID string `json:"workspace_id" jsonschema:"The workspace's id (a UUID); project_list shows it on every project."`
+	ID          string `json:"id" jsonschema:"The play's id, from play_list."`
+}
+
+// MCPTools returns the play definition tools; running a play and its trails live in RunMCPTools.
 func MCPTools(s *Service) []mcptool.Tool {
 	return []mcptool.Tool{
-		{
-			Name: "play_list",
-			Description: "List a workspace's plays, sorted by label. Pass type (and project_id, stage for a " +
-				"ticket play) to switch to the applicable list for the caller: enabled, not excluded for the " +
-				"project, matching stage, and not denied plays:run.",
-			InputSchema: mcptool.ObjectSchema(map[string]any{
-				"workspace_id": map[string]any{"type": "string"},
-				"project_id":   map[string]any{"type": "string"},
-				"type":         map[string]any{"type": "string", "enum": targetTypeNames},
-				"stage":        map[string]any{"type": "string", "enum": stageNames()},
-			}, "workspace_id"),
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				workspaceID, err := mcptool.RequiredString(args, "workspace_id")
+		mcptool.New("play_list", "List plays",
+			"Lists a workspace's plays sorted by label, each with its type, instructions, enabled switch, stage, "+
+				"and excluded projects. Without type it lists every definition and needs plays:read; with type (and "+
+				"project_id, plus stage for ticket plays) it lists only the plays the caller may run on that target, "+
+				"which is what to check before play_run. Paged, 50 per page by default.",
+			mcptool.Hints{ReadOnly: true, Local: true},
+			func(ctx context.Context, in playListIn) (any, error) {
+				list, err := listPlays(ctx, s, in)
 				if err != nil {
 					return nil, err
 				}
-				typeStr := mcptool.OptionalString(args["type"])
-				if typeStr == "" {
-					return s.List(ctx, workspaceID)
+				out := make([]playResult, 0, len(list))
+				for _, p := range list {
+					out = append(out, toPlayResult(p))
 				}
-				return s.ListApplicable(ctx, workspaceID, actorID(ctx), mcptool.OptionalString(args["project_id"]), Type(typeStr), optionalStage(args["stage"]))
-			},
-		},
-		{
-			Name: "play_create",
-			Description: "Create a play in a workspace: label (button text), type (ticket, doc, or interview), description, " +
-				"instructions, enabled, show-when stage (ticket plays only), excluded projects.",
-			InputSchema: mcptool.ObjectSchema(map[string]any{
-				"workspace_id":         map[string]any{"type": "string"},
-				"label":                map[string]any{"type": "string"},
-				"type":                 map[string]any{"type": "string", "enum": targetTypeNames},
-				"description":          map[string]any{"type": "string"},
-				"instructions":         map[string]any{"type": "string"},
-				"enabled":              map[string]any{"type": "boolean"},
-				"show_when_stage":      map[string]any{"type": "string", "enum": stageNames()},
-				"excluded_project_ids": map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
-			}, "workspace_id", "label", "type"),
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				workspaceID, label, err := requiredWorkspaceAndLabel(args)
-				if err != nil {
-					return nil, err
-				}
-				return s.Create(ctx, workspaceID, CreateInput{
-					Label: label, Type: Type(mcptool.OptionalString(args["type"])),
-					Description:  mcptool.OptionalString(args["description"]),
-					Instructions: mcptool.OptionalString(args["instructions"]),
-					Enabled:      optionalBool(args["enabled"]), ShowWhenStage: optionalStage(args["show_when_stage"]),
-					ExcludedProjectIDs: stringsArg(args["excluded_project_ids"]),
+				return mcptool.Paginate(out, in.PageArgs), nil
+			}),
+		mcptool.New("play_create", "Create play",
+			"Creates a play: a button that starts a pre-configured Agent turn on a ticket, a doc, or a project's "+
+				"interview. A ticket play needs show_when_stage and no other type takes one; a new play is disabled "+
+				"unless enabled is true. Returns the created play; change it later with play_update, and start it "+
+				"with play_run. Needs plays:write.",
+			mcptool.Hints{Additive: true, Local: true},
+			func(ctx context.Context, in playCreateIn) (any, error) {
+				p, err := s.Create(ctx, in.WorkspaceID, CreateInput{
+					Label: in.Label, Type: in.Type, Description: in.Description, Instructions: in.Instructions,
+					Enabled: in.Enabled, ShowWhenStage: optionalStage(in.ShowWhenStage), ExcludedProjectIDs: in.ExcludedProjectIDs,
 				})
-			},
-		},
-		{
-			Name: "play_update",
-			Description: "Replace a play's owner-edited fields: label, description, instructions, enabled, " +
-				"show-when stage (ticket plays only), excluded projects. Type is immutable after create.",
-			InputSchema: mcptool.ObjectSchema(map[string]any{
-				"workspace_id":         map[string]any{"type": "string"},
-				"id":                   map[string]any{"type": "string"},
-				"label":                map[string]any{"type": "string"},
-				"description":          map[string]any{"type": "string"},
-				"instructions":         map[string]any{"type": "string"},
-				"enabled":              map[string]any{"type": "boolean"},
-				"show_when_stage":      map[string]any{"type": "string", "enum": stageNames()},
-				"excluded_project_ids": map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
-			}, "workspace_id", "id", "label"),
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				workspaceID, label, err := requiredWorkspaceAndLabel(args)
 				if err != nil {
 					return nil, err
 				}
-				id, err := mcptool.RequiredString(args, "id")
+				return toPlayResult(p), nil
+			}),
+		mcptool.New("play_update", "Update play",
+			"Changes a play's label, description, instructions, enabled switch, stage, or excluded projects. Only "+
+				"the fields you pass change; the rest keep their values, and a play's type never changes. Use enabled "+
+				"false to hide a play without deleting it, and play_delete to remove it. Returns the updated play. "+
+				"Needs plays:read and plays:write.",
+			mcptool.Hints{Idempotent: true, Local: true},
+			func(ctx context.Context, in playUpdateIn) (any, error) {
+				p, err := s.Get(ctx, in.WorkspaceID, in.ID)
+				if err != nil {
+					return nil, playNotFoundHint(err)
+				}
+				updated, err := s.Update(ctx, in.WorkspaceID, in.ID, overlayPlay(p, in))
 				if err != nil {
 					return nil, err
 				}
-				return s.Update(ctx, workspaceID, id, UpdateInput{
-					Label: label, Description: mcptool.OptionalString(args["description"]),
-					Instructions: mcptool.OptionalString(args["instructions"]),
-					Enabled:      optionalBool(args["enabled"]), ShowWhenStage: optionalStage(args["show_when_stage"]),
-					ExcludedProjectIDs: stringsArg(args["excluded_project_ids"]),
-				})
-			},
-		},
-		{
-			Name:        "play_delete",
-			Description: "Delete a play.",
-			InputSchema: mcptool.ObjectSchema(map[string]any{
-				"workspace_id": map[string]any{"type": "string"},
-				"id":           map[string]any{"type": "string"},
-			}, "workspace_id", "id"),
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				workspaceID, err := mcptool.RequiredString(args, "workspace_id")
-				if err != nil {
-					return nil, err
+				return toPlayResult(updated), nil
+			}),
+		mcptool.New("play_delete", "Delete play",
+			"Deletes a play from its workspace and returns its id with deleted true. Trails of its past runs stay "+
+				"readable through trail_list. To hide a play without losing it, use play_update with enabled false "+
+				"instead. Needs plays:delete.",
+			mcptool.Hints{Idempotent: true, Local: true},
+			func(ctx context.Context, in playDeleteIn) (any, error) {
+				if err := s.Delete(ctx, in.WorkspaceID, in.ID); err != nil {
+					return nil, playNotFoundHint(err)
 				}
-				id, err := mcptool.RequiredString(args, "id")
-				if err != nil {
-					return nil, err
-				}
-				if err := s.Delete(ctx, workspaceID, id); err != nil {
-					return nil, err
-				}
-				return map[string]string{"id": id, "status": "deleted"}, nil
-			},
-		},
+				return mcptool.Gone(in.ID), nil
+			}),
 	}
 }
 
-func requiredWorkspaceAndLabel(args map[string]any) (string, string, error) {
-	vals, err := mcptool.RequiredStrings(args, "workspace_id", "label")
-	if err != nil {
-		return "", "", err
+func listPlays(ctx context.Context, s *Service, in playListIn) ([]*Play, error) {
+	if in.Type == "" && (in.ProjectID != "" || in.Stage != "") {
+		return nil, fmt.Errorf("%w: project_id and stage narrow the list only together with type (ticket, doc, or interview)", apperrs.ErrInvalid)
 	}
-	return vals[0], vals[1], nil
+	if in.Type == "" {
+		return s.List(ctx, in.WorkspaceID)
+	}
+	return s.ListApplicable(ctx, in.WorkspaceID, actorID(ctx), in.ProjectID, in.Type, optionalStage(in.Stage))
 }
 
-// targetTypeNames lists the play types, which are also the run target types.
-var targetTypeNames = []string{string(TypeTicket), string(TypeDoc), string(TypeInterview)}
-
-func stageNames() []string {
-	out := make([]string, len(stages))
-	for i, s := range stages {
-		out[i] = string(s)
+// overlayPlay keeps every field the call left out, so a rename never disables the play or wipes its instructions.
+func overlayPlay(p *Play, in playUpdateIn) UpdateInput {
+	out := UpdateInput{
+		Label: p.Label, Description: p.Description, Instructions: p.Instructions, Enabled: p.Enabled,
+		ShowWhenStage: p.ShowWhenStage, ExcludedProjectIDs: p.ExcludedProjectIDs,
+	}
+	if in.Label != nil {
+		out.Label = *in.Label
+	}
+	if in.Description != nil {
+		out.Description = *in.Description
+	}
+	if in.Instructions != nil {
+		out.Instructions = *in.Instructions
+	}
+	if in.Enabled != nil {
+		out.Enabled = *in.Enabled
+	}
+	if in.ShowWhenStage != nil {
+		out.ShowWhenStage = in.ShowWhenStage
+	}
+	if in.ExcludedProjectIDs != nil {
+		out.ExcludedProjectIDs = *in.ExcludedProjectIDs
 	}
 	return out
 }
 
-func optionalStage(v any) *Stage {
-	s, ok := v.(string)
-	if !ok || s == "" {
+func optionalStage(s Stage) *Stage {
+	if s == "" {
 		return nil
 	}
-	stage := Stage(s)
-	return &stage
+	return &s
 }
 
-func optionalBool(v any) bool {
-	b, _ := v.(bool)
-	return b
-}
-
-func stringsArg(v any) []string {
-	list, ok := v.([]any)
-	if !ok {
-		return nil
+func playNotFoundHint(err error) error {
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return fmt.Errorf("%w; play_list shows the workspace's plays", err)
 	}
-	out := make([]string, 0, len(list))
-	for _, item := range list {
-		if s, ok := item.(string); ok {
-			out = append(out, s)
-		}
-	}
-	return out
+	return err
 }

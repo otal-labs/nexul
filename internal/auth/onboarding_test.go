@@ -343,7 +343,7 @@ func TestGenerateConnectionToken_RequiresInstanceURLAndOwner(t *testing.T) {
 		ct, err := s.GenerateConnectionToken(context.Background(), ownerID)
 		require.NoError(t, err)
 		assert.Equal(t, "https://deploy.example.com", ct.InstanceURL)
-		claims, err := s.ParseConnectionToken(ct.Token)
+		claims, err := parseConnectionToken(s, ct.Token)
 		require.NoError(t, err)
 		assert.Equal(t, "https://deploy.example.com", claims.InstanceURL)
 		assert.Equal(t, 2, claims.Version)
@@ -354,7 +354,7 @@ func TestGenerateConnectionToken_RequiresInstanceURLAndOwner(t *testing.T) {
 		require.NoError(t, err)
 		ct, err := s.GenerateConnectionToken(context.Background(), ownerID)
 		require.NoError(t, err)
-		claims, err := s.ParseConnectionToken(ct.Token)
+		claims, err := parseConnectionToken(s, ct.Token)
 		require.NoError(t, err)
 		assert.Equal(t, "https://new.example.com", claims.InstanceURL)
 		assert.Equal(t, 3, claims.Version)
@@ -411,7 +411,7 @@ func TestParseConnectionToken_RejectsBad(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, tok := range []string{"", "a.b", "a.b.c.d", ct.Token + "x"} {
-		_, err := s.ParseConnectionToken(tok)
+		_, err := parseConnectionToken(s, tok)
 		require.ErrorIs(t, err, apperrs.ErrUnauthorized, "token %q", tok)
 	}
 
@@ -420,7 +420,7 @@ func TestParseConnectionToken_RejectsBad(t *testing.T) {
 		require.NoError(t, err)
 		now := s.cfg.Now
 		s.cfg.Now = func() time.Time { return now().Add(31 * 24 * time.Hour) }
-		_, err = s.ParseConnectionToken(ct2.Token)
+		_, err = parseConnectionToken(s, ct2.Token)
 		require.ErrorIs(t, err, apperrs.ErrUnauthorized)
 	})
 }

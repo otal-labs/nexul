@@ -51,7 +51,7 @@ func main() {
 			_, _ = fmt.Fprintln(os.Stderr, "flush shipped logs:", err) // best-effort diagnostic; process is exiting regardless
 		}
 	}()
-	logger.Info("server starting", "version", version.Version, "http_addr", cfg.HTTPAddr, "ws_addr", cfg.WSAddr, "mcp_addr", cfg.MCPAddr, "otlp_endpoint", cfg.OTLPEndpoint)
+	logger.Info("server starting", "version", version.Version, "http_addr", cfg.HTTPAddr, "ws_addr", cfg.WSAddr, "otlp_endpoint", cfg.OTLPEndpoint)
 
 	store, encKey := bootstrapStore(cfg)
 	defer func() {
@@ -85,9 +85,8 @@ func main() {
 	svc.deploySvc.SetMachineDiscoverer(deployMachineDiscovererAdapter{runner: runnerSvc})
 	liveHub, agentHandler := wireLiveHubAndAgent(ctx, bus, store, svc, logger)
 
-	wsServer, httpServer, mcpServerHTTP := buildRoutes(cfg, bus, store, svc, wsHandler, runnerSvc, runnerHTTP, automationsDialin, liveHub, agentHandler, logger)
+	wsServer, httpServer := buildRoutes(cfg, bus, store, svc, wsHandler, runnerSvc, runnerHTTP, automationsDialin, liveHub, agentHandler, logger)
 
-	go serveHTTP(mcpServerHTTP, logger, stop)
 	go serveHTTP(wsServer, logger, stop)
 	go serveHTTP(httpServer, logger, stop)
 
@@ -96,7 +95,7 @@ func main() {
 	}
 	automationsDialin.CloseAll("shutdown")
 
-	shutdownServers(wsServer, mcpServerHTTP, httpServer)
+	shutdownServers(wsServer, httpServer)
 	logger.Info("server stopped")
 }
 
@@ -173,14 +172,6 @@ func withIdentity(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
-}
-
-// mcpActor resolves the acting user for MCP tool calls; RequireAuth guarantees every request carries one.
-func mcpActor(ctx context.Context) identity.Actor {
-	if u := auth.UserFromCtx(ctx); u != nil {
-		return identity.Actor{ID: u.ID, CanCreateWorkspace: u.CanCreateWorkspace}
-	}
-	return identity.Actor{}
 }
 
 // livePushTopics are the bus topics the browser socket bridges onto. Append-only: new streams add topics here.

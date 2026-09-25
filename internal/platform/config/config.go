@@ -14,7 +14,6 @@ type Config struct {
 	DBPath   string
 	HTTPAddr string
 	WSAddr   string
-	MCPAddr  string
 	LogLevel string
 	// AuthSecret signs sessions and derives the at-rest key; NEXUL_AUTH_SECRET, else generated once into <db dir>/auth-secret.
 	AuthSecret string
@@ -34,7 +33,6 @@ func Load() (*Config, error) {
 		DBPath:     envOrDefault("NEXUL_DB_PATH", "./data/nexul.db"),
 		HTTPAddr:   envOrDefault("NEXUL_HTTP_ADDR", ":8080"),
 		WSAddr:     envOrDefault("NEXUL_WS_ADDR", ":8081"),
-		MCPAddr:    envOrDefault("NEXUL_MCP_ADDR", ":8082"),
 		LogLevel:   envOrDefault("NEXUL_LOG_LEVEL", "info"),
 		AuthSecret: os.Getenv("NEXUL_AUTH_SECRET"),
 		SPAOrigin:  envOrDefault("NEXUL_SPA_ORIGIN", ""),

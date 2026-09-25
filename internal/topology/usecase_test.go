@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 	"sync"
 	"testing"
 
@@ -36,7 +37,10 @@ func (f *fakeRepo) Get(_ context.Context, environment string) (*Canvas, error) {
 	if !ok {
 		return nil, apperrs.ErrNotFound
 	}
-	return c, nil
+	cp := *c
+	cp.Nodes = slices.Clone(c.Nodes)
+	cp.Edges = slices.Clone(c.Edges)
+	return &cp, nil
 }
 
 func (f *fakeRepo) Save(_ context.Context, environment string, c *Canvas, evts ...eventbus.OutboxEvent) error {
@@ -597,4 +601,22 @@ func TestService_Update_KeepsViewport(t *testing.T) {
 	got, err := svc.Get(ctx, DefaultEnvironment)
 	require.NoError(t, err)
 	assert.Equal(t, &Viewport{X: 12, Y: -40, Zoom: 0.8}, got.Viewport)
+}
+
+func TestService_HasCanvas(t *testing.T) {
+	repo := newFakeRepo()
+	svc := newTestService(repo, newFakeBus())
+	ok, err := svc.HasCanvas(t.Context(), "staging")
+	require.NoError(t, err)
+	assert.False(t, ok, "never saved")
+
+	_, err = svc.AddNode(t.Context(), "staging", validNetworkNode())
+	require.NoError(t, err)
+	ok, err = svc.HasCanvas(t.Context(), "staging")
+	require.NoError(t, err)
+	assert.True(t, ok)
+
+	repo.getErr = errors.New("boom")
+	_, err = svc.HasCanvas(t.Context(), "staging")
+	require.Error(t, err)
 }

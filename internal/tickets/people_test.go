@@ -185,25 +185,6 @@ func TestPeopleAdapters(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, serve(t, h, http.MethodPatch, "/api/tickets/nope/tester", `{"login":"lena"}`).Code)
 		assert.Equal(t, http.StatusBadRequest, serve(t, h, http.MethodPatch, "/api/tickets/"+created.ID+"/tester", `{"login":`).Code)
 	})
-	t.Run("MCP create is Nexul for the caller and the set tools change people", func(t *testing.T) {
-		s := NewService(newFakeRepo(), fakeStatusStore{}, fakeUserLogins{logins: map[string]string{"u-1": "onik97"}})
-		tools := MCPTools(s)
-		ctx := identity.WithActor(t.Context(), identity.Actor{ID: "u-1"})
-		got, err := toolByName(t, tools, "ticket_create").Call(ctx, map[string]any{"project_id": "p-1", "title": "Fix", "tester": "lena"})
-		require.NoError(t, err)
-		tk := got.(*Ticket)
-		assert.Equal(t, Reporter{Kind: ActorKindUserMCP, Login: "onik97"}, tk.Reporter)
-		assert.Equal(t, "lena", tk.Tester)
-
-		got, err = toolByName(t, tools, "ticket_set_developer").Call(ctx, map[string]any{"id": tk.ID, "login": "onik97"})
-		require.NoError(t, err)
-		assert.Equal(t, "onik97", got.(*Ticket).Developer)
-		got, err = toolByName(t, tools, "ticket_set_tester").Call(ctx, map[string]any{"id": tk.ID})
-		require.NoError(t, err)
-		assert.Equal(t, "", got.(*Ticket).Tester)
-		_, err = toolByName(t, tools, "ticket_set_tester").Call(ctx, map[string]any{})
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
 }
 
 func serveAs(t *testing.T, h http.Handler, method, path, body string, actor identity.Actor) *httptest.ResponseRecorder {

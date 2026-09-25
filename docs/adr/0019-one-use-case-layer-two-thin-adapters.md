@@ -1,5 +1,8 @@
 # One use-case layer, exactly two adapters: the browser never speaks JSON-RPC
 
+Amended by ADR 0068: MCP tools are shaped per task, so a UI capability must be
+reachable through some tool, not through a matching one.
+
 Every domain's behaviour lives in its use-case functions, and exactly two
 adapters call them: an HTTP/JSON gateway for the browser and an MCP server for
 LLMs. Neither adapter holds business logic and neither is the "real" one —

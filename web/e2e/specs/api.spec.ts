@@ -5,6 +5,7 @@ import {
   E2E_PROJECT_ID,
   E2E_WORKSPACE_ID,
   MCP_URL,
+  mcpHeaders,
   authedHeaders,
   makeApiClient,
   mintToken,
@@ -136,7 +137,7 @@ describe("mcp", () => {
   it("handshakes and lists tools as the authenticated user", async () => {
     const init = await fetch(MCP_URL, {
       method: "POST",
-      headers: authedHeaders(TOKEN),
+      headers: mcpHeaders(TOKEN),
       body: JSON.stringify({
         jsonrpc: "2.0",
         id: 1,
@@ -150,13 +151,13 @@ describe("mcp", () => {
 
     const tools = await fetch(MCP_URL, {
       method: "POST",
-      headers: authedHeaders(TOKEN),
+      headers: mcpHeaders(TOKEN),
       body: JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} }),
     });
     expect(tools.status).toBe(200);
     const toolsBody = (await tools.json()) as { result?: { tools?: { name: string }[] } };
     const names = toolsBody.result?.tools?.map((t) => t.name) ?? [];
-    for (const expected of ["doc_search", "ticket_search", "topology_get"]) {
+    for (const expected of ["doc_list", "ticket_list", "topology_get"]) {
       expect(names).toContain(expected);
     }
   });
@@ -164,7 +165,7 @@ describe("mcp", () => {
   it("rejects unauthenticated MCP requests", async () => {
     const res = await fetch(MCP_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Accept: "application/json, text/event-stream" },
       body: JSON.stringify({ jsonrpc: "2.0", id: 3, method: "tools/list", params: {} }),
     });
     expect(res.status).toBe(401);

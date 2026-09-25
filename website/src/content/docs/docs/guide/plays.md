@@ -86,7 +86,7 @@ of its own that the Interview page shows once a run has created it.
 
 The Agent is told the project's name and id and the answers the project
 already records, such as where its tests live from the project wizard. It
-opens the interview memory with `memory_create_interview`, which copies the
+opens the interview memory with `memory_create` and `kind` `interview`, which copies the
 workspace's Interview template the first time. It asks one question at a time,
 each with its recommended answer as the first option. Its first question asks
 whether to scan the codebase for answers; if so, it reads the checkout, then
@@ -107,16 +107,16 @@ the interview memory exists, which can be dismissed for the browser session.
 Test with AI is offered on a ticket in a Testing column. It tests the ticket
 the way a person pressing **Pass** or **Fail** in the Test this panel would.
 The Agent follows the testing strategy in the project's interview memory. It
-reads the ticket's acceptance criteria and asks `ticket_get_test_target` where
-to test, which is never production. When there is no safe test environment
+reads the ticket's acceptance criteria and where to test from `ticket_get`,
+which is never production. When there is no safe test environment
 it stops without a result and says a deploy branch on its own network is
 needed. Otherwise it checks the live URL against each criterion and runs the
 project's tests, from the tests repository when the project has one. Where the
 interview calls for an automated end-to-end suite, it also adds or extends a
 test covering the criteria.
 
-It then records the result with `ticket_test_pass` or `ticket_test_fail`,
-which do what the panel's buttons do, signed "Nexul · for" the person who ran
+It then records the result with `ticket_test_report`, whose `pass` and `fail`
+outcomes do what the panel's buttons do, signed "Nexul · for" the person who ran
 the play. A pass posts "Passed by Nexul · for <login>" and moves the card to
 the first Done column. A fail posts the bug template (steps to reproduce,
 expected result, actual result) under "Test failed by Nexul · for <login>" to
@@ -157,10 +157,10 @@ The HTTP definition routes are under
 `/api/plays/runs/{id}/stop`, and `/api/plays/runs/{id}/answer`; the list of a
 target's runs is `/api/plays/runs?target_type=&target_id=`. The decisions
 check retries through `POST /api/plays/decisions-check` with a `ticket_id`.
-MCP exposes the matching `play_*` and `play_run_*` tools and
-`decisions_check_run`; `play_run` and `play_list_runs` take `ticket`, `doc`,
-or `interview` as `target_type`. The run events `play.run_started`,
+MCP exposes the matching `play_*` tools, `trail_list` and `trail_update` for
+runs, and `decisions_check_run`; `play_run` and `trail_list` take `ticket`,
+`doc`, or `interview` as `target_type`. The run events `play.run_started`,
 `play.run_waiting`, and `play.run_finished` carry the same `target_type`, with
 the project's name as `target_title` for an interview. The project's interview
 thread is `POST /api/chat/projects/{projectID}/interview-thread`, or
-`interview_thread_get` over MCP.
+`message_list` and `message_post` with the `project_id` over MCP.

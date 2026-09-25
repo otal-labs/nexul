@@ -36,6 +36,12 @@ export const authedHeaders = (token: string) => ({
   "Content-Type": "application/json",
 });
 
+// An MCP client must accept both a JSON body and an event stream, or the server answers 400.
+export const mcpHeaders = (token: string) => ({
+  ...authedHeaders(token),
+  Accept: "application/json, text/event-stream",
+});
+
 // Shared HTTP-gateway fetch client for specs hitting `/api/...` directly instead of driving the browser; each spec mints its own token and builds its own client so a 401 test can still hit the gateway unauthed.
 export function makeApiClient(token: string) {
   return async function api<T = unknown>(

@@ -1,5 +1,8 @@
 # The MCP server speaks the 2026-07-28 and 2025-03-26 protocol revisions side by side
 
+Superseded by ADR 0067: the official Go SDK now serves both eras, and the
+hand-rolled protocol code below is gone.
+
 Which revision a request gets is decided per request, from
 `_meta["io.modelcontextprotocol/protocolVersion"]`; no `_meta` means the
 legacy 2025-03-26 behaviour, and an unknown version is rejected with -32022.

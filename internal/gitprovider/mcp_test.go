@@ -1,68 +1,98 @@
 package gitprovider
 
 import (
-	"context"
-	"errors"
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/mcptool"
 )
 
-func TestMCPTools_Names(t *testing.T) {
-	tools := MCPTools(&fakeProvider{})
-	require.Len(t, tools, 2)
-	names := []string{tools[0].Name, tools[1].Name}
-	assert.ElementsMatch(t, []string{"git_list_prs", "git_get_pr"}, names)
-	for _, tool := range tools {
-		assert.NotEmpty(t, tool.Description)
-		assert.NotNil(t, tool.InputSchema)
-		assert.NotNil(t, tool.Call)
+func callTool(t *testing.T, p GitProvider, cc ChangeContextReader, name, args string) (any, error) {
+	t.Helper()
+	for _, tool := range MCPTools(p, cc) {
+		if tool.Name == name {
+			return tool.Call(t.Context(), json.RawMessage(args))
+		}
+	}
+	t.Fatalf("tool %s not found", name)
+	return nil, nil
+}
+
+func TestMCPTools_Surface(t *testing.T) {
+	var names []string
+	for _, tool := range MCPTools(&fakeProvider{}, &fakeChangeReader{}) {
+		names = append(names, tool.Name)
+		assert.NotEmpty(t, tool.Title, tool.Name)
+		assert.NotEmpty(t, tool.Description, tool.Name)
+	}
+	assert.Equal(t, []string{"pull_request_list", "pull_request_get"}, names)
+}
+
+func TestMCPTools_Errors(t *testing.T) {
+	tests := []struct {
+		name, tool, args string
+		provider         *fakeProvider
+		want             error
+		msg              string
+	}{
+		{"pull_request_list needs a repo", "pull_request_list", `{"owner":"acme"}`, &fakeProvider{}, apperrs.ErrInvalid, ""},
+		{"pull_request_list rejects an unknown state", "pull_request_list", `{"owner":"acme","repo":"app","state":"merged"}`, &fakeProvider{}, apperrs.ErrInvalid, "open, closed, or all"},
+		{"pull_request_list surfaces a provider failure", "pull_request_list", `{"owner":"acme","repo":"app"}`, &fakeProvider{err: apperrs.ErrUnauthorized}, apperrs.ErrUnauthorized, ""},
+		{"pull_request_list of a missing repository", "pull_request_list", `{"owner":"acme","repo":"ghost"}`, &fakeProvider{err: apperrs.ErrNotFound}, apperrs.ErrNotFound, "repository_list"},
+		{"pull_request_get rejects the old name key", "pull_request_get", `{"owner":"acme","name":"app","number":7}`, &fakeProvider{}, apperrs.ErrInvalid, ""},
+		{"pull_request_get needs a number or a commit", "pull_request_get", `{"owner":"acme","repo":"app"}`, &fakeProvider{}, apperrs.ErrInvalid, ""},
+		{"pull_request_get of a commit in no pull request", "pull_request_get", `{"owner":"acme","repo":"app","commit":"abc"}`, &fakeProvider{}, apperrs.ErrNotFound, "pull_request_list"},
+		{"pull_request_get of a missing pull request", "pull_request_get", `{"owner":"acme","repo":"app","number":9}`, &fakeProvider{err: apperrs.ErrNotFound}, apperrs.ErrNotFound, "pull_request_list"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := callTool(t, tt.provider, &fakeChangeReader{}, tt.tool, tt.args)
+			require.ErrorIs(t, err, tt.want)
+			assert.Contains(t, err.Error(), tt.msg)
+		})
 	}
 }
 
-func TestMCPTools_ListPRs(t *testing.T) {
-	t.Run("happy path", func(t *testing.T) {
-		want := []*PR{{Number: 1}, {Number: 2}}
-		tools := MCPTools(&fakeProvider{prs: want})
-		got, err := tools[0].Call(context.Background(), map[string]any{"owner": "acme", "repo": "app", "state": "closed", "limit": float64(10)})
-		require.NoError(t, err)
-		assert.Equal(t, want, got)
-	})
-	t.Run("missing owner is invalid params", func(t *testing.T) {
-		tools := MCPTools(&fakeProvider{})
-		_, err := tools[0].Call(context.Background(), map[string]any{"repo": "app"})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("missing repo is invalid params", func(t *testing.T) {
-		tools := MCPTools(&fakeProvider{})
-		_, err := tools[0].Call(context.Background(), map[string]any{"owner": "acme"})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
+func TestPullRequestList(t *testing.T) {
+	p := &fakeProvider{prs: []*PR{
+		{Number: 3, Title: "Add cache", Body: "long body", State: PRStateOpen, LinkedTicketIDs: []string{"t-1"}},
+		{Number: 2, Title: "Fix login", State: PRStateOpen},
+	}}
+	got, err := callTool(t, p, &fakeChangeReader{}, "pull_request_list", `{"owner":"acme","repo":"app","limit":1}`)
+	require.NoError(t, err)
+	page := got.(mcptool.Page[prSummary])
+	assert.Equal(t, PROpts{State: "open", Limit: prScan}, p.listOpts)
+	require.Len(t, page.Items, 1)
+	assert.Equal(t, 3, page.Items[0].Number)
+	assert.Equal(t, []string{"t-1"}, page.Items[0].LinkedTicketIDs)
+	assert.True(t, page.HasMore)
+	b, err := json.Marshal(got)
+	require.NoError(t, err)
+	assert.NotContains(t, string(b), "long body", "bodies stay on pull_request_get")
+
+	_, err = callTool(t, p, &fakeChangeReader{}, "pull_request_list", `{"owner":"acme","repo":"app","state":"all"}`)
+	require.NoError(t, err)
+	assert.Equal(t, "all", p.listOpts.State)
 }
 
-func TestMCPTools_GetPR(t *testing.T) {
-	t.Run("happy path", func(t *testing.T) {
-		want := &PR{Number: 7, Title: "Fix login"}
-		tools := MCPTools(&fakeProvider{pr: want})
-		got, err := tools[1].Call(context.Background(), map[string]any{"owner": "acme", "repo": "app", "number": float64(7)})
-		require.NoError(t, err)
-		assert.Equal(t, want, got)
-	})
-	t.Run("non-positive number is invalid params", func(t *testing.T) {
-		tools := MCPTools(&fakeProvider{})
-		_, err := tools[1].Call(context.Background(), map[string]any{"owner": "acme", "repo": "app", "number": float64(0)})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("missing number is invalid params", func(t *testing.T) {
-		tools := MCPTools(&fakeProvider{})
-		_, err := tools[1].Call(context.Background(), map[string]any{"owner": "acme", "repo": "app"})
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
+func TestPullRequestGet_CarriesTheChangeContext(t *testing.T) {
+	tests := []struct{ name, args string }{
+		{"by number", `{"owner":"acme","repo":"app","number":7}`},
+		{"by a commit it contains", `{"owner":"acme","repo":"app","commit":"abc"}`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p, r := changeFixture()
+			got, err := callTool(t, p, r, "pull_request_get", tt.args)
+			require.NoError(t, err)
+			cc := got.(*ChangeContext)
+			assert.Equal(t, 7, cc.PR.Number)
+			assert.Len(t, cc.Tickets, 3)
+			assert.Len(t, cc.Decisions, 2)
+		})
+	}
 }

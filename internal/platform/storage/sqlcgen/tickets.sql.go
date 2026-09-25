@@ -121,8 +121,8 @@ func (q *Queries) GetTicket(ctx context.Context, id string) (Ticket, error) {
 	return i, err
 }
 
-const getTicketByPrefixAndNumber = `-- name: GetTicketByPrefixAndNumber :one
-SELECT tickets.id, tickets.title, tickets.body, tickets.status, tickets.doc_id, tickets.developer, tickets.created_at, tickets.updated_at, tickets.project_id, tickets.category_id, tickets.type_id, tickets.finished_at, tickets.position, tickets.number, tickets.tester, tickets.reporter_kind, tickets.reporter_login, tickets.reporter_automation_id, tickets.reporter_automation_name FROM tickets JOIN projects ON tickets.project_id = projects.id WHERE projects.prefix = ? AND tickets.number = ?
+const getTicketByPrefixAndNumber = `-- name: GetTicketByPrefixAndNumber :many
+SELECT tickets.id, tickets.title, tickets.body, tickets.status, tickets.doc_id, tickets.developer, tickets.created_at, tickets.updated_at, tickets.project_id, tickets.category_id, tickets.type_id, tickets.finished_at, tickets.position, tickets.number, tickets.tester, tickets.reporter_kind, tickets.reporter_login, tickets.reporter_automation_id, tickets.reporter_automation_name FROM tickets JOIN projects ON tickets.project_id = projects.id WHERE projects.prefix = ? AND tickets.number = ? LIMIT 2
 `
 
 type GetTicketByPrefixAndNumberParams struct {
@@ -130,31 +130,48 @@ type GetTicketByPrefixAndNumberParams struct {
 	Number int64
 }
 
-func (q *Queries) GetTicketByPrefixAndNumber(ctx context.Context, arg GetTicketByPrefixAndNumberParams) (Ticket, error) {
-	row := q.db.QueryRowContext(ctx, getTicketByPrefixAndNumber, arg.Prefix, arg.Number)
-	var i Ticket
-	err := row.Scan(
-		&i.ID,
-		&i.Title,
-		&i.Body,
-		&i.Status,
-		&i.DocID,
-		&i.Developer,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.ProjectID,
-		&i.CategoryID,
-		&i.TypeID,
-		&i.FinishedAt,
-		&i.Position,
-		&i.Number,
-		&i.Tester,
-		&i.ReporterKind,
-		&i.ReporterLogin,
-		&i.ReporterAutomationID,
-		&i.ReporterAutomationName,
-	)
-	return i, err
+// Two rows mean the key is ambiguous: prefixes are unique per workspace, and a moved ticket keeps its number.
+func (q *Queries) GetTicketByPrefixAndNumber(ctx context.Context, arg GetTicketByPrefixAndNumberParams) ([]Ticket, error) {
+	rows, err := q.db.QueryContext(ctx, getTicketByPrefixAndNumber, arg.Prefix, arg.Number)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Ticket
+	for rows.Next() {
+		var i Ticket
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Body,
+			&i.Status,
+			&i.DocID,
+			&i.Developer,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ProjectID,
+			&i.CategoryID,
+			&i.TypeID,
+			&i.FinishedAt,
+			&i.Position,
+			&i.Number,
+			&i.Tester,
+			&i.ReporterKind,
+			&i.ReporterLogin,
+			&i.ReporterAutomationID,
+			&i.ReporterAutomationName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getTicketStatusAndCategory = `-- name: GetTicketStatusAndCategory :one

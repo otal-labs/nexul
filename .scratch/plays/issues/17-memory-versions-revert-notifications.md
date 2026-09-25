@@ -9,4 +9,4 @@
 - [ ] Editing a memory twice shows two versions; reverting to the first produces a third whose body equals the first
 - [ ] The notification says who changed which memory and to which version, and links to it
 - [ ] A memory written by the Agent in a chat turn shows the Agent-via-user author on its version
-- [ ] `memory_list_versions` and `memory_revert` tools and routes exist and are gated by `memories:read` and `memories:write`
+- [ ] `memory_get` and `memory_update` tools and routes exist and are gated by `memories:read` and `memories:write`

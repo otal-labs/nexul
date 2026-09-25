@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net/http"
+	"slices"
 
 	"github.com/otal-labs/nexul/internal/access"
 	"github.com/otal-labs/nexul/internal/auth"
@@ -14,7 +16,9 @@ import (
 	"github.com/otal-labs/nexul/internal/deploy"
 	"github.com/otal-labs/nexul/internal/dns"
 	"github.com/otal-labs/nexul/internal/docs"
+	"github.com/otal-labs/nexul/internal/docs/richtext"
 	"github.com/otal-labs/nexul/internal/gitprovider"
+	"github.com/otal-labs/nexul/internal/mcp/composite"
 	"github.com/otal-labs/nexul/internal/memories"
 	"github.com/otal-labs/nexul/internal/mentions"
 	"github.com/otal-labs/nexul/internal/pairing"
@@ -30,7 +34,7 @@ import (
 	"github.com/otal-labs/nexul/internal/workspace"
 )
 
-// RegistryOptions wires every domain use-case layer the MCP adapter exposes (ADR 0019); each entry is optional.
+// RegistryOptions wires every domain use-case layer the MCP adapter exposes (ADR 0019).
 type RegistryOptions struct {
 	Docs          *docs.Service
 	Memories      *memories.Service
@@ -49,201 +53,87 @@ type RegistryOptions struct {
 	Access        *access.Service
 	Auth          *auth.Service
 	Invitations   *tenancy.InvitationService
+	Workspaces    *tenancy.Service
 	Mentions      *mentions.Service
 	Chat          *chat.Service
 	Plays         *plays.Service
 	PlayRuns      *plays.Runner
 	Pairing       *pairing.Service
 	DeadLetter    deadletter.Storer
+	Publisher     deadletter.Publisher
 	// InstanceAdmin gates the dead-letter tools, which read and replay every domain's failed events.
 	InstanceAdmin identity.InstanceAdmin
-	Publisher     Publisher
-	Logger        *slog.Logger
-	// Actor resolves the acting user; when nil, tool calls carry no identity and permission checks deny.
-	Actor func(context.Context) identity.Actor
+	// InstanceURL is the configured public URL; a browser request from any other origin is refused.
+	InstanceURL func(context.Context) (string, error)
+	Logger      *slog.Logger
 }
 
-// Publisher is the slice of the event bus the adapter needs; replay reuses the dead letter's ID.
-type Publisher interface {
-	Publish(ctx context.Context, topic string, payload any) error
-	PublishWithID(ctx context.Context, id, topic string, payload any) error
+// New assembles the MCP endpoint: every domain's tools, the resources and prompts, behind the SDK's stateless handler.
+// Mount it behind authentication; tools act as the identity the request context carries.
+func New(opts RegistryOptions) http.Handler {
+	return server{
+		tools:        registryTools(opts),
+		resources:    []resource{docResource(opts.Docs), ticketResource(opts.Tickets), topologyResource(opts.Topology)},
+		prompts:      workflowPrompts(),
+		instructions: instructions,
+		logger:       opts.Logger,
+	}.handler(opts.InstanceURL)
 }
 
-// New assembles the default MCP server: every domain's MCPTools, the dead-letter tools, and resources.
-func New(opts RegistryOptions) *Server {
-	s := &Server{}
-	registerDocsTools(s, opts.Docs)
-	registerTicketsTools(s, opts.Tickets)
-	if opts.Topology != nil {
-		s.tools = append(s.tools, topology.MCPTools(opts.Topology)...)
-		s.resources = append(s.resources, topologyResource(opts.Topology))
-	}
-	registerDomainTools(s, opts)
-	if opts.DeadLetter != nil && opts.Publisher != nil {
-		s.tools = append(s.tools, deadLetterListTool(opts.DeadLetter, opts.InstanceAdmin), deadLetterReplayTool(opts.DeadLetter, opts.Publisher, opts.InstanceAdmin))
-	}
-	s.actor = opts.Actor
-	s.prompts = defaultPrompts()
-	return s
+// registryTools lists the tools in a fixed order, so tools/list is byte-stable across processes.
+func registryTools(opts RegistryOptions) []mcptool.Tool {
+	return slices.Concat(
+		docs.MCPTools(opts.Docs),
+		memories.MCPTools(opts.Memories),
+		composite.TicketTools(opts.Tickets, opts.Workspace, opts.Reviews),
+		tickets.MCPTools(opts.Tickets),
+		composite.ProjectTools(opts.Workspace, opts.Tickets),
+		workspace.MCPTools(opts.Workspace),
+		workspace.NotificationMCPTools(opts.Notifications),
+		topology.MCPTools(opts.Topology),
+		deploy.MCPTools(opts.Deploy),
+		runner.MCPTools(opts.Runner),
+		gitprovider.MCPTools(opts.Git, opts.ChangeContext),
+		repository.MCPTools(opts.Repository),
+		dns.MCPTools(opts.DNS),
+		automations.MCPTools(opts.Automations),
+		access.MCPTools(opts.Access),
+		auth.MCPTools(opts.Auth),
+		tenancy.WorkspaceMCPTools(opts.Workspaces),
+		tenancy.MCPTools(opts.Invitations),
+		mentions.MCPTools(opts.Mentions),
+		chat.MCPTools(opts.Chat),
+		pairing.MCPTools(opts.Pairing),
+		plays.MCPTools(opts.Plays),
+		plays.RunMCPTools(opts.PlayRuns),
+		deadLetterTools(opts.DeadLetter, opts.Publisher, opts.InstanceAdmin),
+	)
 }
 
-func registerDocsTools(s *Server, svc *docs.Service) {
-	if svc == nil {
-		return
-	}
-	s.tools = append(s.tools, docs.MCPTools(svc)...)
-	s.templates = append(s.templates, docResource(svc))
-}
-
-func registerTicketsTools(s *Server, svc *tickets.Service) {
-	if svc == nil {
-		return
-	}
-	s.tools = append(s.tools, tickets.MCPTools(svc)...)
-	s.templates = append(s.templates, ticketResource(svc))
-}
-
-// registerDomainTools wires the domains that contribute tools only (no resources).
-func registerDomainTools(s *Server, opts RegistryOptions) {
-	if opts.Deploy != nil {
-		s.tools = append(s.tools, deploy.MCPTools(opts.Deploy)...)
-	}
-	if opts.Runner != nil {
-		s.tools = append(s.tools, runner.MCPTools(opts.Runner)...)
-	}
-	if opts.Reviews != nil {
-		s.tools = append(s.tools, codereview.MCPTools(opts.Reviews)...)
-	}
-	if opts.Workspace != nil {
-		s.tools = append(s.tools, workspace.MCPTools(opts.Workspace)...)
-	}
-	if opts.Notifications != nil {
-		s.tools = append(s.tools, workspace.NotificationMCPTools(opts.Notifications)...)
-	}
-	if opts.Git != nil {
-		s.tools = append(s.tools, gitprovider.MCPTools(opts.Git)...)
-	}
-	if opts.Git != nil && opts.ChangeContext != nil {
-		s.tools = append(s.tools, gitprovider.ChangeContextTools(opts.Git, opts.ChangeContext)...)
-	}
-	if opts.Repository != nil {
-		s.tools = append(s.tools, repository.MCPTools(opts.Repository)...)
-	}
-	if opts.DNS != nil {
-		s.tools = append(s.tools, dns.MCPTools(opts.DNS)...)
-	}
-	if opts.Automations != nil {
-		s.tools = append(s.tools, automations.MCPTools(opts.Automations)...)
-	}
-	if opts.Access != nil {
-		s.tools = append(s.tools, access.MCPTools(opts.Access)...)
-	}
-	registerIdentityTools(s, opts)
-	registerPlaysTools(s, opts)
-	if opts.Memories != nil {
-		s.tools = append(s.tools, memories.MCPTools(opts.Memories)...)
-	}
-}
-
-func registerIdentityTools(s *Server, opts RegistryOptions) {
-	if opts.Auth != nil {
-		s.tools = append(s.tools, auth.MCPTools(opts.Auth)...)
-	}
-	if opts.Invitations != nil {
-		s.tools = append(s.tools, tenancy.MCPTools(opts.Invitations)...)
-	}
-	if opts.Mentions != nil {
-		s.tools = append(s.tools, mentions.MCPTools(opts.Mentions)...)
-	}
-	if opts.Chat != nil {
-		s.tools = append(s.tools, chat.MCPTools(opts.Chat)...)
-	}
-	if opts.Pairing != nil {
-		s.tools = append(s.tools, pairing.MCPTools(opts.Pairing)...)
-	}
-}
-
-func registerPlaysTools(s *Server, opts RegistryOptions) {
-	if opts.Plays != nil {
-		s.tools = append(s.tools, plays.MCPTools(opts.Plays)...)
-	}
-	if opts.PlayRuns != nil {
-		s.tools = append(s.tools, plays.RunMCPTools(opts.PlayRuns)...)
-	}
-}
-
-func deadLetterListTool(store deadletter.Storer, admin identity.InstanceAdmin) Tool {
-	return Tool{
-		Name:        "dead_letter_list",
-		Description: "List events that exhausted retries or failed permanently. Instance admins only: payloads hold every domain's data.",
-		InputSchema: mcptool.ObjectSchema(map[string]any{
-			"limit":  map[string]any{"type": "integer"},
-			"offset": map[string]any{"type": "integer"},
-		}),
-		Call: func(ctx context.Context, args map[string]any) (any, error) {
-			if err := identity.RequireInstanceAdmin(ctx, admin); err != nil {
-				return nil, err
-			}
-			limit := intArg(args["limit"])
-			if limit < 1 {
-				limit = 50
-			}
-			return store.List(ctx, limit, intArg(args["offset"]))
-		},
-	}
-}
-
-func deadLetterReplayTool(store deadletter.Storer, p Publisher, admin identity.InstanceAdmin) Tool {
-	return Tool{
-		Name:        "dead_letter_replay",
-		Description: "Republish a dead letter to its original topic and remove it from the store. Instance admins only.",
-		InputSchema: mcptool.ObjectSchema(map[string]any{
-			"id": map[string]any{"type": "string"},
-		}, "id"),
-		Call: func(ctx context.Context, args map[string]any) (any, error) {
-			if err := identity.RequireInstanceAdmin(ctx, admin); err != nil {
-				return nil, err
-			}
-			id, err := mcptool.RequiredString(args, "id")
-			if err != nil {
-				return nil, err
-			}
-			if err := deadletter.Replay(ctx, store, p, id); err != nil {
-				return nil, err
-			}
-			return map[string]string{"id": id, "status": "replayed"}, nil
-		},
-	}
-}
-
-func docResource(s *docs.Service) ResourceTemplate {
-	return ResourceTemplate{
-		URITemplate: "docs://{id}",
-		Name:        "Doc",
-		Description: "A document's full text.",
-		MIMEType:    "text/markdown",
-		Read: func(ctx context.Context, vars map[string]string) (string, error) {
-			md, err := s.ExportMarkdown(ctx, vars["id"])
+func docResource(s *docs.Service) resource {
+	return resource{
+		uri: "docs://{id}", name: "doc", title: "Doc", mimeType: "text/markdown",
+		description: "A doc's title and full body as markdown, the same content doc_get returns.",
+		read: func(ctx context.Context, id string) (string, error) {
+			d, err := s.Get(ctx, id)
 			if err != nil {
 				return "", err
 			}
-			d, err := s.Get(ctx, vars["id"])
+			md, err := richtext.ToMarkdown(d.Body)
 			if err != nil {
-				return "", err
+				return "", fmt.Errorf("render doc %s: %w", id, err)
 			}
 			return "# " + d.Title + "\n\n" + md, nil
 		},
 	}
 }
 
-func ticketResource(s *tickets.Service) ResourceTemplate {
-	return ResourceTemplate{
-		URITemplate: "tickets://{id}",
-		Name:        "Ticket",
-		Description: "A ticket's full text.",
-		MIMEType:    "text/markdown",
-		Read: func(ctx context.Context, vars map[string]string) (string, error) {
-			t, err := s.Get(ctx, vars["id"])
+func ticketResource(s *tickets.Service) resource {
+	return resource{
+		uri: "tickets://{id}", name: "ticket", title: "Ticket", mimeType: "text/markdown",
+		description: "A ticket's title, status, and body as markdown, by id or key (REF-102); ticket_get returns the full record.",
+		read: func(ctx context.Context, id string) (string, error) {
+			t, err := s.Resolve(ctx, id)
 			if err != nil {
 				return "", err
 			}
@@ -252,13 +142,11 @@ func ticketResource(s *tickets.Service) ResourceTemplate {
 	}
 }
 
-func topologyResource(s *topology.Service) Resource {
-	return Resource{
-		URI:         "topology://current",
-		Name:        "Current topology",
-		Description: "The topology canvas for the default environment.",
-		MIMEType:    "application/json",
-		Read: func(ctx context.Context) (string, error) {
+func topologyResource(s *topology.Service) resource {
+	return resource{
+		uri: "topology://current", name: "topology", title: "Current topology", mimeType: "application/json",
+		description: "The topology canvas of the default environment, the same content topology_get returns.",
+		read: func(ctx context.Context, _ string) (string, error) {
 			c, err := s.Get(ctx, topology.DefaultEnvironment)
 			if err != nil {
 				return "", err
@@ -270,66 +158,4 @@ func topologyResource(s *topology.Service) Resource {
 			return string(b), nil
 		},
 	}
-}
-
-func defaultPrompts() []Prompt {
-	return []Prompt{
-		{
-			Name:        "create_ticket_from_doc",
-			Description: "Turn a doc into an isolated, scoped ticket.",
-			Arguments:   []PromptArgument{{Name: "doc_id", Description: "The source doc id", Required: true}},
-			Messages: func(args map[string]string) []PromptMessage {
-				text := interpolate("Read doc {{doc_id}}, then create one ticket scoped to the work it describes: propose a title, a body summarizing the task, and keep the ticket limited to that doc.", args)
-				return []PromptMessage{{Role: "user", Content: text}}
-			},
-		},
-		{
-			Name:        "deploy_stack",
-			Description: "Deploy a stack and watch its containers come up.",
-			Arguments:   []PromptArgument{{Name: "stack_id", Description: "The stack id (stack_list/stack_get)", Required: true}},
-			Messages: func(args map[string]string) []PromptMessage {
-				text := interpolate("Deploy stack {{stack_id}}: call stack_deploy (build from its ref, or redeploy its last image), then poll deploy_get and service_list until every container is healthy or the deploy fails.", args)
-				return []PromptMessage{{Role: "user", Content: text}}
-			},
-		},
-		{
-			Name:        "investigate_failure",
-			Description: "Investigate a failed deploy end to end.",
-			Arguments:   []PromptArgument{{Name: "deploy_id", Description: "The failed deploy id", Required: true}},
-			Messages: func(args map[string]string) []PromptMessage {
-				text := interpolate("Investigate failed deploy {{deploy_id}}: read it with deploy_get and its output with deploy_log, list the stack's containers with service_list, check the topology, list related dead letters, and propose a fix as a new ticket.", args)
-				return []PromptMessage{{Role: "user", Content: text}}
-			},
-		},
-		{
-			Name:        "ship_repository",
-			Description: "Take a repository from zero to a reachable, deployed stack: the project wizard's own steps, in order.",
-			Arguments: []PromptArgument{
-				{Name: "owner", Description: "Repository owner", Required: true},
-				{Name: "name", Description: "Repository name", Required: true},
-				{Name: "project_id", Description: "Workspace project to create the stack in", Required: true},
-				{Name: "machine", Description: "Machine to deploy the stack on", Required: true},
-				{Name: "hostname", Description: "Hostname to expose the stack at, if it should be reachable", Required: false},
-			},
-			Messages: func(args map[string]string) []PromptMessage {
-				text := interpolate(
-					"Ship {{owner}}/{{name}} to project {{project_id}} on machine {{machine}}: "+
-						"call repository_list to confirm the repository is visible, then repository_scan {owner: \"{{owner}}\", name: \"{{name}}\"} "+
-						"to get its candidates and default branch. Pick the best candidate (compose over a standalone Dockerfile when both exist) "+
-						"and call stack_create with project_id \"{{project_id}}\", machine \"{{machine}}\", that candidate, "+
-						"build_source set to this repo and branch, and deploy: true. Poll deploy_get and service_list until every "+
-						"container is healthy. If a hostname argument was given, once healthy call exposure_create to route it to the "+
-						"reachable service's container and port from the scan result.",
-					args)
-				return []PromptMessage{{Role: "user", Content: text}}
-			},
-		},
-	}
-}
-
-func intArg(v any) int {
-	if f, ok := v.(float64); ok && f > 0 {
-		return int(f)
-	}
-	return 0
 }

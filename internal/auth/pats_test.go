@@ -156,7 +156,7 @@ func TestConnectionToken_CarriesMCPURL(t *testing.T) {
 	ct, err := s.GenerateConnectionToken(context.Background(), ownerID)
 	require.NoError(t, err)
 	assert.Equal(t, "https://deploy.example.com/mcp", ct.MCPURL)
-	claims, err := s.ParseConnectionToken(ct.Token)
+	claims, err := parseConnectionToken(s, ct.Token)
 	require.NoError(t, err)
 	assert.Equal(t, "https://deploy.example.com/mcp", claims.MCPURL)
 }

@@ -86,6 +86,7 @@ type fakeProvider struct {
 	installRepos []*Repo
 	tree         []TreeEntry
 	file         []byte
+	listOpts     PROpts
 }
 
 func (f *fakeProvider) GetRepo(context.Context, string, string) (*Repo, error) {
@@ -95,7 +96,8 @@ func (f *fakeProvider) GetRepo(context.Context, string, string) (*Repo, error) {
 	return f.repo, nil
 }
 
-func (f *fakeProvider) ListPRs(context.Context, string, string, PROpts) ([]*PR, error) {
+func (f *fakeProvider) ListPRs(_ context.Context, _, _ string, opts PROpts) ([]*PR, error) {
+	f.listOpts = opts
 	if f.err != nil {
 		return nil, f.err
 	}

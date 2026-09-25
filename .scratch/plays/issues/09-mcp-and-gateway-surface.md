@@ -10,11 +10,11 @@ Agents are peers of the browser (AGENTS.md, "hit every surface"). List the
 full surface so the spec is complete:
 
 1. MCP tools, one per use-case: `play_list` (for a ticket or doc, only the
-   ones the caller may run and that apply), `play_run` (`plays:run`), `play_run_get`,
+   ones the caller may run and that apply), `play_run` (`plays:run`), `trail_list`,
    `play_run_interrupt`, `play_create/update/delete`, and for the new
    memory entity `memory_list`, `memory_get`, `memory_create`,
-   `memory_update`, `memory_delete`, `memory_clone` (`memories:clone`),
-   `memory_list_versions`, `memory_revert`.
+   `memory_update`, `memory_delete`, `memory_create` (`memories:clone`),
+   `memory_get`, `memory_update`.
 2. Gateway routes mirroring them, and the live WebSocket topic the page
    subscribes to for the running state.
 3. A play started from MCP runs on whose harness: the token's user, same as
@@ -31,11 +31,11 @@ full surface so the spec is complete:
 Resolved 2026-09-16 with the owner (one round).
 
 - **MCP tools**, one per use-case: `play_list` (for a ticket or doc; only
-  plays the caller may run and that apply), `play_run`, `play_run_get`,
-  `play_run_stop`, `play_list_runs`, `play_create`, `play_update`,
+  plays the caller may run and that apply), `play_run`, `trail_list`,
+  `trail_update`, `trail_list`, `play_create`, `play_update`,
   `play_delete`; `memory_list`, `memory_get`, `memory_create`,
-  `memory_update`, `memory_delete`, `memory_clone`, `memory_list_versions`,
-  `memory_revert`. Gateway routes mirror them one to one.
+  `memory_update`, `memory_delete`, `memory_create`, `memory_get`,
+  `memory_update`. Gateway routes mirror them one to one.
 - **Live topic** `play.run` carries run state changes so the ticket page,
   the doc page, and the board card update without a refresh.
 - **A play started from MCP** runs on the token owner's harness, exactly as

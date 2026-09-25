@@ -1,8 +1,8 @@
 package mcptool
 
 import (
+	"context"
 	"encoding/json"
-	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,106 +11,101 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 )
 
-func TestRequiredString(t *testing.T) {
-	tests := []struct {
-		name    string
-		args    map[string]any
-		key     string
-		want    string
-		wantErr error
-	}{
-		{name: "present", args: map[string]any{"id": "t-1"}, key: "id", want: "t-1"},
-		{name: "missing", args: map[string]any{}, key: "id", wantErr: apperrs.ErrInvalid},
-		{
-			name:    "wrong type",
-			args:    map[string]any{"id": 7},
-			key:     "id",
-			wantErr: apperrs.ErrInvalid,
-		},
-		{
-			name:    "empty",
-			args:    map[string]any{"id": ""},
-			key:     "id",
-			wantErr: apperrs.ErrInvalid,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := RequiredString(tt.args, tt.key)
-			if tt.wantErr != nil {
-				if !errors.Is(err, tt.wantErr) {
-					t.Fatalf("RequiredString() error = %v, want %v", err, tt.wantErr)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("RequiredString() unexpected error = %v", err)
-			}
-			if got != tt.want {
-				t.Fatalf("RequiredString() = %q, want %q", got, tt.want)
-			}
-		})
-	}
+type echoIn struct {
+	ID    string  `json:"id" jsonschema:"The object's id."`
+	Title *string `json:"title,omitempty" jsonschema:"New title; omit to keep it."`
+	Count int     `json:"count,omitzero" jsonschema:"How many."`
+	PageArgs
 }
 
-func TestRequiredStrings(t *testing.T) {
-	t.Run("all present", func(t *testing.T) {
-		got, err := RequiredStrings(map[string]any{"project_id": "p-1", "title": "x"}, "project_id", "title")
-		if err != nil {
-			t.Fatalf("RequiredStrings() unexpected error = %v", err)
-		}
-		want := []string{"p-1", "x"}
-		if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
-			t.Fatalf("RequiredStrings() = %v, want %v", got, want)
-		}
-	})
-
-	t.Run("short-circuits on first missing", func(t *testing.T) {
-		_, err := RequiredStrings(map[string]any{"project_id": "p-1"}, "project_id", "title")
-		if !errors.Is(err, apperrs.ErrInvalid) {
-			t.Fatalf("RequiredStrings() error = %v, want %v", err, apperrs.ErrInvalid)
-		}
-	})
+func echoTool() Tool {
+	return New("echo_get", "Echo", "Echoes its input.", Hints{ReadOnly: true, Local: true},
+		func(_ context.Context, in echoIn) (any, error) { return in, nil })
 }
 
-func TestOptionalString(t *testing.T) {
+func TestNew_ValidatesBeforeTheHandlerRuns(t *testing.T) {
 	tests := []struct {
 		name string
-		v    any
-		want string
+		args string
 	}{
-		{name: "string", v: "main", want: "main"},
-		{name: "empty string", v: "", want: ""},
-		{name: "missing", v: nil, want: ""},
-		{name: "number", v: float64(3), want: ""},
+		{"missing required field", `{}`},
+		{"null arguments are an empty object, still missing id", `null`},
+		{"wrong type", `{"id": 7}`},
+		{"unknown key", `{"id": "x", "user_id": "u2"}`},
+		{"malformed JSON", `{"id":`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := OptionalString(tt.v); got != tt.want {
-				t.Fatalf("OptionalString(%v) = %q, want %q", tt.v, got, tt.want)
-			}
+			_, err := echoTool().Call(context.Background(), json.RawMessage(tt.args))
+			require.ErrorIs(t, err, apperrs.ErrInvalid)
 		})
 	}
 }
 
-func TestObjectSchema(t *testing.T) {
+func TestNew_DecodesValidArguments(t *testing.T) {
+	out, err := echoTool().Call(context.Background(), json.RawMessage(`{"id":"t-1","title":"x","limit":5}`))
+	require.NoError(t, err)
+	in, ok := out.(echoIn)
+	require.True(t, ok)
+	assert.Equal(t, "t-1", in.ID)
+	require.NotNil(t, in.Title)
+	assert.Equal(t, "x", *in.Title)
+	assert.Equal(t, 5, in.Limit)
+
+	out, err = echoTool().Call(context.Background(), json.RawMessage(`{"id":"t-1"}`))
+	require.NoError(t, err)
+	assert.Nil(t, out.(echoIn).Title, "an omitted patch field stays nil")
+}
+
+func TestNew_InfersADescribedClosedSchema(t *testing.T) {
+	s := echoTool().InputSchema
+	assert.Equal(t, "object", s.Type)
+	assert.Equal(t, []string{"id"}, s.Required)
+	require.NotNil(t, s.AdditionalProperties)
+	for name, prop := range s.Properties {
+		assert.NotEmpty(t, prop.Description, name)
+	}
+	assert.Contains(t, s.Properties, "limit", "embedded PageArgs flattens into the arguments")
+}
+
+func TestNew_NoArguments(t *testing.T) {
+	tool := New("thing_list", "Things", "Lists things.", Hints{ReadOnly: true},
+		func(context.Context, struct{}) (any, error) { return "ok", nil })
+	out, err := tool.Call(context.Background(), nil)
+	require.NoError(t, err)
+	assert.Equal(t, "ok", out)
+	b, err := json.Marshal(tool.InputSchema)
+	require.NoError(t, err)
+	assert.NotContains(t, string(b), `"properties":null`)
+}
+
+func TestPaginate(t *testing.T) {
+	items := []int{1, 2, 3, 4, 5}
 	tests := []struct {
-		name       string
-		properties map[string]any
-		required   []string
-		want       map[string]any
+		name string
+		args PageArgs
+		want Page[int]
 	}{
-		{"nil properties become an empty object", nil, nil, map[string]any{"type": "object", "properties": map[string]any{}}},
-		{"required is kept", map[string]any{"id": map[string]any{"type": "string"}}, []string{"id"},
-			map[string]any{"type": "object", "properties": map[string]any{"id": map[string]any{"type": "string"}}, "required": []string{"id"}}},
+		{"defaults return everything under the limit", PageArgs{}, Page[int]{Items: items, Total: 5}},
+		{"a limit leaves the rest reachable", PageArgs{Limit: 2}, Page[int]{Items: []int{1, 2}, Total: 5, HasMore: true, NextOffset: 2}},
+		{"the last page has no next offset", PageArgs{Limit: 2, Offset: 4}, Page[int]{Items: []int{5}, Total: 5}},
+		{"an offset past the end is empty, never nil", PageArgs{Offset: 9}, Page[int]{Items: []int{}, Total: 5}},
+		{"a negative offset starts at the beginning", PageArgs{Limit: 1, Offset: -3}, Page[int]{Items: []int{1}, Total: 5, HasMore: true, NextOffset: 1}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := ObjectSchema(tt.properties, tt.required...)
-			assert.Equal(t, tt.want, got)
-			raw, err := json.Marshal(got)
-			require.NoError(t, err)
-			assert.NotContains(t, string(raw), "null")
+			assert.Equal(t, tt.want, Paginate(items, tt.args))
 		})
 	}
+}
+
+func TestPaginate_CapsTheLimit(t *testing.T) {
+	items := make([]int, 250)
+	page := Paginate(items, PageArgs{Limit: 1000})
+	assert.Len(t, page.Items, MaxLimit)
+	assert.True(t, page.HasMore)
+}
+
+func TestGone(t *testing.T) {
+	assert.Equal(t, Deleted{ID: "x", Deleted: true}, Gone("x"))
 }

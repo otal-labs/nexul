@@ -182,10 +182,10 @@ func TestSeedDefaults_CreatesTheFourDefaultPlays(t *testing.T) {
 		wantShow *Stage
 		mentions []string
 	}{
-		{"Fix with AI", TypeTicket, &progress, []string{"ticket_link_pr"}},
-		{"To tickets via AI", TypeDoc, nil, []string{"ticket_create"}},
-		{"Interview", TypeInterview, nil, []string{"memory_create_interview", "one question at a time"}},
-		{"Test with AI", TypeTicket, &testingStage, []string{"ticket_get_test_target", "project_list_repos", "ticket_test_pass", "ticket_test_fail", "never production"}},
+		{"Fix with AI", TypeTicket, &progress, []string{"ticket_update", "link_pr"}},
+		{"To tickets via AI", TypeDoc, nil, []string{"project_get", "ticket_list", "ticket_create"}},
+		{"Interview", TypeInterview, nil, []string{"`kind` `interview`", "one question at a time"}},
+		{"Test with AI", TypeTicket, &testingStage, []string{"test_target", "project_get", "ticket_test_report", "never production"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.label, func(t *testing.T) {

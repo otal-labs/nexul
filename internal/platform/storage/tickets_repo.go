@@ -98,13 +98,19 @@ func (r *TicketsRepo) GetByID(ctx context.Context, id string) (*tickets.Ticket, 
 	return t, nil
 }
 
-// GetByPrefixAndNumber resolves a ticket via its PREFIX-NUMBER display id, used by mentions' key resolution.
+// GetByPrefixAndNumber resolves a ticket via its PREFIX-NUMBER display id; a key two tickets share is a conflict, never a guess.
 func (r *TicketsRepo) GetByPrefixAndNumber(ctx context.Context, prefix string, number int) (*tickets.Ticket, error) {
-	row, err := r.q.GetTicketByPrefixAndNumber(ctx, sqlcgen.GetTicketByPrefixAndNumberParams{Prefix: prefix, Number: int64(number)})
+	rows, err := r.q.GetTicketByPrefixAndNumber(ctx, sqlcgen.GetTicketByPrefixAndNumberParams{Prefix: prefix, Number: int64(number)})
 	if err != nil {
-		return nil, fmt.Errorf("get ticket by key %s-%d: %w", prefix, number, notFoundIfNoRows(err))
+		return nil, fmt.Errorf("get ticket by key %s-%d: %w", prefix, number, err)
 	}
-	t := toTicket(row)
+	if len(rows) == 0 {
+		return nil, fmt.Errorf("get ticket by key %s-%d: %w", prefix, number, apperrs.ErrNotFound)
+	}
+	if len(rows) > 1 {
+		return nil, fmt.Errorf("%w: key %s-%d matches more than one ticket; use the ticket's id", apperrs.ErrConflict, prefix, number)
+	}
+	t := toTicket(rows[0])
 	labels, err := r.ListLabels(ctx, t.ID)
 	if err != nil {
 		return nil, fmt.Errorf("get ticket by key %s-%d: %w", prefix, number, err)

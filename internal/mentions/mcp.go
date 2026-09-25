@@ -8,86 +8,60 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 )
 
-// MCPTools returns the mention tool definitions; LLMs reference targets the same markdown links humans do.
+// mentionSearchScan is the most hits Search returns; the picker never needs more.
+const mentionSearchScan = 50
+
+type mentionRef struct {
+	Type string `json:"type" jsonschema:"What the reference points at: ticket or doc."`
+	ID   string `json:"id" jsonschema:"The ticket's or doc's id."`
+}
+
+type mentionSearchIn struct {
+	Query string       `json:"query,omitempty" jsonschema:"Text to match against ticket and doc titles and bodies, or a ticket key such as REF-102, which sorts first."`
+	Refs  []mentionRef `json:"refs,omitempty" jsonschema:"References to resolve to live chips instead of searching, for example the mentions found in a document."`
+	mcptool.PageArgs
+}
+
+// MCPTools returns the mention tool; agents reference targets with the same markdown links people do.
 func MCPTools(s *Service) []mcptool.Tool {
 	return []mcptool.Tool{
-		{
-			Name:        "mention_search",
-			Description: "Search tickets and docs to @-mention in a document. Returns canonical reference ids.",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"query": map[string]any{"type": "string"},
-					"limit": map[string]any{"type": "integer"},
-				},
-				"required": []string{"query"},
-			},
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				query, err := mcptool.RequiredString(args, "query")
+		mcptool.New("mention_search", "Search mentions",
+			"Finds tickets and docs to @-mention, or with refs resolves references already in a document to live chips. "+
+				"Send exactly one of query or refs. A search returns at most 50 matches, each with its type, id, title, and status; "+
+				"refs return the current title, status, project key parts, and whether you can open it, and leave out targets that no longer exist. "+
+				"Docs you cannot open are never found by a search. Use doc_list or ticket_list for filtered browsing.",
+			mcptool.Hints{ReadOnly: true, Local: true},
+			func(ctx context.Context, in mentionSearchIn) (any, error) {
+				if (in.Query == "") == (len(in.Refs) == 0) {
+					return nil, fmt.Errorf("%w: send exactly one of query or refs", apperrs.ErrInvalid)
+				}
+				if in.Query != "" {
+					results, err := s.Search(ctx, in.Query, mentionSearchScan)
+					if err != nil {
+						return nil, err
+					}
+					return mcptool.Paginate(results, in.PageArgs), nil
+				}
+				refs, err := toRefs(in.Refs)
 				if err != nil {
 					return nil, err
 				}
-				return s.Search(ctx, query, intArg(args["limit"]))
-			},
-		},
-		{
-			Name:        "mention_resolve",
-			Description: "Resolve a batch of mention references to live chips (current title, status label, access-aware clickability) for a document render.",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"refs": map[string]any{
-						"type": "array",
-						"items": map[string]any{
-							"type": "object",
-							"properties": map[string]any{
-								"type": map[string]any{"type": "string", "description": "ticket or doc"},
-								"id":   map[string]any{"type": "string"},
-							},
-							"required": []string{"type", "id"},
-						},
-					},
-				},
-				"required": []string{"refs"},
-			},
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				refs, err := refsArg(args["refs"])
+				chips, err := s.Resolve(ctx, refs)
 				if err != nil {
 					return nil, err
 				}
-				return s.Resolve(ctx, refs)
-			},
-		},
+				return mcptool.Paginate(chips, in.PageArgs), nil
+			}),
 	}
 }
 
-func intArg(v any) int {
-	if f, ok := v.(float64); ok && f > 0 {
-		return int(f)
-	}
-	return 0
-}
-
-func refsArg(v any) ([]Ref, error) {
-	list, ok := v.([]any)
-	if !ok || len(list) == 0 {
-		return nil, fmt.Errorf("%w: refs is required", apperrs.ErrInvalid)
-	}
-	out := make([]Ref, 0, len(list))
-	for _, item := range list {
-		m, ok := item.(map[string]any)
-		if !ok {
-			continue
+func toRefs(in []mentionRef) ([]Ref, error) {
+	out := make([]Ref, 0, len(in))
+	for _, r := range in {
+		if r.Type != string(KindTicket) && r.Type != string(KindDoc) {
+			return nil, fmt.Errorf("%w: ref type %q must be ticket or doc", apperrs.ErrInvalid, r.Type)
 		}
-		typ, _ := m["type"].(string)
-		id, _ := m["id"].(string)
-		if typ == "" || id == "" {
-			continue
-		}
-		out = append(out, Ref{Type: typ, ID: id})
-	}
-	if len(out) == 0 {
-		return nil, fmt.Errorf("%w: refs must contain at least one valid {type, id}", apperrs.ErrInvalid)
+		out = append(out, Ref(r))
 	}
 	return out, nil
 }

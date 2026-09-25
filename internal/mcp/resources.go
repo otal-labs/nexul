@@ -2,55 +2,55 @@ package mcp
 
 import (
 	"context"
+	"errors"
+	"log/slog"
 	"strings"
+
+	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
+	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
+
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/logging"
 )
 
-// Resource is a static URI whose Read returns its text content, e.g. topology://current.
-type Resource struct {
-	URI         string
-	Name        string
-	Description string
-	MIMEType    string
-	Read        func(ctx context.Context) (string, error)
+// resource is one readable entity a user can attach to a conversation; a URI containing "{id}" is a template.
+type resource struct {
+	uri, name, title, description, mimeType string
+	read                                    func(ctx context.Context, id string) (string, error)
 }
 
-// ResourceTemplate is a parameterized resource (e.g. docs://{id}); Read receives the captured values.
-type ResourceTemplate struct {
-	URITemplate string
-	Name        string
-	Description string
-	MIMEType    string
-	Read        func(ctx context.Context, vars map[string]string) (string, error)
-}
-
-type resourceDef struct {
-	URI         string `json:"uri"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	MIMEType    string `json:"mimeType,omitempty"`
-}
-
-type resourceTemplateDef struct {
-	URITemplate string `json:"uriTemplate"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	MIMEType    string `json:"mimeType,omitempty"`
-}
-
-// matchTemplate matches a single {param} placeholder; a template with no placeholder requires exact equality.
-func matchTemplate(uri string, t ResourceTemplate) (map[string]string, bool) {
-	open, close := strings.Index(t.URITemplate, "{"), strings.Index(t.URITemplate, "}")
-	if open < 0 || close < 0 || close < open {
-		return nil, uri == t.URITemplate
+func (r resource) register(srv *sdk.Server, logger *slog.Logger) {
+	h := r.handler(logger)
+	if strings.Contains(r.uri, "{id}") {
+		srv.AddResourceTemplate(&sdk.ResourceTemplate{
+			URITemplate: r.uri, Name: r.name, Title: r.title, Description: r.description, MIMEType: r.mimeType,
+		}, h)
+		return
 	}
-	param := t.URITemplate[open+1 : close]
-	prefix, suffix := t.URITemplate[:open], t.URITemplate[close+1:]
-	if !strings.HasPrefix(uri, prefix) || !strings.HasSuffix(uri, suffix) {
-		return nil, false
+	srv.AddResource(&sdk.Resource{URI: r.uri, Name: r.name, Title: r.title, Description: r.description, MIMEType: r.mimeType}, h)
+}
+
+// handler reads live content, so the result is never cached; a missing or unreadable entity is not found, never leaked.
+func (r resource) handler(logger *slog.Logger) sdk.ResourceHandler {
+	prefix, _, _ := strings.Cut(r.uri, "{id}")
+	return func(ctx context.Context, req *sdk.ReadResourceRequest) (*sdk.ReadResourceResult, error) {
+		uri := req.Params.URI
+		id := strings.TrimPrefix(uri, prefix)
+		text, err := r.read(ctx, id)
+		if errors.Is(err, apperrs.ErrNotFound) || errors.Is(err, apperrs.ErrForbidden) || errors.Is(err, apperrs.ErrUnauthorized) {
+			return nil, sdk.ResourceNotFoundError(uri)
+		}
+		if err != nil {
+			traceID := logging.TraceIDFromCtx(ctx)
+			if traceID == "" {
+				traceID = logging.NewTraceID()
+			}
+			logger.Error("mcp resource read failed", "trace_id", traceID, "uri", uri, "err", err)
+			return nil, &jsonrpc.Error{Code: jsonrpc.CodeInternalError, Message: internalMessage(traceID)}
+		}
+		return &sdk.ReadResourceResult{
+			Cacheable: sdk.Cacheable{TTLMs: 0, CacheScope: "private"},
+			Contents:  []*sdk.ResourceContents{{URI: uri, MIMEType: r.mimeType, Text: text}},
+		}, nil
 	}
-	value := uri[len(prefix) : len(uri)-len(suffix)]
-	if value == "" {
-		return nil, false
-	}
-	return map[string]string{param: value}, true
 }

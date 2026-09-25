@@ -6,7 +6,6 @@ services:
     ports:
       - "8080:8080"
       - "8081:8081"
-      - "8082:8082"
       - "2345:2345"
     environment:
       NEXUL_DB_PATH: /data/nexul.db

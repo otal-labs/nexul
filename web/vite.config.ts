@@ -29,7 +29,7 @@ export default defineConfig({
       "/api": `http://${DEV_PROXY_HOST}:8080`,
       "/auth": `http://${DEV_PROXY_HOST}:8080`,
       "/hooks": `http://${DEV_PROXY_HOST}:8080`,
-      "/mcp": `http://${DEV_PROXY_HOST}:8082`,
+      "/mcp": `http://${DEV_PROXY_HOST}:8080`,
       "/ws/runner": { target: `ws://${DEV_PROXY_HOST}:8081`, ws: true },
       "/ws": { target: `ws://${DEV_PROXY_HOST}:8080`, ws: true },
     },

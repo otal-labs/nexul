@@ -275,6 +275,19 @@ func (s *Service) ListUsers(ctx context.Context, actorID string) ([]*User, error
 	return users, nil
 }
 
+// accountsByID indexes every account by id, so a listed overwrite can say whose it is.
+func (s *Service) accountsByID(ctx context.Context) (map[string]*User, error) {
+	users, err := s.users.ListUsers(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list users: %w", err)
+	}
+	byID := make(map[string]*User, len(users))
+	for _, u := range users {
+		byID[u.ID] = u
+	}
+	return byID, nil
+}
+
 // InstanceAdminID returns "" when no instance admin exists yet; used to resolve the MCP acting user.
 func (s *Service) InstanceAdminID(ctx context.Context) (string, error) {
 	users, err := s.users.ListUsers(ctx)

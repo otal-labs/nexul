@@ -12,6 +12,7 @@ do. The coding standards page on the docs site is a digest of them.
 | `react-guide.md` | Writing anything in `web/` | The Frontend Commandments, structure, hooks, state, data fetching, forms, the API and WebSocket layers, the canvas, styling, testing |
 | `typescript.md` | Writing anything in `sdk/`, `automations/`, or `desktop/` | Runtimes, strictness, the SDK's public surface, errors, testing, the Electron security rules |
 | `design-language.md` | Changing how anything in `web/` looks | The Mono Console token spec, type, shape, motion, and the list, filter, detail, empty, and stepper patterns |
+| `mcp.md` | Touching the MCP adapter, the tool contract, or any domain's `mcp.go` | Transport and security, the tool budget, naming, declaring tools, result and error shape, instructions, resources and prompts, testing |
 | `testing.md` | Writing or reviewing tests in any language | The coverage floor, the pyramid, what to test first, mocking, flaky tests, CI enforcement |
 | `borrowed-practices.md` | Any code | Cross-cutting rules: one-way doors, SQLite discipline, retries, async tests, the git workflow |
 

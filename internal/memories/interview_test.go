@@ -312,30 +312,3 @@ func TestInterviewHandlers(t *testing.T) {
 	rec = serve(t, h, http.MethodPut, "/api/memories/interview-template", `{`)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 }
-
-func TestInterviewMCPTools(t *testing.T) {
-	tools := MCPTools(newTestService(newFakeRepo()))
-
-	got, err := toolByName(t, tools, "memory_create_interview").Call(testCtx(), map[string]any{"project_id": "project-1"})
-	require.NoError(t, err)
-	m, ok := got.(*Memory)
-	require.True(t, ok)
-	assert.Contains(t, m.Body, "Stack and versions")
-	_, err = toolByName(t, tools, "memory_create_interview").Call(testCtx(), map[string]any{})
-	require.ErrorIs(t, err, apperrs.ErrInvalid)
-	_, err = toolByName(t, tools, "memory_create_interview").Call(testCtx(), map[string]any{"project_id": "nope"})
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-
-	_, err = toolByName(t, tools, "memory_update").Call(testCtx(), map[string]any{"id": m.ID, "title": "Interview", "body": strings.Repeat("a", MaxInterviewChars+1)})
-	require.ErrorIs(t, err, apperrs.ErrInvalid)
-
-	_, err = toolByName(t, tools, "interview_template_update").Call(testCtx(), map[string]any{"workspace_id": "workspace-1", "body": "## Mine"})
-	require.NoError(t, err)
-	_, err = toolByName(t, tools, "interview_template_update").Call(testCtx(), map[string]any{})
-	require.ErrorIs(t, err, apperrs.ErrInvalid)
-	tmpl, err := toolByName(t, tools, "interview_template_get").Call(testCtx(), map[string]any{"workspace_id": "workspace-1"})
-	require.NoError(t, err)
-	assert.Equal(t, "## Mine", tmpl.(*InterviewTemplate).Body)
-	_, err = toolByName(t, tools, "interview_template_get").Call(testCtx(), map[string]any{})
-	require.ErrorIs(t, err, apperrs.ErrInvalid)
-}

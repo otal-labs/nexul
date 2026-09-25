@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -195,6 +197,27 @@ func (s *Service) Get(ctx context.Context, id string) (*Ticket, error) {
 	t, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("get ticket %s: %w", id, err)
+	}
+	return t, nil
+}
+
+// ticketKey matches a ticket's human key, PREFIX-NUMBER (ADR 0004); a ticket id is a UUID and never matches.
+var ticketKey = regexp.MustCompile(`^([A-Za-z]{2,5})-([0-9]+)$`)
+
+// Resolve returns a ticket by its id or by its key, such as REF-102.
+func (s *Service) Resolve(ctx context.Context, idOrKey string) (*Ticket, error) {
+	idOrKey = strings.TrimSpace(idOrKey)
+	m := ticketKey.FindStringSubmatch(idOrKey)
+	if m == nil {
+		return s.Get(ctx, idOrKey)
+	}
+	number, err := strconv.Atoi(m[2])
+	if err != nil {
+		return nil, fmt.Errorf("%w: ticket key %s has an out-of-range number", apperrs.ErrInvalid, idOrKey)
+	}
+	t, err := s.repo.GetByPrefixAndNumber(ctx, strings.ToUpper(m[1]), number)
+	if err != nil {
+		return nil, fmt.Errorf("get ticket %s: %w", idOrKey, err)
 	}
 	return t, nil
 }

@@ -7,7 +7,7 @@
 
 ## What to build
 
-When a card enters a done-stage column, fire the built-in decisions check on the mover's paired computer, or the developer's when a merged PR moved it. It writes, supersedes, or skips a three-line decisions-log entry. If it cannot run, the ticket shows "Decisions check didn't run" with a retry. Add `git_get_change_context`: given a commit or PR number, return the PR, its tickets, their docs, bugs found after done, and citing decisions-log entries.
+When a card enters a done-stage column, fire the built-in decisions check on the mover's paired computer, or the developer's when a merged PR moved it. It writes, supersedes, or skips a three-line decisions-log entry. If it cannot run, the ticket shows "Decisions check didn't run" with a retry. Add `pull_request_get`: given a commit or PR number, return the PR, its tickets, their docs, bugs found after done, and citing decisions-log entries.
 
 ## Acceptance criteria
 

@@ -99,10 +99,11 @@ The HTTP routes are `/api/memories`, `/api/memories/{id}`,
 `/api/memories/{id}/versions`, `/api/memories/{id}/revert`,
 `/api/memories/{id}/clone`, `/api/memories/interview` (create or return a
 project's interview), and `/api/memories/interview-template`. MCP registers
-`memory_list`, `memory_get`, `memory_create`, `memory_update`,
-`memory_delete`, `memory_list_versions`, `memory_revert`, `memory_clone`,
-`memory_create_interview`, `interview_template_get`, and
-`interview_template_update`. A memory's `kind` is `interview` for the
+`memory_list`, `memory_get` (with `version` to read an older version),
+`memory_create` (with `clone_from_id` to copy a memory, or `kind`
+`interview` to create or return a project's interview), `memory_update`
+(with `revert_to_version` to restore one), `memory_delete`,
+`interview_template_get`, and `interview_template_update`. A memory's `kind` is `interview` for the
 interview memory, `decisions_log` for the decisions log, and empty otherwise;
 `memory.created` and `memory.updated` carry it, and saving the template
 publishes `interview_template.updated`. `memory_create` and

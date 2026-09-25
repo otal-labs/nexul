@@ -124,23 +124,3 @@ func TestTicketsHandler_Create_BugNeedsOrigin(t *testing.T) {
 	rec = serve(t, h, http.MethodPost, "/api/tickets", `{"title":"Crash","project_id":"p-1","type_id":"tt-bug","origin_unknown":true}`)
 	require.Equal(t, http.StatusCreated, rec.Code)
 }
-
-func TestMCPTools_TicketCreate_BugNeedsOrigin(t *testing.T) {
-	s, _, origin := newBugService(t)
-	call := toolByName(t, MCPTools(s), "ticket_create").Call
-
-	_, err := call(t.Context(), map[string]any{"project_id": "p-1", "title": "Crash", "type_id": "tt-bug"})
-	require.ErrorIs(t, err, apperrs.ErrInvalid)
-
-	got, err := call(t.Context(), map[string]any{"project_id": "p-1", "title": "Crash", "type_id": "tt-bug", "origin_id": origin.ID})
-	require.NoError(t, err)
-	links, err := s.Links(t.Context(), got.(*Ticket).ID)
-	require.NoError(t, err)
-	require.NotNil(t, links.FoundIn)
-
-	got, err = call(t.Context(), map[string]any{"project_id": "p-1", "title": "Crash", "type_id": "tt-bug", "origin_unknown": true})
-	require.NoError(t, err)
-	links, err = s.Links(t.Context(), got.(*Ticket).ID)
-	require.NoError(t, err)
-	assert.True(t, links.OriginUnknown)
-}

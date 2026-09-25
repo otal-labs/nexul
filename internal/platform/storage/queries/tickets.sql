@@ -5,8 +5,9 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 -- name: GetTicket :one
 SELECT * FROM tickets WHERE id = ?;
 
--- name: GetTicketByPrefixAndNumber :one
-SELECT tickets.* FROM tickets JOIN projects ON tickets.project_id = projects.id WHERE projects.prefix = ? AND tickets.number = ?;
+-- name: GetTicketByPrefixAndNumber :many
+-- Two rows mean the key is ambiguous: prefixes are unique per workspace, and a moved ticket keeps its number.
+SELECT tickets.* FROM tickets JOIN projects ON tickets.project_id = projects.id WHERE projects.prefix = ? AND tickets.number = ? LIMIT 2;
 
 -- name: ListTickets :many
 SELECT * FROM tickets ORDER BY created_at;

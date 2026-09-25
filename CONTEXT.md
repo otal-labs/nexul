@@ -450,8 +450,8 @@ PRs, webhooks.
 **Integrations** — the platform for external services: scoped tokens, signed
 webhooks, the store.
 
-**MCP** — the Model Context Protocol adapter, one tool per use-case, so LLM
-agents can drive the product.
+**MCP** — the Model Context Protocol adapter, tools shaped per task over the
+use-case layer, so LLM agents can drive the product.
 
 **Memories** — the Memory entity: its table, page, permission verbs, and MCP
 tools. Never shares a list, a page, or search with Docs.

@@ -19,7 +19,8 @@ const decisionsCheckLabel = "Decisions check"
 
 const decisionsCheckInstructions = "This ticket just reached done. Decide whether it changed how the project works: a new pattern, " +
 	"a library added or dropped, a rule or an earlier decision reversed. Routine work that follows the existing patterns " +
-	"changes nothing. Read the ticket with `ticket_get`, its pull requests with `ticket_get_links` and `git_get_pr`, and " +
+	"changes nothing. Read the ticket and its linked pull requests with `ticket_get`, each pull request with " +
+	"`pull_request_get`, and " +
 	"the project's decisions log, the memory of kind `decisions_log` in your memory index, with `memory_get`. If nothing " +
 	"changed, reply \"No decision recorded\" with one line on why, and write nothing. Otherwise add one entry of at most " +
 	"three lines as its own paragraph at the end of the log: `<YYYY-MM-DD> — <the decision in one line>`, then " +
@@ -182,4 +183,9 @@ func (r *Runner) decisionsStarter(ctx context.Context, m ticketMove) (string, er
 		return "", fmt.Errorf("resolve developer %s: %w", m.Ticket.Developer, err)
 	}
 	return id, nil
+}
+
+// DefaultInstructions returns every built-in instruction text, the seeded plays' and the decisions check's; they name MCP tools.
+func DefaultInstructions() []string {
+	return []string{fixWithAIInstructions, toTicketsInstructions, interviewInstructions, testWithAIInstructions, decisionsCheckInstructions}
 }

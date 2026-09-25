@@ -2,6 +2,8 @@ package storage
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -92,8 +94,12 @@ func TestAuthIntegration_OwnerBootstrapAndAdmission(t *testing.T) {
 
 		conn, err := svc.GenerateConnectionToken(ctx, userID)
 		require.NoError(t, err)
-		claims, err := svc.ParseConnectionToken(conn.Token)
+		parts := strings.Split(conn.Token, ".")
+		require.Len(t, parts, 3)
+		payload, err := base64.RawURLEncoding.DecodeString(parts[1])
 		require.NoError(t, err)
+		var claims auth.ConnectionTokenClaims
+		require.NoError(t, json.Unmarshal(payload, &claims))
 		assert.Equal(t, "https://deploy.example.com", claims.InstanceURL)
 	})
 

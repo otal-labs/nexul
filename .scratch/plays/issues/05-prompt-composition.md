@@ -22,9 +22,9 @@ instructions, and its request is not a human message.
    and chat mentions, so the incremental prompt path applies. Confirm a play
    run uses it too rather than always opening a fresh session.
 4. Tools the two seeded plays rely on and which exist: `ticket_create`,
-   `ticket_link_branch`, `ticket_link_pr`, `ticket_update_status`, doc
+   `ticket_update`, doc
    reading. "To tickets via AI" needs to know the doc's project and the
-   board's columns: are `status_list` and a project lookup enough?
+   board's columns: are `project_get` and a project lookup enough?
 5. Draft the seeded instructions for "Fix with AI" and "To tickets via AI"
    and put them to the owner, including what "Fix with AI" says about
    merging when a selected memory (the owner's "merge-this" idea) permits

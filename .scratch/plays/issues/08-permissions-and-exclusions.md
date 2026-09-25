@@ -29,7 +29,7 @@
 6. Doc threads carry no permission of their own (ticket 04): the chat
    use-case checks the doc's read bit for `doc_thread` conversations the
    way it checks whatever it checks for ticket threads today. Confirm the
-   ticket-thread precedent and that MCP `chat_list_messages` honours it.
+   ticket-thread precedent and that MCP `message_list` honours it.
 7. A run acts with the starter's permissions on the harness. If the play's
    move-to needs `tickets:write` and the starter lacks it, is the button
    disabled up front, or does the run succeed and the move fail with a note?

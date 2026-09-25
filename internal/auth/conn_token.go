@@ -1,15 +1,11 @@
 package auth
 
 import (
-	"crypto/hmac"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/url"
-	"strings"
 	"time"
-
-	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 )
 
 // connectionTokenTTL bounds a token's lifetime; not secret, but expiring it forces a re-import eventually.
@@ -31,29 +27,6 @@ func (s *Service) signConnectionToken(st Settings) (string, error) {
 	}
 	enc := header + "." + base64.RawURLEncoding.EncodeToString(payload)
 	return enc + "." + s.mac(enc), nil
-}
-
-// ParseConnectionToken validates a token's signature and expiry and returns its claims, mirroring Verify's mechanism.
-func (s *Service) ParseConnectionToken(token string) (ConnectionTokenClaims, error) {
-	parts := strings.Split(token, ".")
-	if len(parts) != 3 {
-		return ConnectionTokenClaims{}, apperrs.ErrUnauthorized
-	}
-	if !hmac.Equal([]byte(parts[2]), []byte(s.mac(parts[0]+"."+parts[1]))) {
-		return ConnectionTokenClaims{}, apperrs.ErrUnauthorized
-	}
-	dec, err := base64.RawURLEncoding.DecodeString(parts[1])
-	if err != nil {
-		return ConnectionTokenClaims{}, apperrs.ErrUnauthorized
-	}
-	var c ConnectionTokenClaims
-	if err := json.Unmarshal(dec, &c); err != nil {
-		return ConnectionTokenClaims{}, apperrs.ErrUnauthorized
-	}
-	if c.InstanceURL == "" || s.cfg.Now().Unix() >= c.Exp {
-		return ConnectionTokenClaims{}, apperrs.ErrUnauthorized
-	}
-	return c, nil
 }
 
 // mcpURLFor derives the MCP endpoint from the instance URL: the same origin at /mcp, which the main HTTP

@@ -84,6 +84,7 @@ func TestRequireAuth_Rejections(t *testing.T) {
 			rec := httptest.NewRecorder()
 			h.ServeHTTP(rec, req)
 			assert.Equal(t, tt.want, rec.Code)
+			assert.Equal(t, `Bearer realm="nexul"`, rec.Header().Get("WWW-Authenticate"), "RFC 6750 challenge on every 401")
 		})
 	}
 }

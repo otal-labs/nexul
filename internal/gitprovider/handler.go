@@ -1,6 +1,7 @@
 package gitprovider
 
 import (
+	"cmp"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -40,7 +41,7 @@ func (h *Handler) Routes() http.Handler {
 
 func (h *Handler) listPRs(w http.ResponseWriter, r *http.Request) {
 	prs, err := ListPRs(r.Context(), h.p, r.PathValue("owner"), r.PathValue("repo"), PROpts{
-		State: strArg(r.URL.Query().Get("state"), "open"),
+		State: cmp.Or(r.URL.Query().Get("state"), "open"),
 	})
 	if err != nil {
 		httpx.WriteError(w, err)

@@ -3,8 +3,12 @@ package deploy
 import (
 	"context"
 	"encoding/json"
+	"slices"
 	"sync"
+	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
@@ -25,6 +29,11 @@ type fakeRepo struct {
 
 func newFakeRepo() *fakeRepo {
 	return &fakeRepo{stored: map[string]*Deploy{}, logs: map[string][]LogLine{}}
+}
+
+func seedDeploy(t *testing.T, repo *fakeRepo, d *Deploy) {
+	t.Helper()
+	require.NoError(t, repo.Create(t.Context(), d))
 }
 
 func (f *fakeRepo) Create(_ context.Context, d *Deploy, evts ...eventbus.OutboxEvent) error {
@@ -86,6 +95,7 @@ func (f *fakeRepo) List(_ context.Context) ([]*Deploy, error) {
 	for _, d := range f.stored {
 		out = append(out, d)
 	}
+	slices.SortFunc(out, func(a, b *Deploy) int { return a.CreatedAt.Compare(b.CreatedAt) })
 	return out, nil
 }
 

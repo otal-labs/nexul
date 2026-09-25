@@ -1,150 +1,146 @@
 package access
 
 import (
-	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
-func mcpToolByName(t *testing.T, tools []mcptool.Tool, name string) mcptool.Tool {
+// newGrantsHarness gives "owner" the manage bit on doc-1 and play-1, and nothing to "alice".
+func newGrantsHarness(t *testing.T) (*Service, *fakeRepo) {
 	t.Helper()
-	for _, tool := range tools {
+	svc, repo, _ := newAccessHarness()
+	setOverwrite(repo, resourceTypeDoc, "doc-1", "owner", permissions.SetOf(permissions.PermissionsWrite))
+	setOverwrite(repo, resourceTypePlay, "play-1", "owner", permissions.SetOf(permissions.PlaysWrite))
+	return svc, repo
+}
+
+func callGrantTool(t *testing.T, svc *Service, actor, name, args string) (any, error) {
+	t.Helper()
+	ctx := identity.WithActor(t.Context(), identity.Actor{ID: actor})
+	for _, tool := range MCPTools(svc) {
 		if tool.Name == name {
-			return tool
+			return tool.Call(ctx, json.RawMessage(args))
 		}
 	}
-	t.Fatalf("tool %s not found", name)
-	return mcptool.Tool{}
+	t.Fatalf("tool %s not registered", name)
+	return nil, nil
 }
 
-func TestMCPTools_Shape(t *testing.T) {
-	tools := MCPTools(newService(newFakeRepo(), newFakeUsers()))
-	require.Len(t, tools, 2)
+func TestGrantTools_Surface(t *testing.T) {
+	t.Parallel()
+	svc, _ := newGrantsHarness(t)
 	var names []string
-	for _, tool := range tools {
+	for _, tool := range MCPTools(svc) {
 		names = append(names, tool.Name)
-		assert.NotEmpty(t, tool.Description)
-		assert.NotNil(t, tool.InputSchema)
-		assert.NotNil(t, tool.Call)
+		assert.NotEmpty(t, tool.Title)
 	}
-	assert.ElementsMatch(t, []string{"access_list_grants", "access_set_grants"}, names)
+	assert.Equal(t, []string{"permission_overwrite_list", "permission_overwrite_update"}, names)
 }
 
-func TestMCPTools_ListGrants(t *testing.T) {
-	// Ticket 11: no instance-wide bypass — "owner" proves access through a real permissions:write overwrite on doc-1, same as the HTTP handler tests.
-	svc, repo, _ := newAccessHarness()
-	setOverwrite(repo, resourceTypeDoc, "doc-1", "owner", permissions.SetOf(permissions.PermissionsWrite))
+func TestGrantTools_ErrorPaths(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name    string
+		actor   string
+		tool    string
+		args    string
+		wantErr error
+	}{
+		{"list by the dropped doc_id alias", "owner", "permission_overwrite_list", `{"doc_id": "doc-1"}`, apperrs.ErrInvalid},
+		{"list without a resource type", "owner", "permission_overwrite_list", `{"resource_id": "doc-1"}`, apperrs.ErrInvalid},
+		{"list an unknown resource type", "owner", "permission_overwrite_list", `{"resource_type": "ticket", "resource_id": "t-1"}`, apperrs.ErrInvalid},
+		{"update by the dropped doc_ids alias", "owner", "permission_overwrite_update", `{"resource_type": "doc", "doc_ids": ["doc-1"], "resource_ids": ["doc-1"], "user_ids": ["alice"], "actions": ["docs:read"], "grant": true}`, apperrs.ErrInvalid},
+		{"update without grant", "owner", "permission_overwrite_update", `{"resource_type": "doc", "resource_ids": ["doc-1"], "user_ids": ["alice"], "actions": ["docs:read"]}`, apperrs.ErrInvalid},
+		{"update with an unknown action", "owner", "permission_overwrite_update", `{"resource_type": "doc", "resource_ids": ["doc-1"], "user_ids": ["alice"], "actions": ["comment"], "grant": true}`, apperrs.ErrInvalid},
+		{"update with no resources", "owner", "permission_overwrite_update", `{"resource_type": "doc", "resource_ids": [], "user_ids": ["alice"], "actions": ["docs:read"], "grant": true}`, apperrs.ErrInvalid},
+		{"update a play with a docs action", "owner", "permission_overwrite_update", `{"resource_type": "play", "resource_ids": ["play-1"], "user_ids": ["alice"], "actions": ["docs:read"], "grant": false}`, apperrs.ErrInvalid},
+		{"update an unknown resource type", "owner", "permission_overwrite_update", `{"resource_type": "ticket", "resource_ids": ["t-1"], "user_ids": ["alice"], "actions": ["docs:read"], "grant": true}`, apperrs.ErrInvalid},
+		{"list a doc without the manage bit", "alice", "permission_overwrite_list", `{"resource_type": "doc", "resource_id": "doc-1"}`, apperrs.ErrForbidden},
+		{"update an unknown doc", "owner", "permission_overwrite_update", `{"resource_type": "doc", "resource_ids": ["doc-1", "nope"], "user_ids": ["alice"], "actions": ["docs:read"], "grant": true}`, apperrs.ErrForbidden},
+		{"update a play without plays:write", "alice", "permission_overwrite_update", `{"resource_type": "play", "resource_ids": ["play-1"], "user_ids": ["owner"], "actions": ["plays:run"], "grant": false}`, apperrs.ErrForbidden},
+		{"update without a caller", "", "permission_overwrite_update", `{"resource_type": "doc", "resource_ids": ["doc-1"], "user_ids": ["alice"], "actions": ["docs:read"], "grant": true}`, apperrs.ErrUnauthorized},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			svc, repo := newGrantsHarness(t)
+			_, err := callGrantTool(t, svc, tt.actor, tt.tool, tt.args)
+			require.ErrorIs(t, err, tt.wantErr)
+			_, err = repo.Get(t.Context(), resourceTypeDoc, "doc-1", "alice")
+			require.ErrorIs(t, err, apperrs.ErrNotFound, "a refused call grants nothing")
+		})
+	}
+}
+
+func TestGrantUpdate_OnlyTheNamedActionsChange(t *testing.T) {
+	t.Parallel()
+	svc, repo := newGrantsHarness(t)
+	update := func(actions string, grant bool) {
+		t.Helper()
+		args := fmt.Sprintf(`{"resource_type": "doc", "resource_ids": ["doc-1"], "user_ids": ["alice"], "actions": %s, "grant": %t}`, actions, grant)
+		_, err := callGrantTool(t, svc, "owner", "permission_overwrite_update", args)
+		require.NoError(t, err)
+	}
+
+	update(`["docs:read", "docs:write"]`, true)
+	update(`["docs:delete"]`, true)
+	g, err := repo.Get(t.Context(), resourceTypeDoc, "doc-1", "alice")
+	require.NoError(t, err)
+	assert.Equal(t, permissions.SetOf(permissions.DocsRead, permissions.DocsWrite, permissions.DocsDelete), g.Allow, "a later grant keeps the earlier ones")
+
+	update(`["docs:write"]`, false)
+	g, err = repo.Get(t.Context(), resourceTypeDoc, "doc-1", "alice")
+	require.NoError(t, err)
+	assert.Equal(t, permissions.SetOf(permissions.DocsRead, permissions.DocsDelete), g.Allow, "revoking one action keeps the rest")
+}
+
+func TestGrantList_ShowsEachUsersOverwrite(t *testing.T) {
+	t.Parallel()
+	svc, repo := newGrantsHarness(t)
 	setOverwrite(repo, resourceTypeDoc, "doc-1", "alice", permissions.SetOf(permissions.DocsRead))
-	call := mcpToolByName(t, MCPTools(svc), "access_list_grants").Call
-	ctx := identity.WithActor(context.Background(), identity.Actor{ID: "owner", CanCreateWorkspace: true})
 
-	t.Run("returns grants", func(t *testing.T) {
-		got, err := call(ctx, map[string]any{"doc_id": "doc-1"})
-		require.NoError(t, err)
-		grants := got.([]*Overwrite)
-		require.Len(t, grants, 2)
-	})
-	t.Run("missing doc_id is invalid", func(t *testing.T) {
-		_, err := call(ctx, map[string]any{})
-		require.Error(t, err)
-	})
+	got, err := callGrantTool(t, svc, "owner", "permission_overwrite_list", `{"resource_type": "doc", "resource_id": "doc-1"}`)
+	require.NoError(t, err)
+	page := got.(mcptool.Page[grantResult])
+	assert.ElementsMatch(t, []grantResult{
+		{UserID: "owner", Login: "owner", Allow: permissions.SetOf(permissions.PermissionsWrite)},
+		{UserID: "alice", Login: "alice", Allow: permissions.SetOf(permissions.DocsRead)},
+	}, page.Items)
 }
 
-func TestMCPTools_SetGrants(t *testing.T) {
-	svc, repo, _ := newAccessHarness()
+func TestGrantList_AccountLookupFails_ReturnsTheError(t *testing.T) {
+	t.Parallel()
+	svc, repo, users := newAccessHarness()
 	setOverwrite(repo, resourceTypeDoc, "doc-1", "owner", permissions.SetOf(permissions.PermissionsWrite))
-	call := mcpToolByName(t, MCPTools(svc), "access_set_grants").Call
-	ctx := identity.WithActor(context.Background(), identity.Actor{ID: "owner", CanCreateWorkspace: true})
+	boom := errors.New("users unavailable")
+	users.listErr = boom
 
-	t.Run("applies grants", func(t *testing.T) {
-		_, err := call(ctx, map[string]any{
-			"doc_ids":  []any{"doc-1"},
-			"user_ids": []any{"alice"},
-			"actions":  []any{"docs:read", "docs:write"},
-			"grant":    true,
-		})
-		require.NoError(t, err)
-		g, err := repo.Get(context.Background(), resourceTypeDoc, "doc-1", "alice")
-		require.NoError(t, err)
-		assert.Equal(t, permissions.SetOf(permissions.DocsRead, permissions.DocsWrite), g.Allow)
-	})
-	t.Run("unknown action is invalid", func(t *testing.T) {
-		_, err := call(ctx, map[string]any{
-			"doc_ids":  []any{"doc-1"},
-			"user_ids": []any{"alice"},
-			"actions":  []any{"comment"},
-			"grant":    true,
-		})
-		require.Error(t, err)
-	})
-	t.Run("missing arrays are invalid", func(t *testing.T) {
-		_, err := call(ctx, map[string]any{"doc_ids": []any{}, "user_ids": []any{"alice"}, "actions": []any{"docs:read"}, "grant": true})
-		require.Error(t, err)
-	})
-	t.Run("non-actor ctx is denied", func(t *testing.T) {
-		_, err := call(context.Background(), map[string]any{
-			"doc_ids":  []any{"doc-1"},
-			"user_ids": []any{"alice"},
-			"actions":  []any{"docs:read"},
-			"grant":    true,
-		})
-		require.Error(t, err)
-	})
+	_, err := callGrantTool(t, svc, "owner", "permission_overwrite_list", `{"resource_type": "doc", "resource_id": "doc-1"}`)
+	require.ErrorIs(t, err, boom)
 }
 
-func TestMCPTools_SetGrants_Play(t *testing.T) {
-	svc, repo, _ := newAccessHarness()
-	setOverwrite(repo, resourceTypePlay, "play-1", "owner", permissions.SetOf(permissions.PlaysWrite))
-	call := mcpToolByName(t, MCPTools(svc), "access_set_grants").Call
-	ctx := identity.WithActor(context.Background(), identity.Actor{ID: "owner"})
+func TestGrantTools_PlayExclusion(t *testing.T) {
+	t.Parallel()
+	svc, repo := newGrantsHarness(t)
+	exclude := `{"resource_type": "play", "resource_ids": ["play-1"], "user_ids": ["alice"], "actions": ["plays:run"], "grant": false}`
 
-	t.Run("denies a user's plays:run", func(t *testing.T) {
-		_, err := call(ctx, map[string]any{
-			"resource_type": "play",
-			"resource_ids":  []any{"play-1"},
-			"user_ids":      []any{"alice"},
-			"actions":       []any{"plays:run"},
-			"grant":         false,
-		})
-		require.NoError(t, err)
-		g, err := repo.Get(context.Background(), resourceTypePlay, "play-1", "alice")
-		require.NoError(t, err)
-		assert.Equal(t, permissions.SetOf(permissions.PlaysRun), g.Deny)
-	})
-	t.Run("missing resource_ids is invalid", func(t *testing.T) {
-		_, err := call(ctx, map[string]any{
-			"resource_type": "play",
-			"user_ids":      []any{"alice"},
-			"actions":       []any{"plays:run"},
-			"grant":         false,
-		})
-		require.Error(t, err)
-	})
-}
+	_, err := callGrantTool(t, svc, "owner", "permission_overwrite_update", exclude)
+	require.NoError(t, err)
+	g, err := repo.Get(t.Context(), resourceTypePlay, "play-1", "alice")
+	require.NoError(t, err)
+	assert.Equal(t, permissions.SetOf(permissions.PlaysRun), g.Deny)
 
-func TestMCPTools_ListGrants_Play(t *testing.T) {
-	svc, repo, _ := newAccessHarness()
-	setOverwrite(repo, resourceTypePlay, "play-1", "owner", permissions.SetOf(permissions.PlaysWrite))
-	require.NoError(t, repo.Set(context.Background(), resourceTypePlay, "play-1", "alice", nil, permissions.SetOf(permissions.PlaysRun)))
-	call := mcpToolByName(t, MCPTools(svc), "access_list_grants").Call
-	ctx := identity.WithActor(context.Background(), identity.Actor{ID: "owner"})
-
-	t.Run("returns the play's exclusions", func(t *testing.T) {
-		got, err := call(ctx, map[string]any{"resource_type": "play", "resource_id": "play-1"})
-		require.NoError(t, err)
-		grants := got.([]*Overwrite)
-		require.Len(t, grants, 2)
-		ids := []string{grants[0].UserID, grants[1].UserID}
-		assert.ElementsMatch(t, []string{"owner", "alice"}, ids)
-	})
-	t.Run("missing resource_id is invalid", func(t *testing.T) {
-		_, err := call(ctx, map[string]any{"resource_type": "play"})
-		require.Error(t, err)
-	})
+	got, err := callGrantTool(t, svc, "owner", "permission_overwrite_list", `{"resource_type": "play", "resource_id": "play-1"}`)
+	require.NoError(t, err)
+	assert.Contains(t, got.(mcptool.Page[grantResult]).Items, grantResult{UserID: "alice", Login: "alice", Deny: permissions.SetOf(permissions.PlaysRun)})
 }

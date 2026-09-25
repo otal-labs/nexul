@@ -11,53 +11,55 @@ user whose token authenticates the connection.
 
 ## What it exposes
 
-**Tools** — one per use-case, grouped by domain:
+**Tools** — 97 of them, each covering one task an agent does rather than one
+button, named `<object>_<verb>`. Updates are patches: send only the fields
+you mean to change, and omitted ones keep their values. Lists take `limit`
+and `offset` and return `items`, `total`, `has_more`, and `next_offset`.
 
-| Domain | Tools |
+| Area | Tools |
 |---|---|
-| Docs | `doc_create`, `doc_get`, `doc_search`, `doc_update`, `doc_archive`, `doc_restore` |
-| Tickets | `ticket_create`, `ticket_get`, `ticket_update`, `ticket_update_status`, `ticket_set_type`, `ticket_set_developer`, `ticket_set_tester`, `ticket_add_label`, `ticket_remove_label`, `ticket_list_labels`, `ticket_list_all_labels`, `ticket_set_label_color`, `ticket_label_colors`, `ticket_search`, `ticket_link_pr`, `ticket_link_branch`, `ticket_get_links`, `ticket_get_ticket_links`, `ticket_set_found_in`, `ticket_remove_found_in`, `ticket_add_blocker`, `ticket_remove_blocker`, `ticket_list_blocked`, `ticket_get_test_target`, `ticket_test_pass`, `ticket_test_fail` |
-| Projects and board | `project_create`, `project_get`, `project_list`, `project_rename`, `project_delete`, `project_reorder`, `project_delete_impact`, `project_add_repo`, `project_remove_repo`, `project_list_repos`, `project_set_tests_location`, `project_move_ticket`, `category_create`, `category_get`, `category_list`, `category_rename`, `category_delete`, `category_reorder`, `category_move_ticket`, `category_clear_ticket`, `ticket_type_create`, `ticket_type_list`, `ticket_type_rename`, `ticket_type_set_template`, `ticket_type_delete`, `status_create`, `status_list`, `status_rename`, `status_reorder`, `status_delete` |
-| Deploys and stacks | `deploy_get`, `deploy_log`, `deploy_list`, `deploy_list_by_service`, `deploy_list_by_status`, `deploy_cancel`, `service_list`, `machine_import`, `stack_create`, `stack_deploy`, `stack_get`, `stack_list`, `stack_update`, `stack_delete`, `stack_rollback` |
-| Repositories, runners, and machines | `repository_list`, `repository_scan`, `runner_list`, `runner_queue`, `machine_list`, `machine_discover`, `instance_upgrade_status`, `instance_upgrade` |
-| DNS and gateways | `dns_verify_credentials`, `dns_list_zones`, `dns_list_records`, `dns_create_record`, `dns_update_record`, `dns_delete_record`, `dns_check_propagation`, `dns_list_service_hostnames`, `dns_get_service_hostname`, `dns_set_service_hostname`, `dns_remove_service_hostname`, `dns_tunnel_create`, `dns_tunnel_list`, `dns_tunnel_get`, `dns_tunnel_route`, `dns_tunnel_rotate`, `dns_tunnel_delete`, `dns_tunnel_provision_agent`, `dns_provision_reverse_proxy`, `dns_gateway_create`, `dns_gateway_list`, `dns_gateway_delete`, `exposure_create`, `dns_exposure_list`, `exposure_delete` |
-| Topology | `topology_get`, `topology_add_node`, `topology_remove_node`, `topology_add_edge`, `topology_remove_edge` |
-| Git and code review | `git_list_prs`, `git_get_pr`, `git_get_change_context`, `review_list_by_ticket`, `review_get` |
-| Chat and mentions | `chat_list_conversations`, `chat_list_messages`, `doc_thread_get`, `interview_thread_get`, `chat_post_message`, `mention_search`, `mention_resolve` |
-| Automations | `automation_create`, `automation_list`, `automation_get`, `automation_update_config`, `automation_set_enabled`, `automation_delete`, `automation_mint_token`, `automation_revoke_token` |
-| Notifications | `notification_list`, `notification_mark_read`, `notification_mark_all_read` |
-| Access | `access_list_grants`, `access_set_grants` |
-| Invitations | `invitation_create`, `invitation_list`, `invitation_revoke` |
-| Accounts | `account_whoami`, `account_list`, `account_disable`, `account_reactivate`, `account_remove`, `account_restore` |
-| Computer pairing | `computer_tunnel_create`, `computer_tunnel_status_get`, `computer_tunnel_token_get`, `computer_pair` |
-| Computer setup | `computer_setup_start`, `computer_setup_retry_provider`, `computer_setup_get`, `computer_setup_confirm_provider`, `computer_setup_unconfirm_provider`, `computer_setup_confirm`, `computer_setup_unconfirm` |
-| Computer MCP tokens | `computer_mcp_token_get`, `computer_mcp_token_mint`, `computer_mcp_token_revoke` |
-| Plays | `play_list`, `play_create`, `play_update`, `play_delete`, `play_run`, `play_run_get`, `play_run_stop`, `play_run_answer`, `play_list_runs`, `decisions_check_run` |
-| Memories | `memory_list`, `memory_get`, `memory_create`, `memory_update`, `memory_delete`, `memory_list_versions`, `memory_revert`, `memory_clone`, `memory_create_interview`, `interview_template_get`, `interview_template_update` |
-| Dead letters | `dead_letter_list`, `dead_letter_replay` |
+| Workspaces and projects | `workspace_list`, `project_list`, `project_get`, `project_create`, `project_update`, `project_delete` |
+| Tickets | `ticket_list`, `ticket_get`, `ticket_create`, `ticket_update`, `ticket_delete`, `ticket_test_report` |
+| Docs | `doc_list`, `doc_get`, `doc_create`, `doc_update` |
+| Memories | `memory_list`, `memory_get`, `memory_create`, `memory_update`, `memory_delete`, `interview_template_get`, `interview_template_update` |
+| Chat and notifications | `conversation_list`, `message_list`, `message_post`, `mention_search`, `notification_list`, `notification_update` |
+| Stacks and deploys | `stack_list`, `stack_get`, `stack_create`, `stack_update`, `stack_delete`, `stack_deploy`, `deploy_list`, `deploy_get`, `deploy_cancel` |
+| Machines and the instance | `machine_list`, `machine_discover`, `machine_import`, `instance_get`, `instance_upgrade` |
+| DNS and routing | `dns_zone_list`, `dns_record_list`, `dns_record_create`, `dns_record_update`, `dns_record_delete`, `dns_tunnel_list`, `dns_tunnel_create`, `dns_tunnel_update`, `dns_tunnel_delete`, `gateway_list`, `gateway_create`, `gateway_delete`, `exposure_list`, `exposure_create`, `exposure_delete` |
+| Topology | `topology_get`, `topology_update` |
+| Repositories and pull requests | `repository_list`, `repository_scan`, `pull_request_list`, `pull_request_get` |
+| Plays | `play_list`, `play_create`, `play_update`, `play_delete`, `play_run`, `trail_list`, `trail_update`, `decisions_check_run` |
+| Automations | `automation_list`, `automation_create`, `automation_update`, `automation_delete`, `automation_token_create` |
+| Paired computers | `computer_list`, `computer_create`, `computer_pair`, `computer_delete`, `computer_tunnel_token_get`, `computer_setup_run`, `computer_setup_update`, `computer_mcp_token_create`, `computer_mcp_token_delete` |
+| Accounts and access | `account_get`, `account_list`, `account_update`, `account_delete`, `invitation_create`, `invitation_list`, `invitation_delete`, `permission_overwrite_list`, `permission_overwrite_update` |
+| Failed events | `dead_letter_list`, `dead_letter_replay` |
 
-The workflow prompts are not tools. They template common sequences and are
-listed separately below. Deploys and rollbacks started through MCP are
-attributed to the token's user, with the source suffixed `:mcp`.
+Every tool carries hints a client uses to decide what to confirm: the reads
+are marked read-only, and deletes and anything that starts work are marked
+destructive. A tool's failure comes back as an error result the agent can
+read and act on, with the fields it needs to fix the call. Deploys,
+rollbacks, and other work started through MCP are attributed to the token's
+user, with the source suffixed `:mcp`. Instance upgrades and failed events
+are for instance admins only, as they are in the web app.
 
-`computer_pair` takes the one-time token `t3 pair` prints. With `computer_id`
-it pairs a computer tunnel over its hostname, once `computer_tunnel_status_get`
-reports both checks passing. With `name` and `server_url` instead, it pairs a
+`computer_pair` takes the one-time token `t3 pair` prints. With `id` it pairs
+a computer tunnel over its hostname, once `computer_list` with that id reports
+both tunnel checks passing. With `name` and `server_url` instead, it pairs a
 machine the server can already reach by URL.
 
-`computer_setup_start` runs the same setup turns as the **Set up** step of the
-pairing dialog and returns at once; `computer_setup_retry_provider` runs one
-provider's turn again. `computer_setup_start` takes an optional `models` object
-mapping a provider's driver kind to a model slug, and
-`computer_setup_retry_provider` an optional `model`; a provider without one
-runs on its own default. Progress arrives as `computer.setup_turn_changed` and
-`computer.setup_finished` events. The confirmations themselves are still made
-only by the agent in each turn, through the confirm tools.
+`computer_setup_run` runs the same setup turns as the **Set up** step of the
+pairing dialog and returns at once. It takes an optional `models` object
+mapping a provider's driver kind to a model slug; with `provider` it runs
+that one provider's turn again, on an optional `model`. A provider without a
+model runs on its own default. Progress arrives as
+`computer.setup_turn_changed` and `computer.setup_finished` events. The
+confirmations themselves are made only by the agent in each turn, through
+`computer_setup_update`.
 
-`git_get_change_context` answers "why does this code exist". Give it the
-repository and a pull request number, or a commit SHA from `git blame`, and it
-returns the pull request, the tickets linked to it, each ticket's doc and the
-bugs found in it after it was done, and the decisions-log entries citing those
+`pull_request_get` answers "why does this code exist". Give it the repository
+and a pull request number, or a commit SHA from `git blame`, and it returns
+the pull request, the tickets linked to it, each ticket's doc and the bugs
+found in it after it was done, and the decisions-log entries citing those
 tickets. The same walk is `GET /api/repos/{owner}/{repo}/change-context` with
 `?pr=` or `?commit=`.
 
@@ -68,23 +70,29 @@ didn't run, on the caller's own paired computer.
 `origin_id`, the ticket it was found in, or `origin_unknown` set to true, the
 same rule the web app applies.
 
-`ticket_get_test_target` returns where to test a ticket: the preview of a
-branch linked to it, else a shared test environment that may include other
-changes. It never returns production, meaning the default branch's
-deployment or any branch deployment on production's network with nothing
-overridden; an empty `url` means no safe environment exists yet.
-`ticket_test_pass` moves the ticket to the first done-stage column, makes the
-caller its tester only when none is assigned, and posts "Passed by Nexul · for
-<login>", with the test URL, to the ticket's thread. `ticket_test_fail` posts
-the steps, expected result, actual result, and screenshot attachment ids to
-the ticket's thread under "Test failed by Nexul · for <login>" and moves it
-back to the first progress-stage column; it refuses a done ticket, which takes
-a new bug found in it instead. Both record the move as made by `user:mcp`. The
-Pass and Fail buttons sign with the person's own login instead.
+`ticket_get` includes the ticket's `test_target`: the preview of a branch
+linked to it, else a shared test environment that may include other changes.
+It never points at production, meaning the default branch's deployment or any
+branch deployment on production's network with nothing overridden; an empty
+`url` means no safe environment exists yet. `ticket_test_report` with
+`outcome` `pass` moves the ticket to the first done-stage column, makes the
+caller its tester only when none is assigned, and posts "Passed by Nexul ·
+for <login>", with the test URL, to the ticket's thread. With `outcome`
+`fail` it posts the steps, expected result, actual result, and screenshot
+attachment ids to the ticket's thread under "Test failed by Nexul · for
+<login>" and moves it back to the first progress-stage column; it refuses a
+done ticket, which takes a new bug found in it instead. Both record the move
+as made by `user:mcp`. The Pass and Fail buttons sign with the person's own
+login instead.
 
-**Resources** expose readable entities by URI: `docs://{id}`, `tickets://{id}`, and `topology://current`.
+**Resources** expose readable entities by URI, for attaching one to a
+conversation: `docs://{id}`, `tickets://{id}`, and `topology://current`.
 
-**Prompts** template common workflows: `create_ticket_from_doc`, `deploy_stack` (deploy and watch until healthy or failed), `investigate_failure`, and `ship_repository` (list repositories, scan one, create a stack, deploy it, and expose it — the wizard's own steps, callable end to end).
+**Prompts** template common workflows: `create_ticket_from_doc`,
+`deploy_and_watch_stack` (deploy and watch until healthy or failed),
+`investigate_failure`, and `ship_repository` (list repositories, scan one,
+create a stack, deploy it, and expose it — the wizard's own steps, callable
+end to end).
 
 ## Connecting
 
@@ -160,4 +168,10 @@ http_headers = { Authorization = "Bearer dep_your_token_here" }
 
 ## Protocol revisions
 
-The server speaks two MCP protocol revisions side by side: **2026-07-28** (the stateless revision) and **2025-03-26**. Which one a request gets is decided per-request by the `_meta["io.modelcontextprotocol/protocolVersion"]` field; omitting `_meta` gets you the legacy 2025-03-26 behavior. The server has been stateless from the start — no session store, no held-open streams — so nothing had to be removed to support the newer revision. `initialize`, `notifications/initialized`, and `ping` are kept around for as long as clients still rely on them.
+The server runs on the official MCP Go SDK and speaks the **2026-07-28**
+revision statelessly, per request, alongside the earlier revisions that open
+with an `initialize` handshake (2025-11-25 back to 2024-11-05), so clients on
+either side of the change connect. It answers `POST /mcp` with a single JSON
+response and keeps no sessions or open streams. A browser request is accepted
+only from your instance's own URL, and a missing or invalid token gets `401`
+with a `WWW-Authenticate: Bearer` challenge.
