@@ -97,6 +97,8 @@ func TestMCPTools_Errors(t *testing.T) {
 		{"stack_deploy needs ref, image, or rollback", "stack_deploy", `{"id":"` + stack.ID + `"}`, apperrs.ErrInvalid, "rollback"},
 		{"stack_deploy rollback takes no ref", "stack_deploy", `{"id":"` + stack.ID + `","rollback":true,"ref":"main"}`, apperrs.ErrInvalid, ""},
 		{"stack_deploy of a missing stack", "stack_deploy", `{"id":"nope","image":"img:1"}`, apperrs.ErrNotFound, "stack_list"},
+		{"stack_deploy rollback with no healthy deploy", "stack_deploy", `{"id":"nope","rollback":true}`, apperrs.ErrNotFound, "deploy_list"},
+		{"stack_deploy rollback with no healthy image", "stack_deploy", `{"id":"` + stack.ID + `","rollback":true}`, apperrs.ErrConflict, "roll back"},
 		{"stack_create needs a strategy without a candidate", "stack_create", `{"project_id":"proj-1","machine":"m","name":"x"}`, apperrs.ErrInvalid, "compose or run"},
 		{"stack_create needs a machine", "stack_create", `{"project_id":"proj-1","name":"x","strategy":"compose"}`, apperrs.ErrInvalid, ""},
 		{"stack_create of an unknown project", "stack_create", `{"project_id":"ghost","machine":"m","name":"x","strategy":"compose"}`, apperrs.ErrInvalid, ""},

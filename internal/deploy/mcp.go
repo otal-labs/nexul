@@ -63,8 +63,11 @@ func deployListTool(s *Service) mcptool.Tool {
 func listDeploys(ctx context.Context, s *Service, in deployListIn) ([]*Deploy, error) {
 	if in.Status != "" {
 		ds, err := s.ListByStatus(ctx, Status(in.Status))
-		if err != nil {
+		if errors.Is(err, apperrs.ErrInvalid) {
 			return nil, fmt.Errorf("%w; status is one of pending, running, healthy, failed", err)
+		}
+		if err != nil {
+			return nil, err
 		}
 		return slices.DeleteFunc(ds, func(d *Deploy) bool { return in.StackID != "" && d.StackID != in.StackID }), nil
 	}
@@ -72,8 +75,11 @@ func listDeploys(ctx context.Context, s *Service, in deployListIn) ([]*Deploy, e
 		return s.ListByStackID(ctx, in.StackID)
 	}
 	ds, err := s.List(ctx)
+	if err != nil {
+		return nil, err
+	}
 	slices.Reverse(ds)
-	return ds, err
+	return ds, nil
 }
 
 type deployGetIn struct {
@@ -81,7 +87,7 @@ type deployGetIn struct {
 	LogLines int    `json:"log_lines,omitzero" jsonschema:"How many of the log's last lines to return, 1 to 1000. Defaults to 200."`
 }
 
-// deployDetail is a deploy with the tail of its log; log_total says how much of the log was left out.
+// deployDetail is a deploy with the tail of its log; log_total is the full log's length, so a cut tail shows.
 type deployDetail struct {
 	deployResult
 	Log      []LogLine `json:"log"`
@@ -414,7 +420,7 @@ func stackUpdateTool(s *Service) mcptool.Tool {
 		})
 }
 
-// patchStack overlays the provided fields on the current stack; nothing of cur's is shared with the result.
+// patchStack overlays only the fields the caller sent, so an omitted field keeps its stored value.
 func patchStack(cur Stack, in stackUpdateIn) Stack {
 	set(&cur.ProjectID, in.ProjectID)
 	set(&cur.Name, in.Name)
@@ -545,7 +551,8 @@ func startDeploy(ctx context.Context, s *Service, in stackDeployIn) (*Deploy, er
 		return nil, fmt.Errorf("%w: rollback takes neither ref nor image", apperrs.ErrInvalid)
 	}
 	if in.Rollback {
-		return s.Rollback(ctx, in.ID, mcpTriggeredBy(ctx))
+		d, err := s.Rollback(ctx, in.ID, mcpTriggeredBy(ctx))
+		return d, withHint(err, "a rollback needs a healthy deploy of an existing stack; deploy_list with stack_id shows its deploys")
 	}
 	if in.Ref == "" && in.Image == "" {
 		return nil, fmt.Errorf("%w: send ref to build, image to redeploy, or rollback: true", apperrs.ErrInvalid)

@@ -2,7 +2,10 @@ package repository
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
+	apperrors "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 )
 
@@ -43,6 +46,13 @@ func repositoryScanTool(s Scanner) mcptool.Tool {
 			"provider only; nothing is created.",
 		mcptool.Hints{ReadOnly: true},
 		func(ctx context.Context, in repositoryScanIn) (any, error) {
-			return Scan(ctx, s, in.Owner, in.Repo, in.Ref)
+			out, err := Scan(ctx, s, in.Owner, in.Repo, in.Ref)
+			if errors.Is(err, apperrors.ErrNotFound) {
+				return nil, fmt.Errorf("%w; repository_list lists the repositories Nexul can read", err)
+			}
+			if err != nil {
+				return nil, err
+			}
+			return out, nil
 		})
 }

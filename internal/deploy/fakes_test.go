@@ -33,7 +33,7 @@ func newFakeRepo() *fakeRepo {
 
 func seedDeploy(t *testing.T, repo *fakeRepo, d *Deploy) {
 	t.Helper()
-	require.NoError(t, repo.Create(context.Background(), d))
+	require.NoError(t, repo.Create(t.Context(), d))
 }
 
 func (f *fakeRepo) Create(_ context.Context, d *Deploy, evts ...eventbus.OutboxEvent) error {

@@ -67,8 +67,8 @@ func TestMCPTools_Errors(t *testing.T) {
 		{"an external node needs a label", "topology_update", `{"add_nodes":[{"id":"ext","type":"external","name":"CF"}]}`, apperrs.ErrInvalid, "label"},
 		{"a duplicate node id", "topology_update", `{"add_nodes":[{"id":"net-main","type":"network","name":"dup"}]}`, apperrs.ErrConflict, "nothing was applied"},
 		{"a service node cannot be removed", "topology_update", `{"remove_node_ids":["svc-api"]}`, apperrs.ErrInvalid, "auto-managed"},
-		{"removing a missing node", "topology_update", `{"remove_node_ids":["ghost"]}`, apperrs.ErrNotFound, ""},
-		{"removing a missing edge", "topology_update", `{"remove_edge_ids":["ghost"]}`, apperrs.ErrNotFound, ""},
+		{"removing a missing node", "topology_update", `{"remove_node_ids":["ghost"]}`, apperrs.ErrNotFound, "topology_get"},
+		{"removing a missing edge", "topology_update", `{"remove_edge_ids":["ghost"]}`, apperrs.ErrNotFound, "topology_get"},
 		{"an edge with an unknown kind", "topology_update", `{"add_edges":[{"id":"e","source":"svc-api","target":"net-main","kind":"calls"}]}`, apperrs.ErrInvalid, "kind"},
 		{"an edge to a missing node", "topology_update", `{"add_edges":[{"id":"e","source":"svc-api","target":"ghost","kind":"depends_on"}]}`, apperrs.ErrInvalid, "ghost"},
 	}

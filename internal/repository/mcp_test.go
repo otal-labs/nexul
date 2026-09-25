@@ -37,16 +37,18 @@ func TestMCPTools_Errors(t *testing.T) {
 		name, tool, args string
 		scanner          *fakeScanner
 		want             error
+		msg              string
 	}{
-		{"repository_list surfaces a provider failure", "repository_list", `{}`, &fakeScanner{listErr: apperrors.ErrUnauthorized}, apperrors.ErrUnauthorized},
-		{"repository_scan needs an owner", "repository_scan", `{"repo":"api"}`, &fakeScanner{}, apperrors.ErrInvalid},
-		{"repository_scan takes repo, not name", "repository_scan", `{"owner":"acme","name":"api"}`, &fakeScanner{}, apperrors.ErrInvalid},
-		{"repository_scan of a missing repository", "repository_scan", `{"owner":"acme","repo":"ghost"}`, &fakeScanner{treeErr: apperrors.ErrNotFound}, apperrors.ErrNotFound},
+		{"repository_list surfaces a provider failure", "repository_list", `{}`, &fakeScanner{listErr: apperrors.ErrUnauthorized}, apperrors.ErrUnauthorized, ""},
+		{"repository_scan needs an owner", "repository_scan", `{"repo":"api"}`, &fakeScanner{}, apperrors.ErrInvalid, ""},
+		{"repository_scan takes repo, not name", "repository_scan", `{"owner":"acme","name":"api"}`, &fakeScanner{}, apperrors.ErrInvalid, ""},
+		{"repository_scan of a missing repository", "repository_scan", `{"owner":"acme","repo":"ghost"}`, &fakeScanner{treeErr: apperrors.ErrNotFound}, apperrors.ErrNotFound, "repository_list"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := callTool(t, tt.scanner, tt.tool, tt.args)
 			require.ErrorIs(t, err, tt.want)
+			assert.Contains(t, err.Error(), tt.msg)
 		})
 	}
 }

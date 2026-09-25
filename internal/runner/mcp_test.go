@@ -48,18 +48,20 @@ func TestMCPTools_Errors(t *testing.T) {
 		tool string
 		args string
 		want error
+		msg  string
 	}{
-		{"machine_list rejects an unknown key", asAdmin(), "machine_list", `{"machine":"prod"}`, apperrs.ErrInvalid},
-		{"machine_discover needs an id", asAdmin(), "machine_discover", `{}`, apperrs.ErrInvalid},
-		{"machine_discover of a missing machine", asAdmin(), "machine_discover", `{"id":"ghost"}`, apperrs.ErrNotFound},
-		{"instance_get is for instance admins", asMember(), "instance_get", `{}`, apperrs.ErrForbidden},
-		{"instance_upgrade is for instance admins", asMember(), "instance_upgrade", `{}`, apperrs.ErrForbidden},
-		{"instance_upgrade refuses a dev build", asAdmin(), "instance_upgrade", `{}`, apperrs.ErrConflict},
+		{"machine_list rejects an unknown key", asAdmin(), "machine_list", `{"machine":"prod"}`, apperrs.ErrInvalid, ""},
+		{"machine_discover needs an id", asAdmin(), "machine_discover", `{}`, apperrs.ErrInvalid, ""},
+		{"machine_discover of a missing machine", asAdmin(), "machine_discover", `{"id":"ghost"}`, apperrs.ErrNotFound, "machine_list"},
+		{"instance_get is for instance admins", asMember(), "instance_get", `{}`, apperrs.ErrForbidden, ""},
+		{"instance_upgrade is for instance admins", asMember(), "instance_upgrade", `{}`, apperrs.ErrForbidden, ""},
+		{"instance_upgrade refuses a dev build", asAdmin(), "instance_upgrade", `{}`, apperrs.ErrConflict, "dev build"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := callTool(tt.ctx, t, upgrades, tt.tool, tt.args)
 			require.ErrorIs(t, err, tt.want)
+			assert.Contains(t, err.Error(), tt.msg)
 		})
 	}
 }
@@ -75,7 +77,7 @@ func TestMachineList_GroupsRunnersUnderTheirMachine(t *testing.T) {
 	require.NoError(t, runners.Create(ctx, &Runner{ID: "r-new", Name: "fresh"}))
 	dispatch := &fakeDispatch{
 		runners: []RunnerStatus{{RunnerID: "r-1", RunningJob: &RunningJob{ID: "d-1", Kind: RequestDeploy, Service: "api"}}},
-		queue:   []QueuedJob{{ID: "d-2", Kind: RequestBuild, Service: "web"}},
+		queue:   []QueuedJob{{ID: "d-2", Kind: RequestBuild, Service: "web", Target: "prod"}},
 	}
 	s := NewService(runners, dispatch).WithMachines(machines)
 
@@ -89,11 +91,15 @@ func TestMachineList_GroupsRunnersUnderTheirMachine(t *testing.T) {
 	}
 	require.Len(t, byName["prod"].Runners, 1)
 	assert.Equal(t, "v0.1.6", byName["prod"].Runners[0].Version)
-	assert.Equal(t, "d-1", byName["prod"].Runners[0].RunningJob.ID)
+	assert.Equal(t, &jobResult{ID: "d-1", Kind: RequestDeploy, Stack: "api"}, byName["prod"].Runners[0].RunningJob)
 	assert.Empty(t, byName["edge"].Runners)
 	require.Len(t, list.UnassignedRunners, 1)
 	assert.Equal(t, "r-new", list.UnassignedRunners[0].ID)
-	assert.Equal(t, []QueuedJob{{ID: "d-2", Kind: RequestBuild, Service: "web"}}, list.Queue)
+	assert.Equal(t, []jobResult{{ID: "d-2", Kind: RequestBuild, Stack: "web", Machine: "prod"}}, list.Queue)
+	b, err := json.Marshal(got)
+	require.NoError(t, err)
+	assert.NotContains(t, string(b), `"target"`)
+	assert.NotContains(t, string(b), `"service"`)
 }
 
 func TestMachineList_EmptyQueueIsAList(t *testing.T) {

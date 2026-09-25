@@ -37,19 +37,22 @@ func TestMCPTools_Errors(t *testing.T) {
 		name, tool, args string
 		provider         *fakeProvider
 		want             error
+		msg              string
 	}{
-		{"pull_request_list needs a repo", "pull_request_list", `{"owner":"acme"}`, &fakeProvider{}, apperrs.ErrInvalid},
-		{"pull_request_list rejects an unknown state", "pull_request_list", `{"owner":"acme","repo":"app","state":"merged"}`, &fakeProvider{}, apperrs.ErrInvalid},
-		{"pull_request_list surfaces a provider failure", "pull_request_list", `{"owner":"acme","repo":"app"}`, &fakeProvider{err: apperrs.ErrUnauthorized}, apperrs.ErrUnauthorized},
-		{"pull_request_get rejects the old name key", "pull_request_get", `{"owner":"acme","name":"app","number":7}`, &fakeProvider{}, apperrs.ErrInvalid},
-		{"pull_request_get needs a number or a commit", "pull_request_get", `{"owner":"acme","repo":"app"}`, &fakeProvider{}, apperrs.ErrInvalid},
-		{"pull_request_get of a commit in no pull request", "pull_request_get", `{"owner":"acme","repo":"app","commit":"abc"}`, &fakeProvider{}, apperrs.ErrNotFound},
-		{"pull_request_get of a missing pull request", "pull_request_get", `{"owner":"acme","repo":"app","number":9}`, &fakeProvider{err: apperrs.ErrNotFound}, apperrs.ErrNotFound},
+		{"pull_request_list needs a repo", "pull_request_list", `{"owner":"acme"}`, &fakeProvider{}, apperrs.ErrInvalid, ""},
+		{"pull_request_list rejects an unknown state", "pull_request_list", `{"owner":"acme","repo":"app","state":"merged"}`, &fakeProvider{}, apperrs.ErrInvalid, "open, closed, or all"},
+		{"pull_request_list surfaces a provider failure", "pull_request_list", `{"owner":"acme","repo":"app"}`, &fakeProvider{err: apperrs.ErrUnauthorized}, apperrs.ErrUnauthorized, ""},
+		{"pull_request_list of a missing repository", "pull_request_list", `{"owner":"acme","repo":"ghost"}`, &fakeProvider{err: apperrs.ErrNotFound}, apperrs.ErrNotFound, "repository_list"},
+		{"pull_request_get rejects the old name key", "pull_request_get", `{"owner":"acme","name":"app","number":7}`, &fakeProvider{}, apperrs.ErrInvalid, ""},
+		{"pull_request_get needs a number or a commit", "pull_request_get", `{"owner":"acme","repo":"app"}`, &fakeProvider{}, apperrs.ErrInvalid, ""},
+		{"pull_request_get of a commit in no pull request", "pull_request_get", `{"owner":"acme","repo":"app","commit":"abc"}`, &fakeProvider{}, apperrs.ErrNotFound, "pull_request_list"},
+		{"pull_request_get of a missing pull request", "pull_request_get", `{"owner":"acme","repo":"app","number":9}`, &fakeProvider{err: apperrs.ErrNotFound}, apperrs.ErrNotFound, "pull_request_list"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := callTool(t, tt.provider, &fakeChangeReader{}, tt.tool, tt.args)
 			require.ErrorIs(t, err, tt.want)
+			assert.Contains(t, err.Error(), tt.msg)
 		})
 	}
 }

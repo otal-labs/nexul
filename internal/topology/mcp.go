@@ -2,6 +2,7 @@ package topology
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -29,8 +30,8 @@ func topologyGetTool(s *Service) mcptool.Tool {
 	return mcptool.New("topology_get", "Get topology",
 		"Returns the infrastructure map: service nodes (one per stack service, kept in sync with deploys, with live "+
 			"status and address), network and external nodes people drew, and the typed relations between them. "+
-			"Use it to understand how services connect, and topology_update to draw on it. Only an environment "+
-			"with a saved canvas is accepted.",
+			"Use it to understand how services connect, and topology_update to draw on it. Any environment other "+
+			"than the workspace canvas must already have a saved canvas, so a mistyped name is an error.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in topologyGetIn) (any, error) {
 			env, err := resolveEnvironment(ctx, s, in.Environment)
@@ -131,6 +132,9 @@ func addNode(ctx context.Context, s *Service, env string, n nodeIn) (*Canvas, er
 }
 
 func appliedBefore(err error, done []change) error {
+	if errors.Is(err, apperrs.ErrNotFound) {
+		err = fmt.Errorf("%w; topology_get shows the canvas's node and edge ids", err)
+	}
 	if len(done) == 0 {
 		return fmt.Errorf("%w (nothing was applied)", err)
 	}
@@ -141,8 +145,7 @@ func appliedBefore(err error, done []change) error {
 	return fmt.Errorf("%w (already applied: %s)", err, strings.Join(names, ", "))
 }
 
-// resolveEnvironment defaults to the workspace canvas and refuses any other environment nothing was ever saved to,
-// so a mistyped name is an error rather than an empty canvas.
+// resolveEnvironment refuses a never-saved environment, so a mistyped name is an error rather than an empty canvas.
 func resolveEnvironment(ctx context.Context, s *Service, env string) (string, error) {
 	if env == "" || env == DefaultEnvironment {
 		return DefaultEnvironment, nil
