@@ -1,6 +1,6 @@
 # A beta release on every push to master, numbered from the releases list
 
-Superseded by ADR 0070: git tags are the version, betas are `v<next>-beta.<n>`, and there is no VERSION file.
+Superseded by ADR 0070 (git tags are the version, betas are `v<next>-beta.<n>`, no VERSION file) and ADR 0071 (one beta a day, when master has moved).
 
 Every push to `master` (which, with squash-only merges, means every merged pull request) cuts a prerelease
 tagged `v<VERSION>-<NNN>`, where `VERSION` holds the line currently in beta with its suffix (`0.2.0-beta`) and

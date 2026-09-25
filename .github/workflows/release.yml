@@ -1,11 +1,14 @@
 name: Release
 
-# Git tags are the version (ADR 0070). Every push to master cuts a beta, v<next patch>-beta.<n>; a manual run
-# promotes the newest beta's commit to stable with a patch, minor or major bump; a hand-pushed vX.Y.Z tag builds
-# that tag as stable. GoReleaser (.goreleaser.yaml) builds and publishes whatever tag `resolve` picks.
+# Git tags are the version (ADR 0070). Once a day, if master has moved since its last release, it is cut as a beta,
+# v<next patch>-beta.<n> (ADR 0071); a manual beta run cuts one now. A manual stable run promotes the newest beta's
+# commit with a patch, minor or major bump; a hand-pushed vX.Y.Z tag builds that tag as stable. GoReleaser
+# (.goreleaser.yaml) builds and publishes whatever tag `resolve` picks.
 on:
+  schedule:
+    # 03:17 UTC; off the hour, when scheduled runs queue longest.
+    - cron: "17 3 * * *"
   push:
-    branches: [master]
     tags:
       - "v*.*.*"
       - "!v*-*"
@@ -26,7 +29,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: release-${{ github.event_name == 'push' && (github.ref_type == 'tag' && 'stable' || 'beta') || inputs.channel }}
+  group: release-${{ (github.event_name == 'schedule' || inputs.channel == 'beta') && 'beta' || 'stable' }}
   cancel-in-progress: false
 
 env:
@@ -43,6 +46,7 @@ jobs:
       channel: ${{ steps.resolve.outputs.channel }}
       previous_tag: ${{ steps.resolve.outputs.previous_tag }}
       stable_exists: ${{ steps.resolve.outputs.stable_exists }}
+      skip: ${{ steps.resolve.outputs.skip }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -78,8 +82,14 @@ jobs:
 
           if [[ "$EVENT_NAME" == "push" && "$REF_TYPE" == "tag" ]]; then
             channel=stable; ref="$SHA"; tag="$REF_NAME"; previous_tag="$stable"
-          elif [[ "$EVENT_NAME" == "push" || "$INPUT_CHANNEL" == "beta" ]]; then
+          elif [[ "$EVENT_NAME" == "schedule" || "$INPUT_CHANNEL" == "beta" ]]; then
             channel=beta; ref="$SHA"; previous_tag="$newest_beta"
+            # The daily run releases only when master has moved; a manual beta run is asked for, so it always releases.
+            if [[ "$EVENT_NAME" == "schedule" && -n "$(git tag --points-at "$SHA")" ]]; then
+              echo "master ($SHA) is already released as $(git tag --points-at "$SHA" | head -n1); nothing to cut."
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
             next=$(bump patch)
             last=$(git tag -l "v${next}-beta.*" | sed "s/^v${next}-beta\.//" | sort -n | tail -n1)
             tag="v${next}-beta.$(( ${last:-0} + 1 ))"
@@ -113,6 +123,7 @@ jobs:
   # Pushed before the release exists, so an installer never finds a release whose images are missing.
   automations-image:
     needs: resolve
+    if: needs.resolve.outputs.skip != 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -195,7 +206,7 @@ jobs:
           GORELEASER_PREVIOUS_TAG: ${{ needs.resolve.outputs.previous_tag }}
           STABLE_EXISTS: ${{ needs.resolve.outputs.stable_exists }}
 
-  # Beta only: a beta per merge means old beta image tags accumulate forever
+  # Beta only: a daily beta means old beta image tags accumulate forever
   # otherwise. actions/delete-package-versions can't do this safely here —
   # for container packages its ignore-versions regex matches the version's
   # digest (`.name`), not its tags, so it can't tell a "latest"/stable tag

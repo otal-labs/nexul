@@ -1,5 +1,7 @@
 # Git tags are the version; there is no VERSION file
 
+ADR 0071 replaced the beta per push with one a day, cut only when master has moved.
+
 Supersedes ADR 0053. ADR 0051's one-version and promote-only-what-shipped rules stand.
 
 The repository holds no version file. Every push to `master` is tagged `v<next>-beta.<n>`, where `<next>` is the
