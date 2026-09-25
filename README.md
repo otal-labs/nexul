@@ -34,7 +34,7 @@ Phew, that is a lot of tabs to close.
 
 ## Where the idea comes from
 
-Two repositories shaped Nexul.
+Three repositories shaped Nexul.
 
 [mattpocock/skills](https://github.com/mattpocock/skills) showed how short
 the path from an idea to a set of scoped tickets can be: grill the idea
@@ -43,13 +43,14 @@ against the docs, map it, and the tickets fall out. A developer gets from
 
 [pingdotgg/t3code](https://github.com/pingdotgg/t3code) showed how natural it
 is to run several pieces of work in parallel once an agent does the typing,
-and how much that changes the way code should be written. Nexul takes both
-ideas and applies them to the whole software delivery loop, from the doc to
-the deploy, on your own servers.
+and how much that changes the way code should be written.
 
-[pstack](https://github.com/cursor/plugins/tree/main/pstack) is worth keeping
-beside mattpocock/skills. It is Lauren Tan's engineering-discipline pack:
-short principle skills and playbooks an agent checks its own work against.
+[pstack](https://github.com/cursor/plugins/tree/main/pstack), Lauren Tan's
+engineering-discipline pack, showed how far short principle skills and
+playbooks go when an agent checks its own work against them.
+
+Nexul takes all three ideas and applies them to the whole software delivery
+loop, from the doc to the deploy, on your own servers.
 
 ## The core idea
 
