@@ -171,7 +171,9 @@ func TestAdapter_AdvertisesOnlyWhatItImplements(t *testing.T) {
 			caps := init.Capabilities
 			require.NotNil(t, caps.Tools)
 			assert.False(t, caps.Tools.ListChanged)
-			assert.Nil(t, caps.Logging)
+			wire, err := json.Marshal(caps)
+			require.NoError(t, err)
+			assert.NotContains(t, string(wire), `"logging"`, "logging is deprecated and not implemented")
 			assert.Nil(t, caps.Completions)
 			assert.Equal(t, instructions, init.Instructions)
 		})

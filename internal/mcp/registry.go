@@ -131,9 +131,9 @@ func docResource(s *docs.Service) resource {
 func ticketResource(s *tickets.Service) resource {
 	return resource{
 		uri: "tickets://{id}", name: "ticket", title: "Ticket", mimeType: "text/markdown",
-		description: "A ticket's title, status, and body as markdown; ticket_get returns the full record.",
+		description: "A ticket's title, status, and body as markdown, by id or key (REF-102); ticket_get returns the full record.",
 		read: func(ctx context.Context, id string) (string, error) {
-			t, err := s.Get(ctx, id)
+			t, err := s.Resolve(ctx, id)
 			if err != nil {
 				return "", err
 			}
