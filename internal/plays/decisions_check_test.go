@@ -251,11 +251,11 @@ func TestDecisionsCheckRun_HTTPAndMCP(t *testing.T) {
 	assert.Equal(t, http.StatusForbidden, do(t, h, http.MethodPost, "/api/plays/decisions-check", `{"ticket_id":"`+ticketID+`"}`, "u-stranger").Code)
 
 	f2 := newDecisionsFixture()
-	tool := mcpToolByName(t, RunMCPTools(f2.runner), "decisions_check_run")
-	out, err := tool.Call(ctxAs(starter), map[string]any{"ticket_id": ticketID})
+	tools := RunMCPTools(f2.runner)
+	out, err := callTool(t, tools, ctxAs(starter), "decisions_check_run", `{"ticket_id":"`+ticketID+`"}`)
 	require.NoError(t, err)
 	<-f2.turns.done
-	assert.Equal(t, ViaMCP, out.(*Trail).Via)
-	_, err = tool.Call(ctxAs(starter), map[string]any{})
+	assert.Equal(t, ViaMCP, out.(trailSummary).Via)
+	_, err = callTool(t, tools, ctxAs(starter), "decisions_check_run", `{}`)
 	require.ErrorIs(t, err, apperrs.ErrInvalid)
 }
