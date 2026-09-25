@@ -647,6 +647,47 @@ func TestGetOrCreateInterviewThread(t *testing.T) {
 	})
 }
 
+func TestExistingThread(t *testing.T) {
+	repo := newFakeRepo()
+	s := newTestServiceWithDocAccess(repo, newFakeDocAccess("u-1:doc-1", "u-1:doc-2"))
+	ctx := context.Background()
+	doc, err := s.GetOrCreateDocThread(ctx, "w-1", "doc-1", "u-1")
+	require.NoError(t, err)
+	ticket, err := s.GetOrCreateTicketThread(ctx, "w-1", "t-1", "u-1")
+	require.NoError(t, err)
+	interview, err := s.GetOrCreateInterviewThread(ctx, "w-1", "p-1", "u-1")
+	require.NoError(t, err)
+
+	tests := []struct {
+		name    string
+		kind    Kind
+		target  string
+		caller  string
+		want    string
+		wantErr error
+	}{
+		{"blank target", KindTicketThread, " ", "u-1", "", apperrs.ErrInvalid},
+		{"a kind that is not a thread", KindChannel, "c-1", "u-1", "", apperrs.ErrInvalid},
+		{"a doc thread without docs:thread", KindDocThread, "doc-1", "u-2", "", apperrs.ErrForbidden},
+		{"no thread yet is not found and creates none", KindDocThread, "doc-2", "u-1", "", apperrs.ErrNotFound},
+		{"a doc thread", KindDocThread, "doc-1", "u-1", doc.ID, nil},
+		{"a ticket thread", KindTicketThread, "t-1", "u-2", ticket.ID, nil},
+		{"an interview thread", KindInterviewThread, "p-1", "u-2", interview.ID, nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c, err := s.ExistingThread(ctx, tt.kind, tt.target, tt.caller)
+			if tt.wantErr != nil {
+				require.ErrorIs(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, c.ID)
+		})
+	}
+	assert.Len(t, repo.eventsFor(TopicConversationCreated), 3, "a lookup never creates a thread")
+}
+
 func TestListMessages_DocThread(t *testing.T) {
 	t.Run("a caller without docs:thread is forbidden, not an empty list", func(t *testing.T) {
 		repo := newFakeRepo()
