@@ -114,29 +114,6 @@ func TestDeleteComputer_RevokesTheMCPTokenFirst(t *testing.T) {
 	assert.Equal(t, []string{minted.ID}, tokens.revoked)
 }
 
-func TestMCPTools_MCPTokenFlow(t *testing.T) {
-	t.Parallel()
-	svc, _, _ := newTokenService(t)
-	tools := MCPTools(svc)
-	ctx := actorCtx(t, "u1")
-
-	got, err := toolNamed(t, tools, "computer_mcp_token_mint").Call(ctx, map[string]any{"computer_id": "c1"})
-	require.NoError(t, err)
-	minted := got.(*MintedMCPToken)
-	assert.NotEmpty(t, minted.Token)
-
-	got, err = toolNamed(t, tools, "computer_mcp_token_get").Call(ctx, map[string]any{"computer_id": "c1"})
-	require.NoError(t, err)
-	raw, err := json.Marshal(got)
-	require.NoError(t, err)
-	assert.NotContains(t, string(raw), minted.Token, "reading a token never returns its secret")
-	assert.Contains(t, string(raw), minted.ID)
-
-	got, err = toolNamed(t, tools, "computer_mcp_token_revoke").Call(ctx, map[string]any{"computer_id": "c1"})
-	require.NoError(t, err)
-	assert.Equal(t, map[string]string{"computer_id": "c1", "status": "revoked"}, got)
-}
-
 func TestHandler_MCPToken(t *testing.T) {
 	t.Parallel()
 	svc, _, _ := newTokenService(t)

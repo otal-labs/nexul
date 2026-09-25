@@ -102,8 +102,9 @@ func setOverwrite(f *fakeRepo, resourceType, resourceID, userID string, allow pe
 
 // fakeUsers is an in-memory access.Users.
 type fakeUsers struct {
-	mu   sync.Mutex
-	byID map[string]*User
+	mu      sync.Mutex
+	byID    map[string]*User
+	listErr error
 }
 
 func newFakeUsers(users ...*User) *fakeUsers {
@@ -127,6 +128,9 @@ func (f *fakeUsers) GetUserByID(_ context.Context, id string) (*User, error) {
 func (f *fakeUsers) ListUsers(_ context.Context) ([]*User, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.listErr != nil {
+		return nil, f.listErr
+	}
 	out := make([]*User, 0, len(f.byID))
 	for _, u := range f.byID {
 		out = append(out, u)

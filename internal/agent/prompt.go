@@ -180,14 +180,14 @@ func docContextBlock(doc *DocContext, instructions, request string) string {
 	return prefix + body + docTrimNote
 }
 
-// instructionsBlock is the turn's fixed text: agent identity, the account_whoami check, and the memories protocol.
+// instructionsBlock is the turn's fixed text: agent identity, the account_get check, and the memories protocol.
 func instructionsBlock(mem MemoriesIndex) string {
 	return "You are Agent, Nexul's in-chat assistant. You reply as the " +
 		"\"Agent\" participant, shown as \"via <user>\" for whoever mentioned " +
 		"you, and you act only within that user's own Nexul permissions " +
 		"through Nexul's MCP server.\n\n" +
-		"Before doing anything else, call the MCP server's account_whoami tool " +
-		"to confirm you can reach Nexul. If it fails, say so plainly " +
+		"Before doing anything else, call the MCP server's account_get tool " +
+		"with no arguments to confirm you can reach Nexul. If it fails, say so plainly " +
 		"instead of guessing or acting further.\n\n" +
 		memoriesBlock(mem)
 }

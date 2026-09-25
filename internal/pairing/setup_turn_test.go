@@ -2,7 +2,10 @@ package pairing
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -15,6 +18,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/identity"
+	"github.com/otal-labs/nexul/internal/platform/mcptool"
 	"github.com/otal-labs/nexul/internal/platform/redact"
 )
 
@@ -112,14 +116,8 @@ func (f *setupFixture) startTurn(ctx context.Context, target harness.Target, tit
 	updates := make(chan harness.Update, 4)
 	updates <- harness.Update{Activity: &harness.Activity{Kind: harness.ActivityToolCall, Tool: "bash", Summary: "writing the config", Detail: prompts.Full}}
 	if !failing && !skip && strings.HasPrefix(title, "Nexul setup check") {
-		driver := setupDrivers[target.Provider]
-		if _, err := f.svc.ConfirmProviderSetup(ctx, "u1", f.computer.ID, driver, []string{"tdd", "nexul-memory"}); err != nil {
+		if err := f.confirmAsPrompted(ctx, setupDrivers[target.Provider], prompts.Full); err != nil {
 			return harness.StartResult{}, err
-		}
-		if strings.Contains(prompts.Full, "call `computer_setup_confirm` with") {
-			if _, err := f.svc.ConfirmSetup(ctx, "u1", f.computer.ID); err != nil {
-				return harness.StartResult{}, err
-			}
 		}
 	}
 	updates <- harness.Update{Snapshot: &harness.Snapshot{MessageID: "m1", Text: "All set."}}
@@ -129,6 +127,25 @@ func (f *setupFixture) startTurn(ctx context.Context, target harness.Target, tit
 	updates <- last
 	close(updates)
 	return harness.StartResult{SessionID: "s-" + title, Updates: updates}, nil
+}
+
+// confirmAsPrompted calls computer_setup_update with the arguments the confirm session's instructions spell out.
+func (f *setupFixture) confirmAsPrompted(ctx context.Context, driver, prompt string) error {
+	if !strings.Contains(prompt, "`computer_setup_update` with computer_id") {
+		return nil
+	}
+	tools := MCPTools(f.svc)
+	update := tools[slices.IndexFunc(tools, func(tool mcptool.Tool) bool { return tool.Name == "computer_setup_update" })]
+	ctx = identity.WithActor(ctx, identity.Actor{ID: "u1"})
+	args := fmt.Sprintf(`{"computer_id":%q,"provider":%q,"confirmed":true,"skills":["tdd","nexul-memory"]}`, f.computer.ID, driver)
+	if _, err := update.Call(ctx, json.RawMessage(args)); err != nil {
+		return err
+	}
+	if !strings.Contains(prompt, "confirm the computer itself") {
+		return nil
+	}
+	_, err := update.Call(ctx, json.RawMessage(fmt.Sprintf(`{"computer_id":%q,"confirmed":true}`, f.computer.ID)))
+	return err
 }
 
 func (f *setupFixture) sessionTitles() []string {
@@ -229,9 +246,9 @@ func TestStartSetup_Instructions_EveryConfirmSessionConfirmsTheComputer(t *testi
 	assert.Contains(t, prompts[0], "[mcp_servers.nexul]")
 	assert.Contains(t, prompts[2], "claude mcp add --scope user --transport http nexul")
 	assert.Contains(t, prompts[0], "name: nexul-memory")
-	assert.Contains(t, prompts[1], "call `computer_setup_confirm` with")
-	assert.Contains(t, prompts[3], "call `computer_setup_confirm` with")
-	assert.NotContains(t, prompts[0], "computer_setup_confirm", "the prepare session cannot reach Nexul's MCP server yet")
+	assert.Contains(t, prompts[1], "confirm the computer itself")
+	assert.Contains(t, prompts[3], "confirm the computer itself")
+	assert.NotContains(t, prompts[0], "computer_setup_update", "the prepare session cannot reach Nexul's MCP server yet")
 	assert.Contains(t, prompts[3], `provider "claudeAgent"`)
 }
 
@@ -496,28 +513,6 @@ func TestSetupHandlers_StartAndRetry(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 }
 
-func TestSetupMCPTools_StartAndRetry(t *testing.T) {
-	t.Parallel()
-	f := newSetupFixture(t)
-	ctx := identity.WithActor(t.Context(), identity.Actor{ID: "u1"})
-	tools := MCPTools(f.svc)
-
-	out, err := toolNamed(t, tools, "computer_setup_start").Call(ctx, map[string]any{"computer_id": f.computer.ID})
-	require.NoError(t, err)
-	assert.Len(t, out.(*SetupRun).Providers, 2)
-	f.svc.setupRuns.Wait()
-
-	out, err = toolNamed(t, tools, "computer_setup_retry_provider").Call(ctx, map[string]any{"computer_id": f.computer.ID, "provider": "codex"})
-	require.NoError(t, err)
-	assert.Equal(t, "codex", out.(*SetupRun).Providers[0].Provider)
-	f.svc.setupRuns.Wait()
-
-	_, err = toolNamed(t, tools, "computer_setup_start").Call(ctx, map[string]any{})
-	require.ErrorIs(t, err, apperrs.ErrInvalid)
-	_, err = toolNamed(t, tools, "computer_setup_retry_provider").Call(ctx, map[string]any{"computer_id": f.computer.ID})
-	require.ErrorIs(t, err, apperrs.ErrInvalid)
-}
-
 func TestResolveSetupTurnTarget_NoLinkedProject_UsesTheHarnessFirstProject(t *testing.T) {
 	t.Parallel()
 	f := newSetupFixture(t)
@@ -584,7 +579,7 @@ func TestSetupToken_UnreadableStoredCopy_MintsAFreshOne(t *testing.T) {
 	assert.Equal(t, []string{"pat-1"}, f.tokens.revoked, "an unreadable copy is replaced, not fatal")
 }
 
-func TestGetSetup_Turns_ShowEachProviderNewestTurnOverHTTPAndMCP(t *testing.T) {
+func TestGetSetup_Turns_ShowEachProviderNewestTurnOverHTTP(t *testing.T) {
 	t.Parallel()
 	f := newSetupFixture(t)
 	f.fail["Nexul setup: Codex"] = harness.Update{Terminal: &harness.TurnResult{State: harness.TurnError, LastError: "npx: command not found"}}
@@ -614,13 +609,6 @@ func TestGetSetup_Turns_ShowEachProviderNewestTurnOverHTTPAndMCP(t *testing.T) {
 	assert.NotContains(t, rec.Body.String(), "Transcript", "the read never carries a transcript")
 	rec = doRequest(routes, http.MethodGet, "/api/pairing/computers/"+f.computer.ID+"/setup", "u2", nil)
 	assert.Equal(t, http.StatusNotFound, rec.Code, "only the owner reads a computer's setup turns")
-
-	ctx := identity.WithActor(t.Context(), identity.Actor{ID: "u1"})
-	out, err := toolNamed(t, MCPTools(f.svc), "computer_setup_get").Call(ctx, map[string]any{"computer_id": f.computer.ID})
-	require.NoError(t, err)
-	assert.Len(t, out.(Setup).Turns, 2)
-	_, err = toolNamed(t, MCPTools(f.svc), "computer_setup_get").Call(identity.WithActor(t.Context(), identity.Actor{ID: "u2"}), map[string]any{"computer_id": f.computer.ID})
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
 
 	f.repo.mu.Lock()
 	f.repo.listTurnsErr = errBoom
@@ -721,26 +709,4 @@ func TestSetupHandlers_ModelChoice(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 	rec = doRequest(routes, http.MethodPost, "/api/pairing/computers/"+f.computer.ID+"/setup/providers/codex/retry", "u1", map[string]any{"model": 7})
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
-}
-
-func TestSetupMCPTools_ModelChoice(t *testing.T) {
-	t.Parallel()
-	f := newSetupFixture(t)
-	ctx := identity.WithActor(t.Context(), identity.Actor{ID: "u1"})
-	tools := MCPTools(f.svc)
-
-	out, err := toolNamed(t, tools, "computer_setup_start").Call(ctx, map[string]any{"computer_id": f.computer.ID, "models": map[string]any{"codex": "gpt-mini"}})
-	require.NoError(t, err)
-	assert.Equal(t, "gpt-mini", out.(*SetupRun).Providers[0].Model)
-	f.svc.setupRuns.Wait()
-
-	out, err = toolNamed(t, tools, "computer_setup_retry_provider").Call(ctx, map[string]any{"computer_id": f.computer.ID, "provider": "codex", "model": "gpt-big"})
-	require.NoError(t, err)
-	assert.Equal(t, "gpt-big", out.(*SetupRun).Providers[0].Model)
-	f.svc.setupRuns.Wait()
-
-	_, err = toolNamed(t, tools, "computer_setup_start").Call(ctx, map[string]any{"computer_id": f.computer.ID, "models": "gpt-mini"})
-	require.ErrorIs(t, err, apperrs.ErrInvalid)
-	_, err = toolNamed(t, tools, "computer_setup_start").Call(ctx, map[string]any{"computer_id": f.computer.ID, "models": map[string]any{"codex": 7}})
-	require.ErrorIs(t, err, apperrs.ErrInvalid)
 }

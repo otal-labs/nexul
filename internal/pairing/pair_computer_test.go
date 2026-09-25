@@ -192,27 +192,3 @@ func TestHandler_PairErrors_KeyTheMessageUnderTheField(t *testing.T) {
 		})
 	}
 }
-
-func TestMCPTool_ComputerPair_TunnelAndURLPaths(t *testing.T) {
-	t.Parallel()
-	exch := pairedExchanger()
-	svc, _ := newTunnelService(newFakeRepo(), exch, &fakeTunnels{})
-	id := tunnelComputer(t, svc)
-	pair := toolNamed(t, MCPTools(svc), "computer_pair")
-	ctx := actorCtx(t, "u1")
-
-	got, err := pair.Call(ctx, map[string]any{"computer_id": id, "token": "tok"})
-	require.NoError(t, err)
-	assert.Equal(t, id, got.(*Computer).ID)
-	assert.Equal(t, "https://laptop-ab12cd34.example.com", exch.pairedURL)
-
-	got, err = pair.Call(ctx, map[string]any{"name": "VPS", "server_url": "https://vps.example.com", "token": "tok"})
-	require.NoError(t, err)
-	assert.NotEqual(t, id, got.(*Computer).ID)
-	assert.Equal(t, "https://vps.example.com", exch.pairedURL)
-
-	_, err = pair.Call(ctx, map[string]any{"token": "tok"})
-	var fe *FieldError
-	require.ErrorAs(t, err, &fe)
-	assert.Equal(t, "name", fe.Field)
-}

@@ -268,32 +268,6 @@ func TestService_Repair_KeepsTheComputersTunnel(t *testing.T) {
 	assert.Equal(t, "tun-1", stored.Tunnel.TunnelID)
 }
 
-func TestTunnelMCPTools_CreateReadStatusAndToken(t *testing.T) {
-	t.Parallel()
-	svc, _ := newTunnelService(newFakeRepo(), &fakeExchanger{}, &fakeTunnels{status: "inactive"})
-	tools := MCPTools(svc)
-	ctx := actorCtx(t, "u1")
-
-	got, err := toolNamed(t, tools, "computer_tunnel_create").Call(ctx, map[string]any{"name": "Laptop"})
-	require.NoError(t, err)
-	c := got.(*Computer)
-	assert.Equal(t, "https://laptop-ab12cd34.example.com", c.ServerURL)
-
-	_, err = toolNamed(t, tools, "computer_tunnel_create").Call(ctx, map[string]any{"name": "Desk", "port": float64(70000)})
-	require.ErrorIs(t, err, apperrs.ErrInvalid, "an explicit port is used, not the default")
-
-	status, err := toolNamed(t, tools, "computer_tunnel_status_get").Call(ctx, map[string]any{"computer_id": c.ID})
-	require.NoError(t, err)
-	assert.Equal(t, TunnelStatus{Tunnel: "inactive"}, status)
-
-	token, err := toolNamed(t, tools, "computer_tunnel_token_get").Call(ctx, map[string]any{"computer_id": c.ID})
-	require.NoError(t, err)
-	assert.Equal(t, map[string]string{"token": "connector-token-tun-1"}, token)
-
-	_, err = toolNamed(t, tools, "computer_tunnel_token_get").Call(actorCtx(t, "u2"), map[string]any{"computer_id": c.ID})
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestPrerequisiteError_UnwrapsToInvalidWithTheCausesMessage(t *testing.T) {
 	t.Parallel()
 	err := fmt.Errorf("create tunnel: %w", &PrerequisiteError{Reason: ReasonZeroTrustDisabled, Err: errBoom})

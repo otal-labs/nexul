@@ -12,85 +12,101 @@ import (
 
 // MCPTools' acting user comes from the identity context the MCP server injects.
 func MCPTools(s *Service) []mcptool.Tool {
-	return []mcptool.Tool{
-		{
-			Name:        "access_list_grants",
-			Description: "List permission grants on a document, or the user exclusions on a play (resource_type: play).",
-			InputSchema: mcptool.ObjectSchema(map[string]any{
-				"doc_id":        map[string]any{"type": "string"},
-				"resource_type": map[string]any{"type": "string", "enum": []string{"doc", "play"}},
-				"resource_id":   map[string]any{"type": "string"},
-			}),
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				resourceType := mcptool.OptionalString(args["resource_type"])
-				resourceID := mcptool.OptionalString(args["resource_id"])
-				if resourceType == "play" {
-					if resourceID == "" {
-						return nil, fmt.Errorf("%w: resource_id is required", apperrs.ErrInvalid)
-					}
-					return s.ListPlayGrants(ctx, actorIDFromCtx(ctx), resourceID)
+	return []mcptool.Tool{accessGrantListTool(s), accessGrantUpdateTool(s)}
+}
+
+type accessGrantListIn struct {
+	ResourceType string `json:"resource_type" jsonschema:"doc or play."`
+	ResourceID   string `json:"resource_id" jsonschema:"The doc's or play's id."`
+	mcptool.PageArgs
+}
+
+type accessGrantUpdateIn struct {
+	ResourceType string   `json:"resource_type" jsonschema:"doc or play."`
+	ResourceIDs  []string `json:"resource_ids" jsonschema:"The docs' or plays' ids; every one gets the same change."`
+	UserIDs      []string `json:"user_ids" jsonschema:"The account ids the change applies to, as access_grant_list or account_list shows them."`
+	Actions      []string `json:"actions" jsonschema:"Permissions to grant or revoke, each <domain>:<action>, for example [\"docs:read\", \"docs:write\"]. On a play only plays:run."`
+	Grant        bool     `json:"grant" jsonschema:"true grants the actions (on a play, lifts the users' exclusion); false revokes them (on a play, excludes the users from running it)."`
+}
+
+// grantResult is one user's overwrite on the resource that was asked for.
+type grantResult struct {
+	UserID string          `json:"user_id"`
+	Login  string          `json:"login,omitempty"`
+	Name   string          `json:"name,omitempty"`
+	Allow  permissions.Set `json:"allow"`
+	Deny   permissions.Set `json:"deny"`
+}
+
+func accessGrantListTool(s *Service) mcptool.Tool {
+	return mcptool.New("access_grant_list", "List access grants",
+		"Lists the per-user permission overwrites on one doc or play: on a doc, who was granted which docs "+
+			"actions; on a play, which users are excluded from running it (plays:run in deny). Needs "+
+			"permissions:write on the doc, or plays:write on the play. Returns each user's id, login, and name with "+
+			"their allow and deny sets; change them with access_grant_update.",
+		mcptool.Hints{ReadOnly: true, Local: true},
+		func(ctx context.Context, in accessGrantListIn) (any, error) {
+			grants, err := listGrants(ctx, s, in)
+			if err != nil {
+				return nil, err
+			}
+			accounts, err := s.accountsByID(ctx)
+			if err != nil {
+				return nil, err
+			}
+			out := make([]grantResult, 0, len(grants))
+			for _, g := range grants {
+				r := grantResult{UserID: g.UserID, Allow: g.Allow, Deny: g.Deny}
+				if u, ok := accounts[g.UserID]; ok {
+					r.Login, r.Name = u.Login, u.Name
 				}
-				docID := mcptool.OptionalString(args["doc_id"])
-				if docID == "" {
-					docID = resourceID
-				}
-				if docID == "" {
-					return nil, fmt.Errorf("%w: doc_id is required", apperrs.ErrInvalid)
-				}
-				return s.ListGrants(ctx, actorIDFromCtx(ctx), docID)
-			},
-		},
-		{
-			Name: "access_set_grants",
-			Description: "Grant or revoke permission actions on documents for users, or deny/undeny plays:run " +
-				"on plays (resource_type: play, resource_ids), in one operation.",
-			InputSchema: mcptool.ObjectSchema(map[string]any{
-				"resource_type": map[string]any{"type": "string", "enum": []string{"doc", "play"}},
-				"doc_ids":       map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
-				"resource_ids":  map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
-				"user_ids":      map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
-				"actions":       map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
-				"grant":         map[string]any{"type": "boolean"},
-			}, "user_ids", "actions", "grant"),
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				userIDs, err := requiredStrings(args, "user_ids")
-				if err != nil {
-					return nil, err
-				}
-				rawActions, err := requiredStrings(args, "actions")
-				if err != nil {
-					return nil, err
-				}
-				actions := make([]permissions.Action, 0, len(rawActions))
-				for _, raw := range rawActions {
-					a, ok := permissions.ParseAction(raw)
-					if !ok {
-						return nil, fmt.Errorf("%w: unknown action %s", apperrs.ErrInvalid, raw)
-					}
-					actions = append(actions, a)
-				}
-				grant, _ := args["grant"].(bool)
-				if mcptool.OptionalString(args["resource_type"]) == "play" {
-					resourceIDs, err := requiredStrings(args, "resource_ids")
-					if err != nil {
-						return nil, err
-					}
-					if err := s.SetPlayGrants(ctx, actorIDFromCtx(ctx), resourceIDs, userIDs, actions, grant); err != nil {
-						return nil, err
-					}
-					return map[string]string{"status": "ok"}, nil
-				}
-				docIDs, err := requiredStrings(args, "doc_ids")
-				if err != nil {
-					return nil, err
-				}
-				if err := s.SetGrants(ctx, actorIDFromCtx(ctx), docIDs, userIDs, actions, grant); err != nil {
-					return nil, err
-				}
-				return map[string]string{"status": "ok"}, nil
-			},
-		},
+				out = append(out, r)
+			}
+			return mcptool.Paginate(out, in.PageArgs), nil
+		})
+}
+
+func listGrants(ctx context.Context, s *Service, in accessGrantListIn) ([]*Overwrite, error) {
+	if in.ResourceType == resourceTypeDoc {
+		return s.ListGrants(ctx, actorIDFromCtx(ctx), in.ResourceID)
 	}
+	if in.ResourceType == resourceTypePlay {
+		return s.ListPlayGrants(ctx, actorIDFromCtx(ctx), in.ResourceID)
+	}
+	return nil, unknownResourceType(in.ResourceType)
+}
+
+func accessGrantUpdateTool(s *Service) mcptool.Tool {
+	return mcptool.New("access_grant_update", "Update access grants",
+		"Grants or revokes permission actions for every listed user on every listed doc, or excludes users from "+
+			"running plays and lifts that exclusion, in one operation. Only the named actions change: every other "+
+			"action a user already holds on the resource stays. Needs permissions:write on each doc, or plays:write "+
+			"on each play, and changes nothing unless all of them pass; access_grant_list shows the result.",
+		mcptool.Hints{Idempotent: true, Local: true},
+		func(ctx context.Context, in accessGrantUpdateIn) (any, error) {
+			if err := setGrants(ctx, s, in); err != nil {
+				return nil, err
+			}
+			return in, nil
+		})
+}
+
+func setGrants(ctx context.Context, s *Service, in accessGrantUpdateIn) error {
+	actions, err := parseActions(in.Actions)
+	if err != nil {
+		return fmt.Errorf("%w; a permission is <domain>:<action>, for example docs:read", err)
+	}
+	if in.ResourceType == resourceTypeDoc {
+		return s.SetGrants(ctx, actorIDFromCtx(ctx), in.ResourceIDs, in.UserIDs, actions, in.Grant)
+	}
+	if in.ResourceType == resourceTypePlay {
+		return s.SetPlayGrants(ctx, actorIDFromCtx(ctx), in.ResourceIDs, in.UserIDs, actions, in.Grant)
+	}
+	return unknownResourceType(in.ResourceType)
+}
+
+func unknownResourceType(t string) error {
+	return fmt.Errorf("%w: resource_type %q is not doc or play", apperrs.ErrInvalid, t)
 }
 
 func actorIDFromCtx(ctx context.Context) string {
@@ -98,20 +114,4 @@ func actorIDFromCtx(ctx context.Context) string {
 		return a.ID
 	}
 	return ""
-}
-
-func requiredStrings(args map[string]any, key string) ([]string, error) {
-	raw, ok := args[key].([]any)
-	if !ok || len(raw) == 0 {
-		return nil, fmt.Errorf("%w: %s is required", apperrs.ErrInvalid, key)
-	}
-	out := make([]string, 0, len(raw))
-	for _, v := range raw {
-		s, ok := v.(string)
-		if !ok || s == "" {
-			return nil, fmt.Errorf("%w: %s entries must be non-empty strings", apperrs.ErrInvalid, key)
-		}
-		out = append(out, s)
-	}
-	return out, nil
 }
