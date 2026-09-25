@@ -159,12 +159,12 @@ express all of this without over-granting `write`.
 - Seeded instruction texts, editable like any play:
 
   *Fix with AI*: Confirm your Nexul access with the whoami tool, then read
-  the ticket with `ticket_get` and its links with `ticket_get_links`. Work in
+  the ticket with `ticket_get` and its links with `ticket_get`. Work in
   the project checkout you are running in. Create a branch named `<ticket
   key>-<short-slug>` from the default branch, implement the fix, run the
   project's tests and linters, and commit. Push the branch, open a pull
   request whose title starts with the ticket key, then link the branch and
-  the PR to the ticket with `ticket_link_branch` and `ticket_link_pr`. Do not
+  the PR to the ticket with `ticket_update`. Do not
   merge unless a memory selected for this run explicitly permits merging; if
   one does, merge once checks pass. Reply with what changed, how it was
   verified, and the PR link. If you cannot complete the fix, say what
@@ -172,8 +172,8 @@ express all of this without over-granting `write`.
 
   *To tickets via AI*: Confirm your Nexul access with the whoami tool, then
   read the doc with `doc_get`. List the doc's project's columns with
-  `status_list` and its ticket types. Search existing tickets with
-  `ticket_search` so you do not duplicate work already tracked. Split the
+  `project_get` and its ticket types. Search existing tickets with
+  `ticket_list` so you do not duplicate work already tracked. Split the
   doc into tickets a developer could pick up independently: one outcome per
   ticket, a title under eighty characters, a body with context, acceptance
   criteria, and a pointer to the doc section it came from. Create each with
@@ -254,10 +254,10 @@ express all of this without over-granting `write`.
 
 ### MCP, gateway, events (ticket 09)
 
-- Tools: `play_list`, `play_run`, `play_run_get`, `play_run_stop`,
-  `play_list_runs`, `play_create`, `play_update`, `play_delete`;
+- Tools: `play_list`, `play_run`, `trail_list`, `trail_update`,
+  `trail_list`, `play_create`, `play_update`, `play_delete`;
   `memory_list`, `memory_get`, `memory_create`, `memory_update`,
-  `memory_delete`, `memory_clone`, `memory_list_versions`, `memory_revert`.
+  `memory_delete`, `memory_create`, `memory_get`, `memory_update`.
   Gateway routes mirror them one to one. Live topic `play.run` carries trail
   state changes to the ticket page, the doc page, and the board card.
 - Catalog rows: `play.run_started`, `play.run_finished` (with `outcome`),

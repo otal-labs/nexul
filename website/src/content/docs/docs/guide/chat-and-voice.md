@@ -30,8 +30,10 @@ and are marked read when the newest visible message is seen.
 
 Document threads need the `docs:thread` permission on the document. The
 permission catalog also includes the `chat` and `voice` domains. Chat routes
-are available under `/api/chat`; MCP exposes `chat_list_conversations`,
-`chat_list_messages`, `chat_post_message`, and `doc_thread_get`.
+are available under `/api/chat`; MCP exposes `conversation_list`,
+`message_list`, and `message_post`. The last two also take a `doc_id`,
+`ticket_id`, or interview `project_id` instead of a conversation id, and
+posting starts that thread the first time.
 
 ## Voice channels
 

@@ -118,8 +118,8 @@ no users yet, move quick):
   `<object>_<verb>` (docs fixed, a dozen stragglers to rename); connecting
   Nexul MCP is the wizard's first step via a per-computer token, one setup
   turn per provider confirms itself; token hidden in saved transcripts; the
-  wizard installs nexul-memory; setup tools, `account_whoami`, and
-  `git_get_change_context` listed; owner-only, events with live push; the
+  wizard installs nexul-memory; setup tools, `account_get`, and
+  `pull_request_get` listed; owner-only, events with live push; the
   setup turn's exemption comes only from the wizard's server path.
 - [How a remote Nexul can reach a user's T3 Code](issues/14-t3-remote-reach-facts.md)
   — T3 Connect admits only T3's own apps (blocker); Tailscale, a reachable

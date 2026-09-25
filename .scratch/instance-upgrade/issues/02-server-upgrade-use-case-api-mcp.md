@@ -36,7 +36,7 @@ OpenAPI registration, boot hook), event catalog.
 - Boot: call `ResolvePendingUpgrade` in `server/cmd/bootstrap.go` after
   migrations.
 - MCP: `instance_upgrade` (calls `RequestUpgrade` with the token's user +
-  `:mcp`, ADR 0049) and `instance_upgrade_status` in `internal/runner/mcp.go`.
+  `:mcp`, ADR 0049) and `instance_get` in `internal/runner/mcp.go`.
 
 ## Acceptance
 

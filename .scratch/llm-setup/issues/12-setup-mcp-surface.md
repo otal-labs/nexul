@@ -48,12 +48,12 @@ else's machine that is where plays stop — alongside the missing skills.
 - **The nexul-memory skill is installed by the wizard** alongside the
   default set, replacing the copy-paste box in settings (amends the
   skill-sets ticket's "no Nexul skill").
-- **New tools**: `computer_setup_get` (a computer's overall and per-driver
-  state); `computer_setup_confirm_provider` / `computer_setup_unconfirm_provider`
+- **New tools**: `computer_list` (a computer's overall and per-driver
+  state); `computer_setup_update`
   (computer id, driver kind, the skills list the harness reported);
-  `computer_setup_confirm` / `computer_setup_unconfirm` (overall);
-  `account_whoami` (the tool the agent prompt already tells agents to call,
-  which does not exist yet); `git_get_change_context` (commit or PR number →
+  `computer_setup_update` (overall);
+  `account_get` (the tool the agent prompt already tells agents to call,
+  which does not exist yet); `pull_request_get` (commit or PR number →
   PR, tickets, docs, bugs found after done, decisions-log entries). Exact
   names may shift at implementation, the object-first rule may not.
 - **Owner-only**: every setup tool checks the computer belongs to the caller;

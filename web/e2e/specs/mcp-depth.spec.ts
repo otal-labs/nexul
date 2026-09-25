@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { E2E_PROJECT_ID, MCP_URL, authedHeaders, makeApiClient, mintToken } from "../helpers";
+import { E2E_PROJECT_ID, MCP_URL, makeApiClient, mcpHeaders, mintToken } from "../helpers";
 
 const TOKEN = mintToken();
 
 const rpc = async <T = unknown>(method: string, params: unknown, id = 1) => {
   const res = await fetch(MCP_URL, {
     method: "POST",
-    headers: authedHeaders(TOKEN),
+    headers: mcpHeaders(TOKEN),
     body: JSON.stringify({ jsonrpc: "2.0", id, method, params }),
   });
   return { status: res.status, body: (await res.json()) as T };
@@ -44,13 +44,13 @@ describe("mcp tools + resources (depth)", () => {
     expect(doc.body).toContain(marker);
 
     try {
-      // doc_search finds the doc by its unique marker; the FTS index updates on the doc.created event, so poll briefly.
+      // doc_list with a query finds the doc by its unique marker; the FTS index updates on the doc.created event, so poll briefly.
       let hit = false;
       for (let attempt = 0; attempt < 10 && !hit; attempt++) {
-        const searched = await callTool("doc_search", { query: marker, limit: 5 });
+        const searched = await callTool("doc_list", { query: marker, limit: 5 });
         expect(searched.error).toBeUndefined();
-        const hits = JSON.parse(searched.result!.content![0].text!) as { id: string }[];
-        hit = hits.some((h) => h.id === doc.id);
+        const page = JSON.parse(searched.result!.content![0].text!) as { items: { id: string }[] };
+        hit = page.items.some((h) => h.id === doc.id);
         if (!hit) await new Promise((resolve) => setTimeout(resolve, 300));
       }
       expect(hit).toBe(true);
@@ -59,10 +59,10 @@ describe("mcp tools + resources (depth)", () => {
       expect(fetched.error).toBeUndefined();
       expect(fetched.result!.content![0].text).toContain(marker);
 
-      // resources/list advertises the docs template, and resources/read serves the doc back as markdown.
+      // resources/templates/list advertises the docs template, and resources/read serves the doc back as markdown.
       const listed = await rpc<{
-        result?: { resources?: { uri: string }[]; resourceTemplates?: { uriTemplate: string }[] };
-      }>("resources/list", {});
+        result?: { resourceTemplates?: { uriTemplate: string }[] };
+      }>("resources/templates/list", {});
       expect(listed.status).toBe(200);
       const templates = listed.body.result?.resourceTemplates?.map((t) => t.uriTemplate) ?? [];
       expect(templates).toContain("docs://{id}");

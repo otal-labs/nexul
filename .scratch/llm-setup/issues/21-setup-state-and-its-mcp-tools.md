@@ -7,7 +7,7 @@
 
 ## What to build
 
-Store setup confirmation per ticket 04: a nullable confirmed-at on the computer for the overall state and one row per (computer, driver kind) recording the skills the harness reported. Add the MCP tools `computer_setup_get`, `computer_setup_confirm_provider`, `computer_setup_unconfirm_provider`, `computer_setup_confirm`, `computer_setup_unconfirm`, and `account_whoami`. Writes happen only through MCP; the HTTP gateway exposes reads only.
+Store setup confirmation per ticket 04: a nullable confirmed-at on the computer for the overall state and one row per (computer, driver kind) recording the skills the harness reported. Add the MCP tools `computer_list`, `computer_setup_update`, and `account_get`. Writes happen only through MCP; the HTTP gateway exposes reads only.
 
 ## Acceptance criteria
 

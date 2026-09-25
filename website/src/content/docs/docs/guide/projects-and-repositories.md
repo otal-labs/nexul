@@ -37,7 +37,7 @@ Whichever door you use, a repository always ends up attached to exactly one proj
 
 A project deploys from one repository. If its end-to-end or other tests live in a repository of their own, attach that one as the project's **tests repository**: the repository step asks where tests live and, for a separate repository, lets you pick it. A tests repository is never deployed. Nexul refuses to build a stack from it or run a deploy of it, so the project keeps one deployable repository.
 
-The answer is stored on the project as its tests location (`same` or `separate`), and the interview starts from it. It shows in the project's **Repositories** list, where the tests repository carries a `tests` marker and can be removed like any other. Over MCP, `project_add_repo` takes `role: "tests"` (which also records the location as `separate`), `project_list_repos` returns each repository's role, and `project_set_tests_location` records or withdraws the answer.
+The answer is stored on the project as its tests location (`same` or `separate`), and the interview starts from it. It shows in the project's **Repositories** list, where the tests repository carries a `tests` marker and can be removed like any other. Over MCP, `project_update` attaches one through `add_repos` with `role: "tests"` (which also records the location as `separate`) and records or withdraws the answer through `tests_location`, and `project_get` returns each repository's role.
 
 ## Members and roles
 

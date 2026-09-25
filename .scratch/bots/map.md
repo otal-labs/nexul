@@ -31,7 +31,7 @@ after this map.
   is deliberately not one), 0044 (event catalog), 0051 (chat is a dock).
   Code: `internal/chat/model.go` (`Kind`, `AuthorKind`, `Message`),
   `internal/chat/usecase.go` (`PostMessage`), `internal/chat/handler.go`,
-  `internal/chat/mcp.go` (`chat_post_message`),
+  `internal/chat/mcp.go` (`message_post`),
   `internal/integrations/webhook.go` (the outbound signed webhook, the thing
   a bot is not), `internal/platform/permissions/permissions.go`.
 - Pre-release item 03 (security review of the integration model) lists
