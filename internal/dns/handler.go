@@ -1,10 +1,8 @@
 package dns
 
 import (
-	"fmt"
 	"net/http"
 
-	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/httpx"
 )
 
@@ -117,23 +115,7 @@ func (h *Handler) deleteRecord(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) checkPropagation(w http.ResponseWriter, r *http.Request) {
-	records, err := h.svc.ListRecords(r.Context(), r.PathValue("zoneID"))
-	if err != nil {
-		httpx.WriteError(w, err)
-		return
-	}
-	var rec *Record
-	for i := range records {
-		if records[i].ID == r.PathValue("recordID") {
-			rec = &records[i]
-			break
-		}
-	}
-	if rec == nil {
-		httpx.WriteError(w, fmt.Errorf("%w: record %s not found in zone", apperrs.ErrNotFound, r.PathValue("recordID")))
-		return
-	}
-	if err := h.svc.CheckPropagation(r.Context(), r.PathValue("zoneID"), *rec); err != nil {
+	if err := h.svc.CheckRecordPropagation(r.Context(), r.PathValue("zoneID"), r.PathValue("recordID")); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
