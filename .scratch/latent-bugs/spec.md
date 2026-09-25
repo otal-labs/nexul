@@ -38,3 +38,13 @@ mobile placement (a sheet or an inline section) like the rest of the page.
 participant of a direct-message conversation, so anyone holding its id can read
 and post, over HTTP and MCP alike. The doc-thread gate exists; direct messages
 need the same kind of participation check in the use-case.
+
+## Deleting a project that still has docs is an internal error
+
+`workspace.Service.Delete` refuses a project with tickets, repositories, or
+services, but `DeleteImpact` does not count docs, so a project holding a doc
+passes the check and the delete then fails on the docs foreign key. The web
+app gets a 500 and an MCP agent gets "internal error" instead of a conflict
+that says to move or delete the docs first. Count docs (and any other row
+that references the project) in the impact, or map the constraint failure to
+a conflict naming what is left.
