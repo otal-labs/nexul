@@ -31,3 +31,26 @@ The ticket page's side panel is hidden below the `lg` breakpoint, so on
 320–768px widths the developer and tester can be neither seen nor changed;
 only the reporter shows, in the line under the title. The panel needs a
 mobile placement (a sheet or an inline section) like the rest of the page.
+
+## Cloudflare record writes report proxied as false
+
+`decodeRecord` in `internal/dns/cloudflare/client.go`, used by the create and
+update record calls, never reads `proxied`, so `dns_record_create`,
+`dns_record_update`, and the matching HTTP responses say `proxied: false` for a
+proxied record such as a tunnel CNAME. The write itself is right: reading the
+record back through the list call shows the true value. Decode the field.
+
+## A non-admin can tell whether an account id exists
+
+`auth.Service.UpdateAccountStatus` looks the target up before the instance-admin
+check, so a non-admin gets 404 for an unknown id and 403 for a real one, and a
+call that would change nothing (an already-active account) succeeds without the
+check. Both the web app and `account_update` behave this way. Checking the admin
+bit first closes it.
+
+## Direct messages are readable by any member who has the conversation id
+
+`chat.Service.ListMessages` and `PostMessage` do not check that the caller is a
+participant of a direct-message conversation, so anyone holding its id can read
+and post, over HTTP and MCP alike. The doc-thread gate exists; direct messages
+need the same kind of participation check in the use-case.
