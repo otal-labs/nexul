@@ -7,9 +7,9 @@ sidebar:
 
 A runner is a lightweight host binary that connects out to your instance over a WebSocket, authenticates, and executes builds and deploys. The server holds no SSH keys and never connects into a target itself — target credentials live on the runner, and every deploy runs as `docker run` / `docker compose up` against the Docker daemon on the runner's own machine.
 
-## The bundled runner
+## The instance runner
 
-The Docker Compose stack starts one runner alongside the server, named `instance`, running on the same host. That's enough to build and deploy out of the box, with nothing to configure first.
+`nexul install` installs one runner on the server itself, named `instance`, as the `nexul-runner` systemd service. That's enough to build and deploy out of the box, with nothing to configure first. `journalctl -u nexul-runner` shows what it is doing.
 
 ## Machines
 
@@ -50,8 +50,8 @@ A runner reports its version when it connects. If the server is a stable or beta
 running something different, the server pushes it the release it should be on. The runner downloads the matching
 binary from the server's own download route, verifies its checksum, swaps it in for the one it's running, and
 restarts itself into the new version — no separate update step, and nothing to re-run on the machine. A runner
-mid-job finishes the job first, then updates on its own next connect. The bundled `instance` runner skips this
-entirely: it updates the same way the rest of the compose stack does, by pulling the new image.
+mid-job finishes the job first, then updates on its own next connect. The `instance` runner updates the same way.
+Only a runner running inside a container skips this; it follows its image instead.
 
 ## Importing what's already running on a machine
 

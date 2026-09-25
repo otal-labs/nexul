@@ -32,7 +32,7 @@ body:
     attributes:
       label: How is it installed
       options:
-        - Docker Compose (install.sh / install.ps1)
+        - nexul install (Linux server)
         - Single binary
         - Debug compose stack (developing Nexul)
     validations:

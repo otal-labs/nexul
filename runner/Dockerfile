@@ -1,5 +1,5 @@
-# Build context: ./runner (see docker-compose.yml). The `root` named context
-# supplies the shared Go module (go.mod/go.sum) and internal/ packages.
+# The containerized runner the e2e stack uses; releases ship the runner as a host binary instead.
+# Build context: ./runner; the `root` named context supplies the shared Go module and internal/ packages.
 # Cross-compile from the build host: an emulated arm64 Go build under QEMU takes many times longer.
 FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS build
 ARG VERSION=dev

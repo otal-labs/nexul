@@ -108,7 +108,7 @@ Everything below is in the AGPL edition and runs on your own servers. The
 | Access | ✅ | Private invitation links, owner-configured OAuth sign-in, custom roles per workspace, per-user permission overwrites, and personal access tokens, all checked against one `<domain>:<action>` vocabulary. |
 | Search | ✅ | Full-text search over doc and ticket titles and bodies, from the docs page, the API, and MCP. |
 | MCP server | ✅ | 98 task-shaped tools on the official MCP Go SDK, plus doc, ticket, and topology resources and workflow prompts, over stateless Streamable HTTP at `/mcp`. Every tool is annotated for read-only or destructive, lists are paginated, and failures come back as errors the agent can act on. |
-| Logs | ✅ | Every server log line goes to OpenObserve in the compose stack, or any OTLP/HTTP backend, and the browser's console errors are forwarded into the same stream. |
+| Logs | ✅ | Every server log line goes to the OpenObserve that `nexul install` sets up, or any OTLP/HTTP backend, and the browser's console errors are forwarded into the same stream. |
 | Desktop app | ✅ | An Electron shell that imports a connection token, keeps a list of instances, and loads the web app from the one you pick. |
 | Instance upgrade | ✅ | Settings shows the running version and the newest release, and one click (or the `instance_upgrade` tool) pulls the images and restarts the stack. |
 | Call notes | ⬜ | A speech-to-text model listens to a voice call, takes notes, summarizes it, and writes the summary into the doc, so the loop runs from a conversation to a deploy without anyone typing the notes. |

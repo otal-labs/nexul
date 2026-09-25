@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -18,6 +19,7 @@ import (
 	"github.com/otal-labs/nexul/internal/deploy"
 	"github.com/otal-labs/nexul/internal/dns"
 	"github.com/otal-labs/nexul/internal/docs"
+	"github.com/otal-labs/nexul/internal/install"
 	"github.com/otal-labs/nexul/internal/integrations"
 	"github.com/otal-labs/nexul/internal/memories"
 	"github.com/otal-labs/nexul/internal/pairing"
@@ -33,6 +35,48 @@ import (
 )
 
 func main() {
+	if len(os.Args) < 2 {
+		usage(os.Stderr)
+		os.Exit(2)
+	}
+	cmd, args := os.Args[1], os.Args[2:]
+	if cmd == "serve" {
+		serve()
+		return
+	}
+	if cmd == "version" || cmd == "--version" {
+		fmt.Println(version.Version)
+		return
+	}
+	if cmd == "help" || cmd == "--help" || cmd == "-h" {
+		usage(os.Stdout)
+		return
+	}
+	if err := install.Run(context.Background(), cmd, args); err != nil {
+		if errors.Is(err, install.ErrUnknownCommand) {
+			usage(os.Stderr)
+			os.Exit(2)
+		}
+		fail(err)
+	}
+}
+
+func usage(w io.Writer) {
+	_, _ = fmt.Fprint(w, `Usage: nexul <command> [flags]
+
+Commands:
+  install     Install Nexul on this server (Docker, the stack, the instance runner)
+  upgrade     Upgrade this install to the newest release, or to --version
+  status      Show what is installed and whether it is running
+  uninstall   Stop and remove this install; --purge also deletes its data
+  serve       Run the Nexul server (what the container runs)
+  version     Print this binary's version
+
+Run "nexul <command> --help" for a command's flags.
+`) // best-effort: a closed stdout has nowhere to report to
+}
+
+func serve() {
 	cfg := mustLoadConfig()
 	logger, flushLogs, err := logging.NewWithOTLP(context.Background(), cfg.LogLevel, logging.OTLP{
 		Endpoint: cfg.OTLPEndpoint,
@@ -51,7 +95,7 @@ func main() {
 			_, _ = fmt.Fprintln(os.Stderr, "flush shipped logs:", err) // best-effort diagnostic; process is exiting regardless
 		}
 	}()
-	logger.Info("server starting", "version", version.Version, "http_addr", cfg.HTTPAddr, "ws_addr", cfg.WSAddr, "otlp_endpoint", cfg.OTLPEndpoint)
+	logger.Info("server starting", "version", version.Version, "http_addr", cfg.HTTPAddr, "otlp_endpoint", cfg.OTLPEndpoint)
 
 	store, encKey := bootstrapStore(cfg)
 	defer func() {
@@ -85,9 +129,8 @@ func main() {
 	svc.deploySvc.SetMachineDiscoverer(deployMachineDiscovererAdapter{runner: runnerSvc})
 	liveHub, agentHandler := wireLiveHubAndAgent(ctx, bus, store, svc, logger)
 
-	wsServer, httpServer := buildRoutes(cfg, bus, store, svc, wsHandler, runnerSvc, runnerHTTP, automationsDialin, liveHub, agentHandler, logger)
+	httpServer := buildRoutes(cfg, bus, store, svc, wsHandler, runnerSvc, runnerHTTP, automationsDialin, liveHub, agentHandler, logger)
 
-	go serveHTTP(wsServer, logger, stop)
 	go serveHTTP(httpServer, logger, stop)
 
 	if err := wsHandler.Run(ctx); err != nil {
@@ -95,7 +138,7 @@ func main() {
 	}
 	automationsDialin.CloseAll("shutdown")
 
-	shutdownServers(wsServer, httpServer)
+	shutdownServer(httpServer)
 	logger.Info("server stopped")
 }
 
@@ -235,6 +278,6 @@ var livePushTopics = []string{
 }
 
 func fail(err error) {
-	_, _ = fmt.Fprintln(os.Stderr, "server:", err) // best-effort diagnostic; exit code carries the real result
+	_, _ = fmt.Fprintln(os.Stderr, "nexul:", err) // best-effort diagnostic; exit code carries the real result
 	os.Exit(1)
 }

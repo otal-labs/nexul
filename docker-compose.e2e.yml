@@ -1,4 +1,4 @@
-# End-to-end stack: server + web + the Vitest/Playwright runner, all on an
+# End-to-end stack: server (web UI embedded) + the Playwright runner, all on an
 # internal network with NO host ports — no collisions with a dev stack.
 # Usage:
 #   docker compose -f docker-compose.e2e.yml up --build --abort-on-container-exit
@@ -40,14 +40,6 @@ services:
     depends_on:
       - server
 
-  web:
-    build:
-      context: ./web
-      dockerfile: Dockerfile
-      target: release
-    networks:
-      - e2e-net
-
   # A real runner against the host docker daemon: it claims deploy jobs and
   # executes them for real (docker pull / docker run via the socket). Deployed
   # containers join the e2e-net docker network, so specs verify them by
@@ -60,7 +52,7 @@ services:
       additional_contexts:
         root: .
     environment:
-      NEXUL_SERVER_WS: ws://server:8081/ws/runner
+      NEXUL_SERVER_WS: ws://server:8080/ws/runner
       NEXUL_RUNNER_SECRET: dev-runner-secret-rotate-me
       NEXUL_RUNNER_ID: e2e-runner-1
       NEXUL_RUNNER_NAME: e2e-runner
@@ -78,7 +70,7 @@ services:
       context: ./web
       dockerfile: e2e.Dockerfile
     environment:
-      NEXUL_BASE_URL: http://web
+      NEXUL_BASE_URL: http://server:8080
       NEXUL_AUTH_SECRET: dev-secret-rotate-me
       NEXUL_E2E_DB: /data/nexul.db
     volumes:
@@ -91,7 +83,6 @@ services:
       - e2e-net
     depends_on:
       - server
-      - web
       - runner
 
 networks:

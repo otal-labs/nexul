@@ -26,12 +26,17 @@ func Handler(assets fs.FS) http.Handler {
 			return
 		}
 		p := strings.TrimPrefix(clean, "/")
-		if p != "" {
+		if p != "" && p != "index.html" {
 			if _, err := fs.Stat(assets, p); err == nil {
+				// Vite fingerprints every file under assets/, so a cached copy can never be stale.
+				if strings.HasPrefix(p, "assets/") {
+					w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+				}
 				fileServer.ServeHTTP(w, r)
 				return
 			}
 		}
+		w.Header().Set("Cache-Control", "no-cache")
 		index := r.Clone(r.Context())
 		index.URL.Path = "/"
 		fileServer.ServeHTTP(w, index)

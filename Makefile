@@ -13,7 +13,7 @@ SQLC ?= go tool sqlc
 build: build-server build-runner build-web
 
 build-server:
-	CGO_ENABLED=0 go build $(GO_LDFLAGS) -o $(BIN_DIR)/nexul-server ./server/cmd
+	CGO_ENABLED=0 go build $(GO_LDFLAGS) -o $(BIN_DIR)/nexul ./server/cmd
 
 build-runner:
 	CGO_ENABLED=0 go build $(GO_LDFLAGS) -o $(BIN_DIR)/nexul-runner ./runner/cmd
@@ -21,13 +21,13 @@ build-runner:
 build-web:
 	bun run --cwd web build
 
-# Single-binary server: embeds web/dist via go:embed (server/webui). The SPA
+# The nexul binary as released: embeds web/dist via go:embed (server/webui). The SPA
 # is served by the binary itself; no nginx, no node at runtime.
 build-single: build-web
 	@rm -rf server/webui/dist
 	@mkdir -p server/webui/dist
 	@cp -r web/dist/. server/webui/dist/
-	CGO_ENABLED=0 go build -tags embed $(GO_LDFLAGS) -o $(BIN_DIR)/nexul-server ./server/cmd
+	CGO_ENABLED=0 go build -tags embed $(GO_LDFLAGS) -o $(BIN_DIR)/nexul ./server/cmd
 
 test:
 	go test ./...

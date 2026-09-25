@@ -257,18 +257,17 @@ containers can be seen, wired, and exposed, but it cannot be deployed until
 a repository is attached, which makes it managed.
 
 **Instance upgrade**:
-Moving the running compose stack to the newest release of its channel from
-the UI or the `instance_upgrade` MCP tool. The server records it, the bundled
-`instance` runner starts the upgrade helper, and the server resolves the
-record when it boots on the target version.
+Moving an install to the newest release of its channel, or to a chosen one,
+with `nexul upgrade`: on the host, or from the UI and the `instance_upgrade`
+MCP tool, which ask the `instance` runner to start it. The server records a
+UI or MCP upgrade and resolves the record when it boots on the target version.
 _Avoid_: Update (that word is the runner's own binary swap), deploy
 
-**Upgrade helper**:
-The one-shot container named `nexul-upgrade` that pulls the release's images
-and restarts the compose project. It is not part of the project, so it
-survives the restart that recreates the runner which started it. Its logs
-are the trace of a failed upgrade.
-_Avoid_: Updater, supervisor
+**Install directory**:
+Where `nexul install` puts an instance, `/data/nexul` by default: the compose
+file, the generated `.env`, `data/` and `logs/`. Uninstall keeps it unless
+purged, and installing into it again brings the same instance back.
+_Avoid_: Checkout (there is no git checkout of Nexul on a server)
 
 **Machine**:
 A server a runner runs on. Runners belong to a machine; a service targets a

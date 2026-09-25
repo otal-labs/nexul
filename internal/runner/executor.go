@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"maps"
@@ -52,8 +51,7 @@ type Executor interface {
 	Discover(ctx context.Context) (DiscoverReport, error)
 	// JoinNetworks handles a standalone join_networks request (network.go).
 	JoinNetworks(ctx context.Context, gatewayContainer string, networks []string, send func(Frame))
-	// Upgrade starts the one-shot helper container that brings this runner's compose stack up on req.Version
-	// (instance-upgrade spec); send's error return lets a transport failure short-circuit the remaining docker calls.
+	// Upgrade starts `nexul upgrade` on the host for req.Version; send's error return reports a transport failure.
 	Upgrade(ctx context.Context, req Frame, send func(Frame) error) error
 }
 
@@ -499,144 +497,31 @@ func (e *ShellExecutor) start(ctx context.Context, req DeployRequestedEvent, log
 	}
 }
 
-// upgradeHelperContainer names the one-shot helper container; not --rm, so a failed attempt's logs survive for
-// `docker logs nexul-upgrade` on the host (instance-upgrade spec).
-const upgradeHelperContainer = "nexul-upgrade"
+// upgradeUnit is the transient systemd unit `nexul upgrade` runs in; `journalctl -u nexul-upgrade` holds its output.
+const upgradeUnit = "nexul-upgrade"
 
-// composeWorkingDirLabel and composeConfigFilesLabel are the extra compose labels the upgrade step reads off its
-// own container, alongside composeProjectLabel (discover.go).
-const (
-	composeWorkingDirLabel  = "com.docker.compose.project.working_dir"
-	composeConfigFilesLabel = "com.docker.compose.project.config_files"
-)
+// lookPathFn finds the nexul command on the host; a package var so tests need no real binary on the PATH.
+var lookPathFn = exec.LookPath
 
-// upgradeInspectResult is the subset of `docker inspect` the upgrade step reads off its own container.
-type upgradeInspectResult struct {
-	Config struct {
-		Image  string            `json:"Image"`
-		Labels map[string]string `json:"Labels"`
-	} `json:"Config"`
-}
-
-// Upgrade starts a one-shot helper container that pulls and brings up the compose stack this runner belongs to on
-// req.Version, then reports started; the helper recreates the runner's own container next, so upgrade_result
-// started is always the last frame this method sends (instance-upgrade spec, "Runner behaviour").
+// Upgrade starts `nexul upgrade` for req.Version in its own transient systemd unit, so the upgrade outlives this
+// runner's connection while the server restarts, then reports started (ADR 0069).
 func (e *ShellExecutor) Upgrade(ctx context.Context, req Frame, send func(Frame) error) error {
-	container, err := runnerContainerID()
+	nexul, err := lookPathFn("nexul")
 	if err != nil {
+		return send(upgradeFailed(req, "the nexul command is not on this host; upgrading from the UI needs an install made with nexul install"))
+	}
+	if _, err := e.output(ctx, "systemd-run", "--unit", upgradeUnit, "--collect", "--quiet", nexul, "upgrade", "--version", req.Version); err != nil {
 		return send(upgradeFailed(req, err.Error()))
 	}
-	project, workingDir, configFiles, image, err := e.inspectSelf(ctx, container)
-	if err != nil {
-		return send(upgradeFailed(req, err.Error()))
-	}
-	if project == "" || workingDir == "" {
-		return send(upgradeFailed(req, "instance runner is not managed by docker compose"))
-	}
-	if err := send(Frame{Type: FrameUpgradeProgress, ID: req.ID, Log: fmt.Sprintf("resolved compose project %s at %s", project, workingDir)}); err != nil {
+	if err := send(Frame{Type: FrameUpgradeProgress, ID: req.ID, Log: "started " + upgradeUnit + ".service"}); err != nil {
 		return err
 	}
-
-	// docker rm -f fails harmlessly when there's no previous helper to remove; the spec treats that as expected.
-	_, _ = e.output(ctx, "docker", "rm", "-f", upgradeHelperContainer)
-	if err := send(Frame{Type: FrameUpgradeProgress, ID: req.ID, Log: "removed previous helper"}); err != nil {
-		return err
-	}
-
-	containerID, err := e.output(ctx, "docker", upgradeRunArgs(workingDir, image, project, configFiles, req.Version)...)
-	if err != nil {
-		return send(upgradeFailed(req, err.Error()))
-	}
-	if err := send(Frame{Type: FrameUpgradeProgress, ID: req.ID, Log: "helper started: " + containerID}); err != nil {
-		return err
-	}
-	return send(Frame{Type: FrameUpgradeResult, ID: req.ID, Status: UpgradeStatusStarted, Log: containerID})
+	return send(Frame{Type: FrameUpgradeResult, ID: req.ID, Status: UpgradeStatusStarted, Log: upgradeUnit})
 }
 
-// upgradeFailed builds the terminal frame for a docker failure before the helper starts.
+// upgradeFailed builds the terminal frame for an update that could not be started.
 func upgradeFailed(req Frame, msg string) Frame {
 	return Frame{Type: FrameUpgradeResult, ID: req.ID, Status: UpgradeStatusFailed, Error: msg}
-}
-
-// runnerContainerID resolves the id to inspect for the upgrade: NEXUL_RUNNER_CONTAINER overrides the hostname
-// docker gives every container by default, for tests and non-default hostnames.
-func runnerContainerID() (string, error) {
-	if v := os.Getenv("NEXUL_RUNNER_CONTAINER"); v != "" {
-		return v, nil
-	}
-	return os.Hostname()
-}
-
-// inspectSelf reads this runner's own compose labels and image off `docker inspect`, so the upgrade targets the
-// exact project, working dir and compose files the running stack was started from (instance-upgrade spec).
-func (e *ShellExecutor) inspectSelf(ctx context.Context, container string) (project, workingDir string, configFiles []string, image string, err error) {
-	out, err := e.output(ctx, "docker", "inspect", "--format", "{{json .}}", container)
-	if err != nil {
-		return "", "", nil, "", err
-	}
-	var res upgradeInspectResult
-	if err := json.Unmarshal([]byte(out), &res); err != nil {
-		return "", "", nil, "", fmt.Errorf("parse inspect output: %w", err)
-	}
-	project = res.Config.Labels[composeProjectLabel]
-	workingDir = res.Config.Labels[composeWorkingDirLabel]
-	configFiles = resolveComposeFiles(workingDir, res.Config.Labels[composeConfigFilesLabel])
-	return project, workingDir, configFiles, res.Config.Image, nil
-}
-
-// resolveComposeFiles splits the compose label's comma-separated file list, joining any relative entry onto
-// workingDir the way compose itself resolves a project's `-f` files (instance-upgrade spec, "Runner behaviour").
-func resolveComposeFiles(workingDir, raw string) []string {
-	var files []string
-	for _, f := range strings.Split(raw, ",") {
-		f = strings.TrimSpace(f)
-		if f == "" {
-			continue
-		}
-		if !filepath.IsAbs(f) {
-			f = filepath.Join(workingDir, f)
-		}
-		files = append(files, f)
-	}
-	return files
-}
-
-// upgradeRunArgs builds the helper's `docker run` invocation: it mounts the docker socket and the compose
-// project's working dir (so any bind mount inside the compose files still resolves), then runs pull+up against
-// the same project the running stack was started from (instance-upgrade spec, "Runner behaviour").
-func upgradeRunArgs(workingDir, image, project string, configFiles []string, version string) []string {
-	return []string{
-		"run", "-d", "--name", upgradeHelperContainer,
-		"-v", "/var/run/docker.sock:/var/run/docker.sock",
-		"-v", workingDir + ":" + workingDir,
-		"-w", workingDir,
-		"-e", "NEXUL_VERSION=" + strings.TrimPrefix(version, "v"),
-		"--entrypoint", "sh",
-		image,
-		"-c", upgradeScript(project, configFiles),
-	}
-}
-
-// upgradeScript is the helper's shell command: pull then bring the compose project up on the new images; `set -e`
-// stops it at the first failing step so a bad pull never reaches `up`.
-func upgradeScript(project string, configFiles []string) string {
-	composeArgs := composeProjectArgs(project, configFiles)
-	return fmt.Sprintf("set -e; docker compose %s pull; docker compose %s up -d --remove-orphans", composeArgs, composeArgs)
-}
-
-// composeProjectArgs renders the `-p`/`-f` flags shared by the helper's pull and up commands, shell-quoted since
-// the working dir and compose file names come from docker labels, not a trusted literal.
-func composeProjectArgs(project string, configFiles []string) string {
-	parts := []string{"-p", shellQuote(project)}
-	for _, f := range configFiles {
-		parts = append(parts, "-f", shellQuote(f))
-	}
-	return strings.Join(parts, " ")
-}
-
-// shellQuote wraps s in single quotes for the helper's `sh -c` script, escaping any single quote it contains.
-func shellQuote(s string) string {
-	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }
 
 // recoverAndReport converts an executor panic into a failed result frame so a buggy step cannot hang the job silently.

@@ -1,6 +1,6 @@
 # Instance upgrade from the UI
 
-**Status:** built; end-to-end run on a real install pending public GHCR packages (see spec "Out of scope" and TODO)
+**Status:** built; the helper container below was replaced by `nexul upgrade` in a transient systemd unit (ADR 0069). End-to-end run on a real install pending public GHCR packages.
 
 ## Problem statement
 

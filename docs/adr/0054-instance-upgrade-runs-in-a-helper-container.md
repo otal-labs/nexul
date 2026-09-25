@@ -1,5 +1,7 @@
 # An instance upgrades itself through a helper container the bundled runner starts
 
+Superseded by ADR 0069: the instance runner is a host service and starts `nexul upgrade` in a transient systemd unit.
+
 Upgrading a compose install from the UI means restarting the very containers that would run the upgrade. The
 server holds no credentials to its host (the runner model exists so it never has to), and the bundled
 `instance` runner is itself a container in the project being upgraded, so neither can run `docker compose up`

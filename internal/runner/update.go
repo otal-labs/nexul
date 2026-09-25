@@ -12,13 +12,13 @@ import (
 	"path/filepath"
 )
 
-// isContainerRunner reports whether this process is the compose-managed instance runner: it never swaps its own
-// binary, since the next image pull replaces the whole container instead.
+// dockerEnvPath is the marker file Docker puts in every container; a package var so tests can point it elsewhere.
+var dockerEnvPath = "/.dockerenv"
+
+// isContainerRunner reports whether this runner runs in a container (the dev and e2e stacks): it never swaps its
+// own binary, since rebuilding the image replaces the whole container instead.
 func isContainerRunner() bool {
-	if os.Getenv("NEXUL_RUNNER_ID") == "instance" {
-		return true
-	}
-	_, err := os.Stat("/.dockerenv")
+	_, err := os.Stat(dockerEnvPath)
 	return err == nil
 }
 

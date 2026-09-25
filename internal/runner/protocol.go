@@ -35,10 +35,8 @@ const (
 	// FrameUpdate (server -> runner) carries a newer release for the runner to download and swap itself with
 	// (upgrade-path spec, "Runner protocol"); sent best-effort right after registerRunner on connect.
 	FrameUpdate FrameType = "update"
-	// FrameAssignUpgrade (server -> runner) asks the bundled instance runner to bring the compose stack up on a
-	// newer release by starting a one-shot helper container (instance-upgrade spec); it holds the runner's single
-	// job slot like assign_deploy. FrameUpgradeProgress/FrameUpgradeResult (runner -> server) report it; a
-	// `started` result is the last frame, because the helper recreates the runner's own container next.
+	// FrameAssignUpgrade (server -> runner) asks the instance runner to start `nexul upgrade` on its host (ADR 0069);
+	// FrameUpgradeProgress/FrameUpgradeResult report it, and `started` is the last frame since the server restarts next.
 	FrameAssignUpgrade   FrameType = "assign_upgrade"
 	FrameUpgradeProgress FrameType = "upgrade_progress"
 	FrameUpgradeResult   FrameType = "upgrade_result"

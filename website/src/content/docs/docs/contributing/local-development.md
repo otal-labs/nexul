@@ -18,10 +18,10 @@ The root `Makefile` covers the Go binaries and the web build:
 
 ```sh
 make build         # build-server + build-runner + build-web
-make build-server   # ./dist/nexul-server
+make build-server   # ./dist/nexul, without the web UI
 make build-runner   # ./dist/nexul-runner
 make build-web      # bun run --cwd web build
-make build-single    # single-binary server, web assets embedded via go:embed
+make build-single    # ./dist/nexul as released, web UI embedded via go:embed
 make test           # go test ./...
 make vet            # go vet ./...
 make coverage       # go test -race with the 80% gate
@@ -58,8 +58,8 @@ attached to the Go binaries (`:2345` server, `:2346` runner):
 docker compose -f docker-compose.debug.yml up
 ```
 
-Web (`:5173`), server HTTP and MCP (`:8080`, MCP at `/mcp`), the runner WebSocket (`:8081`), and OpenObserve
-(`:5080`) are all reachable on the host.
+Web (`:5173`), the server (`:8080`: the API, MCP at `/mcp`, and the runner WebSocket at `/ws/runner`), and
+OpenObserve (`:5080`) are all reachable on the host.
 
 **Named `node_modules` volumes.** `web-node-modules` and
 `automations-node-modules` are named Docker volumes, not bind mounts —

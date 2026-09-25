@@ -5,7 +5,7 @@ sidebar:
   order: 8
 ---
 
-The Docker Compose stack includes [OpenObserve](https://openobserve.ai), and the server ships every log line to it as well as to stderr.
+An install made with `nexul install` includes [OpenObserve](https://openobserve.ai), and the server ships every log line to it as well as to stderr.
 
 ## Opening the logs UI
 
@@ -21,7 +21,7 @@ Logs land in the `nexul` stream of the `default` org.
 | `NEXUL_LOGS_PASSWORD` | The OpenObserve root user's password |
 | `NEXUL_LOGS_TOKEN` | The ingest token the server uses to ship logs |
 
-All three are generated into `.env` by `install.sh` / `install.ps1` on first run and reused on every re-run.
+All three are generated into the install directory's `.env` by `nexul install` and reused on every re-run, because OpenObserve reads them only at its first boot.
 
 ## Querying logs through MCP
 

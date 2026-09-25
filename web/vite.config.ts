@@ -17,8 +17,8 @@ export default defineConfig({
   // OAuth, and the WS through Vite instead of calling localhost:8080 cross-
   // origin. Run with VITE_API_URL=/ (df-14).
   //
-  // Mirrors nginx.conf's routing 1:1 so the debug docker-compose stack (where
-  // this proxies to the `server` container) behaves the same as prod. Host
+  // Forwards the paths the server owns, so the SPA reaches it same-origin as it
+  // does in production, where the server serves the SPA itself. Host
   // is overridable because bare `bun run dev` needs localhost while the
   // dockerized debug stack needs the `server` service name.
   server: {
@@ -30,7 +30,6 @@ export default defineConfig({
       "/auth": `http://${DEV_PROXY_HOST}:8080`,
       "/hooks": `http://${DEV_PROXY_HOST}:8080`,
       "/mcp": `http://${DEV_PROXY_HOST}:8080`,
-      "/ws/runner": { target: `ws://${DEV_PROXY_HOST}:8081`, ws: true },
       "/ws": { target: `ws://${DEV_PROXY_HOST}:8080`, ws: true },
     },
   },

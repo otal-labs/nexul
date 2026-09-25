@@ -4,7 +4,7 @@ import '@fontsource-variable/jetbrains-mono';
 import '../styles/landing.css';
 import interWoff2 from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url';
 import monoWoff2 from '@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2?url';
-import InstallSwitcher from '../components/InstallSwitcher.astro';
+import InstallBlock from '../components/InstallBlock.astro';
 import WorkflowPreview from '../components/WorkflowPreview.astro';
 import Icon from '../components/Icon.astro';
 
@@ -61,7 +61,7 @@ const capabilities = [
 				<p class="eyebrow"><span class="brand-mark"></span> The self-hosted software workspace</p>
 				<div class="hero-heading">
 					<h1 id="hero-title">From the first doc<br />to the next deploy<span class="muted">.</span></h1>
-					<div class="hero-install"><InstallSwitcher id="hero" /></div>
+					<div class="hero-install"><InstallBlock /></div>
 				</div>
 				<WorkflowPreview />
 				<div class="hero-footnote"><span>One project. The whole trail.</span><span>Open core <span class="separator">/</span> Self-hosted <span class="separator">/</span> In beta</span></div>
@@ -108,7 +108,7 @@ const capabilities = [
 			<section class="install-section" id="install" aria-labelledby="install-title">
 				<div class="wrap install-grid">
 					<div><p class="eyebrow">Make it your workspace</p><h2 id="install-title">Your next project<br />starts here.</h2><p>Run the installer and open the setup wizard.</p></div>
-					<div class="installation"><InstallSwitcher id="closing" /><p class="beta-note"><span class="beta-dot"></span><span>Currently in beta. Expect rough edges and breaking changes.</span></p></div>
+					<div class="installation"><InstallBlock /><p class="beta-note"><span class="beta-dot"></span><span>Currently in beta. Expect rough edges and breaking changes.</span></p></div>
 				</div>
 			</section>
 		</main>

@@ -177,7 +177,7 @@ func instanceGetTool(s *Service) mcptool.Tool {
 func instanceUpgradeTool(s *Service) mcptool.Tool {
 	return mcptool.New("instance_upgrade", "Upgrade instance",
 		"Upgrades the instance to its channel's newest release, exactly as the settings page's Upgrade button "+
-			"does: the bundled instance runner starts a helper that pulls the new images and restarts Nexul, so the "+
+			"does: the instance runner starts `nexul upgrade` on the host, which pulls the new images and restarts Nexul, so the "+
 			"server goes away for a while. It is refused with the reason when instance_get says an upgrade cannot "+
 			"start. Returns the pending upgrade record; poll instance_get for the outcome. Instance admins only.",
 		mcptool.Hints{},

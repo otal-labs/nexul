@@ -5,7 +5,6 @@ services:
       dockerfile: Dockerfile.debug
     ports:
       - "8080:8080"
-      - "8081:8081"
       - "2345:2345"
     environment:
       NEXUL_DB_PATH: /data/nexul.db
@@ -65,7 +64,7 @@ services:
     depends_on:
       - server
 
-  # The instance-host runner, same as docker-compose.yml, built from source with dlv on :2346.
+  # The instance runner, in a container here so it builds from source with dlv on :2346.
   runner:
     build:
       context: ./runner
@@ -73,7 +72,7 @@ services:
     ports:
       - "2346:2346"
     environment:
-      NEXUL_SERVER_WS: ws://server:8081/ws/runner
+      NEXUL_SERVER_WS: ws://server:8080/ws/runner
       # The server publishes the runner secret next to its DB; read it off the same volume.
       NEXUL_RUNNER_SECRET_FILE: /secrets/runner-secret
       NEXUL_RUNNER_ID: instance

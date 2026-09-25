@@ -1,5 +1,7 @@
 # The runner is a host binary, not a container
 
+ADR 0069 removes the exception below: the instance runner is a host systemd service too.
+
 Everything else Nexul ships runs in the compose stack, so a
 containerized runner would be the consistent choice — but a runner's whole
 job is to drive the host's Docker daemon and check repositories out onto the

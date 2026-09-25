@@ -97,7 +97,7 @@ const InstanceVersionBody = ({ data }: { data: InstanceUpgrade }) => {
         <div className="space-y-1 rounded-md border border-destructive/30 bg-destructive/5 p-3">
           <p className="text-sm text-destructive">{record.error}</p>
           <p className="text-xs text-muted-foreground">
-            On the host, run <code className="font-mono">docker logs nexul-upgrade</code> for the helper&apos;s
+            On the host, run <code className="font-mono">journalctl -u nexul-upgrade</code> for the upgrade&apos;s
             output.
           </p>
         </div>

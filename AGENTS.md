@@ -184,8 +184,11 @@ calls what, `search_graph` to disambiguate an overloaded name. Reindex
 
 1. Create `<service>/cmd/main.go` (composition root).
 2. Create `<service>/Dockerfile` (multi-stage: `release` and `debug` targets).
-3. Add it to the root `docker-compose.yml` and `docker-compose.debug.yml`.
-4. Add a CI job in `.github/workflows/ci.yml` with a `dorny/paths-filter`
+3. Add it to the root `docker-compose.yml` (the production stack `nexul install`
+   writes) and `docker-compose.debug.yml`.
+4. Ship it: a Go binary or its image goes in `.goreleaser.yaml`, anything else
+   is an image job in `.github/workflows/release.yml`.
+5. Add a CI job in `.github/workflows/ci.yml` with a `dorny/paths-filter`
    entry.
 
 ## When in doubt

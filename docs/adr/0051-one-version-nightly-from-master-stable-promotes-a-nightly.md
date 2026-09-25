@@ -1,5 +1,7 @@
 # One product version; nightly cuts from master, stable only promotes a nightly
 
+ADR 0070 replaced the VERSION file with git tags.
+
 Superseded in part by 0053: the hourly nightly became a beta cut on every push to master. The one-version and promote-only-what-shipped rules stand.
 
 Nexul ships one version for the whole product — server, web,
