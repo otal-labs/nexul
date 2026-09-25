@@ -58,7 +58,7 @@ attached to the Go binaries (`:2345` server, `:2346` runner):
 docker compose -f docker-compose.debug.yml up
 ```
 
-Web (`:5173`), server HTTP/WS/MCP (`:8080`/`:8081`/`:8082`), and OpenObserve
+Web (`:5173`), server HTTP and MCP (`:8080`, MCP at `/mcp`), the runner WebSocket (`:8081`), and OpenObserve
 (`:5080`) are all reachable on the host.
 
 **Named `node_modules` volumes.** `web-node-modules` and

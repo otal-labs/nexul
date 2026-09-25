@@ -19,5 +19,5 @@ LABEL org.opencontainers.image.version=${VERSION}
 # CA bundle copied from the Go stage: no RUN here, so the arm64 image needs no emulation at all.
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=build /server /usr/local/bin/server
-EXPOSE 8080 8081 8082
+EXPOSE 8080 8081
 ENTRYPOINT ["server"]

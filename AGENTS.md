@@ -23,7 +23,7 @@ The product is implemented. The work now is improving it domain by domain.
 | Testing | `practices/testing.md` | The language file above |
 | Any code | `practices/borrowed-practices.md`, the cross-cutting rules | `practices/README.md` for the index |
 | Docker, CI, deploy | [CI and releases](https://nexul.io/docs/contributing/ci-and-releases/) | Root `docker-compose.yml` |
-| MCP server | `practices/architecture.md`, section 8 | `docs/adr/` |
+| MCP server or a domain's `mcp.go` | `practices/mcp.md` | `practices/architecture.md`, section 8 |
 | Event bus or resilience | `practices/architecture.md`, sections 2 to 6 | `docs/adr/` |
 | Why is it built this way? | `docs/adr/` | The effort's spec in `.scratch/` |
 | Unfamiliar with a term | `CONTEXT.md` | (the ubiquitous language) |
@@ -172,7 +172,8 @@ calls what, `search_graph` to disambiguate an overloaded name. Reindex
    queries in `internal/platform/storage/queries/<table>.sql` and `make sqlc`.
 3. Register the domain's topics in its `Topics()` function; the catalog
    aggregates them (`practices/architecture.md`, section 2).
-4. Add the MCP tools, one per use-case, named `<object>_<verb>`.
+4. Expose the use-cases to agents per `practices/mcp.md`: extend an existing
+   tool first, add one only inside the tool budget, named `<object>_<verb>`.
 5. Add the HTTP routes in `server/cmd/` or a router package.
 6. Add the frontend: model, hooks, components, page, route.
 7. Add tests: unit (table-driven) and integration (real SQLite).

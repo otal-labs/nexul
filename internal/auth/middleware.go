@@ -23,22 +23,28 @@ func UserFromCtx(ctx context.Context) *User {
 func (s *Service) RequireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if s.cfg.Users == nil {
-			httpx.WriteError(w, apperrs.ErrUnauthorized)
+			unauthorized(w)
 			return
 		}
 		token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 		token = strings.TrimSpace(token)
 		if token == "" {
-			httpx.WriteError(w, apperrs.ErrUnauthorized)
+			unauthorized(w)
 			return
 		}
 		user, err := s.authenticate(r, token)
 		if err != nil {
-			httpx.WriteError(w, apperrs.ErrUnauthorized)
+			unauthorized(w)
 			return
 		}
 		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), userCtxKey, user)))
 	})
+}
+
+// unauthorized carries the Bearer challenge RFC 6750 requires on every 401 of a bearer-protected resource.
+func unauthorized(w http.ResponseWriter) {
+	w.Header().Set("WWW-Authenticate", `Bearer realm="nexul"`)
+	httpx.WriteError(w, apperrs.ErrUnauthorized)
 }
 
 // authenticate resolves a Bearer token (session or PAT) to its user; the PAT path re-reads the store each time.

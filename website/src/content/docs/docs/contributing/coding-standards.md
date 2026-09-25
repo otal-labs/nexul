@@ -1,6 +1,6 @@
 ---
 title: Coding Standards
-description: A digest of the practices that govern Go, React, testing, and visual design in this repo.
+description: A digest of the practices that govern Go, MCP, React, testing, and visual design in this repo.
 sidebar:
   order: 4
 ---
@@ -31,6 +31,19 @@ and [`practices/architecture.md`](https://github.com/otal-labs/nexul/blob/master
   for checks).
 - Queries are hand-written `.sql` files; `sqlc` generates the typed Go. See
   ADR [0009](https://github.com/otal-labs/nexul/blob/master/docs/adr/0009-sqlc-generates-the-storage-queries.md).
+
+## MCP
+
+Full text: [`practices/mcp.md`](https://github.com/otal-labs/nexul/blob/master/practices/mcp.md).
+
+The MCP server runs on the official Go SDK behind one stateless endpoint,
+`POST /mcp`, and domains declare tools through a typed contract instead of
+importing the SDK. Tools are shaped per task and kept under 100: one-field
+setters fold into patch-style updates, list variants into filtered lists.
+Names are `<object>_<verb>` in the glossary's words, every parameter is
+described, every tool carries read-only and destructive hints, lists are
+paginated, and a tool's failure comes back as an `isError` result that says
+how to recover.
 
 ## React (the Frontend Commandments)
 

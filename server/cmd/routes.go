@@ -68,7 +68,7 @@ func liveEventsHandler(presenceKeeper *presence.Keeper, liveHub *live.Hub) http.
 }
 
 // buildRoutes wires the runner WS listener, the HTTP gateway (ADR 0019), and the MCP HTTP transport.
-func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, svc *coreServices, wsHandler *runner.Handler, runnerSvc *runner.Service, runnerHTTP *runner.HTTPHandler, automationsDialin *automations.DialinHandler, liveHub *live.Hub, agentHandler *agent.Handler, logger *slog.Logger) (wsServer, httpServer, mcpServerHTTP *http.Server) {
+func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, svc *coreServices, wsHandler *runner.Handler, runnerSvc *runner.Service, runnerHTTP *runner.HTTPHandler, automationsDialin *automations.DialinHandler, liveHub *live.Hub, agentHandler *agent.Handler, logger *slog.Logger) (wsServer, httpServer *http.Server) {
 	mux := http.NewServeMux()
 	mux.Handle("/ws/runner", wsHandler)
 	wsServer = &http.Server{Addr: cfg.WSAddr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
@@ -162,7 +162,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 		InstanceAdmin: instanceAdminGate{svc: svc.authSvc},
 		Publisher:     bus,
 		Logger:        logger,
-		Actor:         mcpActor,
+		InstanceURL:   dnsSettingsAdapter{store.Settings}.GetInstanceURL,
 	})
 
 	httpMux := httpx.NewServeMux()
@@ -191,7 +191,9 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	// Also on the main listener: the install command and the MCP URL are derived from the instance URL, so a proxy
 	// (or the single binary) only has to forward one origin; the dedicated listeners below stay for direct access.
 	httpMux.Handle("/ws/runner", wsHandler)
-	httpMux.Handle("/mcp", svc.authSvc.RequireAuth(mcpServer))
+	httpMux.Handle("/mcp", svc.authSvc.RequireAuth(withIdentity(mcpServer)))
+	// No OAuth authorization server: a client probing OAuth discovery gets a clean 404, not the web app's HTML.
+	httpMux.Handle("/.well-known/", http.NotFoundHandler())
 	httpMux.Handle("/hooks/github", gitprovider.NewWebhookHandler(cfg.AuthSecret, bus))
 	httpMux.Handle("/hooks/livekit", svc.voiceWebhookHandler)
 	routes := append(httpx.RoutesOf(apiMux), httpx.RoutesOf(httpMux)...)
@@ -201,18 +203,14 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	httpMux.Handle("/", webui.Handler(webui.Assets()))
 	httpServer = &http.Server{Addr: cfg.HTTPAddr, Handler: httpMux, ReadHeaderTimeout: 10 * time.Second}
 
-	// The MCP server is a plain http.Handler, so the same gateway auth middleware guards it.
-	mcpServerHTTP = &http.Server{Addr: cfg.MCPAddr, Handler: svc.authSvc.RequireAuth(mcpServer), ReadHeaderTimeout: 10 * time.Second}
-
-	return wsServer, httpServer, mcpServerHTTP
+	return wsServer, httpServer
 }
 
-// shutdownServers gives the WS, MCP, and HTTP servers a bounded window to drain (graceful shutdown).
-func shutdownServers(wsServer, mcpServerHTTP, httpServer *http.Server) {
+// shutdownServers gives the WS and HTTP servers a bounded window to drain (graceful shutdown).
+func shutdownServers(wsServer, httpServer *http.Server) {
 	shutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	_ = wsServer.Shutdown(shutdown)
-	_ = mcpServerHTTP.Shutdown(shutdown)
 	_ = httpServer.Shutdown(shutdown)
 }
 

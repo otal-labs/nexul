@@ -87,7 +87,8 @@ desktop/                 # Electron desktop shell (see practices/typescript.md)
   boundary: `fmt.Errorf("get ticket %s: %w", id, err)`.
 - Adapters are the only layer that translates them. `internal/platform/httpx`
   owns the status codes and the JSON error envelope every HTTP gateway
-  returns; `internal/mcp/errors.go` owns the JSON-RPC mapping. A handler that
+  returns; the MCP adapter in `internal/mcp/` turns them into tool error
+  results (`practices/mcp.md`, section 8). A handler that
   writes its own status for a sentinel has put the mapping in two places.
 - **Never** call `log.Fatal` or `os.Exit` outside `cmd/main.go`.
 - **Never** swallow an error with `_ = someFunc()`. If ignoring an error is
@@ -471,6 +472,11 @@ These choices are settled. Reopen one only with a written reason.
   choice for Go.
 - `go.yaml.in/yaml/v3` is the YAML library, the maintained successor path
   now that the original `go-yaml` repository stopped taking changes.
+- `github.com/modelcontextprotocol/go-sdk` serves the MCP protocol (ADR 0067)
+  because it is the official SDK, held to full conformance with each
+  specification revision. Only `internal/mcp/` imports it; domains declare
+  tools through `internal/platform/mcptool`, whose input schemas come from
+  the SDK's own schema library, `github.com/google/jsonschema-go`.
 - OpenTelemetry appears only as the log exporter sitting beneath slog
   (section 3, ADR 0008), never as a second logging API.
 

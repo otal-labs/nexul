@@ -168,13 +168,6 @@ func containerNodeStatus(svc *deploy.Container, deployStatus deploy.Status) (top
 
 // wireDomainEventSubscriptions must run before wireIntegrationFanout starts the outbox relay.
 func wireDomainEventSubscriptions(ctx context.Context, bus *inprocess.Bus, svc *coreServices, logger *slog.Logger) {
-	// The MCP adapter re-indexes on doc/ticket events.
-	indexer := mcp.NewIndexer(logger)
-	mustSubscribe(ctx, bus, "mcp.index", docs.TopicCreated, "", indexer.HandleDocEvent)
-	mustSubscribe(ctx, bus, "mcp.index", docs.TopicUpdated, "", indexer.HandleDocEvent)
-	mustSubscribe(ctx, bus, "mcp.index", tickets.TopicCreated, "", indexer.HandleTicketCreated)
-	mustSubscribe(ctx, bus, "mcp.index", tickets.TopicUpdated, "", indexer.HandleTicketCreated)
-
 	// These dedupe via processed_events; PR merge/close completion is owned by tickets, which evaluates ticket.finished.
 	linker := ticketLinker{svc: svc.ticketsSvc}
 	mustSubscribe(ctx, bus, "tickets.link_pr", gitprovider.TopicPROpened, "", func(ctx context.Context, ev eventbus.Event) error {

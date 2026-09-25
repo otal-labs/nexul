@@ -211,25 +211,17 @@ Every service:
 ## 8. The MCP server is one adapter of two
 
 The MCP server in `internal/mcp/` and the HTTP gateway are two adapters over
-the same use-case layer (ADR 0019). Every tool maps to a use-case function;
-every resource maps to a read query. So:
+the same use-case layer (ADR 0019). A tool calls use-cases; it never holds a
+rule of its own. So:
 
-- A capability in the UI exists in MCP by construction, and the reverse.
+- Every capability in the UI is reachable over MCP, and the reverse. A tool
+  covers a task rather than one use-case (ADR 0068), so reachable means
+  through some tool, not through a dedicated one.
 - Operational internals (dead letters, run logs, topology mutation) are
   exposed to agents because they are just use-cases.
 
-Tool names are `<object>_<verb>`: `doc_search`, `ticket_get`,
-`memory_revert`, `stack_deploy`. Object first keeps each domain's tools
-together wherever a tool list is sorted, so an agent finds every ticket
-operation in one place. Workflow prompts are not tools and keep their own
-names (`create_ticket_from_doc`, `deploy_stack`). Composite tools that cross domains live in
-`internal/mcp/registry.go`; domain-owned tools live in the domain's `mcp.go`.
-
-Domain errors map to JSON-RPC codes in `internal/mcp/errors.go`:
-
-- `ErrNotFound` to `-32002`
-- `ErrUnauthorized` to `-32001`
-- internal errors to `-32603`
+`practices/mcp.md` is the standard for everything MCP: transport, security,
+the tool budget, naming, declaring tools, and the shape of results and errors.
 
 ## 9. The canvas JSON is the stored topology
 
