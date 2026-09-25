@@ -21,8 +21,10 @@ type RunnerConfig struct {
 	Name       string
 	// Machine is the machine this runner belongs to (NEXUL_MACHINE, defaults to the host's hostname); runners
 	// reporting the same machine form a dispatch pool (issue 05).
-	Machine  string
-	LogLevel string
+	Machine string
+	// StackRoot is where this runner keeps checkouts (NEXUL_STACK_ROOT), reported so a new machine starts with it.
+	StackRoot string
+	LogLevel  string
 	// GitToken authenticates private repo clones for repo-driven builds; optional so a fresh install's instance runner still starts.
 	GitToken          string
 	HeartbeatInterval time.Duration
@@ -40,6 +42,7 @@ func LoadRunnerConfig() (*RunnerConfig, error) {
 		RunnerID:          os.Getenv("NEXUL_RUNNER_ID"),
 		Name:              os.Getenv("NEXUL_RUNNER_NAME"),
 		Machine:           os.Getenv("NEXUL_MACHINE"),
+		StackRoot:         os.Getenv("NEXUL_STACK_ROOT"),
 		LogLevel:          envOrDefault("NEXUL_LOG_LEVEL", "info"),
 		GitToken:          os.Getenv("NEXUL_GIT_TOKEN"),
 		HeartbeatInterval: envDuration("NEXUL_RUNNER_HEARTBEAT", 10*time.Second),

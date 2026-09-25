@@ -187,6 +187,8 @@ jobs:
         run: |
           (cd web && bun install --frozen-lockfile && VITE_API_URL=/ bun run build)
           rm -rf server/webui/dist && mkdir -p server/webui/dist && cp -r web/dist/. server/webui/dist/
+      # The runner image installs packages, which the arm64 build runs under emulation.
+      - uses: docker/setup-qemu-action@v4
       - uses: docker/setup-buildx-action@v4
       - uses: docker/login-action@v4
         with:
@@ -225,7 +227,7 @@ jobs:
       - name: Delete old beta image versions
         run: |
           set -euo pipefail
-          for pkg in nexul nexul-automations; do
+          for pkg in nexul nexul-runner nexul-automations; do
             echo "Pruning ${pkg}..."
             # Keep the 10 newest tagged versions and anything tagged latest or
             # a stable semver; untagged multi-arch manifest children are left

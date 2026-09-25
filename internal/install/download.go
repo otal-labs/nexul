@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -24,9 +25,13 @@ func (h *Host) releaseAsset(ctx context.Context, tag, name, dest string) error {
 	return h.downloadVerified(ctx, base+name, dest, sum)
 }
 
-// assetName is a release binary's file name for this host, e.g. nexul-runner-linux-amd64.
+// assetName is a release binary's file name for this host, e.g. nexul-runner-linux-amd64 or nexul-windows-amd64.exe.
 func (h *Host) assetName(binary string) string {
-	return fmt.Sprintf("%s-%s-%s", binary, h.GOOS, h.GOARCH)
+	name := fmt.Sprintf("%s-%s-%s", binary, h.GOOS, h.GOARCH)
+	if h.GOOS == "windows" {
+		return name + ".exe"
+	}
+	return name
 }
 
 // fetchChecksum reads a sha256sum-format file and returns the digest listed for name.
@@ -62,7 +67,26 @@ func (h *Host) downloadVerified(ctx context.Context, url, dest, want string) err
 	if got != want {
 		return errors.Join(fmt.Errorf("checksum mismatch for %s: got %s, want %s", url, got, want), os.Remove(tmp))
 	}
-	if err := os.Rename(tmp, dest); err != nil {
+	return replaceFile(tmp, dest)
+}
+
+// replaceFile moves src over dest. Windows refuses to overwrite a running executable but lets it be renamed, so
+// there dest is first moved aside to dest.old, which the next replace clears.
+func replaceFile(src, dest string) error {
+	err := os.Rename(src, dest)
+	if err == nil || runtime.GOOS != "windows" {
+		return wrapInstall(dest, err)
+	}
+	old := dest + ".old"
+	_ = os.Remove(old) // a leftover from the previous replace, or nothing
+	if err := os.Rename(dest, old); err != nil {
+		return wrapInstall(dest, err)
+	}
+	return wrapInstall(dest, os.Rename(src, dest))
+}
+
+func wrapInstall(dest string, err error) error {
+	if err != nil {
 		return fmt.Errorf("install %s: %w", dest, err)
 	}
 	return nil

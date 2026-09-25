@@ -1,4 +1,4 @@
-# Builds every release: the two binaries for each platform, checksums.txt, the nexul image, and the GitHub
+# Builds every release: the two binaries for each platform, checksums.txt, the nexul and nexul-runner images, and the GitHub
 # release. release.yml picks the tag and builds the web UI into server/webui/dist before this runs.
 version: 2
 project_name: nexul
@@ -36,9 +36,24 @@ checksum:
   name_template: checksums.txt
 
 dockers_v2:
-  - ids: [nexul]
+  - id: nexul
+    ids: [nexul]
     images: [ghcr.io/otal-labs/nexul]
     dockerfile: server/Dockerfile.release
+    platforms: [linux/amd64, linux/arm64]
+    tags:
+      - "{{ .Version }}"
+      - "{{ if .Prerelease }}beta{{ end }}"
+      - "{{ if or (not .Prerelease) (eq .Env.STABLE_EXISTS \"false\") }}latest{{ end }}"
+    labels:
+      org.opencontainers.image.source: https://github.com/otal-labs/nexul
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+
+  - id: nexul-runner
+    ids: [nexul-runner]
+    images: [ghcr.io/otal-labs/nexul-runner]
+    dockerfile: runner/Dockerfile.release
     platforms: [linux/amd64, linux/arm64]
     tags:
       - "{{ .Version }}"

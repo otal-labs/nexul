@@ -67,8 +67,9 @@ Nexul has one version for the whole product, and git tags are that version
   `nexul-<os>-<arch>[.exe]`, the server with the web UI embedded plus the
   install, upgrade, status and uninstall commands, and
   `nexul-runner-<os>-<arch>[.exe]`. A `checksums.txt` covers every binary.
-  Two images for amd64 and arm64: `ghcr.io/otal-labs/nexul` and
-  `ghcr.io/otal-labs/nexul-automations`, each tagged with the version
+  Three images for amd64 and arm64: `ghcr.io/otal-labs/nexul`,
+  `ghcr.io/otal-labs/nexul-automations`, and `ghcr.io/otal-labs/nexul-runner`
+  (the instance runner on macOS and Windows installs), each tagged with the version
   (no leading `v`) plus the moving `beta` or `latest` tag; until the first
   stable release exists, betas carry `latest` too. The binary names are a
   contract: the installer, the runner download proxy and runner self-update

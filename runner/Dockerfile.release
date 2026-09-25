@@ -1,0 +1,7 @@
+# The released runner image, used by macOS and Windows installs (docker-compose.desktop.yml). GoReleaser builds the
+# binary and stages it per platform in the context; git and the docker CLI are what every build and deploy shells out to.
+FROM alpine:3.22
+ARG TARGETPLATFORM
+RUN apk add --no-cache git docker-cli docker-cli-compose
+COPY $TARGETPLATFORM/nexul-runner /usr/local/bin/nexul-runner
+ENTRYPOINT ["nexul-runner"]

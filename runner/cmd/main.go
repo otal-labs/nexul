@@ -43,6 +43,7 @@ func main() {
 		RunnerID:          cfg.RunnerID,
 		Name:              cfg.Name,
 		Machine:           cfg.Machine,
+		StackRoot:         cfg.StackRoot,
 		Version:           version.Version,
 		Logger:            logger,
 		Executor:          runner.NewShellExecutor(nil, cfg.GitToken, logger),

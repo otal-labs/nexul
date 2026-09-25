@@ -25,6 +25,8 @@ type ClientConfig struct {
 	Name     string
 	// Machine is the machine this runner reports on connect (NEXUL_MACHINE, issue 05).
 	Machine string
+	// StackRoot is where this runner keeps checkouts (NEXUL_STACK_ROOT); empty leaves the server's default.
+	StackRoot string
 	// Version is the runner binary's stamped build version ("dev" for local
 	// builds); the server persists it so the UI can flag stale runners.
 	Version           string
@@ -263,6 +265,9 @@ func (c *Client) wsURL() string {
 	}
 	q.Set("os", runtime.GOOS)
 	q.Set("arch", runtime.GOARCH)
+	if c.cfg.StackRoot != "" {
+		q.Set("stack_root", c.cfg.StackRoot)
+	}
 	return c.cfg.URL + "?" + q.Encode()
 }
 

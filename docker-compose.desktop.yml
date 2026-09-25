@@ -1,0 +1,37 @@
+# Layered over docker-compose.yml on macOS and Windows, where Docker runs in a VM: nexul install lists both files
+# in COMPOSE_FILE. Data lives in Docker volumes, because SQLite's WAL is unreliable on a folder shared from the
+# host into that VM, and the instance runner is a container, because these hosts have no systemd (ADR 0072).
+services:
+  server:
+    volumes:
+      - nexul-data:/data
+
+  openobserve:
+    volumes:
+      - nexul-logs:/data
+
+  automations:
+    volumes:
+      - nexul-data:/data:ro
+
+  runner:
+    image: ghcr.io/otal-labs/nexul-runner:${NEXUL_VERSION:-latest}
+    environment:
+      NEXUL_SERVER_WS: ws://server:8080/ws/runner
+      NEXUL_RUNNER_SECRET_FILE: /secrets/runner-secret
+      NEXUL_RUNNER_ID: instance
+      NEXUL_RUNNER_NAME: instance
+      NEXUL_MACHINE: instance
+      NEXUL_STACK_ROOT: ${NEXUL_STACK_ROOT:-/data/nexul}
+    volumes:
+      - nexul-data:/secrets:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Same path inside and outside: the Docker VM resolves a stack's bind mounts from the runner's checkout.
+      - ${NEXUL_STACK_ROOT:-/data/nexul}:${NEXUL_STACK_ROOT:-/data/nexul}
+    restart: unless-stopped
+    depends_on:
+      - server
+
+volumes:
+  nexul-data:
+  nexul-logs:
