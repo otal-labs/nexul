@@ -146,10 +146,10 @@ func TestPlaysRepo_Migration_SeedsDefaultWorkspaceWithTheDefaultPlays(t *testing
 		wantShow *plays.Stage
 		mention  string
 	}{
-		{"Fix with AI", plays.TypeTicket, &progress, "ticket_link_pr"},
+		{"Fix with AI", plays.TypeTicket, &progress, "`link_pr`"},
 		{"To tickets via AI", plays.TypeDoc, nil, "ticket_create"},
-		{"Interview", plays.TypeInterview, nil, "memory_create_interview"},
-		{"Test with AI", plays.TypeTicket, &testingStage, "ticket_test_fail"},
+		{"Interview", plays.TypeInterview, nil, "`kind` `interview`"},
+		{"Test with AI", plays.TypeTicket, &testingStage, "ticket_test_report"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.label, func(t *testing.T) {
