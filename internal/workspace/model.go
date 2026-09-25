@@ -136,6 +136,14 @@ const (
 // StatusKinds lists the stages in board order.
 var StatusKinds = []StatusKind{StatusKindBacklog, StatusKindProgress, StatusKindReview, StatusKindTesting, StatusKindDone}
 
+func statusKindNames() []string {
+	names := make([]string, len(StatusKinds))
+	for i, k := range StatusKinds {
+		names[i] = string(k)
+	}
+	return names
+}
+
 func (k StatusKind) Valid() bool {
 	for _, known := range StatusKinds {
 		if k == known {

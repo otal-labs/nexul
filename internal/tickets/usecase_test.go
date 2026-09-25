@@ -43,6 +43,7 @@ type fakeRepo struct {
 	ticketLinks   []TicketLink
 	ticketLinkErr error
 	doneStatuses  map[Status]bool
+	prefixes      map[string]string
 }
 
 func newFakeRepo() *fakeRepo {
@@ -75,6 +76,21 @@ func (f *fakeRepo) GetByID(_ context.Context, id string) (*Ticket, error) {
 		return nil, apperrs.ErrNotFound
 	}
 	return t, nil
+}
+
+// GetByPrefixAndNumber reads the project prefix from prefixes, since tickets alone never store it.
+func (f *fakeRepo) GetByPrefixAndNumber(_ context.Context, prefix string, number int) (*Ticket, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.getErr != nil {
+		return nil, f.getErr
+	}
+	for _, t := range f.tickets {
+		if f.prefixes[t.ProjectID] == prefix && t.Number == number {
+			return t, nil
+		}
+	}
+	return nil, apperrs.ErrNotFound
 }
 
 func (f *fakeRepo) List(_ context.Context) ([]*Ticket, error) {
@@ -562,6 +578,37 @@ func TestGet(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorIs(t, err, repo.getErr)
 	})
+}
+
+func TestResolve(t *testing.T) {
+	repo := newFakeRepo()
+	repo.prefixes = map[string]string{"p-1": "REF"}
+	repo.tickets["t-1"] = &Ticket{ID: "t-1", ProjectID: "p-1", Number: 102}
+	s := newTestService(repo)
+	tests := []struct {
+		name    string
+		in      string
+		wantErr error
+	}{
+		{"empty is invalid", " ", apperrs.ErrInvalid},
+		{"a key past the int range is invalid", "REF-99999999999999999999", apperrs.ErrInvalid},
+		{"a missing key is not found", "REF-7", apperrs.ErrNotFound},
+		{"a missing id is not found", "nope", apperrs.ErrNotFound},
+		{"by id", "t-1", nil},
+		{"by key", "REF-102", nil},
+		{"by a lowercase key", " ref-102 ", nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := s.Resolve(t.Context(), tt.in)
+			if tt.wantErr != nil {
+				require.ErrorIs(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, "t-1", got.ID)
+		})
+	}
 }
 
 func TestListAndListByDoc(t *testing.T) {

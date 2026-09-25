@@ -385,35 +385,3 @@ func TestTestingRoutes(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, serve(http.MethodGet, "/api/tickets/nope/test-target", "").Code)
 	assert.Equal(t, http.StatusNotFound, serve(http.MethodPost, "/api/tickets/nope/test/pass", "").Code)
 }
-
-func TestTestingMCPTools(t *testing.T) {
-	f := newTestingFixture("qa")
-	tools := map[string]func(context.Context, map[string]any) (any, error){}
-	for _, tool := range MCPTools(f.svc) {
-		tools[tool.Name] = tool.Call
-	}
-	ctx := asUser(t.Context())
-
-	_, err := tools["ticket_get_test_target"](ctx, map[string]any{})
-	assert.ErrorIs(t, err, apperrs.ErrInvalid)
-	got, err := tools["ticket_get_test_target"](ctx, map[string]any{"id": "t1"})
-	require.NoError(t, err)
-	assert.Equal(t, TestTarget{}, got)
-
-	_, err = tools["ticket_test_fail"](ctx, map[string]any{"id": "t1", "actual": "broken", "screenshots": []any{1}})
-	assert.ErrorIs(t, err, apperrs.ErrInvalid)
-	_, err = tools["ticket_test_fail"](ctx, map[string]any{})
-	assert.ErrorIs(t, err, apperrs.ErrInvalid)
-	failed, err := tools["ticket_test_fail"](ctx, map[string]any{"id": "t1", "steps": "s", "expected": "e", "actual": "broken", "screenshots": []any{"att-9"}})
-	require.NoError(t, err)
-	assert.Equal(t, Status("build"), failed.(*Ticket).Status)
-	assert.Contains(t, f.threads.posts[0].body, "![screenshot](/api/attachments/att-9)")
-	assert.True(t, strings.HasPrefix(f.threads.posts[0].body, "Test failed by Nexul · for onik97\n"))
-
-	_, err = tools["ticket_test_pass"](ctx, map[string]any{})
-	assert.ErrorIs(t, err, apperrs.ErrInvalid)
-	passed, err := tools["ticket_test_pass"](ctx, map[string]any{"id": "t1"})
-	require.NoError(t, err)
-	assert.Equal(t, Status("shipped"), passed.(*Ticket).Status)
-	assert.Equal(t, "Passed by Nexul · for onik97", f.threads.posts[1].body)
-}

@@ -2,743 +2,93 @@ package workspace
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"sort"
 
-	"github.com/otal-labs/nexul/internal/platform/colors"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 )
 
-// MCPTools returns the workspace tool definitions (named domain_action).
+// MCPTools are the project tools that need only this domain; project_get and project_update live in internal/mcp/composite.
 func MCPTools(s *Service) []mcptool.Tool {
-	var tools []mcptool.Tool
-	tools = append(tools, projectMCPTools(s)...)
-	tools = append(tools, projectRepoMCPTools(s)...)
-	tools = append(tools, categoryMCPTools(s)...)
-	tools = append(tools, ticketTypeMCPTools(s)...)
-	tools = append(tools, statusMCPTools(s)...)
-	return tools
+	return []mcptool.Tool{projectListTool(s), projectCreateTool(s), projectDeleteTool(s)}
 }
 
-func projectMCPTools(s *Service) []mcptool.Tool {
-	return []mcptool.Tool{
-		{
-			Name:        "project_create",
-			Description: "Create a project (the organizational grouping tickets belong to) inside a workspace, and return it. Prefix is an immutable 2-5 letter tag (e.g. \"REF\") used to render human-readable ticket ids like REF-102. Icon is an optional display choice from the suggested list.",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"workspace_id": map[string]any{"type": "string"},
-					"name":         map[string]any{"type": "string"},
-					"prefix":       map[string]any{"type": "string"},
-					"icon":         map[string]any{"type": "string", "enum": projectIconNames()},
-				},
-				"required": []string{"workspace_id", "name", "prefix"},
-			},
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				vals, err := mcptool.RequiredStrings(args, "workspace_id", "name", "prefix")
-				if err != nil {
-					return nil, err
-				}
-				workspaceID, name, prefix := vals[0], vals[1], vals[2]
-				icon := mcptool.OptionalString(args["icon"])
-				return s.Create(ctx, "", workspaceID, name, prefix, ProjectIcon(icon))
-			},
-		},
-		{
-			Name:        "project_get",
-			Description: "Fetch a single project by id.",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"id": map[string]any{"type": "string"},
-				},
-				"required": []string{"id"},
-			},
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				id, err := mcptool.RequiredString(args, "id")
-				if err != nil {
-					return nil, err
-				}
-				return s.Get(ctx, id)
-			},
-		},
-		{
-			Name:        "project_list",
-			Description: "List all projects in a workspace.",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"workspace_id": map[string]any{"type": "string"},
-				},
-				"required": []string{"workspace_id"},
-			},
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				workspaceID, err := mcptool.RequiredString(args, "workspace_id")
-				if err != nil {
-					return nil, err
-				}
-				return s.List(ctx, workspaceID)
-			},
-		},
-		{
-			Name:        "project_rename",
-			Description: "Rename a project and/or change its icon.",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"id":   map[string]any{"type": "string"},
-					"name": map[string]any{"type": "string"},
-					"icon": map[string]any{"type": "string", "enum": projectIconNames()},
-				},
-				"required": []string{"id", "name"},
-			},
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				vals, err := mcptool.RequiredStrings(args, "id", "name")
-				if err != nil {
-					return nil, err
-				}
-				id, name := vals[0], vals[1]
-				var icon *ProjectIcon
-				if _, ok := args["icon"]; ok {
-					v := ProjectIcon(mcptool.OptionalString(args["icon"]))
-					icon = &v
-				}
-				return s.Rename(ctx, "", id, name, icon)
-			},
-		},
-		{
-			Name:        "project_delete",
-			Description: "Delete an empty project (one with no tickets or repositories).",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"id": map[string]any{"type": "string"},
-				},
-				"required": []string{"id"},
-			},
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				id, err := mcptool.RequiredString(args, "id")
-				if err != nil {
-					return nil, err
-				}
-				if err := s.Delete(ctx, "", id); err != nil {
-					return nil, err
-				}
-				return map[string]string{"id": id, "status": "deleted"}, nil
-			},
-		},
-		{
-			Name:        "project_reorder",
-			Description: "Set the display order of a workspace's projects (every id must appear exactly once).",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"workspace_id": map[string]any{"type": "string"},
-					"ids":          map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
-				},
-				"required": []string{"workspace_id", "ids"},
-			},
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				workspaceID, err := mcptool.RequiredString(args, "workspace_id")
-				if err != nil {
-					return nil, err
-				}
-				ids, err := stringSliceArg(args, "ids")
-				if err != nil {
-					return nil, err
-				}
-				if err := s.Reorder(ctx, "", workspaceID, ids); err != nil {
-					return nil, err
-				}
-				return map[string]string{"status": "reordered"}, nil
-			},
-		},
-		{
-			Name:        "project_delete_impact",
-			Description: "Report how many tickets and repositories a project holds (what deleting it would affect).",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"id": map[string]any{"type": "string"},
-				},
-				"required": []string{"id"},
-			},
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				id, err := mcptool.RequiredString(args, "id")
-				if err != nil {
-					return nil, err
-				}
-				return s.DeleteImpact(ctx, id)
-			},
-		},
-	}
+type projectListIn struct {
+	WorkspaceID string `json:"workspace_id" jsonschema:"The workspace's id (a UUID); every project and memory carries it as workspace_id."`
+	mcptool.PageArgs
 }
 
-func projectRepoMCPTools(s *Service) []mcptool.Tool {
-	return []mcptool.Tool{
-		{
-			Name:        "project_add_repo",
-			Description: "Associate a repository with a project (a repository belongs to exactly one project). connector_id names which connected git connector hosts it; omit it to default to \"github\". role is \"app\" (the default, the repository stacks build from) or \"tests\" (a tests repository, never deployed; adding one records the project's tests location as separate).",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"project_id":   map[string]any{"type": "string"},
-					"owner":        map[string]any{"type": "string"},
-					"name":         map[string]any{"type": "string"},
-					"connector_id": map[string]any{"type": "string"},
-					"role":         map[string]any{"type": "string", "enum": []string{string(RepoRoleApp), string(RepoRoleTests)}},
-				},
-				"required": []string{"project_id", "owner", "name"},
-			},
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				vals, err := mcptool.RequiredStrings(args, "project_id", "owner", "name")
-				if err != nil {
-					return nil, err
-				}
-				projectID, owner, name := vals[0], vals[1], vals[2]
-				connectorID := mcptool.OptionalString(args["connector_id"])
-				role := RepoRole(mcptool.OptionalString(args["role"]))
-				if err := s.AddRepo(ctx, "", projectID, owner, name, connectorID, role); err != nil {
-					return nil, err
-				}
-				return map[string]string{"project_id": projectID, "owner": owner, "name": name}, nil
-			},
-		},
-		{
-			Name:        "project_remove_repo",
-			Description: "Dissociate a repository from its project.",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"owner": map[string]any{"type": "string"},
-					"name":  map[string]any{"type": "string"},
-				},
-				"required": []string{"owner", "name"},
-			},
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				vals, err := mcptool.RequiredStrings(args, "owner", "name")
-				if err != nil {
-					return nil, err
-				}
-				owner, name := vals[0], vals[1]
-				if err := s.RemoveRepo(ctx, "", owner, name); err != nil {
-					return nil, err
-				}
-				return map[string]string{"owner": owner, "name": name, "status": "removed"}, nil
-			},
-		},
-		{
-			Name:        "project_list_repos",
-			Description: "List the repositories associated with a project, each with its role (\"app\" or \"tests\").",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"project_id": map[string]any{"type": "string"},
-				},
-				"required": []string{"project_id"},
-			},
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				projectID, err := mcptool.RequiredString(args, "project_id")
-				if err != nil {
-					return nil, err
-				}
-				return s.ListRepos(ctx, projectID)
-			},
-		},
-		{
-			Name:        "project_set_tests_location",
-			Description: "Record where a project's tests live: \"same\" (in the repository that deploys), \"separate\" (in a tests repository, attached with project_add_repo role \"tests\"), or \"\" to withdraw the answer. The interview reads it.",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"project_id":     map[string]any{"type": "string"},
-					"tests_location": map[string]any{"type": "string", "enum": []string{"", string(TestsLocationSame), string(TestsLocationSeparate)}},
-				},
-				"required": []string{"project_id", "tests_location"},
-			},
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				projectID, err := mcptool.RequiredString(args, "project_id")
-				if err != nil {
-					return nil, err
-				}
-				if _, ok := args["tests_location"]; !ok {
-					return nil, fmt.Errorf("%w: tests_location is required", apperrs.ErrInvalid)
-				}
-				return s.SetTestsLocation(ctx, "", projectID, TestsLocation(mcptool.OptionalString(args["tests_location"])))
-			},
-		},
-		{
-			Name:        "project_move_ticket",
-			Description: "Move a ticket into a project without changing its identity.",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"ticket_id":  map[string]any{"type": "string"},
-					"project_id": map[string]any{"type": "string"},
-				},
-				"required": []string{"ticket_id", "project_id"},
-			},
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				vals, err := mcptool.RequiredStrings(args, "ticket_id", "project_id")
-				if err != nil {
-					return nil, err
-				}
-				ticketID, projectID := vals[0], vals[1]
-				if err := s.MoveTicket(ctx, ticketID, projectID); err != nil {
-					return nil, err
-				}
-				return map[string]string{"ticket_id": ticketID, "project_id": projectID, "status": "moved"}, nil
-			},
-		},
-	}
+func projectListTool(s *Service) mcptool.Tool {
+	return mcptool.New("project_list", "List projects",
+		"Lists a workspace's projects in board order, each with its id, name, and prefix (the tag in ticket keys "+
+			"such as REF-102). Use it to find a project's id; project_get then returns its statuses, categories, "+
+			"ticket types, labels, and repositories, which you need before filing or moving tickets. Returns at most "+
+			"100 projects per page.",
+		mcptool.Hints{ReadOnly: true, Local: true},
+		func(ctx context.Context, in projectListIn) (any, error) {
+			projects, err := s.List(ctx, in.WorkspaceID)
+			if err != nil {
+				return nil, err
+			}
+			return mcptool.Paginate(projects, in.PageArgs), nil
+		})
 }
 
-func categoryMCPTools(s *Service) []mcptool.Tool {
-	return []mcptool.Tool{
-		{
-			Name:        "category_create",
-			Description: "Create a category (structural grouping, e.g. Sprint 1) in a project; color is an optional display choice from the suggested list.",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"project_id": map[string]any{"type": "string"},
-					"name":       map[string]any{"type": "string"},
-					"color":      map[string]any{"type": "string", "enum": ticketTypeColorNames()},
-				},
-				"required": []string{"project_id", "name"},
-			},
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				vals, err := mcptool.RequiredStrings(args, "project_id", "name")
-				if err != nil {
-					return nil, err
-				}
-				projectID, name := vals[0], vals[1]
-				color := mcptool.OptionalString(args["color"])
-				return s.CreateCategory(ctx, "", projectID, name, colors.Color(color))
-			},
-		},
-		{
-			Name:        "category_get",
-			Description: "Fetch a single category by id.",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"id": map[string]any{"type": "string"},
-				},
-				"required": []string{"id"},
-			},
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				id, err := mcptool.RequiredString(args, "id")
-				if err != nil {
-					return nil, err
-				}
-				return s.GetCategory(ctx, id)
-			},
-		},
-		{
-			Name:        "category_list",
-			Description: "List all categories in the workspace (optionally for one project).",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"project_id": map[string]any{"type": "string"},
-				},
-			},
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				if pid := mcptool.OptionalString(args["project_id"]); pid != "" {
-					return s.ListCategoriesByProject(ctx, pid)
-				}
-				return s.ListCategories(ctx)
-			},
-		},
-		{
-			Name:        "category_rename",
-			Description: "Rename a category and/or change its color.",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"id":    map[string]any{"type": "string"},
-					"name":  map[string]any{"type": "string"},
-					"color": map[string]any{"type": "string", "enum": ticketTypeColorNames()},
-				},
-				"required": []string{"id", "name"},
-			},
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				vals, err := mcptool.RequiredStrings(args, "id", "name")
-				if err != nil {
-					return nil, err
-				}
-				id, name := vals[0], vals[1]
-				color := mcptool.OptionalString(args["color"])
-				return s.RenameCategory(ctx, "", id, name, colors.Color(color))
-			},
-		},
-		{
-			Name:        "category_delete",
-			Description: "Delete a category. Its tickets become uncategorized — they are never deleted.",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"id": map[string]any{"type": "string"},
-				},
-				"required": []string{"id"},
-			},
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				id, err := mcptool.RequiredString(args, "id")
-				if err != nil {
-					return nil, err
-				}
-				if err := s.DeleteCategory(ctx, "", id); err != nil {
-					return nil, err
-				}
-				return map[string]string{"id": id, "status": "deleted"}, nil
-			},
-		},
-		{
-			Name:        "category_reorder",
-			Description: "Set the display order of a project's categories (every id must appear exactly once).",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"project_id": map[string]any{"type": "string"},
-					"ids":        map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
-				},
-				"required": []string{"project_id", "ids"},
-			},
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				projectID, err := mcptool.RequiredString(args, "project_id")
-				if err != nil {
-					return nil, err
-				}
-				ids, err := stringSliceArg(args, "ids")
-				if err != nil {
-					return nil, err
-				}
-				if err := s.ReorderCategories(ctx, "", projectID, ids); err != nil {
-					return nil, err
-				}
-				return map[string]string{"status": "reordered"}, nil
-			},
-		},
-		{
-			Name:        "category_move_ticket",
-			Description: "Move a ticket into a category without changing its identity.",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"ticket_id":   map[string]any{"type": "string"},
-					"category_id": map[string]any{"type": "string"},
-				},
-				"required": []string{"ticket_id", "category_id"},
-			},
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				vals, err := mcptool.RequiredStrings(args, "ticket_id", "category_id")
-				if err != nil {
-					return nil, err
-				}
-				ticketID, categoryID := vals[0], vals[1]
-				if err := s.MoveTicketToCategory(ctx, ticketID, categoryID); err != nil {
-					return nil, err
-				}
-				return map[string]string{"ticket_id": ticketID, "category_id": categoryID, "status": "moved"}, nil
-			},
-		},
-		{
-			Name:        "category_clear_ticket",
-			Description: "Uncategorize a ticket (it stays on the board in the uncategorized swimlane).",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"ticket_id": map[string]any{"type": "string"},
-				},
-				"required": []string{"ticket_id"},
-			},
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				ticketID, err := mcptool.RequiredString(args, "ticket_id")
-				if err != nil {
-					return nil, err
-				}
-				if err := s.MoveTicketToCategory(ctx, ticketID, ""); err != nil {
-					return nil, err
-				}
-				return map[string]string{"ticket_id": ticketID, "status": "uncategorized"}, nil
-			},
-		},
-	}
+type projectCreateIn struct {
+	WorkspaceID string `json:"workspace_id" jsonschema:"The workspace's id (a UUID) the project belongs to."`
+	Name        string `json:"name" jsonschema:"The project's display name, for example Backend."`
+	Prefix      string `json:"prefix" jsonschema:"2 to 5 letters no other project uses, which start the project's ticket keys, for example REF for REF-102. It cannot change later."`
+	Icon        string `json:"icon,omitempty" jsonschema:"A display icon: Box, Rocket, Server, Globe, Database, Layers, Terminal, Shield, Zap, Package, Cpu, or Cloud. Omit for none."`
 }
 
-func ticketTypeMCPTools(s *Service) []mcptool.Tool {
-	return []mcptool.Tool{
-		{
-			Name:        "ticket_type_create",
-			Description: "Create a ticket type (bug, feature, task, ...) in a project; color is an optional display choice from the suggested list.",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"project_id": map[string]any{"type": "string"},
-					"name":       map[string]any{"type": "string"},
-					"color":      map[string]any{"type": "string", "enum": ticketTypeColorNames()},
-				},
-				"required": []string{"project_id", "name"},
-			},
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				vals, err := mcptool.RequiredStrings(args, "project_id", "name")
-				if err != nil {
-					return nil, err
-				}
-				projectID, name := vals[0], vals[1]
-				color := mcptool.OptionalString(args["color"])
-				return s.CreateTicketType(ctx, "", projectID, name, colors.Color(color))
-			},
-		},
-		{
-			Name:        "ticket_type_list",
-			Description: "List a project's ticket types. Each carries body_template, the markdown sections a new ticket of that type fills in; pass it, filled, as ticket_create's body.",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"project_id": map[string]any{"type": "string"},
-				},
-				"required": []string{"project_id"},
-			},
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				projectID, err := mcptool.RequiredString(args, "project_id")
-				if err != nil {
-					return nil, err
-				}
-				return s.ListTicketTypesByProject(ctx, projectID)
-			},
-		},
-		{
-			Name:        "ticket_type_rename",
-			Description: "Rename a ticket type and/or change its color.",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"id":    map[string]any{"type": "string"},
-					"name":  map[string]any{"type": "string"},
-					"color": map[string]any{"type": "string", "enum": ticketTypeColorNames()},
-				},
-				"required": []string{"id", "name"},
-			},
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				vals, err := mcptool.RequiredStrings(args, "id", "name")
-				if err != nil {
-					return nil, err
-				}
-				id, name := vals[0], vals[1]
-				color := mcptool.OptionalString(args["color"])
-				return s.RenameTicketType(ctx, "", id, name, colors.Color(color))
-			},
-		},
-		{
-			Name:        "ticket_type_set_template",
-			Description: "Replace a ticket type's body template (markdown pre-filled into new tickets of the type). Existing tickets are never rewritten; an empty template clears it.",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"id":            map[string]any{"type": "string"},
-					"body_template": map[string]any{"type": "string"},
-				},
-				"required": []string{"id"},
-			},
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				id, err := mcptool.RequiredString(args, "id")
-				if err != nil {
-					return nil, err
-				}
-				return s.SetTicketTypeTemplate(ctx, "", id, mcptool.OptionalString(args["body_template"]))
-			},
-		},
-		{
-			Name:        "ticket_type_delete",
-			Description: "Delete an unused ticket type (one with no tickets assigned).",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"id": map[string]any{"type": "string"},
-				},
-				"required": []string{"id"},
-			},
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				id, err := mcptool.RequiredString(args, "id")
-				if err != nil {
-					return nil, err
-				}
-				if err := s.DeleteTicketType(ctx, "", id); err != nil {
-					return nil, err
-				}
-				return map[string]string{"id": id, "status": "deleted"}, nil
-			},
-		},
-	}
+func projectCreateTool(s *Service) mcptool.Tool {
+	return mcptool.New("project_create", "Create project",
+		"Creates a project, the grouping tickets, repositories, and stacks belong to, with the default status "+
+			"columns and ticket types (task, bug, feature). Owners only. Use project_update afterwards to rename it, "+
+			"attach repositories, or change its columns, categories, and ticket types. Returns the new project.",
+		mcptool.Hints{Additive: true, Local: true},
+		func(ctx context.Context, in projectCreateIn) (any, error) {
+			actorID, err := ownerActor(ctx)
+			if err != nil {
+				return nil, err
+			}
+			return s.Create(ctx, actorID, in.WorkspaceID, in.Name, in.Prefix, ProjectIcon(in.Icon))
+		})
 }
 
-func statusMCPTools(s *Service) []mcptool.Tool {
-	return []mcptool.Tool{
-		{
-			Name:        "status_create",
-			Description: "Create a status column in a project under one of the board stages (kind: backlog, progress, review, testing, done); icon is an optional display choice from the suggested list.",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"project_id": map[string]any{"type": "string"},
-					"name":       map[string]any{"type": "string"},
-					"kind":       map[string]any{"type": "string", "enum": statusKindNames()},
-					"icon":       map[string]any{"type": "string", "enum": statusIconNames()},
-				},
-				"required": []string{"project_id", "name", "kind"},
-			},
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				vals, err := mcptool.RequiredStrings(args, "project_id", "name", "kind")
-				if err != nil {
-					return nil, err
-				}
-				projectID, name, kind := vals[0], vals[1], vals[2]
-				icon := mcptool.OptionalString(args["icon"])
-				return s.CreateStatus(ctx, "", projectID, name, StatusKind(kind), StatusIcon(icon))
-			},
-		},
-		{
-			Name:        "status_list",
-			Description: "List a project's status columns (the board's columns).",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"project_id": map[string]any{"type": "string"},
-				},
-				"required": []string{"project_id"},
-			},
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				projectID, err := mcptool.RequiredString(args, "project_id")
-				if err != nil {
-					return nil, err
-				}
-				return s.ListStatusesByProject(ctx, projectID)
-			},
-		},
-		{
-			Name:        "status_rename",
-			Description: "Rename a status column and/or change its stage (kind) or icon. Tickets keep their status identity.",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"id":   map[string]any{"type": "string"},
-					"name": map[string]any{"type": "string"},
-					"kind": map[string]any{"type": "string", "enum": statusKindNames()},
-					"icon": map[string]any{"type": "string", "enum": statusIconNames()},
-				},
-				"required": []string{"id", "name", "kind"},
-			},
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				vals, err := mcptool.RequiredStrings(args, "id", "name", "kind")
-				if err != nil {
-					return nil, err
-				}
-				id, name, kind := vals[0], vals[1], vals[2]
-				icon := mcptool.OptionalString(args["icon"])
-				return s.RenameStatus(ctx, "", id, name, StatusKind(kind), StatusIcon(icon))
-			},
-		},
-		{
-			Name:        "status_reorder",
-			Description: "Set the display order of a project's status columns.",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"project_id": map[string]any{"type": "string"},
-					"ids":        map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
-				},
-				"required": []string{"project_id", "ids"},
-			},
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				projectID, err := mcptool.RequiredString(args, "project_id")
-				if err != nil {
-					return nil, err
-				}
-				ids, err := stringSliceArg(args, "ids")
-				if err != nil {
-					return nil, err
-				}
-				if err := s.ReorderStatuses(ctx, "", projectID, ids); err != nil {
-					return nil, err
-				}
-				return map[string]string{"status": "reordered"}, nil
-			},
-		},
-		{
-			Name:        "status_delete",
-			Description: "Delete an unused status column (one holding no tickets).",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"id": map[string]any{"type": "string"},
-				},
-				"required": []string{"id"},
-			},
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				id, err := mcptool.RequiredString(args, "id")
-				if err != nil {
-					return nil, err
-				}
-				if err := s.DeleteStatus(ctx, "", id); err != nil {
-					return nil, err
-				}
-				return map[string]string{"id": id, "status": "deleted"}, nil
-			},
-		},
-	}
+type projectDeleteIn struct {
+	ID string `json:"id" jsonschema:"The project's id (a UUID), from project_list."`
 }
 
-func projectIconNames() []string {
-	names := make([]string, 0, len(validProjectIcons))
-	for icon := range validProjectIcons {
-		names = append(names, string(icon))
-	}
-	sort.Strings(names)
-	return names
+func projectDeleteTool(s *Service) mcptool.Tool {
+	return mcptool.New("project_delete", "Delete project",
+		"Deletes an empty project for good. Owners only. It is refused while the project still holds tickets, "+
+			"repositories, or services; project_get shows those counts under delete_impact, and ticket_update "+
+			"(project_id) and project_update (remove_repos) move them out. Returns the deleted project's id.",
+		mcptool.Hints{Idempotent: true, Local: true},
+		func(ctx context.Context, in projectDeleteIn) (any, error) {
+			actorID, err := ownerActor(ctx)
+			if err != nil {
+				return nil, err
+			}
+			err = s.Delete(ctx, actorID, in.ID)
+			if errors.Is(err, apperrs.ErrNotFound) {
+				return nil, fmt.Errorf("%w; project_list lists a workspace's projects", err)
+			}
+			if err != nil {
+				return nil, err
+			}
+			return mcptool.Gone(in.ID), nil
+		})
 }
 
-func statusKindNames() []string {
-	names := make([]string, len(StatusKinds))
-	for i, k := range StatusKinds {
-		names[i] = string(k)
+// ownerActor is the caller the owner gate checks; an empty id would read as a trusted adapter and skip the gate.
+func ownerActor(ctx context.Context) (string, error) {
+	a, ok := identity.ActorFromCtx(ctx)
+	if !ok || a.ID == "" {
+		return "", fmt.Errorf("%w: changing projects needs a signed-in owner", apperrs.ErrUnauthorized)
 	}
-	return names
-}
-
-func statusIconNames() []string {
-	names := make([]string, 0, len(validStatusIcons))
-	for icon := range validStatusIcons {
-		names = append(names, string(icon))
-	}
-	sort.Strings(names)
-	return names
-}
-
-func ticketTypeColorNames() []string {
-	all := colors.All()
-	names := make([]string, 0, len(all))
-	for _, color := range all {
-		names = append(names, string(color))
-	}
-	return names
-}
-
-func stringSliceArg(args map[string]any, key string) ([]string, error) {
-	raw, ok := args[key].([]any)
-	if !ok || len(raw) == 0 {
-		return nil, fmt.Errorf("%w: %s is required", apperrs.ErrInvalid, key)
-	}
-	out := make([]string, 0, len(raw))
-	for _, v := range raw {
-		s, ok := v.(string)
-		if !ok || s == "" {
-			return nil, fmt.Errorf("%w: %s must be a list of ids", apperrs.ErrInvalid, key)
-		}
-		out = append(out, s)
-	}
-	return out, nil
+	return a.ID, nil
 }
