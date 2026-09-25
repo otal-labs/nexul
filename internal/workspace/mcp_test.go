@@ -104,11 +104,12 @@ func TestProjectDeleteTool(t *testing.T) {
 		owner   bool
 		id      string
 		wantErr error
+		hint    string
 	}{
-		{"no caller is unauthorized", func(ctx context.Context) context.Context { return ctx }, true, "p-1", apperrs.ErrUnauthorized},
-		{"a caller who is not an owner is forbidden", asOwner, false, "p-1", apperrs.ErrForbidden},
-		{"a missing project is not found", asOwner, true, "nope", apperrs.ErrNotFound},
-		{"a project with tickets is a conflict", asOwner, true, "p-busy", apperrs.ErrConflict},
+		{"no caller is unauthorized", func(ctx context.Context) context.Context { return ctx }, true, "p-1", apperrs.ErrUnauthorized, ""},
+		{"a caller who is not an owner is forbidden", asOwner, false, "p-1", apperrs.ErrForbidden, ""},
+		{"a missing project is not found", asOwner, true, "nope", apperrs.ErrNotFound, "project_list"},
+		{"a project with tickets is a conflict", asOwner, true, "p-busy", apperrs.ErrConflict, ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -118,6 +119,7 @@ func TestProjectDeleteTool(t *testing.T) {
 			repo.ticketPro["t-1"] = "p-busy"
 			_, err := wsTool(t, s, "project_delete").Call(tt.ctx(t.Context()), json.RawMessage(`{"id":"`+tt.id+`"}`))
 			require.ErrorIs(t, err, tt.wantErr)
+			assert.Contains(t, err.Error(), tt.hint)
 			assert.Len(t, repo.projects, 2)
 		})
 	}

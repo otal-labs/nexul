@@ -2,6 +2,7 @@ package composite
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -76,7 +77,7 @@ func projectGetTool(w *workspace.Service, t *tickets.Service) mcptool.Tool {
 }
 
 func projectView(ctx context.Context, w *workspace.Service, t *tickets.Service, id string) (projectDetail, error) {
-	p, err := w.Get(ctx, id)
+	p, err := getProject(ctx, w, id)
 	if err != nil {
 		return projectDetail{}, err
 	}
@@ -95,6 +96,15 @@ func projectView(ctx context.Context, w *workspace.Service, t *tickets.Service, 
 	}
 	d.DeleteImpact, err = w.DeleteImpact(ctx, id)
 	return d, err
+}
+
+// getProject names the tool that lists projects when the one asked for is missing.
+func getProject(ctx context.Context, w *workspace.Service, id string) (*workspace.Project, error) {
+	p, err := w.Get(ctx, id)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return nil, fmt.Errorf("%w; project_list lists a workspace's projects", err)
+	}
+	return p, err
 }
 
 func (d *projectDetail) addBoard(ctx context.Context, w *workspace.Service, id string) error {
@@ -255,11 +265,11 @@ func projectUpdateTool(w *workspace.Service, t *tickets.Service) mcptool.Tool {
 			if err != nil {
 				return nil, err
 			}
-			if _, err := w.Get(ctx, in.ID); err != nil {
+			if _, err := getProject(ctx, w, in.ID); err != nil {
 				return nil, err
 			}
-			u := projectUpdate{ctx: ctx, w: w, t: t, actor: actor, id: in.ID}
-			applied, err := runSteps(u.steps(in))
+			u := projectUpdate{w: w, t: t, actor: actor, id: in.ID}
+			applied, err := runSteps(ctx, u.steps(in))
 			if err != nil {
 				return nil, err
 			}
@@ -273,7 +283,6 @@ func projectUpdateTool(w *workspace.Service, t *tickets.Service) mcptool.Tool {
 
 // projectUpdate builds a project_update's steps; each closure reads its field only when the field was sent.
 type projectUpdate struct {
-	ctx       context.Context
 	w         *workspace.Service
 	t         *tickets.Service
 	actor, id string
@@ -282,17 +291,17 @@ type projectUpdate struct {
 func (u projectUpdate) steps(in projectUpdateIn) []step {
 	var steps []step
 	if in.Name != nil || in.Icon != nil {
-		steps = append(steps, step{field: pairLabel("name", in.Name != nil, "icon", in.Icon != nil), run: func() error { return u.rename(in.Name, in.Icon) }})
+		steps = append(steps, step{field: pairLabel("name", in.Name != nil, "icon", in.Icon != nil), run: func(ctx context.Context) error { return u.rename(ctx, in.Name, in.Icon) }})
 	}
 	if in.Prefix != nil {
-		steps = append(steps, step{"prefix", "", func() error { return discard(u.w.SetPrefix(u.ctx, u.actor, u.id, *in.Prefix)) }})
+		steps = append(steps, step{"prefix", "", func(ctx context.Context) error { return discard(u.w.SetPrefix(ctx, u.actor, u.id, *in.Prefix)) }})
 	}
 	if in.Position != nil {
-		steps = append(steps, step{"position", "", func() error { return u.moveProject(*in.Position) }})
+		steps = append(steps, step{"position", "", func(ctx context.Context) error { return u.moveProject(ctx, *in.Position) }})
 	}
 	if in.TestsLocation != nil {
-		steps = append(steps, step{"tests_location", "", func() error {
-			return discard(u.w.SetTestsLocation(u.ctx, u.actor, u.id, workspace.TestsLocation(*in.TestsLocation)))
+		steps = append(steps, step{"tests_location", "", func(ctx context.Context) error {
+			return discard(u.w.SetTestsLocation(ctx, u.actor, u.id, workspace.TestsLocation(*in.TestsLocation)))
 		}})
 	}
 	steps = append(steps, u.repoSteps(in)...)
@@ -300,55 +309,55 @@ func (u projectUpdate) steps(in projectUpdateIn) []step {
 	steps = append(steps, u.categorySteps(in.Categories)...)
 	steps = append(steps, u.ticketTypeSteps(in.TicketTypes)...)
 	for i, lc := range in.LabelColors {
-		steps = append(steps, step{fmt.Sprintf("label_colors[%d]", i), "", func() error {
-			return discard(u.t.SetLabelColor(u.ctx, u.id, lc.Label, colors.Color(lc.Color)))
+		steps = append(steps, step{fmt.Sprintf("label_colors[%d]", i), "", func(ctx context.Context) error {
+			return discard(u.t.SetLabelColor(ctx, u.id, lc.Label, colors.Color(lc.Color)))
 		}})
 	}
 	return steps
 }
 
-func (u projectUpdate) rename(name, icon *string) error {
-	current, err := u.w.Get(u.ctx, u.id)
+func (u projectUpdate) rename(ctx context.Context, name, icon *string) error {
+	current, err := u.w.Get(ctx, u.id)
 	if err != nil {
 		return err
 	}
-	return discard(u.w.Rename(u.ctx, u.actor, u.id, valueOr(name, current.Name), (*workspace.ProjectIcon)(icon)))
+	return discard(u.w.Rename(ctx, u.actor, u.id, valueOr(name, current.Name), (*workspace.ProjectIcon)(icon)))
 }
 
-func (u projectUpdate) moveProject(position int) error {
-	p, err := u.w.Get(u.ctx, u.id)
+func (u projectUpdate) moveProject(ctx context.Context, position int) error {
+	p, err := u.w.Get(ctx, u.id)
 	if err != nil {
 		return err
 	}
-	projects, err := u.w.List(u.ctx, p.WorkspaceID)
+	projects, err := u.w.List(ctx, p.WorkspaceID)
 	if err != nil {
 		return err
 	}
-	return u.w.Reorder(u.ctx, u.actor, p.WorkspaceID, moveTo(idsOf(projects, func(p *workspace.Project) string { return p.ID }), u.id, position))
+	return u.w.Reorder(ctx, u.actor, p.WorkspaceID, moveTo(idsOf(projects, func(p *workspace.Project) string { return p.ID }), u.id, position))
 }
 
 func (u projectUpdate) repoSteps(in projectUpdateIn) []step {
 	var steps []step
 	for i, r := range in.AddRepos {
-		steps = append(steps, step{fmt.Sprintf("add_repos[%d]", i), "", func() error {
-			return u.w.AddRepo(u.ctx, u.actor, u.id, r.Owner, r.Name, r.ConnectorID, workspace.RepoRole(r.Role))
+		steps = append(steps, step{fmt.Sprintf("add_repos[%d]", i), "", func(ctx context.Context) error {
+			return u.w.AddRepo(ctx, u.actor, u.id, r.Owner, r.Name, r.ConnectorID, workspace.RepoRole(r.Role))
 		}})
 	}
 	for i, r := range in.RemoveRepos {
-		steps = append(steps, step{fmt.Sprintf("remove_repos[%d]", i), "project_get lists the project's repositories", func() error { return u.removeRepo(r) }})
+		steps = append(steps, step{fmt.Sprintf("remove_repos[%d]", i), "project_get lists the project's repositories", func(ctx context.Context) error { return u.removeRepo(ctx, r) }})
 	}
 	return steps
 }
 
 // removeRepo detaches only this project's repository; the use-case finds a repository by name in any project.
-func (u projectUpdate) removeRepo(r repoRefIn) error {
-	repos, err := u.w.ListRepos(u.ctx, u.id)
+func (u projectUpdate) removeRepo(ctx context.Context, r repoRefIn) error {
+	repos, err := u.w.ListRepos(ctx, u.id)
 	if err != nil {
 		return err
 	}
 	for _, have := range repos {
 		if strings.EqualFold(have.Owner, r.Owner) && strings.EqualFold(have.Name, r.Name) {
-			return u.w.RemoveRepo(u.ctx, u.actor, have.Owner, have.Name)
+			return u.w.RemoveRepo(ctx, u.actor, have.Owner, have.Name)
 		}
 	}
 	return fmt.Errorf("%w: %s/%s is not a repository of this project", apperrs.ErrInvalid, r.Owner, r.Name)
@@ -360,30 +369,30 @@ func (u projectUpdate) statusSteps(c *statusChanges) []step {
 	}
 	var steps []step
 	for i, s := range c.Create {
-		steps = append(steps, step{fmt.Sprintf("statuses.create[%d]", i), "", func() error {
-			return discard(u.w.CreateStatus(u.ctx, u.actor, u.id, s.Name, workspace.StatusKind(s.Stage), workspace.StatusIcon(s.Icon)))
+		steps = append(steps, step{fmt.Sprintf("statuses.create[%d]", i), "", func(ctx context.Context) error {
+			return discard(u.w.CreateStatus(ctx, u.actor, u.id, s.Name, workspace.StatusKind(s.Stage), workspace.StatusIcon(s.Icon)))
 		}})
 	}
 	for i, s := range c.Update {
-		steps = append(steps, step{fmt.Sprintf("statuses.update[%d]", i), idHint, func() error { return u.updateStatus(s) }})
+		steps = append(steps, step{fmt.Sprintf("statuses.update[%d]", i), idHint, func(ctx context.Context) error { return u.updateStatus(ctx, s) }})
 	}
 	for i, id := range c.Delete {
-		steps = append(steps, step{fmt.Sprintf("statuses.delete[%d]", i), idHint, func() error {
-			current, err := u.w.GetStatus(u.ctx, id)
+		steps = append(steps, step{fmt.Sprintf("statuses.delete[%d]", i), idHint, func(ctx context.Context) error {
+			current, err := u.w.GetStatus(ctx, id)
 			if err != nil {
 				return err
 			}
 			if err := u.owns("status column", id, current.ProjectID); err != nil {
 				return err
 			}
-			return u.w.DeleteStatus(u.ctx, u.actor, id)
+			return u.w.DeleteStatus(ctx, u.actor, id)
 		}})
 	}
 	return steps
 }
 
-func (u projectUpdate) updateStatus(in statusUpdateIn) error {
-	current, err := u.w.GetStatus(u.ctx, in.ID)
+func (u projectUpdate) updateStatus(ctx context.Context, in statusUpdateIn) error {
+	current, err := u.w.GetStatus(ctx, in.ID)
 	if err != nil {
 		return err
 	}
@@ -393,19 +402,19 @@ func (u projectUpdate) updateStatus(in statusUpdateIn) error {
 	if in.Name != nil || in.Stage != nil || in.Icon != nil {
 		stage := workspace.StatusKind(valueOr(in.Stage, string(current.Kind)))
 		icon := workspace.StatusIcon(valueOr(in.Icon, string(current.Icon)))
-		if _, err := u.w.RenameStatus(u.ctx, u.actor, in.ID, valueOr(in.Name, current.Name), stage, icon); err != nil {
+		if _, err := u.w.RenameStatus(ctx, u.actor, in.ID, valueOr(in.Name, current.Name), stage, icon); err != nil {
 			return err
 		}
 	}
 	if in.Position == nil {
 		return nil
 	}
-	statuses, err := u.w.ListStatusesByProject(u.ctx, u.id)
+	statuses, err := u.w.ListStatusesByProject(ctx, u.id)
 	if err != nil {
 		return err
 	}
 	order := moveTo(idsOf(statuses, func(s *workspace.Status) string { return s.ID }), in.ID, *in.Position)
-	return u.w.ReorderStatuses(u.ctx, u.actor, u.id, order)
+	return u.w.ReorderStatuses(ctx, u.actor, u.id, order)
 }
 
 func (u projectUpdate) categorySteps(c *categoryChanges) []step {
@@ -414,30 +423,30 @@ func (u projectUpdate) categorySteps(c *categoryChanges) []step {
 	}
 	var steps []step
 	for i, cat := range c.Create {
-		steps = append(steps, step{fmt.Sprintf("categories.create[%d]", i), "", func() error {
-			return discard(u.w.CreateCategory(u.ctx, u.actor, u.id, cat.Name, colors.Color(cat.Color)))
+		steps = append(steps, step{fmt.Sprintf("categories.create[%d]", i), "", func(ctx context.Context) error {
+			return discard(u.w.CreateCategory(ctx, u.actor, u.id, cat.Name, colors.Color(cat.Color)))
 		}})
 	}
 	for i, cat := range c.Update {
-		steps = append(steps, step{fmt.Sprintf("categories.update[%d]", i), idHint, func() error { return u.updateCategory(cat) }})
+		steps = append(steps, step{fmt.Sprintf("categories.update[%d]", i), idHint, func(ctx context.Context) error { return u.updateCategory(ctx, cat) }})
 	}
 	for i, id := range c.Delete {
-		steps = append(steps, step{fmt.Sprintf("categories.delete[%d]", i), idHint, func() error {
-			current, err := u.w.GetCategory(u.ctx, id)
+		steps = append(steps, step{fmt.Sprintf("categories.delete[%d]", i), idHint, func(ctx context.Context) error {
+			current, err := u.w.GetCategory(ctx, id)
 			if err != nil {
 				return err
 			}
 			if err := u.owns("category", id, current.ProjectID); err != nil {
 				return err
 			}
-			return u.w.DeleteCategory(u.ctx, u.actor, id)
+			return u.w.DeleteCategory(ctx, u.actor, id)
 		}})
 	}
 	return steps
 }
 
-func (u projectUpdate) updateCategory(in categoryUpdateIn) error {
-	current, err := u.w.GetCategory(u.ctx, in.ID)
+func (u projectUpdate) updateCategory(ctx context.Context, in categoryUpdateIn) error {
+	current, err := u.w.GetCategory(ctx, in.ID)
 	if err != nil {
 		return err
 	}
@@ -446,19 +455,19 @@ func (u projectUpdate) updateCategory(in categoryUpdateIn) error {
 	}
 	if in.Name != nil || in.Color != nil {
 		color := colors.Color(valueOr(in.Color, string(current.Color)))
-		if _, err := u.w.RenameCategory(u.ctx, u.actor, in.ID, valueOr(in.Name, current.Name), color); err != nil {
+		if _, err := u.w.RenameCategory(ctx, u.actor, in.ID, valueOr(in.Name, current.Name), color); err != nil {
 			return err
 		}
 	}
 	if in.Position == nil {
 		return nil
 	}
-	cats, err := u.w.ListCategoriesByProject(u.ctx, u.id)
+	cats, err := u.w.ListCategoriesByProject(ctx, u.id)
 	if err != nil {
 		return err
 	}
 	order := moveTo(idsOf(cats, func(c *workspace.Category) string { return c.ID }), in.ID, *in.Position)
-	return u.w.ReorderCategories(u.ctx, u.actor, u.id, order)
+	return u.w.ReorderCategories(ctx, u.actor, u.id, order)
 }
 
 func (u projectUpdate) ticketTypeSteps(c *ticketTypeChanges) []step {
@@ -467,36 +476,36 @@ func (u projectUpdate) ticketTypeSteps(c *ticketTypeChanges) []step {
 	}
 	var steps []step
 	for i, tt := range c.Create {
-		steps = append(steps, step{fmt.Sprintf("ticket_types.create[%d]", i), "", func() error { return u.createTicketType(tt) }})
+		steps = append(steps, step{fmt.Sprintf("ticket_types.create[%d]", i), "", func(ctx context.Context) error { return u.createTicketType(ctx, tt) }})
 	}
 	for i, tt := range c.Update {
-		steps = append(steps, step{fmt.Sprintf("ticket_types.update[%d]", i), idHint, func() error { return u.updateTicketType(tt) }})
+		steps = append(steps, step{fmt.Sprintf("ticket_types.update[%d]", i), idHint, func(ctx context.Context) error { return u.updateTicketType(ctx, tt) }})
 	}
 	for i, id := range c.Delete {
-		steps = append(steps, step{fmt.Sprintf("ticket_types.delete[%d]", i), idHint, func() error {
-			current, err := u.w.GetTicketType(u.ctx, id)
+		steps = append(steps, step{fmt.Sprintf("ticket_types.delete[%d]", i), idHint, func(ctx context.Context) error {
+			current, err := u.w.GetTicketType(ctx, id)
 			if err != nil {
 				return err
 			}
 			if err := u.owns("ticket type", id, current.ProjectID); err != nil {
 				return err
 			}
-			return u.w.DeleteTicketType(u.ctx, u.actor, id)
+			return u.w.DeleteTicketType(ctx, u.actor, id)
 		}})
 	}
 	return steps
 }
 
-func (u projectUpdate) createTicketType(in ticketTypeCreateIn) error {
-	created, err := u.w.CreateTicketType(u.ctx, u.actor, u.id, in.Name, colors.Color(in.Color))
+func (u projectUpdate) createTicketType(ctx context.Context, in ticketTypeCreateIn) error {
+	created, err := u.w.CreateTicketType(ctx, u.actor, u.id, in.Name, colors.Color(in.Color))
 	if err != nil || in.BodyTemplate == "" {
 		return err
 	}
-	return discard(u.w.SetTicketTypeTemplate(u.ctx, u.actor, created.ID, in.BodyTemplate))
+	return discard(u.w.SetTicketTypeTemplate(ctx, u.actor, created.ID, in.BodyTemplate))
 }
 
-func (u projectUpdate) updateTicketType(in ticketTypeUpdateIn) error {
-	current, err := u.w.GetTicketType(u.ctx, in.ID)
+func (u projectUpdate) updateTicketType(ctx context.Context, in ticketTypeUpdateIn) error {
+	current, err := u.w.GetTicketType(ctx, in.ID)
 	if err != nil {
 		return err
 	}
@@ -505,24 +514,24 @@ func (u projectUpdate) updateTicketType(in ticketTypeUpdateIn) error {
 	}
 	if in.Name != nil || in.Color != nil {
 		color := colors.Color(valueOr(in.Color, string(current.Color)))
-		if _, err := u.w.RenameTicketType(u.ctx, u.actor, in.ID, valueOr(in.Name, current.Name), color); err != nil {
+		if _, err := u.w.RenameTicketType(ctx, u.actor, in.ID, valueOr(in.Name, current.Name), color); err != nil {
 			return err
 		}
 	}
 	if in.BodyTemplate != nil {
-		if _, err := u.w.SetTicketTypeTemplate(u.ctx, u.actor, in.ID, *in.BodyTemplate); err != nil {
+		if _, err := u.w.SetTicketTypeTemplate(ctx, u.actor, in.ID, *in.BodyTemplate); err != nil {
 			return err
 		}
 	}
 	if in.Position == nil {
 		return nil
 	}
-	types, err := u.w.ListTicketTypesByProject(u.ctx, u.id)
+	types, err := u.w.ListTicketTypesByProject(ctx, u.id)
 	if err != nil {
 		return err
 	}
 	order := moveTo(idsOf(types, func(tt *workspace.TicketType) string { return tt.ID }), in.ID, *in.Position)
-	return u.w.ReorderTicketTypes(u.ctx, u.actor, u.id, order)
+	return u.w.ReorderTicketTypes(ctx, u.actor, u.id, order)
 }
 
 // owns refuses a column, category, or type of another project, which the use-cases would change by id alone.

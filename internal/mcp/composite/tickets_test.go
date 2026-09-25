@@ -34,6 +34,11 @@ func TestTicketList_Errors(t *testing.T) {
 			require.ErrorIs(t, err, apperrs.ErrInvalid)
 		})
 	}
+	t.Run("a missing project is not found, not an empty list", func(t *testing.T) {
+		_, err := call(t, t.Context(), newFixture(t).ticketTools(), "ticket_list", `{"project_id":"nope"}`)
+		require.ErrorIs(t, err, apperrs.ErrNotFound)
+		assert.Contains(t, err.Error(), "project_list")
+	})
 }
 
 func TestTicketList(t *testing.T) {
@@ -60,7 +65,6 @@ func TestTicketList(t *testing.T) {
 	assert.Equal(t, []string{"WEB-1"}, keys(list(`{"doc_id":"doc-1"}`)))
 	assert.Equal(t, []string{"REF-1", "WEB-1"}, keys(list(`{"query":"LOGIN"}`)))
 	assert.Equal(t, []string{"REF-1"}, keys(list(`{"query":"login","project_id":"p-1"}`)))
-	assert.Empty(t, list(`{"project_id":"nope"}`).Items)
 
 	blocked := list(`{"blocked_only":true}`)
 	require.Len(t, blocked.Items, 1)
@@ -83,15 +87,17 @@ func TestTicketGet_Errors(t *testing.T) {
 		name    string
 		args    string
 		wantErr error
+		hint    string
 	}{
-		{"missing id is invalid", `{}`, apperrs.ErrInvalid},
-		{"a missing ticket is not found", `{"id":"nope"}`, apperrs.ErrNotFound},
-		{"a missing key is not found", `{"id":"REF-99"}`, apperrs.ErrNotFound},
+		{"missing id is invalid", `{}`, apperrs.ErrInvalid, ""},
+		{"a missing ticket is not found", `{"id":"nope"}`, apperrs.ErrNotFound, "ticket_list"},
+		{"a missing key is not found", `{"id":"REF-99"}`, apperrs.ErrNotFound, "ticket_list"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := call(t, t.Context(), newFixture(t).ticketTools(), "ticket_get", tt.args)
 			require.ErrorIs(t, err, tt.wantErr)
+			assert.Contains(t, err.Error(), tt.hint)
 		})
 	}
 }
@@ -133,19 +139,22 @@ func TestTicketCreate_Errors(t *testing.T) {
 		name    string
 		args    string
 		wantErr error
+		hint    string
 	}{
-		{"missing title is invalid", `{"project_id":"p-1"}`, apperrs.ErrInvalid},
-		{"a blank title is invalid", `{"project_id":"p-1","title":"  "}`, apperrs.ErrInvalid},
-		{"a bug without an origin is invalid", `{"project_id":"p-1","title":"Crash","type_id":"tt-bug"}`, apperrs.ErrInvalid},
-		{"an origin that is not a ticket is invalid", `{"project_id":"p-1","title":"Crash","type_id":"tt-bug","origin_id":"REF-99"}`, apperrs.ErrInvalid},
-		{"an origin and unknown together are invalid", `{"project_id":"p-1","title":"Crash","origin_id":"REF-1","origin_unknown":true}`, apperrs.ErrInvalid},
-		{"a reporter field is not an argument", `{"project_id":"p-1","title":"Crash","reporter":"lena"}`, apperrs.ErrInvalid},
+		{"missing title is invalid", `{"project_id":"p-1"}`, apperrs.ErrInvalid, ""},
+		{"a reporter field is not an argument", `{"project_id":"p-1","title":"Crash","reporter":"lena"}`, apperrs.ErrInvalid, ""},
+		{"an origin that is not a ticket is invalid", `{"project_id":"p-1","title":"Crash","type_id":"tt-bug","origin_id":"REF-99"}`, apperrs.ErrInvalid, "ticket_list"},
+		{"a blank title is invalid", `{"project_id":"p-1","title":"  "}`, apperrs.ErrInvalid, "project_get lists"},
+		{"a bug without an origin is invalid", `{"project_id":"p-1","title":"Crash","type_id":"tt-bug"}`, apperrs.ErrInvalid, "project_get lists"},
+		{"an unknown ticket type is invalid", `{"project_id":"p-1","title":"Crash","type_id":"tt-nope"}`, apperrs.ErrInvalid, "project_get lists"},
+		{"an origin and unknown together are invalid", `{"project_id":"p-1","title":"Crash","origin_id":"REF-1","origin_unknown":true}`, apperrs.ErrInvalid, "project_get lists"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			f := newFixture(t)
 			_, err := call(t, asUser(t.Context()), f.ticketTools(), "ticket_create", tt.args)
 			require.ErrorIs(t, err, tt.wantErr)
+			assert.Contains(t, err.Error(), tt.hint)
 			assert.Len(t, f.w.tickets, 2)
 		})
 	}

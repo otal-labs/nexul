@@ -2,6 +2,7 @@ package tickets
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -11,6 +12,15 @@ import (
 // MCPTools are the ticket tools that need only this domain; the ones showing project names live in internal/mcp/composite.
 func MCPTools(s *Service) []mcptool.Tool {
 	return []mcptool.Tool{ticketDeleteTool(s), ticketTestReportTool(s)}
+}
+
+// resolve names the tool that finds tickets when the one asked for is missing.
+func resolve(ctx context.Context, s *Service, idOrKey string) (*Ticket, error) {
+	t, err := s.Resolve(ctx, idOrKey)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return nil, fmt.Errorf("%w; ticket_list finds tickets by text or project", err)
+	}
+	return t, err
 }
 
 type ticketDeleteIn struct {
@@ -24,7 +34,7 @@ func ticketDeleteTool(s *Service) mcptool.Tool {
 			"ticket_update instead, which keeps its history. Returns the deleted ticket's id.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in ticketDeleteIn) (any, error) {
-			t, err := s.Resolve(ctx, in.ID)
+			t, err := resolve(ctx, s, in.ID)
 			if err != nil {
 				return nil, err
 			}
@@ -62,7 +72,7 @@ func ticketTestReportTool(s *Service) mcptool.Tool {
 			"status_id.",
 		mcptool.Hints{Local: true},
 		func(ctx context.Context, in ticketTestReportIn) (any, error) {
-			t, err := s.Resolve(ctx, in.ID)
+			t, err := resolve(ctx, s, in.ID)
 			if err != nil {
 				return nil, err
 			}

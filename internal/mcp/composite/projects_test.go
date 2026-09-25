@@ -26,13 +26,15 @@ func TestProjectGet_Errors(t *testing.T) {
 	for name, tt := range map[string]struct {
 		args    string
 		wantErr error
+		hint    string
 	}{
-		"missing id is invalid":          {`{}`, apperrs.ErrInvalid},
-		"a missing project is not found": {`{"id":"nope"}`, apperrs.ErrNotFound},
+		"missing id is invalid":          {`{}`, apperrs.ErrInvalid, ""},
+		"a missing project is not found": {`{"id":"nope"}`, apperrs.ErrNotFound, "project_list"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			_, err := call(t, t.Context(), newFixture(t).projectTools(), "project_get", tt.args)
 			require.ErrorIs(t, err, tt.wantErr)
+			assert.Contains(t, err.Error(), tt.hint)
 		})
 	}
 }

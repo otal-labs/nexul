@@ -26,7 +26,17 @@ const searchScan = 200
 const (
 	idHint     = "project_get lists the project's status, ticket type, and category ids"
 	ticketHint = "ticket_list finds tickets by text or project"
+	createHint = "project_list lists the projects; project_get lists a project's ticket types and categories"
 )
+
+// resolveTicket names the tool that finds tickets when the one asked for is missing.
+func resolveTicket(ctx context.Context, t *tickets.Service, idOrKey string) (*tickets.Ticket, error) {
+	tk, err := t.Resolve(ctx, idOrKey)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return nil, fmt.Errorf("%w; %s", err, ticketHint)
+	}
+	return tk, err
+}
 
 // ticketResult is a ticket as an agent reads it: ids with their human names and the key beside them.
 type ticketResult struct {
@@ -144,6 +154,12 @@ func ticketListTool(t *tickets.Service, w *workspace.Service) mcptool.Tool {
 			"oldest first; a query returns at most its 200 best matches. Returns at most 100 tickets per page.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in ticketListIn) (any, error) {
+			if in.ProjectID != "" {
+				// A mistyped project would otherwise read as a project with no tickets.
+				if _, err := getProject(ctx, w, in.ProjectID); err != nil {
+					return nil, err
+				}
+			}
 			found, err := findTickets(ctx, t, in)
 			if err != nil {
 				return nil, err
@@ -278,7 +294,7 @@ func ticketGetTool(t *tickets.Service, w *workspace.Service, r *codereview.Servi
 			"ticket_list.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in ticketGetIn) (any, error) {
-			tk, err := t.Resolve(ctx, in.ID)
+			tk, err := resolveTicket(ctx, t, in.ID)
 			if err != nil {
 				return nil, err
 			}
@@ -382,7 +398,7 @@ func ticketCreateTool(t *tickets.Service, w *workspace.Service) mcptool.Tool {
 				OriginID: originID, OriginUnknown: in.OriginUnknown,
 			})
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("%w (%s)", err, createHint)
 			}
 			return newNames(w).ticket(ctx, created)
 		})
@@ -457,12 +473,12 @@ func ticketUpdateTool(t *tickets.Service, w *workspace.Service) mcptool.Tool {
 			if err := in.checkFoundIn(); err != nil {
 				return nil, err
 			}
-			tk, err := t.Resolve(ctx, in.ID)
+			tk, err := resolveTicket(ctx, t, in.ID)
 			if err != nil {
 				return nil, err
 			}
-			u := ticketUpdate{ctx: ctx, t: t, w: w, id: tk.ID}
-			applied, err := runSteps(u.steps(in))
+			u := ticketUpdate{t: t, w: w, id: tk.ID}
+			applied, err := runSteps(ctx, u.steps(in))
 			if err != nil {
 				return nil, err
 			}
@@ -493,28 +509,33 @@ func (in ticketUpdateIn) checkFoundIn() error {
 
 // ticketUpdate builds a ticket_update's steps; each closure reads its field only when the field was sent.
 type ticketUpdate struct {
-	ctx context.Context
-	t   *tickets.Service
-	w   *workspace.Service
-	id  string
+	t  *tickets.Service
+	w  *workspace.Service
+	id string
 }
 
 func (u ticketUpdate) steps(in ticketUpdateIn) []step {
 	var steps []step
 	if in.Title != nil || in.Body != nil {
-		steps = append(steps, step{field: pairLabel("title", in.Title != nil, "body", in.Body != nil), run: func() error { return u.content(in.Title, in.Body) }})
+		steps = append(steps, step{field: pairLabel("title", in.Title != nil, "body", in.Body != nil), run: func(ctx context.Context) error { return u.content(ctx, in.Title, in.Body) }})
 	}
 	fields := []struct {
 		sent bool
 		step step
 	}{
-		{in.ProjectID != nil, step{"project_id", "project_list lists the projects", func() error { return u.w.MoveTicket(u.ctx, u.id, *in.ProjectID) }}},
-		{in.StatusID != nil, step{"status_id", idHint, func() error { return discard(u.t.UpdateStatus(u.ctx, u.id, tickets.Status(*in.StatusID))) }}},
-		{in.Position != nil, step{"position", "", func() error { return discard(u.t.SetPosition(u.ctx, u.id, *in.Position)) }}},
-		{in.TypeID != nil, step{"type_id", idHint, func() error { return discard(u.t.SetType(u.ctx, u.id, *in.TypeID)) }}},
-		{in.CategoryID != nil, step{"category_id", idHint, func() error { return u.w.MoveTicketToCategory(u.ctx, u.id, *in.CategoryID) }}},
-		{in.Developer != nil, step{"developer", "", func() error { return discard(u.t.SetPerson(u.ctx, u.id, tickets.RoleDeveloper, *in.Developer)) }}},
-		{in.Tester != nil, step{"tester", "", func() error { return discard(u.t.SetPerson(u.ctx, u.id, tickets.RoleTester, *in.Tester)) }}},
+		{in.ProjectID != nil, step{"project_id", "project_list lists the projects", func(ctx context.Context) error { return u.w.MoveTicket(ctx, u.id, *in.ProjectID) }}},
+		{in.StatusID != nil, step{"status_id", idHint, func(ctx context.Context) error {
+			return discard(u.t.UpdateStatus(ctx, u.id, tickets.Status(*in.StatusID)))
+		}}},
+		{in.Position != nil, step{"position", "", func(ctx context.Context) error { return discard(u.t.SetPosition(ctx, u.id, *in.Position)) }}},
+		{in.TypeID != nil, step{"type_id", idHint, func(ctx context.Context) error { return discard(u.t.SetType(ctx, u.id, *in.TypeID)) }}},
+		{in.CategoryID != nil, step{"category_id", idHint, func(ctx context.Context) error { return u.w.MoveTicketToCategory(ctx, u.id, *in.CategoryID) }}},
+		{in.Developer != nil, step{"developer", "", func(ctx context.Context) error {
+			return discard(u.t.SetPerson(ctx, u.id, tickets.RoleDeveloper, *in.Developer))
+		}}},
+		{in.Tester != nil, step{"tester", "", func(ctx context.Context) error {
+			return discard(u.t.SetPerson(ctx, u.id, tickets.RoleTester, *in.Tester))
+		}}},
 	}
 	for _, f := range fields {
 		if f.sent {
@@ -527,21 +548,21 @@ func (u ticketUpdate) steps(in ticketUpdateIn) []step {
 }
 
 // content overlays the sent title and body on the stored ones, since the use-case replaces both.
-func (u ticketUpdate) content(title, body *string) error {
-	current, err := u.t.Get(u.ctx, u.id)
+func (u ticketUpdate) content(ctx context.Context, title, body *string) error {
+	current, err := u.t.Get(ctx, u.id)
 	if err != nil {
 		return err
 	}
-	return discard(u.t.UpdateTicket(u.ctx, u.id, valueOr(title, current.Title), valueOr(body, current.Body)))
+	return discard(u.t.UpdateTicket(ctx, u.id, valueOr(title, current.Title), valueOr(body, current.Body)))
 }
 
 func (u ticketUpdate) labelSteps(in ticketUpdateIn) []step {
 	var steps []step
 	for i, label := range in.AddLabels {
-		steps = append(steps, step{fmt.Sprintf("add_labels[%d]", i), "", func() error { return discard(u.t.AddLabel(u.ctx, u.id, label)) }})
+		steps = append(steps, step{fmt.Sprintf("add_labels[%d]", i), "", func(ctx context.Context) error { return discard(u.t.AddLabel(ctx, u.id, label)) }})
 	}
 	for i, label := range in.RemoveLabels {
-		steps = append(steps, step{fmt.Sprintf("remove_labels[%d]", i), "", func() error { return discard(u.t.RemoveLabel(u.ctx, u.id, label)) }})
+		steps = append(steps, step{fmt.Sprintf("remove_labels[%d]", i), "", func(ctx context.Context) error { return discard(u.t.RemoveLabel(ctx, u.id, label)) }})
 	}
 	return steps
 }
@@ -549,46 +570,46 @@ func (u ticketUpdate) labelSteps(in ticketUpdateIn) []step {
 func (u ticketUpdate) linkSteps(in ticketUpdateIn) []step {
 	var steps []step
 	if in.FoundInID != "" || in.FoundInUnknown {
-		steps = append(steps, step{"found_in", ticketHint, func() error { return u.foundIn(in.FoundInID, in.FoundInUnknown) }})
+		steps = append(steps, step{"found_in", ticketHint, func(ctx context.Context) error { return u.foundIn(ctx, in.FoundInID, in.FoundInUnknown) }})
 	}
 	if in.ClearFoundIn {
-		steps = append(steps, step{"clear_found_in", "", func() error { return discard(u.t.RemoveFoundIn(u.ctx, u.id)) }})
+		steps = append(steps, step{"clear_found_in", "", func(ctx context.Context) error { return discard(u.t.RemoveFoundIn(ctx, u.id)) }})
 	}
 	for i, ref := range in.AddBlockerIDs {
-		steps = append(steps, step{fmt.Sprintf("add_blocker_ids[%d]", i), ticketHint, func() error { return u.blocker(ref, u.t.AddBlocker) }})
+		steps = append(steps, step{fmt.Sprintf("add_blocker_ids[%d]", i), ticketHint, func(ctx context.Context) error { return u.blocker(ctx, ref, u.t.AddBlocker) }})
 	}
 	for i, ref := range in.RemoveBlockerIDs {
-		steps = append(steps, step{fmt.Sprintf("remove_blocker_ids[%d]", i), ticketHint, func() error { return u.blocker(ref, u.t.RemoveBlocker) }})
+		steps = append(steps, step{fmt.Sprintf("remove_blocker_ids[%d]", i), ticketHint, func(ctx context.Context) error { return u.blocker(ctx, ref, u.t.RemoveBlocker) }})
 	}
 	if pr := in.LinkPR; pr != nil {
-		steps = append(steps, step{"link_pr", "", func() error {
-			return u.t.LinkPR(u.ctx, u.id, tickets.PRRef{Owner: pr.Owner, Repo: pr.Repo, Number: pr.Number, Title: pr.Title, SHA: pr.SHA})
+		steps = append(steps, step{"link_pr", "", func(ctx context.Context) error {
+			return u.t.LinkPR(ctx, u.id, tickets.PRRef{Owner: pr.Owner, Repo: pr.Repo, Number: pr.Number, Title: pr.Title, SHA: pr.SHA})
 		}})
 	}
 	if b := in.LinkBranch; b != nil {
-		steps = append(steps, step{"link_branch", "", func() error { return u.t.LinkBranch(u.ctx, u.id, b.Owner, b.Repo, b.Branch) }})
+		steps = append(steps, step{"link_branch", "", func(ctx context.Context) error { return u.t.LinkBranch(ctx, u.id, b.Owner, b.Repo, b.Branch) }})
 	}
 	return steps
 }
 
-func (u ticketUpdate) foundIn(originRef string, unknown bool) error {
+func (u ticketUpdate) foundIn(ctx context.Context, originRef string, unknown bool) error {
 	originID := ""
 	if originRef != "" {
-		origin, err := u.t.Resolve(u.ctx, originRef)
+		origin, err := u.t.Resolve(ctx, originRef)
 		if err != nil {
 			return err
 		}
 		originID = origin.ID
 	}
-	return discard(u.t.SetFoundIn(u.ctx, u.id, originID, unknown))
+	return discard(u.t.SetFoundIn(ctx, u.id, originID, unknown))
 }
 
-func (u ticketUpdate) blocker(ref string, apply func(ctx context.Context, id, blockerID string) (*tickets.LinkSet, error)) error {
-	blocker, err := u.t.Resolve(u.ctx, ref)
+func (u ticketUpdate) blocker(ctx context.Context, ref string, apply func(ctx context.Context, id, blockerID string) (*tickets.LinkSet, error)) error {
+	blocker, err := u.t.Resolve(ctx, ref)
 	if err != nil {
 		return err
 	}
-	return discard(apply(u.ctx, u.id, blocker.ID))
+	return discard(apply(ctx, u.id, blocker.ID))
 }
 
 // discard keeps a use-case's error and drops the value an update step does not need.

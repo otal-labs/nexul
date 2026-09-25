@@ -15,14 +15,14 @@ import (
 type step struct {
 	field string
 	hint  string
-	run   func() error
+	run   func(ctx context.Context) error
 }
 
 // runSteps applies steps in order and stops at the first failure, since each use-case commits on its own.
-func runSteps(steps []step) ([]string, error) {
+func runSteps(ctx context.Context, steps []step) ([]string, error) {
 	applied := []string{}
 	for _, s := range steps {
-		err := s.run()
+		err := s.run(ctx)
 		if err == nil {
 			applied = append(applied, s.field)
 			continue

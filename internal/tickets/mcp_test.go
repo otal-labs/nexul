@@ -38,17 +38,20 @@ func TestTicketDeleteTool(t *testing.T) {
 		name    string
 		args    string
 		wantErr error
+		hint    string
 	}{
-		{"missing id is invalid", `{}`, apperrs.ErrInvalid},
-		{"an unknown argument is invalid", `{"id":"t1","force":true}`, apperrs.ErrInvalid},
-		{"a missing ticket is not found", `{"id":"nope"}`, apperrs.ErrNotFound},
-		{"a missing key is not found", `{"id":"REF-9"}`, apperrs.ErrNotFound},
+		{"missing id is invalid", `{}`, apperrs.ErrInvalid, ""},
+		{"an unknown argument is invalid", `{"id":"t1","force":true}`, apperrs.ErrInvalid, ""},
+		{"a missing ticket is not found", `{"id":"nope"}`, apperrs.ErrNotFound, "ticket_list"},
+		{"a missing key is not found", `{"id":"REF-9"}`, apperrs.ErrNotFound, "ticket_list"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			f := newTestingFixture("qa")
 			_, err := callTool(t, t.Context(), MCPTools(f.svc), "ticket_delete", tt.args)
 			require.ErrorIs(t, err, tt.wantErr)
+			assert.Contains(t, err.Error(), tt.hint)
+			assert.Contains(t, f.repo.tickets, "t1")
 		})
 	}
 	t.Run("deletes by key and returns what it deleted", func(t *testing.T) {
