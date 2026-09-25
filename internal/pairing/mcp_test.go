@@ -13,6 +13,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
+	shipped "github.com/otal-labs/nexul/internal/platform/skills"
 )
 
 func toolNamed(t *testing.T, tools []mcptool.Tool, name string) mcptool.Tool {
@@ -47,7 +48,7 @@ func TestMCPTools_Surface(t *testing.T) {
 	}
 	assert.Equal(t, []string{
 		"computer_list", "computer_create", "computer_pair", "computer_delete", "computer_tunnel_token_get",
-		"computer_setup_run", "computer_setup_update", "computer_mcp_token_create", "computer_mcp_token_delete",
+		"computer_setup_run", "computer_setup_update", "computer_mcp_token_create", "computer_mcp_token_delete", "skill_get",
 	}, names)
 }
 
@@ -356,4 +357,22 @@ func TestConfirmInstructions_NameOnlyToolsThatExist(t *testing.T) {
 	for _, m := range named {
 		assert.True(t, names[m[1]], "the confirm session is told to call %s", m[1])
 	}
+}
+
+func TestSkillGet(t *testing.T) {
+	t.Parallel()
+	call := skillGetTool().Call
+
+	_, err := call(t.Context(), json.RawMessage(`{}`))
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
+	_, err = call(t.Context(), json.RawMessage(`{"name":"nexul-memroy"}`))
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
+	assert.Contains(t, err.Error(), "nexul-memory", "a miss names the skills that exist")
+
+	out, err := call(t.Context(), json.RawMessage(`{"name":"nexul-memory"}`))
+	require.NoError(t, err)
+	got := out.(skillResult)
+	assert.Equal(t, shipped.NexulMemory.Version, got.Version)
+	assert.Equal(t, shipped.NexulMemory.Content, got.Content)
+	assert.Equal(t, shipped.NexulMemory.Paths(), got.Paths)
 }

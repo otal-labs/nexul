@@ -88,8 +88,15 @@ per provider with its confirmed-at time, and **Set up** or **Re-run setup**,
 which opens the dialog at this step. The row only shows the state; an agent
 changes a confirmation through MCP and nowhere else.
 
-Setup never overwrites an installed skill and keeps the token the providers
-already hold, so re-running it on a confirmed computer only re-checks. Turns
+Setup never overwrites an installed mattpocock skill and keeps the token the
+providers already hold, so re-running it on a confirmed computer only
+re-checks. The nexul-memory skill is Nexul's own and carries a version: setup
+replaces a copy whose version is older, and a provider confirmed with an older
+copy shows **skills out of date** in its row, beside **Re-run setup**. That is a signal,
+not a block; agent work keeps running, and turns follow the current memory
+protocol from their own prompt until the skill is refreshed. An agent can also
+refresh it without setup: the skill tells it to compare its version with the
+`skill_get` MCP tool once per session and rewrite itself when they differ. Turns
 run in the linked or fallback T3 project, else the first project T3 Code
 lists, and their transcripts are kept with the token hidden.
 

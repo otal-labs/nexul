@@ -19,6 +19,7 @@ const LINE_DOT: Record<ProviderSetupLine["state"], string> = {
 
 const lineLabel = (line: ProviderSetupLine) => {
   if (line.state === "running") return "setting up…";
+  if (line.state === "confirmed" && line.skillsOutdated) return "skills out of date";
   if (line.state === "confirmed" && line.confirmedAt) return `confirmed ${formatRelativeTime(line.confirmedAt)}`;
   if (line.state === "failed") return "setup failed";
   return "not confirmed";
@@ -30,7 +31,13 @@ interface ProviderLineProps {
 
 const ProviderLine = ({ line }: ProviderLineProps) => (
   <li className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-    <span className={cn("size-1.5 shrink-0 rounded-full transition-colors duration-150 ease-standard", LINE_DOT[line.state])} aria-hidden />
+    <span
+      className={cn(
+        "size-1.5 shrink-0 rounded-full transition-colors duration-150 ease-standard",
+        line.state === "confirmed" && line.skillsOutdated ? "bg-info" : LINE_DOT[line.state],
+      )}
+      aria-hidden
+    />
     <span className="break-words text-foreground">{line.name}</span>
     <span className="font-mono tabular-nums">{lineLabel(line)}</span>
   </li>

@@ -10,6 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	shipped "github.com/otal-labs/nexul/internal/platform/skills"
 )
 
 var testNow = time.Date(2026, 8, 26, 12, 0, 0, 0, time.UTC)
@@ -128,7 +130,8 @@ func TestSetup_ConfirmAndUnconfirmProvider(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, setup.ConfirmedAt, "a provider's confirmation leaves the overall one alone")
 	require.Len(t, setup.Providers, 1)
-	assert.Equal(t, ProviderSetup{Provider: "claude", ConfirmedAt: &testNow, Skills: []string{"tdd", "diagnose"}}, setup.Providers[0])
+	assert.Equal(t, ProviderSetup{Provider: "claude", ConfirmedAt: &testNow, Skills: []string{"tdd", "diagnose"}, SkillsVersion: shipped.NexulMemory.Version}, setup.Providers[0],
+		"a confirmation records the skill version its setup just installed")
 
 	setup, err = svc.UnconfirmProviderSetup(t.Context(), "u1", "c1", "claude")
 	require.NoError(t, err)
@@ -139,6 +142,29 @@ func TestSetup_ConfirmAndUnconfirmProvider(t *testing.T) {
 	assert.Equal(t, TopicSetupConfirmed, repo.outbox[0].Topic)
 	assert.Equal(t, SetupChangedEvent{ComputerID: "c1", UserID: "u1", Provider: "claude", ConfirmedAt: &testNow, Skills: []string{"tdd", "diagnose"}}, repo.outbox[0].Payload)
 	assert.Equal(t, TopicSetupUnconfirmed, repo.outbox[1].Topic)
+}
+
+func TestSetup_AnOlderSkillVersionIsFlaggedNotGated(t *testing.T) {
+	t.Parallel()
+	svc, repo := newSetupService(t)
+	for _, p := range []ProviderSetup{
+		{Provider: "claude", ConfirmedAt: &testNow, Skills: []string{"nexul-memory"}, SkillsVersion: "0ld0ld0ld0ld"},
+		{Provider: "codex", ConfirmedAt: &testNow, Skills: []string{"nexul-memory"}},
+		{Provider: "opencode", ConfirmedAt: &testNow, Skills: []string{"nexul-memory"}, SkillsVersion: shipped.NexulMemory.Version},
+		{Provider: "cursor", Skills: []string{}},
+	} {
+		require.NoError(t, repo.SaveProviderSetup(t.Context(), "c1", p, testNow, eventbus.OutboxEvent{}))
+	}
+
+	setup, err := svc.GetSetup(t.Context(), "u1", "c1")
+	require.NoError(t, err)
+	outdated := map[string]bool{}
+	for _, p := range setup.Providers {
+		outdated[p.Provider] = p.SkillsOutdated
+	}
+	assert.NotNil(t, setup.Providers[0].ConfirmedAt, "a stale skill never withdraws the confirmation")
+	assert.Equal(t, map[string]bool{"claude": true, "codex": true, "opencode": false, "cursor": false}, outdated,
+		"an older or unrecorded version is out of date; an unconfirmed provider has nothing to refresh")
 }
 
 func TestSetup_RePair_KeepsTheConfirmation(t *testing.T) {

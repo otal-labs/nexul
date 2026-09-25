@@ -86,6 +86,9 @@ export interface ProviderSetup {
   provider: string;
   confirmed_at: string | null;
   skills: string[];
+  // The nexul-memory version its confirming setup installed; outdated is a signal to re-run setup, never a block.
+  skills_version: string;
+  skills_outdated: boolean;
 }
 
 // Read-only in the browser: confirmations are written only by an agent through MCP (ADR 0063).
@@ -156,6 +159,7 @@ export interface ProviderSetupLine {
   name: string;
   state: SetupTurnState | "unconfirmed";
   confirmedAt: string | null;
+  skillsOutdated: boolean;
 }
 
 // One line per provider the computer has a confirmation row or a setup turn for; a running turn wins over the stored state.
@@ -163,8 +167,9 @@ export const providerSetupLines = (setup: ComputerSetup): ProviderSetupLine[] =>
   const providers = [...new Set([...setup.providers.map((p) => p.provider), ...setup.turns.map((t) => t.provider)])];
   return providers.map((provider) => {
     const turn = setup.turns.find((t) => t.provider === provider);
-    const confirmedAt = setup.providers.find((p) => p.provider === provider)?.confirmed_at ?? null;
-    const base = { provider, name: turn?.provider_name || provider, confirmedAt };
+    const row = setup.providers.find((p) => p.provider === provider);
+    const confirmedAt = row?.confirmed_at ?? null;
+    const base = { provider, name: turn?.provider_name || provider, confirmedAt, skillsOutdated: row?.skills_outdated ?? false };
     if (turn?.state === "running") return { ...base, state: "running" };
     if (confirmedAt) return { ...base, state: "confirmed" };
     if (turn?.state === "failed") return { ...base, state: "failed" };

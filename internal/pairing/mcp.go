@@ -15,11 +15,12 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 )
 
-// MCPTools returns the computer tools: pairing, the tunnel token, setup runs and confirmations (ADR 0063), and MCP tokens.
+// MCPTools returns the computer tools: pairing, the tunnel token, setup runs and confirmations (ADR 0063), MCP tokens, and the skills setup installs.
 func MCPTools(s *Service) []mcptool.Tool {
 	return []mcptool.Tool{
 		computerListTool(s), computerCreateTool(s), computerPairTool(s), computerDeleteTool(s), computerTunnelTokenGetTool(s),
 		computerSetupRunTool(s), computerSetupUpdateTool(s), computerMCPTokenCreateTool(s), computerMCPTokenDeleteTool(s),
+		skillGetTool(),
 	}
 }
 

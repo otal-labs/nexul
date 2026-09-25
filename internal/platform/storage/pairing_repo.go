@@ -191,7 +191,9 @@ func (r *PairingRepo) ListProviderSetups(ctx context.Context, computerID string)
 		if err := json.Unmarshal([]byte(row.SkillsJson), &skills); err != nil {
 			return nil, fmt.Errorf("decode %s skills for %s: %w", row.Provider, computerID, err)
 		}
-		out = append(out, pairing.ProviderSetup{Provider: row.Provider, ConfirmedAt: unixPtrFromNull(row.ConfirmedAt), Skills: skills})
+		out = append(out, pairing.ProviderSetup{
+			Provider: row.Provider, ConfirmedAt: unixPtrFromNull(row.ConfirmedAt), Skills: skills, SkillsVersion: row.SkillsVersion,
+		})
 	}
 	return out, nil
 }
@@ -204,7 +206,7 @@ func (r *PairingRepo) SaveProviderSetup(ctx context.Context, computerID string, 
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		err := r.q.WithTx(tx).SavePairingProviderSetup(ctx, sqlcgen.SavePairingProviderSetupParams{
 			ComputerID: computerID, Provider: p.Provider, ConfirmedAt: nullUnixPtr(p.ConfirmedAt),
-			SkillsJson: string(skills), UpdatedAt: updatedAt.Unix(),
+			SkillsJson: string(skills), SkillsVersion: p.SkillsVersion, UpdatedAt: updatedAt.Unix(),
 		})
 		if err != nil {
 			return fmt.Errorf("save %s setup for %s: %w", p.Provider, computerID, classifyWriteErr(err))

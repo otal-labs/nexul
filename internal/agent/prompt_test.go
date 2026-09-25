@@ -6,6 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/otal-labs/nexul/internal/platform/skills"
 )
 
 func TestComposePrompt_IncludesInstructionsContextAndRequest(t *testing.T) {
@@ -156,6 +158,8 @@ func TestComposePrompt_NoMemoriesFallsBackGracefully(t *testing.T) {
 	out := ComposePrompt(PromptInput{RequestAuthor: "onik97", RequestBody: "@Agent go"})
 	assert.Contains(t, out, "no memories saved yet")
 	assert.Contains(t, out, "nexul-memory skill")
+	assert.Contains(t, out, "metadata.version is \""+skills.NexulMemory.Version+"\"", "a turn follows only the current skill")
+	assert.Contains(t, out, "skill_get")
 }
 
 func TestComposePrompt_MemoriesIndexIsCappedRegardlessOfPromptBudget(t *testing.T) {
