@@ -73,7 +73,7 @@ func decode[In any](resolved *jsonschema.Resolved, args json.RawMessage) (In, er
 		return in, fmt.Errorf("%w: arguments are not valid JSON: %v", apperrs.ErrInvalid, err)
 	}
 	if err := resolved.Validate(instance); err != nil {
-		return in, fmt.Errorf("%w: %v", apperrs.ErrInvalid, err)
+		return in, fmt.Errorf("%w: the arguments do not match this tool's input schema: %v", apperrs.ErrInvalid, err)
 	}
 	if err := json.Unmarshal(args, &in); err != nil {
 		return in, fmt.Errorf("%w: %v", apperrs.ErrInvalid, err)

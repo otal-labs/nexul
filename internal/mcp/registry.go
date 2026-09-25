@@ -2,6 +2,8 @@ package mcp
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"slices"
@@ -14,6 +16,7 @@ import (
 	"github.com/otal-labs/nexul/internal/deploy"
 	"github.com/otal-labs/nexul/internal/dns"
 	"github.com/otal-labs/nexul/internal/docs"
+	"github.com/otal-labs/nexul/internal/docs/richtext"
 	"github.com/otal-labs/nexul/internal/gitprovider"
 	"github.com/otal-labs/nexul/internal/memories"
 	"github.com/otal-labs/nexul/internal/mentions"
@@ -102,4 +105,54 @@ func registryTools(opts RegistryOptions) []mcptool.Tool {
 		plays.RunMCPTools(opts.PlayRuns),
 		deadLetterTools(opts.DeadLetter, opts.Publisher, opts.InstanceAdmin),
 	)
+}
+
+func docResource(s *docs.Service) resource {
+	return resource{
+		uri: "docs://{id}", name: "doc", title: "Doc", mimeType: "text/markdown",
+		description: "A doc's title and full body as markdown, the same content doc_get returns.",
+		read: func(ctx context.Context, id string) (string, error) {
+			d, err := s.Get(ctx, id)
+			if err != nil {
+				return "", err
+			}
+			md, err := richtext.ToMarkdown(d.Body)
+			if err != nil {
+				return "", fmt.Errorf("render doc %s: %w", id, err)
+			}
+			return "# " + d.Title + "\n\n" + md, nil
+		},
+	}
+}
+
+func ticketResource(s *tickets.Service) resource {
+	return resource{
+		uri: "tickets://{id}", name: "ticket", title: "Ticket", mimeType: "text/markdown",
+		description: "A ticket's title, status, and body as markdown; ticket_get returns the full record.",
+		read: func(ctx context.Context, id string) (string, error) {
+			t, err := s.Get(ctx, id)
+			if err != nil {
+				return "", err
+			}
+			return "# " + t.Title + "\n\nstatus: " + string(t.Status) + "\n\n" + t.Body, nil
+		},
+	}
+}
+
+func topologyResource(s *topology.Service) resource {
+	return resource{
+		uri: "topology://current", name: "topology", title: "Current topology", mimeType: "application/json",
+		description: "The topology canvas of the default environment, the same content topology_get returns.",
+		read: func(ctx context.Context, _ string) (string, error) {
+			c, err := s.Get(ctx, topology.DefaultEnvironment)
+			if err != nil {
+				return "", err
+			}
+			b, err := json.Marshal(c)
+			if err != nil {
+				return "", fmt.Errorf("marshal topology: %w", err)
+			}
+			return string(b), nil
+		},
+	}
 }
