@@ -77,6 +77,8 @@ func TestMCPTools_Errors(t *testing.T) {
 		{"list conversations for another user", as("u-1"), "conversation_list", `{"workspace_id":"w-1","user_id":"u-2"}`, apperrs.ErrInvalid},
 		{"list messages without a target", as("u-1"), "message_list", `{}`, apperrs.ErrInvalid},
 		{"list messages with two targets", as("u-1"), "message_list", `{"doc_id":"doc-1","ticket_id":"t-1"}`, apperrs.ErrInvalid},
+		{"list a ticket thread by the ticket's key", as("u-1"), "message_list", `{"ticket_id":"REF-102"}`, apperrs.ErrInvalid},
+		{"post to a ticket thread by the ticket's key", as("u-1"), "message_post", `{"ticket_id":"REF-102","workspace_id":"w-1","body":"hi"}`, apperrs.ErrInvalid},
 		{"post without a body", as("u-1"), "message_post", `{"ticket_id":"t-1"}`, apperrs.ErrInvalid},
 		{"post a blank body", as("owner"), "message_post", `{"conversation_id":"` + docThread.ID + `","body":"  "}`, apperrs.ErrInvalid},
 		{"post to a new thread without a workspace", as("u-1"), "message_post", `{"ticket_id":"t-9","body":"hi"}`, apperrs.ErrInvalid},
@@ -119,6 +121,9 @@ func TestMessagePost_StartsTheThreadOnce(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, first.(messageResult).ConversationID, again.(messageResult).ConversationID)
 			assert.Equal(t, "again", again.(messageResult).Body)
+			listed, err := callTool(as("u-1"), t, s, "message_list", `{`+target+`}`)
+			require.NoError(t, err)
+			assert.Equal(t, 2, listed.(mcptool.Page[messageResult]).Total, "message_list reaches the thread by the same target")
 		})
 	}
 	assert.Len(t, repo.eventsFor(TopicConversationCreated), 3)

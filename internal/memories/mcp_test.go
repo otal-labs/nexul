@@ -74,6 +74,7 @@ func TestMCPTools_Errors(t *testing.T) {
 		{"create an unknown kind", allowed, testCtx(), "memory_create", `{"project_id":"project-1","title":"x","kind":"notes"}`, apperrs.ErrInvalid},
 		{"clone with new content", allowed, testCtx(), "memory_create", `{"clone_from_id":"` + m.ID + `","project_id":"project-2","title":"x"}`, apperrs.ErrInvalid},
 		{"clone with nowhere to go", allowed, testCtx(), "memory_create", `{"clone_from_id":"` + m.ID + `"}`, apperrs.ErrInvalid},
+		{"interview with a body it would drop", allowed, testCtx(), "memory_create", `{"project_id":"project-1","kind":"interview","body":"## Stack"}`, apperrs.ErrInvalid},
 		{"update with an unknown key", allowed, testCtx(), "memory_update", `{` + id + `,"version":2}`, apperrs.ErrInvalid},
 		{"update to a blank title", allowed, testCtx(), "memory_update", `{` + id + `,"title":" "}`, apperrs.ErrInvalid},
 		{"revert mixed with a field", allowed, testCtx(), "memory_update", `{` + id + `,"revert_to_version":1,"title":"x"}`, apperrs.ErrInvalid},

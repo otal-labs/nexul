@@ -10,8 +10,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 )
 
-// viaMCP marks every save made through an MCP tool call (ADR 0049), so the version's author_via records
-// where it came from — an Agent turn's memory_update is attributed to the Agent via the mentioning user.
+// viaMCP is the author_via of every version saved through an MCP tool call (ADR 0049).
 const viaMCP = "mcp"
 
 // memoryGetVersions bounds the version history memory_get returns; older versions stay readable by number.
@@ -36,12 +35,12 @@ type memoryCreateIn struct {
 	WhenToUse      string `json:"when_to_use,omitempty" jsonschema:"One short line saying when the memory applies, for example use this if you are writing React code."`
 	Body           string `json:"body,omitempty" jsonschema:"The memory's body as markdown."`
 	AlwaysIncluded bool   `json:"always_included,omitzero" jsonschema:"true inlines the memory in full in every agent turn it reaches. Defaults to false."`
-	Kind           string `json:"kind,omitempty" jsonschema:"Omit for an ordinary memory. decisions_log creates the project's decisions log; interview returns the project's interview memory, creating it from the Interview template the first time."`
-	CloneFromID    string `json:"clone_from_id,omitempty" jsonschema:"Copy this memory, with its attachments, into project_id or workspace_id instead of writing a new one."`
+	Kind           string `json:"kind,omitempty" jsonschema:"Omit for an ordinary memory. decisions_log creates the project's decisions log; interview, sent with project_id alone, returns the project's interview memory, creating it from the Interview template the first time."`
+	CloneFromID    string `json:"clone_from_id,omitempty" jsonschema:"The id of a memory to copy, from memory_list, with its attachments, into project_id or workspace_id instead of writing a new one."`
 }
 
 type memoryUpdateIn struct {
-	ID              string  `json:"id" jsonschema:"The memory's id."`
+	ID              string  `json:"id" jsonschema:"The memory's id, from memory_list."`
 	Title           *string `json:"title,omitempty" jsonschema:"New title. Omit to keep the current one."`
 	WhenToUse       *string `json:"when_to_use,omitempty" jsonschema:"New when-to-use line; an empty string clears it. Omit to keep the current one."`
 	Body            *string `json:"body,omitempty" jsonschema:"New body as markdown, replacing the whole body. Omit to keep the current body."`
@@ -50,7 +49,7 @@ type memoryUpdateIn struct {
 }
 
 type memoryDeleteIn struct {
-	ID string `json:"id" jsonschema:"The memory's id."`
+	ID string `json:"id" jsonschema:"The memory's id, from memory_list."`
 }
 
 type templateGetIn struct {
@@ -189,13 +188,20 @@ func createMemory(ctx context.Context, s *Service, in memoryCreateIn) (*Memory, 
 		return s.Clone(ctx, in.CloneFromID, in.ProjectID, in.WorkspaceID)
 	}
 	if in.Kind == KindInterview {
+		if in.hasText() {
+			return nil, fmt.Errorf("%w: kind interview returns the project's interview memory as it stands; omit title, when_to_use, body, and always_included, then change it with memory_update", apperrs.ErrInvalid)
+		}
 		return s.CreateInterview(ctx, in.ProjectID, viaMCP)
 	}
 	return s.CreateWithKind(ctx, in.Kind, in.ProjectID, in.WorkspaceID, in.Title, in.WhenToUse, in.Body, in.AlwaysIncluded, viaMCP)
 }
 
 func (in memoryCreateIn) hasContent() bool {
-	return in.Kind != "" || in.Title != "" || in.WhenToUse != "" || in.Body != "" || in.AlwaysIncluded
+	return in.Kind != "" || in.hasText()
+}
+
+func (in memoryCreateIn) hasText() bool {
+	return in.Title != "" || in.WhenToUse != "" || in.Body != "" || in.AlwaysIncluded
 }
 
 func memoryUpdateTool(s *Service) mcptool.Tool {

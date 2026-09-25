@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"regexp"
 	"slices"
 	"time"
 
@@ -24,10 +25,13 @@ type conversationListIn struct {
 // messageTarget names a conversation directly, or through the doc, ticket, or project interview it belongs to.
 type messageTarget struct {
 	ConversationID string `json:"conversation_id,omitempty" jsonschema:"A conversation's id, from conversation_list."`
-	DocID          string `json:"doc_id,omitempty" jsonschema:"A doc's id, for that doc's thread."`
-	TicketID       string `json:"ticket_id,omitempty" jsonschema:"A ticket's id (a UUID, not its key), for that ticket's thread."`
-	ProjectID      string `json:"project_id,omitempty" jsonschema:"A project's id, for that project's interview thread."`
+	DocID          string `json:"doc_id,omitempty" jsonschema:"A doc's id, from doc_list, for that doc's thread."`
+	TicketID       string `json:"ticket_id,omitempty" jsonschema:"A ticket's id (a UUID, not its key such as REF-102; ticket_get returns the id), for that ticket's thread."`
+	ProjectID      string `json:"project_id,omitempty" jsonschema:"A project's id, from project_list, for that project's interview thread."`
 }
+
+// ticketKey matches a ticket's human key; chat cannot resolve one, and a missing ticket's thread would list as empty.
+var ticketKey = regexp.MustCompile(`^[A-Z]{2,5}-\d+$`)
 
 type messageListIn struct {
 	messageTarget
@@ -168,6 +172,9 @@ func (t messageTarget) target() (Kind, string, error) {
 	if set != 1 {
 		return "", "", fmt.Errorf("%w: pass exactly one of conversation_id, doc_id, ticket_id, or project_id (the project's interview thread)", apperrs.ErrInvalid)
 	}
+	if kind == KindTicketThread && ticketKey.MatchString(id) {
+		return "", "", fmt.Errorf("%w: ticket_id takes the ticket's id, not its key %s; ticket_get returns the id", apperrs.ErrInvalid, id)
+	}
 	return kind, id, nil
 }
 
@@ -229,7 +236,7 @@ func toMessageResult(m *Message) messageResult {
 func callerID(ctx context.Context) (string, error) {
 	a, ok := identity.ActorFromCtx(ctx)
 	if !ok || a.ID == "" {
-		return "", apperrs.ErrUnauthorized
+		return "", fmt.Errorf("%w: an authenticated user is required", apperrs.ErrUnauthorized)
 	}
 	return a.ID, nil
 }

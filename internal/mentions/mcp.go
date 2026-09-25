@@ -27,7 +27,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 	return []mcptool.Tool{
 		mcptool.New("mention_search", "Search mentions",
 			"Finds tickets and docs to @-mention, or with refs resolves references already in a document to live chips. "+
-				"Send exactly one of query or refs. A search returns each target's type, id, title, and status; "+
+				"Send exactly one of query or refs. A search returns at most 50 matches, each with its type, id, title, and status; "+
 				"refs return the current title, status, project key parts, and whether you can open it, and leave out targets that no longer exist. "+
 				"Docs you cannot open are never found by a search. Use doc_list or ticket_list for filtered browsing.",
 			mcptool.Hints{ReadOnly: true, Local: true},

@@ -100,7 +100,7 @@ func NotificationMCPTools(s *NotificationService) []mcptool.Tool {
 func notificationCaller(ctx context.Context) (string, error) {
 	a, ok := identity.ActorFromCtx(ctx)
 	if !ok || a.ID == "" {
-		return "", apperrs.ErrUnauthorized
+		return "", fmt.Errorf("%w: an authenticated user is required", apperrs.ErrUnauthorized)
 	}
 	return a.ID, nil
 }
