@@ -65,8 +65,8 @@ func confirmInstructions(p setupPrompt) string {
 	fmt.Fprintf(&b, "You are finishing Nexul's setup for %s on this computer (%s). Work unattended: never ask a question.\n\n", p.ProviderName, p.ComputerName)
 	fmt.Fprintf(&b, "1. Check that %s each hold the mattpocock/skills set and nexul-memory, every skill with a SKILL.md.\n", skillLocations)
 	b.WriteString("2. List the skills this session has discovered: the ones your harness made available to you, not the files on disk.\n")
-	fmt.Fprintf(&b, "3. Call Nexul's MCP tool `computer_setup_confirm_provider` with computer_id %q, provider %q, and skills set to that list. Do not confirm if Nexul's MCP tools are not available in this session or nexul-memory is missing from the list; say what is missing instead.\n", p.ComputerID, p.Driver)
-	fmt.Fprintf(&b, "4. Once the provider is confirmed, call `computer_setup_confirm` with computer_id %q; confirming again is harmless.\n", p.ComputerID)
+	fmt.Fprintf(&b, "3. Call Nexul's MCP tool `computer_setup_update` with computer_id %q, provider %q, confirmed true, and skills set to that list. Do not confirm if Nexul's MCP tools are not available in this session or nexul-memory is missing from the list; say what is missing instead.\n", p.ComputerID, p.Driver)
+	fmt.Fprintf(&b, "4. Once the provider is confirmed, confirm the computer itself: call `computer_setup_update` again with computer_id %q and confirmed true, and no provider; confirming again is harmless.\n", p.ComputerID)
 	b.WriteString("\nEnd with one line saying what you confirmed.\n")
 	return b.String()
 }

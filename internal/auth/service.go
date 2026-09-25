@@ -991,6 +991,42 @@ func (s *Service) ListUsers(ctx context.Context) ([]*User, error) {
 	return s.cfg.Users.ListUsers(ctx)
 }
 
+// GetAccount returns the caller's own account for an empty or own id; any other account only to an instance administrator.
+func (s *Service) GetAccount(ctx context.Context, actorID, id string) (*User, error) {
+	if id == "" || id == actorID {
+		return s.Whoami(ctx, actorID)
+	}
+	if err := s.requireCanCreateWorkspace(ctx, actorID); err != nil {
+		return nil, err
+	}
+	user, err := s.cfg.Users.GetUserByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get account %s: %w", id, err)
+	}
+	return user, nil
+}
+
+// UpdateAccountStatus moves an account to active or disabled; active reactivates a disabled account and restores a removed one.
+func (s *Service) UpdateAccountStatus(ctx context.Context, actorID, targetID string, status AccountStatus) error {
+	target, err := s.cfg.Users.GetUserByID(ctx, targetID)
+	if err != nil {
+		return err
+	}
+	if status == AccountDisabled {
+		return s.DisableAccount(ctx, actorID, target.ID)
+	}
+	if status != AccountActive {
+		return fmt.Errorf("%w: account status must be active or disabled", apperrs.ErrInvalid)
+	}
+	if target.AccountStatus == AccountDisabled {
+		return s.ReactivateAccount(ctx, actorID, target.ID)
+	}
+	if target.AccountStatus == AccountRemoved {
+		return s.RestoreAccount(ctx, actorID, target.ID)
+	}
+	return nil
+}
+
 // ListAccounts returns every registered account to an active instance administrator.
 func (s *Service) ListAccounts(ctx context.Context, actorID string) ([]*User, error) {
 	if err := s.requireCanCreateWorkspace(ctx, actorID); err != nil {

@@ -664,24 +664,7 @@ func (h *Handler) updateAccountStatus(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	target, err := h.svc.GetUserByID(ctx, r.PathValue("id"))
-	if err != nil {
-		httpx.WriteError(w, err)
-		return
-	}
-	if req.Status == AccountDisabled {
-		err = h.svc.DisableAccount(ctx, currentUserID(r), target.ID)
-	}
-	if req.Status == AccountActive && target.AccountStatus == AccountDisabled {
-		err = h.svc.ReactivateAccount(ctx, currentUserID(r), target.ID)
-	}
-	if req.Status == AccountActive && target.AccountStatus == AccountRemoved {
-		err = h.svc.RestoreAccount(ctx, currentUserID(r), target.ID)
-	}
-	if req.Status != AccountActive && req.Status != AccountDisabled {
-		err = fmt.Errorf("%w: account status must be active or disabled", apperrs.ErrInvalid)
-	}
-	if err != nil {
+	if err := h.svc.UpdateAccountStatus(ctx, currentUserID(r), r.PathValue("id"), req.Status); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}

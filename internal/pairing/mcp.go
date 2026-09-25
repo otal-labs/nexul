@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"time"
 
 	"github.com/otal-labs/nexul/internal/harness"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -11,296 +12,291 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 )
 
-// MCPTools returns the computer tunnel, setup confirmation (ADR 0063), and MCP token tools; only MCP writes a confirmation.
+// MCPTools returns the computer tools: pairing, the tunnel token, setup runs and confirmations (ADR 0063), and MCP tokens.
 func MCPTools(s *Service) []mcptool.Tool {
-	return slices.Concat(tunnelTools(s), []mcptool.Tool{pairTool(s)}, setupTools(s), mcpTokenTools(s))
+	return []mcptool.Tool{
+		computerListTool(s), computerCreateTool(s), computerPairTool(s), computerDeleteTool(s), computerTunnelTokenGetTool(s),
+		computerSetupRunTool(s), computerSetupUpdateTool(s), computerMCPTokenCreateTool(s), computerMCPTokenDeleteTool(s),
+	}
 }
 
-func pairTool(s *Service) mcptool.Tool {
-	return mcptool.Tool{
-		Name:        "computer_pair",
-		Description: "Pair T3 Code on a computer with the one-time token `t3 pair` prints there. Pass computer_id to pair a computer tunnel over its hostname once computer_tunnel_status_get reports both checks, or to re-pair any computer at its known address. For a machine this server can already reach, pass name and server_url instead.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"token":       map[string]any{"type": "string", "description": "The one-time token printed by t3 pair"},
-				"computer_id": map[string]any{"type": "string", "description": "An existing computer to pair, such as the one computer_tunnel_create returned"},
-				"name":        map[string]any{"type": "string", "description": "The new computer's name, when pairing by URL"},
-				"server_url":  map[string]any{"type": "string", "description": "The T3 Code server URL this server reaches, when pairing by URL"},
-			},
-			"required": []string{"token"},
-		},
-		Call: func(ctx context.Context, args map[string]any) (any, error) {
-			token, err := mcptool.RequiredString(args, "token")
+type computerListIn struct {
+	ID string `json:"id,omitempty" jsonschema:"One computer's id, to read it alone with its tunnel's live status. Omit to list every computer you own."`
+	mcptool.PageArgs
+}
+
+type computerCreateIn struct {
+	Name string `json:"name" jsonschema:"The computer's name, for example Onik Laptop; its tunnel hostname is made from it."`
+	Port int    `json:"port,omitzero" jsonschema:"The local port T3 Code serves on, 1 to 65535. Defaults to 3773."`
+}
+
+type computerPairIn struct {
+	Token     string `json:"token" jsonschema:"The one-time token t3 pair prints on the computer."`
+	ID        string `json:"id,omitempty" jsonschema:"An existing computer to pair or re-pair at its own address, for example the one computer_create returned. Omit it to pair a new computer by name and server_url."`
+	Name      string `json:"name,omitempty" jsonschema:"The new computer's name, when pairing by URL."`
+	ServerURL string `json:"server_url,omitempty" jsonschema:"The T3 Code server URL this server reaches, when pairing by URL, for example https://vps.example.com:3773."`
+}
+
+type computerDeleteIn struct {
+	ID string `json:"id" jsonschema:"The computer's id, from computer_list."`
+}
+
+type computerIDIn struct {
+	ComputerID string `json:"computer_id" jsonschema:"The computer's id, from computer_list."`
+}
+
+type computerSetupRunIn struct {
+	ComputerID string            `json:"computer_id" jsonschema:"The paired computer's id, from computer_list."`
+	Provider   string            `json:"provider,omitempty" jsonschema:"One provider's driver kind to run alone, for example codex, after its turn failed. Omit to run every provider the harness lists."`
+	Model      string            `json:"model,omitempty" jsonschema:"With provider only: the model slug its turn runs on, as the harness lists it. Omit for the provider's own default."`
+	Models     map[string]string `json:"models,omitempty" jsonschema:"Without provider only: the model slug each provider's turn runs on, keyed by driver kind, for example {\"codex\": \"gpt-5-mini\"}. A provider left out runs on its own default."`
+}
+
+type computerSetupUpdateIn struct {
+	ComputerID string   `json:"computer_id" jsonschema:"The paired computer's id, from computer_list."`
+	Provider   string   `json:"provider,omitempty" jsonschema:"A provider's driver kind, for example claude, codex, or opencode, to change that provider's confirmation. Omit to change the computer's overall confirmation."`
+	Confirmed  bool     `json:"confirmed" jsonschema:"true confirms, false withdraws the confirmation."`
+	Skills     []string `json:"skills,omitempty" jsonschema:"With provider and confirmed true, required: the skill names this session's harness reported as discovered, for example [\"tdd\", \"nexul-memory\"]."`
+}
+
+// computerResult is a computer as an agent reads it: no bearer token, and its setup and MCP token only on a list.
+type computerResult struct {
+	ID               string          `json:"id"`
+	Name             string          `json:"name"`
+	Kind             harness.Kind    `json:"kind"`
+	ServerURL        string          `json:"server_url"`
+	Paired           bool            `json:"paired"`
+	SessionExpiresAt *time.Time      `json:"session_expires_at,omitempty"`
+	HarnessVersion   string          `json:"harness_version,omitempty"`
+	Tunnel           *ComputerTunnel `json:"tunnel,omitempty"`
+	TunnelStatus     *TunnelStatus   `json:"tunnel_status,omitempty"`
+	Setup            *Setup          `json:"setup,omitempty"`
+	MCPToken         *MCPToken       `json:"mcp_token,omitempty"`
+}
+
+func toComputerResult(c Computer) computerResult {
+	r := computerResult{ID: c.ID, Name: c.Name, Kind: c.Kind, ServerURL: c.ServerURL, Paired: c.Paired(), HarnessVersion: c.HarnessVersion, Tunnel: c.Tunnel}
+	if r.Paired {
+		r.SessionExpiresAt = &c.TokenExpiresAt
+	}
+	return r
+}
+
+func computerListTool(s *Service) mcptool.Tool {
+	return mcptool.New("computer_list", "List paired computers",
+		"Lists the computers you own, each with its tunnel, its setup confirmation (overall and per provider, plus each "+
+			"provider's newest setup turn), and its MCP token's metadata, never the token itself. Pass id to read one "+
+			"computer alone with its tunnel's live status: tunnel is Cloudflare's connector state (inactive, healthy, "+
+			"degraded, or down) and harness_reachable says whether T3 Code answers through the hostname; pairing can "+
+			"continue with computer_pair once both pass. A computer with paired false has a tunnel but no harness "+
+			"session yet, and one without setup.confirmed_at needs computer_setup_run before agent work can use it.",
+		mcptool.Hints{ReadOnly: true},
+		func(ctx context.Context, in computerListIn) (any, error) {
+			userID := mcpActorID(ctx)
+			computers, err := s.ListComputers(ctx, userID)
 			if err != nil {
 				return nil, err
 			}
-			if computerID := mcptool.OptionalString(args["computer_id"]); computerID != "" {
-				return s.PairComputer(ctx, mcpActorID(ctx), computerID, token)
+			if in.ID != "" {
+				computers = slices.DeleteFunc(computers, func(c Computer) bool { return c.ID != in.ID })
 			}
-			return s.Pair(ctx, mcpActorID(ctx), harness.KindT3Code, mcptool.OptionalString(args["name"]), mcptool.OptionalString(args["server_url"]), token)
-		},
-	}
+			if in.ID != "" && len(computers) == 0 {
+				return nil, fmt.Errorf("%w: computer %s is not one of yours; computer_list without id lists them", apperrs.ErrNotFound, in.ID)
+			}
+			out := make([]computerResult, 0, len(computers))
+			for _, c := range computers {
+				r, err := listedComputer(ctx, s, userID, c, in.ID != "")
+				if err != nil {
+					return nil, err
+				}
+				out = append(out, r)
+			}
+			return mcptool.Paginate(out, in.PageArgs), nil
+		})
 }
 
-func mcpTokenTools(s *Service) []mcptool.Tool {
-	return []mcptool.Tool{
-		{
-			Name:        "computer_mcp_token_get",
-			Description: "Read one of your paired computers' own MCP token, \"Nexul MCP on <computer>\": its id, name, prefix, and when it was created and last used, never the secret. Null means the computer has none.",
-			InputSchema: computerSchema(nil),
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				computerID, err := mcptool.RequiredString(args, "computer_id")
-				if err != nil {
-					return nil, err
-				}
-				token, err := s.GetMCPToken(ctx, mcpActorID(ctx), computerID)
-				if err != nil {
-					return nil, err
-				}
-				return map[string]any{"mcp_token": token}, nil
-			},
-		},
-		{
-			Name:        "computer_mcp_token_mint",
-			Description: "Mint one of your paired computers its own personal access token, \"Nexul MCP on <computer>\", for its providers' MCP configs; it replaces and revokes the one the computer had. The token is returned only in this response and is hidden in saved transcripts; show it only to the computer's owner.",
-			InputSchema: computerSchema(nil),
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				computerID, err := mcptool.RequiredString(args, "computer_id")
-				if err != nil {
-					return nil, err
-				}
-				return s.MintMCPToken(ctx, mcpActorID(ctx), computerID)
-			},
-		},
-		{
-			Name:        "computer_mcp_token_revoke",
-			Description: "Revoke one of your paired computers' MCP token. Its providers lose Nexul's MCP server until a new token is minted.",
-			InputSchema: computerSchema(nil),
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				computerID, err := mcptool.RequiredString(args, "computer_id")
-				if err != nil {
-					return nil, err
-				}
-				if err := s.RevokeMCPToken(ctx, mcpActorID(ctx), computerID); err != nil {
-					return nil, err
-				}
-				return map[string]string{"computer_id": computerID, "status": "revoked"}, nil
-			},
-		},
-	}
-}
-
-func tunnelTools(s *Service) []mcptool.Tool {
-	return []mcptool.Tool{
-		{
-			Name:        "computer_tunnel_create",
-			Description: "Start pairing a computer through its own tunnel on the instance's Cloudflare: creates the computer, its tunnel, and a hostname closed to everything but this server. Then install cloudflared on the computer with computer_tunnel_token_get's token and wait for computer_tunnel_status_get to report both checks.",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"name": map[string]any{"type": "string", "description": "The computer's name, such as Onik Laptop; its hostname is made from it"},
-					"port": map[string]any{"type": "integer", "description": "The local port T3 Code serves on; defaults to 3773"},
-				},
-				"required": []string{"name"},
-			},
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				name, err := mcptool.RequiredString(args, "name")
-				if err != nil {
-					return nil, err
-				}
-				port := DefaultT3CodePort
-				if f, ok := args["port"].(float64); ok {
-					port = int(f)
-				}
-				return s.CreateComputerTunnel(ctx, mcpActorID(ctx), harness.KindT3Code, name, port)
-			},
-		},
-		{
-			Name:        "computer_tunnel_status_get",
-			Description: "Read one of your computers' tunnel checks: tunnel is Cloudflare's connector status (inactive, healthy, degraded, or down) and harness_reachable is whether T3 Code answers through the hostname. Pairing can continue once the tunnel is healthy and the harness reachable.",
-			InputSchema: computerSchema(nil),
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				computerID, err := mcptool.RequiredString(args, "computer_id")
-				if err != nil {
-					return nil, err
-				}
-				return s.ComputerTunnelStatus(ctx, mcpActorID(ctx), computerID)
-			},
-		},
-		{
-			Name:        "computer_tunnel_token_get",
-			Description: "Read the connector token one of your computers installs cloudflared with (cloudflared service install <token>). It is a secret: show it only to the computer's owner.",
-			InputSchema: computerSchema(nil),
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				computerID, err := mcptool.RequiredString(args, "computer_id")
-				if err != nil {
-					return nil, err
-				}
-				token, err := s.ComputerTunnelToken(ctx, mcpActorID(ctx), computerID)
-				if err != nil {
-					return nil, err
-				}
-				return map[string]string{"token": token}, nil
-			},
-		},
-	}
-}
-
-func setupTools(s *Service) []mcptool.Tool {
-	computerOnly := computerSchema(nil)
-	providerOnly := computerSchema(map[string]any{"provider": providerProperty}, "provider")
-	return []mcptool.Tool{
-		{
-			Name:        "computer_setup_get",
-			Description: "Read one of your paired computers' setup confirmation: the overall one and one per provider, each with its confirmed_at (null means unconfirmed) and the skills reported when it was confirmed; turns is each provider's newest setup turn with its run_id, state (running, confirmed, or failed), status line, and updated_at.",
-			InputSchema: computerOnly,
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				return withComputer(ctx, args, s.GetSetup)
-			},
-		},
-		{
-			Name:        "computer_setup_confirm_provider",
-			Description: "Confirm a provider is set up on one of your paired computers: Nexul's MCP server is connected to it and its harness reports the default skills. Pass the skill names the harness reported.",
-			InputSchema: computerSchema(map[string]any{
-				"provider": providerProperty,
-				"skills":   map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Skill names the harness reported as discovered"},
-			}, "provider", "skills"),
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				skills, err := stringsArg(args, "skills")
-				if err != nil {
-					return nil, err
-				}
-				return withProvider(ctx, args, func(ctx context.Context, userID, computerID, provider string) (Setup, error) {
-					return s.ConfirmProviderSetup(ctx, userID, computerID, provider, skills)
-				})
-			},
-		},
-		{
-			Name:        "computer_setup_unconfirm_provider",
-			Description: "Withdraw a provider's setup confirmation on one of your paired computers, for example after its skills were removed. The provider cannot run agent work there until confirmed again.",
-			InputSchema: providerOnly,
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				return withProvider(ctx, args, s.UnconfirmProviderSetup)
-			},
-		},
-		{
-			Name:        "computer_setup_start",
-			Description: "Start setup on one of your paired computers: Nexul mints or reuses the computer's MCP token, then runs one setup turn per provider its harness lists, one after another. Each turn connects Nexul's MCP server to its provider, installs the default skills and nexul-memory, and confirms the provider and the computer. Returns at once with the run and its providers; progress arrives as computer.setup_turn_changed events and a final computer.setup_finished. Re-running re-verifies without undoing anything.",
-			InputSchema: computerSchema(map[string]any{"models": modelsProperty}),
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				computerID, err := mcptool.RequiredString(args, "computer_id")
-				if err != nil {
-					return nil, err
-				}
-				models, err := modelsArg(args)
-				if err != nil {
-					return nil, err
-				}
-				return s.StartSetup(ctx, mcpActorID(ctx), computerID, models)
-			},
-		},
-		{
-			Name:        "computer_setup_retry_provider",
-			Description: "Run one provider's setup turn again on one of your paired computers, alone, after it failed; on a confirmed provider it re-verifies. Like every setup turn, it also confirms the computer once the provider is confirmed.",
-			InputSchema: computerSchema(map[string]any{"provider": providerProperty, "model": modelProperty}, "provider"),
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				vals, err := mcptool.RequiredStrings(args, "computer_id", "provider")
-				if err != nil {
-					return nil, err
-				}
-				return s.RetrySetupProvider(ctx, mcpActorID(ctx), vals[0], vals[1], mcptool.OptionalString(args["model"]))
-			},
-		},
-		{
-			Name:        "computer_setup_confirm",
-			Description: "Confirm one of your paired computers is set up overall, the last step of its setup.",
-			InputSchema: computerOnly,
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				return withComputer(ctx, args, s.ConfirmSetup)
-			},
-		},
-		{
-			Name:        "computer_setup_unconfirm",
-			Description: "Withdraw the overall setup confirmation of one of your paired computers, for example after the machine was wiped.",
-			InputSchema: computerOnly,
-			Call: func(ctx context.Context, args map[string]any) (any, error) {
-				return withComputer(ctx, args, s.UnconfirmSetup)
-			},
-		},
-	}
-}
-
-var providerProperty = map[string]any{"type": "string", "description": "The provider's driver kind, such as claude, codex, or opencode"}
-
-var modelProperty = map[string]any{"type": "string", "description": "The model slug the setup turn runs on, as the harness lists it for the provider; omit it for the provider's own default"}
-
-var modelsProperty = map[string]any{
-	"type":                 "object",
-	"additionalProperties": map[string]any{"type": "string"},
-	"description":          "The model slug each provider's setup turn runs on, keyed by driver kind; a provider left out runs on its own default",
-}
-
-// modelsArg reads the optional models map; a non-string model is invalid rather than silently dropped.
-func modelsArg(args map[string]any) (map[string]string, error) {
-	raw, ok := args["models"]
-	if !ok || raw == nil {
-		return nil, nil
-	}
-	entries, ok := raw.(map[string]any)
-	if !ok {
-		return nil, fmt.Errorf("%w: models must be an object of model slugs keyed by provider", apperrs.ErrInvalid)
-	}
-	models := make(map[string]string, len(entries))
-	for provider, v := range entries {
-		model, ok := v.(string)
-		if !ok {
-			return nil, fmt.Errorf("%w: the model for %s must be a string", apperrs.ErrInvalid, provider)
-		}
-		models[provider] = model
-	}
-	return models, nil
-}
-
-func computerSchema(extra map[string]any, required ...string) map[string]any {
-	properties := map[string]any{"computer_id": map[string]any{"type": "string"}}
-	for k, v := range extra {
-		properties[k] = v
-	}
-	return map[string]any{"type": "object", "properties": properties, "required": append([]string{"computer_id"}, required...)}
-}
-
-func withComputer(ctx context.Context, args map[string]any, call func(context.Context, string, string) (Setup, error)) (any, error) {
-	computerID, err := mcptool.RequiredString(args, "computer_id")
+// listedComputer adds the setup and MCP token reads, and the live tunnel status only when one computer was asked for.
+func listedComputer(ctx context.Context, s *Service, userID string, c Computer, live bool) (computerResult, error) {
+	r := toComputerResult(c)
+	setup, err := s.GetSetup(ctx, userID, c.ID)
 	if err != nil {
-		return nil, err
+		return r, err
 	}
-	return call(ctx, mcpActorID(ctx), computerID)
-}
-
-func withProvider(ctx context.Context, args map[string]any, call func(context.Context, string, string, string) (Setup, error)) (any, error) {
-	vals, err := mcptool.RequiredStrings(args, "computer_id", "provider")
+	r.Setup = &setup
+	if r.MCPToken, err = s.GetMCPToken(ctx, userID, c.ID); err != nil {
+		return r, err
+	}
+	if !live || c.Tunnel == nil {
+		return r, nil
+	}
+	status, err := s.ComputerTunnelStatus(ctx, userID, c.ID)
 	if err != nil {
-		return nil, err
+		return r, err
 	}
-	return call(ctx, mcpActorID(ctx), vals[0], vals[1])
+	r.TunnelStatus = &status
+	return r, nil
 }
 
-// stringsArg reads a JSON array of strings; any non-string element is invalid rather than silently dropped.
-func stringsArg(args map[string]any, key string) ([]string, error) {
-	raw, ok := args[key].([]any)
-	if !ok {
-		return nil, fmt.Errorf("%w: %s must be an array of strings", apperrs.ErrInvalid, key)
+func computerCreateTool(s *Service) mcptool.Tool {
+	return mcptool.New("computer_create", "Create computer",
+		"Starts pairing a computer through its own tunnel on the instance's Cloudflare: creates the computer, its tunnel, "+
+			"and a hostname closed to everything but this server. Next, install cloudflared on the computer with the "+
+			"token computer_tunnel_token_get reveals, wait for computer_list with this id to report the tunnel healthy "+
+			"and the harness reachable, then call computer_pair. For a machine this server can already reach by URL, "+
+			"skip this and call computer_pair with name and server_url. Returns the new, still unpaired computer.",
+		mcptool.Hints{Additive: true},
+		func(ctx context.Context, in computerCreateIn) (any, error) {
+			port := in.Port
+			if port == 0 {
+				port = DefaultT3CodePort
+			}
+			c, err := s.CreateComputerTunnel(ctx, mcpActorID(ctx), harness.KindT3Code, in.Name, port)
+			if err != nil {
+				return nil, err
+			}
+			return toComputerResult(*c), nil
+		})
+}
+
+func computerPairTool(s *Service) mcptool.Tool {
+	return mcptool.New("computer_pair", "Pair computer",
+		"Pairs T3 Code on a computer with the one-time token t3 pair prints there, giving Nexul a harness session on it. "+
+			"Pass id to pair a computer computer_create made, over its tunnel hostname, or to re-pair any of your "+
+			"computers at its known address; pass name and server_url instead to pair a new machine this server can "+
+			"already reach. Returns the paired computer; run computer_setup_run next so agent work can use it.",
+		mcptool.Hints{},
+		func(ctx context.Context, in computerPairIn) (any, error) {
+			c, err := pairComputer(ctx, s, in)
+			if err != nil {
+				return nil, err
+			}
+			return toComputerResult(*c), nil
+		})
+}
+
+func pairComputer(ctx context.Context, s *Service, in computerPairIn) (*Computer, error) {
+	if in.ID != "" {
+		return s.PairComputer(ctx, mcpActorID(ctx), in.ID, in.Token)
 	}
-	out := make([]string, 0, len(raw))
-	for _, v := range raw {
-		str, ok := v.(string)
-		if !ok {
-			return nil, fmt.Errorf("%w: %s must be an array of strings", apperrs.ErrInvalid, key)
-		}
-		out = append(out, str)
+	return s.Pair(ctx, mcpActorID(ctx), harness.KindT3Code, in.Name, in.ServerURL, in.Token)
+}
+
+func computerDeleteTool(s *Service) mcptool.Tool {
+	return mcptool.New("computer_delete", "Delete computer",
+		"Removes one of your computers: revokes its MCP token, tears down its tunnel, DNS record, and Access app on "+
+			"Cloudflare, then deletes it. Agent work can no longer run there; pair it again with computer_create or "+
+			"computer_pair. A failed Cloudflare teardown keeps the computer, so calling this again retries it.",
+		mcptool.Hints{Idempotent: true},
+		func(ctx context.Context, in computerDeleteIn) (any, error) {
+			if err := s.DeleteComputer(ctx, mcpActorID(ctx), in.ID); err != nil {
+				return nil, err
+			}
+			return mcptool.Gone(in.ID), nil
+		})
+}
+
+func computerTunnelTokenGetTool(s *Service) mcptool.Tool {
+	return mcptool.New("computer_tunnel_token_get", "Reveal tunnel token",
+		"Reveals the secret connector token one of your computers installs cloudflared with (cloudflared service "+
+			"install <token>); this tool exists only to hand it over, so show it to the computer's owner and nobody "+
+			"else. Only a computer made by computer_create has one; a computer paired by URL has no tunnel. "+
+			"computer_list shows the tunnel itself without its token.",
+		mcptool.Hints{ReadOnly: true},
+		func(ctx context.Context, in computerIDIn) (any, error) {
+			token, err := s.ComputerTunnelToken(ctx, mcpActorID(ctx), in.ComputerID)
+			if err != nil {
+				return nil, err
+			}
+			return map[string]string{"computer_id": in.ComputerID, "token": token}, nil
+		})
+}
+
+func computerSetupRunTool(s *Service) mcptool.Tool {
+	return mcptool.New("computer_setup_run", "Run computer setup",
+		"Starts setup on one of your paired computers: Nexul mints or reuses the computer's MCP token, then runs one "+
+			"setup turn per provider its harness lists, one after another, each connecting Nexul's MCP server, "+
+			"installing the default skills and nexul-memory, and confirming through computer_setup_update. Pass "+
+			"provider to run only that provider's turn again after it failed; on a confirmed provider it re-verifies "+
+			"without undoing anything. Returns at once with the run and its providers; computer_list shows each "+
+			"provider's turn state as it progresses. Only one setup runs on a computer at a time.",
+		mcptool.Hints{},
+		func(ctx context.Context, in computerSetupRunIn) (any, error) {
+			if in.Provider == "" && in.Model != "" {
+				return nil, fmt.Errorf("%w: model applies to one provider; pass provider too, or models to pick per provider", apperrs.ErrInvalid)
+			}
+			if in.Provider != "" && len(in.Models) > 0 {
+				return nil, fmt.Errorf("%w: models applies to a run of every provider; with provider pass model instead", apperrs.ErrInvalid)
+			}
+			if in.Provider == "" {
+				return s.StartSetup(ctx, mcpActorID(ctx), in.ComputerID, in.Models)
+			}
+			return s.RetrySetupProvider(ctx, mcpActorID(ctx), in.ComputerID, in.Provider, in.Model)
+		})
+}
+
+func computerSetupUpdateTool(s *Service) mcptool.Tool {
+	return mcptool.New("computer_setup_update", "Update setup confirmation",
+		"Confirms or withdraws a setup confirmation on one of your paired computers; agent work runs there only while "+
+			"both the computer's overall confirmation and its provider's are set. With provider and confirmed true, "+
+			"it records that Nexul's MCP server is connected to that provider and its harness reports the given "+
+			"skills; without provider it confirms the computer overall, the last step of its setup. Confirmed false "+
+			"withdraws the one named, and withdrawing the overall confirmation also revokes the computer's MCP token. "+
+			"Only this tool writes a confirmation, and repeating a call changes nothing more; returns the computer's "+
+			"setup, which computer_list also shows.",
+		mcptool.Hints{Idempotent: true, Local: true},
+		func(ctx context.Context, in computerSetupUpdateIn) (any, error) {
+			if len(in.Skills) > 0 && (in.Provider == "" || !in.Confirmed) {
+				return nil, fmt.Errorf("%w: skills go only with provider and confirmed true", apperrs.ErrInvalid)
+			}
+			return updateSetup(ctx, s, mcpActorID(ctx), in)
+		})
+}
+
+func updateSetup(ctx context.Context, s *Service, userID string, in computerSetupUpdateIn) (Setup, error) {
+	if in.Provider == "" && in.Confirmed {
+		return s.ConfirmSetup(ctx, userID, in.ComputerID)
 	}
-	return out, nil
+	if in.Provider == "" {
+		return s.UnconfirmSetup(ctx, userID, in.ComputerID)
+	}
+	if in.Confirmed {
+		return s.ConfirmProviderSetup(ctx, userID, in.ComputerID, in.Provider, in.Skills)
+	}
+	return s.UnconfirmProviderSetup(ctx, userID, in.ComputerID, in.Provider)
+}
+
+func computerMCPTokenCreateTool(s *Service) mcptool.Tool {
+	return mcptool.New("computer_mcp_token_create", "Create computer MCP token",
+		"Mints one of your paired computers its own personal access token, \"Nexul MCP on <computer>\", for its "+
+			"providers' MCP configs, revoking the one it had. The token is returned only in this response and is "+
+			"hidden in saved transcripts, so show it only to the computer's owner; computer_list shows its metadata "+
+			"afterwards. computer_setup_run mints one on its own, so call this only to rotate the token by hand.",
+		mcptool.Hints{Local: true},
+		func(ctx context.Context, in computerIDIn) (any, error) {
+			return s.MintMCPToken(ctx, mcpActorID(ctx), in.ComputerID)
+		})
+}
+
+func computerMCPTokenDeleteTool(s *Service) mcptool.Tool {
+	return mcptool.New("computer_mcp_token_delete", "Delete computer MCP token",
+		"Revokes one of your paired computers' MCP token, so its providers lose Nexul's MCP server until "+
+			"computer_mcp_token_create or computer_setup_run mints a new one. Returns the revoked token's id. "+
+			"A computer without a token is not found; computer_list shows which computers have one.",
+		mcptool.Hints{Idempotent: true, Local: true},
+		func(ctx context.Context, in computerIDIn) (any, error) {
+			userID := mcpActorID(ctx)
+			token, err := s.GetMCPToken(ctx, userID, in.ComputerID)
+			if err != nil {
+				return nil, err
+			}
+			if token == nil {
+				return nil, fmt.Errorf("%w: computer %s has no MCP token; computer_mcp_token_create mints one", apperrs.ErrNotFound, in.ComputerID)
+			}
+			if err := s.RevokeMCPToken(ctx, userID, in.ComputerID); err != nil {
+				return nil, err
+			}
+			return mcptool.Gone(token.ID), nil
+		})
 }
 
 func mcpActorID(ctx context.Context) string {
