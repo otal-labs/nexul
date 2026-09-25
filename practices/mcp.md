@@ -335,10 +335,15 @@ decide whether an agent picks the right tool.
   check is checked by a test.
 - **Wiring changes get a live check.** Before merging a change to the
   adapter's wiring (capabilities, cache fields, errors, the origin check),
-  run the specification's conformance suite
-  (`npx @modelcontextprotocol/conformance server`) against a dev server for
-  2026-07-28 and 2025-11-25, and a real client against it: list the tools,
-  call one read, and call one failing tool.
+  run a real client against a dev server (the SDK's own client covers both
+  eras): list the tools, call one read, one patch update, and one failing
+  tool. Then run the specification's conformance suite
+  (`npx @modelcontextprotocol/conformance server --url <dev>/mcp`) through a
+  small proxy that adds a bearer token, since the suite sends none, with the
+  instance URL set to the proxy's origin. The protocol scenarios (initialize,
+  ping, the lists, DNS-rebinding protection) must pass; the scenarios that
+  call the suite's own fixture tools and resources, or features this server
+  does not implement, fail by design.
 - **Reshaping is judged by the tasks.** A change that merges or splits tools
   walks the tasks it touches end to end, as an agent would, and says in the
   pull request how many calls each takes before and after. When selection

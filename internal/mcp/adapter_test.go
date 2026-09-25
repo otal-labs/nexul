@@ -154,6 +154,8 @@ func TestAdapter_ToolsCarryTitlesAndHints(t *testing.T) {
 	require.NotNil(t, del)
 	assert.Equal(t, "Get thing", get.Title)
 	assert.True(t, get.Annotations.ReadOnlyHint)
+	assert.False(t, *get.Annotations.DestructiveHint, "a read is never destructive")
+	assert.True(t, get.Annotations.IdempotentHint, "a read is safe to repeat")
 	assert.False(t, *get.Annotations.OpenWorldHint, "a Local tool stays in Nexul's database")
 	assert.False(t, del.Annotations.ReadOnlyHint)
 	assert.True(t, *del.Annotations.DestructiveHint, "the zero Hints are the conservative default")

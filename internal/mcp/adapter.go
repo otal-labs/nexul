@@ -77,7 +77,8 @@ func (s server) handler(instanceURL func(context.Context) (string, error)) http.
 }
 
 func sdkTool(t mcptool.Tool) *sdk.Tool {
-	destructive, openWorld := !t.Hints.Additive, !t.Hints.Local
+	// A read changes nothing, so it is neither destructive nor at risk from a repeat, whatever the other hints say.
+	destructive, openWorld := !t.Hints.ReadOnly && !t.Hints.Additive, !t.Hints.Local
 	return &sdk.Tool{
 		Name:        t.Name,
 		Title:       t.Title,
@@ -87,7 +88,7 @@ func sdkTool(t mcptool.Tool) *sdk.Tool {
 			Title:           t.Title,
 			ReadOnlyHint:    t.Hints.ReadOnly,
 			DestructiveHint: &destructive,
-			IdempotentHint:  t.Hints.Idempotent,
+			IdempotentHint:  t.Hints.Idempotent || t.Hints.ReadOnly,
 			OpenWorldHint:   &openWorld,
 		},
 	}
