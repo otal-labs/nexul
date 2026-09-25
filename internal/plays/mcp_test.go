@@ -71,6 +71,8 @@ func TestPlayTools_ErrorPaths(t *testing.T) {
 		{"create without a label is invalid", "owner", "play_create", `{"workspace_id":"$WS","type":"doc"}`, apperrs.ErrInvalid},
 		{"a ticket play without a stage is invalid", "owner", "play_create", `{"workspace_id":"$WS","label":"Go","type":"ticket"}`, apperrs.ErrInvalid},
 		{"an unknown play type is invalid", "owner", "play_list", `{"workspace_id":"$WS","type":"bogus"}`, apperrs.ErrInvalid},
+		{"project_id without type is invalid, not ignored", "owner", "play_list", `{"workspace_id":"$WS","project_id":"proj-1"}`, apperrs.ErrInvalid},
+		{"stage without type is invalid, not ignored", "owner", "play_list", `{"workspace_id":"$WS","stage":"progress"}`, apperrs.ErrInvalid},
 		{"type cannot be updated", "owner", "play_update", `{"workspace_id":"$WS","id":"$ID","type":"doc"}`, apperrs.ErrInvalid},
 		{"an unknown stage is invalid", "owner", "play_update", `{"workspace_id":"$WS","id":"$ID","show_when_stage":"shipped"}`, apperrs.ErrInvalid},
 		{"update of a missing play", "owner", "play_update", `{"workspace_id":"$WS","id":"missing","label":"x"}`, apperrs.ErrNotFound},

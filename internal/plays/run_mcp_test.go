@@ -64,6 +64,24 @@ func TestTrailList_MissingTrailNamesTheListCall(t *testing.T) {
 	assert.Contains(t, err.Error(), "trail_list with target_type and target_id")
 }
 
+func TestPlayRun_RefusalsNameTheRecoveryTools(t *testing.T) {
+	f := newRunnerFixture()
+	tools := RunMCPTools(f.runner)
+	ctx := ctxAs(starter)
+
+	_, err := callTool(t, tools, ctx, "play_run", `{"play_id":"missing","target_type":"ticket","target_id":"t-1"}`)
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
+	assert.Contains(t, err.Error(), "play_list shows the plays")
+
+	run := `{"play_id":"play-fix","target_type":"ticket","target_id":"t-1"}`
+	_, err = callTool(t, tools, ctx, "play_run", run)
+	require.NoError(t, err)
+	<-f.turns.done
+	_, err = callTool(t, tools, ctx, "play_run", run)
+	require.ErrorIs(t, err, apperrs.ErrConflict)
+	assert.Contains(t, err.Error(), "trail_update with stop ends it")
+}
+
 func TestPlayRun_ThenTrailList(t *testing.T) {
 	f := newRunnerFixture()
 	tools := RunMCPTools(f.runner)

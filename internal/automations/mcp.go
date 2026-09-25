@@ -116,8 +116,9 @@ func MCPTools(s *Service) []mcptool.Tool {
 				return toAutomationResult(a), nil
 			}),
 		mcptool.New("automation_delete", "Delete automation",
-			"Deletes an automation for good and revokes its token, dropping its live connection. To pause one "+
-				"instead, use automation_update with enabled false. Needs automations:delete.",
+			"Deletes an automation for good and revokes its token, dropping its live connection. Returns its id "+
+				"with deleted true. To pause one instead, use automation_update with enabled false. Needs "+
+				"automations:delete.",
 			mcptool.Hints{Idempotent: true, Local: true},
 			func(ctx context.Context, in automationIDIn) (any, error) {
 				if err := s.Delete(ctx, actorIDFromCtx(ctx), in.ID); err != nil {

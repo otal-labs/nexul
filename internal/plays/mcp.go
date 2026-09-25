@@ -45,7 +45,7 @@ type playCreateIn struct {
 	Instructions       string   `json:"instructions,omitempty" jsonschema:"The base instructions the Agent gets on every run, as markdown."`
 	Enabled            bool     `json:"enabled,omitempty" jsonschema:"Whether the play shows and can run. Defaults to false."`
 	ShowWhenStage      Stage    `json:"show_when_stage,omitempty" jsonschema:"Required for a ticket play and refused for any other: the board stage (backlog, progress, review, testing, or done) whose tickets show the button."`
-	ExcludedProjectIDs []string `json:"excluded_project_ids,omitempty" jsonschema:"Ids of projects where the play never shows."`
+	ExcludedProjectIDs []string `json:"excluded_project_ids,omitempty" jsonschema:"Ids of projects where the play never shows, from project_list."`
 }
 
 type playUpdateIn struct {
@@ -118,8 +118,9 @@ func MCPTools(s *Service) []mcptool.Tool {
 				return toPlayResult(updated), nil
 			}),
 		mcptool.New("play_delete", "Delete play",
-			"Deletes a play from its workspace. Trails of its past runs stay readable through trail_list. To hide "+
-				"a play without losing it, use play_update with enabled false instead. Needs plays:delete.",
+			"Deletes a play from its workspace and returns its id with deleted true. Trails of its past runs stay "+
+				"readable through trail_list. To hide a play without losing it, use play_update with enabled false "+
+				"instead. Needs plays:delete.",
 			mcptool.Hints{Idempotent: true, Local: true},
 			func(ctx context.Context, in playDeleteIn) (any, error) {
 				if err := s.Delete(ctx, in.WorkspaceID, in.ID); err != nil {
@@ -131,6 +132,9 @@ func MCPTools(s *Service) []mcptool.Tool {
 }
 
 func listPlays(ctx context.Context, s *Service, in playListIn) ([]*Play, error) {
+	if in.Type == "" && (in.ProjectID != "" || in.Stage != "") {
+		return nil, fmt.Errorf("%w: project_id and stage narrow the list only together with type (ticket, doc, or interview)", apperrs.ErrInvalid)
+	}
 	if in.Type == "" {
 		return s.List(ctx, in.WorkspaceID)
 	}

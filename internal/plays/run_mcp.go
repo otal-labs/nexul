@@ -131,7 +131,7 @@ func RunMCPTools(r *Runner) []mcptool.Tool {
 					ComputerID: in.ComputerID, Provider: in.Provider, Model: in.Model, Via: ViaMCP,
 				})
 				if err != nil {
-					return nil, err
+					return nil, startHint(err)
 				}
 				return toTrailSummary(t), nil
 			}),
@@ -151,7 +151,8 @@ func RunMCPTools(r *Runner) []mcptool.Tool {
 					return toTrailDetail(t, in.Steps), nil
 				}
 				if in.TargetType == "" || in.TargetID == "" {
-					return nil, fmt.Errorf("%w: pass id, or target_type (ticket, doc, or interview) and target_id", apperrs.ErrInvalid)
+					return nil, fmt.Errorf("%w: pass id for one trail, or target_type (ticket, doc, or interview) and target_id "+
+						"for a target's trails, which play_id only narrows; ticket_list, doc_list, and project_list give target ids", apperrs.ErrInvalid)
 				}
 				list, err := r.ListTrails(ctx, in.TargetType, in.TargetID)
 				if err != nil {
@@ -189,7 +190,7 @@ func RunMCPTools(r *Runner) []mcptool.Tool {
 			func(ctx context.Context, in decisionsCheckRunIn) (any, error) {
 				t, err := r.RetryDecisionsCheck(ctx, in.TicketID, ViaMCP)
 				if err != nil {
-					return nil, err
+					return nil, startHint(err)
 				}
 				return toTrailSummary(t), nil
 			}),
@@ -208,6 +209,18 @@ func steerTrail(ctx context.Context, r *Runner, in trailUpdateIn) (*Trail, error
 		answers[id] = harness.AnswerValue(a)
 	}
 	return r.Answer(ctx, in.ID, harness.QuestionAnswer{Answers: answers})
+}
+
+// startHint points a refused start at the tools that recover from it.
+func startHint(err error) error {
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return fmt.Errorf("%w; play_list shows the plays, computer_list the caller's computers, and ticket_list, doc_list, "+
+			"or project_list give a target's id (a UUID)", err)
+	}
+	if errors.Is(err, apperrs.ErrConflict) {
+		return fmt.Errorf("%w; trail_list with target_type and target_id shows the active trail, and trail_update with stop ends it", err)
+	}
+	return err
 }
 
 func trailNotFoundHint(err error) error {
