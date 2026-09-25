@@ -18,6 +18,7 @@ import (
 	"github.com/otal-labs/nexul/internal/docs"
 	"github.com/otal-labs/nexul/internal/docs/richtext"
 	"github.com/otal-labs/nexul/internal/gitprovider"
+	"github.com/otal-labs/nexul/internal/mcp/composite"
 	"github.com/otal-labs/nexul/internal/memories"
 	"github.com/otal-labs/nexul/internal/mentions"
 	"github.com/otal-labs/nexul/internal/pairing"
@@ -52,6 +53,7 @@ type RegistryOptions struct {
 	Access        *access.Service
 	Auth          *auth.Service
 	Invitations   *tenancy.InvitationService
+	Workspaces    *tenancy.Service
 	Mentions      *mentions.Service
 	Chat          *chat.Service
 	Plays         *plays.Service
@@ -83,20 +85,21 @@ func registryTools(opts RegistryOptions) []mcptool.Tool {
 	return slices.Concat(
 		docs.MCPTools(opts.Docs),
 		memories.MCPTools(opts.Memories),
+		composite.TicketTools(opts.Tickets, opts.Workspace, opts.Reviews),
 		tickets.MCPTools(opts.Tickets),
+		composite.ProjectTools(opts.Workspace, opts.Tickets),
 		workspace.MCPTools(opts.Workspace),
-		codereview.MCPTools(opts.Reviews),
 		workspace.NotificationMCPTools(opts.Notifications),
 		topology.MCPTools(opts.Topology),
 		deploy.MCPTools(opts.Deploy),
 		runner.MCPTools(opts.Runner),
-		gitprovider.MCPTools(opts.Git),
-		gitprovider.ChangeContextTools(opts.Git, opts.ChangeContext),
+		gitprovider.MCPTools(opts.Git, opts.ChangeContext),
 		repository.MCPTools(opts.Repository),
 		dns.MCPTools(opts.DNS),
 		automations.MCPTools(opts.Automations),
 		access.MCPTools(opts.Access),
 		auth.MCPTools(opts.Auth),
+		tenancy.WorkspaceMCPTools(opts.Workspaces),
 		tenancy.MCPTools(opts.Invitations),
 		mentions.MCPTools(opts.Mentions),
 		chat.MCPTools(opts.Chat),

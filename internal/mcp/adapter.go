@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -133,6 +134,11 @@ func errorResult(message string) *sdk.CallToolResult {
 
 // toolErrorMessage passes a known sentinel's message through and hides everything else, as the HTTP gateway does.
 func toolErrorMessage(err error, traceID string) (message string, internal bool) {
+	var partial *mcptool.PartialError
+	if errors.As(err, &partial) {
+		message, internal = toolErrorMessage(partial.Err, traceID)
+		return message + "; already applied: " + strings.Join(partial.Applied, ", "), internal
+	}
 	for _, known := range []error{apperrs.ErrInvalid, apperrs.ErrNotFound, apperrs.ErrConflict, apperrs.ErrForbidden, apperrs.ErrUnauthorized} {
 		if errors.Is(err, known) {
 			return err.Error(), false

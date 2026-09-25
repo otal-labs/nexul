@@ -5,10 +5,10 @@ import (
 	"context"
 	"fmt"
 	"slices"
-	"strings"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
+	"github.com/otal-labs/nexul/internal/platform/mcptool"
 )
 
 // step is one use-case call of an update; hint says where the valid values for its field come from.
@@ -33,8 +33,7 @@ func runSteps(ctx context.Context, steps []step) ([]string, error) {
 		if len(applied) == 0 {
 			return applied, fmt.Errorf("%s: %w; nothing was changed", s.field, err)
 		}
-		return applied, fmt.Errorf("%s: %w; already applied: %s; nothing after %s was tried",
-			s.field, err, strings.Join(applied, ", "), s.field)
+		return applied, &mcptool.PartialError{Applied: applied, Err: fmt.Errorf("%s: %w; nothing after %s was tried", s.field, err, s.field)}
 	}
 	return applied, nil
 }

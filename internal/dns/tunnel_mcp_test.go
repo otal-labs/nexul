@@ -103,7 +103,7 @@ func TestTunnelUpdate_SaysWhatAppliedWhenRotationFails(t *testing.T) {
 	f.tunnels.rotateErr = apperrs.ErrForbidden
 	_, err := f.call(t, "dns_tunnel_update", `{"id":"t1","hostname":"nexul.example.com","zone_id":"z1","zone":"example.com","origin_url":"http://web:80","rotate_credentials":true}`)
 	require.ErrorIs(t, err, apperrs.ErrForbidden)
-	assert.Contains(t, err.Error(), "applied [route]")
+	assert.Contains(t, err.Error(), "already applied: route")
 	assert.Equal(t, "nexul.example.com", f.repo.tunnels["t1"].Hostname, "the route stays applied")
 }
 

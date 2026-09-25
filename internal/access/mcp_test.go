@@ -44,7 +44,7 @@ func TestGrantTools_Surface(t *testing.T) {
 		names = append(names, tool.Name)
 		assert.NotEmpty(t, tool.Title)
 	}
-	assert.Equal(t, []string{"access_grant_list", "access_grant_update"}, names)
+	assert.Equal(t, []string{"permission_overwrite_list", "permission_overwrite_update"}, names)
 }
 
 func TestGrantTools_ErrorPaths(t *testing.T) {
@@ -56,19 +56,19 @@ func TestGrantTools_ErrorPaths(t *testing.T) {
 		args    string
 		wantErr error
 	}{
-		{"list by the dropped doc_id alias", "owner", "access_grant_list", `{"doc_id": "doc-1"}`, apperrs.ErrInvalid},
-		{"list without a resource type", "owner", "access_grant_list", `{"resource_id": "doc-1"}`, apperrs.ErrInvalid},
-		{"list an unknown resource type", "owner", "access_grant_list", `{"resource_type": "ticket", "resource_id": "t-1"}`, apperrs.ErrInvalid},
-		{"update by the dropped doc_ids alias", "owner", "access_grant_update", `{"resource_type": "doc", "doc_ids": ["doc-1"], "resource_ids": ["doc-1"], "user_ids": ["alice"], "actions": ["docs:read"], "grant": true}`, apperrs.ErrInvalid},
-		{"update without grant", "owner", "access_grant_update", `{"resource_type": "doc", "resource_ids": ["doc-1"], "user_ids": ["alice"], "actions": ["docs:read"]}`, apperrs.ErrInvalid},
-		{"update with an unknown action", "owner", "access_grant_update", `{"resource_type": "doc", "resource_ids": ["doc-1"], "user_ids": ["alice"], "actions": ["comment"], "grant": true}`, apperrs.ErrInvalid},
-		{"update with no resources", "owner", "access_grant_update", `{"resource_type": "doc", "resource_ids": [], "user_ids": ["alice"], "actions": ["docs:read"], "grant": true}`, apperrs.ErrInvalid},
-		{"update a play with a docs action", "owner", "access_grant_update", `{"resource_type": "play", "resource_ids": ["play-1"], "user_ids": ["alice"], "actions": ["docs:read"], "grant": false}`, apperrs.ErrInvalid},
-		{"update an unknown resource type", "owner", "access_grant_update", `{"resource_type": "ticket", "resource_ids": ["t-1"], "user_ids": ["alice"], "actions": ["docs:read"], "grant": true}`, apperrs.ErrInvalid},
-		{"list a doc without the manage bit", "alice", "access_grant_list", `{"resource_type": "doc", "resource_id": "doc-1"}`, apperrs.ErrForbidden},
-		{"update an unknown doc", "owner", "access_grant_update", `{"resource_type": "doc", "resource_ids": ["doc-1", "nope"], "user_ids": ["alice"], "actions": ["docs:read"], "grant": true}`, apperrs.ErrForbidden},
-		{"update a play without plays:write", "alice", "access_grant_update", `{"resource_type": "play", "resource_ids": ["play-1"], "user_ids": ["owner"], "actions": ["plays:run"], "grant": false}`, apperrs.ErrForbidden},
-		{"update without a caller", "", "access_grant_update", `{"resource_type": "doc", "resource_ids": ["doc-1"], "user_ids": ["alice"], "actions": ["docs:read"], "grant": true}`, apperrs.ErrUnauthorized},
+		{"list by the dropped doc_id alias", "owner", "permission_overwrite_list", `{"doc_id": "doc-1"}`, apperrs.ErrInvalid},
+		{"list without a resource type", "owner", "permission_overwrite_list", `{"resource_id": "doc-1"}`, apperrs.ErrInvalid},
+		{"list an unknown resource type", "owner", "permission_overwrite_list", `{"resource_type": "ticket", "resource_id": "t-1"}`, apperrs.ErrInvalid},
+		{"update by the dropped doc_ids alias", "owner", "permission_overwrite_update", `{"resource_type": "doc", "doc_ids": ["doc-1"], "resource_ids": ["doc-1"], "user_ids": ["alice"], "actions": ["docs:read"], "grant": true}`, apperrs.ErrInvalid},
+		{"update without grant", "owner", "permission_overwrite_update", `{"resource_type": "doc", "resource_ids": ["doc-1"], "user_ids": ["alice"], "actions": ["docs:read"]}`, apperrs.ErrInvalid},
+		{"update with an unknown action", "owner", "permission_overwrite_update", `{"resource_type": "doc", "resource_ids": ["doc-1"], "user_ids": ["alice"], "actions": ["comment"], "grant": true}`, apperrs.ErrInvalid},
+		{"update with no resources", "owner", "permission_overwrite_update", `{"resource_type": "doc", "resource_ids": [], "user_ids": ["alice"], "actions": ["docs:read"], "grant": true}`, apperrs.ErrInvalid},
+		{"update a play with a docs action", "owner", "permission_overwrite_update", `{"resource_type": "play", "resource_ids": ["play-1"], "user_ids": ["alice"], "actions": ["docs:read"], "grant": false}`, apperrs.ErrInvalid},
+		{"update an unknown resource type", "owner", "permission_overwrite_update", `{"resource_type": "ticket", "resource_ids": ["t-1"], "user_ids": ["alice"], "actions": ["docs:read"], "grant": true}`, apperrs.ErrInvalid},
+		{"list a doc without the manage bit", "alice", "permission_overwrite_list", `{"resource_type": "doc", "resource_id": "doc-1"}`, apperrs.ErrForbidden},
+		{"update an unknown doc", "owner", "permission_overwrite_update", `{"resource_type": "doc", "resource_ids": ["doc-1", "nope"], "user_ids": ["alice"], "actions": ["docs:read"], "grant": true}`, apperrs.ErrForbidden},
+		{"update a play without plays:write", "alice", "permission_overwrite_update", `{"resource_type": "play", "resource_ids": ["play-1"], "user_ids": ["owner"], "actions": ["plays:run"], "grant": false}`, apperrs.ErrForbidden},
+		{"update without a caller", "", "permission_overwrite_update", `{"resource_type": "doc", "resource_ids": ["doc-1"], "user_ids": ["alice"], "actions": ["docs:read"], "grant": true}`, apperrs.ErrUnauthorized},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -88,7 +88,7 @@ func TestGrantUpdate_OnlyTheNamedActionsChange(t *testing.T) {
 	update := func(actions string, grant bool) {
 		t.Helper()
 		args := fmt.Sprintf(`{"resource_type": "doc", "resource_ids": ["doc-1"], "user_ids": ["alice"], "actions": %s, "grant": %t}`, actions, grant)
-		_, err := callGrantTool(t, svc, "owner", "access_grant_update", args)
+		_, err := callGrantTool(t, svc, "owner", "permission_overwrite_update", args)
 		require.NoError(t, err)
 	}
 
@@ -109,7 +109,7 @@ func TestGrantList_ShowsEachUsersOverwrite(t *testing.T) {
 	svc, repo := newGrantsHarness(t)
 	setOverwrite(repo, resourceTypeDoc, "doc-1", "alice", permissions.SetOf(permissions.DocsRead))
 
-	got, err := callGrantTool(t, svc, "owner", "access_grant_list", `{"resource_type": "doc", "resource_id": "doc-1"}`)
+	got, err := callGrantTool(t, svc, "owner", "permission_overwrite_list", `{"resource_type": "doc", "resource_id": "doc-1"}`)
 	require.NoError(t, err)
 	page := got.(mcptool.Page[grantResult])
 	assert.ElementsMatch(t, []grantResult{
@@ -125,7 +125,7 @@ func TestGrantList_AccountLookupFails_ReturnsTheError(t *testing.T) {
 	boom := errors.New("users unavailable")
 	users.listErr = boom
 
-	_, err := callGrantTool(t, svc, "owner", "access_grant_list", `{"resource_type": "doc", "resource_id": "doc-1"}`)
+	_, err := callGrantTool(t, svc, "owner", "permission_overwrite_list", `{"resource_type": "doc", "resource_id": "doc-1"}`)
 	require.ErrorIs(t, err, boom)
 }
 
@@ -134,13 +134,13 @@ func TestGrantTools_PlayExclusion(t *testing.T) {
 	svc, repo := newGrantsHarness(t)
 	exclude := `{"resource_type": "play", "resource_ids": ["play-1"], "user_ids": ["alice"], "actions": ["plays:run"], "grant": false}`
 
-	_, err := callGrantTool(t, svc, "owner", "access_grant_update", exclude)
+	_, err := callGrantTool(t, svc, "owner", "permission_overwrite_update", exclude)
 	require.NoError(t, err)
 	g, err := repo.Get(t.Context(), resourceTypePlay, "play-1", "alice")
 	require.NoError(t, err)
 	assert.Equal(t, permissions.SetOf(permissions.PlaysRun), g.Deny)
 
-	got, err := callGrantTool(t, svc, "owner", "access_grant_list", `{"resource_type": "play", "resource_id": "play-1"}`)
+	got, err := callGrantTool(t, svc, "owner", "permission_overwrite_list", `{"resource_type": "play", "resource_id": "play-1"}`)
 	require.NoError(t, err)
 	assert.Contains(t, got.(mcptool.Page[grantResult]).Items, grantResult{UserID: "alice", Login: "alice", Deny: permissions.SetOf(permissions.PlaysRun)})
 }

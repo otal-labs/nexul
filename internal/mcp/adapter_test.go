@@ -269,6 +269,18 @@ func TestAdapter_RateLimitsPerActor(t *testing.T) {
 	assert.Zero(t, l.wait("user-2"), "each actor has its own budget")
 }
 
+func TestToolErrorMessage_PartialUpdatesSayWhatApplied(t *testing.T) {
+	internalFailure := &mcptool.PartialError{Applied: []string{"title", "status_id"}, Err: errors.New("sqlite: locked")}
+	message, internal := toolErrorMessage(internalFailure, "trace-1")
+	assert.True(t, internal)
+	assert.Equal(t, "internal error (trace trace-1); already applied: title, status_id", message)
+
+	domainFailure := &mcptool.PartialError{Applied: []string{"title"}, Err: fmt.Errorf("type_id: %w: no such type", apperrs.ErrInvalid)}
+	message, internal = toolErrorMessage(domainFailure, "trace-2")
+	assert.False(t, internal)
+	assert.Equal(t, "type_id: invalid: no such type; already applied: title", message)
+}
+
 func TestResultText(t *testing.T) {
 	text, err := resultText("already text")
 	require.NoError(t, err)

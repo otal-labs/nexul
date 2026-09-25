@@ -24,7 +24,7 @@ type accessGrantListIn struct {
 type accessGrantUpdateIn struct {
 	ResourceType string   `json:"resource_type" jsonschema:"doc or play."`
 	ResourceIDs  []string `json:"resource_ids" jsonschema:"The docs' or plays' ids; every one gets the same change."`
-	UserIDs      []string `json:"user_ids" jsonschema:"The account ids the change applies to, as access_grant_list or account_list shows them."`
+	UserIDs      []string `json:"user_ids" jsonschema:"The account ids the change applies to, as permission_overwrite_list or account_list shows them."`
 	Actions      []string `json:"actions" jsonschema:"Permissions to grant or revoke, each <domain>:<action>, for example [\"docs:read\", \"docs:write\"]. On a play only plays:run."`
 	Grant        bool     `json:"grant" jsonschema:"true grants the actions (on a play, lifts the users' exclusion); false revokes them (on a play, excludes the users from running it)."`
 }
@@ -39,11 +39,11 @@ type grantResult struct {
 }
 
 func accessGrantListTool(s *Service) mcptool.Tool {
-	return mcptool.New("access_grant_list", "List access grants",
+	return mcptool.New("permission_overwrite_list", "List permission overwrites",
 		"Lists the per-user permission overwrites on one doc or play: on a doc, who was granted which docs "+
 			"actions; on a play, which users are excluded from running it (plays:run in deny). Needs "+
 			"permissions:write on the doc, or plays:write on the play. Returns each user's id, login, and name with "+
-			"their allow and deny sets; change them with access_grant_update.",
+			"their allow and deny sets; change them with permission_overwrite_update.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in accessGrantListIn) (any, error) {
 			grants, err := listGrants(ctx, s, in)
@@ -77,11 +77,11 @@ func listGrants(ctx context.Context, s *Service, in accessGrantListIn) ([]*Overw
 }
 
 func accessGrantUpdateTool(s *Service) mcptool.Tool {
-	return mcptool.New("access_grant_update", "Update access grants",
+	return mcptool.New("permission_overwrite_update", "Update permission overwrites",
 		"Grants or revokes permission actions for every listed user on every listed doc, or excludes users from "+
 			"running plays and lifts that exclusion, in one operation. Only the named actions change: every other "+
 			"action a user already holds on the resource stays. Needs permissions:write on each doc, or plays:write "+
-			"on each play, and changes nothing unless all of them pass; access_grant_list shows the result.",
+			"on each play, and changes nothing unless all of them pass; permission_overwrite_list shows the result.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in accessGrantUpdateIn) (any, error) {
 			if err := setGrants(ctx, s, in); err != nil {

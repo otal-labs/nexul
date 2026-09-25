@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/google/jsonschema-go/jsonschema"
 
@@ -119,6 +120,19 @@ func Paginate[T any](items []T, p PageArgs) Page[T] {
 	}
 	return page
 }
+
+// PartialError is an update that applied some steps before one failed; the adapter shows Applied even when it must
+// hide Err, because each step committed on its own.
+type PartialError struct {
+	Applied []string
+	Err     error
+}
+
+func (e *PartialError) Error() string {
+	return fmt.Sprintf("%v; already applied: %s", e.Err, strings.Join(e.Applied, ", "))
+}
+
+func (e *PartialError) Unwrap() error { return e.Err }
 
 // Deleted is what every delete tool returns, so the model can confirm the effect.
 type Deleted struct {

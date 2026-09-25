@@ -1,7 +1,7 @@
 # MCP tools are shaped per task, inside a budget
 
 MCP tools no longer map one-to-one onto use-cases. A tool covers one task an
-agent performs, and the server stays well under 100 tools. A new capability
+agent performs, and the server stays under 100 tools. A new capability
 extends an existing tool before it earns a new one.
 
 At one tool per use-case the surface passed 180 tools. Every definition costs

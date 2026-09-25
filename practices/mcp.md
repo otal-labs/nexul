@@ -135,8 +135,8 @@ for a newer revision.
 The tool list is the product's interface for agents. Its size and naming
 decide whether an agent picks the right tool.
 
-- **Tools are a budget.** The server stays well under 100 tools. At least
-  one client caps an agent at 100 tools across all its servers, so 100 is a
+- **Tools are a budget.** The server stays under 100 tools. At least one
+  client caps an agent at 100 tools across all its servers, so 100 is a
   ceiling, not a target; every tool definition costs context in every
   session, and past a few dozen, agents start choosing the wrong tool. A new capability extends an existing tool (a filter, an
   optional field, a patch field) before it earns a new tool, and a pull

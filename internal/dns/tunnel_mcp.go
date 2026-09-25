@@ -124,7 +124,10 @@ func tunnelTools(s *Service) []mcptool.Tool {
 				}
 				if in.RotateCredentials {
 					if t, err = s.RotateTunnelCredentials(ctx, in.ID); err != nil {
-						return nil, fmt.Errorf("applied %v, then rotate_credentials failed: %w", applied, err)
+						if len(applied) == 0 {
+							return nil, err
+						}
+						return nil, &mcptool.PartialError{Applied: applied, Err: fmt.Errorf("rotate_credentials: %w", err)}
 					}
 					applied = append(applied, "rotate_credentials")
 				}

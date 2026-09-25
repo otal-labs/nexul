@@ -153,6 +153,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 		Access:        svc.accessSvc,
 		Auth:          svc.authSvc,
 		Invitations:   svc.invitationSvc,
+		Workspaces:    svc.tenancySvc,
 		Mentions:      svc.mentionsSvc,
 		Chat:          svc.chatSvc,
 		Plays:         svc.playsSvc,

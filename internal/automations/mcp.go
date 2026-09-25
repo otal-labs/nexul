@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
@@ -151,7 +150,7 @@ func updateAutomation(ctx context.Context, s *Service, in automationUpdateIn) (*
 		if len(applied) == 0 {
 			return err
 		}
-		return fmt.Errorf("%w (already applied: %s)", err, strings.Join(applied, ", "))
+		return &mcptool.PartialError{Applied: applied, Err: err}
 	}
 	if in.ConfigValues != nil {
 		raw, _ := json.Marshal(in.ConfigValues) // re-encoding decoded JSON cannot fail
