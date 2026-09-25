@@ -75,8 +75,8 @@ describe("providerSetupLines", () => {
     const lines = providerSetupLines(
       setup({
         providers: [
-          { provider: "codex", confirmed_at: "2026-09-20T00:00:00Z", skills: ["tdd"] },
-          { provider: "opencode", confirmed_at: null, skills: [] },
+          { provider: "codex", confirmed_at: "2026-09-20T00:00:00Z", skills: ["tdd"], skills_version: "v1", skills_outdated: false },
+          { provider: "opencode", confirmed_at: null, skills: [], skills_version: "", skills_outdated: false },
         ],
         turns: [
           turn({ provider: "codex", state: "running" }),
@@ -93,9 +93,16 @@ describe("providerSetupLines", () => {
 
   it("keeps a provider confirmed after a later failed re-run, with its confirmed-at time", () => {
     const lines = providerSetupLines(
-      setup({ providers: [{ provider: "codex", confirmed_at: "2026-09-20T00:00:00Z", skills: [] }], turns: [turn({ state: "failed" })] }),
+      setup({ providers: [{ provider: "codex", confirmed_at: "2026-09-20T00:00:00Z", skills: [], skills_version: "v1", skills_outdated: false }], turns: [turn({ state: "failed" })] }),
     );
-    expect(lines).toEqual([{ provider: "codex", name: "Codex", state: "confirmed", confirmedAt: "2026-09-20T00:00:00Z" }]);
+    expect(lines).toEqual([{ provider: "codex", name: "Codex", state: "confirmed", confirmedAt: "2026-09-20T00:00:00Z", skillsOutdated: false }]);
+  });
+
+  it("carries a confirmed provider's out-of-date skills as a flag, never as a lost confirmation", () => {
+    const lines = providerSetupLines(
+      setup({ providers: [{ provider: "codex", confirmed_at: "2026-09-20T00:00:00Z", skills: [], skills_version: "old", skills_outdated: true }] }),
+    );
+    expect(lines).toEqual([{ provider: "codex", name: "codex", state: "confirmed", confirmedAt: "2026-09-20T00:00:00Z", skillsOutdated: true }]);
   });
 });
 

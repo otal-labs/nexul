@@ -131,6 +131,10 @@ type ProviderSetup struct {
 	Provider    string     `json:"provider"`
 	ConfirmedAt *time.Time `json:"confirmed_at"`
 	Skills      []string   `json:"skills"`
+	// SkillsVersion is the nexul-memory version the confirming setup installed; empty for confirmations older than versioning.
+	SkillsVersion string `json:"skills_version"`
+	// SkillsOutdated is a signal, never a gate (ADR 0063): re-running setup refreshes the skill.
+	SkillsOutdated bool `json:"skills_outdated"`
 }
 
 // SetupTurnState is where one provider's setup turn stands.

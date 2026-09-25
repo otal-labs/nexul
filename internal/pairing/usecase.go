@@ -13,6 +13,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	shipped "github.com/otal-labs/nexul/internal/platform/skills"
 )
 
 // Config wires the pairing use-cases.
@@ -693,6 +694,9 @@ func (s *Service) GetSetup(ctx context.Context, userID, computerID string) (Setu
 	if err != nil {
 		return Setup{}, fmt.Errorf("list setup turns for %s: %w", computer.ID, err)
 	}
+	for i, p := range providers {
+		providers[i].SkillsOutdated = p.ConfirmedAt != nil && p.SkillsVersion != shipped.NexulMemory.Version
+	}
 	return Setup{ComputerID: computer.ID, ConfirmedAt: computer.SetupConfirmedAt, Providers: providers, Turns: turns}, nil
 }
 
@@ -737,7 +741,8 @@ func (s *Service) ConfirmProviderSetup(ctx context.Context, userID, computerID, 
 		return Setup{}, err
 	}
 	now := s.now().UTC()
-	return s.saveProviderSetup(ctx, userID, computerID, ProviderSetup{Provider: provider, ConfirmedAt: &now, Skills: skills})
+	// The setup that confirms has just written the current skill, so that is the version this provider now holds.
+	return s.saveProviderSetup(ctx, userID, computerID, ProviderSetup{Provider: provider, ConfirmedAt: &now, Skills: skills, SkillsVersion: shipped.NexulMemory.Version})
 }
 
 // UnconfirmProviderSetup withdraws a provider's confirmation on the caller's computer and clears its skills list.

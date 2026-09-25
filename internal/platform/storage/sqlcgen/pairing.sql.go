@@ -186,7 +186,7 @@ func (q *Queries) ListPairingComputers(ctx context.Context, userID string) ([]Pa
 }
 
 const listPairingProviderSetups = `-- name: ListPairingProviderSetups :many
-SELECT computer_id, provider, confirmed_at, skills_json, updated_at FROM pairing_provider_setups WHERE computer_id = ? ORDER BY provider
+SELECT computer_id, provider, confirmed_at, skills_json, updated_at, skills_version FROM pairing_provider_setups WHERE computer_id = ? ORDER BY provider
 `
 
 func (q *Queries) ListPairingProviderSetups(ctx context.Context, computerID string) ([]PairingProviderSetup, error) {
@@ -204,6 +204,7 @@ func (q *Queries) ListPairingProviderSetups(ctx context.Context, computerID stri
 			&i.ConfirmedAt,
 			&i.SkillsJson,
 			&i.UpdatedAt,
+			&i.SkillsVersion,
 		); err != nil {
 			return nil, err
 		}
@@ -388,18 +389,20 @@ func (q *Queries) SavePairingProjectLink(ctx context.Context, arg SavePairingPro
 }
 
 const savePairingProviderSetup = `-- name: SavePairingProviderSetup :exec
-INSERT INTO pairing_provider_setups (computer_id, provider, confirmed_at, skills_json, updated_at)
-VALUES (?, ?, ?, ?, ?)
+INSERT INTO pairing_provider_setups (computer_id, provider, confirmed_at, skills_json, skills_version, updated_at)
+VALUES (?, ?, ?, ?, ?, ?)
 ON CONFLICT(computer_id, provider) DO UPDATE SET
-  confirmed_at = excluded.confirmed_at, skills_json = excluded.skills_json, updated_at = excluded.updated_at
+  confirmed_at = excluded.confirmed_at, skills_json = excluded.skills_json, skills_version = excluded.skills_version,
+  updated_at = excluded.updated_at
 `
 
 type SavePairingProviderSetupParams struct {
-	ComputerID  string
-	Provider    string
-	ConfirmedAt sql.NullInt64
-	SkillsJson  string
-	UpdatedAt   int64
+	ComputerID    string
+	Provider      string
+	ConfirmedAt   sql.NullInt64
+	SkillsJson    string
+	SkillsVersion string
+	UpdatedAt     int64
 }
 
 func (q *Queries) SavePairingProviderSetup(ctx context.Context, arg SavePairingProviderSetupParams) error {
@@ -408,6 +411,7 @@ func (q *Queries) SavePairingProviderSetup(ctx context.Context, arg SavePairingP
 		arg.Provider,
 		arg.ConfirmedAt,
 		arg.SkillsJson,
+		arg.SkillsVersion,
 		arg.UpdatedAt,
 	)
 	return err

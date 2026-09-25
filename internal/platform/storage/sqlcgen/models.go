@@ -531,11 +531,12 @@ type PairingProjectLink struct {
 }
 
 type PairingProviderSetup struct {
-	ComputerID  string
-	Provider    string
-	ConfirmedAt sql.NullInt64
-	SkillsJson  string
-	UpdatedAt   int64
+	ComputerID    string
+	Provider      string
+	ConfirmedAt   sql.NullInt64
+	SkillsJson    string
+	UpdatedAt     int64
+	SkillsVersion string
 }
 
 type PairingSetupTurn struct {

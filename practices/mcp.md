@@ -365,10 +365,13 @@ and need more than an edit:
 - Play instructions are stored in the database when a workspace is created,
   and owners edit them, so a rename ships with a migration that rewrites the
   old names in stored instructions.
-- The `nexul-memory` skill is written to users' machines once and never
-  overwritten, so the memory tools it names (`memory_list`, `memory_get`,
-  `memory_create`, `memory_update`) keep their names and the arguments it
-  describes.
+- The `nexul-memory` skill lives on users' machines. It carries a version
+  derived from its content (`internal/platform/skills`), so a change to the
+  text changes the version: setup rewrites an outdated copy, the skill
+  refreshes itself through `skill_get`, agent turns ignore a copy whose
+  version is not the current one, and each computer shows "skills out of
+  date" until setup re-runs. A rename of a tool it names is therefore an edit
+  to the skill file in the same change, never a reason to keep the old name.
 
 ---
 

@@ -20,6 +20,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 	"github.com/otal-labs/nexul/internal/platform/redact"
+	shipped "github.com/otal-labs/nexul/internal/platform/skills"
 )
 
 type fakeInstance struct {
@@ -549,7 +550,9 @@ func TestSetupInstructions_PerDriver(t *testing.T) {
 			assert.Contains(t, prepare, "~/.claude/skills/ and ~/.agents/skills/")
 			assert.Contains(t, prepare, "npx -y skills@latest add mattpocock/skills")
 			assert.Contains(t, prepare, "Never overwrite a skill directory that already exists")
-			assert.True(t, strings.HasSuffix(prepare, memorySkill+"````\n"), "the nexul-memory file closes the instructions whole")
+			assert.True(t, strings.HasSuffix(prepare, shipped.NexulMemory.Content+"````\n"), "the nexul-memory file closes the instructions whole")
+			assert.Contains(t, prepare, "is not \""+shipped.NexulMemory.Version+"\"", "an outdated copy is rewritten, not kept")
+			assert.NotContains(t, prepare, "unless it already exists")
 			assert.NotContains(t, confirmInstructions(p), "dep_x", "the confirm session never needs the token")
 		})
 	}

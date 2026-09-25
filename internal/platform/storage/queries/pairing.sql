@@ -52,10 +52,11 @@ UPDATE pairing_computers SET setup_confirmed_at = ? WHERE id = ? AND user_id = ?
 SELECT * FROM pairing_provider_setups WHERE computer_id = ? ORDER BY provider;
 
 -- name: SavePairingProviderSetup :exec
-INSERT INTO pairing_provider_setups (computer_id, provider, confirmed_at, skills_json, updated_at)
-VALUES (?, ?, ?, ?, ?)
+INSERT INTO pairing_provider_setups (computer_id, provider, confirmed_at, skills_json, skills_version, updated_at)
+VALUES (?, ?, ?, ?, ?, ?)
 ON CONFLICT(computer_id, provider) DO UPDATE SET
-  confirmed_at = excluded.confirmed_at, skills_json = excluded.skills_json, updated_at = excluded.updated_at;
+  confirmed_at = excluded.confirmed_at, skills_json = excluded.skills_json, skills_version = excluded.skills_version,
+  updated_at = excluded.updated_at;
 
 -- name: SetPairingComputerSetupMCPToken :execrows
 UPDATE pairing_computers SET setup_mcp_token = ? WHERE id = ? AND user_id = ?;

@@ -153,7 +153,7 @@ describe("ComputersSection", () => {
     setup = {
       computer_id: "c1",
       confirmed_at: at,
-      providers: [{ provider: "codex", confirmed_at: at, skills: ["tdd"] }],
+      providers: [{ provider: "codex", confirmed_at: at, skills: ["tdd"], skills_version: "v1", skills_outdated: false }],
       turns: [{ run_id: "r0", turn_id: "t0", provider: "codex", provider_name: "Codex", state: "confirmed", status: "Confirmed", updated_at: at }],
     };
     serveComputers([computer()]);
@@ -173,6 +173,22 @@ describe("ComputersSection", () => {
     expect(mocks.post).not.toHaveBeenCalled();
     expect(mocks.put).not.toHaveBeenCalled();
     expect(mocks.del).not.toHaveBeenCalled();
+  });
+
+  it("signals out-of-date skills on a confirmed provider and points at re-running setup", async () => {
+    const at = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+    setup = {
+      computer_id: "c1",
+      confirmed_at: at,
+      providers: [{ provider: "codex", confirmed_at: at, skills: ["tdd"], skills_version: "old", skills_outdated: true }],
+      turns: [],
+    };
+    serveComputers([computer()]);
+    renderSection();
+
+    expect(await screen.findByText("skills out of date")).toBeInTheDocument();
+    expect(screen.getByText("Setup confirmed")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /re-run setup/i })).toBeInTheDocument();
   });
 
   it("has no separate Pair by URL button; URL pairing lives in the dialog", async () => {

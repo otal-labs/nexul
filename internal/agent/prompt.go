@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/otal-labs/nexul/internal/platform/skills"
 )
 
 // MaxPromptChars is the harness turn-input ceiling (T3 Code's limit today); oldest context is truncated first to stay under it.
@@ -205,8 +207,11 @@ func memoriesBlock(mem MemoriesIndex) string {
 		"scope. Use your judgment to save a durable fact worth remembering, " +
 		"and always save one when a user says something like \"@Agent remember " +
 		"X\". Keep the set curated — update an existing memory instead of " +
-		"creating a near-duplicate. (If you have the nexul-memory skill " +
-		"installed, follow its fuller protocol instead of this summary.)"
+		"creating a near-duplicate. (If your installed nexul-memory skill's " +
+		"metadata.version is \"" + skills.NexulMemory.Version + "\", follow its " +
+		"fuller protocol instead of this summary. A copy with any other version " +
+		"is out of date: follow this summary, and refresh the skill with the " +
+		"skill_get tool.)"
 
 	lines, truncated := fitMemoriesIndex(mem, MaxMemoriesIndexChars-len(fallback)-len("\n\n"))
 	if len(lines) == 0 {

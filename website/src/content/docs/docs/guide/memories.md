@@ -30,7 +30,9 @@ characters together.
 The [setup wizard](/docs/guide/computer-setup/) installs the nexul-memory
 skill, which carries the same protocol, on every paired computer. It points
 agents to `memory_list` and `memory_get`, and tells them when to use
-`memory_create` or `memory_update`.
+`memory_create` or `memory_update`. It carries a version, so a Nexul release
+that changes it gets rewritten on the next setup, or by the skill itself
+through the `skill_get` tool.
 
 ## The interview
 

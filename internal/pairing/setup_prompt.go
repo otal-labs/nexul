@@ -1,14 +1,12 @@
 package pairing
 
 import (
-	_ "embed"
 	"fmt"
 	"net/url"
 	"strings"
-)
 
-//go:embed nexul_memory_skill.md
-var memorySkill string
+	"github.com/otal-labs/nexul/internal/platform/skills"
+)
 
 // setupPrompt is what one provider's setup sessions need to know.
 type setupPrompt struct {
@@ -32,11 +30,12 @@ func prepareInstructions(p setupPrompt) string {
 	fmt.Fprintf(&b, "\n2. Install the default skill set, mattpocock/skills, into both %s Never overwrite a skill directory that already exists in either location: the user may have edited it.\n", skillLocations)
 	b.WriteString("   - In a new empty temporary directory, run `npx -y skills@latest add mattpocock/skills --skill '*' --agent claude-code --copy --yes`. It writes the skills under `.claude/skills/` in that directory.\n")
 	b.WriteString("   - Copy each skill directory it wrote into ~/.claude/skills/ and into ~/.agents/skills/, creating them if needed and skipping any name already present, then delete the temporary directory.\n")
-	fmt.Fprintf(&b, "3. Install the nexul-memory skill: unless it already exists, write the file at the end of these instructions, exactly as given, to ~/.claude/skills/nexul-memory/SKILL.md and to ~/.agents/skills/nexul-memory/SKILL.md.\n")
+	memory := skills.NexulMemory
+	fmt.Fprintf(&b, "3. Install the nexul-memory skill at %s and at %s: write the file at the end of these instructions, exactly as given, wherever it is missing or its frontmatter's `metadata.version` is not %q. An older copy is Nexul's own, so replace it.\n", memory.Paths()[0], memory.Paths()[1], memory.Version)
 	fmt.Fprintf(&b, "4. Verify that every skill from step 2 and nexul-memory has a SKILL.md in both %s\n\n", skillLocations)
 	b.WriteString("End with one line saying what you connected, installed, and verified.\n\n")
 	b.WriteString("The nexul-memory SKILL.md:\n\n````markdown\n")
-	b.WriteString(memorySkill)
+	b.WriteString(memory.Content)
 	b.WriteString("````\n")
 	return b.String()
 }

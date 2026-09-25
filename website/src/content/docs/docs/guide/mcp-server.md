@@ -11,7 +11,7 @@ user whose token authenticates the connection.
 
 ## What it exposes
 
-**Tools** — 97 of them, each covering one task an agent does rather than one
+**Tools** — 98 of them, each covering one task an agent does rather than one
 button, named `<object>_<verb>`. Updates are patches: send only the fields
 you mean to change, and omitted ones keep their values. Lists take `limit`
 and `offset` and return `items`, `total`, `has_more`, and `next_offset`.
@@ -30,7 +30,7 @@ and `offset` and return `items`, `total`, `has_more`, and `next_offset`.
 | Repositories and pull requests | `repository_list`, `repository_scan`, `pull_request_list`, `pull_request_get` |
 | Plays | `play_list`, `play_create`, `play_update`, `play_delete`, `play_run`, `trail_list`, `trail_update`, `decisions_check_run` |
 | Automations | `automation_list`, `automation_create`, `automation_update`, `automation_delete`, `automation_token_create` |
-| Paired computers | `computer_list`, `computer_create`, `computer_pair`, `computer_delete`, `computer_tunnel_token_get`, `computer_setup_run`, `computer_setup_update`, `computer_mcp_token_create`, `computer_mcp_token_delete` |
+| Paired computers and skills | `computer_list`, `computer_create`, `computer_pair`, `computer_delete`, `computer_tunnel_token_get`, `computer_setup_run`, `computer_setup_update`, `computer_mcp_token_create`, `computer_mcp_token_delete`, `skill_get` |
 | Accounts and access | `account_get`, `account_list`, `account_update`, `account_delete`, `invitation_create`, `invitation_list`, `invitation_delete`, `permission_overwrite_list`, `permission_overwrite_update` |
 | Failed events | `dead_letter_list`, `dead_letter_replay` |
 
