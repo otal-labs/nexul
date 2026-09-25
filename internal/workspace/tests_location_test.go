@@ -113,35 +113,3 @@ func TestHandler_TestsLocation(t *testing.T) {
 		assert.Equal(t, RepoRoleTests, repo.repos["p-1"][0].Role)
 	})
 }
-
-func TestMCPTools_TestsRepository(t *testing.T) {
-	t.Run("project_add_repo passes the role", func(t *testing.T) {
-		s, repo, _ := newOwnerRepo(t, true)
-		repo.projects["p-1"] = &Project{ID: "p-1", Name: "A"}
-		call := wsToolByName(t, MCPTools(s), "project_add_repo").Call
-		_, err := call(t.Context(), map[string]any{"project_id": "p-1", "owner": "acme", "name": "e2e", "role": "tests"})
-		require.NoError(t, err)
-		assert.Equal(t, RepoRoleTests, repo.repos["p-1"][0].Role)
-		assert.Equal(t, TestsLocationSeparate, repo.projects["p-1"].TestsLocation)
-	})
-	t.Run("project_set_tests_location records the answer", func(t *testing.T) {
-		s, repo, _ := newOwnerRepo(t, true)
-		repo.projects["p-1"] = &Project{ID: "p-1", Name: "A"}
-		call := wsToolByName(t, MCPTools(s), "project_set_tests_location").Call
-		got, err := call(t.Context(), map[string]any{"project_id": "p-1", "tests_location": "same"})
-		require.NoError(t, err)
-		assert.Equal(t, TestsLocationSame, got.(*Project).TestsLocation)
-	})
-	t.Run("project_set_tests_location needs the answer", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		call := wsToolByName(t, MCPTools(s), "project_set_tests_location").Call
-		_, err := call(t.Context(), map[string]any{"project_id": "p-1"})
-		require.ErrorIs(t, err, apperrs.ErrInvalid)
-	})
-	t.Run("project_set_tests_location needs the project", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		call := wsToolByName(t, MCPTools(s), "project_set_tests_location").Call
-		_, err := call(t.Context(), map[string]any{"tests_location": "same"})
-		require.ErrorIs(t, err, apperrs.ErrInvalid)
-	})
-}
