@@ -1,5 +1,5 @@
 -- name: CreateRunner :exec
-INSERT INTO runners (id, name, version, last_seen, connected, created_at) VALUES (?, ?, ?, ?, ?, ?);
+INSERT INTO runners (id, name, version, last_seen, connected, created_at, machine_id) VALUES (?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetRunner :one
 SELECT * FROM runners WHERE id = ?;
@@ -16,17 +16,29 @@ UPDATE runners SET last_seen = ?, connected = ? WHERE id = ?;
 -- name: DeleteRunner :execrows
 DELETE FROM runners WHERE id = ?;
 
--- name: SetRunnerMachine :execrows
-UPDATE runners SET machine_id = ? WHERE id = ?;
+-- name: GetRunnerByName :one
+SELECT * FROM runners WHERE name = ?;
 
--- name: GetRunnerSecret :one
-SELECT runner_secret FROM instance_settings WHERE id = 1;
+-- name: PruneRunnerEnrollmentCodes :exec
+DELETE FROM runner_enrollment_codes WHERE expires_at <= ?;
 
--- name: SeedRunnerSecret :exec
-UPDATE instance_settings SET runner_secret = ? WHERE id = 1 AND runner_secret = '';
+-- name: CreateRunnerEnrollmentCode :exec
+INSERT INTO runner_enrollment_codes (code_hash, name, machine, created_at, expires_at) VALUES (?, ?, ?, ?, ?);
 
--- name: SetRunnerSecret :exec
-UPDATE instance_settings SET runner_secret = ? WHERE id = 1;
+-- name: GetRunnerEnrollmentCode :one
+SELECT * FROM runner_enrollment_codes WHERE code_hash = ? AND expires_at > ?;
+
+-- name: ConsumeRunnerEnrollmentCode :execrows
+DELETE FROM runner_enrollment_codes WHERE code_hash = ? AND expires_at > ?;
+
+-- name: CreateRunnerCredential :exec
+INSERT INTO runner_credentials (credential_hash, runner_id, runner_name, created_at) VALUES (?, ?, ?, ?);
+
+-- name: GetRunnerCredential :one
+SELECT * FROM runner_credentials WHERE credential_hash = ?;
+
+-- name: RevokeRunnerCredentials :exec
+UPDATE runner_credentials SET revoked_at = ? WHERE runner_id = ? AND revoked_at IS NULL;
 
 -- name: CreateInstanceUpgrade :exec
 INSERT INTO instance_upgrades (id, from_version, to_version, status, error, requested_by, runner_id, created_at, updated_at)

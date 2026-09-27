@@ -64,10 +64,10 @@ var pathAliases = map[string]string{
 	"automation-secrets": "automations",
 }
 
-// exactDenylist blocks a path regardless of scopes; runners/install returns the shared runner secret,
-// which a scoped token must never read no matter what it's been granted.
+// exactDenylist blocks a path regardless of scopes; a runner enrollment code joins a machine to the fleet,
+// which a scoped token must never mint no matter what it's been granted.
 var exactDenylist = map[string]bool{
-	http.MethodGet + " /api/runners/install": true,
+	http.MethodPost + " /api/runners/enrollments": true,
 }
 
 // requiredAction maps an HTTP method to the action it needs: GET/HEAD read, DELETE delete, everything else write.

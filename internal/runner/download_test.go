@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -181,7 +182,7 @@ func TestHTTPHandler_Download(t *testing.T) {
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	})
 
-	t.Run("401 on the wrong secret", func(t *testing.T) {
+	t.Run("401 on an unknown credential", func(t *testing.T) {
 		gh := fakeGitHub(t, "v0.2.0-beta-001", "binary-bytes")
 		repo := newFakeRunnerRepo()
 		client := release.New(release.Config{APIBase: gh.URL})
@@ -198,9 +199,29 @@ func TestHTTPHandler_Download(t *testing.T) {
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	})
 
-	t.Run("500 when the secret lookup fails", func(t *testing.T) {
+	t.Run("401 runner_removed for a removed runner's credential", func(t *testing.T) {
 		repo := newFakeRunnerRepo()
-		repo.secretErr = assert.AnError
+		cred := repo.enrolled("r-1", "alpha", "")
+		require.NoError(t, repo.Remove(context.Background(), "r-1", time.Now()))
+		svc := NewService(repo, &fakeDispatch{})
+		srv := httptest.NewServer(NewHTTPHandler(svc).PublicRoutes())
+		defer srv.Close()
+
+		req, err := http.NewRequest(http.MethodGet, srv.URL+"/api/runners/download/linux-amd64", nil)
+		require.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+cred)
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		defer func() { require.NoError(t, resp.Body.Close()) }()
+		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+		body, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		assert.Contains(t, string(body), `"code":"runner_removed"`)
+	})
+
+	t.Run("500 when the credential lookup fails", func(t *testing.T) {
+		repo := newFakeRunnerRepo()
+		repo.credErr = assert.AnError
 		svc := NewService(repo, &fakeDispatch{})
 		srv := httptest.NewServer(NewHTTPHandler(svc).PublicRoutes())
 		defer srv.Close()
@@ -224,7 +245,7 @@ func TestHTTPHandler_Download(t *testing.T) {
 
 		req, err := http.NewRequest(http.MethodGet, srv.URL+"/api/runners/download/windows-arm64", nil)
 		require.NoError(t, err)
-		req.Header.Set("Authorization", "Bearer s3cr3t")
+		req.Header.Set("Authorization", "Bearer "+repo.enrolled("r-1", "alpha", ""))
 		resp, err := http.DefaultClient.Do(req)
 		require.NoError(t, err)
 		defer func() { require.NoError(t, resp.Body.Close()) }()
@@ -242,7 +263,7 @@ func TestHTTPHandler_Download(t *testing.T) {
 
 		req, err := http.NewRequest(http.MethodGet, srv.URL+"/api/runners/download/linux-amd64", nil)
 		require.NoError(t, err)
-		req.Header.Set("Authorization", "Bearer s3cr3t")
+		req.Header.Set("Authorization", "Bearer "+repo.enrolled("r-1", "alpha", ""))
 		resp, err := http.DefaultClient.Do(req)
 		require.NoError(t, err)
 		defer func() { require.NoError(t, resp.Body.Close()) }()
@@ -267,7 +288,7 @@ func TestHTTPHandler_Download(t *testing.T) {
 
 		req, err := http.NewRequest(http.MethodGet, srv.URL+"/api/runners/download/linux-amd64?version=v0.1.5", nil)
 		require.NoError(t, err)
-		req.Header.Set("Authorization", "Bearer s3cr3t")
+		req.Header.Set("Authorization", "Bearer "+repo.enrolled("r-1", "alpha", ""))
 		resp, err := http.DefaultClient.Do(req)
 		require.NoError(t, err)
 		defer func() { require.NoError(t, resp.Body.Close()) }()
@@ -288,7 +309,7 @@ func TestHTTPHandler_Download(t *testing.T) {
 
 		req, err := http.NewRequest(http.MethodGet, srv.URL+"/api/runners/download/linux-amd64", nil)
 		require.NoError(t, err)
-		req.Header.Set("Authorization", "Bearer s3cr3t")
+		req.Header.Set("Authorization", "Bearer "+repo.enrolled("r-1", "alpha", ""))
 		resp, err := http.DefaultClient.Do(req)
 		require.NoError(t, err)
 		defer func() { require.NoError(t, resp.Body.Close()) }()

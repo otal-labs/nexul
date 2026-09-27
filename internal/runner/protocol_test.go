@@ -41,9 +41,16 @@ func TestFrame_Encode(t *testing.T) {
 		{
 			name: "heartbeat wire shape",
 			got: func() Frame {
-				return Frame{Type: FrameHeartbeat, RunnerID: "r-1", TS: 1700000000}
+				return Frame{Type: FrameHeartbeat, TS: 1700000000}
 			},
-			want: `{"type":"heartbeat","runner_id":"r-1","ts":1700000000}`,
+			want: `{"type":"heartbeat","ts":1700000000}`,
+		},
+		{
+			name: "uninstall wire shape",
+			got: func() Frame {
+				return Frame{Type: FrameUninstall}
+			},
+			want: `{"type":"uninstall"}`,
 		},
 		{
 			name: "build_progress wire shape",
@@ -126,7 +133,6 @@ func TestFrame_Encode_Invalid(t *testing.T) {
 	}{
 		{name: "missing type", f: Frame{}},
 		{name: "unknown type", f: Frame{Type: "nuke"}},
-		{name: "heartbeat missing runner", f: Frame{Type: FrameHeartbeat}},
 		{name: "assign_build missing ref", f: Frame{Type: FrameAssignBuild, ID: "b1", Repo: "r"}},
 		{name: "assign_deploy missing image", f: Frame{Type: FrameAssignDeploy, ID: "d1", Service: "s"}},
 		{name: "cancel missing id", f: Frame{Type: FrameCancel}},
@@ -156,7 +162,8 @@ func TestFrame_Encode_Invalid(t *testing.T) {
 func TestParseFrame(t *testing.T) {
 	t.Run("valid frames round-trip", func(t *testing.T) {
 		frames := []Frame{
-			{Type: FrameHeartbeat, RunnerID: "r-1", TS: 1700000000},
+			{Type: FrameHeartbeat, TS: 1700000000},
+			{Type: FrameUninstall},
 			{Type: FrameAssignBuild, ID: "b1", Repo: "org/app", Ref: "main", Steps: []string{"a", "b"}},
 			{Type: FrameCancel, ID: "b1"},
 			{Type: FrameBuildProgress, ID: "b1", Step: 1, Total: 2, Log: "x"},
@@ -189,7 +196,7 @@ func TestParseFrame(t *testing.T) {
 func TestParseFrame_ExtraFieldsIgnored(t *testing.T) {
 	got, err := ParseFrame([]byte(`{"type":"heartbeat","runner_id":"r-1","ts":1,"wat":"ignored"}`))
 	require.NoError(t, err)
-	assert.Equal(t, "r-1", got.RunnerID)
+	assert.Equal(t, int64(1), got.TS)
 }
 
 func TestFrame_JSONRoundTripPreservesEnvOrder(t *testing.T) {

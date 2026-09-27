@@ -164,10 +164,10 @@ func TestHandler_Discover_NoIdleRunner(t *testing.T) {
 }
 
 // startDiscoverTestClient connects a client on machine, executing exec's Discover on a discover frame.
-func startDiscoverTestClient(t *testing.T, srvURL, machine string, exec Executor) {
+func startDiscoverTestClient(t *testing.T, srvURL string, repo *fakeRunnerRepo, machine string, exec Executor) {
 	t.Helper()
 	client := NewClient(ClientConfig{
-		URL: srvURL, Token: "s3cr3t", RunnerID: "r-disc-" + machine, Name: "disc", Machine: machine,
+		URL: srvURL, Credential: repo.enrolled("r-disc-"+machine, "disc-"+machine, machine), Name: "disc-" + machine,
 		Logger: testLogger(), Executor: exec,
 		HeartbeatInterval: 20 * time.Millisecond, ConnectTimeout: time.Second,
 		BackoffBase: 5 * time.Millisecond, BackoffMax: 50 * time.Millisecond,
@@ -179,14 +179,15 @@ func startDiscoverTestClient(t *testing.T, srvURL, machine string, exec Executor
 
 func TestHandler_Discover_EndToEnd_Success(t *testing.T) {
 	bus := newFakeBus()
-	h, srv := newIntegrationHandler(t, bus, newFakeRunnerRepo())
+	repo := newFakeRunnerRepo()
+	h, srv := newIntegrationHandler(t, bus, repo)
 	exec := &fakeExecutor{discoverFn: func(context.Context) (DiscoverReport, error) {
 		return DiscoverReport{
 			Containers: []DiscoveredContainer{{Name: "web", Image: "nginx"}},
 			Networks:   []NetworkInfo{{Name: "app-net"}},
 		}, nil
 	}}
-	startDiscoverTestClient(t, wsURL(srv), "prod", exec)
+	startDiscoverTestClient(t, wsURL(srv), repo, "prod", exec)
 	eventually(t, time.Second, func() bool { return len(h.Runners()) == 1 })
 
 	report, err := h.Discover(context.Background(), "prod", time.Second)
@@ -199,7 +200,8 @@ func TestHandler_Discover_EndToEnd_Success(t *testing.T) {
 
 func TestHandler_Discover_Timeout(t *testing.T) {
 	bus := newFakeBus()
-	h, srv := newIntegrationHandler(t, bus, newFakeRunnerRepo())
+	repo := newFakeRunnerRepo()
+	h, srv := newIntegrationHandler(t, bus, repo)
 	block := make(chan struct{})
 	t.Cleanup(func() { close(block) })
 	exec := &fakeExecutor{discoverFn: func(ctx context.Context) (DiscoverReport, error) {
@@ -209,7 +211,7 @@ func TestHandler_Discover_Timeout(t *testing.T) {
 		}
 		return DiscoverReport{}, nil
 	}}
-	startDiscoverTestClient(t, wsURL(srv), "prod", exec)
+	startDiscoverTestClient(t, wsURL(srv), repo, "prod", exec)
 	eventually(t, time.Second, func() bool { return len(h.Runners()) == 1 })
 
 	_, err := h.Discover(context.Background(), "prod", 50*time.Millisecond)
@@ -219,9 +221,10 @@ func TestHandler_Discover_Timeout(t *testing.T) {
 
 func TestHandler_Discover_WrongMachine_NoIdleRunner(t *testing.T) {
 	bus := newFakeBus()
-	h, srv := newIntegrationHandler(t, bus, newFakeRunnerRepo())
+	repo := newFakeRunnerRepo()
+	h, srv := newIntegrationHandler(t, bus, repo)
 	exec := &fakeExecutor{}
-	startDiscoverTestClient(t, wsURL(srv), "staging", exec)
+	startDiscoverTestClient(t, wsURL(srv), repo, "staging", exec)
 	eventually(t, time.Second, func() bool { return len(h.Runners()) == 1 })
 
 	_, err := h.Discover(context.Background(), "prod", 50*time.Millisecond)

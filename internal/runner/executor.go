@@ -53,21 +53,35 @@ type Executor interface {
 	JoinNetworks(ctx context.Context, gatewayContainer string, networks []string, send func(Frame))
 	// Upgrade starts `nexul upgrade` on the host for req.Version; send's error return reports a transport failure.
 	Upgrade(ctx context.Context, req Frame, send func(Frame) error) error
+	// Uninstall starts `nexul uninstall runner <name>` on the host, outside this runner's own service.
+	Uninstall(ctx context.Context, name string) error
 }
 
-// ShellExecutor runs builds and deploys on the host (ADR 0032); gitToken authenticates private clones and never leaves it.
+// ExecutorConfig is the host executor's view of the runner's environment.
+type ExecutorConfig struct {
+	// GitToken authenticates private clones and never leaves the host.
+	GitToken string
+	// StackRoot is the checkout root a job falls back to when it names none.
+	StackRoot string
+	// Ctl is the `nexul` command upgrades and uninstalls go through.
+	Ctl string
+}
+
+// ShellExecutor runs builds and deploys on the host (ADR 0032).
 type ShellExecutor struct {
-	cmd      CommandRunner
-	gitToken string
-	log      *slog.Logger
+	cmd       CommandRunner
+	gitToken  string
+	stackRoot string
+	ctl       string
+	log       *slog.Logger
 }
 
 // NewShellExecutor wires the host executor; a nil cmd falls back to the real shell runner.
-func NewShellExecutor(cmd CommandRunner, gitToken string, log *slog.Logger) *ShellExecutor {
+func NewShellExecutor(cmd CommandRunner, cfg ExecutorConfig, log *slog.Logger) *ShellExecutor {
 	if cmd == nil {
 		cmd = ShellCommandRunner
 	}
-	return &ShellExecutor{cmd: cmd, gitToken: gitToken, log: log}
+	return &ShellExecutor{cmd: cmd, gitToken: cfg.GitToken, stackRoot: cfg.StackRoot, ctl: cfg.Ctl, log: log}
 }
 
 // Discover scans this host's docker containers and networks (spec §3); selfID (os.Hostname()) excludes the
@@ -136,12 +150,17 @@ func (e *ShellExecutor) repoBuildAndDeploy(ctx context.Context, req DeployReques
 }
 
 // checkoutPath resolves the persistent checkout dir for a repo-driven request: "<stack_root>/stacks/<slug>/repo",
-// cloned once and refreshed in place on every later build, never deleted by a deploy (spec §4 step 1).
+// cloned once and refreshed in place on every later build, never deleted by a deploy (spec §4 step 1). A job
+// without a stack root uses the runner's own.
 func (e *ShellExecutor) checkoutPath(req DeployRequestedEvent) (string, error) {
-	if req.StackRoot == "" || req.StackSlug == "" {
+	root := req.StackRoot
+	if root == "" {
+		root = e.stackRoot
+	}
+	if root == "" || req.StackSlug == "" {
 		return "", fmt.Errorf("stack_root and stack_slug are required for a repo-driven deploy")
 	}
-	return filepath.Join(req.StackRoot, "stacks", req.StackSlug, "repo"), nil
+	return filepath.Join(root, "stacks", req.StackSlug, "repo"), nil
 }
 
 // buildSteps: the checkout, then the image build; compose builds every service from the repo's compose file
@@ -497,29 +516,22 @@ func (e *ShellExecutor) start(ctx context.Context, req DeployRequestedEvent, log
 	}
 }
 
-// upgradeUnit is the transient systemd unit `nexul upgrade` runs in; `journalctl -u nexul-upgrade` holds its output.
-const upgradeUnit = "nexul-upgrade"
-
-// lookPathFn finds the nexul command on the host; a package var so tests need no real binary on the PATH.
-var lookPathFn = exec.LookPath
-
-// Upgrade starts `nexul upgrade` for req.Version in its own transient systemd unit, so the upgrade outlives this
-// runner's connection while the server restarts, then reports started (ADR 0069).
+// Upgrade hands the upgrade to `nexul upgrade --detach`, which outlives this runner's connection while the
+// server restarts, then reports started (ADR 0069).
 func (e *ShellExecutor) Upgrade(ctx context.Context, req Frame, send func(Frame) error) error {
-	if isContainerRunner() {
-		return send(upgradeFailed(req, "this install runs its runner in a container (macOS and Windows installs); upgrade from a terminal with nexul upgrade"))
-	}
-	nexul, err := lookPathFn("nexul")
-	if err != nil {
-		return send(upgradeFailed(req, "the nexul command is not on this host; upgrading from the UI needs an install made with nexul install"))
-	}
-	if _, err := e.output(ctx, "systemd-run", "--unit", upgradeUnit, "--collect", "--quiet", nexul, "upgrade", "--version", req.Version); err != nil {
+	if _, err := e.output(ctx, e.ctl, "upgrade", "--detach", "--version", req.Version); err != nil {
 		return send(upgradeFailed(req, err.Error()))
 	}
-	if err := send(Frame{Type: FrameUpgradeProgress, ID: req.ID, Log: "started " + upgradeUnit + ".service"}); err != nil {
+	if err := send(Frame{Type: FrameUpgradeProgress, ID: req.ID, Log: "started nexul upgrade --version " + req.Version}); err != nil {
 		return err
 	}
-	return send(Frame{Type: FrameUpgradeResult, ID: req.ID, Status: UpgradeStatusStarted, Log: upgradeUnit})
+	return send(Frame{Type: FrameUpgradeResult, ID: req.ID, Status: UpgradeStatusStarted, Log: "nexul upgrade"})
+}
+
+// Uninstall hands removal to `nexul uninstall runner <name> --detach`, which stops this runner's service from outside it.
+func (e *ShellExecutor) Uninstall(ctx context.Context, name string) error {
+	_, err := e.output(ctx, e.ctl, "uninstall", "runner", name, "--detach")
+	return err
 }
 
 // upgradeFailed builds the terminal frame for an update that could not be started.

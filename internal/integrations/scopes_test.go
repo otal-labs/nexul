@@ -200,7 +200,7 @@ func TestScopeAllows(t *testing.T) {
 		{"members: write", "POST", "/api/members", []Scope{Scope("members:write")}, true},
 		{"roles: write", "POST", "/api/roles", []Scope{Scope("roles:write")}, true},
 
-		{"runners install denylisted even with runners:read", "GET", "/api/runners/install", []Scope{Scope("runners:read")}, false},
+		{"runner enrollment denylisted even with runners:write", "POST", "/api/runners/enrollments", []Scope{Scope("runners:write")}, false},
 		{"runners list still allowed", "GET", "/api/runners", []Scope{Scope("runners:read")}, true},
 
 		{"unknown domain", "GET", "/api/billing", []Scope{ScopeEventsRead}, false},

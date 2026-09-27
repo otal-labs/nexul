@@ -35,7 +35,7 @@ func TestIntegration_DisconnectMidJobMarksFailed_NotRequeued(t *testing.T) {
 	started := make(chan string, 1)
 	stopped := make(chan string, 1)
 	exec := &fakeExecutor{deployFn: blockingDeploy(started, stopped)}
-	clientCancel := startTestClient(t, srv.URL, exec)
+	clientCancel := startTestClient(t, srv.URL, repo, exec)
 
 	require.NoError(t, bus.Publish(ctx, TopicDeployRequested, DeployRequestedEvent{
 		ID: "deploy-1", Kind: RequestDeploy, Service: "api", Image: "ghcr.io/x/api", Strategy: "compose",
@@ -85,7 +85,7 @@ func TestIntegration_CancelRunningJob(t *testing.T) {
 	started := make(chan string, 1)
 	stopped := make(chan string, 1)
 	exec := &fakeExecutor{deployFn: blockingDeploy(started, stopped)}
-	startTestClient(t, srv.URL, exec)
+	startTestClient(t, srv.URL, repo, exec)
 
 	require.NoError(t, bus.Publish(ctx, TopicDeployRequested, DeployRequestedEvent{
 		ID: "deploy-2", Kind: RequestDeploy, Service: "api", Image: "ghcr.io/x/api", Strategy: "compose",
@@ -139,7 +139,7 @@ func TestIntegration_CompletedJobPumpsQueue(t *testing.T) {
 	require.Len(t, h.Queue(), 2)
 
 	exec := &fakeExecutor{}
-	startTestClient(t, srv.URL, exec)
+	startTestClient(t, srv.URL, repo, exec)
 
 	eventually(t, 5*time.Second, func() bool { return collector.buildCount() == 2 })
 	collector.mu.Lock()
@@ -176,7 +176,7 @@ func TestIntegration_RunnerShowsRunningJobThenIdle(t *testing.T) {
 		send(Frame{Type: FrameBuildResult, ID: req.ID, Status: BuildStatusSuccess})
 		send(Frame{Type: FrameDeployResult, ID: req.ID, Status: DeployStatusHealthy})
 	}
-	startTestClient(t, srv.URL, exec)
+	startTestClient(t, srv.URL, repo, exec)
 	eventually(t, 5*time.Second, func() bool {
 		return repo.connectedCount() == 1
 	})

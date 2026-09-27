@@ -322,7 +322,6 @@ type InstanceSetting struct {
 	GoogleOauthClientSecret  string
 	DiscordOauthClientID     string
 	DiscordOauthClientSecret string
-	RunnerSecret             string
 }
 
 type InstanceUpgrade struct {
@@ -672,6 +671,22 @@ type Runner struct {
 	CreatedAt int64
 	Version   string
 	MachineID string
+}
+
+type RunnerCredential struct {
+	CredentialHash string
+	RunnerID       string
+	RunnerName     string
+	CreatedAt      int64
+	RevokedAt      sql.NullInt64
+}
+
+type RunnerEnrollmentCode struct {
+	CodeHash  string
+	Name      string
+	Machine   string
+	CreatedAt int64
+	ExpiresAt int64
 }
 
 type Service struct {

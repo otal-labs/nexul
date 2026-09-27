@@ -146,7 +146,7 @@ func TestInstanceTools_AsAdmin(t *testing.T) {
 	t.Run("instance_upgrade records the mcp source", func(t *testing.T) {
 		withVersion(t, "v0.2.0")
 		srv := fakeGitHub(t, "v0.2.1", "x")
-		dispatch := &fakeDispatch{runners: []RunnerStatus{{RunnerID: instanceRunnerID}}}
+		dispatch := &fakeDispatch{runners: []RunnerStatus{{RunnerID: "instance-id", Name: instanceRunnerName}}}
 		s := newUpgradeService(srv.URL, newFakeUpgradeRepo(), newFakeBus(), dispatch)
 		got, err := callTool(asAdmin(), t, s, "instance_upgrade", `{}`)
 		require.NoError(t, err)

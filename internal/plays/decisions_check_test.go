@@ -252,10 +252,10 @@ func TestDecisionsCheckRun_HTTPAndMCP(t *testing.T) {
 
 	f2 := newDecisionsFixture()
 	tools := RunMCPTools(f2.runner)
-	out, err := callTool(t, tools, ctxAs(starter), "decisions_check_run", `{"ticket_id":"`+ticketID+`"}`)
+	out, err := callTool(t, tools, ctxAs(starter), "play_run", `{"decisions_check":true,"target_type":"ticket","target_id":"`+ticketID+`"}`)
 	require.NoError(t, err)
 	<-f2.turns.done
 	assert.Equal(t, ViaMCP, out.(trailSummary).Via)
-	_, err = callTool(t, tools, ctxAs(starter), "decisions_check_run", `{}`)
+	_, err = callTool(t, tools, ctxAs(starter), "play_run", `{"decisions_check":true,"target_type":"ticket","target_id":""}`)
 	require.ErrorIs(t, err, apperrs.ErrInvalid)
 }

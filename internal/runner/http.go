@@ -6,9 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
-	"strings"
 
-	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/httpx"
 )
 
@@ -28,18 +26,22 @@ func (h *HTTPHandler) Routes() http.Handler {
 	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /api/runners", h.list)
 	mux.HandleFunc("GET /api/runners/queue", h.queue)
-	mux.HandleFunc("GET /api/runners/install", h.install)
 	mux.HandleFunc("GET /api/runners/latest-version", h.latestVersion)
+	mux.HandleFunc("POST /api/runners/enrollments", h.createEnrollment)
+	mux.HandleFunc("DELETE /api/runners/{id}", h.remove)
 	mux.HandleFunc("GET /api/machines", h.listMachines)
 	mux.HandleFunc("PATCH /api/machines/{id}", h.updateMachine)
 	mux.HandleFunc("POST /api/machines/{id}/discover", h.discoverMachine)
 	return mux
 }
 
-// PublicRoutes returns the runner download endpoint, auth'd by the runner secret, so it must sit outside RequireAuth.
+// PublicRoutes are the endpoints a machine calls without a user session: enrolling with a code, and removing or
+// downloading with the runner's own credential. They must sit outside RequireAuth.
 func (h *HTTPHandler) PublicRoutes() http.Handler {
 	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /api/runners/download/{target}", h.download)
+	mux.HandleFunc("POST /api/runners/enroll", h.enroll)
+	mux.HandleFunc("POST /api/runners/self/remove", h.removeSelf)
 	return mux
 }
 
@@ -70,13 +72,54 @@ func (h *HTTPHandler) latestVersion(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, map[string]string{"version": tag})
 }
 
-func (h *HTTPHandler) install(w http.ResponseWriter, r *http.Request) {
-	info, err := h.svc.Install(r.Context(), r.Host, r.TLS != nil)
+// createEnrollmentRequest is the POST /api/runners/enrollments wire shape.
+type createEnrollmentRequest struct {
+	Name    string `json:"name"`
+	Machine string `json:"machine,omitempty"`
+}
+
+func (h *HTTPHandler) createEnrollment(w http.ResponseWriter, r *http.Request) {
+	var req createEnrollmentRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	e, err := h.svc.CreateEnrollment(r.Context(), req.Name, req.Machine)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, info)
+	httpx.WriteJSON(w, http.StatusCreated, e)
+}
+
+func (h *HTTPHandler) enroll(w http.ResponseWriter, r *http.Request) {
+	var req EnrollRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	enrolled, err := h.svc.Enroll(r.Context(), req)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusCreated, enrolled)
+}
+
+func (h *HTTPHandler) remove(w http.ResponseWriter, r *http.Request) {
+	if err := h.svc.RemoveRunner(r.Context(), r.PathValue("id")); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *HTTPHandler) removeSelf(w http.ResponseWriter, r *http.Request) {
+	if err := h.svc.RemoveSelf(r.Context(), bearerToken(r)); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *HTTPHandler) listMachines(w http.ResponseWriter, r *http.Request) {
@@ -118,16 +161,15 @@ func (h *HTTPHandler) discoverMachine(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, grouped)
 }
 
-// download authenticates with the shared runner secret and streams target's binary from the latest release.
+// download authenticates with a runner's own credential and streams target's binary from the release.
 func (h *HTTPHandler) download(w http.ResponseWriter, r *http.Request) {
-	secret, err := h.svc.repo.Secret(r.Context())
+	cred, err := authenticate(r.Context(), h.svc.repo, bearerToken(r))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
-	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-	if !constantTimeEqual(token, secret) {
-		httpx.WriteError(w, apperrs.ErrUnauthorized)
+	if cred.Revoked {
+		httpx.WriteError(w, errRunnerRemoved)
 		return
 	}
 	target := r.PathValue("target")
