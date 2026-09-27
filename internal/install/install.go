@@ -29,8 +29,10 @@ func (e *ExitCodeError) Error() string { return fmt.Sprintf("exit status %d", e.
 const DefaultDir = "/data/nexul"
 
 const (
-	defaultPort = 80
+	defaultPort = 5123
 	logsEmail   = "nexul@nexul.local"
+	// setupCodeWait bounds the wait for the setup code, which never appears once the instance has an owner.
+	setupCodeWait = 10 * time.Second
 )
 
 // Run executes one nexul command against the real host.
@@ -74,7 +76,7 @@ func (h *Host) runInstall(ctx context.Context, args []string) error {
 	fs.SetOutput(h.Out)
 	var o Options
 	fs.StringVar(&o.Dir, "dir", "", "install directory (default "+h.defaultDir()+")")
-	fs.IntVar(&o.Port, "port", 0, "port the web UI and API listen on (default 80)")
+	fs.IntVar(&o.Port, "port", 0, "port the web UI and API listen on (default 5123)")
 	fs.StringVar(&o.Version, "version", "", "release to install (default: this binary's version)")
 	fs.BoolVar(&o.Yes, "yes", false, "accept the defaults without asking")
 	fs.BoolVar(&o.Yes, "y", false, "shorthand for --yes")
@@ -118,7 +120,7 @@ func (h *Host) Install(ctx context.Context, o Options) error {
 	if err != nil {
 		return err
 	}
-	h.printSummary(o, tag, settings)
+	h.printSummary(o, tag, settings, h.waitSetupCode(ctx, o.Dir))
 	return nil
 }
 
@@ -261,7 +263,7 @@ func (h *Host) installServer(ctx context.Context, o Options, settings map[string
 		return "", err
 	}
 	u.WorkDir = filepath.Join(o.Dir, "data")
-	u.Env = serverEnv(o.Dir, o.Port, settings)
+	u.Env = serverEnv(o.Dir, o.Port, settings, h.desktop())
 	if h.GOOS == "linux" {
 		u.User = serviceUser
 	}
@@ -275,10 +277,10 @@ func (h *Host) installServer(ctx context.Context, o Options, settings map[string
 }
 
 // serverEnv points the server at its database and at the local OpenObserve, which it proxies at /openobserve/ and
-// ships its own logs to.
-func serverEnv(dir string, port int, settings map[string]string) map[string]string {
+// ships its own logs to. A local install is one computer trying Nexul, where localhost is a valid instance URL.
+func serverEnv(dir string, port int, settings map[string]string, local bool) map[string]string {
 	logs := "http://127.0.0.1:" + settings["NEXUL_LOGS_PORT"]
-	return map[string]string{
+	env := map[string]string{
 		"NEXUL_HTTP_ADDR":     ":" + strconv.Itoa(port),
 		"NEXUL_DB_PATH":       filepath.Join(dir, "data", "nexul.db"),
 		"NEXUL_LOG_LEVEL":     "info",
@@ -287,6 +289,10 @@ func serverEnv(dir string, port int, settings map[string]string) map[string]stri
 		"NEXUL_OTLP_USER":     settings["NEXUL_LOGS_EMAIL"],
 		"NEXUL_OTLP_TOKEN":    settings["NEXUL_LOGS_TOKEN"],
 	}
+	if local {
+		env["NEXUL_LOCAL"] = "1"
+	}
+	return env
 }
 
 // installBundled enrolls the instance's own runner or automations host, named instance, through the same path as a
@@ -315,8 +321,7 @@ func (h *Host) waitCode(ctx context.Context, path string) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, h.HealthTimeout)
 	defer cancel()
 	for {
-		data, err := os.ReadFile(path)
-		if code := strings.TrimSpace(string(data)); err == nil && code != "" {
+		if code := readCode(path); code != "" {
 			return code, nil
 		}
 		select {
@@ -325,6 +330,31 @@ func (h *Host) waitCode(ctx context.Context, path string) (string, error) {
 		case <-time.After(h.PollInterval):
 		}
 	}
+}
+
+// readCode returns the code in a file the server writes, or "" while there is none.
+func readCode(path string) string {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(data))
+}
+
+// setupCodePath is where the server keeps the one-time setup code while the instance has no owner.
+func setupCodePath(dir string) string {
+	return filepath.Join(dir, "data", "enroll", "setup")
+}
+
+// waitSetupCode gives the server a moment to write the setup code; "" means the instance already has an owner.
+func (h *Host) waitSetupCode(ctx context.Context, dir string) string {
+	ctx, cancel := context.WithTimeout(ctx, setupCodeWait)
+	defer cancel()
+	code, err := h.waitCode(ctx, setupCodePath(dir))
+	if err != nil {
+		return "" // the only failure is the wait running out, which is how an owned instance answers
+	}
+	return code
 }
 
 // installTag resolves the release an install targets: the flag, else this binary's own version.
@@ -408,11 +438,15 @@ func (h *Host) redraw(e *elapsed, shown string) {
 	e.shown = shown
 }
 
-func (h *Host) printSummary(o Options, tag string, settings map[string]string) {
+func (h *Host) printSummary(o Options, tag string, settings map[string]string, code string) {
 	site := siteURL(h.PublicIP(), o.Port)
-	next := []string{
-		"Next: point a domain at this server and put HTTPS in front of it, then enter the",
-		"https:// address as the instance URL in the setup wizard.",
+	var next []string
+	if code != "" {
+		next = []string{
+			"Next: open the setup page and enter the setup code. The domain and HTTPS, including",
+			"ports 80 and 443, are set up from there with a reverse proxy or a Cloudflare tunnel,",
+			"not by this installer.",
+		}
 	}
 	if h.desktop() {
 		next = []string{"This instance runs on this computer. To put Nexul on a server, run the same install there."}
@@ -420,13 +454,18 @@ func (h *Host) printSummary(o Options, tag string, settings map[string]string) {
 	lines := []string{
 		"",
 		fmt.Sprintf("Nexul %s is running.", tag),
-		fmt.Sprintf("  Setup wizard   %s", site),
+		fmt.Sprintf("  Setup page     %s", site),
+	}
+	if code != "" {
+		lines = append(lines, fmt.Sprintf("  Setup code     %s", code))
+	}
+	lines = append(lines,
 		fmt.Sprintf("  Data           %s  (back this folder up)", o.Dir),
 		fmt.Sprintf("  Logs UI        %sopenobserve/  user %s", site, logsEmail),
 		fmt.Sprintf("  Logs password  %s  (also in %s)", settings["NEXUL_LOGS_PASSWORD"], filepath.Join(o.Dir, ".env")),
 		"  Upgrade        nexul upgrade",
 		"  Status         nexul status",
-	}
+	)
 	if h.GOOS == "linux" {
 		lines = append(lines, fmt.Sprintf("  Firewall       port %d now accepts Docker containers on this machine, so a tunnel can reach Nexul", o.Port))
 	}

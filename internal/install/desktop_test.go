@@ -233,6 +233,10 @@ func TestInstall_Mac_RunsEveryUnitAsALaunchAgentOfTheUser(t *testing.T) {
 	out := th.out.String()
 	assert.Contains(t, out, "http://localhost:")
 	assert.Contains(t, out, "runs on this computer")
+	assert.Contains(t, out, "Setup code     nxs_setup")
+	serverEnv, err := readEnvFile(filepath.Join(th.Paths.UnitRoot, "server", "env"))
+	require.NoError(t, err)
+	assert.Equal(t, "1", serverEnv["NEXUL_LOCAL"])
 }
 
 func TestInstall_Windows_RegistersServicesAndCopiesTheCommand(t *testing.T) {

@@ -224,11 +224,21 @@ func TestStatus(t *testing.T) {
 		require.NoError(t, th.Status(t.Context()))
 
 		out := th.out.String()
-		assert.Contains(t, out, "Directory  "+dir)
+		assert.Contains(t, out, "Directory   "+dir)
+		assert.Contains(t, out, "Setup code  nxs_setup\n")
 		assert.Regexp(t, `server\s+nexul-server\s+active\s+v0.2.1`, out)
 		assert.Regexp(t, `logs\s+nexul-openobserve\s+active\s+v1.0.4`, out)
 		assert.Regexp(t, `runner\s+nexul-runner-instance\s+failed\s+v0.2.1`, out)
 		assert.Regexp(t, `automations\s+nexul-automations-instance\s+active\s+v0.2.1`, out)
+	})
+	t.Run("an instance with an owner has no setup code to show", func(t *testing.T) {
+		th := newTestHost(t)
+		dir := th.installed(t)
+		require.NoError(t, os.Remove(setupCodePath(dir)))
+
+		require.NoError(t, th.Status(t.Context()))
+
+		assert.NotContains(t, th.out.String(), "Setup code")
 	})
 	t.Run("a manager with nothing to say reports unknown", func(t *testing.T) {
 		th := newTestHost(t)

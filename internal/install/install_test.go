@@ -245,6 +245,8 @@ WantedBy=multi-user.target
 	assert.Contains(t, out, "openobserve/  user nexul@nexul.local")
 	assert.Contains(t, out, settings["NEXUL_LOGS_PASSWORD"])
 	assert.Contains(t, out, "Firewall       port "+strconv.Itoa(port)+" now accepts Docker containers")
+	assert.Contains(t, out, "Setup code     nxs_setup")
+	assert.Contains(t, out, "Next: open the setup page and enter the setup code.")
 }
 
 func TestInstall_Rerun_KeepsSecretsPortsAndTheBundledHosts(t *testing.T) {
@@ -456,6 +458,114 @@ func TestRandomSecret_MixesCaseAndDigits(t *testing.T) {
 		assert.True(t, strings.ContainsAny(s, "234567"))
 		assert.NotEqual(t, strings.ToLower(s), s)
 		assert.NotEqual(t, strings.ToUpper(s), s)
+	}
+}
+
+func TestChoose_Port(t *testing.T) {
+	tests := []struct {
+		name string
+		flag int
+		prev *installed
+		want int
+	}{
+		{"a fresh install takes 5123", 0, nil, 5123},
+		{"a re-run keeps the stored port", 0, &installed{Env: map[string]string{"NEXUL_PORT": "80"}}, 80},
+		{"the flag wins over the stored port", 8080, &installed{Env: map[string]string{"NEXUL_PORT": "80"}}, 8080},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			th := newTestHost(t)
+			dir := filepath.Join(th.root, "n")
+			if tt.prev != nil {
+				tt.prev.Dir = dir
+			}
+			o, _, err := th.choose(Options{Dir: dir, Port: tt.flag, Yes: true}, tt.prev)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, o.Port)
+		})
+	}
+}
+
+func TestWaitSetupCode(t *testing.T) {
+	t.Run("an owned instance writes no code, so there is none to print", func(t *testing.T) {
+		th := newTestHost(t)
+		th.HealthTimeout = 20 * time.Millisecond
+		assert.Empty(t, th.waitSetupCode(t.Context(), filepath.Join(th.root, "n")))
+	})
+	t.Run("the code the server wrote is returned trimmed", func(t *testing.T) {
+		th := newTestHost(t)
+		dir := filepath.Join(th.root, "n")
+		th.bootedServer(t, dir)
+		assert.Equal(t, "nxs_setup", th.waitSetupCode(t.Context(), dir))
+	})
+}
+
+func TestPrintSummary(t *testing.T) {
+	tests := []struct {
+		name    string
+		goos    string
+		code    string
+		want    []string
+		notWant []string
+	}{
+		{
+			name:    "no code prints no code line and no setup step",
+			goos:    "linux",
+			notWant: []string{"Setup code", "Next:", "point a domain"},
+		},
+		{
+			name: "a server install names where HTTPS and ports 80 and 443 come from",
+			goos: "linux",
+			code: "nxs_abc",
+			want: []string{
+				"  Setup page     http://",
+				"  Setup code     nxs_abc\n",
+				"enter the setup code",
+				"ports 80 and 443, are set up from there with a reverse proxy or a Cloudflare tunnel",
+				"not by this installer.",
+			},
+			notWant: []string{"point a domain"},
+		},
+		{
+			name:    "a desktop install shows the code and stays about this computer",
+			goos:    "darwin",
+			code:    "nxs_abc",
+			want:    []string{"  Setup page     http://localhost:5123/", "  Setup code     nxs_abc\n", "runs on this computer"},
+			notWant: []string{"reverse proxy", "Firewall"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			th := newTestHost(t)
+			th.GOOS = tt.goos
+			th.printSummary(Options{Dir: "/data/nexul", Port: 5123}, "v0.2.1", map[string]string{}, tt.code)
+			out := th.out.String()
+			for _, s := range tt.want {
+				assert.Contains(t, out, s)
+			}
+			for _, s := range tt.notWant {
+				assert.NotContains(t, out, s)
+			}
+		})
+	}
+}
+
+func TestServerEnv_LocalOnlyWhenAsked(t *testing.T) {
+	tests := []struct {
+		name  string
+		local bool
+		want  string
+		isSet bool
+	}{
+		{"a server install leaves it unset", false, "", false},
+		{"a desktop install marks itself local", true, "1", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, ok := serverEnv("/d", 5123, map[string]string{}, tt.local)["NEXUL_LOCAL"]
+			assert.Equal(t, tt.isSet, ok)
+			assert.Equal(t, tt.want, got)
+		})
 	}
 }
 

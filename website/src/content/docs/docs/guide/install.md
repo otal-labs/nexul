@@ -25,7 +25,7 @@ Nexul v0.2.1 installer
 Press Enter to accept the default.
 
   Install directory  [/data/nexul]:
-  Web port           [80]:
+  Web port           [5123]:
 
   Docker .......... installed 29.8.1
   Docker Compose .. installed 2.40.3
@@ -34,18 +34,25 @@ Press Enter to accept the default.
   User ............ nexul, created
   Files ........... /data/nexul
   Logs ............ OpenObserve v1.0.4 on 127.0.0.1:41873
-  Server .......... running on port 80
+  Server .......... running on port 5123
   Runner .......... nexul-runner-instance
   Automations ..... nexul-automations-instance
 
 Nexul v0.2.1 is running.
-  Setup wizard   http://203.0.113.4/
+  Setup page     http://203.0.113.4:5123/
+  Setup code     nxs_…
   Data           /data/nexul  (back this folder up)
-  Logs UI        http://203.0.113.4/openobserve/  user nexul@nexul.local
+  Logs UI        http://203.0.113.4:5123/openobserve/  user nexul@nexul.local
   Logs password  …  (also in /data/nexul/.env)
   Upgrade        nexul upgrade
   Status         nexul status
+  Firewall       port 5123 now accepts Docker containers on this machine, so a tunnel can reach Nexul
+Next: open the setup page and enter the setup code. The domain and HTTPS, including
+ports 80 and 443, are set up from there with a reverse proxy or a Cloudflare tunnel,
+not by this installer.
 ```
+
+The web port defaults to 5123 so that ports 80 and 443 stay free for the reverse proxy the setup page can deploy.
 
 What each step does:
 
@@ -54,7 +61,7 @@ What each step does:
 3. **User.** Creates the `nexul` system user the server, OpenObserve and the automations host run as.
 4. **Files.** Creates the install directory and writes its `.env` with the generated logs password and token.
 5. **Logs.** Downloads OpenObserve at the version and checksum pinned in `nexul`, and starts it as `nexul-openobserve`, listening on a free localhost port.
-6. **Server.** Downloads `nexul-server` and starts it as `nexul-server` on your web port, then waits until it answers.
+6. **Server.** Downloads `nexul-server` and starts it as `nexul-server` on your web port, then waits until it answers. Until the instance has an owner, the server writes a one-time setup code at every start, and the summary prints it as `Setup code`.
 7. **Runner and Automations.** Installs the instance's own runner and automations host, both named `instance`, as `nexul-runner-instance` and `nexul-automations-instance`. They enroll with the server like any other runner or automations host, so this server can deploy and run automations straight away.
 
 A port that is already in use is caught before anything is installed, and you are asked for another one.
@@ -73,7 +80,7 @@ curl -fsSL https://nexul.io/install.sh | sh -s -- --dir /srv/nexul --port 8080 -
 
 Running `nexul install` again is safe: it keeps the directory, the port and the logs credentials it chose the first time, so it also repairs an install. A directory that still holds a Docker Compose install from an earlier release is refused; run that release's `nexul uninstall` first.
 
-There's nothing else to configure first. The server generates its auth secret on first start. The instance URL, the GitHub App and connectors are collected in the [setup wizard](/docs/guide/setup-wizard/).
+There's nothing else to configure first. The server generates its auth secret on first start. The domain, the instance URL, the GitHub App and connectors are collected in the [setup wizard](/docs/guide/setup-wizard/), which asks for the setup code first. Lost the terminal? `nexul status` prints the code again while it is still valid; once the instance has an owner, there is no code to print.
 
 ### What's installed
 
@@ -97,12 +104,12 @@ The install directory holds everything that belongs to the instance:
 
 Back up the install directory and you have backed up the instance.
 
-The server listens on plain HTTP. For a public domain, put a Cloudflare tunnel or your own TLS-terminating proxy in front of it and enter the `https://` address as the instance URL in the setup wizard. Every URL Nexul derives (OAuth callbacks, the runner install command, the MCP endpoint) comes from that saved instance URL rather than the incoming request, so the proxy doesn't need to forward any extra headers.
+The server listens on plain HTTP on the web port. HTTPS comes from the setup page, not from the installer: it sets up a Cloudflare tunnel, or deploys a reverse proxy on ports 80 and 443 with a Let's Encrypt certificate, or checks an `https://` address your own proxy already serves, then saves that address as the instance URL. Every URL Nexul derives (OAuth callbacks, the runner install command, the MCP endpoint) comes from that saved instance URL rather than the incoming request, so the proxy doesn't need to forward any extra headers.
 
 ### Managing the install
 
 ```sh
-nexul status              # every Nexul service on this machine: kind, name, state and version
+nexul status              # every Nexul service on this machine: kind, name, state and version, plus the setup code while there is one
 nexul upgrade             # the newest release on your channel; see Upgrade
 nexul uninstall           # stop and remove every Nexul service, keeping the install directory
 nexul uninstall --purge   # also delete the install directory and, on Linux, the nexul user
@@ -155,4 +162,4 @@ make build-single
 
 ## Next step
 
-Open the printed URL to reach the setup wizard and connect your [GitHub App](/docs/guide/github-app/). See [Setup wizard](/docs/guide/setup-wizard/) for what each step asks for, and [Upgrade](/docs/guide/upgrade/) for keeping the instance current.
+Open the printed URL, enter the setup code, set up the domain, then connect your [GitHub App](/docs/guide/github-app/). See [Setup wizard](/docs/guide/setup-wizard/) for what each step asks for, and [Upgrade](/docs/guide/upgrade/) for keeping the instance current.
