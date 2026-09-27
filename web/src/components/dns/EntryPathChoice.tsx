@@ -23,10 +23,11 @@ const EntryPathRow = ({ option }: EntryPathRowProps) => (
 );
 
 interface EntryPathChoiceProps {
+  options?: EntryPathOption[];
   onContinue: (path: EntryPath) => void;
 }
 
-export const EntryPathChoice = ({ onContinue }: EntryPathChoiceProps) => {
+export const EntryPathChoice = ({ options = entryPathOptions, onContinue }: EntryPathChoiceProps) => {
   const [path, setPath] = useState<EntryPath | null>(null);
 
   return (
@@ -37,7 +38,7 @@ export const EntryPathChoice = ({ onContinue }: EntryPathChoiceProps) => {
         onValueChange={(value) => setPath(value as EntryPath)}
         className="gap-0 divide-y divide-border border-y border-border"
       >
-        {entryPathOptions.map((option) => (
+        {options.map((option) => (
           <EntryPathRow key={option.value} option={option} />
         ))}
       </RadioGroup>

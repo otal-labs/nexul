@@ -17,7 +17,6 @@ import { FirstLoginWizardPage } from "@/pages/FirstLoginWizardPage";
 import { HomePage } from "@/pages/HomePage";
 import { InboxPage } from "@/pages/InboxPage";
 import { InvitePreviewPage } from "@/pages/InvitePreviewPage";
-import { InstanceBootstrapPage } from "@/pages/InstanceBootstrapPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { MembersPage } from "@/pages/MembersPage";
 import { MemoriesPage } from "@/pages/MemoriesPage";
@@ -28,6 +27,7 @@ import { ProjectWizardPage } from "@/pages/ProjectWizardPage";
 import { RunnersPage } from "@/pages/RunnersPage";
 import { ServicePage } from "@/pages/ServicePage";
 import { SettingsPage } from "@/pages/SettingsPage";
+import { SetupPage } from "@/pages/SetupPage";
 import { StackPage } from "@/pages/StackPage";
 import { TicketPage } from "@/pages/TicketPage";
 import { useSessionStore } from "@/stores/sessionStore";
@@ -48,8 +48,8 @@ const buildRoutes = (loggedIn: boolean): RouteObject[] => [
     children: [
       { path: "/login", element: <LoginPage /> },
       { path: "/invite", element: <InvitePreviewPage /> },
-      // Re-entry to bootstrap for a wrong GitHub App; the API only accepts it while no user exists.
-      { path: "/setup", element: <InstanceBootstrapPage /> },
+      // The handoff link's landing and re-entry for a wrong GitHub App; the API only accepts either while no user exists.
+      { path: "/setup", element: <SetupPage /> },
       ...(loggedIn
         ? [
             { path: "/wizard/onboarding/owner", element: <OwnerWizardPage /> },
@@ -157,7 +157,7 @@ export const AppRouter = () => {
   return (
     <>
       {isPending && <LoadingDisplay />}
-      {needsBootstrap && <InstanceBootstrapPage />}
+      {needsBootstrap && <SetupPage />}
       {!isPending && !needsBootstrap && <RouterProvider key={loggedIn ? "in" : "out"} router={router} />}
     </>
   );

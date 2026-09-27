@@ -17,7 +17,7 @@ import type {
 export const getMeKey = "getMe";
 const getSettingsKey = "getSettings";
 export const getPATsKey = "getPATs";
-const getBootstrapStatusKey = "getBootstrapStatus";
+export const getBootstrapStatusKey = "getBootstrapStatus";
 
 export const useFetchMe = () =>
   useQuery({

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { DnsStepState } from "@/components/dns/DnsStep";
 import type { CredentialCheck } from "@/models/Connectors";
 
 export const RecordTypes = ["A", "AAAA", "CNAME", "TXT"] as const;
@@ -49,11 +50,12 @@ export const InstanceRecordFormSchema = z.object({
 
 export type InstanceRecordFormData = z.infer<typeof InstanceRecordFormSchema>;
 
-// The three ways traffic can reach the instance; the DNS setup stepper's first choice.
+// The ways traffic can reach the instance; the DNS setup stepper's and the first-run domain step's first choice.
 export const EntryPaths = {
   Bare: "bare",
   Tunnel: "tunnel",
   Proxy: "proxy",
+  OwnHttps: "https",
 } as const;
 
 export type EntryPath = (typeof EntryPaths)[keyof typeof EntryPaths];
@@ -86,6 +88,34 @@ export const entryPathOptions: EntryPathOption[] = [
     stepDescription: "Nexul deploys Traefik on your runner and points the instance record at the server.",
   },
 ];
+
+// First run offers only paths that end in HTTPS, which the GitHub callback needs; a bare record stays on the DNS page.
+export const setupEntryPathOptions: EntryPathOption[] = [
+  {
+    value: EntryPaths.Tunnel,
+    label: "Cloudflare tunnel",
+    description: "No open ports. Needs a Cloudflare API token; Cloudflare issues the certificate.",
+    stepDescription: "Connect Cloudflare, run cloudflared on this server, then route a hostname into it.",
+  },
+  {
+    value: EntryPaths.Proxy,
+    label: "Reverse proxy",
+    description: "Nexul runs Traefik on ports 80 and 443 and gets a Let's Encrypt certificate.",
+    stepDescription: "Point the domain at this server, then Nexul deploys Traefik and waits for the certificate.",
+  },
+  {
+    value: EntryPaths.OwnHttps,
+    label: "I already have HTTPS",
+    description: "Your own proxy already serves an https address that forwards to this server.",
+    stepDescription: "Nexul checks the address answers as this instance over HTTPS.",
+  },
+];
+
+export const stepState = (unlocked: boolean, done: boolean): DnsStepState => {
+  if (!unlocked) return "upcoming";
+  if (done) return "done";
+  return "active";
+};
 
 // The tunnel rung's output: what the hostname rung routes into and where cloudflared runs.
 export interface TunnelDeployment {

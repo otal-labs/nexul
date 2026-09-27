@@ -33,7 +33,7 @@ vi.mock("@/hooks/ConnectorsHooks", () => ({
   useDisconnectConnector: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
-// Step components are exercised in full by their own test files; this file only cares about the stepper mechanics OwnerWizardPage itself owns: sequencing, back navigation, and the finish handoff to /wizard/onboarding/dns.
+// Step components are exercised in full by their own test files; this file only cares about the stepper mechanics OwnerWizardPage itself owns: sequencing, back navigation, and the finish handoff to the app home.
 vi.mock("@/components/auth/IntroduceYourselfStep", () => ({
   IntroduceYourselfStep: ({ onContinue }: { onContinue: () => void }) => (
     <button onClick={onContinue}>Step1 continue</button>
@@ -78,6 +78,7 @@ const renderPage = () => {
           <Route path="/wizard/onboarding/owner" element={<OwnerWizardPage />} />
           <Route path="/login" element={<div>Login page</div>} />
           <Route path="/wizard/onboarding/dns" element={<div>DNS page</div>} />
+          <Route path="/" element={<div>Home page</div>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -174,7 +175,7 @@ describe("OwnerWizardPage", () => {
     expect(mocks.setPrefixMutateAsync).toHaveBeenCalledWith({ id: "p-1", prefix: "GEN" });
   });
 
-  it("finishes step 3 using the instance URL from settings (not empty), then navigates to DNS onboarding", async () => {
+  it("finishes step 3 using the instance URL from settings (not empty), then goes home, not to DNS onboarding", async () => {
     const user = userEvent.setup();
     renderPage();
 
@@ -188,7 +189,8 @@ describe("OwnerWizardPage", () => {
     expect(mocks.renameMutateAsync).toHaveBeenCalledWith({ id: "p-1", name: "General" });
     expect(mocks.setPrefixMutateAsync).toHaveBeenCalledWith({ id: "p-1", prefix: "GEN" });
     expect(await screen.findByText("Workspace ready")).toBeInTheDocument();
-    expect(await screen.findByText("DNS page", {}, { timeout: 2000 })).toBeInTheDocument();
+    expect(await screen.findByText("Home page", {}, { timeout: 2000 })).toBeInTheDocument();
+    expect(screen.queryByText("DNS page")).not.toBeInTheDocument();
   });
 
   it("disables Finish setup for the whole sequence — a double click runs it once", async () => {

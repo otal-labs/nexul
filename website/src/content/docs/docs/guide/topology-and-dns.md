@@ -30,7 +30,7 @@ An **exposure** routes one hostname through a gateway to one of a stack's contai
 
 ## Setting up DNS
 
-DNS setup asks a stepped series of questions, either from the owner wizard's optional last step or by selecting **Set up DNS** under Settings → DNS, which opens the DNS setup stepper at `/wizard/onboarding/dns`. It needs the Cloudflare connector connected first (see [GitHub App](/docs/guide/github-app/) for connecting the equivalent GitHub connector — Cloudflare connects with an API token the same way, from Settings → Connectors).
+DNS setup asks a stepped series of questions: select **Set up DNS** under Settings → DNS, which opens the DNS setup stepper at `/wizard/onboarding/dns`. It needs the Cloudflare connector connected first (see [GitHub App](/docs/guide/github-app/) for connecting the equivalent GitHub connector — Cloudflare connects with an API token the same way, from Settings → Connectors).
 
 ### Cloudflare API token permissions
 
