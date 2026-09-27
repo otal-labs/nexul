@@ -148,3 +148,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GORELEASER_CURRENT_TAG: ${{ needs.resolve.outputs.tag }}
           GORELEASER_PREVIOUS_TAG: ${{ needs.resolve.outputs.previous_tag }}
+
+  # nexul.io builds its changelog from the releases at build time, so each release rebuilds the site.
+  website:
+    needs: release
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_HOOK: ${{ secrets.CLOUDFLARE_PAGES_DEPLOY_HOOK }}
+    steps:
+      - name: Rebuild nexul.io
+        if: env.DEPLOY_HOOK != ''
+        run: curl --fail --silent --show-error -X POST "$DEPLOY_HOOK"

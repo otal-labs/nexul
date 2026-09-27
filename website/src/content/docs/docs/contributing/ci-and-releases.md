@@ -33,6 +33,8 @@ against six filters, and each job is gated on its own tag:
   binary — the desktop unit tests never launch it.
 - **`website-build`** — installs with a frozen lockfile, runs `bun run test`,
   then runs `bun run build`, so a broken page or frontmatter fails the check.
+  The build reads the GitHub releases for `/changelog/`, so it needs network
+  access to the GitHub API.
 - **`sdk-test`** — installs with a frozen lockfile, runs the SDK typecheck,
   then runs its Vitest suite.
 - **`automations-test`** — installs with a frozen lockfile, runs the
@@ -77,6 +79,10 @@ Nexul has one version for the whole product, and git tags are that version
 - **Beta image cleanup:** a `prune` job runs after each beta and deletes old
   beta-tagged image versions, keeping the ten newest per image and never
   touching a `latest` or stable-semver tag.
+- **Changelog rebuild:** a `website` job runs after each release and calls
+  the Cloudflare Pages deploy hook in the `CLOUDFLARE_PAGES_DEPLOY_HOOK`
+  secret, so nexul.io/changelog lists the new release. Without the secret the
+  job skips, and the changelog catches up on the next site build.
 - Both binaries are stamped with the release tag via
   `-ldflags -X .../internal/platform/version.Version=...`; `nexul version`
   prints it.

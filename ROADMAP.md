@@ -2,6 +2,8 @@
 
 > Directional, not dated. Open work lives in `.scratch/`, the decisions behind
 > it in `docs/adr/`, and the vocabulary in `CONTEXT.md`.
+> The public roadmap on nexul.io is `website/src/pages/roadmap.astro`; move
+> an item there when it changes status here.
 
 ---
 
@@ -85,14 +87,8 @@ without changing the core architecture.
 - **DNS extensions** — TLS automation (Let's Encrypt) for direct-to-server
   paths, additional registrars behind the provider interface, managed subdomain
   routing for deployed services.
-- **Integration store** — registry, store UI, the install/consent flow, a
-  scaffolder, and the Discord reference integration end to end. Spec:
-  `.scratch/integration-store/`.
 - **Desktop extensions** — auto-update (electron-updater), tray and menu
   niceties, diagnostics.
-- **Additional git providers** — GitLab, Gitea. The provider interface makes it
-  additive, and the auth user model is already provider-agnostic. Spec:
-  `.scratch/second-git-host/`.
 - **Semantic search / embeddings** — the event-driven indexing pipeline is the
   seam.
 - **Doc comments** — deferred during the domain sessions to keep momentum; the
@@ -112,10 +108,6 @@ without changing the core architecture.
 - **Integrations polish** — the expose-a-service flow and the voice channel
   UI, postponed until after the public release (`.scratch/integrations/`,
   tickets 04 and 11).
-- **Workspace-scoped runners, automations, and integrations** — all three are
-  still instance-wide, so an automation or integration installed in one
-  workspace sees every workspace's events
-  (`.scratch/workspace-scoped-automation-surfaces/`).
 - **Smaller gaps**, too thin for a spec: offline doc edits do not survive a
   closed tab (the collaboration state is memory-only); a project's docs list
   has no manual or recency ordering; MCP tools for automation versions and
@@ -136,9 +128,12 @@ without changing the core architecture.
   seam is in place (`internal/harness`, ADR 0054): implement `harness.Client`
   for it, register the kind, and let the pair form pick a kind.
 
-**Exit criterion:** an owner can install the Discord integration from the store
-and see deploy events land in a channel; teams not on GitHub can use
-Nexul; agents connect from the desktop app with a connection token.
+**Exit criterion:** agents connect from the desktop app with a connection token.
+
+Shelved for now, specs kept: the integration store (`.scratch/integration-store/`)
+and a second git host, GitLab and Gitea (`.scratch/second-git-host/`), and
+workspace-scoped runners, automations, and integrations
+(`.scratch/workspace-scoped-automation-surfaces/`).
 
 ---
 
