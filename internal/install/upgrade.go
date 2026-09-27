@@ -173,13 +173,7 @@ func (h *Host) Uninstall(ctx context.Context, purge, yes bool) error {
 	if len(units) == 0 && prev == nil {
 		return errors.New("nexul is not installed on this host; run nexul install")
 	}
-	h.printf("This stops and removes every Nexul service on this machine. Stacks you deployed keep running.\n")
-	if prev != nil && purge {
-		h.printf("It also DELETES %s and the database, the logs and every stack checkout.\n", prev.Dir)
-	}
-	if prev != nil && !purge {
-		h.printf("The data is kept; `nexul install --dir %s` brings this instance back.\n", prev.Dir)
-	}
+	h.printUninstallPlan(prev, purge)
 	if err := h.confirm(yes); err != nil {
 		return err
 	}
@@ -198,8 +192,24 @@ func (h *Host) Uninstall(ctx context.Context, purge, yes bool) error {
 	if err := h.step("Files", func() (string, error) { return h.removeFiles(dir, purge) }); err != nil {
 		return err
 	}
+	// Kept data is still owned by the service user, so only a purge removes it.
+	if purge && h.GOOS == "linux" {
+		if err := h.step("User", func() (string, error) { return h.removeServiceUser(ctx) }); err != nil {
+			return err
+		}
+	}
 	h.printf("\nNexul is uninstalled.\n")
 	return nil
+}
+
+func (h *Host) printUninstallPlan(prev *installed, purge bool) {
+	h.printf("This stops and removes every Nexul service on this machine. Stacks you deployed keep running.\n")
+	if prev != nil && purge {
+		h.printf("It also DELETES %s and the database, the logs and every stack checkout.\n", prev.Dir)
+	}
+	if prev != nil && !purge {
+		h.printf("The data is kept; `nexul install --dir %s` brings this instance back.\n", prev.Dir)
+	}
 }
 
 func (h *Host) confirm(yes bool) error {

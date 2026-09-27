@@ -342,6 +342,17 @@ func (h *Host) ensureServiceUser(ctx context.Context) (string, error) {
 	return serviceUser + ", created", nil
 }
 
+// removeServiceUser deletes the nexul system user and its group, the reverse of ensureServiceUser.
+func (h *Host) removeServiceUser(ctx context.Context) (string, error) {
+	if _, err := h.Exec.Run(ctx, "id", "-u", serviceUser); err != nil {
+		return serviceUser + ", not present", nil
+	}
+	if _, err := h.Exec.Run(ctx, "userdel", serviceUser); err != nil {
+		return "", fmt.Errorf("remove the %s user: %w", serviceUser, err)
+	}
+	return serviceUser + ", removed", nil
+}
+
 func (h *Host) giveToServiceUser(ctx context.Context, paths ...string) error {
 	_, err := h.Exec.Run(ctx, "chown", append([]string{"-R", serviceUser + ":" + serviceUser}, paths...)...)
 	return err
