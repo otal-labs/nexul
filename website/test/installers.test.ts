@@ -7,9 +7,10 @@ import { spawnSync } from 'node:child_process';
 const script = new URL('../public/install.sh', import.meta.url).pathname;
 const directories: string[] = [];
 
-// The fake nexul records its arguments and the first line it reads, then exits with installerExit.
+// The fake nexul records its arguments (joined, and one per line in argv) and the first line it reads, then exits
+// with installerExit.
 const fakeNexul = (installerExit: number) =>
-  `#!/bin/sh\nprintf '%s\\n' "$*" > "$NEXUL_TEST_DIR/args"\nread -r answer || true\nprintf '%s' "$answer" > "$NEXUL_TEST_DIR/installed"\nexit ${installerExit}\n`;
+  `#!/bin/sh\nprintf '%s\\n' "$*" > "$NEXUL_TEST_DIR/args"\nprintf '%s\\n' "$@" > "$NEXUL_TEST_DIR/argv"\nread -r answer || true\nprintf '%s' "$answer" > "$NEXUL_TEST_DIR/installed"\nexit ${installerExit}\n`;
 
 interface Options {
   os?: string;
@@ -123,6 +124,15 @@ test('without a stable release it installs the newest beta and passes the flags 
   expect(await read(directory, 'download-url')).toBe('https://example.test/releases/v0.2.0-beta.4/checksums.txt\n');
   expect(await read(directory, 'args')).toBe('install --dir /srv/nexul --yes\n');
   expect(await read(directory, 'installed')).toBe('interactive input');
+});
+
+test('piped with sh -s, a runner install reaches nexul install with every argument intact', async () => {
+  const { directory, env } = setup();
+  const args = ['runner', '--server', 'https://nexul.example.test', '--name', 'build-2', '--code', 'nxe_a-b_c'];
+  const result = spawnSync('/bin/sh', ['-s', '--', ...args], { env, input: await Bun.file(script).text(), encoding: 'utf8' });
+  expect(result.status).toBe(0);
+  expect(await read(directory, 'args')).toBe(`install ${args.join(' ')}\n`);
+  expect(await read(directory, 'argv')).toBe(['install', ...args].map((arg) => `${arg}\n`).join(''));
 });
 
 test('the newest stable release wins when one exists', async () => {

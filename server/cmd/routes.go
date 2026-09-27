@@ -190,6 +190,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	httpMux.Handle("/.well-known/", http.NotFoundHandler())
 	httpMux.Handle("/hooks/github", gitprovider.NewWebhookHandler(cfg.AuthSecret, bus))
 	httpMux.Handle("/hooks/livekit", svc.voiceWebhookHandler)
+	mountLogsProxy(httpMux, cfg.LogsURL, logger)
 	routes := append(httpx.RoutesOf(apiMux), httpx.RoutesOf(httpMux)...)
 	registerOpenAPIRoutes(spec, routes)
 	httpMux.Handle("/openapi.json", spec.Handler())

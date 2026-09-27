@@ -1,5 +1,5 @@
 # Builds the server image from source, web UI embedded (used by docker-compose.e2e.yml). Build context: ./server;
-# the `root` named context supplies the Go module, internal/, and web/. Releases use Dockerfile.release instead.
+# the `root` named context supplies the Go module, internal/, and web/. Releases ship the server as a host binary instead.
 FROM --platform=$BUILDPLATFORM oven/bun:alpine AS web
 WORKDIR /web
 COPY --from=root web/package.json web/bun.lock ./

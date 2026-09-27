@@ -9,7 +9,7 @@ import (
 )
 
 // reservedPrefixes are owned by other handlers and must never fall back to the SPA's index.html.
-var reservedPrefixes = []string{"/api", "/ws", "/mcp", "/auth", "/hooks"}
+var reservedPrefixes = []string{"/api", "/ws", "/mcp", "/auth", "/hooks", "/openobserve"}
 
 // Handler serves the embedded SPA with client-side routing fallback, or a 404 build hint when assets is nil.
 func Handler(assets fs.FS) http.Handler {

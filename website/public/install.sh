@@ -3,6 +3,7 @@
 # On Windows, use https://nexul.io/install.ps1 instead.
 #   curl -fsSL https://nexul.io/install.sh | sh
 #   curl -fsSL https://nexul.io/install.sh | sh -s -- --dir /srv/nexul --port 8080 --yes
+#   curl -fsSL https://nexul.io/install.sh | sh -s -- runner --server <url> --name <name> --code <code>
 # NEXUL_VERSION=v0.2.1 pins a release; unset, it takes the newest stable release, or the newest beta before one exists.
 set -eu
 
