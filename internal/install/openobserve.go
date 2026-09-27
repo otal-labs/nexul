@@ -13,7 +13,7 @@ import (
 )
 
 // OpenObserve is a log store build: where its archives are published, the version, and each archive's sha256 by
-// <os>-<arch>.
+// archive target (<os>-<arch>, with -musl on Linux).
 type OpenObserve struct {
 	URL     string
 	Version string
@@ -25,11 +25,11 @@ var pinnedOpenObserve = OpenObserve{
 	URL:     "https://downloads.openobserve.ai/releases/openobserve",
 	Version: "v1.0.4",
 	SHA256: map[string]string{
-		"linux-amd64":   "5c1b18bc072658c045ff32ca7dd0d2e3f22fac1209755d7a0ef5fd6448896e61",
-		"linux-arm64":   "b56fad8dd0acfd9386af639f62baf08f96b2439f5aaaf456e1e8a0c79fafd8d0",
-		"darwin-amd64":  "af2535f0a83581b6ffd22665c831ce6aa74a2712f127ec625676d6c67dd18609",
-		"darwin-arm64":  "eed4f77e44dcdf1cee7850b48792514642a4fafdc6faf0ef2c04cca7c66598c5",
-		"windows-amd64": "3a4c24df87f09e6d3999a9f6289c4fde9fde50151712cd1992ad8d921dc0e949",
+		"linux-amd64-musl": "215c7ff105539e7bb3ac587a1389c4239034626b0fa52cf1c561b0ae0f97a8d7",
+		"linux-arm64-musl": "b69e34c6e8168c2e1b48d41b5827199feaaa53857d14bcc3090402cdd1193e10",
+		"darwin-amd64":     "af2535f0a83581b6ffd22665c831ce6aa74a2712f127ec625676d6c67dd18609",
+		"darwin-arm64":     "eed4f77e44dcdf1cee7850b48792514642a4fafdc6faf0ef2c04cca7c66598c5",
+		"windows-amd64":    "3a4c24df87f09e6d3999a9f6289c4fde9fde50151712cd1992ad8d921dc0e949",
 	},
 }
 
@@ -40,6 +40,10 @@ const openObserveBase = "/openobserve"
 func (h *Host) installOpenObserve(ctx context.Context, dest string) error {
 	oo := h.OpenObserve
 	target := h.GOOS + "-" + h.GOARCH
+	// The musl builds are static, so they also run where the system glibc predates OpenObserve's (Ubuntu 20.04).
+	if h.GOOS == "linux" {
+		target += "-musl"
+	}
 	want, ok := oo.SHA256[target]
 	if !ok {
 		return fmt.Errorf("OpenObserve publishes no build for %s", target)

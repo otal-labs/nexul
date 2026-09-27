@@ -265,7 +265,7 @@ func newFakeOpenObserve(t *testing.T, v string) OpenObserve {
 	t.Helper()
 	archives := map[string][]byte{}
 	sums := map[string]string{}
-	for _, target := range testTargets {
+	for _, target := range []string{"linux-amd64-musl", "darwin-arm64", "windows-amd64"} {
 		name := fmt.Sprintf("openobserve-%s-%s.tar.gz", v, target)
 		data := tarGz(t, "openobserve", []byte("openobserve-"+v))
 		if strings.HasPrefix(target, "windows") {
