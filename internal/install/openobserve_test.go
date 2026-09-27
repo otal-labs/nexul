@@ -27,7 +27,7 @@ func TestInstallOpenObserve(t *testing.T) {
 	})
 	t.Run("an archive that does not match the pin is refused and the old binary kept", func(t *testing.T) {
 		th := newTestHost(t)
-		th.OpenObserve.SHA256["linux-amd64"] = strings.Repeat("0", 64)
+		th.OpenObserve.SHA256["linux-amd64-musl"] = strings.Repeat("0", 64)
 		dest := filepath.Join(th.root, "openobserve")
 		require.NoError(t, os.WriteFile(dest, []byte("old"), 0o755))
 		require.ErrorContains(t, th.installOpenObserve(t.Context(), dest), "checksum mismatch")
@@ -37,7 +37,7 @@ func TestInstallOpenObserve(t *testing.T) {
 	t.Run("a target without a build is named", func(t *testing.T) {
 		th := newTestHost(t)
 		th.GOARCH = "riscv64"
-		require.ErrorContains(t, th.installOpenObserve(t.Context(), filepath.Join(th.root, "x")), "no build for linux-riscv64")
+		require.ErrorContains(t, th.installOpenObserve(t.Context(), filepath.Join(th.root, "x")), "no build for linux-riscv64-musl")
 	})
 	t.Run("a missing archive is an HTTP error", func(t *testing.T) {
 		th := newTestHost(t)
@@ -64,7 +64,7 @@ func TestExtractBinary_Failures(t *testing.T) {
 }
 
 func TestPinnedOpenObserve_CoversEveryReleaseTarget(t *testing.T) {
-	for _, target := range []string{"linux-amd64", "linux-arm64", "darwin-amd64", "darwin-arm64", "windows-amd64"} {
+	for _, target := range []string{"linux-amd64-musl", "linux-arm64-musl", "darwin-amd64", "darwin-arm64", "windows-amd64"} {
 		assert.Len(t, pinnedOpenObserve.SHA256[target], 64, target)
 	}
 }
