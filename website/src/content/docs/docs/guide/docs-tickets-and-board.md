@@ -9,7 +9,7 @@ Nexul's loop starts with a document, not a ticket. Docs are the source of truth;
 
 ## Docs
 
-A document belongs to exactly one project, the same rule a ticket follows. Each project's sidebar has two children: **Board** and **Docs**.
+A document belongs to exactly one project, the same rule a ticket follows. Each project's sidebar includes **Board**, its documents, **Interview**, **Memories**, and **Settings**.
 
 - **Rich editor.** The canonical representation is structured rich text, not raw markdown — you get real formatting and styling. Markdown is a conversion surface: it's what LLMs, imports, exports, and integrations read and write, converted to and from the structured document automatically.
 - **`@` mentions.** Typing `@` opens an autocomplete of relevant tickets and other documents. Picking one inserts a live reference: a ticket mention renders as a chip showing its id and status, a document mention shows its current title. If you can't access what's tagged, the chip stays visible but inert — you see the title, not the content.
