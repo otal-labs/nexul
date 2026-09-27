@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -26,6 +27,9 @@ func newTestHandler(bus Bus, repo Repo, opts ...func(*HandlerConfig)) *Handler {
 		HeartbeatInterval: 50 * time.Millisecond,
 		MissedHeartbeats:  3,
 		WriteTimeout:      time.Second,
+	}
+	if f, ok := repo.(*fakeRunnerRepo); ok {
+		cfg.Machines = f.machines
 	}
 	for _, o := range opts {
 		o(&cfg)
@@ -52,7 +56,7 @@ func TestHandler_dispatchFrame(t *testing.T) {
 		frame     Frame
 		wantTopic string
 	}{
-		{name: "heartbeat", frame: Frame{Type: FrameHeartbeat, RunnerID: "r-1", TS: 1700000000}, wantTopic: TopicRunnerHeartbeat},
+		{name: "heartbeat", frame: Frame{Type: FrameHeartbeat, TS: 1700000000}, wantTopic: TopicRunnerHeartbeat},
 		{name: "first build_progress is started", frame: Frame{Type: FrameBuildProgress, ID: "b1", Step: 1, Total: 2}, wantTopic: TopicDeployBuildStarted},
 		{name: "later build_progress", frame: Frame{Type: FrameBuildProgress, ID: "b1", Step: 2, Total: 2}, wantTopic: TopicDeployBuildProgress},
 		{name: "build_result", frame: Frame{Type: FrameBuildResult, ID: "b1", Status: BuildStatusFailed, Error: "boom"}, wantTopic: TopicDeployBuildCompleted},
@@ -134,7 +138,7 @@ func TestHandler_dispatchFrame_HeartbeatUpdatesRepo(t *testing.T) {
 	require.NoError(t, repo.Create(context.Background(), &Runner{ID: "r-1"}))
 	h := newTestHandler(bus, repo)
 
-	f := Frame{Type: FrameHeartbeat, RunnerID: "r-1", TS: 1700000000}
+	f := Frame{Type: FrameHeartbeat, TS: 1700000000}
 	require.NoError(t, h.dispatchFrame(context.Background(), newTestConn(), f))
 	repo.mu.Lock()
 	hb := repo.heartbeats
@@ -332,41 +336,81 @@ func TestHandler_resolveEnv(t *testing.T) {
 }
 
 func TestHandler_ServeHTTP_Auth(t *testing.T) {
-	bus := newFakeBus()
-	h := newTestHandler(bus, newFakeRunnerRepo())
-	srv := httptest.NewServer(h)
-	defer srv.Close()
-
-	tests := []struct {
-		name string
-		url  string
-		want int
-	}{
-		{name: "missing token", url: srv.URL + "?runner_id=r1", want: http.StatusUnauthorized},
-		{name: "wrong token", url: srv.URL + "?token=nope&runner_id=r1", want: http.StatusUnauthorized},
-		{name: "missing runner id", url: srv.URL + "?token=s3cr3t", want: http.StatusBadRequest},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			resp, err := http.Get(tt.url)
-			require.NoError(t, err)
-			defer func() { require.NoError(t, resp.Body.Close()) }()
-			assert.Equal(t, tt.want, resp.StatusCode)
-		})
-	}
-}
-
-func TestHandler_ServeHTTP_SecretLookupFailure(t *testing.T) {
 	repo := newFakeRunnerRepo()
-	repo.secretErr = assert.AnError
+	removed := repo.enrolled("r-gone", "gone", "")
+	require.NoError(t, repo.Remove(context.Background(), "r-gone", time.Now()))
 	h := newTestHandler(newFakeBus(), repo)
 	srv := httptest.NewServer(h)
 	defer srv.Close()
 
-	resp, err := http.Get(srv.URL + "?token=whatever&runner_id=r1")
+	tests := []struct {
+		name     string
+		auth     string
+		wantBody string
+	}{
+		{name: "missing credential, even with one in the query", auth: "", wantBody: "unauthorized\n"},
+		{name: "unknown credential", auth: "Bearer nxr_nope", wantBody: "unauthorized\n"},
+		{name: "removed runner", auth: "Bearer " + removed, wantBody: RemovedRefusal},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodGet, srv.URL+"?token="+removed, nil)
+			require.NoError(t, err)
+			if tt.auth != "" {
+				req.Header.Set("Authorization", tt.auth)
+			}
+			resp, err := http.DefaultClient.Do(req)
+			require.NoError(t, err)
+			defer func() { require.NoError(t, resp.Body.Close()) }()
+			assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+			body, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantBody, string(body))
+		})
+	}
+}
+
+func TestHandler_ServeHTTP_CredentialLookupFailure(t *testing.T) {
+	repo := newFakeRunnerRepo()
+	repo.credErr = assert.AnError
+	h := newTestHandler(newFakeBus(), repo)
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+
+	req, err := http.NewRequest(http.MethodGet, srv.URL, nil)
+	require.NoError(t, err)
+	req.Header.Set("Authorization", "Bearer nxr_whatever")
+	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, resp.Body.Close()) }()
 	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+}
+
+// TestHandler_ServeHTTP_IdentityComesFromTheRecord covers the credential being the whole identity: the runner's
+// id, name and machine are its enrolled record's, whatever the connection URL claims.
+func TestHandler_ServeHTTP_IdentityComesFromTheRecord(t *testing.T) {
+	repo := newFakeRunnerRepo()
+	bus := newFakeBus()
+	h := newTestHandler(bus, repo)
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	conn, _, err := dialRunner(ctx, srv, repo.enrolled("r-7", "build-box", "prod"), "?runner_id=spoof&name=spoof&machine=spoof")
+	require.NoError(t, err)
+	defer func() { _ = conn.CloseNow() }() // closed by the server at cleanup; a second close errors
+
+	eventually(t, 2*time.Second, func() bool { return len(h.Runners()) == 1 })
+	got := h.Runners()[0]
+	assert.Equal(t, "r-7", got.RunnerID)
+	assert.Equal(t, "build-box", got.Name)
+	h.mu.Lock()
+	assert.Equal(t, "prod", h.conns["r-7"].machine)
+	h.mu.Unlock()
+	evs := bus.topicEvents(TopicRunnerConnected)
+	require.Len(t, evs, 1)
+	assert.Equal(t, RunnerConnectedEvent{RunnerID: "r-7", Name: "build-box"}, decodeEvent[RunnerConnectedEvent](t, evs[0]))
 }
 
 func TestHandler_HeartbeatTimeout(t *testing.T) {
@@ -378,7 +422,7 @@ func TestHandler_HeartbeatTimeout(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	conn, _, err := websocket.Dial(ctx, wsURL(srv)+"?token=s3cr3t&runner_id=quiet", nil)
+	conn, _, err := dialRunner(ctx, srv, repo.enrolled("quiet", "quiet", ""), "")
 	require.NoError(t, err)
 	defer func() { _ = conn.CloseNow() }() // CloseNow after a read error or heartbeat close returns an expected "already closed" error
 
@@ -415,7 +459,7 @@ func TestHandler_Disconnect_WritesDisconnectedAfterRequestContextEnds(t *testing
 
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 			defer cancel()
-			conn, _, err := websocket.Dial(ctx, wsURL(srv)+"?token=s3cr3t&runner_id=r-1", nil)
+			conn, _, err := dialRunner(ctx, srv, repo.enrolled("r-1", "r-1", ""), "")
 			require.NoError(t, err)
 			defer func() { _ = conn.CloseNow() }() // already closed by the drop or the server; the second close errors
 
@@ -440,7 +484,7 @@ func TestHandler_ServeHTTP_RecordsRunnerVersion(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	conn, _, err := websocket.Dial(ctx, wsURL(srv)+"?token=s3cr3t&runner_id=r-1&version=v0.1.6", nil)
+	conn, _, err := dialRunner(ctx, srv, repo.enrolled("r-1", "r-1", ""), "?version=v0.1.6")
 	require.NoError(t, err)
 	defer func() { _ = conn.CloseNow() }() // already closed below; a second CloseNow errors on the closed conn
 
@@ -453,7 +497,7 @@ func TestHandler_ServeHTTP_RecordsRunnerVersion(t *testing.T) {
 
 	ctx2, cancel2 := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel2()
-	conn2, _, err := websocket.Dial(ctx2, wsURL(srv)+"?token=s3cr3t&runner_id=r-1&version=v0.1.7", nil)
+	conn2, _, err := dialRunner(ctx2, srv, repo.enrolled("r-1", "r-1", ""), "?version=v0.1.7")
 	require.NoError(t, err)
 	defer func() { _ = conn2.CloseNow() }() // CloseNow after a read error or heartbeat close returns an expected "already closed" error
 
@@ -481,7 +525,7 @@ func TestHandler_JoinNetworks_SendsFrameToConnectedRunner(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	conn, _, err := websocket.Dial(ctx, wsURL(srv)+"?token=s3cr3t&runner_id=r-1&name=host1", nil)
+	conn, _, err := dialRunner(ctx, srv, repo.enrolled("r-1", "r-1", "host1"), "")
 	require.NoError(t, err)
 	defer func() { _ = conn.CloseNow() }() // CloseNow after a read error or heartbeat close returns an expected "already closed" error
 
@@ -523,13 +567,13 @@ func TestHandler_handleUpgradeRequest_DispatchesToInstanceRunner(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	conn, _, err := websocket.Dial(ctx, wsURL(srv)+"?token=s3cr3t&runner_id="+instanceRunnerID, nil)
+	conn, _, err := dialRunner(ctx, srv, repo.enrolled("instance-id", instanceRunnerName, ""), "")
 	require.NoError(t, err)
 	// the server side may close first, so a failed second close is expected here
 	defer func() { _ = conn.CloseNow() }()
 
 	eventually(t, 2*time.Second, func() bool {
-		_, err := repo.GetByID(context.Background(), instanceRunnerID)
+		_, err := repo.GetByID(context.Background(), "instance-id")
 		return err == nil
 	})
 
@@ -550,7 +594,7 @@ func TestHandler_handleUpgradeRequest_DispatchesToInstanceRunner(t *testing.T) {
 	assert.Equal(t, "v0.2.1", frame.Version)
 
 	h.mu.Lock()
-	c := h.conns[instanceRunnerID]
+	c := h.conns["instance-id"]
 	h.mu.Unlock()
 	require.NotNil(t, c)
 	assert.Equal(t, "u-1", c.upgradeSnapshot(), "dispatch holds the runner's slot like a deploy job would")
@@ -572,13 +616,13 @@ func TestHandler_handleUpgradeRequest_MalformedPayloadIsFatal(t *testing.T) {
 }
 
 // TestHandler_idleConnected_UpgradeBusyRunnerIsSkipped covers the busy-slot rule: a runner mid-upgrade never
-// takes a deploy job, the same as one with a running job (instance-upgrade spec).
+// takes a deploy job, the same as one with a running job.
 func TestHandler_idleConnected_UpgradeBusyRunnerIsSkipped(t *testing.T) {
 	h := newTestHandler(newFakeBus(), newFakeRunnerRepo())
-	c := &runnerConn{id: instanceRunnerID}
+	c := &runnerConn{id: "instance-id"}
 	c.setUpgrade("u-1")
 	h.mu.Lock()
-	h.conns[instanceRunnerID] = c
+	h.conns["instance-id"] = c
 	h.mu.Unlock()
 
 	got := h.idleConnected(DeployRequestedEvent{})
@@ -664,11 +708,11 @@ func TestHandler_Disconnect_UpgradeStatus(t *testing.T) {
 
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 			defer cancel()
-			conn, _, err := websocket.Dial(ctx, wsURL(srv)+"?token=s3cr3t&runner_id="+instanceRunnerID, nil)
+			conn, _, err := dialRunner(ctx, srv, repo.enrolled("instance-id", instanceRunnerName, ""), "")
 			require.NoError(t, err)
 
 			eventually(t, 2*time.Second, func() bool {
-				_, err := repo.GetByID(context.Background(), instanceRunnerID)
+				_, err := repo.GetByID(context.Background(), "instance-id")
 				return err == nil
 			})
 			require.NoError(t, h.handleUpgradeRequest(context.Background(), eventbus.Event{
@@ -699,14 +743,15 @@ func TestHandler_sendUpdateIfNeeded(t *testing.T) {
 	t.Run("sends an update frame when the runner reports a different version", func(t *testing.T) {
 		withVersion(t, "v0.2.0")
 		gh := fakeGitHub(t, "v0.2.0", "binary-bytes")
-		h := newTestHandler(newFakeBus(), newFakeRunnerRepo())
+		repo := newFakeRunnerRepo()
+		h := newTestHandler(newFakeBus(), repo)
 		h.SetUpdateSource(&fakeSettingsReader{url: "https://app.example.com"}, release.New(release.Config{APIBase: gh.URL}))
 		srv := httptest.NewServer(h)
 		defer srv.Close()
 
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
-		conn, _, err := websocket.Dial(ctx, wsURL(srv)+"?token=s3cr3t&runner_id=r-1&version=v0.1.5&os=linux&arch=amd64", nil)
+		conn, _, err := dialRunner(ctx, srv, repo.enrolled("r-1", "r-1", ""), "?version=v0.1.5&os=linux&arch=amd64")
 		require.NoError(t, err)
 		defer func() { _ = conn.CloseNow() }() // CloseNow after a read error or heartbeat close returns an expected "already closed" error
 
@@ -720,14 +765,15 @@ func TestHandler_sendUpdateIfNeeded(t *testing.T) {
 	t.Run("stays silent when the runner reports dev", func(t *testing.T) {
 		withVersion(t, "v0.2.0")
 		gh := fakeGitHub(t, "v0.2.0", "binary-bytes")
-		h := newTestHandler(newFakeBus(), newFakeRunnerRepo())
+		repo := newFakeRunnerRepo()
+		h := newTestHandler(newFakeBus(), repo)
 		h.SetUpdateSource(&fakeSettingsReader{url: "https://app.example.com"}, release.New(release.Config{APIBase: gh.URL}))
 		srv := httptest.NewServer(h)
 		defer srv.Close()
 
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
-		conn, _, err := websocket.Dial(ctx, wsURL(srv)+"?token=s3cr3t&runner_id=r-1&version=dev&os=linux&arch=amd64", nil)
+		conn, _, err := dialRunner(ctx, srv, repo.enrolled("r-1", "r-1", ""), "?version=dev&os=linux&arch=amd64")
 		require.NoError(t, err)
 		defer func() { _ = conn.CloseNow() }() // CloseNow after a read error or heartbeat close returns an expected "already closed" error
 
@@ -737,14 +783,15 @@ func TestHandler_sendUpdateIfNeeded(t *testing.T) {
 	t.Run("stays silent when the runner already reports the server's own version", func(t *testing.T) {
 		withVersion(t, "v0.2.0")
 		gh := fakeGitHub(t, "v0.2.0", "binary-bytes")
-		h := newTestHandler(newFakeBus(), newFakeRunnerRepo())
+		repo := newFakeRunnerRepo()
+		h := newTestHandler(newFakeBus(), repo)
 		h.SetUpdateSource(&fakeSettingsReader{url: "https://app.example.com"}, release.New(release.Config{APIBase: gh.URL}))
 		srv := httptest.NewServer(h)
 		defer srv.Close()
 
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
-		conn, _, err := websocket.Dial(ctx, wsURL(srv)+"?token=s3cr3t&runner_id=r-1&version=v0.2.0&os=linux&arch=amd64", nil)
+		conn, _, err := dialRunner(ctx, srv, repo.enrolled("r-1", "r-1", ""), "?version=v0.2.0&os=linux&arch=amd64")
 		require.NoError(t, err)
 		defer func() { _ = conn.CloseNow() }() // CloseNow after a read error or heartbeat close returns an expected "already closed" error
 
@@ -754,14 +801,15 @@ func TestHandler_sendUpdateIfNeeded(t *testing.T) {
 	t.Run("stays silent for an unsupported os/arch target", func(t *testing.T) {
 		withVersion(t, "v0.2.0")
 		gh := fakeGitHub(t, "v0.2.0", "binary-bytes")
-		h := newTestHandler(newFakeBus(), newFakeRunnerRepo())
+		repo := newFakeRunnerRepo()
+		h := newTestHandler(newFakeBus(), repo)
 		h.SetUpdateSource(&fakeSettingsReader{url: "https://app.example.com"}, release.New(release.Config{APIBase: gh.URL}))
 		srv := httptest.NewServer(h)
 		defer srv.Close()
 
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
-		conn, _, err := websocket.Dial(ctx, wsURL(srv)+"?token=s3cr3t&runner_id=r-1&version=v0.1.5&os=plan9&arch=amd64", nil)
+		conn, _, err := dialRunner(ctx, srv, repo.enrolled("r-1", "r-1", ""), "?version=v0.1.5&os=plan9&arch=amd64")
 		require.NoError(t, err)
 		defer func() { _ = conn.CloseNow() }() // CloseNow after a read error or heartbeat close returns an expected "already closed" error
 
@@ -793,4 +841,52 @@ func mustJSON(t *testing.T, v any) []byte {
 	data, err := json.Marshal(v)
 	require.NoError(t, err)
 	return data
+}
+
+// TestHandler_Uninstall_TellsTheConnectedRunnerAndDropsItFromDispatch covers removal of a connected runner: it
+// receives the uninstall frame and no job reaches it afterwards.
+func TestHandler_Uninstall_TellsTheConnectedRunnerAndDropsItFromDispatch(t *testing.T) {
+	repo := newFakeRunnerRepo()
+	h := newTestHandler(newFakeBus(), repo)
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	conn, _, err := dialRunner(ctx, srv, repo.enrolled("r-1", "build-box", "prod"), "")
+	require.NoError(t, err)
+	defer func() { _ = conn.CloseNow() }() // the server closes first; the second close errors
+	eventually(t, 2*time.Second, func() bool { return len(h.Runners()) == 1 })
+
+	h.Uninstall(context.Background(), "r-1")
+
+	frame := readFrame(t, conn, 2*time.Second)
+	assert.Equal(t, FrameUninstall, frame.Type)
+	assert.Empty(t, h.Runners())
+	assert.Nil(t, h.idleConnected(DeployRequestedEvent{Target: "prod"}))
+	h.Uninstall(context.Background(), "r-1") // no longer connected: a no-op
+}
+
+func TestHandler_ServeHTTP_LiveCredentialWithoutARecord_IsAnInternalError(t *testing.T) {
+	repo := newFakeRunnerRepo()
+	cred := repo.enrolled("r-1", "build-box", "")
+	repo.mu.Lock()
+	delete(repo.runners, "r-1")
+	repo.mu.Unlock()
+	srv := httptest.NewServer(newTestHandler(newFakeBus(), repo))
+	defer srv.Close()
+
+	req, err := http.NewRequest(http.MethodGet, srv.URL, nil)
+	require.NoError(t, err)
+	req.Header.Set("Authorization", "Bearer "+cred)
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, resp.Body.Close()) }()
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+}
+
+func TestHandler_machineName_UnknownMachineIsEmpty(t *testing.T) {
+	h := newTestHandler(newFakeBus(), newFakeRunnerRepo())
+	assert.Empty(t, h.machineName(context.Background(), "m-ghost"))
+	assert.Empty(t, h.machineName(context.Background(), ""))
 }

@@ -16,7 +16,29 @@ An automation is first-party code: when an event happens in your workspace, a fu
 
 ## Where automations run
 
-The **automations host** is a small container bundled with your instance from install — it runs every Default automation out of the box, plus any small Custom ones you write. Bigger Custom automations can instead be deployed like any other stack, onto your own server through a runner, which gives them direct access to whatever else is running on that machine's network. An automation can also just dial in from anywhere that can reach your instance — a laptop included.
+Automations run on an **automations host**: a small service that starts a worker for each automation placed on it. `nexul install` installs one on the instance's own server, named `instance`, as the `nexul-automations-instance` service. It runs every Default automation out of the box, and new automations go to it unless you choose otherwise.
+
+Each automation runs on exactly one host. To move one, pick another host on the automation's page, or set `host_id` with `automation_update` (null puts it back on `instance`). The host fetches its assignments from the instance with its own credential and gets each automation's worker a token scoped to that host: the instance accepts it only while the automation is placed there and the host is still enrolled. So moving an automation, or removing its host, stops it running on the old host, and two hosts never run the same automation.
+
+An automation can also be deployed like any other stack, onto your own server through a runner, which gives it direct access to whatever else is running on that machine's network, or it can dial in with its own token from anywhere that can reach your instance, a laptop included.
+
+### Adding an automations host
+
+Add one from the automations hosts list in the web UI, or with the `host_create` MCP tool and `kind: "automations"`. Give it a name (lower case letters, digits and dashes); you get one install line for Linux or macOS and one for Windows, carrying a one-time enrollment code that works once and expires after an hour:
+
+```sh
+curl -fsSL https://nexul.io/automations.sh | NEXUL_VERSION=v0.2.1 sh -s -- --server <instance-url> --name worker-1 --code nxe_…
+```
+
+```powershell
+$env:NEXUL_VERSION='v0.2.1'; & ([scriptblock]::Create((irm https://nexul.io/automations.ps1))) --server <instance-url> --name worker-1 --code nxe_…
+```
+
+Run it on the machine. It installs the host as the `nexul-automations-<name>` service, which trades the code for the host's own credential; it needs no Docker. On Linux the host runs as the `nexul` system user. A machine can run several automations hosts, each with its own name, directory and credential.
+
+### Removing an automations host
+
+**Remove** in the hosts list, or `host_delete` with `kind: "automations"`, revokes the host's credential and deletes it. A connected host uninstalls its own service; one that was offline does so when it next connects and is refused. Move its automations to another host before you remove it. On the machine itself, `nexul uninstall automations <name>` removes the service and tells the instance.
 
 ## Tokens and secrets
 
@@ -50,7 +72,7 @@ export default automation;
 
 ### The `nexul` CLI
 
-The package's own commands, run from your automation's project directory:
+The SDK package's own commands, run from your automation's project directory. This is the SDK's `nexul`, installed with the package, not the `nexul` command that installs and upgrades an instance:
 
 - `nexul init` — asks for your instance URL and a personal access token, writes `nexul.config.json`, and scaffolds `src/index.ts`.
 - `nexul dev` — an interactive harness: pick one of the automation's registered topics, it fires a fixture event at your handler, and prints the outcome, captured logs, and every API call your handler *would* have made. No live effects — nothing actually reaches your instance.

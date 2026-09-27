@@ -4,11 +4,13 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
 interface RunnerInstallCommandProps {
+  // The shell the command is for, e.g. "Linux / macOS".
+  label: string;
   command: string;
 }
 
 // wrap+break-all (not just overflow-x-auto) so the command never forces horizontal scroll at 320px.
-export const RunnerInstallCommand = ({ command }: RunnerInstallCommandProps) => {
+export const RunnerInstallCommand = ({ label, command }: RunnerInstallCommandProps) => {
   const [copied, setCopied] = useState(false);
 
   const copy = async () => {
@@ -24,8 +26,8 @@ export const RunnerInstallCommand = ({ command }: RunnerInstallCommandProps) => 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-medium">Install command</p>
-        <Button type="button" variant="outline" size="sm" onClick={copy}>
+        <p className="text-sm font-medium">{label}</p>
+        <Button type="button" variant="outline" size="sm" onClick={copy} aria-label={copied ? "Copied" : `Copy the ${label} command`}>
           {copied && <Check className="size-4" />}
           {!copied && <Copy className="size-4" />}
           {copied ? "Copied" : "Copy"}
@@ -34,10 +36,6 @@ export const RunnerInstallCommand = ({ command }: RunnerInstallCommandProps) => 
       <pre className="overflow-x-auto rounded-md border border-border bg-muted p-3 font-mono text-xs break-all whitespace-pre-wrap">
         {command}
       </pre>
-      <p className="text-xs text-muted-foreground">
-        The binary is downloaded from this instance; the secret is shared by every runner. Keep it
-        running with your service manager of choice.
-      </p>
     </div>
   );
 };

@@ -1,12 +1,17 @@
-import { render, screen } from "@testing-library/react";
+import { render, renderHook, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { useRunnerInstall, useRunnerQueue, useRunners } from "@/hooks/RunnerHooks";
+import { getRunnersKey, useCreateRunnerEnrollment, useRemoveRunner, useRunnerQueue, useRunners } from "@/hooks/RunnerHooks";
 
-const mocks = vi.hoisted(() => ({ get: vi.fn() }));
+const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), delete: vi.fn(), toastError: vi.fn(), toastSuccess: vi.fn() }));
 
-vi.mock("@/api/client", () => ({ api: { get: mocks.get } }));
+vi.mock("@/api/client", () => ({
+  api: { get: mocks.get, post: mocks.post, delete: mocks.delete },
+  errorMessage: (error: unknown) => (error instanceof Error ? error.message : "Something went wrong"),
+}));
+vi.mock("sonner", () => ({ toast: { error: mocks.toastError, success: mocks.toastSuccess } }));
 
 const runner = {
   id: "r-1",
@@ -26,9 +31,13 @@ const Harness = ({ useFn }: { useFn: () => { isPending: boolean; isSuccess: bool
   );
 };
 
+const wrapperFor = (client: QueryClient) => ({ children }: { children: ReactNode }) => (
+  <QueryClientProvider client={client}>{children}</QueryClientProvider>
+);
+
 describe("RunnerHooks", () => {
   beforeEach(() => {
-    mocks.get.mockReset();
+    vi.clearAllMocks();
   });
 
   it("fetches runners", async () => {
@@ -65,29 +74,43 @@ describe("RunnerHooks", () => {
     await screen.findByText("error");
   });
 
-  it("fetches the install payload when enabled", async () => {
-    mocks.get.mockResolvedValue({
-      data: {
-        ws_url: "wss://deploy.example.com:8081/ws/runner",
-        secret: "abc123",
-        download_url: "https://deploy.example.com/api/runners/download",
-      },
-    });
-    render(
-      <QueryClientProvider client={new QueryClient()}>
-        <Harness useFn={() => useRunnerInstall(true)} />
-      </QueryClientProvider>,
-    );
-    expect(mocks.get).toHaveBeenCalledWith("/api/runners/install");
-    await screen.findByText("loaded");
+  it("toasts a failed enrollment", async () => {
+    mocks.post.mockRejectedValue(new Error("a runner named alpha is already enrolled"));
+    const { result } = renderHook(() => useCreateRunnerEnrollment(), { wrapper: wrapperFor(new QueryClient()) });
+
+    await expect(result.current.mutateAsync({ name: "alpha", machine: "", gitToken: "" })).rejects.toThrow();
+    expect(mocks.toastError).toHaveBeenCalledWith("a runner named alpha is already enrolled");
   });
 
-  it("does not fetch the install payload when disabled", () => {
-    render(
-      <QueryClientProvider client={new QueryClient()}>
-        <Harness useFn={() => useRunnerInstall(false)} />
-      </QueryClientProvider>,
-    );
-    expect(mocks.get).not.toHaveBeenCalled();
+  it("enrolls with the name and machine only, never the git token", async () => {
+    const enrollment = { code: "nxe_1", expires_at: "2026-09-27T13:00:00Z", commands: { unix: "u", windows: "w" } };
+    mocks.post.mockResolvedValue({ data: enrollment });
+    const { result } = renderHook(() => useCreateRunnerEnrollment(), { wrapper: wrapperFor(new QueryClient()) });
+
+    await expect(result.current.mutateAsync({ name: "alpha", machine: "", gitToken: "ghp_secret" })).resolves.toEqual(enrollment);
+    expect(mocks.post).toHaveBeenCalledWith("/api/runners/enrollments", { name: "alpha", machine: undefined });
+
+    await result.current.mutateAsync({ name: "beta", machine: "prod", gitToken: "" });
+    expect(mocks.post).toHaveBeenLastCalledWith("/api/runners/enrollments", { name: "beta", machine: "prod" });
+  });
+
+  it("toasts a failed removal", async () => {
+    mocks.delete.mockRejectedValue(new Error("forbidden"));
+    const { result } = renderHook(() => useRemoveRunner(), { wrapper: wrapperFor(new QueryClient()) });
+
+    result.current.mutate("r-1");
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith("forbidden"));
+  });
+
+  it("removes a runner and refreshes the runner list", async () => {
+    mocks.delete.mockResolvedValue({});
+    const client = new QueryClient();
+    const invalidate = vi.spyOn(client, "invalidateQueries");
+    const { result } = renderHook(() => useRemoveRunner(), { wrapper: wrapperFor(client) });
+
+    result.current.mutate("r-1");
+    await waitFor(() => expect(mocks.toastSuccess).toHaveBeenCalledWith("Runner removed"));
+    expect(mocks.delete).toHaveBeenCalledWith("/api/runners/r-1");
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: [getRunnersKey] });
   });
 });

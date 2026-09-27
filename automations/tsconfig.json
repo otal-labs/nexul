@@ -16,5 +16,5 @@
     "allowImportingTsExtensions": true,
     "types": ["bun"]
   },
-  "include": ["src", "test", "defaults"]
+  "include": ["src", "test", "defaults", "build-binaries.ts"]
 }

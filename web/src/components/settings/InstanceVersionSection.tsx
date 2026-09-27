@@ -97,8 +97,9 @@ const InstanceVersionBody = ({ data }: { data: InstanceUpgrade }) => {
         <div className="space-y-1 rounded-md border border-destructive/30 bg-destructive/5 p-3">
           <p className="text-sm text-destructive">{record.error}</p>
           <p className="text-xs text-muted-foreground">
-            On the host, run <code className="font-mono">journalctl -u nexul-upgrade</code> for the upgrade&apos;s
-            output.
+            On a Linux host, run <code className="font-mono">journalctl -u &apos;nexul-upgrade-*&apos;</code> for the
+            upgrade&apos;s output; on a Mac or Windows PC it is in <code className="font-mono">nexul-upgrade.log</code>{" "}
+            in Nexul&apos;s folder.
           </p>
         </div>
       )}

@@ -2,9 +2,7 @@ package storage
 
 import (
 	"context"
-	"crypto/rand"
 	"database/sql"
-	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -30,12 +28,21 @@ func (r *RunnersRepo) Create(ctx context.Context, rn *runner.Runner) error {
 			LastSeen:  rn.LastSeen.Unix(),
 			Connected: int64(boolInt(rn.Connected)),
 			CreatedAt: rn.CreatedAt.Unix(),
+			MachineID: rn.MachineID,
 		})
 		if err != nil {
 			return fmt.Errorf("insert runner %s: %w", rn.ID, classifyWriteErr(err))
 		}
 		return nil
 	})
+}
+
+func (r *RunnersRepo) GetByName(ctx context.Context, name string) (*runner.Runner, error) {
+	row, err := r.q.GetRunnerByName(ctx, name)
+	if err != nil {
+		return nil, fmt.Errorf("get runner named %s: %w", name, notFoundIfNoRows(err))
+	}
+	return toRunner(row), nil
 }
 
 func (r *RunnersRepo) GetByID(ctx context.Context, id string) (*runner.Runner, error) {
@@ -79,19 +86,6 @@ func (r *RunnersRepo) SetVersion(ctx context.Context, id string, version string)
 	})
 }
 
-func (r *RunnersRepo) SetMachine(ctx context.Context, id string, machineID string) error {
-	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		n, err := r.q.WithTx(tx).SetRunnerMachine(ctx, sqlcgen.SetRunnerMachineParams{MachineID: machineID, ID: id})
-		if err != nil {
-			return fmt.Errorf("set runner %s machine: %w", id, err)
-		}
-		if n == 0 {
-			return fmt.Errorf("set runner %s machine: %w", id, apperrs.ErrNotFound)
-		}
-		return nil
-	})
-}
-
 func (r *RunnersRepo) update(ctx context.Context, id string, lastSeen int64, connected bool) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).UpdateRunnerHeartbeat(ctx, sqlcgen.UpdateRunnerHeartbeatParams{
@@ -107,9 +101,81 @@ func (r *RunnersRepo) update(ctx context.Context, id string, lastSeen int64, con
 	})
 }
 
-func (r *RunnersRepo) Delete(ctx context.Context, id string) error {
+func (r *RunnersRepo) CreateEnrollment(ctx context.Context, e *runner.EnrollmentCode) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		n, err := r.q.WithTx(tx).DeleteRunner(ctx, id)
+		q := r.q.WithTx(tx)
+		if err := q.PruneRunnerEnrollmentCodes(ctx, e.CreatedAt.Unix()); err != nil {
+			return fmt.Errorf("prune runner enrollment codes: %w", err)
+		}
+		err := q.CreateRunnerEnrollmentCode(ctx, sqlcgen.CreateRunnerEnrollmentCodeParams{
+			CodeHash: e.CodeHash, Name: e.Name, Machine: e.Machine, CreatedAt: e.CreatedAt.Unix(), ExpiresAt: e.ExpiresAt.Unix(),
+		})
+		if err != nil {
+			return fmt.Errorf("insert runner enrollment code: %w", classifyWriteErr(err))
+		}
+		return nil
+	})
+}
+
+func (r *RunnersRepo) GetEnrollment(ctx context.Context, codeHash string, now time.Time) (*runner.EnrollmentCode, error) {
+	row, err := r.q.GetRunnerEnrollmentCode(ctx, sqlcgen.GetRunnerEnrollmentCodeParams{CodeHash: codeHash, ExpiresAt: now.Unix()})
+	if err != nil {
+		return nil, fmt.Errorf("get runner enrollment code: %w", notFoundIfNoRows(err))
+	}
+	return &runner.EnrollmentCode{
+		CodeHash: row.CodeHash, Name: row.Name, Machine: row.Machine,
+		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), ExpiresAt: time.Unix(row.ExpiresAt, 0).UTC(),
+	}, nil
+}
+
+func (r *RunnersRepo) Enroll(ctx context.Context, codeHash string, rn *runner.Runner, credentialHash string, now time.Time) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		q := r.q.WithTx(tx)
+		n, err := q.ConsumeRunnerEnrollmentCode(ctx, sqlcgen.ConsumeRunnerEnrollmentCodeParams{CodeHash: codeHash, ExpiresAt: now.Unix()})
+		if err != nil {
+			return fmt.Errorf("consume runner enrollment code: %w", err)
+		}
+		if n == 0 {
+			return fmt.Errorf("consume runner enrollment code: %w", apperrs.ErrNotFound)
+		}
+		err = q.CreateRunner(ctx, sqlcgen.CreateRunnerParams{
+			ID: rn.ID, Name: rn.Name, Version: rn.Version, LastSeen: rn.LastSeen.Unix(),
+			Connected: int64(boolInt(rn.Connected)), CreatedAt: rn.CreatedAt.Unix(), MachineID: rn.MachineID,
+		})
+		if err != nil {
+			return fmt.Errorf("insert runner %s: %w", rn.Name, classifyWriteErr(err))
+		}
+		err = q.CreateRunnerCredential(ctx, sqlcgen.CreateRunnerCredentialParams{
+			CredentialHash: credentialHash, RunnerID: rn.ID, RunnerName: rn.Name, CreatedAt: now.Unix(),
+		})
+		if err != nil {
+			return fmt.Errorf("insert runner %s credential: %w", rn.Name, classifyWriteErr(err))
+		}
+		return nil
+	})
+}
+
+func (r *RunnersRepo) GetCredential(ctx context.Context, hash string) (*runner.Credential, error) {
+	row, err := r.q.GetRunnerCredential(ctx, hash)
+	if err != nil {
+		return nil, fmt.Errorf("get runner credential: %w", notFoundIfNoRows(err))
+	}
+	return &runner.Credential{
+		RunnerID: row.RunnerID, RunnerName: row.RunnerName,
+		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), Revoked: row.RevokedAt.Valid,
+	}, nil
+}
+
+func (r *RunnersRepo) Remove(ctx context.Context, id string, at time.Time) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		q := r.q.WithTx(tx)
+		err := q.RevokeRunnerCredentials(ctx, sqlcgen.RevokeRunnerCredentialsParams{
+			RevokedAt: sql.NullInt64{Int64: at.Unix(), Valid: true}, RunnerID: id,
+		})
+		if err != nil {
+			return fmt.Errorf("revoke runner %s credentials: %w", id, err)
+		}
+		n, err := q.DeleteRunner(ctx, id)
 		if err != nil {
 			return fmt.Errorf("delete runner %s: %w", id, err)
 		}
@@ -118,61 +184,6 @@ func (r *RunnersRepo) Delete(ctx context.Context, id string) error {
 		}
 		return nil
 	})
-}
-
-// Secret generates and persists a value on first use; the UPDATE only applies while empty, so no clobbering a winner.
-func (r *RunnersRepo) Secret(ctx context.Context) (string, error) {
-	secret, err := r.readSecret(ctx)
-	if err != nil {
-		return "", fmt.Errorf("read runner secret: %w", err)
-	}
-	if secret != "" {
-		return secret, nil
-	}
-	generated, err := generateRunnerSecret()
-	if err != nil {
-		return "", fmt.Errorf("generate runner secret: %w", err)
-	}
-	err = r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		if err := r.q.WithTx(tx).SeedRunnerSecret(ctx, generated); err != nil {
-			return fmt.Errorf("seed runner secret: %w", err)
-		}
-		return nil
-	})
-	if err != nil {
-		return "", err
-	}
-	secret, err = r.readSecret(ctx)
-	if err != nil {
-		return "", fmt.Errorf("read runner secret: %w", err)
-	}
-	return secret, nil
-}
-
-// SetSecret overwrites the runner-connection secret, e.g. seeding it from
-// NEXUL_RUNNER_SECRET at boot.
-func (r *RunnersRepo) SetSecret(ctx context.Context, secret string) error {
-	if secret == "" {
-		return fmt.Errorf("set runner secret: %w", apperrs.ErrInvalid)
-	}
-	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		if err := r.q.WithTx(tx).SetRunnerSecret(ctx, secret); err != nil {
-			return fmt.Errorf("set runner secret: %w", err)
-		}
-		return nil
-	})
-}
-
-func (r *RunnersRepo) readSecret(ctx context.Context) (string, error) {
-	return r.q.GetRunnerSecret(ctx)
-}
-
-func generateRunnerSecret() (string, error) {
-	buf := make([]byte, 32)
-	if _, err := rand.Read(buf); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(buf), nil
 }
 
 func boolInt(b bool) int {

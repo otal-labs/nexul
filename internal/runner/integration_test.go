@@ -14,11 +14,12 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 )
 
-func newIntegrationHandler(t *testing.T, bus Bus, repo Repo) (*Handler, *httptest.Server) {
+func newIntegrationHandler(t *testing.T, bus Bus, repo *fakeRunnerRepo) (*Handler, *httptest.Server) {
 	t.Helper()
 	h := NewHandler(HandlerConfig{
 		Bus:               bus,
 		Repo:              repo,
+		Machines:          repo.machines,
 		Logger:            testLogger(),
 		HeartbeatInterval: 100 * time.Millisecond,
 		MissedHeartbeats:  3,
@@ -69,12 +70,11 @@ func (c *eventCollector) buildCount() int {
 	return len(c.builds)
 }
 
-func startTestClient(t *testing.T, srvURL string, exec Executor) context.CancelFunc {
+func startTestClient(t *testing.T, srvURL string, repo *fakeRunnerRepo, exec Executor) context.CancelFunc {
 	t.Helper()
 	client := NewClient(ClientConfig{
 		URL:               srvURL,
-		Token:             "s3cr3t",
-		RunnerID:          "r-integ",
+		Credential:        repo.enrolled("r-integ", "integ", ""),
 		Name:              "integ",
 		Logger:            testLogger(),
 		Executor:          exec,
@@ -109,7 +109,7 @@ func TestIntegration_RunnerConnectAssignBuildPublish(t *testing.T) {
 	collector := &eventCollector{}
 	collector.subscribe(ctx, bus)
 	exec := &fakeExecutor{}
-	startTestClient(t, srv.URL, exec)
+	startTestClient(t, srv.URL, repo, exec)
 
 	eventually(t, 3*time.Second, func() bool {
 		repo.mu.Lock()
@@ -155,7 +155,7 @@ func TestIntegration_EnvValuesReachRunnerWithoutTouchingBus(t *testing.T) {
 	startHandler(t, h, ctx)
 
 	exec := &fakeExecutor{}
-	startTestClient(t, srv.URL, exec)
+	startTestClient(t, srv.URL, repo, exec)
 
 	eventually(t, 3*time.Second, func() bool {
 		repo.mu.Lock()
@@ -201,7 +201,7 @@ func TestIntegration_QueuedRequestFlushedOnConnect(t *testing.T) {
 	collector := &eventCollector{}
 	collector.subscribe(ctx, bus)
 	exec := &fakeExecutor{}
-	startTestClient(t, srv.URL, exec)
+	startTestClient(t, srv.URL, repo, exec)
 
 	eventually(t, 3*time.Second, func() bool { return collector.buildCount() == 1 })
 	collector.mu.Lock()
@@ -226,7 +226,7 @@ func TestIntegration_FailedBuildPublishesFailure(t *testing.T) {
 	exec.buildFn = func(_ context.Context, req DeployRequestedEvent, send func(Frame)) {
 		send(Frame{Type: FrameBuildResult, ID: req.ID, Status: BuildStatusFailed, Error: "make: nothing to be done"})
 	}
-	startTestClient(t, srv.URL, exec)
+	startTestClient(t, srv.URL, repo, exec)
 
 	eventually(t, 3*time.Second, func() bool {
 		repo.mu.Lock()

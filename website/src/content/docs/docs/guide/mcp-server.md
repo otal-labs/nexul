@@ -24,11 +24,11 @@ and `offset` and return `items`, `total`, `has_more`, and `next_offset`.
 | Memories | `memory_list`, `memory_get`, `memory_create`, `memory_update`, `memory_delete`, `interview_template_get`, `interview_template_update` |
 | Chat and notifications | `conversation_list`, `message_list`, `message_post`, `mention_search`, `notification_list`, `notification_update` |
 | Stacks and deploys | `stack_list`, `stack_get`, `stack_create`, `stack_update`, `stack_delete`, `stack_deploy`, `deploy_list`, `deploy_get`, `deploy_cancel` |
-| Machines and the instance | `machine_list`, `machine_discover`, `machine_import`, `instance_get`, `instance_upgrade` |
+| Machines and the instance | `machine_list`, `machine_discover`, `machine_import`, `host_create`, `host_delete`, `instance_get`, `instance_upgrade` |
 | DNS and routing | `dns_zone_list`, `dns_record_list`, `dns_record_create`, `dns_record_update`, `dns_record_delete`, `dns_tunnel_list`, `dns_tunnel_create`, `dns_tunnel_update`, `dns_tunnel_delete`, `gateway_list`, `gateway_create`, `gateway_delete`, `exposure_list`, `exposure_create`, `exposure_delete` |
 | Topology | `topology_get`, `topology_update` |
 | Repositories and pull requests | `repository_list`, `repository_scan`, `pull_request_list`, `pull_request_get` |
-| Plays | `play_list`, `play_create`, `play_update`, `play_delete`, `play_run`, `trail_list`, `trail_update`, `decisions_check_run` |
+| Plays | `play_list`, `play_create`, `play_update`, `play_delete`, `play_run`, `trail_list`, `trail_update` |
 | Automations | `automation_list`, `automation_create`, `automation_update`, `automation_delete`, `automation_token_create` |
 | Paired computers and skills | `computer_list`, `computer_create`, `computer_pair`, `computer_delete`, `computer_tunnel_token_get`, `computer_setup_run`, `computer_setup_update`, `computer_mcp_token_create`, `computer_mcp_token_delete`, `skill_get` |
 | Accounts and access | `account_get`, `account_list`, `account_update`, `account_delete`, `invitation_create`, `invitation_list`, `invitation_delete`, `permission_overwrite_list`, `permission_overwrite_update` |
@@ -63,8 +63,8 @@ found in it after it was done, and the decisions-log entries citing those
 tickets. The same walk is `GET /api/repos/{owner}/{repo}/change-context` with
 `?pr=` or `?commit=`.
 
-`decisions_check_run` reruns the decisions check on a done ticket whose check
-didn't run, on the caller's own paired computer.
+`play_run` with `decisions_check` set to true reruns the decisions check on a
+done ticket whose check didn't run, on the caller's own paired computer.
 
 `ticket_create` files a bug (a ticket of the type named `bug`) only with
 `origin_id`, the ticket it was found in, or `origin_unknown` set to true, the

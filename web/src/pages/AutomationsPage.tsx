@@ -1,5 +1,6 @@
 import { AutomationsFeed } from "@/components/automation/AutomationsFeed";
 import { NewAutomationPanel } from "@/components/automation/NewAutomationPanel";
+import { AutomationHostsSection } from "@/components/automationHost/AutomationHostsSection";
 import { Container } from "@/components/Container";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
@@ -19,6 +20,7 @@ export const AutomationsPage = () => {
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {data && <AutomationsFeed automations={data} />}
+      <AutomationHostsSection />
     </Container>
   );
 };

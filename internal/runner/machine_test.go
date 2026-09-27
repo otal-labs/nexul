@@ -9,92 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestEnsureMachine_NewRunner_CreatesAndLinksMachine(t *testing.T) {
-	runners := newFakeRunnerRepo()
-	machines := newFakeMachineRepo()
-	now := time.Date(2026, 9, 10, 12, 0, 0, 0, time.UTC)
-	require.NoError(t, runners.Create(context.Background(), &Runner{ID: "r-1", Name: "r-1", CreatedAt: now, LastSeen: now}))
-
-	machineID, err := ensureMachine(context.Background(), machines, runners, "r-1", "prod-box", "", now)
-	require.NoError(t, err)
-	require.NotEmpty(t, machineID)
-
-	m, err := machines.Get(context.Background(), machineID)
-	require.NoError(t, err)
-	assert.Equal(t, "prod-box", m.Name)
-	assert.Equal(t, "prod-box", m.ReportedHostname)
-	assert.Equal(t, defaultStackRoot, m.StackRoot)
-
-	r, err := runners.GetByID(context.Background(), "r-1")
-	require.NoError(t, err)
-	assert.Equal(t, machineID, r.MachineID)
-}
-
-func TestEnsureMachine_NoReportedName_FallsBackToRunnerID(t *testing.T) {
-	runners := newFakeRunnerRepo()
-	machines := newFakeMachineRepo()
-	now := time.Now().UTC()
-	require.NoError(t, runners.Create(context.Background(), &Runner{ID: "r-1", CreatedAt: now, LastSeen: now}))
-
-	machineID, err := ensureMachine(context.Background(), machines, runners, "r-1", "", "", now)
-	require.NoError(t, err)
-
-	m, err := machines.Get(context.Background(), machineID)
-	require.NoError(t, err)
-	assert.Equal(t, "r-1", m.Name)
-}
-
-func TestEnsureMachine_TwoRunnersReportingSameName_SharesOneMachine(t *testing.T) {
-	runners := newFakeRunnerRepo()
-	machines := newFakeMachineRepo()
-	now := time.Now().UTC()
-	require.NoError(t, runners.Create(context.Background(), &Runner{ID: "r-1", CreatedAt: now, LastSeen: now}))
-	require.NoError(t, runners.Create(context.Background(), &Runner{ID: "r-2", CreatedAt: now, LastSeen: now}))
-
-	m1, err := ensureMachine(context.Background(), machines, runners, "r-1", "prod-box", "", now)
-	require.NoError(t, err)
-	m2, err := ensureMachine(context.Background(), machines, runners, "r-2", "prod-box", "", now)
-	require.NoError(t, err)
-
-	assert.Equal(t, m1, m2)
-	ms, err := machines.List(context.Background())
-	require.NoError(t, err)
-	assert.Len(t, ms, 1)
-}
-
-// A reconnecting runner keeps its machine and id even if the reported hostname changes; renaming is a UI
-// action only (issue 05).
-func TestEnsureMachine_ExistingRunner_KeepsMachineAndRecordsReportedHint(t *testing.T) {
-	runners := newFakeRunnerRepo()
-	machines := newFakeMachineRepo()
-	first := time.Date(2026, 9, 10, 12, 0, 0, 0, time.UTC)
-	require.NoError(t, runners.Create(context.Background(), &Runner{ID: "r-1", CreatedAt: first, LastSeen: first}))
-
-	machineID, err := ensureMachine(context.Background(), machines, runners, "r-1", "prod-box", "", first)
-	require.NoError(t, err)
-
-	// Owner renames the machine through the UI; the id must survive a reconnect.
-	require.NoError(t, machines.Rename(context.Background(), machineID, "prod-primary"))
-
-	second := first.Add(time.Hour)
-	gotID, err := ensureMachine(context.Background(), machines, runners, "r-1", "prod-box-renamed-by-dhcp", "", second)
-	require.NoError(t, err)
-	assert.Equal(t, machineID, gotID)
-
-	m, err := machines.Get(context.Background(), machineID)
-	require.NoError(t, err)
-	assert.Equal(t, "prod-primary", m.Name, "the UI-chosen name must survive a reconnect")
-	assert.Equal(t, "prod-box-renamed-by-dhcp", m.ReportedHostname)
-	assert.Equal(t, second, m.LastSeen)
-}
-
-func TestEnsureMachine_UnknownRunner_Errors(t *testing.T) {
-	runners := newFakeRunnerRepo()
-	machines := newFakeMachineRepo()
-	_, err := ensureMachine(context.Background(), machines, runners, "missing", "box", "", time.Now())
-	require.Error(t, err)
-}
-
 func TestService_MachineCRUD(t *testing.T) {
 	machines := newFakeMachineRepo()
 	svc := NewService(newFakeRunnerRepo(), &fakeDispatch{}).WithMachines(machines)
@@ -188,17 +102,4 @@ func TestService_DiscoverUnmanaged_DropsTrackedContainers(t *testing.T) {
 	raw, err := svc.Discover(context.Background(), "m-1")
 	require.NoError(t, err)
 	assert.Len(t, raw.Containers, 3, "Discover stays raw for the import use case")
-}
-
-func TestEnsureMachine_NewMachineTakesTheReportedStackRoot(t *testing.T) {
-	machines, runners := newFakeMachineRepo(), newFakeRunnerRepo()
-	now := time.Date(2026, 9, 25, 12, 0, 0, 0, time.UTC)
-	require.NoError(t, runners.Create(t.Context(), &Runner{ID: "r-1", Name: "r-1", CreatedAt: now, LastSeen: now}))
-
-	machineID, err := ensureMachine(t.Context(), machines, runners, "r-1", "laptop", "/Users/onik/nexul", now)
-
-	require.NoError(t, err)
-	m, err := machines.Get(t.Context(), machineID)
-	require.NoError(t, err)
-	assert.Equal(t, "/Users/onik/nexul", m.StackRoot)
 }

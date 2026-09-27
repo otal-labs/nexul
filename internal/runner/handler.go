@@ -2,13 +2,13 @@ package runner
 
 import (
 	"context"
-	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -50,7 +50,7 @@ type HandlerConfig struct {
 	// stays empty (issue 05).
 	Machines MachineRepo
 	// Upgrades is optional; nil means an upgrade_progress/upgrade_result frame and a disconnect while pending
-	// are logged but never persisted (instance-upgrade spec).
+	// are logged but never persisted.
 	Upgrades UpgradeRepo
 	// Logger for lifecycle and failure logs. Defaults to slog.Default().
 	Logger *slog.Logger
@@ -89,8 +89,9 @@ type Handler struct {
 type runnerConn struct {
 	id   string
 	name string
-	// machine is the machine name reported on connect (NEXUL_MACHINE, issue 05); dispatch pools on it.
+	// machine is the name of the machine the runner was enrolled on; dispatch pools on it.
 	machine       string
+	machineID     string
 	ws            *websocket.Conn
 	ctx           context.Context
 	cancel        context.CancelFunc
@@ -100,8 +101,7 @@ type runnerConn struct {
 	jobMu         sync.Mutex
 	job           *DeployRequestedEvent
 	upgradeMu     sync.Mutex
-	// upgradeID is the instance_upgrades record this connection is running, mirroring job for the busy check
-	// (instance-upgrade spec); empty when idle.
+	// upgradeID is the instance_upgrades record this connection is running, mirroring job for the busy check; empty when idle.
 	upgradeID string
 }
 
@@ -157,22 +157,11 @@ func (h *Handler) Run(ctx context.Context) error {
 	return nil
 }
 
-// ServeHTTP authenticates and upgrades a runner connection, then owns it until disconnect.
+// ServeHTTP authenticates a runner by its credential and upgrades the connection, then owns it until disconnect.
+// Identity, name and machine come from the runner's record; the query only reports version, os and arch.
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	secret, err := h.repo.Secret(r.Context())
-	if err != nil {
-		h.log.Error("runner secret lookup failed", "error", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	}
-	q := r.URL.Query()
-	if !constantTimeEqual(q.Get("token"), secret) {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
-		return
-	}
-	runnerID := q.Get("runner_id")
-	if runnerID == "" {
-		http.Error(w, "runner_id query parameter is required", http.StatusBadRequest)
+	rn, machine, ok := h.admit(w, r)
+	if !ok {
 		return
 	}
 	conn, err := websocket.Accept(w, r, nil)
@@ -181,40 +170,81 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	conn.SetReadLimit(h.cfg.ReadLimit)
-	h.handleConn(r.Context(), runnerID, connectInfo{
-		name: q.Get("name"), version: q.Get("version"), machine: q.Get("machine"),
-		os: q.Get("os"), arch: q.Get("arch"), stackRoot: q.Get("stack_root"),
-	}, conn)
+	q := r.URL.Query()
+	c := &runnerConn{id: rn.ID, name: rn.Name, machine: machine, machineID: rn.MachineID, ws: conn}
+	h.handleConn(r.Context(), c, connectInfo{version: q.Get("version"), os: q.Get("os"), arch: q.Get("arch")})
 }
 
-// connectInfo is what a runner reports about itself in its connection URL.
+// admit resolves the bearer credential to its runner and machine, writing the refusal itself when it fails: a
+// removed runner is told so, so it uninstalls itself rather than retrying forever.
+func (h *Handler) admit(w http.ResponseWriter, r *http.Request) (rn *Runner, machine string, ok bool) {
+	cred, err := authenticate(r.Context(), h.repo, bearerToken(r))
+	if errors.Is(err, apperrs.ErrUnauthorized) {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return nil, "", false
+	}
+	if err != nil {
+		h.log.Error("runner credential lookup failed", "error", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return nil, "", false
+	}
+	if cred.Revoked {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = w.Write([]byte(RemovedRefusal)) // the status alone already refuses; the body is the reason
+		return nil, "", false
+	}
+	rn, err = h.repo.GetByID(r.Context(), cred.RunnerID)
+	if err != nil {
+		h.log.Error("runner record lookup failed", "runner_id", cred.RunnerID, "error", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return nil, "", false
+	}
+	return rn, h.machineName(r.Context(), rn.MachineID), true
+}
+
+// machineName resolves the runner's machine for dispatch pooling; empty when machines aren't wired or unknown.
+func (h *Handler) machineName(ctx context.Context, machineID string) string {
+	if h.cfg.Machines == nil || machineID == "" {
+		return ""
+	}
+	m, err := h.cfg.Machines.Get(ctx, machineID)
+	if err != nil {
+		h.log.Warn("runner machine lookup failed", "machine_id", machineID, "error", err)
+		return ""
+	}
+	return m.Name
+}
+
+func bearerToken(r *http.Request) string {
+	return strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+}
+
+// connectInfo is what a runner reports about its build in its connection URL.
 type connectInfo struct {
-	name, version, machine, os, arch string
-	// stackRoot is where this runner keeps checkouts (NEXUL_STACK_ROOT); it seeds a new machine's stack root.
-	stackRoot string
+	version, os, arch string
 }
 
-func (h *Handler) handleConn(ctx context.Context, runnerID string, info connectInfo, ws *websocket.Conn) {
-	name, reportedVersion, machine := info.name, info.version, info.machine
+func (h *Handler) handleConn(ctx context.Context, c *runnerConn, info connectInfo) {
 	ctx, cancel := context.WithCancel(ctx)
-	c := &runnerConn{id: runnerID, name: name, machine: machine, ws: ws, ctx: ctx, cancel: cancel, lastHeartbeat: time.Now()}
+	c.ctx, c.cancel = ctx, cancel
 	c.touchHeartbeat()
 
 	h.mu.Lock()
-	if old, ok := h.conns[runnerID]; ok {
+	if old, ok := h.conns[c.id]; ok {
 		old.cancel()
 		_ = old.ws.Close(websocket.StatusGoingAway, "replaced by new connection")
 	}
-	h.conns[runnerID] = c
+	h.conns[c.id] = c
 	h.mu.Unlock()
 
-	h.log.Info("runner connected", "runner_id", runnerID, "name", name, "version", reportedVersion, "machine", machine)
-	if err := h.registerRunner(ctx, runnerID, name, reportedVersion); err != nil {
-		h.log.Warn("runner repo register failed", "runner_id", runnerID, "error", err)
+	h.log.Info("runner connected", "runner_id", c.id, "name", c.name, "version", info.version, "machine", c.machine)
+	if err := h.registerRunner(ctx, c.id, info.version); err != nil {
+		h.log.Warn("runner repo register failed", "runner_id", c.id, "error", err)
 	}
-	h.sendUpdateIfNeeded(ctx, c, runnerID, reportedVersion, info.os, info.arch)
-	h.resolveMachine(ctx, runnerID, machine, info.stackRoot)
-	h.publish(ctx, TopicRunnerConnected, RunnerConnectedEvent{RunnerID: runnerID, Name: name})
+	h.sendUpdateIfNeeded(ctx, c, c.id, info.version, info.os, info.arch)
+	h.touchMachine(ctx, c)
+	h.publish(ctx, TopicRunnerConnected, RunnerConnectedEvent{RunnerID: c.id, Name: c.name})
 
 	h.dispatchPending(ctx, c)
 
@@ -268,27 +298,8 @@ func (h *Handler) updateChecksum(ctx context.Context, rel *release.Client, runne
 	return sums[assetName]
 }
 
-// resolveMachine upserts and links the connecting runner's machine (issue 05); best-effort like registerRunner
-// — a lookup failure never blocks the connection, since dispatch pooling only needs the reported name on c.
-func (h *Handler) resolveMachine(ctx context.Context, runnerID, machine, stackRoot string) {
-	if h.cfg.Machines == nil {
-		return
-	}
-	if _, err := ensureMachine(ctx, h.cfg.Machines, h.repo, runnerID, machine, stackRoot, time.Now().UTC()); err != nil {
-		h.log.Warn("runner machine resolve failed", "runner_id", runnerID, "machine", machine, "error", err)
-	}
-}
-
-// registerRunner upserts the runner row, marks it connected, and records the
-// build version it reported on this connect.
-func (h *Handler) registerRunner(ctx context.Context, id, name, version string) error {
-	if _, err := h.repo.GetByID(ctx, id); err != nil {
-		if errors.Is(err, apperrs.ErrNotFound) {
-			now := time.Now().UTC()
-			return h.repo.Create(ctx, &Runner{ID: id, Name: name, Version: version, LastSeen: now, Connected: true, CreatedAt: now})
-		}
-		return err
-	}
+// registerRunner marks the enrolled runner connected and records the build version it reported on this connect.
+func (h *Handler) registerRunner(ctx context.Context, id, version string) error {
 	if err := h.repo.SetVersion(ctx, id, version); err != nil {
 		return err
 	}
@@ -454,7 +465,8 @@ func (h *Handler) readLoop(ctx context.Context, c *runnerConn) {
 		if id := c.upgradeSnapshot(); id != "" {
 			h.failPendingUpgrade(ctx, id)
 		}
-		if err := h.repo.SetConnected(ctx, c.id, false); err != nil {
+		// A removed runner's row is already gone, so there is nothing to mark disconnected.
+		if err := h.repo.SetConnected(ctx, c.id, false); err != nil && !errors.Is(err, apperrs.ErrNotFound) {
 			h.log.Warn("runner disconnect repo update failed", "runner_id", c.id, "error", err)
 		}
 		h.publish(ctx, TopicRunnerDisconnected, RunnerDisconnectedEvent{RunnerID: c.id, Reason: "disconnected"})
@@ -524,7 +536,7 @@ func (h *Handler) dispatchFrame(ctx context.Context, c *runnerConn, f Frame) err
 }
 
 // handleUpgradeRequest is the instance.upgrade_requested consumer (TopicInstanceUpgradeRequested's own doc
-// comment explains the bus-topic choice): it dispatches assign_upgrade to the connected instance runner.
+// comment explains the bus-topic choice): it dispatches assign_upgrade to the connected runner named instance.
 // RequestUpgrade already checked the runner was free; a disconnect between that check and this call is not an
 // error here — UpgradeStatus's lazy resolution fails the record after upgradeResolveWindow either way.
 func (h *Handler) handleUpgradeRequest(ctx context.Context, ev eventbus.Event) error {
@@ -532,9 +544,7 @@ func (h *Handler) handleUpgradeRequest(ctx context.Context, ev eventbus.Event) e
 	if err := json.Unmarshal(ev.Payload, &req); err != nil {
 		return apperrs.Fatal(fmt.Errorf("parse instance.upgrade_requested: %w", err))
 	}
-	h.mu.Lock()
-	c := h.conns[instanceRunnerID]
-	h.mu.Unlock()
+	c := h.connNamed(instanceRunnerName)
 	if c == nil {
 		h.log.Warn("instance upgrade requested but the instance runner is not connected", "upgrade_id", req.ID)
 		return nil
@@ -569,7 +579,7 @@ func (h *Handler) handleUpgradeResult(ctx context.Context, c *runnerConn, f Fram
 }
 
 // failPendingUpgrade fails id's record on disconnect, but only while it is still pending — a disconnect after
-// upgrade_result "started" is the expected runner-recreation restart, not a failure (instance-upgrade spec).
+// upgrade_result "started" is the expected restart of the runner, not a failure.
 func (h *Handler) failPendingUpgrade(ctx context.Context, id string) {
 	if h.cfg.Upgrades == nil {
 		return
@@ -591,17 +601,13 @@ func (h *Handler) failPendingUpgrade(ctx context.Context, id string) {
 	h.publish(ctx, TopicInstanceUpgradeChanged, u)
 }
 
-// touchMachine refreshes the connected runner's machine last_seen on every heartbeat (issue 05); best-effort.
+// touchMachine refreshes the connected runner's machine last_seen at connect and on every heartbeat; best-effort.
 func (h *Handler) touchMachine(ctx context.Context, c *runnerConn) {
-	if h.cfg.Machines == nil {
+	if h.cfg.Machines == nil || c.machineID == "" {
 		return
 	}
-	r, err := h.repo.GetByID(ctx, c.id)
-	if err != nil || r.MachineID == "" {
-		return
-	}
-	if err := h.cfg.Machines.Touch(ctx, r.MachineID, c.machine, time.Now().UTC()); err != nil {
-		h.log.Warn("machine heartbeat touch failed", "runner_id", c.id, "machine_id", r.MachineID, "error", err)
+	if err := h.cfg.Machines.Touch(ctx, c.machineID, c.machine, time.Now().UTC()); err != nil {
+		h.log.Warn("machine touch failed", "runner_id", c.id, "machine_id", c.machineID, "error", err)
 	}
 }
 
@@ -655,7 +661,7 @@ func (h *Handler) Runners() []RunnerStatus {
 		if req := c.jobSnapshot(); req != nil {
 			job = req.RunningJob()
 		}
-		out = append(out, RunnerStatus{RunnerID: id, RunningJob: job})
+		out = append(out, RunnerStatus{RunnerID: id, Name: c.name, RunningJob: job})
 	}
 	return out
 }
@@ -718,7 +724,7 @@ func (h *Handler) JoinNetworks(ctx context.Context, machine, gatewayContainer st
 	h.mu.Lock()
 	var c *runnerConn
 	for _, conn := range h.conns {
-		if conn.name == machine {
+		if conn.machine == machine {
 			c = conn
 			break
 		}
@@ -728,6 +734,36 @@ func (h *Handler) JoinNetworks(ctx context.Context, machine, gatewayContainer st
 		return nil
 	}
 	return h.sendFrame(ctx, c, Frame{Type: FrameJoinNetworks, GatewayContainer: gatewayContainer, JoinNetworks: networks})
+}
+
+// connNamed returns the connected runner named name, or nil.
+func (h *Handler) connNamed(name string) *runnerConn {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for _, c := range h.conns {
+		if c.name == name {
+			return c
+		}
+	}
+	return nil
+}
+
+// Uninstall tells a connected runner it was removed and drops it from dispatch at once; the runner uninstalls
+// itself and exits, and the close completes in the background so removal never waits on it.
+func (h *Handler) Uninstall(ctx context.Context, runnerID string) {
+	h.mu.Lock()
+	c := h.conns[runnerID]
+	if c != nil {
+		delete(h.conns, runnerID)
+	}
+	h.mu.Unlock()
+	if c == nil {
+		return
+	}
+	if err := h.sendFrame(ctx, c, Frame{Type: FrameUninstall}); err != nil {
+		h.log.Warn("uninstall frame send failed", "runner_id", runnerID, "error", err)
+	}
+	go func() { _ = c.ws.Close(websocket.StatusNormalClosure, "runner removed") }() // the read loop sees the close either way
 }
 
 // sendFrame writes one frame; safe for concurrent callers (writeMu serializes frames).
@@ -802,8 +838,4 @@ func (c *runnerConn) clearUpgrade(id string) {
 	if c.upgradeID == id {
 		c.upgradeID = ""
 	}
-}
-
-func constantTimeEqual(a, b string) bool {
-	return subtle.ConstantTimeCompare([]byte(a), []byte(b)) == 1
 }

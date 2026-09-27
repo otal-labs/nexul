@@ -67,6 +67,20 @@ export const useSetAutomationEnabled = () => {
   });
 };
 
+// hostId null places the automation back on the bundled instance host.
+export const useSetAutomationHost = (id: string) => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (hostId: string | null) =>
+      (await api.patch<Automation>(`/api/automations/${id}/host`, { host_id: hostId })).data,
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: ["getAutomation", id] });
+      toast.success("Automation moved");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
 export const useDeleteAutomation = () => {
   const client = useQueryClient();
   return useMutation({

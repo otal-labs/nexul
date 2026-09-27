@@ -138,6 +138,15 @@ func DecodeJSON(r *http.Request, v any) error {
 }
 
 func mapError(err error) (status int, code, message string) {
+	status, code, message = mapSentinel(err)
+	var coded *apperrs.Coded
+	if status != http.StatusInternalServerError && errors.As(err, &coded) {
+		code = coded.Code
+	}
+	return status, code, message
+}
+
+func mapSentinel(err error) (status int, code, message string) {
 	switch {
 	case errors.Is(err, apperrs.ErrNotFound):
 		return http.StatusNotFound, "NOT_FOUND", err.Error()

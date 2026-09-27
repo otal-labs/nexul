@@ -16,7 +16,7 @@ import (
 
 func TestRunMCPTools_Surface(t *testing.T) {
 	tools := RunMCPTools(newRunnerFixture().runner)
-	assert.ElementsMatch(t, []string{"play_run", "trail_list", "trail_update", "decisions_check_run"}, toolNames(tools))
+	assert.ElementsMatch(t, []string{"play_run", "trail_list", "trail_update"}, toolNames(tools))
 	for _, tool := range tools {
 		assert.NotEmpty(t, tool.Title, tool.Name)
 	}
@@ -45,7 +45,11 @@ func TestRunMCPTools_ErrorPaths(t *testing.T) {
 		{"a stranger cannot stop someone's run", "stranger", "trail_update", `{"id":"tr-1","stop":true}`, apperrs.ErrForbidden},
 		{"stopping a finished run conflicts", starter, "trail_update", `{"id":"tr-1","stop":true}`, apperrs.ErrConflict},
 		{"answering a run that is not waiting conflicts", starter, "trail_update", `{"id":"tr-1","answer":{"q1":{"text":"x"}}}`, apperrs.ErrConflict},
-		{"decisions_check_run without a ticket id is invalid", starter, "decisions_check_run", `{}`, apperrs.ErrInvalid},
+		{"play_run without a play or the decisions check is invalid", starter, "play_run", `{"target_type":"ticket","target_id":"t-1"}`, apperrs.ErrInvalid},
+		{"the decisions check without a ticket id is invalid", starter, "play_run", `{"decisions_check":true,"target_type":"ticket"}`, apperrs.ErrInvalid},
+		{"the decisions check runs on tickets only", starter, "play_run", `{"decisions_check":true,"target_type":"doc","target_id":"d-1"}`, apperrs.ErrInvalid},
+		{"the decisions check takes no play", starter, "play_run", `{"decisions_check":true,"play_id":"play-fix","target_type":"ticket","target_id":"t-1"}`, apperrs.ErrInvalid},
+		{"the decisions check takes no run choices", starter, "play_run", `{"decisions_check":true,"target_type":"ticket","target_id":"t-1","model":"x"}`, apperrs.ErrInvalid},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

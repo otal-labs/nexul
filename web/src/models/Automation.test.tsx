@@ -18,6 +18,7 @@ const baseAutomation = (overrides: Partial<Automation> = {}): Automation => ({
   config_schema: {},
   config_values: {},
   scopes: ["tickets:write"],
+  host_id: null,
   created_at: "2026-08-01T00:00:00Z",
   updated_at: "2026-08-01T00:00:00Z",
   ...overrides,

@@ -5,25 +5,41 @@ import (
 	"time"
 )
 
+// Repo persists runners together with their enrollment codes and credentials.
 type Repo interface {
+	RunnerStore
+	CredentialStore
+}
+
+// RunnerStore persists the runner rows.
+type RunnerStore interface {
 	Create(ctx context.Context, r *Runner) error
 	GetByID(ctx context.Context, id string) (*Runner, error)
+	// GetByName returns the runner enrolled under name, or apperrs.ErrNotFound.
+	GetByName(ctx context.Context, name string) (*Runner, error)
 	List(ctx context.Context) ([]*Runner, error)
 	Heartbeat(ctx context.Context, id string, at time.Time) error
 	SetConnected(ctx context.Context, id string, connected bool) error
-	// SetVersion records the runner's stamped build version, reported on
-	// each connect.
+	// SetVersion records the runner's stamped build version, reported on each connect.
 	SetVersion(ctx context.Context, id string, version string) error
-	// SetMachine links a runner to the machine it reported on connect (issue 05).
-	SetMachine(ctx context.Context, id string, machineID string) error
-	Delete(ctx context.Context, id string) error
-	// Secret returns the shared runner-connection secret, generated and persisted on first use.
-	Secret(ctx context.Context) (string, error)
-	// SetSecret overwrites the runner-connection secret, e.g. seeding it from NEXUL_RUNNER_SECRET at boot.
-	SetSecret(ctx context.Context, secret string) error
 }
 
-// UpgradeRepo persists instance_upgrades (instance-upgrade spec), a separate aggregate from Repo's runner rows.
+// CredentialStore persists enrollment codes and runner credentials, both by hash only.
+type CredentialStore interface {
+	// CreateEnrollment stores a code and prunes every expired one.
+	CreateEnrollment(ctx context.Context, e *EnrollmentCode) error
+	// GetEnrollment returns the unexpired code with codeHash, or apperrs.ErrNotFound.
+	GetEnrollment(ctx context.Context, codeHash string, now time.Time) (*EnrollmentCode, error)
+	// Enroll consumes the code, creates the runner and stores its credential in one transaction; a code already
+	// used or expired is apperrs.ErrNotFound, a runner name already taken is apperrs.ErrConflict.
+	Enroll(ctx context.Context, codeHash string, r *Runner, credentialHash string, now time.Time) error
+	// GetCredential returns the credential with hash, revoked ones included, or apperrs.ErrNotFound.
+	GetCredential(ctx context.Context, hash string) (*Credential, error)
+	// Remove revokes the runner's credentials and deletes its row; an unknown id is apperrs.ErrNotFound.
+	Remove(ctx context.Context, id string, at time.Time) error
+}
+
+// UpgradeRepo persists instance_upgrades, a separate aggregate from Repo's runner rows.
 type UpgradeRepo interface {
 	Create(ctx context.Context, u *Upgrade) error
 	GetByID(ctx context.Context, id string) (*Upgrade, error)

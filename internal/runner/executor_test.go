@@ -184,7 +184,7 @@ func (r *frameRecorder) last() Frame {
 }
 
 func newTestExecutor(cmd CommandRunner) *ShellExecutor {
-	return NewShellExecutor(cmd, "", testLogger())
+	return NewShellExecutor(cmd, ExecutorConfig{Ctl: "/usr/local/bin/nexul"}, testLogger())
 }
 
 // The dispatch-time connector token outranks the runner's env token, so an env-less runner still clones private repos.
@@ -205,7 +205,7 @@ func TestCmdString_RedactsCloneCredentials(t *testing.T) {
 }
 
 func newTokenExecutor(cmd CommandRunner, token string) *ShellExecutor {
-	return NewShellExecutor(cmd, token, testLogger())
+	return NewShellExecutor(cmd, ExecutorConfig{GitToken: token}, testLogger())
 }
 
 // buildRequest is a repo-driven build request: the assign_build fields
@@ -735,57 +735,9 @@ func TestShellExecutor_Deploy_ReportsServices(t *testing.T) {
 	})
 }
 
-// withNexulOnPath makes lookPathFn resolve the nexul command to path, or fail when path is empty, on a host runner.
-func withNexulOnPath(t *testing.T, path string) {
-	t.Helper()
-	onHost(t)
-	orig := lookPathFn
-	lookPathFn = func(string) (string, error) {
-		if path == "" {
-			return "", errors.New("not found")
-		}
-		return path, nil
-	}
-	t.Cleanup(func() { lookPathFn = orig })
-}
-
 func TestShellExecutor_Upgrade(t *testing.T) {
-	t.Run("starts nexul upgrade in its own systemd unit and reports started", func(t *testing.T) {
-		withNexulOnPath(t, "/usr/local/bin/nexul")
-		cmd := &fakeCmd{}
-		e := newTestExecutor(cmd.run)
-		var frames []Frame
-		send := func(fr Frame) error { frames = append(frames, fr); return nil }
-
-		err := e.Upgrade(t.Context(), Frame{Type: FrameAssignUpgrade, ID: "up-1", Version: "v0.2.2"}, send)
-		require.NoError(t, err)
-
-		assert.Equal(t, [][]string{{"--unit", "nexul-upgrade", "--collect", "--quiet", "/usr/local/bin/nexul", "upgrade", "--version", "v0.2.2"}}, cmd.argsFor("systemd-run"))
-		require.Len(t, frames, 2)
-		assert.Equal(t, FrameUpgradeProgress, frames[0].Type)
-		assert.Equal(t, "started nexul-upgrade.service", frames[0].Log)
-		assert.Equal(t, FrameUpgradeResult, frames[1].Type)
-		assert.Equal(t, UpgradeStatusStarted, frames[1].Status)
-	})
-
-	t.Run("a host without the nexul command fails without running anything", func(t *testing.T) {
-		withNexulOnPath(t, "")
-		cmd := &fakeCmd{}
-		e := newTestExecutor(cmd.run)
-		var frames []Frame
-		send := func(fr Frame) error { frames = append(frames, fr); return nil }
-
-		require.NoError(t, e.Upgrade(t.Context(), Frame{Type: FrameAssignUpgrade, ID: "up-2", Version: "v1"}, send))
-
-		require.Len(t, frames, 1)
-		assert.Equal(t, UpgradeStatusFailed, frames[0].Status)
-		assert.Contains(t, frames[0].Error, "nexul install")
-		assert.Empty(t, cmd.names())
-	})
-
-	t.Run("a systemd-run failure reports upgrade_result failed with the error text", func(t *testing.T) {
-		withNexulOnPath(t, "/usr/local/bin/nexul")
-		cmd := &fakeCmd{failNext: 1, err: errors.New("Unit nexul-upgrade.service already exists")}
+	t.Run("a failing nexul upgrade reports upgrade_result failed with the error text", func(t *testing.T) {
+		cmd := &fakeCmd{failNext: 1, err: errors.New("nexul: no release v1")}
 		e := newTestExecutor(cmd.run)
 		var frames []Frame
 		send := func(fr Frame) error { frames = append(frames, fr); return nil }
@@ -794,11 +746,10 @@ func TestShellExecutor_Upgrade(t *testing.T) {
 
 		require.Len(t, frames, 1)
 		assert.Equal(t, UpgradeStatusFailed, frames[0].Status)
-		assert.Equal(t, "Unit nexul-upgrade.service already exists", frames[0].Error)
+		assert.Equal(t, "nexul: no release v1", frames[0].Error)
 	})
 
 	t.Run("a send failure stops before the result frame", func(t *testing.T) {
-		withNexulOnPath(t, "/usr/local/bin/nexul")
 		e := newTestExecutor((&fakeCmd{}).run)
 		sendErr := errors.New("write failed")
 		sent := 0
@@ -809,6 +760,49 @@ func TestShellExecutor_Upgrade(t *testing.T) {
 		assert.Equal(t, sendErr, err)
 		assert.Equal(t, 1, sent)
 	})
+
+	t.Run("hands the upgrade to nexul upgrade --detach and reports started", func(t *testing.T) {
+		cmd := &fakeCmd{}
+		e := newTestExecutor(cmd.run)
+		var frames []Frame
+		send := func(fr Frame) error { frames = append(frames, fr); return nil }
+
+		require.NoError(t, e.Upgrade(t.Context(), Frame{Type: FrameAssignUpgrade, ID: "up-1", Version: "v0.2.2"}, send))
+
+		assert.Equal(t, [][]string{{"upgrade", "--detach", "--version", "v0.2.2"}}, cmd.argsFor("/usr/local/bin/nexul"))
+		assert.Equal(t, []string{"/usr/local/bin/nexul"}, cmd.names(), "the runner never calls systemd-run itself")
+		require.Len(t, frames, 2)
+		assert.Equal(t, FrameUpgradeProgress, frames[0].Type)
+		assert.Equal(t, FrameUpgradeResult, frames[1].Type)
+		assert.Equal(t, UpgradeStatusStarted, frames[1].Status)
+	})
+}
+
+func TestShellExecutor_Uninstall(t *testing.T) {
+	t.Run("a failing nexul uninstall is returned", func(t *testing.T) {
+		cmd := &fakeCmd{failNext: 1, err: errors.New("sudo: a password is required")}
+		require.EqualError(t, newTestExecutor(cmd.run).Uninstall(t.Context(), "build-box"), "sudo: a password is required")
+	})
+
+	t.Run("runs nexul uninstall runner <name> --detach", func(t *testing.T) {
+		cmd := &fakeCmd{}
+		require.NoError(t, newTestExecutor(cmd.run).Uninstall(t.Context(), "build-box"))
+		assert.Equal(t, [][]string{{"uninstall", "runner", "build-box", "--detach"}}, cmd.argsFor("/usr/local/bin/nexul"))
+	})
+}
+
+func TestShellExecutor_checkoutPath_FallsBackToTheRunnersStackRoot(t *testing.T) {
+	e := NewShellExecutor(nil, ExecutorConfig{StackRoot: "/srv/nexul"}, testLogger())
+	got, err := e.checkoutPath(DeployRequestedEvent{StackSlug: "api"})
+	require.NoError(t, err)
+	assert.Equal(t, "/srv/nexul/stacks/api/repo", got)
+
+	got, err = e.checkoutPath(DeployRequestedEvent{StackSlug: "api", StackRoot: "/data/nexul"})
+	require.NoError(t, err)
+	assert.Equal(t, "/data/nexul/stacks/api/repo", got, "the machine's stack root wins")
+
+	_, err = newTestExecutor(nil).checkoutPath(DeployRequestedEvent{StackSlug: "api"})
+	require.Error(t, err)
 }
 
 func TestTailString(t *testing.T) {
@@ -818,20 +812,4 @@ func TestTailString(t *testing.T) {
 	assert.Equal(t, 11, len(got), "3-byte ellipsis plus the 8-byte tail")
 	assert.Contains(t, got, "89abcdef")
 	assert.Equal(t, "", tailString("   \n", 4))
-}
-
-func TestShellExecutor_Upgrade_ContainerRunnerPointsAtTheTerminal(t *testing.T) {
-	withNexulOnPath(t, "/usr/local/bin/nexul")
-	inContainer(t)
-	cmd := &fakeCmd{}
-	e := newTestExecutor(cmd.run)
-	var frames []Frame
-	send := func(fr Frame) error { frames = append(frames, fr); return nil }
-
-	require.NoError(t, e.Upgrade(t.Context(), Frame{Type: FrameAssignUpgrade, ID: "up-c", Version: "v1"}, send))
-
-	require.Len(t, frames, 1)
-	assert.Equal(t, UpgradeStatusFailed, frames[0].Status)
-	assert.Contains(t, frames[0].Error, "nexul upgrade")
-	assert.Empty(t, cmd.names())
 }

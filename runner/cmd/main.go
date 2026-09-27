@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -24,29 +25,22 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	if cfg.Token == "" && cfg.SecretFile != "" {
-		logger.Info("waiting for the server to publish the runner secret", "path", cfg.SecretFile)
-		waitCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
-		cfg.Token, err = runner.ReadSecretFile(waitCtx, cfg.SecretFile)
-		cancel()
-		if err != nil {
-			fail(err)
-		}
+	if err := cfg.EnrollOnFirstStart(ctx, &http.Client{Timeout: 30 * time.Second}, version.Version); err != nil {
+		fail(err)
 	}
 	if err := cfg.Validate(); err != nil {
 		fail(err)
 	}
 
 	client := runner.NewClient(runner.ClientConfig{
-		URL:               cfg.ServerURL,
-		Token:             cfg.Token,
-		RunnerID:          cfg.RunnerID,
-		Name:              cfg.Name,
-		Machine:           cfg.Machine,
-		StackRoot:         cfg.StackRoot,
-		Version:           version.Version,
-		Logger:            logger,
-		Executor:          runner.NewShellExecutor(nil, cfg.GitToken, logger),
+		URL:        cfg.WSURL(),
+		Credential: cfg.Credential,
+		Name:       cfg.Name,
+		Version:    version.Version,
+		Logger:     logger,
+		Executor: runner.NewShellExecutor(nil, runner.ExecutorConfig{
+			GitToken: cfg.GitToken, StackRoot: cfg.StackRoot, Ctl: cfg.Ctl,
+		}, logger),
 		HeartbeatInterval: cfg.HeartbeatInterval,
 		ConnectTimeout:    cfg.ConnectTimeout,
 		BackoffBase:       cfg.BackoffBase,

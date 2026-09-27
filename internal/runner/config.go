@@ -1,9 +1,9 @@
 package runner
 
 import (
-	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"net/url"
 	"os"
 	"strings"
@@ -12,19 +12,23 @@ import (
 
 // RunnerConfig is the host binary's environment configuration, validated before the client dials.
 type RunnerConfig struct {
+	// ServerURL is the instance's http(s):// base (NEXUL_SERVER_URL); the WebSocket URL derives from it.
 	ServerURL string
-	Token     string
-	// SecretFile is where the server publishes the runner secret (NEXUL_RUNNER_SECRET_FILE); the instance runner
-	// reads it off the shared data volume instead of carrying a copy in its env.
-	SecretFile string
-	RunnerID   string
-	Name       string
-	// Machine is the machine this runner belongs to (NEXUL_MACHINE, defaults to the host's hostname); runners
-	// reporting the same machine form a dispatch pool (issue 05).
-	Machine string
-	// StackRoot is where this runner keeps checkouts (NEXUL_STACK_ROOT), reported so a new machine starts with it.
+	// CredentialFile holds the runner's own credential (NEXUL_CREDENTIAL_FILE), written by `nexul install`.
+	CredentialFile string
+	Credential     string
+	// EnrollCodeFile, when the credential file does not exist yet, holds a code to enroll with on first start
+	// (NEXUL_ENROLL_CODE_FILE); only dev stacks set it, since `nexul install` enrolls everywhere else.
+	EnrollCodeFile string
+	// EnrollWait bounds how long a first start waits for the code file and the server to answer.
+	EnrollWait time.Duration
+	// Name is the runner's unit name (NEXUL_RUNNER_NAME), used only to uninstall itself once removed.
+	Name string
+	// StackRoot is where checkouts live when a job names no stack root of its own (NEXUL_STACK_ROOT).
 	StackRoot string
-	LogLevel  string
+	// Ctl is the `nexul` command the runner upgrades and uninstalls itself through (NEXUL_CTL).
+	Ctl      string
+	LogLevel string
 	// GitToken authenticates private repo clones for repo-driven builds; optional so a fresh install's instance runner still starts.
 	GitToken          string
 	HeartbeatInterval time.Duration
@@ -33,16 +37,17 @@ type RunnerConfig struct {
 	BackoffMax        time.Duration
 }
 
-// LoadRunnerConfig reads the runner env vars; a deliberate break from config.Load since it's a separate binary.
+// LoadRunnerConfig reads the runner env vars and its credential file; a deliberate break from config.Load since
+// it's a separate binary.
 func LoadRunnerConfig() (*RunnerConfig, error) {
 	cfg := &RunnerConfig{
-		ServerURL:         os.Getenv("NEXUL_SERVER_WS"),
-		Token:             os.Getenv("NEXUL_RUNNER_SECRET"),
-		SecretFile:        os.Getenv("NEXUL_RUNNER_SECRET_FILE"),
-		RunnerID:          os.Getenv("NEXUL_RUNNER_ID"),
+		ServerURL:         os.Getenv("NEXUL_SERVER_URL"),
+		CredentialFile:    os.Getenv("NEXUL_CREDENTIAL_FILE"),
+		EnrollCodeFile:    os.Getenv("NEXUL_ENROLL_CODE_FILE"),
+		EnrollWait:        5 * time.Minute,
 		Name:              os.Getenv("NEXUL_RUNNER_NAME"),
-		Machine:           os.Getenv("NEXUL_MACHINE"),
 		StackRoot:         os.Getenv("NEXUL_STACK_ROOT"),
+		Ctl:               envOrDefault("NEXUL_CTL", "nexul"),
 		LogLevel:          envOrDefault("NEXUL_LOG_LEVEL", "info"),
 		GitToken:          os.Getenv("NEXUL_GIT_TOKEN"),
 		HeartbeatInterval: envDuration("NEXUL_RUNNER_HEARTBEAT", 10*time.Second),
@@ -50,38 +55,37 @@ func LoadRunnerConfig() (*RunnerConfig, error) {
 		BackoffBase:       envDuration("NEXUL_RUNNER_BACKOFF_BASE", time.Second),
 		BackoffMax:        envDuration("NEXUL_RUNNER_BACKOFF_MAX", 30*time.Second),
 	}
-	if cfg.RunnerID == "" {
-		host, err := os.Hostname()
-		if err != nil {
-			return nil, fmt.Errorf("NEXUL_RUNNER_ID unset and hostname unavailable: %w", err)
-		}
-		cfg.RunnerID = host
+	if cfg.CredentialFile == "" {
+		return cfg, nil
 	}
-	if cfg.Machine == "" {
-		if host, err := os.Hostname(); err == nil {
-			cfg.Machine = host
-		}
+	b, err := os.ReadFile(cfg.CredentialFile)
+	if errors.Is(err, fs.ErrNotExist) && cfg.EnrollCodeFile != "" {
+		return cfg, nil
 	}
+	if err != nil {
+		return nil, fmt.Errorf("read NEXUL_CREDENTIAL_FILE: %w", err)
+	}
+	cfg.Credential = strings.TrimSpace(string(b))
 	return cfg, nil
 }
 
 // Validate checks every required field and fail-fast invariants.
 func (c *RunnerConfig) Validate() error {
 	if c.ServerURL == "" {
-		return fmt.Errorf("NEXUL_SERVER_WS is required")
+		return fmt.Errorf("NEXUL_SERVER_URL is required")
 	}
 	u, err := url.Parse(c.ServerURL)
 	if err != nil {
-		return fmt.Errorf("NEXUL_SERVER_WS %q: %w", c.ServerURL, err)
+		return fmt.Errorf("NEXUL_SERVER_URL %q: %w", c.ServerURL, err)
 	}
-	if u.Scheme != "ws" && u.Scheme != "wss" {
-		return fmt.Errorf("NEXUL_SERVER_WS must be ws:// or wss://, got %q", u.Scheme)
+	if (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		return fmt.Errorf("NEXUL_SERVER_URL must be an http:// or https:// URL, got %q", c.ServerURL)
 	}
-	if c.Token == "" {
-		return fmt.Errorf("NEXUL_RUNNER_SECRET or NEXUL_RUNNER_SECRET_FILE is required")
+	if c.Credential == "" {
+		return fmt.Errorf("NEXUL_CREDENTIAL_FILE is required and must hold the runner's credential")
 	}
-	if c.RunnerID == "" {
-		return fmt.Errorf("runner id is required")
+	if c.Name == "" {
+		return fmt.Errorf("NEXUL_RUNNER_NAME is required")
 	}
 	if c.HeartbeatInterval <= 0 {
 		return fmt.Errorf("NEXUL_RUNNER_HEARTBEAT must be positive")
@@ -95,23 +99,16 @@ func (c *RunnerConfig) Validate() error {
 	return nil
 }
 
-// ReadSecretFile polls path until it holds a secret: the instance runner starts alongside the server, which only
-// writes the file once it has booted.
-func ReadSecretFile(ctx context.Context, path string) (string, error) {
-	for {
-		b, err := os.ReadFile(path)
-		if err != nil && !errors.Is(err, os.ErrNotExist) {
-			return "", fmt.Errorf("read runner secret %s: %w", path, err)
-		}
-		if s := strings.TrimSpace(string(b)); s != "" {
-			return s, nil
-		}
-		select {
-		case <-ctx.Done():
-			return "", fmt.Errorf("waiting for runner secret %s: %w", path, ctx.Err())
-		case <-time.After(time.Second):
-		}
+// WSURL is the runner endpoint under ServerURL: ws(s)://<host>[<path>]/ws/runner. Call after Validate.
+func (c *RunnerConfig) WSURL() string {
+	u, err := url.Parse(c.ServerURL)
+	if err != nil {
+		return ""
 	}
+	u.Scheme = strings.Replace(u.Scheme, "http", "ws", 1)
+	u.Path = strings.TrimRight(u.Path, "/") + "/ws/runner"
+	u.RawQuery, u.Fragment = "", ""
+	return u.String()
 }
 
 func envOrDefault(key, fallback string) string {

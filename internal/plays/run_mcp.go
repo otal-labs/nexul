@@ -79,7 +79,8 @@ func toTrailDetail(t *Trail, steps int) trailDetail {
 }
 
 type playRunIn struct {
-	PlayID             string     `json:"play_id" jsonschema:"The play's id, from play_list."`
+	PlayID             string     `json:"play_id,omitempty" jsonschema:"The play's id, from play_list. Required unless decisions_check is true."`
+	DecisionsCheck     bool       `json:"decisions_check,omitempty" jsonschema:"true runs the built-in decisions check again on a done ticket, instead of a play: pass it with target_type ticket and target_id, and no play_id or other run choices."`
 	TargetType         TargetType `json:"target_type" jsonschema:"What to run it on, matching the play's type: ticket, doc, or interview."`
 	TargetID           string     `json:"target_id" jsonschema:"The ticket's or doc's id (a UUID, not a ticket key such as REF-102), or for an interview the project's id."`
 	MemoryIDs          []string   `json:"memory_ids,omitempty" jsonschema:"Ids of the target project's memories to inline in full, from memory_list; the project's always-included memories come along anyway."`
@@ -111,25 +112,20 @@ type trailUpdateIn struct {
 	Stop   bool                `json:"stop,omitempty" jsonschema:"true interrupts the run and ends the trail as interrupted, keeping its steps."`
 }
 
-type decisionsCheckRunIn struct {
-	TicketID string `json:"ticket_id" jsonschema:"The done ticket's id (a UUID)."`
-}
-
 // RunMCPTools returns the tools that run plays and read or steer their trails; every run started here carries Via mcp (ADR 0049).
 func RunMCPTools(r *Runner) []mcptool.Tool {
 	return []mcptool.Tool{
 		mcptool.New("play_run", "Run play",
 			"Starts a play on a ticket, a doc, or a project's interview as the calling user, on that user's own "+
 				"paired computer, and posts the run into the target's thread. Check play_list with type first to see "+
-				"which plays the caller may run there; one run at a time per target. Returns the trail in state "+
-				"starting; poll trail_list with its id for the outcome, and answer or stop it with trail_update.",
+				"which plays the caller may run there; one run at a time per target. With decisions_check true instead "+
+				"of a play_id it reruns the built-in decisions check on a done ticket, which reads the ticket, its pull "+
+				"requests, and the project's decisions log, then adds an entry, marks a reversed one superseded, or "+
+				"leaves the log alone; use that when the ticket shows the decisions check didn't run. Returns the trail "+
+				"in state starting; poll trail_list with its id for the outcome, and answer or stop it with trail_update.",
 			mcptool.Hints{},
 			func(ctx context.Context, in playRunIn) (any, error) {
-				t, err := r.Run(ctx, RunInput{
-					PlayID: in.PlayID, TargetType: in.TargetType, TargetID: in.TargetID, MemoryIDs: in.MemoryIDs,
-					CustomInstructions: in.CustomInstructions, MoveToStatusID: in.MoveToStatusID,
-					ComputerID: in.ComputerID, Provider: in.Provider, Model: in.Model, Via: ViaMCP,
-				})
+				t, err := runPlay(ctx, r, in)
 				if err != nil {
 					return nil, startHint(err)
 				}
@@ -180,21 +176,28 @@ func RunMCPTools(r *Runner) []mcptool.Tool {
 				}
 				return toTrailSummary(t), nil
 			}),
-		mcptool.New("decisions_check_run", "Run decisions check",
-			"Runs the built-in decisions check on a done ticket again, as the calling user on their own paired "+
-				"computer: it reads the ticket, its pull requests, and the project's decisions log, then adds an "+
-				"entry, marks a reversed one superseded, or leaves the log alone. Use it when the ticket shows the "+
-				"decisions check didn't run; play_run starts any other play. Returns the trail in state starting; "+
-				"poll trail_list with its id for the outcome.",
-			mcptool.Hints{},
-			func(ctx context.Context, in decisionsCheckRunIn) (any, error) {
-				t, err := r.RetryDecisionsCheck(ctx, in.TicketID, ViaMCP)
-				if err != nil {
-					return nil, startHint(err)
-				}
-				return toTrailSummary(t), nil
-			}),
 	}
+}
+
+// runPlay starts the named play, or with decisions_check the built-in decisions check (ADR 0066: it is a play).
+func runPlay(ctx context.Context, r *Runner, in playRunIn) (*Trail, error) {
+	if !in.DecisionsCheck {
+		if in.PlayID == "" {
+			return nil, fmt.Errorf("%w: pass play_id from play_list, or decisions_check true to rerun the decisions check", apperrs.ErrInvalid)
+		}
+		return r.Run(ctx, RunInput{
+			PlayID: in.PlayID, TargetType: in.TargetType, TargetID: in.TargetID, MemoryIDs: in.MemoryIDs,
+			CustomInstructions: in.CustomInstructions, MoveToStatusID: in.MoveToStatusID,
+			ComputerID: in.ComputerID, Provider: in.Provider, Model: in.Model, Via: ViaMCP,
+		})
+	}
+	choices := in.PlayID != "" || len(in.MemoryIDs) > 0 || in.CustomInstructions != "" || in.MoveToStatusID != "" ||
+		in.ComputerID != "" || in.Provider != "" || in.Model != ""
+	if choices || in.TargetType != TargetTicket {
+		return nil, fmt.Errorf("%w: decisions_check takes only target_type ticket and target_id; it runs with its own "+
+			"instructions on the caller's default computer", apperrs.ErrInvalid)
+	}
+	return r.RetryDecisionsCheck(ctx, in.TargetID, ViaMCP)
 }
 
 func steerTrail(ctx context.Context, r *Runner, in trailUpdateIn) (*Trail, error) {

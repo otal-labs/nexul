@@ -155,3 +155,17 @@ func TestDecodeJSON_MalformedBody_ErrInvalid(t *testing.T) {
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 }
+
+func TestWriteError_CodedError_ReportsItsOwnCode(t *testing.T) {
+	rec := httptest.NewRecorder()
+	WriteError(rec, apperrs.WithCode("invalid_code", fmt.Errorf("%w: enrollment code is unknown, used or expired", apperrs.ErrUnauthorized)))
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	assert.JSONEq(t, `{"message":"unauthorized: enrollment code is unknown, used or expired","code":"invalid_code"}`, rec.Body.String())
+}
+
+func TestWriteError_CodedInternalError_KeepsTheCodeHidden(t *testing.T) {
+	rec := httptest.NewRecorder()
+	WriteError(rec, apperrs.WithCode("secret_detail", errors.New("boom")))
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.JSONEq(t, `{"message":"internal error","code":"INTERNAL"}`, rec.Body.String())
+}

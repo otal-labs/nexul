@@ -46,7 +46,7 @@ func bootstrapBus(logger *slog.Logger, store *storage.Store) *inprocess.Bus {
 	})
 }
 
-// resolvePendingUpgrade applies the boot-time instance-upgrade resolution (instance-upgrade spec): called from
+// resolvePendingUpgrade applies the boot-time instance-upgrade resolution: called from
 // startBackgroundWorkers once runnerSvc exists, after bootstrapStore already ran the migrations this depends on.
 // There is no runner callback confirming a stack survived its own restart, so the booted version is the only
 // signal — a matching pending/started record completes, anything else unresolved past 15 minutes fails.

@@ -10,13 +10,13 @@ Nexul is a self-hosted instance that holds your projects, documents, tickets, ru
 
 Read in order the first time:
 
-1. [Install](/docs/guide/install/) — Docker Compose or a single binary.
+1. [Install](/docs/guide/install/) — one command on Linux, macOS, or Windows, installing native services.
 2. [Setup wizard](/docs/guide/setup-wizard/) — instance URL, owner account, connectors.
 3. [GitHub App](/docs/guide/github-app/) — the app Nexul uses to read repositories and receive events.
-4. [Runners](/docs/guide/runners/) — the hosts that build and deploy.
+4. [Runners](/docs/guide/runners/) — the services that build and deploy, and how to add and remove them.
 5. [Stacks and deploys](/docs/guide/stacks-and-deploys/) — services, branches, and the deploy actions.
 6. [Topology and DNS](/docs/guide/topology-and-dns/) — the canvas, gateways, hostnames, tunnels.
-7. [Logs](/docs/guide/logs/) — the bundled logs stack.
+7. [Logs](/docs/guide/logs/) — the bundled log store at `/openobserve/`.
 
 Then, as you need them:
 

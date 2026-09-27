@@ -210,72 +210,66 @@ func TestEnsureDockerWindows(t *testing.T) {
 	})
 }
 
-func TestInstall_Mac_LayersTheDesktopStack(t *testing.T) {
+func TestInstall_Mac_RunsEveryUnitAsALaunchAgentOfTheUser(t *testing.T) {
 	th := newTestHost(t)
 	onMac(t, th)
+	onMacServices(th)
 	th.lookPath(map[string]string{"docker": "/usr/local/bin/docker"})
 	withVersion(t, "v0.2.1")
-
-	require.NoError(t, th.Install(t.Context(), Options{Port: th.webPort(t), LogsPort: 5080, Yes: true}))
-
 	dir := filepath.Join(th.Home, "nexul")
-	assert.FileExists(t, filepath.Join(dir, "docker-compose.yml"))
-	assert.FileExists(t, filepath.Join(dir, "docker-compose.desktop.yml"))
-	assert.NoDirExists(t, filepath.Join(dir, "data"), "a desktop install keeps its data in Docker volumes")
-	env, err := readEnvFile(filepath.Join(dir, ".env"))
-	require.NoError(t, err)
-	assert.Equal(t, "docker-compose.yml:docker-compose.desktop.yml", env["COMPOSE_FILE"])
-	assert.Equal(t, dir, env["NEXUL_STACK_ROOT"])
+	th.bootedServer(t, dir)
+
+	require.NoError(t, th.Install(t.Context(), Options{Port: th.webPort(t), Yes: true}))
+
+	for _, name := range []string{"nexul-server", "nexul-openobserve", "nexul-runner-instance", "nexul-automations-instance"} {
+		assert.FileExists(t, filepath.Join(th.Paths.Services, "io.nexul."+name+".plist"))
+		assert.True(t, th.exec.ran("launchctl bootstrap gui/501 "+filepath.Join(th.Paths.Services, "io.nexul."+name+".plist")), name)
+	}
+	assert.Equal(t, "nexul-server-binary", readFile(t, filepath.Join(th.Paths.UnitRoot, "server", "nexul-server")))
+	assert.DirExists(t, filepath.Join(dir, "data"), "a native server keeps its data on the host")
 	assert.False(t, th.exec.ran("systemctl"), "there is no systemd on a Mac")
-	assert.NoFileExists(t, th.Paths.Unit)
+	assert.False(t, th.exec.ran("useradd"), "units run as the installing user")
+	assert.False(t, th.exec.ran("chown"))
 	out := th.out.String()
-	assert.Contains(t, out, "container, part of the stack")
 	assert.Contains(t, out, "http://localhost:")
-	assert.Contains(t, out, "Docker volumes nexul_nexul-data")
+	assert.Contains(t, out, "runs on this computer")
 }
 
-func TestInstall_Windows_UsesItsPathsAndSeparator(t *testing.T) {
+func TestInstall_Windows_RegistersServicesAndCopiesTheCommand(t *testing.T) {
 	th := newTestHost(t)
 	th.GOOS = "windows"
 	th.Getuid = func() int { return -1 }
 	withVersion(t, "v0.2.1")
+	dir := filepath.Join(th.Home, "nexul")
+	th.bootedServer(t, dir)
 
-	require.NoError(t, th.Install(t.Context(), Options{Port: th.webPort(t), LogsPort: 5080, Yes: true}))
+	require.NoError(t, th.Install(t.Context(), Options{Port: th.webPort(t), Yes: true}))
 
-	env, err := readEnvFile(filepath.Join(th.Home, "nexul", ".env"))
+	ctl := filepath.Join(th.Paths.BinDir, "nexul.exe")
+	assert.Equal(t, "this-binary", readFile(t, ctl))
+	assert.True(t, th.exec.ran(`sc.exe create nexul-server binPath= "`+ctl+`" service-host nexul-server`))
+	assert.True(t, th.exec.ran("sc.exe start nexul-runner-instance"))
+	assert.Equal(t, "nexul-runner-binary", readFile(t, filepath.Join(th.Paths.UnitRoot, "runner-instance", "nexul-runner.exe")))
+	assert.Equal(t, "openobserve-v1.0.4", readFile(t, filepath.Join(th.Paths.UnitRoot, "openobserve", "openobserve.exe")))
+	u, err := th.loadUnit("nexul-runner-instance")
 	require.NoError(t, err)
-	assert.Equal(t, "docker-compose.yml;docker-compose.desktop.yml", env["COMPOSE_FILE"])
-	assert.Equal(t, DefaultDir, env["NEXUL_STACK_ROOT"])
+	assert.Equal(t, ctl, u.Env["NEXUL_CTL"])
+}
+
+func TestUninstall_Windows_LeavesTheRunningCommandAndSaysSo(t *testing.T) {
+	th := newTestHost(t)
+	th.GOOS = "windows"
+	th.Getuid = func() int { return -1 }
+	withVersion(t, "v0.2.1")
+	th.bootedServer(t, filepath.Join(th.Home, "nexul"))
+	require.NoError(t, th.Install(t.Context(), Options{Port: th.webPort(t), Yes: true}))
+	th.set("sc.exe query", "        STATE              : 1  STOPPED\n", nil)
+
+	require.NoError(t, th.Uninstall(t.Context(), false, true))
+
+	assert.True(t, th.exec.ran("sc.exe delete nexul-server"))
 	assert.FileExists(t, filepath.Join(th.Paths.BinDir, "nexul.exe"))
-}
-
-func TestUninstall_Desktop_Purge_RemovesTheVolumes(t *testing.T) {
-	th := newTestHost(t)
-	onMac(t, th)
-	th.lookPath(map[string]string{"docker": "/usr/local/bin/docker"})
-	withVersion(t, "v0.2.1")
-	require.NoError(t, th.Install(t.Context(), Options{Port: th.webPort(t), LogsPort: 5080, Yes: true}))
-	th.exec.calls = nil
-
-	require.NoError(t, th.Uninstall(t.Context(), true, true))
-
-	assert.True(t, th.exec.ran("docker compose --project-directory "+filepath.Join(th.Home, "nexul")+" down --remove-orphans --volumes"))
-	assert.False(t, th.exec.ran("systemctl"))
-	assert.Contains(t, th.out.String(), "removed with the stack")
-}
-
-func TestStatus_Desktop_PointsAtTheRunnerContainer(t *testing.T) {
-	th := newTestHost(t)
-	onMac(t, th)
-	th.lookPath(map[string]string{"docker": "/usr/local/bin/docker"})
-	withVersion(t, "v0.2.1")
-	require.NoError(t, th.Install(t.Context(), Options{Port: th.webPort(t), LogsPort: 5080, Yes: true}))
-	th.out.Reset()
-
-	require.NoError(t, th.Status(t.Context()))
-
-	assert.Contains(t, th.out.String(), "Runner     container (see Services)")
-	assert.False(t, th.exec.ran("systemctl"))
+	assert.Contains(t, th.out.String(), "yourself")
 }
 
 func TestPlatformNames(t *testing.T) {
@@ -291,8 +285,18 @@ func TestPlatformNames(t *testing.T) {
 
 	linux := &Host{GOOS: "linux"}
 	assert.Equal(t, DefaultDir, linux.defaultDir())
-	assert.Equal(t, "/Users/onik/Library/Application Support/nexul/nexul.conf", pathsFor("darwin", "/Users/onik").Config)
-	assert.Equal(t, "/etc/nexul/nexul.conf", pathsFor("linux", "/root").Config)
+	noEnv := func(string) string { return "" }
+	macPaths := pathsFor("darwin", "/Users/onik", noEnv)
+	assert.Equal(t, "/Users/onik/Library/Application Support/nexul/nexul.conf", macPaths.Config)
+	assert.Equal(t, "/Users/onik/Library/LaunchAgents", macPaths.Services)
+	linuxPaths := pathsFor("linux", "/root", noEnv)
+	assert.Equal(t, "/etc/nexul/nexul.conf", linuxPaths.Config)
+	assert.Equal(t, "/opt/nexul", linuxPaths.UnitRoot)
+	winPaths := pathsFor("windows", `C:\Users\onik`, func(k string) string {
+		return map[string]string{"ProgramData": `D:\Data`}[k]
+	})
+	assert.Equal(t, filepath.Join(`D:\Data`, "Nexul"), winPaths.UnitRoot)
+	assert.Equal(t, filepath.Join(`C:\Program Files`, "Nexul"), winPaths.BinDir)
 }
 
 func TestReplaceFile_MovesOverTheOldFile(t *testing.T) {

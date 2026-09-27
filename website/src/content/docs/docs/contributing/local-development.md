@@ -17,17 +17,23 @@ sidebar:
 The root `Makefile` covers the Go binaries and the web build:
 
 ```sh
-make build         # build-server + build-runner + build-web
-make build-server   # ./dist/nexul, without the web UI
+make build          # build-cli + build-server + build-runner + build-web
+make build-cli      # ./dist/nexul, the install and upgrade command
+make build-server   # ./dist/nexul-server, without the web UI
 make build-runner   # ./dist/nexul-runner
 make build-web      # bun run --cwd web build
-make build-single    # ./dist/nexul as released, web UI embedded via go:embed
+make build-single   # ./dist/nexul-server as released, web UI embedded via go:embed
 make test           # go test ./...
 make vet            # go vet ./...
 make coverage       # go test -race with the 80% gate
 make sqlc           # regenerate sqlcgen from internal/platform/storage/queries/*.sql
 make sqlc-check     # sqlc vet + sqlc diff — fails if generated code is stale
 ```
+
+The automations host binaries come from Bun, not the Makefile:
+`bun run --cwd automations build:binaries` writes
+`automations/dist/nexul-automations-<os>-<arch>[.exe]` for every release
+target.
 
 ## Running the server and the web dev server
 
@@ -39,7 +45,17 @@ go run ./server/cmd
 
 The server generates its auth secret and reads its config from environment
 variables (see `.env.example` — nothing is required for a local run; every
-variable there is an override).
+variable there is an override). It listens on `:8080` unless
+`NEXUL_HTTP_ADDR` says otherwise.
+
+## Trying the installer
+
+`nexul install` downloads every binary from a release, checked against its
+`checksums.txt`. To try it against binaries you built, serve a directory laid
+out like a release (`<tag>/<binary>-<os>-<arch>` plus `<tag>/checksums.txt`)
+and point the installer at it with `NEXUL_RELEASE_URL`, passing the tag with
+`--version`. Do this on a disposable machine or VM: the install creates
+services and a system user.
 
 The web app has its own dev server:
 
@@ -50,6 +66,8 @@ bun run --cwd web dev
 
 ## The debug compose stack
 
+The debug stack is for developing Nexul only; releases ship no images, and a
+real install runs every component as a native service.
 `docker-compose.debug.yml` runs the server, web (Vite, not nginx), runner,
 automations host, and an OpenObserve instance for logs together, with Delve
 attached to the Go binaries (`:2345` server, `:2346` runner):

@@ -44,6 +44,7 @@ func (r *AutomationsRepo) Create(ctx context.Context, a *automations.Automation)
 			TokenHash:      a.TokenHash,
 			TokenPrefix:    a.TokenPrefix,
 			TokenRevokedAt: tokenRevokedAtParam(a.TokenRevokedAt),
+			HostID:         hostIDParam(a.HostID),
 			CreatedAt:      a.CreatedAt.Unix(),
 			UpdatedAt:      a.UpdatedAt.Unix(),
 		})
@@ -108,6 +109,7 @@ func (r *AutomationsRepo) Update(ctx context.Context, a *automations.Automation)
 			TokenHash:      a.TokenHash,
 			TokenPrefix:    a.TokenPrefix,
 			TokenRevokedAt: tokenRevokedAtParam(a.TokenRevokedAt),
+			HostID:         hostIDParam(a.HostID),
 			UpdatedAt:      a.UpdatedAt.Unix(),
 			ID:             a.ID,
 		})
@@ -156,6 +158,9 @@ func toAutomation(row sqlcgen.Automation) (*automations.Automation, error) {
 	if a.Scopes, err = decodeStringList(row.Scopes); err != nil {
 		return nil, fmt.Errorf("decode scopes for automation %s: %w", a.ID, err)
 	}
+	if row.HostID.Valid {
+		a.HostID = &row.HostID.String
+	}
 	if row.TokenRevokedAt.Valid {
 		t := time.Unix(row.TokenRevokedAt.Int64, 0).UTC()
 		a.TokenRevokedAt = &t
@@ -188,4 +193,12 @@ func tokenRevokedAtParam(t *time.Time) sql.NullInt64 {
 		return sql.NullInt64{}
 	}
 	return sql.NullInt64{Int64: t.Unix(), Valid: true}
+}
+
+// hostIDParam stores an unplaced automation's host as NULL, which the schema reads as the instance host.
+func hostIDParam(id *string) sql.NullString {
+	if id == nil {
+		return sql.NullString{}
+	}
+	return sql.NullString{String: *id, Valid: true}
 }

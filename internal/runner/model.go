@@ -36,11 +36,52 @@ type RunningJob struct {
 	Service string      `json:"service,omitempty"`
 }
 
-// InstallInfo is what the "Add runner" flow renders as a copyable install command: WS URL, secret, download URL.
-type InstallInfo struct {
-	WSURL       string `json:"ws_url"`
-	Secret      string `json:"secret"`
-	DownloadURL string `json:"download_url"`
+// EnrollmentCode is a stored one-time code: bound to the runner name it enrolls and, optionally, its machine.
+type EnrollmentCode struct {
+	CodeHash  string
+	Name      string
+	Machine   string
+	CreatedAt time.Time
+	ExpiresAt time.Time
+}
+
+// Credential is a runner's stored credential; a removed runner's stays behind revoked.
+type Credential struct {
+	RunnerID   string
+	RunnerName string
+	CreatedAt  time.Time
+	Revoked    bool
+}
+
+// Enrollment is a freshly minted code with the one-line install commands that carry it.
+type Enrollment struct {
+	Code      string          `json:"code"`
+	ExpiresAt time.Time       `json:"expires_at"`
+	Commands  InstallCommands `json:"commands"`
+}
+
+// InstallCommands are the rendered installer one-liners, one per shell.
+type InstallCommands struct {
+	Unix    string `json:"unix"`
+	Windows string `json:"windows"`
+}
+
+// EnrollRequest is what a machine's installer sends to trade a code for a credential.
+type EnrollRequest struct {
+	Code      string `json:"code"`
+	Name      string `json:"name"`
+	OS        string `json:"os"`
+	Arch      string `json:"arch"`
+	Version   string `json:"version"`
+	StackRoot string `json:"stack_root"`
+}
+
+// Enrolled is the new runner's record and its credential, returned exactly once.
+type Enrolled struct {
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	Machine    string `json:"machine"`
+	Credential string `json:"credential"`
 }
 
 // QueuedJob is a deploy waiting for a runner; it mirrors deploy.requested's identity for correlation.
@@ -51,9 +92,8 @@ type QueuedJob struct {
 	Target  string      `json:"target,omitempty"`
 }
 
-// instanceRunnerID is the fixed id the bundled instance runner connects with; RequestUpgrade and dispatch
-// both target this single runner, never a pool (instance-upgrade spec).
-const instanceRunnerID = "instance"
+// instanceRunnerName names the bundled runner beside the server; upgrades dispatch to it, never to a pool.
+const instanceRunnerName = "instance"
 
 // Upgrade statuses beyond UpgradeStatusStarted/UpgradeStatusFailed (protocol.go, shared with the result frame).
 const (
@@ -61,7 +101,7 @@ const (
 	UpgradeStatusCompleted = "completed"
 )
 
-// Upgrade is one instance-upgrade record (instance-upgrade spec): written pending before dispatch, resolved to
+// Upgrade is one instance-upgrade record: written pending before dispatch, resolved to
 // completed/failed by ResolvePendingUpgrade or UpgradeStatus's lazy check once the instance is back up.
 type Upgrade struct {
 	ID          string `json:"id"`
@@ -70,8 +110,7 @@ type Upgrade struct {
 	Status      string `json:"status"`
 	Error       string `json:"error"`
 	RequestedBy string `json:"requested_by"`
-	// RunnerID is always instanceRunnerID today; kept on the record rather than assumed, since dispatch already
-	// resolves it once per request.
+	// RunnerID is the instance runner's id when the upgrade was requested.
 	RunnerID  string    `json:"-"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`

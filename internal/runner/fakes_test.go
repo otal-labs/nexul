@@ -15,6 +15,7 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/hostcred"
 )
 
 func testLogger() *slog.Logger {
@@ -35,20 +36,121 @@ func eventually(t *testing.T, timeout time.Duration, cond func() bool) {
 
 // fakeRunnerRepo is an in-memory runner.Repo for handler tests.
 type fakeRunnerRepo struct {
-	mu         sync.Mutex
-	runners    map[string]*Runner
-	heartbeats int
-	createErr  error
-	listErr    error
-	secret     string
-	secretErr  error
+	mu          sync.Mutex
+	runners     map[string]*Runner
+	codes       map[string]*EnrollmentCode
+	credentials map[string]*Credential
+	heartbeats  int
+	createErr   error
+	listErr     error
+	credErr     error
+	// machines backs the handler's machine lookups in tests built on this repo.
+	machines *fakeMachineRepo
 }
 
-// newFakeRunnerRepo defaults the secret to "s3cr3t" so every existing test
-// that dials with that token keeps working now that auth reads it from the
-// repo instead of a fixed HandlerConfig field.
 func newFakeRunnerRepo() *fakeRunnerRepo {
-	return &fakeRunnerRepo{runners: map[string]*Runner{}, secret: "s3cr3t"}
+	return &fakeRunnerRepo{
+		runners: map[string]*Runner{}, codes: map[string]*EnrollmentCode{}, credentials: map[string]*Credential{},
+		machines: newFakeMachineRepo(),
+	}
+}
+
+// enrolled adds runner id named name on machine (none when empty) and returns its raw credential, as enrollment would.
+func (f *fakeRunnerRepo) enrolled(id, name, machine string) string {
+	now := time.Now().UTC()
+	machineID := ""
+	if machine != "" {
+		machineID = "m-" + machine
+		_ = f.machines.Create(context.Background(), &Machine{ID: machineID, Name: machine, StackRoot: defaultStackRoot, FirstSeen: now, LastSeen: now}) // the in-memory fake never fails
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.runners[id] = &Runner{ID: id, Name: name, MachineID: machineID, LastSeen: now, CreatedAt: now}
+	raw := "nxr_" + id
+	f.credentials[hostcred.Hash(raw)] = &Credential{RunnerID: id, RunnerName: name, CreatedAt: now}
+	return raw
+}
+
+func (f *fakeRunnerRepo) GetByName(_ context.Context, name string) (*Runner, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, r := range f.runners {
+		if r.Name == name {
+			cp := *r
+			return &cp, nil
+		}
+	}
+	return nil, apperrs.ErrNotFound
+}
+
+func (f *fakeRunnerRepo) CreateEnrollment(_ context.Context, e *EnrollmentCode) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.createErr != nil {
+		return f.createErr
+	}
+	cp := *e
+	f.codes[e.CodeHash] = &cp
+	return nil
+}
+
+func (f *fakeRunnerRepo) GetEnrollment(_ context.Context, codeHash string, now time.Time) (*EnrollmentCode, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e, ok := f.codes[codeHash]
+	if !ok || !e.ExpiresAt.After(now) {
+		return nil, apperrs.ErrNotFound
+	}
+	cp := *e
+	return &cp, nil
+}
+
+func (f *fakeRunnerRepo) Enroll(_ context.Context, codeHash string, r *Runner, credentialHash string, now time.Time) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e, ok := f.codes[codeHash]
+	if !ok || !e.ExpiresAt.After(now) {
+		return apperrs.ErrNotFound
+	}
+	for _, existing := range f.runners {
+		if existing.Name == r.Name {
+			return apperrs.ErrConflict
+		}
+	}
+	delete(f.codes, codeHash)
+	cp := *r
+	f.runners[r.ID] = &cp
+	f.credentials[credentialHash] = &Credential{RunnerID: r.ID, RunnerName: r.Name, CreatedAt: now}
+	return nil
+}
+
+func (f *fakeRunnerRepo) GetCredential(_ context.Context, hash string) (*Credential, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.credErr != nil {
+		return nil, f.credErr
+	}
+	c, ok := f.credentials[hash]
+	if !ok {
+		return nil, apperrs.ErrNotFound
+	}
+	cp := *c
+	return &cp, nil
+}
+
+func (f *fakeRunnerRepo) Remove(_ context.Context, id string, _ time.Time) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.runners[id]; !ok {
+		return apperrs.ErrNotFound
+	}
+	delete(f.runners, id)
+	for _, c := range f.credentials {
+		if c.RunnerID == id {
+			c.Revoked = true
+		}
+	}
+	return nil
 }
 
 func (f *fakeRunnerRepo) Create(_ context.Context, r *Runner) error {
@@ -123,43 +225,6 @@ func (f *fakeRunnerRepo) SetVersion(_ context.Context, id string, version string
 		return apperrs.ErrNotFound
 	}
 	r.Version = version
-	return nil
-}
-
-func (f *fakeRunnerRepo) SetMachine(_ context.Context, id string, machineID string) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	r, ok := f.runners[id]
-	if !ok {
-		return apperrs.ErrNotFound
-	}
-	r.MachineID = machineID
-	return nil
-}
-
-func (f *fakeRunnerRepo) Delete(_ context.Context, id string) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	if _, ok := f.runners[id]; !ok {
-		return apperrs.ErrNotFound
-	}
-	delete(f.runners, id)
-	return nil
-}
-
-func (f *fakeRunnerRepo) Secret(context.Context) (string, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	if f.secretErr != nil {
-		return "", f.secretErr
-	}
-	return f.secret, nil
-}
-
-func (f *fakeRunnerRepo) SetSecret(_ context.Context, secret string) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.secret = secret
 	return nil
 }
 
@@ -427,6 +492,20 @@ type fakeExecutor struct {
 	discoverFn   func(ctx context.Context) (DiscoverReport, error)
 	joinNetworks func(ctx context.Context, gatewayContainer string, networks []string, send func(Frame))
 	upgradeFn    func(ctx context.Context, req Frame, send func(Frame) error) error
+	uninstalls   []string
+}
+
+func (f *fakeExecutor) Uninstall(_ context.Context, name string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.uninstalls = append(f.uninstalls, name)
+	return nil
+}
+
+func (f *fakeExecutor) uninstalled() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]string(nil), f.uninstalls...)
 }
 
 func (f *fakeExecutor) Discover(ctx context.Context) (DiscoverReport, error) {
@@ -535,4 +614,11 @@ func wsTestServer(t *testing.T, serve func(ctx context.Context, conn *websocket.
 
 func wsURL(srv *httptest.Server) string {
 	return "ws" + srv.URL[len("http"):]
+}
+
+// dialRunner connects to the handler as the runner holding credential, with query as the reported build info.
+func dialRunner(ctx context.Context, srv *httptest.Server, credential, query string) (*websocket.Conn, *http.Response, error) {
+	return websocket.Dial(ctx, wsURL(srv)+query, &websocket.DialOptions{
+		HTTPHeader: http.Header{"Authorization": {"Bearer " + credential}},
+	})
 }

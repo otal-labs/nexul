@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,12 +20,12 @@ type Config struct {
 	SPAOrigin  string
 	// DevLogin bypasses GitHub OAuth with a fixed local session; must stay unset in production.
 	DevLogin bool
-	// RunnerSecret seeds the stored runner secret at boot; empty generates one on first runner connection.
-	RunnerSecret string
 	// OTLPEndpoint is the OTLP/HTTP base URL logs are shipped to (e.g. http://openobserve:5080/api/default); empty keeps logs on stderr only.
 	OTLPEndpoint string
 	OTLPUser     string
 	OTLPToken    string
+	// LogsURL is the local log store's base URL (NEXUL_LOGS_URL); when set the server proxies /openobserve/ to it.
+	LogsURL *url.URL
 }
 
 func Load() (*Config, error) {
@@ -36,12 +37,15 @@ func Load() (*Config, error) {
 		SPAOrigin:  envOrDefault("NEXUL_SPA_ORIGIN", ""),
 		DevLogin:   os.Getenv("NEXUL_DEV_LOGIN") == "true",
 
-		RunnerSecret: os.Getenv("NEXUL_RUNNER_SECRET"),
-
 		OTLPEndpoint: os.Getenv("NEXUL_OTLP_ENDPOINT"),
 		OTLPUser:     os.Getenv("NEXUL_OTLP_USER"),
 		OTLPToken:    os.Getenv("NEXUL_OTLP_TOKEN"),
 	}
+	logsURL, err := parseLogsURL(os.Getenv("NEXUL_LOGS_URL"))
+	if err != nil {
+		return nil, err
+	}
+	cfg.LogsURL = logsURL
 	if cfg.AuthSecret == "" {
 		secret, err := loadOrCreateSecret(filepath.Join(filepath.Dir(cfg.DBPath), "auth-secret"))
 		if err != nil {
@@ -50,6 +54,20 @@ func Load() (*Config, error) {
 		cfg.AuthSecret = secret
 	}
 	return cfg, nil
+}
+
+func parseLogsURL(raw string) (*url.URL, error) {
+	if raw == "" {
+		return nil, nil
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return nil, fmt.Errorf("NEXUL_LOGS_URL: %w", err)
+	}
+	if (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		return nil, fmt.Errorf("NEXUL_LOGS_URL %q: want an http(s)://host:port URL", raw)
+	}
+	return u, nil
 }
 
 // loadOrCreateSecret reads the secret at path, generating and persisting one (0600) when the file is absent or empty.

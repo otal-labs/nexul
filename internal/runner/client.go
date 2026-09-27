@@ -5,11 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"math/rand"
+	"net/http"
 	"net/url"
 	"os"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -19,14 +22,12 @@ import (
 
 // ClientConfig wires the runner host binary's connection to the server.
 type ClientConfig struct {
-	URL      string
-	Token    string
-	RunnerID string
-	Name     string
-	// Machine is the machine this runner reports on connect (NEXUL_MACHINE, issue 05).
-	Machine string
-	// StackRoot is where this runner keeps checkouts (NEXUL_STACK_ROOT); empty leaves the server's default.
-	StackRoot string
+	// URL is the runner WebSocket endpoint.
+	URL string
+	// Credential is the runner's own credential; the server knows its id, name and machine from it.
+	Credential string
+	// Name is the runner's unit name, passed to `nexul uninstall runner` once the runner is removed.
+	Name string
 	// Version is the runner binary's stamped build version ("dev" for local
 	// builds); the server persists it so the UI can flag stale runners.
 	Version           string
@@ -77,15 +78,23 @@ func NewClient(cfg ClientConfig) *Client {
 	return &Client{cfg: cfg, log: cfg.Logger, hb: cfg.HeartbeatInterval}
 }
 
+// errRemoved ends the connection loop: the server removed this runner, so reconnecting can never succeed.
+var errRemoved = errors.New("runner removed")
+
 // Run dials the server and keeps the runner connected; a dropped connection retries with exponential backoff.
+// A removed runner uninstalls its own service and returns instead.
 func (c *Client) Run(ctx context.Context) error {
 	c.cleanupOldBinary()
-	c.log.Info("runner starting", "runner_id", c.cfg.RunnerID, "server", c.cfg.URL)
+	c.log.Info("runner starting", "runner", c.cfg.Name, "server", c.cfg.URL)
 	backoff := NewBackoff(c.cfg.BackoffBase, c.cfg.BackoffMax,
 		rand.New(rand.NewSource(time.Now().UnixNano())))
 	attempt := 0
 	for {
 		err := c.runOnce(ctx)
+		if errors.Is(err, errRemoved) {
+			c.uninstall(ctx)
+			return nil
+		}
 		if ctx.Err() != nil {
 			return nil
 		}
@@ -100,15 +109,20 @@ func (c *Client) Run(ctx context.Context) error {
 // runOnce maintains one connection: heartbeats on a ticker, assigns run in goroutines, cancels abort the job.
 func (c *Client) runOnce(ctx context.Context) (err error) {
 	dialCtx, cancel := context.WithTimeout(ctx, c.cfg.ConnectTimeout)
-	conn, _, dialErr := websocket.Dial(dialCtx, c.wsURL(), nil)
+	conn, resp, dialErr := websocket.Dial(dialCtx, c.wsURL(), &websocket.DialOptions{
+		HTTPHeader: http.Header{"Authorization": {"Bearer " + c.cfg.Credential}},
+	})
 	cancel()
 	if dialErr != nil {
+		if refusedAsRemoved(resp) {
+			return errRemoved
+		}
 		return fmt.Errorf("dial %s: %w", c.cfg.URL, dialErr)
 	}
 	defer func() {
 		err = errors.Join(err, conn.CloseNow())
 	}()
-	c.log.Info("runner connected", "runner_id", c.cfg.RunnerID)
+	c.log.Info("runner connected", "runner", c.cfg.Name)
 
 	ctx, cancel = context.WithCancel(ctx)
 	defer cancel()
@@ -123,10 +137,12 @@ func (c *Client) runOnce(ctx context.Context) (err error) {
 		}
 		frame, err := ParseFrame(raw)
 		if err != nil {
-			c.log.Warn("invalid frame from server", "runner_id", c.cfg.RunnerID, "error", err)
+			c.log.Warn("invalid frame from server", "runner", c.cfg.Name, "error", err)
 			continue
 		}
 		switch frame.Type {
+		case FrameUninstall:
+			return errRemoved
 		case FrameAssignBuild, FrameAssignDeploy, FrameAssignUpgrade:
 			c.startJob(ctx, conn, *frame)
 		case FrameCancel:
@@ -139,7 +155,7 @@ func (c *Client) runOnce(ctx context.Context) (err error) {
 		case FrameUpdate:
 			go c.handleUpdate(ctx, *frame)
 		default:
-			c.log.Warn("unexpected server frame", "runner_id", c.cfg.RunnerID, "type", frame.Type)
+			c.log.Warn("unexpected server frame", "runner", c.cfg.Name, "type", frame.Type)
 		}
 	}
 }
@@ -227,7 +243,7 @@ func (c *Client) cancelJob(id string) {
 
 func (c *Client) heartbeatLoop(ctx context.Context, conn *websocket.Conn) {
 	send := func() {
-		c.sendFrame(ctx, conn, Frame{Type: FrameHeartbeat, RunnerID: c.cfg.RunnerID, TS: time.Now().Unix()})
+		c.sendFrame(ctx, conn, Frame{Type: FrameHeartbeat, TS: time.Now().Unix()})
 	}
 	send()
 	ticker := time.NewTicker(c.hb)
@@ -249,26 +265,36 @@ func (c *Client) sendFrame(ctx context.Context, conn *websocket.Conn, f Frame) {
 	c.writeMu.Lock()
 	defer c.writeMu.Unlock()
 	if err := wsjson.Write(ctx, conn, f); err != nil {
-		c.log.Warn("frame send failed", "runner_id", c.cfg.RunnerID, "type", f.Type, "error", err)
+		c.log.Warn("frame send failed", "runner", c.cfg.Name, "type", f.Type, "error", err)
 	}
 }
 
-// wsURL builds the connection URL with the auth token and identity query params.
+// wsURL carries what the server needs to offer an update: this build's version and platform.
 func (c *Client) wsURL() string {
 	q := url.Values{}
-	q.Set("token", c.cfg.Token)
-	q.Set("runner_id", c.cfg.RunnerID)
-	q.Set("name", c.cfg.Name)
-	q.Set("machine", c.cfg.Machine)
 	if c.cfg.Version != "" {
 		q.Set("version", c.cfg.Version)
 	}
 	q.Set("os", runtime.GOOS)
 	q.Set("arch", runtime.GOARCH)
-	if c.cfg.StackRoot != "" {
-		q.Set("stack_root", c.cfg.StackRoot)
-	}
 	return c.cfg.URL + "?" + q.Encode()
+}
+
+// refusedAsRemoved reports whether a failed handshake was the server saying this runner was removed.
+func refusedAsRemoved(resp *http.Response) bool {
+	if resp == nil || resp.StatusCode != http.StatusUnauthorized || resp.Body == nil {
+		return false
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1024))
+	return err == nil && strings.Contains(string(body), `"runner_removed"`)
+}
+
+// uninstall asks `nexul` to remove this runner's service from outside it; the service stopping ends this process.
+func (c *Client) uninstall(ctx context.Context) {
+	c.log.Warn("runner was removed from the instance; uninstalling", "runner", c.cfg.Name)
+	if err := c.cfg.Executor.Uninstall(ctx, c.cfg.Name); err != nil {
+		c.log.Error("uninstall failed; remove the service by hand", "runner", c.cfg.Name, "error", err)
+	}
 }
 
 // cleanupOldBinary best-effort removes the previous binary a completed update left behind.

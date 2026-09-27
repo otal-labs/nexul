@@ -7,9 +7,10 @@ import { spawnSync } from 'node:child_process';
 const script = new URL('../public/install.sh', import.meta.url).pathname;
 const directories: string[] = [];
 
-// The fake nexul records its arguments and the first line it reads, then exits with installerExit.
+// The fake nexul records its arguments (joined, and one per line in argv) and the first line it reads, then exits
+// with installerExit.
 const fakeNexul = (installerExit: number) =>
-  `#!/bin/sh\nprintf '%s\\n' "$*" > "$NEXUL_TEST_DIR/args"\nread -r answer || true\nprintf '%s' "$answer" > "$NEXUL_TEST_DIR/installed"\nexit ${installerExit}\n`;
+  `#!/bin/sh\nprintf '%s\\n' "$*" > "$NEXUL_TEST_DIR/args"\nprintf '%s\\n' "$@" > "$NEXUL_TEST_DIR/argv"\nread -r answer || true\nprintf '%s' "$answer" > "$NEXUL_TEST_DIR/installed"\nexit ${installerExit}\n`;
 
 interface Options {
   os?: string;
@@ -51,6 +52,7 @@ printf '%s\\n' "$url" >> "$NEXUL_TEST_DIR/urls"
 case "$url" in
   */releases/latest) [ -n "$(sed -n '/tag_name/p' "$NEXUL_TEST_DIR/latest.json")" ] || exit 22; src="$NEXUL_TEST_DIR/latest.json" ;;
   *'/releases?per_page=1') src="$NEXUL_TEST_DIR/releases.json" ;;
+  */install.sh) src="$NEXUL_TEST_INSTALL_SH" ;;
   */releases/*) src="$NEXUL_TEST_DIR/release/\${url##*/}"; printf '%s\\n' "$url" > "$NEXUL_TEST_DIR/download-url" ;;
   *) exit 22 ;;
 esac
@@ -69,6 +71,8 @@ if [ -n "$out" ]; then cp "$src" "$out"; else cat "$src"; fi
     NEXUL_BIN_DIR: join(directory, 'installed-bin'),
     NEXUL_RELEASE_URL: 'https://example.test/releases',
     NEXUL_API_URL: 'https://api.example.test',
+    NEXUL_INSTALL_URL: 'https://nexul.example.test/install.sh',
+    NEXUL_TEST_INSTALL_SH: script,
   };
   return { directory, env };
 }
@@ -125,6 +129,15 @@ test('without a stable release it installs the newest beta and passes the flags 
   expect(await read(directory, 'installed')).toBe('interactive input');
 });
 
+test('piped with sh -s, a runner install reaches nexul install with every argument intact', async () => {
+  const { directory, env } = setup();
+  const args = ['runner', '--server', 'https://nexul.example.test', '--name', 'build-2', '--code', 'nxe_a-b_c'];
+  const result = spawnSync('/bin/sh', ['-s', '--', ...args], { env, input: await Bun.file(script).text(), encoding: 'utf8' });
+  expect(result.status).toBe(0);
+  expect(await read(directory, 'args')).toBe(`install ${args.join(' ')}\n`);
+  expect(await read(directory, 'argv')).toBe(['install', ...args].map((arg) => `${arg}\n`).join(''));
+});
+
 test('the newest stable release wins when one exists', async () => {
   const { directory, env } = setup({ latest: '{"tag_name": "v0.2.1", "name": "Nexul v0.2.1"}' });
   expect(run(env).status).toBe(0);
@@ -159,4 +172,28 @@ test('piped installation reads interactive input from the controlling terminal',
 test('installer errors propagate to the caller', () => {
   const { env } = setup({ installerExit: 31 });
   expect(run(env).status).toBe(31);
+});
+
+for (const kind of ['runner', 'automations']) {
+  test(`${kind}.sh installs through install.sh as \`nexul install ${kind}\` with every argument intact`, async () => {
+    const { directory, env } = setup();
+    const kindScript = new URL(`../public/${kind}.sh`, import.meta.url).pathname;
+    const args = ['--server', 'https://nexul.example.com', '--name', 'build 1', '--code', 'nxe_abc'];
+    const result = spawnSync('/bin/sh', [kindScript, ...args], { env, input: '', encoding: 'utf8' });
+    expect(result.status).toBe(0);
+    expect(await read(directory, 'urls')).toContain('https://nexul.example.test/install.sh');
+    expect(await read(directory, 'argv')).toBe(['install', kind, ...args].join('\n') + '\n');
+  });
+}
+
+test('runner.sh stops when install.sh cannot be downloaded', async () => {
+  const { directory, env } = setup();
+  const runnerScript = new URL('../public/runner.sh', import.meta.url).pathname;
+  const result = spawnSync('/bin/sh', [runnerScript], {
+    env: { ...env, NEXUL_TEST_INSTALL_SH: join(directory, 'missing.sh') },
+    encoding: 'utf8',
+  });
+  expect(result.status).not.toBe(0);
+  expect(result.stderr).toContain('could not download install.sh');
+  expect(await exists(directory, 'args')).toBe(false);
 });

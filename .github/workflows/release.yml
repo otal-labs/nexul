@@ -43,9 +43,7 @@ jobs:
     outputs:
       ref: ${{ steps.resolve.outputs.ref }}
       tag: ${{ steps.resolve.outputs.tag }}
-      channel: ${{ steps.resolve.outputs.channel }}
       previous_tag: ${{ steps.resolve.outputs.previous_tag }}
-      stable_exists: ${{ steps.resolve.outputs.stable_exists }}
       skip: ${{ steps.resolve.outputs.skip }}
     steps:
       - uses: actions/checkout@v7
@@ -64,8 +62,6 @@ jobs:
           # A stable tag is bare semver (v0.2.0); a beta has a suffix (v0.2.1-beta.3). Same rule as version.Channel().
           stable=$(git tag -l 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1 || true)
           newest_beta=$(git tag -l 'v*-beta.*' | sort -V | tail -n1 || true)
-          stable_exists=false
-          [[ -n "$stable" ]] && stable_exists=true
 
           bump() { # $1 = patch|minor|major
             if [[ -z "$stable" ]]; then
@@ -113,67 +109,17 @@ jobs:
 
           echo "Releasing $tag ($channel) from $ref"
           {
-            echo "channel=$channel"
             echo "ref=$ref"
             echo "tag=$tag"
             echo "previous_tag=$previous_tag"
-            echo "stable_exists=$stable_exists"
           } >> "$GITHUB_OUTPUT"
 
-  # Pushed before the release exists, so an installer never finds a release whose images are missing.
-  automations-image:
+  release:
     needs: resolve
     if: needs.resolve.outputs.skip != 'true'
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      packages: write
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ needs.resolve.outputs.ref }}
-      - uses: docker/setup-qemu-action@v4
-      - uses: docker/setup-buildx-action@v4
-      - uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - id: tags
-        env:
-          TAG: ${{ needs.resolve.outputs.tag }}
-          CHANNEL: ${{ needs.resolve.outputs.channel }}
-          STABLE_EXISTS: ${{ needs.resolve.outputs.stable_exists }}
-        run: |
-          image=ghcr.io/otal-labs/nexul-automations
-          tags=("${image}:${TAG#v}")
-          [[ "$CHANNEL" == "beta" ]] && tags+=("${image}:beta")
-          [[ "$CHANNEL" == "stable" || "$STABLE_EXISTS" != "true" ]] && tags+=("${image}:latest")
-          {
-            echo "tags<<EOF"
-            printf '%s\n' "${tags[@]}"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-      - uses: docker/build-push-action@v7
-        with:
-          context: ./automations
-          build-contexts: root=.
-          file: ./automations/Dockerfile
-          target: release
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.tags.outputs.tags }}
-          labels: |
-            org.opencontainers.image.source=https://github.com/otal-labs/nexul
-          build-args: |
-            VERSION=${{ needs.resolve.outputs.tag }}
-
-  release:
-    needs: [resolve, automations-image]
-    runs-on: ubuntu-latest
-    permissions:
       contents: write
-      packages: write
     steps:
       - uses: actions/checkout@v7
         with:
@@ -187,14 +133,10 @@ jobs:
         run: |
           (cd web && bun install --frozen-lockfile && VITE_API_URL=/ bun run build)
           rm -rf server/webui/dist && mkdir -p server/webui/dist && cp -r web/dist/. server/webui/dist/
-      # The runner image installs packages, which the arm64 build runs under emulation.
-      - uses: docker/setup-qemu-action@v4
-      - uses: docker/setup-buildx-action@v4
-      - uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build the automations host binaries
+        run: |
+          (cd automations && bun install --frozen-lockfile)
+          bun run --cwd automations build:binaries
       - name: Tag the commit
         run: git tag -f "${{ needs.resolve.outputs.tag }}"
       - uses: goreleaser/goreleaser-action@v7
@@ -206,7 +148,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GORELEASER_CURRENT_TAG: ${{ needs.resolve.outputs.tag }}
           GORELEASER_PREVIOUS_TAG: ${{ needs.resolve.outputs.previous_tag }}
-          STABLE_EXISTS: ${{ needs.resolve.outputs.stable_exists }}
 
   # nexul.io builds its changelog from the releases at build time, so each release rebuilds the site.
   website:
@@ -218,38 +159,3 @@ jobs:
       - name: Rebuild nexul.io
         if: env.DEPLOY_HOOK != ''
         run: curl --fail --silent --show-error -X POST "$DEPLOY_HOOK"
-
-  # Beta only: a daily beta means old beta image tags accumulate forever
-  # otherwise. actions/delete-package-versions can't do this safely here —
-  # for container packages its ignore-versions regex matches the version's
-  # digest (`.name`), not its tags, so it can't tell a "latest"/stable tag
-  # apart from a beta one; a blind min-versions-to-keep could delete the
-  # wrong image. List and delete by tag instead.
-  prune:
-    needs: [resolve, release]
-    if: needs.resolve.outputs.channel == 'beta'
-    runs-on: ubuntu-latest
-    permissions:
-      packages: write
-    env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      OWNER: ${{ github.repository_owner }}
-    steps:
-      - name: Delete old beta image versions
-        run: |
-          set -euo pipefail
-          for pkg in nexul nexul-runner nexul-automations; do
-            echo "Pruning ${pkg}..."
-            # Keep the 10 newest tagged versions and anything tagged latest or
-            # a stable semver; untagged multi-arch manifest children are left
-            # alone since a kept manifest list may still reference them.
-            ids=$(gh api --paginate --slurp "/orgs/${OWNER}/packages/container/${pkg}/versions" | jq -r '
-              add | [.[] | {id, created_at, tags: (.metadata.container.tags // [])}]
-              | map(select((.tags | length) > 0))
-              | map(select((.tags | any(. == "latest" or test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))) | not))
-              | sort_by(.created_at) | reverse | .[10:] | .[].id')
-            for id in $ids; do
-              echo "  deleting version $id"
-              gh api --method DELETE "/orgs/${OWNER}/packages/container/${pkg}/versions/${id}"
-            done
-          done

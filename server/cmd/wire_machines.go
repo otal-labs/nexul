@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 
+	"github.com/otal-labs/nexul/internal/automations"
 	"github.com/otal-labs/nexul/internal/deploy"
 	"github.com/otal-labs/nexul/internal/dns"
 	"github.com/otal-labs/nexul/internal/runner"
@@ -76,6 +77,50 @@ func (a deployMachineDiscovererAdapter) DiscoverContainers(ctx context.Context, 
 			dc.Networks = append(dc.Networks, deploy.ImportNetwork{Name: n.Name, Address: n.Address})
 		}
 		out = append(out, dc)
+	}
+	return out, nil
+}
+
+// runnerHostKind adapts the runner use-cases to the shared host_create and host_delete MCP tools.
+type runnerHostKind struct {
+	svc *runner.Service
+}
+
+func (k runnerHostKind) Enroll(ctx context.Context, name, machine string) (any, error) {
+	return k.svc.CreateEnrollment(ctx, name, machine)
+}
+
+func (k runnerHostKind) Remove(ctx context.Context, id string) error {
+	return k.svc.RemoveRunner(ctx, id)
+}
+
+// automationsHostKind adapts the automations host use-cases to the shared host_create and host_delete MCP tools.
+type automationsHostKind struct {
+	svc *automations.HostsService
+}
+
+func (k automationsHostKind) Enroll(ctx context.Context, name, machine string) (any, error) {
+	return k.svc.CreateEnrollment(ctx, name, machine)
+}
+
+func (k automationsHostKind) Remove(ctx context.Context, id string) error {
+	return k.svc.Remove(ctx, id)
+}
+
+// runnerAutomationsHostsAdapter lets machine_list file automations hosts under their machines (ADR 0017: runner
+// never imports automations).
+type runnerAutomationsHostsAdapter struct {
+	svc *automations.HostsService
+}
+
+func (a runnerAutomationsHostsAdapter) ListAutomationsHosts(ctx context.Context) ([]runner.AutomationsHost, error) {
+	hosts, err := a.svc.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]runner.AutomationsHost, 0, len(hosts))
+	for _, h := range hosts {
+		out = append(out, runner.AutomationsHost{ID: h.ID, Name: h.Name, Machine: h.Machine, Version: h.Version, Connected: h.Connected, LastSeen: h.LastSeen})
 	}
 	return out, nil
 }

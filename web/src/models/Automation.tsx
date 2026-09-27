@@ -15,6 +15,8 @@ export interface Automation {
   scopes: string[];
   token_prefix?: string;
   token_revoked_at?: string;
+  // The automations host it runs on; null means the bundled instance host.
+  host_id: string | null;
   created_at: string;
   updated_at: string;
 }

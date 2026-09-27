@@ -14,18 +14,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// installed runs a fresh install into <root>/nexul for the tests that start from an installed host.
+// installed runs a fresh server install into <root>/data/nexul, then forgets its calls and output.
 func (th *testHost) installed(t *testing.T) string {
 	t.Helper()
-	withVersion(t, "v0.2.1")
-	dir := filepath.Join(th.root, "nexul")
-	require.NoError(t, th.Install(t.Context(), Options{Dir: dir, Port: th.webPort(t), LogsPort: 5080, Yes: true}))
+	dir := th.serverInstall(t)
 	th.out.Reset()
 	th.exec.calls = nil
 	return dir
 }
 
-func TestUpgrade_NotInstalled_Fails(t *testing.T) {
+func TestUpgrade_NothingInstalled_Fails(t *testing.T) {
 	th := newTestHost(t)
 	require.ErrorContains(t, th.Upgrade(t.Context(), "v0.2.2"), "nexul install")
 }
@@ -38,34 +36,88 @@ func TestUpgrade_OtherVersion_SwapsTheBinaryAndReruns(t *testing.T) {
 
 	self, err := th.Executable()
 	require.NoError(t, err)
-	got, err := os.ReadFile(self)
-	require.NoError(t, err)
-	assert.Equal(t, "nexul-binary", string(got))
+	assert.Equal(t, "nexul-binary", readFile(t, self))
 	assert.Equal(t, []string{self, "upgrade", "--version", "v0.2.2"}, th.reexec)
-	assert.False(t, th.exec.ran("docker compose"), "the stack is upgraded by the new binary, not this one")
+	assert.False(t, th.exec.ran("systemctl"), "the units are upgraded by the new binary, not this one")
 }
 
-func TestUpgrade_ThisVersion_WritesTheStackAndRestartsIt(t *testing.T) {
+func TestUpgrade_ThisVersion_ReplacesEveryUnitsBinaryAndRestartsIt(t *testing.T) {
 	th := newTestHost(t)
 	dir := th.installed(t)
-	env, err := readEnvFile(filepath.Join(dir, ".env"))
+	for _, name := range []string{"nexul-server", "nexul-runner-instance", "nexul-automations-instance"} {
+		u, err := th.loadUnit(name)
+		require.NoError(t, err)
+		u.Version = "v0.2.0"
+		require.NoError(t, os.WriteFile(u.Exec, []byte("old"), 0o755))
+		require.NoError(t, th.saveUnit(*u))
+	}
+	settings, err := readEnvFile(filepath.Join(dir, ".env"))
 	require.NoError(t, err)
-	env["NEXUL_VERSION"] = "0.2.0"
-	require.NoError(t, writeEnvFile(filepath.Join(dir, ".env"), env))
+	settings["NEXUL_VERSION"] = "0.2.0"
+	require.NoError(t, writeEnvFile(filepath.Join(dir, ".env"), settings))
 
 	require.NoError(t, th.Upgrade(t.Context(), "v0.2.1"))
 
+	opt := th.Paths.UnitRoot
+	assert.Equal(t, "nexul-server-binary", readFile(t, filepath.Join(opt, "server", "nexul-server")))
+	assert.Equal(t, "nexul-runner-binary", readFile(t, filepath.Join(opt, "runner-instance", "nexul-runner")))
+	assert.Equal(t, "nexul-automations-binary", readFile(t, filepath.Join(opt, "automations-instance", "nexul-automations")))
+	assert.Equal(t, []string{
+		"systemctl restart nexul-server.service",
+		"systemctl restart nexul-runner-instance.service",
+		"systemctl restart nexul-automations-instance.service",
+	}, th.exec.callsTo("systemctl restart"), "OpenObserve's pin did not change, so it keeps running")
+	u, err := th.loadUnit("nexul-runner-instance")
+	require.NoError(t, err)
+	assert.Equal(t, "v0.2.1", u.Version)
 	after, err := readEnvFile(filepath.Join(dir, ".env"))
 	require.NoError(t, err)
 	assert.Equal(t, "0.2.1", after["NEXUL_VERSION"])
-	assert.Equal(t, env["NEXUL_LOGS_PASSWORD"], after["NEXUL_LOGS_PASSWORD"])
-	assert.True(t, th.exec.ran("docker compose --project-directory "+dir+" pull"))
-	assert.True(t, th.exec.ran("docker compose --project-directory "+dir+" up --detach"))
 	assert.Contains(t, th.out.String(), "Nexul v0.2.1 is running.")
 	assert.Nil(t, th.reexec)
 }
 
+func TestUpgrade_NewOpenObservePin_ReplacesAndRestartsIt(t *testing.T) {
+	th := newTestHost(t)
+	th.installed(t)
+	th.OpenObserve = newFakeOpenObserve(t, "v1.0.5")
+
+	require.NoError(t, th.Upgrade(t.Context(), "v0.2.1"))
+
+	assert.Equal(t, "openobserve-v1.0.5", readFile(t, filepath.Join(th.Paths.UnitRoot, "openobserve", "openobserve")))
+	assert.Equal(t, []string{"systemctl restart nexul-openobserve.service"}, th.exec.callsTo("systemctl restart"))
+}
+
+func TestUpgrade_FailingDownload_StopsAtThatUnit(t *testing.T) {
+	th := newTestHost(t)
+	th.installed(t)
+	u, err := th.loadUnit("nexul-server")
+	require.NoError(t, err)
+	u.Version = "v0.2.0"
+	require.NoError(t, th.saveUnit(*u))
+	th.release.checksum = map[string]string{"nexul-server-linux-amd64": strings.Repeat("0", 64)}
+
+	require.ErrorContains(t, th.Upgrade(t.Context(), "v0.2.1"), "nexul-server: checksum mismatch")
+	assert.False(t, th.exec.ran("systemctl restart"))
+}
+
+func TestRunUpgrade_Detach_StartsATransientUnit(t *testing.T) {
+	th := newTestHost(t)
+	require.NoError(t, th.runUpgrade(t.Context(), []string{"--detach", "--version", "v0.2.2"}))
+
+	calls := th.exec.callsTo("systemd-run")
+	require.Len(t, calls, 1)
+	self, _ := th.Executable()
+	assert.Regexp(t, `^systemd-run --unit nexul-upgrade-[a-z2-7]{8} --collect --quiet `+self+` upgrade --version v0.2.2 --yes$`, calls[0])
+	assert.Contains(t, th.out.String(), "journalctl -u nexul-upgrade-")
+}
+
 func TestUninstall(t *testing.T) {
+	t.Run("nothing installed", func(t *testing.T) {
+		th := newTestHost(t)
+		require.ErrorContains(t, th.Uninstall(t.Context(), false, true), "not installed")
+	})
+
 	t.Run("without a terminal and without --yes nothing is removed", func(t *testing.T) {
 		th := newTestHost(t)
 		th.installed(t)
@@ -82,7 +134,7 @@ func TestUninstall(t *testing.T) {
 		assert.Empty(t, th.exec.calls)
 	})
 
-	t.Run("keeps the install directory so install brings it back", func(t *testing.T) {
+	t.Run("removes every unit, hosts first, and keeps the install directory", func(t *testing.T) {
 		th := newTestHost(t)
 		dir := th.installed(t)
 		th.Interactive = true
@@ -90,10 +142,19 @@ func TestUninstall(t *testing.T) {
 
 		require.NoError(t, th.Uninstall(t.Context(), false, false))
 
-		assert.True(t, th.exec.ran("docker compose --project-directory "+dir+" down"))
-		assert.True(t, th.exec.ran("systemctl disable --now nexul-runner.service"))
-		assert.NoFileExists(t, th.Paths.Unit)
-		assert.NoFileExists(t, filepath.Join(th.Paths.BinDir, "nexul-runner"))
+		assert.Equal(t, []string{
+			"systemctl disable --now nexul-automations-instance.service",
+			"systemctl disable --now nexul-runner-instance.service",
+			"systemctl disable --now nexul-openobserve.service",
+			"systemctl disable --now nexul-server.service",
+		}, th.exec.callsTo("systemctl disable"))
+		assert.Len(t, th.instance.calls("/api/runners/self/remove"), 1)
+		assert.Len(t, th.instance.calls("/api/automation-hosts/self/remove"), 1)
+		units, err := th.loadUnits()
+		require.NoError(t, err)
+		assert.Empty(t, units)
+		assert.NoDirExists(t, th.Paths.UnitRoot)
+		assert.NoFileExists(t, filepath.Join(th.Paths.Sudoers, "nexul-automations-instance"))
 		assert.NoFileExists(t, filepath.Join(th.Paths.BinDir, "nexul"))
 		assert.NoFileExists(t, th.Paths.Config)
 		assert.FileExists(t, filepath.Join(dir, ".env"))
@@ -103,17 +164,25 @@ func TestUninstall(t *testing.T) {
 	t.Run("purge deletes the install directory", func(t *testing.T) {
 		th := newTestHost(t)
 		dir := th.installed(t)
-		require.NoError(t, th.Uninstall(t.Context(), true, true))
+		require.NoError(t, th.runUninstall(t.Context(), []string{"--purge", "--yes"}))
 		assert.NoDirExists(t, dir)
 		assert.Contains(t, th.out.String(), "DELETES "+dir)
 	})
 
-	t.Run("a failing compose down stops before removing anything", func(t *testing.T) {
+	t.Run("a remote runner alone is removed without a server install", func(t *testing.T) {
+		th := newTestHost(t)
+		th.hostInstalled(t, kindRunner, "edge")
+		require.NoError(t, th.Uninstall(t.Context(), false, true))
+		assert.NoFileExists(t, filepath.Join(th.Paths.Services, "nexul-runner-edge.service"))
+		assert.Contains(t, th.out.String(), "Files ........... removed")
+	})
+
+	t.Run("a failing daemon-reload stops before the directory goes", func(t *testing.T) {
 		th := newTestHost(t)
 		th.installed(t)
-		th.set("docker compose", "", errors.New("daemon down"))
-		require.ErrorContains(t, th.Uninstall(t.Context(), false, true), "daemon down")
-		assert.FileExists(t, th.Paths.Unit)
+		th.set("systemctl daemon-reload", "", errors.New("bus down"))
+		require.ErrorContains(t, th.Uninstall(t.Context(), false, true), "bus down")
+		assert.DirExists(t, filepath.Join(th.Paths.UnitRoot, "automations-instance"))
 	})
 }
 
@@ -122,43 +191,27 @@ func TestStatus(t *testing.T) {
 		th := newTestHost(t)
 		require.ErrorContains(t, th.Status(t.Context()), "not installed")
 	})
-	t.Run("prints the version, directory, runner and services", func(t *testing.T) {
+	t.Run("lists every unit with its kind, state and version", func(t *testing.T) {
 		th := newTestHost(t)
 		dir := th.installed(t)
 		th.set("systemctl is-active", "active", nil)
-		th.set("docker compose --project-directory "+dir+" ps", "server\trunning\tUp 2 minutes", nil)
+		th.set("systemctl is-active nexul-runner-instance.service", "failed", nil)
 
 		require.NoError(t, th.Status(t.Context()))
 
 		out := th.out.String()
-		assert.Contains(t, out, "Nexul v0.2.1")
 		assert.Contains(t, out, "Directory  "+dir)
-		assert.Contains(t, out, "Runner     active")
-		assert.Contains(t, out, "server\trunning\tUp 2 minutes")
+		assert.Regexp(t, `server\s+nexul-server\s+active\s+v0.2.1`, out)
+		assert.Regexp(t, `logs\s+nexul-openobserve\s+active\s+v1.0.4`, out)
+		assert.Regexp(t, `runner\s+nexul-runner-instance\s+failed\s+v0.2.1`, out)
+		assert.Regexp(t, `automations\s+nexul-automations-instance\s+active\s+v0.2.1`, out)
 	})
-	t.Run("a docker failure still prints the rest", func(t *testing.T) {
+	t.Run("a manager with nothing to say reports unknown", func(t *testing.T) {
 		th := newTestHost(t)
-		th.installed(t)
-		th.set("docker compose", "", errors.New("permission denied"))
+		th.hostInstalled(t, kindRunner, "edge")
 		require.NoError(t, th.Status(t.Context()))
-		assert.Contains(t, th.out.String(), "unavailable: permission denied")
-	})
-}
-
-func TestCommandFlags(t *testing.T) {
-	t.Run("install rejects an unknown flag", func(t *testing.T) {
-		th := newTestHost(t)
-		require.Error(t, th.runInstall(t.Context(), []string{"--bogus"}))
-	})
-	t.Run("upgrade passes --version through", func(t *testing.T) {
-		th := newTestHost(t)
-		require.ErrorContains(t, th.runUpgrade(t.Context(), []string{"--version", "0.2.2"}), "not installed")
-	})
-	t.Run("uninstall passes --purge and --yes through", func(t *testing.T) {
-		th := newTestHost(t)
-		dir := th.installed(t)
-		require.NoError(t, th.runUninstall(t.Context(), []string{"--purge", "--yes"}))
-		assert.NoDirExists(t, dir)
+		assert.Regexp(t, `runner\s+nexul-runner-edge\s+unknown`, th.out.String())
+		assert.NotContains(t, th.out.String(), "Directory")
 	})
 }
 
