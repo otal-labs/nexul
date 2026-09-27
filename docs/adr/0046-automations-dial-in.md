@@ -1,5 +1,7 @@
 # Automations dial in to the instance; Nexul never calls out to them
 
+Amended by ADR 0075: each automation is placed on one automations host, which fetches its assignments and the host-scoped tokens its workers dial in with.
+
 An automation opens one outbound WebSocket to the instance, authenticated by
 its own scoped token, announces the subscriptions declared in its code, and
 receives events down that connection; run reports ride back up it. It is the

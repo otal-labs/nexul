@@ -1,5 +1,7 @@
 # macOS and Windows installs run the runner in a container, with data in Docker volumes
 
+Superseded by ADR 0073: macOS and Windows installs run every component as a native service, keep their data in the install directory, and upgrade from the UI like Linux.
+
 Amends ADR 0069, which covered Linux servers only; brings back ADR 0032's container exception for these hosts.
 
 `nexul install` also runs on a Mac and on Windows, for trying Nexul on a laptop before it goes on a server. There,

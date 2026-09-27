@@ -28,8 +28,10 @@ One self-hosted install of Nexul, owned by one person or team.
 Single-tenant by design.
 
 **Runner**:
-The host binary on your server that executes builds and deploys, connected to
-the server over a WebSocket.
+A named service on a machine that executes builds and deploys, connected to
+the server over a WebSocket with its own host credential. A machine can run
+several; the one `nexul install` puts on the instance's own server is named
+`instance`.
 _Avoid_: Agent, worker, executor
 
 **Agent**:
@@ -247,8 +249,9 @@ _Avoid_: Container (the Docker thing a service is a record of)
 
 **Stack root**:
 The directory on a machine under which every stack's persistent checkout
-lives (`/data/nexul` by default, `stacks/<slug>/repo` beneath it).
-Configurable per machine; a stack's location is fixed once it has deployed.
+lives, at `stacks/<slug>/repo` beneath it. Set by the runner that creates the
+machine when it enrolls, then configurable per machine; a stack's location is
+fixed once it has deployed.
 
 **Unmanaged stack**:
 A stack adopted from what was already running on a machine (a manual
@@ -257,23 +260,25 @@ containers can be seen, wired, and exposed, but it cannot be deployed until
 a repository is attached, which makes it managed.
 
 **Instance upgrade**:
-Moving an install to the newest release of its channel, or to a chosen one,
-with `nexul upgrade`: on the host, or from the UI and the `instance_upgrade`
-MCP tool, which ask the `instance` runner to start it. The server records a
-UI or MCP upgrade and resolves the record when it boots on the target version.
+Moving every Nexul service on the instance's server to the newest release of
+its channel, or to a chosen one, with `nexul upgrade`: on the host, or from
+the UI and the `instance_upgrade` MCP tool, which ask the `instance` runner to
+start it detached from its own service. The server records a UI or MCP
+upgrade and resolves the record when it boots on the target version.
 _Avoid_: Update (that word is the runner's own binary swap), deploy
 
 **Install directory**:
-Where `nexul install` puts an instance: `/data/nexul` on a Linux server, with
-the compose file, the generated `.env`, `data/` and `logs/`; `~/nexul` on a Mac
-or Windows PC, where the data lives in Docker volumes instead. Uninstall keeps
-it unless purged, and installing into it again brings the same instance back.
+Where `nexul install` keeps an instance's data: `/data/nexul` on a Linux
+server and `~/nexul` on a Mac or Windows PC, holding the generated `.env`,
+`data/`, `logs/` and `stacks/`. The binaries and service definitions live
+outside it. Uninstall keeps it unless purged, and installing into it again
+brings the same instance back.
 _Avoid_: Checkout (there is no git checkout of Nexul on a server)
 
 **Machine**:
-A server a runner runs on. Runners belong to a machine; a service targets a
-machine and any of its runners may take the job, so the number of runners
-per machine is the scaling knob. Replaces "target is the runner" from
+A server runners and automations hosts run on. Runners belong to a machine;
+a service targets a machine and any of its runners may take the job, so the
+number of runners per machine is the scaling knob. Replaces "target is the runner" from
 2026-09-07 once built.
 _Avoid_: Host, node, server (in the UI)
 
@@ -291,9 +296,24 @@ Nexul never calls in to it.
 _Avoid_: Rule, workflow (the v1 rule engine is gone)
 
 **Automations host**:
-The small container bundled with the instance that runs automations — all
-Defaults, plus small Custom ones. Bigger Custom automations run wherever the
-owner deploys them.
+A named service that runs the automations placed on it, each automation on
+exactly one host. The one `nexul install` puts on the instance's own server is
+named `instance` and is where new automations go; more can be installed on
+other machines.
+_Avoid_: Automations container, runner (a runner builds and deploys)
+
+**Enrollment code**:
+A one-time code, valid for an hour, that lets one named runner or automations
+host enroll with the instance and receive its host credential. It travels
+inside the install command the instance renders and is useless once used.
+_Avoid_: Join token, registration token, runner secret
+
+**Host credential**:
+The credential one runner or automations host authenticates with, its own
+and no other host's, from enrollment until the host is removed. Removal
+revokes it, and a host refused with a revoked credential uninstalls itself.
+_Avoid_: Runner secret, shared secret, token (a token acts for a person, an
+integration, or an automation)
 
 **Connector**:
 A third-party tool the instance holds a credential for and calls out to:
@@ -423,7 +443,8 @@ roles, token scopes, and the agent. Distinct from auth.
 Distinct from access.
 
 **Automations** — event-driven code: Default and Custom automations run
-functions when events happen, acting through the scoped API.
+functions when events happen, acting through the scoped API, on the
+automations hosts they are placed on.
 
 **Chat** — conversations inside a workspace: channels, direct messages,
 threads, and ticket threads, with the mentionable Agent and its memories.
@@ -456,7 +477,8 @@ use-case layer, so LLM agents can drive the product.
 **Memories** — the Memory entity: its table, page, permission verbs, and MCP
 tools. Never shares a list, a page, or search with Docs.
 
-**Runner** — runner lifecycle, the WebSocket protocol, queueing and dispatch.
+**Runner** — runner enrollment and removal, the WebSocket protocol, queueing
+and dispatch.
 
 **Search** — FTS5 full-text search over docs and tickets. Not a package: each
 domain registers its own index and query.

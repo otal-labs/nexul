@@ -1,6 +1,6 @@
 # One binary installs, upgrades and removes an instance
 
-ADR 0072 extends this to macOS and Windows, where the runner is a container and data lives in Docker volumes.
+Superseded in part by ADR 0073: the compose stack is gone and every component, OpenObserve included, is a native service; the UI's upgrade runs `nexul upgrade --detach`, which on Linux is a transient `nexul-upgrade-<suffix>` unit. The installer-as-a-binary, `nexul upgrade` and the host runner decisions stand.
 
 Supersedes ADR 0054 and the bundled-runner exception in ADR 0032; supersedes ADR 0015 in part.
 

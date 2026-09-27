@@ -5,21 +5,23 @@ sidebar:
   order: 2
 ---
 
-Nexul ships prebuilt images and binaries, so an upgrade replaces the `nexul` command with the release's, pulls that release's images, and restarts the stack. You can start it from the web UI or from the server.
+Nexul ships prebuilt binaries, so an upgrade replaces the `nexul` command with the release's, swaps the binary of every Nexul service on the machine, and restarts each one. You can start it from the web UI or from the server.
 
 ## From the web UI
 
 Open **Settings → Instance**. The **Instance version** section shows the running version, its channel, and the newest release on that channel. When a newer release exists, **Upgrade to vX** starts the upgrade after a confirmation. The same action exists as the `instance_upgrade` MCP tool.
 
-What happens: the server asks the `instance` runner to run `nexul upgrade --version vX` on the server, in a systemd unit of its own named `nexul-upgrade`, so the upgrade carries on while the server restarts. The browser reconnects on its own and the section reports **Upgraded to vX**. Expect about a minute of downtime while containers restart.
+What happens: the server asks the `instance` runner to run `nexul upgrade --detach --version vX` on the server. `--detach` starts the upgrade outside the runner's own service, so it carries on while the runner and the server restart underneath it: on Linux as a transient systemd unit named `nexul-upgrade-<suffix>`, on a Mac or Windows PC as a background process. The browser reconnects on its own and the section reports **Upgraded to vX**. Expect under a minute of downtime while the services restart.
 
-If the instance is still on the old version fifteen minutes later, the section reports the upgrade as failed. The upgrade's output is in the journal:
+If the instance is still on the old version fifteen minutes later, the section reports the upgrade as failed. The upgrade's output is in the journal on Linux:
 
 ```sh
-journalctl -u nexul-upgrade
+journalctl -u 'nexul-upgrade-*'
 ```
 
-The UI upgrade needs a Linux server installed with `nexul install`, which is what gives the server an `instance` runner and the `nexul` command on the host. On a Mac or Windows install, the runner is a container and can't upgrade the host, so run `nexul upgrade` in a terminal instead.
+On a Mac it is in `~/Library/Application Support/nexul/nexul-upgrade.log`, and on Windows in `%ProgramData%\Nexul\nexul-upgrade.log`.
+
+The UI upgrade needs an install made with `nexul install`, which is what gives the server an `instance` runner and the `nexul` command on the host.
 
 ## From the server
 
@@ -27,9 +29,9 @@ The UI upgrade needs a Linux server installed with `nexul install`, which is wha
 nexul upgrade
 ```
 
-This finds the newest release on your install's channel (stable, or beta if you installed a beta), downloads that release's `nexul` and checks it against the release's `checksums.txt`, then hands over to it. The new version writes its own `docker-compose.yml` into the install directory, keeps your `.env`, pulls the images and restarts the stack.
+This finds the newest release on your install's channel (stable, or beta if you installed a beta), downloads that release's `nexul` and checks it against the release's `checksums.txt`, then hands over to it. The new version downloads each service's binary once, copies it to every service of that kind on the machine, and restarts them one at a time: the server, OpenObserve when its pinned version changed, then each runner and automations host. A service already on the target version is left running. `nexul status` shows each service's version afterwards.
 
-Runners, including the `instance` runner, update themselves the next time they connect to the upgraded server. There's nothing to run on them by hand.
+Runners on other machines need nothing run by hand: a runner updates itself the next time it connects to the upgraded server (see [Runners](/docs/guide/runners/#updates)). An automations host on another machine moves when you run `nexul upgrade` there, which also moves every runner on that machine straight away.
 
 ## Pinning and rolling back
 
@@ -49,10 +51,10 @@ An older binary refuses to start against a database with a newer schema. It name
 
 With the default install directory, `/data/nexul`:
 
-1. Stop the stack:
+1. Stop the server:
 
    ```sh
-   docker compose --project-directory /data/nexul down
+   systemctl stop nexul-server
    ```
 
 2. Copy the snapshot over the live database and remove the WAL files, so SQLite doesn't replay them against the restored file:

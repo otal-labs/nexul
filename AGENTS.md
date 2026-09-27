@@ -22,7 +22,7 @@ The product is implemented. The work now is improving it domain by domain.
 | Design or visual work | `practices/design-language.md`, the Mono Console spec | `practices/react-guide.md` |
 | Testing | `practices/testing.md` | The language file above |
 | Any code | `practices/borrowed-practices.md`, the cross-cutting rules | `practices/README.md` for the index |
-| Docker, CI, deploy | [CI and releases](https://nexul.io/docs/contributing/ci-and-releases/) | Root `docker-compose.yml` |
+| Install, CI, release | [CI and releases](https://nexul.io/docs/contributing/ci-and-releases/) | `internal/install/`, `.goreleaser.yaml`, `docker-compose.debug.yml` for development |
 | MCP server or a domain's `mcp.go` | `practices/mcp.md` | `practices/architecture.md`, section 8 |
 | Event bus or resilience | `practices/architecture.md`, sections 2 to 6 | `docs/adr/` |
 | Why is it built this way? | `docs/adr/` | The effort's spec in `.scratch/` |
@@ -182,12 +182,18 @@ calls what, `search_graph` to disambiguate an overloaded name. Reindex
 
 ## Quick reference: adding a new service binary
 
+Releases ship native binaries only, never images (ADR 0073).
+
 1. Create `<service>/cmd/main.go` (composition root).
-2. Create `<service>/Dockerfile` (multi-stage: `release` and `debug` targets).
-3. Add it to the root `docker-compose.yml` (the production stack `nexul install`
-   writes) and `docker-compose.debug.yml`.
-4. Ship it: a Go binary or its image goes in `.goreleaser.yaml`, anything else
-   is an image job in `.github/workflows/release.yml`.
+2. Ship it as `nexul-<service>-<os>-<arch>[.exe]` for every release target: a
+   Go binary is a build in `.goreleaser.yaml`; anything else is built in
+   `.github/workflows/release.yml` and attached through the GoReleaser
+   `extra_files` and checksum globs.
+3. Teach `internal/install/` to run it: a unit kind, its environment, and
+   what `nexul install`, `upgrade`, `status` and `uninstall` do with it on
+   systemd, launchd and the Windows service host.
+4. For development, add a `<service>/Dockerfile.debug` and a service in
+   `docker-compose.debug.yml`.
 5. Add a CI job in `.github/workflows/ci.yml` with a `dorny/paths-filter`
    entry.
 
