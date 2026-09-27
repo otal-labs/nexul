@@ -159,6 +159,7 @@ func TestUninstall(t *testing.T) {
 		assert.NoFileExists(t, th.Paths.Config)
 		assert.FileExists(t, filepath.Join(dir, ".env"))
 		assert.Contains(t, th.out.String(), "nexul install --dir "+dir)
+		assert.False(t, th.exec.ran("userdel"), "kept data keeps its owner")
 	})
 
 	t.Run("purge deletes the install directory", func(t *testing.T) {
@@ -167,6 +168,23 @@ func TestUninstall(t *testing.T) {
 		require.NoError(t, th.runUninstall(t.Context(), []string{"--purge", "--yes"}))
 		assert.NoDirExists(t, dir)
 		assert.Contains(t, th.out.String(), "DELETES "+dir)
+		assert.True(t, th.exec.ran("userdel nexul"), "the service user goes with the data it owned")
+	})
+
+	t.Run("purge with the service user already gone still succeeds", func(t *testing.T) {
+		th := newTestHost(t)
+		th.installed(t)
+		th.set("id -u nexul", "", errors.New("no such user"))
+		require.NoError(t, th.runUninstall(t.Context(), []string{"--purge", "--yes"}))
+		assert.False(t, th.exec.ran("userdel"))
+		assert.Contains(t, th.out.String(), "nexul, not present")
+	})
+
+	t.Run("a failing userdel is reported", func(t *testing.T) {
+		th := newTestHost(t)
+		th.installed(t)
+		th.set("userdel nexul", "", errors.New("user nexul is currently used by process 42"))
+		require.ErrorContains(t, th.runUninstall(t.Context(), []string{"--purge", "--yes"}), "remove the nexul user")
 	})
 
 	t.Run("a remote runner alone is removed without a server install", func(t *testing.T) {

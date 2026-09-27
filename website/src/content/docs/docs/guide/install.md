@@ -105,7 +105,7 @@ The server listens on plain HTTP. For a public domain, put a Cloudflare tunnel o
 nexul status              # every Nexul service on this machine: kind, name, state and version
 nexul upgrade             # the newest release on your channel; see Upgrade
 nexul uninstall           # stop and remove every Nexul service, keeping the install directory
-nexul uninstall --purge   # also delete the install directory
+nexul uninstall --purge   # also delete the install directory and, on Linux, the nexul user
 ```
 
 `nexul uninstall` asks before it removes anything, and it leaves the stacks you deployed running. Installing again with `nexul install --dir <the same directory>` brings the same instance back.
