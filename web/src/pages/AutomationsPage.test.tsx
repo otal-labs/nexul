@@ -26,6 +26,7 @@ const automation = (overrides: Partial<Automation> = {}): Automation => ({
   config_schema: {},
   config_values: {},
   scopes: ["tickets:write"],
+  host_id: null,
   created_at: "2026-08-01T00:00:00Z",
   updated_at: "2026-08-01T00:00:00Z",
   ...overrides,
@@ -53,13 +54,24 @@ describe("AutomationsPage", () => {
     renderPage();
 
     expect(await screen.findByText("No automations yet")).toBeInTheDocument();
+    expect(await screen.findByText("No automations host enrolled yet.")).toBeInTheDocument();
   });
 
-  it("lists automations returned by the API", async () => {
-    mocks.get.mockResolvedValue({ data: [automation(), automation({ id: "a2", name: "PR opened" })] });
+  it("lists automations and the automations hosts returned by the API", async () => {
+    const host = {
+      id: "h1", name: "jobs-1", machine: "prod", os: "linux", arch: "amd64", version: "v0.3.0",
+      connected: true, last_seen: "2026-08-01T00:00:00Z",
+    };
+    mocks.get.mockImplementation(async (url: string) =>
+      url === "/api/automation-hosts"
+        ? { data: [host] }
+        : { data: [automation(), automation({ id: "a2", name: "PR opened" })] },
+    );
     renderPage();
 
     expect(await screen.findByText("Ticket finished")).toBeInTheDocument();
     expect(screen.getByText("PR opened")).toBeInTheDocument();
+    expect(await screen.findByText("jobs-1")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add automations host" })).toBeInTheDocument();
   });
 });

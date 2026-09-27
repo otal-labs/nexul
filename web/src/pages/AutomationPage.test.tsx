@@ -27,6 +27,7 @@ const automation = {
   config_schema: { fields: [] },
   config_values: {},
   scopes: ["tickets:write"],
+  host_id: null,
   created_at: "2026-08-01T00:00:00Z",
   updated_at: "2026-08-01T00:00:00Z",
 };
@@ -63,6 +64,7 @@ describe("AutomationPage", () => {
     "/api/automations/a1/runs": [],
     "/api/workspaces/ws-1/me": { role_name: "Owner", permissions: ["automations:write", "automations:delete"] },
     "/api/automations/a1/versions/diff": { active: null, pending: null },
+    "/api/automation-hosts": [],
   };
 
   it("renders the automation's name, subscriptions, and empty run history", async () => {
