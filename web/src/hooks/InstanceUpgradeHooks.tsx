@@ -24,7 +24,7 @@ export const useRequestInstanceUpgrade = () => {
         return (await api.post<InstanceUpgradeRecord>("/api/instance/upgrade")).data;
       } catch (err) {
         const reason = (err as AxiosError<{ reason: string }>).response?.data?.reason;
-        throw new Error(reason || (err as Error).message);
+        throw new Error(reason || (err as Error).message, { cause: err });
       }
     },
     onSuccess: () => toast.success("Upgrade started"),

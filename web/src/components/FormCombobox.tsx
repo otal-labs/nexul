@@ -96,7 +96,7 @@ export const FormCombobox = <T extends FieldValues>({
               >
                 <span className="truncate">
                   {selected?.label ?? placeholder ?? "Select…"}
-                  {selected?.hint && <span className="ml-1.5 text-muted-foreground">{selected.hint}</span>}
+                  {selected?.hint && <>{" "}<span className="ml-0.5 text-muted-foreground">{selected.hint}</span></>}
                 </span>
                 <ChevronDownIcon className="size-3.5 text-muted-foreground" aria-hidden />
               </PopoverTrigger>
@@ -195,7 +195,7 @@ const ComboboxRow = ({ selected, highlighted, onPick, hint, children }: Combobox
   >
     <span className="truncate">
       {children}
-      {hint && <span className="ml-1.5 text-muted-foreground">{hint}</span>}
+      {hint && <>{" "}<span className="ml-0.5 text-muted-foreground">{hint}</span></>}
     </span>
     {selected && (
       <span className="absolute right-2 flex size-3.5 items-center justify-center">

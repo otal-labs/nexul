@@ -81,7 +81,7 @@ export interface DnsSetupResult {
 
 // Mirrors the server's recordNameFor: "@" at the apex, the label under the zone, or null when the host isn't in it.
 export const instanceRecordName = (instanceUrl: string, zone: string): string | null => {
-  let host = "";
+  let host: string;
   try {
     host = new URL(instanceUrl).hostname.toLowerCase();
   } catch {

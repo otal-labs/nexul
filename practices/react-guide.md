@@ -1622,7 +1622,7 @@ The web workspace lives at `web/` in the monorepo (Bun). Before
 committing, from `web/`:
 
 ```bash
-bun run typecheck   # tsc --noEmit
+bun run typecheck   # tsc --noEmit (TypeScript 7)
 bun run lint        # eslint
 bun run build       # vite build (catches what tsc/eslint miss)
 ```
@@ -1634,3 +1634,8 @@ flat/recommended, `eslint-plugin-react-hooks` recommended, plus a standalone
 `react-refresh` recommended preset enabled, only that one rule. Enable
 `verbatimModuleSyntax` in `tsconfig` so type-only imports are enforced
 (matches the import rules above).
+
+`tsc` is TypeScript 7, installed as `@typescript/native` and called by path
+from the scripts. The plain `typescript` package stays on 6.0.x because
+typescript-eslint needs the compiler API, which TypeScript 7 does not ship.
+Dependabot ignores `typescript` past 6.0 in `web/` for that reason.
