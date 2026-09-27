@@ -79,6 +79,7 @@ const renderPage = (initialPath = "/board/p-1") => {
         <Routes>
           <Route path="/board" element={<BoardPage />} />
           <Route path="/board/:projectId" element={<BoardPage />} />
+          <Route path="/wizard/project/project" element={<div>project-wizard</div>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -347,7 +348,9 @@ describe("BoardPage routing", () => {
     renderPage("/board");
 
     expect(await screen.findByText("No projects yet")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "New project" })).toBeInTheDocument();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("link", { name: "New project" }));
+    expect(await screen.findByText("project-wizard")).toBeInTheDocument();
   });
 
   it("remembers the project it lands on for the next unscoped visit", async () => {

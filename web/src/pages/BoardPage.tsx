@@ -49,7 +49,6 @@ export const BoardPage = () => {
   const swimlanes = useSwimlanes(filteredTickets, categories, filters);
 
   const {
-    openCreateProjectDialog,
     openCreateTicketDialog,
     openCreateCategoryDialog,
     addTicketToColumn,
@@ -66,7 +65,6 @@ export const BoardPage = () => {
             isLoading={isPending}
             error={error}
             hasProjects={projects.length > 0}
-            onCreateProject={() => void openCreateProjectDialog()}
           />
         )}
         {scopedNotFound && <BoardNotFoundState />}

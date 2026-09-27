@@ -23,7 +23,7 @@ The page shows you the exact OAuth callback URL to register on the App (`<instan
 
 Once every row is green, **Set up instance** hands off to GitHub's OAuth screen to sign you in as the first user.
 
-If your instance is already configured, `/setup` refuses a second bootstrap — reload and sign in instead. You can still reach `/setup` later (a link, not hidden) if you ever need to point the instance at a different GitHub App.
+After bootstrap, `/setup` remains available until the first login so you can correct the GitHub App settings. Once someone has signed in, it refuses another bootstrap — use the settings in the app instead.
 
 ## 2. Owner wizard
 
@@ -40,4 +40,4 @@ Teammates who sign in after the owner don't see the workspace setup — the work
 
 ## Next step
 
-Once the owner wizard finishes, connect your first repository from the Runners page's onboarding or the project wizard — see [Runners](/docs/guide/runners/) and [Stacks and deploys](/docs/guide/stacks-and-deploys/).
+Once the owner wizard finishes, connect your first repository from the project wizard — see [Projects and repositories](/docs/guide/projects-and-repositories/) and [Stacks and deploys](/docs/guide/stacks-and-deploys/).

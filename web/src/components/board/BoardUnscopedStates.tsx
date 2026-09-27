@@ -1,18 +1,19 @@
-import { Button } from "@/components/ui/button";
+import { Link } from "react-router";
+
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { PageHeader } from "@/components/PageHeader";
+import { Button } from "@/components/ui/button";
 
 interface BoardUnscopedStatesProps {
   isLoading: boolean;
   error: unknown;
   hasProjects: boolean;
-  onCreateProject: () => void;
 }
 
 // The unscoped /board route while it resolves a redirect; zero projects is the one dead end it can't recover from.
-export const BoardUnscopedStates = ({ isLoading, error, hasProjects, onCreateProject }: BoardUnscopedStatesProps) => (
+export const BoardUnscopedStates = ({ isLoading, error, hasProjects }: BoardUnscopedStatesProps) => (
   <>
     <PageHeader title="Board" subtitle="Every ticket in its lane, traffic optional." />
     {isLoading && <LoadingDisplay label="Loading board…" />}
@@ -22,8 +23,8 @@ export const BoardUnscopedStates = ({ isLoading, error, hasProjects, onCreatePro
         title="No projects yet"
         message="Create a project to start building its board."
         action={
-          <Button size="sm" onClick={onCreateProject}>
-            New project
+          <Button asChild size="sm">
+            <Link to="/wizard/project/project">New project</Link>
           </Button>
         }
       />
