@@ -57,7 +57,7 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version: '1.26'
-      - uses: sqlc-dev/setup-sqlc@v1
+      - uses: sqlc-dev/setup-sqlc@v5
         with:
           sqlc-version: '1.31.1'
       - name: Generated SQL code is current
