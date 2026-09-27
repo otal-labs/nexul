@@ -85,7 +85,7 @@ The `testing` module (`sdk/src/testing.ts`) exports `createMockContext`, the sam
 
 ## Running one locally
 
-1. In your automation's project directory, run `nexul init` and paste in a personal access token minted from **Settings → Personal access tokens**.
+1. In your automation's project directory, run `nexul init` and paste in a personal access token minted from **Settings → Tokens**.
 2. Create the automation itself in the Nexul UI (**Automations → New automation**) to get its id and scopes.
 3. Write handlers in `src/index.ts`, then use `nexul dev` to fire fixture events at them and check the logs and would-have-called API calls.
 4. When it's ready, `nexul push <id>` uploads it as a pending version. The UI shows a diff against whatever's currently active; merging activates it and respawns the automation's worker.

@@ -106,7 +106,7 @@ It authenticates with a personal access token. A browser session token also
 works for an interactive session. See [API and tokens](/docs/guide/api-and-tokens/)
 for the permission vocabulary. Mint one:
 
-1. Open **Settings → Personal access tokens**.
+1. Open **Settings → Tokens**.
 2. Give it a name and create it. The raw token (`dep_…`) is shown once — copy it now, it can't be listed again later.
 
 A paired computer needs none of the steps below: its

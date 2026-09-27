@@ -11,8 +11,6 @@ interface WizardProjectStepProps {
   onDone: () => void;
 }
 
-// Same fields as CreateProjectForm (name + prefix); a plain form rather than that dialog-bound component,
-// since this rung advances the rail on success instead of closing a dialog.
 export const WizardProjectStep = ({ onDone }: WizardProjectStepProps) => {
   const createProject = useCreateProject();
   const setProjectId = useProjectWizardStore((s) => s.setProjectId);
