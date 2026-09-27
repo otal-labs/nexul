@@ -74,6 +74,13 @@ type SettingsStore interface {
 	SetMentionChipTemplate(ctx context.Context, template string) (Settings, error)
 }
 
+// SetupCodeStore keeps the setup code's hash; Replace leaves exactly the one code, Clear leaves none.
+type SetupCodeStore interface {
+	ReplaceSetupCode(ctx context.Context, hash string, createdAt, expiresAt time.Time) error
+	SetupCodeValid(ctx context.Context, hash string, now time.Time) (bool, error)
+	ClearSetupCodes(ctx context.Context) error
+}
+
 // MentionLayoutGate is access's HasPermission check (ADR 0017), gating SetMentionChipTemplate on workspaces:write.
 type MentionLayoutGate interface {
 	CanManageMentionLayout(ctx context.Context, userID string) bool

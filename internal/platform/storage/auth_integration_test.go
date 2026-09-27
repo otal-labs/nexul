@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -15,6 +17,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/auth"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/hostcred"
 )
 
 type ghServer struct {
@@ -233,4 +236,38 @@ func httpxEnvelope(w http.ResponseWriter, body string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(body))
+}
+
+// TestAuthIntegration_SetupCodeLifecycle drives the setup code from boot to the first user against SQLite.
+func TestAuthIntegration_SetupCodeLifecycle(t *testing.T) {
+	store := newTestStore(t)
+	ctx := t.Context()
+	dir := filepath.Join(t.TempDir(), "enroll")
+	svc := auth.NewService(auth.Config{
+		Secret:           []byte("integration-secret"),
+		Users:            store.Users,
+		Allowlist:        store.Allowlist,
+		Settings:         store.Settings,
+		SetupCodes:       store.SetupCodes,
+		EnrollDir:        dir,
+		GitHub:           &ghServer{token: "at"},
+		DefaultWorkspace: fakeDefaultWorkspace{},
+		PendingInvites:   fakePendingInviteResolver{},
+	})
+
+	require.NoError(t, svc.WriteSetupCode(ctx))
+	code, err := os.ReadFile(filepath.Join(dir, "setup"))
+	require.NoError(t, err)
+	pass, err := svc.UnlockSetup(ctx, "198.51.100.1", string(code))
+	require.NoError(t, err)
+	assert.NotEmpty(t, pass.Token)
+
+	_, err = svc.Login(ctx, "good")
+	require.NoError(t, err)
+	assert.NoFileExists(t, filepath.Join(dir, "setup"))
+	_, err = svc.UnlockSetup(ctx, "198.51.100.1", string(code))
+	require.ErrorIs(t, err, apperrs.ErrConflict)
+	valid, err := store.SetupCodes.SetupCodeValid(ctx, hostcred.Hash(string(code)), time.Now())
+	require.NoError(t, err)
+	assert.False(t, valid)
 }

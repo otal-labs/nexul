@@ -557,8 +557,52 @@ func (f *fakePendingInviteResolver) ResolvePendingInvites(_ context.Context, log
 	return nil
 }
 
+// fakeSetupCodes is an in-memory SetupCodeStore holding at most one code, like the real one.
+type fakeSetupCodes struct {
+	mu      sync.Mutex
+	hash    string
+	expires time.Time
+	err     error
+}
+
+func (f *fakeSetupCodes) ReplaceSetupCode(_ context.Context, hash string, _, expiresAt time.Time) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.err != nil {
+		return f.err
+	}
+	f.hash, f.expires = hash, expiresAt
+	return nil
+}
+
+func (f *fakeSetupCodes) SetupCodeValid(_ context.Context, hash string, now time.Time) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.err != nil {
+		return false, f.err
+	}
+	return f.hash != "" && f.hash == hash && now.Before(f.expires), nil
+}
+
+func (f *fakeSetupCodes) ClearSetupCodes(context.Context) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.err != nil {
+		return f.err
+	}
+	f.hash = ""
+	return nil
+}
+
+// fakePublicAddress answers PublicAddressLookup without the network.
+type fakePublicAddress struct{ addr PublicAddress }
+
+func (f fakePublicAddress) PublicAddress(context.Context) PublicAddress { return f.addr }
+
 func newTestService(gh GitHubClient, users UserStore, allowlist AllowlistStore, settings SettingsStore) *Service {
 	return NewService(Config{
+		SetupCodes:       &fakeSetupCodes{},
+		PublicAddress:    fakePublicAddress{addr: PublicAddress{IPv4: "203.0.113.7"}},
 		Secret:           []byte("test-secret"),
 		GitHub:           gh,
 		Users:            users,

@@ -225,3 +225,15 @@ type LoginMatch struct {
 	Login     string `json:"login"`
 	AvatarURL string `json:"avatar_url"`
 }
+
+// SetupPass is the short-lived bearer a correct setup code unlocks for first run.
+type SetupPass struct {
+	Token     string    `json:"token"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+// PublicAddress is this server's address per IP family as the internet sees it; an unreachable family is "".
+type PublicAddress struct {
+	IPv4 string `json:"ipv4"`
+	IPv6 string `json:"ipv6"`
+}

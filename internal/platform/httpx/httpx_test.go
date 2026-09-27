@@ -29,6 +29,7 @@ func TestWriteError_MapsSentinelsToC2(t *testing.T) {
 		{"invalid", apperrs.ErrInvalid, http.StatusBadRequest, "INVALID"},
 		{"retryable", apperrs.Retryable(errors.New("boom")), http.StatusServiceUnavailable, "RETRYABLE"},
 		{"fatal", apperrs.Fatal(errors.New("boom")), http.StatusUnprocessableEntity, "FATAL"},
+		{"rate limited", fmt.Errorf("%w: slow down", apperrs.ErrRateLimited), http.StatusTooManyRequests, "RATE_LIMITED"},
 		{"unknown", errors.New("boom"), http.StatusInternalServerError, "INTERNAL"},
 	}
 	for _, tt := range tests {

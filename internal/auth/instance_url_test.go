@@ -57,11 +57,11 @@ func TestService_VerifyInstanceURL(t *testing.T) {
 
 func TestHandler_BootstrapVerify_InstanceURL(t *testing.T) {
 	s, _, _, _ := newTestHarness(&fakeGitHub{})
-	h := NewHandler(s).Routes()
+	h := s.RequireAuth(NewHandler(s).Routes())
 	srv := bootstrapStatusServer(t, http.StatusOK, `{"configured":false}`)
 
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/auth/bootstrap/verify?check=instance_url",
+	h.ServeHTTP(rec, withSetupPass(t, s, http.MethodPost, "/api/auth/bootstrap/verify?check=instance_url",
 		strings.NewReader(`{"instance_url":"`+srv.URL+`"}`)))
 	assert.Equal(t, http.StatusNoContent, rec.Code)
 }

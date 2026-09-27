@@ -142,6 +142,9 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		ConnectorApps: connectorAppSeederGate{store: store.ConnectorAppConfig},
 		GitHubApp:     githubAppVerifierGate{hc: &http.Client{Timeout: 15 * time.Second}},
 		DevLogin:      cfg.DevLogin,
+		SetupCodes:    store.SetupCodes,
+		EnrollDir:     filepath.Join(filepath.Dir(cfg.DBPath), "enroll"),
+		Local:         cfg.Local,
 	})
 	authHandler := auth.NewHandler(authSvc)
 	invitationSvc := tenancy.NewInvitationService(store.Invitations, authSvc)
