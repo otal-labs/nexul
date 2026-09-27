@@ -1,6 +1,7 @@
 package dns
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -499,7 +500,9 @@ type routeCall struct {
 
 // fakeTunnelProvider is an in-memory dns.TunnelProvider for tunnel use-case tests.
 type fakeTunnelProvider struct {
-	mu          sync.Mutex
+	mu sync.Mutex
+	// account is the account tunnels are created in, acct-1 when empty.
+	account     string
 	tunnels     map[string]*Tunnel
 	nextID      int
 	createErr   error
@@ -527,7 +530,7 @@ func (f *fakeTunnelProvider) CreateTunnel(_ context.Context, name string) (*Tunn
 	}
 	f.nextID++
 	t := &Tunnel{
-		ID: "tunnel-" + itoa(f.nextID), Name: name, AccountID: "acct-1",
+		ID: "tunnel-" + itoa(f.nextID), Name: name, AccountID: cmp.Or(f.account, "acct-1"),
 		Status: "inactive", Token: "tunnel-token-" + itoa(f.nextID),
 	}
 	copied := *t

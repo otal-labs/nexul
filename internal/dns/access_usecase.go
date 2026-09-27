@@ -136,11 +136,25 @@ func (s *Service) accessProviderFor(ctx context.Context) (AccessProvider, error)
 	if s.newAccess == nil {
 		return nil, fmt.Errorf("%w: dns access provider constructor is not wired", apperrs.ErrInvalid)
 	}
-	p, err := s.newAccess(ctx, token)
+	p, err := s.newAccess(ctx, token, s.instanceAccount(ctx))
 	if err != nil {
 		return nil, fmt.Errorf("build dns access provider: %w", err)
 	}
 	return p, nil
+}
+
+// instanceAccount is the account owning the instance's zone, where its Access apps live; empty when it can't be
+// told, which leaves the account to the provider.
+func (s *Service) instanceAccount(ctx context.Context) string {
+	p, err := s.providerFor(ctx)
+	if err != nil {
+		return ""
+	}
+	z, err := s.instanceZone(ctx, p)
+	if err != nil {
+		return ""
+	}
+	return z.AccountID
 }
 
 // saveServiceToken stores tok with its secret sealed, leaving the caller's copy in the clear.

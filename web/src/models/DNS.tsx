@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { CredentialCheck } from "@/models/Connectors";
 
 export const RecordTypes = ["A", "AAAA", "CNAME", "TXT"] as const;
 export type RecordType = (typeof RecordTypes)[number];
@@ -7,7 +8,28 @@ export interface Zone {
   id: string;
   name: string;
   status?: string;
+  account_id?: string;
+  account_name?: string;
 }
+
+export interface CloudflareAccount {
+  id: string;
+  name: string;
+}
+
+// The accounts owning the zones, once each; a tunnel only serves hostnames in its own account's zones.
+export const zoneAccounts = (zones: Zone[]): CloudflareAccount[] => {
+  const byId = new Map<string, CloudflareAccount>();
+  for (const z of zones) {
+    if (!z.account_id || byId.has(z.account_id)) continue;
+    byId.set(z.account_id, { id: z.account_id, name: z.account_name ?? z.account_id });
+  }
+  return [...byId.values()];
+};
+
+// The zones a tunnel in accountId can serve; an unknown account (an older tunnel) keeps every zone.
+export const zonesInAccount = (zones: Zone[], accountId: string): Zone[] =>
+  zones.filter((z) => !accountId || !z.account_id || z.account_id === accountId);
 
 export interface DnsRecord {
   id: string;
@@ -69,6 +91,8 @@ export const entryPathOptions: EntryPathOption[] = [
 export interface TunnelDeployment {
   tunnelId: string;
   tunnelName: string;
+  // The Cloudflare account the tunnel lives in; its hostname must be in one of that account's zones.
+  accountId: string;
   serviceId: string;
   target: string;
 }
@@ -193,3 +217,13 @@ export const ExposeServiceFormSchema = z.object({
 
 export type ExposeServiceFormData = z.infer<typeof ExposeServiceFormSchema>;
 
+// The rows of the ticker that runs once a hostname is routed into a tunnel, one verify request each.
+export const TUNNEL_ROUTE_CHECKS: CredentialCheck[] = [
+  { key: "ingress", label: "Route into the tunnel", why: "cloudflared forwards the hostname to its local service." },
+  { key: "record", label: "DNS record", why: "A proxied CNAME points the hostname at the tunnel." },
+  {
+    key: "reachable",
+    label: "Answers over HTTPS",
+    why: "Asked from this server through Cloudflare; a new record can take a minute.",
+  },
+];

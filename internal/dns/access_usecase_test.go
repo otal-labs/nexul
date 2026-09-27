@@ -213,7 +213,7 @@ func TestAccessProviderFor_Wiring(t *testing.T) {
 		{"no token source", Config{Repo: newFakeRepo()}, apperrs.ErrFatal},
 		{"no constructor", Config{Repo: newFakeRepo(), Tokens: &fakeTokenProvider{token: "at"}}, apperrs.ErrInvalid},
 		{"constructor fails", Config{Repo: newFakeRepo(), Tokens: &fakeTokenProvider{token: "at"},
-			NewAccessProvider: func(context.Context, string) (AccessProvider, error) { return nil, errors.New("boom") }}, nil},
+			NewAccessProvider: func(context.Context, string, string) (AccessProvider, error) { return nil, errors.New("boom") }}, nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -227,7 +227,7 @@ func TestAccessProviderFor_Wiring(t *testing.T) {
 
 	built := newFakeAccessProvider()
 	svc := NewService(Config{Repo: newFakeRepo(), Tokens: &fakeTokenProvider{token: "at"}, EncryptionKey: testKey(),
-		NewAccessProvider: func(_ context.Context, token string) (AccessProvider, error) {
+		NewAccessProvider: func(_ context.Context, token, _ string) (AccessProvider, error) {
 			assert.Equal(t, "at", token)
 			return built, nil
 		}})

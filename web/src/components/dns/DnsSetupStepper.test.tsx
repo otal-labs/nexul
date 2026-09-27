@@ -104,6 +104,7 @@ describe("DnsSetupStepper", () => {
       if (url === "/api/dns/tunnels") return { data: { id: "t1", name: "instance" } };
       if (url === "/api/dns/tunnels/t1/agent") return { data: { service_id: "svc-1" } };
       if (url === "/api/dns/tunnels/t1/route") return { data: { id: "t1" } };
+      if (url === "/api/dns/tunnels/t1/verify") return { data: { detail: "checked" } };
       return { data: {} };
     });
     renderStepper();
@@ -116,7 +117,7 @@ describe("DnsSetupStepper", () => {
     await user.click(screen.getByRole("button", { name: /deploy tunnel/i }));
 
     expect(await screen.findByRole("status")).toHaveTextContent(/waiting for it to reach cloudflare/i);
-    expect(mocks.post).toHaveBeenCalledWith("/api/dns/tunnels", { name: "instance" });
+    expect(mocks.post).toHaveBeenCalledWith("/api/dns/tunnels", { name: "instance", account_id: "" });
     expect(mocks.post).toHaveBeenCalledWith(
       "/api/dns/tunnels/t1/agent",
       expect.objectContaining({ project_id: "p1", target: "prod-1", docker_network: "nexul_default" }),
@@ -134,6 +135,11 @@ describe("DnsSetupStepper", () => {
     expect(screen.queryByLabelText(/different local service/i)).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /point hostname at the tunnel/i }));
 
+    // The ticker checks the route, the record and the hostname before Continue appears.
+    await user.click(await screen.findByRole("button", { name: /^continue$/i }));
+    for (const check of ["ingress", "record", "reachable"]) {
+      expect(mocks.post).toHaveBeenCalledWith("/api/dns/tunnels/t1/verify", null, { params: { check } });
+    }
     expect(await screen.findByRole("button", { name: /continue to nexul/i })).toBeInTheDocument();
     expect(mocks.post).toHaveBeenCalledWith(
       "/api/dns/tunnels/t1/route",

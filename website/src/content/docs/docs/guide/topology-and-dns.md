@@ -38,7 +38,7 @@ Create the token in the Cloudflare dashboard with these permissions. The connect
 
 | Permission | What Nexul uses it for |
 | --- | --- |
-| Zone → Zone: Read | Lists your zones and finds the account your tunnels live in. |
+| Zone → Zone: Read | Lists your zones and the Cloudflare account each belongs to. |
 | Zone → DNS: Edit | Creates and updates the records that point your hostnames at Nexul. |
 | Account → Cloudflare Tunnel: Edit | Creates tunnels and issues the token `cloudflared` runs with. |
 
@@ -63,12 +63,14 @@ Nexul deploys your chosen entry path itself, like any other service — there's 
 
 ### 2. Deploy the tunnel (tunnel path only)
 
-Name the tunnel, pick the project and runner it deploys to, and the docker network it should reach. Nexul creates the tunnel at Cloudflare and runs `cloudflared` on that runner until it connects.
+Name the tunnel, and pick the project, the machine it runs on, and the Docker network it should reach. Nexul creates the tunnel at Cloudflare and runs `cloudflared` on that machine until it connects.
+
+If your token reaches more than one Cloudflare account, choose the account that owns the domain you'll use. A tunnel only serves hostnames in its own account's zones, so the next step only offers that account's zones, and Nexul refuses to route a hostname from another account.
 
 ### 3. Point your hostname
 
 - **Bare path** — pick a Cloudflare zone and record type, and give the target address.
-- **Tunnel path** — pick the zone and subdomain; Nexul routes it into the tunnel you just deployed and creates its DNS record.
+- **Tunnel path** — pick the zone and subdomain; Nexul routes it into the tunnel you just deployed and creates its DNS record. Leave the local service empty and the hostname goes to this instance. A checklist then confirms the ingress rule, the proxied DNS record, and that the hostname answers over HTTPS from the server, which can take a minute for a new record. Continue unlocks once all three pass.
 - **Reverse proxy path** — Nexul deploys Traefik on your chosen runner, then points the instance's own DNS record at that server's address.
 
 ### 4. Go live

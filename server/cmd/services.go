@@ -163,11 +163,11 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		NewProvider: func(_ context.Context, token string) (dns.DNSProvider, error) {
 			return cloudflare.New(token), nil
 		},
-		NewTunnelProvider: func(_ context.Context, token string) (dns.TunnelProvider, error) {
-			return cloudflare.New(token), nil
+		NewTunnelProvider: func(_ context.Context, token, accountID string) (dns.TunnelProvider, error) {
+			return cloudflare.New(token, cloudflare.WithAccountID(accountID)), nil
 		},
-		NewAccessProvider: func(_ context.Context, token string) (dns.AccessProvider, error) {
-			return cloudflare.New(token), nil
+		NewAccessProvider: func(_ context.Context, token, accountID string) (dns.AccessProvider, error) {
+			return cloudflare.New(token, cloudflare.WithAccountID(accountID)), nil
 		},
 		Tokens:         dnsCloudflareTokenAdapter{connectors: connectorsSvc},
 		EncryptionKey:  encKey,

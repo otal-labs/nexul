@@ -58,7 +58,8 @@ export const useFetchTunnelStatus = (tunnelId: string | undefined) =>
 export const useCreateTunnel = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { name: string }) => (await api.post<Tunnel>("/api/dns/tunnels", input)).data,
+    mutationFn: async (input: { name: string; account_id: string }) =>
+      (await api.post<Tunnel>("/api/dns/tunnels", input)).data,
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getDnsTunnelsKey] });
       toast.success("Tunnel created");
@@ -210,3 +211,11 @@ export const useDeleteExposure = () => {
     onError: (error) => toast.error(errorMessage(error)),
   });
 };
+
+// One tunnel ticker check (ingress, record or reachable); resolves with what the server found.
+export const verifyTunnelCheck = async (tunnelId: string, check: string) =>
+  (
+    await api.post<{ detail: string }>(`/api/dns/tunnels/${encodeURIComponent(tunnelId)}/verify`, null, {
+      params: { check },
+    })
+  ).data.detail;

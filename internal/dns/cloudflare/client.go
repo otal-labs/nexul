@@ -120,16 +120,20 @@ func (c *Client) listZones(ctx context.Context, page int) ([]dns.Zone, error) {
 		return nil, err
 	}
 	var zones []struct {
-		ID     string `json:"id"`
-		Name   string `json:"name"`
-		Status string `json:"status"`
+		ID      string `json:"id"`
+		Name    string `json:"name"`
+		Status  string `json:"status"`
+		Account struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		} `json:"account"`
 	}
 	if err := json.Unmarshal(out.Result, &zones); err != nil {
 		return nil, fmt.Errorf("decode zones: %w", err)
 	}
 	var outZones []dns.Zone
 	for _, z := range zones {
-		outZones = append(outZones, dns.Zone{ID: z.ID, Name: z.Name, Status: z.Status})
+		outZones = append(outZones, dns.Zone{ID: z.ID, Name: z.Name, Status: z.Status, AccountID: z.Account.ID, AccountName: z.Account.Name})
 	}
 	if len(outZones) == 50 {
 		next, err := c.listZones(ctx, page+1)

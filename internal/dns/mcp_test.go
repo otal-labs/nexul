@@ -1,7 +1,11 @@
 package dns
 
 import (
+	"cmp"
+	"context"
 	"encoding/json"
+	"net"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -21,6 +25,8 @@ type toolFakes struct {
 	prov         *fakeProvisioner
 	containers   *fakeContainerLookup
 	disconnected bool
+	// httpc answers the reachable check; nil keeps the tools off the network by refusing every dial.
+	httpc *http.Client
 }
 
 func newToolFakes(t *testing.T) *toolFakes {
@@ -50,6 +56,9 @@ func (f *toolFakes) tools() []mcptool.Tool {
 		Tokens: &fakeTokenProvider{token: "at"}, EncryptionKey: testKey(),
 		Settings: &fakeSettings{instanceURL: "https://deploy.example.com"},
 		Now:      func() time.Time { return time.Date(2026, 8, 12, 12, 0, 0, 0, time.UTC) },
+		HTTPClient: cmp.Or(f.httpc, &http.Client{Transport: &http.Transport{
+			DialContext: func(context.Context, string, string) (net.Conn, error) { return nil, errBoom },
+		}}),
 	}
 	if f.disconnected {
 		cfg.Provider, cfg.TunnelProvider, cfg.Tokens = nil, nil, &fakeTokenProvider{err: apperrs.ErrNotFound}

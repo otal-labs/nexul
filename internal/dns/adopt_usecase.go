@@ -40,7 +40,7 @@ func (s *Service) AdoptTunnelGateway(ctx context.Context, in AdoptTunnelGatewayI
 	if err := validateAdoptTunnelGatewayInput(in); err != nil {
 		return nil, err
 	}
-	tp, err := s.tunnelProviderFor(ctx)
+	tp, err := s.tunnelProviderFor(ctx, in.TunnelID)
 	if err != nil {
 		return nil, err
 	}

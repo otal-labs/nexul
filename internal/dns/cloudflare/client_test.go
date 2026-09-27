@@ -99,13 +99,16 @@ func TestClient_Verify_BadToken(t *testing.T) {
 }
 
 func TestClient_ListZones(t *testing.T) {
-	api := &fakeAPI{zones: []map[string]any{{"id": "z1", "name": "example.com", "status": "active"}}}
+	api := &fakeAPI{zones: []map[string]any{{"id": "z1", "name": "example.com", "status": "active",
+		"account": map[string]any{"id": "acct-1", "name": "Otal"}}}}
 	c, srv := newTestClient(t, api)
 	defer srv.Close()
 	zones, err := c.ListZones(context.Background())
 	require.NoError(t, err)
 	require.Len(t, zones, 1)
 	assert.Equal(t, "example.com", zones[0].Name)
+	assert.Equal(t, "acct-1", zones[0].AccountID)
+	assert.Equal(t, "Otal", zones[0].AccountName)
 }
 
 func TestClient_ListZones_NotFound(t *testing.T) {

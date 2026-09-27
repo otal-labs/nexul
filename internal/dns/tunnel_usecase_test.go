@@ -294,7 +294,7 @@ func TestService_CreateTunnel_TokenEncryptionErrors(t *testing.T) {
 			EncryptionKey: testKey(),
 			Settings:      &fakeSettings{instanceURL: "https://deploy.example.com"},
 			Tokens:        &fakeTokenProvider{token: "at"},
-			NewTunnelProvider: func(_ context.Context, _ string) (TunnelProvider, error) {
+			NewTunnelProvider: func(_ context.Context, _, _ string) (TunnelProvider, error) {
 				return newFakeTunnelProvider(), nil
 			},
 			Now: time.Now,
@@ -312,7 +312,7 @@ func TestService_CreateTunnel_TokenEncryptionErrors(t *testing.T) {
 			Tokens:        &fakeTokenProvider{token: "cf-token"},
 			EncryptionKey: testKey(),
 			Settings:      &fakeSettings{instanceURL: "https://deploy.example.com"},
-			NewTunnelProvider: func(_ context.Context, _ string) (TunnelProvider, error) {
+			NewTunnelProvider: func(_ context.Context, _, _ string) (TunnelProvider, error) {
 				return nil, errBoom
 			},
 			Now: time.Now,
