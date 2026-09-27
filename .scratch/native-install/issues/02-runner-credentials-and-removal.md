@@ -1,6 +1,6 @@
 # 02 — Runner enrollment, per-runner credentials, removal
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Type:** task
 **Blocked by:** None — can start immediately
 

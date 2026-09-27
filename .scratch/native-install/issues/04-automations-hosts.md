@@ -1,6 +1,6 @@
 # 04 — Named automations hosts and automation placement
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Type:** task
 **Blocked by:** 02 (reuses `internal/platform/hostcred` and its patterns)
 

@@ -1,6 +1,6 @@
 # Native install: every component a service, no Nexul containers
 
-**Status:** ready-for-agent
+**Status:** built; end-to-end run on the test box pending (ticket 06)
 
 ## Problem statement
 

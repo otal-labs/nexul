@@ -1,6 +1,6 @@
 # 03 — `nexul` as its own binary, installing native services on all three OSes
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Type:** task
 **Blocked by:** None — can start immediately (builds against the enrollment contract)
 

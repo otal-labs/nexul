@@ -1,6 +1,6 @@
 # 01 — `/openobserve/` proxy, component-named release assets, no images
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Type:** task
 **Blocked by:** None — can start immediately
 
