@@ -70,12 +70,6 @@ git history, and anything durable it decided is an ADR.
   on a paired harness (28) and the five follow-ups it produced (29–33).
   Delete the directory once the owner has reacted to the live UI. Research
   findings in `research/`.
-- `.scratch/native-install/` — every component a native service with no
-  Nexul containers, one-line installers for runners and automations hosts,
-  per-host credentials from one-time enrollment codes, removal that
-  uninstalls, and automation placement on named hosts (ADRs 0073–0075).
-  Sliced into tickets 01–06; the directory goes once the end-to-end install
-  on the test machine has passed.
 - `.scratch/bots/` — bots: a named poster in any conversation that outside
   systems drive through a Discord-compatible webhook URL. Wayfinder map
   charted 2026-09-16, tickets 01 to 03 resolved, parked 2026-09-20 until the
