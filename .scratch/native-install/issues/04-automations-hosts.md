@@ -8,7 +8,7 @@
 
 - Server: automations host records, enrollment codes, credentials with
   tombstones, bundled `instance` code file, the `/api/automation-hosts`
-  endpoints and MCP tools from the spec, `automations.host_id` (null = the
+  endpoints, `host_create`/`host_delete` kind `automations` (extend the dispatch ticket 02 built) and automations hosts in `machine_list`, `automations.host_id` (null = the
   `instance` host) settable through the existing update endpoint and MCP tool,
   and the host-scoped automation token accepted by the automation auth path and
   `/ws/automations` only while placement and credential hold. Remove the

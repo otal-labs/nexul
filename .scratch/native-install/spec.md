@@ -176,12 +176,14 @@ its credential file: `/opt/nexul/<kind>-<name>/` on Linux,
 
 Runners:
 - `POST /api/runners/enrollments` (instance admin) `{name, machine?}` →
-  `{code, expires_at, commands: {unix, windows}}`. MCP `runner_enroll`.
+  `{code, expires_at, commands: {unix, windows}}`. MCP `host_create` with
+  `kind: "runner"`.
 - `POST /api/runners/enroll` (public) `{code, name, os, arch, version, stack_root}`
   → `{id, name, machine, credential}`; `401 invalid_code` for unknown, used or
-  expired codes, `409 name_mismatch` when `name` is not the code's.
+  expired codes, `409 name_mismatch` when `name` is not the code's (the
+  standard error body, `{"message", "code"}`).
 - `DELETE /api/runners/{id}` (instance admin): revoke, delete the record, send
-  the uninstall frame if connected. MCP `runner_remove`.
+  the uninstall frame if connected. MCP `host_delete` with `kind: "runner"`.
 - `POST /api/runners/self/remove` (runner credential as Bearer): the same, used
   by `nexul uninstall runner`.
 - `/ws/runner` authenticates with `Authorization: Bearer <credential>`. A
@@ -190,7 +192,8 @@ Runners:
 - `GET /api/runners/download/{target}` accepts a runner credential.
 
 Automations hosts: the same five shapes under `/api/automation-hosts` (MCP
-`automation_host_enroll`, `automation_host_list`, `automation_host_remove`),
+`host_create` and `host_delete` with `kind: "automations"`; hosts are listed
+per machine by `machine_list`, so each host reports its machine),
 plus `GET /api/automation-hosts/self/assignments` (host credential) returning
 the enabled automations placed on that host, each with the token its worker
 uses. That token is host-scoped: the automation auth path accepts it for that
@@ -198,6 +201,9 @@ automation only while the automation is placed on that host and the host's
 credential is live. The host's refusal body is `{"error":"automations_host_removed"}`.
 An automation's host is set through the existing automation update endpoint and
 MCP tool (`host_id`; null means the bundled `instance` host).
+
+The MCP surface stays under its 100-tool budget (ADR 0068):
+`automation_token_create` folds into `automation_update` as `rotate_token`.
 
 Rendered commands (instance URL from settings, version pinned to the server's
 own release; a dev build omits the pin):
