@@ -1,0 +1,62 @@
+---
+import '@fontsource-variable/inter';
+import '@fontsource-variable/jetbrains-mono';
+import '../styles/landing.css';
+import interWoff2 from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url';
+import monoWoff2 from '@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2?url';
+import Icon from '../components/Icon.astro';
+
+interface Props {
+	title: string;
+	description: string;
+	ogDescription?: string;
+}
+
+const { title, description, ogDescription = description } = Astro.props;
+const github = 'https://github.com/otal-labs/nexul';
+const onLanding = Astro.url.pathname === '/';
+const section = (id: string) => (onLanding ? `#${id}` : `/#${id}`);
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>{title}</title>
+		<meta name="description" content={description} />
+		<meta property="og:title" content={title} />
+		<meta property="og:description" content={ogDescription} />
+		<meta property="og:type" content="website" />
+		<meta name="theme-color" content="#050505" media="(prefers-color-scheme: dark)" />
+		<meta name="theme-color" content="#ececec" media="(prefers-color-scheme: light)" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link rel="preload" as="font" type="font/woff2" href={interWoff2} crossorigin />
+		<link rel="preload" as="font" type="font/woff2" href={monoWoff2} crossorigin />
+	</head>
+	<body>
+		<a class="skip-link" href="#main">Skip to content</a>
+		<header class="site-header">
+			<div class="wrap nav-inner">
+				<a class="wordmark" href="/" aria-label="Nexul home"><Icon /> Nexul</a>
+				<nav aria-label="Main navigation">
+					<a class="nav-detail" href={section('product')}>Product</a>
+					<a class="nav-detail" href={section('developers')}>Developers</a>
+					<a class="nav-detail" href="/roadmap/">Roadmap</a>
+					<a class="nav-detail" href="/changelog/">Changelog</a>
+					<a href="/docs/">Docs</a>
+					<a class="nav-detail" href={github}>GitHub <span aria-hidden="true">↗</span></a>
+					<a class="button button-small" href={section('install')}>Get started <span aria-hidden="true">↗</span></a>
+				</nav>
+			</div>
+		</header>
+
+		<main id="main">
+			<slot />
+		</main>
+
+		<footer class="site-footer">
+			<div class="wrap"><div class="footer-top"><a class="wordmark" href="/" aria-label="Nexul home"><Icon /> Nexul</a><p>One loop from docs to deploy.</p><nav aria-label="Footer navigation"><a href="/docs/">Documentation</a><a href="/roadmap/">Roadmap</a><a href="/changelog/">Changelog</a><a href={github}>GitHub <span aria-hidden="true">↗</span></a><a href="/docs/contributing/licensing/">License</a></nav></div><div class="footer-bottom"><span>Your work. Your servers.</span><p>AGPL-3.0 core. Commercial features live in <code>ee/</code>. <a href="/docs/contributing/licensing/">How licensing works <span aria-hidden="true">↗</span></a></p></div></div>
+		</footer>
+	</body>
+</html>

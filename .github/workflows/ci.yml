@@ -124,6 +124,8 @@ jobs:
         working-directory: website
       - run: bun run build
         working-directory: website
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   desktop-test:
     needs: detect-changes
