@@ -278,8 +278,11 @@ func (h *Host) Status(ctx context.Context) error {
 	}
 	h.printf("nexul %s\n", version.Version)
 	if prev != nil {
-		h.printf("  Directory  %s\n", prev.Dir)
-		h.printf("  Web UI     %s\n", siteURL(h.PublicIP(), prev.intEnv("NEXUL_PORT", defaultPort)))
+		h.printf("  Directory   %s\n", prev.Dir)
+		h.printf("  Web UI      %s\n", siteURL(h.PublicIP(), prev.intEnv("NEXUL_PORT", defaultPort)))
+		if code := readCode(setupCodePath(prev.Dir)); code != "" {
+			h.printf("  Setup code  %s\n", code)
+		}
 	}
 	h.printf("\n")
 	tw := tabwriter.NewWriter(h.Out, 0, 0, 2, ' ', 0)
