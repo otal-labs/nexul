@@ -110,11 +110,10 @@ describe("SetupDomainStep", () => {
       expect(mocks.get).not.toHaveBeenCalledWith("/api/machines");
     });
 
-    it("deploys on the only machine and project, routes the hostname and finishes with its https address", async () => {
+    it("deploys on the only machine, leaves the project to the server, routes the hostname and finishes", async () => {
       mocks.get.mockImplementation(async (url: string) => {
         if (url === "/api/connectors") return { data: [cloudflare(true)] };
         if (url === "/api/dns/zones") return { data: [{ id: "z1", name: "example.com", status: "active" }] };
-        if (url === "/api/projects") return { data: [{ id: "p1", name: "Default", created_at: "2026-01-01" }] };
         if (url === "/api/machines") return { data: [{ id: "m1", name: "instance" }] };
         if (url === "/api/dns/tunnels/t1/status") return { data: { id: "t1", name: "instance", status: "healthy" } };
         if (url === "/api/services/svc-1/deploys") return { data: [{ id: "d1", status: "healthy", created_at: "2026-09-27" }] };
@@ -135,8 +134,10 @@ describe("SetupDomainStep", () => {
       await user.click(await screen.findByRole("button", { name: /deploy tunnel/i }));
       expect(mocks.post).toHaveBeenCalledWith(
         "/api/dns/tunnels/t1/agent",
-        expect.objectContaining({ project_id: "p1", target: "instance" }),
+        expect.objectContaining({ project_id: "", target: "instance" }),
       );
+      // Before sign-in there is no workspace, so projects are never listed.
+      expect(mocks.get).not.toHaveBeenCalledWith("/api/projects", expect.anything());
 
       await user.type(await screen.findByLabelText(/subdomain/i), "app");
       await user.click(screen.getByRole("button", { name: /point hostname at the tunnel/i }));

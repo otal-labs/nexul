@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -13,6 +12,7 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/freshdns"
 	"github.com/otal-labs/nexul/internal/platform/ids"
 )
 
@@ -56,13 +56,13 @@ type Config struct {
 	EncryptionKey []byte
 	// Settings feeds the wizard hook's instance record creation.
 	Settings SettingsReader
-	// HTTPClient probes a routed hostname from this server; nil uses a client with a short timeout.
+	// HTTPClient probes a routed hostname from this server; nil uses a short-timeout client resolving through freshdns.
 	HTTPClient *http.Client
 	// InstanceOrigin is where a container on this machine reaches the Nexul server, the default tunnel origin.
 	InstanceOrigin string
 	// Placement defaults the instance proxy's machine and project; nil makes both required inputs.
 	Placement InstancePlacement
-	// Resolver answers where a domain points right now; nil uses the system resolver.
+	// Resolver answers where a domain points right now; nil uses freshdns.
 	Resolver HostResolver
 	// Now overridable for tests.
 	Now func() time.Time
@@ -97,11 +97,13 @@ func NewService(cfg Config) *Service {
 	if cfg.Now == nil {
 		cfg.Now = time.Now
 	}
+	// A hostname these checks look at was usually created seconds ago; freshdns keeps a cached "no such name" out.
+	fresh := freshdns.New()
 	if cfg.HTTPClient == nil {
-		cfg.HTTPClient = &http.Client{Timeout: 10 * time.Second}
+		cfg.HTTPClient = fresh.Client(10 * time.Second)
 	}
 	if cfg.Resolver == nil {
-		cfg.Resolver = net.DefaultResolver
+		cfg.Resolver = fresh
 	}
 	return &Service{
 		repo:        cfg.Repo,

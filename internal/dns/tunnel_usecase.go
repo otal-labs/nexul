@@ -305,6 +305,13 @@ func (s *Service) ProvisionTunnelAgent(ctx context.Context, tunnelID string, spe
 	if spec.Name == "" {
 		spec.Name = "cloudflared-" + t.Name
 	}
+	// First-run setup has no workspace to pick from, so the tunnel lands where the instance's own proxy would.
+	if spec.Target, err = s.placementMachine(ctx, spec.Target); err != nil {
+		return nil, err
+	}
+	if spec.ProjectID, err = s.placementProject(ctx, spec.ProjectID); err != nil {
+		return nil, err
+	}
 	// Without an image nothing is ever deployed, and without `tunnel run` the image prints help and exits.
 	if spec.Image == "" {
 		spec.Image = cloudflaredImage

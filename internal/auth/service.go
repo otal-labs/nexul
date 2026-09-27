@@ -22,6 +22,7 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/freshdns"
 	"github.com/otal-labs/nexul/internal/platform/logging"
 	"github.com/otal-labs/nexul/internal/platform/oauthx"
 )
@@ -168,6 +169,8 @@ type Service struct {
 	cfg Config
 	// httpClient is the shared transport reused per request (T3), avoiding a new *http.Client per login.
 	httpClient *http.Client
+	// probeClient checks the instance URL, a hostname usually created moments before, through freshdns.
+	probeClient *http.Client
 	// searchURL is GitHub's user-search endpoint, overridable in tests like HTTPGitHubClient.userURL.
 	searchURL string
 	unlocks   *unlockLimiter
@@ -184,7 +187,10 @@ func NewService(cfg Config) *Service {
 	if cfg.PublicAddress == nil {
 		cfg.PublicAddress = newCloudflareTrace()
 	}
-	return &Service{cfg: cfg, httpClient: &http.Client{Timeout: 15 * time.Second}, searchURL: githubSearchUsersURL, unlocks: newUnlockLimiter()}
+	return &Service{
+		cfg: cfg, httpClient: &http.Client{Timeout: 15 * time.Second}, probeClient: freshdns.New().Client(15 * time.Second),
+		searchURL: githubSearchUsersURL, unlocks: newUnlockLimiter(),
+	}
 }
 
 // providerClient builds a fresh client from live Settings each call (T3), except cfg.GitHub/Google test overrides.
@@ -876,7 +882,7 @@ func (s *Service) VerifyInstanceURL(ctx context.Context, instanceURL string) (er
 	if err != nil {
 		return fmt.Errorf("%w: %v", apperrs.ErrInvalid, err)
 	}
-	resp, err := s.httpClient.Do(req)
+	resp, err := s.probeClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("%w: this server could not reach %s: %v", apperrs.ErrInvalid, instanceURL, err)
 	}

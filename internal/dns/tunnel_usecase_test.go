@@ -444,9 +444,36 @@ func TestService_ProvisionTunnelAgent(t *testing.T) {
 		require.NoError(t, repo.SaveTunnel(context.Background(), Tunnel{ID: "t1", Token: enc}))
 		prov := &fakeProvisioner{err: errBoom}
 		s := newTunnelService(repo, newFakeTunnelProvider(), prov)
-		_, err = s.ProvisionTunnelAgent(context.Background(), "t1", AgentSpec{})
+		_, err = s.ProvisionTunnelAgent(context.Background(), "t1", AgentSpec{Target: "host1", ProjectID: "p1"})
 		require.Error(t, err)
 		assert.ErrorIs(t, err, errBoom)
+	})
+
+	t.Run("no machine and no placement is invalid", func(t *testing.T) {
+		repo := newFakeRepo()
+		enc, err := encryptTunnelTokenForTest(testKey(), "the-tunnel-secret")
+		require.NoError(t, err)
+		require.NoError(t, repo.SaveTunnel(t.Context(), Tunnel{ID: "t1", Token: enc}))
+		prov := &fakeProvisioner{}
+		s := newTunnelService(repo, newFakeTunnelProvider(), prov)
+		_, err = s.ProvisionTunnelAgent(t.Context(), "t1", AgentSpec{})
+		require.ErrorIs(t, err, apperrs.ErrInvalid)
+		assert.Empty(t, prov.calls)
+	})
+
+	t.Run("setup leaves machine and project to the instance's placement", func(t *testing.T) {
+		repo := newFakeRepo()
+		enc, err := encryptTunnelTokenForTest(testKey(), "the-tunnel-secret")
+		require.NoError(t, err)
+		require.NoError(t, repo.SaveTunnel(t.Context(), Tunnel{ID: "t1", Name: "instance", Token: enc}))
+		prov := &fakeProvisioner{}
+		s := newTunnelService(repo, newFakeTunnelProvider(), prov)
+		s.placement = fakePlacement{machine: "host1", project: "p1"}
+		_, err = s.ProvisionTunnelAgent(t.Context(), "t1", AgentSpec{})
+		require.NoError(t, err)
+		require.Len(t, prov.calls, 1)
+		assert.Equal(t, "host1", prov.calls[0].Target)
+		assert.Equal(t, "p1", prov.calls[0].ProjectID)
 	})
 }
 

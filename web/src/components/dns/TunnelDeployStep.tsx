@@ -14,16 +14,18 @@ import { Button } from "@/components/ui/button";
 import { useCreateTunnel, useFetchDnsZones, useProvisionTunnelAgent } from "@/hooks/DnsHooks";
 import { useFetchMachines } from "@/hooks/MachineHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { soleItem, zoneAccounts, type CloudflareAccount, type TunnelDeployment } from "@/models/DNS";
 import type { Project } from "@/models/Project";
 import type { Machine } from "@/models/Machine";
 
 // The account only has to be chosen when the token reaches more than one; with one it is preselected.
-const tunnelDeploySchema = (chooseAccount: boolean) =>
+const tunnelDeploySchema = (chooseAccount: boolean, projectRequired: boolean) =>
   z.object({
     tunnel_name: z.string().trim().min(1, "Tunnel name is required"),
     account_id: chooseAccount ? z.string().min(1, "Choose the Cloudflare account") : z.string(),
-    project_id: z.string().min(1, "Choose a project"),
+    // Empty lets the server place the tunnel in the instance's default project (first-run setup has no workspace).
+    project_id: projectRequired ? z.string().min(1, "Choose a project") : z.string(),
     target: z.string().trim().min(1, "Machine is required"),
     docker_network: z.string().trim().min(1, "Docker network is required"),
   });
@@ -50,7 +52,7 @@ const TunnelDeployFields = ({ projects, machines, accounts, onConnected }: Tunne
       target: soleItem(machines)?.name ?? "",
       docker_network: "nexul_default",
     },
-    resolver: zodResolver(tunnelDeploySchema(accounts.length > 1)),
+    resolver: zodResolver(tunnelDeploySchema(accounts.length > 1, projects.length > 0)),
   });
   const busy = createTunnel.isPending || provisionAgent.isPending;
 
@@ -99,13 +101,15 @@ const TunnelDeployFields = ({ projects, machines, accounts, onConnected }: Tunne
             cloudflared-{form.watch("tunnel_name") || "instance"} on {form.watch("target") || "machine"}
           </p>
           <AdvancedFields>
-            <FormSelect
-              control={form.control}
-              name="project_id"
-              label="Project"
-              placeholder="Choose a project…"
-              options={projects.map((p) => ({ value: p.id, label: p.name }))}
-            />
+            {projects.length > 0 && (
+              <FormSelect
+                control={form.control}
+                name="project_id"
+                label="Project"
+                placeholder="Choose a project…"
+                options={projects.map((p) => ({ value: p.id, label: p.name }))}
+              />
+            )}
             <MachinePicker control={form.control} name="target" />
             <FormInput control={form.control} name="docker_network" label="Docker network" placeholder="nexul_default" />
           </AdvancedFields>
@@ -123,7 +127,11 @@ interface TunnelDeployStepProps {
 }
 
 export const TunnelDeployStep = ({ onConnected }: TunnelDeployStepProps) => {
-  const { data: projects, isPending: projectsPending, error: projectsError } = useFetchProjects();
+  // Before sign-in there is no workspace to list projects from; the server then picks the instance's default.
+  const inWorkspace = useWorkspaceStore((s) => s.selectedWorkspaceId) !== "";
+  const { data: fetchedProjects, isPending: projectsFetching, error: projectsError } = useFetchProjects(inWorkspace);
+  const projects = inWorkspace ? fetchedProjects : [];
+  const projectsPending = inWorkspace && projectsFetching;
   const { data: machines, isPending: machinesPending, error: machinesError } = useFetchMachines();
   const { data: zones, isPending: zonesPending, error: zonesError } = useFetchDnsZones(true);
 
