@@ -360,10 +360,12 @@ func (h *Handler) dispatchOne(ctx context.Context, c *runnerConn, req DeployRequ
 	if err != nil {
 		return err
 	}
+	// Owned before the frame goes out, so a cancel racing the runner's start finds the job instead of dropping.
+	c.setJob(&req)
 	if err := h.sendFrame(ctx, c, frame); err != nil {
+		c.clearJob(req.ID)
 		return err
 	}
-	c.setJob(&req)
 	return nil
 }
 
