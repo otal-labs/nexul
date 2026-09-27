@@ -402,7 +402,8 @@ func TestHandler_ServeHTTP_IdentityComesFromTheRecord(t *testing.T) {
 	require.NoError(t, err)
 	defer func() { _ = conn.CloseNow() }() // closed by the server at cleanup; a second close errors
 
-	eventually(t, 2*time.Second, func() bool { return len(h.Runners()) == 1 })
+	// The connected event is published last in handleConn, after the connection and its record are in place.
+	eventually(t, 2*time.Second, func() bool { return len(bus.topicEvents(TopicRunnerConnected)) == 1 })
 	got := h.Runners()[0]
 	assert.Equal(t, "r-7", got.RunnerID)
 	assert.Equal(t, "build-box", got.Name)
