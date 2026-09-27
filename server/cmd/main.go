@@ -19,7 +19,6 @@ import (
 	"github.com/otal-labs/nexul/internal/deploy"
 	"github.com/otal-labs/nexul/internal/dns"
 	"github.com/otal-labs/nexul/internal/docs"
-	"github.com/otal-labs/nexul/internal/install"
 	"github.com/otal-labs/nexul/internal/integrations"
 	"github.com/otal-labs/nexul/internal/memories"
 	"github.com/otal-labs/nexul/internal/pairing"
@@ -35,48 +34,26 @@ import (
 )
 
 func main() {
-	if len(os.Args) < 2 {
-		usage(os.Stderr)
-		os.Exit(2)
-	}
-	cmd, args := os.Args[1], os.Args[2:]
-	if cmd == "serve" {
-		serve()
-		return
-	}
-	if cmd == "version" || cmd == "--version" {
+	if len(os.Args) > 1 && (os.Args[1] == "version" || os.Args[1] == "--version") {
 		fmt.Println(version.Version)
 		return
 	}
-	if cmd == "help" || cmd == "--help" || cmd == "-h" {
+	if len(os.Args) > 1 && (os.Args[1] == "help" || os.Args[1] == "--help" || os.Args[1] == "-h") {
 		usage(os.Stdout)
 		return
 	}
-	if err := install.Run(context.Background(), cmd, args); err != nil {
-		if errors.Is(err, install.ErrUnknownCommand) {
-			usage(os.Stderr)
-			os.Exit(2)
-		}
-		var exit *install.ExitCodeError
-		if errors.As(err, &exit) {
-			os.Exit(exit.Code)
-		}
-		fail(err)
+	if len(os.Args) > 1 {
+		usage(os.Stderr)
+		os.Exit(2)
 	}
+	serve()
 }
 
 func usage(w io.Writer) {
-	_, _ = fmt.Fprint(w, `Usage: nexul <command> [flags]
+	_, _ = fmt.Fprint(w, `Usage: nexul-server [version]
 
-Commands:
-  install     Install Nexul on this server (Docker, the stack, the instance runner)
-  upgrade     Upgrade this install to the newest release, or to --version
-  status      Show what is installed and whether it is running
-  uninstall   Stop and remove this install; --purge also deletes its data
-  serve       Run the Nexul server (what the container runs)
-  version     Print this binary's version
-
-Run "nexul <command> --help" for a command's flags.
+Runs the Nexul server: the web UI, the API, both WebSockets and MCP on NEXUL_HTTP_ADDR.
+Installing, upgrading and removing it is the nexul command's job.
 `) // best-effort: a closed stdout has nowhere to report to
 }
 

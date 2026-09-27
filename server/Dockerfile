@@ -15,7 +15,6 @@ ARG TARGETARCH
 WORKDIR /src
 COPY --from=root go.mod go.sum ./
 RUN go mod download
-COPY --from=root *.go docker-compose.yml ./
 COPY --from=root internal/ ./internal/
 COPY . ./server/
 COPY --from=web /web/dist ./server/webui/dist
@@ -24,7 +23,6 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -tags embed -tr
 FROM alpine:3.22 AS release
 ARG VERSION=dev
 LABEL org.opencontainers.image.version=${VERSION}
-COPY --from=build /nexul /usr/local/bin/nexul
+COPY --from=build /nexul /usr/local/bin/nexul-server
 EXPOSE 8080
-ENTRYPOINT ["nexul"]
-CMD ["serve"]
+ENTRYPOINT ["nexul-server"]

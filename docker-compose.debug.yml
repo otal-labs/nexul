@@ -11,7 +11,7 @@ services:
       # Pinned in the debug stack so the dev DB's encrypted rows stay readable; production generates it.
       NEXUL_AUTH_SECRET: ${NEXUL_AUTH_SECRET:-dev-secret-rotate-me}
       NEXUL_LOG_LEVEL: debug
-      # Debug stack only — GET /auth/dev-login skips GitHub entirely. Never in docker-compose.yml.
+      # Debug stack only — GET /auth/dev-login skips GitHub entirely. Never in an install.
       NEXUL_DEV_LOGIN: ${NEXUL_DEV_LOGIN:-true}
       # Post-login redirect target. Debug stack serves the SPA via Vite on
       # :5173, not nginx on :80 — .env's default (http://localhost) would
@@ -28,10 +28,10 @@ services:
     depends_on:
       - openobserve
 
-  # Same as docker-compose.yml, on its own volume for the same reason as
+  # The log store every install runs, on its own volume for the same reason as
   # nexul-debug-data below. UI and MCP (/api/default/mcp) on :5080,
   # both with the email + password; the token only authenticates ingest.
-  # Pinned to match docker-compose.yml — bump deliberately in both files.
+  # Installs pin their build in internal/install/openobserve.go.
   openobserve:
     image: openobserve/openobserve:v1.0.0
     ports:
