@@ -90,6 +90,12 @@ export interface BootstrapStatus {
   reconfigurable?: boolean;
   google_configured?: boolean;
   discord_configured?: boolean;
+  // No user exists yet, so a setup pass can still unlock the first-run screens.
+  setup_open?: boolean;
+  // Stored by the domain step; empty until then.
+  instance_url?: string;
+  // Desktop install: first run keeps localhost and skips the domain step.
+  local?: boolean;
 }
 
 export interface BootstrapResponse {

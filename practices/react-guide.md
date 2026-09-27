@@ -118,7 +118,7 @@ MCP-first backend.
    `POST …/verify?check=<key>` returning 204, 200 with a `detail` line shown
    under the green row (the domains a Cloudflare token can edit), or the
    provider's error, and stores nothing. Examples: `ManualConnectorDialog`,
-   `InstanceBootstrapPage`.
+   `GitHubAppForm`.
    Never collapse the checks into one request: a single red line can't tell
    the user which permission is missing.
 

@@ -10,8 +10,7 @@ import { useRenameWorkspace } from "@/hooks/WorkspaceHooks";
 import { useOwnerWizardStore } from "@/stores/ownerWizardStore";
 
 const CONFIRM_DELAY_MS = 900;
-// DNS onboarding is the fourth rung, rendered by DnsOnboardingPage after the confirmation beat.
-const TOTAL_STEPS = 4;
+const TOTAL_STEPS = 3;
 
 const STEP_COPY = [
   {
@@ -67,9 +66,9 @@ export const OwnerWizardPage = () => {
       }
       resetProgress();
       setConfirmed(true);
-      // Warm confirmation beat before the optional DNS step.
+      // Warm confirmation beat; the domain was set up before sign-in, so the app is next.
       await new Promise((resolve) => setTimeout(resolve, CONFIRM_DELAY_MS));
-      navigate("/wizard/onboarding/dns", { replace: true });
+      navigate("/", { replace: true });
     } catch {
       // Error is surfaced by the hook's toast; the step stays open to retry.
       setFinishing(false);
@@ -83,7 +82,7 @@ export const OwnerWizardPage = () => {
       {confirmed && (
         <WizardConfirmation
           title="Workspace ready"
-          subtitle="One more step — we will point your hostname at the internet."
+          subtitle="Taking you to your workspace."
         />
       )}
       {!confirmed && (

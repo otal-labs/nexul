@@ -29,11 +29,11 @@ describe("App", () => {
     expect(screen.getByRole("link", { name: "Sign in with GitHub" })).toBeInTheDocument();
   }, wholeAppImport);
 
-  it("shows the instance bootstrap page instead of the router when unconfigured", async () => {
-    mocks.get.mockResolvedValue({ data: { configured: false } });
+  it("shows the setup code screen instead of the router when unconfigured", async () => {
+    mocks.get.mockResolvedValue({ data: { configured: false, setup_open: true } });
     const { App } = await import("./App");
     render(<App />);
-    expect(await screen.findByText(/set up this instance/i)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /enter the setup code/i })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Sign in with GitHub" })).not.toBeInTheDocument();
   }, wholeAppImport);
 });

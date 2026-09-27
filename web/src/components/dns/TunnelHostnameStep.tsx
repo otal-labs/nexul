@@ -40,7 +40,7 @@ type TunnelHostnameFormData = z.infer<typeof TunnelHostnameSchema>;
 interface TunnelHostnameFieldsProps {
   deployment: TunnelDeployment;
   zones: Zone[];
-  onDone: (result: DnsSetupResult) => void;
+  onDone: (result: DnsSetupResult, hostname: string) => void;
 }
 
 // Mounted only once zones are loaded so defaultValues can preselect the sole zone.
@@ -94,7 +94,7 @@ const TunnelHostnameFields = ({ deployment, zones, onDone }: TunnelHostnameField
           verified={ticker.verified}
           verifying={ticker.verifying}
           onCheckAgain={() => void ticker.verify({ hostname: routed.host })}
-          onContinue={() => onDone(routed.result)}
+          onContinue={() => onDone(routed.result, routed.host)}
         />
       )}
       {!routed && (
@@ -135,7 +135,7 @@ const TunnelHostnameFields = ({ deployment, zones, onDone }: TunnelHostnameField
 
 interface TunnelHostnameStepProps {
   deployment: TunnelDeployment;
-  onDone: (result: DnsSetupResult) => void;
+  onDone: (result: DnsSetupResult, hostname: string) => void;
 }
 
 export const TunnelHostnameStep = ({ deployment, onDone }: TunnelHostnameStepProps) => {
