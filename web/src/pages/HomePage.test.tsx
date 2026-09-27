@@ -15,6 +15,11 @@ describe("HomePage", () => {
       screen.getByRole("heading", { name: "One button. The trail shows every step the agent took." }),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Sign in with GitHub" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Self-host your own" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Self-host your own" })).toHaveAttribute(
+      "href",
+      "https://nexul.io/docs/guide/install/",
+    );
+    expect(screen.getByRole("link", { name: "Self-host your own" })).toHaveAttribute("target", "_blank");
+    expect(screen.getByRole("link", { name: "Self-host your own" })).toHaveAttribute("rel", "noreferrer");
   });
 });

@@ -1,5 +1,4 @@
 import { AddCategoryForm } from "@/components/project/AddCategoryForm";
-import { CreateProjectForm } from "@/components/project/CreateProjectForm";
 import { CreateTicketFooter } from "@/components/ticket/CreateTicketFooter";
 import { CreateTicketForm, emptyTicketForm } from "@/components/ticket/CreateTicketForm";
 import { CreateTicketHeader } from "@/components/ticket/CreateTicketHeader";
@@ -12,7 +11,6 @@ import { getTicketsKey, useUpdateTicketPosition, useUpdateTicketStatus } from "@
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { SaveCategoryFormSchema, type SaveCategoryFormData } from "@/models/Category";
 import type { Project } from "@/models/Project";
-import { SaveProjectFormSchema, type SaveProjectFormData } from "@/models/Project";
 import type { BoardStatus } from "@/models/Status";
 import {
   SaveTicketFormSchema,
@@ -43,15 +41,6 @@ export const useBoardActions = ({ projects, selectedProjectIds, projectId }: Use
   const clearCategory = useClearTicketCategory();
   const updatePosition = useUpdateTicketPosition();
   const reorderStatuses = useReorderStatuses();
-
-  const openCreateProjectDialog = () =>
-    open<SaveProjectFormData>({
-      title: "New project",
-      schema: SaveProjectFormSchema,
-      okLabel: "Create project",
-      form: <CreateProjectForm />,
-      formOptions: { defaultValues: { name: "", prefix: "", icon: "" } },
-    });
 
   const openCreateTicketDialog = () =>
     open<SaveTicketFormData>({
@@ -138,7 +127,6 @@ export const useBoardActions = ({ projects, selectedProjectIds, projectId }: Use
   };
 
   return {
-    openCreateProjectDialog,
     openCreateTicketDialog,
     openCreateCategoryDialog,
     moveTicket,
