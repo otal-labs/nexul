@@ -177,7 +177,7 @@ describe("InstanceVersionSection", () => {
     renderSection();
 
     await screen.findByText(/instance is still on v0.2.0-beta-003/);
-    expect(screen.getByText("journalctl -u nexul-upgrade")).toBeInTheDocument();
+    expect(screen.getByText("journalctl -u 'nexul-upgrade-*'")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Upgrade to v0.2.0-beta-004" })).toBeEnabled();
   });
 

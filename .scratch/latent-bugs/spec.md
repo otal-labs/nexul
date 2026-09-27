@@ -48,3 +48,10 @@ app gets a 500 and an MCP agent gets "internal error" instead of a conflict
 that says to move or delete the docs first. Count docs (and any other row
 that references the project) in the impact, or map the constraint failure to
 a conflict naming what is left.
+
+## An automations host's version never updates after enrollment
+
+The host reports its version only when it enrolls, and the release build passes
+no version to `build:binaries`, so the Automations hosts list keeps showing the
+enrollment-time version (or `dev`) after `nexul upgrade`. Stamp the version into
+the compiled binary and report it on each assignments poll.

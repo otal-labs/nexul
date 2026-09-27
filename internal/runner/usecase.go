@@ -320,9 +320,8 @@ func InstallDownloadURL(instanceURL, requestHost string, requestTLS bool) string
 	return scheme + "://" + requestHost + "/api/runners/download"
 }
 
-// upgradeResolveWindow bounds how long a pending/started record may sit unresolved before it fails with the
-// docker-logs hint (instance-upgrade spec); there is no runner callback confirming a stack survived its own
-// restart, so the booted version is the only signal, checked lazily and at boot.
+// upgradeResolveWindow bounds how long a pending/started record may sit unresolved before it fails; nothing confirms
+// the services survived their own restart, so the booted version is the only signal, checked lazily and at boot.
 const upgradeResolveWindow = 15 * time.Minute
 
 // WithAdminGate attaches the instance-admin fact the upgrade use-cases require of their caller.

@@ -20,7 +20,7 @@ const (
 	TopicDeployDeployProgress  = "deploy.deploy_progress"
 	TopicDeployLog             = "deploy.log"
 	TopicDeployStatusChanged   = "deploy.status_changed"
-	// TopicInstanceUpgradeRequested is the Service -> Handler dispatch edge (instance-upgrade spec): mirrors
+	// TopicInstanceUpgradeRequested is the Service -> Handler dispatch edge: mirrors
 	// deploy.requested's own bus-topic handoff instead of a direct method call, so Run's existing Subscribe
 	// loop is the one place inbound work reaches a connection, matching deploy's plumbing exactly.
 	TopicInstanceUpgradeRequested = "instance.upgrade_requested"

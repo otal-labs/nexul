@@ -228,7 +228,7 @@ func TestClient_ExecutesJoinNetworks(t *testing.T) {
 
 // TestClient_ExecutesAssignedUpgrade covers the upgrade dispatch path: assign_upgrade goes through the same
 // startJob single-job slot as assign_deploy, reaches Executor.Upgrade with the raw frame, and jobFinished clears
-// the slot once upgrade_result is sent (instance-upgrade spec, ticket 01).
+// the slot once upgrade_result is sent.
 func TestClient_ExecutesAssignedUpgrade(t *testing.T) {
 	results := make(chan Frame, 4)
 	srv := wsTestServer(t, func(ctx context.Context, conn *websocket.Conn) {

@@ -50,7 +50,7 @@ type HandlerConfig struct {
 	// stays empty (issue 05).
 	Machines MachineRepo
 	// Upgrades is optional; nil means an upgrade_progress/upgrade_result frame and a disconnect while pending
-	// are logged but never persisted (instance-upgrade spec).
+	// are logged but never persisted.
 	Upgrades UpgradeRepo
 	// Logger for lifecycle and failure logs. Defaults to slog.Default().
 	Logger *slog.Logger
@@ -101,8 +101,7 @@ type runnerConn struct {
 	jobMu         sync.Mutex
 	job           *DeployRequestedEvent
 	upgradeMu     sync.Mutex
-	// upgradeID is the instance_upgrades record this connection is running, mirroring job for the busy check
-	// (instance-upgrade spec); empty when idle.
+	// upgradeID is the instance_upgrades record this connection is running, mirroring job for the busy check; empty when idle.
 	upgradeID string
 }
 
@@ -580,7 +579,7 @@ func (h *Handler) handleUpgradeResult(ctx context.Context, c *runnerConn, f Fram
 }
 
 // failPendingUpgrade fails id's record on disconnect, but only while it is still pending — a disconnect after
-// upgrade_result "started" is the expected runner-recreation restart, not a failure (instance-upgrade spec).
+// upgrade_result "started" is the expected restart of the runner, not a failure.
 func (h *Handler) failPendingUpgrade(ctx context.Context, id string) {
 	if h.cfg.Upgrades == nil {
 		return

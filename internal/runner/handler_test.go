@@ -616,7 +616,7 @@ func TestHandler_handleUpgradeRequest_MalformedPayloadIsFatal(t *testing.T) {
 }
 
 // TestHandler_idleConnected_UpgradeBusyRunnerIsSkipped covers the busy-slot rule: a runner mid-upgrade never
-// takes a deploy job, the same as one with a running job (instance-upgrade spec).
+// takes a deploy job, the same as one with a running job.
 func TestHandler_idleConnected_UpgradeBusyRunnerIsSkipped(t *testing.T) {
 	h := newTestHandler(newFakeBus(), newFakeRunnerRepo())
 	c := &runnerConn{id: "instance-id"}

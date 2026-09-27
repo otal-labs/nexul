@@ -39,7 +39,7 @@ type CredentialStore interface {
 	Remove(ctx context.Context, id string, at time.Time) error
 }
 
-// UpgradeRepo persists instance_upgrades (instance-upgrade spec), a separate aggregate from Repo's runner rows.
+// UpgradeRepo persists instance_upgrades, a separate aggregate from Repo's runner rows.
 type UpgradeRepo interface {
 	Create(ctx context.Context, u *Upgrade) error
 	GetByID(ctx context.Context, id string) (*Upgrade, error)

@@ -101,7 +101,7 @@ const (
 	UpgradeStatusCompleted = "completed"
 )
 
-// Upgrade is one instance-upgrade record (instance-upgrade spec): written pending before dispatch, resolved to
+// Upgrade is one instance-upgrade record: written pending before dispatch, resolved to
 // completed/failed by ResolvePendingUpgrade or UpgradeStatus's lazy check once the instance is back up.
 type Upgrade struct {
 	ID          string `json:"id"`
