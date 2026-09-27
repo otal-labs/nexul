@@ -53,6 +53,8 @@ type Config struct {
 	EncryptionKey []byte
 	// Settings feeds the wizard hook's instance record creation.
 	Settings SettingsReader
+	// InstanceOrigin is where a container on this machine reaches the Nexul server, the default tunnel origin.
+	InstanceOrigin string
 	// Now overridable for tests.
 	Now func() time.Time
 }
@@ -74,6 +76,7 @@ type Service struct {
 	tokens      TokenProvider
 	key         []byte
 	settings    SettingsReader
+	origin      string
 	now         func() time.Time
 }
 
@@ -96,6 +99,7 @@ func NewService(cfg Config) *Service {
 		tokens:      cfg.Tokens,
 		key:         cfg.EncryptionKey,
 		settings:    cfg.Settings,
+		origin:      cfg.InstanceOrigin,
 		now:         cfg.Now,
 	}
 }

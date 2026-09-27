@@ -489,7 +489,8 @@ func (e *ShellExecutor) output(ctx context.Context, name string, args ...string)
 // The container survives a host reboot on its own (unless-stopped: a deliberate stop stays stopped); compose
 // stacks carry their own restart policy.
 func runArgs(req DeployRequestedEvent) []string {
-	args := []string{"run", "-d", "--restart", "unless-stopped", "--name", req.StackSlug}
+	// host.docker.internal is how a container reaches a service on the host, such as a native Nexul server.
+	args := []string{"run", "-d", "--restart", "unless-stopped", "--name", req.StackSlug, "--add-host", "host.docker.internal:host-gateway"}
 	if req.Network != "" {
 		args = append(args, "--network", req.Network)
 	}

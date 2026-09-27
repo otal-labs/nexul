@@ -86,12 +86,30 @@ func systemdUnit(u Unit) string {
 	lines = append(lines, "EnvironmentFile="+u.envFile(), "WorkingDirectory="+u.WorkDir, "ExecStart="+u.Exec)
 	if u.Kind == kindServer {
 		lines = append(lines, "AmbientCapabilities=CAP_NET_BIND_SERVICE")
+		lines = append(lines, bridgeFirewall(strings.TrimPrefix(u.Env["NEXUL_HTTP_ADDR"], ":"))...)
 	}
 	if u.Kind == kindLogs {
 		lines = append(lines, "MemoryMax=1G")
 	}
 	lines = append(lines, "Restart=always", "RestartSec=5", "", "[Install]", "WantedBy=multi-user.target", "")
 	return strings.Join(lines, "\n")
+}
+
+// bridgeFirewall accepts the server's port from Docker's bridges while it runs, so a container such as cloudflared
+// reaches it through host.docker.internal on a host whose firewall rejects other inbound traffic. "+" runs the
+// command as root and "-" lets the service start on a host without iptables.
+func bridgeFirewall(port string) []string {
+	if port == "" {
+		return nil
+	}
+	var lines []string
+	for _, iface := range []string{"docker0", "br+"} {
+		rule := fmt.Sprintf("INPUT -i %s -p tcp --dport %s -j ACCEPT", iface, port)
+		lines = append(lines,
+			fmt.Sprintf(`ExecStartPre=-+/bin/sh -c "iptables -C %s 2>/dev/null || iptables -I %s"`, rule, rule),
+			fmt.Sprintf(`ExecStopPost=-+/bin/sh -c "iptables -D %s"`, rule))
+	}
+	return lines
 }
 
 type launchd struct{ h *Host }

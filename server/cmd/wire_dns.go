@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 
 	"github.com/otal-labs/nexul/internal/deploy"
 	"github.com/otal-labs/nexul/internal/dns"
@@ -169,4 +170,14 @@ type dnsRunnerJoinAdapter struct {
 
 func (a dnsRunnerJoinAdapter) JoinNetworks(ctx context.Context, machine, gatewayContainer string, networks []string) error {
 	return a.handler.JoinNetworks(ctx, machine, gatewayContainer, networks)
+}
+
+// instanceOrigin is the URL a container on this machine reaches the server at: the runner maps host.docker.internal
+// to the host, and the server listens on addr's port.
+func instanceOrigin(addr string) string {
+	_, port, err := net.SplitHostPort(addr)
+	if err != nil || port == "" {
+		return ""
+	}
+	return "http://host.docker.internal:" + port
 }

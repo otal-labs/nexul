@@ -179,6 +179,10 @@ EnvironmentFile=`+filepath.Join(opt, "server", "env")+`
 WorkingDirectory=`+filepath.Join(dir, "data")+`
 ExecStart=`+filepath.Join(opt, "server", "nexul-server")+`
 AmbientCapabilities=CAP_NET_BIND_SERVICE
+ExecStartPre=-+/bin/sh -c "iptables -C INPUT -i docker0 -p tcp --dport `+strconv.Itoa(port)+` -j ACCEPT 2>/dev/null || iptables -I INPUT -i docker0 -p tcp --dport `+strconv.Itoa(port)+` -j ACCEPT"
+ExecStopPost=-+/bin/sh -c "iptables -D INPUT -i docker0 -p tcp --dport `+strconv.Itoa(port)+` -j ACCEPT"
+ExecStartPre=-+/bin/sh -c "iptables -C INPUT -i br+ -p tcp --dport `+strconv.Itoa(port)+` -j ACCEPT 2>/dev/null || iptables -I INPUT -i br+ -p tcp --dport `+strconv.Itoa(port)+` -j ACCEPT"
+ExecStopPost=-+/bin/sh -c "iptables -D INPUT -i br+ -p tcp --dport `+strconv.Itoa(port)+` -j ACCEPT"
 Restart=always
 RestartSec=5
 
@@ -240,6 +244,7 @@ WantedBy=multi-user.target
 	assert.Contains(t, out, "Nexul v0.2.1 is running.")
 	assert.Contains(t, out, "openobserve/  user nexul@nexul.local")
 	assert.Contains(t, out, settings["NEXUL_LOGS_PASSWORD"])
+	assert.Contains(t, out, "Firewall       port "+strconv.Itoa(port)+" now accepts Docker containers")
 }
 
 func TestInstall_Rerun_KeepsSecretsPortsAndTheBundledHosts(t *testing.T) {

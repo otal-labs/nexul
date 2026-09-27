@@ -21,7 +21,7 @@ type tunnelUpdateIn struct {
 	Hostname          *string `json:"hostname,omitempty" jsonschema:"The public hostname to route into the tunnel, for example nexul.example.com. Omit to keep the current one."`
 	ZoneID            *string `json:"zone_id,omitempty" jsonschema:"The hostname's zone, from dns_zone_list; pass zone with it. Omit to keep the current one."`
 	Zone              *string `json:"zone,omitempty" jsonschema:"That zone's domain name, for example example.com. Omit to keep the current one."`
-	OriginURL         *string `json:"origin_url,omitempty" jsonschema:"The local URL cloudflared forwards the hostname to, for example http://web:80. Omit to keep the current one."`
+	OriginURL         *string `json:"origin_url,omitempty" jsonschema:"The local URL cloudflared forwards the hostname to, for example http://web:80. Omit to keep the current one; a tunnel routed for the first time without one forwards to this Nexul instance."`
 	RotateCredentials bool    `json:"rotate_credentials,omitempty" jsonschema:"Issue the tunnel a new token and store it. Defaults to false."`
 }
 

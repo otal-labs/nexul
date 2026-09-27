@@ -161,6 +161,28 @@ func TestService_RouteTunnelHostname(t *testing.T) {
 		assert.Equal(t, "app2", records[0].Name)
 	})
 
+	t.Run("no local service routes to this instance", func(t *testing.T) {
+		repo := newFakeRepo()
+		require.NoError(t, repo.SaveTunnel(context.Background(), Tunnel{ID: "t1", Name: "tunnel-1"}))
+		s := newTunnelService(repo, newFakeTunnelProvider(), nil)
+		s.origin = "http://host.docker.internal:5123"
+		got, err := s.RouteTunnelHostname(t.Context(), RouteTunnelInput{
+			TunnelID: "t1", Hostname: "app.example.com", ZoneID: "z1", Zone: "example.com",
+		})
+		require.NoError(t, err)
+		assert.Equal(t, "http://host.docker.internal:5123", got.Service)
+	})
+
+	t.Run("no local service and no instance origin is invalid", func(t *testing.T) {
+		repo := newFakeRepo()
+		require.NoError(t, repo.SaveTunnel(context.Background(), Tunnel{ID: "t1", Name: "tunnel-1"}))
+		s := newTunnelService(repo, newFakeTunnelProvider(), nil)
+		_, err := s.RouteTunnelHostname(t.Context(), RouteTunnelInput{
+			TunnelID: "t1", Hostname: "app.example.com", ZoneID: "z1", Zone: "example.com",
+		})
+		assert.ErrorIs(t, err, apperrs.ErrInvalid)
+	})
+
 	t.Run("invalid input rejected", func(t *testing.T) {
 		s := newTunnelService(newFakeRepo(), newFakeTunnelProvider(), nil)
 		_, err := s.RouteTunnelHostname(context.Background(), RouteTunnelInput{TunnelID: "", Hostname: "x"})
