@@ -203,7 +203,8 @@ An automation's host is set through the existing automation update endpoint and
 MCP tool (`host_id`; null means the bundled `instance` host).
 
 The MCP surface stays under its 100-tool budget (ADR 0068):
-`automation_token_create` folds into `automation_update` as `rotate_token`.
+`decisions_check_run` folds into `play_run` (the decisions check is a play,
+ADR 0066). Credential-minting tools stay their own tools (practices/mcp.md §3).
 
 Rendered commands (instance URL from settings, version pinned to the server's
 own release; a dev build omits the pin):
