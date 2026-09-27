@@ -27,3 +27,17 @@ func Retryable(err error) error {
 func Fatal(err error) error {
 	return fmt.Errorf("%w: %w", ErrFatal, err)
 }
+
+// Coded is an error carrying a stable machine code adapters report instead of the sentinel's generic one.
+type Coded struct {
+	Code string
+	Err  error
+}
+
+func (e *Coded) Error() string { return e.Err.Error() }
+func (e *Coded) Unwrap() error { return e.Err }
+
+// WithCode wraps err, which still matches its sentinel, with a machine code such as "invalid_code".
+func WithCode(code string, err error) error {
+	return &Coded{Code: code, Err: err}
+}
