@@ -260,7 +260,7 @@ func TestShellExecutor_Build_RepoDriven_RunStrategy(t *testing.T) {
 	assert.Equal(t, []string{"build", "-f", "Dockerfile", "-t", "api:b1", "."}, cmd.argsFor("docker")[0])
 	assert.Equal(t, []string{"rm", "-f", "api"}, cmd.argsFor("docker")[1])
 	assert.Equal(t, []string{"network", "create", "app-net"}, cmd.argsFor("docker")[2], "a run stack's network is created before docker run needs it")
-	assert.Equal(t, []string{"run", "-d", "--restart", "unless-stopped", "--name", "api", "--network", "app-net", "-e", "A=1", "-e", "B=2", "api:b1"}, cmd.argsFor("docker")[3])
+	assert.Equal(t, []string{"run", "-d", "--restart", "unless-stopped", "--name", "api", "--add-host", "host.docker.internal:host-gateway", "--network", "app-net", "-e", "A=1", "-e", "B=2", "api:b1"}, cmd.argsFor("docker")[3])
 	assert.Equal(t, []string{"inspect", "--format", "{{json .}}", "api"}, cmd.argsFor("docker")[4])
 
 	// Every step announces itself, then streams its output under its phase; the rm/network probes stay silent.
@@ -572,7 +572,7 @@ func TestShellExecutor_Deploy_RunStrategyAppendsCommand(t *testing.T) {
 	e.Deploy(context.Background(), req, rec.send)
 	assert.Equal(t, DeployStatusHealthy, rec.last().Status)
 	assert.Equal(t, []string{
-		"run", "-d", "--restart", "unless-stopped", "--name", "cloudflared-instance", "--network", "nexul_default",
+		"run", "-d", "--restart", "unless-stopped", "--name", "cloudflared-instance", "--add-host", "host.docker.internal:host-gateway", "--network", "nexul_default",
 		"-e", "TUNNEL_TOKEN=tok", "cloudflare/cloudflared:latest", "tunnel", "--no-autoupdate", "run",
 	}, cmd.argsFor("docker")[3])
 }
@@ -636,7 +636,7 @@ func TestShellExecutor_Deploy_HappyPaths(t *testing.T) {
 
 		assert.Equal(t, []string{"pull", "img:1"}, cmd.argsFor("docker")[0])
 		assert.Equal(t, []string{"rm", "-f", "api"}, cmd.argsFor("docker")[1])
-		assert.Equal(t, []string{"run", "-d", "--restart", "unless-stopped", "--name", "api", "-e", "A=1", "-e", "B=2", "img:1"}, cmd.argsFor("docker")[2])
+		assert.Equal(t, []string{"run", "-d", "--restart", "unless-stopped", "--name", "api", "--add-host", "host.docker.internal:host-gateway", "-e", "A=1", "-e", "B=2", "img:1"}, cmd.argsFor("docker")[2])
 
 		// The pull streams under the deploy phase; the run label names the container and image, never the env.
 		assert.Equal(t, "docker pull img:1\nStatus: Downloaded newer image\ndocker run --name api img:1\n", rec.logText(LogPhaseDeploy))
@@ -652,7 +652,7 @@ func TestShellExecutor_Deploy_HappyPaths(t *testing.T) {
 		e.Deploy(context.Background(), req, rec.send)
 		assert.Equal(t, DeployStatusHealthy, rec.last().Status)
 		assert.Equal(t, []string{"rm", "-f", "proxy"}, cmd.argsFor("docker")[1])
-		assert.Equal(t, []string{"run", "-d", "--restart", "unless-stopped", "--name", "proxy", "-p", "80:80", "-p", "443:443", "traefik:v3"}, cmd.argsFor("docker")[2])
+		assert.Equal(t, []string{"run", "-d", "--restart", "unless-stopped", "--name", "proxy", "--add-host", "host.docker.internal:host-gateway", "-p", "80:80", "-p", "443:443", "traefik:v3"}, cmd.argsFor("docker")[2])
 	})
 
 	// Compose always needs its repo's compose file, so a plain pre-built-image deploy only ever supports the

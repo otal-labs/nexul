@@ -7,7 +7,7 @@ sidebar:
 
 Nexul runs as a self-hosted instance on your own server. One command installs it on a Linux server, and the same command on a Mac or Windows PC gives you an instance to try on your own computer first.
 
-Every part of Nexul runs as a native service under the system's own service manager: systemd on Linux, launchd on macOS, and Windows services on Windows. Nothing of Nexul runs in a container, and the only port it opens is the one you choose. Docker is still installed, because the runner deploys your stacks with it.
+Every part of Nexul runs as a native service under the system's own service manager: systemd on Linux, launchd on macOS, and Windows services on Windows. Nothing of Nexul runs in a container, and the only port it opens is the one you choose. Docker is still installed, because the runner deploys your stacks with it. Containers reach Nexul at `host.docker.internal`, so on Linux the server also accepts its port from Docker's bridge interfaces while it runs (see [Firewall](#firewall)).
 
 ## On a Linux server
 
@@ -58,6 +58,10 @@ What each step does:
 7. **Runner and Automations.** Installs the instance's own runner and automations host, both named `instance`, as `nexul-runner-instance` and `nexul-automations-instance`. They enroll with the server like any other runner or automations host, so this server can deploy and run automations straight away.
 
 A port that is already in use is caught before anything is installed, and you are asked for another one.
+
+### Firewall
+
+Deployed containers, cloudflared first, reach Nexul at `http://host.docker.internal:<web port>`. That traffic arrives at the server as inbound, which many cloud images reject unless it's SSH. So while `nexul-server` runs, it adds `iptables` rules accepting the web port from Docker's bridge interfaces (`docker0` and `br-*`), and it removes them when it stops. No other interface is opened, the rules aren't saved to your firewall configuration, and the install summary prints a `Firewall` line saying so. On a host without `iptables` the step is skipped.
 
 To install without questions, pass the answers as flags:
 

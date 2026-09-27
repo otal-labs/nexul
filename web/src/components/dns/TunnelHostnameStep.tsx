@@ -14,7 +14,7 @@ const TunnelHostnameSchema = z.object({
   subdomain: z.string().trim(),
   zone_id: z.string().min(1, "Choose a zone"),
   zone: z.string().min(1, "Choose a zone"),
-  service: z.string().trim().min(1, "Local service is required"),
+  service: z.string().trim(),
 });
 
 type TunnelHostnameFormData = z.infer<typeof TunnelHostnameSchema>;
@@ -30,7 +30,7 @@ const TunnelHostnameFields = ({ deployment, zones, onDone }: TunnelHostnameField
   const routeTunnel = useRouteTunnelHostname();
   const soleZone = soleItem(zones);
   const form = useForm<TunnelHostnameFormData>({
-    defaultValues: { subdomain: "", zone_id: soleZone?.id ?? "", zone: soleZone?.name ?? "", service: "http://web:80" },
+    defaultValues: { subdomain: "", zone_id: soleZone?.id ?? "", zone: soleZone?.name ?? "", service: "" },
     resolver: zodResolver(TunnelHostnameSchema),
   });
 
@@ -50,7 +50,7 @@ const TunnelHostnameFields = ({ deployment, zones, onDone }: TunnelHostnameField
       });
       onDone({
         headline: `${host} routes through the ${deployment.tunnelName} tunnel to this instance.`,
-        detail: `${host} → ${data.service} · cloudflared on ${deployment.target}`,
+        detail: `${host} → ${data.service || "this instance"} · cloudflared on ${deployment.target}`,
       });
     } catch {
       // Errors surface through the hook's toast; routing is retry-safe.
@@ -73,12 +73,12 @@ const TunnelHostnameFields = ({ deployment, zones, onDone }: TunnelHostnameField
       <FormInput
         control={form.control}
         name="service"
-        label="Local service (cloudflared forwards here)"
-        placeholder="http://web:80"
+        label="Local service (cloudflared forwards here, empty for this instance)"
+        placeholder="This Nexul instance"
       />
       {hostname && (
         <p className="font-mono text-xs text-muted-foreground">
-          {hostname} → {service}
+          {hostname} → {service || "this instance"}
         </p>
       )}
       <Button type="submit" className="w-full sm:w-auto" disabled={routeTunnel.isPending}>

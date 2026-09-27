@@ -169,11 +169,12 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		NewAccessProvider: func(_ context.Context, token string) (dns.AccessProvider, error) {
 			return cloudflare.New(token), nil
 		},
-		Tokens:        dnsCloudflareTokenAdapter{connectors: connectorsSvc},
-		EncryptionKey: encKey,
-		Settings:      dnsSettingsAdapter{store.Settings},
-		Provisioner:   dnsProvisioner{deploy: deploySvc},
-		Containers:    dnsContainerLookupAdapter{deploy: deploySvc},
+		Tokens:         dnsCloudflareTokenAdapter{connectors: connectorsSvc},
+		EncryptionKey:  encKey,
+		Settings:       dnsSettingsAdapter{store.Settings},
+		Provisioner:    dnsProvisioner{deploy: deploySvc},
+		Containers:     dnsContainerLookupAdapter{deploy: deploySvc},
+		InstanceOrigin: instanceOrigin(cfg.HTTPAddr),
 	})
 	dnsHandler := dns.NewHandler(dnsSvc)
 	// deploy needs dns, dns needs deploy's Containers/Provisioner, so neither builds the other in its constructor.

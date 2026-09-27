@@ -130,13 +130,13 @@ describe("DnsSetupStepper", () => {
     expect(step(/point your hostname/i)).toHaveAttribute("data-state", "active");
 
     await user.type(screen.getByLabelText(/subdomain/i), "app");
-    expect(screen.getByText("app.example.com → http://web:80")).toBeInTheDocument();
+    expect(screen.getByText("app.example.com → this instance")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /point hostname at the tunnel/i }));
 
     expect(await screen.findByRole("button", { name: /continue to nexul/i })).toBeInTheDocument();
     expect(mocks.post).toHaveBeenCalledWith(
       "/api/dns/tunnels/t1/route",
-      expect.objectContaining({ hostname: "app.example.com", zone_id: "z1", service: "http://web:80" }),
+      expect.objectContaining({ hostname: "app.example.com", zone_id: "z1", service: "" }),
     );
     expect(step(/go live/i)).toHaveAttribute("data-state", "active");
   }, 15000);

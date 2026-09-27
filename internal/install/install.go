@@ -427,6 +427,9 @@ func (h *Host) printSummary(o Options, tag string, settings map[string]string) {
 		"  Upgrade        nexul upgrade",
 		"  Status         nexul status",
 	}
+	if h.GOOS == "linux" {
+		lines = append(lines, fmt.Sprintf("  Firewall       port %d now accepts Docker containers on this machine, so a tunnel can reach Nexul", o.Port))
+	}
 	h.printf("%s\n", strings.Join(append(lines, next...), "\n"))
 }
 

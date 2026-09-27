@@ -132,8 +132,12 @@ func (s *Service) GetTunnel(ctx context.Context, tunnelID string) (*Tunnel, erro
 	return t, nil
 }
 
-// RouteTunnelHostname adds the ingress rule and creates the CNAME pointing the hostname at the tunnel.
+// RouteTunnelHostname adds the ingress rule and creates the CNAME pointing the hostname at the tunnel; with no
+// local service given, the hostname routes to this Nexul instance.
 func (s *Service) RouteTunnelHostname(ctx context.Context, in RouteTunnelInput) (*Tunnel, error) {
+	if strings.TrimSpace(in.Service) == "" {
+		in.Service = s.origin
+	}
 	if err := in.Validate(); err != nil {
 		return nil, err
 	}
