@@ -17,7 +17,7 @@ Every runner belongs to a **machine**. A stack targets a machine by name, not a 
 
 Work queues while no runner on the machine is connected, and flushes the moment one connects.
 
-Each machine also has a **stack root**: the directory on that host under which every stack's checkout lives, at `stacks/<slug>/repo` beneath it. The runner that creates the machine sets it when it enrolls (its own `stacks` folder unless it was installed with `--stack-root`), and you can change it on the Runners page. It's sent to the runner in every deploy so it knows where to check out and bind-mount from.
+Each machine also has a **stack root**: the directory on that host under which every stack's checkout lives, at `stacks/<slug>/repo` beneath it. The runner that creates the machine sets it when it enrolls (its own directory unless it was installed with `--stack-root`), and you can change it on the Runners page. It's sent to the runner in every deploy so it knows where to check out and bind-mount from.
 
 ## Adding a runner
 

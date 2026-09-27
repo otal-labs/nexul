@@ -89,7 +89,7 @@ The install directory holds everything that belongs to the instance:
 | `.env` | The release, the ports and the logs credentials |
 | `data/` | The database, its automatic snapshots and the generated secrets |
 | `logs/` | OpenObserve's storage |
-| `stacks/` | Checkouts of the stacks you deploy to this server. This is the instance runner's stack root, which you can change on the Runners page |
+| `stacks/` | Checkouts of the stacks you deploy to this server. The install directory is the instance runner's stack root, which you can change on the Runners page |
 
 Back up the install directory and you have backed up the instance.
 
