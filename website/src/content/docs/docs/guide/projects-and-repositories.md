@@ -19,19 +19,20 @@ Open the sidebar and pick **New project**. This starts the project wizard, which
 4. **Env** — only shown if the repository has a `.env.example`; fill in the values it lists.
 5. **Reach** — optionally expose the service at a hostname.
 6. **Deploy branches** — optionally deploy other branches, like `feature/*` or `staging`, as their own copies (see [Stacks and Deploys](/docs/guide/stacks-and-deploys/#branch-deploys)).
-7. **Done** — offers the project's interview while it has none, then lands on the topology canvas showing what was just deployed (see [Stacks and Deploys](/docs/guide/stacks-and-deploys/)). Skipping the interview asks "are you sure?" first, and a banner stays on the project's board until the interview exists (see [The Interview play](/docs/guide/plays/#the-interview-play)).
+7. **Done** — offers the project's interview while it has none, then lets you choose **View on the canvas** or **View stack**. Skipping the interview asks "are you sure?" first, and a banner stays on the project's board until the interview exists (see [The Interview play](/docs/guide/plays/#the-interview-play)).
 
-The same wizard reopens later from a project's **Add service** button, or from the Topology page's empty state, to attach another repository or add another service to an existing project.
+The wizard reopens later from a project's **New service** button in **Services**, or from the Topology page's empty state, to attach another repository or add another service to an existing project. **Repositories** has a separate **Add repo** dialog for associating an existing repository directly.
 
-## Three ways to attach a repository
+## Four ways to connect a repository or adopt stacks
 
-The repository step isn't the only door in:
+The repository step isn't the only way to connect a repository, and machine import is a separate path:
 
 - **New project** — the wizard above, starting from nothing.
-- **Add service** — from an existing project's settings (**Repositories** or **Services** section) or the Topology empty state, jumping straight to the repository step with the project already chosen.
+- **New service** — from an existing project's **Services** section or the Topology empty state, jumping straight to the repository step with the project already chosen.
+- **Add repo** — from an existing project's **Repositories** section, associating a repository directly without opening the service wizard.
 - **Import from this machine** — from the [Runners](/docs/guide/runners/) page, next to a machine. This reads what's already running there (containers, networks, reverse proxies) and adopts it as unmanaged stacks. An unmanaged stack has no repository attached yet; use **Attach repository** on it to link one and make it a managed, deployable stack.
 
-Whichever door you use, a repository always ends up attached to exactly one project — the same repository can't be linked into two projects at once. Linking a repository that's already attached elsewhere is rejected outright instead of failing later during a deploy.
+For the first three doors, a repository ends up attached to exactly one project — the same repository can't be linked into two projects at once. Linking a repository that's already attached elsewhere is rejected outright instead of failing later during a deploy. Import creates unmanaged stacks without a repository; use **Attach repository** on an imported stack to give it a repository and make it managed and deployable.
 
 ## A tests repository
 
