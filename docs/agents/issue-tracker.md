@@ -51,6 +51,9 @@ Only efforts with genuinely open work stay here. An effort whose tickets are
 all resolved and whose map or spec says complete gets deleted — the work is in
 git history, and anything durable it decided is an ADR.
 
+- `.scratch/first-run-domain/` — spec and tickets 01–11 (2026-09-27): first
+  run sets up the domain (tunnel, reverse proxy, or own HTTPS) behind a
+  one-time setup code before the GitHub App, on port 5123.
 - `.scratch/latent-bugs/` — small defects seen in passing, one heading each
   in `spec.md`; no tickets, fix and delete the heading.
 - `.scratch/llm-setup/` — wayfinder map complete 2026-09-24 (decisions
