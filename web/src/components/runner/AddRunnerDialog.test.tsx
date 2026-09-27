@@ -5,76 +5,86 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AddRunnerDialog } from "@/components/runner/AddRunnerDialog";
 
-const mocks = vi.hoisted(() => ({ get: vi.fn() }));
+const mocks = vi.hoisted(() => ({ post: vi.fn() }));
 
-vi.mock("@/api/client", () => ({ api: { get: mocks.get } }));
+vi.mock("@/api/client", () => ({ api: { post: mocks.post }, errorMessage: () => "Something went wrong" }));
 
-const install = {
-  ws_url: "wss://deploy.example.com:8081/ws/runner",
-  secret: "abc123def456",
-  download_url: "https://deploy.example.com/api/runners/download",
+const enrollment = {
+  code: "nxe_abc",
+  expires_at: "2026-09-27T13:00:00Z",
+  commands: {
+    unix: "curl -fsSL https://nexul.io/runner.sh | sh -s -- --server https://nexul.example.com --name build-box --code nxe_abc",
+    windows: "& ([scriptblock]::Create((irm https://nexul.io/runner.ps1))) --server https://nexul.example.com --name build-box --code nxe_abc",
+  },
 };
 
-const renderDialog = () => {
-  const client = new QueryClient();
-  return render(
-    <QueryClientProvider client={client}>
-      <AddRunnerDialog />
+const renderDialog = (machineName?: string) =>
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      {machineName && <AddRunnerDialog machineName={machineName} />}
+      {!machineName && <AddRunnerDialog />}
     </QueryClientProvider>,
   );
-};
 
 describe("AddRunnerDialog", () => {
   beforeEach(() => {
-    mocks.get.mockReset();
-    mocks.get.mockResolvedValue({ data: install });
+    mocks.post.mockReset();
+    mocks.post.mockResolvedValue({ data: enrollment });
   });
 
-  it("does not fetch install details until opened", () => {
-    renderDialog();
-    expect(mocks.get).not.toHaveBeenCalled();
-  });
-
-  it("shows the install command with the real ws_url and secret once opened", async () => {
-    const user = userEvent.setup();
-    renderDialog();
-
-    await user.click(screen.getByRole("button", { name: "Add runner" }));
-
-    expect(mocks.get).toHaveBeenCalledWith("/api/runners/install");
-    const pre = await screen.findByText(/curl -fsSL/);
-    expect(pre.textContent).toContain(install.ws_url);
-    expect(pre.textContent).toContain(install.secret);
-    expect(pre.textContent).toContain(install.download_url);
-    expect(pre.textContent).toContain("<github-token>");
-  });
-
-  it("switches to the Windows PowerShell command", async () => {
+  it("rejects a name the installer cannot use, without asking the server", async () => {
     const user = userEvent.setup();
     renderDialog();
     await user.click(screen.getByRole("button", { name: "Add runner" }));
-    await screen.findByText(/curl -fsSL/);
 
-    await user.click(screen.getByRole("button", { name: "Windows" }));
+    await user.type(screen.getByLabelText("Runner name"), "Build Box");
+    await user.click(screen.getByRole("button", { name: "Create install command" }));
 
-    const pre = await screen.findByText(/Invoke-WebRequest/);
-    expect(pre.textContent).toContain(install.ws_url);
+    expect(await screen.findByRole("alert")).toHaveTextContent("lowercase letters, digits or dashes");
+    expect(mocks.post).not.toHaveBeenCalled();
   });
 
-  it("replaces the placeholder once a GitHub token is typed", async () => {
+  it("keeps the form when the server refuses, so the name can be changed", async () => {
+    mocks.post.mockRejectedValue(new Error("conflict"));
     const user = userEvent.setup();
     renderDialog();
     await user.click(screen.getByRole("button", { name: "Add runner" }));
-    await screen.findByText(/curl -fsSL/);
 
+    await user.type(screen.getByLabelText("Runner name"), "build-box");
+    await user.click(screen.getByRole("button", { name: "Create install command" }));
+
+    expect(await screen.findByRole("button", { name: "Create install command" })).toBeEnabled();
+    expect(screen.getByLabelText("Runner name")).toHaveValue("build-box");
+  });
+
+  it("enrolls the runner and shows both one-liners, carrying the git token", async () => {
+    const user = userEvent.setup();
+    renderDialog();
+    await user.click(screen.getByRole("button", { name: "Add runner" }));
+
+    await user.type(screen.getByLabelText("Runner name"), "build-box");
     await user.type(screen.getByLabelText("GitHub token"), "ghp_abc");
+    await user.click(screen.getByRole("button", { name: "Create install command" }));
 
-    const pre = await screen.findByText(/curl -fsSL/);
-    expect(pre.textContent).toContain('NEXUL_GIT_TOKEN="ghp_abc"');
-    expect(pre.textContent).not.toContain("<github-token>");
+    expect(mocks.post).toHaveBeenCalledWith("/api/runners/enrollments", { name: "build-box", machine: undefined });
+    expect(await screen.findByText(`${enrollment.commands.unix} --git-token 'ghp_abc'`)).toBeInTheDocument();
+    expect(screen.getByText(`${enrollment.commands.windows} --git-token 'ghp_abc'`)).toBeInTheDocument();
   });
 
-  it("copies the command to the clipboard", async () => {
+  it("adds to a known machine without asking for it", async () => {
+    const user = userEvent.setup();
+    renderDialog("prod");
+    await user.click(screen.getByRole("button", { name: "Add a runner to this machine" }));
+
+    expect(screen.getByLabelText("Machine")).toHaveValue("prod");
+    await user.type(screen.getByLabelText("Runner name"), "build-box");
+    await user.click(screen.getByRole("button", { name: "Create install command" }));
+
+    expect(mocks.post).toHaveBeenCalledWith("/api/runners/enrollments", { name: "build-box", machine: "prod" });
+    expect(await screen.findByText(enrollment.commands.unix)).toBeInTheDocument();
+  });
+
+  it("copies a command to the clipboard", async () => {
     const user = userEvent.setup();
     // userEvent.setup() installs its own navigator.clipboard stub, so the
     // spy must be attached after setup() runs or it gets clobbered.
@@ -86,11 +96,12 @@ describe("AddRunnerDialog", () => {
     });
     renderDialog();
     await user.click(screen.getByRole("button", { name: "Add runner" }));
-    const pre = await screen.findByText(/curl -fsSL/);
-    const command = pre.textContent;
+    await user.type(screen.getByLabelText("Runner name"), "build-box");
+    await user.click(screen.getByRole("button", { name: "Create install command" }));
+    await screen.findByText(enrollment.commands.windows);
 
-    await user.click(screen.getByRole("button", { name: "Copy" }));
+    await user.click(screen.getByRole("button", { name: "Copy the Windows command" }));
 
-    expect(writeText).toHaveBeenCalledWith(command);
+    expect(writeText).toHaveBeenCalledWith(enrollment.commands.windows);
   });
 });

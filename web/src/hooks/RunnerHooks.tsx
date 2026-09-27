@@ -2,11 +2,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
-import type { Machine, QueuedJob, Runner, RunnerInstall } from "@/models/Runner";
+import type { Machine, QueuedJob, Runner, RunnerEnrollment, RunnerEnrollmentFormData } from "@/models/Runner";
 
 export const getRunnersKey = "runners";
 export const getRunnerQueueKey = "runnerQueue";
-export const getRunnerInstallKey = "runnerInstall";
 export const getMachinesKey = "machines";
 
 export const useRunners = () =>
@@ -21,13 +20,28 @@ export const useRunnerQueue = () =>
     queryFn: async () => (await api.get<QueuedJob[]>("/api/runners/queue")).data,
   });
 
-// Fetched only once the dialog is open, so the install secret isn't requested on every page view.
-export const useRunnerInstall = (enabled: boolean) =>
-  useQuery({
-    queryKey: [getRunnerInstallKey],
-    queryFn: async () => (await api.get<RunnerInstall>("/api/runners/install")).data,
-    enabled,
+// The git token never leaves the browser: it only goes into the rendered command.
+export const useCreateRunnerEnrollment = () =>
+  useMutation({
+    mutationFn: async ({ name, machine }: RunnerEnrollmentFormData) =>
+      (await api.post<RunnerEnrollment>("/api/runners/enrollments", { name, machine: machine || undefined })).data,
+    onError: (error) => toast.error(errorMessage(error)),
   });
+
+export const useRemoveRunner = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => api.delete(`/api/runners/${id}`),
+    onSuccess: async () => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: [getRunnersKey] }),
+        client.invalidateQueries({ queryKey: [getRunnerQueueKey] }),
+      ]);
+      toast.success("Runner removed");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
 
 export const useFetchMachines = () =>
   useQuery({

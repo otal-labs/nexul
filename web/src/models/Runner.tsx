@@ -48,10 +48,22 @@ export const QueuedJobSchema = z.object({
 
 export type QueuedJob = z.infer<typeof QueuedJobSchema>;
 
-export const RunnerInstallSchema = z.object({
-  ws_url: z.string(),
-  secret: z.string(),
-  download_url: z.string(),
+// Names become service names on the machine, so they share the installer's pattern.
+export const RunnerEnrollmentFormSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9][a-z0-9-]{0,31}$/, "Use 1 to 32 lowercase letters, digits or dashes"),
+  machine: z.string().trim(),
+  gitToken: z.string().trim(),
 });
 
-export type RunnerInstall = z.infer<typeof RunnerInstallSchema>;
+export type RunnerEnrollmentFormData = z.infer<typeof RunnerEnrollmentFormSchema>;
+
+export const RunnerEnrollmentSchema = z.object({
+  code: z.string(),
+  expires_at: z.string(),
+  commands: z.object({ unix: z.string(), windows: z.string() }),
+});
+
+export type RunnerEnrollment = z.infer<typeof RunnerEnrollmentSchema>;

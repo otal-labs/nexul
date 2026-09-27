@@ -1,4 +1,5 @@
 import { entranceDelayMs } from "@/components/runner/motion";
+import { RemoveRunnerButton } from "@/components/runner/RemoveRunnerButton";
 import { RunnerStatusBadge } from "@/components/runner/RunnerStatusBadge";
 import { RunnerVersionChip } from "@/components/runner/RunnerVersionChip";
 import type { Runner } from "@/models/Runner";
@@ -41,6 +42,7 @@ export const RunnerRow = ({ runner, index = 0 }: RunnerRowProps) => {
           </div>
         )}
         {!job && <span className="shrink-0 text-sm text-muted-foreground">idle</span>}
+        <RemoveRunnerButton runner={runner} />
       </div>
     </li>
   );
