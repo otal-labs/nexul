@@ -63,6 +63,15 @@ describe("GatewaysSection", () => {
     mocks.toast.error.mockClear();
   });
 
+  it("offers the DNS setup wizard alongside gateway management", async () => {
+    mocks.get.mockImplementation(async () => ({ data: [] }));
+    renderSection();
+    expect(await screen.findByRole("link", { name: "Set up DNS" })).toHaveAttribute(
+      "href",
+      "/wizard/onboarding/dns",
+    );
+  });
+
   it("shows an empty state when there are no gateways", async () => {
     mocks.get.mockImplementation(async () => ({ data: [] }));
     renderSection();

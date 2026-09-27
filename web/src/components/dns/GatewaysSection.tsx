@@ -1,4 +1,5 @@
 import { CloudIcon, RouteIcon, Trash2 } from "lucide-react";
+import { Link } from "react-router";
 
 import { CreateGatewayDialog } from "@/components/dns/CreateGatewayDialog";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
@@ -7,6 +8,7 @@ import { NoDataDisplay } from "@/components/NoDataDisplay";
 import { ConfirmDestroyButton } from "@/components/settings/ConfirmDestroyButton";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { NoFillBadge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useDeleteGateway, useFetchGateways } from "@/hooks/DnsHooks";
 
 // Lives under Settings → DNS; the onboarding stepper creates the first gateway without ever showing this list.
@@ -21,6 +23,12 @@ export const GatewaysSection = () => {
       title="Gateways"
       description="One gateway per docker network gives its services internet reachability."
     >
+      <div className="mb-4 flex items-center justify-between gap-4 border-b border-border pb-4">
+        <p className="text-sm text-muted-foreground">Set up a hostname with the DNS wizard.</p>
+        <Button asChild variant="outline" size="sm">
+          <Link to="/wizard/onboarding/dns">Set up DNS</Link>
+        </Button>
+      </div>
       <div className="mb-4 flex justify-end">
         <CreateGatewayDialog />
       </div>
