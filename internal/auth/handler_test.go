@@ -257,12 +257,13 @@ func TestHandler_Bootstrap(t *testing.T) {
 	verifier := &fakeGitHubAppVerifier{}
 	s.cfg.GitHubApp = verifier
 	h := NewHandler(s).Routes()
+	ph := s.RequireAuth(h)
 
 	t.Run("credentials GitHub rejects are not stored", func(t *testing.T) {
 		verifier.err = fmt.Errorf("%w: GitHub rejected the client secret", apperrs.ErrInvalid)
 		defer func() { verifier.err = nil }()
 		rec := httptest.NewRecorder()
-		h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/auth/bootstrap",
+		ph.ServeHTTP(rec, withSetupPass(t, s, http.MethodPost, "/api/auth/bootstrap",
 			strings.NewReader(`{"instance_url":"https://deploy.example.com","client_id":"gh-id","client_secret":"wrong","app_slug":"gh-slug"}`)))
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 		assert.Contains(t, rec.Body.String(), "rejected the client secret")
@@ -274,7 +275,7 @@ func TestHandler_Bootstrap(t *testing.T) {
 
 	t.Run("verify runs the named check and stores nothing", func(t *testing.T) {
 		rec := httptest.NewRecorder()
-		h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/auth/bootstrap/verify?check=slug",
+		ph.ServeHTTP(rec, withSetupPass(t, s, http.MethodPost, "/api/auth/bootstrap/verify?check=slug",
 			strings.NewReader(`{"client_id":"gh-id","client_secret":"gh-secret","app_slug":"gh-slug"}`)))
 		assert.Equal(t, http.StatusNoContent, rec.Code, rec.Body.String())
 		assert.Equal(t, []string{"slug"}, verifier.checks)
@@ -288,7 +289,7 @@ func TestHandler_Bootstrap(t *testing.T) {
 		verifier.err = fmt.Errorf("%w: GitHub rejected the client secret", apperrs.ErrInvalid)
 		defer func() { verifier.err = nil }()
 		rec := httptest.NewRecorder()
-		h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/auth/bootstrap/verify?check=secret",
+		ph.ServeHTTP(rec, withSetupPass(t, s, http.MethodPost, "/api/auth/bootstrap/verify?check=secret",
 			strings.NewReader(`{"client_id":"gh-id","client_secret":"wrong","app_slug":"gh-slug"}`)))
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 		assert.Contains(t, rec.Body.String(), "rejected the client secret")
@@ -307,21 +308,21 @@ func TestHandler_Bootstrap(t *testing.T) {
 
 	t.Run("missing app slug rejected", func(t *testing.T) {
 		rec := httptest.NewRecorder()
-		h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/auth/bootstrap",
+		ph.ServeHTTP(rec, withSetupPass(t, s, http.MethodPost, "/api/auth/bootstrap",
 			strings.NewReader(`{"instance_url":"https://deploy.example.com","client_id":"gh-id","client_secret":"gh-secret"}`)))
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 
 	t.Run("numeric App ID rejected as slug", func(t *testing.T) {
 		rec := httptest.NewRecorder()
-		h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/auth/bootstrap",
+		ph.ServeHTTP(rec, withSetupPass(t, s, http.MethodPost, "/api/auth/bootstrap",
 			strings.NewReader(`{"instance_url":"https://deploy.example.com","client_id":"gh-id","client_secret":"gh-secret","app_slug":"123456"}`)))
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 
 	t.Run("bootstrap succeeds and persists", func(t *testing.T) {
 		rec := httptest.NewRecorder()
-		h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/auth/bootstrap",
+		ph.ServeHTTP(rec, withSetupPass(t, s, http.MethodPost, "/api/auth/bootstrap",
 			strings.NewReader(`{"instance_url":"https://deploy.example.com","client_id":"gh-id","client_secret":"gh-secret","app_slug":"gh-slug"}`)))
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.NotContains(t, rec.Body.String(), "gh-secret", "raw client secret must never be returned")
@@ -362,8 +363,8 @@ func TestHandler_Bootstrap(t *testing.T) {
 
 	t.Run("second bootstrap before any login replaces a wrong App", func(t *testing.T) {
 		rec := httptest.NewRecorder()
-		h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/auth/bootstrap",
-			strings.NewReader(`{"instance_url":"https://other.example.com","client_id":"other-id","client_secret":"other-secret","app_slug":"other-slug"}`)))
+		ph.ServeHTTP(rec, withSetupPass(t, s, http.MethodPost, "/api/auth/bootstrap",
+			strings.NewReader(`{"client_id":"other-id","client_secret":"other-secret","app_slug":"other-slug"}`)))
 		assert.Equal(t, http.StatusOK, rec.Code)
 
 		st, err := s.cfg.Settings.Get(context.Background())
@@ -371,21 +372,21 @@ func TestHandler_Bootstrap(t *testing.T) {
 		assert.Equal(t, "other-id", st.GitHubOAuthClientID)
 	})
 
-	t.Run("bootstrap conflicts once a user exists", func(t *testing.T) {
+	t.Run("bootstrap is refused once a user exists", func(t *testing.T) {
 		seedOwner(t, users, "u1", "1", "onik97")
 		rec := httptest.NewRecorder()
-		h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/auth/bootstrap",
+		ph.ServeHTTP(rec, withSetupPass(t, s, http.MethodPost, "/api/auth/bootstrap",
 			strings.NewReader(`{"instance_url":"https://third.example.com","client_id":"third-id","client_secret":"third-secret","app_slug":"third-slug"}`)))
-		assert.Equal(t, http.StatusConflict, rec.Code)
+		assert.Equal(t, http.StatusUnauthorized, rec.Code, "the first user ends every setup pass")
 
 		st, err := s.cfg.Settings.Get(context.Background())
 		require.NoError(t, err)
 		assert.Equal(t, "other-id", st.GitHubOAuthClientID, "a live instance must not have its App swapped")
 
 		rec = httptest.NewRecorder()
-		h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/auth/bootstrap/verify?check=slug",
+		ph.ServeHTTP(rec, withSetupPass(t, s, http.MethodPost, "/api/auth/bootstrap/verify?check=slug",
 			strings.NewReader(`{"client_id":"third-id","client_secret":"third-secret","app_slug":"third-slug"}`)))
-		assert.Equal(t, http.StatusConflict, rec.Code, "a live instance must not proxy GitHub checks for strangers")
+		assert.Equal(t, http.StatusUnauthorized, rec.Code, "a live instance must not proxy GitHub checks for strangers")
 
 		rec = httptest.NewRecorder()
 		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/auth/bootstrap-status", nil))

@@ -100,6 +100,10 @@ func serve() {
 	if err := svc.automationSeeder.Seed(ctx); err != nil {
 		fail(fmt.Errorf("seed default automations: %w", err))
 	}
+	// `nexul install` prints the setup code from this file; it goes away once the first user exists.
+	if err := svc.authSvc.WriteSetupCode(ctx); err != nil {
+		fail(fmt.Errorf("write setup code: %w", err))
+	}
 
 	wireDomainEventSubscriptions(ctx, bus, svc, logger)
 	wireIntegrationFanout(ctx, bus, store, svc, logger)

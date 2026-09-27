@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -41,32 +42,97 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/auth/bootstrap-status", h.bootstrapStatus)
 	mux.HandleFunc("POST /api/auth/bootstrap", h.bootstrap)
 	mux.HandleFunc("POST /api/auth/bootstrap/verify", h.bootstrapVerify)
+	mux.HandleFunc("POST /api/setup/unlock", h.unlockSetup)
 	if h.svc.DevLoginEnabled() {
 		mux.HandleFunc("GET /auth/dev-login", h.devLogin)
 	}
 	return mux
 }
 
-// bootstrapStatus reports whether the GitHub OAuth App is configured (ADR 0040); public, side-effect free.
+// bootstrapStatus reports how far first run has got (ADR 0040); public, side-effect free.
 func (h *Handler) bootstrapStatus(w http.ResponseWriter, r *http.Request) {
 	st, err := h.svc.cfg.Settings.Get(r.Context())
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
-	reconfigurable := false
-	if st.Configured() {
-		if reconfigurable, err = h.svc.BootstrapReconfigurable(r.Context()); err != nil {
-			httpx.WriteError(w, err)
-			return
-		}
+	open, err := h.svc.SetupOpen(r.Context())
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]bool{
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{
 		"configured":         st.Configured(),
-		"reconfigurable":     reconfigurable,
+		"reconfigurable":     st.Configured() && open,
 		"google_configured":  st.ProviderConfigured(ProviderGoogle),
 		"discord_configured": st.ProviderConfigured(ProviderDiscord),
+		"setup_open":         open,
+		"instance_url":       st.InstanceURL,
+		"local":              h.svc.cfg.Local,
 	})
+}
+
+type unlockRequest struct {
+	Code string `json:"code"`
+}
+
+// unlockSetup trades the setup code for a setup pass; public, throttled per client address.
+func (h *Handler) unlockSetup(w http.ResponseWriter, r *http.Request) {
+	var req unlockRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	pass, err := h.svc.UnlockSetup(r.Context(), clientAddr(r), req.Code)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, pass)
+}
+
+// ponytail: the peer's IP, so callers behind the instance's own proxy share one throttle; trust a forwarded header if that bites.
+func clientAddr(r *http.Request) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
+}
+
+// SetupRoutes returns the first-run endpoints behind RequireAuth, mounted at /api/setup.
+func (h *Handler) SetupRoutes() http.Handler {
+	mux := httpx.NewServeMux()
+	mux.HandleFunc("PUT /api/setup/instance-url", h.setSetupInstanceURL)
+	mux.HandleFunc("GET /api/setup/public-address", h.publicAddress)
+	return mux
+}
+
+type setupInstanceURLRequest struct {
+	URL string `json:"url"`
+}
+
+func (h *Handler) setSetupInstanceURL(w http.ResponseWriter, r *http.Request) {
+	var req setupInstanceURLRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	instanceURL, err := h.svc.SetSetupInstanceURL(r.Context(), currentUserID(r), req.URL)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]string{"instance_url": instanceURL})
+}
+
+func (h *Handler) publicAddress(w http.ResponseWriter, r *http.Request) {
+	addr, err := h.svc.PublicAddress(r.Context(), currentUserID(r))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, addr)
 }
 
 type bootstrapRequest struct {
@@ -77,14 +143,14 @@ type bootstrapRequest struct {
 	AppSlug string `json:"app_slug"`
 }
 
-// bootstrap stores the instance URL and GitHub App credentials on a fresh instance; public, since there's no user yet.
+// bootstrap stores the GitHub App credentials (and the instance URL when first run has not) on a fresh instance; setup pass only.
 func (h *Handler) bootstrap(w http.ResponseWriter, r *http.Request) {
 	var req bootstrapRequest
 	if err := httpx.DecodeJSON(r, &req); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
-	st, err := h.svc.Bootstrap(r.Context(), req.InstanceURL, req.ClientID, req.ClientSecret, req.AppSlug)
+	st, err := h.svc.Bootstrap(r.Context(), currentUserID(r), req.InstanceURL, req.ClientID, req.ClientSecret, req.AppSlug)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -97,25 +163,25 @@ func (h *Handler) bootstrap(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// bootstrapVerify runs the one GitHub App check named by ?check= (204 or GitHub's verdict) and stores nothing; public like bootstrap.
+// bootstrapVerify runs the one GitHub App check named by ?check= (204 or GitHub's verdict) and stores nothing; setup pass only.
 func (h *Handler) bootstrapVerify(w http.ResponseWriter, r *http.Request) {
 	var req bootstrapRequest
 	if err := httpx.DecodeJSON(r, &req); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
-	if err := h.runBootstrapCheck(r.Context(), r.URL.Query().Get("check"), req); err != nil {
+	if err := h.runBootstrapCheck(r.Context(), currentUserID(r), r.URL.Query().Get("check"), req); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *Handler) runBootstrapCheck(ctx context.Context, check string, req bootstrapRequest) error {
+func (h *Handler) runBootstrapCheck(ctx context.Context, callerID, check string, req bootstrapRequest) error {
 	if check == "instance_url" {
-		return h.svc.VerifyInstanceURL(ctx, req.InstanceURL)
+		return h.svc.VerifyBootstrapInstanceURL(ctx, callerID, req.InstanceURL)
 	}
-	return h.svc.BootstrapVerify(ctx, check, req.ClientID, req.ClientSecret, req.AppSlug)
+	return h.svc.BootstrapVerify(ctx, callerID, check, req.ClientID, req.ClientSecret, req.AppSlug)
 }
 
 // devLogin mints a session for the fixed dev identity, redirects like callbackGET, skips GitHub; dev-build only.

@@ -158,6 +158,8 @@ func mapSentinel(err error) (status int, code, message string) {
 		return http.StatusForbidden, "FORBIDDEN", err.Error()
 	case errors.Is(err, apperrs.ErrInvalid):
 		return http.StatusBadRequest, "INVALID", err.Error()
+	case errors.Is(err, apperrs.ErrRateLimited):
+		return http.StatusTooManyRequests, "RATE_LIMITED", err.Error()
 	case errors.Is(err, apperrs.ErrRetryable):
 		return http.StatusServiceUnavailable, "RETRYABLE", err.Error()
 	case errors.Is(err, apperrs.ErrFatal):

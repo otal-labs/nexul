@@ -14,6 +14,7 @@ var (
 	ErrInvalid      = std.New("invalid")
 	ErrRetryable    = std.New("retryable")
 	ErrFatal        = std.New("fatal")
+	ErrRateLimited  = std.New("rate limited")
 )
 
 // Retryable wraps err so errors.Is(err, ErrRetryable) holds. Event handlers

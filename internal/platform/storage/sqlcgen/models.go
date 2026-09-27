@@ -730,6 +730,12 @@ type Service struct {
 	ObservedAt    int64
 }
 
+type SetupCode struct {
+	CodeHash  string
+	CreatedAt int64
+	ExpiresAt int64
+}
+
 type Stack struct {
 	ID                string
 	ProjectID         string

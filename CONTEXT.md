@@ -422,6 +422,21 @@ The credential an integration (`int_`) or an automation (`dat_`) acts with,
 minted with a chosen subset of permissions and revocable on its own. A scoped
 token granted `X:write` also receives `X:read` at mint.
 
+**Setup code**:
+The code (`nxs_`) that proves someone at the instance's own server is the one
+setting it up. The server writes a fresh one on every start until the first
+user exists, valid a day, and the installer prints it. Unlocking does not use
+it up, so the owner can carry it from the server's address to the domain.
+Gone once the first user exists.
+_Avoid_: Enrollment code (that enrolls a host), invite code, admin password
+
+**Setup pass**:
+What a correct setup code unlocks: a bearer (`nxsp_`) good for an hour that
+lets one browser set up the domain and the GitHub App before any user exists.
+It reaches only the first-run routes and acts as the identity `setup`. Every
+pass stops working the moment the first user exists.
+_Avoid_: Session (that belongs to a user), setup token, bootstrap key
+
 **Connection token**:
 A signed JWT carrying server information only (instance URL, MCP endpoint,
 basic settings) so a standalone client can be pointed at an instance. No
