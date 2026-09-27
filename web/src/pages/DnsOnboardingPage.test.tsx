@@ -61,10 +61,10 @@ describe("DnsOnboardingPage", () => {
     mocks.toast.error.mockClear();
   });
 
-  it("renders as the fourth wizard rung with a quiet skip link", async () => {
+  it("renders as a single-step wizard with a quiet skip link", async () => {
     mockConnected();
     renderPage();
-    expect(await screen.findByRole("status", { name: /step 4 of 4/i })).toBeInTheDocument();
+    expect(await screen.findByRole("status", { name: /step 1 of 1/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /set up dns/i })).toBeInTheDocument();
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: /skip for now/i }));

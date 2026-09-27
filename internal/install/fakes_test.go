@@ -354,6 +354,7 @@ func (th *testHost) bootedServer(t *testing.T, dir string) {
 	require.NoError(t, os.MkdirAll(enroll, 0o700))
 	require.NoError(t, os.WriteFile(filepath.Join(enroll, "runner-instance"), []byte("nxe_runner\n"), 0o600))
 	require.NoError(t, os.WriteFile(filepath.Join(enroll, "automations-instance"), []byte("nxe_automations\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(enroll, "setup"), []byte("nxs_setup\n"), 0o600))
 }
 
 // readFile is os.ReadFile for tests, as a string.

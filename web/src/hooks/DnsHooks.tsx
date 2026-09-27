@@ -13,6 +13,7 @@ import type {
   Zone,
 } from "@/models/DNS";
 import { getServicesKey } from "@/hooks/ServiceHooks";
+import { resolvesHere, type PublicAddress } from "@/models/Setup";
 
 const getDnsZonesKey = "dnsZones";
 
@@ -219,3 +220,21 @@ export const verifyTunnelCheck = async (tunnelId: string, check: string) =>
       params: { check },
     })
   ).data.detail;
+
+const getDnsResolveKey = "dnsResolve";
+
+// Polls until every answer for host is this server, so the proxy's certificate request can succeed.
+export const useResolveHost = (host: string, address: PublicAddress) =>
+  useQuery({
+    queryKey: [getDnsResolveKey, host],
+    queryFn: async () => (await api.get<{ addresses: string[] }>("/api/dns/resolve", { params: { host } })).data,
+    enabled: !!host,
+    refetchInterval: (query) => (resolvesHere(query.state.data?.addresses, address) ? false : 5000),
+  });
+
+// Retry-safe on the server: a second call for the same domain redeploys the same gateway. Errors render inline.
+export const useDeployInstanceProxy = () =>
+  useMutation({
+    mutationFn: async ({ domain, email }: { domain: string; email: string }) =>
+      (await api.post<{ service_id: string }>("/api/dns/instance-proxy", email ? { domain, email } : { domain })).data,
+  });

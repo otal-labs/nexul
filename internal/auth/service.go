@@ -22,6 +22,8 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/freshdns"
+	"github.com/otal-labs/nexul/internal/platform/logging"
 	"github.com/otal-labs/nexul/internal/platform/oauthx"
 )
 
@@ -153,6 +155,13 @@ type Config struct {
 	TokenTTL  time.Duration
 	// DevLogin enables GitHub-free session minting at /auth/dev-login for local dev; must be false in production.
 	DevLogin bool
+	// SetupCodes stores the setup code's hash; EnrollDir is where the installer reads the code itself.
+	SetupCodes SetupCodeStore
+	EnrollDir  string
+	// Local marks a desktop install, whose instance URL may stay http://localhost.
+	Local bool
+	// PublicAddress is overridable in tests; nil asks Cloudflare's trace endpoint.
+	PublicAddress PublicAddressLookup
 }
 
 // Service is the auth use-case layer: OAuth, session tokens, and the user/onboarding/allowlist use-cases.
@@ -160,8 +169,11 @@ type Service struct {
 	cfg Config
 	// httpClient is the shared transport reused per request (T3), avoiding a new *http.Client per login.
 	httpClient *http.Client
+	// probeClient checks the instance URL, a hostname usually created moments before, through freshdns.
+	probeClient *http.Client
 	// searchURL is GitHub's user-search endpoint, overridable in tests like HTTPGitHubClient.userURL.
 	searchURL string
+	unlocks   *unlockLimiter
 }
 
 // NewService wires the auth use-cases.
@@ -172,7 +184,13 @@ func NewService(cfg Config) *Service {
 	if cfg.TokenTTL <= 0 {
 		cfg.TokenTTL = defaultTokenTTL
 	}
-	return &Service{cfg: cfg, httpClient: &http.Client{Timeout: 15 * time.Second}, searchURL: githubSearchUsersURL}
+	if cfg.PublicAddress == nil {
+		cfg.PublicAddress = newCloudflareTrace()
+	}
+	return &Service{
+		cfg: cfg, httpClient: &http.Client{Timeout: 15 * time.Second}, probeClient: freshdns.New().Client(15 * time.Second),
+		searchURL: githubSearchUsersURL, unlocks: newUnlockLimiter(),
+	}
 }
 
 // providerClient builds a fresh client from live Settings each call (T3), except cfg.GitHub/Google test overrides.
@@ -616,6 +634,10 @@ func (s *Service) findOrCreateLoginUser(ctx context.Context, identity *User) (*U
 		}
 		return nil, fmt.Errorf("create first user: %w", err)
 	}
+	// Every pass already stops at the first user; this clears the code and the installer's file with it.
+	if err := s.closeSetup(ctx); err != nil {
+		logging.FromCtx(ctx).Warn("close first run", "error", err)
+	}
 	return user, nil
 }
 
@@ -738,9 +760,13 @@ func (s *Service) CompleteFirstLogin(ctx context.Context, userID string) error {
 	return s.cfg.Users.MarkFirstLoginDone(ctx, userID)
 }
 
-// Bootstrap stores the instance URL and GitHub App credentials on a fresh instance, the one unauthenticated way in.
-func (s *Service) Bootstrap(ctx context.Context, instanceURL, clientID, clientSecret, appSlug string) (Settings, error) {
-	if err := validateInstanceURL(instanceURL); err != nil {
+// Bootstrap stores the GitHub App credentials, and the instance URL unless first run already stored it; setup pass only.
+func (s *Service) Bootstrap(ctx context.Context, callerID, instanceURL, clientID, clientSecret, appSlug string) (Settings, error) {
+	if err := requireSetupPass(callerID); err != nil {
+		return Settings{}, err
+	}
+	instanceURL, stored, err := s.bootstrapInstanceURL(ctx, instanceURL)
+	if err != nil {
 		return Settings{}, err
 	}
 	if err := s.bootstrapAllowed(ctx, clientID, clientSecret, appSlug); err != nil {
@@ -751,8 +777,10 @@ func (s *Service) Bootstrap(ctx context.Context, instanceURL, clientID, clientSe
 			return Settings{}, err
 		}
 	}
-	if _, err := s.cfg.Settings.Set(ctx, instanceURL); err != nil {
-		return Settings{}, fmt.Errorf("set instance url: %w", err)
+	if !stored {
+		if _, err := s.cfg.Settings.Set(ctx, instanceURL); err != nil {
+			return Settings{}, fmt.Errorf("set instance url: %w", err)
+		}
 	}
 	st, err := s.cfg.Settings.SetGitHubOAuth(ctx, clientID, clientSecret)
 	if err != nil {
@@ -768,7 +796,10 @@ func (s *Service) Bootstrap(ctx context.Context, instanceURL, clientID, clientSe
 }
 
 // BootstrapVerify runs one named GitHub App check without storing anything, under Bootstrap's own guards so a live instance never proxies GitHub for strangers.
-func (s *Service) BootstrapVerify(ctx context.Context, check, clientID, clientSecret, appSlug string) error {
+func (s *Service) BootstrapVerify(ctx context.Context, callerID, check, clientID, clientSecret, appSlug string) error {
+	if err := requireSetupPass(callerID); err != nil {
+		return err
+	}
 	if err := s.bootstrapAllowed(ctx, clientID, clientSecret, appSlug); err != nil {
 		return err
 	}
@@ -799,11 +830,11 @@ func (s *Service) bootstrapReplaceable(ctx context.Context) error {
 	if !st.Configured() {
 		return nil
 	}
-	reconfigurable, err := s.bootstrapReconfigurable(ctx)
+	open, err := s.SetupOpen(ctx)
 	if err != nil {
 		return err
 	}
-	if !reconfigurable {
+	if !open {
 		return fmt.Errorf("%w: this instance is already configured", apperrs.ErrConflict)
 	}
 	return nil
@@ -851,7 +882,7 @@ func (s *Service) VerifyInstanceURL(ctx context.Context, instanceURL string) (er
 	if err != nil {
 		return fmt.Errorf("%w: %v", apperrs.ErrInvalid, err)
 	}
-	resp, err := s.httpClient.Do(req)
+	resp, err := s.probeClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("%w: this server could not reach %s: %v", apperrs.ErrInvalid, instanceURL, err)
 	}
@@ -868,18 +899,32 @@ func (s *Service) VerifyInstanceURL(ctx context.Context, instanceURL string) (er
 	return nil
 }
 
-// bootstrapReconfigurable is true until the first login lands: a wrong App can be re-entered instead of bricking the instance.
-func (s *Service) bootstrapReconfigurable(ctx context.Context) (bool, error) {
-	users, err := s.cfg.Users.ListUsers(ctx)
-	if err != nil {
-		return false, fmt.Errorf("list users: %w", err)
+// VerifyBootstrapInstanceURL is the bootstrap ticker's reachability row for the URL Bootstrap would use; setup pass only.
+func (s *Service) VerifyBootstrapInstanceURL(ctx context.Context, callerID, instanceURL string) error {
+	if err := requireSetupPass(callerID); err != nil {
+		return err
 	}
-	return len(users) == 0, nil
+	instanceURL, _, err := s.bootstrapInstanceURL(ctx, instanceURL)
+	if err != nil {
+		return err
+	}
+	return s.VerifyInstanceURL(ctx, instanceURL)
 }
 
-// BootstrapReconfigurable reports whether Bootstrap may overwrite the stored App (no user has logged in yet).
-func (s *Service) BootstrapReconfigurable(ctx context.Context) (bool, error) {
-	return s.bootstrapReconfigurable(ctx)
+// bootstrapInstanceURL is the stored URL (given must match or be empty) when there is one, else the validated given.
+func (s *Service) bootstrapInstanceURL(ctx context.Context, given string) (instanceURL string, stored bool, err error) {
+	st, err := s.cfg.Settings.Get(ctx)
+	if err != nil {
+		return "", false, fmt.Errorf("get settings: %w", err)
+	}
+	given = strings.TrimSpace(given)
+	if st.InstanceURL == "" {
+		return given, false, validateInstanceURL(given)
+	}
+	if given != "" && !strings.EqualFold(strings.TrimSuffix(given, "/"), strings.TrimSuffix(st.InstanceURL, "/")) {
+		return "", false, fmt.Errorf("%w: the instance URL is already set to %s", apperrs.ErrInvalid, st.InstanceURL)
+	}
+	return st.InstanceURL, true, nil
 }
 
 // maxAvatarOverrideBytes caps a decoded avatar override data URI at ~10MB; there's no file-upload/object-storage here.

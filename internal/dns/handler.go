@@ -41,6 +41,8 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("POST /api/dns/tunnels/{tunnelID}/agent", h.provisionTunnelAgent)
 	mux.HandleFunc("DELETE /api/dns/tunnels/{tunnelID}", h.deleteTunnel)
 	mux.HandleFunc("POST /api/dns/reverse-proxy", h.provisionReverseProxy)
+	mux.HandleFunc("POST /api/dns/instance-proxy", h.provisionInstanceProxy)
+	mux.HandleFunc("GET /api/dns/resolve", h.resolve)
 	mux.HandleFunc("POST /api/dns/gateways", h.createGateway)
 	mux.HandleFunc("GET /api/dns/gateways", h.listGateways)
 	mux.HandleFunc("GET /api/dns/gateways/{gatewayID}", h.getGateway)
@@ -286,6 +288,30 @@ func (h *Handler) provisionReverseProxy(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	httpx.WriteJSON(w, http.StatusCreated, p)
+}
+
+// provisionInstanceProxy answers with the backing stack's id, whose deploys the setup page watches.
+func (h *Handler) provisionInstanceProxy(w http.ResponseWriter, r *http.Request) {
+	var req InstanceProxyInput
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	g, err := h.svc.ProvisionInstanceProxy(r.Context(), req)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusCreated, AgentProvisioned{ServiceID: g.ServiceID})
+}
+
+func (h *Handler) resolve(w http.ResponseWriter, r *http.Request) {
+	addrs, err := h.svc.ResolveHost(r.Context(), r.URL.Query().Get("host"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string][]string{"addresses": addrs})
 }
 
 func (h *Handler) deleteTunnel(w http.ResponseWriter, r *http.Request) {

@@ -3,7 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { InstanceBootstrapPage } from "@/pages/InstanceBootstrapPage";
+import { GitHubAppForm } from "@/components/setup/GitHubAppForm";
 
 const mocks = vi.hoisted(() => ({
   post: vi.fn(),
@@ -35,12 +35,12 @@ const renderPage = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <InstanceBootstrapPage />
+      <GitHubAppForm instanceUrl="https://deploy.example.com" />
     </QueryClientProvider>,
   );
 };
 
-describe("InstanceBootstrapPage", () => {
+describe("GitHubAppForm", () => {
   beforeEach(() => {
     mocks.post.mockReset();
     mocks.errorMessage.mockClear();
@@ -49,20 +49,16 @@ describe("InstanceBootstrapPage", () => {
     vi.stubGlobal("location", { ...window.location, assign: mocks.assign });
   });
 
-  it("renders the instance url, client id, client secret, app slug fields and the derived callback preview", async () => {
-    const user = userEvent.setup();
+  it("shows the stored instance url fixed, with no field to change it, and derives the callback from it", () => {
     renderPage();
 
-    expect(screen.getByLabelText(/instance url/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/instance url/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: /instance url/i })).not.toBeInTheDocument();
+    expect(screen.getByText("https://deploy.example.com")).toBeInTheDocument();
+    expect(screen.getByText("https://deploy.example.com/auth/callback")).toBeInTheDocument();
     expect(screen.getByLabelText(/github oauth client id/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/github app slug/i)).toBeInTheDocument();
-    const secretInput = screen.getByLabelText(/github oauth client secret/i);
-    expect(secretInput).toHaveAttribute("type", "password");
-
-    const input = screen.getByLabelText(/instance url/i);
-    await user.clear(input);
-    await user.type(input, "https://deploy.example.com");
-    expect(screen.getByText(/https:\/\/deploy\.example\.com\/auth\/callback/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/github oauth client secret/i)).toHaveAttribute("type", "password");
   });
 
   it("verifies the instance url, slug and secret as three rows before it will set up the instance", async () => {
@@ -75,9 +71,6 @@ describe("InstanceBootstrapPage", () => {
     rows.forEach((row) => expect(row).toHaveAttribute("data-state", "idle"));
     expect(screen.queryByRole("button", { name: /set up instance/i })).not.toBeInTheDocument();
 
-    const urlInput = screen.getByLabelText(/instance url/i);
-    await user.clear(urlInput);
-    await user.type(urlInput, "https://deploy.example.com");
     await user.type(screen.getByLabelText(/github oauth client id/i), "client-id-123");
     await user.type(screen.getByLabelText(/github oauth client secret/i), "client-secret-456");
     await user.type(screen.getByLabelText(/github app slug/i), "my-app");
@@ -140,9 +133,6 @@ describe("InstanceBootstrapPage", () => {
     const user = userEvent.setup();
     renderPage();
 
-    const urlInput = screen.getByLabelText(/instance url/i);
-    await user.clear(urlInput);
-    await user.type(urlInput, "https://deploy.example.com");
     await user.type(screen.getByLabelText(/github oauth client id/i), "client-id-123");
     await user.type(screen.getByLabelText(/github oauth client secret/i), "client-secret-456");
     await user.type(screen.getByLabelText(/github app slug/i), "my-app");

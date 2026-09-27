@@ -19,7 +19,7 @@ func UserFromCtx(ctx context.Context) *User {
 	return u
 }
 
-// RequireAuth resolves the full User into context, or 401s.
+// RequireAuth resolves the full User into context, or 401s; a setup pass resolves to the setup identity (setup.go).
 func (s *Service) RequireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if s.cfg.Users == nil {
@@ -32,7 +32,11 @@ func (s *Service) RequireAuth(next http.Handler) http.Handler {
 			unauthorized(w)
 			return
 		}
-		user, err := s.authenticate(r, token)
+		authenticate := s.authenticate
+		if isSetupPass(token) {
+			authenticate = s.authenticateSetupPass
+		}
+		user, err := authenticate(r, token)
 		if err != nil {
 			unauthorized(w)
 			return

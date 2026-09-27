@@ -30,7 +30,7 @@ An **exposure** routes one hostname through a gateway to one of a stack's contai
 
 ## Setting up DNS
 
-DNS setup asks a stepped series of questions, either from the owner wizard's optional last step or by selecting **Set up DNS** under Settings → DNS, which opens the DNS setup stepper at `/wizard/onboarding/dns`. It needs the Cloudflare connector connected first (see [GitHub App](/docs/guide/github-app/) for connecting the equivalent GitHub connector — Cloudflare connects with an API token the same way, from Settings → Connectors).
+The instance gets its own domain during first run, before GitHub (see [Setup wizard](/docs/guide/setup-wizard/)). To change how it's reached later, or to set up DNS on an instance installed before that, select **Set up DNS** under Settings → DNS, which opens the DNS setup stepper at `/wizard/onboarding/dns`. It needs the Cloudflare connector connected first (see [GitHub App](/docs/guide/github-app/) for connecting the equivalent GitHub connector — Cloudflare connects with an API token the same way, from Settings → Connectors).
 
 ### Cloudflare API token permissions
 
@@ -57,7 +57,7 @@ These two also need Zero Trust enabled on the Cloudflare account. Enable it once
 | --- | --- |
 | Bare public address | Points your hostname straight at the server with an A or AAAA record. |
 | Cloudflare tunnel | No open ports — `cloudflared` runs as a service on a runner and routes the hostname through it. |
-| Reverse proxy | Deploys Traefik as a service on a runner, which routes hostnames to containers. |
+| Reverse proxy | Deploys Traefik on ports 80 and 443 of a machine. It gets Let's Encrypt certificates and forwards the instance's domain to Nexul. |
 
 Nexul deploys your chosen entry path itself, like any other service — there's nothing to install on the server by hand.
 
@@ -71,7 +71,7 @@ If your token reaches more than one Cloudflare account, choose the account that 
 
 - **Bare path** — pick a Cloudflare zone and record type, and give the target address.
 - **Tunnel path** — pick the zone and subdomain; Nexul routes it into the tunnel you just deployed and creates its DNS record. Leave the local service empty and the hostname goes to this instance. A checklist then confirms the ingress rule, the proxied DNS record, and that the hostname answers over HTTPS from the server, which can take a minute for a new record. Continue unlocks once all three pass.
-- **Reverse proxy path** — Nexul deploys Traefik on your chosen runner, then points the instance's own DNS record at that server's address.
+- **Reverse proxy path** — Nexul deploys Traefik on your chosen machine, with a Let's Encrypt certificate for the instance's domain, then points the instance's own DNS record at that server's address. Traefik needs ports 80 and 443 reachable from the internet to get the certificate.
 
 ### 4. Go live
 

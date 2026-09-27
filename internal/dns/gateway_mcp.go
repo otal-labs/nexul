@@ -2,8 +2,10 @@ package dns
 
 import (
 	"context"
+	"fmt"
 	"slices"
 
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 )
 
@@ -12,15 +14,17 @@ type gatewayListIn struct {
 }
 
 type gatewayCreateIn struct {
-	Kind          GatewayKind `json:"kind" jsonschema:"tunnel (cloudflared dials out to a Cloudflare tunnel, no open ports) or proxy (Traefik listens on ports 80 and 443 of the machine)."`
-	Machine       string      `json:"machine" jsonschema:"The machine the gateway's backing stack deploys to, by name, from machine_list."`
-	DockerNetwork string      `json:"docker_network" jsonschema:"The gateway's home docker network, for example shop_default; a network has at most one gateway."`
-	ProjectID     string      `json:"project_id" jsonschema:"The project the backing stack belongs to, from project_list."`
-	ZoneID        string      `json:"zone_id" jsonschema:"The zone the gateway serves, from dns_zone_list."`
-	Zone          string      `json:"zone" jsonschema:"That zone's domain name, for example example.com."`
-	TunnelID      string      `json:"tunnel_id,omitempty" jsonschema:"Required for kind tunnel: the tunnel cloudflared connects to, from dns_tunnel_list or dns_tunnel_create."`
-	ServerAddress string      `json:"server_address,omitempty" jsonschema:"Required for kind proxy: the machine's public IP address or hostname that exposure records point at, for example 203.0.113.10."`
-	StackName     string      `json:"stack_name,omitempty" jsonschema:"The backing stack's name. Defaults to cloudflared-<tunnel name> or traefik-<random>."`
+	Kind           GatewayKind `json:"kind" jsonschema:"tunnel (cloudflared dials out to a Cloudflare tunnel, no open ports) or proxy (Traefik listens on ports 80 and 443 of the machine and gets Let's Encrypt certificates)."`
+	Machine        string      `json:"machine,omitempty" jsonschema:"The machine the gateway's backing stack deploys to, by name, from machine_list. Required unless instance_domain is set, where it defaults to the machine of the runner named instance."`
+	DockerNetwork  string      `json:"docker_network,omitempty" jsonschema:"The gateway's home docker network, for example shop_default; a network has at most one gateway. Required unless instance_domain is set, where it defaults to nexul_proxy."`
+	ProjectID      string      `json:"project_id,omitempty" jsonschema:"The project the backing stack belongs to, from project_list. Required unless instance_domain is set, where it defaults to the first project."`
+	ZoneID         string      `json:"zone_id,omitempty" jsonschema:"The zone the gateway serves, from dns_zone_list. Required unless instance_domain is set."`
+	Zone           string      `json:"zone,omitempty" jsonschema:"That zone's domain name, for example example.com. Required unless instance_domain is set."`
+	TunnelID       string      `json:"tunnel_id,omitempty" jsonschema:"Required for kind tunnel: the tunnel cloudflared connects to, from dns_tunnel_list or dns_tunnel_create."`
+	ServerAddress  string      `json:"server_address,omitempty" jsonschema:"Required for kind proxy without instance_domain: the machine's public IP address or hostname that exposure records point at, for example 203.0.113.10."`
+	StackName      string      `json:"stack_name,omitempty" jsonschema:"The backing stack's name. Defaults to cloudflared-<tunnel name> or traefik-<random>."`
+	InstanceDomain string      `json:"instance_domain,omitempty" jsonschema:"Kind proxy only: a domain already resolving to the machine, for example nexul.example.com, that Traefik routes to this Nexul server over HTTPS."`
+	Email          string      `json:"email,omitempty" jsonschema:"With instance_domain: the email the Let's Encrypt account registers with, for example owner@example.com. Optional."`
 }
 
 type gatewayDeleteIn struct {
@@ -71,9 +75,16 @@ func gatewayTools(s *Service) []mcptool.Tool {
 				"exposure_create already reuses or deploys a gateway on the container's machine, so use this to choose "+
 				"the kind, network, or tunnel yourself, or to give the instance's own network a gateway. A tunnel gateway "+
 				"needs a tunnel_id from dns_tunnel_create or dns_tunnel_list, and a proxy gateway needs the machine's "+
-				"public server_address. A network that already has a gateway fails with a conflict; gateway_list shows it.",
+				"public server_address. A network that already has a gateway fails with a conflict; gateway_list shows it. "+
+				"With kind proxy and instance_domain it instead routes that domain to this Nexul server: it reuses the "+
+				"machine's proxy gateway or deploys one, Traefik gets a Let's Encrypt certificate once the domain resolves "+
+				"to the machine and ports 80 and 443 are open, and calling it again redeploys the same stack. Returns "+
+				"the gateway; stack_id is the stack whose deploys show the rollout.",
 			mcptool.Hints{},
 			func(ctx context.Context, in gatewayCreateIn) (any, error) {
+				if in.InstanceDomain != "" {
+					return s.createInstanceGateway(ctx, in)
+				}
 				g, err := s.CreateGateway(ctx, CreateGatewayInput{
 					Kind: in.Kind, DockerNetwork: in.DockerNetwork, ZoneID: in.ZoneID, Zone: in.Zone,
 					TunnelID: in.TunnelID, ServerAddress: in.ServerAddress,
@@ -97,6 +108,20 @@ func gatewayTools(s *Service) []mcptool.Tool {
 				return mcptool.Gone(in.ID), nil
 			}),
 	}
+}
+
+// createInstanceGateway is gateway_create's instance_domain form, the same use-case as POST /api/dns/instance-proxy.
+func (s *Service) createInstanceGateway(ctx context.Context, in gatewayCreateIn) (any, error) {
+	if in.Kind != GatewayProxy {
+		return nil, fmt.Errorf("%w: instance_domain needs kind proxy", apperrs.ErrInvalid)
+	}
+	g, err := s.ProvisionInstanceProxy(ctx, InstanceProxyInput{
+		Domain: in.InstanceDomain, Email: in.Email, Target: in.Machine, ProjectID: in.ProjectID, DockerNetwork: in.DockerNetwork,
+	})
+	if err != nil {
+		return nil, listedBy(err, "project_list lists projects and machine_list machines")
+	}
+	return toGatewayResult(g), nil
 }
 
 type exposureListIn struct {

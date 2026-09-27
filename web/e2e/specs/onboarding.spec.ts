@@ -37,11 +37,8 @@ describe("onboarding wizards", () => {
     await page.getByRole("button", { name: "Continue", exact: true }).click();
 
     await page.getByRole("button", { name: /finish setup/i }).click();
-    // completion flows into the optional DNS step (DN3)
-    await page.waitForURL("**/onboarding/dns");
-    await expect(
-      page.getByRole("heading", { name: /connect your dns provider/i }),
-    ).toBeVisible();
+    // The domain is set up before sign-in, so completion goes straight to the app.
+    await page.waitForURL((url) => url.pathname === "/");
   });
 
   it("dns onboarding renders and can be skipped", async () => {

@@ -73,3 +73,32 @@ func TestLoad_LogsURL(t *testing.T) {
 		})
 	}
 }
+
+func TestLoad_Local(t *testing.T) {
+	tests := []struct {
+		name    string
+		raw     string
+		want    bool
+		wantErr bool
+	}{
+		{"not a boolean fails", "yes", false, true},
+		{"unset means a server install", "", false, false},
+		{"1 marks a desktop install", "1", true, false},
+		{"true marks a desktop install", "true", true, false},
+		{"0 is a server install", "0", false, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("NEXUL_DB_PATH", filepath.Join(t.TempDir(), "d.db"))
+			t.Setenv("NEXUL_AUTH_SECRET", "s")
+			t.Setenv("NEXUL_LOCAL", tt.raw)
+			cfg, err := Load()
+			if tt.wantErr {
+				require.ErrorContains(t, err, "NEXUL_LOCAL")
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, cfg.Local)
+		})
+	}
+}

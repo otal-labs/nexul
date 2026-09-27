@@ -11,12 +11,13 @@ export const getProjectsKey = "getProjects";
 const getProjectReposKey = "getProjectRepos";
 
 // Reads selectedWorkspaceId internally so the key refetches on workspace switch with no per-caller wiring.
-export const useFetchProjects = () => {
+export const useFetchProjects = (enabled = true) => {
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   return useQuery({
     queryKey: [getProjectsKey, workspaceId],
     queryFn: async () =>
       (await api.get<Project[]>("/api/projects", { params: { workspace_id: workspaceId } })).data,
+    enabled,
   });
 };
 

@@ -59,6 +59,14 @@ each enrolling for its own credential with a one-time code. Remove revokes the
 credential and uninstalls the host from its machine, and each automation is
 placed on one named automations host.
 
+### Domain-first setup
+
+First run gives the instance its https domain before anything else, unlocked by
+a one-time setup code the installer prints: a Cloudflare tunnel, a reverse
+proxy that gets a Let's Encrypt certificate, or the owner's own HTTPS. The
+GitHub App is then connected from the domain, where sign-in works. The server
+installs on port 5123 so the proxy can own 80 and 443.
+
 ### The design pass
 
 A monochrome identity — "The Mono Console", light and dark as true inversions

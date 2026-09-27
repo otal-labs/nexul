@@ -105,6 +105,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	apiMux.Handle("GET /api/automations/{id}/runs", automationRunsRoutes)
 	apiMux.Handle("GET /api/automations/{id}/runs/{runID}", automationRunsRoutes)
 	mountGateway(apiMux, "/api/auth", svc.authHandler.ProtectedRoutes())
+	mountGateway(apiMux, "/api/setup", svc.authHandler.SetupRoutes())
 	runnerRoutes := runnerHTTP.Routes()
 	mountGateway(apiMux, "/api/runners", runnerRoutes)
 	// Machines live in the runner domain (issue 05); registered as exact patterns since /api/machines/{id}/import
@@ -181,16 +182,18 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	httpMux.Handle("POST /api/automation-hosts/enroll", automationHostsPublic)
 	httpMux.Handle("POST /api/automation-hosts/self/remove", automationHostsPublic)
 	httpMux.Handle("GET /api/automation-hosts/self/assignments", automationHostsPublic)
+	userAuth := func(h http.Handler) http.Handler { return svc.authSvc.RequireAuth(withIdentity(h)) }
 	// Without this, these fall through to the /api/ catch-all below and 401 before reaching the handler.
 	httpMux.Handle("GET /api/auth/bootstrap-status", svc.authHandler.Routes())
-	httpMux.Handle("POST /api/auth/bootstrap", svc.authHandler.Routes())
-	httpMux.Handle("POST /api/auth/bootstrap/verify", svc.authHandler.Routes())
+	httpMux.Handle("POST /api/setup/unlock", svc.authHandler.Routes())
+	// Bootstrap lives on the public mux but needs the setup pass, so only session/PAT/pass auth wraps it.
+	httpMux.Handle("POST /api/auth/bootstrap", userAuth(svc.authHandler.Routes()))
+	httpMux.Handle("POST /api/auth/bootstrap/verify", userAuth(svc.authHandler.Routes()))
 	httpMux.Handle("POST /api/invitations/preview", svc.invitationHandler.PublicRoutes())
 	httpMux.Handle("POST /api/invitations/oauth", svc.authHandler.Routes())
 	httpMux.Handle("POST /api/invitations/acceptance", svc.authHandler.Routes())
 	httpMux.Handle("POST /api/invitations/redeem", svc.authHandler.Routes())
-	// Automation tokens, then integration tokens, then session/PAT — one audit-logged handler underneath all three.
-	userAuth := func(h http.Handler) http.Handler { return svc.authSvc.RequireAuth(withIdentity(h)) }
+	// Automation tokens, then integration tokens, then session/PAT/setup pass — one audit-logged handler underneath all.
 	httpMux.Handle("/api/", svc.automationsSvc.RequireAutomation(
 		func(h http.Handler) http.Handler { return svc.integrationsSvc.RequireIntegration(userAuth, h) },
 		svc.integrationsSvc.AuditLog(resolveAuditActor, apiMux),
@@ -224,6 +227,7 @@ func shutdownServer(httpServer *http.Server) {
 func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.RegisterMountedRoutes(routes)
 	spec.SetTagDescription("auth", "Identity, onboarding, settings, members")
+	spec.SetTagDescription("setup", "First run: setup code unlock, instance URL, public address")
 	spec.SetTagDescription("docs", "Documents and version history")
 	spec.SetTagDescription("attachments", "Files attached to docs and tickets")
 	spec.SetTagDescription("tickets", "Tickets and status transitions")
@@ -334,6 +338,8 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("POST", "/api/dns/tunnels/{tunnelID}/rotate", "Rotate tunnel credentials", "dns")
 	spec.Register("DELETE", "/api/dns/tunnels/{tunnelID}", "Delete a tunnel", "dns")
 	spec.Register("POST", "/api/dns/gateways", "Create a gateway (tunnel or proxy)", "dns")
+	spec.Register("POST", "/api/dns/instance-proxy", "Route a domain to this server through Traefik with Let's Encrypt", "dns")
+	spec.Register("GET", "/api/dns/resolve", "Resolve a domain's current addresses", "dns")
 	spec.Register("GET", "/api/dns/gateways", "List gateways", "dns")
 	spec.Register("DELETE", "/api/dns/gateways/{gatewayID}", "Delete a gateway", "dns")
 	spec.Register("POST", "/api/dns/exposures", "Route a hostname through a gateway to a container", "dns")

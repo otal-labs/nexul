@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api, errorMessage } from "@/api/client";
 import { useSessionStore } from "@/stores/sessionStore";
+import { useSetupPassStore } from "@/stores/setupPassStore";
 
 describe("errorMessage", () => {
   it.each([
@@ -24,9 +25,55 @@ describe("errorMessage", () => {
   });
 });
 
+const captureAuth = async () => {
+  let captured: { headers: Record<string, string> } | undefined;
+  await api.get("/ping", {
+    adapter: async (config) => {
+      captured = config;
+      return { data: {}, status: 200, statusText: "OK", headers: {}, config };
+    },
+  });
+  return captured?.headers.Authorization;
+};
+
+const FUTURE = "2999-01-01T00:00:00Z";
+
 describe("api client interceptors", () => {
   beforeEach(() => {
     useSessionStore.setState({ token: null, isLoggedIn: false });
+    useSetupPassStore.setState({ token: null, expiresAt: null, code: null });
+  });
+
+  it("clears a refused setup pass on 401 without redirecting to /login", async () => {
+    useSetupPassStore.getState().unlock({ token: "pass-1", expires_at: FUTURE }, "nxs_abc");
+    const assignMock = vi.fn();
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { pathname: "/", assign: assignMock },
+    });
+    const error = { response: { status: 401, data: { message: "unauthorized", code: "unauthorized" } }, message: "401" };
+    await expect(api.get("/api/dns/zones", { adapter: async () => Promise.reject(error) })).rejects.toMatchObject({
+      message: "401",
+    });
+    expect(useSetupPassStore.getState().token).toBeNull();
+    expect(assignMock).not.toHaveBeenCalled();
+  });
+
+  it("does not send an expired setup pass", async () => {
+    useSetupPassStore.getState().unlock({ token: "pass-1", expires_at: "2000-01-01T00:00:00Z" }, "nxs_abc");
+    expect(await captureAuth()).toBeUndefined();
+    expect(useSetupPassStore.getState().token).toBeNull();
+  });
+
+  it("sends the setup pass as the bearer when there is no session", async () => {
+    useSetupPassStore.getState().unlock({ token: "pass-1", expires_at: FUTURE }, "nxs_abc");
+    expect(await captureAuth()).toBe("Bearer pass-1");
+  });
+
+  it("prefers the session over a leftover setup pass", async () => {
+    useSetupPassStore.getState().unlock({ token: "pass-1", expires_at: FUTURE }, "nxs_abc");
+    useSessionStore.getState().login("tok-1");
+    expect(await captureAuth()).toBe("Bearer tok-1");
   });
 
   afterEach(() => {

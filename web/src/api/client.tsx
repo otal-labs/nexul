@@ -1,6 +1,7 @@
 import axios, { type AxiosError } from "axios";
 
 import { useSessionStore } from "@/stores/sessionStore";
+import { currentSetupPass, useSetupPassStore } from "@/stores/setupPassStore";
 
 export interface ApiErrorBody {
   message: string;
@@ -25,8 +26,9 @@ export const resolveWSBase = () =>
 
 export const api = axios.create({ baseURL: API_BASE_URL });
 
+// Before the first user exists there is no session; the setup pass stands in for it.
 api.interceptors.request.use((config) => {
-  const token = useSessionStore.getState().token;
+  const token = useSessionStore.getState().token ?? currentSetupPass();
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
@@ -40,6 +42,11 @@ const redirectToLogin = () => {
 api.interceptors.response.use(
   (response) => response,
   (error: AxiosError<ApiErrorBody>) => {
+    if (error.response?.status === 401 && !useSessionStore.getState().token && useSetupPassStore.getState().token) {
+      // A refused pass (expired, or a user now exists) sends setup back to the code screen, not to /login.
+      useSetupPassStore.getState().clear();
+      return Promise.reject(error);
+    }
     if (error.response?.status === 401) {
       useSessionStore.getState().logout();
       redirectToLogin();

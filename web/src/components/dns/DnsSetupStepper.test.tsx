@@ -5,6 +5,7 @@ import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DnsSetupStepper } from "@/components/dns/DnsSetupStepper";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { pickOption } from "@/test/pickOption";
 
 const mocks = vi.hoisted(() => ({
@@ -55,6 +56,7 @@ const choosePath = async (user: ReturnType<typeof userEvent.setup>, label: RegEx
 
 describe("DnsSetupStepper", () => {
   beforeEach(() => {
+    useWorkspaceStore.setState({ selectedWorkspaceId: "w1" });
     mocks.get.mockReset();
     mocks.post.mockReset();
     mocks.errorMessage.mockClear();

@@ -305,6 +305,13 @@ func (s *Service) ProvisionTunnelAgent(ctx context.Context, tunnelID string, spe
 	if spec.Name == "" {
 		spec.Name = "cloudflared-" + t.Name
 	}
+	// First-run setup has no workspace to pick from, so the tunnel lands where the instance's own proxy would.
+	if spec.Target, err = s.placementMachine(ctx, spec.Target); err != nil {
+		return nil, err
+	}
+	if spec.ProjectID, err = s.placementProject(ctx, spec.ProjectID); err != nil {
+		return nil, err
+	}
 	// Without an image nothing is ever deployed, and without `tunnel run` the image prints help and exits.
 	if spec.Image == "" {
 		spec.Image = cloudflaredImage
@@ -335,23 +342,22 @@ func (s *Service) ProvisionTunnelAgent(ctx context.Context, tunnelID string, spe
 	return provisioned, nil
 }
 
-// ProvisionReverseProxy provisions a reverse-proxy service definition (e.g. Traefik) as a Nexul service.
+// ProvisionReverseProxy deploys the machine's proxy gateway for the DNS page, routing the stored instance URL's host
+// to this server when one is set; spec supplies only the machine, project, and network.
 func (s *Service) ProvisionReverseProxy(ctx context.Context, spec AgentSpec) (*AgentProvisioned, error) {
-	if s.provisioner == nil {
-		return nil, apperrs.Fatal(fmt.Errorf("%w: entry-path provisioning is not wired", apperrs.ErrInvalid))
+	domain := ""
+	if u, err := s.instanceURL(ctx); err == nil && u != "" {
+		if host, err := hostFromURL(u); err == nil {
+			domain = host
+		}
 	}
-	spec.Name = strings.TrimSpace(spec.Name)
-	if spec.Name == "" {
-		spec.Name = "reverse-proxy"
-	}
-	if spec.HealthURL == "" {
-		spec.HealthURL = "http://localhost:80/"
-	}
-	provisioned, err := s.provisioner.Provision(ctx, spec)
+	g, err := s.deployProxyGateway(ctx, InstanceProxyInput{
+		Domain: domain, Target: spec.Target, ProjectID: spec.ProjectID, DockerNetwork: spec.DockerNetwork,
+	})
 	if err != nil {
-		return nil, fmt.Errorf("provision reverse proxy: %w", err)
+		return nil, err
 	}
-	return provisioned, nil
+	return &AgentProvisioned{ServiceID: g.ServiceID}, nil
 }
 
 // encryptTunnelToken seals a tunnel token at rest.

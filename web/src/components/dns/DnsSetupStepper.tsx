@@ -1,19 +1,13 @@
 import { useState } from "react";
 
 import { DnsSetupDone } from "@/components/dns/DnsSetupDone";
-import { DnsStep, type DnsStepState } from "@/components/dns/DnsStep";
+import { DnsStep } from "@/components/dns/DnsStep";
 import { EntryPathChoice } from "@/components/dns/EntryPathChoice";
 import { InstanceRecordForm } from "@/components/dns/InstanceRecordForm";
 import { ProxyEntryPathForm } from "@/components/dns/ProxyEntryPathForm";
 import { TunnelDeployStep } from "@/components/dns/TunnelDeployStep";
 import { TunnelHostnameStep } from "@/components/dns/TunnelHostnameStep";
-import { EntryPaths, entryPathOptions, type DnsSetupResult, type EntryPath, type TunnelDeployment } from "@/models/DNS";
-
-const stepState = (unlocked: boolean, done: boolean): DnsStepState => {
-  if (!unlocked) return "upcoming";
-  if (done) return "done";
-  return "active";
-};
+import { EntryPaths, entryPathOptions, stepState, type DnsSetupResult, type EntryPath, type TunnelDeployment } from "@/models/DNS";
 
 // Three rungs, one unlocked at a time (Resend "Add domain" lock): choose the path, point the hostname, go live.
 export const DnsSetupStepper = () => {
