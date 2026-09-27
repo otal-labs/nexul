@@ -27,9 +27,18 @@ type Commander interface {
 
 // Paths are the host locations the installer writes outside the install directory.
 type Paths struct {
-	Config       string
-	BinDir       string
-	Unit         string
+	// Config records the server's install directory.
+	Config string
+	// BinDir holds the nexul command.
+	BinDir string
+	// UnitRoot is the parent of every unit's own directory: its binary, env file, credential and unit.json.
+	UnitRoot string
+	// Services holds the service definitions: systemd units on Linux, LaunchAgents on macOS.
+	Services string
+	// Sudoers is the sudoers drop-in directory, for the automations hosts' self-removal on Linux.
+	Sudoers string
+	// Logs is where launchd writes each unit's output on macOS.
+	Logs         string
 	ComposePlugs string
 	SystemdProbe string
 	// UserPlugins is the per-user Docker CLI plugins directory, where macOS links Homebrew's compose plugin.
@@ -66,11 +75,19 @@ type Host struct {
 	LookPath    func(file string) (string, error)
 	Executable  func() (string, error)
 	Reexec      func(path string, args []string) error
-	// HealthTimeout bounds how long the installer waits for the server to answer after starting the stack.
+	// LocalPort returns a port free on localhost, for OpenObserve's listeners.
+	LocalPort func() (int, error)
+	// StartDetached starts a process that outlives this one and the service that started it (macOS, Windows).
+	StartDetached func(name string, args []string, logPath string) error
+	// OpenObserve is the pinned log store build the server install downloads.
+	OpenObserve OpenObserve
+	// HealthTimeout bounds how long the installer waits for the server to answer after starting it.
 	HealthTimeout time.Duration
 	PollInterval  time.Duration
 
 	aptUpdated bool
+	// ctl is where the nexul command was installed, once installSelf has run.
+	ctl string
 }
 
 // NewHost returns a Host wired to this machine.
@@ -90,7 +107,7 @@ func NewHost() *Host {
 		DockerScriptURL: "https://get.docker.com",
 		ComposeURL:      "https://github.com/docker/compose/releases/latest/download",
 		BrewInstallURL:  "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh",
-		Paths:           pathsFor(runtime.GOOS, home),
+		Paths:           pathsFor(runtime.GOOS, home, os.Getenv),
 		Home:            home,
 		PrependPath: func(dir string) {
 			_ = os.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH")) // Setenv fails only on an invalid key
@@ -102,30 +119,47 @@ func NewHost() *Host {
 		LookPath:      exec.LookPath,
 		Executable:    os.Executable,
 		Reexec:        reexec,
+		LocalPort:     localPort,
+		StartDetached: startDetached,
+		OpenObserve:   pinnedOpenObserve,
 		HealthTimeout: 3 * time.Minute,
 		PollInterval:  2 * time.Second,
 	}
 }
 
-// pathsFor places the config and the nexul command where each OS expects them without extra privileges.
-func pathsFor(goos, home string) Paths {
+// pathsFor places the config, the nexul command and the units where each OS expects them: system locations on
+// Linux and Windows, the user's own Library on macOS, where the installer runs as the user.
+func pathsFor(goos, home string, getenv func(string) string) Paths {
 	p := Paths{
 		Config:       "/etc/nexul/nexul.conf",
 		BinDir:       "/usr/local/bin",
-		Unit:         "/etc/systemd/system/nexul-runner.service",
+		UnitRoot:     "/opt/nexul",
+		Services:     "/etc/systemd/system",
+		Sudoers:      "/etc/sudoers.d",
 		ComposePlugs: "/usr/local/lib/docker/cli-plugins",
 		SystemdProbe: "/run/systemd/system",
 		UserPlugins:  filepath.Join(home, ".docker", "cli-plugins"),
 		DockerApp:    "/Applications/Docker.app",
 	}
 	if goos == "darwin" {
-		p.Config = filepath.Join(home, "Library", "Application Support", "nexul", "nexul.conf")
+		p.UnitRoot = filepath.Join(home, "Library", "Application Support", "nexul")
+		p.Config = filepath.Join(p.UnitRoot, "nexul.conf")
+		p.Services = filepath.Join(home, "Library", "LaunchAgents")
+		p.Logs = filepath.Join(home, "Library", "Logs", "nexul")
 	}
 	if goos == "windows" {
-		p.Config = filepath.Join(home, "AppData", "Roaming", "nexul", "nexul.conf")
-		p.BinDir = filepath.Join(home, "AppData", "Local", "Programs", "Nexul")
+		p.UnitRoot = filepath.Join(envOr(getenv, "ProgramData", `C:\ProgramData`), "Nexul")
+		p.Config = filepath.Join(p.UnitRoot, "nexul.conf")
+		p.BinDir = filepath.Join(envOr(getenv, "ProgramFiles", `C:\Program Files`), "Nexul")
 	}
 	return p
+}
+
+func envOr(getenv func(string) string, key, fallback string) string {
+	if v := getenv(key); v != "" {
+		return v
+	}
+	return fallback
 }
 
 // desktop reports a macOS or Windows host, where Docker runs in a VM and there is no systemd.
@@ -157,7 +191,7 @@ func (h *Host) checkUser() error {
 		return nil
 	}
 	if h.GOOS != "linux" {
-		return fmt.Errorf("nexul install supports Linux, macOS and Windows, not %s; run the binary with `nexul serve`", h.GOOS)
+		return fmt.Errorf("nexul install supports Linux, macOS and Windows, not %s; run nexul-server by hand", h.GOOS)
 	}
 	if h.Getuid() != 0 {
 		return errors.New("run this as root, for example with sudo")
@@ -192,6 +226,16 @@ func portFree(port int) bool {
 	return true
 }
 
+// localPort asks the OS for a free port on the loopback interface.
+func localPort() (int, error) {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return 0, fmt.Errorf("find a free local port: %w", err)
+	}
+	defer func() { _ = l.Close() }() // the probe listener accepted nothing
+	return l.Addr().(*net.TCPAddr).Port, nil
+}
+
 func isTerminal(f *os.File) bool {
 	info, err := f.Stat()
 	return err == nil && info.Mode()&os.ModeCharDevice != 0
@@ -214,7 +258,7 @@ func (execCommander) Run(ctx context.Context, name string, args ...string) (stri
 	return out, nil
 }
 
-// childEnv drops NEXUL_* variables, which docker compose would otherwise let override the install's .env.
+// childEnv drops NEXUL_* variables, so a calling service's own settings never reach the commands the installer runs.
 func childEnv(environ []string) []string {
 	out := make([]string, 0, len(environ))
 	for _, kv := range environ {

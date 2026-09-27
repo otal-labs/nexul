@@ -13,8 +13,6 @@ import (
 	"strings"
 	"time"
 	"unicode"
-
-	"github.com/otal-labs/nexul"
 )
 
 // installed is an existing install: the directory recorded in the config file and the .env inside it.
@@ -69,35 +67,28 @@ func installAt(dir string, prev *installed) (*installed, error) {
 	return &installed{Dir: dir, Env: env}, nil
 }
 
-// requireInstall is loadInstall for the commands that only make sense on an installed host.
-func (h *Host) requireInstall() (*installed, error) {
-	prev, err := h.loadInstall()
-	if err != nil {
-		return nil, err
+// writeSettings creates the install directory's folders and writes its .env, keeping every secret and port already
+// in it, and records the directory in the config file. On Linux the data and logs folders go to the nexul user the
+// server and OpenObserve run as.
+func (h *Host) writeSettings(ctx context.Context, o Options, prev *installed, tag string) (map[string]string, error) {
+	if err := os.MkdirAll(o.Dir, 0o755); err != nil {
+		return nil, fmt.Errorf("create %s: %w", o.Dir, err)
 	}
-	if prev == nil {
-		return nil, errors.New("nexul is not installed on this host; run nexul install")
-	}
-	return prev, nil
-}
-
-// writeStack writes the compose file and .env into the install directory, keeping any secret already in .env, and
-// records the directory in the config file.
-func (h *Host) writeStack(o Options, prev *installed, tag string) (map[string]string, error) {
-	if err := h.writeComposeFiles(o.Dir); err != nil {
-		return nil, err
+	for _, sub := range []string{"data", "logs", "stacks"} {
+		if err := os.MkdirAll(filepath.Join(o.Dir, sub), 0o750); err != nil {
+			return nil, fmt.Errorf("create %s: %w", sub, err)
+		}
 	}
 	env := map[string]string{}
 	if prev != nil && prev.Dir == o.Dir {
 		env = prev.Env
 	}
-	for k, v := range h.platformEnv(o.Dir) {
-		env[k] = v
-	}
 	env["NEXUL_VERSION"] = strings.TrimPrefix(tag, "v")
 	env["NEXUL_PORT"] = strconv.Itoa(o.Port)
-	env["NEXUL_LOGS_PORT"] = strconv.Itoa(o.LogsPort)
 	env["NEXUL_LOGS_EMAIL"] = logsEmail
+	if err := h.pickLogsPorts(env, o.Port); err != nil {
+		return nil, err
+	}
 	// OpenObserve refuses to boot on a password that breaks its rule, so one that does was never in use.
 	if !validLogsPassword(env["NEXUL_LOGS_PASSWORD"]) {
 		env["NEXUL_LOGS_PASSWORD"] = randomPassword()
@@ -108,58 +99,43 @@ func (h *Host) writeStack(o Options, prev *installed, tag string) (map[string]st
 	if err := writeEnvFile(filepath.Join(o.Dir, ".env"), env); err != nil {
 		return nil, err
 	}
+	if h.GOOS == "linux" {
+		if err := h.giveToServiceUser(ctx, filepath.Join(o.Dir, "data"), filepath.Join(o.Dir, "logs")); err != nil {
+			return nil, err
+		}
+	}
 	if err := os.MkdirAll(filepath.Dir(h.Paths.Config), 0o755); err != nil {
 		return nil, fmt.Errorf("create %s: %w", filepath.Dir(h.Paths.Config), err)
 	}
 	return env, writeEnvFile(h.Paths.Config, map[string]string{"NEXUL_DIR": o.Dir})
 }
 
-// writeComposeFiles writes the stack's compose file, plus the desktop overlay on macOS and Windows; a Linux install
-// also gets the data and logs folders its bind mounts point at.
-func (h *Host) writeComposeFiles(dir string) error {
-	if err := os.MkdirAll(dir, 0o750); err != nil {
-		return fmt.Errorf("create %s: %w", dir, err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, "docker-compose.yml"), nexul.Compose, 0o644); err != nil {
-		return fmt.Errorf("write compose file: %w", err)
-	}
-	if h.desktop() {
-		if err := os.WriteFile(filepath.Join(dir, desktopComposeFile), nexul.DesktopCompose, 0o644); err != nil {
-			return fmt.Errorf("write desktop compose file: %w", err)
+// pickLogsPorts gives OpenObserve's HTTP and gRPC listeners free localhost ports, once: an install that has them
+// keeps them, since its own OpenObserve is what holds them.
+func (h *Host) pickLogsPorts(env map[string]string, webPort int) error {
+	taken := map[string]bool{strconv.Itoa(webPort): true}
+	for _, key := range []string{"NEXUL_LOGS_PORT", "NEXUL_LOGS_GRPC_PORT"} {
+		if env[key] != "" && !taken[env[key]] {
+			taken[env[key]] = true
+			continue
 		}
-		return nil
-	}
-	for _, sub := range []string{"data", "logs"} {
-		if err := os.MkdirAll(filepath.Join(dir, sub), 0o750); err != nil {
-			return fmt.Errorf("create %s: %w", sub, err)
+		for {
+			port, err := h.LocalPort()
+			if err != nil {
+				return err
+			}
+			if !taken[strconv.Itoa(port)] {
+				env[key] = strconv.Itoa(port)
+				taken[env[key]] = true
+				break
+			}
 		}
 	}
 	return nil
 }
 
-const desktopComposeFile = "docker-compose.desktop.yml"
-
-// platformEnv is the part of .env that differs by platform. On macOS and Windows COMPOSE_FILE layers the desktop
-// overlay, which compose reads from .env, and NEXUL_STACK_ROOT is a path both the runner container and the Docker
-// VM can see: the install directory on macOS, where the home directory is shared, and a VM path on Windows.
-func (h *Host) platformEnv(dir string) map[string]string {
-	if h.GOOS == "darwin" {
-		return map[string]string{"COMPOSE_FILE": "docker-compose.yml:" + desktopComposeFile, "NEXUL_STACK_ROOT": dir}
-	}
-	if h.GOOS == "windows" {
-		return map[string]string{"COMPOSE_FILE": "docker-compose.yml;" + desktopComposeFile, "NEXUL_STACK_ROOT": DefaultDir}
-	}
-	return map[string]string{}
-}
-
-// compose runs a docker compose subcommand against the install directory's project.
-func (h *Host) compose(ctx context.Context, dir string, args ...string) error {
-	_, err := h.Exec.Run(ctx, "docker", slices.Concat([]string{"compose", "--project-directory", dir}, args)...)
-	return err
-}
-
 // waitHealthy polls the web UI until the server answers, so the summary never points at a server still booting.
-func (h *Host) waitHealthy(ctx context.Context, port int) error {
+func (h *Host) waitHealthy(ctx context.Context, port int, u Unit) error {
 	ctx, cancel := context.WithTimeout(ctx, h.HealthTimeout)
 	defer cancel()
 	url := fmt.Sprintf("http://127.0.0.1:%d/", port)
@@ -176,49 +152,36 @@ func (h *Host) waitHealthy(ctx context.Context, port int) error {
 		}
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("the server did not answer on port %d; see `docker compose --project-directory <dir> logs server`", port)
+			return fmt.Errorf("the server did not answer on port %d; %s", port, h.logHint(u))
 		case <-time.After(h.PollInterval):
 		}
 	}
 }
 
-// checkPorts refuses ports another program holds; the ports this install already serves on are expected busy.
-func (h *Host) checkPorts(o Options, prev *installed) error {
-	if o.Port == o.LogsPort {
-		return fmt.Errorf("the web port and the logs port are both %d", o.Port)
+// logHint says where a unit's output goes on this OS.
+func (h *Host) logHint(u Unit) string {
+	if h.GOOS == "darwin" {
+		return "see " + filepath.Join(h.Paths.Logs, u.Name+".log")
 	}
-	for _, p := range []struct {
-		port int
-		key  string
-		flag string
-	}{{o.Port, "NEXUL_PORT", "--port"}, {o.LogsPort, "NEXUL_LOGS_PORT", "--logs-port"}} {
-		if p.port < 1 || p.port > 65535 {
-			return fmt.Errorf("port %d is out of range", p.port)
-		}
-		if prev.intEnv(p.key, 0) == p.port {
-			continue
-		}
-		if !h.PortFree(p.port) {
-			return fmt.Errorf("port %d is already in use; pick another with %s", p.port, p.flag)
-		}
+	if h.GOOS == "windows" {
+		return "see " + filepath.Join(u.Dir, "service.log")
 	}
-	return nil
+	return "see `journalctl -u " + u.Name + "`"
 }
 
-// askPorts prompts for both ports with their defaults filled in; Enter keeps the default.
-func (h *Host) askPorts(o Options, prev *installed) (Options, error) {
-	var err error
-	if o.Port, err = h.askPort("Web port", o.Port, "NEXUL_PORT", prev); err != nil {
-		return o, err
+// checkPort refuses a port another program holds; the port this install already serves on is expected busy.
+func (h *Host) checkPort(port int, prev *installed) error {
+	if port < 1 || port > 65535 {
+		return fmt.Errorf("port %d is out of range", port)
 	}
-	if o.LogsPort, err = h.askPort("Logs UI port", o.LogsPort, "NEXUL_LOGS_PORT", prev); err != nil {
-		return o, err
+	if prev.intEnv("NEXUL_PORT", 0) == port || h.PortFree(port) {
+		return nil
 	}
-	return o, nil
+	return fmt.Errorf("port %d is already in use; pick another with --port", port)
 }
 
 // askPort re-asks until the answer is a free port or the port this install already uses.
-func (h *Host) askPort(label string, def int, key string, prev *installed) (int, error) {
+func (h *Host) askPort(label string, def int, prev *installed) (int, error) {
 	for {
 		answer, err := h.prompt(label, strconv.Itoa(def))
 		if err != nil {
@@ -229,7 +192,7 @@ func (h *Host) askPort(label string, def int, key string, prev *installed) (int,
 			h.printf("  %q is not a port number.\n", answer)
 			continue
 		}
-		if prev.intEnv(key, 0) != port && !h.PortFree(port) {
+		if prev.intEnv("NEXUL_PORT", 0) != port && !h.PortFree(port) {
 			h.printf("  Port %d is already in use.\n", port)
 			continue
 		}
@@ -285,7 +248,7 @@ func writeEnvFile(path string, env map[string]string) error {
 }
 
 // randomPassword meets OpenObserve's root password rule: upper and lower case, a digit and a special character. The
-// special character is a dash because compose reads $ in .env as a variable.
+// special character is a dash, which no env file parser treats specially.
 func randomPassword() string {
 	s := randomSecret()
 	return s[:12] + "-" + s[12:]
