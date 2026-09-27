@@ -16,5 +16,8 @@
 - Website docs: install, upgrade, runners, logs, automations, local
   development, CI and releases, index and install switcher copy, README, bug
   template, `AGENTS.md` service-binary quick reference.
+- `ROADMAP.md` and `website/src/pages/roadmap.astro`: move per-runner credentials
+  from planned to shipped (labels/selectors stay planned) and add the native
+  install and named automations hosts.
 - Delete `.scratch/per-runner-credentials/` (folded into this effort) and
   update `docs/agents/issue-tracker.md`'s list.
