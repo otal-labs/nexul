@@ -31,11 +31,12 @@ with it; Nexul itself never runs in a container.
   OpenObserve listens on localhost only and the server reverse-proxies it at
   `/openobserve/`. The install asks for the port and re-asks while it is taken
   (already true today; it stays).
-- **One-line installers per component.** The same bootstrap script installs any
-  component; its first argument picks which:
-  `curl -fsSL https://nexul.io/install.sh | sh -s -- runner --server <url> --name <name> --code <code>`.
-  No argument installs the server, as today. The instance renders these
-  commands for the Add runner and Add automations host dialogs.
+- **One-line installers per component.** `install.sh` installs the server;
+  `runner.sh` and `automations.sh` (and their `.ps1` twins) hand over to it
+  with the component filled in:
+  `curl -fsSL https://nexul.io/runner.sh | sh -s -- --server <url> --name <name> --code <code>`.
+  The instance renders these commands for the Add runner and Add automations
+  host dialogs.
 - **Named runners and automations hosts, several per machine.** Each installs as
   its own service (`nexul-runner-<name>`, `nexul-automations-<name>`) with its
   own directory, binary copy and credential, so two on one machine never share
@@ -202,9 +203,11 @@ Rendered commands (instance URL from settings, version pinned to the server's
 own release; a dev build omits the pin):
 
 ```
-curl -fsSL https://nexul.io/install.sh | NEXUL_VERSION=<v> sh -s -- runner --server <url> --name <name> --code <code>
-$env:NEXUL_VERSION='<v>'; & ([scriptblock]::Create((irm https://nexul.io/install.ps1))) runner --server <url> --name <name> --code <code>
+curl -fsSL https://nexul.io/runner.sh | NEXUL_VERSION=<v> sh -s -- --server <url> --name <name> --code <code>
+$env:NEXUL_VERSION='<v>'; & ([scriptblock]::Create((irm https://nexul.io/runner.ps1))) --server <url> --name <name> --code <code>
 ```
+
+Automations hosts use `automations.sh` and `automations.ps1` the same way.
 
 ## Out of scope
 

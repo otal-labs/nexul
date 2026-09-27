@@ -52,6 +52,7 @@ printf '%s\\n' "$url" >> "$NEXUL_TEST_DIR/urls"
 case "$url" in
   */releases/latest) [ -n "$(sed -n '/tag_name/p' "$NEXUL_TEST_DIR/latest.json")" ] || exit 22; src="$NEXUL_TEST_DIR/latest.json" ;;
   *'/releases?per_page=1') src="$NEXUL_TEST_DIR/releases.json" ;;
+  */install.sh) src="$NEXUL_TEST_INSTALL_SH" ;;
   */releases/*) src="$NEXUL_TEST_DIR/release/\${url##*/}"; printf '%s\\n' "$url" > "$NEXUL_TEST_DIR/download-url" ;;
   *) exit 22 ;;
 esac
@@ -70,6 +71,8 @@ if [ -n "$out" ]; then cp "$src" "$out"; else cat "$src"; fi
     NEXUL_BIN_DIR: join(directory, 'installed-bin'),
     NEXUL_RELEASE_URL: 'https://example.test/releases',
     NEXUL_API_URL: 'https://api.example.test',
+    NEXUL_INSTALL_URL: 'https://nexul.example.test/install.sh',
+    NEXUL_TEST_INSTALL_SH: script,
   };
   return { directory, env };
 }
@@ -169,4 +172,28 @@ test('piped installation reads interactive input from the controlling terminal',
 test('installer errors propagate to the caller', () => {
   const { env } = setup({ installerExit: 31 });
   expect(run(env).status).toBe(31);
+});
+
+for (const kind of ['runner', 'automations']) {
+  test(`${kind}.sh installs through install.sh as \`nexul install ${kind}\` with every argument intact`, async () => {
+    const { directory, env } = setup();
+    const kindScript = new URL(`../public/${kind}.sh`, import.meta.url).pathname;
+    const args = ['--server', 'https://nexul.example.com', '--name', 'build 1', '--code', 'nxe_abc'];
+    const result = spawnSync('/bin/sh', [kindScript, ...args], { env, input: '', encoding: 'utf8' });
+    expect(result.status).toBe(0);
+    expect(await read(directory, 'urls')).toContain('https://nexul.example.test/install.sh');
+    expect(await read(directory, 'argv')).toBe(['install', kind, ...args].join('\n') + '\n');
+  });
+}
+
+test('runner.sh stops when install.sh cannot be downloaded', async () => {
+  const { directory, env } = setup();
+  const runnerScript = new URL('../public/runner.sh', import.meta.url).pathname;
+  const result = spawnSync('/bin/sh', [runnerScript], {
+    env: { ...env, NEXUL_TEST_INSTALL_SH: join(directory, 'missing.sh') },
+    encoding: 'utf8',
+  });
+  expect(result.status).not.toBe(0);
+  expect(result.stderr).toContain('could not download install.sh');
+  expect(await exists(directory, 'args')).toBe(false);
 });

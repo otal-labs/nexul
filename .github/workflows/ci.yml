@@ -31,7 +31,6 @@ jobs:
               - 'runner/**'
               - 'internal/**'
               - '*.go'
-              - 'docker-compose.yml'
               - 'go.mod'
               - 'go.sum'
               - 'sqlc.yaml'
