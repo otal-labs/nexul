@@ -1,6 +1,6 @@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ticketTypeColor } from "@/components/board/ticketTypeColor";
-import { ticketTypeIcon } from "@/components/board/ticketTypeIcon";
+import { TicketTypeIcon } from "@/components/board/ticketTypeIcon";
 import { editableRowClass, menuItemClass, rowClass } from "@/components/ticket/ticketPropertyRowStyle";
 import { useFetchProjectTicketTypes } from "@/hooks/TicketTypeHooks";
 import { cn } from "@/lib/utils";
@@ -15,11 +15,10 @@ export const TicketTypeRow = ({ ticket, onSetType }: TicketTypeRowProps) => {
   const { data: ticketTypes } = useFetchProjectTicketTypes(ticket.project_id);
   const types = ticketTypes ?? [];
   const current = types.find((t) => t.id === ticket.type_id);
-  const Icon = ticketTypeIcon(current?.name ?? "");
 
   const content = (
     <>
-      <Icon className={cn("size-3.5 shrink-0", ticketTypeColor(current?.name ?? ""))} aria-hidden />
+      <TicketTypeIcon typeName={current?.name ?? ""} className={cn("size-3.5 shrink-0", ticketTypeColor(current?.name ?? ""))} aria-hidden />
       <span className={cn("text-xs", current ? "font-medium text-foreground" : "text-muted-foreground")}>
         {current?.name ?? "No type"}
       </span>

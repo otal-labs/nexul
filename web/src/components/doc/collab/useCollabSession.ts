@@ -78,10 +78,7 @@ export const useCollabSession = (
   // One effect (not split) keeps StrictMode's double-invoke setup/cleanup symmetric.
   useEffect(() => {
     // No doc id or token yet means no connection; the effect re-runs once the token dependency lands.
-    if (!docId || !token) {
-      setSession(null);
-      return;
-    }
+    if (!docId || !token) return;
     const doc = new Y.Doc();
     const user: CollabUser = {
       name: name || "You",
@@ -135,6 +132,7 @@ export const useCollabSession = (
       // Flushes what the 5s commit loop missed — the editor unmounts before cleanup, so refs carry the latest state.
       provider.flushCommit();
       provider.destroy();
+      setSession(null);
     };
   }, [docId, mode, name, token, sessionKey, opts.wsFactory, opts.avatar]);
 

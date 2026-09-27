@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import type { BoardFilters } from "@/components/board/BoardFilterBar";
 import { useFetchMe } from "@/hooks/AuthHooks";
@@ -42,14 +42,8 @@ interface FilterSets {
 
 // projectId, when given, locks the board to that project, seeded into initial state so the URL is the source of truth.
 export const useBoardFilters = (tickets: Ticket[] | undefined, projectId?: string) => {
-  const [filters, setFilters] = useState<BoardFilters>(() =>
-    projectId ? { ...EMPTY_FILTERS, projectIds: [projectId] } : EMPTY_FILTERS,
-  );
-
-  // The lazy useState above only fires once, before an in-place redirect resolves the project; re-seed here too.
-  useEffect(() => {
-    if (projectId) setFilters((current) => ({ ...current, projectIds: [projectId] }));
-  }, [projectId]);
+  const [picked, setFilters] = useState<BoardFilters>(EMPTY_FILTERS);
+  const filters = useMemo(() => (projectId ? { ...picked, projectIds: [projectId] } : picked), [picked, projectId]);
 
   const { data: me } = useFetchMe();
   const { data: statuses } = useFetchProjectStatuses(projectId);
@@ -120,9 +114,7 @@ export const useBoardFilters = (tickets: Ticket[] | undefined, projectId?: strin
   const toggleWaitingForMeToTest = () =>
     setFilters((current) => ({ ...current, waitingForMeToTest: !current.waitingForMeToTest }));
 
-  // Resets what the user picked, never the URL's project scope, or the view would leak every project's tickets.
-  const clearAll = () =>
-    setFilters(projectId ? { ...EMPTY_FILTERS, projectIds: [projectId] } : EMPTY_FILTERS);
+  const clearAll = () => setFilters(EMPTY_FILTERS);
 
   return {
     filters,

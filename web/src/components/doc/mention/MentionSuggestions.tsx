@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
+import { forwardRef, useImperativeHandle, useState } from "react";
 import { FileTextIcon, Loader2Icon, TicketIcon } from "lucide-react";
 import type { SuggestionKeyDownProps, SuggestionProps } from "@tiptap/suggestion";
 
@@ -50,11 +50,8 @@ export const MentionSuggestions = forwardRef<
   SuggestionProps<MentionSearchResult>
 >(function MentionSuggestions(props, ref) {
   const items = props.items;
-  const [selectedIndex, setSelectedIndex] = useState(0);
-
-  useEffect(() => {
-    setSelectedIndex(0);
-  }, [items]);
+  const [selection, setSelection] = useState({ items, index: 0 });
+  const selectedIndex = selection.items === items ? selection.index : 0;
 
   const selectItem = (index: number) => {
     const item = items[index];
@@ -65,11 +62,11 @@ export const MentionSuggestions = forwardRef<
     onKeyDown: ({ event }) => {
       if (items.length === 0) return false;
       if (event.key === "ArrowUp") {
-        setSelectedIndex((i) => (i + items.length - 1) % items.length);
+        setSelection({ items, index: (selectedIndex + items.length - 1) % items.length });
         return true;
       }
       if (event.key === "ArrowDown") {
-        setSelectedIndex((i) => (i + 1) % items.length);
+        setSelection({ items, index: (selectedIndex + 1) % items.length });
         return true;
       }
       if (event.key === "Enter") {

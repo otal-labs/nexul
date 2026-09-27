@@ -1,4 +1,4 @@
-import { FileTextIcon, LockIcon, TicketIcon } from "lucide-react";
+import { FileTextIcon, LockIcon, TicketIcon, type LucideIcon } from "lucide-react";
 import { Link } from "react-router";
 
 import { useFetchSettings } from "@/hooks/AuthHooks";
@@ -29,7 +29,7 @@ const renderTicketTemplate = (template: string, chip: MentionChipData | undefine
   return template.replace(/\{ticket\.(\w+)\}/g, (match, key: string) => values[key] ?? match);
 };
 
-const iconFor = (type: MentionType) => (type === "ticket" ? TicketIcon : FileTextIcon);
+const MENTION_ICONS: Record<MentionType, LucideIcon> = { ticket: TicketIcon, doc: FileTextIcon };
 
 const hrefFor = (type: MentionType, id: string) => (type === "ticket" ? `/tickets/${id}` : `/docs/${id}`);
 
@@ -41,7 +41,7 @@ export const MentionChip = ({ type, id, label, chip }: MentionChipProps) => {
   const { data: settings } = useFetchSettings();
   const title = chip?.title || label;
   const canOpen = chip?.can_open ?? false;
-  const Icon = iconFor(type);
+  const Icon = MENTION_ICONS[type];
   const template = settings?.mention_chip_template || DEFAULT_TICKET_TEMPLATE;
   const text = textFor(type, template, chip, title);
 

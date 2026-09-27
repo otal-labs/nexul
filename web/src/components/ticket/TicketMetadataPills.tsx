@@ -2,7 +2,7 @@ import { FileIcon, TagIcon, UserIcon, XIcon } from "lucide-react";
 import { useState } from "react";
 
 import { PersonAvatar } from "@/components/PersonAvatar";
-import { ticketTypeIcon } from "@/components/board/ticketTypeIcon";
+import { TicketTypeIcon } from "@/components/board/ticketTypeIcon";
 import { useFormDialogContext } from "@/components/dialogs/FormDialogContext";
 import { PersonPickerList } from "@/components/ticket/PersonPickerList";
 import { selectTicketType } from "@/components/ticket/selectTicketType";
@@ -23,13 +23,12 @@ export const TypePill = ({ ticketTypes }: TypePillProps) => {
   const [open, setOpen] = useState(false);
   const typeId = watch("type_id");
   const current = ticketTypes.find((t) => t.id === typeId);
-  const CurrentIcon = ticketTypeIcon(current?.name ?? "");
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button type="button" className={pillTriggerClass}>
-          <CurrentIcon className="size-3.5 text-muted-foreground" aria-hidden />
+          <TicketTypeIcon typeName={current?.name ?? ""} className="size-3.5 text-muted-foreground" aria-hidden />
           {current?.name ?? "Type"}
         </button>
       </PopoverTrigger>
