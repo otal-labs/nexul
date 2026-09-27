@@ -199,7 +199,7 @@ WantedBy=multi-user.target
 
 	runner := th.instance.calls("/api/runners/enroll")
 	require.Len(t, runner, 1)
-	assert.Equal(t, map[string]string{"code": "nxe_runner", "name": "instance", "os": "linux", "arch": "amd64", "version": "v0.2.1", "stack_root": filepath.Join(dir, "stacks")}, runner[0].body)
+	assert.Equal(t, map[string]string{"code": "nxe_runner", "name": "instance", "os": "linux", "arch": "amd64", "version": "v0.2.1", "stack_root": dir}, runner[0].body)
 	require.Len(t, th.instance.calls("/api/automation-hosts/enroll"), 1)
 	assert.FileExists(t, filepath.Join(th.Paths.Services, "nexul-runner-instance.service"))
 	assert.FileExists(t, filepath.Join(th.Paths.Services, "nexul-automations-instance.service"))

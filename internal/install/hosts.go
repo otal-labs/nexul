@@ -35,7 +35,7 @@ func (h *Host) runInstallHost(ctx context.Context, kind string, args []string) e
 	fs.StringVar(&o.Name, "name", "", "this "+kind+"'s name: lower case letters, digits and dashes")
 	fs.StringVar(&o.Code, "code", "", "the one-time enrollment code the instance gave you")
 	if kind == kindRunner {
-		fs.StringVar(&o.StackRoot, "stack-root", "", "where stack checkouts live (default: a stacks folder in the runner's directory)")
+		fs.StringVar(&o.StackRoot, "stack-root", "", "the stack root; checkouts go in its stacks folder (default: the runner's directory)")
 		fs.StringVar(&o.GitToken, "git-token", "", "a token for cloning private repositories")
 	}
 	fs.StringVar(&o.Version, "version", "", "release to install (default: this binary's version)")
@@ -127,7 +127,7 @@ func (h *Host) setUpHost(ctx context.Context, u *Unit, o HostOptions, tag string
 	}
 	server := strings.TrimSuffix(o.Server, "/")
 	if o.Kind == kindRunner && o.StackRoot == "" {
-		o.StackRoot = filepath.Join(u.Dir, "stacks")
+		o.StackRoot = u.Dir
 	}
 	credential, err := h.enroll(ctx, server, o, tag)
 	if err != nil {

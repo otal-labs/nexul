@@ -58,7 +58,7 @@ func TestInstallHost_Runner_EnrollsAndRunsAsRootWithItsOwnDirectory(t *testing.T
 	dir := filepath.Join(th.Paths.UnitRoot, "runner-edge")
 	enroll := th.instance.calls("/api/runners/enroll")
 	require.Len(t, enroll, 1)
-	assert.Equal(t, map[string]string{"code": "nxe_code", "name": "edge", "os": "linux", "arch": "amd64", "version": "v0.2.1", "stack_root": filepath.Join(dir, "stacks")}, enroll[0].body)
+	assert.Equal(t, map[string]string{"code": "nxe_code", "name": "edge", "os": "linux", "arch": "amd64", "version": "v0.2.1", "stack_root": dir}, enroll[0].body)
 	assert.Equal(t, "nexul-runner-binary", readFile(t, filepath.Join(dir, "nexul-runner")))
 	assert.Equal(t, "cred-edge\n", readFile(t, filepath.Join(dir, "credential")))
 	for _, f := range []string{"credential", "env"} {
@@ -72,7 +72,7 @@ func TestInstallHost_Runner_EnrollsAndRunsAsRootWithItsOwnDirectory(t *testing.T
 		"NEXUL_SERVER_URL":      th.web.URL,
 		"NEXUL_CREDENTIAL_FILE": filepath.Join(dir, "credential"),
 		"NEXUL_RUNNER_NAME":     "edge",
-		"NEXUL_STACK_ROOT":      filepath.Join(dir, "stacks"),
+		"NEXUL_STACK_ROOT":      dir,
 		"NEXUL_GIT_TOKEN":       "ghp_x",
 		"NEXUL_CTL":             filepath.Join(th.Paths.BinDir, "nexul"),
 	}, env)

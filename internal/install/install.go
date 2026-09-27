@@ -304,7 +304,7 @@ func (h *Host) installBundled(ctx context.Context, o Options, kind, tag string) 
 	}
 	host := HostOptions{Kind: kind, Server: fmt.Sprintf("http://127.0.0.1:%d", o.Port), Name: "instance", Code: code}
 	if kind == kindRunner {
-		host.StackRoot = filepath.Join(o.Dir, "stacks")
+		host.StackRoot = o.Dir
 	}
 	return h.installHost(ctx, host, tag)
 }

@@ -30,6 +30,7 @@ jobs:
               - 'server/**'
               - 'runner/**'
               - 'internal/**'
+              - 'cmd/**'
               - '*.go'
               - 'go.mod'
               - 'go.sum'
