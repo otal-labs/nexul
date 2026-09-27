@@ -92,7 +92,7 @@ export const latestDeploy = (deploys: Deploy[] | undefined): Deploy | undefined 
 export const ServiceFormSchema = z
   .object({
     name: z.string().trim().min(1, "Service name is required"),
-    target: z.string().trim().min(1, "Runner is required"),
+    target: z.string().trim().min(1, "Machine is required"),
     strategy: z.enum([DeployStrategy.Compose, DeployStrategy.Run]),
     compose_dir: z.string().trim(),
     docker_network: z.string().trim(),

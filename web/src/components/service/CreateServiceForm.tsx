@@ -1,6 +1,6 @@
 import { useFormDialogContext } from "@/components/dialogs/FormDialogContext";
 import { FormInput } from "@/components/FormInput";
-import { RunnerPicker } from "@/components/RunnerPicker";
+import { MachinePicker } from "@/components/MachinePicker";
 import { ServiceFormAdaptor } from "@/components/service/ServiceFormAdaptor";
 import { FormSelect } from "@/components/ticket/FormSelect";
 import { FormTextarea } from "@/components/ticket/FormTextarea";
@@ -75,7 +75,7 @@ export const CreateServiceForm = ({ projectId }: CreateServiceFormProps) => {
   return (
     <div className="space-y-4">
       <FormInput control={control} name="name" label="Name" placeholder="api" />
-      <RunnerPicker control={control} name="target" />
+      <MachinePicker control={control} name="target" />
 
       <FormSelect
         control={control}

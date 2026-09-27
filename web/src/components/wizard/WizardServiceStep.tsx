@@ -9,7 +9,7 @@ import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { Button } from "@/components/ui/button";
 import { CandidateChoice } from "@/components/wizard/CandidateChoice";
 import { declaredFrom } from "@/components/wizard/declaredFrom";
-import { MachinePicker } from "@/components/wizard/MachinePicker";
+import { MachinePicker } from "@/components/MachinePicker";
 import { useCreateStack, useDeployStack, useFetchStack, useUpdateStack } from "@/hooks/StackHooks";
 import type { Candidate, Repo } from "@/models/Repository";
 import type { BuildSource, CreateStackInput } from "@/models/Stack";

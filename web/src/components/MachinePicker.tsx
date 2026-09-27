@@ -8,8 +8,7 @@ interface MachinePickerProps<T extends FieldValues> {
   name: Path<T>;
 }
 
-// A stack targets a machine by name, the same way RunnerPicker targets a runner by name (issue 05: "the
-// wizard's target step lists machines, not runners").
+// A service targets a machine by name and any runner on it takes the job; this is the one picker for every target field.
 export const MachinePicker = <T extends FieldValues>({ control, name }: MachinePickerProps<T>) => {
   const { data: machines } = useFetchMachines();
   const options = (machines ?? []).map((machine) => ({ value: machine.name, label: machine.name }));
