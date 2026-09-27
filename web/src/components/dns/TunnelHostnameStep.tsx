@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { AdvancedFields } from "@/components/dns/AdvancedFields";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { FormInput } from "@/components/FormInput";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
@@ -70,17 +71,19 @@ const TunnelHostnameFields = ({ deployment, zones, onDone }: TunnelHostnameField
           onChangeValue={(value) => form.setValue("zone", zoneName(value), { shouldValidate: true })}
         />
       </div>
-      <FormInput
-        control={form.control}
-        name="service"
-        label="Local service (cloudflared forwards here, empty for this instance)"
-        placeholder="This Nexul instance"
-      />
       {hostname && (
         <p className="font-mono text-xs text-muted-foreground">
           {hostname} → {service || "this instance"}
         </p>
       )}
+      <AdvancedFields>
+        <FormInput
+          control={form.control}
+          name="service"
+          label="Forward to a different local service"
+          placeholder="http://my-app:3000"
+        />
+      </AdvancedFields>
       <Button type="submit" className="w-full sm:w-auto" disabled={routeTunnel.isPending}>
         {routeTunnel.isPending ? "Routing hostname…" : "Point hostname at the tunnel"}
       </Button>

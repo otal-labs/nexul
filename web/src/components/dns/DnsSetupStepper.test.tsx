@@ -131,6 +131,7 @@ describe("DnsSetupStepper", () => {
 
     await user.type(screen.getByLabelText(/subdomain/i), "app");
     expect(screen.getByText("app.example.com → this instance")).toBeInTheDocument();
+    expect(screen.queryByLabelText(/different local service/i)).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /point hostname at the tunnel/i }));
 
     expect(await screen.findByRole("button", { name: /continue to nexul/i })).toBeInTheDocument();
