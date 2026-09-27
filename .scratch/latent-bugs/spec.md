@@ -62,3 +62,15 @@ The host restarts a worker whenever the automation's `updated_at` changes, and
 the first connection itself updates it, so every worker starts twice about one
 poll apart after the host boots. Harmless, but noisy in the logs; compare only
 what a worker is built from (active version, config, token).
+
+## Proxy-gateway exposures never get a route
+
+An exposure on a reverse-proxy gateway expects Traefik's Docker provider to
+route the target container by its labels, but nothing ever puts Traefik labels
+on that container, and the runner's `docker run` cannot set labels. So a proxy
+exposure records its hostname and DNS record while Traefik has no router for
+it; only the instance's own domain routes, through the file provider (ADR 0077).
+The fix is either label support in the runner (a stack field plus the assign
+frame) or writing each exposure into the same file-provider config the gateway
+container renders on start. Every router on the https entry point already
+defaults to Let's Encrypt, so certificates follow once routers exist.
