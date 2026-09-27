@@ -33,6 +33,8 @@ type Service struct {
 	scopeAllows   ScopeGate
 	resolveScopes ScopeResolver
 	owner         OwnerGate
+	// hosts checks host-scoped tokens and backs placement; nil until SetHosts wires it.
+	hosts *HostsService
 }
 
 // NewService wires the automations use-cases over the given repo and permission gate.
@@ -45,10 +47,21 @@ func (s *Service) SetConnectionRegistry(r ConnectionRegistry) {
 	s.conns = r
 }
 
+// SetHosts wires the automations hosts, whose workers authenticate with host-scoped tokens.
+func (s *Service) SetHosts(h *HostsService) {
+	s.hosts = h
+}
+
 // AuthenticateToken resolves the automation dialing in with raw (ADR 0046); revocation kills access immediately.
 func (s *Service) AuthenticateToken(ctx context.Context, raw string) (*Automation, error) {
 	if strings.TrimSpace(raw) == "" {
 		return nil, fmt.Errorf("%w: token is required", apperrs.ErrUnauthorized)
+	}
+	if strings.HasPrefix(raw, hostTokenPrefix) {
+		if s.hosts == nil {
+			return nil, errInvalidToken
+		}
+		return s.hosts.authenticateToken(ctx, raw)
 	}
 	a, err := s.repo.GetByTokenHash(ctx, hashToken(raw))
 	if err != nil {
@@ -143,6 +156,62 @@ func (s *Service) SetEnabled(ctx context.Context, actorID, id string, enabled bo
 		return nil, fmt.Errorf("set automation %s enabled: %w", id, err)
 	}
 	return a, nil
+}
+
+// SetHost places an automation on the automations host hostID; empty places it on the bundled instance host. Its
+// live connection drops, so the new host's worker takes over.
+func (s *Service) SetHost(ctx context.Context, actorID, id, hostID string) (*Automation, error) {
+	if err := s.require(ctx, actorID, permissions.AutomationsWrite); err != nil {
+		return nil, err
+	}
+	a, err := s.getByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	next, err := s.resolveHost(ctx, strings.TrimSpace(hostID))
+	if err != nil {
+		return nil, err
+	}
+	if equalHost(a.HostID, next) {
+		return a, nil
+	}
+	a.HostID = next
+	a.UpdatedAt = s.now().UTC()
+	if err := s.repo.Update(ctx, a); err != nil {
+		return nil, fmt.Errorf("set automation %s host: %w", id, err)
+	}
+	if s.conns != nil {
+		s.conns.Disconnect(id, "moved to another automations host")
+	}
+	return a, nil
+}
+
+// resolveHost checks hostID names an enrolled host; the instance host is stored as nil, the same as no host.
+func (s *Service) resolveHost(ctx context.Context, hostID string) (*string, error) {
+	if hostID == "" {
+		return nil, nil
+	}
+	if s.hosts == nil {
+		return nil, fmt.Errorf("%w: automations hosts are not available", apperrs.ErrInvalid)
+	}
+	host, err := s.hosts.repo.GetHost(ctx, hostID)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return nil, fmt.Errorf("%w: no automations host has id %s", apperrs.ErrNotFound, hostID)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get automations host %s: %w", hostID, err)
+	}
+	if host.Name == InstanceHostName {
+		return nil, nil
+	}
+	return &host.ID, nil
+}
+
+func equalHost(a, b *string) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
 }
 
 // UpdateConfigValues' schema validation is the SDK's job, not this one's.

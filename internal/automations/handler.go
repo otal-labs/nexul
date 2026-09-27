@@ -33,6 +33,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/automations/{id}", h.get)
 	mux.HandleFunc("PATCH /api/automations/{id}/config", h.updateConfig)
 	mux.HandleFunc("PATCH /api/automations/{id}/enabled", h.setEnabled)
+	mux.HandleFunc("PATCH /api/automations/{id}/host", h.setHost)
 	mux.HandleFunc("DELETE /api/automations/{id}", h.delete)
 	mux.HandleFunc("POST /api/automations/{id}/token", h.mintToken)
 	mux.HandleFunc("DELETE /api/automations/{id}/token", h.revokeToken)
@@ -115,6 +116,29 @@ func (h *Handler) setEnabled(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a, err := h.svc.SetEnabled(r.Context(), actorID(r), r.PathValue("id"), req.Enabled)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, a)
+}
+
+// setHostRequest's null or empty host_id places the automation back on the bundled instance host.
+type setHostRequest struct {
+	HostID *string `json:"host_id"`
+}
+
+func (h *Handler) setHost(w http.ResponseWriter, r *http.Request) {
+	var req setHostRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	hostID := ""
+	if req.HostID != nil {
+		hostID = *req.HostID
+	}
+	a, err := h.svc.SetHost(r.Context(), actorID(r), r.PathValue("id"), hostID)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

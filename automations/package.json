@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "bun run src/main.ts",
+    "build:binaries": "bun run build-binaries.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun test"
   },

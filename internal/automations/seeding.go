@@ -79,8 +79,8 @@ func (s *Seeder) Seed(ctx context.Context) error {
 }
 
 func (s *Seeder) create(ctx context.Context, def DefaultDefinition, scopes []string) (*Automation, error) {
-	// No owner to hand the raw token to (defaults dial in from the host), so it's written to the host token file instead.
-	rawToken, hash, prefix, err := mintToken()
+	// Nobody is handed the raw token: the instance host's workers dial in with host-scoped tokens derived from its hash.
+	_, hash, prefix, err := mintToken()
 	if err != nil {
 		return nil, fmt.Errorf("mint token for default automation %s: %w", def.ID, err)
 	}
@@ -104,8 +104,5 @@ func (s *Seeder) create(ctx context.Context, def DefaultDefinition, scopes []str
 		return nil, fmt.Errorf("create default automation %s: %w", def.ID, err)
 	}
 	s.log.Info("automations: created default automation", "automation_id", a.ID, "name", a.Name)
-	if err := writeHostToken(a.ID, a.Name, rawToken); err != nil {
-		s.log.Warn("automations: failed to write host token, the bundled host won't pick this default up on its own", "automation_id", a.ID, "error", err)
-	}
 	return a, nil
 }

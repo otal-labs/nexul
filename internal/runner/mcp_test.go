@@ -3,6 +3,7 @@ package runner
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 	"time"
 
@@ -100,6 +101,41 @@ func TestMachineList_GroupsRunnersUnderTheirMachine(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotContains(t, string(b), `"target"`)
 	assert.NotContains(t, string(b), `"service"`)
+}
+
+type fakeAutomationsHosts struct {
+	hosts []AutomationsHost
+	err   error
+}
+
+func (f fakeAutomationsHosts) ListAutomationsHosts(context.Context) ([]AutomationsHost, error) {
+	return f.hosts, f.err
+}
+
+func TestMachineList_FilesAutomationsHostsUnderTheirMachine(t *testing.T) {
+	ctx := t.Context()
+	machines := newFakeMachineRepo()
+	require.NoError(t, machines.Create(ctx, &Machine{ID: "m-1", Name: "prod"}))
+	require.NoError(t, machines.Create(ctx, &Machine{ID: "m-2", Name: "edge"}))
+	base := NewService(newFakeRunnerRepo(), &fakeDispatch{}).WithMachines(machines)
+
+	_, err := callTool(ctx, t, base.WithAutomationsHosts(fakeAutomationsHosts{err: errors.New("db down")}), "machine_list", `{}`)
+	require.Error(t, err, "a failed host lookup fails the list")
+
+	hosts := fakeAutomationsHosts{hosts: []AutomationsHost{
+		{ID: "h-1", Name: "jobs", Machine: "prod", Version: "v0.3.0", Connected: true},
+		{ID: "h-2", Name: "laptop", Machine: "laptop"},
+	}}
+	got, err := callTool(ctx, t, base.WithAutomationsHosts(hosts), "machine_list", `{}`)
+	require.NoError(t, err)
+	list := got.(machineList)
+	byName := map[string]machineResult{}
+	for _, m := range list.Items {
+		byName[m.Name] = m
+	}
+	assert.Equal(t, []automationsHostResult{{ID: "h-1", Name: "jobs", Version: "v0.3.0", Connected: true}}, byName["prod"].AutomationsHosts)
+	assert.Equal(t, []automationsHostResult{}, byName["edge"].AutomationsHosts)
+	assert.Equal(t, []automationsHostResult{{ID: "h-2", Name: "laptop"}}, list.UnassignedAutomationsHosts)
 }
 
 func TestMachineList_EmptyQueueIsAList(t *testing.T) {

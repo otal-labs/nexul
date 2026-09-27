@@ -23,6 +23,8 @@ type automationResult struct {
 	ConfigValues  json.RawMessage `json:"config_values"`
 	Scopes        []string        `json:"scopes"`
 	TokenRevoked  bool            `json:"token_revoked"`
+	// HostID is the automations host it runs on; empty means the bundled instance host.
+	HostID string `json:"host_id,omitempty"`
 }
 
 // mintedTokenResult is the only result that carries a token, returned once by the tools that mint one.
@@ -35,8 +37,15 @@ func toAutomationResult(a *Automation) automationResult {
 	return automationResult{
 		ID: a.ID, Name: a.Name, Description: a.Description, Kind: a.Kind, Enabled: a.Enabled,
 		Subscriptions: a.Subscriptions, ConfigSchema: a.ConfigSchema, ConfigValues: a.ConfigValues, Scopes: a.Scopes,
-		TokenRevoked: a.TokenRevokedAt != nil,
+		TokenRevoked: a.TokenRevokedAt != nil, HostID: deref(a.HostID),
 	}
+}
+
+func deref(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }
 
 type automationListIn struct {
@@ -53,6 +62,7 @@ type automationUpdateIn struct {
 	ID           string         `json:"id" jsonschema:"The automation's id, from automation_list."`
 	ConfigValues map[string]any `json:"config_values,omitempty" jsonschema:"The owner-set config as a JSON object, replacing the current values whole and checked by the automation against its config_schema; omit to keep them."`
 	Enabled      *bool          `json:"enabled,omitempty" jsonschema:"true delivers events to the automation and runs its worker, false stops both; omit to keep it."`
+	HostID       *string        `json:"host_id,omitempty" jsonschema:"The automations host to run it on, by id from machine_list; an empty string moves it back to the bundled instance host; omit to keep it."`
 	RevokeToken  bool           `json:"revoke_token,omitempty" jsonschema:"true revokes the automation's token at once and drops its live connection; automation_token_create mints a new one to restore access."`
 }
 
@@ -101,8 +111,9 @@ func MCPTools(s *Service) []mcptool.Tool {
 				return mintedTokenResult{Automation: toAutomationResult(a), Token: token}, nil
 			}),
 		mcptool.New("automation_update", "Update automation",
-			"Changes an automation's config values, enables or disables it, or revokes its token. Only the "+
-				"fields you pass change, applied in the order config_values, enabled, revoke_token; it stops at the "+
+			"Changes an automation's config values, enables or disables it, moves it to another automations host, or "+
+				"revokes its token. Only the fields you pass change, applied in the order config_values, enabled, "+
+				"host_id, revoke_token; it stops at the "+
 				"first failure and the error says which fields already took effect. Returns the updated automation. "+
 				"To rotate the token use automation_token_create, and to remove the automation automation_delete. "+
 				"Needs automations:write.",
@@ -167,6 +178,13 @@ func updateAutomation(ctx context.Context, s *Service, in automationUpdateIn) (*
 		}
 		applied = append(applied, "enabled")
 	}
+	if in.HostID != nil {
+		var err error
+		if a, err = s.SetHost(ctx, actor, in.ID, *in.HostID); err != nil {
+			return nil, partial(err)
+		}
+		applied = append(applied, "host_id")
+	}
 	if in.RevokeToken {
 		var err error
 		if a, err = s.RevokeToken(ctx, actor, in.ID); err != nil {
@@ -174,7 +192,7 @@ func updateAutomation(ctx context.Context, s *Service, in automationUpdateIn) (*
 		}
 	}
 	if a == nil {
-		return nil, fmt.Errorf("%w: nothing to change; pass config_values, enabled, or revoke_token", apperrs.ErrInvalid)
+		return nil, fmt.Errorf("%w: nothing to change; pass config_values, enabled, host_id, or revoke_token", apperrs.ErrInvalid)
 	}
 	return a, nil
 }

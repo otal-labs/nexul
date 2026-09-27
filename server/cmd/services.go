@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"net/http"
+	"path/filepath"
 	"time"
 
 	"github.com/otal-labs/nexul/internal/access"
@@ -27,6 +28,7 @@ import (
 	"github.com/otal-labs/nexul/internal/mentions"
 	"github.com/otal-labs/nexul/internal/pairing"
 	"github.com/otal-labs/nexul/internal/platform/config"
+	"github.com/otal-labs/nexul/internal/platform/crypto"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/inprocess"
 	"github.com/otal-labs/nexul/internal/platform/storage"
 	"github.com/otal-labs/nexul/internal/plays"
@@ -59,6 +61,7 @@ type coreServices struct {
 	automationSecretsSvc  *automations.SecretsService
 	automationSeeder      *automations.Seeder
 	automationRunsSvc     *automations.RunsService
+	automationHostsSvc    *automations.HostsService
 
 	authSvc           *auth.Service
 	authHandler       *auth.Handler
@@ -245,6 +248,12 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	})
 	// ScopeAllows is injected as a function value rather than automations importing integrations (ADR 0017 seam rule).
 	automationsSvc.SetGateway(integrations.ScopeAllows, integrations.ResolveScopes, instanceAdminGate{svc: authSvc})
+	// Its own key, derived from the auth secret, signs the tokens host workers dial in with.
+	automationHostsSvc := automations.NewHostsService(store.AutomationHosts, store.Automations, crypto.DeriveKey("nexul automations host token key:"+cfg.AuthSecret)).
+		WithAdminGate(instanceAdminGate{svc: authSvc}).
+		WithInstanceURL(dnsSettingsAdapter{store.Settings}).
+		WithEnrollDir(filepath.Join(filepath.Dir(cfg.DBPath), "enroll"))
+	automationsSvc.SetHosts(automationHostsSvc)
 
 	notifSvc := workspace.NewNotificationService(store.Notifications, workspaceUserStore{users: store.Users}, workspaceMembersStore{members: store.WorkspaceMembers}, notificationPermissionGate{svc: accessSvc})
 
@@ -266,6 +275,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		automationSecretsSvc:  automationSecretsSvc,
 		automationSeeder:      automationSeeder,
 		automationRunsSvc:     automationRunsSvc,
+		automationHostsSvc:    automationHostsSvc,
 
 		authSvc:           authSvc,
 		authHandler:       authHandler,

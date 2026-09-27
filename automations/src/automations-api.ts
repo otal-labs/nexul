@@ -1,4 +1,9 @@
-import type { AutomationTarget } from "./host-tokens.ts";
+// AutomationTarget is one automation placed on this host, with the host-scoped token its worker dials in with.
+export interface AutomationTarget {
+  id: string;
+  name: string;
+  token: string;
+}
 
 export interface RemoteState {
   enabled: boolean;
@@ -7,7 +12,11 @@ export interface RemoteState {
   activeCode: string | null;
 }
 
+// A removed host is refused with {"error":"automations_host_removed"}; it uninstalls itself rather than retry.
+export type AssignmentsResult = { removed: true } | { removed: false; automations: AutomationTarget[] };
+
 export interface AutomationsApi {
+  fetchAssignments(serverUrl: string, credential: string): Promise<AssignmentsResult>;
   fetchState(target: AutomationTarget, serverUrl: string): Promise<RemoteState>;
 }
 
@@ -20,12 +29,21 @@ interface VersionDiffResponse {
   active: { id: string; code: string } | null;
 }
 
-// httpAutomationsApi hits the real HTTP gateway with the automation's own
-// dat_ token (ADR 0046). Known limitation (ticket 11's comments, resolved by
-// ticket 16 concurrently): dat_ tokens don't authenticate on the HTTP
-// gateway yet, only the WS dial-in endpoint — this call is written as if
-// that gap is closed, matching the two default automations' ctx.api calls.
+interface AssignmentsResponse {
+  automations: AutomationTarget[];
+}
+
 export const httpAutomationsApi: AutomationsApi = {
+  async fetchAssignments(serverUrl, credential) {
+    const url = `${serverUrl}/api/automation-hosts/self/assignments`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${credential}` } });
+    if (res.status === 401 && (await res.text()).includes('"automations_host_removed"')) return { removed: true };
+    if (!res.ok) throw new Error(`GET ${url} failed: ${res.status}`);
+    const body = (await res.json()) as AssignmentsResponse;
+    return { removed: false, automations: body.automations };
+  },
+
+  // The worker's own token reads its automation: a self-read needs no scope (CONTEXT.md, Self-read).
   async fetchState(target, serverUrl) {
     const headers = { Authorization: `Bearer ${target.token}` };
     const [automation, diff] = await Promise.all([

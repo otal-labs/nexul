@@ -32,6 +32,16 @@ type machineResult struct {
 	ReportedHostname string         `json:"reported_hostname,omitempty"`
 	LastSeen         time.Time      `json:"last_seen"`
 	Runners          []runnerResult `json:"runners"`
+	// AutomationsHosts are the automations hosts filed under this machine; their ids are host_delete's.
+	AutomationsHosts []automationsHostResult `json:"automations_hosts"`
+}
+
+type automationsHostResult struct {
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	Version   string    `json:"version"`
+	Connected bool      `json:"connected"`
+	LastSeen  time.Time `json:"last_seen"`
 }
 
 // runnerResult and jobResult name a job's stack and machine in CONTEXT.md terms, not the wire's service and target.
@@ -55,13 +65,16 @@ type jobResult struct {
 type machineList struct {
 	mcptool.Page[machineResult]
 	UnassignedRunners []runnerResult `json:"unassigned_runners,omitempty"`
-	Queue             []jobResult    `json:"queue"`
+	// UnassignedAutomationsHosts are hosts filed under a machine no runner has joined.
+	UnassignedAutomationsHosts []automationsHostResult `json:"unassigned_automations_hosts,omitempty"`
+	Queue                      []jobResult             `json:"queue"`
 }
 
 func machineListTool(s *Service) mcptool.Tool {
 	return mcptool.New("machine_list", "List machines",
-		"Lists the machines runners connect from, each with its stack root and its runners' connection state, "+
-			"version, and running job, plus the deploys queued for a runner; a build or deploy job's id is its "+
+		"Lists the machines runners connect from, each with its stack root, its runners' connection state, "+
+			"version, and running job, and its automations hosts, plus the deploys queued for a runner; a build or "+
+			"deploy job's id is its "+
 			"deploy's id for deploy_get. Use a machine's name as stack_create's machine and its id for "+
 			"machine_discover and machine_import. Returns at most 100 machines per page.",
 		mcptool.Hints{ReadOnly: true, Local: true},
@@ -78,12 +91,20 @@ func machineListTool(s *Service) mcptool.Tool {
 			if err != nil {
 				return nil, err
 			}
+			hosts, err := s.listAutomationsHosts(ctx)
+			if err != nil {
+				return nil, err
+			}
 			results, unassigned := groupRunners(machines, runners)
+			results, unassignedHosts := groupAutomationsHosts(results, hosts)
 			jobs := make([]jobResult, 0, len(queue))
 			for _, q := range queue {
 				jobs = append(jobs, jobResult{ID: q.ID, Kind: q.Kind, Stack: q.Service, Machine: q.Target})
 			}
-			return machineList{Page: mcptool.Paginate(results, in.PageArgs), UnassignedRunners: unassigned, Queue: jobs}, nil
+			return machineList{
+				Page: mcptool.Paginate(results, in.PageArgs), UnassignedRunners: unassigned,
+				UnassignedAutomationsHosts: unassignedHosts, Queue: jobs,
+			}, nil
 		})
 }
 
@@ -114,6 +135,33 @@ func groupRunners(machines []*Machine, runners []RunnerView) ([]machineResult, [
 		})
 	}
 	return out, unassigned
+}
+
+func (s *Service) listAutomationsHosts(ctx context.Context) ([]AutomationsHost, error) {
+	if s.automationsHosts == nil {
+		return nil, nil
+	}
+	return s.automationsHosts.ListAutomationsHosts(ctx)
+}
+
+// groupAutomationsHosts files each host under the machine of its name; a host on no known machine is returned apart.
+func groupAutomationsHosts(machines []machineResult, hosts []AutomationsHost) ([]machineResult, []automationsHostResult) {
+	index := make(map[string]int, len(machines))
+	for i := range machines {
+		index[machines[i].Name] = i
+		machines[i].AutomationsHosts = []automationsHostResult{}
+	}
+	var unassigned []automationsHostResult
+	for _, h := range hosts {
+		r := automationsHostResult{ID: h.ID, Name: h.Name, Version: h.Version, Connected: h.Connected, LastSeen: h.LastSeen}
+		i, ok := index[h.Machine]
+		if !ok {
+			unassigned = append(unassigned, r)
+			continue
+		}
+		machines[i].AutomationsHosts = append(machines[i].AutomationsHosts, r)
+	}
+	return machines, unassigned
 }
 
 func toRunnerResult(r RunnerView) runnerResult {

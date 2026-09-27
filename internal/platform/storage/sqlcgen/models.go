@@ -52,6 +52,7 @@ type Automation struct {
 	CreatedAt      int64
 	UpdatedAt      int64
 	CreatedBy      string
+	HostID         sql.NullString
 }
 
 type AutomationCursor struct {
@@ -59,6 +60,33 @@ type AutomationCursor struct {
 	LastCreatedAt int64
 	LastEventID   string
 	UpdatedAt     int64
+}
+
+type AutomationHost struct {
+	ID        string
+	Name      string
+	Machine   string
+	Os        string
+	Arch      string
+	Version   string
+	LastSeen  int64
+	CreatedAt int64
+}
+
+type AutomationHostCredential struct {
+	CredentialHash string
+	HostID         string
+	HostName       string
+	CreatedAt      int64
+	RevokedAt      sql.NullInt64
+}
+
+type AutomationHostEnrollmentCode struct {
+	CodeHash  string
+	Name      string
+	Machine   string
+	CreatedAt int64
+	ExpiresAt int64
 }
 
 type AutomationRun struct {

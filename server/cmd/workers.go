@@ -51,7 +51,8 @@ func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *stor
 		Settings: dnsSettingsAdapter{store.Settings},
 		Release:  releaseClient,
 	}).WithUpgrades(store.InstanceUpgrades).WithBus(bus).WithAdminGate(instanceAdminGate{svc: svc.authSvc}).
-		WithEnrollDir(filepath.Join(filepath.Dir(cfg.DBPath), "enroll"))
+		WithEnrollDir(filepath.Join(filepath.Dir(cfg.DBPath), "enroll")).
+		WithAutomationsHosts(runnerAutomationsHostsAdapter{svc: svc.automationHostsSvc})
 	// `nexul install` enrolls the bundled runner from this file; it goes away once that runner is enrolled.
 	if err := runnerSvc.WriteInstanceEnrollment(ctx); err != nil {
 		fail(fmt.Errorf("write instance runner enrollment: %w", err))
@@ -71,6 +72,11 @@ func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *stor
 		Logger:   logger,
 	})
 	svc.automationsSvc.SetConnectionRegistry(automationsDialin)
+	svc.automationHostsSvc.SetConnectionRegistry(automationsDialin)
+	// `nexul install` enrolls the bundled automations host from this file; it goes away once that host is enrolled.
+	if err := svc.automationHostsSvc.WriteInstanceEnrollment(ctx); err != nil {
+		fail(fmt.Errorf("write instance automations host enrollment: %w", err))
+	}
 	go automations.RunCleanupLoop(ctx, svc.automationRunsSvc, 30*24*time.Hour, time.Hour, logger)
 
 	return wsHandler, runnerSvc, runnerHTTP, automationsDialin

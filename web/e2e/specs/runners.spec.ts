@@ -13,8 +13,8 @@ describe("runners (web)", () => {
       timeout: 10_000,
     });
     await expect(page.getByRole("heading", { name: /Waiting for a runner/ })).toBeVisible();
-    // the e2e runner service is always connected to the gateway
-    await expect(page.getByText("e2e-runner", { exact: true })).toBeVisible({
+    // the e2e runner service enrolls as the instance runner and stays connected; its machine shares the name
+    await expect(page.getByText("instance", { exact: true }).first()).toBeVisible({
       timeout: 15_000,
     });
   });

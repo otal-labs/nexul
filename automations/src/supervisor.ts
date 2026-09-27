@@ -1,5 +1,4 @@
-import type { AutomationsApi, RemoteState } from "./automations-api.ts";
-import type { AutomationTarget } from "./host-tokens.ts";
+import type { AutomationTarget, AutomationsApi, RemoteState } from "./automations-api.ts";
 import { log } from "./log.ts";
 import type { WorkerFactory, WorkerHandle } from "./worker.ts";
 
@@ -13,25 +12,33 @@ export interface SupervisorConfig {
 interface TrackedState {
   activeVersionId: string | null;
   updatedAt: string;
+  token: string;
   running: boolean;
 }
 
-// Supervisor is the host's whole job: for each known automation, ask
-// the server what should be running and reconcile a worker to match. One
-// poll tick, one reconcile pass — no queue, no scheduler, deliberately.
+// Supervisor is the host's whole job: for each automation placed on this
+// host, ask the server what should be running and reconcile a worker to
+// match. One poll tick, one reconcile pass — no queue, no scheduler.
 export class Supervisor {
   private readonly tracked = new Map<string, TrackedState>();
   private readonly handles = new Map<string, WorkerHandle>();
 
   constructor(
-    private readonly targets: AutomationTarget[],
     private readonly api: AutomationsApi,
     private readonly workers: WorkerFactory,
     private readonly cfg: SupervisorConfig,
   ) {}
 
-  async pollOnce(): Promise<void> {
-    for (const target of this.targets) {
+  // reconcile stops the workers of automations no longer placed here, then brings each placed one up to date.
+  async reconcile(targets: AutomationTarget[]): Promise<void> {
+    const placed = new Set(targets.map((t) => t.id));
+    for (const id of [...this.tracked.keys()]) {
+      if (placed.has(id)) continue;
+      await this.stop(id);
+      this.tracked.delete(id);
+      log("info", "automation worker stopped: no longer placed on this host", { automationId: id });
+    }
+    for (const target of targets) {
       await this.reconcileOne(target);
     }
   }
@@ -53,7 +60,7 @@ export class Supervisor {
 
     if (!state.enabled) {
       if (prev?.running) await this.stop(target.id);
-      this.tracked.set(target.id, toTracked(state, false));
+      this.tracked.set(target.id, toTracked(state, target, false));
       return;
     }
 
@@ -62,7 +69,8 @@ export class Supervisor {
       return;
     }
 
-    const changed = !prev || prev.activeVersionId !== state.activeVersionId || prev.updatedAt !== state.updatedAt;
+    const changed =
+      !prev || prev.activeVersionId !== state.activeVersionId || prev.updatedAt !== state.updatedAt || prev.token !== target.token;
     if (prev?.running && !changed) return;
 
     if (prev?.running) await this.stop(target.id);
@@ -84,7 +92,7 @@ export class Supervisor {
       () => this.markStale(target.id),
     );
     this.handles.set(target.id, handle);
-    this.tracked.set(target.id, toTracked(state, true));
+    this.tracked.set(target.id, toTracked(state, target, true));
     log("info", "automation worker started", { automationId: target.id, name: target.name, versionId: state.activeVersionId });
   }
 
@@ -101,6 +109,6 @@ export class Supervisor {
   }
 }
 
-function toTracked(state: RemoteState, running: boolean): TrackedState {
-  return { activeVersionId: state.activeVersionId, updatedAt: state.updatedAt, running };
+function toTracked(state: RemoteState, target: AutomationTarget, running: boolean): TrackedState {
+  return { activeVersionId: state.activeVersionId, updatedAt: state.updatedAt, token: target.token, running };
 }

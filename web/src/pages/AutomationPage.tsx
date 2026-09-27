@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router";
 import { AutomationConfigForm } from "@/components/automation/AutomationConfigForm";
 import { AutomationDeleteButton } from "@/components/automation/AutomationDeleteButton";
 import { AutomationDetailHeader } from "@/components/automation/AutomationDetailHeader";
+import { AutomationHostPicker } from "@/components/automation/AutomationHostPicker";
 import { AutomationPendingVersionBanner } from "@/components/automation/AutomationPendingVersionBanner";
 import { AutomationRunsFeed } from "@/components/automation/AutomationRunsFeed";
 import { AutomationSubscriptionsSection } from "@/components/automation/AutomationSubscriptionsSection";
@@ -43,6 +44,7 @@ export const AutomationPage = () => {
               <AutomationPendingVersionBanner automationId={automation.id} />
               <AutomationSubscriptionsSection subscriptions={automation.subscriptions} />
               <AutomationConfigForm automation={automation} />
+              {canUpdate && <AutomationHostPicker automation={automation} />}
               <AutomationTokenSection automation={automation} />
               {runs.isPending && <LoadingDisplay />}
               {runs.error && <ErrorDisplay error={runs.error} />}

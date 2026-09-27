@@ -27,6 +27,7 @@ const automation = (overrides: Partial<Automation> = {}): Automation => ({
   config_schema: { properties: { targetStatus: { type: "string", format: "status", title: "Target status" } }, required: ["targetStatus"] },
   config_values: {},
   scopes: ["tickets:write"],
+  host_id: null,
   created_at: "2026-08-01T00:00:00Z",
   updated_at: "2026-08-01T00:00:00Z",
   ...overrides,

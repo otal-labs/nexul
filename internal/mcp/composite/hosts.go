@@ -27,7 +27,7 @@ func HostTools(kinds map[string]HostKind) []mcptool.Tool {
 type hostCreateIn struct {
 	Kind    string `json:"kind" jsonschema:"What to enroll: runner or automations."`
 	Name    string `json:"name" jsonschema:"The new host's name, 1 to 32 lowercase letters, digits or dashes, e.g. build-box-1."`
-	Machine string `json:"machine,omitempty" jsonschema:"For a runner, the machine it joins, by name from machine_list; omitted, it gets a machine of its own named after it."`
+	Machine string `json:"machine,omitempty" jsonschema:"The machine it runs on, by name from machine_list; omitted, it is filed under a machine named after it."`
 }
 
 type hostDeleteIn struct {
