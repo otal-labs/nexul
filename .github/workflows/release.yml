@@ -208,6 +208,17 @@ jobs:
           GORELEASER_PREVIOUS_TAG: ${{ needs.resolve.outputs.previous_tag }}
           STABLE_EXISTS: ${{ needs.resolve.outputs.stable_exists }}
 
+  # nexul.io builds its changelog from the releases at build time, so each release rebuilds the site.
+  website:
+    needs: release
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_HOOK: ${{ secrets.CLOUDFLARE_PAGES_DEPLOY_HOOK }}
+    steps:
+      - name: Rebuild nexul.io
+        if: env.DEPLOY_HOOK != ''
+        run: curl --fail --silent --show-error -X POST "$DEPLOY_HOOK"
+
   # Beta only: a daily beta means old beta image tags accumulate forever
   # otherwise. actions/delete-package-versions can't do this safely here —
   # for container packages its ignore-versions regex matches the version's

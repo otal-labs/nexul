@@ -1,0 +1,50 @@
+---
+import SiteLayout from '../layouts/SiteLayout.astro';
+
+type Status = 'planned' | 'in-progress' | 'shipped';
+
+const label: Record<Status, string> = { planned: 'Planned', 'in-progress': 'In progress', shipped: 'Shipped' };
+
+const items: { name: string; status: Status; summary: string }[] = [
+	{ name: 'Call notes', status: 'planned', summary: 'A voice call becomes notes and a summary in the doc, without anyone typing them.' },
+	{ name: 'Semantic search', status: 'planned', summary: 'Find docs and tickets by what they mean, not only by the words they share.' },
+	{ name: 'Per-runner credentials', status: 'planned', summary: 'Revoke one machine without touching the others.' },
+	{ name: 'Automatic TLS', status: 'planned', summary: "Let's Encrypt certificates for services served straight from your server." },
+	{ name: 'Guided agent setup', status: 'shipped', summary: 'A wizard that pairs your computer, sets up your coding harness, and installs a starting skill set.' },
+	{ name: 'Tickets that carry the testing', status: 'shipped', summary: 'Blocked-by and found-in links, bug flows, templates per ticket type, and a pass or fail step before done.' },
+	{ name: 'One-command install', status: 'shipped', summary: 'One command installs Nexul on Linux, macOS, or Windows and opens the setup wizard.' },
+	{ name: 'Instance upgrade', status: 'shipped', summary: 'Settings shows the newest release, and one click upgrades the whole stack.' },
+	{ name: 'Plays', status: 'shipped', summary: 'One-button agent runs from a ticket or a doc, on your own coding harness, with your permissions.' },
+	{ name: 'Memories', status: 'shipped', summary: 'Versioned notes for agents, per workspace or per project, that agents can write too.' },
+	{ name: 'MCP server', status: 'shipped', summary: 'Every capability as a tool, with the same permissions as the person who connected.' },
+	{ name: 'Voice', status: 'shipped', summary: 'Voice rooms with screen share and camera, on a LiveKit server you run.' },
+	{ name: 'Chat', status: 'shipped', summary: 'Channels, direct messages, and one thread per ticket and per doc.' },
+	{ name: 'Automations', status: 'shipped', summary: 'Event-driven TypeScript, each automation acting through its own scoped token.' },
+	{ name: 'Topology', status: 'shipped', summary: 'A canvas of every service, network, gateway, and hostname, with live status.' },
+	{ name: 'DNS and tunnels', status: 'shipped', summary: 'Cloudflare records and tunnels, so a service can go live with no open ports.' },
+	{ name: 'Stacks and deploys', status: 'shipped', summary: 'A runner deploys your compose file, with history, preview branches, and one-click rollback.' },
+	{ name: 'Runners', status: 'shipped', summary: 'A small binary on each server that connects out, so Nexul never holds an SSH key.' },
+	{ name: 'Live collaboration', status: 'shipped', summary: 'Several people edit one doc at once, with live cursors and merged edits.' },
+	{ name: 'Docs and tickets', status: 'shipped', summary: 'Versioned docs, a board per project, and tickets linked to branches and pull requests.' },
+	{ name: 'Desktop app', status: 'shipped', summary: 'A desktop shell that keeps a list of your instances and opens the one you pick.' },
+];
+---
+
+<SiteLayout title="Roadmap · Nexul" description="What has shipped in Nexul, what is being built now, and what comes next.">
+	<section class="page-hero wrap" aria-labelledby="roadmap-title">
+		<p class="eyebrow">Roadmap</p>
+		<h1 id="roadmap-title">What's shipped.<br />What's next<span class="muted">.</span></h1>
+		<p class="page-lede">Directional, not dated. For what changed in each release, see the <a href="/changelog/">changelog</a>.</p>
+	</section>
+	<section class="rail-section wrap" aria-label="Roadmap items">
+		<ol class="rail">
+			{items.map((item) => (
+				<li class="rail-item">
+					<span class="rail-dot" data-status={item.status} aria-hidden="true"></span>
+					<h2 class="rail-title" data-status={item.status}>{item.name}<span class="rail-status">{label[item.status]}</span></h2>
+					<p>{item.summary}</p>
+				</li>
+			))}
+		</ol>
+	</section>
+</SiteLayout>
