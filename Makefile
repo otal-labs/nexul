@@ -8,12 +8,15 @@ GO_LDFLAGS := -ldflags="-s -w -X github.com/otal-labs/nexul/internal/platform/ve
 # Version is pinned in go.mod's tool directive; local and CI both resolve it from there.
 SQLC ?= go tool sqlc
 
-.PHONY: build build-server build-runner build-web build-single test vet lint vuln coverage sqlc sqlc-check clean
+.PHONY: build build-cli build-server build-runner build-web build-single test vet lint vuln coverage sqlc sqlc-check clean
 
-build: build-server build-runner build-web
+build: build-cli build-server build-runner build-web
+
+build-cli:
+	CGO_ENABLED=0 go build $(GO_LDFLAGS) -o $(BIN_DIR)/nexul ./cmd/nexul
 
 build-server:
-	CGO_ENABLED=0 go build $(GO_LDFLAGS) -o $(BIN_DIR)/nexul ./server/cmd
+	CGO_ENABLED=0 go build $(GO_LDFLAGS) -o $(BIN_DIR)/nexul-server ./server/cmd
 
 build-runner:
 	CGO_ENABLED=0 go build $(GO_LDFLAGS) -o $(BIN_DIR)/nexul-runner ./runner/cmd
@@ -21,13 +24,13 @@ build-runner:
 build-web:
 	bun run --cwd web build
 
-# The nexul binary as released: embeds web/dist via go:embed (server/webui). The SPA
+# The nexul-server binary as released: embeds web/dist via go:embed (server/webui). The SPA
 # is served by the binary itself; no nginx, no node at runtime.
 build-single: build-web
 	@rm -rf server/webui/dist
 	@mkdir -p server/webui/dist
 	@cp -r web/dist/. server/webui/dist/
-	CGO_ENABLED=0 go build -tags embed $(GO_LDFLAGS) -o $(BIN_DIR)/nexul ./server/cmd
+	CGO_ENABLED=0 go build -tags embed $(GO_LDFLAGS) -o $(BIN_DIR)/nexul-server ./server/cmd
 
 test:
 	go test ./...

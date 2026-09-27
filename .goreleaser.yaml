@@ -1,12 +1,22 @@
-# Builds every release: the two binaries for each platform, checksums.txt, the nexul and nexul-runner images, and the GitHub
-# release. release.yml picks the tag and builds the web UI into server/webui/dist before this runs.
+# Builds every release: nexul, nexul-server and nexul-runner for each platform, checksums.txt and the GitHub release.
+# release.yml picks the tag and builds the web UI and the nexul-automations binaries before this runs.
 version: 2
 project_name: nexul
 
 builds:
   - id: nexul
-    main: ./server/cmd
+    main: ./cmd/nexul
     binary: nexul
+    env: [CGO_ENABLED=0]
+    flags: [-trimpath]
+    ldflags: ["-s -w -X github.com/otal-labs/nexul/internal/platform/version.Version={{ .Tag }}"]
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ignore:
+      - { goos: windows, goarch: arm64 }
+  - id: nexul-server
+    main: ./server/cmd
+    binary: nexul-server
     tags: [embed]
     env: [CGO_ENABLED=0]
     flags: [-trimpath]
@@ -34,41 +44,16 @@ archives:
 
 checksum:
   name_template: checksums.txt
-
-dockers_v2:
-  - id: nexul
-    ids: [nexul]
-    images: [ghcr.io/otal-labs/nexul]
-    dockerfile: server/Dockerfile.release
-    platforms: [linux/amd64, linux/arm64]
-    tags:
-      - "{{ .Version }}"
-      - "{{ if .Prerelease }}beta{{ end }}"
-      - "{{ if or (not .Prerelease) (eq .Env.STABLE_EXISTS \"false\") }}latest{{ end }}"
-    labels:
-      org.opencontainers.image.source: https://github.com/otal-labs/nexul
-      org.opencontainers.image.version: "{{ .Version }}"
-      org.opencontainers.image.revision: "{{ .FullCommit }}"
-
-  - id: nexul-runner
-    ids: [nexul-runner]
-    images: [ghcr.io/otal-labs/nexul-runner]
-    dockerfile: runner/Dockerfile.release
-    platforms: [linux/amd64, linux/arm64]
-    tags:
-      - "{{ .Version }}"
-      - "{{ if .Prerelease }}beta{{ end }}"
-      - "{{ if or (not .Prerelease) (eq .Env.STABLE_EXISTS \"false\") }}latest{{ end }}"
-    labels:
-      org.opencontainers.image.source: https://github.com/otal-labs/nexul
-      org.opencontainers.image.version: "{{ .Version }}"
-      org.opencontainers.image.revision: "{{ .FullCommit }}"
+  extra_files:
+    - glob: ./automations/dist/nexul-automations-*
 
 release:
   prerelease: auto
   make_latest: "{{ not .Prerelease }}"
   target_commitish: "{{ .FullCommit }}"
   name_template: "Nexul {{ .Tag }}"
+  extra_files:
+    - glob: ./automations/dist/nexul-automations-*
 
 changelog:
   use: github-native

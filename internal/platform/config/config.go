@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -25,6 +26,8 @@ type Config struct {
 	OTLPEndpoint string
 	OTLPUser     string
 	OTLPToken    string
+	// LogsURL is the local log store's base URL (NEXUL_LOGS_URL); when set the server proxies /openobserve/ to it.
+	LogsURL *url.URL
 }
 
 func Load() (*Config, error) {
@@ -42,6 +45,11 @@ func Load() (*Config, error) {
 		OTLPUser:     os.Getenv("NEXUL_OTLP_USER"),
 		OTLPToken:    os.Getenv("NEXUL_OTLP_TOKEN"),
 	}
+	logsURL, err := parseLogsURL(os.Getenv("NEXUL_LOGS_URL"))
+	if err != nil {
+		return nil, err
+	}
+	cfg.LogsURL = logsURL
 	if cfg.AuthSecret == "" {
 		secret, err := loadOrCreateSecret(filepath.Join(filepath.Dir(cfg.DBPath), "auth-secret"))
 		if err != nil {
@@ -50,6 +58,20 @@ func Load() (*Config, error) {
 		cfg.AuthSecret = secret
 	}
 	return cfg, nil
+}
+
+func parseLogsURL(raw string) (*url.URL, error) {
+	if raw == "" {
+		return nil, nil
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return nil, fmt.Errorf("NEXUL_LOGS_URL: %w", err)
+	}
+	if (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		return nil, fmt.Errorf("NEXUL_LOGS_URL %q: want an http(s)://host:port URL", raw)
+	}
+	return u, nil
 }
 
 // loadOrCreateSecret reads the secret at path, generating and persisting one (0600) when the file is absent or empty.

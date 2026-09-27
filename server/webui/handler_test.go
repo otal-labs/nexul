@@ -42,6 +42,8 @@ func TestHandler_ReservedPrefix_Returns404(t *testing.T) {
 		{"auth nested", "/auth/github"},
 		{"hooks", "/hooks"},
 		{"hooks nested", "/hooks/github"},
+		{"openobserve", "/openobserve"},
+		{"openobserve nested", "/openobserve/web/logs"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
