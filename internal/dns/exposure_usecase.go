@@ -232,7 +232,7 @@ func (s *Service) createExposureRecord(ctx context.Context, g *Gateway, in Creat
 		if strings.TrimSpace(g.TunnelID) == "" {
 			return nil, apperrs.Fatal(fmt.Errorf("%w: gateway %s has no tunnel reference", apperrs.ErrInvalid, g.ID))
 		}
-		tp, err := s.tunnelProviderFor(ctx)
+		tp, err := s.tunnelProviderFor(ctx, g.TunnelID)
 		if err != nil {
 			return nil, err
 		}
@@ -344,7 +344,7 @@ func (s *Service) DeleteExposure(ctx context.Context, exposureID string) error {
 		return fmt.Errorf("get gateway %s: %w", e.GatewayID, err)
 	}
 	if g.Kind == GatewayTunnel {
-		tp, err := s.tunnelProviderFor(ctx)
+		tp, err := s.tunnelProviderFor(ctx, g.TunnelID)
 		if err != nil {
 			return err
 		}

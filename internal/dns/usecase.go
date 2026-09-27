@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 	"sync"
@@ -34,12 +35,13 @@ type Config struct {
 	NewProvider func(ctx context.Context, token string) (DNSProvider, error)
 	// TunnelProvider is a fixed tunnel provider for tests; when set, NewTunnelProvider is ignored.
 	TunnelProvider TunnelProvider
-	// NewTunnelProvider builds a tunnel-capable provider for a freshly-resolved access token.
-	NewTunnelProvider func(ctx context.Context, token string) (TunnelProvider, error)
+	// NewTunnelProvider builds a tunnel-capable provider for a freshly-resolved access token, pinned to a
+	// Cloudflare account; an empty account leaves the choice to the provider.
+	NewTunnelProvider func(ctx context.Context, token, accountID string) (TunnelProvider, error)
 	// AccessProvider is a fixed Access provider for tests; when set, NewAccessProvider is ignored.
 	AccessProvider AccessProvider
 	// NewAccessProvider builds a Cloudflare Access provider for a freshly-resolved access token.
-	NewAccessProvider func(ctx context.Context, token string) (AccessProvider, error)
+	NewAccessProvider func(ctx context.Context, token, accountID string) (AccessProvider, error)
 	// Provisioner creates service definitions for entry-path agents; nil makes provisioning use-cases fail fatally.
 	Provisioner ServiceProvisioner
 	// Containers resolves the container an exposure targets, or a gateway's own backing container.
@@ -53,6 +55,8 @@ type Config struct {
 	EncryptionKey []byte
 	// Settings feeds the wizard hook's instance record creation.
 	Settings SettingsReader
+	// HTTPClient probes a routed hostname from this server; nil uses a client with a short timeout.
+	HTTPClient *http.Client
 	// InstanceOrigin is where a container on this machine reaches the Nexul server, the default tunnel origin.
 	InstanceOrigin string
 	// Now overridable for tests.
@@ -65,9 +69,9 @@ type Service struct {
 	provider    DNSProvider
 	newProvider func(ctx context.Context, token string) (DNSProvider, error)
 	tunnel      TunnelProvider
-	newTunnel   func(ctx context.Context, token string) (TunnelProvider, error)
+	newTunnel   func(ctx context.Context, token, accountID string) (TunnelProvider, error)
 	access      AccessProvider
-	newAccess   func(ctx context.Context, token string) (AccessProvider, error)
+	newAccess   func(ctx context.Context, token, accountID string) (AccessProvider, error)
 	// accessMu keeps concurrent callers from minting two instance service tokens.
 	accessMu    sync.Mutex
 	provisioner ServiceProvisioner
@@ -77,6 +81,7 @@ type Service struct {
 	key         []byte
 	settings    SettingsReader
 	origin      string
+	httpc       *http.Client
 	now         func() time.Time
 }
 
@@ -84,6 +89,9 @@ type Service struct {
 func NewService(cfg Config) *Service {
 	if cfg.Now == nil {
 		cfg.Now = time.Now
+	}
+	if cfg.HTTPClient == nil {
+		cfg.HTTPClient = &http.Client{Timeout: 10 * time.Second}
 	}
 	return &Service{
 		repo:        cfg.Repo,
@@ -100,6 +108,7 @@ func NewService(cfg Config) *Service {
 		key:         cfg.EncryptionKey,
 		settings:    cfg.Settings,
 		origin:      cfg.InstanceOrigin,
+		httpc:       cfg.HTTPClient,
 		now:         cfg.Now,
 	}
 }

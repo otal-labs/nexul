@@ -1,15 +1,32 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Loader2 } from "lucide-react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { AdvancedFields } from "@/components/dns/AdvancedFields";
+import { TunnelRouteChecks } from "@/components/dns/TunnelRouteChecks";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { FormInput } from "@/components/FormInput";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { FormSelect } from "@/components/ticket/FormSelect";
 import { Button } from "@/components/ui/button";
-import { useFetchDnsZones, useRouteTunnelHostname } from "@/hooks/DnsHooks";
-import { fullHostname, soleItem, type DnsSetupResult, type TunnelDeployment, type Zone } from "@/models/DNS";
+import { useFetchDnsZones, useRouteTunnelHostname, verifyTunnelCheck } from "@/hooks/DnsHooks";
+import { useTicker } from "@/hooks/useTicker";
+import {
+  TUNNEL_ROUTE_CHECKS,
+  fullHostname,
+  soleItem,
+  zonesInAccount,
+  type DnsSetupResult,
+  type TunnelDeployment,
+  type Zone,
+} from "@/models/DNS";
+import { retry } from "@/utils/RetryUtility";
+
+// A fresh CNAME can take a minute to answer, so the reachable row keeps asking before it goes red.
+const REACHABLE_ATTEMPTS = 20;
+const REACHABLE_RETRY_MS = 3000;
 
 const TunnelHostnameSchema = z.object({
   subdomain: z.string().trim(),
@@ -29,6 +46,12 @@ interface TunnelHostnameFieldsProps {
 // Mounted only once zones are loaded so defaultValues can preselect the sole zone.
 const TunnelHostnameFields = ({ deployment, zones, onDone }: TunnelHostnameFieldsProps) => {
   const routeTunnel = useRouteTunnelHostname();
+  const [routed, setRouted] = useState<{ host: string; result: DnsSetupResult } | null>(null);
+  const ticker = useTicker(TUNNEL_ROUTE_CHECKS, { hostname: routed?.host }, (key) =>
+    key === "reachable"
+      ? retry(REACHABLE_ATTEMPTS, REACHABLE_RETRY_MS, () => verifyTunnelCheck(deployment.tunnelId, key))
+      : verifyTunnelCheck(deployment.tunnelId, key),
+  );
   const soleZone = soleItem(zones);
   const form = useForm<TunnelHostnameFormData>({
     defaultValues: { subdomain: "", zone_id: soleZone?.id ?? "", zone: soleZone?.name ?? "", service: "" },
@@ -49,16 +72,32 @@ const TunnelHostnameFields = ({ deployment, zones, onDone }: TunnelHostnameField
         zone: data.zone,
         service: data.service,
       });
-      onDone({
-        headline: `${host} routes through the ${deployment.tunnelName} tunnel to this instance.`,
-        detail: `${host} → ${data.service || "this instance"} · cloudflared on ${deployment.target}`,
+      setRouted({
+        host,
+        result: {
+          headline: `${host} routes through the ${deployment.tunnelName} tunnel to this instance.`,
+          detail: `${host} → ${data.service || "this instance"} · cloudflared on ${deployment.target}`,
+        },
       });
+      await ticker.verify({ hostname: host });
     } catch {
       // Errors surface through the hook's toast; routing is retry-safe.
     }
   };
 
   return (
+    <>
+      {routed && (
+        <TunnelRouteChecks
+          hostname={routed.host}
+          outcomeFor={ticker.outcomeFor}
+          verified={ticker.verified}
+          verifying={ticker.verifying}
+          onCheckAgain={() => void ticker.verify({ hostname: routed.host })}
+          onContinue={() => onDone(routed.result)}
+        />
+      )}
+      {!routed && (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-2">
         <FormInput control={form.control} name="subdomain" label="Subdomain" placeholder="app" />
@@ -85,9 +124,12 @@ const TunnelHostnameFields = ({ deployment, zones, onDone }: TunnelHostnameField
         />
       </AdvancedFields>
       <Button type="submit" className="w-full sm:w-auto" disabled={routeTunnel.isPending}>
+        {routeTunnel.isPending && <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden />}
         {routeTunnel.isPending ? "Routing hostname…" : "Point hostname at the tunnel"}
       </Button>
     </form>
+      )}
+    </>
   );
 };
 
@@ -103,7 +145,13 @@ export const TunnelHostnameStep = ({ deployment, onDone }: TunnelHostnameStepPro
     <>
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
-      {zones && <TunnelHostnameFields deployment={deployment} zones={zones} onDone={onDone} />}
+      {zones && (
+        <TunnelHostnameFields
+          deployment={deployment}
+          zones={zonesInAccount(zones, deployment.accountId)}
+          onDone={onDone}
+        />
+      )}
     </>
   );
 };

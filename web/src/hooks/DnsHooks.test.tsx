@@ -42,9 +42,9 @@ describe("DnsHooks tunnel hooks", () => {
     mocks.post.mockResolvedValue({ data: { id: "t1", name: "one" } });
     mocks.get.mockResolvedValue({ data: [] });
     const { result } = renderHook(() => useCreateTunnel(), { wrapper });
-    result.current.mutate({ name: "one" });
+    result.current.mutate({ name: "one", account_id: "acct-1" });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(mocks.post).toHaveBeenCalledWith("/api/dns/tunnels", { name: "one" });
+    expect(mocks.post).toHaveBeenCalledWith("/api/dns/tunnels", { name: "one", account_id: "acct-1" });
     expect(mocks.toast.success).toHaveBeenCalledWith("Tunnel created");
   });
 
@@ -52,7 +52,7 @@ describe("DnsHooks tunnel hooks", () => {
     mocks.post.mockRejectedValue(new Error("boom"));
     mocks.errorMessage.mockReturnValue("boom");
     const { result } = renderHook(() => useCreateTunnel(), { wrapper });
-    result.current.mutate({ name: "one" });
+    result.current.mutate({ name: "one", account_id: "" });
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(mocks.toast.error).toHaveBeenCalled();
   });

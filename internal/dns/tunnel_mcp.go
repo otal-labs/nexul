@@ -8,12 +8,14 @@ import (
 )
 
 type tunnelListIn struct {
-	ID string `json:"id,omitempty" jsonschema:"Only this tunnel, with its live connection status read from Cloudflare."`
+	ID     string `json:"id,omitempty" jsonschema:"Only this tunnel, with its live connection status read from Cloudflare."`
+	Verify bool   `json:"verify,omitempty" jsonschema:"With an id, also check its routed hostname: the ingress rule, the proxied CNAME, and whether it answers over HTTPS. Defaults to false."`
 	mcptool.PageArgs
 }
 
 type tunnelCreateIn struct {
-	Name string `json:"name" jsonschema:"The tunnel's name at Cloudflare, for example instance."`
+	Name      string `json:"name" jsonschema:"The tunnel's name at Cloudflare, for example instance."`
+	AccountID string `json:"account_id,omitempty" jsonschema:"The Cloudflare account to create it in, the account_id of the zone its hostname will use, from dns_zone_list. Required when the token reaches more than one account."`
 }
 
 type tunnelUpdateIn struct {
@@ -44,12 +46,15 @@ type tunnelResult struct {
 	RecordID  string `json:"record_id,omitempty"`
 	OriginURL string `json:"origin_url,omitempty"`
 	StackID   string `json:"stack_id,omitempty"`
+	AccountID string `json:"account_id,omitempty"`
+	// Checks is each hostname check's finding or failure, only when asked to verify.
+	Checks map[string]string `json:"checks,omitempty"`
 }
 
 func toTunnelResult(t *Tunnel) tunnelResult {
 	return tunnelResult{
 		ID: t.ID, Name: t.Name, Hostname: t.Hostname, ZoneID: t.ZoneID, Zone: t.Zone,
-		RecordID: t.RecordID, OriginURL: t.Service, StackID: t.AgentServiceID,
+		RecordID: t.RecordID, OriginURL: t.Service, StackID: t.AgentServiceID, AccountID: t.AccountID,
 	}
 }
 
@@ -65,7 +70,8 @@ func tunnelTools(s *Service) []mcptool.Tool {
 			"Lists the Cloudflare tunnels Nexul manages, oldest first, with the hostname each routes, its zone, the "+
 				"origin_url cloudflared forwards to, and the stack_id of the stack running cloudflared. With an id it "+
 				"returns only that tunnel with its live status read from Cloudflare, healthy once cloudflared is "+
-				"connected, which is how to wait for a new tunnel gateway to come up. Tunnel tokens are never returned.",
+				"connected, which is how to wait for a new tunnel gateway to come up; verify adds the routed hostname's "+
+				"checks. Tunnel tokens are never returned.",
 			mcptool.Hints{ReadOnly: true},
 			func(ctx context.Context, in tunnelListIn) (any, error) {
 				if in.ID != "" {
@@ -75,6 +81,9 @@ func tunnelTools(s *Service) []mcptool.Tool {
 					}
 					res := toTunnelResult(t)
 					res.Status = t.Status
+					if in.Verify {
+						res.Checks = s.verifyAll(ctx, t.ID)
+					}
 					return mcptool.Paginate([]tunnelResult{res}, in.PageArgs), nil
 				}
 				tunnels, err := s.ListTunnels(ctx)

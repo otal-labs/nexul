@@ -16,17 +16,21 @@ func (s *Service) CreateTunnel(ctx context.Context, in CreateTunnelInput) (*Tunn
 	if err := in.Validate(); err != nil {
 		return nil, err
 	}
+	acct, err := s.creationAccount(ctx, in.AccountID)
+	if err != nil {
+		return nil, err
+	}
 	// A retried onboarding step reuses the tunnel it already created instead of piling up duplicates at Cloudflare.
 	existing, err := s.repo.ListTunnels(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list tunnels: %w", err)
 	}
 	for _, t := range existing {
-		if t.Name == strings.TrimSpace(in.Name) {
+		if t.Name == strings.TrimSpace(in.Name) && (acct == "" || t.AccountID == acct) {
 			return t, nil
 		}
 	}
-	p, err := s.tunnelProviderFor(ctx)
+	p, err := s.tunnelProviderIn(ctx, acct)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +59,7 @@ func (s *Service) DescribeTunnel(ctx context.Context, tunnelID string) (*TunnelI
 	if strings.TrimSpace(tunnelID) == "" {
 		return nil, fmt.Errorf("%w: tunnel id is required", apperrs.ErrInvalid)
 	}
-	tp, err := s.tunnelProviderFor(ctx)
+	tp, err := s.tunnelProviderFor(ctx, tunnelID)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +145,10 @@ func (s *Service) RouteTunnelHostname(ctx context.Context, in RouteTunnelInput) 
 	if err := in.Validate(); err != nil {
 		return nil, err
 	}
-	p, err := s.tunnelProviderFor(ctx)
+	if err := s.checkSameAccount(ctx, in.TunnelID, in.ZoneID); err != nil {
+		return nil, err
+	}
+	p, err := s.tunnelProviderFor(ctx, in.TunnelID)
 	if err != nil {
 		return nil, err
 	}
@@ -201,7 +208,7 @@ func (s *Service) RotateTunnelCredentials(ctx context.Context, tunnelID string) 
 	if err != nil {
 		return nil, fmt.Errorf("get tunnel %s: %w", tunnelID, err)
 	}
-	p, err := s.tunnelProviderFor(ctx)
+	p, err := s.tunnelProviderFor(ctx, tunnelID)
 	if err != nil {
 		return nil, err
 	}
@@ -232,7 +239,7 @@ func (s *Service) DeleteTunnel(ctx context.Context, tunnelID string) error {
 	if err != nil {
 		return fmt.Errorf("get tunnel %s: %w", tunnelID, err)
 	}
-	p, err := s.tunnelProviderFor(ctx)
+	p, err := s.tunnelProviderFor(ctx, tunnelID)
 	if err != nil {
 		return err
 	}
@@ -261,7 +268,7 @@ func (s *Service) TunnelStatus(ctx context.Context, tunnelID string) (*Tunnel, e
 	if strings.TrimSpace(tunnelID) == "" {
 		return nil, fmt.Errorf("%w: tunnel id is required", apperrs.ErrInvalid)
 	}
-	p, err := s.tunnelProviderFor(ctx)
+	p, err := s.tunnelProviderFor(ctx, tunnelID)
 	if err != nil {
 		return nil, err
 	}
@@ -345,25 +352,6 @@ func (s *Service) ProvisionReverseProxy(ctx context.Context, spec AgentSpec) (*A
 		return nil, fmt.Errorf("provision reverse proxy: %w", err)
 	}
 	return provisioned, nil
-}
-
-// tunnelProviderFor resolves the tunnel provider; tunnel ops also need the account-level Tunnel permission.
-func (s *Service) tunnelProviderFor(ctx context.Context) (TunnelProvider, error) {
-	if s.tunnel != nil {
-		return s.tunnel, nil
-	}
-	token, err := s.resolveToken(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if s.newTunnel == nil {
-		return nil, fmt.Errorf("%w: dns tunnel provider constructor is not wired", apperrs.ErrInvalid)
-	}
-	p, err := s.newTunnel(ctx, token)
-	if err != nil {
-		return nil, fmt.Errorf("build dns tunnel provider: %w", err)
-	}
-	return p, nil
 }
 
 // encryptTunnelToken seals a tunnel token at rest.

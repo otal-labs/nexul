@@ -1,6 +1,7 @@
 package dns
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -69,6 +70,22 @@ func TestTunnelList(t *testing.T) {
 	page = got.(mcptool.Page[tunnelResult])
 	require.Len(t, page.Items, 1)
 	assert.Equal(t, "healthy", page.Items[0].Status, "an id reads the live status")
+	assert.Empty(t, page.Items[0].Checks, "checks only run when asked")
+}
+
+func TestTunnelList_VerifyRunsTheHostnameChecks(t *testing.T) {
+	f := newToolFakes(t)
+	f.httpc = answering(t, http.StatusOK)
+	_, err := f.call(t, "dns_tunnel_update", routeT1Args)
+	require.NoError(t, err)
+	got, err := f.call(t, "dns_tunnel_list", `{"id":"t1","verify":true}`)
+	require.NoError(t, err)
+	checks := got.(mcptool.Page[tunnelResult]).Items[0].Checks
+	assert.Equal(t, map[string]string{
+		TunnelCheckIngress:   "ok: nexul.example.com → http://web:80",
+		TunnelCheckRecord:    "ok: Proxied CNAME in example.com",
+		TunnelCheckReachable: "ok: Answered HTTP 200 over HTTPS",
+	}, checks)
 }
 
 func TestTunnelUpdate_OmittedRouteFieldsKeepTheirValue(t *testing.T) {

@@ -23,6 +23,9 @@ type Zone struct {
 	ID     string `json:"id"`
 	Name   string `json:"name"`
 	Status string `json:"status,omitempty"`
+	// AccountID owns the zone; a tunnel's CNAME only resolves in a zone of the tunnel's own account.
+	AccountID   string `json:"account_id,omitempty"`
+	AccountName string `json:"account_name,omitempty"`
 }
 
 // Record is a DNS record as managed at the provider.

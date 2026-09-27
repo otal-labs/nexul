@@ -50,6 +50,8 @@ type Tunnel struct {
 // CreateTunnelInput is the validated input to Service.CreateTunnel.
 type CreateTunnelInput struct {
 	Name string `json:"name"`
+	// AccountID is the Cloudflare account to create it in; empty is fine when the token reaches only one.
+	AccountID string `json:"account_id,omitempty"`
 }
 
 // Validate rejects tunnel creations that cannot proceed.

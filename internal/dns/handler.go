@@ -36,6 +36,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/dns/tunnels/{tunnelID}", h.getTunnel)
 	mux.HandleFunc("GET /api/dns/tunnels/{tunnelID}/status", h.tunnelStatus)
 	mux.HandleFunc("POST /api/dns/tunnels/{tunnelID}/route", h.routeTunnelHostname)
+	mux.HandleFunc("POST /api/dns/tunnels/{tunnelID}/verify", h.verifyTunnelRoute)
 	mux.HandleFunc("POST /api/dns/tunnels/{tunnelID}/rotate", h.rotateTunnelCredentials)
 	mux.HandleFunc("POST /api/dns/tunnels/{tunnelID}/agent", h.provisionTunnelAgent)
 	mux.HandleFunc("DELETE /api/dns/tunnels/{tunnelID}", h.deleteTunnel)
@@ -223,6 +224,16 @@ func (h *Handler) tunnelStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, t)
+}
+
+// verifyTunnelRoute runs one ticker check (?check=ingress|record|reachable): 200 with what it found, or its error.
+func (h *Handler) verifyTunnelRoute(w http.ResponseWriter, r *http.Request) {
+	detail, err := h.svc.VerifyTunnelRoute(r.Context(), r.PathValue("tunnelID"), r.URL.Query().Get("check"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]string{"detail": detail})
 }
 
 func (h *Handler) routeTunnelHostname(w http.ResponseWriter, r *http.Request) {

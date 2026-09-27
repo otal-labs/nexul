@@ -36,7 +36,7 @@ func (s *Service) CreateComputerTunnel(ctx context.Context, name string, port in
 	if err != nil {
 		return nil, err
 	}
-	tp, err := s.tunnelProviderFor(ctx)
+	tp, err := s.tunnelProviderIn(ctx, zone.AccountID)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +97,7 @@ func (s *Service) DeleteComputerTunnel(ctx context.Context, ct ComputerTunnel) e
 }
 
 func (s *Service) deleteTunnelAtProvider(ctx context.Context, tunnelID string) error {
-	tp, err := s.tunnelProviderFor(ctx)
+	tp, err := s.tunnelProviderFor(ctx, tunnelID)
 	if err != nil {
 		return err
 	}
@@ -119,7 +119,7 @@ func (s *Service) ComputerTunnelStatus(ctx context.Context, tunnelID string) (st
 	if strings.TrimSpace(tunnelID) == "" {
 		return "", fmt.Errorf("%w: tunnel id is required", apperrs.ErrInvalid)
 	}
-	tp, err := s.tunnelProviderFor(ctx)
+	tp, err := s.tunnelProviderFor(ctx, tunnelID)
 	if err != nil {
 		return "", err
 	}
@@ -135,7 +135,7 @@ func (s *Service) ComputerTunnelToken(ctx context.Context, tunnelID string) (str
 	if strings.TrimSpace(tunnelID) == "" {
 		return "", fmt.Errorf("%w: tunnel id is required", apperrs.ErrInvalid)
 	}
-	tp, err := s.tunnelProviderFor(ctx)
+	tp, err := s.tunnelProviderFor(ctx, tunnelID)
 	if err != nil {
 		return "", err
 	}
@@ -165,7 +165,7 @@ func (s *Service) instanceZone(ctx context.Context, p DNSProvider) (Zone, error)
 	for _, z := range zones {
 		name := strings.ToLower(z.Name)
 		if (host == name || strings.HasSuffix(host, "."+name)) && len(name) > len(best.Name) {
-			best = Zone{ID: z.ID, Name: name, Status: z.Status}
+			best = Zone{ID: z.ID, Name: name, Status: z.Status, AccountID: z.AccountID, AccountName: z.AccountName}
 		}
 	}
 	if best.ID == "" {
