@@ -1,7 +1,9 @@
 package runner
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"net/url"
 	"os"
 	"strings"
@@ -15,6 +17,11 @@ type RunnerConfig struct {
 	// CredentialFile holds the runner's own credential (NEXUL_CREDENTIAL_FILE), written by `nexul install`.
 	CredentialFile string
 	Credential     string
+	// EnrollCodeFile, when the credential file does not exist yet, holds a code to enroll with on first start
+	// (NEXUL_ENROLL_CODE_FILE); only dev stacks set it, since `nexul install` enrolls everywhere else.
+	EnrollCodeFile string
+	// EnrollWait bounds how long a first start waits for the code file and the server to answer.
+	EnrollWait time.Duration
 	// Name is the runner's unit name (NEXUL_RUNNER_NAME), used only to uninstall itself once removed.
 	Name string
 	// StackRoot is where checkouts live when a job names no stack root of its own (NEXUL_STACK_ROOT).
@@ -36,6 +43,8 @@ func LoadRunnerConfig() (*RunnerConfig, error) {
 	cfg := &RunnerConfig{
 		ServerURL:         os.Getenv("NEXUL_SERVER_URL"),
 		CredentialFile:    os.Getenv("NEXUL_CREDENTIAL_FILE"),
+		EnrollCodeFile:    os.Getenv("NEXUL_ENROLL_CODE_FILE"),
+		EnrollWait:        5 * time.Minute,
 		Name:              os.Getenv("NEXUL_RUNNER_NAME"),
 		StackRoot:         os.Getenv("NEXUL_STACK_ROOT"),
 		Ctl:               envOrDefault("NEXUL_CTL", "nexul"),
@@ -50,6 +59,9 @@ func LoadRunnerConfig() (*RunnerConfig, error) {
 		return cfg, nil
 	}
 	b, err := os.ReadFile(cfg.CredentialFile)
+	if errors.Is(err, fs.ErrNotExist) && cfg.EnrollCodeFile != "" {
+		return cfg, nil
+	}
 	if err != nil {
 		return nil, fmt.Errorf("read NEXUL_CREDENTIAL_FILE: %w", err)
 	}

@@ -14,10 +14,8 @@ services:
     environment:
       NEXUL_DB_PATH: /data/nexul.db
       NEXUL_AUTH_SECRET: dev-secret-rotate-me
-      NEXUL_RUNNER_SECRET: dev-runner-secret-rotate-me
       NEXUL_LOG_LEVEL: warn
       NEXUL_SPA_ORIGIN: http://localhost
-      NEXUL_AUTOMATIONS_HOST_TOKENS_PATH: /data/automations-tokens.json
     volumes:
       - e2e-data:/data
     networks:
@@ -31,10 +29,14 @@ services:
         root: .
     environment:
       NEXUL_SERVER_URL: http://server:8080
-      NEXUL_AUTOMATIONS_TOKENS_PATH: /data/automations-tokens.json
+      NEXUL_AUTOMATIONS_HOST_NAME: instance
+      NEXUL_CREDENTIAL_FILE: /state/credential
+      # First start enrolls with the code the server writes at boot.
+      NEXUL_ENROLL_CODE_FILE: /data/enroll/automations-instance
       NEXUL_LOG_LEVEL: warn
     volumes:
       - e2e-data:/data:ro
+      - e2e-automations-state:/state
     networks:
       - e2e-net
     depends_on:
@@ -52,14 +54,17 @@ services:
       additional_contexts:
         root: .
     environment:
-      NEXUL_SERVER_WS: ws://server:8080/ws/runner
-      NEXUL_RUNNER_SECRET: dev-runner-secret-rotate-me
-      NEXUL_RUNNER_ID: e2e-runner-1
-      NEXUL_RUNNER_NAME: e2e-runner
+      NEXUL_SERVER_URL: http://server:8080
+      NEXUL_RUNNER_NAME: instance
+      NEXUL_CREDENTIAL_FILE: /state/credential
+      # First start enrolls with the code the server writes at boot.
+      NEXUL_ENROLL_CODE_FILE: /data/enroll/runner-instance
       NEXUL_GIT_TOKEN: e2e-dummy
       NEXUL_LOG_LEVEL: warn
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - e2e-data:/data:ro
+      - e2e-runner-state:/state
     networks:
       - e2e-net
     depends_on:
@@ -92,3 +97,5 @@ networks:
 volumes:
   e2e-data:
   e2e-node-modules:
+  e2e-automations-state:
+  e2e-runner-state:

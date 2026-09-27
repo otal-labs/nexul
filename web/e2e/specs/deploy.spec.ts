@@ -74,7 +74,7 @@ describe("deploy execution (real runner)", () => {
 
         const runners = await api<{ id: string; name: string }[]>("/api/runners");
         expect(runners.status).toBe(200);
-        expect(runners.body?.some((r) => r.name === "e2e-runner")).toBe(true);
+        expect(runners.body?.some((r) => r.name === "instance")).toBe(true);
       } finally {
         await api(`/api/services/${serviceId}`, { method: "DELETE" });
       }

@@ -18,7 +18,6 @@ services:
       # otherwise bounce the browser to the bare server on :8080, which 404s
       # (no embedded web assets in the debug build).
       NEXUL_SPA_ORIGIN: http://localhost:5173
-      NEXUL_AUTOMATIONS_HOST_TOKENS_PATH: /data/automations-tokens.json
       NEXUL_OTLP_ENDPOINT: http://openobserve:5080/api/default
       NEXUL_OTLP_USER: ${NEXUL_LOGS_EMAIL:-nexul@nexul.local}
       NEXUL_OTLP_TOKEN: ${NEXUL_LOGS_TOKEN:-dev-logs-token-rotate-me}
@@ -56,11 +55,17 @@ services:
         root: .
     environment:
       NEXUL_SERVER_URL: http://server:8080
-      NEXUL_AUTOMATIONS_TOKENS_PATH: /data/automations-tokens.json
+      NEXUL_AUTOMATIONS_HOST_NAME: instance
+      NEXUL_CREDENTIAL_FILE: /state/credential
+      # First start enrolls with the code the server writes at boot until the host named instance exists.
+      NEXUL_ENROLL_CODE_FILE: /data/enroll/automations-instance
+    # A first start gives up after five minutes without the code; the server's first dlv build can take longer.
+    restart: on-failure
     volumes:
       - ./automations:/app
       - automations-node-modules:/app/node_modules
       - nexul-debug-data:/data:ro
+      - automations-debug-state:/state
     depends_on:
       - server
 
@@ -72,16 +77,18 @@ services:
     ports:
       - "2346:2346"
     environment:
-      NEXUL_SERVER_WS: ws://server:8080/ws/runner
-      # The server publishes the runner secret next to its DB; read it off the same volume.
-      NEXUL_RUNNER_SECRET_FILE: /secrets/runner-secret
-      NEXUL_RUNNER_ID: instance
+      NEXUL_SERVER_URL: http://server:8080
       NEXUL_RUNNER_NAME: instance
-      NEXUL_MACHINE: instance
+      NEXUL_CREDENTIAL_FILE: /state/credential
+      # First start enrolls with the code the server writes next to its DB until the runner named instance exists.
+      NEXUL_ENROLL_CODE_FILE: /secrets/enroll/runner-instance
+      NEXUL_STACK_ROOT: /data/nexul
       NEXUL_GIT_TOKEN: ${NEXUL_GIT_TOKEN:-}
+    restart: on-failure
     volumes:
       - .:/src
       - nexul-debug-data:/secrets:ro
+      - runner-debug-state:/state
       - /var/run/docker.sock:/var/run/docker.sock
       # Same path inside and outside: the host daemon resolves compose bind mounts from a stack's checkout.
       - ${NEXUL_STACK_ROOT:-/data/nexul}:/data/nexul
@@ -115,3 +122,6 @@ volumes:
   openobserve-debug-data:
   web-node-modules:
   automations-node-modules:
+  # Each host's credential, kept across restarts: the enrollment code works once.
+  automations-debug-state:
+  runner-debug-state:
