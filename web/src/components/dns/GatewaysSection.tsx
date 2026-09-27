@@ -23,7 +23,7 @@ export const GatewaysSection = () => {
       title="Gateways"
       description="One gateway per docker network gives its services internet reachability."
     >
-      <div className="mb-4 flex items-center justify-between gap-4 border-b border-border pb-4">
+      <div className="mb-4 flex flex-col items-start gap-3 border-b border-border pb-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">Set up a hostname with the DNS wizard.</p>
         <Button asChild variant="outline" size="sm">
           <Link to="/wizard/onboarding/dns">Set up DNS</Link>
