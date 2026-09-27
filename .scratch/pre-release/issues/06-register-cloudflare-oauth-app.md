@@ -1,6 +1,6 @@
 # 06 — Register the Cloudflare OAuth app
 
-**Status:** ready-for-human
+**Status:** wontfix for now
 
 **Blocked by:** None — needed before the DNS domain's credential flow can work.
 
@@ -9,7 +9,10 @@ needs a registered Cloudflare OAuth application (client ID + secret) — the sam
 pattern as the GitHub OAuth App.
 
 Owner chose OAuth over pasted API tokens during the DNS domain discussion
-(2026-08-11).
+(2026-08-11), then settled on the pasted API token with its ticker dialog
+(2026-09-27): first run sets up the domain before anything else, and an OAuth
+callback cannot exist before the domain does. OAuth is an optional later
+addition, never a first-run dependency.
 
 - [ ] Confirm which OAuth scopes Cloudflare offers for zone DNS editing —
       do this **before** implementation, since it may constrain the design
@@ -19,5 +22,4 @@ Owner chose OAuth over pasted API tokens during the DNS domain discussion
 
 ## Surface when
 
-- DNS records / the setup wizard's DNS step is implemented.
-- Anyone touches DNS credential handling.
+- Someone asks to connect Cloudflare by signing in instead of pasting a token.
