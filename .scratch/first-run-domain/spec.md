@@ -99,3 +99,51 @@ local, and first run there skips the domain step and uses localhost.
 handoff · 05 tunnel path · 06 "I already have HTTPS" path · 07 research:
 Traefik to a host service with Let's Encrypt · 08 reverse-proxy path ·
 09 bootstrap on the domain · 10 desktop local mode · 11 docs, ADR, CONTEXT
+
+## Contract
+
+The shape every ticket builds against, fixed before the work split.
+
+**Setup code** — `nxs_` + `hostcred.MintCode`'s random part; the server
+writes it to `<data>/enroll/setup` (0600) on every boot while no user exists
+and deletes the file once one does. Only its sha256 is stored, valid 24h.
+
+**Status** — `GET /api/auth/bootstrap-status` (public) gains:
+`setup_open` (no user exists yet), `instance_url` (stored, may be empty),
+`local` (desktop install). Existing fields stay.
+
+**Unlock** — `POST /api/setup/unlock {"code"}` (public):
+- 200 `{"token","expires_at"}`: the setup pass, a bearer valid one hour.
+- 400 `invalid_code` (wrong or expired), 429 after 10 failures in 10 minutes
+  from one address, 409 `setup_done` once a user exists.
+
+**Setup pass** — sent as `Authorization: Bearer <token>`. `RequireAuth`
+accepts it only while no user exists, with the caller's identity set to the
+user id `setup`, and only on:
+- `/api/setup/*`, `/api/auth/bootstrap`, `/api/auth/bootstrap/verify`
+- `/api/connectors/cloudflare/manual`, `/api/connectors/cloudflare/manual/verify`,
+  `GET /api/connectors`
+- `/api/dns/*`, `GET /api/machines`, `GET /api/projects`,
+  `GET /api/services/{id}/deploys`, `GET /api/deploys/{id}/logs`
+Anything else with a pass is 401.
+
+**Instance URL** — `PUT /api/setup/instance-url {"url"}` (pass only, no user
+may exist): refuses `http://` unless the install is local, runs the existing
+`VerifyInstanceURL` check, stores it, returns `{"instance_url"}`.
+
+**Bootstrap** — `POST /api/auth/bootstrap` and `/bootstrap/verify` require
+the pass. When an instance URL is stored, the request's `instance_url` is
+optional and must match it if given.
+
+**Local install** — the installer writes `NEXUL_LOCAL=1` into the server's
+env on macOS and Windows only (optional; unset means a server install).
+
+**Reverse proxy** —
+- `GET /api/setup/public-address` (pass or signed-in owner): `{"ipv4","ipv6"}`,
+  the server's public addresses as the internet sees them.
+- `GET /api/dns/resolve?host=<domain>`: `{"addresses":[...]}`, what the
+  domain resolves to right now.
+- `POST /api/dns/instance-proxy {"domain","email"}` (`email` optional):
+  deploys the gateway Traefik on 80/443 with Let's Encrypt, routing the domain
+  to the Nexul server on the host; returns `{"service_id"}` so the page can
+  watch the deploy like the tunnel's. Retry-safe.
