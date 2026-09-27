@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net"
 	"sync"
 	"time"
 
@@ -793,6 +794,8 @@ func newGatewayServiceWithJoiner(repo *fakeRepo, tunnel *fakeTunnelProvider, pro
 		EncryptionKey:  []byte("0123456789abcdef0123456789abcdef"),
 		Settings:       &fakeSettings{instanceURL: "https://deploy.example.com"},
 		Tokens:         &fakeTokenProvider{token: "at"},
+		InstanceOrigin: testOrigin,
+		Resolver:       fakeResolver{},
 		Now:            func() time.Time { return time.Date(2026, 8, 12, 12, 0, 0, 0, time.UTC) },
 	}
 	if joiner != nil {
@@ -913,3 +916,31 @@ func (f *fakeAccessProvider) DeleteServiceToken(_ context.Context, tokenID strin
 	f.deleted = append(f.deleted, tokenID)
 	return nil
 }
+
+// testOrigin is where a test's containers reach the server.
+const testOrigin = "http://host.docker.internal:5123"
+
+// fakeResolver answers from a fixed table; a host missing from it does not resolve, like NXDOMAIN.
+type fakeResolver struct {
+	addrs map[string][]string
+	err   error
+}
+
+func (f fakeResolver) LookupHost(_ context.Context, host string) ([]string, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	if a, ok := f.addrs[host]; ok {
+		return append([]string(nil), a...), nil
+	}
+	return nil, &net.DNSError{Err: "no such host", Name: host, IsNotFound: true}
+}
+
+// fakePlacement is an in-memory dns.InstancePlacement.
+type fakePlacement struct {
+	machine, project string
+	err              error
+}
+
+func (f fakePlacement) InstanceMachine(context.Context) (string, error) { return f.machine, f.err }
+func (f fakePlacement) DefaultProject(context.Context) (string, error)  { return f.project, f.err }

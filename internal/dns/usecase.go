@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -59,6 +60,10 @@ type Config struct {
 	HTTPClient *http.Client
 	// InstanceOrigin is where a container on this machine reaches the Nexul server, the default tunnel origin.
 	InstanceOrigin string
+	// Placement defaults the instance proxy's machine and project; nil makes both required inputs.
+	Placement InstancePlacement
+	// Resolver answers where a domain points right now; nil uses the system resolver.
+	Resolver HostResolver
 	// Now overridable for tests.
 	Now func() time.Time
 }
@@ -81,6 +86,8 @@ type Service struct {
 	key         []byte
 	settings    SettingsReader
 	origin      string
+	placement   InstancePlacement
+	resolver    HostResolver
 	httpc       *http.Client
 	now         func() time.Time
 }
@@ -92,6 +99,9 @@ func NewService(cfg Config) *Service {
 	}
 	if cfg.HTTPClient == nil {
 		cfg.HTTPClient = &http.Client{Timeout: 10 * time.Second}
+	}
+	if cfg.Resolver == nil {
+		cfg.Resolver = net.DefaultResolver
 	}
 	return &Service{
 		repo:        cfg.Repo,
@@ -108,6 +118,8 @@ func NewService(cfg Config) *Service {
 		key:         cfg.EncryptionKey,
 		settings:    cfg.Settings,
 		origin:      cfg.InstanceOrigin,
+		placement:   cfg.Placement,
+		resolver:    cfg.Resolver,
 		httpc:       cfg.HTTPClient,
 		now:         cfg.Now,
 	}

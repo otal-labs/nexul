@@ -55,6 +55,9 @@ func TestService_CreateGateway_Proxy(t *testing.T) {
 	assert.ElementsMatch(t, []string{"80:80", "443:443"}, spec.Ports)
 	assert.Contains(t, spec.Mounts, dockerSocketMount)
 	assert.Equal(t, "false", spec.Env["TRAEFIK_PROVIDERS_DOCKER_EXPOSEDBYDEFAULT"])
+	assert.Contains(t, spec.Mounts, acmeVolumeMount)
+	assert.Equal(t, certResolver, spec.Env["TRAEFIK_ENTRYPOINTS_WEBSECURE_HTTP_TLS_CERTRESOLVER"], "exposure routers get certificates too")
+	assert.Equal(t, "{}", spec.Env[dynamicConfigEnv], "a plain proxy gateway routes nothing to the instance")
 }
 
 func TestService_CreateGateway_NetworkAlreadyHasGateway(t *testing.T) {

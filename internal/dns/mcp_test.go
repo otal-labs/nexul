@@ -54,8 +54,11 @@ func (f *toolFakes) tools() []mcptool.Tool {
 	cfg := Config{
 		Repo: f.repo, Provider: f.records, TunnelProvider: f.tunnels, Provisioner: f.prov, Containers: f.containers,
 		Tokens: &fakeTokenProvider{token: "at"}, EncryptionKey: testKey(),
-		Settings: &fakeSettings{instanceURL: "https://deploy.example.com"},
-		Now:      func() time.Time { return time.Date(2026, 8, 12, 12, 0, 0, 0, time.UTC) },
+		Settings:       &fakeSettings{instanceURL: "https://deploy.example.com"},
+		InstanceOrigin: testOrigin,
+		Resolver:       fakeResolver{addrs: map[string][]string{"nexul.example.com": {"203.0.113.10"}}},
+		Placement:      fakePlacement{machine: "host1", project: "p1"},
+		Now:            func() time.Time { return time.Date(2026, 8, 12, 12, 0, 0, 0, time.UTC) },
 		HTTPClient: cmp.Or(f.httpc, &http.Client{Transport: &http.Transport{
 			DialContext: func(context.Context, string, string) (net.Conn, error) { return nil, errBoom },
 		}}),

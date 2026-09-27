@@ -334,6 +334,8 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("POST", "/api/dns/tunnels/{tunnelID}/rotate", "Rotate tunnel credentials", "dns")
 	spec.Register("DELETE", "/api/dns/tunnels/{tunnelID}", "Delete a tunnel", "dns")
 	spec.Register("POST", "/api/dns/gateways", "Create a gateway (tunnel or proxy)", "dns")
+	spec.Register("POST", "/api/dns/instance-proxy", "Route a domain to this server through Traefik with Let's Encrypt", "dns")
+	spec.Register("GET", "/api/dns/resolve", "Resolve a domain's current addresses", "dns")
 	spec.Register("GET", "/api/dns/gateways", "List gateways", "dns")
 	spec.Register("DELETE", "/api/dns/gateways/{gatewayID}", "Delete a gateway", "dns")
 	spec.Register("POST", "/api/dns/exposures", "Route a hostname through a gateway to a container", "dns")

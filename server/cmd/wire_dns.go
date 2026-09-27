@@ -11,6 +11,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/storage"
 	"github.com/otal-labs/nexul/internal/runner"
+	"github.com/otal-labs/nexul/internal/tenancy"
 )
 
 // dnsSettingsAdapter adapts the auth settings store to dns's SettingsReader seam (ADR 0017).
@@ -41,12 +42,21 @@ type dnsProvisioner struct {
 }
 
 func (a dnsProvisioner) Provision(ctx context.Context, in dns.AgentSpec) (*dns.AgentProvisioned, error) {
-	// A retried entry-path step reuses the stack it already created and redeploys it; an already-running deploy is fine.
+	// A retried entry-path step reuses the stack it already created, updates its container settings, and redeploys
+	// it; an already-running deploy is fine, the next one picks the settings up.
 	if existing, err := a.deploy.GetServiceByName(ctx, in.Name); err == nil && existing.Machine == in.Target {
-		if in.Image != "" {
-			if _, err := a.deploy.Deploy(ctx, deploy.DeployRequest{StackID: existing.ID, Image: in.Image}); err != nil && !errors.Is(err, apperrs.ErrConflict) {
-				return nil, fmt.Errorf("redeploy entry-path stack: %w", err)
-			}
+		if in.Image == "" {
+			return &dns.AgentProvisioned{ServiceID: existing.ID}, nil
+		}
+		existing.Ports, existing.Mounts, existing.Command, existing.Env = in.Ports, in.Mounts, in.Command, in.Env
+		if in.DockerNetwork != "" {
+			existing.DockerNetwork = in.DockerNetwork
+		}
+		if _, err := a.deploy.UpdateStack(ctx, *existing); err != nil {
+			return nil, fmt.Errorf("update entry-path stack: %w", err)
+		}
+		if _, err := a.deploy.Deploy(ctx, deploy.DeployRequest{StackID: existing.ID, Image: in.Image}); err != nil && !errors.Is(err, apperrs.ErrConflict) {
+			return nil, fmt.Errorf("redeploy entry-path stack: %w", err)
 		}
 		return &dns.AgentProvisioned{ServiceID: existing.ID}, nil
 	}
@@ -83,6 +93,47 @@ func (a dnsProvisioner) Deprovision(ctx context.Context, stackID string) error {
 	}
 	return nil
 }
+
+// dnsInstancePlacement adapts runners, machines, and projects to dns's InstancePlacement seam (ADR 0017).
+type dnsInstancePlacement struct {
+	runners  *storage.RunnersRepo
+	machines *storage.MachinesRepo
+	projects *storage.ProjectsRepo
+}
+
+// InstanceMachine is the machine the bundled "instance" runner reported on its first connect.
+func (a dnsInstancePlacement) InstanceMachine(ctx context.Context) (string, error) {
+	r, err := a.runners.GetByName(ctx, instanceRunnerName)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return "", fmt.Errorf("%w: no runner named %q is enrolled; choose a machine", apperrs.ErrInvalid, instanceRunnerName)
+	}
+	if err != nil {
+		return "", err
+	}
+	if r.MachineID == "" {
+		return "", fmt.Errorf("%w: the %q runner has not connected yet; retry once it is online", apperrs.ErrInvalid, instanceRunnerName)
+	}
+	m, err := a.machines.Get(ctx, r.MachineID)
+	if err != nil {
+		return "", err
+	}
+	return m.Name, nil
+}
+
+// DefaultProject is the workspace's first project, the seeded one on a fresh install.
+func (a dnsInstancePlacement) DefaultProject(ctx context.Context) (string, error) {
+	projects, err := a.projects.List(ctx, tenancy.DefaultWorkspaceID)
+	if err != nil {
+		return "", err
+	}
+	if len(projects) == 0 {
+		return "", fmt.Errorf("%w: the workspace has no project to hold the proxy; create one first", apperrs.ErrInvalid)
+	}
+	return projects[0].ID, nil
+}
+
+// instanceRunnerName is the bundled runner the installer enrolls beside the server.
+const instanceRunnerName = "instance"
 
 // dnsContainerLookupAdapter adapts deploy to dns's ContainerLookup seam (ADR 0017): dns never imports deploy directly.
 type dnsContainerLookupAdapter struct {
