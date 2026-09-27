@@ -531,8 +531,8 @@ func TestHandler_JoinNetworks_SendsFrameToConnectedRunner(t *testing.T) {
 	defer func() { _ = conn.CloseNow() }() // CloseNow after a read error or heartbeat close returns an expected "already closed" error
 
 	eventually(t, 2*time.Second, func() bool {
-		_, err := repo.GetByID(context.Background(), "r-1")
-		return err == nil
+		// Connected is set after the handler registers the connection; the record itself exists from enrollment.
+		return repo.connectedCount() == 1
 	})
 
 	require.NoError(t, h.JoinNetworks(context.Background(), "host1", "gateway-container", []string{"net1"}))
@@ -574,8 +574,8 @@ func TestHandler_handleUpgradeRequest_DispatchesToInstanceRunner(t *testing.T) {
 	defer func() { _ = conn.CloseNow() }()
 
 	eventually(t, 2*time.Second, func() bool {
-		_, err := repo.GetByID(context.Background(), "instance-id")
-		return err == nil
+		// Connected is set after the handler registers the connection; the record itself exists from enrollment.
+		return repo.connectedCount() == 1
 	})
 
 	require.NoError(t, h.handleUpgradeRequest(context.Background(), eventbus.Event{
@@ -713,8 +713,8 @@ func TestHandler_Disconnect_UpgradeStatus(t *testing.T) {
 			require.NoError(t, err)
 
 			eventually(t, 2*time.Second, func() bool {
-				_, err := repo.GetByID(context.Background(), "instance-id")
-				return err == nil
+				// Connected is set after the handler registers the connection; the record itself exists from enrollment.
+				return repo.connectedCount() == 1
 			})
 			require.NoError(t, h.handleUpgradeRequest(context.Background(), eventbus.Event{
 				Payload: mustJSON(t, InstanceUpgradeRequestedEvent{ID: "u-1", Version: "v2"}),
