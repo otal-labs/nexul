@@ -173,7 +173,7 @@ func TestHandler_ProvisionTunnelAgent(t *testing.T) {
 }
 
 func TestHandler_ProvisionReverseProxy(t *testing.T) {
-	h, _, _, _ := newTunnelTestHandler()
+	h := NewHandler(newGatewayService(newFakeRepo(), newFakeTunnelProvider(), &fakeProvisioner{}, newFakeContainerLookup()))
 	rec := doJSON(t, h.Routes(), http.MethodPost, "/api/dns/reverse-proxy", map[string]any{
 		"project_id": "p1", "target": "10.0.0.1", "strategy": "run", "docker_network": "nexul",
 	})

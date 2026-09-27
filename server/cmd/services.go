@@ -175,6 +175,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		Provisioner:    dnsProvisioner{deploy: deploySvc},
 		Containers:     dnsContainerLookupAdapter{deploy: deploySvc},
 		InstanceOrigin: instanceOrigin(cfg.HTTPAddr),
+		Placement:      dnsInstancePlacement{runners: store.Runners, machines: store.Machines, projects: store.Projects},
 	})
 	dnsHandler := dns.NewHandler(dnsSvc)
 	// deploy needs dns, dns needs deploy's Containers/Provisioner, so neither builds the other in its constructor.
