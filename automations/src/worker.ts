@@ -23,7 +23,8 @@ export interface WorkerFactory {
   spawn(opts: SpawnOptions, onStale: () => void): WorkerHandle;
 }
 
-const WORKER_ENTRY = new URL("./worker-entry.ts", import.meta.url);
+// A compiled binary holds the worker entrypoint as worker-entry.js beside its bundled main; from source it is the .ts.
+const WORKER_ENTRY = new URL(import.meta.url.endsWith(".ts") ? "./worker-entry.ts" : "./worker-entry.js", import.meta.url);
 
 interface WorkerMessage {
   type: "log" | "heartbeat";
