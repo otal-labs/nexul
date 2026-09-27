@@ -58,7 +58,7 @@ func TestInstallHost_Runner_EnrollsAndRunsAsRootWithItsOwnDirectory(t *testing.T
 	dir := filepath.Join(th.Paths.UnitRoot, "runner-edge")
 	enroll := th.instance.calls("/api/runners/enroll")
 	require.Len(t, enroll, 1)
-	assert.Equal(t, map[string]string{"code": "nxe_code", "name": "edge", "os": "linux", "arch": "amd64", "version": "v0.2.1", "stack_root": dir}, enroll[0].body)
+	assert.Equal(t, map[string]string{"code": "nxe_code", "name": "edge", "os": "linux", "arch": "amd64", "version": "v0.2.1", "stack_root": dir, "machine": "box-1"}, enroll[0].body)
 	assert.Equal(t, "nexul-runner-binary", readFile(t, filepath.Join(dir, "nexul-runner")))
 	assert.Equal(t, "cred-edge\n", readFile(t, filepath.Join(dir, "credential")))
 	for _, f := range []string{"credential", "env"} {
@@ -106,6 +106,8 @@ func TestInstallHost_Automations_RunsAsNexulWithItsSudoersRule(t *testing.T) {
 	enroll := th.instance.calls("/api/automation-hosts/enroll")
 	require.Len(t, enroll, 1)
 	assert.NotContains(t, enroll[0].body, "stack_root")
+	assert.Equal(t, "box-1", enroll[0].body["machine"], "filed under the host it runs on")
+	assert.Contains(t, th.out.String(), "The automations host jobs is running")
 	env, err := readEnvFile(filepath.Join(dir, "env"))
 	require.NoError(t, err)
 	ctl := filepath.Join(th.Paths.BinDir, "nexul")

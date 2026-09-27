@@ -70,6 +70,7 @@ type HostEnrollRequest struct {
 	OS      string `json:"os"`
 	Arch    string `json:"arch"`
 	Version string `json:"version"`
+	Machine string `json:"machine"`
 }
 
 // HostEnrolled is the new host's record and its credential, returned exactly once.

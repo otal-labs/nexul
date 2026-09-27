@@ -9,6 +9,8 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -59,4 +61,26 @@ func InstallCommands(script, instanceURL, name, code string) (unix, windows stri
 	unix = "curl -fsSL https://nexul.io/" + script + ".sh | " + unixPin + "sh -s -- " + args
 	windows = windowsPin + "& ([scriptblock]::Create((irm https://nexul.io/" + script + ".ps1))) " + args
 	return unix, windows
+}
+
+// WriteCodeFile writes a bundled host's code (0600) through a rename, so an installer polling the file never reads
+// it half written.
+func WriteCodeFile(path, code string) error {
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".code-*")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = os.Remove(tmp.Name()) }() // a no-op once the rename has moved it
+	if _, err := tmp.WriteString(code); err != nil {
+		_ = tmp.Close() // the write error is the one worth returning
+		return err
+	}
+	if err := tmp.Chmod(0o600); err != nil {
+		_ = tmp.Close() // the chmod error is the one worth returning
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmp.Name(), path)
 }

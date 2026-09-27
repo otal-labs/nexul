@@ -117,6 +117,21 @@ func TestAskPort(t *testing.T) {
 		assert.Contains(t, th.out.String(), `"abc" is not a port number`)
 		assert.Contains(t, th.out.String(), "Port 80 is already in use")
 	})
+	t.Run("once the default is busy, Enter takes the next free port", func(t *testing.T) {
+		th := newTestHost(t)
+		th.PortFree = func(port int) bool { return port != 80 && port != 8080 }
+		th.In = bufio.NewReader(strings.NewReader("\n\n"))
+		port, err := th.askPort("Web port", 80, nil)
+		require.NoError(t, err)
+		assert.Equal(t, 8081, port)
+		assert.Contains(t, th.out.String(), "[8081]")
+	})
+	t.Run("nothing free nearby keeps the old default", func(t *testing.T) {
+		th := newTestHost(t)
+		th.PortFree = func(int) bool { return false }
+		assert.Equal(t, 80, th.freePortAfter(80, 80))
+		assert.Equal(t, 3000, th.freePortAfter(65535, 3000))
+	})
 	t.Run("the input ending early is an error, not a loop", func(t *testing.T) {
 		th := newTestHost(t)
 		_, err := th.askPort("Web port", 80, nil)
@@ -199,7 +214,7 @@ WantedBy=multi-user.target
 
 	runner := th.instance.calls("/api/runners/enroll")
 	require.Len(t, runner, 1)
-	assert.Equal(t, map[string]string{"code": "nxe_runner", "name": "instance", "os": "linux", "arch": "amd64", "version": "v0.2.1", "stack_root": dir}, runner[0].body)
+	assert.Equal(t, map[string]string{"code": "nxe_runner", "name": "instance", "os": "linux", "arch": "amd64", "version": "v0.2.1", "stack_root": dir, "machine": "box-1"}, runner[0].body)
 	require.Len(t, th.instance.calls("/api/automation-hosts/enroll"), 1)
 	assert.FileExists(t, filepath.Join(th.Paths.Services, "nexul-runner-instance.service"))
 	assert.FileExists(t, filepath.Join(th.Paths.Services, "nexul-automations-instance.service"))

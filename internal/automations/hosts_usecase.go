@@ -124,7 +124,7 @@ func (h *HostsService) mintEnrollment(ctx context.Context, name, machine string,
 }
 
 // Enroll trades a code for the host's own credential, returned once. It is the public half of enrollment, so it
-// takes no actor; a host with no machine on its code is filed under its own name.
+// takes no actor; a host with no machine on its code is filed under its reported hostname, else its own name.
 func (h *HostsService) Enroll(ctx context.Context, req HostEnrollRequest) (HostEnrolled, error) {
 	now := h.now().UTC()
 	codeHash := hostcred.Hash(strings.TrimSpace(req.Code))
@@ -138,7 +138,10 @@ func (h *HostsService) Enroll(ctx context.Context, req HostEnrollRequest) (HostE
 	if strings.TrimSpace(req.Name) != code.Name {
 		return HostEnrolled{}, apperrs.WithCode("name_mismatch", fmt.Errorf("%w: this code enrolls an automations host named %s", apperrs.ErrConflict, code.Name))
 	}
-	machine := code.Machine
+	machine := strings.TrimSpace(code.Machine)
+	if machine == "" {
+		machine = strings.TrimSpace(req.Machine)
+	}
 	if machine == "" {
 		machine = code.Name
 	}
@@ -355,7 +358,7 @@ func (h *HostsService) WriteInstanceEnrollment(ctx context.Context) error {
 	if err := os.MkdirAll(h.enrollDir, 0o700); err != nil {
 		return fmt.Errorf("create enroll dir: %w", err)
 	}
-	if err := os.WriteFile(filepath.Join(h.enrollDir, instanceHostEnrollFile), []byte(code), 0o600); err != nil {
+	if err := hostcred.WriteCodeFile(filepath.Join(h.enrollDir, instanceHostEnrollFile), code); err != nil {
 		return fmt.Errorf("write instance automations host enrollment code: %w", err)
 	}
 	return nil

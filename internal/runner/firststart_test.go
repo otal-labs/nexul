@@ -138,3 +138,26 @@ func TestLoadRunnerConfig_NoCredentialYetWithAnEnrollCode(t *testing.T) {
 	assert.Empty(t, cfg.Credential)
 	assert.Equal(t, "/data/enroll/runner-instance", cfg.EnrollCodeFile)
 }
+
+func TestEnrollOnFirstStart_EmptyCodeFile_WaitsInsteadOfSendingIt(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		cfg := firstStartConfig(t)
+		require.NoError(t, os.WriteFile(cfg.EnrollCodeFile, nil, 0o600))
+		var codes []string
+		hc := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+			var body map[string]string
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				return nil, err
+			}
+			codes = append(codes, body["code"])
+			return answer(http.StatusCreated, `{"credential":"nxr_new"}`), nil
+		})}
+		go func() {
+			time.Sleep(5 * time.Second)
+			_ = os.WriteFile(cfg.EnrollCodeFile, []byte("nxe_abc"), 0o600) // the code arriving after the file
+		}()
+
+		require.NoError(t, cfg.EnrollOnFirstStart(t.Context(), hc, "v1"))
+		assert.Equal(t, []string{"nxe_abc"}, codes)
+	})
+}

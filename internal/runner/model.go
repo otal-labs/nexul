@@ -74,6 +74,7 @@ type EnrollRequest struct {
 	Arch      string `json:"arch"`
 	Version   string `json:"version"`
 	StackRoot string `json:"stack_root"`
+	Machine   string `json:"machine"`
 }
 
 // Enrolled is the new runner's record and its credential, returned exactly once.

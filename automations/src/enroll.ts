@@ -60,6 +60,7 @@ export async function loadCredential(cfg: HostConfig, deps: EnrollDeps = default
 
 async function enrollOnce(cfg: HostConfig, codeFile: string, deps: EnrollDeps): Promise<string> {
   const code = readFileSync(codeFile, "utf8").trim();
+  if (!code) throw new Error(`${codeFile} is still empty`);
   const res = await deps.fetch(`${cfg.serverUrl}/api/automation-hosts/enroll`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

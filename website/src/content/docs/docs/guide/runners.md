@@ -43,7 +43,7 @@ The instance URL comes from settings, so set it in the setup wizard before addin
 
 ### Several runners on one machine
 
-Run the install command once per runner, each with its own name. Every runner is its own service with its own directory, binary and credential, so two runners on one machine never share state, and the machine takes one job per runner at a time.
+Run the install command once per runner, each with its own name. Every runner is its own service with its own directory, binary and credential, so two runners on one machine never share state, and the machine takes one job per runner at a time. Unless the Add runner dialog names a machine, a runner joins the machine named after its computer's hostname, so runners installed on one computer share a machine.
 
 ## Removing a runner
 
