@@ -5,11 +5,11 @@ sidebar:
   order: 8
 ---
 
-An install made with `nexul install` includes [OpenObserve](https://openobserve.ai), and the server ships every log line to it as well as to stderr.
+An install made with `nexul install` includes [OpenObserve](https://openobserve.ai), and the server ships every log line to it as well as to stderr. OpenObserve runs as the `nexul-openobserve` service and listens on localhost only; the server reaches it there and serves its UI on your web port at `/openobserve/`, so there is no second port to open.
 
 ## Opening the logs UI
 
-Open `http://<host>:5080` and sign in as `nexul@nexul.local`, with the password you chose when running the install script — or the one it generated for you, printed at the end of the install and saved to `.env` as `NEXUL_LOGS_PASSWORD`. Both the email and password can be changed later inside OpenObserve itself.
+Open `http://<host>/openobserve/` (with `:<port>` when the web port isn't 80, and your `https://` instance URL once a proxy is in front) and sign in as `nexul@nexul.local` with the password the install generated. It is printed at the end of the install and saved to the install directory's `.env` as `NEXUL_LOGS_PASSWORD`. Both the email and password can be changed later inside OpenObserve itself. Nexul's own sign-in does not guard this path; OpenObserve's login does.
 
 Logs land in the `nexul` stream of the `default` org.
 
@@ -25,16 +25,15 @@ All three are generated into the install directory's `.env` by `nexul install` a
 
 ## Querying logs through MCP
 
-OpenObserve ships its own MCP server, so an agent can search your logs directly. It authenticates with the UI password, not the ingest token. To add it in Claude Code:
+OpenObserve ships its own MCP server, so an agent can search your logs directly. Point your MCP client at the Streamable HTTP endpoint `http://<host>/openobserve/api/default/mcp` with a basic `Authorization` header built from the UI email and password, not the ingest token:
 
 ```sh
-claude mcp add --transport http nexul-logs http://<host>:5080/api/default/mcp \
-  --header "Authorization: Basic $(echo -n "$NEXUL_LOGS_EMAIL:$NEXUL_LOGS_PASSWORD" | base64 -w0)"
+echo "Authorization: Basic $(printf '%s' "$NEXUL_LOGS_EMAIL:$NEXUL_LOGS_PASSWORD" | base64 | tr -d '\n')"
 ```
 
-## Single-binary installs
+## A server run by hand
 
-A single-binary install has no bundled OpenObserve. Point it at any OTLP/HTTP backend instead:
+A server started on its own, without `nexul install`, has no bundled OpenObserve. Point it at any OTLP/HTTP backend instead:
 
 | Variable | What it sets |
 | --- | --- |

@@ -13,7 +13,7 @@ against six filters, and each job is gated on its own tag:
 
 | Filter | Paths | Job |
 |---|---|---|
-| `go` | `server/**`, `runner/**`, `internal/**`, root `*.go`, `docker-compose.yml`, `go.mod`, `go.sum`, `sqlc.yaml`, `.goreleaser.yaml` | `go-test` |
+| `go` | `server/**`, `runner/**`, `internal/**`, root `*.go`, `go.mod`, `go.sum`, `sqlc.yaml`, `.goreleaser.yaml` | `go-test` |
 | `web` | `web/**` | `web-test` |
 | `desktop` | `desktop/**` | `desktop-test` |
 | `website` | `website/**` | `website-build` |
@@ -61,29 +61,23 @@ Nexul has one version for the whole product, and git tags are that version
   beta has already carried, and it refuses when that commit is already
   released. Pushing a bare `vX.Y.Z` tag by hand builds that tag as stable.
 - **How a release is built:** the workflow builds the web UI into
-  `server/webui/dist`, tags the commit, and runs GoReleaser
-  (`.goreleaser.yaml`). The automations image is pushed first, so a
-  published release never points at a missing image.
-- **What a release carries:** two binaries per platform (linux/amd64,
-  linux/arm64, darwin/amd64, darwin/arm64, windows/amd64):
-  `nexul-<os>-<arch>[.exe]`, the server with the web UI embedded plus the
-  install, upgrade, status and uninstall commands, and
-  `nexul-runner-<os>-<arch>[.exe]`. A `checksums.txt` covers every binary.
-  Three images for amd64 and arm64: `ghcr.io/otal-labs/nexul`,
-  `ghcr.io/otal-labs/nexul-automations`, and `ghcr.io/otal-labs/nexul-runner`
-  (the instance runner on macOS and Windows installs), each tagged with the version
-  (no leading `v`) plus the moving `beta` or `latest` tag; until the first
-  stable release exists, betas carry `latest` too. The binary names are a
-  contract: the installer, the runner download proxy and runner self-update
-  fetch these exact names.
-- **Beta image cleanup:** a `prune` job runs after each beta and deletes old
-  beta-tagged image versions, keeping the ten newest per image and never
-  touching a `latest` or stable-semver tag.
+  `server/webui/dist`, compiles the automations host for every target with
+  `bun build --compile` (`bun run --cwd automations build:binaries`), tags
+  the commit, and runs GoReleaser (`.goreleaser.yaml`), which builds the Go
+  binaries and publishes everything to the GitHub release.
+- **What a release carries:** four binaries per platform (linux/amd64,
+  linux/arm64, darwin/amd64, darwin/arm64, windows/amd64), named
+  `<binary>-<os>-<arch>[.exe]`: `nexul`, the install and management command;
+  `nexul-server`, the server with the web UI embedded; `nexul-runner`; and
+  `nexul-automations`, the automations host. A `checksums.txt` covers every
+  binary. No container images are released. The binary names are a
+  contract: `install.sh`, `nexul install`, `nexul upgrade`, the runner
+  download proxy and runner self-update fetch these exact names.
 - **Changelog rebuild:** a `website` job runs after each release and calls
   the Cloudflare Pages deploy hook in the `CLOUDFLARE_PAGES_DEPLOY_HOOK`
   secret, so nexul.io/changelog lists the new release. Without the secret the
   job skips, and the changelog catches up on the next site build.
-- Both binaries are stamped with the release tag via
+- The Go binaries are stamped with the release tag via
   `-ldflags -X .../internal/platform/version.Version=...`; `nexul version`
   prints it.
 

@@ -16,8 +16,8 @@ running outside a browser tab: two Bun runtimes and one Electron shell.
   CLI, so it never needs to run anywhere else.
 - **automations** targets Bun. Its running service sticks to
   Node-compatible APIs like `node:worker_threads` and `node:fs`, but it
-  only ever runs inside the `oven/bun:1-slim` image the Dockerfile builds,
-  and its own build tooling (`defaults/build.ts`) calls `Bun.build()` and
+  only ever runs under Bun, released as a binary compiled with
+  `bun build --compile`, and its own build tooling (`defaults/build.ts`) calls `Bun.build()` and
   `Bun.write()` directly. Treat the whole package as Bun-only.
 - **desktop** is two runtimes glued together, deliberately: the Electron
   main process and preload run on the Node runtime Electron embeds
@@ -29,8 +29,8 @@ running outside a browser tab: two Bun runtimes and one Electron shell.
   Electron APIs directly.
 
 A package never mixes runtimes. Bun globals (`Bun.*`, `import.meta.dir`,
-`bun:test`) belong only in `sdk` and `automations`. Node-only APIs the
-Bun image does not ship stay out of those two packages unless a Bun
+`bun:test`) belong only in `sdk` and `automations`. Node-only APIs Bun
+does not ship stay out of those two packages unless a Bun
 compatibility table already covers them; check before adding one.
 `desktop`'s main and preload code never uses a Bun global, and its launcher
 renderer code never imports `node:*` or `electron` directly, only through
@@ -240,8 +240,8 @@ package on every change, including `sdk` and `automations`.
 
 ## 10. Adding a new TypeScript package
 
-1. Decide the runtime first: Bun if it only ever needs to run in a
-   container or as a CLI, Electron's Node if it is part of the desktop
+1. Decide the runtime first: Bun if it only ever needs to run as a
+   service or a CLI, Electron's Node if it is part of the desktop
    shell, browser if it renders in the launcher or the web app.
 2. Add a `tsconfig.json` extending the shared base (or, until that base
    exists, copying its exact strict flags) plus whatever `lib`/`types` the

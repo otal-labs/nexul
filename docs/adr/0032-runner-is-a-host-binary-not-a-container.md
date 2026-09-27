@@ -1,6 +1,6 @@
 # The runner is a host binary, not a container
 
-ADR 0069 made the instance runner a host systemd service on Linux; ADR 0072 keeps the container exception for macOS and Windows installs.
+The container exception is gone: ADR 0073 installs the instance runner as a native service on Linux, macOS and Windows alike.
 
 Everything else Nexul ships runs in the compose stack, so a
 containerized runner would be the consistent choice — but a runner's whole

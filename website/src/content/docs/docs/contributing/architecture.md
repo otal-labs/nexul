@@ -5,10 +5,11 @@ sidebar:
   order: 1
 ---
 
-Nexul is one Go module (`github.com/otal-labs/nexul`) that builds a
-`server` binary and a `runner` binary. The repository also contains a React
-web app, a thin Electron desktop shell, a TypeScript SDK, a Bun CLI exposed as
-`nexul`, and a small automations host. Keeping these surfaces in one repository
+Nexul is one Go module (`github.com/otal-labs/nexul`) that builds the
+`nexul-server`, `nexul-runner` and `nexul` (install and upgrade) binaries. The
+repository also contains a React web app, a thin Electron desktop shell, a
+TypeScript SDK with its own Bun CLI, and a small automations host compiled into
+`nexul-automations`. Keeping these surfaces in one repository
 makes the seams between them explicit.
 
 ## The domain layer
@@ -74,6 +75,6 @@ connection token and otherwise stays out of the way.
 `sdk/` is the TypeScript package automations are written against. It contains
 the API client, generated event types, config schema, testing surface, and a
 Bun CLI with `nexul init`, `nexul dev`, `nexul push`, and `nexul pull`.
-`automations/` is the small container bundled with every instance that runs
-Default automations and small Custom ones. Bigger Custom automations run
-wherever their owner deploys them.
+`automations/` is the automations host: a small service that runs the
+automations placed on it. Every instance installs one named `instance` for the
+Default automations, and more can be installed on other machines.

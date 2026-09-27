@@ -9,12 +9,13 @@ prevents, so it can be extended to cases this file does not list.
 ## 1. Project layout
 
 ```
+cmd/nexul/main.go        # nexul: install, upgrade, status, uninstall
 server/
-  cmd/main.go            # server binary entry point
-  Dockerfile             # multi-stage (release + debug targets)
+  cmd/main.go            # nexul-server entry point
+  Dockerfile.debug       # debug compose stack only; releases ship binaries
 runner/
-  cmd/main.go            # runner binary entry point
-  Dockerfile
+  cmd/main.go            # nexul-runner entry point
+  Dockerfile.debug
 internal/
   access/                # permission overwrite table: allow/deny per resource and user
   agent/                 # agent turn pipeline, T3 backend adapter
@@ -31,6 +32,7 @@ internal/
   eventcatalog/          # aggregates every domain's published event topics
   gitprovider/           # git provider interface + GitHub impl
   harness/               # harness.Client interface, one implementation per agent harness kind
+  install/               # the nexul command: services on systemd, launchd, Windows
   integrations/          # external service integrations, scoped tokens
   livekit/               # minimal stdlib LiveKit client
   mcp/                   # MCP server adapter (tools/resources/prompts)

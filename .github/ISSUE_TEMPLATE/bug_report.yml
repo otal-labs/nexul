@@ -24,7 +24,7 @@ body:
     attributes:
       label: Nexul version
       description: The version chip in the web UI, or `GET /api/version` on your instance.
-      placeholder: 0.2.0 or a nightly tag
+      placeholder: 0.2.0 or a beta such as 0.2.1-beta.3
     validations:
       required: true
   - type: dropdown
@@ -34,7 +34,7 @@ body:
       options:
         - nexul install (Linux server)
         - nexul install (Mac or Windows)
-        - Single binary
+        - nexul-server run by hand
         - Debug compose stack (developing Nexul)
     validations:
       required: true
@@ -47,5 +47,5 @@ body:
     id: logs
     attributes:
       label: Logs
-      description: Relevant lines from the server or runner log, or from OpenObserve. Paste as text, not screenshots.
+      description: Relevant lines from the service's log (`journalctl -u nexul-server` or `journalctl -u nexul-runner-<name>` on Linux, `service.log` in the service's folder on Windows, `~/Library/Logs/nexul/` on a Mac), or from OpenObserve at `/openobserve/`. Paste as text, not screenshots.
       render: text

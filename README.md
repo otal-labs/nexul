@@ -76,8 +76,8 @@ source of behavior.
 
 ## Who it's for
 
-- Solo developers and small teams who self-host and want one binary or one
-  `docker compose`, with no managed services.
+- Solo developers and small teams who self-host and want one install command
+  and native services on one port, with no managed services.
 - Teams that run coding agents and need a tracker, docs, and deploys that a
   machine can query and act on.
 - Operators who deploy to a mix of ordinary servers and want a live topology
@@ -101,17 +101,17 @@ Everything below is in the AGPL edition and runs on your own servers. The
 | Code review | ✅ | A mirror of each linked PR's review state, listed on the ticket. Nexul does not host review threads. |
 | Git providers | ✅ | GitHub through a GitHub App: repositories, branches, pull requests, and webhooks, behind a provider interface. |
 | Stacks and deploys | ✅ | A repository becomes a stack (a compose file, or a Dockerfile as a stack of one) that a runner deploys with `docker compose up`. History, cancel, one-click rollback, branch deploy rules with a preview deployment per branch, and import of containers already running on a machine. |
-| Runners and machines | ✅ | A small host binary connects out over a WebSocket, so the server holds no SSH keys. Runners report a machine and pool on it, and work queues until one is connected. |
+| Runners and machines | ✅ | A small service on each machine connects out over a WebSocket, so the server holds no SSH keys. A one-line command installs a named runner, several can share a machine and pool on it, each has its own credential, and Remove uninstalls it. Work queues until a runner is connected. |
 | Topology | ✅ | A canvas of every service, its docker network, gateways, and hostnames, with each node's status as the runner last observed it. |
 | DNS and exposure | ✅ | Cloudflare zones and records, Cloudflare tunnels for hosting with no open ports, and gateways that expose one hostname to one container. |
-| Automations | ✅ | Event-driven TypeScript against `@nexul/sdk`, run by the bundled host or anywhere that can dial in. Each automation acts through its own scoped token and reads a shared secrets pool. |
+| Automations | ✅ | Event-driven TypeScript against `@nexul/sdk`, placed on the bundled automations host or a named one on any machine, or run anywhere that can dial in. Each automation acts through its own scoped token and reads a shared secrets pool. |
 | Connectors and integrations | ✅ | Instance-wide credentials for GitHub, Cloudflare, and LiveKit. Third-party integrations get scoped tokens, signed outgoing webhooks, and an OpenAPI 3 spec at `/openapi.json`. |
 | Access | ✅ | Private invitation links, owner-configured OAuth sign-in, custom roles per workspace, per-user permission overwrites, and personal access tokens, all checked against one `<domain>:<action>` vocabulary. |
 | Search | ✅ | Full-text search over doc and ticket titles and bodies, from the docs page, the API, and MCP. |
 | MCP server | ✅ | 98 task-shaped tools on the official MCP Go SDK, plus doc, ticket, and topology resources and workflow prompts, over stateless Streamable HTTP at `/mcp`. Every tool is annotated for read-only or destructive, lists are paginated, and failures come back as errors the agent can act on. |
-| Logs | ✅ | Every server log line goes to the OpenObserve that `nexul install` sets up, or any OTLP/HTTP backend, and the browser's console errors are forwarded into the same stream. |
+| Logs | ✅ | Every server log line goes to the OpenObserve that `nexul install` sets up, served at `/openobserve/` on the same port, or to any OTLP/HTTP backend, and the browser's console errors are forwarded into the same stream. |
 | Desktop app | ✅ | An Electron shell that imports a connection token, keeps a list of instances, and loads the web app from the one you pick. |
-| Instance upgrade | ✅ | Settings shows the running version and the newest release, and one click (or the `instance_upgrade` tool) pulls the images and restarts the stack. |
+| Instance upgrade | ✅ | Settings shows the running version and the newest release, and one click (or the `instance_upgrade` tool) moves every Nexul service on the server to it. |
 | Call notes | ⬜ | A speech-to-text model listens to a voice call, takes notes, summarizes it, and writes the summary into the doc, so the loop runs from a conversation to a deploy without anyone typing the notes. |
 
 ## Contributing

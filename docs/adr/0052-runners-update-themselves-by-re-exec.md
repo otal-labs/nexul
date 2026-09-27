@@ -1,6 +1,6 @@
 # Runners update themselves: server-pushed, re-exec in place
 
-ADR 0069 made the instance runner a host binary, so it updates this way too; only a runner in a container does not.
+ADR 0073 removed the container exception: every runner, the `instance` runner included, is a native service and updates this way.
 
 A runner reports its version on every connect. When the server is a real release build and a connected runner
 reports a different real version, the server sends it an `update` frame naming the version, a download URL back

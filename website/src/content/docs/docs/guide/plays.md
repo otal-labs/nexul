@@ -140,8 +140,8 @@ computer, the provider is not set up there, the computer is offline, the
 ticket has no developer, or another run holds the ticket, the failed trail
 stays on the ticket and the ticket page shows **Decisions check didn't run**
 with the reason and a **Run check** button. Pressing it runs the check on your
-own computer. Agents retry with `decisions_check_run`. Either way it needs
-`plays:run`.
+own computer. Agents retry with `play_run` and `decisions_check: true`. Either
+way it needs `plays:run`.
 
 ## Permissions
 
@@ -157,9 +157,10 @@ The HTTP definition routes are under
 `/api/plays/runs/{id}/stop`, and `/api/plays/runs/{id}/answer`; the list of a
 target's runs is `/api/plays/runs?target_type=&target_id=`. The decisions
 check retries through `POST /api/plays/decisions-check` with a `ticket_id`.
-MCP exposes the matching `play_*` tools, `trail_list` and `trail_update` for
-runs, and `decisions_check_run`; `play_run` and `trail_list` take `ticket`,
-`doc`, or `interview` as `target_type`. The run events `play.run_started`,
+MCP exposes the matching `play_*` tools and `trail_list` and `trail_update` for
+runs; `play_run` with `decisions_check: true` reruns the decisions check.
+`play_run` and `trail_list` take `ticket`, `doc`, or `interview` as
+`target_type`. The run events `play.run_started`,
 `play.run_waiting`, and `play.run_finished` carry the same `target_type`, with
 the project's name as `target_title` for an interview. The project's interview
 thread is `POST /api/chat/projects/{projectID}/interview-thread`, or

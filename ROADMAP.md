@@ -24,7 +24,7 @@
 
 A self-hostable instance where the full SDLC loop works end to end: GitHub OAuth
 login, versioned docs, tickets, PR linking, deploys via host runner, live
-topology canvas, an MCP server over the whole domain, one `docker-compose up`
+topology canvas, an MCP server over the whole domain, one install command
 with a SQLite spine.
 
 ### The domain build-out
@@ -48,6 +48,16 @@ Every domain built out:
   bootstrapped by the connection token.
 - **DNS** — a Cloudflare-first provider abstraction: records, a setup-wizard
   hook, and tunnels for zero-open-port hosting.
+
+### Native install
+
+Every part of Nexul runs as a native service under the OS service manager on
+Linux, macOS, and Windows, with no containers of its own and one public port;
+OpenObserve sits behind the server at `/openobserve/`. Runners and automations
+hosts install on any machine from a one-line command, several to a machine,
+each enrolling for its own credential with a one-time code. Remove revokes the
+credential and uninstalls the host from its machine, and each automation is
+placed on one named automations host.
 
 ### The design pass
 
@@ -93,8 +103,8 @@ without changing the core architecture.
   seam.
 - **Doc comments** — deferred during the domain sessions to keep momentum; the
   access domain regains a `comment` action when this lands.
-- **Per-runner credentials** so one machine can be revoked on its own
-  (`.scratch/per-runner-credentials/`), and labels/selectors for runner routing.
+- **Runner labels and selectors** for routing a job to the right runners,
+  beyond the machine a stack targets.
 - **Ticket workflow depth** — blocked tickets, ticket-type body templates and
   required relations, comments and an activity timeline
   (`.scratch/ticket-workflow-depth/`); creating a branch from the ticket page

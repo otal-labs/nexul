@@ -1,5 +1,7 @@
 # OpenObserve ships in the compose stack and receives the server's logs over OTLP
 
+Amended by ADR 0073: OpenObserve runs as a native service, `nexul-openobserve`, listening on localhost only and capped with `MemoryMax=1G` on Linux. The server proxies its UI and MCP at `/openobserve/`, so there is no second public port and no compose service.
+
 Server logs only went to stderr, so a failed deploy left an agent with nothing
 to query: the MCP server exposes the domain, not the logs. The fix is a log
 store that (a) runs as one container inside a 4 GB host budget, (b) speaks

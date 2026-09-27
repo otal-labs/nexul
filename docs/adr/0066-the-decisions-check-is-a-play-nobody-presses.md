@@ -1,5 +1,7 @@
 # The decisions check is a play nobody presses
 
+Amended: agents rerun the check with `play_run` and `decisions_check: true`; `decisions_check_run` folded into it to keep the MCP surface under its budget (ADR 0068).
+
 ADR 0055 says nothing fires a play but a person. The decisions check is the
 one exception: when a ticket enters a done-stage column, a server-side
 consumer of `ticket.status_changed` starts it once, as a play run on the
