@@ -21,10 +21,11 @@ import (
 
 func newTestHandler(bus Bus, repo Repo, opts ...func(*HandlerConfig)) *Handler {
 	cfg := HandlerConfig{
-		Bus:               bus,
-		Repo:              repo,
-		Logger:            testLogger(),
-		HeartbeatInterval: 50 * time.Millisecond,
+		Bus:    bus,
+		Repo:   repo,
+		Logger: testLogger(),
+		// Long enough that a test runner which never beats is not dropped while a loaded machine runs the suite.
+		HeartbeatInterval: time.Second,
 		MissedHeartbeats:  3,
 		WriteTimeout:      time.Second,
 	}
@@ -416,7 +417,7 @@ func TestHandler_ServeHTTP_IdentityComesFromTheRecord(t *testing.T) {
 func TestHandler_HeartbeatTimeout(t *testing.T) {
 	repo := newFakeRunnerRepo()
 	bus := newFakeBus()
-	h := newTestHandler(bus, repo)
+	h := newTestHandler(bus, repo, func(c *HandlerConfig) { c.HeartbeatInterval = 50 * time.Millisecond })
 	srv := httptest.NewServer(h)
 	defer srv.Close()
 
@@ -753,7 +754,7 @@ func TestHandler_sendUpdateIfNeeded(t *testing.T) {
 		defer cancel()
 		conn, _, err := dialRunner(ctx, srv, repo.enrolled("r-1", "r-1", ""), "?version=v0.1.5&os=linux&arch=amd64")
 		require.NoError(t, err)
-		defer func() { _ = conn.CloseNow() }() // CloseNow after a read error or heartbeat close returns an expected "already closed" error
+		closeBeforeCleanup(t, conn, repo)
 
 		frame := readFrame(t, conn, 2*time.Second)
 		assert.Equal(t, FrameUpdate, frame.Type)
@@ -775,7 +776,7 @@ func TestHandler_sendUpdateIfNeeded(t *testing.T) {
 		defer cancel()
 		conn, _, err := dialRunner(ctx, srv, repo.enrolled("r-1", "r-1", ""), "?version=dev&os=linux&arch=amd64")
 		require.NoError(t, err)
-		defer func() { _ = conn.CloseNow() }() // CloseNow after a read error or heartbeat close returns an expected "already closed" error
+		closeBeforeCleanup(t, conn, repo)
 
 		assertNoFrame(t, conn, 300*time.Millisecond)
 	})
@@ -793,7 +794,7 @@ func TestHandler_sendUpdateIfNeeded(t *testing.T) {
 		defer cancel()
 		conn, _, err := dialRunner(ctx, srv, repo.enrolled("r-1", "r-1", ""), "?version=v0.2.0&os=linux&arch=amd64")
 		require.NoError(t, err)
-		defer func() { _ = conn.CloseNow() }() // CloseNow after a read error or heartbeat close returns an expected "already closed" error
+		closeBeforeCleanup(t, conn, repo)
 
 		assertNoFrame(t, conn, 300*time.Millisecond)
 	})
@@ -811,9 +812,19 @@ func TestHandler_sendUpdateIfNeeded(t *testing.T) {
 		defer cancel()
 		conn, _, err := dialRunner(ctx, srv, repo.enrolled("r-1", "r-1", ""), "?version=v0.1.5&os=plan9&arch=amd64")
 		require.NoError(t, err)
-		defer func() { _ = conn.CloseNow() }() // CloseNow after a read error or heartbeat close returns an expected "already closed" error
+		closeBeforeCleanup(t, conn, repo)
 
 		assertNoFrame(t, conn, 300*time.Millisecond)
+	})
+}
+
+// closeBeforeCleanup closes conn and waits for the handler to let go of it before earlier cleanups run, so restoring
+// version.Version never races the handler goroutine that read it.
+func closeBeforeCleanup(t *testing.T, conn *websocket.Conn, repo *fakeRunnerRepo) {
+	t.Helper()
+	t.Cleanup(func() {
+		_ = conn.CloseNow() // closing an already closed conn only reports that it was closed
+		eventually(t, 2*time.Second, func() bool { return repo.connectedCount() == 0 })
 	})
 }
 

@@ -20,6 +20,7 @@ const enrollRetry = time.Second
 
 // errEnrollRefused is a refusal retrying cannot fix: the server read the code and said no.
 var errEnrollRefused = errors.New("enrollment refused")
+var errEnrollCodeEmpty = errors.New("the enrollment code file is still empty")
 
 // EnrollOnFirstStart trades the code in EnrollCodeFile for the runner's credential when it has none yet and writes
 // it to CredentialFile (0600). It is how a dev stack's runner enrolls itself, where no `nexul install` runs; the
@@ -47,12 +48,16 @@ func (c *RunnerConfig) EnrollOnFirstStart(ctx context.Context, hc *http.Client, 
 }
 
 func (c *RunnerConfig) enrollOnce(ctx context.Context, hc *http.Client, version string) (string, error) {
-	code, err := os.ReadFile(c.EnrollCodeFile)
+	data, err := os.ReadFile(c.EnrollCodeFile)
 	if err != nil {
 		return "", err
 	}
+	code := strings.TrimSpace(string(data))
+	if code == "" {
+		return "", errEnrollCodeEmpty
+	}
 	payload, err := json.Marshal(map[string]string{
-		"code": strings.TrimSpace(string(code)), "name": c.Name, "os": runtime.GOOS, "arch": runtime.GOARCH,
+		"code": code, "name": c.Name, "os": runtime.GOOS, "arch": runtime.GOARCH,
 		"version": version, "stack_root": c.StackRoot,
 	})
 	if err != nil {

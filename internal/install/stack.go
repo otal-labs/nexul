@@ -194,10 +194,26 @@ func (h *Host) askPort(label string, def int, prev *installed) (int, error) {
 		}
 		if prev.intEnv("NEXUL_PORT", 0) != port && !h.PortFree(port) {
 			h.printf("  Port %d is already in use.\n", port)
+			def = h.freePortAfter(port, def)
 			continue
 		}
 		return port, nil
 	}
+}
+
+// freePortAfter suggests the next free port once taken is busy, starting at 8080 for a privileged one; fallback
+// stands when nothing nearby is free.
+func (h *Host) freePortAfter(taken, fallback int) int {
+	start := taken + 1
+	if taken < 1024 {
+		start = 8080
+	}
+	for port := start; port < start+100 && port <= 65535; port++ {
+		if h.PortFree(port) {
+			return port
+		}
+	}
+	return fallback
 }
 
 func (h *Host) prompt(label, def string) (string, error) {

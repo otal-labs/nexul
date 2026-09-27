@@ -34,7 +34,7 @@ curl -fsSL https://nexul.io/automations.sh | NEXUL_VERSION=v0.2.1 sh -s -- --ser
 $env:NEXUL_VERSION='v0.2.1'; & ([scriptblock]::Create((irm https://nexul.io/automations.ps1))) --server <instance-url> --name worker-1 --code nxe_…
 ```
 
-Run it on the machine. It installs the host as the `nexul-automations-<name>` service, which trades the code for the host's own credential; it needs no Docker. On Linux the host runs as the `nexul` system user. A machine can run several automations hosts, each with its own name, directory and credential.
+Run it on the machine. It installs the host as the `nexul-automations-<name>` service, which trades the code for the host's own credential; it needs no Docker. On Linux the host runs as the `nexul` system user. A machine can run several automations hosts, each with its own name, directory and credential. Unless you name a machine when adding it, a host is filed under its computer's hostname.
 
 ### Removing an automations host
 

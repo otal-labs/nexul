@@ -269,6 +269,17 @@ func TestHostCreateEnrollment_Refusals(t *testing.T) {
 	}
 }
 
+func TestHostEnroll_WithoutAMachineOnTheCode_UsesTheReportedHostname(t *testing.T) {
+	f := newHostsFixture(t)
+	e, err := f.hosts.CreateEnrollment(adminCtx(), "jobs", "")
+	require.NoError(t, err)
+
+	got, err := f.hosts.Enroll(t.Context(), automations.HostEnrollRequest{Code: e.Code, Name: "jobs", Machine: "box-1"})
+	require.NoError(t, err)
+
+	assert.Equal(t, "box-1", got.Machine)
+}
+
 func TestHostEnroll_RendersCommandsAndFilesUnderMachine(t *testing.T) {
 	f := newHostsFixture(t)
 	e, err := f.hosts.CreateEnrollment(adminCtx(), "jobs", "prod")

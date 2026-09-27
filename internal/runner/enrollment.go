@@ -101,10 +101,7 @@ func (s *Service) Enroll(ctx context.Context, req EnrollRequest) (Enrolled, erro
 	if strings.TrimSpace(req.Name) != code.Name {
 		return Enrolled{}, apperrs.WithCode("name_mismatch", fmt.Errorf("%w: this code enrolls a runner named %s", apperrs.ErrConflict, code.Name))
 	}
-	machine := code.Machine
-	if machine == "" {
-		machine = code.Name
-	}
+	machine := enrolledMachine(code.Machine, req.Machine, code.Name)
 	machineID, err := s.machineFor(ctx, machine, strings.TrimSpace(req.StackRoot), now)
 	if err != nil {
 		return Enrolled{}, err
@@ -214,7 +211,7 @@ func (s *Service) WriteInstanceEnrollment(ctx context.Context) error {
 	if err := os.MkdirAll(s.enrollDir, 0o700); err != nil {
 		return fmt.Errorf("create enroll dir: %w", err)
 	}
-	if err := os.WriteFile(filepath.Join(s.enrollDir, instanceEnrollFile), []byte(code), 0o600); err != nil {
+	if err := hostcred.WriteCodeFile(filepath.Join(s.enrollDir, instanceEnrollFile), code); err != nil {
 		return fmt.Errorf("write instance runner enrollment code: %w", err)
 	}
 	return nil
@@ -226,4 +223,16 @@ func (s *Service) removeInstanceEnrollFile() {
 		return
 	}
 	_ = os.Remove(filepath.Join(s.enrollDir, instanceEnrollFile))
+}
+
+// enrolledMachine picks the code's machine, then the hostname the installer reported, then the runner's own name, so
+// runners installed on one host share its machine unless the code says otherwise.
+func enrolledMachine(onCode, reported, name string) string {
+	if m := strings.TrimSpace(onCode); m != "" {
+		return m
+	}
+	if m := strings.TrimSpace(reported); m != "" {
+		return m
+	}
+	return name
 }

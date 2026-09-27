@@ -69,6 +69,17 @@ describe("loadCredential", () => {
     await expect(loadCredential(config(), fakeDeps([]))).rejects.toThrow("enroll with the code in");
   });
 
+  test("an empty code file is still being written, so it waits instead of sending an empty code", async () => {
+    const cfg = config();
+    writeFileSync(cfg.enrollCodeFile!, "");
+    const deps = fakeDeps([async () => new Response(JSON.stringify({ credential: "nxa_new" }), { status: 201 })], () =>
+      writeFileSync(cfg.enrollCodeFile!, "nxe_abc"),
+    );
+    expect(await loadCredential(cfg, deps)).toBe("nxa_new");
+    expect(deps.bodies).toHaveLength(1);
+    expect((deps.bodies[0] as { code: string }).code).toBe("nxe_abc");
+  });
+
   test("reads an existing credential without enrolling", async () => {
     const cfg = config();
     writeFileSync(cfg.enrollCodeFile as string, "nxe_abc");

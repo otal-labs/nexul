@@ -55,3 +55,10 @@ The host reports its version only when it enrolls, and the release build passes
 no version to `build:binaries`, so the Automations hosts list keeps showing the
 enrollment-time version (or `dev`) after `nexul upgrade`. Stamp the version into
 the compiled binary and report it on each assignments poll.
+
+## An automations host restarts its workers once after they first connect
+
+The host restarts a worker whenever the automation's `updated_at` changes, and
+the first connection itself updates it, so every worker starts twice about one
+poll apart after the host boots. Harmless, but noisy in the logs; compare only
+what a worker is built from (active version, config, token).

@@ -234,6 +234,7 @@ func newTestHost(t *testing.T) *testHost {
 		GOOS:        "linux",
 		GOARCH:      "amd64",
 		Getuid:      func() int { return 0 },
+		Hostname:    func() (string, error) { return "box-1", nil },
 		PortFree:    func(int) bool { return true },
 		LookPath:    func(file string) (string, error) { return "/usr/bin/" + file, nil },
 		Executable:  func() (string, error) { return self, nil },

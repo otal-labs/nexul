@@ -71,6 +71,7 @@ type Host struct {
 	GOOS        string
 	GOARCH      string
 	Getuid      func() int
+	Hostname    func() (string, error)
 	PortFree    func(port int) bool
 	LookPath    func(file string) (string, error)
 	Executable  func() (string, error)
@@ -115,6 +116,7 @@ func NewHost() *Host {
 		GOOS:          runtime.GOOS,
 		GOARCH:        runtime.GOARCH,
 		Getuid:        os.Getuid,
+		Hostname:      os.Hostname,
 		PortFree:      portFree,
 		LookPath:      exec.LookPath,
 		Executable:    os.Executable,

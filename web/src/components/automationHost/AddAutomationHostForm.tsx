@@ -24,7 +24,7 @@ export const AddAutomationHostForm = ({ pending, onSubmit }: AddAutomationHostFo
   return (
     <form onSubmit={submit} className="space-y-4">
       <FormInput control={form.control} name="name" label="Host name" placeholder="e.g. jobs-1" autoFocus />
-      <FormInput control={form.control} name="machine" label="Machine" placeholder="Defaults to the host's name" />
+      <FormInput control={form.control} name="machine" label="Machine" placeholder="Defaults to the computer it runs on" />
       <Button type="submit" disabled={pending}>
         {pending ? "Creating…" : "Create install command"}
       </Button>

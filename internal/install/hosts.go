@@ -83,7 +83,7 @@ func (h *Host) InstallHost(ctx context.Context, o HostOptions) error {
 	if err := h.step(label, func() (string, error) { return h.installHost(ctx, o, tag) }); err != nil {
 		return err
 	}
-	h.printf("\nThe %s %s is running as the %s service.\n", o.Kind, o.Name, unitName(o.Kind, o.Name))
+	h.printf("\nThe %s %s is running as the %s service.\n", hostNoun(o.Kind), o.Name, unitName(o.Kind, o.Name))
 	h.printf("  Remove it      nexul uninstall %s %s\n  Status         nexul status\n", o.Kind, o.Name)
 	return nil
 }
@@ -194,6 +194,9 @@ func (h *Host) enroll(ctx context.Context, server string, o HostOptions, tag str
 	if o.Kind == kindRunner {
 		body["stack_root"] = o.StackRoot
 	}
+	if hostname, err := h.Hostname(); err == nil {
+		body["machine"] = hostname
+	}
 	resp, err := h.postJSON(ctx, server+apiPath(o.Kind)+"/enroll", "", body)
 	if err != nil {
 		return "", fmt.Errorf("enroll with %s: %w", server, err)
@@ -272,7 +275,7 @@ func (h *Host) UninstallHost(ctx context.Context, kind, name string, yes bool) e
 	if u == nil {
 		return missing
 	}
-	h.printf("This removes the %s %s from this machine and from the instance.\n", kind, name)
+	h.printf("This removes the %s %s from this machine and from the instance.\n", hostNoun(kind), name)
 	if err := h.confirm(yes); err != nil {
 		return err
 	}
@@ -280,7 +283,7 @@ func (h *Host) UninstallHost(ctx context.Context, kind, name string, yes bool) e
 	if err := h.step(u.Name, func() (string, error) { return h.removeUnit(ctx, *u) }); err != nil {
 		return err
 	}
-	h.printf("\nThe %s %s is uninstalled.\n", kind, name)
+	h.printf("\nThe %s %s is uninstalled.\n", hostNoun(kind), name)
 	return nil
 }
 
@@ -365,4 +368,12 @@ func (h *Host) writeSudoers(ctx context.Context, name string) error {
 		return fmt.Errorf("install %s: %w", path, err)
 	}
 	return nil
+}
+
+// hostNoun is how the terminal names a kind of host: "automations" alone reads as the automations themselves.
+func hostNoun(kind string) string {
+	if kind == kindAutomations {
+		return "automations host"
+	}
+	return kind
 }

@@ -182,6 +182,28 @@ func TestService_Enroll_CreatesTheRunnerOnItsMachine(t *testing.T) {
 		assert.Equal(t, got.ID, cred.RunnerID)
 	})
 
+	t.Run("the reported hostname files the runner when the code names no machine", func(t *testing.T) {
+		repo := newFakeRunnerRepo()
+		svc := newEnrollService(repo, &fakeDispatch{})
+		code := mustEnrollment(t, svc, "second", "")
+
+		got, err := svc.Enroll(context.Background(), EnrollRequest{Code: code, Name: "second", Machine: " box-1 "})
+		require.NoError(t, err)
+
+		assert.Equal(t, "box-1", got.Machine)
+	})
+
+	t.Run("the code's machine wins over the reported hostname", func(t *testing.T) {
+		repo := newFakeRunnerRepo()
+		svc := newEnrollService(repo, &fakeDispatch{})
+		code := mustEnrollment(t, svc, "second", "prod")
+
+		got, err := svc.Enroll(context.Background(), EnrollRequest{Code: code, Name: "second", Machine: "box-1"})
+		require.NoError(t, err)
+
+		assert.Equal(t, "prod", got.Machine)
+	})
+
 	t.Run("a named machine is joined, keeping its own stack root", func(t *testing.T) {
 		repo := newFakeRunnerRepo()
 		repo.enrolled("r-1", "first", "prod")
