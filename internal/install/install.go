@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/otal-labs/nexul/internal/platform/version"
@@ -339,14 +340,72 @@ func installTag(flagVersion string) (string, error) {
 
 // step prints one aligned progress line: the label, then the step's result or its failure.
 func (h *Host) step(label string, fn func() (string, error)) error {
-	h.printf("  %s %s ", label, strings.Repeat(".", max(2, 16-len(label))))
+	line := fmt.Sprintf("  %s %s ", label, strings.Repeat(".", max(2, 16-len(label))))
+	h.printf("%s", line)
+	stop := h.showElapsed(line)
 	detail, err := fn()
+	stop()
 	if err != nil {
 		h.printf("failed\n")
 		return fmt.Errorf("%s: %w", strings.ToLower(label), err)
 	}
 	h.printf("%s\n", detail)
 	return nil
+}
+
+// elapsed is a running step's line and the time last drawn after it.
+type elapsed struct {
+	line  string
+	shown string
+}
+
+// showElapsed redraws a running step's line every second with its elapsed time, so a slow step (installing Docker)
+// does not look hung. Any other output during the step ends it, so an attached installer's prompt is never overwritten.
+func (h *Host) showElapsed(line string) (stop func()) {
+	if !h.Live {
+		return func() {}
+	}
+	e := &elapsed{line: line}
+	h.outMu.Lock()
+	h.running = e
+	h.outMu.Unlock()
+	start := time.Now()
+	done := make(chan struct{})
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		tick := time.NewTicker(time.Second)
+		defer tick.Stop()
+		for {
+			select {
+			case <-done:
+				return
+			case now := <-tick.C:
+				h.redraw(e, now.Sub(start).Round(time.Second).String())
+			}
+		}
+	})
+	return func() {
+		close(done)
+		wg.Wait()
+		h.redraw(e, "")
+		h.outMu.Lock()
+		if h.running == e {
+			h.running = nil
+		}
+		h.outMu.Unlock()
+	}
+}
+
+// redraw rewrites e's line with shown after it, blanking what was drawn before; it does nothing once e is displaced.
+func (h *Host) redraw(e *elapsed, shown string) {
+	h.outMu.Lock()
+	defer h.outMu.Unlock()
+	if h.running != e || shown == e.shown {
+		return
+	}
+	pad := strings.Repeat(" ", max(0, len(e.shown)-len(shown)))
+	_, _ = fmt.Fprintf(h.Out, "\r%s%s%s\r%s%s", e.line, shown, pad, e.line, shown) // terminal writes have nowhere to report failure
+	e.shown = shown
 }
 
 func (h *Host) printSummary(o Options, tag string, settings map[string]string) {

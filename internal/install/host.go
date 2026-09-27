@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -54,6 +55,8 @@ type Host struct {
 	Out         io.Writer
 	In          *bufio.Reader
 	Interactive bool
+	// Live means Out is a terminal, so a running step can redraw its line with how long it has taken.
+	Live bool
 	// ReleaseURL is the base the release's files are downloaded from; NEXUL_RELEASE_URL overrides it for testing.
 	ReleaseURL string
 	// ReleaseAPI is the GitHub API root the newest release is looked up on; empty means api.github.com.
@@ -87,6 +90,9 @@ type Host struct {
 	PollInterval  time.Duration
 
 	aptUpdated bool
+	// outMu serializes writes to Out; running is the step whose elapsed time is on screen, nil once anything else prints.
+	outMu   sync.Mutex
+	running *elapsed
 	// ctl is where the nexul command was installed, once installSelf has run.
 	ctl string
 }
@@ -104,6 +110,7 @@ func NewHost() *Host {
 		Out:             os.Stdout,
 		In:              bufio.NewReader(os.Stdin),
 		Interactive:     isTerminal(os.Stdin),
+		Live:            isTerminal(os.Stdout),
 		ReleaseURL:      strings.TrimSuffix(releaseURL, "/"),
 		DockerScriptURL: "https://get.docker.com",
 		ComposeURL:      "https://github.com/docker/compose/releases/latest/download",
@@ -180,6 +187,9 @@ func (h *Host) defaultDir() string {
 
 // printf writes to the terminal; a failed terminal write has nowhere to be reported.
 func (h *Host) printf(format string, a ...any) {
+	h.outMu.Lock()
+	defer h.outMu.Unlock()
+	h.running = nil
 	_, _ = fmt.Fprintf(h.Out, format, a...)
 }
 
