@@ -191,6 +191,12 @@ func TestStatus(t *testing.T) {
 		th := newTestHost(t)
 		require.ErrorContains(t, th.Status(t.Context()), "not installed")
 	})
+	t.Run("a non-root user on a server is told to use sudo, not shown a permission error", func(t *testing.T) {
+		th := newTestHost(t)
+		th.installed(t)
+		th.Getuid = func() int { return 1000 }
+		require.ErrorContains(t, th.Status(t.Context()), "run this as root")
+	})
 	t.Run("lists every unit with its kind, state and version", func(t *testing.T) {
 		th := newTestHost(t)
 		dir := th.installed(t)

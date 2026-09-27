@@ -251,6 +251,10 @@ func (h *Host) removeFiles(dir string, purge bool) (string, error) {
 // Status prints every Nexul unit on this machine with its kind, state and version, plus the server install's
 // directory and address when there is one.
 func (h *Host) Status(ctx context.Context) error {
+	// Unit records hold each service's credentials, so on a server only root can read them.
+	if err := h.checkUser(); err != nil {
+		return err
+	}
 	units, err := h.loadUnits()
 	if err != nil {
 		return err
