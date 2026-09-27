@@ -13,7 +13,7 @@ export const InstanceHostNotice = ({ zone, target }: InstanceHostNoticeProps) =>
   const { data: settings } = useFetchSettings();
   const instanceUrl = settings?.instance_url ?? "";
   const name = instanceRecordName(instanceUrl, zone);
-  let host = "";
+  let host: string;
   try {
     host = new URL(instanceUrl).hostname;
   } catch {

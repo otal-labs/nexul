@@ -42,7 +42,7 @@ export const SwimlaneSection = ({ lane, columns, onAddTicket }: SwimlaneSectionP
           onClick={() => toggleLane(lane.key)}
           className="group/lane flex w-full cursor-pointer items-center justify-between gap-2 rounded-sm px-0.5 text-left"
         >
-          <span className="sticky left-0 min-w-0 truncate text-sm font-semibold">{lane.label}</span>
+          <span className="sticky left-0 min-w-0 truncate text-sm font-semibold">{lane.label}</span>{" "}
           <span className="sticky right-0 flex shrink-0 items-center gap-1 font-mono text-xs text-muted-foreground transition-colors group-hover/lane:text-foreground">
             {lane.tickets.length} tickets
             <ChevronDownIcon
