@@ -22,11 +22,14 @@ type Dispatch interface {
 	Queue() []QueuedJob
 	// Discover asks one idle, connected runner on machine to scan its host, blocking up to timeout (spec §8).
 	Discover(ctx context.Context, machine string, timeout time.Duration) (DiscoverReport, error)
+	// Uninstall tells a connected runner to remove itself and drops its connection; a no-op when it is offline.
+	Uninstall(ctx context.Context, runnerID string)
 }
 
 // RunnerStatus pairs a live connection with its running job.
 type RunnerStatus struct {
 	RunnerID   string
+	Name       string
 	RunningJob *RunningJob
 }
 
@@ -35,9 +38,9 @@ type SettingsReader interface {
 	GetInstanceURL(ctx context.Context) (string, error)
 }
 
-// InstallConfig wires the "Add runner" install use-case; the zero value derives the WS URL from the request host.
+// InstallConfig wires the instance URL the install commands carry and the release lookups downloads use.
 type InstallConfig struct {
-	// Settings resolves the instance URL; nil falls back to the request host.
+	// Settings resolves the instance URL; nil leaves it empty.
 	Settings SettingsReader
 	// Release wires the GitHub release lookups behind GET /api/runners/download/{target}
 	// and the runner's own LatestVersion/Download; also shared with the /api/version handler for one cache.
@@ -55,6 +58,8 @@ type Service struct {
 	upgrades UpgradeRepo
 	bus      Publisher
 	admin    identity.InstanceAdmin
+	// enrollDir holds the bundled runner's enrollment code file while it is not enrolled.
+	enrollDir string
 	// now is the clock UpgradeStatus/ResolvePendingUpgrade check the 15-minute timeout against; overridden only
 	// in tests to exercise the expiry without sleeping.
 	now func() time.Time
@@ -270,44 +275,12 @@ func (s *Service) discover(ctx context.Context, machineID string) (string, Disco
 	return m.Name, report, nil
 }
 
-// Install returns the WS URL and shared secret for the "Add runner" flow's copyable install command.
-func (s *Service) Install(ctx context.Context, requestHost string, requestTLS bool) (InstallInfo, error) {
-	instanceURL, err := s.instanceURL(ctx)
-	if err != nil {
-		return InstallInfo{}, fmt.Errorf("get instance url: %w", err)
-	}
-	secret, err := s.repo.Secret(ctx)
-	if err != nil {
-		return InstallInfo{}, fmt.Errorf("get runner secret: %w", err)
-	}
-	wsURL := InstallWSURL(instanceURL, requestHost, requestTLS)
-	downloadURL := InstallDownloadURL(instanceURL, requestHost, requestTLS)
-	return InstallInfo{WSURL: wsURL, Secret: secret, DownloadURL: downloadURL}, nil
-}
-
 // instanceURL reads the configured instance URL, or "" when no Settings reader is wired (local/dev composition).
 func (s *Service) instanceURL(ctx context.Context) (string, error) {
 	if s.install.Settings == nil {
 		return "", nil
 	}
 	return s.install.Settings.GetInstanceURL(ctx)
-}
-
-// InstallWSURL: the instance URL's origin (port included) at /ws/runner, else the request's. The main HTTP listener
-// serves /ws/runner too, so the runner dials the same origin the browser reached, through whatever proxy is in front.
-func InstallWSURL(instanceURL, requestHost string, requestTLS bool) string {
-	if u, err := url.Parse(instanceURL); err == nil && u.Host != "" {
-		scheme := "ws"
-		if u.Scheme == "https" {
-			scheme = "wss"
-		}
-		return scheme + "://" + u.Host + "/ws/runner"
-	}
-	scheme := "ws"
-	if requestTLS {
-		scheme = "wss"
-	}
-	return scheme + "://" + requestHost + "/ws/runner"
 }
 
 // InstallDownloadURL: the instance URL's scheme+host if set (same origin, unlike the WS port), else the request's.
@@ -384,10 +357,10 @@ func (s *Service) canUpgrade(rel *release.Release, relErr error, latest *Upgrade
 	return true, ""
 }
 
-// instanceRunner returns the connected runner's live status, if the bundled instance runner is connected.
+// instanceRunner returns the live status of the connected runner named instance, if there is one.
 func (s *Service) instanceRunner() (RunnerStatus, bool) {
 	for _, r := range s.live.Runners() {
-		if r.RunnerID == instanceRunnerID {
+		if r.Name == instanceRunnerName {
 			return r, true
 		}
 	}
@@ -420,7 +393,7 @@ func (s *Service) resolveOne(ctx context.Context, u *Upgrade) (*Upgrade, error) 
 		return s.transitionUpgrade(ctx, u, UpgradeStatusCompleted, "")
 	}
 	if s.now().Sub(u.UpdatedAt) > upgradeResolveWindow {
-		msg := fmt.Sprintf("instance is still on %s; run journalctl -u nexul-upgrade on the host", version.Version)
+		msg := fmt.Sprintf("instance is still on %s; run nexul upgrade on the host to see why", version.Version)
 		return s.transitionUpgrade(ctx, u, UpgradeStatusFailed, msg)
 	}
 	return u, nil
@@ -454,6 +427,7 @@ func (s *Service) RequestUpgrade(ctx context.Context, actor string) (Upgrade, er
 	if !status.CanUpgrade {
 		return Upgrade{}, &UpgradeBlockedError{Reason: status.Reason}
 	}
+	instance, _ := s.instanceRunner()
 	now := s.now().UTC()
 	u := &Upgrade{
 		ID:          ids.New(),
@@ -461,7 +435,7 @@ func (s *Service) RequestUpgrade(ctx context.Context, actor string) (Upgrade, er
 		ToVersion:   status.Latest.Version,
 		Status:      UpgradeStatusPending,
 		RequestedBy: actor,
-		RunnerID:    instanceRunnerID,
+		RunnerID:    instance.RunnerID,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}

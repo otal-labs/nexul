@@ -28,21 +28,8 @@ func (f fakeUpgradeGate) CanCreateWorkspace(context.Context, string) (bool, erro
 	return f.allow, f.err
 }
 
-// noopRunnerRepo satisfies runner.Repo without touching storage; UpgradeStatus/RequestUpgrade never call it.
-type noopRunnerRepo struct{}
-
-func (noopRunnerRepo) Create(context.Context, *runner.Runner) error { return nil }
-func (noopRunnerRepo) GetByID(context.Context, string) (*runner.Runner, error) {
-	return nil, apperrs.ErrNotFound
-}
-func (noopRunnerRepo) List(context.Context) ([]*runner.Runner, error)     { return nil, nil }
-func (noopRunnerRepo) Heartbeat(context.Context, string, time.Time) error { return nil }
-func (noopRunnerRepo) SetConnected(context.Context, string, bool) error   { return nil }
-func (noopRunnerRepo) SetVersion(context.Context, string, string) error   { return nil }
-func (noopRunnerRepo) SetMachine(context.Context, string, string) error   { return nil }
-func (noopRunnerRepo) Delete(context.Context, string) error               { return nil }
-func (noopRunnerRepo) Secret(context.Context) (string, error)             { return "", nil }
-func (noopRunnerRepo) SetSecret(context.Context, string) error            { return nil }
+// noopRunnerRepo satisfies runner.Repo without storage; UpgradeStatus/RequestUpgrade never call it, so a call panics.
+type noopRunnerRepo struct{ runner.Repo }
 
 // fakeUpgradeDispatch reports a fixed connected-runner view; only Runners() matters to UpgradeStatus.
 type fakeUpgradeDispatch struct {
@@ -54,6 +41,7 @@ func (f fakeUpgradeDispatch) Queue() []runner.QueuedJob      { return nil }
 func (f fakeUpgradeDispatch) Discover(context.Context, string, time.Duration) (runner.DiscoverReport, error) {
 	return runner.DiscoverReport{}, nil
 }
+func (f fakeUpgradeDispatch) Uninstall(context.Context, string) {}
 
 // memUpgradeRepo is an in-memory runner.UpgradeRepo for the HTTP handler tests.
 type memUpgradeRepo struct {
@@ -128,7 +116,7 @@ func newTestUpgradeService(t *testing.T, tag string, connected, admin bool) *run
 	client := release.New(release.Config{APIBase: srv.URL})
 	var runners []runner.RunnerStatus
 	if connected {
-		runners = []runner.RunnerStatus{{RunnerID: "instance"}}
+		runners = []runner.RunnerStatus{{RunnerID: "instance-id", Name: "instance"}}
 	}
 	return runner.NewService(noopRunnerRepo{}, fakeUpgradeDispatch{runners: runners}).
 		WithInstall(runner.InstallConfig{Release: client}).

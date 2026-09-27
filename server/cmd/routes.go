@@ -18,6 +18,7 @@ import (
 	"github.com/otal-labs/nexul/internal/gitprovider"
 	"github.com/otal-labs/nexul/internal/integrations"
 	"github.com/otal-labs/nexul/internal/mcp"
+	"github.com/otal-labs/nexul/internal/mcp/composite"
 	"github.com/otal-labs/nexul/internal/memories"
 	"github.com/otal-labs/nexul/internal/mentions"
 	"github.com/otal-labs/nexul/internal/platform/config"
@@ -144,6 +145,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 		ChangeContext: changeContext,
 		Repository:    svc.repositoryScanner,
 		Runner:        runnerSvc,
+		Hosts:         map[string]composite.HostKind{"runner": runnerHostKind{svc: runnerSvc}},
 		DNS:           svc.dnsSvc,
 		Automations:   svc.automationsSvc,
 		Access:        svc.accessSvc,
@@ -165,8 +167,11 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	httpMux := httpx.NewServeMux()
 	mountGateway(httpMux, "/auth", svc.authHandler.Routes())
 	httpMux.Handle("/auth/connectors/", svc.connectorsHandler.PublicRoutes())
-	// Authenticates with the runner secret, not the browser session — a fresh machine's curl carries no session token.
-	httpMux.Handle("GET /api/runners/download/{target}", runnerHTTP.PublicRoutes())
+	// A machine holds no session: these authenticate with an enrollment code or the runner's own credential.
+	runnerPublic := runnerHTTP.PublicRoutes()
+	httpMux.Handle("GET /api/runners/download/{target}", runnerPublic)
+	httpMux.Handle("POST /api/runners/enroll", runnerPublic)
+	httpMux.Handle("POST /api/runners/self/remove", runnerPublic)
 	// Without this, these fall through to the /api/ catch-all below and 401 before reaching the handler.
 	httpMux.Handle("GET /api/auth/bootstrap-status", svc.authHandler.Routes())
 	httpMux.Handle("POST /api/auth/bootstrap", svc.authHandler.Routes())
@@ -223,7 +228,7 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.SetTagDescription("workspaces", "Workspaces and membership")
 	spec.SetTagDescription("roles", "Workspace roles and permission masks")
 	spec.SetTagDescription("automations", "First-party event-driven automations: identity, config, and scoped tokens")
-	spec.SetTagDescription("runners", "Runner fleet visibility")
+	spec.SetTagDescription("runners", "Runner fleet: enrollment, visibility, and removal")
 	spec.SetTagDescription("machines", "Machines runners belong to, discovery, and import")
 	spec.SetTagDescription("dns", "DNS zones, records, service hostnames, tunnels")
 	spec.SetTagDescription("notifications", "Notification inbox")
@@ -293,8 +298,11 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("POST", "/api/automations/{id}/token", "Rotate an automation's token", "automations")
 	spec.Register("DELETE", "/api/automations/{id}/token", "Revoke an automation's token", "automations")
 	spec.Register("GET", "/api/runners", "List runners", "runners")
-	spec.Register("GET", "/api/runners/install", "Install info for a new runner (WS URL + shared runner secret)", "runners")
-	spec.Register("GET", "/api/runners/download/{target}", "Download the runner binary for a target (runner-secret auth)", "runners")
+	spec.Register("POST", "/api/runners/enrollments", "Instance-admin: mint a one-time runner enrollment code and its install commands", "runners")
+	spec.Register("POST", "/api/runners/enroll", "Trade an enrollment code for the runner's own credential (public)", "runners")
+	spec.Register("DELETE", "/api/runners/{id}", "Instance-admin: remove a runner, revoking its credential", "runners")
+	spec.Register("POST", "/api/runners/self/remove", "Remove the runner whose credential is the bearer token", "runners")
+	spec.Register("GET", "/api/runners/download/{target}", "Download the runner binary for a target (runner credential)", "runners")
 	spec.Register("GET", "/api/runners/latest-version", "Latest published runner version", "runners")
 	spec.Register("GET", "/api/machines", "List machines", "machines")
 	spec.Register("PATCH", "/api/machines/{id}", "Rename a machine or change its stack root", "machines")

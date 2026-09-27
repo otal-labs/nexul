@@ -7,7 +7,25 @@ package sqlcgen
 
 import (
 	"context"
+	"database/sql"
 )
+
+const consumeRunnerEnrollmentCode = `-- name: ConsumeRunnerEnrollmentCode :execrows
+DELETE FROM runner_enrollment_codes WHERE code_hash = ? AND expires_at > ?
+`
+
+type ConsumeRunnerEnrollmentCodeParams struct {
+	CodeHash  string
+	ExpiresAt int64
+}
+
+func (q *Queries) ConsumeRunnerEnrollmentCode(ctx context.Context, arg ConsumeRunnerEnrollmentCodeParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, consumeRunnerEnrollmentCode, arg.CodeHash, arg.ExpiresAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
 
 const createInstanceUpgrade = `-- name: CreateInstanceUpgrade :exec
 INSERT INTO instance_upgrades (id, from_version, to_version, status, error, requested_by, runner_id, created_at, updated_at)
@@ -42,7 +60,7 @@ func (q *Queries) CreateInstanceUpgrade(ctx context.Context, arg CreateInstanceU
 }
 
 const createRunner = `-- name: CreateRunner :exec
-INSERT INTO runners (id, name, version, last_seen, connected, created_at) VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO runners (id, name, version, last_seen, connected, created_at, machine_id) VALUES (?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateRunnerParams struct {
@@ -52,6 +70,7 @@ type CreateRunnerParams struct {
 	LastSeen  int64
 	Connected int64
 	CreatedAt int64
+	MachineID string
 }
 
 func (q *Queries) CreateRunner(ctx context.Context, arg CreateRunnerParams) error {
@@ -62,6 +81,51 @@ func (q *Queries) CreateRunner(ctx context.Context, arg CreateRunnerParams) erro
 		arg.LastSeen,
 		arg.Connected,
 		arg.CreatedAt,
+		arg.MachineID,
+	)
+	return err
+}
+
+const createRunnerCredential = `-- name: CreateRunnerCredential :exec
+INSERT INTO runner_credentials (credential_hash, runner_id, runner_name, created_at) VALUES (?, ?, ?, ?)
+`
+
+type CreateRunnerCredentialParams struct {
+	CredentialHash string
+	RunnerID       string
+	RunnerName     string
+	CreatedAt      int64
+}
+
+func (q *Queries) CreateRunnerCredential(ctx context.Context, arg CreateRunnerCredentialParams) error {
+	_, err := q.db.ExecContext(ctx, createRunnerCredential,
+		arg.CredentialHash,
+		arg.RunnerID,
+		arg.RunnerName,
+		arg.CreatedAt,
+	)
+	return err
+}
+
+const createRunnerEnrollmentCode = `-- name: CreateRunnerEnrollmentCode :exec
+INSERT INTO runner_enrollment_codes (code_hash, name, machine, created_at, expires_at) VALUES (?, ?, ?, ?, ?)
+`
+
+type CreateRunnerEnrollmentCodeParams struct {
+	CodeHash  string
+	Name      string
+	Machine   string
+	CreatedAt int64
+	ExpiresAt int64
+}
+
+func (q *Queries) CreateRunnerEnrollmentCode(ctx context.Context, arg CreateRunnerEnrollmentCodeParams) error {
+	_, err := q.db.ExecContext(ctx, createRunnerEnrollmentCode,
+		arg.CodeHash,
+		arg.Name,
+		arg.Machine,
+		arg.CreatedAt,
+		arg.ExpiresAt,
 	)
 	return err
 }
@@ -139,15 +203,62 @@ func (q *Queries) GetRunner(ctx context.Context, id string) (Runner, error) {
 	return i, err
 }
 
-const getRunnerSecret = `-- name: GetRunnerSecret :one
-SELECT runner_secret FROM instance_settings WHERE id = 1
+const getRunnerByName = `-- name: GetRunnerByName :one
+SELECT id, name, last_seen, connected, created_at, version, machine_id FROM runners WHERE name = ?
 `
 
-func (q *Queries) GetRunnerSecret(ctx context.Context) (string, error) {
-	row := q.db.QueryRowContext(ctx, getRunnerSecret)
-	var runner_secret string
-	err := row.Scan(&runner_secret)
-	return runner_secret, err
+func (q *Queries) GetRunnerByName(ctx context.Context, name string) (Runner, error) {
+	row := q.db.QueryRowContext(ctx, getRunnerByName, name)
+	var i Runner
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.LastSeen,
+		&i.Connected,
+		&i.CreatedAt,
+		&i.Version,
+		&i.MachineID,
+	)
+	return i, err
+}
+
+const getRunnerCredential = `-- name: GetRunnerCredential :one
+SELECT credential_hash, runner_id, runner_name, created_at, revoked_at FROM runner_credentials WHERE credential_hash = ?
+`
+
+func (q *Queries) GetRunnerCredential(ctx context.Context, credentialHash string) (RunnerCredential, error) {
+	row := q.db.QueryRowContext(ctx, getRunnerCredential, credentialHash)
+	var i RunnerCredential
+	err := row.Scan(
+		&i.CredentialHash,
+		&i.RunnerID,
+		&i.RunnerName,
+		&i.CreatedAt,
+		&i.RevokedAt,
+	)
+	return i, err
+}
+
+const getRunnerEnrollmentCode = `-- name: GetRunnerEnrollmentCode :one
+SELECT code_hash, name, machine, created_at, expires_at FROM runner_enrollment_codes WHERE code_hash = ? AND expires_at > ?
+`
+
+type GetRunnerEnrollmentCodeParams struct {
+	CodeHash  string
+	ExpiresAt int64
+}
+
+func (q *Queries) GetRunnerEnrollmentCode(ctx context.Context, arg GetRunnerEnrollmentCodeParams) (RunnerEnrollmentCode, error) {
+	row := q.db.QueryRowContext(ctx, getRunnerEnrollmentCode, arg.CodeHash, arg.ExpiresAt)
+	var i RunnerEnrollmentCode
+	err := row.Scan(
+		&i.CodeHash,
+		&i.Name,
+		&i.Machine,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+	)
+	return i, err
 }
 
 const listRunners = `-- name: ListRunners :many
@@ -222,12 +333,26 @@ func (q *Queries) ListUnresolvedInstanceUpgrades(ctx context.Context) ([]Instanc
 	return items, nil
 }
 
-const seedRunnerSecret = `-- name: SeedRunnerSecret :exec
-UPDATE instance_settings SET runner_secret = ? WHERE id = 1 AND runner_secret = ''
+const pruneRunnerEnrollmentCodes = `-- name: PruneRunnerEnrollmentCodes :exec
+DELETE FROM runner_enrollment_codes WHERE expires_at <= ?
 `
 
-func (q *Queries) SeedRunnerSecret(ctx context.Context, runnerSecret string) error {
-	_, err := q.db.ExecContext(ctx, seedRunnerSecret, runnerSecret)
+func (q *Queries) PruneRunnerEnrollmentCodes(ctx context.Context, expiresAt int64) error {
+	_, err := q.db.ExecContext(ctx, pruneRunnerEnrollmentCodes, expiresAt)
+	return err
+}
+
+const revokeRunnerCredentials = `-- name: RevokeRunnerCredentials :exec
+UPDATE runner_credentials SET revoked_at = ? WHERE runner_id = ? AND revoked_at IS NULL
+`
+
+type RevokeRunnerCredentialsParams struct {
+	RevokedAt sql.NullInt64
+	RunnerID  string
+}
+
+func (q *Queries) RevokeRunnerCredentials(ctx context.Context, arg RevokeRunnerCredentialsParams) error {
+	_, err := q.db.ExecContext(ctx, revokeRunnerCredentials, arg.RevokedAt, arg.RunnerID)
 	return err
 }
 
@@ -253,32 +378,6 @@ func (q *Queries) SetInstanceUpgradeStatus(ctx context.Context, arg SetInstanceU
 		return 0, err
 	}
 	return result.RowsAffected()
-}
-
-const setRunnerMachine = `-- name: SetRunnerMachine :execrows
-UPDATE runners SET machine_id = ? WHERE id = ?
-`
-
-type SetRunnerMachineParams struct {
-	MachineID string
-	ID        string
-}
-
-func (q *Queries) SetRunnerMachine(ctx context.Context, arg SetRunnerMachineParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, setRunnerMachine, arg.MachineID, arg.ID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
-}
-
-const setRunnerSecret = `-- name: SetRunnerSecret :exec
-UPDATE instance_settings SET runner_secret = ? WHERE id = 1
-`
-
-func (q *Queries) SetRunnerSecret(ctx context.Context, runnerSecret string) error {
-	_, err := q.db.ExecContext(ctx, setRunnerSecret, runnerSecret)
-	return err
 }
 
 const setRunnerVersion = `-- name: SetRunnerVersion :execrows

@@ -114,7 +114,7 @@ func (q *Queries) DeleteAccountPairingDefaults(ctx context.Context, userID strin
 }
 
 const getSettings = `-- name: GetSettings :one
-SELECT id, instance_url, settings_version, updated_at, github_oauth_client_id, github_oauth_client_secret, mention_chip_template, google_oauth_client_id, google_oauth_client_secret, discord_oauth_client_id, discord_oauth_client_secret, runner_secret FROM instance_settings WHERE id = 1
+SELECT id, instance_url, settings_version, updated_at, github_oauth_client_id, github_oauth_client_secret, mention_chip_template, google_oauth_client_id, google_oauth_client_secret, discord_oauth_client_id, discord_oauth_client_secret FROM instance_settings WHERE id = 1
 `
 
 func (q *Queries) GetSettings(ctx context.Context) (InstanceSetting, error) {
@@ -132,7 +132,6 @@ func (q *Queries) GetSettings(ctx context.Context) (InstanceSetting, error) {
 		&i.GoogleOauthClientSecret,
 		&i.DiscordOauthClientID,
 		&i.DiscordOauthClientSecret,
-		&i.RunnerSecret,
 	)
 	return i, err
 }

@@ -150,50 +150,8 @@ func TestApplyUpdate(t *testing.T) {
 	})
 }
 
-// inContainer points the container marker at an existing file for the rest of the test.
-func inContainer(t *testing.T) {
-	t.Helper()
-	orig := dockerEnvPath
-	dockerEnvPath = writeExe(t, "")
-	t.Cleanup(func() { dockerEnvPath = orig })
-}
-
-// onHost points the container marker at a path that does not exist, whatever machine the test runs on.
-func onHost(t *testing.T) {
-	t.Helper()
-	orig := dockerEnvPath
-	dockerEnvPath = filepath.Join(t.TempDir(), "missing")
-	t.Cleanup(func() { dockerEnvPath = orig })
-}
-
-func TestIsContainerRunner(t *testing.T) {
-	t.Run("the docker marker file is present", func(t *testing.T) {
-		inContainer(t)
-		assert.True(t, isContainerRunner())
-	})
-
-	t.Run("a host install, including the instance runner", func(t *testing.T) {
-		onHost(t)
-		t.Setenv("NEXUL_RUNNER_ID", "instance")
-		assert.False(t, isContainerRunner())
-	})
-}
-
 func TestClient_handleUpdate(t *testing.T) {
-	t.Run("ignored for a container runner", func(t *testing.T) {
-		inContainer(t)
-		c := newTestClient("ws://server/ws/runner", &fakeExecutor{})
-		c.cfg.Version = "v0.1.6"
-
-		c.handleUpdate(context.Background(), Frame{Type: FrameUpdate, Version: "v0.2.0", URL: "http://unused"})
-
-		c.mu.Lock()
-		defer c.mu.Unlock()
-		assert.Nil(t, c.pendingUpdate)
-	})
-
 	t.Run("ignored for a dev build", func(t *testing.T) {
-		onHost(t)
 		c := newTestClient("ws://server/ws/runner", &fakeExecutor{})
 		c.cfg.Version = "dev"
 
@@ -205,7 +163,6 @@ func TestClient_handleUpdate(t *testing.T) {
 	})
 
 	t.Run("deferred while a job is running, never touching the executable", func(t *testing.T) {
-		onHost(t)
 		c := newTestClient("ws://server/ws/runner", &fakeExecutor{})
 		c.cfg.Version = "v0.1.6"
 		origExeFn := runnerExecutableFn
@@ -233,7 +190,6 @@ func TestClient_handleUpdate(t *testing.T) {
 	})
 
 	t.Run("applied immediately when idle", func(t *testing.T) {
-		onHost(t)
 		body := "new-binary-bytes"
 		sum := sha256.Sum256([]byte(body))
 		sha := hex.EncodeToString(sum[:])

@@ -14,7 +14,7 @@ import (
 
 func newTestRunner(id string) *runner.Runner {
 	now := time.Date(2026, 8, 2, 12, 0, 0, 0, time.UTC)
-	return &runner.Runner{ID: id, Name: "build-box", LastSeen: now, Connected: false, CreatedAt: now}
+	return &runner.Runner{ID: id, Name: "box-" + id, LastSeen: now, Connected: false, CreatedAt: now}
 }
 
 func TestRunnersRepo_GetByID_NotFound(t *testing.T) {
@@ -41,7 +41,7 @@ func TestRunnersRepo_Create_GetByID_RoundTrip(t *testing.T) {
 
 	got, err := s.Runners.GetByID(context.Background(), "r-1")
 	require.NoError(t, err)
-	assert.Equal(t, "build-box", got.Name)
+	assert.Equal(t, "box-r-1", got.Name)
 	assert.False(t, got.Connected)
 	assert.Equal(t, "v0.1.5", got.Version)
 }
@@ -124,66 +124,125 @@ func TestRunnersRepo_SetConnected_CancelledContext_LeavesRowUntouched(t *testing
 	assert.True(t, got.Connected, "a cancelled ctx must not reach the database; this is why the handler detaches it")
 }
 
-func TestRunnersRepo_Delete_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Runners.Delete(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
-func TestRunnersRepo_Delete_RemovesRunner(t *testing.T) {
+func TestRunnersRepo_Create_DuplicateName_Conflict(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
 	require.NoError(t, s.Runners.Create(context.Background(), newTestRunner("r-1")))
-	require.NoError(t, s.Runners.Delete(context.Background(), "r-1"))
+	other := newTestRunner("r-2")
+	other.Name = "box-r-1"
+	require.ErrorIs(t, s.Runners.Create(context.Background(), other), apperrs.ErrConflict)
+}
+
+func TestRunnersRepo_GetByName(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	_, err := s.Runners.GetByName(context.Background(), "box-r-1")
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
+
+	require.NoError(t, s.Runners.Create(context.Background(), newTestRunner("r-1")))
+	got, err := s.Runners.GetByName(context.Background(), "box-r-1")
+	require.NoError(t, err)
+	assert.Equal(t, "r-1", got.ID)
+}
+
+var enrollNow = time.Date(2026, 9, 27, 12, 0, 0, 0, time.UTC)
+
+func mustCreateEnrollment(t *testing.T, s *Store, hash, name string, expiresAt time.Time) {
+	t.Helper()
+	require.NoError(t, s.Runners.CreateEnrollment(context.Background(), &runner.EnrollmentCode{
+		CodeHash: hash, Name: name, Machine: "m", CreatedAt: enrollNow, ExpiresAt: expiresAt,
+	}))
+}
+
+func TestRunnersRepo_GetEnrollment_UnknownOrExpired_NotFound(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	mustCreateEnrollment(t, s, "h-live", "a", enrollNow.Add(time.Hour))
+	mustCreateEnrollment(t, s, "h-old", "b", enrollNow.Add(time.Minute))
+
+	_, err := s.Runners.GetEnrollment(context.Background(), "h-missing", enrollNow)
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
+	_, err = s.Runners.GetEnrollment(context.Background(), "h-old", enrollNow.Add(time.Minute))
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
+
+	got, err := s.Runners.GetEnrollment(context.Background(), "h-live", enrollNow)
+	require.NoError(t, err)
+	assert.Equal(t, runner.EnrollmentCode{CodeHash: "h-live", Name: "a", Machine: "m", CreatedAt: enrollNow, ExpiresAt: enrollNow.Add(time.Hour)}, *got)
+}
+
+func TestRunnersRepo_CreateEnrollment_PrunesExpiredCodes(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	mustCreateEnrollment(t, s, "h-expired", "a", enrollNow.Add(-time.Second))
+	mustCreateEnrollment(t, s, "h-new", "b", enrollNow.Add(time.Hour))
+
+	var n int
+	require.NoError(t, s.db.QueryRow(`SELECT COUNT(*) FROM runner_enrollment_codes`).Scan(&n))
+	assert.Equal(t, 1, n)
+}
+
+func TestRunnersRepo_Enroll_ConsumesCodeOnce(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	mustCreateEnrollment(t, s, "h-1", "box-r-1", enrollNow.Add(time.Hour))
+
+	require.NoError(t, s.Runners.Enroll(context.Background(), "h-1", newTestRunner("r-1"), "cred-hash", enrollNow))
+
+	got, err := s.Runners.GetByName(context.Background(), "box-r-1")
+	require.NoError(t, err)
+	assert.Equal(t, "r-1", got.ID)
+	cred, err := s.Runners.GetCredential(context.Background(), "cred-hash")
+	require.NoError(t, err)
+	assert.Equal(t, runner.Credential{RunnerID: "r-1", RunnerName: "box-r-1", CreatedAt: enrollNow}, *cred)
+
+	err = s.Runners.Enroll(context.Background(), "h-1", newTestRunner("r-2"), "cred-hash-2", enrollNow)
+	require.ErrorIs(t, err, apperrs.ErrNotFound, "a used code is gone")
+}
+
+func TestRunnersRepo_Enroll_ExpiredCode_NotFound(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	mustCreateEnrollment(t, s, "h-1", "box-r-1", enrollNow.Add(time.Minute))
+	err := s.Runners.Enroll(context.Background(), "h-1", newTestRunner("r-1"), "cred-hash", enrollNow.Add(time.Hour))
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
+}
+
+func TestRunnersRepo_Enroll_NameTaken_ConflictAndCodeKept(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	require.NoError(t, s.Runners.Create(context.Background(), newTestRunner("r-1")))
+	mustCreateEnrollment(t, s, "h-1", "box-r-1", enrollNow.Add(time.Hour))
+
+	again := newTestRunner("r-1b")
+	again.Name = "box-r-1"
+	err := s.Runners.Enroll(context.Background(), "h-1", again, "cred-hash", enrollNow)
+	require.ErrorIs(t, err, apperrs.ErrConflict)
+	_, err = s.Runners.GetEnrollment(context.Background(), "h-1", enrollNow)
+	require.NoError(t, err, "the failed enrollment rolls back, leaving the code usable")
+	_, err = s.Runners.GetCredential(context.Background(), "cred-hash")
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
+}
+
+func TestRunnersRepo_Remove_RevokesCredentialAndDeletesRunner(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	mustCreateEnrollment(t, s, "h-1", "box-r-1", enrollNow.Add(time.Hour))
+	require.NoError(t, s.Runners.Enroll(context.Background(), "h-1", newTestRunner("r-1"), "cred-hash", enrollNow))
+
+	require.NoError(t, s.Runners.Remove(context.Background(), "r-1", enrollNow))
+
 	_, err := s.Runners.GetByID(context.Background(), "r-1")
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
+	cred, err := s.Runners.GetCredential(context.Background(), "cred-hash")
+	require.NoError(t, err, "the credential stays as a tombstone")
+	assert.True(t, cred.Revoked)
+
+	require.ErrorIs(t, s.Runners.Remove(context.Background(), "r-1", enrollNow), apperrs.ErrNotFound)
 }
 
-func TestRunnersRepo_Secret_GeneratedOnceAndStable(t *testing.T) {
+func TestRunnersRepo_GetCredential_Unknown_NotFound(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
-	first, err := s.Runners.Secret(context.Background())
-	require.NoError(t, err)
-	assert.NotEmpty(t, first)
-
-	second, err := s.Runners.Secret(context.Background())
-	require.NoError(t, err)
-	assert.Equal(t, first, second, "secret must be generated once and stay stable across calls")
-}
-
-func TestRunnersRepo_SetSecret_ThenSecret_ReturnsSeededValue(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	require.NoError(t, s.Runners.SetSecret(context.Background(), "seeded-secret"))
-
-	got, err := s.Runners.Secret(context.Background())
-	require.NoError(t, err)
-	assert.Equal(t, "seeded-secret", got)
-}
-
-func TestRunnersRepo_SetSecret_Empty_ReturnsValidationError(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Runners.SetSecret(context.Background(), "")
-	require.ErrorIs(t, err, apperrs.ErrInvalid)
-}
-
-func TestRunnersRepo_SetMachine_RoundTrip(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	require.NoError(t, s.Runners.Create(context.Background(), newTestRunner("r-1")))
-
-	require.NoError(t, s.Runners.SetMachine(context.Background(), "r-1", "m-1"))
-
-	got, err := s.Runners.GetByID(context.Background(), "r-1")
-	require.NoError(t, err)
-	assert.Equal(t, "m-1", got.MachineID)
-}
-
-func TestRunnersRepo_SetMachine_UnknownRunner_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	err := s.Runners.SetMachine(context.Background(), "missing", "m-1")
+	_, err := s.Runners.GetCredential(context.Background(), "nope")
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }

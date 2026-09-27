@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"time"
 
@@ -30,20 +29,6 @@ func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *stor
 	// Cloudflare never pushes connector status, so a computer mid-pairing is polled and each change pushed live.
 	go svc.pairingSvc.RunTunnelWatch(ctx)
 
-	// Runners get their own connection secret, never the session-signing auth secret.
-	if cfg.RunnerSecret != "" {
-		if err := store.Runners.SetSecret(ctx, cfg.RunnerSecret); err != nil {
-			fail(fmt.Errorf("seed runner secret: %w", err))
-		}
-	}
-	// Published next to the DB so the compose stack's instance runner picks it up off the shared volume.
-	runnerSecret, err := store.Runners.Secret(ctx)
-	if err != nil {
-		fail(fmt.Errorf("runner secret: %w", err))
-	}
-	if err := os.WriteFile(filepath.Join(filepath.Dir(cfg.DBPath), "runner-secret"), []byte(runnerSecret+"\n"), 0o600); err != nil {
-		fail(fmt.Errorf("publish runner secret: %w", err))
-	}
 	wsHandler = runner.NewHandler(runner.HandlerConfig{
 		Bus:      bus,
 		Repo:     store.Runners,
@@ -65,7 +50,12 @@ func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *stor
 	runnerSvc = runner.NewService(store.Runners, wsHandler).WithMachines(store.Machines).WithManaged(store.Services).WithTunnelDescriber(runnerTunnelDescriberAdapter{dns: svc.dnsSvc}).WithInstall(runner.InstallConfig{
 		Settings: dnsSettingsAdapter{store.Settings},
 		Release:  releaseClient,
-	}).WithUpgrades(store.InstanceUpgrades).WithBus(bus).WithAdminGate(instanceAdminGate{svc: svc.authSvc})
+	}).WithUpgrades(store.InstanceUpgrades).WithBus(bus).WithAdminGate(instanceAdminGate{svc: svc.authSvc}).
+		WithEnrollDir(filepath.Join(filepath.Dir(cfg.DBPath), "enroll"))
+	// `nexul install` enrolls the bundled runner from this file; it goes away once that runner is enrolled.
+	if err := runnerSvc.WriteInstanceEnrollment(ctx); err != nil {
+		fail(fmt.Errorf("write instance runner enrollment: %w", err))
+	}
 	// The update frame needs the same settings reader and release client, only available once runnerSvc exists.
 	wsHandler.SetUpdateSource(dnsSettingsAdapter{store.Settings}, releaseClient)
 	runnerHTTP = runner.NewHTTPHandler(runnerSvc)

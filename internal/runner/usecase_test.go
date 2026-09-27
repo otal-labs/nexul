@@ -16,9 +16,14 @@ import (
 
 // fakeDispatch records the live view for use-case tests.
 type fakeDispatch struct {
-	runners    []RunnerStatus
-	queue      []QueuedJob
-	discoverFn func(ctx context.Context, machine string, timeout time.Duration) (DiscoverReport, error)
+	runners     []RunnerStatus
+	queue       []QueuedJob
+	discoverFn  func(ctx context.Context, machine string, timeout time.Duration) (DiscoverReport, error)
+	uninstalled []string
+}
+
+func (f *fakeDispatch) Uninstall(_ context.Context, runnerID string) {
+	f.uninstalled = append(f.uninstalled, runnerID)
 }
 
 func (f *fakeDispatch) Runners() []RunnerStatus { return f.runners }
@@ -184,7 +189,7 @@ func TestService_UpgradeStatus_ReasonPrecedence(t *testing.T) {
 	t.Run("instance runner is busy", func(t *testing.T) {
 		withVersion(t, "v0.2.0")
 		srv := fakeGitHub(t, "v0.2.1", "x")
-		dispatch := &fakeDispatch{runners: []RunnerStatus{{RunnerID: instanceRunnerID, RunningJob: &RunningJob{ID: "d-1"}}}}
+		dispatch := &fakeDispatch{runners: []RunnerStatus{{RunnerID: "instance-id", Name: instanceRunnerName, RunningJob: &RunningJob{ID: "d-1"}}}}
 		svc := newUpgradeService(srv.URL, newFakeUpgradeRepo(), newFakeBus(), dispatch)
 
 		status, err := svc.UpgradeStatus(asAdmin())
@@ -196,7 +201,7 @@ func TestService_UpgradeStatus_ReasonPrecedence(t *testing.T) {
 	t.Run("can upgrade", func(t *testing.T) {
 		withVersion(t, "v0.2.0")
 		srv := fakeGitHub(t, "v0.2.1", "x")
-		dispatch := &fakeDispatch{runners: []RunnerStatus{{RunnerID: instanceRunnerID}}}
+		dispatch := &fakeDispatch{runners: []RunnerStatus{{RunnerID: "instance-id", Name: instanceRunnerName}}}
 		svc := newUpgradeService(srv.URL, newFakeUpgradeRepo(), newFakeBus(), dispatch)
 
 		status, err := svc.UpgradeStatus(asAdmin())
@@ -232,7 +237,7 @@ func TestService_UpgradeStatus_LazyResolution(t *testing.T) {
 		assert.Len(t, bus.topicEvents(TopicInstanceUpgradeChanged), 1)
 	})
 
-	t.Run("a record stuck past the window fails with the journal hint", func(t *testing.T) {
+	t.Run("a record stuck past the window fails with the host hint", func(t *testing.T) {
 		withVersion(t, "v0.2.0")
 		srv := fakeGitHub(t, "v0.2.1", "x")
 		upgrades := newFakeUpgradeRepo()
@@ -248,7 +253,7 @@ func TestService_UpgradeStatus_LazyResolution(t *testing.T) {
 		require.NotNil(t, status.Upgrade)
 		assert.Equal(t, UpgradeStatusFailed, status.Upgrade.Status)
 		assert.Contains(t, status.Upgrade.Error, "instance is still on v0.2.0")
-		assert.Contains(t, status.Upgrade.Error, "journalctl -u nexul-upgrade")
+		assert.Contains(t, status.Upgrade.Error, "run nexul upgrade on the host")
 	})
 
 	t.Run("a record still within the window stays unresolved", func(t *testing.T) {
@@ -272,7 +277,7 @@ func TestService_UpgradeStatus_LazyResolution(t *testing.T) {
 func TestService_Upgrade_RequiresInstanceAdmin(t *testing.T) {
 	withVersion(t, "v0.2.0")
 	srv := fakeGitHub(t, "v0.2.1", "x")
-	dispatch := &fakeDispatch{runners: []RunnerStatus{{RunnerID: instanceRunnerID}}}
+	dispatch := &fakeDispatch{runners: []RunnerStatus{{RunnerID: "instance-id", Name: instanceRunnerName}}}
 	svc := newUpgradeService(srv.URL, newFakeUpgradeRepo(), newFakeBus(), dispatch)
 	member := identity.WithActor(context.Background(), identity.Actor{ID: "member-1"})
 
@@ -303,7 +308,7 @@ func TestService_RequestUpgrade(t *testing.T) {
 		srv := fakeGitHub(t, "v0.2.1", "x")
 		upgrades := newFakeUpgradeRepo()
 		bus := newFakeBus()
-		dispatch := &fakeDispatch{runners: []RunnerStatus{{RunnerID: instanceRunnerID}}}
+		dispatch := &fakeDispatch{runners: []RunnerStatus{{RunnerID: "instance-id", Name: instanceRunnerName}}}
 		svc := newUpgradeService(srv.URL, upgrades, bus, dispatch)
 
 		got, err := svc.RequestUpgrade(asAdmin(), "user-1")

@@ -45,8 +45,7 @@ func TestClient_startJob_CopiesRunFields(t *testing.T) {
 func newTestClient(srvURL string, exec Executor) *Client {
 	return NewClient(ClientConfig{
 		URL:               srvURL,
-		Token:             "tok",
-		RunnerID:          "r-1",
+		Credential:        "nxr_tok",
 		Name:              "alpha",
 		Logger:            testLogger(),
 		Executor:          exec,
@@ -72,9 +71,8 @@ func TestClient_wsURL(t *testing.T) {
 	u, err := url.Parse(c.wsURL())
 	require.NoError(t, err)
 	q := u.Query()
-	assert.Equal(t, "tok", q.Get("token"))
-	assert.Equal(t, "r-1", q.Get("runner_id"))
-	assert.Equal(t, "alpha", q.Get("name"))
+	assert.False(t, q.Has("token"), "the credential rides the Authorization header, never the URL")
+	assert.False(t, q.Has("runner_id"), "identity comes from the credential's record")
 	assert.Equal(t, "ws", u.Scheme)
 	assert.Empty(t, q.Get("version"), "no version configured means no query param")
 	assert.Equal(t, runtime.GOOS, q.Get("os"))
@@ -87,18 +85,6 @@ func TestClient_wsURL_Version(t *testing.T) {
 	u, err := url.Parse(c.wsURL())
 	require.NoError(t, err)
 	assert.Equal(t, "v0.1.6", u.Query().Get("version"))
-}
-
-func TestClient_wsURL_StackRoot(t *testing.T) {
-	c := newTestClient("ws://server:8080/ws/runner", &fakeExecutor{})
-	u, err := url.Parse(c.wsURL())
-	require.NoError(t, err)
-	assert.False(t, u.Query().Has("stack_root"), "no stack root configured means the server's default")
-
-	c.cfg.StackRoot = "/Users/onik/nexul"
-	u, err = url.Parse(c.wsURL())
-	require.NoError(t, err)
-	assert.Equal(t, "/Users/onik/nexul", u.Query().Get("stack_root"))
 }
 
 func TestClient_SendsHeartbeat(t *testing.T) {
@@ -122,7 +108,6 @@ func TestClient_SendsHeartbeat(t *testing.T) {
 
 	first := <-beats
 	assert.Equal(t, FrameHeartbeat, first.Type)
-	assert.Equal(t, "r-1", first.RunnerID)
 	assert.Positive(t, first.TS)
 
 	<-beats
@@ -455,4 +440,51 @@ func TestClient_ReconnectsAfterDrop(t *testing.T) {
 	}
 	cancel()
 	assert.NoError(t, <-done)
+}
+
+func TestClient_RemovedRunner_UninstallsItselfAndStops(t *testing.T) {
+	t.Run("an uninstall frame from the server", func(t *testing.T) {
+		srv := wsTestServer(t, func(ctx context.Context, conn *websocket.Conn) {
+			_ = wsjson.Write(ctx, conn, Frame{Type: FrameUninstall}) // the client's exit is what the test waits on
+			_, _, _ = conn.Read(ctx)
+		})
+		exec := &fakeExecutor{}
+		_, done := runClient(t, newTestClient(wsURL(srv), exec))
+
+		require.NoError(t, <-done, "a removed runner exits cleanly instead of reconnecting")
+		assert.Equal(t, []string{"alpha"}, exec.uninstalled())
+	})
+
+	t.Run("the server refusing it as removed", func(t *testing.T) {
+		var gotAuth atomic.Value
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			gotAuth.Store(r.Header.Get("Authorization"))
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			_, _ = w.Write([]byte(RemovedRefusal))
+		}))
+		t.Cleanup(srv.Close)
+		exec := &fakeExecutor{}
+		_, done := runClient(t, newTestClient(wsURL(srv), exec))
+
+		require.NoError(t, <-done)
+		assert.Equal(t, []string{"alpha"}, exec.uninstalled())
+		assert.Equal(t, "Bearer nxr_tok", gotAuth.Load())
+	})
+}
+
+func TestClient_UnknownCredential_KeepsRetryingWithoutUninstalling(t *testing.T) {
+	var attempts atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts.Add(1)
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+	}))
+	t.Cleanup(srv.Close)
+	exec := &fakeExecutor{}
+	cancel, done := runClient(t, newTestClient(wsURL(srv), exec))
+
+	require.Eventually(t, func() bool { return attempts.Load() >= 3 }, 2*time.Second, 5*time.Millisecond)
+	cancel()
+	require.NoError(t, <-done)
+	assert.Empty(t, exec.uninstalled(), "only a removal uninstalls; an unknown credential may be a server restored from backup")
 }

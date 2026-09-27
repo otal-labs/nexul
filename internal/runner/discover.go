@@ -423,7 +423,7 @@ func (h *Handler) deliverDiscoverResult(f Frame) {
 func (c *Client) handleDiscover(ctx context.Context, conn *websocket.Conn, f Frame) {
 	report, err := c.cfg.Executor.Discover(ctx)
 	if err != nil {
-		c.log.Warn("discover failed", "runner_id", c.cfg.RunnerID, "id", f.ID, "error", err)
+		c.log.Warn("discover failed", "runner", c.cfg.Name, "id", f.ID, "error", err)
 		c.sendFrame(ctx, conn, Frame{Type: FrameDiscoverResult, ID: f.ID, Error: err.Error()})
 		return
 	}

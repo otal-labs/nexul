@@ -19,8 +19,6 @@ type Config struct {
 	SPAOrigin  string
 	// DevLogin bypasses GitHub OAuth with a fixed local session; must stay unset in production.
 	DevLogin bool
-	// RunnerSecret seeds the stored runner secret at boot; empty generates one on first runner connection.
-	RunnerSecret string
 	// OTLPEndpoint is the OTLP/HTTP base URL logs are shipped to (e.g. http://openobserve:5080/api/default); empty keeps logs on stderr only.
 	OTLPEndpoint string
 	OTLPUser     string
@@ -35,8 +33,6 @@ func Load() (*Config, error) {
 		AuthSecret: os.Getenv("NEXUL_AUTH_SECRET"),
 		SPAOrigin:  envOrDefault("NEXUL_SPA_ORIGIN", ""),
 		DevLogin:   os.Getenv("NEXUL_DEV_LOGIN") == "true",
-
-		RunnerSecret: os.Getenv("NEXUL_RUNNER_SECRET"),
 
 		OTLPEndpoint: os.Getenv("NEXUL_OTLP_ENDPOINT"),
 		OTLPUser:     os.Getenv("NEXUL_OTLP_USER"),

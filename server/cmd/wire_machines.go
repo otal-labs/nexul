@@ -79,3 +79,16 @@ func (a deployMachineDiscovererAdapter) DiscoverContainers(ctx context.Context, 
 	}
 	return out, nil
 }
+
+// runnerHostKind adapts the runner use-cases to the shared host_create and host_delete MCP tools.
+type runnerHostKind struct {
+	svc *runner.Service
+}
+
+func (k runnerHostKind) Enroll(ctx context.Context, name, machine string) (any, error) {
+	return k.svc.CreateEnrollment(ctx, name, machine)
+}
+
+func (k runnerHostKind) Remove(ctx context.Context, id string) error {
+	return k.svc.RemoveRunner(ctx, id)
+}

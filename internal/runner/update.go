@@ -12,25 +12,11 @@ import (
 	"path/filepath"
 )
 
-// dockerEnvPath is the marker file Docker puts in every container; a package var so tests can point it elsewhere.
-var dockerEnvPath = "/.dockerenv"
-
-// isContainerRunner reports whether this runner runs in a container (the dev and e2e stacks): it never swaps its
-// own binary, since rebuilding the image replaces the whole container instead.
-func isContainerRunner() bool {
-	_, err := os.Stat(dockerEnvPath)
-	return err == nil
-}
-
 // handleUpdate applies an update frame immediately when the runner is idle, or defers it until the running
 // job's result frame has been sent (a mid-job binary swap would kill the job).
 func (c *Client) handleUpdate(ctx context.Context, frame Frame) {
-	if isContainerRunner() {
-		c.log.Info("update frame ignored: container runner updates via image pull", "runner_id", c.cfg.RunnerID)
-		return
-	}
 	if c.cfg.Version == "dev" {
-		c.log.Info("update frame ignored: dev build", "runner_id", c.cfg.RunnerID)
+		c.log.Info("update frame ignored: dev build", "runner", c.cfg.Name)
 		return
 	}
 	c.mu.Lock()
@@ -41,7 +27,7 @@ func (c *Client) handleUpdate(ctx context.Context, frame Frame) {
 	}
 	c.mu.Unlock()
 	if busy {
-		c.log.Info("update deferred until the running job finishes", "runner_id", c.cfg.RunnerID, "version", frame.Version)
+		c.log.Info("update deferred until the running job finishes", "runner", c.cfg.Name, "version", frame.Version)
 		return
 	}
 	c.applyUpdateFrame(ctx, frame)
@@ -70,15 +56,15 @@ func (c *Client) jobFinished(ctx context.Context, id string) {
 // leaves the runner exactly as it was, connected and running the old binary.
 func (c *Client) applyUpdateFrame(ctx context.Context, frame Frame) {
 	if frame.Sha256 == "" {
-		c.log.Warn("update has no checksum; skipping verification", "runner_id", c.cfg.RunnerID, "version", frame.Version)
+		c.log.Warn("update has no checksum; skipping verification", "runner", c.cfg.Name, "version", frame.Version)
 	}
 	exe, err := runnerExecutableFn()
 	if err != nil {
-		c.log.Error("update failed: resolve executable", "runner_id", c.cfg.RunnerID, "error", err)
+		c.log.Error("update failed: resolve executable", "runner", c.cfg.Name, "error", err)
 		return
 	}
-	if err := applyUpdate(ctx, frame, c.cfg.Token, exe); err != nil {
-		c.log.Error("update failed", "runner_id", c.cfg.RunnerID, "version", frame.Version, "error", err)
+	if err := applyUpdate(ctx, frame, c.cfg.Credential, exe); err != nil {
+		c.log.Error("update failed", "runner", c.cfg.Name, "version", frame.Version, "error", err)
 		return
 	}
 	// applyUpdate re-execs the process in place on success; reaching this line means it didn't.
@@ -110,12 +96,12 @@ func runnerExecutable() (string, error) {
 // in for exe (via "<exe>.old"), and re-execs the process. A checksum mismatch deletes the partial download and
 // returns an error without touching exe. Split out from the Client so it's testable with an httptest server and
 // a temp-dir exe.
-func applyUpdate(ctx context.Context, frame Frame, token, exe string) (err error) {
+func applyUpdate(ctx context.Context, frame Frame, credential, exe string) (err error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, frame.URL, nil)
 	if err != nil {
 		return fmt.Errorf("build update request: %w", err)
 	}
-	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Authorization", "Bearer "+credential)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("download update: %w", err)

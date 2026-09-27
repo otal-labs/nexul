@@ -24,7 +24,7 @@ and `offset` and return `items`, `total`, `has_more`, and `next_offset`.
 | Memories | `memory_list`, `memory_get`, `memory_create`, `memory_update`, `memory_delete`, `interview_template_get`, `interview_template_update` |
 | Chat and notifications | `conversation_list`, `message_list`, `message_post`, `mention_search`, `notification_list`, `notification_update` |
 | Stacks and deploys | `stack_list`, `stack_get`, `stack_create`, `stack_update`, `stack_delete`, `stack_deploy`, `deploy_list`, `deploy_get`, `deploy_cancel` |
-| Machines and the instance | `machine_list`, `machine_discover`, `machine_import`, `instance_get`, `instance_upgrade` |
+| Machines and the instance | `machine_list`, `machine_discover`, `machine_import`, `host_create`, `host_delete`, `instance_get`, `instance_upgrade` |
 | DNS and routing | `dns_zone_list`, `dns_record_list`, `dns_record_create`, `dns_record_update`, `dns_record_delete`, `dns_tunnel_list`, `dns_tunnel_create`, `dns_tunnel_update`, `dns_tunnel_delete`, `gateway_list`, `gateway_create`, `gateway_delete`, `exposure_list`, `exposure_create`, `exposure_delete` |
 | Topology | `topology_get`, `topology_update` |
 | Repositories and pull requests | `repository_list`, `repository_scan`, `pull_request_list`, `pull_request_get` |

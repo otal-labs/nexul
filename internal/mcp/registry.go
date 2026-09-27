@@ -48,19 +48,21 @@ type RegistryOptions struct {
 	ChangeContext gitprovider.ChangeContextReader
 	Repository    repository.Scanner
 	Runner        *runner.Service
-	DNS           *dns.Service
-	Automations   *automations.Service
-	Access        *access.Service
-	Auth          *auth.Service
-	Invitations   *tenancy.InvitationService
-	Workspaces    *tenancy.Service
-	Mentions      *mentions.Service
-	Chat          *chat.Service
-	Plays         *plays.Service
-	PlayRuns      *plays.Runner
-	Pairing       *pairing.Service
-	DeadLetter    deadletter.Storer
-	Publisher     deadletter.Publisher
+	// Hosts adapts each host kind (runner, automations host) to the shared host_create and host_delete tools.
+	Hosts       map[string]composite.HostKind
+	DNS         *dns.Service
+	Automations *automations.Service
+	Access      *access.Service
+	Auth        *auth.Service
+	Invitations *tenancy.InvitationService
+	Workspaces  *tenancy.Service
+	Mentions    *mentions.Service
+	Chat        *chat.Service
+	Plays       *plays.Service
+	PlayRuns    *plays.Runner
+	Pairing     *pairing.Service
+	DeadLetter  deadletter.Storer
+	Publisher   deadletter.Publisher
 	// InstanceAdmin gates the dead-letter tools, which read and replay every domain's failed events.
 	InstanceAdmin identity.InstanceAdmin
 	// InstanceURL is the configured public URL; a browser request from any other origin is refused.
@@ -93,6 +95,7 @@ func registryTools(opts RegistryOptions) []mcptool.Tool {
 		topology.MCPTools(opts.Topology),
 		deploy.MCPTools(opts.Deploy),
 		runner.MCPTools(opts.Runner),
+		composite.HostTools(opts.Hosts),
 		gitprovider.MCPTools(opts.Git, opts.ChangeContext),
 		repository.MCPTools(opts.Repository),
 		dns.MCPTools(opts.DNS),

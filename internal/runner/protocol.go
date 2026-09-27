@@ -40,6 +40,8 @@ const (
 	FrameAssignUpgrade   FrameType = "assign_upgrade"
 	FrameUpgradeProgress FrameType = "upgrade_progress"
 	FrameUpgradeResult   FrameType = "upgrade_result"
+	// FrameUninstall (server -> runner) says the runner was removed: it uninstalls its own service and exits.
+	FrameUninstall FrameType = "uninstall"
 )
 
 // Build and deploy statuses carried by result frames.
@@ -88,7 +90,6 @@ type Frame struct {
 	StackSlug string `json:"stack_slug,omitempty"`
 	// StackRoot is the machine-wide checkout root; the checkout lives at "<StackRoot>/stacks/<StackSlug>/repo".
 	StackRoot string   `json:"stack_root,omitempty"`
-	RunnerID  string   `json:"runner_id,omitempty"`
 	TS        int64    `json:"ts,omitempty"`
 	Step      int      `json:"step,omitempty"`
 	Total     int      `json:"total,omitempty"`
@@ -141,7 +142,7 @@ type ObservedNetwork struct {
 
 // frameValidators maps each frame type to the check for the fields it requires.
 var frameValidators = map[FrameType]func(*Frame) error{
-	FrameHeartbeat:          (*Frame).validateHeartbeat,
+	FrameHeartbeat:          (*Frame).validateNothing,
 	FrameAssignBuild:        (*Frame).validateAssignBuild,
 	FrameAssignDeploy:       (*Frame).validateAssignDeploy,
 	FrameCancel:             (*Frame).validateCancel,
@@ -158,6 +159,7 @@ var frameValidators = map[FrameType]func(*Frame) error{
 	FrameAssignUpgrade:      (*Frame).validateAssignUpgrade,
 	FrameUpgradeProgress:    (*Frame).validateUpgradeProgress,
 	FrameUpgradeResult:      (*Frame).validateUpgradeResult,
+	FrameUninstall:          (*Frame).validateNothing,
 }
 
 // Validate checks the fields required by the frame's type; unknown types and malformed values return ErrInvalid.
@@ -172,10 +174,8 @@ func (f *Frame) Validate() error {
 	return validate(f)
 }
 
-func (f *Frame) validateHeartbeat() error {
-	if f.RunnerID == "" {
-		return fmt.Errorf("%w: heartbeat requires runner_id", apperrs.ErrInvalid)
-	}
+// validateNothing accepts frames whose type is the whole message: the connection already names the runner.
+func (f *Frame) validateNothing() error {
 	return nil
 }
 
