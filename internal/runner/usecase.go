@@ -58,6 +58,8 @@ type Service struct {
 	upgrades UpgradeRepo
 	bus      Publisher
 	admin    identity.InstanceAdmin
+	// automationsHosts lets machine_list show each machine's automations hosts; nil lists none.
+	automationsHosts AutomationsHostLister
 	// enrollDir holds the bundled runner's enrollment code file while it is not enrolled.
 	enrollDir string
 	// now is the clock UpgradeStatus/ResolvePendingUpgrade check the 15-minute timeout against; overridden only
@@ -85,6 +87,27 @@ func (s *Service) WithInstall(cfg InstallConfig) *Service {
 // WithMachines attaches the machine repo and returns the same Service, for chaining onto NewService.
 func (s *Service) WithMachines(machines MachineRepo) *Service {
 	s.machines = machines
+	return s
+}
+
+// AutomationsHost is an automations host as machine_list files it under its machine.
+type AutomationsHost struct {
+	ID        string
+	Name      string
+	Machine   string
+	Version   string
+	Connected bool
+	LastSeen  time.Time
+}
+
+// AutomationsHostLister is the consumer-side slice of the automations hosts machine_list reads (ADR 0017).
+type AutomationsHostLister interface {
+	ListAutomationsHosts(ctx context.Context) ([]AutomationsHost, error)
+}
+
+// WithAutomationsHosts attaches the automations hosts machine_list shows beside each machine's runners.
+func (s *Service) WithAutomationsHosts(l AutomationsHostLister) *Service {
+	s.automationsHosts = l
 	return s
 }
 

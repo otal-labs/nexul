@@ -37,8 +37,10 @@ type Automation struct {
 	TokenPrefix    string          `json:"token_prefix,omitempty"`
 	TokenHash      string          `json:"-"`
 	TokenRevokedAt *time.Time      `json:"token_revoked_at,omitempty"`
-	CreatedAt      time.Time       `json:"created_at"`
-	UpdatedAt      time.Time       `json:"updated_at"`
+	// HostID is the automations host it runs on; nil means the bundled host named instance.
+	HostID    *string   `json:"host_id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // Validate checks the fields every automation must carry regardless of how it was constructed.

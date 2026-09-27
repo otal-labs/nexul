@@ -48,6 +48,7 @@ type Store struct {
 	PlayTrails            *PlayTrailsRepo
 	DNS                   *DNSRepo
 	Automations           *AutomationsRepo
+	AutomationHosts       *AutomationHostsRepo
 	AutomationVersions    *AutomationVersionsRepo
 	AutomationSecrets     *AutomationSecretsRepo
 	AutomationRuns        *AutomationRunsRepo
@@ -108,6 +109,7 @@ func New(db *sql.DB, encKey []byte) *Store {
 		PlayTrails:            &PlayTrailsRepo{db: db, w: w, q: q},
 		DNS:                   &DNSRepo{db: db, w: w, q: q},
 		Automations:           &AutomationsRepo{db: db, w: w, q: q},
+		AutomationHosts:       &AutomationHostsRepo{db: db, w: w, q: q},
 		AutomationVersions:    &AutomationVersionsRepo{db: db, w: w, q: q},
 		AutomationSecrets:     &AutomationSecretsRepo{db: db, w: w, q: q, encKey: encKey},
 		AutomationRuns:        &AutomationRunsRepo{db: db, w: w, q: q},

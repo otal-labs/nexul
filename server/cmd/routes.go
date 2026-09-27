@@ -98,6 +98,8 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	mountGateway(apiMux, "/api/plays", plays.NewRunHandler(svc.playsRunner).Routes())
 	mountGateway(apiMux, "/api/automations", automations.NewHandler(svc.automationsSvc).WithVersions(svc.automationVersionsSvc).Routes())
 	mountGateway(apiMux, "/api/automation-secrets", automations.NewSecretsHandler(svc.automationSecretsSvc).Routes())
+	automationHostsHTTP := automations.NewHostsHandler(svc.automationHostsSvc)
+	mountGateway(apiMux, "/api/automation-hosts", automationHostsHTTP.Routes())
 	// Registered as exact patterns, more specific than the "/api/automations/" subtree mountGateway claimed above.
 	automationRunsRoutes := automations.NewRunsHandler(svc.automationRunsSvc).Routes()
 	apiMux.Handle("GET /api/automations/{id}/runs", automationRunsRoutes)
@@ -145,7 +147,10 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 		ChangeContext: changeContext,
 		Repository:    svc.repositoryScanner,
 		Runner:        runnerSvc,
-		Hosts:         map[string]composite.HostKind{"runner": runnerHostKind{svc: runnerSvc}},
+		Hosts: map[string]composite.HostKind{
+			"runner":      runnerHostKind{svc: runnerSvc},
+			"automations": automationsHostKind{svc: svc.automationHostsSvc},
+		},
 		DNS:           svc.dnsSvc,
 		Automations:   svc.automationsSvc,
 		Access:        svc.accessSvc,
@@ -172,6 +177,10 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	httpMux.Handle("GET /api/runners/download/{target}", runnerPublic)
 	httpMux.Handle("POST /api/runners/enroll", runnerPublic)
 	httpMux.Handle("POST /api/runners/self/remove", runnerPublic)
+	automationHostsPublic := automationHostsHTTP.PublicRoutes()
+	httpMux.Handle("POST /api/automation-hosts/enroll", automationHostsPublic)
+	httpMux.Handle("POST /api/automation-hosts/self/remove", automationHostsPublic)
+	httpMux.Handle("GET /api/automation-hosts/self/assignments", automationHostsPublic)
 	// Without this, these fall through to the /api/ catch-all below and 401 before reaching the handler.
 	httpMux.Handle("GET /api/auth/bootstrap-status", svc.authHandler.Routes())
 	httpMux.Handle("POST /api/auth/bootstrap", svc.authHandler.Routes())
@@ -230,6 +239,7 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.SetTagDescription("roles", "Workspace roles and permission masks")
 	spec.SetTagDescription("automations", "First-party event-driven automations: identity, config, and scoped tokens")
 	spec.SetTagDescription("runners", "Runner fleet: enrollment, visibility, and removal")
+	spec.SetTagDescription("automation-hosts", "Automations hosts: enrollment, assignments, and removal")
 	spec.SetTagDescription("machines", "Machines runners belong to, discovery, and import")
 	spec.SetTagDescription("dns", "DNS zones, records, service hostnames, tunnels")
 	spec.SetTagDescription("notifications", "Notification inbox")
@@ -298,6 +308,13 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("DELETE", "/api/automations/{id}", "Delete an automation", "automations")
 	spec.Register("POST", "/api/automations/{id}/token", "Rotate an automation's token", "automations")
 	spec.Register("DELETE", "/api/automations/{id}/token", "Revoke an automation's token", "automations")
+	spec.Register("PATCH", "/api/automations/{id}/host", "Place an automation on an automations host (null: the instance host)", "automations")
+	spec.Register("GET", "/api/automation-hosts", "List automations hosts", "automation-hosts")
+	spec.Register("POST", "/api/automation-hosts/enrollments", "Instance-admin: mint a one-time automations host enrollment code and its install commands", "automation-hosts")
+	spec.Register("POST", "/api/automation-hosts/enroll", "Trade an enrollment code for the automations host's own credential (public)", "automation-hosts")
+	spec.Register("DELETE", "/api/automation-hosts/{id}", "Instance-admin: remove an automations host, revoking its credential", "automation-hosts")
+	spec.Register("POST", "/api/automation-hosts/self/remove", "Remove the automations host whose credential is the bearer token", "automation-hosts")
+	spec.Register("GET", "/api/automation-hosts/self/assignments", "The enabled automations placed on the calling host, each with its worker's token (host credential)", "automation-hosts")
 	spec.Register("GET", "/api/runners", "List runners", "runners")
 	spec.Register("POST", "/api/runners/enrollments", "Instance-admin: mint a one-time runner enrollment code and its install commands", "runners")
 	spec.Register("POST", "/api/runners/enroll", "Trade an enrollment code for the runner's own credential (public)", "runners")

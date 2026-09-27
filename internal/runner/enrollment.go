@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 
@@ -14,7 +13,6 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/hostcred"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/ids"
-	"github.com/otal-labs/nexul/internal/platform/version"
 )
 
 const (
@@ -26,8 +24,6 @@ const (
 	// RemovedRefusal is the body a removed runner is refused with, so it uninstalls itself instead of retrying.
 	RemovedRefusal = `{"error":"runner_removed"}`
 )
-
-var runnerNamePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,31}$`)
 
 var (
 	errInvalidCode   = apperrs.WithCode("invalid_code", fmt.Errorf("%w: the enrollment code is unknown, used or expired", apperrs.ErrUnauthorized))
@@ -62,7 +58,7 @@ func (s *Service) CreateEnrollment(ctx context.Context, name, machine string) (E
 
 func (s *Service) mintEnrollment(ctx context.Context, name, machine string, ttl time.Duration) (string, time.Time, error) {
 	name = strings.TrimSpace(name)
-	if !runnerNamePattern.MatchString(name) {
+	if !hostcred.NamePattern.MatchString(name) {
 		return "", time.Time{}, fmt.Errorf("%w: a runner name is 1 to 32 lowercase letters, digits or dashes, starting with a letter or digit", apperrs.ErrInvalid)
 	}
 	_, err := s.repo.GetByName(ctx, name)
@@ -84,18 +80,10 @@ func (s *Service) mintEnrollment(ctx context.Context, name, machine string, ttl 
 	return raw, code.ExpiresAt, nil
 }
 
-// installCommands renders the runner installer one-liners; a release build pins them to its own version.
+// installCommands renders the runner installer one-liners.
 func installCommands(instanceURL, name, code string) InstallCommands {
-	args := fmt.Sprintf("--server %s --name %s --code %s", strings.TrimRight(instanceURL, "/"), name, code)
-	unixPin, windowsPin := "", ""
-	if version.IsRelease() {
-		unixPin = "NEXUL_VERSION=" + version.Version + " "
-		windowsPin = "$env:NEXUL_VERSION='" + version.Version + "'; "
-	}
-	return InstallCommands{
-		Unix:    "curl -fsSL https://nexul.io/runner.sh | " + unixPin + "sh -s -- " + args,
-		Windows: windowsPin + "& ([scriptblock]::Create((irm https://nexul.io/runner.ps1))) " + args,
-	}
+	unix, windows := hostcred.InstallCommands("runner", instanceURL, name, code)
+	return InstallCommands{Unix: unix, Windows: windows}
 }
 
 // Enroll trades a code for the runner's own credential: the runner record is created on its machine and the
