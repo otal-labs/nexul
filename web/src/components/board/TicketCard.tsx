@@ -1,13 +1,13 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { LoaderCircle, MessageSquare } from "lucide-react";
-import { memo, useRef, type CSSProperties } from "react";
+import { memo, useState, type CSSProperties } from "react";
 import { useNavigate } from "react-router";
 
 import { PersonAvatar } from "@/components/PersonAvatar";
 import type { DropTargetData } from "@/components/board/dragMove";
 import { TicketBlockedLine } from "@/components/board/TicketBlockedLine";
 import { labelDotColor, pillClass, ticketTypeColor } from "@/components/board/ticketTypeColor";
-import { ticketTypeIcon } from "@/components/board/ticketTypeIcon";
+import { TicketTypeIcon } from "@/components/board/ticketTypeIcon";
 import { useFetchChatThreadIndicators } from "@/hooks/ChatHooks";
 import { useFetchProject } from "@/hooks/ProjectHooks";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
@@ -45,7 +45,6 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
   const prefix = project?.prefix ?? "";
   const ticketType = ticketTypes?.find((t) => t.id === ticket.type_id);
   const type = ticketType?.name ?? "";
-  const TypeIcon = ticketTypeIcon(type);
   const labels = ticket.labels ?? [];
 
   return (
@@ -71,7 +70,7 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
               data-slot="pill"
               className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium", pillClass(ticketTypeColor(type, ticketType?.color)))}
             >
-              <TypeIcon className="size-3" aria-hidden />
+              <TicketTypeIcon typeName={type} className="size-3" aria-hidden />
               {type}
             </span>
           )}
@@ -108,8 +107,8 @@ const TicketCardImpl = ({ ticket, index = 0 }: TicketCardProps) => {
   });
   const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
   // The ghost remounts in every column it's dragged through; replaying the staggered entrance there reads as lag.
-  const mountedWhileDragging = useRef(isDragging);
-  const entrance = !reduceMotion && !mountedWhileDragging.current;
+  const [mountedWhileDragging] = useState(isDragging);
+  const entrance = !reduceMotion && !mountedWhileDragging;
 
   // Explicit inline animation-* longhands so the mount animation never fights the permanent hover transition.
   const entranceStyle: CSSProperties = !entrance

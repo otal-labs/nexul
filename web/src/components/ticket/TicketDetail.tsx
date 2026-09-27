@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 
 import { DocBodyView } from "@/components/doc/DocBodyView";
@@ -32,7 +32,9 @@ export const TicketDetail = ({ ticket, project, onSave }: TicketDetailProps) => 
   const initialBodyJSON = useRef(JSON.stringify(parseBodyToJSON(ticket.body)));
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onSaveRef = useRef(onSave);
-  onSaveRef.current = onSave;
+  useLayoutEffect(() => {
+    onSaveRef.current = onSave;
+  });
   const reporter = reporterLabel(ticket.reporter);
 
   const flush = async () => {

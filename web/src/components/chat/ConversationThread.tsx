@@ -1,4 +1,4 @@
-import { ArrowLeft, Hash, Users, Volume2 } from "lucide-react";
+import { ArrowLeft, Hash, Users, Volume2, type LucideIcon } from "lucide-react";
 import { Suspense, useCallback, useRef } from "react";
 
 import { ChatComposer } from "@/components/chat/ChatComposer";
@@ -29,11 +29,7 @@ interface ConversationThreadProps {
   showHeader?: boolean;
 }
 
-const conversationIcon = (kind: Conversation["kind"]) => {
-  if (kind === "voice_channel") return Volume2;
-  if (kind === "dm") return Users;
-  return Hash;
-};
+const CONVERSATION_ICONS: Partial<Record<Conversation["kind"], LucideIcon>> = { voice_channel: Volume2, dm: Users };
 
 export const ConversationThread = ({ workspaceId, conversation, onBack, showHeader = true }: ConversationThreadProps) => {
   const { data: me } = useFetchMe();
@@ -60,7 +56,7 @@ export const ConversationThread = ({ workspaceId, conversation, onBack, showHead
     [conversation.id],
   );
 
-  const Icon = conversationIcon(conversation.kind);
+  const Icon = CONVERSATION_ICONS[conversation.kind] ?? Hash;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
