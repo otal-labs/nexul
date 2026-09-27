@@ -8,20 +8,20 @@ import { TunnelDeployWatch } from "@/components/dns/TunnelDeployWatch";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { FormInput } from "@/components/FormInput";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { RunnerPicker } from "@/components/RunnerPicker";
+import { MachinePicker } from "@/components/MachinePicker";
 import { FormSelect } from "@/components/ticket/FormSelect";
 import { Button } from "@/components/ui/button";
 import { useCreateTunnel, useProvisionTunnelAgent } from "@/hooks/DnsHooks";
+import { useFetchMachines } from "@/hooks/MachineHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
-import { useRunners } from "@/hooks/RunnerHooks";
 import { soleItem, type TunnelDeployment } from "@/models/DNS";
 import type { Project } from "@/models/Project";
-import type { Runner } from "@/models/Runner";
+import type { Machine } from "@/models/Machine";
 
 const TunnelDeploySchema = z.object({
   tunnel_name: z.string().trim().min(1, "Tunnel name is required"),
   project_id: z.string().min(1, "Choose a project"),
-  target: z.string().trim().min(1, "Runner is required"),
+  target: z.string().trim().min(1, "Machine is required"),
   docker_network: z.string().trim().min(1, "Docker network is required"),
 });
 
@@ -29,12 +29,12 @@ type TunnelDeployFormData = z.infer<typeof TunnelDeploySchema>;
 
 interface TunnelDeployFieldsProps {
   projects: Project[];
-  runners: Runner[];
+  machines: Machine[];
   onConnected: (deployment: TunnelDeployment) => void;
 }
 
-// Mounted only once the lists are loaded so defaultValues can preselect the sole project and runner.
-const TunnelDeployFields = ({ projects, runners, onConnected }: TunnelDeployFieldsProps) => {
+// Mounted only once the lists are loaded so defaultValues can preselect the sole project and machine.
+const TunnelDeployFields = ({ projects, machines, onConnected }: TunnelDeployFieldsProps) => {
   const createTunnel = useCreateTunnel();
   const provisionAgent = useProvisionTunnelAgent();
   const [pending, setPending] = useState<TunnelDeployment | null>(null);
@@ -42,7 +42,7 @@ const TunnelDeployFields = ({ projects, runners, onConnected }: TunnelDeployFiel
     defaultValues: {
       tunnel_name: "instance",
       project_id: soleItem(projects)?.id ?? "",
-      target: soleItem(runners.filter((r) => r.connected))?.name ?? "",
+      target: soleItem(machines)?.name ?? "",
       docker_network: "nexul_default",
     },
     resolver: zodResolver(TunnelDeploySchema),
@@ -71,7 +71,7 @@ const TunnelDeployFields = ({ projects, runners, onConnected }: TunnelDeployFiel
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
           <FormInput control={form.control} name="tunnel_name" label="Tunnel name" placeholder="instance" />
           <p className="font-mono text-xs text-muted-foreground">
-            cloudflared-{form.watch("tunnel_name") || "instance"} on {form.watch("target") || "runner"}
+            cloudflared-{form.watch("tunnel_name") || "instance"} on {form.watch("target") || "machine"}
           </p>
           <AdvancedFields>
             <FormSelect
@@ -81,7 +81,7 @@ const TunnelDeployFields = ({ projects, runners, onConnected }: TunnelDeployFiel
               placeholder="Choose a project…"
               options={projects.map((p) => ({ value: p.id, label: p.name }))}
             />
-            <RunnerPicker control={form.control} name="target" />
+            <MachinePicker control={form.control} name="target" />
             <FormInput control={form.control} name="docker_network" label="Docker network" placeholder="nexul_default" />
           </AdvancedFields>
           <Button type="submit" className="w-full sm:w-auto" disabled={busy}>
@@ -99,14 +99,14 @@ interface TunnelDeployStepProps {
 
 export const TunnelDeployStep = ({ onConnected }: TunnelDeployStepProps) => {
   const { data: projects, isPending: projectsPending, error: projectsError } = useFetchProjects();
-  const { data: runners, isPending: runnersPending, error: runnersError } = useRunners();
+  const { data: machines, isPending: machinesPending, error: machinesError } = useFetchMachines();
 
   return (
     <>
-      {(projectsPending || runnersPending) && <LoadingDisplay />}
+      {(projectsPending || machinesPending) && <LoadingDisplay />}
       {projectsError && <ErrorDisplay error={projectsError} />}
-      {runnersError && <ErrorDisplay error={runnersError} />}
-      {projects && runners && <TunnelDeployFields projects={projects} runners={runners} onConnected={onConnected} />}
+      {machinesError && <ErrorDisplay error={machinesError} />}
+      {projects && machines && <TunnelDeployFields projects={projects} machines={machines} onConnected={onConnected} />}
     </>
   );
 };

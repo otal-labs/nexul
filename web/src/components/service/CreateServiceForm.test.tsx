@@ -52,15 +52,15 @@ const renderWithRoot = (ui: ReactElement) =>
     </QueryClientProvider>,
   );
 
-const runners = [
-  { id: "r1", name: "instance", connected: true, last_seen: "2026-09-03T00:00:00Z", running_job: null, version: "0.1.0" },
+const machines = [
+  { id: "m1", name: "prod-1", stack_root: "/data/nexul", first_seen: "2026-09-03T00:00:00Z", last_seen: "2026-09-03T00:00:00Z" },
 ];
 
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(api.post).mockResolvedValue({ data: {} });
   vi.mocked(api.get).mockImplementation((url: string) => {
-    if (url === "/api/runners") return Promise.resolve({ data: runners });
+    if (url === "/api/machines") return Promise.resolve({ data: machines });
     return Promise.resolve({ data: [] });
   });
 });
@@ -89,7 +89,7 @@ describe("CreateServiceForm", () => {
 
     await user.click(screen.getByRole("button", { name: "Open" }));
     await user.type(screen.getByLabelText("Name"), "api");
-    await pickOption(user, "Runs on", "instance");
+    await pickOption(user, "Machine", "prod-1");
     await user.type(screen.getByLabelText("Health check URL"), "http://10.0.0.1:8080/health");
     await user.type(screen.getByLabelText("Compose directory"), "/srv/api");
     await user.type(screen.getByLabelText("Image (pre-built)"), "ghcr.io/onik/api:v1");
@@ -119,7 +119,7 @@ describe("CreateServiceForm", () => {
     await user.click(screen.getByRole("button", { name: "Open" }));
     await pickOption(user, "Strategy", "Docker run");
     await user.type(screen.getByLabelText("Name"), "api");
-    await pickOption(user, "Runs on", "instance");
+    await pickOption(user, "Machine", "prod-1");
     await user.type(screen.getByLabelText("Health check URL"), "http://10.0.0.1:8080/health");
     await user.type(screen.getByLabelText("Docker network"), "app-net");
     await user.type(screen.getByLabelText("Repo owner"), "onik97");
@@ -151,7 +151,7 @@ describe("CreateServiceForm", () => {
 
     await user.click(screen.getByRole("button", { name: "Open" }));
     await user.type(screen.getByLabelText("Name"), "api");
-    await pickOption(user, "Runs on", "instance");
+    await pickOption(user, "Machine", "prod-1");
     await user.type(screen.getByLabelText("Health check URL"), "http://10.0.0.1:8080/health");
     await user.type(screen.getByLabelText("Compose directory"), "/srv/api");
     await user.click(screen.getByRole("button", { name: /create & deploy/i }));

@@ -147,7 +147,7 @@ export const CreateGatewayFormSchema = z
     tunnel_id: z.string().trim(),
     server_address: z.string().trim(),
     project_id: z.string().min(1, "Choose a project"),
-    target: z.string().trim().min(1, "Runner is required"),
+    target: z.string().trim().min(1, "Machine is required"),
   })
   .superRefine((val, ctx) => {
     if (val.kind === "tunnel" && !val.tunnel_id) {

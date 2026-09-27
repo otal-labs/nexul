@@ -6,17 +6,17 @@ import { AdvancedFields } from "@/components/dns/AdvancedFields";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { FormInput } from "@/components/FormInput";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { RunnerPicker } from "@/components/RunnerPicker";
+import { MachinePicker } from "@/components/MachinePicker";
 import { InstanceHostNotice } from "@/components/dns/InstanceHostNotice";
 import { FormSelect } from "@/components/ticket/FormSelect";
 import { Button } from "@/components/ui/button";
 import { useFetchSettings } from "@/hooks/AuthHooks";
 import { useCreateInstanceRecord, useFetchDnsZones, useProvisionReverseProxy } from "@/hooks/DnsHooks";
+import { useFetchMachines } from "@/hooks/MachineHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
-import { useRunners } from "@/hooks/RunnerHooks";
 import { instanceRecordName, soleItem, type DnsSetupResult, type Zone } from "@/models/DNS";
 import type { Project } from "@/models/Project";
-import type { Runner } from "@/models/Runner";
+import type { Machine } from "@/models/Machine";
 
 const ProxyEntryPathSchema = z.object({
   zone_id: z.string().min(1, "Choose a zone"),
@@ -24,7 +24,7 @@ const ProxyEntryPathSchema = z.object({
   record_type: z.enum(["A", "AAAA"]),
   server_address: z.string().trim().min(1, "Server address is required"),
   project_id: z.string().min(1, "Choose a project"),
-  target: z.string().trim().min(1, "Runner is required"),
+  target: z.string().trim().min(1, "Machine is required"),
   docker_network: z.string().trim().min(1, "Docker network is required"),
 });
 
@@ -33,12 +33,12 @@ type ProxyEntryPathFormData = z.infer<typeof ProxyEntryPathSchema>;
 interface ProxyEntryPathFieldsProps {
   projects: Project[];
   zones: Zone[];
-  runners: Runner[];
+  machines: Machine[];
   onDone: (result: DnsSetupResult) => void;
 }
 
-// Mounted only once the lists are loaded so defaultValues can preselect the sole zone, project, and runner.
-const ProxyEntryPathFields = ({ projects, zones, runners, onDone }: ProxyEntryPathFieldsProps) => {
+// Mounted only once the lists are loaded so defaultValues can preselect the sole zone, project, and machine.
+const ProxyEntryPathFields = ({ projects, zones, machines, onDone }: ProxyEntryPathFieldsProps) => {
   const provision = useProvisionReverseProxy();
   const createInstanceRecord = useCreateInstanceRecord();
   const { data: settings } = useFetchSettings();
@@ -50,7 +50,7 @@ const ProxyEntryPathFields = ({ projects, zones, runners, onDone }: ProxyEntryPa
       record_type: "A",
       server_address: "",
       project_id: soleItem(projects)?.id ?? "",
-      target: soleItem(runners.filter((r) => r.connected))?.name ?? "",
+      target: soleItem(machines)?.name ?? "",
       docker_network: "nexul_default",
     },
     resolver: zodResolver(ProxyEntryPathSchema),
@@ -121,7 +121,7 @@ const ProxyEntryPathFields = ({ projects, zones, runners, onDone }: ProxyEntryPa
           placeholder="Choose a project…"
           options={projects.map((p) => ({ value: p.id, label: p.name }))}
         />
-        <RunnerPicker control={form.control} name="target" />
+        <MachinePicker control={form.control} name="target" />
         <FormInput control={form.control} name="docker_network" label="Docker network" placeholder="nexul_default" />
       </AdvancedFields>
       <Button type="submit" className="w-full sm:w-auto" disabled={busy || blocked}>
@@ -138,16 +138,16 @@ interface ProxyEntryPathFormProps {
 export const ProxyEntryPathForm = ({ onDone }: ProxyEntryPathFormProps) => {
   const { data: projects, isPending: projectsPending, error: projectsError } = useFetchProjects();
   const { data: zones, isPending: zonesPending, error: zonesError } = useFetchDnsZones(true);
-  const { data: runners, isPending: runnersPending, error: runnersError } = useRunners();
+  const { data: machines, isPending: machinesPending, error: machinesError } = useFetchMachines();
 
   return (
     <>
-      {(projectsPending || zonesPending || runnersPending) && <LoadingDisplay />}
+      {(projectsPending || zonesPending || machinesPending) && <LoadingDisplay />}
       {projectsError && <ErrorDisplay error={projectsError} />}
       {zonesError && <ErrorDisplay error={zonesError} />}
-      {runnersError && <ErrorDisplay error={runnersError} />}
-      {projects && zones && runners && (
-        <ProxyEntryPathFields projects={projects} zones={zones} runners={runners} onDone={onDone} />
+      {machinesError && <ErrorDisplay error={machinesError} />}
+      {projects && zones && machines && (
+        <ProxyEntryPathFields projects={projects} zones={zones} machines={machines} onDone={onDone} />
       )}
     </>
   );

@@ -23,15 +23,15 @@ vi.mock("sonner", () => ({ toast: mocks.toast }));
 
 const projects = [{ id: "p1", name: "Main", created_at: "2026-01-01" }];
 const zones = [{ id: "z1", name: "example.com", status: "active" }];
-const runners = [
-  { id: "r1", name: "instance", connected: true, last_seen: "2026-09-03T00:00:00Z", running_job: null, version: "0.1.0" },
+const machines = [
+  { id: "m1", name: "prod-1", stack_root: "/data/nexul", first_seen: "2026-09-03T00:00:00Z", last_seen: "2026-09-03T00:00:00Z" },
 ];
 
 const mockLists = () =>
   mocks.get.mockImplementation(async (url: string) => {
     if (url === "/api/dns/zones") return { data: zones };
     if (url === "/api/projects") return { data: projects };
-    if (url === "/api/runners") return { data: runners };
+    if (url === "/api/machines") return { data: machines };
     return { data: [] };
   });
 
@@ -95,7 +95,7 @@ describe("DnsSetupStepper", () => {
     mocks.get.mockImplementation(async (url: string) => {
       if (url === "/api/dns/zones") return { data: zones };
       if (url === "/api/projects") return { data: projects };
-      if (url === "/api/runners") return { data: runners };
+      if (url === "/api/machines") return { data: machines };
       if (url === "/api/dns/tunnels/t1/status") return { data: { id: "t1", name: "instance", status: tunnelStatus } };
       if (url === "/api/services/svc-1/deploys") return { data: [{ id: "d1", status: "healthy", created_at: "2026-09-07T10:00:00Z" }] };
       return { data: [] };
@@ -119,7 +119,7 @@ describe("DnsSetupStepper", () => {
     expect(mocks.post).toHaveBeenCalledWith("/api/dns/tunnels", { name: "instance" });
     expect(mocks.post).toHaveBeenCalledWith(
       "/api/dns/tunnels/t1/agent",
-      expect.objectContaining({ project_id: "p1", target: "instance", docker_network: "nexul_default" }),
+      expect.objectContaining({ project_id: "p1", target: "prod-1", docker_network: "nexul_default" }),
     );
     expect(mocks.post).not.toHaveBeenCalledWith("/api/dns/tunnels/t1/route", expect.anything());
 
@@ -145,7 +145,7 @@ describe("DnsSetupStepper", () => {
     mocks.get.mockImplementation(async (url: string) => {
       if (url === "/api/dns/zones") return { data: zones };
       if (url === "/api/projects") return { data: projects };
-      if (url === "/api/runners") return { data: runners };
+      if (url === "/api/machines") return { data: machines };
       if (url === "/api/dns/tunnels/t1/status") return { data: { id: "t1", name: "instance", status: "inactive" } };
       if (url === "/api/services/svc-1/deploys") return { data: [{ id: "d1", status: "failed", created_at: "2026-09-07T10:00:00Z" }] };
       if (url === "/api/deploys/d1/log") return { data: [{ seq: 1, ts: 1, phase: "deploy", text: "pull access denied" }] };
@@ -161,21 +161,21 @@ describe("DnsSetupStepper", () => {
     await choosePath(user, /cloudflare tunnel/i);
     await user.click(await screen.findByRole("button", { name: /deploy tunnel/i }));
 
-    expect(await screen.findByRole("status")).toHaveTextContent(/deploy on instance failed/i);
+    expect(await screen.findByRole("status")).toHaveTextContent(/deploy on prod-1 failed/i);
     expect(screen.getByText("pull access denied")).toBeInTheDocument();
     expect(step(/point your hostname/i)).toHaveAttribute("data-state", "upcoming");
     await user.click(screen.getByRole("button", { name: /try again/i }));
     expect(await screen.findByRole("button", { name: /deploy tunnel/i })).toBeInTheDocument();
   });
 
-  it("reveals the advanced fields on demand with the runner preselected", async () => {
+  it("reveals the advanced fields on demand with the machine preselected", async () => {
     mockLists();
     renderStepper();
     const user = userEvent.setup();
     await choosePath(user, /cloudflare tunnel/i);
 
     await user.click(await screen.findByRole("button", { name: /advanced options/i }));
-    expect(screen.getByRole("combobox", { name: "Runs on" })).toHaveTextContent("instance");
+    expect(screen.getByRole("combobox", { name: "Machine" })).toHaveTextContent("prod-1");
     expect(screen.getByLabelText(/docker network/i)).toHaveValue("nexul_default");
   });
 
@@ -197,7 +197,7 @@ describe("DnsSetupStepper", () => {
     expect(await screen.findByRole("button", { name: /continue to nexul/i })).toBeInTheDocument();
     expect(mocks.post).toHaveBeenCalledWith(
       "/api/dns/reverse-proxy",
-      expect.objectContaining({ project_id: "p1", target: "instance" }),
+      expect.objectContaining({ project_id: "p1", target: "prod-1" }),
     );
     expect(mocks.post).toHaveBeenCalledWith(
       "/api/dns/instance-record",

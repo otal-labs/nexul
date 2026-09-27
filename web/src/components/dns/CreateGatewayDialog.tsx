@@ -5,7 +5,7 @@ import { useForm, type UseFormReturn } from "react-hook-form";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { FormInput } from "@/components/FormInput";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { RunnerPicker } from "@/components/RunnerPicker";
+import { MachinePicker } from "@/components/MachinePicker";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -73,7 +73,7 @@ const CreateGatewayFormFields = ({ form, kind, zones, tunnels, projects }: Creat
         placeholder="Choose a project…"
         options={projects.map((p) => ({ value: p.id, label: p.name }))}
       />
-      <RunnerPicker control={form.control} name="target" />
+      <MachinePicker control={form.control} name="target" />
     </>
   );
 };
