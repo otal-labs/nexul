@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { GitBranchIcon } from "lucide-react";
 import { Link } from "react-router";
 
+import { Fact } from "@/components/Fact";
 import { DeployStatusBadge } from "@/components/service/DeployStatusBadge";
 import { formatRelativeTime } from "@/components/service/DeployTime";
 import { NoFillBadge } from "@/components/ui/badge";
@@ -15,18 +16,6 @@ interface StackHeaderSectionProps {
   image: string | undefined;
   hostnames: string[];
 }
-
-interface FactProps {
-  label: string;
-  children: ReactNode;
-}
-
-const Fact = ({ label, children }: FactProps) => (
-  <div className="min-w-0">
-    <dt className="font-mono text-[11px] font-medium tracking-[0.18em] text-muted-foreground uppercase">{label}</dt>
-    <dd className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm">{children}</dd>
-  </div>
-);
 
 const Mono = ({ children, title }: { children: ReactNode; title?: string }) => (
   <span className="min-w-0 truncate font-mono text-xs" title={title}>
