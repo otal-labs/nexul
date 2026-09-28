@@ -12,7 +12,8 @@ import { useFetchNotifications, useMarkAllNotificationsRead, useMarkNotification
 import { SubjectType, type Notification } from "@/models/Notification";
 
 // A memory has no phone screen yet (ticket 11's scope); its notifications mark read with nothing to open.
-const subjectRoute = (notification: Notification): Href | null => {
+// Exported so a tapped push notification can land on the same screen, without duplicating the mapping.
+export const subjectRoute = (notification: Notification): Href | null => {
   if (notification.subject_type === SubjectType.Ticket) return `/board/ticket/${notification.subject_id}`;
   if (notification.subject_type === SubjectType.Doc) return `/more/docs/${notification.subject_id}`;
   return null;

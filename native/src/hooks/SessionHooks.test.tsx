@@ -4,10 +4,16 @@ import type { ReactNode } from "react";
 
 import { api } from "@/api/client";
 import { useListSessions, useSignOut, useSignOutOtherSessions, useSignOutSession } from "@/hooks/SessionHooks";
+import { clearPushToken } from "@/push/pushToken";
 import { useSessionStore } from "@/stores/sessionStore";
 
 jest.mock("@/api/client", () => ({
   api: { get: jest.fn(), delete: jest.fn() },
+}));
+
+jest.mock("@/push/pushToken", () => ({
+  registerPushToken: jest.fn(async () => undefined),
+  clearPushToken: jest.fn(async () => undefined),
 }));
 
 jest.mock("expo-secure-store", () => {
@@ -36,6 +42,7 @@ const otherDevice = { id: "s-2", client: "browser", platform: "Chrome", label: "
 beforeEach(() => {
   jest.mocked(api.get).mockReset();
   jest.mocked(api.delete).mockReset();
+  jest.mocked(clearPushToken).mockClear();
   useSessionStore.getState().signIn("https://nexul.example.com", "ses_abc");
 });
 
@@ -85,5 +92,17 @@ describe("useSignOut", () => {
     await result.current.mutateAsync();
 
     expect(useSessionStore.getState().signedIn).toBe(false);
+  });
+
+  test("clears the push token while the session can still authenticate, before deleting it", async () => {
+    jest.mocked(api.delete).mockResolvedValue(undefined);
+    const { result } = await renderHook(() => useSignOut(), { wrapper });
+
+    await result.current.mutateAsync();
+
+    expect(clearPushToken).toHaveBeenCalledWith("https://nexul.example.com", "ses_abc");
+    const clearOrder = jest.mocked(clearPushToken).mock.invocationCallOrder[0] ?? Infinity;
+    const deleteOrder = jest.mocked(api.delete).mock.invocationCallOrder[0] ?? Infinity;
+    expect(clearOrder).toBeLessThan(deleteOrder);
   });
 });

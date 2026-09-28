@@ -2,7 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "@/api/client";
 import type { Session } from "@/models/User";
-import { useSessionStore } from "@/stores/sessionStore";
+import { clearPushToken } from "@/push/pushToken";
+import { readSessionToken, useSessionStore } from "@/stores/sessionStore";
 
 export const getSessionsKey = "getSessions";
 
@@ -28,9 +29,14 @@ export const useSignOutOtherSessions = () => {
   });
 };
 
-// Deletes the session server-side first; the local sign-out always follows, since a failed delete still means leaving.
+// Clears the push token while the session can still authenticate, then deletes the session; the local sign-out always follows.
 export const useSignOut = () =>
   useMutation({
-    mutationFn: () => api.delete("/api/auth/sessions/current"),
+    mutationFn: async () => {
+      const { host } = useSessionStore.getState();
+      const token = readSessionToken();
+      if (host && token) await clearPushToken(host, token);
+      return api.delete("/api/auth/sessions/current");
+    },
     onSettled: () => useSessionStore.getState().signOut(),
   });
