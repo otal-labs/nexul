@@ -90,6 +90,13 @@ type SetupCodeStore interface {
 	ClearSetupCodes(ctx context.Context) error
 }
 
+// ConnectCodeStore keeps connect code hashes; Replace leaves the user exactly one code, Consume deletes it and names its user.
+type ConnectCodeStore interface {
+	ReplaceConnectCode(ctx context.Context, userID, hash string, createdAt, expiresAt time.Time) error
+	// ConsumeConnectCode returns the code's user and deletes it; a missing or expired code is ErrNotFound.
+	ConsumeConnectCode(ctx context.Context, hash string, now time.Time) (string, error)
+}
+
 // PATStore persists PATs; only the hash reaches the store; Revoke is user-scoped, a repeat is ErrNotFound.
 type PATStore interface {
 	Create(ctx context.Context, pat *PersonalAccessToken, evts ...eventbus.OutboxEvent) error

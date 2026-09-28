@@ -310,27 +310,29 @@ func (c cloudflareTrace) fetch(ctx context.Context, url string, family func(neti
 	return ""
 }
 
-// ponytail: failed unlocks per address, in memory; a restart forgets them, and rotates the code anyway.
-type unlockLimiter struct {
+// ponytail: failures per address, in memory; a restart forgets them, and rotates the setup code anyway.
+type failureLimiter struct {
 	mu       sync.Mutex
 	failures map[string][]time.Time
+	max      int
+	window   time.Duration
 }
 
-func newUnlockLimiter() *unlockLimiter {
-	return &unlockLimiter{failures: map[string][]time.Time{}}
+func newFailureLimiter(maxFailures int, window time.Duration) *failureLimiter {
+	return &failureLimiter{failures: map[string][]time.Time{}, max: maxFailures, window: window}
 }
 
-func (l *unlockLimiter) blocked(addr string, now time.Time) bool {
+func (l *failureLimiter) blocked(addr string, now time.Time) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	return len(recent(l.failures[addr], now)) >= unlockMaxFailures
+	return len(l.recent(l.failures[addr], now)) >= l.max
 }
 
-func (l *unlockLimiter) fail(addr string, now time.Time) {
+func (l *failureLimiter) fail(addr string, now time.Time) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	for key, times := range l.failures {
-		if kept := recent(times, now); len(kept) > 0 {
+		if kept := l.recent(times, now); len(kept) > 0 {
 			l.failures[key] = kept
 			continue
 		}
@@ -339,10 +341,10 @@ func (l *unlockLimiter) fail(addr string, now time.Time) {
 	l.failures[addr] = append(l.failures[addr], now)
 }
 
-func recent(times []time.Time, now time.Time) []time.Time {
+func (l *failureLimiter) recent(times []time.Time, now time.Time) []time.Time {
 	var kept []time.Time
 	for _, t := range times {
-		if now.Sub(t) < unlockWindow {
+		if now.Sub(t) < l.window {
 			kept = append(kept, t)
 		}
 	}

@@ -156,6 +156,8 @@ type Config struct {
 	// SetupCodes stores the setup code's hash; EnrollDir is where the installer reads the code itself.
 	SetupCodes SetupCodeStore
 	EnrollDir  string
+	// ConnectCodes stores connect code hashes; nil means phones cannot connect (tests without the store).
+	ConnectCodes ConnectCodeStore
 	// Local marks a desktop install, whose instance URL may stay http://localhost.
 	Local bool
 	// PublicAddress is overridable in tests; nil asks Cloudflare's trace endpoint.
@@ -171,7 +173,8 @@ type Service struct {
 	probeClient *http.Client
 	// searchURL is GitHub's user-search endpoint, overridable in tests like HTTPGitHubClient.userURL.
 	searchURL string
-	unlocks   *unlockLimiter
+	unlocks   *failureLimiter
+	exchanges *failureLimiter
 }
 
 // NewService wires the auth use-cases.
@@ -184,7 +187,9 @@ func NewService(cfg Config) *Service {
 	}
 	return &Service{
 		cfg: cfg, httpClient: &http.Client{Timeout: 15 * time.Second}, probeClient: freshdns.New().Client(15 * time.Second),
-		searchURL: githubSearchUsersURL, unlocks: newUnlockLimiter(),
+		searchURL: githubSearchUsersURL,
+		unlocks:   newFailureLimiter(unlockMaxFailures, unlockWindow),
+		exchanges: newFailureLimiter(exchangeMaxFailures, exchangeWindow),
 	}
 }
 

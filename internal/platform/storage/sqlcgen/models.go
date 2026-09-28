@@ -155,6 +155,13 @@ type CollabUpdate struct {
 	CreatedAt int64
 }
 
+type ConnectCode struct {
+	CodeHash  string
+	UserID    string
+	CreatedAt int64
+	ExpiresAt int64
+}
+
 type ConnectorAppConfig struct {
 	ConnectorID  string
 	ClientID     string

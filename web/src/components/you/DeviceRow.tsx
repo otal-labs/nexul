@@ -8,17 +8,26 @@ import { formatRelativeTime } from "@/utils/TimeUtility";
 
 interface DeviceRowProps {
   session: Session;
+  /** A phone that just connected: rises in over 800ms with a glow that fades over 5600ms after an 800ms hold. */
+  arrived?: boolean;
   leaving?: boolean;
   onSignOut?: () => void;
 }
 
-export const DeviceRow = ({ session, leaving = false, onSignOut }: DeviceRowProps) => (
+export const DeviceRow = ({ session, arrived = false, leaving = false, onSignOut }: DeviceRowProps) => (
   <li
     className={cn(
-      "flex items-center gap-3 bg-card px-3 py-3 transition-colors duration-150 ease-standard hover:bg-accent/40",
+      "relative isolate flex items-center gap-3 bg-card px-3 py-3 transition-colors duration-150 ease-standard hover:bg-accent/40",
+      arrived && "animate-in fade-in-0 slide-in-from-top-1 duration-800 ease-out",
       leaving && "animate-out fade-out-0 slide-out-to-top-1 duration-150 ease-standard fill-mode-forwards",
     )}
   >
+    {arrived && (
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10 bg-accent animate-out fade-out-0 delay-800 duration-[5600ms] ease-out fill-mode-forwards motion-reduce:hidden"
+      />
+    )}
     <DeviceIcon session={session} />
     <div className="min-w-0 flex-1">
       <p className="flex min-w-0 items-center gap-2 text-sm font-medium">

@@ -783,3 +783,50 @@ func newTestHarness(gh GitHubClient) (*Service, *fakeUserStore, *fakeAllowlist, 
 func ghUser(id, login string) *GitHubUser {
 	return &GitHubUser{ID: id, Login: login, Name: "Name " + login, AvatarURL: "https://avatar/" + login}
 }
+
+// fakeConnectCodes is an in-memory ConnectCodeStore holding one code per user, like the real one.
+type fakeConnectCodes struct {
+	mu      sync.Mutex
+	byHash  map[string]fakeConnectCode
+	err     error
+	replace int
+}
+
+type fakeConnectCode struct {
+	userID  string
+	expires time.Time
+}
+
+func newFakeConnectCodes() *fakeConnectCodes {
+	return &fakeConnectCodes{byHash: map[string]fakeConnectCode{}}
+}
+
+func (f *fakeConnectCodes) ReplaceConnectCode(_ context.Context, userID, hash string, _, expiresAt time.Time) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.err != nil {
+		return f.err
+	}
+	for h, c := range f.byHash {
+		if c.userID == userID {
+			delete(f.byHash, h)
+		}
+	}
+	f.byHash[hash] = fakeConnectCode{userID: userID, expires: expiresAt}
+	f.replace++
+	return nil
+}
+
+func (f *fakeConnectCodes) ConsumeConnectCode(_ context.Context, hash string, now time.Time) (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.err != nil {
+		return "", f.err
+	}
+	c, ok := f.byHash[hash]
+	if !ok || !now.Before(c.expires) {
+		return "", apperrs.ErrNotFound
+	}
+	delete(f.byHash, hash)
+	return c.userID, nil
+}

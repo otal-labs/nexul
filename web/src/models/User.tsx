@@ -93,6 +93,13 @@ export interface Session {
   current: boolean;
 }
 
+// A fresh phone connect code; `host` is what the QR link names, `code` reads XXXX-XXXX-XXXX.
+export interface ConnectCode {
+  code: string;
+  host: string;
+  expires_at: string;
+}
+
 export interface MintPATResponse {
   token: string;
   id: string;

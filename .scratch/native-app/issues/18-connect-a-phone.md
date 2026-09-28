@@ -1,7 +1,7 @@
 # 18 — Connect a phone
 
 **Type:** implementation
-**Status:** ready-for-agent
+**Status:** done
 **Blocked by:** 15, 17
 **Decided in:** tickets 05, 06
 

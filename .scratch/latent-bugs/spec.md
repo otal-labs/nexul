@@ -5,6 +5,14 @@
 Small defects seen in passing that have no effort of their own. One heading
 each; delete the heading when it is fixed, delete the file when it is empty.
 
+## Live push broadcasts every user's session and token events to every browser
+
+The live hub sends `session.created`, `session.revoked`, and the personal
+access token topics to every connected browser; the web filters on
+`user_id`. Nothing secret travels (no token, no IP), but any signed-in user
+can watch when someone else signs in and on what device. Route these topics
+to the owning user's connections only.
+
 ## The outbox crash-redelivery test is timing-sensitive under the race run
 
 `TestRelay_CrashRedelivery_DedupeEndToEnd` in `internal/platform/eventbus/outbox`
