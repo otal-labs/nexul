@@ -20,6 +20,7 @@ documentation disagree on an API, the documentation wins.
 | Secrets | expo-secure-store | The session token and the instance it belongs to, nothing else; never in a Zustand store |
 | Fonts | expo-font config plugin | Inter and JetBrains Mono embedded at build time, one family each with its weights |
 | Updates | expo-updates | Runtime version policy `appVersion`; `updates.url` comes from the environment at build time |
+| Push | expo-notifications | Registers on sign-in, clears on sign-out; `src/push/` |
 | Tests | jest-expo + React Native Testing Library | `bun run test` |
 | Lint | eslint-config-expo | `bun run lint` |
 
@@ -84,6 +85,18 @@ as written. In particular:
   reconnect. There is no offline cache.
 - One API client for the connected instance; components never call it
   directly, only typed hooks do.
+- Push notifications live in `src/push/`. The root layout requests
+  permission and registers the Expo push token (needs `extra.eas.projectId`,
+  set from `NEXUL_EAS_PROJECT_ID`) once per sign-in; sign-out clears it on
+  the server before the session itself is deleted (`useSignOut` in
+  `SessionHooks.tsx`), not from the session store. A missing project id or a
+  denied permission skips registration and logs once, never nags. Tapping a
+  notification opens the Inbox and pushes to the item its `notification_id`
+  names, the same route the Inbox itself resolves; it never marks anything
+  read. Android's native FCM registration additionally needs
+  `google-services.json`; `app.config.ts` reads its path from
+  `NEXUL_GOOGLE_SERVICES_JSON` and includes it only when the file exists at
+  build time, so a build without the owner's push setup still succeeds.
 
 ## 4. Testing
 
