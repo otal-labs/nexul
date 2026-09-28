@@ -310,6 +310,14 @@ func (s *Service) SetProviderOAuth(ctx context.Context, userID string, provider 
 	}
 	clientID = strings.TrimSpace(clientID)
 	clientSecret = strings.TrimSpace(clientSecret)
+	// Editing an enabled provider's client ID keeps its stored secret, which is never sent back to be re-entered.
+	if clientID != "" && clientSecret == "" {
+		st, err := s.cfg.Settings.Get(ctx)
+		if err != nil {
+			return Settings{}, fmt.Errorf("get settings: %w", err)
+		}
+		_, clientSecret = st.OAuthCredentials(provider)
+	}
 	if (clientID == "") != (clientSecret == "") {
 		return Settings{}, fmt.Errorf("%w: client ID and client secret must be set together (or both empty to disable %s sign-in)", apperrs.ErrInvalid, provider)
 	}
