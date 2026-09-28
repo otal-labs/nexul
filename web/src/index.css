@@ -184,6 +184,13 @@ h3 {
   background: color-mix(in oklab, var(--primary) 26%, transparent);
 }
 
+/* Tailwind v4 defaults a bare `border` to currentColor; the Mono Console hairline is --border. */
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+}
+
 /* Thin, quiet scrollbars (emil: only customise small/simple surfaces). */
 * {
   scrollbar-width: thin;
