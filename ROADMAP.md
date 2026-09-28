@@ -67,6 +67,15 @@ proxy that gets a Let's Encrypt certificate, or the owner's own HTTPS. The
 GitHub App is then connected from the domain, where sign-in works. The server
 installs on port 5123 so the proxy can own 80 and 443.
 
+### Your settings, Devices, and connecting a phone
+
+Settings split by who they affect: your own settings behind a gear in the
+sidebar footer, and workspace and instance configuration in the Workspace
+section. Sessions are stored per device, so Devices lists every signed-in
+browser, desktop app and phone and signs any of them out on its next request.
+Profile links several sign-in accounts to one user, and a phone connects by
+scanning a single-use QR code.
+
 ### The design pass
 
 A monochrome identity — "The Mono Console", light and dark as true inversions
@@ -88,13 +97,9 @@ the public domain exists, security-review the integration model before the
 store accepts third parties, register the Cloudflare OAuth app, and settle the
 canvas node kinds.
 
-Being charted: **the phone app**. Settings split by who they affect (your
-own settings behind a gear in the sidebar footer, workspace and instance
-configuration in the Workspace section), a Devices page that lists every
-signed-in browser, desktop app and phone and signs any of them out, and
-connecting a phone by scanning a QR code. Then an Android app with the pages
-worth having on a phone, updated over the air. The wayfinder map is in
-`.scratch/native-app/`.
+Being charted: **the Android app**, with the pages worth having on a phone,
+signed in by scanning a QR code and updated over the air. The wayfinder map
+is in `.scratch/native-app/`.
 
 Parked until the repository migration lands: **bots**, webhook-driven bots
 that post into any conversation with Discord's payload and get their own tab
