@@ -61,6 +61,7 @@ export interface EventPayloads {
   "memory.deleted": { "id": string; "title": string; "author_id": string; };
   "memory.updated": { "memory": { "id": string; "workspace_id": string; "project_id": string; "kind"?: string; "title": string; "when_to_use"?: string; "always_included"?: boolean; "updated_at"?: string; }; "author_id": string; };
   "notification.created": Record<string, unknown>;
+  "notification.push_requested": { "notifications": { "id": string; "user_id": string; "workspace_id"?: string; }[]; };
   "personal_access_token.minted": { "token_id": string; "user_id": string; "name": string; "computer_id"?: string; };
   "personal_access_token.revoked": { "token_id": string; "user_id": string; "name": string; "computer_id"?: string; };
   "play.created": { "play": { "id": string; "workspace_id": string; "label": string; "type": string; "description"?: string; "instructions"?: string; "enabled"?: boolean; "show_when_stage"?: string | null; "excluded_project_ids"?: string[]; "created_by"?: string; "created_at"?: string; "updated_at"?: string; }; };
@@ -163,6 +164,7 @@ export const TOPICS: Topic[] = [
   "memory.deleted",
   "memory.updated",
   "notification.created",
+  "notification.push_requested",
   "personal_access_token.minted",
   "personal_access_token.revoked",
   "play.created",
@@ -263,6 +265,7 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "memory.deleted": {"id":"fixture-id","title":"fixture-title","author_id":"fixture-author_id"},
   "memory.updated": {"memory":{"id":"fixture-id","workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","kind":"fixture-kind","title":"fixture-title","when_to_use":"fixture-when_to_use","always_included":false,"updated_at":"2026-01-01T00:00:00Z"},"author_id":"fixture-author_id"},
   "notification.created": {},
+  "notification.push_requested": {"notifications":[{"id":"fixture-id","user_id":"fixture-user_id","workspace_id":"fixture-workspace_id"}]},
   "personal_access_token.minted": {"token_id":"fixture-token_id","user_id":"fixture-user_id","name":"fixture-name","computer_id":"fixture-computer_id"},
   "personal_access_token.revoked": {"token_id":"fixture-token_id","user_id":"fixture-user_id","name":"fixture-name","computer_id":"fixture-computer_id"},
   "play.created": {"play":{"id":"fixture-id","workspace_id":"fixture-workspace_id","label":"fixture-label","type":"fixture-type","description":"fixture-description","instructions":"fixture-instructions","enabled":false,"show_when_stage":"fixture-show_when_stage","excluded_project_ids":["fixture-excluded_project_ids"],"created_by":"fixture-created_by","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"}},
