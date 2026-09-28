@@ -5,6 +5,7 @@ import { navLinkClass, sectionLabelClass } from "@/components/SidebarNav";
 import { ProjectNav } from "@/components/sidebar/ProjectNav";
 import { ProjectSwitcher } from "@/components/sidebar/ProjectSwitcher";
 import { useSidebarProject } from "@/hooks/useSidebarProject";
+import { NEW_PROJECT_PATH } from "@/models/Project";
 import { cn } from "@/lib/utils";
 
 interface ProjectSectionProps {
@@ -22,7 +23,7 @@ export const ProjectSection = ({ collapsed }: ProjectSectionProps) => {
       {projects && projects.length === 0 && (
         <button
           type="button"
-          onClick={() => void navigate("/wizard/project/project")}
+          onClick={() => void navigate(NEW_PROJECT_PATH)}
           title={collapsed ? "New project" : undefined}
           className={cn(navLinkClass({ isActive: false }), "w-full", collapsed && "justify-center px-0")}
         >

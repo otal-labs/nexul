@@ -136,7 +136,8 @@ func (s *Service) Import(ctx context.Context, machineID string, req ImportReques
 	}
 	gateways := make([]GatewayAdoption, 0, len(req.Gateways))
 	for _, name := range req.Gateways {
-		stack, err := s.importStack(ctx, req.ProjectID, machineName, name, []string{name}, byName)
+		// A gateway belongs to the instance, not to the project its routes happen to reach (ADR 0079).
+		stack, err := s.importStack(ctx, "", machineName, name, []string{name}, byName)
 		if err != nil {
 			return nil, err
 		}

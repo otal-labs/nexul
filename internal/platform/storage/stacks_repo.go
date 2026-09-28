@@ -86,7 +86,7 @@ func (r *StacksRepo) ListByDerivedFrom(ctx context.Context, baseStackID string) 
 func (r *StacksRepo) Update(ctx context.Context, stack *deploy.Stack, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).UpdateStack(ctx, sqlcgen.UpdateStackParams{
-			ProjectID: stack.ProjectID, Name: stack.Name, Slug: stack.Slug, Machine: stack.Machine,
+			ProjectID: nullStringOrNil(stack.ProjectID), Name: stack.Name, Slug: stack.Slug, Machine: stack.Machine,
 			Strategy: string(stack.Strategy), ComposePath: stack.ComposePath,
 			Env: envJSON(stack.Env), DockerNetwork: stack.DockerNetwork, Ports: portsJSON(stack.Ports), Mounts: portsJSON(stack.Mounts), Command: portsJSON(stack.Command),
 			BuildRepoOwner: buildOwner(stack), BuildRepoName: buildName(stack), BuildBranch: buildBranch(stack), BuildDockerfile: buildDockerfile(stack), BuildComposePath: buildComposePath(stack),
@@ -118,7 +118,7 @@ func (r *StacksRepo) Delete(ctx context.Context, id string, evts ...eventbus.Out
 
 func insertStack(ctx context.Context, q *sqlcgen.Queries, stack *deploy.Stack) error {
 	err := q.CreateStack(ctx, sqlcgen.CreateStackParams{
-		ID: stack.ID, ProjectID: stack.ProjectID, Name: stack.Name, Slug: stack.Slug, Machine: stack.Machine,
+		ID: stack.ID, ProjectID: nullStringOrNil(stack.ProjectID), Name: stack.Name, Slug: stack.Slug, Machine: stack.Machine,
 		Strategy: string(stack.Strategy), ComposePath: stack.ComposePath,
 		Env: envJSON(stack.Env), DockerNetwork: stack.DockerNetwork, Ports: portsJSON(stack.Ports), Mounts: portsJSON(stack.Mounts), Command: portsJSON(stack.Command),
 		BuildRepoOwner: buildOwner(stack), BuildRepoName: buildName(stack), BuildBranch: buildBranch(stack), BuildDockerfile: buildDockerfile(stack), BuildComposePath: buildComposePath(stack),
@@ -134,7 +134,7 @@ func insertStack(ctx context.Context, q *sqlcgen.Queries, stack *deploy.Stack) e
 func toStack(row sqlcgen.Stack) (*deploy.Stack, error) {
 	stack := &deploy.Stack{
 		ID:            row.ID,
-		ProjectID:     row.ProjectID,
+		ProjectID:     row.ProjectID.String,
 		Name:          row.Name,
 		Slug:          row.Slug,
 		Machine:       row.Machine,

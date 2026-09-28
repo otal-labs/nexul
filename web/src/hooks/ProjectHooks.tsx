@@ -69,20 +69,6 @@ export const useRenameProject = () => {
   });
 };
 
-// Backfills a real prefix onto a pre-prefix project; the backend refuses a second call once one is set.
-export const useSetProjectPrefix = () => {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, prefix }: { id: string; prefix: string }) =>
-      (await api.post<Project>(`/api/projects/${id}/prefix`, { prefix })).data,
-    onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: [getProjectsKey] });
-      toast.success("Project prefix set");
-    },
-    onError: (error) => toast.error(errorMessage(error)),
-  });
-};
-
 export const useDeleteProject = () => {
   const client = useQueryClient();
   return useMutation({

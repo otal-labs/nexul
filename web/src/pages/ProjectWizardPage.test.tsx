@@ -74,6 +74,22 @@ describe("ProjectWizardPage", () => {
     expect(rung(/^done$/i)).toHaveAttribute("data-state", "upcoming");
   });
 
+  it("frames the project rung as the first project when the workspace has none", async () => {
+    renderPage("/wizard/project/project");
+    expect(await screen.findByRole("heading", { name: /^create your first project$/i })).toBeInTheDocument();
+  });
+
+  it("titles the project rung New project once the workspace has one", async () => {
+    mocks.get.mockImplementation(async (url: string) => {
+      if (url === "/api/projects") return { data: [project] };
+      return { data: [] };
+    });
+    renderPage("/wizard/project/project");
+    await screen.findByRole("heading", { name: /^project$/i });
+    expect(await screen.findByRole("heading", { name: /^new project$/i })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /first project/i })).not.toBeInTheDocument();
+  });
+
   it("falls back to the furthest rung the store can render when a later step is opened cold", async () => {
     renderPage("/wizard/project/service");
     expect(await screen.findByRole("heading", { name: /^project$/i })).toBeInTheDocument();

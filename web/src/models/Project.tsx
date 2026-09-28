@@ -69,6 +69,9 @@ export const switchProjectPath = (pathname: string, project: Project): string =>
 
 export const projectSettingsPath = (token: string): string => `/projects/${token}/settings`;
 
+// Every way to create a project opens the project wizard; it is the only thing that makes one.
+export const NEW_PROJECT_PATH = "/wizard/project/project";
+
 export const interviewPath = (token: string): string => `/projects/${token}/interview`;
 
 export const docPath = (token: string, docId: string): string => `/docs/${token}/${docId}`;

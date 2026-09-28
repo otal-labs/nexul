@@ -102,7 +102,11 @@ func TestStackValidate(t *testing.T) {
 			s.DockerNetwork = "net1"
 		}, nil},
 		{"empty name", func(s *Stack) { s.Name = "" }, apperrs.ErrInvalid},
-		{"empty project", func(s *Stack) { s.ProjectID = "" }, apperrs.ErrInvalid},
+		{"a repository-built stack without a project", func(s *Stack) {
+			s.ProjectID = ""
+			s.BuildSource = &BuildSource{RepoOwner: "acme", RepoName: "api"}
+		}, apperrs.ErrInvalid},
+		{"an instance stack needs no project", func(s *Stack) { s.ProjectID = "" }, nil},
 		{"empty machine", func(s *Stack) { s.Machine = "" }, apperrs.ErrInvalid},
 		{"run missing docker network", func(s *Stack) { s.Strategy = StrategyRun }, apperrs.ErrInvalid},
 		{"unknown strategy", func(s *Stack) { s.Strategy = "kube" }, apperrs.ErrInvalid},

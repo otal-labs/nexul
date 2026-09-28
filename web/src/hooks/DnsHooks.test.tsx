@@ -74,11 +74,10 @@ describe("DnsHooks tunnel hooks", () => {
   it("useProvisionTunnelAgent posts the agent spec", async () => {
     mocks.post.mockResolvedValue({ data: { service_id: "svc-1" } });
     const { result } = renderHook(() => useProvisionTunnelAgent(), { wrapper });
-    result.current.mutate({ tunnel_id: "t1", project_id: "p1", target: "10.0.0.1", docker_network: "net" });
+    result.current.mutate({ tunnel_id: "t1", target: "10.0.0.1", docker_network: "net" });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(mocks.post).toHaveBeenCalledWith("/api/dns/tunnels/t1/agent", {
       tunnel_id: "t1",
-      project_id: "p1",
       target: "10.0.0.1",
       docker_network: "net",
     });
@@ -87,10 +86,9 @@ describe("DnsHooks tunnel hooks", () => {
   it("useProvisionReverseProxy posts the proxy spec", async () => {
     mocks.post.mockResolvedValue({ data: { service_id: "svc-1" } });
     const { result } = renderHook(() => useProvisionReverseProxy(), { wrapper });
-    result.current.mutate({ project_id: "p1", target: "10.0.0.1", docker_network: "net" });
+    result.current.mutate({ target: "10.0.0.1", docker_network: "net" });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(mocks.post).toHaveBeenCalledWith("/api/dns/reverse-proxy", {
-      project_id: "p1",
       target: "10.0.0.1",
       docker_network: "net",
     });

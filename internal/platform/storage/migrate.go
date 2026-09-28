@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"embed"
 	"errors"
@@ -160,7 +161,25 @@ func migrationApplied(db *sql.DB, version string) (bool, error) {
 }
 
 func applyMigration(db *sql.DB, version, script string) (err error) {
-	tx, err := db.Begin()
+	ctx := context.Background()
+	conn, err := db.Conn(ctx)
+	if err != nil {
+		return fmt.Errorf("connect for migration %s: %w", version, err)
+	}
+	defer func() {
+		err = errors.Join(err, conn.Close())
+	}()
+	// SQLite only honours this outside a transaction; left on, rebuilding a table would cascade its DROP.
+	if _, err := conn.ExecContext(ctx, `PRAGMA foreign_keys = OFF`); err != nil {
+		return fmt.Errorf("disable foreign keys for migration %s: %w", version, err)
+	}
+	defer func() {
+		if _, ferr := conn.ExecContext(ctx, `PRAGMA foreign_keys = ON`); ferr != nil {
+			err = errors.Join(err, fmt.Errorf("re-enable foreign keys after migration %s: %w", version, ferr))
+		}
+	}()
+
+	tx, err := conn.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin migration %s: %w", version, err)
 	}
@@ -174,6 +193,9 @@ func applyMigration(db *sql.DB, version, script string) (err error) {
 	if _, err := tx.Exec(script); err != nil {
 		return fmt.Errorf("exec migration %s: %w", version, err)
 	}
+	if err := checkForeignKeys(tx); err != nil {
+		return fmt.Errorf("migration %s: %w", version, err)
+	}
 	// hand-written: schema_migrations is created here, outside the migrations sqlc reads, so it has no generated query
 	if _, err := tx.Exec(`INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)`, version, time.Now().Unix()); err != nil {
 		return fmt.Errorf("record migration %s: %w", version, err)
@@ -182,4 +204,27 @@ func applyMigration(db *sql.DB, version, script string) (err error) {
 		return fmt.Errorf("commit migration %s: %w", version, err)
 	}
 	return nil
+}
+
+// checkForeignKeys stands in for the enforcement a migration runs without, refusing a commit that leaves a row
+// pointing at nothing.
+func checkForeignKeys(tx *sql.Tx) (err error) {
+	// hand-written: a pragma, which sqlc cannot express
+	rows, err := tx.Query(`PRAGMA foreign_key_check`)
+	if err != nil {
+		return fmt.Errorf("check foreign keys: %w", err)
+	}
+	defer func() {
+		err = errors.Join(err, rows.Close())
+	}()
+	if rows.Next() {
+		var table, parent string
+		var rowID sql.NullInt64
+		var fkID int
+		if err := rows.Scan(&table, &rowID, &parent, &fkID); err != nil {
+			return fmt.Errorf("scan foreign key check: %w", err)
+		}
+		return fmt.Errorf("a row in %s references a missing %s", table, parent)
+	}
+	return rows.Err()
 }

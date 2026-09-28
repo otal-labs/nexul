@@ -43,7 +43,8 @@ export const StackPage = () => {
   const hostnames = (exposures ?? [])
     .filter((e) => !!e.service_id && containerIds.has(e.service_id))
     .map((e) => e.hostname);
-  const projectPath = stack ? projectSettingsPath(projectTokenById(projects, stack.project_id)) : "";
+  // An instance stack (a gateway) has no project; Topology is where it lives.
+  const projectPath = stack?.project_id ? projectSettingsPath(projectTokenById(projects, stack.project_id)) : "/topology";
   const image = latest?.image || imageOf(services?.[0]);
 
   return (

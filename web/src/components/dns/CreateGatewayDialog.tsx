@@ -18,9 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { FormSelect } from "@/components/ticket/FormSelect";
 import { useCreateGateway, useFetchDnsZones, useFetchTunnels } from "@/hooks/DnsHooks";
-import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { CreateGatewayFormSchema, GatewayKinds, type CreateGatewayFormData, type Tunnel, type Zone } from "@/models/DNS";
-import type { Project } from "@/models/Project";
 
 const kindLabel = (kind: (typeof GatewayKinds)[number]) => (kind === "tunnel" ? "Cloudflare tunnel" : "Reverse proxy");
 const KIND_OPTIONS = GatewayKinds.map((kind) => ({ value: kind, label: kindLabel(kind) }));
@@ -30,11 +28,11 @@ interface CreateGatewayFormFieldsProps {
   kind: CreateGatewayFormData["kind"];
   zones: Zone[];
   tunnels: Tunnel[];
-  projects: Project[];
 }
 
 // Kind picks what's provisioned: cloudflared (tunnel, references a dns tunnel) or Traefik (proxy, an address).
-const CreateGatewayFormFields = ({ form, kind, zones, tunnels, projects }: CreateGatewayFormFieldsProps) => {
+// Either way the backing stack belongs to the instance, not to a project.
+const CreateGatewayFormFields = ({ form, kind, zones, tunnels }: CreateGatewayFormFieldsProps) => {
   const zoneName = (id: string) => zones.find((z) => z.id === id)?.name ?? "";
   return (
     <>
@@ -66,13 +64,6 @@ const CreateGatewayFormFields = ({ form, kind, zones, tunnels, projects }: Creat
         options={zones.map((z) => ({ value: z.id, label: z.name }))}
         onChangeValue={(value) => form.setValue("zone", zoneName(value), { shouldValidate: true })}
       />
-      <FormSelect
-        control={form.control}
-        name="project_id"
-        label="Project"
-        placeholder="Choose a project…"
-        options={projects.map((p) => ({ value: p.id, label: p.name }))}
-      />
       <MachinePicker control={form.control} name="target" />
     </>
   );
@@ -80,7 +71,6 @@ const CreateGatewayFormFields = ({ form, kind, zones, tunnels, projects }: Creat
 
 export const CreateGatewayDialog = () => {
   const [open, setOpen] = useState(false);
-  const { data: projects, isPending: projectsPending, error: projectsError } = useFetchProjects();
   const { data: zones, isPending: zonesPending, error: zonesError } = useFetchDnsZones(open);
   const { data: tunnels, isPending: tunnelsPending, error: tunnelsError } = useFetchTunnels(open);
   const createGateway = useCreateGateway();
@@ -93,15 +83,14 @@ export const CreateGatewayDialog = () => {
       zone: "",
       tunnel_id: "",
       server_address: "",
-      project_id: "",
       target: "",
     },
     resolver: zodResolver(CreateGatewayFormSchema),
   });
 
   const kind = form.watch("kind");
-  const loading = projectsPending || zonesPending || tunnelsPending;
-  const loadError = projectsError ?? zonesError ?? tunnelsError;
+  const loading = zonesPending || tunnelsPending;
+  const loadError = zonesError ?? tunnelsError;
 
   const onSubmit = async (data: CreateGatewayFormData) => {
     await createGateway.mutateAsync(data);
@@ -129,9 +118,9 @@ export const CreateGatewayDialog = () => {
         </DialogHeader>
         {loading && <LoadingDisplay />}
         {loadError && <ErrorDisplay error={loadError} />}
-        {projects && zones && tunnels && (
+        {zones && tunnels && (
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <CreateGatewayFormFields form={form} kind={kind} zones={zones} tunnels={tunnels} projects={projects} />
+            <CreateGatewayFormFields form={form} kind={kind} zones={zones} tunnels={tunnels} />
             <DialogFooter>
               <Button type="submit" disabled={createGateway.isPending}>
                 {createGateway.isPending ? "Creating…" : "Create gateway"}

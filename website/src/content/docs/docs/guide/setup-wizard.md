@@ -47,8 +47,10 @@ Until someone has signed in, `/setup` on the domain lets you correct the GitHub 
 The very first person to sign in becomes the workspace owner and lands in a three-step wizard:
 
 1. **Introduce yourself.** Set the name and avatar other members will see, or keep the GitHub defaults.
-2. **Set up your workspace.** Name the workspace and its default project (and the project's ticket prefix).
+2. **Set up your workspace.** Name the workspace. That's all: a workspace starts with no project.
 3. **Connect your tools.** The same connectors list as Settings. Cloudflare already shows as connected if you took the tunnel path.
+
+Finishing opens the [project wizard](/docs/guide/projects-and-repositories/#creating-a-project) to create your first project. The tunnel or reverse proxy set up in step 2 belongs to the instance, not to a project, so it's already running before any project exists.
 
 ## 6. Everyone else: first-login wizard
 
@@ -56,4 +58,4 @@ Teammates who sign in after the owner don't see the workspace setup, because the
 
 ## Next step
 
-Once the owner wizard finishes, connect your first repository from the project wizard. See [Projects and repositories](/docs/guide/projects-and-repositories/) and [Stacks and deploys](/docs/guide/stacks-and-deploys/).
+The project wizard takes your first project from a name to a deployed service. See [Projects and repositories](/docs/guide/projects-and-repositories/) and [Stacks and deploys](/docs/guide/stacks-and-deploys/).

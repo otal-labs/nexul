@@ -3,7 +3,7 @@ import { Navigate, useParams, useSearchParams } from "react-router";
 
 import { WizardLayout } from "@/components/auth/WizardLayout";
 import { ProjectWizardStepper, WizardSteps, type WizardStepId } from "@/components/wizard/ProjectWizardStepper";
-import { useFetchProject } from "@/hooks/ProjectHooks";
+import { useFetchProject, useFetchProjects } from "@/hooks/ProjectHooks";
 import { useFetchStack } from "@/hooks/StackHooks";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
 
@@ -61,10 +61,17 @@ const furthestStep = (hasProjectParam: boolean, hasStackParam: boolean): WizardS
   return "project";
 };
 
-const wizardTitle = (isAttach: boolean, projectPreselected: boolean): string => {
+const wizardTitle = (isAttach: boolean, projectPreselected: boolean, firstProject: boolean): string => {
   if (isAttach) return "Attach a repository";
   if (projectPreselected) return "Add a service";
+  if (firstProject) return "Create your first project";
   return "New project";
+};
+
+const wizardSubtitle = (isAttach: boolean, firstProject: boolean): string => {
+  if (isAttach) return "Point this stack at a repository so Nexul can build and deploy it.";
+  if (firstProject) return "Tickets, docs, and deploys all live in a project. Name it, then point Nexul at its repository.";
+  return "Point Nexul at a repository and it takes care of the rest.";
 };
 
 // An unknown step goes to the first one; a step past the furthest reachable one goes back to that one.
@@ -83,12 +90,12 @@ export const ProjectWizardPage = () => {
   useSeedAttachStack();
   const projectPreselected = useProjectWizardStore((s) => s.projectPreselected);
   const isAttach = searchParams.has("stack");
+  const { data: projects } = useFetchProjects();
+  const firstProject = step === "project" && projects?.length === 0;
 
   const redirectTo = wizardRedirect(step, searchParams, isAttach);
-  const title = wizardTitle(isAttach, projectPreselected);
-  const subtitle = isAttach
-    ? "Point this stack at a repository so Nexul can build and deploy it."
-    : "Point Nexul at a repository and it takes care of the rest.";
+  const title = wizardTitle(isAttach, projectPreselected, firstProject);
+  const subtitle = wizardSubtitle(isAttach, firstProject);
 
   return (
     <>

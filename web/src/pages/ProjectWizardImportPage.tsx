@@ -15,6 +15,7 @@ import { useDiscoverMachine, useFetchMachines, useImportMachine } from "@/hooks/
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { useImportSelection } from "@/hooks/useImportSelection";
 import type { GroupedDiscovery, ImportResult } from "@/models/Machine";
+import { NEW_PROJECT_PATH } from "@/models/Project";
 
 // Door 3 (spec §1/§8): pick a machine, discover what's already running on it, adopt the selection as unmanaged
 // stacks. A single self-contained page, not a rail — there's no "later step" that depends on an earlier one
@@ -131,6 +132,15 @@ export const ProjectWizardImportPage = () => {
                 {doImport.isPending ? "Importing…" : "Import"}
               </Button>
             </div>
+            {projects && projects.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                Adopted stacks belong to a project.{" "}
+                <Link to={NEW_PROJECT_PATH} className="text-foreground underline underline-offset-2">
+                  Create a project
+                </Link>{" "}
+                first.
+              </p>
+            )}
           </div>
         )}
         {result && (

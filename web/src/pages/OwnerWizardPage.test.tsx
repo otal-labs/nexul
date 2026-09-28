@@ -11,9 +11,7 @@ import { useOwnerWizardStore } from "@/stores/ownerWizardStore";
 const mocks = vi.hoisted(() => ({
   useFetchSettings: vi.fn(),
   completeMutateAsync: vi.fn(),
-  renameMutateAsync: vi.fn(),
   renameWorkspaceMutateAsync: vi.fn(),
-  setPrefixMutateAsync: vi.fn(),
   useFetchConnectors: vi.fn(),
 }));
 
@@ -40,13 +38,7 @@ vi.mock("@/components/auth/IntroduceYourselfStep", () => ({
   ),
 }));
 
-const workspaceSetupFixture = {
-  workspaceId: "workspace-default",
-  workspaceName: "Acme",
-  projectId: "p-1",
-  projectName: "General",
-  projectPrefix: "GEN",
-};
+const workspaceSetupFixture = { workspaceId: "workspace-default", workspaceName: "Acme" };
 
 vi.mock("@/components/auth/SetupWorkspaceStep", () => ({
   SetupWorkspaceStep: ({ onContinue }: { onContinue: (data: typeof workspaceSetupFixture) => void }) => (
@@ -58,11 +50,6 @@ vi.mock("@/hooks/AuthHooks", () => ({
   useFetchSettings: mocks.useFetchSettings,
   useFetchMe: () => ({ data: { user: { can_create_workspace: true } } }),
   useCompleteOwnerWizard: () => ({ mutateAsync: mocks.completeMutateAsync, isPending: false }),
-}));
-
-vi.mock("@/hooks/ProjectHooks", () => ({
-  useRenameProject: () => ({ mutateAsync: mocks.renameMutateAsync }),
-  useSetProjectPrefix: () => ({ mutateAsync: mocks.setPrefixMutateAsync }),
 }));
 
 vi.mock("@/hooks/WorkspaceHooks", () => ({
@@ -79,6 +66,7 @@ const renderPage = () => {
           <Route path="/login" element={<div>Login page</div>} />
           <Route path="/wizard/onboarding/dns" element={<div>DNS page</div>} />
           <Route path="/" element={<div>Home page</div>} />
+          <Route path="/wizard/project/project" element={<div>Project wizard</div>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -96,12 +84,8 @@ describe("OwnerWizardPage", () => {
     });
     mocks.completeMutateAsync.mockReset();
     mocks.completeMutateAsync.mockResolvedValue({});
-    mocks.renameMutateAsync.mockReset();
-    mocks.renameMutateAsync.mockResolvedValue({});
     mocks.renameWorkspaceMutateAsync.mockReset();
     mocks.renameWorkspaceMutateAsync.mockResolvedValue({});
-    mocks.setPrefixMutateAsync.mockReset();
-    mocks.setPrefixMutateAsync.mockResolvedValue({});
     mocks.useFetchConnectors.mockReturnValue({ data: connectorFixture, isPending: false, error: undefined });
   });
 
@@ -172,10 +156,10 @@ describe("OwnerWizardPage", () => {
 
     expect(screen.getByText("Connect your tools")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /finish setup/i }));
-    expect(mocks.setPrefixMutateAsync).toHaveBeenCalledWith({ id: "p-1", prefix: "GEN" });
+    expect(mocks.renameWorkspaceMutateAsync).toHaveBeenCalledWith({ id: "workspace-default", name: "Acme" });
   });
 
-  it("finishes step 3 using the instance URL from settings (not empty), then goes home, not to DNS onboarding", async () => {
+  it("finishes step 3 using the instance URL from settings (not empty), then opens the project wizard for the first project", async () => {
     const user = userEvent.setup();
     renderPage();
 
@@ -184,12 +168,11 @@ describe("OwnerWizardPage", () => {
     await user.click(screen.getByRole("button", { name: /finish setup/i }));
 
     expect(mocks.completeMutateAsync).toHaveBeenCalledWith("https://deploy.example.com");
-    // Applied only after CompleteOwnerWizard resolves, since step 2's rename/prefix endpoints 403 until can_create_workspace is granted (requireOwner).
+    // Applied only after CompleteOwnerWizard resolves, since the rename endpoint 403s until can_create_workspace is granted (requireOwner).
     expect(mocks.renameWorkspaceMutateAsync).toHaveBeenCalledWith({ id: "workspace-default", name: "Acme" });
-    expect(mocks.renameMutateAsync).toHaveBeenCalledWith({ id: "p-1", name: "General" });
-    expect(mocks.setPrefixMutateAsync).toHaveBeenCalledWith({ id: "p-1", prefix: "GEN" });
     expect(await screen.findByText("Workspace ready")).toBeInTheDocument();
-    expect(await screen.findByText("Home page", {}, { timeout: 2000 })).toBeInTheDocument();
+    expect(await screen.findByText("Project wizard", {}, { timeout: 2000 })).toBeInTheDocument();
+    expect(screen.queryByText("Home page")).not.toBeInTheDocument();
     expect(screen.queryByText("DNS page")).not.toBeInTheDocument();
   });
 

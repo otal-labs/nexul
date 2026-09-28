@@ -6,7 +6,7 @@ import { NewDocButton } from "@/components/sidebar/NewDocButton";
 import { ProjectSwitcherMenu } from "@/components/sidebar/ProjectSwitcherMenu";
 import { ProjectSwitcherTrigger } from "@/components/sidebar/ProjectSwitcherTrigger";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import { switchProjectPath, type Project } from "@/models/Project";
+import { NEW_PROJECT_PATH, switchProjectPath, type Project } from "@/models/Project";
 
 interface ProjectSwitcherProps {
   projects: Project[];
@@ -29,7 +29,7 @@ export const ProjectSwitcher = ({ projects, current, collapsed }: ProjectSwitche
   // The project wizard's project step covers name + prefix; no dialog needed here.
   const handleCreate = () => {
     setOpen(false);
-    void navigate("/wizard/project/project");
+    void navigate(NEW_PROJECT_PATH);
   };
 
   return (

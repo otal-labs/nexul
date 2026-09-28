@@ -5,12 +5,12 @@ import { OwnerWizardStepPanel } from "@/components/auth/OwnerWizardStepPanel";
 import { WizardConfirmation } from "@/components/auth/WizardConfirmation";
 import { WizardLayout } from "@/components/auth/WizardLayout";
 import { useCompleteOwnerWizard, useFetchSettings } from "@/hooks/AuthHooks";
-import { useRenameProject, useSetProjectPrefix } from "@/hooks/ProjectHooks";
 import { useRenameWorkspace } from "@/hooks/WorkspaceHooks";
 import { useOwnerWizardStore } from "@/stores/ownerWizardStore";
 
 const CONFIRM_DELAY_MS = 900;
 const TOTAL_STEPS = 3;
+const FIRST_PROJECT_PATH = "/wizard/project/project";
 
 const STEP_COPY = [
   {
@@ -19,7 +19,7 @@ const STEP_COPY = [
   },
   {
     title: "Set up your workspace",
-    subtitle: "Name your workspace and its default project.",
+    subtitle: "Name the workspace your team works in. Your first project comes right after.",
   },
   {
     title: "Connect your tools",
@@ -41,8 +41,6 @@ export const OwnerWizardPage = () => {
   const { data: settings, isPending: settingsPending, error: settingsError } = useFetchSettings();
   const complete = useCompleteOwnerWizard();
   const renameWorkspace = useRenameWorkspace();
-  const renameProject = useRenameProject();
-  const setPrefix = useSetProjectPrefix();
 
   const onBack = () => {
     if (step === 1) {
@@ -57,18 +55,14 @@ export const OwnerWizardPage = () => {
     setFinishing(true);
     try {
       await complete.mutateAsync(settings.instance_url);
-      if (workspaceSetup) {
-        if (workspaceSetup.workspaceName) {
-          await renameWorkspace.mutateAsync({ id: workspaceSetup.workspaceId, name: workspaceSetup.workspaceName });
-        }
-        await renameProject.mutateAsync({ id: workspaceSetup.projectId, name: workspaceSetup.projectName });
-        await setPrefix.mutateAsync({ id: workspaceSetup.projectId, prefix: workspaceSetup.projectPrefix });
+      if (workspaceSetup?.workspaceName) {
+        await renameWorkspace.mutateAsync({ id: workspaceSetup.workspaceId, name: workspaceSetup.workspaceName });
       }
       resetProgress();
       setConfirmed(true);
-      // Warm confirmation beat; the domain was set up before sign-in, so the app is next.
+      // Warm confirmation beat; a workspace starts with no project, so the project wizard is next.
       await new Promise((resolve) => setTimeout(resolve, CONFIRM_DELAY_MS));
-      navigate("/", { replace: true });
+      navigate(FIRST_PROJECT_PATH, { replace: true });
     } catch {
       // Error is surfaced by the hook's toast; the step stays open to retry.
       setFinishing(false);
@@ -80,10 +74,7 @@ export const OwnerWizardPage = () => {
   return (
     <WizardLayout step={{ current: step, total: TOTAL_STEPS }} title={title} subtitle={subtitle} onBack={onBack}>
       {confirmed && (
-        <WizardConfirmation
-          title="Workspace ready"
-          subtitle="Taking you to your workspace."
-        />
+        <WizardConfirmation title="Workspace ready" subtitle="Next, your first project." />
       )}
       {!confirmed && (
         <OwnerWizardStepPanel

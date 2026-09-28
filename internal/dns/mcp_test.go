@@ -45,7 +45,7 @@ func newToolFakes(t *testing.T) *toolFakes {
 	require.NoError(t, f.repo.SaveTunnel(t.Context(), Tunnel{ID: "t1", Name: "prod", Token: enc}))
 	f.tunnels.tunnels["t1"] = &Tunnel{ID: "t1", Name: "prod", Status: "healthy"}
 	f.containers.add("app", ExposureTarget{
-		ContainerID: "c-app", Name: "app", StackID: "s-app", ProjectID: "p1", Machine: "host1", Networks: []string{"net1"},
+		ContainerID: "c-app", Name: "app", StackID: "s-app", Machine: "host1", Networks: []string{"net1"},
 	})
 	return f
 }
@@ -57,7 +57,7 @@ func (f *toolFakes) tools() []mcptool.Tool {
 		Settings:       &fakeSettings{instanceURL: "https://deploy.example.com"},
 		InstanceOrigin: testOrigin,
 		Resolver:       fakeResolver{addrs: map[string][]string{"nexul.example.com": {"203.0.113.10"}}},
-		Placement:      fakePlacement{machine: "host1", project: "p1"},
+		Placement:      fakePlacement{machine: "host1"},
 		Now:            func() time.Time { return time.Date(2026, 8, 12, 12, 0, 0, 0, time.UTC) },
 		HTTPClient: cmp.Or(f.httpc, &http.Client{Transport: &http.Transport{
 			DialContext: func(context.Context, string, string) (net.Conn, error) { return nil, errBoom },
@@ -170,7 +170,7 @@ func TestMCPTools_NotFoundNamesTheLister(t *testing.T) {
 		lister string
 	}{
 		{"dns_record_update", `{"zone_id":"z1","id":"ghost","ttl":60}`, "dns_record_list"},
-		{"gateway_create", `{"kind":"tunnel","machine":"host1","docker_network":"net1","project_id":"p1","zone_id":"z1","zone":"example.com","tunnel_id":"ghost"}`, "dns_tunnel_list"},
+		{"gateway_create", `{"kind":"tunnel","machine":"host1","docker_network":"net1","zone_id":"z1","zone":"example.com","tunnel_id":"ghost"}`, "dns_tunnel_list"},
 		{"gateway_delete", `{"id":"ghost"}`, "gateway_list"},
 		{"exposure_create", `{"hostname":"app.example.com","service_id":"ghost","port":80,"zone_id":"z1","zone":"example.com"}`, "stack_get"},
 		{"exposure_delete", `{"id":"ghost"}`, "exposure_list"},

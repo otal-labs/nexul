@@ -334,7 +334,7 @@ func TestService_ProvisionTunnelAgent_DefaultsHealthURL(t *testing.T) {
 	require.NoError(t, repo.SaveTunnel(context.Background(), Tunnel{ID: "t1", Name: "instance", Token: enc}))
 	prov := &fakeProvisioner{}
 	s := newTunnelService(repo, newFakeTunnelProvider(), prov)
-	_, err = s.ProvisionTunnelAgent(context.Background(), "t1", AgentSpec{ProjectID: "p1", Target: "instance", DockerNetwork: "nexul_default"})
+	_, err = s.ProvisionTunnelAgent(context.Background(), "t1", AgentSpec{Target: "instance", DockerNetwork: "nexul_default"})
 	require.NoError(t, err)
 	require.Len(t, prov.calls, 1)
 	assert.Equal(t, cloudflaredHealthURL, prov.calls[0].HealthURL)
@@ -404,7 +404,7 @@ func TestService_ProvisionTunnelAgent(t *testing.T) {
 		prov := &fakeProvisioner{}
 		s := newTunnelService(repo, newFakeTunnelProvider(), prov)
 		got, err := s.ProvisionTunnelAgent(context.Background(), "t1", AgentSpec{
-			ProjectID: "p1", Target: "10.0.0.1", Name: "cloudflared-tunnel-1",
+			Target: "10.0.0.1", Name: "cloudflared-tunnel-1",
 			Strategy: "run", DockerNetwork: "nexul", HealthURL: "http://localhost:20131/ready",
 		})
 		require.NoError(t, err)
@@ -444,7 +444,7 @@ func TestService_ProvisionTunnelAgent(t *testing.T) {
 		require.NoError(t, repo.SaveTunnel(context.Background(), Tunnel{ID: "t1", Token: enc}))
 		prov := &fakeProvisioner{err: errBoom}
 		s := newTunnelService(repo, newFakeTunnelProvider(), prov)
-		_, err = s.ProvisionTunnelAgent(context.Background(), "t1", AgentSpec{Target: "host1", ProjectID: "p1"})
+		_, err = s.ProvisionTunnelAgent(context.Background(), "t1", AgentSpec{Target: "host1"})
 		require.Error(t, err)
 		assert.ErrorIs(t, err, errBoom)
 	})
@@ -461,19 +461,18 @@ func TestService_ProvisionTunnelAgent(t *testing.T) {
 		assert.Empty(t, prov.calls)
 	})
 
-	t.Run("setup leaves machine and project to the instance's placement", func(t *testing.T) {
+	t.Run("setup leaves the machine to the instance's placement", func(t *testing.T) {
 		repo := newFakeRepo()
 		enc, err := encryptTunnelTokenForTest(testKey(), "the-tunnel-secret")
 		require.NoError(t, err)
 		require.NoError(t, repo.SaveTunnel(t.Context(), Tunnel{ID: "t1", Name: "instance", Token: enc}))
 		prov := &fakeProvisioner{}
 		s := newTunnelService(repo, newFakeTunnelProvider(), prov)
-		s.placement = fakePlacement{machine: "host1", project: "p1"}
+		s.placement = fakePlacement{machine: "host1"}
 		_, err = s.ProvisionTunnelAgent(t.Context(), "t1", AgentSpec{})
 		require.NoError(t, err)
 		require.Len(t, prov.calls, 1)
 		assert.Equal(t, "host1", prov.calls[0].Target)
-		assert.Equal(t, "p1", prov.calls[0].ProjectID)
 	})
 }
 
@@ -482,7 +481,7 @@ func TestService_ProvisionReverseProxy(t *testing.T) {
 		prov := &fakeProvisioner{}
 		repo := newFakeRepo()
 		s := newGatewayService(repo, newFakeTunnelProvider(), prov, newFakeContainerLookup())
-		got, err := s.ProvisionReverseProxy(t.Context(), AgentSpec{ProjectID: "p1", Target: "host1", DockerNetwork: "nexul_default"})
+		got, err := s.ProvisionReverseProxy(t.Context(), AgentSpec{Target: "host1", DockerNetwork: "nexul_default"})
 		require.NoError(t, err)
 		assert.Equal(t, "svc-1", got.ServiceID)
 		require.Len(t, prov.calls, 1)
@@ -500,7 +499,7 @@ func TestService_ProvisionReverseProxy(t *testing.T) {
 	t.Run("no instance URL deploys Traefik with no route", func(t *testing.T) {
 		prov := &fakeProvisioner{}
 		s := NewService(Config{Repo: newFakeRepo(), Provisioner: prov, Settings: &fakeSettings{}, Resolver: fakeResolver{}})
-		_, err := s.ProvisionReverseProxy(t.Context(), AgentSpec{ProjectID: "p1", Target: "host1"})
+		_, err := s.ProvisionReverseProxy(t.Context(), AgentSpec{Target: "host1"})
 		require.NoError(t, err)
 		require.Len(t, prov.calls, 1)
 		assert.Equal(t, "{}", prov.calls[0].Env[dynamicConfigEnv])
@@ -508,13 +507,13 @@ func TestService_ProvisionReverseProxy(t *testing.T) {
 
 	t.Run("a stored instance URL without the server's container address is a configuration error", func(t *testing.T) {
 		s := newTunnelService(newFakeRepo(), newFakeTunnelProvider(), &fakeProvisioner{})
-		_, err := s.ProvisionReverseProxy(t.Context(), AgentSpec{ProjectID: "p1", Target: "host1"})
+		_, err := s.ProvisionReverseProxy(t.Context(), AgentSpec{Target: "host1"})
 		require.ErrorIs(t, err, apperrs.ErrFatal)
 	})
 
 	t.Run("no provisioner wired is a configuration error", func(t *testing.T) {
 		s := NewService(Config{Repo: newFakeRepo(), Settings: &fakeSettings{}, Resolver: fakeResolver{}})
-		_, err := s.ProvisionReverseProxy(t.Context(), AgentSpec{ProjectID: "p1", Target: "host1"})
+		_, err := s.ProvisionReverseProxy(t.Context(), AgentSpec{Target: "host1"})
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrFatal))
 	})

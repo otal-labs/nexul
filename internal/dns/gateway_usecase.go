@@ -39,8 +39,7 @@ func (s *Service) CreateGateway(ctx context.Context, in CreateGatewayInput) (*Ga
 			name = "cloudflared-" + t.Name
 		}
 		provisioned, err := s.ProvisionTunnelAgent(ctx, in.TunnelID, AgentSpec{
-			ProjectID: in.ProjectID, Target: in.Target, Name: name,
-			Strategy: "run", DockerNetwork: in.DockerNetwork,
+			Target: in.Target, Name: name, Strategy: "run", DockerNetwork: in.DockerNetwork,
 		})
 		if err != nil {
 			return nil, err
@@ -51,7 +50,7 @@ func (s *Service) CreateGateway(ctx context.Context, in CreateGatewayInput) (*Ga
 			name = "traefik-" + ids.New()[:8]
 		}
 		spec := traefikSpec("", "", "")
-		spec.ProjectID, spec.Target, spec.Name, spec.DockerNetwork = in.ProjectID, in.Target, name, in.DockerNetwork
+		spec.Target, spec.Name, spec.DockerNetwork = in.Target, name, in.DockerNetwork
 		provisioned, err := s.provisionProxy(ctx, spec)
 		if err != nil {
 			return nil, err
@@ -195,12 +194,8 @@ func (s *Service) deployProxyGateway(ctx context.Context, in InstanceProxyInput)
 	if err != nil {
 		return nil, err
 	}
-	projectID, err := s.placementProject(ctx, in.ProjectID)
-	if err != nil {
-		return nil, err
-	}
 	spec := traefikSpec(in.Domain, s.origin, in.Email)
-	spec.ProjectID, spec.Target, spec.Name, spec.DockerNetwork = projectID, machine, g.ServiceName, g.DockerNetwork
+	spec.Target, spec.Name, spec.DockerNetwork = machine, g.ServiceName, g.DockerNetwork
 	provisioned, err := s.provisionProxy(ctx, spec)
 	if err != nil {
 		return nil, err
@@ -262,20 +257,6 @@ func (s *Service) placementMachine(ctx context.Context, target string) (string, 
 		return "", fmt.Errorf("find the instance machine: %w", err)
 	}
 	return machine, nil
-}
-
-func (s *Service) placementProject(ctx context.Context, projectID string) (string, error) {
-	if p := strings.TrimSpace(projectID); p != "" {
-		return p, nil
-	}
-	if s.placement == nil {
-		return "", fmt.Errorf("%w: project is required", apperrs.ErrInvalid)
-	}
-	p, err := s.placement.DefaultProject(ctx)
-	if err != nil {
-		return "", fmt.Errorf("find a project for the proxy: %w", err)
-	}
-	return p, nil
 }
 
 func (s *Service) provisionProxy(ctx context.Context, spec AgentSpec) (*AgentProvisioned, error) {

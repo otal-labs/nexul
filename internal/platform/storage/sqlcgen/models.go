@@ -738,7 +738,7 @@ type SetupCode struct {
 
 type Stack struct {
 	ID                string
-	ProjectID         string
+	ProjectID         sql.NullString
 	Name              string
 	Slug              string
 	Machine           string

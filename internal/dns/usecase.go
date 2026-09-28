@@ -60,7 +60,7 @@ type Config struct {
 	HTTPClient *http.Client
 	// InstanceOrigin is where a container on this machine reaches the Nexul server, the default tunnel origin.
 	InstanceOrigin string
-	// Placement defaults the instance proxy's machine and project; nil makes both required inputs.
+	// Placement defaults the instance proxy's machine; nil makes it a required input.
 	Placement InstancePlacement
 	// Resolver answers where a domain points right now; nil uses freshdns.
 	Resolver HostResolver

@@ -13,9 +13,7 @@ import { Button } from "@/components/ui/button";
 import { useFetchSettings } from "@/hooks/AuthHooks";
 import { useCreateInstanceRecord, useFetchDnsZones, useProvisionReverseProxy } from "@/hooks/DnsHooks";
 import { useFetchMachines } from "@/hooks/MachineHooks";
-import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { instanceRecordName, soleItem, type DnsSetupResult, type Zone } from "@/models/DNS";
-import type { Project } from "@/models/Project";
 import type { Machine } from "@/models/Machine";
 
 const ProxyEntryPathSchema = z.object({
@@ -23,7 +21,6 @@ const ProxyEntryPathSchema = z.object({
   zone: z.string().min(1, "Choose a zone"),
   record_type: z.enum(["A", "AAAA"]),
   server_address: z.string().trim().min(1, "Server address is required"),
-  project_id: z.string().min(1, "Choose a project"),
   target: z.string().trim().min(1, "Machine is required"),
   docker_network: z.string().trim().min(1, "Docker network is required"),
 });
@@ -31,14 +28,14 @@ const ProxyEntryPathSchema = z.object({
 type ProxyEntryPathFormData = z.infer<typeof ProxyEntryPathSchema>;
 
 interface ProxyEntryPathFieldsProps {
-  projects: Project[];
   zones: Zone[];
   machines: Machine[];
   onDone: (result: DnsSetupResult) => void;
 }
 
-// Mounted only once the lists are loaded so defaultValues can preselect the sole zone, project, and machine.
-const ProxyEntryPathFields = ({ projects, zones, machines, onDone }: ProxyEntryPathFieldsProps) => {
+// Mounted only once the lists are loaded so defaultValues can preselect the sole zone and machine.
+// The proxy's stack belongs to the instance, not to a project.
+const ProxyEntryPathFields = ({ zones, machines, onDone }: ProxyEntryPathFieldsProps) => {
   const provision = useProvisionReverseProxy();
   const createInstanceRecord = useCreateInstanceRecord();
   const { data: settings } = useFetchSettings();
@@ -49,7 +46,6 @@ const ProxyEntryPathFields = ({ projects, zones, machines, onDone }: ProxyEntryP
       zone: soleZone?.name ?? "",
       record_type: "A",
       server_address: "",
-      project_id: soleItem(projects)?.id ?? "",
       target: soleItem(machines)?.name ?? "",
       docker_network: "nexul_default",
     },
@@ -66,7 +62,6 @@ const ProxyEntryPathFields = ({ projects, zones, machines, onDone }: ProxyEntryP
   const onSubmit = async (data: ProxyEntryPathFormData) => {
     try {
       await provision.mutateAsync({
-        project_id: data.project_id,
         target: data.target,
         docker_network: data.docker_network,
       });
@@ -114,13 +109,6 @@ const ProxyEntryPathFields = ({ projects, zones, machines, onDone }: ProxyEntryP
       />
       <InstanceHostNotice zone={zone} target={serverAddress} />
       <AdvancedFields>
-        <FormSelect
-          control={form.control}
-          name="project_id"
-          label="Project"
-          placeholder="Choose a project…"
-          options={projects.map((p) => ({ value: p.id, label: p.name }))}
-        />
         <MachinePicker control={form.control} name="target" />
         <FormInput control={form.control} name="docker_network" label="Docker network" placeholder="nexul_default" />
       </AdvancedFields>
@@ -136,19 +124,15 @@ interface ProxyEntryPathFormProps {
 }
 
 export const ProxyEntryPathForm = ({ onDone }: ProxyEntryPathFormProps) => {
-  const { data: projects, isPending: projectsPending, error: projectsError } = useFetchProjects();
   const { data: zones, isPending: zonesPending, error: zonesError } = useFetchDnsZones(true);
   const { data: machines, isPending: machinesPending, error: machinesError } = useFetchMachines();
 
   return (
     <>
-      {(projectsPending || zonesPending || machinesPending) && <LoadingDisplay />}
-      {projectsError && <ErrorDisplay error={projectsError} />}
+      {(zonesPending || machinesPending) && <LoadingDisplay />}
       {zonesError && <ErrorDisplay error={zonesError} />}
       {machinesError && <ErrorDisplay error={machinesError} />}
-      {projects && zones && machines && (
-        <ProxyEntryPathFields projects={projects} zones={zones} machines={machines} onDone={onDone} />
-      )}
+      {zones && machines && <ProxyEntryPathFields zones={zones} machines={machines} onDone={onDone} />}
     </>
   );
 };

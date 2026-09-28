@@ -138,7 +138,7 @@ func deployCancelTool(s *Service) mcptool.Tool {
 }
 
 type stackListIn struct {
-	ProjectID string `json:"project_id,omitempty" jsonschema:"Only this project's stacks, by the project's id from project_list. Omit for every project."`
+	ProjectID string `json:"project_id,omitempty" jsonschema:"Only this project's stacks, by the project's id from project_list. Omit for every stack, the instance's own gateways included."`
 	mcptool.PageArgs
 }
 
@@ -255,7 +255,7 @@ type candidateIn struct {
 }
 
 type stackCreateIn struct {
-	ProjectID         string            `json:"project_id" jsonschema:"The project the stack belongs to, by id from project_list."`
+	ProjectID         string            `json:"project_id,omitempty" jsonschema:"The project the stack belongs to, by id from project_list. Required with a build_source; omit only for the instance's own infrastructure, which belongs to no project."`
 	Machine           string            `json:"machine" jsonschema:"The name of the machine the stack runs on, from machine_list, for example prod-1."`
 	Name              string            `json:"name,omitempty" jsonschema:"The stack's name; its slug is derived from it once. With a candidate it defaults to build_source.repo_name."`
 	Strategy          Strategy          `json:"strategy,omitempty" jsonschema:"compose or run. Required without a candidate; a candidate sets it from its kind."`
@@ -389,7 +389,7 @@ type buildSourcePatchIn struct {
 
 type stackUpdateIn struct {
 	ID                string              `json:"id" jsonschema:"The stack's id, from stack_list."`
-	ProjectID         *string             `json:"project_id,omitempty" jsonschema:"Move the stack to this project, by id from project_list."`
+	ProjectID         *string             `json:"project_id,omitempty" jsonschema:"Move the stack to this project, by id from project_list. An empty string leaves it with no project, which only a stack without a build source may be."`
 	Name              *string             `json:"name,omitempty" jsonschema:"A new display name; the slug never changes."`
 	Machine           *string             `json:"machine,omitempty" jsonschema:"Move the stack to the machine with this name, from machine_list; the next deploy runs there."`
 	Strategy          *Strategy           `json:"strategy,omitempty" jsonschema:"compose or run."`
@@ -664,7 +664,7 @@ func toDeployResults(ds []*Deploy) []deployResult {
 // stackSummary is a stack in a list: enough to pick one and call stack_get.
 type stackSummary struct {
 	ID          string       `json:"id"`
-	ProjectID   string       `json:"project_id"`
+	ProjectID   string       `json:"project_id,omitempty"`
 	Name        string       `json:"name"`
 	Slug        string       `json:"slug"`
 	Machine     string       `json:"machine"`

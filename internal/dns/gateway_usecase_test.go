@@ -21,7 +21,7 @@ func TestService_CreateGateway_Tunnel(t *testing.T) {
 
 	g, err := s.CreateGateway(context.Background(), CreateGatewayInput{
 		Kind: GatewayTunnel, DockerNetwork: "net1", ZoneID: "z1", Zone: "example.com",
-		TunnelID: "t1", ProjectID: "p1", Target: "host1",
+		TunnelID: "t1", Target: "host1",
 	})
 	require.NoError(t, err)
 	assert.Equal(t, GatewayTunnel, g.Kind)
@@ -44,7 +44,7 @@ func TestService_CreateGateway_Proxy(t *testing.T) {
 
 	g, err := s.CreateGateway(context.Background(), CreateGatewayInput{
 		Kind: GatewayProxy, DockerNetwork: "net1", ZoneID: "z1", Zone: "example.com",
-		ServerAddress: "203.0.113.10", ProjectID: "p1", Target: "host1",
+		ServerAddress: "203.0.113.10", Target: "host1",
 	})
 	require.NoError(t, err)
 	assert.Equal(t, GatewayProxy, g.Kind)
@@ -63,7 +63,7 @@ func TestService_CreateGateway_Proxy(t *testing.T) {
 func TestService_CreateGateway_NetworkAlreadyHasGateway(t *testing.T) {
 	repo := newFakeRepo()
 	s := newGatewayService(repo, newFakeTunnelProvider(), &fakeProvisioner{}, newFakeContainerLookup())
-	in := CreateGatewayInput{Kind: GatewayProxy, DockerNetwork: "net1", ZoneID: "z1", Zone: "example.com", ServerAddress: "1.2.3.4", ProjectID: "p1", Target: "host1"}
+	in := CreateGatewayInput{Kind: GatewayProxy, DockerNetwork: "net1", ZoneID: "z1", Zone: "example.com", ServerAddress: "1.2.3.4", Target: "host1"}
 	_, err := s.CreateGateway(context.Background(), in)
 	require.NoError(t, err)
 
@@ -76,19 +76,19 @@ func TestService_CreateGateway_Validation(t *testing.T) {
 	s := newGatewayService(newFakeRepo(), newFakeTunnelProvider(), &fakeProvisioner{}, newFakeContainerLookup())
 
 	t.Run("bad kind", func(t *testing.T) {
-		_, err := s.CreateGateway(context.Background(), CreateGatewayInput{Kind: "vpn", DockerNetwork: "n", ZoneID: "z", Zone: "z.com", ProjectID: "p", Target: "t"})
+		_, err := s.CreateGateway(context.Background(), CreateGatewayInput{Kind: "vpn", DockerNetwork: "n", ZoneID: "z", Zone: "z.com", Target: "t"})
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 	})
 
 	t.Run("tunnel kind needs tunnel id", func(t *testing.T) {
-		_, err := s.CreateGateway(context.Background(), CreateGatewayInput{Kind: GatewayTunnel, DockerNetwork: "n", ZoneID: "z", Zone: "z.com", ProjectID: "p", Target: "t"})
+		_, err := s.CreateGateway(context.Background(), CreateGatewayInput{Kind: GatewayTunnel, DockerNetwork: "n", ZoneID: "z", Zone: "z.com", Target: "t"})
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 	})
 
 	t.Run("proxy kind needs server address", func(t *testing.T) {
-		_, err := s.CreateGateway(context.Background(), CreateGatewayInput{Kind: GatewayProxy, DockerNetwork: "n", ZoneID: "z", Zone: "z.com", ProjectID: "p", Target: "t"})
+		_, err := s.CreateGateway(context.Background(), CreateGatewayInput{Kind: GatewayProxy, DockerNetwork: "n", ZoneID: "z", Zone: "z.com", Target: "t"})
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 	})
@@ -99,7 +99,7 @@ func TestService_ListAndGetGateway(t *testing.T) {
 	s := newGatewayService(repo, newFakeTunnelProvider(), &fakeProvisioner{}, newFakeContainerLookup())
 	g, err := s.CreateGateway(context.Background(), CreateGatewayInput{
 		Kind: GatewayProxy, DockerNetwork: "net1", ZoneID: "z1", Zone: "example.com",
-		ServerAddress: "1.2.3.4", ProjectID: "p1", Target: "host1",
+		ServerAddress: "1.2.3.4", Target: "host1",
 	})
 	require.NoError(t, err)
 
@@ -122,7 +122,7 @@ func TestService_DeleteGateway_Deprovisions(t *testing.T) {
 	s := newGatewayService(repo, newFakeTunnelProvider(), prov, newFakeContainerLookup())
 	g, err := s.CreateGateway(context.Background(), CreateGatewayInput{
 		Kind: GatewayProxy, DockerNetwork: "net1", ZoneID: "z1", Zone: "example.com",
-		ServerAddress: "1.2.3.4", ProjectID: "p1", Target: "host1",
+		ServerAddress: "1.2.3.4", Target: "host1",
 	})
 	require.NoError(t, err)
 
@@ -137,7 +137,7 @@ func TestService_DeleteGateway_FailsWithExposures(t *testing.T) {
 	s := newGatewayService(repo, newFakeTunnelProvider(), &fakeProvisioner{}, newFakeContainerLookup())
 	g, err := s.CreateGateway(context.Background(), CreateGatewayInput{
 		Kind: GatewayProxy, DockerNetwork: "net1", ZoneID: "z1", Zone: "example.com",
-		ServerAddress: "1.2.3.4", ProjectID: "p1", Target: "host1",
+		ServerAddress: "1.2.3.4", Target: "host1",
 	})
 	require.NoError(t, err)
 	require.NoError(t, repo.SaveExposure(context.Background(), Exposure{ID: "e1", GatewayID: g.ID, Hostname: "app.example.com", Service: "app", Port: 8080}))
@@ -153,7 +153,7 @@ func TestService_GatewayForStackNetwork(t *testing.T) {
 	s := newGatewayService(repo, newFakeTunnelProvider(), &fakeProvisioner{}, containers)
 	g, err := s.CreateGateway(context.Background(), CreateGatewayInput{
 		Kind: GatewayProxy, DockerNetwork: "net1", ZoneID: "z1", Zone: "example.com",
-		ServerAddress: "1.2.3.4", ProjectID: "p1", Target: "host1",
+		ServerAddress: "1.2.3.4", Target: "host1",
 	})
 	require.NoError(t, err)
 	containers.add("gateway-stack", ExposureTarget{

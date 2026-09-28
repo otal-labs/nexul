@@ -11,7 +11,7 @@ Each project gets its own board, its own docs list, and its own settings. Nothin
 
 ## Creating a project
 
-Open the sidebar and pick **New project**. This starts the project wizard, which walks you straight from an empty project to a deployed service:
+A project only ever comes from the project wizard. A new workspace has none: the owner lands in the wizard right after the owner wizard, and until a project exists the sidebar, the board, and the docs list each show a **New project** action instead. Afterwards, open the sidebar and pick **New project**. Either way it starts the project wizard, which walks you straight from an empty project to a deployed service:
 
 1. **Project** — name and prefix (2-5 letters, used to render ticket ids like `BE-42`).
 2. **Repository** — say where the project's tests live, in the repository you deploy or in a separate one (see [A tests repository](#a-tests-repository)), then pick one of your installed GitHub repositories to deploy (see [GitHub App](/docs/guide/github-app/)).

@@ -17,7 +17,6 @@ type gatewayCreateIn struct {
 	Kind           GatewayKind `json:"kind" jsonschema:"tunnel (cloudflared dials out to a Cloudflare tunnel, no open ports) or proxy (Traefik listens on ports 80 and 443 of the machine and gets Let's Encrypt certificates)."`
 	Machine        string      `json:"machine,omitempty" jsonschema:"The machine the gateway's backing stack deploys to, by name, from machine_list. Required unless instance_domain is set, where it defaults to the machine of the runner named instance."`
 	DockerNetwork  string      `json:"docker_network,omitempty" jsonschema:"The gateway's home docker network, for example shop_default; a network has at most one gateway. Required unless instance_domain is set, where it defaults to nexul_proxy."`
-	ProjectID      string      `json:"project_id,omitempty" jsonschema:"The project the backing stack belongs to, from project_list. Required unless instance_domain is set, where it defaults to the first project."`
 	ZoneID         string      `json:"zone_id,omitempty" jsonschema:"The zone the gateway serves, from dns_zone_list. Required unless instance_domain is set."`
 	Zone           string      `json:"zone,omitempty" jsonschema:"That zone's domain name, for example example.com. Required unless instance_domain is set."`
 	TunnelID       string      `json:"tunnel_id,omitempty" jsonschema:"Required for kind tunnel: the tunnel cloudflared connects to, from dns_tunnel_list or dns_tunnel_create."`
@@ -88,10 +87,10 @@ func gatewayTools(s *Service) []mcptool.Tool {
 				g, err := s.CreateGateway(ctx, CreateGatewayInput{
 					Kind: in.Kind, DockerNetwork: in.DockerNetwork, ZoneID: in.ZoneID, Zone: in.Zone,
 					TunnelID: in.TunnelID, ServerAddress: in.ServerAddress,
-					ProjectID: in.ProjectID, Target: in.Machine, Name: in.StackName,
+					Target: in.Machine, Name: in.StackName,
 				})
 				if err != nil {
-					return nil, listedBy(err, "dns_tunnel_list lists tunnels, project_list projects, and machine_list machines")
+					return nil, listedBy(err, "dns_tunnel_list lists tunnels and machine_list machines")
 				}
 				return toGatewayResult(g), nil
 			}),
@@ -116,10 +115,10 @@ func (s *Service) createInstanceGateway(ctx context.Context, in gatewayCreateIn)
 		return nil, fmt.Errorf("%w: instance_domain needs kind proxy", apperrs.ErrInvalid)
 	}
 	g, err := s.ProvisionInstanceProxy(ctx, InstanceProxyInput{
-		Domain: in.InstanceDomain, Email: in.Email, Target: in.Machine, ProjectID: in.ProjectID, DockerNetwork: in.DockerNetwork,
+		Domain: in.InstanceDomain, Email: in.Email, Target: in.Machine, DockerNetwork: in.DockerNetwork,
 	})
 	if err != nil {
-		return nil, listedBy(err, "project_list lists projects and machine_list machines")
+		return nil, listedBy(err, "machine_list lists machines")
 	}
 	return toGatewayResult(g), nil
 }

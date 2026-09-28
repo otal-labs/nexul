@@ -125,6 +125,33 @@ func TestStacksRepo_GetBySlugAndMachine(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
+func TestStacksRepo_InstanceStack_HasNoProject(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	gateway := newTestStack("svc-gw")
+	gateway.ProjectID, gateway.Name, gateway.Slug = "", "cloudflared-instance", "cloudflared-instance"
+	require.NoError(t, s.Stacks.Create(context.Background(), gateway))
+	require.NoError(t, s.Stacks.Create(context.Background(), newTestStack("svc-1")))
+
+	got, err := s.Stacks.GetByID(context.Background(), "svc-gw")
+	require.NoError(t, err)
+	assert.Empty(t, got.ProjectID)
+	inProject, err := s.Stacks.ListByProject(context.Background(), "project-general")
+	require.NoError(t, err)
+	require.Len(t, inProject, 1, "a project's stacks leave the instance's out")
+	all, err := s.Stacks.ListByProject(context.Background(), "")
+	require.NoError(t, err)
+	require.Len(t, all, 2, "every stack includes the instance's own")
+
+	got.ProjectID = "project-general"
+	require.NoError(t, s.Stacks.Update(context.Background(), got))
+	got.ProjectID = ""
+	require.NoError(t, s.Stacks.Update(context.Background(), got))
+	back, err := s.Stacks.GetByID(context.Background(), "svc-gw")
+	require.NoError(t, err)
+	assert.Empty(t, back.ProjectID, "moving a stack out of its project stores no project, not an empty id")
+}
+
 func TestStacksRepo_ListByProject(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

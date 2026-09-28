@@ -126,7 +126,7 @@ func TestHandler_RotateTunnelCredentials_Missing(t *testing.T) {
 func TestHandler_ProvisionTunnelAgent_MissingTunnel(t *testing.T) {
 	h, _, _, _ := newTunnelTestHandler()
 	rec := doJSON(t, h.Routes(), http.MethodPost, "/api/dns/tunnels/ghost/agent", map[string]any{
-		"project_id": "p1", "target": "10.0.0.1",
+		"target": "10.0.0.1",
 	})
 	require.Equal(t, http.StatusNotFound, rec.Code)
 }
@@ -164,7 +164,7 @@ func TestHandler_ProvisionTunnelAgent(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, repo.SaveTunnel(context.Background(), Tunnel{ID: "t1", Name: "one", Token: enc}))
 	rec := doJSON(t, h.Routes(), http.MethodPost, "/api/dns/tunnels/t1/agent", map[string]any{
-		"project_id": "p1", "target": "10.0.0.1", "strategy": "run", "docker_network": "nexul",
+		"target": "10.0.0.1", "strategy": "run", "docker_network": "nexul",
 	})
 	require.Equal(t, http.StatusCreated, rec.Code)
 	var got AgentProvisioned
@@ -175,7 +175,7 @@ func TestHandler_ProvisionTunnelAgent(t *testing.T) {
 func TestHandler_ProvisionReverseProxy(t *testing.T) {
 	h := NewHandler(newGatewayService(newFakeRepo(), newFakeTunnelProvider(), &fakeProvisioner{}, newFakeContainerLookup()))
 	rec := doJSON(t, h.Routes(), http.MethodPost, "/api/dns/reverse-proxy", map[string]any{
-		"project_id": "p1", "target": "10.0.0.1", "strategy": "run", "docker_network": "nexul",
+		"target": "10.0.0.1", "strategy": "run", "docker_network": "nexul",
 	})
 	require.Equal(t, http.StatusCreated, rec.Code)
 	var got AgentProvisioned

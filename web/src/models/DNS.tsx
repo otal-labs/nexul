@@ -200,7 +200,6 @@ export const CreateGatewayFormSchema = z
     zone: z.string().min(1, "Choose a zone"),
     tunnel_id: z.string().trim(),
     server_address: z.string().trim(),
-    project_id: z.string().min(1, "Choose a project"),
     target: z.string().trim().min(1, "Machine is required"),
   })
   .superRefine((val, ctx) => {

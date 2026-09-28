@@ -55,7 +55,6 @@ var setupPassRoutes = func() *http.ServeMux {
 		"GET /api/connectors",
 		"/api/dns/",
 		"GET /api/machines",
-		"GET /api/projects",
 		"GET /api/services/{id}/deploys",
 		"GET /api/deploys/{id}/log",
 	} {

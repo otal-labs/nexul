@@ -47,7 +47,6 @@ describe("tunnel account and checks", () => {
     mocks.post.mockReset();
     mocks.get.mockImplementation(async (url: string) => {
       if (url === "/api/dns/zones") return { data: zones };
-      if (url === "/api/projects") return { data: [{ id: "p1", name: "Main", created_at: "" }] };
       if (url === "/api/machines") return { data: [{ id: "m1", name: "prod-1", stack_root: "", first_seen: "", last_seen: "" }] };
       return { data: [] };
     });
@@ -73,7 +72,6 @@ describe("tunnel account and checks", () => {
   it("hides the account choice when the token reaches one account", async () => {
     mocks.get.mockImplementation(async (url: string) => {
       if (url === "/api/dns/zones") return { data: [zones[1]] };
-      if (url === "/api/projects") return { data: [{ id: "p1", name: "Main", created_at: "" }] };
       if (url === "/api/machines") return { data: [{ id: "m1", name: "prod-1", stack_root: "", first_seen: "", last_seen: "" }] };
       return { data: [] };
     });

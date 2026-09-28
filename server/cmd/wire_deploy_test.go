@@ -11,6 +11,7 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/storage"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
 
@@ -19,6 +20,7 @@ func TestDeployProjectStore_LinkRepo(t *testing.T) {
 	db, err := storage.OpenDB(filepath.Join(t.TempDir(), "test.db"))
 	require.NoError(t, err)
 	require.NoError(t, storage.Migrate(db))
+	require.NoError(t, testutil.SeedGeneralProject(db))
 	t.Cleanup(func() { require.NoError(t, db.Close()) })
 	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
 	require.NoError(t, s.Projects.Create(ctx, &workspace.Project{ID: "p-other", WorkspaceID: "workspace-default", Name: "Other", Prefix: "OT"}))
@@ -38,6 +40,7 @@ func TestDeployProjectStore_IsTestsRepo(t *testing.T) {
 	db, err := storage.OpenDB(filepath.Join(t.TempDir(), "test.db"))
 	require.NoError(t, err)
 	require.NoError(t, storage.Migrate(db))
+	require.NoError(t, testutil.SeedGeneralProject(db))
 	t.Cleanup(func() { require.NoError(t, db.Close()) })
 	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
 	store := deployProjectStore{projects: s.Projects}

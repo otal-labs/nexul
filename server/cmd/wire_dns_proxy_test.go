@@ -24,12 +24,13 @@ func newDNSWireStore(t *testing.T) *storage.Store {
 	return storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
 }
 
+// A fresh instance has no project, and its gateway stack needs none.
 func TestDNSProvisioner_RetryUpdatesTheStack(t *testing.T) {
 	s := newDNSWireStore(t)
 	deploySvc := deploy.NewService(s.Deploys, s.Stacks, s.Services, deployProjectStore{projects: s.Projects})
 	prov := dnsProvisioner{deploy: deploySvc}
 	spec := dns.AgentSpec{
-		ProjectID: "project-general", Target: "box", Name: "nexul-proxy", Strategy: "run", DockerNetwork: "nexul_proxy",
+		Target: "box", Name: "nexul-proxy", Strategy: "run", DockerNetwork: "nexul_proxy",
 		Image: "traefik:v3", Ports: []string{"80:80"}, Env: map[string]string{"A": "1"},
 	}
 
@@ -45,30 +46,28 @@ func TestDNSProvisioner_RetryUpdatesTheStack(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, map[string]string{"A": "2"}, stack.Env)
 	assert.Equal(t, []string{"nexul-traefik-acme:/letsencrypt"}, stack.Mounts)
+	assert.Empty(t, stack.ProjectID)
 }
 
 func TestDNSInstancePlacement(t *testing.T) {
 	t.Run("no instance runner is invalid", func(t *testing.T) {
 		s := newDNSWireStore(t)
-		_, err := dnsInstancePlacement{runners: s.Runners, machines: s.Machines, projects: s.Projects}.InstanceMachine(t.Context())
+		_, err := dnsInstancePlacement{runners: s.Runners, machines: s.Machines}.InstanceMachine(t.Context())
 		require.ErrorIs(t, err, apperrs.ErrInvalid)
 	})
 	t.Run("an instance runner that never connected is invalid", func(t *testing.T) {
 		s := newDNSWireStore(t)
 		require.NoError(t, s.Runners.Create(t.Context(), &runner.Runner{ID: "r1", Name: "instance", CreatedAt: time.Now()}))
-		_, err := dnsInstancePlacement{runners: s.Runners, machines: s.Machines, projects: s.Projects}.InstanceMachine(t.Context())
+		_, err := dnsInstancePlacement{runners: s.Runners, machines: s.Machines}.InstanceMachine(t.Context())
 		require.ErrorIs(t, err, apperrs.ErrInvalid)
 	})
-	t.Run("the instance runner's machine and the seeded project", func(t *testing.T) {
+	t.Run("the instance runner's machine", func(t *testing.T) {
 		s := newDNSWireStore(t)
 		require.NoError(t, s.Machines.Create(t.Context(), &runner.Machine{ID: "m1", Name: "box", FirstSeen: time.Now(), LastSeen: time.Now()}))
 		require.NoError(t, s.Runners.Create(t.Context(), &runner.Runner{ID: "r1", Name: "instance", MachineID: "m1", CreatedAt: time.Now()}))
-		p := dnsInstancePlacement{runners: s.Runners, machines: s.Machines, projects: s.Projects}
+		p := dnsInstancePlacement{runners: s.Runners, machines: s.Machines}
 		machine, err := p.InstanceMachine(t.Context())
 		require.NoError(t, err)
 		assert.Equal(t, "box", machine)
-		project, err := p.DefaultProject(t.Context())
-		require.NoError(t, err)
-		assert.Equal(t, "project-general", project)
 	})
 }

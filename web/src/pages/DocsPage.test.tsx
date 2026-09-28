@@ -55,8 +55,19 @@ describe("DocsPage", () => {
     expect(screen.getByRole("button", { name: "New doc" })).toBeInTheDocument();
   });
 
-  it("shows the shared empty state when there are no docs", async () => {
+  it("points at the project wizard when the workspace has no project yet", async () => {
     vi.mocked(api.get).mockResolvedValue({ data: [] });
+    renderPage();
+    expect(await screen.findByText("No projects yet")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "New project" })).toHaveAttribute("href", "/wizard/project/project");
+    expect(screen.queryByRole("button", { name: "New doc" })).not.toBeInTheDocument();
+  });
+
+  it("shows the shared empty state when there are no docs", async () => {
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url.startsWith("/api/projects")) return { data: [{ id: "p-1", name: "Backend", position: 0, created_at: "", updated_at: "" }] };
+      return { data: [] };
+    });
     renderPage();
     expect(await screen.findByText("No docs yet.")).toBeInTheDocument();
     // the create action stays available on an empty page (first doc UX)
