@@ -1,7 +1,10 @@
-import { Container } from "@/components/Container";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { MembersPageContent } from "@/components/member/MembersPageContent";
+import { CreateInvitationDialog } from "@/components/member/CreateInvitationDialog";
+import { InvitationsFeed } from "@/components/member/InvitationsFeed";
+import { MembersFeed } from "@/components/member/MembersFeed";
+import { NoDataDisplay } from "@/components/NoDataDisplay";
+import { SettingsCard } from "@/components/settings/SettingsCard";
 import {
   useChangeWorkspaceMemberRole,
   useFetchWorkspaceMembers,
@@ -10,7 +13,7 @@ import {
 import { useFetchWorkspaceRoles } from "@/hooks/RoleHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
-export const MembersPage = () => {
+export const MembersSection = () => {
   const selectedWorkspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const { data: members, isPending, error } = useFetchWorkspaceMembers(selectedWorkspaceId);
   const { data: roles } = useFetchWorkspaceRoles(selectedWorkspaceId);
@@ -18,18 +21,27 @@ export const MembersPage = () => {
   const changeRole = useChangeWorkspaceMemberRole(selectedWorkspaceId);
 
   return (
-    <Container className="mx-auto max-w-3xl py-8">
+    <SettingsCard
+      id="members"
+      title="Members"
+      description="Who is in this workspace and with which role, plus private invitation links with access across one or more workspaces."
+      footer={<CreateInvitationDialog />}
+    >
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
-      {members && (
-        <MembersPageContent
-          members={members}
+      {members && members.members.length === 0 && (
+        <NoDataDisplay message="No members yet — create an invitation link to add someone." />
+      )}
+      {members && members.members.length > 0 && (
+        <MembersFeed
+          members={members.members}
           roles={roles ?? []}
           isRemoving={removeMember.isPending}
           onRoleChange={(userId, roleId) => changeRole.mutate({ userId, roleId })}
           onRemove={(userId) => removeMember.mutate(userId)}
         />
       )}
-    </Container>
+      <InvitationsFeed />
+    </SettingsCard>
   );
 };

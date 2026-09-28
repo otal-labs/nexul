@@ -11,7 +11,7 @@ import { NoFillBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useDeleteGateway, useFetchGateways } from "@/hooks/DnsHooks";
 
-// Lives under Settings → DNS; the onboarding stepper creates the first gateway without ever showing this list.
+// Lives under Configuration → DNS; the onboarding stepper creates the first gateway without ever showing this list.
 // Delete is refused by the backend while exposures still exist; that rejection surfaces through the mutation's toast.
 export const GatewaysSection = () => {
   const { data: gateways, isPending, error } = useFetchGateways();

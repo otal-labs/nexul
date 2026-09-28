@@ -116,12 +116,12 @@ describe("Layout", () => {
     expect(await screen.findByRole("button", { name: "New project" })).toBeInTheDocument();
   });
 
-  it("puts the collapse toggle outside the bottom control cluster, not next to the theme toggle", () => {
+  it("puts the collapse toggle outside the bottom control cluster, not next to the settings gear", () => {
     useSessionStore.setState({ token: "t", isLoggedIn: true });
     renderLayout();
     const collapseButton = screen.getByRole("button", { name: /collapse sidebar|expand sidebar/i });
-    const themeToggle = screen.getByRole("button", { name: /switch to .* theme/i });
-    expect(collapseButton.closest("div")).not.toBe(themeToggle.closest("div"));
+    const gear = screen.getByRole("link", { name: "Your settings" });
+    expect(collapseButton.closest("div")).not.toBe(gear.closest("div"));
   });
 
   it("shows the Inbox link for signed-in users, above the project section", async () => {
@@ -148,23 +148,14 @@ describe("Layout", () => {
     expect(screen.getByRole("link", { name: /Inbox/ })).toHaveTextContent("3");
   });
 
-  it("no longer renders Members as a sidebar nav link — it lives in the account menu", async () => {
+  it("reaches Configuration from the Workspace section and Your settings from the footer gear, with no Members or Settings links", async () => {
     useSessionStore.setState({ token: "t", isLoggedIn: true });
     renderLayout();
     await screen.findByText("@onik97");
+    expect(screen.getByRole("link", { name: "Configuration" })).toHaveAttribute("href", "/configuration");
+    expect(screen.getByRole("link", { name: "Your settings" })).toHaveAttribute("href", "/settings");
     expect(screen.queryByRole("link", { name: "Members" })).not.toBeInTheDocument();
-  });
-
-  it("no longer renders Settings as a sidebar nav link — it moved into the account menu", async () => {
-    useSessionStore.setState({ token: "t", isLoggedIn: true });
-    renderLayout();
-    await screen.findByText("@onik97");
     expect(screen.queryByRole("link", { name: "Settings" })).not.toBeInTheDocument();
-  });
-
-  it("includes a theme toggle in the header", () => {
-    renderLayout();
-    expect(screen.getByRole("button", { name: /switch to .* theme/i })).toBeInTheDocument();
   });
 
   it("selects the first workspace when nothing is selected, even on an onboarding route with no switcher", async () => {

@@ -1,7 +1,7 @@
 # 16 — Settings split: Your settings, Configuration, and every old link
 
 **Type:** implementation
-**Status:** ready-for-agent
+**Status:** done
 **Blocked by:** None — can start immediately
 **Decided in:** tickets 01, 03, 05
 

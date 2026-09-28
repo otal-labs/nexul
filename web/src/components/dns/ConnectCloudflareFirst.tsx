@@ -15,8 +15,8 @@ export const ConnectCloudflareFirst = () => {
           token, then come back here.
         </p>
       </div>
-      <Button variant="outline" onClick={() => navigate("/settings?section=connectors")}>
-        Go to Settings
+      <Button variant="outline" onClick={() => navigate("/configuration?section=connectors")}>
+        Go to Configuration
       </Button>
     </div>
   );

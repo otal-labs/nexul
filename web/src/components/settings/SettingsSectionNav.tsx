@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { Link } from "react-router";
 
 import { cn } from "@/lib/utils";
@@ -11,10 +12,15 @@ const itemClass = (isActive: boolean, danger: boolean) =>
       (danger ? "hover:bg-destructive/10" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"),
   );
 
+// A deep link can land on an item past the right edge of the narrow top row; bring it into view.
+const revealActive = (el: HTMLAnchorElement | null) => el?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+
 export interface SettingsSectionNavItem {
   section: string;
   label: string;
   danger?: boolean;
+  /** Items sharing a group render under one label; a group with no items shows no label. */
+  group?: string;
 }
 
 interface SettingsSectionNavProps {
@@ -23,20 +29,33 @@ interface SettingsSectionNavProps {
   active: string;
 }
 
-// Collapses to a horizontal tab row below `md:`; shared by both settings pages so they can't drift.
+// A top row below `lg:` (at 768px a side column left too little width for the content) and a side column from it; shared by every settings-style page so they can't drift.
 export const SettingsSectionNav = ({ ariaLabel, items, active }: SettingsSectionNavProps) => (
-  <nav aria-label={ariaLabel} className="md:w-48 md:shrink-0">
-    <ul className="flex gap-1 overflow-x-auto pb-1 md:flex-col md:gap-0.5 md:overflow-visible md:pb-0">
-      {items.map((item) => (
-        <li key={item.section} className="shrink-0">
-          <Link
-            to={{ search: `?section=${item.section}` }}
-            aria-current={active === item.section ? "page" : undefined}
-            className={itemClass(active === item.section, item.danger ?? false)}
-          >
-            {item.label}
-          </Link>
-        </li>
+  <nav aria-label={ariaLabel} className="lg:w-48 lg:shrink-0">
+    <ul className="flex items-center gap-1 overflow-x-auto pb-1 lg:flex-col lg:items-stretch lg:gap-0.5 lg:overflow-visible lg:pb-0">
+      {items.map((item, index) => (
+        <Fragment key={item.section}>
+          {item.group !== undefined && item.group !== items[index - 1]?.group && (
+            <li
+              className={cn(
+                "shrink-0 px-3 font-mono text-[11px] font-medium tracking-wide text-muted-foreground/70 uppercase lg:pb-1",
+                index > 0 && "ml-2 lg:ml-0 lg:pt-4",
+              )}
+            >
+              {item.group}
+            </li>
+          )}
+          <li className="shrink-0">
+            <Link
+              to={{ search: `?section=${item.section}` }}
+              ref={active === item.section ? revealActive : undefined}
+              aria-current={active === item.section ? "page" : undefined}
+              className={itemClass(active === item.section, item.danger ?? false)}
+            >
+              {item.label}
+            </Link>
+          </li>
+        </Fragment>
       ))}
     </ul>
   </nav>

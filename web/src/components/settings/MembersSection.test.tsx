@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { MembersPage } from "@/pages/MembersPage";
+import { MembersSection } from "@/components/settings/MembersSection";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), open: vi.fn() }));
@@ -11,7 +11,7 @@ vi.mock("@/api/client", () => ({ api: { get: mocks.get, post: vi.fn(), patch: vi
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("@/hooks/useFormDialog", () => ({ useFormDialog: () => ({ open: mocks.open }) }));
 
-describe("MembersPage", () => {
+describe("MembersSection", () => {
   beforeEach(() => {
     mocks.get.mockImplementation((url: string) => {
       if (url === "/api/workspaces/ws-1/roles") return Promise.resolve({ data: [{ id: "r-1", workspace_id: "ws-1", name: "Editor", permissions: [], is_owner_role: false, created_at: "", updated_at: "" }] });
@@ -27,7 +27,7 @@ describe("MembersPage", () => {
 
   it("offers link invitations and no identifier input", async () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    render(<QueryClientProvider client={client}><MemoryRouter><MembersPage /></MemoryRouter></QueryClientProvider>);
+    render(<QueryClientProvider client={client}><MemoryRouter><MembersSection /></MemoryRouter></QueryClientProvider>);
     expect(await screen.findByRole("button", { name: "Invite" })).toBeInTheDocument();
     expect(screen.queryByLabelText(/github username/i)).not.toBeInTheDocument();
   });
@@ -35,7 +35,7 @@ describe("MembersPage", () => {
   it("preselects the current workspace when opening an invitation", async () => {
     const user = (await import("@testing-library/user-event")).default.setup();
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    render(<QueryClientProvider client={client}><MemoryRouter><MembersPage /></MemoryRouter></QueryClientProvider>);
+    render(<QueryClientProvider client={client}><MemoryRouter><MembersSection /></MemoryRouter></QueryClientProvider>);
     await user.click(await screen.findByRole("button", { name: "Invite" }));
     expect(mocks.open).toHaveBeenCalledWith(expect.objectContaining({ formOptions: expect.objectContaining({ defaultValues: expect.objectContaining({ grants: [expect.objectContaining({ workspace_id: "ws-1" })] }) }) }));
   });

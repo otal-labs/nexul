@@ -1381,8 +1381,8 @@ export const AppRouter = () => {
   see the motion rules). Below it: the workspace switcher; a scrolling nav
   with Inbox, Chat, the channels, and one project at a time behind a project
   switcher, its pages listed once; the workspace section (Runners, Topology,
-  Automations) docked under the scroll area and foldable; the account menu
-  and theme toggle at the bottom. Pages render inside `<main>` under
+  Automations, Configuration) docked under the scroll area and foldable; the
+  account menu (Support, Logout) and the Your settings gear at the bottom. Pages render inside `<main>` under
   `Container` (`mx-auto w-full max-w-7xl`).
 - Catch-all `*` renders `ErrorPage`, last.
 - Auth-gated routes added conditionally.

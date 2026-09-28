@@ -10,7 +10,7 @@ Runner builds and deploys stacks. It is a different product surface.
 
 ## Pair a computer
 
-Open **Settings → T3 pairing** and select **Pair a computer**. The dialog has
+Open **Your settings → T3 pairing** and select **Pair a computer**. The dialog has
 three steps.
 
 1. **Connect.** Name the computer and select **Create tunnel**. Nexul creates
@@ -86,7 +86,7 @@ blocks the others. A failed provider can be retried on its own.
 The step shows one row per provider: waiting, running with the agent's steps
 folded under it (one line per step, updated as it finishes), confirmed, or
 failed with **Retry**. Each computer row in
-**Settings → T3 pairing** shows **Setup confirmed** or **Needs setup**, one line
+**Your settings → T3 pairing** shows **Setup confirmed** or **Needs setup**, one line
 per provider with its confirmed-at time, and **Set up** or **Re-run setup**,
 which opens the dialog at this step. The row only shows the state; an agent
 changes a confirmation through MCP and nowhere else.
@@ -105,7 +105,7 @@ lists, and their transcripts are kept with the token hidden.
 
 ## Choose defaults
 
-The **Defaults** tab in **Settings → T3 pairing** is used by `@Agent` in a
+The **Defaults** tab in **Your settings → T3 pairing** is used by `@Agent` in a
 channel or direct message that has no project link. It has these fields:
 
 - **Default computer**. Leave it empty when only one paired computer should be
@@ -129,7 +129,7 @@ user's defaults again.
 The browser resolves a target before a play or chat mention starts. The UI
 reports the reason when it cannot run:
 
-- `unpaired`: pair a computer in Settings, or finish pairing one still in
+- `unpaired`: pair a computer in Your settings, or finish pairing one still in
   progress.
 - `expired`: re-pair the expired computer.
 - `no_harness_project`: select a project link or set a fallback project.

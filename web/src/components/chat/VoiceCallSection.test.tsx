@@ -67,8 +67,8 @@ describe("VoiceCallSection", () => {
     renderSection(true);
 
     expect(screen.getByText(/needs a LiveKit connector/)).toBeInTheDocument();
-    const settingsLink = screen.getByRole("link", { name: "Open settings" });
-    expect(settingsLink).toHaveAttribute("href", "/settings");
+    const settingsLink = screen.getByRole("link", { name: "Open Configuration" });
+    expect(settingsLink).toHaveAttribute("href", "/configuration?section=connectors");
     // No disabled/dead join control in this state.
     expect(screen.queryByRole("button", { name: "Join call" })).not.toBeInTheDocument();
   });

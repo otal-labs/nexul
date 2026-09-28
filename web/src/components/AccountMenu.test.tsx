@@ -66,43 +66,17 @@ describe("AccountMenu", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("opens the popover with Settings, Support, and Logout", async () => {
-    const user = userEvent.setup();
-    renderMenu();
-    await user.click(await screen.findByText("@onik97"));
-
-    expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/settings");
-    const support = screen.getByRole("link", { name: "Support" });
-    expect(support).toHaveAttribute("href", "https://github.com/otal-labs/nexul/issues");
-    expect(support).toHaveAttribute("target", "_blank");
-    expect(screen.getByRole("button", { name: "Logout" })).toBeInTheDocument();
-  });
-
-  it("hides Settings for a member without projects:write", async () => {
-    roleResponse = { role_name: "Member", permissions: [] };
+  it("opens the popover with Support and Logout only", async () => {
     const user = userEvent.setup();
     renderMenu();
     await user.click(await screen.findByText("@onik97"));
 
     expect(screen.queryByRole("link", { name: "Settings" })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Support" })).toBeInTheDocument();
-  });
-
-  it("hides Members for a viewer without members:write", async () => {
-    const user = userEvent.setup();
-    renderMenu();
-    await user.click(await screen.findByText("@onik97"));
-
     expect(screen.queryByRole("link", { name: "Members" })).not.toBeInTheDocument();
-  });
-
-  it("shows Members for a viewer with members:write", async () => {
-    roleResponse = { role_name: "Owner", permissions: ["members:write"] };
-    const user = userEvent.setup();
-    renderMenu();
-    await user.click(await screen.findByText("@onik97"));
-
-    expect(screen.getByRole("link", { name: "Members" })).toHaveAttribute("href", "/members");
+    const support = screen.getByRole("link", { name: "Support" });
+    expect(support).toHaveAttribute("href", "https://github.com/otal-labs/nexul/issues");
+    expect(support).toHaveAttribute("target", "_blank");
+    expect(screen.getByRole("button", { name: "Logout" })).toBeInTheDocument();
   });
 
   it("signs the session out server-side, clears local state, and redirects home when Logout is clicked", async () => {

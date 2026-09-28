@@ -1,71 +1,94 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 
-import { isSettingsSection, SettingsNav } from "@/components/settings/SettingsNav";
+import {
+  isSettingsSection,
+  SETTINGS_SECTIONS,
+  SettingsNav,
+  visibleSettingsSections,
+  type SettingsVisibility,
+} from "@/components/settings/SettingsNav";
 
-const renderNav = (overrides: Partial<Parameters<typeof SettingsNav>[0]> = {}) =>
+const nothing: SettingsVisibility = {
+  isInstanceAdmin: false,
+  showRoles: false,
+  showPlays: false,
+  showInterviewTemplate: false,
+  showMembers: false,
+  showMentionLayout: false,
+};
+
+const everything: SettingsVisibility = {
+  isInstanceAdmin: true,
+  showRoles: true,
+  showPlays: true,
+  showInterviewTemplate: true,
+  showMembers: true,
+  showMentionLayout: true,
+};
+
+const renderNav = (visibility: SettingsVisibility, active = "danger" as const) =>
   render(
-    <MemoryRouter initialEntries={["/settings"]}>
-      <SettingsNav
-        active="instance"
-        showInstanceAccess={false}
-        showRoles={false}
-        showPlays={false}
-        showMentionLayout={false}
-        showInterviewTemplate={false}
-        {...overrides}
-      />
+    <MemoryRouter initialEntries={["/configuration"]}>
+      <SettingsNav active={active} sections={visibleSettingsSections(visibility)} />
     </MemoryRouter>,
   );
 
 describe("SettingsNav", () => {
-  it("renders one link per ungated section, each pointing at its section param", () => {
-    renderNav();
-    expect(screen.getByRole("link", { name: "Instance" })).toHaveAttribute("href", "/settings?section=instance");
-    expect(screen.getByRole("link", { name: "Appearance" })).toHaveAttribute("href", "/settings?section=appearance");
-    expect(screen.getByRole("link", { name: "Tokens" })).toHaveAttribute("href", "/settings?section=tokens");
-    expect(screen.getByRole("link", { name: "T3 pairing" })).toHaveAttribute("href", "/settings?section=pairing");
-    expect(screen.getByRole("link", { name: "Connectors" })).toHaveAttribute("href", "/settings?section=connectors");
-    expect(screen.getByRole("link", { name: "Danger zone" })).toHaveAttribute("href", "/settings?section=danger");
+  it("renders every section in two labelled groups for an admin holding every permission", () => {
+    renderNav(everything);
+    const nav = within(screen.getByRole("navigation", { name: "Configuration sections" }));
+    expect(nav.getAllByRole("listitem").map((item) => item.textContent)).toEqual([
+      "This workspace",
+      "Roles",
+      "Plays",
+      "Interview template",
+      "Members",
+      "Mention chips",
+      "Danger zone",
+      "Whole instance",
+      "Instance",
+      "Sign-in providers",
+      "Connectors",
+      "DNS",
+      "Registered accounts",
+    ]);
+    expect(nav.getByRole("link", { name: "Members" })).toHaveAttribute("href", "/configuration?section=members");
+    expect(nav.getByRole("link", { name: "Sign-in providers" })).toHaveAttribute("href", "/configuration?section=sign-in");
+  });
+
+  it("drops the whole-instance group and its label for a non-admin", () => {
+    renderNav({ ...everything, isInstanceAdmin: false });
+    expect(screen.queryByText("Whole instance")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Instance" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Registered accounts" })).not.toBeInTheDocument();
+    expect(screen.getByText("This workspace")).toBeInTheDocument();
+  });
+
+  it("hides every gated workspace section until its flag is set, leaving Danger zone", () => {
+    renderNav(nothing);
+    expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual(["Danger zone"]);
   });
 
   it("marks only the active section", () => {
-    renderNav({ active: "tokens" });
-    expect(screen.getByRole("link", { name: "Tokens" })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("link", { name: "Instance" })).not.toHaveAttribute("aria-current");
+    renderNav(everything, "danger");
+    expect(screen.getByRole("link", { name: "Danger zone" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Roles" })).not.toHaveAttribute("aria-current");
   });
+});
 
-  it("hides gated sections until their flag is set", () => {
-    renderNav();
-    expect(screen.queryByRole("link", { name: "Registered accounts" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Roles" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Plays" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Mention chips" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Interview template" })).not.toBeInTheDocument();
-  });
-
-  it("shows gated sections when their flag is set", () => {
-    renderNav({ showInstanceAccess: true, showRoles: true, showPlays: true, showMentionLayout: true, showInterviewTemplate: true });
-    expect(screen.getByRole("link", { name: "Interview template" })).toHaveAttribute("href", "/settings?section=interview");
-    expect(screen.getByRole("link", { name: "Registered accounts" })).toHaveAttribute("href", "/settings?section=access");
-    expect(screen.getByRole("link", { name: "Roles" })).toHaveAttribute("href", "/settings?section=roles");
-    expect(screen.getByRole("link", { name: "Plays" })).toHaveAttribute("href", "/settings?section=plays");
-    expect(screen.getByRole("link", { name: "Mention chips" })).toHaveAttribute("href", "/settings?section=mentions");
+describe("visibleSettingsSections", () => {
+  it("keeps nav order", () => {
+    expect(visibleSettingsSections(everything)).toEqual([...SETTINGS_SECTIONS]);
   });
 });
 
 describe("isSettingsSection", () => {
-  it("accepts every known section", () => {
-    for (const section of ["instance", "roles", "plays", "interview", "mentions", "appearance", "tokens", "pairing", "connectors", "access", "danger"]) {
-      expect(isSettingsSection(section)).toBe(true);
+  it("accepts every known section and rejects the personal ones that moved out", () => {
+    for (const section of SETTINGS_SECTIONS) expect(isSettingsSection(section)).toBe(true);
+    for (const section of ["appearance", "tokens", "pairing", "nope", "", null, undefined]) {
+      expect(isSettingsSection(section)).toBe(false);
     }
-  });
-
-  it("rejects anything else", () => {
-    expect(isSettingsSection("nope")).toBe(false);
-    expect(isSettingsSection(null)).toBe(false);
-    expect(isSettingsSection(undefined)).toBe(false);
-    expect(isSettingsSection("")).toBe(false);
   });
 });

@@ -1,4 +1,4 @@
-import { ChevronDownIcon, Cpu, Network, Workflow } from "lucide-react";
+import { ChevronDownIcon, Cpu, Network, SlidersHorizontal, Workflow } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 
 import { sectionLabelClass, type SidebarNavEntry } from "@/components/SidebarNav";
@@ -10,6 +10,7 @@ const deployNav: SidebarNavEntry[] = [
   { to: "/runners", label: "Runners", icon: Cpu },
   { to: "/topology", label: "Topology", icon: Network },
   { to: "/automations", label: "Automations", icon: Workflow, wip: true },
+  { to: "/configuration", label: "Configuration", icon: SlidersHorizontal },
 ];
 
 interface DeploySidebarNavProps {

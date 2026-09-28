@@ -49,7 +49,7 @@ describe("UpdateButton", () => {
     mocks.get.mockResolvedValue(withUpdate([]));
     renderButton();
     const button = await screen.findByRole("link", { name: "Update available: v0.2.0-beta.8" });
-    expect(button).toHaveAttribute("href", "/settings?section=instance#instance-version");
+    expect(button).toHaveAttribute("href", "/configuration?section=instance#instance-version");
   });
 
   it("hovering shows what changed since the running version", async () => {
@@ -68,7 +68,7 @@ describe("UpdateButton", () => {
     expect(screen.getByRole("link", { name: "v0.2.0-beta.8" })).toHaveAttribute("href", "https://x/8");
     expect(screen.getByRole("link", { name: "Upgrade from Settings" })).toHaveAttribute(
       "href",
-      "/settings?section=instance#instance-version",
+      "/configuration?section=instance#instance-version",
     );
   });
 

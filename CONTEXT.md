@@ -232,7 +232,7 @@ _Avoid_: Compose project, resource, application
 A stack that belongs to the instance rather than to a project: the backing
 stack of a gateway, the tunnel or reverse proxy first run deploys among
 them. It never builds from a repository, shows on Topology and in
-Settings → DNS, and is reached by whoever can reach stacks at all, since a
+Configuration → DNS, and is reached by whoever can reach stacks at all, since a
 stack's project never gates access to it.
 _Avoid_: System stack, infrastructure project
 

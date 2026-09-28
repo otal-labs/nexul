@@ -21,7 +21,7 @@ export const MembersFeed = ({
   const assignableRoles = roles.filter((r) => !r.is_owner_role);
 
   return (
-    <ul className="mt-4 divide-y divide-border overflow-hidden rounded-md border bg-card shadow-card">
+    <ul className="divide-y divide-border overflow-hidden rounded-md border bg-card shadow-card">
       {members.map((member, index) => (
         <MemberRow
           key={member.user_id}

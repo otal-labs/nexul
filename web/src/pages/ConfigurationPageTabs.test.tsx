@@ -1,0 +1,122 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter, useLocation } from "react-router";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { ConfigurationPage } from "@/pages/ConfigurationPage";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
+
+const mocks = vi.hoisted(() => ({ get: vi.fn(), toastSuccess: vi.fn() }));
+
+vi.mock("@/api/client", () => ({ api: { get: mocks.get }, errorMessage: () => "error" }));
+vi.mock("sonner", () => ({ toast: { success: mocks.toastSuccess, error: vi.fn() } }));
+
+// Stub every card so these tests only exercise which section and tab a URL lands on; ConnectorsSection stays real to prove it still reads the OAuth callback.
+vi.mock("@/components/settings/InstanceVersionSection", () => ({ InstanceVersionSection: () => <p>Version card</p> }));
+vi.mock("@/components/settings/InstanceUrlSection", () => ({ InstanceUrlSection: () => <p>URL card</p> }));
+vi.mock("@/components/settings/OAuthProviderSection", () => ({
+  OAuthProviderSection: ({ provider }: { provider: string }) => <p>{provider} card</p>,
+}));
+vi.mock("@/components/settings/ConnectorAppConfigSection", () => ({ ConnectorAppConfigSection: () => <p>App card</p> }));
+vi.mock("@/components/settings/RoleSettingsSection", () => ({ RoleSettingsSection: () => <p>Roles card</p> }));
+vi.mock("@/components/settings/MembersSection", () => ({ MembersSection: () => <p>Members card</p> }));
+
+const settings = { instance_url: "https://deploy.example.com", settings_version: 1 };
+
+const routeGet = (admin: boolean, permissions: string[]) => (url: string) => {
+  if (url === "/api/auth/me") return Promise.resolve({ data: { user: { can_create_workspace: admin } } });
+  if (url === "/api/workspaces/ws-1/me") return Promise.resolve({ data: { role_name: "Owner", permissions } });
+  if (url === "/api/connectors") {
+    return Promise.resolve({
+      data: [{ connector: { id: "github", name: "GitHub" }, status: { configured: true } }],
+    });
+  }
+  return Promise.resolve({ data: settings });
+};
+
+const LocationProbe = () => {
+  const location = useLocation();
+  return <output aria-label="location">{`${location.search}${location.hash}`}</output>;
+};
+
+const renderPage = (route: string, admin = true, permissions: string[] = []) => {
+  mocks.get.mockImplementation(routeGet(admin, permissions));
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={[route]}>
+        <ConfigurationPage />
+        <LocationProbe />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+};
+
+const selectedTab = (name: string) => screen.findByRole("tab", { name, selected: true });
+
+describe("ConfigurationPage sections", () => {
+  beforeEach(() => {
+    mocks.get.mockReset();
+    mocks.toastSuccess.mockReset();
+    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
+    useWorkspaceStore.persist.clearStorage();
+  });
+
+  it("lands an admin with no workspace permissions on Instance, never on Danger zone", async () => {
+    renderPage("/configuration?section=automation-secrets");
+
+    expect(await screen.findByText("URL card")).toBeInTheDocument();
+    expect(screen.getByText("Version card")).toBeInTheDocument();
+    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+  });
+
+  it("opens the first workspace section for a workspace owner", async () => {
+    renderPage("/configuration", true, ["roles:write", "members:write"]);
+
+    expect(await screen.findByText("Roles card")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Members" })).toHaveAttribute("href", "/configuration?section=members");
+  });
+
+  it("shows Members to a members:write holder", async () => {
+    renderPage("/configuration?section=members", false, ["members:write"]);
+
+    expect(await screen.findByText("Members card")).toBeInTheDocument();
+  });
+
+  it("hides every whole-instance section from a non-admin, and an instance link falls back", async () => {
+    renderPage("/configuration?section=instance", false);
+
+    await screen.findByRole("heading", { name: "Configuration" });
+    expect(screen.queryByText("URL card")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Instance" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Connectors" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Whole instance")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Danger zone" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("gives sign-in providers their own section", async () => {
+    renderPage("/configuration?section=sign-in");
+
+    expect(await screen.findByText("google card")).toBeInTheDocument();
+    expect(screen.getByText("discord card")).toBeInTheDocument();
+    expect(screen.queryByText("URL card")).not.toBeInTheDocument();
+  });
+
+  it("lands the connector OAuth callback on the Connectors tab, which toasts and strips it", async () => {
+    renderPage("/configuration?section=connectors&connector=github&connected=1");
+
+    await selectedTab("Connectors");
+    await vi.waitFor(() => expect(mocks.toastSuccess).toHaveBeenCalledWith(expect.stringMatching(/connected$/)));
+    await vi.waitFor(() => expect(screen.getByLabelText("location")).toHaveTextContent(/^\?section=connectors$/));
+    expect(screen.queryByText("App card")).not.toBeInTheDocument();
+  });
+
+  it("keeps the GitHub App card on its own tab", async () => {
+    const user = userEvent.setup();
+    renderPage("/configuration?section=connectors");
+
+    await user.click(await screen.findByRole("tab", { name: "GitHub App" }));
+    expect(screen.getByText("App card")).toBeInTheDocument();
+  });
+});

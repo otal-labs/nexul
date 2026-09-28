@@ -189,7 +189,7 @@ export interface RefusalDetails {
 // Mirrors pairing.ReasonSetupRequired, the refusal whose fix is running setup on the computer it names.
 export const SETUP_REQUIRED_REASON = "setup_required";
 
-// Settings → T3 pairing with the computer's Set up step open.
+// Your settings → T3 pairing with the computer's Set up step open.
 export const computerSetupPath = (computerId: string) =>
   `/settings?section=pairing&setup=${encodeURIComponent(computerId)}`;
 
