@@ -22,9 +22,9 @@
       try { $tag = (Invoke-RestMethod "$api/repos/$repo/releases/latest").tag_name } catch { $tag = $null }
     }
     if (-not $tag) {
-      # GitHub orders the list by tag text (beta.9 above beta.10); the newest is the latest published, never a draft.
+      # GitHub orders the list by tag text (beta.9 above beta.10); take the latest published server (v*) release, never a draft.
       $tag = @(Invoke-RestMethod "$api/repos/$repo/releases?per_page=30") |
-        Where-Object { -not $_.draft -and $_.published_at } |
+        Where-Object { -not $_.draft -and $_.published_at -and $_.tag_name -like 'v*' } |
         Sort-Object { [datetime]$_.published_at } -Descending |
         Select-Object -First 1 -ExpandProperty tag_name
     }
