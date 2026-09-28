@@ -70,6 +70,22 @@ export interface PersonalAccessToken {
   computer_id?: string;
 }
 
+export type SessionClient = "browser" | "desktop" | "phone";
+
+// One signed-in device; `current` flags the session the listing request itself came in on.
+export interface Session {
+  id: string;
+  user_id: string;
+  client: SessionClient;
+  platform: string;
+  label: string;
+  ip: string;
+  created_at: string;
+  last_active_at: string;
+  expires_at: string;
+  current: boolean;
+}
+
 export interface MintPATResponse {
   token: string;
   id: string;
