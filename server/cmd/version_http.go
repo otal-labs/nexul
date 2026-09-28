@@ -35,6 +35,9 @@ type latestVersion struct {
 // share one 5-minute cache instead of each polling GitHub on its own.
 func versionHandler(runnerSvc *runner.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("refresh") == "1" {
+			runnerSvc.RefreshReleases()
+		}
 		resp := versionResponse{Version: version.Version, Channel: version.Channel(), Changes: []versionChange{}}
 		if !version.IsRelease() {
 			httpx.WriteJSON(w, http.StatusOK, resp)
@@ -58,6 +61,9 @@ func versionHandler(runnerSvc *runner.Service) http.HandlerFunc {
 // The use-case enforces instance administration, so a non-admin gets 403 here and over MCP alike.
 func instanceUpgradeGetHandler(runnerSvc *runner.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("refresh") == "1" {
+			runnerSvc.RefreshReleases()
+		}
 		status, err := runnerSvc.UpgradeStatus(r.Context())
 		if err != nil {
 			httpx.WriteError(w, err)

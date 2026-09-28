@@ -228,4 +228,21 @@ describe("InstanceVersionSection", () => {
 
     expect(mocks.post).not.toHaveBeenCalled();
   });
+
+  it("checks for a newer release past the caches and shows it", async () => {
+    const onBeta9 = { version: "v0.2.0-beta.9", channel: "beta", update_available: false, can_upgrade: false, reason: "already on the newest release", upgrade: null };
+    mocks.get.mockImplementation(async (_url: string, config?: { params?: { refresh?: number } }) =>
+      config?.params?.refresh === 1
+        ? { data: { ...onBeta9, latest: { version: "v0.2.0-beta.10", url: "u" }, update_available: true, can_upgrade: true, reason: "" } }
+        : { data: { ...onBeta9, latest: { version: "v0.2.0-beta.9", url: "u" } } },
+    );
+    const user = userEvent.setup();
+    renderSection();
+
+    expect(await screen.findByRole("button", { name: "Upgrade to v0.2.0-beta.9" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Check for a newer release" }));
+
+    expect(await screen.findByRole("button", { name: "Upgrade to v0.2.0-beta.10" })).toBeEnabled();
+    expect(mocks.get).toHaveBeenCalledWith("/api/instance/upgrade", { params: { refresh: 1 } });
+  });
 });

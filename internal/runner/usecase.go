@@ -332,6 +332,13 @@ func (s *Service) WithAdminGate(admin identity.InstanceAdmin) *Service {
 
 // UpgradeStatus reports the running version, the channel's newest release, and whether an upgrade can start now.
 // Only an instance admin may read it.
+// RefreshReleases makes the next release lookup ask GitHub instead of the cache, for a release published moments ago.
+func (s *Service) RefreshReleases() {
+	if s.install.Release != nil {
+		s.install.Release.Refresh()
+	}
+}
+
 func (s *Service) UpgradeStatus(ctx context.Context) (UpgradeStatus, error) {
 	if err := identity.RequireInstanceAdmin(ctx, s.admin); err != nil {
 		return UpgradeStatus{}, err

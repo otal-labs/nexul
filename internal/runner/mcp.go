@@ -215,9 +215,13 @@ func instanceGetTool(s *Service) mcptool.Tool {
 	return mcptool.New("instance_get", "Get instance",
 		"Returns the instance's running version and release channel, the channel's newest release, whether an "+
 			"upgrade can start now and if not why, and the latest upgrade record. Check it before instance_upgrade "+
-			"and poll it afterwards to see the upgrade complete or fail. Instance admins only.",
+			"and poll it afterwards to see the upgrade complete or fail; refresh asks GitHub for a release published "+
+			"in the last few minutes. Instance admins only.",
 		mcptool.Hints{ReadOnly: true},
-		func(ctx context.Context, _ struct{}) (any, error) {
+		func(ctx context.Context, in instanceGetIn) (any, error) {
+			if in.Refresh {
+				s.RefreshReleases()
+			}
 			return s.UpgradeStatus(ctx)
 		})
 }
@@ -232,6 +236,10 @@ func instanceUpgradeTool(s *Service) mcptool.Tool {
 		func(ctx context.Context, _ struct{}) (any, error) {
 			return s.RequestUpgrade(ctx, mcpUpgradeActor(ctx))
 		})
+}
+
+type instanceGetIn struct {
+	Refresh bool `json:"refresh,omitempty" jsonschema:"Skip the few-minute release cache and ask GitHub for the newest release now. Defaults to false."`
 }
 
 // mcpUpgradeActor is upgrade provenance for an MCP call (ADR 0049): "<user id>:mcp", empty with no actor.
