@@ -48,7 +48,7 @@ On the App's page, click Install App, choose your account, and pick **All reposi
 
 - **First run** (`/setup` on your domain) — OAuth client ID, client secret, App slug. The instance URL is already fixed by the domain step. This page shows the exact callback URL and verifies the slug against GitHub before letting you continue. See [Setup wizard](/docs/guide/setup-wizard/).
 - **Owner wizard's "Connect your tools" step, or Settings → Connectors → GitHub → Connect** — the OAuth consent round trip. If you already authorized the App while installing it, there's no consent screen to click through.
-- **Rotating credentials** — Settings' GitHub App card takes a new client ID and secret at any time. Nothing lives in environment variables.
+- **Rotating credentials** — the **GitHub App** tab under Settings → Connectors takes a new client ID and secret at any time. Nothing lives in environment variables.
 
 ## 4. When you change permissions later
 

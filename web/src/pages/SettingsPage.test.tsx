@@ -114,7 +114,7 @@ describe("SettingsPage", () => {
       },
     });
     const user = userEvent.setup();
-    renderPage("/settings?section=tokens");
+    renderPage("/settings?section=tokens&tab=personal");
 
     await user.type(await screen.findByLabelText(/token name/i), "ci agent");
     await user.click(screen.getByRole("button", { name: /^create token$/i }));
@@ -150,7 +150,7 @@ describe("SettingsPage", () => {
       if (url === "/api/connectors") return Promise.resolve({ data: [] });
       return Promise.resolve({ data: settings });
     });
-    renderPage("/settings?section=tokens");
+    renderPage("/settings?section=tokens&tab=personal");
 
     expect(await screen.findByText("ci agent")).toBeInTheDocument();
     expect(screen.getByText("old token")).toBeInTheDocument();
@@ -182,7 +182,7 @@ describe("SettingsPage", () => {
     });
     mocks.del.mockResolvedValue({ data: patList([]) });
     const user = userEvent.setup();
-    renderPage("/settings?section=tokens");
+    renderPage("/settings?section=tokens&tab=personal");
 
     const revoke = await screen.findByRole("button", { name: /^revoke$/i });
     await user.click(revoke);

@@ -1,5 +1,6 @@
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
+import { PageTabs, PageTabsContent } from "@/components/PageTabs";
 import { BoardLabelColorsSection } from "@/components/settings/BoardLabelColorsSection";
 import { BoardStatusColumnsSection } from "@/components/settings/BoardStatusColumnsSection";
 import { BoardTicketTypesSection } from "@/components/settings/BoardTicketTypesSection";
@@ -32,11 +33,25 @@ export const BoardSettingsSection = ({ projectId }: BoardSettingsSectionProps) =
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {statuses && (
-        <div className="mt-6 space-y-6">
-          <BoardStatusColumnsSection projectId={projectId} statuses={statuses} />
-          <BoardTicketTypesSection projectId={projectId} ticketTypes={ticketTypes} />
-          <BoardLabelColorsSection projectId={projectId} allLabels={allLabels} labelColors={labelColors} />
-        </div>
+        <PageTabs
+          label="Board settings"
+          className="mt-6"
+          tabs={[
+            { value: "columns", label: "Status columns" },
+            { value: "types", label: "Ticket types" },
+            { value: "labels", label: "Label colors" },
+          ]}
+        >
+          <PageTabsContent value="columns">
+            <BoardStatusColumnsSection projectId={projectId} statuses={statuses} />
+          </PageTabsContent>
+          <PageTabsContent value="types">
+            <BoardTicketTypesSection projectId={projectId} ticketTypes={ticketTypes} />
+          </PageTabsContent>
+          <PageTabsContent value="labels">
+            <BoardLabelColorsSection projectId={projectId} allLabels={allLabels} labelColors={labelColors} />
+          </PageTabsContent>
+        </PageTabs>
       )}
     </div>
   );

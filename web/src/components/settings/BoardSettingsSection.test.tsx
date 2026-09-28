@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { BoardSettingsSection } from "@/components/settings/BoardSettingsSection";
@@ -44,11 +45,14 @@ const ticketType = (overrides: Record<string, unknown> = {}) => ({
 
 const PROJECT_ID = "proj-1";
 
-const renderSection = () => {
+// Columns, types, and label colors are separate tabs; tests open the one they exercise through ?tab=.
+const renderSection = (tab = "columns") => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <BoardSettingsSection projectId={PROJECT_ID} />
+      <MemoryRouter initialEntries={[`/projects/proj-1/settings?section=board&tab=${tab}`]}>
+        <BoardSettingsSection projectId={PROJECT_ID} />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 };
@@ -75,10 +79,33 @@ describe("BoardSettingsSection", () => {
   });
 
   it("shows empty states for both lists", async () => {
+    const user = userEvent.setup();
     renderSection();
     expect(await screen.findByText(/no backlog statuses/i)).toBeInTheDocument();
     expect(screen.getByText(/no done statuses/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Ticket types" }));
     expect(screen.getByText(/no ticket types yet/i)).toBeInTheDocument();
+    expect(screen.queryByText(/no backlog statuses/i)).not.toBeInTheDocument();
+  });
+
+  it("opens on the status columns tab and switches to label colors", async () => {
+    const user = userEvent.setup();
+    mocks.get.mockImplementation((url: string) => {
+      if (url === "/api/tickets/labels") return Promise.resolve({ data: ["bug"] });
+      return Promise.resolve({ data: [] });
+    });
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <MemoryRouter initialEntries={["/projects/proj-1/settings?section=board"]}>
+          <BoardSettingsSection projectId={PROJECT_ID} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByRole("tab", { name: "Status columns" })).toHaveAttribute("aria-selected", "true");
+    await user.click(screen.getByRole("tab", { name: "Label colors" }));
+    expect(await screen.findByRole("radiogroup", { name: "Color for label bug" })).toBeInTheDocument();
   });
 
   it("does not show the empty states while statuses are still loading", () => {
@@ -286,7 +313,7 @@ describe("BoardSettingsSection", () => {
     await user.click(screen.getByRole("button", { name: "Rename" }));
     const iconPicker = within(screen.getByRole("radiogroup", { name: "Icon" }));
     await user.click(iconPicker.getByRole("radio", { name: "CircleX" }));
-    await user.click(screen.getByText("Status columns"));
+    await user.click(screen.getByRole("heading", { name: "Status columns" }));
 
     expect(mocks.patch).toHaveBeenCalledWith("/api/statuses/open", {
       name: "Open",
@@ -315,7 +342,7 @@ describe("BoardSettingsSection", () => {
   it("adds a ticket type", async () => {
     mocks.post.mockResolvedValue({ data: ticketType() });
     const user = userEvent.setup();
-    renderSection();
+    renderSection("types");
 
     await user.type(await screen.findByLabelText("New ticket type"), "bug");
     await user.click(screen.getByRole("button", { name: "Add type" }));
@@ -330,7 +357,7 @@ describe("BoardSettingsSection", () => {
       return Promise.resolve({ data: [] });
     });
     const user = userEvent.setup();
-    renderSection();
+    renderSection("types");
 
     await user.click(await screen.findByRole("button", { name: "Actions for task" }));
     await user.click(screen.getByRole("button", { name: "Delete" }));
@@ -345,7 +372,7 @@ describe("BoardSettingsSection", () => {
       return Promise.resolve({ data: [] });
     });
     const user = userEvent.setup();
-    renderSection();
+    renderSection("types");
 
     await user.click(await screen.findByRole("button", { name: "Actions for task" }));
     await user.click(screen.getByRole("button", { name: "Rename" }));
@@ -364,7 +391,7 @@ describe("BoardSettingsSection", () => {
       return Promise.resolve({ data: [] });
     });
     const user = userEvent.setup();
-    renderSection();
+    renderSection("types");
 
     await user.click(await screen.findByRole("button", { name: "Color for task" }));
     const colorPicker = within(screen.getByRole("radiogroup", { name: "Color for task" }));
@@ -381,7 +408,7 @@ describe("BoardSettingsSection", () => {
     });
     mocks.post.mockResolvedValue({ data: {} });
     const user = userEvent.setup();
-    renderSection();
+    renderSection("labels");
 
     const colorPicker = within(await screen.findByRole("radiogroup", { name: "Color for label bug" }));
     await user.click(colorPicker.getByRole("radio", { name: "orange" }));

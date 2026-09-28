@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import { TicketPage } from "@/pages/TicketPage";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
@@ -142,5 +143,53 @@ describe("TicketPage", () => {
     vi.mocked(api.get).mockRejectedValue(new Error("boom"));
     renderPage();
     expect(await screen.findByText("boom")).toBeInTheDocument();
+  });
+});
+
+describe("TicketPage tabs", () => {
+  beforeEach(() => {
+    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
+  });
+
+  it("drops Thread and Activity without a workspace, opening on Testing", async () => {
+    useWorkspaceStore.setState({ selectedWorkspaceId: "" });
+    mockTicket();
+    renderPage();
+
+    expect(await screen.findByRole("tab", { name: "Testing", selected: true })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Thread" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Activity" })).not.toBeInTheDocument();
+  });
+
+  it("keeps the ticket body on top and opens the Thread tab below it", async () => {
+    mockTicket();
+    renderPage();
+
+    expect(await screen.findByRole("heading", { name: "Write migrations" })).toBeInTheDocument();
+    expect(await screen.findByRole("tab", { name: "Thread", selected: true })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Thread" })).toBeInTheDocument();
+    expect(screen.queryByText("Linked tickets")).not.toBeInTheDocument();
+  });
+
+  it("switches to Testing, Links, and Activity, each saying something when empty", async () => {
+    const user = userEvent.setup();
+    mockTicket();
+    renderPage();
+
+    await user.click(await screen.findByRole("tab", { name: "Testing" }));
+    expect(await screen.findByText(/once the ticket reaches a Testing column/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Links" }));
+    expect(await screen.findByText("No blockers or found-in links.")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Activity" }));
+    expect(await screen.findByText("No plays have run on this ticket yet.")).toBeInTheDocument();
+  });
+
+  it("opens the tab named by ?tab=", async () => {
+    mockTicket();
+    renderPage("/tickets/t-1?tab=links");
+
+    expect(await screen.findByText("No blockers or found-in links.")).toBeInTheDocument();
   });
 });

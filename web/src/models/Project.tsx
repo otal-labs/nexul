@@ -49,6 +49,24 @@ export const resolveProject = (projects: Project[], param: string): Project | un
 
 export const boardPath = (project: Project): string => `/board/${projectToken(project)}`;
 
+// The token of the project a URL is scoped to; undefined on pages that belong to no one project.
+const projectScopedPaths = [/^\/board\/([^/]+)/, /^\/projects\/([^/]+)\//, /^\/(?:docs|memories)\/([^/]+)\/[^/]+/];
+
+export const projectTokenFromPath = (pathname: string): string | undefined => {
+  for (const pattern of projectScopedPaths) {
+    const token = pattern.exec(pathname)?.[1];
+    if (token) return token;
+  }
+  return undefined;
+};
+
+// Switching project keeps you on its settings or interview; anywhere else lands on the new project's board.
+export const switchProjectPath = (pathname: string, project: Project): string => {
+  const page = /^\/projects\/[^/]+\/(settings|interview)/.exec(pathname)?.[1];
+  if (page) return `/projects/${projectToken(project)}/${page}`;
+  return boardPath(project);
+};
+
 export const projectSettingsPath = (token: string): string => `/projects/${token}/settings`;
 
 // Every way to create a project opens the project wizard; it is the only thing that makes one.

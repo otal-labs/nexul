@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -32,11 +33,11 @@ const automation = (overrides: Partial<Automation> = {}): Automation => ({
   ...overrides,
 });
 
-const renderPage = () => {
+const renderPage = (route = "/automations") => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={["/automations"]}>
+      <MemoryRouter initialEntries={[route]}>
         <AutomationsPage />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -49,15 +50,47 @@ describe("AutomationsPage", () => {
     mocks.patch.mockReset();
   });
 
-  it("shows an empty state with no automations", async () => {
+  it("shows an error on the Automations tab when the list fails to load", async () => {
+    mocks.get.mockRejectedValue(new Error("boom"));
+    renderPage();
+
+    expect(await screen.findByText("error")).toBeInTheDocument();
+  });
+
+  it("shows an empty state with no automations, and keeps hosts on their own tab", async () => {
+    const user = userEvent.setup();
     mocks.get.mockResolvedValue({ data: [] });
     renderPage();
 
     expect(await screen.findByText("No automations yet")).toBeInTheDocument();
+    expect(screen.queryByText("No automations host enrolled yet.")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Hosts" }));
     expect(await screen.findByText("No automations host enrolled yet.")).toBeInTheDocument();
+    expect(screen.queryByText("No automations yet")).not.toBeInTheDocument();
   });
 
-  it("lists automations and the automations hosts returned by the API", async () => {
+  it("offers New automation in the header on every tab", async () => {
+    mocks.get.mockResolvedValue({ data: [] });
+    renderPage("/automations?tab=secrets");
+
+    expect(await screen.findByRole("button", { name: "New automation" })).toBeInTheDocument();
+  });
+
+  it("opens ?tab=secrets on the shared secrets pool", async () => {
+    mocks.get.mockImplementation(async (url: string) =>
+      url === "/api/automation-secrets"
+        ? { data: [{ name: "SLACK_WEBHOOK_URL", created_at: "2026-08-01T00:00:00Z", updated_at: "2026-08-01T00:00:00Z" }] }
+        : { data: [] },
+    );
+    renderPage("/automations?tab=secrets");
+
+    expect(await screen.findByRole("tab", { name: "Secrets", selected: true })).toBeInTheDocument();
+    expect(await screen.findByText("SLACK_WEBHOOK_URL")).toBeInTheDocument();
+    expect(screen.queryByText("No automations yet")).not.toBeInTheDocument();
+  });
+
+  it("lists automations, and the automations hosts on the Hosts tab", async () => {
     const host = {
       id: "h1", name: "jobs-1", machine: "prod", os: "linux", arch: "amd64", version: "v0.3.0",
       connected: true, last_seen: "2026-08-01T00:00:00Z",
@@ -71,6 +104,8 @@ describe("AutomationsPage", () => {
 
     expect(await screen.findByText("Ticket finished")).toBeInTheDocument();
     expect(screen.getByText("PR opened")).toBeInTheDocument();
+
+    await userEvent.setup().click(screen.getByRole("tab", { name: "Hosts" }));
     expect(await screen.findByText("jobs-1")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add automations host" })).toBeInTheDocument();
   });

@@ -11,7 +11,6 @@ export const SETTINGS_SECTIONS = [
   "pairing",
   "connectors",
   "dns",
-  "automation-secrets",
   "access",
   "danger",
 ] as const;
@@ -34,7 +33,6 @@ const sectionLabels: Record<SettingsSection, string> = {
   pairing: "T3 pairing",
   connectors: "Connectors",
   dns: "DNS",
-  "automation-secrets": "Automation secrets",
   access: "Registered accounts",
   danger: "Danger zone",
 };

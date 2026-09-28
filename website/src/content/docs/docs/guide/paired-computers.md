@@ -102,7 +102,7 @@ lists, and their transcripts are kept with the token hidden.
 
 ## Choose defaults
 
-The **Defaults** card in **Settings → T3 pairing** is used by `@Agent` in a
+The **Defaults** tab in **Settings → T3 pairing** is used by `@Agent` in a
 channel or direct message that has no project link. It has these fields:
 
 - **Default computer**. Leave it empty when only one paired computer should be

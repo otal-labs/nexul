@@ -14,7 +14,7 @@ export const MemoryVersionsFeed = ({ memoryId, currentVersion, canRevert }: Memo
   const { data, error, isPending } = useFetchMemoryVersions(memoryId);
 
   return (
-    <section className="mt-8 space-y-3" aria-label="Version history">
+    <section className="space-y-3" aria-label="Version history">
       <h2 className="font-mono text-[11px] font-semibold tracking-[0.08em] text-muted-foreground/80 uppercase">
         Version history
       </h2>
