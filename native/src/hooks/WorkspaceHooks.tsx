@@ -20,6 +20,8 @@ export const useSelectedWorkspace = (): Workspace | undefined => {
   return data?.find((workspace) => workspace.id === selectedWorkspaceId);
 };
 
+export const useCurrentWorkspaceId = (): string | undefined => useSelectedWorkspace()?.id;
+
 // F5 exception: repairs an empty or stale selection so the switcher and every workspace-scoped screen has one to read.
 export const useEnsureWorkspaceSelected = () => {
   const { data } = useFetchWorkspaces();

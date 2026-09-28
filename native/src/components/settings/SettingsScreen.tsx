@@ -4,13 +4,12 @@ import { ScrollView, View } from "react-native";
 import { ProfileSection } from "@/components/settings/ProfileSection";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { SignOutButton } from "@/components/settings/SignOutButton";
-import { useEnsureWorkspaceSelected, useSelectedWorkspace } from "@/hooks/WorkspaceHooks";
+import { useSelectedWorkspace } from "@/hooks/WorkspaceHooks";
 import { appearanceLabel, useAppearanceStore } from "@/stores/appearanceStore";
 
 export const SettingsScreen = () => {
   const router = useRouter();
   const appearance = useAppearanceStore((s) => s.appearance);
-  useEnsureWorkspaceSelected();
   const workspace = useSelectedWorkspace();
 
   return (

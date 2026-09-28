@@ -2,7 +2,8 @@ import { LegendList } from "@legendapp/list/react-native";
 import { useMemo } from "react";
 
 import { MessageRow } from "@/components/chat/MessageRow";
-import { useChatAuthorLookup, useChatWorkspaceId } from "@/hooks/ChatHooks";
+import { useChatAuthorLookup } from "@/hooks/ChatHooks";
+import { useCurrentWorkspaceId } from "@/hooks/WorkspaceHooks";
 import type { Message } from "@/models/Chat";
 
 interface MessageListProps {
@@ -11,7 +12,7 @@ interface MessageListProps {
 
 // Oldest first and anchored to the end: opens on the newest message and follows new ones while the reader is at the bottom.
 export const MessageList = ({ messages }: MessageListProps) => {
-  const resolveLogin = useChatAuthorLookup(useChatWorkspaceId());
+  const resolveLogin = useChatAuthorLookup(useCurrentWorkspaceId());
   const visible = useMemo(() => messages.filter((m) => !m.deleted_at), [messages]);
   return (
     <LegendList

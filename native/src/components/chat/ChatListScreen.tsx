@@ -4,10 +4,11 @@ import { ConversationsFeed } from "@/components/chat/ConversationsFeed";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { PlaceholderScreen } from "@/components/PlaceholderScreen";
-import { useChatWorkspaceId, useFetchConversations } from "@/hooks/ChatHooks";
+import { useFetchConversations } from "@/hooks/ChatHooks";
+import { useCurrentWorkspaceId } from "@/hooks/WorkspaceHooks";
 
 export const ChatListScreen = () => {
-  const workspaceId = useChatWorkspaceId();
+  const workspaceId = useCurrentWorkspaceId();
   const { data: conversations, error, isPending } = useFetchConversations(workspaceId);
   return (
     <View className="flex-1 bg-background">

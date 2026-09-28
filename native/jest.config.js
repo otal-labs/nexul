@@ -2,6 +2,7 @@ const { resolveBabelOptions } = require("jest-expo/src/resolveBabelOptions");
 
 module.exports = {
   preset: "jest-expo",
+  setupFiles: ["<rootDir>/jest.setup.ts"],
   transformIgnorePatterns: [
     "/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|@expo|@expo-google-fonts|react-navigation|@react-navigation|@sentry/react-native|native-base|standard-navigation|uniwind|@rn-primitives|lucide-react-native|react-native-svg))",
   ],
