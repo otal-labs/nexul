@@ -23,6 +23,7 @@ interface YourSettingsNavProps {
 export const YourSettingsNav = ({ active }: YourSettingsNavProps) => (
   <SettingsSectionNav
     ariaLabel="Your settings sections"
+    basePath="/settings"
     active={active}
     items={YOUR_SETTINGS_SECTIONS.map((section) => ({ section, label: sectionLabels[section] }))}
   />

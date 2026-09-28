@@ -16,7 +16,7 @@ export const NoTestTargetRow = ({ projectId }: NoTestTargetRowProps) => {
       {stack && (
         <>
           {" in "}
-          <Link to={`/stacks/${stack.id}?section=branches`} className="text-foreground underline underline-offset-4">
+          <Link to={`/stacks/${stack.id}/branches`} className="text-foreground underline underline-offset-4">
             {stack.name}
           </Link>
         </>

@@ -31,7 +31,7 @@ const mockGet = (identities: unknown[], status: Record<string, boolean>) =>
     return Promise.reject(new Error(`unexpected GET ${url}`));
   });
 
-const renderSection = (route = "/settings?section=profile") => {
+const renderSection = (route = "/settings/profile") => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
@@ -89,7 +89,7 @@ describe("SignInAccountsSection", () => {
 
   it("toasts the link callback's outcome once", async () => {
     mockGet([github, google], { google_configured: true });
-    renderSection("/settings?section=profile&provider=google&error=conflict%3A+already+linked+to+another+user");
+    renderSection("/settings/profile?provider=google&error=conflict%3A+already+linked+to+another+user");
     await screen.findByText("onik@example.com");
     await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith("Google: conflict: already linked to another user"));
     expect(mocks.toastError).toHaveBeenCalledTimes(1);

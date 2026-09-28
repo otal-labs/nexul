@@ -48,8 +48,8 @@ const renderPage = (route = "/settings") => {
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[route]}>
         <Routes>
-          <Route path="/settings" element={<YourSettingsPage />} />
-          <Route path="/configuration" element={<p>Configuration page</p>} />
+          <Route path="/settings/:section?" element={<YourSettingsPage />} />
+          <Route path="/configuration/:section?" element={<p>Configuration page</p>} />
         </Routes>
         <LocationProbe />
       </MemoryRouter>
@@ -71,13 +71,13 @@ describe("YourSettingsPage", () => {
     expect(screen.getByRole("heading", { name: "Settings" })).toBeInTheDocument();
     expect(await screen.findByLabelText("Name")).toHaveValue("Onik N");
     expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Security" })).toHaveAttribute("href", "/settings?section=security");
+    expect(screen.getByRole("link", { name: "Security" })).toHaveAttribute("href", "/settings/security");
   });
 
   it.each([
-    ["/settings?section=connectors&connector=github&connected=1", "/configuration?section=connectors&connector=github&connected=1"],
-    ["/settings?section=instance#instance-version", "/configuration?section=instance#instance-version"],
-    ["/settings?section=members", "/configuration?section=members"],
+    ["/settings/connectors?connector=github&connected=1", "/configuration/connectors?connector=github&connected=1"],
+    ["/settings/instance#instance-version", "/configuration/instance#instance-version"],
+    ["/settings/members", "/configuration/members"],
   ])("sends a moved section link %s to %s with its query and hash", async (from, to) => {
     renderPage(from);
     expect(await screen.findByText("Configuration page")).toBeInTheDocument();
@@ -85,15 +85,15 @@ describe("YourSettingsPage", () => {
   });
 
   it("sends the old tokens section to the Tokens tab of Security", async () => {
-    renderPage("/settings?section=tokens&tab=personal");
+    renderPage("/settings/tokens?tab=personal");
     expect(await screen.findByLabelText(/token name/i)).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Tokens", selected: true })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Devices" })).toBeInTheDocument();
-    expect(screen.getByLabelText("location")).toHaveTextContent("/settings?section=security&tab=tokens");
+    expect(screen.getByLabelText("location")).toHaveTextContent("/settings/security?tab=tokens");
   });
 
   it("opens Security on the Devices tab with the desktop card and the device list", async () => {
-    renderPage("/settings?section=security");
+    renderPage("/settings/security");
     expect(await screen.findByRole("tab", { name: "Devices", selected: true })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Copy connection token" })).toBeInTheDocument();
     expect(await screen.findByText(/no other devices are signed in/i)).toBeInTheDocument();
@@ -102,7 +102,7 @@ describe("YourSettingsPage", () => {
 
   it("lands a computer setup link on the Computers tab with its setup param intact", async () => {
     const user = userEvent.setup();
-    renderPage("/settings?section=pairing&setup=c1");
+    renderPage("/settings/pairing?setup=c1");
 
     expect(await screen.findByRole("tab", { name: "Computers", selected: true })).toBeInTheDocument();
     expect(screen.getByText("Computers card")).toBeInTheDocument();
@@ -122,7 +122,7 @@ describe("YourSettingsPage", () => {
       },
     });
     const user = userEvent.setup();
-    renderPage("/settings?section=security");
+    renderPage("/settings/security");
 
     await user.click(await screen.findByRole("button", { name: "Copy connection token" }));
     expect(await screen.findByRole("button", { name: "Copied" })).toBeInTheDocument();
@@ -135,7 +135,7 @@ describe("YourSettingsPage", () => {
       data: { token: "dep_ABC123rawvalue", id: "pat-1", name: "ci agent", prefix: "rawvalue", created_at: "2026-08-12T00:00:00Z" },
     });
     const user = userEvent.setup();
-    renderPage("/settings?section=security&tab=tokens");
+    renderPage("/settings/security?tab=tokens");
 
     await user.type(await screen.findByLabelText(/token name/i), "ci agent");
     await user.click(screen.getByRole("button", { name: /^create token$/i }));
@@ -159,7 +159,7 @@ describe("YourSettingsPage", () => {
     });
     mocks.del.mockResolvedValue({ data: patList([]) });
     const user = userEvent.setup();
-    renderPage("/settings?section=security&tab=tokens");
+    renderPage("/settings/security?tab=tokens");
 
     expect(await screen.findByText("ci agent")).toBeInTheDocument();
     expect(screen.getByText("old token")).toBeInTheDocument();

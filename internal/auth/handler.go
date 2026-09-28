@@ -378,7 +378,7 @@ func (h *Handler) providerConfigured(r *http.Request, provider Provider) (bool, 
 // instance asked for, so it is never exchanged, and the browser goes back into the app instead of to an error.
 func (h *Handler) stateless(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Get("installation_id") != "" {
-		http.Redirect(w, r, h.spaOrigin(r)+"/configuration?section=connectors", http.StatusFound)
+		http.Redirect(w, r, h.spaOrigin(r)+"/configuration/connectors", http.StatusFound)
 		return
 	}
 	http.Redirect(w, r, h.spaOrigin(r)+"/login", http.StatusFound)
@@ -439,13 +439,13 @@ func (h *Handler) invitationCallback(w http.ResponseWriter, r *http.Request, pro
 
 // identityLinkCallback lands back on Profile either way: the person is signed in, so an error is a toast there.
 func (h *Handler) identityLinkCallback(w http.ResponseWriter, r *http.Request, provider Provider, state, code string) {
-	target := h.spaOrigin(r) + "/settings?section=profile"
+	target := h.spaOrigin(r) + "/settings/profile"
 	if err := h.svc.CompleteIdentityLink(r.Context(), provider, state, code); err != nil {
 		logging.FromCtx(r.Context()).Warn("link identity", "provider", provider, "error", err)
-		http.Redirect(w, r, target+"&provider="+string(provider)+"&error="+url.QueryEscape(err.Error()), http.StatusFound)
+		http.Redirect(w, r, target+"?provider="+string(provider)+"&error="+url.QueryEscape(err.Error()), http.StatusFound)
 		return
 	}
-	http.Redirect(w, r, target+"&provider="+string(provider)+"&linked=1", http.StatusFound)
+	http.Redirect(w, r, target+"?provider="+string(provider)+"&linked=1", http.StatusFound)
 }
 
 // callbackPOST exchanges a code for a token, returning JSON for programmatic clients; the browser uses the GET flow.

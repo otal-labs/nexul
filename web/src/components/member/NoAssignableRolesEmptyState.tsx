@@ -11,7 +11,7 @@ export const NoAssignableRolesEmptyState = () => (
     message="Create one before you can invite anyone."
     action={
       <Button asChild>
-        <Link to="/configuration?section=roles">Create a role</Link>
+        <Link to="/configuration/roles">Create a role</Link>
       </Button>
     }
   />

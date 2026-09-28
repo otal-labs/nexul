@@ -74,7 +74,7 @@ describe("DeployPage", () => {
     mockApi(deploy({}), lines);
     renderPage();
     expect(await screen.findByRole("heading", { name: "api" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /back to deploy history/i })).toHaveAttribute("href", "/stacks/stack-1?section=history");
+    expect(screen.getByRole("link", { name: /back to deploy history/i })).toHaveAttribute("href", "/stacks/stack-1/history");
     expect(screen.getByText("d-1")).toBeInTheDocument();
     expect(screen.getByText("running")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Building and deploying" })).toBeInTheDocument();

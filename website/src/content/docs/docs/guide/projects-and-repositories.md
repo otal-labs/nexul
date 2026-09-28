@@ -48,7 +48,7 @@ Beyond Owner, roles are fully custom: anyone holding `roles:write` can create as
 
 To invite someone to a workspace:
 
-1. Open **Configuration → Members** (`/configuration?section=members`).
+1. Open **Configuration → Members** (`/configuration/members`).
 2. Create an invitation, choose one or more workspaces, and select a role for each. The Owner role isn't offered here — transferring ownership is a separate action.
 3. Copy the generated link and send it through any channel you trust. Nexul shows it once.
 4. The recipient opens the link, signs in through one of the instance's configured OAuth providers, reviews the access package, and accepts it.

@@ -28,7 +28,7 @@ const renderPage = () => {
         <Routes>
           <Route path="/wizard/onboarding/dns" element={<DnsOnboardingPage />} />
           <Route path="/" element={<div>home-page</div>} />
-          <Route path="/configuration" element={<div>settings-page</div>} />
+          <Route path="/configuration/:section?" element={<div>settings-page</div>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,

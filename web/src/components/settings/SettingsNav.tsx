@@ -74,5 +74,5 @@ export const SettingsNav = ({ active, sections }: SettingsNavProps) => {
     group: INSTANCE_SECTIONS.includes(section) ? INSTANCE_GROUP : WORKSPACE_GROUP,
   }));
 
-  return <SettingsSectionNav ariaLabel="Configuration sections" active={active} items={items} />;
+  return <SettingsSectionNav ariaLabel="Configuration sections" basePath="/configuration" active={active} items={items} />;
 };

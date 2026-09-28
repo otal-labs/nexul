@@ -72,7 +72,7 @@ export const VoiceCallSection = ({ workspaceId, conversation, active }: VoiceCal
           </span>
           <div className="flex shrink-0 items-center gap-2">
             <Button asChild size="sm" variant="outline">
-              <Link to="/configuration?section=connectors">Open Configuration</Link>
+              <Link to="/configuration/connectors">Open Configuration</Link>
             </Button>
             <Button size="sm" variant="ghost" onClick={leave}>
               Dismiss

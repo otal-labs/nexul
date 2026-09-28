@@ -1,4 +1,4 @@
-import { useSearchParams } from "react-router";
+import { useParams } from "react-router";
 
 import { Container } from "@/components/Container";
 import { PageHeader } from "@/components/PageHeader";
@@ -9,7 +9,7 @@ import { SettingsPageContent } from "@/components/settings/SettingsPageContent";
 import { useFetchMe, useFetchSettings } from "@/hooks/AuthHooks";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
 
-// Same section-per-view shape as ProjectSettingsPage: ?section= drives the card, SettingsNav lists sections.
+// Same section-per-view shape as ProjectSettingsPage: the :section path segment drives the card, SettingsNav lists sections.
 export const ConfigurationPage = () => {
   const { data: settings, isPending, error } = useFetchSettings();
   const { data: me } = useFetchMe();
@@ -32,8 +32,7 @@ export const ConfigurationPage = () => {
     showMentionLayout: canManageMentionLayout,
   });
 
-  const [searchParams] = useSearchParams();
-  const rawSection = searchParams.get("section");
+  const { section: rawSection } = useParams();
   // A section the viewer can't open (unknown, or gated away) falls back to the first they can; Danger zone is never gated, so it's the last resort.
   const fallback = sections.find((candidate) => candidate !== "danger") ?? "danger";
   const section = isSettingsSection(rawSection) && sections.includes(rawSection) ? rawSection : fallback;

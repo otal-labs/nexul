@@ -49,7 +49,7 @@ const serveComputers = (computers: unknown[]) =>
     return { data: computerList(computers) };
   });
 
-const renderSection = (url = "/settings?section=pairing") => {
+const renderSection = (url = "/settings/pairing") => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const location: { search: string } = { search: "" };
   const LocationProbe = () => {
@@ -144,13 +144,13 @@ describe("ComputersSection", () => {
   it("opens the named computer's Set up step from the setup link, and closing it forgets the link", async () => {
     serveComputers([computer(), computer({ id: "c2", name: "Mint" })]);
     const user = userEvent.setup();
-    const { location } = renderSection("/settings?section=pairing&setup=c2");
+    const { location } = renderSection("/settings/pairing?setup=c2");
 
     expect(await screen.findByRole("dialog", { name: /set up mint/i })).toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: /set up home/i })).not.toBeInTheDocument();
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(location.search).toBe("?section=pairing");
+    expect(location.search).toBe("");
   });
 
   it("lists each provider with its confirmed-at time and follows a setup push without a refresh, changing nothing itself", async () => {

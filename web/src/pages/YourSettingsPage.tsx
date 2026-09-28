@@ -1,4 +1,4 @@
-import { Navigate, useLocation, useSearchParams } from "react-router";
+import { Navigate, useLocation, useParams } from "react-router";
 
 import { Container } from "@/components/Container";
 import { PageHeader } from "@/components/PageHeader";
@@ -11,10 +11,9 @@ import {
 import { movedSettingsTarget } from "@/utils/SettingsRedirects";
 
 export const YourSettingsPage = () => {
+  const { section: rawSection } = useParams();
   const { search, hash } = useLocation();
-  const moved = movedSettingsTarget(search, hash);
-  const [searchParams] = useSearchParams();
-  const rawSection = searchParams.get("section");
+  const moved = movedSettingsTarget(rawSection, search, hash);
   const section = isYourSettingsSection(rawSection) ? rawSection : DEFAULT_YOUR_SETTINGS_SECTION;
 
   return (

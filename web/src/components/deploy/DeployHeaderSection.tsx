@@ -17,7 +17,7 @@ export const DeployHeaderSection = ({ deploy }: DeployHeaderSectionProps) => {
   return (
     <header className="space-y-2 border-b border-border pb-6">
       <Link
-        to={`/stacks/${deploy.stack_id}?section=history`}
+        to={`/stacks/${deploy.stack_id}/history`}
         className="inline-block font-mono text-xs text-muted-foreground transition-colors duration-150 ease-standard hover:text-foreground"
       >
         ← Back to deploy history

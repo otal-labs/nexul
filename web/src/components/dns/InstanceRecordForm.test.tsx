@@ -98,7 +98,7 @@ describe("InstanceRecordForm", () => {
     const user = userEvent.setup();
     await user.type(await screen.findByLabelText(/points to/i), "203.0.113.10");
     expect(await screen.findByRole("alert")).toHaveTextContent(/localhost:5173.*not under example\.com/i);
-    expect(screen.getByRole("link", { name: /configuration/i })).toHaveAttribute("href", "/configuration?section=instance");
+    expect(screen.getByRole("link", { name: /configuration/i })).toHaveAttribute("href", "/configuration/instance");
     expect(screen.getByRole("button", { name: /create instance record/i })).toBeDisabled();
   });
 

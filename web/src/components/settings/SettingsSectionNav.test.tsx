@@ -10,6 +10,7 @@ describe("SettingsSectionNav", () => {
       <MemoryRouter initialEntries={["/x"]}>
         <SettingsSectionNav
           ariaLabel="Sections"
+          basePath="/x"
           active="b"
           items={[
             { section: "a", label: "A", group: "First" },
@@ -21,13 +22,13 @@ describe("SettingsSectionNav", () => {
     );
     expect(screen.getAllByRole("listitem").map((item) => item.textContent)).toEqual(["First", "A", "B", "Second", "C"]);
     expect(screen.getByRole("link", { name: "B" })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("link", { name: "C" })).toHaveAttribute("href", "/x?section=c");
+    expect(screen.getByRole("link", { name: "C" })).toHaveAttribute("href", "/x/c");
   });
 
   it("renders no labels for ungrouped items", () => {
     render(
       <MemoryRouter>
-        <SettingsSectionNav ariaLabel="Sections" active="a" items={[{ section: "a", label: "A" }]} />
+        <SettingsSectionNav ariaLabel="Sections" basePath="/x" active="a" items={[{ section: "a", label: "A" }]} />
       </MemoryRouter>,
     );
     expect(screen.getAllByRole("listitem")).toHaveLength(1);

@@ -54,8 +54,8 @@ describe("SettingsNav", () => {
       "DNS",
       "Registered accounts",
     ]);
-    expect(nav.getByRole("link", { name: "Members" })).toHaveAttribute("href", "/configuration?section=members");
-    expect(nav.getByRole("link", { name: "Sign-in providers" })).toHaveAttribute("href", "/configuration?section=sign-in");
+    expect(nav.getByRole("link", { name: "Members" })).toHaveAttribute("href", "/configuration/members");
+    expect(nav.getByRole("link", { name: "Sign-in providers" })).toHaveAttribute("href", "/configuration/sign-in");
   });
 
   it("drops the whole-instance group and its label for a non-admin", () => {
