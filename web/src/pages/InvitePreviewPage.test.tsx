@@ -64,6 +64,24 @@ describe("InvitePreviewPage", () => {
     expect(useSessionStore.getState().token).toBe("new-session");
   });
 
+  it("lands a signed-out invitee back from the provider on the acceptance, never on the invitation preview", async () => {
+    window.history.replaceState(null, "", "/invite#acceptance-token=hand-off");
+    mocks.post.mockResolvedValueOnce({ data: { instance_name: "Private Nexul", grants: [], expires_at: "later", providers: [], acceptance_token: "hand-off" } });
+    renderPage();
+    expect(await screen.findByRole("button", { name: "Accept invitation" })).toBeInTheDocument();
+    expect(mocks.post).toHaveBeenCalledWith("/api/invitations/acceptance", { acceptance_token: "hand-off" });
+    expect(mocks.post).not.toHaveBeenCalledWith("/api/invitations/preview", expect.anything());
+  });
+
+  it("tries again with the link it already read, since the address bar no longer has it", async () => {
+    mocks.post.mockRejectedValueOnce(new Error("network")).mockResolvedValueOnce({ data: { instance_name: "Private Nexul", grants: [], expires_at: "later", providers: ["github"] } });
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("heading", { name: /join private nexul/i })).toBeInTheDocument();
+    expect(mocks.post).toHaveBeenLastCalledWith("/api/invitations/preview", { token: "raw-token" });
+  });
+
   it("renders the generic invalid state for malformed percent encoding", async () => {
     window.history.replaceState(null, "", "/invite#%E0%A4%A");
     renderPage();

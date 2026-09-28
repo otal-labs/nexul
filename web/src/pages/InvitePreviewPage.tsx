@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 
 import { Container } from "@/components/Container";
@@ -42,14 +42,19 @@ export const InvitePreviewPage = () => {
     window.history.replaceState(null, "", `${location.pathname}${location.search}`);
   }, [location.hash, location.pathname, location.search]);
 
-  useEffect(() => {
-    if (started.current || fragment.malformed || !fragment.token || (!fragment.acceptance && !isLoggedIn)) return;
-    started.current = true;
-    exchange.mutate(
+  const exchangeMutate = exchange.mutate;
+  const startExchange = useCallback(() => {
+    exchangeMutate(
       fragment.acceptance ? { acceptance_token: fragment.token } : { token: fragment.token },
       { onSuccess: (data) => { setAcceptance(data); setCredential(data.acceptance_token ?? fragment.token); } },
     );
-  }, [exchange, fragment, isLoggedIn]);
+  }, [exchangeMutate, fragment]);
+
+  useEffect(() => {
+    if (started.current || fragment.malformed || !fragment.token || (!fragment.acceptance && !isLoggedIn)) return;
+    started.current = true;
+    startExchange();
+  }, [fragment, isLoggedIn, startExchange]);
 
   const publicPreview = preview.data;
   const details = acceptance ?? publicPreview;
@@ -59,6 +64,15 @@ export const InvitePreviewPage = () => {
   if (bootstrapStatus?.discord_configured) providers.push("discord");
   const instanceName = details?.instance_name ?? (details?.instance_url ? new URL(details.instance_url).host : "this instance");
   const invalid = fragment.malformed || Boolean((fragment.token === "" && !publicPreview && !exchange.isPending) || preview.error || exchange.error);
+
+  // The link left the address bar on arrival, so a reload would lose it; retry with the token already read.
+  const retry = () => {
+    if (fragment.acceptance || isLoggedIn) {
+      startExchange();
+      return;
+    }
+    void preview.refetch();
+  };
 
   const startOAuth = (provider: InvitationProvider) => {
     oauth.mutate({ provider, token: fragment.token }, { onSuccess: (data) => window.location.assign(data.url) });
@@ -86,7 +100,7 @@ export const InvitePreviewPage = () => {
             <p className="text-sm text-muted-foreground">This one-use link expires {details ? new Date(details.expires_at).toLocaleString() : "soon"}.</p>
           </header>
           {(preview.isPending || exchange.isPending) && <LoadingDisplay label="Checking invitation…" />}
-          {invalid && <div className="space-y-3"><ErrorDisplay title={INVALID_MESSAGE} /><Button type="button" variant="outline" onClick={() => window.location.reload()}>Try again</Button></div>}
+          {invalid && <div className="space-y-3"><ErrorDisplay title={INVALID_MESSAGE} />{fragment.token && <Button type="button" variant="outline" onClick={retry}>Try again</Button>}</div>}
           {!invalid && details && <InvitationGrantSummary invitation={details} detailed={acceptance != null} />}
           {!invalid && acceptance && <InvitationAcceptancePanel pending={redeem.isPending} onAccept={accept} onDecline={() => navigate("/", { replace: true })} />}
           {!invalid && !acceptance && publicPreview && <InvitationProviderList providers={providers} disabled={oauth.isPending} onSelect={startOAuth} />}

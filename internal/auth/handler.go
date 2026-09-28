@@ -433,7 +433,8 @@ func (h *Handler) invitationCallback(w http.ResponseWriter, r *http.Request, pro
 		return
 	}
 	http.SetCookie(w, &http.Cookie{Name: invitationStateCookie(hashCredential(state)), Value: "", MaxAge: -1, Path: "/", HttpOnly: true, Secure: h.svc.secureCookie(r.Context(), r.TLS != nil)})
-	http.Redirect(w, r, h.spaOrigin(r)+"/invite#"+acceptance, http.StatusFound)
+	// The invite page reads an unlabeled fragment as the invitation link itself, not the handoff.
+	http.Redirect(w, r, h.spaOrigin(r)+"/invite#acceptance-token="+acceptance, http.StatusFound)
 }
 
 // identityLinkCallback lands back on Profile either way: the person is signed in, so an error is a toast there.
