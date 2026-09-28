@@ -1,5 +1,5 @@
-import { PlaceholderScreen } from "@/components/PlaceholderScreen";
+import { InboxScreen } from "@/components/inbox/InboxScreen";
 
-export default function InboxScreen() {
-  return <PlaceholderScreen message="Notifications land here, newest first." />;
+export default function InboxRoute() {
+  return <InboxScreen />;
 }

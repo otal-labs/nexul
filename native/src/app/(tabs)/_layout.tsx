@@ -3,12 +3,15 @@ import { Ellipsis, Inbox, MessageSquare, Rocket, SquareKanban } from "lucide-rea
 import { useCSSVariable } from "uniwind";
 
 import { TabBar } from "@/components/TabBar";
+import { unreadBadge, useFetchUnreadCount } from "@/hooks/NotificationHooks";
 
 export default function TabsLayout() {
   const [foreground, mutedForeground] = useCSSVariable([
     "--color-foreground",
     "--color-muted-foreground",
   ]);
+  const { data: unread } = useFetchUnreadCount();
+  const badge = unreadBadge(unread?.count);
 
   return (
     <Tabs
@@ -22,7 +25,12 @@ export default function TabsLayout() {
     >
       <Tabs.Screen
         name="inbox"
-        options={{ title: "Inbox", tabBarIcon: ({ color, size }) => <Inbox color={color} size={size} /> }}
+        options={{
+          title: "Inbox",
+          tabBarIcon: ({ color, size }) => <Inbox color={color} size={size} />,
+          // exactOptionalPropertyTypes rejects an explicit undefined, so the key is only present with a badge.
+          ...(badge !== undefined && { tabBarBadge: badge }),
+        }}
       />
       <Tabs.Screen
         name="chat"
