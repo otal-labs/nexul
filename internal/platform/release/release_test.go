@@ -468,3 +468,25 @@ func TestClient_BetaOrderIsByPublishTime(t *testing.T) {
 	}
 	assert.Equal(t, []string{"v0.2.0-beta.11", "v0.2.0-beta.10"}, tags)
 }
+
+func TestClient_ListIgnoresAppReleases(t *testing.T) {
+	at := func(h int) time.Time { return time.Date(2026, 9, 28, h, 0, 0, 0, time.UTC) }
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		require.NoError(t, jsonEncode(w, []ghRelease{
+			{TagName: "android-v0.1.0", Prerelease: true, PublishedAt: at(12)},
+			{TagName: "v0.2.0-beta.9", Prerelease: true, PublishedAt: at(10)},
+			{TagName: "v0.2.0-beta.8", Prerelease: true, PublishedAt: at(9)},
+		}))
+	}))
+	t.Cleanup(srv.Close)
+	c := New(Config{APIBase: srv.URL})
+
+	latest, err := c.Latest(t.Context(), "beta")
+	require.NoError(t, err)
+	assert.Equal(t, "v0.2.0-beta.9", latest.Tag, "the newest phone release is not a server beta")
+
+	since, err := c.Since(t.Context(), "beta", "v0.2.0-beta.8")
+	require.NoError(t, err)
+	require.Len(t, since, 1)
+	assert.Equal(t, "v0.2.0-beta.9", since[0].Tag)
+}

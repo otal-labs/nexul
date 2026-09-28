@@ -1,0 +1,44 @@
+name: Native update
+
+# Publishes the phone app's JavaScript and assets to the update server as an over-the-air update for the app version in
+# native/app.config.ts. Run by hand only. A change to a native dependency or to app.config.ts is not an update: bump
+# the version and ship a new APK through native-release.yml.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-update
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: native
+    env:
+      NEXUL_UPDATES_URL: ${{ vars.NEXUL_UPDATES_URL }}
+      NEXUL_UPDATES_APP_ID: ${{ vars.NEXUL_UPDATES_APP_ID }}
+      EOO_TOKEN: ${{ secrets.EOO_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+      # Without EOO_TOKEN the publish CLI silently falls back to Expo's own login and fails later with a bare 401.
+      - name: Check the update server settings
+        run: |
+          set -euo pipefail
+          missing=0
+          [[ -n "$EOO_TOKEN" ]] || { echo "::error::The EOO_TOKEN secret is missing: create a publish token in the update server dashboard and add it to the repository secrets." >&2; missing=1; }
+          [[ -n "$NEXUL_UPDATES_URL" ]] || { echo "::error::The NEXUL_UPDATES_URL repository variable is missing (the update server's manifest URL)." >&2; missing=1; }
+          [[ -n "$NEXUL_UPDATES_APP_ID" ]] || { echo "::error::The NEXUL_UPDATES_APP_ID repository variable is missing (the app's id in the update server dashboard)." >&2; missing=1; }
+          exit "$missing"
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.11
+      - run: bun install --frozen-lockfile
+      - name: Publish the update
+        env:
+          RELEASE_CHANNEL: production
+        run: npx eoas@3.2.5 publish --branch production --platform android --nonInteractive --disableRepositoryCheck

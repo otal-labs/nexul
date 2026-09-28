@@ -1,7 +1,7 @@
 # 33 — APK release and OTA update workflows
 
 **Type:** implementation
-**Status:** ready-for-agent
+**Status:** done
 **Blocked by:** 24
 **Decided in:** ticket 14
 

@@ -1,4 +1,8 @@
+import { existsSync } from "node:fs";
 import type { ExpoConfig } from "expo/config";
+
+// The update server's certificate, downloaded from its dashboard once the app exists there; until then updates are unsigned.
+const certificate = "./certs/certificate.pem";
 
 const inter = "node_modules/@expo-google-fonts/inter";
 const mono = "node_modules/@expo-google-fonts/jetbrains-mono";
@@ -33,10 +37,21 @@ const config: ExpoConfig = {
     package: "io.nexul.app",
   },
   runtimeVersion: { policy: "appVersion" },
-  updates: { url: process.env.NEXUL_UPDATES_URL ?? "" },
+  updates: {
+    url: process.env.NEXUL_UPDATES_URL ?? "",
+    requestHeaders: {
+      "expo-channel-name": "production",
+      "expo-app-id": process.env.NEXUL_UPDATES_APP_ID ?? "",
+    },
+    ...(existsSync(certificate) && {
+      codeSigningCertificate: certificate,
+      codeSigningMetadata: { keyid: "main", alg: "rsa-v1_5-sha256" },
+    }),
+  },
   extra: { eas: { projectId: process.env.NEXUL_EAS_PROJECT_ID ?? "" } },
   plugins: [
     "expo-router",
+    "./plugins/withReleaseSigning",
     [
       "expo-font",
       {

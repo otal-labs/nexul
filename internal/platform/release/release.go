@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -332,6 +333,8 @@ func (c *Client) fetchList(ctx context.Context) (_ []ghRelease, err error) {
 	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
 		return nil, fmt.Errorf("decode releases: %w", err)
 	}
+	// The phone app shares the repository under android-v* tags; only v* tags carry the server binaries.
+	releases = slices.DeleteFunc(releases, func(r ghRelease) bool { return !strings.HasPrefix(r.TagName, "v") })
 	// GitHub orders this list by tag text, which puts beta.9 above beta.10; newest first means by publish time.
 	sort.SliceStable(releases, func(i, j int) bool { return releases[i].when().After(releases[j].when()) })
 	return releases, nil

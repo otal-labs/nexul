@@ -109,9 +109,62 @@ as written. In particular:
 - Before calling native work done: `bun run lint`, `bun run typecheck`,
   `bun run test` are green, and the screen has been opened on an emulator in
   dark and light.
-- A change to a native dependency or to `app.config.ts` bumps `version` and
-  ships a new APK, because the runtime version follows the app version. A
-  JavaScript-only change ships over the air within the same version.
+- A change to a native dependency or to `app.config.ts` bumps `version` in
+  `app.config.ts` and ships a new APK, because the runtime version follows the
+  app version. A JavaScript-only change ships over the air within the same
+  version. A published update never reaches an APK with a different version.
 - Adding a primitive: `bunx shadcn@latest add` with the Uniwind item from the
   react-native-reusables registry. Registry files execute in this project's
   tokens; a customised primitive is diffed, never overwritten wholesale.
+
+## 6. Releasing the APK and publishing updates
+
+Both workflows run by hand only (`workflow_dispatch`), never on push or on a
+schedule.
+
+- `native-release.yml` installs, runs `bun run prebuild`, builds
+  `assembleRelease` with the signing key from the repository secrets, and
+  creates the GitHub release `android-v<version>` with
+  `nexul-android-<version>.apk` attached. It refuses when the tag already
+  exists: bump `version` first. The release is created with `--latest=false`,
+  and the server's release client, `install.sh` and the changelog skip every
+  tag that does not start with `v`, so a phone release never becomes the
+  server's latest.
+- `native-update.yml` publishes the JavaScript and assets of the current
+  commit to the update server's `production` branch with
+  `npx eoas@<server version> publish`. The CLI version is pinned to the
+  server's; upgrade both together. The run fails before installing anything
+  when `EOO_TOKEN`, `NEXUL_UPDATES_URL` or `NEXUL_UPDATES_APP_ID` is unset,
+  because the CLI would otherwise fall back to Expo's own login and fail late.
+
+| Name | Kind | Holds |
+|---|---|---|
+| `ANDROID_KEYSTORE_BASE64` | secret | The PKCS12 release keystore, base64 |
+| `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` | secrets | Its passwords and the key alias |
+| `EOO_TOKEN` | secret | A publish token from the update server's dashboard |
+| `NEXUL_UPDATES_URL` | variable | The manifest URL, `https://<update server>/manifest`; baked into every APK and read by the publish CLI |
+| `NEXUL_UPDATES_APP_ID` | variable | The app's id in the update server's dashboard, sent as the `expo-app-id` header |
+
+The signing key is generated once and never changes: an APK signed with a
+different key cannot install over the old one. An offline copy of the
+keystore lives with the owner.
+
+Release signing is wired by the config plugin `plugins/withReleaseSigning.ts`,
+which appends a `release` signing config to the generated `build.gradle`
+that reads the Gradle properties `nexulKeystoreFile`,
+`nexulKeystorePassword`, `nexulKeyAlias` and `nexulKeyPassword`. Without
+them a release build stays debug-signed, so `bun run prebuild` needs nothing.
+The workflow passes them as `ORG_GRADLE_PROJECT_*` environment variables; a
+local signed build does the same:
+
+```sh
+cd android && ORG_GRADLE_PROJECT_nexulKeystoreFile=/path/to/release.keystore \
+  ORG_GRADLE_PROJECT_nexulKeystorePassword=... ORG_GRADLE_PROJECT_nexulKeyAlias=... \
+  ORG_GRADLE_PROJECT_nexulKeyPassword=... ./gradlew assembleRelease
+```
+
+Updates are code-signed once `certs/certificate.pem`, downloaded from the
+update server's dashboard, is committed: `app.config.ts` adds
+`codeSigningCertificate` and `codeSigningMetadata` only when the file exists,
+so builds work before the server does. An APK built without the certificate
+accepts unsigned updates; the first APK built with it is a new version.
