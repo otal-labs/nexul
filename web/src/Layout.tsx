@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Outlet, useLocation } from "react-router";
 
+import { PhoneBanner } from "@/components/PhoneBanner";
 import { Sidebar } from "@/components/sidebar/Sidebar";
 import { useFetchUnreadCount } from "@/hooks/NotificationHooks";
 import { useEnsureWorkspaceSelected } from "@/hooks/WorkspaceHooks";
@@ -29,6 +30,7 @@ export const Layout = () => {
         />
       )}
       <div className="flex min-w-0 flex-1 flex-col">
+        <PhoneBanner />
         <main className="flex-1">
           <Outlet />
         </main>
