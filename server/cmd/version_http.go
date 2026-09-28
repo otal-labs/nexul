@@ -31,6 +31,17 @@ type latestVersion struct {
 	URL     string `json:"url"`
 }
 
+// aboutResponse is the public GET /api/about wire shape: product and version only, so an unauthenticated
+// caller learns nothing beyond what it needs to confirm the address is a Nexul server it can talk to (ADR 0082).
+type aboutResponse struct {
+	Product string `json:"product"`
+	Version string `json:"version"`
+}
+
+func aboutHandler(w http.ResponseWriter, _ *http.Request) {
+	httpx.WriteJSON(w, http.StatusOK, aboutResponse{Product: "nexul", Version: version.Version})
+}
+
 // versionHandler serves GET /api/version off the same release client the runner download proxy uses, so the two
 // share one 5-minute cache instead of each polling GitHub on its own.
 func versionHandler(runnerSvc *runner.Service) http.HandlerFunc {
