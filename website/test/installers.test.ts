@@ -51,7 +51,7 @@ done
 printf '%s\\n' "$url" >> "$NEXUL_TEST_DIR/urls"
 case "$url" in
   */releases/latest) [ -n "$(sed -n '/tag_name/p' "$NEXUL_TEST_DIR/latest.json")" ] || exit 22; src="$NEXUL_TEST_DIR/latest.json" ;;
-  *'/releases?per_page=1') src="$NEXUL_TEST_DIR/releases.json" ;;
+  *'/releases?per_page=30') src="$NEXUL_TEST_DIR/releases.json" ;;
   */install.sh) src="$NEXUL_TEST_INSTALL_SH" ;;
   */releases/*) src="$NEXUL_TEST_DIR/release/\${url##*/}"; printf '%s\\n' "$url" > "$NEXUL_TEST_DIR/download-url" ;;
   *) exit 22 ;;
@@ -127,6 +127,18 @@ test('without a stable release it installs the newest beta and passes the flags 
   expect(await read(directory, 'download-url')).toBe('https://example.test/releases/v0.2.0-beta.4/checksums.txt\n');
   expect(await read(directory, 'args')).toBe('install --dir /srv/nexul --yes\n');
   expect(await read(directory, 'installed')).toBe('interactive input');
+});
+
+test('the newest beta is the latest published, not the first in GitHub\'s tag-ordered list', async () => {
+  const releases = JSON.stringify([
+    { tag_name: 'v0.2.0-beta.9', draft: false, published_at: '2026-09-28T10:45:25Z' },
+    { tag_name: 'v0.2.0-beta.12', draft: true, published_at: null },
+    { tag_name: 'v0.2.0-beta.11', draft: false, published_at: '2026-09-28T14:55:27Z' },
+    { tag_name: 'v0.2.0-beta.10', draft: false, published_at: '2026-09-28T11:25:26Z' },
+  ]);
+  const { directory, env } = setup({ releases });
+  expect(run(env, ['--yes']).status).toBe(0);
+  expect(await read(directory, 'download-url')).toBe('https://example.test/releases/v0.2.0-beta.11/checksums.txt\n');
 });
 
 test('piped with sh -s, a runner install reaches nexul install with every argument intact', async () => {
