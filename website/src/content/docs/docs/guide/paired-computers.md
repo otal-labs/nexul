@@ -16,8 +16,11 @@ three steps.
 1. **Connect.** Name the computer and select **Create tunnel**. Nexul creates
    a tunnel for it on the instance's Cloudflare, with a hostname made from the
    name plus eight random characters that only the Nexul server can reach.
-   Run the commands shown for your operating system on the computer; they
-   install `cloudflared` as a background service. The dialog waits until the
+   Run the one command shown for your operating system on the computer
+   (`curl -fsSL https://nexul.io/tunnel.sh | sh -s -- <token>` on Linux and
+   macOS, a PowerShell line as administrator on Windows). It installs
+   `cloudflared` if it is missing and runs it as a background service with
+   the computer's token; running it again replaces the service. The dialog waits until the
    tunnel is online and T3 Code answers through it, then **Next** unlocks.
    The instance needs Cloudflare connected and Zero Trust enabled once; the
    dialog explains either missing piece with its fix.

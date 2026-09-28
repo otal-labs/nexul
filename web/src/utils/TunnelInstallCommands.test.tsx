@@ -4,14 +4,14 @@ import { detectTunnelOs, TunnelOs, tunnelInstallSteps } from "@/utils/TunnelInst
 
 describe("tunnelInstallSteps", () => {
   it.each([
-    [TunnelOs.Linux, "bash", "sudo cloudflared service install tok"],
-    [TunnelOs.MacOS, "zsh", "cloudflared service install tok"],
-    [TunnelOs.Windows, "powershell", "cloudflared.exe service install tok"],
-  ])("ends %s's steps by installing the service with the computer's token", (os, shell, last) => {
+    [TunnelOs.Linux, "bash", "curl -fsSL https://nexul.io/tunnel.sh | sh -s -- tok"],
+    [TunnelOs.MacOS, "zsh", "curl -fsSL https://nexul.io/tunnel.sh | sh -s -- tok"],
+    [TunnelOs.Windows, "powershell", "& ([scriptblock]::Create((irm https://nexul.io/tunnel.ps1))) tok"],
+  ])("gives %s one command that carries the computer's token", (os, shell, command) => {
     const steps = tunnelInstallSteps(os, "tok");
-    expect(steps).toHaveLength(2);
-    expect(steps.every((s) => s.shell === shell)).toBe(true);
-    expect(steps.at(-1)?.lines).toEqual([last]);
+    expect(steps).toHaveLength(1);
+    expect(steps[0]?.shell).toBe(shell);
+    expect(steps[0]?.lines).toEqual([command]);
   });
 });
 
