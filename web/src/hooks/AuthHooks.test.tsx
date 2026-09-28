@@ -9,7 +9,7 @@ import {
   useCompleteOwnerWizard,
   useFetchMe,
   useFetchSettings,
-  useGenerateConnectionToken,
+  useCopyConnectionToken,
   useUpdateSettings,
 } from "@/hooks/AuthHooks";
 import type { MeResponse } from "@/models/User";
@@ -122,11 +122,14 @@ describe("useUpdateSettings", () => {
   });
 });
 
-describe("useGenerateConnectionToken", () => {
-  it("posts to generate a token", async () => {
+describe("useCopyConnectionToken", () => {
+  it("mints a token and puts it on the clipboard", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true, writable: true });
     vi.mocked(api.post).mockResolvedValue({ data: { token: "t", instance_url: "https://deploy.example.com", settings_version: 2, expires_at: "2026-09-11T12:00:00Z" } });
-    const { result } = renderHook(() => useGenerateConnectionToken(), { wrapper });
+    const { result } = renderHook(() => useCopyConnectionToken(), { wrapper });
     await result.current.mutateAsync();
     expect(api.post).toHaveBeenCalledWith("/api/auth/connection-token");
+    expect(writeText).toHaveBeenCalledWith("t");
   });
 });

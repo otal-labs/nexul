@@ -11,7 +11,7 @@ The Nexul desktop app is a thin Electron shell around the same web app your serv
 
 The app doesn't ask for a username or a server address on first run. Instead:
 
-1. In the web app, open **Your settings → Security → [Tokens](/docs/guide/api-and-tokens/)** and click **Generate connection token**. This produces a signed token carrying your instance's URL and basic settings — no identity or credentials, so it isn't secret. It expires 30 days after it's generated.
+1. In the web app, open **Your settings → Security → Devices** and click **Copy connection token** on the *Connect the desktop app* card. This mints a signed [connection token](/docs/guide/api-and-tokens/) carrying your instance's URL and basic settings — no identity or credentials, so it isn't secret — and puts it on your clipboard. It expires 30 days after it's generated.
 2. Paste the token into the desktop app's **Add instance** field and click **Import**.
 3. The instance now shows in the app's list, with a live status (connecting, connected, unreachable, or expired) checked by probing `/api/auth/me` on that instance's origin.
 4. Click **Connect**. The app loads your instance's web app in place; you sign in the normal way through GitHub OAuth. Nothing about sign-in is special-cased for the desktop app — it's the same login flow the browser uses.
