@@ -200,7 +200,7 @@ func TestHandler_CallbackGET_ExchangeAndRedirect(t *testing.T) {
 	loc := rec.Header().Get("Location")
 	assert.Contains(t, loc, "/login?token=")
 	token := strings.TrimPrefix(loc, "http://example.com/login?token=")
-	userID, err := s.Verify(token)
+	userID, err := verify(s, token)
 	require.NoError(t, err)
 	user, err := users.GetUserByID(context.Background(), userID)
 	require.NoError(t, err)
@@ -234,7 +234,7 @@ func TestHandler_CallbackPOST(t *testing.T) {
 		Token string `json:"token"`
 	}
 	require.NoError(t, decodeJSON(rec, &body))
-	userID, err := s.Verify(body.Token)
+	userID, err := verify(s, body.Token)
 	require.NoError(t, err)
 	user, err := users.GetUserByID(context.Background(), userID)
 	require.NoError(t, err)
@@ -823,7 +823,7 @@ func protectedRequest(t *testing.T, s *Service, users *fakeUserStore, method, pa
 	if _, err := users.GetUserByID(context.Background(), userID); err != nil {
 		t.Fatalf("user %s must exist in the fake store", userID)
 	}
-	token, err := s.Sign(userID)
+	token, err := sign(s, userID)
 	require.NoError(t, err)
 	req := httptest.NewRequest(method, path, strings.NewReader(body))
 	req.Header.Set("Authorization", "Bearer "+token)
@@ -932,4 +932,84 @@ func TestHandler_DiscordGateAndSettings(t *testing.T) {
 	rec = httptest.NewRecorder()
 	public.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusUnauthorized, rec.Code, "not allowlisted → rejected like any provider")
+}
+
+func TestHandler_Sessions(t *testing.T) {
+	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "onik97")})
+	seedOwner(t, users, "u1", "1", "onik97")
+	seedOwner(t, users, "u2", "2", "other")
+	pats := newFakePATStore()
+	s.cfg.PATs = pats
+	h := protectedHandler(s, users)
+	sessionReq := func(method, path, token string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(method, path, nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		return rec
+	}
+	listIDs := func(token string) (current string, ids []string) {
+		rec := sessionReq(http.MethodGet, "/api/auth/sessions", token)
+		require.Equal(t, http.StatusOK, rec.Code)
+		var body struct {
+			Sessions []Session `json:"sessions"`
+		}
+		require.NoError(t, decodeJSON(rec, &body))
+		for _, ses := range body.Sessions {
+			ids = append(ids, ses.ID)
+			if ses.Current {
+				current = ses.ID
+			}
+		}
+		return current, ids
+	}
+
+	current, err := sign(s, "u1")
+	require.NoError(t, err)
+	phone, err := s.CreateSession(WithDevice(context.Background(), Device{Client: ClientPhone, Label: "Pixel 8"}), "u1")
+	require.NoError(t, err)
+	laptop, err := sign(s, "u1")
+	require.NoError(t, err)
+	foreign, err := sign(s, "u2")
+	require.NoError(t, err)
+	patRaw, _, err := s.MintPAT(context.Background(), "u1", "ci")
+	require.NoError(t, err)
+
+	t.Run("a personal access token has no device", func(t *testing.T) {
+		assert.Equal(t, http.StatusForbidden, sessionReq(http.MethodGet, "/api/auth/sessions", patRaw).Code)
+		assert.Equal(t, http.StatusForbidden, sessionReq(http.MethodDelete, "/api/auth/sessions/current", patRaw).Code)
+		assert.Equal(t, http.StatusForbidden, sessionReq(http.MethodDelete, "/api/auth/sessions/others", patRaw).Code)
+		assert.Equal(t, http.StatusForbidden, sessionReq(http.MethodDelete, "/api/auth/sessions/x", patRaw).Code)
+	})
+
+	currentID, ids := listIDs(current)
+	require.Len(t, ids, 3)
+	require.NotEmpty(t, currentID)
+	_, phoneSes, err := s.AuthenticateSession(context.Background(), phone, "")
+	require.NoError(t, err)
+	_, foreignSes, err := s.AuthenticateSession(context.Background(), foreign, "")
+	require.NoError(t, err)
+
+	t.Run("sign out one", func(t *testing.T) {
+		assert.Equal(t, http.StatusNotFound, sessionReq(http.MethodDelete, "/api/auth/sessions/"+foreignSes.ID, current).Code, "another user's session is not yours to see")
+		assert.Equal(t, http.StatusNoContent, sessionReq(http.MethodDelete, "/api/auth/sessions/"+phoneSes.ID, current).Code)
+		assert.Equal(t, http.StatusUnauthorized, sessionReq(http.MethodGet, "/api/auth/sessions", phone).Code, "the signed-out token fails its next request")
+		assert.Equal(t, http.StatusNotFound, sessionReq(http.MethodDelete, "/api/auth/sessions/"+phoneSes.ID, current).Code)
+	})
+
+	t.Run("sign out everywhere else", func(t *testing.T) {
+		assert.Equal(t, http.StatusNoContent, sessionReq(http.MethodDelete, "/api/auth/sessions/others", current).Code)
+		assert.Equal(t, http.StatusUnauthorized, sessionReq(http.MethodGet, "/api/auth/sessions", laptop).Code)
+		_, ids := listIDs(current)
+		assert.Equal(t, []string{currentID}, ids)
+		assert.Equal(t, http.StatusOK, sessionReq(http.MethodGet, "/api/auth/tokens", patRaw).Code, "personal access tokens are untouched")
+		assert.Equal(t, http.StatusOK, sessionReq(http.MethodGet, "/api/auth/sessions", foreign).Code, "other users are untouched")
+	})
+
+	t.Run("sign out the current session", func(t *testing.T) {
+		assert.Equal(t, http.StatusNoContent, sessionReq(http.MethodDelete, "/api/auth/sessions/current", current).Code)
+		assert.Equal(t, http.StatusUnauthorized, sessionReq(http.MethodGet, "/api/auth/me", current).Code)
+		rec := doRequest(s.RequireWS(&captureHandler{}), http.MethodGet, "/ws/events?token="+current, "", "")
+		assert.Equal(t, http.StatusUnauthorized, rec.Code, "the WebSocket dial fails too")
+	})
 }

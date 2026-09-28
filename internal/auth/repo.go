@@ -96,3 +96,14 @@ type PATStore interface {
 	// GetActiveForComputer returns the computer's unrevoked token, or ErrNotFound.
 	GetActiveForComputer(ctx context.Context, userID, computerID string) (*PersonalAccessToken, error)
 }
+
+// SessionStore persists sessions; only the hash reaches the store; deletes are user-scoped so nobody signs out another's device.
+type SessionStore interface {
+	CreateSession(ctx context.Context, s *Session, evts ...eventbus.OutboxEvent) error
+	GetSessionByHash(ctx context.Context, hash string) (*Session, error)
+	ListSessionsByUser(ctx context.Context, userID string) ([]Session, error)
+	DeleteSession(ctx context.Context, id, userID string, evts ...eventbus.OutboxEvent) error
+	DeleteOtherSessions(ctx context.Context, userID, keepID string, evts ...eventbus.OutboxEvent) error
+	TouchSession(ctx context.Context, id string, lastActive time.Time, ip string, expiresAt time.Time) error
+	DeleteExpiredSessions(ctx context.Context, userID string, now time.Time) error
+}

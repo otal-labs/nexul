@@ -237,3 +237,36 @@ type PublicAddress struct {
 	IPv4 string `json:"ipv4"`
 	IPv6 string `json:"ipv6"`
 }
+
+// SessionClient is the kind of device a session belongs to; it picks the sliding-expiry window.
+type SessionClient string
+
+const (
+	ClientBrowser SessionClient = "browser"
+	ClientDesktop SessionClient = "desktop"
+	ClientPhone   SessionClient = "phone"
+)
+
+// Session is one signed-in device (ADR 0081); only the token's hash is stored, and deleting the row signs it out.
+type Session struct {
+	ID           string        `json:"id"`
+	UserID       string        `json:"user_id"`
+	Client       SessionClient `json:"client"`
+	Platform     string        `json:"platform"`
+	Label        string        `json:"label"`
+	IP           string        `json:"ip"`
+	CreatedAt    time.Time     `json:"created_at"`
+	LastActiveAt time.Time     `json:"last_active_at"`
+	ExpiresAt    time.Time     `json:"expires_at"`
+	// Current marks the session the listing request itself came in on.
+	Current   bool   `json:"current"`
+	TokenHash string `json:"-"`
+}
+
+// Device is what a sign-in knows about the thing signing in: parsed from the user agent, or reported by an app.
+type Device struct {
+	Client   SessionClient
+	Platform string
+	Label    string
+	IP       string
+}

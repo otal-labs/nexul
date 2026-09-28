@@ -1,5 +1,7 @@
 # Sessions are stateless HMAC tokens with no server-side revocation list
 
+Superseded by ADR 0081: a session is a stored row per signed-in device, listable and revocable one at a time.
+
 A session is an HMAC-signed token (24h TTL) keyed by
 `NEXUL_AUTH_SECRET`; logout discards it client-side. There is no session
 table, so nothing to read on every request against a single-writer SQLite

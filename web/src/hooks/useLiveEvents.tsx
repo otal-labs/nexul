@@ -14,7 +14,7 @@ import { getDocKey, getDocsKey } from "@/hooks/DocHooks";
 import { getInstanceUpgradeKey } from "@/hooks/InstanceUpgradeHooks";
 import { getMemoriesKey, getMemoryKey, getMemoryVersionsKey } from "@/hooks/MemoryHooks";
 import { getNotificationsKey, getUnreadCountKey } from "@/hooks/NotificationHooks";
-import { getPATsKey } from "@/hooks/AuthHooks";
+import { getPATsKey, getSessionsKey } from "@/hooks/AuthHooks";
 import {
   getComputerSetupKey,
   getComputersKey,
@@ -81,6 +81,9 @@ const pushTopics: Record<string, string[]> = {
   // A computer row's MCP token line follows a mint or revoke from setup, the row, or an MCP tool.
   "personal_access_token.minted": [getMCPTokenKey, getPATsKey],
   "personal_access_token.revoked": [getMCPTokenKey, getPATsKey],
+  // The Devices list follows a phone connecting or a device being signed out, without a refresh.
+  "session.created": [getSessionsKey],
+  "session.revoked": [getSessionsKey],
   "category.created": [getCategoriesKey, getProjectCategoriesKey],
   "category.updated": [getCategoriesKey, getProjectCategoriesKey],
   "category.deleted": [getCategoriesKey, getProjectCategoriesKey],

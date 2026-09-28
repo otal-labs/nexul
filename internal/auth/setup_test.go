@@ -154,8 +154,8 @@ func TestRequireAuth_SetupPass(t *testing.T) {
 		{"pass without a signature", http.MethodGet, "/api/dns/zones", func(*testing.T, *Service) string {
 			return setupPassPrefix + "e30"
 		}, nil, http.StatusUnauthorized},
-		{"session signature does not make a pass", http.MethodGet, "/api/dns/zones", func(t *testing.T, s *Service) string {
-			session, err := s.Sign(SetupUserID)
+		{"session token does not make a pass", http.MethodGet, "/api/dns/zones", func(t *testing.T, s *Service) string {
+			session, err := sign(s, SetupUserID)
 			require.NoError(t, err)
 			return setupPassPrefix + session
 		}, nil, http.StatusUnauthorized},

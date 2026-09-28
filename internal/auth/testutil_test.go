@@ -436,6 +436,111 @@ func (f *fakePATStore) TouchLastUsed(_ context.Context, id string) error {
 }
 
 // fakeDefaultWorkspace is a minimal stand-in for the tenancy domain's BindDefaultWorkspaceOwner seam (ticket 11): it just records who was bound, mirroring what the real tenancy.Service would persist.
+// fakeSessionStore is an in-memory SessionStore with the real repo's contract: hashes only, user-scoped deletes.
+type fakeSessionStore struct {
+	mu       sync.Mutex
+	byID     map[string]*Session
+	outbox   []eventbus.OutboxEvent
+	touches  int
+	touchErr error
+}
+
+func newFakeSessionStore() *fakeSessionStore {
+	return &fakeSessionStore{byID: map[string]*Session{}}
+}
+
+func (f *fakeSessionStore) CreateSession(_ context.Context, s *Session, evts ...eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	cp := *s
+	f.byID[s.ID] = &cp
+	f.outbox = append(f.outbox, evts...)
+	return nil
+}
+
+func (f *fakeSessionStore) GetSessionByHash(_ context.Context, hash string) (*Session, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, s := range f.byID {
+		if s.TokenHash == hash {
+			cp := *s
+			return &cp, nil
+		}
+	}
+	return nil, apperrs.ErrNotFound
+}
+
+func (f *fakeSessionStore) ListSessionsByUser(_ context.Context, userID string) ([]Session, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make([]Session, 0)
+	for _, s := range f.byID {
+		if s.UserID == userID {
+			out = append(out, *s)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+	return out, nil
+}
+
+func (f *fakeSessionStore) DeleteSession(_ context.Context, id, userID string, evts ...eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	s, ok := f.byID[id]
+	if !ok || s.UserID != userID {
+		return apperrs.ErrNotFound
+	}
+	delete(f.byID, id)
+	f.outbox = append(f.outbox, evts...)
+	return nil
+}
+
+func (f *fakeSessionStore) DeleteOtherSessions(_ context.Context, userID, keepID string, evts ...eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for id, s := range f.byID {
+		if s.UserID == userID && id != keepID {
+			delete(f.byID, id)
+		}
+	}
+	f.outbox = append(f.outbox, evts...)
+	return nil
+}
+
+func (f *fakeSessionStore) TouchSession(_ context.Context, id string, lastActive time.Time, ip string, expiresAt time.Time) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.touches++
+	if f.touchErr != nil {
+		return f.touchErr
+	}
+	if s, ok := f.byID[id]; ok {
+		s.LastActiveAt, s.IP, s.ExpiresAt = lastActive, ip, expiresAt
+	}
+	return nil
+}
+
+func (f *fakeSessionStore) DeleteExpiredSessions(_ context.Context, userID string, now time.Time) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for id, s := range f.byID {
+		if s.UserID == userID && !now.Before(s.ExpiresAt) {
+			delete(f.byID, id)
+		}
+	}
+	return nil
+}
+
+func (f *fakeSessionStore) topics() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make([]string, 0, len(f.outbox))
+	for _, e := range f.outbox {
+		out = append(out, e.Topic)
+	}
+	return out
+}
+
 type fakeDefaultWorkspace struct {
 	mu    sync.Mutex
 	bound []string
@@ -612,8 +717,22 @@ func newTestService(gh GitHubClient, users UserStore, allowlist AllowlistStore, 
 		PendingInvites:   &fakePendingInviteResolver{},
 		MentionLayout:    newFakeMentionLayoutGate(),
 		Now:              func() time.Time { return time.Unix(1_700_000_000, 0) },
-		TokenTTL:         time.Hour,
+		Sessions:         newFakeSessionStore(),
 	})
+}
+
+// sign mints a browser session for userID the way every sign-in path does, returning the raw bearer.
+func sign(s *Service, userID string) (string, error) {
+	return s.CreateSession(context.Background(), userID)
+}
+
+// verify resolves a raw bearer to the user it acts as, the way RequireAuth does.
+func verify(s *Service, token string) (string, error) {
+	user, _, err := s.AuthenticateSession(context.Background(), token, "")
+	if err != nil {
+		return "", err
+	}
+	return user.ID, nil
 }
 
 // newTestHarness wires a service with fresh in-memory fakes and returns them so tests can seed allowlist entries, owners, etc.; Configured()/AuthorizeURL read GitHub OAuth credentials from the returned *fakeSettings (T3/T5), so callers needing Configured() true must seed settings.st.GitHubOAuthClientID/Secret themselves.

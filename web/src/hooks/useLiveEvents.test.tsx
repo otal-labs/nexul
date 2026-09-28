@@ -466,6 +466,18 @@ describe("useLiveEvents dispatch", () => {
     }
   });
 
+  it("refreshes the sessions list when a device signs in or is signed out", async () => {
+    setup();
+    const socket = await connectedSocket();
+    const spy = invalidate();
+    const payload = { session_id: "s1", user_id: "u1", client: "phone", platform: "Android", label: "Pixel 8" };
+    for (const topic of ["session.created", "session.revoked"]) {
+      spy.mockClear();
+      act(() => socket.message(JSON.stringify({ topic, type: "event", payload })));
+      expect(spy).toHaveBeenCalledWith({ queryKey: ["getSessions"] });
+    }
+  });
+
   it("applies a topology canvas patch to the flow store on a topology push", async () => {
     setup();
     const socket = await connectedSocket();

@@ -34,7 +34,6 @@ const (
 	githubSearchUsersURL = "https://api.github.com/search/users"
 	stateCookie          = "nexul_oauth_state"
 	stateMaxAge          = 10 * time.Minute
-	defaultTokenTTL      = 24 * time.Hour
 )
 
 // ProviderClient is the slice of an OAuth provider's API the service calls, fakeable in tests.
@@ -141,6 +140,8 @@ type Config struct {
 	Allowlist     AllowlistStore
 	Settings      SettingsStore
 	PATs          PATStore
+	// Sessions stores one row per signed-in device (ADR 0081); every sign-in path mints through it.
+	Sessions SessionStore
 	// MentionLayout gates SetMentionChipTemplate on workspaces:write; nil fails closed with ErrForbidden.
 	MentionLayout MentionLayoutGate
 	// DefaultWorkspace binds the wizard's completing user to the default workspace; wired later via SetDefaultWorkspace.
@@ -152,7 +153,6 @@ type Config struct {
 	// GitHubApp checks the pasted App credentials against GitHub before Bootstrap stores them; nil skips (tests).
 	GitHubApp GitHubAppVerifier
 	Now       func() time.Time
-	TokenTTL  time.Duration
 	// DevLogin enables GitHub-free session minting at /auth/dev-login for local dev; must be false in production.
 	DevLogin bool
 	// SetupCodes stores the setup code's hash; EnrollDir is where the installer reads the code itself.
@@ -164,7 +164,7 @@ type Config struct {
 	PublicAddress PublicAddressLookup
 }
 
-// Service is the auth use-case layer: OAuth, session tokens, and the user/onboarding/allowlist use-cases.
+// Service is the auth use-case layer: OAuth, device sessions, and the user/onboarding/allowlist use-cases.
 type Service struct {
 	cfg Config
 	// httpClient is the shared transport reused per request (T3), avoiding a new *http.Client per login.
@@ -180,9 +180,6 @@ type Service struct {
 func NewService(cfg Config) *Service {
 	if cfg.Now == nil {
 		cfg.Now = time.Now
-	}
-	if cfg.TokenTTL <= 0 {
-		cfg.TokenTTL = defaultTokenTTL
 	}
 	if cfg.PublicAddress == nil {
 		cfg.PublicAddress = newCloudflareTrace()
@@ -329,7 +326,7 @@ func (s *Service) DevLoginEnabled() bool {
 	return s.cfg.DevLogin
 }
 
-// DevLogin mints a session for a fixed local identity, skipping the GitHub round trip, via Login's upsert-then-sign.
+// DevLogin mints a session for a fixed local identity, skipping the GitHub round trip, via Login's upsert-then-mint.
 func (s *Service) DevLogin(ctx context.Context) (string, error) {
 	identity := &User{
 		ID:             newUserID(),
@@ -342,7 +339,7 @@ func (s *Service) DevLogin(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return s.Sign(user.ID)
+	return s.CreateSession(ctx, user.ID)
 }
 
 // AuthorizeURL builds the GitHub authorize redirect for a fresh state token.
@@ -536,7 +533,7 @@ func (s *Service) RedeemInvitation(ctx context.Context, acceptance string) (Invi
 	if err != nil {
 		return InvitationRedeemResult{}, classifyInvitationError(err)
 	}
-	token, err := s.Sign(admission.UserID)
+	token, err := s.CreateSession(ctx, admission.UserID)
 	if err != nil {
 		return InvitationRedeemResult{}, err
 	}
@@ -585,7 +582,7 @@ func (s *Service) Login(ctx context.Context, code string) (string, error) {
 	return s.LoginWith(ctx, ProviderGitHub, code)
 }
 
-// LoginWith exchanges a code for identity, admits only known active users or the first instance user, and mints a token.
+// LoginWith exchanges a code for identity, admits only known active users or the first instance user, and mints a session.
 func (s *Service) LoginWith(ctx context.Context, provider Provider, code string) (string, error) {
 	client, err := s.providerClient(ctx, provider)
 	if err != nil {
@@ -610,7 +607,7 @@ func (s *Service) LoginWith(ctx context.Context, provider Provider, code string)
 	if err != nil {
 		return "", err
 	}
-	return s.Sign(user.ID)
+	return s.CreateSession(ctx, user.ID)
 }
 
 func (s *Service) findOrCreateLoginUser(ctx context.Context, identity *User) (*User, error) {
@@ -651,45 +648,6 @@ func (s *Service) findOrCreateLoginUser(ctx context.Context, identity *User) (*U
 
 func accountIsActive(status AccountStatus) bool {
 	return status == "" || status == AccountActive
-}
-
-// Sign mints a session token for a user ID, valid for TokenTTL (ADR 0041).
-func (s *Service) Sign(userID string) (string, error) {
-	payload, err := json.Marshal(tokenClaims{
-		UserID: userID,
-		Exp:    s.cfg.Now().Add(s.cfg.TokenTTL).Unix(),
-	})
-	if err != nil {
-		return "", fmt.Errorf("sign token: %w", err)
-	}
-	enc := base64.RawURLEncoding.EncodeToString(payload)
-	return enc + "." + s.mac(enc), nil
-}
-
-// Verify validates a session token and returns the user ID it names.
-func (s *Service) Verify(token string) (string, error) {
-	enc, sig, ok := strings.Cut(token, ".")
-	if !ok {
-		return "", apperrs.ErrUnauthorized
-	}
-	if !hmac.Equal([]byte(sig), []byte(s.mac(enc))) {
-		return "", apperrs.ErrUnauthorized
-	}
-	payload, err := base64.RawURLEncoding.DecodeString(enc)
-	if err != nil {
-		return "", apperrs.ErrUnauthorized
-	}
-	var claims tokenClaims
-	if err := json.Unmarshal(payload, &claims); err != nil {
-		return "", apperrs.ErrUnauthorized
-	}
-	if s.cfg.Now().Unix() >= claims.Exp {
-		return "", apperrs.ErrUnauthorized
-	}
-	if claims.UserID == "" {
-		return "", apperrs.ErrUnauthorized
-	}
-	return claims.UserID, nil
 }
 
 // Whoami returns the caller's own account, so an MCP client can confirm which user its token acts as.
@@ -1229,11 +1187,6 @@ func (s *Service) mac(enc string) string {
 	m := hmac.New(sha256.New, s.cfg.Secret)
 	_, _ = m.Write([]byte(enc))
 	return base64.RawURLEncoding.EncodeToString(m.Sum(nil))
-}
-
-type tokenClaims struct {
-	UserID string `json:"uid"`
-	Exp    int64  `json:"exp"`
 }
 
 func validateInstanceURL(raw string) error {

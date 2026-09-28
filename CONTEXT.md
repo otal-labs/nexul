@@ -433,6 +433,20 @@ computer has at most one of its own, "Nexul MCP on <computer>", revoked when
 its setup is un-confirmed or it is removed; a saved transcript shows any
 personal access token as `[redacted token]`.
 
+**Session**:
+One signed-in device (`ses_`): a browser, the desktop app, or a phone. Stored
+as a row with its platform and label, listed on the user's Devices, signed
+out one at a time or everywhere else at once, and expiring 30 days after
+last use (90 for a phone). A user's own; no permission bit and no MCP tool,
+so an agent can never sign a person out.
+_Avoid_: Login token, JWT, cookie, refresh token
+
+**Device**:
+What a session belongs to, as the sign-in saw it: the client kind (browser,
+desktop, phone), the platform ("Linux", "Android"), and a label (the browser
+name, "Nexul desktop", or the phone's model). Shown as "platform · label".
+_Avoid_: Paired computer (that runs a harness), machine, host
+
 **Scoped token**:
 The credential an integration (`int_`) or an automation (`dat_`) acts with,
 minted with a chosen subset of permissions and revocable on its own. A scoped
@@ -470,7 +484,7 @@ permission is `<domain>:<read|write|delete>` (`docs:write`,
 (`plays:run`, `memories:clone`, `roles:clone`, `docs:thread`), one
 vocabulary shared by roles, token scopes, and the agent. Distinct from auth.
 
-**Auth** — who a user is. Identity and sessions, via an owner-configured OAuth provider.
+**Auth** — who a user is. Identity and device sessions, via an owner-configured OAuth provider.
 Distinct from access.
 
 **Automations** — event-driven code: Default and Custom automations run

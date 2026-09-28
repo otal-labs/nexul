@@ -11,12 +11,29 @@ import (
 
 type ctxKey string
 
-const userCtxKey ctxKey = "user"
+const (
+	userCtxKey    ctxKey = "user"
+	sessionCtxKey ctxKey = "session"
+)
 
 // UserFromCtx returns the authenticated user record set by RequireAuth, or nil when unauthenticated.
 func UserFromCtx(ctx context.Context) *User {
 	u, _ := ctx.Value(userCtxKey).(*User)
 	return u
+}
+
+// SessionFromCtx returns the device session the request came in on; nil for a personal access token or setup pass.
+func SessionFromCtx(ctx context.Context) *Session {
+	s, _ := ctx.Value(sessionCtxKey).(*Session)
+	return s
+}
+
+func withPrincipal(ctx context.Context, user *User, ses *Session) context.Context {
+	ctx = context.WithValue(ctx, userCtxKey, user)
+	if ses == nil {
+		return ctx
+	}
+	return context.WithValue(ctx, sessionCtxKey, ses)
 }
 
 // RequireAuth resolves the full User into context, or 401s; a setup pass resolves to the setup identity (setup.go).
@@ -32,16 +49,12 @@ func (s *Service) RequireAuth(next http.Handler) http.Handler {
 			unauthorized(w)
 			return
 		}
-		authenticate := s.authenticate
-		if isSetupPass(token) {
-			authenticate = s.authenticateSetupPass
-		}
-		user, err := authenticate(r, token)
+		user, ses, err := s.authenticate(r, token)
 		if err != nil {
 			unauthorized(w)
 			return
 		}
-		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), userCtxKey, user)))
+		next.ServeHTTP(w, r.WithContext(withPrincipal(r.Context(), user, ses)))
 	})
 }
 
@@ -51,33 +64,20 @@ func unauthorized(w http.ResponseWriter) {
 	httpx.WriteError(w, apperrs.ErrUnauthorized)
 }
 
-// authenticate resolves a Bearer token (session or PAT) to its user; the PAT path re-reads the store each time.
-func (s *Service) authenticate(r *http.Request, token string) (*User, error) {
+// authenticate resolves a Bearer token (session, PAT or setup pass) to its user; every path re-reads its store.
+func (s *Service) authenticate(r *http.Request, token string) (*User, *Session, error) {
+	if isSetupPass(token) {
+		user, err := s.authenticateSetupPass(r, token)
+		return user, nil, err
+	}
 	if isPAT(token) {
 		if s.cfg.PATs == nil {
-			return nil, apperrs.ErrUnauthorized
+			return nil, nil, apperrs.ErrUnauthorized
 		}
 		user, err := s.AuthenticatePAT(r.Context(), token)
-		if err != nil {
-			return nil, err
-		}
-		if !accountIsActive(user.AccountStatus) {
-			return nil, apperrs.ErrUnauthorized
-		}
-		return user, nil
+		return user, nil, err
 	}
-	userID, err := s.Verify(token)
-	if err != nil {
-		return nil, err
-	}
-	user, err := s.cfg.Users.GetUserByID(r.Context(), userID)
-	if err != nil {
-		return nil, err
-	}
-	if !accountIsActive(user.AccountStatus) {
-		return nil, apperrs.ErrUnauthorized
-	}
-	return user, nil
+	return s.AuthenticateSession(r.Context(), token, clientAddr(r))
 }
 
 // RequireWS guards a WS endpoint: a browser can't set Authorization on a WS upgrade, so the SPA uses a query param.
@@ -92,11 +92,11 @@ func (s *Service) RequireWS(next http.Handler) http.Handler {
 			httpx.WriteError(w, apperrs.ErrUnauthorized)
 			return
 		}
-		user, err := s.authenticate(r, token)
+		user, ses, err := s.authenticate(r, token)
 		if err != nil {
 			httpx.WriteError(w, apperrs.ErrUnauthorized)
 			return
 		}
-		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), userCtxKey, user)))
+		next.ServeHTTP(w, r.WithContext(withPrincipal(r.Context(), user, ses)))
 	})
 }

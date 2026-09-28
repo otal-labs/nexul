@@ -105,9 +105,10 @@ describe("AccountMenu", () => {
     expect(screen.getByRole("link", { name: "Members" })).toHaveAttribute("href", "/members");
   });
 
-  it("calls logout and redirects to the home page when Logout is clicked", async () => {
+  it("signs the session out server-side, clears local state, and redirects home when Logout is clicked", async () => {
     const logout = vi.fn();
     useSessionStore.setState({ logout });
+    vi.mocked(api.delete).mockResolvedValue({ data: undefined });
     const user = userEvent.setup();
     render(
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
@@ -122,8 +123,31 @@ describe("AccountMenu", () => {
     await user.click(await screen.findByText("@onik97"));
     await user.click(screen.getByRole("button", { name: "Logout" }));
 
-    expect(logout).toHaveBeenCalledOnce();
     expect(await screen.findByText("Home page")).toBeInTheDocument();
+    expect(api.delete).toHaveBeenCalledWith("/api/auth/sessions/current");
+    expect(logout).toHaveBeenCalledOnce();
+  });
+
+  it("still clears local state when the server-side sign-out fails", async () => {
+    const logout = vi.fn();
+    useSessionStore.setState({ logout });
+    vi.mocked(api.delete).mockRejectedValue(new Error("offline"));
+    const user = userEvent.setup();
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <MemoryRouter initialEntries={["/docs/d-1"]}>
+          <Routes>
+            <Route path="/docs/:docId" element={<AccountMenu collapsed={false} />} />
+            <Route path="/" element={<div>Home page</div>} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await user.click(await screen.findByText("@onik97"));
+    await user.click(screen.getByRole("button", { name: "Logout" }));
+
+    expect(await screen.findByText("Home page")).toBeInTheDocument();
+    expect(logout).toHaveBeenCalledOnce();
   });
 
   it("renders an icon-only trigger when collapsed", async () => {

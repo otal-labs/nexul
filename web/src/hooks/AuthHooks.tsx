@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
+import { useSessionStore } from "@/stores/sessionStore";
 import type {
   BootstrapResponse,
   BootstrapStatus,
@@ -11,12 +13,14 @@ import type {
   MintPATResponse,
   OptionalProvider,
   PersonalAccessToken,
+  Session,
   User,
 } from "@/models/User";
 
 export const getMeKey = "getMe";
 const getSettingsKey = "getSettings";
 export const getPATsKey = "getPATs";
+export const getSessionsKey = "getSessions";
 export const getBootstrapStatusKey = "getBootstrapStatus";
 
 export const useFetchMe = () =>
@@ -157,6 +161,26 @@ export const useRevokePAT = () => {
       toast.success("Token revoked");
     },
     onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
+export const useListSessions = () =>
+  useQuery({
+    queryKey: [getSessionsKey],
+    queryFn: async () => (await api.get<{ sessions: Session[] }>("/api/auth/sessions")).data,
+  });
+
+// Deletes the session server-side first; local state clears either way, since a failed delete still means leaving.
+export const useLogout = () => {
+  const navigate = useNavigate();
+  const logout = useSessionStore((s) => s.logout);
+  return useMutation({
+    mutationFn: async () => api.delete("/api/auth/sessions/current"),
+    onSettled: () => {
+      logout();
+      // Replace, not push: the current URL would 404 once the router rebuilds logged-out.
+      navigate("/", { replace: true });
+    },
   });
 };
 

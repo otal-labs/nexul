@@ -15,7 +15,7 @@ func TestRequireAuth_AcceptableCredentials(t *testing.T) {
 	u := seedPATUser(t, users)
 	raw, _, err := s.MintPAT(context.Background(), u, "ci")
 	require.NoError(t, err)
-	session, err := s.Sign(u)
+	session, err := sign(s, u)
 	require.NoError(t, err)
 
 	h := s.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -61,7 +61,7 @@ func TestRequireAuth_Rejections(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	valid, err := s.Sign(u)
+	valid, err := sign(s, u)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -92,7 +92,7 @@ func TestRequireAuth_Rejections(t *testing.T) {
 func TestRequireAuth_DisabledUserCannotUseExistingCredentials(t *testing.T) {
 	s, users, _ := newPATHarness()
 	u := seedPATUser(t, users)
-	session, err := s.Sign(u)
+	session, err := sign(s, u)
 	require.NoError(t, err)
 	raw, _, err := s.MintPAT(context.Background(), u, "ci")
 	require.NoError(t, err)

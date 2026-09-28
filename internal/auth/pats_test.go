@@ -64,7 +64,7 @@ func TestMintPAT_ReturnsRawOnce_StoresHash(t *testing.T) {
 		defer pats.mu.Unlock()
 		for _, stored := range pats.byID {
 			assert.NotEqual(t, raw, stored.TokenHash, "raw token must not be persisted")
-			assert.Equal(t, hashPAT(raw), stored.TokenHash)
+			assert.Equal(t, hashToken(raw), stored.TokenHash)
 		}
 	})
 

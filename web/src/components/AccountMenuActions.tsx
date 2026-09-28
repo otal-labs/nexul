@@ -1,9 +1,9 @@
 import { LifeBuoyIcon, LogOutIcon, SettingsIcon, UsersIcon } from "lucide-react";
-import { Link, useNavigate } from "react-router";
+import { Link } from "react-router";
 
 import { PopoverContent } from "@/components/ui/popover";
+import { useLogout } from "@/hooks/AuthHooks";
 import { cn } from "@/lib/utils";
-import { useSessionStore } from "@/stores/sessionStore";
 
 const menuItemClass =
   "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-[13.5px] text-muted-foreground outline-none transition-colors duration-150 ease-standard hover:bg-accent/60 hover:text-foreground focus-visible:bg-accent/60 focus-visible:text-foreground";
@@ -15,14 +15,11 @@ interface AccountMenuActionsProps {
 }
 
 export const AccountMenuActions = ({ canManageMembers, canManageSettings, onClose }: AccountMenuActionsProps) => {
-  const navigate = useNavigate();
-  const logout = useSessionStore((s) => s.logout);
+  const logout = useLogout();
 
   const onLogout = () => {
     onClose();
-    logout();
-    // Replace, not push: the current URL would 404 once the router rebuilds logged-out.
-    navigate("/", { replace: true });
+    logout.mutate();
   };
 
   return (

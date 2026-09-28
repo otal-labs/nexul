@@ -35,6 +35,7 @@ type Store struct {
 	SetupCodes            *SetupCodesRepo
 	Access                *AccessRepo
 	PATs                  *PATsRepo
+	Sessions              *SessionsRepo
 	Projects              *ProjectsRepo
 	Categories            *CategoriesRepo
 	TicketTypes           *TicketTypesRepo
@@ -97,6 +98,7 @@ func New(db *sql.DB, encKey []byte) *Store {
 		SetupCodes:            &SetupCodesRepo{db: db, w: w, q: q},
 		Access:                &AccessRepo{db: db, w: w, q: q},
 		PATs:                  &PATsRepo{db: db, w: w, q: q},
+		Sessions:              &SessionsRepo{db: db, w: w, q: q},
 		Projects:              &ProjectsRepo{db: db, w: w, q: q},
 		Categories:            &CategoriesRepo{db: db, w: w, q: q},
 		TicketTypes:           &TicketTypesRepo{db: db, w: w, q: q},
