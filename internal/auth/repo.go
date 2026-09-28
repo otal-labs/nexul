@@ -70,8 +70,6 @@ type SettingsStore interface {
 	SetGitHubOAuth(ctx context.Context, clientID, clientSecret string) (Settings, error)
 	// SetProviderOAuth persists sign-in credentials; both empty disables it; same no-version-bump rule as SetGitHubOAuth.
 	SetProviderOAuth(ctx context.Context, provider Provider, clientID, clientSecret string) (Settings, error)
-	// SetMentionChipTemplate persists the chip template; doesn't bump SettingsVersion (see Settings.MentionChipTemplate).
-	SetMentionChipTemplate(ctx context.Context, template string) (Settings, error)
 }
 
 // SetupCodeStore keeps the setup code's hash; Replace leaves exactly the one code, Clear leaves none.
@@ -79,11 +77,6 @@ type SetupCodeStore interface {
 	ReplaceSetupCode(ctx context.Context, hash string, createdAt, expiresAt time.Time) error
 	SetupCodeValid(ctx context.Context, hash string, now time.Time) (bool, error)
 	ClearSetupCodes(ctx context.Context) error
-}
-
-// MentionLayoutGate is access's HasPermission check (ADR 0017), gating SetMentionChipTemplate on workspaces:write.
-type MentionLayoutGate interface {
-	CanManageMentionLayout(ctx context.Context, userID string) bool
 }
 
 // PATStore persists PATs; only the hash reaches the store; Revoke is user-scoped, a repeat is ErrNotFound.

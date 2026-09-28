@@ -220,7 +220,6 @@ func (h *Handler) ProtectedRoutes() http.Handler {
 	mux.HandleFunc("GET /api/auth/settings", h.getSettings)
 	mux.HandleFunc("PUT /api/auth/settings", h.updateSettings)
 	mux.HandleFunc("PUT /api/auth/settings/oauth/{provider}", h.updateProviderOAuth)
-	mux.HandleFunc("PATCH /api/auth/settings/mention-chip-template", h.updateMentionChipTemplate)
 	mux.HandleFunc("POST /api/auth/connection-token", h.connectionToken)
 	mux.HandleFunc("GET /api/auth/tokens", h.listPATs)
 	mux.HandleFunc("POST /api/auth/tokens", h.mintPAT)
@@ -513,10 +512,9 @@ func (h *Handler) getSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{
-		"instance_url":          st.InstanceURL,
-		"settings_version":      st.SettingsVersion,
-		"oauth_callback":        oauthCallbackFor(st.InstanceURL),
-		"mention_chip_template": st.MentionChipTemplate,
+		"instance_url":     st.InstanceURL,
+		"settings_version": st.SettingsVersion,
+		"oauth_callback":   oauthCallbackFor(st.InstanceURL),
 		// Google/Discord sign-in are optional (ADR 0040): the client ID is public, only the secret's presence is reported.
 		"google_oauth_client_id":   st.GoogleOAuthClientID,
 		"google_oauth_callback":    callbackFor(st.InstanceURL, ProviderGoogle),
@@ -526,27 +524,6 @@ func (h *Handler) getSettings(w http.ResponseWriter, r *http.Request) {
 		"discord_oauth_configured": st.ProviderConfigured(ProviderDiscord),
 		// mcp_url reuses ConnectionToken's derivation so settings render a copy-paste config without minting a token.
 		"mcp_url": mcpURLFor(st.InstanceURL),
-	})
-}
-
-type updateMentionChipTemplateRequest struct {
-	MentionChipTemplate string `json:"mention_chip_template"`
-}
-
-// updateMentionChipTemplate sets the mention chip layout; any user reads it, only workspaces:write can change it.
-func (h *Handler) updateMentionChipTemplate(w http.ResponseWriter, r *http.Request) {
-	var req updateMentionChipTemplateRequest
-	if err := httpx.DecodeJSON(r, &req); err != nil {
-		httpx.WriteError(w, err)
-		return
-	}
-	st, err := h.svc.SetMentionChipTemplate(r.Context(), currentUserID(r), req.MentionChipTemplate)
-	if err != nil {
-		httpx.WriteError(w, err)
-		return
-	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{
-		"mention_chip_template": st.MentionChipTemplate,
 	})
 }
 

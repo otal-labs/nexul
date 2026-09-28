@@ -42,6 +42,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/workspaces", h.list)
 	mux.HandleFunc("POST /api/workspaces", h.create)
 	mux.HandleFunc("PATCH /api/workspaces/{workspaceID}", h.rename)
+	mux.HandleFunc("PATCH /api/workspaces/{workspaceID}/mention-chip-template", h.setMentionChipTemplate)
 	mux.HandleFunc("GET /api/workspaces/{workspaceID}/me", h.me)
 	mux.HandleFunc("GET /api/workspaces/{workspaceID}/members", h.listMembers)
 	mux.HandleFunc("POST /api/workspaces/{workspaceID}/members", h.inviteMember)
@@ -82,6 +83,25 @@ func (h *Handler) rename(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ws, err := h.svc.Rename(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("workspaceID"), req.Name)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, ws)
+}
+
+type setMentionChipTemplateRequest struct {
+	MentionChipTemplate string `json:"mention_chip_template"`
+}
+
+// setMentionChipTemplate requires workspaces:write in that workspace; any member reads it off the workspace list.
+func (h *Handler) setMentionChipTemplate(w http.ResponseWriter, r *http.Request) {
+	var req setMentionChipTemplateRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	ws, err := h.svc.SetMentionChipTemplate(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("workspaceID"), req.MentionChipTemplate)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

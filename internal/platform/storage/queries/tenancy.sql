@@ -1,14 +1,14 @@
 -- name: CreateWorkspace :exec
-INSERT INTO workspaces (id, name, created_at, updated_at) VALUES (?, ?, ?, ?);
+INSERT INTO workspaces (id, name, mention_chip_template, created_at, updated_at) VALUES (?, ?, ?, ?, ?);
 
 -- name: UpdateWorkspace :execrows
-UPDATE workspaces SET name = ?, updated_at = ? WHERE id = ?;
+UPDATE workspaces SET name = ?, mention_chip_template = ?, updated_at = ? WHERE id = ?;
 
 -- name: GetWorkspace :one
-SELECT id, name, created_at, updated_at FROM workspaces WHERE id = ?;
+SELECT id, name, created_at, updated_at, mention_chip_template FROM workspaces WHERE id = ?;
 
 -- name: ListWorkspacesForUser :many
-SELECT w.id, w.name, w.created_at, w.updated_at
+SELECT w.id, w.name, w.created_at, w.updated_at, w.mention_chip_template
 FROM workspaces w
 JOIN workspace_members m ON m.workspace_id = w.id
 WHERE m.user_id = ?

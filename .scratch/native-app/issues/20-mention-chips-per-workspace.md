@@ -1,7 +1,7 @@
 # 20 — Mention chip template per workspace
 
 **Type:** implementation
-**Status:** ready-for-agent
+**Status:** done
 **Blocked by:** 16
 **Decided in:** ticket 03
 

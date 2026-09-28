@@ -1,9 +1,10 @@
 import { FileTextIcon, LockIcon, TicketIcon, type LucideIcon } from "lucide-react";
 import { Link } from "react-router";
 
-import { useFetchSettings } from "@/hooks/AuthHooks";
+import { useSelectedWorkspace } from "@/hooks/WorkspaceHooks";
 import { cn } from "@/lib/utils";
 import type { MentionChipData, MentionType } from "@/models/Mention";
+import { DEFAULT_MENTION_CHIP_TEMPLATE } from "@/models/Workspace";
 
 interface MentionChipProps {
   type: MentionType;
@@ -11,9 +12,6 @@ interface MentionChipProps {
   label: string;
   chip?: MentionChipData | undefined;
 }
-
-// Matches the DB default (see migration 0109) so a chip looks the same before settings resolve.
-const DEFAULT_TICKET_TEMPLATE = "{ticket.Ticket} {ticket.Status}";
 
 // Substitutes {ticket.Field} tokens (spec.md §6); unrecognized tokens pass through unchanged.
 const renderTicketTemplate = (template: string, chip: MentionChipData | undefined, title: string) => {
@@ -38,11 +36,11 @@ const textFor = (type: MentionType, template: string, chip: MentionChipData | un
 
 // Ticket text follows the workspace template (spec.md §6); inert with disclosed title if not openable.
 export const MentionChip = ({ type, id, label, chip }: MentionChipProps) => {
-  const { data: settings } = useFetchSettings();
+  const workspace = useSelectedWorkspace();
   const title = chip?.title || label;
   const canOpen = chip?.can_open ?? false;
   const Icon = MENTION_ICONS[type];
-  const template = settings?.mention_chip_template || DEFAULT_TICKET_TEMPLATE;
+  const template = workspace?.mention_chip_template || DEFAULT_MENTION_CHIP_TEMPLATE;
   const text = textFor(type, template, chip, title);
 
   const content = (

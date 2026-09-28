@@ -311,3 +311,42 @@ func TestWorkspaceInvitesRepo_Upsert_UnknownWorkspaceOrRole_Conflict(t *testing.
 	})
 	require.ErrorIs(t, err, apperrs.ErrConflict)
 }
+
+func TestWorkspacesRepo_MentionChipTemplate_RoundTrip(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := context.Background()
+	ws := newTestWorkspace("ws-1", "Acme")
+	ws.MentionChipTemplate = "{ticket.Project} {ticket.Ticket}"
+	require.NoError(t, s.Workspaces.Create(ctx, ws))
+
+	got, err := s.Workspaces.Get(ctx, "ws-1")
+	require.NoError(t, err)
+	assert.Equal(t, "{ticket.Project} {ticket.Ticket}", got.MentionChipTemplate)
+
+	got.MentionChipTemplate = "{ticket.Status}"
+	require.NoError(t, s.Workspaces.Update(ctx, got))
+	got, err = s.Workspaces.Get(ctx, "ws-1")
+	require.NoError(t, err)
+	assert.Equal(t, "{ticket.Status}", got.MentionChipTemplate)
+	assert.Equal(t, "Acme", got.Name, "update carries the name alongside the template")
+
+	_, _, err = s.Users.UpsertUser(ctx, newTestUser("u-1", "1", "u-1"))
+	require.NoError(t, err)
+	role := newTestRole("role-1", "ws-1")
+	require.NoError(t, s.Roles.Create(ctx, role))
+	require.NoError(t, s.WorkspaceMembers.AddMember(ctx, &tenancy.Member{UserID: "u-1", WorkspaceID: "ws-1", RoleID: role.ID, CreatedAt: time.Now()}))
+	listed, err := s.Workspaces.ListForUser(ctx, "u-1")
+	require.NoError(t, err)
+	require.Len(t, listed, 1)
+	assert.Equal(t, "{ticket.Status}", listed[0].MentionChipTemplate)
+}
+
+// The seeded default workspace predates the column, so the migration's default is what its chips render with.
+func TestWorkspacesRepo_SeededDefault_CarriesDefaultTemplate(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	got, err := s.Workspaces.Get(context.Background(), tenancy.DefaultWorkspaceID)
+	require.NoError(t, err)
+	assert.Equal(t, tenancy.DefaultMentionChipTemplate, got.MentionChipTemplate)
+}

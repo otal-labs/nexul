@@ -23,7 +23,6 @@ const settings = {
   instance_url: "https://deploy.example.com",
   settings_version: 2,
   oauth_callback: "https://deploy.example.com/auth/callback",
-  mention_chip_template: "",
   google_oauth_client_id: "",
   google_oauth_callback: "https://deploy.example.com/auth/google/callback",
   google_oauth_configured: false,

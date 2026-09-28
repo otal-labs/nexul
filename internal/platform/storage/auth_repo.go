@@ -400,15 +400,6 @@ func (r *SettingsRepo) Set(ctx context.Context, instanceURL string) (auth.Settin
 	})
 }
 
-// SetMentionChipTemplate persists the chip template; doesn't bump SettingsVersion (that tracks the instance URL only).
-func (r *SettingsRepo) SetMentionChipTemplate(ctx context.Context, template string) (auth.Settings, error) {
-	return r.update(ctx, "set mention chip template", func(q *sqlcgen.Queries) (int64, error) {
-		return q.SetSettingsMentionChipTemplate(ctx, sqlcgen.SetSettingsMentionChipTemplateParams{
-			MentionChipTemplate: template, UpdatedAt: time.Now().Unix(),
-		})
-	})
-}
-
 // SetGitHubOAuth persists the GitHub OAuth App client ID/secret, encrypted at rest with the repo's injected key.
 func (r *SettingsRepo) SetGitHubOAuth(ctx context.Context, clientID, clientSecret string) (auth.Settings, error) {
 	encSecret, err := r.encryptSecret("github", clientSecret)
@@ -508,7 +499,6 @@ func (r *SettingsRepo) readSettings(ctx context.Context, q *sqlcgen.Queries) (au
 		GitHubOAuthClientID:  row.GithubOauthClientID,
 		GoogleOAuthClientID:  row.GoogleOauthClientID,
 		DiscordOAuthClientID: row.DiscordOauthClientID,
-		MentionChipTemplate:  row.MentionChipTemplate,
 	}
 	if st.GitHubOAuthClientSecret, err = r.decryptSecret("github", row.GithubOauthClientSecret); err != nil {
 		return auth.Settings{}, err

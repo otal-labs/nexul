@@ -345,7 +345,6 @@ type InstanceSetting struct {
 	UpdatedAt                int64
 	GithubOauthClientID      string
 	GithubOauthClientSecret  string
-	MentionChipTemplate      string
 	GoogleOauthClientID      string
 	GoogleOauthClientSecret  string
 	DiscordOauthClientID     string
@@ -879,10 +878,11 @@ type User struct {
 }
 
 type Workspace struct {
-	ID        string
-	Name      string
-	CreatedAt int64
-	UpdatedAt int64
+	ID                  string
+	Name                string
+	CreatedAt           int64
+	UpdatedAt           int64
+	MentionChipTemplate string
 }
 
 type WorkspaceInvite struct {

@@ -251,3 +251,42 @@ func TestHandler_ChangeMemberRole(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 }
+
+func TestHandler_SetMentionChipTemplate(t *testing.T) {
+	newHandler := func(t *testing.T, perms ...string) (*Handler, string) {
+		t.Helper()
+		repo := newFakeRepo()
+		wsPerms := newFakeWorkspacePermissionGate()
+		svc := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), newFakeRoleNameGate(), wsPerms, newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{})
+		w, err := svc.Create(context.Background(), "u-1", "Acme")
+		require.NoError(t, err)
+		wsPerms.perms["u-1"] = perms
+		return NewHandler(svc), w.ID
+	}
+	t.Run("bad json is invalid", func(t *testing.T) {
+		h, id := newHandler(t, "workspaces:write")
+		rec := do(t, h.Routes(), http.MethodPatch, "/api/workspaces/"+id+"/mention-chip-template", `{`, "u-1")
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+	t.Run("actor without workspaces:write is forbidden", func(t *testing.T) {
+		h, id := newHandler(t, "members:write")
+		rec := do(t, h.Routes(), http.MethodPatch, "/api/workspaces/"+id+"/mention-chip-template", `{"mention_chip_template":"{ticket.Project}"}`, "u-1")
+		assert.Equal(t, http.StatusForbidden, rec.Code)
+	})
+	t.Run("returns the workspace with its new template", func(t *testing.T) {
+		h, id := newHandler(t, "workspaces:write")
+		rec := do(t, h.Routes(), http.MethodPatch, "/api/workspaces/"+id+"/mention-chip-template", `{"mention_chip_template":"{ticket.Project} {ticket.Ticket}"}`, "u-1")
+		require.Equal(t, http.StatusOK, rec.Code)
+		var w Workspace
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &w))
+		assert.Equal(t, id, w.ID)
+		assert.Equal(t, "{ticket.Project} {ticket.Ticket}", w.MentionChipTemplate)
+
+		list := do(t, h.Routes(), http.MethodGet, "/api/workspaces", "", "u-1")
+		require.Equal(t, http.StatusOK, list.Code)
+		var workspaces []Workspace
+		require.NoError(t, json.Unmarshal(list.Body.Bytes(), &workspaces))
+		require.Len(t, workspaces, 1)
+		assert.Equal(t, "{ticket.Project} {ticket.Ticket}", workspaces[0].MentionChipTemplate, "the list is where the browser reads the template")
+	})
+}

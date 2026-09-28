@@ -266,7 +266,7 @@ type fakeSettings struct {
 }
 
 func newFakeSettings() *fakeSettings {
-	return &fakeSettings{st: Settings{SettingsVersion: 1, MentionChipTemplate: "{ticket.Ticket} {ticket.Status}"}}
+	return &fakeSettings{st: Settings{SettingsVersion: 1}}
 }
 
 func (f *fakeSettings) Get(_ context.Context) (Settings, error) {
@@ -303,35 +303,6 @@ func (f *fakeSettings) SetProviderOAuth(_ context.Context, provider Provider, cl
 		return Settings{}, apperrs.ErrInvalid
 	}
 	return f.st, nil
-}
-
-func (f *fakeSettings) SetMentionChipTemplate(_ context.Context, template string) (Settings, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.st.MentionChipTemplate = template
-	return f.st, nil
-}
-
-// fakeMentionLayoutGate is an in-memory MentionLayoutGate: allow defaults to true so tests that don't care about the workspaces:write gate aren't forced to wire it up; SetAllowed(false) exercises the forbidden path.
-type fakeMentionLayoutGate struct {
-	mu      sync.Mutex
-	allowed bool
-}
-
-func newFakeMentionLayoutGate() *fakeMentionLayoutGate {
-	return &fakeMentionLayoutGate{allowed: true}
-}
-
-func (f *fakeMentionLayoutGate) CanManageMentionLayout(_ context.Context, _ string) bool {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	return f.allowed
-}
-
-func (f *fakeMentionLayoutGate) SetAllowed(allowed bool) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.allowed = allowed
 }
 
 // fakePATStore is an in-memory PATStore that mimics the real repo's contract: only hashes are stored and revoke is user-scoped + idempotent-once.
@@ -715,7 +686,6 @@ func newTestService(gh GitHubClient, users UserStore, allowlist AllowlistStore, 
 		Settings:         settings,
 		DefaultWorkspace: &fakeDefaultWorkspace{},
 		PendingInvites:   &fakePendingInviteResolver{},
-		MentionLayout:    newFakeMentionLayoutGate(),
 		Now:              func() time.Time { return time.Unix(1_700_000_000, 0) },
 		Sessions:         newFakeSessionStore(),
 	})

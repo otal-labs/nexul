@@ -153,8 +153,6 @@ type Settings struct {
 	GoogleOAuthClientSecret  string
 	DiscordOAuthClientID     string
 	DiscordOAuthClientSecret string
-	// MentionChipTemplate is the mention chip layout template with {ticket.Field}; doesn't bump SettingsVersion.
-	MentionChipTemplate string
 }
 
 // Configured reports whether a GitHub OAuth App has been stored via the database bootstrap flow, rather than env vars.

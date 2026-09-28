@@ -7,12 +7,17 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
+// DefaultMentionChipTemplate renders a chip as the fixed icon+title+status it showed before templates existed.
+const DefaultMentionChipTemplate = "{ticket.Ticket} {ticket.Status}"
+
 // Workspace's Owner implicitly has full access to everything inside it.
 type Workspace struct {
-	ID        string    `json:"id"`
-	Name      string    `json:"name"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	// MentionChipTemplate is the @-mention ticket chip layout with {ticket.Field} tokens; gated on workspaces:write.
+	MentionChipTemplate string    `json:"mention_chip_template"`
+	CreatedAt           time.Time `json:"created_at"`
+	UpdatedAt           time.Time `json:"updated_at"`
 }
 
 // Member's RoleID is currently always the workspace's Owner role, assigned via Service.Create.

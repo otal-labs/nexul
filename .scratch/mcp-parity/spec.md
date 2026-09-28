@@ -25,3 +25,5 @@ and a new tool only inside the budget (97 of 100 today).
   key; the tickets and projects tools accept `REF-102` already.
 - **Rate limits.** Tool calls are limited per actor; the HTTP gateway has no
   limit at all, so the same agent loop over `/api` is unbounded.
+- **Workspace.** The mention chip template (`PATCH
+  /api/workspaces/{id}/mention-chip-template`); no tool reads or sets it.

@@ -27,13 +27,15 @@ const settings = {
   instance_url: "https://deploy.example.com",
   settings_version: 2,
   oauth_callback: "https://deploy.example.com/auth/callback",
-  mention_chip_template: "{ticket.Ticket} {ticket.Status}",
 };
+
+const workspaces = [{ id: "ws-1", name: "Acme", mention_chip_template: "{ticket.Ticket} {ticket.Status}", created_at: "", updated_at: "" }];
 
 // The page issues several GETs (me, settings, connectors, version); route by URL so each resolves with the right shape.
 const mockGet = (url: string) => {
   if (url === "/api/auth/me") return Promise.resolve({ data: { user: { can_create_workspace: true } } });
   if (url === "/api/connectors") return Promise.resolve({ data: [] });
+  if (url === "/api/workspaces") return Promise.resolve({ data: workspaces });
   if (url.startsWith("/api/version")) return Promise.resolve({ data: { current: "0.1.0", channel: "beta" } });
   return Promise.resolve({ data: settings });
 };
@@ -115,7 +117,7 @@ describe("ConfigurationPage mention chip layout gating", () => {
       }
       return mockGet(url);
     });
-    mocks.patch.mockResolvedValue({ data: { mention_chip_template: "{ticket.Status}" } });
+    mocks.patch.mockResolvedValue({ data: { ...workspaces[0], mention_chip_template: "{ticket.Status}" } });
     const user = userEvent.setup();
     renderPage("/configuration?section=mentions");
 
@@ -128,7 +130,7 @@ describe("ConfigurationPage mention chip layout gating", () => {
     await user.type(input, "{{ticket.Status}");
     await user.click(section.getByRole("button", { name: /^save$/i }));
 
-    expect(mocks.patch).toHaveBeenCalledWith("/api/auth/settings/mention-chip-template", {
+    expect(mocks.patch).toHaveBeenCalledWith("/api/workspaces/ws-1/mention-chip-template", {
       mention_chip_template: "{ticket.Status}",
     });
   });
