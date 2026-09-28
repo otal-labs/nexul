@@ -31,6 +31,7 @@ func TestParseScope(t *testing.T) {
 		{"members now grantable", "members:delete", Scope("members:delete"), false},
 		{"plays run", "plays:run", Scope("plays:run"), false},
 		{"memories clone", "memories:clone", Scope("memories:clone"), false},
+		{"roles clone", "roles:clone", Scope("roles:clone"), false},
 		{"docs thread", "docs:thread", Scope("docs:thread"), false},
 		{"a verb another domain didn't declare", "plays:clone", "", true},
 		{"empty", "", "", true},
@@ -176,6 +177,8 @@ func TestScopeAllows(t *testing.T) {
 		{"roles under workspaces: read", "GET", "/api/workspaces/ws1/roles", []Scope{Scope("workspaces:read")}, true},
 		{"roles under workspaces: write", "POST", "/api/workspaces/ws1/roles", []Scope{Scope("workspaces:write")}, true},
 		{"roles under workspaces: delete", "DELETE", "/api/workspaces/ws1/roles/r1", []Scope{Scope("workspaces:delete")}, true},
+		{"role clone under workspaces: write", "POST", "/api/workspaces/ws1/roles/r1/clone", []Scope{Scope("workspaces:write")}, true},
+		{"role clone is not a read", "POST", "/api/workspaces/ws1/roles/r1/clone", []Scope{Scope("workspaces:read")}, false},
 
 		{"projects read with implied scope", "GET", "/api/projects", write, true},
 		{"projects read denied without scope", "GET", "/api/projects", read, false},
@@ -227,7 +230,7 @@ func TestCatalog_CoversEveryGrantableScopeOnce(t *testing.T) {
 		seen[sc] = true
 	}
 	assert.Len(t, seen, len(allScopes))
-	assert.Len(t, seen, 69)
+	assert.Len(t, seen, 70)
 }
 
 func TestCatalog_EveryValueParses(t *testing.T) {

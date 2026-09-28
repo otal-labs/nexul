@@ -2,6 +2,7 @@ package roles
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -142,6 +143,66 @@ func (s *Service) Delete(ctx context.Context, workspaceID, roleID, actorUserID s
 	return nil
 }
 
+// Clone copies a custom role into another workspace; it needs roles:clone in the source and roles:write in the target.
+func (s *Service) Clone(ctx context.Context, sourceWorkspaceID, roleID, targetWorkspaceID, actorUserID string) (*Role, error) {
+	targetWorkspaceID = strings.TrimSpace(targetWorkspaceID)
+	if targetWorkspaceID == "" {
+		return nil, fmt.Errorf("%w: target workspace id is required", apperrs.ErrInvalid)
+	}
+	source, err := s.getInWorkspace(ctx, sourceWorkspaceID, roleID)
+	if err != nil {
+		return nil, err
+	}
+	if source.IsOwnerRole {
+		return nil, fmt.Errorf("%w: the Owner role can't be cloned; every workspace already has its own", apperrs.ErrInvalid)
+	}
+	if targetWorkspaceID == source.WorkspaceID {
+		return nil, fmt.Errorf("%w: pick a workspace other than the one the role is in", apperrs.ErrInvalid)
+	}
+	if err := s.requireAction(ctx, source.WorkspaceID, actorUserID, permissions.RolesClone); err != nil {
+		return nil, err
+	}
+	if err := s.requireAction(ctx, targetWorkspaceID, actorUserID, permissions.RolesWrite); err != nil {
+		if errors.Is(err, apperrs.ErrNotFound) {
+			return nil, fmt.Errorf("%w: you aren't a member of the target workspace", apperrs.ErrForbidden)
+		}
+		return nil, err
+	}
+	taken, err := s.repo.List(ctx, targetWorkspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("list roles for workspace %s: %w", targetWorkspaceID, err)
+	}
+	now := s.now().UTC()
+	r := &Role{
+		ID:          ids.New(),
+		WorkspaceID: targetWorkspaceID,
+		Name:        freeName(source.Name, taken),
+		Permissions: permissions.SetOf(source.Permissions...),
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+	if err := s.repo.Create(ctx, r); err != nil {
+		return nil, fmt.Errorf("clone role %s into workspace %s: %w", roleID, targetWorkspaceID, err)
+	}
+	return r, nil
+}
+
+// freeName returns name, or the first "<name> (copy)", "<name> (copy 2)", ... no role in taken already uses.
+func freeName(name string, taken []*Role) string {
+	used := make(map[string]bool, len(taken))
+	for _, r := range taken {
+		used[strings.ToLower(r.Name)] = true
+	}
+	candidate := name
+	for n := 1; used[strings.ToLower(candidate)]; n++ {
+		candidate = name + " (copy)"
+		if n > 1 {
+			candidate = fmt.Sprintf("%s (copy %d)", name, n)
+		}
+	}
+	return candidate
+}
+
 func (s *Service) getInWorkspace(ctx context.Context, workspaceID, roleID string) (*Role, error) {
 	workspaceID = strings.TrimSpace(workspaceID)
 	roleID = strings.TrimSpace(roleID)
@@ -163,6 +224,11 @@ func (s *Service) getInWorkspace(ctx context.Context, workspaceID, roleID string
 
 // requireManageRoles checks the Owner bypass, then roles:write, gating Create/Update/Delete on custom roles.
 func (s *Service) requireManageRoles(ctx context.Context, workspaceID, actorUserID string) error {
+	return s.requireAction(ctx, workspaceID, actorUserID, permissions.RolesWrite)
+}
+
+// requireAction checks the Owner bypass, then action on the actor's role in workspaceID.
+func (s *Service) requireAction(ctx context.Context, workspaceID, actorUserID string, action permissions.Action) error {
 	actorUserID = strings.TrimSpace(actorUserID)
 	if actorUserID == "" {
 		return fmt.Errorf("%w: actor user id is required", apperrs.ErrInvalid)
@@ -178,8 +244,8 @@ func (s *Service) requireManageRoles(ctx context.Context, workspaceID, actorUser
 	if actorRole.IsOwnerRole {
 		return nil
 	}
-	if !actorRole.Permissions.Has(permissions.RolesWrite) {
-		return fmt.Errorf("%w: roles:write required", apperrs.ErrForbidden)
+	if !actorRole.Permissions.Has(action) {
+		return fmt.Errorf("%w: %s required", apperrs.ErrForbidden, action)
 	}
 	return nil
 }

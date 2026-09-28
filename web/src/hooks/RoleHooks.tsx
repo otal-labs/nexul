@@ -3,6 +3,7 @@ import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
 import type { Role } from "@/models/Role";
+import type { Workspace } from "@/models/Workspace";
 
 const getWorkspaceRolesKey = "getWorkspaceRoles";
 
@@ -49,6 +50,27 @@ export const useDeleteWorkspaceRole = (workspaceId: string) => {
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getWorkspaceRolesKey, workspaceId] });
       toast.success("Role deleted");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
+interface CloneWorkspaceRoleInput {
+  role: Role;
+  target: Workspace;
+}
+
+// The toast names the copy's new name only when the target already had a role by that name.
+export const useCloneWorkspaceRole = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ role, target }: CloneWorkspaceRoleInput) =>
+      (await api.post<Role>(`/api/workspaces/${role.workspace_id}/roles/${role.id}/clone`, { workspace_id: target.id }))
+        .data,
+    onSuccess: async (clone, { role, target }) => {
+      await client.invalidateQueries({ queryKey: [getWorkspaceRolesKey, target.id] });
+      const renamed = clone.name !== role.name ? ` as ${clone.name}` : "";
+      toast.success(`Cloned ${role.name} to ${target.name}${renamed}`);
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

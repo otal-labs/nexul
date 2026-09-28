@@ -23,6 +23,7 @@ const (
 	WorkspacesWrite   Action = "workspaces:write"
 	MembersWrite      Action = "members:write"
 	RolesWrite        Action = "roles:write"
+	RolesClone        Action = "roles:clone"
 	AutomationsRead   Action = "automations:read"
 	AutomationsWrite  Action = "automations:write"
 	AutomationsDelete Action = "automations:delete"
@@ -49,6 +50,7 @@ const (
 var verbLabel = map[Action]string{
 	PlaysRun:      "Run plays",
 	MemoriesClone: "Clone memories to another project or workspace",
+	RolesClone:    "Clone roles to another workspace",
 	DocsThread:    "See doc threads",
 }
 
@@ -77,7 +79,7 @@ var domainTable = []domainInfo{
 	{"projects", "projects and board settings", []string{read, write, delete}},
 	{"workspaces", "workspaces", []string{read, write, delete}},
 	{"members", "members and invites", []string{read, write, delete}},
-	{"roles", "roles", []string{read, write, delete}},
+	{"roles", "roles", []string{read, write, delete, clone}},
 	{"runners", "runners", []string{read}},
 	{"machines", "machines", []string{read, write}},
 	{"dns", "DNS and gateways", []string{read, write, delete}},

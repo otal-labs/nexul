@@ -28,6 +28,8 @@ const catalog = [
   { value: "projects:write", label: "Create and update projects", domain: "projects", action: "write" },
   { value: "roles:read", label: "Read roles", domain: "roles", action: "read" },
   { value: "roles:write", label: "Create and update roles", domain: "roles", action: "write" },
+  { value: "roles:delete", label: "Delete roles", domain: "roles", action: "delete" },
+  { value: "roles:clone", label: "Clone roles to another workspace", domain: "roles", action: "clone" },
 ];
 
 const level = (scope: HTMLElement, domain: string, name: string) =>
@@ -46,9 +48,11 @@ const role = (overrides: Record<string, unknown> = {}) => ({
 
 const ownerRole = role({ id: "role-owner", name: "Owner", is_owner_role: true });
 
-const mockRoles = (roles: unknown[]) => {
+const mockRoles = (roles: unknown[], myPermissions: string[] = []) => {
   mocks.get.mockImplementation((url: string) => {
     if (url === "/api/workspaces/ws-1/roles") return Promise.resolve({ data: roles });
+    if (url === "/api/workspaces/ws-1/me") return Promise.resolve({ data: { role_name: "Admin", permissions: myPermissions } });
+    if (url === "/api/workspaces") return Promise.resolve({ data: [] });
     if (url === "/api/permissions/catalog") return Promise.resolve({ data: { permissions: catalog } });
     return Promise.reject(new Error(`unexpected GET ${url}`));
   });
@@ -187,5 +191,42 @@ describe("RoleSettingsSection", () => {
     await user.click(screen.getByRole("button", { name: /^confirm$/i }));
 
     expect(mocks.delete).toHaveBeenCalledWith("/api/workspaces/ws-1/roles/role-editor");
+  });
+
+  it("hides Clone without roles:clone", async () => {
+    mockRoles([ownerRole, role()], ["roles:write"]);
+    renderSection();
+
+    expect(await screen.findByText("Editor")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^clone /i })).not.toBeInTheDocument();
+  });
+
+  it("offers Clone on custom roles, never on the Owner role, and opens the dialog", async () => {
+    mockRoles([ownerRole, role()], ["roles:write", "roles:clone"]);
+    const user = userEvent.setup();
+    renderSection();
+
+    const clone = await screen.findByRole("button", { name: "Clone Editor to another workspace" });
+    expect(clone).toHaveAttribute("title", "Clone Editor to another workspace");
+    expect(screen.queryByRole("button", { name: "Clone Owner to another workspace" })).not.toBeInTheDocument();
+
+    await user.click(clone);
+    expect(await screen.findByRole("dialog", { name: "Clone Editor to another workspace" })).toBeInTheDocument();
+  });
+
+  it("toggles the Clone verb for Roles in the role editor", async () => {
+    mockRoles([ownerRole, role({ permissions: ["roles:read"] })]);
+    mocks.patch.mockResolvedValue({ data: role() });
+    const user = userEvent.setup();
+    renderSection();
+
+    await user.click(await screen.findByRole("button", { name: "Rename role Editor" }));
+    await user.click(screen.getByRole("button", { name: "Clone roles to another workspace" }));
+    await user.click(screen.getByRole("button", { name: /new role/i }));
+
+    expect(mocks.patch).toHaveBeenCalledWith("/api/workspaces/ws-1/roles/role-editor", {
+      name: "Editor",
+      actions: ["roles:read", "roles:clone"],
+    });
   });
 });

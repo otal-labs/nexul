@@ -405,8 +405,8 @@ _Avoid_: Ticket template, form, checklist
 One capability, written `<domain>:<action>` where the action is `read`,
 `write`, or `delete` (`docs:write`, `members:delete`), or a verb the domain
 declares for an act that is neither (`plays:run`, `memories:clone`,
-`docs:thread`). One vocabulary for every actor: a role, a scoped token, and
-the agent are checked against the same values.
+`roles:clone`, `docs:thread`). One vocabulary for every actor: a role, a
+scoped token, and the agent are checked against the same values.
 _Avoid_: Right, privilege, capability, ACL entry
 
 **Permission overwrite**:
@@ -467,8 +467,8 @@ internals.
 **Access** — what an actor may do. Permissions and access control. A
 permission is `<domain>:<read|write|delete>` (`docs:write`,
 `members:delete`), or a verb a domain declares beside those three
-(`plays:run`, `memories:clone`, `docs:thread`), one vocabulary shared by
-roles, token scopes, and the agent. Distinct from auth.
+(`plays:run`, `memories:clone`, `roles:clone`, `docs:thread`), one
+vocabulary shared by roles, token scopes, and the agent. Distinct from auth.
 
 **Auth** — who a user is. Identity and sessions, via an owner-configured OAuth provider.
 Distinct from access.
