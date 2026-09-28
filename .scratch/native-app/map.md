@@ -44,7 +44,8 @@ web first:
 
 The web half was fully decided on 2026-09-28 and sliced into implementation
 tickets 15–21 (sessions, settings split, Devices tab, connect a phone,
-profile and linked sign-ins, mention chips per workspace, phone banner).
+profile and linked sign-ins, mention chips per workspace, phone banner),
+all built and merged the same day (PRs #120, #122–#127).
 The phone half is sliced once its decision tickets resolve.
 
 ## Decisions so far

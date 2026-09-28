@@ -7,11 +7,11 @@ const label: Record<Status, string> = { planned: 'Planned', 'in-progress': 'In p
 
 const items: { name: string; status: Status; summary: string }[] = [
 	{ name: 'Android app', status: 'planned', summary: 'Your inbox, chat, board, docs and deploys on your phone, signed in by scanning a QR code.' },
-	{ name: 'Devices', status: 'planned', summary: 'See every browser and phone signed in to your account, and sign any of them out.' },
 	{ name: 'Call notes', status: 'planned', summary: 'A voice call becomes notes and a summary in the doc, without anyone typing them.' },
 	{ name: 'Semantic search', status: 'planned', summary: 'Find docs and tickets by what they mean, not only by the words they share.' },
 	{ name: 'Runner labels', status: 'planned', summary: 'Route a job to the runners that carry the right labels, not just the right machine.' },
 	{ name: 'Automatic TLS', status: 'planned', summary: "Let's Encrypt certificates for services served straight from your server." },
+	{ name: 'Devices', status: 'shipped', summary: 'See every browser and phone signed in to your account, sign any of them out, and connect a phone with a QR code.' },
 	{ name: 'Domain-first setup', status: 'shipped', summary: 'First run gives Nexul its https domain behind a setup code, by Cloudflare tunnel, reverse proxy with Let\'s Encrypt, or your own HTTPS, before GitHub.' },
 	{ name: 'Native install', status: 'shipped', summary: 'Every part of Nexul runs as a native service on one port, with no containers of its own.' },
 	{ name: 'Per-runner credentials', status: 'shipped', summary: 'Each runner enrolls for its own credential, and Remove uninstalls it from its machine.' },
