@@ -55,7 +55,7 @@ func (h *Handler) Routes() http.Handler {
 }
 
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
-	rs, err := h.svc.List(r.Context(), r.PathValue("workspaceID"))
+	rs, err := h.svc.ListForMember(r.Context(), r.PathValue("workspaceID"), UserIDFromCtx(r.Context()))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -78,7 +78,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
-	role, err := h.svc.Get(r.Context(), r.PathValue("workspaceID"), r.PathValue("roleID"))
+	role, err := h.svc.GetForMember(r.Context(), r.PathValue("workspaceID"), r.PathValue("roleID"), UserIDFromCtx(r.Context()))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
