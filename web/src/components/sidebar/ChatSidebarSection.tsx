@@ -2,9 +2,11 @@ import { Hash, Users, Volume2 } from "lucide-react";
 import { useNavigate } from "react-router";
 
 import { VoiceOccupantList } from "@/components/chat/VoiceOccupantAvatars";
-import { navLinkClass, sectionLabelClass } from "@/components/SidebarNav";
+import { SidebarSectionHeader } from "@/components/sidebar/SidebarSectionHeader";
+import { navLinkClass } from "@/components/SidebarNav";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { useChatAuthorLookup, useFetchChatUnread, useFetchConversations } from "@/hooks/ChatHooks";
+import { useNewConversationDialogs } from "@/hooks/useNewConversationDialogs";
 import { useVoiceOccupancy } from "@/hooks/VoiceHooks";
 import { cn } from "@/lib/utils";
 import { conversationLabel, groupConversations, type Conversation, type DMLabelContext } from "@/models/Chat";
@@ -83,12 +85,16 @@ export const ChatSidebarSection = ({ collapsed }: ChatSidebarSectionProps) => {
   const navigate = useNavigate();
   const occupancy = useVoiceOccupancy(!collapsed);
   const joinCall = useVoiceCallStore((s) => s.join);
+  // A new text channel or DM opens straight away; a new voice channel waits in the list to be joined.
+  const { openNewChannel, openNewDM } = useNewConversationDialogs(workspaceId, (conversation) => {
+    if (conversation.kind === "voice_channel") return;
+    void navigate(`/chat/${conversation.id}`);
+  });
 
   if (collapsed) return null;
-  if (!conversations || conversations.length === 0) return null;
 
   const dmCtx: DMLabelContext = { currentUserId: me?.user.id, resolveLogin };
-  const { channels, voiceChannels, dms } = groupConversations(conversations);
+  const { channels, voiceChannels, dms } = groupConversations(conversations ?? []);
 
   // Joining voice does not open the thread; the call lives in the app-level VoiceDock instead.
   const handleJoinVoice = (conversationId: string) => {
@@ -97,9 +103,8 @@ export const ChatSidebarSection = ({ collapsed }: ChatSidebarSectionProps) => {
 
   return (
     <div className="flex flex-col gap-0.5">
-      {channels.length > 0 && (
-        <div className="flex flex-col gap-0.5">
-          <div className={sectionLabelClass}>Channels</div>
+      <div className="flex flex-col gap-0.5">
+        <SidebarSectionHeader label="Channels" actionLabel="New channel" onAction={() => void openNewChannel(false)} />
           {channels.map((conversation) => (
             <ChatSidebarRow
               key={conversation.id}
@@ -109,11 +114,13 @@ export const ChatSidebarSection = ({ collapsed }: ChatSidebarSectionProps) => {
               onSelect={(id) => void navigate(`/chat/${id}`)}
             />
           ))}
-        </div>
-      )}
-      {voiceChannels.length > 0 && (
-        <div className="flex flex-col gap-0.5">
-          <div className={sectionLabelClass}>Voice channels</div>
+      </div>
+      <div className="flex flex-col gap-0.5">
+        <SidebarSectionHeader
+          label="Voice channels"
+          actionLabel="New voice channel"
+          onAction={() => void openNewChannel(true)}
+        />
           {voiceChannels.map((conversation) => (
             <VoiceChannelSidebarRow
               key={conversation.id}
@@ -123,11 +130,9 @@ export const ChatSidebarSection = ({ collapsed }: ChatSidebarSectionProps) => {
               onJoin={handleJoinVoice}
             />
           ))}
-        </div>
-      )}
-      {dms.length > 0 && (
-        <div className="flex flex-col gap-0.5">
-          <div className={sectionLabelClass}>Direct messages</div>
+      </div>
+      <div className="flex flex-col gap-0.5">
+        <SidebarSectionHeader label="Direct messages" actionLabel="New direct message" onAction={() => void openNewDM()} />
           {dms.map((conversation) => (
             <ChatSidebarRow
               key={conversation.id}
@@ -137,8 +142,7 @@ export const ChatSidebarSection = ({ collapsed }: ChatSidebarSectionProps) => {
               onSelect={(id) => void navigate(`/chat/${id}`)}
             />
           ))}
-        </div>
-      )}
+      </div>
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { ContextAwareConfirmation } from "react-confirm";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -42,6 +43,7 @@ const renderSection = (collapsed = false) => {
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={["/"]}>
+        <ContextAwareConfirmation.ConfirmationRoot />
         <Routes>
           <Route path="/" element={<ChatSidebarSection collapsed={collapsed} />} />
           <Route path="/chat/:conversationId" element={<div>chat-page</div>} />
@@ -83,15 +85,48 @@ describe("ChatSidebarSection", () => {
     expect(screen.getByText("7")).toBeInTheDocument();
   });
 
-  it("renders nothing when there are no conversations", async () => {
+  it("with no conversations it still offers to create each kind", async () => {
     vi.mocked(api.get).mockImplementation(async (url: string) => {
       if (url === "/api/chat/conversations") return { data: [] };
       if (url === "/api/auth/me") return { data: meResponse };
       return { data: {} };
     });
-    const { container } = renderSection();
+    renderSection();
     await waitFor(() => expect(api.get).toHaveBeenCalledWith("/api/chat/conversations", expect.anything()));
-    expect(container).toBeEmptyDOMElement();
+    expect(screen.getByRole("button", { name: "New channel" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "New voice channel" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "New direct message" })).toBeInTheDocument();
+  });
+
+  it("the voice channels + creates one without leaving the page", async () => {
+    vi.mocked(api.post).mockResolvedValue({
+      data: { id: "c9", workspace_id: "ws-1", kind: "voice_channel", name: "standup", created_by: "u1", created_at: "", updated_at: "" },
+    });
+    const user = userEvent.setup();
+    renderSection();
+
+    await user.click(await screen.findByRole("button", { name: "New voice channel" }));
+    await user.type(await screen.findByLabelText("Voice channel name"), "standup");
+    await user.click(screen.getByRole("button", { name: "Create voice channel" }));
+
+    await waitFor(() => expect(api.post).toHaveBeenCalled());
+    expect(vi.mocked(api.post).mock.calls[0]?.[1]).toEqual({ workspace_id: "ws-1", name: "standup" });
+    expect(screen.queryByText("chat-page")).not.toBeInTheDocument();
+  });
+
+  it("the channels + opens the new channel", async () => {
+    vi.mocked(api.post).mockResolvedValue({
+      data: { id: "c8", workspace_id: "ws-1", kind: "channel", name: "incidents", created_by: "u1", created_at: "", updated_at: "" },
+    });
+    const user = userEvent.setup();
+    renderSection();
+
+    await user.click(await screen.findByRole("button", { name: "New channel" }));
+    await user.type(await screen.findByLabelText("Channel name"), "incidents");
+    await user.click(screen.getByRole("button", { name: "Create channel" }));
+
+    expect(await screen.findByText("chat-page")).toBeInTheDocument();
+    expect(api.post).toHaveBeenCalledWith("/api/chat/channels", { workspace_id: "ws-1", name: "incidents" });
   });
 
   it("clicking a conversation navigates to its chat page", async () => {
@@ -103,8 +138,8 @@ describe("ChatSidebarSection", () => {
 
   it("lists voice channels under their own heading, with occupants visible without joining", async () => {
     renderSection();
-    expect(await screen.findByText("Voice channels")).toBeInTheDocument();
-    expect(screen.getByText("huddle")).toBeInTheDocument();
+    expect(await screen.findByText("huddle")).toBeInTheDocument();
+    expect(screen.getByText("Voice channels")).toBeInTheDocument();
     expect(await screen.findByTitle("Dana")).toBeInTheDocument();
   });
 
