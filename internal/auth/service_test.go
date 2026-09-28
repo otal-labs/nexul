@@ -313,34 +313,6 @@ func TestConfigured_ReflectsLiveSettings(t *testing.T) {
 	assert.True(t, configured, "newly stored credentials must be reflected immediately")
 }
 
-func TestSetMentionChipTemplate_UpdatesTemplate(t *testing.T) {
-	s, _, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
-	st, err := s.SetMentionChipTemplate(context.Background(), "user-1", "{ticket.Project} {ticket.Ticket}")
-	require.NoError(t, err)
-	assert.Equal(t, "{ticket.Project} {ticket.Ticket}", st.MentionChipTemplate)
-
-	got, err := s.cfg.Settings.Get(context.Background())
-	require.NoError(t, err)
-	assert.Equal(t, "{ticket.Project} {ticket.Ticket}", got.MentionChipTemplate)
-}
-
-// TestSetMentionChipTemplate_RequiresPermission proves the write is gated on workspaces:write (spec.md section 5): a caller the gate denies is rejected with ErrForbidden and the stored template is left untouched.
-func TestSetMentionChipTemplate_RequiresPermission(t *testing.T) {
-	s, _, _, settings := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
-	s.cfg.MentionLayout.(*fakeMentionLayoutGate).SetAllowed(false)
-
-	_, err := s.SetMentionChipTemplate(context.Background(), "user-1", "{ticket.Project} {ticket.Ticket}")
-	require.ErrorIs(t, err, apperrs.ErrForbidden)
-	assert.Equal(t, "{ticket.Ticket} {ticket.Status}", settings.st.MentionChipTemplate, "denied write must not change the stored template")
-}
-
-// TestSetMentionChipTemplate_NilGateFailsClosed proves a Service built without a MentionLayout gate (a construction bug, not user input) refuses the write rather than silently allowing it.
-func TestSetMentionChipTemplate_NilGateFailsClosed(t *testing.T) {
-	s := NewService(Config{Secret: []byte("x"), Settings: newFakeSettings()})
-	_, err := s.SetMentionChipTemplate(context.Background(), "user-1", "{ticket.Ticket}")
-	require.ErrorIs(t, err, apperrs.ErrForbidden)
-}
-
 func TestAuthorizeURL(t *testing.T) {
 	s, _, _, settings := newTestHarness(&fakeGitHub{user: ghUser("1", "x")})
 	settings.st.GitHubOAuthClientID = "client"

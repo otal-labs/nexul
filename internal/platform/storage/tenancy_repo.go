@@ -23,7 +23,8 @@ type WorkspacesRepo struct {
 func (r *WorkspacesRepo) Create(ctx context.Context, ws *tenancy.Workspace) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		err := r.q.WithTx(tx).CreateWorkspace(ctx, sqlcgen.CreateWorkspaceParams{
-			ID: ws.ID, Name: ws.Name, CreatedAt: ws.CreatedAt.Unix(), UpdatedAt: ws.UpdatedAt.Unix(),
+			ID: ws.ID, Name: ws.Name, MentionChipTemplate: ws.MentionChipTemplate,
+			CreatedAt: ws.CreatedAt.Unix(), UpdatedAt: ws.UpdatedAt.Unix(),
 		})
 		if err != nil {
 			return fmt.Errorf("insert workspace %s: %w", ws.ID, classifyWriteErr(err))
@@ -35,7 +36,7 @@ func (r *WorkspacesRepo) Create(ctx context.Context, ws *tenancy.Workspace) erro
 func (r *WorkspacesRepo) Update(ctx context.Context, ws *tenancy.Workspace) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).UpdateWorkspace(ctx, sqlcgen.UpdateWorkspaceParams{
-			Name: ws.Name, UpdatedAt: ws.UpdatedAt.Unix(), ID: ws.ID,
+			Name: ws.Name, MentionChipTemplate: ws.MentionChipTemplate, UpdatedAt: ws.UpdatedAt.Unix(), ID: ws.ID,
 		})
 		if err != nil {
 			return fmt.Errorf("update workspace %s: %w", ws.ID, classifyWriteErr(err))
@@ -69,10 +70,11 @@ func (r *WorkspacesRepo) ListForUser(ctx context.Context, userID string) ([]*ten
 
 func toWorkspace(row sqlcgen.Workspace) *tenancy.Workspace {
 	return &tenancy.Workspace{
-		ID:        row.ID,
-		Name:      row.Name,
-		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(),
-		UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
+		ID:                  row.ID,
+		Name:                row.Name,
+		MentionChipTemplate: row.MentionChipTemplate,
+		CreatedAt:           time.Unix(row.CreatedAt, 0).UTC(),
+		UpdatedAt:           time.Unix(row.UpdatedAt, 0).UTC(),
 	}
 }
 

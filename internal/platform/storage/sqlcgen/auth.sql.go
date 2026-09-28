@@ -114,7 +114,7 @@ func (q *Queries) DeleteAccountPairingDefaults(ctx context.Context, userID strin
 }
 
 const getSettings = `-- name: GetSettings :one
-SELECT id, instance_url, settings_version, updated_at, github_oauth_client_id, github_oauth_client_secret, mention_chip_template, google_oauth_client_id, google_oauth_client_secret, discord_oauth_client_id, discord_oauth_client_secret FROM instance_settings WHERE id = 1
+SELECT id, instance_url, settings_version, updated_at, github_oauth_client_id, github_oauth_client_secret, google_oauth_client_id, google_oauth_client_secret, discord_oauth_client_id, discord_oauth_client_secret FROM instance_settings WHERE id = 1
 `
 
 func (q *Queries) GetSettings(ctx context.Context) (InstanceSetting, error) {
@@ -127,7 +127,6 @@ func (q *Queries) GetSettings(ctx context.Context) (InstanceSetting, error) {
 		&i.UpdatedAt,
 		&i.GithubOauthClientID,
 		&i.GithubOauthClientSecret,
-		&i.MentionChipTemplate,
 		&i.GoogleOauthClientID,
 		&i.GoogleOauthClientSecret,
 		&i.DiscordOauthClientID,
@@ -462,23 +461,6 @@ type SetSettingsGitHubOAuthParams struct {
 
 func (q *Queries) SetSettingsGitHubOAuth(ctx context.Context, arg SetSettingsGitHubOAuthParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, setSettingsGitHubOAuth, arg.GithubOauthClientID, arg.GithubOauthClientSecret, arg.UpdatedAt)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
-}
-
-const setSettingsMentionChipTemplate = `-- name: SetSettingsMentionChipTemplate :execrows
-UPDATE instance_settings SET mention_chip_template = ?, updated_at = ? WHERE id = 1
-`
-
-type SetSettingsMentionChipTemplateParams struct {
-	MentionChipTemplate string
-	UpdatedAt           int64
-}
-
-func (q *Queries) SetSettingsMentionChipTemplate(ctx context.Context, arg SetSettingsMentionChipTemplateParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, setSettingsMentionChipTemplate, arg.MentionChipTemplate, arg.UpdatedAt)
 	if err != nil {
 		return 0, err
 	}

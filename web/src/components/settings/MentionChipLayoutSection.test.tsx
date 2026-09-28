@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MentionChipLayoutSection } from "@/components/settings/MentionChipLayoutSection";
-import type { InstanceSettings } from "@/models/User";
+import type { Workspace } from "@/models/Workspace";
 
 const mocks = vi.hoisted(() => ({ patch: vi.fn() }));
 
@@ -15,18 +15,19 @@ vi.mock("@/api/client", () => ({
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
-const settings: InstanceSettings = {
-  instance_url: "https://deploy.example.com",
-  settings_version: 1,
-  oauth_callback: "https://deploy.example.com/auth/callback",
+const workspace: Workspace = {
+  id: "ws-1",
+  name: "Acme",
   mention_chip_template: "{ticket.Ticket} {ticket.Status}",
+  created_at: "",
+  updated_at: "",
 };
 
-const renderSection = (overrides: Partial<InstanceSettings> = {}) => {
+const renderSection = (overrides: Partial<Workspace> = {}) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <MentionChipLayoutSection settings={{ ...settings, ...overrides }} />
+      <MentionChipLayoutSection workspace={{ ...workspace, ...overrides }} />
     </QueryClientProvider>,
   );
 };
@@ -71,7 +72,7 @@ describe("MentionChipLayoutSection", () => {
     await user.type(input, "{{ticket.Status}");
     await user.click(screen.getByRole("button", { name: /^save$/i }));
 
-    expect(mocks.patch).toHaveBeenCalledWith("/api/auth/settings/mention-chip-template", {
+    expect(mocks.patch).toHaveBeenCalledWith("/api/workspaces/ws-1/mention-chip-template", {
       mention_chip_template: "{ticket.Status}",
     });
   });

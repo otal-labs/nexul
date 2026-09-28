@@ -7,6 +7,7 @@ import { api } from "@/api/client";
 import { DocBodyView } from "@/components/doc/DocBodyView";
 import { publishChips } from "@/components/doc/mention/mentionChipsStore";
 import type { MentionChipData } from "@/models/Mention";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
@@ -33,16 +34,10 @@ const renderBody = (body: string) => {
 
 beforeEach(() => {
   vi.mocked(api.get).mockReset();
-  // MentionChip reads the workspace mention-chip-layout template via useFetchSettings
-  // (spec.md section 6, ticket 09); default template renders identically to the old
-  // hardcoded title+status chip.
+  // MentionChip reads the selected workspace's template off the workspace list; the default renders like the old fixed chip.
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   vi.mocked(api.get).mockResolvedValue({
-    data: {
-      instance_url: "",
-      settings_version: 1,
-      oauth_callback: "",
-      mention_chip_template: "{ticket.Ticket} {ticket.Status}",
-    },
+    data: [{ id: "ws-1", name: "Acme", mention_chip_template: "{ticket.Ticket} {ticket.Status}", created_at: "", updated_at: "" }],
   });
   vi.mocked(api.post).mockReset();
   publishChips(new Map());

@@ -25,7 +25,6 @@ const settings = {
   instance_url: "https://deploy.example.com",
   settings_version: 2,
   oauth_callback: "https://deploy.example.com/auth/callback",
-  mention_chip_template: "{ticket.Ticket} {ticket.Status}",
 };
 
 const renderSection = () => {

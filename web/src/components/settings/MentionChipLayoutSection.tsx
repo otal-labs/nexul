@@ -3,11 +3,11 @@ import { TicketIcon } from "lucide-react";
 
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { Button } from "@/components/ui/button";
-import { useUpdateMentionChipTemplate } from "@/hooks/AuthHooks";
-import type { InstanceSettings } from "@/models/User";
+import { useUpdateMentionChipTemplate } from "@/hooks/WorkspaceHooks";
+import type { Workspace } from "@/models/Workspace";
 
 interface MentionChipLayoutSectionProps {
-  settings: InstanceSettings;
+  workspace: Workspace;
 }
 
 const TEMPLATE_TOKENS = ["Project", "Ticket", "Status", "Type", "Developer", "Due"] as const;
@@ -27,13 +27,13 @@ const renderPreview = (template: string) =>
   template.replace(/\{ticket\.(\w+)\}/g, (match, key: string) => PREVIEW_VALUES[key as keyof typeof PREVIEW_VALUES] ?? match);
 
 // Gated on workspaces:write, same gate-in-parent pattern as RoleSettingsSection.
-export const MentionChipLayoutSection = ({ settings }: MentionChipLayoutSectionProps) => {
-  const [template, setTemplate] = useState(settings.mention_chip_template);
+export const MentionChipLayoutSection = ({ workspace }: MentionChipLayoutSectionProps) => {
+  const [template, setTemplate] = useState(workspace.mention_chip_template);
   const updateTemplate = useUpdateMentionChipTemplate();
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    await updateTemplate.mutateAsync(template);
+    await updateTemplate.mutateAsync({ id: workspace.id, template });
   };
 
   const insertToken = (token: (typeof TEMPLATE_TOKENS)[number]) =>
@@ -43,7 +43,7 @@ export const MentionChipLayoutSection = ({ settings }: MentionChipLayoutSectionP
     <SettingsCard
       id="mention-layout"
       title="Mention chip layout"
-      description="What a @-mention ticket chip shows across the workspace. The icon stays fixed — everything else comes from this format string."
+      description="What a @-mention ticket chip shows in this workspace. The icon stays fixed — everything else comes from this format string."
     >
       <form onSubmit={onSubmit} className="space-y-4">
         <div>

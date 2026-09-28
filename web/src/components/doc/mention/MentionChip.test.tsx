@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MentionChip } from "@/components/doc/mention/MentionChip";
 import type { MentionChipData } from "@/models/Mention";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn() }));
 
@@ -13,9 +14,10 @@ vi.mock("@/api/client", () => ({
   errorMessage: vi.fn(),
 }));
 
+// The chip reads the selected workspace's template off the workspace list.
 const mockTemplate = (mention_chip_template: string) =>
   mocks.get.mockResolvedValue({
-    data: { instance_url: "", settings_version: 1, oauth_callback: "", mention_chip_template },
+    data: [{ id: "ws-1", name: "Acme", mention_chip_template, created_at: "", updated_at: "" }],
   });
 
 const wrap = (ui: React.ReactNode) => {
@@ -30,6 +32,7 @@ const wrap = (ui: React.ReactNode) => {
 describe("MentionChip", () => {
   beforeEach(() => {
     mocks.get.mockReset();
+    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
     // Default template renders identically to the old hardcoded icon+title+status
     // chip (spec.md section 6, regression safety).
     mockTemplate("{ticket.Ticket} {ticket.Status}");

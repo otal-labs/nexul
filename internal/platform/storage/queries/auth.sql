@@ -77,8 +77,5 @@ SELECT * FROM instance_settings WHERE id = 1;
 -- name: SetInstanceURL :execrows
 UPDATE instance_settings SET instance_url = ?, settings_version = settings_version + 1, updated_at = ? WHERE id = 1;
 
--- name: SetSettingsMentionChipTemplate :execrows
-UPDATE instance_settings SET mention_chip_template = ?, updated_at = ? WHERE id = 1;
-
 -- name: SetSettingsGitHubOAuth :execrows
 UPDATE instance_settings SET github_oauth_client_id = ?, github_oauth_client_secret = ?, updated_at = ? WHERE id = 1;

@@ -142,8 +142,6 @@ type Config struct {
 	PATs          PATStore
 	// Sessions stores one row per signed-in device (ADR 0081); every sign-in path mints through it.
 	Sessions SessionStore
-	// MentionLayout gates SetMentionChipTemplate on workspaces:write; nil fails closed with ErrForbidden.
-	MentionLayout MentionLayoutGate
 	// DefaultWorkspace binds the wizard's completing user to the default workspace; wired later via SetDefaultWorkspace.
 	DefaultWorkspace DefaultWorkspaceBinder
 	// PendingInvites resolves pending invites the moment a User row is created; wired later, same as DefaultWorkspace.
@@ -945,21 +943,6 @@ func (s *Service) UpdateInstanceURL(ctx context.Context, userID, instanceURL str
 		return Settings{}, err
 	}
 	return s.cfg.Settings.Set(ctx, instanceURL)
-}
-
-// SetMentionChipTemplate updates the mention chip layout, requiring workspaces:write; bad tokens pass through.
-func (s *Service) SetMentionChipTemplate(ctx context.Context, userID, template string) (Settings, error) {
-	if err := s.requireManageMentionLayout(ctx, userID); err != nil {
-		return Settings{}, err
-	}
-	return s.cfg.Settings.SetMentionChipTemplate(ctx, template)
-}
-
-func (s *Service) requireManageMentionLayout(ctx context.Context, userID string) error {
-	if s.cfg.MentionLayout == nil || !s.cfg.MentionLayout.CanManageMentionLayout(ctx, userID) {
-		return fmt.Errorf("%w: workspaces:write required", apperrs.ErrForbidden)
-	}
-	return nil
 }
 
 // GenerateConnectionToken mints a connection token from the instance settings (owner only); carries server info only.

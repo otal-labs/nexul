@@ -53,7 +53,7 @@ func (s *Service) Create(ctx context.Context, userID, name string) (*Workspace, 
 		return nil, fmt.Errorf("%w: can_create_workspace permission required", apperrs.ErrForbidden)
 	}
 	now := s.now().UTC()
-	w := &Workspace{ID: ids.New(), Name: name, CreatedAt: now, UpdatedAt: now}
+	w := &Workspace{ID: ids.New(), Name: name, MentionChipTemplate: DefaultMentionChipTemplate, CreatedAt: now, UpdatedAt: now}
 	if err := s.repo.Create(ctx, w); err != nil {
 		return nil, fmt.Errorf("create workspace: %w", err)
 	}
@@ -101,6 +101,25 @@ func (s *Service) Rename(ctx context.Context, userID, id, name string) (*Workspa
 	updated.UpdatedAt = s.now().UTC()
 	if err := s.repo.Update(ctx, &updated); err != nil {
 		return nil, fmt.Errorf("rename workspace %s: %w", id, err)
+	}
+	return &updated, nil
+}
+
+// SetMentionChipTemplate changes how @-mention ticket chips render in workspace id; requires workspaces:write there.
+func (s *Service) SetMentionChipTemplate(ctx context.Context, actorID, id, template string) (*Workspace, error) {
+	id = strings.TrimSpace(id)
+	if err := s.requireWorkspacePermission(ctx, actorID, id, permissions.WorkspacesWrite); err != nil {
+		return nil, err
+	}
+	current, err := s.Get(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	updated := *current
+	updated.MentionChipTemplate = template
+	updated.UpdatedAt = s.now().UTC()
+	if err := s.repo.Update(ctx, &updated); err != nil {
+		return nil, fmt.Errorf("set mention chip template for workspace %s: %w", id, err)
 	}
 	return &updated, nil
 }
@@ -170,14 +189,18 @@ func (s *Service) MemberPermissions(ctx context.Context, workspaceID, userID str
 	return s.wsPerms.WorkspacePermissions(ctx, userID, workspaceID)
 }
 
-// requireManageWorkspaceMembers already covers Owner via WorkspacePermissionGate's bypass.
-func (s *Service) requireManageWorkspaceMembers(ctx context.Context, actorID, workspaceID string) error {
+// requireWorkspacePermission already covers Owner via WorkspacePermissionGate's bypass.
+func (s *Service) requireWorkspacePermission(ctx context.Context, actorID, workspaceID string, action permissions.Action) error {
 	for _, p := range s.wsPerms.WorkspacePermissions(ctx, actorID, workspaceID) {
-		if p == string(permissions.MembersWrite) {
+		if p == string(action) {
 			return nil
 		}
 	}
-	return fmt.Errorf("%w: members:write permission required", apperrs.ErrForbidden)
+	return fmt.Errorf("%w: %s permission required", apperrs.ErrForbidden, action)
+}
+
+func (s *Service) requireManageWorkspaceMembers(ctx context.Context, actorID, workspaceID string) error {
+	return s.requireWorkspacePermission(ctx, actorID, workspaceID, permissions.MembersWrite)
 }
 
 // InviteMember requires login to already be allowlisted; an unknown login is held pending until first sign-in.

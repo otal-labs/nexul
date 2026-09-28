@@ -108,24 +108,6 @@ export const useUpdateProviderOAuth = (provider: OptionalProvider, label: string
   });
 };
 
-// Gated server-side on workspaces:write; the read above stays open to any user since chips need it.
-export const useUpdateMentionChipTemplate = () => {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: async (mention_chip_template: string) =>
-      (
-        await api.patch<{ mention_chip_template: string }>("/api/auth/settings/mention-chip-template", {
-          mention_chip_template,
-        })
-      ).data,
-    onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: [getSettingsKey] });
-      toast.success("Mention chip layout updated");
-    },
-    onError: (error) => toast.error(errorMessage(error)),
-  });
-};
-
 export const useGenerateConnectionToken = () =>
   useMutation({
     mutationFn: async () => (await api.post<ConnectionToken>("/api/auth/connection-token")).data,

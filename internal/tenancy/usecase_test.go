@@ -905,3 +905,60 @@ func TestResolvePendingInvites(t *testing.T) {
 		require.NoError(t, f.svc.ResolvePendingInvites(context.Background(), "nobody", "u-nobody"))
 	})
 }
+
+func TestSetMentionChipTemplate(t *testing.T) {
+	newFixture := func() (*Service, *fakeRepo, *fakeWorkspacePermissionGate) {
+		repo := newFakeRepo()
+		wsPerms := newFakeWorkspacePermissionGate()
+		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), newFakeRoleNameGate(), wsPerms, newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{})
+		s.now = func() time.Time { return fixedNow }
+		return s, repo, wsPerms
+	}
+	t.Run("actor without workspaces:write is forbidden and the template is untouched", func(t *testing.T) {
+		s, _, wsPerms := newFixture()
+		w, err := s.Create(context.Background(), "u-1", "Acme")
+		require.NoError(t, err)
+		wsPerms.perms["u-1"] = []string{"members:write"}
+
+		_, err = s.SetMentionChipTemplate(context.Background(), "u-1", w.ID, "{ticket.Project}")
+		require.ErrorIs(t, err, apperrs.ErrForbidden)
+		got, err := s.Get(context.Background(), w.ID)
+		require.NoError(t, err)
+		assert.Equal(t, DefaultMentionChipTemplate, got.MentionChipTemplate)
+	})
+	t.Run("unknown workspace is not found", func(t *testing.T) {
+		s, _, wsPerms := newFixture()
+		wsPerms.perms["u-1"] = []string{"workspaces:write"}
+		_, err := s.SetMentionChipTemplate(context.Background(), "u-1", "missing", "{ticket.Project}")
+		require.ErrorIs(t, err, apperrs.ErrNotFound)
+	})
+	t.Run("new workspace starts with the default template", func(t *testing.T) {
+		s, _, _ := newFixture()
+		w, err := s.Create(context.Background(), "u-1", "Acme")
+		require.NoError(t, err)
+		assert.Equal(t, DefaultMentionChipTemplate, w.MentionChipTemplate)
+	})
+	t.Run("workspaces:write holder changes only that workspace's template", func(t *testing.T) {
+		s, _, wsPerms := newFixture()
+		a, err := s.Create(context.Background(), "u-1", "A")
+		require.NoError(t, err)
+		b, err := s.Create(context.Background(), "u-1", "B")
+		require.NoError(t, err)
+		wsPerms.perms["u-1"] = []string{"workspaces:write"}
+		later := fixedNow.Add(time.Hour)
+		s.now = func() time.Time { return later }
+
+		got, err := s.SetMentionChipTemplate(context.Background(), "u-1", a.ID, "{ticket.Project} {ticket.Ticket}")
+		require.NoError(t, err)
+		assert.Equal(t, "{ticket.Project} {ticket.Ticket}", got.MentionChipTemplate)
+		assert.Equal(t, "A", got.Name, "rename fields survive a template change")
+		assert.Equal(t, later, got.UpdatedAt)
+
+		stored, err := s.Get(context.Background(), a.ID)
+		require.NoError(t, err)
+		assert.Equal(t, "{ticket.Project} {ticket.Ticket}", stored.MentionChipTemplate)
+		other, err := s.Get(context.Background(), b.ID)
+		require.NoError(t, err)
+		assert.Equal(t, DefaultMentionChipTemplate, other.MentionChipTemplate)
+	})
+}

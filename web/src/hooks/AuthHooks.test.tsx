@@ -10,7 +10,6 @@ import {
   useFetchMe,
   useFetchSettings,
   useGenerateConnectionToken,
-  useUpdateMentionChipTemplate,
   useUpdateSettings,
 } from "@/hooks/AuthHooks";
 import type { MeResponse } from "@/models/User";
@@ -106,7 +105,6 @@ describe("useFetchSettings", () => {
       instance_url: "https://deploy.example.com",
       settings_version: 2,
       oauth_callback: "https://deploy.example.com/auth/callback",
-      mention_chip_template: "{ticket.Ticket} {ticket.Status}",
     };
     vi.mocked(api.get).mockResolvedValue({ data: settings });
     const { result } = renderHook(() => useFetchSettings(), { wrapper });
@@ -121,25 +119,6 @@ describe("useUpdateSettings", () => {
     const { result } = renderHook(() => useUpdateSettings(), { wrapper });
     await result.current.mutateAsync("https://new.example.com");
     expect(api.put).toHaveBeenCalledWith("/api/auth/settings", { instance_url: "https://new.example.com" });
-  });
-});
-
-describe("useUpdateMentionChipTemplate", () => {
-  it("patches the mention chip template", async () => {
-    vi.mocked(api.patch).mockResolvedValue({ data: { mention_chip_template: "{ticket.Project} {ticket.Ticket}" } });
-    const { result } = renderHook(() => useUpdateMentionChipTemplate(), { wrapper });
-    await result.current.mutateAsync("{ticket.Project} {ticket.Ticket}");
-    expect(api.patch).toHaveBeenCalledWith("/api/auth/settings/mention-chip-template", {
-      mention_chip_template: "{ticket.Project} {ticket.Ticket}",
-    });
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-  });
-
-  it("surfaces an api error", async () => {
-    vi.mocked(api.patch).mockRejectedValue(new Error("forbidden"));
-    const { result } = renderHook(() => useUpdateMentionChipTemplate(), { wrapper });
-    await result.current.mutateAsync("{ticket.Ticket}").catch(() => {});
-    await waitFor(() => expect(result.current.isError).toBe(true));
   });
 });
 

@@ -39,8 +39,6 @@ export interface InstanceSettings {
   instance_url: string;
   settings_version: number;
   oauth_callback: string;
-  // A free-text template with {ticket.Field} placeholders; any user can read it, only managers can change it.
-  mention_chip_template: string;
   // The client ID is public, the secret is never sent — only whether one is stored.
   google_oauth_client_id?: string;
   google_oauth_callback?: string;

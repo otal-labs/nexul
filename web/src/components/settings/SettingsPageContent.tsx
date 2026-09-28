@@ -10,6 +10,7 @@ import { OAuthProviderSection } from "@/components/settings/OAuthProviderSection
 import { PlaySettingsSection } from "@/components/settings/PlaySettingsSection";
 import { RoleSettingsSection } from "@/components/settings/RoleSettingsSection";
 import type { SettingsSection } from "@/components/settings/SettingsNav";
+import { useSelectedWorkspace } from "@/hooks/WorkspaceHooks";
 import type { InstanceSettings } from "@/models/User";
 
 // Thin same-file gates: each permission check gets its own function scope, not a wall of chained &&.
@@ -27,13 +28,15 @@ const MembersPanel = ({ canManageMembers }: { canManageMembers: boolean }) => (
   <>{canManageMembers && <MembersSection />}</>
 );
 
-const MentionsPanel = ({
-  settings,
-  canManageMentionLayout,
-}: {
-  settings: InstanceSettings | undefined;
-  canManageMentionLayout: boolean;
-}) => <>{settings && canManageMentionLayout && <MentionChipLayoutSection settings={settings} />}</>;
+// Keyed by workspace id so switching workspaces reseeds the form instead of keeping the previous template.
+const MentionsPanel = ({ canManageMentionLayout }: { canManageMentionLayout: boolean }) => {
+  const workspace = useSelectedWorkspace();
+  return (
+    <>
+      {workspace && canManageMentionLayout && <MentionChipLayoutSection key={workspace.id} workspace={workspace} />}
+    </>
+  );
+};
 
 const InstancePanel = ({ settings, isInstanceAdmin }: { settings: InstanceSettings | undefined; isInstanceAdmin: boolean }) => (
   <>{settings && isInstanceAdmin && <InstanceSettingsPanel settings={settings} />}</>
@@ -91,9 +94,7 @@ export const SettingsPageContent = ({
     )}
     {section === "interview" && <InterviewTemplateSection />}
     {section === "members" && <MembersPanel canManageMembers={canManageMembers} />}
-    {section === "mentions" && (
-      <MentionsPanel settings={settings} canManageMentionLayout={canManageMentionLayout} />
-    )}
+    {section === "mentions" && <MentionsPanel canManageMentionLayout={canManageMentionLayout} />}
     {section === "danger" && <DangerPanel settings={settings} />}
     {section === "instance" && <InstancePanel settings={settings} isInstanceAdmin={isInstanceAdmin} />}
     {section === "sign-in" && <SignInPanel settings={settings} isInstanceAdmin={isInstanceAdmin} />}

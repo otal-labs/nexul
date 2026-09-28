@@ -164,16 +164,7 @@ func (g workspacePermissionGate) WorkspacePermissions(ctx context.Context, userI
 	return g.svc.WorkspacePermissions(ctx, userID, workspaceID)
 }
 
-// mentionLayoutGate adapts access's HasPermission to auth's seam (ADR 0017), scoped to tenancy.DefaultWorkspaceID.
-type mentionLayoutGate struct {
-	svc *access.Service
-}
-
-func (g mentionLayoutGate) CanManageMentionLayout(ctx context.Context, userID string) bool {
-	return g.svc.HasPermission(ctx, userID, tenancy.DefaultWorkspaceID, permissions.WorkspacesWrite, "", "")
-}
-
-// automationPermissionGate adapts access's HasPermission to automations' seam (ADR 0017), scoped like mentionLayoutGate.
+// automationPermissionGate adapts access's HasPermission to automations' seam (ADR 0017), scoped to tenancy.DefaultWorkspaceID.
 type automationPermissionGate struct {
 	svc *access.Service
 }

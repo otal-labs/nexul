@@ -16,6 +16,13 @@ export const useFetchWorkspaces = (enabled = true) =>
     enabled,
   });
 
+// The selected workspace is where every chip on screen belongs, since the app only shows one workspace at a time.
+export const useSelectedWorkspace = (): Workspace | undefined => {
+  const selectedWorkspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
+  const { data: workspaces } = useFetchWorkspaces();
+  return workspaces?.find((w) => w.id === selectedWorkspaceId);
+};
+
 // F5 exception: repairs an empty or stale selection so every workspace-scoped query works even where no switcher renders (onboarding). getState() avoids clobbering a just-created id before refetch.
 export const useEnsureWorkspaceSelected = (enabled: boolean) => {
   const { data: workspaces } = useFetchWorkspaces(enabled);
@@ -58,6 +65,24 @@ export const useRenameWorkspace = () => {
       (await api.patch<Workspace>(`/api/workspaces/${payload.id}`, { name: payload.name })).data,
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getWorkspacesKey] });
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
+// Gated server-side on workspaces:write in that workspace; the list read stays open to every member since chips need it.
+export const useUpdateMentionChipTemplate = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: { id: string; template: string }) =>
+      (
+        await api.patch<Workspace>(`/api/workspaces/${payload.id}/mention-chip-template`, {
+          mention_chip_template: payload.template,
+        })
+      ).data,
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: [getWorkspacesKey] });
+      toast.success("Mention chip layout updated");
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

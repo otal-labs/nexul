@@ -315,30 +315,6 @@ func TestSettingsRepo_Get_Defaults(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "", st.InstanceURL)
 	assert.Equal(t, 1, st.SettingsVersion)
-	assert.Equal(t, "{ticket.Ticket} {ticket.Status}", st.MentionChipTemplate, "default must render identically to today's hardcoded chip (spec.md section 6)")
-}
-
-// TestSettingsRepo_SetMentionChipTemplate_RoundTrip proves the mention-chip
-// layout template (spec.md section 6) round-trips through
-// SetMentionChipTemplate/Get and doesn't disturb SettingsVersion or the
-// instance URL (unlike Set, which bumps the version).
-func TestSettingsRepo_SetMentionChipTemplate_RoundTrip(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	ctx := context.Background()
-
-	_, err := s.Settings.Set(ctx, "https://deploy.example.com")
-	require.NoError(t, err)
-
-	st, err := s.Settings.SetMentionChipTemplate(ctx, "{ticket.Project} {ticket.Ticket}")
-	require.NoError(t, err)
-	assert.Equal(t, "{ticket.Project} {ticket.Ticket}", st.MentionChipTemplate)
-	assert.Equal(t, "https://deploy.example.com", st.InstanceURL, "instance url untouched")
-	assert.Equal(t, 2, st.SettingsVersion, "settings version untouched (only the instance url bumps it)")
-
-	got, err := s.Settings.Get(ctx)
-	require.NoError(t, err)
-	assert.Equal(t, "{ticket.Project} {ticket.Ticket}", got.MentionChipTemplate)
 }
 
 func TestSettingsRepo_Set_BumpsVersion(t *testing.T) {
