@@ -35,3 +35,17 @@ export const useRequestInstanceUpgrade = () => {
     },
   });
 };
+
+// Asks GitHub past both caches, the server's and this tab's, for a release published in the last few minutes.
+export const useRefreshInstanceUpgrade = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async () =>
+      (await api.get<InstanceUpgrade>("/api/instance/upgrade", { params: { refresh: 1 } })).data,
+    onSuccess: async (data) => {
+      client.setQueryData([getInstanceUpgradeKey], data);
+      await client.invalidateQueries({ queryKey: [getServerVersionKey] });
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};

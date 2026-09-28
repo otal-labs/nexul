@@ -1,25 +1,18 @@
-import type { ReactNode } from "react";
+import { RefreshCw } from "lucide-react";
 
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { Button } from "@/components/ui/button";
-import { useInstanceUpgrade, useRequestInstanceUpgrade } from "@/hooks/InstanceUpgradeHooks";
+import { Fact } from "@/components/Fact";
+import {
+  useInstanceUpgrade,
+  useRefreshInstanceUpgrade,
+  useRequestInstanceUpgrade,
+} from "@/hooks/InstanceUpgradeHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { formatRelativeTime } from "@/utils/TimeUtility";
 import { isUpgradeInProgress, type InstanceUpgrade } from "@/models/InstanceUpgrade";
-
-interface FactProps {
-  label: string;
-  children: ReactNode;
-}
-
-const Fact = ({ label, children }: FactProps) => (
-  <div className="min-w-0">
-    <dt className="font-mono text-[11px] font-medium tracking-[0.18em] text-muted-foreground uppercase">{label}</dt>
-    <dd className="mt-1 text-sm">{children}</dd>
-  </div>
-);
 
 const InstanceVersionFacts = ({ data }: { data: InstanceUpgrade }) => (
   <dl className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-3">
@@ -41,9 +34,31 @@ const InstanceVersionFacts = ({ data }: { data: InstanceUpgrade }) => (
         </a>
       )}
       {!data.latest && <span className="text-xs text-muted-foreground">—</span>}
+      <CheckForReleaseButton />
     </Fact>
   </dl>
 );
+
+const CheckForReleaseButton = () => {
+  const refresh = useRefreshInstanceUpgrade();
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="size-6 text-muted-foreground hover:text-foreground"
+      aria-label="Check for a newer release"
+      title="Check for a newer release"
+      disabled={refresh.isPending}
+      onClick={() => refresh.mutate()}
+    >
+      <RefreshCw
+        className={refresh.isPending ? "size-3.5 animate-spin motion-reduce:animate-none" : "size-3.5"}
+        aria-hidden
+      />
+    </Button>
+  );
+};
 
 // "dev build" gets a friendlier line than the raw reason string; every other reason already reads as one.
 const reasonCopy = (reason: string): string =>

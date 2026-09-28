@@ -84,6 +84,24 @@ func New(cfg Config) *Client {
 	return &Client{cfg: cfg, now: time.Now, cache: make(map[string]cacheEntry)}
 }
 
+// refreshFloor keeps a refresh button from turning every click into a GitHub request (60 an hour unauthenticated).
+const refreshFloor = 30 * time.Second
+
+// Refresh drops cached answers older than refreshFloor, so the next Latest or Since asks GitHub again.
+func (c *Client) Refresh() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	now := c.now()
+	for channel, entry := range c.cache {
+		if now.Sub(entry.at) >= refreshFloor {
+			delete(c.cache, channel)
+		}
+	}
+	if now.Sub(c.list.at) >= refreshFloor {
+		c.list = listEntry{}
+	}
+}
+
 // Latest resolves channel's newest release: "stable" and "dev" both GET releases/latest; "beta" lists releases
 // and picks the first (newest) non-draft prerelease tag (one with a dash after the semver). Cached per channel for 5 minutes;
 // errors are never cached.

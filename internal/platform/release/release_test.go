@@ -408,3 +408,34 @@ func TestRelease_Notes(t *testing.T) {
 		})
 	}
 }
+
+func TestClient_Refresh(t *testing.T) {
+	var requests int
+	tag := "v0.2.0-beta.9"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		require.NoError(t, jsonEncode(w, []ghRelease{{TagName: tag, Prerelease: true}}))
+	}))
+	t.Cleanup(srv.Close)
+	c := New(Config{APIBase: srv.URL})
+	now := time.Now()
+	c.now = func() time.Time { return now }
+	latest := func() string {
+		rel, err := c.Latest(t.Context(), "beta")
+		require.NoError(t, err)
+		return rel.Tag
+	}
+
+	assert.Equal(t, "v0.2.0-beta.9", latest())
+	tag = "v0.2.0-beta.10"
+
+	c.Refresh()
+	assert.Equal(t, "v0.2.0-beta.9", latest(), "a refresh within 30 seconds of the last check keeps the cache")
+
+	now = now.Add(refreshFloor)
+	c.Refresh()
+	assert.Equal(t, "v0.2.0-beta.10", latest(), "a refresh after the floor asks GitHub again")
+	_, err := c.Since(t.Context(), "beta", "v0.2.0-beta.9")
+	require.NoError(t, err)
+	assert.Equal(t, 3, requests)
+}

@@ -179,6 +179,17 @@ func TestInstanceTools_AsAdmin(t *testing.T) {
 		assert.False(t, status.CanUpgrade)
 		assert.Equal(t, "dev build", status.Reason)
 	})
+	t.Run("instance_get with refresh reads past the release cache", func(t *testing.T) {
+		withVersion(t, "v0.2.0")
+		srv := fakeGitHub(t, "v0.2.1", "x")
+		s := newUpgradeService(srv.URL, newFakeUpgradeRepo(), newFakeBus(), &fakeDispatch{})
+		got, err := callTool(asAdmin(), t, s, "instance_get", `{"refresh":true}`)
+		require.NoError(t, err)
+		assert.Equal(t, "v0.2.1", got.(UpgradeStatus).Latest.Version)
+	})
+	t.Run("refreshing without a release client is a no-op", func(t *testing.T) {
+		assert.NotPanics(t, func() { (&Service{}).RefreshReleases() })
+	})
 	t.Run("instance_upgrade records the mcp source", func(t *testing.T) {
 		withVersion(t, "v0.2.0")
 		srv := fakeGitHub(t, "v0.2.1", "x")

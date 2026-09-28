@@ -258,8 +258,8 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 
 	spec.Register("GET", "/api/auth/me", "Current user + onboarding state", "auth")
 	spec.Register("POST", "/api/logs", "Relay a batch of browser log records (console errors, uncaught exceptions)", "logs")
-	spec.Register("GET", "/api/version", "This build's version, channel, the channel's latest release, and the release notes since this build", "version")
-	spec.Register("GET", "/api/instance/upgrade", "Instance-admin: running version, latest release, and whether an upgrade can start now", "version")
+	spec.Register("GET", "/api/version", "This build's version, channel, the channel's latest release, and the release notes since this build; ?refresh=1 skips the release cache", "version")
+	spec.Register("GET", "/api/instance/upgrade", "Instance-admin: running version, latest release, and whether an upgrade can start now; ?refresh=1 skips the release cache", "version")
 	spec.Register("POST", "/api/instance/upgrade", "Instance-admin: upgrade the instance to the channel's newest release", "version")
 	spec.Register("POST", "/api/auth/tokens", "Mint a personal access token", "auth")
 	spec.Register("GET", "/api/auth/tokens", "List personal access tokens", "auth")
