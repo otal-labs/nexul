@@ -3,6 +3,7 @@ import { Pressable, View } from "react-native";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
 import { NotificationKind, type Notification } from "@/models/Notification";
+import { formatRelativeTime } from "@/lib/time";
 
 const kindLabels: Record<NotificationKind, string> = {
   [NotificationKind.TicketAssigned]: "assigned to you",
@@ -13,19 +14,6 @@ const kindLabels: Record<NotificationKind, string> = {
   [NotificationKind.MemoryUpdated]: "memory updated",
   [NotificationKind.PlayRunFinished]: "play run ended",
   [NotificationKind.PlayRunWaiting]: "needs your answer",
-};
-
-const MINUTE_MS = 60_000;
-const HOUR_MS = 60 * MINUTE_MS;
-const DAY_MS = 24 * HOUR_MS;
-
-// Same buckets as the web inbox; nothing else on the phone needs finer relative time yet.
-const formatRelativeTime = (iso: string): string => {
-  const diffMs = Date.now() - new Date(iso).getTime();
-  if (diffMs < MINUTE_MS) return "now";
-  if (diffMs < HOUR_MS) return `${Math.floor(diffMs / MINUTE_MS)}m`;
-  if (diffMs < DAY_MS) return `${Math.floor(diffMs / HOUR_MS)}h`;
-  return `${Math.floor(diffMs / DAY_MS)}d`;
 };
 
 interface NotificationRowProps {
