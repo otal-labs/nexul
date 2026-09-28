@@ -17,7 +17,7 @@ documentation disagree on an API, the documentation wins.
 | Icons | lucide-react-native | Same icon set as the web app |
 | Server state | TanStack Query | Online manager on `expo-network`, focus manager on `AppState`, wired once in `src/lib/queryClient.ts` and the root layout |
 | Client state | Zustand | Persisted through `expo-sqlite/kv-store` via `src/lib/storage.ts`; synchronous, so stores hydrate before first render |
-| Secrets | expo-secure-store | The session token and nothing else; never in a Zustand store |
+| Secrets | expo-secure-store | The session token and the instance it belongs to, nothing else; never in a Zustand store |
 | Fonts | expo-font config plugin | Inter and JetBrains Mono embedded at build time, one family each with its weights |
 | Updates | expo-updates | Runtime version policy `appVersion`; `updates.url` comes from the environment at build time |
 | Tests | jest-expo + React Native Testing Library | `bun run test` |

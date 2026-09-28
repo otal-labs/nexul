@@ -1,12 +1,12 @@
 import "@/global.css";
 
 import { QueryClientProvider, focusManager } from "@tanstack/react-query";
-import { Stack } from "expo-router";
 import { ThemeProvider } from "expo-router/react-navigation";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 
+import { RootNavigator } from "@/components/RootNavigator";
 import { useNavigationTheme } from "@/hooks/useNavigationTheme";
 import { queryClient } from "@/lib/queryClient";
 
@@ -26,9 +26,7 @@ export default function RootLayout() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider value={navigationTheme}>
         <StatusBar style="auto" />
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(tabs)" />
-        </Stack>
+        <RootNavigator />
       </ThemeProvider>
     </QueryClientProvider>
   );

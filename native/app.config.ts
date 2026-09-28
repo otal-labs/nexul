@@ -29,7 +29,7 @@ const fonts = [
 const config: ExpoConfig = {
   name: "Nexul",
   slug: "nexul",
-  version: "0.1.0",
+  version: "0.1.1",
   scheme: "nexul",
   orientation: "portrait",
   userInterfaceStyle: "automatic",
@@ -52,6 +52,15 @@ const config: ExpoConfig = {
   plugins: [
     "expo-router",
     "./plugins/withReleaseSigning",
+    "expo-secure-store",
+    [
+      "expo-camera",
+      {
+        cameraPermission: "Nexul scans the connect code shown on your Devices page.",
+        microphonePermission: false,
+        recordAudioAndroid: false,
+      },
+    ],
     [
       "expo-font",
       {
