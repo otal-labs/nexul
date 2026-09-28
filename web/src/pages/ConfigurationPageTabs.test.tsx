@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, useLocation } from "react-router";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ConfigurationPage } from "@/pages/ConfigurationPage";
@@ -37,7 +37,7 @@ const routeGet = (admin: boolean, permissions: string[]) => (url: string) => {
 
 const LocationProbe = () => {
   const location = useLocation();
-  return <output aria-label="location">{`${location.search}${location.hash}`}</output>;
+  return <output aria-label="location">{`${location.pathname}${location.search}${location.hash}`}</output>;
 };
 
 const renderPage = (route: string, admin = true, permissions: string[] = []) => {
@@ -46,7 +46,9 @@ const renderPage = (route: string, admin = true, permissions: string[] = []) => 
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[route]}>
-        <ConfigurationPage />
+        <Routes>
+          <Route path="/configuration/:section?" element={<ConfigurationPage />} />
+        </Routes>
         <LocationProbe />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -64,7 +66,7 @@ describe("ConfigurationPage sections", () => {
   });
 
   it("lands an admin with no workspace permissions on Instance, never on Danger zone", async () => {
-    renderPage("/configuration?section=automation-secrets");
+    renderPage("/configuration/automation-secrets");
 
     expect(await screen.findByText("URL card")).toBeInTheDocument();
     expect(screen.getByText("Version card")).toBeInTheDocument();
@@ -75,17 +77,17 @@ describe("ConfigurationPage sections", () => {
     renderPage("/configuration", true, ["roles:write", "members:write"]);
 
     expect(await screen.findByText("Roles card")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Members" })).toHaveAttribute("href", "/configuration?section=members");
+    expect(screen.getByRole("link", { name: "Members" })).toHaveAttribute("href", "/configuration/members");
   });
 
   it("shows Members to a members:write holder", async () => {
-    renderPage("/configuration?section=members", false, ["members:write"]);
+    renderPage("/configuration/members", false, ["members:write"]);
 
     expect(await screen.findByText("Members card")).toBeInTheDocument();
   });
 
   it("hides every whole-instance section from a non-admin, and an instance link falls back", async () => {
-    renderPage("/configuration?section=instance", false);
+    renderPage("/configuration/instance", false);
 
     await screen.findByRole("heading", { name: "Configuration" });
     expect(screen.queryByText("URL card")).not.toBeInTheDocument();
@@ -96,7 +98,7 @@ describe("ConfigurationPage sections", () => {
   });
 
   it("gives sign-in providers their own section, one tab each with Discord first", async () => {
-    renderPage("/configuration?section=sign-in");
+    renderPage("/configuration/sign-in");
 
     await selectedTab("Discord");
     expect(screen.getByText("discord card")).toBeInTheDocument();
@@ -104,24 +106,24 @@ describe("ConfigurationPage sections", () => {
   });
 
   it("opens the Google sign-in tab from its ?tab=", async () => {
-    renderPage("/configuration?section=sign-in&tab=google");
+    renderPage("/configuration/sign-in?tab=google");
 
     await selectedTab("Google");
     expect(screen.getByText("google card")).toBeInTheDocument();
   });
 
   it("lands the connector OAuth callback on the Connectors tab, which toasts and strips it", async () => {
-    renderPage("/configuration?section=connectors&connector=github&connected=1");
+    renderPage("/configuration/connectors?connector=github&connected=1");
 
     await selectedTab("Connectors");
     await vi.waitFor(() => expect(mocks.toastSuccess).toHaveBeenCalledWith(expect.stringMatching(/connected$/)));
-    await vi.waitFor(() => expect(screen.getByLabelText("location")).toHaveTextContent(/^\?section=connectors$/));
+    await vi.waitFor(() => expect(screen.getByLabelText("location")).toHaveTextContent(/^\/configuration\/connectors$/));
     expect(screen.queryByText("App card")).not.toBeInTheDocument();
   });
 
   it("keeps the GitHub App card on its own tab", async () => {
     const user = userEvent.setup();
-    renderPage("/configuration?section=connectors");
+    renderPage("/configuration/connectors");
 
     await user.click(await screen.findByRole("tab", { name: "GitHub App" }));
     expect(screen.getByText("App card")).toBeInTheDocument();

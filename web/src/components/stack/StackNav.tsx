@@ -18,14 +18,16 @@ const sectionLabels: Record<StackSection, string> = {
 };
 
 interface StackNavProps {
+  stackId: string;
   active: StackSection;
   // A branch deployment has no rules of its own — the nav must not link to an empty section.
   showBranches: boolean;
 }
 
-export const StackNav = ({ active, showBranches }: StackNavProps) => (
+export const StackNav = ({ stackId, active, showBranches }: StackNavProps) => (
   <SettingsSectionNav
     ariaLabel="Stack sections"
+    basePath={`/stacks/${stackId}`}
     active={active}
     items={STACK_SECTIONS.filter((section) => section !== "branches" || showBranches).map((section) => ({
       section,

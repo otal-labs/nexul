@@ -26,7 +26,7 @@ export const InstanceHostNotice = ({ zone, target }: InstanceHostNoticeProps) =>
         <p role="alert" className="text-sm text-destructive">
           Your instance URL is <span className="font-mono text-xs">{instanceUrl}</span>, which is not under{" "}
           <span className="font-mono text-xs">{zone}</span>. Set it to a hostname in that zone under{" "}
-          <Link to="/configuration?section=instance" className="underline underline-offset-4">
+          <Link to="/configuration/instance" className="underline underline-offset-4">
             Configuration → Instance
           </Link>{" "}
           first.

@@ -192,7 +192,7 @@ export const SETUP_REQUIRED_REASON = "setup_required";
 
 // Your settings → T3 pairing with the computer's Set up step open.
 export const computerSetupPath = (computerId: string) =>
-  `/settings?section=pairing&setup=${encodeURIComponent(computerId)}`;
+  `/settings/pairing?setup=${encodeURIComponent(computerId)}`;
 
 // The computer a setup refusal names, read from the error envelope's details; undefined for any other error.
 export const setupRefusalComputerId = (error: unknown): string | undefined => {

@@ -44,7 +44,7 @@ const renderPage = (path = "/stacks/stack-1") =>
       <ContextAwareConfirmation.ConfirmationRoot />
       <MemoryRouter initialEntries={[path]}>
         <Routes>
-          <Route path="/stacks/:stackId" element={<StackPage />} />
+          <Route path="/stacks/:stackId/:section?" element={<StackPage />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -152,7 +152,7 @@ describe("StackPage", () => {
       }
       return Promise.resolve({ data: [] });
     });
-    renderPage("/stacks/stack-1?section=branches");
+    renderPage("/stacks/stack-1/branches");
     await screen.findByRole("heading", { name: "api" });
     expect(screen.queryByRole("link", { name: "Branch deploys" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Deploy" })).toBeInTheDocument();
@@ -197,7 +197,7 @@ describe("StackPage", () => {
   it("deletes the stack from the danger zone after confirming", async () => {
     const user = userEvent.setup();
     mocks._delete.mockResolvedValue({ data: {} });
-    renderPage("/stacks/stack-1?section=danger");
+    renderPage("/stacks/stack-1/danger");
 
     await user.click(await screen.findByRole("button", { name: "Delete stack" }));
     expect(await screen.findByRole("heading", { name: "Delete api?" })).toBeInTheDocument();
@@ -230,7 +230,7 @@ describe("StackPage", () => {
       }
       return Promise.resolve({ data: [] });
     });
-    renderPage("/stacks/stack-1?section=danger");
+    renderPage("/stacks/stack-1/danger");
     const dangerZone = await screen.findByRole("region", { name: "Danger zone" });
     expect(within(dangerZone).getByText("app.example.com")).toBeInTheDocument();
   });
@@ -259,7 +259,7 @@ describe("StackPage", () => {
       }
       return Promise.resolve({ data: [] });
     });
-    renderPage("/stacks/stack-1?section=history");
+    renderPage("/stacks/stack-1/history");
     expect(await screen.findAllByText("ghcr.io/onik/api:v1")).not.toHaveLength(0);
     expect(screen.getByText("last deploy 3h ago")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Deploy history" })).toBeInTheDocument();

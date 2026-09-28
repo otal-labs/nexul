@@ -120,7 +120,7 @@ func TestHandler_CallbackGET_WithoutState(t *testing.T) {
 		query string
 		want  string
 	}{
-		{"an App installation goes to the connectors", "?code=c&installation_id=42&setup_action=install", "https://deploy.example.com/configuration?section=connectors"},
+		{"an App installation goes to the connectors", "?code=c&installation_id=42&setup_action=install", "https://deploy.example.com/configuration/connectors"},
 		{"anything else goes to sign-in", "?code=c", "https://deploy.example.com/login"},
 	}
 	for _, tt := range tests {

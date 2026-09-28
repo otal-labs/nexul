@@ -21,7 +21,7 @@ export const ProjectSettingsContent = ({ project, section }: ProjectSettingsCont
       <h1 className="text-lg font-semibold tracking-tight">{project.name}</h1>
     </div>
     <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
-      <ProjectSettingsNav active={section} />
+      <ProjectSettingsNav project={project} active={section} />
       <div className="min-w-0 flex-1">
         {section === "general" && <ProjectGeneralSection project={project} />}
         {section === "categories" && <ProjectCategories projectId={project.id} />}

@@ -25,12 +25,14 @@ export interface SettingsSectionNavItem {
 
 interface SettingsSectionNavProps {
   ariaLabel: string;
+  // The page path each section link hangs off, e.g. /configuration.
+  basePath: string;
   items: SettingsSectionNavItem[];
   active: string;
 }
 
 // A top row below `lg:` (at 768px a side column left too little width for the content) and a side column from it; shared by every settings-style page so they can't drift.
-export const SettingsSectionNav = ({ ariaLabel, items, active }: SettingsSectionNavProps) => (
+export const SettingsSectionNav = ({ ariaLabel, basePath, items, active }: SettingsSectionNavProps) => (
   <nav aria-label={ariaLabel} className="lg:w-48 lg:shrink-0">
     <ul className="flex items-center gap-1 overflow-x-auto pb-1 lg:flex-col lg:items-stretch lg:gap-0.5 lg:overflow-visible lg:pb-0">
       {items.map((item, index) => (
@@ -47,7 +49,7 @@ export const SettingsSectionNav = ({ ariaLabel, items, active }: SettingsSection
           )}
           <li className="shrink-0">
             <Link
-              to={{ search: `?section=${item.section}` }}
+              to={`${basePath}/${item.section}`}
               ref={active === item.section ? revealActive : undefined}
               aria-current={active === item.section ? "page" : undefined}
               className={itemClass(active === item.section, item.danger ?? false)}

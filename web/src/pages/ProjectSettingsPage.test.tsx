@@ -26,7 +26,7 @@ const renderPage = (initialEntry = "/projects/p-1/settings") => {
       <ContextAwareConfirmation.ConfirmationRoot />
       <MemoryRouter initialEntries={[initialEntry]}>
         <Routes>
-          <Route path="/projects/:projectId/settings" element={<ProjectSettingsPage />} />
+          <Route path="/projects/:projectId/settings/:section?" element={<ProjectSettingsPage />} />
           <Route path="/" element={<div>home</div>} />
         </Routes>
       </MemoryRouter>
@@ -87,7 +87,7 @@ describe("ProjectSettingsPage", () => {
   });
 
   it("deep-links straight into a non-default section", async () => {
-    renderPage("/projects/p-1/settings?section=categories");
+    renderPage("/projects/p-1/settings/categories");
 
     expect(await screen.findByText("Sprint 1")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "General" })).not.toBeInTheDocument();
@@ -129,7 +129,7 @@ describe("ProjectSettingsPage", () => {
       if (url === "/api/projects/p-1/impact") return { data: { tickets: 3, repos: 1, services: 0 } };
       return { data: [] };
     });
-    renderPage("/projects/p-1/settings?section=danger");
+    renderPage("/projects/p-1/settings/danger");
 
     await user.click(await screen.findByRole("button", { name: "Remove project" }));
     expect(await screen.findByText(/still has affected work/i)).toBeInTheDocument();
@@ -142,7 +142,7 @@ describe("ProjectSettingsPage", () => {
   it("removes an empty project from the danger zone after confirming", async () => {
     const user = userEvent.setup();
     vi.mocked(api.delete).mockResolvedValue({ data: undefined });
-    renderPage("/projects/p-1/settings?section=danger");
+    renderPage("/projects/p-1/settings/danger");
 
     await user.click(await screen.findByRole("button", { name: "Remove project" }));
     expect(await screen.findByText(/can be removed/i)).toBeInTheDocument();

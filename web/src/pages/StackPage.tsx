@@ -1,4 +1,4 @@
-import { useParams, useSearchParams } from "react-router";
+import { useParams } from "react-router";
 
 import { Container } from "@/components/Container";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
@@ -21,17 +21,15 @@ import { projectSettingsPath, projectTokenById } from "@/models/Project";
 // A container's declared image, or the image observed running once the runner reports one.
 const imageOf = (c: StackContainer | undefined): string | undefined => c?.image || c?.declared.image;
 
-// Same section-per-view shape as the settings pages: ?section= drives the card, StackNav lists sections.
+// Same section-per-view shape as the settings pages: the :section path segment drives the card, StackNav lists sections.
 export const StackPage = () => {
-  const { stackId = "" } = useParams();
+  const { stackId = "", section: rawSection } = useParams();
   const { data: stack, isPending, error } = useFetchStack(stackId);
   const { data: projects = [] } = useFetchProjects();
   const { data: services, isPending: servicesPending, error: servicesError } = useFetchStackServices(stackId);
   const { data: deploys, isPending: deploysPending } = useFetchStackDeploys(stackId);
   const { data: exposures } = useFetchExposures();
 
-  const [searchParams] = useSearchParams();
-  const rawSection = searchParams.get("section");
   const requested: StackSection = isStackSection(rawSection) ? rawSection : DEFAULT_STACK_SECTION;
   const showBranches = !!stack && !stack.derived_from;
   const section = requested === "branches" && !showBranches ? DEFAULT_STACK_SECTION : requested;
@@ -61,7 +59,7 @@ export const StackPage = () => {
             hostnames={hostnames}
           />
           <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
-            <StackNav active={section} showBranches={showBranches} />
+            <StackNav stackId={stack.id} active={section} showBranches={showBranches} />
             <div className="min-w-0 flex-1 space-y-6">
               {section === "overview" && (
                 <>

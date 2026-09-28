@@ -1,4 +1,5 @@
 import { SettingsSectionNav } from "@/components/settings/SettingsSectionNav";
+import { projectSettingsPath, projectToken, type Project } from "@/models/Project";
 
 export const PROJECT_SETTINGS_SECTIONS = [
   "general",
@@ -28,12 +29,14 @@ const sectionLabels: Record<ProjectSettingsSection, string> = {
 };
 
 interface ProjectSettingsNavProps {
+  project: Project;
   active: ProjectSettingsSection;
 }
 
-export const ProjectSettingsNav = ({ active }: ProjectSettingsNavProps) => (
+export const ProjectSettingsNav = ({ project, active }: ProjectSettingsNavProps) => (
   <SettingsSectionNav
     ariaLabel="Project settings sections"
+    basePath={projectSettingsPath(projectToken(project))}
     active={active}
     items={PROJECT_SETTINGS_SECTIONS.map((section) => ({
       section,

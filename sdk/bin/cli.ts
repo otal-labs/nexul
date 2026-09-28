@@ -78,7 +78,7 @@ if (import.meta.main) {
 
 async function cmdInit(): Promise<void> {
   const url = (await prompt("Nexul instance URL (e.g. https://deploy.example.com): ")).replace(/\/+$/, "");
-  console.log(`\nMint a personal access token at ${url}/settings?section=security&tab=tokens (Your settings -> Security -> Tokens), then paste it below.\n`);
+  console.log(`\nMint a personal access token at ${url}/settings/security?tab=tokens (Your settings -> Security -> Tokens), then paste it below.\n`);
   const token = await prompt("Personal access token: ");
   closePrompts();
   writeFileSync(CONFIG_FILE, `${JSON.stringify({ url, token }, null, 2)}\n`);

@@ -204,7 +204,7 @@ Stack detail page. The header keeps the detail-page shape (back link, mono
 slug, title, actions top right) and adds a facts grid: a mono microheader over
 each value (Status, Image, Runner, Strategy, Hostnames, Repository, or Network
 when no repository is attached). Below it the page is the settings shell:
-`SettingsSectionNav` driving `?section=` (Overview, Exposures, Branch deploys,
+`SettingsSectionNav` driving a `/:section` path segment (Overview, Exposures, Branch deploys,
 Deploy history, Danger zone), one or two `SettingsCard`s per section. The nav
 is a scrolling top row below 1024px and a side column from it, on every
 settings-style page (Your settings, Configuration, Project settings, Stack);

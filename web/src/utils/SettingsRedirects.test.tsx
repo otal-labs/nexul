@@ -4,21 +4,25 @@ import { movedSettingsTarget } from "@/utils/SettingsRedirects";
 
 describe("movedSettingsTarget", () => {
   it.each([
-    ["?section=connectors&connector=github&connected=1", "", "/configuration?section=connectors&connector=github&connected=1"],
-    ["?section=instance", "#instance-version", "/configuration?section=instance#instance-version"],
-    ["?section=instance&tab=sign-in", "", "/configuration?section=sign-in"],
-    ["?section=connectors&tab=github-app", "", "/configuration?section=connectors&tab=github-app"],
-    ["?section=roles", "", "/configuration?section=roles"],
-    ["?section=tokens", "", "/settings?section=security&tab=tokens"],
-    ["?section=tokens&tab=personal", "", "/settings?section=security&tab=tokens"],
-  ])("sends %s%s to %s", (search, hash, target) => {
-    expect(movedSettingsTarget(search, hash)).toBe(target);
+    ["connectors", "?connector=github&connected=1", "", "/configuration/connectors?connector=github&connected=1"],
+    ["instance", "", "#instance-version", "/configuration/instance#instance-version"],
+    ["instance", "?tab=sign-in", "", "/configuration/sign-in"],
+    ["connectors", "?tab=github-app", "", "/configuration/connectors?tab=github-app"],
+    ["roles", "", "", "/configuration/roles"],
+    ["tokens", "", "", "/settings/security?tab=tokens"],
+    ["tokens", "?tab=personal", "", "/settings/security?tab=tokens"],
+  ])("sends /settings/%s%s%s to %s", (section, search, hash, target) => {
+    expect(movedSettingsTarget(section, search, hash)).toBe(target);
   });
 
-  it.each(["", "?section=profile", "?section=appearance", "?section=security&tab=tokens", "?section=pairing&setup=c1", "?section=nope"])(
-    "leaves %s on Your settings",
-    (search) => {
-      expect(movedSettingsTarget(search, "")).toBeUndefined();
-    },
-  );
+  it.each([
+    [undefined, ""],
+    ["profile", ""],
+    ["appearance", ""],
+    ["security", "?tab=tokens"],
+    ["pairing", "?setup=c1"],
+    ["nope", ""],
+  ])("leaves /settings/%s%s on Your settings", (section, search) => {
+    expect(movedSettingsTarget(section, search, "")).toBeUndefined();
+  });
 });

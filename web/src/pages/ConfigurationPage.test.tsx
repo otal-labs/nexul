@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ConfigurationPage } from "@/pages/ConfigurationPage";
@@ -40,13 +40,15 @@ const mockGet = (url: string) => {
   return Promise.resolve({ data: settings });
 };
 
-// Sections render one at a time off ?section=, so each test opens the page on the section it exercises.
+// Sections render one at a time off the path, so each test opens the page on the section it exercises.
 const renderPage = (route = "/configuration") => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[route]}>
-        <ConfigurationPage />
+        <Routes>
+          <Route path="/configuration/:section?" element={<ConfigurationPage />} />
+        </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -66,7 +68,7 @@ describe("ConfigurationPage", () => {
   });
 
   it("shows the current instance url and derived callback", async () => {
-    renderPage("/configuration?section=instance");
+    renderPage("/configuration/instance");
     expect(await screen.findByDisplayValue("https://deploy.example.com")).toBeInTheDocument();
     expect(screen.getByText(/https:\/\/deploy\.example\.com\/auth\/callback/i)).toBeInTheDocument();
   });
@@ -74,7 +76,7 @@ describe("ConfigurationPage", () => {
   it("updates the instance url", async () => {
     mocks.put.mockResolvedValue({ data: { ...settings, instance_url: "https://new.example.com", settings_version: 3 } });
     const user = userEvent.setup();
-    renderPage("/configuration?section=instance");
+    renderPage("/configuration/instance");
 
     const input = await screen.findByLabelText(/instance url/i);
     await user.clear(input);
@@ -102,7 +104,7 @@ describe("ConfigurationPage mention chip layout gating", () => {
   });
 
   it("hides the mention chip layout panel without workspaces:write", async () => {
-    renderPage("/configuration?section=mentions");
+    renderPage("/configuration/mentions");
 
     await screen.findByRole("heading", { name: "Configuration" });
     expect(screen.queryByText("Mention chip layout")).not.toBeInTheDocument();
@@ -119,7 +121,7 @@ describe("ConfigurationPage mention chip layout gating", () => {
     });
     mocks.patch.mockResolvedValue({ data: { ...workspaces[0], mention_chip_template: "{ticket.Status}" } });
     const user = userEvent.setup();
-    renderPage("/configuration?section=mentions");
+    renderPage("/configuration/mentions");
 
     expect(await screen.findByText("Mention chip layout")).toBeInTheDocument();
     const section = within(screen.getByRole("region", { name: "Mention chip layout" }));

@@ -33,7 +33,7 @@ export const TunnelPrerequisiteAlert = ({ reason, onRetry, retrying }: TunnelPre
       <div className="flex flex-wrap gap-2">
         {reason === "cloudflare_not_connected" && (
           <Button asChild size="sm">
-            <Link to="/configuration?section=connectors">Connect Cloudflare</Link>
+            <Link to="/configuration/connectors">Connect Cloudflare</Link>
           </Button>
         )}
         {reason === "zero_trust_disabled" && (

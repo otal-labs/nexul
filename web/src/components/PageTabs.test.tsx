@@ -67,14 +67,14 @@ describe("PageTabs", () => {
 
   it("writes the selected tab to ?tab= and keeps the other params", async () => {
     const user = userEvent.setup();
-    renderTabs("/page?section=tokens&setup=c1", tabs);
+    renderTabs("/page?other=tokens&setup=c1", tabs);
 
     await user.click(screen.getByRole("tab", { name: "Second" }));
 
     expect(screen.getByText("Second body")).toBeInTheDocument();
     const search = new URLSearchParams(screen.getByLabelText("location").textContent ?? "");
     expect(search.get("tab")).toBe("second");
-    expect(search.get("section")).toBe("tokens");
+    expect(search.get("other")).toBe("tokens");
     expect(search.get("setup")).toBe("c1");
   });
 });

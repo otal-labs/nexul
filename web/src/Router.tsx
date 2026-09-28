@@ -123,13 +123,13 @@ const buildRoutes = (loggedIn: boolean): RouteObject[] => [
                 { path: "/automations", element: <AutomationsPage /> },
                 { path: "/automations/:id", element: <AutomationPage /> },
                 { path: "/services/:serviceId", element: <ServicePage /> },
-                { path: "/stacks/:stackId", element: <StackPage /> },
+                { path: "/stacks/:stackId/:section?", element: <StackPage /> },
                 { path: "/stacks/:stackId/deploys/:deployId", element: <DeployPage /> },
-                // Members is a Configuration section now; the page itself sends moved ?section= links there.
-                { path: "/members", element: <Navigate to="/configuration?section=members" replace /> },
-                { path: "/settings", element: <YourSettingsPage /> },
-                { path: "/configuration", element: <ConfigurationPage /> },
-                { path: "/projects/:projectId/settings", element: <ProjectSettingsPage /> },
+                // Members is a Configuration section now; the page itself sends moved /settings/<section> links there.
+                { path: "/members", element: <Navigate to="/configuration/members" replace /> },
+                { path: "/settings/:section?", element: <YourSettingsPage /> },
+                { path: "/configuration/:section?", element: <ConfigurationPage /> },
+                { path: "/projects/:projectId/settings/:section?", element: <ProjectSettingsPage /> },
                 {
                   path: "/projects/:projectId/interview",
                   element: (

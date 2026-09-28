@@ -50,7 +50,7 @@ const renderSection = (tab = "columns") => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[`/projects/proj-1/settings?section=board&tab=${tab}`]}>
+      <MemoryRouter initialEntries={[`/projects/proj-1/settings/board?tab=${tab}`]}>
         <BoardSettingsSection projectId={PROJECT_ID} />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -97,7 +97,7 @@ describe("BoardSettingsSection", () => {
     });
     render(
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-        <MemoryRouter initialEntries={["/projects/proj-1/settings?section=board"]}>
+        <MemoryRouter initialEntries={["/projects/proj-1/settings/board"]}>
           <BoardSettingsSection projectId={PROJECT_ID} />
         </MemoryRouter>
       </QueryClientProvider>,

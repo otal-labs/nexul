@@ -1,4 +1,4 @@
-import { Link, useParams, useSearchParams } from "react-router";
+import { Link, useParams } from "react-router";
 
 import { Container } from "@/components/Container";
 import { EmptyState } from "@/components/EmptyState";
@@ -15,14 +15,12 @@ import { resolveProject } from "@/models/Project";
 
 export const ProjectSettingsPage = () => {
   // The URL token is the project's prefix or (old links) its id, same resolution rule as the board route.
-  const { projectId: routeParam = "" } = useParams();
+  const { projectId: routeParam = "", section: rawSection } = useParams();
   const { data: projects = [], isPending, error } = useFetchProjects();
   const resolved = resolveProject(projects, routeParam);
   const projectId = resolved?.id ?? "";
   const notFound = !isPending && !error && !resolved;
   const { data: project } = useFetchProject(projectId);
-  const [searchParams] = useSearchParams();
-  const rawSection = searchParams.get("section");
   const section = isProjectSettingsSection(rawSection) ? rawSection : DEFAULT_PROJECT_SETTINGS_SECTION;
 
   return (

@@ -176,7 +176,7 @@ func TestHandler_IdentityRoutes(t *testing.T) {
 	rec = httptest.NewRecorder()
 	public.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusFound, rec.Code)
-	assert.Equal(t, "https://deploy.example.com/settings?section=profile&provider=google&linked=1", rec.Header().Get("Location"))
+	assert.Equal(t, "https://deploy.example.com/settings/profile?provider=google&linked=1", rec.Header().Get("Location"))
 
 	t.Run("a second link of the same provider lands back with the reason", func(t *testing.T) {
 		rec := httptest.NewRecorder()
@@ -194,7 +194,7 @@ func TestHandler_IdentityRoutes(t *testing.T) {
 		public.ServeHTTP(rec, req)
 		require.Equal(t, http.StatusFound, rec.Code)
 		location := rec.Header().Get("Location")
-		assert.True(t, strings.HasPrefix(location, "https://deploy.example.com/settings?section=profile&provider=google&error="), location)
+		assert.True(t, strings.HasPrefix(location, "https://deploy.example.com/settings/profile?provider=google&error="), location)
 		assert.Contains(t, location, "already+linked")
 	})
 

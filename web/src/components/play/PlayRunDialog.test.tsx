@@ -229,7 +229,7 @@ describe("PlayRunDialog", () => {
 
     await user.click(await screen.findByRole("button", { name: "Run Fix with AI · then In review" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("until its setup is done");
-    expect(screen.getByRole("link", { name: "Set up Onik's PC" })).toHaveAttribute("href", "/settings?section=pairing&setup=c-1");
+    expect(screen.getByRole("link", { name: "Set up Onik's PC" })).toHaveAttribute("href", "/settings/pairing?setup=c-1");
   });
 
   it("offers no setup link for a refusal that names no computer to set up", async () => {

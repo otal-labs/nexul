@@ -15,7 +15,7 @@ describe("settings (web)", () => {
   });
 
   it("mints a personal access token from settings", async () => {
-    const page = await authedPage("/settings?section=tokens");
+    const page = await authedPage("/settings/tokens");
     await page.waitForLoadState("networkidle");
     await page.getByLabel(/token name/i).fill("e2e-pat");
     await page.getByRole("button", { name: "Create token" }).click();
