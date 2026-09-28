@@ -59,6 +59,10 @@ git history, and anything durable it decided is an ADR.
   setup gate and its wizard, and the guided lifecycle (ticket people and
   templates, found-in and blocked-by, the testing step, the interview, the
   decisions check). Research findings in `research/`.
+- `.scratch/native-app/` — wayfinder map charted 2026-09-28: the settings
+  split (Your settings, Configuration, Devices with QR phone sign-in and
+  stored per-device sessions), then an Android app in `native/` with
+  self-hosted OTA updates. Research findings in `research/`.
 - `.scratch/integrations/` — three tracks: Cloudflare deploy→domain,
   branch-driven deployments, LiveKit voice channels. Implemented; tickets 04
   and 11 await the owner's reaction to the built UI. Research findings in
