@@ -33,6 +33,7 @@ type Store struct {
 	Allowlist             *AllowlistRepo
 	Settings              *SettingsRepo
 	SetupCodes            *SetupCodesRepo
+	ConnectCodes          *ConnectCodesRepo
 	Access                *AccessRepo
 	PATs                  *PATsRepo
 	Sessions              *SessionsRepo
@@ -96,6 +97,7 @@ func New(db *sql.DB, encKey []byte) *Store {
 		Allowlist:             &AllowlistRepo{db: db, w: w, q: q},
 		Settings:              &SettingsRepo{db: db, w: w, q: q, encKey: encKey},
 		SetupCodes:            &SetupCodesRepo{db: db, w: w, q: q},
+		ConnectCodes:          &ConnectCodesRepo{db: db, w: w, q: q},
 		Access:                &AccessRepo{db: db, w: w, q: q},
 		PATs:                  &PATsRepo{db: db, w: w, q: q},
 		Sessions:              &SessionsRepo{db: db, w: w, q: q},

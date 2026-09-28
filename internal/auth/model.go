@@ -270,6 +270,20 @@ type Session struct {
 	TokenHash string `json:"-"`
 }
 
+// ConnectCode is what the Devices page shows a phone: the code as XXXX-XXXX-XXXX and the instance URL the QR link names.
+type ConnectCode struct {
+	Code      string    `json:"code"`
+	Host      string    `json:"host"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+// ConnectDevice is what a phone says about itself in the exchange; the model becomes the session's label.
+type ConnectDevice struct {
+	Model      string `json:"model"`
+	OS         string `json:"os"`
+	AppVersion string `json:"app_version"`
+}
+
 // Device is what a sign-in knows about the thing signing in: parsed from the user agent, or reported by an app.
 type Device struct {
 	Client   SessionClient

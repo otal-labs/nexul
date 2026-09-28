@@ -143,6 +143,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		GitHubApp:     githubAppVerifierGate{hc: &http.Client{Timeout: 15 * time.Second}},
 		DevLogin:      cfg.DevLogin,
 		SetupCodes:    store.SetupCodes,
+		ConnectCodes:  store.ConnectCodes,
 		EnrollDir:     filepath.Join(filepath.Dir(cfg.DBPath), "enroll"),
 		Local:         cfg.Local,
 	})

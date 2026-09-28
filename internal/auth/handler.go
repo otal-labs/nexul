@@ -12,6 +12,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/httpx"
 	"github.com/otal-labs/nexul/internal/platform/logging"
+	"github.com/otal-labs/nexul/internal/platform/version"
 )
 
 // Handler's Routes() is public; ProtectedRoutes() needs RequireAuth.
@@ -45,6 +46,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("POST /api/auth/bootstrap", h.bootstrap)
 	mux.HandleFunc("POST /api/auth/bootstrap/verify", h.bootstrapVerify)
 	mux.HandleFunc("POST /api/setup/unlock", h.unlockSetup)
+	mux.HandleFunc("POST /api/auth/connect-codes/exchange", h.exchangeConnectCode)
 	if h.svc.DevLoginEnabled() {
 		mux.HandleFunc("GET /auth/dev-login", h.devLogin)
 	}
@@ -227,6 +229,7 @@ func (h *Handler) ProtectedRoutes() http.Handler {
 	mux.HandleFunc("POST /api/auth/tokens", h.mintPAT)
 	mux.HandleFunc("DELETE /api/auth/tokens/{id}", h.revokePAT)
 	mux.HandleFunc("GET /api/auth/sessions", h.listSessions)
+	mux.HandleFunc("POST /api/auth/connect-codes", h.issueConnectCode)
 	mux.HandleFunc("DELETE /api/auth/sessions/current", h.signOutCurrentSession)
 	mux.HandleFunc("DELETE /api/auth/sessions/others", h.signOutOtherSessions)
 	mux.HandleFunc("DELETE /api/auth/sessions/{id}", h.signOutSession)
@@ -764,6 +767,52 @@ func (h *Handler) unlinkIdentity(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// issueConnectCode needs a signed-in device, so no agent holding a personal access token can sign a phone in.
+func (h *Handler) issueConnectCode(w http.ResponseWriter, r *http.Request) {
+	if _, err := requireSession(r); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	code, err := h.svc.IssueConnectCode(r.Context(), currentUserID(r), h.apiOrigin(r))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, code)
+}
+
+// apiOrigin is the address a phone dials: the instance URL, else the host this request reached; never the SPA origin.
+func (h *Handler) apiOrigin(r *http.Request) string {
+	if base := h.svc.InstanceURL(r.Context()); base != "" {
+		return strings.TrimSuffix(base, "/")
+	}
+	scheme := "http"
+	if r.TLS != nil {
+		scheme = "https"
+	}
+	return scheme + "://" + r.Host
+}
+
+type exchangeConnectCodeRequest struct {
+	Code   string        `json:"code"`
+	Device ConnectDevice `json:"device"`
+}
+
+// exchangeConnectCode is public: the phone has no session yet, so the code is the whole proof, throttled per address.
+func (h *Handler) exchangeConnectCode(w http.ResponseWriter, r *http.Request) {
+	var req exchangeConnectCodeRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	token, err := h.svc.ExchangeConnectCode(r.Context(), clientAddr(r), req.Code, req.Device)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]string{"token": token, "server_version": version.Version})
 }
 
 func (h *Handler) listMembers(w http.ResponseWriter, r *http.Request) {

@@ -187,6 +187,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	// Without this, these fall through to the /api/ catch-all below and 401 before reaching the handler.
 	httpMux.Handle("GET /api/auth/bootstrap-status", svc.authHandler.Routes())
 	httpMux.Handle("POST /api/setup/unlock", svc.authHandler.Routes())
+	httpMux.Handle("POST /api/auth/connect-codes/exchange", svc.authHandler.Routes())
 	// Bootstrap lives on the public mux but needs the setup pass, so only session/PAT/pass auth wraps it.
 	httpMux.Handle("POST /api/auth/bootstrap", userAuth(svc.authHandler.Routes()))
 	httpMux.Handle("POST /api/auth/bootstrap/verify", userAuth(svc.authHandler.Routes()))
@@ -265,6 +266,8 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("POST", "/api/auth/tokens", "Mint a personal access token", "auth")
 	spec.Register("GET", "/api/auth/tokens", "List personal access tokens", "auth")
 	spec.Register("DELETE", "/api/auth/tokens/{id}", "Revoke a personal access token", "auth")
+	spec.Register("POST", "/api/auth/connect-codes", "Issue a two-minute connect code for the phone app; session only, a personal access token is refused", "auth")
+	spec.Register("POST", "/api/auth/connect-codes/exchange", "Public: trade a connect code and the phone's model for a phone session and the server version; 429 after five wrong codes from one address in ten minutes", "auth")
 	spec.Register("GET", "/api/docs", "List docs", "docs")
 	spec.Register("POST", "/api/docs", "Create a doc", "docs")
 	spec.Register("GET", "/api/docs/search", "Search docs", "docs")
