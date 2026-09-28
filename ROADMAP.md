@@ -88,6 +88,14 @@ the public domain exists, security-review the integration model before the
 store accepts third parties, register the Cloudflare OAuth app, and settle the
 canvas node kinds.
 
+Being charted: **the phone app**. Settings split by who they affect (your
+own settings behind a gear in the sidebar footer, workspace and instance
+configuration in the Workspace section), a Devices page that lists every
+signed-in browser, desktop app and phone and signs any of them out, and
+connecting a phone by scanning a QR code. Then an Android app with the pages
+worth having on a phone, updated over the air. The wayfinder map is in
+`.scratch/native-app/`.
+
 Parked until the repository migration lands: **bots**, webhook-driven bots
 that post into any conversation with Discord's payload and get their own tab
 in Settings. The wayfinder map in `.scratch/bots/` has the Discord contract,
