@@ -1,7 +1,6 @@
 import { isSettingsSection } from "@/components/settings/SettingsNav";
 
-// Where an old /settings?section=… link lives now, or undefined when it still belongs to Your settings.
-// Every other query parameter (tab, setup, connector, connected, error) and the hash travel along.
+// Where an old /settings?section=… link lives now (query and hash kept), or undefined if it stays in Your settings.
 export const movedSettingsTarget = (search: string, hash: string): string | undefined => {
   const params = new URLSearchParams(search);
   const section = params.get("section");

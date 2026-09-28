@@ -12,6 +12,9 @@ const itemClass = (isActive: boolean, danger: boolean) =>
       (danger ? "hover:bg-destructive/10" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"),
   );
 
+// A deep link can land on an item past the right edge of the narrow top row; bring it into view.
+const revealActive = (el: HTMLAnchorElement | null) => el?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+
 export interface SettingsSectionNavItem {
   section: string;
   label: string;
@@ -45,6 +48,7 @@ export const SettingsSectionNav = ({ ariaLabel, items, active }: SettingsSection
           <li className="shrink-0">
             <Link
               to={{ search: `?section=${item.section}` }}
+              ref={active === item.section ? revealActive : undefined}
               aria-current={active === item.section ? "page" : undefined}
               className={itemClass(active === item.section, item.danger ?? false)}
             >
