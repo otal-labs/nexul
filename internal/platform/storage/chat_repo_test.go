@@ -290,7 +290,7 @@ func TestChatRepo_CreateMessage_UnknownConversation_Conflict(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrConflict)
 }
 
-func TestChatRepo_ListMessages_OrderedAndLimited(t *testing.T) {
+func TestChatRepo_ListMessages_NewestLimitedOldestFirst(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
 	seedChatUser(t, s, "u-1")
@@ -306,8 +306,8 @@ func TestChatRepo_ListMessages_OrderedAndLimited(t *testing.T) {
 	got, err := s.Chat.ListMessages(context.Background(), "conv-1", 2)
 	require.NoError(t, err)
 	require.Len(t, got, 2)
-	assert.Equal(t, "msg-1", got[0].ID)
-	assert.Equal(t, "msg-2", got[1].ID)
+	assert.Equal(t, "msg-2", got[0].ID)
+	assert.Equal(t, "msg-3", got[1].ID)
 }
 
 func TestChatRepo_UpdateMessage_RoundTrip(t *testing.T) {
