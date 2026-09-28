@@ -185,6 +185,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	httpMux.Handle("GET /api/automation-hosts/self/assignments", automationHostsPublic)
 	userAuth := func(h http.Handler) http.Handler { return svc.authSvc.RequireAuth(withIdentity(h)) }
 	// Without this, these fall through to the /api/ catch-all below and 401 before reaching the handler.
+	httpMux.HandleFunc("GET /api/about", aboutHandler)
 	httpMux.Handle("GET /api/auth/bootstrap-status", svc.authHandler.Routes())
 	httpMux.Handle("POST /api/setup/unlock", svc.authHandler.Routes())
 	httpMux.Handle("POST /api/auth/connect-codes/exchange", svc.authHandler.Routes())
@@ -260,6 +261,7 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 
 	spec.Register("GET", "/api/auth/me", "Current user + onboarding state", "auth")
 	spec.Register("POST", "/api/logs", "Relay a batch of browser log records (console errors, uncaught exceptions)", "logs")
+	spec.Register("GET", "/api/about", "Public: the product name and this build's version, so a client can confirm the address is a Nexul server new enough for it", "version")
 	spec.Register("GET", "/api/version", "This build's version, channel, the channel's latest release, and the release notes since this build; ?refresh=1 skips the release cache", "version")
 	spec.Register("GET", "/api/instance/upgrade", "Instance-admin: running version, latest release, and whether an upgrade can start now; ?refresh=1 skips the release cache", "version")
 	spec.Register("POST", "/api/instance/upgrade", "Instance-admin: upgrade the instance to the channel's newest release", "version")

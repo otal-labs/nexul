@@ -23,7 +23,7 @@ changed by redemption.
 Registered Users have an active, disabled, or removed Account status. Auth
 middleware reloads the User on each session or personal-token request, so
 disabling or removing an Account takes effect immediately (the session itself
-is a stored row since ADR 0081).
+is a stored row since ADR 0083).
 Removal keeps authored content attributed while removing access. The final
 active instance administrator cannot be disabled or removed.
 

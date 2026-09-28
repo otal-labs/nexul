@@ -132,6 +132,18 @@ func withVersion(t *testing.T, v string) {
 	version.Version = v
 }
 
+func TestAboutHandler_WithoutAuth_ReturnsOnlyProductAndVersion(t *testing.T) {
+	withVersion(t, "v0.2.0-beta.9")
+	req := httptest.NewRequest(http.MethodGet, "/api/about", nil)
+	rec := httptest.NewRecorder()
+
+	aboutHandler(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+	var body map[string]string
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
+	assert.Equal(t, map[string]string{"product": "nexul", "version": "v0.2.0-beta.9"}, body)
+}
+
 func TestInstanceUpgradeGetHandler(t *testing.T) {
 	t.Run("no signed-in user is unauthorized", func(t *testing.T) {
 		withVersion(t, "v0.2.0")

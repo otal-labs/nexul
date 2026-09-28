@@ -290,6 +290,9 @@ Third-party integrations extend the product without running inside it
 - The contracts are the product: the versioned event schemas (ADR 0044) and
   the generated OpenAPI document (ADR 0045). The SDK derives from them, which
   is what lets an integration be written in any language.
+- The HTTP gateway only grows (ADR 0082): a route or field a released client
+  may call is never removed or renamed; a replacement ships beside it. The
+  public `GET /api/about` is how a client checks the server is new enough.
 - Trust is tiered. Registry entries are `verified` or `community`. Least
   privilege scopes, signed webhooks, revocable tokens, and an audit log are
   the baseline.

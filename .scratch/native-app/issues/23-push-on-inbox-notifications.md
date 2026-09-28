@@ -34,7 +34,7 @@ semantics. The HTTP client is injectable so tests never reach Expo.
 
 ## Read first
 
-`practices/go.md`, `practices/architecture.md` (sections 2 to 6, the event bus), `practices/testing.md`, tickets 02 and 13, `docs/adr/0081-sessions-are-stored-per-device.md`.
+`practices/go.md`, `practices/architecture.md` (sections 2 to 6, the event bus), `practices/testing.md`, tickets 02 and 13, `docs/adr/0083-sessions-are-stored-per-device.md`.
 
 ## Verification
 

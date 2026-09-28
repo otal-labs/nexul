@@ -1,4 +1,4 @@
--- A session is one signed-in device (ADR 0081); only the token's hash is kept, and deleting the row signs it out.
+-- A session is one signed-in device (ADR 0083); only the token's hash is kept, and deleting the row signs it out.
 CREATE TABLE IF NOT EXISTS sessions (
     id             TEXT PRIMARY KEY,
     user_id        TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

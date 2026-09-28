@@ -254,7 +254,7 @@ const (
 	ClientPhone   SessionClient = "phone"
 )
 
-// Session is one signed-in device (ADR 0081); only the token's hash is stored, and deleting the row signs it out.
+// Session is one signed-in device (ADR 0083); only the token's hash is stored, and deleting the row signs it out.
 type Session struct {
 	ID           string        `json:"id"`
 	UserID       string        `json:"user_id"`
