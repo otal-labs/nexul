@@ -9,7 +9,7 @@ Tool families, named object_verb:
 - Conversation: conversation_list, message_list, message_post, mention_search, notification_*.
 - Shipping: stack_* (a stack is what gets deployed), deploy_*, machine_*, gateway_*, exposure_*, dns_*, topology_*, repository_*, pull_request_*.
 - Agents and automation: play_*, trail_* (a trail is the record of one play run), automation_*, computer_* (paired computers and their setup).
-- Administration: account_*, invitation_*, permission_overwrite_*, instance_*, dead_letter_*.
+- Administration: account_*, invitation_*, role_* (workspace_list with an id lists roles and valid permissions), permission_overwrite_*, instance_*, dead_letter_*.
 
 Workflows:
 - Filing work: call project_get for valid status, ticket type, and category ids, then ticket_create. Change a ticket with ticket_update.

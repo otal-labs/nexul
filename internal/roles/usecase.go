@@ -143,14 +143,17 @@ func (s *Service) Delete(ctx context.Context, workspaceID, roleID, actorUserID s
 	return nil
 }
 
-// Clone copies a custom role into another workspace; it needs roles:clone in the source and roles:write in the target.
+// Clone copies a custom role into another workspace, needing roles:clone in the source ("" = the role's own) and roles:write in the target.
 func (s *Service) Clone(ctx context.Context, sourceWorkspaceID, roleID, targetWorkspaceID, actorUserID string) (*Role, error) {
 	targetWorkspaceID = strings.TrimSpace(targetWorkspaceID)
 	if targetWorkspaceID == "" {
 		return nil, fmt.Errorf("%w: target workspace id is required", apperrs.ErrInvalid)
 	}
-	source, err := s.getInWorkspace(ctx, sourceWorkspaceID, roleID)
+	source, err := s.cloneSource(ctx, sourceWorkspaceID, roleID)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.requireAction(ctx, source.WorkspaceID, actorUserID, permissions.RolesClone); err != nil {
 		return nil, err
 	}
 	if source.IsOwnerRole {
@@ -158,9 +161,6 @@ func (s *Service) Clone(ctx context.Context, sourceWorkspaceID, roleID, targetWo
 	}
 	if targetWorkspaceID == source.WorkspaceID {
 		return nil, fmt.Errorf("%w: pick a workspace other than the one the role is in", apperrs.ErrInvalid)
-	}
-	if err := s.requireAction(ctx, source.WorkspaceID, actorUserID, permissions.RolesClone); err != nil {
-		return nil, err
 	}
 	if err := s.requireAction(ctx, targetWorkspaceID, actorUserID, permissions.RolesWrite); err != nil {
 		if errors.Is(err, apperrs.ErrNotFound) {
@@ -183,6 +183,21 @@ func (s *Service) Clone(ctx context.Context, sourceWorkspaceID, roleID, targetWo
 	}
 	if err := s.repo.Create(ctx, r); err != nil {
 		return nil, fmt.Errorf("clone role %s into workspace %s: %w", roleID, targetWorkspaceID, err)
+	}
+	return r, nil
+}
+
+func (s *Service) cloneSource(ctx context.Context, sourceWorkspaceID, roleID string) (*Role, error) {
+	if strings.TrimSpace(sourceWorkspaceID) != "" {
+		return s.getInWorkspace(ctx, sourceWorkspaceID, roleID)
+	}
+	roleID = strings.TrimSpace(roleID)
+	if roleID == "" {
+		return nil, fmt.Errorf("%w: role id is required", apperrs.ErrInvalid)
+	}
+	r, err := s.repo.Get(ctx, roleID)
+	if err != nil {
+		return nil, fmt.Errorf("get role %s: %w", roleID, err)
 	}
 	return r, nil
 }

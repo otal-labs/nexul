@@ -27,6 +27,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/repository"
+	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/runner"
 	"github.com/otal-labs/nexul/internal/tenancy"
 	"github.com/otal-labs/nexul/internal/tickets"
@@ -56,6 +57,7 @@ type RegistryOptions struct {
 	Auth        *auth.Service
 	Invitations *tenancy.InvitationService
 	Workspaces  *tenancy.Service
+	Roles       *roles.Service
 	Mentions    *mentions.Service
 	Chat        *chat.Service
 	Plays       *plays.Service
@@ -102,7 +104,8 @@ func registryTools(opts RegistryOptions) []mcptool.Tool {
 		automations.MCPTools(opts.Automations),
 		access.MCPTools(opts.Access),
 		auth.MCPTools(opts.Auth),
-		tenancy.WorkspaceMCPTools(opts.Workspaces),
+		composite.WorkspaceTools(opts.Workspaces, opts.Roles),
+		roles.MCPTools(opts.Roles),
 		tenancy.MCPTools(opts.Invitations),
 		mentions.MCPTools(opts.Mentions),
 		chat.MCPTools(opts.Chat),

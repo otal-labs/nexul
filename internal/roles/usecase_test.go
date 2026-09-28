@@ -422,6 +422,10 @@ func TestClone_Errors(t *testing.T) {
 		{"no roles:write in the target is forbidden", []cloneMember{cloner, {workspaceID: "ws-dst", mask: permissions.SetOf(permissions.RolesClone)}}, "ws-src", "role-editors", "ws-dst", apperrs.ErrForbidden},
 		{"not a member of the target is forbidden", []cloneMember{cloner}, "ws-src", "role-editors", "ws-dst", apperrs.ErrForbidden},
 		{"not a member of the source is not found", []cloneMember{writer}, "ws-src", "role-editors", "ws-dst", apperrs.ErrNotFound},
+		{"no source workspace and no role id is invalid", []cloneMember{cloner, writer}, "", " ", "ws-dst", apperrs.ErrInvalid},
+		{"no source workspace and a missing role is not found", []cloneMember{cloner, writer}, "", "role-missing", "ws-dst", apperrs.ErrNotFound},
+		{"no source workspace hides the role from a non-member", []cloneMember{writer}, "", "role-editors", "ws-dst", apperrs.ErrNotFound},
+		{"no source workspace hides the Owner role from a non-member", []cloneMember{writer}, "", "role-owner-src", "ws-dst", apperrs.ErrNotFound},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -458,6 +462,13 @@ func TestClone_CopiesNameAndPermissions(t *testing.T) {
 		{"owner of the source, roles:write in the target", []cloneMember{{workspaceID: "ws-src", owner: true}, {workspaceID: "ws-dst", mask: permissions.SetOf(permissions.RolesWrite)}}},
 		{"roles:clone in the source, owner of the target", []cloneMember{{workspaceID: "ws-src", mask: permissions.SetOf(permissions.RolesClone)}, {workspaceID: "ws-dst", owner: true}}},
 	}
+	t.Run("no source workspace clones from the role's own", func(t *testing.T) {
+		s, _ := newCloneFixture(t, "u-1", cloneMember{workspaceID: "ws-src", owner: true}, cloneMember{workspaceID: "ws-dst", owner: true})
+		got, err := s.Clone(t.Context(), "", "role-editors", "ws-dst", "u-1")
+		require.NoError(t, err)
+		assert.Equal(t, "ws-dst", got.WorkspaceID)
+		assert.Equal(t, "Editors", got.Name)
+	})
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s, repo := newCloneFixture(t, "u-1", tt.memberships...)

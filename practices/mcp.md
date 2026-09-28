@@ -135,12 +135,17 @@ for a newer revision.
 The tool list is the product's interface for agents. Its size and naming
 decide whether an agent picks the right tool.
 
-- **Tools are a budget.** The server stays under 100 tools. At least one
-  client caps an agent at 100 tools across all its servers, so 100 is a
-  ceiling, not a target; every tool definition costs context in every
-  session, and past a few dozen, agents start choosing the wrong tool. A new capability extends an existing tool (a filter, an
-  optional field, a patch field) before it earns a new tool, and a pull
-  request that adds a tool says why no existing tool could carry it.
+- **Tools are a budget.** The server stays under the ceiling set by
+  `toolBudget` in `internal/mcp/surface_test.go`, which sits just above the
+  current count so every new tool fails the test until it is justified. At
+  least one client caps an agent at 100 tools across all its servers, so
+  every tool past 100 is one such a client drops; every tool definition
+  costs context in every session, and past a few dozen, agents start
+  choosing the wrong tool. A new capability extends an existing tool (a
+  filter, an optional field, a patch field) before it earns a new tool, and
+  a pull request that adds a tool says why no existing tool could carry it.
+  Raising the ceiling takes an ADR that names why no existing tool could
+  carry the capability.
 - **One tool per task, not per use-case or endpoint.** Group by what an agent
   is trying to do (ADR 0068):
   - One-field setters fold into a patch-style `update` on their object
