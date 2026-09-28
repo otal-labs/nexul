@@ -209,6 +209,24 @@ func TestHandler_CallbackGET_ExchangeAndRedirect(t *testing.T) {
 	assert.True(t, rec.Result().Cookies()[0].MaxAge < 0, "state cookie should be cleared")
 }
 
+func TestHandler_InvitationCallback_ReturnsAnAcceptanceFragment(t *testing.T) {
+	s, _, _, settings := newTestHarness(&fakeGitHub{token: "at", user: ghUser("provider-1", "new-user")})
+	settings.st.GitHubOAuthClientID = "client"
+	settings.st.GitHubOAuthClientSecret = "secret"
+	s.SetInvitationGate(&fakeInvitationGate{token: "raw-invitation", invitation: &InvitationAcceptance{InvitationID: "inv-1"}})
+	s.SetOAuthHandoffStore(&fakeOAuthHandoffStore{})
+	start, err := s.StartInvitationOAuth(t.Context(), ProviderGitHub, "raw-invitation")
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodGet, "/auth/callback?code=good-code&state="+start.State, nil)
+	req.AddCookie(&http.Cookie{Name: invitationStateCookie(hashCredential(start.State)), Value: start.State})
+	rec := httptest.NewRecorder()
+	NewHandler(s).Routes().ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusFound, rec.Code, rec.Body.String())
+	assert.Regexp(t, `/invite#acceptance-token=\S+$`, rec.Header().Get("Location"), "the invite page reads an unlabeled fragment as the invitation link itself")
+}
+
 func TestHandler_CallbackGET_SPAOrigin(t *testing.T) {
 	s, _, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "onik97")})
 	s.cfg.SPAOrigin = "https://deploy.example.com"
