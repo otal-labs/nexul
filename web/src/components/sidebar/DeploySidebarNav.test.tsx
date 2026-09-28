@@ -34,6 +34,12 @@ describe("DeploySidebarNav", () => {
     expect(screen.getByRole("link", { name: /Runners/ })).toBeInTheDocument();
   });
 
+  it("tags only Automations as work in progress", () => {
+    renderNav();
+    expect(screen.getByRole("link", { name: /Automations/ })).toHaveTextContent("WIP");
+    expect(screen.getByRole("link", { name: /Topology/ })).not.toHaveTextContent("WIP");
+  });
+
   it("collapsed rail always shows the icons, with no header to fold", () => {
     useSidebarStore.setState({ workspaceNavOpen: false });
     renderNav(true);

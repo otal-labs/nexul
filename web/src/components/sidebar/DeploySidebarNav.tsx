@@ -8,8 +8,8 @@ import { useSidebarStore } from "@/stores/sidebarStore";
 
 const deployNav: SidebarNavEntry[] = [
   { to: "/runners", label: "Runners", icon: Cpu },
-  { to: "/topology", label: "Topology", icon: Network, wip: true },
-  { to: "/automations", label: "Automations", icon: Workflow },
+  { to: "/topology", label: "Topology", icon: Network },
+  { to: "/automations", label: "Automations", icon: Workflow, wip: true },
 ];
 
 interface DeploySidebarNavProps {
