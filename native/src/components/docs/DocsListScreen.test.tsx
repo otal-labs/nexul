@@ -4,6 +4,7 @@ import { act, render, screen, userEvent } from "@testing-library/react-native";
 import { api } from "@/api/client";
 import { DocsListScreen } from "@/components/docs/DocsListScreen";
 import { useDocsProjectStore } from "@/stores/docsProjectStore";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 jest.mock("@/api/client", () => ({
   api: { get: jest.fn() },
@@ -50,6 +51,11 @@ beforeEach(() => {
   jest.mocked(api.get).mockReset();
   mockPush.mockReset();
   useDocsProjectStore.setState({ selectedProjectId: null });
+});
+
+
+beforeEach(() => {
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
 });
 
 describe("DocsListScreen", () => {

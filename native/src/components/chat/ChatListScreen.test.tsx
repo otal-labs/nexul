@@ -3,6 +3,7 @@ import { render, screen, userEvent } from "@testing-library/react-native";
 
 import { api } from "@/api/client";
 import { ChatListScreen } from "@/components/chat/ChatListScreen";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 jest.mock("expo-secure-store", () => ({ getItem: () => null, setItem: jest.fn(), deleteItemAsync: jest.fn() }));
 
@@ -42,6 +43,11 @@ const renderScreen = () =>
       <ChatListScreen />
     </QueryClientProvider>,
   );
+
+
+beforeEach(() => {
+  useWorkspaceStore.setState({ selectedWorkspaceId: "w1" });
+});
 
 describe("ChatListScreen", () => {
   beforeEach(() => {

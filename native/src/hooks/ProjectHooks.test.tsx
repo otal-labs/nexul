@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { api } from "@/api/client";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 jest.mock("@/api/client", () => ({
   api: { get: jest.fn() },
@@ -19,6 +20,11 @@ const wrapper = ({ children }: { children: ReactNode }) => {
 
 beforeEach(() => {
   jest.mocked(api.get).mockReset();
+});
+
+
+beforeEach(() => {
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
 });
 
 describe("useFetchProjects", () => {

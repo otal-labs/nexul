@@ -3,6 +3,7 @@ import { render, screen, userEvent } from "@testing-library/react-native";
 
 import { api } from "@/api/client";
 import { BoardScreen } from "@/components/board/BoardScreen";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 jest.mock("@/api/client", () => ({ api: { get: jest.fn() } }));
 
@@ -51,6 +52,11 @@ const renderScreen = () => {
 };
 
 beforeEach(() => jest.mocked(api.get).mockReset().mockImplementation(mockGet));
+
+
+beforeEach(() => {
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
+});
 
 describe("BoardScreen", () => {
   test("sections render in the project's status order", async () => {

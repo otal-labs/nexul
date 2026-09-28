@@ -4,12 +4,14 @@ import { useCSSVariable } from "uniwind";
 
 import { TabBar } from "@/components/TabBar";
 import { unreadBadge, useFetchUnreadCount } from "@/hooks/NotificationHooks";
+import { useEnsureWorkspaceSelected } from "@/hooks/WorkspaceHooks";
 
 export default function TabsLayout() {
   const [foreground, mutedForeground] = useCSSVariable([
     "--color-foreground",
     "--color-muted-foreground",
   ]);
+  useEnsureWorkspaceSelected();
   const { data: unread } = useFetchUnreadCount();
   const badge = unreadBadge(unread?.count);
 

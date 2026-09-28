@@ -1,7 +1,8 @@
 import { Stack } from "expo-router";
 
 import { useFetchMe } from "@/hooks/AuthHooks";
-import { useChatAuthorLookup, useChatWorkspaceId, useFetchConversations } from "@/hooks/ChatHooks";
+import { useChatAuthorLookup, useFetchConversations } from "@/hooks/ChatHooks";
+import { useCurrentWorkspaceId } from "@/hooks/WorkspaceHooks";
 import { conversationLabel } from "@/models/Chat";
 
 interface ChatThreadTitleProps {
@@ -10,7 +11,7 @@ interface ChatThreadTitleProps {
 
 // Reads the list cache, so a thread opened from the list or from an Inbox link gets the same title.
 export const ChatThreadTitle = ({ conversationId }: ChatThreadTitleProps) => {
-  const workspaceId = useChatWorkspaceId();
+  const workspaceId = useCurrentWorkspaceId();
   const { data: conversations } = useFetchConversations(workspaceId);
   const { data: me } = useFetchMe(true);
   const resolveLogin = useChatAuthorLookup(workspaceId);

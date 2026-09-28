@@ -3,10 +3,10 @@ import { useEffect } from "react";
 
 import { api } from "@/api/client";
 import { getMeKey } from "@/hooks/AuthHooks";
-import type { Conversation, Message, UnreadCounts, Workspace, WorkspaceMembers } from "@/models/Chat";
+import { useCurrentWorkspaceId } from "@/hooks/WorkspaceHooks";
+import type { Conversation, Message, UnreadCounts, WorkspaceMembers } from "@/models/Chat";
 import type { MeResponse } from "@/models/User";
 
-export const getChatWorkspacesKey = "getWorkspaces";
 export const getChatMembersKey = "getWorkspaceMembers";
 export const getChatConversationsKey = "getChatConversations";
 export const getChatMessagesKey = "getChatMessages";
@@ -14,15 +14,6 @@ export const getChatUnreadKey = "getChatUnread";
 
 // The server returns the newest page; scrolling further back than this stays on the web for now.
 const threadMessageLimit = 100;
-
-// ponytail: first workspace until the Your settings switcher lands and scopes every tab.
-export const useChatWorkspaceId = (): string | undefined => {
-  const { data: workspaces } = useQuery({
-    queryKey: [getChatWorkspacesKey],
-    queryFn: () => api.get<Workspace[]>("/api/workspaces"),
-  });
-  return workspaces?.[0]?.id;
-};
 
 export const useFetchConversations = (workspaceId: string | undefined) =>
   useQuery({
@@ -103,7 +94,7 @@ export const usePostMessage = (conversationId: string) => {
 // Marks the thread read on open and on each new message; a plain call, since a mutation observer would only re-render the thread.
 export const useMarkThreadRead = (conversationId: string, lastMessageId: string | undefined) => {
   const client = useQueryClient();
-  const workspaceId = useChatWorkspaceId();
+  const workspaceId = useCurrentWorkspaceId();
   useEffect(() => {
     if (!conversationId || !lastMessageId) return;
     void api
