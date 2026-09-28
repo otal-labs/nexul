@@ -35,7 +35,7 @@
     "@tiptap/starter-kit": "3.31.3",
     "@tiptap/suggestion": "3.31.3",
     "@tiptap/y-tiptap": "3.0.9",
-    "@xyflow/react": "^12.11.6",
+    "@xyflow/react": "^12.12.0",
     "axios": "^1.20.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
@@ -43,7 +43,7 @@
     "livekit-client": "^2.22.3",
     "lowlight": "^3.3.0",
     "lucide-react": "1.48.0",
-    "motion": "^13.4.2",
+    "motion": "^13.4.4",
     "radix-ui": "^1.6.7",
     "react": "^19.3.0",
     "react-confirm": "^0.5.0",
@@ -71,7 +71,7 @@
     "@types/react-dom": "^19.3.0",
     "@typescript/native": "npm:typescript@^7.0.2",
     "@vitejs/plugin-react": "^6.1.1",
-    "@vitest/coverage-v8": "^5.0.1",
+    "@vitest/coverage-v8": "^5.0.2",
     "eslint": "^10.11.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.7",
@@ -82,6 +82,6 @@
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.70.1",
     "vite": "^8.3.0",
-    "vitest": "^5.0.1"
+    "vitest": "^5.0.2"
   }
 }
