@@ -45,13 +45,15 @@ const useMarkdownStyle = (): MarkdownStyle => {
 
 interface MessageMarkdownProps {
   markdown: string;
+  /** Overrides the default "open in the system browser"; a caller with internal links routes them here. */
+  onLinkPress?: (url: string) => void;
 }
 
-export const MessageMarkdown = ({ markdown }: MessageMarkdownProps) => (
+export const MessageMarkdown = ({ markdown, onLinkPress }: MessageMarkdownProps) => (
   <EnrichedMarkdownText
     markdown={markdown}
     flavor="github"
     markdownStyle={useMarkdownStyle()}
-    onLinkPress={({ url }) => void Linking.openURL(url)}
+    onLinkPress={({ url }) => (onLinkPress ? onLinkPress(url) : void Linking.openURL(url))}
   />
 );

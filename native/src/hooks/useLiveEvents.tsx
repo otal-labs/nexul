@@ -4,6 +4,7 @@ import { AppState, type AppStateStatus } from "react-native";
 
 import { buildLiveURL, LiveEventsClient, type ServerFrame } from "@/api/events";
 import { getChatConversationsKey, getChatMessagesKey, getChatUnreadKey } from "@/hooks/ChatHooks";
+import { getDocKey, getDocsKey } from "@/hooks/DocHooks";
 import { getNotificationsKey, getUnreadCountKey } from "@/hooks/NotificationHooks";
 import { getProjectStatusesKey } from "@/hooks/StatusHooks";
 import { getTicketKey, getTicketsByProjectKey } from "@/hooks/TicketHooks";
@@ -27,6 +28,9 @@ const pushTopics: Record<string, string[]> = {
   "status.created": [getProjectStatusesKey],
   "status.updated": [getProjectStatusesKey],
   "status.deleted": [getProjectStatusesKey],
+  "doc.created": [getDocsKey],
+  "doc.updated": [getDocsKey, getDocKey],
+  "doc.deleted": [getDocsKey, getDocKey],
 };
 
 export const dispatch = (client: QueryClient) => (frame: ServerFrame) => {
