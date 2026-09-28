@@ -1,7 +1,7 @@
 # 27 — Chat on the phone
 
 **Type:** implementation
-**Status:** ready-for-agent
+**Status:** done
 **Blocked by:** 25
 **Decided in:** tickets 11, 12
 

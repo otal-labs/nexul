@@ -12,8 +12,8 @@ export const getChatConversationsKey = "getChatConversations";
 export const getChatMessagesKey = "getChatMessages";
 export const getChatUnreadKey = "getChatUnread";
 
-// ponytail: the list endpoint returns the oldest N, so a thread past this many messages loses its newest; needs a newest-first page on the server.
-const threadMessageLimit = 500;
+// The server returns the newest page; scrolling further back than this stays on the web for now.
+const threadMessageLimit = 100;
 
 // ponytail: first workspace until the Your settings switcher lands and scopes every tab.
 export const useChatWorkspaceId = (): string | undefined => {
