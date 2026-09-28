@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -44,6 +44,9 @@ describe("NewAutomationPanel", () => {
     });
   });
 
+  const level = async (domain: string, name: string) =>
+    within(await screen.findByRole("radiogroup", { name: `${domain} access` })).getByRole("radio", { name });
+
   it("opens the create form, then reveals the minted token and SDK commands on success", async () => {
     mocks.post.mockResolvedValue({
       data: {
@@ -56,30 +59,29 @@ describe("NewAutomationPanel", () => {
 
     await user.click(screen.getByRole("button", { name: "New automation" }));
     await user.type(screen.getByLabelText("Name"), "Slack notifier");
-    await user.click(await screen.findByRole("checkbox", { name: /Create and update tickets/ }));
-    await user.click(screen.getByRole("checkbox", { name: /Read events/ }));
+    await user.click(await level("Tickets", "Write"));
+    await user.click(await level("Events", "Read"));
     await user.click(screen.getByRole("button", { name: "Create automation" }));
 
     expect(mocks.post).toHaveBeenCalledWith("/api/automations", {
       name: "Slack notifier",
-      scopes: ["tickets:write", "events:read"],
+      scopes: ["tickets:read", "tickets:write", "events:read"],
     });
     expect(await screen.findByText("Slack notifier created")).toBeInTheDocument();
     expect(screen.getByText("dep_secret_abc123")).toBeInTheDocument();
     expect(screen.getByText(/npx @nexul\/sdk init/)).toBeInTheDocument();
   });
 
-  it("unticking a scope removes it from the submitted set", async () => {
+  it("setting a domain back to None removes its scopes from the submitted set", async () => {
     mocks.post.mockResolvedValue({ data: { automation: { id: "a1", name: "x" }, token: "t" } });
     const user = userEvent.setup();
     renderPanel();
 
     await user.click(screen.getByRole("button", { name: "New automation" }));
     await user.type(screen.getByLabelText("Name"), "x");
-    const docs = await screen.findByRole("checkbox", { name: /Read docs/ });
-    await user.click(docs);
-    await user.click(screen.getByRole("checkbox", { name: /Read tickets/ }));
-    await user.click(docs);
+    await user.click(await level("Docs", "Read"));
+    await user.click(await level("Tickets", "Read"));
+    await user.click(await level("Docs", "None"));
     await user.click(screen.getByRole("button", { name: "Create automation" }));
 
     expect(mocks.post).toHaveBeenCalledWith("/api/automations", { name: "x", scopes: ["tickets:read"] });

@@ -1,12 +1,13 @@
 import { useState, type FocusEvent, type KeyboardEvent } from "react";
 import { CrownIcon, PencilIcon, Trash2 } from "lucide-react";
 
-import { PermissionGrid } from "@/components/access/PermissionGrid";
+import { PermissionLevels } from "@/components/access/PermissionLevels";
 import { ConfirmDestroyButton } from "@/components/settings/ConfirmDestroyButton";
 import { NoFillBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useDeleteWorkspaceRole, useUpdateWorkspaceRole } from "@/hooks/RoleHooks";
 import type { PermissionInfo } from "@/models/Permission";
+import { domainsOf, summarize } from "@/models/PermissionLevel";
 import type { Role } from "@/models/Role";
 
 interface RoleRowProps {
@@ -23,7 +24,7 @@ export const RoleRow = ({ role, workspaceId, catalog }: RoleRowProps) => {
   const [nameDraft, setNameDraft] = useState(role.name);
   const [actionsDraft, setActionsDraft] = useState<string[]>(role.permissions);
 
-  const labelFor = (value: string) => catalog.find((entry) => entry.value === value)?.label ?? value;
+  const summary = summarize(domainsOf(catalog), role.permissions);
 
   if (role.is_owner_role) {
     return (
@@ -72,17 +73,17 @@ export const RoleRow = ({ role, workspaceId, catalog }: RoleRowProps) => {
             onChange={(event) => setNameDraft(event.target.value)}
             onKeyDown={handleNameKeyDown}
           />
-          <PermissionGrid entries={catalog} value={actionsDraft} onChange={setActionsDraft} />
+          <PermissionLevels entries={catalog} value={actionsDraft} onChange={setActionsDraft} />
         </div>
       )}
       {!editing && (
         <div className="flex flex-1 flex-col gap-1.5">
           <span className="text-sm font-medium">{role.name}</span>
-          <div className="flex flex-wrap gap-3">
-            {role.permissions.length === 0 && <span className="text-xs text-muted-foreground">No permissions</span>}
-            {role.permissions.map((value) => (
-              <NoFillBadge key={value} color="text-muted-foreground">
-                {labelFor(value)}
+          <div className="flex flex-wrap gap-x-3 gap-y-1">
+            {summary.length === 0 && <span className="text-xs text-muted-foreground">No permissions</span>}
+            {summary.map((line) => (
+              <NoFillBadge key={line} color="text-muted-foreground">
+                {line}
               </NoFillBadge>
             ))}
           </div>

@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 
 import { AutomationTokenReveal } from "@/components/automation/AutomationTokenReveal";
-import { PermissionGrid } from "@/components/access/PermissionGrid";
+import { PermissionLevels } from "@/components/access/PermissionLevels";
 import { FormInput } from "@/components/FormInput";
 import { Button } from "@/components/ui/button";
 import { useCreateAutomation, useFetchScopeCatalog } from "@/hooks/AutomationHooks";
@@ -50,7 +50,7 @@ export const NewAutomationPanel = () => {
               render={({ field, fieldState }) => (
                 <fieldset className="space-y-2">
                   <legend className="text-sm font-medium">Scopes</legend>
-                  <PermissionGrid entries={scopeCatalog} value={field.value} onChange={field.onChange} />
+                  <PermissionLevels entries={scopeCatalog} value={field.value} onChange={field.onChange} />
                   {fieldState.error && (
                     <p role="alert" className="text-sm text-destructive">
                       {fieldState.error.message}

@@ -22,10 +22,16 @@ vi.mock("@/api/client", () => ({
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const catalog = [
-  { value: "members:write", label: "Manage members", domain: "members", action: "write" },
-  { value: "projects:write", label: "Manage projects", domain: "projects", action: "write" },
-  { value: "roles:write", label: "Manage roles", domain: "roles", action: "write" },
+  { value: "members:read", label: "Read members", domain: "members", action: "read" },
+  { value: "members:write", label: "Create and update members", domain: "members", action: "write" },
+  { value: "projects:read", label: "Read projects", domain: "projects", action: "read" },
+  { value: "projects:write", label: "Create and update projects", domain: "projects", action: "write" },
+  { value: "roles:read", label: "Read roles", domain: "roles", action: "read" },
+  { value: "roles:write", label: "Create and update roles", domain: "roles", action: "write" },
 ];
+
+const level = (scope: HTMLElement, domain: string, name: string) =>
+  within(within(scope).getByRole("radiogroup", { name: `${domain} access` })).getByRole("radio", { name });
 
 const role = (overrides: Record<string, unknown> = {}) => ({
   id: "role-editor",
@@ -88,12 +94,13 @@ describe("RoleSettingsSection", () => {
     expect(screen.queryByRole("button", { name: /delete role owner/i })).not.toBeInTheDocument();
   });
 
-  it("lists a custom role's permission chips with catalog labels", async () => {
-    mockRoles([ownerRole, role({ permissions: ["members:write"] })]);
+  it("summarises a custom role as one chip per domain at its level", async () => {
+    mockRoles([ownerRole, role({ permissions: ["members:read", "members:write", "roles:read"] })]);
     renderSection();
 
     const row = (await screen.findByText("Editor")).closest("li")!;
-    expect(within(row).getByText("Manage members")).toBeInTheDocument();
+    expect(within(row).getByText("Members · Write")).toBeInTheDocument();
+    expect(within(row).getByText("Roles · Read")).toBeInTheDocument();
   });
 
   it("shows 'No permissions' for a role with no permissions", async () => {
@@ -103,19 +110,40 @@ describe("RoleSettingsSection", () => {
     expect(await screen.findByText("No permissions")).toBeInTheDocument();
   });
 
-  it("creates a role with the checked permissions", async () => {
+  it("creates a role with the chosen levels", async () => {
     mockRoles([ownerRole]);
     mocks.post.mockResolvedValue({ data: role() });
     const user = userEvent.setup();
     renderSection();
 
-    await user.type(await screen.findByLabelText("New role name"), "Editor");
-    await user.click(screen.getByRole("checkbox", { name: "Manage projects" }));
+    await user.click(await screen.findByRole("button", { name: /new role/i }));
+    await user.type(screen.getByLabelText("New role name"), "Editor");
+    const form = screen.getByLabelText("New role name").closest("form")!;
+    await user.click(level(form, "Every domain", "Read"));
+    await user.click(level(form, "Projects", "Write"));
     await user.click(screen.getByRole("button", { name: /create role/i }));
 
     expect(mocks.post).toHaveBeenCalledWith("/api/workspaces/ws-1/roles", {
       name: "Editor",
-      actions: ["projects:write"],
+      actions: ["members:read", "roles:read", "projects:read", "projects:write"],
+    });
+  });
+
+  it("starts a new role from an existing role's permissions", async () => {
+    mockRoles([ownerRole, role({ permissions: ["members:read"] })]);
+    mocks.post.mockResolvedValue({ data: role() });
+    const user = userEvent.setup();
+    renderSection();
+
+    await user.click(await screen.findByRole("button", { name: /new role/i }));
+    await user.type(screen.getByLabelText("New role name"), "Auditor");
+    await user.click(screen.getByRole("combobox", { name: "Copy permissions from role" }));
+    await user.click(await screen.findByRole("option", { name: "Editor" }));
+    await user.click(screen.getByRole("button", { name: /create role/i }));
+
+    expect(mocks.post).toHaveBeenCalledWith("/api/workspaces/ws-1/roles", {
+      name: "Auditor",
+      actions: ["members:read"],
     });
   });
 
@@ -124,27 +152,28 @@ describe("RoleSettingsSection", () => {
     const user = userEvent.setup();
     renderSection();
 
-    await user.click(await screen.findByRole("button", { name: /create role/i }));
+    await user.click(await screen.findByRole("button", { name: /new role/i }));
+    await user.click(screen.getByRole("button", { name: /create role/i }));
     expect(mocks.post).not.toHaveBeenCalled();
   });
 
-  it("renames a role and toggles its permissions inline", async () => {
-    mockRoles([ownerRole, role({ permissions: ["members:write"] })]);
+  it("renames a role and changes its levels inline", async () => {
+    mockRoles([ownerRole, role({ permissions: ["members:read", "members:write"] })]);
     mocks.patch.mockResolvedValue({ data: role() });
     const user = userEvent.setup();
     renderSection();
 
     await user.click(await screen.findByRole("button", { name: "Rename role Editor" }));
     const input = screen.getByLabelText("Role name");
-    const row = within(input.closest("li")!);
+    const row = input.closest("li")!;
     await user.clear(input);
     await user.type(input, "Reviewer");
-    await user.click(row.getByRole("checkbox", { name: "Manage roles" }));
-    await user.click(screen.getByLabelText("New role name"));
+    await user.click(level(row, "Roles", "Write"));
+    await user.click(screen.getByRole("button", { name: /new role/i }));
 
     expect(mocks.patch).toHaveBeenCalledWith("/api/workspaces/ws-1/roles/role-editor", {
       name: "Reviewer",
-      actions: ["members:write", "roles:write"],
+      actions: ["members:read", "members:write", "roles:read", "roles:write"],
     });
   });
 
