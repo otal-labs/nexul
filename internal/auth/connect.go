@@ -45,6 +45,20 @@ func (s *Service) IssueConnectCode(ctx context.Context, userID, host string) (Co
 	return ConnectCode{Code: formatConnectCode(raw), Host: host, ExpiresAt: expires}, nil
 }
 
+const maxDeviceLabel = 64
+
+// phoneLabel bounds the model an unauthenticated caller reports, since it shows in every Devices list.
+func phoneLabel(model string) string {
+	label := strings.TrimSpace(model)
+	if r := []rune(label); len(r) > maxDeviceLabel {
+		label = string(r[:maxDeviceLabel])
+	}
+	if label == "" {
+		return "Phone"
+	}
+	return label
+}
+
 // ExchangeConnectCode trades a code for a phone session, throttled per addr; every wrong answer is the same error.
 func (s *Service) ExchangeConnectCode(ctx context.Context, addr, code string, dev ConnectDevice) (string, error) {
 	if s.cfg.ConnectCodes == nil {
@@ -62,10 +76,7 @@ func (s *Service) ExchangeConnectCode(ctx context.Context, addr, code string, de
 	if err != nil {
 		return "", fmt.Errorf("consume connect code: %w", err)
 	}
-	label := strings.TrimSpace(dev.Model)
-	if label == "" {
-		label = "Phone"
-	}
+	label := phoneLabel(dev.Model)
 	logging.FromCtx(ctx).Info("phone connected", "user_id", userID, "model", label, "os", dev.OS, "app_version", dev.AppVersion)
 	return s.CreateSession(WithDevice(ctx, Device{Client: ClientPhone, Platform: phonePlatform, Label: label, IP: addr}), userID)
 }

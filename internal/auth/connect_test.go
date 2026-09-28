@@ -239,3 +239,9 @@ func TestHandler_ConnectCodes(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, exchange("198.51.100.3:4000", `{"code":"AAAA-AAAA-AAAA"}`).Code, "another address is not throttled")
 	})
 }
+
+func TestPhoneLabel(t *testing.T) {
+	assert.Equal(t, "Phone", phoneLabel("  "))
+	assert.Equal(t, "Pixel 8", phoneLabel(" Pixel 8 "))
+	assert.Len(t, []rune(phoneLabel(strings.Repeat("é", 100))), maxDeviceLabel)
+}
