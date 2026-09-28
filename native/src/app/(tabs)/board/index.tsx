@@ -1,5 +1,5 @@
-import { PlaceholderScreen } from "@/components/PlaceholderScreen";
+import { BoardScreen } from "@/components/board/BoardScreen";
 
-export default function BoardScreen() {
-  return <PlaceholderScreen message="Tickets land here, grouped by status." />;
+export default function BoardRoute() {
+  return <BoardScreen />;
 }

@@ -5,6 +5,8 @@ import { AppState, type AppStateStatus } from "react-native";
 import { buildLiveURL, LiveEventsClient, type ServerFrame } from "@/api/events";
 import { getChatConversationsKey, getChatMessagesKey, getChatUnreadKey } from "@/hooks/ChatHooks";
 import { getNotificationsKey, getUnreadCountKey } from "@/hooks/NotificationHooks";
+import { getProjectStatusesKey } from "@/hooks/StatusHooks";
+import { getTicketKey, getTicketsByProjectKey } from "@/hooks/TicketHooks";
 import { readSessionToken, useSessionStore } from "@/stores/sessionStore";
 
 // Maps push topics to the query keys they invalidate; each domain adds its rows as its screens land.
@@ -14,6 +16,17 @@ const pushTopics: Record<string, string[]> = {
   "chat.message.created": [getChatMessagesKey, getChatUnreadKey],
   "chat.message.updated": [getChatMessagesKey],
   "chat.message.deleted": [getChatMessagesKey, getChatUnreadKey],
+  "ticket.created": [getTicketsByProjectKey],
+  "ticket.updated": [getTicketsByProjectKey, getTicketKey],
+  "ticket.status_changed": [getTicketsByProjectKey, getTicketKey],
+  "ticket.assignee_changed": [getTicketsByProjectKey, getTicketKey],
+  "ticket.developer_changed": [getTicketsByProjectKey, getTicketKey],
+  "ticket.tester_changed": [getTicketsByProjectKey, getTicketKey],
+  "ticket.finished": [getTicketsByProjectKey, getTicketKey],
+  "ticket.deleted": [getTicketsByProjectKey, getTicketKey],
+  "status.created": [getProjectStatusesKey],
+  "status.updated": [getProjectStatusesKey],
+  "status.deleted": [getProjectStatusesKey],
 };
 
 export const dispatch = (client: QueryClient) => (frame: ServerFrame) => {

@@ -1,0 +1,51 @@
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { Check } from "lucide-react-native";
+import { FlatList, Pressable, View } from "react-native";
+
+import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { LoadingDisplay } from "@/components/LoadingDisplay";
+import { Text } from "@/components/ui/text";
+import { statusStageDot } from "@/models/Status";
+import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
+import { useUpdateTicketStatus } from "@/hooks/TicketHooks";
+import { cn } from "@/lib/utils";
+
+type StatusPickerParams = {
+  ticketId: string;
+  projectId: string;
+  currentStatusId?: string;
+};
+
+export const StatusPickerScreen = () => {
+  const router = useRouter();
+  const { ticketId, projectId, currentStatusId } = useLocalSearchParams<StatusPickerParams>();
+  const { data: statuses, error: statusesError, isPending } = useFetchProjectStatuses(projectId);
+  const updateStatus = useUpdateTicketStatus();
+
+  return (
+    <View className="flex-1 bg-background">
+      {isPending && <LoadingDisplay />}
+      {statusesError && <ErrorDisplay error={statusesError} />}
+      {updateStatus.error && <ErrorDisplay error={updateStatus.error} />}
+      {statuses && (
+        <FlatList
+          data={statuses}
+          keyExtractor={(s) => s.id}
+          renderItem={({ item }) => (
+            <Pressable
+              disabled={updateStatus.isPending}
+              onPress={() => updateStatus.mutate({ id: ticketId, status: item.id }, { onSuccess: () => router.back() })}
+              className="min-h-11 flex-row items-center gap-2 border-b border-border px-4 active:bg-accent disabled:opacity-50"
+            >
+              <View className={cn("size-2 rounded-full", statusStageDot(item.kind))} />
+              <Text className="min-w-0 flex-1 font-medium" numberOfLines={1}>
+                {item.name}
+              </Text>
+              {item.id === currentStatusId && <Check size={16} className="text-foreground" />}
+            </Pressable>
+          )}
+        />
+      )}
+    </View>
+  );
+};
