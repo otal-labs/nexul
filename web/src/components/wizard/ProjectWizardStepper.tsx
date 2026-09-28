@@ -9,6 +9,7 @@ import { WizardProjectStep } from "@/components/wizard/WizardProjectStep";
 import { WizardReachStep } from "@/components/wizard/WizardReachStep";
 import { WizardRepositoryStep } from "@/components/wizard/WizardRepositoryStep";
 import { WizardServiceStep } from "@/components/wizard/WizardServiceStep";
+import { useWizardStepOrder } from "@/hooks/useWizardStepOrder";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
 import { TestsLocation } from "@/enums/Project";
 
@@ -27,7 +28,6 @@ export const ProjectWizardStepper = ({ step }: ProjectWizardStepperProps) => {
   const [searchParams] = useSearchParams();
   const {
     projectName,
-    projectPreselected,
     attachStackId,
     repository,
     testsLocation,
@@ -42,7 +42,6 @@ export const ProjectWizardStepper = ({ step }: ProjectWizardStepperProps) => {
   } = useProjectWizardStore(
     useShallow((s) => ({
       projectName: s.projectName,
-      projectPreselected: s.projectPreselected,
       attachStackId: s.attachStackId,
       repository: s.repository,
       testsLocation: s.testsLocation,
@@ -59,8 +58,9 @@ export const ProjectWizardStepper = ({ step }: ProjectWizardStepperProps) => {
 
   const isAttach = !!attachStackId;
   const showEnv = (scanResult?.env_keys.length ?? 0) > 0;
-  const order = WizardSteps.filter((id) => (id !== "env" || showEnv) && (id !== "reach" || !isAttach));
+  const order = useWizardStepOrder();
   const currentIndex = order.indexOf(step);
+  const numbered = (id: WizardStepId, label: string) => `Step ${order.indexOf(id) + 1}: ${label}`;
   // Attach mode has no name/machine to enter, so its summary names the candidate instead.
   const serviceSummary = (): string | undefined => {
     if (isAttach) return candidate ? `${candidate.kind === "compose" ? "Compose" : "Dockerfile"} · ${candidate.path}` : undefined;
@@ -90,16 +90,12 @@ export const ProjectWizardStepper = ({ step }: ProjectWizardStepperProps) => {
 
   return (
     <ol className="list-none">
-      <DnsStep
-        title="Project"
-        state={stateFor("project")}
-        summary={projectName}
-        {...(!projectPreselected && { onChange: () => goTo("project") })}
-      >
+      {/* No Change: the project exists once this rung is done, so going back would make a second one. */}
+      <DnsStep title={numbered("project", "Info")} state={stateFor("project")} summary={projectName}>
         <WizardProjectStep onDone={() => goTo("repository")} />
       </DnsStep>
       <DnsStep
-        title="Repository"
+        title={numbered("repository", "Repository")}
         description="Pick the repository to deploy; Nexul reads its Dockerfile or compose file."
         state={stateFor("repository")}
         summary={repositorySummary}
@@ -108,7 +104,7 @@ export const ProjectWizardStepper = ({ step }: ProjectWizardStepperProps) => {
         <WizardRepositoryStep onDone={() => goTo("service")} />
       </DnsStep>
       <DnsStep
-        title={isAttach ? "Attach" : "Service"}
+        title={numbered("service", isAttach ? "Attach" : "Service")}
         state={stateFor("service")}
         summary={serviceSummary()}
         onChange={() => goTo("service")}
@@ -116,13 +112,13 @@ export const ProjectWizardStepper = ({ step }: ProjectWizardStepperProps) => {
         <WizardServiceStep onDone={() => goTo(afterService())} />
       </DnsStep>
       {showEnv && (
-        <DnsStep title="Environment" state={stateFor("env")} onChange={() => goTo("env")}>
+        <DnsStep title={numbered("env", "Environment")} state={stateFor("env")} onChange={() => goTo("env")}>
           <WizardEnvStep onDone={() => goTo(afterEnv)} />
         </DnsStep>
       )}
       {!isAttach && (
         <DnsStep
-          title="Reach"
+          title={numbered("reach", "Reach")}
           description="Optional — give this service a hostname now, or do it later from the stack page."
           state={stateFor("reach")}
           summary={exposureHostname ?? "Skipped"}
@@ -132,7 +128,7 @@ export const ProjectWizardStepper = ({ step }: ProjectWizardStepperProps) => {
         </DnsStep>
       )}
       <DnsStep
-        title="Deploy branches"
+        title={numbered("branches", "Deploy branches")}
         description="Optional — deploy other branches as their own copies, each at its own URL."
         state={stateFor("branches")}
         summary={branchesSummary ?? "Skipped"}
@@ -140,7 +136,7 @@ export const ProjectWizardStepper = ({ step }: ProjectWizardStepperProps) => {
       >
         <WizardBranchesStep onDone={() => goTo("done")} onSkip={() => goTo("done")} />
       </DnsStep>
-      <DnsStep title="Done" state={stateFor("done")} last>
+      <DnsStep title={numbered("done", "Done")} state={stateFor("done")} last>
         {stackId && <WizardDoneStep />}
       </DnsStep>
     </ol>

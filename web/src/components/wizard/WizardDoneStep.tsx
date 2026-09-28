@@ -21,12 +21,10 @@ export const WizardDoneStep = () => {
       projectName: s.projectName,
     })),
   );
-  const reset = useProjectWizardStore((s) => s.reset);
   const { data: projects } = useFetchProjects();
   const offer = useInterviewOffer(projectId, projectName ?? name);
 
   const go = (to: string) => {
-    reset();
     navigate(to);
   };
   // Leaving any other way than the interview counts as skipping it, so it asks first.

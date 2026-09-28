@@ -3,6 +3,7 @@ import { Navigate, useParams, useSearchParams } from "react-router";
 
 import { WizardLayout } from "@/components/auth/WizardLayout";
 import { ProjectWizardStepper, WizardSteps, type WizardStepId } from "@/components/wizard/ProjectWizardStepper";
+import { useWizardStepOrder } from "@/hooks/useWizardStepOrder";
 import { useFetchProject, useFetchProjects } from "@/hooks/ProjectHooks";
 import { useFetchStack } from "@/hooks/StackHooks";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
@@ -88,10 +89,14 @@ export const ProjectWizardPage = () => {
   const [searchParams] = useSearchParams();
   useSeedPreselectedProject();
   useSeedAttachStack();
+  const reset = useProjectWizardStore((s) => s.reset);
+  // Leaving ends the run, so the next visit starts clean; a project it already made resumes through Add a service.
+  useEffect(() => reset, [reset]);
   const projectPreselected = useProjectWizardStore((s) => s.projectPreselected);
   const isAttach = searchParams.has("stack");
   const { data: projects } = useFetchProjects();
   const firstProject = step === "project" && projects?.length === 0;
+  const order = useWizardStepOrder();
 
   const redirectTo = wizardRedirect(step, searchParams, isAttach);
   const title = wizardTitle(isAttach, projectPreselected, firstProject);
@@ -102,7 +107,7 @@ export const ProjectWizardPage = () => {
       {redirectTo && <Navigate to={redirectTo} replace />}
       {!redirectTo && isWizardStep(step) && (
         <WizardLayout
-          step={{ current: WizardSteps.indexOf(step) + 1, total: WizardSteps.length }}
+          step={{ current: Math.max(1, order.indexOf(step) + 1), total: order.length }}
           title={title}
           subtitle={subtitle}
         >
