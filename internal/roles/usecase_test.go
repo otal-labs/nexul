@@ -515,3 +515,41 @@ func TestClone_NameCollision(t *testing.T) {
 		})
 	}
 }
+
+func TestReadsForMembers(t *testing.T) {
+	setup := func(t *testing.T) (*Service, *fakeMemberGate) {
+		t.Helper()
+		repo := newFakeRepo()
+		members := newFakeMemberGate()
+		seedOwner(t, repo, members, "ws-1", "member")
+		return newTestService(repo, members), members
+	}
+	t.Run("a member lists and reads the workspace's roles", func(t *testing.T) {
+		s, _ := setup(t)
+		rs, err := s.ListForMember(t.Context(), "ws-1", "member")
+		require.NoError(t, err)
+		require.Len(t, rs, 1)
+		got, err := s.GetForMember(t.Context(), "ws-1", "role-owner", "member")
+		require.NoError(t, err)
+		assert.Equal(t, "Owner", got.Name)
+	})
+	t.Run("someone from another workspace is told it does not exist", func(t *testing.T) {
+		s, _ := setup(t)
+		_, err := s.ListForMember(t.Context(), "ws-1", "outsider")
+		require.ErrorIs(t, err, apperrs.ErrNotFound)
+		_, err = s.GetForMember(t.Context(), "ws-1", "role-owner", "outsider")
+		require.ErrorIs(t, err, apperrs.ErrNotFound)
+	})
+	t.Run("no caller is invalid", func(t *testing.T) {
+		s, _ := setup(t)
+		_, err := s.ListForMember(t.Context(), "ws-1", " ")
+		require.ErrorIs(t, err, apperrs.ErrInvalid)
+	})
+	t.Run("a membership lookup failure surfaces as itself", func(t *testing.T) {
+		s, members := setup(t)
+		members.err = errors.New("db down")
+		_, err := s.ListForMember(t.Context(), "ws-1", "member")
+		require.Error(t, err)
+		assert.NotErrorIs(t, err, apperrs.ErrNotFound)
+	})
+}

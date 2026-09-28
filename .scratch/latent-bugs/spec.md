@@ -74,13 +74,3 @@ The fix is either label support in the runner (a stack field plus the assign
 frame) or writing each exposure into the same file-provider config the gateway
 container renders on start. Every router on the https entry point already
 defaults to Let's Encrypt, so certificates follow once routers exist.
-
-## Any signed-in user can read another workspace's roles over HTTP
-
-`GET /api/workspaces/{workspaceID}/roles` and `.../roles/{roleID}` return a
-workspace's roles without checking that the caller belongs to it, so anyone
-signed in who knows a workspace id can read its role names and permissions.
-The MCP path (`workspace_list` with an id) does check membership. The fix is
-giving the roles list and get use-cases an actor and refusing non-members
-with not found, as `workspace_list` does; it belongs with the permissions
-sweep.

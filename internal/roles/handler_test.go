@@ -81,6 +81,13 @@ func TestHandler_List(t *testing.T) {
 		require.Len(t, got, 1)
 		assert.Equal(t, "Owner", got[0].Name)
 	})
+	t.Run("someone outside the workspace gets not found, for the list and for one role", func(t *testing.T) {
+		h, repo, members := newTestHandler(t)
+		seedOwner(t, repo, members, "ws-1", "u-owner")
+
+		assert.Equal(t, http.StatusNotFound, do(t, h.Routes(), http.MethodGet, "/api/workspaces/ws-1/roles", "", "u-outsider").Code)
+		assert.Equal(t, http.StatusNotFound, do(t, h.Routes(), http.MethodGet, "/api/workspaces/ws-1/roles/role-owner", "", "u-outsider").Code)
+	})
 }
 
 func TestHandler_Get(t *testing.T) {

@@ -100,6 +100,36 @@ func (s *Service) List(ctx context.Context, workspaceID string) ([]*Role, error)
 	return rs, nil
 }
 
+// ListForMember lists workspaceID's roles for one of its members; anyone else is told it does not exist.
+func (s *Service) ListForMember(ctx context.Context, workspaceID, actorUserID string) ([]*Role, error) {
+	if err := s.requireMember(ctx, workspaceID, actorUserID); err != nil {
+		return nil, err
+	}
+	return s.List(ctx, workspaceID)
+}
+
+// GetForMember reads one of workspaceID's roles for one of its members; anyone else is told it does not exist.
+func (s *Service) GetForMember(ctx context.Context, workspaceID, roleID, actorUserID string) (*Role, error) {
+	if err := s.requireMember(ctx, workspaceID, actorUserID); err != nil {
+		return nil, err
+	}
+	return s.Get(ctx, workspaceID, roleID)
+}
+
+// requireMember answers not found for a caller outside workspaceID, so its roles never leak to other workspaces.
+func (s *Service) requireMember(ctx context.Context, workspaceID, actorUserID string) error {
+	if strings.TrimSpace(actorUserID) == "" {
+		return fmt.Errorf("%w: actor user id is required", apperrs.ErrInvalid)
+	}
+	if _, err := s.members.MemberRoleID(ctx, workspaceID, actorUserID); err != nil {
+		if errors.Is(err, apperrs.ErrNotFound) || errors.Is(err, apperrs.ErrForbidden) {
+			return fmt.Errorf("%w: workspace %s", apperrs.ErrNotFound, workspaceID)
+		}
+		return fmt.Errorf("resolve membership in workspace %s: %w", workspaceID, err)
+	}
+	return nil
+}
+
 // Update renames a custom role and/or replaces its permissions; the Owner role can't be renamed or edited.
 func (s *Service) Update(ctx context.Context, workspaceID, roleID, actorUserID, name string, perms permissions.Set) (*Role, error) {
 	name = strings.TrimSpace(name)
