@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useFieldArray, useFormContext, useFormState, useWatch, Controller } from "react-hook-form";
 
 import { PermissionGrid } from "@/components/access/PermissionGrid";
+import { PermissionLevels } from "@/components/access/PermissionLevels";
 import { useFormDialogContext } from "@/components/dialogs/FormDialogContext";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -78,7 +79,7 @@ const InvitationGrantRow = ({ index, remove }: { index: number; remove: (index: 
           <p className="text-xs text-muted-foreground">These workspace-wide overrides apply on top of the selected role.</p>
           {catalog && (
             <>
-              <div className="space-y-1"><p className="text-xs font-medium">Allow</p><PermissionGrid entries={catalog} value={allow} onChange={(value) => setValue(`grants.${index}.allow`, value)} /></div>
+              <div className="space-y-1"><p className="text-xs font-medium">Allow</p><PermissionLevels entries={catalog} value={allow} onChange={(value) => setValue(`grants.${index}.allow`, value)} /></div>
               <div className="space-y-1"><p className="text-xs font-medium">Deny</p><PermissionGrid entries={catalog} value={deny} onChange={(value) => setValue(`grants.${index}.deny`, value)} /></div>
             </>
           )}

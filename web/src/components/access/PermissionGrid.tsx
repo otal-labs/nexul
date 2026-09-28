@@ -1,5 +1,6 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import type { PermissionInfo } from "@/models/Permission";
+import { domainLabel, groupByDomain } from "@/models/PermissionLevel";
 
 interface PermissionGridProps {
   entries: PermissionInfo[];
@@ -14,31 +15,6 @@ const columnsOf = (entries: PermissionInfo[]): string[] => {
     if (!columns.includes(entry.action)) columns.push(entry.action);
   }
   return columns;
-};
-
-// Server sends entries pre-grouped by domain; this only buckets them, it never reorders.
-const groupByDomain = (entries: PermissionInfo[]): [string, PermissionInfo[]][] => {
-  const order: string[] = [];
-  const byDomain = new Map<string, PermissionInfo[]>();
-  for (const entry of entries) {
-    const bucket = byDomain.get(entry.domain);
-    if (bucket) {
-      bucket.push(entry);
-      continue;
-    }
-    byDomain.set(entry.domain, [entry]);
-    order.push(entry.domain);
-  }
-  return order.map((domain) => [domain, byDomain.get(domain) ?? []]);
-};
-
-// No client-side domain name map: the read entry's own label ("Read docs") minus its verb is the row name.
-const domainLabel = (entries: PermissionInfo[]): string => {
-  const [first] = entries;
-  const source = entries.find((entry) => entry.action === "read") ?? first;
-  if (!source) return "";
-  const text = source.action === "read" ? source.label.replace(/^Read\s+/, "") : source.label;
-  return text.charAt(0).toUpperCase() + text.slice(1);
 };
 
 const capitalize = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1);
