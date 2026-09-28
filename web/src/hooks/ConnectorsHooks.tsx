@@ -5,6 +5,14 @@ import { api, errorMessage } from "@/api/client";
 import type { AppConfigStatus, ConnectorStatus, CredentialStatus } from "@/models/Connectors";
 
 const getConnectorsKey = "connectors";
+const getConnectorAppConfigKey = "connector-app-config";
+
+// The instance's app registration for one connector, secret excluded.
+export const useFetchConnectorAppConfig = (id: string) =>
+  useQuery({
+    queryKey: [getConnectorAppConfigKey, id],
+    queryFn: async () => (await api.get<AppConfigStatus>(`/api/connectors/${id}/app-config`)).data,
+  });
 
 export const useFetchConnectors = () =>
   useQuery({
@@ -44,9 +52,10 @@ export const useSetConnectorAppConfig = () => {
           app_slug: payload.app_slug,
         })
       ).data,
-    onSuccess: () => {
+    onSuccess: (_, payload) => {
       toast.success("Connector app config saved");
       void queryClient.invalidateQueries({ queryKey: [getConnectorsKey] });
+      void queryClient.invalidateQueries({ queryKey: [getConnectorAppConfigKey, payload.id] });
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

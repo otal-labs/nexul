@@ -5,21 +5,33 @@ import { errorMessage } from "@/api/client";
 import { FormInput } from "@/components/FormInput";
 import { Button } from "@/components/ui/button";
 import { useSetConnectorAppConfig } from "@/hooks/ConnectorsHooks";
-import { connectorAppConfigFormSchema, type ConnectorAppConfigFormData } from "@/models/Connectors";
+import {
+  connectorAppConfigFormSchema,
+  type AppConfigStatus,
+  type ConnectorAppConfigFormData,
+} from "@/models/Connectors";
 
 interface ConnectorAppConfigFormProps {
   connectorId: string;
   onSaved?: () => void;
+  // A registered app to edit: its fields start filled, and a blank secret keeps the stored one.
+  current?: AppConfigStatus;
 }
 
 // Owner-only OAuth app registration (CN3a); shared by the Settings card and the connector card's "Set up app" dialog.
-export const ConnectorAppConfigForm = ({ connectorId, onSaved }: ConnectorAppConfigFormProps) => {
+export const ConnectorAppConfigForm = ({ connectorId, onSaved, current }: ConnectorAppConfigFormProps) => {
   const setAppConfig = useSetConnectorAppConfig();
   const githubApp = connectorId === "github";
+  const editing = current?.configured ?? false;
 
   const form = useForm<ConnectorAppConfigFormData>({
-    defaultValues: { client_id: "", client_secret: "", base_url: "", app_slug: "" },
-    resolver: zodResolver(connectorAppConfigFormSchema(githubApp)),
+    defaultValues: {
+      client_id: current?.client_id ?? "",
+      client_secret: "",
+      base_url: current?.base_url ?? "",
+      app_slug: current?.app_slug ?? "",
+    },
+    resolver: zodResolver(connectorAppConfigFormSchema(githubApp, !editing)),
   });
 
   const onSubmit = async (data: ConnectorAppConfigFormData) => {
@@ -47,7 +59,7 @@ export const ConnectorAppConfigForm = ({ connectorId, onSaved }: ConnectorAppCon
         id={`${connectorId}-app-client-secret`}
         label="Client secret"
         type="password"
-        placeholder="••••••••••••••••"
+        placeholder={editing ? "Leave blank to keep the current secret" : "••••••••••••••••"}
       />
       {githubApp && (
         <FormInput
