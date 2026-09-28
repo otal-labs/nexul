@@ -1,7 +1,7 @@
 # 15 — Stored per-device sessions
 
 **Type:** implementation
-**Status:** ready-for-agent
+**Status:** done
 **Blocked by:** None — can start immediately
 **Decided in:** ticket 02
 
