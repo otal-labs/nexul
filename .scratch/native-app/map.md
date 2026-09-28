@@ -46,7 +46,12 @@ The web half was fully decided on 2026-09-28 and sliced into implementation
 tickets 15–21 (sessions, settings split, Devices tab, connect a phone,
 profile and linked sign-ins, mention chips per workspace, phone banner),
 all built and merged the same day (PRs #120, #122–#127).
-The phone half is sliced once its decision tickets resolve.
+The phone half was decided on 2026-09-28 and sliced into tickets 22–33: the
+public version endpoint, push on inbox notifications, the `native/` scaffold,
+QR sign-in with the version gate, Inbox, Chat, Board and ticket, Docs,
+Deploys and runners, Your settings, push on the phone, and the release and
+update workflows. Ticket 08 (standing up the update server) needs the owner's
+instance.
 
 ## Decisions so far
 
@@ -58,18 +63,17 @@ The phone half is sliced once its decision tickets resolve.
 - [05 — Your settings and Devices look](issues/05-your-settings-and-devices-look.md) — footer gear; Profile / Appearance / Security (Devices, Tokens) / T3 pairing; connect-a-phone and desktop cards over the device list; one hero motion for "phone connected" with a row glow; prototype on `proto/your-settings`.
 - [06 — Connect a phone: the QR exchange](issues/06-qr-connect-exchange.md) — 12-char single-use 2-minute code in a `nexul://connect` link, session-only issuing, rate-limited public exchange returning a phone session, live `session.created` feedback, `uqr` for the QR.
 
+- [09 — Version handshake between app and server](issues/09-version-handshake.md) — public `/api/about`; the app holds a minimum server version and refuses with Retry below it; the HTTP API is additive.
+- [10 — native/ layout, shared code, practices and CI](issues/10-native-repo-layout.md) — its own bun package, Expo Router, Uniwind + reusables, no shared source for the first cut, `practices/native.md`, a native CI job.
+- [11 — What each phone page does](issues/11-phone-page-scope.md) — tabs Inbox, Chat, Board, Deploys, More; read plus a few actions (send text, change status, redeploy); one instance per install.
+- [12 — Phone look and navigation](issues/12-phone-look-and-navigation.md) — the Mono Console on a native tab bar with pushed details and form sheets; dark by default, following the system.
+- [13 — Push notifications](issues/13-push-notifications.md) — what lands in the Inbox, token on the phone session, Expo push with a generic body.
+- [14 — Android release and OTA publishing](issues/14-android-release-and-ota.md) — `android-v` tags, `appVersion` runtime policy, hand-run APK and OTA workflows, the signing key in secrets with an offline copy.
+
 ## Not yet specified
 
-- More than one instance on one phone: a switcher, or one instance per
-  install. Hangs on the QR exchange and the session model.
-- Workspace switching on the phone, and what a phone does for a user in
-  several workspaces.
-- Offline behaviour: what a phone shows with no connection, and whether any
-  query cache persists across launches.
-- How mention chips, attachments and rich blocks render in native chat and
-  docs, once the page scope says which of them the phone shows.
-- End-to-end testing of the phone against a real instance (Maestro against
-  nexul-box or an emulator), once the repo layout and CI are settled.
+- End-to-end testing of the phone against a real instance (Maestro on an
+  emulator against a local server), once the app exists.
 
 ## Out of scope
 
