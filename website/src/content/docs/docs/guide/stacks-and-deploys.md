@@ -9,7 +9,7 @@ A **stack** is one repository's worth of deployable containers — a compose fil
 
 ## Three ways to create a stack
 
-**New project** — the project wizard at `/wizard/project/project` walks you through everything: pick or name a project, pick a repository, name the service, optionally fill in environment variables, and optionally give it a hostname.
+**New project** — the project wizard at `/wizard/project/project` walks you through everything: pick or name a project, pick a repository, name the service, optionally fill in environment variables, and optionally give it a hostname. The project exists as soon as it is named, so **Skip for now** on any later step keeps it without a service; a workspace can also have no project at all.
 
 **Add a service to an existing project** — the same wizard, entered from a project page with the project already chosen, starting at the repository step.
 

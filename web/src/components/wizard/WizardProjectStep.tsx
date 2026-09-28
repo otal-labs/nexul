@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 
 import { FormInput } from "@/components/FormInput";
 import { Button } from "@/components/ui/button";
+import { WizardSkipButton } from "@/components/wizard/WizardSkipButton";
 import { useCreateProject } from "@/hooks/ProjectHooks";
 import { SaveProjectFormSchema, type SaveProjectFormData } from "@/models/Project";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
@@ -39,9 +40,12 @@ export const WizardProjectStep = ({ onDone }: WizardProjectStepProps) => {
         autoFocus
       />
       <FormInput control={form.control} name="prefix" label="Prefix" placeholder="e.g. BE" maxLength={5} />
-      <Button type="submit" className="w-full sm:w-auto" disabled={form.formState.isSubmitting}>
-        {form.formState.isSubmitting ? "Creating…" : "Continue"}
-      </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button type="submit" disabled={form.formState.isSubmitting}>
+          {form.formState.isSubmitting ? "Creating…" : "Continue"}
+        </Button>
+        <WizardSkipButton />
+      </div>
     </form>
   );
 };

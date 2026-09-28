@@ -3,7 +3,6 @@ import { Link } from "react-router";
 import { Container } from "@/components/Container";
 import { Logo } from "@/components/Logo";
 import { PlayTrailPreview } from "@/components/play/PlayTrailPreview";
-import { FirstProjectRedirect } from "@/components/project/FirstProjectRedirect";
 import { Button } from "@/components/ui/button";
 import { useSessionStore } from "@/stores/sessionStore";
 
@@ -12,7 +11,6 @@ export const HomePage = () => {
 
   return (
     <div className="blueprint-bg min-h-screen">
-      {isLoggedIn && <FirstProjectRedirect />}
       <Container className="flex min-h-[calc(100vh-3.5rem)] flex-col items-center justify-center py-16 text-center">
         <Logo className="size-12 rounded-xl" />
         <p className="mt-6 font-mono text-[11px] font-medium tracking-[0.24em] text-primary/90 uppercase">

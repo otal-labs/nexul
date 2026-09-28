@@ -9,6 +9,7 @@ import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TestsLocationChoice } from "@/components/wizard/TestsLocationChoice";
+import { WizardSkipButton } from "@/components/wizard/WizardSkipButton";
 import { useFetchProjectRepos, useSaveTestsAnswer } from "@/hooks/ProjectHooks";
 import { useFetchRepositories, useScanRepository } from "@/hooks/RepositoryHooks";
 import { manualCandidate, parseInstallUrl, type Repo } from "@/models/Repository";
@@ -186,6 +187,7 @@ export const WizardRepositoryStep = ({ onDone }: WizardRepositoryStepProps) => {
           }
         />
       )}
+      {!attachStackId && <WizardSkipButton />}
     </div>
   );
 };

@@ -10,7 +10,9 @@ Decision: a project only ever comes from the project wizard, whose backend call 
 project with its status columns, ticket types, and starter memory; `project_create` over MCP runs the same
 use-case. Nothing seeds a project and creating a workspace creates only the workspace. The owner wizard names the
 workspace and then opens the project wizard for the first project; a workspace with no project shows a New
-project action on the sidebar, the board, and the docs list instead of failing.
+project action on the sidebar, the board, and the docs list instead of failing, and nothing sends anyone into the
+wizard on their own. The wizard creates the project the moment it is named, so every rung after that can be
+skipped and the project stays; the naming rung can be skipped too, leaving the workspace with none.
 
 The stacks the instance deploys for itself, every gateway's backing stack (cloudflared, Traefik), have no project:
 `stacks.project_id` is nullable and stays a foreign key when set. A stack that builds from a repository still

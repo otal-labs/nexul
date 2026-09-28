@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router";
+import userEvent from "@testing-library/user-event";
+import { RouterProvider, createMemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ProjectWizardPage } from "@/pages/ProjectWizardPage";
@@ -10,10 +11,10 @@ import { useProjectWizardStore } from "@/stores/projectWizardStore";
 // WizardServiceStep.test.tsx, WizardEnvStep.test.tsx, WizardReachStep.test.tsx); this file only cares about the
 // stepper mechanics ProjectWizardPage/ProjectWizardStepper own themselves: which rung the URL opens, an
 // unknown step redirecting back to the start, and door 2's preselected-project rung.
-const mocks = vi.hoisted(() => ({ get: vi.fn() }));
+const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }));
 
 vi.mock("@/api/client", () => ({
-  api: { get: mocks.get },
+  api: { get: mocks.get, post: mocks.post },
   errorMessage: vi.fn(() => ""),
 }));
 
@@ -35,11 +36,16 @@ const renderPage = (path: string) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[path]}>
-        <Routes>
-          <Route path="/wizard/project/:step" element={<ProjectWizardPage />} />
-        </Routes>
-      </MemoryRouter>
+      <RouterProvider
+        router={createMemoryRouter(
+          [
+            { path: "/wizard/project/:step", element: <ProjectWizardPage /> },
+            { path: "/board", element: <p>board</p> },
+            { path: "/board/:token", element: <p>project board</p> },
+          ],
+          { initialEntries: [path] },
+        )}
+      />
     </QueryClientProvider>,
   );
 };
@@ -57,21 +63,49 @@ beforeEach(() => {
 });
 
 describe("ProjectWizardPage", () => {
+  it("skips the project rung without creating anything, leaving the workspace as it is", async () => {
+    const user = userEvent.setup();
+    renderPage("/wizard/project/project");
+
+    await user.click(await within(rung(/: info$/i)).findByRole("button", { name: "Skip for now" }));
+
+    expect(await screen.findByText("board")).toBeInTheDocument();
+  });
+
+  it("keeps the project it just created when the rest is skipped, and lands on its board", async () => {
+    mocks.post.mockResolvedValueOnce({ data: project });
+    const user = userEvent.setup();
+    renderPage("/wizard/project/project");
+
+    await user.type(await screen.findByLabelText("Project name"), "Backend");
+    await user.type(screen.getByLabelText("Prefix"), "BE");
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+    await screen.findByRole("heading", { name: /: repository$/i });
+    expect(within(rung(/: info$/i)).queryByRole("button", { name: /change/i })).not.toBeInTheDocument();
+    await user.click(await within(rung(/: repository$/i)).findByRole("button", { name: "Skip for now" }));
+
+    expect(await screen.findByText("project board")).toBeInTheDocument();
+    expect(mocks.post).toHaveBeenCalledTimes(1);
+    expect(useProjectWizardStore.getState().projectId).toBeNull();
+  });
+
   it("redirects an unknown step back to the project step", async () => {
     renderPage("/wizard/project/nonsense");
-    expect(await screen.findByRole("heading", { name: /^project$/i })).toBeInTheDocument();
-    expect(rung(/^project$/i)).toHaveAttribute("data-state", "active");
+    expect(await screen.findByRole("heading", { name: /: info$/i })).toBeInTheDocument();
+    expect(rung(/: info$/i)).toHaveAttribute("data-state", "active");
   });
 
   it("opens the project rung by default with everything after it upcoming", async () => {
     renderPage("/wizard/project/project");
-    await screen.findByRole("heading", { name: /^project$/i });
-    expect(rung(/^project$/i)).toHaveAttribute("data-state", "active");
-    expect(rung(/^repository$/i)).toHaveAttribute("data-state", "upcoming");
-    expect(rung(/^service$/i)).toHaveAttribute("data-state", "upcoming");
-    expect(rung(/^reach$/i)).toHaveAttribute("data-state", "upcoming");
-    expect(rung(/^deploy branches$/i)).toHaveAttribute("data-state", "upcoming");
-    expect(rung(/^done$/i)).toHaveAttribute("data-state", "upcoming");
+    await screen.findByRole("heading", { name: /: info$/i });
+    expect(rung(/: info$/i)).toHaveAttribute("data-state", "active");
+    expect(rung(/: repository$/i)).toHaveAttribute("data-state", "upcoming");
+    expect(rung(/: service$/i)).toHaveAttribute("data-state", "upcoming");
+    expect(rung(/: reach$/i)).toHaveAttribute("data-state", "upcoming");
+    expect(rung(/: deploy branches$/i)).toHaveAttribute("data-state", "upcoming");
+    expect(rung(/: done$/i)).toHaveAttribute("data-state", "upcoming");
+    expect(screen.getByRole("heading", { name: "Step 1: Info" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Step 6: Done" })).toBeInTheDocument();
   });
 
   it("frames the project rung as the first project when the workspace has none", async () => {
@@ -85,28 +119,28 @@ describe("ProjectWizardPage", () => {
       return { data: [] };
     });
     renderPage("/wizard/project/project");
-    await screen.findByRole("heading", { name: /^project$/i });
+    await screen.findByRole("heading", { name: /: info$/i });
     expect(await screen.findByRole("heading", { name: /^new project$/i })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /first project/i })).not.toBeInTheDocument();
   });
 
   it("falls back to the furthest rung the store can render when a later step is opened cold", async () => {
     renderPage("/wizard/project/service");
-    expect(await screen.findByRole("heading", { name: /^project$/i })).toBeInTheDocument();
-    expect(rung(/^project$/i)).toHaveAttribute("data-state", "active");
-    expect(rung(/^service$/i)).toHaveAttribute("data-state", "upcoming");
+    expect(await screen.findByRole("heading", { name: /: info$/i })).toBeInTheDocument();
+    expect(rung(/: info$/i)).toHaveAttribute("data-state", "active");
+    expect(rung(/: service$/i)).toHaveAttribute("data-state", "upcoming");
   });
 
   it("door 2: preselects the project from ?project= and opens the repository rung with the project already done", async () => {
     renderPage("/wizard/project/repository?project=p-1");
-    expect(await screen.findByRole("heading", { name: /^repository$/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /: repository$/i })).toBeInTheDocument();
 
-    const projectRung = rung(/^project$/i);
+    const projectRung = rung(/: info$/i);
     expect(projectRung).toHaveAttribute("data-state", "done");
     expect(await within(projectRung).findByText("Backend")).toBeInTheDocument();
-    // Locked: door 2 seeded it, so there's no Change affordance to re-open it.
+    // Locked: the project already exists, so there's no Change affordance to re-open it.
     expect(within(projectRung).queryByRole("button", { name: /change/i })).not.toBeInTheDocument();
-    expect(rung(/^repository$/i)).toHaveAttribute("data-state", "active");
+    expect(rung(/: repository$/i)).toHaveAttribute("data-state", "active");
   });
 
   it("door 3: preselects the project from ?stack= and opens the repository rung with the project already done", async () => {
@@ -117,14 +151,14 @@ describe("ProjectWizardPage", () => {
       return { data: [] };
     });
     renderPage("/wizard/project/repository?stack=stack-1");
-    expect(await screen.findByRole("heading", { name: /^repository$/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /: repository$/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /^attach a repository$/i })).toBeInTheDocument();
 
-    const projectRung = rung(/^project$/i);
+    const projectRung = rung(/: info$/i);
     expect(projectRung).toHaveAttribute("data-state", "done");
     expect(await within(projectRung).findByText("Backend")).toBeInTheDocument();
     // Locked: door 3 seeded it too, so there's no Change affordance to re-open it.
     expect(within(projectRung).queryByRole("button", { name: /change/i })).not.toBeInTheDocument();
-    expect(rung(/^repository$/i)).toHaveAttribute("data-state", "active");
+    expect(rung(/: repository$/i)).toHaveAttribute("data-state", "active");
   });
 });
