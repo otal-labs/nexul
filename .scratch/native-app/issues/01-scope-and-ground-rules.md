@@ -22,7 +22,7 @@ Settled with the owner while charting, 2026-09-28.
   Your settings. Everything else stays web-only.
 - **Settings split**, by where the data lives today:
   - *Your settings* (gear in the sidebar footer, replacing the light/dark
-    toggle, Discord-style): Profile, Appearance, Devices, Tokens (personal
+    toggle): Profile, Appearance, Devices, Tokens (personal
     access tokens only), T3 pairing (computers and defaults).
   - *Configuration* (Workspace section of the sidebar, next to Runners,
     Topology, Automations), two labelled nav groups:

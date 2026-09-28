@@ -40,6 +40,13 @@ web first:
   - No "v1" or version-tier framing; say "for now" or "first cut".
 - Research so far: [React Native best practices](research/react-native-best-practices.md), [self-hosted update server](research/self-hosted-update-server.md).
 
+## Build tickets
+
+The web half was fully decided on 2026-09-28 and sliced into implementation
+tickets 15–21 (sessions, settings split, Devices tab, connect a phone,
+profile and linked sign-ins, mention chips per workspace, phone banner).
+The phone half is sliced once its decision tickets resolve.
+
 ## Decisions so far
 
 - [01 — Scope and ground rules](issues/01-scope-and-ground-rules.md) — the page picks, the three-scope settings split, stored per-device sessions, QR-only phone sign-in, 768px web, Android `.apk` via GitHub Actions, self-hosted OTA, Uniwind + react-native-reusables.
@@ -47,6 +54,8 @@ web first:
 - [02 — Stored per-device sessions](issues/02-stored-device-sessions.md) — a `sessions` table beside personal access tokens (never merged), sliding 30/90-day expiry, hourly last-active writes, instant sign-out, live events, no MCP tool; a new ADR supersedes 0041.
 - [03 — Settings split: routes, placement and old links](issues/03-settings-split-routes.md) — `/settings` is Your settings, `/configuration` the rest, every old link redirects; a normal page; Profile edits name and avatar and links Google/Discord/GitHub sign-ins; mention chips become per workspace.
 - [04 — Web on phones after the 768px rule](issues/04-web-on-phones.md) — ADR 0080: `web/` is 768px and up with a dismissible "get the Android app" banner below it, no clean-up of old classes; `website/` stays mobile first.
+- [05 — Your settings and Devices look](issues/05-your-settings-and-devices-look.md) — footer gear; Profile / Appearance / Security (Devices, Tokens) / T3 pairing; connect-a-phone and desktop cards over the device list; one hero motion for "phone connected" with a row glow; prototype on `proto/your-settings`.
+- [06 — Connect a phone: the QR exchange](issues/06-qr-connect-exchange.md) — 12-char single-use 2-minute code in a `nexul://connect` link, session-only issuing, rate-limited public exchange returning a phone session, live `session.created` feedback, `uqr` for the QR.
 
 ## Not yet specified
 
