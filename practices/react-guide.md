@@ -1254,7 +1254,7 @@ never buttons or inputs.
 Use container queries (`@container`, `@min-*`/`@max-*`) for component-level
 responsiveness, not viewport breakpoints, whenever a component's layout
 should react to the space it is actually given (a card in a narrow sidebar
-versus the same card in a wide panel). The mobile-first law is that a
+versus the same card in a wide panel). The layout law is that a
 component adapts to its container, not to the viewport it happens to be
 mounted in today.
 

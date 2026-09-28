@@ -79,8 +79,8 @@ The checklist for calling a feature done on every surface lives in
   the change from the code's point of view, because that sentence becomes the
   commit on `master` and the line in the release notes.
 - The body states the problem in a sentence or two, then how the change fixes
-  it. A UI change carries before and after screenshots at 320, 375, 414, and
-  768px; a change that depends on motion carries a short video.
+  it. A UI change carries before and after screenshots at 768, 1024, and
+  1440px (320, 375, 414, and 768px for `website/`); a change that depends on motion carries a short video.
 - Nothing shipped names the tool that produced it. Commit messages, pull
   request text, comments, and docs describe the change, not its author.
 
