@@ -1,3 +1,4 @@
+import { PageTabs, PageTabsContent } from "@/components/PageTabs";
 import { InstanceUrlSection } from "@/components/settings/InstanceUrlSection";
 import { InstanceVersionSection } from "@/components/settings/InstanceVersionSection";
 import { OAuthProviderSection } from "@/components/settings/OAuthProviderSection";
@@ -9,10 +10,20 @@ interface InstanceSettingsPanelProps {
 }
 
 export const InstanceSettingsPanel = ({ settings, isInstanceAdmin }: InstanceSettingsPanelProps) => (
-  <>
-    {isInstanceAdmin && <InstanceVersionSection />}
-    <InstanceUrlSection settings={settings} />
-    {isInstanceAdmin && <OAuthProviderSection provider="google" settings={settings} />}
-    {isInstanceAdmin && <OAuthProviderSection provider="discord" settings={settings} />}
-  </>
+  <PageTabs
+    label="Instance settings"
+    tabs={[
+      { value: "general", label: "General" },
+      { value: "sign-in", label: "Sign-in providers", hidden: !isInstanceAdmin },
+    ]}
+  >
+    <PageTabsContent value="general">
+      {isInstanceAdmin && <InstanceVersionSection />}
+      <InstanceUrlSection settings={settings} />
+    </PageTabsContent>
+    <PageTabsContent value="sign-in">
+      <OAuthProviderSection provider="google" settings={settings} />
+      <OAuthProviderSection provider="discord" settings={settings} />
+    </PageTabsContent>
+  </PageTabs>
 );

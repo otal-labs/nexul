@@ -1,0 +1,80 @@
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter, useLocation } from "react-router";
+import { describe, expect, it } from "vitest";
+
+import { PageTabs, PageTabsContent, type PageTab } from "@/components/PageTabs";
+
+const LocationProbe = () => {
+  const location = useLocation();
+  return <output aria-label="location">{location.search}</output>;
+};
+
+const renderTabs = (route: string, tabs: PageTab[]) =>
+  render(
+    <MemoryRouter initialEntries={[route]}>
+      <PageTabs label="Example sections" tabs={tabs}>
+        <PageTabsContent value="first">First body</PageTabsContent>
+        <PageTabsContent value="second">Second body</PageTabsContent>
+        <PageTabsContent value="secret">Secret body</PageTabsContent>
+      </PageTabs>
+      <LocationProbe />
+    </MemoryRouter>,
+  );
+
+const tabs: PageTab[] = [
+  { value: "first", label: "First" },
+  { value: "second", label: "Second" },
+];
+
+describe("PageTabs", () => {
+  it("falls back to the first tab when ?tab= names an unknown tab", () => {
+    renderTabs("/page?tab=nope", tabs);
+
+    expect(screen.getByRole("tab", { name: "First" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText("First body")).toBeInTheDocument();
+    expect(screen.queryByText("Second body")).not.toBeInTheDocument();
+  });
+
+  it("never selects a hidden tab, even when ?tab= asks for it", () => {
+    renderTabs("/page?tab=secret", [...tabs, { value: "secret", label: "Secret", hidden: true }]);
+
+    expect(screen.queryByRole("tab", { name: "Secret" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Secret body")).not.toBeInTheDocument();
+    expect(screen.getByText("First body")).toBeInTheDocument();
+  });
+
+  it("drops the tab list when only one tab is visible", () => {
+    renderTabs("/page", [tabs[0]!, { value: "second", label: "Second", hidden: true }]);
+
+    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+    expect(screen.getByText("First body")).toBeInTheDocument();
+  });
+
+  it("opens on the first tab when no ?tab= is set", () => {
+    renderTabs("/page", tabs);
+
+    expect(screen.getByRole("tablist", { name: "Example sections" })).toBeInTheDocument();
+    expect(screen.getByText("First body")).toBeInTheDocument();
+  });
+
+  it("opens on the tab named by ?tab=", () => {
+    renderTabs("/page?tab=second", tabs);
+
+    expect(screen.getByRole("tab", { name: "Second" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText("Second body")).toBeInTheDocument();
+  });
+
+  it("writes the selected tab to ?tab= and keeps the other params", async () => {
+    const user = userEvent.setup();
+    renderTabs("/page?section=tokens&setup=c1", tabs);
+
+    await user.click(screen.getByRole("tab", { name: "Second" }));
+
+    expect(screen.getByText("Second body")).toBeInTheDocument();
+    const search = new URLSearchParams(screen.getByLabelText("location").textContent ?? "");
+    expect(search.get("tab")).toBe("second");
+    expect(search.get("section")).toBe("tokens");
+    expect(search.get("setup")).toBe("c1");
+  });
+});

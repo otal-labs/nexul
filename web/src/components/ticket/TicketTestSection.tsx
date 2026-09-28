@@ -1,6 +1,7 @@
 import { Check, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { EmptyRow } from "@/components/EmptyRow";
 import { AcceptanceCriteriaBlock } from "@/components/ticket/AcceptanceCriteriaBlock";
 import { TestTargetRow } from "@/components/ticket/TestTargetRow";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
@@ -22,25 +23,30 @@ export const TicketTestSection = ({ ticket }: TicketTestSectionProps) => {
   const pass = useTestPass();
   const openFail = useTestFailDialog();
   const testing = statuses?.some((s) => s.id === ticket.status && s.kind === StatusKind.Testing) ?? false;
-  if (!testing) return null;
+  if (!statuses) return null;
 
   return (
     <section aria-labelledby="test-this" className="space-y-4 border-t border-border pt-6">
       <h2 id="test-this" className={microheaderClass}>
         Test this
       </h2>
-      <TestTargetRow ticket={ticket} />
-      <AcceptanceCriteriaBlock ticket={ticket} />
-      <div className="flex gap-2 px-2">
-        <Button className="flex-1 sm:flex-none" disabled={pass.isPending} onClick={() => pass.mutate(ticket.id)}>
-          <Check className="size-4" aria-hidden />
-          Pass
-        </Button>
-        <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => void openFail(ticket.id)}>
-          <X className="size-4" aria-hidden />
-          Fail
-        </Button>
-      </div>
+      {!testing && <EmptyRow>Pass and fail open once the ticket reaches a Testing column.</EmptyRow>}
+      {testing && (
+        <div className="space-y-4">
+          <TestTargetRow ticket={ticket} />
+          <AcceptanceCriteriaBlock ticket={ticket} />
+          <div className="flex gap-2 px-2">
+            <Button className="flex-1 sm:flex-none" disabled={pass.isPending} onClick={() => pass.mutate(ticket.id)}>
+              <Check className="size-4" aria-hidden />
+              Pass
+            </Button>
+            <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => void openFail(ticket.id)}>
+              <X className="size-4" aria-hidden />
+              Fail
+            </Button>
+          </div>
+        </div>
+      )}
     </section>
   );
 };

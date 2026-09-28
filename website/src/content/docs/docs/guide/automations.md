@@ -24,7 +24,7 @@ An automation can also be deployed like any other stack, onto your own server th
 
 ### Adding an automations host
 
-Add one from the automations hosts list in the web UI, or with the `host_create` MCP tool and `kind: "automations"`. Give it a name (lower case letters, digits and dashes); you get one install line for Linux or macOS and one for Windows, carrying a one-time enrollment code that works once and expires after an hour:
+Add one from the **Hosts** tab of the Automations page, or with the `host_create` MCP tool and `kind: "automations"`. Give it a name (lower case letters, digits and dashes); you get one install line for Linux or macOS and one for Windows, carrying a one-time enrollment code that works once and expires after an hour:
 
 ```sh
 curl -fsSL https://nexul.io/automations.sh | NEXUL_VERSION=v0.2.1 sh -s -- --server <instance-url> --name worker-1 --code nxe_…
@@ -44,7 +44,7 @@ Run it on the machine. It installs the host as the `nexul-automations-<name>` se
 
 Each automation gets a scoped token minted when you create it; you pick its scopes from the same [permission vocabulary](/docs/guide/api-and-tokens/) integrations use. The token is what gates what the automation's code can touch through the API — including changing Nexul itself. Revoking it kills access immediately.
 
-Secrets are a shared workspace pool, GitHub-Actions-style: set a name and value once in settings, and every automation can read it as `ctx.secrets.NAME`. Values are write-only after saving — names stay visible, values never do.
+Secrets are a shared workspace pool, GitHub-Actions-style: set a name and value once on the **Secrets** tab of the Automations page, and every automation can read it as `ctx.secrets.NAME`. Values are write-only after saving — names stay visible, values never do.
 
 ## The SDK
 

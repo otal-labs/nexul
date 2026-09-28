@@ -8,7 +8,7 @@ interface AutomationPendingVersionBannerProps {
 }
 
 // A push always lands pending, never activating itself — this surfaces
-// that there's a diff waiting for a decision without leaving the Overview tab.
+// that there's a diff waiting for a decision without leaving the Configuration tab.
 export const AutomationPendingVersionBanner = ({ automationId }: AutomationPendingVersionBannerProps) => {
   const { data } = useFetchAutomationVersionDiff(automationId);
   if (!data?.pending) return null;
