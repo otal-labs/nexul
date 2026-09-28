@@ -44,4 +44,4 @@ changing either user. The user's login, name and avatar follow the identity
 they were created with, so a linked account never renames them, and the
 identity row itself syncs on every sign-in. Agents get no tool for this:
 linking is an interactive browser flow, and unlinking a person's sign-in is
-a session-class act (ADR 0081). Decided 2026-09-28.
+a session-class act (ADR 0083). Decided 2026-09-28.

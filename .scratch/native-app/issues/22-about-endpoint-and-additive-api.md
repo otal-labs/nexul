@@ -1,7 +1,7 @@
 # 22 — Public server version and the additive API rule
 
 **Type:** implementation
-**Status:** ready-for-agent
+**Status:** done
 **Blocked by:** None — can start immediately
 **Decided in:** ticket 09
 

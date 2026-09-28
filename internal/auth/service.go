@@ -140,7 +140,7 @@ type Config struct {
 	Allowlist     AllowlistStore
 	Settings      SettingsStore
 	PATs          PATStore
-	// Sessions stores one row per signed-in device (ADR 0081); every sign-in path mints through it.
+	// Sessions stores one row per signed-in device (ADR 0083); every sign-in path mints through it.
 	Sessions SessionStore
 	// DefaultWorkspace binds the wizard's completing user to the default workspace; wired later via SetDefaultWorkspace.
 	DefaultWorkspace DefaultWorkspaceBinder
