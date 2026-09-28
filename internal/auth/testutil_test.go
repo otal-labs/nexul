@@ -481,10 +481,12 @@ type fakeSessionStore struct {
 	outbox   []eventbus.OutboxEvent
 	touches  int
 	touchErr error
+	// pushTokens is keyed by session id; the real store keeps the token on the row.
+	pushTokens map[string]string
 }
 
 func newFakeSessionStore() *fakeSessionStore {
-	return &fakeSessionStore{byID: map[string]*Session{}}
+	return &fakeSessionStore{byID: map[string]*Session{}, pushTokens: map[string]string{}}
 }
 
 func (f *fakeSessionStore) CreateSession(_ context.Context, s *Session, evts ...eventbus.OutboxEvent) error {
@@ -542,6 +544,17 @@ func (f *fakeSessionStore) DeleteOtherSessions(_ context.Context, userID, keepID
 		}
 	}
 	f.outbox = append(f.outbox, evts...)
+	return nil
+}
+
+func (f *fakeSessionStore) SetSessionPushToken(_ context.Context, id, userID, token string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	s, ok := f.byID[id]
+	if !ok || s.UserID != userID {
+		return apperrs.ErrNotFound
+	}
+	f.pushTokens[id] = token
 	return nil
 }
 

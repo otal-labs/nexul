@@ -975,6 +975,13 @@ func TestHandler_Sessions(t *testing.T) {
 	patRaw, _, err := s.MintPAT(context.Background(), "u1", "ci")
 	require.NoError(t, err)
 
+	t.Run("a phone registers its push token on its own session", func(t *testing.T) {
+		assert.Equal(t, http.StatusForbidden, doRequest(h, http.MethodPut, "/api/auth/sessions/current/push-token", "Bearer "+patRaw, `{"push_token":"tok"}`).Code)
+		assert.Equal(t, http.StatusBadRequest, doRequest(h, http.MethodPut, "/api/auth/sessions/current/push-token", "Bearer "+phone, `{`).Code)
+		assert.Equal(t, http.StatusNoContent, doRequest(h, http.MethodPut, "/api/auth/sessions/current/push-token", "Bearer "+phone, `{"push_token":"ExponentPushToken[abc]"}`).Code)
+		assert.Equal(t, http.StatusNoContent, doRequest(h, http.MethodPut, "/api/auth/sessions/current/push-token", "Bearer "+phone, `{"push_token":""}`).Code)
+	})
+
 	t.Run("a personal access token has no device", func(t *testing.T) {
 		assert.Equal(t, http.StatusForbidden, sessionReq(http.MethodGet, "/api/auth/sessions", patRaw).Code)
 		assert.Equal(t, http.StatusForbidden, sessionReq(http.MethodDelete, "/api/auth/sessions/current", patRaw).Code)

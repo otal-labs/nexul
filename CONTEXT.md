@@ -464,6 +464,15 @@ replacing the last. Issued only from a signed-in device, never by a personal
 access token, so no agent can sign a phone in. Only its hash is stored.
 _Avoid_: Pairing code (that pairs a computer), QR token, login code
 
+**Push token**:
+The Expo token a phone registers on its own session so the instance can
+reach it. One push per inbox notification per phone, titled "Nexul" with an
+id-only payload the app fetches the content for; posted from a consumer of
+the notification event, never from the request that made it. Signing the
+session out drops the token with the row, and a device Expo reports as no
+longer registered loses it.
+_Avoid_: Device token, FCM token (that is Expo's concern), notification key
+
 **Scoped token**:
 The credential an integration (`int_`) or an automation (`dat_`) acts with,
 minted with a chosen subset of permissions and revocable on its own. A scoped

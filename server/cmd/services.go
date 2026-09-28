@@ -33,6 +33,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/storage"
 	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/presence"
+	"github.com/otal-labs/nexul/internal/push"
 	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/t3client"
 	"github.com/otal-labs/nexul/internal/tenancy"
@@ -97,7 +98,8 @@ type coreServices struct {
 
 	integrationsSvc *integrations.Service
 
-	notifSvc *workspace.NotificationService
+	notifSvc   *workspace.NotificationService
+	pushSender *push.Sender
 }
 
 // wireCoreServices constructs every domain service; order matters since some close cycles via Set*/gateway calls.
@@ -262,6 +264,12 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	automationsSvc.SetHosts(automationHostsSvc)
 
 	notifSvc := workspace.NewNotificationService(store.Notifications, workspaceUserStore{users: store.Users}, workspaceMembersStore{members: store.WorkspaceMembers}, notificationPermissionGate{svc: accessSvc})
+	pushSender := push.New(push.Config{
+		Tokens:     store.Sessions,
+		Workspaces: pushWorkspaceNamer{workspaces: store.Workspaces},
+		Instance:   dnsSettingsAdapter{store.Settings},
+		Logger:     logger,
+	})
 
 	return &coreServices{
 		accessSvc:      accessSvc,
@@ -315,7 +323,8 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 
 		integrationsSvc: integrationsSvc,
 
-		notifSvc: notifSvc,
+		notifSvc:   notifSvc,
+		pushSender: pushSender,
 	}
 }
 

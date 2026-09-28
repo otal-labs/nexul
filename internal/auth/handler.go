@@ -231,6 +231,7 @@ func (h *Handler) ProtectedRoutes() http.Handler {
 	mux.HandleFunc("GET /api/auth/sessions", h.listSessions)
 	mux.HandleFunc("POST /api/auth/connect-codes", h.issueConnectCode)
 	mux.HandleFunc("DELETE /api/auth/sessions/current", h.signOutCurrentSession)
+	mux.HandleFunc("PUT /api/auth/sessions/current/push-token", h.setPushToken)
 	mux.HandleFunc("DELETE /api/auth/sessions/others", h.signOutOtherSessions)
 	mux.HandleFunc("DELETE /api/auth/sessions/{id}", h.signOutSession)
 	mux.HandleFunc("GET /api/auth/identities", h.listIdentities)
@@ -698,6 +699,29 @@ func (h *Handler) signOutCurrentSession(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if err := h.svc.SignOutSession(r.Context(), currentUserID(r), ses.ID); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+type pushTokenRequest struct {
+	PushToken string `json:"push_token"`
+}
+
+// setPushToken registers the calling phone's Expo token on its own session; an empty token clears it.
+func (h *Handler) setPushToken(w http.ResponseWriter, r *http.Request) {
+	ses, err := requireSession(r)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	var req pushTokenRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	if err := h.svc.SetPushToken(r.Context(), currentUserID(r), ses.ID, req.PushToken); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}

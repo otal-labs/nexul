@@ -58,3 +58,16 @@ func (a workspaceMembersStore) ListMemberUserIDs(ctx context.Context, workspaceI
 	}
 	return out, nil
 }
+
+// pushWorkspaceNamer adapts the tenancy store to push's WorkspaceNamer seam (ADR 0017): the body names the workspace.
+type pushWorkspaceNamer struct {
+	workspaces *storage.WorkspacesRepo
+}
+
+func (a pushWorkspaceNamer) WorkspaceName(ctx context.Context, workspaceID string) (string, error) {
+	w, err := a.workspaces.Get(ctx, workspaceID)
+	if err != nil {
+		return "", err
+	}
+	return w.Name, nil
+}

@@ -14,6 +14,9 @@ import (
 // TopicNotificationCreated is published by the workspace capability after it fans out new notifications (ws-26).
 const TopicNotificationCreated = "notification.created"
 
+// TopicNotificationPushRequested names the new rows and their recipients for the push sender; never bridged to the browser.
+const TopicNotificationPushRequested = "notification.push_requested"
+
 // Category topics (ws-15); web refetches the board's swimlanes and filter bar via WS push when categories change.
 const (
 	TopicCategoryCreated = "category.created"
@@ -41,7 +44,7 @@ const TopicTicketCategoryChanged = "ticket.category_changed"
 // Topics returns every topic the workspace domain publishes.
 func Topics() []string {
 	return []string{
-		TopicNotificationCreated,
+		TopicNotificationCreated, TopicNotificationPushRequested,
 		TopicCategoryCreated, TopicCategoryUpdated, TopicCategoryDeleted,
 		TopicTicketTypeCreated, TopicTicketTypeUpdated, TopicTicketTypeDeleted,
 		TopicStatusCreated, TopicStatusUpdated, TopicStatusDeleted,
@@ -72,6 +75,18 @@ type TicketCategoryChangedEvent struct {
 
 // NotificationCreatedEvent is empty because the topic broadcasts to every browser: a recipient or subject field would leak one user's inbox, so consumers refetch their own.
 type NotificationCreatedEvent struct{}
+
+// NotificationPushRequestedEvent is the payload for notification.push_requested: ids only, the phone fetches the content.
+type NotificationPushRequestedEvent struct {
+	Notifications []NotificationPushItem `json:"notifications"`
+}
+
+// NotificationPushItem is one new inbox row; WorkspaceID is empty when the subject is not workspace-scoped.
+type NotificationPushItem struct {
+	ID          string `json:"id"`
+	UserID      string `json:"user_id"`
+	WorkspaceID string `json:"workspace_id,omitempty"`
+}
 
 // ticketCreatedEvent is declared consumer-side so this package stays decoupled from tickets (ADR 0017).
 type ticketCreatedEvent struct {

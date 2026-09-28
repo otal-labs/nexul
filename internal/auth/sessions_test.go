@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -186,4 +187,19 @@ func TestSignOutSession_OneAndOthers(t *testing.T) {
 	require.NoError(t, s.SignOutOtherSessions(context.Background(), u, currentSes.ID), "nothing left to sign out is fine")
 
 	assert.Equal(t, []string{TopicSessionCreated, TopicSessionCreated, TopicSessionCreated, TopicSessionRevoked, TopicSessionRevoked}, sessions.topics())
+}
+
+func TestSetPushToken_StoresAndClears(t *testing.T) {
+	s, sessions, u := newSessionHarness(t)
+	phone, err := s.CreateSession(WithDevice(context.Background(), Device{Client: ClientPhone}), u)
+	require.NoError(t, err)
+	_, ses, err := s.AuthenticateSession(context.Background(), phone, "")
+	require.NoError(t, err)
+
+	require.NoError(t, s.SetPushToken(context.Background(), u, ses.ID, " ExponentPushToken[abc] "))
+	assert.Equal(t, "ExponentPushToken[abc]", sessions.pushTokens[ses.ID], "whitespace is trimmed")
+	require.NoError(t, s.SetPushToken(context.Background(), u, ses.ID, ""))
+	assert.Equal(t, "", sessions.pushTokens[ses.ID], "an empty token clears the registration")
+	require.ErrorIs(t, s.SetPushToken(context.Background(), "someone-else", ses.ID, "tok"), apperrs.ErrNotFound)
+	require.ErrorIs(t, s.SetPushToken(context.Background(), u, ses.ID, strings.Repeat("x", maxPushTokenLen+1)), apperrs.ErrInvalid)
 }

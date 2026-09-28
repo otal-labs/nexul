@@ -747,6 +747,7 @@ type Session struct {
 	CreatedAt    int64
 	LastActiveAt int64
 	ExpiresAt    int64
+	PushToken    sql.NullString
 }
 
 type SetupCode struct {

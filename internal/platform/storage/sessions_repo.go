@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -10,9 +11,13 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
+	"github.com/otal-labs/nexul/internal/push"
 )
 
-var _ auth.SessionStore = (*SessionsRepo)(nil)
+var (
+	_ auth.SessionStore = (*SessionsRepo)(nil)
+	_ push.TokenStore   = (*SessionsRepo)(nil)
+)
 
 // SessionsRepo persists only the SHA-256 hash of a session token, like PATsRepo, so a leaked dump cannot be replayed.
 type SessionsRepo struct {
@@ -97,6 +102,47 @@ func (r *SessionsRepo) DeleteExpiredSessions(ctx context.Context, userID string,
 		}
 		return nil
 	})
+}
+
+// SetSessionPushToken stores the token, or NULL for an empty one; user-scoped like every session write.
+func (r *SessionsRepo) SetSessionPushToken(ctx context.Context, id, userID, token string) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		n, err := r.q.WithTx(tx).SetSessionPushToken(ctx, sqlcgen.SetSessionPushTokenParams{
+			PushToken: sql.NullString{String: token, Valid: token != ""}, ID: id, UserID: userID,
+		})
+		if err != nil {
+			return fmt.Errorf("set push token on session %s: %w", id, err)
+		}
+		if n == 0 {
+			return fmt.Errorf("set push token on session %s: %w", id, apperrs.ErrNotFound)
+		}
+		return nil
+	})
+}
+
+// ClearPushToken is the push sender's DeviceNotRegistered path; a row already gone is not an error.
+func (r *SessionsRepo) ClearPushToken(ctx context.Context, sessionID, userID string) error {
+	err := r.SetSessionPushToken(ctx, sessionID, userID, "")
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return nil
+	}
+	return err
+}
+
+// ListPushTargets returns the live phone sessions holding a token for any of the users.
+func (r *SessionsRepo) ListPushTargets(ctx context.Context, userIDs []string) ([]push.Target, error) {
+	if len(userIDs) == 0 {
+		return nil, nil
+	}
+	rows, err := r.q.ListPushTargets(ctx, sqlcgen.ListPushTargetsParams{Now: time.Now().Unix(), UserIds: userIDs})
+	if err != nil {
+		return nil, fmt.Errorf("list push targets: %w", err)
+	}
+	out := make([]push.Target, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, push.Target{SessionID: row.ID, UserID: row.UserID, Token: row.PushToken.String})
+	}
+	return out, nil
 }
 
 func toSession(row sqlcgen.Session) *auth.Session {

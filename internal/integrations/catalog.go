@@ -245,6 +245,25 @@ var catalogSchemas = map[string]string{
 		"type": "object",
 		"properties": {}
 	}`,
+	"notification.push_requested": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["notifications"],
+		"properties": {
+			"notifications": {
+				"type": "array",
+				"items": {
+					"type": "object",
+					"required": ["id", "user_id"],
+					"properties": {
+						"id": {"type": "string"},
+						"user_id": {"type": "string"},
+						"workspace_id": {"type": "string"}
+					}
+				}
+			}
+		}
+	}`,
 	"runner.connected": `{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",
 		"type": "object",

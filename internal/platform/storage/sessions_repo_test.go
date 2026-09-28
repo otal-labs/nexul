@@ -10,6 +10,7 @@ import (
 	"github.com/otal-labs/nexul/internal/auth"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/push"
 )
 
 func newSessionRecord(id, userID, hash string, at time.Time) *auth.Session {
@@ -101,4 +102,51 @@ func TestSessionsRepo_DeleteOthersAndExpired(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, list, 1)
 	assert.Equal(t, "s1", list[0].ID, "only the row past its expiry is swept")
+}
+
+func TestSessionsRepo_PushTokens(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	_, _, err := s.Users.UpsertUser(ctx, newTestUser("u1", "42", "onik97"))
+	require.NoError(t, err)
+	_, _, err = s.Users.UpsertUser(ctx, newTestUser("u2", "43", "other"))
+	require.NoError(t, err)
+	at := time.Now().UTC()
+	phone := newSessionRecord("p1", "u1", "h-p1", at)
+	phone.Client = auth.ClientPhone
+	require.NoError(t, s.Sessions.CreateSession(ctx, phone))
+	require.NoError(t, s.Sessions.CreateSession(ctx, newSessionRecord("b1", "u1", "h-b1", at)))
+	expired := newSessionRecord("p2", "u1", "h-p2", at.Add(-48*time.Hour))
+	expired.Client = auth.ClientPhone
+	expired.ExpiresAt = at.Add(-time.Hour)
+	require.NoError(t, s.Sessions.CreateSession(ctx, expired))
+	other := newSessionRecord("p3", "u2", "h-p3", at)
+	other.Client = auth.ClientPhone
+	require.NoError(t, s.Sessions.CreateSession(ctx, other))
+
+	require.ErrorIs(t, s.Sessions.SetSessionPushToken(ctx, "p1", "u2", "tok"), apperrs.ErrNotFound, "another user's session never takes a token")
+	require.NoError(t, s.Sessions.SetSessionPushToken(ctx, "p1", "u1", "tok-phone"))
+	require.NoError(t, s.Sessions.SetSessionPushToken(ctx, "b1", "u1", "tok-browser"))
+	require.NoError(t, s.Sessions.SetSessionPushToken(ctx, "p2", "u1", "tok-expired"))
+	require.NoError(t, s.Sessions.SetSessionPushToken(ctx, "p3", "u2", "tok-other"))
+
+	targets, err := s.Sessions.ListPushTargets(ctx, []string{"u1"})
+	require.NoError(t, err)
+	assert.Equal(t, []push.Target{{SessionID: "p1", UserID: "u1", Token: "tok-phone"}}, targets, "browsers and expired phones never receive a push")
+
+	none, err := s.Sessions.ListPushTargets(ctx, nil)
+	require.NoError(t, err)
+	assert.Empty(t, none)
+
+	require.NoError(t, s.Sessions.ClearPushToken(ctx, "p1", "u1"))
+	require.NoError(t, s.Sessions.ClearPushToken(ctx, "missing", "u1"), "a row already signed out is not an error")
+	targets, err = s.Sessions.ListPushTargets(ctx, []string{"u1", "u2"})
+	require.NoError(t, err)
+	assert.Equal(t, []push.Target{{SessionID: "p3", UserID: "u2", Token: "tok-other"}}, targets)
+
+	require.NoError(t, s.Sessions.DeleteSession(ctx, "p3", "u2"))
+	targets, err = s.Sessions.ListPushTargets(ctx, []string{"u1", "u2"})
+	require.NoError(t, err)
+	assert.Empty(t, targets, "signing out removes the row and its token with it")
 }
