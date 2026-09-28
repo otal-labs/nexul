@@ -1,12 +1,22 @@
 import { PageTabs, PageTabsContent } from "@/components/PageTabs";
-import { ConnectionTokenSection } from "@/components/settings/ConnectionTokenSection";
 import { PersonalAccessTokensSection } from "@/components/settings/PersonalAccessTokensSection";
+import { ConnectDesktopCard } from "@/components/you/ConnectDesktopCard";
+import { DevicesFeed } from "@/components/you/DevicesFeed";
 
-// One tab for now, so PageTabs shows no tab row; Devices lands in front of it later.
 export const SecurityPanel = () => (
-  <PageTabs label="Security" tabs={[{ value: "tokens", label: "Tokens" }]}>
+  <PageTabs
+    label="Security"
+    tabs={[
+      { value: "devices", label: "Devices" },
+      { value: "tokens", label: "Tokens" },
+    ]}
+  >
+    <PageTabsContent value="devices">
+      {/* Full width until the Connect a phone card joins it in a two-column grid. */}
+      <ConnectDesktopCard />
+      <DevicesFeed />
+    </PageTabsContent>
     <PageTabsContent value="tokens">
-      <ConnectionTokenSection />
       <PersonalAccessTokensSection />
     </PageTabsContent>
   </PageTabs>

@@ -31,6 +31,7 @@ const patList = (tokens: unknown[]) => ({ tokens });
 const mockGet = (url: string) => {
   if (url === "/api/auth/me") return Promise.resolve({ data: me });
   if (url === "/api/auth/tokens") return Promise.resolve({ data: patList([]) });
+  if (url === "/api/auth/sessions") return Promise.resolve({ data: { sessions: [] } });
   return Promise.reject(new Error(`unexpected GET ${url}`));
 };
 
@@ -81,12 +82,20 @@ describe("YourSettingsPage", () => {
     expect(screen.getByLabelText("location")).toHaveTextContent(to);
   });
 
-  it("puts both token cards on the Security section with no tab row", async () => {
+  it("sends the old tokens section to the Tokens tab of Security", async () => {
     renderPage("/settings?section=tokens&tab=personal");
-    expect(await screen.findByRole("button", { name: /generate connection token/i })).toBeInTheDocument();
     expect(await screen.findByLabelText(/token name/i)).toBeInTheDocument();
-    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Tokens", selected: true })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Devices" })).toBeInTheDocument();
     expect(screen.getByLabelText("location")).toHaveTextContent("/settings?section=security&tab=tokens");
+  });
+
+  it("opens Security on the Devices tab with the desktop card and the device list", async () => {
+    renderPage("/settings?section=security");
+    expect(await screen.findByRole("tab", { name: "Devices", selected: true })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Copy connection token" })).toBeInTheDocument();
+    expect(await screen.findByText(/no other devices are signed in/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/token name/i)).not.toBeInTheDocument();
   });
 
   it("lands a computer setup link on the Computers tab with its setup param intact", async () => {
@@ -101,7 +110,7 @@ describe("YourSettingsPage", () => {
     expect(screen.getByText("Defaults card")).toBeInTheDocument();
   });
 
-  it("generates and reveals a connection token", async () => {
+  it("copies a connection token from the Devices tab", async () => {
     mocks.post.mockResolvedValue({
       data: {
         token: "header.payload.sig",
@@ -113,8 +122,10 @@ describe("YourSettingsPage", () => {
     const user = userEvent.setup();
     renderPage("/settings?section=security");
 
-    await user.click(await screen.findByRole("button", { name: /generate connection token/i }));
-    expect(await screen.findByText("header.payload.sig")).toBeInTheDocument();
+    await user.click(await screen.findByRole("button", { name: "Copy connection token" }));
+    expect(await screen.findByRole("button", { name: "Copied" })).toBeInTheDocument();
+    expect(mocks.post).toHaveBeenCalledWith("/api/auth/connection-token");
+    expect(await navigator.clipboard.readText()).toBe("header.payload.sig");
   });
 
   it("mints a personal access token and shows it once", async () => {
@@ -122,7 +133,7 @@ describe("YourSettingsPage", () => {
       data: { token: "dep_ABC123rawvalue", id: "pat-1", name: "ci agent", prefix: "rawvalue", created_at: "2026-08-12T00:00:00Z" },
     });
     const user = userEvent.setup();
-    renderPage("/settings?section=security");
+    renderPage("/settings?section=security&tab=tokens");
 
     await user.type(await screen.findByLabelText(/token name/i), "ci agent");
     await user.click(screen.getByRole("button", { name: /^create token$/i }));
@@ -146,7 +157,7 @@ describe("YourSettingsPage", () => {
     });
     mocks.del.mockResolvedValue({ data: patList([]) });
     const user = userEvent.setup();
-    renderPage("/settings?section=security");
+    renderPage("/settings?section=security&tab=tokens");
 
     expect(await screen.findByText("ci agent")).toBeInTheDocument();
     expect(screen.getByText("old token")).toBeInTheDocument();

@@ -43,7 +43,7 @@ A paired computer gets its own PAT, "Nexul MCP on <computer>", minted from the c
 
 ## Connection tokens
 
-A **connection token** is different: it carries no identity or credentials at all, just server information (the instance URL, derived MCP endpoint, and basic settings) as a signed JWT. It exists so a standalone client — the [desktop app](/docs/guide/desktop-app/) today — can be pointed at your instance without you typing a URL by hand. Generate one from **Your settings → Security → Tokens**; after importing it, the client still signs you in through the normal GitHub OAuth flow.
+A **connection token** is different: it carries no identity or credentials at all, just server information (the instance URL, derived MCP endpoint, and basic settings) as a signed JWT. It exists so a standalone client — the [desktop app](/docs/guide/desktop-app/) today — can be pointed at your instance without you typing a URL by hand. Copy one from **Your settings → Security → Devices**; after importing it, the client still signs you in through the normal GitHub OAuth flow.
 
 ## Outgoing webhooks
 

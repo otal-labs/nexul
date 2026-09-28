@@ -108,10 +108,13 @@ export const useUpdateProviderOAuth = (provider: OptionalProvider, label: string
   });
 };
 
-export const useGenerateConnectionToken = () =>
+// Mints and copies in one step; the caller shows the tick, so success needs no toast.
+export const useCopyConnectionToken = () =>
   useMutation({
-    mutationFn: async () => (await api.post<ConnectionToken>("/api/auth/connection-token")).data,
-    onSuccess: () => toast.success("Connection token generated — copy it now, it won't be shown again"),
+    mutationFn: async () => {
+      const { token } = (await api.post<ConnectionToken>("/api/auth/connection-token")).data;
+      await navigator.clipboard.writeText(token);
+    },
     onError: (error) => toast.error(errorMessage(error)),
   });
 
@@ -151,6 +154,24 @@ export const useListSessions = () =>
     queryKey: [getSessionsKey],
     queryFn: async () => (await api.get<{ sessions: Session[] }>("/api/auth/sessions")).data,
   });
+
+export const useSignOutSession = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => api.delete(`/api/auth/sessions/${id}`),
+    onSuccess: () => client.invalidateQueries({ queryKey: [getSessionsKey] }),
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
+export const useSignOutOtherSessions = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async () => api.delete("/api/auth/sessions/others"),
+    onSuccess: () => client.invalidateQueries({ queryKey: [getSessionsKey] }),
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
 
 // Deletes the session server-side first; local state clears either way, since a failed delete still means leaving.
 export const useLogout = () => {
