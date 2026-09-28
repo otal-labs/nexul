@@ -1,5 +1,6 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import { sidebar } from './src/lib/sidebar';
 
 export default defineConfig({
 	site: 'https://nexul.io',
@@ -17,16 +18,12 @@ export default defineConfig({
 				{ icon: 'github', label: 'GitHub', href: 'https://github.com/otal-labs/nexul' },
 			],
 			customCss: ['./src/styles/mono-console.css'],
-			sidebar: [
-				{
-					label: 'Using Nexul',
-					items: [{ autogenerate: { directory: 'docs/guide' } }],
-				},
-				{
-					label: 'Contributing',
-					items: [{ autogenerate: { directory: 'docs/contributing' } }],
-				},
-			],
+			sidebar,
+			editLink: { baseUrl: 'https://github.com/otal-labs/nexul/edit/master/website/' },
+			components: {
+				PageTitle: './src/components/docs/PageTitle.astro',
+				SocialIcons: './src/components/docs/SocialIcons.astro',
+			},
 		}),
 	],
 });
