@@ -297,11 +297,22 @@ func (s *Service) SetAppConfig(ctx context.Context, userID, connectorID, clientI
 	if _, ok := s.registry[connectorID]; !ok {
 		return AppConfigStatus{}, fmt.Errorf("%w: unknown connector %q", apperrs.ErrNotFound, connectorID)
 	}
-	if strings.TrimSpace(clientID) == "" || strings.TrimSpace(clientSecret) == "" {
-		return AppConfigStatus{}, fmt.Errorf("%w: client_id and client_secret are required", apperrs.ErrInvalid)
+	if strings.TrimSpace(clientID) == "" {
+		return AppConfigStatus{}, fmt.Errorf("%w: client_id is required", apperrs.ErrInvalid)
 	}
 	if s.appConfigStore == nil {
 		return AppConfigStatus{}, fmt.Errorf("%w: app config store is not configured", apperrs.ErrForbidden)
+	}
+	// Editing the slug or client ID keeps the stored secret, which is never sent back to be re-entered.
+	if strings.TrimSpace(clientSecret) == "" {
+		existing, err := s.appConfigStore.GetAppConfig(ctx, connectorID)
+		if err != nil {
+			return AppConfigStatus{}, fmt.Errorf("get app config %s: %w", connectorID, err)
+		}
+		if !existing.Configured() {
+			return AppConfigStatus{}, fmt.Errorf("%w: client_secret is required", apperrs.ErrInvalid)
+		}
+		clientSecret = existing.ClientSecret
 	}
 	cfg := AppConfig{ConnectorID: connectorID, ClientID: clientID, ClientSecret: clientSecret, BaseURL: baseURL, AppSlug: appSlug}
 	if v, ok := s.registry[connectorID].OAuth.(AppVerifier); ok {
@@ -311,6 +322,21 @@ func (s *Service) SetAppConfig(ctx context.Context, userID, connectorID, clientI
 	}
 	if err := s.appConfigStore.SetAppConfig(ctx, cfg); err != nil {
 		return AppConfigStatus{}, fmt.Errorf("save app config %s: %w", connectorID, err)
+	}
+	return cfg.Status(), nil
+}
+
+// AppConfigStatus returns connectorID's app registration without its secret.
+func (s *Service) AppConfigStatus(ctx context.Context, connectorID string) (AppConfigStatus, error) {
+	if _, ok := s.registry[connectorID]; !ok {
+		return AppConfigStatus{}, fmt.Errorf("%w: unknown connector %q", apperrs.ErrNotFound, connectorID)
+	}
+	if s.appConfigStore == nil {
+		return AppConfigStatus{}, nil
+	}
+	cfg, err := s.appConfigStore.GetAppConfig(ctx, connectorID)
+	if err != nil {
+		return AppConfigStatus{}, fmt.Errorf("get app config %s: %w", connectorID, err)
 	}
 	return cfg.Status(), nil
 }

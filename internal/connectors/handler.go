@@ -50,6 +50,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("POST /api/connectors/{id}/manual/verify", h.verifyManual)
 	mux.HandleFunc("POST /api/connectors/{id}/manual", h.saveManual)
 	mux.HandleFunc("POST /api/connectors/{id}/disconnect", h.disconnect)
+	mux.HandleFunc("GET /api/connectors/{id}/app-config", h.appConfig)
 	mux.HandleFunc("PUT /api/connectors/{id}/app-config", h.setAppConfig)
 	return mux
 }
@@ -225,6 +226,16 @@ func (h *Handler) disconnect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]string{"status": "disconnected"})
+}
+
+// appConfig reads connectorID's app registration without its secret.
+func (h *Handler) appConfig(w http.ResponseWriter, r *http.Request) {
+	st, err := h.svc.AppConfigStatus(r.Context(), r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, st)
 }
 
 // setAppConfig stores connectorID's app-level OAuth registration (CN3a); the use-case enforces the owner-only check.

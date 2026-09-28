@@ -63,10 +63,11 @@ export interface AppConfigStatus {
 }
 
 // Only GitHub Apps carry a slug and a self-hosted base URL; every other OAuth app is just client ID + secret.
-export const connectorAppConfigFormSchema = (githubApp: boolean) =>
+// Editing a registered app may leave the secret blank, which keeps the stored one.
+export const connectorAppConfigFormSchema = (githubApp: boolean, secretRequired = true) =>
   z.object({
     client_id: z.string().trim().min(1, "Client ID is required"),
-    client_secret: z.string().trim().min(1, "Client secret is required"),
+    client_secret: secretRequired ? z.string().trim().min(1, "Client secret is required") : z.string().trim(),
     base_url: z.string().trim(),
     app_slug: githubApp
       ? z
@@ -76,5 +77,9 @@ export const connectorAppConfigFormSchema = (githubApp: boolean) =>
           .refine((v) => !/^\d+$/.test(v), "That's the numeric App ID — enter the slug from your app's URL (github.com/apps/<slug>)")
       : z.string().trim(),
   });
+
+// Where a GitHub App's public page lives: github.com, or the Enterprise server's base URL.
+export const githubAppURL = (app: AppConfigStatus): string =>
+  `${(app.base_url || "https://github.com").replace(/\/+$/, "")}/apps/${app.app_slug ?? ""}`;
 
 export type ConnectorAppConfigFormData = z.infer<ReturnType<typeof connectorAppConfigFormSchema>>;

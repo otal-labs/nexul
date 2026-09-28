@@ -305,6 +305,21 @@ func newTestHandlerWithAppConfig(t *testing.T) (*connectors.Handler, *memAppConf
 	return connectors.NewHandler(svc), appStore
 }
 
+func TestGetAppConfig_ReadsBackWithoutTheSecret(t *testing.T) {
+	h, _ := newTestHandlerWithAppConfig(t)
+	put := httptest.NewRequest("PUT", "/api/connectors/github/app-config", strings.NewReader(`{"client_id":"Iv1.abc","client_secret":"shh","app_slug":"my-app"}`))
+	put = put.WithContext(connectors.WithUserID(put.Context(), "owner-1"))
+	h.Routes().ServeHTTP(httptest.NewRecorder(), put)
+
+	rec := httptest.NewRecorder()
+	get := httptest.NewRequest("GET", "/api/connectors/github/app-config", nil)
+	h.Routes().ServeHTTP(rec, get.WithContext(connectors.WithUserID(get.Context(), "owner-1")))
+
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"app_slug":"my-app"`) || strings.Contains(rec.Body.String(), "shh") {
+		t.Fatalf("GET app-config = %d %s, want the slug and never the secret", rec.Code, rec.Body.String())
+	}
+}
+
 // TestSetAppConfig_OwnerAllowed_NonOwnerForbidden proves PUT
 // /api/connectors/{id}/app-config requires owner permission: the owner's
 // request succeeds and is stored, a non-owner's request is rejected and
