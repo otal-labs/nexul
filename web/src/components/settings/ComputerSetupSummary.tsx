@@ -74,7 +74,7 @@ const SetupDetails = ({ computer, setup }: SetupDetailsProps) => {
         )}
       </div>
       <PairComputerDialog
-        setupFor={computer}
+        existing={computer}
         defaultOpen={searchParams.get("setup") === computer.id}
         onClosed={() => setSearchParams((params) => withoutSetup(params), { replace: true })}
         trigger={

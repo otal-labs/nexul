@@ -37,12 +37,12 @@ const apiError = (body: Record<string, string>, errors?: Record<string, string[]
 
 const emptySetup: ComputerSetup = { computer_id: "c1", confirmed_at: null, providers: [], turns: [] };
 
-const renderDialog = (setupFor?: Computer) => {
+const renderDialog = (existing?: Computer) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
-        <PairComputerDialog setupFor={setupFor} trigger={<Button type="button">{setupFor ? "Set up" : "Pair a computer"}</Button>} />
+        <PairComputerDialog existing={existing} trigger={<Button type="button">{existing ? "Open" : "Pair a computer"}</Button>} />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -247,6 +247,21 @@ describe("PairComputerDialog", () => {
     await user.click(screen.getByRole("button", { name: /pair a computer/i }));
     expect(await screen.findByLabelText(/computer name/i)).toBeInTheDocument();
   });
+
+  it("resumes a computer still pairing at its tunnel, without naming it again", async () => {
+    const user = userEvent.setup();
+    const client = renderDialog(created);
+
+    await user.click(screen.getByRole("button", { name: /^open$/i }));
+    expect(await screen.findByRole("heading", { name: /pair work laptop/i })).toBeInTheDocument();
+    expect(await screen.findByText(/waiting for connection/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/computer name/i)).not.toBeInTheDocument();
+
+    act(() => setCachedTunnelStatus(client, { computer_id: "c1", tunnel: "healthy", harness_reachable: true }));
+    await user.click(await screen.findByRole("button", { name: /^next$/i }));
+    expect(await screen.findByLabelText(/one-time pairing token/i)).toBeInTheDocument();
+    expect(mocks.post).not.toHaveBeenCalled();
+  });
 });
 
 describe("PairComputerDialog opened at Set up", () => {
@@ -289,7 +304,7 @@ describe("PairComputerDialog opened at Set up", () => {
     const user = userEvent.setup();
     renderDialog(paired);
 
-    await user.click(screen.getByRole("button", { name: /^set up$/i }));
+    await user.click(screen.getByRole("button", { name: /^open$/i }));
     expect(await screen.findByRole("heading", { name: /set up work laptop/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /connect/i })).toBeDisabled();
     expect(await screen.findByText("Confirmed with 12 skills")).toBeInTheDocument();
@@ -318,7 +333,7 @@ describe("PairComputerDialog opened at Set up", () => {
     const user = userEvent.setup();
     renderDialog(paired);
 
-    await user.click(screen.getByRole("button", { name: /^set up$/i }));
+    await user.click(screen.getByRole("button", { name: /^open$/i }));
     await user.click(await screen.findByRole("button", { name: /start setup/i }));
 
     await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/runs", { models: {} }));
@@ -352,7 +367,7 @@ describe("PairComputerDialog opened at Set up", () => {
     const user = userEvent.setup();
     renderDialog(paired);
 
-    await user.click(screen.getByRole("button", { name: /^set up$/i }));
+    await user.click(screen.getByRole("button", { name: /^open$/i }));
     expect(await screen.findByRole("combobox", { name: "Claude" })).toHaveTextContent("Big");
     expect(screen.getByRole("combobox", { name: "OpenCode" })).toHaveTextContent("Pickle");
     await pickOption(user, "OpenCode", "Provider default");

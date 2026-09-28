@@ -109,6 +109,7 @@ describe("ComputersSection", () => {
   });
 
   it("reads a computer tunnel with no session yet as pairing in progress, not expired", async () => {
+    const user = userEvent.setup();
     serveComputers([
       computer({
         server_url: "https://laptop-ab12cd34.example.com",
@@ -123,6 +124,10 @@ describe("ComputersSection", () => {
     expect(screen.queryByText(/acts as unpaired/i)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^pair$/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /set up/i })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /^pair$/i }));
+    expect(await screen.findByRole("dialog", { name: /pair home/i })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/one-time pairing token/i)).not.toBeInTheDocument();
   });
 
   it("badges an unconfirmed computer and opens the dialog straight at Set up for it", async () => {
