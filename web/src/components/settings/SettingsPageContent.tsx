@@ -6,9 +6,9 @@ import { InterviewTemplateSection } from "@/components/settings/InterviewTemplat
 import { InstanceSettingsPanel } from "@/components/settings/InstanceSettingsPanel";
 import { MembersSection } from "@/components/settings/MembersSection";
 import { MentionChipLayoutSection } from "@/components/settings/MentionChipLayoutSection";
-import { OAuthProviderSection } from "@/components/settings/OAuthProviderSection";
 import { PlaySettingsSection } from "@/components/settings/PlaySettingsSection";
 import { RoleSettingsSection } from "@/components/settings/RoleSettingsSection";
+import { SignInProvidersPanel } from "@/components/settings/SignInProvidersPanel";
 import type { SettingsSection } from "@/components/settings/SettingsNav";
 import { useSelectedWorkspace } from "@/hooks/WorkspaceHooks";
 import type { InstanceSettings } from "@/models/User";
@@ -43,10 +43,7 @@ const InstancePanel = ({ settings, isInstanceAdmin }: { settings: InstanceSettin
 );
 
 const SignInPanel = ({ settings, isInstanceAdmin }: { settings: InstanceSettings | undefined; isInstanceAdmin: boolean }) => (
-  <>
-    {settings && isInstanceAdmin && <OAuthProviderSection provider="google" settings={settings} />}
-    {settings && isInstanceAdmin && <OAuthProviderSection provider="discord" settings={settings} />}
-  </>
+  <>{settings && isInstanceAdmin && <SignInProvidersPanel settings={settings} />}</>
 );
 
 const ConnectorsPanel = ({ isInstanceAdmin }: { isInstanceAdmin: boolean }) => (
