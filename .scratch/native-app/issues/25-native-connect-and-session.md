@@ -1,7 +1,7 @@
 # 25 — Phone sign-in by QR, the version gate, and the API client
 
 **Type:** implementation
-**Status:** ready-for-agent
+**Status:** done
 **Blocked by:** 22, 24
 **Decided in:** tickets 06, 09, 11
 
