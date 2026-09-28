@@ -63,6 +63,19 @@ func (f *fakeNotifRepo) create(t *testing.T, n *Notification) {
 	require.NoError(t, f.CreateMany(context.Background(), []*Notification{n}))
 }
 
+// pushItems returns the rows named by every notification.push_requested event enqueued so far.
+func (f *fakeNotifRepo) pushItems() []NotificationPushItem {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []NotificationPushItem
+	for _, evt := range f.outbox {
+		if e, ok := evt.Payload.(NotificationPushRequestedEvent); ok {
+			out = append(out, e.Notifications...)
+		}
+	}
+	return out
+}
+
 // topics returns the topics of every outbox event enqueued so far.
 func (f *fakeNotifRepo) topics() []string {
 	f.mu.Lock()
@@ -378,6 +391,7 @@ func TestHandleMemoryUpdated(t *testing.T) {
 		assert.Equal(t, KindMemoryUpdated, n.Kind)
 		assert.Equal(t, SubjectMemory, n.SubjectType)
 		assert.Equal(t, "m-1", n.SubjectID)
+		assert.Equal(t, []NotificationPushItem{{ID: n.ID, UserID: "u2", WorkspaceID: "ws-1"}}, repo.pushItems(), "the push request names the memory's workspace")
 		assert.Contains(t, n.SubjectTitle, "Deploy quirks")
 		assert.Contains(t, n.SubjectTitle, "v3")
 		assert.Contains(t, n.SubjectTitle, "onik97") // the author's login, resolved from their id
@@ -465,7 +479,8 @@ func TestHandleTicketCreated(t *testing.T) {
 		assert.Equal(t, KindTicketMentioned, alice[0].Kind)
 		assert.Equal(t, "evt-1:u2", alice[0].ID)
 
-		assert.Equal(t, []string{TopicNotificationCreated}, repo.topics())
+		assert.Equal(t, []string{TopicNotificationCreated, TopicNotificationPushRequested}, repo.topics())
+		assert.ElementsMatch(t, []NotificationPushItem{{ID: "evt-1:u1", UserID: "u1"}, {ID: "evt-1:u2", UserID: "u2"}, {ID: "evt-1:u3", UserID: "u3"}}, repo.pushItems())
 	})
 	t.Run("unknown people and mentions are skipped", func(t *testing.T) {
 		repo := newFakeNotifRepo()

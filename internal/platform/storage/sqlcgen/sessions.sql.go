@@ -7,6 +7,8 @@ package sqlcgen
 
 import (
 	"context"
+	"database/sql"
+	"strings"
 )
 
 const createSession = `-- name: CreateSession :exec
@@ -89,7 +91,7 @@ func (q *Queries) DeleteSession(ctx context.Context, arg DeleteSessionParams) (i
 }
 
 const getSessionByHash = `-- name: GetSessionByHash :one
-SELECT id, user_id, token_hash, client, platform, label, ip, created_at, last_active_at, expires_at FROM sessions WHERE token_hash = ?
+SELECT id, user_id, token_hash, client, platform, label, ip, created_at, last_active_at, expires_at, push_token FROM sessions WHERE token_hash = ?
 `
 
 func (q *Queries) GetSessionByHash(ctx context.Context, tokenHash string) (Session, error) {
@@ -106,12 +108,63 @@ func (q *Queries) GetSessionByHash(ctx context.Context, tokenHash string) (Sessi
 		&i.CreatedAt,
 		&i.LastActiveAt,
 		&i.ExpiresAt,
+		&i.PushToken,
 	)
 	return i, err
 }
 
+const listPushTargets = `-- name: ListPushTargets :many
+SELECT id, user_id, push_token FROM sessions
+WHERE client = 'phone' AND push_token IS NOT NULL AND expires_at > ?1 AND user_id IN (/*SLICE:user_ids*/?)
+`
+
+type ListPushTargetsParams struct {
+	Now     int64
+	UserIds []string
+}
+
+type ListPushTargetsRow struct {
+	ID        string
+	UserID    string
+	PushToken sql.NullString
+}
+
+func (q *Queries) ListPushTargets(ctx context.Context, arg ListPushTargetsParams) ([]ListPushTargetsRow, error) {
+	query := listPushTargets
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.Now)
+	if len(arg.UserIds) > 0 {
+		for _, v := range arg.UserIds {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:user_ids*/?", strings.Repeat(",?", len(arg.UserIds))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:user_ids*/?", "NULL", 1)
+	}
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPushTargetsRow
+	for rows.Next() {
+		var i ListPushTargetsRow
+		if err := rows.Scan(&i.ID, &i.UserID, &i.PushToken); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSessionsByUser = `-- name: ListSessionsByUser :many
-SELECT id, user_id, token_hash, client, platform, label, ip, created_at, last_active_at, expires_at FROM sessions WHERE user_id = ? ORDER BY last_active_at DESC, id
+SELECT id, user_id, token_hash, client, platform, label, ip, created_at, last_active_at, expires_at, push_token FROM sessions WHERE user_id = ? ORDER BY last_active_at DESC, id
 `
 
 func (q *Queries) ListSessionsByUser(ctx context.Context, userID string) ([]Session, error) {
@@ -134,6 +187,7 @@ func (q *Queries) ListSessionsByUser(ctx context.Context, userID string) ([]Sess
 			&i.CreatedAt,
 			&i.LastActiveAt,
 			&i.ExpiresAt,
+			&i.PushToken,
 		); err != nil {
 			return nil, err
 		}
@@ -146,6 +200,24 @@ func (q *Queries) ListSessionsByUser(ctx context.Context, userID string) ([]Sess
 		return nil, err
 	}
 	return items, nil
+}
+
+const setSessionPushToken = `-- name: SetSessionPushToken :execrows
+UPDATE sessions SET push_token = ? WHERE id = ? AND user_id = ?
+`
+
+type SetSessionPushTokenParams struct {
+	PushToken sql.NullString
+	ID        string
+	UserID    string
+}
+
+func (q *Queries) SetSessionPushToken(ctx context.Context, arg SetSessionPushTokenParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, setSessionPushToken, arg.PushToken, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const touchSession = `-- name: TouchSession :exec

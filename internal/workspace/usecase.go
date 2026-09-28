@@ -977,7 +977,7 @@ func (s *NotificationService) onMemoryUpdated(ctx context.Context, m memoryRef, 
 		}
 		recipients = append(recipients, uid)
 	}
-	return s.fanOutByUserID(ctx, evtKey(ctx), SubjectMemory, m.ID, subjectTitle, KindMemoryUpdated, recipients)
+	return s.fanOutByUserID(ctx, evtKey(ctx), SubjectMemory, m.ID, subjectTitle, KindMemoryUpdated, recipients, m.WorkspaceID)
 }
 
 // onPlayRunFinished tells the starter how their run ended; the subject is the target so the inbox opens it.
@@ -1004,7 +1004,7 @@ func (s *NotificationService) notifyPlayStarter(ctx context.Context, e playRunFi
 		title = e.TargetID
 	}
 	subjectTitle := fmt.Sprintf("%s %s on %s", e.PlayLabel, outcome, title)
-	return s.fanOutByUserID(ctx, evtKey(ctx), subjectType, e.TargetID, subjectTitle, kind, []string{e.StarterID})
+	return s.fanOutByUserID(ctx, evtKey(ctx), subjectType, e.TargetID, subjectTitle, kind, []string{e.StarterID}, "")
 }
 
 // recipient is one pending fan-out row: the recipient login and the notification kind to create.
@@ -1045,19 +1045,12 @@ func (s *NotificationService) fanOut(ctx context.Context, key string, subjectTyp
 			CreatedAt:    now,
 		})
 	}
-	if len(toCreate) == 0 {
-		return nil
-	}
-	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicNotificationCreated, Payload: NotificationCreatedEvent{}}
-	if err := s.repo.CreateMany(ctx, toCreate, evt); err != nil {
-		return fmt.Errorf("create notifications: %w", err)
-	}
-	return nil
+	return s.create(ctx, toCreate, "")
 }
 
 // fanOutByUserID creates one notification per already-resolved user id, skipping fanOut's login lookup for
 // recipient lists that came from a workspace-membership scan (memory.updated) rather than a login.
-func (s *NotificationService) fanOutByUserID(ctx context.Context, key string, subjectType SubjectType, subjectID, subjectTitle string, kind Kind, userIDs []string) error {
+func (s *NotificationService) fanOutByUserID(ctx context.Context, key string, subjectType SubjectType, subjectID, subjectTitle string, kind Kind, userIDs []string, workspaceID string) error {
 	now := s.now().UTC()
 	var toCreate []*Notification
 	for _, uid := range userIDs {
@@ -1076,11 +1069,21 @@ func (s *NotificationService) fanOutByUserID(ctx context.Context, key string, su
 			CreatedAt:    now,
 		})
 	}
+	return s.create(ctx, toCreate, workspaceID)
+}
+
+// create writes the rows with both outbox events: the empty browser broadcast and the id-only push request.
+func (s *NotificationService) create(ctx context.Context, toCreate []*Notification, workspaceID string) error {
 	if len(toCreate) == 0 {
 		return nil
 	}
-	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicNotificationCreated, Payload: NotificationCreatedEvent{}}
-	if err := s.repo.CreateMany(ctx, toCreate, evt); err != nil {
+	items := make([]NotificationPushItem, 0, len(toCreate))
+	for _, n := range toCreate {
+		items = append(items, NotificationPushItem{ID: n.ID, UserID: n.UserID, WorkspaceID: workspaceID})
+	}
+	created := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicNotificationCreated, Payload: NotificationCreatedEvent{}}
+	push := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicNotificationPushRequested, Payload: NotificationPushRequestedEvent{Notifications: items}}
+	if err := s.repo.CreateMany(ctx, toCreate, created, push); err != nil {
 		return fmt.Errorf("create notifications: %w", err)
 	}
 	return nil

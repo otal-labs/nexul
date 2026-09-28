@@ -19,3 +19,10 @@ UPDATE sessions SET last_active_at = ?, ip = ?, expires_at = ? WHERE id = ?;
 
 -- name: DeleteExpiredSessions :exec
 DELETE FROM sessions WHERE user_id = ? AND expires_at <= ?;
+
+-- name: SetSessionPushToken :execrows
+UPDATE sessions SET push_token = ? WHERE id = ? AND user_id = ?;
+
+-- name: ListPushTargets :many
+SELECT id, user_id, push_token FROM sessions
+WHERE client = 'phone' AND push_token IS NOT NULL AND expires_at > sqlc.arg(now) AND user_id IN (sqlc.slice('user_ids'));

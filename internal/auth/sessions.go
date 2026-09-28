@@ -21,6 +21,8 @@ const (
 	phoneSessionTTL   = 90 * 24 * time.Hour
 	// sessionTouchInterval bounds the last-active writes so a busy tab does not turn every request into a write.
 	sessionTouchInterval = time.Hour
+	// maxPushTokenLen bounds the stored token; an Expo token is well under 100 characters.
+	maxPushTokenLen = 512
 )
 
 const deviceCtxKey ctxKey = "device"
@@ -185,6 +187,18 @@ func (s *Service) SignOutOtherSessions(ctx context.Context, userID, keepID strin
 		return nil
 	}
 	return s.cfg.Sessions.DeleteOtherSessions(ctx, userID, keepID, evts...)
+}
+
+// SetPushToken stores or clears (empty token) the calling session's Expo push token; the row is the phone's registration.
+func (s *Service) SetPushToken(ctx context.Context, userID, sessionID, token string) error {
+	token = strings.TrimSpace(token)
+	if len(token) > maxPushTokenLen {
+		return fmt.Errorf("%w: push token is too long", apperrs.ErrInvalid)
+	}
+	if err := s.cfg.Sessions.SetSessionPushToken(ctx, sessionID, userID, token); err != nil {
+		return fmt.Errorf("set push token: %w", err)
+	}
+	return nil
 }
 
 func sessionEvent(topic string, ses Session) eventbus.OutboxEvent {

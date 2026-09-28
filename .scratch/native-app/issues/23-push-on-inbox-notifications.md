@@ -1,7 +1,7 @@
 # 23 — Push inbox notifications to phones
 
 **Type:** implementation
-**Status:** ready-for-agent
+**Status:** done
 **Blocked by:** None — can start immediately
 **Decided in:** tickets 02, 13
 

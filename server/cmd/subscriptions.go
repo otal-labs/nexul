@@ -222,6 +222,9 @@ func wireDomainEventSubscriptions(ctx context.Context, bus *inprocess.Bus, svc *
 	mustSubscribe(ctx, bus, "notifications", plays.TopicRunWaiting, "", func(ctx context.Context, ev eventbus.Event) error {
 		return workspace.HandlePlayRunWaiting(ctx, svc.notifSvc, ev)
 	})
+
+	// Pushes leave the request path here: the outbox event names the rows, the sender posts to Expo per phone.
+	mustSubscribe(ctx, bus, "push.notifications", workspace.TopicNotificationPushRequested, "", svc.pushSender.HandleNotificationPushRequested)
 }
 
 // wireIntegrationFanout subscribes the fan-out per topic, starts the delivery relay, and publishes the catalog.
