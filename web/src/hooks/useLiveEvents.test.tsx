@@ -4,7 +4,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { LiveSocket } from "@/api/ws";
 import { useLiveEvents } from "@/hooks/useLiveEvents";
+import { getMeKey } from "@/hooks/AuthHooks";
 import { useAgentStreamStore } from "@/stores/agentStreamStore";
+import { useDeviceArrivalStore } from "@/stores/deviceArrivalStore";
 import { useFlowStore } from "@/stores/flowStore";
 import { usePlayRunStore } from "@/stores/playRunStore";
 import { useSetupActivityStore } from "@/stores/setupActivityStore";
@@ -39,6 +41,7 @@ describe("useLiveEvents dispatch", () => {
     useAgentStreamStore.setState({ streams: {} });
     usePlayRunStore.setState({ frames: {}, steps: {}, activeByTarget: {} });
     useVoiceOccupancyStore.setState({ occupancy: {} });
+    useDeviceArrivalStore.setState({ arrivals: [] });
   });
 
   const setup = () => {
@@ -64,6 +67,25 @@ describe("useLiveEvents dispatch", () => {
   };
 
   const invalidate = () => vi.spyOn(client, "invalidateQueries");
+
+  it("records the viewer's own phone on session.created and refetches the devices list", async () => {
+    setup();
+    client.setQueryData([getMeKey], { user: { id: "u1" } });
+    const socket = await connectedSocket();
+    const spy = invalidate();
+    const push = (payload: Record<string, string>) =>
+      act(() => socket.message(JSON.stringify({ topic: "session.created", type: "event", payload })));
+
+    push({ session_id: "s-browser", user_id: "u1", client: "browser", platform: "Linux", label: "Chrome" });
+    push({ session_id: "s-other", user_id: "u2", client: "phone", platform: "Android", label: "Pixel 8" });
+    push({ session_id: "s-phone", user_id: "u1", client: "phone", platform: "Android", label: "Pixel 8" });
+
+    expect(spy).toHaveBeenCalledTimes(3);
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["getSessions"] });
+    const arrivals = useDeviceArrivalStore.getState().arrivals;
+    expect(arrivals).toHaveLength(1);
+    expect(arrivals[0]).toMatchObject({ id: "s-phone", platform: "Android", label: "Pixel 8" });
+  });
 
   it("invalidates the runners query on a runner.connected push", async () => {
     setup();

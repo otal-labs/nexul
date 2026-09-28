@@ -8,6 +8,7 @@ import { SettingsCard } from "@/components/settings/SettingsCard";
 import { Button } from "@/components/ui/button";
 import { DeviceRow } from "@/components/you/DeviceRow";
 import { useListSessions, useSignOutOtherSessions, useSignOutSession } from "@/hooks/AuthHooks";
+import { useDeviceArrivalStore } from "@/stores/deviceArrivalStore";
 
 export const DevicesFeed = () => {
   const { data, error, isPending } = useListSessions();
@@ -15,6 +16,10 @@ export const DevicesFeed = () => {
   const signOutOthers = useSignOutOtherSessions();
   // Rows exit while the request is in flight; the refetch removes them, a failure brings them back.
   const [leaving, setLeaving] = useState<string[]>([]);
+  // A phone that signed in after this list appeared gets the arrival rise and glow; one already listed does not.
+  const [mountedAt] = useState(() => Date.now());
+  const arrivals = useDeviceArrivalStore((s) => s.arrivals);
+  const arrived = (id: string) => arrivals.some((a) => a.id === id && a.at >= mountedAt);
 
   const current = data?.sessions.filter((session) => session.current) ?? [];
   const others = data?.sessions.filter((session) => !session.current) ?? [];
@@ -69,6 +74,7 @@ export const DevicesFeed = () => {
                   <DeviceRow
                     key={session.id}
                     session={session}
+                    arrived={arrived(session.id)}
                     leaving={leaving.includes(session.id)}
                     onSignOut={() => signOutOne(session.id)}
                   />

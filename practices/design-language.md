@@ -252,3 +252,9 @@ easing token is added.
 - Paired elements (overlay and dialog, drawer and backdrop, filter bar and
   result list) share identical duration and easing, or the pair reads as two
   events.
+- The one exception to the 150 to 250ms rule is the phone-connected hero on
+  the Devices tab, because it happens once per phone and the list has to
+  answer too: the QR content crossfades to a check tile at 800ms `--ease-out`
+  with a 4px blur and 0.98 scale; the new row enters Other devices with a 4px
+  rise over 800ms `--ease-out`; and a `bg-accent` glow behind it fades out
+  over 5600ms after an 800ms hold. Nothing else adopts these numbers.

@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DevicesFeed } from "@/components/you/DevicesFeed";
 import type { Session } from "@/models/User";
+import { useDeviceArrivalStore } from "@/stores/deviceArrivalStore";
 
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
@@ -58,6 +59,16 @@ describe("DevicesFeed", () => {
     mocks.del.mockReset();
     mocks.errorMessage.mockReset();
     vi.mocked(toast.error).mockClear();
+    useDeviceArrivalStore.setState({ arrivals: [] });
+  });
+
+  it("keeps a phone that just connected signable out while it glows", async () => {
+    useDeviceArrivalStore.setState({ arrivals: [{ id: "s-phone", platform: "Android", label: "Pixel 8", at: Date.now() + 1_000 }] });
+    mocks.get.mockResolvedValue({ data: { sessions: [current, phone] } });
+    renderFeed();
+
+    expect(await screen.findByText("Android · Pixel 8")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sign out" })).toBeEnabled();
   });
 
   it("shows an error when the list fails to load", async () => {

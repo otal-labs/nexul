@@ -14,7 +14,7 @@ import { getDocKey, getDocsKey } from "@/hooks/DocHooks";
 import { getInstanceUpgradeKey } from "@/hooks/InstanceUpgradeHooks";
 import { getMemoriesKey, getMemoryKey, getMemoryVersionsKey } from "@/hooks/MemoryHooks";
 import { getNotificationsKey, getUnreadCountKey } from "@/hooks/NotificationHooks";
-import { getPATsKey, getSessionsKey } from "@/hooks/AuthHooks";
+import { getMeKey, getPATsKey, getSessionsKey } from "@/hooks/AuthHooks";
 import {
   getComputerSetupKey,
   getComputersKey,
@@ -38,12 +38,14 @@ import {
   upsertCachedMessage,
 } from "@/hooks/ChatHooks";
 import type { Message } from "@/models/Chat";
+import type { MeResponse, SessionClient } from "@/models/User";
 import { getServerVersionKey, notifyIfServerUpdated } from "@/hooks/VersionHooks";
 import { setCachedTunnelStatus, type TunnelStatusChangedPayload } from "@/hooks/PairingHooks";
 import { getApplicablePlaysKey, getWorkspacePlaysKey } from "@/hooks/PlayHooks";
 import { getActiveTrailsKey, getTrailKey, getTrailsKey } from "@/hooks/TrailHooks";
 import { useAgentStreamStore } from "@/stores/agentStreamStore";
 import { usePlayRunStore } from "@/stores/playRunStore";
+import { useDeviceArrivalStore } from "@/stores/deviceArrivalStore";
 import { useSetupActivityStore } from "@/stores/setupActivityStore";
 import { useVoiceOccupancyStore } from "@/stores/voiceOccupancyStore";
 import { isTrailActive, type ActivityKind, type RunFrame } from "@/models/Trail";
@@ -146,6 +148,15 @@ interface SetupTurnActivityPayload {
   call_id?: string;
 }
 
+// The metadata of a session that just signed in; never the token.
+interface SessionCreatedPayload {
+  session_id: string;
+  user_id: string;
+  client: SessionClient;
+  platform: string;
+  label: string;
+}
+
 // One voice channel's full occupant list after a change, applied wholesale.
 interface OccupancyChangedPayload {
   conversation_id: string;
@@ -214,6 +225,14 @@ const dispatch = (client: ReturnType<typeof useQueryClient>) => (frame: ServerFr
     const p = frame.payload as SetupTurnActivityPayload;
     useSetupActivityStore.getState().push(p.turn_id, p.status, p.call_id);
     return;
+  }
+  if (frame.topic === "session.created") {
+    const p = frame.payload as SessionCreatedPayload;
+    // Every browser hears every session; only the viewer's own phone flips their Devices page.
+    const me = client.getQueryData<MeResponse>([getMeKey]);
+    if (p.client === "phone" && p.user_id === me?.user.id) {
+      useDeviceArrivalStore.getState().arrive({ id: p.session_id, platform: p.platform, label: p.label });
+    }
   }
   if (frame.topic === "voice.occupancy.changed") {
     const p = frame.payload as OccupancyChangedPayload;

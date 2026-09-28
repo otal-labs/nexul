@@ -1,6 +1,7 @@
 import { PageTabs, PageTabsContent } from "@/components/PageTabs";
 import { PersonalAccessTokensSection } from "@/components/settings/PersonalAccessTokensSection";
 import { ConnectDesktopCard } from "@/components/you/ConnectDesktopCard";
+import { ConnectPhoneCard } from "@/components/you/ConnectPhoneCard";
 import { DevicesFeed } from "@/components/you/DevicesFeed";
 
 export const SecurityPanel = () => (
@@ -12,8 +13,10 @@ export const SecurityPanel = () => (
     ]}
   >
     <PageTabsContent value="devices">
-      {/* Full width until the Connect a phone card joins it in a two-column grid. */}
-      <ConnectDesktopCard />
+      <div className="grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
+        <ConnectPhoneCard />
+        <ConnectDesktopCard />
+      </div>
       <DevicesFeed />
     </PageTabsContent>
     <PageTabsContent value="tokens">

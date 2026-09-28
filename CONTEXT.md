@@ -456,6 +456,14 @@ desktop, phone), the platform ("Linux", "Android"), and a label (the browser
 name, "Nexul desktop", or the phone's model). Shown as "platform · label".
 _Avoid_: Paired computer (that runs a harness), machine, host
 
+**Connect code**:
+The code a phone trades for its session: twelve Crockford base32 characters
+shown as `XXXX-XXXX-XXXX` and inside the QR link `nexul://connect?host=…&code=…`,
+valid two minutes, single use, one live code per user with a newer one
+replacing the last. Issued only from a signed-in device, never by a personal
+access token, so no agent can sign a phone in. Only its hash is stored.
+_Avoid_: Pairing code (that pairs a computer), QR token, login code
+
 **Scoped token**:
 The credential an integration (`int_`) or an automation (`dat_`) acts with,
 minted with a chosen subset of permissions and revocable on its own. A scoped
