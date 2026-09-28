@@ -158,6 +158,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 		Auth:          svc.authSvc,
 		Invitations:   svc.invitationSvc,
 		Workspaces:    svc.tenancySvc,
+		Roles:         svc.rolesSvc,
 		Mentions:      svc.mentionsSvc,
 		Chat:          svc.chatSvc,
 		Plays:         svc.playsSvc,
@@ -304,6 +305,7 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("GET", "/api/workspaces/{workspaceID}/roles/{roleID}", "Get a role", "roles")
 	spec.Register("PATCH", "/api/workspaces/{workspaceID}/roles/{roleID}", "Rename a role or change its permission mask", "roles")
 	spec.Register("DELETE", "/api/workspaces/{workspaceID}/roles/{roleID}", "Delete a custom role", "roles")
+	spec.Register("POST", "/api/workspaces/{workspaceID}/roles/{roleID}/clone", "Clone a custom role into another workspace", "roles")
 	spec.Register("GET", "/api/automations", "List automations", "automations")
 	spec.Register("POST", "/api/automations", "Create a Custom automation and mint its scoped token", "automations")
 	spec.Register("GET", "/api/automations/{id}", "Get an automation", "automations")

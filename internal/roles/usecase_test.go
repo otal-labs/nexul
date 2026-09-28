@@ -3,6 +3,7 @@ package roles
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -103,19 +104,23 @@ func (f *fakeRepo) Delete(_ context.Context, id string) error {
 
 // fakeMemberGate maps (workspaceID, userID) -> roleID, standing in for the tenancy domain's workspace_members lookup.
 type fakeMemberGate struct {
-	roleIDs map[string]string // userID -> roleID (single workspace per test)
+	roleIDs map[string]string // memberKey(workspaceID, userID) -> roleID
 	err     error
+}
+
+func memberKey(workspaceID, userID string) string {
+	return workspaceID + "|" + userID
 }
 
 func newFakeMemberGate() *fakeMemberGate {
 	return &fakeMemberGate{roleIDs: map[string]string{}}
 }
 
-func (g *fakeMemberGate) MemberRoleID(_ context.Context, _, userID string) (string, error) {
+func (g *fakeMemberGate) MemberRoleID(_ context.Context, workspaceID, userID string) (string, error) {
 	if g.err != nil {
 		return "", g.err
 	}
-	roleID, ok := g.roleIDs[userID]
+	roleID, ok := g.roleIDs[memberKey(workspaceID, userID)]
 	if !ok {
 		return "", apperrs.ErrNotFound
 	}
@@ -133,7 +138,7 @@ func seedOwner(t *testing.T, repo *fakeRepo, members *fakeMemberGate, workspaceI
 	t.Helper()
 	owner := &Role{ID: "role-owner", WorkspaceID: workspaceID, Name: "Owner", IsOwnerRole: true, CreatedAt: fixedNow, UpdatedAt: fixedNow}
 	require.NoError(t, repo.Create(context.Background(), owner))
-	members.roleIDs[actorUserID] = owner.ID
+	members.roleIDs[memberKey(workspaceID, actorUserID)] = owner.ID
 	return owner.ID
 }
 
@@ -142,7 +147,7 @@ func seedRoleWithMask(t *testing.T, repo *fakeRepo, members *fakeMemberGate, wor
 	t.Helper()
 	r := &Role{ID: "role-actor", WorkspaceID: workspaceID, Name: "Actor", Permissions: mask, CreatedAt: fixedNow, UpdatedAt: fixedNow}
 	require.NoError(t, repo.Create(context.Background(), r))
-	members.roleIDs[actorUserID] = r.ID
+	members.roleIDs[memberKey(workspaceID, actorUserID)] = r.ID
 	return r.ID
 }
 
@@ -372,4 +377,141 @@ func TestSetMemberGate(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "Editors", r.Name)
 	})
+}
+
+// cloneMember is one workspace the clone actor belongs to, with the role it holds there.
+type cloneMember struct {
+	workspaceID string
+	owner       bool
+	mask        permissions.Set
+}
+
+// newCloneFixture seeds ws-src's Owner role and a custom "Editors" role, then binds actor to one role per membership.
+func newCloneFixture(t *testing.T, actor string, memberships ...cloneMember) (*Service, *fakeRepo) {
+	t.Helper()
+	repo, members := newFakeRepo(), newFakeMemberGate()
+	editors := &Role{ID: "role-editors", WorkspaceID: "ws-src", Name: "Editors", Permissions: permissions.SetOf(permissions.DocsRead, permissions.MemoriesClone, permissions.PlaysRun), CreatedAt: fixedNow, UpdatedAt: fixedNow}
+	require.NoError(t, repo.Create(context.Background(), editors))
+	owner := &Role{ID: "role-owner-src", WorkspaceID: "ws-src", Name: "Owner", IsOwnerRole: true, CreatedAt: fixedNow, UpdatedAt: fixedNow}
+	require.NoError(t, repo.Create(context.Background(), owner))
+	for _, m := range memberships {
+		r := &Role{ID: "role-" + actor + "-" + m.workspaceID, WorkspaceID: m.workspaceID, Name: "Actor", IsOwnerRole: m.owner, Permissions: m.mask, CreatedAt: fixedNow, UpdatedAt: fixedNow}
+		require.NoError(t, repo.Create(context.Background(), r))
+		members.roleIDs[memberKey(m.workspaceID, actor)] = r.ID
+	}
+	return newTestService(repo, members), repo
+}
+
+func TestClone_Errors(t *testing.T) {
+	cloner := cloneMember{workspaceID: "ws-src", mask: permissions.SetOf(permissions.RolesClone)}
+	writer := cloneMember{workspaceID: "ws-dst", mask: permissions.SetOf(permissions.RolesWrite)}
+	tests := []struct {
+		name        string
+		memberships []cloneMember
+		sourceWS    string
+		roleID      string
+		targetWS    string
+		want        error
+	}{
+		{"missing target workspace id is invalid", []cloneMember{cloner, writer}, "ws-src", "role-editors", "  ", apperrs.ErrInvalid},
+		{"missing role is not found", []cloneMember{cloner, writer}, "ws-src", "role-missing", "ws-dst", apperrs.ErrNotFound},
+		{"role from another workspace is not found", []cloneMember{cloner, writer}, "ws-dst", "role-editors", "ws-other", apperrs.ErrNotFound},
+		{"the Owner role is refused", []cloneMember{cloner, writer}, "ws-src", "role-owner-src", "ws-dst", apperrs.ErrInvalid},
+		{"the source workspace as target is refused", []cloneMember{cloner, writer}, "ws-src", "role-editors", "ws-src", apperrs.ErrInvalid},
+		{"no roles:clone in the source is forbidden", []cloneMember{{workspaceID: "ws-src", mask: permissions.SetOf(permissions.RolesWrite)}, writer}, "ws-src", "role-editors", "ws-dst", apperrs.ErrForbidden},
+		{"no roles:write in the target is forbidden", []cloneMember{cloner, {workspaceID: "ws-dst", mask: permissions.SetOf(permissions.RolesClone)}}, "ws-src", "role-editors", "ws-dst", apperrs.ErrForbidden},
+		{"not a member of the target is forbidden", []cloneMember{cloner}, "ws-src", "role-editors", "ws-dst", apperrs.ErrForbidden},
+		{"not a member of the source is not found", []cloneMember{writer}, "ws-src", "role-editors", "ws-dst", apperrs.ErrNotFound},
+		{"no source workspace and no role id is invalid", []cloneMember{cloner, writer}, "", " ", "ws-dst", apperrs.ErrInvalid},
+		{"no source workspace and a missing role is not found", []cloneMember{cloner, writer}, "", "role-missing", "ws-dst", apperrs.ErrNotFound},
+		{"no source workspace hides the role from a non-member", []cloneMember{writer}, "", "role-editors", "ws-dst", apperrs.ErrNotFound},
+		{"no source workspace hides the Owner role from a non-member", []cloneMember{writer}, "", "role-owner-src", "ws-dst", apperrs.ErrNotFound},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s, _ := newCloneFixture(t, "u-1", tt.memberships...)
+			_, err := s.Clone(t.Context(), tt.sourceWS, tt.roleID, tt.targetWS, "u-1")
+			require.ErrorIs(t, err, tt.want)
+		})
+	}
+}
+
+func TestClone_RepoErrorsPropagate(t *testing.T) {
+	owners := []cloneMember{{workspaceID: "ws-src", owner: true}, {workspaceID: "ws-dst", owner: true}}
+	t.Run("list error", func(t *testing.T) {
+		s, repo := newCloneFixture(t, "u-1", owners...)
+		repo.listErr = errors.New("db down")
+		_, err := s.Clone(t.Context(), "ws-src", "role-editors", "ws-dst", "u-1")
+		require.ErrorIs(t, err, repo.listErr)
+	})
+	t.Run("create error", func(t *testing.T) {
+		s, repo := newCloneFixture(t, "u-1", owners...)
+		repo.createErr = errors.New("db down")
+		_, err := s.Clone(t.Context(), "ws-src", "role-editors", "ws-dst", "u-1")
+		require.ErrorIs(t, err, repo.createErr)
+	})
+}
+
+func TestClone_CopiesNameAndPermissions(t *testing.T) {
+	tests := []struct {
+		name        string
+		memberships []cloneMember
+	}{
+		{"owner of both workspaces", []cloneMember{{workspaceID: "ws-src", owner: true}, {workspaceID: "ws-dst", owner: true}}},
+		{"roles:clone in source and roles:write in target", []cloneMember{{workspaceID: "ws-src", mask: permissions.SetOf(permissions.RolesClone)}, {workspaceID: "ws-dst", mask: permissions.SetOf(permissions.RolesWrite)}}},
+		{"owner of the source, roles:write in the target", []cloneMember{{workspaceID: "ws-src", owner: true}, {workspaceID: "ws-dst", mask: permissions.SetOf(permissions.RolesWrite)}}},
+		{"roles:clone in the source, owner of the target", []cloneMember{{workspaceID: "ws-src", mask: permissions.SetOf(permissions.RolesClone)}, {workspaceID: "ws-dst", owner: true}}},
+	}
+	t.Run("no source workspace clones from the role's own", func(t *testing.T) {
+		s, _ := newCloneFixture(t, "u-1", cloneMember{workspaceID: "ws-src", owner: true}, cloneMember{workspaceID: "ws-dst", owner: true})
+		got, err := s.Clone(t.Context(), "", "role-editors", "ws-dst", "u-1")
+		require.NoError(t, err)
+		assert.Equal(t, "ws-dst", got.WorkspaceID)
+		assert.Equal(t, "Editors", got.Name)
+	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s, repo := newCloneFixture(t, "u-1", tt.memberships...)
+			got, err := s.Clone(t.Context(), " ws-src ", "role-editors", " ws-dst ", "u-1")
+			require.NoError(t, err)
+			assert.Equal(t, "ws-dst", got.WorkspaceID)
+			assert.Equal(t, "Editors", got.Name)
+			assert.False(t, got.IsOwnerRole)
+			assert.Equal(t, permissions.SetOf(permissions.DocsRead, permissions.MemoriesClone, permissions.PlaysRun), got.Permissions)
+			assert.NotEqual(t, "role-editors", got.ID)
+			assert.Equal(t, fixedNow, got.CreatedAt)
+
+			stored, err := repo.Get(t.Context(), got.ID)
+			require.NoError(t, err)
+			assert.Equal(t, got, stored)
+			source, err := repo.Get(t.Context(), "role-editors")
+			require.NoError(t, err)
+			assert.Equal(t, "ws-src", source.WorkspaceID)
+		})
+	}
+}
+
+func TestClone_NameCollision(t *testing.T) {
+	tests := []struct {
+		name  string
+		taken []string
+		want  string
+	}{
+		{"free name is kept", []string{"Reviewers"}, "Editors"},
+		{"taken name gets (copy)", []string{"Editors"}, "Editors (copy)"},
+		{"taken name matches case-insensitively", []string{"editors"}, "Editors (copy)"},
+		{"taken (copy) gets (copy 2)", []string{"Editors", "Editors (copy)"}, "Editors (copy 2)"},
+		{"counts past every taken copy", []string{"Editors", "Editors (copy)", "Editors (copy 2)", "Editors (copy 3)"}, "Editors (copy 4)"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s, repo := newCloneFixture(t, "u-1", cloneMember{workspaceID: "ws-src", owner: true}, cloneMember{workspaceID: "ws-dst", owner: true})
+			for i, name := range tt.taken {
+				require.NoError(t, repo.Create(t.Context(), &Role{ID: fmt.Sprintf("taken-%d", i), WorkspaceID: "ws-dst", Name: name}))
+			}
+			got, err := s.Clone(t.Context(), "ws-src", "role-editors", "ws-dst", "u-1")
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got.Name)
+		})
+	}
 }

@@ -62,7 +62,7 @@ func TestHandler_Create(t *testing.T) {
 		seedOwner(t, repo, members, "ws-1", "u-owner")
 		editors := &Role{ID: "role-editors", WorkspaceID: "ws-1", Name: "Editors"}
 		require.NoError(t, repo.Create(context.Background(), editors))
-		members.roleIDs["u-plain"] = "role-editors"
+		members.roleIDs[memberKey("ws-1", "u-plain")] = "role-editors"
 
 		rec := do(t, h.Routes(), http.MethodPost, "/api/workspaces/ws-1/roles", `{"name":"More"}`, "u-plain")
 		assert.Equal(t, http.StatusForbidden, rec.Code)
@@ -137,5 +137,45 @@ func TestHandler_Delete(t *testing.T) {
 		seedOwner(t, repo, members, "ws-1", "u-owner")
 		rec := do(t, h.Routes(), http.MethodDelete, "/api/workspaces/ws-1/roles/role-owner", "", "u-owner")
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+}
+
+func TestHandler_Clone(t *testing.T) {
+	const path = "/api/workspaces/ws-1/roles/role-editors/clone"
+	seed := func(t *testing.T, targetOwner bool) http.Handler {
+		t.Helper()
+		h, repo, members := newTestHandler(t)
+		seedOwner(t, repo, members, "ws-1", "u-owner")
+		require.NoError(t, repo.Create(context.Background(), &Role{ID: "role-editors", WorkspaceID: "ws-1", Name: "Editors", Permissions: setFromActions([]string{"docs:read", "roles:clone"})}))
+		if targetOwner {
+			require.NoError(t, repo.Create(context.Background(), &Role{ID: "role-owner-2", WorkspaceID: "ws-2", Name: "Owner", IsOwnerRole: true}))
+			members.roleIDs[memberKey("ws-2", "u-owner")] = "role-owner-2"
+		}
+		return h.Routes()
+	}
+	t.Run("owner of both workspaces gets the clone back", func(t *testing.T) {
+		rec := do(t, seed(t, true), http.MethodPost, path, `{"workspace_id":"ws-2"}`, "u-owner")
+		assert.Equal(t, http.StatusCreated, rec.Code)
+		var r Role
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &r))
+		assert.Equal(t, "ws-2", r.WorkspaceID)
+		assert.Equal(t, "Editors", r.Name)
+		assert.Equal(t, setFromActions([]string{"docs:read", "roles:clone"}), r.Permissions)
+	})
+	t.Run("bad json is invalid", func(t *testing.T) {
+		rec := do(t, seed(t, true), http.MethodPost, path, `{`, "u-owner")
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+	t.Run("same workspace is invalid", func(t *testing.T) {
+		rec := do(t, seed(t, true), http.MethodPost, path, `{"workspace_id":"ws-1"}`, "u-owner")
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+	t.Run("missing role is not found", func(t *testing.T) {
+		rec := do(t, seed(t, true), http.MethodPost, "/api/workspaces/ws-1/roles/missing/clone", `{"workspace_id":"ws-2"}`, "u-owner")
+		assert.Equal(t, http.StatusNotFound, rec.Code)
+	})
+	t.Run("not a member of the target is forbidden", func(t *testing.T) {
+		rec := do(t, seed(t, false), http.MethodPost, path, `{"workspace_id":"ws-2"}`, "u-owner")
+		assert.Equal(t, http.StatusForbidden, rec.Code)
 	})
 }

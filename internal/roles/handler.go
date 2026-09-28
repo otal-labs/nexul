@@ -38,6 +38,10 @@ type roleRequest struct {
 	Actions []string `json:"actions"`
 }
 
+type cloneRoleRequest struct {
+	WorkspaceID string `json:"workspace_id"`
+}
+
 // Routes are wrapped with the auth-user-id injection adapter before mounting behind RequireAuth.
 func (h *Handler) Routes() http.Handler {
 	mux := httpx.NewServeMux()
@@ -46,6 +50,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/workspaces/{workspaceID}/roles/{roleID}", h.get)
 	mux.HandleFunc("PATCH /api/workspaces/{workspaceID}/roles/{roleID}", h.update)
 	mux.HandleFunc("DELETE /api/workspaces/{workspaceID}/roles/{roleID}", h.delete)
+	mux.HandleFunc("POST /api/workspaces/{workspaceID}/roles/{roleID}/clone", h.clone)
 	return mux
 }
 
@@ -101,6 +106,20 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) clone(w http.ResponseWriter, r *http.Request) {
+	var req cloneRoleRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	role, err := h.svc.Clone(r.Context(), r.PathValue("workspaceID"), r.PathValue("roleID"), req.WorkspaceID, UserIDFromCtx(r.Context()))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusCreated, role)
 }
 
 // setFromActions silently drops unknown action names, so a client on an older grid never gets a 400.

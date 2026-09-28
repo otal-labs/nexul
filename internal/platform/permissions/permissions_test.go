@@ -10,7 +10,7 @@ import (
 
 func TestCatalog_GridShape(t *testing.T) {
 	catalog := Catalog()
-	require.Len(t, catalog, 69)
+	require.Len(t, catalog, 70)
 	assert.Equal(t, Info{Value: "docs:read", Label: "Read docs", Domain: "docs", Action: "read"}, catalog[0])
 	assert.Equal(t, Info{Value: "docs:write", Label: "Create and update docs", Domain: "docs", Action: "write"}, catalog[1])
 	assert.Equal(t, Info{Value: "docs:delete", Label: "Delete docs", Domain: "docs", Action: "delete"}, catalog[2])
@@ -57,6 +57,7 @@ func TestCatalog_DomainDeclaredVerbs(t *testing.T) {
 		{MemoriesDelete, "Delete memories", "memories", "delete"},
 		{MemoriesClone, "Clone memories to another project or workspace", "memories", "clone"},
 		{DocsThread, "See doc threads", "docs", "thread"},
+		{RolesClone, "Clone roles to another workspace", "roles", "clone"},
 	}
 	for _, tt := range tests {
 		t.Run(string(tt.value), func(t *testing.T) {
@@ -85,6 +86,7 @@ func TestParseAction(t *testing.T) {
 		{"empty", "", "", false},
 		{"plays run", "plays:run", PlaysRun, true},
 		{"memories clone", "memories:clone", MemoriesClone, true},
+		{"roles clone", "roles:clone", RolesClone, true},
 		{"docs thread", "docs:thread", DocsThread, true},
 		{"a verb another domain didn't declare", "plays:clone", "", false},
 		{"a verb tickets didn't declare", "tickets:run", "", false},

@@ -1,11 +1,13 @@
 import { useState, type FocusEvent, type KeyboardEvent } from "react";
-import { CrownIcon, PencilIcon, Trash2 } from "lucide-react";
+import { CopyIcon, CrownIcon, PencilIcon, Trash2 } from "lucide-react";
 
 import { PermissionLevels } from "@/components/access/PermissionLevels";
+import { CloneRoleDialog } from "@/components/settings/CloneRoleDialog";
 import { ConfirmDestroyButton } from "@/components/settings/ConfirmDestroyButton";
 import { NoFillBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useDeleteWorkspaceRole, useUpdateWorkspaceRole } from "@/hooks/RoleHooks";
+import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import type { PermissionInfo } from "@/models/Permission";
 import { domainsOf, summarize } from "@/models/PermissionLevel";
 import type { Role } from "@/models/Role";
@@ -23,6 +25,8 @@ export const RoleRow = ({ role, workspaceId, catalog }: RoleRowProps) => {
   const [editing, setEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState(role.name);
   const [actionsDraft, setActionsDraft] = useState<string[]>(role.permissions);
+  const [cloning, setCloning] = useState(false);
+  const canClone = useHasPermission("roles:clone");
 
   const summary = summarize(domainsOf(catalog), role.permissions);
 
@@ -94,6 +98,18 @@ export const RoleRow = ({ role, workspaceId, catalog }: RoleRowProps) => {
           <PencilIcon className="size-4" />
         </Button>
       )}
+      {!editing && canClone && (
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-label={`Clone ${role.name} to another workspace`}
+          title={`Clone ${role.name} to another workspace`}
+          onClick={() => setCloning(true)}
+        >
+          <CopyIcon className="size-4" />
+        </Button>
+      )}
+      {canClone && <CloneRoleDialog role={role} open={cloning} onClose={() => setCloning(false)} />}
       <ConfirmDestroyButton
         icon={Trash2}
         idleLabel={`Delete role ${role.name}`}
