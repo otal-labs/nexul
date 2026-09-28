@@ -30,7 +30,7 @@ const (
 	setupCodeTTL    = 24 * time.Hour
 	setupPassPrefix = "nxsp_"
 	setupPassTTL    = time.Hour
-	// setupPassMACLabel keeps a pass's signature from ever verifying as a session token's, and the reverse.
+	// setupPassMACLabel namespaces the pass's MAC so nothing else signed with the secret ever verifies as one.
 	setupPassMACLabel = "setup-pass."
 	unlockMaxFailures = 10
 	unlockWindow      = 10 * time.Minute

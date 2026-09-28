@@ -44,7 +44,7 @@ func (s *Service) mintPAT(ctx context.Context, userID, name, computerID string) 
 	if _, err := s.cfg.Users.GetUserByID(ctx, userID); err != nil {
 		return "", nil, fmt.Errorf("get user %s: %w", userID, err)
 	}
-	raw, err := newPAT()
+	raw, err := newToken(patPrefix)
 	if err != nil {
 		return "", nil, err
 	}
@@ -55,7 +55,7 @@ func (s *Service) mintPAT(ctx context.Context, userID, name, computerID string) 
 		Prefix:     raw[len(raw)-6:],
 		CreatedAt:  s.cfg.Now(),
 		ComputerID: computerID,
-		TokenHash:  hashPAT(raw),
+		TokenHash:  hashToken(raw),
 	}
 	if err := s.cfg.PATs.Create(ctx, pat, tokenEvent(TopicTokenMinted, *pat)); err != nil {
 		return "", nil, fmt.Errorf("create pat: %w", err)
@@ -109,7 +109,7 @@ func tokenEvent(topic string, p PersonalAccessToken) eventbus.OutboxEvent {
 
 // AuthenticatePAT is used instead of Verify when the token carries the dep_ prefix.
 func (s *Service) AuthenticatePAT(ctx context.Context, raw string) (*User, error) {
-	pat, err := s.cfg.PATs.GetByHash(ctx, hashPAT(raw))
+	pat, err := s.cfg.PATs.GetByHash(ctx, hashToken(raw))
 	if err != nil {
 		return nil, apperrs.ErrUnauthorized
 	}
@@ -128,22 +128,22 @@ func (s *Service) AuthenticatePAT(ctx context.Context, raw string) (*User, error
 	return user, nil
 }
 
-// newPAT mints a raw token: patPrefix + 32 bytes of randomness, base64url.
-func newPAT() (string, error) {
+// newToken mints a raw bearer: prefix + 32 bytes of randomness, base64url; sessions and PATs share it.
+func newToken(prefix string) (string, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
-		return "", fmt.Errorf("generate pat: %w", err)
+		return "", fmt.Errorf("generate token: %w", err)
 	}
-	return patPrefix + base64.RawURLEncoding.EncodeToString(b), nil
+	return prefix + base64.RawURLEncoding.EncodeToString(b), nil
 }
 
-// hashPAT derives the stored hash of a raw token; hashes are long-lived and high-entropy, so a non-keyed hash is safe.
-func hashPAT(raw string) string {
+// hashToken derives the stored hash of a raw token; tokens are high-entropy, so a non-keyed hash is safe.
+func hashToken(raw string) string {
 	sum := sha256.Sum256([]byte(raw))
 	return hex.EncodeToString(sum[:])
 }
 
-// isPAT reports whether a Bearer token is a PAT rather than a session token; session tokens never carry the prefix.
+// isPAT reports whether a Bearer token is a PAT rather than a session token; each kind carries its own prefix.
 func isPAT(token string) bool {
 	return strings.HasPrefix(token, patPrefix)
 }

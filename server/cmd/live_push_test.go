@@ -12,3 +12,8 @@ func TestLivePushTopics_TokenLifecycle_ReachesTheBrowser(t *testing.T) {
 	assert.Contains(t, livePushTopics, auth.TopicTokenMinted)
 	assert.Contains(t, livePushTopics, auth.TopicTokenRevoked)
 }
+
+func TestLivePushTopics_SessionLifecycle_ReachesTheBrowser(t *testing.T) {
+	assert.Contains(t, livePushTopics, auth.TopicSessionCreated)
+	assert.Contains(t, livePushTopics, auth.TopicSessionRevoked)
+}

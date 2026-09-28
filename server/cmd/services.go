@@ -138,6 +138,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		Allowlist:     store.Allowlist,
 		Settings:      store.Settings,
 		PATs:          store.PATs,
+		Sessions:      store.Sessions,
 		MentionLayout: mentionLayoutGate{svc: accessSvc},
 		ConnectorApps: connectorAppSeederGate{store: store.ConnectorAppConfig},
 		GitHubApp:     githubAppVerifierGate{hc: &http.Client{Timeout: 15 * time.Second}},

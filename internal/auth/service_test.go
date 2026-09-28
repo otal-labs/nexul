@@ -16,43 +16,46 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 )
 
-func TestSignVerify_RoundTrip(t *testing.T) {
-	s, _, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "onik97")})
-	token, err := s.Sign("user-1")
+func TestCreateSession_RoundTrip(t *testing.T) {
+	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "onik97")})
+	seedOwner(t, users, "user-1", "1", "onik97")
+	token, err := sign(s, "user-1")
 	require.NoError(t, err)
+	assert.True(t, strings.HasPrefix(token, sessionPrefix))
 
-	userID, err := s.Verify(token)
+	userID, err := verify(s, token)
 	require.NoError(t, err)
 	assert.Equal(t, "user-1", userID)
 }
 
-func TestVerify_RejectsTampered(t *testing.T) {
-	s, _, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "onik97")})
-	token, err := s.Sign("user-1")
+func TestAuthenticateSession_RejectsTampered(t *testing.T) {
+	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "onik97")})
+	seedOwner(t, users, "user-1", "1", "onik97")
+	token, err := sign(s, "user-1")
 	require.NoError(t, err)
 
-	userID, err := s.Verify(token + "x")
+	userID, err := verify(s, token+"x")
 	require.ErrorIs(t, err, apperrs.ErrUnauthorized)
 	assert.Empty(t, userID)
 }
 
-func TestVerify_RejectsExpired(t *testing.T) {
-	s, _, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "onik97")})
+func TestAuthenticateSession_RejectsExpired(t *testing.T) {
+	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "onik97")})
+	seedOwner(t, users, "user-1", "1", "onik97")
 	now := time.Unix(1_700_000_000, 0)
-	s.cfg.Now = func() time.Time { return now.Add(-2 * time.Hour) }
-	token, err := s.Sign("user-1")
+	token, err := sign(s, "user-1")
 	require.NoError(t, err)
 
-	s.cfg.Now = func() time.Time { return now }
-	userID, err := s.Verify(token)
+	s.cfg.Now = func() time.Time { return now.Add(browserSessionTTL) }
+	userID, err := verify(s, token)
 	require.ErrorIs(t, err, apperrs.ErrUnauthorized)
 	assert.Empty(t, userID)
 }
 
-func TestVerify_MalformedToken(t *testing.T) {
+func TestAuthenticateSession_MalformedToken(t *testing.T) {
 	s, _, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "onik97")})
-	for _, tok := range []string{"", "no-dot", "a.", ".b", "garbage!!"} {
-		userID, err := s.Verify(tok)
+	for _, tok := range []string{"", "no-prefix", sessionPrefix, sessionPrefix + "garbage!!", "a.b"} {
+		userID, err := verify(s, tok)
 		assert.ErrorIs(t, err, apperrs.ErrUnauthorized, "token %q", tok)
 		assert.Empty(t, userID)
 	}
@@ -62,7 +65,7 @@ func TestLogin_ExchangesCodeAndPersistsUser(t *testing.T) {
 	s, users, _, _ := newTestHarness(&fakeGitHub{token: "at", user: ghUser("42", "onik97")})
 	token, err := s.Login(context.Background(), "good-code")
 	require.NoError(t, err)
-	userID, err := s.Verify(token)
+	userID, err := verify(s, token)
 	require.NoError(t, err)
 
 	user, err := users.GetUserByID(context.Background(), userID)
@@ -85,7 +88,7 @@ func TestLogin_SyncsProviderFieldsOnResignIn(t *testing.T) {
 	s, users, _, _ := newTestHarness(&fakeGitHub{token: "at", user: ghUser("42", "renamed")})
 	token, err := s.Login(context.Background(), "good-code")
 	require.NoError(t, err)
-	userID, err := s.Verify(token)
+	userID, err := verify(s, token)
 	require.NoError(t, err)
 	user, err := users.GetUserByID(context.Background(), userID)
 	require.NoError(t, err)
@@ -94,7 +97,7 @@ func TestLogin_SyncsProviderFieldsOnResignIn(t *testing.T) {
 	s.cfg.GitHub = &fakeGitHub{token: "at", user: ghUser("42", "onik97")}
 	token, err = s.Login(context.Background(), "good-code")
 	require.NoError(t, err)
-	userID, err = s.Verify(token)
+	userID, err = verify(s, token)
 	require.NoError(t, err)
 	user, err = users.GetUserByID(context.Background(), userID)
 	require.NoError(t, err)
@@ -117,7 +120,7 @@ func TestLogin_FreshInstanceFirstSignInUnrestricted(t *testing.T) {
 func TestLogin_FirstUserRace_AllowsOneUser(t *testing.T) {
 	ctx := t.Context()
 	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "first-user")})
-	other := NewService(Config{Secret: []byte("test-secret"), Users: users, GitHub: &fakeGitHub{user: ghUser("2", "second-user")}, Settings: newFakeSettings(), Allowlist: newFakeAllowlist(), Now: time.Now})
+	other := NewService(Config{Secret: []byte("test-secret"), Users: users, GitHub: &fakeGitHub{user: ghUser("2", "second-user")}, Settings: newFakeSettings(), Allowlist: newFakeAllowlist(), Now: time.Now, Sessions: newFakeSessionStore()})
 	results := make(chan error, 2)
 	var wg sync.WaitGroup
 	wg.Go(func() {
@@ -409,7 +412,7 @@ func TestRequireAuth(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, user)
 
-	token, err := s.Sign("u1")
+	token, err := sign(s, "u1")
 	require.NoError(t, err)
 
 	t.Run("missing", func(t *testing.T) {
@@ -436,7 +439,7 @@ func TestRequireAuth(t *testing.T) {
 	})
 
 	t.Run("unknown user", func(t *testing.T) {
-		ghost, err := s.Sign("ghost")
+		ghost, err := sign(s, "ghost")
 		require.NoError(t, err)
 		inner := &captureHandler{}
 		rec := doRequest(s.RequireAuth(inner), "GET", "/api/docs", "Bearer "+ghost, "")
@@ -457,7 +460,7 @@ func TestRequireWS(t *testing.T) {
 	_, _, err := users.UpsertUser(context.Background(), &User{ID: "u1", Provider: ProviderGitHub, ProviderUserID: "1", Login: "onik97"})
 	require.NoError(t, err)
 
-	token, err := s.Sign("u1")
+	token, err := sign(s, "u1")
 	require.NoError(t, err)
 
 	t.Run("missing", func(t *testing.T) {
@@ -484,7 +487,7 @@ func TestRequireWS(t *testing.T) {
 	})
 
 	t.Run("unknown user", func(t *testing.T) {
-		ghost, err := s.Sign("ghost")
+		ghost, err := sign(s, "ghost")
 		require.NoError(t, err)
 		inner := &captureHandler{}
 		rec := doRequest(s.RequireWS(inner), "GET", "/ws/events?token="+ghost, "", "")
@@ -514,7 +517,7 @@ func doRequest(h http.Handler, method, path, auth, body string) *httptest.Respon
 
 func mustVerify(t *testing.T, s *Service, token string) string {
 	t.Helper()
-	userID, err := s.Verify(token)
+	userID, err := verify(s, token)
 	require.NoError(t, err)
 	return userID
 }
@@ -524,7 +527,7 @@ func TestLoginWith_Google(t *testing.T) {
 	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
 	ownerToken, err := s.Login(context.Background(), "good-code")
 	require.NoError(t, err)
-	ownerID, err := s.Verify(ownerToken)
+	ownerID, err := verify(s, ownerToken)
 	require.NoError(t, err)
 	require.NoError(t, users.SetCanCreateWorkspace(context.Background(), ownerID, true))
 
@@ -534,7 +537,7 @@ func TestLoginWith_Google(t *testing.T) {
 	require.NoError(t, err)
 	token, err := s.LoginWith(context.Background(), ProviderGoogle, "good-code")
 	require.NoError(t, err)
-	id, err := s.Verify(token)
+	id, err := verify(s, token)
 	require.NoError(t, err)
 	u, err := users.GetUserByID(context.Background(), id)
 	require.NoError(t, err)
@@ -609,7 +612,7 @@ func TestLoginWith_Discord(t *testing.T) {
 	s, users, _, settings := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
 	ownerToken, err := s.Login(context.Background(), "good-code")
 	require.NoError(t, err)
-	ownerID, err := s.Verify(ownerToken)
+	ownerID, err := verify(s, ownerToken)
 	require.NoError(t, err)
 	require.NoError(t, users.SetCanCreateWorkspace(context.Background(), ownerID, true))
 	_, err = settings.Set(context.Background(), "https://deploy.example.com")
@@ -634,7 +637,7 @@ func TestLoginWith_Discord(t *testing.T) {
 	require.NoError(t, err)
 	token, err := s.LoginWith(context.Background(), ProviderDiscord, "good-code")
 	require.NoError(t, err)
-	id, err := s.Verify(token)
+	id, err := verify(s, token)
 	require.NoError(t, err)
 	got, err := users.GetUserByID(context.Background(), id)
 	require.NoError(t, err)

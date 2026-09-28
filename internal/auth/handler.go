@@ -186,7 +186,7 @@ func (h *Handler) runBootstrapCheck(ctx context.Context, callerID, check string,
 
 // devLogin mints a session for the fixed dev identity, redirects like callbackGET, skips GitHub; dev-build only.
 func (h *Handler) devLogin(w http.ResponseWriter, r *http.Request) {
-	token, err := h.svc.DevLogin(r.Context())
+	token, err := h.svc.DevLogin(WithDevice(r.Context(), DeviceFromRequest(r)))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -225,6 +225,10 @@ func (h *Handler) ProtectedRoutes() http.Handler {
 	mux.HandleFunc("GET /api/auth/tokens", h.listPATs)
 	mux.HandleFunc("POST /api/auth/tokens", h.mintPAT)
 	mux.HandleFunc("DELETE /api/auth/tokens/{id}", h.revokePAT)
+	mux.HandleFunc("GET /api/auth/sessions", h.listSessions)
+	mux.HandleFunc("DELETE /api/auth/sessions/current", h.signOutCurrentSession)
+	mux.HandleFunc("DELETE /api/auth/sessions/others", h.signOutOtherSessions)
+	mux.HandleFunc("DELETE /api/auth/sessions/{id}", h.signOutSession)
 	mux.HandleFunc("GET /api/auth/members", h.listMembers)
 	mux.HandleFunc("GET /api/auth/members/lookup", h.lookupMembers)
 	mux.HandleFunc("POST /api/auth/members", h.addMember)
@@ -310,7 +314,7 @@ func (h *Handler) redeemInvitation(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	result, err := h.svc.RedeemInvitation(ctx, req.AcceptanceToken)
+	result, err := h.svc.RedeemInvitation(WithDevice(ctx, DeviceFromRequest(r)), req.AcceptanceToken)
 	if err != nil {
 		httpx.WriteError(w, classifyInvitationError(err))
 		return
@@ -339,7 +343,7 @@ func (h *Handler) acceptInvitation(w http.ResponseWriter, r *http.Request) {
 	var err error
 	if req.Token != "" {
 		rawAuth := strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
-		user, authErr := h.svc.authenticate(r.WithContext(ctx), rawAuth)
+		user, _, authErr := h.svc.authenticate(r.WithContext(ctx), rawAuth)
 		if authErr != nil || user == nil {
 			httpx.WriteError(w, apperrs.ErrUnauthorized)
 			return
@@ -408,7 +412,7 @@ func (h *Handler) callbackGET(provider Provider) http.HandlerFunc {
 			httpx.WriteError(w, fmt.Errorf("%w: code is required", apperrs.ErrInvalid))
 			return
 		}
-		token, err := h.svc.LoginWith(r.Context(), provider, code)
+		token, err := h.svc.LoginWith(WithDevice(r.Context(), DeviceFromRequest(r)), provider, code)
 		if err != nil {
 			httpx.WriteError(w, err)
 			return
@@ -429,7 +433,7 @@ func (h *Handler) callbackPOST(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, fmt.Errorf("%w: code is required", apperrs.ErrInvalid))
 		return
 	}
-	token, err := h.svc.Login(r.Context(), req.Code)
+	token, err := h.svc.Login(WithDevice(r.Context(), DeviceFromRequest(r)), req.Code)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -648,6 +652,67 @@ func (h *Handler) revokePAT(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"tokens": tokens})
+}
+
+// requireSession is the gate on the session routes: a personal access token has no device to list or sign out.
+func requireSession(r *http.Request) (*Session, error) {
+	ses := SessionFromCtx(r.Context())
+	if ses == nil {
+		return nil, fmt.Errorf("%w: a signed-in device is required", apperrs.ErrForbidden)
+	}
+	return ses, nil
+}
+
+func (h *Handler) listSessions(w http.ResponseWriter, r *http.Request) {
+	ses, err := requireSession(r)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	sessions, err := h.svc.ListSessions(r.Context(), currentUserID(r), ses.ID)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"sessions": sessions})
+}
+
+func (h *Handler) signOutSession(w http.ResponseWriter, r *http.Request) {
+	if _, err := requireSession(r); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	if err := h.svc.SignOutSession(r.Context(), currentUserID(r), r.PathValue("id")); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) signOutCurrentSession(w http.ResponseWriter, r *http.Request) {
+	ses, err := requireSession(r)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	if err := h.svc.SignOutSession(r.Context(), currentUserID(r), ses.ID); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) signOutOtherSessions(w http.ResponseWriter, r *http.Request) {
+	ses, err := requireSession(r)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	if err := h.svc.SignOutOtherSessions(r.Context(), currentUserID(r), ses.ID); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) listMembers(w http.ResponseWriter, r *http.Request) {

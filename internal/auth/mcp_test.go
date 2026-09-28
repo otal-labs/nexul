@@ -147,7 +147,7 @@ func TestAccountUpdate_ActivePicksReactivateOrRestore(t *testing.T) {
 func TestHandler_UpdateAccountStatus_UsesTheSameRule(t *testing.T) {
 	t.Parallel()
 	s, users := newAccountsHarness(t)
-	token, err := s.Sign("admin")
+	token, err := sign(s, "admin")
 	require.NoError(t, err)
 	routes := s.RequireAuth(NewHandler(s).ProtectedRoutes())
 	patch := func(id, body string) int {

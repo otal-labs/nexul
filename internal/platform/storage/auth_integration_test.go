@@ -63,6 +63,15 @@ func (fakePendingInviteResolver) ResolvePendingInvites(context.Context, string, 
 	return nil
 }
 
+// sessionUser resolves a minted session token to its user id through the real sessions table.
+func sessionUser(svc *auth.Service, token string) (string, error) {
+	user, _, err := svc.AuthenticateSession(context.Background(), token, "")
+	if err != nil {
+		return "", err
+	}
+	return user.ID, nil
+}
+
 // TestAuthIntegration_OwnerBootstrapAndAdmission drives first-user bootstrap and known-user admission against SQLite.
 func TestAuthIntegration_OwnerBootstrapAndAdmission(t *testing.T) {
 	store := newTestStore(t)
@@ -74,6 +83,7 @@ func TestAuthIntegration_OwnerBootstrapAndAdmission(t *testing.T) {
 		Users:            store.Users,
 		Allowlist:        store.Allowlist,
 		Settings:         store.Settings,
+		Sessions:         store.Sessions,
 		GitHub:           gh,
 		DefaultWorkspace: fakeDefaultWorkspace{},
 		PendingInvites:   fakePendingInviteResolver{},
@@ -83,7 +93,7 @@ func TestAuthIntegration_OwnerBootstrapAndAdmission(t *testing.T) {
 	t.Run("first sign-in leads to the owner wizard", func(t *testing.T) {
 		token, err := svc.Login(ctx, "good")
 		require.NoError(t, err)
-		userID, err := svc.Verify(token)
+		userID, err := sessionUser(svc, token)
 		require.NoError(t, err)
 		st, err := svc.Me(ctx, userID)
 		require.NoError(t, err)
@@ -120,7 +130,7 @@ func TestAuthIntegration_OwnerBootstrapAndAdmission(t *testing.T) {
 		gh.userID = "2"
 		token, err := svc.Login(ctx, "good")
 		require.NoError(t, err)
-		userID, err := svc.Verify(token)
+		userID, err := sessionUser(svc, token)
 		require.NoError(t, err)
 		st, err := svc.Me(ctx, userID)
 		require.NoError(t, err)
@@ -135,6 +145,7 @@ func TestAuthIntegration_HTTPGateway(t *testing.T) {
 		Users:            store.Users,
 		Allowlist:        store.Allowlist,
 		Settings:         store.Settings,
+		Sessions:         store.Sessions,
 		GitHub:           &ghServer{token: "at"},
 		DefaultWorkspace: fakeDefaultWorkspace{},
 		PendingInvites:   fakePendingInviteResolver{},
@@ -193,6 +204,7 @@ func TestAuthIntegration_PATLifecycle(t *testing.T) {
 		Allowlist:        store.Allowlist,
 		Settings:         store.Settings,
 		PATs:             store.PATs,
+		Sessions:         store.Sessions,
 		GitHub:           &ghServer{token: "at"},
 		DefaultWorkspace: fakeDefaultWorkspace{},
 		PendingInvites:   fakePendingInviteResolver{},
@@ -201,7 +213,7 @@ func TestAuthIntegration_PATLifecycle(t *testing.T) {
 	// First sign-in becomes the owner.
 	ownerToken, err := svc.Login(ctx, "good")
 	require.NoError(t, err)
-	ownerID, err := svc.Verify(ownerToken)
+	ownerID, err := sessionUser(svc, ownerToken)
 	require.NoError(t, err)
 	require.NoError(t, svc.CompleteOwnerWizard(ctx, ownerID, "https://deploy.example.com"))
 
@@ -249,6 +261,7 @@ func TestAuthIntegration_SetupCodeLifecycle(t *testing.T) {
 		Allowlist:        store.Allowlist,
 		Settings:         store.Settings,
 		SetupCodes:       store.SetupCodes,
+		Sessions:         store.Sessions,
 		EnrollDir:        dir,
 		GitHub:           &ghServer{token: "at"},
 		DefaultWorkspace: fakeDefaultWorkspace{},

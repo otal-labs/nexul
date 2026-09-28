@@ -74,6 +74,8 @@ export interface EventPayloads {
   "service.created": { "service": Record<string, unknown>; };
   "service.deleted": { "id": string; "name": string; };
   "service.updated": { "service": Record<string, unknown>; };
+  "session.created": { "session_id": string; "user_id": string; "client": "browser" | "desktop" | "phone"; "platform"?: string; "label"?: string; };
+  "session.revoked": { "session_id": string; "user_id": string; "client": "browser" | "desktop" | "phone"; "platform"?: string; "label"?: string; };
   "status.created": { "status": Record<string, unknown>; };
   "status.deleted": { "status": Record<string, unknown>; };
   "status.updated": { "status": Record<string, unknown>; };
@@ -172,6 +174,8 @@ export const TOPICS: Topic[] = [
   "service.created",
   "service.deleted",
   "service.updated",
+  "session.created",
+  "session.revoked",
   "status.created",
   "status.deleted",
   "status.updated",
@@ -268,6 +272,8 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "service.created": {"service":{}},
   "service.deleted": {"id":"fixture-id","name":"fixture-name"},
   "service.updated": {"service":{}},
+  "session.created": {"session_id":"fixture-session_id","user_id":"fixture-user_id","client":"browser","platform":"fixture-platform","label":"fixture-label"},
+  "session.revoked": {"session_id":"fixture-session_id","user_id":"fixture-user_id","client":"browser","platform":"fixture-platform","label":"fixture-label"},
   "status.created": {"status":{}},
   "status.deleted": {"status":{}},
   "status.updated": {"status":{}},

@@ -904,6 +904,30 @@ var catalogSchemas = map[string]string{
 			"computer_id": {"type": "string"}
 		}
 	}`,
+	"session.created": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["session_id", "user_id", "client"],
+		"properties": {
+			"session_id": {"type": "string"},
+			"user_id": {"type": "string"},
+			"client": {"type": "string", "enum": ["browser", "desktop", "phone"]},
+			"platform": {"type": "string"},
+			"label": {"type": "string"}
+		}
+	}`,
+	"session.revoked": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["session_id", "user_id", "client"],
+		"properties": {
+			"session_id": {"type": "string"},
+			"user_id": {"type": "string"},
+			"client": {"type": "string", "enum": ["browser", "desktop", "phone"]},
+			"platform": {"type": "string"},
+			"label": {"type": "string"}
+		}
+	}`,
 	"ticket.category_changed": `{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",
 		"type": "object",

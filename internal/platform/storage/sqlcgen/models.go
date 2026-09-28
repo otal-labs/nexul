@@ -730,6 +730,19 @@ type Service struct {
 	ObservedAt    int64
 }
 
+type Session struct {
+	ID           string
+	UserID       string
+	TokenHash    string
+	Client       string
+	Platform     string
+	Label        string
+	Ip           string
+	CreatedAt    int64
+	LastActiveAt int64
+	ExpiresAt    int64
+}
+
 type SetupCode struct {
 	CodeHash  string
 	CreatedAt int64
