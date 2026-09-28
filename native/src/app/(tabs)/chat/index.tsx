@@ -1,5 +1,5 @@
-import { PlaceholderScreen } from "@/components/PlaceholderScreen";
+import { ChatListScreen } from "@/components/chat/ChatListScreen";
 
 export default function ChatScreen() {
-  return <PlaceholderScreen message="Conversations land here." />;
+  return <ChatListScreen />;
 }

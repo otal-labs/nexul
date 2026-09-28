@@ -29,7 +29,7 @@ const fonts = [
 const config: ExpoConfig = {
   name: "Nexul",
   slug: "nexul",
-  version: "0.1.1",
+  version: "0.1.2",
   scheme: "nexul",
   orientation: "portrait",
   userInterfaceStyle: "automatic",

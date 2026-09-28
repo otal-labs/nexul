@@ -3,12 +3,17 @@ import { useEffect } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 
 import { buildLiveURL, LiveEventsClient, type ServerFrame } from "@/api/events";
+import { getChatConversationsKey, getChatMessagesKey, getChatUnreadKey } from "@/hooks/ChatHooks";
 import { getNotificationsKey, getUnreadCountKey } from "@/hooks/NotificationHooks";
 import { readSessionToken, useSessionStore } from "@/stores/sessionStore";
 
 // Maps push topics to the query keys they invalidate; each domain adds its rows as its screens land.
 const pushTopics: Record<string, string[]> = {
   "notification.created": [getNotificationsKey, getUnreadCountKey],
+  "chat.conversation.created": [getChatConversationsKey],
+  "chat.message.created": [getChatMessagesKey, getChatUnreadKey],
+  "chat.message.updated": [getChatMessagesKey],
+  "chat.message.deleted": [getChatMessagesKey, getChatUnreadKey],
 };
 
 export const dispatch = (client: QueryClient) => (frame: ServerFrame) => {
