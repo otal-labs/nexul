@@ -76,6 +76,19 @@ describe("StackPage", () => {
     expect(screen.getByText("api", { selector: "span.font-mono" })).toBeInTheDocument();
   });
 
+  it("an instance stack with no project links back to Topology and offers no repository to attach", async () => {
+    const gateway = { ...stack, project_id: "", name: "cloudflared-instance", slug: "cloudflared-instance", managed: false };
+    mocks.get.mockImplementation((url: string) => {
+      if (url === "/api/stacks/stack-1") return Promise.resolve({ data: gateway });
+      return Promise.resolve({ data: [] });
+    });
+    renderPage();
+
+    expect(await screen.findByRole("heading", { name: "cloudflared-instance" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /back to topology/i })).toHaveAttribute("href", "/topology");
+    expect(screen.queryByRole("link", { name: /attach repository/i })).not.toBeInTheDocument();
+  });
+
   it("lists the stack sections and lands on the overview", async () => {
     renderPage();
     await screen.findByRole("heading", { name: "api" });

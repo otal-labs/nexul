@@ -938,9 +938,8 @@ func (f fakeResolver) LookupHost(_ context.Context, host string) ([]string, erro
 
 // fakePlacement is an in-memory dns.InstancePlacement.
 type fakePlacement struct {
-	machine, project string
-	err              error
+	machine string
+	err     error
 }
 
 func (f fakePlacement) InstanceMachine(context.Context) (string, error) { return f.machine, f.err }
-func (f fakePlacement) DefaultProject(context.Context) (string, error)  { return f.project, f.err }

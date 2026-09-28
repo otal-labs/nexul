@@ -1,10 +1,7 @@
-import { Link } from "react-router";
-
-import { EmptyState } from "@/components/EmptyState";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { PageHeader } from "@/components/PageHeader";
-import { Button } from "@/components/ui/button";
+import { NoProjectsState } from "@/components/project/NoProjectsState";
 
 interface BoardUnscopedStatesProps {
   isLoading: boolean;
@@ -19,15 +16,7 @@ export const BoardUnscopedStates = ({ isLoading, error, hasProjects }: BoardUnsc
     {isLoading && <LoadingDisplay label="Loading board…" />}
     {!isLoading && error && <ErrorDisplay error={error} title="Failed to load the board." />}
     {!isLoading && !error && !hasProjects && (
-      <EmptyState
-        title="No projects yet"
-        message="Create a project to start building its board."
-        action={
-          <Button asChild size="sm">
-            <Link to="/wizard/project/project">New project</Link>
-          </Button>
-        }
-      />
+      <NoProjectsState message="Create a project to start building its board." />
     )}
     {!isLoading && !error && hasProjects && <LoadingDisplay label="Loading board…" />}
   </>

@@ -94,7 +94,6 @@ func (in RouteTunnelInput) Validate() error {
 
 // AgentSpec is the dns-side view of a service for an entry-path agent; the root adapts it to a deploy service (ADR 0017).
 type AgentSpec struct {
-	ProjectID     string   `json:"project_id"`
 	Target        string   `json:"target"`
 	Name          string   `json:"name,omitempty"`
 	Strategy      string   `json:"strategy,omitempty"`

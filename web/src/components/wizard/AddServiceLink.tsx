@@ -2,6 +2,7 @@ import { PlusIcon } from "lucide-react";
 import { Link } from "react-router";
 
 import { Button, type ButtonProps } from "@/components/ui/button";
+import { NEW_PROJECT_PATH } from "@/models/Project";
 
 interface AddServiceLinkProps extends Omit<ButtonProps, "asChild" | "children"> {
   // Preselects the project on entry (spec §1, door 2: "project page's Add service; Topology empty state").
@@ -13,7 +14,7 @@ interface AddServiceLinkProps extends Omit<ButtonProps, "asChild" | "children"> 
 // Exported for pages this ticket doesn't own (Topology's empty state) to render without duplicating the route.
 export const AddServiceLink = ({ projectId, children, variant, size, className, ...props }: AddServiceLinkProps) => (
   <Button asChild variant={variant} size={size} className={className} {...props}>
-    <Link to={projectId ? `/wizard/project/repository?project=${projectId}` : "/wizard/project/project"}>
+    <Link to={projectId ? `/wizard/project/repository?project=${projectId}` : NEW_PROJECT_PATH}>
       <PlusIcon className="size-3.5" aria-hidden />
       {children ?? "Add service"}
     </Link>

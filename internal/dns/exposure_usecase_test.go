@@ -23,13 +23,13 @@ func newExposureFixture(t *testing.T) (*Service, *fakeRepo, *fakeTunnelProvider,
 	require.NoError(t, repo.SaveTunnel(context.Background(), Tunnel{ID: "t1", Name: "prod", Token: enc}))
 	tunnel := newFakeTunnelProvider()
 	containers := newFakeContainerLookup()
-	containers.add("app", ExposureTarget{ContainerID: "c-app", Name: "app", StackID: "s-app", ProjectID: "p1", Machine: "host1", Networks: []string{"net1"}, Running: true})
-	containers.add("api", ExposureTarget{ContainerID: "c-api", Name: "api", StackID: "s-api", ProjectID: "p1", Machine: "host1", Networks: []string{"net1"}, Running: true})
-	containers.add("other", ExposureTarget{ContainerID: "c-other", Name: "other", StackID: "s-other", ProjectID: "p1", Machine: "host2", Networks: []string{"net2"}, Running: true})
+	containers.add("app", ExposureTarget{ContainerID: "c-app", Name: "app", StackID: "s-app", Machine: "host1", Networks: []string{"net1"}, Running: true})
+	containers.add("api", ExposureTarget{ContainerID: "c-api", Name: "api", StackID: "s-api", Machine: "host1", Networks: []string{"net1"}, Running: true})
+	containers.add("other", ExposureTarget{ContainerID: "c-other", Name: "other", StackID: "s-other", Machine: "host2", Networks: []string{"net2"}, Running: true})
 	s := newGatewayService(repo, tunnel, &fakeProvisioner{}, containers)
 	g, err := s.CreateGateway(context.Background(), CreateGatewayInput{
 		Kind: GatewayTunnel, DockerNetwork: "net1", ZoneID: "z1", Zone: "example.com",
-		TunnelID: "t1", ProjectID: "p1", Target: "host1",
+		TunnelID: "t1", Target: "host1",
 	})
 	require.NoError(t, err)
 	return s, repo, tunnel, containers, g
@@ -99,11 +99,11 @@ func TestService_CreateExposure_MachineMismatchIsInvalid(t *testing.T) {
 func TestService_CreateExposure_Proxy(t *testing.T) {
 	repo := newFakeRepo()
 	containers := newFakeContainerLookup()
-	containers.add("web", ExposureTarget{ContainerID: "c-web", Name: "web", StackID: "s-web", ProjectID: "p1", Machine: "host1", Networks: []string{"net1"}, Running: true})
+	containers.add("web", ExposureTarget{ContainerID: "c-web", Name: "web", StackID: "s-web", Machine: "host1", Networks: []string{"net1"}, Running: true})
 	s := newGatewayService(repo, newFakeTunnelProvider(), &fakeProvisioner{}, containers)
 	g, err := s.CreateGateway(context.Background(), CreateGatewayInput{
 		Kind: GatewayProxy, DockerNetwork: "net1", ZoneID: "z1", Zone: "example.com",
-		ServerAddress: "203.0.113.10", ProjectID: "p1", Target: "host1",
+		ServerAddress: "203.0.113.10", Target: "host1",
 	})
 	require.NoError(t, err)
 
@@ -132,7 +132,7 @@ func TestService_CreateExposure_ReusesGatewayOnMachine(t *testing.T) {
 func TestService_CreateExposure_ProvisionsGatewayWhenNoneExists(t *testing.T) {
 	repo := newFakeRepo()
 	containers := newFakeContainerLookup()
-	containers.add("web", ExposureTarget{ContainerID: "c-web", Name: "web", StackID: "s-web", ProjectID: "p1", Machine: "host9", Networks: []string{"net9"}, Running: false})
+	containers.add("web", ExposureTarget{ContainerID: "c-web", Name: "web", StackID: "s-web", Machine: "host9", Networks: []string{"net9"}, Running: false})
 	prov := &fakeProvisioner{}
 	cfg := Config{
 		Repo: repo, Provider: newFakeProvider(), TunnelProvider: newFakeTunnelProvider(), Provisioner: prov,
@@ -164,12 +164,12 @@ func TestService_CreateExposure_ProvisionsGatewayWhenNoneExists(t *testing.T) {
 func TestService_CreateExposure_JoinsGatewayNetworks(t *testing.T) {
 	repo := newFakeRepo()
 	containers := newFakeContainerLookup()
-	containers.add("app", ExposureTarget{ContainerID: "c-app", Name: "app", StackID: "s-app", ProjectID: "p1", Machine: "host1", Networks: []string{"net1", "net2"}, Running: true})
+	containers.add("app", ExposureTarget{ContainerID: "c-app", Name: "app", StackID: "s-app", Machine: "host1", Networks: []string{"net1", "net2"}, Running: true})
 	joiner := &fakeRunnerJoiner{}
 	s := newGatewayServiceWithJoiner(repo, newFakeTunnelProvider(), &fakeProvisioner{}, containers, joiner)
 	g, err := s.CreateGateway(context.Background(), CreateGatewayInput{
 		Kind: GatewayProxy, DockerNetwork: "net1", ZoneID: "z1", Zone: "example.com",
-		ServerAddress: "1.2.3.4", ProjectID: "p1", Target: "host1",
+		ServerAddress: "1.2.3.4", Target: "host1",
 	})
 	require.NoError(t, err)
 	// The fixture's container lookup keys the gateway's own backing container by its stack id.

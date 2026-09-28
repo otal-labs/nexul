@@ -16,6 +16,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/outbox"
 	"github.com/otal-labs/nexul/internal/platform/storage"
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
@@ -25,6 +26,7 @@ func newDB(t *testing.T) *sql.DB {
 	db, err := storage.OpenDB(filepath.Join(t.TempDir(), "test.db"))
 	require.NoError(t, err)
 	require.NoError(t, storage.Migrate(db))
+	require.NoError(t, testutil.SeedGeneralProject(db))
 	t.Cleanup(func() { require.NoError(t, db.Close()) })
 	return db
 }

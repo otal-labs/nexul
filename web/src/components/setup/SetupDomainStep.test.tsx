@@ -110,7 +110,7 @@ describe("SetupDomainStep", () => {
       expect(mocks.get).not.toHaveBeenCalledWith("/api/machines");
     });
 
-    it("deploys on the only machine, leaves the project to the server, routes the hostname and finishes", async () => {
+    it("deploys on the only machine with no project, routes the hostname and finishes", async () => {
       mocks.get.mockImplementation(async (url: string) => {
         if (url === "/api/connectors") return { data: [cloudflare(true)] };
         if (url === "/api/dns/zones") return { data: [{ id: "z1", name: "example.com", status: "active" }] };
@@ -134,9 +134,9 @@ describe("SetupDomainStep", () => {
       await user.click(await screen.findByRole("button", { name: /deploy tunnel/i }));
       expect(mocks.post).toHaveBeenCalledWith(
         "/api/dns/tunnels/t1/agent",
-        expect.objectContaining({ project_id: "", target: "instance" }),
+        { tunnel_id: "t1", target: "instance", docker_network: "nexul_default" },
       );
-      // Before sign-in there is no workspace, so projects are never listed.
+      // An instance stack belongs to no project, so projects are never listed.
       expect(mocks.get).not.toHaveBeenCalledWith("/api/projects", expect.anything());
 
       await user.type(await screen.findByLabelText(/subdomain/i), "app");

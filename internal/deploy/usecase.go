@@ -364,7 +364,7 @@ func (s *Service) GetService(ctx context.Context, id string) (*Container, error)
 
 // checkProject also requires the build source's repo to belong to the project, if one is set.
 func (s *Service) checkProject(ctx context.Context, stack *Stack) error {
-	if s.projects == nil {
+	if s.projects == nil || stack.ProjectID == "" {
 		return nil
 	}
 	ok, err := s.projects.ProjectExists(ctx, stack.ProjectID)
@@ -414,6 +414,9 @@ type CreateStackOptions struct {
 // CreateStackWithOptions is one wizard step server-side: link, create, deploy. Linking before creating is what
 // lets a fresh repository pass CreateStack's repo-in-project check.
 func (s *Service) CreateStackWithOptions(ctx context.Context, in Stack, declared map[string]Declared, opts CreateStackOptions) (*Stack, *Deploy, error) {
+	if err := in.Validate(); err != nil {
+		return nil, nil, err
+	}
 	if opts.LinkRepository && in.BuildSource != nil && in.BuildSource.RepoOwner != "" {
 		if err := s.projects.LinkRepo(ctx, in.ProjectID, in.BuildSource.RepoOwner, in.BuildSource.RepoName); err != nil {
 			return nil, nil, fmt.Errorf("link repository %s/%s: %w", in.BuildSource.RepoOwner, in.BuildSource.RepoName, err)

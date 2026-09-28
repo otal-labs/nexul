@@ -22,7 +22,6 @@ vi.mock("@/api/client", () => ({
 
 vi.mock("sonner", () => ({ toast: mocks.toast }));
 
-const projects = [{ id: "p1", name: "Main", created_at: "2026-01-01" }];
 const zones = [{ id: "z1", name: "example.com", status: "active" }];
 const tunnels = [{ id: "t1", name: "instance", account_id: "acct", status: "active", created_at: "", updated_at: "" }];
 const machines = [
@@ -95,7 +94,6 @@ describe("GatewaysSection", () => {
       if (url === "/api/dns/gateways") return { data: [] };
       if (url === "/api/dns/zones") return { data: zones };
       if (url === "/api/dns/tunnels") return { data: tunnels };
-      if (url === "/api/projects") return { data: projects };
       if (url === "/api/machines") return { data: machines };
       return { data: [] };
     });
@@ -107,7 +105,6 @@ describe("GatewaysSection", () => {
     await user.type(await screen.findByLabelText(/docker network/i), "nexul");
     await pickOption(user, /^Tunnel$/, "instance");
     await pickOption(user, /^Zone$/, "example.com");
-    await pickOption(user, /^Project$/, "Main");
     await pickOption(user, "Machine", "edge-1");
     await user.click(screen.getByRole("button", { name: /^create gateway$/i }));
 
@@ -118,7 +115,6 @@ describe("GatewaysSection", () => {
       zone: "example.com",
       tunnel_id: "t1",
       server_address: "",
-      project_id: "p1",
       target: "edge-1",
     });
   });
@@ -128,7 +124,6 @@ describe("GatewaysSection", () => {
       if (url === "/api/dns/gateways") return { data: [] };
       if (url === "/api/dns/zones") return { data: zones };
       if (url === "/api/dns/tunnels") return { data: tunnels };
-      if (url === "/api/projects") return { data: projects };
       if (url === "/api/machines") return { data: machines };
       return { data: [] };
     });

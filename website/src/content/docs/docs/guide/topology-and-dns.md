@@ -22,7 +22,7 @@ Each node's accent and status badge reflect what the runner last observed — he
 
 A **gateway** is a Nexul-deployed service — a Cloudflare tunnel or a reverse proxy — that gives one docker network reachability from the internet. On the canvas, a gateway node is a hub: a hostname pill wires into it on the left, one row per exposure names where that traffic lands (`service:port`, with the container's observed address alongside it once known), and a wire goes out to the matching service node on the right.
 
-Manage gateways directly from Settings → DNS → Gateways, or let the DNS setup stepper create your first one for you.
+Manage gateways directly from Settings → DNS → Gateways, or let the DNS setup stepper create your first one for you. A gateway's stack belongs to the instance rather than to a project: it shows on Topology and in Settings → DNS, and its stack page links back to Topology.
 
 ## Exposures
 
@@ -63,7 +63,7 @@ Nexul deploys your chosen entry path itself, like any other service — there's 
 
 ### 2. Deploy the tunnel (tunnel path only)
 
-Name the tunnel, and pick the project, the machine it runs on, and the Docker network it should reach. Nexul creates the tunnel at Cloudflare and runs `cloudflared` on that machine until it connects.
+Name the tunnel, and pick the machine it runs on and the Docker network it should reach. The tunnel's `cloudflared` stack belongs to the instance, not to a project, like every gateway. Nexul creates the tunnel at Cloudflare and runs `cloudflared` on that machine until it connects.
 
 If your token reaches more than one Cloudflare account, choose the account that owns the domain you'll use. A tunnel only serves hostnames in its own account's zones, so the next step only offers that account's zones, and Nexul refuses to route a hostname from another account.
 

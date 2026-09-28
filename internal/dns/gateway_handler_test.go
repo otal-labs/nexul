@@ -20,12 +20,12 @@ func newGatewayTestHandler(t *testing.T) (*Handler, *Gateway) {
 	require.NoError(t, err)
 	require.NoError(t, repo.SaveTunnel(context.Background(), Tunnel{ID: "t1", Name: "prod", Token: enc}))
 	containers := newFakeContainerLookup()
-	containers.add("app", ExposureTarget{ContainerID: "c-app", Name: "app", StackID: "s-app", ProjectID: "p1", Machine: "host1", Networks: []string{"net1"}})
-	containers.add("other", ExposureTarget{ContainerID: "c-other", Name: "other", StackID: "s-other", ProjectID: "p1", Machine: "host2", Networks: []string{"net2"}})
+	containers.add("app", ExposureTarget{ContainerID: "c-app", Name: "app", StackID: "s-app", Machine: "host1", Networks: []string{"net1"}})
+	containers.add("other", ExposureTarget{ContainerID: "c-other", Name: "other", StackID: "s-other", Machine: "host2", Networks: []string{"net2"}})
 	s := newGatewayService(repo, newFakeTunnelProvider(), &fakeProvisioner{}, containers)
 	g, err := s.CreateGateway(context.Background(), CreateGatewayInput{
 		Kind: GatewayTunnel, DockerNetwork: "net1", ZoneID: "z1", Zone: "example.com",
-		TunnelID: "t1", ProjectID: "p1", Target: "host1",
+		TunnelID: "t1", Target: "host1",
 	})
 	require.NoError(t, err)
 	return NewHandler(s), g

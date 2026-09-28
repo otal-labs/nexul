@@ -13,6 +13,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/otal-labs/nexul/internal/platform/storage/testutil"
 )
 
 var (
@@ -48,6 +50,10 @@ func migratedTemplate(t *testing.T) string {
 			}
 		}()
 		if err := Migrate(db); err != nil {
+			templateErr = err
+			return
+		}
+		if err := testutil.SeedGeneralProject(db); err != nil {
 			templateErr = err
 			return
 		}

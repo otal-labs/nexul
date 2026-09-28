@@ -5,12 +5,14 @@ import { useNavigate } from "react-router";
 import { LazyCreateDocForm } from "@/components/doc/LazyCreateDocForm";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { navLinkClass, sectionLabelClass } from "@/components/SidebarNav";
+import { ProjectTreeEmpty } from "@/components/sidebar/ProjectTreeEmpty";
 import { ProjectTreeItem } from "@/components/sidebar/ProjectTreeItem";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { cn } from "@/lib/utils";
 import type { SaveDocFormData } from "@/models/Doc";
 import { SaveDocFormSchema } from "@/models/Doc";
+import { NEW_PROJECT_PATH } from "@/models/Project";
 import { emptyDocForm } from "@/utils/emptyDocJson";
 
 interface ProjectTreeProps {
@@ -19,7 +21,7 @@ interface ProjectTreeProps {
 
 // One openIds Set is shared by the collapsed rail and the expanded tree, so opening one keeps the other open.
 export const ProjectTree = ({ collapsed }: ProjectTreeProps) => {
-  const { data: projects = [] } = useFetchProjects();
+  const { data: projects } = useFetchProjects();
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
   const { open: openCreateDoc } = useFormDialog();
@@ -35,8 +37,7 @@ export const ProjectTree = ({ collapsed }: ProjectTreeProps) => {
       return next;
     });
 
-  // The project wizard's project step covers name + prefix (spec §1, door 1); no dialog needed here anymore.
-  const createProject = () => navigate("/wizard/project/project");
+  const createProject = () => navigate(NEW_PROJECT_PATH);
 
   // Hovering a row reveals a "+" that adds a child, scoped here to project->doc.
   const createDoc = (projectId: string) =>
@@ -67,7 +68,8 @@ export const ProjectTree = ({ collapsed }: ProjectTreeProps) => {
           </button>
         </div>
       )}
-      {projects.map((project) => (
+      {!collapsed && projects && projects.length === 0 && <ProjectTreeEmpty />}
+      {projects?.map((project) => (
         <ProjectTreeItem
           key={project.id}
           project={project}

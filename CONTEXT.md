@@ -23,6 +23,14 @@ projects, docs, and configuration; members switch between them in the normal
 UI via a picker. Sign-in itself stays instance-wide.
 _Avoid_: Organization, tenant, team
 
+**Project**:
+The grouping inside a workspace that tickets, docs, project memories,
+repositories, and stacks belong to. Only the project wizard makes one
+(`project_create` over MCP runs the same use-case), and it arrives with its
+status columns, ticket types, and a starter memory. Nothing seeds one: a new
+workspace, the owner's first included, has none until the wizard runs.
+_Avoid_: Board, app, default project
+
 **Instance**:
 One self-hosted install of Nexul, owned by one person or team.
 Single-tenant by design.
@@ -219,6 +227,14 @@ Dockerfile as a stack of one. The stack is what gets deployed, rolled back,
 and torn down; the services inside it are observed, not deployed on their
 own. Decided 2026-09-08 for the project wizard.
 _Avoid_: Compose project, resource, application
+
+**Instance stack**:
+A stack that belongs to the instance rather than to a project: the backing
+stack of a gateway, the tunnel or reverse proxy first run deploys among
+them. It never builds from a repository, shows on Topology and in
+Settings → DNS, and is reached by whoever can reach stacks at all, since a
+stack's project never gates access to it.
+_Avoid_: System stack, infrastructure project
 
 **Stack slug**:
 The DNS- and Docker-safe token derived once from a stack's name at creation,

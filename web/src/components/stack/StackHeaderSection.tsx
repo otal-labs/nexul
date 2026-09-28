@@ -41,7 +41,7 @@ export const StackHeaderSection = ({ stack, projectPath, latest, image, hostname
           to={projectPath}
           className="inline-block font-mono text-xs text-muted-foreground transition-colors duration-150 ease-standard hover:text-foreground"
         >
-          ← Back to project
+          {stack.project_id ? "← Back to project" : "← Back to topology"}
         </Link>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 space-y-1">
@@ -51,7 +51,7 @@ export const StackHeaderSection = ({ stack, projectPath, latest, image, hostname
             </div>
             <h1 className="text-3xl font-semibold tracking-tight">{stack.name}</h1>
           </div>
-          {!stack.managed && (
+          {!stack.managed && !!stack.project_id && (
             <Button variant="outline" size="sm" asChild>
               <Link to={`/wizard/project/repository?stack=${stack.id}`}>
                 <GitBranchIcon className="size-4" /> Attach repository

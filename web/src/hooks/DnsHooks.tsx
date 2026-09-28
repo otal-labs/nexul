@@ -90,7 +90,7 @@ export const useRouteTunnelHostname = () => {
 export const useProvisionTunnelAgent = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { tunnel_id: string; project_id: string; target: string; docker_network: string }) =>
+    mutationFn: async (input: { tunnel_id: string; target: string; docker_network: string }) =>
       (
         await api.post<{ service_id: string }>(
           `/api/dns/tunnels/${encodeURIComponent(input.tunnel_id)}/agent`,
@@ -109,7 +109,6 @@ export const useProvisionReverseProxy = () => {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async (input: {
-      project_id: string;
       target: string;
       docker_network: string;
       image?: string;

@@ -4,7 +4,6 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SetupWorkspaceStep } from "@/components/auth/SetupWorkspaceStep";
-import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
@@ -19,9 +18,6 @@ vi.mock("@/api/client", () => ({
 }));
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
-
-const workspace = { id: "ws-1", name: "Acme", created_at: "", updated_at: "" };
-const project = { id: "p-1", name: "General", prefix: "", position: 0, created_at: "", updated_at: "" };
 
 const renderStep = (onContinue = vi.fn()) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -38,55 +34,51 @@ describe("SetupWorkspaceStep", () => {
     mocks.get.mockReset();
     mocks.post.mockReset();
     mocks.patch.mockReset();
-    mocks.errorMessage.mockReset();
-    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
     mocks.get.mockImplementation(async (url: string) => {
-      if (url === "/api/workspaces") return { data: [workspace] };
-      if (url === "/api/projects") return { data: [project] };
+      if (url === "/api/workspaces") return { data: [] };
       throw new Error(`unexpected GET ${url}`);
     });
   });
 
-  it("renders the workspace name and project fields", async () => {
+  it("shows the error when the workspaces cannot load", async () => {
+    mocks.get.mockRejectedValue(new Error("boom"));
     renderStep();
-    expect(await screen.findByLabelText(/project name/i)).toHaveValue("General");
-    expect(screen.getByLabelText(/project prefix/i)).toHaveValue("");
-    expect(screen.getByLabelText(/workspace name/i)).toHaveValue("Acme");
+
+    expect(await screen.findByText(/something went wrong/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/workspace name/i)).not.toBeInTheDocument();
   });
 
-  it("hands the validated project name and prefix up instead of saving them itself", async () => {
-    // The PATCH endpoints require can_create_workspace, which this user only
-    // gets from CompleteOwnerWizard (runs after this step), so it must not
-    // call the backend itself.
+  it("blocks an empty workspace name instead of continuing", async () => {
     const user = userEvent.setup();
     const onContinue = renderStep();
 
-    await screen.findByLabelText(/project name/i);
-    await user.clear(screen.getByLabelText(/project name/i));
-    await user.type(screen.getByLabelText(/project name/i), "Nexul");
-    await user.type(screen.getByLabelText(/project prefix/i), "DEP");
+    await user.clear(await screen.findByLabelText(/workspace name/i));
+    await user.click(screen.getByRole("button", { name: /continue/i }));
+
+    expect(await screen.findByText(/workspace name is required/i)).toBeInTheDocument();
+    expect(onContinue).not.toHaveBeenCalled();
+  });
+
+  it("asks for the workspace name only, with no project fields", async () => {
+    renderStep();
+
+    expect(await screen.findByLabelText(/workspace name/i)).toHaveValue("Default");
+    expect(screen.queryByLabelText(/project/i)).not.toBeInTheDocument();
+    expect(mocks.get).not.toHaveBeenCalledWith("/api/projects", expect.anything());
+  });
+
+  it("hands the name up instead of saving it itself", async () => {
+    // Renaming needs can_create_workspace, which the owner only gets once the wizard completes.
+    const user = userEvent.setup();
+    const onContinue = renderStep();
+
+    const name = await screen.findByLabelText(/workspace name/i);
+    await user.clear(name);
+    await user.type(name, "Acme");
     await user.click(screen.getByRole("button", { name: /continue/i }));
 
     expect(mocks.patch).not.toHaveBeenCalled();
     expect(mocks.post).not.toHaveBeenCalled();
-    expect(onContinue).toHaveBeenCalledWith({
-      workspaceId: "workspace-default",
-      workspaceName: "Acme",
-      projectId: "p-1",
-      projectName: "Nexul",
-      projectPrefix: "DEP",
-    });
-  });
-
-  it("blocks submit on an invalid prefix instead of continuing", async () => {
-    const user = userEvent.setup();
-    const onContinue = renderStep();
-
-    await screen.findByLabelText(/project name/i);
-    await user.type(screen.getByLabelText(/project prefix/i), "1");
-    await user.click(screen.getByRole("button", { name: /continue/i }));
-
-    expect(await screen.findByText(/prefix must be 2-5 letters/i)).toBeInTheDocument();
-    expect(onContinue).not.toHaveBeenCalled();
+    expect(onContinue).toHaveBeenCalledWith({ workspaceId: "workspace-default", workspaceName: "Acme" });
   });
 });

@@ -67,11 +67,10 @@ type CreateGatewayInput struct {
 	TunnelID string `json:"tunnel_id,omitempty"`
 	// ServerAddress is the server's public IP/hostname the proxy listens on (kind proxy).
 	ServerAddress string `json:"server_address,omitempty"`
-	// ProjectID/Target/Name feed the backing service provisioning; Name defaults per kind when empty.
+	// Target/Name feed the backing stack, which belongs to the instance, not a project; Name defaults per kind.
 	// Target also becomes the gateway's Machine — the backing service always deploys where the gateway runs.
-	ProjectID string `json:"project_id"`
-	Target    string `json:"target"`
-	Name      string `json:"name,omitempty"`
+	Target string `json:"target"`
+	Name   string `json:"name,omitempty"`
 }
 
 // Validate rejects gateway creations that cannot proceed.
@@ -86,9 +85,6 @@ func (in CreateGatewayInput) Validate() error {
 	}
 	if strings.TrimSpace(in.ZoneID) == "" || strings.TrimSpace(in.Zone) == "" {
 		return fmt.Errorf("%w: zone is required", apperrs.ErrInvalid)
-	}
-	if strings.TrimSpace(in.ProjectID) == "" {
-		return fmt.Errorf("%w: project is required", apperrs.ErrInvalid)
 	}
 	if strings.TrimSpace(in.Target) == "" {
 		return fmt.Errorf("%w: target host is required", apperrs.ErrInvalid)
@@ -109,11 +105,10 @@ type ExposureTarget struct {
 	ContainerID string
 	// Name is the container's runtime name, used for the tunnel origin and proxy label (Container.ContainerName,
 	// falling back to the stack slug when not yet observed).
-	Name      string
-	StackID   string
-	ProjectID string
-	Machine   string
-	Networks  []string
+	Name     string
+	StackID  string
+	Machine  string
+	Networks []string
 	// Running reports whether the container is currently up, so CreateExposure knows whether to ask the
 	// runner to join networks immediately or leave it for the stack's next deploy.
 	Running bool
@@ -226,9 +221,8 @@ type InstanceProxyInput struct {
 	Domain string `json:"domain"`
 	// Email registers the Let's Encrypt account; optional.
 	Email string `json:"email,omitempty"`
-	// Target, ProjectID, and DockerNetwork default to the bundled instance machine, the first project, and nexul_proxy.
+	// Target and DockerNetwork default to the bundled instance machine and nexul_proxy.
 	Target        string `json:"target,omitempty"`
-	ProjectID     string `json:"project_id,omitempty"`
 	DockerNetwork string `json:"docker_network,omitempty"`
 }
 
@@ -279,8 +273,6 @@ func validLabel(l string) bool {
 type InstancePlacement interface {
 	// InstanceMachine is the machine the bundled runner named "instance" runs on.
 	InstanceMachine(ctx context.Context) (string, error)
-	// DefaultProject is the project a new proxy stack belongs to.
-	DefaultProject(ctx context.Context) (string, error)
 }
 
 // HostResolver looks a host name up; *net.Resolver satisfies it.

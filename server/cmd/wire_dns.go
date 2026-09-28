@@ -11,7 +11,6 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/storage"
 	"github.com/otal-labs/nexul/internal/runner"
-	"github.com/otal-labs/nexul/internal/tenancy"
 )
 
 // dnsSettingsAdapter adapts the auth settings store to dns's SettingsReader seam (ADR 0017).
@@ -61,7 +60,6 @@ func (a dnsProvisioner) Provision(ctx context.Context, in dns.AgentSpec) (*dns.A
 		return &dns.AgentProvisioned{ServiceID: existing.ID}, nil
 	}
 	stack, err := a.deploy.CreateStack(ctx, deploy.Stack{
-		ProjectID:     in.ProjectID,
 		Name:          in.Name,
 		Machine:       in.Target,
 		Strategy:      deploy.Strategy(in.Strategy),
@@ -94,11 +92,10 @@ func (a dnsProvisioner) Deprovision(ctx context.Context, stackID string) error {
 	return nil
 }
 
-// dnsInstancePlacement adapts runners, machines, and projects to dns's InstancePlacement seam (ADR 0017).
+// dnsInstancePlacement adapts runners and machines to dns's InstancePlacement seam (ADR 0017).
 type dnsInstancePlacement struct {
 	runners  *storage.RunnersRepo
 	machines *storage.MachinesRepo
-	projects *storage.ProjectsRepo
 }
 
 // InstanceMachine is the machine the bundled "instance" runner reported on its first connect.
@@ -118,18 +115,6 @@ func (a dnsInstancePlacement) InstanceMachine(ctx context.Context) (string, erro
 		return "", err
 	}
 	return m.Name, nil
-}
-
-// DefaultProject is the workspace's first project, the seeded one on a fresh install.
-func (a dnsInstancePlacement) DefaultProject(ctx context.Context) (string, error) {
-	projects, err := a.projects.List(ctx, tenancy.DefaultWorkspaceID)
-	if err != nil {
-		return "", err
-	}
-	if len(projects) == 0 {
-		return "", fmt.Errorf("%w: the workspace has no project to hold the proxy; create one first", apperrs.ErrInvalid)
-	}
-	return projects[0].ID, nil
 }
 
 // instanceRunnerName is the bundled runner the installer enrolls beside the server.
@@ -201,7 +186,7 @@ func exposureTargetFor(stack *deploy.Stack, container *deploy.Container) *dns.Ex
 	}
 	running := container.Status == deploy.ServiceStatusRunning || container.Status == deploy.ServiceStatusHealthy
 	return &dns.ExposureTarget{
-		ContainerID: container.ID, Name: name, StackID: stack.ID, ProjectID: stack.ProjectID,
+		ContainerID: container.ID, Name: name, StackID: stack.ID,
 		Machine: stack.Machine, Networks: networks, Running: running,
 	}
 }

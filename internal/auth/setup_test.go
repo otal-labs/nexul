@@ -176,7 +176,7 @@ func TestRequireAuth_SetupPass(t *testing.T) {
 		{"dns tunnel create", http.MethodPost, "/api/dns/tunnels", mustSetupPass, nil, http.StatusOK},
 		{"dns instance proxy", http.MethodPost, "/api/dns/instance-proxy", mustSetupPass, nil, http.StatusOK},
 		{"machines", http.MethodGet, "/api/machines", mustSetupPass, nil, http.StatusOK},
-		{"projects", http.MethodGet, "/api/projects", mustSetupPass, nil, http.StatusOK},
+		{"projects are off the allowlist: first run has none", http.MethodGet, "/api/projects", mustSetupPass, nil, http.StatusUnauthorized},
 		{"service deploys", http.MethodGet, "/api/services/s1/deploys", mustSetupPass, nil, http.StatusOK},
 		{"deploy log", http.MethodGet, "/api/deploys/d1/log", mustSetupPass, nil, http.StatusOK},
 	}

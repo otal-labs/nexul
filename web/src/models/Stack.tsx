@@ -65,7 +65,8 @@ export const derivesClone = (rule: Pick<BranchDeployRule, "pattern" | "name_suff
 export const defaultNetwork = (stack: Pick<Stack, "strategy" | "slug" | "docker_network">): string =>
   stack.strategy === "run" ? (stack.docker_network ?? "") : `${stack.slug}_default`;
 
-// Stack is a deploy stack definition (spec §2): a workload owned by one project, on one machine, with a strategy.
+// Stack is a deploy stack definition (spec §2): a workload on one machine, with a strategy, owned by one project,
+// or by the instance itself (a gateway), when project_id is empty.
 export interface Stack {
   id: string;
   project_id: string;

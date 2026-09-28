@@ -143,7 +143,7 @@ func (s *Service) provisionExposureGateway(ctx context.Context, in CreateExposur
 	return s.CreateGateway(ctx, CreateGatewayInput{
 		Kind: kind, DockerNetwork: firstNetwork(target.Networks),
 		ZoneID: in.ZoneID, Zone: in.Zone, TunnelID: tunnelID, ServerAddress: serverAddress,
-		ProjectID: target.ProjectID, Target: target.Machine,
+		Target: target.Machine,
 	})
 }
 

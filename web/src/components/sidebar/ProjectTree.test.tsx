@@ -30,10 +30,10 @@ const docsByProject: Record<string, { id: string; project_id: string; title: str
   "p-2": [],
 };
 
-const mockApi = () => {
+const mockApi = (list: typeof projects) => {
   vi.mocked(api.get).mockImplementation(async (url: string, config?: unknown) => {
     const projectId = (config as { params?: { project_id?: string } } | undefined)?.params?.project_id ?? "";
-    if (url === "/api/projects") return { data: projects };
+    if (url === "/api/projects") return { data: list };
     if (url === "/api/docs") return { data: docsByProject[projectId] ?? [] };
     return { data: [] };
   });
@@ -41,8 +41,8 @@ const mockApi = () => {
 
 const LocationSpy = () => <div data-testid="location">{useLocation().pathname}</div>;
 
-const renderTree = (collapsed = false) => {
-  mockApi();
+const renderTree = (collapsed = false, list = projects) => {
+  mockApi(list);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
@@ -109,6 +109,15 @@ describe("ProjectTree", () => {
     renderTree();
 
     await user.click(await screen.findByRole("button", { name: "New project" }));
+    expect(screen.getByTestId("location")).toHaveTextContent("/wizard/project/project");
+  });
+
+  it("a workspace with no project shows an empty state whose action opens the project wizard", async () => {
+    const user = userEvent.setup();
+    renderTree(false, []);
+
+    expect(await screen.findByText("No projects yet.")).toBeInTheDocument();
+    await user.click(screen.getByRole("link", { name: "Create your first project" }));
     expect(screen.getByTestId("location")).toHaveTextContent("/wizard/project/project");
   });
 

@@ -16,6 +16,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus/inprocess"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/testutil"
 	"github.com/otal-labs/nexul/internal/platform/storage"
+	storagetest "github.com/otal-labs/nexul/internal/platform/storage/testutil"
 )
 
 // openStore returns a migrated real-SQLite store on a temp file.
@@ -24,6 +25,7 @@ func openStore(t *testing.T) *storage.Store {
 	db, err := storage.OpenDB(filepath.Join(t.TempDir(), "test.db"))
 	require.NoError(t, err)
 	require.NoError(t, storage.Migrate(db))
+	require.NoError(t, storagetest.SeedGeneralProject(db))
 	t.Cleanup(func() { require.NoError(t, db.Close()) })
 	return storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
 }

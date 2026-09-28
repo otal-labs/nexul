@@ -10,7 +10,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 )
 
-const tunnelGatewayArgs = `{"kind":"tunnel","machine":"host1","docker_network":"net1","project_id":"p1","zone_id":"z1","zone":"example.com","tunnel_id":"t1"}`
+const tunnelGatewayArgs = `{"kind":"tunnel","machine":"host1","docker_network":"net1","zone_id":"z1","zone":"example.com","tunnel_id":"t1"}`
 
 func seedGateway(f *toolFakes, g Gateway) {
 	f.repo.gateways[g.ID] = &g
@@ -23,15 +23,15 @@ func seedExposure(f *toolFakes, e Exposure) {
 func TestGatewayAndExposureTools_Errors(t *testing.T) {
 	runToolErrors(t, []toolError{
 		{name: "an unknown kind is invalid", tool: "gateway_create", want: apperrs.ErrInvalid,
-			args: `{"kind":"bridge","machine":"host1","docker_network":"net1","project_id":"p1","zone_id":"z1","zone":"example.com"}`},
+			args: `{"kind":"bridge","machine":"host1","docker_network":"net1","zone_id":"z1","zone":"example.com"}`},
 		{name: "a tunnel gateway without a tunnel is invalid", tool: "gateway_create", want: apperrs.ErrInvalid,
-			args: `{"kind":"tunnel","machine":"host1","docker_network":"net1","project_id":"p1","zone_id":"z1","zone":"example.com"}`},
+			args: `{"kind":"tunnel","machine":"host1","docker_network":"net1","zone_id":"z1","zone":"example.com"}`},
 		{name: "the old target argument is rejected", tool: "gateway_create", want: apperrs.ErrInvalid,
-			args: `{"kind":"tunnel","target":"host1","docker_network":"net1","project_id":"p1","zone_id":"z1","zone":"example.com","tunnel_id":"t1"}`},
+			args: `{"kind":"tunnel","target":"host1","docker_network":"net1","zone_id":"z1","zone":"example.com","tunnel_id":"t1"}`},
 		{name: "ports are rejected, not dropped", tool: "gateway_create", want: apperrs.ErrInvalid,
-			args: `{"kind":"tunnel","machine":"host1","docker_network":"net1","project_id":"p1","zone_id":"z1","zone":"example.com","tunnel_id":"t1","ports":["80:80"]}`},
+			args: `{"kind":"tunnel","machine":"host1","docker_network":"net1","zone_id":"z1","zone":"example.com","tunnel_id":"t1","ports":["80:80"]}`},
 		{name: "an unknown tunnel is not found", tool: "gateway_create", want: apperrs.ErrNotFound,
-			args: `{"kind":"tunnel","machine":"host1","docker_network":"net1","project_id":"p1","zone_id":"z1","zone":"example.com","tunnel_id":"ghost"}`},
+			args: `{"kind":"tunnel","machine":"host1","docker_network":"net1","zone_id":"z1","zone":"example.com","tunnel_id":"ghost"}`},
 		{name: "a network that has a gateway conflicts", tool: "gateway_create", want: apperrs.ErrConflict, args: tunnelGatewayArgs,
 			setup: func(f *toolFakes) {
 				seedGateway(f, Gateway{ID: "g0", Kind: GatewayProxy, DockerNetwork: "net1", Machine: "host1"})
@@ -80,7 +80,7 @@ func TestGatewayCreate_TunnelDeploysCloudflaredOnTheMachine(t *testing.T) {
 func TestGatewayCreate_ProxyDeploysTraefik(t *testing.T) {
 	f := newToolFakes(t)
 	got, err := f.call(t, "gateway_create",
-		`{"kind":"proxy","machine":"host1","docker_network":"net1","project_id":"p1","zone_id":"z1","zone":"example.com","server_address":"203.0.113.10","stack_name":"edge"}`)
+		`{"kind":"proxy","machine":"host1","docker_network":"net1","zone_id":"z1","zone":"example.com","server_address":"203.0.113.10","stack_name":"edge"}`)
 	require.NoError(t, err)
 	assert.Equal(t, gatewayResult{
 		ID: got.(gatewayResult).ID, Kind: GatewayProxy, Machine: "host1", DockerNetwork: "net1", Networks: []string{"net1"},

@@ -250,8 +250,9 @@ func (bs *BuildSource) Buildable() bool {
 	return bs != nil && (bs.Dockerfile != "" || bs.ComposePath != "")
 }
 
-// Stack is a deploy stack definition: a workload owned by one project, on one machine, with a strategy.
-// A stack owns the observed Container rows its deploys started.
+// Stack is a deploy stack definition: a workload on one machine, with a strategy, owned by one project or, for
+// the instance's own infrastructure like a gateway, by no project. A stack owns the observed Container rows its
+// deploys started.
 type Stack struct {
 	ID        string `json:"id"`
 	ProjectID string `json:"project_id"`
@@ -301,8 +302,8 @@ func (s *Stack) Validate() error {
 	if strings.TrimSpace(s.Name) == "" {
 		return fmt.Errorf("%w: stack name is required", apperrs.ErrInvalid)
 	}
-	if strings.TrimSpace(s.ProjectID) == "" {
-		return fmt.Errorf("%w: project is required", apperrs.ErrInvalid)
+	if s.BuildSource != nil && strings.TrimSpace(s.ProjectID) == "" {
+		return fmt.Errorf("%w: a stack that builds from a repository belongs to that repository's project", apperrs.ErrInvalid)
 	}
 	if strings.TrimSpace(s.Machine) == "" {
 		return fmt.Errorf("%w: machine is required", apperrs.ErrInvalid)

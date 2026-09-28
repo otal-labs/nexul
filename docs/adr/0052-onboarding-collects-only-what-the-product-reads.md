@@ -7,9 +7,11 @@ either one, so storing them would be data kept for its own sake — a column to
 migrate, a field to render, and a question to answer on the way in, all with no
 consumer on the other side.
 
-The same rule governed the wizard's other steps. Step 2 sets the name and prefix
+The same rule governed the wizard's other steps. Step 2 set the name and prefix
 on the already-seeded default project rather than creating a second project row,
-because the step exists to fix those fields, not to establish a second identity.
+because the step existed to fix those fields, not to establish a second identity.
+Superseded in part by ADR 0079: nothing seeds a project any more, step 2 names the
+workspace only, and the first project comes from the project wizard.
 
 Decided: 2026-09-03
 

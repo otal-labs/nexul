@@ -7,6 +7,7 @@ package sqlcgen
 
 import (
 	"context"
+	"database/sql"
 )
 
 const createStack = `-- name: CreateStack :exec
@@ -20,7 +21,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 
 type CreateStackParams struct {
 	ID                string
-	ProjectID         string
+	ProjectID         sql.NullString
 	Name              string
 	Slug              string
 	Machine           string
@@ -363,7 +364,7 @@ WHERE id = ?
 `
 
 type UpdateStackParams struct {
-	ProjectID         string
+	ProjectID         sql.NullString
 	Name              string
 	Slug              string
 	Machine           string

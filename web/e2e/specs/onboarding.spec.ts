@@ -31,14 +31,14 @@ describe("onboarding wizards", () => {
 
     await page.getByRole("button", { name: "Continue", exact: true }).click();
 
-    // The seeded default project starts with an empty prefix (ADR 0004 backfill), which fails the 2-5 letter validation, so it must be filled before continuing.
+    // The workspace step names the workspace only; projects come from the project wizard.
     await expect(page.getByLabel("Workspace name", { exact: true })).toBeVisible();
-    await page.getByLabel("Project prefix", { exact: true }).fill("GEN");
+    await expect(page.getByLabel(/project/i)).toHaveCount(0);
     await page.getByRole("button", { name: "Continue", exact: true }).click();
 
     await page.getByRole("button", { name: /finish setup/i }).click();
-    // The domain is set up before sign-in, so completion goes straight to the app.
-    await page.waitForURL((url) => url.pathname === "/");
+    // The domain is set up before sign-in, so completion goes straight to the project wizard.
+    await page.waitForURL((url) => url.pathname === "/wizard/project/project");
   });
 
   it("dns onboarding renders and can be skipped", async () => {

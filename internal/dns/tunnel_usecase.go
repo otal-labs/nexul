@@ -309,9 +309,6 @@ func (s *Service) ProvisionTunnelAgent(ctx context.Context, tunnelID string, spe
 	if spec.Target, err = s.placementMachine(ctx, spec.Target); err != nil {
 		return nil, err
 	}
-	if spec.ProjectID, err = s.placementProject(ctx, spec.ProjectID); err != nil {
-		return nil, err
-	}
 	// Without an image nothing is ever deployed, and without `tunnel run` the image prints help and exits.
 	if spec.Image == "" {
 		spec.Image = cloudflaredImage
@@ -343,7 +340,7 @@ func (s *Service) ProvisionTunnelAgent(ctx context.Context, tunnelID string, spe
 }
 
 // ProvisionReverseProxy deploys the machine's proxy gateway for the DNS page, routing the stored instance URL's host
-// to this server when one is set; spec supplies only the machine, project, and network.
+// to this server when one is set; spec supplies only the machine and network.
 func (s *Service) ProvisionReverseProxy(ctx context.Context, spec AgentSpec) (*AgentProvisioned, error) {
 	domain := ""
 	if u, err := s.instanceURL(ctx); err == nil && u != "" {
@@ -352,7 +349,7 @@ func (s *Service) ProvisionReverseProxy(ctx context.Context, spec AgentSpec) (*A
 		}
 	}
 	g, err := s.deployProxyGateway(ctx, InstanceProxyInput{
-		Domain: domain, Target: spec.Target, ProjectID: spec.ProjectID, DockerNetwork: spec.DockerNetwork,
+		Domain: domain, Target: spec.Target, DockerNetwork: spec.DockerNetwork,
 	})
 	if err != nil {
 		return nil, err

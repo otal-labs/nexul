@@ -14,13 +14,13 @@ import (
 
 const testDomain = "nexul.example.com"
 
-// newInstanceProxyService wires the instance proxy use-case over fakes: the bundled machine is host1, the default
-// project p1, and the domain resolves to one IPv6 and one IPv4 address.
+// newInstanceProxyService wires the instance proxy use-case over fakes: the bundled machine is host1 and the
+// domain resolves to one IPv6 and one IPv4 address.
 func newInstanceProxyService(repo *fakeRepo, prov *fakeProvisioner) *Service {
 	return NewService(Config{
 		Repo: repo, Provisioner: prov, Settings: &fakeSettings{},
 		InstanceOrigin: testOrigin,
-		Placement:      fakePlacement{machine: "host1", project: "p1"},
+		Placement:      fakePlacement{machine: "host1"},
 		Resolver:       fakeResolver{addrs: map[string][]string{testDomain: {"2001:db8::1", "203.0.113.10"}}},
 	})
 }
@@ -43,10 +43,6 @@ func TestService_ProvisionInstanceProxy_Errors(t *testing.T) {
 			setup: func(r *fakeRepo, p *fakeProvisioner) *Service {
 				return NewService(Config{Repo: r, Provisioner: p, InstanceOrigin: testOrigin, Resolver: fakeResolver{}})
 			}, want: apperrs.ErrInvalid},
-		{name: "no project and no placement is invalid", in: InstanceProxyInput{Domain: testDomain, Target: "host1"},
-			setup: func(r *fakeRepo, p *fakeProvisioner) *Service {
-				return NewService(Config{Repo: r, Provisioner: p, InstanceOrigin: testOrigin, Resolver: fakeResolver{}})
-			}, want: apperrs.ErrInvalid},
 		{name: "an instance runner that never connected surfaces", in: InstanceProxyInput{Domain: testDomain},
 			setup: func(r *fakeRepo, p *fakeProvisioner) *Service {
 				return NewService(Config{Repo: r, Provisioner: p, InstanceOrigin: testOrigin, Resolver: fakeResolver{},
@@ -54,7 +50,7 @@ func TestService_ProvisionInstanceProxy_Errors(t *testing.T) {
 			}, want: apperrs.ErrInvalid},
 		{name: "no container address for the server is a configuration error", in: InstanceProxyInput{Domain: testDomain},
 			setup: func(r *fakeRepo, p *fakeProvisioner) *Service {
-				return NewService(Config{Repo: r, Provisioner: p, Resolver: fakeResolver{}, Placement: fakePlacement{machine: "host1", project: "p1"}})
+				return NewService(Config{Repo: r, Provisioner: p, Resolver: fakeResolver{}, Placement: fakePlacement{machine: "host1"}})
 			}, want: apperrs.ErrFatal},
 		{name: "a network another gateway homes on conflicts", in: InstanceProxyInput{Domain: testDomain},
 			setup: func(r *fakeRepo, p *fakeProvisioner) *Service {
@@ -94,7 +90,7 @@ func TestService_ProvisionInstanceProxy_DeploysTraefikWithTheInstanceRoute(t *te
 
 	require.Len(t, prov.calls, 1)
 	assert.Equal(t, AgentSpec{
-		ProjectID: "p1", Target: "host1", Name: "nexul-proxy", Strategy: "run", DockerNetwork: "nexul_proxy",
+		Target: "host1", Name: "nexul-proxy", Strategy: "run", DockerNetwork: "nexul_proxy",
 		Image:  "traefik:v3",
 		Ports:  []string{"80:80", "443:443"},
 		Mounts: []string{"/var/run/docker.sock:/var/run/docker.sock:ro", "nexul-traefik-acme:/letsencrypt"},
@@ -249,7 +245,7 @@ func TestGatewayCreateTool_InstanceDomain(t *testing.T) {
 		assert.Equal(t, "owner@example.com", f.prov.calls[0].Env["TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_EMAIL"])
 	})
 	t.Run("a proxy gateway without an instance domain still needs its zone", func(t *testing.T) {
-		_, err := newToolFakes(t).call(t, "gateway_create", `{"kind":"proxy","machine":"host1","docker_network":"n","project_id":"p1","server_address":"1.2.3.4"}`)
+		_, err := newToolFakes(t).call(t, "gateway_create", `{"kind":"proxy","machine":"host1","docker_network":"n","server_address":"1.2.3.4"}`)
 		require.True(t, errors.Is(err, apperrs.ErrInvalid))
 	})
 }
