@@ -44,7 +44,7 @@ main() {
   if [ -z "$tag" ]; then
     # releases/latest skips prereleases, so before the first stable release the newest beta is the answer.
     tag=$(curl -fsSL "$API/repos/$REPO/releases/latest" 2>/dev/null | tag_name || true)
-    [ -n "$tag" ] || tag=$(curl -fsSL "$API/repos/$REPO/releases?per_page=1" | tag_name || true)
+    [ -n "$tag" ] || tag=$(curl -fsSL "$API/repos/$REPO/releases?per_page=30" | newest_tag || true)
     [ -n "$tag" ] || fail "could not find a Nexul release"
   fi
   case "$tag" in v*) ;; *) tag="v$tag" ;; esac
@@ -81,6 +81,18 @@ sha256() {
 
 tag_name() {
   sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1
+}
+
+# newest_tag picks the most recently published release. GitHub orders the list by tag text, which puts beta.9
+# above beta.10, and a draft has no publish time, so it is never picked.
+newest_tag() {
+  tr ',' '\n' | awk '
+    /"tag_name"[[:space:]]*:/ { t = $0; sub(/.*"tag_name"[[:space:]]*:[[:space:]]*"/, "", t); sub(/".*/, "", t) }
+    /"published_at"[[:space:]]*:[[:space:]]*"/ {
+      p = $0; sub(/.*"published_at"[[:space:]]*:[[:space:]]*"/, "", p); sub(/".*/, "", p)
+      if (t != "") print p, t
+      t = ""
+    }' | sort | tail -n1 | cut -d' ' -f2
 }
 
 main "$@"

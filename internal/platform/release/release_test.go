@@ -439,3 +439,32 @@ func TestClient_Refresh(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 3, requests)
 }
+
+// GitHub lists releases by tag text, so beta.9 comes before beta.11; the answer must go by publish time.
+func TestClient_BetaOrderIsByPublishTime(t *testing.T) {
+	at := func(h int) time.Time { return time.Date(2026, 9, 28, h, 0, 0, 0, time.UTC) }
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		require.NoError(t, jsonEncode(w, []ghRelease{
+			{TagName: "v0.2.0-beta.9", Prerelease: true, PublishedAt: at(10)},
+			{TagName: "v0.2.0-beta.8", Prerelease: true, PublishedAt: at(9)},
+			{TagName: "v0.2.0-beta.7", Prerelease: true, PublishedAt: at(0)},
+			{TagName: "v0.2.0-beta.12", Prerelease: true, Draft: true, CreatedAt: at(16)},
+			{TagName: "v0.2.0-beta.11", Prerelease: true, PublishedAt: at(15)},
+			{TagName: "v0.2.0-beta.10", Prerelease: true, PublishedAt: at(11)},
+		}))
+	}))
+	t.Cleanup(srv.Close)
+	c := New(Config{APIBase: srv.URL})
+
+	latest, err := c.Latest(t.Context(), "beta")
+	require.NoError(t, err)
+	assert.Equal(t, "v0.2.0-beta.11", latest.Tag, "a draft never wins, and beta.11 is newer than beta.9")
+
+	since, err := c.Since(t.Context(), "beta", "v0.2.0-beta.9")
+	require.NoError(t, err)
+	tags := make([]string, 0, len(since))
+	for _, r := range since {
+		tags = append(tags, r.Tag)
+	}
+	assert.Equal(t, []string{"v0.2.0-beta.11", "v0.2.0-beta.10"}, tags)
+}
