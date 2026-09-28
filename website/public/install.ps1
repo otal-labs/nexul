@@ -22,7 +22,11 @@
       try { $tag = (Invoke-RestMethod "$api/repos/$repo/releases/latest").tag_name } catch { $tag = $null }
     }
     if (-not $tag) {
-      $tag = @(Invoke-RestMethod "$api/repos/$repo/releases?per_page=1")[0].tag_name
+      # GitHub orders the list by tag text (beta.9 above beta.10); the newest is the latest published, never a draft.
+      $tag = @(Invoke-RestMethod "$api/repos/$repo/releases?per_page=30") |
+        Where-Object { -not $_.draft -and $_.published_at } |
+        Sort-Object { [datetime]$_.published_at } -Descending |
+        Select-Object -First 1 -ExpandProperty tag_name
     }
     if (-not $tag) { throw 'could not find a Nexul release' }
     if (-not $tag.StartsWith('v')) { $tag = "v$tag" }

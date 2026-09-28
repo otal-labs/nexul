@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -265,12 +266,22 @@ func (c *Client) cacheSet(channel string, rel *Release) {
 
 // ghRelease is the subset of GitHub's release API response this package needs.
 type ghRelease struct {
-	TagName    string    `json:"tag_name"`
-	HTMLURL    string    `json:"html_url"`
-	Prerelease bool      `json:"prerelease"`
-	Draft      bool      `json:"draft"`
-	Body       string    `json:"body"`
-	Assets     []ghAsset `json:"assets"`
+	TagName     string    `json:"tag_name"`
+	HTMLURL     string    `json:"html_url"`
+	Prerelease  bool      `json:"prerelease"`
+	Draft       bool      `json:"draft"`
+	Body        string    `json:"body"`
+	Assets      []ghAsset `json:"assets"`
+	CreatedAt   time.Time `json:"created_at"`
+	PublishedAt time.Time `json:"published_at"`
+}
+
+// when orders releases: published, or created for a draft that never was.
+func (r ghRelease) when() time.Time {
+	if r.PublishedAt.IsZero() {
+		return r.CreatedAt
+	}
+	return r.PublishedAt
 }
 
 type ghAsset struct {
@@ -304,7 +315,7 @@ func (c *Client) latestBeta(ctx context.Context) (*Release, error) {
 	return nil, fmt.Errorf("no beta release found: %w", apperrs.ErrNotFound)
 }
 
-// fetchList lists the newest 30 releases, newest first.
+// fetchList lists the newest 30 releases, newest published first.
 func (c *Client) fetchList(ctx context.Context) (_ []ghRelease, err error) {
 	req, err := c.newRequest(ctx, c.cfg.APIBase+"/repos/"+repo+"/releases?per_page=30")
 	if err != nil {
@@ -321,6 +332,8 @@ func (c *Client) fetchList(ctx context.Context) (_ []ghRelease, err error) {
 	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
 		return nil, fmt.Errorf("decode releases: %w", err)
 	}
+	// GitHub orders this list by tag text, which puts beta.9 above beta.10; newest first means by publish time.
+	sort.SliceStable(releases, func(i, j int) bool { return releases[i].when().After(releases[j].when()) })
 	return releases, nil
 }
 
