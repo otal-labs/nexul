@@ -125,5 +125,6 @@ These apply everywhere, regardless of surface:
 - **Comments are sparse.** Default is no comment. One exists only to say a
   *why*, a non-local warning, or a pointer — never to restate the code,
   never a change-history note, one line, and no commented-out code.
-- **Mobile-first.** Design and build at 320 / 375 / 414px first; verify at
-  320 / 375 / 414 / 768px before calling web work done.
+- **Tablet and desktop.** Build the web app at 768px first and verify at
+  768 / 1024 / 1440px before calling web work done; phones are served by the
+  Android app. The website stays mobile-first at 320 / 375 / 414px.

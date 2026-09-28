@@ -44,6 +44,9 @@ web first:
 
 - [01 — Scope and ground rules](issues/01-scope-and-ground-rules.md) — the page picks, the three-scope settings split, stored per-device sessions, QR-only phone sign-in, 768px web, Android `.apk` via GitHub Actions, self-hosted OTA, Uniwind + react-native-reusables.
 - [07 — Self-hosted update server requirements](issues/07-self-hosted-update-server.md) — Xprem with Postgres (no Expo account, no EAS CLI) as a Nexul stack at `xprem.nexul.io`; CI publishes with `eoas`; its signing master key cannot be recovered and needs an offline backup.
+- [02 — Stored per-device sessions](issues/02-stored-device-sessions.md) — a `sessions` table beside personal access tokens (never merged), sliding 30/90-day expiry, hourly last-active writes, instant sign-out, live events, no MCP tool; a new ADR supersedes 0041.
+- [03 — Settings split: routes, placement and old links](issues/03-settings-split-routes.md) — `/settings` is Your settings, `/configuration` the rest, every old link redirects; a normal page; Profile edits name and avatar and links Google/Discord/GitHub sign-ins; mention chips become per workspace.
+- [04 — Web on phones after the 768px rule](issues/04-web-on-phones.md) — ADR 0080: `web/` is 768px and up with a dismissible "get the Android app" banner below it, no clean-up of old classes; `website/` stays mobile first.
 
 ## Not yet specified
 

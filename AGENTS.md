@@ -89,9 +89,10 @@ these win.
     fonts. Color is reserved for status signal. A design that needs a missing
     token adds it to `web/src/index.css` and to the token table in
     `practices/design-language.md`, never as a one-off class.
-12. Mobile first. Design and build at 320, 375, and 414px first; desktop is
-    the enhancement. Verify at 320, 375, 414, and 768px before calling web
-    work done.
+12. Tablet and desktop. Build `web/` at 768px first and verify at 768, 1024,
+    and 1440px before calling web work done; phones are served by the
+    Android app in `native/` (ADR 0080). `website/` stays mobile first: build
+    at 320, 375, and 414px and verify at 320, 375, 414, and 768px.
 
 ## What enforces the rules
 
@@ -118,7 +119,7 @@ The most common defect in this repo is a change that works on the path you
 tested and is missing everywhere else. Before calling a feature done, walk
 this list and say which entries applied:
 
-- UI page or component. The browser flow works at 320, 375, 414, and 768px.
+- UI page or component. The browser flow works at 768, 1024, and 1440px.
 - HTTP gateway route. The browser and integrations reach it (ADR 0019).
 - MCP tool. Agents are peers of the browser; a capability without a tool is
   half shipped.
