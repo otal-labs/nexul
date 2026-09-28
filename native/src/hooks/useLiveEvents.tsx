@@ -3,10 +3,13 @@ import { useEffect } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 
 import { buildLiveURL, LiveEventsClient, type ServerFrame } from "@/api/events";
+import { getNotificationsKey, getUnreadCountKey } from "@/hooks/NotificationHooks";
 import { readSessionToken, useSessionStore } from "@/stores/sessionStore";
 
 // Maps push topics to the query keys they invalidate; each domain adds its rows as its screens land.
-const pushTopics: Record<string, string[]> = {};
+const pushTopics: Record<string, string[]> = {
+  "notification.created": [getNotificationsKey, getUnreadCountKey],
+};
 
 export const dispatch = (client: QueryClient) => (frame: ServerFrame) => {
   const keys = pushTopics[frame.topic];
