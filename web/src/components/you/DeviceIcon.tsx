@@ -1,10 +1,15 @@
 import { Monitor, Smartphone } from "lucide-react";
 
-import type { SessionClient } from "@/models/User";
+import type { Session } from "@/models/User";
 
-export const DeviceIcon = ({ client }: { client: SessionClient }) => (
-  <span className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-muted/60 text-muted-foreground">
-    {client === "phone" && <Smartphone className="size-4" aria-hidden />}
-    {client !== "phone" && <Monitor className="size-4" aria-hidden />}
-  </span>
-);
+const PHONE_PLATFORMS = ["Android", "iOS"];
+
+export const DeviceIcon = ({ session }: { session: Pick<Session, "client" | "platform"> }) => {
+  const phone = session.client === "phone" || PHONE_PLATFORMS.includes(session.platform);
+  return (
+    <span className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-muted/60 text-muted-foreground">
+      {phone && <Smartphone className="size-4" aria-hidden />}
+      {!phone && <Monitor className="size-4" aria-hidden />}
+    </span>
+  );
+};

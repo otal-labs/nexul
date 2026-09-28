@@ -1,7 +1,7 @@
 # 17 — Devices tab
 
 **Type:** implementation
-**Status:** ready-for-agent
+**Status:** done
 **Blocked by:** 15, 16
 **Decided in:** tickets 02, 05
 

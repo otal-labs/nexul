@@ -19,7 +19,7 @@ export const DeviceRow = ({ session, leaving = false, onSignOut }: DeviceRowProp
       leaving && "animate-out fade-out-0 slide-out-to-top-1 duration-150 ease-standard fill-mode-forwards",
     )}
   >
-    <DeviceIcon client={session.client} />
+    <DeviceIcon session={session} />
     <div className="min-w-0 flex-1">
       <p className="flex min-w-0 items-center gap-2 text-sm font-medium">
         <span className="truncate">{[session.platform, session.label].filter(Boolean).join(" · ")}</span>
