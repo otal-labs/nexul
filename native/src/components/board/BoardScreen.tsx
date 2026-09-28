@@ -36,6 +36,7 @@ export const BoardScreen = () => {
       {projects && projects.length > 0 && (
         <View className="flex-row items-center gap-2 border-b border-border px-4 py-3">
           <Pressable
+            role="button"
             onPress={() => router.push("/board/project-picker")}
             className="min-h-11 flex-1 flex-row items-center gap-1.5 active:opacity-70"
           >
@@ -45,6 +46,7 @@ export const BoardScreen = () => {
             <ChevronDown size={16} className="text-muted-foreground" />
           </Pressable>
           <Pressable
+            role="button"
             onPress={() => setMineOnly((v) => !v)}
             aria-label="Mine"
             className={cn("min-h-9 justify-center rounded-md border border-border px-3", mineOnly && "bg-accent")}

@@ -24,6 +24,7 @@ export const ProjectPickerScreen = () => {
           keyExtractor={(p) => p.id}
           renderItem={({ item }) => (
             <Pressable
+              role="button"
               onPress={() => {
                 selectProject(item.id);
                 router.back();

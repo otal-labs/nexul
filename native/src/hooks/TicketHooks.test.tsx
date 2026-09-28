@@ -10,9 +10,12 @@ jest.mock("@/api/client", () => ({ api: { patch: jest.fn() } }));
 
 const patch = jest.mocked(api.patch);
 
-const withClient = (client: QueryClient) => ({ children }: { children: ReactNode }) => (
-  <QueryClientProvider client={client}>{children}</QueryClientProvider>
-);
+const withClient = (client: QueryClient) => {
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  );
+  return Wrapper;
+};
 
 describe("useUpdateTicketStatus", () => {
   beforeEach(() => patch.mockReset());

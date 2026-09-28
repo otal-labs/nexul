@@ -33,6 +33,7 @@ export const StatusPickerScreen = () => {
           keyExtractor={(s) => s.id}
           renderItem={({ item }) => (
             <Pressable
+              role="button"
               disabled={updateStatus.isPending}
               onPress={() => updateStatus.mutate({ id: ticketId, status: item.id }, { onSuccess: () => router.back() })}
               className="min-h-11 flex-row items-center gap-2 border-b border-border px-4 active:bg-accent disabled:opacity-50"

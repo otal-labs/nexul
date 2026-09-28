@@ -19,6 +19,7 @@ export const TicketRow = ({ ticket, projectPrefix, typeName, typeColor, onPress 
   const labels = ticket.labels ?? [];
   return (
     <Pressable
+      role="button"
       onPress={onPress}
       className="min-h-11 flex-row items-center gap-2 border-b border-border px-4 py-2.5 active:bg-accent"
     >

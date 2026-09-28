@@ -54,6 +54,7 @@ export const TicketScreen = () => {
               {ticketKey(ticket, project?.prefix)}
             </Text>
             <Pressable
+              role="button"
               onPress={() =>
                 router.push({
                   pathname: "/board/status-picker",
