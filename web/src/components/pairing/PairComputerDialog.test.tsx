@@ -84,13 +84,13 @@ describe("PairComputerDialog", () => {
     await nameTheComputer(user);
     await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/tunnel", { name: "Work laptop", port: 3773 }));
 
-    expect(await screen.findByText(/sudo cloudflared service install eyJ-connector-token/)).toBeInTheDocument();
+    expect(await screen.findByText(/tunnel\.sh \| sh -s -- eyJ-connector-token/)).toBeInTheDocument();
     expect(screen.getByText(/waiting for connection/i)).toBeInTheDocument();
     expect(screen.getByText("work-laptop-ab12cd34.example.com")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^next$/i })).toBeDisabled();
 
-    await user.click(screen.getByRole("tab", { name: /macos/i }));
-    expect(screen.getByText("cloudflared service install eyJ-connector-token")).toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: /windows/i }));
+    expect(screen.getByText(/tunnel\.ps1\)\)\) eyJ-connector-token/)).toBeInTheDocument();
 
     act(() => setCachedTunnelStatus(client, { computer_id: "c1", tunnel: "healthy", harness_reachable: false }));
     expect(await screen.findByText("Online")).toBeInTheDocument();
