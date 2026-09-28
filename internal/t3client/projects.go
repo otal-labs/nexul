@@ -38,9 +38,10 @@ func (c *Client) ListProjects(ctx context.Context) ([]harness.Project, error) {
 						Kind     string `json:"kind"`
 						Snapshot struct {
 							Projects []struct {
-								ID        string  `json:"id"`
-								Title     string  `json:"title"`
-								DeletedAt *string `json:"deletedAt"`
+								ID            string  `json:"id"`
+								Title         string  `json:"title"`
+								WorkspaceRoot string  `json:"workspaceRoot"`
+								DeletedAt     *string `json:"deletedAt"`
 							} `json:"projects"`
 						} `json:"snapshot"`
 					}
@@ -52,7 +53,7 @@ func (c *Client) ListProjects(ctx context.Context) ([]harness.Project, error) {
 						if p.DeletedAt != nil || p.ID == "" {
 							continue
 						}
-						projects = append(projects, harness.Project{ID: p.ID, Title: p.Title})
+						projects = append(projects, harness.Project{ID: p.ID, Title: p.Title, Path: p.WorkspaceRoot})
 					}
 					return projects, nil
 				}

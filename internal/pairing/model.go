@@ -181,7 +181,10 @@ func (t *SetupTurn) appendStep(a harness.Activity) {
 type SetupRun struct {
 	RunID      string          `json:"run_id"`
 	ComputerID string          `json:"computer_id"`
+	Folder     string          `json:"folder,omitempty"`
 	Providers  []SetupProvider `json:"providers"`
+	// projectID is the harness project Folder resolved to; empty leaves the choice to ResolveSetupTurnTarget.
+	projectID string
 }
 
 // SetupProvider is one provider a setup run covers, by driver kind and display name, with the model its turn runs on.

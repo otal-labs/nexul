@@ -24,22 +24,28 @@ type InstanceSettings interface {
 	GetInstanceURL(ctx context.Context) (string, error)
 }
 
-// StartSetup runs one setup turn per provider in the background, each on its models entry (by driver), else the provider's default.
-func (s *Service) StartSetup(ctx context.Context, userID, computerID string, models map[string]string) (*SetupRun, error) {
-	return s.startSetup(ctx, userID, computerID, "", models)
+// StartSetup runs one setup turn per provider in the background, each on its models entry (by driver), else the provider's default;
+// folder picks the harness project the turns run in, empty for the default.
+func (s *Service) StartSetup(ctx context.Context, userID, computerID string, models map[string]string, folder string) (*SetupRun, error) {
+	return s.startSetup(ctx, userID, computerID, "", models, folder)
 }
 
 // RetrySetupProvider runs one provider's setup turn alone on model, empty for its default; on a confirmed provider it re-verifies.
-func (s *Service) RetrySetupProvider(ctx context.Context, userID, computerID, provider, model string) (*SetupRun, error) {
+func (s *Service) RetrySetupProvider(ctx context.Context, userID, computerID, provider, model, folder string) (*SetupRun, error) {
 	provider, err := validateProvider(provider)
 	if err != nil {
 		return nil, err
 	}
-	return s.startSetup(ctx, userID, computerID, provider, map[string]string{provider: model})
+	return s.startSetup(ctx, userID, computerID, provider, map[string]string{provider: model}, folder)
 }
 
-func (s *Service) startSetup(ctx context.Context, userID, computerID, only string, models map[string]string) (*SetupRun, error) {
+func (s *Service) startSetup(ctx context.Context, userID, computerID, only string, models map[string]string, folder string) (*SetupRun, error) {
 	session, err := s.sessionComputer(ctx, userID, computerID)
+	if err != nil {
+		return nil, err
+	}
+	folder = strings.TrimSpace(folder)
+	projectID, err := s.setupProject(ctx, session, folder)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +69,7 @@ func (s *Service) startSetup(ctx context.Context, userID, computerID, only strin
 		s.releaseSetup(session.ID)
 		return nil, err
 	}
-	run := &SetupRun{RunID: ids.New(), ComputerID: session.ID, Providers: make([]SetupProvider, 0, len(providers))}
+	run := &SetupRun{RunID: ids.New(), ComputerID: session.ID, Folder: folder, Providers: make([]SetupProvider, 0, len(providers)), projectID: projectID}
 	for _, p := range providers {
 		run.Providers = append(run.Providers, SetupProvider{Provider: strings.ToLower(p.Driver), Name: p.Name, Model: setupModel(models, p)})
 	}
@@ -74,6 +80,30 @@ func (s *Service) startSetup(ctx context.Context, userID, computerID, only strin
 		s.runSetup(runCtx, userID, *run, providers, prompt)
 	})
 	return run, nil
+}
+
+// setupProject finds the harness project that opens folder, so setup never runs in a project whose folder is gone.
+func (s *Service) setupProject(ctx context.Context, session Computer, folder string) (string, error) {
+	if folder == "" {
+		return "", nil
+	}
+	client, err := s.client(session.Kind)
+	if err != nil {
+		return "", err
+	}
+	projects, err := client.ListProjects(ctx, session.Session())
+	if err != nil {
+		return "", fmt.Errorf("list projects on %s: %w", session.Name, err)
+	}
+	folders := make([]string, 0, len(projects))
+	for _, p := range projects {
+		if p.Path == folder {
+			return p.ID, nil
+		}
+		folders = append(folders, p.Path)
+	}
+	return "", fmt.Errorf("%w: no T3 Code project on %s opens %s; add the folder in T3 Code first, or pick one it opens: %s",
+		apperrs.ErrInvalid, session.Name, folder, strings.Join(folders, ", "))
 }
 
 // setupModel is the model picked for p by driver kind or instance id, any case; "" leaves the provider on its own default.
@@ -185,7 +215,7 @@ func (s *Service) runSetup(ctx context.Context, userID string, run SetupRun, pro
 	for i, p := range providers {
 		last := i == len(providers)-1
 		prompt.Driver, prompt.ProviderName = p.Driver, p.Name
-		turn := s.runSetupTurn(ctx, userID, runID, computerID, p, run.Providers[i].Model, prompt)
+		turn := s.runSetupTurn(ctx, userID, run, p, run.Providers[i].Model, prompt)
 		outcomes = append(outcomes, SetupTurnOutcome{Provider: turn.Provider, State: turn.State, Status: turn.Status})
 		if !last {
 			s.saveSetupTurn(ctx, turn)
@@ -198,13 +228,14 @@ func (s *Service) runSetup(ctx context.Context, userID string, run SetupRun, pro
 }
 
 // runSetupTurn is a prepare session that connects MCP and installs skills, then a fresh session that loads them and confirms.
-func (s *Service) runSetupTurn(ctx context.Context, userID, runID, computerID string, p harness.Provider, model string, prompt setupPrompt) SetupTurn {
+func (s *Service) runSetupTurn(ctx context.Context, userID string, run SetupRun, p harness.Provider, model string, prompt setupPrompt) SetupTurn {
+	computerID := run.ComputerID
 	turn := SetupTurn{
-		ID: ids.New(), RunID: runID, ComputerID: computerID, UserID: userID, Provider: strings.ToLower(p.Driver), ProviderName: p.Name, Model: model,
+		ID: ids.New(), RunID: run.RunID, ComputerID: computerID, UserID: userID, Provider: strings.ToLower(p.Driver), ProviderName: p.Name, Model: model,
 		State: SetupTurnRunning, Status: "Connecting Nexul and installing skills", Transcript: []harness.Activity{}, StartedAt: s.now().UTC(),
 	}
 	s.saveSetupTurn(ctx, turn)
-	target, err := s.ResolveSetupTurnTarget(ctx, userID, computerID, p.ID)
+	target, err := s.ResolveSetupTurnTarget(ctx, userID, computerID, p.ID, run.projectID)
 	if err != nil {
 		return s.endSetupTurn(turn, SetupTurnFailed, err.Error())
 	}

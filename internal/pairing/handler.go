@@ -87,9 +87,10 @@ func (h *Handler) getSetup(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, setup)
 }
 
-// startSetupRequest's Models maps a provider's driver kind to the model its setup turn runs on.
+// startSetupRequest's Models maps a provider's driver kind to the model its setup turn runs on; Folder picks where the turns run.
 type startSetupRequest struct {
 	Models map[string]string `json:"models"`
+	Folder string            `json:"folder"`
 }
 
 func (h *Handler) startSetup(w http.ResponseWriter, r *http.Request) {
@@ -98,7 +99,7 @@ func (h *Handler) startSetup(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	run, err := h.svc.StartSetup(r.Context(), actorID(r), r.PathValue("id"), req.Models)
+	run, err := h.svc.StartSetup(r.Context(), actorID(r), r.PathValue("id"), req.Models, req.Folder)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -107,7 +108,8 @@ func (h *Handler) startSetup(w http.ResponseWriter, r *http.Request) {
 }
 
 type retrySetupRequest struct {
-	Model string `json:"model"`
+	Model  string `json:"model"`
+	Folder string `json:"folder"`
 }
 
 func (h *Handler) retrySetupProvider(w http.ResponseWriter, r *http.Request) {
@@ -116,7 +118,7 @@ func (h *Handler) retrySetupProvider(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	run, err := h.svc.RetrySetupProvider(r.Context(), actorID(r), r.PathValue("id"), r.PathValue("provider"), req.Model)
+	run, err := h.svc.RetrySetupProvider(r.Context(), actorID(r), r.PathValue("id"), r.PathValue("provider"), req.Model, req.Folder)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

@@ -177,9 +177,10 @@ export const useFetchComputerSetup = (computerId: string) =>
     enabled: !!computerId,
   });
 
-// Model slugs keyed by driver kind; a provider left out or set to "" runs on its own default.
+// Model slugs keyed by driver kind; a provider left out or set to "" runs on its own default. An empty folder runs in the default project.
 export interface RunSetupInput {
   models: Record<string, string>;
+  folder: string;
   provider?: string;
 }
 
@@ -187,12 +188,12 @@ export interface RunSetupInput {
 export const useRunSetup = (computerId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ models, provider }: RunSetupInput) => {
+    mutationFn: async ({ models, folder, provider }: RunSetupInput) => {
       if (provider) {
         const url = `/api/pairing/computers/${computerId}/setup/providers/${encodeURIComponent(provider)}/retry`;
-        return (await api.post<SetupRun>(url, { model: models[provider] ?? "" })).data;
+        return (await api.post<SetupRun>(url, { model: models[provider] ?? "", folder })).data;
       }
-      return (await api.post<SetupRun>(`/api/pairing/computers/${computerId}/setup/runs`, { models })).data;
+      return (await api.post<SetupRun>(`/api/pairing/computers/${computerId}/setup/runs`, { models, folder })).data;
     },
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getComputerSetupKey, computerId] });

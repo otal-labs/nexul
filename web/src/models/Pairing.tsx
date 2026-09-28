@@ -102,6 +102,7 @@ export interface ComputerSetup {
 export interface SetupRun {
   run_id: string;
   computer_id: string;
+  folder?: string;
   providers: { provider: string; name: string; model?: string }[];
 }
 
@@ -237,6 +238,7 @@ export interface ProjectLink {
 export interface HarnessProject {
   id: string;
   title: string;
+  path: string;
 }
 
 export interface HarnessProviderModel {

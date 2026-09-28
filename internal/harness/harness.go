@@ -33,6 +33,7 @@ type PairResult struct {
 type Project struct {
 	ID    string `json:"id"`
 	Title string `json:"title"`
+	Path  string `json:"path"`
 }
 
 // ProviderModel is one model a provider instance offers.

@@ -17,7 +17,7 @@ func TestListProjects_ReturnsLiveRegistryFromShellSnapshot(t *testing.T) {
 	projects, err := c.ListProjects(testCtx(t))
 	require.NoError(t, err)
 	assert.Equal(t, []harness.Project{
-		{ID: "proj-live", Title: "My App"},
-		{ID: "proj-two", Title: "Second"},
+		{ID: "proj-live", Title: "My App", Path: "/home/me/app"},
+		{ID: "proj-two", Title: "Second", Path: "/home/me/second"},
 	}, projects, "deleted projects are dropped")
 }

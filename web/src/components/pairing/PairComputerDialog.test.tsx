@@ -8,7 +8,7 @@ import { PairComputerDialog } from "@/components/pairing/PairComputerDialog";
 import { Button } from "@/components/ui/button";
 import { setCachedTunnelStatus } from "@/hooks/PairingHooks";
 import { useSetupActivityStore } from "@/stores/setupActivityStore";
-import type { Computer, ComputerSetup, HarnessProvider, PairingDefaults, SetupTurnState } from "@/models/Pairing";
+import type { Computer, ComputerSetup, HarnessProject, HarnessProvider, PairingDefaults, SetupTurnState } from "@/models/Pairing";
 import { pickOption } from "@/test/pickOption";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }));
@@ -278,6 +278,7 @@ describe("PairComputerDialog opened at Set up", () => {
   let setup: ComputerSetup;
   let providers: HarnessProvider[];
   let defaults: PairingDefaults;
+  let projects: HarnessProject[];
 
   beforeEach(() => {
     mocks.get.mockReset();
@@ -286,8 +287,10 @@ describe("PairComputerDialog opened at Set up", () => {
     setup = emptySetup;
     providers = [];
     defaults = {};
+    projects = [];
     mocks.get.mockImplementation(async (url: string) => {
       if (url.endsWith("/setup")) return { data: setup };
+      if (url.endsWith("/projects")) return { data: { projects } };
       if (url.endsWith("/providers")) return { data: { providers } };
       if (url.endsWith("/defaults")) return { data: defaults };
       return { data: { computers: [] } };
@@ -312,7 +315,7 @@ describe("PairComputerDialog opened at Set up", () => {
     expect(screen.getByText("1/2 confirmed")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /retry/i }));
-    await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/providers/opencode/retry", { model: "" }));
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/providers/opencode/retry", { model: "", folder: "" }));
     expect(mocks.post).toHaveBeenCalledTimes(1);
   });
 
@@ -336,7 +339,7 @@ describe("PairComputerDialog opened at Set up", () => {
     await user.click(screen.getByRole("button", { name: /^open$/i }));
     await user.click(await screen.findByRole("button", { name: /start setup/i }));
 
-    await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/runs", { models: {} }));
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/runs", { models: {}, folder: "" }));
     expect(await screen.findByText("Connecting Nexul and installing skills")).toBeInTheDocument();
     expect(screen.getByText("Waiting for its turn")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /re-run setup/i })).toBeDisabled();
@@ -373,12 +376,38 @@ describe("PairComputerDialog opened at Set up", () => {
     await pickOption(user, "OpenCode", "Provider default");
     await user.click(screen.getByRole("button", { name: /start setup/i }));
     await waitFor(() =>
-      expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/runs", { models: { claudeagent: "claude-big", opencode: "" } }),
+      expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/runs", { models: { claudeagent: "claude-big", opencode: "" }, folder: "" }),
     );
     expect(await screen.findByText("claude-big", { exact: false })).toBeInTheDocument();
 
     await pickOption(user, "OpenCode", "GPT");
     await user.click(await screen.findByRole("button", { name: /retry/i }));
-    await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/providers/opencode/retry", { model: "gpt" }));
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/providers/opencode/retry", { model: "gpt", folder: "" }));
+  });
+
+  it("runs setup in the default project's folder, or the one picked, and retries in it too", async () => {
+    projects = [
+      { id: "t3-gone", title: "StreamerBotChat", path: "/home/me/StreamerBotChat" },
+      { id: "t3-app", title: "App", path: "/home/me/app" },
+    ];
+    defaults = { default_computer_id: "c1", fallback_project_id: "t3-gone" };
+    mocks.post.mockImplementation(async () => {
+      setup = { ...emptySetup, turns: [turn("codex", "Codex", "failed", "workspace folder no longer exists", "r1", "t2")] };
+      return { data: { run_id: "r1", computer_id: "c1", providers: [{ provider: "codex", name: "Codex" }] } };
+    });
+    const user = userEvent.setup();
+    renderDialog(paired);
+
+    await user.click(screen.getByRole("button", { name: /^open$/i }));
+    expect(await screen.findByRole("combobox", { name: "Folder" })).toHaveTextContent("StreamerBotChat");
+    await user.click(screen.getByRole("button", { name: /start setup/i }));
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/runs", { models: {}, folder: "/home/me/StreamerBotChat" }));
+
+    await pickOption(user, "Folder", /^App/);
+    expect(screen.getByText("/home/me/app")).toBeInTheDocument();
+    await user.click(await screen.findByRole("button", { name: /retry/i }));
+    await waitFor(() =>
+      expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/providers/codex/retry", { model: "", folder: "/home/me/app" }),
+    );
   });
 });

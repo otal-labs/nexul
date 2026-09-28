@@ -1,12 +1,14 @@
 import { Play } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { SetupFolderPick } from "@/components/pairing/SetupFolderPick";
 import { SetupModelPicks } from "@/components/pairing/SetupModelPicks";
 import { SetupPreselection } from "@/components/pairing/SetupPreselection";
 import { SetupRunRows } from "@/components/pairing/SetupRunRows";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { useFetchComputerSetup, useRunSetup } from "@/hooks/PairingHooks";
+import { useSetupFolder } from "@/hooks/useSetupFolder";
 import { useSetupModels } from "@/hooks/useSetupModels";
 import { setupRunRows, setupRunning, type Computer, type ComputerSetup } from "@/models/Pairing";
 import { formatRelativeTime } from "@/utils/TimeUtility";
@@ -20,14 +22,16 @@ interface SetupRunSectionProps {
 const SetupRunSection = ({ computerId, setup }: SetupRunSectionProps) => {
   const run = useRunSetup(computerId);
   const { choices, models, pick } = useSetupModels(computerId);
+  const { projects, folder, pick: pickFolder } = useSetupFolder(computerId);
   const rows = setupRunRows(setup.turns, run.data);
   const busy = run.isPending || setupRunning(rows);
   const startLabel = setup.turns.length > 0 ? "Re-run setup" : "Start setup";
   return (
     <div className="space-y-4">
+      {projects.length > 0 && <SetupFolderPick projects={projects} folder={folder} disabled={busy} onPick={pickFolder} />}
       {choices.length > 0 && <SetupModelPicks choices={choices} models={models} disabled={busy} onPick={pick} />}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <Button type="button" onClick={() => run.mutate({ models })} disabled={busy}>
+        <Button type="button" onClick={() => run.mutate({ models, folder })} disabled={busy}>
           <Play className="size-4" aria-hidden />
           {startLabel}
         </Button>
@@ -38,7 +42,7 @@ const SetupRunSection = ({ computerId, setup }: SetupRunSectionProps) => {
           </span>
         )}
       </div>
-      {rows.length > 0 && <SetupRunRows rows={rows} retryDisabled={busy} onRetry={(provider) => run.mutate({ models, provider })} />}
+      {rows.length > 0 && <SetupRunRows rows={rows} retryDisabled={busy} onRetry={(provider) => run.mutate({ models, folder, provider })} />}
     </div>
   );
 };
