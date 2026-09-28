@@ -13,8 +13,6 @@ export type Provider = (typeof Provider)[keyof typeof Provider];
 
 export interface User {
   id: string;
-  provider: Provider;
-  provider_user_id: string;
   login: string;
   name: string;
   avatar_url: string;
@@ -25,6 +23,17 @@ export interface User {
   display_name?: string;
   avatar_override_url?: string;
 }
+
+// One provider account attached to the user; the provider's own id never leaves the server.
+export interface Identity {
+  provider: Provider;
+  login: string;
+  name: string;
+  avatar_url: string;
+  created_at: string;
+}
+
+export const providerLabel: Record<Provider, string> = { github: "GitHub", google: "Google", discord: "Discord" };
 
 // The one rule for which avatar to show: the manual override if set, else the provider-sourced one.
 export const effectiveAvatar = (user: User): string => user.avatar_override_url || user.avatar_url;

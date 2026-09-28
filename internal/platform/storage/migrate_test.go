@@ -57,7 +57,7 @@ func TestPending_FullyMigratedDB_IsEmpty(t *testing.T) {
 func TestMigrate_Twice_AppliesPrivateInvitationMigrationOnceAndPreservesActiveStatus(t *testing.T) {
 	db := freshDB(t)
 	require.NoError(t, Migrate(db))
-	_, err := db.ExecContext(t.Context(), `INSERT INTO users (id, provider, provider_user_id, login, created_at, updated_at) VALUES ('u-1', 'github', 'provider-1', 'alice', 1, 1)`)
+	_, err := db.ExecContext(t.Context(), `INSERT INTO users (id, login, created_at, updated_at) VALUES ('u-1', 'alice', 1, 1)`)
 	require.NoError(t, err)
 	require.NoError(t, Migrate(db))
 

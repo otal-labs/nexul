@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/httpx"
+	"github.com/otal-labs/nexul/internal/platform/logging"
 )
 
 // Handler's Routes() is public; ProtectedRoutes() needs RequireAuth.
@@ -228,6 +230,9 @@ func (h *Handler) ProtectedRoutes() http.Handler {
 	mux.HandleFunc("DELETE /api/auth/sessions/current", h.signOutCurrentSession)
 	mux.HandleFunc("DELETE /api/auth/sessions/others", h.signOutOtherSessions)
 	mux.HandleFunc("DELETE /api/auth/sessions/{id}", h.signOutSession)
+	mux.HandleFunc("GET /api/auth/identities", h.listIdentities)
+	mux.HandleFunc("POST /api/auth/identities/link", h.startIdentityLink)
+	mux.HandleFunc("DELETE /api/auth/identities/{provider}", h.unlinkIdentity)
 	mux.HandleFunc("GET /api/auth/members", h.listMembers)
 	mux.HandleFunc("GET /api/auth/members/lookup", h.lookupMembers)
 	mux.HandleFunc("POST /api/auth/members", h.addMember)
@@ -384,22 +389,9 @@ func (h *Handler) callbackGET(provider Provider) http.HandlerFunc {
 			h.stateless(w, r)
 			return
 		}
-		if state != "" {
-			if cookie, cookieErr := r.Cookie(invitationStateCookie(hashCredential(state))); cookieErr == nil && cookie.Value == state {
-				code := r.URL.Query().Get("code")
-				if code == "" {
-					httpx.WriteError(w, invalidInvitationError())
-					return
-				}
-				acceptance, err := h.svc.CompleteInvitationOAuth(ctx, provider, state, code)
-				if err != nil {
-					httpx.WriteError(w, classifyInvitationError(err))
-					return
-				}
-				http.SetCookie(w, &http.Cookie{Name: invitationStateCookie(hashCredential(state)), Value: "", MaxAge: -1, Path: "/", HttpOnly: true, Secure: h.svc.secureCookie(ctx, r.TLS != nil)})
-				http.Redirect(w, r, h.spaOrigin(r)+"/invite#"+acceptance, http.StatusFound)
-				return
-			}
+		if cookie, cookieErr := r.Cookie(invitationStateCookie(hashCredential(state))); cookieErr == nil && cookie.Value == state {
+			h.invitationCallback(w, r.WithContext(ctx), provider, state)
+			return
 		}
 		cookie, err := r.Cookie(stateCookie)
 		if err != nil || cookie.Value == "" || cookie.Value != state {
@@ -411,14 +403,44 @@ func (h *Handler) callbackGET(provider Provider) http.HandlerFunc {
 			httpx.WriteError(w, fmt.Errorf("%w: code is required", apperrs.ErrInvalid))
 			return
 		}
-		token, err := h.svc.LoginWith(WithDevice(r.Context(), DeviceFromRequest(r)), provider, code)
+		http.SetCookie(w, &http.Cookie{Name: stateCookie, Value: "", MaxAge: -1, Path: "/", HttpOnly: true, Secure: h.svc.secureCookie(ctx, r.TLS != nil)})
+		if IsLinkState(state) {
+			h.identityLinkCallback(w, r.WithContext(ctx), provider, state, code)
+			return
+		}
+		token, err := h.svc.LoginWith(WithDevice(ctx, DeviceFromRequest(r)), provider, code)
 		if err != nil {
 			httpx.WriteError(w, err)
 			return
 		}
-		http.SetCookie(w, &http.Cookie{Name: stateCookie, Value: "", MaxAge: -1, Path: "/", HttpOnly: true, Secure: h.svc.secureCookie(ctx, r.TLS != nil)})
 		http.Redirect(w, r, h.spaOrigin(r)+"/login?token="+token, http.StatusFound)
 	}
+}
+
+func (h *Handler) invitationCallback(w http.ResponseWriter, r *http.Request, provider Provider, state string) {
+	code := r.URL.Query().Get("code")
+	if code == "" {
+		httpx.WriteError(w, invalidInvitationError())
+		return
+	}
+	acceptance, err := h.svc.CompleteInvitationOAuth(r.Context(), provider, state, code)
+	if err != nil {
+		httpx.WriteError(w, classifyInvitationError(err))
+		return
+	}
+	http.SetCookie(w, &http.Cookie{Name: invitationStateCookie(hashCredential(state)), Value: "", MaxAge: -1, Path: "/", HttpOnly: true, Secure: h.svc.secureCookie(r.Context(), r.TLS != nil)})
+	http.Redirect(w, r, h.spaOrigin(r)+"/invite#"+acceptance, http.StatusFound)
+}
+
+// identityLinkCallback lands back on Profile either way: the person is signed in, so an error is a toast there.
+func (h *Handler) identityLinkCallback(w http.ResponseWriter, r *http.Request, provider Provider, state, code string) {
+	target := h.spaOrigin(r) + "/settings?section=profile"
+	if err := h.svc.CompleteIdentityLink(r.Context(), provider, state, code); err != nil {
+		logging.FromCtx(r.Context()).Warn("link identity", "provider", provider, "error", err)
+		http.Redirect(w, r, target+"&provider="+string(provider)+"&error="+url.QueryEscape(err.Error()), http.StatusFound)
+		return
+	}
+	http.Redirect(w, r, target+"&provider="+string(provider)+"&linked=1", http.StatusFound)
 }
 
 // callbackPOST exchanges a code for a token, returning JSON for programmatic clients; the browser uses the GET flow.
@@ -692,6 +714,58 @@ func (h *Handler) signOutOtherSessions(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (h *Handler) listIdentities(w http.ResponseWriter, r *http.Request) {
+	if _, err := requireSession(r); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	identities, err := h.svc.ListIdentities(r.Context(), currentUserID(r))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"identities": identities})
+}
+
+type identityLinkRequest struct {
+	Provider Provider `json:"provider"`
+}
+
+// startIdentityLink answers the authorize URL for the browser to visit; a top-level redirect could not carry the bearer.
+func (h *Handler) startIdentityLink(w http.ResponseWriter, r *http.Request) {
+	if _, err := requireSession(r); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	var req identityLinkRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	authorizeURL, state, err := h.svc.StartIdentityLink(r.Context(), currentUserID(r), req.Provider)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name: stateCookie, Value: state, Path: "/", MaxAge: int(stateMaxAge.Seconds()),
+		HttpOnly: true, SameSite: http.SameSiteLaxMode, Secure: h.svc.secureCookie(r.Context(), r.TLS != nil),
+	})
+	httpx.WriteJSON(w, http.StatusOK, map[string]string{"url": authorizeURL})
+}
+
+func (h *Handler) unlinkIdentity(w http.ResponseWriter, r *http.Request) {
+	if _, err := requireSession(r); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	if err := h.svc.UnlinkIdentity(r.Context(), currentUserID(r), Provider(r.PathValue("provider"))); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (h *Handler) listMembers(w http.ResponseWriter, r *http.Request) {
 	members, err := h.svc.ListMembers(r.Context(), currentUserID(r))
 	if err != nil {
@@ -756,7 +830,7 @@ func (h *Handler) listAccounts(w http.ResponseWriter, r *http.Request) {
 	out := make([]accountResponse, 0, len(accounts))
 	for _, account := range accounts {
 		out = append(out, accountResponse{
-			ID: account.ID, Provider: account.Provider, Login: account.Login, Name: account.Name,
+			ID: account.ID, Login: account.Login, Name: account.Name,
 			AvatarURL: account.AvatarURL, Status: account.AccountStatus,
 			CanCreateWorkspace: account.CanCreateWorkspace, CreatedAt: account.CreatedAt,
 		})
@@ -766,7 +840,6 @@ func (h *Handler) listAccounts(w http.ResponseWriter, r *http.Request) {
 
 type accountResponse struct {
 	ID                 string        `json:"id"`
-	Provider           Provider      `json:"provider"`
 	Login              string        `json:"login"`
 	Name               string        `json:"name"`
 	AvatarURL          string        `json:"avatar_url"`

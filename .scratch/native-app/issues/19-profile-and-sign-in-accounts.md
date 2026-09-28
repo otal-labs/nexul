@@ -1,7 +1,7 @@
 # 19 — Profile and linked sign-in accounts
 
 **Type:** implementation
-**Status:** ready-for-agent
+**Status:** done
 **Blocked by:** 16
 **Decided in:** tickets 03, 05
 

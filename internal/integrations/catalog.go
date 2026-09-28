@@ -904,6 +904,26 @@ var catalogSchemas = map[string]string{
 			"computer_id": {"type": "string"}
 		}
 	}`,
+	"identity.linked": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["user_id", "provider", "login"],
+		"properties": {
+			"user_id": {"type": "string"},
+			"provider": {"type": "string"},
+			"login": {"type": "string"}
+		}
+	}`,
+	"identity.unlinked": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["user_id", "provider", "login"],
+		"properties": {
+			"user_id": {"type": "string"},
+			"provider": {"type": "string"},
+			"login": {"type": "string"}
+		}
+	}`,
 	"session.created": `{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",
 		"type": "object",

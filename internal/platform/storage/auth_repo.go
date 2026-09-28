@@ -26,42 +26,39 @@ type UsersRepo struct {
 	q  *sqlcgen.Queries
 }
 
-// UpsertUser inserts or syncs provider-sourced columns; owner/onboarding flags are never touched by a re-login.
-func (r *UsersRepo) UpsertUser(ctx context.Context, u *auth.User) (*auth.User, bool, error) {
+// UpsertUser syncs a known identity, and the user's profile when that identity is their first, else creates the user.
+func (r *UsersRepo) UpsertUser(ctx context.Context, id *auth.Identity) (*auth.User, bool, error) {
 	created := false
 	var persisted *auth.User
 	err := r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
-		existingID, err := q.GetUserIDByProvider(ctx, sqlcgen.GetUserIDByProviderParams{
-			Provider: string(u.Provider), ProviderUserID: u.ProviderUserID,
+		existing, err := q.GetUserByIdentity(ctx, sqlcgen.GetUserByIdentityParams{
+			Provider: string(id.Provider), ProviderUserID: id.ProviderUserID,
 		})
-		newUser := errors.Is(err, sql.ErrNoRows)
-		if err != nil && !newUser {
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return fmt.Errorf("query user: %w", err)
 		}
-		now := time.Now().Unix()
-		if newUser {
-			created = true
-			if err := q.InsertUser(ctx, sqlcgen.InsertUserParams{
-				ID: u.ID, Provider: string(u.Provider), ProviderUserID: u.ProviderUserID,
-				Login: u.Login, Name: u.Name, AvatarUrl: u.AvatarURL, CreatedAt: now, UpdatedAt: now,
-			}); err != nil {
-				return fmt.Errorf("insert user: %w", err)
-			}
-		}
-		if !newUser {
-			if err := q.SyncUser(ctx, sqlcgen.SyncUserParams{
-				Login: u.Login, Name: u.Name, AvatarUrl: u.AvatarURL, UpdatedAt: now, ID: existingID,
-			}); err != nil {
-				return fmt.Errorf("update user: %w", err)
-			}
-		}
-		p, err := r.getByProvider(ctx, q, u.Provider, u.ProviderUserID)
+		now := time.Now()
 		if err != nil {
+			created = true
+			if err := insertUserWithIdentity(ctx, q, id, now); err != nil {
+				return err
+			}
+			persisted, err = r.getByProvider(ctx, q, id.Provider, id.ProviderUserID)
 			return err
 		}
-		persisted = p
-		return nil
+		if err := q.SyncIdentity(ctx, sqlcgen.SyncIdentityParams{
+			Login: id.Login, Name: id.Name, AvatarUrl: id.AvatarURL, Provider: string(id.Provider), ProviderUserID: id.ProviderUserID,
+		}); err != nil {
+			return fmt.Errorf("sync identity: %w", err)
+		}
+		if err := q.SyncUserFromFirstIdentity(ctx, sqlcgen.SyncUserFromFirstIdentityParams{
+			Login: id.Login, Name: id.Name, AvatarUrl: id.AvatarURL, UpdatedAt: now.Unix(), UserID: existing.ID, Provider: string(id.Provider),
+		}); err != nil {
+			return fmt.Errorf("update user: %w", err)
+		}
+		persisted, err = r.getByProvider(ctx, q, id.Provider, id.ProviderUserID)
+		return err
 	})
 	if err != nil {
 		return nil, false, err
@@ -69,8 +66,8 @@ func (r *UsersRepo) UpsertUser(ctx context.Context, u *auth.User) (*auth.User, b
 	return persisted, created, nil
 }
 
-// CreateFirstUser admits the first provider identity while holding the shared write serializer.
-func (r *UsersRepo) CreateFirstUser(ctx context.Context, u *auth.User, events ...eventbus.OutboxEvent) (*auth.User, error) {
+// CreateFirstUser admits the first identity while holding the shared write serializer.
+func (r *UsersRepo) CreateFirstUser(ctx context.Context, id *auth.Identity, events ...eventbus.OutboxEvent) (*auth.User, error) {
 	var persisted *auth.User
 	err := r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
@@ -81,25 +78,99 @@ func (r *UsersRepo) CreateFirstUser(ctx context.Context, u *auth.User, events ..
 		if count != 0 {
 			return apperrs.ErrConflict
 		}
-		now := time.Now().Unix()
-		if err := q.InsertUser(ctx, sqlcgen.InsertUserParams{
-			ID: u.ID, Provider: string(u.Provider), ProviderUserID: u.ProviderUserID,
-			Login: u.Login, Name: u.Name, AvatarUrl: u.AvatarURL, CreatedAt: now, UpdatedAt: now,
-		}); err != nil {
-			return fmt.Errorf("insert first user: %w", err)
+		if err := insertUserWithIdentity(ctx, q, id, time.Now()); err != nil {
+			return err
 		}
-		for _, event := range events {
-			if err := insertOutboxRow(ctx, tx, event.ID, event.Topic, event.Payload); err != nil {
-				return fmt.Errorf("write first-user event: %w", err)
-			}
+		if err := insertOutboxRows(ctx, tx, events); err != nil {
+			return fmt.Errorf("write first-user event: %w", err)
 		}
-		persisted, err = r.getByProvider(ctx, q, u.Provider, u.ProviderUserID)
+		persisted, err = r.getByProvider(ctx, q, id.Provider, id.ProviderUserID)
 		return err
 	})
 	if err != nil {
 		return nil, err
 	}
 	return persisted, nil
+}
+
+// insertUserWithIdentity creates the user row from the identity's profile and the identity row that resolves it.
+func insertUserWithIdentity(ctx context.Context, q *sqlcgen.Queries, id *auth.Identity, now time.Time) error {
+	if err := q.InsertUser(ctx, sqlcgen.InsertUserParams{
+		ID: id.UserID, Login: id.Login, Name: id.Name, AvatarUrl: id.AvatarURL, CreatedAt: now.Unix(), UpdatedAt: now.Unix(),
+	}); err != nil {
+		return fmt.Errorf("insert user: %w", classifyWriteErr(err))
+	}
+	return insertIdentity(ctx, q, id, now)
+}
+
+func insertIdentity(ctx context.Context, q *sqlcgen.Queries, id *auth.Identity, now time.Time) error {
+	if err := q.InsertIdentity(ctx, sqlcgen.InsertIdentityParams{
+		UserID: id.UserID, Provider: string(id.Provider), ProviderUserID: id.ProviderUserID,
+		Login: id.Login, Name: id.Name, AvatarUrl: id.AvatarURL, CreatedAt: now.Unix(),
+	}); err != nil {
+		return fmt.Errorf("insert identity: %w", classifyWriteErr(err))
+	}
+	return nil
+}
+
+func (r *UsersRepo) ListIdentities(ctx context.Context, userID string) ([]auth.Identity, error) {
+	rows, err := r.q.ListIdentitiesByUser(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list identities of %s: %w", userID, err)
+	}
+	out := make([]auth.Identity, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, auth.Identity{
+			UserID: row.UserID, Provider: auth.Provider(row.Provider), ProviderUserID: row.ProviderUserID,
+			Login: row.Login, Name: row.Name, AvatarURL: row.AvatarUrl, CreatedAt: time.Unix(row.CreatedAt, 0).UTC(),
+		})
+	}
+	return out, nil
+}
+
+// LinkIdentity looks up the owner first so each conflict gets its own message; the PRIMARY KEY still guards the race.
+func (r *UsersRepo) LinkIdentity(ctx context.Context, id *auth.Identity, events ...eventbus.OutboxEvent) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		q := r.q.WithTx(tx)
+		owner, err := q.GetUserByIdentity(ctx, sqlcgen.GetUserByIdentityParams{Provider: string(id.Provider), ProviderUserID: id.ProviderUserID})
+		if err == nil && owner.ID == id.UserID {
+			return fmt.Errorf("%w: that %s account is already linked to you", apperrs.ErrConflict, id.Provider)
+		}
+		if err == nil {
+			return fmt.Errorf("%w: that %s account is already linked to another user", apperrs.ErrConflict, id.Provider)
+		}
+		if !errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("query identity: %w", err)
+		}
+		if err := insertIdentity(ctx, q, id, time.Now()); err != nil {
+			if errors.Is(err, apperrs.ErrConflict) {
+				return fmt.Errorf("%w: a %s account is already linked; unlink it first", apperrs.ErrConflict, id.Provider)
+			}
+			return err
+		}
+		return insertOutboxRows(ctx, tx, events)
+	})
+}
+
+func (r *UsersRepo) UnlinkIdentity(ctx context.Context, userID string, provider auth.Provider, events ...eventbus.OutboxEvent) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		q := r.q.WithTx(tx)
+		n, err := q.CountIdentitiesByUser(ctx, userID)
+		if err != nil {
+			return fmt.Errorf("count identities of %s: %w", userID, err)
+		}
+		if n <= 1 {
+			return fmt.Errorf("%w: this is your only sign-in", apperrs.ErrConflict)
+		}
+		deleted, err := q.DeleteIdentity(ctx, sqlcgen.DeleteIdentityParams{UserID: userID, Provider: string(provider)})
+		if err != nil {
+			return fmt.Errorf("delete %s identity of %s: %w", provider, userID, err)
+		}
+		if deleted == 0 {
+			return fmt.Errorf("%w: no %s account is linked", apperrs.ErrNotFound, provider)
+		}
+		return insertOutboxRows(ctx, tx, events)
+	})
 }
 
 func (r *UsersRepo) GetUserByID(ctx context.Context, id string) (*auth.User, error) {
@@ -111,7 +182,7 @@ func (r *UsersRepo) GetUserByID(ctx context.Context, id string) (*auth.User, err
 }
 
 func (r *UsersRepo) GetUserByProvider(ctx context.Context, provider auth.Provider, providerUserID string) (*auth.User, error) {
-	return userRow(r.q.GetUserByProvider(ctx, sqlcgen.GetUserByProviderParams{Provider: string(provider), ProviderUserID: providerUserID}))
+	return r.getByProvider(ctx, r.q, provider, providerUserID)
 }
 
 func (r *UsersRepo) CanCreateWorkspaceExists(ctx context.Context) (bool, error) {
@@ -270,7 +341,7 @@ func (r *UsersRepo) SetProfileOverride(ctx context.Context, id string, displayNa
 }
 
 func (r *UsersRepo) getByProvider(ctx context.Context, q *sqlcgen.Queries, provider auth.Provider, providerUserID string) (*auth.User, error) {
-	return userRow(q.GetUserByProvider(ctx, sqlcgen.GetUserByProviderParams{
+	return userRow(q.GetUserByIdentity(ctx, sqlcgen.GetUserByIdentityParams{
 		Provider: string(provider), ProviderUserID: providerUserID,
 	}))
 }
@@ -304,8 +375,6 @@ func userRow(row sqlcgen.User, err error) (*auth.User, error) {
 func toUser(row sqlcgen.User) *auth.User {
 	u := &auth.User{
 		ID:                 row.ID,
-		Provider:           auth.Provider(row.Provider),
-		ProviderUserID:     row.ProviderUserID,
 		Login:              row.Login,
 		Name:               row.Name,
 		AvatarURL:          row.AvatarUrl,

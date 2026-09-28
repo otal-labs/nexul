@@ -420,36 +420,6 @@ func (q *Queries) GetRoleForInvitationGrant(ctx context.Context, arg GetRoleForI
 	return i, err
 }
 
-const getUserByProviderForInvitation = `-- name: GetUserByProviderForInvitation :one
-SELECT id, provider, provider_user_id, login, name, avatar_url, first_login_done, created_at, updated_at, can_create_workspace, display_name, avatar_override_url, account_status FROM users WHERE provider = ? AND provider_user_id = ?
-`
-
-type GetUserByProviderForInvitationParams struct {
-	Provider       string
-	ProviderUserID string
-}
-
-func (q *Queries) GetUserByProviderForInvitation(ctx context.Context, arg GetUserByProviderForInvitationParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, getUserByProviderForInvitation, arg.Provider, arg.ProviderUserID)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.Provider,
-		&i.ProviderUserID,
-		&i.Login,
-		&i.Name,
-		&i.AvatarUrl,
-		&i.FirstLoginDone,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.CanCreateWorkspace,
-		&i.DisplayName,
-		&i.AvatarOverrideUrl,
-		&i.AccountStatus,
-	)
-	return i, err
-}
-
 const getWorkspaceForInvitationGrant = `-- name: GetWorkspaceForInvitationGrant :one
 SELECT w.id, w.name
 FROM workspaces w
@@ -466,36 +436,6 @@ func (q *Queries) GetWorkspaceForInvitationGrant(ctx context.Context, id string)
 	var i GetWorkspaceForInvitationGrantRow
 	err := row.Scan(&i.ID, &i.Name)
 	return i, err
-}
-
-const insertUserForInvitation = `-- name: InsertUserForInvitation :exec
-INSERT INTO users (id, provider, provider_user_id, login, name, avatar_url, first_login_done, created_at, updated_at, can_create_workspace, account_status)
-VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, 0, 'active')
-`
-
-type InsertUserForInvitationParams struct {
-	ID             string
-	Provider       string
-	ProviderUserID string
-	Login          string
-	Name           string
-	AvatarUrl      string
-	CreatedAt      int64
-	UpdatedAt      int64
-}
-
-func (q *Queries) InsertUserForInvitation(ctx context.Context, arg InsertUserForInvitationParams) error {
-	_, err := q.db.ExecContext(ctx, insertUserForInvitation,
-		arg.ID,
-		arg.Provider,
-		arg.ProviderUserID,
-		arg.Login,
-		arg.Name,
-		arg.AvatarUrl,
-		arg.CreatedAt,
-		arg.UpdatedAt,
-	)
-	return err
 }
 
 const listAllInvitations = `-- name: ListAllInvitations :many

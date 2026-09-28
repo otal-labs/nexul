@@ -39,61 +39,66 @@ func (f *fakeGitHub) FetchUser(_ context.Context, _ string) (*GitHubUser, error)
 	return f.user, nil
 }
 
-// fakeUserStore is an in-memory UserStore.
+// fakeUserStore is an in-memory UserStore; byKey maps a provider identity to its user, identities keeps the rows.
 type fakeUserStore struct {
-	mu    sync.Mutex
-	byID  map[string]*User
-	byKey map[string]string
-	seq   int
+	mu         sync.Mutex
+	byID       map[string]*User
+	byKey      map[string]string
+	identities map[string]*Identity
+	seq        int
 }
 
 func newFakeUserStore() *fakeUserStore {
-	return &fakeUserStore{byID: map[string]*User{}, byKey: map[string]string{}}
+	return &fakeUserStore{byID: map[string]*User{}, byKey: map[string]string{}, identities: map[string]*Identity{}}
 }
 
 func userKey(p Provider, pid string) string { return string(p) + ":" + pid }
 
-func (f *fakeUserStore) UpsertUser(_ context.Context, u *User) (*User, bool, error) {
+func (f *fakeUserStore) UpsertUser(_ context.Context, id *Identity) (*User, bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	key := userKey(u.Provider, u.ProviderUserID)
-	if id, ok := f.byKey[key]; ok {
-		existing := f.byID[id]
-		existing.Login = u.Login
-		existing.Name = u.Name
-		existing.AvatarURL = u.AvatarURL
+	key := userKey(id.Provider, id.ProviderUserID)
+	if userID, ok := f.byKey[key]; ok {
+		stored := f.identities[key]
+		stored.Login, stored.Name, stored.AvatarURL = id.Login, id.Name, id.AvatarURL
+		existing := f.byID[userID]
+		// Mirrors the repo: the user's profile follows the identity they were created with, never a later link.
+		f.mu.Unlock()
+		first, _ := f.ListIdentities(context.Background(), userID)
+		f.mu.Lock()
+		if len(first) > 0 && userKey(first[0].Provider, first[0].ProviderUserID) == key {
+			existing.Login, existing.Name, existing.AvatarURL = id.Login, id.Name, id.AvatarURL
+		}
 		return existing, false, nil
 	}
-	if u.ID == "" {
+	if id.UserID == "" {
 		f.seq++
-		u.ID = fmt.Sprintf("user-%d", f.seq)
+		id.UserID = fmt.Sprintf("user-%d", f.seq)
 	}
-	if u.AccountStatus == "" {
-		u.AccountStatus = AccountActive
-	}
-	cp := *u
-	f.byKey[key] = cp.ID
-	f.byID[cp.ID] = &cp
-	return &cp, true, nil
+	return f.insert(id), true, nil
 }
 
-func (f *fakeUserStore) CreateFirstUser(_ context.Context, u *User, _ ...eventbus.OutboxEvent) (*User, error) {
+// insert creates the user row from the identity, keeping the caller's copy of the identity untouched.
+func (f *fakeUserStore) insert(id *Identity) *User {
+	u := &User{ID: id.UserID, Login: id.Login, Name: id.Name, AvatarURL: id.AvatarURL, AccountStatus: AccountActive}
+	cp := *id
+	f.byKey[userKey(id.Provider, id.ProviderUserID)] = u.ID
+	f.identities[userKey(id.Provider, id.ProviderUserID)] = &cp
+	f.byID[u.ID] = u
+	return u
+}
+
+func (f *fakeUserStore) CreateFirstUser(_ context.Context, id *Identity, _ ...eventbus.OutboxEvent) (*User, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if len(f.byID) != 0 {
 		return nil, apperrs.ErrConflict
 	}
-	if u.ID == "" {
+	if id.UserID == "" {
 		f.seq++
-		u.ID = fmt.Sprintf("user-%d", f.seq)
+		id.UserID = fmt.Sprintf("user-%d", f.seq)
 	}
-	if u.AccountStatus == "" {
-		u.AccountStatus = AccountActive
-	}
-	cp := *u
-	f.byKey[userKey(u.Provider, u.ProviderUserID)] = cp.ID
-	f.byID[cp.ID] = &cp
-	return &cp, nil
+	return f.insert(id), nil
 }
 
 func (f *fakeUserStore) GetUserByProvider(_ context.Context, provider Provider, providerUserID string) (*User, error) {
@@ -104,6 +109,68 @@ func (f *fakeUserStore) GetUserByProvider(_ context.Context, provider Provider, 
 		return nil, apperrs.ErrNotFound
 	}
 	return f.byID[id], nil
+}
+
+func (f *fakeUserStore) ListIdentities(_ context.Context, userID string) ([]Identity, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []Identity
+	for _, id := range f.identities {
+		if id.UserID == userID {
+			out = append(out, *id)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if !out[i].CreatedAt.Equal(out[j].CreatedAt) {
+			return out[i].CreatedAt.Before(out[j].CreatedAt)
+		}
+		return out[i].Provider < out[j].Provider
+	})
+	return out, nil
+}
+
+func (f *fakeUserStore) LinkIdentity(_ context.Context, id *Identity, _ ...eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	key := userKey(id.Provider, id.ProviderUserID)
+	if owner, ok := f.byKey[key]; ok && owner == id.UserID {
+		return fmt.Errorf("%w: that %s account is already linked to you", apperrs.ErrConflict, id.Provider)
+	}
+	if _, ok := f.byKey[key]; ok {
+		return fmt.Errorf("%w: that %s account is already linked to another user", apperrs.ErrConflict, id.Provider)
+	}
+	for _, existing := range f.identities {
+		if existing.UserID == id.UserID && existing.Provider == id.Provider {
+			return fmt.Errorf("%w: a %s account is already linked; unlink it first", apperrs.ErrConflict, id.Provider)
+		}
+	}
+	cp := *id
+	f.byKey[key] = id.UserID
+	f.identities[key] = &cp
+	return nil
+}
+
+func (f *fakeUserStore) UnlinkIdentity(_ context.Context, userID string, provider Provider, _ ...eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var keys []string
+	for key, id := range f.identities {
+		if id.UserID == userID {
+			keys = append(keys, key)
+		}
+	}
+	if len(keys) <= 1 {
+		return fmt.Errorf("%w: this is your only sign-in", apperrs.ErrConflict)
+	}
+	for _, key := range keys {
+		if f.identities[key].Provider != provider {
+			continue
+		}
+		delete(f.identities, key)
+		delete(f.byKey, key)
+		return nil
+	}
+	return fmt.Errorf("%w: no %s account is linked", apperrs.ErrNotFound, provider)
 }
 
 func (f *fakeUserStore) GetUserByID(_ context.Context, id string) (*User, error) {

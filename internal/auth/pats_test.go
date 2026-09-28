@@ -22,7 +22,7 @@ func newPATHarness() (*Service, *fakeUserStore, *fakePATStore) {
 
 func seedPATUser(t *testing.T, users *fakeUserStore) string {
 	t.Helper()
-	_, _, err := users.UpsertUser(context.Background(), &User{ID: "u1", Provider: ProviderGitHub, ProviderUserID: "1", Login: "owner"})
+	_, _, err := users.UpsertUser(context.Background(), &Identity{UserID: "u1", Provider: ProviderGitHub, ProviderUserID: "1", Login: "owner"})
 	require.NoError(t, err)
 	return "u1"
 }
@@ -117,7 +117,7 @@ func TestRevokePAT_TakesEffectImmediately(t *testing.T) {
 	})
 
 	t.Run("revoking another user's token not found", func(t *testing.T) {
-		_, _, err := users.UpsertUser(context.Background(), &User{ID: "u2", Provider: ProviderGitHub, ProviderUserID: "2", Login: "bob"})
+		_, _, err := users.UpsertUser(context.Background(), &Identity{UserID: "u2", Provider: ProviderGitHub, ProviderUserID: "2", Login: "bob"})
 		require.NoError(t, err)
 		require.ErrorIs(t, s.RevokePAT(context.Background(), "u2", pat.ID), apperrs.ErrNotFound)
 	})

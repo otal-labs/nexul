@@ -110,7 +110,7 @@ func TestRequireAuth_DisabledUserCannotUseExistingCredentials(t *testing.T) {
 
 func TestRequireAuth_NoPATStoreConfigured(t *testing.T) {
 	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
-	_, _, err := users.UpsertUser(context.Background(), &User{ID: "u1", Provider: ProviderGitHub, ProviderUserID: "1", Login: "owner"})
+	_, _, err := users.UpsertUser(context.Background(), &Identity{UserID: "u1", Provider: ProviderGitHub, ProviderUserID: "1", Login: "owner"})
 	require.NoError(t, err)
 
 	h := s.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

@@ -48,6 +48,8 @@ export interface EventPayloads {
   "git.pr_review_submitted": { "owner": string; "repo": string; "pr": Record<string, unknown>; };
   "git.provider_event": { "provider": string; "event_type": string; "delivery_id": string; "action"?: string; "repository"?: Record<string, unknown>; "payload"?: Record<string, unknown>; "received_at": string; };
   "git.push": { "owner": string; "repo": string; "branch": string; "sha": string; "pusher"?: string; };
+  "identity.linked": { "user_id": string; "provider": string; "login": string; };
+  "identity.unlinked": { "user_id": string; "provider": string; "login": string; };
   "instance.upgrade_changed": { "id": string; "from_version": string; "to_version": string; "status": "pending" | "started" | "completed" | "failed"; "error"?: string; "requested_by"?: string; "created_at"?: string; "updated_at"?: string; };
   "instance.upgrade_requested": { "id": string; "version": string; };
   "interview_template.updated": { "workspace_id": string; "author_id": string; "updated_at"?: string; };
@@ -148,6 +150,8 @@ export const TOPICS: Topic[] = [
   "git.pr_review_submitted",
   "git.provider_event",
   "git.push",
+  "identity.linked",
+  "identity.unlinked",
   "instance.upgrade_changed",
   "instance.upgrade_requested",
   "interview_template.updated",
@@ -246,6 +250,8 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "git.pr_review_submitted": {"owner":"fixture-owner","repo":"fixture-repo","pr":{}},
   "git.provider_event": {"provider":"fixture-provider","event_type":"fixture-event_type","delivery_id":"fixture-delivery_id","action":"fixture-action","repository":{},"payload":{},"received_at":"2026-01-01T00:00:00Z"},
   "git.push": {"owner":"fixture-owner","repo":"fixture-repo","branch":"fixture-branch","sha":"fixture-sha","pusher":"fixture-pusher"},
+  "identity.linked": {"user_id":"fixture-user_id","provider":"fixture-provider","login":"fixture-login"},
+  "identity.unlinked": {"user_id":"fixture-user_id","provider":"fixture-provider","login":"fixture-login"},
   "instance.upgrade_changed": {"id":"fixture-id","from_version":"fixture-from_version","to_version":"fixture-to_version","status":"pending","error":"fixture-error","requested_by":"fixture-requested_by","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"},
   "instance.upgrade_requested": {"id":"fixture-id","version":"fixture-version"},
   "interview_template.updated": {"workspace_id":"fixture-workspace_id","author_id":"fixture-author_id","updated_at":"2026-01-01T00:00:00Z"},

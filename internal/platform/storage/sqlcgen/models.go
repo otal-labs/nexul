@@ -863,18 +863,26 @@ type Topology struct {
 
 type User struct {
 	ID                 string
-	Provider           string
-	ProviderUserID     string
 	Login              string
 	Name               string
 	AvatarUrl          string
 	FirstLoginDone     int64
-	CreatedAt          int64
-	UpdatedAt          int64
 	CanCreateWorkspace int64
 	DisplayName        sql.NullString
 	AvatarOverrideUrl  sql.NullString
 	AccountStatus      string
+	CreatedAt          int64
+	UpdatedAt          int64
+}
+
+type UserIdentity struct {
+	UserID         string
+	Provider       string
+	ProviderUserID string
+	Login          string
+	Name           string
+	AvatarUrl      string
+	CreatedAt      int64
 }
 
 type Workspace struct {

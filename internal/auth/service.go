@@ -326,13 +326,7 @@ func (s *Service) DevLoginEnabled() bool {
 
 // DevLogin mints a session for a fixed local identity, skipping the GitHub round trip, via Login's upsert-then-mint.
 func (s *Service) DevLogin(ctx context.Context) (string, error) {
-	identity := &User{
-		ID:             newUserID(),
-		Provider:       ProviderDev,
-		ProviderUserID: "dev",
-		Login:          "dev",
-		Name:           "Dev User",
-	}
+	identity := &Identity{UserID: newUserID(), Provider: ProviderDev, ProviderUserID: "dev", Login: "dev", Name: "Dev User"}
 	user, err := s.findOrCreateLoginUser(ctx, identity)
 	if err != nil {
 		return "", err
@@ -464,15 +458,20 @@ func (s *Service) PrepareAuthenticatedAcceptance(ctx context.Context, userID, ra
 	if err != nil {
 		return nil, err
 	}
-	handoff := &OAuthHandoff{ID: newUserID(), InvitationID: details.InvitationID, OAuthStateHash: hashCredential(state), Provider: user.Provider, CreatedAt: s.cfg.Now(), ExpiresAt: s.cfg.Now().Add(stateMaxAge)}
+	// Redemption resolves the user through an identity, so the signed-in user's first one stands in for the OAuth round trip.
+	first, err := s.firstIdentity(ctx, user.ID)
+	if err != nil {
+		return nil, err
+	}
+	handoff := &OAuthHandoff{ID: newUserID(), InvitationID: details.InvitationID, OAuthStateHash: hashCredential(state), Provider: first.Provider, CreatedAt: s.cfg.Now(), ExpiresAt: s.cfg.Now().Add(stateMaxAge)}
 	if err := s.cfg.OAuthHandoffs.StartOAuthHandoff(ctx, handoff); err != nil {
 		return nil, err
 	}
-	identity := OAuthHandoffIdentity{Provider: user.Provider, ProviderUserID: user.ProviderUserID, Login: user.Login, Name: user.Name, AvatarURL: user.AvatarURL, ExistingUserID: user.ID}
+	identity := OAuthHandoffIdentity{Provider: first.Provider, ProviderUserID: first.ProviderUserID, Login: user.Login, Name: user.Name, AvatarURL: user.AvatarURL, ExistingUserID: user.ID}
 	if _, err := s.cfg.OAuthHandoffs.CompleteOAuthCallback(ctx, hashCredential(state), hashCredential(acceptance), identity, s.cfg.Now().Add(stateMaxAge), s.cfg.Now()); err != nil {
 		return nil, classifyInvitationError(err)
 	}
-	details.AuthenticatedUser = &InvitationAuthenticatedUser{ID: user.ID, Provider: user.Provider, Login: user.Login, Name: user.Name, AvatarURL: user.AvatarURL}
+	details.AuthenticatedUser = &InvitationAuthenticatedUser{ID: user.ID, Provider: first.Provider, Login: user.Login, Name: user.Name, AvatarURL: user.AvatarURL}
 	return s.acceptanceDetails(acceptance, details)
 }
 
@@ -594,21 +593,18 @@ func (s *Service) LoginWith(ctx context.Context, provider Provider, code string)
 	if err != nil {
 		return "", err
 	}
-	user, err := s.findOrCreateLoginUser(ctx, &User{
-		ID:             newUserID(),
-		Provider:       provider,
-		ProviderUserID: pu.ID,
-		Login:          pu.Login,
-		Name:           pu.Name,
-		AvatarURL:      pu.AvatarURL,
-	})
+	user, err := s.findOrCreateLoginUser(ctx, providerIdentity(newUserID(), provider, pu))
 	if err != nil {
 		return "", err
 	}
 	return s.CreateSession(ctx, user.ID)
 }
 
-func (s *Service) findOrCreateLoginUser(ctx context.Context, identity *User) (*User, error) {
+func providerIdentity(userID string, provider Provider, pu *ProviderUser) *Identity {
+	return &Identity{UserID: userID, Provider: provider, ProviderUserID: pu.ID, Login: pu.Login, Name: pu.Name, AvatarURL: pu.AvatarURL}
+}
+
+func (s *Service) findOrCreateLoginUser(ctx context.Context, identity *Identity) (*User, error) {
 	user, err := s.cfg.Users.GetUserByProvider(ctx, identity.Provider, identity.ProviderUserID)
 	if err == nil {
 		if !accountIsActive(user.AccountStatus) {
@@ -630,7 +626,7 @@ func (s *Service) findOrCreateLoginUser(ctx context.Context, identity *User) (*U
 	if count != 0 {
 		return nil, fmt.Errorf("%w: invitation required", apperrs.ErrUnauthorized)
 	}
-	user, err = s.cfg.Users.CreateFirstUser(ctx, identity, eventbus.OutboxEvent{ID: newUserID(), Topic: TopicAccountAdmitted, Payload: AccountLifecycleEvent{AccountID: identity.ID}})
+	user, err = s.cfg.Users.CreateFirstUser(ctx, identity, eventbus.OutboxEvent{ID: newUserID(), Topic: TopicAccountAdmitted, Payload: AccountLifecycleEvent{AccountID: identity.UserID}})
 	if err != nil {
 		if errors.Is(err, apperrs.ErrConflict) {
 			return nil, fmt.Errorf("%w: invitation required", apperrs.ErrUnauthorized)

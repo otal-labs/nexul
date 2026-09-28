@@ -1,18 +1,34 @@
--- name: GetUserIDByProvider :one
-SELECT id FROM users WHERE provider = ? AND provider_user_id = ?;
-
 -- name: CountUsers :one
 SELECT COUNT(*) FROM users;
 
 -- name: InsertUser :exec
-INSERT INTO users (id, provider, provider_user_id, login, name, avatar_url, can_create_workspace, first_login_done, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?, ?);
+INSERT INTO users (id, login, name, avatar_url, can_create_workspace, first_login_done, created_at, updated_at)
+VALUES (?, ?, ?, ?, 0, 0, ?, ?);
 
--- name: SyncUser :exec
-UPDATE users SET login = ?, name = ?, avatar_url = ?, updated_at = ? WHERE id = ?;
+-- name: GetUserByIdentity :one
+SELECT u.* FROM users u JOIN user_identities i ON i.user_id = u.id
+WHERE i.provider = ? AND i.provider_user_id = ?;
 
--- name: GetUserByProvider :one
-SELECT * FROM users WHERE provider = ? AND provider_user_id = ?;
+-- name: InsertIdentity :exec
+INSERT INTO user_identities (user_id, provider, provider_user_id, login, name, avatar_url, created_at)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+-- name: SyncIdentity :exec
+UPDATE user_identities SET login = ?, name = ?, avatar_url = ? WHERE provider = ? AND provider_user_id = ?;
+
+-- name: SyncUserFromFirstIdentity :exec
+UPDATE users SET login = ?, name = ?, avatar_url = ?, updated_at = ?
+WHERE id = sqlc.arg(user_id)
+  AND sqlc.arg(provider) = (SELECT provider FROM user_identities WHERE user_id = sqlc.arg(user_id) ORDER BY created_at, provider LIMIT 1);
+
+-- name: ListIdentitiesByUser :many
+SELECT * FROM user_identities WHERE user_id = ? ORDER BY created_at, provider;
+
+-- name: CountIdentitiesByUser :one
+SELECT COUNT(*) FROM user_identities WHERE user_id = ?;
+
+-- name: DeleteIdentity :execrows
+DELETE FROM user_identities WHERE user_id = ? AND provider = ?;
 
 -- name: SetAccountStatus :execrows
 UPDATE users SET account_status = ?, updated_at = ? WHERE id = ?;

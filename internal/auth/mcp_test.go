@@ -17,9 +17,10 @@ import (
 func newAccountsHarness(t *testing.T) (*Service, *fakeUserStore) {
 	t.Helper()
 	s, users, _, _ := newTestHarness(&fakeGitHub{})
-	_, _, err := users.UpsertUser(t.Context(), &User{ID: "admin", Provider: ProviderGitHub, ProviderUserID: "1", Login: "onik97", CanCreateWorkspace: true})
+	_, _, err := users.UpsertUser(t.Context(), &Identity{UserID: "admin", Provider: ProviderGitHub, ProviderUserID: "1", Login: "onik97"})
 	require.NoError(t, err)
-	_, _, err = users.UpsertUser(t.Context(), &User{ID: "member", Provider: ProviderGitHub, ProviderUserID: "2", Login: "member", Name: "Mem Ber"})
+	require.NoError(t, users.SetCanCreateWorkspace(t.Context(), "admin", true))
+	_, _, err = users.UpsertUser(t.Context(), &Identity{UserID: "member", Provider: ProviderGitHub, ProviderUserID: "2", Login: "member", Name: "Mem Ber"})
 	require.NoError(t, err)
 	return s, users
 }
@@ -91,7 +92,7 @@ func TestAccountGet_WithoutIDIsTheCaller(t *testing.T) {
 
 	got, err := callAccountTool(t, s, "member", "account_get", `{}`)
 	require.NoError(t, err)
-	assert.Equal(t, accountResult{ID: "member", Login: "member", Name: "Mem Ber", Provider: ProviderGitHub, Status: AccountActive}, got)
+	assert.Equal(t, accountResult{ID: "member", Login: "member", Name: "Mem Ber", Status: AccountActive}, got)
 
 	got, err = callAccountTool(t, s, "member", "account_get", `{"id": "member"}`)
 	require.NoError(t, err)

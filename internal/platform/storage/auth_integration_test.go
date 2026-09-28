@@ -117,12 +117,12 @@ func TestAuthIntegration_OwnerBootstrapAndAdmission(t *testing.T) {
 	})
 
 	t.Run("known active user signs in without allowlist", func(t *testing.T) {
-		owner := &auth.User{ID: "owner-id", Provider: auth.ProviderGitHub, ProviderUserID: "1", Login: "owner"}
+		owner := &auth.Identity{UserID: "owner-id", Provider: auth.ProviderGitHub, ProviderUserID: "1", Login: "owner"}
 		ownerRec, _, err := store.Users.UpsertUser(ctx, owner)
 		require.NoError(t, err)
 		require.NoError(t, store.Users.SetCanCreateWorkspace(ctx, ownerRec.ID, true))
 
-		member := &auth.User{ID: "member-id", Provider: auth.ProviderGitHub, ProviderUserID: "2", Login: "member"}
+		member := &auth.Identity{UserID: "member-id", Provider: auth.ProviderGitHub, ProviderUserID: "2", Login: "member"}
 		_, _, err = store.Users.UpsertUser(ctx, member)
 		require.NoError(t, err)
 

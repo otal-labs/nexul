@@ -3,6 +3,9 @@
 ADR 0061 supersedes the allowlist paragraph below. Provider OAuth and
 database-backed provider configuration remain unchanged.
 
+Amended: a user holds one or more sign-in identities instead of being keyed
+by a single provider (the amendment at the end).
+
 Nexul has no username/password and stores no passwords: a person signs
 in through GitHub, or through the optional Google/Discord providers an owner
 turns on later. Nothing to hash, nothing to reset, no credential store to
@@ -24,3 +27,21 @@ kinds can never collide. An unverified email is refused at sign-in.
 
 Decided: 2026-07-25 (GitHub OAuth); optional providers and DB-backed
 credentials 2026-09-03.
+
+## Amendment: one user, many sign-in identities
+
+The user row used to carry its provider and provider user id, so a person
+who signed in with GitHub could never also sign in with Google without a
+second account. Identities now live in their own rows, one per provider per
+user, and sign-in resolves the user through them. A signed-in person links
+another provider from their Profile by running that provider's OAuth in
+link mode: the state carries the signed-in user, signed with the instance
+secret, so the public callback attaches the account to them and never to
+whoever a cookie names. No admission step: they are already in. Unlinking is
+the way back out and is refused for the last identity, so nobody can lock
+themselves out; an identity attached to another user is refused without
+changing either user. The user's login, name and avatar follow the identity
+they were created with, so a linked account never renames them, and the
+identity row itself syncs on every sign-in. Agents get no tool for this:
+linking is an interactive browser flow, and unlinking a person's sign-in is
+a session-class act (ADR 0081). Decided 2026-09-28.

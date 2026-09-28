@@ -7,12 +7,23 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 )
 
-// UserStore persists user records; UpsertUser returns the record, permission/sync columns included, plus created.
-type UserStore interface {
-	UpsertUser(ctx context.Context, u *User) (*User, bool, error)
-	CreateFirstUser(ctx context.Context, u *User, events ...eventbus.OutboxEvent) (*User, error)
-	GetUserByID(ctx context.Context, id string) (*User, error)
+// IdentityStore persists the provider accounts a user signs in with; every write is user-scoped.
+type IdentityStore interface {
+	// UpsertUser syncs a known identity (and the user's profile when it is their first) or creates the user with it.
+	UpsertUser(ctx context.Context, id *Identity) (*User, bool, error)
+	CreateFirstUser(ctx context.Context, id *Identity, events ...eventbus.OutboxEvent) (*User, error)
 	GetUserByProvider(ctx context.Context, provider Provider, providerUserID string) (*User, error)
+	ListIdentities(ctx context.Context, userID string) ([]Identity, error)
+	// LinkIdentity attaches one more provider account; ErrConflict when it belongs to anyone already.
+	LinkIdentity(ctx context.Context, id *Identity, events ...eventbus.OutboxEvent) error
+	// UnlinkIdentity detaches a provider account; ErrConflict for the user's last one, so nobody locks themselves out.
+	UnlinkIdentity(ctx context.Context, userID string, provider Provider, events ...eventbus.OutboxEvent) error
+}
+
+// UserStore persists user records.
+type UserStore interface {
+	IdentityStore
+	GetUserByID(ctx context.Context, id string) (*User, error)
 	// GetUserByLogin looks up a user by login (ErrNotFound if none); tenancy checks if a login already has a User.
 	GetUserByLogin(ctx context.Context, login string) (*User, error)
 	ListUsers(ctx context.Context) ([]*User, error)

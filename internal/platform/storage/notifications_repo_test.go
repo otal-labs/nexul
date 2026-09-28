@@ -25,8 +25,8 @@ func newTestNotification(id, userID string, read bool) *workspace.Notification {
 
 func mustCreateUser(t *testing.T, s *Store, id, login string) {
 	t.Helper()
-	_, _, err := s.Users.UpsertUser(context.Background(), &auth.User{
-		ID: id, Provider: auth.ProviderGitHub, ProviderUserID: "p-" + id, Login: login,
+	_, _, err := s.Users.UpsertUser(context.Background(), &auth.Identity{
+		UserID: id, Provider: auth.ProviderGitHub, ProviderUserID: "p-" + id, Login: login,
 	})
 	require.NoError(t, err)
 }

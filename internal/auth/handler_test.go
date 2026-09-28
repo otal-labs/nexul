@@ -252,7 +252,7 @@ func TestHandler_CallbackPOST_EmptyCode(t *testing.T) {
 
 func seedOwner(t *testing.T, users *fakeUserStore, id, providerID, login string) {
 	t.Helper()
-	_, _, err := users.UpsertUser(context.Background(), &User{ID: id, Provider: ProviderGitHub, ProviderUserID: providerID, Login: login})
+	_, _, err := users.UpsertUser(context.Background(), &Identity{UserID: id, Provider: ProviderGitHub, ProviderUserID: providerID, Login: login})
 	require.NoError(t, err)
 	require.NoError(t, users.SetCanCreateWorkspace(context.Background(), id, true))
 }
@@ -439,7 +439,7 @@ func TestHandler_Me(t *testing.T) {
 
 func TestHandler_CompleteOwnerWizard(t *testing.T) {
 	s, users, _, settings := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
-	_, _, err := users.UpsertUser(context.Background(), &User{ID: "u1", Provider: ProviderGitHub, ProviderUserID: "1", Login: "owner"})
+	_, _, err := users.UpsertUser(context.Background(), &Identity{UserID: "u1", Provider: ProviderGitHub, ProviderUserID: "1", Login: "owner"})
 	require.NoError(t, err)
 	h := protectedHandler(s, users)
 
@@ -464,7 +464,7 @@ func TestHandler_CompleteOwnerWizard(t *testing.T) {
 
 func TestHandler_CompleteFirstLogin(t *testing.T) {
 	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "member")})
-	_, _, err := users.UpsertUser(context.Background(), &User{ID: "u1", Provider: ProviderGitHub, ProviderUserID: "1", Login: "member"})
+	_, _, err := users.UpsertUser(context.Background(), &Identity{UserID: "u1", Provider: ProviderGitHub, ProviderUserID: "1", Login: "member"})
 	require.NoError(t, err)
 
 	rec := httptest.NewRecorder()
@@ -498,7 +498,7 @@ func TestHandler_Settings(t *testing.T) {
 	})
 
 	t.Run("update by non-owner forbidden", func(t *testing.T) {
-		_, _, err := users.UpsertUser(context.Background(), &User{ID: "u2", Provider: ProviderGitHub, ProviderUserID: "2", Login: "bob"})
+		_, _, err := users.UpsertUser(context.Background(), &Identity{UserID: "u2", Provider: ProviderGitHub, ProviderUserID: "2", Login: "bob"})
 		require.NoError(t, err)
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, protectedRequest(t, s, users, http.MethodPut, "/api/auth/settings", "u2", `{"instance_url":"https://evil.example.com"}`))
@@ -532,7 +532,7 @@ func TestHandler_ConnectionToken(t *testing.T) {
 	})
 
 	t.Run("non-owner forbidden", func(t *testing.T) {
-		_, _, err := users.UpsertUser(context.Background(), &User{ID: "u2", Provider: ProviderGitHub, ProviderUserID: "2", Login: "bob"})
+		_, _, err := users.UpsertUser(context.Background(), &Identity{UserID: "u2", Provider: ProviderGitHub, ProviderUserID: "2", Login: "bob"})
 		require.NoError(t, err)
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, protectedRequest(t, s, users, http.MethodPost, "/api/auth/connection-token", "u2", ""))
@@ -543,7 +543,7 @@ func TestHandler_ConnectionToken(t *testing.T) {
 func TestHandler_PersonalAccessTokens(t *testing.T) {
 	s, users, _ := newPATHarness()
 	seedOwner(t, users, "u1", "1", "owner")
-	_, _, err := users.UpsertUser(context.Background(), &User{ID: "u2", Provider: ProviderGitHub, ProviderUserID: "2", Login: "bob"})
+	_, _, err := users.UpsertUser(context.Background(), &Identity{UserID: "u2", Provider: ProviderGitHub, ProviderUserID: "2", Login: "bob"})
 	require.NoError(t, err)
 	h := protectedHandler(s, users)
 
@@ -617,7 +617,7 @@ func TestHandler_PersonalAccessTokens(t *testing.T) {
 func TestHandler_Members(t *testing.T) {
 	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
 	seedOwner(t, users, "u1", "1", "owner")
-	_, _, err := users.UpsertUser(context.Background(), &User{ID: "u2", Provider: ProviderGitHub, ProviderUserID: "2", Login: "bob"})
+	_, _, err := users.UpsertUser(context.Background(), &Identity{UserID: "u2", Provider: ProviderGitHub, ProviderUserID: "2", Login: "bob"})
 	require.NoError(t, err)
 	h := protectedHandler(s, users)
 
@@ -664,7 +664,7 @@ func TestHandler_Members(t *testing.T) {
 func TestHandler_LookupMembers(t *testing.T) {
 	s, users, _, settings := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
 	seedOwner(t, users, "u1", "1", "owner")
-	_, _, err := users.UpsertUser(context.Background(), &User{ID: "u2", Provider: ProviderGitHub, ProviderUserID: "2", Login: "bob"})
+	_, _, err := users.UpsertUser(context.Background(), &Identity{UserID: "u2", Provider: ProviderGitHub, ProviderUserID: "2", Login: "bob"})
 	require.NoError(t, err)
 	h := protectedHandler(s, users)
 
@@ -760,7 +760,7 @@ func TestHandler_LookupMembers(t *testing.T) {
 
 func TestHandler_UpdateProfile(t *testing.T) {
 	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "onik97")})
-	_, _, err := users.UpsertUser(context.Background(), &User{ID: "u1", Provider: ProviderGitHub, ProviderUserID: "1", Login: "onik97", Name: "GitHub Name", AvatarURL: "https://avatar/gh"})
+	_, _, err := users.UpsertUser(context.Background(), &Identity{UserID: "u1", Provider: ProviderGitHub, ProviderUserID: "1", Login: "onik97", Name: "GitHub Name", AvatarURL: "https://avatar/gh"})
 	require.NoError(t, err)
 	h := protectedHandler(s, users)
 
@@ -795,7 +795,7 @@ func TestHandler_UpdateProfile(t *testing.T) {
 	})
 
 	t.Run("a user can only ever set their own override", func(t *testing.T) {
-		_, _, err := users.UpsertUser(context.Background(), &User{ID: "u2", Provider: ProviderGitHub, ProviderUserID: "2", Login: "bob"})
+		_, _, err := users.UpsertUser(context.Background(), &Identity{UserID: "u2", Provider: ProviderGitHub, ProviderUserID: "2", Login: "bob"})
 		require.NoError(t, err)
 
 		rec := httptest.NewRecorder()
@@ -884,7 +884,7 @@ func TestHandler_GoogleOAuthSettings(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), `"google_oauth_callback":"https://deploy.example.com/auth/google/callback"`)
 	assert.NotContains(t, rec.Body.String(), "g-secret")
 
-	_, _, err = users.UpsertUser(context.Background(), &User{ID: "u2", Provider: ProviderGitHub, ProviderUserID: "2", Login: "bob"})
+	_, _, err = users.UpsertUser(context.Background(), &Identity{UserID: "u2", Provider: ProviderGitHub, ProviderUserID: "2", Login: "bob"})
 	require.NoError(t, err)
 	rec = httptest.NewRecorder()
 	h.ServeHTTP(rec, protectedRequest(t, s, users, http.MethodPut, "/api/auth/settings/oauth/google", "u2", `{"client_id":"x","client_secret":"y"}`))

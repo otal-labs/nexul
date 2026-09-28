@@ -34,7 +34,7 @@ func mentionsTestDB(t *testing.T) *sql.DB {
 
 func seedMentionsUser(t *testing.T, s *storage.Store, id string, owner bool) {
 	t.Helper()
-	_, _, err := s.Users.UpsertUser(context.Background(), &auth.User{ID: id, Provider: auth.ProviderGitHub, ProviderUserID: id, Login: id})
+	_, _, err := s.Users.UpsertUser(context.Background(), &auth.Identity{UserID: id, Provider: auth.ProviderGitHub, ProviderUserID: id, Login: id})
 	require.NoError(t, err)
 	if owner {
 		require.NoError(t, s.Users.SetCanCreateWorkspace(context.Background(), id, true))
