@@ -1,7 +1,7 @@
 # 32 — Push notifications on the phone
 
 **Type:** implementation
-**Status:** ready-for-agent
+**Status:** done
 **Blocked by:** 23, 25
 **Decided in:** ticket 13
 

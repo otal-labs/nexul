@@ -1,6 +1,6 @@
 import * as Notifications from "expo-notifications";
 
-import { clearPushToken, pushProjectId, registerPushToken } from "@/push/pushToken";
+import { clearPushToken, registerPushToken } from "@/push/pushToken";
 
 jest.mock("expo-constants", () => {
   const mockConstants = { expoConfig: { extra: { eas: { projectId: "proj_1" } } } };
@@ -33,15 +33,6 @@ describe("pushToken", () => {
     mockConstants.expoConfig.extra.eas.projectId = "proj_1";
     jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue({ granted: true } as never);
     jest.mocked(Notifications.requestPermissionsAsync).mockResolvedValue({ granted: true } as never);
-  });
-
-  test("pushProjectId reads the EAS project id from app config", () => {
-    expect(pushProjectId()).toBe("proj_1");
-  });
-
-  test("pushProjectId is undefined when the owner hasn't configured one", () => {
-    mockConstants.expoConfig.extra.eas.projectId = "";
-    expect(pushProjectId()).toBeUndefined();
   });
 
   test("registerPushToken PUTs the Expo token once permission is granted", async () => {

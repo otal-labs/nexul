@@ -7,7 +7,7 @@ const CHANNEL_ID = "default";
 const PUSH_TOKEN_PATH = "/api/auth/sessions/current/push-token";
 
 // Set by the owner's one-time Expo/Firebase setup (ticket 13); empty until then.
-export const pushProjectId = (): string | undefined => {
+const pushProjectId = (): string | undefined => {
   const id = Constants.expoConfig?.extra?.eas?.projectId;
   return typeof id === "string" && id.length > 0 ? id : undefined;
 };
