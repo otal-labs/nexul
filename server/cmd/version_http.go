@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/otal-labs/nexul/internal/platform/httpx"
@@ -10,12 +11,19 @@ import (
 )
 
 // versionResponse is the GET /api/version wire shape; Latest is null and UpdateAvailable false for a dev build
-// or when the GitHub lookup fails.
+// or when the GitHub lookup fails. Changes lists the releases between this build and Latest, newest first.
 type versionResponse struct {
-	Version         string         `json:"version"`
-	Channel         string         `json:"channel"`
-	Latest          *latestVersion `json:"latest"`
-	UpdateAvailable bool           `json:"update_available"`
+	Version         string          `json:"version"`
+	Channel         string          `json:"channel"`
+	Latest          *latestVersion  `json:"latest"`
+	UpdateAvailable bool            `json:"update_available"`
+	Changes         []versionChange `json:"changes"`
+}
+
+type versionChange struct {
+	Version string   `json:"version"`
+	URL     string   `json:"url"`
+	Notes   []string `json:"notes"`
 }
 
 type latestVersion struct {
@@ -27,7 +35,7 @@ type latestVersion struct {
 // share one 5-minute cache instead of each polling GitHub on its own.
 func versionHandler(runnerSvc *runner.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		resp := versionResponse{Version: version.Version, Channel: version.Channel()}
+		resp := versionResponse{Version: version.Version, Channel: version.Channel(), Changes: []versionChange{}}
 		if !version.IsRelease() {
 			httpx.WriteJSON(w, http.StatusOK, resp)
 			return
@@ -39,6 +47,9 @@ func versionHandler(runnerSvc *runner.Service) http.HandlerFunc {
 		}
 		resp.Latest = &latestVersion{Version: rel.Tag, URL: rel.URL}
 		resp.UpdateAvailable = rel.Tag != version.Version
+		if resp.UpdateAvailable {
+			resp.Changes = versionChanges(r, runnerSvc)
+		}
 		httpx.WriteJSON(w, http.StatusOK, resp)
 	}
 }
@@ -72,4 +83,22 @@ func instanceUpgradePostHandler(runnerSvc *runner.Service) http.HandlerFunc {
 		}
 		httpx.WriteJSON(w, http.StatusAccepted, upgrade)
 	}
+}
+
+// versionChanges never fails the version response: without notes the update still shows, just without its changelog.
+func versionChanges(r *http.Request, runnerSvc *runner.Service) []versionChange {
+	releases, err := runnerSvc.ReleaseClient().Since(r.Context(), version.Channel(), version.Version)
+	if err != nil {
+		slog.DebugContext(r.Context(), "list releases since this build", "error", err)
+		return []versionChange{}
+	}
+	changes := make([]versionChange, 0, len(releases))
+	for _, rel := range releases {
+		notes := rel.Notes()
+		if notes == nil {
+			notes = []string{}
+		}
+		changes = append(changes, versionChange{Version: rel.Tag, URL: rel.URL, Notes: notes})
+	}
+	return changes
 }

@@ -1,8 +1,10 @@
-import { Cpu, Network, Workflow } from "lucide-react";
-import { NavLink } from "react-router";
+import { ChevronDownIcon, Cpu, Network, Workflow } from "lucide-react";
+import { useShallow } from "zustand/react/shallow";
 
-import { navLinkClass, sectionLabelClass, type SidebarNavEntry } from "@/components/SidebarNav";
+import { sectionLabelClass, type SidebarNavEntry } from "@/components/SidebarNav";
+import { SidebarNavLink } from "@/components/sidebar/SidebarNavLink";
 import { cn } from "@/lib/utils";
+import { useSidebarStore } from "@/stores/sidebarStore";
 
 const deployNav: SidebarNavEntry[] = [
   { to: "/runners", label: "Runners", icon: Cpu },
@@ -14,32 +16,51 @@ interface DeploySidebarNavProps {
   collapsed: boolean;
 }
 
-export const DeploySidebarNav = ({ collapsed }: DeploySidebarNavProps) => (
-  <>
-    {!collapsed && <div className={sectionLabelClass}>Workspace</div>}
-    <div className="flex flex-col gap-0.5">
-      {deployNav.map((entry) => (
-        <NavLink
-          key={entry.to}
-          to={entry.to}
-          className={({ isActive }) => cn(navLinkClass({ isActive }), collapsed && "justify-center")}
-          {...(entry.end ? { end: entry.end } : {})}
-          {...(collapsed ? { title: entry.label } : {})}
-        >
-          <span className="flex w-8 shrink-0 justify-center">
-            <entry.icon className="size-4" aria-hidden />
-          </span>
-          {!collapsed && <span className="flex-1 text-left">{entry.label}</span>}
-          {!collapsed && entry.wip && (
-            <span
-              className="shrink-0 text-[10px] font-medium tracking-wide text-warning"
-              title="Work in progress"
-            >
-              WIP
-            </span>
+// Docked under the scrolling nav like an editor's bottom pane; folding it leaves only its header.
+export const DeploySidebarNav = ({ collapsed }: DeploySidebarNavProps) => {
+  const { open, toggle } = useSidebarStore(
+    useShallow((s) => ({ open: s.workspaceNavOpen, toggle: s.toggleWorkspaceNav })),
+  );
+
+  return (
+    <nav aria-label="Workspace" className="shrink-0 border-t border-border px-2 py-1">
+      {!collapsed && (
+        <button
+          type="button"
+          onClick={toggle}
+          aria-expanded={open}
+          className={cn(
+            sectionLabelClass,
+            "flex w-full items-center justify-between rounded-md pt-1.5 outline-none transition-colors duration-150 ease-standard hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/40",
           )}
-        </NavLink>
-      ))}
-    </div>
-  </>
-);
+        >
+          <span>Workspace</span>
+          <ChevronDownIcon
+            className={cn("size-3.5 transition-transform duration-150 ease-standard", !open && "-rotate-90")}
+            aria-hidden
+          />
+        </button>
+      )}
+      {(open || collapsed) && (
+        <div className="flex flex-col gap-0.5 pb-1">
+          {deployNav.map((entry) => (
+            <SidebarNavLink
+              key={entry.to}
+              to={entry.to}
+              label={entry.label}
+              icon={entry.icon}
+              collapsed={collapsed}
+              end={entry.end ?? false}
+            >
+              {entry.wip && (
+                <span className="shrink-0 text-[10px] font-medium tracking-wide text-warning" title="Work in progress">
+                  WIP
+                </span>
+              )}
+            </SidebarNavLink>
+          ))}
+        </div>
+      )}
+    </nav>
+  );
+};
