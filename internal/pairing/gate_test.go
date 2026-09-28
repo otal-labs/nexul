@@ -187,15 +187,15 @@ func TestResolveSetupTurnTarget_UnconfirmedComputer_ResolvesWithoutTheGate(t *te
 	t.Parallel()
 	f := newGateFixture(t)
 
-	target, err := f.svc.ResolveSetupTurnTarget(t.Context(), "u1", f.computer.ID, "claude")
+	target, err := f.svc.ResolveSetupTurnTarget(t.Context(), "u1", f.computer.ID, "claude", "")
 	require.NoError(t, err)
 	assert.Equal(t, "claude", target.Provider)
 	assert.Equal(t, "secret", target.Computer.BearerToken)
 
-	_, err = f.svc.ResolveSetupTurnTarget(t.Context(), "u1", "  ", "claude")
+	_, err = f.svc.ResolveSetupTurnTarget(t.Context(), "u1", "  ", "claude", "")
 	require.ErrorIs(t, err, apperrs.ErrInvalid, "a setup turn never falls back to the caller's defaults")
 
-	_, err = f.svc.ResolveSetupTurnTarget(t.Context(), "u2", f.computer.ID, "claude")
+	_, err = f.svc.ResolveSetupTurnTarget(t.Context(), "u2", f.computer.ID, "claude", "")
 	var nc *NotConfiguredError
 	require.ErrorAs(t, err, &nc)
 	assert.Equal(t, ReasonUnpaired, nc.Reason, "only the computer's owner runs its setup")

@@ -427,9 +427,17 @@ func (s *Service) PreviewTarget(ctx context.Context, userID, projectID string) (
 }
 
 // ResolveSetupTurnTarget skips the setup gate for the wizard's setup turn only; TestResolveSetupTurnTarget_OnlyTheWizardCallsIt guards it.
-func (s *Service) ResolveSetupTurnTarget(ctx context.Context, userID, computerID, provider string) (*ResolvedTarget, error) {
+// A picked projectID wins over the defaults.
+func (s *Service) ResolveSetupTurnTarget(ctx context.Context, userID, computerID, provider, projectID string) (*ResolvedTarget, error) {
 	if strings.TrimSpace(computerID) == "" {
 		return nil, fmt.Errorf("%w: a setup turn needs its computer", apperrs.ErrInvalid)
+	}
+	if projectID != "" {
+		session, err := s.sessionComputer(ctx, userID, computerID)
+		if err != nil {
+			return nil, err
+		}
+		return &ResolvedTarget{Computer: session, HarnessProjectID: projectID, Provider: strings.TrimSpace(provider)}, nil
 	}
 	target, err := s.resolveTargetOverride(ctx, userID, "", computerID, provider, "")
 	var nc *NotConfiguredError

@@ -100,8 +100,10 @@ not a block; agent work keeps running, and turns follow the current memory
 protocol from their own prompt until the skill is refreshed. An agent can also
 refresh it without setup: the skill tells it to compare its version with the
 `skill_get` MCP tool once per session and rewrite itself when they differ. Turns
-run in the linked or fallback T3 project, else the first project T3 Code
-lists, and their transcripts are kept with the token hidden.
+run in the folder picked under **Folder**, one of the projects T3 Code opens,
+preselected to the fallback T3 project or else the first one T3 Code lists.
+Setup only writes user-level files, so any of them works; pick another when a
+project's folder no longer exists. Transcripts are kept with the token hidden.
 
 ## Choose defaults
 

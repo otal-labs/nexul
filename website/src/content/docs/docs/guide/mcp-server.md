@@ -51,7 +51,8 @@ machine the server can already reach by URL.
 pairing dialog and returns at once. It takes an optional `models` object
 mapping a provider's driver kind to a model slug; with `provider` it runs
 that one provider's turn again, on an optional `model`. A provider without a
-model runs on its own default. Progress arrives as
+model runs on its own default. An optional `folder` runs the turns in the T3
+Code project that opens that absolute path, in place of the default project. Progress arrives as
 `computer.setup_turn_changed` and `computer.setup_finished` events. The
 confirmations themselves are made only by the agent in each turn, through
 `computer_setup_update`.

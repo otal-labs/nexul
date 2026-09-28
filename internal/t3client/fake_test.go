@@ -129,9 +129,9 @@ func (f *fakeT3) handleWS(w http.ResponseWriter, r *http.Request) {
 			f.write(chunk(idString(env.ID), map[string]any{"kind": "snapshot", "snapshot": map[string]any{
 				"snapshotSequence": 1,
 				"projects": []map[string]any{
-					{"id": "proj-live", "title": "My App", "deletedAt": nil},
+					{"id": "proj-live", "title": "My App", "workspaceRoot": "/home/me/app", "deletedAt": nil},
 					{"id": "proj-gone", "title": "Old", "deletedAt": "2026-01-01T00:00:00Z"},
-					{"id": "proj-two", "title": "Second"},
+					{"id": "proj-two", "title": "Second", "workspaceRoot": "/home/me/second"},
 				},
 			}}))
 		default:

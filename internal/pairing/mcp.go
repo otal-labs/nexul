@@ -54,6 +54,7 @@ type computerSetupRunIn struct {
 	Provider   string            `json:"provider,omitempty" jsonschema:"One provider's driver kind to run alone, for example codex, after its turn failed. Omit to run every provider the harness lists."`
 	Model      string            `json:"model,omitempty" jsonschema:"With provider only: the model slug its turn runs on, as the harness lists it. Omit for the provider's own default."`
 	Models     map[string]string `json:"models,omitempty" jsonschema:"Without provider only: the model slug each provider's turn runs on, keyed by driver kind, for example {\"codex\": \"gpt-5-mini\"}. A provider left out runs on its own default."`
+	Folder     string            `json:"folder,omitempty" jsonschema:"The absolute folder the turns run in, one a T3 Code project on that computer opens, for example /home/me/code/app. Omit for the pairing default, else the harness's first project."`
 }
 
 type computerSetupUpdateIn struct {
@@ -236,7 +237,8 @@ func computerSetupRunTool(s *Service) mcptool.Tool {
 			"installing the default skills and nexul-memory, and confirming through computer_setup_update. Pass "+
 			"provider to run only that provider's turn again after it failed; on a confirmed provider it re-verifies "+
 			"without undoing anything. Returns at once with the run and its providers; computer_list shows each "+
-			"provider's turn state as it progresses. Only one setup runs on a computer at a time.",
+			"provider's turn state as it progresses. Setup only writes user-level files, so pass folder to run it in any "+
+			"project folder when the default one is gone. Only one setup runs on a computer at a time.",
 		mcptool.Hints{},
 		func(ctx context.Context, in computerSetupRunIn) (any, error) {
 			if in.Provider == "" && in.Model != "" {
@@ -246,9 +248,9 @@ func computerSetupRunTool(s *Service) mcptool.Tool {
 				return nil, fmt.Errorf("%w: models applies to a run of every provider; with provider pass model instead", apperrs.ErrInvalid)
 			}
 			if in.Provider == "" {
-				return s.StartSetup(ctx, mcpActorID(ctx), in.ComputerID, in.Models)
+				return s.StartSetup(ctx, mcpActorID(ctx), in.ComputerID, in.Models, in.Folder)
 			}
-			return s.RetrySetupProvider(ctx, mcpActorID(ctx), in.ComputerID, in.Provider, in.Model)
+			return s.RetrySetupProvider(ctx, mcpActorID(ctx), in.ComputerID, in.Provider, in.Model, in.Folder)
 		})
 }
 
