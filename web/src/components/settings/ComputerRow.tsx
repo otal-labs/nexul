@@ -1,5 +1,6 @@
 import { Clock3, RefreshCwIcon, Trash2 } from "lucide-react";
 
+import { PairComputerDialog } from "@/components/pairing/PairComputerDialog";
 import { ComputerMCPToken } from "@/components/settings/ComputerMCPToken";
 import { ComputerSetupSummary } from "@/components/settings/ComputerSetupSummary";
 import { ConfirmDestroyButton } from "@/components/settings/ConfirmDestroyButton";
@@ -31,14 +32,13 @@ export const ComputerRow = ({ computer, presence }: ComputerRowProps) => {
   const days = daysUntil(computer.token_expires_at);
   const expired = !pairing && days <= 0;
   const expiringSoon = !expired && !pairing && days <= EXPIRY_WARNING_DAYS;
-  const repairLabel = pairing ? "Pair" : "Re-pair";
 
   const repair = async () => {
     await openRepair<PairComputerFormData>({
-      title: `${repairLabel} ${computer.name}`,
+      title: `Re-pair ${computer.name}`,
       description: "Run `t3 pair` on the machine, then paste the one-time token it prints.",
       schema: PairComputerFormSchema,
-      okLabel: repairLabel,
+      okLabel: "Re-pair",
       form: <PairComputerForm computer={computer} />,
       formOptions: {
         defaultValues: { name: computer.name, server_url: computer.server_url, token: "" },
@@ -82,10 +82,24 @@ export const ComputerRow = ({ computer, presence }: ComputerRowProps) => {
           </p>
         </div>
         <span className="flex shrink-0 items-center gap-1">
-          <Button type="button" variant="ghost" size="sm" onClick={repair}>
-            <RefreshCwIcon className="size-4" />
-            {repairLabel}
-          </Button>
+          {/* Mounted past pairing so the refetch that flips the row can't close the wizard as it reaches Set up. */}
+          <PairComputerDialog
+            existing={computer}
+            trigger={
+              pairing && (
+                <Button type="button" variant="ghost" size="sm">
+                  <RefreshCwIcon className="size-4" />
+                  Pair
+                </Button>
+              )
+            }
+          />
+          {!pairing && (
+            <Button type="button" variant="ghost" size="sm" onClick={repair}>
+              <RefreshCwIcon className="size-4" />
+              Re-pair
+            </Button>
+          )}
           <ConfirmDestroyButton
             icon={Trash2}
             idleLabel="Remove"
