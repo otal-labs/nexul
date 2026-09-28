@@ -1,5 +1,5 @@
-import { PlaceholderScreen } from "@/components/PlaceholderScreen";
+import { DeploysScreen } from "@/components/deploys/DeploysScreen";
 
-export default function DeploysScreen() {
-  return <PlaceholderScreen message="Stacks and their deploys land here." />;
+export default function DeploysRoute() {
+  return <DeploysScreen />;
 }

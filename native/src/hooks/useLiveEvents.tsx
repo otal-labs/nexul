@@ -4,8 +4,11 @@ import { AppState, type AppStateStatus } from "react-native";
 
 import { buildLiveURL, LiveEventsClient, type ServerFrame } from "@/api/events";
 import { getChatConversationsKey, getChatMessagesKey, getChatUnreadKey } from "@/hooks/ChatHooks";
+import { getDeployKey, getDeployLogKey } from "@/hooks/DeployHooks";
 import { getDocKey, getDocsKey } from "@/hooks/DocHooks";
 import { getNotificationsKey, getUnreadCountKey } from "@/hooks/NotificationHooks";
+import { getRunnersKey } from "@/hooks/RunnerHooks";
+import { getStackDeploysKey } from "@/hooks/StackHooks";
 import { getProjectStatusesKey } from "@/hooks/StatusHooks";
 import { getTicketKey, getTicketsByProjectKey } from "@/hooks/TicketHooks";
 import { readSessionToken, useSessionStore } from "@/stores/sessionStore";
@@ -31,6 +34,10 @@ const pushTopics: Record<string, string[]> = {
   "doc.created": [getDocsKey],
   "doc.updated": [getDocsKey, getDocKey],
   "doc.deleted": [getDocsKey, getDocKey],
+  "runner.connected": [getRunnersKey],
+  "runner.disconnected": [getRunnersKey],
+  // The deploy screen's log follows the tail off this alone: a refetch here is what turns into new log lines.
+  "deploy.updated": [getDeployKey, getDeployLogKey, getStackDeploysKey],
 };
 
 export const dispatch = (client: QueryClient) => (frame: ServerFrame) => {
