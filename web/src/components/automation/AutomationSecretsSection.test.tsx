@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { AutomationSecretsSection } from "@/components/settings/AutomationSecretsSection";
+import { AutomationSecretsSection } from "@/components/automation/AutomationSecretsSection";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn(), del: vi.fn() }));
 

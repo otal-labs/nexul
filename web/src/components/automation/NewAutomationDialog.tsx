@@ -1,19 +1,26 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Plus } from "lucide-react";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { AutomationTokenReveal } from "@/components/automation/AutomationTokenReveal";
 import { PermissionLevels } from "@/components/access/PermissionLevels";
 import { FormInput } from "@/components/FormInput";
-import { Button } from "@/components/ui/button";
 import { useCreateAutomation, useFetchScopeCatalog } from "@/hooks/AutomationHooks";
 import { CreateAutomationFormSchema, type CreateAutomationFormData } from "@/models/Automation";
-import type { AutomationTokenMint } from "@/models/Automation";
 
-// The minted token shows exactly once with the SDK commands, never again after this panel closes.
-export const NewAutomationPanel = () => {
+// The minted token shows exactly once with the SDK commands; closing the dialog drops it for good.
+export const NewAutomationDialog = () => {
   const [open, setOpen] = useState(false);
-  const [minted, setMinted] = useState<AutomationTokenMint | null>(null);
   const create = useCreateAutomation();
   const { data: scopeCatalog = [] } = useFetchScopeCatalog();
 
@@ -24,24 +31,36 @@ export const NewAutomationPanel = () => {
 
   const onSubmit = async (data: CreateAutomationFormData) => {
     try {
-      const result = await create.mutateAsync({ name: data.name, scopes: data.scopes });
-      setMinted(result);
+      await create.mutateAsync({ name: data.name, scopes: data.scopes });
       form.reset();
     } catch {
       // Failure toast is handled by useCreateAutomation; the form stays open to retry.
     }
   };
 
-  const close = () => {
-    setOpen(false);
-    setMinted(null);
+  const onOpenChange = (next: boolean) => {
+    setOpen(next);
+    if (next) return;
+    create.reset();
+    form.reset();
   };
 
+  const minted = create.data;
+
   return (
-    <div className="space-y-4">
-      {!open && <Button onClick={() => setOpen(true)}>New automation</Button>}
-      {open && !minted && (
-        <div className="animate-in fade-in-0 slide-in-from-top-1 space-y-4 rounded-lg border border-border bg-card p-4 duration-200 ease-out">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogTrigger asChild>
+        <Button type="button">
+          <Plus className="size-4" aria-hidden />
+          New automation
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>New automation</DialogTitle>
+          <DialogDescription>Name it and pick what its token may touch.</DialogDescription>
+        </DialogHeader>
+        {!minted && (
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormInput control={form.control} name="name" label="Name" placeholder="e.g. Slack notifier" />
             <Controller
@@ -63,22 +82,22 @@ export const NewAutomationPanel = () => {
               <Button type="submit" disabled={form.formState.isSubmitting}>
                 {form.formState.isSubmitting ? "Creating…" : "Create automation"}
               </Button>
-              <Button type="button" variant="ghost" onClick={close}>
+              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
             </div>
           </form>
-        </div>
-      )}
-      {minted && (
-        <div className="animate-in fade-in-0 slide-in-from-top-1 space-y-4 rounded-lg border border-border bg-card p-4 duration-200 ease-out">
-          <p className="text-sm font-medium">{minted.automation.name} created</p>
-          <AutomationTokenReveal token={minted.token} />
-          <Button type="button" variant="outline" size="sm" onClick={close}>
-            Done
-          </Button>
-        </div>
-      )}
-    </div>
+        )}
+        {minted && (
+          <div className="space-y-4">
+            <p className="text-sm font-medium">{minted.automation.name} created</p>
+            <AutomationTokenReveal token={minted.token} />
+            <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+              Done
+            </Button>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 };

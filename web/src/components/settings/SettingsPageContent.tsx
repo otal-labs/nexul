@@ -1,11 +1,11 @@
 import { AccountsSection } from "@/components/settings/AccountsSection";
 import { AppearanceSection } from "@/components/settings/AppearanceSection";
-import { AutomationSecretsSection } from "@/components/settings/AutomationSecretsSection";
 import { ComputersSection } from "@/components/settings/ComputersSection";
 import { ConnectionTokenSection } from "@/components/settings/ConnectionTokenSection";
 import { ConnectorsSettingsPanel } from "@/components/settings/ConnectorsSettingsPanel";
 import { DangerZoneSection } from "@/components/settings/DangerZoneSection";
 import { GatewaysSection } from "@/components/dns/GatewaysSection";
+import { PageTabs, PageTabsContent } from "@/components/PageTabs";
 import { InterviewTemplateSection } from "@/components/settings/InterviewTemplateSection";
 import { InstanceSettingsPanel } from "@/components/settings/InstanceSettingsPanel";
 import { MentionChipLayoutSection } from "@/components/settings/MentionChipLayoutSection";
@@ -38,13 +38,41 @@ const MentionsPanel = ({
 const TokensPanel = ({ settings }: { settings: InstanceSettings | undefined }) => (
   <>
     {settings && (
-      <>
-        {/* Remounts on settings_version bump so a revealed token from before a URL change never lingers. */}
-        <ConnectionTokenSection key={settings.settings_version} />
-        <PersonalAccessTokensSection />
-      </>
+      <PageTabs
+        label="Token settings"
+        tabs={[
+          { value: "connection", label: "Connection token" },
+          { value: "personal", label: "Personal tokens" },
+        ]}
+      >
+        <PageTabsContent value="connection">
+          {/* Remounts on settings_version bump so a revealed token from before a URL change never lingers. */}
+          <ConnectionTokenSection key={settings.settings_version} />
+        </PageTabsContent>
+        <PageTabsContent value="personal">
+          <PersonalAccessTokensSection />
+        </PageTabsContent>
+      </PageTabs>
     )}
   </>
+);
+
+// Computers comes first so /settings?section=pairing&setup=<id> (no ?tab=) opens the setup summary it names.
+const PairingPanel = () => (
+  <PageTabs
+    label="T3 pairing settings"
+    tabs={[
+      { value: "computers", label: "Computers" },
+      { value: "defaults", label: "Defaults" },
+    ]}
+  >
+    <PageTabsContent value="computers">
+      <ComputersSection />
+    </PageTabsContent>
+    <PageTabsContent value="defaults">
+      <PairingDefaultsSection />
+    </PageTabsContent>
+  </PageTabs>
 );
 
 const AccessPanel = ({ isInstanceAdmin }: { isInstanceAdmin: boolean }) => (
@@ -91,15 +119,9 @@ export const SettingsPageContent = ({
     )}
     {section === "appearance" && <AppearanceSection />}
     {section === "tokens" && <TokensPanel settings={settings} />}
-    {section === "pairing" && (
-      <>
-        <ComputersSection />
-        <PairingDefaultsSection />
-      </>
-    )}
+    {section === "pairing" && <PairingPanel />}
     {section === "connectors" && <ConnectorsSettingsPanel isInstanceAdmin={isInstanceAdmin} />}
     {section === "dns" && <GatewaysSection />}
-    {section === "automation-secrets" && <AutomationSecretsSection />}
     {section === "access" && <AccessPanel isInstanceAdmin={isInstanceAdmin} />}
     {section === "danger" && <DangerPanel settings={settings} />}
   </>

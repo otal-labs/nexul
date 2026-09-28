@@ -70,11 +70,12 @@ beforeEach(() => {
 });
 
 describe("TicketTestSection", () => {
-  it("shows nothing outside a testing-stage column", async () => {
+  it("explains when pass and fail open, without offering them, outside a testing-stage column", async () => {
     mockApi({ url: "" });
     renderSection({ status: "st-build" as Ticket["status"] });
-    await vi.waitFor(() => expect(api.get).toHaveBeenCalledWith("/api/statuses", expect.anything()));
-    expect(screen.queryByText("Test this")).not.toBeInTheDocument();
+    expect(await screen.findByText(/once the ticket reaches a Testing column/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Pass" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Fail" })).not.toBeInTheDocument();
   });
 
   it("offers a shared environment with its label and the acceptance criteria", async () => {

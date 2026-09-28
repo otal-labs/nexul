@@ -212,6 +212,19 @@ section's main job stays collapsed behind that footer button. Lists inside a
 card are hairline rows in one bordered box. Nothing nests a card inside a
 card.
 
+Tabs. A view whose cards or sections are separate jobs (two or more of them)
+splits them into tabs instead of stacking them; a single-card view gets none,
+and a left section nav stays as it is, the tabs live inside the section. Tabs
+are `PageTabs` in `web/src/components/PageTabs.tsx`: a monochrome line tab row
+on a hairline that scrolls sideways at narrow widths, the active tab in
+`?tab=` next to whatever else the URL holds, the first visible tab when
+`?tab=` is missing or unknown. A tab the viewer lacks permission for is
+hidden, not disabled, and a view left with one tab drops the row. Anything
+that deep-links into a tabbed view either names its `?tab=` or relies on the
+target being the first tab. A tab never opens blank: a section that renders
+nothing when empty says so in an `EmptyRow` instead. A filter that narrows one
+list (`ConnectorsSection`'s Connected and Not connected) is not a tab.
+
 ## Motion baseline
 
 The two eases in `web/src/index.css` cover every role; no new duration or

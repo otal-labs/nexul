@@ -1,10 +1,12 @@
+import { AutomationSecretsSection } from "@/components/automation/AutomationSecretsSection";
 import { AutomationsFeed } from "@/components/automation/AutomationsFeed";
-import { NewAutomationPanel } from "@/components/automation/NewAutomationPanel";
+import { NewAutomationDialog } from "@/components/automation/NewAutomationDialog";
 import { AutomationHostsSection } from "@/components/automationHost/AutomationHostsSection";
 import { Container } from "@/components/Container";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { PageHeader } from "@/components/PageHeader";
+import { PageTabs, PageTabsContent } from "@/components/PageTabs";
 import { useFetchAutomations } from "@/hooks/AutomationHooks";
 
 export const AutomationsPage = () => {
@@ -15,12 +17,28 @@ export const AutomationsPage = () => {
       <PageHeader
         title="Automations"
         subtitle="First-party code that reacts to what happens in this workspace — Default automations ship with the instance, Custom ones are yours."
+        actions={<NewAutomationDialog />}
       />
-      <NewAutomationPanel />
-      {isPending && <LoadingDisplay />}
-      {error && <ErrorDisplay error={error} />}
-      {data && <AutomationsFeed automations={data} />}
-      <AutomationHostsSection />
+      <PageTabs
+        label="Automations sections"
+        tabs={[
+          { value: "automations", label: "Automations" },
+          { value: "hosts", label: "Hosts" },
+          { value: "secrets", label: "Secrets" },
+        ]}
+      >
+        <PageTabsContent value="automations">
+          {isPending && <LoadingDisplay />}
+          {error && <ErrorDisplay error={error} />}
+          {data && <AutomationsFeed automations={data} />}
+        </PageTabsContent>
+        <PageTabsContent value="hosts">
+          <AutomationHostsSection />
+        </PageTabsContent>
+        <PageTabsContent value="secrets">
+          <AutomationSecretsSection />
+        </PageTabsContent>
+      </PageTabs>
     </Container>
   );
 };

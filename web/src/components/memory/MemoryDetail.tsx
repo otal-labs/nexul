@@ -7,6 +7,7 @@ import { RichTextEditor } from "@/components/doc/RichTextEditor";
 import { CloneMemoryDialog } from "@/components/memory/CloneMemoryDialog";
 import { InterviewLengthMeter } from "@/components/memory/InterviewLengthMeter";
 import { MemoryVersionsFeed } from "@/components/memory/MemoryVersionsFeed";
+import { PageTabs, PageTabsContent } from "@/components/PageTabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -127,11 +128,23 @@ export const MemoryDetail = ({ memory, canWrite, canDelete, canClone, onSave, on
             </Button>
           </div>
         )}
-
-        <AttachmentsSection owner={{ memory_id: memory.id }} className="mt-8" />
       </article>
 
-      <MemoryVersionsFeed memoryId={memory.id} currentVersion={memory.version} canRevert={canWrite} />
+      <PageTabs
+        label="Memory sections"
+        className="mt-8"
+        tabs={[
+          { value: "attachments", label: "Attachments" },
+          { value: "versions", label: "Versions" },
+        ]}
+      >
+        <PageTabsContent value="attachments">
+          <AttachmentsSection owner={{ memory_id: memory.id }} />
+        </PageTabsContent>
+        <PageTabsContent value="versions">
+          <MemoryVersionsFeed memoryId={memory.id} currentVersion={memory.version} canRevert={canWrite} />
+        </PageTabsContent>
+      </PageTabs>
     </div>
   );
 };

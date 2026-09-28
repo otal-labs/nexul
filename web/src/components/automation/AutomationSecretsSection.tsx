@@ -5,7 +5,7 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { FormInput } from "@/components/FormInput";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { NoDataDisplay } from "@/components/NoDataDisplay";
-import { AutomationSecretRow } from "@/components/settings/AutomationSecretRow";
+import { AutomationSecretRow } from "@/components/automation/AutomationSecretRow";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { Button } from "@/components/ui/button";
 import { useFetchAutomationSecrets, useSetAutomationSecret } from "@/hooks/AutomationSecretHooks";
