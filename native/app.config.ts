@@ -4,6 +4,9 @@ import type { ExpoConfig } from "expo/config";
 // The update server's certificate, downloaded from its dashboard once the app exists there; until then updates are unsigned.
 const certificate = "./certs/certificate.pem";
 
+// Firebase's FCM credentials file, path supplied by the build environment; until the owner runs the push setup, builds go without it.
+const googleServicesFile = process.env.NEXUL_GOOGLE_SERVICES_JSON;
+
 const inter = "node_modules/@expo-google-fonts/inter";
 const mono = "node_modules/@expo-google-fonts/jetbrains-mono";
 
@@ -29,12 +32,13 @@ const fonts = [
 const config: ExpoConfig = {
   name: "Nexul",
   slug: "nexul",
-  version: "0.1.2",
+  version: "0.1.3",
   scheme: "nexul",
   orientation: "portrait",
   userInterfaceStyle: "automatic",
   android: {
     package: "io.nexul.app",
+    ...(googleServicesFile && existsSync(googleServicesFile) && { googleServicesFile }),
   },
   runtimeVersion: { policy: "appVersion" },
   updates: {
@@ -53,6 +57,7 @@ const config: ExpoConfig = {
     "expo-router",
     "./plugins/withReleaseSigning",
     "expo-secure-store",
+    "expo-notifications",
     [
       "expo-camera",
       {

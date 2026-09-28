@@ -10,6 +10,12 @@ jest.mock("expo-secure-store", () => {
   };
 });
 
+// Sign-out also clears the push token server-side (see sessionStore.test.tsx); irrelevant to this file's assertions.
+jest.mock("@/push/pushToken", () => ({
+  registerPushToken: jest.fn(async () => undefined),
+  clearPushToken: jest.fn(async () => undefined),
+}));
+
 const mockFetch = jest.fn();
 globalThis.fetch = mockFetch;
 

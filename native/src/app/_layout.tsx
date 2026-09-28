@@ -9,6 +9,8 @@ import { AppState, type AppStateStatus } from "react-native";
 import { RootNavigator } from "@/components/RootNavigator";
 import { useNavigationTheme } from "@/hooks/useNavigationTheme";
 import { queryClient } from "@/lib/queryClient";
+import { usePushNotificationRouting } from "@/push/usePushNotificationRouting";
+import { usePushRegistration } from "@/push/usePushRegistration";
 
 export { ErrorBoundary } from "expo-router";
 
@@ -16,6 +18,8 @@ const onAppStateChange = (status: AppStateStatus) => focusManager.setFocused(sta
 
 export default function RootLayout() {
   const navigationTheme = useNavigationTheme();
+  usePushRegistration();
+  usePushNotificationRouting();
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", onAppStateChange);

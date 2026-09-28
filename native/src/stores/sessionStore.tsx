@@ -2,6 +2,7 @@ import * as SecureStore from "expo-secure-store";
 import { create } from "zustand";
 
 import { queryClient } from "@/lib/queryClient";
+import { clearPushToken } from "@/push/pushToken";
 
 const HOST_KEY = "session_host";
 const TOKEN_KEY = "session_token";
@@ -16,7 +17,7 @@ export type SessionStore = {
 // The token stays in the secure store and is read on demand; the store only knows that one exists.
 export const readSessionToken = (): string | null => SecureStore.getItem(TOKEN_KEY);
 
-export const useSessionStore = create<SessionStore>((set) => ({
+export const useSessionStore = create<SessionStore>((set, get) => ({
   host: SecureStore.getItem(HOST_KEY),
   signedIn: SecureStore.getItem(TOKEN_KEY) !== null,
   signIn: (host, token) => {
@@ -25,6 +26,10 @@ export const useSessionStore = create<SessionStore>((set) => ({
     set({ host, signedIn: true });
   },
   signOut: () => {
+    // Clear the push token server-side while the session is still valid, before it is deleted.
+    const { host } = get();
+    const token = readSessionToken();
+    if (host && token) void clearPushToken(host, token);
     set({ host: null, signedIn: false });
     queryClient.clear();
     void SecureStore.deleteItemAsync(HOST_KEY);

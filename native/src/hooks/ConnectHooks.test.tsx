@@ -18,6 +18,11 @@ jest.mock("@/lib/deviceInfo", () => ({
   deviceInfo: () => ({ model: "Pixel 9", os: "Android 16", app_version: "0.1.1" }),
 }));
 
+jest.mock("@/push/pushToken", () => ({
+  registerPushToken: jest.fn(async () => undefined),
+  clearPushToken: jest.fn(async () => undefined),
+}));
+
 const about = jest.mocked(fetchAbout);
 const exchange = jest.mocked(exchangeConnectCode);
 const host = "https://nexul.example.com";
