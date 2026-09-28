@@ -1,8 +1,10 @@
-import { RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
+import { InstanceUpgradeProgress } from "@/components/settings/InstanceUpgradeProgress";
 import { SettingsCard } from "@/components/settings/SettingsCard";
+import { TickerRow } from "@/components/TickerRow";
 import { Button } from "@/components/ui/button";
 import { Fact } from "@/components/Fact";
 import {
@@ -84,6 +86,7 @@ const InstanceVersionAction = ({ data }: { data: InstanceUpgrade }) => {
         onClick={() => void onUpgradeClick()}
         disabled={!data.can_upgrade || requestUpgrade.isPending}
       >
+        {requestUpgrade.isPending && <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden />}
         {data.latest ? `Upgrade to ${data.latest.version}` : "Upgrade"}
       </Button>
       {!data.can_upgrade && <p className="text-xs text-muted-foreground">{reasonCopy(data.reason)}</p>}
@@ -98,15 +101,15 @@ const InstanceVersionBody = ({ data }: { data: InstanceUpgrade }) => {
   return (
     <div className="space-y-4">
       <InstanceVersionFacts data={data} />
-      {record && inProgress && (
-        <p className="text-sm text-muted-foreground">
-          Upgrading to {record.to_version}… the app will reconnect on its own
-        </p>
-      )}
+      {record && inProgress && <InstanceUpgradeProgress record={record} />}
       {record && !inProgress && record.status === "completed" && (
-        <p className="text-sm text-muted-foreground">
-          Upgraded to {record.to_version} at {formatRelativeTime(record.updated_at)}
-        </p>
+        <ul>
+          <TickerRow
+            label={`Upgraded to ${record.to_version}`}
+            why={formatRelativeTime(record.updated_at)}
+            outcome={{ state: "ok" }}
+          />
+        </ul>
       )}
       {record && !inProgress && record.status === "failed" && (
         <div className="space-y-1 rounded-md border border-destructive/30 bg-destructive/5 p-3">
@@ -133,7 +136,7 @@ export const InstanceVersionSection = () => {
       description="What this instance is running, and the newest release on its channel."
     >
       {isPending && <LoadingDisplay />}
-      {error && <ErrorDisplay error={error} />}
+      {error && !isUpgradeInProgress(data?.upgrade ?? null) && <ErrorDisplay error={error} />}
       {data && <InstanceVersionBody data={data} />}
     </SettingsCard>
   );

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -27,12 +27,36 @@ const latest = { version: "v0.2.0-beta-004", url: "https://github.com/otal-labs/
 
 const renderSection = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  render(
     <QueryClientProvider client={client}>
       <InstanceVersionSection />
     </QueryClientProvider>,
   );
+  return client;
 };
+
+const upgrading = (status: "pending" | "started") => ({
+  data: {
+    version: "v0.2.0-beta-003",
+    channel: "beta",
+    latest,
+    update_available: true,
+    can_upgrade: false,
+    reason: "an upgrade is already in progress",
+    upgrade: {
+      id: "u-1",
+      from_version: "v0.2.0-beta-003",
+      to_version: "v0.2.0-beta-004",
+      status,
+      error: "",
+      requested_by: "user-1",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+  },
+});
+
+const rowState = (label: string) => screen.getByText(label).closest("li")?.getAttribute("data-state");
 
 describe("InstanceVersionSection", () => {
   beforeEach(() => {
@@ -99,31 +123,37 @@ describe("InstanceVersionSection", () => {
     expect(screen.getByRole("button", { name: "Upgrade" })).toBeDisabled();
   });
 
-  it("shows a status line and no button while the upgrade is pending or started", async () => {
-    mocks.get.mockResolvedValue({
-      data: {
-        version: "v0.2.0-beta-003",
-        channel: "beta",
-        latest,
-        update_available: true,
-        can_upgrade: false,
-        reason: "an upgrade is already in progress",
-        upgrade: {
-          id: "u-1",
-          from_version: "v0.2.0-beta-003",
-          to_version: "v0.2.0-beta-004",
-          status: "started",
-          error: "",
-          requested_by: "user-1",
-          created_at: "2026-09-15T00:00:00Z",
-          updated_at: "2026-09-15T00:00:00Z",
-        },
-      },
-    });
+  it("ticks off the hand-off and spins on the install once the upgrade has started", async () => {
+    mocks.get.mockResolvedValue(upgrading("started"));
     renderSection();
 
-    await screen.findByText("Upgrading to v0.2.0-beta-004… the app will reconnect on its own");
+    await screen.findByText("Install v0.2.0-beta-004 and restart");
+    expect(rowState("Hand the upgrade to this machine")).toBe("ok");
+    expect(rowState("Install v0.2.0-beta-004 and restart")).toBe("pending");
+    expect(rowState("Come back on v0.2.0-beta-004")).toBe("idle");
     expect(screen.queryByRole("button", { name: /upgrade/i })).not.toBeInTheDocument();
+  });
+
+  it("spins on the hand-off while the upgrade is only pending", async () => {
+    mocks.get.mockResolvedValue(upgrading("pending"));
+    renderSection();
+
+    await screen.findByText("Hand the upgrade to this machine");
+    expect(rowState("Hand the upgrade to this machine")).toBe("pending");
+    expect(rowState("Install v0.2.0-beta-004 and restart")).toBe("idle");
+  });
+
+  it("reads a failed poll mid-upgrade as the restart, not an error", async () => {
+    mocks.get.mockResolvedValueOnce(upgrading("started"));
+    const client = renderSection();
+    await screen.findByText("Install v0.2.0-beta-004 and restart");
+
+    mocks.get.mockRejectedValueOnce(new Error("Network Error"));
+    await client.refetchQueries();
+
+    await waitFor(() => expect(rowState("Come back on v0.2.0-beta-004")).toBe("pending"));
+    expect(rowState("Install v0.2.0-beta-004 and restart")).toBe("ok");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("shows the completed message and re-enables the button when a newer release exists", async () => {
@@ -149,7 +179,8 @@ describe("InstanceVersionSection", () => {
     });
     renderSection();
 
-    expect(await screen.findByText(/Upgraded to v0.2.0-beta-004 at/)).toBeInTheDocument();
+    await screen.findByText("Upgraded to v0.2.0-beta-004");
+    expect(rowState("Upgraded to v0.2.0-beta-004")).toBe("ok");
     expect(screen.getByRole("button", { name: "Upgrade to v0.2.0-beta-005" })).toBeEnabled();
   });
 
