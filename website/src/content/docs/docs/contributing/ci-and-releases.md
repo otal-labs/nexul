@@ -9,7 +9,7 @@ sidebar:
 
 CI runs on pushes and pull requests against `master`, and it only runs the
 jobs a change actually touches. A `dorny/paths-filter` step tags the diff
-against six filters, and each job is gated on its own tag:
+against seven filters, and each job is gated on its own tag:
 
 | Filter | Paths | Job |
 |---|---|---|
@@ -19,6 +19,7 @@ against six filters, and each job is gated on its own tag:
 | `website` | `website/**` | `website-build` |
 | `sdk` | `sdk/**`, `internal/integrations/catalog.go` | `sdk-test` |
 | `automations` | `automations/**` | `automations-test` |
+| `native` | `native/**` | `native-test` |
 
 - **`go-test`** — checks the committed `sqlcgen` output is current
   (`sqlc vet` + `sqlc diff`), builds, vets, lints, validates
@@ -39,6 +40,8 @@ against six filters, and each job is gated on its own tag:
   then runs its Vitest suite.
 - **`automations-test`** — installs with a frozen lockfile, runs the
   automations host typecheck, then runs its Bun test suite.
+- **`native-test`** — installs with a frozen lockfile, type-checks, lints,
+  then runs the phone app's Jest suite. No APK is built in CI.
 
 A change that touches only `web/` never spins up a Go job, and vice versa.
 
@@ -80,6 +83,44 @@ Nexul has one version for the whole product, and git tags are that version
 - The Go binaries are stamped with the release tag via
   `-ldflags -X .../internal/platform/version.Version=...`; `nexul version`
   prints it.
+
+## The phone app — `native-release.yml` and `native-update.yml`
+
+The Android app has its own version, `version` in `native/app.config.ts`,
+and its own tags, `android-v<version>`, next to the server's `v…` tags. Both
+workflows run only by hand (`workflow_dispatch`); nothing about the app ships
+on push or on a schedule.
+
+- **`native-release.yml`** builds a signed release APK (`expo prebuild`,
+  then `gradlew assembleRelease` with the keystore from the repository
+  secrets) and creates the GitHub release `android-v<version>` with
+  `nexul-android-<version>.apk` attached. It refuses to run when that tag
+  already exists. The release is never marked latest, and the server's
+  release client, `install.sh` and this site's changelog ignore every tag
+  that does not start with `v`, so a phone release cannot become the
+  server's latest.
+- **`native-update.yml`** publishes the JavaScript and assets of the
+  current commit to the self-hosted update server's `production` branch as
+  an over-the-air update. Phones running the same app version pick it up on
+  their next launch. The run stops with an error before installing anything
+  when the update server's token or variables are missing.
+- **Which one to run:** a change to a native dependency or to
+  `app.config.ts` bumps `version` and needs a new APK, because the runtime
+  version follows the app version and an update never crosses versions. A
+  JavaScript-only change ships as an update within the current version.
+- **Secrets:** `ANDROID_KEYSTORE_BASE64` (the PKCS12 release keystore,
+  base64), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`,
+  `ANDROID_KEY_PASSWORD`, and `EOO_TOKEN` (a publish token from the update
+  server's dashboard). The keystore never changes: an APK signed with another
+  key cannot install over the old one.
+- **Variables:** `NEXUL_UPDATES_URL`, the update server's manifest URL
+  (`https://<update server>/manifest`), and `NEXUL_UPDATES_APP_ID`, the app's
+  id in the update server's dashboard. Both are baked into every APK and read
+  by the publish step, so an APK built without them never receives updates.
+- **Code signing of updates:** once the update server's certificate is
+  committed as `native/certs/certificate.pem`, the app config adds it and
+  every update must be signed by the server. Builds work without it; the
+  first APK built with it is a new version.
 
 ## Merge policy
 

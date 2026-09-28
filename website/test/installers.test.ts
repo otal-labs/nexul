@@ -141,6 +141,16 @@ test('the newest beta is the latest published, not the first in GitHub\'s tag-or
   expect(await read(directory, 'download-url')).toBe('https://example.test/releases/v0.2.0-beta.11/checksums.txt\n');
 });
 
+test('a newer phone app release never wins over the server beta', async () => {
+  const releases = JSON.stringify([
+    { tag_name: 'android-v0.1.0', draft: false, published_at: '2026-09-28T16:00:00Z' },
+    { tag_name: 'v0.2.0-beta.9', draft: false, published_at: '2026-09-28T10:45:25Z' },
+  ]);
+  const { directory, env } = setup({ releases });
+  expect(run(env, ['--yes']).status).toBe(0);
+  expect(await read(directory, 'download-url')).toBe('https://example.test/releases/v0.2.0-beta.9/checksums.txt\n');
+});
+
 test('piped with sh -s, a runner install reaches nexul install with every argument intact', async () => {
   const { directory, env } = setup();
   const args = ['runner', '--server', 'https://nexul.example.test', '--name', 'build-2', '--code', 'nxe_a-b_c'];

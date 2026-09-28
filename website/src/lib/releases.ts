@@ -57,5 +57,6 @@ export async function fetchReleases(repo: string): Promise<Release[]> {
 	const response = await fetch(`https://api.github.com/repos/${repo}/releases?per_page=100`, { headers });
 	if (!response.ok) throw new Error(`GET ${repo} releases failed: ${response.status}`);
 	const releases = (await response.json()) as ApiRelease[];
-	return releases.filter((release) => !release.draft).map(toRelease);
+	// The phone app's android-v* releases share the repository; the changelog is the server's.
+	return releases.filter((release) => !release.draft && release.tag_name.startsWith('v')).map(toRelease);
 }
