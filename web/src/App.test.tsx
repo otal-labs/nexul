@@ -26,7 +26,7 @@ describe("App", () => {
     expect(
       await screen.findByRole("heading", { name: "One button. The trail shows every step the agent took." }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Sign in with GitHub" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Sign in" })).toBeInTheDocument();
   }, wholeAppImport);
 
   it("shows the setup code screen instead of the router when unconfigured", async () => {
@@ -34,6 +34,6 @@ describe("App", () => {
     const { App } = await import("./App");
     render(<App />);
     expect(await screen.findByRole("heading", { name: /enter the setup code/i })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Sign in with GitHub" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Sign in" })).not.toBeInTheDocument();
   }, wholeAppImport);
 });

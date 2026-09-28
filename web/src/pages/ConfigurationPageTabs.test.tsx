@@ -95,12 +95,19 @@ describe("ConfigurationPage sections", () => {
     expect(screen.getByRole("link", { name: "Danger zone" })).toHaveAttribute("aria-current", "page");
   });
 
-  it("gives sign-in providers their own section", async () => {
+  it("gives sign-in providers their own section, one tab each with Discord first", async () => {
     renderPage("/configuration?section=sign-in");
 
-    expect(await screen.findByText("google card")).toBeInTheDocument();
+    await selectedTab("Discord");
     expect(screen.getByText("discord card")).toBeInTheDocument();
     expect(screen.queryByText("URL card")).not.toBeInTheDocument();
+  });
+
+  it("opens the Google sign-in tab from its ?tab=", async () => {
+    renderPage("/configuration?section=sign-in&tab=google");
+
+    await selectedTab("Google");
+    expect(screen.getByText("google card")).toBeInTheDocument();
   });
 
   it("lands the connector OAuth callback on the Connectors tab, which toasts and strips it", async () => {
