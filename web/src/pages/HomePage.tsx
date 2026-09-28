@@ -40,7 +40,7 @@ export const HomePage = () => {
           ) : (
             <>
               <Button asChild size="lg">
-                <Link to="/login">Sign in with GitHub</Link>
+                <Link to="/login">Sign in</Link>
               </Button>
               <Button asChild variant="outline" size="lg">
                 <a href="https://nexul.io/docs/guide/install/" target="_blank" rel="noreferrer">
