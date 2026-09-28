@@ -3,10 +3,6 @@ import { act, render, screen } from "@testing-library/react-native";
 
 import { OfflineBanner } from "@/components/OfflineBanner";
 
-jest.mock("react-native-safe-area-context", () => ({
-  useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
-}));
-
 describe("OfflineBanner", () => {
   afterEach(() => onlineManager.setOnline(true));
 

@@ -2,6 +2,8 @@ import { Tabs } from "expo-router";
 import { Ellipsis, Inbox, MessageSquare, Rocket, SquareKanban } from "lucide-react-native";
 import { useCSSVariable } from "uniwind";
 
+import { TabBar } from "@/components/TabBar";
+
 export default function TabsLayout() {
   const [foreground, mutedForeground] = useCSSVariable([
     "--color-foreground",
@@ -10,6 +12,7 @@ export default function TabsLayout() {
 
   return (
     <Tabs
+      tabBar={(props) => <TabBar {...props} />}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: String(foreground),
