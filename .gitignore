@@ -43,6 +43,14 @@ website/.astro/
 # Automations
 automations/node_modules
 
+# Native
+native/node_modules
+native/android/
+native/ios/
+native/.expo/
+native/coverage/
+native/expo-env.d.ts
+
 # Data / secrets
 *.db
 *.db-wal

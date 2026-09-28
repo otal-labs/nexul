@@ -20,6 +20,7 @@ jobs:
       website: ${{ steps.filter.outputs.website }}
       sdk: ${{ steps.filter.outputs.sdk }}
       automations: ${{ steps.filter.outputs.automations }}
+      native: ${{ steps.filter.outputs.native }}
     steps:
       - uses: actions/checkout@v7
       - uses: dorny/paths-filter@v4
@@ -47,6 +48,8 @@ jobs:
               - 'internal/integrations/catalog.go'
             automations:
               - 'automations/**'
+            native:
+              - 'native/**'
 
   go-test:
     needs: detect-changes
@@ -184,3 +187,21 @@ jobs:
         working-directory: automations
       - run: bun run test
         working-directory: automations
+
+  native-test:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.native == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.11
+      - run: bun install --frozen-lockfile
+        working-directory: native
+      - run: bun run typecheck
+        working-directory: native
+      - run: bun run lint
+        working-directory: native
+      - run: bun run test
+        working-directory: native

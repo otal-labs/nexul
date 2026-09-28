@@ -19,6 +19,7 @@ The product is implemented. The work now is improving it domain by domain.
 | Go backend | `practices/go.md` | `practices/architecture.md` |
 | Frontend (React) | `practices/react-guide.md`, the F1 to F7 commandments are enforced | `practices/design-language.md` |
 | SDK, automations host, desktop | `practices/typescript.md` | `practices/react-guide.md` for the desktop launcher |
+| Phone app (React Native) | `practices/native.md` | `practices/react-guide.md`, the rules it inherits |
 | Design or visual work | `practices/design-language.md`, the Mono Console spec | `practices/react-guide.md` |
 | Testing | `practices/testing.md` | The language file above |
 | Any code | `practices/borrowed-practices.md`, the cross-cutting rules | `practices/README.md` for the index |
@@ -106,6 +107,7 @@ skipped and lint errors do not.
 | Go coverage floor | `make coverage`, in CI and locally |
 | Generated SQL code matches the queries | `sqlc vet` and `sqlc diff`, in CI and `make sqlc-check` |
 | Web lint, types, tests, coverage | `bun run lint`, `typecheck`, `test` in `web/`, in CI |
+| Native lint, types, tests | `bun run lint`, `typecheck`, `test` in `native/`, in CI |
 | SDK and automations host types and tests | `bun run typecheck` and `bun run test` in each package, in CI |
 | Desktop types, tests, build | the desktop CI job |
 | Dependency freshness | Dependabot, weekly, grouped per directory |

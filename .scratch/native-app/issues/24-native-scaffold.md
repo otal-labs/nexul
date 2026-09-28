@@ -1,7 +1,7 @@
 # 24 — The native/ app scaffold, practices, and CI
 
 **Type:** implementation
-**Status:** ready-for-agent
+**Status:** done
 **Blocked by:** None — can start immediately
 **Decided in:** tickets 10, 12
 
