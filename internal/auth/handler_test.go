@@ -114,6 +114,30 @@ func TestHandler_CallbackGET_StateMismatch(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
 }
 
+func TestHandler_CallbackGET_WithoutState(t *testing.T) {
+	tests := []struct {
+		name  string
+		query string
+		want  string
+	}{
+		{"an App installation goes to the connectors", "?code=c&installation_id=42&setup_action=install", "https://deploy.example.com/settings?section=connectors"},
+		{"anything else goes to sign-in", "?code=c", "https://deploy.example.com/login"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gh := &fakeGitHub{user: ghUser("1", "onik97")}
+			s, _, _, settings := newTestHarness(gh)
+			_, err := settings.Set(t.Context(), "https://deploy.example.com")
+			require.NoError(t, err)
+			rec := httptest.NewRecorder()
+			NewHandler(s).Routes().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/auth/callback"+tt.query, nil))
+			assert.Equal(t, http.StatusFound, rec.Code)
+			assert.Equal(t, tt.want, rec.Header().Get("Location"))
+			assert.Empty(t, rec.Result().Cookies(), "nobody is signed in")
+		})
+	}
+}
+
 func TestHandler_CallbackGET_NoStateCookie(t *testing.T) {
 	s, _, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "onik97")})
 	h := NewHandler(s).Routes()

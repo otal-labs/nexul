@@ -361,11 +361,26 @@ func (h *Handler) providerConfigured(r *http.Request, provider Provider) (bool, 
 }
 
 // callbackGET verifies the CSRF cookie, exchanges the code, and redirects to the SPA with a session token in the URL.
+// stateless answers a callback this instance never started. GitHub sends one after an App installation when
+// "Request user authorization during installation" is on (docs/guide/github-app); its code is not a sign-in this
+// instance asked for, so it is never exchanged, and the browser goes back into the app instead of to an error.
+func (h *Handler) stateless(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Query().Get("installation_id") != "" {
+		http.Redirect(w, r, h.spaOrigin(r)+"/settings?section=connectors", http.StatusFound)
+		return
+	}
+	http.Redirect(w, r, h.spaOrigin(r)+"/login", http.StatusFound)
+}
+
 func (h *Handler) callbackGET(provider Provider) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 		defer cancel()
 		state := r.URL.Query().Get("state")
+		if state == "" {
+			h.stateless(w, r)
+			return
+		}
 		if state != "" {
 			if cookie, cookieErr := r.Cookie(invitationStateCookie(hashCredential(state))); cookieErr == nil && cookie.Value == state {
 				code := r.URL.Query().Get("code")
