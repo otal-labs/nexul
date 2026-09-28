@@ -32,7 +32,7 @@ Press Enter to accept the default.
   Git ............. present
   Command ......... /usr/local/bin/nexul
   User ............ nexul, created
-  Files ........... /data/nexul
+  Files ........... done
   Logs ............ OpenObserve v1.0.4 on 127.0.0.1:41873
   Server .......... running on port 5123
   Runner .......... nexul-runner-instance
