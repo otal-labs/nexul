@@ -4,6 +4,11 @@ import { render, screen, userEvent } from "@testing-library/react-native";
 import { api } from "@/api/client";
 import { TicketScreen } from "@/components/board/TicketScreen";
 
+// The shared renderer pulls in the app query client and native markdown; the ticket screen only needs the body text.
+jest.mock("@/components/chat/MessageBody", () => {
+  const { Text } = jest.requireActual("react-native");
+  return { MessageBody: ({ body }: { body: string }) => <Text>{body}</Text> };
+});
 jest.mock("@/api/client", () => ({ api: { get: jest.fn(), patch: jest.fn(), post: jest.fn() } }));
 
 const mockPush = jest.fn();
