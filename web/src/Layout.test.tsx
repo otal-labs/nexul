@@ -96,7 +96,7 @@ describe("Layout", () => {
     expect(await screen.findByText("@onik97")).toBeInTheDocument();
   });
 
-  it("has no leftover flat Docs nav link — docs live inside each project's tree row now", () => {
+  it("has no leftover flat Docs nav link — docs live under the current project", () => {
     useSessionStore.setState({ token: "t", isLoggedIn: true });
     renderLayout();
     expect(screen.queryByRole("link", { name: "Docs" })).not.toBeInTheDocument();
@@ -110,10 +110,10 @@ describe("Layout", () => {
     expect(screen.queryByText(/^Manage$/)).not.toBeInTheDocument();
   });
 
-  it("renders the project tree's persistent New project row in the sidebar", () => {
+  it("offers New project in the sidebar when the workspace has no projects", async () => {
     useSessionStore.setState({ token: "t", isLoggedIn: true });
     renderLayout();
-    expect(screen.getByRole("button", { name: "New project" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "New project" })).toBeInTheDocument();
   });
 
   it("puts the collapse toggle outside the bottom control cluster, not next to the theme toggle", () => {
@@ -124,12 +124,12 @@ describe("Layout", () => {
     expect(collapseButton.closest("div")).not.toBe(themeToggle.closest("div"));
   });
 
-  it("shows the Inbox link for signed-in users, above the project tree", () => {
+  it("shows the Inbox link for signed-in users, above the project section", async () => {
     useSessionStore.setState({ token: "t", isLoggedIn: true });
     renderLayout();
     const inboxLink = screen.getByRole("link", { name: "Inbox" });
     expect(inboxLink).toHaveAttribute("href", "/inbox");
-    expect(inboxLink.compareDocumentPosition(screen.getByRole("button", { name: "New project" }))).toBe(
+    expect(inboxLink.compareDocumentPosition(await screen.findByRole("button", { name: "New project" }))).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     );
   });

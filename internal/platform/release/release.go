@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -39,6 +40,7 @@ type Release struct {
 	Tag        string
 	URL        string
 	Prerelease bool
+	Body       string
 	Assets     []Asset
 }
 
@@ -58,6 +60,12 @@ type Client struct {
 
 	mu    sync.Mutex
 	cache map[string]cacheEntry
+	list  listEntry
+}
+
+type listEntry struct {
+	releases []ghRelease
+	at       time.Time
 }
 
 type cacheEntry struct {
@@ -96,6 +104,67 @@ func (c *Client) fetchLatest(ctx context.Context, channel string) (*Release, err
 		return c.latestBeta(ctx)
 	}
 	return c.fetchRelease(ctx, "/repos/"+repo+"/releases/latest")
+}
+
+// Since returns channel's releases newer than current, newest first, from the newest 30 on GitHub. The list is
+// cached for 5 minutes; errors are never cached.
+func (c *Client) Since(ctx context.Context, channel, current string) ([]Release, error) {
+	releases, err := c.cachedList(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var out []Release
+	for _, r := range releases {
+		if r.TagName == current {
+			return out, nil
+		}
+		if r.Draft || isBetaTag(r.TagName) != (channel == "beta") {
+			continue
+		}
+		out = append(out, *r.toRelease())
+	}
+	return out, nil
+}
+
+// noteSuffix is the " by @author in <pull URL>" tail GitHub's generated release notes put on every change line.
+var noteSuffix = regexp.MustCompile(`\s+by @\S+ in \S+$`)
+
+// Notes reads the change lines out of a GitHub-generated release body: one PR title per bullet, author and link dropped.
+func (r Release) Notes() []string {
+	var notes []string
+	for _, line := range strings.Split(r.Body, "\n") {
+		line = strings.TrimSpace(line)
+		title, ok := strings.CutPrefix(line, "* ")
+		if !ok {
+			title, ok = strings.CutPrefix(line, "- ")
+		}
+		if !ok {
+			continue
+		}
+		notes = append(notes, noteSuffix.ReplaceAllString(title, ""))
+	}
+	return notes
+}
+
+func (c *Client) cachedList(ctx context.Context) ([]ghRelease, error) {
+	c.mu.Lock()
+	entry := c.list
+	c.mu.Unlock()
+	if entry.releases != nil && c.now().Sub(entry.at) < latestTTL {
+		return entry.releases, nil
+	}
+	releases, err := c.fetchList(ctx)
+	if err != nil {
+		return nil, err
+	}
+	c.mu.Lock()
+	c.list = listEntry{releases: releases, at: c.now()}
+	c.mu.Unlock()
+	return releases, nil
+}
+
+func isBetaTag(tag string) bool {
+	return strings.Contains(tag, "-")
 }
 
 // ByTag fetches the release tagged tag.
@@ -182,6 +251,7 @@ type ghRelease struct {
 	HTMLURL    string    `json:"html_url"`
 	Prerelease bool      `json:"prerelease"`
 	Draft      bool      `json:"draft"`
+	Body       string    `json:"body"`
 	Assets     []ghAsset `json:"assets"`
 }
 
@@ -196,11 +266,28 @@ func (r ghRelease) toRelease() *Release {
 	for i, a := range r.Assets {
 		assets[i] = Asset(a)
 	}
-	return &Release{Tag: r.TagName, URL: r.HTMLURL, Prerelease: r.Prerelease, Assets: assets}
+	return &Release{Tag: r.TagName, URL: r.HTMLURL, Prerelease: r.Prerelease, Body: r.Body, Assets: assets}
 }
 
 // latestBeta lists the newest 30 releases and picks the first non-draft prerelease tag (v0.2.0-beta-003, not v0.2.0).
-func (c *Client) latestBeta(ctx context.Context) (_ *Release, err error) {
+func (c *Client) latestBeta(ctx context.Context) (*Release, error) {
+	releases, err := c.fetchList(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, r := range releases {
+		if r.Draft {
+			continue
+		}
+		if isBetaTag(r.TagName) {
+			return r.toRelease(), nil
+		}
+	}
+	return nil, fmt.Errorf("no beta release found: %w", apperrs.ErrNotFound)
+}
+
+// fetchList lists the newest 30 releases, newest first.
+func (c *Client) fetchList(ctx context.Context) (_ []ghRelease, err error) {
 	req, err := c.newRequest(ctx, c.cfg.APIBase+"/repos/"+repo+"/releases?per_page=30")
 	if err != nil {
 		return nil, err
@@ -216,15 +303,7 @@ func (c *Client) latestBeta(ctx context.Context) (_ *Release, err error) {
 	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
 		return nil, fmt.Errorf("decode releases: %w", err)
 	}
-	for _, r := range releases {
-		if r.Draft {
-			continue
-		}
-		if strings.Contains(r.TagName, "-") {
-			return r.toRelease(), nil
-		}
-	}
-	return nil, fmt.Errorf("no beta release found: %w", apperrs.ErrNotFound)
+	return releases, nil
 }
 
 func (c *Client) fetchRelease(ctx context.Context, path string) (_ *Release, err error) {

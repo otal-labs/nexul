@@ -334,3 +334,77 @@ func TestClient_Token(t *testing.T) {
 		})
 	}
 }
+
+func TestClient_Since_StopsAtCurrentAndKeepsChannel(t *testing.T) {
+	list := []ghRelease{
+		{TagName: "v0.2.0-beta.9", Draft: true},
+		{TagName: "v0.2.0-beta.8", Body: "* Eight by @a in https://x/pull/8"},
+		{TagName: "v0.2.0"},
+		{TagName: "v0.2.0-beta.7"},
+		{TagName: "v0.2.0-beta.6"},
+	}
+	srv, _ := fakeGitHub(t, ghRelease{}, list, "")
+	c := New(Config{APIBase: srv.URL})
+
+	beta, err := c.Since(t.Context(), "beta", "v0.2.0-beta.7")
+	require.NoError(t, err)
+	require.Len(t, beta, 1)
+	assert.Equal(t, "v0.2.0-beta.8", beta[0].Tag)
+	assert.Equal(t, []string{"Eight"}, beta[0].Notes())
+
+	stable, err := c.Since(t.Context(), "stable", "v0.1.0")
+	require.NoError(t, err)
+	require.Len(t, stable, 1)
+	assert.Equal(t, "v0.2.0", stable[0].Tag)
+}
+
+func TestClient_Since_CachesTheListButNotErrors(t *testing.T) {
+	hits := 0
+	fail := true
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits++
+		if fail {
+			w.WriteHeader(http.StatusBadGateway)
+			return
+		}
+		require.NoError(t, jsonEncode(w, []ghRelease{{TagName: "v0.2.0-beta.2"}, {TagName: "v0.2.0-beta.1"}}))
+	}))
+	t.Cleanup(srv.Close)
+	now := time.Now()
+	c := New(Config{APIBase: srv.URL})
+	c.now = func() time.Time { return now }
+
+	_, err := c.Since(t.Context(), "beta", "v0.2.0-beta.1")
+	require.Error(t, err)
+
+	fail = false
+	for range 2 {
+		got, err := c.Since(t.Context(), "beta", "v0.2.0-beta.1")
+		require.NoError(t, err)
+		assert.Len(t, got, 1)
+	}
+	assert.Equal(t, 2, hits)
+
+	now = now.Add(latestTTL)
+	_, err = c.Since(t.Context(), "beta", "v0.2.0-beta.1")
+	require.NoError(t, err)
+	assert.Equal(t, 3, hits)
+}
+
+func TestRelease_Notes(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+		want []string
+	}{
+		{"generated notes", "## What's Changed\n* Fix the board by @Onik97 in https://github.com/otal-labs/nexul/pull/99\n* Add a thing by @b in https://x/pull/1\n\n\n**Full Changelog**: https://x/compare/a...b", []string{"Fix the board", "Add a thing"}},
+		{"dash bullets without author", "- Plain line\r\n- Another", []string{"Plain line", "Another"}},
+		{"no bullets", "Just prose", nil},
+		{"empty", "", nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, Release{Body: tt.body}.Notes())
+		})
+	}
+}

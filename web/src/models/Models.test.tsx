@@ -65,9 +65,11 @@ describe("VersionSchema", () => {
       channel: "beta",
       latest: { version: "v0.2.0-beta-331", url: "https://github.com/otal-labs/nexul/releases/tag/v0.2.0-beta-331" },
       update_available: true,
+      changes: [{ version: "v0.2.0-beta-331", url: "https://x/331", notes: ["Fix the board"] }],
     });
     expect(data.channel).toBe("beta");
     expect(data.latest?.version).toBe("v0.2.0-beta-331");
+    expect(data.changes[0]?.notes).toEqual(["Fix the board"]);
   });
 
   it("parses a version response with no known update", () => {
@@ -76,6 +78,7 @@ describe("VersionSchema", () => {
       channel: "dev",
       latest: null,
       update_available: false,
+      changes: [],
     });
     expect(data.latest).toBeNull();
   });

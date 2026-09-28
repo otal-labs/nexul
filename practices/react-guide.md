@@ -1375,11 +1375,15 @@ export const AppRouter = () => {
 ```
 
 - All routes nested under `<Layout/>` (header + `<Outlet/>` + footer).
-- The shell is a **sidebar layout**: a sticky left rail (`Layout.tsx`) with
-  grouped nav (Work / Deploy / Manage via `SidebarNavGroup`), a collapse
-  toggle (instant width swap, no layout animation, see the motion rules), and
-  ThemeToggle + NotificationBell + Sign out pinned at the bottom. Pages
-  render inside `<main>` under `Container` (`mx-auto w-full max-w-7xl`).
+- The shell is a **sidebar layout**: a sticky left rail
+  (`components/sidebar/Sidebar.tsx`). Its header holds the logo, the update
+  button, and the collapse toggle (instant width swap, no layout animation,
+  see the motion rules). Below it: the workspace switcher; a scrolling nav
+  with Inbox, Chat, the channels, and one project at a time behind a project
+  switcher, its pages listed once; the workspace section (Runners, Topology,
+  Automations) docked under the scroll area and foldable; the account menu
+  and theme toggle at the bottom. Pages render inside `<main>` under
+  `Container` (`mx-auto w-full max-w-7xl`).
 - Catch-all `*` renders `ErrorPage`, last.
 - Auth-gated routes added conditionally.
 
