@@ -24,14 +24,12 @@ const (
 	AccountRemoved  AccountStatus = "removed"
 )
 
-// User is the persistent identity record, keyed by provider + user ID because a login can be renamed; login/name/avatar sync each sign-in.
+// User is the persistent account record; login/name/avatar follow the Identity it was created with.
 type User struct {
-	ID             string   `json:"id"`
-	Provider       Provider `json:"provider"`
-	ProviderUserID string   `json:"provider_user_id"`
-	Login          string   `json:"login"`
-	Name           string   `json:"name"`
-	AvatarURL      string   `json:"avatar_url"`
+	ID        string `json:"id"`
+	Login     string `json:"login"`
+	Name      string `json:"name"`
+	AvatarURL string `json:"avatar_url"`
 	// CanCreateWorkspace is the instance-level bit gating workspace creation and, by default, settings/allowlist.
 	CanCreateWorkspace bool          `json:"can_create_workspace"`
 	FirstLoginDone     bool          `json:"first_login_done"`
@@ -42,6 +40,17 @@ type User struct {
 	// DisplayName and AvatarOverrideURL are the manual override, untouched by UpsertUser's sync, surviving sign-in.
 	DisplayName       *string `json:"display_name,omitempty"`
 	AvatarOverrideURL *string `json:"avatar_override_url,omitempty"`
+}
+
+// Identity is one provider account a user signs in through (ADR 0040), keyed by the provider's own id since logins rename.
+type Identity struct {
+	UserID         string    `json:"-"`
+	Provider       Provider  `json:"provider"`
+	ProviderUserID string    `json:"-"`
+	Login          string    `json:"login"`
+	Name           string    `json:"name"`
+	AvatarURL      string    `json:"avatar_url"`
+	CreatedAt      time.Time `json:"created_at"`
 }
 
 // InvitationAcceptance is the non-secret invitation detail shown after preview or OAuth authentication.

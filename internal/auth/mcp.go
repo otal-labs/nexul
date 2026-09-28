@@ -30,13 +30,12 @@ type accountDeleteIn struct {
 	ID string `json:"id" jsonschema:"The account's id, from account_list."`
 }
 
-// accountResult is an account without its provider-side ids and onboarding bookkeeping.
+// accountResult is an account without its sign-in identities and onboarding bookkeeping.
 type accountResult struct {
 	ID                 string        `json:"id"`
 	Login              string        `json:"login"`
 	Name               string        `json:"name"`
 	DisplayName        string        `json:"display_name,omitempty"`
-	Provider           Provider      `json:"provider"`
 	AvatarURL          string        `json:"avatar_url,omitempty"`
 	Status             AccountStatus `json:"status"`
 	CanCreateWorkspace bool          `json:"can_create_workspace"`
@@ -49,7 +48,7 @@ func toAccountResult(u *User) accountResult {
 		status = AccountActive
 	}
 	r := accountResult{
-		ID: u.ID, Login: u.Login, Name: u.Name, Provider: u.Provider, AvatarURL: u.AvatarURL,
+		ID: u.ID, Login: u.Login, Name: u.Name, AvatarURL: u.AvatarURL,
 		Status: status, CanCreateWorkspace: u.CanCreateWorkspace, CreatedAt: u.CreatedAt,
 	}
 	if u.DisplayName != nil {
@@ -63,8 +62,8 @@ func accountGetTool(s *Service) mcptool.Tool {
 		"Returns one account: without id, the account this MCP connection acts as, which also confirms Nexul is "+
 			"reachable; call it first in a session. With another account's id it needs an instance administrator, "+
 			"the same as account_list, which lists every account. Returns the login, name, the display name the "+
-			"person chose if any, sign-in provider, status (active, disabled, or removed), and whether the account "+
-			"administers the instance.",
+			"person chose if any, status (active, disabled, or removed), and whether the account administers "+
+			"the instance.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in accountGetIn) (any, error) {
 			u, err := s.GetAccount(ctx, actorID(ctx), in.ID)

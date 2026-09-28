@@ -10,7 +10,16 @@ const (
 	TopicTokenRevoked       = "personal_access_token.revoked"
 	TopicSessionCreated     = "session.created"
 	TopicSessionRevoked     = "session.revoked"
+	TopicIdentityLinked     = "identity.linked"
+	TopicIdentityUnlinked   = "identity.unlinked"
 )
+
+// IdentityChangedEvent is the payload for both identity topics; it never carries the provider's own user id.
+type IdentityChangedEvent struct {
+	UserID   string   `json:"user_id"`
+	Provider Provider `json:"provider"`
+	Login    string   `json:"login"`
+}
 
 // AccountLifecycleEvent is the durable payload for account state changes.
 type AccountLifecycleEvent struct {
@@ -35,10 +44,11 @@ type SessionChangedEvent struct {
 	Label     string        `json:"label"`
 }
 
-// Topics lists account, personal access token and session lifecycle events for the event catalog.
+// Topics lists account, personal access token, session and identity lifecycle events for the event catalog.
 func Topics() []string {
 	return []string{
 		TopicAccountAdmitted, TopicAccountDisabled, TopicAccountReactivated, TopicAccountRemoved, TopicAccountRestored,
 		TopicTokenMinted, TopicTokenRevoked, TopicSessionCreated, TopicSessionRevoked,
+		TopicIdentityLinked, TopicIdentityUnlinked,
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/otal-labs/nexul/internal/auth"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/ids"
@@ -263,7 +264,7 @@ func (r *InvitationsRepo) Redeem(ctx context.Context, acceptanceHash string, ide
 			return invalidInvitation()
 		}
 		if handoff.CompletedAt.Valid {
-			user, err := q.GetUserByProviderForInvitation(ctx, sqlcgen.GetUserByProviderForInvitationParams{Provider: identity.Provider, ProviderUserID: identity.ProviderUserID})
+			user, err := q.GetUserByIdentity(ctx, sqlcgen.GetUserByIdentityParams{Provider: identity.Provider, ProviderUserID: identity.ProviderUserID})
 			if err != nil || user.AccountStatus != "active" || !handoff.AdmittedUserID.Valid || handoff.AdmittedUserID.String != user.ID {
 				return invalidInvitation()
 			}
@@ -377,7 +378,7 @@ func (r *InvitationsRepo) Redeem(ctx context.Context, acceptanceHash string, ide
 }
 
 func invitationUser(ctx context.Context, q *sqlcgen.Queries, identity tenancy.InvitationIdentity) (sqlcgen.User, bool, error) {
-	row, err := q.GetUserByProviderForInvitation(ctx, sqlcgen.GetUserByProviderForInvitationParams{Provider: identity.Provider, ProviderUserID: identity.ProviderUserID})
+	row, err := q.GetUserByIdentity(ctx, sqlcgen.GetUserByIdentityParams{Provider: identity.Provider, ProviderUserID: identity.ProviderUserID})
 	if err == nil {
 		return row, true, nil
 	}
@@ -388,8 +389,12 @@ func invitationUser(ctx context.Context, q *sqlcgen.Queries, identity tenancy.In
 }
 
 func insertInvitationUser(ctx context.Context, q *sqlcgen.Queries, identity tenancy.InvitationIdentity, now time.Time) error {
-	if err := q.InsertUserForInvitation(ctx, sqlcgen.InsertUserForInvitationParams{ID: identity.ID, Provider: identity.Provider, ProviderUserID: identity.ProviderUserID, Login: identity.Login, Name: identity.Name, AvatarUrl: identity.AvatarURL, CreatedAt: now.Unix(), UpdatedAt: now.Unix()}); err != nil {
-		return fmt.Errorf("admit invitation user: %w", classifyWriteErr(err))
+	id := &auth.Identity{
+		UserID: identity.ID, Provider: auth.Provider(identity.Provider), ProviderUserID: identity.ProviderUserID,
+		Login: identity.Login, Name: identity.Name, AvatarURL: identity.AvatarURL,
+	}
+	if err := insertUserWithIdentity(ctx, q, id, now); err != nil {
+		return fmt.Errorf("admit invitation user: %w", err)
 	}
 	return nil
 }

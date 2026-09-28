@@ -32,6 +32,8 @@ const mockGet = (url: string) => {
   if (url === "/api/auth/me") return Promise.resolve({ data: me });
   if (url === "/api/auth/tokens") return Promise.resolve({ data: patList([]) });
   if (url === "/api/auth/sessions") return Promise.resolve({ data: { sessions: [] } });
+  if (url === "/api/auth/identities") return Promise.resolve({ data: { identities: [] } });
+  if (url === "/api/auth/bootstrap-status") return Promise.resolve({ data: { configured: true } });
   return Promise.reject(new Error(`unexpected GET ${url}`));
 };
 

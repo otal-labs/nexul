@@ -17,8 +17,6 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const baseUser: User = {
   id: "u1",
-  provider: "github",
-  provider_user_id: "42",
   login: "onik97",
   name: "Onik GitHub",
   avatar_url: "https://avatar/provider.png",

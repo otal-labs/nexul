@@ -68,10 +68,9 @@ func TestLogin_ExchangesCodeAndPersistsUser(t *testing.T) {
 	userID, err := verify(s, token)
 	require.NoError(t, err)
 
-	user, err := users.GetUserByID(context.Background(), userID)
+	user, err := users.GetUserByProvider(context.Background(), ProviderGitHub, "42")
 	require.NoError(t, err)
-	assert.Equal(t, ProviderGitHub, user.Provider)
-	assert.Equal(t, "42", user.ProviderUserID)
+	assert.Equal(t, userID, user.ID)
 	assert.Equal(t, "onik97", user.Login)
 	assert.Equal(t, "Name onik97", user.Name)
 	assert.Equal(t, "https://avatar/onik97", user.AvatarURL)
@@ -163,7 +162,7 @@ func TestLogin_AllowlistedUserPasses(t *testing.T) {
 	ownerToken, err := s.Login(context.Background(), "good-code")
 	require.NoError(t, err)
 	require.NoError(t, s.CompleteOwnerWizard(context.Background(), mustVerify(t, s, ownerToken), "https://deploy.example.com"))
-	_, _, err = users.UpsertUser(context.Background(), &User{ID: "bob-id", Provider: ProviderGitHub, ProviderUserID: "2", Login: "bob"})
+	_, _, err = users.UpsertUser(context.Background(), &Identity{UserID: "bob-id", Provider: ProviderGitHub, ProviderUserID: "2", Login: "bob"})
 	require.NoError(t, err)
 
 	s.cfg.GitHub = &fakeGitHub{user: ghUser("2", "bob")}
@@ -380,7 +379,7 @@ func TestGithubClient_ExplicitOverrideBypassesSettings(t *testing.T) {
 
 func TestRequireAuth(t *testing.T) {
 	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "onik97")})
-	user, _, err := users.UpsertUser(context.Background(), &User{ID: "u1", Provider: ProviderGitHub, ProviderUserID: "1", Login: "onik97"})
+	user, _, err := users.UpsertUser(context.Background(), &Identity{UserID: "u1", Provider: ProviderGitHub, ProviderUserID: "1", Login: "onik97"})
 	require.NoError(t, err)
 	require.NotNil(t, user)
 
@@ -429,7 +428,7 @@ func TestRequireAuth_NilUserStoreRejects(t *testing.T) {
 
 func TestRequireWS(t *testing.T) {
 	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "onik97")})
-	_, _, err := users.UpsertUser(context.Background(), &User{ID: "u1", Provider: ProviderGitHub, ProviderUserID: "1", Login: "onik97"})
+	_, _, err := users.UpsertUser(context.Background(), &Identity{UserID: "u1", Provider: ProviderGitHub, ProviderUserID: "1", Login: "onik97"})
 	require.NoError(t, err)
 
 	token, err := sign(s, "u1")
@@ -505,16 +504,15 @@ func TestLoginWith_Google(t *testing.T) {
 
 	s.cfg.Google = &fakeGitHub{token: "at", user: &ProviderUser{ID: "sub-9", Login: "client@example.com", Name: "Client"}}
 
-	_, _, err = users.UpsertUser(context.Background(), &User{ID: "google-id", Provider: ProviderGoogle, ProviderUserID: "sub-9", Login: "client@example.com"})
+	_, _, err = users.UpsertUser(context.Background(), &Identity{UserID: "google-id", Provider: ProviderGoogle, ProviderUserID: "sub-9", Login: "client@example.com"})
 	require.NoError(t, err)
 	token, err := s.LoginWith(context.Background(), ProviderGoogle, "good-code")
 	require.NoError(t, err)
 	id, err := verify(s, token)
 	require.NoError(t, err)
-	u, err := users.GetUserByID(context.Background(), id)
+	u, err := users.GetUserByProvider(context.Background(), ProviderGoogle, "sub-9")
 	require.NoError(t, err)
-	assert.Equal(t, ProviderGoogle, u.Provider)
-	assert.Equal(t, "sub-9", u.ProviderUserID)
+	assert.Equal(t, id, u.ID)
 	assert.Equal(t, "client@example.com", u.Login)
 }
 
@@ -550,9 +548,9 @@ func TestAuthorizeURLFor_Google(t *testing.T) {
 
 func TestSetProviderOAuth(t *testing.T) {
 	s, users, _, settings := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
-	_, _, err := users.UpsertUser(context.Background(), &User{ID: "u1", Provider: ProviderGitHub, ProviderUserID: "1", Login: "owner"})
+	_, _, err := users.UpsertUser(context.Background(), &Identity{UserID: "u1", Provider: ProviderGitHub, ProviderUserID: "1", Login: "owner"})
 	require.NoError(t, err)
-	_, _, err = users.UpsertUser(context.Background(), &User{ID: "u2", Provider: ProviderGitHub, ProviderUserID: "2", Login: "bob"})
+	_, _, err = users.UpsertUser(context.Background(), &Identity{UserID: "u2", Provider: ProviderGitHub, ProviderUserID: "2", Login: "bob"})
 	require.NoError(t, err)
 	require.NoError(t, users.SetCanCreateWorkspace(context.Background(), "u1", true))
 
@@ -605,16 +603,15 @@ func TestLoginWith_Discord(t *testing.T) {
 	assert.True(t, ok)
 
 	s.cfg.Discord = &fakeGitHub{token: "at", user: &ProviderUser{ID: "snowflake", Login: "client@example.com"}}
-	_, _, err = users.UpsertUser(context.Background(), &User{ID: "discord-id", Provider: ProviderDiscord, ProviderUserID: "snowflake", Login: "client@example.com"})
+	_, _, err = users.UpsertUser(context.Background(), &Identity{UserID: "discord-id", Provider: ProviderDiscord, ProviderUserID: "snowflake", Login: "client@example.com"})
 	require.NoError(t, err)
 	token, err := s.LoginWith(context.Background(), ProviderDiscord, "good-code")
 	require.NoError(t, err)
 	id, err := verify(s, token)
 	require.NoError(t, err)
-	got, err := users.GetUserByID(context.Background(), id)
+	got, err := users.GetUserByProvider(context.Background(), ProviderDiscord, "snowflake")
 	require.NoError(t, err)
-	assert.Equal(t, ProviderDiscord, got.Provider)
-	assert.Equal(t, "snowflake", got.ProviderUserID)
+	assert.Equal(t, id, got.ID)
 }
 
 func TestSetProviderOAuth_RefusesGitHub(t *testing.T) {
@@ -628,7 +625,7 @@ func TestSetProviderOAuth_RefusesGitHub(t *testing.T) {
 
 func TestLookupMembers_RequiresPermission(t *testing.T) {
 	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "bob")})
-	_, _, err := users.UpsertUser(context.Background(), &User{ID: "u1", Provider: ProviderGitHub, ProviderUserID: "1", Login: "bob"})
+	_, _, err := users.UpsertUser(context.Background(), &Identity{UserID: "u1", Provider: ProviderGitHub, ProviderUserID: "1", Login: "bob"})
 	require.NoError(t, err)
 	_, err = s.LookupMembers(context.Background(), "u1", "octo")
 	assert.ErrorIs(t, err, apperrs.ErrForbidden)

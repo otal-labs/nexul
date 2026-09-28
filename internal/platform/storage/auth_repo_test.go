@@ -13,9 +13,9 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 )
 
-func newTestUser(id, providerID, login string) *auth.User {
-	return &auth.User{
-		ID:             id,
+func newTestUser(id, providerID, login string) *auth.Identity {
+	return &auth.Identity{
+		UserID:         id,
 		Provider:       auth.ProviderGitHub,
 		ProviderUserID: providerID,
 		Login:          login,
@@ -68,9 +68,9 @@ func TestUsersRepo_UpsertUser_UpdatesProviderFieldsNotFlags(t *testing.T) {
 	assert.True(t, u.CanCreateWorkspace, "re-login must not reset owner flag")
 	assert.True(t, u.FirstLoginDone, "re-login must not reset onboarding flag")
 
-	byID, err := s.Users.GetUserByID(context.Background(), "u1")
+	byKey, err := s.Users.GetUserByProvider(context.Background(), auth.ProviderGitHub, "42")
 	require.NoError(t, err)
-	assert.Equal(t, "42", byID.ProviderUserID, "provider key is stable across login renames")
+	assert.Equal(t, "u1", byKey.ID, "provider key is stable across login renames")
 }
 
 func TestUsersRepo_GetUserByID_NotFound(t *testing.T) {

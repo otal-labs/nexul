@@ -80,7 +80,6 @@ export const hasDuplicateInvitationWorkspaces = (grants: readonly InvitationGran
 
 export interface Account {
   id: string;
-  provider: string;
   login: string;
   name: string;
   avatar_url: string;

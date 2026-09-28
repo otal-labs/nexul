@@ -124,7 +124,7 @@ func TestMigration_PrivateInvitationFoundation_IsPresentAndBackfillsActiveUsers(
 	t.Parallel()
 	db := newTestDB(t)
 	ctx := t.Context()
-	_, err := db.ExecContext(ctx, `INSERT INTO users (id, provider, provider_user_id, login, created_at, updated_at) VALUES ('u-1', 'github', 'provider-1', 'alice', 1, 1)`)
+	_, err := db.ExecContext(ctx, `INSERT INTO users (id, login, created_at, updated_at) VALUES ('u-1', 'alice', 1, 1)`)
 	require.NoError(t, err)
 	var status string
 	require.NoError(t, db.QueryRowContext(ctx, `SELECT account_status FROM users WHERE id = 'u-1'`).Scan(&status))

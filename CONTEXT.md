@@ -433,6 +433,15 @@ computer has at most one of its own, "Nexul MCP on <computer>", revoked when
 its setup is un-confirmed or it is removed; a saved transcript shows any
 personal access token as `[redacted token]`.
 
+**Sign-in identity**:
+One provider account attached to a user: GitHub, Google or Discord, keyed by
+the provider's own id, with the login it yields. A user holds one per
+provider at most and signs in through any of them; the first one created is
+the one their login, name and picture follow. Linked from Profile while
+signed in, unlinked from there too, never down to none.
+_Avoid_: Account (that is the user), login method, connected account (a
+Connector is the instance's credential, not a person's)
+
 **Session**:
 One signed-in device (`ses_`): a browser, the desktop app, or a phone. Stored
 as a row with its platform and label, listed on the user's Devices, signed

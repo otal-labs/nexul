@@ -108,13 +108,6 @@ INSERT INTO permission_overwrites (resource_type, resource_id, user_id, allow, d
 VALUES ('workspace', ?, ?, ?, ?, ?, ?)
 ON CONFLICT(resource_type, resource_id, user_id) DO NOTHING;
 
--- name: GetUserByProviderForInvitation :one
-SELECT * FROM users WHERE provider = ? AND provider_user_id = ?;
-
--- name: InsertUserForInvitation :exec
-INSERT INTO users (id, provider, provider_user_id, login, name, avatar_url, first_login_done, created_at, updated_at, can_create_workspace, account_status)
-VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, 0, 'active');
-
 -- name: DeleteInvitationBeforeRedeem :execrows
 DELETE FROM invitations
 WHERE id = ? AND token_hash = ? AND expires_at > ?;

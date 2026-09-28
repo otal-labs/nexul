@@ -4,15 +4,18 @@ import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
 import { useSessionStore } from "@/stores/sessionStore";
+import { providerLabel } from "@/models/User";
 import type {
   BootstrapResponse,
   BootstrapStatus,
   ConnectionToken,
+  Identity,
   InstanceSettings,
   MeResponse,
   MintPATResponse,
   OptionalProvider,
   PersonalAccessToken,
+  Provider,
   Session,
   User,
 } from "@/models/User";
@@ -21,6 +24,7 @@ export const getMeKey = "getMe";
 const getSettingsKey = "getSettings";
 export const getPATsKey = "getPATs";
 export const getSessionsKey = "getSessions";
+export const getIdentitiesKey = "getIdentities";
 export const getBootstrapStatusKey = "getBootstrapStatus";
 
 export const useFetchMe = () =>
@@ -169,6 +173,33 @@ export const useSignOutOtherSessions = () => {
   return useMutation({
     mutationFn: async () => api.delete("/api/auth/sessions/others"),
     onSuccess: () => client.invalidateQueries({ queryKey: [getSessionsKey] }),
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
+export const useFetchIdentities = () =>
+  useQuery({
+    queryKey: [getIdentitiesKey],
+    queryFn: async () => (await api.get<{ identities: Identity[] }>("/api/auth/identities")).data.identities,
+  });
+
+// The server answers the provider's authorize URL; the browser goes there itself and comes back to the Profile section.
+export const useStartIdentityLink = () =>
+  useMutation({
+    mutationFn: async (provider: Provider) =>
+      (await api.post<{ url: string }>("/api/auth/identities/link", { provider })).data,
+    onSuccess: (data) => window.location.assign(data.url),
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
+export const useUnlinkIdentity = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (provider: Provider) => api.delete(`/api/auth/identities/${provider}`),
+    onSuccess: async (_, provider) => {
+      await client.invalidateQueries({ queryKey: [getIdentitiesKey] });
+      toast.success(`${providerLabel[provider]} unlinked`);
+    },
     onError: (error) => toast.error(errorMessage(error)),
   });
 };

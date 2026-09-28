@@ -25,7 +25,7 @@ func newAccessStore(t *testing.T) *storage.Store {
 func seedUserForOverwrite(t *testing.T, s *storage.Store, userID string) {
 	t.Helper()
 	_, _, err := s.Users.UpsertUser(context.Background(),
-		&auth.User{ID: userID, Provider: auth.ProviderGitHub, ProviderUserID: userID, Login: userID})
+		&auth.Identity{UserID: userID, Provider: auth.ProviderGitHub, ProviderUserID: userID, Login: userID})
 	require.NoError(t, err)
 }
 

@@ -27,7 +27,7 @@ func TestMe_FirstLoginWizardForMember(t *testing.T) {
 	require.NoError(t, err)
 	ownerID := mustVerify(t, s, ownerToken)
 	require.NoError(t, s.CompleteOwnerWizard(context.Background(), ownerID, "https://deploy.example.com"))
-	_, _, err = users.UpsertUser(context.Background(), &User{ID: "member-id", Provider: ProviderGitHub, ProviderUserID: "2", Login: "member"})
+	_, _, err = users.UpsertUser(context.Background(), &Identity{UserID: "member-id", Provider: ProviderGitHub, ProviderUserID: "2", Login: "member"})
 	require.NoError(t, err)
 
 	s.cfg.GitHub = &fakeGitHub{user: ghUser("2", "member")}
@@ -119,7 +119,7 @@ func TestGrantCanCreateWorkspace_RequiresPermissionAndUpdatesTarget(t *testing.T
 	ownerID := mustVerify(t, s, token)
 	require.NoError(t, s.CompleteOwnerWizard(context.Background(), ownerID, "https://deploy.example.com"))
 
-	target, _, err := users.UpsertUser(context.Background(), &User{ID: "u2", Provider: ProviderGitHub, ProviderUserID: "2", Login: "member"})
+	target, _, err := users.UpsertUser(context.Background(), &Identity{UserID: "u2", Provider: ProviderGitHub, ProviderUserID: "2", Login: "member"})
 	require.NoError(t, err)
 	require.False(t, target.CanCreateWorkspace)
 
@@ -136,7 +136,7 @@ func TestGrantCanCreateWorkspace_RequiresPermissionAndUpdatesTarget(t *testing.T
 	})
 
 	t.Run("newly granted admin can grant/revoke too", func(t *testing.T) {
-		target2, _, err := users.UpsertUser(context.Background(), &User{ID: "u3", Provider: ProviderGitHub, ProviderUserID: "3", Login: "member2"})
+		target2, _, err := users.UpsertUser(context.Background(), &Identity{UserID: "u3", Provider: ProviderGitHub, ProviderUserID: "3", Login: "member2"})
 		require.NoError(t, err)
 		require.False(t, target2.CanCreateWorkspace)
 
@@ -159,10 +159,10 @@ func TestRevokeCanCreateWorkspace_RequiresPermission(t *testing.T) {
 	ownerID := mustVerify(t, s, token)
 	require.NoError(t, s.CompleteOwnerWizard(context.Background(), ownerID, "https://deploy.example.com"))
 
-	target, _, err := users.UpsertUser(context.Background(), &User{ID: "u2", Provider: ProviderGitHub, ProviderUserID: "2", Login: "member"})
+	target, _, err := users.UpsertUser(context.Background(), &Identity{UserID: "u2", Provider: ProviderGitHub, ProviderUserID: "2", Login: "member"})
 	require.NoError(t, err)
 	require.NoError(t, s.GrantCanCreateWorkspace(context.Background(), ownerID, target.ID))
-	nonAdmin, _, err := users.UpsertUser(context.Background(), &User{ID: "u3", Provider: ProviderGitHub, ProviderUserID: "3", Login: "plain-member"})
+	nonAdmin, _, err := users.UpsertUser(context.Background(), &Identity{UserID: "u3", Provider: ProviderGitHub, ProviderUserID: "3", Login: "plain-member"})
 	require.NoError(t, err)
 	require.False(t, nonAdmin.CanCreateWorkspace)
 
@@ -196,7 +196,7 @@ func TestCompleteOwnerWizard_SecondUserConflicts(t *testing.T) {
 	ownerID := mustVerify(t, s, ownerToken)
 	require.NoError(t, s.CompleteOwnerWizard(context.Background(), ownerID, "https://deploy.example.com"))
 
-	second, _, err := users.UpsertUser(context.Background(), &User{ID: "u2", Provider: ProviderGitHub, ProviderUserID: "2", Login: "intruder"})
+	second, _, err := users.UpsertUser(context.Background(), &Identity{UserID: "u2", Provider: ProviderGitHub, ProviderUserID: "2", Login: "intruder"})
 	require.NoError(t, err)
 	require.NotNil(t, second)
 
@@ -222,7 +222,7 @@ func TestUpdateInstanceURL_OwnerOnly(t *testing.T) {
 	require.NoError(t, err)
 	ownerID := mustVerify(t, s, ownerToken)
 	require.NoError(t, s.CompleteOwnerWizard(context.Background(), ownerID, "https://deploy.example.com"))
-	_, _, err = users.UpsertUser(context.Background(), &User{ID: "member-id", Provider: ProviderGitHub, ProviderUserID: "2", Login: "member"})
+	_, _, err = users.UpsertUser(context.Background(), &Identity{UserID: "member-id", Provider: ProviderGitHub, ProviderUserID: "2", Login: "member"})
 	require.NoError(t, err)
 
 	s.cfg.GitHub = &fakeGitHub{user: ghUser("2", "member")}
@@ -277,7 +277,7 @@ func TestAddMember_ValidationAndDuplicates(t *testing.T) {
 	})
 
 	t.Run("non-owner forbidden", func(t *testing.T) {
-		_, _, err := users.UpsertUser(context.Background(), &User{ID: "bob-id", Provider: ProviderGitHub, ProviderUserID: "2", Login: "bob"})
+		_, _, err := users.UpsertUser(context.Background(), &Identity{UserID: "bob-id", Provider: ProviderGitHub, ProviderUserID: "2", Login: "bob"})
 		require.NoError(t, err)
 		require.ErrorIs(t, s.AddMember(context.Background(), "bob-id", "x"), apperrs.ErrForbidden)
 	})
@@ -291,7 +291,7 @@ func TestRemoveMember_BlocksSignInButKeepsUserRow(t *testing.T) {
 	require.NoError(t, s.CompleteOwnerWizard(context.Background(), ownerID, "https://deploy.example.com"))
 	require.NoError(t, s.AddMember(context.Background(), ownerID, "bob"))
 
-	user, _, err := users.UpsertUser(context.Background(), &User{ID: "bob-id", Provider: ProviderGitHub, ProviderUserID: "2", Login: "bob"})
+	user, _, err := users.UpsertUser(context.Background(), &Identity{UserID: "bob-id", Provider: ProviderGitHub, ProviderUserID: "2", Login: "bob"})
 	require.NoError(t, err)
 	require.NotNil(t, user)
 
@@ -333,7 +333,7 @@ func TestGenerateConnectionToken_RequiresInstanceURLAndOwner(t *testing.T) {
 	settings.mu.Unlock()
 
 	t.Run("non-owner forbidden", func(t *testing.T) {
-		_, _, err := users.UpsertUser(context.Background(), &User{ID: "bob-id", Provider: ProviderGitHub, ProviderUserID: "2", Login: "bob"})
+		_, _, err := users.UpsertUser(context.Background(), &Identity{UserID: "bob-id", Provider: ProviderGitHub, ProviderUserID: "2", Login: "bob"})
 		require.NoError(t, err)
 		_, err = s.GenerateConnectionToken(context.Background(), "bob-id")
 		require.ErrorIs(t, err, apperrs.ErrForbidden)
@@ -367,7 +367,7 @@ func TestAccountLifecycle_RequiresAdminAndRestoresWithoutAccess(t *testing.T) {
 	require.NoError(t, err)
 	ownerID := mustVerify(t, s, token)
 	require.NoError(t, s.CompleteOwnerWizard(context.Background(), ownerID, "https://deploy.example.com"))
-	_, _, err = users.UpsertUser(context.Background(), &User{ID: "member-id", Provider: ProviderGitHub, ProviderUserID: "2", Login: "member"})
+	_, _, err = users.UpsertUser(context.Background(), &Identity{UserID: "member-id", Provider: ProviderGitHub, ProviderUserID: "2", Login: "member"})
 	require.NoError(t, err)
 
 	accounts, err := s.ListAccounts(context.Background(), ownerID)
@@ -389,7 +389,7 @@ func TestAccountLifecycle_WrongOperationDoesNotChangeState(t *testing.T) {
 	require.NoError(t, err)
 	ownerID := mustVerify(t, s, token)
 	require.NoError(t, s.CompleteOwnerWizard(context.Background(), ownerID, "https://deploy.example.com"))
-	_, _, err = users.UpsertUser(context.Background(), &User{ID: "member-id", Provider: ProviderGitHub, ProviderUserID: "2", Login: "member"})
+	_, _, err = users.UpsertUser(context.Background(), &Identity{UserID: "member-id", Provider: ProviderGitHub, ProviderUserID: "2", Login: "member"})
 	require.NoError(t, err)
 	require.NoError(t, s.DisableAccount(context.Background(), ownerID, "member-id"))
 	require.ErrorIs(t, s.RestoreAccount(context.Background(), ownerID, "member-id"), apperrs.ErrInvalid)

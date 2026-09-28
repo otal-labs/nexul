@@ -373,7 +373,7 @@ func TestHandler_Bootstrap_RequiresPass(t *testing.T) {
 		assert.Equal(t, http.StatusUnauthorized, rec.Code, path)
 	}
 
-	_, _, err := users.UpsertUser(context.Background(), &User{ID: "u1", Provider: ProviderGitHub, ProviderUserID: "1", Login: "someone"})
+	_, _, err := users.UpsertUser(context.Background(), &Identity{UserID: "u1", Provider: ProviderGitHub, ProviderUserID: "1", Login: "someone"})
 	require.NoError(t, err)
 	_, err = s.Bootstrap(context.Background(), "u1", "https://nexul.example.com", "id", "sec", "slug")
 	require.ErrorIs(t, err, apperrs.ErrUnauthorized, "a session is not a setup pass")
@@ -420,7 +420,7 @@ func TestHandler_PublicAddress(t *testing.T) {
 	h.ServeHTTP(rec, protectedRequest(t, s, users, http.MethodGet, "/api/setup/public-address", "u1", ""))
 	assert.Equal(t, http.StatusOK, rec.Code, "a signed-in owner may ask too")
 
-	_, _, err := users.UpsertUser(context.Background(), &User{ID: "u2", Provider: ProviderGitHub, ProviderUserID: "2", Login: "member"})
+	_, _, err := users.UpsertUser(context.Background(), &Identity{UserID: "u2", Provider: ProviderGitHub, ProviderUserID: "2", Login: "member"})
 	require.NoError(t, err)
 	rec = httptest.NewRecorder()
 	h.ServeHTTP(rec, protectedRequest(t, s, users, http.MethodGet, "/api/setup/public-address", "u2", ""))

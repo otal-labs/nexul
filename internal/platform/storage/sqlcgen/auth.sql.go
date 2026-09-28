@@ -57,6 +57,17 @@ func (q *Queries) CountCanCreateWorkspace(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const countIdentitiesByUser = `-- name: CountIdentitiesByUser :one
+SELECT COUNT(*) FROM user_identities WHERE user_id = ?
+`
+
+func (q *Queries) CountIdentitiesByUser(ctx context.Context, userID string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countIdentitiesByUser, userID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countUsers = `-- name: CountUsers :one
 SELECT COUNT(*) FROM users
 `
@@ -113,6 +124,23 @@ func (q *Queries) DeleteAccountPairingDefaults(ctx context.Context, userID strin
 	return err
 }
 
+const deleteIdentity = `-- name: DeleteIdentity :execrows
+DELETE FROM user_identities WHERE user_id = ? AND provider = ?
+`
+
+type DeleteIdentityParams struct {
+	UserID   string
+	Provider string
+}
+
+func (q *Queries) DeleteIdentity(ctx context.Context, arg DeleteIdentityParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteIdentity, arg.UserID, arg.Provider)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const getSettings = `-- name: GetSettings :one
 SELECT id, instance_url, settings_version, updated_at, github_oauth_client_id, github_oauth_client_secret, google_oauth_client_id, google_oauth_client_secret, discord_oauth_client_id, discord_oauth_client_secret FROM instance_settings WHERE id = 1
 `
@@ -136,7 +164,7 @@ func (q *Queries) GetSettings(ctx context.Context) (InstanceSetting, error) {
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, provider, provider_user_id, login, name, avatar_url, first_login_done, created_at, updated_at, can_create_workspace, display_name, avatar_override_url, account_status FROM users WHERE id = ?
+SELECT id, login, name, avatar_url, first_login_done, can_create_workspace, display_name, avatar_override_url, account_status, created_at, updated_at FROM users WHERE id = ?
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id string) (User, error) {
@@ -144,24 +172,51 @@ func (q *Queries) GetUserByID(ctx context.Context, id string) (User, error) {
 	var i User
 	err := row.Scan(
 		&i.ID,
-		&i.Provider,
-		&i.ProviderUserID,
 		&i.Login,
 		&i.Name,
 		&i.AvatarUrl,
 		&i.FirstLoginDone,
-		&i.CreatedAt,
-		&i.UpdatedAt,
 		&i.CanCreateWorkspace,
 		&i.DisplayName,
 		&i.AvatarOverrideUrl,
 		&i.AccountStatus,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getUserByIdentity = `-- name: GetUserByIdentity :one
+SELECT u.id, u.login, u.name, u.avatar_url, u.first_login_done, u.can_create_workspace, u.display_name, u.avatar_override_url, u.account_status, u.created_at, u.updated_at FROM users u JOIN user_identities i ON i.user_id = u.id
+WHERE i.provider = ? AND i.provider_user_id = ?
+`
+
+type GetUserByIdentityParams struct {
+	Provider       string
+	ProviderUserID string
+}
+
+func (q *Queries) GetUserByIdentity(ctx context.Context, arg GetUserByIdentityParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByIdentity, arg.Provider, arg.ProviderUserID)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Login,
+		&i.Name,
+		&i.AvatarUrl,
+		&i.FirstLoginDone,
+		&i.CanCreateWorkspace,
+		&i.DisplayName,
+		&i.AvatarOverrideUrl,
+		&i.AccountStatus,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const getUserByLogin = `-- name: GetUserByLogin :one
-SELECT id, provider, provider_user_id, login, name, avatar_url, first_login_done, created_at, updated_at, can_create_workspace, display_name, avatar_override_url, account_status FROM users WHERE lower(login) = lower(?)
+SELECT id, login, name, avatar_url, first_login_done, can_create_workspace, display_name, avatar_override_url, account_status, created_at, updated_at FROM users WHERE lower(login) = lower(?)
 `
 
 func (q *Queries) GetUserByLogin(ctx context.Context, lower string) (User, error) {
@@ -169,89 +224,65 @@ func (q *Queries) GetUserByLogin(ctx context.Context, lower string) (User, error
 	var i User
 	err := row.Scan(
 		&i.ID,
-		&i.Provider,
-		&i.ProviderUserID,
 		&i.Login,
 		&i.Name,
 		&i.AvatarUrl,
 		&i.FirstLoginDone,
-		&i.CreatedAt,
-		&i.UpdatedAt,
 		&i.CanCreateWorkspace,
 		&i.DisplayName,
 		&i.AvatarOverrideUrl,
 		&i.AccountStatus,
-	)
-	return i, err
-}
-
-const getUserByProvider = `-- name: GetUserByProvider :one
-SELECT id, provider, provider_user_id, login, name, avatar_url, first_login_done, created_at, updated_at, can_create_workspace, display_name, avatar_override_url, account_status FROM users WHERE provider = ? AND provider_user_id = ?
-`
-
-type GetUserByProviderParams struct {
-	Provider       string
-	ProviderUserID string
-}
-
-func (q *Queries) GetUserByProvider(ctx context.Context, arg GetUserByProviderParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, getUserByProvider, arg.Provider, arg.ProviderUserID)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.Provider,
-		&i.ProviderUserID,
-		&i.Login,
-		&i.Name,
-		&i.AvatarUrl,
-		&i.FirstLoginDone,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.CanCreateWorkspace,
-		&i.DisplayName,
-		&i.AvatarOverrideUrl,
-		&i.AccountStatus,
 	)
 	return i, err
 }
 
-const getUserIDByProvider = `-- name: GetUserIDByProvider :one
-SELECT id FROM users WHERE provider = ? AND provider_user_id = ?
+const insertIdentity = `-- name: InsertIdentity :exec
+INSERT INTO user_identities (user_id, provider, provider_user_id, login, name, avatar_url, created_at)
+VALUES (?, ?, ?, ?, ?, ?, ?)
 `
 
-type GetUserIDByProviderParams struct {
-	Provider       string
-	ProviderUserID string
-}
-
-func (q *Queries) GetUserIDByProvider(ctx context.Context, arg GetUserIDByProviderParams) (string, error) {
-	row := q.db.QueryRowContext(ctx, getUserIDByProvider, arg.Provider, arg.ProviderUserID)
-	var id string
-	err := row.Scan(&id)
-	return id, err
-}
-
-const insertUser = `-- name: InsertUser :exec
-INSERT INTO users (id, provider, provider_user_id, login, name, avatar_url, can_create_workspace, first_login_done, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?, ?)
-`
-
-type InsertUserParams struct {
-	ID             string
+type InsertIdentityParams struct {
+	UserID         string
 	Provider       string
 	ProviderUserID string
 	Login          string
 	Name           string
 	AvatarUrl      string
 	CreatedAt      int64
-	UpdatedAt      int64
+}
+
+func (q *Queries) InsertIdentity(ctx context.Context, arg InsertIdentityParams) error {
+	_, err := q.db.ExecContext(ctx, insertIdentity,
+		arg.UserID,
+		arg.Provider,
+		arg.ProviderUserID,
+		arg.Login,
+		arg.Name,
+		arg.AvatarUrl,
+		arg.CreatedAt,
+	)
+	return err
+}
+
+const insertUser = `-- name: InsertUser :exec
+INSERT INTO users (id, login, name, avatar_url, can_create_workspace, first_login_done, created_at, updated_at)
+VALUES (?, ?, ?, ?, 0, 0, ?, ?)
+`
+
+type InsertUserParams struct {
+	ID        string
+	Login     string
+	Name      string
+	AvatarUrl string
+	CreatedAt int64
+	UpdatedAt int64
 }
 
 func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) error {
 	_, err := q.db.ExecContext(ctx, insertUser,
 		arg.ID,
-		arg.Provider,
-		arg.ProviderUserID,
 		arg.Login,
 		arg.Name,
 		arg.AvatarUrl,
@@ -288,8 +319,43 @@ func (q *Queries) ListAllowlist(ctx context.Context) ([]string, error) {
 	return items, nil
 }
 
+const listIdentitiesByUser = `-- name: ListIdentitiesByUser :many
+SELECT user_id, provider, provider_user_id, login, name, avatar_url, created_at FROM user_identities WHERE user_id = ? ORDER BY created_at, provider
+`
+
+func (q *Queries) ListIdentitiesByUser(ctx context.Context, userID string) ([]UserIdentity, error) {
+	rows, err := q.db.QueryContext(ctx, listIdentitiesByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []UserIdentity
+	for rows.Next() {
+		var i UserIdentity
+		if err := rows.Scan(
+			&i.UserID,
+			&i.Provider,
+			&i.ProviderUserID,
+			&i.Login,
+			&i.Name,
+			&i.AvatarUrl,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUsers = `-- name: ListUsers :many
-SELECT id, provider, provider_user_id, login, name, avatar_url, first_login_done, created_at, updated_at, can_create_workspace, display_name, avatar_override_url, account_status FROM users ORDER BY login
+SELECT id, login, name, avatar_url, first_login_done, can_create_workspace, display_name, avatar_override_url, account_status, created_at, updated_at FROM users ORDER BY login
 `
 
 func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
@@ -303,18 +369,16 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 		var i User
 		if err := rows.Scan(
 			&i.ID,
-			&i.Provider,
-			&i.ProviderUserID,
 			&i.Login,
 			&i.Name,
 			&i.AvatarUrl,
 			&i.FirstLoginDone,
-			&i.CreatedAt,
-			&i.UpdatedAt,
 			&i.CanCreateWorkspace,
 			&i.DisplayName,
 			&i.AvatarOverrideUrl,
 			&i.AccountStatus,
+			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -467,25 +531,52 @@ func (q *Queries) SetSettingsGitHubOAuth(ctx context.Context, arg SetSettingsGit
 	return result.RowsAffected()
 }
 
-const syncUser = `-- name: SyncUser :exec
-UPDATE users SET login = ?, name = ?, avatar_url = ?, updated_at = ? WHERE id = ?
+const syncIdentity = `-- name: SyncIdentity :exec
+UPDATE user_identities SET login = ?, name = ?, avatar_url = ? WHERE provider = ? AND provider_user_id = ?
 `
 
-type SyncUserParams struct {
+type SyncIdentityParams struct {
+	Login          string
+	Name           string
+	AvatarUrl      string
+	Provider       string
+	ProviderUserID string
+}
+
+func (q *Queries) SyncIdentity(ctx context.Context, arg SyncIdentityParams) error {
+	_, err := q.db.ExecContext(ctx, syncIdentity,
+		arg.Login,
+		arg.Name,
+		arg.AvatarUrl,
+		arg.Provider,
+		arg.ProviderUserID,
+	)
+	return err
+}
+
+const syncUserFromFirstIdentity = `-- name: SyncUserFromFirstIdentity :exec
+UPDATE users SET login = ?, name = ?, avatar_url = ?, updated_at = ?
+WHERE id = ?5
+  AND ?6 = (SELECT provider FROM user_identities WHERE user_id = ?5 ORDER BY created_at, provider LIMIT 1)
+`
+
+type SyncUserFromFirstIdentityParams struct {
 	Login     string
 	Name      string
 	AvatarUrl string
 	UpdatedAt int64
-	ID        string
+	UserID    string
+	Provider  string
 }
 
-func (q *Queries) SyncUser(ctx context.Context, arg SyncUserParams) error {
-	_, err := q.db.ExecContext(ctx, syncUser,
+func (q *Queries) SyncUserFromFirstIdentity(ctx context.Context, arg SyncUserFromFirstIdentityParams) error {
+	_, err := q.db.ExecContext(ctx, syncUserFromFirstIdentity,
 		arg.Login,
 		arg.Name,
 		arg.AvatarUrl,
 		arg.UpdatedAt,
-		arg.ID,
+		arg.UserID,
+		arg.Provider,
 	)
 	return err
 }

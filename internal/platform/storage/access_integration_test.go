@@ -47,7 +47,7 @@ func (u realUsers) ListUsers(ctx context.Context) ([]*access.User, error) {
 
 func seedUser(t *testing.T, s *storage.Store, id, login string, owner bool) {
 	t.Helper()
-	_, _, err := s.Users.UpsertUser(context.Background(), &auth.User{ID: id, Provider: auth.ProviderGitHub, ProviderUserID: login, Login: login})
+	_, _, err := s.Users.UpsertUser(context.Background(), &auth.Identity{UserID: id, Provider: auth.ProviderGitHub, ProviderUserID: login, Login: login})
 	require.NoError(t, err)
 	if owner {
 		require.NoError(t, s.Users.SetCanCreateWorkspace(context.Background(), id, true))
