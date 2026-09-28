@@ -370,7 +370,7 @@ func (h *Handler) providerConfigured(r *http.Request, provider Provider) (bool, 
 // instance asked for, so it is never exchanged, and the browser goes back into the app instead of to an error.
 func (h *Handler) stateless(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Get("installation_id") != "" {
-		http.Redirect(w, r, h.spaOrigin(r)+"/settings?section=connectors", http.StatusFound)
+		http.Redirect(w, r, h.spaOrigin(r)+"/configuration?section=connectors", http.StatusFound)
 		return
 	}
 	http.Redirect(w, r, h.spaOrigin(r)+"/login", http.StatusFound)
