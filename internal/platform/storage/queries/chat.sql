@@ -45,7 +45,7 @@ UPDATE conversations SET agent_synced_at = ? WHERE id = ?;
 SELECT * FROM messages WHERE id = ?;
 
 -- name: ListMessages :many
-SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at LIMIT ?;
+SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at DESC, id DESC LIMIT ?;
 
 -- name: ListMessagesSince :many
 SELECT * FROM messages WHERE conversation_id = ? AND deleted_at IS NULL AND created_at > ? ORDER BY created_at;

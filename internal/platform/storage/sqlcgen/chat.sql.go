@@ -314,7 +314,7 @@ func (q *Queries) ListConversationsForUser(ctx context.Context, arg ListConversa
 }
 
 const listMessages = `-- name: ListMessages :many
-SELECT id, conversation_id, author_id, body, mentions, attachment_id, edited_at, deleted_at, created_at, updated_at, author_kind FROM messages WHERE conversation_id = ? ORDER BY created_at LIMIT ?
+SELECT id, conversation_id, author_id, body, mentions, attachment_id, edited_at, deleted_at, created_at, updated_at, author_kind FROM messages WHERE conversation_id = ? ORDER BY created_at DESC, id DESC LIMIT ?
 `
 
 type ListMessagesParams struct {

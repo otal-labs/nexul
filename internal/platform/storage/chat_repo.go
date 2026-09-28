@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/otal-labs/nexul/internal/chat"
@@ -205,6 +206,8 @@ func (r *ChatRepo) ListMessages(ctx context.Context, conversationID string, limi
 	if err != nil {
 		return nil, fmt.Errorf("list messages for conversation %s: %w", conversationID, err)
 	}
+	// The query takes the newest rows so a long thread keeps its latest messages; callers read them oldest-first.
+	slices.Reverse(rows)
 	return toMessages(rows)
 }
 
