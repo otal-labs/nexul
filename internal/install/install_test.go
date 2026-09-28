@@ -346,7 +346,56 @@ func TestInstall_Interactive_AsksThenInstalls(t *testing.T) {
 	assert.Contains(t, th.out.String(), "Press Enter to accept the default.")
 }
 
+func TestInstall_Interactive_AStrayKeyIsAskedAgain(t *testing.T) {
+	th := newTestHost(t)
+	withVersion(t, "v0.2.1")
+	dir := filepath.Join(th.root, "asked")
+	th.bootedServer(t, dir)
+	th.Interactive = true
+	// An arrow key pressed while the installer downloaded arrives as the first answer.
+	th.In = bufio.NewReader(strings.NewReader("\x1b[C\nrelative/dir\n" + dir + "\n" + strconv.Itoa(th.webPort(t)) + "\n"))
+
+	require.NoError(t, th.Install(t.Context(), Options{}))
+
+	out := th.out.String()
+	assert.Contains(t, out, `"\x1b[C" has control characters in it`)
+	assert.Contains(t, out, `"relative/dir" is not a full path`)
+	assert.FileExists(t, filepath.Join(dir, ".env"))
+	assert.Contains(t, out, "Files ........... done")
+}
+
+func TestInstallDir(t *testing.T) {
+	tests := []struct {
+		name    string
+		dir     string
+		want    string
+		wantErr string
+	}{
+		{"an escape sequence", "\x1b[C", "", "control characters"},
+		{"a relative path", "data/nexul", "", "not a full path"},
+		{"empty", "", "", "not a full path"},
+		{"an absolute path is cleaned", "/data//nexul/", "/data/nexul", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := installDir(tt.dir)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func TestRunInstall_Flags(t *testing.T) {
+	t.Run("a relative --dir is refused before anything is installed", func(t *testing.T) {
+		th := newTestHost(t)
+		withVersion(t, "v0.2.1")
+		require.ErrorContains(t, th.runInstall(t.Context(), []string{"--dir", "nexul", "--yes"}), "not a full path")
+		assert.Empty(t, th.exec.calls)
+	})
 	t.Run("an unknown flag is refused", func(t *testing.T) {
 		th := newTestHost(t)
 		require.Error(t, th.runInstall(t.Context(), []string{"--bogus"}))

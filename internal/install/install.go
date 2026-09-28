@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/otal-labs/nexul/internal/platform/version"
 )
@@ -139,9 +140,12 @@ func (h *Host) choose(o Options, prev *installed) (Options, *installed, error) {
 	}
 	var err error
 	if interactive {
-		if o.Dir, err = h.prompt("Install directory", o.Dir); err != nil {
+		if o.Dir, err = h.askDir("Install directory", o.Dir); err != nil {
 			return o, nil, err
 		}
+	}
+	if o.Dir, err = installDir(o.Dir); err != nil {
+		return o, nil, err
 	}
 	// A directory kept by uninstall still holds its .env, whose logs credentials OpenObserve has already adopted.
 	if prev, err = installAt(o.Dir, prev); err != nil {
@@ -158,6 +162,33 @@ func (h *Host) choose(o Options, prev *installed) (Options, *installed, error) {
 	}
 	h.printf("\n")
 	return o, prev, nil
+}
+
+// askDir asks for the install directory until the answer is one installDir accepts.
+func (h *Host) askDir(label, def string) (string, error) {
+	for {
+		answer, err := h.prompt(label, def)
+		if err != nil {
+			return "", err
+		}
+		if _, err := installDir(answer); err != nil {
+			h.printf("  %s. Press Enter for %s, or type a full path.\n", err, def)
+			continue
+		}
+		return answer, nil
+	}
+}
+
+// installDir accepts an absolute path of printable characters. A key pressed while the installer downloads lands
+// in the first prompt as an escape sequence, which would otherwise become a relative directory systemd rejects.
+func installDir(dir string) (string, error) {
+	if strings.IndexFunc(dir, unicode.IsControl) >= 0 {
+		return "", fmt.Errorf("%q has control characters in it, likely a key pressed while this downloaded", dir)
+	}
+	if !filepath.IsAbs(dir) {
+		return "", fmt.Errorf("%q is not a full path", dir)
+	}
+	return filepath.Clean(dir), nil
 }
 
 // install runs the steps in order and returns the settings it wrote; the first failing step stops the rest.
@@ -179,7 +210,7 @@ func (h *Host) install(ctx context.Context, o Options, prev *installed, tag stri
 	if err := h.step("Files", func() (string, error) {
 		var err error
 		settings, err = h.writeSettings(ctx, o, prev, tag)
-		return o.Dir, err
+		return "done", err
 	}); err != nil {
 		return nil, err
 	}
