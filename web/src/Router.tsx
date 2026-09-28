@@ -27,6 +27,7 @@ import { ProjectWizardPage } from "@/pages/ProjectWizardPage";
 import { RunnersPage } from "@/pages/RunnersPage";
 import { ServicePage } from "@/pages/ServicePage";
 import { SettingsPage } from "@/pages/SettingsPage";
+import { YourSettingsPage } from "@/pages/YourSettingsPage";
 import { SetupPage } from "@/pages/SetupPage";
 import { StackPage } from "@/pages/StackPage";
 import { TicketPage } from "@/pages/TicketPage";
@@ -126,7 +127,8 @@ const buildRoutes = (loggedIn: boolean): RouteObject[] => [
                 { path: "/stacks/:stackId", element: <StackPage /> },
                 { path: "/stacks/:stackId/deploys/:deployId", element: <DeployPage /> },
                 { path: "/members", element: <MembersPage /> },
-                { path: "/settings", element: <SettingsPage /> },
+                { path: "/settings", element: <YourSettingsPage /> },
+                { path: "/configuration", element: <SettingsPage /> },
                 { path: "/projects/:projectId/settings", element: <ProjectSettingsPage /> },
                 {
                   path: "/projects/:projectId/interview",

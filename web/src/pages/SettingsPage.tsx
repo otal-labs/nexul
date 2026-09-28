@@ -31,10 +31,10 @@ export const SettingsPage = () => {
       <PageHeader
         className="mb-8"
         eyebrow="Workspace"
-        title="Settings"
+        title="Configuration"
         subtitle="How this instance connects, who holds keys, and what the board can contain."
       />
-      <div className="flex flex-col gap-6 md:flex-row md:items-start md:gap-8">
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
         <SettingsNav
           active={section}
           showInstanceAccess={isInstanceAdmin}

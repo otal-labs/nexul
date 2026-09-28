@@ -25,8 +25,8 @@ interface SettingsSectionNavProps {
 
 // Collapses to a horizontal tab row below `md:`; shared by both settings pages so they can't drift.
 export const SettingsSectionNav = ({ ariaLabel, items, active }: SettingsSectionNavProps) => (
-  <nav aria-label={ariaLabel} className="md:w-48 md:shrink-0">
-    <ul className="flex gap-1 overflow-x-auto pb-1 md:flex-col md:gap-0.5 md:overflow-visible md:pb-0">
+  <nav aria-label={ariaLabel} className="lg:w-48 lg:shrink-0">
+    <ul className="flex gap-1 overflow-x-auto pb-1 lg:flex-col lg:gap-0.5 lg:overflow-visible lg:pb-0">
       {items.map((item) => (
         <li key={item.section} className="shrink-0">
           <Link

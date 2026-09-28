@@ -60,6 +60,7 @@ export const SettingsNav = ({
   showInterviewTemplate,
 }: SettingsNavProps) => {
   const items: SettingsSectionNavItem[] = SETTINGS_SECTIONS.filter((section) => {
+    if (section === "appearance" || section === "tokens" || section === "pairing") return false;
     if (section === "roles") return showRoles;
     if (section === "plays") return showPlays;
     if (section === "mentions") return showMentionLayout;

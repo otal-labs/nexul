@@ -6,7 +6,19 @@ import path from "path";
 const DEV_PROXY_HOST = process.env.VITE_PROXY_HOST || "localhost";
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    {
+      name: "proto-configured-instance",
+      configureServer(server) {
+        server.middlewares.use("/api/auth/bootstrap-status", (_req, res) => {
+          res.setHeader("content-type", "application/json");
+          res.end(JSON.stringify({ configured: true, google_configured: true, discord_configured: true, instance_url: "https://nexul.otal.dev" }));
+        });
+      },
+    },
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

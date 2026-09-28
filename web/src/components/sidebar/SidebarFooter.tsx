@@ -1,5 +1,5 @@
 import { AccountMenu } from "@/components/AccountMenu";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { SettingsGearLink } from "@/components/sidebar/SettingsGearLink";
 import { cn } from "@/lib/utils";
 
 interface SidebarFooterProps {
@@ -15,7 +15,7 @@ export const SidebarFooter = ({ collapsed, isLoggedIn }: SidebarFooterProps) => 
           <AccountMenu collapsed={collapsed} />
         </div>
       )}
-      <ThemeToggle />
+      {isLoggedIn && <SettingsGearLink />}
     </div>
   </div>
 );

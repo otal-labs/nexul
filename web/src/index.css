@@ -184,6 +184,12 @@ h3 {
   background: color-mix(in oklab, var(--primary) 26%, transparent);
 }
 
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+}
+
 /* Thin, quiet scrollbars (emil: only customise small/simple surfaces). */
 * {
   scrollbar-width: thin;
