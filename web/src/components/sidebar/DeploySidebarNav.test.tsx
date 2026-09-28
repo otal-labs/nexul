@@ -34,6 +34,12 @@ describe("DeploySidebarNav", () => {
     expect(screen.getByRole("link", { name: /Runners/ })).toBeInTheDocument();
   });
 
+  it("lists Configuration after Automations", () => {
+    renderNav();
+    const links = screen.getAllByRole("link").map((link) => link.getAttribute("href"));
+    expect(links).toEqual(["/runners", "/topology", "/automations", "/configuration"]);
+  });
+
   it("tags only Automations as work in progress", () => {
     renderNav();
     expect(screen.getByRole("link", { name: /Automations/ })).toHaveTextContent("WIP");

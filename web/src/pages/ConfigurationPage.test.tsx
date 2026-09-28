@@ -1,10 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { SettingsPage } from "@/pages/SettingsPage";
+import { ConfigurationPage } from "@/pages/ConfigurationPage";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 const mocks = vi.hoisted(() => ({
@@ -30,32 +30,27 @@ const settings = {
   mention_chip_template: "{ticket.Ticket} {ticket.Status}",
 };
 
-const patList = (tokens: unknown[]) => ({ tokens });
-
-// The page issues several GETs (settings, token list, connectors); route by URL so each resolves with the right shape.
+// The page issues several GETs (me, settings, connectors, version); route by URL so each resolves with the right shape.
 const mockGet = (url: string) => {
-  if (url === "/api/auth/tokens") {
-    return Promise.resolve({ data: patList([]) });
-  }
-  if (url === "/api/connectors") {
-    return Promise.resolve({ data: [] });
-  }
+  if (url === "/api/auth/me") return Promise.resolve({ data: { user: { can_create_workspace: true } } });
+  if (url === "/api/connectors") return Promise.resolve({ data: [] });
+  if (url.startsWith("/api/version")) return Promise.resolve({ data: { current: "0.1.0", channel: "beta" } });
   return Promise.resolve({ data: settings });
 };
 
 // Sections render one at a time off ?section=, so each test opens the page on the section it exercises.
-const renderPage = (route = "/settings") => {
+const renderPage = (route = "/configuration") => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[route]}>
-        <SettingsPage />
+        <ConfigurationPage />
       </MemoryRouter>
     </QueryClientProvider>,
   );
 };
 
-describe("SettingsPage", () => {
+describe("ConfigurationPage", () => {
   beforeEach(() => {
     mocks.get.mockReset();
     mocks.put.mockReset();
@@ -64,10 +59,12 @@ describe("SettingsPage", () => {
     mocks.del.mockReset();
     mocks.errorMessage.mockClear();
     mocks.get.mockImplementation(mockGet);
+    useWorkspaceStore.setState({ selectedWorkspaceId: "" });
+    useWorkspaceStore.persist.clearStorage();
   });
 
   it("shows the current instance url and derived callback", async () => {
-    renderPage();
+    renderPage("/configuration?section=instance");
     expect(await screen.findByDisplayValue("https://deploy.example.com")).toBeInTheDocument();
     expect(screen.getByText(/https:\/\/deploy\.example\.com\/auth\/callback/i)).toBeInTheDocument();
   });
@@ -75,7 +72,7 @@ describe("SettingsPage", () => {
   it("updates the instance url", async () => {
     mocks.put.mockResolvedValue({ data: { ...settings, instance_url: "https://new.example.com", settings_version: 3 } });
     const user = userEvent.setup();
-    renderPage();
+    renderPage("/configuration?section=instance");
 
     const input = await screen.findByLabelText(/instance url/i);
     await user.clear(input);
@@ -87,110 +84,6 @@ describe("SettingsPage", () => {
     });
   });
 
-  it("generates and reveals a connection token", async () => {
-    mocks.post.mockResolvedValue({
-      data: {
-        token: "header.payload.sig",
-        instance_url: "https://deploy.example.com",
-        settings_version: 2,
-        expires_at: "2026-09-11T12:00:00Z",
-      },
-    });
-    const user = userEvent.setup();
-    renderPage("/settings?section=tokens");
-
-    await user.click(await screen.findByRole("button", { name: /generate connection token/i }));
-    expect(await screen.findByText("header.payload.sig")).toBeInTheDocument();
-  });
-
-  it("mints a personal access token and shows it once", async () => {
-    mocks.post.mockResolvedValue({
-      data: {
-        token: "dep_ABC123rawvalue",
-        id: "pat-1",
-        name: "ci agent",
-        prefix: "rawvalue",
-        created_at: "2026-08-12T00:00:00Z",
-      },
-    });
-    const user = userEvent.setup();
-    renderPage("/settings?section=tokens&tab=personal");
-
-    await user.type(await screen.findByLabelText(/token name/i), "ci agent");
-    await user.click(screen.getByRole("button", { name: /^create token$/i }));
-
-    expect(await screen.findByText(/copy this token now/i)).toBeInTheDocument();
-    expect(screen.getByText("dep_ABC123rawvalue")).toBeInTheDocument();
-    expect(mocks.post).toHaveBeenCalledWith("/api/auth/tokens", { name: "ci agent" });
-  });
-
-  it("lists personal access tokens with revoke state", async () => {
-    mocks.get.mockImplementation((url: string) => {
-      if (url === "/api/auth/tokens") {
-        return Promise.resolve({
-          data: patList([
-            {
-              id: "pat-1",
-              user_id: "u1",
-              name: "ci agent",
-              prefix: "abc123",
-              created_at: "2026-08-01T00:00:00Z",
-            },
-            {
-              id: "pat-2",
-              user_id: "u1",
-              name: "old token",
-              prefix: "xyz789",
-              created_at: "2026-07-01T00:00:00Z",
-              revoked_at: "2026-07-15T00:00:00Z",
-            },
-          ]),
-        });
-      }
-      if (url === "/api/connectors") return Promise.resolve({ data: [] });
-      return Promise.resolve({ data: settings });
-    });
-    renderPage("/settings?section=tokens&tab=personal");
-
-    expect(await screen.findByText("ci agent")).toBeInTheDocument();
-    expect(screen.getByText("old token")).toBeInTheDocument();
-    expect(screen.getByText(/revoked/)).toBeInTheDocument();
-
-    const revokeButtons = screen.getAllByRole("button", { name: /^revoke$/i });
-    expect(revokeButtons).toHaveLength(2);
-    expect(revokeButtons.filter((b) => (b as HTMLButtonElement).disabled)).toHaveLength(1);
-    expect(screen.getByText("old token").closest("li")).toBeInTheDocument();
-  });
-
-  it("revokes a personal access token", async () => {
-    mocks.get.mockImplementation((url: string) => {
-      if (url === "/api/auth/tokens") {
-        return Promise.resolve({
-          data: patList([
-            {
-              id: "pat-1",
-              user_id: "u1",
-              name: "ci agent",
-              prefix: "abc123",
-              created_at: "2026-08-01T00:00:00Z",
-            },
-          ]),
-        });
-      }
-      if (url === "/api/connectors") return Promise.resolve({ data: [] });
-      return Promise.resolve({ data: settings });
-    });
-    mocks.del.mockResolvedValue({ data: patList([]) });
-    const user = userEvent.setup();
-    renderPage("/settings?section=tokens&tab=personal");
-
-    const revoke = await screen.findByRole("button", { name: /^revoke$/i });
-    await user.click(revoke);
-    await user.click(screen.getByRole("button", { name: /^confirm$/i }));
-
-    await waitFor(() => expect(mocks.del).toHaveBeenCalledWith("/api/auth/tokens/pat-1"));
-  });
-
   it("shows an error when settings fail to load", async () => {
     mocks.get.mockRejectedValue(new Error("boom"));
     mocks.errorMessage.mockReturnValue("Settings failed");
@@ -199,18 +92,19 @@ describe("SettingsPage", () => {
   });
 });
 
-describe("SettingsPage mention chip layout gating", () => {
+describe("ConfigurationPage mention chip layout gating", () => {
   beforeEach(() => {
+    mocks.get.mockImplementation(mockGet);
     useWorkspaceStore.setState({ selectedWorkspaceId: "" });
     useWorkspaceStore.persist.clearStorage();
   });
 
   it("hides the mention chip layout panel without workspaces:write", async () => {
-    mocks.get.mockImplementation(mockGet);
-    renderPage("/settings?section=mentions");
+    renderPage("/configuration?section=mentions");
 
-    await screen.findByRole("heading", { name: "Settings" });
+    await screen.findByRole("heading", { name: "Configuration" });
     expect(screen.queryByText("Mention chip layout")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Mention chips" })).not.toBeInTheDocument();
   });
 
   it("shows and lets a workspaces:write holder edit the template", async () => {
@@ -223,7 +117,7 @@ describe("SettingsPage mention chip layout gating", () => {
     });
     mocks.patch.mockResolvedValue({ data: { mention_chip_template: "{ticket.Status}" } });
     const user = userEvent.setup();
-    renderPage("/settings?section=mentions");
+    renderPage("/configuration?section=mentions");
 
     expect(await screen.findByText("Mention chip layout")).toBeInTheDocument();
     const section = within(screen.getByRole("region", { name: "Mention chip layout" }));

@@ -1,72 +1,78 @@
 import { SettingsSectionNav, type SettingsSectionNavItem } from "@/components/settings/SettingsSectionNav";
 
 export const SETTINGS_SECTIONS = [
-  "instance",
   "roles",
   "plays",
   "interview",
+  "members",
   "mentions",
-  "appearance",
-  "tokens",
-  "pairing",
+  "danger",
+  "instance",
+  "sign-in",
   "connectors",
   "dns",
   "access",
-  "danger",
 ] as const;
 
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
 
-export const DEFAULT_SETTINGS_SECTION: SettingsSection = "instance";
-
 export const isSettingsSection = (value: string | null | undefined): value is SettingsSection =>
   !!value && (SETTINGS_SECTIONS as readonly string[]).includes(value);
 
+const WORKSPACE_GROUP = "This workspace";
+const INSTANCE_GROUP = "Whole instance";
+
+const INSTANCE_SECTIONS: readonly SettingsSection[] = ["instance", "sign-in", "connectors", "dns", "access"];
+
 const sectionLabels: Record<SettingsSection, string> = {
-  instance: "Instance",
   roles: "Roles",
   plays: "Plays",
   interview: "Interview template",
+  members: "Members",
   mentions: "Mention chips",
-  appearance: "Appearance",
-  tokens: "Tokens",
-  pairing: "T3 pairing",
+  danger: "Danger zone",
+  instance: "Instance",
+  "sign-in": "Sign-in providers",
   connectors: "Connectors",
   dns: "DNS",
   access: "Registered accounts",
-  danger: "Danger zone",
 };
+
+export interface SettingsVisibility {
+  // Every whole-instance section is for instance admins only.
+  isInstanceAdmin: boolean;
+  // Each gated workspace section renders only for its permission holder; the nav must not link to an empty section.
+  showRoles: boolean;
+  showPlays: boolean;
+  showInterviewTemplate: boolean;
+  showMembers: boolean;
+  showMentionLayout: boolean;
+}
+
+// The sections the viewer may open, in nav order; the page falls back to the first when the URL names none of them.
+export const visibleSettingsSections = (visibility: SettingsVisibility): SettingsSection[] =>
+  SETTINGS_SECTIONS.filter((section) => {
+    if (INSTANCE_SECTIONS.includes(section)) return visibility.isInstanceAdmin;
+    if (section === "roles") return visibility.showRoles;
+    if (section === "plays") return visibility.showPlays;
+    if (section === "interview") return visibility.showInterviewTemplate;
+    if (section === "members") return visibility.showMembers;
+    if (section === "mentions") return visibility.showMentionLayout;
+    return true;
+  });
 
 interface SettingsNavProps {
   active: SettingsSection;
-  // Account management only renders for admins — the nav must not link to an empty section.
-  showInstanceAccess: boolean;
-  // RoleSettingsSection only renders for roles:write holders — same "no empty link" rule.
-  showRoles: boolean;
-  // PlaySettingsSection only renders for plays:read holders — same "no empty link" rule.
-  showPlays: boolean;
-  // MentionChipLayoutSection gates on workspaces:write.
-  showMentionLayout: boolean;
-  // InterviewTemplateSection reads through memories:read.
-  showInterviewTemplate: boolean;
+  sections: SettingsSection[];
 }
 
-export const SettingsNav = ({
-  active,
-  showInstanceAccess,
-  showRoles,
-  showPlays,
-  showMentionLayout,
-  showInterviewTemplate,
-}: SettingsNavProps) => {
-  const items: SettingsSectionNavItem[] = SETTINGS_SECTIONS.filter((section) => {
-    if (section === "roles") return showRoles;
-    if (section === "plays") return showPlays;
-    if (section === "mentions") return showMentionLayout;
-    if (section === "interview") return showInterviewTemplate;
-    if (section === "access") return showInstanceAccess;
-    return true;
-  }).map((section) => ({ section, label: sectionLabels[section], danger: section === "danger" }));
+export const SettingsNav = ({ active, sections }: SettingsNavProps) => {
+  const items: SettingsSectionNavItem[] = sections.map((section) => ({
+    section,
+    label: sectionLabels[section],
+    danger: section === "danger",
+    group: INSTANCE_SECTIONS.includes(section) ? INSTANCE_GROUP : WORKSPACE_GROUP,
+  }));
 
-  return <SettingsSectionNav ariaLabel="Settings sections" active={active} items={items} />;
+  return <SettingsSectionNav ariaLabel="Configuration sections" active={active} items={items} />;
 };

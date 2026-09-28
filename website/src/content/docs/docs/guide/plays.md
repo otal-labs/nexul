@@ -12,7 +12,7 @@ project's interview.
 
 ## Configure a play
 
-Open **Settings → Plays**. Every workspace starts with four ordinary plays:
+Open **Configuration → Plays**. Every workspace starts with four ordinary plays:
 
 - **Fix with AI** is a ticket play shown in the In progress stage.
 - **To tickets via AI** is a document play.

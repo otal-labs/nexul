@@ -106,13 +106,13 @@ It authenticates with a personal access token. A browser session token also
 works for an interactive session. See [API and tokens](/docs/guide/api-and-tokens/)
 for the permission vocabulary. Mint one:
 
-1. Open **Settings → Tokens**.
+1. Open **Your settings → Security → Tokens**.
 2. Give it a name and create it. The raw token (`dep_…`) is shown once — copy it now, it can't be listed again later.
 
 A paired computer needs none of the steps below: its
 [setup wizard](/docs/guide/computer-setup/) connects each provider with the
 computer's own token, "Nexul MCP on <computer>", and installs the skills. The
-token is listed as **MCP token** on the computer's row in **Settings → T3
+token is listed as **MCP token** on the computer's row in **Your settings → T3
 pairing**. Un-confirming the computer's setup or removing the computer revokes
 it.
 Nexul replaces any `dep_` token with `[redacted token]` before it saves a play's

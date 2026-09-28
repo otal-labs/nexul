@@ -60,7 +60,7 @@ export const StackPage = () => {
             image={image}
             hostnames={hostnames}
           />
-          <div className="mt-6 flex flex-col gap-6 md:flex-row md:items-start md:gap-8">
+          <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
             <StackNav active={section} showBranches={showBranches} />
             <div className="min-w-0 flex-1 space-y-6">
               {section === "overview" && (

@@ -13,9 +13,8 @@ export const DangerZoneSection = () => (
     description="Irreversible workspace actions live here, separated from daily settings so nothing destructive is one stray click away."
   >
     <p className="text-sm text-muted-foreground">
-      No irreversible workspace-wide action exists on this instance yet. Revoking a personal
-      access token (above) is the one truly irreversible action on this page today, and it
-      already requires the same confirm-before-continue step anything added here would use.
+      No irreversible workspace-wide action exists on this instance yet. Anything added here
+      will use the same confirm-before-continue step revoking a personal access token does.
     </p>
   </SettingsCard>
 );

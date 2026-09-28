@@ -52,7 +52,7 @@ run. It is capped at 8,000 characters of markdown; the editor counts against
 the cap, and a save over it is refused with the count. It versions and
 reverts like any memory. A clone of it is an ordinary memory.
 
-The **Interview template** lives in **Settings → Interview template**. A new
+The **Interview template** lives in **Configuration → Interview template**. A new
 workspace starts with one heading per category: stack and versions,
 architecture, error handling and logging, testing, code style, dependency
 policy, security and secrets, performance budgets, CI gates, branching and

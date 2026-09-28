@@ -22,6 +22,6 @@ export const Sidebar = ({ collapsed, onToggleCollapse, isLoggedIn, unreadCount }
     {isLoggedIn && <SidebarNavContent collapsed={collapsed} unreadCount={unreadCount} />}
     {!isLoggedIn && <div className="flex-1" />}
     {isLoggedIn && <VoiceDock collapsed={collapsed} />}
-    <SidebarFooter collapsed={collapsed} isLoggedIn={isLoggedIn} />
+    {isLoggedIn && <SidebarFooter collapsed={collapsed} />}
   </aside>
 );

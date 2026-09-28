@@ -204,9 +204,13 @@ Stack detail page. The header keeps the detail-page shape (back link, mono
 slug, title, actions top right) and adds a facts grid: a mono microheader over
 each value (Status, Image, Runner, Strategy, Hostnames, Repository, or Network
 when no repository is attached). Below it the page is the settings shell:
-`SettingsSectionNav` on the left driving `?section=` (Overview, Exposures,
-Branch deploys, Deploy history, Danger zone), one or two `SettingsCard`s per
-section. A card's action lives in its footer strip (`footer` prop: Rollback,
+`SettingsSectionNav` driving `?section=` (Overview, Exposures, Branch deploys,
+Deploy history, Danger zone), one or two `SettingsCard`s per section. The nav
+is a scrolling top row below 1024px and a side column from it, on every
+settings-style page (Your settings, Configuration, Project settings, Stack);
+a nav with two jobs (Configuration's This workspace and Whole instance)
+labels each group with a mono microheader, and a group with nothing the
+viewer may open shows no label. A card's action lives in its footer strip (`footer` prop: Rollback,
 Expose, Add rule), never floating in the body, and a form that is not the
 section's main job stays collapsed behind that footer button. Lists inside a
 card are hairline rows in one bordered box. Nothing nests a card inside a

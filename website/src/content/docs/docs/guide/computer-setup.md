@@ -10,7 +10,7 @@ confirms that computer's setup. You never do this by hand: the setup wizard
 connects Nexul's MCP server to each provider and installs the skills, then
 each provider confirms itself.
 
-Open **Settings → T3 pairing** and select **Set up** on the computer's row, or
+Open **Your settings → T3 pairing** and select **Set up** on the computer's row, or
 continue from the last step of **Pair a computer**. A play refused because
 setup isn't done shows a **Set up** button naming the computer in its run
 dialog and its trail, which opens the same dialog straight away. Under
