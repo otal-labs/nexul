@@ -585,7 +585,7 @@ func TestSetProviderOAuth(t *testing.T) {
 	assert.ErrorIs(t, err, apperrs.ErrForbidden)
 
 	_, err = s.SetProviderOAuth(context.Background(), "u1", ProviderGoogle, "id", "")
-	assert.ErrorIs(t, err, apperrs.ErrInvalid, "half-configured must be rejected")
+	assert.ErrorIs(t, err, apperrs.ErrInvalid, "a first setup without a secret is half-configured")
 
 	st, err := s.SetProviderOAuth(context.Background(), "u1", ProviderGoogle, " id ", " secret ")
 	require.NoError(t, err)
@@ -594,6 +594,11 @@ func TestSetProviderOAuth(t *testing.T) {
 	ok, err := s.ProviderConfigured(context.Background(), ProviderGoogle)
 	require.NoError(t, err)
 	assert.True(t, ok)
+
+	st, err = s.SetProviderOAuth(context.Background(), "u1", ProviderGoogle, "new-id", "")
+	require.NoError(t, err)
+	assert.Equal(t, "new-id", st.GoogleOAuthClientID)
+	assert.Equal(t, "secret", st.GoogleOAuthClientSecret, "an edit without a secret keeps the stored one")
 
 	_, err = s.SetProviderOAuth(context.Background(), "u1", ProviderGoogle, "", "")
 	require.NoError(t, err)

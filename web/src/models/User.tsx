@@ -118,15 +118,38 @@ export const InstanceBootstrapFormSchema = z.object({
 
 export type InstanceBootstrapFormData = z.infer<typeof InstanceBootstrapFormSchema>;
 
-export const OAuthProviderFormSchema = z
-  .object({
-    client_id: z.string().trim(),
-    client_secret: z.string().trim(),
-  })
-  .refine((v) => (v.client_id === "") === (v.client_secret === ""), {
-    message: "Enter both the client ID and secret, or clear both to turn this sign-in off",
-    path: ["client_secret"],
-  });
+// A first setup needs both values; editing an enabled provider may leave the secret blank to keep the stored one.
+export const oauthProviderFormSchema = (editing: boolean) =>
+  z
+    .object({
+      client_id: z.string().trim().min(1, "Client ID is required"),
+      client_secret: z.string().trim(),
+    })
+    .refine((v) => editing || v.client_secret !== "", {
+      message: "Client secret is required",
+      path: ["client_secret"],
+    });
+
+export const OAuthProviderFormSchema = oauthProviderFormSchema(false);
+
+// Per-provider copy only; the flow (enable with both values, edit, disable) is identical.
+export const oauthProviderCopy: Record<
+  OptionalProvider,
+  { label: string; console: string; idPlaceholder: string; secretPlaceholder: string }
+> = {
+  google: {
+    label: "Google",
+    console: "Create an OAuth client (Web application) in Google Cloud Console",
+    idPlaceholder: "1234567890-abc.apps.googleusercontent.com",
+    secretPlaceholder: "GOCSPX-…",
+  },
+  discord: {
+    label: "Discord",
+    console: "Create an application in the Discord Developer Portal (OAuth2 → General)",
+    idPlaceholder: "123456789012345678",
+    secretPlaceholder: "Client secret from the OAuth2 page",
+  },
+};
 
 export type OAuthProviderFormData = z.infer<typeof OAuthProviderFormSchema>;
 
