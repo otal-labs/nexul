@@ -93,11 +93,6 @@ func TestHandler_Installations(t *testing.T) {
 		require.Equal(t, http.StatusOK, rec.Code)
 		assert.JSONEq(t, `{"installations":[]}`, rec.Body.String())
 	})
-	t.Run("a connector without a live token is a 401", func(t *testing.T) {
-		s := &fakeScanner{installErr: apperrors.ErrUnauthorized}
-		rec := serve(t, s, http.MethodGet, "/api/repositories/installations", "")
-		assert.Equal(t, http.StatusUnauthorized, rec.Code)
-	})
 }
 
 type assertError struct{}

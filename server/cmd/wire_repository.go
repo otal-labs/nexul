@@ -36,7 +36,7 @@ func (s repositoryScanner) ListInstallationRepos(ctx context.Context) ([]reposit
 	}
 	repos, err := p.ListInstallationRepos(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("list installation repositories: %w", err)
+		return nil, fmt.Errorf("list installation repositories: %w", connectorRefused(err))
 	}
 	out := make([]repository.Repo, 0, len(repos))
 	for _, r := range repos {
@@ -52,7 +52,7 @@ func (s repositoryScanner) ListInstallations(ctx context.Context) ([]repository.
 	}
 	installs, err := p.ListInstallations(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("list installations: %w", err)
+		return nil, fmt.Errorf("list installations: %w", connectorRefused(err))
 	}
 	out := make([]repository.Installation, 0, len(installs))
 	for _, i := range installs {
@@ -114,6 +114,14 @@ func (s repositoryScanner) mapNotInstalled(ctx context.Context, err error) error
 		msg = fmt.Sprintf("%s: install it at https://github.com/apps/%s/installations/new", msg, appCfg.AppSlug)
 	}
 	return fmt.Errorf("%s: %w", msg, apperrs.ErrNotFound)
+}
+
+// connectorRefused turns GitHub refusing the connector's token into a 403: a 401 would sign the browser out.
+func connectorRefused(err error) error {
+	if !errors.Is(err, apperrs.ErrUnauthorized) {
+		return err
+	}
+	return fmt.Errorf("GitHub refused the connector's token, reconnect GitHub in Configuration → Connectors: %w", apperrs.ErrForbidden)
 }
 
 func toRepositoryRepo(r *gitprovider.Repo) repository.Repo {
