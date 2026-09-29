@@ -23,7 +23,6 @@ const me = {
     login: "onik97",
     name: "Onik",
     avatar_url: "https://avatar/x",
-    can_create_workspace: false,
     first_login_done: false,
     created_at: "2026-08-12T12:00:00Z",
   },

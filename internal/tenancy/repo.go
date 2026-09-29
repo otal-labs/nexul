@@ -60,9 +60,10 @@ type RoleGate interface {
 	CreateOwnerRole(ctx context.Context, workspaceID string) (roleID string, err error)
 }
 
-// PermissionGate checks can_create_workspace without tenancy importing auth (ADR 0017).
+// PermissionGate answers instance-level checks without tenancy importing access (ADR 0017): whether userID holds
+// action in any workspace they belong to (ADR 0087).
 type PermissionGate interface {
-	CanCreateWorkspace(ctx context.Context, userID string) (bool, error)
+	HoldsAnywhere(ctx context.Context, userID string, action permissions.Action) (bool, error)
 }
 
 // RoleNameGate resolves a role's display name without tenancy importing roles (ADR 0017).
@@ -71,6 +72,8 @@ type RoleNameGate interface {
 	RoleName(ctx context.Context, workspaceID, roleID string) (string, error)
 	// IsOwnerRole reports whether roleID is workspaceID's protected singleton Owner role.
 	IsOwnerRole(ctx context.Context, workspaceID, roleID string) (bool, error)
+	// RolePermissions returns the actions roleID grants in workspaceID.
+	RolePermissions(ctx context.Context, workspaceID, roleID string) (permissions.Set, error)
 }
 
 // AllowlistGate checks the sign-in allowlist without tenancy importing auth (ADR 0017).

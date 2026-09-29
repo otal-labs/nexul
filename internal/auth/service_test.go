@@ -500,7 +500,7 @@ func TestLoginWith_Google(t *testing.T) {
 	require.NoError(t, err)
 	ownerID, err := verify(s, ownerToken)
 	require.NoError(t, err)
-	require.NoError(t, users.SetCanCreateWorkspace(context.Background(), ownerID, true))
+	users.setOwner(ownerID)
 
 	s.cfg.Google = &fakeGitHub{token: "at", user: &ProviderUser{ID: "sub-9", Login: "client@example.com", Name: "Client"}}
 
@@ -552,7 +552,7 @@ func TestSetProviderOAuth(t *testing.T) {
 	require.NoError(t, err)
 	_, _, err = users.UpsertUser(context.Background(), &Identity{UserID: "u2", Provider: ProviderGitHub, ProviderUserID: "2", Login: "bob"})
 	require.NoError(t, err)
-	require.NoError(t, users.SetCanCreateWorkspace(context.Background(), "u1", true))
+	users.setOwner("u1")
 
 	_, err = s.SetProviderOAuth(context.Background(), "u2", ProviderGoogle, "id", "secret")
 	assert.ErrorIs(t, err, apperrs.ErrForbidden)
@@ -584,7 +584,7 @@ func TestLoginWith_Discord(t *testing.T) {
 	require.NoError(t, err)
 	ownerID, err := verify(s, ownerToken)
 	require.NoError(t, err)
-	require.NoError(t, users.SetCanCreateWorkspace(context.Background(), ownerID, true))
+	users.setOwner(ownerID)
 	_, err = settings.Set(context.Background(), "https://deploy.example.com")
 	require.NoError(t, err)
 

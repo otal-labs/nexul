@@ -13,14 +13,16 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 // tokenPrefix marks a scoped token so the gateway tells it from a session token or PAT without verifying all three.
 const tokenPrefix = "dit_"
 
-// OwnerGate resolves can_create_workspace; a consumer-side seam so this package never imports auth (ADR 0017).
-type OwnerGate interface {
-	CanCreateWorkspace(ctx context.Context, userID string) (bool, error)
+// PermissionGate answers whether a user holds an action in any workspace they belong to (ADR 0087); a
+// consumer-side seam so this package never imports access (ADR 0017).
+type PermissionGate interface {
+	HoldsAnywhere(ctx context.Context, userID string, action permissions.Action) (bool, error)
 }
 
 // Config wires the integrations service.
@@ -31,7 +33,7 @@ type Config struct {
 	Deliveries DeliveryStore
 	Schemas    SchemaStore
 	Audit      AuditStore
-	Owner      OwnerGate
+	Perms      PermissionGate
 	Now        func() time.Time
 }
 
@@ -50,7 +52,7 @@ func NewService(cfg Config) *Service {
 
 // Install mints a scoped token for a new install (ADR 0043), returning the raw token and webhook secret exactly once.
 func (s *Service) Install(ctx context.Context, createdBy, name string, tier TrustTier, webhookURL string, requested []Scope) (rawToken, webhookSecret string, install *Install, err error) {
-	if err := s.requireOwner(ctx, createdBy); err != nil {
+	if err := s.require(ctx, createdBy, permissions.IntegrationsWrite); err != nil {
 		return "", "", nil, err
 	}
 	name = strings.TrimSpace(name)
@@ -108,9 +110,9 @@ func (s *Service) Install(ctx context.Context, createdBy, name string, tier Trus
 	return raw, secret, install, nil
 }
 
-// ListInstalls returns all installs; owner-only, since installs are workspace configuration, not per-user records.
+// ListInstalls returns all installs to a holder of integrations:read; installs are instance configuration.
 func (s *Service) ListInstalls(ctx context.Context, actorID string) ([]*Install, error) {
-	if err := s.requireOwner(ctx, actorID); err != nil {
+	if err := s.require(ctx, actorID, permissions.IntegrationsRead); err != nil {
 		return nil, err
 	}
 	installs, err := s.cfg.Installs.List(ctx)
@@ -120,9 +122,9 @@ func (s *Service) ListInstalls(ctx context.Context, actorID string) ([]*Install,
 	return installs, nil
 }
 
-// GetInstall returns one install by id (owner-only read).
+// GetInstall returns one install by id (integrations:read).
 func (s *Service) GetInstall(ctx context.Context, actorID, id string) (*Install, error) {
-	if err := s.requireOwner(ctx, actorID); err != nil {
+	if err := s.require(ctx, actorID, permissions.IntegrationsRead); err != nil {
 		return nil, err
 	}
 	install, err := s.cfg.Installs.GetByID(ctx, id)
@@ -134,7 +136,7 @@ func (s *Service) GetInstall(ctx context.Context, actorID, id string) (*Install,
 
 // RevokeInstall revokes an install immediately: its token stops authenticating and webhook fan-out skips it (ADR 0043).
 func (s *Service) RevokeInstall(ctx context.Context, actorID, id string) error {
-	if err := s.requireOwner(ctx, actorID); err != nil {
+	if err := s.require(ctx, actorID, permissions.IntegrationsDelete); err != nil {
 		return err
 	}
 	if err := s.cfg.Installs.Revoke(ctx, id); err != nil {
@@ -171,7 +173,7 @@ func (s *Service) AuthenticateToken(ctx context.Context, raw string) (*Install, 
 
 // Subscribe registers a webhook topic for an install (ADR 0043, per-topic v1).
 func (s *Service) Subscribe(ctx context.Context, actorID, installID, topic string) error {
-	if err := s.requireOwner(ctx, actorID); err != nil {
+	if err := s.require(ctx, actorID, permissions.IntegrationsWrite); err != nil {
 		return err
 	}
 	topic = strings.TrimSpace(topic)
@@ -189,7 +191,7 @@ func (s *Service) Subscribe(ctx context.Context, actorID, installID, topic strin
 
 // Unsubscribe removes a webhook topic registration.
 func (s *Service) Unsubscribe(ctx context.Context, actorID, installID, topic string) error {
-	if err := s.requireOwner(ctx, actorID); err != nil {
+	if err := s.require(ctx, actorID, permissions.IntegrationsWrite); err != nil {
 		return err
 	}
 	if err := s.cfg.Subs.Remove(ctx, installID, topic); err != nil {
@@ -200,7 +202,7 @@ func (s *Service) Unsubscribe(ctx context.Context, actorID, installID, topic str
 
 // ListSubscriptions returns the topics an install subscribes to.
 func (s *Service) ListSubscriptions(ctx context.Context, actorID, installID string) ([]Subscription, error) {
-	if err := s.requireOwner(ctx, actorID); err != nil {
+	if err := s.require(ctx, actorID, permissions.IntegrationsRead); err != nil {
 		return nil, err
 	}
 	subs, err := s.cfg.Subs.ListByInstall(ctx, installID)
@@ -212,7 +214,7 @@ func (s *Service) ListSubscriptions(ctx context.Context, actorID, installID stri
 
 // ListDeliveries returns the delivery history for an install.
 func (s *Service) ListDeliveries(ctx context.Context, actorID, installID string) ([]*Delivery, error) {
-	if err := s.requireOwner(ctx, actorID); err != nil {
+	if err := s.require(ctx, actorID, permissions.IntegrationsRead); err != nil {
 		return nil, err
 	}
 	deliveries, err := s.cfg.Deliveries.ListByInstall(ctx, installID)
@@ -231,9 +233,9 @@ func (s *Service) Catalog(ctx context.Context) ([]SchemaEntry, error) {
 	return entries, nil
 }
 
-// ListAudit returns recent audit rows (owner-only read).
+// ListAudit returns recent audit rows (audit:read).
 func (s *Service) ListAudit(ctx context.Context, actorID string, limit int) ([]AuditEntry, error) {
-	if err := s.requireOwner(ctx, actorID); err != nil {
+	if err := s.require(ctx, actorID, permissions.AuditRead); err != nil {
 		return nil, err
 	}
 	if limit < 1 || limit > 100 {
@@ -246,16 +248,17 @@ func (s *Service) ListAudit(ctx context.Context, actorID string, limit int) ([]A
 	return entries, nil
 }
 
-func (s *Service) requireOwner(ctx context.Context, actorID string) error {
-	if s.cfg.Owner == nil {
-		return fmt.Errorf("%w: owner gate is not configured", apperrs.ErrForbidden)
+// require checks actorID holds action in any workspace they belong to; installs belong to the whole instance.
+func (s *Service) require(ctx context.Context, actorID string, action permissions.Action) error {
+	if s.cfg.Perms == nil {
+		return fmt.Errorf("%w: no permission gate wired", apperrs.ErrForbidden)
 	}
-	ok, err := s.cfg.Owner.CanCreateWorkspace(ctx, actorID)
+	ok, err := s.cfg.Perms.HoldsAnywhere(ctx, actorID, action)
 	if err != nil {
-		return fmt.Errorf("resolve owner: %w", err)
+		return fmt.Errorf("check %s: %w", action, err)
 	}
 	if !ok {
-		return fmt.Errorf("%w: owner role required", apperrs.ErrForbidden)
+		return fmt.Errorf("%w: %s required", apperrs.ErrForbidden, action)
 	}
 	return nil
 }

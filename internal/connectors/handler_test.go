@@ -12,6 +12,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/connectors"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 // memAppConfigStore is a minimal in-memory AppConfigStore for handler tests.
@@ -32,11 +33,13 @@ func (m *memAppConfigStore) SetAppConfig(_ context.Context, c connectors.AppConf
 	return nil
 }
 
-// fakeOwnerGate is a canned OwnerGate for handler tests: userID "owner-1"
-// holds the instance-admin bit, everyone else doesn't.
+// fakeOwnerGate is a canned Gate for handler tests: userID "owner-1" holds connectors:write, everyone else doesn't,
+// and the context-based check lets every call through.
 type fakeOwnerGate struct{}
 
-func (fakeOwnerGate) CanCreateWorkspace(_ context.Context, userID string) (bool, error) {
+func (fakeOwnerGate) RequireAnywhere(context.Context, permissions.Action) error { return nil }
+
+func (fakeOwnerGate) HoldsAnywhere(_ context.Context, userID string, _ permissions.Action) (bool, error) {
 	return userID == "owner-1", nil
 }
 
@@ -297,7 +300,7 @@ func newTestHandlerWithAppConfig(t *testing.T) (*connectors.Handler, *memAppConf
 	svc := connectors.NewService(connectors.Config{
 		Store:          credStore,
 		AppConfigStore: appStore,
-		Owner:          fakeOwnerGate{},
+		Gate:           fakeOwnerGate{},
 		Registry: []connectors.Connector{
 			{ID: "github", Name: "GitHub", Description: "d", Category: "development"},
 		},

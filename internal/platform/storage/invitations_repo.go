@@ -404,6 +404,7 @@ func validateInvitationPackage(ctx context.Context, q *sqlcgen.Queries, invitati
 		return fmt.Errorf("%w: invitation has no grants", apperrs.ErrInvalid)
 	}
 	seen := make(map[string]struct{}, len(invitation.Grants))
+	granted := make(map[string]permissions.Set, len(invitation.Grants))
 	for _, grant := range invitation.Grants {
 		if grant == nil || grant.WorkspaceID == "" || grant.RoleID == "" {
 			return fmt.Errorf("%w: invitation grant is incomplete", apperrs.ErrInvalid)
@@ -412,19 +413,11 @@ func validateInvitationPackage(ctx context.Context, q *sqlcgen.Queries, invitati
 			return fmt.Errorf("%w: invitation contains duplicate workspaces", apperrs.ErrInvalid)
 		}
 		seen[grant.WorkspaceID] = struct{}{}
-		if _, err := q.GetWorkspaceForInvitationGrant(ctx, grant.WorkspaceID); err != nil {
-			return fmt.Errorf("%w: workspace is unavailable", apperrs.ErrInvalid)
-		}
-		role, err := q.GetRoleForInvitationGrant(ctx, sqlcgen.GetRoleForInvitationGrantParams{ID: grant.RoleID, WorkspaceID: grant.WorkspaceID})
+		actions, err := invitationGrantActions(ctx, q, grant)
 		if err != nil {
-			return fmt.Errorf("%w: role is unavailable", apperrs.ErrInvalid)
-		}
-		if role.IsOwnerRole != 0 {
-			return fmt.Errorf("%w: Owner cannot be granted by invitation", apperrs.ErrInvalid)
-		}
-		if err := validateInvitationSets(grant.Allow, grant.Deny); err != nil {
 			return err
 		}
+		granted[grant.WorkspaceID] = actions
 	}
 	allowed, err := actorCanManage(ctx, q, actorID, invitation.Grants)
 	if err != nil {
@@ -433,7 +426,43 @@ func validateInvitationPackage(ctx context.Context, q *sqlcgen.Queries, invitati
 	if !allowed {
 		return fmt.Errorf("%w: members:write required in every invited workspace", apperrs.ErrForbidden)
 	}
+	// The package's role and allow overrides may carry only what its creator holds in that workspace (ADR 0088).
+	for _, grant := range invitation.Grants {
+		access, err := creatorAccess(ctx, q, actorID, grant.WorkspaceID)
+		if err != nil {
+			return err
+		}
+		if access.owner {
+			continue
+		}
+		if err := permissions.RequireHeld(granted[grant.WorkspaceID], access.held); err != nil {
+			return err
+		}
+	}
 	return nil
+}
+
+// invitationGrantActions checks one workspace's part of a package and returns every action it hands out: its role's
+// set plus its allow overrides.
+func invitationGrantActions(ctx context.Context, q *sqlcgen.Queries, grant *tenancy.InvitationGrant) (permissions.Set, error) {
+	if _, err := q.GetWorkspaceForInvitationGrant(ctx, grant.WorkspaceID); err != nil {
+		return nil, fmt.Errorf("%w: workspace is unavailable", apperrs.ErrInvalid)
+	}
+	role, err := q.GetRoleForInvitationGrant(ctx, sqlcgen.GetRoleForInvitationGrantParams{ID: grant.RoleID, WorkspaceID: grant.WorkspaceID})
+	if err != nil {
+		return nil, fmt.Errorf("%w: role is unavailable", apperrs.ErrInvalid)
+	}
+	if role.IsOwnerRole != 0 {
+		return nil, fmt.Errorf("%w: Owner cannot be granted by invitation", apperrs.ErrInvalid)
+	}
+	if err := validateInvitationSets(grant.Allow, grant.Deny); err != nil {
+		return nil, err
+	}
+	rolePermissions, err := parseSet(role.Permissions)
+	if err != nil {
+		return nil, fmt.Errorf("decode role permissions: %w", err)
+	}
+	return permissions.SetOf(append(rolePermissions, grant.Allow...)...), nil
 }
 
 func validateInvitationSets(allow, deny permissions.Set) error {
@@ -457,44 +486,56 @@ func validateInvitationSets(allow, deny permissions.Set) error {
 
 func actorCanManage(ctx context.Context, q *sqlcgen.Queries, actorID string, grants []*tenancy.InvitationGrant) (bool, error) {
 	for _, grant := range grants {
-		row, err := q.GetInvitationCreatorWorkspaceAccess(ctx, sqlcgen.GetInvitationCreatorWorkspaceAccessParams{WorkspaceID: grant.WorkspaceID, UserID: actorID})
-		if errors.Is(err, sql.ErrNoRows) {
-			return false, nil
-		}
+		access, err := creatorAccess(ctx, q, actorID, grant.WorkspaceID)
 		if err != nil {
-			return false, fmt.Errorf("check workspace authority: %w", err)
+			return false, err
 		}
-		if row.IsOwnerRole != 0 {
-			continue
-		}
-		rolePermissions, err := parseSet(row.Permissions)
-		if err != nil {
-			return false, fmt.Errorf("decode role permissions: %w", err)
-		}
-		allowed := rolePermissions.Has(permissions.MembersWrite)
-		denied := false
-		if row.Deny.Valid {
-			deny, err := parseSet(row.Deny.String)
-			if err != nil {
-				return false, fmt.Errorf("decode workspace deny: %w", err)
-			}
-			if deny.Has(permissions.MembersWrite) {
-				allowed = false
-				denied = true
-			}
-		}
-		if !denied && row.Allow.Valid {
-			allow, err := parseSet(row.Allow.String)
-			if err != nil {
-				return false, fmt.Errorf("decode workspace allow: %w", err)
-			}
-			allowed = allowed || allow.Has(permissions.MembersWrite)
-		}
-		if !allowed {
+		if !access.member || (!access.owner && !access.held.Has(permissions.MembersWrite)) {
 			return false, nil
 		}
 	}
 	return true, nil
+}
+
+// workspaceAccess is what someone holds in one workspace: membership, the Owner bypass, and their grid there.
+type workspaceAccess struct {
+	member bool
+	owner  bool
+	held   permissions.Set
+}
+
+// creatorAccess resolves actorID's grid in workspaceID as the access domain does: the role's set, then the
+// workspace-wide override, deny beating allow.
+func creatorAccess(ctx context.Context, q *sqlcgen.Queries, actorID, workspaceID string) (workspaceAccess, error) {
+	row, err := q.GetInvitationCreatorWorkspaceAccess(ctx, sqlcgen.GetInvitationCreatorWorkspaceAccessParams{WorkspaceID: workspaceID, UserID: actorID})
+	if errors.Is(err, sql.ErrNoRows) {
+		return workspaceAccess{}, nil
+	}
+	if err != nil {
+		return workspaceAccess{}, fmt.Errorf("check workspace authority: %w", err)
+	}
+	if row.IsOwnerRole != 0 {
+		return workspaceAccess{member: true, owner: true}, nil
+	}
+	held, err := parseSet(row.Permissions)
+	if err != nil {
+		return workspaceAccess{}, fmt.Errorf("decode role permissions: %w", err)
+	}
+	if row.Allow.Valid {
+		allow, err := parseSet(row.Allow.String)
+		if err != nil {
+			return workspaceAccess{}, fmt.Errorf("decode workspace allow: %w", err)
+		}
+		held = permissions.SetOf(append(held, allow...)...)
+	}
+	if row.Deny.Valid {
+		deny, err := parseSet(row.Deny.String)
+		if err != nil {
+			return workspaceAccess{}, fmt.Errorf("decode workspace deny: %w", err)
+		}
+		held = held.Except(deny)
+	}
+	return workspaceAccess{member: true, held: held}, nil
 }
 
 func readInvitation(ctx context.Context, q *sqlcgen.Queries, row sqlcgen.Invitation) (*tenancy.Invitation, error) {

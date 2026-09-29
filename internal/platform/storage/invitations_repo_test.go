@@ -25,7 +25,7 @@ func seedInvitationWorkspace(t *testing.T, s *Store, workspaceID, name, roleID s
 	require.NoError(t, s.Workspaces.Create(t.Context(), newTestWorkspace(workspaceID, name)))
 	_, _, err := s.Users.UpsertUser(t.Context(), newTestUser(actorID, actorID, actorID))
 	require.NoError(t, err)
-	role := &roles.Role{ID: roleID, WorkspaceID: workspaceID, Name: "Editors", IsOwnerRole: owner, Permissions: permissions.SetOf(permissions.MembersWrite), CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC()}
+	role := &roles.Role{ID: roleID, WorkspaceID: workspaceID, Name: "Editors", IsOwnerRole: owner, Permissions: permissions.SetOf(permissions.MembersWrite, permissions.DocsRead), CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC()}
 	require.NoError(t, s.Roles.Create(t.Context(), role))
 	require.NoError(t, s.WorkspaceMembers.AddMember(t.Context(), &tenancy.Member{UserID: actorID, WorkspaceID: workspaceID, RoleID: roleID, CreatedAt: time.Now().UTC()}))
 }

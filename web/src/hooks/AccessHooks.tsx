@@ -1,9 +1,8 @@
 import { type SettingsSection, visibleSettingsSections } from "@/components/settings/SettingsNav";
 import { useFetchMe } from "@/hooks/AuthHooks";
-import { useFetchTeam } from "@/hooks/TeamHooks";
 import { useFetchMyRole } from "@/hooks/WorkspaceHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import { AREA_PERMISSION, type Area, type RouteArea } from "@/models/Access";
+import { AREA_PERMISSION, INSTANCE_SECTION_PERMISSION, type Area, type InstanceSection, type RouteArea } from "@/models/Access";
 import { hasPermission } from "@/models/Permission";
 
 // Undefined until permissions first arrive; isFetched, since a failed read refetches as pending and must not blink.
@@ -14,26 +13,32 @@ export const useAreaAccess = (): ((area: Area) => boolean) | undefined => {
   return (area) => hasPermission(data?.permissions, AREA_PERMISSION[area]);
 };
 
+// Whether the viewer holds value in any workspace, which is what the server checks an instance-level action against.
+export const useHasInstancePermission = (value: string): boolean => {
+  const { data: me } = useFetchMe();
+  return hasPermission(me?.instance_permissions, value);
+};
+
 // The Configuration sections the viewer may open, in nav order; undefined until every gate behind them has answered.
 export const useVisibleSettingsSections = (): SettingsSection[] | undefined => {
   const selectedWorkspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const { data: me } = useFetchMe();
   const { data: role, isFetched: roleFetched } = useFetchMyRole(selectedWorkspaceId);
   const permissions = role?.permissions ?? [];
-  const isInstanceAdmin = me?.user?.can_create_workspace ?? false;
-  const canManageMembers = hasPermission(permissions, "members:write");
-  // Members may be managed in a workspace other than the selected one; the scoped Team read answers that.
-  const needsTeam = !!me && !isInstanceAdmin && !canManageMembers && roleFetched;
-  const { data: team, isFetched: teamFetched } = useFetchTeam(needsTeam);
+  const anywhere = me?.instance_permissions;
+  const instanceSections = (Object.keys(INSTANCE_SECTION_PERMISSION) as InstanceSection[]).filter((section) =>
+    hasPermission(anywhere, INSTANCE_SECTION_PERMISSION[section]),
+  );
 
-  if (!me || !roleFetched || (needsTeam && !teamFetched)) return undefined;
+  if (!me || !roleFetched) return undefined;
   return visibleSettingsSections({
-    isInstanceAdmin,
+    instanceSections,
+    teamIsInstanceWide: hasPermission(anywhere, "accounts:read"),
+    showTeam: hasPermission(anywhere, "accounts:read") || hasPermission(anywhere, "members:write"),
     showRoles: hasPermission(permissions, "roles:write"),
     showPlays: hasPermission(permissions, "plays:read"),
     showInterviewTemplate: hasPermission(permissions, "memories:read"),
     showMentionLayout: hasPermission(permissions, "workspaces:write"),
-    showTeam: canManageMembers || !!team,
   });
 };
 

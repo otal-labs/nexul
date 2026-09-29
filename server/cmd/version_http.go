@@ -69,7 +69,7 @@ func versionHandler(runnerSvc *runner.Service) http.HandlerFunc {
 }
 
 // instanceUpgradeGetHandler serves GET /api/instance/upgrade: the facts row plus whether an upgrade can start.
-// The use-case enforces instance administration, so a non-admin gets 403 here and over MCP alike.
+// The use-case enforces instance:read, so a caller without it gets 403 here and over MCP alike.
 func instanceUpgradeGetHandler(runnerSvc *runner.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("refresh") == "1" {

@@ -13,15 +13,12 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
-// OwnerGate gates the owner-only app-config write via can_create_workspace (CN3a, ADR 0017).
-type OwnerGate interface {
-	CanCreateWorkspace(ctx context.Context, userID string) (bool, error)
-}
-
 // Gate is the permission check connecting and reading connectors passes; a connector belongs to the instance, so a
 // caller needs the action in any workspace they belong to (ADR 0087).
 type Gate interface {
 	RequireAnywhere(ctx context.Context, action permissions.Action) error
+	// HoldsAnywhere answers the same check for a named user, for a use-case that is handed its caller.
+	HoldsAnywhere(ctx context.Context, userID string, action permissions.Action) (bool, error)
 }
 
 // SettingsReader is the consumer-side view of the instance settings this package needs (ADR 0017).
@@ -35,8 +32,6 @@ type Config struct {
 	Store CredentialsStore
 	// AppConfigStore persists each connector's app-level OAuth registration (CN3a); nil disables SetAppConfig.
 	AppConfigStore AppConfigStore
-	// Owner resolves owner-only writes; nil disables SetAppConfig.
-	Owner OwnerGate
 	// Gate checks connector reads and writes; nil lets only the server's own calls through.
 	Gate Gate
 	// Settings resolves the SPA's URL for the post-OAuth redirect; the provider's API host may not be browser-reachable.
@@ -51,7 +46,6 @@ type Config struct {
 type Service struct {
 	store          CredentialsStore
 	appConfigStore AppConfigStore
-	owner          OwnerGate
 	gate           Gate
 	settings       SettingsReader
 	registry       map[string]Connector
@@ -74,7 +68,6 @@ func NewService(cfg Config) *Service {
 	return &Service{
 		store:          cfg.Store,
 		appConfigStore: cfg.AppConfigStore,
-		owner:          cfg.Owner,
 		gate:           cfg.Gate,
 		settings:       cfg.Settings,
 		registry:       byID,
@@ -150,7 +143,7 @@ func (s *Service) AuthorizeURL(ctx context.Context, connectorID, state string) (
 	}
 	// Without this, the client renders a consent URL that 404s at the provider instead of telling the SPA what's missing.
 	if !c.OAuth.Configured() {
-		return "", fmt.Errorf("%w: %s app is not configured — an owner has to set up its app (client ID and secret) first", apperrs.ErrInvalid, c.Name)
+		return "", fmt.Errorf("%w: %s app is not configured — someone holding connectors:write has to set up its app (client ID and secret) first", apperrs.ErrInvalid, c.Name)
 	}
 	return c.OAuth.AuthorizeURL(state), nil
 }
@@ -307,28 +300,21 @@ func (s *Service) ManualCredentials(ctx context.Context, connectorID string) (ma
 	return cred.ManualFields, nil
 }
 
-// requireOwner enforces the instance-admin (can_create_workspace) bit on CN3a's app-config write.
-func (s *Service) requireOwner(ctx context.Context, userID string) error {
-	if userID == "" {
-		return apperrs.ErrUnauthorized
-	}
-	if s.owner == nil {
-		return fmt.Errorf("%w: owner gate is not configured", apperrs.ErrForbidden)
-	}
-	ok, err := s.owner.CanCreateWorkspace(ctx, userID)
-	if err != nil {
-		return fmt.Errorf("resolve owner: %w", err)
-	}
-	if !ok {
-		return fmt.Errorf("%w: owner role required", apperrs.ErrForbidden)
-	}
-	return nil
-}
-
-// SetAppConfig stores an app-level OAuth registration (CN3a), owner-only since it rotates an instance-wide credential.
+// SetAppConfig stores an app-level OAuth registration (CN3a); a person holding connectors:write sets it, since it
+// rotates an instance-wide credential.
 func (s *Service) SetAppConfig(ctx context.Context, userID, connectorID, clientID, clientSecret, baseURL, appSlug string) (AppConfigStatus, error) {
-	if err := s.requireOwner(ctx, userID); err != nil {
-		return AppConfigStatus{}, err
+	if userID == "" {
+		return AppConfigStatus{}, apperrs.ErrUnauthorized
+	}
+	if s.gate == nil {
+		return AppConfigStatus{}, fmt.Errorf("%w: no permission gate wired", apperrs.ErrForbidden)
+	}
+	held, err := s.gate.HoldsAnywhere(ctx, userID, permissions.ConnectorsWrite)
+	if err != nil {
+		return AppConfigStatus{}, fmt.Errorf("check %s: %w", permissions.ConnectorsWrite, err)
+	}
+	if !held {
+		return AppConfigStatus{}, fmt.Errorf("%w: %s required", apperrs.ErrForbidden, permissions.ConnectorsWrite)
 	}
 	if _, ok := s.registry[connectorID]; !ok {
 		return AppConfigStatus{}, fmt.Errorf("%w: unknown connector %q", apperrs.ErrNotFound, connectorID)

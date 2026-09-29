@@ -40,12 +40,13 @@ destructive. A tool's failure comes back as an error result the agent can
 read and act on, with the fields it needs to fix the call. Deploys,
 rollbacks, and other work started through MCP are attributed to the token's
 user, with the source suffixed `:mcp`. Instance upgrades and failed events
-are for instance admins only, as they are in the web app.
+need `instance:read` to see and `instance:write` to act on, held in any
+workspace, as they do in the web app.
 
 `account_list` is the Team: every account with its status and, per workspace
 it belongs to, its role, its overrides, and whether you may change that
-access. An instance administrator sees everyone; anyone else sees only the
-workspaces where they manage members and the people in them. `account_update` changes the status, and through `workspaces` and
+access. A holder of `accounts:read` in any workspace sees everyone; anyone else
+sees only the workspaces where they manage members and the people in them. `account_update` changes the status, and through `workspaces` and
 `remove_workspace_ids` adds an account to a workspace, changes its role or
 overrides there, or takes it out; each workspace change needs `members:write`
 in that workspace.

@@ -24,34 +24,12 @@ func (q *Queries) AddAllowlistMember(ctx context.Context, arg AddAllowlistMember
 	return err
 }
 
-const countActiveAdmins = `-- name: CountActiveAdmins :one
-SELECT COUNT(*) FROM users WHERE can_create_workspace = 1 AND account_status = 'active'
-`
-
-func (q *Queries) CountActiveAdmins(ctx context.Context) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countActiveAdmins)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const countAllowlistMember = `-- name: CountAllowlistMember :one
 SELECT COUNT(*) FROM allowlist WHERE login = ?
 `
 
 func (q *Queries) CountAllowlistMember(ctx context.Context, login string) (int64, error) {
 	row := q.db.QueryRowContext(ctx, countAllowlistMember, login)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
-const countCanCreateWorkspace = `-- name: CountCanCreateWorkspace :one
-SELECT COUNT(*) FROM users WHERE can_create_workspace = 1
-`
-
-func (q *Queries) CountCanCreateWorkspace(ctx context.Context) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countCanCreateWorkspace)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -164,7 +142,7 @@ func (q *Queries) GetSettings(ctx context.Context) (InstanceSetting, error) {
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, login, name, avatar_url, first_login_done, can_create_workspace, display_name, avatar_override_url, account_status, created_at, updated_at FROM users WHERE id = ?
+SELECT id, login, name, avatar_url, first_login_done, display_name, avatar_override_url, account_status, created_at, updated_at FROM users WHERE id = ?
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id string) (User, error) {
@@ -176,7 +154,6 @@ func (q *Queries) GetUserByID(ctx context.Context, id string) (User, error) {
 		&i.Name,
 		&i.AvatarUrl,
 		&i.FirstLoginDone,
-		&i.CanCreateWorkspace,
 		&i.DisplayName,
 		&i.AvatarOverrideUrl,
 		&i.AccountStatus,
@@ -187,7 +164,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id string) (User, error) {
 }
 
 const getUserByIdentity = `-- name: GetUserByIdentity :one
-SELECT u.id, u.login, u.name, u.avatar_url, u.first_login_done, u.can_create_workspace, u.display_name, u.avatar_override_url, u.account_status, u.created_at, u.updated_at FROM users u JOIN user_identities i ON i.user_id = u.id
+SELECT u.id, u.login, u.name, u.avatar_url, u.first_login_done, u.display_name, u.avatar_override_url, u.account_status, u.created_at, u.updated_at FROM users u JOIN user_identities i ON i.user_id = u.id
 WHERE i.provider = ? AND i.provider_user_id = ?
 `
 
@@ -205,7 +182,6 @@ func (q *Queries) GetUserByIdentity(ctx context.Context, arg GetUserByIdentityPa
 		&i.Name,
 		&i.AvatarUrl,
 		&i.FirstLoginDone,
-		&i.CanCreateWorkspace,
 		&i.DisplayName,
 		&i.AvatarOverrideUrl,
 		&i.AccountStatus,
@@ -216,7 +192,7 @@ func (q *Queries) GetUserByIdentity(ctx context.Context, arg GetUserByIdentityPa
 }
 
 const getUserByLogin = `-- name: GetUserByLogin :one
-SELECT id, login, name, avatar_url, first_login_done, can_create_workspace, display_name, avatar_override_url, account_status, created_at, updated_at FROM users WHERE lower(login) = lower(?)
+SELECT id, login, name, avatar_url, first_login_done, display_name, avatar_override_url, account_status, created_at, updated_at FROM users WHERE lower(login) = lower(?)
 `
 
 func (q *Queries) GetUserByLogin(ctx context.Context, lower string) (User, error) {
@@ -228,7 +204,6 @@ func (q *Queries) GetUserByLogin(ctx context.Context, lower string) (User, error
 		&i.Name,
 		&i.AvatarUrl,
 		&i.FirstLoginDone,
-		&i.CanCreateWorkspace,
 		&i.DisplayName,
 		&i.AvatarOverrideUrl,
 		&i.AccountStatus,
@@ -267,8 +242,8 @@ func (q *Queries) InsertIdentity(ctx context.Context, arg InsertIdentityParams) 
 }
 
 const insertUser = `-- name: InsertUser :exec
-INSERT INTO users (id, login, name, avatar_url, can_create_workspace, first_login_done, created_at, updated_at)
-VALUES (?, ?, ?, ?, 0, 0, ?, ?)
+INSERT INTO users (id, login, name, avatar_url, first_login_done, created_at, updated_at)
+VALUES (?, ?, ?, ?, 0, ?, ?)
 `
 
 type InsertUserParams struct {
@@ -290,6 +265,36 @@ func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) error {
 		arg.UpdatedAt,
 	)
 	return err
+}
+
+const listActiveOwnerIDs = `-- name: ListActiveOwnerIDs :many
+SELECT DISTINCT m.user_id FROM workspace_members m
+JOIN roles r ON r.id = m.role_id AND r.is_owner_role = 1
+JOIN users u ON u.id = m.user_id AND u.account_status = 'active'
+ORDER BY m.user_id
+`
+
+func (q *Queries) ListActiveOwnerIDs(ctx context.Context) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listActiveOwnerIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var user_id string
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listAllowlist = `-- name: ListAllowlist :many
@@ -355,7 +360,7 @@ func (q *Queries) ListIdentitiesByUser(ctx context.Context, userID string) ([]Us
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, login, name, avatar_url, first_login_done, can_create_workspace, display_name, avatar_override_url, account_status, created_at, updated_at FROM users ORDER BY login
+SELECT id, login, name, avatar_url, first_login_done, display_name, avatar_override_url, account_status, created_at, updated_at FROM users ORDER BY login
 `
 
 func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
@@ -373,7 +378,6 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 			&i.Name,
 			&i.AvatarUrl,
 			&i.FirstLoginDone,
-			&i.CanCreateWorkspace,
 			&i.DisplayName,
 			&i.AvatarOverrideUrl,
 			&i.AccountStatus,
@@ -448,24 +452,6 @@ type SetAccountStatusParams struct {
 
 func (q *Queries) SetAccountStatus(ctx context.Context, arg SetAccountStatusParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, setAccountStatus, arg.AccountStatus, arg.UpdatedAt, arg.ID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
-}
-
-const setCanCreateWorkspace = `-- name: SetCanCreateWorkspace :execrows
-UPDATE users SET can_create_workspace = ?, updated_at = ? WHERE id = ?
-`
-
-type SetCanCreateWorkspaceParams struct {
-	CanCreateWorkspace int64
-	UpdatedAt          int64
-	ID                 string
-}
-
-func (q *Queries) SetCanCreateWorkspace(ctx context.Context, arg SetCanCreateWorkspaceParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, setCanCreateWorkspace, arg.CanCreateWorkspace, arg.UpdatedAt, arg.ID)
 	if err != nil {
 		return 0, err
 	}

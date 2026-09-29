@@ -5,7 +5,7 @@ import { api, errorMessage } from "@/api/client";
 import { getWorkspacePeopleKey } from "@/hooks/PeopleHooks";
 import { getTeamKey, type Team } from "@/models/Team";
 
-// The server scopes it: everything for an instance administrator, else only the workspaces the viewer manages.
+// The server scopes it: everything for an accounts:read holder, else only the workspaces the viewer manages.
 export const useFetchTeam = (enabled = true) =>
   useQuery({
     queryKey: [getTeamKey],

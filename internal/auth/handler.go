@@ -636,7 +636,7 @@ type providerOAuthRequest struct {
 	ClientSecret string `json:"client_secret"`
 }
 
-// updateProviderOAuth stores or clears sign-in credentials (owner only); like bootstrap, never echoes the raw secret.
+// updateProviderOAuth stores or clears sign-in credentials (instance:write); like bootstrap, never echoes the raw secret.
 func (h *Handler) updateProviderOAuth(w http.ResponseWriter, r *http.Request) {
 	var req providerOAuthRequest
 	if err := httpx.DecodeJSON(r, &req); err != nil {
@@ -961,21 +961,19 @@ func (h *Handler) listAccounts(w http.ResponseWriter, r *http.Request) {
 	for _, account := range accounts {
 		out = append(out, accountResponse{
 			ID: account.ID, Login: account.Login, Name: account.Name,
-			AvatarURL: account.AvatarURL, Status: account.AccountStatus,
-			CanCreateWorkspace: account.CanCreateWorkspace, CreatedAt: account.CreatedAt,
+			AvatarURL: account.AvatarURL, Status: account.AccountStatus, CreatedAt: account.CreatedAt,
 		})
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"accounts": out})
 }
 
 type accountResponse struct {
-	ID                 string        `json:"id"`
-	Login              string        `json:"login"`
-	Name               string        `json:"name"`
-	AvatarURL          string        `json:"avatar_url"`
-	Status             AccountStatus `json:"status"`
-	CanCreateWorkspace bool          `json:"can_create_workspace"`
-	CreatedAt          time.Time     `json:"created_at"`
+	ID        string        `json:"id"`
+	Login     string        `json:"login"`
+	Name      string        `json:"name"`
+	AvatarURL string        `json:"avatar_url"`
+	Status    AccountStatus `json:"status"`
+	CreatedAt time.Time     `json:"created_at"`
 }
 
 type updateAccountStatusRequest struct {

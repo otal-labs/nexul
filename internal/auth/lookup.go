@@ -10,11 +10,12 @@ import (
 	"strings"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 // LookupMembers works only through GitHub, since only it exposes a user-search API (ADR 0040).
 func (s *Service) LookupMembers(ctx context.Context, userID, q string) (matches []LoginMatch, err error) {
-	if err := s.requireCanCreateWorkspace(ctx, userID); err != nil {
+	if err := s.requireAnywhere(ctx, userID, permissions.AccountsRead); err != nil {
 		return nil, err
 	}
 	q = strings.TrimSpace(q)

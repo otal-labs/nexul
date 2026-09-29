@@ -6,22 +6,21 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { isSettingsSection, SettingsNav } from "@/components/settings/SettingsNav";
 import { SettingsPageContent } from "@/components/settings/SettingsPageContent";
-import { useVisibleSettingsSections } from "@/hooks/AccessHooks";
-import { useFetchMe, useFetchSettings } from "@/hooks/AuthHooks";
+import { useHasInstancePermission, useVisibleSettingsSections } from "@/hooks/AccessHooks";
+import { useFetchSettings } from "@/hooks/AuthHooks";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import { legacyConfigurationTarget } from "@/utils/SettingsRedirects";
 
 // Same section-per-view shape as ProjectSettingsPage: the :section path segment drives the card, SettingsNav lists sections.
 export const ConfigurationPage = () => {
   const { data: settings, isPending, error } = useFetchSettings();
-  const { data: me } = useFetchMe();
   // Same permission the roles REST endpoints require server-side.
   const canManageRoles = useHasPermission("roles:write");
   const canReadPlays = useHasPermission("plays:read");
   const canWritePlays = useHasPermission("plays:write");
   const canDeletePlays = useHasPermission("plays:delete");
   const canManageMentionLayout = useHasPermission("workspaces:write");
-  const isInstanceAdmin = me?.user?.can_create_workspace ?? false;
+  const teamIsInstanceWide = useHasInstancePermission("accounts:read");
   const sections = useVisibleSettingsSections() ?? [];
 
   const { section: rawSection } = useParams();
@@ -41,14 +40,13 @@ export const ConfigurationPage = () => {
         subtitle="What this workspace can contain and who holds keys, and how the whole instance connects."
       />
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
-        <SettingsNav active={section} sections={sections} isInstanceAdmin={isInstanceAdmin} />
+        <SettingsNav active={section} sections={sections} teamIsInstanceWide={teamIsInstanceWide} />
         <div className="min-w-0 flex-1 space-y-6">
           {isPending && <LoadingDisplay />}
           {error && <ErrorDisplay error={error} />}
           <SettingsPageContent
             section={section}
             settings={settings}
-            isInstanceAdmin={isInstanceAdmin}
             canManageRoles={canManageRoles}
             canReadPlays={canReadPlays}
             canWritePlays={canWritePlays}

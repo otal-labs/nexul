@@ -6,9 +6,9 @@ import (
 )
 
 func TestActorRoundtrip(t *testing.T) {
-	ctx := WithActor(context.Background(), Actor{ID: "u1", CanCreateWorkspace: true})
+	ctx := WithActor(context.Background(), Actor{ID: "u1"})
 	a, ok := ActorFromCtx(ctx)
-	if !ok || a.ID != "u1" || !a.CanCreateWorkspace {
+	if !ok || a.ID != "u1" {
 		t.Fatalf("got %+v %v", a, ok)
 	}
 }

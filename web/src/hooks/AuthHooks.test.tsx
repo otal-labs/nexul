@@ -34,7 +34,6 @@ const user = {
   login: "onik97",
   name: "Onik",
   avatar_url: "https://avatar/x",
-  can_create_workspace: false,
   first_login_done: false,
   created_at: "2026-08-12T12:00:00Z",
 };
@@ -43,6 +42,7 @@ const me: MeResponse = {
   user,
   needs_owner_wizard: false,
   needs_first_login_wizard: true,
+  instance_permissions: [],
 };
 
 const wrapper = ({ children }: { children: ReactNode }) => {

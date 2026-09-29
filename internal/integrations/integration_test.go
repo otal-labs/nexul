@@ -17,12 +17,13 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/inprocess"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/testutil"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
 )
 
 type ownerGate struct{}
 
-func (ownerGate) CanCreateWorkspace(ctx context.Context, userID string) (bool, error) {
+func (ownerGate) HoldsAnywhere(context.Context, string, permissions.Action) (bool, error) {
 	return true, nil
 }
 
@@ -34,7 +35,7 @@ func newSvc(store *storage.Store) *integrations.Service {
 		Deliveries: store.IntegrationDeliveries,
 		Schemas:    store.EventSchemas,
 		Audit:      store.Audit,
-		Owner:      ownerGate{},
+		Perms:      ownerGate{},
 		Now:        func() time.Time { return time.Now().UTC() },
 	})
 }

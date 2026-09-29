@@ -26,7 +26,6 @@ export interface TeamPerson {
   display_name?: string;
   avatar_url: string;
   status: AccountStatus;
-  can_create_workspace: boolean;
   created_at: string;
   // A live browser socket right now; last_seen_at is the latest session activity, to the hour, null once signed out everywhere.
   online: boolean;
@@ -50,6 +49,6 @@ export interface TeamWorkspace {
 export interface Team {
   people: TeamPerson[];
   workspaces: TeamWorkspace[];
-  // False for a viewer who manages members somewhere but doesn't administer the instance: no account status actions.
+  // Whether the viewer holds accounts:write in any workspace; the web reads the finer bits from /me instead.
   can_manage_accounts: boolean;
 }

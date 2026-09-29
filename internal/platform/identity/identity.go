@@ -6,8 +6,6 @@ import "context"
 // Actor is the identity performing a use-case call.
 type Actor struct {
 	ID string
-	// CanCreateWorkspace lets access checks short-circuit without a user lookup.
-	CanCreateWorkspace bool
 	// Automation is set for an automation-token request: domains record the automation, not its creator, as the actor.
 	Automation *AutomationRef
 }

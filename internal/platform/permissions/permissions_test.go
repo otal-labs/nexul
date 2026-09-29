@@ -10,12 +10,12 @@ import (
 
 func TestCatalog_GridShape(t *testing.T) {
 	catalog := Catalog()
-	require.Len(t, catalog, 70)
+	require.Len(t, catalog, 78)
 	assert.Equal(t, Info{Value: "docs:read", Label: "Read docs", Domain: "docs", Action: "read"}, catalog[0])
 	assert.Equal(t, Info{Value: "docs:write", Label: "Create and update docs", Domain: "docs", Action: "write"}, catalog[1])
 	assert.Equal(t, Info{Value: "docs:delete", Label: "Delete docs", Domain: "docs", Action: "delete"}, catalog[2])
 	assert.Equal(t, Info{Value: "docs:thread", Label: "See doc threads", Domain: "docs", Action: "thread"}, catalog[3])
-	assert.Equal(t, Action("audit:read"), catalog[len(catalog)-1].Value)
+	assert.Equal(t, Action("instance:write"), catalog[len(catalog)-1].Value)
 
 	seen := map[Action]bool{}
 	domains := map[string]bool{}
@@ -25,7 +25,7 @@ func TestCatalog_GridShape(t *testing.T) {
 		domains[info.Domain] = true
 		assert.Equal(t, Action(info.Domain+":"+info.Action), info.Value)
 	}
-	assert.Len(t, domains, 28)
+	assert.Len(t, domains, 30)
 	assert.Equal(t, AllActions(), func() []Action {
 		out := make([]Action, 0, len(catalog))
 		for _, info := range catalog {
@@ -58,6 +58,7 @@ func TestCatalog_DomainDeclaredVerbs(t *testing.T) {
 		{MemoriesClone, "Clone memories to another project or workspace", "memories", "clone"},
 		{DocsThread, "See doc threads", "docs", "thread"},
 		{RolesClone, "Clone roles to another workspace", "roles", "clone"},
+		{WorkspacesCreate, "Create workspaces", "workspaces", "create"},
 	}
 	for _, tt := range tests {
 		t.Run(string(tt.value), func(t *testing.T) {

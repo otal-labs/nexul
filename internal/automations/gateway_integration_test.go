@@ -24,10 +24,6 @@ func (g allowAutomationPerm) HasPermission(_ context.Context, userID string, act
 	return userID == g.userID
 }
 
-type alwaysOwner struct{}
-
-func (alwaysOwner) CanCreateWorkspace(context.Context, string) (bool, error) { return true, nil }
-
 func fellThroughUserAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "no user session", http.StatusUnauthorized)
@@ -43,7 +39,7 @@ func fellThroughUserAuth(next http.Handler) http.Handler {
 func TestRequireAutomation_EndToEndScopedTicketsRead(t *testing.T) {
 	store := testutil.NewStore(t)
 	svc := automations.NewService(store.Automations, allowAutomationPerm{userID: "creator-1"})
-	svc.SetGateway(integrations.ScopeAllows, integrations.ResolveScopes, alwaysOwner{})
+	svc.SetGateway(integrations.ScopeAllows, integrations.ResolveScopes)
 
 	_, raw, err := svc.Create(context.Background(), "creator-1", "ticket-reader", []string{"tickets:read"})
 	require.NoError(t, err)
@@ -82,7 +78,7 @@ func TestRequireAutomation_EndToEndScopedTicketsRead(t *testing.T) {
 func TestCreate_ScopesUseTheIntegrationsVocabulary(t *testing.T) {
 	store := testutil.NewStore(t)
 	svc := automations.NewService(store.Automations, allowAutomationPerm{userID: "creator-1"})
-	svc.SetGateway(integrations.ScopeAllows, integrations.ResolveScopes, alwaysOwner{})
+	svc.SetGateway(integrations.ScopeAllows, integrations.ResolveScopes)
 
 	t.Run("a typo'd scope is rejected instead of minting a token the gate refuses everywhere", func(t *testing.T) {
 		_, _, err := svc.Create(context.Background(), "creator-1", "typo", []string{"ticket:write"})

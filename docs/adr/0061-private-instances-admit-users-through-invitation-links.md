@@ -25,7 +25,8 @@ middleware reloads the User on each session or personal-token request, so
 disabling or removing an Account takes effect immediately (the session itself
 is a stored row since ADR 0083).
 Removal keeps authored content attributed while removing access. The final
-active instance administrator cannot be disabled or removed.
+active instance administrator cannot be disabled or removed; since ADR 0088 the
+rule protects the last active Owner.
 
 This replaces the need to discover a recipient's GitHub username or verified
 email before inviting them. The cost is that an Invitation URL is itself a

@@ -23,19 +23,18 @@ const baseUser = {
   login: "onik97",
   name: "Onik",
   avatar_url: "",
-  can_create_workspace: false,
   first_login_done: true,
   created_at: "2026-08-12T12:00:00Z",
 };
 
-const baseMe = { user: baseUser, needs_owner_wizard: false, needs_first_login_wizard: false };
+const baseMe = { user: baseUser, needs_owner_wizard: false, needs_first_login_wizard: false, instance_permissions: [] as string[] };
 
 const workspaces = [
   { id: "ws-1", name: "Shopkeepers", created_at: "", updated_at: "" },
   { id: "ws-2", name: "Arena's Hub", created_at: "", updated_at: "" },
 ];
 
-// GET /api/workspaces feeds the switcher's list; GET /api/auth/me carries the can_create_workspace flag (useFetchMe).
+// GET /api/workspaces feeds the switcher's list; GET /api/auth/me carries workspaces:create in instance_permissions (useFetchMe).
 const mockApi = (
   wsList: unknown,
   me: typeof baseMe = baseMe,
@@ -113,7 +112,7 @@ describe("WorkspaceSwitcher", () => {
     expect(useWorkspaceStore.getState().selectedWorkspaceId).toBe("ws-2");
   });
 
-  it("hides the New Workspace row when can_create_workspace is false", async () => {
+  it("hides the New Workspace row without workspaces:create", async () => {
     mockApi(workspaces);
     const user = userEvent.setup();
     renderSwitcher();
@@ -122,8 +121,8 @@ describe("WorkspaceSwitcher", () => {
     expect(screen.queryByText("New Workspace")).not.toBeInTheDocument();
   });
 
-  it("shows the New Workspace row when can_create_workspace is true, and creates + switches on submit", async () => {
-    mockApi(workspaces, { ...baseMe, user: { ...baseUser, can_create_workspace: true } });
+  it("shows the New Workspace row with workspaces:create, and creates + switches on submit", async () => {
+    mockApi(workspaces, { ...baseMe, instance_permissions: ["workspaces:create"] });
     vi.mocked(api.post).mockResolvedValue({
       data: { id: "ws-3", name: "New Co", created_at: "", updated_at: "" },
     });

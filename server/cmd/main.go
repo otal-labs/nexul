@@ -198,7 +198,7 @@ func withIdentity(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// A setup pass acts for the server during first run: auth confines it to the setup routes, and nobody is a member yet.
 		if u := auth.UserFromCtx(r.Context()); u != nil && u.ID != auth.SetupUserID {
-			r = r.WithContext(identity.WithActor(r.Context(), identity.Actor{ID: u.ID, CanCreateWorkspace: u.CanCreateWorkspace}))
+			r = r.WithContext(identity.WithActor(r.Context(), identity.Actor{ID: u.ID}))
 		}
 		next.ServeHTTP(w, r)
 	})

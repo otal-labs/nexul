@@ -16,6 +16,7 @@ import (
 type Service struct {
 	repo    Repo
 	members MemberGate
+	perms   PermissionGate
 	now     func() time.Time
 }
 
@@ -27,6 +28,11 @@ func NewService(repo Repo, members MemberGate) *Service {
 // SetMemberGate wires the tenancy-domain member lookup after both services exist (see NewService).
 func (s *Service) SetMemberGate(g MemberGate) {
 	s.members = g
+}
+
+// SetPermissionGate wires the access domain's per-workspace grid; unset, a role can carry no permission at all.
+func (s *Service) SetPermissionGate(g PermissionGate) {
+	s.perms = g
 }
 
 // CreateOwnerRole creates workspaceID's protected Owner role; it bypasses every check via IsOwnerRole, not its set.
@@ -61,6 +67,9 @@ func (s *Service) Create(ctx context.Context, workspaceID, actorUserID, name str
 		return nil, fmt.Errorf("%w: role name is required", apperrs.ErrInvalid)
 	}
 	if err := s.requireManageRoles(ctx, workspaceID, actorUserID); err != nil {
+		return nil, err
+	}
+	if err := s.requireHolds(ctx, workspaceID, actorUserID, perms); err != nil {
 		return nil, err
 	}
 	now := s.now().UTC()
@@ -146,6 +155,10 @@ func (s *Service) Update(ctx context.Context, workspaceID, roleID, actorUserID, 
 	if err := s.requireManageRoles(ctx, workspaceID, actorUserID); err != nil {
 		return nil, err
 	}
+	// Only what the edit adds is a grant; a permission the role already carried may stay without the editor holding it.
+	if err := s.requireHolds(ctx, workspaceID, actorUserID, perms.Except(r.Permissions)); err != nil {
+		return nil, err
+	}
 	r.Name = name
 	r.Permissions = perms
 	r.UpdatedAt = s.now().UTC()
@@ -196,6 +209,9 @@ func (s *Service) Clone(ctx context.Context, sourceWorkspaceID, roleID, targetWo
 		if errors.Is(err, apperrs.ErrNotFound) {
 			return nil, fmt.Errorf("%w: you aren't a member of the target workspace", apperrs.ErrForbidden)
 		}
+		return nil, err
+	}
+	if err := s.requireHolds(ctx, targetWorkspaceID, actorUserID, source.Permissions); err != nil {
 		return nil, err
 	}
 	taken, err := s.repo.List(ctx, targetWorkspaceID)
@@ -265,6 +281,15 @@ func (s *Service) getInWorkspace(ctx context.Context, workspaceID, roleID string
 		return nil, fmt.Errorf("get role %s: %w", roleID, apperrs.ErrNotFound)
 	}
 	return r, nil
+}
+
+// requireHolds refuses a role carrying an action actorUserID does not hold in workspaceID (ADR 0088).
+func (s *Service) requireHolds(ctx context.Context, workspaceID, actorUserID string, grant permissions.Set) error {
+	var held permissions.Set
+	if s.perms != nil {
+		held = permissions.SetOfStrings(s.perms.WorkspacePermissions(ctx, actorUserID, workspaceID))
+	}
+	return permissions.RequireHeld(grant, held)
 }
 
 // requireManageRoles checks the Owner bypass, then roles:write, gating Create/Update/Delete on custom roles.

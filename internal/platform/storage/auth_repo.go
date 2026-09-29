@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/otal-labs/nexul/internal/auth"
@@ -185,27 +186,12 @@ func (r *UsersRepo) GetUserByProvider(ctx context.Context, provider auth.Provide
 	return r.getByProvider(ctx, r.q, provider, providerUserID)
 }
 
-func (r *UsersRepo) CanCreateWorkspaceExists(ctx context.Context) (bool, error) {
-	n, err := r.q.CountCanCreateWorkspace(ctx)
+func (r *UsersRepo) ListActiveOwnerIDs(ctx context.Context) ([]string, error) {
+	ids, err := r.q.ListActiveOwnerIDs(ctx)
 	if err != nil {
-		return false, fmt.Errorf("count instance admins: %w", err)
+		return nil, fmt.Errorf("list active owners: %w", err)
 	}
-	return n > 0, nil
-}
-
-func (r *UsersRepo) SetCanCreateWorkspace(ctx context.Context, id string, can bool) error {
-	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		n, err := r.q.WithTx(tx).SetCanCreateWorkspace(ctx, sqlcgen.SetCanCreateWorkspaceParams{
-			CanCreateWorkspace: int64(boolInt(can)), UpdatedAt: time.Now().Unix(), ID: id,
-		})
-		if err != nil {
-			return fmt.Errorf("set can_create_workspace %s: %w", id, err)
-		}
-		if n == 0 {
-			return fmt.Errorf("set can_create_workspace %s: %w", id, apperrs.ErrNotFound)
-		}
-		return nil
-	})
+	return ids, nil
 }
 
 func (r *UsersRepo) SetAccountStatus(ctx context.Context, id string, status auth.AccountStatus, events ...eventbus.OutboxEvent) error {
@@ -218,7 +204,7 @@ func (r *UsersRepo) SetAccountStatus(ctx context.Context, id string, status auth
 		if err != nil {
 			return fmt.Errorf("get account %s: %w", id, notFoundIfNoRows(err))
 		}
-		if err := protectLastActiveAdmin(ctx, q, user, status); err != nil {
+		if err := protectLastActiveOwner(ctx, q, user, status); err != nil {
 			return err
 		}
 		now := time.Now().Unix()
@@ -244,16 +230,18 @@ func validAccountStatus(status auth.AccountStatus) bool {
 	return status == auth.AccountActive || status == auth.AccountDisabled || status == auth.AccountRemoved
 }
 
-func protectLastActiveAdmin(ctx context.Context, q *sqlcgen.Queries, user sqlcgen.User, status auth.AccountStatus) error {
-	if user.CanCreateWorkspace == 0 || user.AccountStatus != string(auth.AccountActive) || status == auth.AccountActive {
+// protectLastActiveOwner keeps one active Owner on the instance: an Owner holds every permission, so losing the
+// last one would leave nobody able to reactivate anyone.
+func protectLastActiveOwner(ctx context.Context, q *sqlcgen.Queries, user sqlcgen.User, status auth.AccountStatus) error {
+	if user.AccountStatus != string(auth.AccountActive) || status == auth.AccountActive {
 		return nil
 	}
-	activeAdmins, err := q.CountActiveAdmins(ctx)
+	owners, err := q.ListActiveOwnerIDs(ctx)
 	if err != nil {
-		return fmt.Errorf("count active instance admins: %w", err)
+		return fmt.Errorf("list active owners: %w", err)
 	}
-	if activeAdmins <= 1 {
-		return fmt.Errorf("%w: cannot change the last active instance admin", apperrs.ErrConflict)
+	if slices.Contains(owners, user.ID) && len(owners) <= 1 {
+		return fmt.Errorf("%w: cannot disable or remove the last active Owner", apperrs.ErrConflict)
 	}
 	return nil
 }
@@ -277,9 +265,6 @@ func removeAccountAccess(ctx context.Context, q *sqlcgen.Queries, id string, now
 			return fmt.Errorf("remove account %s %s: %w", id, step.name, err)
 		}
 	}
-	if _, err := q.SetCanCreateWorkspace(ctx, sqlcgen.SetCanCreateWorkspaceParams{CanCreateWorkspace: 0, UpdatedAt: now, ID: id}); err != nil {
-		return fmt.Errorf("clear account admin %s: %w", id, err)
-	}
 	return nil
 }
 
@@ -296,14 +281,6 @@ func (r *UsersRepo) CountUsers(ctx context.Context) (int, error) {
 	n, err := r.q.CountUsers(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("count users: %w", err)
-	}
-	return int(n), nil
-}
-
-func (r *UsersRepo) CountActiveAdmins(ctx context.Context) (int, error) {
-	n, err := r.q.CountActiveAdmins(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("count active instance admins: %w", err)
 	}
 	return int(n), nil
 }
@@ -374,15 +351,14 @@ func userRow(row sqlcgen.User, err error) (*auth.User, error) {
 
 func toUser(row sqlcgen.User) *auth.User {
 	u := &auth.User{
-		ID:                 row.ID,
-		Login:              row.Login,
-		Name:               row.Name,
-		AvatarURL:          row.AvatarUrl,
-		CanCreateWorkspace: row.CanCreateWorkspace != 0,
-		FirstLoginDone:     row.FirstLoginDone != 0,
-		AccountStatus:      auth.AccountStatus(row.AccountStatus),
-		CreatedAt:          time.Unix(row.CreatedAt, 0).UTC(),
-		UpdatedAt:          time.Unix(row.UpdatedAt, 0).UTC(),
+		ID:             row.ID,
+		Login:          row.Login,
+		Name:           row.Name,
+		AvatarURL:      row.AvatarUrl,
+		FirstLoginDone: row.FirstLoginDone != 0,
+		AccountStatus:  auth.AccountStatus(row.AccountStatus),
+		CreatedAt:      time.Unix(row.CreatedAt, 0).UTC(),
+		UpdatedAt:      time.Unix(row.UpdatedAt, 0).UTC(),
 	}
 	if row.DisplayName.Valid {
 		u.DisplayName = &row.DisplayName.String

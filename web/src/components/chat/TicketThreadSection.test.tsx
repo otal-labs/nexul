@@ -12,7 +12,7 @@ vi.mock("@/api/client", () => ({
 }));
 
 const meResponse = {
-  user: { id: "u1", provider: "github", provider_user_id: "1", login: "onik97", name: "Onik", avatar_url: "", can_create_workspace: true, first_login_done: true, created_at: "" },
+  user: { id: "u1", provider: "github", provider_user_id: "1", login: "onik97", name: "Onik", avatar_url: "", first_login_done: true, created_at: "" },
   needs_owner_wizard: false,
   needs_first_login_wizard: false,
 };

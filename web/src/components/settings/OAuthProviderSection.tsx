@@ -11,7 +11,7 @@ interface OAuthProviderSectionProps {
   settings: InstanceSettings;
 }
 
-// Optional sign-in providers (ADR 0040) for non-GitHub users; owner-only, secret is write-only.
+// Optional sign-in providers (ADR 0040) for non-GitHub users; instance:write to change, secret is write-only.
 export const OAuthProviderSection = ({ provider, settings }: OAuthProviderSectionProps) => {
   const copy = oauthProviderCopy[provider];
   const enabled = settings[`${provider}_oauth_configured`] ?? false;

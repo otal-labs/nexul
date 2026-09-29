@@ -8,6 +8,7 @@ import { InvitationsFeed } from "@/components/member/InvitationsFeed";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { TeamFeed } from "@/components/team/TeamFeed";
 import { TeamPersonDialog } from "@/components/team/TeamPersonDialog";
+import { useHasInstancePermission } from "@/hooks/AccessHooks";
 import { useFetchTeam } from "@/hooks/TeamHooks";
 
 // The open person lives in ?person= so a detail is linkable and survives a refresh.
@@ -15,7 +16,8 @@ export const TeamSection = () => {
   const { data: team, isPending, error } = useFetchTeam();
   const [params, setParams] = useSearchParams();
   const personId = params.get("person");
-  const scope = team && !team.can_manage_accounts ? "The people in the workspaces you manage" : "Everyone registered on this instance";
+  const everyone = useHasInstancePermission("accounts:read");
+  const scope = everyone ? "Everyone registered on this instance" : "The people in the workspaces you manage";
   const description = `${scope} and what they can reach in each workspace. New people join through invitation links.`;
 
   const open = (id: string | null) =>

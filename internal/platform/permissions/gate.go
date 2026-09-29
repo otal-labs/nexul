@@ -45,3 +45,18 @@ func Filter[T any](items []T, scope func(T) string, check func(scope string) err
 	}
 	return out, nil
 }
+
+// RequireHeld refuses a grant carrying an action its giver does not hold, so nobody hands out more than they have
+// (ADR 0088). held is the giver's own grid in the workspace the grant lands in; an Owner's is every action.
+func RequireHeld(grant, held Set) error {
+	var missing Set
+	for _, action := range grant {
+		if !held.Has(action) {
+			missing = append(missing, action)
+		}
+	}
+	if len(missing) == 0 {
+		return nil
+	}
+	return fmt.Errorf("%w: you can only grant permissions you hold yourself; you lack %s", apperrs.ErrForbidden, missing)
+}

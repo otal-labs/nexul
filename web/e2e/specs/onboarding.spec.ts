@@ -6,7 +6,7 @@ import { clearDefaultWorkspaceOwnership, restoreDefaultWorkspaceOwnership, updat
 
 // The wizards restore their flags on completion; afterAll is a safety net so a mid-test failure can't leave the seeded user stranded in a wizard, or leave the default workspace without an Owner role for every other spec file that assumes one exists.
 afterAll(() => {
-  updateUser({ can_create_workspace: 1, first_login_done: 1 });
+  updateUser({ first_login_done: 1 });
   restoreDefaultWorkspaceOwnership();
   return closeBrowser();
 });
@@ -23,7 +23,7 @@ describe("onboarding wizards", () => {
   });
 
   it("owner wizard: first user sets up their workspace and connects tools", async () => {
-    updateUser({ can_create_workspace: 0, first_login_done: 1 });
+    updateUser({ first_login_done: 1 });
     // global.ts's seed pre-creates the default workspace's Owner role/membership for every other spec's benefit, but tenancy.BindDefaultWorkspaceOwner always INSERTs a fresh one (idx_roles_owner_singleton), so this genuinely-fresh-owner flow 409s unless that pre-seeded row is cleared first.
     clearDefaultWorkspaceOwnership();
     const page = await authedPage("/");

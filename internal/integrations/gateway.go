@@ -46,7 +46,7 @@ func (s *Service) RequireIntegration(userAuth func(http.Handler) http.Handler, n
 			return
 		}
 		ctx := context.WithValue(r.Context(), integrationCtxKey, &IntegrationAuth{Install: install, Token: integrationToken})
-		ctx = identity.WithActor(ctx, identity.Actor{ID: install.CreatedBy, CanCreateWorkspace: true})
+		ctx = identity.WithActor(ctx, identity.Actor{ID: install.CreatedBy})
 		r = r.WithContext(ctx)
 		next.ServeHTTP(w, r)
 	})
@@ -64,10 +64,11 @@ var pathAliases = map[string]string{
 	"automation-secrets": "automations",
 }
 
-// exactDenylist blocks a path regardless of scopes; a runner enrollment code joins a machine to the fleet,
-// which a scoped token must never mint no matter what it's been granted.
+// exactDenylist blocks a path regardless of scopes: a runner enrollment code joins a machine to the fleet and an
+// upgrade restarts every service, which a scoped token must never do no matter what it's been granted.
 var exactDenylist = map[string]bool{
 	http.MethodPost + " /api/runners/enrollments": true,
+	http.MethodPost + " /api/instance/upgrade":    true,
 }
 
 // requiredAction maps an HTTP method to the action it needs: GET/HEAD read, DELETE delete, everything else write.

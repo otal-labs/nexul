@@ -23,14 +23,13 @@ type accountDeleteIn struct {
 
 // accountResult is an account without its sign-in identities and onboarding bookkeeping.
 type accountResult struct {
-	ID                 string        `json:"id"`
-	Login              string        `json:"login"`
-	Name               string        `json:"name"`
-	DisplayName        string        `json:"display_name,omitempty"`
-	AvatarURL          string        `json:"avatar_url,omitempty"`
-	Status             AccountStatus `json:"status"`
-	CanCreateWorkspace bool          `json:"can_create_workspace"`
-	CreatedAt          time.Time     `json:"created_at"`
+	ID          string        `json:"id"`
+	Login       string        `json:"login"`
+	Name        string        `json:"name"`
+	DisplayName string        `json:"display_name,omitempty"`
+	AvatarURL   string        `json:"avatar_url,omitempty"`
+	Status      AccountStatus `json:"status"`
+	CreatedAt   time.Time     `json:"created_at"`
 }
 
 func toAccountResult(u *User) accountResult {
@@ -40,7 +39,7 @@ func toAccountResult(u *User) accountResult {
 	}
 	r := accountResult{
 		ID: u.ID, Login: u.Login, Name: u.Name, AvatarURL: u.AvatarURL,
-		Status: status, CanCreateWorkspace: u.CanCreateWorkspace, CreatedAt: u.CreatedAt,
+		Status: status, CreatedAt: u.CreatedAt,
 	}
 	if u.DisplayName != nil {
 		r.DisplayName = *u.DisplayName
@@ -51,10 +50,10 @@ func toAccountResult(u *User) accountResult {
 func accountGetTool(s *Service) mcptool.Tool {
 	return mcptool.New("account_get", "Get account",
 		"Returns one account: without id, the account this MCP connection acts as, which also confirms Nexul is "+
-			"reachable; call it first in a session. With another account's id it needs an instance administrator, "+
-			"the same as account_list, which lists every account with its workspace access. Returns the login, name, the display name the "+
-			"person chose if any, status (active, disabled, or removed), and whether the account administers "+
-			"the instance.",
+			"reachable; call it first in a session. With another account's id it needs accounts:read in any "+
+			"workspace, the same as seeing everyone in account_list, which lists every account with its workspace "+
+			"access. Returns the login, name, the display name the person chose if any, and status (active, "+
+			"disabled, or removed).",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in accountGetIn) (any, error) {
 			u, err := s.GetAccount(ctx, actorID(ctx), in.ID)
@@ -69,7 +68,8 @@ func accountDeleteTool(s *Service) mcptool.Tool {
 	return mcptool.New("account_delete", "Remove account",
 		"Removes an account: it can no longer sign in, and its credentials and workspace memberships are deleted, "+
 			"while everything it authored stays. The account remains listed as removed; account_update with status "+
-			"active restores it, without the deleted access. Instance administrators only; returns {id, deleted: true}.",
+			"active restores it, without the deleted access. Needs accounts:delete in any workspace, and the last "+
+			"active Owner cannot be removed; returns {id, deleted: true}.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in accountDeleteIn) (any, error) {
 			if err := s.RemoveAccount(ctx, actorID(ctx), in.ID); err != nil {

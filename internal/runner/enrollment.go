@@ -11,8 +11,8 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/hostcred"
-	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 const (
@@ -37,9 +37,9 @@ func (s *Service) WithEnrollDir(dir string) *Service {
 }
 
 // CreateEnrollment mints a one-hour code for a runner named name, optionally bound to machine, and renders the
-// install one-liners that carry it. Only an instance admin may enroll a runner.
+// install one-liners that carry it. It needs runners:write.
 func (s *Service) CreateEnrollment(ctx context.Context, name, machine string) (Enrollment, error) {
-	if err := identity.RequireInstanceAdmin(ctx, s.admin); err != nil {
+	if err := s.require(ctx, permissions.RunnersWrite); err != nil {
 		return Enrollment{}, err
 	}
 	instanceURL, err := s.instanceURL(ctx)
@@ -147,9 +147,9 @@ func (s *Service) machineFor(ctx context.Context, name, stackRoot string, now ti
 }
 
 // RemoveRunner revokes a runner's credential, deletes its record and, when it is connected, tells it to
-// uninstall itself. Only an instance admin may remove a runner.
+// uninstall itself. It needs runners:delete.
 func (s *Service) RemoveRunner(ctx context.Context, id string) error {
-	if err := identity.RequireInstanceAdmin(ctx, s.admin); err != nil {
+	if err := s.require(ctx, permissions.RunnersDelete); err != nil {
 		return err
 	}
 	return s.remove(ctx, id)

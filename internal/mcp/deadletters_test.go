@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus/deadletter"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 type fakeDeadLetters struct {
@@ -57,10 +59,15 @@ func (p *fakePublisher) PublishWithID(_ context.Context, _, topic string, _ any)
 	return nil
 }
 
-type admins map[string]bool
+// holders stands in for access: each user holds the listed actions in some workspace.
+type holders map[string]permissions.Set
 
-func (a admins) CanCreateWorkspace(_ context.Context, userID string) (bool, error) {
-	return a[userID], nil
+func (h holders) RequireAnywhere(ctx context.Context, action permissions.Action) error {
+	actor, _ := identity.ActorFromCtx(ctx)
+	if h[actor.ID].Has(action) {
+		return nil
+	}
+	return fmt.Errorf("%w: %s required", apperrs.ErrForbidden, action)
 }
 
 func deadLetterFixture() (map[string]mcptool.Tool, *fakeDeadLetters, *fakePublisher) {
@@ -70,7 +77,10 @@ func deadLetterFixture() (map[string]mcptool.Tool, *fakeDeadLetters, *fakePublis
 	}}
 	pub := &fakePublisher{}
 	tools := map[string]mcptool.Tool{}
-	for _, tool := range deadLetterTools(store, pub, admins{"admin-1": true}) {
+	for _, tool := range deadLetterTools(store, pub, holders{
+		"admin-1":  permissions.SetOf(permissions.InstanceRead, permissions.InstanceWrite),
+		"reader-1": permissions.SetOf(permissions.InstanceRead),
+	}) {
 		tools[tool.Name] = tool
 	}
 	return tools, store, pub
@@ -80,24 +90,14 @@ func as(userID string) context.Context {
 	return identity.WithActor(context.Background(), identity.Actor{ID: userID})
 }
 
-func TestDeadLetters_AreInstanceAdminOnly(t *testing.T) {
+func TestDeadLetters_NeedTheInstancePermissions(t *testing.T) {
 	tools, store, pub := deadLetterFixture()
-	tests := []struct {
-		name string
-		ctx  context.Context
-		want error
-	}{
-		{"no caller is unauthorized", context.Background(), apperrs.ErrUnauthorized},
-		{"a member is forbidden", as("member-1"), apperrs.ErrForbidden},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			_, err := tools["dead_letter_list"].Call(tt.ctx, json.RawMessage(`{}`))
-			require.ErrorIs(t, err, tt.want)
-			_, err = tools["dead_letter_replay"].Call(tt.ctx, json.RawMessage(`{"id":"dl-json"}`))
-			require.ErrorIs(t, err, tt.want)
-		})
-	}
+	_, err := tools["dead_letter_list"].Call(as("member-1"), json.RawMessage(`{}`))
+	require.ErrorIs(t, err, apperrs.ErrForbidden, "listing needs instance:read")
+	_, err = tools["dead_letter_list"].Call(as("reader-1"), json.RawMessage(`{}`))
+	require.NoError(t, err)
+	_, err = tools["dead_letter_replay"].Call(as("reader-1"), json.RawMessage(`{"id":"dl-json"}`))
+	require.ErrorIs(t, err, apperrs.ErrForbidden, "replaying needs instance:write")
 	assert.Empty(t, pub.topics)
 	assert.Len(t, store.letters, 2, "a refused replay leaves the dead letter in place")
 }

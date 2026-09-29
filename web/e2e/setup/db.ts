@@ -5,14 +5,10 @@ import { E2E_OWNER_ROLE_ID, E2E_PROJECT_ID, E2E_UID, E2E_WORKSPACE_ID } from "..
 const DB_PATH = process.env.NEXUL_E2E_DB ?? "/data/nexul.db";
 
 // Flips onboarding flags on the seeded user so specs can exercise the wizards through the real UI; the wizards restore the flags on completion, this exists only as a safety net for cleanup when a test fails midway.
-export function updateUser(fields: { can_create_workspace?: number; first_login_done?: number }): void {
+export function updateUser(fields: { first_login_done?: number }): void {
   const db = new Database(DB_PATH, { readwrite: true });
   const sets: string[] = [];
   const values: number[] = [];
-  if (fields.can_create_workspace !== undefined) {
-    sets.push("can_create_workspace = ?");
-    values.push(fields.can_create_workspace);
-  }
   if (fields.first_login_done !== undefined) {
     sets.push("first_login_done = ?");
     values.push(fields.first_login_done);

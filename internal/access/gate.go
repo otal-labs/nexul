@@ -57,18 +57,62 @@ func (s *Service) RequireAnywhere(ctx context.Context, action permissions.Action
 	if !checked {
 		return nil
 	}
-	if userID != "" && s.scopes != nil {
-		workspaceIDs, err := s.scopes.WorkspaceIDsForUser(ctx, userID)
-		if err != nil {
-			return fmt.Errorf("list workspaces of %s: %w", userID, err)
-		}
-		for _, workspaceID := range workspaceIDs {
-			if s.HasPermission(ctx, userID, workspaceID, action, "", "") {
-				return nil
-			}
+	held, err := s.HoldsAnywhere(ctx, userID, action)
+	if err != nil {
+		return err
+	}
+	if !held {
+		return fmt.Errorf("%w: %s required", apperrs.ErrForbidden, action)
+	}
+	return nil
+}
+
+// HoldsAnywhere reports whether userID holds action in at least one workspace they belong to; an Owner of any
+// workspace holds every action, which is all instance-level power there is (ADR 0088).
+func (s *Service) HoldsAnywhere(ctx context.Context, userID string, action permissions.Action) (bool, error) {
+	workspaceIDs, err := s.workspacesOf(ctx, userID)
+	if err != nil {
+		return false, err
+	}
+	for _, workspaceID := range workspaceIDs {
+		if s.HasPermission(ctx, userID, workspaceID, action, "", "") {
+			return true, nil
 		}
 	}
-	return fmt.Errorf("%w: %s required", apperrs.ErrForbidden, action)
+	return false, nil
+}
+
+// PermissionsAnywhere is every action userID holds in at least one workspace, in catalog order: what an
+// instance-level area answers to, so a client shows the same areas the server lets through.
+func (s *Service) PermissionsAnywhere(ctx context.Context, userID string) ([]string, error) {
+	workspaceIDs, err := s.workspacesOf(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	held := map[string]bool{}
+	for _, workspaceID := range workspaceIDs {
+		for _, a := range s.WorkspacePermissions(ctx, userID, workspaceID) {
+			held[a] = true
+		}
+	}
+	out := make([]string, 0, len(held))
+	for _, a := range permissions.AllActions() {
+		if held[string(a)] {
+			out = append(out, string(a))
+		}
+	}
+	return out, nil
+}
+
+func (s *Service) workspacesOf(ctx context.Context, userID string) ([]string, error) {
+	if userID == "" || s.scopes == nil {
+		return nil, nil
+	}
+	workspaceIDs, err := s.scopes.WorkspaceIDsForUser(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list workspaces of %s: %w", userID, err)
+	}
+	return workspaceIDs, nil
 }
 
 // caller is the person a check is about; checked is false for the server's own calls and for a shipped default

@@ -27,11 +27,10 @@ type UserStore interface {
 	// GetUserByLogin looks up a user by login (ErrNotFound if none); tenancy checks if a login already has a User.
 	GetUserByLogin(ctx context.Context, login string) (*User, error)
 	ListUsers(ctx context.Context) ([]*User, error)
-	CanCreateWorkspaceExists(ctx context.Context) (bool, error)
-	SetCanCreateWorkspace(ctx context.Context, id string, can bool) error
+	// ListActiveOwnerIDs is every active account holding a workspace's Owner role; empty until the owner wizard ran.
+	ListActiveOwnerIDs(ctx context.Context) ([]string, error)
 	SetAccountStatus(ctx context.Context, id string, status AccountStatus, events ...eventbus.OutboxEvent) error
 	CountUsers(ctx context.Context) (int, error)
-	CountActiveAdmins(ctx context.Context) (int, error)
 	MarkFirstLoginDone(ctx context.Context, id string) error
 	// SetProfileOverride sets the caller's profile override; nil clears to provider-sourced; UpsertUser never calls this.
 	SetProfileOverride(ctx context.Context, id string, displayName, avatarOverrideURL *string, events ...eventbus.OutboxEvent) error

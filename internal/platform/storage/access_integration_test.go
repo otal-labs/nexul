@@ -25,14 +25,6 @@ type realUsers struct {
 	repo *storage.UsersRepo
 }
 
-func (u realUsers) GetUserByID(ctx context.Context, id string) (*access.User, error) {
-	user, err := u.repo.GetUserByID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	return &access.User{ID: user.ID, Login: user.Login, Name: user.Name, CanCreateWorkspace: user.CanCreateWorkspace}, nil
-}
-
 func (u realUsers) ListUsers(ctx context.Context) ([]*access.User, error) {
 	users, err := u.repo.ListUsers(ctx)
 	if err != nil {
@@ -40,22 +32,19 @@ func (u realUsers) ListUsers(ctx context.Context) ([]*access.User, error) {
 	}
 	out := make([]*access.User, 0, len(users))
 	for _, user := range users {
-		out = append(out, &access.User{ID: user.ID, Login: user.Login, Name: user.Name, CanCreateWorkspace: user.CanCreateWorkspace})
+		out = append(out, &access.User{ID: user.ID, Login: user.Login, Name: user.Name})
 	}
 	return out, nil
 }
 
-func seedUser(t *testing.T, s *storage.Store, id, login string, owner bool) {
+func seedUser(t *testing.T, s *storage.Store, id, login string) {
 	t.Helper()
 	_, _, err := s.Users.UpsertUser(context.Background(), &auth.Identity{UserID: id, Provider: auth.ProviderGitHub, ProviderUserID: login, Login: login})
 	require.NoError(t, err)
-	if owner {
-		require.NoError(t, s.Users.SetCanCreateWorkspace(context.Background(), id, true))
-	}
 }
 
-func actor(id string, owner bool) context.Context {
-	return identity.WithActor(context.Background(), identity.Actor{ID: id, CanCreateWorkspace: owner})
+func actor(id string) context.Context {
+	return identity.WithActor(context.Background(), identity.Actor{ID: id})
 }
 
 // testScopes mirrors server/cmd's accessScopes: project and membership lookups straight from storage.
@@ -107,58 +96,54 @@ func TestIntegration_AccessEndToEnd(t *testing.T) {
 	accessSvc := access.NewService(s.Access, realUsers{s.Users})
 	docsSvc := docs.NewService(s.Docs, accessSvc)
 
-	seedUser(t, s, "owner", "owner", true)
-	seedUser(t, s, "alice", "alice", false)
-	seedUser(t, s, "bob", "bob", false)
+	seedUser(t, s, "owner", "owner")
+	seedUser(t, s, "alice", "alice")
+	seedUser(t, s, "bob", "bob")
 	joinDefaultWorkspace(t, s, accessSvc, "owner", "alice", "bob")
 
 	// Creator receives full permissions automatically.
-	doc, err := docsSvc.Create(actor("alice", false), "project-general", "Shared Spec", "SQLite migrations")
+	doc, err := docsSvc.Create(actor("alice"), "project-general", "Shared Spec", "SQLite migrations")
 	require.NoError(t, err)
 
 	// Creator can read and edit their own doc.
-	got, err := docsSvc.Get(actor("alice", false), doc.ID)
+	got, err := docsSvc.Get(actor("alice"), doc.ID)
 	require.NoError(t, err)
 	assert.Equal(t, "Shared Spec", got.Title)
 
 	// A stranger cannot open the target.
-	_, err = docsSvc.Get(actor("bob", false), doc.ID)
+	_, err = docsSvc.Get(actor("bob"), doc.ID)
 	require.Error(t, err)
 
-	// Ticket 11: can_create_workspace no longer bypasses doc checks (that
-	// would cross workspace isolation boundaries — see access.Service.Can's
-	// doc comment). The equivalent bypass is the doc's workspace Owner role,
-	// covered separately by TestIntegration_HasPermission_WorkspacePrecedence;
-	// here "owner" proves access the same way any other user would, through
-	// an explicit full grant.
+	// The only bypass is the doc's workspace Owner role, covered by TestIntegration_HasPermission_WorkspacePrecedence;
+	// here "owner" is no member and proves access the way any other user would, through an explicit full grant.
 	require.NoError(t, s.Access.Set(ctx, "doc", doc.ID, "owner", permissions.CreatorGrant, nil))
-	_, err = docsSvc.Get(actor("owner", true), doc.ID)
+	_, err = docsSvc.Get(actor("owner"), doc.ID)
 	require.NoError(t, err)
 
 	// Search returns only docs the requester can open.
-	results, err := docsSvc.Search(actor("bob", false), "sqlite", 10)
+	results, err := docsSvc.Search(actor("bob"), "sqlite", 10)
 	require.NoError(t, err)
 	assert.Empty(t, results, "stranger sees no results")
-	results, err = docsSvc.Search(actor("owner", true), "sqlite", 10)
+	results, err = docsSvc.Search(actor("owner"), "sqlite", 10)
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 
 	// Owner bulk-grants read to bob.
 	require.NoError(t, accessSvc.SetGrants(ctx, "owner", []string{doc.ID}, []string{"bob"}, []permissions.Action{permissions.DocsRead}, true))
-	_, err = docsSvc.Get(actor("bob", false), doc.ID)
+	_, err = docsSvc.Get(actor("bob"), doc.ID)
 	require.NoError(t, err)
-	results, err = docsSvc.Search(actor("bob", false), "sqlite", 10)
+	results, err = docsSvc.Search(actor("bob"), "sqlite", 10)
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 
 	// Revoking read locks bob out again.
 	require.NoError(t, accessSvc.SetGrants(ctx, "owner", []string{doc.ID}, []string{"bob"}, []permissions.Action{permissions.DocsRead}, false))
-	_, err = docsSvc.Get(actor("bob", false), doc.ID)
+	_, err = docsSvc.Get(actor("bob"), doc.ID)
 	require.Error(t, err)
 
 	// permission_overwrites has no FK to docs, so cleanup is explicit in docs.Service.Delete, not an automatic DB cascade.
 	require.NoError(t, accessSvc.SetGrants(ctx, "owner", []string{doc.ID}, []string{"bob"}, []permissions.Action{permissions.DocsRead}, true))
-	require.NoError(t, docsSvc.Delete(actor("owner", true), doc.ID))
+	require.NoError(t, docsSvc.Delete(actor("owner"), doc.ID))
 	_, err = s.Access.Get(ctx, "doc", doc.ID, "bob")
 	assert.True(t, errors.Is(err, apperrs.ErrNotFound), "overwrites must be removed with the doc")
 }
@@ -170,22 +155,22 @@ func TestIntegration_ArchivedHiddenFromSearch(t *testing.T) {
 	s := storage.New(newDB(t), []byte("0123456789abcdef0123456789abcdef"))
 	accessSvc := access.NewService(s.Access, realUsers{s.Users})
 	docsSvc := docs.NewService(s.Docs, accessSvc)
-	seedUser(t, s, "owner", "owner", true)
+	seedUser(t, s, "owner", "owner")
 	joinDefaultWorkspace(t, s, accessSvc, "owner")
 
-	doc, err := docsSvc.Create(actor("owner", true), "project-general", "Archivable", "FTS content")
+	doc, err := docsSvc.Create(actor("owner"), "project-general", "Archivable", "FTS content")
 	require.NoError(t, err)
 
-	_, err = docsSvc.Archive(actor("owner", true), doc.ID)
+	_, err = docsSvc.Archive(actor("owner"), doc.ID)
 	require.NoError(t, err)
 
-	results, err := docsSvc.Search(actor("owner", true), "fts", 10)
+	results, err := docsSvc.Search(actor("owner"), "fts", 10)
 	require.NoError(t, err)
 	assert.Empty(t, results, "archived doc must not appear in search")
 
-	_, err = docsSvc.Restore(actor("owner", true), doc.ID)
+	_, err = docsSvc.Restore(actor("owner"), doc.ID)
 	require.NoError(t, err)
-	results, err = docsSvc.Search(actor("owner", true), "fts", 10)
+	results, err = docsSvc.Search(actor("owner"), "fts", 10)
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 }
@@ -197,22 +182,22 @@ func TestIntegration_ListDisclosure(t *testing.T) {
 	s := storage.New(newDB(t), []byte("0123456789abcdef0123456789abcdef"))
 	accessSvc := access.NewService(s.Access, realUsers{s.Users})
 	docsSvc := docs.NewService(s.Docs, accessSvc)
-	seedUser(t, s, "owner", "owner", true)
-	seedUser(t, s, "alice", "alice", false)
-	seedUser(t, s, "bob", "bob", false)
+	seedUser(t, s, "owner", "owner")
+	seedUser(t, s, "alice", "alice")
+	seedUser(t, s, "bob", "bob")
 	joinDefaultWorkspace(t, s, accessSvc, "owner", "alice", "bob")
 
-	_, err := docsSvc.Create(actor("alice", false), "project-general", "Private Notes", "nobody else should open this")
+	_, err := docsSvc.Create(actor("alice"), "project-general", "Private Notes", "nobody else should open this")
 	require.NoError(t, err)
 
-	items, err := docsSvc.List(actor("bob", false))
+	items, err := docsSvc.List(actor("bob"))
 	require.NoError(t, err)
 	require.Len(t, items, 1)
 	assert.False(t, items[0].CanOpen)
 	assert.Equal(t, "Private Notes", items[0].Title)
 
 	// Bob still cannot open the target.
-	_, err = docsSvc.Get(actor("bob", false), items[0].ID)
+	_, err = docsSvc.Get(actor("bob"), items[0].ID)
 	require.Error(t, err)
 }
 
@@ -255,6 +240,14 @@ func (g testRoleNameGate) IsOwnerRole(ctx context.Context, workspaceID, roleID s
 	return r.IsOwnerRole, nil
 }
 
+func (g testRoleNameGate) RolePermissions(ctx context.Context, workspaceID, roleID string) (permissions.Set, error) {
+	r, err := g.svc.Get(ctx, workspaceID, roleID)
+	if err != nil {
+		return nil, err
+	}
+	return r.Permissions, nil
+}
+
 // testAllowlistGate mirrors server/cmd/main.go's allowlistGate adapter
 // (Membership invites), needed to construct a real tenancy.Service for this
 // test. Every login is allowed — this integration test predates Membership
@@ -279,12 +272,11 @@ func (testUserLookupGate) LoginForUserID(context.Context, string) (string, error
 	return "", apperrs.ErrNotFound
 }
 
-// testPermissionGate is an always-allow stand-in for auth's instance-admin
-// gate — this integration test exercises HasPermission's precedence chain,
-// not workspace-creation gating.
+// testPermissionGate is an always-allow stand-in for tenancy's instance-level check: these tests exercise
+// HasPermission's precedence chain, not workspace-creation gating.
 type testPermissionGate struct{}
 
-func (testPermissionGate) CanCreateWorkspace(context.Context, string) (bool, error) {
+func (testPermissionGate) HoldsAnywhere(context.Context, string, permissions.Action) (bool, error) {
 	return true, nil
 }
 
@@ -349,11 +341,12 @@ func TestIntegration_HasPermission_WorkspacePrecedence(t *testing.T) {
 	rolesSvc := roles.NewService(s.Roles, nil)
 	tenancySvc := tenancy.NewService(s.Workspaces, s.WorkspaceMembers, s.WorkspaceInvites, testRoleGate{svc: rolesSvc}, testPermissionGate{}, testRoleNameGate{svc: rolesSvc}, testWorkspacePermissionGate{svc: accessSvc}, testAllowlistGate{}, testUserLookupGate{}, testChannelGate{}, testPlaysGate{}, testAccountGate{users: s.Users})
 	rolesSvc.SetMemberGate(testMemberGate{svc: tenancySvc})
+	rolesSvc.SetPermissionGate(testWorkspacePermissionGate{svc: accessSvc})
 	accessSvc.SetRoles(accessRoleResolver{tenancy: tenancySvc, roles: rolesSvc})
 
-	seedUser(t, s, "owner", "owner", false)
-	seedUser(t, s, "alice", "alice", false)
-	seedUser(t, s, "stranger", "stranger", false)
+	seedUser(t, s, "owner", "owner")
+	seedUser(t, s, "alice", "alice")
+	seedUser(t, s, "stranger", "stranger")
 
 	ws, err := tenancySvc.Create(ctx, "owner", "Acme")
 	require.NoError(t, err)

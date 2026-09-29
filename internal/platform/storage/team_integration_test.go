@@ -63,15 +63,15 @@ func testTeamAccount(u *auth.User) *tenancy.TeamAccount {
 	return a
 }
 
-// testInstanceAdminGate reads can_create_workspace from the real users table, like server/cmd's instanceAdminGate.
-type testInstanceAdminGate struct{ users *storage.UsersRepo }
+// testCreatorGate lets anyone create a workspace, since the fixture starts with nobody holding anything, and asks
+// access, like server/cmd does, for every other instance-level action.
+type testCreatorGate struct{ access *access.Service }
 
-func (g testInstanceAdminGate) CanCreateWorkspace(ctx context.Context, userID string) (bool, error) {
-	u, err := g.users.GetUserByID(ctx, userID)
-	if err != nil {
-		return false, err
+func (g testCreatorGate) HoldsAnywhere(ctx context.Context, userID string, action permissions.Action) (bool, error) {
+	if action == permissions.WorkspacesCreate {
+		return true, nil
 	}
-	return u.CanCreateWorkspace, nil
+	return g.access.HoldsAnywhere(ctx, userID, action)
 }
 
 type teamFixture struct {
@@ -86,7 +86,8 @@ type teamFixture struct {
 	online       map[string]bool
 }
 
-// newTeamFixture: admin and dana administer the instance; admin owns Nexul and is only a Viewer in dana's Acme.
+// newTeamFixture: admin owns Nexul and dana owns Acme, so both hold every instance-level permission; admin is only
+// a Viewer in dana's Acme.
 func newTeamFixture(t *testing.T) teamFixture {
 	t.Helper()
 	ctx := t.Context()
@@ -94,14 +95,16 @@ func newTeamFixture(t *testing.T) teamFixture {
 	accessSvc := access.NewService(s.Access, realUsers{s.Users})
 	rolesSvc := roles.NewService(s.Roles, nil)
 	online := map[string]bool{}
-	svc := tenancy.NewService(s.Workspaces, s.WorkspaceMembers, s.WorkspaceInvites, testRoleGate{svc: rolesSvc}, testInstanceAdminGate{users: s.Users}, testRoleNameGate{svc: rolesSvc}, testWorkspacePermissionGate{svc: accessSvc}, testAllowlistGate{}, testUserLookupGate{}, testChannelGate{}, testPlaysGate{}, testAccountGate{users: s.Users, sessions: s.Sessions, online: online})
+	svc := tenancy.NewService(s.Workspaces, s.WorkspaceMembers, s.WorkspaceInvites, testRoleGate{svc: rolesSvc}, testCreatorGate{access: accessSvc}, testRoleNameGate{svc: rolesSvc}, testWorkspacePermissionGate{svc: accessSvc}, testAllowlistGate{}, testUserLookupGate{}, testChannelGate{}, testPlaysGate{}, testAccountGate{users: s.Users, sessions: s.Sessions, online: online})
 	rolesSvc.SetMemberGate(testMemberGate{svc: svc})
 	accessSvc.SetRoles(accessRoleResolver{tenancy: svc, roles: rolesSvc})
+	accessSvc.SetScopes(testScopes{s: s})
+	rolesSvc.SetPermissionGate(testWorkspacePermissionGate{svc: accessSvc})
 
-	seedUser(t, s, "admin", "admin", true)
-	seedUser(t, s, "dana", "dana", true)
-	seedUser(t, s, "bob", "bob", false)
-	seedUser(t, s, "carol", "carol", false)
+	seedUser(t, s, "admin", "admin")
+	seedUser(t, s, "dana", "dana")
+	seedUser(t, s, "bob", "bob")
+	seedUser(t, s, "carol", "carol")
 
 	nexul, err := svc.Create(ctx, "admin", "Nexul")
 	require.NoError(t, err)
@@ -153,7 +156,7 @@ func TestIntegration_ListTeam_ReturnsEachPersonsAccessAndTheViewersManageFlag(t 
 
 	assert.True(t, team.CanManageAccounts)
 	assert.True(t, workspaceByID(t, team, f.nexul.ID).CanManageMembers, "the Owner holds members:write in Nexul")
-	assert.False(t, workspaceByID(t, team, f.acme.ID).CanManageMembers, "an instance admin who is only a Viewer in Acme cannot manage its members")
+	assert.False(t, workspaceByID(t, team, f.acme.ID).CanManageMembers, "every instance-level permission, through owning Nexul, does not manage Acme, where admin is a Viewer")
 	acmeRoles := workspaceByID(t, team, f.acme.ID).Roles
 	require.Len(t, acmeRoles, 2)
 	assert.True(t, acmeRoles[0].IsOwner, "the Owner role is listed first")
@@ -194,7 +197,7 @@ func TestIntegration_ListTeam_WorkspaceManager_SeesOnlyTheWorkspacesTheyManage(t
 	team, err := f.svc.ListTeam(ctx, "bob")
 	require.NoError(t, err)
 
-	assert.False(t, team.CanManageAccounts, "account status stays with instance administrators")
+	assert.False(t, team.CanManageAccounts, "account status needs accounts:write, which a Manager does not hold")
 	require.Len(t, team.Workspaces, 1)
 	assert.Equal(t, f.nexul.ID, team.Workspaces[0].ID)
 	logins := []string{}
@@ -241,7 +244,7 @@ func TestIntegration_ListTeam_OnlineFirstThenLatestSessionActivity(t *testing.T)
 	assert.Nil(t, personByLogin(t, team, "admin").LastSeenAt, "no session row, no last seen")
 }
 
-// Instance admin is not workspace admin (ADR 0024): every membership edit in Acme needs members:write in Acme.
+// Instance-level permission is not workspace management (ADR 0024): every membership edit in Acme needs members:write in Acme.
 func TestIntegration_TeamEdits_WithoutMembersWriteInTheWorkspace_AreForbidden(t *testing.T) {
 	ctx := t.Context()
 	f := newTeamFixture(t)

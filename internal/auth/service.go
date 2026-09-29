@@ -14,6 +14,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -25,6 +26,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/freshdns"
 	"github.com/otal-labs/nexul/internal/platform/logging"
 	"github.com/otal-labs/nexul/internal/platform/oauthx"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 const (
@@ -174,6 +176,14 @@ type Config struct {
 	Local bool
 	// PublicAddress is overridable in tests; nil asks Cloudflare's trace endpoint.
 	PublicAddress PublicAddressLookup
+	// Permissions answers the instance-level checks; nil refuses every one of them.
+	Permissions PermissionGate
+}
+
+// PermissionGate is the access domain's instance-level answer (ADR 0087): what a user holds in any workspace they belong to.
+type PermissionGate interface {
+	HoldsAnywhere(ctx context.Context, userID string, action permissions.Action) (bool, error)
+	PermissionsAnywhere(ctx context.Context, userID string) ([]string, error)
 }
 
 // Service is the auth use-case layer: OAuth, device sessions, and the user/onboarding/allowlist use-cases.
@@ -312,12 +322,12 @@ func (s *Service) ProviderConfigured(ctx context.Context, provider Provider) (bo
 	return st.ProviderConfigured(provider), nil
 }
 
-// SetProviderOAuth stores or clears sign-in credentials (owner, ADR 0040); GitHub is refused, half-filled input rejected.
+// SetProviderOAuth stores or clears sign-in credentials (instance:write, ADR 0040); GitHub is refused, half-filled input rejected.
 func (s *Service) SetProviderOAuth(ctx context.Context, userID string, provider Provider, clientID, clientSecret string) (Settings, error) {
 	if _, ok := signInProviders[provider]; !ok || provider == ProviderGitHub {
 		return Settings{}, fmt.Errorf("%w: %q is not a configurable sign-in provider", apperrs.ErrInvalid, provider)
 	}
-	if err := s.requireCanCreateWorkspace(ctx, userID); err != nil {
+	if err := s.requireAnywhere(ctx, userID, permissions.InstanceWrite); err != nil {
 		return Settings{}, err
 	}
 	clientID = strings.TrimSpace(clientID)
@@ -682,12 +692,16 @@ func (s *Service) Me(ctx context.Context, userID string) (*OnboardingStatus, err
 	if err != nil {
 		return nil, fmt.Errorf("get user %s: %w", userID, err)
 	}
-	adminExists, err := s.cfg.Users.CanCreateWorkspaceExists(ctx)
+	owners, err := s.cfg.Users.ListActiveOwnerIDs(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("check instance admin: %w", err)
+		return nil, fmt.Errorf("list owners: %w", err)
 	}
-	st := &OnboardingStatus{User: user}
-	if !adminExists && !user.CanCreateWorkspace {
+	held, err := s.permissionsAnywhere(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	st := &OnboardingStatus{User: user, InstancePermissions: held}
+	if len(owners) == 0 {
 		st.NeedsOwnerWizard = true
 		return st, nil
 	}
@@ -702,7 +716,7 @@ type GitHubAppVerifier interface {
 	VerifyGitHubAppCheck(ctx context.Context, check, clientID, clientSecret, appSlug string) error
 }
 
-// CompleteOwnerWizard binds the caller to the workspace's Owner role, grants can_create_workspace; a repeat conflicts.
+// CompleteOwnerWizard binds the caller to the default workspace's Owner role; anyone but that Owner repeating it conflicts.
 func (s *Service) CompleteOwnerWizard(ctx context.Context, userID, instanceURL string) error {
 	if err := validateInstanceURL(instanceURL); err != nil {
 		return err
@@ -711,12 +725,12 @@ func (s *Service) CompleteOwnerWizard(ctx context.Context, userID, instanceURL s
 	if err != nil {
 		return fmt.Errorf("get user %s: %w", userID, err)
 	}
-	adminExists, err := s.cfg.Users.CanCreateWorkspaceExists(ctx)
+	owners, err := s.cfg.Users.ListActiveOwnerIDs(ctx)
 	if err != nil {
-		return fmt.Errorf("check instance admin: %w", err)
+		return fmt.Errorf("list owners: %w", err)
 	}
-	// Idempotent for the admin themself: a double-submitted finish re-runs the grant instead of conflicting.
-	if adminExists && !user.CanCreateWorkspace {
+	// Idempotent for the owner themself: a double-submitted finish re-runs instead of conflicting.
+	if len(owners) > 0 && !slices.Contains(owners, user.ID) {
 		return fmt.Errorf("%w: this instance already has an owner", apperrs.ErrConflict)
 	}
 	if _, err := s.cfg.Settings.Set(ctx, instanceURL); err != nil {
@@ -725,9 +739,6 @@ func (s *Service) CompleteOwnerWizard(ctx context.Context, userID, instanceURL s
 	// Bind to the pre-seeded default workspace as its Owner-role member instead of creating a second, duplicate workspace.
 	if err := s.cfg.DefaultWorkspace.BindDefaultWorkspaceOwner(ctx, user.ID); err != nil {
 		return fmt.Errorf("bind default workspace owner: %w", err)
-	}
-	if err := s.cfg.Users.SetCanCreateWorkspace(ctx, user.ID, true); err != nil {
-		return fmt.Errorf("grant can_create_workspace: %w", err)
 	}
 	if err := s.cfg.Users.MarkFirstLoginDone(ctx, user.ID); err != nil {
 		return fmt.Errorf("mark first login: %w", err)
@@ -965,20 +976,20 @@ func validateAvatarOverrideURL(raw string) error {
 	return nil
 }
 
-// UpdateInstanceURL changes the instance URL (owner only), bumping the version so new connection tokens carry it.
+// UpdateInstanceURL changes the instance URL (instance:write), bumping the version so new connection tokens carry it.
 func (s *Service) UpdateInstanceURL(ctx context.Context, userID, instanceURL string) (Settings, error) {
 	if err := validateInstanceURL(instanceURL); err != nil {
 		return Settings{}, err
 	}
-	if err := s.requireCanCreateWorkspace(ctx, userID); err != nil {
+	if err := s.requireAnywhere(ctx, userID, permissions.InstanceWrite); err != nil {
 		return Settings{}, err
 	}
 	return s.cfg.Settings.Set(ctx, instanceURL)
 }
 
-// GenerateConnectionToken mints a connection token from the instance settings (owner only); carries server info only.
+// GenerateConnectionToken mints a connection token from the instance settings (instance:read); carries server info only.
 func (s *Service) GenerateConnectionToken(ctx context.Context, userID string) (*ConnectionToken, error) {
-	if err := s.requireCanCreateWorkspace(ctx, userID); err != nil {
+	if err := s.requireAnywhere(ctx, userID, permissions.InstanceRead); err != nil {
 		return nil, err
 	}
 	st, err := s.cfg.Settings.Get(ctx)
@@ -1001,11 +1012,6 @@ func (s *Service) GenerateConnectionToken(ctx context.Context, userID string) (*
 	}, nil
 }
 
-// CanCreateWorkspaceExists reports whether a user already holds can_create_workspace, via a consumer-side interface.
-func (s *Service) CanCreateWorkspaceExists(ctx context.Context) (bool, error) {
-	return s.cfg.Users.CanCreateWorkspaceExists(ctx)
-}
-
 // GetUserByID resolves a user record for consumers of the owner role.
 func (s *Service) GetUserByID(ctx context.Context, id string) (*User, error) {
 	return s.cfg.Users.GetUserByID(ctx, id)
@@ -1016,12 +1022,12 @@ func (s *Service) ListUsers(ctx context.Context) ([]*User, error) {
 	return s.cfg.Users.ListUsers(ctx)
 }
 
-// GetAccount returns the caller's own account for an empty or own id; any other account only to an instance administrator.
+// GetAccount returns the caller's own account for an empty or own id; any other account needs accounts:read.
 func (s *Service) GetAccount(ctx context.Context, actorID, id string) (*User, error) {
 	if id == "" || id == actorID {
 		return s.Whoami(ctx, actorID)
 	}
-	if err := s.requireCanCreateWorkspace(ctx, actorID); err != nil {
+	if err := s.requireAnywhere(ctx, actorID, permissions.AccountsRead); err != nil {
 		return nil, err
 	}
 	user, err := s.cfg.Users.GetUserByID(ctx, id)
@@ -1033,8 +1039,8 @@ func (s *Service) GetAccount(ctx context.Context, actorID, id string) (*User, er
 
 // UpdateAccountStatus moves an account to active or disabled; active reactivates a disabled account and restores a removed one.
 func (s *Service) UpdateAccountStatus(ctx context.Context, actorID, targetID string, status AccountStatus) error {
-	// The admin check comes first, so a non-admin cannot tell a real account id from an unknown one.
-	if err := s.requireCanCreateWorkspace(ctx, actorID); err != nil {
+	// The permission check comes first, so a caller without it cannot tell a real account id from an unknown one.
+	if err := s.requireAnywhere(ctx, actorID, permissions.AccountsWrite); err != nil {
 		return err
 	}
 	target, err := s.cfg.Users.GetUserByID(ctx, targetID)
@@ -1059,9 +1065,9 @@ func (s *Service) UpdateAccountStatus(ctx context.Context, actorID, targetID str
 	return nil
 }
 
-// ListAccounts returns every registered account to an active instance administrator.
+// ListAccounts returns every registered account to a holder of accounts:read.
 func (s *Service) ListAccounts(ctx context.Context, actorID string) ([]*User, error) {
-	if err := s.requireCanCreateWorkspace(ctx, actorID); err != nil {
+	if err := s.requireAnywhere(ctx, actorID, permissions.AccountsRead); err != nil {
 		return nil, err
 	}
 	return s.cfg.Users.ListUsers(ctx)
@@ -1077,7 +1083,7 @@ func (s *Service) ReactivateAccount(ctx context.Context, actorID, targetID strin
 	return s.changeAccountStatus(ctx, actorID, targetID, AccountActive, AccountDisabled, TopicAccountReactivated)
 }
 
-// RemoveAccount tombstones an account and removes its access credentials and memberships.
+// RemoveAccount tombstones an account and removes its access credentials and memberships; it needs accounts:delete.
 func (s *Service) RemoveAccount(ctx context.Context, actorID, targetID string) error {
 	return s.changeAccountStatus(ctx, actorID, targetID, AccountRemoved, AccountActive, TopicAccountRemoved)
 }
@@ -1088,7 +1094,11 @@ func (s *Service) RestoreAccount(ctx context.Context, actorID, targetID string) 
 }
 
 func (s *Service) changeAccountStatus(ctx context.Context, actorID, targetID string, status, expectedFrom AccountStatus, topic string) error {
-	if err := s.requireCanCreateWorkspace(ctx, actorID); err != nil {
+	action := permissions.AccountsWrite
+	if status == AccountRemoved {
+		action = permissions.AccountsDelete
+	}
+	if err := s.requireAnywhere(ctx, actorID, action); err != nil {
 		return err
 	}
 	if strings.TrimSpace(targetID) == "" {
@@ -1112,17 +1122,17 @@ func (s *Service) changeAccountStatus(ctx context.Context, actorID, targetID str
 	return s.cfg.Users.SetAccountStatus(ctx, targetID, status, eventbus.OutboxEvent{ID: newUserID(), Topic: topic, Payload: payload})
 }
 
-// ListMembers returns the allowlist (owner only, ADR 0040).
+// ListMembers returns the allowlist (accounts:read, ADR 0040).
 func (s *Service) ListMembers(ctx context.Context, userID string) ([]string, error) {
-	if err := s.requireCanCreateWorkspace(ctx, userID); err != nil {
+	if err := s.requireAnywhere(ctx, userID, permissions.AccountsRead); err != nil {
 		return nil, err
 	}
 	return s.cfg.Allowlist.List(ctx)
 }
 
-// AddMember adds a git provider username to the allowlist (owner only, ADR 0040).
+// AddMember adds a git provider username to the allowlist (accounts:write, ADR 0040).
 func (s *Service) AddMember(ctx context.Context, userID, login string) error {
-	if err := s.requireCanCreateWorkspace(ctx, userID); err != nil {
+	if err := s.requireAnywhere(ctx, userID, permissions.AccountsWrite); err != nil {
 		return err
 	}
 	login = strings.ToLower(strings.TrimSpace(login))
@@ -1132,9 +1142,9 @@ func (s *Service) AddMember(ctx context.Context, userID, login string) error {
 	return s.cfg.Allowlist.Add(ctx, login)
 }
 
-// RemoveMember removes a username from the allowlist (owner only); the user row is untouched, sessions live until TTL.
+// RemoveMember removes a username from the allowlist (accounts:delete); the user row is untouched, sessions live until TTL.
 func (s *Service) RemoveMember(ctx context.Context, userID, login string) error {
-	if err := s.requireCanCreateWorkspace(ctx, userID); err != nil {
+	if err := s.requireAnywhere(ctx, userID, permissions.AccountsDelete); err != nil {
 		return err
 	}
 	return s.cfg.Allowlist.Remove(ctx, strings.ToLower(strings.TrimSpace(login)))
@@ -1157,43 +1167,31 @@ func (s *Service) UserIDForLogin(ctx context.Context, login string) (string, boo
 	return u.ID, true, nil
 }
 
-// GrantCanCreateWorkspace grants targetID the can_create_workspace bit; actorID must already hold the bit.
-func (s *Service) GrantCanCreateWorkspace(ctx context.Context, actorID, targetID string) error {
-	if err := s.requireCanCreateWorkspace(ctx, actorID); err != nil {
-		return err
+// requireAnywhere refuses userID unless they hold action in a workspace they belong to (ADR 0087), which an Owner
+// always does; nothing else grants instance-level power (ADR 0088).
+func (s *Service) requireAnywhere(ctx context.Context, userID string, action permissions.Action) error {
+	if s.cfg.Permissions == nil {
+		return fmt.Errorf("%w: no permission gate wired", apperrs.ErrForbidden)
 	}
-	if _, err := s.cfg.Users.GetUserByID(ctx, targetID); err != nil {
-		return fmt.Errorf("get user %s: %w", targetID, err)
-	}
-	if err := s.cfg.Users.SetCanCreateWorkspace(ctx, targetID, true); err != nil {
-		return fmt.Errorf("grant can_create_workspace to %s: %w", targetID, err)
-	}
-	return nil
-}
-
-// RevokeCanCreateWorkspace revokes targetID's can_create_workspace permission bit; actorID must hold the bit.
-func (s *Service) RevokeCanCreateWorkspace(ctx context.Context, actorID, targetID string) error {
-	if err := s.requireCanCreateWorkspace(ctx, actorID); err != nil {
-		return err
-	}
-	if _, err := s.cfg.Users.GetUserByID(ctx, targetID); err != nil {
-		return fmt.Errorf("get user %s: %w", targetID, err)
-	}
-	if err := s.cfg.Users.SetCanCreateWorkspace(ctx, targetID, false); err != nil {
-		return fmt.Errorf("revoke can_create_workspace from %s: %w", targetID, err)
-	}
-	return nil
-}
-
-func (s *Service) requireCanCreateWorkspace(ctx context.Context, userID string) error {
-	user, err := s.cfg.Users.GetUserByID(ctx, userID)
+	held, err := s.cfg.Permissions.HoldsAnywhere(ctx, userID, action)
 	if err != nil {
-		return fmt.Errorf("get user %s: %w", userID, err)
+		return fmt.Errorf("check %s: %w", action, err)
 	}
-	if !accountIsActive(user.AccountStatus) || !user.CanCreateWorkspace {
-		return fmt.Errorf("%w: can_create_workspace permission required", apperrs.ErrForbidden)
+	if !held {
+		return fmt.Errorf("%w: %s required", apperrs.ErrForbidden, action)
 	}
 	return nil
+}
+
+func (s *Service) permissionsAnywhere(ctx context.Context, userID string) ([]string, error) {
+	if s.cfg.Permissions == nil {
+		return []string{}, nil
+	}
+	held, err := s.cfg.Permissions.PermissionsAnywhere(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list permissions of %s: %w", userID, err)
+	}
+	return held, nil
 }
 
 // mac returns the HMAC-SHA256 of enc keyed by the shared secret, base64url.

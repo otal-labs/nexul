@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 func TestMe_OwnerWizardOnlyBeforeAnyOwner(t *testing.T) {
@@ -50,7 +51,7 @@ func TestMe_OwnerAfterWizardNoWizardNeeded(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, st.NeedsOwnerWizard)
 	assert.False(t, st.NeedsFirstLoginWizard)
-	assert.True(t, st.User.CanCreateWorkspace)
+	assert.Len(t, st.InstancePermissions, len(permissions.AllActions()), "the first user, as Owner, holds every permission")
 }
 
 func TestCompleteOwnerWizard_GrantsOwnerAndSavesInstanceURL(t *testing.T) {
@@ -63,17 +64,15 @@ func TestCompleteOwnerWizard_GrantsOwnerAndSavesInstanceURL(t *testing.T) {
 
 	user, err := users.GetUserByID(context.Background(), ownerID)
 	require.NoError(t, err)
-	assert.True(t, user.CanCreateWorkspace)
 	assert.True(t, user.FirstLoginDone)
+	owners, err := users.ListActiveOwnerIDs(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, []string{ownerID}, owners)
 
 	st, err := settings.Get(context.Background())
 	require.NoError(t, err)
 	assert.Equal(t, "https://deploy.example.com", st.InstanceURL)
 	assert.Equal(t, 2, st.SettingsVersion)
-
-	exists, err := s.CanCreateWorkspaceExists(context.Background())
-	require.NoError(t, err)
-	assert.True(t, exists)
 }
 
 func TestCompleteOwnerWizard_SameUserRedoIsIdempotent(t *testing.T) {
@@ -83,7 +82,7 @@ func TestCompleteOwnerWizard_SameUserRedoIsIdempotent(t *testing.T) {
 	ownerID := mustVerify(t, s, token)
 
 	require.NoError(t, s.CompleteOwnerWizard(context.Background(), ownerID, "https://deploy.example.com"))
-	// A double-submitted finish (or retry after partial failure) from the admin themself must succeed, not 409: only a *different* user conflicts.
+	// A double-submitted finish (or retry after partial failure) from the owner themself must succeed, not 409: only a *different* user conflicts.
 	require.NoError(t, s.CompleteOwnerWizard(context.Background(), ownerID, "https://deploy.example.com"))
 }
 
@@ -110,73 +109,6 @@ func TestCompleteOwnerWizard_DefaultWorkspaceBindErrorPropagates(t *testing.T) {
 	s.cfg.DefaultWorkspace.(*fakeDefaultWorkspace).err = apperrs.ErrNotFound
 	err = s.CompleteOwnerWizard(context.Background(), ownerID, "https://deploy.example.com")
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
-func TestGrantCanCreateWorkspace_RequiresPermissionAndUpdatesTarget(t *testing.T) {
-	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
-	token, err := s.Login(context.Background(), "good-code")
-	require.NoError(t, err)
-	ownerID := mustVerify(t, s, token)
-	require.NoError(t, s.CompleteOwnerWizard(context.Background(), ownerID, "https://deploy.example.com"))
-
-	target, _, err := users.UpsertUser(context.Background(), &Identity{UserID: "u2", Provider: ProviderGitHub, ProviderUserID: "2", Login: "member"})
-	require.NoError(t, err)
-	require.False(t, target.CanCreateWorkspace)
-
-	t.Run("non-admin forbidden", func(t *testing.T) {
-		err := s.GrantCanCreateWorkspace(context.Background(), "u2", ownerID)
-		require.ErrorIs(t, err, apperrs.ErrForbidden)
-	})
-
-	t.Run("admin grants the bit", func(t *testing.T) {
-		require.NoError(t, s.GrantCanCreateWorkspace(context.Background(), ownerID, "u2"))
-		got, err := users.GetUserByID(context.Background(), "u2")
-		require.NoError(t, err)
-		assert.True(t, got.CanCreateWorkspace)
-	})
-
-	t.Run("newly granted admin can grant/revoke too", func(t *testing.T) {
-		target2, _, err := users.UpsertUser(context.Background(), &Identity{UserID: "u3", Provider: ProviderGitHub, ProviderUserID: "3", Login: "member2"})
-		require.NoError(t, err)
-		require.False(t, target2.CanCreateWorkspace)
-
-		require.NoError(t, s.GrantCanCreateWorkspace(context.Background(), "u2", "u3"))
-		got, err := users.GetUserByID(context.Background(), "u3")
-		require.NoError(t, err)
-		assert.True(t, got.CanCreateWorkspace)
-
-		require.NoError(t, s.RevokeCanCreateWorkspace(context.Background(), "u2", "u3"))
-		got, err = users.GetUserByID(context.Background(), "u3")
-		require.NoError(t, err)
-		assert.False(t, got.CanCreateWorkspace)
-	})
-}
-
-func TestRevokeCanCreateWorkspace_RequiresPermission(t *testing.T) {
-	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "owner")})
-	token, err := s.Login(context.Background(), "good-code")
-	require.NoError(t, err)
-	ownerID := mustVerify(t, s, token)
-	require.NoError(t, s.CompleteOwnerWizard(context.Background(), ownerID, "https://deploy.example.com"))
-
-	target, _, err := users.UpsertUser(context.Background(), &Identity{UserID: "u2", Provider: ProviderGitHub, ProviderUserID: "2", Login: "member"})
-	require.NoError(t, err)
-	require.NoError(t, s.GrantCanCreateWorkspace(context.Background(), ownerID, target.ID))
-	nonAdmin, _, err := users.UpsertUser(context.Background(), &Identity{UserID: "u3", Provider: ProviderGitHub, ProviderUserID: "3", Login: "plain-member"})
-	require.NoError(t, err)
-	require.False(t, nonAdmin.CanCreateWorkspace)
-
-	t.Run("non-admin forbidden", func(t *testing.T) {
-		err := s.RevokeCanCreateWorkspace(context.Background(), "u3", ownerID)
-		require.ErrorIs(t, err, apperrs.ErrForbidden)
-	})
-
-	t.Run("admin revokes the bit", func(t *testing.T) {
-		require.NoError(t, s.RevokeCanCreateWorkspace(context.Background(), ownerID, "u2"))
-		got, err := users.GetUserByID(context.Background(), "u2")
-		require.NoError(t, err)
-		assert.False(t, got.CanCreateWorkspace)
-	})
 }
 
 func TestCompleteOwnerWizard_InvalidInstanceURL(t *testing.T) {

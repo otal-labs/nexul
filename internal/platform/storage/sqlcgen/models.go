@@ -871,17 +871,16 @@ type Topology struct {
 }
 
 type User struct {
-	ID                 string
-	Login              string
-	Name               string
-	AvatarUrl          string
-	FirstLoginDone     int64
-	CanCreateWorkspace int64
-	DisplayName        sql.NullString
-	AvatarOverrideUrl  sql.NullString
-	AccountStatus      string
-	CreatedAt          int64
-	UpdatedAt          int64
+	ID                string
+	Login             string
+	Name              string
+	AvatarUrl         string
+	FirstLoginDone    int64
+	DisplayName       sql.NullString
+	AvatarOverrideUrl sql.NullString
+	AccountStatus     string
+	CreatedAt         int64
+	UpdatedAt         int64
 }
 
 type UserIdentity struct {

@@ -47,7 +47,7 @@ func TestAppConfigStatus(t *testing.T) {
 		assert.Equal(t, AppConfigStatus{Configured: true, ClientID: "Iv1.abc", BaseURL: "https://ghe.example.com", AppSlug: "my-app"}, got)
 	})
 	t.Run("without a store nothing is configured", func(t *testing.T) {
-		svc := NewService(Config{Store: newMemStore(), Owner: owner, Registry: []Connector{{ID: "github", Name: "GitHub"}}})
+		svc := NewService(Config{Store: newMemStore(), Gate: owner, Registry: []Connector{{ID: "github", Name: "GitHub"}}})
 		got, err := svc.AppConfigStatus(t.Context(), "github")
 		require.NoError(t, err)
 		assert.False(t, got.Configured)

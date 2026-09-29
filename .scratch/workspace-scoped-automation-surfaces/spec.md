@@ -63,8 +63,8 @@ because the switcher currently implies the opposite.
 3. As a workspace owner, I want an integration's scoped token to be unable to read another workspace, so that the consent I gave is bounded by what I can see.
 4. As a workspace owner, I want to see only my own workspace's runners and machines, so that the topology reflects my infrastructure rather than the instance's.
 5. As a workspace owner, I want my deploys to queue against my own runners, so that another workspace cannot exhaust my build capacity.
-6. As an instance admin, I want to know which workspace every automation, integration, and runner belongs to, so that offboarding a team is a bounded operation.
-7. As an instance admin, I want a default automation to still ship with every workspace, so that scoping does not mean setting the same thing up repeatedly.
+6. As the instance's Owner, I want to know which workspace every automation, integration, and runner belongs to, so that offboarding a team is a bounded operation.
+7. As the instance's Owner, I want a default automation to still ship with every workspace, so that scoping does not mean setting the same thing up repeatedly.
 8. As a developer reading the event envelope, I want the originating workspace on every event, so that a consumer can filter without reaching into each payload's shape.
 
 ## Implementation Decisions

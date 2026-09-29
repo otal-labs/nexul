@@ -88,14 +88,13 @@ const AccountStatusRemoved = "removed"
 
 // TeamAccount is a registered account as the Team page shows it, resolved through AccountGate.
 type TeamAccount struct {
-	ID                 string    `json:"id"`
-	Login              string    `json:"login"`
-	Name               string    `json:"name"`
-	DisplayName        string    `json:"display_name,omitempty"`
-	AvatarURL          string    `json:"avatar_url"`
-	Status             string    `json:"status"`
-	CanCreateWorkspace bool      `json:"can_create_workspace"`
-	CreatedAt          time.Time `json:"created_at"`
+	ID          string    `json:"id"`
+	Login       string    `json:"login"`
+	Name        string    `json:"name"`
+	DisplayName string    `json:"display_name,omitempty"`
+	AvatarURL   string    `json:"avatar_url"`
+	Status      string    `json:"status"`
+	CreatedAt   time.Time `json:"created_at"`
 	// Online is a live browser socket open right now; LastSeenAt is their latest session activity, nil once signed out everywhere.
 	Online     bool       `json:"online"`
 	LastSeenAt *time.Time `json:"last_seen_at"`
@@ -149,7 +148,7 @@ type TeamWorkspace struct {
 	Roles            []*TeamRole `json:"roles"`
 }
 
-// Team is the people and workspaces the viewer may see; CanManageAccounts is whether they may change account status.
+// Team is the people and workspaces the viewer may see; CanManageAccounts is whether they hold accounts:write.
 type Team struct {
 	People            []*TeamPerson    `json:"people"`
 	Workspaces        []*TeamWorkspace `json:"workspaces"`

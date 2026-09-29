@@ -40,8 +40,8 @@ const connectorEntry = (overrides: Partial<ConnectorStatus> = {}): ConnectorStat
   ...overrides,
 });
 
-const owner = { user: { can_create_workspace: true }, needs_owner_wizard: false, needs_first_login_wizard: false };
-const member = { user: { can_create_workspace: false }, needs_owner_wizard: false, needs_first_login_wizard: false };
+const owner = { user: {}, needs_owner_wizard: false, needs_first_login_wizard: false, instance_permissions: ["connectors:read", "connectors:write"] };
+const member = { user: {}, needs_owner_wizard: false, needs_first_login_wizard: false, instance_permissions: ["connectors:read"] };
 
 // Cloudflare wired for OAuth but with no app registration stored yet.
 const unregisteredCloudflare = (): ConnectorStatus =>
@@ -166,7 +166,7 @@ describe("ConnectorsSection", () => {
     vi.unstubAllGlobals();
   });
 
-  it("offers an owner Set up app in place of Connect while the OAuth app is unregistered, then saves it", async () => {
+  it("offers a connectors:write holder Set up app in place of Connect while the OAuth app is unregistered, then saves it", async () => {
     mocks.get.mockImplementation((url: string) => {
       if (url === "/api/auth/me") return Promise.resolve({ data: owner });
       return Promise.resolve({ data: [unregisteredCloudflare()] });
@@ -190,7 +190,7 @@ describe("ConnectorsSection", () => {
     });
   });
 
-  it("shows a disabled Connect to non-owners while the OAuth app is unregistered", async () => {
+  it("shows a disabled Connect without connectors:write while the OAuth app is unregistered", async () => {
     mocks.get.mockImplementation((url: string) => {
       if (url === "/api/auth/me") return Promise.resolve({ data: member });
       return Promise.resolve({ data: [unregisteredCloudflare()] });

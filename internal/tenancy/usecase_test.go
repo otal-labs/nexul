@@ -253,7 +253,8 @@ func (g *fakePlaysGate) SeedDefaultPlays(_ context.Context, _ string) error {
 	return g.seedErr
 }
 
-// fakePermissionGate is a minimal stand-in for auth's instance-admin gate (ticket 11); allow defaults to true so existing Create tests keep working without granting the bit explicitly.
+// fakePermissionGate stands in for access's instance-level check: allow answers every action, defaulting to true so
+// Create tests need not grant workspaces:create explicitly.
 type fakePermissionGate struct {
 	allow bool
 	err   error
@@ -263,7 +264,7 @@ func newFakePermissionGate() *fakePermissionGate {
 	return &fakePermissionGate{allow: true}
 }
 
-func (g *fakePermissionGate) CanCreateWorkspace(_ context.Context, _ string) (bool, error) {
+func (g *fakePermissionGate) HoldsAnywhere(_ context.Context, _ string, _ permissions.Action) (bool, error) {
 	if g.err != nil {
 		return false, g.err
 	}
@@ -274,11 +275,17 @@ func (g *fakePermissionGate) CanCreateWorkspace(_ context.Context, _ string) (bo
 type fakeRoleNameGate struct {
 	names   map[string]string
 	isOwner map[string]bool
+	perms   map[string]permissions.Set
 	err     error
 }
 
 func newFakeRoleNameGate() *fakeRoleNameGate {
-	return &fakeRoleNameGate{names: map[string]string{}, isOwner: map[string]bool{}}
+	return &fakeRoleNameGate{names: map[string]string{}, isOwner: map[string]bool{}, perms: map[string]permissions.Set{}}
+}
+
+// RolePermissions is empty unless registered, so assigning an unregistered role grants nothing to check.
+func (g *fakeRoleNameGate) RolePermissions(_ context.Context, _, roleID string) (permissions.Set, error) {
+	return g.perms[roleID], nil
 }
 
 func (g *fakeRoleNameGate) RoleName(_ context.Context, _, roleID string) (string, error) {
@@ -453,7 +460,7 @@ func TestCreate(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, got)
 	})
-	t.Run("without can_create_workspace is forbidden", func(t *testing.T) {
+	t.Run("without workspaces:create is forbidden", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, &fakePermissionGate{allow: false}, newFakeRoleNameGate(), newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{}, newFakeAccountGate())
 		s.now = func() time.Time { return fixedNow }
@@ -475,7 +482,10 @@ func TestRename(t *testing.T) {
 	t.Run("renames and bumps updated_at", func(t *testing.T) {
 		repo := newFakeRepo()
 		repo.workspaces[DefaultWorkspaceID] = &Workspace{ID: DefaultWorkspaceID, Name: "Default"}
-		s := newTestService(repo)
+		wsPerms := newFakeWorkspacePermissionGate()
+		wsPerms.perms["u-1"] = []string{"workspaces:write"}
+		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), newFakeRoleNameGate(), wsPerms, newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{}, newFakeAccountGate())
+		s.now = func() time.Time { return fixedNow }
 
 		ws, err := s.Rename(context.Background(), "u-1", DefaultWorkspaceID, "  Acme  ")
 		require.NoError(t, err)
@@ -486,10 +496,10 @@ func TestRename(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "Acme", got.Name)
 	})
-	t.Run("requires can_create_workspace", func(t *testing.T) {
+	t.Run("requires workspaces:write in that workspace", func(t *testing.T) {
 		repo := newFakeRepo()
 		repo.workspaces[DefaultWorkspaceID] = &Workspace{ID: DefaultWorkspaceID, Name: "Default"}
-		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, &fakePermissionGate{allow: false}, newFakeRoleNameGate(), newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{}, newFakeAccountGate())
+		s := newTestService(repo)
 		_, err := s.Rename(context.Background(), "u-1", DefaultWorkspaceID, "Acme")
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
@@ -1038,6 +1048,9 @@ func TestAddMember(t *testing.T) {
 		{"existing member is a conflict", func(f *inviteTestFixture, _ *fakeAccountGate) {
 			require.NoError(t, f.repo.AddMember(t.Context(), &Member{UserID: "bob", WorkspaceID: "ws-1", RoleID: "role-viewer"}))
 		}, "bob", "role-editor", apperrs.ErrConflict},
+		{"a role carrying a permission the actor lacks is refused", func(f *inviteTestFixture, _ *fakeAccountGate) {
+			f.nameGate.perms["role-instance"] = permissions.SetOf(permissions.InstanceWrite)
+		}, "bob", "role-instance", apperrs.ErrForbidden},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1091,8 +1104,25 @@ func TestSetMemberOverrides(t *testing.T) {
 			require.ErrorIs(t, err, apperrs.ErrInvalid)
 		})
 	}
+	t.Run("an allow the actor does not hold is refused", func(t *testing.T) {
+		f := newMemberFixture(t)
+		err := f.svc.SetMemberOverrides(t.Context(), "actor", "ws-1", "bob", set(permissions.InstanceWrite), nil)
+		require.ErrorIs(t, err, apperrs.ErrForbidden)
+	})
+	t.Run("an allow the member already had stays without the actor holding it", func(t *testing.T) {
+		f := newMemberFixture(t)
+		require.NoError(t, f.repo.SetOverrides(t.Context(), "ws-1", "bob", permissions.SetOf(permissions.InstanceWrite), nil))
+		require.NoError(t, f.svc.SetMemberOverrides(t.Context(), "actor", "ws-1", "bob", set(permissions.InstanceWrite), set(permissions.DocsDelete)))
+	})
+	t.Run("lifting a deny the actor does not hold is refused, since it hands back what the role gives", func(t *testing.T) {
+		f := newMemberFixture(t)
+		require.NoError(t, f.repo.SetOverrides(t.Context(), "ws-1", "bob", nil, permissions.SetOf(permissions.InstanceWrite)))
+		err := f.svc.SetMemberOverrides(t.Context(), "actor", "ws-1", "bob", nil, set())
+		require.ErrorIs(t, err, apperrs.ErrForbidden)
+	})
 	t.Run("an omitted set keeps its current value", func(t *testing.T) {
 		f := newMemberFixture(t)
+		f.wsPerms.perms["actor"] = []string{"members:write", "docs:write", "projects:write"}
 		require.NoError(t, f.svc.SetMemberOverrides(t.Context(), "actor", "ws-1", "bob", set(permissions.DocsWrite), set(permissions.DocsDelete)))
 		require.NoError(t, f.svc.SetMemberOverrides(t.Context(), "actor", "ws-1", "bob", set(permissions.ProjectsWrite), nil))
 		allow, deny, err := f.repo.Overrides(t.Context(), "ws-1", "bob")

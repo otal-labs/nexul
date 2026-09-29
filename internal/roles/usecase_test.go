@@ -127,8 +127,36 @@ func (g *fakeMemberGate) MemberRoleID(_ context.Context, workspaceID, userID str
 	return roleID, nil
 }
 
+// fakeHeld reads a member's grid the way access does, minus overrides: the Owner holds everything, anyone else
+// their role's set.
+type fakeHeld struct {
+	repo    *fakeRepo
+	members *fakeMemberGate
+}
+
+func (h fakeHeld) WorkspacePermissions(ctx context.Context, userID, workspaceID string) []string {
+	roleID, err := h.members.MemberRoleID(ctx, workspaceID, userID)
+	if err != nil {
+		return []string{}
+	}
+	r, err := h.repo.Get(ctx, roleID)
+	if err != nil {
+		return []string{}
+	}
+	held := r.Permissions
+	if r.IsOwnerRole {
+		held = permissions.SetOf(permissions.AllActions()...)
+	}
+	out := make([]string, len(held))
+	for i, a := range held {
+		out[i] = string(a)
+	}
+	return out
+}
+
 func newTestService(repo *fakeRepo, members *fakeMemberGate) *Service {
 	s := NewService(repo, members)
+	s.SetPermissionGate(fakeHeld{repo: repo, members: members})
 	s.now = func() time.Time { return fixedNow }
 	return s
 }
@@ -207,7 +235,7 @@ func TestCreate(t *testing.T) {
 	})
 	t.Run("actor with roles:write can create a custom role", func(t *testing.T) {
 		repo, members := newFakeRepo(), newFakeMemberGate()
-		seedRoleWithMask(t, repo, members, "ws-1", "u-1", permissions.SetOf(permissions.RolesWrite))
+		seedRoleWithMask(t, repo, members, "ws-1", "u-1", permissions.SetOf(permissions.RolesWrite, permissions.ProjectsWrite))
 		s := newTestService(repo, members)
 		r, err := s.Create(context.Background(), "ws-1", "u-1", "Editors", permissions.SetOf(permissions.ProjectsWrite))
 		require.NoError(t, err)
@@ -217,14 +245,29 @@ func TestCreate(t *testing.T) {
 	})
 	t.Run("a role can hold a domain-declared verb beside read, write, and delete", func(t *testing.T) {
 		repo, members := newFakeRepo(), newFakeMemberGate()
-		seedRoleWithMask(t, repo, members, "ws-1", "u-1", permissions.SetOf(permissions.RolesWrite))
-		s := newTestService(repo, members)
 		perms := permissions.SetOf(permissions.PlaysRun, permissions.MemoriesClone, permissions.DocsThread)
+		seedRoleWithMask(t, repo, members, "ws-1", "u-1", perms.With(permissions.RolesWrite))
+		s := newTestService(repo, members)
 		r, err := s.Create(context.Background(), "ws-1", "u-1", "Runners", perms)
 		require.NoError(t, err)
 		assert.True(t, r.Permissions.Has(permissions.PlaysRun))
 		assert.True(t, r.Permissions.Has(permissions.MemoriesClone))
 		assert.True(t, r.Permissions.Has(permissions.DocsThread))
+	})
+	t.Run("a roles:write holder cannot give a role a permission they lack", func(t *testing.T) {
+		repo, members := newFakeRepo(), newFakeMemberGate()
+		seedRoleWithMask(t, repo, members, "ws-1", "u-1", permissions.SetOf(permissions.RolesWrite))
+		s := newTestService(repo, members)
+		_, err := s.Create(context.Background(), "ws-1", "u-1", "Admins", permissions.SetOf(permissions.InstanceWrite))
+		require.ErrorIs(t, err, apperrs.ErrForbidden)
+	})
+	t.Run("the Owner gives a role any permission", func(t *testing.T) {
+		repo, members := newFakeRepo(), newFakeMemberGate()
+		seedOwner(t, repo, members, "ws-1", "u-owner")
+		s := newTestService(repo, members)
+		r, err := s.Create(context.Background(), "ws-1", "u-owner", "Admins", permissions.SetOf(permissions.InstanceWrite))
+		require.NoError(t, err)
+		assert.True(t, r.Permissions.Has(permissions.InstanceWrite))
 	})
 	t.Run("owner bypasses roles:write by is_owner_role, not by holding the bit", func(t *testing.T) {
 		repo, members := newFakeRepo(), newFakeMemberGate()
@@ -329,6 +372,18 @@ func TestUpdate(t *testing.T) {
 		assert.Equal(t, "Reviewers", r.Name)
 		assert.True(t, r.Permissions.Has(permissions.ProjectsWrite))
 	})
+	t.Run("an edit may keep a permission the editor lacks but never add one", func(t *testing.T) {
+		repo, members := newFakeRepo(), newFakeMemberGate()
+		admins := &Role{ID: "role-admins", WorkspaceID: "ws-1", Name: "Admins", Permissions: permissions.SetOf(permissions.InstanceWrite), CreatedAt: fixedNow, UpdatedAt: fixedNow}
+		require.NoError(t, repo.Create(context.Background(), admins))
+		seedRoleWithMask(t, repo, members, "ws-1", "u-1", permissions.SetOf(permissions.RolesWrite, permissions.DocsRead))
+		s := newTestService(repo, members)
+
+		_, err := s.Update(context.Background(), "ws-1", "role-admins", "u-1", "Admins", permissions.SetOf(permissions.InstanceWrite, permissions.DocsRead))
+		require.NoError(t, err)
+		_, err = s.Update(context.Background(), "ws-1", "role-admins", "u-1", "Admins", permissions.SetOf(permissions.InstanceWrite, permissions.AccountsWrite))
+		require.ErrorIs(t, err, apperrs.ErrForbidden)
+	})
 }
 
 func TestDelete(t *testing.T) {
@@ -404,7 +459,7 @@ func newCloneFixture(t *testing.T, actor string, memberships ...cloneMember) (*S
 
 func TestClone_Errors(t *testing.T) {
 	cloner := cloneMember{workspaceID: "ws-src", mask: permissions.SetOf(permissions.RolesClone)}
-	writer := cloneMember{workspaceID: "ws-dst", mask: permissions.SetOf(permissions.RolesWrite)}
+	writer := cloneMember{workspaceID: "ws-dst", mask: permissions.SetOf(permissions.RolesWrite, permissions.DocsRead, permissions.MemoriesClone, permissions.PlaysRun)}
 	tests := []struct {
 		name        string
 		memberships []cloneMember
@@ -421,6 +476,7 @@ func TestClone_Errors(t *testing.T) {
 		{"no roles:clone in the source is forbidden", []cloneMember{{workspaceID: "ws-src", mask: permissions.SetOf(permissions.RolesWrite)}, writer}, "ws-src", "role-editors", "ws-dst", apperrs.ErrForbidden},
 		{"no roles:write in the target is forbidden", []cloneMember{cloner, {workspaceID: "ws-dst", mask: permissions.SetOf(permissions.RolesClone)}}, "ws-src", "role-editors", "ws-dst", apperrs.ErrForbidden},
 		{"not a member of the target is forbidden", []cloneMember{cloner}, "ws-src", "role-editors", "ws-dst", apperrs.ErrForbidden},
+		{"a role carrying permissions the target writer lacks is forbidden", []cloneMember{cloner, {workspaceID: "ws-dst", mask: permissions.SetOf(permissions.RolesWrite)}}, "ws-src", "role-editors", "ws-dst", apperrs.ErrForbidden},
 		{"not a member of the source is not found", []cloneMember{writer}, "ws-src", "role-editors", "ws-dst", apperrs.ErrNotFound},
 		{"no source workspace and no role id is invalid", []cloneMember{cloner, writer}, "", " ", "ws-dst", apperrs.ErrInvalid},
 		{"no source workspace and a missing role is not found", []cloneMember{cloner, writer}, "", "role-missing", "ws-dst", apperrs.ErrNotFound},
@@ -453,13 +509,14 @@ func TestClone_RepoErrorsPropagate(t *testing.T) {
 }
 
 func TestClone_CopiesNameAndPermissions(t *testing.T) {
+	editorsAndRolesWrite := permissions.SetOf(permissions.RolesWrite, permissions.DocsRead, permissions.MemoriesClone, permissions.PlaysRun)
 	tests := []struct {
 		name        string
 		memberships []cloneMember
 	}{
 		{"owner of both workspaces", []cloneMember{{workspaceID: "ws-src", owner: true}, {workspaceID: "ws-dst", owner: true}}},
-		{"roles:clone in source and roles:write in target", []cloneMember{{workspaceID: "ws-src", mask: permissions.SetOf(permissions.RolesClone)}, {workspaceID: "ws-dst", mask: permissions.SetOf(permissions.RolesWrite)}}},
-		{"owner of the source, roles:write in the target", []cloneMember{{workspaceID: "ws-src", owner: true}, {workspaceID: "ws-dst", mask: permissions.SetOf(permissions.RolesWrite)}}},
+		{"roles:clone in source and roles:write in target", []cloneMember{{workspaceID: "ws-src", mask: permissions.SetOf(permissions.RolesClone)}, {workspaceID: "ws-dst", mask: editorsAndRolesWrite}}},
+		{"owner of the source, roles:write in the target", []cloneMember{{workspaceID: "ws-src", owner: true}, {workspaceID: "ws-dst", mask: editorsAndRolesWrite}}},
 		{"roles:clone in the source, owner of the target", []cloneMember{{workspaceID: "ws-src", mask: permissions.SetOf(permissions.RolesClone)}, {workspaceID: "ws-dst", owner: true}}},
 	}
 	t.Run("no source workspace clones from the role's own", func(t *testing.T) {

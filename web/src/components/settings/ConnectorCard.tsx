@@ -6,7 +6,7 @@ import { ConnectorAppConfigDialog } from "@/components/settings/ConnectorAppConf
 import { ManualConnectorDialog } from "@/components/settings/ManualConnectorDialog";
 import { NoFillBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useFetchMe } from "@/hooks/AuthHooks";
+import { useHasInstancePermission } from "@/hooks/AccessHooks";
 import { useDisconnectConnector, useStartConnectorOAuth } from "@/hooks/ConnectorsHooks";
 import type { ConnectorStatus } from "@/models/Connectors";
 
@@ -26,11 +26,10 @@ export const ConnectorCard = ({ entry }: ConnectorCardProps) => {
   const Icon = iconById[connector.icon] ?? Blocks;
   const startOAuth = useStartConnectorOAuth();
   const disconnect = useDisconnectConnector();
-  const { data: me } = useFetchMe();
-  const isOwner = me?.user?.can_create_workspace ?? false;
+  const canSetUpApp = useHasInstancePermission("connectors:write");
   const isManual = !!connector.manual?.length;
   const unconfigured = available && !status.configured;
-  // OAuth connect needs the app registration first (CN3a); only an owner may store it.
+  // OAuth connect needs the app registration first (CN3a); storing it takes connectors:write.
   const needsApp = unconfigured && !isManual && !app_configured;
 
   const onConnect = () => {
@@ -64,9 +63,9 @@ export const ConnectorCard = ({ entry }: ConnectorCardProps) => {
           </Button>
         )}
         {unconfigured && isManual && <ManualConnectorDialog connector={connector} />}
-        {needsApp && isOwner && <ConnectorAppConfigDialog connector={connector} />}
-        {needsApp && !isOwner && (
-          <Button size="sm" disabled title={`An owner has to set up the ${connector.name} app first`}>
+        {needsApp && canSetUpApp && <ConnectorAppConfigDialog connector={connector} />}
+        {needsApp && !canSetUpApp && (
+          <Button size="sm" disabled title={`Someone who manages connectors has to set up the ${connector.name} app first`}>
             Connect
           </Button>
         )}

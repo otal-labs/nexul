@@ -96,7 +96,7 @@ func (h *Handler) avatar(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(data) // the status is already sent; a failed write only means the client went away
 }
 
-// team is scoped by the use-case: everything for an instance administrator, else only the workspaces the caller manages.
+// team is scoped by the use-case: everything for a holder of accounts:read, else only the workspaces the caller manages.
 func (h *Handler) team(w http.ResponseWriter, r *http.Request) {
 	team, err := h.svc.ListTeam(r.Context(), UserIDFromCtx(r.Context()))
 	if err != nil {
@@ -129,7 +129,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusCreated, ws)
 }
 
-// rename is instance-admin only: the owner wizard's finish step and workspace settings land here.
+// rename needs workspaces:write in the workspace: the owner wizard's finish step and workspace settings land here.
 func (h *Handler) rename(w http.ResponseWriter, r *http.Request) {
 	var req createWorkspaceRequest
 	if err := httpx.DecodeJSON(r, &req); err != nil {

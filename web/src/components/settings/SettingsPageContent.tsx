@@ -33,20 +33,14 @@ const MentionsPanel = ({ canManageMentionLayout }: { canManageMentionLayout: boo
   );
 };
 
-const InstancePanel = ({ settings, isInstanceAdmin }: { settings: InstanceSettings | undefined; isInstanceAdmin: boolean }) => (
-  <>{settings && isInstanceAdmin && <InstanceSettingsPanel settings={settings} />}</>
+// The whole-instance sections need no gate here: ConfigurationPage only selects a section the viewer may open.
+const InstancePanel = ({ settings }: { settings: InstanceSettings | undefined }) => (
+  <>{settings && <InstanceSettingsPanel settings={settings} />}</>
 );
 
-const SignInPanel = ({ settings, isInstanceAdmin }: { settings: InstanceSettings | undefined; isInstanceAdmin: boolean }) => (
-  <>{settings && isInstanceAdmin && <SignInProvidersPanel settings={settings} />}</>
+const SignInPanel = ({ settings }: { settings: InstanceSettings | undefined }) => (
+  <>{settings && <SignInProvidersPanel settings={settings} />}</>
 );
-
-const ConnectorsPanel = ({ isInstanceAdmin }: { isInstanceAdmin: boolean }) => (
-  <>{isInstanceAdmin && <ConnectorsSettingsPanel />}</>
-);
-
-const DnsPanel = ({ isInstanceAdmin }: { isInstanceAdmin: boolean }) => <>{isInstanceAdmin && <GatewaysSection />}</>;
-
 
 const DangerPanel = ({ settings }: { settings: InstanceSettings | undefined }) => (
   <>{settings && <DangerZoneSection />}</>
@@ -55,7 +49,6 @@ const DangerPanel = ({ settings }: { settings: InstanceSettings | undefined }) =
 interface SettingsPageContentProps {
   section: SettingsSection;
   settings: InstanceSettings | undefined;
-  isInstanceAdmin: boolean;
   canManageRoles: boolean;
   canReadPlays: boolean;
   canWritePlays: boolean;
@@ -67,7 +60,6 @@ interface SettingsPageContentProps {
 export const SettingsPageContent = ({
   section,
   settings,
-  isInstanceAdmin,
   canManageRoles,
   canReadPlays,
   canWritePlays,
@@ -82,10 +74,10 @@ export const SettingsPageContent = ({
     {section === "interview" && <InterviewTemplateSection />}
     {section === "mentions" && <MentionsPanel canManageMentionLayout={canManageMentionLayout} />}
     {section === "danger" && <DangerPanel settings={settings} />}
-    {section === "instance" && <InstancePanel settings={settings} isInstanceAdmin={isInstanceAdmin} />}
-    {section === "sign-in" && <SignInPanel settings={settings} isInstanceAdmin={isInstanceAdmin} />}
-    {section === "connectors" && <ConnectorsPanel isInstanceAdmin={isInstanceAdmin} />}
-    {section === "dns" && <DnsPanel isInstanceAdmin={isInstanceAdmin} />}
+    {section === "instance" && <InstancePanel settings={settings} />}
+    {section === "sign-in" && <SignInPanel settings={settings} />}
+    {section === "connectors" && <ConnectorsSettingsPanel />}
+    {section === "dns" && <GatewaysSection />}
     {section === "team" && <TeamSection />}
   </>
 );

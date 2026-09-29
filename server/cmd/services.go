@@ -152,6 +152,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		ConnectCodes:  store.ConnectCodes,
 		EnrollDir:     filepath.Join(filepath.Dir(cfg.DBPath), "enroll"),
 		Local:         cfg.Local,
+		Permissions:   accessSvc,
 	})
 	authHandler := auth.NewHandler(authSvc)
 	invitationSvc := tenancy.NewInvitationService(store.Invitations, authSvc)
@@ -163,7 +164,6 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	connectorsSvc := connectors.NewService(connectors.Config{
 		Store:          store.Connectors,
 		AppConfigStore: store.ConnectorAppConfig,
-		Owner:          instanceAdminGate{svc: authSvc},
 		Gate:           accessSvc,
 		Settings:       dnsSettingsAdapter{store.Settings},
 		Registry:       connectorsRegistry,
@@ -230,8 +230,9 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	voiceHandler := voice.NewHandler(voiceSvc)
 	voiceWebhookHandler := voice.NewWebhookHandler(voiceSvc, voiceCredentials{svc: connectorsSvc}, logger)
 	playsSvc := plays.NewService(store.Plays, playsPermissionGate{svc: accessSvc})
-	tenancySvc := tenancy.NewService(store.Workspaces, store.WorkspaceMembers, store.WorkspaceInvites, roleGate{svc: rolesSvc}, instanceAdminGate{svc: authSvc}, roleNameGate{svc: rolesSvc}, workspacePermissionGate{svc: accessSvc}, allowlistGate{svc: authSvc}, userLookupGate{svc: authSvc}, channelGate{svc: chatSvc}, playsGate{svc: playsSvc}, accountGate{svc: authSvc, presence: presenceKeeper})
+	tenancySvc := tenancy.NewService(store.Workspaces, store.WorkspaceMembers, store.WorkspaceInvites, roleGate{svc: rolesSvc}, accessSvc, roleNameGate{svc: rolesSvc}, workspacePermissionGate{svc: accessSvc}, allowlistGate{svc: authSvc}, userLookupGate{svc: authSvc}, channelGate{svc: chatSvc}, playsGate{svc: playsSvc}, accountGate{svc: authSvc, presence: presenceKeeper})
 	rolesSvc.SetMemberGate(roleMemberGate{svc: tenancySvc})
+	rolesSvc.SetPermissionGate(workspacePermissionGate{svc: accessSvc})
 	authSvc.SetDefaultWorkspace(defaultWorkspaceGate{svc: tenancySvc})
 	authSvc.SetPendingInviteResolver(pendingInviteResolverGate{svc: tenancySvc})
 	workspaceSvc := workspace.NewService(store.Projects, store.Categories, store.TicketTypes, store.Statuses, accessSvc, workspaceGate{svc: tenancySvc})
@@ -261,13 +262,12 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		Deliveries: store.IntegrationDeliveries,
 		Schemas:    store.EventSchemas,
 		Audit:      store.Audit,
-		Owner:      instanceAdminGate{svc: authSvc},
+		Perms:      accessSvc,
 	})
 	// ScopeAllows is injected as a function value rather than automations importing integrations (ADR 0017 seam rule).
-	automationsSvc.SetGateway(integrations.ScopeAllows, integrations.ResolveScopes, instanceAdminGate{svc: authSvc})
+	automationsSvc.SetGateway(integrations.ScopeAllows, integrations.ResolveScopes)
 	// Its own key, derived from the auth secret, signs the tokens host workers dial in with.
 	automationHostsSvc := automations.NewHostsService(store.AutomationHosts, store.Automations, crypto.DeriveKey("nexul automations host token key:"+cfg.AuthSecret)).
-		WithAdminGate(instanceAdminGate{svc: authSvc}).
 		WithGate(accessSvc).
 		WithInstanceURL(dnsSettingsAdapter{store.Settings}).
 		WithEnrollDir(filepath.Join(filepath.Dir(cfg.DBPath), "enroll"))

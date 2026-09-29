@@ -26,16 +26,14 @@ const (
 
 // User is the persistent account record; login/name/avatar follow the Identity it was created with.
 type User struct {
-	ID        string `json:"id"`
-	Login     string `json:"login"`
-	Name      string `json:"name"`
-	AvatarURL string `json:"avatar_url"`
-	// CanCreateWorkspace is the instance-level bit gating workspace creation and, by default, settings/allowlist.
-	CanCreateWorkspace bool          `json:"can_create_workspace"`
-	FirstLoginDone     bool          `json:"first_login_done"`
-	AccountStatus      AccountStatus `json:"account_status"`
-	CreatedAt          time.Time     `json:"created_at"`
-	UpdatedAt          time.Time     `json:"updated_at"`
+	ID             string        `json:"id"`
+	Login          string        `json:"login"`
+	Name           string        `json:"name"`
+	AvatarURL      string        `json:"avatar_url"`
+	FirstLoginDone bool          `json:"first_login_done"`
+	AccountStatus  AccountStatus `json:"account_status"`
+	CreatedAt      time.Time     `json:"created_at"`
+	UpdatedAt      time.Time     `json:"updated_at"`
 
 	// DisplayName and AvatarOverrideURL are the manual override, untouched by UpsertUser's sync, surviving sign-in.
 	DisplayName       *string `json:"display_name,omitempty"`
@@ -193,6 +191,8 @@ type OnboardingStatus struct {
 	User                  *User `json:"user"`
 	NeedsOwnerWizard      bool  `json:"needs_owner_wizard"`
 	NeedsFirstLoginWizard bool  `json:"needs_first_login_wizard"`
+	// InstancePermissions are the actions the user holds in at least one workspace, what instance-level areas answer to.
+	InstancePermissions []string `json:"instance_permissions"`
 }
 
 // ConnectionToken is a signed JWT a client imports to learn how to connect; no identity or credentials, not secret.

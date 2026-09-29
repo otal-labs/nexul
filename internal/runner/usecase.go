@@ -8,7 +8,6 @@ import (
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
-	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/release"
@@ -58,7 +57,6 @@ type Service struct {
 	tunnels  TunnelDescriber
 	upgrades UpgradeRepo
 	bus      Publisher
-	admin    identity.InstanceAdmin
 	gate     Gate
 	// automationsHosts lets machine_list show each machine's automations hosts; nil lists none.
 	automationsHosts AutomationsHostLister
@@ -372,14 +370,6 @@ func InstallDownloadURL(instanceURL, requestHost string, requestTLS bool) string
 // the services survived their own restart, so the booted version is the only signal, checked lazily and at boot.
 const upgradeResolveWindow = 15 * time.Minute
 
-// WithAdminGate attaches the instance-admin fact the upgrade use-cases require of their caller.
-func (s *Service) WithAdminGate(admin identity.InstanceAdmin) *Service {
-	s.admin = admin
-	return s
-}
-
-// UpgradeStatus reports the running version, the channel's newest release, and whether an upgrade can start now.
-// Only an instance admin may read it.
 // RefreshReleases makes the next release lookup ask GitHub instead of the cache, for a release published moments ago.
 func (s *Service) RefreshReleases() {
 	if s.install.Release != nil {
@@ -387,8 +377,10 @@ func (s *Service) RefreshReleases() {
 	}
 }
 
+// UpgradeStatus reports the running version, the channel's newest release, and whether an upgrade can start now;
+// it needs instance:read.
 func (s *Service) UpgradeStatus(ctx context.Context) (UpgradeStatus, error) {
-	if err := identity.RequireInstanceAdmin(ctx, s.admin); err != nil {
+	if err := s.require(ctx, permissions.InstanceRead); err != nil {
 		return UpgradeStatus{}, err
 	}
 	return s.upgradeStatus(ctx)
@@ -494,7 +486,7 @@ func (s *Service) transitionUpgrade(ctx context.Context, u *Upgrade, status, err
 // record is written, then instance.upgrade_requested asks Handler.Run's subscription to dispatch assign_upgrade
 // — the same bus-topic handoff deploy.requested already uses, so dispatch has one entry point, not two.
 func (s *Service) RequestUpgrade(ctx context.Context, actor string) (Upgrade, error) {
-	if err := identity.RequireInstanceAdmin(ctx, s.admin); err != nil {
+	if err := s.require(ctx, permissions.InstanceWrite); err != nil {
 		return Upgrade{}, err
 	}
 	status, err := s.upgradeStatus(ctx)

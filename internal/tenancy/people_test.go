@@ -19,7 +19,7 @@ func newPeopleFixture(t *testing.T) (*Handler, *Service, *fakeAccountGate) {
 		require.NoError(t, repo.AddMember(t.Context(), m))
 	}
 	accounts := newFakeAccountGate()
-	accounts.accounts["lewis"] = &TeamAccount{ID: "lewis", Login: "LewisWelch94", Name: "Lewis Welch", DisplayName: "Lewis", AvatarURL: "https://avatars.example/lewis", Status: "active", CanCreateWorkspace: true, AvatarOverride: "data:image/svg+xml;base64,PHN2Zz48L3N2Zz4="}
+	accounts.accounts["lewis"] = &TeamAccount{ID: "lewis", Login: "LewisWelch94", Name: "Lewis Welch", DisplayName: "Lewis", AvatarURL: "https://avatars.example/lewis", Status: "active", AvatarOverride: "data:image/svg+xml;base64,PHN2Zz48L3N2Zz4="}
 	accounts.accounts["carol"] = &TeamAccount{ID: "carol", Login: "carol", Status: "disabled"}
 	accounts.accounts["bob"] = &TeamAccount{ID: "bob", Login: "bob", Status: "active"}
 	perm := newFakePermissionGate()

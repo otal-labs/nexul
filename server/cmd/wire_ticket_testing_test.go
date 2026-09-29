@@ -20,7 +20,7 @@ import (
 func TestIntegration_TicketTesting(t *testing.T) {
 	ctx := context.Background()
 	s := storage.New(mentionsTestDB(t), []byte("0123456789abcdef0123456789abcdef"))
-	seedMentionsUser(t, s, "u-alice", false)
+	seedMentionsUser(t, s, "u-alice")
 	aliceCtx := identity.WithActor(ctx, identity.Actor{ID: "u-alice"})
 	now := time.Now().UTC()
 	require.NoError(t, s.Statuses.Create(ctx, &workspace.Status{ID: "qa", ProjectID: "project-general", Name: "QA", Kind: workspace.StatusKindTesting, CreatedAt: now, UpdatedAt: now}))

@@ -93,7 +93,7 @@ for a newer revision.
   permission table. Authorization never lives in the adapter, in a tool
   description, or in annotations.
 - **MCP is never weaker than the browser.** When an HTTP route gates an
-  action (instance administration, "only the caller's own inbox"), the same
+  action (an instance-level permission, "only the caller's own inbox"), the same
   gate applies to the tool. The durable fix is moving the gate into the
   use-case so both adapters inherit it; a gate that exists only in an HTTP
   handler is a defect.

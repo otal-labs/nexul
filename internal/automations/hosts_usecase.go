@@ -12,7 +12,6 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/hostcred"
-	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
@@ -41,7 +40,6 @@ type HostsService struct {
 	automations Repo
 	// key signs host-scoped automation tokens; the server's own secret, never stored.
 	key         []byte
-	admin       identity.InstanceAdmin
 	instanceURL InstanceURLReader
 	enrollDir   string
 	conns       ConnectionRegistry
@@ -54,7 +52,7 @@ func NewHostsService(repo HostRepo, automations Repo, key []byte) *HostsService 
 	return &HostsService{repo: repo, automations: automations, key: key, now: time.Now}
 }
 
-// Gate is the permission check listing hosts passes; hosts belong to the instance, so a caller needs the action in
+// Gate is the permission check listing, enrolling, and removing hosts passes; hosts belong to the instance, so a caller needs the action in
 // any workspace they belong to (ADR 0087).
 type Gate interface {
 	RequireAnywhere(ctx context.Context, action permissions.Action) error
@@ -63,12 +61,6 @@ type Gate interface {
 // WithGate wires the permission check; unset, only the server's own calls pass.
 func (h *HostsService) WithGate(g Gate) *HostsService {
 	h.gate = g
-	return h
-}
-
-// WithAdminGate attaches the instance-admin fact enrolling and removing a host requires.
-func (h *HostsService) WithAdminGate(admin identity.InstanceAdmin) *HostsService {
-	h.admin = admin
 	return h
 }
 
@@ -90,9 +82,9 @@ func (h *HostsService) SetConnectionRegistry(r ConnectionRegistry) {
 }
 
 // CreateEnrollment mints a one-hour code for a host named name, optionally filed under machine, and renders the
-// install one-liners that carry it. Only an instance admin may enroll a host.
+// install one-liners that carry it. It needs automations:write.
 func (h *HostsService) CreateEnrollment(ctx context.Context, name, machine string) (HostEnrollment, error) {
-	if err := identity.RequireInstanceAdmin(ctx, h.admin); err != nil {
+	if err := h.require(ctx, permissions.AutomationsWrite); err != nil {
 		return HostEnrollment{}, err
 	}
 	instanceURL := ""
@@ -179,7 +171,7 @@ func (h *HostsService) Enroll(ctx context.Context, req HostEnrollRequest) (HostE
 
 // List returns every automations host with whether it polled recently.
 func (h *HostsService) List(ctx context.Context) ([]HostView, error) {
-	if err := h.requireRead(ctx); err != nil {
+	if err := h.require(ctx, permissions.AutomationsRead); err != nil {
 		return nil, err
 	}
 	hosts, err := h.repo.ListHosts(ctx)
@@ -197,17 +189,17 @@ func (h *HostsService) List(ctx context.Context) ([]HostView, error) {
 	return out, nil
 }
 
-func (h *HostsService) requireRead(ctx context.Context) error {
+func (h *HostsService) require(ctx context.Context, action permissions.Action) error {
 	if h.gate == nil {
 		return permissions.Ungated(ctx)
 	}
-	return h.gate.RequireAnywhere(ctx, permissions.AutomationsRead)
+	return h.gate.RequireAnywhere(ctx, action)
 }
 
 // Remove revokes a host's credential and deletes it; its automations fall back to the instance host and their live
-// connections drop. The host learns it was removed on its next poll. Only an instance admin may remove a host.
+// connections drop. The host learns it was removed on its next poll. It needs automations:delete.
 func (h *HostsService) Remove(ctx context.Context, id string) error {
-	if err := identity.RequireInstanceAdmin(ctx, h.admin); err != nil {
+	if err := h.require(ctx, permissions.AutomationsDelete); err != nil {
 		return err
 	}
 	return h.remove(ctx, id)

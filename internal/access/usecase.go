@@ -253,22 +253,22 @@ func (s *Service) listGrants(ctx context.Context, actorID, resourceType, resourc
 	return grants, nil
 }
 
-// ListUsers is gated to an instance admin or anyone holding permissions:write on at least one document.
+// ListUsers is gated to a holder of accounts:read or anyone holding permissions:write on at least one document.
 func (s *Service) ListUsers(ctx context.Context, actorID string) ([]*User, error) {
 	if actorID == "" {
 		return nil, fmt.Errorf("%w: actor is required", apperrs.ErrUnauthorized)
 	}
-	u, err := s.users.GetUserByID(ctx, actorID)
+	readsAccounts, err := s.HoldsAnywhere(ctx, actorID, permissions.AccountsRead)
 	if err != nil {
-		return nil, fmt.Errorf("resolve user %s: %w", actorID, err)
+		return nil, err
 	}
-	if !u.CanCreateWorkspace {
+	if !readsAccounts {
 		has, err := s.repo.HasAllowAny(ctx, resourceTypeDoc, actorID, permissions.PermissionsWrite)
 		if err != nil {
 			return nil, fmt.Errorf("check permissions:write for %s: %w", actorID, err)
 		}
 		if !has {
-			return nil, fmt.Errorf("%w: owner or permissions:write required", apperrs.ErrForbidden)
+			return nil, fmt.Errorf("%w: accounts:read or permissions:write required", apperrs.ErrForbidden)
 		}
 	}
 	users, err := s.users.ListUsers(ctx)
@@ -289,20 +289,6 @@ func (s *Service) accountsByID(ctx context.Context) (map[string]*User, error) {
 		byID[u.ID] = u
 	}
 	return byID, nil
-}
-
-// InstanceAdminID returns "" when no instance admin exists yet; used to resolve the MCP acting user.
-func (s *Service) InstanceAdminID(ctx context.Context) (string, error) {
-	users, err := s.users.ListUsers(ctx)
-	if err != nil {
-		return "", fmt.Errorf("list users: %w", err)
-	}
-	for _, u := range users {
-		if u.CanCreateWorkspace {
-			return u.ID, nil
-		}
-	}
-	return "", nil
 }
 
 // canManage grants no instance-wide bypass, since that would cross workspace isolation boundaries. A doc's

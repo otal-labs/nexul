@@ -10,7 +10,7 @@ web first:
 1. **Web.** Settings split by who they affect: **Your settings** behind a
    gear in the sidebar footer (Profile, Appearance, Devices, Tokens,
    T3 pairing), and **Configuration** in the sidebar's Workspace section with
-   a "This workspace" group and an admin-only "Whole instance" group. Devices
+   a "This workspace" group and a "Whole instance" group gated per section. Devices
    lists every signed-in browser, desktop app and phone with sign-out, and
    connects a phone by QR code. The web app officially targets 768px and up.
 2. **Phone.** An Android app in `native/` (Expo, React Native) that signs in
