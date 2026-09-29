@@ -1,4 +1,4 @@
-import { ApiError } from "@/api/client";
+import { ApiError } from "@/api/errors";
 import { queryClient } from "@/lib/queryClient";
 
 jest.mock("@/lib/onlineStatus", () => ({ networkOnlineListener: jest.fn() }));

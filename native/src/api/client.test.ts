@@ -1,4 +1,5 @@
-import { api, ApiError } from "@/api/client";
+import { api } from "@/api/client";
+import { ApiError } from "@/api/errors";
 import { useSessionStore } from "@/stores/sessionStore";
 
 jest.mock("expo-secure-store", () => {

@@ -24,7 +24,7 @@ const renderTabs = () =>
       "(tabs)/more/index": () => <Text>More list</Text>,
       "(tabs)/more/settings/_layout": () => <Stack />,
       "(tabs)/more/settings/index": () => <Text>Your settings</Text>,
-      "(tabs)/more/settings/workspace": () => (
+      "(sheets)/more/settings/workspace": () => (
         <QueryClientProvider client={client}>
           <WorkspaceScreen />
         </QueryClientProvider>
@@ -60,7 +60,6 @@ describe("WorkspaceScreen", () => {
 
     fireEvent.press(await screen.findByText("Beta"));
     await settle(() => undefined);
-    console.warn("AFTER", JSON.stringify(view.getRouterState()));
 
     expect(useWorkspaceStore.getState().selectedWorkspaceId).toBe("ws-2");
     expect(view.getPathname()).toBe("/more");

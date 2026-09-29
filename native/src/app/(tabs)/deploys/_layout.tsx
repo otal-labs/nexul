@@ -1,7 +1,5 @@
 import { Stack } from "expo-router";
 
-import { sheetOptions } from "@/lib/sheetOptions";
-
 export const unstable_settings = { initialRouteName: "index" };
 
 export default function DeploysLayout() {
@@ -14,7 +12,6 @@ export default function DeploysLayout() {
     >
       <Stack.Screen name="index" options={{ title: "Deploys" }} />
       <Stack.Screen name="stack/[id]" options={{ title: "" }} />
-      <Stack.Screen name="redeploy" options={sheetOptions} />
       <Stack.Screen name="deploy/[id]" options={{ title: "Deploy" }} />
     </Stack>
   );

@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 
-import { ApiError, errorMessage } from "@/api/client";
+import { ApiError, errorMessage } from "@/api/errors";
 import { exchangeConnectCode, fetchAbout } from "@/api/connect";
 import { deviceInfo } from "@/lib/deviceInfo";
 import { serverIsSupported } from "@/lib/serverVersion";

@@ -1,4 +1,5 @@
-import { ApiError, requestJSON } from "@/api/client";
+import { requestJSON } from "@/api/client";
+import { ApiError } from "@/api/errors";
 import type { About, ConnectDevice, ConnectExchange } from "@/models/Connect";
 
 const isAbout = (body: unknown): body is About =>

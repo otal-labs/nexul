@@ -1,11 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, userEvent } from "@testing-library/react-native";
 
-import { ApiError, api } from "@/api/client";
+import { api } from "@/api/client";
+import { ApiError } from "@/api/errors";
 import { RedeployScreen } from "@/components/deploys/RedeployScreen";
 
 jest.mock("@/api/client", () => ({
-  ...jest.requireActual("@/api/client"),
   api: { get: jest.fn(async () => ({ id: "s-1", name: "checkout-api" })), post: jest.fn() },
 }));
 
