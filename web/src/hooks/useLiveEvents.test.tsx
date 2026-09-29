@@ -453,12 +453,16 @@ describe("useLiveEvents dispatch", () => {
     setup();
     const socket = await connectedSocket();
     const spy = invalidate();
-    const activity = (status: string, call_id?: string) =>
-      JSON.stringify({ topic: "computer.setup_turn_activity", type: "event", payload: { computer_id: "c1", turn_id: "t1", provider: "codex", status, call_id } });
-    act(() => socket.message(activity("Ran command started", "call-1")));
-    act(() => socket.message(activity("Ran command", "call-1")));
-    act(() => socket.message(activity("All set.")));
-    expect(useSetupActivityStore.getState().steps.t1?.map((s) => s.line)).toEqual(["Ran command", "All set."]);
+    const activity = (status: string, kind: string, call_id?: string) =>
+      JSON.stringify({ topic: "computer.setup_turn_activity", type: "event", payload: { computer_id: "c1", turn_id: "t1", provider: "codex", status, call_id, kind } });
+    act(() => socket.message(activity("nexul mcp add", "tool_call", "call-1")));
+    expect(useSetupActivityStore.getState().steps.t1?.[0]?.open).toBe(true);
+    act(() => socket.message(activity("nexul mcp add", "tool_result", "call-1")));
+    act(() => socket.message(activity("All set.", "text")));
+    expect(useSetupActivityStore.getState().steps.t1).toEqual([
+      { callId: "call-1", line: "nexul mcp add", open: false },
+      { callId: "", line: "All set.", open: false },
+    ]);
     expect(spy).not.toHaveBeenCalled();
   });
 

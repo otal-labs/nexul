@@ -9,10 +9,14 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, Di
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { useFetchTunnelStatus } from "@/hooks/PairingHooks";
 import { stillPairing, tunnelConnected, type Computer, type PairingStep } from "@/models/Pairing";
+import { cn } from "@/lib/utils";
 
 // Centred dialog from 640px up, a full-screen sheet below it.
 const FRAME =
   "flex max-h-[min(90dvh,52rem)] flex-col gap-0 p-0 sm:max-w-[min(48rem,calc(100%-2rem))] max-sm:inset-0 max-sm:top-0 max-sm:left-0 max-sm:h-dvh max-sm:max-h-none max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-none max-sm:border-0";
+
+// Set up is two panes from md up: wider, and a fixed height so the panes hold still while the transcript streams.
+const SETUP_FRAME = "md:h-[min(90dvh,52rem)] md:max-w-[min(64rem,calc(100%-2rem))]";
 
 interface NextButtonProps {
   computerId: string;
@@ -80,21 +84,21 @@ export const PairComputerDialog = ({ trigger, existing, defaultOpen = false, onC
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-      <DialogContent className={FRAME}>
+      <DialogContent className={cn(FRAME, step === "setup" && SETUP_FRAME)}>
         <Tabs value={step} onValueChange={(v) => setStep(v as PairingStep)} className="flex min-h-0 flex-1 flex-col gap-0">
           <DialogHeader className="gap-3 border-b border-border px-4 pt-5 pb-4 text-left sm:px-6">
             <DialogTitle className="pr-8">{dialogTitle(existing, setupFor)}</DialogTitle>
             <DialogDescription>{setupFor ? SETUP_LEAD : PAIR_LEAD}</DialogDescription>
             <PairingStepTabs step={step} reachable={reachableStep(step, paired)} earliest={first} />
           </DialogHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
+          <div className={cn("min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6", step === "setup" && "md:overflow-hidden md:p-0")}>
             <TabsContent value="connect">
               <ConnectStep computer={computer} onCreated={setComputer} onPairByUrl={() => setStep("pair")} />
             </TabsContent>
             <TabsContent value="pair">
               <PairT3CodeStep computer={computer} onPaired={onPaired} />
             </TabsContent>
-            <TabsContent value="setup">
+            <TabsContent value="setup" className="md:h-full">
               {paired && <SetupStep computer={paired} />}
             </TabsContent>
           </div>

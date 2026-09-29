@@ -387,11 +387,15 @@ type toolPayload struct {
 	Title      string `json:"title"`
 	Detail     string `json:"detail"`
 	Data       struct {
-		ToolName  string          `json:"toolName"`
-		Command   string          `json:"command"`
-		ImagePath string          `json:"imagePath"`
-		Input     json.RawMessage `json:"input"`
-		Result    json.RawMessage `json:"result"`
+		ToolName  string `json:"toolName"`
+		Command   string `json:"command"`
+		ImagePath string `json:"imagePath"`
+		// Item is Codex's raw item, the only place its command rides.
+		Item struct {
+			Command string `json:"command"`
+		} `json:"item"`
+		Input  json.RawMessage `json:"input"`
+		Result json.RawMessage `json:"result"`
 	} `json:"data"`
 }
 
@@ -482,7 +486,7 @@ func (c *Client) builtinSummary(p toolPayload) string {
 	}
 	switch p.ItemType {
 	case itemCommand:
-		return firstNonEmpty(p.Data.Command, in.Command)
+		return firstNonEmpty(p.Data.Command, in.Command, p.Data.Item.Command)
 	case itemFileChange:
 		return firstNonEmpty(in.FilePath, quotedField(p.Detail, "file_path"))
 	case itemImageView:

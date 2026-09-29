@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -122,7 +122,7 @@ describe("PairComputerDialog", () => {
 
     await waitFor(() => expect(mocks.post).toHaveBeenLastCalledWith("/api/pairing/computers/c1/pair", { token: "t3-pair-token" }));
     expect(await screen.findByRole("button", { name: /start setup/i })).toBeInTheDocument();
-    expect(screen.getByText(/one short setup turn per provider on work laptop/i)).toBeInTheDocument();
+    expect(screen.getByText(/each provider on work laptop takes one short turn/i)).toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: /~\/\.claude\/skills\//i })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: /~\/\.agents\/skills\//i })).toBeChecked();
     expect(screen.getByRole("button", { name: /^done$/i })).toBeInTheDocument();
@@ -173,7 +173,7 @@ describe("PairComputerDialog", () => {
         token: "t3-pair-token",
       }),
     );
-    expect(await screen.findByText(/one short setup turn per provider on vps/i)).toBeInTheDocument();
+    expect(await screen.findByText(/each provider on vps takes one short turn/i)).toBeInTheDocument();
   });
 
   it("shows a failure with no field under the form", async () => {
@@ -310,18 +310,25 @@ describe("PairComputerDialog opened at Set up", () => {
     await user.click(screen.getByRole("button", { name: /^open$/i }));
     expect(await screen.findByRole("heading", { name: /set up work laptop/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /connect/i })).toBeDisabled();
-    expect(await screen.findByText("Confirmed with 12 skills")).toBeInTheDocument();
-    expect(screen.getByText("No result within 10m0s")).toBeInTheDocument();
+    const list = within(await screen.findByRole("list", { name: "Providers" }));
+    expect(list.getByText("Confirmed with 12 skills")).toBeInTheDocument();
+    expect(list.getByText("No result within 10m0s")).toBeInTheDocument();
     expect(screen.getByText("1/2 confirmed")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /retry/i }));
+    await user.click(list.getByRole("button", { name: /^retry$/i }));
     await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/providers/opencode/retry", { model: "", folder: "" }));
     expect(mocks.post).toHaveBeenCalledTimes(1);
   });
 
-  it("lists every provider of a started run at once, with the running turn's commentary folded under it", async () => {
+  it("lists every provider of a started run at once and follows the running one's transcript until another is clicked", async () => {
     mocks.post.mockImplementation(async () => {
-      setup = { ...emptySetup, turns: [turn("claudeagent", "Claude", "running", "Connecting Nexul and installing skills", "r1", "t2")] };
+      setup = {
+        ...emptySetup,
+        turns: [
+          turn("claudeagent", "Claude", "confirmed", "Confirmed with 12 skills", "r1", "t1"),
+          turn("codex", "Codex", "running", "Connecting Nexul and installing skills", "r1", "t2"),
+        ],
+      };
       return {
         data: {
           run_id: "r1",
@@ -329,6 +336,7 @@ describe("PairComputerDialog opened at Set up", () => {
           providers: [
             { provider: "claudeagent", name: "Claude" },
             { provider: "codex", name: "Codex" },
+            { provider: "opencode", name: "OpenCode" },
           ],
         },
       };
@@ -340,15 +348,20 @@ describe("PairComputerDialog opened at Set up", () => {
     await user.click(await screen.findByRole("button", { name: /start setup/i }));
 
     await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/runs", { models: {}, folder: "" }));
-    expect(await screen.findByText("Connecting Nexul and installing skills")).toBeInTheDocument();
-    expect(screen.getByText("Waiting for its turn")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Codex" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /codex/i })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: /re-run setup/i })).toBeDisabled();
 
-    act(() => useSetupActivityStore.getState().push("t2", "Ran command started", "call-1"));
-    act(() => useSetupActivityStore.getState().push("t2", "Wrote ~/.codex/config.toml", "call-1"));
-    await user.click(await screen.findByRole("button", { name: /agent steps \(1\)/i }));
-    expect(screen.getByText("Wrote ~/.codex/config.toml")).toBeInTheDocument();
-    expect(screen.queryByText("Ran command started")).not.toBeInTheDocument();
+    act(() => useSetupActivityStore.getState().push("t2", "nexul mcp add", "call-1", true));
+    act(() => useSetupActivityStore.getState().push("t2", "nexul mcp add", "call-1"));
+    act(() => useSetupActivityStore.getState().push("t2", "ls ~/.claude/skills", "call-2", true));
+    const log = screen.getByRole("log", { name: "Codex steps" });
+    expect(within(log).getAllByText(/nexul mcp add|ls ~\/\.claude\/skills/).map((l) => l.textContent)).toEqual(["nexul mcp add", "ls ~/.claude/skills"]);
+
+    await user.click(screen.getByRole("button", { name: /opencode/i }));
+    expect(screen.getByRole("heading", { name: "OpenCode" })).toBeInTheDocument();
+    expect(screen.getByText("Waiting for its turn. Codex is setting up now.")).toBeInTheDocument();
+    expect(screen.queryByRole("log", { name: "Codex steps" })).not.toBeInTheDocument();
   });
 
   it("picks a model per provider, preselected from the defaults, and sends it with Start and Retry", async () => {
@@ -381,7 +394,7 @@ describe("PairComputerDialog opened at Set up", () => {
     expect(await screen.findByText("claude-big", { exact: false })).toBeInTheDocument();
 
     await pickOption(user, "OpenCode", "GPT");
-    await user.click(await screen.findByRole("button", { name: /retry/i }));
+    await user.click(await screen.findByRole("button", { name: "Retry OpenCode" }));
     await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/providers/opencode/retry", { model: "gpt", folder: "" }));
   });
 
@@ -405,7 +418,7 @@ describe("PairComputerDialog opened at Set up", () => {
 
     await pickOption(user, "Folder", /^App/);
     expect(screen.getByText("/home/me/app")).toBeInTheDocument();
-    await user.click(await screen.findByRole("button", { name: /retry/i }));
+    await user.click(await screen.findByRole("button", { name: /^retry$/i }));
     await waitFor(() =>
       expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/providers/codex/retry", { model: "", folder: "/home/me/app" }),
     );

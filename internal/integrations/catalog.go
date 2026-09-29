@@ -898,7 +898,8 @@ var catalogSchemas = map[string]string{
 			"turn_id": {"type": "string"},
 			"provider": {"type": "string"},
 			"status": {"type": "string"},
-			"call_id": {"type": "string"}
+			"call_id": {"type": "string"},
+			"kind": {"type": "string", "enum": ["tool_call", "tool_result", "text", "question", "other"]}
 		}
 	}`,
 	"personal_access_token.minted": `{

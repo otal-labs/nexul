@@ -17,13 +17,14 @@ describe("setupActivityStore", () => {
     expect(lines("t2")).toEqual(["other"]);
   });
 
-  it("updates a tool call's step in place instead of adding its finish as a second line", () => {
+  it("updates a tool call's step in place instead of adding its finish as a second line, closing it", () => {
     const { push } = useSetupActivityStore.getState();
-    push("t1", "Ran command started", "call-1");
+    push("t1", "nexul mcp add", "call-1", true);
     push("t1", "Wrote the config");
-    push("t1", "Ran command", "call-1");
-    push("t1", "Ran command started", "call-2");
+    push("t1", "nexul mcp add", "call-1");
+    push("t1", "ls ~/.claude/skills", "call-2", true);
 
-    expect(lines("t1")).toEqual(["Ran command", "Wrote the config", "Ran command started"]);
+    expect(lines("t1")).toEqual(["nexul mcp add", "Wrote the config", "ls ~/.claude/skills"]);
+    expect(useSetupActivityStore.getState().steps.t1?.map((s) => s.open)).toEqual([false, false, true]);
   });
 });
