@@ -187,7 +187,94 @@ func TestService_CreateExposure_JoinsGatewayNetworks(t *testing.T) {
 	require.Len(t, joiner.calls, 1)
 	assert.Equal(t, "host1", joiner.calls[0].Machine)
 	assert.Equal(t, "gateway-container", joiner.calls[0].GatewayContainer)
-	assert.Equal(t, []string{"net2"}, joiner.calls[0].Networks, "only the newly-joined network is sent, not the whole set")
+	assert.Equal(t, []string{"net1", "net2"}, joiner.calls[0].Networks, "every target network is sent; a repeat join is a no-op on the runner")
+}
+
+// newAgentOnlyFixture is a fresh instance as first-run setup leaves it: tunnel t1 whose cloudflared agent
+// (stack s-cfd) already runs on host1's nexul_default, no gateway rows, and a compose container "whoami" on
+// host1 that has not been observed yet, so its name is still the stack slug.
+func newAgentOnlyFixture(t *testing.T) (*Service, *fakeRepo, *fakeTunnelProvider, *fakeProvisioner, *fakeRunnerJoiner) {
+	t.Helper()
+	repo := newFakeRepo()
+	enc, err := encryptTunnelTokenForTest(testKey(), "the-tunnel-secret")
+	require.NoError(t, err)
+	require.NoError(t, repo.SaveTunnel(t.Context(), Tunnel{ID: "t1", Name: "prod", Token: enc, AgentServiceID: "s-cfd"}))
+	containers := newFakeContainerLookup()
+	containers.add("cloudflared-prod", ExposureTarget{ContainerID: "c-cfd", Name: "cloudflared-prod", StackID: "s-cfd", Machine: "host1", Networks: []string{"nexul_default"}, Running: true})
+	containers.add("whoami-app", ExposureTarget{ContainerID: "c-whoami", Name: "whoami-app", StackID: "s-whoami", Machine: "host1", Networks: []string{"whoami-app_default"}})
+	tunnel, prov, joiner := newFakeTunnelProvider(), &fakeProvisioner{}, &fakeRunnerJoiner{}
+	return newGatewayServiceWithJoiner(repo, tunnel, prov, containers, joiner), repo, tunnel, prov, joiner
+}
+
+var whoamiExposure = CreateExposureInput{Hostname: "whoami.example.com", ServiceID: "c-whoami", Port: 80, ZoneID: "z1", Zone: "example.com"}
+
+// TestService_CreateExposure_UsesTheTunnelsRunningAgent is the regression for the first-click 502: with no
+// gateway row, exposing a service provisioned "cloudflared-<tunnel>" again, which redeployed the instance's
+// own tunnel agent onto the target's network and dropped the request riding through it.
+func TestService_CreateExposure_UsesTheTunnelsRunningAgent(t *testing.T) {
+	s, _, tunnel, prov, _ := newAgentOnlyFixture(t)
+
+	e, err := s.CreateExposure(t.Context(), whoamiExposure)
+	require.NoError(t, err)
+
+	assert.Empty(t, prov.calls, "the running agent is never redeployed")
+	g, err := s.GetGateway(t.Context(), e.GatewayID)
+	require.NoError(t, err)
+	assert.Equal(t, "s-cfd", g.ServiceID, "the gateway is the agent the tunnel already runs")
+	assert.Equal(t, "nexul_default", g.DockerNetwork, "it stays homed where it runs")
+	assert.ElementsMatch(t, []string{"nexul_default", "whoami-app_default"}, g.Networks)
+	require.Len(t, tunnel.routeCalls, 1)
+}
+
+// TestService_CreateExposure_RetryConverges covers a retry after an attempt died between the DNS record and
+// the saved row: the leftover record is reused, a repeat returns the saved exposure, and the hostname stays
+// one row pointing at one record.
+func TestService_CreateExposure_RetryConverges(t *testing.T) {
+	s, _, _, _, _ := newAgentOnlyFixture(t)
+	dnsp := s.provider.(*fakeProvider)
+	dnsp.records["z1"] = []Record{{ID: "left-over", ZoneID: "z1", Type: RecordCNAME, Name: "whoami.example.com", Content: "t1.cfargotunnel.com", TTL: 1, Proxied: true}}
+
+	first, err := s.CreateExposure(t.Context(), whoamiExposure)
+	require.NoError(t, err)
+	again, err := s.CreateExposure(t.Context(), whoamiExposure)
+	require.NoError(t, err)
+
+	assert.Equal(t, "left-over", first.RecordID, "the record the interrupted attempt created is reused")
+	assert.Equal(t, first.ID, again.ID, "a repeat returns the saved exposure")
+	exps, err := s.ListExposures(t.Context())
+	require.NoError(t, err)
+	assert.Len(t, exps, 1)
+	assert.Len(t, dnsp.records["z1"], 1)
+
+	other := whoamiExposure
+	other.Port = 8080
+	_, err = s.CreateExposure(t.Context(), other)
+	require.ErrorIs(t, err, apperrs.ErrConflict, "a hostname already routed elsewhere is refused, not duplicated")
+}
+
+// TestService_ReconcileExposures_ReroutesToTheRunningContainer is the regression for the origin 502: an
+// exposure made before the compose container ran routed to the stack slug, which no container answers to;
+// once the deploy reports it running, the route moves to its real name and the gateway joins its network.
+func TestService_ReconcileExposures_ReroutesToTheRunningContainer(t *testing.T) {
+	s, repo, tunnel, _, joiner := newAgentOnlyFixture(t)
+	e, err := s.CreateExposure(t.Context(), whoamiExposure)
+	require.NoError(t, err)
+	require.Equal(t, "http://whoami-app:80", tunnel.routeCalls[0].Service)
+	require.Empty(t, joiner.calls, "nothing to join while the container is not running")
+
+	running := ExposureTarget{ContainerID: "c-whoami", Name: "whoami-app-whoami-1", StackID: "s-whoami", Machine: "host1", Networks: []string{"whoami-app_default"}, Running: true}
+	require.NoError(t, s.ReconcileExposures(t.Context(), []ExposureTarget{running}))
+
+	require.Len(t, tunnel.routeCalls, 2)
+	assert.Equal(t, "http://whoami-app-whoami-1:80", tunnel.routeCalls[1].Service)
+	saved, err := repo.GetExposure(t.Context(), e.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "whoami-app-whoami-1", saved.Service)
+	require.Len(t, joiner.calls, 1)
+	assert.Equal(t, joinCall{Machine: "host1", GatewayContainer: "cloudflared-prod", Networks: []string{"whoami-app_default"}}, joiner.calls[0])
+
+	require.NoError(t, s.ReconcileExposures(t.Context(), []ExposureTarget{running}))
+	assert.Len(t, tunnel.routeCalls, 2, "a route already on the running name is left alone")
 }
 
 func TestService_ExposuresForService(t *testing.T) {

@@ -170,13 +170,13 @@ func (a dnsContainerLookupAdapter) singleContainer(ctx context.Context, stack *d
 	return exposureTargetFor(stack, containers[0]), nil
 }
 
-// exposureTargetFor adapts a deploy stack+container to dns's ExposureTarget DTO (ADR 0017). Networks falls back to
-// the stack's own default network when the container hasn't reported in yet, so a not-yet-deployed stack can
+// exposureTargetFor adapts a deploy stack+container to dns's ExposureTarget DTO (ADR 0017). Name and Networks fall
+// back to what the runner will create when the container hasn't reported in yet, so a not-yet-deployed stack can
 // still be exposed/provisioned for.
 func exposureTargetFor(stack *deploy.Stack, container *deploy.Container) *dns.ExposureTarget {
 	name := container.ContainerName
 	if name == "" {
-		name = stack.Slug
+		name = expectedContainerName(stack, container)
 	}
 	networks := containerNetworkNames(container)
 	if len(networks) == 0 {
@@ -189,6 +189,15 @@ func exposureTargetFor(stack *deploy.Stack, container *deploy.Container) *dns.Ex
 		ContainerID: container.ID, Name: name, StackID: stack.ID,
 		Machine: stack.Machine, Networks: networks, Running: running,
 	}
+}
+
+// expectedContainerName is the name Docker gives a container the runner starts: compose's <project>-<service>-1
+// with the slug as project, or the slug itself for a run stack.
+func expectedContainerName(stack *deploy.Stack, container *deploy.Container) string {
+	if stack.Strategy == deploy.StrategyCompose && container.Name != "" {
+		return stack.Slug + "-" + container.Name + "-1"
+	}
+	return stack.Slug
 }
 
 func containerNetworkNames(container *deploy.Container) []string {
