@@ -1,48 +1,47 @@
 import { Plus } from "lucide-react";
+import { Link } from "react-router";
 
-import { EmptyRow } from "@/components/EmptyRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { GitHubInstallationRow } from "@/components/settings/GitHubInstallationRow";
+import { GitHubInstallationsList } from "@/components/settings/GitHubInstallationsList";
+import { SettingsCard } from "@/components/settings/SettingsCard";
 import { Button } from "@/components/ui/button";
-import { useFetchConnectorAppConfig } from "@/hooks/ConnectorsHooks";
-import { useFetchInstallations } from "@/hooks/RepositoryHooks";
+import { useFetchConnectorAppConfig, useFetchConnectorStatus } from "@/hooks/ConnectorsHooks";
 import { githubAppInstallURL } from "@/models/Connectors";
 
 export const GitHubInstallationsSection = () => {
-  const { data: installations, error, isPending } = useFetchInstallations();
   const { data: app } = useFetchConnectorAppConfig("github");
+  const { data: connector, error, isPending } = useFetchConnectorStatus("github");
+  if (!app?.configured) return null;
 
   return (
-    <section aria-labelledby="github-installations-title" className="space-y-3 border-t border-border pt-4">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
-          <h3 id="github-installations-title" className="text-sm font-medium">
-            Accounts Nexul can see
-          </h3>
-          <p className="text-xs text-muted-foreground">Nexul reads repositories wherever its GitHub App is installed.</p>
-        </div>
-        {app?.app_slug && (
+    <SettingsCard
+      id="github-installations"
+      title="Installations"
+      description="Where the App is installed. Nexul reads repositories in these accounts and organisations."
+      footer={
+        app.app_slug && (
           <Button asChild variant="outline" size="sm">
             <a href={githubAppInstallURL(app)} target="_blank" rel="noreferrer">
               <Plus className="size-3.5" aria-hidden />
               Add account or organisation
             </a>
           </Button>
-        )}
-      </div>
-      {isPending && <LoadingDisplay className="p-4" />}
-      {error && <ErrorDisplay error={error} title="Couldn't load the accounts" className="p-4" />}
-      {installations && installations.length === 0 && (
-        <EmptyRow>The GitHub App isn't installed on any account you can see yet.</EmptyRow>
+        )
+      }
+    >
+      {isPending && <LoadingDisplay />}
+      {error && <ErrorDisplay error={error} />}
+      {connector && !connector.status.configured && (
+        <p className="text-sm text-muted-foreground">
+          Connect GitHub on the{" "}
+          <Link to="?tab=connectors" className="underline underline-offset-2 hover:text-foreground">
+            Connectors tab
+          </Link>{" "}
+          to see where the App is installed.
+        </p>
       )}
-      {installations && installations.length > 0 && (
-        <ul className="divide-y divide-border overflow-hidden rounded-md border border-border">
-          {installations.map((installation) => (
-            <GitHubInstallationRow key={installation.id} installation={installation} />
-          ))}
-        </ul>
-      )}
-    </section>
+      {connector?.status.configured && <GitHubInstallationsList />}
+    </SettingsCard>
   );
 };

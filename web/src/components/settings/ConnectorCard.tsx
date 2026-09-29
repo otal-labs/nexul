@@ -3,7 +3,6 @@ import type { ComponentType } from "react";
 
 import { GithubMark } from "@/components/ProviderMarks";
 import { ConnectorAppConfigDialog } from "@/components/settings/ConnectorAppConfigDialog";
-import { GitHubInstallationsSection } from "@/components/settings/GitHubInstallationsSection";
 import { ManualConnectorDialog } from "@/components/settings/ManualConnectorDialog";
 import { NoFillBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -82,7 +81,6 @@ export const ConnectorCard = ({ entry }: ConnectorCardProps) => {
           </Button>
         )}
       </div>
-      {connector.id === "github" && status.configured && <GitHubInstallationsSection />}
     </li>
   );
 };
