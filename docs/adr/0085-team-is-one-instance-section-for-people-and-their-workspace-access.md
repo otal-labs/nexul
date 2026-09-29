@@ -7,8 +7,11 @@ account with its status. Seeing what one person could reach meant switching
 workspace and opening both, and giving an existing account access to another
 workspace had no path at all short of a new invitation.
 
-Decision: one section, **Team**, under Whole instance, for instance
-administrators. It lists every registered account with its status and a
+Decision: one section, **Team**. An instance administrator finds it under
+Whole instance and sees everyone; anyone else who holds `members:write` in a
+workspace finds it under This workspace and sees only the workspaces they
+manage and the people in them, with no account actions. For an administrator
+it lists every registered account with its status and a
 summary of its workspace access; opening a person shows every workspace on the
 instance with their role and workspace-wide overrides there, lets the role
 be changed, the person be removed from or added to a workspace, and carries
@@ -28,9 +31,10 @@ the workspace member use-cases, which check `members:write` in that
 workspace, and the Owner role can still never be given, changed, removed, or
 overridden there. An instance administrator who is not a manager of a
 workspace sees that workspace's rows read-only, with the reason, and the
-server refuses the change if it is sent anyway. The cost is that a workspace
-manager who is not an instance administrator no longer has a page for their
-workspace's members in the web app; the HTTP routes and `account_update`
-still serve them.
+server refuses the change if it is sent anyway. The scoping is the server's:
+`GET /api/team` and `account_list` answer a workspace manager with their own
+workspaces only, so a manager never learns who holds access elsewhere, and a
+caller who manages nothing is refused. The cost is one page whose contents
+differ by who is looking, and a nav entry that moves between the two groups.
 
 Decided 2026-09-29, amending ADR 0024 and ADR 0061.
