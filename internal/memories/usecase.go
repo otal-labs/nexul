@@ -375,7 +375,7 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 	if err := s.require(ctx, m.WorkspaceID, permissions.MemoriesDelete); err != nil {
 		return err
 	}
-	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicDeleted, Payload: DeletedEvent{ID: m.ID, Title: m.Title, AuthorID: actor.ID}}
+	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicDeleted, Payload: DeletedEvent{ID: m.ID, WorkspaceID: m.WorkspaceID, Title: m.Title, AuthorID: actor.ID}}
 	if err := s.repo.Delete(ctx, id, evt); err != nil {
 		return fmt.Errorf("delete memory %s: %w", id, err)
 	}

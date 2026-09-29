@@ -71,6 +71,30 @@ func (s *Service) readable(ctx context.Context, ts []*Ticket) ([]*Ticket, error)
 	})
 }
 
+// readableIDs keeps the ids of tickets the caller may read; an id naming no ticket is left out too.
+func (s *Service) readableIDs(ctx context.Context, ids []string) ([]string, error) {
+	ts := make([]*Ticket, 0, len(ids))
+	for _, id := range ids {
+		t, err := s.repo.GetByID(ctx, id)
+		if errors.Is(err, apperrs.ErrNotFound) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		ts = append(ts, t)
+	}
+	ts, err := s.readable(ctx, ts)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, len(ts))
+	for i, t := range ts {
+		out[i] = t.ID
+	}
+	return out, nil
+}
+
 // SetTicketTypes wires the type lookup; unset, an MCP-filed ticket keeps the body it was given and no type counts as a bug.
 func (s *Service) SetTicketTypes(t TicketTypes) { s.types = t }
 
@@ -731,13 +755,18 @@ func (s *Service) ListLinks(ctx context.Context, id string) ([]PRLink, []BranchL
 	return prs, branches, nil
 }
 
-// DevStatus batches PR counts in one query so the board avoids a request per card.
+// DevStatus batches PR counts in one query so the board avoids a request per card; a ticket the caller may not
+// read gets no entry.
 func (s *Service) DevStatus(ctx context.Context, ids []string) (map[string]DevStatusCounts, error) {
 	cleaned := make([]string, 0, len(ids))
 	for _, id := range ids {
 		if id = strings.TrimSpace(id); id != "" {
 			cleaned = append(cleaned, id)
 		}
+	}
+	cleaned, err := s.readableIDs(ctx, cleaned)
+	if err != nil {
+		return nil, fmt.Errorf("dev status: %w", err)
 	}
 	linksByTicket, err := s.repo.ListPRLinksBatch(ctx, cleaned)
 	if err != nil {

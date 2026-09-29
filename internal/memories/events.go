@@ -45,9 +45,10 @@ type UpdatedEvent struct {
 
 // DeletedEvent is the memory.deleted payload; the memory is already gone by publish time.
 type DeletedEvent struct {
-	ID       string `json:"id"`
-	Title    string `json:"title"`
-	AuthorID string `json:"author_id"`
+	ID          string `json:"id"`
+	WorkspaceID string `json:"workspace_id"`
+	Title       string `json:"title"`
+	AuthorID    string `json:"author_id"`
 }
 
 // InterviewTemplateUpdatedEvent is the interview_template.updated payload; the body stays out, like MemoryRef.
