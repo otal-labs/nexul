@@ -1,7 +1,7 @@
 import { AddCategoryForm } from "@/components/project/AddCategoryForm";
 import { CreateTicketFooter } from "@/components/ticket/CreateTicketFooter";
 import { CreateTicketForm, emptyTicketForm } from "@/components/ticket/CreateTicketForm";
-import { CreateTicketHeader } from "@/components/ticket/CreateTicketHeader";
+import { ProjectDialogHeader } from "@/components/project/ProjectDialogHeader";
 import { useQueryClient } from "@tanstack/react-query";
 
 import type { DragMoveAction } from "@/components/board/dragMove";
@@ -47,7 +47,7 @@ export const useBoardActions = ({ projects, selectedProjectIds, projectId }: Use
       title: "New ticket",
       schema: SaveTicketFormSchema,
       okLabel: "Create",
-      header: <CreateTicketHeader />,
+      header: <ProjectDialogHeader title="New ticket" />,
       footerStart: <CreateTicketFooter />,
       form: <CreateTicketForm />,
       formOptions: { defaultValues: emptyTicketForm() },
@@ -74,7 +74,7 @@ export const useBoardActions = ({ projects, selectedProjectIds, projectId }: Use
       title: "New ticket",
       schema: SaveTicketFormSchema,
       okLabel: "Create",
-      header: <CreateTicketHeader />,
+      header: <ProjectDialogHeader title="New ticket" />,
       footerStart: <CreateTicketFooter />,
       form: <CreateTicketForm defaultCategoryId={categoryId ?? ""} />,
       formOptions: { defaultValues: emptyTicketForm() },

@@ -5,6 +5,7 @@ import { NoDataDisplay } from "@/components/NoDataDisplay";
 import { FoundInPill } from "@/components/ticket/FoundInPill";
 import { offeredTicketTypes, selectTicketType, type TicketTypeForm } from "@/components/ticket/selectTicketType";
 import { CategoryPill, DocChip, PersonPill, TypePill } from "@/components/ticket/TicketMetadataPills";
+import { dialogTitleInputClass } from "@/components/ticket/ticketFormPillStyles";
 import { useFetchCategories } from "@/hooks/CategoryHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { useCreateTicket } from "@/hooks/TicketHooks";
@@ -150,7 +151,7 @@ export const CreateTicketForm = ({
               aria-label="Title"
               aria-invalid={titleError != null}
               placeholder="Ticket title"
-              className="quiet-focus w-full border-0 bg-transparent p-0 text-lg font-medium text-foreground caret-primary outline-none placeholder:text-muted-foreground"
+              className={dialogTitleInputClass}
             />
             {titleError && (
               <p role="alert" className="mt-1 text-sm text-destructive">

@@ -80,9 +80,16 @@ export interface EditorExtensionOptions {
   /** The doc or ticket pasted/dropped files attach to; omitted for read-only bodies. */
   attachTo?: AttachmentUploadOptions["owner"];
   onUploaded?: AttachmentUploadOptions["onUploaded"];
+  /** The gutter "+" beside an empty line; "/" still opens the same menu without it. */
+  plusMenu?: boolean;
 }
 
-export function buildEditorExtensions({ collab = false, attachTo = null, onUploaded }: EditorExtensionOptions = {}) {
+export function buildEditorExtensions({
+  collab = false,
+  attachTo = null,
+  onUploaded,
+  plusMenu = true,
+}: EditorExtensionOptions = {}) {
   return [
     // Collab mode's undo comes from the Yjs Collaboration extension; StarterKit's UndoRedo must stand down for Mod-Z.
     StarterKit.configure({ codeBlock: false, ...(collab && { undoRedo: false }) }),
@@ -99,7 +106,7 @@ export function buildEditorExtensions({ collab = false, attachTo = null, onUploa
     }),
     AttachmentUpload.configure({ owner: attachTo, ...(onUploaded ? { onUploaded } : {}) }),
     SlashCommandExtension,
-    PlusMenuExtension,
+    ...(plusMenu ? [PlusMenuExtension] : []),
     Mention.extend({
       markdownTokenizer: {
         name: "mention",

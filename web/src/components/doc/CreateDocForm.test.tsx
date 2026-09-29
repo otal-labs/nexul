@@ -1,17 +1,13 @@
-import type { ReactElement } from "react";
-import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ContextAwareConfirmation } from "react-confirm";
+import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
-import { CreateDocForm } from "@/components/doc/CreateDocForm";
-import { useFormDialog } from "@/hooks/useFormDialog";
-import { SaveDocFormSchema, type SaveDocFormData } from "@/models/Doc";
-import { emptyDocForm } from "@/utils/emptyDocJson";
-import { emptyDocJson, isStructuredBody } from "@/utils/RichtextUtility";
+import { useCreateDocDialog } from "@/hooks/useCreateDocDialog";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
@@ -20,135 +16,101 @@ vi.mock("@/api/client", () => ({
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
+// The real wrapper lazy-imports CreateDocForm (tiptap + yjs); resolving it synchronously keeps findBy inside its timeout.
+vi.mock("@/components/doc/LazyCreateDocForm", async () => ({
+  LazyCreateDocForm: (await import("@/components/doc/CreateDocForm")).CreateDocForm,
+}));
+
 const projects = [
-  { id: "p-1", name: "Backend", position: 0, created_at: "", updated_at: "" },
-  { id: "p-2", name: "Frontend", position: 1, created_at: "", updated_at: "" },
+  { id: "p-1", name: "Backend", prefix: "BE", position: 0, created_at: "", updated_at: "" },
+  { id: "p-2", name: "Frontend", prefix: "FE", position: 1, created_at: "", updated_at: "" },
 ];
 
-const mockProjects = (list: unknown[] = projects) => {
+const mockApi = (list: unknown[] = projects) => {
   vi.mocked(api.get).mockImplementation(async (url: string) => {
-    if (url.startsWith("/api/projects")) return { data: list };
+    if (url === "/api/projects") return { data: list };
+    if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions: ["docs:write"] } };
     return { data: [] };
+  });
+  vi.mocked(api.post).mockImplementation(async (url: string) => {
+    if (url === "/api/docs") return { data: { id: "doc-1" } };
+    return { data: { chips: [] } };
   });
 };
 
-const DocHarness = () => {
-  const { open } = useFormDialog();
-  const [result, setResult] = useState("pending");
+const Opener = () => {
+  const open = useCreateDocDialog("p-1");
   return (
-    <div>
-      <button
-        type="button"
-        onClick={async () => {
-          const result = await open<SaveDocFormData>({
-            title: "New doc",
-            schema: SaveDocFormSchema,
-            okLabel: "Create",
-            form: <CreateDocForm />,
-            formOptions: { defaultValues: emptyDocForm() },
-          });
-          setResult(result.success ? String((result.data as SaveDocFormData & { id?: string })?.id) : "cancelled");
-        }}
-      >
-        Open
-      </button>
-      <p>{result}</p>
-    </div>
+    <button type="button" onClick={open}>
+      Open
+    </button>
   );
 };
 
-const renderWithRoot = (ui: ReactElement) =>
+const openDialog = async () => {
+  const user = userEvent.setup();
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <ContextAwareConfirmation.ConfirmationRoot />
-      {ui}
+      <MemoryRouter>
+        <ContextAwareConfirmation.ConfirmationRoot />
+        <Opener />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
+  await user.click(await screen.findByRole("button", { name: "Open" }));
+  return { user, dialog: await screen.findByRole("dialog", { name: "New doc" }) };
+};
+
+const docPosts = () => vi.mocked(api.post).mock.calls.filter(([url]) => url === "/api/docs");
 
 beforeEach(() => {
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
 });
 
-describe("CreateDocForm", () => {
-  it("creates a doc in the selected project and resolves with its id", async () => {
-    const user = userEvent.setup();
-    mockProjects();
-    vi.mocked(api.post).mockResolvedValue({
-      data: {
-        id: "doc-1",
-        project_id: "p-1",
-        title: "New doc",
-        body: "",
-        version: 1,
-        archived: false,
-        created_at: "",
-        updated_at: "",
-      },
-    });
-    renderWithRoot(<DocHarness />);
+describe("New doc dialog", () => {
+  it("creates a doc in the project picked in the header, with its title and body, on Ctrl+Enter", async () => {
+    mockApi();
+    const { user, dialog } = await openDialog();
 
-    await user.click(screen.getByRole("button", { name: "Open" }));
-    await user.type(await screen.findByLabelText("Title"), "New doc");
-    await user.click(screen.getByRole("button", { name: "Create" }));
+    const title = await within(dialog).findByLabelText("Title");
+    expect(title).toHaveFocus();
+    await user.click(within(dialog).getByRole("button", { name: "Backend" }));
+    await user.click(await screen.findByRole("button", { name: "Frontend" }));
+    await user.type(title, "Rollback plan");
+    const body = within(dialog).getByLabelText("Body");
+    await user.click(body);
+    // ProseMirror reads jsdom's DOM edits one key at a time; a burst of keys drops some.
+    for (const key of "Drain first") await user.keyboard(key === " " ? "[Space]" : key);
+    await user.keyboard("{Control>}{Enter}{/Control}");
 
-    expect(await screen.findByText("doc-1")).toBeInTheDocument();
-    expect(api.post).toHaveBeenCalledWith(
-      "/api/docs",
-      expect.objectContaining({ project_id: "p-1", title: "New doc" }),
-    );
-  });
-
-  it("submits a structured rich-text body", async () => {
-    const user = userEvent.setup();
-    mockProjects();
-    vi.mocked(api.post).mockResolvedValue({ data: { id: "doc-1" } });
-    renderWithRoot(<DocHarness />);
-
-    await user.click(screen.getByRole("button", { name: "Open" }));
-    await user.type(await screen.findByLabelText("Title"), "New doc");
-    await user.click(screen.getByRole("button", { name: "Create" }));
-
-    await vi.waitFor(() => expect(api.post).toHaveBeenCalledTimes(1));
-    const [, payload] = vi.mocked(api.post).mock.calls[0] as [string, { title: string; body: string }];
-    expect(payload.body).toBe(emptyDocJson);
-    expect(isStructuredBody(payload.body)).toBe(true);
-  });
-
-  it("renders the body editor with an accessible region", async () => {
-    const user = userEvent.setup();
-    mockProjects();
-    renderWithRoot(<DocHarness />);
-
-    await user.click(screen.getByRole("button", { name: "Open" }));
-    expect(await screen.findByLabelText("Body")).toBeInTheDocument();
-    expect(screen.getByText("Start writing…")).toBeInTheDocument();
-    await user.keyboard("{Escape}");
+    await vi.waitFor(() => expect(docPosts()).toHaveLength(1));
+    const [, payload] = docPosts()[0] as [string, { project_id: string; title: string; body: string }];
+    expect(payload.project_id).toBe("p-2");
+    expect(payload.title).toBe("Rollback plan");
+    expect(JSON.parse(payload.body)).toMatchObject({ type: "doc" });
+    expect(payload.body).toContain("Drain first");
   });
 
   it("rejects an empty title without submitting", async () => {
-    const user = userEvent.setup();
-    mockProjects();
-    renderWithRoot(<DocHarness />);
+    mockApi();
+    const { user, dialog } = await openDialog();
 
-    await user.click(screen.getByRole("button", { name: "Open" }));
-    await screen.findByLabelText("Title");
-    await user.click(screen.getByRole("button", { name: "Create" }));
+    await within(dialog).findByLabelText("Title");
+    await user.click(within(dialog).getByRole("button", { name: "Create" }));
 
-    expect(screen.getByText("Title is required")).toBeInTheDocument();
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(api.post).not.toHaveBeenCalled();
+    expect(await within(dialog).findByText("Title is required")).toBeInTheDocument();
+    expect(docPosts()).toHaveLength(0);
     await user.keyboard("{Escape}");
   });
 
   it("asks for a project when none exist", async () => {
-    const user = userEvent.setup();
-    mockProjects([]);
-    renderWithRoot(<DocHarness />);
+    mockApi([]);
+    const { user, dialog } = await openDialog();
 
-    await user.click(screen.getByRole("button", { name: "Open" }));
-    expect(await screen.findByText(/create a project first/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
+    expect(await within(dialog).findByText(/create a project first/i)).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Create" })).toBeDisabled();
     await user.keyboard("{Escape}");
   });
 });

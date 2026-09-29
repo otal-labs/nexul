@@ -5,3 +5,7 @@ export const pillTriggerClass =
 // Shared by every option row inside a pill's popover; matches BoardCreateMenu's list-item convention.
 export const menuItemClass =
   "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-xs text-foreground outline-none transition-colors duration-150 ease-standard hover:bg-accent/60 focus-visible:bg-accent/60";
+
+// The borderless large title every create dialog opens with (ticket, doc).
+export const dialogTitleInputClass =
+  "quiet-focus w-full border-0 bg-transparent p-0 text-lg font-medium text-foreground caret-primary outline-none placeholder:text-muted-foreground";

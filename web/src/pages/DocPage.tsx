@@ -7,7 +7,7 @@ import { DetailErrorDisplay } from "@/components/DetailErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { CreateTicketFooter } from "@/components/ticket/CreateTicketFooter";
 import { CreateTicketForm, emptyTicketForm } from "@/components/ticket/CreateTicketForm";
-import { CreateTicketHeader } from "@/components/ticket/CreateTicketHeader";
+import { ProjectDialogHeader } from "@/components/project/ProjectDialogHeader";
 import { useArchiveDoc, useFetchDoc, useRestoreDoc } from "@/hooks/DocHooks";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { SaveTicketFormSchema, type SaveTicketFormData } from "@/models/Ticket";
@@ -36,7 +36,7 @@ export const DocPage = ({ wsFactory, docId: docIdProp }: DocPageProps = {}) => {
       title: "New ticket",
       schema: SaveTicketFormSchema,
       okLabel: "Create",
-      header: <CreateTicketHeader />,
+      header: <ProjectDialogHeader title="New ticket" />,
       footerStart: <CreateTicketFooter />,
       form: <CreateTicketForm docId={targetDocId} defaultProjectId={doc?.project_id ?? ""} />,
       formOptions: { defaultValues: emptyTicketForm() },

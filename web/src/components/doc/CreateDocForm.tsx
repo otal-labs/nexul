@@ -1,10 +1,9 @@
 import { useEffect } from "react";
 
 import { useFormDialogContext } from "@/components/dialogs/FormDialogContext";
-import { FormInput } from "@/components/FormInput";
 import { NoDataDisplay } from "@/components/NoDataDisplay";
 import { RichTextEditor } from "@/components/doc/RichTextEditor";
-import { FormSelect } from "@/components/ticket/FormSelect";
+import { dialogTitleInputClass } from "@/components/ticket/ticketFormPillStyles";
 import { useCreateDoc } from "@/hooks/DocHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import type { SaveDocFormData } from "@/models/Doc";
@@ -13,45 +12,67 @@ interface CreateDocFormProps {
   defaultProjectId?: string;
 }
 
+// The create-ticket dialog's shape: ProjectDialogHeader picks the project, then a borderless title over the body.
 export const CreateDocForm = ({ defaultProjectId = "" }: CreateDocFormProps) => {
-  const { control, setValue, watch, onSubmit, setLoading } = useFormDialogContext<SaveDocFormData>();
+  const { register, formState, getValues, setValue, watch, onSubmit, setLoading, submit } =
+    useFormDialogContext<SaveDocFormData>();
   const createDoc = useCreateDoc();
   const { data: projects } = useFetchProjects();
 
   const ready = projects != null;
-  const noProjects = ready && (projects?.length ?? 0) === 0;
+  const noProjects = ready && projects.length === 0;
 
   useEffect(() => {
     setLoading(!ready || noProjects);
   }, [ready, noProjects, setLoading]);
 
-  // Seed once reference data loads; the dialog mounts fresh per open (react-confirm), same pattern as CreateTicketForm.
+  // Seeds only an empty pick, so a refetch never undoes the header's choice.
   useEffect(() => {
-    if (!ready) return;
-    setValue("project_id", (defaultProjectId || projects?.[0]?.id) ?? "");
-  }, [ready, projects, defaultProjectId, setValue]);
+    if (!ready || getValues("project_id")) return;
+    setValue("project_id", (defaultProjectId || projects[0]?.id) ?? "");
+  }, [ready, projects, defaultProjectId, getValues, setValue]);
 
   onSubmit(async (input) => {
     const doc = await createDoc.mutateAsync(input);
     return { id: doc.id, ...input };
   });
 
-  const projectOptions = (projects ?? []).map((project) => ({ value: project.id, label: project.name }));
+  const titleError = formState.errors.title?.message;
 
   return (
-    <div className="space-y-4">
-      {noProjects && (
-        <NoDataDisplay message="Create a project first — every doc belongs to exactly one project." />
-      )}
+    <div
+      className="space-y-3"
+      // Capture: the body editor would otherwise take Mod-Enter as a line break before the form sees it.
+      onKeyDownCapture={(e) => {
+        if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+          e.preventDefault();
+          e.stopPropagation();
+          submit();
+        }
+      }}
+    >
+      {noProjects && <NoDataDisplay message="Create a project first — every doc belongs to exactly one project." />}
       {!noProjects && (
-        <>
-          <FormSelect control={control} name="project_id" label="Project" options={projectOptions} />
-          <FormInput control={control} name="title" label="Title" placeholder="Doc title" />
+        <div className="space-y-3">
           <div>
-            <span className="text-sm font-medium">Body</span>
-            <RichTextEditor value={watch("body")} onChange={(value) => setValue("body", value)} aria-label="Body" />
+            <input
+              {...register("title")}
+              autoFocus
+              aria-label="Title"
+              aria-invalid={titleError != null}
+              placeholder="Doc title"
+              className={dialogTitleInputClass}
+            />
+            {titleError && (
+              <p role="alert" className="mt-1 text-sm text-destructive">
+                {titleError}
+              </p>
+            )}
           </div>
-        </>
+          <div className="max-h-[40dvh] overflow-y-auto">
+            <RichTextEditor compact value={watch("body")} onChange={(value) => setValue("body", value)} aria-label="Body" />
+          </div>
+        </div>
       )}
     </div>
   );
