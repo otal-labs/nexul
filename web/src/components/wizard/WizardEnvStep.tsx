@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useShallow } from "zustand/react/shallow";
 
@@ -5,8 +6,11 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { FormInput } from "@/components/FormInput";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { Button } from "@/components/ui/button";
+import { EnvModeToggle, type EnvMode } from "@/components/wizard/EnvModeToggle";
+import { EnvPasteField } from "@/components/wizard/EnvPasteField";
 import { useDeployStack, useFetchStack, useUpdateStackEnv } from "@/hooks/StackHooks";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
+import { formatEnvFile, parseEnvFile } from "@/models/EnvFile";
 
 interface WizardEnvStepProps {
   onDone: () => void;
@@ -29,6 +33,21 @@ export const WizardEnvStep = ({ onDone }: WizardEnvStepProps) => {
   const form = useForm<Record<string, string>>({
     defaultValues: Object.fromEntries(envKeys.map((key) => [key, envValues[key] ?? ""])),
   });
+  const [mode, setMode] = useState<EnvMode>("fields");
+  const [text, setText] = useState("");
+  // Keys beyond the detected ones have no field; they ride along in Paste and are still saved.
+  const [extras, setExtras] = useState(() => Object.fromEntries(Object.entries(envValues).filter(([key]) => !envKeys.includes(key))));
+  const parsed = useMemo(() => parseEnvFile(text), [text]);
+  const pasteBlocked = mode === "paste" && parsed.invalidLines.length > 0;
+
+  const changeMode = (next: EnvMode) => {
+    if (next === "paste") setText(formatEnvFile({ ...extras, ...form.getValues() }, [...envKeys, ...Object.keys(extras)]));
+    if (next === "fields") {
+      form.reset(Object.fromEntries(envKeys.map((key) => [key, parsed.values[key] ?? ""])));
+      setExtras(Object.fromEntries(Object.entries(parsed.values).filter(([key]) => !envKeys.includes(key))));
+    }
+    setMode(next);
+  };
 
   if (!stack) {
     return (
@@ -40,7 +59,9 @@ export const WizardEnvStep = ({ onDone }: WizardEnvStepProps) => {
   }
 
   const onSubmit = async (data: Record<string, string>) => {
-    const filled = Object.fromEntries(Object.entries(data).filter(([, value]) => value.trim() !== ""));
+    if (pasteBlocked) return;
+    const entered = mode === "paste" ? parsed.values : { ...extras, ...data };
+    const filled = Object.fromEntries(Object.entries(entered).filter(([, value]) => value.trim() !== ""));
     try {
       await updateEnv.mutateAsync({ ...stack, env: { ...stack.env, ...filled } });
       setEnvValues(filled);
@@ -53,10 +74,21 @@ export const WizardEnvStep = ({ onDone }: WizardEnvStepProps) => {
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-      {envKeys.map((key) => (
-        <FormInput key={key} control={form.control} name={key} label={key} placeholder="optional" />
-      ))}
-      <Button type="submit" className="w-full sm:w-auto" loading={updateEnv.isPending || deployStack.isPending}>
+      <div className="flex">
+        <EnvModeToggle mode={mode} onMode={changeMode} fieldsDisabled={pasteBlocked} />
+      </div>
+      {mode === "fields" &&
+        envKeys.map((key) => <FormInput key={key} control={form.control} name={key} label={key} placeholder="optional" />)}
+      {mode === "fields" && Object.keys(extras).length > 0 && (
+        <p className="text-xs text-muted-foreground">Also saving: {Object.keys(extras).join(", ")}</p>
+      )}
+      {mode === "paste" && <EnvPasteField text={text} onText={setText} parsed={parsed} />}
+      <Button
+        type="submit"
+        className="w-full sm:w-auto"
+        disabled={pasteBlocked}
+        loading={updateEnv.isPending || deployStack.isPending}
+      >
         Save & deploy
       </Button>
     </form>

@@ -67,4 +67,66 @@ describe("WizardEnvStep", () => {
     expect(useProjectWizardStore.getState().envValues).toEqual({ API_KEY: "secret" });
     expect(mocks.post).toHaveBeenCalledWith("/api/deploys", expect.objectContaining({ stack_id: "stack-1", ref: "main" }));
   });
+
+  it("carries the typed values into Paste, and edits made there back into the fields plus extra keys that keep being saved", async () => {
+    mocks.patch.mockResolvedValue({ data: stack });
+    const onDone = renderStep();
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByLabelText("API_KEY"), "secret");
+    await user.click(screen.getByRole("radio", { name: "Paste .env" }));
+    const paste = screen.getByLabelText("Environment file");
+    expect(paste).toHaveValue("API_KEY=secret\nDB_URL=");
+
+    await user.clear(paste);
+    await user.click(paste);
+    await user.paste("# db\nexport DB_URL='postgres://x'\nEXTRA=1\n");
+    await user.click(screen.getByRole("radio", { name: "Fields" }));
+
+    expect(screen.getByLabelText("API_KEY")).toHaveValue("");
+    expect(screen.getByLabelText("DB_URL")).toHaveValue("postgres://x");
+    expect(screen.getByText("Also saving: EXTRA")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /save & deploy/i }));
+    await vi.waitFor(() => expect(onDone).toHaveBeenCalled());
+    expect(mocks.patch).toHaveBeenCalledWith(
+      "/api/stacks/stack-1",
+      expect.objectContaining({ env: { DB_URL: "postgres://x", EXTRA: "1" } }),
+    );
+  });
+
+  it("saves what the paste box holds when Save is pressed there", async () => {
+    mocks.patch.mockResolvedValue({ data: stack });
+    const onDone = renderStep();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("radio", { name: "Paste .env" }));
+    const paste = screen.getByLabelText("Environment file");
+    await user.clear(paste);
+    await user.click(paste);
+    await user.paste("API_KEY=from-paste");
+    await user.click(screen.getByRole("button", { name: /save & deploy/i }));
+
+    await vi.waitFor(() => expect(onDone).toHaveBeenCalled());
+    expect(mocks.patch).toHaveBeenCalledWith(
+      "/api/stacks/stack-1",
+      expect.objectContaining({ env: { API_KEY: "from-paste" } }),
+    );
+  });
+
+  it("blocks Save and leaving Paste while a line is not KEY=value, and names the line", async () => {
+    const user = userEvent.setup();
+    renderStep();
+
+    await user.click(await screen.findByRole("radio", { name: "Paste .env" }));
+    const paste = screen.getByLabelText("Environment file");
+    await user.clear(paste);
+    await user.click(paste);
+    await user.paste("API_KEY=1\noops");
+
+    expect(screen.getByText("Line 2 isn't KEY=value")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /save & deploy/i })).toBeDisabled();
+    expect(screen.getByRole("radio", { name: "Fields" })).toBeDisabled();
+    expect(mocks.patch).not.toHaveBeenCalled();
+  });
 });
