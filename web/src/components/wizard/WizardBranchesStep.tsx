@@ -1,9 +1,9 @@
 import { useShallow } from "zustand/react/shallow";
 
-import { Button } from "@/components/ui/button";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { BranchRulesForm } from "@/components/wizard/BranchRulesForm";
+import { WizardSkipLink } from "@/components/wizard/WizardSkipLink";
 import { useFetchExposures } from "@/hooks/DnsHooks";
 import { useFetchMachineNetworks, useFetchStack, useFetchStackServices } from "@/hooks/StackHooks";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
@@ -34,9 +34,7 @@ export const WizardBranchesStep = ({ onDone, onSkip }: WizardBranchesStepProps) 
       {error && (
         <div className="space-y-4">
           <ErrorDisplay error={error} title="Could not load what this machine runs" />
-          <Button type="button" variant="ghost" className="text-muted-foreground" onClick={onSkip}>
-            Skip for now
-          </Button>
+          <WizardSkipLink onClick={onSkip} />
         </div>
       )}
       {stack.data && services.data && exposures.data && networks.data && (

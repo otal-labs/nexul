@@ -191,16 +191,23 @@ led: the finished rung's rail draws down (260ms `--ease-out`, `scaleY` from
 the top), then the next body rises in (200ms, 4px, with a 180ms delay only
 when it follows a drawn rail). `DnsSetupStepper` is the reference.
 
-Project wizard. The `/wizard/project/<step>` flow (project, repository,
-service, env, reach, deploy branches, done) reuses the setup stepper wholesale: `DnsStep` rungs
-inside `WizardLayout`, with the URL step deciding which rung is open. A rung's
-state is its position relative to the current step, so moving forward
-collapses everything before it to done with a `Change` summary and lights the
-next rung. The project rung is the one departure: entering from an existing
-project preselects it, so that rung renders completed from the first paint
-instead of asking for something already known. Candidate choice and reach
-fields are radio rows and form fields per the patterns above; no new stepper
-chrome exists.
+Project wizard. The `/wizard/project/<step>` flow (info, repository, service,
+environment when the scan found keys, reach, deploy branches, done) is a
+horizontal progress row above the active step, not the vertical rail. The row
+is an `ol` up to `max-w-3xl` of 20px nodes evenly spaced on a 1px connector;
+segments up to the current step fill with `foreground` (a `scaleX` over 200ms),
+the rest stay `border`. A done node is a check in the `success` token and is a
+button back to that step only when revisiting has no side effect (never Info,
+and none once the stack exists); the current node is a filled ring with
+`aria-current="step"`; future nodes are hollow, muted, and disabled. Labels are
+`text-[11px]` mono under each node from a 42rem container up; narrower, one line
+under the row names the current step with its `n / total` counter. The step
+content sits in a `max-w-xl` column beneath the title and slides 8px in the
+direction of travel over 180ms. Every step ends with one footer: Back on the
+left (Info leaves the wizard, Service returns to Repository until its stack
+exists), then a ghost "Skip for now" where the step allows it, then the
+primary action; Info's reads "Continue to <next step>". No new stepper chrome
+beyond this row exists. The URL step is the whole navigation state.
 
 Stack detail page. The header keeps the detail-page shape (back link, mono
 slug, title, actions top right) and adds a facts grid: a mono microheader over

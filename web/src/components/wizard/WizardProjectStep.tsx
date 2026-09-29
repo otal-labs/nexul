@@ -3,16 +3,18 @@ import { useForm } from "react-hook-form";
 
 import { FormInput } from "@/components/FormInput";
 import { Button } from "@/components/ui/button";
-import { WizardSkipButton } from "@/components/wizard/WizardSkipButton";
+import { WizardFooter } from "@/components/wizard/WizardFooter";
 import { useCreateProject } from "@/hooks/ProjectHooks";
 import { SaveProjectFormSchema, type SaveProjectFormData } from "@/models/Project";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
 
 interface WizardProjectStepProps {
   onDone: () => void;
+  onBack?: (() => void) | undefined;
+  continueLabel?: string;
 }
 
-export const WizardProjectStep = ({ onDone }: WizardProjectStepProps) => {
+export const WizardProjectStep = ({ onDone, onBack, continueLabel = "Continue" }: WizardProjectStepProps) => {
   const createProject = useCreateProject();
   const setProjectId = useProjectWizardStore((s) => s.setProjectId);
   const form = useForm<SaveProjectFormData>({
@@ -47,12 +49,11 @@ export const WizardProjectStep = ({ onDone }: WizardProjectStepProps) => {
         maxLength={5}
         transform={(value) => value.toUpperCase()}
       />
-      <div className="flex flex-wrap items-center gap-2">
+      <WizardFooter onBack={onBack}>
         <Button type="submit" loading={form.formState.isSubmitting}>
-          Continue
+          {continueLabel}
         </Button>
-        <WizardSkipButton />
-      </div>
+      </WizardFooter>
     </form>
   );
 };

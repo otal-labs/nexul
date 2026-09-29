@@ -3,6 +3,8 @@ import { Plus } from "lucide-react";
 import { useFieldArray, useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
+import { WizardFooter } from "@/components/wizard/WizardFooter";
+import { WizardSkipLink } from "@/components/wizard/WizardSkipLink";
 import { BranchRuleRow } from "@/components/wizard/BranchRuleRow";
 import { DefaultBranchRow } from "@/components/wizard/DefaultBranchRow";
 import { useUpdateStack } from "@/hooks/StackHooks";
@@ -90,14 +92,11 @@ export const BranchRulesForm = ({ stack, exposure, defaultPort, networks, onDone
         <Plus aria-hidden className="size-4" />
         Add branch
       </Button>
-      <div className="flex flex-wrap gap-3">
-        <Button type="submit" className="w-full sm:w-auto" loading={updateStack.isPending}>
+      <WizardFooter skip={<WizardSkipLink onClick={onSkip} />}>
+        <Button type="submit" loading={updateStack.isPending}>
           Save branches
         </Button>
-        <Button type="button" variant="ghost" className="text-muted-foreground" onClick={onSkip}>
-          Skip for now
-        </Button>
-      </div>
+      </WizardFooter>
     </form>
   );
 };
