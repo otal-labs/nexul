@@ -413,7 +413,7 @@ _Avoid_: Ticket template, form, checklist
 One capability, written `<domain>:<action>` where the action is `read`,
 `write`, or `delete` (`docs:write`, `members:delete`), or a verb the domain
 declares for an act that is neither (`plays:run`, `memories:clone`,
-`roles:clone`, `docs:thread`). One vocabulary for every actor: a role, a
+`roles:clone`, `docs:thread`, `docs:clone`). One vocabulary for every actor: a role, a
 scoped token, and the agent are checked against the same values. Checked in
 the workspace the entity belongs to; runners, the topology, machines, DNS,
 connectors, the instance's own stacks, and the instance itself (its settings,
@@ -544,7 +544,7 @@ internals.
 **Access** — what an actor may do. Permissions and access control. A
 permission is `<domain>:<read|write|delete>` (`docs:write`,
 `members:delete`), or a verb a domain declares beside those three
-(`plays:run`, `memories:clone`, `roles:clone`, `docs:thread`), one
+(`plays:run`, `memories:clone`, `roles:clone`, `docs:thread`, `docs:clone`), one
 vocabulary shared by roles, token scopes, and the agent. Distinct from auth.
 
 **Auth** — who a user is. Identity and device sessions, via an owner-configured OAuth provider.
