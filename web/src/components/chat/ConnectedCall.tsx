@@ -10,11 +10,10 @@ import { useVoiceCallStore } from "@/stores/voiceCallStore";
 
 interface ConnectedCallProps {
   room: Room;
-  resolveLogin: (identity: string) => string;
 }
 
 // Built from shadcn Button, not the library's ControlBar, so controls read as Mono Console, not the default look.
-export const ConnectedCall = ({ room, resolveLogin }: ConnectedCallProps) => {
+export const ConnectedCall = ({ room }: ConnectedCallProps) => {
   const { micEnabled, cameraEnabled, screenShareEnabled, leave, toggleMic, toggleCamera, toggleScreenShare } = useVoiceCallStore(
     useShallow((s) => ({
       micEnabled: s.micEnabled,
@@ -33,7 +32,7 @@ export const ConnectedCall = ({ room, resolveLogin }: ConnectedCallProps) => {
         data-lk-theme="default"
         className="voice-call-stage flex h-[45vh] min-h-56 shrink-0 flex-col gap-2 border-b border-border bg-background p-2"
       >
-        <VoiceCallStage resolveLogin={resolveLogin} />
+        <VoiceCallStage />
         <div className="flex shrink-0 items-center justify-center gap-2 border-t border-border pt-2">
           <VoiceCallControlButton
             enabled={micEnabled}

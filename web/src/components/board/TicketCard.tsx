@@ -9,12 +9,14 @@ import { TicketBlockedLine } from "@/components/board/TicketBlockedLine";
 import { labelDotColor, pillClass, ticketTypeColor } from "@/components/board/ticketTypeColor";
 import { TicketTypeIcon } from "@/components/board/ticketTypeIcon";
 import { useFetchChatThreadIndicators } from "@/hooks/ChatHooks";
+import { usePerson } from "@/hooks/PeopleHooks";
 import { useFetchProject } from "@/hooks/ProjectHooks";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
 import { useFetchLabelColors } from "@/hooks/TicketHooks";
 import { useFetchProjectTicketTypes } from "@/hooks/TicketTypeHooks";
 import { useIsTicketRunActive } from "@/hooks/TrailHooks";
 import { cn } from "@/lib/utils";
+import { personLabel } from "@/models/Person";
 import { cardPerson, ticketPath, type Ticket } from "@/models/Ticket";
 
 interface TicketCardProps {
@@ -40,6 +42,7 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
   const { data: threadIndicators } = useFetchChatThreadIndicators(ticket.project_id);
   const { data: statuses } = useFetchProjectStatuses(ticket.project_id);
   const person = cardPerson(ticket, statuses?.find((s) => s.id === ticket.status)?.kind);
+  const shown = usePerson(person.login);
   const hasThread = threadIndicators?.[ticket.id] === true;
   const runActive = useIsTicketRunActive(ticket.project_id, ticket.id);
   const prefix = project?.prefix ?? "";
@@ -52,8 +55,8 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
       {/* The whole card is the drag handle and click target; a still click never activates dnd-kit, so no inner handler is needed. */}
       <span className="flex items-center gap-2.5">
         {person.login && (
-          <span role="img" aria-label={`${person.role} ${person.login}`} className="shrink-0">
-            <PersonAvatar login={person.login} className="size-7 text-[10px]" />
+          <span role="img" aria-label={`${person.role} ${personLabel(shown)}`} className="shrink-0">
+            <PersonAvatar login={person.login} src={shown.avatar_url} className="size-7 text-[10px]" />
           </span>
         )}
         <span className="min-w-0 flex-1 text-sm font-medium leading-snug">{ticket.title}</span>

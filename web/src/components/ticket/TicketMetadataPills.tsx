@@ -10,7 +10,9 @@ import { menuItemClass, pillTriggerClass } from "@/components/ticket/ticketFormP
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useFetchDoc } from "@/hooks/DocHooks";
+import { usePerson } from "@/hooks/PeopleHooks";
 import type { Category } from "@/models/Category";
+import { personLabel } from "@/models/Person";
 import type { SaveTicketFormData } from "@/models/Ticket";
 import type { TicketType } from "@/models/TicketType";
 
@@ -131,16 +133,18 @@ interface PersonPillProps {
 export const PersonPill = ({ field, label }: PersonPillProps) => {
   const { watch, setValue } = useFormDialogContext<SaveTicketFormData>();
   const [open, setOpen] = useState(false);
-  // Submits the member's login verbatim — the same value rendered elsewhere as display name.
+  // Submits the member's login verbatim; the pill shows their display name.
   const login = watch(field);
+  const person = usePerson(login ?? "");
+  const name = login ? personLabel(person) : "";
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button type="button" aria-label={`${label}: ${login || "no one"}`} className={pillTriggerClass}>
+        <button type="button" aria-label={`${label}: ${name || "no one"}`} className={pillTriggerClass}>
           {!login && <UserIcon className="size-3.5 text-muted-foreground" aria-hidden />}
-          {login && <PersonAvatar login={login} className="size-4 text-[8px]" />}
-          {login || label}
+          {login && <PersonAvatar login={login} src={person.avatar_url} className="size-4 text-[8px]" />}
+          {name || label}
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-56 p-1.5">

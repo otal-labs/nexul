@@ -35,7 +35,7 @@ const conversationsWithDocThread: Conversation[] = [
 const docResponse = { id: "doc-1", project_id: "proj-1", title: "Runbook", body: "", version: 1, archived: false, created_at: "", updated_at: "" };
 
 const occupancy = { c2: [{ identity: "u2", name: "Dana" }] };
-const membersResponse = { members: [{ user_id: "u1", login: "onik97", role_id: "r1" }], invites: [] };
+const peopleResponse = { people: [{ user_id: "u1", login: "onik97", display_name: "", avatar_url: "" }] };
 
 const renderList = (onSelect = vi.fn(), list: Conversation[] = conversations) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -62,7 +62,7 @@ beforeEach(() => {
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/voice/occupancy") return { data: occupancy };
     if (url === "/api/auth/me") return { data: meResponse };
-    if (url.startsWith("/api/workspaces/")) return { data: membersResponse };
+    if (url.startsWith("/api/workspaces/")) return { data: peopleResponse };
     if (url === "/api/docs/doc-1") return { data: docResponse };
     return { data: {} };
   });

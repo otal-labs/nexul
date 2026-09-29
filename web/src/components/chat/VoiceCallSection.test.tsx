@@ -7,10 +7,10 @@ import { VoiceCallSection } from "@/components/chat/VoiceCallSection";
 import type { Conversation } from "@/models/Chat";
 import { useVoiceCallStore, type VoiceCallStatus } from "@/stores/voiceCallStore";
 
-// useChatAuthorLookup fetches workspace members via react-query; the tile avatar lookup is not what
-// these tests exercise, so it's stubbed to an identity passthrough instead of wiring a QueryClient.
-vi.mock("@/hooks/ChatHooks", () => ({
-  useChatAuthorLookup: () => (identity: string) => identity,
+// The tile avatar lookup fetches the workspace's people via react-query; it is not what these tests
+// exercise, so it's stubbed to an unknown person instead of wiring a QueryClient.
+vi.mock("@/hooks/PeopleHooks", () => ({
+  usePersonLookup: () => (identity: string) => ({ user_id: identity, login: identity, display_name: "", avatar_url: "" }),
 }));
 
 const conversation: Conversation = {
@@ -32,7 +32,7 @@ const stageCall = (status: VoiceCallStatus, overrides?: Partial<ReturnType<typeo
 const renderSection = (active: boolean) =>
   render(
     <MemoryRouter>
-      <VoiceCallSection workspaceId="w1" conversation={conversation} active={active} />
+      <VoiceCallSection conversation={conversation} active={active} />
     </MemoryRouter>,
   );
 

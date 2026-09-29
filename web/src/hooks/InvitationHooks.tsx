@@ -80,7 +80,7 @@ export const useRedeemInvitation = () => {
       await Promise.all([
         client.invalidateQueries({ queryKey: [getInvitationsKey] }),
         client.invalidateQueries({ queryKey: ["getWorkspaces"] }),
-        client.invalidateQueries({ queryKey: ["getWorkspaceMembers"] }),
+        client.invalidateQueries({ queryKey: ["getWorkspacePeople"] }),
         client.invalidateQueries({ queryKey: ["getMe"] }),
       ]);
     },

@@ -8,8 +8,8 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { Button } from "@/components/ui/button";
 import { useFetchMe } from "@/hooks/AuthHooks";
+import { usePersonLookup } from "@/hooks/PeopleHooks";
 import {
-  useChatAuthorLookup,
   useDeleteMessage,
   useEditMessage,
   useFetchMessages,
@@ -34,13 +34,13 @@ const CONVERSATION_ICONS: Partial<Record<Conversation["kind"], LucideIcon>> = { 
 export const ConversationThread = ({ workspaceId, conversation, onBack, showHeader = true }: ConversationThreadProps) => {
   const { data: me } = useFetchMe();
   const { data: messages, error, isPending } = useFetchMessages(conversation.id);
-  const resolveAuthorLogin = useChatAuthorLookup(workspaceId);
+  const resolvePerson = usePersonLookup(workspaceId);
   const postMessage = usePostMessage(conversation.id);
   const editMessage = useEditMessage();
   const deleteMessage = useDeleteMessage(conversation.id);
   const interruptAgent = useInterruptAgentTurn(conversation.id);
   const markRead = useMarkChatRead(workspaceId);
-  const label = conversationLabel(conversation, { currentUserId: me?.user.id, resolveLogin: resolveAuthorLogin });
+  const label = conversationLabel(conversation, { currentUserId: me?.user.id, resolvePerson });
   const isVoiceChannel = conversation.kind === "voice_channel";
   const isCallActive = useVoiceCallStore((s) => s.activeConversationId === conversation.id);
 
@@ -73,7 +73,7 @@ export const ConversationThread = ({ workspaceId, conversation, onBack, showHead
       )}
       {isVoiceChannel && (
         <Suspense fallback={<LoadingDisplay label="Loading voice…" />}>
-          <LazyVoiceCallSection workspaceId={workspaceId} conversation={conversation} active={isCallActive} />
+          <LazyVoiceCallSection conversation={conversation} active={isCallActive} />
         </Suspense>
       )}
       {isPending && <LoadingDisplay label="Loading messages…" />}
@@ -84,7 +84,7 @@ export const ConversationThread = ({ workspaceId, conversation, onBack, showHead
           messages={messages}
           onNewestSeen={onNewestSeen}
           currentUserId={me?.user.id}
-          resolveAuthorLogin={resolveAuthorLogin}
+          resolveAuthor={resolvePerson}
           onEdit={async (messageId, body) => {
             await editMessage.mutateAsync({ messageId, body });
           }}

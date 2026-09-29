@@ -1,3 +1,5 @@
+import { personLabel, type Person } from "@/models/Person";
+
 // Mirrors internal/chat/model.go; "voice_channel" and the interview and channel threads exist but the phone does not list them.
 export type ConversationKind =
   | "channel"
@@ -51,18 +53,9 @@ export interface Workspace {
   name: string;
 }
 
-export interface WorkspaceMember {
-  user_id: string;
-  login: string;
-}
-
-export interface WorkspaceMembers {
-  members: WorkspaceMember[];
-}
-
 export interface DMLabelContext {
   currentUserId: string | undefined;
-  resolveLogin: (userId: string) => string;
+  resolvePerson: (userId: string) => Person;
 }
 
 export const conversationLabel = (c: Conversation, dmCtx?: DMLabelContext): string => {
@@ -70,8 +63,8 @@ export const conversationLabel = (c: Conversation, dmCtx?: DMLabelContext): stri
   if (c.kind === "dm") {
     const ids = c.participant_ids ?? [];
     const others = ids.filter((id) => id !== dmCtx?.currentUserId);
-    if (dmCtx && others.length > 0) return others.map(dmCtx.resolveLogin).join(", ");
-    if (dmCtx?.currentUserId && ids.length > 0) return `${dmCtx.resolveLogin(dmCtx.currentUserId)} (you)`;
+    if (dmCtx && others.length > 0) return others.map((id) => personLabel(dmCtx.resolvePerson(id))).join(", ");
+    if (dmCtx?.currentUserId && ids.length > 0) return `${personLabel(dmCtx.resolvePerson(dmCtx.currentUserId))} (you)`;
     return "Direct message";
   }
   if (c.kind === "ticket_thread") return "Ticket thread";

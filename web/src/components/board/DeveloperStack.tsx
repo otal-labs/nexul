@@ -2,7 +2,9 @@ import { CheckIcon } from "lucide-react";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { PersonAvatar } from "@/components/PersonAvatar";
+import { usePerson } from "@/hooks/PeopleHooks";
 import { cn } from "@/lib/utils";
+import { personLabel } from "@/models/Person";
 
 interface DeveloperStackProps {
   developers: string[];
@@ -19,11 +21,13 @@ interface DeveloperToggleProps {
 
 const MAX_VISIBLE = 5;
 
-const DeveloperStackAvatar = ({ login, active, dimmed, onToggle }: DeveloperToggleProps) => (
+const DeveloperStackAvatar = ({ login, active, dimmed, onToggle }: DeveloperToggleProps) => {
+  const person = usePerson(login);
+  return (
   <button
     type="button"
     aria-pressed={active}
-    aria-label={`Developer ${login}`}
+    aria-label={`Developer ${personLabel(person)}`}
     onClick={() => onToggle(login)}
     className={cn(
       "relative rounded-full ring-2 ring-card transition-[transform,opacity,box-shadow] duration-150 ease-standard hover:z-10 hover:scale-110 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-ring",
@@ -31,23 +35,27 @@ const DeveloperStackAvatar = ({ login, active, dimmed, onToggle }: DeveloperTogg
       dimmed && "opacity-50 hover:opacity-100",
     )}
   >
-    <PersonAvatar login={login} className="size-8 text-[11px]" />
+    <PersonAvatar login={login} src={person.avatar_url} className="size-8 text-[11px]" />
   </button>
-);
+  );
+};
 
-const DeveloperStackMenuItem = ({ login, active, onToggle }: Omit<DeveloperToggleProps, "dimmed">) => (
+const DeveloperStackMenuItem = ({ login, active, onToggle }: Omit<DeveloperToggleProps, "dimmed">) => {
+  const person = usePerson(login);
+  return (
   <button
     type="button"
     aria-pressed={active}
-    aria-label={`Developer ${login}`}
+    aria-label={`Developer ${personLabel(person)}`}
     onClick={() => onToggle(login)}
     className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
   >
-    <PersonAvatar login={login} className="size-6" />
-    <span className="min-w-0 flex-1 truncate">{login}</span>
+    <PersonAvatar login={login} src={person.avatar_url} className="size-6" />
+    <span className="min-w-0 flex-1 truncate">{personLabel(person)}</span>
     {active && <CheckIcon className="size-3.5 shrink-0" aria-hidden />}
   </button>
-);
+  );
+};
 
 // Overlapping avatars beside the Filter button: a click narrows the board to that developer, a ring marks the selected ones.
 export const DeveloperStack = ({ developers, selected, onToggle }: DeveloperStackProps) => {

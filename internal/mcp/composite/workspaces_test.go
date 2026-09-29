@@ -20,6 +20,7 @@ import (
 // fakeWorkspaces holds each user's workspaces and the role name they hold in each.
 type fakeWorkspaces struct {
 	byUser  map[string][]*tenancy.Workspace
+	people  map[string][]tenancy.Person
 	listErr error
 }
 
@@ -29,6 +30,10 @@ func (f fakeWorkspaces) ListForUser(_ context.Context, userID string) ([]*tenanc
 
 func (f fakeWorkspaces) MemberRoleName(_ context.Context, _, _ string) (string, error) {
 	return "Owner", nil
+}
+
+func (f fakeWorkspaces) ListPeople(_ context.Context, _, workspaceID string) ([]tenancy.Person, error) {
+	return f.people[workspaceID], nil
 }
 
 type fakeRoles struct {
@@ -44,6 +49,8 @@ func newWorkspaceListCall(rolesErr error) func(context.Context, json.RawMessage)
 	ws := fakeWorkspaces{byUser: map[string][]*tenancy.Workspace{
 		"u-1": {{ID: "ws-1", Name: "Acme"}, {ID: "ws-2", Name: "Beta"}},
 		"u-2": {{ID: "ws-3", Name: "Other"}},
+	}, people: map[string][]tenancy.Person{
+		"ws-1": {{UserID: "u-1", Login: "LewisWelch94", DisplayName: "Lewis", AvatarURL: "https://avatars.example/1"}},
 	}}
 	rs := fakeRoles{err: rolesErr, byWorkspace: map[string][]*roles.Role{
 		"ws-1": {
@@ -91,7 +98,7 @@ func TestWorkspaceList_WithoutIDListsTheCallersWorkspacesOnly(t *testing.T) {
 	assert.Equal(t, []workspaceResult{{ID: "ws-1", Name: "Acme", Role: "Owner"}, {ID: "ws-2", Name: "Beta", Role: "Owner"}}, page.Items)
 }
 
-func TestWorkspaceList_WithIDReturnsRolesAndCatalog(t *testing.T) {
+func TestWorkspaceList_WithIDReturnsPeopleRolesAndCatalog(t *testing.T) {
 	out, err := newWorkspaceListCall(nil)(actorCtx("u-1"), json.RawMessage(`{"id":"ws-1"}`))
 	require.NoError(t, err)
 	page, ok := out.(mcptool.Page[workspaceResult])
@@ -99,6 +106,7 @@ func TestWorkspaceList_WithIDReturnsRolesAndCatalog(t *testing.T) {
 	require.Len(t, page.Items, 1)
 	got := page.Items[0]
 	assert.Equal(t, "ws-1", got.ID)
+	assert.Equal(t, []tenancy.Person{{UserID: "u-1", Login: "LewisWelch94", DisplayName: "Lewis", AvatarURL: "https://avatars.example/1"}}, got.People)
 	assert.Equal(t, []roles.RoleResult{
 		{ID: "role-owner", WorkspaceID: "ws-1", Name: "Owner", IsOwnerRole: true, Permissions: []string{}},
 		{ID: "role-editors", WorkspaceID: "ws-1", Name: "Editors", Permissions: []string{"docs:read", "roles:clone"}},

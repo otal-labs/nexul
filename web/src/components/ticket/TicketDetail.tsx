@@ -6,6 +6,8 @@ import { RichTextEditor } from "@/components/doc/RichTextEditor";
 import { formatUpdatedAgo } from "@/components/doc/docTime";
 import { TicketStatusBadge } from "@/components/ticket/TicketStatusBadge";
 import { Input } from "@/components/ui/input";
+import { usePerson } from "@/hooks/PeopleHooks";
+import { personLabel } from "@/models/Person";
 import type { Project } from "@/models/Project";
 import { reporterLabel, type Ticket } from "@/models/Ticket";
 import { parseBodyToJSON } from "@/utils/RichtextUtility";
@@ -35,7 +37,8 @@ export const TicketDetail = ({ ticket, project, onSave }: TicketDetailProps) => 
   useLayoutEffect(() => {
     onSaveRef.current = onSave;
   });
-  const reporter = reporterLabel(ticket.reporter);
+  const reporterPerson = usePerson(ticket.reporter.login ?? "");
+  const reporter = reporterLabel(ticket.reporter, () => personLabel(reporterPerson));
 
   const flush = async () => {
     if (timer.current) {

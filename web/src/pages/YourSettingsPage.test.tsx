@@ -69,7 +69,7 @@ describe("YourSettingsPage", () => {
   it("opens on Profile with the saved display name in the form", async () => {
     renderPage();
     expect(screen.getByRole("heading", { name: "Settings" })).toBeInTheDocument();
-    expect(await screen.findByLabelText("Name")).toHaveValue("Onik N");
+    expect(await screen.findByLabelText("Display name")).toHaveValue("Onik N");
     expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Security" })).toHaveAttribute("href", "/settings/security");
   });

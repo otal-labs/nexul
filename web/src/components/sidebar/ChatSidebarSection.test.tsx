@@ -30,12 +30,11 @@ const conversations = [
 
 const occupancy = { c3: [{ identity: "u2", name: "Dana" }] };
 
-const membersResponse = {
-  members: [
-    { user_id: "u1", login: "onik97", role_id: "r1" },
-    { user_id: "u2", login: "olive", role_id: "r1" },
+const peopleResponse = {
+  people: [
+    { user_id: "u1", login: "onik97", display_name: "", avatar_url: "" },
+    { user_id: "u2", login: "olive", display_name: "", avatar_url: "" },
   ],
-  invites: [],
 };
 
 const renderSection = (collapsed = false) => {
@@ -65,7 +64,7 @@ beforeEach(() => {
     if (url === "/api/chat/unread") return { data: { c1: 7 } };
     if (url === "/api/auth/me") return { data: meResponse };
     if (url === "/api/voice/occupancy") return { data: occupancy };
-    if (url.startsWith("/api/workspaces/")) return { data: membersResponse };
+    if (url.startsWith("/api/workspaces/")) return { data: peopleResponse };
     return { data: {} };
   });
 });

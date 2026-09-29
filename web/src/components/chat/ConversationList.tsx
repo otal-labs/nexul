@@ -7,7 +7,7 @@ import { NewConversationMenu } from "@/components/chat/NewConversationMenu";
 import { NoDataDisplay } from "@/components/NoDataDisplay";
 import { Input } from "@/components/ui/input";
 import { useFetchMe } from "@/hooks/AuthHooks";
-import { useChatAuthorLookup } from "@/hooks/ChatHooks";
+import { usePersonLookup } from "@/hooks/PeopleHooks";
 import { conversationLabel, groupConversations, type Conversation, type DMLabelContext, type UnreadCounts } from "@/models/Chat";
 
 interface ConversationListProps {
@@ -22,8 +22,8 @@ interface ConversationListProps {
 export const ConversationList = ({ workspaceId, conversations, unread, selectedConversationId, onSelect }: ConversationListProps) => {
   const [search, setSearch] = useState("");
   const { data: me } = useFetchMe();
-  const resolveLogin = useChatAuthorLookup(workspaceId);
-  const dmCtx: DMLabelContext = { currentUserId: me?.user.id, resolveLogin };
+  const resolvePerson = usePersonLookup(workspaceId);
+  const dmCtx: DMLabelContext = { currentUserId: me?.user.id, resolvePerson };
 
   const query = search.trim().toLowerCase();
   const filtered =
@@ -50,7 +50,6 @@ export const ConversationList = ({ workspaceId, conversations, unread, selectedC
         {conversations.length === 0 && <NoDataDisplay message="No conversations yet" size="compact" />}
         {conversations.length > 0 && (
           <ChatsSection
-            workspaceId={workspaceId}
             channels={channels}
             voiceChannels={voiceChannels}
             dms={dms}

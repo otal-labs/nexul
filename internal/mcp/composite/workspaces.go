@@ -16,6 +16,7 @@ import (
 type WorkspaceReader interface {
 	ListForUser(ctx context.Context, userID string) ([]*tenancy.Workspace, error)
 	MemberRoleName(ctx context.Context, workspaceID, userID string) (string, error)
+	ListPeople(ctx context.Context, actorID, workspaceID string) ([]tenancy.Person, error)
 }
 
 // RoleReader is the slice of the roles use-cases workspace_list reads.
@@ -24,7 +25,7 @@ type RoleReader interface {
 }
 
 type workspaceListIn struct {
-	ID string `json:"id,omitempty" jsonschema:"Only this workspace, with its roles and the permission catalog their permissions come from."`
+	ID string `json:"id,omitempty" jsonschema:"Only this workspace, with its people, its roles, and the permission catalog their permissions come from."`
 	mcptool.PageArgs
 }
 
@@ -33,6 +34,7 @@ type workspaceResult struct {
 	ID                string             `json:"id"`
 	Name              string             `json:"name"`
 	Role              string             `json:"role"`
+	People            []tenancy.Person   `json:"people,omitempty"`
 	Roles             []roles.RoleResult `json:"roles,omitempty"`
 	PermissionCatalog []permissions.Info `json:"permission_catalog,omitempty"`
 }
@@ -42,8 +44,9 @@ func WorkspaceTools(w WorkspaceReader, r RoleReader) []mcptool.Tool {
 	return []mcptool.Tool{mcptool.New("workspace_list", "List workspaces",
 		"Lists the workspaces you belong to, with each one's id, name, and your role in it. Start here when a tool "+
 			"needs a workspace_id: project_list, play_list, and the memory, role, and invitation tools are scoped by "+
-			"workspace. With an id it returns only that workspace, with its roles (id, name, whether it is the Owner role, "+
-			"and permissions) and the permission_catalog of every valid permission, which role_update takes. "+
+			"workspace. With an id it returns only that workspace, with its people (user_id, login, display_name, avatar_url: "+
+			"how to name a chat message's author_id, and the login an @mention takes), its roles (id, name, whether it is "+
+			"the Owner role, and permissions) and the permission_catalog of every valid permission, which role_update takes. "+
 			"It returns only workspaces you are a member of.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in workspaceListIn) (any, error) {
@@ -79,6 +82,10 @@ func workspaceWithRoles(ctx context.Context, w WorkspaceReader, r RoleReader, ws
 		if err != nil {
 			return nil, err
 		}
+		people, err := w.ListPeople(ctx, userID, one.ID)
+		if err != nil {
+			return nil, err
+		}
 		rs, err := r.List(ctx, one.ID)
 		if err != nil {
 			return nil, err
@@ -87,7 +94,7 @@ func workspaceWithRoles(ctx context.Context, w WorkspaceReader, r RoleReader, ws
 		for _, x := range rs {
 			shaped = append(shaped, roles.ToRoleResult(x))
 		}
-		res := workspaceResult{ID: one.ID, Name: one.Name, Role: role, Roles: shaped, PermissionCatalog: permissions.Catalog()}
+		res := workspaceResult{ID: one.ID, Name: one.Name, Role: role, People: people, Roles: shaped, PermissionCatalog: permissions.Catalog()}
 		return mcptool.Paginate([]workspaceResult{res}, in.PageArgs), nil
 	}
 	return nil, fmt.Errorf("%w: workspace %s is not one you belong to; workspace_list without an id lists yours", apperrs.ErrNotFound, in.ID)

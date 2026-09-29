@@ -22,7 +22,7 @@ export const TeamPersonSheet = ({ personId, onClose }: TeamPersonSheetProps) => 
         {person && (
           <SheetHeader className="border-b border-border">
             <div className="flex items-center gap-3 pr-8">
-              <PersonAvatar login={person.login} className="size-10" />
+              <PersonAvatar login={person.login} src={person.avatar_url} className="size-10" />
               <div className="min-w-0 flex-1">
                 <SheetTitle className="truncate">{personName(person)}</SheetTitle>
                 <SheetDescription className="truncate font-mono text-xs">@{person.login}</SheetDescription>

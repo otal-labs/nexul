@@ -96,6 +96,21 @@ type TeamAccount struct {
 	Status             string    `json:"status"`
 	CanCreateWorkspace bool      `json:"can_create_workspace"`
 	CreatedAt          time.Time `json:"created_at"`
+	// AvatarOverride is the uploaded picture as a data URI; it leaves the server only through the avatar route.
+	AvatarOverride string `json:"-"`
+}
+
+// Person is all any member of a workspace sees of another: never a role, an override, an email, or account status.
+type Person struct {
+	UserID      string `json:"user_id"`
+	Login       string `json:"login"`
+	DisplayName string `json:"display_name"`
+	AvatarURL   string `json:"avatar_url"`
+}
+
+// People is a workspace's people as the directory route answers them.
+type People struct {
+	People []Person `json:"people"`
 }
 
 // TeamMembership is one person's place in one workspace: its role and their workspace-wide overrides.

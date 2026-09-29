@@ -62,7 +62,7 @@ const mockApi = (trails: Trail[]) =>
     if (url === "/api/plays/runs") return { data: trails };
     if (url === "/api/plays/runs/tr-1") return { data: trails.find((t) => t.id === "tr-1") };
     if (url === "/api/plays/runs/tr-run") return { data: trails.find((t) => t.id === "tr-run") };
-    if (url === "/api/workspaces/ws-1/members") return { data: { members: [{ user_id: "u-1", login: "onik97" }, { user_id: "u-2", login: "sara" }] } };
+    if (url === "/api/workspaces/ws-1/people") return { data: { people: [{ user_id: "u-1", login: "onik97", display_name: "", avatar_url: "" }, { user_id: "u-2", login: "sara", display_name: "", avatar_url: "" }] } };
     if (url === "/api/memories") return { data: [{ id: "m-always", title: "Working in this project", always_included: true }] };
     if (url === "/api/statuses") return { data: [{ id: "st-review", name: "In review", kind: "review", position: 2 }] };
     return { data: [] };

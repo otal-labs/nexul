@@ -15,12 +15,11 @@ vi.mock("@/api/client", () => ({
 const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
 vi.mock("sonner", () => ({ toast }));
 
-const members = {
-  members: [
-    { user_id: "u1", login: "onik97", role_id: "r1" },
-    { user_id: "u2", login: "olive", role_id: "r1" },
+const people = {
+  people: [
+    { user_id: "u1", login: "onik97", display_name: "", avatar_url: "" },
+    { user_id: "u2", login: "olive", display_name: "", avatar_url: "" },
   ],
-  invites: [],
 };
 
 const renderComposer = (onSend = vi.fn(async () => {})) => {
@@ -39,7 +38,7 @@ const pngFile = (name = "shot.png") => new File(["png"], name, { type: "image/pn
 
 beforeEach(() => {
   vi.mocked(api.get).mockReset();
-  vi.mocked(api.get).mockResolvedValue({ data: members });
+  vi.mocked(api.get).mockResolvedValue({ data: people });
   vi.mocked(api.post).mockReset();
   vi.mocked(api.delete).mockReset();
   vi.mocked(api.delete).mockResolvedValue({ data: undefined });

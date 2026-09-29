@@ -97,6 +97,9 @@ func toTeamAccount(u *auth.User) *tenancy.TeamAccount {
 	if u.DisplayName != nil {
 		a.DisplayName = *u.DisplayName
 	}
+	if u.AvatarOverrideURL != nil {
+		a.AvatarOverride = *u.AvatarOverrideURL
+	}
 	return a
 }
 

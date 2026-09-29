@@ -5,8 +5,9 @@ import { useFormDialogContext } from "@/components/dialogs/FormDialogContext";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { useCreateDM } from "@/hooks/ChatHooks";
-import { useFetchWorkspaceMembers } from "@/hooks/MemberHooks";
+import { useFetchWorkspacePeople } from "@/hooks/PeopleHooks";
 import type { Conversation, SaveDMFormData } from "@/models/Chat";
+import { personLabel } from "@/models/Person";
 
 interface CreateDMFormProps {
   workspaceId: string;
@@ -17,9 +18,9 @@ interface CreateDMFormProps {
 export const CreateDMForm = ({ workspaceId, onCreated }: CreateDMFormProps) => {
   const { control, onSubmit, formState } = useFormDialogContext<SaveDMFormData>();
   const { data: me } = useFetchMe();
-  const { data: membersList } = useFetchWorkspaceMembers(workspaceId);
+  const { data: people } = useFetchWorkspacePeople(workspaceId);
   const createDM = useCreateDM(workspaceId);
-  const all = membersList?.members ?? [];
+  const all = people ?? [];
   const self = all.find((m) => m.user_id === me?.user.id);
   const members = [...(self ? [self] : []), ...all.filter((m) => m.user_id !== me?.user.id)];
   const error = formState.errors.participant_ids;
@@ -54,8 +55,8 @@ export const CreateDMForm = ({ workspaceId, onCreated }: CreateDMFormProps) => {
                       )
                     }
                   />
-                  <PersonAvatar login={member.login} />
-                  {member.login}
+                  <PersonAvatar login={member.login} src={member.avatar_url} />
+                  {personLabel(member)}
                   {member.user_id === me?.user.id && <span className="text-muted-foreground">(you)</span>}
                 </label>
               );

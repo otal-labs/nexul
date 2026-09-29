@@ -7,11 +7,10 @@ import { useFetchDoc } from "@/hooks/DocHooks";
 import { useFetchProject } from "@/hooks/ProjectHooks";
 import { useFetchTicket } from "@/hooks/TicketHooks";
 import { useCurrentWorkspaceId } from "@/hooks/WorkspaceHooks";
-import { conversationLabel, type Conversation, type DMLabelContext, type Message, type UnreadCounts, type WorkspaceMembers } from "@/models/Chat";
+import { conversationLabel, type Conversation, type DMLabelContext, type Message, type UnreadCounts } from "@/models/Chat";
 import { ticketKey } from "@/models/Ticket";
 import type { MeResponse } from "@/models/User";
 
-export const getChatMembersKey = "getWorkspaceMembers";
 export const getChatConversationsKey = "getChatConversations";
 export const getChatMessagesKey = "getChatMessages";
 export const getChatUnreadKey = "getChatUnread";
@@ -41,17 +40,6 @@ export const useFetchMessages = (conversationId: string | undefined) =>
       api.get<Message[]>(`/api/chat/conversations/${conversationId}/messages?limit=${threadMessageLimit}`),
     enabled: !!conversationId,
   });
-
-// Author names for message rows and DM labels: one members fetch, looked up per message.
-export const useChatAuthorLookup = (workspaceId: string | undefined) => {
-  const { data } = useQuery({
-    queryKey: [getChatMembersKey, workspaceId],
-    queryFn: () => api.get<WorkspaceMembers>(`/api/workspaces/${workspaceId}/members`),
-    enabled: !!workspaceId,
-  });
-  const members = data?.members ?? [];
-  return (userId: string): string => members.find((m) => m.user_id === userId)?.login ?? userId;
-};
 
 // A ticket thread reads "KEY-N Title" and a doc thread reads the doc's title, like the web; every other kind keeps its own label.
 export const useConversationLabel = (conversation: Conversation, dmCtx: DMLabelContext): string => {

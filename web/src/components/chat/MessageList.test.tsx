@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MessageList } from "@/components/chat/MessageList";
 import { getTrailsKey } from "@/hooks/TrailHooks";
 import type { Conversation, Message } from "@/models/Chat";
+import { unknownPerson } from "@/models/Person";
 import type { ActivityEntry, Trail } from "@/models/Trail";
 import { useAgentStreamStore } from "@/stores/agentStreamStore";
 import { usePlayRunStore } from "@/stores/playRunStore";
@@ -43,7 +44,7 @@ const renderList = (messages: Message[], onInterruptAgent = vi.fn()) =>
         conversation={conversation}
         messages={messages}
         currentUserId="u1"
-        resolveAuthorLogin={(id) => id}
+        resolveAuthor={unknownPerson}
         onEdit={noopAsync}
         onDelete={noopAsync}
         onInterruptAgent={onInterruptAgent}
@@ -128,7 +129,7 @@ describe("MessageList agent stream bubble lifecycle", () => {
           conversation={conversation}
           messages={finalMessages}
           currentUserId="u1"
-          resolveAuthorLogin={(id) => id}
+          resolveAuthor={unknownPerson}
           onEdit={noopAsync}
           onDelete={noopAsync}
           onInterruptAgent={vi.fn()}
@@ -162,7 +163,7 @@ const renderWithClient = (messages: Message[]) =>
         conversation={conversation}
         messages={messages}
         currentUserId="u1"
-        resolveAuthorLogin={(id) => id}
+        resolveAuthor={unknownPerson}
         onEdit={noopAsync}
         onDelete={noopAsync}
         onInterruptAgent={vi.fn()}
@@ -233,7 +234,7 @@ const renderThread = (messages: Message[], trails: Trail[]) => {
         conversation={ticketThread}
         messages={messages}
         currentUserId="u1"
-        resolveAuthorLogin={(id) => id}
+        resolveAuthor={unknownPerson}
         onEdit={noopAsync}
         onDelete={noopAsync}
         onInterruptAgent={vi.fn()}

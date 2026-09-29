@@ -2,8 +2,9 @@ import { useState } from "react";
 
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { Input } from "@/components/ui/input";
-import { useFetchWorkspaceMembers } from "@/hooks/MemberHooks";
+import { useFetchWorkspacePeople } from "@/hooks/PeopleHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { personLabel } from "@/models/Person";
 
 const menuItemClass =
   "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-xs text-foreground outline-none transition-colors duration-150 ease-standard hover:bg-accent/60 focus-visible:bg-accent/60";
@@ -15,10 +16,10 @@ interface PersonPickerListProps {
 // Shared member list body for every popover; callers own the Popover/trigger around it.
 export const PersonPickerList = ({ onSelect }: PersonPickerListProps) => {
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
-  const { data: membersList } = useFetchWorkspaceMembers(workspaceId);
+  const { data: people } = useFetchWorkspacePeople(workspaceId);
   const [search, setSearch] = useState("");
-  const members = membersList?.members ?? [];
-  const filtered = members.filter((m) => m.login.toLowerCase().includes(search.trim().toLowerCase()));
+  const query = search.trim().toLowerCase();
+  const filtered = (people ?? []).filter((p) => `${p.login} ${p.display_name}`.toLowerCase().includes(query));
 
   return (
     <>
@@ -41,8 +42,8 @@ export const PersonPickerList = ({ onSelect }: PersonPickerListProps) => {
             className={menuItemClass}
             onClick={() => onSelect(member.login)}
           >
-            <PersonAvatar login={member.login} />
-            {member.login}
+            <PersonAvatar login={member.login} src={member.avatar_url} />
+            {personLabel(member)}
           </button>
         ))}
         {filtered.length === 0 && <p className="px-2.5 py-1.5 text-xs text-muted-foreground">No matches</p>}

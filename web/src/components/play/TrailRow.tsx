@@ -1,9 +1,10 @@
 import { formatUpdatedAgo } from "@/components/doc/docTime";
 import { SetupRefusalLink } from "@/components/pairing/SetupRefusalLink";
 import { TrailStateIcon } from "@/components/play/TrailStateIcon";
-import { useChatAuthorLookup } from "@/hooks/ChatHooks";
+import { usePersonLookup } from "@/hooks/PeopleHooks";
 import { useLiveTrailActivity, useLiveTrailState } from "@/hooks/TrailHooks";
 import { SETUP_REQUIRED_REASON } from "@/models/Pairing";
+import { personLabel } from "@/models/Person";
 import { trailSummary, type Trail } from "@/models/Trail";
 
 interface TrailRowProps {
@@ -16,7 +17,7 @@ interface TrailRowProps {
 export const TrailRow = ({ workspaceId, trail, onOpen }: TrailRowProps) => {
   const state = useLiveTrailState(trail);
   const activity = useLiveTrailActivity(trail);
-  const resolveLogin = useChatAuthorLookup(workspaceId);
+  const lookup = usePersonLookup(workspaceId);
   const lastStep = trail.activity[trail.activity.length - 1];
 
   return (
@@ -32,7 +33,7 @@ export const TrailRow = ({ workspaceId, trail, onOpen }: TrailRowProps) => {
           <span className="text-muted-foreground"> · {trailSummary(state, trail.last_error, activity ?? lastStep)}</span>
         </span>
         <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
-          {resolveLogin(trail.starter_id)} · {formatUpdatedAgo(trail.started_at)}
+          {personLabel(lookup(trail.starter_id))} · {formatUpdatedAgo(trail.started_at)}
         </span>
       </button>
       {trail.failure_reason === SETUP_REQUIRED_REASON && (

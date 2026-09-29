@@ -5,8 +5,9 @@ import { VoiceOccupantList } from "@/components/chat/VoiceOccupantAvatars";
 import { SidebarSectionHeader } from "@/components/sidebar/SidebarSectionHeader";
 import { navLinkClass } from "@/components/SidebarNav";
 import { useFetchMe } from "@/hooks/AuthHooks";
-import { useChatAuthorLookup, useFetchChatUnread, useFetchConversations } from "@/hooks/ChatHooks";
+import { useFetchChatUnread, useFetchConversations } from "@/hooks/ChatHooks";
 import { useNewConversationDialogs } from "@/hooks/useNewConversationDialogs";
+import { usePersonLookup } from "@/hooks/PeopleHooks";
 import { useVoiceOccupancy } from "@/hooks/VoiceHooks";
 import { cn } from "@/lib/utils";
 import { conversationLabel, groupConversations, type Conversation, type DMLabelContext } from "@/models/Chat";
@@ -48,12 +49,11 @@ const ChatSidebarRow = ({ conversation, unreadCount, dmCtx, onSelect }: ChatSide
 interface VoiceChannelSidebarRowProps {
   conversation: Conversation;
   occupants: VoiceOccupant[];
-  resolveLogin: (identity: string) => string;
   onJoin: (conversationId: string) => void;
 }
 
 // Same nav-row shell as ChatSidebarRow, but clicking joins the call, and lists occupants Discord-style.
-const VoiceChannelSidebarRow = ({ conversation, occupants, resolveLogin, onJoin }: VoiceChannelSidebarRowProps) => (
+const VoiceChannelSidebarRow = ({ conversation, occupants, onJoin }: VoiceChannelSidebarRowProps) => (
   <div>
     <button
       type="button"
@@ -67,7 +67,7 @@ const VoiceChannelSidebarRow = ({ conversation, occupants, resolveLogin, onJoin 
       <span className="min-w-0 flex-1 truncate text-left">{conversation.name}</span>
     </button>
     {/* px-2.5 + w-8 icon column + gap-2.5 (navLinkClass geometry) = the channel name's x. */}
-    <VoiceOccupantList occupants={occupants} resolveLogin={resolveLogin} className="pl-[3.25rem]" />
+    <VoiceOccupantList occupants={occupants} className="pl-[3.25rem]" />
   </div>
 );
 
@@ -81,7 +81,7 @@ export const ChatSidebarSection = ({ collapsed }: ChatSidebarSectionProps) => {
   const { data: conversations } = useFetchConversations(collapsed ? undefined : workspaceId);
   const { data: unread } = useFetchChatUnread(workspaceId, !collapsed);
   const { data: me } = useFetchMe();
-  const resolveLogin = useChatAuthorLookup(workspaceId);
+  const resolvePerson = usePersonLookup(workspaceId);
   const navigate = useNavigate();
   const occupancy = useVoiceOccupancy(!collapsed);
   const joinCall = useVoiceCallStore((s) => s.join);
@@ -93,7 +93,7 @@ export const ChatSidebarSection = ({ collapsed }: ChatSidebarSectionProps) => {
 
   if (collapsed) return null;
 
-  const dmCtx: DMLabelContext = { currentUserId: me?.user.id, resolveLogin };
+  const dmCtx: DMLabelContext = { currentUserId: me?.user.id, resolvePerson };
   const { channels, voiceChannels, dms } = groupConversations(conversations ?? []);
 
   // Joining voice does not open the thread; the call lives in the app-level VoiceDock instead.
@@ -126,7 +126,6 @@ export const ChatSidebarSection = ({ collapsed }: ChatSidebarSectionProps) => {
               key={conversation.id}
               conversation={conversation}
               occupants={occupancy[conversation.id] ?? []}
-              resolveLogin={resolveLogin}
               onJoin={handleJoinVoice}
             />
           ))}

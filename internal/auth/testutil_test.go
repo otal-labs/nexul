@@ -46,6 +46,8 @@ type fakeUserStore struct {
 	byKey      map[string]string
 	identities map[string]*Identity
 	seq        int
+	// profileEvents records what SetProfileOverride was asked to write to the outbox.
+	profileEvents []eventbus.OutboxEvent
 }
 
 func newFakeUserStore() *fakeUserStore {
@@ -266,7 +268,7 @@ func (f *fakeUserStore) MarkFirstLoginDone(_ context.Context, id string) error {
 	return nil
 }
 
-func (f *fakeUserStore) SetProfileOverride(_ context.Context, id string, displayName, avatarOverrideURL *string) error {
+func (f *fakeUserStore) SetProfileOverride(_ context.Context, id string, displayName, avatarOverrideURL *string, events ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	u, ok := f.byID[id]
@@ -275,6 +277,7 @@ func (f *fakeUserStore) SetProfileOverride(_ context.Context, id string, display
 	}
 	u.DisplayName = displayName
 	u.AvatarOverrideURL = avatarOverrideURL
+	f.profileEvents = append(f.profileEvents, events...)
 	return nil
 }
 

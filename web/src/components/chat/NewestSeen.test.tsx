@@ -10,6 +10,7 @@ vi.mock("@/components/ui/message-scroller", async (importOriginal) => {
 
 import { MessageList } from "@/components/chat/MessageList";
 import type { Conversation, Message } from "@/models/Chat";
+import { unknownPerson } from "@/models/Person";
 
 const conversation = { id: "c1", kind: "channel" } as Conversation;
 const withClient = (ui: ReactNode) => render(<QueryClientProvider client={new QueryClient()}>{ui}</QueryClientProvider>);
@@ -34,7 +35,7 @@ describe("MessageList onNewestSeen", () => {
         conversation={conversation}
         messages={[msg("m-1"), msg("m-2")]}
         currentUserId="u1"
-        resolveAuthorLogin={() => "onik97"}
+        resolveAuthor={() => unknownPerson("onik97")}
         onEdit={async () => {}}
         onDelete={async () => {}}
         onInterruptAgent={() => {}}
@@ -51,7 +52,7 @@ describe("MessageList onNewestSeen", () => {
         conversation={conversation}
         messages={[msg("m-2"), msg("m-3")]}
         currentUserId="u1"
-        resolveAuthorLogin={() => "onik97"}
+        resolveAuthor={() => unknownPerson("onik97")}
         onEdit={async () => {}}
         onDelete={async () => {}}
         onInterruptAgent={() => {}}

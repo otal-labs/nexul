@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import { MessageRow } from "@/components/chat/MessageRow";
 import type { AuthorKind, Message } from "@/models/Chat";
+import { unknownPerson } from "@/models/Person";
 import type { Trail } from "@/models/Trail";
 
 vi.mock("@/api/client", () => ({
@@ -39,7 +40,7 @@ beforeEach(() => {
 
 describe("MessageRow author_kind rendering", () => {
   it("renders your own message as a right-aligned bubble, no name header, with edit/delete controls", () => {
-    renderRow(<MessageRow message={message({})} authorLogin="onik97" isOwn onEdit={noop} onDelete={noop} />);
+    renderRow(<MessageRow message={message({})} author={unknownPerson("onik97")} isOwn onEdit={noop} onDelete={noop} />);
     expect(screen.queryByText("onik97")).not.toBeInTheDocument();
     expect(document.querySelector('[data-slot="message"]')?.getAttribute("data-align")).toBe("end");
     expect(screen.getByLabelText("Edit message")).toBeInTheDocument();
@@ -47,7 +48,7 @@ describe("MessageRow author_kind rendering", () => {
   });
 
   it("renders a teammate's message left-aligned with their login header", () => {
-    renderRow(<MessageRow message={message({ author_id: "u2" })} authorLogin="lena" isOwn={false} onEdit={noop} onDelete={noop} />);
+    renderRow(<MessageRow message={message({ author_id: "u2" })} author={unknownPerson("lena")} isOwn={false} onEdit={noop} onDelete={noop} />);
     expect(screen.getByText("lena")).toBeInTheDocument();
     expect(document.querySelector('[data-slot="message"]')?.getAttribute("data-align")).toBe("start");
     expect(screen.queryByLabelText("Edit message")).not.toBeInTheDocument();
@@ -57,7 +58,7 @@ describe("MessageRow author_kind rendering", () => {
     renderRow(
       <MessageRow
         message={message({ author_kind: "agent", author_id: "u1", body: "Here's the deploy status." })}
-        authorLogin="onik97"
+        author={unknownPerson("onik97")}
         isOwn
         onEdit={noop}
         onDelete={noop}
@@ -71,7 +72,7 @@ describe("MessageRow author_kind rendering", () => {
 
   it("never shows edit/delete on an agent message, even when author_id matches the viewer", () => {
     renderRow(
-      <MessageRow message={message({ author_kind: "agent", author_id: "u1" })} authorLogin="onik97" isOwn onEdit={noop} onDelete={noop} />,
+      <MessageRow message={message({ author_kind: "agent", author_id: "u1" })} author={unknownPerson("onik97")} isOwn onEdit={noop} onDelete={noop} />,
     );
     expect(screen.queryByLabelText("Edit message")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Delete message")).not.toBeInTheDocument();
@@ -82,7 +83,7 @@ describe("MessageRow author_kind rendering", () => {
     renderRow(
       <MessageRow
         message={message({ author_kind: "system", body: "@Agent needs a paired T3 Code computer." })}
-        authorLogin="onik97"
+        author={unknownPerson("onik97")}
         isOwn={false}
         onEdit={onEdit}
         onDelete={noop}
@@ -102,7 +103,7 @@ describe("MessageRow attachment image rendering", () => {
     renderRow(
       <MessageRow
         message={message({ body: "look at this\n![shot.png](/api/attachments/a-9)" })}
-        authorLogin="onik97"
+        author={unknownPerson("onik97")}
         isOwn={false}
         onEdit={noop}
         onDelete={noop}
@@ -118,7 +119,7 @@ describe("MessageRow attachment image rendering", () => {
 describe("MessageRow as the Agent's turn", () => {
   it("renders an agent reply as markdown prose, no bubble", () => {
     renderRow(
-      <MessageRow message={message({ author_kind: "agent", body: "Ran `go test`, all green." })} authorLogin="onik97" isOwn onEdit={noop} onDelete={noop} />,
+      <MessageRow message={message({ author_kind: "agent", body: "Ran `go test`, all green." })} author={unknownPerson("onik97")} isOwn onEdit={noop} onDelete={noop} />,
     );
     expect(screen.getByText("go test", { selector: "code" })).toBeInTheDocument();
     expect(document.querySelector('[data-slot="bubble"]')).toBeNull();
@@ -130,7 +131,7 @@ describe("MessageRow as the Agent's turn", () => {
     renderRow(
       <MessageRow
         message={message({ author_kind: "agent", body: "All green." })}
-        authorLogin="onik97"
+        author={unknownPerson("onik97")}
         isOwn
         trailBlock={{ trail, turns: [{ kind: "turn", entries, running: false, from: "2026-09-18T10:00:00Z", until: "2026-09-18T10:00:05Z" }] }}
         onEdit={noop}

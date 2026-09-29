@@ -660,3 +660,24 @@ func TestLookupMembers_EmptyMatchesAreNeverNil(t *testing.T) {
 	assert.NotNil(t, matches)
 	assert.Empty(t, matches)
 }
+
+func TestUpdateProfileOverride_AnnouncesOnlyARealChange(t *testing.T) {
+	s, users, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "LewisWelch94")})
+	_, _, err := users.UpsertUser(t.Context(), &Identity{UserID: "u1", Provider: ProviderGitHub, ProviderUserID: "1", Login: "LewisWelch94"})
+	require.NoError(t, err)
+	picture := "data:image/png;base64,aGVsbG8="
+
+	_, err = s.UpdateProfileOverride(t.Context(), "u1", "Lewis", picture)
+	require.NoError(t, err)
+	require.Len(t, users.profileEvents, 1)
+	assert.Equal(t, TopicProfileUpdated, users.profileEvents[0].Topic)
+	assert.Equal(t, AccountLifecycleEvent{AccountID: "u1"}, users.profileEvents[0].Payload)
+
+	_, err = s.UpdateProfileOverride(t.Context(), "u1", " Lewis ", picture)
+	require.NoError(t, err)
+	assert.Len(t, users.profileEvents, 1, "saving the same name and picture again announces nothing")
+
+	_, err = s.UpdateProfileOverride(t.Context(), "u1", "Lewis", "")
+	require.NoError(t, err)
+	assert.Len(t, users.profileEvents, 2, "removing the picture is a change others must see")
+}

@@ -6,10 +6,12 @@ import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { MessageBody } from "@/components/chat/MessageBody";
+import { personLabel } from "@/models/Person";
 import { statusStageDot } from "@/models/Status";
 import { ticketKey, TicketRole } from "@/models/Ticket";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { useFetchProject } from "@/hooks/ProjectHooks";
+import { usePersonLookup } from "@/hooks/PeopleHooks";
 import { useCurrentWorkspaceId } from "@/hooks/WorkspaceHooks";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
 import { useFetchTicket, useOpenTicketThread, useSetTicketPerson } from "@/hooks/TicketHooks";
@@ -25,6 +27,7 @@ export const TicketScreen = () => {
   const { data: ticketTypes } = useFetchProjectTicketTypes(ticket?.project_id);
   const { data: me } = useFetchMe(true);
   const workspaceId = useCurrentWorkspaceId();
+  const resolvePerson = usePersonLookup(workspaceId);
   const setPerson = useSetTicketPerson();
   const openThread = useOpenTicketThread();
 
@@ -83,17 +86,13 @@ export const TicketScreen = () => {
               <Text variant="small" className="w-20 shrink-0 text-muted-foreground">
                 Developer
               </Text>
-              <Text variant="small" className="font-mono">
-                {ticket.developer || "No one"}
-              </Text>
+              <Text variant="small">{ticket.developer ? personLabel(resolvePerson(ticket.developer)) : "No one"}</Text>
             </View>
             <View className="min-h-9 flex-row items-center gap-2">
               <Text variant="small" className="w-20 shrink-0 text-muted-foreground">
                 Tester
               </Text>
-              <Text variant="small" className="font-mono">
-                {ticket.tester || "No one"}
-              </Text>
+              <Text variant="small">{ticket.tester ? personLabel(resolvePerson(ticket.tester)) : "No one"}</Text>
             </View>
           </View>
 

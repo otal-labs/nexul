@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
-import { getWorkspaceMembersKey } from "@/hooks/MemberHooks";
+import { getWorkspacePeopleKey } from "@/hooks/PeopleHooks";
 import { getTeamKey, type Team } from "@/models/Team";
 
 // The server scopes it: everything for an instance administrator, else only the workspaces the viewer manages.
@@ -21,7 +21,7 @@ const useTeamMutation = <TInput,>(request: (input: TInput) => Promise<unknown>, 
     onSuccess: async () => {
       await Promise.all([
         client.invalidateQueries({ queryKey: [getTeamKey] }),
-        client.invalidateQueries({ queryKey: [getWorkspaceMembersKey] }),
+        client.invalidateQueries({ queryKey: [getWorkspacePeopleKey] }),
       ]);
       toast.success(success);
     },

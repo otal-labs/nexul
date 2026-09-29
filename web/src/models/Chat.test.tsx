@@ -13,7 +13,7 @@ import {
   type Conversation,
 } from "@/models/Chat";
 import type { Attachment } from "@/models/Attachment";
-import type { MemberView } from "@/models/Member";
+import { unknownPerson, type Person } from "@/models/Person";
 
 const conversation = (overrides: Partial<Conversation>): Conversation => ({
   id: "c1",
@@ -37,26 +37,30 @@ describe("conversationLabel", () => {
     expect(conversationLabel(conversation({ kind: "channel_thread" }))).toBe("Thread");
   });
 
-  const resolveLogin = (id: string): string => ({ "u-2": "olive", "u-3": "sam" })[id] ?? id;
+  const people: Record<string, Person> = {
+    "u-2": { user_id: "u-2", login: "olive", display_name: "", avatar_url: "" },
+    "u-3": { user_id: "u-3", login: "sam", display_name: "Sam Hill", avatar_url: "" },
+  };
+  const resolvePerson = (id: string): Person => people[id] ?? unknownPerson(id);
 
-  it("labels a DM with the other participants' logins when given DM context", () => {
+  it("labels a DM with the other participants' names when given DM context", () => {
     const dm = conversation({ kind: "dm", participant_ids: ["u-1", "u-2"] });
-    expect(conversationLabel(dm, { currentUserId: "u-1", resolveLogin })).toBe("olive");
+    expect(conversationLabel(dm, { currentUserId: "u-1", resolvePerson })).toBe("olive");
   });
 
   it("joins multiple other participants for a group DM", () => {
     const dm = conversation({ kind: "dm", participant_ids: ["u-1", "u-2", "u-3"] });
-    expect(conversationLabel(dm, { currentUserId: "u-1", resolveLogin })).toBe("olive, sam");
+    expect(conversationLabel(dm, { currentUserId: "u-1", resolvePerson })).toBe("olive, Sam Hill");
   });
 
   it("labels a self-DM with your own login and a (you) marker", () => {
     const dm = conversation({ kind: "dm", participant_ids: ["u-2"] });
-    expect(conversationLabel(dm, { currentUserId: "u-2", resolveLogin })).toBe("olive (you)");
+    expect(conversationLabel(dm, { currentUserId: "u-2", resolvePerson })).toBe("olive (you)");
   });
 
   it("falls back to 'Direct message' when no participant ids are present yet", () => {
     const dm = conversation({ kind: "dm" });
-    expect(conversationLabel(dm, { currentUserId: "u-1", resolveLogin })).toBe("Direct message");
+    expect(conversationLabel(dm, { currentUserId: "u-1", resolvePerson })).toBe("Direct message");
   });
 });
 
@@ -78,9 +82,9 @@ describe("groupConversations", () => {
   });
 });
 
-const members: MemberView[] = [
-  { user_id: "u1", login: "onik97", role_id: "r1" },
-  { user_id: "u2", login: "olive", role_id: "r1" },
+const members: Person[] = [
+  { user_id: "u1", login: "onik97", display_name: "Onik", avatar_url: "" },
+  { user_id: "u2", login: "olive", display_name: "", avatar_url: "" },
 ];
 
 describe("buildMentionCandidates", () => {

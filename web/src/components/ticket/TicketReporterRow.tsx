@@ -2,6 +2,8 @@ import { Bot } from "lucide-react";
 
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { rowClass } from "@/components/ticket/ticketPropertyRowStyle";
+import { usePerson } from "@/hooks/PeopleHooks";
+import { personLabel } from "@/models/Person";
 import { ReporterKind, reporterName, reporterOnBehalfOf, type Ticket } from "@/models/Ticket";
 
 interface TicketReporterRowProps {
@@ -12,8 +14,10 @@ interface TicketReporterRowProps {
 export const TicketReporterRow = ({ ticket }: TicketReporterRowProps) => {
   const { reporter } = ticket;
   const isNexul = reporter.kind !== ReporterKind.User;
-  const name = reporterName(reporter);
-  const onBehalfOf = reporterOnBehalfOf(reporter);
+  const person = usePerson(reporter.login ?? "");
+  const nameOf = () => personLabel(person);
+  const name = reporterName(reporter, nameOf);
+  const onBehalfOf = reporterOnBehalfOf(reporter, nameOf);
 
   return (
     <div className={rowClass}>
@@ -22,10 +26,10 @@ export const TicketReporterRow = ({ ticket }: TicketReporterRowProps) => {
           <Bot className="size-3" aria-hidden />
         </span>
       )}
-      {!isNexul && name && <PersonAvatar login={name} className="size-4 text-[8px]" />}
+      {!isNexul && name && <PersonAvatar login={person.login} src={person.avatar_url} className="size-4 text-[8px]" />}
       <span className="w-16 shrink-0 text-xs text-muted-foreground">Reporter</span>
       <span className="flex min-w-0 flex-col">
-        <span className="truncate font-mono text-xs text-foreground">{name || "Unknown"}</span>
+        <span className="truncate text-xs text-foreground">{name || "Unknown"}</span>
         {onBehalfOf && <span className="truncate text-[11px] text-muted-foreground">{onBehalfOf}</span>}
       </span>
     </div>

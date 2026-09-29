@@ -7,6 +7,7 @@ import { getChatConversationsKey, getChatMessagesKey, getChatUnreadKey } from "@
 import { getDeployKey, getDeployLogKey } from "@/hooks/DeployHooks";
 import { getDocKey, getDocsKey } from "@/hooks/DocHooks";
 import { getNotificationsKey, getUnreadCountKey } from "@/hooks/NotificationHooks";
+import { getWorkspacePeopleKey } from "@/hooks/PeopleHooks";
 import { getRunnersKey } from "@/hooks/RunnerHooks";
 import { getStackDeploysKey } from "@/hooks/StackHooks";
 import { getProjectStatusesKey } from "@/hooks/StatusHooks";
@@ -17,6 +18,10 @@ import { readSessionToken, useSessionStore } from "@/stores/sessionStore";
 const pushTopics: Record<string, string[]> = {
   "notification.created": [getNotificationsKey, getUnreadCountKey],
   "chat.conversation.created": [getChatConversationsKey],
+  "account.profile_updated": [getWorkspacePeopleKey],
+  "account.removed": [getWorkspacePeopleKey],
+  "workspace.member.added": [getWorkspacePeopleKey],
+  "workspace.member.removed": [getWorkspacePeopleKey],
   "chat.message.created": [getChatMessagesKey, getChatUnreadKey],
   "chat.message.updated": [getChatMessagesKey],
   "chat.message.deleted": [getChatMessagesKey, getChatUnreadKey],

@@ -6,6 +6,7 @@ import { ChatThreadScreen } from "@/components/chat/ChatThreadScreen";
 import { dispatch } from "@/hooks/useLiveEvents";
 import type { Message } from "@/models/Chat";
 import { useSessionStore } from "@/stores/sessionStore";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 jest.mock("expo-secure-store", () => {
   const mockSecrets = new Map<string, string>();
@@ -69,7 +70,7 @@ let thread: Message[] = [];
 const respond = async (path: string): Promise<unknown> => {
   if (path === "/api/auth/me") return { user: { id: "me", login: "onik", name: "Onik" } };
   if (path === "/api/workspaces") return [{ id: "w1", name: "Main" }];
-  if (path === "/api/workspaces/w1/members") return { members: [{ user_id: "ana", login: "ana" }] };
+  if (path === "/api/workspaces/w1/people") return { people: [{ user_id: "ana", login: "ana97", display_name: "Ana Lima", avatar_url: "" }] };
   if (path === "/api/chat/conversations?workspace_id=w1") return [];
   if (path.startsWith("/api/chat/conversations/c1/messages")) return thread;
   throw new Error(`unexpected GET ${path}`);
@@ -92,6 +93,7 @@ describe("ChatThreadScreen", () => {
     post.mockResolvedValue(null);
     get.mockImplementation(respond);
     useSessionStore.getState().signIn(host, "ses_abc");
+    useWorkspaceStore.setState({ selectedWorkspaceId: "w1" });
     thread = [message("m1", "first", 1), message("m2", "second", 2), message("m3", "newest", 3)];
   });
 
@@ -130,7 +132,7 @@ describe("ChatThreadScreen", () => {
     expect(await screen.findByText("newest")).toBeTruthy();
     const bodies = screen.getAllByText(/^(first|second|newest)$/).map((node) => node.props.children);
     expect(bodies).toEqual(["first", "second", "newest"]);
-    expect(screen.getAllByText("ana").length).toBe(3);
+    expect((await screen.findAllByText("Ana Lima")).length).toBe(3);
     expect(mockListProps.current).toMatchObject({ initialScrollAtEnd: true, alignItemsAtEnd: true, maintainScrollAtEnd: true });
   });
 

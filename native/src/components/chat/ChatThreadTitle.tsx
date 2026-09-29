@@ -1,7 +1,8 @@
 import { Stack } from "expo-router";
 
 import { useFetchMe } from "@/hooks/AuthHooks";
-import { useChatAuthorLookup, useFetchConversations } from "@/hooks/ChatHooks";
+import { useFetchConversations } from "@/hooks/ChatHooks";
+import { usePersonLookup } from "@/hooks/PeopleHooks";
 import { useFetchProject } from "@/hooks/ProjectHooks";
 import { useFetchTicket } from "@/hooks/TicketHooks";
 import { useCurrentWorkspaceId } from "@/hooks/WorkspaceHooks";
@@ -17,11 +18,11 @@ export const ChatThreadTitle = ({ conversationId }: ChatThreadTitleProps) => {
   const workspaceId = useCurrentWorkspaceId();
   const { data: conversations } = useFetchConversations(workspaceId);
   const { data: me } = useFetchMe(true);
-  const resolveLogin = useChatAuthorLookup(workspaceId);
+  const resolvePerson = usePersonLookup(workspaceId);
   const conversation = conversations?.find((c) => c.id === conversationId);
   const { data: ticket } = useFetchTicket(conversation?.ticket_id);
   const { data: project } = useFetchProject(ticket?.project_id);
-  const label = conversation ? conversationLabel(conversation, { currentUserId: me?.user.id, resolveLogin }) : "";
+  const label = conversation ? conversationLabel(conversation, { currentUserId: me?.user.id, resolvePerson }) : "";
   const title = ticket ? `Thread · ${ticketKey(ticket, project?.prefix)}` : label;
   return <Stack.Screen options={{ title }} />;
 };

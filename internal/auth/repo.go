@@ -34,7 +34,7 @@ type UserStore interface {
 	CountActiveAdmins(ctx context.Context) (int, error)
 	MarkFirstLoginDone(ctx context.Context, id string) error
 	// SetProfileOverride sets the caller's profile override; nil clears to provider-sourced; UpsertUser never calls this.
-	SetProfileOverride(ctx context.Context, id string, displayName, avatarOverrideURL *string) error
+	SetProfileOverride(ctx context.Context, id string, displayName, avatarOverrideURL *string, events ...eventbus.OutboxEvent) error
 }
 
 type OAuthHandoffStore interface {
