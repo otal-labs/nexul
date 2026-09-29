@@ -4,9 +4,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { shouldPromptReload, useServerVersion } from "@/hooks/VersionHooks";
 
-const mocks = vi.hoisted(() => ({ get: vi.fn() }));
+const mocks = vi.hoisted(() => ({ get: vi.fn(), toast: vi.fn() }));
 
 vi.mock("@/api/client", () => ({ api: { get: mocks.get } }));
+vi.mock("sonner", () => ({ toast: mocks.toast }));
 
 const version = {
   version: "v0.2.0-beta-310",
@@ -71,5 +72,37 @@ describe("shouldPromptReload", () => {
 
   it("is true when the version changed since the tab first loaded", () => {
     expect(shouldPromptReload("v0.2.0", "v0.2.1")).toBe(true);
+  });
+});
+
+describe("notifyIfServerUpdated", () => {
+  const upgraded = { ...version, version: "v0.2.0-beta-331", update_available: false };
+
+  beforeEach(() => {
+    mocks.toast.mockReset();
+    vi.resetModules();
+  });
+
+  it("goes to the network past a pre-upgrade cache and prompts a reload", async () => {
+    const { notifyIfServerUpdated, useServerVersion: freshUseServerVersion, getServerVersionKey } =
+      await import("@/hooks/VersionHooks");
+    const client = new QueryClient({ defaultOptions: { queries: { staleTime: 30_000 } } });
+    const FreshHarness = () => {
+      freshUseServerVersion();
+      return null;
+    };
+    mocks.get.mockResolvedValueOnce({ data: version });
+    render(
+      <QueryClientProvider client={client}>
+        <FreshHarness />
+      </QueryClientProvider>,
+    );
+    await vi.waitFor(() => expect(client.getQueryData([getServerVersionKey])).toEqual(version));
+
+    mocks.get.mockResolvedValueOnce({ data: upgraded });
+    await notifyIfServerUpdated(client);
+
+    expect(client.getQueryData([getServerVersionKey])).toEqual(upgraded);
+    expect(mocks.toast).toHaveBeenCalledWith("Nexul was updated", expect.anything());
   });
 });

@@ -29,11 +29,12 @@ export const shouldPromptReload = (initial: string | null, current: string): boo
 
 // Called on every live-events reconnect: refetches /api/version and, the first time it differs from
 // the version this tab started with, prompts a reload instead of leaving stale code running against
-// an upgraded server.
+// an upgraded server. staleTime 0 because the server may have restarted since the cached read.
 export const notifyIfServerUpdated = async (queryClient: QueryClient) => {
   const data = await queryClient.fetchQuery({
     queryKey: [getServerVersionKey],
     queryFn: async () => (await api.get<Version>("/api/version")).data,
+    staleTime: 0,
   });
   if (firstVersion === null) firstVersion = data.version;
   if (reloadPromptShown || !shouldPromptReload(firstVersion, data.version)) return;
