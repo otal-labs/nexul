@@ -53,6 +53,9 @@ Deploys and runners, Your settings, push on the phone, and the release and
 update workflows. Ticket 08 (standing up the update server) needs the owner's
 instance.
 
+Built 2026-09-28/29 (PRs #130–#155, test audit #162). A first device pass
+found fixes, tracked as ticket 34.
+
 ## Decisions so far
 
 - [01 — Scope and ground rules](issues/01-scope-and-ground-rules.md) — the page picks, the three-scope settings split, stored per-device sessions, QR-only phone sign-in, 768px web, Android `.apk` via GitHub Actions, self-hosted OTA, Uniwind + react-native-reusables.
