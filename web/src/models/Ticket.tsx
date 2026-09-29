@@ -58,20 +58,24 @@ export interface Ticket {
   labels: string[] | null;
 }
 
-export const reporterName = (reporter: TicketReporter): string => {
-  if (reporter.kind === ReporterKind.User) return reporter.login ?? "";
+// nameOf turns the reporter's login into the name to show; the caller holds the people directory.
+type NameOf = (login: string) => string;
+const asLogin: NameOf = (login) => login;
+
+export const reporterName = (reporter: TicketReporter, nameOf: NameOf = asLogin): string => {
+  if (reporter.kind === ReporterKind.User) return reporter.login ? nameOf(reporter.login) : "";
   return "Nexul";
 };
 
 // The line under "Nexul": the person it ran for, or the automation that filed the ticket.
-export const reporterOnBehalfOf = (reporter: TicketReporter): string => {
-  if (reporter.kind === ReporterKind.UserMCP) return reporter.login ? `for ${reporter.login}` : "";
+export const reporterOnBehalfOf = (reporter: TicketReporter, nameOf: NameOf = asLogin): string => {
+  if (reporter.kind === ReporterKind.UserMCP) return reporter.login ? `for ${nameOf(reporter.login)}` : "";
   if (reporter.kind === ReporterKind.Automation) return reporter.automation_name ?? "";
   return "";
 };
 
-export const reporterLabel = (reporter: TicketReporter): string =>
-  [reporterName(reporter), reporterOnBehalfOf(reporter)].filter((part) => part !== "").join(" · ");
+export const reporterLabel = (reporter: TicketReporter, nameOf: NameOf = asLogin): string =>
+  [reporterName(reporter, nameOf), reporterOnBehalfOf(reporter, nameOf)].filter((part) => part !== "").join(" · ");
 
 // A board card shows who acts next: the tester while the ticket sits in a testing-stage column, else the developer.
 export const cardPerson = (ticket: Ticket, stage: StatusKind | undefined): { role: TicketRole; login: string } =>

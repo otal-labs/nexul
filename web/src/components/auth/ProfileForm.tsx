@@ -14,7 +14,7 @@ import type { User } from "@/models/User";
 const MAX_AVATAR_BYTES = 10 * 1024 * 1024;
 
 const ProfileFormSchema = z.object({
-  name: z.string().trim().min(1, "Name is required"),
+  name: z.string().trim().min(1, "Display name is required"),
   avatarOverrideUrl: z.string(),
 });
 
@@ -127,7 +127,7 @@ export const ProfileForm = ({ user, submitLabel, submitClassName, onSaved }: Pro
           {avatarError}
         </p>
       )}
-      <FormInput control={form.control} name="name" label="Name" placeholder={user.login} />
+      <FormInput control={form.control} name="name" label="Display name" placeholder={user.login} />
       <Button type="submit" className={cn(submitClassName)} disabled={form.formState.isSubmitting}>
         {form.formState.isSubmitting ? "Saving…" : submitLabel}
       </Button>

@@ -13,12 +13,13 @@ import { Message, MessageAvatar, MessageContent } from "@/components/ui/message"
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { cn } from "@/lib/utils";
 import type { Message as ChatMessage } from "@/models/Chat";
+import type { Person } from "@/models/Person";
 import { parseQuestionMessage } from "@/models/Question";
 import type { TrailBlock } from "@/utils/ThreadTrailUtility";
 
 interface MessageRowProps {
   message: ChatMessage;
-  authorLogin: string;
+  author: Person;
   isOwn: boolean;
   // questionAnswered says the thread already moved past an Agent question, so its card is read-only.
   questionAnswered?: boolean;
@@ -70,7 +71,7 @@ const AgentMessageBody = ({ message, trailBlock, questionAnswered }: AgentMessag
 };
 
 // Your own messages sit right-aligned with no header; everyone else gets an avatar + name/time header.
-export const MessageRow = ({ message, authorLogin, isOwn, questionAnswered = false, trailBlock, onEdit, onDelete }: MessageRowProps) => {
+export const MessageRow = ({ message, author, isOwn, questionAnswered = false, trailBlock, onEdit, onDelete }: MessageRowProps) => {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(message.body);
   const { open: confirmDelete } = useConfirmationDialog();
@@ -109,11 +110,11 @@ export const MessageRow = ({ message, authorLogin, isOwn, questionAnswered = fal
         <Message align={align} className={cn("group px-3 py-1", message.pending && "opacity-60")}>
           {align === "start" && (
             <MessageAvatar className="size-6 self-start bg-transparent">
-              <MessageRowAvatar isAgent={isAgent} authorLogin={authorLogin} />
+              <MessageRowAvatar isAgent={isAgent} author={author} />
             </MessageAvatar>
           )}
           <MessageContent>
-            <MessageRowHeader align={align} message={message} isAgent={isAgent} authorLogin={authorLogin} />
+            <MessageRowHeader align={align} message={message} isAgent={isAgent} author={author} />
             {editing && (
               <MessageEditForm draft={draft} onDraftChange={setDraft} onCancel={() => setEditing(false)} onSave={() => void saveEdit()} />
             )}

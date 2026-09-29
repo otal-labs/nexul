@@ -5,12 +5,10 @@ import { useShallow } from "zustand/react/shallow";
 
 import { ConnectedCall } from "@/components/chat/ConnectedCall";
 import { Button } from "@/components/ui/button";
-import { useChatAuthorLookup } from "@/hooks/ChatHooks";
 import type { Conversation } from "@/models/Chat";
 import { useVoiceCallStore, type VoiceCallStatus } from "@/stores/voiceCallStore";
 
 interface VoiceCallSectionProps {
-  workspaceId: string;
   conversation: Conversation;
   /** True once this voice channel is the call the user intends to join; false while just browsing text chat. */
   active: boolean;
@@ -28,7 +26,7 @@ const deriveCallPhase = (active: boolean, status: VoiceCallStatus, room: Room | 
 };
 
 // States read from voiceCallStore, which owns the connection; the call survives this panel closing.
-export const VoiceCallSection = ({ workspaceId, conversation, active }: VoiceCallSectionProps) => {
+export const VoiceCallSection = ({ conversation, active }: VoiceCallSectionProps) => {
   const { status, room, error, join, leave, retry } = useVoiceCallStore(
     useShallow((s) => ({
       status: s.status,
@@ -39,7 +37,6 @@ export const VoiceCallSection = ({ workspaceId, conversation, active }: VoiceCal
       retry: s.retry,
     })),
   );
-  const resolveLogin = useChatAuthorLookup(workspaceId);
   const phase = deriveCallPhase(active, status, room);
 
   return (
@@ -96,7 +93,7 @@ export const VoiceCallSection = ({ workspaceId, conversation, active }: VoiceCal
           </div>
         </div>
       )}
-      {phase === "connected" && room && <ConnectedCall room={room} resolveLogin={resolveLogin} />}
+      {phase === "connected" && room && <ConnectedCall room={room} />}
     </>
   );
 };

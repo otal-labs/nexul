@@ -6,6 +6,7 @@ const (
 	TopicAccountReactivated = "account.reactivated"
 	TopicAccountRemoved     = "account.removed"
 	TopicAccountRestored    = "account.restored"
+	TopicProfileUpdated     = "account.profile_updated"
 	TopicTokenMinted        = "personal_access_token.minted"
 	TopicTokenRevoked       = "personal_access_token.revoked"
 	TopicSessionCreated     = "session.created"
@@ -48,6 +49,7 @@ type SessionChangedEvent struct {
 func Topics() []string {
 	return []string{
 		TopicAccountAdmitted, TopicAccountDisabled, TopicAccountReactivated, TopicAccountRemoved, TopicAccountRestored,
+		TopicProfileUpdated,
 		TopicTokenMinted, TopicTokenRevoked, TopicSessionCreated, TopicSessionRevoked,
 		TopicIdentityLinked, TopicIdentityUnlinked,
 	}

@@ -29,7 +29,7 @@ export const ConversationRow = ({ conversation, unreadCount, selected, onSelect,
   const label = conversationLabel(conversation, dmCtx);
   const isDM = conversation.kind === "dm";
   const other = conversation.participant_ids?.find((id) => id !== dmCtx?.currentUserId) ?? conversation.participant_ids?.[0];
-  const avatarLogin = other && dmCtx ? dmCtx.resolveLogin(other) : label;
+  const person = other && dmCtx ? dmCtx.resolvePerson(other) : undefined;
   return (
     <button
       type="button"
@@ -37,7 +37,7 @@ export const ConversationRow = ({ conversation, unreadCount, selected, onSelect,
       aria-current={selected ? "true" : undefined}
       className={conversationRowClass(selected)}
     >
-      {isDM && <PersonAvatar login={avatarLogin} className="size-7 text-[10px]" />}
+      {isDM && <PersonAvatar login={person?.login ?? label} src={person?.avatar_url} className="size-7 text-[10px]" />}
       {!isDM && (
         <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
           <Hash className="size-3.5" aria-hidden />

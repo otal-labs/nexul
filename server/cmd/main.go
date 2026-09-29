@@ -268,6 +268,7 @@ var livePushTopics = []string{
 	auth.TopicAccountReactivated,
 	auth.TopicAccountRemoved,
 	auth.TopicAccountRestored,
+	auth.TopicProfileUpdated,
 	tenancy.TopicWorkspaceMemberAdded,
 	tenancy.TopicWorkspaceMemberRemoved,
 	tenancy.TopicWorkspaceMemberUpdated,

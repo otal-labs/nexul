@@ -48,6 +48,8 @@ Beyond Owner, roles are fully custom: anyone holding `roles:write` can create as
 
 Instance administrators see everyone in one place: **Configuration → Team** (`/configuration/team`), under Whole instance. It lists every registered account with its status (active, disabled, or removed) and a one-line summary of where it has access. Open a person to see every workspace on the instance: change their role, remove them from a workspace, add them to one they're not in, or edit their workspace-wide permission overrides. Each of those needs `members:write` in that workspace, so being an instance administrator alone doesn't let you change a workspace you don't manage; its row stays read-only and says why. Disabling, reactivating, removing, and restoring the account itself also live there. Someone who manages members in a workspace without administering the instance finds Team under This workspace instead, showing only the workspaces they manage and the people in them, without the account actions. Roles are defined per workspace under **Roles**; Team only assigns them.
 
+Seeing who you work with needs no permission. Every member of a workspace can read its people, each with their login, display name, and picture, and nothing about their role or access, through `GET /api/workspaces/{workspaceID}/people`; that is what names chat authors, DMs, and a ticket's developer for someone without `members:write`. A person's display name is the one they set under **Your settings → Profile**, else their sign-in account's name, else their login, and a changed name or picture reaches everyone's open screens without a refresh.
+
 To invite someone new:
 
 1. Open **Configuration → Team** (`/configuration/team`) and choose **Invite**.

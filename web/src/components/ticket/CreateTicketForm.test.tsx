@@ -44,8 +44,8 @@ const templatedTypes = [
 ];
 
 const members = [
-  { user_id: "u-alice", login: "alice", role_id: "role-1" },
-  { user_id: "u-bob", login: "bob", role_id: "role-1" },
+  { user_id: "u-alice", login: "alice", display_name: "", avatar_url: "" },
+  { user_id: "u-bob", login: "bob", display_name: "", avatar_url: "" },
 ];
 
 const mockReferenceData = (
@@ -60,7 +60,7 @@ const mockReferenceData = (
     if (url.startsWith("/api/projects")) return { data: mockProjects };
     if (url.startsWith("/api/categories")) return { data: mockCategories };
     if (url.startsWith("/api/ticket-types")) return { data: mockTicketTypes };
-    if (url.startsWith("/api/workspaces/") && url.endsWith("/members")) return { data: { members, invites: [] } };
+    if (url.startsWith("/api/workspaces/") && url.endsWith("/people")) return { data: { people: members } };
     if (url.startsWith("/api/docs/")) return { data: { id: "doc-9", title: options.docTitle ?? "Runbook", project_id: "p-1" } };
     return { data: [] };
   });

@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ComposerAttachmentStrip } from "@/components/chat/ComposerAttachmentStrip";
 import { ComposerMentionSuggestions } from "@/components/chat/ComposerMentionSuggestions";
 import { useComposerAttachments } from "@/hooks/ComposerAttachmentHooks";
-import { useFetchWorkspaceMembers } from "@/hooks/MemberHooks";
+import { useFetchWorkspacePeople } from "@/hooks/PeopleHooks";
 import {
   buildMentionCandidates,
   composeMessageBody,
@@ -41,9 +41,9 @@ export const ChatComposer = ({ workspaceId, conversationId, placeholder = "Messa
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: membersList } = useFetchWorkspaceMembers(workspaceId);
+  const { data: people } = useFetchWorkspacePeople(workspaceId);
   const { pending, isUploading, addFiles, remove, reset } = useComposerAttachments(conversationId);
-  const candidates = buildMentionCandidates(membersList?.members ?? []);
+  const candidates = buildMentionCandidates(people ?? []);
   const matches = trigger
     ? candidates.filter((c) => matchesMentionPrefix(c, trigger.query)).slice(0, MAX_MENTION_MATCHES)
     : [];

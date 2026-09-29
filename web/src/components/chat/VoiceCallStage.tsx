@@ -3,12 +3,8 @@ import { Track } from "livekit-client";
 
 import { VoiceTile } from "@/components/chat/VoiceTile";
 
-interface VoiceCallStageProps {
-  resolveLogin: (identity: string) => string;
-}
-
 // GridLayout with placeholders so audio-only participants still get a tile; screen share gets FocusLayout.
-export const VoiceCallStage = ({ resolveLogin }: VoiceCallStageProps) => {
+export const VoiceCallStage = () => {
   const tracks = useTracks(
     [
       { source: Track.Source.Camera, withPlaceholder: true },
@@ -24,14 +20,14 @@ export const VoiceCallStage = ({ resolveLogin }: VoiceCallStageProps) => {
       {screenShareTrack && isTrackReference(screenShareTrack) && (
         <FocusLayoutContainer className="min-h-0 flex-1">
           <CarouselLayout tracks={rest}>
-            <VoiceTile resolveLogin={resolveLogin} />
+            <VoiceTile />
           </CarouselLayout>
           <FocusLayout trackRef={screenShareTrack} />
         </FocusLayoutContainer>
       )}
       {!screenShareTrack && (
         <GridLayout tracks={tracks} className="min-h-0 flex-1">
-          <VoiceTile resolveLogin={resolveLogin} />
+          <VoiceTile />
         </GridLayout>
       )}
     </>

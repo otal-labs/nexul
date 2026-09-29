@@ -33,7 +33,7 @@ const renderApp = (threadView: boolean) =>
           <Route element={<Layout />}>
             <Route
               path="/"
-              element={threadView ? <ConnectedCall room={room} resolveLogin={(id) => id} /> : <div>page-content</div>}
+              element={threadView ? <ConnectedCall room={room} /> : <div>page-content</div>}
             />
           </Route>
         </Routes>

@@ -23,10 +23,10 @@ const get = jest.mocked(api.get);
 const responses: Record<string, unknown> = {
   "/api/auth/me": { user: { id: "me", login: "onik", name: "Onik" } },
   "/api/workspaces": [{ id: "w1", name: "Main" }],
-  "/api/workspaces/w1/members": {
-    members: [
-      { user_id: "me", login: "onik" },
-      { user_id: "ana", login: "ana" },
+  "/api/workspaces/w1/people": {
+    people: [
+      { user_id: "me", login: "onik", display_name: "Onik", avatar_url: "" },
+      { user_id: "ana", login: "ana", display_name: "", avatar_url: "" },
     ],
   },
   "/api/chat/conversations?workspace_id=w1": [

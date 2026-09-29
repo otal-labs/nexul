@@ -324,7 +324,7 @@ func (r *UsersRepo) MarkFirstLoginDone(ctx context.Context, id string) error {
 }
 
 // SetProfileOverride sets the manual profile columns, separate from the GitHub sync; nil clears back to SQL NULL.
-func (r *UsersRepo) SetProfileOverride(ctx context.Context, id string, displayName, avatarOverrideURL *string) error {
+func (r *UsersRepo) SetProfileOverride(ctx context.Context, id string, displayName, avatarOverrideURL *string, events ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).SetProfileOverride(ctx, sqlcgen.SetProfileOverrideParams{
 			DisplayName: nullStringPtr(displayName), AvatarOverrideUrl: nullStringPtr(avatarOverrideURL),
@@ -336,7 +336,7 @@ func (r *UsersRepo) SetProfileOverride(ctx context.Context, id string, displayNa
 		if n == 0 {
 			return fmt.Errorf("set profile override %s: %w", id, apperrs.ErrNotFound)
 		}
-		return nil
+		return enqueueAccountEvents(ctx, tx, id, events)
 	})
 }
 

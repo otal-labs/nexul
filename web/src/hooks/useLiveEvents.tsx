@@ -12,7 +12,7 @@ import { getDeployKey, getDeployLogKey } from "@/hooks/DeployHooks";
 import { getDnsExposuresKey, getDnsGatewaysKey } from "@/hooks/DnsHooks";
 import { getDocKey, getDocsKey } from "@/hooks/DocHooks";
 import { getInstanceUpgradeKey } from "@/hooks/InstanceUpgradeHooks";
-import { getWorkspaceMembersKey } from "@/hooks/MemberHooks";
+import { getWorkspacePeopleKey } from "@/hooks/PeopleHooks";
 import { getWorkspacesKey } from "@/hooks/WorkspaceHooks";
 import { getTeamKey } from "@/models/Team";
 import { getMemoriesKey, getMemoryKey, getMemoryVersionsKey } from "@/hooks/MemoryHooks";
@@ -124,11 +124,13 @@ const pushTopics: Record<string, string[]> = {
   "account.admitted": [getTeamKey],
   "account.disabled": [getTeamKey],
   "account.reactivated": [getTeamKey],
-  "account.removed": [getTeamKey, getWorkspaceMembersKey],
+  "account.removed": [getTeamKey, getWorkspacePeopleKey],
   "account.restored": [getTeamKey],
-  "workspace.member.added": [getTeamKey, getWorkspaceMembersKey, getWorkspacesKey],
-  "workspace.member.removed": [getTeamKey, getWorkspaceMembersKey, getWorkspacesKey],
-  "workspace.member.updated": [getTeamKey, getWorkspaceMembersKey],
+  // A new name or picture reaches every open screen that shows the person, the saver's other devices included.
+  "account.profile_updated": [getWorkspacePeopleKey, getTeamKey, getMeKey],
+  "workspace.member.added": [getTeamKey, getWorkspacePeopleKey, getWorkspacesKey],
+  "workspace.member.removed": [getTeamKey, getWorkspacePeopleKey, getWorkspacesKey],
+  "workspace.member.updated": [getTeamKey],
 };
 
 // A full-text-replace snapshot of the in-progress @Agent turn bubble, keyed by conversation + message id.

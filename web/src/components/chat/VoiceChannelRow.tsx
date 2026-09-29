@@ -9,7 +9,6 @@ import type { VoiceOccupant } from "@/models/Voice";
 interface VoiceChannelRowProps {
   conversation: Conversation;
   occupants: VoiceOccupant[];
-  resolveLogin: (identity: string) => string;
   selected: boolean;
   /** Primary click (the row itself, Discord-style): joins the call — fetch token, connect. */
   onJoin: (conversationId: string) => void;
@@ -18,7 +17,7 @@ interface VoiceChannelRowProps {
 }
 
 // Two click targets: the row itself joins the call; the message icon opens the same conversation's text chat instead.
-export const VoiceChannelRow = ({ conversation, occupants, resolveLogin, selected, onJoin, onOpenText }: VoiceChannelRowProps) => (
+export const VoiceChannelRow = ({ conversation, occupants, selected, onJoin, onOpenText }: VoiceChannelRowProps) => (
   <div className={cn(conversationRowClass(selected), "flex-col items-stretch gap-0 py-0 pr-0 pl-0")}>
     <div className="flex w-full items-center gap-2.5 py-2 pr-2 pl-3">
       <button
@@ -43,6 +42,6 @@ export const VoiceChannelRow = ({ conversation, occupants, resolveLogin, selecte
       </button>
     </div>
     {/* pl-3 + size-7 circle + gap-2.5 = the channel name's x — the avatars line up under it. */}
-    <VoiceOccupantList occupants={occupants} resolveLogin={resolveLogin} className="pb-1 pl-[3.125rem]" />
+    <VoiceOccupantList occupants={occupants} className="pb-1 pl-[3.125rem]" />
   </div>
 );

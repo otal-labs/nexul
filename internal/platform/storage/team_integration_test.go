@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/otal-labs/nexul/internal/access"
+	"github.com/otal-labs/nexul/internal/auth"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
@@ -25,7 +26,7 @@ func (g testAccountGate) ListAccounts(ctx context.Context) ([]*tenancy.TeamAccou
 	}
 	out := make([]*tenancy.TeamAccount, 0, len(users))
 	for _, u := range users {
-		out = append(out, &tenancy.TeamAccount{ID: u.ID, Login: u.Login, Status: string(u.AccountStatus)})
+		out = append(out, testTeamAccount(u))
 	}
 	return out, nil
 }
@@ -35,7 +36,18 @@ func (g testAccountGate) Account(ctx context.Context, userID string) (*tenancy.T
 	if err != nil {
 		return nil, err
 	}
-	return &tenancy.TeamAccount{ID: u.ID, Login: u.Login, Status: string(u.AccountStatus)}, nil
+	return testTeamAccount(u), nil
+}
+
+func testTeamAccount(u *auth.User) *tenancy.TeamAccount {
+	a := &tenancy.TeamAccount{ID: u.ID, Login: u.Login, Name: u.Name, AvatarURL: u.AvatarURL, Status: string(u.AccountStatus)}
+	if u.DisplayName != nil {
+		a.DisplayName = *u.DisplayName
+	}
+	if u.AvatarOverrideURL != nil {
+		a.AvatarOverride = *u.AvatarOverrideURL
+	}
+	return a
 }
 
 // testInstanceAdminGate reads can_create_workspace from the real users table, like server/cmd's instanceAdminGate.
@@ -56,6 +68,7 @@ type teamFixture struct {
 	editor       *roles.Role
 	viewer       *roles.Role
 	nexulOwnerID string
+	users        *storage.UsersRepo
 }
 
 // newTeamFixture: admin and dana administer the instance; admin owns Nexul and is only a Viewer in dana's Acme.
@@ -87,7 +100,7 @@ func newTeamFixture(t *testing.T) teamFixture {
 
 	require.NoError(t, svc.AddMember(ctx, "dana", acme.ID, "admin", viewer.ID))
 	require.NoError(t, svc.AddMember(ctx, "dana", acme.ID, "carol", viewer.ID))
-	return teamFixture{svc: svc, roles: rolesSvc, nexul: nexul, acme: acme, editor: editor, viewer: viewer, nexulOwnerID: ownerID}
+	return teamFixture{svc: svc, roles: rolesSvc, nexul: nexul, acme: acme, editor: editor, viewer: viewer, nexulOwnerID: ownerID, users: s.Users}
 }
 
 func personByLogin(t *testing.T, team *tenancy.Team, login string) *tenancy.TeamPerson {
@@ -196,4 +209,43 @@ func TestIntegration_TeamEdits_OwnerStaysProtected(t *testing.T) {
 
 	require.ErrorIs(t, f.svc.AddMember(ctx, "admin", f.nexul.ID, "carol", f.nexulOwnerID), apperrs.ErrInvalid)
 	require.ErrorIs(t, f.svc.SetMemberOverrides(ctx, "dana", f.acme.ID, "dana", nil, &deny), apperrs.ErrInvalid)
+}
+
+// Carol holds only docs:read in Acme, so the members list refuses her; the people list must not.
+func TestIntegration_ListPeople_ABasicMemberSeesEveryMembersNameAndPicture(t *testing.T) {
+	ctx := t.Context()
+	f := newTeamFixture(t)
+	name, picture := "Lewis", "data:image/png;base64,aGVsbG8="
+	require.NoError(t, f.users.SetProfileOverride(ctx, "admin", &name, &picture))
+
+	_, err := f.svc.ListWorkspaceMembers(ctx, "carol", f.acme.ID)
+	require.ErrorIs(t, err, apperrs.ErrForbidden, "the precondition: a Viewer cannot read the managed roster")
+
+	people, err := f.svc.ListPeople(ctx, "carol", f.acme.ID)
+	require.NoError(t, err)
+	byLogin := map[string]tenancy.Person{}
+	for _, p := range people {
+		byLogin[p.Login] = p
+	}
+	require.Len(t, byLogin, 3, "dana, admin, and carol are Acme's members")
+	assert.Equal(t, "Lewis", byLogin["admin"].DisplayName)
+	assert.Equal(t, "admin", byLogin["admin"].UserID)
+	assert.Regexp(t, `^/api/people/admin/avatar\?v=[0-9a-f]+$`, byLogin["admin"].AvatarURL)
+	assert.Empty(t, byLogin["dana"].DisplayName, "no name set anywhere leaves the client to fall back to the login")
+
+	contentType, data, err := f.svc.Avatar(ctx, "carol", "admin")
+	require.NoError(t, err)
+	assert.Equal(t, "image/png", contentType)
+	assert.Equal(t, []byte("hello"), data)
+}
+
+func TestIntegration_ListPeople_ANonMemberIsRefused(t *testing.T) {
+	ctx := t.Context()
+	f := newTeamFixture(t)
+
+	_, err := f.svc.ListPeople(ctx, "bob", f.acme.ID)
+	require.ErrorIs(t, err, apperrs.ErrForbidden)
+
+	_, _, err = f.svc.Avatar(ctx, "bob", "carol")
+	require.ErrorIs(t, err, apperrs.ErrForbidden, "bob shares no workspace with carol")
 }

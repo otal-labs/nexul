@@ -3,7 +3,9 @@ import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { useRevertMemory } from "@/hooks/MemoryHooks";
+import { usePerson } from "@/hooks/PeopleHooks";
 import type { MemoryVersion } from "@/models/MemoryVersion";
+import { personLabel } from "@/models/Person";
 import { formatRelativeTime } from "@/utils/TimeUtility";
 
 interface MemoryVersionRowProps {
@@ -14,13 +16,12 @@ interface MemoryVersionRowProps {
 }
 
 // authorLabel names who saved the version; an MCP-tagged save reads "Agent via <user>" (ADR 0049).
-const authorLabel = (version: MemoryVersion): string => {
-  const author = version.author_id || "Unknown";
-  return version.author_via === "mcp" ? `Agent via ${author}` : author;
-};
+const authorLabel = (version: MemoryVersion, author: string): string =>
+  version.author_via === "mcp" ? `Agent via ${author}` : author;
 
 export const MemoryVersionRow = ({ memoryId, version, isCurrent, canRevert }: MemoryVersionRowProps) => {
   const revert = useRevertMemory();
+  const author = usePerson(version.author_id);
   const { open: confirm } = useConfirmationDialog();
 
   const onRevert = async () => {
@@ -37,7 +38,7 @@ export const MemoryVersionRow = ({ memoryId, version, isCurrent, canRevert }: Me
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm">{version.title}</p>
         <p className="truncate text-xs text-muted-foreground">
-          {authorLabel(version)} · {formatRelativeTime(version.created_at)}
+          {authorLabel(version, version.author_id ? personLabel(author) : "Unknown")} · {formatRelativeTime(version.created_at)}
         </p>
       </div>
       {!isCurrent && canRevert && (

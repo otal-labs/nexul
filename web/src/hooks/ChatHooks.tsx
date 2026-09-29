@@ -3,7 +3,6 @@ import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
 import { getMeKey } from "@/hooks/AuthHooks";
-import { useFetchWorkspaceMembers } from "@/hooks/MemberHooks";
 import { useFetchTicketsByProject } from "@/hooks/TicketHooks";
 import type { Conversation, Message, UnreadCounts } from "@/models/Chat";
 import type { QuestionAnswers } from "@/models/Question";
@@ -225,10 +224,3 @@ export const useAnswerAgentQuestion = (conversationId: string) =>
       api.post(`/api/agent/conversations/${conversationId}/answer`, { request_id: requestId, answers }),
     onError: (error) => toast.error(errorMessage(error)),
   });
-
-// A plain object lookup (one shared members fetch), not a query per message.
-export const useChatAuthorLookup = (workspaceId: string) => {
-  const { data: membersList } = useFetchWorkspaceMembers(workspaceId);
-  const members = membersList?.members ?? [];
-  return (authorId: string): string => members.find((m) => m.user_id === authorId)?.login ?? authorId;
-};

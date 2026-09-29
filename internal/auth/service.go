@@ -918,6 +918,13 @@ func (s *Service) UpdateProfileOverride(ctx context.Context, userID, displayName
 			return nil, err
 		}
 	}
+	current, err := s.cfg.Users.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("get user %s: %w", userID, err)
+	}
+	if deref(current.DisplayName) == displayName && deref(current.AvatarOverrideURL) == avatarOverrideURL {
+		return current, nil
+	}
 	var namePtr, avatarPtr *string
 	if displayName != "" {
 		namePtr = &displayName
@@ -925,10 +932,18 @@ func (s *Service) UpdateProfileOverride(ctx context.Context, userID, displayName
 	if avatarOverrideURL != "" {
 		avatarPtr = &avatarOverrideURL
 	}
-	if err := s.cfg.Users.SetProfileOverride(ctx, userID, namePtr, avatarPtr); err != nil {
+	event := eventbus.OutboxEvent{ID: newUserID(), Topic: TopicProfileUpdated, Payload: AccountLifecycleEvent{AccountID: userID}}
+	if err := s.cfg.Users.SetProfileOverride(ctx, userID, namePtr, avatarPtr, event); err != nil {
 		return nil, fmt.Errorf("set profile override %s: %w", userID, err)
 	}
 	return s.cfg.Users.GetUserByID(ctx, userID)
+}
+
+func deref(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }
 
 // validateAvatarOverrideURL requires a base64 data: URI decoding to no more than maxAvatarOverrideBytes.

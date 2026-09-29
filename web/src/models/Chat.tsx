@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { attachmentPath, isAttachmentPath, type Attachment } from "@/models/Attachment";
-import type { MemberView } from "@/models/Member";
+import { personLabel, type Person } from "@/models/Person";
 import type { PlayType } from "@/models/Play";
 
 // "voice_channel" is a real conversation that internal/voice attaches a LiveKit room to.
@@ -70,17 +70,17 @@ export type UnreadCounts = Record<string, number>;
 
 export interface DMLabelContext {
   currentUserId: string | undefined;
-  resolveLogin: (userId: string) => string;
+  resolvePerson: (userId: string) => Person;
 }
 
-// Channels use their name; everything else falls back to its kind. Passing dmCtx upgrades a DM to logins.
+// Channels use their name; everything else falls back to its kind. Passing dmCtx names a DM by its people.
 export const conversationLabel = (c: Conversation, dmCtx?: DMLabelContext): string => {
   if (c.name) return c.name;
   if (c.kind === "dm") {
     const ids = c.participant_ids ?? [];
     const others = ids.filter((id) => id !== dmCtx?.currentUserId);
-    if (dmCtx && others.length > 0) return others.map(dmCtx.resolveLogin).join(", ");
-    if (dmCtx?.currentUserId && ids.length > 0 && others.length === 0) return `${dmCtx.resolveLogin(dmCtx.currentUserId)} (you)`;
+    if (dmCtx && others.length > 0) return others.map((id) => personLabel(dmCtx.resolvePerson(id))).join(", ");
+    if (dmCtx?.currentUserId && ids.length > 0 && others.length === 0) return `${personLabel(dmCtx.resolvePerson(dmCtx.currentUserId))} (you)`;
     return "Direct message";
   }
   if (c.kind === "ticket_thread") return "Ticket thread";
@@ -108,9 +108,9 @@ export interface MentionCandidate {
 }
 
 // buildMentionCandidates backs the composer's @ picker: @Agent is always offered, plus every workspace member.
-export const buildMentionCandidates = (members: MemberView[]): MentionCandidate[] => [
+export const buildMentionCandidates = (people: Person[]): MentionCandidate[] => [
   { kind: "agent", handle: AgentMentionHandle },
-  ...members.map((m) => ({ kind: "user" as const, handle: m.login })),
+  ...people.map((p) => ({ kind: "user" as const, handle: p.login })),
 ];
 
 // Same prefix-match pattern as the docs/tickets @ picker, applied to a single-token handle.

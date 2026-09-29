@@ -16,6 +16,7 @@ import { MessageRow } from "@/components/chat/MessageRow";
 import { NoDataDisplay } from "@/components/NoDataDisplay";
 import { useThreadTrailBlocks } from "@/hooks/TrailHooks";
 import type { Conversation, Message } from "@/models/Chat";
+import type { Person } from "@/models/Person";
 import { useAgentStreamStore } from "@/stores/agentStreamStore";
 import { trailBlockFor } from "@/utils/ThreadTrailUtility";
 
@@ -23,7 +24,7 @@ interface MessageListProps {
   conversation: Conversation;
   messages: Message[];
   currentUserId: string | undefined;
-  resolveAuthorLogin: (authorId: string) => string;
+  resolveAuthor: (authorId: string) => Person;
   onEdit: (messageId: string, body: string) => Promise<void>;
   onDelete: (messageId: string) => Promise<void>;
   onInterruptAgent: () => void;
@@ -63,7 +64,7 @@ export const MessageList = ({
   conversation,
   messages,
   currentUserId,
-  resolveAuthorLogin,
+  resolveAuthor,
   onEdit,
   onDelete,
   onInterruptAgent,
@@ -95,7 +96,7 @@ export const MessageList = ({
                   >
                     <MessageRow
                       message={message}
-                      authorLogin={resolveAuthorLogin(message.author_id)}
+                      author={resolveAuthor(message.author_id)}
                       isOwn={message.author_id === currentUserId}
                       questionAnswered={message.author_kind === "agent" && answeredAfter(messages, i)}
                       trailBlock={trailBlockFor(message, blocks)}

@@ -27,10 +27,13 @@ describe("splitMessageBody", () => {
 });
 
 describe("conversationLabel", () => {
-  const dmCtx = { currentUserId: "me", resolveLogin: (id: string) => `@${id}` };
+  const dmCtx = {
+    currentUserId: "me",
+    resolvePerson: (id: string) => ({ user_id: id, login: `@${id}`, display_name: id === "ana" ? "Ana Lima" : "", avatar_url: "" }),
+  };
 
   test("a DM names the other people, not the caller", () => {
-    expect(conversationLabel(conversation({ kind: "dm", participant_ids: ["me", "ana"] }), dmCtx)).toBe("@ana");
+    expect(conversationLabel(conversation({ kind: "dm", participant_ids: ["me", "ana"] }), dmCtx)).toBe("Ana Lima");
   });
 
   test("a DM with only the caller says so", () => {

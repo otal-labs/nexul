@@ -5,6 +5,7 @@
 export interface EventPayloads {
   "account.admitted": { "invitation_id"?: string; "user_id"?: string; };
   "account.disabled": { "account_id": string; "actor_id"?: string; };
+  "account.profile_updated": { "account_id": string; };
   "account.reactivated": { "account_id": string; "actor_id"?: string; };
   "account.removed": { "account_id": string; "actor_id"?: string; };
   "account.restored": { "account_id": string; "actor_id"?: string; };
@@ -110,6 +111,7 @@ export type Topic = keyof EventPayloads;
 export const TOPICS: Topic[] = [
   "account.admitted",
   "account.disabled",
+  "account.profile_updated",
   "account.reactivated",
   "account.removed",
   "account.restored",
@@ -213,6 +215,7 @@ export const TOPICS: Topic[] = [
 export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "account.admitted": {"invitation_id":"fixture-invitation_id","user_id":"fixture-user_id"},
   "account.disabled": {"account_id":"fixture-account_id","actor_id":"fixture-actor_id"},
+  "account.profile_updated": {"account_id":"fixture-account_id"},
   "account.reactivated": {"account_id":"fixture-account_id","actor_id":"fixture-actor_id"},
   "account.removed": {"account_id":"fixture-account_id","actor_id":"fixture-actor_id"},
   "account.restored": {"account_id":"fixture-account_id","actor_id":"fixture-actor_id"},

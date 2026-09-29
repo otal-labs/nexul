@@ -435,6 +435,18 @@ inside a workspace always needs `members:write` there, and the Owner role is
 never given or taken through it.
 _Avoid_: Members (one workspace's roster), registered accounts, users
 
+**Display name**:
+What a person is called wherever they appear: the name they set in their
+profile, else their sign-in account's name, else their login. The login
+stays where a handle is meant: an @mention and the line under a name.
+_Avoid_: Username, nickname, name (alone, that is the sign-in account's)
+
+**People**:
+A workspace's members as any member sees them: login, display name, and
+picture, and nothing else. Readable by every member of that workspace,
+whatever their role; managing members is the Team's.
+_Avoid_: Directory, roster, members (the managed list with roles)
+
 **Personal access token**:
 A long-lived, revocable credential (`dep_`) carrying exactly one user's own
 permissions. What an agent authenticates its MCP connection with. A paired

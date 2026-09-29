@@ -3,6 +3,7 @@ package tenancy
 import (
 	"context"
 	"net/http"
+	"strconv"
 
 	"github.com/otal-labs/nexul/internal/platform/httpx"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
@@ -46,6 +47,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("PATCH /api/workspaces/{workspaceID}/mention-chip-template", h.setMentionChipTemplate)
 	mux.HandleFunc("GET /api/workspaces/{workspaceID}/me", h.me)
 	mux.HandleFunc("GET /api/workspaces/{workspaceID}/members", h.listMembers)
+	mux.HandleFunc("GET /api/workspaces/{workspaceID}/people", h.listPeople)
 	mux.HandleFunc("POST /api/workspaces/{workspaceID}/members", h.inviteMember)
 	mux.HandleFunc("DELETE /api/workspaces/{workspaceID}/members/{userID}", h.removeMember)
 	mux.HandleFunc("PUT /api/workspaces/{workspaceID}/members/{userID}", h.addMember)
@@ -59,6 +61,39 @@ func (h *Handler) TeamRoutes() http.Handler {
 	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /api/team", h.team)
 	return mux
+}
+
+// PeopleRoutes serves uploaded pictures; mounted at /api/people behind the same auth-user-id adapter.
+func (h *Handler) PeopleRoutes() http.Handler {
+	mux := httpx.NewServeMux()
+	mux.HandleFunc("GET /api/people/{userID}/avatar", h.avatar)
+	return mux
+}
+
+// listPeople answers any member of the workspace, since seeing who you work with needs no permission.
+func (h *Handler) listPeople(w http.ResponseWriter, r *http.Request) {
+	people, err := h.svc.ListPeople(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("workspaceID"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, People{People: people})
+}
+
+// avatar sets nosniff so an uploaded picture can never be re-interpreted as HTML on this origin.
+func (h *Handler) avatar(w http.ResponseWriter, r *http.Request) {
+	contentType, data, err := h.svc.Avatar(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("userID"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Content-Length", strconv.Itoa(len(data)))
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	// The URL carries a content hash, so a changed picture is a new URL and this copy never goes stale.
+	w.Header().Set("Cache-Control", "private, max-age=31536000, immutable")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(data) // the status is already sent; a failed write only means the client went away
 }
 
 // team is scoped by the use-case: everything for an instance administrator, else only the workspaces the caller manages.

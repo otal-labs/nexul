@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
 
-import { useChatAuthorLookup } from "@/hooks/ChatHooks";
 import { useFetchMemoriesByProject } from "@/hooks/MemoryHooks";
+import { usePersonLookup } from "@/hooks/PeopleHooks";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
+import { personLabel } from "@/models/Person";
 import type { Trail } from "@/models/Trail";
 
 interface TrailFactsProps {
@@ -25,7 +26,7 @@ const formatTimestamp = (iso: string) => new Date(iso).toLocaleString();
 
 // The run's facts as a two-column definition list: who, via what, when, and the choices made at the press.
 export const TrailFacts = ({ trail }: TrailFactsProps) => {
-  const resolveLogin = useChatAuthorLookup(trail.workspace_id);
+  const lookup = usePersonLookup(trail.workspace_id);
   const { data: memories } = useFetchMemoriesByProject(trail.project_id);
   const { data: columns } = useFetchProjectStatuses(trail.project_id);
 
@@ -36,7 +37,7 @@ export const TrailFacts = ({ trail }: TrailFactsProps) => {
     <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
       <Fact label="Play">{trail.play_label}</Fact>
       <Fact label="Started by">
-        <span className="font-mono text-xs">{resolveLogin(trail.starter_id)}</span>
+        <span className="text-xs">{personLabel(lookup(trail.starter_id))}</span>
       </Fact>
       <Fact label="Via">
         <span className="font-mono text-xs">{trail.via}</span>

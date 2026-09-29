@@ -492,6 +492,20 @@ describe("useLiveEvents dispatch", () => {
     }
   });
 
+  it("refreshes the people directory when someone joins or changes their name or picture", async () => {
+    setup();
+    const socket = await connectedSocket();
+    const spy = invalidate();
+    for (const [topic, payload] of [
+      ["account.profile_updated", { account_id: "u-lewis" }],
+      ["workspace.member.added", { user_id: "u-lewis", workspace_id: "ws-1" }],
+    ] as const) {
+      spy.mockClear();
+      act(() => socket.message(JSON.stringify({ topic, type: "event", payload })));
+      expect(spy).toHaveBeenCalledWith({ queryKey: ["getWorkspacePeople"] });
+    }
+  });
+
   it("refreshes the sessions list when a device signs in or is signed out", async () => {
     setup();
     const socket = await connectedSocket();
