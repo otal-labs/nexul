@@ -6,6 +6,7 @@ import type { Notification } from "@/models/Notification";
 const unread: Notification = {
   id: "n1",
   user_id: "u1",
+  workspace_id: "ws-1",
   kind: "ticket.assigned",
   subject_type: "ticket",
   subject_id: "t-1",

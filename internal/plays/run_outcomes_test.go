@@ -143,7 +143,7 @@ func TestFinish_WritesRunStartedAndFinishedEvents(t *testing.T) {
 	obs.OnActivity(step("Read", "Read main.go"))
 	obs.OnFinished(harness.TurnResult{State: harness.TurnDone}, "reply-1")
 
-	ref := RunRef{TrailID: trail.ID, PlayID: fixPlayID, PlayLabel: "Fix with AI", TargetType: TargetTicket, TargetID: ticketID, TargetTitle: "NEX-1", StarterID: starter, Via: ViaMCP}
+	ref := RunRef{TrailID: trail.ID, PlayID: fixPlayID, PlayLabel: "Fix with AI", TargetType: TargetTicket, TargetID: ticketID, TargetTitle: "NEX-1", StarterID: starter, Via: ViaMCP, WorkspaceID: workspaceID}
 	started := f.trails.eventsFor(TopicRunStarted)
 	require.Len(t, started, 1)
 	assert.NotEmpty(t, started[0].ID)

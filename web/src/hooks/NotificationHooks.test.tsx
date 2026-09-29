@@ -10,6 +10,7 @@ import {
   useMarkAllNotificationsRead,
   useMarkNotificationRead,
 } from "@/hooks/NotificationHooks";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 vi.mock("@/api/client", () => ({
   api: {
@@ -24,6 +25,7 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 const notification = {
   id: "n1",
   user_id: "u1",
+  workspace_id: "ws-1",
   kind: "doc.created",
   subject_type: "doc",
   subject_id: "doc-1",
@@ -40,23 +42,24 @@ const wrapper = ({ children }: { children: ReactNode }) => {
 beforeEach(() => {
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
 });
 
 describe("useFetchNotifications", () => {
-  it("loads the notification list", async () => {
+  it("loads the selected workspace's notifications", async () => {
     vi.mocked(api.get).mockResolvedValue({ data: [notification] });
     const { result } = renderHook(() => useFetchNotifications(), { wrapper });
     await waitFor(() => expect(result.current.data).toEqual([notification]));
-    expect(api.get).toHaveBeenCalledWith("/api/notifications");
+    expect(api.get).toHaveBeenCalledWith("/api/notifications", { params: { workspace_id: "ws-1" } });
   });
 });
 
 describe("useFetchUnreadCount", () => {
-  it("loads the unread count", async () => {
+  it("counts only the selected workspace's unread notifications", async () => {
     vi.mocked(api.get).mockResolvedValue({ data: { count: 2 } });
     const { result } = renderHook(() => useFetchUnreadCount(), { wrapper });
     await waitFor(() => expect(result.current.data).toEqual({ count: 2 }));
-    expect(api.get).toHaveBeenCalledWith("/api/notifications/unread-count");
+    expect(api.get).toHaveBeenCalledWith("/api/notifications/unread-count", { params: { workspace_id: "ws-1" } });
   });
 });
 
@@ -77,10 +80,12 @@ describe("useMarkNotificationRead", () => {
 });
 
 describe("useMarkAllNotificationsRead", () => {
-  it("posts the read-all endpoint", async () => {
+  it("marks only the selected workspace read", async () => {
     vi.mocked(api.post).mockResolvedValue({ data: undefined });
     const { result } = renderHook(() => useMarkAllNotificationsRead(), { wrapper });
     await result.current.mutateAsync();
-    expect(api.post).toHaveBeenCalledWith("/api/notifications/read-all");
+    expect(api.post).toHaveBeenCalledWith("/api/notifications/read-all", undefined, {
+      params: { workspace_id: "ws-1" },
+    });
   });
 });

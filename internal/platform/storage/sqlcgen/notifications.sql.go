@@ -10,28 +10,35 @@ import (
 )
 
 const countUnreadNotifications = `-- name: CountUnreadNotifications :one
-SELECT COUNT(*) FROM notifications WHERE user_id = ? AND read = 0
+SELECT COUNT(*) FROM notifications
+WHERE user_id = ?1 AND read = 0 AND (?2 = '' OR workspace_id = ?2)
 `
 
-func (q *Queries) CountUnreadNotifications(ctx context.Context, userID string) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countUnreadNotifications, userID)
+type CountUnreadNotificationsParams struct {
+	UserID      string
+	WorkspaceID interface{}
+}
+
+func (q *Queries) CountUnreadNotifications(ctx context.Context, arg CountUnreadNotificationsParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countUnreadNotifications, arg.UserID, arg.WorkspaceID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
 }
 
 const createNotificationIfAbsent = `-- name: CreateNotificationIfAbsent :execrows
-INSERT INTO notifications (id, user_id, kind, subject_type, subject_id, subject_title, read, created_at)
-SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8
+INSERT INTO notifications (id, user_id, workspace_id, kind, subject_type, subject_id, subject_title, read, created_at)
+SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9
 WHERE NOT EXISTS (
   SELECT 1 FROM notifications
-  WHERE user_id = ?2 AND kind = ?3 AND subject_type = ?4 AND subject_id = ?5 AND read = 0
+  WHERE user_id = ?2 AND kind = ?4 AND subject_type = ?5 AND subject_id = ?6 AND read = 0
 )
 `
 
 type CreateNotificationIfAbsentParams struct {
 	ID           string
 	UserID       string
+	WorkspaceID  string
 	Kind         string
 	SubjectType  string
 	SubjectID    string
@@ -45,6 +52,7 @@ func (q *Queries) CreateNotificationIfAbsent(ctx context.Context, arg CreateNoti
 	result, err := q.db.ExecContext(ctx, createNotificationIfAbsent,
 		arg.ID,
 		arg.UserID,
+		arg.WorkspaceID,
 		arg.Kind,
 		arg.SubjectType,
 		arg.SubjectID,
@@ -59,16 +67,20 @@ func (q *Queries) CreateNotificationIfAbsent(ctx context.Context, arg CreateNoti
 }
 
 const listNotifications = `-- name: ListNotifications :many
-SELECT id, user_id, kind, subject_type, subject_id, subject_title, read, created_at FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT ?
+SELECT id, user_id, kind, subject_type, subject_id, subject_title, read, created_at, workspace_id FROM notifications
+WHERE user_id = ?1 AND (?2 = '' OR workspace_id = ?2)
+ORDER BY created_at DESC LIMIT ?3
 `
 
 type ListNotificationsParams struct {
-	UserID string
-	Limit  int64
+	UserID      string
+	WorkspaceID interface{}
+	Limit       int64
 }
 
+// An empty workspace_id lists every workspace, the unscoped inbox older clients still ask for.
 func (q *Queries) ListNotifications(ctx context.Context, arg ListNotificationsParams) ([]Notification, error) {
-	rows, err := q.db.QueryContext(ctx, listNotifications, arg.UserID, arg.Limit)
+	rows, err := q.db.QueryContext(ctx, listNotifications, arg.UserID, arg.WorkspaceID, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -85,6 +97,7 @@ func (q *Queries) ListNotifications(ctx context.Context, arg ListNotificationsPa
 			&i.SubjectTitle,
 			&i.Read,
 			&i.CreatedAt,
+			&i.WorkspaceID,
 		); err != nil {
 			return nil, err
 		}
@@ -100,11 +113,17 @@ func (q *Queries) ListNotifications(ctx context.Context, arg ListNotificationsPa
 }
 
 const markAllNotificationsRead = `-- name: MarkAllNotificationsRead :exec
-UPDATE notifications SET read = 1 WHERE user_id = ? AND read = 0
+UPDATE notifications SET read = 1
+WHERE user_id = ?1 AND read = 0 AND (?2 = '' OR workspace_id = ?2)
 `
 
-func (q *Queries) MarkAllNotificationsRead(ctx context.Context, userID string) error {
-	_, err := q.db.ExecContext(ctx, markAllNotificationsRead, userID)
+type MarkAllNotificationsReadParams struct {
+	UserID      string
+	WorkspaceID interface{}
+}
+
+func (q *Queries) MarkAllNotificationsRead(ctx context.Context, arg MarkAllNotificationsReadParams) error {
+	_, err := q.db.ExecContext(ctx, markAllNotificationsRead, arg.UserID, arg.WorkspaceID)
 	return err
 }
 

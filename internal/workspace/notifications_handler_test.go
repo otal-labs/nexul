@@ -81,7 +81,7 @@ func TestNotificationHandler_MarkRead(t *testing.T) {
 		s := newTestNotifService(repo, newFakeNotifUsers())
 		rec := notifServe(t, notifAuthedHandler(s), http.MethodPost, "/api/notifications/n1/read", "")
 		assert.Equal(t, http.StatusNoContent, rec.Code)
-		ns, err := s.List(context.Background(), "u1", 0)
+		ns, err := s.List(context.Background(), "u1", "", 0)
 		require.NoError(t, err)
 		assert.True(t, ns[0].Read)
 	})
@@ -109,15 +109,50 @@ func TestNotificationHandler_MarkAllRead(t *testing.T) {
 		s := newTestNotifService(repo, newFakeNotifUsers())
 		rec := notifServe(t, notifAuthedHandler(s), http.MethodPost, "/api/notifications/read-all", "")
 		assert.Equal(t, http.StatusNoContent, rec.Code)
-		ns, err := s.List(context.Background(), "u1", 0)
+		ns, err := s.List(context.Background(), "u1", "", 0)
 		require.NoError(t, err)
 		for _, n := range ns {
 			assert.True(t, n.Read)
 		}
-		other, err := s.List(context.Background(), "u2", 0)
+		other, err := s.List(context.Background(), "u2", "", 0)
 		require.NoError(t, err)
 		for _, n := range other {
 			assert.False(t, n.Read)
 		}
+	})
+}
+
+func TestNotificationHandler_WorkspaceIDScopesTheInbox(t *testing.T) {
+	seed := func(t *testing.T) *NotificationService {
+		repo := newFakeNotifRepo()
+		for _, n := range []struct{ id, ws string }{{"n1", "ws-1"}, {"n2", "ws-2"}, {"n3", "ws-2"}} {
+			row := mkNotif(n.id, "u1")
+			row.WorkspaceID = n.ws
+			repo.create(t, row)
+		}
+		return newTestNotifService(repo, newFakeNotifUsers())
+	}
+	t.Run("list returns only the workspace's notifications", func(t *testing.T) {
+		rec := notifServe(t, notifAuthedHandler(seed(t)), http.MethodGet, "/api/notifications?workspace_id=ws-1", "")
+		require.Equal(t, http.StatusOK, rec.Code)
+		var ns []*Notification
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &ns))
+		require.Len(t, ns, 1)
+		assert.Equal(t, "ws-1", ns[0].WorkspaceID)
+	})
+	t.Run("unread count counts only the workspace", func(t *testing.T) {
+		rec := notifServe(t, notifAuthedHandler(seed(t)), http.MethodGet, "/api/notifications/unread-count?workspace_id=ws-2", "")
+		require.Equal(t, http.StatusOK, rec.Code)
+		var out map[string]int
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &out))
+		assert.Equal(t, 2, out["count"])
+	})
+	t.Run("read-all leaves other workspaces unread", func(t *testing.T) {
+		s := seed(t)
+		rec := notifServe(t, notifAuthedHandler(s), http.MethodPost, "/api/notifications/read-all?workspace_id=ws-1", "")
+		require.Equal(t, http.StatusNoContent, rec.Code)
+		n, err := s.UnreadCount(context.Background(), "u1", "")
+		require.NoError(t, err)
+		assert.Equal(t, 2, n)
 	})
 }

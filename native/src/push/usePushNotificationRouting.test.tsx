@@ -24,6 +24,7 @@ jest.mock("@/api/client", () => ({ api: { get: jest.fn() } }));
 const notification: Notification = {
   id: "n1",
   user_id: "u1",
+  workspace_id: "ws-1",
   kind: "ticket.assigned",
   subject_type: "ticket",
   subject_id: "t1",

@@ -524,6 +524,7 @@ type Notification struct {
 	SubjectTitle string
 	Read         int64
 	CreatedAt    int64
+	WorkspaceID  string
 }
 
 type Outbox struct {

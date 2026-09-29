@@ -20,18 +20,6 @@ func (a workspaceUserStore) GetUserByLogin(ctx context.Context, login string) (*
 	return &workspace.User{ID: u.ID, Login: u.Login}, nil
 }
 
-func (a workspaceUserStore) ListUsers(ctx context.Context) ([]*workspace.User, error) {
-	us, err := a.users.ListUsers(ctx)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]*workspace.User, 0, len(us))
-	for _, u := range us {
-		out = append(out, &workspace.User{ID: u.ID, Login: u.Login})
-	}
-	return out, nil
-}
-
 func (a workspaceUserStore) LoginForUserID(ctx context.Context, userID string) (string, error) {
 	u, err := a.users.GetUserByID(ctx, userID)
 	if err != nil {

@@ -54,6 +54,7 @@ type RunRef struct {
 	TargetTitle string     `json:"target_title"`
 	StarterID   string     `json:"starter_id"`
 	Via         Via        `json:"via"`
+	WorkspaceID string     `json:"workspace_id,omitempty"`
 }
 
 // RunStartedEvent is the play.run_started payload, written when the harness accepts the turn.
@@ -91,7 +92,7 @@ type RunFrame struct {
 func runRef(t *Trail, targetTitle string) RunRef {
 	return RunRef{
 		TrailID: t.ID, PlayID: t.PlayID, PlayLabel: t.PlayLabel, TargetType: t.TargetType, TargetID: t.TargetID,
-		TargetTitle: targetTitle, StarterID: t.StarterID, Via: t.Via,
+		TargetTitle: targetTitle, StarterID: t.StarterID, Via: t.Via, WorkspaceID: t.WorkspaceID,
 	}
 }
 

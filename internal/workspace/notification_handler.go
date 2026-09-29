@@ -19,7 +19,7 @@ func NewNotificationHandler(svc *NotificationService, currentUser func(*http.Req
 	return &NotificationHandler{svc: svc, currentUser: currentUser}
 }
 
-// Routes returns the notifications REST endpoints.
+// Routes returns the notifications REST endpoints; list, unread-count, and read-all take an optional workspace_id.
 func (h *NotificationHandler) Routes() http.Handler {
 	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /api/notifications", h.list)
@@ -36,7 +36,7 @@ func (h *NotificationHandler) list(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	ns, err := h.svc.List(r.Context(), userID, limit)
+	ns, err := h.svc.List(r.Context(), userID, r.URL.Query().Get("workspace_id"), limit)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -50,7 +50,7 @@ func (h *NotificationHandler) unreadCount(w http.ResponseWriter, r *http.Request
 		httpx.WriteError(w, apperrs.ErrUnauthorized)
 		return
 	}
-	n, err := h.svc.UnreadCount(r.Context(), userID)
+	n, err := h.svc.UnreadCount(r.Context(), userID, r.URL.Query().Get("workspace_id"))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -77,7 +77,7 @@ func (h *NotificationHandler) markAllRead(w http.ResponseWriter, r *http.Request
 		httpx.WriteError(w, apperrs.ErrUnauthorized)
 		return
 	}
-	if err := h.svc.MarkAllRead(r.Context(), userID); err != nil {
+	if err := h.svc.MarkAllRead(r.Context(), userID, r.URL.Query().Get("workspace_id")); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}

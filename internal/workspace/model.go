@@ -220,6 +220,7 @@ const (
 type Notification struct {
 	ID           string      `json:"id"`
 	UserID       string      `json:"user_id"`
+	WorkspaceID  string      `json:"workspace_id"`
 	Kind         Kind        `json:"kind"`
 	SubjectType  SubjectType `json:"subject_type"`
 	SubjectID    string      `json:"subject_id"`

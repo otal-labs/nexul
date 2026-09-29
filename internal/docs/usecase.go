@@ -62,7 +62,7 @@ func (s *Service) Create(ctx context.Context, projectID, title, body string) (*D
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
-	if err := s.repo.Create(ctx, d, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicCreated, Payload: CreatedEvent{Doc: *d}}); err != nil {
+	if err := s.repo.Create(ctx, d, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicCreated, Payload: CreatedEvent{Doc: *d, ActorID: actor.ID}}); err != nil {
 		return nil, fmt.Errorf("create doc: %w", err)
 	}
 	if s.access != nil {
@@ -71,6 +71,12 @@ func (s *Service) Create(ctx context.Context, projectID, title, body string) (*D
 		}
 	}
 	return d, nil
+}
+
+// actorID is the authenticated user behind ctx, or "" for a caller without one.
+func actorID(ctx context.Context) string {
+	a, _ := identity.ActorFromCtx(ctx)
+	return a.ID
 }
 
 // Get returns a doc by id; a user without the read bit gets ErrForbidden, though list surfaces may disclose its title.
@@ -150,7 +156,7 @@ func (s *Service) Update(ctx context.Context, id, title, body string) (*Doc, err
 	current.Body = body
 	current.Version++
 	current.UpdatedAt = s.now().UTC()
-	if err := s.repo.Update(ctx, current, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: UpdatedEvent{Doc: *current}}); err != nil {
+	if err := s.repo.Update(ctx, current, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: UpdatedEvent{Doc: *current, ActorID: actorID(ctx)}}); err != nil {
 		return nil, fmt.Errorf("update doc %s: %w", id, err)
 	}
 	return current, nil
@@ -178,7 +184,7 @@ func (s *Service) setArchived(ctx context.Context, id string, archived bool) (*D
 	}
 	current.Archived = archived
 	current.UpdatedAt = s.now().UTC()
-	if err := s.repo.SetArchived(ctx, current.ID, archived, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: UpdatedEvent{Doc: *current}}); err != nil {
+	if err := s.repo.SetArchived(ctx, current.ID, archived, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: UpdatedEvent{Doc: *current, ActorID: actorID(ctx)}}); err != nil {
 		return nil, fmt.Errorf("archive doc %s: %w", id, err)
 	}
 	return current, nil
@@ -302,7 +308,7 @@ func (s *Service) CommitCollab(ctx context.Context, id, title, body string) erro
 	current.Body = body
 	current.Version++
 	current.UpdatedAt = s.now().UTC()
-	if err := s.repo.CommitBody(ctx, current, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: UpdatedEvent{Doc: *current}}); err != nil {
+	if err := s.repo.CommitBody(ctx, current, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: UpdatedEvent{Doc: *current, ActorID: actorID(ctx)}}); err != nil {
 		return fmt.Errorf("commit doc %s: %w", id, err)
 	}
 	return nil

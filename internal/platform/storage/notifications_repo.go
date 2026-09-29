@@ -29,7 +29,7 @@ func (r *NotificationsRepo) CreateMany(ctx context.Context, ns []*workspace.Noti
 		inserted := false
 		for _, n := range ns {
 			rows, err := q.CreateNotificationIfAbsent(ctx, sqlcgen.CreateNotificationIfAbsentParams{
-				ID: n.ID, UserID: n.UserID, Kind: string(n.Kind), SubjectType: string(n.SubjectType),
+				ID: n.ID, UserID: n.UserID, WorkspaceID: n.WorkspaceID, Kind: string(n.Kind), SubjectType: string(n.SubjectType),
 				SubjectID: n.SubjectID, SubjectTitle: n.SubjectTitle, Read: int64(boolInt(n.Read)), CreatedAt: n.CreatedAt.Unix(),
 			})
 			if err != nil {
@@ -54,16 +54,16 @@ func (r *NotificationsRepo) CreateMany(ctx context.Context, ns []*workspace.Noti
 	})
 }
 
-func (r *NotificationsRepo) List(ctx context.Context, userID string, limit int) ([]*workspace.Notification, error) {
-	rows, err := r.q.ListNotifications(ctx, sqlcgen.ListNotificationsParams{UserID: userID, Limit: int64(limit)})
+func (r *NotificationsRepo) List(ctx context.Context, userID, workspaceID string, limit int) ([]*workspace.Notification, error) {
+	rows, err := r.q.ListNotifications(ctx, sqlcgen.ListNotificationsParams{UserID: userID, WorkspaceID: workspaceID, Limit: int64(limit)})
 	if err != nil {
 		return nil, fmt.Errorf("list notifications for %s: %w", userID, err)
 	}
 	return toNotifications(rows), nil
 }
 
-func (r *NotificationsRepo) UnreadCount(ctx context.Context, userID string) (int, error) {
-	n, err := r.q.CountUnreadNotifications(ctx, userID)
+func (r *NotificationsRepo) UnreadCount(ctx context.Context, userID, workspaceID string) (int, error) {
+	n, err := r.q.CountUnreadNotifications(ctx, sqlcgen.CountUnreadNotificationsParams{UserID: userID, WorkspaceID: workspaceID})
 	if err != nil {
 		return 0, fmt.Errorf("unread count for %s: %w", userID, err)
 	}
@@ -83,9 +83,9 @@ func (r *NotificationsRepo) MarkRead(ctx context.Context, userID, id string) err
 	})
 }
 
-func (r *NotificationsRepo) MarkAllRead(ctx context.Context, userID string) error {
+func (r *NotificationsRepo) MarkAllRead(ctx context.Context, userID, workspaceID string) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		if err := r.q.WithTx(tx).MarkAllNotificationsRead(ctx, userID); err != nil {
+		if err := r.q.WithTx(tx).MarkAllNotificationsRead(ctx, sqlcgen.MarkAllNotificationsReadParams{UserID: userID, WorkspaceID: workspaceID}); err != nil {
 			return fmt.Errorf("mark all notifications read for %s: %w", userID, err)
 		}
 		return nil
@@ -96,6 +96,7 @@ func toNotification(row sqlcgen.Notification) *workspace.Notification {
 	return &workspace.Notification{
 		ID:           row.ID,
 		UserID:       row.UserID,
+		WorkspaceID:  row.WorkspaceID,
 		Kind:         workspace.Kind(row.Kind),
 		SubjectType:  workspace.SubjectType(row.SubjectType),
 		SubjectID:    row.SubjectID,

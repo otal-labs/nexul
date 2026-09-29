@@ -8,6 +8,7 @@ import type { Notification } from "@/models/Notification";
 const notification: Notification = {
   id: "n1",
   user_id: "u1",
+  workspace_id: "ws-1",
   kind: "doc.created",
   subject_type: "doc",
   subject_id: "doc-1",

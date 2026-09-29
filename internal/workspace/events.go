@@ -96,27 +96,36 @@ type ticketCreatedEvent struct {
 // ticketStatusChangedEvent mirrors ticket.status_changed.
 type ticketStatusChangedEvent struct {
 	Ticket ticketRef `json:"ticket"`
+	Actor  struct {
+		UserID string `json:"user_id"`
+	} `json:"actor"`
 }
 
 // ticketRef is the slice of a ticket the generation rules need.
 type ticketRef struct {
 	ID        string `json:"id"`
+	ProjectID string `json:"project_id"`
 	Title     string `json:"title"`
 	Body      string `json:"body"`
 	Developer string `json:"developer"`
 	Tester    string `json:"tester"`
+	Reporter  struct {
+		Login string `json:"login"`
+	} `json:"reporter"`
 }
 
 // docEvent mirrors the docs domain's doc.created / doc.updated payloads.
 type docEvent struct {
-	Doc docRef `json:"doc"`
+	Doc     docRef `json:"doc"`
+	ActorID string `json:"actor_id"`
 }
 
 // docRef is the slice of a doc the generation rules need.
 type docRef struct {
-	ID    string `json:"id"`
-	Title string `json:"title"`
-	Body  string `json:"body"`
+	ID        string `json:"id"`
+	ProjectID string `json:"project_id"`
+	Title     string `json:"title"`
+	Body      string `json:"body"`
 }
 
 // memoryUpdatedEvent mirrors the memories domain's memory.updated payload.
@@ -142,6 +151,7 @@ type playRunFinishedEvent struct {
 	TargetID    string `json:"target_id"`
 	TargetTitle string `json:"target_title"`
 	StarterID   string `json:"starter_id"`
+	WorkspaceID string `json:"workspace_id"`
 	Outcome     string `json:"outcome"`
 }
 
@@ -181,7 +191,7 @@ func HandleTicketCreated(ctx context.Context, svc *NotificationService, ev event
 	return svc.onTicketCreated(CtxWithEventKey(ctx, ev.ID), e.Ticket)
 }
 
-// HandleTicketStatusChanged notifies the developer, the tester, and @-mentioned users of that ticket.
+// HandleTicketStatusChanged notifies the developer, the tester, and @-mentioned users of that ticket, never the mover.
 func HandleTicketStatusChanged(ctx context.Context, svc *NotificationService, ev eventbus.Event) error {
 	var e ticketStatusChangedEvent
 	if err := json.Unmarshal(ev.Payload, &e); err != nil {
@@ -190,10 +200,10 @@ func HandleTicketStatusChanged(ctx context.Context, svc *NotificationService, ev
 	if e.Ticket.ID == "" {
 		return apperrs.Fatal(fmt.Errorf("ticket.status_changed missing ticket id"))
 	}
-	return svc.onTicketStatusChanged(CtxWithEventKey(ctx, ev.ID), e.Ticket)
+	return svc.onTicketStatusChanged(CtxWithEventKey(ctx, ev.ID), e.Ticket, e.Actor.UserID)
 }
 
-// HandleDocCreated notifies all members for now; ws-22 will narrow to granted users.
+// HandleDocCreated notifies every member of the doc's workspace except whoever created it.
 func HandleDocCreated(ctx context.Context, svc *NotificationService, ev eventbus.Event) error {
 	var e docEvent
 	if err := json.Unmarshal(ev.Payload, &e); err != nil {
@@ -202,10 +212,10 @@ func HandleDocCreated(ctx context.Context, svc *NotificationService, ev eventbus
 	if e.Doc.ID == "" {
 		return apperrs.Fatal(fmt.Errorf("doc.created missing doc id"))
 	}
-	return svc.onDocActivity(CtxWithEventKey(ctx, ev.ID), e.Doc, KindDocCreated)
+	return svc.onDocActivity(CtxWithEventKey(ctx, ev.ID), e.Doc, e.ActorID, KindDocCreated)
 }
 
-// HandleDocUpdated fans out doc.updated to every user who can access the doc (v1: all members; ws-22 will narrow).
+// HandleDocUpdated notifies every member of the doc's workspace except whoever made the edit.
 func HandleDocUpdated(ctx context.Context, svc *NotificationService, ev eventbus.Event) error {
 	var e docEvent
 	if err := json.Unmarshal(ev.Payload, &e); err != nil {
@@ -214,7 +224,7 @@ func HandleDocUpdated(ctx context.Context, svc *NotificationService, ev eventbus
 	if e.Doc.ID == "" {
 		return apperrs.Fatal(fmt.Errorf("doc.updated missing doc id"))
 	}
-	return svc.onDocActivity(CtxWithEventKey(ctx, ev.ID), e.Doc, KindDocUpdated)
+	return svc.onDocActivity(CtxWithEventKey(ctx, ev.ID), e.Doc, e.ActorID, KindDocUpdated)
 }
 
 // HandleMemoryUpdated notifies every workspace member who holds memories:read, except the author.

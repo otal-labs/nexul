@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"maps"
 	"strconv"
 	"strings"
 	"sync"
@@ -87,20 +88,30 @@ func (f *fakeNotifRepo) topics() []string {
 	return out
 }
 
-func (f *fakeNotifRepo) List(_ context.Context, userID string, limit int) ([]*Notification, error) {
+// inWorkspace mirrors the storage filter: an empty workspaceID spans every workspace.
+func inWorkspace(n *Notification, workspaceID string) bool {
+	return workspaceID == "" || n.WorkspaceID == workspaceID
+}
+
+func (f *fakeNotifRepo) List(_ context.Context, userID, workspaceID string, limit int) ([]*Notification, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.listErr != nil {
 		return nil, f.listErr
 	}
-	all := append([]*Notification(nil), f.byUser[userID]...)
+	var all []*Notification
+	for _, n := range f.byUser[userID] {
+		if inWorkspace(n, workspaceID) {
+			all = append(all, n)
+		}
+	}
 	if limit > 0 && len(all) > limit {
 		all = all[:limit]
 	}
 	return all, nil
 }
 
-func (f *fakeNotifRepo) UnreadCount(_ context.Context, userID string) (int, error) {
+func (f *fakeNotifRepo) UnreadCount(_ context.Context, userID, workspaceID string) (int, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.countErr != nil {
@@ -108,7 +119,7 @@ func (f *fakeNotifRepo) UnreadCount(_ context.Context, userID string) (int, erro
 	}
 	n := 0
 	for _, notif := range f.byUser[userID] {
-		if !notif.Read {
+		if !notif.Read && inWorkspace(notif, workspaceID) {
 			n++
 		}
 	}
@@ -129,14 +140,16 @@ func (f *fakeNotifRepo) MarkRead(_ context.Context, userID, id string) error {
 	return nil
 }
 
-func (f *fakeNotifRepo) MarkAllRead(_ context.Context, userID string) error {
+func (f *fakeNotifRepo) MarkAllRead(_ context.Context, userID, workspaceID string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.markErr != nil {
 		return f.markErr
 	}
 	for _, n := range f.byUser[userID] {
-		n.Read = true
+		if inWorkspace(n, workspaceID) {
+			n.Read = true
+		}
 	}
 	return nil
 }
@@ -201,10 +214,28 @@ func (f *fakeNotifUsers) LoginForUserID(_ context.Context, userID string) (strin
 // fan-out tests.
 type fakeMemberStore struct {
 	byWorkspace map[string][]string
+	err         error
 }
 
 func (f *fakeMemberStore) ListMemberUserIDs(_ context.Context, workspaceID string) ([]string, error) {
-	return f.byWorkspace[workspaceID], nil
+	return f.byWorkspace[workspaceID], f.err
+}
+
+// fakeProjects is a ProjectReader stub mapping project id to its workspace.
+type fakeProjects struct {
+	workspaceOf map[string]string
+	err         error
+}
+
+func (f *fakeProjects) Get(_ context.Context, id string) (*Project, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	ws, ok := f.workspaceOf[id]
+	if !ok {
+		return nil, apperrs.ErrNotFound
+	}
+	return &Project{ID: id, WorkspaceID: ws}, nil
 }
 
 // fakeAccessChecker is a PermissionChecker stub gating memory.updated fan-out by a fixed allow/deny set.
@@ -221,7 +252,7 @@ func newTestNotifService(repo *fakeNotifRepo, users *fakeNotifUsers) *Notificati
 }
 
 func newTestNotifServiceWith(repo *fakeNotifRepo, users *fakeNotifUsers, members WorkspaceMemberStore, access PermissionChecker) *NotificationService {
-	s := NewNotificationService(repo, users, members, access)
+	s := NewNotificationService(repo, users, members, access, &fakeProjects{workspaceOf: map[string]string{"p-1": "ws-1"}})
 	s.now = func() time.Time { return notifFixedNow }
 	return s
 }
@@ -241,7 +272,7 @@ func mkNotif(id, userID string) *Notification {
 func TestNotifList(t *testing.T) {
 	t.Run("empty user id is invalid", func(t *testing.T) {
 		s := newTestNotifService(newFakeNotifRepo(), newFakeNotifUsers())
-		_, err := s.List(context.Background(), "  ", 10)
+		_, err := s.List(context.Background(), "  ", "", 10)
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 	})
@@ -249,7 +280,7 @@ func TestNotifList(t *testing.T) {
 		repo := newFakeNotifRepo()
 		repo.listErr = errors.New("db down")
 		s := newTestNotifService(repo, newFakeNotifUsers())
-		_, err := s.List(context.Background(), "u1", 10)
+		_, err := s.List(context.Background(), "u1", "", 10)
 		require.Error(t, err)
 		assert.ErrorIs(t, err, repo.listErr)
 	})
@@ -259,7 +290,7 @@ func TestNotifList(t *testing.T) {
 			repo.create(t, &Notification{ID: notifID(i), UserID: "u1"})
 		}
 		s := newTestNotifService(repo, newFakeNotifUsers())
-		ns, err := s.List(context.Background(), "u1", 0)
+		ns, err := s.List(context.Background(), "u1", "", 0)
 		require.NoError(t, err)
 		require.Len(t, ns, 50)
 	})
@@ -269,7 +300,7 @@ func TestNotifList(t *testing.T) {
 			repo.create(t, &Notification{ID: notifID(i), UserID: "u1"})
 		}
 		s := newTestNotifService(repo, newFakeNotifUsers())
-		ns, err := s.List(context.Background(), "u1", 2)
+		ns, err := s.List(context.Background(), "u1", "", 2)
 		require.NoError(t, err)
 		require.Len(t, ns, 2)
 	})
@@ -278,7 +309,7 @@ func TestNotifList(t *testing.T) {
 func TestNotifUnreadCount(t *testing.T) {
 	t.Run("empty user id is invalid", func(t *testing.T) {
 		s := newTestNotifService(newFakeNotifRepo(), newFakeNotifUsers())
-		_, err := s.UnreadCount(context.Background(), "")
+		_, err := s.UnreadCount(context.Background(), "", "")
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 	})
@@ -286,7 +317,7 @@ func TestNotifUnreadCount(t *testing.T) {
 		repo := newFakeNotifRepo()
 		repo.countErr = errors.New("db down")
 		s := newTestNotifService(repo, newFakeNotifUsers())
-		_, err := s.UnreadCount(context.Background(), "u1")
+		_, err := s.UnreadCount(context.Background(), "u1", "")
 		require.Error(t, err)
 		assert.ErrorIs(t, err, repo.countErr)
 	})
@@ -296,7 +327,7 @@ func TestNotifUnreadCount(t *testing.T) {
 		repo.create(t, &Notification{ID: "n2", UserID: "u1"})
 		require.NoError(t, repo.MarkRead(context.Background(), "u1", "n1"))
 		s := newTestNotifService(repo, newFakeNotifUsers())
-		n, err := s.UnreadCount(context.Background(), "u1")
+		n, err := s.UnreadCount(context.Background(), "u1", "")
 		require.NoError(t, err)
 		assert.Equal(t, 1, n)
 	})
@@ -331,7 +362,7 @@ func TestNotifMarkRead(t *testing.T) {
 		repo.create(t, &Notification{ID: "n1", UserID: "u1"})
 		s := newTestNotifService(repo, newFakeNotifUsers())
 		require.NoError(t, s.MarkRead(context.Background(), "u1", "n1"))
-		got, err := s.List(context.Background(), "u1", 0)
+		got, err := s.List(context.Background(), "u1", "", 0)
 		require.NoError(t, err)
 		require.Len(t, got, 1)
 		assert.True(t, got[0].Read)
@@ -341,7 +372,7 @@ func TestNotifMarkRead(t *testing.T) {
 func TestNotifMarkAllRead(t *testing.T) {
 	t.Run("empty user id is invalid", func(t *testing.T) {
 		s := newTestNotifService(newFakeNotifRepo(), newFakeNotifUsers())
-		err := s.MarkAllRead(context.Background(), "")
+		err := s.MarkAllRead(context.Background(), "", "")
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 	})
@@ -349,7 +380,7 @@ func TestNotifMarkAllRead(t *testing.T) {
 		repo := newFakeNotifRepo()
 		repo.markErr = errors.New("db down")
 		s := newTestNotifService(repo, newFakeNotifUsers())
-		err := s.MarkAllRead(context.Background(), "u1")
+		err := s.MarkAllRead(context.Background(), "u1", "")
 		require.Error(t, err)
 		assert.ErrorIs(t, err, repo.markErr)
 	})
@@ -359,7 +390,7 @@ func TestNotifMarkAllRead(t *testing.T) {
 		repo.create(t, &Notification{ID: "n2", UserID: "u1"})
 		repo.create(t, &Notification{ID: "n3", UserID: "u2"})
 		s := newTestNotifService(repo, newFakeNotifUsers())
-		require.NoError(t, s.MarkAllRead(context.Background(), "u1"))
+		require.NoError(t, s.MarkAllRead(context.Background(), "u1", ""))
 		for _, n := range repo.notifsFor("u1") {
 			assert.True(t, n.Read)
 		}
@@ -413,7 +444,7 @@ func TestHandleMemoryUpdated(t *testing.T) {
 	})
 
 	t.Run("no members or access gate wired is a no-op, not a panic", func(t *testing.T) {
-		s := NewNotificationService(newFakeNotifRepo(), newFakeNotifUsers(), nil, nil)
+		s := NewNotificationService(newFakeNotifRepo(), newFakeNotifUsers(), nil, nil, nil)
 		require.NoError(t, HandleMemoryUpdated(context.Background(), s, notifEvFor(t, "memory.updated", payload)))
 	})
 
@@ -546,23 +577,26 @@ func TestHandleTicketStatusChanged(t *testing.T) {
 }
 
 func TestHandleDocCreatedAndUpdated(t *testing.T) {
-	docPayload := map[string]any{"doc": map[string]any{"id": "d-1", "title": "Spec"}}
+	docPayload := map[string]any{"doc": map[string]any{"id": "d-1", "title": "Spec", "project_id": "p-1"}}
+	users := func() *fakeNotifUsers { return newFakeNotifUsers(notifUser("u1", "onik97"), notifUser("u2", "alice")) }
+	wsMembers := func() *fakeMemberStore {
+		return &fakeMemberStore{byWorkspace: map[string][]string{"ws-1": {"u1", "u2"}, "ws-2": {"u3"}}}
+	}
 
-	t.Run("doc.created fans out to every member", func(t *testing.T) {
+	t.Run("doc.created fans out to every member of the doc's workspace", func(t *testing.T) {
 		repo := newFakeNotifRepo()
-		users := newFakeNotifUsers(notifUser("u1", "onik97"), notifUser("u2", "alice"))
-		s := newTestNotifService(repo, users)
+		s := newTestNotifServiceWith(repo, users(), wsMembers(), &fakeAccessChecker{})
 		require.NoError(t, HandleDocCreated(context.Background(), s, notifEvFor(t, "doc.created", docPayload)))
 		require.Len(t, repo.notifsFor("u1"), 1)
 		assert.Equal(t, KindDocCreated, repo.notifsFor("u1")[0].Kind)
 		assert.Equal(t, SubjectDoc, repo.notifsFor("u1")[0].SubjectType)
+		assert.Equal(t, "ws-1", repo.notifsFor("u1")[0].WorkspaceID)
 		require.Len(t, repo.notifsFor("u2"), 1)
-		assert.Equal(t, KindDocCreated, repo.notifsFor("u2")[0].Kind)
+		assert.Empty(t, repo.notifsFor("u3"), "a member of another workspace is not told")
 	})
-	t.Run("doc.updated fans out to every member", func(t *testing.T) {
+	t.Run("doc.updated fans out to every member of the doc's workspace", func(t *testing.T) {
 		repo := newFakeNotifRepo()
-		users := newFakeNotifUsers(notifUser("u1", "onik97"))
-		s := newTestNotifService(repo, users)
+		s := newTestNotifServiceWith(repo, users(), wsMembers(), &fakeAccessChecker{})
 		require.NoError(t, HandleDocUpdated(context.Background(), s, notifEvFor(t, "doc.updated", docPayload)))
 		require.Len(t, repo.notifsFor("u1"), 1)
 		assert.Equal(t, KindDocUpdated, repo.notifsFor("u1")[0].Kind)
@@ -575,20 +609,96 @@ func TestHandleDocCreatedAndUpdated(t *testing.T) {
 	})
 	t.Run("fan-out is idempotent per source event", func(t *testing.T) {
 		repo := newFakeNotifRepo()
-		s := newTestNotifService(repo, newFakeNotifUsers(notifUser("u1", "onik97")))
+		s := newTestNotifServiceWith(repo, users(), wsMembers(), &fakeAccessChecker{})
 		ev := notifEvFor(t, "doc.created", docPayload)
 		require.NoError(t, HandleDocCreated(context.Background(), s, ev))
 		require.NoError(t, HandleDocCreated(context.Background(), s, ev))
 		require.Len(t, repo.notifsFor("u1"), 1)
 	})
-	t.Run("user store failure propagates", func(t *testing.T) {
-		users := newFakeNotifUsers(notifUser("u1", "onik97"))
-		users.err = errors.New("db down")
-		s := newTestNotifService(newFakeNotifRepo(), users)
+	t.Run("member store failure propagates", func(t *testing.T) {
+		members := wsMembers()
+		members.err = errors.New("db down")
+		s := newTestNotifServiceWith(newFakeNotifRepo(), users(), members, &fakeAccessChecker{})
 		err := HandleDocCreated(context.Background(), s, notifEvFor(t, "doc.created", docPayload))
-		require.Error(t, err)
-		assert.ErrorIs(t, err, users.err)
+		assert.ErrorIs(t, err, members.err)
 	})
+}
+
+func TestFanOut_StampsTheSubjectsWorkspace(t *testing.T) {
+	t.Run("project lookup failure propagates so the bus retries", func(t *testing.T) {
+		repo := newFakeNotifRepo()
+		lookupErr := errors.New("db down")
+		s := NewNotificationService(repo, newFakeNotifUsers(notifUser("u1", "onik97")), &fakeMemberStore{}, &fakeAccessChecker{}, &fakeProjects{err: lookupErr})
+		payload := map[string]any{"ticket": map[string]any{"id": "t-1", "project_id": "p-1", "developer": "onik97"}}
+		err := HandleTicketCreated(context.Background(), s, notifEvFor(t, "ticket.created", payload))
+		require.ErrorIs(t, err, lookupErr)
+		assert.Empty(t, repo.notifsFor("u1"))
+	})
+	t.Run("a project deleted since the event leaves the notification unscoped", func(t *testing.T) {
+		repo := newFakeNotifRepo()
+		s := newTestNotifService(repo, newFakeNotifUsers(notifUser("u1", "onik97")))
+		payload := map[string]any{"ticket": map[string]any{"id": "t-1", "project_id": "p-gone", "developer": "onik97"}}
+		require.NoError(t, HandleTicketCreated(context.Background(), s, notifEvFor(t, "ticket.created", payload)))
+		require.Len(t, repo.notifsFor("u1"), 1)
+		assert.Empty(t, repo.notifsFor("u1")[0].WorkspaceID)
+	})
+
+	tests := []struct {
+		name   string
+		handle func(context.Context, *NotificationService, eventbus.Event) error
+		topic  string
+		body   map[string]any
+	}{
+		{"ticket.created", HandleTicketCreated, "ticket.created",
+			map[string]any{"ticket": map[string]any{"id": "t-1", "project_id": "p-1", "developer": "alice"}}},
+		{"ticket.status_changed", HandleTicketStatusChanged, "ticket.status_changed",
+			map[string]any{"ticket": map[string]any{"id": "t-1", "project_id": "p-1", "developer": "alice"}}},
+		{"play.run_finished", HandlePlayRunFinished, "play.run_finished",
+			map[string]any{"trail_id": "tr-1", "target_type": "ticket", "target_id": "t-1", "starter_id": "u2", "workspace_id": "ws-1", "outcome": "done"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := newFakeNotifRepo()
+			s := newTestNotifService(repo, newFakeNotifUsers(notifUser("u2", "alice")))
+			require.NoError(t, tt.handle(context.Background(), s, notifEvFor(t, tt.topic, tt.body)))
+			require.Len(t, repo.notifsFor("u2"), 1)
+			assert.Equal(t, "ws-1", repo.notifsFor("u2")[0].WorkspaceID)
+			assert.Equal(t, []NotificationPushItem{{ID: "evt-1:u2", UserID: "u2", WorkspaceID: "ws-1"}}, repo.pushItems())
+		})
+	}
+}
+
+func TestFanOut_TheActorIsNeverNotifiedOfTheirOwnAction(t *testing.T) {
+	ticket := map[string]any{"id": "t-1", "project_id": "p-1", "title": "Fix @alice", "developer": "onik97", "tester": "alice"}
+	doc := map[string]any{"id": "d-1", "title": "Spec", "project_id": "p-1"}
+	selfFiled := maps.Clone(ticket)
+	selfFiled["reporter"] = map[string]any{"kind": "user", "login": "onik97"}
+	tests := []struct {
+		name   string
+		handle func(context.Context, *NotificationService, eventbus.Event) error
+		topic  string
+		body   map[string]any
+	}{
+		{"ticket.created by its developer", HandleTicketCreated, "ticket.created",
+			map[string]any{"ticket": selfFiled}},
+		{"ticket.status_changed moved by its developer", HandleTicketStatusChanged, "ticket.status_changed",
+			map[string]any{"ticket": ticket, "actor": map[string]any{"kind": "user", "user_id": "u1"}}},
+		{"doc.created by a member", HandleDocCreated, "doc.created", map[string]any{"doc": doc, "actor_id": "u1"}},
+		{"doc.updated by a member", HandleDocUpdated, "doc.updated", map[string]any{"doc": doc, "actor_id": "u1"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := newFakeNotifRepo()
+			members := &fakeMemberStore{byWorkspace: map[string][]string{"ws-1": {"u1", "u2"}}}
+			s := newTestNotifServiceWith(repo, newFakeNotifUsers(notifUser("u1", "onik97"), notifUser("u2", "alice")), members, &fakeAccessChecker{})
+			require.NoError(t, tt.handle(context.Background(), s, notifEvFor(t, tt.topic, tt.body)))
+			assert.Empty(t, repo.notifsFor("u1"), "the actor is not notified")
+			assert.Len(t, repo.notifsFor("u2"), 1, "everyone else still is")
+			for _, item := range repo.pushItems() {
+				assert.NotEqual(t, "u1", item.UserID, "and never pushed to")
+			}
+		})
+	}
 }
 
 func TestExtractMentions(t *testing.T) {

@@ -35,7 +35,8 @@ var catalogSchemas = map[string]string{
 					"created_at": {"type": "string", "format": "date-time"},
 					"updated_at": {"type": "string", "format": "date-time"}
 				}
-			}
+			},
+			"actor_id": {"type": "string"}
 		}
 	}`,
 	"doc.updated": `{
@@ -55,7 +56,8 @@ var catalogSchemas = map[string]string{
 					"created_at": {"type": "string", "format": "date-time"},
 					"updated_at": {"type": "string", "format": "date-time"}
 				}
-			}
+			},
+			"actor_id": {"type": "string"}
 		}
 	}`,
 	"ticket.created": `{
@@ -678,6 +680,7 @@ var catalogSchemas = map[string]string{
 			"target_title": {"type": "string"},
 			"starter_id": {"type": "string"},
 			"via": {"type": "string", "enum": ["web", "mcp"]},
+			"workspace_id": {"type": "string"},
 			"harness_session_id": {"type": "string"}
 		}
 	}`,
@@ -693,7 +696,8 @@ var catalogSchemas = map[string]string{
 			"target_id": {"type": "string"},
 			"target_title": {"type": "string"},
 			"starter_id": {"type": "string"},
-			"via": {"type": "string", "enum": ["web", "mcp"]}
+			"via": {"type": "string", "enum": ["web", "mcp"]},
+			"workspace_id": {"type": "string"}
 		}
 	}`,
 	"play.run_finished": `{
@@ -709,6 +713,7 @@ var catalogSchemas = map[string]string{
 			"target_title": {"type": "string"},
 			"starter_id": {"type": "string"},
 			"via": {"type": "string", "enum": ["web", "mcp"]},
+			"workspace_id": {"type": "string"},
 			"outcome": {"type": "string", "enum": ["done", "failed", "interrupted"]},
 			"last_error": {"type": "string"},
 			"reply_message_id": {"type": "string"}
