@@ -76,6 +76,13 @@ browser, desktop app and phone and signs any of them out on its next request.
 Profile links several sign-in accounts to one user, and a phone connects by
 scanning a single-use QR code.
 
+### Team
+
+One instance section lists everyone registered and what each person can
+reach: open a person to change their role, overrides, or workspaces, or their
+account's status, with every workspace change still needing `members:write`
+in that workspace.
+
 ### The design pass
 
 A monochrome identity — "The Mono Console", light and dark as true inversions

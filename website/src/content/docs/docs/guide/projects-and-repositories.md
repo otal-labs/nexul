@@ -40,16 +40,18 @@ A project deploys from one repository. If its end-to-end or other tests live in 
 
 The answer is stored on the project as its tests location (`same` or `separate`), and the interview starts from it. It shows in the project's **Repositories** list, where the tests repository carries a `tests` marker and can be removed like any other. Over MCP, `project_update` attaches one through `add_repos` with `role: "tests"` (which also records the location as `separate`) and records or withdraws the answer through `tests_location`, and `project_get` returns each repository's role.
 
-## Members and roles
+## Team and roles
 
 Every workspace auto-creates a singleton **Owner** role at creation. It can't be deleted or renamed, and it implicitly holds every permission — an Owner is never locked out by a permission change.
 
 Beyond Owner, roles are fully custom: anyone holding `roles:write` can create as many roles as needed, each with its own set of permissions. Every permission follows one shared vocabulary, `<domain>:<action>` (`docs:write`, `tickets:read`, `members:delete`, and so on) — the same values gate a role, a personal access token, and an automation, so "what can this actor do" has one consistent answer everywhere.
 
-To invite someone to a workspace:
+Instance administrators see everyone in one place: **Configuration → Team** (`/configuration/team`), under Whole instance. It lists every registered account with its status (active, disabled, or removed) and a one-line summary of where it has access. Open a person to see every workspace on the instance: change their role, remove them from a workspace, add them to one they're not in, or edit their workspace-wide permission overrides. Each of those needs `members:write` in that workspace, so being an instance administrator alone doesn't let you change a workspace you don't manage; its row stays read-only and says why. Disabling, reactivating, removing, and restoring the account itself also live there. Roles are defined per workspace under **Roles**; Team only assigns them.
 
-1. Open **Configuration → Members** (`/configuration/members`).
-2. Create an invitation, choose one or more workspaces, and select a role for each. The Owner role isn't offered here — transferring ownership is a separate action.
+To invite someone new:
+
+1. Open **Configuration → Team** (`/configuration/team`) and choose **Invite**.
+2. Choose one or more workspaces, and select a role for each. The Owner role isn't offered here — transferring ownership is a separate action.
 3. Copy the generated link and send it through any channel you trust. Nexul shows it once.
 4. The recipient opens the link, signs in through one of the instance's configured OAuth providers, reviews the access package, and accepts it.
 
