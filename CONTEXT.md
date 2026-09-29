@@ -414,7 +414,11 @@ One capability, written `<domain>:<action>` where the action is `read`,
 `write`, or `delete` (`docs:write`, `members:delete`), or a verb the domain
 declares for an act that is neither (`plays:run`, `memories:clone`,
 `roles:clone`, `docs:thread`). One vocabulary for every actor: a role, a
-scoped token, and the agent are checked against the same values.
+scoped token, and the agent are checked against the same values. Checked in
+the workspace the entity belongs to; runners, the topology, machines, and the
+instance's own stacks, which belong to none, against every workspace the
+caller is in. What every member reads (the project list, channels, their own
+DMs and inbox, People) takes membership, not a permission.
 _Avoid_: Right, privilege, capability, ACL entry
 
 **Permission overwrite**:

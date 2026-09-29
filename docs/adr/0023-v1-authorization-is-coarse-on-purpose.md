@@ -1,5 +1,7 @@
 # Authorization stays coarse inside tickets and chat, but the seams are already there
 
+Superseded by ADR 0087: the sweep this deferred has run.
+
 Ticket permissions are **workspace-level**: there is no per-ticket grant and
 no per-ticket permission UI. Crucially, permission is never inferred through
 a ticket relationship — a link between two tickets, or between a ticket and
