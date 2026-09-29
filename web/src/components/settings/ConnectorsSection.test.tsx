@@ -494,4 +494,72 @@ describe("ConnectorsSection", () => {
 
     await vi.waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/connectors/github/disconnect"));
   });
+
+  describe("the connected GitHub card's accounts", () => {
+    const connectedGitHub = [connectorEntry({ status: { configured: true, connected_by: "u1" } })];
+    const mockGitHub = (installations: unknown[], app: Record<string, string> = { app_slug: "nexul-app" }) =>
+      mocks.get.mockImplementation((url: string) => {
+        if (url === "/api/connectors") return Promise.resolve({ data: connectedGitHub });
+        if (url === "/api/repositories/installations") return Promise.resolve({ data: { installations } });
+        if (url === "/api/connectors/github/app-config") return Promise.resolve({ data: { configured: true, ...app } });
+        return Promise.reject(new Error(`unexpected GET ${url}`));
+      });
+
+    it("lists each installation with its repository access and a Manage link to it on GitHub", async () => {
+      mockGitHub([
+        {
+          id: 1,
+          account_login: "octo-org",
+          account_type: "organization",
+          account_avatar_url: "",
+          repository_selection: "selected",
+          repository_count: 3,
+          html_url: "https://github.com/organizations/octo-org/settings/installations/1",
+        },
+        {
+          id: 2,
+          account_login: "octocat",
+          account_type: "user",
+          account_avatar_url: "",
+          repository_selection: "all",
+          html_url: "https://github.com/settings/installations/2",
+        },
+      ]);
+      renderSection();
+
+      const org = (await screen.findByText("octo-org")).closest("li")!;
+      expect(org).toHaveTextContent("Organisation · 3 selected repositories");
+      expect(within(org).getByRole("link", { name: "Manage octo-org on GitHub" })).toHaveAttribute(
+        "href",
+        "https://github.com/organizations/octo-org/settings/installations/1",
+      );
+      const user = screen.getByText("octocat").closest("li")!;
+      expect(user).toHaveTextContent("User · All repositories");
+      expect(within(user).getByRole("link", { name: "Manage octocat on GitHub" })).toHaveAttribute(
+        "href",
+        "https://github.com/settings/installations/2",
+      );
+      expect(await screen.findByRole("link", { name: /add account or organisation/i })).toHaveAttribute(
+        "href",
+        "https://github.com/apps/nexul-app/installations/new",
+      );
+    });
+
+    it("says so when the App is installed nowhere the connector can see, still offering to add one", async () => {
+      mockGitHub([]);
+      renderSection();
+
+      expect(await screen.findByText(/isn't installed on any account you can see yet/i)).toBeInTheDocument();
+      expect(await screen.findByRole("link", { name: /add account or organisation/i })).toBeInTheDocument();
+    });
+
+    it("is absent while GitHub is not connected", async () => {
+      mocks.get.mockResolvedValue({ data: registryConnectors() });
+      renderSection();
+
+      expect(await screen.findByText("GitHub")).toBeInTheDocument();
+      expect(screen.queryByText("Accounts Nexul can see")).not.toBeInTheDocument();
+      expect(mocks.get).not.toHaveBeenCalledWith("/api/repositories/installations");
+    });
+  });
 });

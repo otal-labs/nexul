@@ -3,6 +3,7 @@ import type { ComponentType } from "react";
 
 import { GithubMark } from "@/components/ProviderMarks";
 import { ConnectorAppConfigDialog } from "@/components/settings/ConnectorAppConfigDialog";
+import { GitHubInstallationsSection } from "@/components/settings/GitHubInstallationsSection";
 import { ManualConnectorDialog } from "@/components/settings/ManualConnectorDialog";
 import { NoFillBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,43 +43,46 @@ export const ConnectorCard = ({ entry }: ConnectorCardProps) => {
   const onDisconnect = () => disconnect.mutate(connector.id);
 
   return (
-    <li className="flex items-center gap-3 p-4">
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-muted/60">
-        <Icon className="size-4" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <p className="truncate text-sm font-medium">{connector.name}</p>
-          {status.configured && (
-            <NoFillBadge icon={CheckCircle2} color="text-success">
-              Connected
-            </NoFillBadge>
-          )}
+    <li className="space-y-4 p-4">
+      <div className="flex items-center gap-3">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-muted/60">
+          <Icon className="size-4" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <p className="truncate text-sm font-medium">{connector.name}</p>
+            {status.configured && (
+              <NoFillBadge icon={CheckCircle2} color="text-success">
+                Connected
+              </NoFillBadge>
+            )}
+          </div>
+          <p className="truncate text-sm text-muted-foreground">{connector.description}</p>
         </div>
-        <p className="truncate text-sm text-muted-foreground">{connector.description}</p>
+        {!available && (
+          <Button size="sm" variant="outline" disabled>
+            Coming soon
+          </Button>
+        )}
+        {unconfigured && isManual && <ManualConnectorDialog connector={connector} />}
+        {needsApp && isOwner && <ConnectorAppConfigDialog connector={connector} />}
+        {needsApp && !isOwner && (
+          <Button size="sm" disabled title={`An owner has to set up the ${connector.name} app first`}>
+            Connect
+          </Button>
+        )}
+        {unconfigured && !isManual && app_configured && (
+          <Button size="sm" onClick={onConnect} disabled={startOAuth.isPending}>
+            Connect
+          </Button>
+        )}
+        {available && status.configured && (
+          <Button size="sm" variant="outline" onClick={onDisconnect} disabled={disconnect.isPending}>
+            Disconnect
+          </Button>
+        )}
       </div>
-      {!available && (
-        <Button size="sm" variant="outline" disabled>
-          Coming soon
-        </Button>
-      )}
-      {unconfigured && isManual && <ManualConnectorDialog connector={connector} />}
-      {needsApp && isOwner && <ConnectorAppConfigDialog connector={connector} />}
-      {needsApp && !isOwner && (
-        <Button size="sm" disabled title={`An owner has to set up the ${connector.name} app first`}>
-          Connect
-        </Button>
-      )}
-      {unconfigured && !isManual && app_configured && (
-        <Button size="sm" onClick={onConnect} disabled={startOAuth.isPending}>
-          Connect
-        </Button>
-      )}
-      {available && status.configured && (
-        <Button size="sm" variant="outline" onClick={onDisconnect} disabled={disconnect.isPending}>
-          Disconnect
-        </Button>
-      )}
+      {connector.id === "github" && status.configured && <GitHubInstallationsSection />}
     </li>
   );
 };

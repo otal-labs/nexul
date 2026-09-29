@@ -24,10 +24,11 @@ vi.mock("sonner", () => ({ toast: { success: mocks.toastSuccess, error: mocks.to
 const github = { provider: "github", login: "onik97", name: "Onik", avatar_url: "", created_at: "2026-01-01T00:00:00Z" };
 const google = { provider: "google", login: "onik@example.com", name: "Onik", avatar_url: "", created_at: "2026-02-01T00:00:00Z" };
 
-const mockGet = (identities: unknown[], status: Record<string, boolean>) =>
+const mockGet = (identities: unknown[], status: Record<string, boolean>, appSlug = "") =>
   mocks.get.mockImplementation((url: string) => {
     if (url === "/api/auth/identities") return Promise.resolve({ data: { identities } });
     if (url === "/api/auth/bootstrap-status") return Promise.resolve({ data: { configured: true, ...status } });
+    if (url === "/api/connectors/github/app-config") return Promise.resolve({ data: { configured: true, app_slug: appSlug } });
     return Promise.reject(new Error(`unexpected GET ${url}`));
   });
 
@@ -93,5 +94,25 @@ describe("SignInAccountsSection", () => {
     await screen.findByText("onik@example.com");
     await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith("Google: conflict: already linked to another user"));
     expect(mocks.toastError).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers someone with GitHub linked the App's install page on their own account", async () => {
+    mockGet([github], {}, "nexul-app");
+    renderSection();
+
+    expect(await screen.findByRole("link", { name: /let nexul deploy your repositories/i })).toHaveAttribute(
+      "href",
+      "https://github.com/apps/nexul-app/installations/new",
+    );
+    expect(screen.getByText("Installs Nexul's GitHub App on your account; pick which repositories.")).toBeInTheDocument();
+  });
+
+  it("offers no install link while the instance's GitHub App has no slug", async () => {
+    mockGet([github], {});
+    renderSection();
+
+    expect(await screen.findByText("@onik97")).toBeInTheDocument();
+    await waitFor(() => expect(mocks.get).toHaveBeenCalledWith("/api/connectors/github/app-config"));
+    expect(screen.queryByRole("link", { name: /let nexul deploy your repositories/i })).not.toBeInTheDocument();
   });
 });
