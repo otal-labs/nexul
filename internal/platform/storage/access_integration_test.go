@@ -58,6 +58,46 @@ func actor(id string, owner bool) context.Context {
 	return identity.WithActor(context.Background(), identity.Actor{ID: id, CanCreateWorkspace: owner})
 }
 
+// testScopes mirrors server/cmd's accessScopes: project and membership lookups straight from storage.
+type testScopes struct{ s *storage.Store }
+
+func (sc testScopes) WorkspaceIDForProject(ctx context.Context, projectID string) (string, error) {
+	p, err := sc.s.Projects.Get(ctx, projectID)
+	if err != nil {
+		return "", err
+	}
+	return p.WorkspaceID, nil
+}
+
+func (sc testScopes) WorkspaceIDsForUser(ctx context.Context, userID string) ([]string, error) {
+	ws, err := sc.s.Workspaces.ListForUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, len(ws))
+	for i, w := range ws {
+		out[i] = w.ID
+	}
+	return out, nil
+}
+
+// joinDefaultWorkspace wires accessSvc's role and scope lookups over real storage and makes each user a member of
+// the default workspace under a role holding docs:write, since only members create or list its docs.
+func joinDefaultWorkspace(t *testing.T, s *storage.Store, accessSvc *access.Service, userIDs ...string) {
+	t.Helper()
+	ctx := context.Background()
+	rolesSvc := roles.NewService(s.Roles, nil)
+	tenancySvc := tenancy.NewService(s.Workspaces, s.WorkspaceMembers, s.WorkspaceInvites, testRoleGate{svc: rolesSvc}, testPermissionGate{}, testRoleNameGate{svc: rolesSvc}, testWorkspacePermissionGate{svc: accessSvc}, testAllowlistGate{}, testUserLookupGate{}, testChannelGate{}, testPlaysGate{}, testAccountGate{users: s.Users})
+	rolesSvc.SetMemberGate(testMemberGate{svc: tenancySvc})
+	accessSvc.SetRoles(accessRoleResolver{tenancy: tenancySvc, roles: rolesSvc})
+	accessSvc.SetScopes(testScopes{s: s})
+	role := &roles.Role{ID: "role-writer", WorkspaceID: "workspace-default", Name: "Writer", Permissions: permissions.SetOf(permissions.DocsWrite), CreatedAt: time.Now(), UpdatedAt: time.Now()}
+	require.NoError(t, s.Roles.Create(ctx, role))
+	for _, id := range userIDs {
+		require.NoError(t, s.WorkspaceMembers.AddMember(ctx, &tenancy.Member{UserID: id, WorkspaceID: "workspace-default", RoleID: role.ID, CreatedAt: time.Now()}))
+	}
+}
+
 // TestIntegration_AccessEndToEnd covers the ws-22 acceptance flow over real
 // SQLite: creator gets full permissions, a stranger is denied, the owner can
 // open anything, bulk grants unlock a doc, and search only shows readable docs.
@@ -69,6 +109,8 @@ func TestIntegration_AccessEndToEnd(t *testing.T) {
 
 	seedUser(t, s, "owner", "owner", true)
 	seedUser(t, s, "alice", "alice", false)
+	seedUser(t, s, "bob", "bob", false)
+	joinDefaultWorkspace(t, s, accessSvc, "owner", "alice", "bob")
 
 	// Creator receives full permissions automatically.
 	doc, err := docsSvc.Create(actor("alice", false), "project-general", "Shared Spec", "SQLite migrations")
@@ -80,7 +122,6 @@ func TestIntegration_AccessEndToEnd(t *testing.T) {
 	assert.Equal(t, "Shared Spec", got.Title)
 
 	// A stranger cannot open the target.
-	seedUser(t, s, "bob", "bob", false)
 	_, err = docsSvc.Get(actor("bob", false), doc.ID)
 	require.Error(t, err)
 
@@ -130,6 +171,7 @@ func TestIntegration_ArchivedHiddenFromSearch(t *testing.T) {
 	accessSvc := access.NewService(s.Access, realUsers{s.Users})
 	docsSvc := docs.NewService(s.Docs, accessSvc)
 	seedUser(t, s, "owner", "owner", true)
+	joinDefaultWorkspace(t, s, accessSvc, "owner")
 
 	doc, err := docsSvc.Create(actor("owner", true), "project-general", "Archivable", "FTS content")
 	require.NoError(t, err)
@@ -158,6 +200,7 @@ func TestIntegration_ListDisclosure(t *testing.T) {
 	seedUser(t, s, "owner", "owner", true)
 	seedUser(t, s, "alice", "alice", false)
 	seedUser(t, s, "bob", "bob", false)
+	joinDefaultWorkspace(t, s, accessSvc, "owner", "alice", "bob")
 
 	_, err := docsSvc.Create(actor("alice", false), "project-general", "Private Notes", "nobody else should open this")
 	require.NoError(t, err)

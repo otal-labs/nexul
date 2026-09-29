@@ -9,6 +9,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 // ImportNetwork mirrors the runner domain's discovered-network shape so deploy never imports runner (ADR 0017).
@@ -106,6 +107,9 @@ func (s *Service) Import(ctx context.Context, machineID string, req ImportReques
 	if strings.TrimSpace(req.ProjectID) == "" {
 		return nil, fmt.Errorf("%w: project is required", apperrs.ErrInvalid)
 	}
+	if err := s.requireImport(ctx, req); err != nil {
+		return nil, err
+	}
 	machineName, err := s.machines.MachineName(ctx, machineID)
 	if err != nil {
 		return nil, fmt.Errorf("resolve machine %s: %w", machineID, err)
@@ -145,6 +149,17 @@ func (s *Service) Import(ctx context.Context, machineID string, req ImportReques
 		gateways = append(gateways, s.adoptGateway(ctx, req.ProjectID, machineName, stack, byName[name]))
 	}
 	return &ImportResult{Stacks: stacks, Gateways: gateways}, nil
+}
+
+// requireImport takes stacks:write in the target project, and anywhere too when a gateway, an instance stack, comes along.
+func (s *Service) requireImport(ctx context.Context, req ImportRequest) error {
+	if err := s.requireIn(ctx, req.ProjectID, permissions.StacksWrite); err != nil {
+		return err
+	}
+	if len(req.Gateways) == 0 {
+		return nil
+	}
+	return s.requireIn(ctx, "", permissions.StacksWrite)
 }
 
 // adoptGateway turns a ticked cloudflared container into a dns gateway with one exposure per routed hostname.

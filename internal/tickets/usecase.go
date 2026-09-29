@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 // Service is the tickets use-case layer (ADR 0019); mutations enqueue events into the transactional outbox.
@@ -23,12 +25,50 @@ type Service struct {
 	users    UserLogins
 	types    TicketTypes
 	testing  Testing
+	gate     Gate
 	now      func() time.Time
+}
+
+// Gate is the permission check a ticket passes through before the caller touches it (the access domain, ADR 0042).
+type Gate interface {
+	RequireProject(ctx context.Context, projectID string, action permissions.Action) error
 }
 
 // NewService wires the tickets use-cases; users resolves the reporter's login and may be nil, recording the user id.
 func NewService(repo Repo, statuses StatusStore, users UserLogins) *Service {
 	return &Service{repo: repo, statuses: statuses, users: users, now: time.Now}
+}
+
+// SetGate wires the permission check; unset, only the server's own calls pass.
+func (s *Service) SetGate(g Gate) { s.gate = g }
+
+func (s *Service) require(ctx context.Context, projectID string, action permissions.Action) error {
+	if s.gate == nil {
+		return permissions.Ungated(ctx)
+	}
+	return s.gate.RequireProject(ctx, projectID, action)
+}
+
+// load fetches a ticket the caller may act on with action.
+func (s *Service) load(ctx context.Context, id string, action permissions.Action) (*Ticket, error) {
+	if strings.TrimSpace(id) == "" {
+		return nil, fmt.Errorf("%w: id is required", apperrs.ErrInvalid)
+	}
+	t, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.require(ctx, t.ProjectID, action); err != nil {
+		return nil, err
+	}
+	return t, nil
+}
+
+// readable keeps the tickets the caller may read.
+func (s *Service) readable(ctx context.Context, ts []*Ticket) ([]*Ticket, error) {
+	return permissions.Filter(ts, func(t *Ticket) string { return t.ProjectID }, func(projectID string) error {
+		return s.require(ctx, projectID, permissions.TicketsRead)
+	})
 }
 
 // SetTicketTypes wires the type lookup; unset, an MCP-filed ticket keeps the body it was given and no type counts as a bug.
@@ -49,6 +89,9 @@ func (s *Service) Create(ctx context.Context, projectID, title, body, docID, dev
 	projectID = strings.TrimSpace(projectID)
 	if projectID == "" {
 		return nil, fmt.Errorf("%w: project id is required — create a project before creating tickets", apperrs.ErrInvalid)
+	}
+	if err := s.require(ctx, projectID, permissions.TicketsWrite); err != nil {
+		return nil, fmt.Errorf("create ticket: %w", err)
 	}
 	title = strings.TrimSpace(title)
 	if title == "" {
@@ -228,7 +271,7 @@ func (s *Service) Get(ctx context.Context, id string) (*Ticket, error) {
 	if strings.TrimSpace(id) == "" {
 		return nil, fmt.Errorf("%w: id is required", apperrs.ErrInvalid)
 	}
-	t, err := s.repo.GetByID(ctx, id)
+	t, err := s.load(ctx, id, permissions.TicketsRead)
 	if err != nil {
 		return nil, fmt.Errorf("get ticket %s: %w", id, err)
 	}
@@ -253,16 +296,19 @@ func (s *Service) Resolve(ctx context.Context, idOrKey string) (*Ticket, error) 
 	if err != nil {
 		return nil, fmt.Errorf("get ticket %s: %w", idOrKey, err)
 	}
+	if err := s.require(ctx, t.ProjectID, permissions.TicketsRead); err != nil {
+		return nil, fmt.Errorf("get ticket %s: %w", idOrKey, err)
+	}
 	return t, nil
 }
 
-// List returns all tickets, oldest first.
+// List returns every ticket the caller may read, oldest first.
 func (s *Service) List(ctx context.Context) ([]*Ticket, error) {
 	ts, err := s.repo.List(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list tickets: %w", err)
 	}
-	return ts, nil
+	return s.readable(ctx, ts)
 }
 
 // ListByDoc returns the tickets derived from a given doc.
@@ -274,13 +320,16 @@ func (s *Service) ListByDoc(ctx context.Context, docID string) ([]*Ticket, error
 	if err != nil {
 		return nil, fmt.Errorf("list tickets for doc %s: %w", docID, err)
 	}
-	return ts, nil
+	return s.readable(ctx, ts)
 }
 
 // ListByProject returns the tickets in a given project.
 func (s *Service) ListByProject(ctx context.Context, projectID string) ([]*Ticket, error) {
 	if strings.TrimSpace(projectID) == "" {
 		return nil, fmt.Errorf("%w: project id is required", apperrs.ErrInvalid)
+	}
+	if err := s.require(ctx, projectID, permissions.TicketsRead); err != nil {
+		return nil, fmt.Errorf("list tickets for project %s: %w", projectID, err)
 	}
 	ts, err := s.repo.ListByProject(ctx, projectID)
 	if err != nil {
@@ -298,7 +347,7 @@ func (s *Service) SetType(ctx context.Context, id, typeID string) (*Ticket, erro
 	if typeID == "" {
 		return nil, fmt.Errorf("%w: type id is required", apperrs.ErrInvalid)
 	}
-	current, err := s.repo.GetByID(ctx, id)
+	current, err := s.load(ctx, id, permissions.TicketsWrite)
 	if err != nil {
 		return nil, fmt.Errorf("set type on ticket %s: %w", id, err)
 	}
@@ -320,7 +369,7 @@ func (s *Service) SetPerson(ctx context.Context, id string, role Role, login str
 		return nil, fmt.Errorf("%w: role must be developer or tester", apperrs.ErrInvalid)
 	}
 	login = strings.TrimSpace(login)
-	current, err := s.repo.GetByID(ctx, id)
+	current, err := s.load(ctx, id, permissions.TicketsWrite)
 	if err != nil {
 		return nil, fmt.Errorf("set %s on ticket %s: %w", role, id, err)
 	}
@@ -354,7 +403,7 @@ func (s *Service) UpdateTicket(ctx context.Context, id, title, body string) (*Ti
 	if title == "" {
 		return nil, fmt.Errorf("%w: title is required", apperrs.ErrInvalid)
 	}
-	current, err := s.repo.GetByID(ctx, id)
+	current, err := s.load(ctx, id, permissions.TicketsWrite)
 	if err != nil {
 		return nil, fmt.Errorf("update ticket %s: %w", id, err)
 	}
@@ -378,7 +427,7 @@ func (s *Service) AddLabel(ctx context.Context, id, label string) (*Ticket, erro
 	if label == "" {
 		return nil, fmt.Errorf("%w: label is required", apperrs.ErrInvalid)
 	}
-	current, err := s.repo.GetByID(ctx, id)
+	current, err := s.load(ctx, id, permissions.TicketsWrite)
 	if err != nil {
 		return nil, fmt.Errorf("add label to ticket %s: %w", id, err)
 	}
@@ -400,7 +449,7 @@ func (s *Service) RemoveLabel(ctx context.Context, id, label string) (*Ticket, e
 	if label == "" {
 		return nil, fmt.Errorf("%w: label is required", apperrs.ErrInvalid)
 	}
-	current, err := s.repo.GetByID(ctx, id)
+	current, err := s.load(ctx, id, permissions.TicketsWrite)
 	if err != nil {
 		return nil, fmt.Errorf("remove label from ticket %s: %w", id, err)
 	}
@@ -424,6 +473,9 @@ func (s *Service) ListLabels(ctx context.Context, id string) ([]string, error) {
 	if strings.TrimSpace(id) == "" {
 		return nil, fmt.Errorf("%w: id is required", apperrs.ErrInvalid)
 	}
+	if _, err := s.load(ctx, id, permissions.TicketsRead); err != nil {
+		return nil, fmt.Errorf("list labels for ticket %s: %w", id, err)
+	}
 	labels, err := s.repo.ListLabels(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("list labels for ticket %s: %w", id, err)
@@ -431,13 +483,18 @@ func (s *Service) ListLabels(ctx context.Context, id string) ([]string, error) {
 	return labels, nil
 }
 
-// ListAllLabels returns the distinct labels across all tickets, ordered, for the board filter bar.
+// ListAllLabels returns the distinct labels across the tickets the caller may read, ordered, for the board filter bar.
 func (s *Service) ListAllLabels(ctx context.Context) ([]string, error) {
-	labels, err := s.repo.ListAllLabels(ctx)
+	ts, err := s.List(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list all labels: %w", err)
 	}
-	return labels, nil
+	var labels []string
+	for _, t := range ts {
+		labels = append(labels, t.Labels...)
+	}
+	slices.Sort(labels)
+	return slices.Compact(labels), nil
 }
 
 // SetLabelColor works even for a label no ticket has used yet, with no separate registration step.
@@ -453,6 +510,9 @@ func (s *Service) SetLabelColor(ctx context.Context, projectID, label string, co
 	if !colors.Valid(color) {
 		return nil, fmt.Errorf("%w: color must be one of the suggested palette colors", apperrs.ErrInvalid)
 	}
+	if err := s.require(ctx, projectID, permissions.TicketsWrite); err != nil {
+		return nil, fmt.Errorf("set color for label %q: %w", label, err)
+	}
 	if err := s.repo.SetLabelColor(ctx, projectID, label, color); err != nil {
 		return nil, fmt.Errorf("set color for label %q: %w", label, err)
 	}
@@ -464,6 +524,9 @@ func (s *Service) LabelColors(ctx context.Context, projectID string, labels []st
 	projectID = strings.TrimSpace(projectID)
 	if projectID == "" {
 		return nil, fmt.Errorf("%w: project id is required", apperrs.ErrInvalid)
+	}
+	if err := s.require(ctx, projectID, permissions.TicketsRead); err != nil {
+		return nil, fmt.Errorf("label colors: %w", err)
 	}
 	cleaned := make([]string, 0, len(labels))
 	for _, l := range labels {
@@ -480,6 +543,9 @@ func (s *Service) LabelColors(ctx context.Context, projectID string, labels []st
 
 // UpdateStatus records the automation as actor for an automation-token request, else the user.
 func (s *Service) UpdateStatus(ctx context.Context, id string, to Status) (*Ticket, error) {
+	if _, err := s.load(ctx, id, permissions.TicketsWrite); err != nil {
+		return nil, fmt.Errorf("update ticket %s status: %w", id, err)
+	}
 	return s.transition(ctx, id, to, statusActor(ctx), "")
 }
 
@@ -544,7 +610,7 @@ func (s *Service) SetPosition(ctx context.Context, id string, position int) (*Ti
 	if position < 0 {
 		return nil, fmt.Errorf("%w: position must be non-negative", apperrs.ErrInvalid)
 	}
-	current, err := s.repo.GetByID(ctx, id)
+	current, err := s.load(ctx, id, permissions.TicketsWrite)
 	if err != nil {
 		return nil, fmt.Errorf("set position on ticket %s: %w", id, err)
 	}
@@ -562,7 +628,7 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 	if strings.TrimSpace(id) == "" {
 		return fmt.Errorf("%w: id is required", apperrs.ErrInvalid)
 	}
-	t, err := s.repo.GetByID(ctx, id)
+	t, err := s.load(ctx, id, permissions.TicketsDelete)
 	if err != nil {
 		return fmt.Errorf("delete ticket %s: %w", id, err)
 	}
@@ -586,7 +652,10 @@ func (s *Service) Search(ctx context.Context, query string, limit int) ([]Search
 	if err != nil {
 		return nil, fmt.Errorf("search tickets: %w", err)
 	}
-	return results, nil
+	return permissions.Filter(results, func(r SearchResult) string { return r.ID }, func(id string) error {
+		_, err := s.load(ctx, id, permissions.TicketsRead)
+		return err
+	})
 }
 
 // LinkPR is a no-op on a duplicate link; the ticket must already exist.
@@ -597,7 +666,7 @@ func (s *Service) LinkPR(ctx context.Context, id string, ref PRRef) error {
 	if ref.Owner == "" || ref.Repo == "" || ref.Number < 1 {
 		return fmt.Errorf("%w: pr ref is incomplete", apperrs.ErrInvalid)
 	}
-	if _, err := s.repo.GetByID(ctx, id); err != nil {
+	if _, err := s.load(ctx, id, permissions.TicketsWrite); err != nil {
 		return fmt.Errorf("link pr to ticket %s: %w", id, err)
 	}
 	if err := s.repo.LinkPR(ctx, id, ref, PRStateOpen); err != nil {
@@ -614,7 +683,7 @@ func (s *Service) LinkBranch(ctx context.Context, id, owner, repo, branch string
 	if strings.TrimSpace(owner) == "" || strings.TrimSpace(repo) == "" || strings.TrimSpace(branch) == "" {
 		return fmt.Errorf("%w: branch link is incomplete", apperrs.ErrInvalid)
 	}
-	if _, err := s.repo.GetByID(ctx, id); err != nil {
+	if _, err := s.load(ctx, id, permissions.TicketsWrite); err != nil {
 		return fmt.Errorf("link branch to ticket %s: %w", id, err)
 	}
 	if err := s.repo.LinkBranch(ctx, id, BranchLink{Owner: owner, Repo: repo, Branch: branch}); err != nil {
@@ -640,7 +709,7 @@ func (s *Service) ListByPR(ctx context.Context, owner, repo string, number int) 
 		}
 		out = append(out, t)
 	}
-	return out, nil
+	return s.readable(ctx, out)
 }
 
 // ListLinks returns the PR and branch links recorded against a ticket (development section).
@@ -648,7 +717,7 @@ func (s *Service) ListLinks(ctx context.Context, id string) ([]PRLink, []BranchL
 	if strings.TrimSpace(id) == "" {
 		return nil, nil, fmt.Errorf("%w: ticket id is required", apperrs.ErrInvalid)
 	}
-	if _, err := s.repo.GetByID(ctx, id); err != nil {
+	if _, err := s.load(ctx, id, permissions.TicketsRead); err != nil {
 		return nil, nil, fmt.Errorf("list links for ticket %s: %w", id, err)
 	}
 	prs, err := s.repo.ListPRLinks(ctx, id)

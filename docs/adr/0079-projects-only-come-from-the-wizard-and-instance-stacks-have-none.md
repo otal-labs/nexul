@@ -18,10 +18,10 @@ The stacks the instance deploys for itself, every gateway's backing stack (cloud
 `stacks.project_id` is nullable and stays a foreign key when set. A stack that builds from a repository still
 needs a project, because the repository belongs to one (ADR 0039).
 
-Access does not change: a stack's project never gated who could see or manage it. Every signed-in member reaches
-every stack over HTTP and MCP, and a scoped token needs the `stacks` permissions, so an instance stack is visible
-and manageable exactly like any other stack. Topology and Settings → DNS list it; its stack page links back to
-Topology instead of a project.
+Access: an instance stack is checked like the topology, against every workspace the caller belongs to, while a
+project's stack is checked in its project's workspace (ADR 0087, which replaced the rule that every signed-in member
+reached every stack). Topology and Settings → DNS list it; its stack page links back to Topology instead of a
+project.
 
 Migration 0029 rebuilds `stacks` with the column nullable, moves existing gateway stacks out of their project, and
 deletes the seeded General project only on an instance nobody has signed in to yet; anywhere the owner already

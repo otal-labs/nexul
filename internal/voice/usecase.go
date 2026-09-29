@@ -7,6 +7,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/livekit"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/identity"
 )
 
 // Config wires Service's seams (ADR 0017); adapters live in the composition root, never imported here directly.
@@ -92,9 +93,19 @@ func (s *Service) Leave(ctx context.Context, conversationID, userID string) erro
 	return s.publishIfChanged(ctx, conversationID, occupants, changed)
 }
 
-// Occupancy returns every voice channel's current occupant list, the initial-render data source.
-func (s *Service) Occupancy() map[string][]Occupant {
-	return s.occupancy.snapshot()
+// Occupancy returns the current occupant list of every voice channel the caller may read, the initial-render data
+// source; a channel of a workspace they are not in is left out.
+func (s *Service) Occupancy(ctx context.Context) map[string][]Occupant {
+	all := s.occupancy.snapshot()
+	if identity.Internal(ctx) {
+		return all
+	}
+	for id := range all {
+		if ok, err := s.conversations.IsVoiceChannel(ctx, id); err != nil || !ok {
+			delete(all, id)
+		}
+	}
+	return all
 }
 
 // HandleWebhook applies one verified LiveKit delivery to occupancy and publishes a delta if it changed.

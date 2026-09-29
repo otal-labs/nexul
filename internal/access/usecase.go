@@ -28,6 +28,7 @@ type Service struct {
 	roles         RoleResolver
 	docWorkspace  DocWorkspaceResolver
 	playWorkspace PlayWorkspaceResolver
+	scopes        Scopes
 	now           func() time.Time
 }
 
@@ -72,6 +73,7 @@ func (s *Service) HasPermission(ctx context.Context, userID, workspaceID string,
 // workspaceLayers is the role set and workspace-wide overwrite for one user, fetched once so a
 // whole-grid answer (WorkspacePermissions) costs the same lookups as a single check.
 type workspaceLayers struct {
+	member    bool
 	owner     bool
 	role      permissions.Set
 	overwrite *Overwrite
@@ -84,6 +86,7 @@ func (s *Service) workspaceLayers(ctx context.Context, userID, workspaceID strin
 	}
 	if s.roles != nil {
 		if info, err := s.roles.MemberRole(ctx, workspaceID, userID); err == nil {
+			ws.member = true
 			ws.owner = info.IsOwnerRole
 			ws.role = info.Permissions
 		}

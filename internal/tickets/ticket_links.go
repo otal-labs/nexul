@@ -7,7 +7,9 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 // Links returns both directions of a ticket's found-in and blocked-by links.
@@ -16,14 +18,35 @@ func (s *Service) Links(ctx context.Context, id string) (*LinkSet, error) {
 	if id == "" {
 		return nil, fmt.Errorf("%w: id is required", apperrs.ErrInvalid)
 	}
-	if _, err := s.repo.GetByID(ctx, id); err != nil {
+	if _, err := s.load(ctx, id, permissions.TicketsRead); err != nil {
 		return nil, fmt.Errorf("list links for ticket %s: %w", id, err)
 	}
 	from, to, err := s.repo.ListLinkEnds(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("list links for ticket %s: %w", id, err)
 	}
+	if from, err = s.readableEnds(ctx, from); err != nil {
+		return nil, fmt.Errorf("list links for ticket %s: %w", id, err)
+	}
+	if to, err = s.readableEnds(ctx, to); err != nil {
+		return nil, fmt.Errorf("list links for ticket %s: %w", id, err)
+	}
 	return buildLinkSet(from, to), nil
+}
+
+// readableEnds drops links to tickets the caller may not read: a link is data, never a grant (ADR 0023).
+func (s *Service) readableEnds(ctx context.Context, ends []LinkEnd) ([]LinkEnd, error) {
+	return permissions.Filter(ends, func(e LinkEnd) string {
+		if e.Ticket == nil {
+			return ""
+		}
+		return e.Ticket.ProjectID
+	}, func(projectID string) error {
+		if projectID == "" {
+			return nil
+		}
+		return s.require(ctx, projectID, permissions.TicketsRead)
+	})
 }
 
 func buildLinkSet(from, to []LinkEnd) *LinkSet {
@@ -60,7 +83,10 @@ func (s *Service) SetFoundIn(ctx context.Context, id, originID string, originUnk
 	if err := validateFoundIn(id, originID, originUnknown); err != nil {
 		return nil, err
 	}
-	if err := s.mustExist(ctx, id, originID); err != nil {
+	if _, err := s.load(ctx, id, permissions.TicketsWrite); err != nil {
+		return nil, fmt.Errorf("set found-in on ticket %s: %w", id, err)
+	}
+	if err := s.mustRead(ctx, originID); err != nil {
 		return nil, fmt.Errorf("set found-in on ticket %s: %w", id, err)
 	}
 	current, held, err := s.foundIn(ctx, id)
@@ -104,7 +130,7 @@ func (s *Service) RemoveFoundIn(ctx context.Context, id string) (*LinkSet, error
 	if id == "" {
 		return nil, fmt.Errorf("%w: id is required", apperrs.ErrInvalid)
 	}
-	if err := s.mustExist(ctx, id); err != nil {
+	if _, err := s.load(ctx, id, permissions.TicketsWrite); err != nil {
 		return nil, fmt.Errorf("remove found-in from ticket %s: %w", id, err)
 	}
 	current, held, err := s.foundIn(ctx, id)
@@ -148,11 +174,11 @@ func (s *Service) AddBlocker(ctx context.Context, id, blockerID string) (*LinkSe
 	if id == blockerID {
 		return nil, fmt.Errorf("%w: a ticket cannot be blocked by itself", apperrs.ErrInvalid)
 	}
-	t, err := s.repo.GetByID(ctx, id)
+	t, err := s.load(ctx, id, permissions.TicketsWrite)
 	if err != nil {
 		return nil, fmt.Errorf("add blocker to ticket %s: %w", id, err)
 	}
-	blocker, err := s.repo.GetByID(ctx, blockerID)
+	blocker, err := s.load(ctx, blockerID, permissions.TicketsRead)
 	if err != nil {
 		return nil, fmt.Errorf("add blocker to ticket %s: %w", id, err)
 	}
@@ -210,7 +236,7 @@ func (s *Service) RemoveBlocker(ctx context.Context, id, blockerID string) (*Lin
 	if id == "" || blockerID == "" {
 		return nil, fmt.Errorf("%w: id and blocker_id are required", apperrs.ErrInvalid)
 	}
-	if err := s.mustExist(ctx, id); err != nil {
+	if _, err := s.load(ctx, id, permissions.TicketsWrite); err != nil {
 		return nil, fmt.Errorf("remove blocker from ticket %s: %w", id, err)
 	}
 	link := TicketLink{TicketID: id, Kind: LinkBlockedBy, TargetID: blockerID, CreatedAt: s.now().UTC()}
@@ -226,20 +252,36 @@ func (s *Service) UnclearedBlockers(ctx context.Context) (map[string][]LinkedTic
 	if err != nil {
 		return nil, fmt.Errorf("list uncleared blockers: %w", err)
 	}
+	if identity.Internal(ctx) {
+		return out, nil
+	}
+	for id, blockers := range out {
+		_, err := s.load(ctx, id, permissions.TicketsRead)
+		if permissions.Refused(err) {
+			delete(out, id)
+			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("list uncleared blockers: %w", err)
+		}
+		visible, err := permissions.Filter(blockers, func(b LinkedTicket) string { return b.ProjectID }, func(projectID string) error {
+			return s.require(ctx, projectID, permissions.TicketsRead)
+		})
+		if err != nil {
+			return nil, fmt.Errorf("list uncleared blockers: %w", err)
+		}
+		out[id] = visible
+	}
 	return out, nil
 }
 
-// mustExist fetches each non-empty id so a missing ticket surfaces as ErrNotFound.
-func (s *Service) mustExist(ctx context.Context, ids ...string) error {
-	for _, id := range ids {
-		if id == "" {
-			continue
-		}
-		if _, err := s.repo.GetByID(ctx, id); err != nil {
-			return err
-		}
+// mustRead fetches a non-empty id the caller may read, so a missing ticket surfaces as ErrNotFound.
+func (s *Service) mustRead(ctx context.Context, id string) error {
+	if id == "" {
+		return nil
 	}
-	return nil
+	_, err := s.load(ctx, id, permissions.TicketsRead)
+	return err
 }
 
 func linkEvent(topic string, link TicketLink) eventbus.OutboxEvent {

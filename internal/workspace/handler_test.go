@@ -15,7 +15,7 @@ import (
 func newTestHandler(t *testing.T, allowCreate bool) (*Handler, *fakeRepo) {
 	t.Helper()
 	repo := newFakeRepo()
-	owner := &fakeOwner{allowCreate: allowCreate}
+	owner := &fakeGate{allow: allowCreate}
 	return NewHandler(newTestService(repo, owner)), repo
 }
 

@@ -20,6 +20,8 @@ type stubAccess struct {
 	canOpen map[string]bool
 }
 
+func (s *stubAccess) RequireProject(context.Context, string, permissions.Action) error { return nil }
+
 func (s *stubAccess) Can(_ context.Context, _, docID string, action permissions.Action) (bool, error) {
 	if action != permissions.DocsRead {
 		return false, nil

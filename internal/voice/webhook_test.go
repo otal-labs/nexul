@@ -28,7 +28,7 @@ func TestWebhookHandler_ValidDeliveryUpdatesOccupancy(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200; body = %s", rec.Code, rec.Body.String())
 	}
-	got := svc.Occupancy()
+	got := svc.Occupancy(t.Context())
 	if len(got["conv-1"]) != 1 || got["conv-1"][0] != (Occupant{Identity: "u-1", Name: "Ada"}) {
 		t.Errorf("Occupancy() = %+v, want conv-1 to hold u-1/Ada", got)
 	}
@@ -48,7 +48,7 @@ func TestWebhookHandler_WrongSignature_Rejected(t *testing.T) {
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("status = %d, want 401", rec.Code)
 	}
-	if got := svc.Occupancy(); len(got) != 0 {
+	if got := svc.Occupancy(t.Context()); len(got) != 0 {
 		t.Errorf("Occupancy() after a rejected delivery = %+v, want empty", got)
 	}
 }
@@ -69,7 +69,7 @@ func TestWebhookHandler_NoConnectorConfigured_AcceptsWithoutApplying(t *testing.
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}
-	if got := svc.Occupancy(); len(got) != 0 {
+	if got := svc.Occupancy(t.Context()); len(got) != 0 {
 		t.Errorf("Occupancy() = %+v, want empty (delivery was never applied)", got)
 	}
 }

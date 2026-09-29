@@ -142,6 +142,7 @@ func TestCreate_Reporter(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := newFakeRepo()
 			s := NewService(repo, fakeStatusStore{}, tt.users)
+			s.SetGate(allowGate{})
 			ctx := t.Context()
 			if tt.actor != nil {
 				ctx = identity.WithActor(ctx, *tt.actor)
@@ -158,7 +159,9 @@ func TestCreate_Reporter(t *testing.T) {
 
 func TestPeopleAdapters(t *testing.T) {
 	t.Run("HTTP create records the person and both roles", func(t *testing.T) {
-		h := NewHandler(NewService(newFakeRepo(), fakeStatusStore{}, fakeUserLogins{logins: map[string]string{"u-1": "onik97"}})).Routes()
+		svc := NewService(newFakeRepo(), fakeStatusStore{}, fakeUserLogins{logins: map[string]string{"u-1": "onik97"}})
+		svc.SetGate(allowGate{})
+		h := NewHandler(svc).Routes()
 		req := `{"title":"Fix","project_id":"p-1","developer":"onik97","tester":"lena"}`
 		rec := serveAs(t, h, http.MethodPost, "/api/tickets", req, identity.Actor{ID: "u-1"})
 		require.Equal(t, http.StatusCreated, rec.Code)

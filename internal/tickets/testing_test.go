@@ -87,6 +87,7 @@ func newTestingFixture(status Status) testingFixture {
 	repo := newFakeRepo()
 	repo.tickets["t1"] = &Ticket{ID: "t1", ProjectID: "p1", Title: "Login", Status: status}
 	s := NewService(repo, fakeStatusStore{known: map[Status]bool{"build": true, "qa": true, "shipped": true}}, fakeUserLogins{logins: map[string]string{"u-1": "onik97"}})
+	s.SetGate(allowGate{})
 	threads, targets := &fakeThreads{}, &fakeTargets{}
 	s.SetTesting(Testing{
 		Stages:  fakeStages{stages: map[string]string{"build": StageProgress, "qa": "testing", "shipped": StageDone}, order: []string{"build", "qa", "shipped"}},

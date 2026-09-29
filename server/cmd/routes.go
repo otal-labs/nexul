@@ -204,7 +204,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 		func(h http.Handler) http.Handler { return svc.integrationsSvc.RequireIntegration(userAuth, h) },
 		svc.integrationsSvc.AuditLog(resolveAuditActor, apiMux),
 	))
-	httpMux.Handle("/ws/events", svc.authSvc.RequireWS(liveEventsHandler(svc.presenceKeeper, liveHub)))
+	httpMux.Handle("/ws/events", svc.authSvc.RequireWS(withIdentity(liveEventsHandler(svc.presenceKeeper, liveHub))))
 	httpMux.Handle("GET /ws/collab/{docID}", svc.authSvc.RequireWS(withIdentity(svc.collabHub)))
 	httpMux.Handle("/ws/automations", automationsDialin)
 	httpMux.Handle("/ws/runner", wsHandler)

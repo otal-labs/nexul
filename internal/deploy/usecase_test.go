@@ -12,6 +12,7 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 func validRequest() DeployRequest {
@@ -50,9 +51,17 @@ func newTestService(repo *fakeRepo, bus *fakeBus) *Service {
 // Tests assert on repo.of(...)/repo.topics() instead.
 func newTestServiceWith(repo *fakeRepo, stacks *fakeStackRepo, containers *fakeContainerRepo, projects *fakeProjects, bus *fakeBus) *Service {
 	s := NewService(repo, stacks, containers, projects)
+	s.SetGate(allowGate{})
 	s.now = func() time.Time { return time.Date(2026, 8, 2, 12, 0, 0, 0, time.UTC) }
 	return s
 }
+
+// allowGate lets every caller through, for tests about what happens past the permission check.
+type allowGate struct{}
+
+func (allowGate) RequireProject(context.Context, string, permissions.Action) error { return nil }
+
+func (allowGate) RequireAnywhere(context.Context, permissions.Action) error { return nil }
 
 func requireStack(t *testing.T, stacks *fakeStackRepo, stack Stack) {
 	t.Helper()
@@ -623,7 +632,7 @@ func TestStackCRUD(t *testing.T) {
 		_, err = s.GetStack(context.Background(), created.ID)
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-		svcs, err := s.ListServices(context.Background(), created.ID)
+		svcs, err := containers.ListByStack(context.Background(), created.ID)
 		require.NoError(t, err)
 		assert.Empty(t, svcs, "services are dropped with the stack")
 		deploys, err := s.ListByStackID(context.Background(), created.ID)

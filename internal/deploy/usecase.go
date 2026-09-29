@@ -11,7 +11,9 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 // ProjectStore validates a stack's project and build-source repo against the workspace domain (ADR 0017).
@@ -56,7 +58,82 @@ type Service struct {
 	discoverer  MachineDiscoverer
 	adopter     GatewayAdopter
 	gatewayJoin GatewayJoin
+	gate        Gate
 	now         func() time.Time
+}
+
+// Gate is the permission check a stack or deploy passes before the caller touches it (the access domain, ADR 0042).
+type Gate interface {
+	RequireProject(ctx context.Context, projectID string, action permissions.Action) error
+	RequireAnywhere(ctx context.Context, action permissions.Action) error
+}
+
+// SetGate wires the permission check; unset, only the server's own calls pass.
+func (s *Service) SetGate(g Gate) { s.gate = g }
+
+// requireIn checks action where a stack lives: its project's workspace, or any workspace for one outside every
+// project, the instance's own gateways (ADR 0079).
+func (s *Service) requireIn(ctx context.Context, projectID string, action permissions.Action) error {
+	if s.gate == nil {
+		return permissions.Ungated(ctx)
+	}
+	if projectID == "" {
+		return s.gate.RequireAnywhere(ctx, action)
+	}
+	return s.gate.RequireProject(ctx, projectID, action)
+}
+
+// loadStack fetches a stack the caller may act on with action.
+func (s *Service) loadStack(ctx context.Context, id string, action permissions.Action) (*Stack, error) {
+	stack, err := s.stacks.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.requireIn(ctx, stack.ProjectID, action); err != nil {
+		return nil, err
+	}
+	return stack, nil
+}
+
+// loadForUpdate fetches the stack an update replaces; the caller needs stacks:write where it is and where it goes.
+func (s *Service) loadForUpdate(ctx context.Context, stack Stack) (*Stack, error) {
+	existing, err := s.loadStack(ctx, stack.ID, permissions.StacksWrite)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.requireIn(ctx, stack.ProjectID, permissions.StacksWrite); err != nil {
+		return nil, err
+	}
+	return existing, nil
+}
+
+// readableStacks keeps the stacks the caller may read.
+func (s *Service) readableStacks(ctx context.Context, stacks []*Stack) ([]*Stack, error) {
+	return permissions.Filter(stacks, func(st *Stack) string { return st.ProjectID }, func(projectID string) error {
+		return s.requireIn(ctx, projectID, permissions.StacksRead)
+	})
+}
+
+// requireDeploy checks action on a deploy through its stack; a deleted stack's kept history is instance-level.
+func (s *Service) requireDeploy(ctx context.Context, stackID string, action permissions.Action) error {
+	if identity.Internal(ctx) {
+		return nil
+	}
+	stack, err := s.stacks.GetByID(ctx, stackID)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return s.requireIn(ctx, "", action)
+	}
+	if err != nil {
+		return fmt.Errorf("stack %s: %w", stackID, err)
+	}
+	return s.requireIn(ctx, stack.ProjectID, action)
+}
+
+// readableDeploys keeps the deploys the caller may read.
+func (s *Service) readableDeploys(ctx context.Context, ds []*Deploy) ([]*Deploy, error) {
+	return permissions.Filter(ds, func(d *Deploy) string { return d.StackID }, func(stackID string) error {
+		return s.requireDeploy(ctx, stackID, permissions.DeploysRead)
+	})
 }
 
 // NewService wires the deploy use-cases; GatewayLookup/ExposureManager are set later, breaking a cycle with dns.
@@ -89,7 +166,7 @@ func (s *Service) Deploy(ctx context.Context, req DeployRequest) (*Deploy, error
 	if err := req.Validate(); err != nil {
 		return nil, fmt.Errorf("deploy %s: %w", req.StackID, err)
 	}
-	stack, err := s.stacks.GetByID(ctx, req.StackID)
+	stack, err := s.loadStack(ctx, req.StackID, permissions.DeploysWrite)
 	if err != nil {
 		return nil, fmt.Errorf("deploy %s: %w", req.StackID, err)
 	}
@@ -176,6 +253,9 @@ func (s *Service) CreateStack(ctx context.Context, stack Stack, declared map[str
 	if err := s.checkProject(ctx, &stack); err != nil {
 		return nil, err
 	}
+	if err := s.requireIn(ctx, stack.ProjectID, permissions.StacksWrite); err != nil {
+		return nil, err
+	}
 	if err := s.checkBranchDeployRules(ctx, &stack); err != nil {
 		return nil, err
 	}
@@ -210,7 +290,7 @@ func (s *Service) GetStack(ctx context.Context, id string) (*Stack, error) {
 	if strings.TrimSpace(id) == "" {
 		return nil, fmt.Errorf("%w: stack id is required", apperrs.ErrInvalid)
 	}
-	stack, err := s.stacks.GetByID(ctx, id)
+	stack, err := s.loadStack(ctx, id, permissions.StacksRead)
 	if err != nil {
 		return nil, fmt.Errorf("get stack %s: %w", id, err)
 	}
@@ -237,7 +317,7 @@ func (s *Service) ListStacks(ctx context.Context, projectID string) ([]*Stack, e
 	if err != nil {
 		return nil, fmt.Errorf("list stacks for project %s: %w", projectID, err)
 	}
-	return baseStacks(stacks), nil
+	return s.readableStacks(ctx, baseStacks(stacks))
 }
 
 // ListScopedStacks narrows to a project when given, else to a workspace's projects, else lists every base stack.
@@ -250,7 +330,7 @@ func (s *Service) ListScopedStacks(ctx context.Context, projectID, workspaceID s
 	if err != nil {
 		return nil, fmt.Errorf("list stacks for workspace %s: %w", workspaceID, err)
 	}
-	return baseStacks(stacks), nil
+	return s.readableStacks(ctx, baseStacks(stacks))
 }
 
 func baseStacks(stacks []*Stack) []*Stack {
@@ -268,6 +348,9 @@ func (s *Service) ListBranchDeployments(ctx context.Context, baseStackID string)
 	if strings.TrimSpace(baseStackID) == "" {
 		return nil, fmt.Errorf("%w: stack id is required", apperrs.ErrInvalid)
 	}
+	if _, err := s.loadStack(ctx, baseStackID, permissions.StacksRead); err != nil {
+		return nil, fmt.Errorf("list branch deployments for %s: %w", baseStackID, err)
+	}
 	stacks, err := s.stacks.ListByDerivedFrom(ctx, baseStackID)
 	if err != nil {
 		return nil, fmt.Errorf("list branch deployments for %s: %w", baseStackID, err)
@@ -284,7 +367,7 @@ func (s *Service) UpdateStack(ctx context.Context, stack Stack) (*Stack, error) 
 	if err := stack.Validate(); err != nil {
 		return nil, err
 	}
-	existing, err := s.stacks.GetByID(ctx, stack.ID)
+	existing, err := s.loadForUpdate(ctx, stack)
 	if err != nil {
 		return nil, fmt.Errorf("update stack %s: %w", stack.ID, err)
 	}
@@ -324,7 +407,7 @@ func (s *Service) DeleteStack(ctx context.Context, id string) error {
 	if strings.TrimSpace(id) == "" {
 		return fmt.Errorf("%w: stack id is required", apperrs.ErrInvalid)
 	}
-	stack, err := s.stacks.GetByID(ctx, id)
+	stack, err := s.loadStack(ctx, id, permissions.StacksDelete)
 	if err != nil {
 		return fmt.Errorf("delete stack %s: %w", id, err)
 	}
@@ -360,6 +443,9 @@ func (s *Service) ListServices(ctx context.Context, stackID string) ([]*Containe
 	if strings.TrimSpace(stackID) == "" {
 		return nil, fmt.Errorf("%w: stack id is required", apperrs.ErrInvalid)
 	}
+	if _, err := s.loadStack(ctx, stackID, permissions.StacksRead); err != nil {
+		return nil, fmt.Errorf("list services for stack %s: %w", stackID, err)
+	}
 	svcs, err := s.services.ListByStack(ctx, stackID)
 	if err != nil {
 		return nil, fmt.Errorf("list services for stack %s: %w", stackID, err)
@@ -374,6 +460,9 @@ func (s *Service) GetService(ctx context.Context, id string) (*Container, error)
 	}
 	svc, err := s.services.Get(ctx, id)
 	if err != nil {
+		return nil, fmt.Errorf("get service %s: %w", id, err)
+	}
+	if _, err := s.loadStack(ctx, svc.StackID, permissions.StacksRead); err != nil {
 		return nil, fmt.Errorf("get service %s: %w", id, err)
 	}
 	return svc, nil
@@ -670,6 +759,9 @@ func (s *Service) Cancel(ctx context.Context, id string) error {
 	if err != nil {
 		return fmt.Errorf("cancel deploy %s: %w", id, err)
 	}
+	if err := s.requireDeploy(ctx, d.StackID, permissions.DeploysWrite); err != nil {
+		return fmt.Errorf("cancel deploy %s: %w", id, err)
+	}
 	switch d.Status {
 	case StatusPending, StatusRunning:
 	default:
@@ -691,6 +783,9 @@ func (s *Service) Get(ctx context.Context, id string) (*Deploy, error) {
 	if err != nil {
 		return nil, fmt.Errorf("get deploy %s: %w", id, err)
 	}
+	if err := s.requireDeploy(ctx, d.StackID, permissions.DeploysRead); err != nil {
+		return nil, fmt.Errorf("get deploy %s: %w", id, err)
+	}
 	return d, nil
 }
 
@@ -700,7 +795,7 @@ func (s *Service) List(ctx context.Context) ([]*Deploy, error) {
 	if err != nil {
 		return nil, fmt.Errorf("list deploys: %w", err)
 	}
-	return ds, nil
+	return s.readableDeploys(ctx, ds)
 }
 
 // ListByService returns the deploy history for one stack name, newest first.
@@ -712,13 +807,16 @@ func (s *Service) ListByService(ctx context.Context, service string) ([]*Deploy,
 	if err != nil {
 		return nil, fmt.Errorf("list deploys for %s: %w", service, err)
 	}
-	return ds, nil
+	return s.readableDeploys(ctx, ds)
 }
 
 // ListByStackID returns the deploy history for one stack id, newest first.
 func (s *Service) ListByStackID(ctx context.Context, stackID string) ([]*Deploy, error) {
 	if strings.TrimSpace(stackID) == "" {
 		return nil, fmt.Errorf("%w: stack is required", apperrs.ErrInvalid)
+	}
+	if err := s.requireDeploy(ctx, stackID, permissions.DeploysRead); err != nil {
+		return nil, fmt.Errorf("list deploys for stack %s: %w", stackID, err)
 	}
 	ds, err := s.repo.ListByStackID(ctx, stackID)
 	if err != nil {
@@ -738,7 +836,7 @@ func (s *Service) ListByStatus(ctx context.Context, status Status) ([]*Deploy, e
 	if err != nil {
 		return nil, fmt.Errorf("list deploys with status %s: %w", status, err)
 	}
-	return ds, nil
+	return s.readableDeploys(ctx, ds)
 }
 
 // applyStackDefaults fills the compose-strategy default compose path so a stack always carries a concrete value.

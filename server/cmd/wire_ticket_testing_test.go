@@ -32,7 +32,9 @@ func TestIntegration_TicketTesting(t *testing.T) {
 	}))
 
 	chatSvc := chat.NewService(s.Chat)
+	chatSvc.SetGate(allowTickets{})
 	svc := tickets.NewService(s.Tickets, s.Statuses, workspaceUserStore{users: s.Users})
+	svc.SetGate(allowTickets{})
 	svc.SetTesting(tickets.Testing{
 		Stages:  ticketStages{statuses: s.Statuses},
 		Threads: ticketThreads{chat: chatSvc, projects: s.Projects},

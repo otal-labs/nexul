@@ -50,7 +50,7 @@ func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *stor
 	runnerSvc = runner.NewService(store.Runners, wsHandler).WithMachines(store.Machines).WithManaged(store.Services).WithTunnelDescriber(runnerTunnelDescriberAdapter{dns: svc.dnsSvc}).WithInstall(runner.InstallConfig{
 		Settings: dnsSettingsAdapter{store.Settings},
 		Release:  releaseClient,
-	}).WithUpgrades(store.InstanceUpgrades).WithBus(bus).WithAdminGate(instanceAdminGate{svc: svc.authSvc}).
+	}).WithUpgrades(store.InstanceUpgrades).WithBus(bus).WithAdminGate(instanceAdminGate{svc: svc.authSvc}).WithGate(svc.accessSvc).
 		WithEnrollDir(filepath.Join(filepath.Dir(cfg.DBPath), "enroll")).
 		WithAutomationsHosts(runnerAutomationsHostsAdapter{svc: svc.automationHostsSvc})
 	// `nexul install` enrolls the bundled runner from this file; it goes away once that runner is enrolled.

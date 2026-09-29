@@ -244,33 +244,6 @@ func (q *Queries) LinkTicketPR(ctx context.Context, arg LinkTicketPRParams) erro
 	return err
 }
 
-const listAllTicketLabels = `-- name: ListAllTicketLabels :many
-SELECT DISTINCT label FROM ticket_labels ORDER BY label
-`
-
-func (q *Queries) ListAllTicketLabels(ctx context.Context) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, listAllTicketLabels)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []string
-	for rows.Next() {
-		var label string
-		if err := rows.Scan(&label); err != nil {
-			return nil, err
-		}
-		items = append(items, label)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listLabelColors = `-- name: ListLabelColors :many
 SELECT label, color FROM label_colors WHERE project_id = ? AND label IN (/*SLICE:labels*/?)
 `

@@ -248,6 +248,7 @@ func wireIntegrationFanout(ctx context.Context, bus *inprocess.Bus, store *stora
 func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage.Store, svc *coreServices, logger *slog.Logger) (*live.Hub, *agent.Handler) {
 	// The hub is generic; future streams add their own topics to livePushTopics.
 	liveHub := live.New(logger)
+	liveHub.SetAudience(liveAudience{access: svc.accessSvc, tickets: svc.ticketsSvc, chat: svc.chatSvc, deploy: svc.deploySvc}.allows)
 	for _, topic := range livePushTopics {
 		mustSubscribe(ctx, bus, "live.push", topic, " for live push", func(ctx context.Context, ev eventbus.Event) error {
 			return liveHub.Publish(ctx, ev.Topic, ev.Payload)
@@ -257,7 +258,7 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 	// Live-only and naming nobody: open Team pages refetch, which applies the Team's own scoping to who is online.
 	svc.presenceKeeper.SetOnlineChanged(func(string) {
 		// A nil payload cannot fail to marshal, and a failed write already drops that browser.
-		_ = liveHub.Publish(ctx, "account.presence_changed", nil)
+		_ = liveHub.Publish(ctx, topicPresenceChanged, nil)
 	})
 
 	// In-progress reply text pushes to liveHub as ephemeral frames; only the final reply is durable, via PostAgentReply.
@@ -281,7 +282,7 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 		Trails:      store.PlayTrails,
 		Perm:        playsPermissionGate{svc: svc.accessSvc},
 		Targets:     playsTargetReader{tickets: svc.ticketsSvc, docs: svc.docsSvc, workspace: svc.workspaceSvc},
-		Projects:    playsProjectLookup{memoriesProjectLookup{svc: svc.workspaceSvc}},
+		Projects:    playsProjectLookup{memoriesProjectLookup{projects: store.Projects}},
 		Harness:     playsHarnessResolver{svc: svc.pairingSvc},
 		Memories:    playsMemoryReader{svc: svc.memoriesSvc},
 		Threads:     playsThreads{svc: svc.chatSvc},
@@ -303,7 +304,7 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 		if err := json.Unmarshal(ev.Payload, &e); err != nil {
 			return apperrs.Fatal(fmt.Errorf("parse %s: %w", topology.TopicUpdated, err))
 		}
-		return liveHub.Publish(ctx, "topology", e.Canvas)
+		return liveHub.Publish(ctx, topicTopologyCanvas, e.Canvas)
 	})
 
 	return liveHub, agentHandler

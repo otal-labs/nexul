@@ -62,7 +62,7 @@ type playsProjectLookup struct {
 }
 
 func (a playsProjectLookup) GetProject(ctx context.Context, projectID string) (plays.ProjectTarget, error) {
-	p, err := a.svc.Get(ctx, projectID)
+	p, err := a.projects.Get(ctx, projectID)
 	if err != nil {
 		return plays.ProjectTarget{}, err
 	}

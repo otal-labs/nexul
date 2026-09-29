@@ -159,6 +159,7 @@ func TestRenameCategory(t *testing.T) {
 	})
 	t.Run("non-owner is forbidden", func(t *testing.T) {
 		s, _, _ := newOwnerRepo(t, false)
+		catRepo(s).cats["c-1"] = &Category{ID: "c-1", ProjectID: "p-1"}
 		_, err := s.RenameCategory(context.Background(), "u-1", "c-1", "Sprint 2", "")
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
@@ -239,6 +240,7 @@ func TestDeleteCategory(t *testing.T) {
 	})
 	t.Run("non-owner is forbidden", func(t *testing.T) {
 		s, _, _ := newOwnerRepo(t, false)
+		catRepo(s).cats["c-1"] = &Category{ID: "c-1", ProjectID: "p-1"}
 		err := s.DeleteCategory(context.Background(), "u-1", "c-1")
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
@@ -398,6 +400,7 @@ func TestRenameTicketType(t *testing.T) {
 func TestSetTicketTypeTemplate(t *testing.T) {
 	t.Run("non-owner is forbidden", func(t *testing.T) {
 		s, _, _ := newOwnerRepo(t, false)
+		typeRepo(s).types["t-1"] = &TicketType{ID: "t-1"}
 		_, err := s.SetTicketTypeTemplate(context.Background(), "u-1", "t-1", "## Why")
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
@@ -430,6 +433,7 @@ func TestDeleteTicketType(t *testing.T) {
 	t.Run("in-use type is conflict", func(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)
 		repo.ticketPro["t-1"] = "p-1"
+		typeRepo(s).types["t-1"] = &TicketType{ID: "t-1"}
 		typeRepo(s).count = 1
 		err := s.DeleteTicketType(context.Background(), "u-1", "t-1")
 		require.Error(t, err)
@@ -444,6 +448,7 @@ func TestDeleteTicketType(t *testing.T) {
 	})
 	t.Run("non-owner is forbidden", func(t *testing.T) {
 		s, _, _ := newOwnerRepo(t, false)
+		typeRepo(s).types["t-1"] = &TicketType{ID: "t-1"}
 		err := s.DeleteTicketType(context.Background(), "u-1", "t-1")
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
@@ -633,6 +638,7 @@ func TestDeleteStatus(t *testing.T) {
 	t.Run("in-use status is conflict", func(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)
 		repo.ticketPro["t-1"] = "p-1"
+		statusRepo(s).statuses["s-1"] = &Status{ID: "s-1"}
 		statusRepo(s).count = 1
 		err := s.DeleteStatus(context.Background(), "u-1", "s-1")
 		require.Error(t, err)
@@ -653,6 +659,7 @@ func TestDeleteStatus(t *testing.T) {
 	})
 	t.Run("non-owner is forbidden", func(t *testing.T) {
 		s, _, _ := newOwnerRepo(t, false)
+		statusRepo(s).statuses["s-1"] = &Status{ID: "s-1"}
 		err := s.DeleteStatus(context.Background(), "u-1", "s-1")
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrForbidden))

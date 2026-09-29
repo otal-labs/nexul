@@ -8,7 +8,6 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/storage"
 	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/tenancy"
-	"github.com/otal-labs/nexul/internal/workspace"
 )
 
 // accessPlayWorkspaceResolver reads from the repo directly to avoid recursing into a permission check;
@@ -46,7 +45,7 @@ func (a accessRoleResolver) MemberRole(ctx context.Context, workspaceID, userID 
 // accessDocWorkspaceResolver reads from the repo directly to avoid recursing into a permission check.
 type accessDocWorkspaceResolver struct {
 	docs     *storage.DocsRepo
-	projects *workspace.Service
+	projects *storage.ProjectsRepo
 }
 
 func (a accessDocWorkspaceResolver) WorkspaceIDForDoc(ctx context.Context, docID string) (string, error) {
@@ -91,4 +90,44 @@ func (a accessUsers) ListUsers(ctx context.Context) ([]*access.User, error) {
 
 func mapAccessUser(u *auth.User) *access.User {
 	return &access.User{ID: u.ID, Login: u.Login, Name: u.Name, CanCreateWorkspace: u.CanCreateWorkspace}
+}
+
+// accessScopes reads projects and memberships from storage: a check that went through a gated use-case would
+// ask itself for permission.
+type accessScopes struct {
+	projects   *storage.ProjectsRepo
+	workspaces *storage.WorkspacesRepo
+}
+
+func (a accessScopes) WorkspaceIDForProject(ctx context.Context, projectID string) (string, error) {
+	p, err := a.projects.Get(ctx, projectID)
+	if err != nil {
+		return "", err
+	}
+	return p.WorkspaceID, nil
+}
+
+func (a accessScopes) WorkspaceIDsForUser(ctx context.Context, userID string) ([]string, error) {
+	ws, err := a.workspaces.ListForUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, len(ws))
+	for i, w := range ws {
+		out[i] = w.ID
+	}
+	return out, nil
+}
+
+// workspaceTicketProjects reads a ticket's project from storage for the workspace domain's ticket moves (ADR 0017).
+type workspaceTicketProjects struct {
+	tickets *storage.TicketsRepo
+}
+
+func (a workspaceTicketProjects) ProjectOfTicket(ctx context.Context, ticketID string) (string, error) {
+	t, err := a.tickets.GetByID(ctx, ticketID)
+	if err != nil {
+		return "", err
+	}
+	return t.ProjectID, nil
 }

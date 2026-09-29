@@ -53,7 +53,11 @@ func (r *ChatRepo) GetConversation(ctx context.Context, id string) (*chat.Conver
 	if err != nil {
 		return nil, fmt.Errorf("get conversation %s: %w", id, notFoundIfNoRows(err))
 	}
-	return toConversation(row), nil
+	c := toConversation(row)
+	if err := r.attachDMParticipants(ctx, []*chat.Conversation{c}); err != nil {
+		return nil, fmt.Errorf("attach dm participants: %w", err)
+	}
+	return c, nil
 }
 
 func (r *ChatRepo) GetChannelByName(ctx context.Context, workspaceID, name string) (*chat.Conversation, error) {

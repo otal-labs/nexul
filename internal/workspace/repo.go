@@ -7,9 +7,15 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
-// InstanceAdminGate lets workspace check can_create_workspace without importing auth (ADR 0017).
-type InstanceAdminGate interface {
-	CanCreateWorkspace(ctx context.Context, userID string) (bool, error)
+// Gate is the permission check project, board-setting, and ticket-move use-cases ask (the access domain, ADR 0042).
+type Gate interface {
+	Require(ctx context.Context, workspaceID string, action permissions.Action) error
+	RequireProject(ctx context.Context, projectID string, action permissions.Action) error
+}
+
+// TicketProjects names the project a ticket sits in, so moving it is checked there too (ADR 0017).
+type TicketProjects interface {
+	ProjectOfTicket(ctx context.Context, ticketID string) (string, error)
 }
 
 // WorkspaceGate lets workspace check existence without importing tenancy (ADR 0017).
@@ -100,10 +106,10 @@ type WorkspaceMemberStore interface {
 	ListMemberUserIDs(ctx context.Context, workspaceID string) ([]string, error)
 }
 
-// PermissionChecker adapts access's HasPermission (ADR 0017), so memory.updated only reaches members who
-// still hold memories:read.
+// PermissionChecker adapts access (ADR 0017), so a notice only reaches someone who may open its subject.
 type PermissionChecker interface {
 	HasPermission(ctx context.Context, userID, workspaceID string, action permissions.Action) bool
+	CanReadDoc(ctx context.Context, userID, docID string) bool
 }
 
 // User is the minimal user projection the generation rules resolve against.

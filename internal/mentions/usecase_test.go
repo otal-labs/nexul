@@ -121,6 +121,10 @@ func (f *fakeAccessChecker) Can(_ context.Context, _, docID string, action permi
 	return ok, nil
 }
 
+func (f *fakeAccessChecker) RequireProject(context.Context, string, permissions.Action) error {
+	return f.err
+}
+
 func newTestService(t *testing.T, tickets TicketSource, docs DocSource, statuses StatusSource, access AccessChecker) *Service {
 	t.Helper()
 	if tickets == nil {
@@ -420,7 +424,8 @@ func TestSearch_KeyMatch_SortsFirstAndDedupsTitleHit(t *testing.T) {
 
 func TestSearch_LimitClamping(t *testing.T) {
 	tickets := &fakeTicketSource{
-		search: []SearchHit{{ID: "t-1", Title: "a"}, {ID: "t-2", Title: "b"}, {ID: "t-3", Title: "c"}},
+		tickets: map[string]Ticket{"t-1": {ID: "t-1"}, "t-2": {ID: "t-2"}, "t-3": {ID: "t-3"}},
+		search:  []SearchHit{{ID: "t-1", Title: "a"}, {ID: "t-2", Title: "b"}, {ID: "t-3", Title: "c"}},
 	}
 	docs := &fakeDocSource{
 		docs:   map[string]Doc{"d-1": {ID: "d-1", Title: "x"}},

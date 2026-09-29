@@ -8,11 +8,29 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 // Service is the topology use-case layer (ADR 0019); mutations enqueue topology.updated via the outbox.
 type Service struct {
 	repo Repo
+	gate Gate
+}
+
+// Gate is the permission check the canvas passes through; the canvas is instance-wide, so a caller needs the
+// action in any workspace they belong to (the access domain, ADR 0042).
+type Gate interface {
+	RequireAnywhere(ctx context.Context, action permissions.Action) error
+}
+
+// SetGate wires the permission check; unset, only the server's own calls pass.
+func (s *Service) SetGate(g Gate) { s.gate = g }
+
+func (s *Service) require(ctx context.Context, action permissions.Action) error {
+	if s.gate == nil {
+		return permissions.Ungated(ctx)
+	}
+	return s.gate.RequireAnywhere(ctx, action)
 }
 
 // NewService wires the topology use-cases over the given repo.
@@ -22,6 +40,9 @@ func NewService(repo Repo) *Service {
 
 // Get returns the canvas for an environment, empty if unsaved; stored canvases below schema are migrated on read.
 func (s *Service) Get(ctx context.Context, environment string) (*Canvas, error) {
+	if err := s.require(ctx, permissions.TopologyRead); err != nil {
+		return nil, err
+	}
 	if environment == "" {
 		return nil, fmt.Errorf("%w: environment is required", apperrs.ErrInvalid)
 	}
@@ -43,6 +64,9 @@ func (s *Service) Get(ctx context.Context, environment string) (*Canvas, error) 
 
 // HasCanvas reports whether a canvas has ever been saved for environment.
 func (s *Service) HasCanvas(ctx context.Context, environment string) (bool, error) {
+	if err := s.require(ctx, permissions.TopologyRead); err != nil {
+		return false, err
+	}
 	_, err := s.repo.Get(ctx, environment)
 	if errors.Is(err, apperrs.ErrNotFound) {
 		return false, nil
@@ -55,6 +79,9 @@ func (s *Service) HasCanvas(ctx context.Context, environment string) (bool, erro
 
 // Update persists a full canvas; service nodes are auto-managed, so stored ones are merged back in.
 func (s *Service) Update(ctx context.Context, environment string, c *Canvas) (*Canvas, error) {
+	if err := s.require(ctx, permissions.TopologyWrite); err != nil {
+		return nil, err
+	}
 	if environment == "" {
 		return nil, fmt.Errorf("%w: environment is required", apperrs.ErrInvalid)
 	}
@@ -101,6 +128,9 @@ func (s *Service) Update(ctx context.Context, environment string, c *Canvas) (*C
 
 // AddNode inserts a node; a service node must anchor to an existing service definition by ID.
 func (s *Service) AddNode(ctx context.Context, environment string, n Node) (*Canvas, error) {
+	if err := s.require(ctx, permissions.TopologyWrite); err != nil {
+		return nil, err
+	}
 	if n.Type == NodeService {
 		n.Data.ServiceID = n.ID
 	}
@@ -125,6 +155,9 @@ func (s *Service) AddNode(ctx context.Context, environment string, n Node) (*Can
 
 // RemoveNode deletes a non-service node and its edges; service nodes go through RemoveServiceNode instead.
 func (s *Service) RemoveNode(ctx context.Context, environment string, nodeID string) (*Canvas, error) {
+	if err := s.require(ctx, permissions.TopologyDelete); err != nil {
+		return nil, err
+	}
 	if nodeID == "" {
 		return nil, fmt.Errorf("%w: node id is required", apperrs.ErrInvalid)
 	}
@@ -142,6 +175,9 @@ func (s *Service) RemoveNode(ctx context.Context, environment string, nodeID str
 
 // RemoveServiceNode removes the node anchored to serviceID and its edges; a missing node is a no-op.
 func (s *Service) RemoveServiceNode(ctx context.Context, environment string, serviceID string) (*Canvas, error) {
+	if err := s.require(ctx, permissions.TopologyDelete); err != nil {
+		return nil, err
+	}
 	if serviceID == "" {
 		return nil, fmt.Errorf("%w: service id is required", apperrs.ErrInvalid)
 	}
@@ -193,6 +229,9 @@ func (s *Service) removeNode(ctx context.Context, environment string, c *Canvas,
 
 // RenameServiceNode updates the anchored service node's display name; a missing node is a no-op.
 func (s *Service) RenameServiceNode(ctx context.Context, environment string, serviceID string, name string) (*Canvas, error) {
+	if err := s.require(ctx, permissions.TopologyWrite); err != nil {
+		return nil, err
+	}
 	if serviceID == "" {
 		return nil, fmt.Errorf("%w: service id is required", apperrs.ErrInvalid)
 	}
@@ -219,6 +258,9 @@ func (s *Service) RenameServiceNode(ctx context.Context, environment string, ser
 // SetServiceNodeStatus updates the anchored node's live status badge and, when reported, its address;
 // an empty address keeps whatever was set before, so a failed redeploy doesn't wipe the last known one.
 func (s *Service) SetServiceNodeStatus(ctx context.Context, environment string, serviceID string, status ServiceStatus, address string) (*Canvas, error) {
+	if err := s.require(ctx, permissions.TopologyWrite); err != nil {
+		return nil, err
+	}
 	if serviceID == "" {
 		return nil, fmt.Errorf("%w: service id is required", apperrs.ErrInvalid)
 	}
@@ -247,6 +289,9 @@ func (s *Service) SetServiceNodeStatus(ctx context.Context, environment string, 
 
 // AddEdge inserts a relation between two nodes, validating the canvas first.
 func (s *Service) AddEdge(ctx context.Context, environment string, e Edge) (*Canvas, error) {
+	if err := s.require(ctx, permissions.TopologyWrite); err != nil {
+		return nil, err
+	}
 	if err := e.Validate(); err != nil {
 		return nil, fmt.Errorf("add edge: %w", err)
 	}
@@ -268,6 +313,9 @@ func (s *Service) AddEdge(ctx context.Context, environment string, e Edge) (*Can
 
 // RemoveEdge deletes a single relation by id.
 func (s *Service) RemoveEdge(ctx context.Context, environment string, edgeID string) (*Canvas, error) {
+	if err := s.require(ctx, permissions.TopologyDelete); err != nil {
+		return nil, err
+	}
 	if edgeID == "" {
 		return nil, fmt.Errorf("%w: edge id is required", apperrs.ErrInvalid)
 	}

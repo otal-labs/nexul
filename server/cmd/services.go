@@ -112,6 +112,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	collabHub := collab.NewHub(logger, store.Collab, accessSvc, collabDocWriter{docsSvc})
 	ticketsSvc := tickets.NewService(store.Tickets, store.Statuses, workspaceUserStore{users: store.Users})
 	ticketsSvc.SetTicketTypes(store.TicketTypes)
+	ticketsSvc.SetGate(accessSvc)
 	mentionsSvc := mentions.New(mentions.Config{
 		Tickets:     mentionTicketSource{repo: store.Tickets},
 		Docs:        mentionDocSource{repo: store.Docs},
@@ -122,6 +123,8 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	})
 	topoSvc := topology.NewService(store.Topology)
 	deploySvc := deploy.NewService(store.Deploys, store.Stacks, store.Services, deployProjectStore{projects: store.Projects})
+	topoSvc.SetGate(accessSvc)
+	deploySvc.SetGate(accessSvc)
 	reviewSvc := codereview.NewService(store.CodeReviews)
 	automationsSvc := automations.NewService(store.Automations, automationPermissionGate{svc: accessSvc})
 	// DefaultDefinitions supplies the board pair's bundled default automation code.
@@ -228,15 +231,17 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	rolesSvc.SetMemberGate(roleMemberGate{svc: tenancySvc})
 	authSvc.SetDefaultWorkspace(defaultWorkspaceGate{svc: tenancySvc})
 	authSvc.SetPendingInviteResolver(pendingInviteResolverGate{svc: tenancySvc})
-	workspaceSvc := workspace.NewService(store.Projects, store.Categories, store.TicketTypes, store.Statuses, instanceAdminGate{svc: authSvc}, workspaceGate{svc: tenancySvc})
-	memoriesSvc := memories.NewService(store.Memories, memoriesPermissionGate{svc: accessSvc}, memoriesProjectLookup{svc: workspaceSvc}, memoriesAttachmentsGate{svc: attachmentsSvc}, memoriesMembershipGate{members: store.WorkspaceMembers})
+	workspaceSvc := workspace.NewService(store.Projects, store.Categories, store.TicketTypes, store.Statuses, accessSvc, workspaceGate{svc: tenancySvc})
+	workspaceSvc.SetTicketProjects(workspaceTicketProjects{tickets: store.Tickets})
+	memoriesSvc := memories.NewService(store.Memories, memoriesPermissionGate{svc: accessSvc}, memoriesProjectLookup{projects: store.Projects}, memoriesAttachmentsGate{svc: attachmentsSvc}, memoriesMembershipGate{members: store.WorkspaceMembers})
 	// HasPermission's role-mask layer needs both roles and tenancy, wired only after the cycle above closes.
 	accessSvc.SetRoles(accessRoleResolver{tenancy: tenancySvc, roles: rolesSvc})
-	// Docs are project-scoped, so this resolver needs workspaceSvc to exist first.
-	accessSvc.SetDocWorkspaces(accessDocWorkspaceResolver{docs: store.Docs, projects: workspaceSvc})
+	accessSvc.SetDocWorkspaces(accessDocWorkspaceResolver{docs: store.Docs, projects: store.Projects})
+	accessSvc.SetScopes(accessScopes{projects: store.Projects, workspaces: store.Workspaces})
 	accessSvc.SetPlayWorkspaces(accessPlayWorkspaceResolver{plays: store.Plays})
 	// accessSvc.Can already matches chat.DocAccess's shape (ADR 0017 seam), so it wires in directly.
 	chatSvc.SetDocAccess(accessSvc)
+	chatSvc.SetGate(accessSvc)
 	ticketsSvc.SetTesting(tickets.Testing{
 		Stages:  ticketStages{statuses: store.Statuses},
 		Threads: ticketThreads{chat: chatSvc, projects: store.Projects},

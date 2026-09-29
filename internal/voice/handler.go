@@ -60,5 +60,5 @@ func (h *Handler) join(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) occupancy(w http.ResponseWriter, r *http.Request) {
-	httpx.WriteJSON(w, http.StatusOK, h.svc.Occupancy())
+	httpx.WriteJSON(w, http.StatusOK, h.svc.Occupancy(r.Context()))
 }

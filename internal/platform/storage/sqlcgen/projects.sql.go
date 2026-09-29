@@ -100,7 +100,7 @@ func (q *Queries) GetProject(ctx context.Context, id string) (Project, error) {
 }
 
 const getProjectRepoByOwnerAndName = `-- name: GetProjectRepoByOwnerAndName :one
-SELECT owner, name, full_name, connector_id, role FROM project_repos WHERE owner = ? AND name = ?
+SELECT project_id, owner, name, full_name, connector_id, role FROM project_repos WHERE owner = ? AND name = ?
 `
 
 type GetProjectRepoByOwnerAndNameParams struct {
@@ -109,6 +109,7 @@ type GetProjectRepoByOwnerAndNameParams struct {
 }
 
 type GetProjectRepoByOwnerAndNameRow struct {
+	ProjectID   string
 	Owner       string
 	Name        string
 	FullName    string
@@ -120,6 +121,7 @@ func (q *Queries) GetProjectRepoByOwnerAndName(ctx context.Context, arg GetProje
 	row := q.db.QueryRowContext(ctx, getProjectRepoByOwnerAndName, arg.Owner, arg.Name)
 	var i GetProjectRepoByOwnerAndNameRow
 	err := row.Scan(
+		&i.ProjectID,
 		&i.Owner,
 		&i.Name,
 		&i.FullName,

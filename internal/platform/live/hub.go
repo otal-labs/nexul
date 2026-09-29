@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
+
+	"github.com/otal-labs/nexul/internal/platform/identity"
 )
 
 // Frame is the wire shape pushed to browser clients. The SPA parses
@@ -23,16 +25,21 @@ type Frame struct {
 // WriteTimeout bounds each frame write to a browser. Slow consumers drop.
 const WriteTimeout = 10 * time.Second
 
-// Hub manages browser WS connections and broadcasts frames to all of them.
+// Audience decides whether a frame may reach the person behind one socket; ctx carries them as the actor.
+type Audience func(ctx context.Context, topic string, payload any) bool
+
+// Hub manages browser WS connections and pushes each frame to the ones its audience allows.
 type Hub struct {
-	log     *slog.Logger
-	mu      sync.Mutex
-	clients map[*client]struct{}
+	log      *slog.Logger
+	mu       sync.Mutex
+	clients  map[*client]struct{}
+	audience Audience
 }
 
 type client struct {
 	writeMu sync.Mutex
 	ws      *websocket.Conn
+	userID  string
 }
 
 // New wires a hub. A nil logger defaults to slog.Default().
@@ -43,15 +50,21 @@ func New(logger *slog.Logger) *Hub {
 	return &Hub{log: logger, clients: make(map[*client]struct{})}
 }
 
+// SetAudience wires the per-socket check every frame passes; unset, every socket receives every frame.
+func (h *Hub) SetAudience(a Audience) {
+	h.audience = a
+}
+
 // ServeHTTP upgrades a browser connection and pushes to it until it closes.
-// Authentication is the caller's job (mount behind a RequireWS-style guard).
+// Authentication is the caller's job (mount behind a RequireWS-style guard that attaches the actor).
 func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	conn, err := websocket.Accept(w, r, nil)
 	if err != nil {
 		h.log.Warn("browser ws upgrade failed", "error", err)
 		return
 	}
-	c := &client{ws: conn}
+	actor, _ := identity.ActorFromCtx(r.Context())
+	c := &client{ws: conn, userID: actor.ID}
 	h.add(c)
 	h.log.Info("browser ws connected", "remote", r.RemoteAddr)
 
@@ -66,8 +79,9 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_ = conn.Close(websocket.StatusNormalClosure, "")
 }
 
-// Publish broadcasts a frame to every browser; a write failure just drops that client, who reconnects with backoff.
-func (h *Hub) Publish(_ context.Context, topic string, payload any) error {
+// Publish pushes a frame to every browser its audience allows; a write failure just drops that client, who
+// reconnects with backoff.
+func (h *Hub) Publish(ctx context.Context, topic string, payload any) error {
 	data, err := json.Marshal(Frame{Topic: topic, Type: "event", Payload: payload})
 	if err != nil {
 		return err
@@ -79,6 +93,10 @@ func (h *Hub) Publish(_ context.Context, topic string, payload any) error {
 	}
 	h.mu.Unlock()
 	for _, c := range clients {
+		// ponytail: one read check per socket per frame; group sockets by user if a busy instance feels it.
+		if h.audience != nil && !h.audience(identity.WithActor(ctx, identity.Actor{ID: c.userID}), topic, payload) {
+			continue
+		}
 		if err := c.write(data); err != nil {
 			h.log.Warn("browser ws write failed; dropping client", "error", err)
 			h.remove(c)

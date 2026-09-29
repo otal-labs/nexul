@@ -110,6 +110,7 @@ func TestIntegration_DocsToTicketFlowPublishesEvents(t *testing.T) {
 	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
 	docsSvc := docs.NewService(s.Docs, allowAll{})
 	ticketsSvc := tickets.NewService(s.Tickets, s.Statuses, nil)
+	ticketsSvc.SetGate(allowAll{})
 
 	doc, err := docsSvc.Create(ctx, "project-general", "Storage Spine", "SQLite migrations and FTS5 indexing")
 	require.NoError(t, err)
