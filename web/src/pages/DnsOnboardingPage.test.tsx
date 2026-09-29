@@ -6,6 +6,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DnsOnboardingPage } from "@/pages/DnsOnboardingPage";
 
+const access = vi.hoisted(() => ({ sections: ["connectors"] as string[] }));
+vi.mock("@/hooks/AccessHooks", () => ({ useCanOpenSection: (section: string) => access.sections.includes(section) }));
+
+beforeEach(() => {
+  access.sections = ["connectors"];
+});
+
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
   post: vi.fn(),
@@ -113,5 +120,16 @@ describe("DnsOnboardingPage", () => {
     });
     await user.click(await screen.findByRole("button", { name: /continue to nexul/i }));
     expect(await screen.findByText("home-page")).toBeInTheDocument();
+  });
+
+  it("offers no Configuration button to a viewer who can't open Connectors", async () => {
+    access.sections = [];
+    mocks.get.mockImplementation(async (url: string) => {
+      if (url === "/api/connectors") return { data: cloudflareConnector(false) };
+      return { data: [] };
+    });
+    renderPage();
+    expect(await screen.findByText(/connect cloudflare first/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /go to configuration/i })).not.toBeInTheDocument();
   });
 });

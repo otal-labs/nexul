@@ -11,6 +11,13 @@ import { useSetupActivityStore } from "@/stores/setupActivityStore";
 import type { Computer, ComputerSetup, HarnessProject, HarnessProvider, PairingDefaults, SetupTurnState } from "@/models/Pairing";
 import { pickOption } from "@/test/pickOption";
 
+const access = vi.hoisted(() => ({ sections: ["connectors"] as string[] }));
+vi.mock("@/hooks/AccessHooks", () => ({ useCanOpenSection: (section: string) => access.sections.includes(section) }));
+
+beforeEach(() => {
+  access.sections = ["connectors"];
+});
+
 const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }));
 
 vi.mock("@/api/client", () => ({
@@ -262,6 +269,18 @@ describe("PairComputerDialog", () => {
     expect(await screen.findByLabelText(/one-time pairing token/i)).toBeInTheDocument();
     expect(mocks.post).not.toHaveBeenCalled();
   });
+  it("explains a missing Cloudflare connection without a Configuration link to a viewer who can't open Connectors", async () => {
+    access.sections = [];
+    mocks.post.mockRejectedValueOnce(apiError({ message: "missing", code: "INVALID", reason: "cloudflare_not_connected" }));
+    const user = userEvent.setup();
+    renderDialog();
+
+    await nameTheComputer(user);
+    expect(await screen.findByRole("alert")).toHaveTextContent(/cloudflare isn't connected/i);
+    expect(screen.queryByRole("link", { name: /connect cloudflare/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
+  });
+
 });
 
 describe("PairComputerDialog opened at Set up", () => {

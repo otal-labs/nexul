@@ -9,6 +9,7 @@ import { DocsFeed } from "@/components/doc/DocsFeed";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { NoProjectsState } from "@/components/project/NoProjectsState";
+import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFetchDocs } from "@/hooks/DocHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { useFormDialog } from "@/hooks/useFormDialog";
@@ -18,6 +19,7 @@ import { emptyDocForm } from "@/utils/emptyDocJson";
 
 export const DocsPage = () => {
   const navigate = useNavigate();
+  const canCreate = useAreaAccess()?.("newDoc") ?? false;
   const { open: openCreateDoc } = useFormDialog();
   const { open: openPermissions } = useFormDialog();
   const [selected, setSelected] = useState<string[]>([]);
@@ -76,6 +78,7 @@ export const DocsPage = () => {
           selected={selected}
           onToggleSelect={toggleSelect}
           onSelect={openDoc}
+          canCreate={canCreate}
           onCreate={() => void openCreateDocDialog()}
           onPermissions={() => void openPermissionsDialog()}
         />

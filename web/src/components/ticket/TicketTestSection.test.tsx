@@ -10,6 +10,13 @@ import { TicketTestSection } from "@/components/ticket/TicketTestSection";
 import type { Ticket } from "@/models/Ticket";
 import type { TestTarget } from "@/models/TicketTest";
 
+const access = vi.hoisted(() => ({ areas: ["stacks"] as string[] }));
+vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
+
+beforeEach(() => {
+  access.areas = ["stacks"];
+});
+
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn() },
   errorMessage: vi.fn(() => "failed"),
@@ -153,5 +160,14 @@ describe("TicketTestSection", () => {
     await vi.waitFor(() =>
       expect(api.post).toHaveBeenCalledWith("/api/tickets/t-1/test/fail", expect.objectContaining({ screenshots: ["att-1"] })),
     );
+  });
+
+  it("names the stack without linking to it when the viewer can't read stacks", async () => {
+    access.areas = [];
+    mockApi({ url: "" });
+    renderSection({ body: "" });
+    expect(await screen.findByText(/No test environment yet/)).toBeInTheDocument();
+    expect(await screen.findByText(/no Acceptance criteria section/)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "web" })).not.toBeInTheDocument();
   });
 });

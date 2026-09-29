@@ -17,6 +17,8 @@ vi.mock("@/api/client", () => ({
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("@/hooks/WorkspaceHooks", () => ({ useHasPermission: () => true }));
+const access = vi.hoisted(() => ({ areas: ["tickets"] as string[] }));
+vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
 vi.mock("@/components/chat/ConversationThread", () => ({
   ConversationThread: ({ conversation }: { conversation: Conversation }) => (
     <div data-testid="conversation">{conversation.id}</div>
@@ -84,6 +86,7 @@ beforeEach(() => {
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
+  access.areas = ["tickets"];
 });
 
 describe("InterviewPage", () => {
@@ -97,6 +100,15 @@ describe("InterviewPage", () => {
     mockMemories([]);
     renderPage("/projects/NOPE/interview");
     expect(await screen.findByText("Project not found")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Go to your board" })).toHaveAttribute("href", "/board");
+  });
+
+  it("does not send a viewer who can't read tickets to the board from a missing project", async () => {
+    access.areas = [];
+    mockMemories([]);
+    renderPage("/projects/NOPE/interview");
+    expect(await screen.findByText("Project not found")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Go to your board" })).not.toBeInTheDocument();
   });
 
   it("offers to start from the template when the project has no interview", async () => {

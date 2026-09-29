@@ -7,6 +7,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ProjectWizardPage } from "@/pages/ProjectWizardPage";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
 
+const access = vi.hoisted(() => ({ areas: ["tickets"] as string[] }));
+vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
+
+beforeEach(() => {
+  access.areas = ["tickets"];
+});
+
 // Step components are exercised in full by their own test files (WizardRepositoryStep.test.tsx,
 // WizardServiceStep.test.tsx, WizardEnvStep.test.tsx, WizardReachStep.test.tsx); this file only cares about the
 // stepper mechanics ProjectWizardPage/ProjectWizardStepper own themselves: which rung the URL opens, an
@@ -40,6 +47,7 @@ const renderPage = (path: string) => {
         router={createMemoryRouter(
           [
             { path: "/wizard/project/:step", element: <ProjectWizardPage /> },
+            { path: "/", element: <p>home</p> },
             { path: "/board", element: <p>board</p> },
             { path: "/board/:token", element: <p>project board</p> },
           ],
@@ -160,5 +168,15 @@ describe("ProjectWizardPage", () => {
     // Locked: door 3 seeded it too, so there's no Change affordance to re-open it.
     expect(within(projectRung).queryByRole("button", { name: /change/i })).not.toBeInTheDocument();
     expect(rung(/: repository$/i)).toHaveAttribute("data-state", "active");
+  });
+
+  it("skips to home instead of the board when the viewer can't read tickets", async () => {
+    access.areas = [];
+    const user = userEvent.setup();
+    renderPage("/wizard/project/project");
+
+    await user.click(await within(rung(/: info$/i)).findByRole("button", { name: "Skip for now" }));
+
+    expect(await screen.findByText("home")).toBeInTheDocument();
   });
 });

@@ -7,6 +7,7 @@ import { DeployStatusBadge } from "@/components/service/DeployStatusBadge";
 import { formatRelativeTime } from "@/components/service/DeployTime";
 import { NoFillBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useAreaAccess } from "@/hooks/AccessHooks";
 import type { Deploy, Stack } from "@/models/Stack";
 
 interface StackHeaderSectionProps {
@@ -31,18 +32,21 @@ const repoLabel = (stack: Stack): string | undefined => {
 
 // Detail-page header (back link → mono slug → title) plus the locked facts grid: mono microheader over each value.
 export const StackHeaderSection = ({ stack, projectPath, latest, image, hostnames }: StackHeaderSectionProps) => {
+  const can = useAreaAccess();
   const repo = repoLabel(stack);
   const [firstHostname, ...moreHostnames] = hostnames;
 
   return (
     <header className="space-y-5 border-b border-border pb-6">
       <div className="space-y-2">
-        <Link
-          to={projectPath}
-          className="inline-block font-mono text-xs text-muted-foreground transition-colors duration-150 ease-standard hover:text-foreground"
-        >
-          {stack.project_id ? "← Back to project" : "← Back to topology"}
-        </Link>
+        {can?.(stack.project_id ? "projects" : "topology") && (
+          <Link
+            to={projectPath}
+            className="inline-block font-mono text-xs text-muted-foreground transition-colors duration-150 ease-standard hover:text-foreground"
+          >
+            {stack.project_id ? "← Back to project" : "← Back to topology"}
+          </Link>
+        )}
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
@@ -51,7 +55,7 @@ export const StackHeaderSection = ({ stack, projectPath, latest, image, hostname
             </div>
             <h1 className="text-3xl font-semibold tracking-tight">{stack.name}</h1>
           </div>
-          {!stack.managed && !!stack.project_id && (
+          {!stack.managed && !!stack.project_id && can?.("newProject") && (
             <Button variant="outline" size="sm" asChild>
               <Link to={`/wizard/project/repository?stack=${stack.id}`}>
                 <GitBranchIcon className="size-4" /> Attach repository

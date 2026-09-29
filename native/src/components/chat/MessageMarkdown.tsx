@@ -4,6 +4,7 @@ import { Linking } from "react-native";
 import { EnrichedMarkdownText, type MarkdownStyle } from "react-native-enriched-markdown";
 import { useCSSVariable } from "uniwind";
 
+import { useAreaAccess } from "@/hooks/WorkspaceHooks";
 import { useSessionStore } from "@/stores/sessionStore";
 
 const sans = "Inter";
@@ -48,18 +49,19 @@ const useMarkdownStyle = (): MarkdownStyle => {
 };
 
 // Both doc URL shapes the web serves, /docs/<id> and /docs/<projectToken>/<id>, and ticket URLs, relative or on the instance.
-const inAppRoute = (path: string): Href | null => {
+// A ticket is only in-app for a viewer who has the Board tab; for anyone else it is the web page, which says it isn't found.
+const inAppRoute = (path: string, canReadTickets: boolean): Href | null => {
   const doc = /^\/docs\/(?:[^/?#]+\/)?([^/?#]+)(?=[?#]|$)/.exec(path);
   if (doc?.[1]) return `/more/docs/${doc[1]}`;
   const ticket = /^\/tickets\/([^/?#]+)(?=[?#]|$)/.exec(path);
-  if (ticket?.[1]) return `/board/ticket/${ticket[1]}`;
+  if (ticket?.[1] && canReadTickets) return `/board/ticket/${ticket[1]}`;
   return null;
 };
 
-const openLink = (url: string) => {
+const openLink = (url: string, canReadTickets: boolean) => {
   const host = useSessionStore.getState().host ?? "";
   const path = host && url.startsWith(`${host}/`) ? url.slice(host.length) : url;
-  const route = inAppRoute(path);
+  const route = inAppRoute(path, canReadTickets);
   if (route) {
     router.push(route, { withAnchor: true });
     return;
@@ -72,11 +74,14 @@ interface MessageMarkdownProps {
   markdown: string;
 }
 
-export const MessageMarkdown = ({ markdown }: MessageMarkdownProps) => (
-  <EnrichedMarkdownText
-    markdown={markdown}
-    flavor="github"
-    markdownStyle={useMarkdownStyle()}
-    onLinkPress={({ url }) => openLink(url)}
-  />
-);
+export const MessageMarkdown = ({ markdown }: MessageMarkdownProps) => {
+  const canReadTickets = useAreaAccess()?.("tickets") ?? false;
+  return (
+    <EnrichedMarkdownText
+      markdown={markdown}
+      flavor="github"
+      markdownStyle={useMarkdownStyle()}
+      onLinkPress={({ url }) => openLink(url, canReadTickets)}
+    />
+  );
+};

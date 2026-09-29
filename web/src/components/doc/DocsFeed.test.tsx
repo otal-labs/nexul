@@ -16,6 +16,7 @@ const baseProps = {
   selected: [] as string[],
   onToggleSelect: () => {},
   onSelect: () => {},
+  canCreate: true,
   onCreate: () => {},
   onPermissions: () => {},
 };

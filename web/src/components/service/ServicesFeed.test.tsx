@@ -1,9 +1,12 @@
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { ServicesFeed } from "@/components/service/ServicesFeed";
 import { DeployStrategy, type ServiceDef } from "@/models/Service";
+
+const access = vi.hoisted(() => ({ areas: ["stacks"] as string[] }));
+vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
 
 const services: ServiceDef[] = [
   {

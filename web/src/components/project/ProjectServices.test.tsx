@@ -8,6 +8,13 @@ import { ProjectServices } from "@/components/project/ProjectServices";
 import { api } from "@/api/client";
 import type { ServiceDef } from "@/models/Service";
 
+const access = vi.hoisted(() => ({ areas: ["newProject", "stacks"] as string[] }));
+vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
+
+beforeEach(() => {
+  access.areas = ["newProject", "stacks"];
+});
+
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
   errorMessage: vi.fn(),
@@ -64,5 +71,12 @@ describe("ProjectServices", () => {
       "href",
       "/wizard/project/repository?project=p-1",
     );
+  });
+
+  it("hides New service and unlinks the cards without projects:write and stacks:read", async () => {
+    access.areas = [];
+    renderServices();
+    expect(await screen.findByText("api")).toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 });

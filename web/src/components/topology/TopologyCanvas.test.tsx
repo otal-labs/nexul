@@ -7,6 +7,13 @@ import { TopologyCanvas } from "@/components/topology/TopologyCanvas";
 import { ServiceStatus, type Canvas } from "@/models/Topology";
 import { useFlowStore } from "@/stores/flowStore";
 
+const access = vi.hoisted(() => ({ areas: ["stacks"] as string[] }));
+vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
+
+beforeEach(() => {
+  access.areas = ["stacks"];
+});
+
 const mocks = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn() }));
 
 vi.mock("@/api/client", () => ({ api: { get: mocks.get, put: mocks.put }, errorMessage: () => "" }));
@@ -109,5 +116,12 @@ describe("TopologyCanvas", () => {
     render(wrap(<TopologyCanvas />));
     fireEvent.click(await screen.findByText("api-gateway"));
     expect(await screen.findByText("stack page")).toBeInTheDocument();
+  });
+
+  it("does not open the stack page for a viewer who can't read stacks", async () => {
+    access.areas = [];
+    render(wrap(<TopologyCanvas />));
+    fireEvent.click(await screen.findByText("api-gateway"));
+    expect(screen.queryByText("stack page")).not.toBeInTheDocument();
   });
 });

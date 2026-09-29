@@ -37,6 +37,10 @@ export const useVisibleSettingsSections = (): SettingsSection[] | undefined => {
   });
 };
 
+// Whether one Configuration section is open to the viewer; false while that is still loading, so a link never flashes.
+export const useCanOpenSection = (section: SettingsSection): boolean =>
+  useVisibleSettingsSections()?.includes(section) ?? false;
+
 // Danger zone holds no action yet, so on its own it doesn't make Configuration worth opening.
 const opensConfiguration = (sections: SettingsSection[]) => sections.some((section) => section !== "danger");
 

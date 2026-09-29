@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ImportContainerRow } from "@/components/wizard/ImportContainerRow";
 import { ImportGatewayRow } from "@/components/wizard/ImportGatewayRow";
 import { ImportStackGroupSection } from "@/components/wizard/ImportStackGroupSection";
+import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useDiscoverMachine, useFetchMachines, useImportMachine } from "@/hooks/MachineHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { useImportSelection } from "@/hooks/useImportSelection";
@@ -22,6 +23,7 @@ import { NEW_PROJECT_PATH } from "@/models/Project";
 // the way the project wizard's steps do.
 export const ProjectWizardImportPage = () => {
   const [searchParams] = useSearchParams();
+  const canOpenTopology = useAreaAccess()?.("topology") ?? false;
   const [machineId, setMachineId] = useState(() => searchParams.get("machine") ?? "");
   const [projectId, setProjectId] = useState("");
   const [report, setReport] = useState<GroupedDiscovery | null>(null);
@@ -167,9 +169,11 @@ export const ProjectWizardImportPage = () => {
                 )}
               </div>
             ))}
-            <Button asChild>
-              <Link to="/topology">View on the canvas</Link>
-            </Button>
+            {canOpenTopology && (
+              <Button asChild>
+                <Link to="/topology">View on the canvas</Link>
+              </Button>
+            )}
           </div>
         )}
       </div>

@@ -11,6 +11,7 @@ interface DocsFeedProps {
   selected: string[];
   onToggleSelect: (id: string) => void;
   onSelect: (id: string) => void;
+  canCreate: boolean;
   onCreate: () => void;
   onPermissions: () => void;
 }
@@ -20,6 +21,7 @@ export const DocsFeed = ({
   selected,
   onToggleSelect,
   onSelect,
+  canCreate,
   onCreate,
   onPermissions,
 }: DocsFeedProps) => {
@@ -59,9 +61,11 @@ export const DocsFeed = ({
               Permissions ({selected.length})
             </Button>
           )}
-          <Button size="sm" onClick={onCreate}>
-            New doc
-          </Button>
+          {canCreate && (
+            <Button size="sm" onClick={onCreate}>
+              New doc
+            </Button>
+          )}
         </div>
       </div>
       {docs.length === 0 && <NoDataDisplay message="No docs yet." />}

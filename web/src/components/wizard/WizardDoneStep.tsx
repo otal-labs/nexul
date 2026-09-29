@@ -3,6 +3,7 @@ import { useShallow } from "zustand/react/shallow";
 
 import { Button } from "@/components/ui/button";
 import { WizardInterviewOffer } from "@/components/wizard/WizardInterviewOffer";
+import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useInterviewOffer } from "@/hooks/useInterviewOffer";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
@@ -11,6 +12,7 @@ import { interviewPath, projectTokenById } from "@/models/Project";
 // Terminal rung: what the wizard built, the interview offer while the project has none, and links to the stack and canvas.
 export const WizardDoneStep = () => {
   const navigate = useNavigate();
+  const can = useAreaAccess();
   const { name, machine, exposureHostname, stackId, projectId, projectName } = useProjectWizardStore(
     useShallow((s) => ({
       name: s.name,
@@ -55,14 +57,16 @@ export const WizardDoneStep = () => {
         </p>
       )}
       <div className="flex flex-wrap gap-3">
-        {stackId && (
+        {stackId && can?.("stacks") && (
           <Button variant="outline" onClick={() => void leave(`/stacks/${stackId}`)}>
             View stack
           </Button>
         )}
-        <Button variant={offer.pending ? "outline" : "default"} onClick={() => void leave("/topology")}>
-          View on the canvas
-        </Button>
+        {can?.("topology") && (
+          <Button variant={offer.pending ? "outline" : "default"} onClick={() => void leave("/topology")}>
+            View on the canvas
+          </Button>
+        )}
       </div>
     </div>
   );

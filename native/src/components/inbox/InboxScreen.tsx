@@ -9,6 +9,7 @@ import { PlaceholderScreen } from "@/components/PlaceholderScreen";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { useFetchNotifications, useMarkAllNotificationsRead, useMarkNotificationRead } from "@/hooks/NotificationHooks";
+import { useAreaAccess } from "@/hooks/WorkspaceHooks";
 import { SubjectType, type Notification } from "@/models/Notification";
 
 // A memory has no phone screen yet (ticket 11's scope); its notifications mark read with nothing to open.
@@ -25,6 +26,7 @@ export const InboxScreen = () => {
   const { data, error, isPending, isRefetching, refetch } = useFetchNotifications();
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
+  const canReadTickets = useAreaAccess()?.("tickets") ?? false;
 
   useEffect(() => {
     navigation.setOptions({
@@ -40,6 +42,8 @@ export const InboxScreen = () => {
   const onSelect = (notification: Notification) => {
     if (!notification.read) markRead.mutate(notification.id);
     const target = subjectRoute(notification);
+    // A ticket opens on the Board tab, which a viewer without tickets:read doesn't have.
+    if (notification.subject_type === SubjectType.Ticket && !canReadTickets) return;
     if (target) router.push(target, { withAnchor: true });
   };
 

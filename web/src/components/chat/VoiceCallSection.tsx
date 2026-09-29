@@ -5,6 +5,7 @@ import { useShallow } from "zustand/react/shallow";
 
 import { ConnectedCall } from "@/components/chat/ConnectedCall";
 import { Button } from "@/components/ui/button";
+import { useCanOpenSection } from "@/hooks/AccessHooks";
 import type { Conversation } from "@/models/Chat";
 import { useVoiceCallStore, type VoiceCallStatus } from "@/stores/voiceCallStore";
 
@@ -27,6 +28,7 @@ const deriveCallPhase = (active: boolean, status: VoiceCallStatus, room: Room | 
 
 // States read from voiceCallStore, which owns the connection; the call survives this panel closing.
 export const VoiceCallSection = ({ conversation, active }: VoiceCallSectionProps) => {
+  const canConfigure = useCanOpenSection("connectors");
   const { status, room, error, join, leave, retry } = useVoiceCallStore(
     useShallow((s) => ({
       status: s.status,
@@ -68,9 +70,11 @@ export const VoiceCallSection = ({ conversation, active }: VoiceCallSectionProps
             Voice needs a LiveKit connector — ask an instance admin to set one up in Configuration.
           </span>
           <div className="flex shrink-0 items-center gap-2">
-            <Button asChild size="sm" variant="outline">
-              <Link to="/configuration/connectors">Open Configuration</Link>
-            </Button>
+            {canConfigure && (
+              <Button asChild size="sm" variant="outline">
+                <Link to="/configuration/connectors">Open Configuration</Link>
+              </Button>
+            )}
             <Button size="sm" variant="ghost" onClick={leave}>
               Dismiss
             </Button>
