@@ -1,4 +1,4 @@
-import { RoomAudioRenderer, RoomContext } from "@livekit/components-react";
+import { RoomContext } from "@livekit/components-react";
 import { Mic, MicOff, PhoneOff, ScreenShare, ScreenShareOff, Video, VideoOff } from "lucide-react";
 import type { Room } from "livekit-client";
 import { useShallow } from "zustand/react/shallow";
@@ -33,7 +33,6 @@ export const ConnectedCall = ({ room, resolveLogin }: ConnectedCallProps) => {
         data-lk-theme="default"
         className="voice-call-stage flex h-[45vh] min-h-56 shrink-0 flex-col gap-2 border-b border-border bg-background p-2"
       >
-        <RoomAudioRenderer />
         <VoiceCallStage resolveLogin={resolveLogin} />
         <div className="flex shrink-0 items-center justify-center gap-2 border-t border-border pt-2">
           <VoiceCallControlButton
