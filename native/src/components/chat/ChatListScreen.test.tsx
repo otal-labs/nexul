@@ -15,7 +15,6 @@ jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush }) }));
 
 jest.mock("@/api/client", () => ({
   api: { get: jest.fn(), post: jest.fn() },
-  errorMessage: (error: Error) => error.message,
 }));
 
 const get = jest.mocked(api.get);

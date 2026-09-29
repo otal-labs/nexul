@@ -16,6 +16,9 @@ const kindLabels: Record<NotificationKind, string> = {
   [NotificationKind.PlayRunWaiting]: "needs your answer",
 };
 
+// A read row keeps an empty dot so its text lines up with an unread row's.
+const dotClassName = "mt-1.5 size-2 shrink-0 rounded-full";
+
 interface NotificationRowProps {
   notification: Notification;
   onPress: (notification: Notification) => void;
@@ -27,10 +30,9 @@ export const NotificationRow = ({ notification, onPress }: NotificationRowProps)
     onPress={() => onPress(notification)}
     className="min-h-11 flex-row items-start gap-2.5 border-b border-border px-4 py-3 active:bg-accent"
   >
-    {!notification.read && (
-      <View accessible accessibilityLabel="Unread" className="mt-1.5 size-2 shrink-0 rounded-full bg-primary" />
-    )}
-    <View className={cn("min-w-0 flex-1", notification.read && "pl-[14px]")}>
+    {!notification.read && <View accessible accessibilityLabel="Unread" className={cn(dotClassName, "bg-primary")} />}
+    {notification.read && <View className={dotClassName} />}
+    <View className="min-w-0 flex-1">
       <Text numberOfLines={1} className={cn(!notification.read ? "font-semibold" : "font-medium text-muted-foreground")}>
         {notification.subject_title}
       </Text>

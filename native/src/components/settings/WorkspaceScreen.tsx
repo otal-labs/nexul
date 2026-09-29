@@ -1,4 +1,5 @@
 import { useNavigation, useRouter } from "expo-router";
+import type { NavigationProp, ParamListBase } from "expo-router/react-navigation";
 import { View } from "react-native";
 
 import { ErrorDisplay } from "@/components/ErrorDisplay";
@@ -11,19 +12,19 @@ import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 export const WorkspaceScreen = () => {
   const router = useRouter();
-  const tabs = useNavigation("/(tabs)");
+  const navigation = useNavigation<NavigationProp<ParamListBase>>();
   const { data, error, isPending } = useFetchWorkspaces();
   const selectedWorkspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const selectWorkspace = useWorkspaceStore((s) => s.selectWorkspace);
 
-  // A fresh tab navigator starts every tab at its root, so no old-workspace ticket, thread, or log survives the switch.
+  // Resetting the root stack drops the sheet and remounts every tab at its root, so no old-workspace screen survives.
   const choose = (id: string) => {
     if (id === selectedWorkspaceId) {
       router.back();
       return;
     }
     selectWorkspace(id);
-    tabs.getParent()?.reset({ index: 0, routes: [{ name: "(tabs)", state: { routes: [{ name: "more" }] } }] });
+    navigation.reset({ index: 0, routes: [{ name: "(tabs)", state: { routes: [{ name: "more" }] } }] });
   };
 
   return (

@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react-native";
 
-import { ApiError } from "@/api/client";
+import { ApiError } from "@/api/errors";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 
 const notFoundError = new ApiError(404, { message: "get doc x: not found", code: "not_found" }, "GET failed: 404");

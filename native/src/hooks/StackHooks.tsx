@@ -1,6 +1,7 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { ApiError, api } from "@/api/client";
+import { api } from "@/api/client";
+import { ApiError } from "@/api/errors";
 import { useCurrentWorkspaceId } from "@/hooks/WorkspaceHooks";
 import { latestDeploy, type Container, type Deploy, type Stack } from "@/models/Stack";
 

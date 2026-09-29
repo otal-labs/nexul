@@ -1,6 +1,6 @@
 import { QueryClient, onlineManager } from "@tanstack/react-query";
 
-import { ApiError } from "@/api/client";
+import { ApiError } from "@/api/errors";
 import { networkOnlineListener } from "@/lib/onlineStatus";
 
 onlineManager.setEventListener(networkOnlineListener);

@@ -8,7 +8,6 @@ import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 jest.mock("@/api/client", () => ({
   api: { get: jest.fn(), post: jest.fn() },
-  errorMessage: jest.fn(() => "Something went wrong"),
 }));
 
 const mockPush = jest.fn();

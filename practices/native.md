@@ -63,7 +63,11 @@ as written. In particular:
   back gesture; a push into another tab passes `{ withAnchor: true }` so that
   tab's list stays underneath. Pickers and confirms open with `sheetOptions`
   (`src/lib/sheetOptions.ts`: a fitted form sheet with the native header
-  hidden) and name what they act on with `SheetTitle`. A nested folder's stack
+  hidden) and name what they act on with `SheetTitle`. Their route files live
+  under `src/app/(sheets)/`, mirroring the URL of the tab they belong to, and
+  are registered on the root stack in `RootNavigator`, never on a tab's
+  stack: a sheet on a tab's stack opens under the tab bar, which stays bright
+  and tappable. A nested folder's stack
   draws its own header, so the parent stack hides its bar over it. No drawer,
   no top tabs. Motion is the platform default for push and sheet;
   nothing else animates unless `practices/design-language.md` says so.

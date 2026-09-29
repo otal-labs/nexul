@@ -1,4 +1,4 @@
-import { ApiError } from "@/api/client";
+import { ApiError } from "@/api/errors";
 import { exchangeConnectCode, fetchAbout } from "@/api/connect";
 import { connectPhone } from "@/hooks/ConnectHooks";
 import { readSessionToken, useSessionStore } from "@/stores/sessionStore";

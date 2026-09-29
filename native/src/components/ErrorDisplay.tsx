@@ -1,6 +1,6 @@
 import { View } from "react-native";
 
-import { errorMessage, isNotFound } from "@/api/client";
+import { errorMessage, isNotFound } from "@/api/errors";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
 

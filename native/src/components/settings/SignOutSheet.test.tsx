@@ -1,11 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, userEvent, waitFor } from "@testing-library/react-native";
 
-import { ApiError, api } from "@/api/client";
+import { api } from "@/api/client";
+import { ApiError } from "@/api/errors";
 import { SignOutSheet } from "@/components/settings/SignOutSheet";
 
 jest.mock("@/api/client", () => ({
-  ...jest.requireActual("@/api/client"),
   api: { delete: jest.fn() },
 }));
 
