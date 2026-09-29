@@ -137,6 +137,8 @@ describe("InstanceVersionSection", () => {
     renderSection();
 
     await screen.findByText("This build cannot upgrade itself.");
+    expect(screen.getByText("No release to compare against")).toBeInTheDocument();
+    expect(screen.queryByText("Up to date")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^upgrade/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Release notes" })).not.toBeInTheDocument();
   });

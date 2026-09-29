@@ -25,7 +25,8 @@ const statusOf = (data: InstanceUpgrade): { headline: string; dot: string } => {
   if (data.upgrade && isUpgradeInProgress(data.upgrade)) {
     return { headline: `Upgrading to ${data.upgrade.to_version}`, dot: "bg-warning" };
   }
-  if (data.update_available && data.latest) return { headline: `${data.latest.version} is available`, dot: "bg-foreground" };
+  if (!data.latest) return { headline: "No release to compare against", dot: "bg-muted-foreground" };
+  if (data.update_available) return { headline: `${data.latest.version} is available`, dot: "bg-foreground" };
   return { headline: "Up to date", dot: "bg-success" };
 };
 
@@ -41,7 +42,7 @@ const InstanceVersionStatus = ({ data }: { data: InstanceUpgrade }) => {
         {headline}
       </p>
       <p className="text-sm text-muted-foreground">
-        Running <span className="font-mono">{data.version}</span> on the {data.channel} channel.
+        Running <span className="font-mono">{data.version}</span> on the {data.channel} channel
         {data.latest && (
           <>
             {" · "}
