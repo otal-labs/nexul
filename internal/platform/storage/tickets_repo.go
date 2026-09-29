@@ -68,7 +68,7 @@ func (r *TicketsRepo) insertTicket(ctx context.Context, tx *sql.Tx, t *tickets.T
 		DocID:                  sql.NullString{String: t.DocID, Valid: t.DocID != ""},
 		ProjectID:              sql.NullString{String: t.ProjectID, Valid: t.ProjectID != ""},
 		CategoryID:             sql.NullString{String: t.CategoryID, Valid: t.CategoryID != ""},
-		TypeID:                 sql.NullString{String: defaultType(t.TypeID), Valid: true},
+		TypeID:                 sql.NullString{String: t.TypeID, Valid: t.TypeID != ""},
 		Developer:              t.Developer,
 		Tester:                 t.Tester,
 		ReporterKind:           t.Reporter.Kind,
@@ -542,13 +542,6 @@ func insertTicketLabels(ctx context.Context, tx *sql.Tx, ticketID string, labels
 		}
 	}
 	return nil
-}
-
-func defaultType(typeID string) string {
-	if strings.TrimSpace(typeID) == "" {
-		return "ticket-type-task"
-	}
-	return typeID
 }
 
 func toTicket(row sqlcgen.Ticket) *tickets.Ticket {

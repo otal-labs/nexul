@@ -16,9 +16,9 @@ export const DocsListScreen = () => {
   const router = useRouter();
   const selectedProjectId = useDocsProjectStore((s) => s.selectedProjectId);
   const { data: projects, error: projectsError, isPending: projectsPending } = useFetchProjects();
-  // No explicit pick yet: the first project stands in, same "one instance" default as useFetchProjects.
-  const activeProjectId = selectedProjectId ?? projects?.[0]?.id;
-  const activeProject = projects?.find((p) => p.id === activeProjectId);
+  // No pick in this workspace yet (none, or one from another workspace): the first project stands in, as on Board.
+  const activeProject = projects?.find((p) => p.id === selectedProjectId) ?? projects?.[0];
+  const activeProjectId = activeProject?.id;
   const {
     data: docs,
     error: docsError,

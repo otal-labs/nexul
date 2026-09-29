@@ -17,6 +17,8 @@ type SearchResult struct {
 // StatusStore is workspace's status columns, used to validate transitions without importing workspace (ADR 0017).
 type StatusStore interface {
 	Exists(ctx context.Context, id string) (bool, error)
+	// FirstStatus is the project's first column in board order, backlog first; "" when it has none.
+	FirstStatus(ctx context.Context, projectID string) (string, error)
 }
 
 // UserLogins resolves a user id to the member login tickets store for people, without importing auth (ADR 0017).
@@ -28,6 +30,8 @@ type UserLogins interface {
 type TicketTypes interface {
 	BodyTemplate(ctx context.Context, typeID string) (string, error)
 	TypeName(ctx context.Context, typeID string) (string, error)
+	// FirstType is the project's first ticket type in display order; "" when it has none.
+	FirstType(ctx context.Context, projectID string) (string, error)
 }
 
 // LinkRepo persists found-in and blocked-by links; writes carry outbox events.

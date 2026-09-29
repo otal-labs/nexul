@@ -3,6 +3,8 @@ package deploy_test
 import (
 	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"path/filepath"
 	"sync/atomic"
 	"testing"
@@ -17,6 +19,8 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus/testutil"
 	"github.com/otal-labs/nexul/internal/platform/storage"
 	storagetest "github.com/otal-labs/nexul/internal/platform/storage/testutil"
+	"github.com/otal-labs/nexul/internal/tenancy"
+	"github.com/otal-labs/nexul/internal/workspace"
 )
 
 // openStore returns a migrated real-SQLite store on a temp file.
@@ -290,4 +294,41 @@ func TestIntegration_StatusChanged_FansOutToAllConsumers(t *testing.T) {
 		stored, err := store.Deploys.GetByID(ctx, got.ID)
 		return err == nil && stored.Status == deploy.StatusHealthy
 	}, 2*time.Second, 10*time.Millisecond, "all four consumers must process the event")
+}
+
+// GET /api/stacks?workspace_id= lists only that workspace's stacks, so a workspace-scoped client never shows another's.
+func TestIntegration_ListStacks_WorkspaceFilter(t *testing.T) {
+	ctx := t.Context()
+	store := openStore(t)
+	now := time.Now().UTC()
+	require.NoError(t, store.Workspaces.Create(ctx, &tenancy.Workspace{ID: "ws-other", Name: "Other", CreatedAt: now, UpdatedAt: now}))
+	require.NoError(t, store.Projects.Create(ctx, &workspace.Project{ID: "p-other", WorkspaceID: "ws-other", Name: "Other", Prefix: "OT", CreatedAt: now, UpdatedAt: now}))
+	seedStack(t, store)
+	require.NoError(t, store.Stacks.Create(ctx, &deploy.Stack{
+		ID: "svc-other", ProjectID: "p-other", Name: "worker", Slug: "worker", Machine: "10.0.0.1:22",
+		Strategy: deploy.StrategyRun, Managed: true, CreatedAt: now, UpdatedAt: now,
+	}))
+	h := deploy.NewHandler(newService(t, store)).Routes()
+
+	tests := []struct {
+		query string
+		want  []string
+	}{
+		{"?workspace_id=workspace-default", []string{"svc-1"}},
+		{"?workspace_id=ws-other", []string{"svc-other"}},
+		{"?workspace_id=ws-other&project_id=project-general", []string{"svc-1"}},
+		{"", []string{"svc-1", "svc-other"}},
+	}
+	for _, tt := range tests {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/stacks"+tt.query, nil))
+		require.Equal(t, http.StatusOK, rec.Code, tt.query)
+		var stacks []deploy.Stack
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &stacks))
+		ids := make([]string, 0, len(stacks))
+		for _, s := range stacks {
+			ids = append(ids, s.ID)
+		}
+		assert.ElementsMatch(t, tt.want, ids, tt.query)
+	}
 }

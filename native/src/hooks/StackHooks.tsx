@@ -1,6 +1,7 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { api } from "@/api/client";
+import { ApiError, api } from "@/api/client";
+import { useCurrentWorkspaceId } from "@/hooks/WorkspaceHooks";
 import { latestDeploy, type Container, type Deploy, type Stack } from "@/models/Stack";
 
 export const getStacksKey = "getStacks";
@@ -8,11 +9,14 @@ export const getStackKey = "getStack";
 export const getStackServicesKey = "getStackServices";
 export const getStackDeploysKey = "getStackDeploys";
 
-export const useFetchStacks = () =>
-  useQuery({
-    queryKey: [getStacksKey],
-    queryFn: () => api.get<Stack[]>("/api/stacks"),
+export const useFetchStacks = () => {
+  const workspaceId = useCurrentWorkspaceId();
+  return useQuery({
+    queryKey: [getStacksKey, workspaceId],
+    queryFn: () => api.get<Stack[]>(`/api/stacks?workspace_id=${encodeURIComponent(workspaceId ?? "")}`),
+    enabled: !!workspaceId,
   });
+};
 
 export const useFetchStack = (id: string | undefined) =>
   useQuery({
@@ -69,8 +73,16 @@ export const useFetchStacksWithLatestDeploy = () => {
 export const useDeployStack = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: ({ stackId, image }: { stackId: string; image: string }) =>
-      api.post<Deploy>("/api/deploys", { stack_id: stackId, image }),
+    mutationFn: async ({ stackId, image }: { stackId: string; image: string }) => {
+      try {
+        return await api.post<Deploy>("/api/deploys", { stack_id: stackId, image });
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 409) {
+          throw new Error("A deploy is already running on this stack. Redeploy once it finishes.");
+        }
+        throw error;
+      }
+    },
     onSuccess: async (_data, vars) => {
       await client.invalidateQueries({ queryKey: [getStackDeploysKey, vars.stackId] });
     },

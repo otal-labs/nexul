@@ -166,7 +166,8 @@ func (h *Handler) createStack(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) listStacks(w http.ResponseWriter, r *http.Request) {
-	stacks, err := h.svc.ListStacks(r.Context(), r.URL.Query().Get("project_id"))
+	q := r.URL.Query()
+	stacks, err := h.svc.ListScopedStacks(r.Context(), q.Get("project_id"), q.Get("workspace_id"))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

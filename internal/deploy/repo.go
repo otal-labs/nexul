@@ -39,6 +39,8 @@ type StackRepo interface {
 	GetByName(ctx context.Context, name string) (*Stack, error)
 	// ListByProject lists a project's stacks; an empty projectID lists every project's.
 	ListByProject(ctx context.Context, projectID string) ([]*Stack, error)
+	// ListByWorkspace lists the stacks of a workspace's projects.
+	ListByWorkspace(ctx context.Context, workspaceID string) ([]*Stack, error)
 	// ListByBuildRepo returns every base stack whose build source references this repository, for the push consumer.
 	ListByBuildRepo(ctx context.Context, owner, name string) ([]*Stack, error)
 	// ListByDerivedFrom returns a base stack's branch deployments, oldest first.

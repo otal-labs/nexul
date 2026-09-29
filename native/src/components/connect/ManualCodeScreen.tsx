@@ -4,6 +4,8 @@ import { View } from "react-native";
 
 import { ManualCodeForm } from "@/components/connect/ManualCodeForm";
 import { ServerRefusedScreen } from "@/components/connect/ServerRefusedScreen";
+import { Button } from "@/components/ui/button";
+import { Text } from "@/components/ui/text";
 import { useConnectPhone } from "@/hooks/ConnectHooks";
 import { normalizeHost } from "@/lib/connectLink";
 
@@ -17,7 +19,7 @@ export const ManualCodeScreen = () => {
   const params = useLocalSearchParams<ManualCodeParams>();
   const [host, setHost] = useState(params.host ?? "");
   const [code, setCode] = useState(params.code ?? "");
-  const { mutate, data, error, isPending } = useConnectPhone();
+  const { mutate, reset, data, error, isPending } = useConnectPhone();
   const submit = () => mutate({ host: normalizeHost(host), code: code.trim() });
   const autoSubmitted = useRef(false);
 
@@ -33,7 +35,11 @@ export const ManualCodeScreen = () => {
   return (
     <View className="flex-1 bg-background">
       {refused && (
-        <ServerRefusedScreen host={refused.host} version={refused.version} retrying={isPending} onRetry={submit} />
+        <ServerRefusedScreen host={refused.host} version={refused.version} retrying={isPending} onRetry={submit}>
+          <Button variant="ghost" disabled={isPending} onPress={reset}>
+            <Text>Use a different server</Text>
+          </Button>
+        </ServerRefusedScreen>
       )}
       {!refused && (
         <ManualCodeForm

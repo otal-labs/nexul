@@ -371,7 +371,7 @@ type ticketCreateIn struct {
 	ProjectID     string `json:"project_id" jsonschema:"The project's id (a UUID), from project_list."`
 	Title         string `json:"title" jsonschema:"A short summary, for example Login times out on slow networks."`
 	Body          string `json:"body,omitempty" jsonschema:"The body in markdown. Fill the type's body_template from project_get; omitted with a type_id, the ticket starts from that template."`
-	TypeID        string `json:"type_id,omitempty" jsonschema:"The ticket type's id, from project_get."`
+	TypeID        string `json:"type_id,omitempty" jsonschema:"The ticket type's id, from project_get. Omit for the project's first type."`
 	CategoryID    string `json:"category_id,omitempty" jsonschema:"The category's id, from project_get. Omit to leave it uncategorized."`
 	Developer     string `json:"developer,omitempty" jsonschema:"The member login who builds it, for example onik97."`
 	Tester        string `json:"tester,omitempty" jsonschema:"The member login who tests it in its testing stage, for example lena."`
@@ -387,7 +387,7 @@ func ticketCreateTool(t *tickets.Service, w *workspace.Service) mcptool.Tool {
 			"types with their body_template: fill that template as the body, or omit the body with a type_id to start "+
 			"from it. A bug (the type named bug) needs origin_id, the ticket it was found in, or origin_unknown true "+
 			"when nobody knows; never guess an origin. Set its status column, labels, and blockers afterwards with "+
-			"ticket_update.",
+			"ticket_update; it starts in the project's first backlog column.",
 		mcptool.Hints{Additive: true, Local: true},
 		func(ctx context.Context, in ticketCreateIn) (any, error) {
 			originID, err := originOf(ctx, t, in.OriginID)

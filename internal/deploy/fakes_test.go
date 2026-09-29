@@ -3,6 +3,7 @@ package deploy
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"slices"
 	"sync"
 	"testing"
@@ -296,6 +297,10 @@ func (f *fakeStackRepo) GetByName(_ context.Context, name string) (*Stack, error
 		}
 	}
 	return nil, apperrs.ErrNotFound
+}
+
+func (f *fakeStackRepo) ListByWorkspace(context.Context, string) ([]*Stack, error) {
+	return nil, errors.New("fakeStackRepo has no projects; workspace listing is tested over real storage")
 }
 
 func (f *fakeStackRepo) ListByProject(_ context.Context, projectID string) ([]*Stack, error) {

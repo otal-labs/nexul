@@ -113,6 +113,18 @@ func (r *StatusesRepo) Exists(ctx context.Context, id string) (bool, error) {
 	return n > 0, nil
 }
 
+// FirstStatus returns the project's first column in board order, backlog first; satisfies tickets' StatusStore seam.
+func (r *StatusesRepo) FirstStatus(ctx context.Context, projectID string) (string, error) {
+	rows, err := r.q.ListStatusesByProject(ctx, projectID)
+	if err != nil {
+		return "", fmt.Errorf("first status of project %s: %w", projectID, err)
+	}
+	if len(rows) == 0 {
+		return "", nil
+	}
+	return rows[0].ID, nil
+}
+
 func toStatus(row sqlcgen.Status) *workspace.Status {
 	return &workspace.Status{
 		ID:        row.ID,
