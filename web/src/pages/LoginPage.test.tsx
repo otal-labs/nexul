@@ -151,4 +151,22 @@ describe("LoginPage", () => {
     expect(await screen.findByText("OAuth failed")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /continue with github/i })).toBeInTheDocument();
   });
+
+  it("explains an invitation-required sign-in above the buttons", async () => {
+    renderPage(["/login?error=invitation_required"]);
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "This instance is invite-only. Ask someone on it for an invitation link, then open that link to join.",
+    );
+    expect(screen.getByRole("button", { name: /continue with github/i })).toBeInTheDocument();
+  });
+
+  it("falls back to a generic line for an error code it does not know", async () => {
+    renderPage(["/login?error=something_new"]);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Sign-in didn't work. Try again.");
+  });
+
+  it("shows no error when the page is opened plainly", () => {
+    renderPage();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
 });

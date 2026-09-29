@@ -168,7 +168,8 @@ func TestHandler_IdentityRoutes(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/auth/google/callback?code=good-code&state="+stateCookieValue, nil)
 		rec := httptest.NewRecorder()
 		public.ServeHTTP(rec, req)
-		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+		assert.Equal(t, http.StatusFound, rec.Code)
+		assert.Contains(t, rec.Header().Get("Location"), "/login?error=state_mismatch")
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/auth/google/callback?code=good-code&state="+stateCookieValue, nil)

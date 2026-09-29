@@ -103,17 +103,6 @@ func TestHandler_StartOAuth_UsesConfiguredHTTPSForSecureCookie(t *testing.T) {
 	assert.True(t, rec.Result().Cookies()[0].Secure)
 }
 
-func TestHandler_CallbackGET_StateMismatch(t *testing.T) {
-	s, _, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "onik97")})
-	h := NewHandler(s).Routes()
-
-	req := httptest.NewRequest(http.MethodGet, "/auth/callback?code=c&state=stale", nil)
-	req.AddCookie(&http.Cookie{Name: stateCookie, Value: "other"})
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
-	assert.Equal(t, http.StatusUnauthorized, rec.Code)
-}
-
 func TestHandler_CallbackGET_WithoutState(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -136,37 +125,6 @@ func TestHandler_CallbackGET_WithoutState(t *testing.T) {
 			assert.Empty(t, rec.Result().Cookies(), "nobody is signed in")
 		})
 	}
-}
-
-func TestHandler_CallbackGET_NoStateCookie(t *testing.T) {
-	s, _, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "onik97")})
-	h := NewHandler(s).Routes()
-
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/auth/callback?code=c&state=st8", nil))
-	assert.Equal(t, http.StatusUnauthorized, rec.Code)
-}
-
-func TestHandler_CallbackGET_NoCode(t *testing.T) {
-	s, _, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "onik97")})
-	h := NewHandler(s).Routes()
-
-	req := httptest.NewRequest(http.MethodGet, "/auth/callback?state=st8", nil)
-	req.AddCookie(&http.Cookie{Name: stateCookie, Value: "st8"})
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
-	assert.Equal(t, http.StatusBadRequest, rec.Code)
-}
-
-func TestHandler_CallbackGET_ExchangeFails(t *testing.T) {
-	s, _, _, _ := newTestHarness(&fakeGitHub{user: ghUser("1", "onik97"), exErr: apperrs.ErrUnauthorized})
-	h := NewHandler(s).Routes()
-
-	req := httptest.NewRequest(http.MethodGet, "/auth/callback?code=bad&state=st8", nil)
-	req.AddCookie(&http.Cookie{Name: stateCookie, Value: "st8"})
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
-	assert.Equal(t, http.StatusUnauthorized, rec.Code)
 }
 
 func TestHandler_CallbackPOST_BadJSON(t *testing.T) {
@@ -949,7 +907,8 @@ func TestHandler_DiscordGateAndSettings(t *testing.T) {
 	req.AddCookie(&http.Cookie{Name: stateCookie, Value: "st8"})
 	rec = httptest.NewRecorder()
 	public.ServeHTTP(rec, req)
-	assert.Equal(t, http.StatusUnauthorized, rec.Code, "not allowlisted → rejected like any provider")
+	assert.Equal(t, http.StatusFound, rec.Code)
+	assert.Equal(t, "https://deploy.example.com/login?error=invitation_required", rec.Header().Get("Location"), "an unknown identity is sent back to sign-in like any provider")
 }
 
 func TestHandler_Sessions(t *testing.T) {
@@ -1037,4 +996,99 @@ func TestHandler_Sessions(t *testing.T) {
 		rec := doRequest(s.RequireWS(&captureHandler{}), http.MethodGet, "/ws/events?token="+current, "", "")
 		assert.Equal(t, http.StatusUnauthorized, rec.Code, "the WebSocket dial fails too")
 	})
+}
+
+func TestHandler_CallbackGET_FailuresRedirectToSignIn(t *testing.T) {
+	routes := []struct {
+		provider Provider
+		path     string
+	}{
+		{ProviderGitHub, "/auth/callback"},
+		{ProviderGoogle, "/auth/google/callback"},
+		{ProviderDiscord, "/auth/discord/callback"},
+	}
+	cases := []struct {
+		name   string
+		query  string
+		cookie string
+		setup  func(t *testing.T, s *Service, users *fakeUserStore, provider Provider)
+		want   string
+	}{
+		{"unknown identity needs an invitation", "?code=c&state=st8", "st8", func(t *testing.T, _ *Service, users *fakeUserStore, _ Provider) {
+			seedOwner(t, users, "owner", "1", "owner")
+		}, "invitation_required"},
+		{"disabled account", "?code=c&state=st8", "st8", func(t *testing.T, _ *Service, users *fakeUserStore, provider Provider) {
+			_, _, err := users.UpsertUser(t.Context(), &Identity{UserID: "u9", Provider: provider, ProviderUserID: "9", Login: "nine"})
+			require.NoError(t, err)
+			require.NoError(t, users.SetAccountStatus(t.Context(), "u9", AccountDisabled))
+		}, "account_disabled"},
+		{"removed account", "?code=c&state=st8", "st8", func(t *testing.T, _ *Service, users *fakeUserStore, provider Provider) {
+			_, _, err := users.UpsertUser(t.Context(), &Identity{UserID: "u9", Provider: provider, ProviderUserID: "9", Login: "nine"})
+			require.NoError(t, err)
+			require.NoError(t, users.SetAccountStatus(t.Context(), "u9", AccountRemoved))
+		}, "account_removed"},
+		{"state does not match the cookie", "?code=c&state=stale", "other", nil, "state_mismatch"},
+		{"no state cookie", "?code=c&state=st8", "", nil, "state_mismatch"},
+		{"person cancelled at the provider", "?error=access_denied&state=st8", "st8", nil, "access_denied"},
+		{"provider reports another error", "?error=server_error&state=st8", "st8", nil, "provider_error"},
+		{"provider is not configured", "?code=c&state=st8", "st8", func(_ *testing.T, s *Service, _ *fakeUserStore, _ Provider) {
+			s.cfg.GitHub, s.cfg.Google, s.cfg.Discord = nil, nil, nil
+		}, "not_configured"},
+		{"code exchange fails", "?code=bad-code&state=st8", "st8", nil, "sign_in_failed"},
+		{"callback carries no code", "?state=st8", "st8", nil, "sign_in_failed"},
+	}
+	for _, route := range routes {
+		for _, tt := range cases {
+			t.Run(string(route.provider)+"/"+tt.name, func(t *testing.T) {
+				client := &fakeGitHub{token: "at", user: &ProviderUser{ID: "9", Login: "nine"}}
+				s, users, _, _ := newTestHarness(client)
+				s.cfg.GitHub, s.cfg.Google, s.cfg.Discord = client, client, client
+				s.cfg.SPAOrigin = "https://deploy.example.com"
+				if tt.setup != nil {
+					tt.setup(t, s, users, route.provider)
+				}
+				req := httptest.NewRequest(http.MethodGet, route.path+tt.query, nil)
+				if tt.cookie != "" {
+					req.AddCookie(&http.Cookie{Name: stateCookie, Value: tt.cookie})
+				}
+				rec := httptest.NewRecorder()
+				NewHandler(s).Routes().ServeHTTP(rec, req)
+
+				require.Equal(t, http.StatusFound, rec.Code, rec.Body.String())
+				assert.Equal(t, "https://deploy.example.com/login?error="+tt.want, rec.Header().Get("Location"))
+				assert.NotContains(t, rec.Header().Get("Content-Type"), "json", "a browser navigation never renders the JSON envelope")
+			})
+		}
+	}
+}
+
+func TestHandler_InvitationCallback_FailuresRedirectToSignIn(t *testing.T) {
+	tests := []struct {
+		name  string
+		query string
+		want  string
+	}{
+		{"person cancelled at the provider", "&error=access_denied", "access_denied"},
+		{"callback carries no code", "", "invitation_invalid"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s, _, _, settings := newTestHarness(&fakeGitHub{token: "at", user: ghUser("provider-1", "new-user")})
+			settings.st.GitHubOAuthClientID = "client"
+			settings.st.GitHubOAuthClientSecret = "secret"
+			s.cfg.SPAOrigin = "https://deploy.example.com"
+			s.SetInvitationGate(&fakeInvitationGate{token: "raw-invitation", invitation: &InvitationAcceptance{InvitationID: "inv-1"}})
+			s.SetOAuthHandoffStore(&fakeOAuthHandoffStore{})
+			start, err := s.StartInvitationOAuth(t.Context(), ProviderGitHub, "raw-invitation")
+			require.NoError(t, err)
+
+			req := httptest.NewRequest(http.MethodGet, "/auth/callback?state="+start.State+tt.query, nil)
+			req.AddCookie(&http.Cookie{Name: invitationStateCookie(hashCredential(start.State)), Value: start.State})
+			rec := httptest.NewRecorder()
+			NewHandler(s).Routes().ServeHTTP(rec, req)
+
+			require.Equal(t, http.StatusFound, rec.Code)
+			assert.Equal(t, "https://deploy.example.com/login?error="+tt.want, rec.Header().Get("Location"))
+		})
+	}
 }
