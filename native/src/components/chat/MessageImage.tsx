@@ -9,6 +9,9 @@ interface MessageImageProps {
   alt: string;
 }
 
+const maxWidth = 320;
+const maxHeight = 360;
+
 // The attachment route needs the bearer token; Android's Image only sends headers from an array source.
 export const MessageImage = ({ src, alt }: MessageImageProps) => {
   const host = useSessionStore((s) => s.host);
@@ -30,11 +33,11 @@ export const MessageImage = ({ src, alt }: MessageImageProps) => {
         <Image
           accessibilityLabel={alt || "Image"}
           source={[{ uri: `${host ?? ""}${src}`, headers: { Authorization: `Bearer ${readSessionToken() ?? ""}` } }]}
-          resizeMode="contain"
+          resizeMode="cover"
           onError={() => setFailed(true)}
-          onLoad={({ nativeEvent: { source } }) => setAspectRatio(source.width / source.height)}
-          style={{ aspectRatio }}
-          className="max-h-72 w-full max-w-xs rounded-md border border-border"
+          onLoad={({ nativeEvent: { source } }) => source.height > 0 && setAspectRatio(source.width / source.height)}
+          style={{ aspectRatio, width: Math.min(maxWidth, maxHeight * aspectRatio) }}
+          className="max-w-full rounded-md border border-border"
         />
       )}
     </View>

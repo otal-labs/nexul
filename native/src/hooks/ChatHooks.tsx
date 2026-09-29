@@ -3,8 +3,12 @@ import { useEffect } from "react";
 
 import { api } from "@/api/client";
 import { getMeKey } from "@/hooks/AuthHooks";
+import { useFetchDoc } from "@/hooks/DocHooks";
+import { useFetchProject } from "@/hooks/ProjectHooks";
+import { useFetchTicket } from "@/hooks/TicketHooks";
 import { useCurrentWorkspaceId } from "@/hooks/WorkspaceHooks";
-import type { Conversation, Message, UnreadCounts, WorkspaceMembers } from "@/models/Chat";
+import { conversationLabel, type Conversation, type DMLabelContext, type Message, type UnreadCounts, type WorkspaceMembers } from "@/models/Chat";
+import { ticketKey } from "@/models/Ticket";
 import type { MeResponse } from "@/models/User";
 
 export const getChatMembersKey = "getWorkspaceMembers";
@@ -47,6 +51,16 @@ export const useChatAuthorLookup = (workspaceId: string | undefined) => {
   });
   const members = data?.members ?? [];
   return (userId: string): string => members.find((m) => m.user_id === userId)?.login ?? userId;
+};
+
+// A ticket thread reads "KEY-N Title" and a doc thread reads the doc's title, like the web; every other kind keeps its own label.
+export const useConversationLabel = (conversation: Conversation, dmCtx: DMLabelContext): string => {
+  const { data: ticket } = useFetchTicket(conversation.kind === "ticket_thread" ? conversation.ticket_id : undefined);
+  const { data: project } = useFetchProject(ticket?.project_id);
+  const { data: doc } = useFetchDoc(conversation.kind === "doc_thread" ? conversation.doc_id : undefined);
+  if (ticket) return `${ticketKey(ticket, project?.prefix)} ${ticket.title}`;
+  if (doc) return doc.title;
+  return conversationLabel(conversation, dmCtx);
 };
 
 // The server copy retires the optimistic row it confirms, whichever of the POST reply or the refetch lands first.

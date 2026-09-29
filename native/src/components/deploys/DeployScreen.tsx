@@ -1,5 +1,5 @@
 import { LegendList } from "@legendapp/list/react-native";
-import { useLocalSearchParams } from "expo-router";
+import { Stack, useLocalSearchParams } from "expo-router";
 import { View } from "react-native";
 
 import { DeployLogLineRow } from "@/components/deploys/DeployLogLineRow";
@@ -8,7 +8,7 @@ import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { Text } from "@/components/ui/text";
 import { useFetchDeploy, useFetchDeployLog } from "@/hooks/DeployHooks";
 import { cn } from "@/lib/utils";
-import { deployStatusDot } from "@/models/Stack";
+import { deployStatusDot, deployTitle } from "@/models/Stack";
 
 export const DeployScreen = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -19,6 +19,7 @@ export const DeployScreen = () => {
     <View className="flex-1 bg-background">
       {deployPending && <LoadingDisplay />}
       {deployError && <ErrorDisplay error={deployError} notFound="This deploy doesn't exist or was deleted." />}
+      {deploy && <Stack.Screen options={{ title: deployTitle(deploy) }} />}
       {deploy && (
         <View className="flex-row items-center gap-2 border-b border-border px-4 py-3">
           <View className={cn("size-2 rounded-full", deployStatusDot(deploy.status))} />
@@ -47,6 +48,7 @@ export const DeployScreen = () => {
             keyExtractor={(line) => String(line.seq)}
             renderItem={({ item }) => <DeployLogLineRow line={item} />}
             estimatedItemSize={20}
+            recycleItems
             initialScrollAtEnd
             alignItemsAtEnd
             maintainScrollAtEnd

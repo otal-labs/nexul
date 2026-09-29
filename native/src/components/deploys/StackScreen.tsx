@@ -18,7 +18,8 @@ export const StackScreen = () => {
   const { data: containers, error: containersError, isPending: containersPending } = useFetchStackServices(id);
 
   const latest = latestDeploy(deploys);
-  const canRedeploy = stack?.strategy === DeployStrategy.Run && !!latest?.image;
+  const isRun = stack?.strategy === DeployStrategy.Run;
+  const canRedeploy = isRun && !!latest?.image;
   // The server refuses a second deploy while one is active; live deploy.updated events re-enable the button.
   const deploying = latest?.status === DeployStatus.Pending || latest?.status === DeployStatus.Running;
 
@@ -46,9 +47,14 @@ export const StackScreen = () => {
               <Text>{deploying ? "Deploy in progress" : "Redeploy"}</Text>
             </Button>
           )}
-          {!canRedeploy && (
+          {stack.strategy === DeployStrategy.Compose && (
             <Text variant="muted" className="text-xs">
-              Redeploy from the phone needs a running image; build stacks deploy from the web.
+              Redeploy from the web: this stack builds from its compose file.
+            </Text>
+          )}
+          {isRun && !canRedeploy && (
+            <Text variant="muted" className="text-xs">
+              Nothing to redeploy yet: this stack has no deployed image.
             </Text>
           )}
 

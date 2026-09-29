@@ -20,6 +20,7 @@ export const MessageList = ({ messages }: MessageListProps) => {
       keyExtractor={(message) => message.id}
       renderItem={({ item }) => <MessageRow message={item} authorLogin={resolveLogin(item.author_id)} />}
       estimatedItemSize={72}
+      recycleItems={false}
       initialScrollAtEnd
       alignItemsAtEnd
       maintainScrollAtEnd

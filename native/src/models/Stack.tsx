@@ -71,6 +71,15 @@ export interface Deploy {
 export const latestDeploy = (deploys: Deploy[] | undefined): Deploy | undefined =>
   deploys?.reduce<Deploy | undefined>((best, d) => (!best || d.created_at > best.created_at ? d : best), undefined);
 
+// The deploy's short image tag ("abc123" from "ghcr.io/org/app:abc123"), or a short id for a build with no image.
+export const deployTitle = (deploy: Deploy): string => {
+  if (!deploy.image) return `Build ${deploy.id.slice(0, 7)}`;
+  const ref = deploy.image.split("/").at(-1) ?? deploy.image;
+  const [named = ref, digest] = ref.split("@");
+  if (digest) return digest.replace(/^sha256:/, "").slice(0, 7);
+  return named.split(":")[1] ?? named;
+};
+
 // Declared is the compose/run parse's view of a container, before anything has been observed running.
 export interface Declared {
   image?: string;

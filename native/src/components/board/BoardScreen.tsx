@@ -14,6 +14,7 @@ import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
 import { useFetchTicketsByProject } from "@/hooks/TicketHooks";
 import { useFetchProjectTicketTypes } from "@/hooks/TicketTypeHooks";
 import { cn } from "@/lib/utils";
+import { effectiveProject } from "@/models/Project";
 import { useBoardStore } from "@/stores/boardStore";
 
 export const BoardScreen = () => {
@@ -23,7 +24,7 @@ export const BoardScreen = () => {
   const { data: me } = useFetchMe(true);
   const { data: projects, error: projectsError, isPending: projectsPending } = useFetchProjects();
   const selectedProjectId = useBoardStore((s) => s.selectedProjectId);
-  const project = projects?.find((p) => p.id === selectedProjectId) ?? projects?.[0];
+  const project = effectiveProject(projects, selectedProjectId);
   const { data: statuses, error: statusesError, isPending: statusesPending } = useFetchProjectStatuses(project?.id);
   const { data: tickets, error: ticketsError, isPending: ticketsPending } = useFetchTicketsByProject(project?.id);
   const { data: ticketTypes } = useFetchProjectTicketTypes(project?.id);
@@ -51,9 +52,15 @@ export const BoardScreen = () => {
             role="button"
             onPress={() => setMineOnly((v) => !v)}
             aria-label="Mine"
-            className={cn("min-h-11 min-w-11 items-center justify-center rounded-md border border-border px-3", mineOnly && "bg-accent")}
+            aria-pressed={mineOnly}
+            className={cn(
+              "min-h-11 min-w-11 items-center justify-center rounded-md border border-border px-3",
+              mineOnly && "border-primary bg-primary",
+            )}
           >
-            <Text variant="small">Mine</Text>
+            <Text variant="small" className={cn(mineOnly && "font-semibold text-primary-foreground")}>
+              Mine
+            </Text>
           </Pressable>
         </View>
       )}

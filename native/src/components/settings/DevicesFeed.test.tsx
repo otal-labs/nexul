@@ -1,14 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, userEvent, waitFor } from "@testing-library/react-native";
-import { Alert } from "react-native";
-
-import { api } from "@/api/client";
+import { render, screen, userEvent } from "@testing-library/react-native";
 import { DevicesFeed } from "@/components/settings/DevicesFeed";
 import type { Session } from "@/models/User";
 
-jest.mock("@/api/client", () => ({
-  api: { delete: jest.fn() },
-}));
+const mockPush = jest.fn();
+jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush }) }));
 
 // SessionHooks pulls in the real queryClient (via sessionStore), which subscribes to this on mount; unmocked, its subscription lacks .remove() under jest.
 jest.mock("expo-network", () => ({
@@ -28,17 +24,7 @@ const renderFeed = (sessions: Session[]) => {
   );
 };
 
-// Confirms are native Alerts; pressing confirms them by invoking the destructive button's onPress directly.
-const confirm = () => {
-  const call = jest.mocked(Alert.alert).mock.calls.at(-1);
-  const buttons = call?.[2] as { text: string; onPress?: () => void }[];
-  buttons.find((button) => button.text !== "Cancel")?.onPress?.();
-};
-
-beforeEach(() => {
-  jest.mocked(api.delete).mockReset().mockResolvedValue(undefined);
-  jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
-});
+beforeEach(() => mockPush.mockReset());
 
 describe("DevicesFeed", () => {
   test("shows the current device first, then the others", async () => {
@@ -55,22 +41,15 @@ describe("DevicesFeed", () => {
     expect(await screen.findByText("No other devices are signed in.")).toBeTruthy();
   });
 
-  test("signing out one device deletes its session", async () => {
+  test("signing out one device opens the confirm sheet naming that device", async () => {
     await renderFeed([current, other]);
 
     await userEvent.setup().press(screen.getByLabelText("Sign out"));
-    confirm();
 
-    await waitFor(() => expect(api.delete).toHaveBeenCalledWith("/api/auth/sessions/s-2"));
-  });
-
-  test("signing out everywhere else deletes every other session at once", async () => {
-    await renderFeed([current, other]);
-
-    await userEvent.setup().press(screen.getByRole("button", { name: "Sign out everywhere else" }));
-    confirm();
-
-    await waitFor(() => expect(api.delete).toHaveBeenCalledWith("/api/auth/sessions/others"));
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: "/more/settings/sign-out",
+      params: { mode: "device", id: "s-2", label: "Chrome · Desktop" },
+    });
   });
 
   test("sign out everywhere else is disabled with no other devices", async () => {
