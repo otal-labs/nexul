@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -849,40 +850,42 @@ func (s *Service) DeleteStatus(ctx context.Context, userID, id string) error {
 
 // NotificationService is the notifications use-case layer (ADR 0019): the inbox plus v1's fan-out generation rules.
 type NotificationService struct {
-	repo    NotificationRepo
-	users   UserStore
-	members WorkspaceMemberStore
-	access  PermissionChecker
-	now     func() time.Time
+	repo     NotificationRepo
+	users    UserStore
+	members  WorkspaceMemberStore
+	access   PermissionChecker
+	projects ProjectReader
+	now      func() time.Time
 }
 
 // NewNotificationService wires the notification use-cases; delivery goes through the outbox, not a direct
-// publish. members and access back the workspace-scoped, permission-gated fan-out memory.updated needs.
-func NewNotificationService(repo NotificationRepo, users UserStore, members WorkspaceMemberStore, access PermissionChecker) *NotificationService {
-	return &NotificationService{repo: repo, users: users, members: members, access: access, now: time.Now}
+// publish. members and access back the workspace-scoped, permission-gated fan-out memory.updated needs, and
+// projects resolves a ticket's or doc's workspace.
+func NewNotificationService(repo NotificationRepo, users UserStore, members WorkspaceMemberStore, access PermissionChecker, projects ProjectReader) *NotificationService {
+	return &NotificationService{repo: repo, users: users, members: members, access: access, projects: projects, now: time.Now}
 }
 
-// List returns a user's notifications, newest first, limited to limit rows.
-func (s *NotificationService) List(ctx context.Context, userID string, limit int) ([]*Notification, error) {
+// List returns a user's notifications in one workspace (every workspace when workspaceID is empty), newest first.
+func (s *NotificationService) List(ctx context.Context, userID, workspaceID string, limit int) ([]*Notification, error) {
 	if strings.TrimSpace(userID) == "" {
 		return nil, fmt.Errorf("%w: user id is required", apperrs.ErrInvalid)
 	}
 	if limit < 1 {
 		limit = 50
 	}
-	ns, err := s.repo.List(ctx, userID, limit)
+	ns, err := s.repo.List(ctx, userID, strings.TrimSpace(workspaceID), limit)
 	if err != nil {
 		return nil, fmt.Errorf("list notifications: %w", err)
 	}
 	return ns, nil
 }
 
-// UnreadCount returns how many of the user's notifications are unread.
-func (s *NotificationService) UnreadCount(ctx context.Context, userID string) (int, error) {
+// UnreadCount returns how many of the user's notifications in one workspace (or every workspace) are unread.
+func (s *NotificationService) UnreadCount(ctx context.Context, userID, workspaceID string) (int, error) {
 	if strings.TrimSpace(userID) == "" {
 		return 0, fmt.Errorf("%w: user id is required", apperrs.ErrInvalid)
 	}
-	n, err := s.repo.UnreadCount(ctx, userID)
+	n, err := s.repo.UnreadCount(ctx, userID, strings.TrimSpace(workspaceID))
 	if err != nil {
 		return 0, fmt.Errorf("unread count: %w", err)
 	}
@@ -903,12 +906,12 @@ func (s *NotificationService) MarkRead(ctx context.Context, userID, id string) e
 	return nil
 }
 
-// MarkAllRead marks every notification of the user as read.
-func (s *NotificationService) MarkAllRead(ctx context.Context, userID string) error {
+// MarkAllRead marks every notification of the user in one workspace (or every workspace) as read.
+func (s *NotificationService) MarkAllRead(ctx context.Context, userID, workspaceID string) error {
 	if strings.TrimSpace(userID) == "" {
 		return fmt.Errorf("%w: user id is required", apperrs.ErrInvalid)
 	}
-	if err := s.repo.MarkAllRead(ctx, userID); err != nil {
+	if err := s.repo.MarkAllRead(ctx, userID, strings.TrimSpace(workspaceID)); err != nil {
 		return fmt.Errorf("mark all read: %w", err)
 	}
 	return nil
@@ -920,11 +923,19 @@ func (s *NotificationService) onTicketCreated(ctx context.Context, t ticketRef) 
 	for _, login := range extractMentions(t.Title + " " + t.Body) {
 		recipients = append(recipients, recipient{Login: login, Kind: KindTicketMentioned})
 	}
-	return s.fanOut(ctx, evtKey(ctx), SubjectTicket, t.ID, t.Title, recipients)
+	actorID, err := s.userIDForLogin(ctx, t.Reporter.Login)
+	if err != nil {
+		return err
+	}
+	n, err := s.notice(ctx, SubjectTicket, t.ID, t.Title, t.ProjectID, actorID)
+	if err != nil {
+		return err
+	}
+	return s.fanOut(ctx, evtKey(ctx), n, recipients)
 }
 
 // onTicketStatusChanged fans out ticket.status_changed to the developer, tester, and @-mentioned users of the ticket.
-func (s *NotificationService) onTicketStatusChanged(ctx context.Context, t ticketRef) error {
+func (s *NotificationService) onTicketStatusChanged(ctx context.Context, t ticketRef, actorID string) error {
 	recipients := []recipient{{Login: t.Developer, Kind: KindTicketStatus}, {Login: t.Tester, Kind: KindTicketStatus}}
 	for _, login := range extractMentions(t.Title + " " + t.Body) {
 		if strings.EqualFold(login, t.Developer) || strings.EqualFold(login, t.Tester) {
@@ -932,25 +943,34 @@ func (s *NotificationService) onTicketStatusChanged(ctx context.Context, t ticke
 		}
 		recipients = append(recipients, recipient{Login: login, Kind: KindTicketStatus})
 	}
-	return s.fanOut(ctx, evtKey(ctx), SubjectTicket, t.ID, t.Title, recipients)
+	n, err := s.notice(ctx, SubjectTicket, t.ID, t.Title, t.ProjectID, actorID)
+	if err != nil {
+		return err
+	}
+	return s.fanOut(ctx, evtKey(ctx), n, recipients)
 }
 
-// onDocActivity fans out to every user who can access the doc; v1 access is workspace-level, so every member.
-func (s *NotificationService) onDocActivity(ctx context.Context, d docRef, kind Kind) error {
-	users, err := s.users.ListUsers(ctx)
+// onDocActivity fans out to every member of the doc's workspace; access is workspace-level, so every member.
+func (s *NotificationService) onDocActivity(ctx context.Context, d docRef, actorID string, kind Kind) error {
+	if s.members == nil {
+		return nil
+	}
+	n, err := s.notice(ctx, SubjectDoc, d.ID, d.Title, d.ProjectID, actorID)
 	if err != nil {
-		return fmt.Errorf("list users for doc fan-out: %w", err)
+		return err
 	}
-	recipients := make([]recipient, 0, len(users))
-	for _, u := range users {
-		recipients = append(recipients, recipient{Login: u.Login, Kind: kind})
+	if n.workspaceID == "" {
+		return nil
 	}
-	return s.fanOut(ctx, evtKey(ctx), SubjectDoc, d.ID, d.Title, recipients)
+	userIDs, err := s.members.ListMemberUserIDs(ctx, n.workspaceID)
+	if err != nil {
+		return fmt.Errorf("list members for doc fan-out: %w", err)
+	}
+	return s.fanOutByUserID(ctx, evtKey(ctx), n, kind, userIDs)
 }
 
 // onMemoryUpdated fans out to every member of the memory's workspace who holds memories:read, excluding the
-// author (ticket 17); unlike onDocActivity, memories are genuinely workspace-scoped, so this filters by
-// membership and the permission bit rather than every registered user.
+// author (ticket 17); membership and the permission bit decide, not every registered user.
 func (s *NotificationService) onMemoryUpdated(ctx context.Context, m memoryRef, authorID, authorVia string) error {
 	if s.members == nil || s.access == nil {
 		return nil
@@ -969,15 +989,13 @@ func (s *NotificationService) onMemoryUpdated(ctx context.Context, m memoryRef, 
 	subjectTitle := fmt.Sprintf("%s — v%d by %s", m.Title, m.Version, authorLabel)
 	var recipients []string
 	for _, uid := range userIDs {
-		if uid == authorID {
-			continue
-		}
 		if !s.access.HasPermission(ctx, uid, m.WorkspaceID, permissions.MemoriesRead) {
 			continue
 		}
 		recipients = append(recipients, uid)
 	}
-	return s.fanOutByUserID(ctx, evtKey(ctx), SubjectMemory, m.ID, subjectTitle, KindMemoryUpdated, recipients, m.WorkspaceID)
+	n := notice{subjectType: SubjectMemory, subjectID: m.ID, subjectTitle: subjectTitle, workspaceID: m.WorkspaceID, actorID: authorID}
+	return s.fanOutByUserID(ctx, evtKey(ctx), n, KindMemoryUpdated, recipients)
 }
 
 // onPlayRunFinished tells the starter how their run ended; the subject is the target so the inbox opens it.
@@ -994,6 +1012,7 @@ func (s *NotificationService) onPlayRunWaiting(ctx context.Context, e playRunFin
 	return s.notifyPlayStarter(ctx, e, "needs your answer", KindPlayRunWaiting)
 }
 
+// notifyPlayStarter has no actor to exclude: the run, not the starter, is what finished or asked.
 func (s *NotificationService) notifyPlayStarter(ctx context.Context, e playRunFinishedEvent, outcome string, kind Kind) error {
 	subjectType := SubjectTicket
 	if e.TargetType == string(SubjectDoc) {
@@ -1003,8 +1022,51 @@ func (s *NotificationService) notifyPlayStarter(ctx context.Context, e playRunFi
 	if title == "" {
 		title = e.TargetID
 	}
-	subjectTitle := fmt.Sprintf("%s %s on %s", e.PlayLabel, outcome, title)
-	return s.fanOutByUserID(ctx, evtKey(ctx), subjectType, e.TargetID, subjectTitle, kind, []string{e.StarterID}, "")
+	n := notice{subjectType: subjectType, subjectID: e.TargetID, subjectTitle: fmt.Sprintf("%s %s on %s", e.PlayLabel, outcome, title), workspaceID: e.WorkspaceID}
+	return s.fanOutByUserID(ctx, evtKey(ctx), n, kind, []string{e.StarterID})
+}
+
+// notice is what one source event is about: its subject, the subject's workspace, and whose action it was.
+type notice struct {
+	subjectType  SubjectType
+	subjectID    string
+	subjectTitle string
+	workspaceID  string
+	actorID      string
+}
+
+// notice resolves the subject's project to its workspace; a project deleted since the event leaves it unscoped.
+func (s *NotificationService) notice(ctx context.Context, subjectType SubjectType, subjectID, subjectTitle, projectID, actorID string) (notice, error) {
+	n := notice{subjectType: subjectType, subjectID: subjectID, subjectTitle: subjectTitle, actorID: actorID}
+	if s.projects == nil || strings.TrimSpace(projectID) == "" {
+		return n, nil
+	}
+	p, err := s.projects.Get(ctx, projectID)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return n, nil
+	}
+	if err != nil {
+		return n, fmt.Errorf("resolve workspace of project %s: %w", projectID, err)
+	}
+	n.workspaceID = p.WorkspaceID
+	return n, nil
+}
+
+// userIDForLogin resolves an event's actor login; an unknown login falls back to itself, since the tickets domain
+// records the raw user id when its own lookup failed.
+func (s *NotificationService) userIDForLogin(ctx context.Context, login string) (string, error) {
+	login = strings.TrimSpace(login)
+	if login == "" {
+		return "", nil
+	}
+	u, err := s.users.GetUserByLogin(ctx, login)
+	if errors.Is(err, apperrs.ErrNotFound) || (err == nil && u == nil) {
+		return login, nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("resolve actor %s: %w", login, err)
+	}
+	return u.ID, nil
 }
 
 // recipient is one pending fan-out row: the recipient login and the notification kind to create.
@@ -1014,7 +1076,7 @@ type recipient struct {
 }
 
 // fanOut creates one notification per known recipient in a single outbox transaction, idempotent per event.
-func (s *NotificationService) fanOut(ctx context.Context, key string, subjectType SubjectType, subjectID, subjectTitle string, recipients []recipient) error {
+func (s *NotificationService) fanOut(ctx context.Context, key string, n notice, recipients []recipient) error {
 	now := s.now().UTC()
 	seen := map[string]bool{}
 	var toCreate []*Notification
@@ -1034,23 +1096,14 @@ func (s *NotificationService) fanOut(ctx context.Context, key string, subjectTyp
 		if user == nil || strings.TrimSpace(user.ID) == "" {
 			continue
 		}
-		toCreate = append(toCreate, &Notification{
-			ID:           key + ":" + user.ID,
-			UserID:       user.ID,
-			Kind:         r.Kind,
-			SubjectType:  subjectType,
-			SubjectID:    subjectID,
-			SubjectTitle: subjectTitle,
-			Read:         false,
-			CreatedAt:    now,
-		})
+		toCreate = append(toCreate, n.row(key, user.ID, r.Kind, now))
 	}
-	return s.create(ctx, toCreate, "")
+	return s.create(ctx, n, toCreate)
 }
 
 // fanOutByUserID creates one notification per already-resolved user id, skipping fanOut's login lookup for
-// recipient lists that came from a workspace-membership scan (memory.updated) rather than a login.
-func (s *NotificationService) fanOutByUserID(ctx context.Context, key string, subjectType SubjectType, subjectID, subjectTitle string, kind Kind, userIDs []string, workspaceID string) error {
+// recipient lists that came from a workspace-membership scan rather than a login.
+func (s *NotificationService) fanOutByUserID(ctx context.Context, key string, n notice, kind Kind, userIDs []string) error {
 	now := s.now().UTC()
 	var toCreate []*Notification
 	for _, uid := range userIDs {
@@ -1058,28 +1111,35 @@ func (s *NotificationService) fanOutByUserID(ctx context.Context, key string, su
 		if uid == "" {
 			continue
 		}
-		toCreate = append(toCreate, &Notification{
-			ID:           key + ":" + uid,
-			UserID:       uid,
-			Kind:         kind,
-			SubjectType:  subjectType,
-			SubjectID:    subjectID,
-			SubjectTitle: subjectTitle,
-			Read:         false,
-			CreatedAt:    now,
-		})
+		toCreate = append(toCreate, n.row(key, uid, kind, now))
 	}
-	return s.create(ctx, toCreate, workspaceID)
+	return s.create(ctx, n, toCreate)
 }
 
-// create writes the rows with both outbox events: the empty browser broadcast and the id-only push request.
-func (s *NotificationService) create(ctx context.Context, toCreate []*Notification, workspaceID string) error {
+func (n notice) row(key, userID string, kind Kind, now time.Time) *Notification {
+	return &Notification{
+		ID:           key + ":" + userID,
+		UserID:       userID,
+		WorkspaceID:  n.workspaceID,
+		Kind:         kind,
+		SubjectType:  n.subjectType,
+		SubjectID:    n.subjectID,
+		SubjectTitle: n.subjectTitle,
+		CreatedAt:    now,
+	}
+}
+
+// create writes the rows with both outbox events; every fan-out passes through here, so the actor is dropped once for all kinds.
+func (s *NotificationService) create(ctx context.Context, n notice, toCreate []*Notification) error {
+	if n.actorID != "" {
+		toCreate = slices.DeleteFunc(toCreate, func(row *Notification) bool { return row.UserID == n.actorID })
+	}
 	if len(toCreate) == 0 {
 		return nil
 	}
 	items := make([]NotificationPushItem, 0, len(toCreate))
-	for _, n := range toCreate {
-		items = append(items, NotificationPushItem{ID: n.ID, UserID: n.UserID, WorkspaceID: workspaceID})
+	for _, row := range toCreate {
+		items = append(items, NotificationPushItem{ID: row.ID, UserID: row.UserID, WorkspaceID: row.WorkspaceID})
 	}
 	created := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicNotificationCreated, Payload: NotificationCreatedEvent{}}
 	push := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicNotificationPushRequested, Payload: NotificationPushRequestedEvent{Notifications: items}}

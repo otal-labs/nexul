@@ -28,19 +28,21 @@ func notifAs(userID string) context.Context {
 	return identity.WithActor(context.Background(), identity.Actor{ID: userID})
 }
 
-// seededInbox gives u1 two unread notifications and u2 one.
+// seededInbox gives u1 two unread notifications, one per workspace, and u2 one.
 func seededInbox(t *testing.T) *NotificationService {
 	t.Helper()
 	repo := newFakeNotifRepo()
-	repo.create(t, mkNotif("n1", "u1"))
-	repo.create(t, mkNotif("n2", "u1"))
+	n1, n2 := mkNotif("n1", "u1"), mkNotif("n2", "u1")
+	n1.WorkspaceID, n2.WorkspaceID = "ws-1", "ws-2"
+	repo.create(t, n1)
+	repo.create(t, n2)
 	repo.create(t, mkNotif("n3", "u2"))
 	return newTestNotifService(repo, newFakeNotifUsers())
 }
 
 func readState(t *testing.T, s *NotificationService, userID string) map[string]bool {
 	t.Helper()
-	ns, err := s.List(context.Background(), userID, 0)
+	ns, err := s.List(context.Background(), userID, "", 0)
 	require.NoError(t, err)
 	out := map[string]bool{}
 	for _, n := range ns {
@@ -102,6 +104,13 @@ func TestNotificationUpdate_AllTouchesOnlyTheCallersInbox(t *testing.T) {
 	assert.Equal(t, map[string]bool{"n3": false}, readState(t, s, "u2"))
 }
 
+func TestNotificationUpdate_AllWithAWorkspaceLeavesOtherWorkspacesUnread(t *testing.T) {
+	s := seededInbox(t)
+	_, err := callNotificationTool(notifAs("u1"), t, s, "notification_update", `{"all":true,"workspace_id":"ws-1"}`)
+	require.NoError(t, err)
+	assert.Equal(t, map[string]bool{"n1": true, "n2": false}, readState(t, s, "u1"))
+}
+
 func TestNotificationList(t *testing.T) {
 	s := seededInbox(t)
 	_, err := callNotificationTool(notifAs("u1"), t, s, "notification_update", `{"id":"n1"}`)
@@ -118,4 +127,7 @@ func TestNotificationList(t *testing.T) {
 	assert.Equal(t, "n2", unread.Items[0].ID)
 	assert.Equal(t, "Spec", unread.Items[0].SubjectTitle)
 	assert.True(t, page(`{"limit":1}`).HasMore)
+	inWS2 := page(`{"workspace_id":"ws-2"}`)
+	require.Len(t, inWS2.Items, 1, "only the named workspace's notifications")
+	assert.Equal(t, "ws-2", inWS2.Items[0].WorkspaceID)
 }

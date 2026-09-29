@@ -39,10 +39,16 @@ type Repo interface {
 // NotificationRepo is the consumer-side persistence contract for the workspace notifications capability.
 type NotificationRepo interface {
 	CreateMany(ctx context.Context, ns []*Notification, evts ...eventbus.OutboxEvent) error
-	List(ctx context.Context, userID string, limit int) ([]*Notification, error)
-	UnreadCount(ctx context.Context, userID string) (int, error)
+	// List, UnreadCount, and MarkAllRead span every workspace when workspaceID is empty.
+	List(ctx context.Context, userID, workspaceID string, limit int) ([]*Notification, error)
+	UnreadCount(ctx context.Context, userID, workspaceID string) (int, error)
 	MarkRead(ctx context.Context, userID, id string) error
-	MarkAllRead(ctx context.Context, userID string) error
+	MarkAllRead(ctx context.Context, userID, workspaceID string) error
+}
+
+// ProjectReader resolves a notification subject's project to the workspace the notification belongs to.
+type ProjectReader interface {
+	Get(ctx context.Context, id string) (*Project, error)
 }
 
 // CategoryRepo mutations carry events to write to the transactional outbox in the same transaction.
@@ -84,7 +90,6 @@ type StatusRepo interface {
 // UserStore resolves notification recipients via auth's UsersRepo, adapted at the composition root (ADR 0017).
 type UserStore interface {
 	GetUserByLogin(ctx context.Context, login string) (*User, error)
-	ListUsers(ctx context.Context) ([]*User, error)
 	// LoginForUserID reverses GetUserByLogin, for fan-out paths (memories) that already hold a user id.
 	LoginForUserID(ctx context.Context, userID string) (string, error)
 }

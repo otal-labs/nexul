@@ -15,17 +15,20 @@ import (
 const notificationScan = 1000
 
 type notificationListIn struct {
-	UnreadOnly bool `json:"unread_only,omitzero" jsonschema:"Only notifications you have not read yet. Defaults to false."`
+	WorkspaceID string `json:"workspace_id,omitempty" jsonschema:"Only notifications about tickets, docs, and memories in this workspace, from workspace_list. Omit for every workspace."`
+	UnreadOnly  bool   `json:"unread_only,omitzero" jsonschema:"Only notifications you have not read yet. Defaults to false."`
 	mcptool.PageArgs
 }
 
 type notificationUpdateIn struct {
-	ID  string `json:"id,omitempty" jsonschema:"One notification's id, from notification_list, to mark read."`
-	All bool   `json:"all,omitzero" jsonschema:"true marks every one of your notifications read. Send instead of id."`
+	ID          string `json:"id,omitempty" jsonschema:"One notification's id, from notification_list, to mark read."`
+	All         bool   `json:"all,omitzero" jsonschema:"true marks every one of your notifications read. Send instead of id."`
+	WorkspaceID string `json:"workspace_id,omitempty" jsonschema:"With all, marks only this workspace's notifications read, from workspace_list. Omit for every workspace."`
 }
 
 type notificationResult struct {
 	ID           string      `json:"id"`
+	WorkspaceID  string      `json:"workspace_id"`
 	Kind         Kind        `json:"kind"`
 	SubjectType  SubjectType `json:"subject_type"`
 	SubjectID    string      `json:"subject_id"`
@@ -45,7 +48,7 @@ func NotificationMCPTools(s *NotificationService) []mcptool.Tool {
 	return []mcptool.Tool{
 		mcptool.New("notification_list", "List notifications",
 			"Lists your own notifications newest first: what happened (kind), to which ticket, doc, or memory (subject), and whether you have read it. "+
-				"Set unread_only to see only what is new, then mark items read with notification_update. "+
+				"Set workspace_id to see one workspace's inbox and unread_only to see only what is new, then mark items read with notification_update. "+
 				"It never shows another user's inbox.",
 			mcptool.Hints{ReadOnly: true, Local: true},
 			func(ctx context.Context, in notificationListIn) (any, error) {
@@ -53,7 +56,7 @@ func NotificationMCPTools(s *NotificationService) []mcptool.Tool {
 				if err != nil {
 					return nil, err
 				}
-				ns, err := s.List(ctx, userID, notificationScan)
+				ns, err := s.List(ctx, userID, in.WorkspaceID, notificationScan)
 				if err != nil {
 					return nil, err
 				}
@@ -63,7 +66,7 @@ func NotificationMCPTools(s *NotificationService) []mcptool.Tool {
 				out := make([]notificationResult, 0, len(ns))
 				for _, n := range ns {
 					out = append(out, notificationResult{
-						ID: n.ID, Kind: n.Kind, SubjectType: n.SubjectType, SubjectID: n.SubjectID, SubjectTitle: n.SubjectTitle,
+						ID: n.ID, WorkspaceID: n.WorkspaceID, Kind: n.Kind, SubjectType: n.SubjectType, SubjectID: n.SubjectID, SubjectTitle: n.SubjectTitle,
 						Read: n.Read, CreatedAt: n.CreatedAt,
 					})
 				}
@@ -83,7 +86,7 @@ func NotificationMCPTools(s *NotificationService) []mcptool.Tool {
 					return nil, fmt.Errorf("%w: send either id for one notification or all true for every one", apperrs.ErrInvalid)
 				}
 				if in.All {
-					if err := s.MarkAllRead(ctx, userID); err != nil {
+					if err := s.MarkAllRead(ctx, userID, in.WorkspaceID); err != nil {
 						return nil, err
 					}
 					return notificationUpdated{All: true, Read: true}, nil

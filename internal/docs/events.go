@@ -15,11 +15,15 @@ func Topics() []string {
 // CreatedEvent is the payload for doc.created; field names are part of the event contract (ADR 0044) and additive-only.
 type CreatedEvent struct {
 	Doc Doc `json:"doc"`
+	// ActorID is the user who created the doc, so notifications skip them.
+	ActorID string `json:"actor_id,omitempty"`
 }
 
 // UpdatedEvent is the payload for doc.updated.
 type UpdatedEvent struct {
 	Doc Doc `json:"doc"`
+	// ActorID is the user whose edit, archive, or collaborative commit this is; empty when none is known.
+	ActorID string `json:"actor_id,omitempty"`
 }
 
 // DeletedEvent is the doc.deleted payload; the doc is already gone by publish time, so consumers get identity only.

@@ -293,7 +293,9 @@ func TestCreate(t *testing.T) {
 		assert.Equal(t, 1, d.Version)
 		assert.Equal(t, fixedNow, d.CreatedAt)
 		assert.Equal(t, fixedNow, d.UpdatedAt)
-		assert.NotEmpty(t, repo.eventsFor(TopicCreated))
+		created := repo.eventsFor(TopicCreated)
+		require.Len(t, created, 1)
+		assert.Equal(t, "user-1", created[0].Payload.(CreatedEvent).ActorID, "names the creator so notifications skip them")
 	})
 }
 
@@ -375,7 +377,9 @@ func TestUpdate(t *testing.T) {
 		require.Len(t, vs, 2)
 		assert.Equal(t, 2, vs[0].Version)
 		assert.Equal(t, 1, vs[1].Version)
-		assert.NotEmpty(t, repo.eventsFor(TopicUpdated))
+		updatedEvts := repo.eventsFor(TopicUpdated)
+		require.Len(t, updatedEvts, 1)
+		assert.Equal(t, "user-1", updatedEvts[0].Payload.(UpdatedEvent).ActorID, "names the editor so notifications skip them")
 	})
 }
 
@@ -765,7 +769,9 @@ func TestCommitCollab(t *testing.T) {
 		assert.Equal(t, body, got.Body)
 		assert.Equal(t, 2, got.Version, "revision counter advances")
 		assert.Len(t, repo.versions[d.ID], before, "no heavyweight version row per commit")
-		assert.NotEmpty(t, repo.eventsFor(TopicUpdated))
+		commits := repo.eventsFor(TopicUpdated)
+		require.NotEmpty(t, commits)
+		assert.Equal(t, "user-1", commits[len(commits)-1].Payload.(UpdatedEvent).ActorID, "names the committing editor")
 	})
 }
 

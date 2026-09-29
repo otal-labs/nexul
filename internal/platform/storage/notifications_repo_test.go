@@ -38,7 +38,7 @@ func TestNotificationsRepo_CreateMany_DuplicateID_IsNoOp(t *testing.T) {
 	require.NoError(t, s.Notifications.CreateMany(context.Background(), []*workspace.Notification{newTestNotification("n1", "u1", false)}))
 	require.NoError(t, s.Notifications.CreateMany(context.Background(), []*workspace.Notification{newTestNotification("n1", "u1", false)}))
 
-	ns, err := s.Notifications.List(context.Background(), "u1", 50)
+	ns, err := s.Notifications.List(context.Background(), "u1", "", 50)
 	require.NoError(t, err)
 	require.Len(t, ns, 1)
 }
@@ -52,7 +52,7 @@ func TestNotificationsRepo_CreateMany_WritesRowsAndOutboxInSameTx(t *testing.T) 
 	evt := eventbus.OutboxEvent{ID: "evt-1", Topic: workspace.TopicNotificationCreated, Payload: workspace.NotificationCreatedEvent{}}
 	require.NoError(t, s.Notifications.CreateMany(context.Background(), ns, evt))
 
-	got, err := s.Notifications.List(context.Background(), "u1", 50)
+	got, err := s.Notifications.List(context.Background(), "u1", "", 50)
 	require.NoError(t, err)
 	require.Len(t, got, 1)
 
@@ -89,7 +89,7 @@ func TestNotificationsRepo_CreateMany_CollapsesWhileUnread(t *testing.T) {
 	// (collab commits fire doc.updated every few seconds mid-edit).
 	repeat := newTestNotification("c2", "u1", false)
 	require.NoError(t, s.Notifications.CreateMany(context.Background(), []*workspace.Notification{repeat}))
-	ns, err := s.Notifications.List(context.Background(), "u1", 50)
+	ns, err := s.Notifications.List(context.Background(), "u1", "", 50)
 	require.NoError(t, err)
 	require.Len(t, ns, 1)
 
@@ -97,7 +97,7 @@ func TestNotificationsRepo_CreateMany_CollapsesWhileUnread(t *testing.T) {
 	require.NoError(t, s.Notifications.MarkRead(context.Background(), "u1", "c1"))
 	again := newTestNotification("c3", "u1", false)
 	require.NoError(t, s.Notifications.CreateMany(context.Background(), []*workspace.Notification{again}))
-	ns, err = s.Notifications.List(context.Background(), "u1", 50)
+	ns, err = s.Notifications.List(context.Background(), "u1", "", 50)
 	require.NoError(t, err)
 	require.Len(t, ns, 2)
 }
@@ -118,7 +118,7 @@ func TestNotificationsRepo_List_ScopesByUserAndOrdersNewestFirst(t *testing.T) {
 	require.NoError(t, s.Notifications.CreateMany(context.Background(), []*workspace.Notification{newTestNotification("n2", "u2", false)}))
 	require.NoError(t, s.Notifications.CreateMany(context.Background(), []*workspace.Notification{n3}))
 
-	ns, err := s.Notifications.List(context.Background(), "u1", 50)
+	ns, err := s.Notifications.List(context.Background(), "u1", "", 50)
 	require.NoError(t, err)
 	require.Len(t, ns, 2)
 	assert.Equal(t, "n3", ns[0].ID) // newest first
@@ -134,7 +134,7 @@ func TestNotificationsRepo_List_RespectsLimit(t *testing.T) {
 	require.NoError(t, s.Notifications.CreateMany(context.Background(), []*workspace.Notification{newTestNotification("n1", "u1", false)}))
 	require.NoError(t, s.Notifications.CreateMany(context.Background(), []*workspace.Notification{newTestNotification("n2", "u1", false)}))
 
-	ns, err := s.Notifications.List(context.Background(), "u1", 1)
+	ns, err := s.Notifications.List(context.Background(), "u1", "", 1)
 	require.NoError(t, err)
 	require.Len(t, ns, 1)
 }
@@ -146,7 +146,7 @@ func TestNotificationsRepo_UnreadCount(t *testing.T) {
 	require.NoError(t, s.Notifications.CreateMany(context.Background(), []*workspace.Notification{newTestNotification("n1", "u1", false)}))
 	require.NoError(t, s.Notifications.CreateMany(context.Background(), []*workspace.Notification{newTestNotification("n2", "u1", true)}))
 
-	n, err := s.Notifications.UnreadCount(context.Background(), "u1")
+	n, err := s.Notifications.UnreadCount(context.Background(), "u1", "")
 	require.NoError(t, err)
 	assert.Equal(t, 1, n)
 }
@@ -162,7 +162,7 @@ func TestNotificationsRepo_MarkRead_NotFoundForOtherUser(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 
 	require.NoError(t, s.Notifications.MarkRead(context.Background(), "u1", "n1"))
-	ns, err := s.Notifications.List(context.Background(), "u1", 50)
+	ns, err := s.Notifications.List(context.Background(), "u1", "", 50)
 	require.NoError(t, err)
 	assert.True(t, ns[0].Read)
 }
@@ -176,16 +176,45 @@ func TestNotificationsRepo_MarkAllRead_ScopedToUser(t *testing.T) {
 	require.NoError(t, s.Notifications.CreateMany(context.Background(), []*workspace.Notification{newTestNotification("n2", "u1", false)}))
 	require.NoError(t, s.Notifications.CreateMany(context.Background(), []*workspace.Notification{newTestNotification("n3", "u2", false)}))
 
-	require.NoError(t, s.Notifications.MarkAllRead(context.Background(), "u1"))
+	require.NoError(t, s.Notifications.MarkAllRead(context.Background(), "u1", ""))
 
-	u1, err := s.Notifications.List(context.Background(), "u1", 50)
+	u1, err := s.Notifications.List(context.Background(), "u1", "", 50)
 	require.NoError(t, err)
 	for _, n := range u1 {
 		assert.True(t, n.Read)
 	}
-	u2, err := s.Notifications.List(context.Background(), "u2", 50)
+	u2, err := s.Notifications.List(context.Background(), "u2", "", 50)
 	require.NoError(t, err)
 	for _, n := range u2 {
 		assert.False(t, n.Read)
 	}
+}
+
+func TestNotificationsRepo_WorkspaceFilter_ScopesListCountAndReadAll(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	s := newTestStore(t)
+	mustCreateUser(t, s, "u1", "onik97")
+	for _, n := range []struct{ id, ws, subject string }{{"n1", "ws-1", "d-1"}, {"n2", "ws-2", "d-2"}, {"n3", "ws-2", "d-3"}} {
+		row := newTestNotification(n.id, "u1", false)
+		row.WorkspaceID, row.SubjectID = n.ws, n.subject
+		require.NoError(t, s.Notifications.CreateMany(ctx, []*workspace.Notification{row}))
+	}
+
+	ws1, err := s.Notifications.List(ctx, "u1", "ws-1", 50)
+	require.NoError(t, err)
+	require.Len(t, ws1, 1)
+	assert.Equal(t, "ws-1", ws1[0].WorkspaceID, "the stored workspace round-trips")
+	all, err := s.Notifications.List(ctx, "u1", "", 50)
+	require.NoError(t, err)
+	assert.Len(t, all, 3, "no workspace lists every workspace")
+
+	count, err := s.Notifications.UnreadCount(ctx, "u1", "ws-2")
+	require.NoError(t, err)
+	assert.Equal(t, 2, count)
+
+	require.NoError(t, s.Notifications.MarkAllRead(ctx, "u1", "ws-2"))
+	count, err = s.Notifications.UnreadCount(ctx, "u1", "")
+	require.NoError(t, err)
+	assert.Equal(t, 1, count, "read-all in ws-2 leaves ws-1 unread")
 }
