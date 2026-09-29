@@ -22,7 +22,7 @@ export const Provider = {
 
 export type Provider = (typeof Provider)[keyof typeof Provider];
 
-export const providerLabel: Record<Provider, string> = { github: "GitHub", google: "Google", discord: "Discord" };
+export const providerLabel: Record<string, string> = { github: "GitHub", google: "Google", discord: "Discord" };
 
 // One provider account attached to the user; the provider's own id never leaves the server.
 export interface Identity {

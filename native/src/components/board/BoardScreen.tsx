@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import { ChevronDown } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
+import { useCSSVariable } from "uniwind";
 
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
@@ -17,6 +18,7 @@ import { useBoardStore } from "@/stores/boardStore";
 
 export const BoardScreen = () => {
   const router = useRouter();
+  const [mutedForeground] = useCSSVariable(["--color-muted-foreground"]);
   const [mineOnly, setMineOnly] = useState(false);
   const { data: me } = useFetchMe(true);
   const { data: projects, error: projectsError, isPending: projectsPending } = useFetchProjects();
@@ -43,13 +45,13 @@ export const BoardScreen = () => {
             <Text className="min-w-0 flex-1 font-semibold" numberOfLines={1}>
               {project?.name ?? "Choose a project"}
             </Text>
-            <ChevronDown size={16} className="text-muted-foreground" />
+            <ChevronDown size={16} color={String(mutedForeground)} />
           </Pressable>
           <Pressable
             role="button"
             onPress={() => setMineOnly((v) => !v)}
             aria-label="Mine"
-            className={cn("min-h-9 justify-center rounded-md border border-border px-3", mineOnly && "bg-accent")}
+            className={cn("min-h-11 min-w-11 items-center justify-center rounded-md border border-border px-3", mineOnly && "bg-accent")}
           >
             <Text variant="small">Mine</Text>
           </Pressable>

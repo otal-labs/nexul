@@ -4,7 +4,7 @@ import { useCSSVariable } from "uniwind";
 
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
-import { formatRelativeTime } from "@/lib/time";
+import { RelativeTime } from "@/components/RelativeTime";
 import type { DocListItem } from "@/models/Doc";
 
 interface DocRowProps {
@@ -29,7 +29,7 @@ export const DocRow = ({ doc, onPress }: DocRowProps) => {
           {doc.title}
         </Text>
         <Text variant="muted" className="font-mono text-xs">
-          v{doc.version} · {formatRelativeTime(doc.updated_at)}
+          v{doc.version} · <RelativeTime iso={doc.updated_at} />
         </Text>
       </View>
       {!doc.can_open && <LockIcon size={14} color={String(mutedForeground)} />}

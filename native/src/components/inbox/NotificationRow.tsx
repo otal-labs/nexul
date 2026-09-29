@@ -3,7 +3,7 @@ import { Pressable, View } from "react-native";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
 import { NotificationKind, type Notification } from "@/models/Notification";
-import { formatRelativeTime } from "@/lib/time";
+import { RelativeTime } from "@/components/RelativeTime";
 
 const kindLabels: Record<NotificationKind, string> = {
   [NotificationKind.TicketAssigned]: "assigned to you",
@@ -39,7 +39,7 @@ export const NotificationRow = ({ notification, onPress }: NotificationRowProps)
       </Text>
     </View>
     <Text variant="muted" className="font-mono text-xs">
-      {formatRelativeTime(notification.created_at)}
+      <RelativeTime iso={notification.created_at} />
     </Text>
   </Pressable>
 );

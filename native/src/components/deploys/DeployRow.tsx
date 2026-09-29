@@ -1,7 +1,7 @@
 import { Pressable, View } from "react-native";
 
 import { Text } from "@/components/ui/text";
-import { formatRelativeTime } from "@/lib/time";
+import { RelativeTime } from "@/components/RelativeTime";
 import { cn } from "@/lib/utils";
 import { deployStatusDot, type Deploy } from "@/models/Stack";
 
@@ -21,7 +21,7 @@ export const DeployRow = ({ deploy, onPress }: DeployRowProps) => (
       {deploy.image || "repo build"}
     </Text>
     <Text variant="small" className="shrink-0 font-mono text-muted-foreground">
-      {formatRelativeTime(deploy.created_at)}
+      <RelativeTime iso={deploy.created_at} />
     </Text>
   </Pressable>
 );

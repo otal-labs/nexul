@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import { Check } from "lucide-react-native";
 import { FlatList, Pressable, View } from "react-native";
+import { useCSSVariable } from "uniwind";
 
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
@@ -10,6 +11,7 @@ import { useBoardStore } from "@/stores/boardStore";
 
 export const ProjectPickerScreen = () => {
   const router = useRouter();
+  const [foreground] = useCSSVariable(["--color-foreground"]);
   const { data: projects, error, isPending } = useFetchProjects();
   const selectedProjectId = useBoardStore((s) => s.selectedProjectId);
   const selectProject = useBoardStore((s) => s.selectProject);
@@ -37,7 +39,7 @@ export const ProjectPickerScreen = () => {
               <Text variant="small" className="shrink-0 font-mono text-muted-foreground">
                 {item.prefix}
               </Text>
-              {item.id === selectedProjectId && <Check size={16} className="text-foreground" />}
+              {item.id === selectedProjectId && <Check size={16} color={String(foreground)} />}
             </Pressable>
           )}
         />

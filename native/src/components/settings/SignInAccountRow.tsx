@@ -9,9 +9,9 @@ interface SignInAccountRowProps {
 
 export const SignInAccountRow = ({ identity }: SignInAccountRowProps) => (
   <View className="min-h-11 flex-row items-center justify-between gap-2 border-b border-border bg-card px-3 py-3">
-    <Text className="font-medium">{providerLabel[identity.provider]}</Text>
+    <Text className="font-medium">{providerLabel[identity.provider] ?? identity.provider}</Text>
     <Text variant="muted" numberOfLines={1} className="text-xs">
-      {identity.name || identity.login}
+      {identity.login || identity.name}
     </Text>
   </View>
 );
