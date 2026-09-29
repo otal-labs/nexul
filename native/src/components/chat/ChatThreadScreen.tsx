@@ -1,5 +1,6 @@
 import { useLocalSearchParams } from "expo-router";
-import { KeyboardAvoidingView, Platform, View } from "react-native";
+import { useHeaderHeight } from "expo-router/react-navigation";
+import { KeyboardAvoidingView, View } from "react-native";
 
 import { ChatComposer } from "@/components/chat/ChatComposer";
 import { ChatThreadTitle } from "@/components/chat/ChatThreadTitle";
@@ -13,8 +14,10 @@ export const ChatThreadScreen = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: messages, error, isPending } = useFetchMessages(id);
   useMarkThreadRead(id, messages?.at(-1)?.id);
+  // Edge-to-edge Android never resizes the window for the keyboard, and this view's frame starts below the header.
+  const headerHeight = useHeaderHeight();
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1 bg-background">
+    <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={headerHeight} className="flex-1 bg-background">
       <ChatThreadTitle conversationId={id} />
       {isPending && <LoadingDisplay />}
       {error && (

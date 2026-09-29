@@ -9,7 +9,7 @@ interface MessageImageProps {
   alt: string;
 }
 
-// The attachment route needs the bearer token, so the image request carries it as a header.
+// The attachment route needs the bearer token; Android's Image only sends headers from an array source.
 export const MessageImage = ({ src, alt }: MessageImageProps) => {
   const host = useSessionStore((s) => s.host);
   const [failed, setFailed] = useState(false);
@@ -29,7 +29,7 @@ export const MessageImage = ({ src, alt }: MessageImageProps) => {
       {!failed && (
         <Image
           accessibilityLabel={alt || "Image"}
-          source={{ uri: `${host ?? ""}${src}`, headers: { Authorization: `Bearer ${readSessionToken() ?? ""}` } }}
+          source={[{ uri: `${host ?? ""}${src}`, headers: { Authorization: `Bearer ${readSessionToken() ?? ""}` } }]}
           resizeMode="contain"
           onError={() => setFailed(true)}
           onLoad={({ nativeEvent: { source } }) => setAspectRatio(source.width / source.height)}

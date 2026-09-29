@@ -22,6 +22,7 @@ jest.mock("expo-network", () => ({
 }));
 
 jest.mock("expo-router", () => ({ useLocalSearchParams: () => ({ id: "c1" }), Stack: { Screen: () => null } }));
+jest.mock("expo-router/react-navigation", () => ({ useHeaderHeight: () => 0 }));
 jest.mock("lucide-react-native", () => ({ SendHorizontal: () => null }));
 jest.mock("react-native-enriched-markdown", () => jest.requireActual("react-native-enriched-markdown/jest"));
 
@@ -166,14 +167,14 @@ describe("ChatThreadScreen", () => {
     expect(await screen.findByText("sent from the web")).toBeTruthy();
   });
 
+  // Android's Image drops the headers of a single source object, so only an array source reaches the private file route.
   test("markdown goes to the renderer and an attachment loads with the bearer token", async () => {
     thread = [message("m1", "**bold** words\n![shot.png](/api/attachments/a1)", 1)];
     await renderThread();
 
     expect(await screen.findByText("**bold** words")).toBeTruthy();
-    expect(screen.getByLabelText("shot.png").props.source).toEqual({
-      uri: `${host}/api/attachments/a1`,
-      headers: { Authorization: "Bearer ses_abc" },
-    });
+    expect(screen.getByLabelText("shot.png").props.source).toEqual([
+      { uri: `${host}/api/attachments/a1`, headers: { Authorization: "Bearer ses_abc" } },
+    ]);
   });
 });
