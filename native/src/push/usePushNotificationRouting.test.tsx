@@ -50,7 +50,7 @@ describe("usePushNotificationRouting", () => {
 
     responseListener?.(respond({ notification_id: "n1" }));
 
-    await waitFor(() => expect(mockPush).toHaveBeenNthCalledWith(2, "/board/ticket/t1"));
+    await waitFor(() => expect(mockPush).toHaveBeenNthCalledWith(2, "/board/ticket/t1", { withAnchor: true }));
     expect(mockPush).toHaveBeenNthCalledWith(1, "/inbox");
   });
 
@@ -60,7 +60,7 @@ describe("usePushNotificationRouting", () => {
 
     await renderHook(() => usePushNotificationRouting());
 
-    await waitFor(() => expect(mockPush).toHaveBeenNthCalledWith(2, "/board/ticket/t1"));
+    await waitFor(() => expect(mockPush).toHaveBeenNthCalledWith(2, "/board/ticket/t1", { withAnchor: true }));
     expect(Notifications.clearLastNotificationResponse).toHaveBeenCalled();
   });
 

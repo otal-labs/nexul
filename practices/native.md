@@ -60,8 +60,12 @@ as written. In particular:
   `src/app/`, because every file there is a route.
 - Navigation is a bottom tab bar (Inbox, Chat, Board, Deploys, More) with a
   stack per tab. Detail screens push onto the tab's stack and use the platform
-  back gesture; pickers and confirms open as `formSheet` presentations. No
-  drawer, no top tabs. Motion is the platform default for push and sheet;
+  back gesture; a push into another tab passes `{ withAnchor: true }` so that
+  tab's list stays underneath. Pickers and confirms open with `sheetOptions`
+  (`src/lib/sheetOptions.ts`: a fitted form sheet with the native header
+  hidden) and name what they act on with `SheetTitle`. A nested folder's stack
+  draws its own header, so the parent stack hides its bar over it. No drawer,
+  no top tabs. Motion is the platform default for push and sheet;
   nothing else animates unless `practices/design-language.md` says so.
 - A row is a `Pressable` at least 44 points tall with a hairline `border-b
   border-border`, the primary field left, meta right in `font-mono

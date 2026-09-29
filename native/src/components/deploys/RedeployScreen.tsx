@@ -2,19 +2,22 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { View } from "react-native";
 
 import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { SheetTitle } from "@/components/SheetTitle";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
-import { useDeployStack } from "@/hooks/StackHooks";
+import { useDeployStack, useFetchStack } from "@/hooks/StackHooks";
 
 type RedeployParams = { stackId: string; image: string };
 
 export const RedeployScreen = () => {
   const router = useRouter();
   const { stackId, image } = useLocalSearchParams<RedeployParams>();
+  const { data: stack } = useFetchStack(stackId);
   const deploy = useDeployStack();
 
   return (
-    <View className="flex-1 gap-4 bg-background px-4 py-4">
+    <View className="gap-4 bg-popover px-4 pb-6">
+      <SheetTitle title={stack ? `Redeploy ${stack.name}` : "Redeploy"} className="px-0 pb-0" />
       <Text variant="muted">Pulls the image again and restarts the container.</Text>
       <Text className="font-mono text-xs" numberOfLines={1}>
         {image}

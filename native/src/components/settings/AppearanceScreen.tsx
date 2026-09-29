@@ -3,6 +3,7 @@ import { Check } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 import { useCSSVariable } from "uniwind";
 
+import { SheetTitle } from "@/components/SheetTitle";
 import { Text } from "@/components/ui/text";
 import { appearanceLabel, useAppearanceStore, type Appearance } from "@/stores/appearanceStore";
 
@@ -20,7 +21,8 @@ export const AppearanceScreen = () => {
   };
 
   return (
-    <View className="flex-1 bg-background pt-2">
+    <View className="bg-popover pb-6">
+      <SheetTitle title="Appearance" />
       {OPTIONS.map((value) => (
         <Pressable
           key={value}

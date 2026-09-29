@@ -5,7 +5,7 @@ import { api } from "@/api/client";
 import { RedeployScreen } from "@/components/deploys/RedeployScreen";
 
 jest.mock("@/api/client", () => ({
-  api: { post: jest.fn() },
+  api: { get: jest.fn(async () => ({ id: "s-1", name: "checkout-api" })), post: jest.fn() },
   errorMessage: jest.fn(() => "Something went wrong"),
 }));
 

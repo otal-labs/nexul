@@ -60,7 +60,7 @@ const openLink = (url: string) => {
   const path = host && url.startsWith(`${host}/`) ? url.slice(host.length) : url;
   const route = inAppRoute(path);
   if (route) {
-    router.push(route);
+    router.push(route, { withAnchor: true });
     return;
   }
   // Any other relative link is a page of the web app, which only the browser can show.

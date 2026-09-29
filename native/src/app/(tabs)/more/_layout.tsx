@@ -1,6 +1,8 @@
 import { Stack } from "expo-router";
 
-// Not <TabStack>: the nested settings/ folder needs its outer screen header hidden so its own stack owns the header.
+export const unstable_settings = { initialRouteName: "index" };
+
+// docs/ and settings/ are stacks of their own that draw their own header, so this stack hides its bar over them.
 export default function MoreLayout() {
   return (
     <Stack
@@ -10,6 +12,8 @@ export default function MoreLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ title: "More" }} />
+      <Stack.Screen name="runners/index" options={{ title: "Runners" }} />
+      <Stack.Screen name="docs" options={{ headerShown: false }} />
       <Stack.Screen name="settings" options={{ headerShown: false }} />
     </Stack>
   );

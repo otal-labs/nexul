@@ -77,7 +77,7 @@ describe("InboxScreen", () => {
     await userEvent.setup().press(screen.getByRole("button", { name: /Write migrations/ }));
 
     expect(api.post).toHaveBeenCalledWith("/api/notifications/n1/read");
-    expect(mockPush).toHaveBeenCalledWith("/board/ticket/t-1");
+    expect(mockPush).toHaveBeenCalledWith("/board/ticket/t-1", { withAnchor: true });
   });
 
   test("tapping an already-read row opens its subject without marking read again", async () => {
@@ -88,7 +88,7 @@ describe("InboxScreen", () => {
     await userEvent.setup().press(screen.getByRole("button", { name: /Spec/ }));
 
     expect(api.post).not.toHaveBeenCalled();
-    expect(mockPush).toHaveBeenCalledWith("/more/docs/doc-1");
+    expect(mockPush).toHaveBeenCalledWith("/more/docs/doc-1", { withAnchor: true });
   });
 
   test("shows the empty state when there are no notifications", async () => {

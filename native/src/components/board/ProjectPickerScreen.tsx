@@ -5,6 +5,7 @@ import { useCSSVariable } from "uniwind";
 
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
+import { SheetTitle } from "@/components/SheetTitle";
 import { Text } from "@/components/ui/text";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { useBoardStore } from "@/stores/boardStore";
@@ -17,7 +18,8 @@ export const ProjectPickerScreen = () => {
   const selectProject = useBoardStore((s) => s.selectProject);
 
   return (
-    <View className="flex-1 bg-background">
+    <View className="bg-popover pb-6">
+      <SheetTitle title="Board project" />
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {projects && (

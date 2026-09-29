@@ -15,6 +15,7 @@ const mockPush = jest.fn();
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: mockPush }),
   useLocalSearchParams: () => ({ id: "t-1" }),
+  Stack: { Screen: () => null },
 }));
 
 const me = { user: { id: "u1", login: "onik97", name: "Onik" } };

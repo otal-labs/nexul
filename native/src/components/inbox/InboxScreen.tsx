@@ -40,7 +40,7 @@ export const InboxScreen = () => {
   const onSelect = (notification: Notification) => {
     if (!notification.read) markRead.mutate(notification.id);
     const target = subjectRoute(notification);
-    if (target) router.push(target);
+    if (target) router.push(target, { withAnchor: true });
   };
 
   return (
