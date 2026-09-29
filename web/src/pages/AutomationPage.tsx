@@ -10,6 +10,7 @@ import { AutomationSubscriptionsSection } from "@/components/automation/Automati
 import { AutomationTokenSection } from "@/components/automation/AutomationTokenSection";
 import { AutomationVersionsFeed } from "@/components/automation/AutomationVersionsFeed";
 import { Container } from "@/components/Container";
+import { DetailErrorDisplay } from "@/components/DetailErrorDisplay";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { PageTabs, PageTabsContent } from "@/components/PageTabs";
@@ -29,7 +30,7 @@ export const AutomationPage = () => {
   return (
     <Container className="space-y-6 py-6">
       {isPending && <LoadingDisplay />}
-      {error && <ErrorDisplay error={error} />}
+      {error && <DetailErrorDisplay error={error} />}
       {automation && (
         <div className="space-y-6">
           <AutomationDetailHeader automation={automation} />

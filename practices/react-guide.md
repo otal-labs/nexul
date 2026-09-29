@@ -1386,6 +1386,12 @@ export const AppRouter = () => {
   `Container` (`mx-auto w-full max-w-7xl`).
 - Catch-all `*` renders `ErrorPage`, last.
 - Auth-gated routes added conditionally.
+- Permission-gated areas are listed once in `models/Access.tsx`. A sidebar
+  entry renders only when the viewer holds its read permission (an Owner's
+  `/me` is the whole grid), a route declares its area as `handle` and
+  `AreaGate` renders the not-found screen when it can't be opened, and a
+  detail page's 403 or 404 lands on the same screen. Create actions follow
+  the domain's write permission and are hidden, not disabled, without it.
 
 ---
 

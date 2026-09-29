@@ -1,6 +1,7 @@
 import { useParams } from "react-router";
 
 import { Container } from "@/components/Container";
+import { DetailErrorDisplay } from "@/components/DetailErrorDisplay";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { ServiceHostnameSection } from "@/components/dns/ServiceHostnameSection";
@@ -48,7 +49,7 @@ export const StackPage = () => {
   return (
     <Container className="mx-auto max-w-5xl py-8">
       {isPending && <LoadingDisplay />}
-      {error && <ErrorDisplay error={error} />}
+      {error && <DetailErrorDisplay error={error} />}
       {stack && (
         <>
           <StackHeaderSection

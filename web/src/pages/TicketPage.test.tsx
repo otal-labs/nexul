@@ -136,7 +136,7 @@ describe("TicketPage", () => {
   it("shows not-found for a key that matches no ticket", async () => {
     mockTicket();
     renderPage("/tickets/BE-999");
-    expect(await screen.findByText("Ticket not found")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Page not found" })).toBeInTheDocument();
   });
 
   it("shows the shared error display", async () => {
