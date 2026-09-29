@@ -10,6 +10,8 @@ import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { ExposureTicker } from "@/components/wizard/ExposureTicker";
 import { FormSelect } from "@/components/ticket/FormSelect";
 import { Button } from "@/components/ui/button";
+import { WizardFooter } from "@/components/wizard/WizardFooter";
+import { WizardSkipLink } from "@/components/wizard/WizardSkipLink";
 import { useCreateServiceExposure, useFetchDnsZones, useFetchGateways } from "@/hooks/DnsHooks";
 import { useFetchStackDeploys, useFetchStackServices } from "@/hooks/StackHooks";
 import { fullHostname } from "@/models/DNS";
@@ -157,7 +159,7 @@ const ReachForm = ({
       </div>
       {hostname && <p className="font-mono text-xs text-muted-foreground">{hostname}</p>}
       <ExposureTicker status={createExposure.status} error={createExposure.error} result={exposedLabel} />
-      <div className="flex flex-wrap gap-3">
+      <WizardFooter skip={!exposed && <WizardSkipLink onClick={onSkip} />}>
         {exposed && (
           <Button type="button" onClick={() => onDone(exposed.id, exposedLabel ?? exposed.hostname)}>
             Continue
@@ -168,12 +170,7 @@ const ReachForm = ({
             Expose service
           </Button>
         )}
-        {!exposed && (
-          <Button type="button" variant="ghost" className="text-muted-foreground" onClick={onSkip}>
-            Skip for now
-          </Button>
-        )}
-      </div>
+      </WizardFooter>
     </form>
   );
 };

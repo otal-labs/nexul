@@ -8,6 +8,7 @@ import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { Button } from "@/components/ui/button";
 import { EnvModeToggle, type EnvMode } from "@/components/wizard/EnvModeToggle";
 import { EnvPasteField } from "@/components/wizard/EnvPasteField";
+import { WizardFooter } from "@/components/wizard/WizardFooter";
 import { useDeployStack, useFetchStack, useUpdateStackEnv } from "@/hooks/StackHooks";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
 import { formatEnvFile, parseEnvFile } from "@/models/EnvFile";
@@ -83,14 +84,11 @@ export const WizardEnvStep = ({ onDone }: WizardEnvStepProps) => {
         <p className="text-xs text-muted-foreground">Also saving: {Object.keys(extras).join(", ")}</p>
       )}
       {mode === "paste" && <EnvPasteField text={text} onText={setText} parsed={parsed} />}
-      <Button
-        type="submit"
-        className="w-full sm:w-auto"
-        disabled={pasteBlocked}
-        loading={updateEnv.isPending || deployStack.isPending}
-      >
-        Save & deploy
-      </Button>
+      <WizardFooter>
+        <Button type="submit" disabled={pasteBlocked} loading={updateEnv.isPending || deployStack.isPending}>
+          Save & deploy
+        </Button>
+      </WizardFooter>
     </form>
   );
 };

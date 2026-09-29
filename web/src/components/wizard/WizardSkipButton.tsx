@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router";
 
-import { Button } from "@/components/ui/button";
+import { WizardSkipLink } from "@/components/wizard/WizardSkipLink";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
 
@@ -15,14 +15,5 @@ export const WizardSkipButton = () => {
     void navigate(projectId ? `/board/${projectId}` : "/board");
   };
 
-  return (
-    <Button
-      type="button"
-      variant="ghost"
-      className="text-muted-foreground"
-      onClick={skip}
-    >
-      Skip for now
-    </Button>
-  );
+  return <WizardSkipLink onClick={skip} />;
 };

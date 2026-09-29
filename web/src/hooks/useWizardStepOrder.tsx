@@ -1,4 +1,4 @@
-import { WizardSteps, type WizardStepId } from "@/components/wizard/ProjectWizardStepper";
+import { WizardSteps, type WizardStepId } from "@/models/ProjectWizard";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
 
 // The rungs this run shows: Environment only when the scan found env keys, no Reach when attaching to a stack.

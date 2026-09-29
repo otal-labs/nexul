@@ -2,11 +2,11 @@ import { useEffect } from "react";
 import { Navigate, useParams, useSearchParams } from "react-router";
 
 import { WizardLayout } from "@/components/auth/WizardLayout";
-import { ProjectWizardStepper, WizardSteps, type WizardStepId } from "@/components/wizard/ProjectWizardStepper";
-import { useWizardBack } from "@/hooks/useWizardBack";
-import { useWizardStepOrder } from "@/hooks/useWizardStepOrder";
+import { ProjectWizardStepContent } from "@/components/wizard/ProjectWizardStepContent";
+import { WizardProgress } from "@/components/wizard/WizardProgress";
 import { useFetchProject, useFetchProjects } from "@/hooks/ProjectHooks";
 import { useFetchStack } from "@/hooks/StackHooks";
+import { WizardSteps, type WizardStepId } from "@/models/ProjectWizard";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
 
 const isWizardStep = (value: string | undefined): value is WizardStepId =>
@@ -97,8 +97,6 @@ export const ProjectWizardPage = () => {
   const isAttach = searchParams.has("stack");
   const { data: projects } = useFetchProjects();
   const firstProject = step === "project" && projects?.length === 0;
-  const order = useWizardStepOrder();
-  const onBack = useWizardBack(step);
 
   const redirectTo = wizardRedirect(step, searchParams, isAttach);
   const title = wizardTitle(isAttach, projectPreselected, firstProject);
@@ -108,13 +106,8 @@ export const ProjectWizardPage = () => {
     <>
       {redirectTo && <Navigate to={redirectTo} replace />}
       {!redirectTo && isWizardStep(step) && (
-        <WizardLayout
-          step={{ current: Math.max(1, order.indexOf(step) + 1), total: order.length }}
-          title={title}
-          subtitle={subtitle}
-          {...(onBack && { onBack })}
-        >
-          <ProjectWizardStepper step={step} />
+        <WizardLayout progress={<WizardProgress step={step} />} title={title} subtitle={subtitle}>
+          <ProjectWizardStepContent step={step} />
         </WizardLayout>
       )}
     </>

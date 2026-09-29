@@ -4,9 +4,12 @@ import { ArrowLeft } from "lucide-react";
 import { Container } from "@/components/Container";
 import { WizardStepIndicator } from "@/components/auth/WizardStepIndicator";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface WizardLayoutProps {
-  step: { current: number; total: number };
+  step?: { current: number; total: number };
+  // A wider row that replaces the "1 / 6" indicator; the text and content column stay at reading width beneath it.
+  progress?: ReactNode;
   title: string;
   subtitle: string;
   onBack?: () => void;
@@ -14,9 +17,10 @@ interface WizardLayoutProps {
 }
 
 // Shared onboarding wizard shell: centered step with a mono indicator, serif title/subtitle, back action.
-export const WizardLayout = ({ step, title, subtitle, onBack, children }: WizardLayoutProps) => (
+export const WizardLayout = ({ step, progress, title, subtitle, onBack, children }: WizardLayoutProps) => (
   <Container className="flex min-h-[70vh] flex-col items-center justify-center py-10 sm:py-16">
-    <div className="w-full max-w-md">
+    {progress && <div className="mb-10 w-full max-w-3xl">{progress}</div>}
+    <div className={cn("w-full", progress ? "max-w-xl" : "max-w-md")}>
       {onBack && (
         <Button
           variant="ghost"
@@ -28,8 +32,8 @@ export const WizardLayout = ({ step, title, subtitle, onBack, children }: Wizard
           Back
         </Button>
       )}
-      <WizardStepIndicator current={step.current} total={step.total} />
-      <h1 className="mt-5 text-3xl font-semibold tracking-tight sm:text-4xl">{title}</h1>
+      {step && !progress && <WizardStepIndicator current={step.current} total={step.total} />}
+      <h1 className={cn("text-3xl font-semibold tracking-tight sm:text-4xl", !progress && "mt-5")}>{title}</h1>
       <p className="mt-2 text-muted-foreground">{subtitle}</p>
       <div className="mt-8">{children}</div>
     </div>
