@@ -4,6 +4,7 @@ import { FlatList, View } from "react-native";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { ProjectPickerRow } from "@/components/docs/ProjectPickerRow";
+import { SheetTitle } from "@/components/SheetTitle";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import type { Project } from "@/models/Project";
 import { useDocsProjectStore } from "@/stores/docsProjectStore";
@@ -21,7 +22,8 @@ export const ProjectPickerSheet = () => {
   };
 
   return (
-    <View className="flex-1 bg-background">
+    <View className="bg-popover pb-6">
+      <SheetTitle title="Docs project" />
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {projects && (

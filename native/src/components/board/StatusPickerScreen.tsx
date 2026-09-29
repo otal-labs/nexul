@@ -5,10 +5,13 @@ import { useCSSVariable } from "uniwind";
 
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
+import { SheetTitle } from "@/components/SheetTitle";
 import { Text } from "@/components/ui/text";
 import { statusStageDot } from "@/models/Status";
+import { ticketKey } from "@/models/Ticket";
+import { useFetchProject } from "@/hooks/ProjectHooks";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
-import { useUpdateTicketStatus } from "@/hooks/TicketHooks";
+import { useFetchTicket, useUpdateTicketStatus } from "@/hooks/TicketHooks";
 import { cn } from "@/lib/utils";
 
 type StatusPickerParams = {
@@ -22,10 +25,13 @@ export const StatusPickerScreen = () => {
   const [foreground] = useCSSVariable(["--color-foreground"]);
   const { ticketId, projectId, currentStatusId } = useLocalSearchParams<StatusPickerParams>();
   const { data: statuses, error: statusesError, isPending } = useFetchProjectStatuses(projectId);
+  const { data: ticket } = useFetchTicket(ticketId);
+  const { data: project } = useFetchProject(projectId);
   const updateStatus = useUpdateTicketStatus();
 
   return (
-    <View className="flex-1 bg-background">
+    <View className="bg-popover pb-6">
+      <SheetTitle title={ticket ? `Status · ${ticketKey(ticket, project?.prefix)}` : "Status"} />
       {isPending && <LoadingDisplay />}
       {statusesError && <ErrorDisplay error={statusesError} />}
       {updateStatus.error && <ErrorDisplay error={updateStatus.error} />}

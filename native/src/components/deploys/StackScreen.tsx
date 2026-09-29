@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { ScrollView, View } from "react-native";
 
 import { ContainerRow } from "@/components/deploys/ContainerRow";
@@ -26,6 +26,7 @@ export const StackScreen = () => {
       {error && <ErrorDisplay error={error} />}
       {stack && (
         <View className="gap-5 px-4 py-4">
+          <Stack.Screen options={{ title: stack.name }} />
           <View>
             <Text variant="h3">{stack.name}</Text>
             <Text variant="muted" className="font-mono text-xs">

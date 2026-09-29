@@ -1,5 +1,9 @@
 import { Stack } from "expo-router";
 
+import { sheetOptions } from "@/lib/sheetOptions";
+
+export const unstable_settings = { initialRouteName: "index" };
+
 export default function DocsLayout() {
   return (
     <Stack
@@ -9,8 +13,8 @@ export default function DocsLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ title: "Docs" }} />
-      <Stack.Screen name="[id]" options={{ title: "Doc" }} />
-      <Stack.Screen name="pick-project" options={{ title: "Choose a project", presentation: "formSheet" }} />
+      <Stack.Screen name="[id]" options={{ title: "" }} />
+      <Stack.Screen name="pick-project" options={sheetOptions} />
     </Stack>
   );
 }

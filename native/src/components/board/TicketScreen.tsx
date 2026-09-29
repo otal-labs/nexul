@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { Pressable, ScrollView, View } from "react-native";
 
 import { ErrorDisplay } from "@/components/ErrorDisplay";
@@ -40,7 +40,7 @@ export const TicketScreen = () => {
     if (!ticket || !workspaceId) return;
     openThread.mutate(
       { id: ticket.id, workspaceId },
-      { onSuccess: (conversation) => router.push(`/chat/${conversation.id}`) },
+      { onSuccess: (conversation) => router.push(`/chat/${conversation.id}`, { withAnchor: true }) },
     );
   };
 
@@ -50,6 +50,7 @@ export const TicketScreen = () => {
       {error && <ErrorDisplay error={error} />}
       {ticket && (
         <View className="gap-4 px-4 py-4">
+          <Stack.Screen options={{ title: ticketKey(ticket, project?.prefix) }} />
           <View className="flex-row items-center gap-2">
             <Text variant="small" className="font-mono text-muted-foreground">
               {ticketKey(ticket, project?.prefix)}

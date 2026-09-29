@@ -24,7 +24,7 @@ const openNotification = async (notificationId: string, router: ImperativeRouter
   router.push("/inbox" as Href);
   const notification = await findNotification(notificationId);
   const target = notification && subjectRoute(notification);
-  if (target) router.push(target);
+  if (target) router.push(target, { withAnchor: true });
 };
 
 const notificationIdFrom = (response: Notifications.NotificationResponse): string | undefined => {
