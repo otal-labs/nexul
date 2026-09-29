@@ -28,6 +28,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/logging"
 	"github.com/otal-labs/nexul/internal/platform/version"
 	"github.com/otal-labs/nexul/internal/runner"
+	"github.com/otal-labs/nexul/internal/tenancy"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/voice"
 	"github.com/otal-labs/nexul/internal/workspace"
@@ -262,6 +263,14 @@ var livePushTopics = []string{
 	auth.TopicTokenRevoked,
 	auth.TopicSessionCreated,
 	auth.TopicSessionRevoked,
+	auth.TopicAccountAdmitted,
+	auth.TopicAccountDisabled,
+	auth.TopicAccountReactivated,
+	auth.TopicAccountRemoved,
+	auth.TopicAccountRestored,
+	tenancy.TopicWorkspaceMemberAdded,
+	tenancy.TopicWorkspaceMemberRemoved,
+	tenancy.TopicWorkspaceMemberUpdated,
 }
 
 func fail(err error) {

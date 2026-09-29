@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 // Repo is the consumer-side persistence contract for workspaces; implemented in internal/platform/storage.
@@ -14,17 +15,25 @@ type Repo interface {
 	Get(ctx context.Context, id string) (*Workspace, error)
 	// ListForUser returns the workspaces the given user is a member of, via workspace_members.
 	ListForUser(ctx context.Context, userID string) ([]*Workspace, error)
+	// ListWithRoles returns every workspace on the instance with its roles, Owner first; Roles are filled, CanManageMembers is not.
+	ListWithRoles(ctx context.Context) ([]*TeamWorkspace, error)
 }
 
 // MemberRepo is the consumer-side persistence contract for workspace membership.
 type MemberRepo interface {
-	AddMember(ctx context.Context, m *Member) error
+	AddMember(ctx context.Context, m *Member, events ...eventbus.OutboxEvent) error
 	// RoleIDFor returns the role id userID holds in workspaceID, or apperrs.ErrNotFound if userID isn't a member.
 	RoleIDFor(ctx context.Context, workspaceID, userID string) (string, error)
 	// ListByWorkspace returns every member of workspaceID (Membership invites' roster).
 	ListByWorkspace(ctx context.Context, workspaceID string) ([]*Member, error)
-	RemoveMember(ctx context.Context, workspaceID, userID string) error
-	SetRole(ctx context.Context, workspaceID, userID, roleID string) error
+	RemoveMember(ctx context.Context, workspaceID, userID string, events ...eventbus.OutboxEvent) error
+	SetRole(ctx context.Context, workspaceID, userID, roleID string, events ...eventbus.OutboxEvent) error
+	// Overrides returns userID's workspace-wide overwrite in workspaceID; both sets are empty when there is none.
+	Overrides(ctx context.Context, workspaceID, userID string) (allow, deny permissions.Set, err error)
+	// SetOverrides replaces userID's workspace-wide overwrite in workspaceID; two empty sets delete it.
+	SetOverrides(ctx context.Context, workspaceID, userID string, allow, deny permissions.Set, events ...eventbus.OutboxEvent) error
+	// ListAllMemberships returns every membership on the instance with its workspace, role, and overrides.
+	ListAllMemberships(ctx context.Context) ([]*TeamMembership, error)
 }
 
 // InviteRepo is the consumer-side persistence contract for pending workspace invites.
@@ -73,6 +82,12 @@ type AllowlistGate interface {
 type UserLookupGate interface {
 	UserIDForLogin(ctx context.Context, login string) (userID string, found bool, err error)
 	LoginForUserID(ctx context.Context, userID string) (string, error)
+}
+
+// AccountGate reads registered accounts without tenancy importing auth (ADR 0017).
+type AccountGate interface {
+	ListAccounts(ctx context.Context) ([]*TeamAccount, error)
+	Account(ctx context.Context, userID string) (*TeamAccount, error)
 }
 
 // WorkspacePermissionGate resolves permissions without tenancy importing access (ADR 0017).

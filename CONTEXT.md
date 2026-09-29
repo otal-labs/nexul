@@ -21,7 +21,7 @@ The top-level content and configuration boundary inside an instance. An
 instance hosts multiple workspaces, each an isolation boundary for its
 projects, docs, and configuration; members switch between them in the normal
 UI via a picker. Sign-in itself stays instance-wide.
-_Avoid_: Organization, tenant, team
+_Avoid_: Organization, tenant, team (the Team is the instance's people)
 
 **Project**:
 The grouping inside a workspace that tickets, docs, project memories,
@@ -32,7 +32,7 @@ workspace, the owner's first included, has none until the wizard runs.
 _Avoid_: Board, app, default project
 
 **Instance**:
-One self-hosted install of Nexul, owned by one person or team.
+One self-hosted install of Nexul, owned by one person or group.
 Single-tenant by design.
 
 **Runner**:
@@ -425,6 +425,15 @@ _Avoid_: Allowlist entry, invite code, join link
 Whether a registered User may authenticate to the Instance: active, disabled,
 or removed. Workspace membership and Roles remain separate.
 _Avoid_: Allowlist status, membership status
+
+**Team**:
+Everyone registered on the instance and what each can reach: every account
+with its Account status and, per workspace, its Role and workspace-wide
+Permission overwrites. Instance administrators see all of it; someone who
+manages members in a workspace sees only the workspaces they manage. A change
+inside a workspace always needs `members:write` there, and the Owner role is
+never given or taken through it.
+_Avoid_: Members (one workspace's roster), registered accounts, users
 
 **Personal access token**:
 A long-lived, revocable credential (`dep_`) carrying exactly one user's own

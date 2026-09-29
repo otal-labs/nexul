@@ -82,3 +82,58 @@ type MembersList struct {
 	Members []MemberView `json:"members"`
 	Invites []*Invite    `json:"invites"`
 }
+
+// AccountStatusRemoved is the Account status of an account whose access was taken away; it holds no memberships.
+const AccountStatusRemoved = "removed"
+
+// TeamAccount is a registered account as the Team page shows it, resolved through AccountGate.
+type TeamAccount struct {
+	ID                 string    `json:"id"`
+	Login              string    `json:"login"`
+	Name               string    `json:"name"`
+	DisplayName        string    `json:"display_name,omitempty"`
+	AvatarURL          string    `json:"avatar_url"`
+	Status             string    `json:"status"`
+	CanCreateWorkspace bool      `json:"can_create_workspace"`
+	CreatedAt          time.Time `json:"created_at"`
+}
+
+// TeamMembership is one person's place in one workspace: its role and their workspace-wide overrides.
+type TeamMembership struct {
+	UserID        string          `json:"-"`
+	WorkspaceID   string          `json:"workspace_id"`
+	WorkspaceName string          `json:"workspace_name"`
+	RoleID        string          `json:"role_id"`
+	RoleName      string          `json:"role_name"`
+	IsOwner       bool            `json:"is_owner"`
+	Allow         permissions.Set `json:"allow"`
+	Deny          permissions.Set `json:"deny"`
+}
+
+// TeamPerson is one registered account with every workspace membership it holds.
+type TeamPerson struct {
+	TeamAccount
+	Workspaces []*TeamMembership `json:"workspaces"`
+}
+
+// TeamRole is a role a Team member can be given, or the Owner role they may already hold.
+type TeamRole struct {
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	IsOwner bool   `json:"is_owner"`
+}
+
+// TeamWorkspace is one workspace on the instance, its roles, and whether the viewer holds members:write there.
+type TeamWorkspace struct {
+	ID               string      `json:"id"`
+	Name             string      `json:"name"`
+	CanManageMembers bool        `json:"can_manage_members"`
+	Roles            []*TeamRole `json:"roles"`
+}
+
+// Team is the people and workspaces the viewer may see; CanManageAccounts is whether they may change account status.
+type Team struct {
+	People            []*TeamPerson    `json:"people"`
+	Workspaces        []*TeamWorkspace `json:"workspaces"`
+	CanManageAccounts bool             `json:"can_manage_accounts"`
+}

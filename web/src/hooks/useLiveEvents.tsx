@@ -12,6 +12,9 @@ import { getDeployKey, getDeployLogKey } from "@/hooks/DeployHooks";
 import { getDnsExposuresKey, getDnsGatewaysKey } from "@/hooks/DnsHooks";
 import { getDocKey, getDocsKey } from "@/hooks/DocHooks";
 import { getInstanceUpgradeKey } from "@/hooks/InstanceUpgradeHooks";
+import { getWorkspaceMembersKey } from "@/hooks/MemberHooks";
+import { getWorkspacesKey } from "@/hooks/WorkspaceHooks";
+import { getTeamKey } from "@/models/Team";
 import { getMemoriesKey, getMemoryKey, getMemoryVersionsKey } from "@/hooks/MemoryHooks";
 import { getNotificationsKey, getUnreadCountKey } from "@/hooks/NotificationHooks";
 import { getMeKey, getPATsKey, getSessionsKey } from "@/hooks/AuthHooks";
@@ -117,6 +120,15 @@ const pushTopics: Record<string, string[]> = {
   "memory.created": [getMemoriesKey],
   "memory.updated": [getMemoriesKey, getMemoryKey, getMemoryVersionsKey],
   "memory.deleted": [getMemoriesKey, getMemoryKey],
+  // The Team list and a person's detail follow account and membership changes made anywhere, MCP included.
+  "account.admitted": [getTeamKey],
+  "account.disabled": [getTeamKey],
+  "account.reactivated": [getTeamKey],
+  "account.removed": [getTeamKey, getWorkspaceMembersKey],
+  "account.restored": [getTeamKey],
+  "workspace.member.added": [getTeamKey, getWorkspaceMembersKey, getWorkspacesKey],
+  "workspace.member.removed": [getTeamKey, getWorkspaceMembersKey, getWorkspacesKey],
+  "workspace.member.updated": [getTeamKey, getWorkspaceMembersKey],
 };
 
 // A full-text-replace snapshot of the in-progress @Agent turn bubble, keyed by conversation + message id.

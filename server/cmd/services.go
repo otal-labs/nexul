@@ -224,7 +224,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	voiceHandler := voice.NewHandler(voiceSvc)
 	voiceWebhookHandler := voice.NewWebhookHandler(voiceSvc, voiceCredentials{svc: connectorsSvc}, logger)
 	playsSvc := plays.NewService(store.Plays, playsPermissionGate{svc: accessSvc})
-	tenancySvc := tenancy.NewService(store.Workspaces, store.WorkspaceMembers, store.WorkspaceInvites, roleGate{svc: rolesSvc}, instanceAdminGate{svc: authSvc}, roleNameGate{svc: rolesSvc}, workspacePermissionGate{svc: accessSvc}, allowlistGate{svc: authSvc}, userLookupGate{svc: authSvc}, channelGate{svc: chatSvc}, playsGate{svc: playsSvc})
+	tenancySvc := tenancy.NewService(store.Workspaces, store.WorkspaceMembers, store.WorkspaceInvites, roleGate{svc: rolesSvc}, instanceAdminGate{svc: authSvc}, roleNameGate{svc: rolesSvc}, workspacePermissionGate{svc: accessSvc}, allowlistGate{svc: authSvc}, userLookupGate{svc: authSvc}, channelGate{svc: chatSvc}, playsGate{svc: playsSvc}, accountGate{svc: authSvc})
 	rolesSvc.SetMemberGate(roleMemberGate{svc: tenancySvc})
 	authSvc.SetDefaultWorkspace(defaultWorkspaceGate{svc: tenancySvc})
 	authSvc.SetPendingInviteResolver(pendingInviteResolverGate{svc: tenancySvc})

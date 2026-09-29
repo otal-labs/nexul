@@ -11,6 +11,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 func newTestHandler(t *testing.T) (*Handler, *fakeRepo) {
@@ -110,7 +112,7 @@ func TestHandler_Me(t *testing.T) {
 	t.Run("returns the caller's resolved permission list", func(t *testing.T) {
 		repo := newFakeRepo()
 		wsPerms := newFakeWorkspacePermissionGate()
-		svc := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), newFakeRoleNameGate(), wsPerms, newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{})
+		svc := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), newFakeRoleNameGate(), wsPerms, newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{}, newFakeAccountGate())
 		h := NewHandler(svc)
 		createRec := do(t, h.Routes(), http.MethodPost, "/api/workspaces", `{"name":"Acme"}`, "u-1")
 		require.Equal(t, http.StatusCreated, createRec.Code)
@@ -250,6 +252,21 @@ func TestHandler_ChangeMemberRole(t *testing.T) {
 		rec := do(t, h.Routes(), http.MethodPatch, "/api/workspaces/ws-1/members/u-bob", `{"role_id":"owner-role-ws-1"}`, "actor")
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
+	t.Run("overrides alone change only the overrides", func(t *testing.T) {
+		f := newInviteFixture()
+		f.grantManageMembers("actor")
+		require.NoError(t, f.repo.AddMember(context.Background(), &Member{UserID: "u-bob", WorkspaceID: "ws-1", RoleID: "role-editor"}))
+		h := NewHandler(f.svc)
+
+		rec := do(t, h.Routes(), http.MethodPatch, "/api/workspaces/ws-1/members/u-bob", `{"deny":["docs:delete"]}`, "actor")
+		require.Equal(t, http.StatusNoContent, rec.Code, rec.Body.String())
+		roleID, err := f.svc.MemberRoleID(context.Background(), "ws-1", "u-bob")
+		require.NoError(t, err)
+		assert.Equal(t, "role-editor", roleID)
+		_, deny, err := f.repo.Overrides(context.Background(), "ws-1", "u-bob")
+		require.NoError(t, err)
+		assert.Equal(t, permissions.SetOf(permissions.DocsDelete), deny)
+	})
 }
 
 func TestHandler_SetMentionChipTemplate(t *testing.T) {
@@ -257,7 +274,7 @@ func TestHandler_SetMentionChipTemplate(t *testing.T) {
 		t.Helper()
 		repo := newFakeRepo()
 		wsPerms := newFakeWorkspacePermissionGate()
-		svc := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), newFakeRoleNameGate(), wsPerms, newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{})
+		svc := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), newFakeRoleNameGate(), wsPerms, newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{}, newFakeAccountGate())
 		w, err := svc.Create(context.Background(), "u-1", "Acme")
 		require.NoError(t, err)
 		wsPerms.perms["u-1"] = perms

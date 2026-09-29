@@ -100,6 +100,133 @@ func (q *Queries) GetWorkspaceMemberRole(ctx context.Context, arg GetWorkspaceMe
 	return role_id, err
 }
 
+const listTeamMemberships = `-- name: ListTeamMemberships :many
+SELECT m.user_id, m.workspace_id, w.name AS workspace_name, m.role_id, r.name AS role_name, r.is_owner_role,
+       COALESCE(po.allow, '[]') AS allow, COALESCE(po.deny, '[]') AS deny
+FROM workspace_members m
+JOIN workspaces w ON w.id = m.workspace_id
+JOIN roles r ON r.id = m.role_id
+LEFT JOIN permission_overwrites po
+  ON po.resource_type = 'workspace'
+ AND po.resource_id = m.workspace_id
+ AND po.user_id = m.user_id
+ORDER BY w.created_at, w.id
+`
+
+type ListTeamMembershipsRow struct {
+	UserID        string
+	WorkspaceID   string
+	WorkspaceName string
+	RoleID        string
+	RoleName      string
+	IsOwnerRole   int64
+	Allow         string
+	Deny          string
+}
+
+func (q *Queries) ListTeamMemberships(ctx context.Context) ([]ListTeamMembershipsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listTeamMemberships)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTeamMembershipsRow
+	for rows.Next() {
+		var i ListTeamMembershipsRow
+		if err := rows.Scan(
+			&i.UserID,
+			&i.WorkspaceID,
+			&i.WorkspaceName,
+			&i.RoleID,
+			&i.RoleName,
+			&i.IsOwnerRole,
+			&i.Allow,
+			&i.Deny,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTeamRoles = `-- name: ListTeamRoles :many
+SELECT id, workspace_id, name, is_owner_role FROM roles ORDER BY is_owner_role DESC, created_at, id
+`
+
+type ListTeamRolesRow struct {
+	ID          string
+	WorkspaceID string
+	Name        string
+	IsOwnerRole int64
+}
+
+func (q *Queries) ListTeamRoles(ctx context.Context) ([]ListTeamRolesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listTeamRoles)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTeamRolesRow
+	for rows.Next() {
+		var i ListTeamRolesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.Name,
+			&i.IsOwnerRole,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTeamWorkspaces = `-- name: ListTeamWorkspaces :many
+SELECT id, name FROM workspaces ORDER BY created_at, id
+`
+
+type ListTeamWorkspacesRow struct {
+	ID   string
+	Name string
+}
+
+func (q *Queries) ListTeamWorkspaces(ctx context.Context) ([]ListTeamWorkspacesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listTeamWorkspaces)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTeamWorkspacesRow
+	for rows.Next() {
+		var i ListTeamWorkspacesRow
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listWorkspaceInvitesByLogin = `-- name: ListWorkspaceInvitesByLogin :many
 SELECT workspace_id, login, role_id, invited_by, created_at
 FROM workspace_invites WHERE login = ? ORDER BY created_at, workspace_id

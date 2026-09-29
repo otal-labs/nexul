@@ -3,10 +3,13 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
 	"github.com/otal-labs/nexul/internal/tenancy"
 )
@@ -68,6 +71,30 @@ func (r *WorkspacesRepo) ListForUser(ctx context.Context, userID string) ([]*ten
 	return out, nil
 }
 
+func (r *WorkspacesRepo) ListWithRoles(ctx context.Context) ([]*tenancy.TeamWorkspace, error) {
+	rows, err := r.q.ListTeamWorkspaces(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list workspaces: %w", err)
+	}
+	roleRows, err := r.q.ListTeamRoles(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list roles: %w", err)
+	}
+	out := make([]*tenancy.TeamWorkspace, 0, len(rows))
+	byID := make(map[string]*tenancy.TeamWorkspace, len(rows))
+	for _, row := range rows {
+		w := &tenancy.TeamWorkspace{ID: row.ID, Name: row.Name, Roles: []*tenancy.TeamRole{}}
+		out = append(out, w)
+		byID[row.ID] = w
+	}
+	for _, role := range roleRows {
+		if w, ok := byID[role.WorkspaceID]; ok {
+			w.Roles = append(w.Roles, &tenancy.TeamRole{ID: role.ID, Name: role.Name, IsOwner: role.IsOwnerRole != 0})
+		}
+	}
+	return out, nil
+}
+
 func toWorkspace(row sqlcgen.Workspace) *tenancy.Workspace {
 	return &tenancy.Workspace{
 		ID:                  row.ID,
@@ -80,6 +107,9 @@ func toWorkspace(row sqlcgen.Workspace) *tenancy.Workspace {
 
 var _ tenancy.MemberRepo = (*WorkspaceMembersRepo)(nil)
 
+// workspaceResourceType is the permission_overwrites resource type of a workspace-wide overwrite (ADR 0042).
+const workspaceResourceType = "workspace"
+
 // WorkspaceMembersRepo persists the tenancy domain's workspace_members join table (ticket 07).
 type WorkspaceMembersRepo struct {
 	db *sql.DB
@@ -87,7 +117,7 @@ type WorkspaceMembersRepo struct {
 	q  *sqlcgen.Queries
 }
 
-func (r *WorkspaceMembersRepo) AddMember(ctx context.Context, m *tenancy.Member) error {
+func (r *WorkspaceMembersRepo) AddMember(ctx context.Context, m *tenancy.Member, events ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		err := r.q.WithTx(tx).AddWorkspaceMember(ctx, sqlcgen.AddWorkspaceMemberParams{
 			UserID: m.UserID, WorkspaceID: m.WorkspaceID, RoleID: m.RoleID, CreatedAt: m.CreatedAt.Unix(),
@@ -95,7 +125,7 @@ func (r *WorkspaceMembersRepo) AddMember(ctx context.Context, m *tenancy.Member)
 		if err != nil {
 			return fmt.Errorf("add member %s to workspace %s: %w", m.UserID, m.WorkspaceID, classifyWriteErr(err))
 		}
-		return nil
+		return insertOutboxRows(ctx, tx, events)
 	})
 }
 
@@ -119,7 +149,7 @@ func (r *WorkspaceMembersRepo) ListByWorkspace(ctx context.Context, workspaceID 
 	return out, nil
 }
 
-func (r *WorkspaceMembersRepo) RemoveMember(ctx context.Context, workspaceID, userID string) error {
+func (r *WorkspaceMembersRepo) RemoveMember(ctx context.Context, workspaceID, userID string, events ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).RemoveWorkspaceMember(ctx, sqlcgen.RemoveWorkspaceMemberParams{WorkspaceID: workspaceID, UserID: userID})
 		if err != nil {
@@ -128,11 +158,11 @@ func (r *WorkspaceMembersRepo) RemoveMember(ctx context.Context, workspaceID, us
 		if n == 0 {
 			return fmt.Errorf("remove member %s from workspace %s: %w", userID, workspaceID, apperrs.ErrNotFound)
 		}
-		return nil
+		return insertOutboxRows(ctx, tx, events)
 	})
 }
 
-func (r *WorkspaceMembersRepo) SetRole(ctx context.Context, workspaceID, userID, roleID string) error {
+func (r *WorkspaceMembersRepo) SetRole(ctx context.Context, workspaceID, userID, roleID string, events ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).SetWorkspaceMemberRole(ctx, sqlcgen.SetWorkspaceMemberRoleParams{
 			RoleID: roleID, WorkspaceID: workspaceID, UserID: userID,
@@ -143,8 +173,67 @@ func (r *WorkspaceMembersRepo) SetRole(ctx context.Context, workspaceID, userID,
 		if n == 0 {
 			return fmt.Errorf("set role for %s in workspace %s: %w", userID, workspaceID, apperrs.ErrNotFound)
 		}
-		return nil
+		return insertOutboxRows(ctx, tx, events)
 	})
+}
+
+func (r *WorkspaceMembersRepo) Overrides(ctx context.Context, workspaceID, userID string) (permissions.Set, permissions.Set, error) {
+	row, err := r.q.GetOverwrite(ctx, sqlcgen.GetOverwriteParams{ResourceType: workspaceResourceType, ResourceID: workspaceID, UserID: userID})
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil, nil
+	}
+	if err != nil {
+		return nil, nil, fmt.Errorf("get overrides for %s in workspace %s: %w", userID, workspaceID, err)
+	}
+	o, err := toOverwrite(row)
+	if err != nil {
+		return nil, nil, err
+	}
+	return o.Allow, o.Deny, nil
+}
+
+func (r *WorkspaceMembersRepo) SetOverrides(ctx context.Context, workspaceID, userID string, allow, deny permissions.Set, events ...eventbus.OutboxEvent) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		q := r.q.WithTx(tx)
+		if len(allow) == 0 && len(deny) == 0 {
+			_, err := q.DeleteOverwrite(ctx, sqlcgen.DeleteOverwriteParams{ResourceType: workspaceResourceType, ResourceID: workspaceID, UserID: userID})
+			if err != nil {
+				return fmt.Errorf("clear overrides for %s in workspace %s: %w", userID, workspaceID, err)
+			}
+			return insertOutboxRows(ctx, tx, events)
+		}
+		_, err := q.UpsertOverwrite(ctx, sqlcgen.UpsertOverwriteParams{
+			ResourceType: workspaceResourceType, ResourceID: workspaceID, UserID: userID,
+			Allow: setJSON(allow), Deny: setJSON(deny), Now: time.Now().Unix(),
+		})
+		if err != nil {
+			return fmt.Errorf("set overrides for %s in workspace %s: %w", userID, workspaceID, classifyWriteErr(err))
+		}
+		return insertOutboxRows(ctx, tx, events)
+	})
+}
+
+func (r *WorkspaceMembersRepo) ListAllMemberships(ctx context.Context) ([]*tenancy.TeamMembership, error) {
+	rows, err := r.q.ListTeamMemberships(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list memberships: %w", err)
+	}
+	out := make([]*tenancy.TeamMembership, 0, len(rows))
+	for _, row := range rows {
+		allow, err := parseSet(row.Allow)
+		if err != nil {
+			return nil, fmt.Errorf("decode allow for %s in workspace %s: %w", row.UserID, row.WorkspaceID, err)
+		}
+		deny, err := parseSet(row.Deny)
+		if err != nil {
+			return nil, fmt.Errorf("decode deny for %s in workspace %s: %w", row.UserID, row.WorkspaceID, err)
+		}
+		out = append(out, &tenancy.TeamMembership{
+			UserID: row.UserID, WorkspaceID: row.WorkspaceID, WorkspaceName: row.WorkspaceName,
+			RoleID: row.RoleID, RoleName: row.RoleName, IsOwner: row.IsOwnerRole != 0, Allow: allow, Deny: deny,
+		})
+	}
+	return out, nil
 }
 
 func toMember(row sqlcgen.WorkspaceMember) *tenancy.Member {

@@ -7,7 +7,6 @@ export const InvitationProvider = {
 } as const;
 
 export const getInvitationPreviewKey = "getInvitationPreview";
-export const getAccountsKey = "getAccounts";
 
 export type InvitationProvider = (typeof InvitationProvider)[keyof typeof InvitationProvider];
 
@@ -77,16 +76,6 @@ export type CreateInvitationFormData = z.infer<typeof CreateInvitationFormSchema
 
 export const hasDuplicateInvitationWorkspaces = (grants: readonly InvitationGrantInput[]): boolean =>
   new Set(grants.map((grant) => grant.workspace_id)).size !== grants.length;
-
-export interface Account {
-  id: string;
-  login: string;
-  name: string;
-  avatar_url: string;
-  status: "active" | "disabled" | "removed";
-  can_create_workspace: boolean;
-  created_at: string;
-}
 
 export interface InvitationFragment {
   token: string;

@@ -7,7 +7,7 @@ import { hasPermission } from "@/models/Permission";
 import type { Workspace } from "@/models/Workspace";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
-const getWorkspacesKey = "getWorkspaces";
+export const getWorkspacesKey = "getWorkspaces";
 
 export const useFetchWorkspaces = (enabled = true) =>
   useQuery({

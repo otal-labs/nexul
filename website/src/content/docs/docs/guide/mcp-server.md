@@ -42,6 +42,14 @@ rollbacks, and other work started through MCP are attributed to the token's
 user, with the source suffixed `:mcp`. Instance upgrades and failed events
 are for instance admins only, as they are in the web app.
 
+`account_list` is the Team: every account with its status and, per workspace
+it belongs to, its role, its overrides, and whether you may change that
+access. An instance administrator sees everyone; anyone else sees only the
+workspaces where they manage members and the people in them. `account_update` changes the status, and through `workspaces` and
+`remove_workspace_ids` adds an account to a workspace, changes its role or
+overrides there, or takes it out; each workspace change needs `members:write`
+in that workspace.
+
 `computer_pair` takes the one-time token `t3 pair` prints. With `id` it pairs
 a computer tunnel over its hostname, once `computer_list` with that id reports
 both tunnel checks passing. With `name` and `server_url` instead, it pairs a

@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/otal-labs/nexul/internal/platform/httpx"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 type ctxKey string
@@ -47,9 +48,27 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/workspaces/{workspaceID}/members", h.listMembers)
 	mux.HandleFunc("POST /api/workspaces/{workspaceID}/members", h.inviteMember)
 	mux.HandleFunc("DELETE /api/workspaces/{workspaceID}/members/{userID}", h.removeMember)
+	mux.HandleFunc("PUT /api/workspaces/{workspaceID}/members/{userID}", h.addMember)
 	mux.HandleFunc("PATCH /api/workspaces/{workspaceID}/members/{userID}", h.changeMemberRole)
 	mux.HandleFunc("DELETE /api/workspaces/{workspaceID}/invites/{login}", h.cancelInvite)
 	return mux
+}
+
+// TeamRoutes serves the instance-wide Team read; mounted at /api/team behind the same auth-user-id adapter.
+func (h *Handler) TeamRoutes() http.Handler {
+	mux := httpx.NewServeMux()
+	mux.HandleFunc("GET /api/team", h.team)
+	return mux
+}
+
+// team is scoped by the use-case: everything for an instance administrator, else only the workspaces the caller manages.
+func (h *Handler) team(w http.ResponseWriter, r *http.Request) {
+	team, err := h.svc.ListTeam(r.Context(), UserIDFromCtx(r.Context()))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, team)
 }
 
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
@@ -133,8 +152,15 @@ type inviteMemberRequest struct {
 	RoleID string `json:"role_id"`
 }
 
-type changeMemberRoleRequest struct {
+type addMemberRequest struct {
 	RoleID string `json:"role_id"`
+}
+
+// changeMemberRoleRequest is a patch: an omitted field keeps its value, and allow or deny replace that set.
+type changeMemberRoleRequest struct {
+	RoleID string           `json:"role_id"`
+	Allow  *permissions.Set `json:"allow"`
+	Deny   *permissions.Set `json:"deny"`
 }
 
 // listMembers requires members:write.
@@ -179,16 +205,40 @@ func (h *Handler) cancelInvite(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// addMember puts an existing account into the workspace; members:write there, never the Owner role.
+func (h *Handler) addMember(w http.ResponseWriter, r *http.Request) {
+	var req addMemberRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	err := h.svc.AddMember(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("workspaceID"), r.PathValue("userID"), req.RoleID)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (h *Handler) changeMemberRole(w http.ResponseWriter, r *http.Request) {
 	var req changeMemberRoleRequest
 	if err := httpx.DecodeJSON(r, &req); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
-	err := h.svc.ChangeMemberRole(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("workspaceID"), r.PathValue("userID"), req.RoleID)
-	if err != nil {
-		httpx.WriteError(w, err)
-		return
+	ctx, actorID, workspaceID, userID := r.Context(), UserIDFromCtx(r.Context()), r.PathValue("workspaceID"), r.PathValue("userID")
+	overrides := req.Allow != nil || req.Deny != nil
+	if req.RoleID != "" || !overrides {
+		if err := h.svc.ChangeMemberRole(ctx, actorID, workspaceID, userID, req.RoleID); err != nil {
+			httpx.WriteError(w, err)
+			return
+		}
+	}
+	if overrides {
+		if err := h.svc.SetMemberOverrides(ctx, actorID, workspaceID, userID, req.Allow, req.Deny); err != nil {
+			httpx.WriteError(w, err)
+			return
+		}
 	}
 	w.WriteHeader(http.StatusNoContent)
 }

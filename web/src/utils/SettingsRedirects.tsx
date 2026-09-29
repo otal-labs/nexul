@@ -1,4 +1,13 @@
-import { isSettingsSection } from "@/components/settings/SettingsNav";
+import { isSettingsSection, type SettingsSection } from "@/components/settings/SettingsNav";
+
+// Sections folded into another; a bookmark to the old one lands on its replacement.
+const foldedSections: Record<string, SettingsSection> = { members: "team", access: "team" };
+
+// Where an old /configuration/<section> link lives now, or undefined if the section still exists.
+export const legacyConfigurationTarget = (section: string | undefined, search: string, hash: string): string | undefined => {
+  if (!section || !Object.hasOwn(foldedSections, section)) return undefined;
+  return `/configuration/${foldedSections[section]}${search}${hash}`;
+};
 
 const withQuery = (params: URLSearchParams): string => (params.size > 0 ? `?${params}` : "");
 
@@ -14,6 +23,8 @@ export const movedSettingsTarget = (section: string | undefined, search: string,
     params.delete("tab");
     return `/configuration/sign-in${withQuery(params)}${hash}`;
   }
+  const folded = legacyConfigurationTarget(section, withQuery(params), hash);
+  if (folded) return folded;
   if (isSettingsSection(section)) return `/configuration/${section}${withQuery(params)}${hash}`;
   return undefined;
 };

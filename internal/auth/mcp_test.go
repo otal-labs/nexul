@@ -45,7 +45,7 @@ func TestAccountTools_Surface(t *testing.T) {
 		names = append(names, tool.Name)
 		assert.NotEmpty(t, tool.Title)
 	}
-	assert.Equal(t, []string{"account_get", "account_list", "account_update", "account_delete"}, names)
+	assert.Equal(t, []string{"account_get", "account_delete"}, names)
 }
 
 func TestAccountTools_ErrorPaths(t *testing.T) {
@@ -58,19 +58,12 @@ func TestAccountTools_ErrorPaths(t *testing.T) {
 		wantErr error
 	}{
 		{"get with a numeric id", "admin", "account_get", `{"id": 1}`, apperrs.ErrInvalid},
-		{"update without a status", "admin", "account_update", `{"id": "member"}`, apperrs.ErrInvalid},
-		{"update to removed", "admin", "account_update", `{"id": "member", "status": "removed"}`, apperrs.ErrInvalid},
 		{"delete without an id", "admin", "account_delete", `{}`, apperrs.ErrInvalid},
 		{"get without a caller", "", "account_get", `{}`, apperrs.ErrUnauthorized},
 		{"get a caller that no longer exists", "ghost", "account_get", `{}`, apperrs.ErrNotFound},
 		{"get an unknown account", "admin", "account_get", `{"id": "ghost"}`, apperrs.ErrNotFound},
-		{"update an unknown account", "admin", "account_update", `{"id": "ghost", "status": "disabled"}`, apperrs.ErrNotFound},
 		{"delete an unknown account", "admin", "account_delete", `{"id": "ghost"}`, apperrs.ErrNotFound},
 		{"member gets another account", "member", "account_get", `{"id": "admin"}`, apperrs.ErrForbidden},
-		{"member lists accounts", "member", "account_list", `{}`, apperrs.ErrForbidden},
-		{"member disables an account", "member", "account_update", `{"id": "admin", "status": "disabled"}`, apperrs.ErrForbidden},
-		{"member probes an unknown account", "member", "account_update", `{"id": "ghost", "status": "active"}`, apperrs.ErrForbidden},
-		{"member re-activates an active account", "member", "account_update", `{"id": "admin", "status": "active"}`, apperrs.ErrForbidden},
 		{"member removes an account", "member", "account_delete", `{"id": "admin"}`, apperrs.ErrForbidden},
 	}
 	for _, tt := range tests {
@@ -109,31 +102,48 @@ func TestAccountGet_WithoutIDIsTheCaller(t *testing.T) {
 	assert.Equal(t, "Mem", got.(accountResult).DisplayName, "the chosen display name sits beside the provider's name")
 }
 
-func TestAccountList_PagesEveryAccount(t *testing.T) {
+func TestUpdateAccountStatus_Refusals(t *testing.T) {
 	t.Parallel()
-	s, _ := newAccountsHarness(t)
-	got, err := callAccountTool(t, s, "admin", "account_list", `{"limit": 1}`)
-	require.NoError(t, err)
-	page := got.(mcptool.Page[accountResult])
-	assert.Len(t, page.Items, 1)
-	assert.Equal(t, 2, page.Total)
-	assert.True(t, page.HasMore)
+	tests := []struct {
+		name    string
+		actor   string
+		target  string
+		status  AccountStatus
+		wantErr error
+	}{
+		{"to removed", "admin", "member", AccountRemoved, apperrs.ErrInvalid},
+		{"an unknown account", "admin", "ghost", AccountDisabled, apperrs.ErrNotFound},
+		{"member disables an account", "member", "admin", AccountDisabled, apperrs.ErrForbidden},
+		{"member probes an unknown account", "member", "ghost", AccountActive, apperrs.ErrForbidden},
+		{"member re-activates an active account", "member", "admin", AccountActive, apperrs.ErrForbidden},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			s, users := newAccountsHarness(t)
+			require.ErrorIs(t, s.UpdateAccountStatus(t.Context(), tt.actor, tt.target, tt.status), tt.wantErr)
+			member, err := users.GetUserByID(t.Context(), "member")
+			require.NoError(t, err)
+			assert.Equal(t, AccountActive, member.AccountStatus, "a refused call changes nothing")
+		})
+	}
 }
 
-func TestAccountUpdate_ActivePicksReactivateOrRestore(t *testing.T) {
+func TestUpdateAccountStatus_ActivePicksReactivateOrRestore(t *testing.T) {
 	t.Parallel()
 	s, users := newAccountsHarness(t)
-	status := func(args string) AccountStatus {
+	status := func(to AccountStatus) AccountStatus {
 		t.Helper()
-		got, err := callAccountTool(t, s, "admin", "account_update", args)
+		require.NoError(t, s.UpdateAccountStatus(t.Context(), "admin", "member", to))
+		u, err := users.GetUserByID(t.Context(), "member")
 		require.NoError(t, err)
-		return got.(accountResult).Status
+		return u.AccountStatus
 	}
 
-	assert.Equal(t, AccountDisabled, status(`{"id": "member", "status": "disabled"}`))
-	assert.Equal(t, AccountDisabled, status(`{"id": "member", "status": "disabled"}`), "disabling a disabled account changes nothing")
-	assert.Equal(t, AccountActive, status(`{"id": "member", "status": "active"}`), "a disabled account is reactivated")
-	assert.Equal(t, AccountActive, status(`{"id": "member", "status": "active"}`), "an active account stays active")
+	assert.Equal(t, AccountDisabled, status(AccountDisabled))
+	assert.Equal(t, AccountDisabled, status(AccountDisabled), "disabling a disabled account changes nothing")
+	assert.Equal(t, AccountActive, status(AccountActive), "a disabled account is reactivated")
+	assert.Equal(t, AccountActive, status(AccountActive), "an active account stays active")
 
 	got, err := callAccountTool(t, s, "admin", "account_delete", `{"id": "member"}`)
 	require.NoError(t, err)
@@ -142,7 +152,7 @@ func TestAccountUpdate_ActivePicksReactivateOrRestore(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, AccountRemoved, removed.AccountStatus)
 
-	assert.Equal(t, AccountActive, status(`{"id": "member", "status": "active"}`), "a removed account is restored")
+	assert.Equal(t, AccountActive, status(AccountActive), "a removed account is restored")
 }
 
 func TestHandler_UpdateAccountStatus_UsesTheSameRule(t *testing.T) {

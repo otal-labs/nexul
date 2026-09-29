@@ -77,7 +77,7 @@ describe("YourSettingsPage", () => {
   it.each([
     ["/settings/connectors?connector=github&connected=1", "/configuration/connectors?connector=github&connected=1"],
     ["/settings/instance#instance-version", "/configuration/instance#instance-version"],
-    ["/settings/members", "/configuration/members"],
+    ["/settings/members", "/configuration/team"],
   ])("sends a moved section link %s to %s with its query and hash", async (from, to) => {
     renderPage(from);
     expect(await screen.findByText("Configuration page")).toBeInTheDocument();

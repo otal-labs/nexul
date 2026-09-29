@@ -125,8 +125,8 @@ const buildRoutes = (loggedIn: boolean): RouteObject[] => [
                 { path: "/services/:serviceId", element: <ServicePage /> },
                 { path: "/stacks/:stackId/:section?", element: <StackPage /> },
                 { path: "/stacks/:stackId/deploys/:deployId", element: <DeployPage /> },
-                // Members is a Configuration section now; the page itself sends moved /settings/<section> links there.
-                { path: "/members", element: <Navigate to="/configuration/members" replace /> },
+                // Members folded into Configuration's Team; the pages themselves send moved section links there.
+                { path: "/members", element: <Navigate to="/configuration/team" replace /> },
                 { path: "/settings/:section?", element: <YourSettingsPage /> },
                 { path: "/configuration/:section?", element: <ConfigurationPage /> },
                 { path: "/projects/:projectId/settings/:section?", element: <ProjectSettingsPage /> },

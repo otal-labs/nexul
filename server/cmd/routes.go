@@ -92,6 +92,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	mountGateway(apiMux, "/api/ticket-types", withUserID(workspace.WithUserID)(workspace.NewHandler(svc.workspaceSvc).Routes()))
 	mountGateway(apiMux, "/api/statuses", withUserID(workspace.WithUserID)(workspace.NewHandler(svc.workspaceSvc).Routes()))
 	mountGateway(apiMux, "/api/workspaces", withUserID(tenancy.WithUserID)(tenancy.NewHandler(svc.tenancySvc).Routes()))
+	mountGateway(apiMux, "/api/team", withUserID(tenancy.WithUserID)(tenancy.NewHandler(svc.tenancySvc).TeamRoutes()))
 	mountGateway(apiMux, "/api/invitations", withUserID(tenancy.WithUserID)(svc.invitationHandler.Routes()))
 	mountGateway(apiMux, "/api/workspaces/{workspaceID}/roles", withUserID(roles.WithUserID)(roles.NewHandler(svc.rolesSvc).Routes()))
 	mountGateway(apiMux, "/api/workspaces/{workspaceID}/plays", plays.NewHandler(svc.playsSvc).Routes())
