@@ -11,7 +11,7 @@ export const ComposerMentionSuggestions = ({ matches, selectedIndex, onPick }: C
   <div
     role="listbox"
     aria-label="Mention suggestions"
-    className="absolute inset-x-2 bottom-full z-10 mb-1 max-h-48 overflow-y-auto rounded-md border border-border bg-popover p-1 shadow-overlay"
+    className="absolute inset-x-3 bottom-full z-10 mb-1 max-h-48 overflow-y-auto rounded-md border border-border bg-popover p-1 shadow-overlay"
   >
     {matches.map((candidate, index) => (
       <button

@@ -15,7 +15,7 @@ import { AgentStreamBubble } from "@/components/chat/AgentStreamBubble";
 import { MessageRow } from "@/components/chat/MessageRow";
 import { NoDataDisplay } from "@/components/NoDataDisplay";
 import { useThreadTrailBlocks } from "@/hooks/TrailHooks";
-import type { Conversation, Message } from "@/models/Chat";
+import { isContinuation, type Conversation, type Message } from "@/models/Chat";
 import type { Person } from "@/models/Person";
 import { useAgentStreamStore } from "@/stores/agentStreamStore";
 import { trailBlockFor } from "@/utils/ThreadTrailUtility";
@@ -86,27 +86,32 @@ export const MessageList = ({
         <MessageScrollerProvider autoScroll defaultScrollPosition="last-anchor">
           <MessageScroller className="min-h-0 flex-1">
             <MessageScrollerViewport>
-              <MessageScrollerContent className="py-2" aria-busy={stream?.streaming ?? false}>
-                {messages.map((message, i) => (
-                  // Only @Agent turns anchor to the viewport top; anchoring every message shoved chatter to the top.
-                  <MessageScrollerItem
-                    key={message.id}
-                    messageId={message.id}
-                    scrollAnchor={message.author_kind === "user" && (message.mentions ?? []).some((m) => m.kind === "agent")}
-                  >
-                    <MessageRow
-                      message={message}
-                      author={resolveAuthor(message.author_id)}
-                      isOwn={message.author_id === currentUserId}
-                      questionAnswered={message.author_kind === "agent" && answeredAfter(messages, i)}
-                      trailBlock={trailBlockFor(message, blocks)}
-                      onEdit={onEdit}
-                      onDelete={onDelete}
-                    />
-                  </MessageScrollerItem>
-                ))}
+              <MessageScrollerContent className="mx-auto w-full max-w-3xl gap-0 py-2" aria-busy={stream?.streaming ?? false}>
+                {messages.map((message, i) => {
+                  const continuation = isContinuation(messages[i - 1], message);
+                  return (
+                    // Only @Agent turns anchor to the viewport top; anchoring every message shoved chatter to the top.
+                    <MessageScrollerItem
+                      key={message.id}
+                      messageId={message.id}
+                      className={continuation ? "pt-0.5" : "pt-5"}
+                      scrollAnchor={message.author_kind === "user" && (message.mentions ?? []).some((m) => m.kind === "agent")}
+                    >
+                      <MessageRow
+                        message={message}
+                        author={resolveAuthor(message.author_id)}
+                        isOwn={message.author_id === currentUserId}
+                        continuation={continuation}
+                        questionAnswered={message.author_kind === "agent" && answeredAfter(messages, i)}
+                        trailBlock={trailBlockFor(message, blocks)}
+                        onEdit={onEdit}
+                        onDelete={onDelete}
+                      />
+                    </MessageScrollerItem>
+                  );
+                })}
                 {stream && (
-                  <MessageScrollerItem messageId={`stream-${conversation.id}`}>
+                  <MessageScrollerItem messageId={`stream-${conversation.id}`} className="pt-5">
                     <AgentStreamBubble frame={stream} onInterrupt={onInterruptAgent} live={blocks.live} />
                   </MessageScrollerItem>
                 )}

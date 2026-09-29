@@ -8,9 +8,11 @@ import {
   conversationPlayTarget,
   findMentionTrigger,
   groupConversations,
+  isContinuation,
   matchesMentionPrefix,
   splitMessageBody,
   type Conversation,
+  type Message,
 } from "@/models/Chat";
 import type { Attachment } from "@/models/Attachment";
 import { unknownPerson, type Person } from "@/models/Person";
@@ -213,5 +215,37 @@ describe("conversationPlayTarget", () => {
 
   it("maps nothing for a channel", () => {
     expect(conversationPlayTarget(conversation({ kind: "channel", name: "general" }))).toBeNull();
+  });
+});
+
+describe("isContinuation", () => {
+  const at = (hour: number, minute: number, second = 0, day = 28) => new Date(2026, 8, day, hour, minute, second).toISOString();
+  const message = (overrides: Partial<Message>): Message => ({
+    id: "m",
+    conversation_id: "c1",
+    author_id: "u1",
+    author_kind: "user",
+    body: "hi",
+    mentions: null,
+    created_at: at(10, 0),
+    updated_at: at(10, 0),
+    ...overrides,
+  });
+
+  it.each<[string, Message | undefined, Message, boolean]>([
+    ["is the first message", undefined, message({}), false],
+    ["is the same person a minute later", message({}), message({ created_at: at(10, 1) }), true],
+    ["is the same person exactly five minutes later", message({}), message({ created_at: at(10, 5) }), true],
+    ["is the same person past five minutes", message({}), message({ created_at: at(10, 5, 1) }), false],
+    ["chains: measured from the previous message, not the group's first", message({ created_at: at(10, 4) }), message({ created_at: at(10, 8) }), true],
+    ["is a different person", message({}), message({ author_id: "u2", created_at: at(10, 1) }), false],
+    ["is the Agent speaking as the same person", message({}), message({ author_kind: "agent", created_at: at(10, 1) }), false],
+    ["follows an Agent message from the same person", message({ author_kind: "agent" }), message({ created_at: at(10, 1) }), false],
+    ["follows a system line", message({ author_kind: "system" }), message({ created_at: at(10, 1) }), false],
+    ["follows a deleted message", message({ deleted_at: at(10, 0, 30) }), message({ created_at: at(10, 1) }), false],
+    ["crosses midnight within five minutes", message({ created_at: at(23, 58) }), message({ created_at: at(0, 1, 0, 29) }), false],
+    ["arrives before the previous one", message({ created_at: at(10, 5) }), message({ created_at: at(10, 4) }), false],
+  ])("a message that %s", (_name, prev, curr, expected) => {
+    expect(isContinuation(prev, curr)).toBe(expected);
   });
 });

@@ -296,3 +296,25 @@ describe("MessageList play runs in a ticket thread", () => {
     expect(screen.getByText("Run failed: no harness update for 15m")).toHaveClass("italic");
   });
 });
+
+describe("MessageList grouping", () => {
+  const from = (id: string, author: string, time: string) => message({ id, author_id: author, created_at: `2026-08-26T${time}Z`, updated_at: `2026-08-26T${time}Z` });
+
+  it("shows one avatar, name and time gutter per run and a bubble per message, starting a new run after a long pause", () => {
+    renderList([
+      from("m1", "u2", "10:00:00"),
+      from("m2", "u2", "10:00:20"),
+      from("m3", "u2", "10:00:50"),
+      from("m4", "u2", "10:10:50"),
+    ]);
+    expect(screen.getAllByText("u2")).toHaveLength(2);
+    expect(document.querySelectorAll('[data-slot="bubble"]')).toHaveLength(4);
+    expect(document.querySelectorAll("time")).toHaveLength(2);
+  });
+
+  it("keeps edit and delete on every message of your own run", () => {
+    renderList([from("m1", "u1", "10:00:00"), from("m2", "u1", "10:00:20"), from("m3", "u1", "10:00:50")]);
+    expect(screen.getAllByLabelText("Edit message")).toHaveLength(3);
+    expect(screen.getAllByLabelText("Delete message")).toHaveLength(3);
+  });
+});

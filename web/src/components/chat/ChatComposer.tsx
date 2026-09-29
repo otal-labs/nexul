@@ -143,50 +143,52 @@ export const ChatComposer = ({ workspaceId, conversationId, placeholder = "Messa
   };
 
   return (
-    <div className="relative border-t border-border p-2" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
-      {trigger && matches.length > 0 && (
-        <ComposerMentionSuggestions matches={matches} selectedIndex={selectedIndex} onPick={pickMention} />
-      )}
-      {pending.length > 0 && <ComposerAttachmentStrip pending={pending} onRemove={remove} />}
-      <div className="flex items-end gap-2">
-        <Textarea
-          ref={textareaRef}
-          aria-label="Message"
-          placeholder={placeholder}
-          value={value}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-          onClick={handleClickOrKeyUp}
-          onPaste={handlePaste}
-          rows={1}
-          className="min-h-9 flex-1 resize-none text-sm"
-        />
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          multiple
-          className="sr-only"
-          aria-label="Choose image files"
-          onChange={handleFileInputChange}
-        />
-        <Button
-          type="button"
-          size="icon"
-          variant="ghost"
-          aria-label="Attach image"
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <ImagePlus className="size-4" aria-hidden />
-        </Button>
-        <Button
-          size="icon"
-          aria-label="Send message"
-          disabled={(value.trim() === "" && pending.length === 0) || sending || isUploading}
-          onClick={() => void send()}
-        >
-          <SendHorizontal className="size-4" aria-hidden />
-        </Button>
+    <div className="border-t border-border py-2" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
+      <div className="relative mx-auto w-full max-w-3xl px-3">
+        {trigger && matches.length > 0 && (
+          <ComposerMentionSuggestions matches={matches} selectedIndex={selectedIndex} onPick={pickMention} />
+        )}
+        {pending.length > 0 && <ComposerAttachmentStrip pending={pending} onRemove={remove} />}
+        <div className="flex items-end gap-2">
+          <Textarea
+            ref={textareaRef}
+            aria-label="Message"
+            placeholder={placeholder}
+            value={value}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            onClick={handleClickOrKeyUp}
+            onPaste={handlePaste}
+            rows={1}
+            className="min-h-9 flex-1 resize-none text-sm"
+          />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="sr-only"
+            aria-label="Choose image files"
+            onChange={handleFileInputChange}
+          />
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            aria-label="Attach image"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <ImagePlus className="size-4" aria-hidden />
+          </Button>
+          <Button
+            size="icon"
+            aria-label="Send message"
+            disabled={(value.trim() === "" && pending.length === 0) || sending || isUploading}
+            onClick={() => void send()}
+          >
+            <SendHorizontal className="size-4" aria-hidden />
+          </Button>
+        </div>
       </div>
     </div>
   );

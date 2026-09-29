@@ -46,6 +46,18 @@ export interface Message {
   pending?: boolean;
 }
 
+const CONTINUATION_WINDOW_MS = 5 * 60_000;
+
+// Mirrors web's isContinuation: the same person's ordinary message within five minutes and the same day of the
+// previous one shares its header. Agent and system lines never group.
+export const isContinuation = (prev: Message | undefined, curr: Message): boolean => {
+  if (prev === undefined || prev.deleted_at) return false;
+  if (prev.author_kind !== "user" || curr.author_kind !== "user" || prev.author_id !== curr.author_id) return false;
+  const gapMs = Date.parse(curr.created_at) - Date.parse(prev.created_at);
+  if (!(gapMs >= 0 && gapMs <= CONTINUATION_WINDOW_MS)) return false;
+  return new Date(prev.created_at).toDateString() === new Date(curr.created_at).toDateString();
+};
+
 export type UnreadCounts = Record<string, number>;
 
 export interface Workspace {
