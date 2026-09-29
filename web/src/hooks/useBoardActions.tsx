@@ -68,7 +68,7 @@ export const useBoardActions = ({ projects, selectedProjectIds, projectId }: Use
     await updateStatus.mutateAsync({ id: ticketId, status: status as TicketStatusType });
   };
 
-  // No status field on create (always lands in "open"), so this follows up with the same status-move mutation.
+  // Create lands in the project's first column, so another column follows up with the same status-move mutation.
   const addTicketToColumn = async (categoryId: string | null, statusId: string) => {
     const result = await open<SaveTicketFormData>({
       title: "New ticket",

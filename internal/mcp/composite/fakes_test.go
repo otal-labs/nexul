@@ -441,7 +441,21 @@ func (s statusStore) Exists(_ context.Context, id string) (bool, error) {
 	return err == nil, nil
 }
 
+func (s statusStore) FirstStatus(_ context.Context, projectID string) (string, error) {
+	for _, st := range s.w.statuses.where(func(st *workspace.Status) bool { return st.ProjectID == projectID }) {
+		return st.ID, nil
+	}
+	return "", nil
+}
+
 type typeLookup struct{ w *world }
+
+func (l typeLookup) FirstType(_ context.Context, projectID string) (string, error) {
+	for _, tt := range l.w.types.where(func(tt *workspace.TicketType) bool { return tt.ProjectID == projectID }) {
+		return tt.ID, nil
+	}
+	return "", nil
+}
 
 func (l typeLookup) TypeName(_ context.Context, id string) (string, error) {
 	tt, err := l.w.types.get(id)

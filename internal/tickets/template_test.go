@@ -14,7 +14,12 @@ import (
 type fakeTypeTemplates struct {
 	templates map[string]string
 	names     map[string]string
+	first     string
 	err       error
+}
+
+func (f fakeTypeTemplates) FirstType(context.Context, string) (string, error) {
+	return f.first, f.err
 }
 
 func (f fakeTypeTemplates) TypeName(_ context.Context, typeID string) (string, error) {

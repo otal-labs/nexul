@@ -123,6 +123,18 @@ func (r *TicketTypesRepo) TypeName(ctx context.Context, typeID string) (string, 
 	return t.Name, nil
 }
 
+// FirstType returns the project's first ticket type in display order, the one a ticket filed without a type gets.
+func (r *TicketTypesRepo) FirstType(ctx context.Context, projectID string) (string, error) {
+	rows, err := r.q.ListTicketTypesByProject(ctx, projectID)
+	if err != nil {
+		return "", fmt.Errorf("first ticket type of project %s: %w", projectID, err)
+	}
+	if len(rows) == 0 {
+		return "", nil
+	}
+	return rows[0].ID, nil
+}
+
 func toTicketType(row sqlcgen.TicketType) *workspace.TicketType {
 	return &workspace.TicketType{
 		ID:           row.ID,

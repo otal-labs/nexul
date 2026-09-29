@@ -104,11 +104,13 @@ func TestCreate_FoundInWriteFails_NothingReturned(t *testing.T) {
 }
 
 func TestCreate_TypeLookupFails_Propagates(t *testing.T) {
-	s := newTestService(newFakeRepo())
-	boom := errors.New("db down")
-	s.SetTicketTypes(fakeTypeTemplates{err: boom})
-	_, err := s.Create(context.Background(), "p-1", "Crash", "", "", "", CreateOptions{TypeID: "tt-bug"})
-	require.ErrorIs(t, err, boom)
+	for _, typeID := range []string{"tt-bug", ""} {
+		s := newTestService(newFakeRepo())
+		boom := errors.New("db down")
+		s.SetTicketTypes(fakeTypeTemplates{err: boom})
+		_, err := s.Create(context.Background(), "p-1", "Crash", "", "", "", CreateOptions{TypeID: typeID})
+		require.ErrorIs(t, err, boom, "type %q", typeID)
+	}
 }
 
 func TestTicketsHandler_Create_BugNeedsOrigin(t *testing.T) {

@@ -58,7 +58,7 @@ func TestIntegration_MentionsOverRealStorage(t *testing.T) {
 	require.NoError(t, s.Docs.Create(ctx, &docs.Doc{ID: "d-locked", Title: "Secret vault", Body: `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"hi"}]}]}`, Version: 1}))
 	require.NoError(t, s.Access.Set(ctx, "doc", "d-open", "u-alice", permissions.SetOf(permissions.DocsRead), nil))
 
-	ticket := &tickets.Ticket{ID: "tk-1", ProjectID: "project-general", Title: "Fix the bug", Body: "body", Status: tickets.StatusOpen, Developer: "onik97"}
+	ticket := &tickets.Ticket{ID: "tk-1", ProjectID: "project-general", Title: "Fix the bug", Body: "body", Status: tickets.StatusOpen, TypeID: "ticket-type-task", Developer: "onik97"}
 	require.NoError(t, s.Tickets.Create(ctx, ticket))
 	require.NoError(t, s.Tickets.UpdateStatus(ctx, ticket.ID, tickets.StatusOpen))
 
@@ -85,7 +85,7 @@ func TestIntegration_MentionsOverRealStorage(t *testing.T) {
 		assert.Equal(t, "open", chips[0].Status)
 		assert.Equal(t, "Open", chips[0].StatusLabel)
 		assert.True(t, chips[0].CanOpen)
-		// "project-general" has no prefix, so ProjectPrefix is empty though Number is real; TypeLabel resolves to "task".
+		// "project-general" has no prefix, so ProjectPrefix is empty though Number is real.
 		assert.Equal(t, "", chips[0].ProjectPrefix)
 		assert.Equal(t, 1, chips[0].ProjectNumber)
 		assert.Equal(t, "task", chips[0].TypeLabel)

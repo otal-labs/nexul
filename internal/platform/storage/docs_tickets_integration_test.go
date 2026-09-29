@@ -349,3 +349,26 @@ func TestIntegration_TicketStatusChangePublishesFromStatusToStatus(t *testing.T)
 	}
 	assert.True(t, found, "ticket.status_changed published with from/to")
 }
+
+// A ticket filed with no type or status lands in the project's backlog column with its first type, so a board shows it.
+func TestIntegration_CreateTicketWithoutTypeLandsInBacklogColumn(t *testing.T) {
+	ctx := context.Background()
+	s := storage.New(newDB(t), []byte("0123456789abcdef0123456789abcdef"))
+	now := time.Now()
+	require.NoError(t, s.Projects.Create(ctx, &workspace.Project{
+		ID: "project-seeded", Name: "Seeded", Prefix: "SD", Position: 1, WorkspaceID: "workspace-default", CreatedAt: now, UpdatedAt: now,
+	}))
+	svc := tickets.NewService(s.Tickets, s.Statuses, nil)
+	svc.SetTicketTypes(s.TicketTypes)
+
+	created, err := svc.Create(ctx, "project-seeded", "Filed from the phone", "", "", "")
+	require.NoError(t, err)
+
+	columns, err := s.Statuses.ListByProject(ctx, "project-seeded")
+	require.NoError(t, err)
+	types, err := s.TicketTypes.ListByProject(ctx, "project-seeded")
+	require.NoError(t, err)
+	assert.Equal(t, workspace.StatusKindBacklog, columns[0].Kind)
+	assert.Equal(t, tickets.Status(columns[0].ID), created.Status)
+	assert.Equal(t, types[0].ID, created.TypeID)
+}

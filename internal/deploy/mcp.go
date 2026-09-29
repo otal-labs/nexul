@@ -138,7 +138,8 @@ func deployCancelTool(s *Service) mcptool.Tool {
 }
 
 type stackListIn struct {
-	ProjectID string `json:"project_id,omitempty" jsonschema:"Only this project's stacks, by the project's id from project_list. Omit for every stack, the instance's own gateways included."`
+	ProjectID   string `json:"project_id,omitempty" jsonschema:"Only this project's stacks, by the project's id from project_list. Omit for every stack, the instance's own gateways included."`
+	WorkspaceID string `json:"workspace_id,omitempty" jsonschema:"Only the stacks of this workspace's projects, by its id from workspace_list; project_id wins when both are given."`
 	mcptool.PageArgs
 }
 
@@ -149,7 +150,7 @@ func stackListTool(s *Service) mcptool.Tool {
 			"services and recent deploys. Returns at most 100 per page.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in stackListIn) (any, error) {
-			stacks, err := s.ListStacks(ctx, in.ProjectID)
+			stacks, err := s.ListScopedStacks(ctx, in.ProjectID, in.WorkspaceID)
 			if err != nil {
 				return nil, err
 			}

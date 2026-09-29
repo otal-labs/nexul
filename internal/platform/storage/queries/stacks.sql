@@ -18,6 +18,9 @@ SELECT * FROM stacks WHERE name = ? ORDER BY created_at LIMIT 1;
 -- name: ListStacksByProject :many
 SELECT * FROM stacks WHERE (sqlc.arg(project_id) = '' OR project_id = sqlc.arg(project_id)) ORDER BY name;
 
+-- name: ListStacksByWorkspace :many
+SELECT * FROM stacks WHERE project_id IN (SELECT id FROM projects WHERE workspace_id = ?) ORDER BY name;
+
 -- name: ListStacksByBuildRepo :many
 SELECT * FROM stacks WHERE derived_from = '' AND build_repo_owner = ? AND build_repo_name = ? ORDER BY name;
 

@@ -65,6 +65,15 @@ func (r *StacksRepo) ListByProject(ctx context.Context, projectID string) ([]*de
 	return toStacks(rows)
 }
 
+// ListByWorkspace lists the stacks of a workspace's projects; the instance's own stacks belong to none.
+func (r *StacksRepo) ListByWorkspace(ctx context.Context, workspaceID string) ([]*deploy.Stack, error) {
+	rows, err := r.q.ListStacksByWorkspace(ctx, workspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("list stacks for workspace %s: %w", workspaceID, err)
+	}
+	return toStacks(rows)
+}
+
 // ListByBuildRepo returns every base stack whose build source references this repository, for the push consumer.
 func (r *StacksRepo) ListByBuildRepo(ctx context.Context, owner, name string) ([]*deploy.Stack, error) {
 	rows, err := r.q.ListStacksByBuildRepo(ctx, sqlcgen.ListStacksByBuildRepoParams{BuildRepoOwner: owner, BuildRepoName: name})

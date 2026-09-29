@@ -59,10 +59,19 @@ func (s *Service) Create(ctx context.Context, projectID, title, body, docID, dev
 		opt = opts[0]
 	}
 	opt.OriginID = strings.TrimSpace(opt.OriginID)
+	typeID, err := s.typeOrDefault(ctx, projectID, opt.TypeID)
+	if err != nil {
+		return nil, fmt.Errorf("create ticket: %w", err)
+	}
+	opt.TypeID = typeID
+	status, err := s.firstColumn(ctx, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("create ticket: %w", err)
+	}
 	if err := s.checkFoundIn(ctx, opt); err != nil {
 		return nil, fmt.Errorf("create ticket: %w", err)
 	}
-	body, err := s.defaultBody(ctx, body, opt)
+	body, err = s.defaultBody(ctx, body, opt)
 	if err != nil {
 		return nil, fmt.Errorf("create ticket: %w", err)
 	}
@@ -71,10 +80,10 @@ func (s *Service) Create(ctx context.Context, projectID, title, body, docID, dev
 		ID:         ids.New(),
 		ProjectID:  projectID,
 		CategoryID: strings.TrimSpace(opt.CategoryID),
-		TypeID:     strings.TrimSpace(opt.TypeID),
+		TypeID:     opt.TypeID,
 		Title:      title,
 		Body:       body,
-		Status:     StatusOpen,
+		Status:     status,
 		DocID:      strings.TrimSpace(docID),
 		Developer:  strings.TrimSpace(developer),
 		Tester:     strings.TrimSpace(opt.Tester),
@@ -91,6 +100,31 @@ func (s *Service) Create(ctx context.Context, projectID, title, body, docID, dev
 		return nil, fmt.Errorf("create ticket: %w", err)
 	}
 	return created, nil
+}
+
+// typeOrDefault gives a ticket filed without a type the project's first one, as the web's create form preselects.
+func (s *Service) typeOrDefault(ctx context.Context, projectID, typeID string) (string, error) {
+	typeID = strings.TrimSpace(typeID)
+	if typeID != "" || s.types == nil {
+		return typeID, nil
+	}
+	first, err := s.types.FirstType(ctx, projectID)
+	if err != nil {
+		return "", fmt.Errorf("default type of project %s: %w", projectID, err)
+	}
+	return first, nil
+}
+
+// firstColumn is where a new ticket lands, so every board shows it; a project without columns keeps the open status.
+func (s *Service) firstColumn(ctx context.Context, projectID string) (Status, error) {
+	first, err := s.statuses.FirstStatus(ctx, projectID)
+	if err != nil {
+		return "", fmt.Errorf("first column of project %s: %w", projectID, err)
+	}
+	if first == "" {
+		return StatusOpen, nil
+	}
+	return Status(first), nil
 }
 
 // persist writes the ticket, and its found-in link in the same transaction when it was filed with one.

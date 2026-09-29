@@ -341,8 +341,14 @@ func newTestService(repo *fakeRepo) *Service {
 
 // fakeStatusStore accepts the seeded status columns; a non-existent status is rejected.
 type fakeStatusStore struct {
-	known map[Status]bool
-	err   error
+	known    map[Status]bool
+	err      error
+	first    string
+	firstErr error
+}
+
+func (f fakeStatusStore) FirstStatus(context.Context, string) (string, error) {
+	return f.first, f.firstErr
 }
 
 func (f fakeStatusStore) Exists(_ context.Context, id string) (bool, error) {
@@ -535,6 +541,12 @@ func TestCreate(t *testing.T) {
 		tk, err := s.Create(context.Background(), "p-1", "Standalone", "body", "   ", "")
 		require.NoError(t, err)
 		assert.Equal(t, "", tk.DocID)
+	})
+	t.Run("first column lookup error propagates", func(t *testing.T) {
+		boom := errors.New("db down")
+		s := NewService(newFakeRepo(), fakeStatusStore{firstErr: boom}, nil)
+		_, err := s.Create(context.Background(), "p-1", "title", "body", "", "")
+		require.ErrorIs(t, err, boom)
 	})
 	t.Run("post-create fetch error propagates", func(t *testing.T) {
 		repo := newFakeRepo()

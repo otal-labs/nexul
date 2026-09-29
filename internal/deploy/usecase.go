@@ -237,13 +237,30 @@ func (s *Service) ListStacks(ctx context.Context, projectID string) ([]*Stack, e
 	if err != nil {
 		return nil, fmt.Errorf("list stacks for project %s: %w", projectID, err)
 	}
+	return baseStacks(stacks), nil
+}
+
+// ListScopedStacks narrows to a project when given, else to a workspace's projects, else lists every base stack.
+func (s *Service) ListScopedStacks(ctx context.Context, projectID, workspaceID string) ([]*Stack, error) {
+	workspaceID = strings.TrimSpace(workspaceID)
+	if strings.TrimSpace(projectID) != "" || workspaceID == "" {
+		return s.ListStacks(ctx, projectID)
+	}
+	stacks, err := s.stacks.ListByWorkspace(ctx, workspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("list stacks for workspace %s: %w", workspaceID, err)
+	}
+	return baseStacks(stacks), nil
+}
+
+func baseStacks(stacks []*Stack) []*Stack {
 	out := make([]*Stack, 0, len(stacks))
 	for _, stack := range stacks {
 		if stack.DerivedFrom == "" {
 			out = append(out, stack)
 		}
 	}
-	return out, nil
+	return out
 }
 
 // ListBranchDeployments returns a base stack's live branch deployments, the accessor its API response attaches.

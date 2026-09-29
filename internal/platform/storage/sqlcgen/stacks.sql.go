@@ -354,6 +354,57 @@ func (q *Queries) ListStacksByProject(ctx context.Context, projectID interface{}
 	return items, nil
 }
 
+const listStacksByWorkspace = `-- name: ListStacksByWorkspace :many
+SELECT id, project_id, name, slug, machine, strategy, compose_path, env, docker_network, ports, mounts, command, build_repo_owner, build_repo_name, build_branch, build_dockerfile, build_compose_path, branch_deploy_rules, derived_from, branch, managed, created_at, updated_at FROM stacks WHERE project_id IN (SELECT id FROM projects WHERE workspace_id = ?) ORDER BY name
+`
+
+func (q *Queries) ListStacksByWorkspace(ctx context.Context, workspaceID string) ([]Stack, error) {
+	rows, err := q.db.QueryContext(ctx, listStacksByWorkspace, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Stack
+	for rows.Next() {
+		var i Stack
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.Name,
+			&i.Slug,
+			&i.Machine,
+			&i.Strategy,
+			&i.ComposePath,
+			&i.Env,
+			&i.DockerNetwork,
+			&i.Ports,
+			&i.Mounts,
+			&i.Command,
+			&i.BuildRepoOwner,
+			&i.BuildRepoName,
+			&i.BuildBranch,
+			&i.BuildDockerfile,
+			&i.BuildComposePath,
+			&i.BranchDeployRules,
+			&i.DerivedFrom,
+			&i.Branch,
+			&i.Managed,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateStack = `-- name: UpdateStack :execrows
 UPDATE stacks SET project_id = ?, name = ?, slug = ?, machine = ?, strategy = ?, compose_path = ?,
     env = ?, docker_network = ?, ports = ?, mounts = ?, command = ?,
