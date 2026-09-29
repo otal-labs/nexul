@@ -83,12 +83,13 @@ type accountUpdateResult struct {
 
 func accountListTool(t Team) mcptool.Tool {
 	return mcptool.New("account_list", "List accounts",
-		"Lists the Team: every account registered on the instance with its status (active, disabled, or removed) "+
-			"and its workspace access, one entry per workspace it belongs to with the role, whether that is the "+
-			"Owner role, its workspace-wide allow and deny overrides, and can_manage_members, whether you hold "+
-			"members:write there and so may change that access. Instance administrators only. Use account_get for "+
-			"your own account, account_update to change an account's status or workspace access, and account_delete "+
-			"to remove it.",
+		"Lists the Team: accounts with their status (active, disabled, or removed) and their workspace access, one "+
+			"entry per workspace with the role, whether that is the Owner role, the workspace-wide allow and deny "+
+			"overrides, and can_manage_members, whether you hold members:write there and so may change that access. "+
+			"An instance administrator sees every account and workspace; anyone else sees only the workspaces where "+
+			"they hold members:write and the people in them, and callers with neither are refused. Use account_get "+
+			"for your own account, account_update to change an account's status or workspace access, and "+
+			"account_delete to remove it.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in accountListIn) (any, error) {
 			team, err := t.ListTeam(ctx, accountActor(ctx))
@@ -112,7 +113,7 @@ func accountUpdateTool(a AccountStatusSetter, t Team) mcptool.Tool {
 			"takes it out of one; each needs members:write in that workspace, and the Owner role can never be "+
 			"given, changed, or removed. Only the fields you send change. The changes apply in the order listed "+
 			"here and stop at the first failure, whose message names the field and the ones already applied. "+
-			"Returns the fields applied and, for an instance administrator, the account as account_list shows it.",
+			"Returns the fields applied and the account as account_list shows it to you, when it shows it at all.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in accountUpdateIn) (any, error) {
 			if in.Status == "" && len(in.Workspaces) == 0 && len(in.RemoveWorkspaceIDs) == 0 {
@@ -170,7 +171,7 @@ func setWorkspaceAccess(ctx context.Context, t Team, actor, userID string, w acc
 	return t.SetMemberOverrides(ctx, actor, w.WorkspaceID, userID, w.Allow, w.Deny)
 }
 
-// readAccount is nil for a caller who may change a workspace's members but is not an instance administrator.
+// readAccount is nil when the account falls outside the caller's view of the Team.
 func readAccount(ctx context.Context, t Team, actor, id string) *accountResult {
 	team, err := t.ListTeam(ctx, actor)
 	if err != nil {

@@ -51,6 +51,7 @@ func (g testInstanceAdminGate) CanCreateWorkspace(ctx context.Context, userID st
 
 type teamFixture struct {
 	svc          *tenancy.Service
+	roles        *roles.Service
 	nexul, acme  *tenancy.Workspace
 	editor       *roles.Role
 	viewer       *roles.Role
@@ -86,7 +87,7 @@ func newTeamFixture(t *testing.T) teamFixture {
 
 	require.NoError(t, svc.AddMember(ctx, "dana", acme.ID, "admin", viewer.ID))
 	require.NoError(t, svc.AddMember(ctx, "dana", acme.ID, "carol", viewer.ID))
-	return teamFixture{svc: svc, nexul: nexul, acme: acme, editor: editor, viewer: viewer, nexulOwnerID: ownerID}
+	return teamFixture{svc: svc, roles: rolesSvc, nexul: nexul, acme: acme, editor: editor, viewer: viewer, nexulOwnerID: ownerID}
 }
 
 func personByLogin(t *testing.T, team *tenancy.Team, login string) *tenancy.TeamPerson {
@@ -121,6 +122,7 @@ func TestIntegration_ListTeam_ReturnsEachPersonsAccessAndTheViewersManageFlag(t 
 	team, err := f.svc.ListTeam(ctx, "admin")
 	require.NoError(t, err)
 
+	assert.True(t, team.CanManageAccounts)
 	assert.True(t, workspaceByID(t, team, f.nexul.ID).CanManageMembers, "the Owner holds members:write in Nexul")
 	assert.False(t, workspaceByID(t, team, f.acme.ID).CanManageMembers, "an instance admin who is only a Viewer in Acme cannot manage its members")
 	acmeRoles := workspaceByID(t, team, f.acme.ID).Roles
@@ -146,10 +148,33 @@ func TestIntegration_ListTeam_ReturnsEachPersonsAccessAndTheViewersManageFlag(t 
 	assert.True(t, admin.Workspaces[0].IsOwner || admin.Workspaces[1].IsOwner)
 }
 
-func TestIntegration_ListTeam_NonAdmin_IsForbidden(t *testing.T) {
+func TestIntegration_ListTeam_WithoutMembersWriteAnywhere_IsForbidden(t *testing.T) {
 	f := newTeamFixture(t)
 	_, err := f.svc.ListTeam(t.Context(), "carol")
 	require.ErrorIs(t, err, apperrs.ErrForbidden)
+}
+
+func TestIntegration_ListTeam_WorkspaceManager_SeesOnlyTheWorkspacesTheyManage(t *testing.T) {
+	ctx := t.Context()
+	f := newTeamFixture(t)
+	manager, err := f.roles.Create(ctx, f.nexul.ID, "admin", "Manager", permissions.SetOf(permissions.MembersWrite))
+	require.NoError(t, err)
+	require.NoError(t, f.svc.AddMember(ctx, "admin", f.nexul.ID, "bob", manager.ID))
+
+	team, err := f.svc.ListTeam(ctx, "bob")
+	require.NoError(t, err)
+
+	assert.False(t, team.CanManageAccounts, "account status stays with instance administrators")
+	require.Len(t, team.Workspaces, 1)
+	assert.Equal(t, f.nexul.ID, team.Workspaces[0].ID)
+	logins := []string{}
+	for _, p := range team.People {
+		logins = append(logins, p.Login)
+		for _, m := range p.Workspaces {
+			assert.Equal(t, f.nexul.ID, m.WorkspaceID, "%s's access elsewhere is left out", p.Login)
+		}
+	}
+	assert.ElementsMatch(t, []string{"admin", "bob"}, logins, "carol and dana hold nothing in Nexul")
 }
 
 // Instance admin is not workspace admin (ADR 0024): every membership edit in Acme needs members:write in Acme.

@@ -131,8 +131,9 @@ type TeamWorkspace struct {
 	Roles            []*TeamRole `json:"roles"`
 }
 
-// Team is every registered account with its workspace access, and every workspace it could be given.
+// Team is the people and workspaces the viewer may see; CanManageAccounts is whether they may change account status.
 type Team struct {
-	People     []*TeamPerson    `json:"people"`
-	Workspaces []*TeamWorkspace `json:"workspaces"`
+	People            []*TeamPerson    `json:"people"`
+	Workspaces        []*TeamWorkspace `json:"workspaces"`
+	CanManageAccounts bool             `json:"can_manage_accounts"`
 }

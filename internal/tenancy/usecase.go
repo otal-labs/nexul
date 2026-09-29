@@ -352,10 +352,27 @@ func (s *Service) ChangeMemberRole(ctx context.Context, actorID, workspaceID, us
 	return nil
 }
 
-// ListTeam is every registered account with its access in every workspace, for instance administrators only.
+// ListTeam is every account with its access for an instance administrator; anyone else holding members:write
+// somewhere sees only the workspaces they manage and the people in them.
 func (s *Service) ListTeam(ctx context.Context, actorID string) (*Team, error) {
-	if err := s.requireInstanceAdmin(ctx, actorID); err != nil {
-		return nil, err
+	admin, err := s.perm.CanCreateWorkspace(ctx, actorID)
+	if err != nil {
+		return nil, fmt.Errorf("check instance administrator: %w", err)
+	}
+	workspaces, err := s.repo.ListWithRoles(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list workspaces: %w", err)
+	}
+	// Instance admin is not workspace admin (ADR 0024): each workspace answers for itself.
+	visible := make([]*TeamWorkspace, 0, len(workspaces))
+	for _, w := range workspaces {
+		w.CanManageMembers = s.requireManageWorkspaceMembers(ctx, actorID, w.ID) == nil
+		if admin || w.CanManageMembers {
+			visible = append(visible, w)
+		}
+	}
+	if len(visible) == 0 && !admin {
+		return nil, fmt.Errorf("%w: instance administrator or members:write in a workspace required", apperrs.ErrForbidden)
 	}
 	accounts, err := s.accounts.ListAccounts(ctx)
 	if err != nil {
@@ -365,27 +382,33 @@ func (s *Service) ListTeam(ctx context.Context, actorID string) (*Team, error) {
 	if err != nil {
 		return nil, fmt.Errorf("list memberships: %w", err)
 	}
-	workspaces, err := s.repo.ListWithRoles(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("list workspaces: %w", err)
-	}
-	// Instance admin is not workspace admin (ADR 0024): each workspace answers for itself.
-	for _, w := range workspaces {
-		w.CanManageMembers = s.requireManageWorkspaceMembers(ctx, actorID, w.ID) == nil
+	return &Team{People: teamPeople(accounts, memberships, visible, admin), Workspaces: visible, CanManageAccounts: admin}, nil
+}
+
+// teamPeople keeps only the visible workspaces' memberships; outside an admin's view, a person with none of them is left out.
+func teamPeople(accounts []*TeamAccount, memberships []*TeamMembership, visible []*TeamWorkspace, admin bool) []*TeamPerson {
+	shown := make(map[string]bool, len(visible))
+	for _, w := range visible {
+		shown[w.ID] = true
 	}
 	byUser := make(map[string][]*TeamMembership, len(accounts))
 	for _, m := range memberships {
-		byUser[m.UserID] = append(byUser[m.UserID], m)
+		if shown[m.WorkspaceID] {
+			byUser[m.UserID] = append(byUser[m.UserID], m)
+		}
 	}
 	people := make([]*TeamPerson, 0, len(accounts))
 	for _, a := range accounts {
 		held := byUser[a.ID]
+		if held == nil && !admin {
+			continue
+		}
 		if held == nil {
 			held = []*TeamMembership{}
 		}
 		people = append(people, &TeamPerson{TeamAccount: *a, Workspaces: held})
 	}
-	return &Team{People: people, Workspaces: workspaces}, nil
+	return people
 }
 
 // AddMember puts an existing account into workspaceID with a non-Owner role; requires members:write there.
@@ -480,17 +503,6 @@ func validateOverrides(allow, deny permissions.Set) error {
 		if deny.Has(action) {
 			return fmt.Errorf("%w: %s cannot be allowed and denied at once", apperrs.ErrInvalid, action)
 		}
-	}
-	return nil
-}
-
-func (s *Service) requireInstanceAdmin(ctx context.Context, actorID string) error {
-	ok, err := s.perm.CanCreateWorkspace(ctx, actorID)
-	if err != nil {
-		return fmt.Errorf("check instance administrator: %w", err)
-	}
-	if !ok {
-		return fmt.Errorf("%w: instance administrator required", apperrs.ErrForbidden)
 	}
 	return nil
 }

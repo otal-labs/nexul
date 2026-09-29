@@ -61,7 +61,7 @@ func (h *Handler) TeamRoutes() http.Handler {
 	return mux
 }
 
-// team requires an instance administrator; each workspace's can_manage_members still answers members:write there.
+// team is scoped by the use-case: everything for an instance administrator, else only the workspaces the caller manages.
 func (h *Handler) team(w http.ResponseWriter, r *http.Request) {
 	team, err := h.svc.ListTeam(r.Context(), UserIDFromCtx(r.Context()))
 	if err != nil {
