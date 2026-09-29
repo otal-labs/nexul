@@ -9,6 +9,7 @@ export const AREA_PERMISSION = {
   docs: "docs:read",
   stacks: "stacks:read",
   deploys: "deploys:read",
+  dns: "dns:read",
   newConversation: "chat:write",
   newProject: "projects:write",
   newDoc: "docs:write",

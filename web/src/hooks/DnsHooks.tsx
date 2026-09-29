@@ -158,10 +158,11 @@ export const useDeleteGateway = () => {
 
 export const getDnsExposuresKey = "dnsExposures";
 
-export const useFetchExposures = () =>
+export const useFetchExposures = (enabled = true) =>
   useQuery({
     queryKey: [getDnsExposuresKey],
     queryFn: async () => (await api.get<Exposure[]>("/api/dns/exposures")).data,
+    enabled,
   });
 
 export const useCreateExposure = () => {

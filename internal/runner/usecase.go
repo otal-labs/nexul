@@ -219,10 +219,25 @@ func (s *Service) ListQueue(ctx context.Context) ([]QueuedJob, error) {
 
 // ListMachines returns every machine.
 func (s *Service) ListMachines(ctx context.Context) ([]*Machine, error) {
+	if err := s.require(ctx, permissions.MachinesRead); err != nil {
+		return nil, err
+	}
 	if s.machines == nil {
 		return nil, nil
 	}
 	return s.machines.List(ctx)
+}
+
+// listAutomationsHosts is the hosts machine_list files under each machine; a caller who may not read them gets none.
+func (s *Service) listAutomationsHosts(ctx context.Context) ([]AutomationsHost, error) {
+	if s.automationsHosts == nil {
+		return nil, nil
+	}
+	hosts, err := s.automationsHosts.ListAutomationsHosts(ctx)
+	if permissions.Refused(err) {
+		return nil, nil
+	}
+	return hosts, err
 }
 
 // GetMachine returns one machine by id.
@@ -290,6 +305,9 @@ func (s *Service) DiscoverUnmanaged(ctx context.Context, machineID string) (Disc
 // before anything is adopted. A describe failure (no Cloudflare connector, unknown tunnel) is carried on the
 // row as TunnelError rather than failing the whole scan.
 func (s *Service) DiscoverForImport(ctx context.Context, machineID string) (GroupedDiscovery, error) {
+	if err := s.require(ctx, permissions.MachinesRead); err != nil {
+		return GroupedDiscovery{}, err
+	}
 	report, err := s.DiscoverUnmanaged(ctx, machineID)
 	if err != nil {
 		return GroupedDiscovery{}, err

@@ -163,6 +163,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		Store:          store.Connectors,
 		AppConfigStore: store.ConnectorAppConfig,
 		Owner:          instanceAdminGate{svc: authSvc},
+		Gate:           accessSvc,
 		Settings:       dnsSettingsAdapter{store.Settings},
 		Registry:       connectorsRegistry,
 	})
@@ -186,6 +187,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		InstanceOrigin: instanceOrigin(cfg.HTTPAddr),
 		Placement:      dnsInstancePlacement{runners: store.Runners, machines: store.Machines},
 	})
+	dnsSvc.SetGate(accessSvc)
 	dnsHandler := dns.NewHandler(dnsSvc)
 	// deploy needs dns, dns needs deploy's Containers/Provisioner, so neither builds the other in its constructor.
 	deploySvc.SetGatewayLookup(deployGatewayLookupAdapter{dns: dnsSvc})
@@ -264,6 +266,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	// Its own key, derived from the auth secret, signs the tokens host workers dial in with.
 	automationHostsSvc := automations.NewHostsService(store.AutomationHosts, store.Automations, crypto.DeriveKey("nexul automations host token key:"+cfg.AuthSecret)).
 		WithAdminGate(instanceAdminGate{svc: authSvc}).
+		WithGate(accessSvc).
 		WithInstanceURL(dnsSettingsAdapter{store.Settings}).
 		WithEnrollDir(filepath.Join(filepath.Dir(cfg.DBPath), "enroll"))
 	automationsSvc.SetHosts(automationHostsSvc)

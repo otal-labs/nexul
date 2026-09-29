@@ -137,13 +137,6 @@ func groupRunners(machines []*Machine, runners []RunnerView) ([]machineResult, [
 	return out, unassigned
 }
 
-func (s *Service) listAutomationsHosts(ctx context.Context) ([]AutomationsHost, error) {
-	if s.automationsHosts == nil {
-		return nil, nil
-	}
-	return s.automationsHosts.ListAutomationsHosts(ctx)
-}
-
 // groupAutomationsHosts files each host under the machine of its name; a host on no known machine is returned apart.
 func groupAutomationsHosts(machines []machineResult, hosts []AutomationsHost) ([]machineResult, []automationsHostResult) {
 	index := make(map[string]int, len(machines))

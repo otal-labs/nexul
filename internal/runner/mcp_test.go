@@ -12,6 +12,7 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 func callTool(ctx context.Context, t *testing.T, s *Service, name, args string) (any, error) {
@@ -24,6 +25,11 @@ func callTool(ctx context.Context, t *testing.T, s *Service, name, args string) 
 	t.Fatalf("tool %s not found", name)
 	return nil, nil
 }
+
+// allowAnywhere passes every instance-level check, so a case reaches the rule it is about.
+type allowAnywhere struct{}
+
+func (allowAnywhere) RequireAnywhere(context.Context, permissions.Action) error { return nil }
 
 func asMember() context.Context {
 	return identity.WithActor(context.Background(), identity.Actor{ID: "member-1"})
@@ -42,7 +48,7 @@ func TestMCPTools_Surface(t *testing.T) {
 func TestMCPTools_Errors(t *testing.T) {
 	withVersion(t, "dev")
 	srv := fakeGitHub(t, "v0.2.0", "x")
-	upgrades := newUpgradeService(srv.URL, newFakeUpgradeRepo(), newFakeBus(), &fakeDispatch{}).WithMachines(newFakeMachineRepo())
+	upgrades := newUpgradeService(srv.URL, newFakeUpgradeRepo(), newFakeBus(), &fakeDispatch{}).WithMachines(newFakeMachineRepo()).WithGate(allowAnywhere{})
 	tests := []struct {
 		name string
 		ctx  context.Context

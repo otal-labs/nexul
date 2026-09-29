@@ -9,12 +9,16 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 // CreateExposure routes a hostname through a gateway to a container, publishing exposure_changed via the
 // outbox. Without a gateway id, it reuses a gateway on the target's machine (preferring one already on
 // one of its networks) or provisions one (spec §7).
 func (s *Service) CreateExposure(ctx context.Context, in CreateExposureInput) (*Exposure, error) {
+	if err := s.require(ctx, permissions.DNSWrite); err != nil {
+		return nil, err
+	}
 	if err := in.Validate(); err != nil {
 		return nil, err
 	}
@@ -262,6 +266,9 @@ func (s *Service) createExposureRecord(ctx context.Context, g *Gateway, in Creat
 
 // ListExposures returns every locally-tracked exposure, oldest first.
 func (s *Service) ListExposures(ctx context.Context) ([]*Exposure, error) {
+	if err := s.require(ctx, permissions.DNSRead); err != nil {
+		return nil, err
+	}
 	exps, err := s.repo.ListExposures(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list exposures: %w", err)
@@ -271,6 +278,9 @@ func (s *Service) ListExposures(ctx context.Context) ([]*Exposure, error) {
 
 // GetExposure returns one locally-tracked exposure.
 func (s *Service) GetExposure(ctx context.Context, exposureID string) (*Exposure, error) {
+	if err := s.require(ctx, permissions.DNSRead); err != nil {
+		return nil, err
+	}
 	if strings.TrimSpace(exposureID) == "" {
 		return nil, fmt.Errorf("%w: exposure id is required", apperrs.ErrInvalid)
 	}
@@ -284,6 +294,9 @@ func (s *Service) GetExposure(ctx context.Context, exposureID string) (*Exposure
 // ExposuresForService returns the hostname+port of every exposure routed to a service by its legacy name,
 // for the by-name alias route and the branch-deploy consumer.
 func (s *Service) ExposuresForService(ctx context.Context, serviceName string) ([]ExposureSummary, error) {
+	if err := s.require(ctx, permissions.DNSRead); err != nil {
+		return nil, err
+	}
 	if strings.TrimSpace(serviceName) == "" {
 		return nil, fmt.Errorf("%w: service is required", apperrs.ErrInvalid)
 	}
@@ -332,6 +345,13 @@ func (s *Service) GetExposureByService(ctx context.Context, serviceName string) 
 
 // DeleteExposure reverses CreateExposure: removes the ingress rule or A/AAAA record and drops the DNS record and row.
 func (s *Service) DeleteExposure(ctx context.Context, exposureID string) error {
+	if err := s.require(ctx, permissions.DNSDelete); err != nil {
+		return err
+	}
+	return s.deleteExposure(ctx, exposureID)
+}
+
+func (s *Service) deleteExposure(ctx context.Context, exposureID string) error {
 	if strings.TrimSpace(exposureID) == "" {
 		return fmt.Errorf("%w: exposure id is required", apperrs.ErrInvalid)
 	}
@@ -392,7 +412,7 @@ func (s *Service) DeleteExposuresForStack(ctx context.Context, stackName string,
 		}
 	}
 	for _, e := range seen {
-		if err := s.DeleteExposure(ctx, e.ID); err != nil {
+		if err := s.deleteExposure(ctx, e.ID); err != nil {
 			return fmt.Errorf("release hostname %s: %w", e.Hostname, err)
 		}
 	}

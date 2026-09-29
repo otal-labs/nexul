@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 // The checks the tunnel ticker runs once a hostname is routed, one request per row.
@@ -18,6 +19,9 @@ const (
 
 // VerifyTunnelRoute runs one check on a tunnel's routed hostname and returns what it found, or why it fails.
 func (s *Service) VerifyTunnelRoute(ctx context.Context, tunnelID, check string) (string, error) {
+	if err := s.require(ctx, permissions.DNSRead); err != nil {
+		return "", err
+	}
 	t, err := s.repo.GetTunnel(ctx, tunnelID)
 	if err != nil {
 		return "", fmt.Errorf("get tunnel %s: %w", tunnelID, err)

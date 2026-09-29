@@ -10,11 +10,18 @@ import (
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 // OwnerGate gates the owner-only app-config write via can_create_workspace (CN3a, ADR 0017).
 type OwnerGate interface {
 	CanCreateWorkspace(ctx context.Context, userID string) (bool, error)
+}
+
+// Gate is the permission check connecting and reading connectors passes; a connector belongs to the instance, so a
+// caller needs the action in any workspace they belong to (ADR 0087).
+type Gate interface {
+	RequireAnywhere(ctx context.Context, action permissions.Action) error
 }
 
 // SettingsReader is the consumer-side view of the instance settings this package needs (ADR 0017).
@@ -30,6 +37,8 @@ type Config struct {
 	AppConfigStore AppConfigStore
 	// Owner resolves owner-only writes; nil disables SetAppConfig.
 	Owner OwnerGate
+	// Gate checks connector reads and writes; nil lets only the server's own calls through.
+	Gate Gate
 	// Settings resolves the SPA's URL for the post-OAuth redirect; the provider's API host may not be browser-reachable.
 	Settings SettingsReader
 	// Registry overrides the package's static Registry() for tests.
@@ -43,6 +52,7 @@ type Service struct {
 	store          CredentialsStore
 	appConfigStore AppConfigStore
 	owner          OwnerGate
+	gate           Gate
 	settings       SettingsReader
 	registry       map[string]Connector
 	now            func() time.Time
@@ -65,10 +75,18 @@ func NewService(cfg Config) *Service {
 		store:          cfg.Store,
 		appConfigStore: cfg.AppConfigStore,
 		owner:          cfg.Owner,
+		gate:           cfg.Gate,
 		settings:       cfg.Settings,
 		registry:       byID,
 		now:            cfg.Now,
 	}
+}
+
+func (s *Service) require(ctx context.Context, action permissions.Action) error {
+	if s.gate == nil {
+		return permissions.Ungated(ctx)
+	}
+	return s.gate.RequireAnywhere(ctx, action)
 }
 
 // InstanceURL returns the SPA-facing base URL, or "" when unreadable, so the callback falls back to the request host.
@@ -95,6 +113,9 @@ type ConnectorStatus struct {
 
 // List returns every registry entry with its current CredentialStatus, zero-valued for connectors never connected.
 func (s *Service) List(ctx context.Context) ([]ConnectorStatus, error) {
+	if err := s.require(ctx, permissions.ConnectorsRead); err != nil {
+		return nil, err
+	}
 	regs := make([]Connector, 0, len(s.registry))
 	for _, c := range s.registry {
 		regs = append(regs, c)
@@ -120,6 +141,9 @@ func (s *Service) List(ctx context.Context) ([]ConnectorStatus, error) {
 
 // AuthorizeURL builds the provider consent URL for connectorID and a CSRF state token.
 func (s *Service) AuthorizeURL(ctx context.Context, connectorID, state string) (string, error) {
+	if err := s.require(ctx, permissions.ConnectorsWrite); err != nil {
+		return "", err
+	}
 	c, err := s.get(connectorID)
 	if err != nil {
 		return "", err
@@ -157,6 +181,9 @@ func (s *Service) CompleteOAuth(ctx context.Context, connectorID, code, userID s
 
 // Disconnect revokes and deletes the stored credential; the local row is deleted even if provider revocation fails.
 func (s *Service) Disconnect(ctx context.Context, connectorID string) error {
+	if err := s.require(ctx, permissions.ConnectorsWrite); err != nil {
+		return err
+	}
 	c, ok := s.registry[connectorID]
 	if !ok {
 		return fmt.Errorf("%w: unknown connector %q", apperrs.ErrNotFound, connectorID)
@@ -205,12 +232,18 @@ func (s *Service) checkManual(ctx context.Context, connectorID string, fields ma
 
 // VerifyManualCredentials runs the live provider check without storing, so the UI can show a green light before Confirm.
 func (s *Service) VerifyManualCredentials(ctx context.Context, connectorID string, fields map[string]string) error {
+	if err := s.require(ctx, permissions.ConnectorsWrite); err != nil {
+		return err
+	}
 	_, err := s.checkManual(ctx, connectorID, fields)
 	return err
 }
 
 // VerifyManualCheck runs one named permission check, so the dialog can fan the checks out in parallel and tick each row.
 func (s *Service) VerifyManualCheck(ctx context.Context, connectorID string, fields map[string]string, key string) (string, error) {
+	if err := s.require(ctx, permissions.ConnectorsWrite); err != nil {
+		return "", err
+	}
 	c, ok := s.registry[connectorID]
 	if !ok {
 		return "", fmt.Errorf("%w: unknown connector %q", apperrs.ErrNotFound, connectorID)
@@ -247,6 +280,9 @@ func asInvalid(err error) error {
 
 // SaveManualCredentials verifies again and stores, so a save can never bypass the live check.
 func (s *Service) SaveManualCredentials(ctx context.Context, connectorID, userID string, fields map[string]string) (CredentialStatus, error) {
+	if err := s.require(ctx, permissions.ConnectorsWrite); err != nil {
+		return CredentialStatus{}, err
+	}
 	clean, err := s.checkManual(ctx, connectorID, fields)
 	if err != nil {
 		return CredentialStatus{}, err

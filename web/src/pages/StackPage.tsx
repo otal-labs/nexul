@@ -13,6 +13,7 @@ import { StackDangerZoneSection } from "@/components/stack/StackDangerZoneSectio
 import { StackDeployActions } from "@/components/stack/StackDeployActions";
 import { StackHeaderSection } from "@/components/stack/StackHeaderSection";
 import { DEFAULT_STACK_SECTION, isStackSection, StackNav, type StackSection } from "@/components/stack/StackNav";
+import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFetchExposures } from "@/hooks/DnsHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { useFetchStack, useFetchStackDeploys, useFetchStackServices } from "@/hooks/StackHooks";
@@ -29,11 +30,13 @@ export const StackPage = () => {
   const { data: projects = [] } = useFetchProjects();
   const { data: services, isPending: servicesPending, error: servicesError } = useFetchStackServices(stackId);
   const { data: deploys, isPending: deploysPending } = useFetchStackDeploys(stackId);
-  const { data: exposures } = useFetchExposures();
+  const showExposures = useAreaAccess()?.("dns") ?? false;
+  const { data: exposures } = useFetchExposures(showExposures);
 
   const requested: StackSection = isStackSection(rawSection) ? rawSection : DEFAULT_STACK_SECTION;
   const showBranches = !!stack && !stack.derived_from;
-  const section = requested === "branches" && !showBranches ? DEFAULT_STACK_SECTION : requested;
+  const hidden = (requested === "branches" && !showBranches) || (requested === "exposures" && !showExposures);
+  const section = hidden ? DEFAULT_STACK_SECTION : requested;
 
   const latest = latestDeploy(deploys);
   const lastHealthy = deploys?.find((d) => d.status === "healthy");
@@ -60,7 +63,7 @@ export const StackPage = () => {
             hostnames={hostnames}
           />
           <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
-            <StackNav stackId={stack.id} active={section} showBranches={showBranches} />
+            <StackNav stackId={stack.id} active={section} showBranches={showBranches} showExposures={showExposures} />
             <div className="min-w-0 flex-1 space-y-6">
               {section === "overview" && (
                 <>
