@@ -102,6 +102,22 @@ func TestNotificationsRepo_CreateMany_CollapsesWhileUnread(t *testing.T) {
 	require.Len(t, ns, 2)
 }
 
+func TestNotificationsRepo_CreateMany_UnreadInAnotherWorkspace_DoesNotCollapse(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	s := newTestStore(t)
+	mustCreateUser(t, s, "u1", "onik97")
+	require.NoError(t, s.Notifications.CreateMany(ctx, []*workspace.Notification{newTestNotification("old", "u1", false)}))
+
+	scoped := newTestNotification("new", "u1", false)
+	scoped.WorkspaceID = "ws-1"
+	require.NoError(t, s.Notifications.CreateMany(ctx, []*workspace.Notification{scoped}))
+
+	ns, err := s.Notifications.List(ctx, "u1", "ws-1", 50)
+	require.NoError(t, err)
+	assert.Len(t, ns, 1, "an unread row the ws-1 inbox never shows must not silence ws-1")
+}
+
 func TestNotificationsRepo_List_ScopesByUserAndOrdersNewestFirst(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

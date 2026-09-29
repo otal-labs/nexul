@@ -31,7 +31,7 @@ INSERT INTO notifications (id, user_id, workspace_id, kind, subject_type, subjec
 SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9
 WHERE NOT EXISTS (
   SELECT 1 FROM notifications
-  WHERE user_id = ?2 AND kind = ?4 AND subject_type = ?5 AND subject_id = ?6 AND read = 0
+  WHERE user_id = ?2 AND workspace_id = ?3 AND kind = ?4 AND subject_type = ?5 AND subject_id = ?6 AND read = 0
 )
 `
 
@@ -47,7 +47,7 @@ type CreateNotificationIfAbsentParams struct {
 	CreatedAt    int64
 }
 
-// NOT EXISTS collapses repeats while an unread row exists, so rapid edits don't flood the inbox.
+// NOT EXISTS collapses repeats while an unread row exists in the same inbox, so rapid edits don't flood it.
 func (q *Queries) CreateNotificationIfAbsent(ctx context.Context, arg CreateNotificationIfAbsentParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, createNotificationIfAbsent,
 		arg.ID,
