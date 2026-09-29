@@ -60,6 +60,46 @@ func (g userLookupGate) LoginForUserID(ctx context.Context, userID string) (stri
 	return u.Login, nil
 }
 
+// accountGate adapts auth's registered accounts to tenancy's AccountGate seam (ADR 0017: tenancy never imports auth).
+type accountGate struct {
+	svc *auth.Service
+}
+
+func (g accountGate) ListAccounts(ctx context.Context) ([]*tenancy.TeamAccount, error) {
+	users, err := g.svc.ListUsers(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*tenancy.TeamAccount, 0, len(users))
+	for _, u := range users {
+		out = append(out, toTeamAccount(u))
+	}
+	return out, nil
+}
+
+func (g accountGate) Account(ctx context.Context, userID string) (*tenancy.TeamAccount, error) {
+	u, err := g.svc.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return toTeamAccount(u), nil
+}
+
+func toTeamAccount(u *auth.User) *tenancy.TeamAccount {
+	status := u.AccountStatus
+	if status == "" {
+		status = auth.AccountActive
+	}
+	a := &tenancy.TeamAccount{
+		ID: u.ID, Login: u.Login, Name: u.Name, AvatarURL: u.AvatarURL,
+		Status: string(status), CanCreateWorkspace: u.CanCreateWorkspace, CreatedAt: u.CreatedAt,
+	}
+	if u.DisplayName != nil {
+		a.DisplayName = *u.DisplayName
+	}
+	return a
+}
+
 // connectorAppSeederGate adapts connectors' app-config store to auth's seam (ADR 0017: auth never imports connectors).
 type connectorAppSeederGate struct {
 	store connectors.AppConfigStore

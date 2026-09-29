@@ -2,11 +2,14 @@ package tenancy
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
@@ -27,12 +30,13 @@ type Service struct {
 	users     UserLookupGate
 	channels  ChannelGate
 	plays     PlaysGate
+	accounts  AccountGate
 	now       func() time.Time
 }
 
 // NewService wires the tenancy use-cases over their repos and permission gates.
-func NewService(repo Repo, members MemberRepo, invites InviteRepo, roles RoleGate, perm PermissionGate, roleNames RoleNameGate, wsPerms WorkspacePermissionGate, allowlist AllowlistGate, users UserLookupGate, channels ChannelGate, plays PlaysGate) *Service {
-	return &Service{repo: repo, members: members, invites: invites, roles: roles, perm: perm, roleNames: roleNames, wsPerms: wsPerms, allowlist: allowlist, users: users, channels: channels, plays: plays, now: time.Now}
+func NewService(repo Repo, members MemberRepo, invites InviteRepo, roles RoleGate, perm PermissionGate, roleNames RoleNameGate, wsPerms WorkspacePermissionGate, allowlist AllowlistGate, users UserLookupGate, channels ChannelGate, plays PlaysGate, accounts AccountGate) *Service {
+	return &Service{repo: repo, members: members, invites: invites, roles: roles, perm: perm, roleNames: roleNames, wsPerms: wsPerms, allowlist: allowlist, users: users, channels: channels, plays: plays, accounts: accounts, now: time.Now}
 }
 
 // Create adds a workspace and binds userID as its first member; requires the can_create_workspace bit.
@@ -307,7 +311,7 @@ func (s *Service) RemoveMember(ctx context.Context, actorID, workspaceID, userID
 	if isOwner {
 		return fmt.Errorf("%w: the workspace Owner cannot be removed", apperrs.ErrInvalid)
 	}
-	if err := s.members.RemoveMember(ctx, workspaceID, userID); err != nil {
+	if err := s.members.RemoveMember(ctx, workspaceID, userID, memberEvent(TopicWorkspaceMemberRemoved, actorID, workspaceID, userID)); err != nil {
 		return fmt.Errorf("remove member %s from workspace %s: %w", userID, workspaceID, err)
 	}
 	return nil
@@ -342,10 +346,157 @@ func (s *Service) ChangeMemberRole(ctx context.Context, actorID, workspaceID, us
 	if isNewOwner {
 		return fmt.Errorf("%w: the Owner role cannot be assigned via invite", apperrs.ErrInvalid)
 	}
-	if err := s.members.SetRole(ctx, workspaceID, userID, roleID); err != nil {
+	if err := s.members.SetRole(ctx, workspaceID, userID, roleID, memberEvent(TopicWorkspaceMemberUpdated, actorID, workspaceID, userID)); err != nil {
 		return fmt.Errorf("set role for %s in workspace %s: %w", userID, workspaceID, err)
 	}
 	return nil
+}
+
+// ListTeam is every registered account with its access in every workspace, for instance administrators only.
+func (s *Service) ListTeam(ctx context.Context, actorID string) (*Team, error) {
+	if err := s.requireInstanceAdmin(ctx, actorID); err != nil {
+		return nil, err
+	}
+	accounts, err := s.accounts.ListAccounts(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list accounts: %w", err)
+	}
+	memberships, err := s.members.ListAllMemberships(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list memberships: %w", err)
+	}
+	workspaces, err := s.repo.ListWithRoles(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list workspaces: %w", err)
+	}
+	// Instance admin is not workspace admin (ADR 0024): each workspace answers for itself.
+	for _, w := range workspaces {
+		w.CanManageMembers = s.requireManageWorkspaceMembers(ctx, actorID, w.ID) == nil
+	}
+	byUser := make(map[string][]*TeamMembership, len(accounts))
+	for _, m := range memberships {
+		byUser[m.UserID] = append(byUser[m.UserID], m)
+	}
+	people := make([]*TeamPerson, 0, len(accounts))
+	for _, a := range accounts {
+		held := byUser[a.ID]
+		if held == nil {
+			held = []*TeamMembership{}
+		}
+		people = append(people, &TeamPerson{TeamAccount: *a, Workspaces: held})
+	}
+	return &Team{People: people, Workspaces: workspaces}, nil
+}
+
+// AddMember puts an existing account into workspaceID with a non-Owner role; requires members:write there.
+func (s *Service) AddMember(ctx context.Context, actorID, workspaceID, userID, roleID string) error {
+	workspaceID = strings.TrimSpace(workspaceID)
+	userID = strings.TrimSpace(userID)
+	roleID = strings.TrimSpace(roleID)
+	if userID == "" {
+		return fmt.Errorf("%w: user id is required", apperrs.ErrInvalid)
+	}
+	if roleID == "" {
+		return fmt.Errorf("%w: role id is required", apperrs.ErrInvalid)
+	}
+	if err := s.requireManageWorkspaceMembers(ctx, actorID, workspaceID); err != nil {
+		return err
+	}
+	isOwner, err := s.roleNames.IsOwnerRole(ctx, workspaceID, roleID)
+	if err != nil {
+		return fmt.Errorf("check owner role %s: %w", roleID, err)
+	}
+	if isOwner {
+		return fmt.Errorf("%w: the Owner role cannot be assigned", apperrs.ErrInvalid)
+	}
+	account, err := s.accounts.Account(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("get account %s: %w", userID, err)
+	}
+	if account.Status == AccountStatusRemoved {
+		return fmt.Errorf("%w: %s's account is removed; restore it before adding them to a workspace", apperrs.ErrInvalid, account.Login)
+	}
+	_, err = s.members.RoleIDFor(ctx, workspaceID, userID)
+	if err == nil {
+		return fmt.Errorf("%w: %s is already a member of this workspace; change their role instead", apperrs.ErrConflict, account.Login)
+	}
+	if !errors.Is(err, apperrs.ErrNotFound) {
+		return fmt.Errorf("check membership of %s in workspace %s: %w", userID, workspaceID, err)
+	}
+	member := &Member{UserID: userID, WorkspaceID: workspaceID, RoleID: roleID, CreatedAt: s.now().UTC()}
+	if err := s.members.AddMember(ctx, member, memberEvent(TopicWorkspaceMemberAdded, actorID, workspaceID, userID)); err != nil {
+		return fmt.Errorf("add member %s to workspace %s: %w", userID, workspaceID, err)
+	}
+	return nil
+}
+
+// SetMemberOverrides changes a member's workspace-wide allow and deny sets; a nil set keeps its current value.
+func (s *Service) SetMemberOverrides(ctx context.Context, actorID, workspaceID, userID string, allow, deny *permissions.Set) error {
+	workspaceID = strings.TrimSpace(workspaceID)
+	userID = strings.TrimSpace(userID)
+	if allow == nil && deny == nil {
+		return fmt.Errorf("%w: allow or deny is required", apperrs.ErrInvalid)
+	}
+	if err := s.requireManageWorkspaceMembers(ctx, actorID, workspaceID); err != nil {
+		return err
+	}
+	roleID, err := s.members.RoleIDFor(ctx, workspaceID, userID)
+	if err != nil {
+		return fmt.Errorf("resolve role for %s in workspace %s: %w", userID, workspaceID, err)
+	}
+	isOwner, err := s.roleNames.IsOwnerRole(ctx, workspaceID, roleID)
+	if err != nil {
+		return fmt.Errorf("check owner role %s: %w", roleID, err)
+	}
+	if isOwner {
+		return fmt.Errorf("%w: the workspace Owner bypasses permission overrides, so none can be set", apperrs.ErrInvalid)
+	}
+	nextAllow, nextDeny, err := s.members.Overrides(ctx, workspaceID, userID)
+	if err != nil {
+		return fmt.Errorf("read overrides for %s in workspace %s: %w", userID, workspaceID, err)
+	}
+	if allow != nil {
+		nextAllow = permissions.SetOf(*allow...)
+	}
+	if deny != nil {
+		nextDeny = permissions.SetOf(*deny...)
+	}
+	if err := validateOverrides(nextAllow, nextDeny); err != nil {
+		return err
+	}
+	if err := s.members.SetOverrides(ctx, workspaceID, userID, nextAllow, nextDeny, memberEvent(TopicWorkspaceMemberUpdated, actorID, workspaceID, userID)); err != nil {
+		return fmt.Errorf("set overrides for %s in workspace %s: %w", userID, workspaceID, err)
+	}
+	return nil
+}
+
+func validateOverrides(allow, deny permissions.Set) error {
+	for _, action := range slices.Concat(allow, deny) {
+		if _, ok := permissions.ParseAction(string(action)); !ok {
+			return fmt.Errorf("%w: %q is not a permission; the permission catalog lists them", apperrs.ErrInvalid, action)
+		}
+	}
+	for _, action := range allow {
+		if deny.Has(action) {
+			return fmt.Errorf("%w: %s cannot be allowed and denied at once", apperrs.ErrInvalid, action)
+		}
+	}
+	return nil
+}
+
+func (s *Service) requireInstanceAdmin(ctx context.Context, actorID string) error {
+	ok, err := s.perm.CanCreateWorkspace(ctx, actorID)
+	if err != nil {
+		return fmt.Errorf("check instance administrator: %w", err)
+	}
+	if !ok {
+		return fmt.Errorf("%w: instance administrator required", apperrs.ErrForbidden)
+	}
+	return nil
+}
+
+func memberEvent(topic, actorID, workspaceID, userID string) eventbus.OutboxEvent {
+	return eventbus.OutboxEvent{ID: ids.New(), Topic: topic, Payload: MemberEvent{UserID: userID, WorkspaceID: workspaceID, ActorID: actorID}}
 }
 
 // ResolvePendingInvites binds pending invites to userID so the caller's next request sees the membership.

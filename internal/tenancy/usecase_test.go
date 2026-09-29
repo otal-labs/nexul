@@ -12,6 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 var fixedNow = time.Date(2026, 8, 19, 9, 0, 0, 0, time.UTC)
@@ -19,8 +21,10 @@ var fixedNow = time.Date(2026, 8, 19, 9, 0, 0, 0, time.UTC)
 type fakeRepo struct {
 	mu         sync.Mutex
 	workspaces map[string]*Workspace
-	members    map[string][]string          // workspaceID -> userIDs
-	roleIDs    map[string]map[string]string // workspaceID -> userID -> roleID
+	members    map[string][]string           // workspaceID -> userIDs
+	roleIDs    map[string]map[string]string  // workspaceID -> userID -> roleID
+	overrides  map[string][2]permissions.Set // workspaceID/userID -> allow, deny
+	events     []eventbus.OutboxEvent
 	createErr  error
 	getErr     error
 	listErr    error
@@ -31,6 +35,7 @@ func newFakeRepo() *fakeRepo {
 		workspaces: map[string]*Workspace{},
 		members:    map[string][]string{},
 		roleIDs:    map[string]map[string]string{},
+		overrides:  map[string][2]permissions.Set{},
 	}
 }
 
@@ -87,9 +92,14 @@ func (f *fakeRepo) ListForUser(_ context.Context, userID string) ([]*Workspace, 
 	return out, nil
 }
 
-func (f *fakeRepo) AddMember(_ context.Context, m *Member) error {
+func (f *fakeRepo) ListWithRoles(context.Context) ([]*TeamWorkspace, error) {
+	return nil, nil
+}
+
+func (f *fakeRepo) AddMember(_ context.Context, m *Member, events ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.events = append(f.events, events...)
 	f.members[m.WorkspaceID] = append(f.members[m.WorkspaceID], m.UserID)
 	if f.roleIDs[m.WorkspaceID] == nil {
 		f.roleIDs[m.WorkspaceID] = map[string]string{}
@@ -118,9 +128,10 @@ func (f *fakeRepo) ListByWorkspace(_ context.Context, workspaceID string) ([]*Me
 	return out, nil
 }
 
-func (f *fakeRepo) RemoveMember(_ context.Context, workspaceID, userID string) error {
+func (f *fakeRepo) RemoveMember(_ context.Context, workspaceID, userID string, events ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.events = append(f.events, events...)
 	users := f.members[workspaceID]
 	for i, u := range users {
 		if u == userID {
@@ -132,14 +143,34 @@ func (f *fakeRepo) RemoveMember(_ context.Context, workspaceID, userID string) e
 	return apperrs.ErrNotFound
 }
 
-func (f *fakeRepo) SetRole(_ context.Context, workspaceID, userID, roleID string) error {
+func (f *fakeRepo) SetRole(_ context.Context, workspaceID, userID, roleID string, events ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if _, ok := f.roleIDs[workspaceID][userID]; !ok {
 		return apperrs.ErrNotFound
 	}
 	f.roleIDs[workspaceID][userID] = roleID
+	f.events = append(f.events, events...)
 	return nil
+}
+
+func (f *fakeRepo) Overrides(_ context.Context, workspaceID, userID string) (permissions.Set, permissions.Set, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	o := f.overrides[workspaceID+"/"+userID]
+	return o[0], o[1], nil
+}
+
+func (f *fakeRepo) SetOverrides(_ context.Context, workspaceID, userID string, allow, deny permissions.Set, events ...eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.overrides[workspaceID+"/"+userID] = [2]permissions.Set{allow, deny}
+	f.events = append(f.events, events...)
+	return nil
+}
+
+func (f *fakeRepo) ListAllMemberships(context.Context) ([]*TeamMembership, error) {
+	return nil, nil
 }
 
 // fakeInviteRepo is a minimal stand-in for the storage layer's WorkspaceInvitesRepo (separate from fakeRepo since InviteRepo and MemberRepo both declare a same-named, differently-typed ListByWorkspace that one Go type can't implement both of).
@@ -332,8 +363,32 @@ func (g *fakeUserLookupGate) LoginForUserID(_ context.Context, userID string) (s
 	return login, nil
 }
 
+// fakeAccountGate is a minimal stand-in for auth's registered accounts: every id resolves to an active account unless registered otherwise.
+type fakeAccountGate struct {
+	accounts map[string]*TeamAccount
+}
+
+func newFakeAccountGate() *fakeAccountGate {
+	return &fakeAccountGate{accounts: map[string]*TeamAccount{}}
+}
+
+func (g *fakeAccountGate) ListAccounts(context.Context) ([]*TeamAccount, error) {
+	out := make([]*TeamAccount, 0, len(g.accounts))
+	for _, a := range g.accounts {
+		out = append(out, a)
+	}
+	return out, nil
+}
+
+func (g *fakeAccountGate) Account(_ context.Context, userID string) (*TeamAccount, error) {
+	if a, ok := g.accounts[userID]; ok {
+		return a, nil
+	}
+	return &TeamAccount{ID: userID, Login: userID, Status: "active"}, nil
+}
+
 func newTestService(repo *fakeRepo) *Service {
-	s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), newFakeRoleNameGate(), newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{})
+	s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), newFakeRoleNameGate(), newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{}, newFakeAccountGate())
 	s.now = func() time.Time { return fixedNow }
 	return s
 }
@@ -384,7 +439,7 @@ func TestCreate(t *testing.T) {
 	})
 	t.Run("role gate error propagates and skips adding the member", func(t *testing.T) {
 		repo := newFakeRepo()
-		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{createErr: errors.New("roles unavailable")}, newFakePermissionGate(), newFakeRoleNameGate(), newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{})
+		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{createErr: errors.New("roles unavailable")}, newFakePermissionGate(), newFakeRoleNameGate(), newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{}, newFakeAccountGate())
 		s.now = func() time.Time { return fixedNow }
 		_, err := s.Create(context.Background(), "u-1", "Acme")
 		require.Error(t, err)
@@ -396,7 +451,7 @@ func TestCreate(t *testing.T) {
 	})
 	t.Run("without can_create_workspace is forbidden", func(t *testing.T) {
 		repo := newFakeRepo()
-		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, &fakePermissionGate{allow: false}, newFakeRoleNameGate(), newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{})
+		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, &fakePermissionGate{allow: false}, newFakeRoleNameGate(), newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{}, newFakeAccountGate())
 		s.now = func() time.Time { return fixedNow }
 		_, err := s.Create(context.Background(), "u-1", "Acme")
 		require.Error(t, err)
@@ -404,7 +459,7 @@ func TestCreate(t *testing.T) {
 	})
 	t.Run("permission gate error propagates", func(t *testing.T) {
 		repo := newFakeRepo()
-		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, &fakePermissionGate{err: errors.New("gate down")}, newFakeRoleNameGate(), newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{})
+		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, &fakePermissionGate{err: errors.New("gate down")}, newFakeRoleNameGate(), newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{}, newFakeAccountGate())
 		s.now = func() time.Time { return fixedNow }
 		_, err := s.Create(context.Background(), "u-1", "Acme")
 		require.Error(t, err)
@@ -430,7 +485,7 @@ func TestRename(t *testing.T) {
 	t.Run("requires can_create_workspace", func(t *testing.T) {
 		repo := newFakeRepo()
 		repo.workspaces[DefaultWorkspaceID] = &Workspace{ID: DefaultWorkspaceID, Name: "Default"}
-		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, &fakePermissionGate{allow: false}, newFakeRoleNameGate(), newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{})
+		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, &fakePermissionGate{allow: false}, newFakeRoleNameGate(), newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{}, newFakeAccountGate())
 		_, err := s.Rename(context.Background(), "u-1", DefaultWorkspaceID, "Acme")
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
@@ -477,7 +532,7 @@ func TestBindDefaultWorkspaceOwner(t *testing.T) {
 	t.Run("role gate error propagates", func(t *testing.T) {
 		repo := newFakeRepo()
 		repo.workspaces[DefaultWorkspaceID] = &Workspace{ID: DefaultWorkspaceID, Name: "Default"}
-		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{createErr: errors.New("roles unavailable")}, newFakePermissionGate(), newFakeRoleNameGate(), newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{})
+		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{createErr: errors.New("roles unavailable")}, newFakePermissionGate(), newFakeRoleNameGate(), newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{}, newFakeAccountGate())
 		s.now = func() time.Time { return fixedNow }
 		err := s.BindDefaultWorkspaceOwner(context.Background(), "u-1")
 		require.Error(t, err)
@@ -539,7 +594,7 @@ func TestMemberRoleName(t *testing.T) {
 	t.Run("returns the owner role's name for the workspace creator", func(t *testing.T) {
 		repo := newFakeRepo()
 		nameGate := newFakeRoleNameGate()
-		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), nameGate, newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{})
+		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), nameGate, newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{}, newFakeAccountGate())
 		s.now = func() time.Time { return fixedNow }
 		w, err := s.Create(context.Background(), "u-1", "Acme")
 		require.NoError(t, err)
@@ -552,7 +607,7 @@ func TestMemberRoleName(t *testing.T) {
 	t.Run("returns a custom role's real name", func(t *testing.T) {
 		repo := newFakeRepo()
 		nameGate := newFakeRoleNameGate()
-		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), nameGate, newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{})
+		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), nameGate, newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{}, newFakeAccountGate())
 		s.now = func() time.Time { return fixedNow }
 		require.NoError(t, repo.AddMember(context.Background(), &Member{UserID: "u-2", WorkspaceID: "ws-1", RoleID: "role-editor"}))
 		nameGate.names["role-editor"] = "Editor"
@@ -565,7 +620,7 @@ func TestMemberRoleName(t *testing.T) {
 		repo := newFakeRepo()
 		nameGate := newFakeRoleNameGate()
 		nameGate.err = errors.New("roles unavailable")
-		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), nameGate, newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{})
+		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), nameGate, newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{}, newFakeAccountGate())
 		s.now = func() time.Time { return fixedNow }
 		w, err := s.Create(context.Background(), "u-1", "Acme")
 		require.NoError(t, err)
@@ -580,7 +635,7 @@ func TestMemberPermissions(t *testing.T) {
 	t.Run("delegates to the workspace-permission gate", func(t *testing.T) {
 		repo := newFakeRepo()
 		wsPerms := newFakeWorkspacePermissionGate()
-		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), newFakeRoleNameGate(), wsPerms, newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{})
+		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), newFakeRoleNameGate(), wsPerms, newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{}, newFakeAccountGate())
 		s.now = func() time.Time { return fixedNow }
 		w, err := s.Create(context.Background(), "u-1", "Acme")
 		require.NoError(t, err)
@@ -677,7 +732,7 @@ func newInviteFixture() *inviteTestFixture {
 		users:     newFakeUserLookupGate(),
 		nameGate:  newFakeRoleNameGate(),
 	}
-	f.svc = NewService(f.repo, f.repo, f.invites, &fakeRoleGate{}, newFakePermissionGate(), f.nameGate, f.wsPerms, f.allowlist, f.users, &fakeChannelGate{}, &fakePlaysGate{})
+	f.svc = NewService(f.repo, f.repo, f.invites, &fakeRoleGate{}, newFakePermissionGate(), f.nameGate, f.wsPerms, f.allowlist, f.users, &fakeChannelGate{}, &fakePlaysGate{}, newFakeAccountGate())
 	f.svc.now = func() time.Time { return fixedNow }
 	return f
 }
@@ -910,7 +965,7 @@ func TestSetMentionChipTemplate(t *testing.T) {
 	newFixture := func() (*Service, *fakeRepo, *fakeWorkspacePermissionGate) {
 		repo := newFakeRepo()
 		wsPerms := newFakeWorkspacePermissionGate()
-		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), newFakeRoleNameGate(), wsPerms, newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{})
+		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), newFakeRoleNameGate(), wsPerms, newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{}, newFakeAccountGate())
 		s.now = func() time.Time { return fixedNow }
 		return s, repo, wsPerms
 	}
@@ -960,5 +1015,86 @@ func TestSetMentionChipTemplate(t *testing.T) {
 		other, err := s.Get(context.Background(), b.ID)
 		require.NoError(t, err)
 		assert.Equal(t, DefaultMentionChipTemplate, other.MentionChipTemplate)
+	})
+}
+
+func TestAddMember(t *testing.T) {
+	tests := []struct {
+		name    string
+		setup   func(f *inviteTestFixture, accounts *fakeAccountGate)
+		userID  string
+		roleID  string
+		wantErr error
+	}{
+		{"empty user id is invalid", nil, " ", "role-editor", apperrs.ErrInvalid},
+		{"empty role id is invalid", nil, "bob", " ", apperrs.ErrInvalid},
+		{"removed account is refused", func(_ *inviteTestFixture, a *fakeAccountGate) {
+			a.accounts["bob"] = &TeamAccount{ID: "bob", Login: "bob", Status: AccountStatusRemoved}
+		}, "bob", "role-editor", apperrs.ErrInvalid},
+		{"existing member is a conflict", func(f *inviteTestFixture, _ *fakeAccountGate) {
+			require.NoError(t, f.repo.AddMember(t.Context(), &Member{UserID: "bob", WorkspaceID: "ws-1", RoleID: "role-viewer"}))
+		}, "bob", "role-editor", apperrs.ErrConflict},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := newInviteFixture()
+			accounts := newFakeAccountGate()
+			f.svc.accounts = accounts
+			f.grantManageMembers("actor")
+			if tt.setup != nil {
+				tt.setup(f, accounts)
+			}
+			err := f.svc.AddMember(t.Context(), "actor", "ws-1", tt.userID, tt.roleID)
+			require.ErrorIs(t, err, tt.wantErr)
+		})
+	}
+	t.Run("adds the account with the role and announces it", func(t *testing.T) {
+		f := newInviteFixture()
+		f.grantManageMembers("actor")
+		require.NoError(t, f.svc.AddMember(t.Context(), "actor", "ws-1", "bob", "role-editor"))
+		roleID, err := f.repo.RoleIDFor(t.Context(), "ws-1", "bob")
+		require.NoError(t, err)
+		assert.Equal(t, "role-editor", roleID)
+		require.Len(t, f.repo.events, 1)
+		assert.Equal(t, TopicWorkspaceMemberAdded, f.repo.events[0].Topic)
+		assert.Equal(t, MemberEvent{UserID: "bob", WorkspaceID: "ws-1", ActorID: "actor"}, f.repo.events[0].Payload)
+	})
+}
+
+func TestSetMemberOverrides(t *testing.T) {
+	set := func(actions ...permissions.Action) *permissions.Set {
+		s := permissions.SetOf(actions...)
+		return &s
+	}
+	newMemberFixture := func(t *testing.T) *inviteTestFixture {
+		f := newInviteFixture()
+		f.grantManageMembers("actor")
+		require.NoError(t, f.repo.AddMember(t.Context(), &Member{UserID: "bob", WorkspaceID: "ws-1", RoleID: "role-editor"}))
+		return f
+	}
+	tests := []struct {
+		name        string
+		allow, deny *permissions.Set
+	}{
+		{"neither set is invalid", nil, nil},
+		{"an unknown permission is invalid", set("docs:fly"), nil},
+		{"allowing and denying one permission is invalid", set(permissions.DocsWrite), set(permissions.DocsWrite)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := newMemberFixture(t)
+			err := f.svc.SetMemberOverrides(t.Context(), "actor", "ws-1", "bob", tt.allow, tt.deny)
+			require.ErrorIs(t, err, apperrs.ErrInvalid)
+		})
+	}
+	t.Run("an omitted set keeps its current value", func(t *testing.T) {
+		f := newMemberFixture(t)
+		require.NoError(t, f.svc.SetMemberOverrides(t.Context(), "actor", "ws-1", "bob", set(permissions.DocsWrite), set(permissions.DocsDelete)))
+		require.NoError(t, f.svc.SetMemberOverrides(t.Context(), "actor", "ws-1", "bob", set(permissions.ProjectsWrite), nil))
+		allow, deny, err := f.repo.Overrides(t.Context(), "ws-1", "bob")
+		require.NoError(t, err)
+		assert.Equal(t, permissions.SetOf(permissions.ProjectsWrite), allow)
+		assert.Equal(t, permissions.SetOf(permissions.DocsDelete), deny)
+		assert.Equal(t, TopicWorkspaceMemberUpdated, f.repo.events[len(f.repo.events)-1].Topic)
 	})
 }
