@@ -28,13 +28,14 @@ type TestTarget struct {
 	Branch string         `json:"branch,omitempty"`
 }
 
-// ResolveTestTarget offers the first branch's preview, else a shared test environment, and never production.
+// ResolveTestTarget offers the first branch's preview, else a shared test environment, and never production. It
+// reads stacks unchecked: the URL is part of the ticket, which its caller has already been allowed to test.
 func (s *Service) ResolveTestTarget(ctx context.Context, projectID string, branches []BranchRef) (TestTarget, error) {
-	stacks, err := s.ListStacks(ctx, projectID)
+	stacks, err := s.stacks.ListByProject(ctx, projectID)
 	if err != nil {
 		return TestTarget{}, fmt.Errorf("resolve test target: %w", err)
 	}
-	return testTarget(stacks, branches), nil
+	return testTarget(baseStacks(stacks), branches), nil
 }
 
 func testTarget(stacks []*Stack, branches []BranchRef) TestTarget {

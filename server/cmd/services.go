@@ -123,6 +123,8 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	})
 	topoSvc := topology.NewService(store.Topology)
 	deploySvc := deploy.NewService(store.Deploys, store.Stacks, store.Services, deployProjectStore{projects: store.Projects})
+	topoSvc.SetGate(accessSvc)
+	deploySvc.SetGate(accessSvc)
 	reviewSvc := codereview.NewService(store.CodeReviews)
 	automationsSvc := automations.NewService(store.Automations, automationPermissionGate{svc: accessSvc})
 	// DefaultDefinitions supplies the board pair's bundled default automation code.

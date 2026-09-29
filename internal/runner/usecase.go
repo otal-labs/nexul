@@ -10,6 +10,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/release"
 	"github.com/otal-labs/nexul/internal/platform/version"
 )
@@ -58,6 +59,7 @@ type Service struct {
 	upgrades UpgradeRepo
 	bus      Publisher
 	admin    identity.InstanceAdmin
+	gate     Gate
 	// automationsHosts lets machine_list show each machine's automations hosts; nil lists none.
 	automationsHosts AutomationsHostLister
 	// enrollDir holds the bundled runner's enrollment code file while it is not enrolled.
@@ -142,8 +144,30 @@ func (s *Service) WithManaged(managed ManagedLookup) *Service {
 	return s
 }
 
+// Gate is the permission check runners and machines pass through; both are instance-wide, so a caller needs the
+// action in any workspace they belong to (the access domain, ADR 0042).
+type Gate interface {
+	RequireAnywhere(ctx context.Context, action permissions.Action) error
+}
+
+// WithGate wires the permission check; unset, only the server's own calls pass.
+func (s *Service) WithGate(g Gate) *Service {
+	s.gate = g
+	return s
+}
+
+func (s *Service) require(ctx context.Context, action permissions.Action) error {
+	if s.gate == nil {
+		return permissions.Ungated(ctx)
+	}
+	return s.gate.RequireAnywhere(ctx, action)
+}
+
 // ListRunners returns every runner with its presence state and current job; unseen runners are absent.
 func (s *Service) ListRunners(ctx context.Context) ([]RunnerView, error) {
+	if err := s.require(ctx, permissions.RunnersRead); err != nil {
+		return nil, err
+	}
 	rs, err := s.repo.List(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list runners: %w", err)
@@ -187,6 +211,9 @@ func (s *Service) machineNames(ctx context.Context) map[string]string {
 
 // ListQueue returns the deploys waiting for a runner, FIFO order.
 func (s *Service) ListQueue(ctx context.Context) ([]QueuedJob, error) {
+	if err := s.require(ctx, permissions.RunnersRead); err != nil {
+		return nil, err
+	}
 	return s.live.Queue(), nil
 }
 
@@ -210,6 +237,9 @@ func (s *Service) GetMachine(ctx context.Context, id string) (*Machine, error) {
 func (s *Service) UpdateMachine(ctx context.Context, id, name, stackRoot string) (*Machine, error) {
 	if s.machines == nil {
 		return nil, fmt.Errorf("%w: machines are not configured", apperrs.ErrConflict)
+	}
+	if err := s.require(ctx, permissions.MachinesWrite); err != nil {
+		return nil, err
 	}
 	if name != "" {
 		if err := s.machines.Rename(ctx, id, name); err != nil {
