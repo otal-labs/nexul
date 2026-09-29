@@ -62,12 +62,20 @@ const wrapMark = (text: string, mark: RichMark): string => {
   return text;
 };
 
-// Mentions have no markdown node of their own; a mono chip is the closest the shared renderer's `code` mark gets.
+// Mirrors richtext.MentionHref: a mention is a link to its target, and an unknown kind renders nothing.
+const mentionMarkdown = (attrs: Record<string, unknown> = {}): string => {
+  const label = String(attrs.label ?? "");
+  const id = String(attrs.id ?? "");
+  if (attrs.type === "ticket") return `[${label}](/tickets/${id})`;
+  if (attrs.type === "doc") return `[${label}](/docs/${id})`;
+  return "";
+};
+
 const renderInlineMarkdown = (nodes: RichNode[]): string =>
   nodes
     .map((node) => {
       if (node.type === "hardBreak") return "  \n";
-      if (node.type === "mention") return `\`${String(node.attrs?.label ?? "")}\``;
+      if (node.type === "mention") return mentionMarkdown(node.attrs);
       if (node.type !== "text") return "";
       return (node.marks ?? []).reduce((text, mark) => wrapMark(text, mark), node.text ?? "");
     })

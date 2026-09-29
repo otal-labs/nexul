@@ -1,7 +1,10 @@
+import { router, type Href } from "expo-router";
 import { useMemo } from "react";
 import { Linking } from "react-native";
 import { EnrichedMarkdownText, type MarkdownStyle } from "react-native-enriched-markdown";
 import { useCSSVariable } from "uniwind";
+
+import { useSessionStore } from "@/stores/sessionStore";
 
 const sans = "Inter";
 const mono = "JetBrains Mono";
@@ -43,17 +46,36 @@ const useMarkdownStyle = (): MarkdownStyle => {
   }, [foreground, mutedForeground, border, surface]);
 };
 
+// Both doc URL shapes the web serves, /docs/<id> and /docs/<projectToken>/<id>, and ticket URLs, relative or on the instance.
+const inAppRoute = (path: string): Href | null => {
+  const doc = /^\/docs\/(?:[^/?#]+\/)?([^/?#]+)(?=[?#]|$)/.exec(path);
+  if (doc?.[1]) return `/more/docs/${doc[1]}`;
+  const ticket = /^\/tickets\/([^/?#]+)(?=[?#]|$)/.exec(path);
+  if (ticket?.[1]) return `/board/ticket/${ticket[1]}`;
+  return null;
+};
+
+const openLink = (url: string) => {
+  const host = useSessionStore.getState().host ?? "";
+  const path = host && url.startsWith(`${host}/`) ? url.slice(host.length) : url;
+  const route = inAppRoute(path);
+  if (route) {
+    router.push(route);
+    return;
+  }
+  // Any other relative link is a page of the web app, which only the browser can show.
+  void Linking.openURL(path.startsWith("/") ? `${host}${path}` : url);
+};
+
 interface MessageMarkdownProps {
   markdown: string;
-  /** Overrides the default "open in the system browser"; a caller with internal links routes them here. */
-  onLinkPress?: (url: string) => void;
 }
 
-export const MessageMarkdown = ({ markdown, onLinkPress }: MessageMarkdownProps) => (
+export const MessageMarkdown = ({ markdown }: MessageMarkdownProps) => (
   <EnrichedMarkdownText
     markdown={markdown}
     flavor="github"
     markdownStyle={useMarkdownStyle()}
-    onLinkPress={({ url }) => (onLinkPress ? onLinkPress(url) : void Linking.openURL(url))}
+    onLinkPress={({ url }) => openLink(url)}
   />
 );
