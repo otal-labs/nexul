@@ -105,8 +105,8 @@ type coreServices struct {
 // wireCoreServices constructs every domain service; order matters since some close cycles via Set*/gateway calls.
 func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, bus *inprocess.Bus, logger *slog.Logger) *coreServices {
 	accessSvc := access.NewService(store.Access, accessUsers{store.Users})
-	docsSvc := docs.NewService(store.Docs, accessSvc)
 	attachmentsSvc := attachments.NewService(store.Attachments, accessSvc, memoryAttachmentsAccessGate{memories: store.Memories, access: accessSvc})
+	docsSvc := docs.NewService(store.Docs, accessSvc, docsAttachmentsGate{svc: attachmentsSvc})
 
 	// The hub relays/persists Y.js updates and commits via the docs use-case layer (ADR 0017 seam, collab never imports docs).
 	collabHub := collab.NewHub(logger, store.Collab, accessSvc, collabDocWriter{docsSvc})

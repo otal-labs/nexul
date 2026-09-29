@@ -10,6 +10,7 @@ type Doc struct {
 	ProjectID string    `json:"project_id"`
 	Version   int       `json:"version"`
 	Archived  bool      `json:"archived"`
+	CreatedBy string    `json:"created_by"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -35,4 +36,7 @@ type DocListItem struct {
 	Archived  bool      `json:"archived"`
 	CanOpen   bool      `json:"can_open"`
 	UpdatedAt time.Time `json:"updated_at"`
+	// Filled only when CanOpen, so a doc the caller can't open discloses its title alone.
+	CreatedBy string `json:"created_by,omitempty"`
+	Snippet   string `json:"snippet,omitempty"`
 }

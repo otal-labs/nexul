@@ -321,6 +321,7 @@ type Doc struct {
 	Archived  int64
 	BodyMd    string
 	ProjectID sql.NullString
+	CreatedBy string
 }
 
 type DocVersion struct {

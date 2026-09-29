@@ -169,6 +169,7 @@ func memoryCreateTool(s *Service) mcptool.Tool {
 			"Save a durable fact worth remembering; if a memory already covers the ground, change it with memory_update instead. "+
 			"kind decisions_log creates the project's decisions log (one per project, never sent every turn), and kind interview returns the project's interview memory, "+
 			"creating it from the Interview template the first time; both need project_id. "+
+			"Copying needs memories:clone on the source and memories:write at the destination. "+
 			"Returns the memory with its body as markdown.",
 		mcptool.Hints{Additive: true, Local: true},
 		func(ctx context.Context, in memoryCreateIn) (any, error) {

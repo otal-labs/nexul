@@ -21,6 +21,7 @@ const (
 	DocsWrite          Action = "docs:write"
 	DocsDelete         Action = "docs:delete"
 	DocsThread         Action = "docs:thread"
+	DocsClone          Action = "docs:clone"
 	PermissionsWrite   Action = "permissions:write"
 	ProjectsRead       Action = "projects:read"
 	ProjectsWrite      Action = "projects:write"
@@ -92,6 +93,7 @@ var verbLabel = map[Action]string{
 	MemoriesClone: "Clone memories to another project or workspace",
 	RolesClone:    "Clone roles to another workspace",
 	DocsThread:    "See doc threads",
+	DocsClone:     "Clone docs into another project",
 	// The creator owns what they create, and an Owner holds every permission, so this one is as strong as Owner.
 	WorkspacesCreate: "Create workspaces",
 }
@@ -105,7 +107,7 @@ type domainInfo struct {
 
 // domainTable is the single source every catalog, valid-action set, and web grid derives from (display order).
 var domainTable = []domainInfo{
-	{"docs", "docs", []string{read, write, delete, thread}},
+	{"docs", "docs", []string{read, write, delete, thread, clone}},
 	{"attachments", "attachments", []string{read, write, delete}},
 	{"plays", "plays", []string{read, write, delete, run}},
 	{"memories", "memories", []string{read, write, delete, clone}},

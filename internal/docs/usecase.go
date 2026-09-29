@@ -24,16 +24,26 @@ type AccessChecker interface {
 	RequireProject(ctx context.Context, projectID string, action permissions.Action) error
 }
 
-// Service is the docs use-case layer (ADR 0019); permission checks run here so every adapter inherits them.
-type Service struct {
-	repo   Repo
-	access AccessChecker
-	now    func() time.Time
+// AttachmentsCopier duplicates a doc's attachments under a clone's id; docs never imports attachments (ADR 0017).
+type AttachmentsCopier interface {
+	ListOwnerIDs(ctx context.Context, docID string) ([]string, error)
+	CopyOwnerWithIDs(ctx context.Context, fromDocID, toDocID string, idMap map[string]string) error
 }
 
-// NewService wires the docs use-cases over the given repo and access checker.
-func NewService(repo Repo, access AccessChecker) *Service {
-	return &Service{repo: repo, access: access, now: time.Now}
+// snippetRunes bounds a list item's preview; the row truncates it to one line anyway.
+const snippetRunes = 140
+
+// Service is the docs use-case layer (ADR 0019); permission checks run here so every adapter inherits them.
+type Service struct {
+	repo        Repo
+	access      AccessChecker
+	attachments AttachmentsCopier
+	now         func() time.Time
+}
+
+// NewService wires the docs use-cases over the given repo, access checker, and attachment copier (for Clone).
+func NewService(repo Repo, access AccessChecker, attachments AttachmentsCopier) *Service {
+	return &Service{repo: repo, access: access, attachments: attachments, now: time.Now}
 }
 
 // Create validates and persists a new doc (v1), enqueuing doc.created and granting the creator full permissions.
@@ -64,18 +74,87 @@ func (s *Service) Create(ctx context.Context, projectID, title, body string) (*D
 		Title:     title,
 		Body:      body,
 		Version:   1,
+		CreatedBy: actor.ID,
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
-	if err := s.repo.Create(ctx, d, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicCreated, Payload: CreatedEvent{Doc: *d, ActorID: actor.ID}}); err != nil {
-		return nil, fmt.Errorf("create doc: %w", err)
-	}
-	if s.access != nil {
-		if err := s.access.GrantCreator(ctx, d.ID, actor.ID); err != nil {
-			return nil, fmt.Errorf("grant creator on doc %s: %w", d.ID, err)
-		}
+	if err := s.persistNew(ctx, d); err != nil {
+		return nil, err
 	}
 	return d, nil
+}
+
+// persistNew writes a new doc with its doc.created event and grants its author full permissions on it.
+func (s *Service) persistNew(ctx context.Context, d *Doc) error {
+	if err := s.repo.Create(ctx, d, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicCreated, Payload: CreatedEvent{Doc: *d, ActorID: d.CreatedBy}}); err != nil {
+		return fmt.Errorf("create doc: %w", err)
+	}
+	if s.access != nil {
+		if err := s.access.GrantCreator(ctx, d.ID, d.CreatedBy); err != nil {
+			return fmt.Errorf("grant creator on doc %s: %w", d.ID, err)
+		}
+	}
+	return nil
+}
+
+// Clone copies a doc, with its attachments, into destinationProjectID as a new doc with a fresh history; an empty
+// destination duplicates it in its own project with " (copy)" on the title. Needs docs:read and docs:clone on the
+// source and docs:write in the destination project.
+func (s *Service) Clone(ctx context.Context, id, destinationProjectID string) (*Doc, error) {
+	source, err := s.Get(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.require(ctx, source.ID, permissions.DocsClone); err != nil {
+		return nil, err
+	}
+	title := source.Title
+	destinationProjectID = strings.TrimSpace(destinationProjectID)
+	if destinationProjectID == "" || destinationProjectID == source.ProjectID {
+		destinationProjectID = source.ProjectID
+		title += " (copy)"
+	}
+	if err := s.requireProject(ctx, destinationProjectID, permissions.DocsWrite); err != nil {
+		return nil, err
+	}
+	idMap, err := s.attachmentIDMap(ctx, source.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list attachments for doc %s: %w", id, err)
+	}
+	body, err := richtext.RewriteAttachmentRefs(source.Body, idMap)
+	if err != nil {
+		return nil, fmt.Errorf("rewrite attachment refs for doc %s: %w", id, err)
+	}
+	now := s.now().UTC()
+	clone := &Doc{
+		ID: ids.New(), ProjectID: destinationProjectID, Title: title, Body: body,
+		Version: 1, CreatedBy: actorID(ctx), CreatedAt: now, UpdatedAt: now,
+	}
+	if err := s.persistNew(ctx, clone); err != nil {
+		return nil, err
+	}
+	if len(idMap) > 0 {
+		if err := s.attachments.CopyOwnerWithIDs(ctx, source.ID, clone.ID, idMap); err != nil {
+			return nil, fmt.Errorf("copy attachments for doc clone %s: %w", id, err)
+		}
+	}
+	return clone, nil
+}
+
+// attachmentIDMap pre-assigns a fresh id per attachment, so the clone's body can point at the copies before they exist.
+func (s *Service) attachmentIDMap(ctx context.Context, docID string) (map[string]string, error) {
+	if s.attachments == nil {
+		return nil, nil
+	}
+	oldIDs, err := s.attachments.ListOwnerIDs(ctx, docID)
+	if err != nil || len(oldIDs) == 0 {
+		return nil, err
+	}
+	idMap := make(map[string]string, len(oldIDs))
+	for _, oldID := range oldIDs {
+		idMap[oldID] = ids.New()
+	}
+	return idMap, nil
 }
 
 // actorID is the authenticated user behind ctx, or "" for a caller without one.
@@ -143,6 +222,10 @@ func (s *Service) toListItems(ctx context.Context, ds []*Doc) ([]*DocListItem, e
 			UpdatedAt: d.UpdatedAt,
 		}
 		item.CanOpen = s.can(ctx, d.ID, permissions.DocsRead)
+		if item.CanOpen {
+			item.CreatedBy = d.CreatedBy
+			item.Snippet = richtext.Snippet(d.Body, snippetRunes)
+		}
 		out = append(out, item)
 	}
 	return out, nil

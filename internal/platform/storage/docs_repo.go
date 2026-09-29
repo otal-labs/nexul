@@ -32,6 +32,7 @@ func (r *DocsRepo) Create(ctx context.Context, d *docs.Doc, evts ...eventbus.Out
 			BodyMd:    richtext.SearchText(d.Body),
 			Version:   int64(d.Version),
 			Archived:  int64(boolInt(d.Archived)),
+			CreatedBy: d.CreatedBy,
 			CreatedAt: d.CreatedAt.Unix(),
 			UpdatedAt: d.UpdatedAt.Unix(),
 		})
@@ -192,6 +193,7 @@ func toDoc(row sqlcgen.Doc) *docs.Doc {
 		Body:      row.Body,
 		Version:   int(row.Version),
 		Archived:  row.Archived != 0,
+		CreatedBy: row.CreatedBy,
 		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(),
 		UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
 	}
