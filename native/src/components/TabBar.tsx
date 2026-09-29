@@ -1,11 +1,14 @@
+import { View } from "react-native";
 import { BottomTabBar, type BottomTabBarProps } from "expo-router/js-tabs";
 
 import { OfflineBanner } from "@/components/OfflineBanner";
 
-// Above the tab bar the banner needs no inset math and never pushes a native header down.
+// The banner floats over the screens' bottom edge; the tab layout pads the scenes by its height while it shows.
 export const TabBar = (props: BottomTabBarProps) => (
-  <>
-    <OfflineBanner />
+  <View>
+    <View className="absolute inset-x-0 bottom-full">
+      <OfflineBanner />
+    </View>
     <BottomTabBar {...props} />
-  </>
+  </View>
 );

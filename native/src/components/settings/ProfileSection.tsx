@@ -17,7 +17,7 @@ export const ProfileSection = () => {
   return (
     <View className="gap-4 px-4 py-4">
       {isPending && <LoadingDisplay />}
-      {error && <ErrorDisplay error={error} />}
+      {error && <ErrorDisplay error={error} className="px-0" />}
       {me.data && (
         <View className="flex-row items-center gap-3">
           <Image source={{ uri: effectiveAvatar(me.data.user) }} className="size-14 rounded-full bg-muted" />

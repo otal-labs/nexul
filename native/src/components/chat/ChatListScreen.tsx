@@ -15,7 +15,7 @@ export const ChatListScreen = () => {
       {isPending && <LoadingDisplay />}
       {error && (
         <View className="px-4">
-          <ErrorDisplay error={error} />
+          <ErrorDisplay error={error} className="px-0" />
         </View>
       )}
       {conversations && conversations.length === 0 && <PlaceholderScreen message="No conversations yet." />}

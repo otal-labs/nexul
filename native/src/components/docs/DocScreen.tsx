@@ -24,7 +24,7 @@ export const DocScreen = ({ docId }: DocScreenProps) => {
   return (
     <View className="flex-1 bg-background">
       {isPending && <LoadingDisplay />}
-      {error && <ErrorDisplay error={error} />}
+      {error && <ErrorDisplay error={error} notFound="This doc doesn't exist or was deleted." />}
       {doc && (
         <ScrollView contentContainerClassName="gap-3 p-4">
           <Text variant="h3">{doc.title}</Text>

@@ -48,7 +48,7 @@ func (r *DocsRepo) Create(ctx context.Context, d *docs.Doc, evts ...eventbus.Out
 func (r *DocsRepo) GetByID(ctx context.Context, id string) (*docs.Doc, error) {
 	row, err := r.q.GetDoc(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("get doc %s: %w", id, notFoundIfNoRows(err))
+		return nil, notFoundIfNoRows(err)
 	}
 	return toDoc(row), nil
 }
@@ -176,7 +176,7 @@ func (r *DocsRepo) ListVersions(ctx context.Context, docID string) ([]*docs.DocV
 func (r *DocsRepo) GetVersion(ctx context.Context, docID string, version int) (*docs.DocVersion, error) {
 	row, err := r.q.GetDocVersion(ctx, sqlcgen.GetDocVersionParams{DocID: docID, Version: int64(version)})
 	if err != nil {
-		return nil, fmt.Errorf("get doc %s version %d: %w", docID, version, notFoundIfNoRows(err))
+		return nil, notFoundIfNoRows(err)
 	}
 	return &docs.DocVersion{
 		DocID: row.DocID, Version: int(row.Version), Title: row.Title, Body: row.Body,

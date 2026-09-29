@@ -18,7 +18,7 @@ export const DeployScreen = () => {
   return (
     <View className="flex-1 bg-background">
       {deployPending && <LoadingDisplay />}
-      {deployError && <ErrorDisplay error={deployError} />}
+      {deployError && <ErrorDisplay error={deployError} notFound="This deploy doesn't exist or was deleted." />}
       {deploy && (
         <View className="flex-row items-center gap-2 border-b border-border px-4 py-3">
           <View className={cn("size-2 rounded-full", deployStatusDot(deploy.status))} />

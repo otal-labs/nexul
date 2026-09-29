@@ -22,7 +22,7 @@ export const ChatThreadScreen = () => {
       {isPending && <LoadingDisplay />}
       {error && (
         <View className="flex-1 px-4">
-          <ErrorDisplay error={error} />
+          <ErrorDisplay error={error} className="px-0" notFound="This conversation doesn't exist or was deleted." />
         </View>
       )}
       {messages && messages.length === 0 && <PlaceholderScreen message="No messages yet." />}

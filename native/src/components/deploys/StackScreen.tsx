@@ -25,7 +25,7 @@ export const StackScreen = () => {
   return (
     <ScrollView className="flex-1 bg-background">
       {isPending && <LoadingDisplay />}
-      {error && <ErrorDisplay error={error} />}
+      {error && <ErrorDisplay error={error} notFound="This stack doesn't exist or was deleted." />}
       {stack && (
         <View className="gap-5 px-4 py-4">
           <Stack.Screen options={{ title: stack.name }} />
@@ -57,7 +57,7 @@ export const StackScreen = () => {
               Services
             </Text>
             {containersPending && <LoadingDisplay />}
-            {containersError && <ErrorDisplay error={containersError} />}
+            {containersError && <ErrorDisplay error={containersError} className="px-0" />}
             {containers && containers.length === 0 && <Text variant="muted">No services parsed yet.</Text>}
             {containers && containers.length > 0 && containers.map((c) => <ContainerRow key={c.id} container={c} />)}
           </View>
@@ -67,7 +67,7 @@ export const StackScreen = () => {
               Deploy history
             </Text>
             {deploysPending && <LoadingDisplay />}
-            {deploysError && <ErrorDisplay error={deploysError} />}
+            {deploysError && <ErrorDisplay error={deploysError} className="px-0" />}
             {deploys && deploys.length === 0 && <Text variant="muted">No deploys yet.</Text>}
             {deploys &&
               deploys.length > 0 &&

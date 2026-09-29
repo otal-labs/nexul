@@ -51,7 +51,7 @@ export const ManualCodeForm = ({ host, code, pending, error, onHostChange, onCod
           aria-label="Connect code"
         />
       </View>
-      {error !== null && error !== undefined && <ErrorDisplay error={error} />}
+      {error !== null && error !== undefined && <ErrorDisplay error={error} className="px-0" />}
       <Button onPress={onSubmit} disabled={!canSubmit}>
         <Text>{pending ? "Connecting…" : "Connect"}</Text>
       </Button>

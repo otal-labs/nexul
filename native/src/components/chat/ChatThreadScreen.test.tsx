@@ -43,6 +43,7 @@ jest.mock("@legendapp/list/react-native", () => ({
 jest.mock("@/api/client", () => ({
   api: { get: jest.fn(), post: jest.fn() },
   errorMessage: (error: Error) => error.message,
+  isNotFound: () => false,
 }));
 
 // Query notifications otherwise land on a zero timeout after act has returned.

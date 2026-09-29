@@ -2,6 +2,7 @@ import { Tabs } from "expo-router";
 import { Ellipsis, Inbox, MessageSquare, Rocket, SquareKanban } from "lucide-react-native";
 import { useCSSVariable } from "uniwind";
 
+import { OFFLINE_BANNER_HEIGHT, useIsOffline } from "@/components/OfflineBanner";
 import { TabBar } from "@/components/TabBar";
 import { unreadBadge, useFetchUnreadCount } from "@/hooks/NotificationHooks";
 import { useEnsureWorkspaceSelected } from "@/hooks/WorkspaceHooks";
@@ -11,6 +12,7 @@ export default function TabsLayout() {
     "--color-foreground",
     "--color-muted-foreground",
   ]);
+  const offline = useIsOffline();
   useEnsureWorkspaceSelected();
   const { data: unread } = useFetchUnreadCount();
   const badge = unreadBadge(unread?.count);
@@ -20,6 +22,7 @@ export default function TabsLayout() {
       tabBar={(props) => <TabBar {...props} />}
       screenOptions={{
         headerShown: false,
+        sceneStyle: { paddingBottom: offline ? OFFLINE_BANNER_HEIGHT : 0 },
         tabBarActiveTintColor: String(foreground),
         tabBarInactiveTintColor: String(mutedForeground),
         tabBarLabelStyle: { fontFamily: "Inter", fontWeight: "500" },

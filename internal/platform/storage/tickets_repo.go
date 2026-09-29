@@ -87,12 +87,12 @@ func (r *TicketsRepo) insertTicket(ctx context.Context, tx *sql.Tx, t *tickets.T
 func (r *TicketsRepo) GetByID(ctx context.Context, id string) (*tickets.Ticket, error) {
 	row, err := r.q.GetTicket(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("get ticket %s: %w", id, notFoundIfNoRows(err))
+		return nil, notFoundIfNoRows(err)
 	}
 	t := toTicket(row)
 	labels, err := r.ListLabels(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("get ticket %s: %w", id, err)
+		return nil, err
 	}
 	t.Labels = labels
 	return t, nil
@@ -102,10 +102,10 @@ func (r *TicketsRepo) GetByID(ctx context.Context, id string) (*tickets.Ticket, 
 func (r *TicketsRepo) GetByPrefixAndNumber(ctx context.Context, prefix string, number int) (*tickets.Ticket, error) {
 	rows, err := r.q.GetTicketByPrefixAndNumber(ctx, sqlcgen.GetTicketByPrefixAndNumberParams{Prefix: prefix, Number: int64(number)})
 	if err != nil {
-		return nil, fmt.Errorf("get ticket by key %s-%d: %w", prefix, number, err)
+		return nil, err
 	}
 	if len(rows) == 0 {
-		return nil, fmt.Errorf("get ticket by key %s-%d: %w", prefix, number, apperrs.ErrNotFound)
+		return nil, apperrs.ErrNotFound
 	}
 	if len(rows) > 1 {
 		return nil, fmt.Errorf("%w: key %s-%d matches more than one ticket; use the ticket's id", apperrs.ErrConflict, prefix, number)
@@ -113,7 +113,7 @@ func (r *TicketsRepo) GetByPrefixAndNumber(ctx context.Context, prefix string, n
 	t := toTicket(rows[0])
 	labels, err := r.ListLabels(ctx, t.ID)
 	if err != nil {
-		return nil, fmt.Errorf("get ticket by key %s-%d: %w", prefix, number, err)
+		return nil, err
 	}
 	t.Labels = labels
 	return t, nil
