@@ -146,6 +146,7 @@ interface SetupTurnActivityPayload {
   turn_id: string;
   status: string;
   call_id?: string;
+  kind?: string;
 }
 
 // The metadata of a session that just signed in; never the token.
@@ -223,7 +224,7 @@ const dispatch = (client: ReturnType<typeof useQueryClient>) => (frame: ServerFr
   }
   if (frame.topic === "computer.setup_turn_activity") {
     const p = frame.payload as SetupTurnActivityPayload;
-    useSetupActivityStore.getState().push(p.turn_id, p.status, p.call_id);
+    useSetupActivityStore.getState().push(p.turn_id, p.status, p.call_id, p.kind === "tool_call");
     return;
   }
   if (frame.topic === "session.created") {

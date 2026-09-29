@@ -738,6 +738,7 @@ func TestStartSetup_ToolCallUpdates_AreOneStep(t *testing.T) {
 	defer f.bus.mu.Unlock()
 	assert.Equal(t, "call-Nexul setup: Codex", f.bus.frames[0].CallID)
 	assert.Equal(t, f.bus.frames[0].CallID, f.bus.frames[1].CallID, "the live frames name the call, so the dialog updates its line")
+	assert.Equal(t, []string{"tool_call", "tool_result"}, []string{f.bus.frames[0].Kind, f.bus.frames[1].Kind}, "the dialog spins an open call until its result lands")
 }
 
 func TestSetupHandlers_ModelChoice(t *testing.T) {

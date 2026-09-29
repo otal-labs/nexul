@@ -2,16 +2,17 @@ import { create } from "zustand";
 
 const MAX_STEPS = 40;
 
-// One agent step; callId is the tool call it belongs to, empty for a step that is not one.
+// One agent step; callId is the tool call it belongs to, empty for a step that is not one; open until the call's result lands.
 export interface SetupActivityStep {
   callId: string;
   line: string;
+  open: boolean;
 }
 
 // Ephemeral, never persisted: each setup turn's steps as computer.setup_turn_activity frames arrive.
 export type SetupActivityStore = {
   steps: Record<string, SetupActivityStep[]>;
-  push: (turnId: string, line: string, callId?: string) => void;
+  push: (turnId: string, line: string, callId?: string, open?: boolean) => void;
 };
 
 // A later frame for the same tool call replaces its step, so a call's start and finish read as one line.
@@ -23,6 +24,6 @@ const withStep = (steps: SetupActivityStep[], step: SetupActivityStep): SetupAct
 
 export const useSetupActivityStore = create<SetupActivityStore>((set) => ({
   steps: {},
-  push: (turnId, line, callId = "") =>
-    set((s) => ({ steps: { ...s.steps, [turnId]: withStep(s.steps[turnId] ?? [], { callId, line }) } })),
+  push: (turnId, line, callId = "", open = false) =>
+    set((s) => ({ steps: { ...s.steps, [turnId]: withStep(s.steps[turnId] ?? [], { callId, line, open }) } })),
 }));

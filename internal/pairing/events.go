@@ -91,7 +91,7 @@ type SetupTurnOutcome struct {
 	Status   string         `json:"status"`
 }
 
-// SetupTurnActivityEvent is the running turn's latest step as one line, for the commentary under its row.
+// SetupTurnActivityEvent is the running turn's latest step as one line, for the setup dialog's transcript.
 type SetupTurnActivityEvent struct {
 	ComputerID string `json:"computer_id"`
 	UserID     string `json:"user_id"`
@@ -101,4 +101,6 @@ type SetupTurnActivityEvent struct {
 	Status     string `json:"status"`
 	// CallID names the tool call the step belongs to, so a consumer updates that step's line instead of adding one.
 	CallID string `json:"call_id,omitempty"`
+	// Kind is the step's harness.ActivityKind; tool_call means the call is still open.
+	Kind string `json:"kind,omitempty"`
 }

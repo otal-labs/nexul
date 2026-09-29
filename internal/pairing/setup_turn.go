@@ -331,7 +331,7 @@ func (s *Service) recordSetupActivity(ctx context.Context, turn *SetupTurn, a ha
 	}
 	err := s.bus.Publish(ctx, TopicSetupTurnActivity, SetupTurnActivityEvent{
 		ComputerID: turn.ComputerID, UserID: turn.UserID, RunID: turn.RunID, TurnID: turn.ID, Provider: turn.Provider,
-		Status: harness.Preview(a.Summary, 120), CallID: a.CallID,
+		Status: harness.Preview(a.Summary, 120), CallID: a.CallID, Kind: string(a.Kind),
 	})
 	if err != nil {
 		logging.FromCtx(ctx).Warn("publish setup turn activity", "computer_id", turn.ComputerID, "error", err)
