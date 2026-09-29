@@ -10,14 +10,14 @@ import { Text } from "@/components/ui/text";
 import { useFetchDocsByProject } from "@/hooks/DocHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import type { DocListItem } from "@/models/Doc";
+import { effectiveProject } from "@/models/Project";
 import { useDocsProjectStore } from "@/stores/docsProjectStore";
 
 export const DocsListScreen = () => {
   const router = useRouter();
   const selectedProjectId = useDocsProjectStore((s) => s.selectedProjectId);
   const { data: projects, error: projectsError, isPending: projectsPending } = useFetchProjects();
-  // No pick in this workspace yet (none, or one from another workspace): the first project stands in, as on Board.
-  const activeProject = projects?.find((p) => p.id === selectedProjectId) ?? projects?.[0];
+  const activeProject = effectiveProject(projects, selectedProjectId);
   const activeProjectId = activeProject?.id;
   const {
     data: docs,

@@ -5,7 +5,8 @@ import { useCSSVariable } from "uniwind";
 
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
-import { conversationLabel, type Conversation, type ConversationKind, type DMLabelContext } from "@/models/Chat";
+import { useConversationLabel } from "@/hooks/ChatHooks";
+import type { Conversation, ConversationKind, DMLabelContext } from "@/models/Chat";
 
 const kindIcons: Partial<Record<ConversationKind, typeof Hash>> = {
   dm: User,
@@ -22,7 +23,7 @@ interface ConversationRowProps {
 export const ConversationRow = ({ conversation, unreadCount, dmCtx }: ConversationRowProps) => {
   const router = useRouter();
   const [mutedForeground] = useCSSVariable(["--color-muted-foreground"]);
-  const label = conversationLabel(conversation, dmCtx);
+  const label = useConversationLabel(conversation, dmCtx);
   const Icon = kindIcons[conversation.kind] ?? Hash;
   return (
     <Pressable

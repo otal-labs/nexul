@@ -8,7 +8,7 @@ import type { DeployLogLine } from "@/models/Stack";
 
 jest.mock("@/api/client", () => ({ api: { get: jest.fn() } }));
 
-jest.mock("expo-router", () => ({ useLocalSearchParams: () => ({ id: "d-1" }) }));
+jest.mock("expo-router", () => ({ useLocalSearchParams: () => ({ id: "d-1" }), Stack: { Screen: () => null } }));
 
 // dispatch pulls in useLiveEvents' sessionStore import chain, which wires the query client's online manager
 // to expo-network/expo-secure-store; both are stubbed the same way useLiveEvents.test.tsx does it.

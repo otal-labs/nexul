@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, userEvent, waitFor } from "@testing-library/react-native";
-import { Alert, Text } from "react-native";
+import { Text } from "react-native";
 
 import { api } from "@/api/client";
 import { fetchAbout } from "@/api/connect";
@@ -28,7 +28,6 @@ beforeEach(() => {
 
 describe("VersionGate", () => {
   test("a signed-in phone refused by an old server can sign out instead of only retrying", async () => {
-    const alert = jest.spyOn(Alert, "alert");
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     await render(
       <QueryClientProvider client={client}>
@@ -38,9 +37,9 @@ describe("VersionGate", () => {
       </QueryClientProvider>,
     );
 
-    await userEvent.setup().press(await screen.findByRole("button", { name: "Sign out" }));
-    const confirm = alert.mock.calls[0]?.[2]?.find((button) => button.text === "Sign out");
-    confirm?.onPress?.();
+    const user = userEvent.setup();
+    await user.press(await screen.findByRole("button", { name: "Sign out" }));
+    await user.press(screen.getByRole("button", { name: "Confirm sign out" }));
 
     await waitFor(() => expect(useSessionStore.getState().signedIn).toBe(false));
     expect(await screen.findByText("Connect")).toBeTruthy();

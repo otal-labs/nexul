@@ -16,6 +16,7 @@ export default function SettingsLayout() {
       <Stack.Screen name="devices" options={{ title: "Devices" }} />
       <Stack.Screen name="appearance" options={sheetOptions} />
       <Stack.Screen name="workspace" options={sheetOptions} />
+      <Stack.Screen name="sign-out" options={sheetOptions} />
     </Stack>
   );
 }

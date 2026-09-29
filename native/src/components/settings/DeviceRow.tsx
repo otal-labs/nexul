@@ -1,5 +1,5 @@
 import { Monitor, Smartphone, X } from "lucide-react-native";
-import { Alert, Pressable, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useCSSVariable } from "uniwind";
 
 import { Text } from "@/components/ui/text";
@@ -8,22 +8,17 @@ import type { Session } from "@/models/User";
 
 const PHONE_PLATFORMS = ["Android", "iOS"];
 
+export const deviceLabel = (session: Session) => [session.platform, session.label].filter(Boolean).join(" · ");
+
 interface DeviceRowProps {
   session: Session;
-  pending?: boolean;
   onSignOut?: () => void;
 }
 
-export const DeviceRow = ({ session, pending = false, onSignOut }: DeviceRowProps) => {
+export const DeviceRow = ({ session, onSignOut }: DeviceRowProps) => {
   const [mutedForeground] = useCSSVariable(["--color-muted-foreground"]);
   const phone = session.client === "phone" || PHONE_PLATFORMS.includes(session.platform);
-  const label = [session.platform, session.label].filter(Boolean).join(" · ");
-
-  const confirmSignOut = () =>
-    Alert.alert("Sign out this device?", label, [
-      { text: "Cancel", style: "cancel" },
-      { text: "Sign out", style: "destructive", onPress: onSignOut },
-    ]);
+  const label = deviceLabel(session);
 
   return (
     <View className="min-h-11 flex-row items-center gap-3 border-b border-border bg-card px-4 py-3">
@@ -45,7 +40,7 @@ export const DeviceRow = ({ session, pending = false, onSignOut }: DeviceRowProp
         </Text>
       </View>
       {!session.current && onSignOut && (
-        <Pressable role="button" accessibilityLabel="Sign out" disabled={pending} onPress={confirmSignOut} className="size-11 items-center justify-center">
+        <Pressable role="button" accessibilityLabel="Sign out" onPress={onSignOut} className="size-11 items-center justify-center">
           <X size={16} color={String(mutedForeground)} />
         </Pressable>
       )}

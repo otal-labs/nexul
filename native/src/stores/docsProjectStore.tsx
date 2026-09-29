@@ -5,7 +5,7 @@ export type DocsProjectStore = {
   setSelectedProjectId: (id: string) => void;
 };
 
-// Scoped to the Docs list for now; Board is building its own project picker in parallel.
+// Scoped to the Docs list; Board keeps its own pick in boardStore.
 export const useDocsProjectStore = create<DocsProjectStore>((set) => ({
   selectedProjectId: null,
   setSelectedProjectId: (id) => set({ selectedProjectId: id }),

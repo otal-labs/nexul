@@ -32,6 +32,7 @@ const useMarkdownStyle = (): MarkdownStyle => {
       list: { ...body, bulletColor: mutedForeground, markerColor: mutedForeground },
       blockquote: { ...body, color: mutedForeground, borderColor: border, backgroundColor: "transparent" },
       code: { fontFamily: mono, color: foreground, backgroundColor: surface, borderColor: border },
+      thematicBreak: { color: border, height: 1 },
       codeBlock: {
         fontFamily: mono,
         fontSize: 13,
