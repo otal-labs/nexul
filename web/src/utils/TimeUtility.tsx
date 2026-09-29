@@ -32,3 +32,16 @@ export const formatDurationMs = (ms: number): string => {
   if (ms < 1000) return `${ms}ms`;
   return `${(ms / 1000).toFixed(1)}s`;
 };
+
+// The exact moment as a tooltip: the relative forms above lose it.
+export const formatFullTime = (ts: string): string => {
+  const date = new Date(ts);
+  return Number.isNaN(date.getTime()) ? ts : date.toLocaleString();
+};
+
+// 24-hour wall clock, short enough for the gutter a grouped message reveals it in.
+export const formatClockTime = (ts: string): string => {
+  const date = new Date(ts);
+  if (Number.isNaN(date.getTime())) return ts;
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+};

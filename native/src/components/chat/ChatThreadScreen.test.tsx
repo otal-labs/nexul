@@ -130,8 +130,16 @@ describe("ChatThreadScreen", () => {
     expect(await screen.findByText("newest")).toBeTruthy();
     const bodies = screen.getAllByText(/^(first|second|newest)$/).map((node) => node.props.children);
     expect(bodies).toEqual(["first", "second", "newest"]);
-    expect((await screen.findAllByText("Ana Lima")).length).toBe(3);
     expect(mockListProps.current).toMatchObject({ initialScrollAtEnd: true, alignItemsAtEnd: true, maintainScrollAtEnd: true });
+  });
+
+  test("a run of one person's messages shows one name, and a pause of more than five minutes starts a new one", async () => {
+    thread = [message("m1", "first", 1), message("m2", "second", 2), message("m3", "third", 3), message("m4", "much later", 14)];
+    await renderThread();
+
+    expect(await screen.findByText("much later")).toBeTruthy();
+    expect(screen.getAllByText(/^(first|second|third|much later)$/)).toHaveLength(4);
+    expect(screen.getAllByText("Ana Lima")).toHaveLength(2);
   });
 
   test("sending posts the message and shows it before the server answers", async () => {

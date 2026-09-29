@@ -65,6 +65,18 @@ export interface Message {
   pending?: boolean;
 }
 
+const CONTINUATION_WINDOW_MS = 5 * 60_000;
+
+// A message continues the previous one's group when it is the same person's ordinary message, at most five minutes after
+// it and on the same day. Agent turns and system lines carry trails and question cards, so they never group.
+export const isContinuation = (prev: Message | undefined, curr: Message): boolean => {
+  if (prev === undefined || prev.deleted_at) return false;
+  if (prev.author_kind !== "user" || curr.author_kind !== "user" || prev.author_id !== curr.author_id) return false;
+  const gapMs = Date.parse(curr.created_at) - Date.parse(prev.created_at);
+  if (!(gapMs >= 0 && gapMs <= CONTINUATION_WINDOW_MS)) return false;
+  return new Date(prev.created_at).toDateString() === new Date(curr.created_at).toDateString();
+};
+
 // Maps conversation id to the caller's unread message count.
 export type UnreadCounts = Record<string, number>;
 

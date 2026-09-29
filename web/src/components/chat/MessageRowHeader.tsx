@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { MessageHeader } from "@/components/ui/message";
 import type { Message as ChatMessage } from "@/models/Chat";
 import { personLabel, type Person } from "@/models/Person";
-import { formatRelativeTime } from "@/utils/TimeUtility";
+import { cn } from "@/lib/utils";
+import { formatClockTime, formatFullTime, formatRelativeTime } from "@/utils/TimeUtility";
 
 export type MessageAlign = "start" | "end";
 
@@ -38,15 +39,26 @@ export const MessageRowHeader = ({ align, message, isAgent, author }: MessageRow
           </Badge>
         )}
         {isAgent && <span className="text-[11px]">via {personLabel(author)}</span>}
-        <span className="shrink-0 font-mono text-[11px]">{formatRelativeTime(message.created_at)}</span>
+        <span className="shrink-0 font-mono text-[11px]" title={formatFullTime(message.created_at)}>
+          {formatRelativeTime(message.created_at)}
+        </span>
         {message.edited_at && <span className="shrink-0 text-[11px]">(edited)</span>}
       </MessageHeader>
     )}
     {align === "end" && (
       <MessageHeader className="justify-end gap-2 px-1">
-        <span className="shrink-0 font-mono text-[11px]">{formatRelativeTime(message.created_at)}</span>
+        <span className="shrink-0 font-mono text-[11px]" title={formatFullTime(message.created_at)}>
+          {formatRelativeTime(message.created_at)}
+        </span>
         {message.edited_at && <span className="shrink-0 text-[11px]">(edited)</span>}
       </MessageHeader>
     )}
   </>
+);
+
+// What a grouped message shows in place of its header; the row's hover and focus reveal it.
+export const MessageContinuationTime = ({ createdAt, className }: { createdAt: string; className?: string }) => (
+  <time dateTime={createdAt} title={formatFullTime(createdAt)} className={cn("font-mono text-[11px] whitespace-nowrap text-muted-foreground tabular-nums", className)}>
+    {formatClockTime(createdAt)}
+  </time>
 );

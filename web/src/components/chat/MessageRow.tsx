@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ChatQuestionCard } from "@/components/chat/ChatQuestionCard";
 import { MessageBody } from "@/components/chat/MessageBody";
 import { MessageEditForm } from "@/components/chat/MessageEditForm";
-import { MessageRowAvatar, MessageRowHeader, type MessageAlign } from "@/components/chat/MessageRowHeader";
+import { MessageContinuationTime, MessageRowAvatar, MessageRowHeader, type MessageAlign } from "@/components/chat/MessageRowHeader";
 import { MessageTrailTurns } from "@/components/chat/MessageTrailTurns";
 import { TrailQuestionBody } from "@/components/play/TrailQuestionCard";
 import { TrailReplyProse } from "@/components/play/TrailReplyProse";
@@ -21,6 +21,8 @@ interface MessageRowProps {
   message: ChatMessage;
   author: Person;
   isOwn: boolean;
+  // continuation says the previous message is the same person's, so this one drops its avatar and header.
+  continuation?: boolean;
   // questionAnswered says the thread already moved past an Agent question, so its card is read-only.
   questionAnswered?: boolean;
   // trailBlock is the run that led to this message: its turns render above it, and its question is answered on the trail.
@@ -29,14 +31,21 @@ interface MessageRowProps {
   onDelete: (messageId: string) => Promise<void>;
 }
 
-const MessageBubble = ({ message, align }: { message: ChatMessage; align: MessageAlign }) => (
+// timeOnHover is the clock time a grouped message of yours reveals beside its bubble, in place of the header it dropped.
+const MessageBubble = ({ message, align, timeOnHover }: { message: ChatMessage; align: MessageAlign; timeOnHover: boolean }) => (
   <div
     data-slot="bubble"
     className={cn(
-      "max-w-[85%] space-y-1.5 rounded-2xl bg-accent px-3 py-2 text-sm break-words text-accent-foreground",
+      "relative w-fit max-w-[75%] space-y-1.5 rounded-2xl bg-accent px-3 py-2 text-sm break-words text-accent-foreground",
       align === "end" ? "rounded-br-md" : "rounded-bl-md",
     )}
   >
+    {timeOnHover && (
+      <MessageContinuationTime
+        createdAt={message.created_at}
+        className="absolute top-1/2 right-full mr-2 -translate-y-1/2 opacity-0 transition-opacity duration-150 ease-standard group-focus-within:opacity-100 group-hover:opacity-100"
+      />
+    )}
     <MessageBody body={message.body} mentionHandles={(message.mentions ?? []).map((m) => m.handle)} />
   </div>
 );
@@ -71,7 +80,7 @@ const AgentMessageBody = ({ message, trailBlock, questionAnswered }: AgentMessag
 };
 
 // Your own messages sit right-aligned with no header; everyone else gets an avatar + name/time header.
-export const MessageRow = ({ message, author, isOwn, questionAnswered = false, trailBlock, onEdit, onDelete }: MessageRowProps) => {
+export const MessageRow = ({ message, author, isOwn, continuation = false, questionAnswered = false, trailBlock, onEdit, onDelete }: MessageRowProps) => {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(message.body);
   const { open: confirmDelete } = useConfirmationDialog();
@@ -107,22 +116,30 @@ export const MessageRow = ({ message, author, isOwn, questionAnswered = false, t
     <>
       {isSystem && <SystemMessageRow body={message.body} trailBlock={trailBlock} />}
       {!isSystem && (
-        <Message align={align} className={cn("group px-3 py-1", message.pending && "opacity-60")}>
-          {align === "start" && (
+        <Message align={align} className={cn("group px-3", message.pending && "opacity-60")}>
+          {align === "start" && !continuation && (
             <MessageAvatar className="size-6 self-start bg-transparent">
               <MessageRowAvatar isAgent={isAgent} author={author} />
             </MessageAvatar>
           )}
+          {align === "start" && continuation && (
+            <MessageAvatar className="w-8 self-center overflow-visible bg-transparent">
+              <MessageContinuationTime
+                createdAt={message.created_at}
+                className="opacity-0 transition-opacity duration-150 ease-standard group-focus-within:opacity-100 group-hover:opacity-100"
+              />
+            </MessageAvatar>
+          )}
           <MessageContent>
-            <MessageRowHeader align={align} message={message} isAgent={isAgent} author={author} />
+            {!continuation && <MessageRowHeader align={align} message={message} isAgent={isAgent} author={author} />}
             {editing && (
               <MessageEditForm draft={draft} onDraftChange={setDraft} onCancel={() => setEditing(false)} onSave={() => void saveEdit()} />
             )}
-            {!editing && !isAgent && <MessageBubble message={message} align={align} />}
+            {!editing && !isAgent && <MessageBubble message={message} align={align} timeOnHover={continuation && align === "end"} />}
             {!editing && isAgent && <AgentMessageBody message={message} trailBlock={trailBlock} questionAnswered={questionAnswered} />}
           </MessageContent>
           {canEditOrDelete && !editing && (
-            <div className="flex h-fit shrink-0 gap-0.5 self-center opacity-0 transition-opacity duration-150 ease-standard group-hover:opacity-100">
+            <div className="flex h-fit shrink-0 gap-0.5 self-center opacity-0 transition-opacity duration-150 ease-standard group-focus-within:opacity-100 group-hover:opacity-100">
               <Button size="icon" variant="ghost" className="size-6" aria-label="Edit message" onClick={startEdit}>
                 <Pencil className="size-3.5" aria-hidden />
               </Button>
