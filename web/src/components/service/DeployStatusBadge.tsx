@@ -4,9 +4,9 @@ import { NoFillBadge } from "@/components/ui/badge";
 import { DeployStatus, type DeployStatus as DeployStatusType } from "@/models/Service";
 
 // Colored icon + text, never a filled/tinted chip; semantic tokens carry color instead of background tint.
-const config: Record<DeployStatusType, { icon: LucideIcon; color: string }> = {
+const config: Record<DeployStatusType, { icon: LucideIcon; color: string; iconClassName?: string }> = {
   [DeployStatus.Pending]: { icon: Clock, color: "text-warning" },
-  [DeployStatus.Running]: { icon: Loader2, color: "text-info" },
+  [DeployStatus.Running]: { icon: Loader2, color: "text-info", iconClassName: "animate-spin motion-reduce:animate-none" },
   [DeployStatus.Healthy]: { icon: CheckCircle2, color: "text-success" },
   [DeployStatus.Failed]: { icon: XCircle, color: "text-destructive" },
 };
@@ -16,9 +16,9 @@ interface DeployStatusBadgeProps {
 }
 
 export const DeployStatusBadge = ({ status }: DeployStatusBadgeProps) => {
-  const { icon, color } = config[status];
+  const { icon, color, iconClassName } = config[status];
   return (
-    <NoFillBadge icon={icon} color={color}>
+    <NoFillBadge icon={icon} color={color} iconClassName={iconClassName}>
       {status}
     </NoFillBadge>
   );
