@@ -14,15 +14,20 @@ import (
 
 	"github.com/otal-labs/nexul/internal/auth"
 	"github.com/otal-labs/nexul/internal/chat"
+	"github.com/otal-labs/nexul/internal/codereview"
 	"github.com/otal-labs/nexul/internal/deploy"
+	"github.com/otal-labs/nexul/internal/dns"
 	"github.com/otal-labs/nexul/internal/docs"
+	"github.com/otal-labs/nexul/internal/gitprovider"
 	"github.com/otal-labs/nexul/internal/platform/config"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/inprocess"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
+	"github.com/otal-labs/nexul/internal/repository"
 	"github.com/otal-labs/nexul/internal/roles"
+	"github.com/otal-labs/nexul/internal/runner"
 	"github.com/otal-labs/nexul/internal/tenancy"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/workspace"
@@ -78,6 +83,28 @@ func contains[T any](items []T, err error, match func(T) bool) error {
 	return nil
 }
 
+// present reports a batch read's entry for id, or errHidden when the read left it out.
+func present[V any](m map[string]V, err error, id string) error {
+	if err != nil {
+		return err
+	}
+	if _, ok := m[id]; !ok {
+		return errHidden
+	}
+	return nil
+}
+
+// noPRs and noRepos stand in for the git host, so an allowed call ends at an empty answer instead of the network.
+type noPRs struct{ gitprovider.GitProvider }
+
+func (noPRs) ListPRs(context.Context, string, string, gitprovider.PROpts) ([]*gitprovider.PR, error) {
+	return nil, nil
+}
+
+type noRepos struct{ repository.Scanner }
+
+func (noRepos) ListInstallationRepos(context.Context) ([]repository.Repo, error) { return nil, nil }
+
 func grant(actions ...string) permissions.Set {
 	out := make([]permissions.Action, len(actions))
 	for i, a := range actions {
@@ -96,6 +123,7 @@ type permFixture struct {
 	stack   string
 	infra   string
 	deploy  string
+	review  string
 }
 
 // newPermFixture wires the real composition root over a fresh database and seeds one of everything in the default
@@ -117,7 +145,8 @@ func newPermFixture(t *testing.T) permFixture {
 		_, _, err := store.Users.UpsertUser(ctx, &auth.Identity{UserID: id, Provider: auth.ProviderGitHub, ProviderUserID: id, Login: id})
 		require.NoError(t, err)
 	}
-	reads := []string{"tickets:read", "stacks:read", "deploys:read", "topology:read", "docs:read", "memories:read"}
+	reads := []string{"tickets:read", "stacks:read", "deploys:read", "topology:read", "docs:read", "memories:read", "dns:read",
+		"machines:read", "connectors:read", "reviews:read", "repos:read"}
 	now := time.Now()
 	for _, r := range []*roles.Role{
 		{ID: "role-owner", WorkspaceID: "workspace-default", Name: "Owner", IsOwnerRole: true},
@@ -133,7 +162,7 @@ func newPermFixture(t *testing.T) permFixture {
 	}
 	require.NoError(t, store.Access.Set(ctx, "workspace", "workspace-default", uOverwrite, grant(reads...), nil))
 
-	f := permFixture{svc: svc, store: store, doc: "doc-1", stack: "stack-1", infra: "stack-gateway", deploy: "deploy-1"}
+	f := permFixture{svc: svc, store: store, doc: "doc-1", stack: "stack-1", infra: "stack-gateway", deploy: "deploy-1", review: "review-1"}
 	var err error
 	f.ticket, err = svc.ticketsSvc.Create(ctx, "project-general", "Login times out", "", "", "")
 	require.NoError(t, err)
@@ -145,6 +174,11 @@ func newPermFixture(t *testing.T) permFixture {
 	require.NoError(t, store.Stacks.Create(ctx, &deploy.Stack{ID: f.stack, ProjectID: "project-general", Name: "web", Slug: "web", Machine: "m1", Strategy: deploy.StrategyRun, CreatedAt: now, UpdatedAt: now}))
 	require.NoError(t, store.Stacks.Create(ctx, &deploy.Stack{ID: f.infra, Name: "cloudflared", Slug: "cloudflared", Machine: "m1", Strategy: deploy.StrategyRun, CreatedAt: now, UpdatedAt: now}))
 	require.NoError(t, store.Deploys.Create(ctx, &deploy.Deploy{ID: f.deploy, StackID: f.stack, Service: "web", Status: deploy.StatusHealthy, CreatedAt: now, UpdatedAt: now}))
+	require.NoError(t, store.Projects.AddRepo(ctx, "project-general", workspace.RepoRef{Owner: "acme", Name: "app", FullName: "acme/app", ConnectorID: "github", Role: workspace.RepoRoleApp}))
+	require.NoError(t, store.Tickets.LinkPR(ctx, f.ticket.ID, tickets.PRRef{Owner: "acme", Repo: "app", Number: 7}, tickets.PRStateOpen))
+	require.NoError(t, store.CodeReviews.Create(ctx, &codereview.CodeReview{ID: f.review, Repo: "acme/app", PRNumber: 7, Status: codereview.StatusPending, CreatedAt: now}))
+	_, err = svc.chatSvc.GetOrCreateTicketThread(ctx, "workspace-default", f.ticket.ID, uOwner)
+	require.NoError(t, err)
 	return f
 }
 
@@ -153,6 +187,8 @@ func newPermFixture(t *testing.T) permFixture {
 func TestIntegration_PermissionTable(t *testing.T) {
 	f := newPermFixture(t)
 	s := f.svc
+	machines := runner.NewService(f.store.Runners, nil).WithMachines(f.store.Machines).WithGate(s.accessSvc)
+	entities := projectEntityGate{access: s.accessSvc, projects: f.store.Projects, tickets: f.store.Tickets}
 	cases := []struct {
 		name string
 		call func(ctx context.Context) error
@@ -232,6 +268,66 @@ func TestIntegration_PermissionTable(t *testing.T) {
 			_, err := s.notifSvc.List(ctx, actor.ID, "workspace-default", 10)
 			return err
 		}, map[string]string{uPlain: ok, uOutsider: notFound}},
+		{"dns: list gateways", func(ctx context.Context) error {
+			_, err := s.dnsSvc.ListGateways(ctx)
+			return err
+		}, map[string]string{uOwner: ok, uReader: ok, uOverwrite: ok, uPlain: forbidden, uOutsider: forbidden}},
+		{"dns: delete an exposure (the owner passes the gate to a missing id)", func(ctx context.Context) error {
+			return s.dnsSvc.DeleteExposure(ctx, "exposure-missing")
+		}, map[string]string{uOwner: notFound, uReader: forbidden, uWriter: forbidden, uOutsider: forbidden}},
+		{"dns: create a record", func(ctx context.Context) error {
+			_, err := s.dnsSvc.CreateRecord(ctx, "zone-1", dns.RecordInput{Type: dns.RecordA, Name: "app", Content: "192.0.2.1"})
+			return err
+		}, map[string]string{uReader: forbidden, uPlain: forbidden, uOutsider: forbidden}},
+		{"machines: list", func(ctx context.Context) error {
+			_, err := machines.ListMachines(ctx)
+			return err
+		}, map[string]string{uOwner: ok, uReader: ok, uPlain: forbidden, uOutsider: forbidden}},
+		{"automations hosts: list", func(ctx context.Context) error {
+			_, err := s.automationHostsSvc.List(ctx)
+			return err
+		}, map[string]string{uOwner: ok, uReader: forbidden, uOutsider: forbidden}},
+		{"connectors: list", func(ctx context.Context) error {
+			_, err := s.connectorsSvc.List(ctx)
+			return err
+		}, map[string]string{uOwner: ok, uReader: ok, uPlain: forbidden, uOutsider: forbidden}},
+		{"connectors: disconnect", func(ctx context.Context) error {
+			return s.connectorsSvc.Disconnect(ctx, "cloudflare")
+		}, map[string]string{uOwner: ok, uReader: forbidden, uWriter: forbidden, uOutsider: forbidden}},
+		{"repositories: list the installation's", func(ctx context.Context) error {
+			_, err := repository.ListRepos(ctx, s.accessSvc, noRepos{})
+			return err
+		}, map[string]string{uOwner: ok, uWriter: ok, uReader: forbidden, uOutsider: forbidden}},
+		{"pull requests: list a project repository's", func(ctx context.Context) error {
+			_, err := gitprovider.ListPRs(ctx, entities, noPRs{}, "acme", "app", gitprovider.PROpts{})
+			return err
+		}, map[string]string{uOwner: ok, uReader: ok, uPlain: forbidden, uOutsider: notFound}},
+		{"reviews: get", func(ctx context.Context) error {
+			_, err := s.reviewSvc.Get(ctx, f.review)
+			return err
+		}, map[string]string{uOwner: ok, uReader: ok, uPlain: forbidden, uOutsider: notFound}},
+		{"reviews: list a ticket's", func(ctx context.Context) error {
+			rs, err := s.reviewSvc.ListByTicket(ctx, f.ticket.ID)
+			return contains(rs, err, func(r *codereview.CodeReview) bool { return r.ID == f.review })
+		}, map[string]string{uOwner: ok, uReader: ok, uWriter: hidden, uPlain: forbidden, uOutsider: notFound}},
+		{"board: PR counts per card", func(ctx context.Context) error {
+			counts, err := s.ticketsSvc.DevStatus(ctx, []string{f.ticket.ID})
+			return present(counts, err, f.ticket.ID)
+		}, map[string]string{uOwner: ok, uReader: ok, uPlain: hidden, uOutsider: hidden}},
+		{"board: ticket-thread markers", func(ctx context.Context) error {
+			marks, err := s.chatSvc.HasTicketThreads(ctx, []string{f.ticket.ID})
+			return present(marks, err, f.ticket.ID)
+		}, map[string]string{uOwner: ok, uReader: ok, uPlain: hidden, uOutsider: hidden}},
+		{"chat: a DM with someone outside the workspace", func(ctx context.Context) error {
+			actor, _ := identity.ActorFromCtx(ctx)
+			_, err := s.chatSvc.CreateDM(ctx, "workspace-default", actor.ID, []string{uOutsider})
+			return err
+		}, map[string]string{uOwner: notFound, uWriter: notFound}},
+		{"chat: a DM with nobody by that id reads the same", func(ctx context.Context) error {
+			actor, _ := identity.ActorFromCtx(ctx)
+			_, err := s.chatSvc.CreateDM(ctx, "workspace-default", actor.ID, []string{"u-nobody"})
+			return err
+		}, map[string]string{uOwner: notFound}},
 	}
 	for _, tc := range cases {
 		for user, want := range tc.want {

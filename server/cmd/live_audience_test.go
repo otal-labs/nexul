@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -11,7 +12,10 @@ import (
 	"github.com/otal-labs/nexul/internal/auth"
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/deploy"
+	"github.com/otal-labs/nexul/internal/memories"
 	"github.com/otal-labs/nexul/internal/plays"
+	"github.com/otal-labs/nexul/internal/roles"
+	"github.com/otal-labs/nexul/internal/tenancy"
 	"github.com/otal-labs/nexul/internal/tickets"
 )
 
@@ -47,5 +51,22 @@ func TestLiveAudience_FramesFollowTheEntitysRead(t *testing.T) {
 		for user, want := range tc.want {
 			assert.Equal(t, want, a.allows(as(user), tc.topic, json.RawMessage(raw)), "%s as %s", tc.topic, user)
 		}
+	}
+}
+
+// TestLiveAudience_MemoryDeletedStaysInItsWorkspace: the deleted frame carries the memory's title, so it reaches
+// readers of the memory's own workspace, not someone who reads memories in another one.
+func TestLiveAudience_MemoryDeletedStaysInItsWorkspace(t *testing.T) {
+	f := newPermFixture(t)
+	ctx := t.Context()
+	now := time.Now()
+	require.NoError(t, f.store.Workspaces.Create(ctx, &tenancy.Workspace{ID: "workspace-other", Name: "Other", CreatedAt: now, UpdatedAt: now}))
+	require.NoError(t, f.store.Roles.Create(ctx, &roles.Role{ID: "role-other-reader", WorkspaceID: "workspace-other", Name: "Reader", Permissions: grant("memories:read"), CreatedAt: now, UpdatedAt: now}))
+	require.NoError(t, f.store.WorkspaceMembers.AddMember(ctx, &tenancy.Member{UserID: uOutsider, WorkspaceID: "workspace-other", RoleID: "role-other-reader", CreatedAt: now}))
+	a := liveAudience{access: f.svc.accessSvc}
+	raw, err := json.Marshal(memories.DeletedEvent{ID: "memory-1", WorkspaceID: "workspace-default", Title: "Deploy keys", AuthorID: uOwner})
+	require.NoError(t, err)
+	for user, want := range map[string]bool{uReader: true, uPlain: false, uOutsider: false} {
+		assert.Equal(t, want, a.allows(as(user), memories.TopicDeleted, json.RawMessage(raw)), "as %s", user)
 	}
 }
