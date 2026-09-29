@@ -81,6 +81,9 @@ updates:
       - dependency-name: "react-native"
       - dependency-name: "react-native-*"
       - dependency-name: "jest-expo"
+      # typescript stays on the 6.x API for typescript-eslint; tsc 7 comes from the @typescript/native alias.
+      - dependency-name: "typescript"
+        versions: [">=6.1.0"]
     groups:
       minor-and-patch:
         patterns: ["*"]
