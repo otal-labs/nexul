@@ -91,8 +91,8 @@ export const BranchRulesForm = ({ stack, exposure, defaultPort, networks, onDone
         Add branch
       </Button>
       <div className="flex flex-wrap gap-3">
-        <Button type="submit" className="w-full sm:w-auto" disabled={updateStack.isPending}>
-          {updateStack.isPending ? "Saving…" : "Save branches"}
+        <Button type="submit" className="w-full sm:w-auto" loading={updateStack.isPending}>
+          Save branches
         </Button>
         <Button type="button" variant="ghost" className="text-muted-foreground" onClick={onSkip}>
           Skip for now

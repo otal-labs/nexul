@@ -33,8 +33,8 @@ export const AutomationConfigForm = ({ automation }: AutomationConfigFormProps) 
           {fields.map((field) => (
             <AutomationConfigFieldControl key={field.key} control={form.control} field={field} />
           ))}
-          <Button type="submit" size="sm" disabled={updateConfig.isPending}>
-            {updateConfig.isPending ? "Saving…" : "Save configuration"}
+          <Button type="submit" size="sm" loading={updateConfig.isPending}>
+            Save configuration
           </Button>
         </form>
       )}

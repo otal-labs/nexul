@@ -97,7 +97,7 @@ const TunnelDeployFields = ({ machines, accounts, onConnected }: TunnelDeployFie
             <MachinePicker control={form.control} name="target" />
             <FormInput control={form.control} name="docker_network" label="Docker network" placeholder="nexul_default" />
           </AdvancedFields>
-          <Button type="submit" className="w-full sm:w-auto" disabled={busy}>
+          <Button type="submit" className="w-full sm:w-auto" loading={busy}>
             {busy ? "Deploying tunnel…" : "Deploy tunnel"}
           </Button>
         </form>

@@ -122,8 +122,8 @@ export const CreateGatewayDialog = () => {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <CreateGatewayFormFields form={form} kind={kind} zones={zones} tunnels={tunnels} />
             <DialogFooter>
-              <Button type="submit" disabled={createGateway.isPending}>
-                {createGateway.isPending ? "Creating…" : "Create gateway"}
+              <Button type="submit" loading={createGateway.isPending}>
+                Create gateway
               </Button>
             </DialogFooter>
           </form>

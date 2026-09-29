@@ -56,8 +56,8 @@ export const WizardEnvStep = ({ onDone }: WizardEnvStepProps) => {
       {envKeys.map((key) => (
         <FormInput key={key} control={form.control} name={key} label={key} placeholder="optional" />
       ))}
-      <Button type="submit" className="w-full sm:w-auto" disabled={updateEnv.isPending || deployStack.isPending}>
-        {updateEnv.isPending || deployStack.isPending ? "Saving…" : "Save & deploy"}
+      <Button type="submit" className="w-full sm:w-auto" loading={updateEnv.isPending || deployStack.isPending}>
+        Save & deploy
       </Button>
     </form>
   );

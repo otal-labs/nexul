@@ -128,8 +128,8 @@ export const ProfileForm = ({ user, submitLabel, submitClassName, onSaved }: Pro
         </p>
       )}
       <FormInput control={form.control} name="name" label="Display name" placeholder={user.login} />
-      <Button type="submit" className={cn(submitClassName)} disabled={form.formState.isSubmitting}>
-        {form.formState.isSubmitting ? "Saving…" : submitLabel}
+      <Button type="submit" className={cn(submitClassName)} loading={form.formState.isSubmitting}>
+        {submitLabel}
       </Button>
     </form>
   );

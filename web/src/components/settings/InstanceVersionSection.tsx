@@ -1,4 +1,4 @@
-import { Loader2, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
@@ -93,11 +93,8 @@ const CheckAgainButton = () => {
   const refresh = useRefreshInstanceUpgrade();
 
   return (
-    <Button variant="ghost" size="sm" disabled={refresh.isPending} onClick={() => refresh.mutate()}>
-      <RefreshCw
-        className={refresh.isPending ? "size-3.5 animate-spin motion-reduce:animate-none" : "size-3.5"}
-        aria-hidden
-      />
+    <Button variant="ghost" size="sm" loading={refresh.isPending} onClick={() => refresh.mutate()}>
+      <RefreshCw className="size-3.5" aria-hidden />
       Check again
     </Button>
   );
@@ -118,8 +115,7 @@ const UpgradeButton = ({ latest }: { latest: InstanceUpgrade["latest"] }) => {
   };
 
   return (
-    <Button size="sm" onClick={() => void onUpgradeClick()} disabled={requestUpgrade.isPending}>
-      {requestUpgrade.isPending && <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden />}
+    <Button size="sm" onClick={() => void onUpgradeClick()} loading={requestUpgrade.isPending}>
       {latest ? `Upgrade to ${latest.version}` : "Upgrade"}
     </Button>
   );

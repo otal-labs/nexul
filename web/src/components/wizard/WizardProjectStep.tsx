@@ -48,8 +48,8 @@ export const WizardProjectStep = ({ onDone }: WizardProjectStepProps) => {
         transform={(value) => value.toUpperCase()}
       />
       <div className="flex flex-wrap items-center gap-2">
-        <Button type="submit" disabled={form.formState.isSubmitting}>
-          {form.formState.isSubmitting ? "Creating…" : "Continue"}
+        <Button type="submit" loading={form.formState.isSubmitting}>
+          Continue
         </Button>
         <WizardSkipButton />
       </div>

@@ -133,7 +133,7 @@ export const ManualConnectorDialog = ({ connector }: ManualConnectorDialogProps)
             </p>
           )}
           <DialogFooter>
-            <Button type="submit" disabled={form.formState.isSubmitting || verifying}>
+            <Button type="submit" loading={form.formState.isSubmitting || verifying}>
               {form.formState.isSubmitting && verified && "Connecting…"}
               {verifying && "Verifying…"}
               {!form.formState.isSubmitting && !verifying && (verified ? "Confirm" : "Verify")}

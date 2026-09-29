@@ -60,8 +60,8 @@ export const SetupCodeForm = () => {
           {form.formState.errors.root.message}
         </p>
       )}
-      <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-        {form.formState.isSubmitting ? "Checking…" : "Continue"}
+      <Button type="submit" className="w-full" loading={form.formState.isSubmitting}>
+        Continue
       </Button>
     </form>
   );

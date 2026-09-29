@@ -73,7 +73,7 @@ export const CategoryRow = ({ category, count, first, last, onMoveUp, onMoveDown
               <ColorPicker label="Category color" value={field.value} onChange={field.onChange} />
             )}
           />
-          <Button variant="ghost" size="sm" onClick={saveRename}>
+          <Button variant="ghost" size="sm" loading={renameCategory.isPending} onClick={saveRename}>
             Save
           </Button>
         </div>

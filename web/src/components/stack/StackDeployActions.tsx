@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { HammerIcon, Loader2, RefreshCwIcon, RocketIcon } from "lucide-react";
+import { HammerIcon, RefreshCwIcon, RocketIcon } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router";
 
@@ -48,9 +48,8 @@ const BuildRefForm = ({ stack, deploy }: BuildRefFormProps) => {
       <div className="min-w-0 flex-1 basis-64">
         <FormInput control={form.control} name="ref" label="Build & deploy ref" placeholder={stack.build_source?.branch ?? "main"} />
       </div>
-      <Button type="submit" disabled={deploy.isPending}>
-        {isDeploying && <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden />}
-        {!isDeploying && <HammerIcon className="size-4" aria-hidden />}
+      <Button type="submit" loading={isDeploying} disabled={deploy.isPending}>
+        <HammerIcon className="size-4" aria-hidden />
         {isDeploying ? "Building & deploying…" : "Build & deploy"}
       </Button>
     </form>
@@ -77,11 +76,11 @@ const RedeployRow = ({ stack, image, deploy }: RedeployRowProps) => {
       </div>
       <Button
         type="button"
+        loading={isDeploying}
         disabled={deploy.isPending}
         onClick={() => deploy.mutate({ stackId: stack.id, image }, { onSuccess: (created) => void navigate(deployPath(created)) })}
       >
-        {isDeploying && <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden />}
-        {!isDeploying && <RocketIcon className="size-4" aria-hidden />}
+        <RocketIcon className="size-4" aria-hidden />
         {isDeploying ? "Redeploying…" : "Redeploy"}
       </Button>
     </div>
@@ -104,11 +103,11 @@ const RollbackButton = ({ stack, lastHealthy, canRollback, deployPending, rollba
       variant="outline"
       size="sm"
       onClick={() => rollback.mutate(stack.id, { onSuccess: (created) => void navigate(deployPath(created)) })}
-      disabled={!canRollback || deployPending || rollback.isPending}
+      loading={rollback.isPending}
+      disabled={!canRollback || deployPending}
       title={canRollback ? `Roll back to ${lastHealthy?.image}` : "No healthy deploy to roll back to"}
     >
-      {rollback.isPending && <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden />}
-      {!rollback.isPending && <RefreshCwIcon className="size-4" aria-hidden />}
+      <RefreshCwIcon className="size-4" aria-hidden />
       {rollback.isPending ? "Rolling back…" : "Rollback"}
     </Button>
   );

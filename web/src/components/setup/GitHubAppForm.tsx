@@ -120,7 +120,7 @@ export const GitHubAppForm = ({ instanceUrl }: GitHubAppFormProps) => {
           {form.formState.errors.root.message}
         </p>
       )}
-      <Button type="submit" disabled={form.formState.isSubmitting || verifying} className="w-full">
+      <Button type="submit" loading={form.formState.isSubmitting || verifying} className="w-full">
         {form.formState.isSubmitting && verified && "Setting up…"}
         {verifying && "Verifying…"}
         {!form.formState.isSubmitting && !verifying && (verified ? "Set up instance" : "Verify")}

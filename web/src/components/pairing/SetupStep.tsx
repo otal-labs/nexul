@@ -64,7 +64,7 @@ const SetupRunSection = ({ computerId, setup, children }: SetupRunSectionProps) 
           {projects.length > 0 && <SetupFolderPick projects={projects} folder={folder} disabled={busy} onPick={pickFolder} />}
           {choices.length > 0 && <SetupModelPicks choices={choices} models={models} disabled={busy} onPick={pick} />}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <Button type="button" onClick={() => start()} disabled={busy}>
+            <Button type="button" onClick={() => start()} loading={busy}>
               <Play className="size-4" aria-hidden />
               {startLabel}
             </Button>

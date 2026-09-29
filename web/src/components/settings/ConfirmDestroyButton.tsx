@@ -9,6 +9,7 @@ interface ConfirmDestroyButtonProps {
   confirmLabel?: string;
   onConfirm: () => void;
   disabled?: boolean;
+  loading?: boolean;
   armMs?: number;
 }
 
@@ -19,6 +20,7 @@ export const ConfirmDestroyButton = ({
   confirmLabel = "Confirm",
   onConfirm,
   disabled = false,
+  loading = false,
   armMs = 4000,
 }: ConfirmDestroyButtonProps) => {
   const [armed, setArmed] = useState(false);
@@ -40,6 +42,7 @@ export const ConfirmDestroyButton = ({
           title={idleLabel}
           className="hover:text-destructive"
           disabled={disabled}
+          loading={loading}
           onClick={() => setArmed(true)}
         >
           <Icon className="size-4" />

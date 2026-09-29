@@ -36,7 +36,7 @@ export const TicketTestSection = ({ ticket }: TicketTestSectionProps) => {
           <TestTargetRow ticket={ticket} />
           <AcceptanceCriteriaBlock ticket={ticket} />
           <div className="flex gap-2 px-2">
-            <Button className="flex-1 sm:flex-none" disabled={pass.isPending} onClick={() => pass.mutate(ticket.id)}>
+            <Button className="flex-1 sm:flex-none" loading={pass.isPending} onClick={() => pass.mutate(ticket.id)}>
               <Check className="size-4" aria-hidden />
               Pass
             </Button>

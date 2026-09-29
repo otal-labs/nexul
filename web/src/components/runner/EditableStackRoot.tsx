@@ -45,7 +45,7 @@ export const EditableStackRoot = ({ machineId, stackRoot }: EditableStackRootPro
           className="h-7 w-56 font-mono text-xs"
           disabled={updateMachine.isPending}
         />
-        <Button type="submit" size="sm" variant="ghost" aria-label="Save stack root" disabled={updateMachine.isPending}>
+        <Button type="submit" size="sm" variant="ghost" aria-label="Save stack root" loading={updateMachine.isPending}>
           <CheckIcon className="size-3.5" />
         </Button>
         <Button

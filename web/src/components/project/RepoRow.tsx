@@ -28,6 +28,7 @@ export const RepoRow = ({ repo }: RepoRowProps) => {
         size="sm"
         className="w-8 shrink-0"
         aria-label={`Remove ${repo.full_name}`}
+        loading={removeRepo.isPending}
         onClick={() => removeRepo.mutate({ owner: repo.owner, name: repo.name })}
       >
         <XIcon className="size-4" />

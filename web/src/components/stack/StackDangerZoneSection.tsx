@@ -54,7 +54,7 @@ export const StackDangerZoneSection = ({ stack, projectPath, hostnames }: StackD
         <Button
           variant="destructive"
           className="shrink-0"
-          disabled={deleteStack.isPending}
+          loading={deleteStack.isPending}
           onClick={() => void onDelete()}
         >
           Delete stack

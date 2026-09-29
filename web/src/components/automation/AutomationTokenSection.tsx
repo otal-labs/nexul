@@ -38,13 +38,14 @@ export const AutomationTokenSection = ({ automation }: AutomationTokenSectionPro
           {automation.token_revoked_at && <p className="text-xs text-destructive">Revoked</p>}
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          <Button type="button" variant="outline" size="sm" onClick={onRotate} disabled={mint.isPending}>
-            {mint.isPending ? "Rotating…" : "Rotate"}
+          <Button type="button" variant="outline" size="sm" onClick={onRotate} loading={mint.isPending}>
+            Rotate
           </Button>
           <ConfirmDestroyButton
             icon={KeyRound}
             idleLabel="Revoke"
-            disabled={!!automation.token_revoked_at || revoke.isPending}
+            loading={revoke.isPending}
+            disabled={!!automation.token_revoked_at}
             onConfirm={() => revoke.mutate()}
           />
         </div>

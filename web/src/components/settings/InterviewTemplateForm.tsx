@@ -47,7 +47,7 @@ export const InterviewTemplateForm = ({ template, canWrite }: InterviewTemplateF
             >
               Reset to default
             </Button>
-            <Button type="submit" size="sm" disabled={body === template.body || saveTemplate.isPending}>
+            <Button type="submit" size="sm" loading={saveTemplate.isPending} disabled={body === template.body}>
               Save
             </Button>
           </div>

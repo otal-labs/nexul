@@ -37,8 +37,8 @@ export const BranchDeployRuleOverridesForm = ({ overrides, saving, onSave, onCan
         deploy uses the base value again.
       </p>
       <div className="flex gap-2">
-        <Button type="submit" size="sm" disabled={saving}>
-          {saving ? "Saving…" : "Save overrides"}
+        <Button type="submit" size="sm" loading={saving}>
+          Save overrides
         </Button>
         <Button type="button" size="sm" variant="ghost" onClick={onCancel}>
           Cancel

@@ -45,7 +45,8 @@ export const DevicesFeed = () => {
           <Button
             variant="destructive"
             size="sm"
-            disabled={others.length === 0 || signOutOthers.isPending}
+            loading={signOutOthers.isPending}
+            disabled={others.length === 0}
             onClick={signOutAll}
           >
             <LogOut className="size-4" aria-hidden />

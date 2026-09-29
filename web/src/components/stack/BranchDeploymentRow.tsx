@@ -14,7 +14,7 @@ export const BranchDeploymentRow = ({ deployment }: BranchDeploymentRowProps) =>
         <p className="truncate font-mono">{deployment.name}</p>
         <p className="truncate text-muted-foreground">branch {deployment.branch}</p>
       </div>
-      <Button variant="outline" size="sm" onClick={() => deleteStack.mutate(deployment.id)} disabled={deleteStack.isPending}>
+      <Button variant="outline" size="sm" onClick={() => deleteStack.mutate(deployment.id)} loading={deleteStack.isPending}>
         Tear down
       </Button>
     </li>

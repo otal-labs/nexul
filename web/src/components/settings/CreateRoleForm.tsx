@@ -64,7 +64,7 @@ export const CreateRoleForm = ({ workspaceId, roles, catalog, onDone }: CreateRo
       </div>
       <PermissionLevels entries={catalog} value={actions} onChange={setActions} />
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" disabled={createRole.isPending}>
+        <Button type="submit" loading={createRole.isPending}>
           <PlusIcon className="size-4" />
           Create role
         </Button>

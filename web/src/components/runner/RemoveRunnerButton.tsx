@@ -34,7 +34,7 @@ export const RemoveRunnerButton = ({ runner }: RemoveRunnerButtonProps) => {
       aria-label={`Remove ${name}`}
       title={`Remove ${name}`}
       className="shrink-0 hover:text-destructive"
-      disabled={remove.isPending}
+      loading={remove.isPending}
       onClick={() => void onRemove()}
     >
       <Trash2 className="size-4" />

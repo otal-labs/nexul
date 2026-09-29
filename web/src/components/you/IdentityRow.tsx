@@ -38,13 +38,13 @@ export const IdentityRow = ({ provider, identity, onlyOne }: IdentityRowProps) =
           icon={Unlink}
           idleLabel={`Unlink ${label}`}
           confirmLabel="Unlink"
-          disabled={unlink.isPending}
+          loading={unlink.isPending}
           onConfirm={() => unlink.mutate(provider)}
         />
       )}
       {identity && onlyOne && <span className="text-xs text-muted-foreground">Your only sign-in</span>}
       {!identity && (
-        <Button variant="outline" size="sm" disabled={link.isPending} onClick={() => link.mutate(provider)}>
+        <Button variant="outline" size="sm" loading={link.isPending} onClick={() => link.mutate(provider)}>
           Link {label}
         </Button>
       )}

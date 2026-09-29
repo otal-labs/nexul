@@ -54,7 +54,7 @@ export const NameComputerForm = ({ onCreated, onPairByUrl }: NameComputerFormPro
           {errorMessage(create.error)}
         </p>
       )}
-      <Button type="submit" disabled={create.isPending}>
+      <Button type="submit" loading={create.isPending}>
         {create.isPending ? "Creating tunnel…" : "Create tunnel"}
       </Button>
     </form>

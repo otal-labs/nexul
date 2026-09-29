@@ -53,8 +53,8 @@ export const AutomationSecretsSection = () => {
             type="password"
             className="w-full sm:w-64"
           />
-          <Button type="submit" disabled={form.formState.isSubmitting}>
-            {form.formState.isSubmitting ? "Saving…" : "Save secret"}
+          <Button type="submit" loading={form.formState.isSubmitting}>
+            Save secret
           </Button>
         </form>
 

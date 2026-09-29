@@ -33,7 +33,7 @@ export const RemoveAutomationHostButton = ({ host }: RemoveAutomationHostButtonP
       aria-label={`Remove ${host.name}`}
       title={`Remove ${host.name}`}
       className="shrink-0 hover:text-destructive"
-      disabled={remove.isPending}
+      loading={remove.isPending}
       onClick={() => void onRemove()}
     >
       <Trash2 className="size-4" />

@@ -46,7 +46,7 @@ export const TeamOverridesForm = ({ target, membership, onDone }: TeamOverridesF
       )}
       {overlap && <p role="alert" className="text-sm text-destructive">A permission can&apos;t be allowed and denied at once.</p>}
       <div className="flex gap-2">
-        <Button type="submit" size="sm" disabled={!form.formState.isDirty || overlap || save.isPending}>
+        <Button type="submit" size="sm" loading={save.isPending} disabled={!form.formState.isDirty || overlap}>
           Save overrides
         </Button>
         <Button type="button" variant="ghost" size="sm" onClick={onDone}>

@@ -53,7 +53,7 @@ export const ConnectCodePanel = () => {
                   size="sm"
                   className="absolute inset-0 m-auto w-fit animate-in fade-in-0 zoom-in-[0.97] duration-150 ease-out"
                   onClick={newCode}
-                  disabled={isFetching}
+                  loading={isFetching}
                 >
                   <RefreshCw className="size-4" aria-hidden />
                   New code
@@ -69,7 +69,7 @@ export const ConnectCodePanel = () => {
               <p className="font-mono text-xs tabular-nums text-muted-foreground">
                 {expired ? "Expired" : `Expires in ${formatRemaining(remaining)}`}
               </p>
-              <Button variant="outline" size="sm" onClick={newCode} disabled={isFetching}>
+              <Button variant="outline" size="sm" onClick={newCode} loading={isFetching}>
                 <RefreshCw className="size-4" aria-hidden />
                 New code
               </Button>

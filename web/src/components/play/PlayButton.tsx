@@ -72,7 +72,7 @@ export const PlayButton = ({ play, projectId, targetType, targetId, variant = "o
               className="size-8"
               title="Stop this run"
               aria-label={`Stop ${play.label}`}
-              disabled={stopTrail.isPending}
+              loading={stopTrail.isPending}
               onClick={() => stopTrail.mutate(activeTrail.id)}
             >
               <Square className="size-3 fill-current" aria-hidden />

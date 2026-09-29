@@ -1,5 +1,4 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -123,8 +122,7 @@ const TunnelHostnameFields = ({ deployment, zones, onDone }: TunnelHostnameField
           placeholder="http://my-app:3000"
         />
       </AdvancedFields>
-      <Button type="submit" className="w-full sm:w-auto" disabled={routeTunnel.isPending}>
-        {routeTunnel.isPending && <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden />}
+      <Button type="submit" className="w-full sm:w-auto" loading={routeTunnel.isPending}>
         {routeTunnel.isPending ? "Routing hostname…" : "Point hostname at the tunnel"}
       </Button>
     </form>

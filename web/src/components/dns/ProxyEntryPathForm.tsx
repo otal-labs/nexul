@@ -112,7 +112,7 @@ const ProxyEntryPathFields = ({ zones, machines, onDone }: ProxyEntryPathFieldsP
         <MachinePicker control={form.control} name="target" />
         <FormInput control={form.control} name="docker_network" label="Docker network" placeholder="nexul_default" />
       </AdvancedFields>
-      <Button type="submit" className="w-full sm:w-auto" disabled={busy || blocked}>
+      <Button type="submit" className="w-full sm:w-auto" loading={busy} disabled={blocked}>
         {busy ? "Setting up proxy…" : "Set up reverse proxy"}
       </Button>
     </form>

@@ -38,7 +38,7 @@ export const OAuthProviderActions = ({ provider, clientId }: OAuthProviderAction
 
   return (
     <>
-      <Button variant="outline" size="sm" disabled={update.isPending} onClick={() => void disable()}>
+      <Button variant="outline" size="sm" loading={update.isPending} onClick={() => void disable()}>
         Disable
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>

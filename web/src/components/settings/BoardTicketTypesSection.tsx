@@ -50,7 +50,7 @@ export const BoardTicketTypesSection = ({ projectId, ticketTypes }: BoardTicketT
           placeholder="New ticket type (bug, feature, task, ...)"
           className="w-full sm:w-80"
         />
-        <Button type="submit" disabled={typeForm.formState.isSubmitting}>
+        <Button type="submit" loading={typeForm.formState.isSubmitting}>
           Add type
         </Button>
       </form>

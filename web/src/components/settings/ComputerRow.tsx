@@ -103,7 +103,7 @@ export const ComputerRow = ({ computer, presence }: ComputerRowProps) => {
           <ConfirmDestroyButton
             icon={Trash2}
             idleLabel="Remove"
-            disabled={remove.isPending}
+            loading={remove.isPending}
             onConfirm={() => remove.mutate(computer)}
           />
         </span>

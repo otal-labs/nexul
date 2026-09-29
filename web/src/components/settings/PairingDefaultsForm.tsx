@@ -63,8 +63,8 @@ export const PairingDefaultsForm = ({ defaults, computers }: PairingDefaultsForm
         computerId={form.watch("default_computer_id")}
         setModel={(value) => form.setValue("model", value)}
       />
-      <Button type="submit" disabled={form.formState.isSubmitting}>
-        {form.formState.isSubmitting ? "Saving…" : "Save defaults"}
+      <Button type="submit" loading={form.formState.isSubmitting}>
+        Save defaults
       </Button>
     </form>
   );

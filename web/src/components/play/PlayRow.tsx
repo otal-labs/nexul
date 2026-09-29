@@ -62,7 +62,7 @@ export const PlayRow = ({ play, workspaceId, canWrite, canDelete, onEdit }: Play
           <ConfirmDestroyButton
             icon={Trash2}
             idleLabel={`Delete play ${play.label}`}
-            disabled={deletePlay.isPending}
+            loading={deletePlay.isPending}
             onConfirm={() => deletePlay.mutate(play.id)}
           />
         )}

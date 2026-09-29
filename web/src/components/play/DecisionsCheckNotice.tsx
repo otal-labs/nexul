@@ -26,7 +26,7 @@ export const DecisionsCheckNotice = ({ ticketId }: DecisionsCheckNoticeProps) =>
         {missed.last_error && <p className="text-xs break-words text-muted-foreground">{missed.last_error}</p>}
       </div>
       {missed.failure_reason === SETUP_REQUIRED_REASON && <SetupRefusalLink computerId={missed.computer_id} />}
-      <Button variant="outline" size="sm" disabled={run.isPending} onClick={() => run.mutate(ticketId)}>
+      <Button variant="outline" size="sm" loading={run.isPending} onClick={() => run.mutate(ticketId)}>
         <RotateCw aria-hidden />
         Run check
       </Button>

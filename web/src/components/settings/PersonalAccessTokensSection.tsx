@@ -66,8 +66,8 @@ export const PersonalAccessTokensSection = () => {
               placeholder="e.g. ci agent"
               className="w-full sm:w-80"
             />
-            <Button type="submit" disabled={mint.isPending}>
-              {mint.isPending ? "Creating…" : "Create token"}
+            <Button type="submit" loading={mint.isPending}>
+              Create token
             </Button>
           </form>
 
