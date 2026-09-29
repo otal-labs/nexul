@@ -2,9 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
-import { getAccountsKey, getInvitationPreviewKey } from "@/models/Invitation";
+import { getInvitationPreviewKey } from "@/models/Invitation";
 import type {
-  Account,
   ActiveInvitation,
   CreateInvitationFormData,
   CreatedInvitation,
@@ -84,40 +83,6 @@ export const useRedeemInvitation = () => {
         client.invalidateQueries({ queryKey: ["getWorkspaceMembers"] }),
         client.invalidateQueries({ queryKey: ["getMe"] }),
       ]);
-    },
-    onError: (error) => toast.error(errorMessage(error)),
-  });
-};
-
-export const useFetchAccounts = () =>
-  useQuery({
-    queryKey: [getAccountsKey],
-    queryFn: async () => {
-      const data = (await api.get<Account[] | { accounts: Account[] }>("/api/auth/accounts")).data;
-      return Array.isArray(data) ? data : data.accounts;
-    },
-  });
-
-export const useUpdateAccountStatus = () => {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: "active" | "disabled" }) =>
-      (await api.patch<Account>(`/api/auth/accounts/${encodeURIComponent(id)}`, { status })).data,
-    onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: [getAccountsKey] });
-      toast.success("Account status updated");
-    },
-    onError: (error) => toast.error(errorMessage(error)),
-  });
-};
-
-export const useRemoveAccount = () => {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string) => api.delete(`/api/auth/accounts/${encodeURIComponent(id)}`),
-    onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: [getAccountsKey] });
-      toast.success("Account removed");
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

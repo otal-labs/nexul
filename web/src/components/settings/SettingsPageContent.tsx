@@ -1,14 +1,13 @@
-import { AccountsSection } from "@/components/settings/AccountsSection";
 import { ConnectorsSettingsPanel } from "@/components/settings/ConnectorsSettingsPanel";
 import { DangerZoneSection } from "@/components/settings/DangerZoneSection";
 import { GatewaysSection } from "@/components/dns/GatewaysSection";
 import { InterviewTemplateSection } from "@/components/settings/InterviewTemplateSection";
 import { InstanceSettingsPanel } from "@/components/settings/InstanceSettingsPanel";
-import { MembersSection } from "@/components/settings/MembersSection";
 import { MentionChipLayoutSection } from "@/components/settings/MentionChipLayoutSection";
 import { PlaySettingsSection } from "@/components/settings/PlaySettingsSection";
 import { RoleSettingsSection } from "@/components/settings/RoleSettingsSection";
 import { SignInProvidersPanel } from "@/components/settings/SignInProvidersPanel";
+import { TeamSection } from "@/components/team/TeamSection";
 import type { SettingsSection } from "@/components/settings/SettingsNav";
 import { useSelectedWorkspace } from "@/hooks/WorkspaceHooks";
 import type { InstanceSettings } from "@/models/User";
@@ -23,10 +22,6 @@ const PlaysPanel = ({ canReadPlays, canWritePlays, canDeletePlays }: {
   canWritePlays: boolean;
   canDeletePlays: boolean;
 }) => <>{canReadPlays && <PlaySettingsSection canWrite={canWritePlays} canDelete={canDeletePlays} />}</>;
-
-const MembersPanel = ({ canManageMembers }: { canManageMembers: boolean }) => (
-  <>{canManageMembers && <MembersSection />}</>
-);
 
 // Keyed by workspace id so switching workspaces reseeds the form instead of keeping the previous template.
 const MentionsPanel = ({ canManageMentionLayout }: { canManageMentionLayout: boolean }) => {
@@ -52,9 +47,7 @@ const ConnectorsPanel = ({ isInstanceAdmin }: { isInstanceAdmin: boolean }) => (
 
 const DnsPanel = ({ isInstanceAdmin }: { isInstanceAdmin: boolean }) => <>{isInstanceAdmin && <GatewaysSection />}</>;
 
-const AccessPanel = ({ isInstanceAdmin }: { isInstanceAdmin: boolean }) => (
-  <>{isInstanceAdmin && <AccountsSection />}</>
-);
+const TeamPanel = ({ isInstanceAdmin }: { isInstanceAdmin: boolean }) => <>{isInstanceAdmin && <TeamSection />}</>;
 
 const DangerPanel = ({ settings }: { settings: InstanceSettings | undefined }) => (
   <>{settings && <DangerZoneSection />}</>
@@ -68,7 +61,6 @@ interface SettingsPageContentProps {
   canReadPlays: boolean;
   canWritePlays: boolean;
   canDeletePlays: boolean;
-  canManageMembers: boolean;
   canManageMentionLayout: boolean;
 }
 
@@ -81,7 +73,6 @@ export const SettingsPageContent = ({
   canReadPlays,
   canWritePlays,
   canDeletePlays,
-  canManageMembers,
   canManageMentionLayout,
 }: SettingsPageContentProps) => (
   <>
@@ -90,13 +81,12 @@ export const SettingsPageContent = ({
       <PlaysPanel canReadPlays={canReadPlays} canWritePlays={canWritePlays} canDeletePlays={canDeletePlays} />
     )}
     {section === "interview" && <InterviewTemplateSection />}
-    {section === "members" && <MembersPanel canManageMembers={canManageMembers} />}
     {section === "mentions" && <MentionsPanel canManageMentionLayout={canManageMentionLayout} />}
     {section === "danger" && <DangerPanel settings={settings} />}
     {section === "instance" && <InstancePanel settings={settings} isInstanceAdmin={isInstanceAdmin} />}
     {section === "sign-in" && <SignInPanel settings={settings} isInstanceAdmin={isInstanceAdmin} />}
     {section === "connectors" && <ConnectorsPanel isInstanceAdmin={isInstanceAdmin} />}
     {section === "dns" && <DnsPanel isInstanceAdmin={isInstanceAdmin} />}
-    {section === "access" && <AccessPanel isInstanceAdmin={isInstanceAdmin} />}
+    {section === "team" && <TeamPanel isInstanceAdmin={isInstanceAdmin} />}
   </>
 );

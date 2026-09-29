@@ -20,7 +20,7 @@ vi.mock("@/components/settings/OAuthProviderSection", () => ({
 }));
 vi.mock("@/components/settings/ConnectorAppConfigSection", () => ({ ConnectorAppConfigSection: () => <p>App card</p> }));
 vi.mock("@/components/settings/RoleSettingsSection", () => ({ RoleSettingsSection: () => <p>Roles card</p> }));
-vi.mock("@/components/settings/MembersSection", () => ({ MembersSection: () => <p>Members card</p> }));
+vi.mock("@/components/team/TeamSection", () => ({ TeamSection: () => <p>Team card</p> }));
 
 const settings = { instance_url: "https://deploy.example.com", settings_version: 1 };
 
@@ -77,13 +77,14 @@ describe("ConfigurationPage sections", () => {
     renderPage("/configuration", true, ["roles:write", "members:write"]);
 
     expect(await screen.findByText("Roles card")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Members" })).toHaveAttribute("href", "/configuration/members");
+    expect(screen.getByRole("link", { name: "Team" })).toHaveAttribute("href", "/configuration/team");
   });
 
-  it("shows Members to a members:write holder", async () => {
-    renderPage("/configuration/members", false, ["members:write"]);
+  it.each(["/configuration/members", "/configuration/access?person=u-1"])("lands the folded section link %s on Team", async (route) => {
+    renderPage(route);
 
-    expect(await screen.findByText("Members card")).toBeInTheDocument();
+    expect(await screen.findByText("Team card")).toBeInTheDocument();
+    expect(screen.getByLabelText("location")).toHaveTextContent(/^\/configuration\/team(\?person=u-1)?$/);
   });
 
   it("hides every whole-instance section from a non-admin, and an instance link falls back", async () => {

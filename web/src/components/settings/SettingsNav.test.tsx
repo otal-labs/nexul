@@ -15,7 +15,6 @@ const nothing: SettingsVisibility = {
   showRoles: false,
   showPlays: false,
   showInterviewTemplate: false,
-  showMembers: false,
   showMentionLayout: false,
 };
 
@@ -24,7 +23,6 @@ const everything: SettingsVisibility = {
   showRoles: true,
   showPlays: true,
   showInterviewTemplate: true,
-  showMembers: true,
   showMentionLayout: true,
 };
 
@@ -44,17 +42,16 @@ describe("SettingsNav", () => {
       "Roles",
       "Plays",
       "Interview template",
-      "Members",
       "Mention chips",
       "Danger zone",
       "Whole instance",
       "Instance",
+      "Team",
       "Sign-in providers",
       "Connectors",
       "DNS",
-      "Registered accounts",
     ]);
-    expect(nav.getByRole("link", { name: "Members" })).toHaveAttribute("href", "/configuration/members");
+    expect(nav.getByRole("link", { name: "Team" })).toHaveAttribute("href", "/configuration/team");
     expect(nav.getByRole("link", { name: "Sign-in providers" })).toHaveAttribute("href", "/configuration/sign-in");
   });
 
@@ -62,7 +59,7 @@ describe("SettingsNav", () => {
     renderNav({ ...everything, isInstanceAdmin: false });
     expect(screen.queryByText("Whole instance")).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Instance" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Registered accounts" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Team" })).not.toBeInTheDocument();
     expect(screen.getByText("This workspace")).toBeInTheDocument();
   });
 

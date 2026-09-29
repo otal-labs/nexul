@@ -4,14 +4,13 @@ export const SETTINGS_SECTIONS = [
   "roles",
   "plays",
   "interview",
-  "members",
   "mentions",
   "danger",
   "instance",
+  "team",
   "sign-in",
   "connectors",
   "dns",
-  "access",
 ] as const;
 
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
@@ -22,20 +21,19 @@ export const isSettingsSection = (value: string | null | undefined): value is Se
 const WORKSPACE_GROUP = "This workspace";
 const INSTANCE_GROUP = "Whole instance";
 
-const INSTANCE_SECTIONS: readonly SettingsSection[] = ["instance", "sign-in", "connectors", "dns", "access"];
+const INSTANCE_SECTIONS: readonly SettingsSection[] = ["instance", "team", "sign-in", "connectors", "dns"];
 
 const sectionLabels: Record<SettingsSection, string> = {
   roles: "Roles",
   plays: "Plays",
   interview: "Interview template",
-  members: "Members",
   mentions: "Mention chips",
   danger: "Danger zone",
   instance: "Instance",
   "sign-in": "Sign-in providers",
   connectors: "Connectors",
   dns: "DNS",
-  access: "Registered accounts",
+  team: "Team",
 };
 
 export interface SettingsVisibility {
@@ -45,7 +43,6 @@ export interface SettingsVisibility {
   showRoles: boolean;
   showPlays: boolean;
   showInterviewTemplate: boolean;
-  showMembers: boolean;
   showMentionLayout: boolean;
 }
 
@@ -56,7 +53,6 @@ export const visibleSettingsSections = (visibility: SettingsVisibility): Setting
     if (section === "roles") return visibility.showRoles;
     if (section === "plays") return visibility.showPlays;
     if (section === "interview") return visibility.showInterviewTemplate;
-    if (section === "members") return visibility.showMembers;
     if (section === "mentions") return visibility.showMentionLayout;
     return true;
   });

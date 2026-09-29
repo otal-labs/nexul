@@ -1,4 +1,4 @@
-import { useParams } from "react-router";
+import { Navigate, useLocation, useParams } from "react-router";
 
 import { Container } from "@/components/Container";
 import { PageHeader } from "@/components/PageHeader";
@@ -8,6 +8,7 @@ import { isSettingsSection, SettingsNav, visibleSettingsSections } from "@/compo
 import { SettingsPageContent } from "@/components/settings/SettingsPageContent";
 import { useFetchMe, useFetchSettings } from "@/hooks/AuthHooks";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
+import { legacyConfigurationTarget } from "@/utils/SettingsRedirects";
 
 // Same section-per-view shape as ProjectSettingsPage: the :section path segment drives the card, SettingsNav lists sections.
 export const ConfigurationPage = () => {
@@ -18,7 +19,6 @@ export const ConfigurationPage = () => {
   const canReadPlays = useHasPermission("plays:read");
   const canWritePlays = useHasPermission("plays:write");
   const canDeletePlays = useHasPermission("plays:delete");
-  const canManageMembers = useHasPermission("members:write");
   const canManageMentionLayout = useHasPermission("workspaces:write");
   const canReadMemories = useHasPermission("memories:read");
   const isInstanceAdmin = me?.user?.can_create_workspace ?? false;
@@ -28,17 +28,19 @@ export const ConfigurationPage = () => {
     showRoles: canManageRoles,
     showPlays: canReadPlays,
     showInterviewTemplate: canReadMemories,
-    showMembers: canManageMembers,
     showMentionLayout: canManageMentionLayout,
   });
 
   const { section: rawSection } = useParams();
+  const { search, hash } = useLocation();
+  const moved = legacyConfigurationTarget(rawSection, search, hash);
   // A section the viewer can't open (unknown, or gated away) falls back to the first they can; Danger zone is never gated, so it's the last resort.
   const fallback = sections.find((candidate) => candidate !== "danger") ?? "danger";
   const section = isSettingsSection(rawSection) && sections.includes(rawSection) ? rawSection : fallback;
 
   return (
     <Container className="mx-auto max-w-5xl py-10">
+      {moved && <Navigate to={moved} replace />}
       <PageHeader
         className="mb-8"
         eyebrow="Workspace"
@@ -58,7 +60,6 @@ export const ConfigurationPage = () => {
             canReadPlays={canReadPlays}
             canWritePlays={canWritePlays}
             canDeletePlays={canDeletePlays}
-            canManageMembers={canManageMembers}
             canManageMentionLayout={canManageMentionLayout}
           />
         </div>
