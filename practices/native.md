@@ -144,7 +144,9 @@ Both workflows run by hand only (`workflow_dispatch`), never on push or on a
 schedule.
 
 - `native-release.yml` installs, runs `bun run prebuild`, builds
-  `assembleRelease` with the signing key from the repository secrets, and
+  `assembleRelease` for `arm64-v8a` and `x86_64` only (32-bit ABIs double the
+  native compile for no current phone) with the signing key from the
+  repository secrets, and
   creates the GitHub release `android-v<version>` with
   `nexul-android-<version>.apk` attached. It refuses when the tag already
   exists: bump `version` first. The release is created with `--latest=false`,

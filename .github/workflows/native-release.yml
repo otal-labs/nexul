@@ -67,6 +67,8 @@ jobs:
           ORG_GRADLE_PROJECT_nexulKeystorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ORG_GRADLE_PROJECT_nexulKeyAlias: ${{ secrets.ANDROID_KEY_ALIAS }}
           ORG_GRADLE_PROJECT_nexulKeyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          # Every current phone is arm64; x86_64 keeps emulators working. Each ABI is a full native compile.
+          ORG_GRADLE_PROJECT_reactNativeArchitectures: arm64-v8a,x86_64
         run: ./gradlew assembleRelease --no-daemon
       - name: Create the release
         env:
