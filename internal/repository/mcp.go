@@ -21,7 +21,9 @@ type repositoryListIn struct {
 func repositoryListTool(s Scanner) mcptool.Tool {
 	return mcptool.New("repository_list", "List repositories",
 		"Lists the repositories the connected git provider installation can read, with owner, name, and default "+
-			"branch. Use it to pick a repository for repository_scan or pull_request_list. Returns at most 100 per page.",
+			"branch. Use it to pick a repository for repository_scan or pull_request_list. Returns at most 100 per page. "+
+			"Only accounts with Nexul's GitHub App installed are listed; a missing repository means the App is not "+
+			"installed on its owner, which installs it at https://github.com/apps/<app slug>/installations/new.",
 		mcptool.Hints{ReadOnly: true},
 		func(ctx context.Context, in repositoryListIn) (any, error) {
 			repos, err := ListRepos(ctx, s)

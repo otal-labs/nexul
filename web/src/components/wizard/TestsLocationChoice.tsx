@@ -1,5 +1,6 @@
 import { useShallow } from "zustand/react/shallow";
 
+import { RepositoryInstallHint } from "@/components/wizard/RepositoryInstallHint";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useFetchRepositories } from "@/hooks/RepositoryHooks";
@@ -52,6 +53,7 @@ const TestsRepoPicker = () => {
           ))}
         </SelectContent>
       </Select>
+      <RepositoryInstallHint />
     </div>
   );
 };

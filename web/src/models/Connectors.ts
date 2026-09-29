@@ -82,4 +82,7 @@ export const connectorAppConfigFormSchema = (githubApp: boolean, secretRequired 
 export const githubAppURL = (app: AppConfigStatus): string =>
   `${(app.base_url || "https://github.com").replace(/\/+$/, "")}/apps/${app.app_slug ?? ""}`;
 
+// GitHub's own picker for the account or organisation to install the App on, and which of its repositories.
+export const githubAppInstallURL = (app: AppConfigStatus): string => `${githubAppURL(app)}/installations/new`;
+
 export type ConnectorAppConfigFormData = z.infer<ReturnType<typeof connectorAppConfigFormSchema>>;
