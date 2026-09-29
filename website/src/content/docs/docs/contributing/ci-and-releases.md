@@ -51,16 +51,17 @@ Nexul has one version for the whole product, and git tags are that version
 (ADR 0070). There is no version file in the repository.
 
 - **Beta** runs once a day at 03:17 UTC (ADR 0071). When `master` has moved
-  since its last release, it tags the head `v<next>-beta.<n>`: `<next>` is
-  the newest stable tag with its patch bumped (`0.2.0` while no stable
-  release exists) and `<n>` is one more than the highest beta already tagged
-  on that line (`v0.2.1-beta.1`, `v0.2.1-beta.2`, ...). When `master` hasn't
-  moved, the run stops before building anything. A beta's release notes list
+  since its last release, it tags the head `v<line>.<n>-beta` (ADR 0084):
+  `<line>` is `0.3` until a stable release starts a newer one, and `<n>` is
+  one past the highest patch already tagged on that line, beta or stable
+  (`v0.3.0-beta`, `v0.3.1-beta`, ...). When `master` hasn't moved, the run
+  stops before building anything. A beta's release notes list
   every pull request merged since the previous beta. To cut one now, run the
   workflow by hand with `channel: beta`.
-- **Stable** is a manual run (`channel: stable`) with a `bump` input:
-  `patch`, `minor` or `major`, counted from the last stable release. It
-  builds the commit of the newest beta, so stable only ever ships a commit a
+- **Stable** is a manual run (`channel: stable`) with a `bump` input.
+  `patch` releases the newest beta under its own number (`v0.3.12-beta`
+  becomes `v0.3.12`); `minor` or `major` start a new line (`v0.4.0`), and
+  betas continue at `v0.4.1-beta`. It builds the commit of the newest beta, so stable only ever ships a commit a
   beta has already carried, and it refuses when that commit is already
   released. Pushing a bare `vX.Y.Z` tag by hand builds that tag as stable.
 - **How a release is built:** the workflow builds the web UI into

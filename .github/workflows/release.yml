@@ -1,9 +1,10 @@
 name: Release
 
-# Git tags are the version (ADR 0070). Once a day, if master has moved since its last release, it is cut as a beta,
-# v<next patch>-beta.<n> (ADR 0071); a manual beta run cuts one now. A manual stable run promotes the newest beta's
-# commit with a patch, minor or major bump; a hand-pushed vX.Y.Z tag builds that tag as stable. GoReleaser
-# (.goreleaser.yaml) builds and publishes whatever tag `resolve` picks.
+# Git tags are the version (ADR 0070). Once a day, if master has moved since its last release, it is cut as a beta
+# (ADR 0071) numbered v<line>.<n>-beta, one patch number past the line's last release (ADR 0084); a manual beta run
+# cuts one now. A manual stable run promotes the newest beta's commit, under its own number or onto a new line; a
+# hand-pushed vX.Y.Z tag builds that tag as stable. GoReleaser (.goreleaser.yaml) builds and publishes whatever tag
+# `resolve` picks.
 on:
   schedule:
     # 03:17 UTC; off the hour, when scheduled runs queue longest.
@@ -20,7 +21,7 @@ on:
         options: [stable, beta]
         default: stable
       bump:
-        description: Stable only. How far the version moves from the last stable release
+        description: Stable only. patch releases the newest beta under its own number; minor or major start a new line
         type: choice
         options: [patch, minor, major]
         default: patch
@@ -33,8 +34,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  # The first version line, used until a stable release exists to bump from.
-  FIRST_VERSION: 0.2.0
+  # The version line betas count up on until a stable release starts a newer one.
+  FIRST_LINE: "0.3"
 
 jobs:
   # Picks the commit and the tag every other job builds, from the tags already in the repository.
@@ -59,22 +60,11 @@ jobs:
           SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          # A stable tag is bare semver (v0.2.0); a beta has a suffix (v0.2.1-beta.3). Same rule as version.Channel().
+          # A stable tag is bare semver (v0.3.4); a beta has a suffix (v0.3.5-beta). Same rule as version.Channel().
           stable=$(git tag -l 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1 || true)
-          newest_beta=$(git tag -l 'v*-beta.*' | sort -V | tail -n1 || true)
-
-          bump() { # $1 = patch|minor|major
-            if [[ -z "$stable" ]]; then
-              [[ "$1" == major ]] && echo 1.0.0 || echo "$FIRST_VERSION"
-              return
-            fi
-            IFS=. read -r major minor patch <<< "${stable#v}"
-            case "$1" in
-              patch) echo "$major.$minor.$((patch + 1))" ;;
-              minor) echo "$major.$((minor + 1)).0" ;;
-              major) echo "$((major + 1)).0.0" ;;
-            esac
-          }
+          newest_beta=$(git tag -l 'v*-beta*' | sort -V | tail -n1 || true)
+          stable_version=${stable#v}
+          line=$(printf '%s\n%s\n' "$FIRST_LINE" "${stable_version%.*}" | sort -V | tail -n1)
 
           if [[ "$EVENT_NAME" == "push" && "$REF_TYPE" == "tag" ]]; then
             channel=stable; ref="$SHA"; tag="$REF_NAME"; previous_tag="$stable"
@@ -86,21 +76,30 @@ jobs:
               echo "skip=true" >> "$GITHUB_OUTPUT"
               exit 0
             fi
-            next=$(bump patch)
-            last=$(git tag -l "v${next}-beta.*" | sed "s/^v${next}-beta\.//" | sort -n | tail -n1)
-            tag="v${next}-beta.$(( ${last:-0} + 1 ))"
+            # One past the line's highest patch, beta or stable, so the number alone orders every release.
+            last=$(git tag -l "v${line}.*" | sed -nE "s/^v${line//./\\.}\.([0-9]+)(-beta)?$/\1/p" | sort -n | tail -n1)
+            tag="v${line}.$(( ${last:--1} + 1 ))-beta"
           else
             channel=stable; previous_tag="$stable"
             if [[ -z "$newest_beta" ]]; then
               echo "::error::No beta exists yet to promote to stable." >&2
               exit 1
             fi
+            if [[ ! "$newest_beta" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)-beta$ ]]; then
+              echo "::error::$newest_beta predates v<line>.<n>-beta numbering; cut a beta first." >&2
+              exit 1
+            fi
+            major=${BASH_REMATCH[1]} minor=${BASH_REMATCH[2]} patch=${BASH_REMATCH[3]}
             ref=$(git rev-list -n1 "$newest_beta")
             if released=$(git tag --points-at "$ref" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$'); then
               echo "::error::$newest_beta is already released as $released; merge something new first." >&2
               exit 1
             fi
-            tag="v$(bump "$INPUT_BUMP")"
+            case "$INPUT_BUMP" in
+              patch) tag="v$major.$minor.$patch" ;;
+              minor) tag="v$major.$((minor + 1)).0" ;;
+              major) tag="v$((major + 1)).0.0" ;;
+            esac
           fi
           if git rev-parse -q --verify "refs/tags/$tag" >/dev/null && [[ "$REF_TYPE" != "tag" ]]; then
             echo "::error::Tag $tag already exists." >&2

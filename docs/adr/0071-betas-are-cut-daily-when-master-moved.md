@@ -1,7 +1,7 @@
 # Betas are cut once a day, when master has moved
 
 Supersedes the beta-per-push rule in ADR 0070 and reverses ADR 0053's rejection of a scheduled build; tags stay the
-version.
+version. ADR 0084 replaces the `v<next>-beta.<n>` tag format below; the cadence stands.
 
 A scheduled run at 03:17 UTC cuts the next `v<next>-beta.<n>` from `master`, and does nothing when `master`'s head
 already carries a release tag. A manual run with the beta channel cuts one immediately, for a fix that should not
