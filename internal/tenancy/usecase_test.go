@@ -1114,6 +1114,12 @@ func TestSetMemberOverrides(t *testing.T) {
 		require.NoError(t, f.repo.SetOverrides(t.Context(), "ws-1", "bob", permissions.SetOf(permissions.InstanceWrite), nil))
 		require.NoError(t, f.svc.SetMemberOverrides(t.Context(), "actor", "ws-1", "bob", set(permissions.InstanceWrite), set(permissions.DocsDelete)))
 	})
+	t.Run("lifting a deny the actor does not hold is refused, since it hands back what the role gives", func(t *testing.T) {
+		f := newMemberFixture(t)
+		require.NoError(t, f.repo.SetOverrides(t.Context(), "ws-1", "bob", nil, permissions.SetOf(permissions.InstanceWrite)))
+		err := f.svc.SetMemberOverrides(t.Context(), "actor", "ws-1", "bob", nil, set())
+		require.ErrorIs(t, err, apperrs.ErrForbidden)
+	})
 	t.Run("an omitted set keeps its current value", func(t *testing.T) {
 		f := newMemberFixture(t)
 		f.wsPerms.perms["actor"] = []string{"members:write", "docs:write", "projects:write"}

@@ -530,11 +530,11 @@ func (s *Service) SetMemberOverrides(ctx context.Context, actorID, workspaceID, 
 	if isOwner {
 		return fmt.Errorf("%w: the workspace Owner bypasses permission overrides, so none can be set", apperrs.ErrInvalid)
 	}
-	currentAllow, nextDeny, err := s.members.Overrides(ctx, workspaceID, userID)
+	currentAllow, currentDeny, err := s.members.Overrides(ctx, workspaceID, userID)
 	if err != nil {
 		return fmt.Errorf("read overrides for %s in workspace %s: %w", userID, workspaceID, err)
 	}
-	nextAllow := currentAllow
+	nextAllow, nextDeny := currentAllow, currentDeny
 	if allow != nil {
 		nextAllow = permissions.SetOf(*allow...)
 	}
@@ -544,8 +544,9 @@ func (s *Service) SetMemberOverrides(ctx context.Context, actorID, workspaceID, 
 	if err := validateOverrides(nextAllow, nextDeny); err != nil {
 		return err
 	}
-	// Only what the change adds is a grant; an allow the member already had may stay without the actor holding it.
-	if err := s.requireHolds(ctx, actorID, workspaceID, nextAllow.Except(currentAllow)); err != nil {
+	// Only what the change adds is a grant: a new allow, or a lifted deny, which hands back what the role gives.
+	added := permissions.SetOf(slices.Concat(nextAllow.Except(currentAllow), currentDeny.Except(nextDeny))...)
+	if err := s.requireHolds(ctx, actorID, workspaceID, added); err != nil {
 		return err
 	}
 	if err := s.members.SetOverrides(ctx, workspaceID, userID, nextAllow, nextDeny, memberEvent(TopicWorkspaceMemberUpdated, actorID, workspaceID, userID)); err != nil {
