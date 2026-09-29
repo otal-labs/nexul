@@ -104,6 +104,7 @@ func registryTools(opts RegistryOptions) []mcptool.Tool {
 		automations.MCPTools(opts.Automations),
 		access.MCPTools(opts.Access),
 		auth.MCPTools(opts.Auth),
+		composite.AccountTools(opts.Auth, opts.Workspaces),
 		composite.WorkspaceTools(opts.Workspaces, opts.Roles),
 		roles.MCPTools(opts.Roles),
 		tenancy.MCPTools(opts.Invitations),
