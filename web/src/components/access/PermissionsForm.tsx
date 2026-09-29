@@ -92,9 +92,6 @@ export const PermissionsForm = ({ resourceType, resourceIds }: PermissionsFormPr
               onCheckedChange={() => toggleUser(user.id)}
             >
               <span className="flex-1">{user.login}</span>
-              {user.can_create_workspace && (
-                <span className="text-xs text-muted-foreground">owner</span>
-              )}
             </PermissionCheckRow>
           ))}
           {users?.length === 0 && <EmptyState title="No users yet" className="border-0 p-3" />}

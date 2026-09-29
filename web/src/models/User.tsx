@@ -16,7 +16,6 @@ export interface User {
   login: string;
   name: string;
   avatar_url: string;
-  can_create_workspace: boolean;
   first_login_done: boolean;
   created_at: string;
   // The optional manual profile override; omitted from the JSON entirely when unset, hence optional not nullable.
@@ -42,6 +41,8 @@ export interface MeResponse {
   user: User;
   needs_owner_wizard: boolean;
   needs_first_login_wizard: boolean;
+  // Every permission the user holds in at least one workspace: what instance-level areas are checked against.
+  instance_permissions: string[];
 }
 
 export interface InstanceSettings {

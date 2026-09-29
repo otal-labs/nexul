@@ -31,9 +31,11 @@ const settings = {
 
 const workspaces = [{ id: "ws-1", name: "Acme", mention_chip_template: "{ticket.Ticket} {ticket.Status}", created_at: "", updated_at: "" }];
 
+const instanceWide = ["instance:read", "instance:write", "accounts:read", "connectors:read", "dns:read"];
+
 // The page issues several GETs (me, settings, connectors, version); route by URL so each resolves with the right shape.
 const mockGet = (url: string) => {
-  if (url === "/api/auth/me") return Promise.resolve({ data: { user: { can_create_workspace: true } } });
+  if (url === "/api/auth/me") return Promise.resolve({ data: { user: {}, instance_permissions: instanceWide } });
   if (url === "/api/connectors") return Promise.resolve({ data: [] });
   if (url === "/api/workspaces") return Promise.resolve({ data: workspaces });
   if (url === "/api/workspaces/ws-1/me") return Promise.resolve({ data: { role_name: "Member", permissions: [] } });
@@ -136,5 +138,30 @@ describe("ConfigurationPage mention chip layout gating", () => {
     expect(mocks.patch).toHaveBeenCalledWith("/api/workspaces/ws-1/mention-chip-template", {
       mention_chip_template: "{ticket.Status}",
     });
+  });
+});
+
+describe("ConfigurationPage whole-instance sections", () => {
+  beforeEach(() => {
+    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
+    useWorkspaceStore.persist.clearStorage();
+  });
+
+  // Each section opens with its own permission held in any workspace, which /me reports.
+  it.each([
+    { held: ["instance:read"], shown: ["Instance", "Sign-in providers"] },
+    { held: ["connectors:read"], shown: ["Connectors"] },
+    { held: ["dns:read"], shown: ["DNS"] },
+    { held: ["accounts:read"], shown: ["Team"] },
+  ])("with $held the Whole instance group lists $shown", async ({ held, shown }) => {
+    mocks.get.mockImplementation((url: string) =>
+      url === "/api/auth/me" ? Promise.resolve({ data: { user: {}, instance_permissions: held } }) : mockGet(url),
+    );
+    renderPage();
+
+    const nav = within(await screen.findByRole("navigation", { name: "Configuration sections" }));
+    await nav.findByText("Whole instance");
+    const instanceLinks = ["Instance", "Team", "Sign-in providers", "Connectors", "DNS"].filter((name) => nav.queryByRole("link", { name }));
+    expect(instanceLinks).toEqual(shown);
   });
 });

@@ -21,7 +21,6 @@ const user = {
   login: "onik97",
   name: "Onik",
   avatar_url: "",
-  can_create_workspace: false,
   first_login_done: false,
   created_at: "2026-08-12T12:00:00Z",
 };
@@ -30,6 +29,7 @@ const me = (overrides: Partial<MeResponse>): MeResponse => ({
   user,
   needs_owner_wizard: false,
   needs_first_login_wizard: false,
+  instance_permissions: [],
   ...overrides,
 });
 

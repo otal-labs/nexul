@@ -11,7 +11,8 @@ import {
 } from "@/components/settings/SettingsNav";
 
 const nothing: SettingsVisibility = {
-  isInstanceAdmin: false,
+  instanceSections: [],
+  teamIsInstanceWide: false,
   showRoles: false,
   showPlays: false,
   showInterviewTemplate: false,
@@ -20,7 +21,8 @@ const nothing: SettingsVisibility = {
 };
 
 const everything: SettingsVisibility = {
-  isInstanceAdmin: true,
+  instanceSections: ["instance", "sign-in", "connectors", "dns"],
+  teamIsInstanceWide: true,
   showRoles: true,
   showPlays: true,
   showInterviewTemplate: true,
@@ -31,12 +33,12 @@ const everything: SettingsVisibility = {
 const renderNav = (visibility: SettingsVisibility, active = "danger" as const) =>
   render(
     <MemoryRouter initialEntries={["/configuration"]}>
-      <SettingsNav active={active} sections={visibleSettingsSections(visibility)} isInstanceAdmin={visibility.isInstanceAdmin} />
+      <SettingsNav active={active} sections={visibleSettingsSections(visibility)} teamIsInstanceWide={visibility.teamIsInstanceWide} />
     </MemoryRouter>,
   );
 
 describe("SettingsNav", () => {
-  it("renders every section in two labelled groups for an admin holding every permission", () => {
+  it("renders every section in two labelled groups for a viewer holding every permission", () => {
     renderNav(everything);
     const nav = within(screen.getByRole("navigation", { name: "Configuration sections" }));
     expect(nav.getAllByRole("listitem").map((item) => item.textContent)).toEqual([
@@ -57,14 +59,14 @@ describe("SettingsNav", () => {
     expect(nav.getByRole("link", { name: "Sign-in providers" })).toHaveAttribute("href", "/configuration/sign-in");
   });
 
-  it("drops the whole-instance group and its label for a non-admin", () => {
-    renderNav({ ...everything, isInstanceAdmin: false });
+  it("drops the whole-instance group and its label for a viewer holding none of its permissions", () => {
+    renderNav({ ...everything, instanceSections: [], teamIsInstanceWide: false, showTeam: false });
     expect(screen.queryByText("Whole instance")).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Instance" })).not.toBeInTheDocument();
     expect(screen.getByText("This workspace")).toBeInTheDocument();
   });
 
-  it("puts Team with the workspace sections, ahead of Danger zone, for a member manager who isn't an instance admin", () => {
+  it("puts Team with the workspace sections, ahead of Danger zone, for a member manager without accounts:read", () => {
     renderNav({ ...nothing, showRoles: true, showTeam: true });
     const nav = within(screen.getByRole("navigation", { name: "Configuration sections" }));
     expect(nav.getAllByRole("listitem").map((item) => item.textContent)).toEqual(["This workspace", "Roles", "Team", "Danger zone"]);

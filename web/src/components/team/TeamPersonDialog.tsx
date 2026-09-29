@@ -53,7 +53,7 @@ export const TeamPersonDialog = ({ personId, onClose }: TeamPersonDialogProps) =
         )}
         {person && team && (
           <DialogFooter className="flex-row items-center justify-between border-t border-border px-6 py-3 sm:justify-between">
-            {team.can_manage_accounts && <TeamAccountActions person={person} />}
+            <TeamAccountActions person={person} />
             <DialogClose asChild>
               <Button type="button" size="sm" className="ml-auto">
                 Done

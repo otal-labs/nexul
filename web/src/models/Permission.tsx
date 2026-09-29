@@ -30,7 +30,6 @@ export interface PermissionUser {
   id: string;
   login: string;
   name: string;
-  can_create_workspace: boolean;
 }
 
 // Two shapes on the wire: a doc grant (doc_ids, unchanged since before ticket 21) and a play exclusion

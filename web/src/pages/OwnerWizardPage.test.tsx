@@ -48,7 +48,7 @@ vi.mock("@/components/auth/SetupWorkspaceStep", () => ({
 
 vi.mock("@/hooks/AuthHooks", () => ({
   useFetchSettings: mocks.useFetchSettings,
-  useFetchMe: () => ({ data: { user: { can_create_workspace: true } } }),
+  useFetchMe: () => ({ data: { user: {}, instance_permissions: [] } }),
   useCompleteOwnerWizard: () => ({ mutateAsync: mocks.completeMutateAsync, isPending: false }),
 }));
 
@@ -168,7 +168,7 @@ describe("OwnerWizardPage", () => {
     await user.click(screen.getByRole("button", { name: /finish setup/i }));
 
     expect(mocks.completeMutateAsync).toHaveBeenCalledWith("https://deploy.example.com");
-    // Applied only after CompleteOwnerWizard resolves, since the rename endpoint 403s until can_create_workspace is granted (requireOwner).
+    // Applied only after CompleteOwnerWizard resolves, since the rename endpoint 403s until the caller is the default workspace's Owner.
     expect(mocks.renameWorkspaceMutateAsync).toHaveBeenCalledWith({ id: "workspace-default", name: "Acme" });
     expect(await screen.findByText("Workspace ready")).toBeInTheDocument();
     expect(await screen.findByText("Project wizard", {}, { timeout: 2000 })).toBeInTheDocument();

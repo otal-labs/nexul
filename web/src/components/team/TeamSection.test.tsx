@@ -22,7 +22,7 @@ const team: Team = {
   ],
   people: [
     {
-      id: "u-bob", login: "bob", name: "Bob", avatar_url: "", status: "active", can_create_workspace: false, created_at: "",
+      id: "u-bob", login: "bob", name: "Bob", avatar_url: "", status: "active", created_at: "",
       online: true, last_seen_at: null,
       workspaces: [
         { workspace_id: "ws-nexul", workspace_name: "Nexul", role_id: "r-editor", role_name: "Editor", is_owner: false, allow: [], deny: [] },
@@ -32,8 +32,13 @@ const team: Team = {
   ],
 };
 
-const renderSection = (route = "/configuration/team", data: Team = team) => {
-  mocks.get.mockImplementation((url: string) => Promise.resolve({ data: url === "/api/team" ? data : [] }));
+const accountsBits = ["accounts:read", "accounts:write", "accounts:delete"];
+
+const renderSection = (route = "/configuration/team", data: Team = team, anywhere: string[] = accountsBits) => {
+  mocks.get.mockImplementation((url: string) => {
+    if (url === "/api/auth/me") return Promise.resolve({ data: { user: {}, instance_permissions: anywhere } });
+    return Promise.resolve({ data: url === "/api/team" ? data : [] });
+  });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
@@ -53,7 +58,7 @@ describe("TeamSection", () => {
   it("shows when each person was last online, with a presence dot and their account status kept as a word", async () => {
     const hoursAgo = (hours: number) => new Date(Date.now() - hours * 3_600_000).toISOString();
     const person = (id: string, name: string, extra: Partial<TeamPerson>): TeamPerson => ({
-      id, login: id, name, avatar_url: "", status: "active", can_create_workspace: false, created_at: "", online: false, last_seen_at: null, workspaces: [], ...extra,
+      id, login: id, name, avatar_url: "", status: "active", created_at: "", online: false, last_seen_at: null, workspaces: [], ...extra,
     });
     renderSection("/configuration/team", {
       ...team,
@@ -101,14 +106,20 @@ describe("TeamSection", () => {
     expect(nexul.getByRole("combobox", { name: "Role in Nexul" })).toBeInTheDocument();
     await user.click(nexul.getByRole("button", { name: "Actions for Nexul" }));
     expect(await screen.findByRole("button", { name: "Remove from workspace" })).toBeInTheDocument();
-    expect(dialog.getByRole("button", { name: "Disable" })).toBeInTheDocument();
+    expect(await dialog.findByRole("button", { name: "Disable" })).toBeInTheDocument();
   });
 
-  it("offers account actions only to a viewer who administers the instance", async () => {
-    renderSection("/configuration/team?person=u-bob", { ...team, can_manage_accounts: false });
+  // Changing an account's status takes accounts:write and removing it accounts:delete, each held in any workspace.
+  it.each([
+    { anywhere: [], disable: false, remove: false },
+    { anywhere: ["accounts:write"], disable: true, remove: false },
+    { anywhere: ["accounts:write", "accounts:delete"], disable: true, remove: true },
+  ])("with $anywhere offers Disable: $disable, Remove account: $remove", async ({ anywhere, disable, remove }) => {
+    renderSection("/configuration/team?person=u-bob", team, anywhere);
 
     await screen.findByRole("listitem", { name: "Nexul" });
-    expect(screen.queryByRole("button", { name: /disable|remove account/i })).not.toBeInTheDocument();
+    await vi.waitFor(() => expect(!!screen.queryByRole("button", { name: "Disable" })).toBe(disable));
+    expect(!!screen.queryByRole("button", { name: "Remove account" })).toBe(remove);
   });
 
   it("opens from a link and adds the person to a workspace they are not in and the viewer manages", async () => {

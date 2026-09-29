@@ -23,7 +23,7 @@ vi.mock("@/components/settings/ComputersSection", () => ({ ComputersSection: () 
 vi.mock("@/components/settings/PairingDefaultsSection", () => ({ PairingDefaultsSection: () => <p>Defaults card</p> }));
 
 const me = {
-  user: { id: "u1", login: "onik97", name: "Onik", avatar_url: "", display_name: "Onik N", can_create_workspace: true },
+  user: { id: "u1", login: "onik97", name: "Onik", avatar_url: "", display_name: "Onik N" },
 };
 
 const patList = (tokens: unknown[]) => ({ tokens });

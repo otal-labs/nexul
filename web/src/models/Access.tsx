@@ -17,6 +17,17 @@ export const AREA_PERMISSION = {
 
 export type Area = keyof typeof AREA_PERMISSION;
 
+// The whole-instance Configuration sections and the permission each opens with, held in any workspace (/me's
+// instance_permissions). Team is not here: it opens on accounts:read or members:write.
+export const INSTANCE_SECTION_PERMISSION = {
+  instance: "instance:read",
+  "sign-in": "instance:read",
+  connectors: "connectors:read",
+  dns: "dns:read",
+} as const;
+
+export type InstanceSection = keyof typeof INSTANCE_SECTION_PERMISSION;
+
 // Configuration has no bit of its own: it opens when one of its sections does.
 export type RouteArea = Area | "configuration";
 

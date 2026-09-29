@@ -14,25 +14,24 @@ vi.mock("@/api/client", async (importOriginal) => {
   return { ...actual, api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() } };
 });
 
-const user = (admin: boolean) => ({
+const user = {
   id: "u1",
   provider: "github",
   provider_user_id: "1",
   login: "onik97",
   name: "Onik",
   avatar_url: "",
-  can_create_workspace: admin,
   first_login_done: true,
   created_at: "",
-});
+};
 
 const forbidden = Object.assign(new Error("forbidden"), { response: { status: 403, data: { message: "forbidden" } } });
 
-const mockApi = (admin: boolean, permissions: string[]) =>
+const mockApi = (anywhere: string[], permissions: string[]) =>
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/auth/bootstrap-status") return { data: { configured: true } };
     if (url === "/api/auth/me") {
-      return { data: { user: user(admin), needs_owner_wizard: false, needs_first_login_wizard: false } };
+      return { data: { user, needs_owner_wizard: false, needs_first_login_wizard: false, instance_permissions: anywhere } };
     }
     if (url === "/api/workspaces") return { data: [{ id: "ws-1", name: "Acme", created_at: "", updated_at: "" }] };
     if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions } };
@@ -59,17 +58,18 @@ beforeEach(() => {
 
 describe("route permissions", () => {
   it.each([
-    { path: "/runners", admin: false, permissions: [], page: null },
-    { path: "/runners", admin: false, permissions: ["runners:read"], page: "Runners" },
-    { path: "/topology", admin: false, permissions: ["runners:read"], page: null },
-    { path: "/automations", admin: false, permissions: ["runners:read"], page: null },
-    { path: "/board", admin: false, permissions: ["chat:read"], page: null },
-    { path: "/configuration", admin: false, permissions: ["chat:read"], page: null },
-    { path: "/configuration", admin: false, permissions: ["roles:write"], page: "Configuration" },
-    { path: "/configuration", admin: true, permissions: [], page: "Configuration" },
-    { path: "/inbox", admin: false, permissions: [], page: "Inbox" },
-  ])("$path with $permissions (admin: $admin) opens $page", async ({ path, admin, permissions, page }) => {
-    mockApi(admin, permissions);
+    { path: "/runners", anywhere: [], permissions: [], page: null },
+    { path: "/runners", anywhere: [], permissions: ["runners:read"], page: "Runners" },
+    { path: "/topology", anywhere: [], permissions: ["runners:read"], page: null },
+    { path: "/automations", anywhere: [], permissions: ["runners:read"], page: null },
+    { path: "/board", anywhere: [], permissions: ["chat:read"], page: null },
+    { path: "/configuration", anywhere: [], permissions: ["chat:read"], page: null },
+    { path: "/configuration", anywhere: [], permissions: ["roles:write"], page: "Configuration" },
+    { path: "/configuration", anywhere: ["instance:read"], permissions: [], page: "Configuration" },
+    { path: "/configuration", anywhere: ["members:write"], permissions: [], page: "Configuration" },
+    { path: "/inbox", anywhere: [], permissions: [], page: "Inbox" },
+  ])("$path with $permissions (anywhere: $anywhere) opens $page", async ({ path, anywhere, permissions, page }) => {
+    mockApi(anywhere, permissions);
     renderAt(path);
 
     if (page === null) {
@@ -81,7 +81,7 @@ describe("route permissions", () => {
   });
 
   it("a deep link to an item the server refuses lands on not-found", async () => {
-    mockApi(false, ["automations:read"]);
+    mockApi([], ["automations:read"]);
     renderAt("/automations/a-1");
 
     expect(await screen.findByRole("heading", { name: "Page not found" })).toBeInTheDocument();

@@ -51,7 +51,7 @@ const SetupWorkspaceForm = ({ workspaceName, onContinue }: SetupWorkspaceFormPro
     resolver: zodResolver(SaveWorkspaceFormSchema),
   });
 
-  // Renaming needs can_create_workspace (granted after this step), so hand the value to the wizard shell.
+  // Renaming needs workspaces:write, which the owner holds only once the wizard finishes, so hand the value to the wizard shell.
   const onSubmit = (data: SaveWorkspaceFormData) =>
     onContinue({ workspaceId: DEFAULT_WORKSPACE_ID, workspaceName: data.name });
 

@@ -26,7 +26,7 @@ beforeEach(() => {
   useSidebarStore.setState({ workspaceNavOpen: true });
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   vi.mocked(api.get).mockImplementation(async (url: string) => {
-    if (url === "/api/auth/me") return { data: { user: { can_create_workspace: true } } };
+    if (url === "/api/auth/me") return { data: { user: {}, instance_permissions: ["instance:read"] } };
     return { data: { role_name: "Owner", permissions: ["automations:read", "runners:read", "topology:read"] } };
   });
 });

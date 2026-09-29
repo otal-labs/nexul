@@ -97,7 +97,7 @@ describe("PermissionsForm", () => {
   it("shows users and only the docs + permissions:write actions from the catalog", async () => {
     const user = userEvent.setup();
     vi.mocked(api.get).mockImplementation(
-      mockGet([{ id: "u1", login: "alice", name: "Alice", can_create_workspace: false }]),
+      mockGet([{ id: "u1", login: "alice", name: "Alice" }]),
     );
     renderWithRoot(<PermissionsHarness docIds={["doc-1"]} />);
 
@@ -115,7 +115,7 @@ describe("PermissionsForm", () => {
   it("applies selected users and actions and resolves success", async () => {
     const user = userEvent.setup();
     vi.mocked(api.get).mockImplementation(
-      mockGet([{ id: "u1", login: "alice", name: "Alice", can_create_workspace: false }]),
+      mockGet([{ id: "u1", login: "alice", name: "Alice" }]),
     );
     vi.mocked(api.put).mockResolvedValue({});
     renderWithRoot(<PermissionsHarness docIds={["doc-1"]} />);
@@ -150,7 +150,7 @@ describe("PermissionsForm", () => {
   it("disables apply until a user and an action are chosen", async () => {
     const user = userEvent.setup();
     vi.mocked(api.get).mockImplementation(
-      mockGet([{ id: "u1", login: "alice", name: "Alice", can_create_workspace: false }]),
+      mockGet([{ id: "u1", login: "alice", name: "Alice" }]),
     );
     renderWithRoot(<PermissionsHarness docIds={["doc-1"]} />);
 
@@ -168,7 +168,7 @@ describe("PermissionsForm (play resource type)", () => {
   it("offers only Run plays and defaults to deny", async () => {
     const user = userEvent.setup();
     vi.mocked(api.get).mockImplementation(
-      mockGet([{ id: "u1", login: "alice", name: "Alice", can_create_workspace: false }]),
+      mockGet([{ id: "u1", login: "alice", name: "Alice" }]),
     );
     renderWithRoot(<PlayPermissionsHarness playIds={["play-1"]} />);
 
@@ -182,7 +182,7 @@ describe("PermissionsForm (play resource type)", () => {
   it("submits a deny with resource_type and resource_ids, no doc_ids", async () => {
     const user = userEvent.setup();
     vi.mocked(api.get).mockImplementation(
-      mockGet([{ id: "u1", login: "alice", name: "Alice", can_create_workspace: false }]),
+      mockGet([{ id: "u1", login: "alice", name: "Alice" }]),
     );
     vi.mocked(api.put).mockResolvedValue({});
     renderWithRoot(<PlayPermissionsHarness playIds={["play-1"]} />);

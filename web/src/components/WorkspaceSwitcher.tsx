@@ -5,7 +5,7 @@ import { CreateWorkspaceForm } from "@/components/CreateWorkspaceForm";
 import { Popover } from "@/components/ui/popover";
 import { WorkspaceSwitcherMenu } from "@/components/WorkspaceSwitcherMenu";
 import { WorkspaceSwitcherTrigger } from "@/components/WorkspaceSwitcherTrigger";
-import { useFetchMe } from "@/hooks/AuthHooks";
+import { useHasInstancePermission } from "@/hooks/AccessHooks";
 import { useFetchWorkspaces } from "@/hooks/WorkspaceHooks";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { SaveWorkspaceFormSchema, type SaveWorkspaceFormData } from "@/models/Workspace";
@@ -20,8 +20,7 @@ export const WorkspaceSwitcher = ({ collapsed }: WorkspaceSwitcherProps) => {
   const [open, setOpen] = useState(false);
   // Server state, rendered straight from the query cache, never mirrored into workspaceStore (F5).
   const { data: workspaces } = useFetchWorkspaces();
-  const { data: me } = useFetchMe();
-  const canCreateWorkspace = me?.user?.can_create_workspace ?? false;
+  const canCreateWorkspace = useHasInstancePermission("workspaces:create");
   const { selectedWorkspaceId, selectWorkspace } = useWorkspaceStore(
     useShallow((s) => ({
       selectedWorkspaceId: s.selectedWorkspaceId,

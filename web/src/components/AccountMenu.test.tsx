@@ -21,7 +21,6 @@ const ownerUser = {
   login: "onik97",
   name: "Onik",
   avatar_url: "",
-  can_create_workspace: true,
   first_login_done: true,
   created_at: "2026-08-12T12:00:00Z",
 };

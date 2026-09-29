@@ -68,7 +68,7 @@ describe("SetupWorkspaceStep", () => {
   });
 
   it("hands the name up instead of saving it itself", async () => {
-    // Renaming needs can_create_workspace, which the owner only gets once the wizard completes.
+    // Renaming needs workspaces:write, which the owner only holds once the wizard completes.
     const user = userEvent.setup();
     const onContinue = renderStep();
 

@@ -24,8 +24,11 @@ vi.mock("@/components/team/TeamSection", () => ({ TeamSection: () => <p>Team car
 
 const settings = { instance_url: "https://deploy.example.com", settings_version: 1 };
 
-const routeGet = (admin: boolean, permissions: string[]) => (url: string) => {
-  if (url === "/api/auth/me") return Promise.resolve({ data: { user: { can_create_workspace: admin } } });
+// Every whole-instance permission, as the Owner of some workspace holds them.
+const everythingAnywhere = ["instance:read", "accounts:read", "members:write", "connectors:read", "connectors:write", "dns:read"];
+
+const routeGet = (anywhere: string[], permissions: string[]) => (url: string) => {
+  if (url === "/api/auth/me") return Promise.resolve({ data: { user: {}, instance_permissions: anywhere } });
   if (url === "/api/workspaces/ws-1/me") return Promise.resolve({ data: { role_name: "Owner", permissions } });
   if (url === "/api/team") return Promise.reject(new Error("403"));
   if (url === "/api/connectors") {
@@ -41,8 +44,8 @@ const LocationProbe = () => {
   return <output aria-label="location">{`${location.pathname}${location.search}${location.hash}`}</output>;
 };
 
-const renderPage = (route: string, admin = true, permissions: string[] = []) => {
-  mocks.get.mockImplementation(routeGet(admin, permissions));
+const renderPage = (route: string, anywhere = everythingAnywhere, permissions: string[] = []) => {
+  mocks.get.mockImplementation(routeGet(anywhere, permissions));
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
@@ -66,7 +69,7 @@ describe("ConfigurationPage sections", () => {
     useWorkspaceStore.persist.clearStorage();
   });
 
-  it("lands an admin with no workspace permissions on Instance, never on Danger zone", async () => {
+  it("lands an instance:read holder with no workspace permissions on Instance, never on Danger zone", async () => {
     renderPage("/configuration/automation-secrets");
 
     expect(await screen.findByText("URL card")).toBeInTheDocument();
@@ -75,7 +78,7 @@ describe("ConfigurationPage sections", () => {
   });
 
   it("opens the first workspace section for a workspace owner", async () => {
-    renderPage("/configuration", true, ["roles:write", "members:write"]);
+    renderPage("/configuration", everythingAnywhere, ["roles:write", "members:write"]);
 
     expect(await screen.findByText("Roles card")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Team" })).toHaveAttribute("href", "/configuration/team");
@@ -88,15 +91,15 @@ describe("ConfigurationPage sections", () => {
     expect(screen.getByLabelText("location")).toHaveTextContent(/^\/configuration\/team(\?person=u-1)?$/);
   });
 
-  it("shows Team among the workspace sections to a members:write holder who isn't an instance admin", async () => {
-    renderPage("/configuration/team", false, ["members:write"]);
+  it("shows Team among the workspace sections to a members:write holder without accounts:read", async () => {
+    renderPage("/configuration/team", ["members:write"], ["members:write"]);
 
     expect(await screen.findByText("Team card")).toBeInTheDocument();
     expect(screen.queryByText("Whole instance")).not.toBeInTheDocument();
   });
 
-  it("hides every whole-instance section from a non-admin, and an instance link falls back", async () => {
-    renderPage("/configuration/instance", false);
+  it("hides every whole-instance section from a viewer holding none of their permissions, and an instance link falls back", async () => {
+    renderPage("/configuration/instance", []);
 
     expect(await screen.findByRole("link", { name: "Danger zone" })).toHaveAttribute("aria-current", "page");
     expect(screen.queryByText("URL card")).not.toBeInTheDocument();

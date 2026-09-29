@@ -12,11 +12,11 @@ import {
   E2E_WORKSPACE_ID,
 } from "../helpers";
 
-// Mirrors what auth.Service.CompleteOwnerWizard / tenancy.BindDefaultWorkspaceOwner set up for a real owner, since this seed bypasses that flow and writes the DB directly; workspace membership (not can_create_workspace) is what grants doc/board access via access.Service.HasPermission's Owner-role bypass (ticket 11).
+// Mirrors what auth.Service.CompleteOwnerWizard / tenancy.BindDefaultWorkspaceOwner set up for a real owner, since this seed bypasses that flow and writes the DB directly; workspace membership is what grants every permission via access.Service.HasPermission's Owner-role bypass.
 const DEFAULT_WORKSPACE_ID = E2E_WORKSPACE_ID;
 const DEFAULT_OWNER_ROLE_ID = E2E_OWNER_ROLE_ID;
 
-// Seeds a deterministic e2e owner (first_login_done so OnboardingGate lets the app load), bound to the default workspace since doc/board access now flows through workspace membership rather than can_create_workspace (ticket 11); default statuses ship in migration 0022 so the board works out of the box.
+// Seeds a deterministic e2e owner (first_login_done so OnboardingGate lets the app load), bound to the default workspace since every permission flows through workspace membership; default statuses ship in migration 0022 so the board works out of the box.
 export async function setup(): Promise<void> {
   const dbPath = process.env.NEXUL_E2E_DB ?? "/data/nexul.db";
 
@@ -39,18 +39,18 @@ export async function setup(): Promise<void> {
 
   const now = Math.floor(Date.now() / 1000);
   db.run(
-    `INSERT INTO users (id, provider, provider_user_id, login, name, can_create_workspace, first_login_done, created_at, updated_at)
-     VALUES (?, 'github', '0', ?, 'E2E User', 1, 1, ?, ?)
+    `INSERT INTO users (id, provider, provider_user_id, login, name, first_login_done, created_at, updated_at)
+     VALUES (?, 'github', '0', ?, 'E2E User', 1, ?, ?)
      ON CONFLICT(provider, provider_user_id)
-     DO UPDATE SET can_create_workspace = 1, first_login_done = 1, login = excluded.login`,
+     DO UPDATE SET first_login_done = 1, login = excluded.login`,
     [E2E_UID, E2E_LOGIN, now, now],
   );
   // second user for real-time-collab presence (distinct editor identity)
   db.run(
-    `INSERT INTO users (id, provider, provider_user_id, login, name, can_create_workspace, first_login_done, created_at, updated_at)
-     VALUES (?, 'github', '1', ?, 'Collab Partner', 0, 1, ?, ?)
+    `INSERT INTO users (id, provider, provider_user_id, login, name, first_login_done, created_at, updated_at)
+     VALUES (?, 'github', '1', ?, 'Collab Partner', 1, ?, ?)
      ON CONFLICT(provider, provider_user_id)
-     DO UPDATE SET can_create_workspace = 0, first_login_done = 1, login = excluded.login`,
+     DO UPDATE SET first_login_done = 1, login = excluded.login`,
     [E2E_UID_2, E2E_LOGIN_2, now, now],
   );
   db.run(
