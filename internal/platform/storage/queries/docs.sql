@@ -1,5 +1,5 @@
 -- name: CreateDoc :exec
-INSERT INTO docs (id, project_id, title, body, body_md, version, archived, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO docs (id, project_id, title, body, body_md, version, archived, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetDoc :one
 SELECT * FROM docs WHERE id = ?;

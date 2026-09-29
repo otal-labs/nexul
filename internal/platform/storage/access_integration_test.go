@@ -94,7 +94,7 @@ func TestIntegration_AccessEndToEnd(t *testing.T) {
 	ctx := context.Background()
 	s := storage.New(newDB(t), []byte("0123456789abcdef0123456789abcdef"))
 	accessSvc := access.NewService(s.Access, realUsers{s.Users})
-	docsSvc := docs.NewService(s.Docs, accessSvc)
+	docsSvc := docs.NewService(s.Docs, accessSvc, nil)
 
 	seedUser(t, s, "owner", "owner")
 	seedUser(t, s, "alice", "alice")
@@ -154,7 +154,7 @@ func TestIntegration_ArchivedHiddenFromSearch(t *testing.T) {
 
 	s := storage.New(newDB(t), []byte("0123456789abcdef0123456789abcdef"))
 	accessSvc := access.NewService(s.Access, realUsers{s.Users})
-	docsSvc := docs.NewService(s.Docs, accessSvc)
+	docsSvc := docs.NewService(s.Docs, accessSvc, nil)
 	seedUser(t, s, "owner", "owner")
 	joinDefaultWorkspace(t, s, accessSvc, "owner")
 
@@ -181,7 +181,7 @@ func TestIntegration_ListDisclosure(t *testing.T) {
 
 	s := storage.New(newDB(t), []byte("0123456789abcdef0123456789abcdef"))
 	accessSvc := access.NewService(s.Access, realUsers{s.Users})
-	docsSvc := docs.NewService(s.Docs, accessSvc)
+	docsSvc := docs.NewService(s.Docs, accessSvc, nil)
 	seedUser(t, s, "owner", "owner")
 	seedUser(t, s, "alice", "alice")
 	seedUser(t, s, "bob", "bob")

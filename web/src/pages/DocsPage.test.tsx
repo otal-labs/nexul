@@ -1,8 +1,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ContextAwareConfirmation } from "react-confirm";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
@@ -16,122 +16,125 @@ vi.mock("@/api/client", () => ({
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
-// The real wrapper lazy-imports CreateDocForm (tiptap + yjs); under full-suite load that dynamic import can outlive findBy's timeout, so the test resolves it synchronously.
-vi.mock("@/components/doc/LazyCreateDocForm", async () => ({
-  LazyCreateDocForm: (await import("@/components/doc/CreateDocForm")).CreateDocForm,
-}));
+// The editor pane is DocPage's own concern (collab session, tiptap); here it only has to be the open doc's.
+vi.mock("@/pages/DocPage", async () => {
+  const { useParams } = await import("react-router");
+  return { DocPage: () => <p>editing {useParams().docId}</p> };
+});
 
-const renderPage = () => {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+const project = { id: "p-1", name: "Backend", prefix: "BE", position: 0, created_at: "", updated_at: "" };
+
+const doc = (id: string, title: string, updated_at: string, can_open = true) => ({
+  id,
+  project_id: "p-1",
+  title,
+  version: 1,
+  archived: false,
+  can_open,
+  updated_at,
+  ...(can_open ? { created_by: "u-1", snippet: `${title} notes` } : {}),
+});
+
+const docs = [
+  doc("doc-1", "Storage Spine", new Date().toISOString()),
+  doc("doc-2", "Rollback plan", "2020-01-01T12:00:00Z"),
+  doc("doc-3", "Salaries", "2020-01-02T12:00:00Z", false),
+];
+
+const LocationSpy = () => <p data-testid="location">{useLocation().pathname}</p>;
+
+const renderPage = (path: string, permissions: string[], overrides: Record<string, unknown> = {}) => {
+  const endpoints: Record<string, unknown> = {
+    "/api/projects": [project],
+    "/api/workspaces": [{ id: "ws-1", name: "Acme" }],
+    "/api/workspaces/ws-1/me": { role_name: "Member", permissions },
+    "/api/docs": docs,
+    ...overrides,
+  };
+  vi.mocked(api.get).mockImplementation(async (url: string) => {
+    const data = endpoints[url];
+    if (data instanceof Error) throw data;
+    return { data: data ?? [] };
+  });
   return render(
-    <QueryClientProvider client={client}>
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <ContextAwareConfirmation.ConfirmationRoot />
-        <MemoryRouter>
-          <DocsPage />
-        </MemoryRouter>
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route path="/docs" element={<DocsPage />} />
+          <Route path="/docs/:projectToken/:docId" element={<DocsPage />} />
+          <Route path="/docs/:docId" element={<DocsPage />} />
+        </Routes>
+        <LocationSpy />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 };
 
-const listItem = {
-  id: "doc-1",
-  project_id: "p-1",
-  title: "Storage Spine",
-  version: 1,
-  archived: false,
-  can_open: true,
-  updated_at: "2026-08-02T12:00:00Z",
-};
-
-// Answers the viewer's own role so the New doc button can be shown or hidden; everything else comes from `data`.
-const mockGet = (data: (url: string) => unknown, permissions: string[] = ["docs:write"]) =>
-  vi.mocked(api.get).mockImplementation(async (url: string) =>
-    url === "/api/workspaces/ws-1/me" ? { data: { role_name: "Member", permissions } } : { data: data(url) },
-  );
-
 beforeEach(() => {
-  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedProjectId: "" });
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
 });
 
 describe("DocsPage", () => {
-  it("renders docs from the gateway", async () => {
-    mockGet(() => [listItem]);
-    renderPage();
-    expect(await screen.findByText("Storage Spine")).toBeInTheDocument();
-    expect(await screen.findByRole("button", { name: "New doc" })).toBeInTheDocument();
+  it("lists the openable docs by day and opens the one the URL names", async () => {
+    renderPage("/docs/BE/doc-2", ["docs:read"]);
+
+    const earlier = await screen.findByRole("region", { name: "Earlier" });
+    expect(within(earlier).getByRole("link", { name: /Rollback plan/ })).toHaveAttribute("aria-current", "page");
+    const today = screen.getByRole("region", { name: "Today" });
+    expect(within(today).getByRole("link", { name: /Storage Spine/ })).not.toHaveAttribute("aria-current");
+    expect(screen.queryByText("Salaries")).not.toBeInTheDocument();
+    expect(await screen.findByText("editing doc-2")).toBeInTheDocument();
   });
 
-  it("hides New doc from a member without docs:write", async () => {
-    mockGet(() => [listItem], ["docs:read"]);
-    renderPage();
-    expect(await screen.findByText("Storage Spine")).toBeInTheDocument();
+  it("moves a bare doc link to its project's URL", async () => {
+    renderPage("/docs/doc-2", ["docs:read"], { "/api/docs/doc-2": { ...doc("doc-2", "Rollback plan", ""), body: "" } });
+
+    await vi.waitFor(() => expect(screen.getByTestId("location")).toHaveTextContent("/docs/BE/doc-2"));
+    expect(await screen.findByText("editing doc-2")).toBeInTheDocument();
+  });
+
+  it("offers New doc and Clone only to a role that holds them", async () => {
+    renderPage("/docs", ["docs:read", "docs:delete"]);
+
+    // Delete's menu shows once the role has loaded, so the absences below are the role's, not a pending fetch's.
+    await screen.findByRole("button", { name: "More actions for Storage Spine" });
     expect(screen.queryByRole("button", { name: "New doc" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Clone Storage Spine" })).not.toBeInTheDocument();
+  });
+
+  it("clones a doc into the project picked in Clone to…", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.post).mockResolvedValue({ data: { id: "doc-9", project_id: "p-1" } });
+    renderPage("/docs", ["docs:read", "docs:clone"], { "/api/projects": [project] });
+
+    await user.click(await screen.findByRole("button", { name: "Clone Storage Spine" }));
+    const dialog = await screen.findByRole("dialog", { name: "Clone to…" });
+    await user.click(await within(dialog).findByRole("button", { name: "Clone" }));
+
+    await vi.waitFor(() => expect(api.post).toHaveBeenCalledWith("/api/docs/doc-1/clone", { project_id: "p-1" }));
+    expect(await screen.findByText("editing doc-9")).toBeInTheDocument();
+  });
+
+  it("says so, and offers a writer New doc, when the project has no docs", async () => {
+    renderPage("/docs", ["docs:read", "docs:write"], { "/api/docs": [] });
+
+    expect(await screen.findByText("No docs yet")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "New doc" })).toBeInTheDocument();
   });
 
   it("points at the project wizard when the workspace has no project yet", async () => {
-    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
-    vi.mocked(api.get).mockImplementation(async (url: string) =>
-      url === "/api/workspaces/ws-1/me" ? { data: { role_name: "Member", permissions: ["projects:write"] } } : { data: [] },
-    );
-    renderPage();
+    renderPage("/docs", ["projects:write"], { "/api/projects": [] });
+
     expect(await screen.findByText("No projects yet")).toBeInTheDocument();
     expect(await screen.findByRole("link", { name: "New project" })).toHaveAttribute("href", "/wizard/project/project");
-    expect(screen.queryByRole("button", { name: "New doc" })).not.toBeInTheDocument();
-  });
-
-  it("shows the shared empty state when there are no docs", async () => {
-    mockGet((url) => (url.startsWith("/api/projects") ? [{ id: "p-1", name: "Backend", position: 0, created_at: "", updated_at: "" }] : []));
-    renderPage();
-    expect(await screen.findByText("No docs yet.")).toBeInTheDocument();
-    // the create action stays available on an empty page (first doc UX)
-    expect(await screen.findByRole("button", { name: "New doc" })).toBeInTheDocument();
-  });
-
-  it("creates a doc through the dialog", async () => {
-    const user = userEvent.setup();
-    mockGet((url) => (url.startsWith("/api/projects") ? [{ id: "p-1", name: "Backend", position: 0, created_at: "", updated_at: "" }] : [listItem]));
-    vi.mocked(api.post).mockResolvedValue({
-      data: {
-        id: "doc-1",
-        project_id: "p-1",
-        title: "New spec",
-        body: "",
-        version: 1,
-        archived: false,
-        created_at: "2026-08-02T12:00:00Z",
-        updated_at: "2026-08-02T12:00:00Z",
-      },
-    });
-    renderPage();
-
-    await user.click(await screen.findByRole("button", { name: "New doc" }));
-    await user.type(await screen.findByLabelText("Title"), "New spec");
-    await user.click(screen.getByRole("button", { name: "Create" }));
-
-    expect(api.post).toHaveBeenCalledTimes(1);
-    const [url, payload] = vi.mocked(api.post).mock.calls[0] as [string, { project_id: string; title: string; body: string }];
-    expect(url).toBe("/api/docs");
-    expect(payload.project_id).toBe("p-1");
-    expect(payload.title).toBe("New spec");
-    expect(JSON.parse(payload.body)).toHaveProperty("type", "doc");
-  });
-
-  it("opens the permissions dialog for selected docs", async () => {
-    const user = userEvent.setup();
-    mockGet(() => [listItem, { ...listItem, id: "doc-2", title: "Event Bus" }]);
-    renderPage();
-
-    await user.click(await screen.findByLabelText("Select Storage Spine"));
-    await user.click(screen.getByRole("button", { name: "Permissions (1)" }));
-    expect(await screen.findByText("Permissions")).toBeInTheDocument();
-    await user.keyboard("{Escape}");
   });
 
   it("shows the shared error display when the list fails", async () => {
-    vi.mocked(api.get).mockRejectedValue(new Error("boom"));
-    renderPage();
-    expect(await screen.findByText("boom")).toBeInTheDocument();
+    renderPage("/docs", ["docs:read"], { "/api/docs": new Error("boom") });
+
+    expect(await screen.findByText("Failed to load docs.")).toBeInTheDocument();
   });
 });

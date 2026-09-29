@@ -584,6 +584,11 @@ h3 {
   min-height: 0;
 }
 
+/* A create dialog's body sits under the title like the ticket dialog's description, not a page. */
+.doc-editor-compact .tiptap {
+  min-height: 5rem;
+}
+
 /* Gutter "+" (PlusMenuExtension): a bare glyph, not a boxed button — appears
    only next to the current empty line, matching the editor's "no box" rule. */
 .plus-menu-button {

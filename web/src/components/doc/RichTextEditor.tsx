@@ -30,6 +30,8 @@ interface RichTextEditorProps {
   "aria-label"?: string;
   /** The doc or ticket that pasted, dropped, or picked files attach to; without it the body accepts no files. */
   attachTo?: AttachmentOwner;
+  /** A dialog's short body: no gutter "+", a short minimum height, and the ticket dialog's placeholder. */
+  compact?: boolean;
   /** Binds to a live collab session (ws-25); body seeds only once the server confirms nothing to replay. */
   collab?: {
     doc: Y.Doc;
@@ -64,10 +66,13 @@ export const RichTextEditor = ({
   onHeadingsChange,
   "aria-label": ariaLabel,
   attachTo,
+  compact = false,
   collab,
 }: RichTextEditorProps) => {
   const queryClient = useQueryClient();
+  const placeholder = compact ? "Add description…" : "Start writing…";
   const extensionOptions = {
+    plusMenu: !compact,
     attachTo: attachTo ?? null,
     onUploaded: () => void queryClient.invalidateQueries({ queryKey: [getAttachmentsKey] }),
   };
@@ -89,12 +94,15 @@ export const RichTextEditor = ({
         attributes: {
           "aria-label": ariaLabel ?? "Doc body",
           "aria-multiline": "true",
-          "data-placeholder": "Start writing…",
+          "data-placeholder": placeholder,
         },
       },
       onUpdate: ({ editor: e }) => {
         // Controlled re-application is skipped while a collab session owns the content.
-        onChange(JSON.stringify(e.getJSON()));
+        const json = JSON.stringify(e.getJSON());
+        // The echo of this edit is not an external change; re-applying it would reset the cursor mid-typing.
+        appliedValue.current = json;
+        onChange(json);
       },
     },
     // Editor is recreated when the collab binding changes (a fresh session after a conflict reset).
@@ -161,6 +169,7 @@ export const RichTextEditor = ({
     <div
       className={cn(
         "doc-editor doc-body-view prose-rich relative",
+        compact && "doc-editor-compact text-sm",
         isEmpty && "is-empty",
       )}
       data-testid="rich-text-editor"
@@ -170,7 +179,7 @@ export const RichTextEditor = ({
           aria-hidden="true"
           className="pointer-events-none absolute left-0 top-0 select-none text-muted-foreground/70"
         >
-          Start writing…
+          {placeholder}
         </span>
       )}
       <EditorContent editor={editor} />

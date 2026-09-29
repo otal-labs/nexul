@@ -108,7 +108,7 @@ func TestIntegration_DocsToTicketFlowPublishesEvents(t *testing.T) {
 	ctx := actorCtx()
 	db := newDB(t)
 	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
-	docsSvc := docs.NewService(s.Docs, allowAll{})
+	docsSvc := docs.NewService(s.Docs, allowAll{}, nil)
 	ticketsSvc := tickets.NewService(s.Tickets, s.Statuses, nil)
 	ticketsSvc.SetGate(allowAll{})
 
@@ -141,7 +141,7 @@ func TestIntegration_DocUpdateVersionsAndPublishes(t *testing.T) {
 	ctx := actorCtx()
 	db := newDB(t)
 	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
-	svc := docs.NewService(s.Docs, allowAll{})
+	svc := docs.NewService(s.Docs, allowAll{}, nil)
 
 	doc, err := svc.Create(ctx, "project-general", "v1", "first")
 	require.NoError(t, err)
@@ -285,7 +285,7 @@ func TestIntegration_CreateDocWithUnknownProjectIsConflict(t *testing.T) {
 	ctx := actorCtx()
 	db := newDB(t)
 	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
-	svc := docs.NewService(s.Docs, allowAll{})
+	svc := docs.NewService(s.Docs, allowAll{}, nil)
 
 	_, err := svc.Create(ctx, "does-not-exist", "orphan", "body")
 	require.Error(t, err)
@@ -297,7 +297,7 @@ func TestIntegration_ListDocsByProjectFiltersCorrectly(t *testing.T) {
 	ctx := actorCtx()
 	db := newDB(t)
 	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
-	docsSvc := docs.NewService(s.Docs, allowAll{})
+	docsSvc := docs.NewService(s.Docs, allowAll{}, nil)
 
 	now := time.Now()
 	require.NoError(t, s.Projects.Create(ctx, &workspace.Project{
@@ -379,7 +379,7 @@ func TestIntegration_MissingDocAndTicketNameTheIDOnce(t *testing.T) {
 	ctx := actorCtx()
 	s := storage.New(newDB(t), []byte("0123456789abcdef0123456789abcdef"))
 
-	_, err := docs.NewService(s.Docs, allowAll{}).Get(ctx, "gone")
+	_, err := docs.NewService(s.Docs, allowAll{}, nil).Get(ctx, "gone")
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 	assert.EqualError(t, err, "get doc gone: not found")
 

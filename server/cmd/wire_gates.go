@@ -311,6 +311,19 @@ func (g memoriesAttachmentsGate) CopyOwnerWithIDs(ctx context.Context, fromMemor
 	return g.svc.CopyAttachmentsWithIDs(ctx, attachments.Owner{MemoryID: fromMemoryID}, attachments.Owner{MemoryID: toMemoryID}, idMap)
 }
 
+// docsAttachmentsGate is memoriesAttachmentsGate for docs' Clone, keyed by doc id.
+type docsAttachmentsGate struct {
+	svc *attachments.Service
+}
+
+func (g docsAttachmentsGate) ListOwnerIDs(ctx context.Context, docID string) ([]string, error) {
+	return g.svc.ListOwnerAttachmentIDs(ctx, attachments.Owner{DocID: docID})
+}
+
+func (g docsAttachmentsGate) CopyOwnerWithIDs(ctx context.Context, fromDocID, toDocID string, idMap map[string]string) error {
+	return g.svc.CopyAttachmentsWithIDs(ctx, attachments.Owner{DocID: fromDocID}, attachments.Owner{DocID: toDocID}, idMap)
+}
+
 // membershipGate adapts tenancy's raw membership store to the membership seams of memories (Clone's destination
 // workspace) and chat (a DM's participants), ADR 0017.
 type membershipGate struct {

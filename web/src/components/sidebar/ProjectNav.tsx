@@ -1,7 +1,5 @@
-import { ClipboardListIcon, LayoutDashboardIcon, SettingsIcon } from "lucide-react";
+import { BrainIcon, ClipboardListIcon, FileTextIcon, LayoutDashboardIcon, SettingsIcon } from "lucide-react";
 
-import { ProjectDocsRow } from "@/components/sidebar/ProjectDocsRow";
-import { ProjectMemoriesRow } from "@/components/sidebar/ProjectMemoriesRow";
 import { SidebarNavLink } from "@/components/sidebar/SidebarNavLink";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { boardPath, interviewPath, projectSettingsPath, projectToken, type Project } from "@/models/Project";
@@ -11,7 +9,7 @@ interface ProjectNavProps {
   collapsed: boolean;
 }
 
-// Docs are listed as the server filters them per doc; every other row follows the viewer's workspace permissions.
+// Every row follows the viewer's workspace permissions; the Docs page itself lists only the docs they can open.
 export const ProjectNav = ({ project, collapsed }: ProjectNavProps) => {
   const can = useAreaAccess();
   return (
@@ -27,8 +25,8 @@ export const ProjectNav = ({ project, collapsed }: ProjectNavProps) => {
           collapsed={collapsed}
         />
       )}
-      <ProjectDocsRow project={project} collapsed={collapsed} />
-      {can?.("memories") && <ProjectMemoriesRow project={project} collapsed={collapsed} />}
+      {can?.("docs") && <SidebarNavLink to="/docs" label="Docs" icon={FileTextIcon} collapsed={collapsed} />}
+      {can?.("memories") && <SidebarNavLink to="/memories" label="Memories" icon={BrainIcon} collapsed={collapsed} />}
       {can?.("projects") && (
         <SidebarNavLink
           to={projectSettingsPath(projectToken(project))}

@@ -218,21 +218,21 @@ func (f *fakeRepo) eventsFor(topic string) []eventbus.OutboxEvent {
 }
 
 func newTestService(repo *fakeRepo) *Service {
-	s := NewService(repo, fakeAccess{can: true})
+	s := NewService(repo, fakeAccess{can: true}, nil)
 	s.now = func() time.Time { return fixedNow }
 	return s
 }
 
 // newDenyService wires a service whose access checker denies every action.
 func newDenyService(repo *fakeRepo) *Service {
-	s := NewService(repo, fakeAccess{can: false})
+	s := NewService(repo, fakeAccess{can: false}, nil)
 	s.now = func() time.Time { return fixedNow }
 	return s
 }
 
 // newScriptedService wires a checker whose Can result is driven by the test.
 func newScriptedService(repo *fakeRepo, can bool, grantErr error) *Service {
-	s := NewService(repo, fakeAccess{can: can, grant: grantErr})
+	s := NewService(repo, fakeAccess{can: can, grant: grantErr}, nil)
 	s.now = func() time.Time { return fixedNow }
 	return s
 }
@@ -435,7 +435,7 @@ func TestDelete(t *testing.T) {
 	})
 	t.Run("access cleanup error propagates", func(t *testing.T) {
 		repo := newFakeRepo()
-		s := NewService(repo, fakeAccess{can: true, deleteErr: errors.New("db down")})
+		s := NewService(repo, fakeAccess{can: true, deleteErr: errors.New("db down")}, nil)
 		s.now = func() time.Time { return fixedNow }
 		created, err := s.Create(testCtx(), "project-1", "title", "body")
 		require.NoError(t, err)
@@ -838,4 +838,40 @@ func TestCreateNamedVersion(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, v.Version, got.Version, "doc counter advances to the named row's key")
 	})
+}
+
+// fakeCopier is a docs.AttachmentsCopier that records the id map each clone's attachments were copied under.
+type fakeCopier struct {
+	owned  map[string][]string
+	copied map[string]map[string]string
+}
+
+func (f *fakeCopier) ListOwnerIDs(_ context.Context, docID string) ([]string, error) {
+	return f.owned[docID], nil
+}
+
+func (f *fakeCopier) CopyOwnerWithIDs(_ context.Context, _, toDocID string, idMap map[string]string) error {
+	f.copied[toDocID] = idMap
+	return nil
+}
+
+func TestClone_InItsOwnProject_CopiesBodyAndAttachmentsUnderACopyTitle(t *testing.T) {
+	copier := &fakeCopier{owned: map[string][]string{}, copied: map[string]map[string]string{}}
+	s := NewService(newFakeRepo(), fakeAccess{can: true}, copier)
+	s.now = func() time.Time { return fixedNow }
+	source, err := s.Create(testCtx(), "project-1", "Spec", `{"type":"doc","content":[{"type":"image","attrs":{"src":"/api/attachments/att-1"}}]}`)
+	require.NoError(t, err)
+	copier.owned[source.ID] = []string{"att-1"}
+
+	clone, err := s.Clone(testCtx(), source.ID, "")
+	require.NoError(t, err)
+
+	assert.NotEqual(t, source.ID, clone.ID)
+	assert.Equal(t, "project-1", clone.ProjectID)
+	assert.Equal(t, "Spec (copy)", clone.Title)
+	assert.Equal(t, "user-1", clone.CreatedBy)
+	copied := copier.copied[clone.ID]["att-1"]
+	require.NotEmpty(t, copied, "the source's attachment is copied under the clone")
+	assert.Contains(t, clone.Body, "/api/attachments/"+copied)
+	assert.NotContains(t, clone.Body, "att-1", "the clone never points at the source's attachment")
 }

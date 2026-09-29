@@ -1,6 +1,6 @@
 import { CreateTicketFooter } from "@/components/ticket/CreateTicketFooter";
 import { CreateTicketForm, emptyTicketForm } from "@/components/ticket/CreateTicketForm";
-import { CreateTicketHeader } from "@/components/ticket/CreateTicketHeader";
+import { ProjectDialogHeader } from "@/components/project/ProjectDialogHeader";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { ReportBugFormSchema, type SaveTicketFormData } from "@/models/Ticket";
 
@@ -17,7 +17,7 @@ export const useReportBugDialog = () => {
       title: "Report a bug",
       schema: ReportBugFormSchema,
       okLabel: "Report bug",
-      header: <CreateTicketHeader title="Report a bug" />,
+      header: <ProjectDialogHeader title="Report a bug" />,
       footerStart: <CreateTicketFooter />,
       form: <CreateTicketForm bug allowOriginUnknown={!options.originId} defaultProjectId={options.projectId ?? ""} />,
       formOptions: { defaultValues: { ...emptyTicketForm(), origin_id: options.originId ?? "", origin_unknown: false } },

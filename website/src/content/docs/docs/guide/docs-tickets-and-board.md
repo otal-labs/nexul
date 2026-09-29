@@ -9,13 +9,14 @@ Nexul's loop starts with a document, not a ticket. Docs are the source of truth;
 
 ## Docs
 
-A document belongs to exactly one project, the same rule a ticket follows. Each project's sidebar includes **Board**, its documents, **Interview**, **Memories**, and **Settings**.
+A document belongs to exactly one project, the same rule a ticket follows. Each project's sidebar includes **Board**, **Interview**, **Docs**, **Memories**, and **Settings**. **Docs** lists the project's documents you can open, newest first under Today, Yesterday, and Earlier, beside the one that's open; its search filters the list by title and first line.
 
 - **Rich editor.** The canonical representation is structured rich text, not raw markdown — you get real formatting and styling. Markdown is a conversion surface: it's what LLMs, imports, exports, and integrations read and write, converted to and from the structured document automatically.
 - **`@` mentions.** Typing `@` opens an autocomplete of relevant tickets and other documents. Picking one inserts a live reference: a ticket mention renders as a chip showing its id and status, a document mention shows its current title. If you can't access what's tagged, the chip stays visible but inert — you see the title, not the content.
 - **Real-time collaboration.** Multiple people can edit the same document at once. Changes appear live, presence shows who's viewing or editing (with cursors and selections), and normal concurrent edits merge automatically. A conflict prompt only appears for edits that genuinely can't be merged. Offline edits sync once you reconnect.
 - **Versions.** Lightweight history is kept for recovery, plus deliberate named versions for milestones you want to come back to — not a version for every keystroke.
 - **Attachments.** Paste, drop, or use the `/image` slash command to attach files. Everything the doc owns is listed under the body with download and delete; deleting the doc deletes its files too.
+- **Clone and delete.** Hover a doc in the list for **Clone** and a menu with **Delete**. **Clone to…** copies the doc and its attachments into any project you can write docs in; choosing its own project makes a copy beside it. Cloning needs `docs:clone`, deleting `docs:delete`, and both are hidden without them. The API route is `POST /api/docs/{id}/clone`, and `doc_create` takes `clone_from_id` over MCP.
 
 ## Tickets
 

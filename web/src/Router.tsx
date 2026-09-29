@@ -34,9 +34,7 @@ import { YourSettingsPage } from "@/pages/YourSettingsPage";
 import { useSessionStore } from "@/stores/sessionStore";
 import type { RouteAccess, RouteArea } from "@/models/Access";
 
-// Lazy-loaded: together their deps would double the main bundle, and most sessions never visit either route.
-const DocPage = lazy(() => import("@/pages/DocPage").then((m) => ({ default: m.DocPage })));
-const MemoryPage = lazy(() => import("@/pages/MemoryPage").then((m) => ({ default: m.MemoryPage })));
+// Lazy-loaded: their deps would bloat the main bundle, and most sessions never visit these routes.
 const InterviewPage = lazy(() => import("@/pages/InterviewPage").then((m) => ({ default: m.InterviewPage })));
 const TopologyPage = lazy(() =>
   import("@/pages/TopologyPage").then((m) => ({ default: m.TopologyPage })),
@@ -88,43 +86,13 @@ const buildRoutes = (loggedIn: boolean): RouteObject[] => [
                   ),
                 },
                 { path: "/docs", element: <DocsPage /> },
-                {
-                  path: "/docs/:projectToken/:docId",
-                  element: (
-                    <Suspense fallback={<LoadingDisplay />}>
-                      <DocPage />
-                    </Suspense>
-                  ),
-                },
-                {
-                  // Legacy shape for old links/mention chips with only a doc id; DocPage fetches by id either way.
-                  path: "/docs/:docId",
-                  element: (
-                    <Suspense fallback={<LoadingDisplay />}>
-                      <DocPage />
-                    </Suspense>
-                  ),
-                },
+                { path: "/docs/:projectToken/:docId", element: <DocsPage /> },
+                // Old links and mention chips carry only the doc id; the page moves them to the project's URL.
+                { path: "/docs/:docId", element: <DocsPage /> },
                 { path: "/memories", handle: gate("memories"), element: <MemoriesPage /> },
-                {
-                  path: "/memories/:projectToken/:memoryId",
-                  handle: gate("memories"),
-                  element: (
-                    <Suspense fallback={<LoadingDisplay />}>
-                      <MemoryPage />
-                    </Suspense>
-                  ),
-                },
-                {
-                  // Legacy shape mirroring docs' bare-id route.
-                  path: "/memories/:memoryId",
-                  handle: gate("memories"),
-                  element: (
-                    <Suspense fallback={<LoadingDisplay />}>
-                      <MemoryPage />
-                    </Suspense>
-                  ),
-                },
+                { path: "/memories/:projectToken/:memoryId", handle: gate("memories"), element: <MemoriesPage /> },
+                // A workspace memory's own URL, and old project-memory links, which the page moves to the project's URL.
+                { path: "/memories/:memoryId", handle: gate("memories"), element: <MemoriesPage /> },
                 { path: "/board", handle: gate("tickets"), element: <BoardPage /> },
                 { path: "/board/:projectId", handle: gate("tickets"), element: <BoardPage /> },
                 { path: "/tickets/:ticketId", handle: gate("tickets"), element: <TicketPage /> },

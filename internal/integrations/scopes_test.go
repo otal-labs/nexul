@@ -231,7 +231,7 @@ func TestCatalog_CoversEveryGrantableScopeOnce(t *testing.T) {
 		seen[sc] = true
 	}
 	assert.Len(t, seen, len(allScopes))
-	assert.Len(t, seen, 78)
+	assert.Len(t, seen, 79)
 }
 
 func TestCatalog_EveryValueParses(t *testing.T) {

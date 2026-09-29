@@ -11,7 +11,10 @@ are not listed with docs.
 
 ## Scope and use
 
-Open **Memories** at `/memories`. The **New memory** dialog has a **Project**
+Open **Memories** under the project in the sidebar (`/memories`). The list puts
+always-included memories first under **Pinned**; each row's switch turns
+**Always included in every turn** on or off at once, and hovering a row shows
+**Clone** and a menu with **Delete**. The **New memory** dialog has a **Project**
 selector. Its `Workspace` option creates a workspace-scoped memory. Choosing a
 project creates a project-scoped memory.
 

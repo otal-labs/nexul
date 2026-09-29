@@ -48,9 +48,13 @@ const (
 	uSteward = "u-steward"
 	uClerk   = "u-clerk"
 	uManager = "u-manager"
+	// uCloner may clone docs but not write them, uEditor may write but not clone, and uCopier may do both.
+	uCloner = "u-cloner"
+	uEditor = "u-editor"
+	uCopier = "u-copier"
 )
 
-var people = []string{uOwner, uReader, uWriter, uPlain, uOverwrite, uOutsider, uSteward, uClerk, uManager}
+var people = []string{uOwner, uReader, uWriter, uPlain, uOverwrite, uOutsider, uSteward, uClerk, uManager, uCloner, uEditor, uCopier}
 
 // instanceBits is every permission that used to take the instance administrator flag (ADR 0088).
 var instanceBits = []string{"instance:read", "instance:write", "accounts:read", "accounts:write", "accounts:delete",
@@ -179,12 +183,15 @@ func newPermFixture(t *testing.T) permFixture {
 		{ID: "role-steward", WorkspaceID: "workspace-default", Name: "Steward", Permissions: grant(instanceBits...)},
 		{ID: "role-clerk", WorkspaceID: "workspace-default", Name: "Clerk", Permissions: grant("accounts:read", "accounts:write")},
 		{ID: "role-manager", WorkspaceID: "workspace-default", Name: "Manager", Permissions: grant("roles:write", "members:write")},
+		{ID: "role-cloner", WorkspaceID: "workspace-default", Name: "Cloner", Permissions: grant("docs:read", "docs:clone")},
+		{ID: "role-editor", WorkspaceID: "workspace-default", Name: "Editor", Permissions: grant("docs:read", "docs:write")},
+		{ID: "role-copier", WorkspaceID: "workspace-default", Name: "Copier", Permissions: grant("docs:read", "docs:clone", "docs:write")},
 	} {
 		r.CreatedAt, r.UpdatedAt = now, now
 		require.NoError(t, store.Roles.Create(ctx, r))
 	}
 	for user, role := range map[string]string{uOwner: "role-owner", uReader: "role-reader", uWriter: "role-writer", uPlain: "role-plain", uOverwrite: "role-plain",
-		uSteward: "role-steward", uClerk: "role-clerk", uManager: "role-manager"} {
+		uSteward: "role-steward", uClerk: "role-clerk", uManager: "role-manager", uCloner: "role-cloner", uEditor: "role-editor", uCopier: "role-copier"} {
 		require.NoError(t, store.WorkspaceMembers.AddMember(ctx, &tenancy.Member{UserID: user, WorkspaceID: "workspace-default", RoleID: role, CreatedAt: now}))
 	}
 	require.NoError(t, store.Access.Set(ctx, "workspace", "workspace-default", uOverwrite, grant(reads...), nil))
@@ -261,6 +268,10 @@ func TestIntegration_PermissionTable(t *testing.T) {
 			ds, err := s.docsSvc.List(ctx)
 			return contains(ds, err, func(d *docs.DocListItem) bool { return d.ID == f.doc })
 		}, map[string]string{uPlain: ok, uOutsider: hidden}},
+		{"docs: clone", func(ctx context.Context) error {
+			_, err := s.docsSvc.Clone(ctx, f.doc, "project-general")
+			return err
+		}, map[string]string{uOwner: ok, uCopier: ok, uEditor: forbidden, uCloner: forbidden, uWriter: forbidden, uOutsider: notFound}},
 		{"chat: create channel", func(ctx context.Context) error {
 			actor, _ := identity.ActorFromCtx(ctx)
 			_, err := s.chatSvc.CreateChannel(ctx, "workspace-default", actor.ID, "room-"+actor.ID)

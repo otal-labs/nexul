@@ -37,6 +37,7 @@ const doc: Doc = {
   body: "SQLite is the spine.",
   version: 2,
   archived: false,
+  created_by: "u-1",
   created_at: "2026-08-02T12:00:00Z",
   updated_at: "2026-08-02T12:00:00Z",
 };

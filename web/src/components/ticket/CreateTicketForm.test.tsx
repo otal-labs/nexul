@@ -9,7 +9,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import { CreateTicketFooter } from "@/components/ticket/CreateTicketFooter";
 import { CreateTicketForm, emptyTicketForm } from "@/components/ticket/CreateTicketForm";
-import { CreateTicketHeader } from "@/components/ticket/CreateTicketHeader";
+import { ProjectDialogHeader } from "@/components/project/ProjectDialogHeader";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { SaveTicketFormSchema, type SaveTicketFormData } from "@/models/Ticket";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
@@ -86,7 +86,7 @@ const TicketHarness = ({ docId = "", defaultProjectId = "", defaultCategoryId = 
             title: "New ticket",
             schema: SaveTicketFormSchema,
             okLabel: "Create",
-            header: <CreateTicketHeader />,
+            header: <ProjectDialogHeader title="New ticket" />,
             footerStart: <CreateTicketFooter />,
             form: <CreateTicketForm docId={docId} defaultProjectId={defaultProjectId} defaultCategoryId={defaultCategoryId} />,
             formOptions: { defaultValues: emptyTicketForm() },

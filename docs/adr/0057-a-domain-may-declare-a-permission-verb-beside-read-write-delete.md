@@ -21,3 +21,8 @@ no longer three words, so a verb must be declared, named, and documented
 per domain rather than assumed.
 
 Decided 2026-09-16, amending ADR 0010.
+
+Amended 2026-09-29: `docs:clone` joins them, for the same reason as
+`memories:clone`. Copying a doc into another project needs it on the source,
+beside `docs:read`, and `docs:write` in the destination project. Nobody held a
+doc clone before, so no role is backfilled.

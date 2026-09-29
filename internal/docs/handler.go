@@ -25,6 +25,11 @@ type saveDocRequest struct {
 	Body      string `json:"body"`
 }
 
+// cloneDocRequest's empty ProjectID duplicates the doc in its own project.
+type cloneDocRequest struct {
+	ProjectID string `json:"project_id"`
+}
+
 type namedVersionRequest struct {
 	Name string `json:"name"`
 }
@@ -38,6 +43,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/docs/search", h.search)
 	mux.HandleFunc("POST /api/docs/{id}/archive", h.archive)
 	mux.HandleFunc("POST /api/docs/{id}/restore", h.restore)
+	mux.HandleFunc("POST /api/docs/{id}/clone", h.clone)
 	mux.HandleFunc("GET /api/docs/{id}/export", h.exportDoc)
 	mux.HandleFunc("GET /api/docs/{id}/versions/{version}", h.getVersion)
 	mux.HandleFunc("GET /api/docs/{id}/versions", h.listVersions)
@@ -163,6 +169,20 @@ func (h *Handler) restore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, d)
+}
+
+func (h *Handler) clone(w http.ResponseWriter, r *http.Request) {
+	var req cloneDocRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	d, err := h.svc.Clone(r.Context(), r.PathValue("id"), req.ProjectID)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusCreated, d)
 }
 
 func (h *Handler) listVersions(w http.ResponseWriter, r *http.Request) {

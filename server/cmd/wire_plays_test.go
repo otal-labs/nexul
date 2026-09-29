@@ -51,7 +51,7 @@ func TestIntegration_PlaysLinkReader_OneHop(t *testing.T) {
 	lockedBug, err := ticketsSvc.Create(ctx, "project-general", "Vault 500s", "", "", "", tickets.CreateOptions{OriginID: locked.ID})
 	require.NoError(t, err)
 
-	reader := playsLinkReader{tickets: ticketsSvc, docs: agentDocReader{svc: docs.NewService(s.Docs, access.NewService(s.Access, accessUsers{users: s.Users}))}}
+	reader := playsLinkReader{tickets: ticketsSvc, docs: agentDocReader{svc: docs.NewService(s.Docs, access.NewService(s.Access, accessUsers{users: s.Users}), nil)}}
 	got, err := reader.TicketLinks(aliceCtx, bug.ID)
 	require.NoError(t, err)
 	require.NotNil(t, got.Origin)

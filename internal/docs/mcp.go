@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/otal-labs/nexul/internal/docs/richtext"
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 )
 
@@ -36,9 +37,10 @@ type docGetIn struct {
 }
 
 type docCreateIn struct {
-	ProjectID string `json:"project_id" jsonschema:"The project the doc belongs to; project_list lists projects."`
-	Title     string `json:"title" jsonschema:"The doc's title, for example Storage spine."`
-	Body      string `json:"body,omitempty" jsonschema:"The doc's body as markdown. Omit for an empty doc."`
+	ProjectID   string `json:"project_id" jsonschema:"The project the doc belongs to; project_list lists projects."`
+	Title       string `json:"title,omitempty" jsonschema:"The doc's title, for example Storage spine. Required unless clone_from_id is set."`
+	Body        string `json:"body,omitempty" jsonschema:"The doc's body as markdown. Omit for an empty doc."`
+	CloneFromID string `json:"clone_from_id,omitempty" jsonschema:"The id of a doc to copy, from doc_list, with its attachments, into project_id instead of writing a new one. Its own project_id duplicates it there."`
 }
 
 type docUpdateIn struct {
@@ -121,17 +123,28 @@ func docGetTool(s *Service) mcptool.Tool {
 
 func docCreateTool(s *Service) mcptool.Tool {
 	return mcptool.New("doc_create", "Create doc",
-		"Creates a doc in a project from a markdown title and body, and makes you its owner. "+
+		"Creates a doc in a project from a markdown title and body, or copies one with clone_from_id, and makes you its owner. "+
 			"Use it for documentation and requirements people read; notes meant for agents belong in memory_create instead. "+
+			"Copying needs docs:clone on the source and docs:write in the destination project. "+
 			"Returns the new doc with its body as markdown.",
 		mcptool.Hints{Additive: true, Local: true},
 		func(ctx context.Context, in docCreateIn) (any, error) {
-			d, err := s.Create(ctx, in.ProjectID, in.Title, in.Body)
+			d, err := createOrClone(ctx, s, in)
 			if err != nil {
 				return nil, err
 			}
 			return toDocResult(d)
 		})
+}
+
+func createOrClone(ctx context.Context, s *Service, in docCreateIn) (*Doc, error) {
+	if in.CloneFromID == "" {
+		return s.Create(ctx, in.ProjectID, in.Title, in.Body)
+	}
+	if in.Title != "" || in.Body != "" {
+		return nil, fmt.Errorf("%w: clone_from_id copies the source's title and body; omit both, then change the copy with doc_update", apperrs.ErrInvalid)
+	}
+	return s.Clone(ctx, in.CloneFromID, in.ProjectID)
 }
 
 func docUpdateTool(s *Service) mcptool.Tool {

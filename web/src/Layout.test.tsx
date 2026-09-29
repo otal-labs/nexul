@@ -120,12 +120,6 @@ describe("Layout", () => {
     expect(await screen.findByText("@onik97")).toBeInTheDocument();
   });
 
-  it("has no leftover flat Docs nav link — docs live under the current project", () => {
-    useSessionStore.setState({ token: "t", isLoggedIn: true });
-    renderLayout();
-    expect(screen.queryByRole("link", { name: "Docs" })).not.toBeInTheDocument();
-  });
-
   it("has no Work/Deploy/Manage section header anywhere in the sidebar", () => {
     useSessionStore.setState({ token: "t", isLoggedIn: true });
     renderLayout();
@@ -223,7 +217,7 @@ describe("Layout", () => {
       name: "the Owner sees every entry and every create action",
       user: ownerUser,
       permissions: ownerGrid,
-      main: ["/inbox", "/chat", "/board/BE", "/projects/BE/interview", "/projects/BE/settings"],
+      main: ["/inbox", "/chat", "/board/BE", "/projects/BE/interview", "/docs", "/memories", "/projects/BE/settings"],
       workspace: ["/runners", "/topology", "/automations", "/configuration"],
       create: ["New channel", "New voice channel", "New direct message"],
     },
@@ -232,6 +226,14 @@ describe("Layout", () => {
       user: member,
       permissions: ["chat:read", "tickets:read"],
       main: ["/inbox", "/chat", "/board/BE"],
+      workspace: [],
+      create: [],
+    },
+    {
+      name: "a member who reads docs sees the one Docs entry and no Memories",
+      user: member,
+      permissions: ["docs:read"],
+      main: ["/inbox", "/chat", "/docs"],
       workspace: [],
       create: [],
     },
