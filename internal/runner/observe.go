@@ -15,7 +15,7 @@ type containerRef struct {
 	containerName string
 }
 
-// composePSEntry is one line of `docker compose ps -a --format json` output (one JSON object per container).
+// composePSEntry is one container in `docker compose ps -a --format json` output.
 type composePSEntry struct {
 	Name    string `json:"Name"`
 	Service string `json:"Service"`
@@ -71,19 +71,37 @@ func (e *ShellExecutor) containerRefs(ctx context.Context, req DeployRequestedEv
 		return nil
 	}
 	var refs []containerRef
-	for _, line := range strings.Split(out, "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" {
+	dec := json.NewDecoder(strings.NewReader(out))
+	for dec.More() {
+		var raw json.RawMessage
+		if err := dec.Decode(&raw); err != nil {
+			e.log.Warn("compose ps output unparsable", "stack", req.StackSlug, "error", err)
+			return refs
+		}
+		entries, err := composePSEntries(raw)
+		if err != nil {
+			e.log.Warn("compose ps entry unparsable", "stack", req.StackSlug, "entry", string(raw), "error", err)
 			continue
 		}
-		var entry composePSEntry
-		if err := json.Unmarshal([]byte(line), &entry); err != nil {
-			e.log.Warn("compose ps line unparsable", "line", line, "error", err)
-			continue
+		for _, entry := range entries {
+			refs = append(refs, containerRef{name: entry.Service, containerName: entry.Name})
 		}
-		refs = append(refs, containerRef{name: entry.Service, containerName: entry.Name})
 	}
 	return refs
+}
+
+// composePSEntries reads one `compose ps --format json` value: an object per line on 2.21+, one array before.
+func composePSEntries(raw json.RawMessage) ([]composePSEntry, error) {
+	if raw[0] == '[' {
+		var entries []composePSEntry
+		err := json.Unmarshal(raw, &entries)
+		return entries, err
+	}
+	var entry composePSEntry
+	if err := json.Unmarshal(raw, &entry); err != nil {
+		return nil, err
+	}
+	return []composePSEntry{entry}, nil
 }
 
 // inspectService runs `docker inspect` on one container and builds its report entry.

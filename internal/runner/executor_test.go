@@ -332,6 +332,41 @@ func TestShellExecutor_Build_RepoDriven_ComposeStrategy(t *testing.T) {
 	assert.Equal(t, "A=1\nB=2\n", string(envFile))
 }
 
+func TestShellExecutor_Build_RepoDriven_ComposePSOutput_ReportsServices(t *testing.T) {
+	observed := func(name, container string) ObservedService {
+		return ObservedService{Name: name, ContainerName: container, Image: "img", Status: "running", Networks: []ObservedNetwork{}}
+	}
+	tests := []struct {
+		name  string
+		psOut string
+		want  []ObservedService
+	}{
+		{
+			name:  "compose before 2.21 prints one array",
+			psOut: `[{"Name":"x-db-1","Service":"db"},{"Name":"x-app-1","Service":"app"}]`,
+			want:  []ObservedService{observed("db", "x-db-1"), observed("app", "x-app-1")},
+		},
+		{
+			name:  "an unexpected entry is skipped and the rest still report",
+			psOut: `"odd"` + "\n" + `{"Name":"x-db-1","Service":"db"}`,
+			want:  []ObservedService{observed("db", "x-db-1")},
+		},
+		{name: "unparsable output reports nothing", psOut: `{"Name":`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := &fakeCmd{composePSOut: tt.psOut, inspectOut: `{"Config":{"Image":"img"},"State":{"Status":"running"}}`}
+			rec := &frameRecorder{}
+			req := buildRequest(t, "b1")
+			req.Strategy = "compose"
+			newTestExecutor(cmd.run).Build(t.Context(), req, rec.send)
+
+			require.Equal(t, DeployStatusHealthy, rec.last().Status, "a thin report never fails a healthy deploy")
+			assert.ElementsMatch(t, tt.want, rec.last().Services)
+		})
+	}
+}
+
 func TestShellExecutor_Build_RepoDriven_ComposeBuildFailure_StopsBeforeUp(t *testing.T) {
 	cmd := &fakeCmd{}
 	var mu sync.Mutex
