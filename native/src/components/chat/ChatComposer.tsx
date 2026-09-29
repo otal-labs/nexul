@@ -28,7 +28,7 @@ export const ChatComposer = ({ conversationId }: ChatComposerProps) => {
 
   return (
     <View className="gap-1 border-t border-border bg-background px-3 py-2">
-      {post.error && <ErrorDisplay error={post.error} />}
+      {post.error && <ErrorDisplay error={post.error} className="px-0" />}
       <View className="flex-row items-end gap-2">
         <Input
           multiline

@@ -22,7 +22,7 @@ export const RedeployScreen = () => {
       <Text className="font-mono text-xs" numberOfLines={1}>
         {image}
       </Text>
-      {deploy.error && <ErrorDisplay error={deploy.error} />}
+      {deploy.error && <ErrorDisplay error={deploy.error} className="px-0" />}
       <Button
         disabled={deploy.isPending}
         onPress={() => deploy.mutate({ stackId, image }, { onSuccess: () => router.back() })}

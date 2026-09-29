@@ -46,11 +46,11 @@ export const TicketScreen = () => {
 
   return (
     <ScrollView className="flex-1 bg-background">
+      <Stack.Screen options={{ title: ticket ? ticketKey(ticket, project?.prefix) : "Ticket" }} />
       {isPending && <LoadingDisplay />}
-      {error && <ErrorDisplay error={error} />}
+      {error && <ErrorDisplay error={error} notFound="This ticket doesn't exist or was deleted." />}
       {ticket && (
         <View className="gap-4 px-4 py-4">
-          <Stack.Screen options={{ title: ticketKey(ticket, project?.prefix) }} />
           <View className="flex-row items-center gap-2">
             <Text variant="small" className="font-mono text-muted-foreground">
               {ticketKey(ticket, project?.prefix)}
@@ -97,7 +97,7 @@ export const TicketScreen = () => {
             </View>
           </View>
 
-          {setPerson.error && <ErrorDisplay error={setPerson.error} />}
+          {setPerson.error && <ErrorDisplay error={setPerson.error} className="px-0" />}
           {ticket.developer !== me?.user.login && (
             <Button variant="outline" onPress={assignToMe} disabled={setPerson.isPending}>
               <Text>Assign to me</Text>
@@ -111,7 +111,7 @@ export const TicketScreen = () => {
             <MessageBody body={ticket.body} />
           </View>
 
-          {openThread.error && <ErrorDisplay error={openThread.error} />}
+          {openThread.error && <ErrorDisplay error={openThread.error} className="px-0" />}
           <Button variant="outline" onPress={openInChat} disabled={openThread.isPending || !workspaceId}>
             <Text>Open thread</Text>
           </Button>

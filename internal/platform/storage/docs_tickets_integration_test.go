@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/otal-labs/nexul/internal/docs"
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/outbox"
 	"github.com/otal-labs/nexul/internal/platform/storage"
@@ -371,4 +372,17 @@ func TestIntegration_CreateTicketWithoutTypeLandsInBacklogColumn(t *testing.T) {
 	assert.Equal(t, workspace.StatusKindBacklog, columns[0].Kind)
 	assert.Equal(t, tickets.Status(columns[0].ID), created.Status)
 	assert.Equal(t, types[0].ID, created.TypeID)
+}
+
+func TestIntegration_MissingDocAndTicketNameTheIDOnce(t *testing.T) {
+	ctx := actorCtx()
+	s := storage.New(newDB(t), []byte("0123456789abcdef0123456789abcdef"))
+
+	_, err := docs.NewService(s.Docs, allowAll{}).Get(ctx, "gone")
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
+	assert.EqualError(t, err, "get doc gone: not found")
+
+	_, err = tickets.NewService(s.Tickets, s.Statuses, nil).Get(ctx, "gone")
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
+	assert.EqualError(t, err, "get ticket gone: not found")
 }
