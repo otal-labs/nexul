@@ -2,7 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 
 import { api } from "@/api/client";
-import type { Workspace } from "@/models/Workspace";
+import { AREA_PERMISSION, type Area } from "@/models/Access";
+import type { MyWorkspaceInfo, Workspace } from "@/models/Workspace";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 export const getWorkspacesKey = "getWorkspaces";
@@ -21,6 +22,24 @@ export const useSelectedWorkspace = (): Workspace | undefined => {
 };
 
 export const useCurrentWorkspaceId = (): string | undefined => useSelectedWorkspace()?.id;
+
+export const getMyRoleKey = "getMyRole";
+
+export const useFetchMyRole = () => {
+  const workspaceId = useCurrentWorkspaceId();
+  return useQuery({
+    queryKey: [getMyRoleKey, workspaceId],
+    queryFn: () => api.get<MyWorkspaceInfo>(`/api/workspaces/${workspaceId}/me`),
+    enabled: !!workspaceId,
+  });
+};
+
+// Undefined until permissions first arrive; isFetched, since a failed read refetches as pending and must not blink.
+export const useAreaAccess = (): ((area: Area) => boolean) | undefined => {
+  const { data, isFetched } = useFetchMyRole();
+  if (!isFetched) return undefined;
+  return (area) => (data?.permissions ?? []).includes(AREA_PERMISSION[area]);
+};
 
 // F5 exception: repairs an empty or stale selection so the switcher and every workspace-scoped screen has one to read.
 export const useEnsureWorkspaceSelected = () => {

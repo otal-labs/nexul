@@ -12,6 +12,13 @@ describe("ErrorDisplay", () => {
     expect(screen.queryByText(/not found/)).toBeNull();
   });
 
+  test("treats a 403 as not found, so a refused deep link reads like a missing one", async () => {
+    const forbidden = new ApiError(403, { message: "tickets:read permission required", code: "forbidden" }, "GET failed: 403");
+    await render(<ErrorDisplay error={forbidden} notFound="This ticket doesn't exist or was deleted." />);
+    expect(screen.getByText("This ticket doesn't exist or was deleted.")).toBeTruthy();
+    expect(screen.queryByText(/permission required/)).toBeNull();
+  });
+
   test("keeps the server message for a 404 when the screen gave no not-found text", async () => {
     await render(<ErrorDisplay error={notFoundError} />);
     expect(screen.getByText("get doc x: not found")).toBeTruthy();
