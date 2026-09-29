@@ -72,6 +72,41 @@ export const useUpdateMemory = () => {
   });
 };
 
+// Saves the memory as it stands with always_included flipped; the caches patch first and roll back on failure.
+export const useSetMemoryAlwaysIncluded = () => {
+  const client = useQueryClient();
+  const patchLists = (id: string, alwaysIncluded: boolean) => {
+    client.setQueriesData<Memory[]>({ queryKey: [getMemoriesKey] }, (list) =>
+      list?.map((m) => (m.id === id ? { ...m, always_included: alwaysIncluded } : m)),
+    );
+    client.setQueryData<Memory>([getMemoryKey, id], (m) => m && { ...m, always_included: alwaysIncluded });
+  };
+  return useMutation({
+    mutationFn: async ({ memory, alwaysIncluded }: { memory: Memory; alwaysIncluded: boolean }) =>
+      (
+        await api.put<Memory>(`/api/memories/${memory.id}`, {
+          title: memory.title,
+          when_to_use: memory.when_to_use,
+          body: memory.body,
+          always_included: alwaysIncluded,
+        })
+      ).data,
+    onMutate: async ({ memory, alwaysIncluded }) => {
+      await client.cancelQueries({ queryKey: [getMemoriesKey] });
+      await client.cancelQueries({ queryKey: [getMemoryKey, memory.id] });
+      patchLists(memory.id, alwaysIncluded);
+    },
+    onError: (error, { memory }) => {
+      patchLists(memory.id, memory.always_included);
+      toast.error(errorMessage(error));
+    },
+    onSettled: async (_, __, { memory }) => {
+      await client.invalidateQueries({ queryKey: [getMemoriesKey] });
+      await client.invalidateQueries({ queryKey: [getMemoryKey, memory.id] });
+    },
+  });
+};
+
 export const useDeleteMemory = () => {
   const client = useQueryClient();
   return useMutation({

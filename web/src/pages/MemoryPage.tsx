@@ -1,10 +1,11 @@
-import { useParams, useNavigate } from "react-router";
+import { useParams } from "react-router";
 
 import { Container } from "@/components/Container";
 import { DetailErrorDisplay } from "@/components/DetailErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { MemoryDetail } from "@/components/memory/MemoryDetail";
-import { useDeleteMemory, useFetchMemory, useUpdateMemory } from "@/hooks/MemoryHooks";
+import { useFetchMemory, useUpdateMemory } from "@/hooks/MemoryHooks";
+import { useConfirmDeleteMemory } from "@/hooks/useConfirmDeleteMemory";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
 
 interface MemoryPageProps {
@@ -15,13 +16,12 @@ interface MemoryPageProps {
 export const MemoryPage = ({ memoryId: memoryIdProp }: MemoryPageProps = {}) => {
   const { memoryId: routeMemoryId } = useParams<{ memoryId: string }>();
   const memoryId = memoryIdProp ?? routeMemoryId;
-  const navigate = useNavigate();
   const canWrite = useHasPermission("memories:write");
   const canDelete = useHasPermission("memories:delete");
   const canClone = useHasPermission("memories:clone");
   const { data: memory, error, isPending } = useFetchMemory(memoryId);
   const updateMemory = useUpdateMemory();
-  const deleteMemory = useDeleteMemory();
+  const confirmDelete = useConfirmDeleteMemory();
 
   return (
     <Container className="p-6">
@@ -34,8 +34,8 @@ export const MemoryPage = ({ memoryId: memoryIdProp }: MemoryPageProps = {}) => 
           canDelete={canDelete}
           canClone={canClone}
           saving={updateMemory.isPending}
-          onSave={(input) => updateMemory.mutate({ id: memory.id, ...input })}
-          onDelete={() => deleteMemory.mutate(memory.id, { onSuccess: () => navigate("/memories") })}
+          onSave={(input) => updateMemory.mutate({ id: memory.id, always_included: memory.always_included, ...input })}
+          onDelete={() => void confirmDelete(memory, true)}
         />
       )}
     </Container>

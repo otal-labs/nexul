@@ -1,88 +1,47 @@
-import { Suspense, useState } from "react";
-import { useNavigate } from "react-router";
+import { lazy, Suspense } from "react";
+import { Navigate, useParams } from "react-router";
 
-import { PermissionsForm, PermissionsFormSchema, type PermissionsFormData } from "@/components/access/PermissionsForm";
-import { Container } from "@/components/Container";
-import { PageHeader } from "@/components/PageHeader";
-import { LazyCreateDocForm } from "@/components/doc/LazyCreateDocForm";
-import { DocsFeed } from "@/components/doc/DocsFeed";
+import { DocsListPane } from "@/components/doc/DocsListPane";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { ListDetailLayout } from "@/components/listpane/ListDetailLayout";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { NoProjectsState } from "@/components/project/NoProjectsState";
-import { useAreaAccess } from "@/hooks/AccessHooks";
-import { useFetchDocs } from "@/hooks/DocHooks";
-import { useFetchProjects } from "@/hooks/ProjectHooks";
-import { useFormDialog } from "@/hooks/useFormDialog";
-import { SaveDocFormSchema, type SaveDocFormData } from "@/models/Doc";
+import { useFetchDoc, useFetchDocsByProject } from "@/hooks/DocHooks";
+import { useSidebarProject } from "@/hooks/useSidebarProject";
 import { docPath, projectTokenById } from "@/models/Project";
-import { emptyDocForm } from "@/utils/emptyDocJson";
 
+// Lazy: the editor's tiptap and yjs stack loads only once a doc is open.
+const DocPage = lazy(() => import("@/pages/DocPage").then((m) => ({ default: m.DocPage })));
+
+// The sidebar's project's docs beside the open one; a bare /docs/:docId link moves to its project's URL.
 export const DocsPage = () => {
-  const navigate = useNavigate();
-  const canCreate = useAreaAccess()?.("newDoc") ?? false;
-  const { open: openCreateDoc } = useFormDialog();
-  const { open: openPermissions } = useFormDialog();
-  const [selected, setSelected] = useState<string[]>([]);
-  const { data, error, isPending } = useFetchDocs();
-  const { data: projects, isPending: projectsPending, error: projectsError } = useFetchProjects();
-  const loadError = error ?? projectsError;
-
-  const openDoc = (id: string) => {
-    const projectId = data?.find((d) => d.id === id)?.project_id;
-    navigate(projectId ? docPath(projectTokenById(projects ?? [], projectId), id) : `/docs/${id}`);
-  };
-
-  const toggleSelect = (id: string) => {
-    setSelected((prev) => (prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]));
-  };
-
-  const openPermissionsDialog = async () => {
-    await openPermissions<PermissionsFormData>({
-      title: "Permissions",
-      schema: PermissionsFormSchema,
-      okLabel: "Apply",
-      form: <PermissionsForm resourceType="doc" resourceIds={selected} />,
-    });
-    setSelected([]);
-  };
-
-  const openCreateDocDialog = () =>
-    openCreateDoc<SaveDocFormData>({
-      title: "New doc",
-      schema: SaveDocFormSchema,
-      okLabel: "Create",
-      form: (
-        <Suspense fallback={<LoadingDisplay />}>
-          <LazyCreateDocForm />
-        </Suspense>
-      ),
-      formOptions: { defaultValues: emptyDocForm() },
-    });
+  const { projectToken, docId } = useParams();
+  const { projects, current } = useSidebarProject();
+  const { data: docs, error, isPending } = useFetchDocsByProject(current?.id ?? "");
+  const { data: bareDoc } = useFetchDoc(projectToken ? undefined : docId);
 
   return (
-    <Container className="p-6">
-      <PageHeader
-        className="mb-6"
-        eyebrow="Docs"
-        title="Docs"
-        subtitle="The org&apos;s decisions, recorded — every doc is a source of truth that tickets can hang off."
-      />
-      {(isPending || projectsPending) && <LoadingDisplay />}
-      {loadError && <ErrorDisplay error={loadError} />}
-      {data && projects && projects.length === 0 && (
-        <NoProjectsState message="Every doc belongs to a project. Create one to start writing." />
+    <div>
+      {bareDoc && projects && <Navigate replace to={docPath(projectTokenById(projects, bareDoc.project_id), bareDoc.id)} />}
+      {projects && projects.length === 0 && (
+        <div className="p-6">
+          <NoProjectsState message="Every doc belongs to a project. Create one to start writing." />
+        </div>
       )}
-      {data && projects && projects.length > 0 && (
-        <DocsFeed
-          docs={data}
-          selected={selected}
-          onToggleSelect={toggleSelect}
-          onSelect={openDoc}
-          canCreate={canCreate}
-          onCreate={() => void openCreateDocDialog()}
-          onPermissions={() => void openPermissionsDialog()}
+      {current && isPending && <LoadingDisplay label="Loading docs…" />}
+      {error && <ErrorDisplay error={error} title="Failed to load docs." />}
+      {current && docs && (
+        <ListDetailLayout
+          hasSelection={!!docId}
+          list={<DocsListPane docs={docs} project={current} selectedId={docId} />}
+          placeholder="Select a doc"
+          detail={
+            <Suspense fallback={<LoadingDisplay />}>
+              <DocPage key={docId} />
+            </Suspense>
+          }
         />
       )}
-    </Container>
+    </div>
   );
 };

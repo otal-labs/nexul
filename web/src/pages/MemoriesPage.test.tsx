@@ -1,122 +1,142 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ContextAwareConfirmation } from "react-confirm";
-import { render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { api } from "@/api/client";
 import { MemoriesPage } from "@/pages/MemoriesPage";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
-const mocks = vi.hoisted(() => ({ get: vi.fn() }));
-
 vi.mock("@/api/client", () => ({
-  api: { get: mocks.get },
+  api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
   errorMessage: (error: unknown) => (error as Error)?.message ?? "Something went wrong",
 }));
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
+// The editor pane is MemoryPage's own concern; here it only has to be the open memory's.
+vi.mock("@/pages/MemoryPage", async () => {
+  const { useParams } = await import("react-router");
+  return { MemoryPage: () => <p>editing {useParams().memoryId}</p> };
+});
+
 const project = { id: "p-1", name: "Backend", prefix: "BE", position: 0, created_at: "", updated_at: "" };
 
-const memory = {
-  id: "mem-1",
+const memory = (id: string, title: string, alwaysIncluded: boolean) => ({
+  id,
   workspace_id: "ws-1",
   project_id: "p-1",
-  title: "Deploy quirks",
-  when_to_use: "use this if touching deploy config",
-  body: "body",
-  always_included: true,
-  created_by: "user-1",
+  kind: "",
+  title,
+  when_to_use: "",
+  body: `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"${title} body"}]}]}`,
+  always_included: alwaysIncluded,
+  version: 1,
+  created_by: "u-1",
   created_at: "2026-09-16T12:00:00Z",
-  updated_by: "user-1",
+  updated_by: "u-1",
   updated_at: "2026-09-16T12:00:00Z",
-};
+});
 
-const routeFor = (endpoints: Record<string, unknown>) => (url: string) => {
-  for (const [path, data] of Object.entries(endpoints)) {
-    if (url === path) return Promise.resolve({ data });
-  }
-  return Promise.reject(new Error(`unhandled GET ${url}`));
-};
+const memories = [memory("mem-1", "Deploy quirks", true), memory("mem-2", "Naming rules", false)];
 
-const renderPage = (endpoints: Record<string, unknown>) => {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  mocks.get.mockImplementation(routeFor(endpoints));
+const renderPage = (path: string, permissions: string[], overrides: Record<string, unknown> = {}) => {
+  const endpoints: Record<string, unknown> = {
+    "/api/projects": [project],
+    "/api/workspaces/ws-1/me": { role_name: "Member", permissions },
+    "/api/memories": memories,
+    ...overrides,
+  };
+  vi.mocked(api.get).mockImplementation(async (url: string) => {
+    const data = endpoints[url];
+    if (data instanceof Error) throw data;
+    return { data: data ?? [] };
+  });
   return render(
-    <QueryClientProvider client={client}>
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <ContextAwareConfirmation.ConfirmationRoot />
-      <MemoryRouter>
-        <MemoriesPage />
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route path="/memories" element={<MemoriesPage />} />
+          <Route path="/memories/:projectToken/:memoryId" element={<MemoriesPage />} />
+        </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
   );
 };
 
-const baseEndpoints = {
-  "/api/projects": [project],
-  "/api/workspaces/ws-1/me": { role_name: "Owner", permissions: ["memories:write"] },
-};
+const rowSwitch = (title: string) => screen.findByRole("switch", { name: `Always include ${title}` });
 
 beforeEach(() => {
-  mocks.get.mockReset();
-  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedProjectId: "" });
+  vi.mocked(api.get).mockReset();
+  vi.mocked(api.put).mockReset();
 });
 
-const workspaceMemory = {
-  ...memory,
-  id: "mem-2",
-  project_id: "",
-  title: "House style",
-};
-
 describe("MemoriesPage", () => {
-  it("renders memories grouped under their project", async () => {
-    renderPage({ ...baseEndpoints, "/api/memories": [memory] });
-    expect(await screen.findByText("Deploy quirks")).toBeInTheDocument();
-    expect(screen.getByText("Backend")).toBeInTheDocument();
-    expect(screen.getByText("always included")).toBeInTheDocument();
+  it("pins always-included memories first and opens the one the URL names", async () => {
+    renderPage("/memories/BE/mem-2", ["memories:read"]);
+
+    const pinned = await screen.findByRole("region", { name: "Pinned" });
+    expect(within(pinned).getByRole("link", { name: /Deploy quirks/ })).toBeInTheDocument();
+    expect(within(pinned).getByText("always in context")).toBeInTheDocument();
+    expect(within(pinned).getByText("Deploy quirks body")).toBeInTheDocument();
+    const other = screen.getByRole("region", { name: "Other" });
+    expect(within(other).getByRole("link", { name: /Naming rules/ })).toHaveAttribute("aria-current", "page");
+    expect(await screen.findByText("editing mem-2")).toBeInTheDocument();
   });
 
-  it("groups workspace memories under a Workspace heading before per-project groups", async () => {
-    renderPage({ ...baseEndpoints, "/api/memories": [memory, workspaceMemory] });
-    await screen.findByText("Deploy quirks");
-    const headings = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
-    expect(headings).toEqual(["Workspace", "Backend"]);
+  it("the row switch saves always-included at once and rolls back when the save fails", async () => {
+    const user = userEvent.setup();
+    let failSave: (error: Error) => void = () => {};
+    vi.mocked(api.put).mockReturnValue(new Promise((_, reject) => (failSave = reject)));
+    renderPage("/memories", ["memories:read", "memories:write"]);
+
+    const toggle = await rowSwitch("Naming rules");
+    await vi.waitFor(() => expect(toggle).toBeEnabled());
+    // Every later list read hangs, so the switch below shows the cache's own state, never a refetch's.
+    const loaded = vi.mocked(api.get).getMockImplementation();
+    vi.mocked(api.get).mockImplementation((url: string) =>
+      url === "/api/memories" ? new Promise(() => {}) : (loaded?.(url) ?? Promise.resolve({ data: [] })),
+    );
+    await user.click(toggle);
+
+    expect(await rowSwitch("Naming rules")).toBeChecked();
+    expect(api.put).toHaveBeenCalledWith(
+      "/api/memories/mem-2",
+      expect.objectContaining({ title: "Naming rules", body: memories[1]?.body, always_included: true }),
+    );
+    failSave(new Error("conflict"));
+    await vi.waitFor(async () => expect(await rowSwitch("Naming rules")).not.toBeChecked());
   });
 
-  it("shows the New memory action when the actor can write", async () => {
-    renderPage({ ...baseEndpoints, "/api/memories": [memory] });
+  it("disables the row switch and hides Clone for a role without memories:write and memories:clone", async () => {
+    renderPage("/memories", ["memories:read", "memories:delete"]);
+
+    // Delete's menu shows once the role has loaded, so what follows is the role's answer, not a pending fetch's.
+    await screen.findByRole("button", { name: "More actions for Naming rules" });
+    expect(await rowSwitch("Naming rules")).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Clone Naming rules" })).not.toBeInTheDocument();
+  });
+
+  it("shows Clone to a role with memories:clone", async () => {
+    renderPage("/memories", ["memories:read", "memories:clone"]);
+
+    expect(await screen.findByRole("button", { name: "Clone Naming rules" })).toBeInTheDocument();
+  });
+
+  it("says so, and offers a writer New memory, when there are none", async () => {
+    renderPage("/memories", ["memories:read", "memories:write"], { "/api/memories": [] });
+
+    expect(await screen.findByText("No memories yet")).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: "New memory" })).toBeInTheDocument();
   });
 
-  it("hides the New memory action without memories:write", async () => {
-    renderPage({
-      ...baseEndpoints,
-      "/api/memories": [memory],
-      "/api/workspaces/ws-1/me": { role_name: "Member", permissions: [] },
-    });
-    await screen.findByText("Deploy quirks");
-    expect(screen.queryByRole("button", { name: "New memory" })).not.toBeInTheDocument();
-  });
-
-  it("shows the shared empty state when there are no memories", async () => {
-    renderPage({ ...baseEndpoints, "/api/memories": [] });
-    expect(await screen.findByText("No memories yet.")).toBeInTheDocument();
-  });
-
   it("shows the shared error display when the list fails", async () => {
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    mocks.get.mockImplementation((url: string) => {
-      if (url === "/api/memories") return Promise.reject(new Error("boom"));
-      return routeFor(baseEndpoints)(url);
-    });
-    render(
-      <QueryClientProvider client={client}>
-        <MemoryRouter>
-          <MemoriesPage />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-    expect(await screen.findByText("boom")).toBeInTheDocument();
+    renderPage("/memories", ["memories:read"], { "/api/memories": new Error("boom") });
+
+    expect(await screen.findByText("Failed to load memories.")).toBeInTheDocument();
   });
 });

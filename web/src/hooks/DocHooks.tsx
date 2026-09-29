@@ -67,3 +67,31 @@ export const useRestoreDoc = () => {
   });
 };
 
+
+// projectId "" duplicates the doc in its own project.
+export const useCloneDoc = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, projectId }: { id: string; projectId: string }) =>
+      (await api.post<Doc>(`/api/docs/${id}/clone`, { project_id: projectId })).data,
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: [getDocsKey] });
+      toast.success("Doc cloned");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
+export const useDeleteDoc = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/api/docs/${id}`);
+    },
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: [getDocsKey] });
+      toast.success("Doc deleted");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};

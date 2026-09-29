@@ -6,11 +6,11 @@ import { DocBodyView } from "@/components/doc/DocBodyView";
 import { RichTextEditor } from "@/components/doc/RichTextEditor";
 import { CloneMemoryDialog } from "@/components/memory/CloneMemoryDialog";
 import { InterviewLengthMeter } from "@/components/memory/InterviewLengthMeter";
+import { MemoryPinSwitch } from "@/components/memory/MemoryPinSwitch";
 import { MemoryVersionsFeed } from "@/components/memory/MemoryVersionsFeed";
 import { PageTabs, PageTabsContent } from "@/components/PageTabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import { isDecisionsLogMemory, isInterviewMemory, isWorkspaceMemory, type Memory } from "@/models/Memory";
 import { bodyToMarkdown } from "@/utils/RichtextUtility";
 
@@ -19,7 +19,7 @@ interface MemoryDetailProps {
   canWrite: boolean;
   canDelete: boolean;
   canClone: boolean;
-  onSave: (input: { title: string; when_to_use: string; body: string; always_included: boolean }) => void;
+  onSave: (input: { title: string; when_to_use: string; body: string }) => void;
   onDelete: () => void;
   saving: boolean;
 }
@@ -28,18 +28,13 @@ interface MemoryDetailProps {
 export const MemoryDetail = ({ memory, canWrite, canDelete, canClone, onSave, onDelete, saving }: MemoryDetailProps) => {
   const [title, setTitle] = useState(memory.title);
   const [whenToUse, setWhenToUse] = useState(memory.when_to_use);
-  const [alwaysIncluded, setAlwaysIncluded] = useState(memory.always_included);
   const [body, setBody] = useState(memory.body);
   const [cloneOpen, setCloneOpen] = useState(false);
   const interview = isInterviewMemory(memory);
   const decisionsLog = isDecisionsLogMemory(memory);
   const interviewLength = useMemo(() => (interview ? bodyToMarkdown(body).length : 0), [interview, body]);
 
-  const dirty =
-    title !== memory.title ||
-    whenToUse !== memory.when_to_use ||
-    alwaysIncluded !== memory.always_included ||
-    body !== memory.body;
+  const dirty = title !== memory.title || whenToUse !== memory.when_to_use || body !== memory.body;
 
   return (
     <div className="animate-in fade-in-0 slide-in-from-bottom-1 mx-auto w-full max-w-6xl duration-200 ease-out">
@@ -47,7 +42,7 @@ export const MemoryDetail = ({ memory, canWrite, canDelete, canClone, onSave, on
         <div className="flex items-center gap-2">
           <Link
             to="/memories"
-            className="font-mono text-xs text-muted-foreground transition-colors duration-150 ease-standard hover:text-foreground"
+            className="font-mono text-xs lg:hidden text-muted-foreground transition-colors duration-150 ease-standard hover:text-foreground"
           >
             ← All memories
           </Link>
@@ -94,7 +89,7 @@ export const MemoryDetail = ({ memory, canWrite, canDelete, canClone, onSave, on
             />
             {!interview && !decisionsLog && (
               <label className="flex items-center gap-2 text-sm font-medium">
-                <Switch checked={alwaysIncluded} onCheckedChange={setAlwaysIncluded} aria-label="Always included" />
+                <MemoryPinSwitch memory={memory} label="Always included" />
                 Always included in every turn
               </label>
             )}
@@ -122,7 +117,7 @@ export const MemoryDetail = ({ memory, canWrite, canDelete, canClone, onSave, on
             {interview && <InterviewLengthMeter length={interviewLength} />}
             <Button
               loading={saving} disabled={!dirty}
-              onClick={() => onSave({ title, when_to_use: whenToUse, body, always_included: alwaysIncluded })}
+              onClick={() => onSave({ title, when_to_use: whenToUse, body })}
             >
               Save
             </Button>

@@ -75,8 +75,9 @@ describe("ProjectSection", () => {
     expect(screen.getAllByRole("link", { name: "Settings" })).toHaveLength(1);
     expect(screen.getByRole("link", { name: "Board" })).toHaveAttribute("href", "/board/BE");
     expect(screen.getByRole("link", { name: "Interview" })).toHaveAttribute("href", "/projects/BE/interview");
-    expect(await screen.findByRole("link", { name: "Runbook" })).toHaveAttribute("href", "/docs/BE/d-1");
-    expect(screen.queryByRole("link", { name: "Salaries" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Docs" })).toHaveAttribute("href", "/docs");
+    expect(screen.getByRole("link", { name: "Memories" })).toHaveAttribute("href", "/memories");
+    expect(screen.queryByRole("link", { name: "Runbook" })).not.toBeInTheDocument();
     expect(screen.queryByText("Frontend")).not.toBeInTheDocument();
   });
 

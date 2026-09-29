@@ -46,7 +46,7 @@ export const ProjectInterview = ({ project }: ProjectInterviewProps) => {
           canDelete={canDelete}
           canClone={canClone}
           saving={updateMemory.isPending}
-          onSave={(input) => updateMemory.mutate({ id: interview.id, ...input })}
+          onSave={(input) => updateMemory.mutate({ id: interview.id, always_included: interview.always_included, ...input })}
           onDelete={() => deleteMemory.mutate(interview.id)}
         />
       )}

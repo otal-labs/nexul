@@ -105,7 +105,7 @@ export const DocDetail = ({
       <div className="flex items-center justify-between">
         <Link
           to="/docs"
-          className="font-mono text-xs text-muted-foreground transition-colors duration-150 ease-standard hover:text-foreground"
+          className="font-mono text-xs text-muted-foreground lg:invisible transition-colors duration-150 ease-standard hover:text-foreground"
         >
           ← All docs
         </Link>
