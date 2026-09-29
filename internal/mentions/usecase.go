@@ -14,7 +14,7 @@ import (
 )
 
 // mentionKeyRe matches a PREFIX-NUMBER display id (ADR 0004); uppercase-only, mixed-case falls through to search.
-var mentionKeyRe = regexp.MustCompile(`^([A-Z]{2,5})-(\d+)$`)
+var mentionKeyRe = regexp.MustCompile(`^([A-Z][A-Z0-9]{1,4})-(\d+)$`)
 
 // Config wires the resolution seam; a nil source makes Resolve/Search fail closed.
 type Config struct {

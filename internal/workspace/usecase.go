@@ -16,8 +16,8 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
-// projectPrefixPattern matches the immutable 2-5 letter project prefix (ADR 0004), checked after uppercasing.
-var projectPrefixPattern = regexp.MustCompile(`^[A-Z]{2,5}$`)
+// projectPrefixPattern matches the immutable project prefix (ADR 0004): a letter then 1-4 letters or digits, checked after uppercasing.
+var projectPrefixPattern = regexp.MustCompile(`^[A-Z][A-Z0-9]{1,4}$`)
 
 // Service is the workspace use-case layer (ADR 0019): projects, categories, ticket types, and status columns.
 type Service struct {
@@ -57,7 +57,7 @@ func (s *Service) Create(ctx context.Context, userID, workspaceID, name, prefix 
 	}
 	prefix = strings.ToUpper(strings.TrimSpace(prefix))
 	if !projectPrefixPattern.MatchString(prefix) {
-		return nil, fmt.Errorf("%w: project prefix must be 2-5 letters", apperrs.ErrInvalid)
+		return nil, fmt.Errorf("%w: project prefix must be 2-5 letters or digits, starting with a letter", apperrs.ErrInvalid)
 	}
 	icon = ProjectIcon(strings.TrimSpace(string(icon)))
 	if icon != "" && !validProjectIcons[icon] {
@@ -151,7 +151,7 @@ func (s *Service) SetPrefix(ctx context.Context, userID, id, prefix string) (*Pr
 	}
 	prefix = strings.ToUpper(strings.TrimSpace(prefix))
 	if !projectPrefixPattern.MatchString(prefix) {
-		return nil, fmt.Errorf("%w: project prefix must be 2-5 letters", apperrs.ErrInvalid)
+		return nil, fmt.Errorf("%w: project prefix must be 2-5 letters or digits, starting with a letter", apperrs.ErrInvalid)
 	}
 	current, err := s.repo.Get(ctx, id)
 	if err != nil {

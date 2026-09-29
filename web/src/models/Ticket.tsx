@@ -85,7 +85,7 @@ export const ticketPath = (ticket: Ticket, prefix?: string): string =>
 
 // A UUID can't false-match here: its first segment is 8 hex chars, longer than any prefix.
 export const parseTicketKey = (param: string): { prefix: string; number: number } | undefined => {
-  const [, prefix, number] = /^([A-Za-z]{2,5})-(\d+)$/.exec(param) ?? [];
+  const [, prefix, number] = /^([A-Za-z][A-Za-z0-9]{1,4})-(\d+)$/.exec(param) ?? [];
   if (!prefix || !number) return undefined;
   return { prefix, number: Number(number) };
 };

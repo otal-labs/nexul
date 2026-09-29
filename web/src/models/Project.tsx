@@ -23,7 +23,7 @@ export type ProjectIconName = (typeof PROJECT_ICON_NAMES)[number];
 export interface Project {
   id: string;
   name: string;
-  /** Immutable 2-5 uppercase-letter tag, unique per workspace, for the human-readable ticket id (PREFIX-N). */
+  /** Immutable 2-5 character uppercase tag (a letter, then letters or digits), unique per workspace, for the human-readable ticket id (PREFIX-N). */
   prefix: string;
   position: number;
   /** Owner-configured lucide-react icon name, "" when unset — falls back to prefix-only rendering. */
@@ -100,7 +100,7 @@ export const SaveProjectFormSchema = z.object({
   prefix: z
     .string()
     .trim()
-    .regex(/^[A-Za-z]{2,5}$/, "Prefix must be 2-5 letters"),
+    .regex(/^[A-Za-z][A-Za-z0-9]{1,4}$/, "Prefix is 2–5 letters or digits, starting with a letter"),
   icon: z.enum(["", ...PROJECT_ICON_NAMES]),
 });
 

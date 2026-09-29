@@ -39,7 +39,7 @@ func projectListTool(s *Service) mcptool.Tool {
 type projectCreateIn struct {
 	WorkspaceID string `json:"workspace_id" jsonschema:"The workspace's id (a UUID) the project belongs to."`
 	Name        string `json:"name" jsonschema:"The project's display name, for example Backend."`
-	Prefix      string `json:"prefix" jsonschema:"2 to 5 letters no other project uses, which start the project's ticket keys, for example REF for REF-102. It cannot change later."`
+	Prefix      string `json:"prefix" jsonschema:"2 to 5 letters or digits, starting with a letter, that no other project uses. It starts the project's ticket keys, for example REF for REF-102 or P1 for P1-12, and cannot change later."`
 	Icon        string `json:"icon,omitempty" jsonschema:"A display icon: Box, Rocket, Server, Globe, Database, Layers, Terminal, Shield, Zap, Package, Cpu, or Cloud. Omit for none."`
 }
 

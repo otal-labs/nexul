@@ -236,7 +236,7 @@ func (s *Service) Get(ctx context.Context, id string) (*Ticket, error) {
 }
 
 // ticketKey matches a ticket's human key, PREFIX-NUMBER (ADR 0004); a ticket id is a UUID and never matches.
-var ticketKey = regexp.MustCompile(`^([A-Za-z]{2,5})-([0-9]+)$`)
+var ticketKey = regexp.MustCompile(`^([A-Za-z][A-Za-z0-9]{1,4})-([0-9]+)$`)
 
 // Resolve returns a ticket by its id or by its key, such as REF-102.
 func (s *Service) Resolve(ctx context.Context, idOrKey string) (*Ticket, error) {
