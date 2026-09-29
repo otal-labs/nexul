@@ -41,12 +41,7 @@ const pushTopics: Record<string, string[]> = {
 };
 
 export const dispatch = (client: QueryClient) => (frame: ServerFrame) => {
-  const keys = pushTopics[frame.topic];
-  if (keys) {
-    keys.forEach((key) => void client.invalidateQueries({ queryKey: [key] }));
-    return;
-  }
-  void client.invalidateQueries({ queryKey: [frame.topic] });
+  pushTopics[frame.topic]?.forEach((key) => void client.invalidateQueries({ queryKey: [key] }));
 };
 
 // One socket for the signed-in instance: open while the app is in front, closed in the background.

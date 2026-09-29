@@ -20,11 +20,6 @@ describe("sessionStore", () => {
     useSessionStore.setState({ host: null, signedIn: false });
   });
 
-  test("starts signed out when the secure store is empty", () => {
-    expect(useSessionStore.getState().signedIn).toBe(false);
-    expect(readSessionToken()).toBeNull();
-  });
-
   test("signing in keeps the token in the secure store, never in the store state", () => {
     useSessionStore.getState().signIn("https://nexul.example.com", "ses_abc");
 

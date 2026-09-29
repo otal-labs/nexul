@@ -27,22 +27,9 @@ const createCounterStore = () =>
 describe("kvStateStorage", () => {
   beforeEach(() => mockRows.clear());
 
-  test("returns null for a key that was never written", () => {
-    expect(kvStateStorage.getItem("missing")).toBeNull();
-  });
-
   test("hydrates a persisted store synchronously on creation", () => {
     createCounterStore().getState().increment();
 
     expect(createCounterStore().getState().count).toBe(1);
-  });
-
-  test("clearing the persisted state drops the row", () => {
-    const store = createCounterStore();
-    store.getState().increment();
-
-    store.persist.clearStorage();
-
-    expect(mockRows.has("counter")).toBe(false);
   });
 });

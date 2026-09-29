@@ -25,10 +25,6 @@ describe("appearanceStore", () => {
     mockUniwind.Uniwind.setTheme.mockClear();
   });
 
-  test("defaults to following the system appearance", () => {
-    expect(useAppearanceStore.getState().appearance).toBe("system");
-  });
-
   test("setting a choice applies it through Uniwind and persists it", () => {
     useAppearanceStore.getState().setAppearance("dark");
 

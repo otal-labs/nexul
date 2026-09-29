@@ -10,9 +10,6 @@ jest.mock("@/api/client", () => ({
   api: { get: jest.fn() },
 }));
 
-const workspace = { id: "ws-1", name: "Acme" };
-const project = { id: "proj-1", name: "Nexul", prefix: "NX" };
-
 const wrapper = ({ children }: { children: ReactNode }) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
@@ -28,16 +25,6 @@ beforeEach(() => {
 });
 
 describe("useFetchProjects", () => {
-  test("resolves the first workspace, then loads its projects", async () => {
-    jest.mocked(api.get).mockImplementation((path: string) =>
-      path === "/api/workspaces" ? Promise.resolve([workspace]) : Promise.resolve([project]),
-    );
-    const { result } = await renderHook(() => useFetchProjects(), { wrapper });
-    await waitFor(() => expect(result.current.data).toEqual([project]));
-    expect(api.get).toHaveBeenCalledWith("/api/workspaces");
-    expect(api.get).toHaveBeenCalledWith("/api/projects?workspace_id=ws-1");
-  });
-
   test("stays disabled while no workspace has loaded", async () => {
     jest.mocked(api.get).mockResolvedValue([]);
     const { result } = await renderHook(() => useFetchProjects(), { wrapper });

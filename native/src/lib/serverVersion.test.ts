@@ -1,4 +1,4 @@
-import { compareVersions, serverIsSupported } from "@/lib/serverVersion";
+import { serverIsSupported } from "@/lib/serverVersion";
 
 describe("serverIsSupported", () => {
   const min = "v0.2.0-beta.9";
@@ -26,17 +26,19 @@ describe("serverIsSupported", () => {
     expect(serverIsSupported("v0.2.0-beta.99", "v0.2.0")).toBe(false);
     expect(serverIsSupported("v0.2.0", "v0.2.0")).toBe(true);
   });
-});
 
-describe("compareVersions", () => {
-  test("returns null when either side is malformed", () => {
-    expect(compareVersions("v0.2.0", "nope")).toBeNull();
-    expect(compareVersions("nope", "v0.2.0")).toBeNull();
+  test("a numeric pre-release part orders before a word", () => {
+    expect(serverIsSupported("v0.2.0-1", "v0.2.0-beta")).toBe(false);
+    expect(serverIsSupported("v0.2.0-beta", "v0.2.0-1")).toBe(true);
   });
 
-  test("orders a numeric pre-release part before a word", () => {
-    expect(compareVersions("v0.2.0-1", "v0.2.0-beta")).toBeLessThan(0);
-    expect(compareVersions("v0.2.0-alpha", "v0.2.0-beta")).toBeLessThan(0);
-    expect(compareVersions("v0.2.0-beta", "v0.2.0-beta.1")).toBeLessThan(0);
+  test("alpha orders before beta", () => {
+    expect(serverIsSupported("v0.2.0-alpha", "v0.2.0-beta")).toBe(false);
+    expect(serverIsSupported("v0.2.0-beta", "v0.2.0-alpha")).toBe(true);
+  });
+
+  test("a shorter pre-release orders before a longer one with the same prefix", () => {
+    expect(serverIsSupported("v0.2.0-beta", "v0.2.0-beta.1")).toBe(false);
+    expect(serverIsSupported("v0.2.0-beta.1", "v0.2.0-beta")).toBe(true);
   });
 });

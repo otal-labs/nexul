@@ -36,7 +36,7 @@ const compareParts = (a: (number | string)[], b: (number | string)[]): number =>
 };
 
 // Semantic-version precedence: numeric pre-release parts compare as numbers and a release beats its betas.
-export const compareVersions = (a: string, b: string): number | null => {
+const compareVersions = (a: string, b: string): number | null => {
   const left = parseVersion(a);
   const right = parseVersion(b);
   if (!left || !right) return null;
