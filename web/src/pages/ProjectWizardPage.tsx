@@ -3,6 +3,7 @@ import { Navigate, useParams, useSearchParams } from "react-router";
 
 import { WizardLayout } from "@/components/auth/WizardLayout";
 import { ProjectWizardStepper, WizardSteps, type WizardStepId } from "@/components/wizard/ProjectWizardStepper";
+import { useWizardBack } from "@/hooks/useWizardBack";
 import { useWizardStepOrder } from "@/hooks/useWizardStepOrder";
 import { useFetchProject, useFetchProjects } from "@/hooks/ProjectHooks";
 import { useFetchStack } from "@/hooks/StackHooks";
@@ -97,6 +98,7 @@ export const ProjectWizardPage = () => {
   const { data: projects } = useFetchProjects();
   const firstProject = step === "project" && projects?.length === 0;
   const order = useWizardStepOrder();
+  const onBack = useWizardBack(step);
 
   const redirectTo = wizardRedirect(step, searchParams, isAttach);
   const title = wizardTitle(isAttach, projectPreselected, firstProject);
@@ -110,6 +112,7 @@ export const ProjectWizardPage = () => {
           step={{ current: Math.max(1, order.indexOf(step) + 1), total: order.length }}
           title={title}
           subtitle={subtitle}
+          {...(onBack && { onBack })}
         >
           <ProjectWizardStepper step={step} />
         </WizardLayout>

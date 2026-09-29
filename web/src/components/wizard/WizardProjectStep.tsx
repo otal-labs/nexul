@@ -3,7 +3,6 @@ import { useForm } from "react-hook-form";
 
 import { FormInput } from "@/components/FormInput";
 import { Button } from "@/components/ui/button";
-import { WizardSkipButton } from "@/components/wizard/WizardSkipButton";
 import { useCreateProject } from "@/hooks/ProjectHooks";
 import { SaveProjectFormSchema, type SaveProjectFormData } from "@/models/Project";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
@@ -47,12 +46,9 @@ export const WizardProjectStep = ({ onDone }: WizardProjectStepProps) => {
         maxLength={5}
         transform={(value) => value.toUpperCase()}
       />
-      <div className="flex flex-wrap items-center gap-2">
-        <Button type="submit" loading={form.formState.isSubmitting}>
-          Continue
-        </Button>
-        <WizardSkipButton />
-      </div>
+      <Button type="submit" loading={form.formState.isSubmitting}>
+        Continue
+      </Button>
     </form>
   );
 };

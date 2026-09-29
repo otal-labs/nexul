@@ -39,7 +39,8 @@ const stack = {
   updated_at: "",
 };
 
-const renderPage = (path: string) => {
+const renderPage = (path: string | string[]) => {
+  const entries = Array.isArray(path) ? path : [path];
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
@@ -51,7 +52,7 @@ const renderPage = (path: string) => {
             { path: "/board", element: <p>board</p> },
             { path: "/board/:token", element: <p>project board</p> },
           ],
-          { initialEntries: [path] },
+          { initialEntries: entries, initialIndex: entries.length - 1 },
         )}
       />
     </QueryClientProvider>,
@@ -71,13 +72,56 @@ beforeEach(() => {
 });
 
 describe("ProjectWizardPage", () => {
-  it("skips the project rung without creating anything, leaving the workspace as it is", async () => {
+  it("offers no way to skip the info rung, since the project does not exist until it is created", async () => {
+    renderPage("/wizard/project/project");
+
+    await screen.findByLabelText("Project name");
+
+    expect(within(rung(/: info$/i)).queryByRole("button", { name: "Skip for now" })).not.toBeInTheDocument();
+  });
+
+  it("goes back from the info rung to the page the wizard was opened from, creating nothing", async () => {
+    const user = userEvent.setup();
+    renderPage(["/board/p-1", "/wizard/project/project"]);
+
+    await user.click(await screen.findByRole("button", { name: "Back" }));
+
+    expect(await screen.findByText("project board")).toBeInTheDocument();
+    expect(mocks.post).not.toHaveBeenCalled();
+  });
+
+  it("goes back from a cold-opened info rung to the board", async () => {
     const user = userEvent.setup();
     renderPage("/wizard/project/project");
 
-    await user.click(await within(rung(/: info$/i)).findByRole("button", { name: "Skip for now" }));
+    await user.click(await screen.findByRole("button", { name: "Back" }));
 
     expect(await screen.findByText("board")).toBeInTheDocument();
+  });
+
+  it("goes back from the service rung to the repository rung while no stack exists yet", async () => {
+    const store = useProjectWizardStore.getState();
+    store.setProjectId("p-1", "Backend");
+    store.setCandidate({ kind: "compose", path: "compose.yml", name: "api", services: [] });
+    const user = userEvent.setup();
+    renderPage("/wizard/project/service");
+    await screen.findByRole("heading", { name: /: service$/i });
+
+    await user.click(screen.getByRole("button", { name: "Back" }));
+
+    expect(rung(/: repository$/i)).toHaveAttribute("data-state", "active");
+    expect(screen.queryByRole("button", { name: "Back" })).not.toBeInTheDocument();
+  });
+
+  it("offers no way back from the service rung once its stack exists", async () => {
+    const store = useProjectWizardStore.getState();
+    store.setProjectId("p-1", "Backend");
+    store.setCandidate({ kind: "compose", path: "compose.yml", name: "api", services: [] });
+    store.setStackId("stack-1");
+    renderPage("/wizard/project/service");
+    await screen.findByRole("heading", { name: /: service$/i });
+
+    expect(screen.queryByRole("button", { name: "Back" })).not.toBeInTheDocument();
   });
 
   it("keeps the project it just created when the rest is skipped, and lands on its board", async () => {
@@ -170,12 +214,12 @@ describe("ProjectWizardPage", () => {
     expect(rung(/: repository$/i)).toHaveAttribute("data-state", "active");
   });
 
-  it("skips to home instead of the board when the viewer can't read tickets", async () => {
+  it("goes back to home instead of the board when the viewer can't read tickets", async () => {
     access.areas = [];
     const user = userEvent.setup();
     renderPage("/wizard/project/project");
 
-    await user.click(await within(rung(/: info$/i)).findByRole("button", { name: "Skip for now" }));
+    await user.click(await screen.findByRole("button", { name: "Back" }));
 
     expect(await screen.findByText("home")).toBeInTheDocument();
   });
