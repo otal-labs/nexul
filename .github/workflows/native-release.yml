@@ -69,7 +69,8 @@ jobs:
           ORG_GRADLE_PROJECT_nexulKeyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
           # Every current phone is arm64; x86_64 keeps emulators working. Each ABI is a full native compile.
           ORG_GRADLE_PROJECT_reactNativeArchitectures: arm64-v8a,x86_64
-        run: ./gradlew assembleRelease --no-daemon
+        # The Kotlin compile daemon hung at expo-updates' KSP step on a hosted runner for two hours; compile in-process instead.
+        run: ./gradlew assembleRelease --no-daemon -Pkotlin.compiler.execution.strategy=in-process -Dorg.gradle.jvmargs="-Xmx6g -XX:MaxMetaspaceSize=1g"
       - name: Create the release
         env:
           GH_TOKEN: ${{ github.token }}
