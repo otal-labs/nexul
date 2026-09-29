@@ -104,9 +104,10 @@ the public domain exists, security-review the integration model before the
 store accepts third parties, register the Cloudflare OAuth app, and settle the
 canvas node kinds.
 
-Being charted: **the Android app**, with the pages worth having on a phone,
-signed in by scanning a QR code and updated over the air. The wayfinder map
-is in `.scratch/native-app/`.
+In progress: **the Android app** in `native/`, with Inbox, Chat, the board,
+docs, deploys and runners on a phone, signed in by scanning a QR code,
+with push notifications and over-the-air updates. It is built and in device
+testing ahead of its first release; the map is in `.scratch/native-app/`.
 
 Parked until the repository migration lands: **bots**, webhook-driven bots
 that post into any conversation with Discord's payload and get their own tab
