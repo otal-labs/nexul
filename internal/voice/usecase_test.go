@@ -204,7 +204,7 @@ func testHandleWebhookParticipantLeft(t *testing.T) {
 	if len(evts[1].Occupants) != 0 {
 		t.Errorf("published event after leave = %+v, want empty occupants", evts[1])
 	}
-	if got := s.Occupancy(); len(got) != 0 {
+	if got := s.Occupancy(context.Background()); len(got) != 0 {
 		t.Errorf("Occupancy() after last participant leaves = %+v, want empty (room absent)", got)
 	}
 }
@@ -218,7 +218,7 @@ func testHandleWebhookRoomFinished(t *testing.T) {
 	if err := s.HandleWebhook(context.Background(), livekit.Event{Type: "room_finished", Room: "conv-1"}); err != nil {
 		t.Fatalf("HandleWebhook(room_finished): %v", err)
 	}
-	if got := s.Occupancy(); len(got) != 0 {
+	if got := s.Occupancy(context.Background()); len(got) != 0 {
 		t.Errorf("Occupancy() after room_finished = %+v, want empty", got)
 	}
 }
@@ -247,13 +247,13 @@ func testHandleWebhookRoomStarted(t *testing.T) {
 
 func TestOccupancy_Snapshot(t *testing.T) {
 	s := newTestService(t, nil, nil, nil, nil)
-	if got := s.Occupancy(); len(got) != 0 {
+	if got := s.Occupancy(context.Background()); len(got) != 0 {
 		t.Fatalf("Occupancy() on a fresh service = %+v, want empty", got)
 	}
 	if err := s.HandleWebhook(context.Background(), livekit.Event{Type: "participant_joined", Room: "conv-1", ParticipantIdentity: "u-1", ParticipantName: "Ada"}); err != nil {
 		t.Fatalf("HandleWebhook: %v", err)
 	}
-	got := s.Occupancy()
+	got := s.Occupancy(context.Background())
 	want := []Occupant{{Identity: "u-1", Name: "Ada"}}
 	if len(got["conv-1"]) != 1 || got["conv-1"][0] != want[0] {
 		t.Errorf("Occupancy() = %+v, want conv-1: %+v", got, want)

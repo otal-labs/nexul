@@ -340,9 +340,15 @@ func (f *fakeRepo) eventsFor(topic string) []eventbus.OutboxEvent {
 
 func newTestService(repo *fakeRepo) *Service {
 	s := NewService(repo)
+	s.SetGate(allowGate{})
 	s.now = func() time.Time { return fixedNow }
 	return s
 }
+
+// allowGate lets every caller through, for tests about what happens past the permission check.
+type allowGate struct{}
+
+func (allowGate) Require(context.Context, string, permissions.Action) error { return nil }
 
 // fakeDocAccess is an in-memory chat.DocAccess for doc thread permission tests; allowed keys "userID:docID".
 type fakeDocAccess struct {

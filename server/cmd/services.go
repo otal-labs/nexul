@@ -241,6 +241,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	accessSvc.SetPlayWorkspaces(accessPlayWorkspaceResolver{plays: store.Plays})
 	// accessSvc.Can already matches chat.DocAccess's shape (ADR 0017 seam), so it wires in directly.
 	chatSvc.SetDocAccess(accessSvc)
+	chatSvc.SetGate(accessSvc)
 	ticketsSvc.SetTesting(tickets.Testing{
 		Stages:  ticketStages{statuses: store.Statuses},
 		Threads: ticketThreads{chat: chatSvc, projects: store.Projects},
