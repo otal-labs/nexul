@@ -9,11 +9,12 @@ import (
 // Handler adapts the repository use-cases to the HTTP/JSON gateway (ADR 0019).
 type Handler struct {
 	s Scanner
+	l InstallationLister
 }
 
-// NewHandler wires the repository REST gateway over the given scanner.
-func NewHandler(s Scanner) *Handler {
-	return &Handler{s: s}
+// NewHandler wires the repository REST gateway over the given scanner and installation reader.
+func NewHandler(s Scanner, l InstallationLister) *Handler {
+	return &Handler{s: s, l: l}
 }
 
 // Routes returns the repository REST endpoints.
@@ -21,6 +22,7 @@ func (h *Handler) Routes() http.Handler {
 	mux := httpx.NewServeMux()
 	mux.HandleFunc("POST /api/repositories/scan", h.scan)
 	mux.HandleFunc("GET /api/repositories", h.list)
+	mux.HandleFunc("GET /api/repositories/installations", h.installations)
 	return mux
 }
 
@@ -51,4 +53,13 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"repositories": repos})
+}
+
+func (h *Handler) installations(w http.ResponseWriter, r *http.Request) {
+	installs, err := ListInstallations(r.Context(), h.l)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"installations": installs})
 }

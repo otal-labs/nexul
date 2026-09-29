@@ -53,6 +53,22 @@ func TestRepositoryScanner_ListInstallationRepos(t *testing.T) {
 	assert.Equal(t, "acme/app", repos[0].FullName)
 }
 
+func TestRepositoryScanner_GitHubRefusingTheTokenIsNotASignedOutSession(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/user/installations", func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, `{"message":"Bad credentials"}`, http.StatusUnauthorized)
+	})
+	s := newTestRepositoryScanner(t, mux, "my-app")
+
+	_, reposErr := s.ListInstallationRepos(context.Background())
+	_, installsErr := s.ListInstallations(context.Background())
+	for _, err := range []error{reposErr, installsErr} {
+		require.ErrorIs(t, err, apperrs.ErrForbidden)
+		assert.NotErrorIs(t, err, apperrs.ErrUnauthorized)
+		assert.Contains(t, err.Error(), "reconnect GitHub")
+	}
+}
+
 func TestRepositoryScanner_GetTree(t *testing.T) {
 	t.Run("empty ref resolves and reports the default branch", func(t *testing.T) {
 		mux := http.NewServeMux()

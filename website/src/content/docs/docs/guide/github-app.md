@@ -54,6 +54,12 @@ On the App's page, click Install App, choose your account, and pick **All reposi
 
 Raising or adding a permission on the App doesn't apply to installations that already exist. GitHub sends the installation owner a request instead: Settings → Applications → Installed GitHub Apps → Configure → **Review request** → accept. Until you accept it, the token keeps its old permissions, and anything that needed the new one — a clone, a webhook call — keeps failing.
 
+## Adding an organisation or another account
+
+Nexul sees a repository only when its GitHub App is installed on the account or organisation that owns it. **Configuration → Connectors → GitHub** lists those accounts under **Accounts Nexul can see**, each with whether it grants all repositories or a selection, and a **Manage** link to change that on GitHub. **Add account or organisation** opens GitHub's install page, where you pick the account and its repositories; the list updates when you come back to the tab.
+
+Repositories you only collaborate on belong to someone else, so the App has to be installed on their account. Anyone with GitHub linked can do that from **Your settings → Profile → Sign-in accounts → Let Nexul deploy your repositories**. Once they have, the repositories among them that the connected GitHub account collaborates on show up in the repository picker. Agents see the same list through `repository_list` with `installations` set.
+
 ## Which token is used where
 
 - Sign-in only uses the user's own token, and only to read their profile.

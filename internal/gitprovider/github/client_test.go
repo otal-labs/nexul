@@ -292,6 +292,66 @@ func TestListInstallationRepos(t *testing.T) {
 	})
 }
 
+// installationsJSON is a trimmed GET /user/installations body: one organisation granting selected repositories,
+// one user account granting all of them.
+const installationsJSON = `{"total_count":2,"installations":[
+{"id":1,"account":{"login":"octo-org","id":10,"avatar_url":"https://avatars.githubusercontent.com/u/10?v=4","type":"Organization","site_admin":false},
+ "repository_selection":"selected","html_url":"https://github.com/organizations/octo-org/settings/installations/1",
+ "app_id":7,"app_slug":"nexul","target_id":10,"target_type":"Organization","permissions":{"contents":"read","metadata":"read"},
+ "events":["push"],"created_at":"2026-09-01T10:00:00.000Z","updated_at":"2026-09-01T10:00:00.000Z","single_file_name":null,"suspended_at":null},
+{"id":2,"account":{"login":"octocat","id":20,"avatar_url":"https://avatars.githubusercontent.com/u/20?v=4","type":"User","site_admin":false},
+ "repository_selection":"all","html_url":"https://github.com/settings/installations/2",
+ "app_id":7,"app_slug":"nexul","target_id":20,"target_type":"User","permissions":{"contents":"read","metadata":"read"},
+ "events":["push"],"created_at":"2026-09-01T10:00:00.000Z","updated_at":"2026-09-01T10:00:00.000Z","single_file_name":null,"suspended_at":null}]}`
+
+func TestListInstallations(t *testing.T) {
+	t.Run("maps user and organisation installations, counting only selected repositories", func(t *testing.T) {
+		var countQueries []string
+		mux := http.NewServeMux()
+		mux.HandleFunc("/user/installations", func(w http.ResponseWriter, r *http.Request) {
+			_, _ = fmt.Fprint(w, installationsJSON) // test server: write errors are irrelevant
+		})
+		mux.HandleFunc("/user/installations/1/repositories", func(w http.ResponseWriter, r *http.Request) {
+			countQueries = append(countQueries, r.URL.RawQuery)
+			w.Header().Set("Link", `<http://x/user/installations/1/repositories?per_page=1&page=2>; rel="next"`)
+			_, _ = fmt.Fprint(w, `{"total_count":3,"repositories":[`+repoJSON("octo-org", "api")+`]}`) // test server: write errors are irrelevant
+		})
+		mux.HandleFunc("/user/installations/2/repositories", func(w http.ResponseWriter, r *http.Request) {
+			t.Error("an installation granting all repositories must not be counted")
+		})
+		c := newTestClient(t, mux)
+
+		got, err := c.ListInstallations(context.Background())
+		require.NoError(t, err)
+		three := 3
+		assert.Equal(t, []*gitprovider.Installation{
+			{
+				ID: 1, AccountLogin: "octo-org", AccountType: "organization",
+				AccountAvatarURL:    "https://avatars.githubusercontent.com/u/10?v=4",
+				RepositorySelection: "selected", RepositoryCount: &three,
+				HTMLURL: "https://github.com/organizations/octo-org/settings/installations/1",
+			},
+			{
+				ID: 2, AccountLogin: "octocat", AccountType: "user",
+				AccountAvatarURL:    "https://avatars.githubusercontent.com/u/20?v=4",
+				RepositorySelection: "all",
+				HTMLURL:             "https://github.com/settings/installations/2",
+			},
+		}, got)
+		assert.Equal(t, []string{"per_page=1"}, countQueries, "the count reads one page of one item, never the whole list")
+	})
+	t.Run("a failed count fails the list", func(t *testing.T) {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/user/installations", func(w http.ResponseWriter, r *http.Request) {
+			_, _ = fmt.Fprint(w, installationsJSON) // test server: write errors are irrelevant
+		})
+		mux.HandleFunc("/user/installations/1/repositories", errorHandler(http.StatusForbidden))
+		c := newTestClient(t, mux)
+		_, err := c.ListInstallations(context.Background())
+		assertErrorIs(t, err, apperrs.ErrUnauthorized)
+	})
+}
+
 func TestGetTree(t *testing.T) {
 	t.Run("explicit ref skips resolving the default branch", func(t *testing.T) {
 		var repoCalls int

@@ -10,27 +10,44 @@ import (
 )
 
 // MCPTools returns the repository tools: the project wizard's first two steps, list and scan.
-func MCPTools(s Scanner) []mcptool.Tool {
-	return []mcptool.Tool{repositoryListTool(s), repositoryScanTool(s)}
+func MCPTools(s Scanner, l InstallationLister) []mcptool.Tool {
+	return []mcptool.Tool{repositoryListTool(s, l), repositoryScanTool(s)}
 }
 
 type repositoryListIn struct {
 	mcptool.PageArgs
+	Installations bool `json:"installations,omitempty" jsonschema:"When true, also return the accounts and organisations Nexul's GitHub App is installed on. Defaults to false."`
 }
 
-func repositoryListTool(s Scanner) mcptool.Tool {
+// repositoryListOut is the page plus the installations behind it, returned only when they were asked for.
+type repositoryListOut struct {
+	mcptool.Page[Repo]
+	Installations []Installation `json:"installations"`
+}
+
+func repositoryListTool(s Scanner, l InstallationLister) mcptool.Tool {
 	return mcptool.New("repository_list", "List repositories",
 		"Lists the repositories the connected git provider installation can read, with owner, name, and default "+
 			"branch. Use it to pick a repository for repository_scan or pull_request_list. Returns at most 100 per page. "+
 			"Only accounts with Nexul's GitHub App installed are listed; a missing repository means the App is not "+
-			"installed on its owner, which installs it at https://github.com/apps/<app slug>/installations/new.",
+			"installed on its owner, which installs it at https://github.com/apps/<app slug>/installations/new. "+
+			"Pass installations to also see those accounts and organisations, whether each grants all or selected "+
+			"repositories, and the GitHub page where its access is managed.",
 		mcptool.Hints{ReadOnly: true},
 		func(ctx context.Context, in repositoryListIn) (any, error) {
 			repos, err := ListRepos(ctx, s)
 			if err != nil {
 				return nil, err
 			}
-			return mcptool.Paginate(repos, in.PageArgs), nil
+			page := mcptool.Paginate(repos, in.PageArgs)
+			if !in.Installations {
+				return page, nil
+			}
+			installs, err := ListInstallations(ctx, l)
+			if err != nil {
+				return nil, err
+			}
+			return repositoryListOut{Page: page, Installations: installs}, nil
 		})
 }
 

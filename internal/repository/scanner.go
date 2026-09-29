@@ -13,3 +13,10 @@ type Scanner interface {
 	// GetFile returns a file's content at ref.
 	GetFile(ctx context.Context, owner, name, ref, path string) ([]byte, error)
 }
+
+// InstallationLister is the seam over the git provider's installation read, kept apart from Scanner so each
+// interface stays small (go.md §6).
+type InstallationLister interface {
+	// ListInstallations lists the App installations the connector's user can see.
+	ListInstallations(ctx context.Context) ([]Installation, error)
+}

@@ -135,6 +135,14 @@ func (g gitProviderRouter) ListInstallationRepos(ctx context.Context) ([]*gitpro
 	return p.ListInstallationRepos(ctx)
 }
 
+func (g gitProviderRouter) ListInstallations(ctx context.Context) ([]*gitprovider.Installation, error) {
+	p, err := g.resolveConnector(ctx, "github")
+	if err != nil {
+		return nil, err
+	}
+	return p.ListInstallations(ctx)
+}
+
 func (g gitProviderRouter) GetTree(ctx context.Context, owner, name, ref string) ([]gitprovider.TreeEntry, error) {
 	p, err := g.resolve(ctx, owner, name)
 	if err != nil {

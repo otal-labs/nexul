@@ -13,7 +13,7 @@ import (
 	apperrors "github.com/otal-labs/nexul/internal/platform/errors"
 )
 
-func serve(t *testing.T, s Scanner, method, path, body string) *httptest.ResponseRecorder {
+func serve(t *testing.T, s *fakeScanner, method, path, body string) *httptest.ResponseRecorder {
 	t.Helper()
 	var r *http.Request
 	if body != "" {
@@ -22,7 +22,7 @@ func serve(t *testing.T, s Scanner, method, path, body string) *httptest.Respons
 		r = httptest.NewRequest(method, path, nil)
 	}
 	rec := httptest.NewRecorder()
-	NewHandler(s).Routes().ServeHTTP(rec, r)
+	NewHandler(s, s).Routes().ServeHTTP(rec, r)
 	return rec
 }
 
@@ -71,6 +71,27 @@ func TestHandler_List(t *testing.T) {
 		s := &fakeScanner{listErr: assertError{}}
 		rec := serve(t, s, http.MethodGet, "/api/repositories", "")
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	})
+}
+
+func TestHandler_Installations(t *testing.T) {
+	t.Run("lists installations with the selected count only where GitHub gives one", func(t *testing.T) {
+		three := 3
+		s := &fakeScanner{installs: []Installation{
+			{ID: 1, AccountLogin: "octo-org", AccountType: "organization", RepositorySelection: "selected", RepositoryCount: &three},
+			{ID: 2, AccountLogin: "octocat", AccountType: "user", RepositorySelection: "all"},
+		}}
+		rec := serve(t, s, http.MethodGet, "/api/repositories/installations", "")
+		require.Equal(t, http.StatusOK, rec.Code)
+		assert.JSONEq(t, `{"installations":[
+			{"id":1,"account_login":"octo-org","account_type":"organization","account_avatar_url":"","repository_selection":"selected","repository_count":3,"html_url":""},
+			{"id":2,"account_login":"octocat","account_type":"user","account_avatar_url":"","repository_selection":"all","html_url":""}]}`,
+			rec.Body.String())
+	})
+	t.Run("no installations is an empty list, not null", func(t *testing.T) {
+		rec := serve(t, &fakeScanner{}, http.MethodGet, "/api/repositories/installations", "")
+		require.Equal(t, http.StatusOK, rec.Code)
+		assert.JSONEq(t, `{"installations":[]}`, rec.Body.String())
 	})
 }
 

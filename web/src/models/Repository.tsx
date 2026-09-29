@@ -9,6 +9,19 @@ export interface Repo {
   html_url: string;
 }
 
+// One account or organisation the GitHub App is installed on; together they decide which repositories Nexul sees.
+export interface Installation {
+  id: number;
+  account_login: string;
+  account_type: "user" | "organization";
+  account_avatar_url: string;
+  repository_selection: "all" | "selected";
+  // Present only for a "selected" installation.
+  repository_count?: number;
+  // The installation's settings page on GitHub, where its repository access is changed.
+  html_url: string;
+}
+
 export const CandidateKinds = ["compose", "dockerfile"] as const;
 export type CandidateKind = (typeof CandidateKinds)[number];
 

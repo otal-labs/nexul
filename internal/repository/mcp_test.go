@@ -11,9 +11,9 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 )
 
-func callTool(t *testing.T, s Scanner, name, args string) (any, error) {
+func callTool(t *testing.T, s *fakeScanner, name, args string) (any, error) {
 	t.Helper()
-	for _, tool := range MCPTools(s) {
+	for _, tool := range MCPTools(s, s) {
 		if tool.Name == name {
 			return tool.Call(t.Context(), json.RawMessage(args))
 		}
@@ -24,7 +24,7 @@ func callTool(t *testing.T, s Scanner, name, args string) (any, error) {
 
 func TestMCPTools_Surface(t *testing.T) {
 	var names []string
-	for _, tool := range MCPTools(&fakeScanner{}) {
+	for _, tool := range MCPTools(&fakeScanner{}, &fakeScanner{}) {
 		names = append(names, tool.Name)
 		assert.NotEmpty(t, tool.Title, tool.Name)
 		assert.NotEmpty(t, tool.Description, tool.Name)
@@ -40,6 +40,7 @@ func TestMCPTools_Errors(t *testing.T) {
 		msg              string
 	}{
 		{"repository_list surfaces a provider failure", "repository_list", `{}`, &fakeScanner{listErr: apperrors.ErrUnauthorized}, apperrors.ErrUnauthorized, ""},
+		{"repository_list surfaces an installations failure", "repository_list", `{"installations":true}`, &fakeScanner{installErr: apperrors.ErrUnauthorized}, apperrors.ErrUnauthorized, ""},
 		{"repository_scan needs an owner", "repository_scan", `{"repo":"api"}`, &fakeScanner{}, apperrors.ErrInvalid, ""},
 		{"repository_scan takes repo, not name", "repository_scan", `{"owner":"acme","name":"api"}`, &fakeScanner{}, apperrors.ErrInvalid, ""},
 		{"repository_scan of a missing repository", "repository_scan", `{"owner":"acme","repo":"ghost"}`, &fakeScanner{treeErr: apperrors.ErrNotFound}, apperrors.ErrNotFound, "repository_list"},
@@ -61,6 +62,19 @@ func TestRepositoryList_Pages(t *testing.T) {
 	require.Len(t, page.Items, 1)
 	assert.Equal(t, "acme/api", page.Items[0].FullName)
 	assert.Equal(t, 2, page.Total)
+}
+
+func TestRepositoryList_Installations(t *testing.T) {
+	s := &fakeScanner{
+		repos:    []Repo{{ID: 1, FullName: "acme/api"}},
+		installs: []Installation{{ID: 9, AccountLogin: "acme", AccountType: "organization", RepositorySelection: "all"}},
+	}
+	got, err := callTool(t, s, "repository_list", `{"installations":true}`)
+	require.NoError(t, err)
+	b, err := json.Marshal(got)
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"items":[{"id":1,"owner":"","name":"","full_name":"acme/api","default_branch":"","html_url":""}],"total":1,"has_more":false,
+		"installations":[{"id":9,"account_login":"acme","account_type":"organization","account_avatar_url":"","repository_selection":"all","html_url":""}]}`, string(b))
 }
 
 func TestRepositoryScan(t *testing.T) {

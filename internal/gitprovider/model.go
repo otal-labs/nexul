@@ -10,6 +10,21 @@ type Repo struct {
 	HTMLURL       string `json:"html_url"`
 }
 
+// Installation is one account or organisation the git host's App is installed on, as the connected user sees it.
+type Installation struct {
+	ID           int64
+	AccountLogin string
+	// AccountType is "user" or "organization".
+	AccountType      string
+	AccountAvatarURL string
+	// RepositorySelection is "all" or "selected".
+	RepositorySelection string
+	// RepositoryCount is set only for a "selected" installation; "all" follows the account's repositories.
+	RepositoryCount *int
+	// HTMLURL is the installation's settings page on the git host.
+	HTMLURL string
+}
+
 // PRState is the lifecycle state of a pull request.
 type PRState string
 

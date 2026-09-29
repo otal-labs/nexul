@@ -116,6 +116,15 @@ func ListRepos(ctx context.Context, s Scanner) ([]Repo, error) {
 	return repos, nil
 }
 
+// ListInstallations lists the accounts and organisations whose repositories the connector can read.
+func ListInstallations(ctx context.Context, l InstallationLister) ([]Installation, error) {
+	installs, err := l.ListInstallations(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list installations: %w", err)
+	}
+	return nonNil(installs), nil
+}
+
 // candidateName derives a candidate's display name from the repo name plus the file's directory, when not root.
 func candidateName(repoName, filePath string) string {
 	dir := path.Dir(filePath)

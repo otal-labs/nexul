@@ -4,6 +4,7 @@ import { Unlink } from "lucide-react";
 import { ConfirmDestroyButton } from "@/components/settings/ConfirmDestroyButton";
 import { Button } from "@/components/ui/button";
 import { DiscordMark, GithubMark, GoogleMark } from "@/components/ProviderMarks";
+import { GitHubInstallShortcut } from "@/components/you/GitHubInstallShortcut";
 import { useStartIdentityLink, useUnlinkIdentity } from "@/hooks/AuthHooks";
 import { providerLabel, type Identity, type Provider } from "@/models/User";
 
@@ -30,6 +31,7 @@ export const IdentityRow = ({ provider, identity, onlyOne }: IdentityRowProps) =
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium">{label}</p>
         <p className="truncate font-mono text-xs text-muted-foreground">{account ?? "Not linked"}</p>
+        {provider === "github" && identity && <GitHubInstallShortcut />}
       </div>
       {identity && !onlyOne && (
         <ConfirmDestroyButton

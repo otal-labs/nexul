@@ -13,6 +13,22 @@ type Repo struct {
 	HTMLURL       string `json:"html_url"`
 }
 
+// Installation is one account or organisation the connector's GitHub App is installed on, visible to its user;
+// together they decide which repositories Nexul can read.
+type Installation struct {
+	ID           int64  `json:"id"`
+	AccountLogin string `json:"account_login"`
+	// AccountType is "user" or "organization".
+	AccountType      string `json:"account_type"`
+	AccountAvatarURL string `json:"account_avatar_url"`
+	// RepositorySelection is "all" or "selected".
+	RepositorySelection string `json:"repository_selection"`
+	// RepositoryCount is present only when RepositorySelection is "selected".
+	RepositoryCount *int `json:"repository_count,omitempty"`
+	// HTMLURL is where the installation's repository access is managed on GitHub.
+	HTMLURL string `json:"html_url"`
+}
+
 // TreeEntry is one entry of a recursive git tree: a file (blob), directory (tree), or submodule (commit).
 type TreeEntry struct {
 	Path string
