@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import { DocsPage } from "@/pages/DocsPage";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
@@ -56,10 +57,13 @@ describe("DocsPage", () => {
   });
 
   it("points at the project wizard when the workspace has no project yet", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: [] });
+    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
+    vi.mocked(api.get).mockImplementation(async (url: string) =>
+      url === "/api/workspaces/ws-1/me" ? { data: { role_name: "Member", permissions: ["projects:write"] } } : { data: [] },
+    );
     renderPage();
     expect(await screen.findByText("No projects yet")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "New project" })).toHaveAttribute("href", "/wizard/project/project");
+    expect(await screen.findByRole("link", { name: "New project" })).toHaveAttribute("href", "/wizard/project/project");
     expect(screen.queryByRole("button", { name: "New doc" })).not.toBeInTheDocument();
   });
 

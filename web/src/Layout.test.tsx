@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -29,8 +29,26 @@ vi.mock("@/api/client", async (importOriginal) => {
   };
 });
 
-// The owner-only nav items (ticket 15) are gated on the selected workspace's resolved `/me` permission list, so tests toggle this instead of a user field to simulate a permission-holding vs. non-holding member.
-let meResponse = { role_name: "Owner", permissions: ["projects:write", "members:write"] };
+// The server answers an Owner's `/me` with the whole grid; these are the actions the sidebar reads.
+const ownerGrid = [
+  "automations:read",
+  "chat:read",
+  "chat:write",
+  "docs:read",
+  "docs:write",
+  "members:write",
+  "memories:read",
+  "projects:read",
+  "projects:write",
+  "roles:write",
+  "runners:read",
+  "tickets:read",
+  "topology:read",
+];
+
+// Sidebar entries are gated on the selected workspace's resolved `/me` permission list, so tests toggle this instead of a user field.
+let meResponse = { role_name: "Owner", permissions: ownerGrid };
+let projects: unknown[] = [];
 
 const ownerUser = {
   id: "u1",
@@ -42,7 +60,10 @@ const ownerUser = {
   can_create_workspace: true,
   first_login_done: true,
   created_at: "2026-08-12T12:00:00Z",
-};const renderLayout = (path = "/") => {
+};
+let authUser = ownerUser;
+
+const renderLayout = (path = "/") => {
   const client = new QueryClient();
   return render(
     <QueryClientProvider client={client}>
@@ -62,16 +83,20 @@ describe("Layout", () => {
   beforeEach(() => {
     localStorage.clear();
     useSessionStore.setState({ token: null, isLoggedIn: false });
-    meResponse = { role_name: "Owner", permissions: ["projects:write", "members:write"] };
+    meResponse = { role_name: "Owner", permissions: ownerGrid };
+    projects = [];
+    authUser = ownerUser;
     useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
     useWorkspaceStore.persist.clearStorage();
     vi.mocked(api.get).mockReset();
     vi.mocked(api.get).mockImplementation(async (url: string) => {
       // The auth profile (AccountMenu/WorkspaceSwitcher read it via useFetchMe) must match exactly before the workspace-scoped /me, which this URL also ends with.
       if (url === "/api/auth/me") {
-        return { data: { user: ownerUser, needs_owner_wizard: false, needs_first_login_wizard: false } };
+        return { data: { user: authUser, needs_owner_wizard: false, needs_first_login_wizard: false } };
       }
       if (url.endsWith("/me")) return { data: meResponse };
+      if (url === "/api/projects") return { data: projects };
+      if (url === "/api/team") throw new Error("403");
       if (url === "/api/workspaces") return { data: [{ id: "ws-1", name: "Acme", created_at: "", updated_at: "" }] };
       return { data: [] };
     });
@@ -92,7 +117,7 @@ describe("Layout", () => {
   it("shows the signed-in nav and account menu trigger", async () => {
     useSessionStore.setState({ token: "t", isLoggedIn: true });
     renderLayout();
-    expect(screen.getByRole("link", { name: /^Topology/ })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: /^Topology/ })).toBeInTheDocument();
     expect(await screen.findByText("@onik97")).toBeInTheDocument();
   });
 
@@ -152,7 +177,7 @@ describe("Layout", () => {
     useSessionStore.setState({ token: "t", isLoggedIn: true });
     renderLayout();
     await screen.findByText("@onik97");
-    expect(screen.getByRole("link", { name: "Configuration" })).toHaveAttribute("href", "/configuration");
+    expect(await screen.findByRole("link", { name: "Configuration" })).toHaveAttribute("href", "/configuration");
     expect(screen.getByRole("link", { name: "Your settings" })).toHaveAttribute("href", "/settings");
     expect(screen.queryByRole("link", { name: "Members" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Settings" })).not.toBeInTheDocument();
@@ -180,10 +205,74 @@ describe("Layout", () => {
     expect(screen.queryByRole("button", { name: /collapse sidebar|expand sidebar/i })).not.toBeInTheDocument();
   });
 
-  it("links to the runners page", () => {
+  it("links to the runners page", async () => {
     useSessionStore.setState({ token: "t", isLoggedIn: true });
     renderLayout();
-    expect(screen.getByRole("link", { name: /^Runners/ })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: /^Runners/ })).toBeInTheDocument();
+  });
+
+  const linkTargets = (nav: string) => {
+    const region = screen.queryByRole("navigation", { name: nav });
+    return region ? within(region).queryAllByRole("link").map((link) => link.getAttribute("href")) : [];
+  };
+  const createButtons = () =>
+    ["New channel", "New voice channel", "New direct message"].filter((name) => screen.queryByRole("button", { name }));
+  const member = { ...ownerUser, can_create_workspace: false };
+
+  it.each([
+    {
+      name: "the Owner sees every entry and every create action",
+      user: ownerUser,
+      permissions: ownerGrid,
+      main: ["/inbox", "/chat", "/board/BE", "/projects/BE/interview", "/projects/BE/settings"],
+      workspace: ["/runners", "/topology", "/automations", "/configuration"],
+      create: ["New channel", "New voice channel", "New direct message"],
+    },
+    {
+      name: "a member who reads chat and tickets sees the board and nothing of the workspace",
+      user: member,
+      permissions: ["chat:read", "tickets:read"],
+      main: ["/inbox", "/chat", "/board/BE"],
+      workspace: [],
+      create: [],
+    },
+    {
+      name: "a member who reads runners and topology sees only those two",
+      user: member,
+      permissions: ["runners:read", "topology:read"],
+      main: ["/inbox", "/chat"],
+      workspace: ["/runners", "/topology"],
+      create: [],
+    },
+    {
+      name: "a member who manages roles reaches Configuration alone",
+      user: member,
+      permissions: ["roles:write"],
+      main: ["/inbox", "/chat"],
+      workspace: ["/configuration"],
+      create: [],
+    },
+    {
+      name: "a member who may only chat keeps chat and its create actions",
+      user: member,
+      permissions: ["chat:write"],
+      main: ["/inbox", "/chat"],
+      workspace: [],
+      create: ["New channel", "New voice channel", "New direct message"],
+    },
+  ])("sidebar by permission: $name", async ({ user, permissions, main, workspace, create }) => {
+    useSessionStore.setState({ token: "t", isLoggedIn: true });
+    authUser = user;
+    meResponse = { role_name: "Member", permissions };
+    projects = [{ id: "p-1", name: "Backend", prefix: "BE", position: 0, created_at: "", updated_at: "" }];
+    renderLayout();
+
+    await waitFor(() => {
+      expect(linkTargets("Main")).toEqual(main);
+      expect(linkTargets("Workspace")).toEqual(workspace);
+      expect(createButtons()).toEqual(create);
+    });
+    expect(screen.queryByRole("button", { name: "Workspace" }) !== null).toBe(workspace.length > 0);
   });
 });
 

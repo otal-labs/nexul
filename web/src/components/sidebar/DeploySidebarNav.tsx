@@ -3,14 +3,15 @@ import { useShallow } from "zustand/react/shallow";
 
 import { sectionLabelClass, type SidebarNavEntry } from "@/components/SidebarNav";
 import { SidebarNavLink } from "@/components/sidebar/SidebarNavLink";
+import { useCanOpen } from "@/hooks/AccessHooks";
 import { cn } from "@/lib/utils";
 import { useSidebarStore } from "@/stores/sidebarStore";
 
 const deployNav: SidebarNavEntry[] = [
-  { to: "/runners", label: "Runners", icon: Cpu },
-  { to: "/topology", label: "Topology", icon: Network },
-  { to: "/automations", label: "Automations", icon: Workflow, wip: true },
-  { to: "/configuration", label: "Configuration", icon: SlidersHorizontal },
+  { to: "/runners", label: "Runners", icon: Cpu, area: "runners" },
+  { to: "/topology", label: "Topology", icon: Network, area: "topology" },
+  { to: "/automations", label: "Automations", icon: Workflow, area: "automations", wip: true },
+  { to: "/configuration", label: "Configuration", icon: SlidersHorizontal, area: "configuration" },
 ];
 
 interface DeploySidebarNavProps {
@@ -22,6 +23,10 @@ export const DeploySidebarNav = ({ collapsed }: DeploySidebarNavProps) => {
   const { open, toggle } = useSidebarStore(
     useShallow((s) => ({ open: s.workspaceNavOpen, toggle: s.toggleWorkspaceNav })),
   );
+  const canOpen = useCanOpen();
+  const entries = deployNav.filter((entry) => canOpen(entry.area) === true);
+
+  if (entries.length === 0) return null;
 
   return (
     <nav aria-label="Workspace" className="shrink-0 border-t border-border px-2 py-1">
@@ -44,7 +49,7 @@ export const DeploySidebarNav = ({ collapsed }: DeploySidebarNavProps) => {
       )}
       {(open || collapsed) && (
         <div className="flex flex-col gap-0.5 pb-1">
-          {deployNav.map((entry) => (
+          {entries.map((entry) => (
             <SidebarNavLink
               key={entry.to}
               to={entry.to}

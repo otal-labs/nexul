@@ -4,10 +4,10 @@ import { Container } from "@/components/Container";
 import { PageHeader } from "@/components/PageHeader";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { isSettingsSection, SettingsNav, visibleSettingsSections } from "@/components/settings/SettingsNav";
+import { isSettingsSection, SettingsNav } from "@/components/settings/SettingsNav";
 import { SettingsPageContent } from "@/components/settings/SettingsPageContent";
+import { useVisibleSettingsSections } from "@/hooks/AccessHooks";
 import { useFetchMe, useFetchSettings } from "@/hooks/AuthHooks";
-import { useFetchTeam } from "@/hooks/TeamHooks";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import { legacyConfigurationTarget } from "@/utils/SettingsRedirects";
 
@@ -21,20 +21,8 @@ export const ConfigurationPage = () => {
   const canWritePlays = useHasPermission("plays:write");
   const canDeletePlays = useHasPermission("plays:delete");
   const canManageMentionLayout = useHasPermission("workspaces:write");
-  const canReadMemories = useHasPermission("memories:read");
   const isInstanceAdmin = me?.user?.can_create_workspace ?? false;
-  const canManageMembers = useHasPermission("members:write");
-  // Members may be managed in a workspace other than the selected one; the scoped Team read answers that.
-  const { data: team } = useFetchTeam(!!me && !isInstanceAdmin && !canManageMembers);
-
-  const sections = visibleSettingsSections({
-    isInstanceAdmin,
-    showRoles: canManageRoles,
-    showPlays: canReadPlays,
-    showInterviewTemplate: canReadMemories,
-    showMentionLayout: canManageMentionLayout,
-    showTeam: canManageMembers || !!team,
-  });
+  const sections = useVisibleSettingsSections() ?? [];
 
   const { section: rawSection } = useParams();
   const { search, hash } = useLocation();

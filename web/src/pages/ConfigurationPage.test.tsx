@@ -36,6 +36,7 @@ const mockGet = (url: string) => {
   if (url === "/api/auth/me") return Promise.resolve({ data: { user: { can_create_workspace: true } } });
   if (url === "/api/connectors") return Promise.resolve({ data: [] });
   if (url === "/api/workspaces") return Promise.resolve({ data: workspaces });
+  if (url === "/api/workspaces/ws-1/me") return Promise.resolve({ data: { role_name: "Member", permissions: [] } });
   if (url.startsWith("/api/version")) return Promise.resolve({ data: { current: "0.1.0", channel: "beta" } });
   return Promise.resolve({ data: settings });
 };
@@ -63,7 +64,7 @@ describe("ConfigurationPage", () => {
     mocks.del.mockReset();
     mocks.errorMessage.mockClear();
     mocks.get.mockImplementation(mockGet);
-    useWorkspaceStore.setState({ selectedWorkspaceId: "" });
+    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
     useWorkspaceStore.persist.clearStorage();
   });
 
@@ -99,7 +100,7 @@ describe("ConfigurationPage", () => {
 describe("ConfigurationPage mention chip layout gating", () => {
   beforeEach(() => {
     mocks.get.mockImplementation(mockGet);
-    useWorkspaceStore.setState({ selectedWorkspaceId: "" });
+    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
     useWorkspaceStore.persist.clearStorage();
   });
 

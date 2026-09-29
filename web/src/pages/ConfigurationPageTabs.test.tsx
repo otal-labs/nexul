@@ -98,12 +98,11 @@ describe("ConfigurationPage sections", () => {
   it("hides every whole-instance section from a non-admin, and an instance link falls back", async () => {
     renderPage("/configuration/instance", false);
 
-    await screen.findByRole("heading", { name: "Configuration" });
+    expect(await screen.findByRole("link", { name: "Danger zone" })).toHaveAttribute("aria-current", "page");
     expect(screen.queryByText("URL card")).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Instance" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Connectors" })).not.toBeInTheDocument();
     expect(screen.queryByText("Whole instance")).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Danger zone" })).toHaveAttribute("aria-current", "page");
   });
 
   it("gives sign-in providers their own section, one tab each with Discord first", async () => {

@@ -10,7 +10,8 @@ interface ProjectSwitcherMenuProps {
   projects: Project[];
   currentId: string;
   onSelect: (project: Project) => void;
-  onCreate: () => void;
+  // Absent for a viewer who may not create a project.
+  onCreate?: (() => void) | undefined;
 }
 
 export const ProjectSwitcherMenu = ({ projects, currentId, onSelect, onCreate }: ProjectSwitcherMenuProps) => (
@@ -24,10 +25,12 @@ export const ProjectSwitcherMenu = ({ projects, currentId, onSelect, onCreate }:
         </button>
       ))}
     </div>
-    <div className="my-1 border-t border-border" />
-    <button type="button" onClick={onCreate} className={menuItemClass}>
-      <PlusIcon className="size-4 shrink-0" aria-hidden />
-      <span>New project</span>
-    </button>
+    {onCreate && <div className="my-1 border-t border-border" />}
+    {onCreate && (
+      <button type="button" onClick={onCreate} className={menuItemClass}>
+        <PlusIcon className="size-4 shrink-0" aria-hidden />
+        <span>New project</span>
+      </button>
+    )}
   </PopoverContent>
 );

@@ -4,6 +4,7 @@ import { useNavigate } from "react-router";
 import { navLinkClass, sectionLabelClass } from "@/components/SidebarNav";
 import { ProjectNav } from "@/components/sidebar/ProjectNav";
 import { ProjectSwitcher } from "@/components/sidebar/ProjectSwitcher";
+import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useSidebarProject } from "@/hooks/useSidebarProject";
 import { NEW_PROJECT_PATH } from "@/models/Project";
 import { cn } from "@/lib/utils";
@@ -16,11 +17,18 @@ interface ProjectSectionProps {
 export const ProjectSection = ({ collapsed }: ProjectSectionProps) => {
   const { projects, current } = useSidebarProject();
   const navigate = useNavigate();
+  const can = useAreaAccess();
+  const canCreate = can?.("newProject") ?? false;
+  // The switcher only earns its place when the viewer can open something inside a project.
+  const readsProjects = !!can && (["projects", "tickets", "memories", "docs"] as const).some((area) => can(area));
+  const offerCreate = !!projects && projects.length === 0 && canCreate;
+  const showSwitcher = readsProjects && !!current;
 
+  if (!offerCreate && !showSwitcher) return null;
   return (
     <div className="flex flex-col gap-0.5">
       {!collapsed && <div className={sectionLabelClass}>Project</div>}
-      {projects && projects.length === 0 && (
+      {offerCreate && (
         <button
           type="button"
           onClick={() => void navigate(NEW_PROJECT_PATH)}
@@ -33,8 +41,10 @@ export const ProjectSection = ({ collapsed }: ProjectSectionProps) => {
           {!collapsed && <span className="flex-1 text-left">New project</span>}
         </button>
       )}
-      {projects && current && <ProjectSwitcher projects={projects} current={current} collapsed={collapsed} />}
-      {current && <ProjectNav project={current} collapsed={collapsed} />}
+      {projects && current && showSwitcher && (
+        <ProjectSwitcher projects={projects} current={current} collapsed={collapsed} />
+      )}
+      {current && showSwitcher && <ProjectNav project={current} collapsed={collapsed} />}
     </div>
   );
 };

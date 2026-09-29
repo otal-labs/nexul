@@ -2,6 +2,7 @@ import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useNewConversationDialogs } from "@/hooks/useNewConversationDialogs";
 
 interface NewConversationMenuProps {
@@ -11,7 +12,9 @@ interface NewConversationMenuProps {
 
 export const NewConversationMenu = ({ workspaceId, onCreated }: NewConversationMenuProps) => {
   const { openNewChannel, openNewDM } = useNewConversationDialogs(workspaceId, (c) => onCreated(c.id));
+  const canCreate = useAreaAccess()?.("newConversation") ?? false;
 
+  if (!canCreate) return null;
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

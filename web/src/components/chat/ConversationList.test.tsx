@@ -9,6 +9,7 @@ import { ConversationList } from "@/components/chat/ConversationList";
 import type { Conversation } from "@/models/Chat";
 import { useVoiceCallStore } from "@/stores/voiceCallStore";
 import { useVoiceOccupancyStore } from "@/stores/voiceOccupancyStore";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn() },
@@ -59,9 +60,11 @@ beforeEach(() => {
   useVoiceOccupancyStore.setState({ occupancy: {} });
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/voice/occupancy") return { data: occupancy };
     if (url === "/api/auth/me") return { data: meResponse };
+    if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions: ["chat:write"] } };
     if (url.startsWith("/api/workspaces/")) return { data: peopleResponse };
     if (url === "/api/docs/doc-1") return { data: docResponse };
     return { data: {} };
@@ -107,7 +110,7 @@ describe("ConversationList voice channels", () => {
     renderList();
     await screen.findByText("Chats");
 
-    await user.click(screen.getByRole("button", { name: "New conversation" }));
+    await user.click(await screen.findByRole("button", { name: "New conversation" }));
     await user.click(await screen.findByRole("menuitem", { name: "New voice channel" }));
 
     expect(await screen.findByLabelText("Voice channel name")).toBeInTheDocument();

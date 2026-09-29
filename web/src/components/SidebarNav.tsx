@@ -1,11 +1,13 @@
 import type { ComponentType } from "react";
 
+import type { RouteArea } from "@/models/Access";
 import { cn } from "@/lib/utils";
 
 export interface SidebarNavEntry {
   to: string;
   label: string;
   icon: ComponentType<{ className?: string }>;
+  area: RouteArea;
   end?: boolean;
   wip?: boolean;
 }
