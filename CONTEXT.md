@@ -338,6 +338,14 @@ at rest. Nexul acting as itself against someone else's API; an
 Integration is the opposite direction.
 _Avoid_: Integration (the other direction), OAuth app, provider
 
+**Installation**:
+One account or organisation Nexul's GitHub App is installed on, granting all
+of its repositories or a selection. The installations the GitHub connector's
+user can see decide which repositories Nexul reads, so adding an organisation,
+or a collaborator installing the App on their own account, is how a repository
+becomes visible.
+_Avoid_: Install (that is the `nexul install` command), connection, grant
+
 **Pending version**:
 An automation code version that has been pushed or seeded but is not active.
 Merging it activates it and respawns the worker. Shipped upgrades land here
