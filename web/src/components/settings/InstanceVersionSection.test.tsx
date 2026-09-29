@@ -65,7 +65,7 @@ describe("InstanceVersionSection", () => {
     confirmOpen.mockReset();
   });
 
-  it("shows an enabled upgrade button when a newer release is available", async () => {
+  it("leads with the newer release and offers Upgrade when one is available", async () => {
     mocks.get.mockResolvedValue({
       data: {
         version: "v0.2.0-beta-003",
@@ -79,14 +79,12 @@ describe("InstanceVersionSection", () => {
     });
     renderSection();
 
-    expect(await screen.findByText("v0.2.0-beta-003")).toBeInTheDocument();
-    expect(screen.getByText("beta")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "v0.2.0-beta-004" })).toHaveAttribute("href", latest.url);
-    const button = screen.getByRole("button", { name: "Upgrade to v0.2.0-beta-004" });
-    expect(button).toBeEnabled();
+    expect(await screen.findByText("v0.2.0-beta-004 is available")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Release notes" })).toHaveAttribute("href", latest.url);
+    expect(screen.getByRole("button", { name: "Upgrade to v0.2.0-beta-004" })).toBeEnabled();
   });
 
-  it("disables the button and shows the reason when can_upgrade is false", async () => {
+  it("says up to date and offers no Upgrade button when already on the newest release", async () => {
     mocks.get.mockResolvedValue({
       data: {
         version: "v0.2.0-beta-004",
@@ -100,9 +98,28 @@ describe("InstanceVersionSection", () => {
     });
     renderSection();
 
-    const button = await screen.findByRole("button", { name: "Upgrade to v0.2.0-beta-004" });
-    expect(button).toBeDisabled();
-    expect(screen.getByText("already on the newest release")).toBeInTheDocument();
+    expect(await screen.findByText("Up to date")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^upgrade/i })).not.toBeInTheDocument();
+    expect(screen.queryByText("already on the newest release")).not.toBeInTheDocument();
+  });
+
+  it("explains why an available release cannot be installed yet, without an Upgrade button", async () => {
+    mocks.get.mockResolvedValue({
+      data: {
+        version: "v0.2.0-beta-003",
+        channel: "beta",
+        latest,
+        update_available: true,
+        can_upgrade: false,
+        reason: "instance runner is not connected",
+        upgrade: null,
+      },
+    });
+    renderSection();
+
+    expect(await screen.findByText("v0.2.0-beta-004 is available")).toBeInTheDocument();
+    expect(screen.getByText("instance runner is not connected")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^upgrade/i })).not.toBeInTheDocument();
   });
 
   it("shows friendlier copy for a dev build", async () => {
@@ -120,7 +137,10 @@ describe("InstanceVersionSection", () => {
     renderSection();
 
     await screen.findByText("This build cannot upgrade itself.");
-    expect(screen.getByRole("button", { name: "Upgrade" })).toBeDisabled();
+    expect(screen.getByText("No release to compare against")).toBeInTheDocument();
+    expect(screen.queryByText("Up to date")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^upgrade/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Release notes" })).not.toBeInTheDocument();
   });
 
   it("ticks off the hand-off and spins on the install once the upgrade has started", async () => {
@@ -131,7 +151,8 @@ describe("InstanceVersionSection", () => {
     expect(rowState("Hand the upgrade to this machine")).toBe("ok");
     expect(rowState("Install v0.2.0-beta-004 and restart")).toBe("pending");
     expect(rowState("Come back on v0.2.0-beta-004")).toBe("idle");
-    expect(screen.queryByRole("button", { name: /upgrade/i })).not.toBeInTheDocument();
+    expect(screen.getByText("Upgrading to v0.2.0-beta-004")).toBeInTheDocument();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 
   it("spins on the hand-off while the upgrade is only pending", async () => {
@@ -156,7 +177,7 @@ describe("InstanceVersionSection", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("shows the completed message and re-enables the button when a newer release exists", async () => {
+  it("shows when the last upgrade finished and offers the next one when a newer release exists", async () => {
     mocks.get.mockResolvedValue({
       data: {
         version: "v0.2.0-beta-004",
@@ -179,8 +200,7 @@ describe("InstanceVersionSection", () => {
     });
     renderSection();
 
-    await screen.findByText("Upgraded to v0.2.0-beta-004");
-    expect(rowState("Upgraded to v0.2.0-beta-004")).toBe("ok");
+    expect(await screen.findByText("Upgraded to v0.2.0-beta-004 · 5m ago")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Upgrade to v0.2.0-beta-005" })).toBeEnabled();
   });
 
@@ -260,7 +280,7 @@ describe("InstanceVersionSection", () => {
     expect(mocks.post).not.toHaveBeenCalled();
   });
 
-  it("checks for a newer release past the caches and shows it", async () => {
+  it("checks again past the caches and swaps the answer to the newer release", async () => {
     const onBeta9 = { version: "v0.2.0-beta.9", channel: "beta", update_available: false, can_upgrade: false, reason: "already on the newest release", upgrade: null };
     mocks.get.mockImplementation(async (_url: string, config?: { params?: { refresh?: number } }) =>
       config?.params?.refresh === 1
@@ -270,10 +290,11 @@ describe("InstanceVersionSection", () => {
     const user = userEvent.setup();
     renderSection();
 
-    expect(await screen.findByRole("button", { name: "Upgrade to v0.2.0-beta.9" })).toBeDisabled();
-    await user.click(screen.getByRole("button", { name: "Check for a newer release" }));
+    expect(await screen.findByText("Up to date")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Check again" }));
 
     expect(await screen.findByRole("button", { name: "Upgrade to v0.2.0-beta.10" })).toBeEnabled();
+    expect(screen.getByText("v0.2.0-beta.10 is available")).toBeInTheDocument();
     expect(mocks.get).toHaveBeenCalledWith("/api/instance/upgrade", { params: { refresh: 1 } });
   });
 });
