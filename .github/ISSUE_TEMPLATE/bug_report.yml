@@ -24,7 +24,7 @@ body:
     attributes:
       label: Nexul version
       description: The version chip in the web UI, or `GET /api/version` on your instance.
-      placeholder: 0.2.0 or a beta such as 0.2.1-beta.3
+      placeholder: 0.3.4 or a beta such as 0.3.5-beta
     validations:
       required: true
   - type: dropdown
