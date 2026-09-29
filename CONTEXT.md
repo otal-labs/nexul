@@ -416,10 +416,13 @@ declares for an act that is neither (`plays:run`, `memories:clone`,
 `roles:clone`, `docs:thread`). One vocabulary for every actor: a role, a
 scoped token, and the agent are checked against the same values. Checked in
 the workspace the entity belongs to; runners, the topology, machines, DNS,
-connectors, and the instance's own stacks, which belong to none, against every
-workspace the caller is in. What every member reads (the project list, channels, their own
+connectors, the instance's own stacks, and the instance itself (its settings,
+upgrades, accounts, workspace creation), which belong to none, against every
+workspace the caller is in. The Owner of any workspace therefore holds every
+instance-level permission, and nobody grants a permission they don't hold. What every member reads (the project list, channels, their own
 DMs and inbox, People) takes membership, not a permission.
-_Avoid_: Right, privilege, capability, ACL entry
+_Avoid_: Right, privilege, capability, ACL entry, instance admin (holding the
+instance's permissions is what that meant)
 
 **Permission overwrite**:
 A per-user allow/deny set layered on top of their role, either workspace-wide
@@ -441,8 +444,9 @@ _Avoid_: Allowlist status, membership status
 **Team**:
 Everyone registered on the instance and what each can reach: every account
 with its Account status, whether it is online or when it was last seen, and,
-per workspace, its Role and workspace-wide Permission overwrites. Instance administrators see all of it; someone who
-manages members in a workspace sees only the workspaces they manage. A change
+per workspace, its Role and workspace-wide Permission overwrites. A holder of
+`accounts:read` sees all of it; someone who manages members in a workspace sees
+only the workspaces they manage. A change
 inside a workspace always needs `members:write` there, and the Owner role is
 never given or taken through it.
 _Avoid_: Members (one workspace's roster), registered accounts, users

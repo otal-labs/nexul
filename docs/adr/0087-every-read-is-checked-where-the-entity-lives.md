@@ -44,7 +44,7 @@ and `notifications:read`, which would let an owner cut a member off from their o
 
 Also covers, with no rule changed: DNS (zones, records, gateways, exposures, hostnames), connectors, machines, and
 automations hosts are instance-level and checked against every workspace, with the table's own `dns:*`,
-`connectors:*`, `machines:read`, and `automations:read`; the connector app registration stays instance-admin. The
+`connectors:*`, `machines:read`, and `automations:read`; the connector app registration takes `connectors:write` (ADR 0088). The
 seams other domains call into DNS (a computer's tunnel, a stack's exposures on teardown) stay unchecked, since
 their caller checks its own action. A pull request is read with `repos:read`, and a code review record with
 `reviews:read`, in the workspace of the project its repository belongs to; a ticket's reviews also need the ticket,
@@ -57,3 +57,5 @@ workspace so only that workspace's readers receive it. A setup pass acts as the 
 it, and nobody is a member yet to check it against.
 
 Supersedes ADR 0023, and the "every signed-in member reaches every stack" paragraph of ADR 0079. Decided 2026-09-29.
+Amended by ADR 0088, which replaces the instance-admin bit with permissions checked against every workspace in the
+same way.

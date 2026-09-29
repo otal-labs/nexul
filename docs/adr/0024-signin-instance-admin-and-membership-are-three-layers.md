@@ -1,7 +1,9 @@
 # Sign-in, instance admin, and workspace membership are three separate layers
 
-The first rule below is superseded by ADR 0061. Instance administration and
-per-Workspace Roles remain separate as described here.
+The first rule below is superseded by ADR 0061, and the second by ADR 0088:
+instance-level capability is permission bits held in any workspace, not a flag
+on the user. Per-Workspace Roles and the protected Owner role remain as
+described here.
 
 An instance hosts many workspaces, and three different things decide what a
 person can reach:

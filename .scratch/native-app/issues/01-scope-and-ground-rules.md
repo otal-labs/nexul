@@ -28,7 +28,7 @@ Settled with the owner while charting, 2026-09-28.
     Topology, Automations), two labelled nav groups:
     - This workspace: Roles, Plays, Interview template, Members (moves out
       of the account menu), Danger zone.
-    - Whole instance, instance admins only: Instance, Sign-in providers,
+    - Whole instance, each by its permission held in any workspace: Instance, Sign-in providers,
       Connectors, DNS, Registered accounts, Mention chips. Mention chips are
       stored instance-wide but gated on a workspace permission today; move
       the section and fix the gate.

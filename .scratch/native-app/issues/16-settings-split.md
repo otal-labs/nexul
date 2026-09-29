@@ -17,8 +17,9 @@ Split the one Settings page into **Your settings** at `/settings` and
   19 adds sign-in accounts.
 - Configuration: eyebrow "Workspace", title "Configuration", a section nav in
   two labelled groups. *This workspace*: Roles, Plays, Interview template,
-  Members, Mention chips, Danger zone. *Whole instance* (instance admins
-  only): Instance, Sign-in providers, Connectors, DNS, Registered accounts.
+  Members, Mention chips, Danger zone. *Whole instance* (each section
+  by its permission held in any workspace, ADR 0088): Instance, Sign-in
+  providers, Connectors, DNS, Registered accounts.
   The Members page moves in as a section.
 - Sidebar: a Configuration entry in the Workspace section after Automations;
   the footer's theme toggle becomes a gear icon button linking to
@@ -40,7 +41,7 @@ breakpoint). Do not copy its mock data, Vite stub, or prototype store.
 
 - [ ] Every old `/settings?section=…` and `/members` URL lands on the same content at its new home, query and hash intact
 - [ ] The gear opens Your settings; Configuration is reachable from the sidebar; the account menu shows Support and Logout
-- [ ] Whole-instance sections are hidden from non-admins, and a group left empty drops its label
+- [ ] Whole-instance sections are hidden without their permission, and a group left empty drops its label
 - [ ] Verified at 768, 1024 and 1440px
 
 ## Surfaces

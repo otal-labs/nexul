@@ -18,7 +18,7 @@ interface ConnectorAppConfigFormProps {
   current?: AppConfigStatus;
 }
 
-// Owner-only OAuth app registration (CN3a); shared by the Settings card and the connector card's "Set up app" dialog.
+// OAuth app registration (CN3a), which takes connectors:write; shared by the Settings card and the connector card's "Set up app" dialog.
 export const ConnectorAppConfigForm = ({ connectorId, onSaved, current }: ConnectorAppConfigFormProps) => {
   const setAppConfig = useSetConnectorAppConfig();
   const githubApp = connectorId === "github";

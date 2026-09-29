@@ -15,7 +15,8 @@ name is the one the person set, else their sign-in account's name; clients
 fall back to the login. Over MCP the same list rides on `workspace_list`
 with an id, so no tool is added. An uploaded picture is served from
 `GET /api/people/{userID}/avatar` to the person, anyone sharing a workspace
-with them, and an instance administrator; its URL carries a hash of the
+with them, and a holder of `accounts:read` (an instance administrator before
+ADR 0088); its URL carries a hash of the
 picture, so a new upload is a new URL and no cache keeps the old one. Saving
 a profile publishes `account.profile_updated` with the account id only, and
 open clients refetch the list.

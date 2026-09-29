@@ -636,7 +636,7 @@ type providerOAuthRequest struct {
 	ClientSecret string `json:"client_secret"`
 }
 
-// updateProviderOAuth stores or clears sign-in credentials (owner only); like bootstrap, never echoes the raw secret.
+// updateProviderOAuth stores or clears sign-in credentials (instance:write); like bootstrap, never echoes the raw secret.
 func (h *Handler) updateProviderOAuth(w http.ResponseWriter, r *http.Request) {
 	var req providerOAuthRequest
 	if err := httpx.DecodeJSON(r, &req); err != nil {
