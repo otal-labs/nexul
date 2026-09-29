@@ -28,6 +28,9 @@ export interface TeamPerson {
   status: AccountStatus;
   can_create_workspace: boolean;
   created_at: string;
+  // A live browser socket right now; last_seen_at is the latest session activity, to the hour, null once signed out everywhere.
+  online: boolean;
+  last_seen_at: string | null;
   workspaces: TeamMembership[];
 }
 

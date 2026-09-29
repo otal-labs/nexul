@@ -118,4 +118,6 @@ type SessionStore interface {
 	TouchSession(ctx context.Context, id string, lastActive time.Time, ip string, expiresAt time.Time) error
 	DeleteExpiredSessions(ctx context.Context, userID string, now time.Time) error
 	SetSessionPushToken(ctx context.Context, id, userID, token string) error
+	// LastActiveByUser is each user's latest last-active time across their sessions.
+	LastActiveByUser(ctx context.Context) (map[string]time.Time, error)
 }

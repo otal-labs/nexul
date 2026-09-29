@@ -382,7 +382,37 @@ func (s *Service) ListTeam(ctx context.Context, actorID string) (*Team, error) {
 	if err != nil {
 		return nil, fmt.Errorf("list memberships: %w", err)
 	}
-	return &Team{People: teamPeople(accounts, memberships, visible, admin), Workspaces: visible, CanManageAccounts: admin}, nil
+	online, seen, err := s.accounts.Presence(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("read presence: %w", err)
+	}
+	people := teamPeople(accounts, memberships, visible, admin)
+	for _, p := range people {
+		p.Online = online[p.ID]
+		if at, ok := seen[p.ID]; ok {
+			p.LastSeenAt = &at
+		}
+	}
+	slices.SortStableFunc(people, byPresence)
+	return &Team{People: people, Workspaces: visible, CanManageAccounts: admin}, nil
+}
+
+// byPresence puts whoever is online first, then the most recently seen; ties keep the accounts' login order.
+func byPresence(a, b *TeamPerson) int {
+	if a.Online != b.Online {
+		if a.Online {
+			return -1
+		}
+		return 1
+	}
+	return lastSeen(b).Compare(lastSeen(a))
+}
+
+func lastSeen(p *TeamPerson) time.Time {
+	if p.LastSeenAt == nil {
+		return time.Time{}
+	}
+	return *p.LastSeenAt
 }
 
 // teamPeople keeps only the visible workspaces' memberships; outside an admin's view, a person with none of them is left out.

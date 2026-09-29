@@ -27,7 +27,7 @@ export const TeamPersonSheet = ({ personId, onClose }: TeamPersonSheetProps) => 
                 <SheetTitle className="truncate">{personName(person)}</SheetTitle>
                 <SheetDescription className="truncate font-mono text-xs">@{person.login}</SheetDescription>
               </div>
-              <AccountStatusLabel status={person.status} />
+              <AccountStatusLabel status={person.status} online={person.online} />
             </div>
             {team?.can_manage_accounts && <TeamAccountActions person={person} />}
           </SheetHeader>

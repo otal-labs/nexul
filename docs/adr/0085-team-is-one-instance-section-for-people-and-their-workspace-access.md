@@ -11,8 +11,7 @@ Decision: one section, **Team**. An instance administrator finds it under
 Whole instance and sees everyone; anyone else who holds `members:write` in a
 workspace finds it under This workspace and sees only the workspaces they
 manage and the people in them, with no account actions. For an administrator
-it lists every registered account with its status and a
-summary of its workspace access; opening a person shows every workspace on the
+it lists every registered account with its status and its presence; opening a person shows every workspace on the
 instance with their role and workspace-wide overrides there, lets the role
 be changed, the person be removed from or added to a workspace, and carries
 the account's own disable, reactivate, remove, and restore. Invitations move
@@ -36,5 +35,17 @@ server refuses the change if it is sent anyway. The scoping is the server's:
 workspaces only, so a manager never learns who holds access elsewhere, and a
 caller who manages nothing is refused. The cost is one page whose contents
 differ by who is looking, and a nav entry that moves between the two groups.
+
+Presence, added the same day: a row shows Online while the person holds an
+open live-events socket (the one the presence keeper already counts per user,
+with its linger so a refresh does not flap), otherwise when they were last
+seen, the latest `last_active_at` across their sessions. That column is
+written at most once an hour (ADR 0083), so last seen is accurate to the hour,
+and signing out of every device deletes it, so the row then says Signed out.
+Opening the first socket and the end of the last one's linger push a live-only
+`account.presence_changed` frame that names nobody: an open Team page
+refetches and the server's scoping decides who it may see. It is not a catalog
+event, since presence is not a domain change and must not reach integrations.
+Presence is on the Team and `account_list` only, never the people directory.
 
 Decided 2026-09-29, amending ADR 0024 and ADR 0061.

@@ -246,3 +246,27 @@ func TestKeeper_RefreshWhileOfflineIsNoop(t *testing.T) {
 	case <-time.After(60 * time.Millisecond):
 	}
 }
+
+func TestKeeper_OnlineFollowsFirstSocketAndLingerEnd(t *testing.T) {
+	t.Parallel()
+	k := New(Config{Sessions: (&sessionsFunc{}).list, Linger: 300 * time.Millisecond})
+	changed := make(chan string, 8)
+	k.SetOnlineChanged(func(userID string) { changed <- userID })
+
+	k.Connected("u1")
+	require.Equal(t, "u1", <-changed, "first socket announces the user online")
+	k.Connected("u1") // second tab
+	k.Disconnected("u1")
+	assert.Empty(t, changed, "a second tab or one of two closing is not a presence change")
+	assert.Equal(t, map[string]bool{"u1": true}, k.Online())
+
+	k.Disconnected("u1")
+	assert.True(t, k.Online()["u1"], "online through the linger window, so a refresh never reads as offline")
+	select {
+	case id := <-changed:
+		assert.Equal(t, "u1", id)
+	case <-time.After(2 * time.Second):
+		t.Fatal("going offline after the linger window was not announced")
+	}
+	assert.Empty(t, k.Online())
+}

@@ -585,6 +585,18 @@ func (f *fakeSessionStore) DeleteExpiredSessions(_ context.Context, userID strin
 	return nil
 }
 
+func (f *fakeSessionStore) LastActiveByUser(context.Context) (map[string]time.Time, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := map[string]time.Time{}
+	for _, s := range f.byID {
+		if s.LastActiveAt.After(out[s.UserID]) {
+			out[s.UserID] = s.LastActiveAt
+		}
+	}
+	return out, nil
+}
+
 func (f *fakeSessionStore) topics() []string {
 	f.mu.Lock()
 	defer f.mu.Unlock()

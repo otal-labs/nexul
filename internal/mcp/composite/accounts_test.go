@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -81,10 +82,11 @@ func callAccountTool(t *testing.T, tools []mcptool.Tool, name, args string) (any
 	return nil, nil
 }
 
-func TestAccountList_CarriesEachMembershipWithTheViewersManageFlag(t *testing.T) {
+func TestAccountList_CarriesPresenceAndEachMembershipWithTheViewersManageFlag(t *testing.T) {
+	seen := time.Date(2026, 9, 29, 10, 0, 0, 0, time.UTC)
 	team := &fakeTeam{team: &tenancy.Team{
 		People: []*tenancy.TeamPerson{{
-			TeamAccount: tenancy.TeamAccount{ID: "bob", Login: "bob", Status: "active"},
+			TeamAccount: tenancy.TeamAccount{ID: "bob", Login: "bob", Status: "active", Online: true, LastSeenAt: &seen},
 			Workspaces: []*tenancy.TeamMembership{
 				{WorkspaceID: "ws-nexul", RoleName: "Editor"},
 				{WorkspaceID: "ws-acme", RoleName: "Viewer"},
@@ -97,6 +99,8 @@ func TestAccountList_CarriesEachMembershipWithTheViewersManageFlag(t *testing.T)
 	require.NoError(t, err)
 	page := got.(mcptool.Page[accountResult])
 	require.Len(t, page.Items, 1)
+	assert.True(t, page.Items[0].Online)
+	assert.Equal(t, &seen, page.Items[0].LastSeenAt)
 	require.Len(t, page.Items[0].Workspaces, 2)
 	assert.True(t, page.Items[0].Workspaces[0].CanManageMembers)
 	assert.False(t, page.Items[0].Workspaces[1].CanManageMembers)

@@ -436,8 +436,8 @@ _Avoid_: Allowlist status, membership status
 
 **Team**:
 Everyone registered on the instance and what each can reach: every account
-with its Account status and, per workspace, its Role and workspace-wide
-Permission overwrites. Instance administrators see all of it; someone who
+with its Account status, whether it is online or when it was last seen, and,
+per workspace, its Role and workspace-wide Permission overwrites. Instance administrators see all of it; someone who
 manages members in a workspace sees only the workspaces they manage. A change
 inside a workspace always needs `members:write` there, and the Owner role is
 never given or taken through it.

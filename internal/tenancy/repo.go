@@ -88,6 +88,8 @@ type UserLookupGate interface {
 type AccountGate interface {
 	ListAccounts(ctx context.Context) ([]*TeamAccount, error)
 	Account(ctx context.Context, userID string) (*TeamAccount, error)
+	// Presence is who holds a live socket now and each account's latest session activity; absent means offline or signed out.
+	Presence(ctx context.Context) (online map[string]bool, lastSeen map[string]time.Time, err error)
 }
 
 // WorkspacePermissionGate resolves permissions without tenancy importing access (ADR 0017).

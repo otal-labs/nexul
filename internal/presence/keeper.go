@@ -39,6 +39,8 @@ type Keeper struct {
 
 	mu    sync.Mutex
 	users map[string]*presence
+	// onlineChanged runs outside the lock when a user's first socket opens or their linger window ends.
+	onlineChanged func(userID string)
 }
 
 type presence struct {
@@ -77,6 +79,24 @@ func (k *Keeper) Status(userID string) map[string]string {
 	return out
 }
 
+// Online is every user holding a live browser socket, the linger window included so a page refresh never reads as offline.
+func (k *Keeper) Online() map[string]bool {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	out := make(map[string]bool, len(k.users))
+	for id := range k.users {
+		out[id] = true
+	}
+	return out
+}
+
+// SetOnlineChanged registers the hook for a user coming online or going offline; call it before serving sockets.
+func (k *Keeper) SetOnlineChanged(fn func(userID string)) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	k.onlineChanged = fn
+}
+
 func (k *Keeper) setState(l *loop, state string) {
 	k.mu.Lock()
 	l.state = state
@@ -101,7 +121,8 @@ func (k *Keeper) Connected(userID string) {
 	}
 	k.mu.Lock()
 	p := k.users[userID]
-	if p == nil {
+	cameOnline := p == nil
+	if cameOnline {
 		ctx, cancel := context.WithCancel(context.Background())
 		p = &presence{ctx: ctx, cancel: cancel, computers: make(map[string]*loop)}
 		k.users[userID] = p
@@ -111,8 +132,12 @@ func (k *Keeper) Connected(userID string) {
 		p.linger.Stop()
 		p.linger = nil
 	}
+	notify := k.onlineChanged
 	k.mu.Unlock()
 	go k.reconcile(userID)
+	if cameOnline && notify != nil {
+		notify(userID)
+	}
 }
 
 // Disconnected records one browser socket closing; the last one tears down held connections after the linger window.
@@ -135,10 +160,16 @@ func (k *Keeper) Disconnected(userID string) {
 	}
 	p.linger = time.AfterFunc(k.cfg.Linger, func() {
 		k.mu.Lock()
-		defer k.mu.Unlock()
-		if cur := k.users[userID]; cur == p && p.refs <= 0 {
-			p.cancel()
-			delete(k.users, userID)
+		if cur := k.users[userID]; cur != p || p.refs > 0 {
+			k.mu.Unlock()
+			return
+		}
+		p.cancel()
+		delete(k.users, userID)
+		notify := k.onlineChanged
+		k.mu.Unlock()
+		if notify != nil {
+			notify(userID)
 		}
 	})
 }

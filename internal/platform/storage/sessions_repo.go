@@ -145,6 +145,19 @@ func (r *SessionsRepo) ListPushTargets(ctx context.Context, userIDs []string) ([
 	return out, nil
 }
 
+// LastActiveByUser is each user's latest session activity; a user with no session row is absent.
+func (r *SessionsRepo) LastActiveByUser(ctx context.Context) (map[string]time.Time, error) {
+	rows, err := r.q.ListSessionLastActive(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list session last active: %w", err)
+	}
+	out := make(map[string]time.Time, len(rows))
+	for _, row := range rows {
+		out[row.UserID] = time.Unix(row.LastActiveAt, 0).UTC()
+	}
+	return out, nil
+}
+
 func toSession(row sqlcgen.Session) *auth.Session {
 	return &auth.Session{
 		ID: row.ID, UserID: row.UserID, TokenHash: row.TokenHash, Client: auth.SessionClient(row.Client),

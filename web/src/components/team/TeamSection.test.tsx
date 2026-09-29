@@ -5,7 +5,7 @@ import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TeamSection } from "@/components/team/TeamSection";
-import type { Team } from "@/models/Team";
+import type { Team, TeamPerson } from "@/models/Team";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() }));
 vi.mock("@/api/client", () => ({ api: mocks, errorMessage: vi.fn() }));
@@ -21,6 +21,7 @@ const team: Team = {
   people: [
     {
       id: "u-bob", login: "bob", name: "Bob", avatar_url: "", status: "active", can_create_workspace: false, created_at: "",
+      online: true, last_seen_at: null,
       workspaces: [
         { workspace_id: "ws-nexul", workspace_name: "Nexul", role_id: "r-editor", role_name: "Editor", is_owner: false, allow: [], deny: [] },
         { workspace_id: "ws-acme", workspace_name: "Acme", role_id: "r-viewer", role_name: "Viewer", is_owner: false, allow: [], deny: [] },
@@ -47,12 +48,36 @@ describe("TeamSection", () => {
     mocks.put.mockReset();
   });
 
-  it("lists each person with a one-line summary of their workspace access", async () => {
-    renderSection();
+  it("shows when each person was last online, with a presence dot and their account status kept as a word", async () => {
+    const hoursAgo = (hours: number) => new Date(Date.now() - hours * 3_600_000).toISOString();
+    const person = (id: string, name: string, extra: Partial<TeamPerson>): TeamPerson => ({
+      id, login: id, name, avatar_url: "", status: "active", can_create_workspace: false, created_at: "", online: false, last_seen_at: null, workspaces: [], ...extra,
+    });
+    renderSection("/configuration/team", {
+      ...team,
+      people: [
+        person("u-ann", "Ann", { online: true, last_seen_at: hoursAgo(1) }),
+        person("u-cy", "Cy", { last_seen_at: hoursAgo(2) }),
+        person("u-dee", "Dee", {}),
+        person("u-eve", "Eve", { status: "disabled", last_seen_at: hoursAgo(72) }),
+      ],
+    });
 
-    const row = await screen.findByRole("button", { name: "Open Bob" });
-    expect(row).toHaveTextContent("Editor in Nexul · Viewer in Acme");
-    expect(row).toHaveTextContent("active");
+    const dotOf = (row: HTMLElement) => row.querySelector("span[aria-hidden].rounded-full");
+    const ann = await screen.findByRole("button", { name: "Open Ann" });
+    expect(ann).toHaveTextContent("Online");
+    expect(ann).toHaveTextContent("active");
+    expect(dotOf(ann)).toHaveClass("bg-success");
+
+    const cy = screen.getByRole("button", { name: "Open Cy" });
+    expect(cy).toHaveTextContent("Last seen 2h ago");
+    expect(dotOf(cy)).toHaveClass("bg-muted-foreground");
+    expect(screen.getByRole("button", { name: "Open Dee" })).toHaveTextContent("Signed out");
+
+    const eve = screen.getByRole("button", { name: "Open Eve" });
+    expect(eve).toHaveTextContent("Last seen 3d ago");
+    expect(eve).toHaveTextContent("disabled");
+    expect(dotOf(eve)).toHaveClass("bg-muted-foreground");
   });
 
   it("keeps a workspace the viewer cannot manage read-only, with the reason, and edits the one they can", async () => {
