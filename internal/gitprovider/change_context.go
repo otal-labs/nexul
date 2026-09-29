@@ -58,8 +58,8 @@ type ChangeRef struct {
 }
 
 // GetChangeContext walks a change back to its why: PR, tickets, their docs and later bugs, and the decisions citing them.
-func GetChangeContext(ctx context.Context, p GitProvider, r ChangeContextReader, ref ChangeRef) (*ChangeContext, error) {
-	pr, err := resolveChangePR(ctx, p, ref)
+func GetChangeContext(ctx context.Context, g Gate, p GitProvider, r ChangeContextReader, ref ChangeRef) (*ChangeContext, error) {
+	pr, err := resolveChangePR(ctx, g, p, ref)
 	if err != nil {
 		return nil, err
 	}
@@ -89,9 +89,12 @@ func GetChangeContext(ctx context.Context, p GitProvider, r ChangeContextReader,
 	return &ChangeContext{Owner: ref.Owner, Repo: ref.Repo, PR: pr, Tickets: tickets, Decisions: decisions}, nil
 }
 
-func resolveChangePR(ctx context.Context, p GitProvider, ref ChangeRef) (*PR, error) {
+func resolveChangePR(ctx context.Context, g Gate, p GitProvider, ref ChangeRef) (*PR, error) {
 	if ref.Owner == "" || ref.Repo == "" {
 		return nil, fmt.Errorf("%w: owner and repo are required", apperrors.ErrInvalid)
+	}
+	if err := requireRead(ctx, g, ref.Owner, ref.Repo); err != nil {
+		return nil, err
 	}
 	commit := strings.TrimSpace(ref.Commit)
 	if ref.Number > 0 {

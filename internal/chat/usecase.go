@@ -20,8 +20,17 @@ type Service struct {
 	repo      Repo
 	docAccess DocAccess
 	gate      Gate
+	members   Membership
 	now       func() time.Time
 }
+
+// Membership answers whether a person belongs to a workspace, so a DM only ever joins its own members.
+type Membership interface {
+	IsMember(ctx context.Context, userID, workspaceID string) (bool, error)
+}
+
+// SetMembership wires the membership lookup; unset, only the server's own calls may start a DM.
+func (s *Service) SetMembership(m Membership) { s.members = m }
 
 // Gate is the permission check a conversation passes before the caller reads or starts one (the access domain,
 // ADR 0042); permissions.Member asks only that the caller belongs to the workspace.
@@ -145,11 +154,32 @@ func (s *Service) CreateDM(ctx context.Context, workspaceID, creatorUserID strin
 		return nil, err
 	}
 	participants := dedupeParticipants(creatorUserID, participantUserIDs)
+	if err := s.requireMembers(ctx, workspaceID, participants); err != nil {
+		return nil, err
+	}
 	return s.createConversation(ctx, &Conversation{
 		WorkspaceID: workspaceID,
 		Kind:        KindDM,
 		CreatedBy:   creatorUserID,
 	}, participants)
+}
+
+// requireMembers refuses a participant outside the workspace as not found, the same answer for someone who does not
+// exist, so a DM never confirms who is registered elsewhere.
+func (s *Service) requireMembers(ctx context.Context, workspaceID string, userIDs []string) error {
+	if s.members == nil {
+		return permissions.Ungated(ctx)
+	}
+	for _, id := range userIDs {
+		ok, err := s.members.IsMember(ctx, id, workspaceID)
+		if err != nil {
+			return fmt.Errorf("check member %s: %w", id, err)
+		}
+		if !ok {
+			return fmt.Errorf("%w: no member %s in this workspace", apperrs.ErrNotFound, id)
+		}
+	}
+	return nil
 }
 
 // GetOrCreateTicketThread lazily creates the thread; a losing race just re-fetches.
@@ -372,7 +402,8 @@ func dedupeParticipants(creatorUserID string, participantUserIDs []string) []str
 	return out
 }
 
-// HasTicketThreads batches the ticket-thread-exists check for the board's per-card indicator.
+// HasTicketThreads batches the ticket-thread-exists check for the board's per-card indicator, leaving out threads
+// the caller may not read.
 func (s *Service) HasTicketThreads(ctx context.Context, ticketIDs []string) (map[string]bool, error) {
 	cleaned := make([]string, 0, len(ticketIDs))
 	for _, id := range ticketIDs {
@@ -384,7 +415,25 @@ func (s *Service) HasTicketThreads(ctx context.Context, ticketIDs []string) (map
 	if err != nil {
 		return nil, fmt.Errorf("has ticket threads: %w", err)
 	}
-	return out, nil
+	threads := make([]*Conversation, 0, len(out))
+	for ticketID := range out {
+		thread, err := s.repo.GetTicketThread(ctx, ticketID)
+		if err != nil {
+			return nil, fmt.Errorf("has ticket threads: %w", err)
+		}
+		threads = append(threads, thread)
+	}
+	readable, err := permissions.Filter(threads, func(c *Conversation) string { return c.WorkspaceID }, func(workspaceID string) error {
+		return s.require(ctx, workspaceID, readAction(KindTicketThread))
+	})
+	if err != nil {
+		return nil, fmt.Errorf("has ticket threads: %w", err)
+	}
+	visible := make(map[string]bool, len(readable))
+	for _, c := range readable {
+		visible[c.TicketID] = true
+	}
+	return visible, nil
 }
 
 // GetConversation returns one conversation by id.

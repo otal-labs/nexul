@@ -776,8 +776,11 @@ func (s *Service) AnswerFromChat(ctx context.Context, conversationID, userID, re
 	return nil
 }
 
-// Interrupt stops the in-flight turn on a conversation, if any (stop control).
+// Interrupt stops the in-flight turn on a conversation, if any (stop control); the caller must be able to read it.
 func (s *Service) Interrupt(ctx context.Context, conversationID string) error {
+	if _, err := s.conversations.GetConversation(ctx, conversationID); err != nil {
+		return fmt.Errorf("interrupt agent turn: %w", err)
+	}
 	s.mu.Lock()
 	t, ok := s.active[conversationID]
 	s.mu.Unlock()

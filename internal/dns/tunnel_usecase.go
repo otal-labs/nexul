@@ -9,10 +9,14 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 // CreateTunnel creates a tunnel, stores it with its token encrypted at rest, publishing tunnel_changed.
 func (s *Service) CreateTunnel(ctx context.Context, in CreateTunnelInput) (*Tunnel, error) {
+	if err := s.require(ctx, permissions.DNSWrite); err != nil {
+		return nil, err
+	}
 	if err := in.Validate(); err != nil {
 		return nil, err
 	}
@@ -117,6 +121,9 @@ func (s *Service) tunnelRecords(ctx context.Context, p DNSProvider, tunnelID str
 
 // ListTunnels returns every locally-tracked tunnel, oldest first.
 func (s *Service) ListTunnels(ctx context.Context) ([]*Tunnel, error) {
+	if err := s.require(ctx, permissions.DNSRead); err != nil {
+		return nil, err
+	}
 	tunnels, err := s.repo.ListTunnels(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list tunnels: %w", err)
@@ -126,6 +133,9 @@ func (s *Service) ListTunnels(ctx context.Context) ([]*Tunnel, error) {
 
 // GetTunnel returns one locally-tracked tunnel.
 func (s *Service) GetTunnel(ctx context.Context, tunnelID string) (*Tunnel, error) {
+	if err := s.require(ctx, permissions.DNSRead); err != nil {
+		return nil, err
+	}
 	if strings.TrimSpace(tunnelID) == "" {
 		return nil, fmt.Errorf("%w: tunnel id is required", apperrs.ErrInvalid)
 	}
@@ -139,6 +149,13 @@ func (s *Service) GetTunnel(ctx context.Context, tunnelID string) (*Tunnel, erro
 // RouteTunnelHostname adds the ingress rule and creates the CNAME pointing the hostname at the tunnel; with no
 // local service given, the hostname routes to this Nexul instance.
 func (s *Service) RouteTunnelHostname(ctx context.Context, in RouteTunnelInput) (*Tunnel, error) {
+	if err := s.require(ctx, permissions.DNSWrite); err != nil {
+		return nil, err
+	}
+	return s.routeTunnelHostname(ctx, in)
+}
+
+func (s *Service) routeTunnelHostname(ctx context.Context, in RouteTunnelInput) (*Tunnel, error) {
 	if strings.TrimSpace(in.Service) == "" {
 		in.Service = s.origin
 	}
@@ -201,6 +218,9 @@ func (s *Service) RouteTunnelHostname(ctx context.Context, in RouteTunnelInput) 
 
 // RotateTunnelCredentials issues a fresh encrypted token; cloudflared stays up until the agent redeploys.
 func (s *Service) RotateTunnelCredentials(ctx context.Context, tunnelID string) (*Tunnel, error) {
+	if err := s.require(ctx, permissions.DNSWrite); err != nil {
+		return nil, err
+	}
 	if strings.TrimSpace(tunnelID) == "" {
 		return nil, fmt.Errorf("%w: tunnel id is required", apperrs.ErrInvalid)
 	}
@@ -232,6 +252,9 @@ func (s *Service) RotateTunnelCredentials(ctx context.Context, tunnelID string) 
 // DeleteTunnel removes the tunnel at the provider (idempotent) and drops the
 // local row, publishing dns.tunnel_changed (deleted).
 func (s *Service) DeleteTunnel(ctx context.Context, tunnelID string) error {
+	if err := s.require(ctx, permissions.DNSDelete); err != nil {
+		return err
+	}
 	if strings.TrimSpace(tunnelID) == "" {
 		return fmt.Errorf("%w: tunnel id is required", apperrs.ErrInvalid)
 	}
@@ -265,6 +288,9 @@ func cloudflaredCommand() []string {
 
 // TunnelStatus asks the provider for the tunnel's live connector state ("healthy" once cloudflared is connected).
 func (s *Service) TunnelStatus(ctx context.Context, tunnelID string) (*Tunnel, error) {
+	if err := s.require(ctx, permissions.DNSRead); err != nil {
+		return nil, err
+	}
 	if strings.TrimSpace(tunnelID) == "" {
 		return nil, fmt.Errorf("%w: tunnel id is required", apperrs.ErrInvalid)
 	}
@@ -287,6 +313,9 @@ func (s *Service) TunnelStatus(ctx context.Context, tunnelID string) (*Tunnel, e
 
 // ProvisionTunnelAgent provisions the cloudflared service, feeding it the token, and records the service id.
 func (s *Service) ProvisionTunnelAgent(ctx context.Context, tunnelID string, spec AgentSpec) (*AgentProvisioned, error) {
+	if err := s.require(ctx, permissions.DNSWrite); err != nil {
+		return nil, err
+	}
 	if strings.TrimSpace(tunnelID) == "" {
 		return nil, fmt.Errorf("%w: tunnel id is required", apperrs.ErrInvalid)
 	}
@@ -342,6 +371,9 @@ func (s *Service) ProvisionTunnelAgent(ctx context.Context, tunnelID string, spe
 // ProvisionReverseProxy deploys the machine's proxy gateway for the DNS page, routing the stored instance URL's host
 // to this server when one is set; spec supplies only the machine and network.
 func (s *Service) ProvisionReverseProxy(ctx context.Context, spec AgentSpec) (*AgentProvisioned, error) {
+	if err := s.require(ctx, permissions.DNSWrite); err != nil {
+		return nil, err
+	}
 	domain := ""
 	if u, err := s.instanceURL(ctx); err == nil && u != "" {
 		if host, err := hostFromURL(u); err == nil {

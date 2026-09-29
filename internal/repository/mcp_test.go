@@ -13,7 +13,7 @@ import (
 
 func callTool(t *testing.T, s *fakeScanner, name, args string) (any, error) {
 	t.Helper()
-	for _, tool := range MCPTools(s, s) {
+	for _, tool := range MCPTools(s, s, nil) {
 		if tool.Name == name {
 			return tool.Call(t.Context(), json.RawMessage(args))
 		}
@@ -24,7 +24,7 @@ func callTool(t *testing.T, s *fakeScanner, name, args string) (any, error) {
 
 func TestMCPTools_Surface(t *testing.T) {
 	var names []string
-	for _, tool := range MCPTools(&fakeScanner{}, &fakeScanner{}) {
+	for _, tool := range MCPTools(&fakeScanner{}, &fakeScanner{}, nil) {
 		names = append(names, tool.Name)
 		assert.NotEmpty(t, tool.Title, tool.Name)
 		assert.NotEmpty(t, tool.Description, tool.Name)

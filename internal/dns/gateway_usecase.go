@@ -12,10 +12,14 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 // CreateGateway provisions a gateway's backing service, publishing gateway_changed; one gateway per network.
 func (s *Service) CreateGateway(ctx context.Context, in CreateGatewayInput) (*Gateway, error) {
+	if err := s.require(ctx, permissions.DNSWrite); err != nil {
+		return nil, err
+	}
 	if err := in.Validate(); err != nil {
 		return nil, err
 	}
@@ -79,6 +83,9 @@ func (s *Service) CreateGateway(ctx context.Context, in CreateGatewayInput) (*Ga
 
 // ListGateways returns every locally-tracked gateway, oldest first.
 func (s *Service) ListGateways(ctx context.Context) ([]*Gateway, error) {
+	if err := s.require(ctx, permissions.DNSRead); err != nil {
+		return nil, err
+	}
 	gws, err := s.repo.ListGateways(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list gateways: %w", err)
@@ -88,6 +95,9 @@ func (s *Service) ListGateways(ctx context.Context) ([]*Gateway, error) {
 
 // GetGateway returns one locally-tracked gateway.
 func (s *Service) GetGateway(ctx context.Context, gatewayID string) (*Gateway, error) {
+	if err := s.require(ctx, permissions.DNSRead); err != nil {
+		return nil, err
+	}
 	if strings.TrimSpace(gatewayID) == "" {
 		return nil, fmt.Errorf("%w: gateway id is required", apperrs.ErrInvalid)
 	}
@@ -136,6 +146,9 @@ func (s *Service) GatewayForNetwork(ctx context.Context, dockerNetwork string) (
 
 // DeleteGateway deprovisions the backing service and drops the row; refuses a gateway that still has exposures.
 func (s *Service) DeleteGateway(ctx context.Context, gatewayID string) error {
+	if err := s.require(ctx, permissions.DNSDelete); err != nil {
+		return err
+	}
 	if strings.TrimSpace(gatewayID) == "" {
 		return fmt.Errorf("%w: gateway id is required", apperrs.ErrInvalid)
 	}
@@ -174,6 +187,9 @@ func (s *Service) gatewayEvent(ev GatewayChangedEvent) eventbus.OutboxEvent {
 // ProvisionInstanceProxy deploys the machine's one proxy gateway (reusing it when the machine has one) with Let's
 // Encrypt and a route for the domain to this Nexul server; a retry redeploys the same stack.
 func (s *Service) ProvisionInstanceProxy(ctx context.Context, in InstanceProxyInput) (*Gateway, error) {
+	if err := s.require(ctx, permissions.DNSWrite); err != nil {
+		return nil, err
+	}
 	in, err := in.normalize()
 	if err != nil {
 		return nil, err
@@ -290,6 +306,9 @@ const resolveTimeout = 5 * time.Second
 
 // ResolveHost returns the sorted addresses host resolves to right now; a name that does not resolve yet is empty, not an error.
 func (s *Service) ResolveHost(ctx context.Context, host string) ([]string, error) {
+	if err := s.require(ctx, permissions.DNSRead); err != nil {
+		return nil, err
+	}
 	domain, err := normalizeDomain(host)
 	if err != nil {
 		return nil, err

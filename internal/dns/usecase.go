@@ -14,6 +14,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/freshdns"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 // SettingsReader is the consumer-side view of the instance settings dns needs for the wizard hook (ADR 0017).
@@ -89,6 +90,7 @@ type Service struct {
 	placement   InstancePlacement
 	resolver    HostResolver
 	httpc       *http.Client
+	gate        Gate
 	now         func() time.Time
 }
 
@@ -131,9 +133,29 @@ func NewService(cfg Config) *Service {
 // CreateExposure only records the join in gateways.networks and leaves the runner side to the next deploy.
 func (s *Service) SetRunnerJoin(j RunnerJoiner) { s.runnerJoin = j }
 
+// Gate is the permission check DNS passes through; zones, gateways, and exposures belong to the instance, so a
+// caller needs the action in any workspace they belong to (ADR 0087).
+type Gate interface {
+	RequireAnywhere(ctx context.Context, action permissions.Action) error
+}
+
+// SetGate wires the permission check; unset, only the server's own calls pass. The seams other domains call
+// (computer tunnels, gateway lookups, a stack's exposures on teardown) stay unchecked: their caller checks its own.
+func (s *Service) SetGate(g Gate) { s.gate = g }
+
+func (s *Service) require(ctx context.Context, action permissions.Action) error {
+	if s.gate == nil {
+		return permissions.Ungated(ctx)
+	}
+	return s.gate.RequireAnywhere(ctx, action)
+}
+
 // VerifyCredentials checks the current credentials against the provider,
 // surfacing bad tokens as fatal.
 func (s *Service) VerifyCredentials(ctx context.Context) error {
+	if err := s.require(ctx, permissions.DNSRead); err != nil {
+		return err
+	}
 	p, err := s.providerFor(ctx)
 	if err != nil {
 		return err
@@ -146,6 +168,9 @@ func (s *Service) VerifyCredentials(ctx context.Context) error {
 
 // ListZones returns the zones the connected credentials can edit.
 func (s *Service) ListZones(ctx context.Context) ([]Zone, error) {
+	if err := s.require(ctx, permissions.DNSRead); err != nil {
+		return nil, err
+	}
 	p, err := s.providerFor(ctx)
 	if err != nil {
 		return nil, err
@@ -159,6 +184,9 @@ func (s *Service) ListZones(ctx context.Context) ([]Zone, error) {
 
 // ListRecords returns the records in a zone.
 func (s *Service) ListRecords(ctx context.Context, zoneID string) ([]Record, error) {
+	if err := s.require(ctx, permissions.DNSRead); err != nil {
+		return nil, err
+	}
 	if strings.TrimSpace(zoneID) == "" {
 		return nil, fmt.Errorf("%w: zone id is required", apperrs.ErrInvalid)
 	}
@@ -175,6 +203,9 @@ func (s *Service) ListRecords(ctx context.Context, zoneID string) ([]Record, err
 
 // CreateRecord creates a record at the provider and publishes dns.record_changed.
 func (s *Service) CreateRecord(ctx context.Context, zoneID string, in RecordInput) (*Record, error) {
+	if err := s.require(ctx, permissions.DNSWrite); err != nil {
+		return nil, err
+	}
 	if err := in.Validate(); err != nil {
 		return nil, err
 	}
@@ -197,6 +228,9 @@ func (s *Service) CreateRecord(ctx context.Context, zoneID string, in RecordInpu
 
 // UpdateRecord replaces a record's content at the provider.
 func (s *Service) UpdateRecord(ctx context.Context, zoneID, recordID string, in RecordInput) (*Record, error) {
+	if err := s.require(ctx, permissions.DNSWrite); err != nil {
+		return nil, err
+	}
 	if err := in.Validate(); err != nil {
 		return nil, err
 	}
@@ -219,6 +253,9 @@ func (s *Service) UpdateRecord(ctx context.Context, zoneID, recordID string, in 
 
 // DeleteRecord removes a record at the provider (idempotent).
 func (s *Service) DeleteRecord(ctx context.Context, zoneID, recordID string) error {
+	if err := s.require(ctx, permissions.DNSDelete); err != nil {
+		return err
+	}
 	if strings.TrimSpace(zoneID) == "" || strings.TrimSpace(recordID) == "" {
 		return fmt.Errorf("%w: zone id and record id are required", apperrs.ErrInvalid)
 	}
@@ -235,6 +272,9 @@ func (s *Service) DeleteRecord(ctx context.Context, zoneID, recordID string) err
 
 // GetRecord returns one of a zone's records; an id the zone does not hold is ErrNotFound.
 func (s *Service) GetRecord(ctx context.Context, zoneID, recordID string) (*Record, error) {
+	if err := s.require(ctx, permissions.DNSRead); err != nil {
+		return nil, err
+	}
 	records, err := s.ListRecords(ctx, zoneID)
 	if err != nil {
 		return nil, err
@@ -249,6 +289,9 @@ func (s *Service) GetRecord(ctx context.Context, zoneID, recordID string) (*Reco
 
 // CheckRecordPropagation verifies one of a zone's records has propagated to public DNS.
 func (s *Service) CheckRecordPropagation(ctx context.Context, zoneID, recordID string) error {
+	if err := s.require(ctx, permissions.DNSRead); err != nil {
+		return err
+	}
 	rec, err := s.GetRecord(ctx, zoneID, recordID)
 	if err != nil {
 		return err
@@ -258,6 +301,9 @@ func (s *Service) CheckRecordPropagation(ctx context.Context, zoneID, recordID s
 
 // CheckPropagation verifies a record has propagated to public DNS.
 func (s *Service) CheckPropagation(ctx context.Context, zoneID string, rec Record) error {
+	if err := s.require(ctx, permissions.DNSRead); err != nil {
+		return err
+	}
 	if strings.TrimSpace(zoneID) == "" || rec.ID == "" {
 		return fmt.Errorf("%w: zone id and record are required", apperrs.ErrInvalid)
 	}
@@ -273,6 +319,9 @@ func (s *Service) CheckPropagation(ctx context.Context, zoneID string, rec Recor
 
 // CreateInstanceRecord creates the record from the saved URL; host/zone mismatch surfaces, never guessed.
 func (s *Service) CreateInstanceRecord(ctx context.Context, zoneID, zone string, recType RecordType, target string) (*Record, error) {
+	if err := s.require(ctx, permissions.DNSWrite); err != nil {
+		return nil, err
+	}
 	if strings.TrimSpace(zoneID) == "" || strings.TrimSpace(zone) == "" {
 		return nil, fmt.Errorf("%w: zone is required", apperrs.ErrInvalid)
 	}
@@ -296,6 +345,9 @@ func (s *Service) CreateInstanceRecord(ctx context.Context, zoneID, zone string,
 
 // SetServiceHostname associates a hostname with a service, creating the provider record in one transaction.
 func (s *Service) SetServiceHostname(ctx context.Context, in ServiceHostnameInput) (*ServiceHostname, error) {
+	if err := s.require(ctx, permissions.DNSWrite); err != nil {
+		return nil, err
+	}
 	if err := in.Validate(); err != nil {
 		return nil, err
 	}
@@ -334,6 +386,9 @@ func (s *Service) SetServiceHostname(ctx context.Context, in ServiceHostnameInpu
 
 // GetServiceHostname returns one service's hostname association.
 func (s *Service) GetServiceHostname(ctx context.Context, service string) (*ServiceHostname, error) {
+	if err := s.require(ctx, permissions.DNSRead); err != nil {
+		return nil, err
+	}
 	if strings.TrimSpace(service) == "" {
 		return nil, fmt.Errorf("%w: service is required", apperrs.ErrInvalid)
 	}
@@ -346,6 +401,9 @@ func (s *Service) GetServiceHostname(ctx context.Context, service string) (*Serv
 
 // ListServiceHostnames returns every hostname association, oldest first.
 func (s *Service) ListServiceHostnames(ctx context.Context) ([]*ServiceHostname, error) {
+	if err := s.require(ctx, permissions.DNSRead); err != nil {
+		return nil, err
+	}
 	shs, err := s.repo.ListServiceHostnames(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list service hostnames: %w", err)
@@ -355,6 +413,9 @@ func (s *Service) ListServiceHostnames(ctx context.Context) ([]*ServiceHostname,
 
 // RemoveServiceHostname deletes the provider record and the local association.
 func (s *Service) RemoveServiceHostname(ctx context.Context, service string) error {
+	if err := s.require(ctx, permissions.DNSDelete); err != nil {
+		return err
+	}
 	if strings.TrimSpace(service) == "" {
 		return fmt.Errorf("%w: service is required", apperrs.ErrInvalid)
 	}

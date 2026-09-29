@@ -5,6 +5,8 @@ import (
 
 	"github.com/otal-labs/nexul/internal/access"
 	"github.com/otal-labs/nexul/internal/auth"
+	"github.com/otal-labs/nexul/internal/platform/identity"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
 	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/tenancy"
@@ -130,4 +132,34 @@ func (a workspaceTicketProjects) ProjectOfTicket(ctx context.Context, ticketID s
 		return "", err
 	}
 	return t.ProjectID, nil
+}
+
+// projectEntityGate resolves a repository or a ticket to its project from storage, then asks access for the action
+// in that project's workspace; a repository no project links, or an unknown ticket, is not found.
+type projectEntityGate struct {
+	access   *access.Service
+	projects *storage.ProjectsRepo
+	tickets  *storage.TicketsRepo
+}
+
+func (g projectEntityGate) RequireRepo(ctx context.Context, owner, name string, action permissions.Action) error {
+	if identity.Internal(ctx) {
+		return nil
+	}
+	ref, err := g.projects.GetRepoByFullName(ctx, owner, name)
+	if err != nil {
+		return err
+	}
+	return g.access.RequireProject(ctx, ref.ProjectID, action)
+}
+
+func (g projectEntityGate) RequireTicket(ctx context.Context, ticketID string, action permissions.Action) error {
+	if identity.Internal(ctx) {
+		return nil
+	}
+	t, err := g.tickets.GetByID(ctx, ticketID)
+	if err != nil {
+		return err
+	}
+	return g.access.RequireProject(ctx, t.ProjectID, action)
 }

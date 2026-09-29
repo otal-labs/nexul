@@ -7,11 +7,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { StackPage } from "@/pages/StackPage";
 
-const access = vi.hoisted(() => ({ areas: ["projects", "topology", "newProject"] as string[] }));
+const access = vi.hoisted(() => ({ areas: ["projects", "topology", "newProject", "dns"] as string[] }));
 vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
 
 beforeEach(() => {
-  access.areas = ["projects", "topology", "newProject"];
+  access.areas = ["projects", "topology", "newProject", "dns"];
 });
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), patch: vi.fn(), _delete: vi.fn() }));
@@ -163,6 +163,15 @@ describe("StackPage", () => {
     await screen.findByRole("heading", { name: "api" });
     expect(screen.queryByRole("link", { name: "Branch deploys" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Deploy" })).toBeInTheDocument();
+  });
+
+  it("hides the exposures section, and skips reading exposures, for a viewer who cannot read DNS", async () => {
+    access.areas = ["projects", "topology"];
+    renderPage("/stacks/stack-1/exposures");
+    await screen.findByRole("heading", { name: "api" });
+    expect(screen.queryByRole("link", { name: "Exposures" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Deploy" })).toBeInTheDocument();
+    expect(mocks.get).not.toHaveBeenCalledWith("/api/dns/exposures");
   });
 
   it("renders the services table from the stack's containers", async () => {

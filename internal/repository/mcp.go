@@ -10,8 +10,8 @@ import (
 )
 
 // MCPTools returns the repository tools: the project wizard's first two steps, list and scan.
-func MCPTools(s Scanner, l InstallationLister) []mcptool.Tool {
-	return []mcptool.Tool{repositoryListTool(s, l), repositoryScanTool(s)}
+func MCPTools(s Scanner, l InstallationLister, g Gate) []mcptool.Tool {
+	return []mcptool.Tool{repositoryListTool(s, l, g), repositoryScanTool(s, g)}
 }
 
 type repositoryListIn struct {
@@ -25,7 +25,7 @@ type repositoryListOut struct {
 	Installations []Installation `json:"installations"`
 }
 
-func repositoryListTool(s Scanner, l InstallationLister) mcptool.Tool {
+func repositoryListTool(s Scanner, l InstallationLister, g Gate) mcptool.Tool {
 	return mcptool.New("repository_list", "List repositories",
 		"Lists the repositories the connected git provider installation can read, with owner, name, and default "+
 			"branch. Use it to pick a repository for repository_scan or pull_request_list. Returns at most 100 per page. "+
@@ -35,7 +35,7 @@ func repositoryListTool(s Scanner, l InstallationLister) mcptool.Tool {
 			"repositories, and the GitHub page where its access is managed.",
 		mcptool.Hints{ReadOnly: true},
 		func(ctx context.Context, in repositoryListIn) (any, error) {
-			repos, err := ListRepos(ctx, s)
+			repos, err := ListRepos(ctx, g, s)
 			if err != nil {
 				return nil, err
 			}
@@ -43,7 +43,7 @@ func repositoryListTool(s Scanner, l InstallationLister) mcptool.Tool {
 			if !in.Installations {
 				return page, nil
 			}
-			installs, err := ListInstallations(ctx, l)
+			installs, err := ListInstallations(ctx, g, l)
 			if err != nil {
 				return nil, err
 			}
@@ -57,7 +57,7 @@ type repositoryScanIn struct {
 	Ref   string `json:"ref,omitempty" jsonschema:"The branch, tag, or commit to scan, for example main. Defaults to the repository's default branch."`
 }
 
-func repositoryScanTool(s Scanner) mcptool.Tool {
+func repositoryScanTool(s Scanner, g Gate) mcptool.Tool {
 	return mcptool.New("repository_scan", "Scan repository",
 		"Reads a repository's file tree and proposes deployable candidates: one per compose file and one per "+
 			"standalone Dockerfile, each with its services, ports, and env keys, plus the env keys of any "+
@@ -65,7 +65,7 @@ func repositoryScanTool(s Scanner) mcptool.Tool {
 			"provider only; nothing is created.",
 		mcptool.Hints{ReadOnly: true},
 		func(ctx context.Context, in repositoryScanIn) (any, error) {
-			out, err := Scan(ctx, s, in.Owner, in.Repo, in.Ref)
+			out, err := Scan(ctx, g, s, in.Owner, in.Repo, in.Ref)
 			if errors.Is(err, apperrors.ErrNotFound) {
 				return nil, fmt.Errorf("%w; repository_list lists the repositories Nexul can read", err)
 			}

@@ -316,13 +316,13 @@ func (g memoriesAttachmentsGate) CopyOwnerWithIDs(ctx context.Context, fromMemor
 	return g.svc.CopyAttachmentsWithIDs(ctx, attachments.Owner{MemoryID: fromMemoryID}, attachments.Owner{MemoryID: toMemoryID}, idMap)
 }
 
-// memoriesMembershipGate adapts tenancy's raw membership store to memories' WorkspaceMembership seam
-// (ADR 0017), for Clone's destination-workspace check.
-type memoriesMembershipGate struct {
+// membershipGate adapts tenancy's raw membership store to the membership seams of memories (Clone's destination
+// workspace) and chat (a DM's participants), ADR 0017.
+type membershipGate struct {
 	members *storage.WorkspaceMembersRepo
 }
 
-func (g memoriesMembershipGate) IsMember(ctx context.Context, userID, workspaceID string) (bool, error) {
+func (g membershipGate) IsMember(ctx context.Context, userID, workspaceID string) (bool, error) {
 	_, err := g.members.RoleIDFor(ctx, workspaceID, userID)
 	if err != nil {
 		if errors.Is(err, apperrs.ErrNotFound) {

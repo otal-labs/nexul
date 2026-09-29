@@ -22,10 +22,10 @@ services:
 const rootDockerfile = "FROM go\nEXPOSE 3000\n"
 
 func TestScan_RequiresOwnerAndName(t *testing.T) {
-	_, err := Scan(context.Background(), &fakeScanner{}, "", "app", "")
+	_, err := Scan(context.Background(), nil, &fakeScanner{}, "", "app", "")
 	assert.ErrorIs(t, err, apperrors.ErrInvalid)
 
-	_, err = Scan(context.Background(), &fakeScanner{}, "acme", "", "")
+	_, err = Scan(context.Background(), nil, &fakeScanner{}, "acme", "", "")
 	assert.ErrorIs(t, err, apperrors.ErrInvalid)
 }
 
@@ -38,7 +38,7 @@ func TestScan_NoCandidates(t *testing.T) {
 			{Path: "src/main.go", Type: "blob"},
 		},
 	}
-	result, err := Scan(context.Background(), s, "acme", "app", "")
+	result, err := Scan(context.Background(), nil, s, "acme", "app", "")
 	require.NoError(t, err)
 	assert.Equal(t, "main", result.DefaultBranch)
 	assert.Empty(t, result.Candidates)
@@ -52,7 +52,7 @@ func TestScan_EmptyListsAreNeverNil(t *testing.T) {
 		tree:        []TreeEntry{{Path: "Dockerfile", Type: "blob"}},
 		files:       map[string][]byte{"Dockerfile": []byte("FROM go\n")},
 	}
-	result, err := Scan(context.Background(), s, "acme", "app", "")
+	result, err := Scan(context.Background(), nil, s, "acme", "app", "")
 	require.NoError(t, err)
 	require.Len(t, result.Candidates, 1)
 	svc := result.Candidates[0].Services[0]
@@ -74,7 +74,7 @@ func TestScan_ComposeSortsBeforeDockerfile(t *testing.T) {
 			"Dockerfile":         []byte(rootDockerfile),
 		},
 	}
-	result, err := Scan(context.Background(), s, "acme", "app", "")
+	result, err := Scan(context.Background(), nil, s, "acme", "app", "")
 	require.NoError(t, err)
 	require.Len(t, result.Candidates, 2)
 	assert.Equal(t, KindCompose, result.Candidates[0].Kind)
@@ -99,7 +99,7 @@ func TestScan_SkipsVendorNodeModulesAndGit(t *testing.T) {
 			{Path: ".git/hooks/Dockerfile", Type: "blob"},
 		},
 	}
-	result, err := Scan(context.Background(), s, "acme", "app", "")
+	result, err := Scan(context.Background(), nil, s, "acme", "app", "")
 	require.NoError(t, err)
 	assert.Empty(t, result.Candidates)
 }
@@ -114,7 +114,7 @@ func TestScan_NestedComposeNameIncludesDirectory(t *testing.T) {
 			"services/web/docker-compose.yml": []byte(rootCompose),
 		},
 	}
-	result, err := Scan(context.Background(), s, "acme", "app", "")
+	result, err := Scan(context.Background(), nil, s, "acme", "app", "")
 	require.NoError(t, err)
 	require.Len(t, result.Candidates, 1)
 	assert.Equal(t, "app/services/web", result.Candidates[0].Name)
@@ -132,7 +132,7 @@ func TestScan_EnvKeysMergedAndDedupedAcrossFiles(t *testing.T) {
 			"api/.env.sample": []byte("SHARED=2\nBAZ=qux\n"),
 		},
 	}
-	result, err := Scan(context.Background(), s, "acme", "app", "")
+	result, err := Scan(context.Background(), nil, s, "acme", "app", "")
 	require.NoError(t, err)
 	assert.Equal(t, []string{"FOO", "SHARED", "BAZ"}, result.EnvKeys)
 }
@@ -149,7 +149,7 @@ func TestScan_MultipleComposeFilesAreAllCandidates(t *testing.T) {
 			"backend/compose.prod.yaml": []byte(rootCompose),
 		},
 	}
-	result, err := Scan(context.Background(), s, "acme", "app", "")
+	result, err := Scan(context.Background(), nil, s, "acme", "app", "")
 	require.NoError(t, err)
 	require.Len(t, result.Candidates, 2)
 	assert.Equal(t, "backend/compose.prod.yaml", result.Candidates[0].Path)
@@ -158,7 +158,7 @@ func TestScan_MultipleComposeFilesAreAllCandidates(t *testing.T) {
 
 func TestScan_GetTreeErrorPropagates(t *testing.T) {
 	s := &fakeScanner{treeErr: apperrors.ErrNotFound}
-	_, err := Scan(context.Background(), s, "acme", "app", "")
+	_, err := Scan(context.Background(), nil, s, "acme", "app", "")
 	assert.ErrorIs(t, err, apperrors.ErrNotFound)
 }
 
@@ -168,7 +168,7 @@ func TestScan_GetFileErrorPropagates(t *testing.T) {
 		tree:        []TreeEntry{{Path: "docker-compose.yml", Type: "blob"}},
 		fileErr:     errors.New("boom"),
 	}
-	_, err := Scan(context.Background(), s, "acme", "app", "")
+	_, err := Scan(context.Background(), nil, s, "acme", "app", "")
 	require.Error(t, err)
 }
 
@@ -178,7 +178,7 @@ func TestScan_InvalidComposeYAMLIsNotACandidate(t *testing.T) {
 		tree:        []TreeEntry{{Path: "docker-compose.yml", Type: "blob"}},
 		files:       map[string][]byte{"docker-compose.yml": []byte("services: [this is not")},
 	}
-	result, err := Scan(context.Background(), s, "acme", "app", "")
+	result, err := Scan(context.Background(), nil, s, "acme", "app", "")
 	require.NoError(t, err)
 	assert.Empty(t, result.Candidates)
 }
@@ -186,13 +186,13 @@ func TestScan_InvalidComposeYAMLIsNotACandidate(t *testing.T) {
 func TestListRepos(t *testing.T) {
 	t.Run("returns the scanner's repos", func(t *testing.T) {
 		s := &fakeScanner{repos: []Repo{{Owner: "acme", Name: "app"}}}
-		repos, err := ListRepos(context.Background(), s)
+		repos, err := ListRepos(context.Background(), nil, s)
 		require.NoError(t, err)
 		assert.Equal(t, []Repo{{Owner: "acme", Name: "app"}}, repos)
 	})
 	t.Run("propagates the scanner's error", func(t *testing.T) {
 		s := &fakeScanner{listErr: apperrors.ErrUnauthorized}
-		_, err := ListRepos(context.Background(), s)
+		_, err := ListRepos(context.Background(), nil, s)
 		assert.ErrorIs(t, err, apperrors.ErrUnauthorized)
 	})
 }
@@ -209,7 +209,7 @@ func TestScan_SkipsUnparsableComposeFile(t *testing.T) {
 			"docker-compose.yml":        []byte(rootCompose),
 		},
 	}
-	result, err := Scan(context.Background(), s, "acme", "app", "")
+	result, err := Scan(context.Background(), nil, s, "acme", "app", "")
 	require.NoError(t, err)
 	require.Len(t, result.Candidates, 1)
 	assert.Equal(t, "docker-compose.yml", result.Candidates[0].Path)

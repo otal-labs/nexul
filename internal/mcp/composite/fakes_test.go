@@ -140,7 +140,9 @@ func newFixture(t *testing.T) fixture {
 	ts.SetTesting(tickets.Testing{Targets: testTargets{w}})
 	ws := workspace.NewService(projectRepo{w: w}, categoryRepo{w: w}, typeRepo{w}, statusRepo{w}, ownerGate{w}, workspaceGate{})
 	ws.SetTicketProjects(ticketProjects{w})
-	return fixture{w: w, tickets: ts, projects: ws, reviews: codereview.NewService(reviewRepo{w: w})}
+	reviews := codereview.NewService(reviewRepo{w: w})
+	reviews.SetGate(allowGate{})
+	return fixture{w: w, tickets: ts, projects: ws, reviews: reviews}
 }
 
 func must(t *testing.T, err error) {
@@ -680,10 +682,14 @@ func (p ticketProjects) ProjectOfTicket(_ context.Context, ticketID string) (str
 	return t.ProjectID, nil
 }
 
-// allowGate lets every ticket call through; the ticket permission table is tested in the tickets package.
+// allowGate lets every ticket and review call through; the permission table is tested in server/cmd.
 type allowGate struct{}
 
 func (allowGate) RequireProject(context.Context, string, permissions.Action) error { return nil }
+
+func (allowGate) RequireRepo(context.Context, string, string, permissions.Action) error { return nil }
+
+func (allowGate) RequireTicket(context.Context, string, permissions.Action) error { return nil }
 
 func (g ownerGate) RequireProject(ctx context.Context, _ string, action permissions.Action) error {
 	return g.Require(ctx, "", action)

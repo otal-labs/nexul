@@ -14,6 +14,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/hostcred"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 const (
@@ -44,12 +45,25 @@ type HostsService struct {
 	instanceURL InstanceURLReader
 	enrollDir   string
 	conns       ConnectionRegistry
+	gate        Gate
 	now         func() time.Time
 }
 
 // NewHostsService wires the automations host use-cases; key signs the tokens workers dial in with.
 func NewHostsService(repo HostRepo, automations Repo, key []byte) *HostsService {
 	return &HostsService{repo: repo, automations: automations, key: key, now: time.Now}
+}
+
+// Gate is the permission check listing hosts passes; hosts belong to the instance, so a caller needs the action in
+// any workspace they belong to (ADR 0087).
+type Gate interface {
+	RequireAnywhere(ctx context.Context, action permissions.Action) error
+}
+
+// WithGate wires the permission check; unset, only the server's own calls pass.
+func (h *HostsService) WithGate(g Gate) *HostsService {
+	h.gate = g
+	return h
 }
 
 // WithAdminGate attaches the instance-admin fact enrolling and removing a host requires.
@@ -165,6 +179,9 @@ func (h *HostsService) Enroll(ctx context.Context, req HostEnrollRequest) (HostE
 
 // List returns every automations host with whether it polled recently.
 func (h *HostsService) List(ctx context.Context) ([]HostView, error) {
+	if err := h.requireRead(ctx); err != nil {
+		return nil, err
+	}
 	hosts, err := h.repo.ListHosts(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list automations hosts: %w", err)
@@ -178,6 +195,13 @@ func (h *HostsService) List(ctx context.Context) ([]HostView, error) {
 		})
 	}
 	return out, nil
+}
+
+func (h *HostsService) requireRead(ctx context.Context) error {
+	if h.gate == nil {
+		return permissions.Ungated(ctx)
+	}
+	return h.gate.RequireAnywhere(ctx, permissions.AutomationsRead)
 }
 
 // Remove revokes a host's credential and deletes it; its automations fall back to the instance host and their live

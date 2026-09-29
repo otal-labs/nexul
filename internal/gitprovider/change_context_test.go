@@ -51,7 +51,7 @@ func changeFixture() (*fakeProvider, *fakeChangeReader) {
 
 func TestGetChangeContext_FromAPRNumber_WalksTheChain(t *testing.T) {
 	p, r := changeFixture()
-	got, err := GetChangeContext(context.Background(), p, r, ChangeRef{Owner: "acme", Repo: "app", Number: 7})
+	got, err := GetChangeContext(context.Background(), nil, p, r, ChangeRef{Owner: "acme", Repo: "app", Number: 7})
 	require.NoError(t, err)
 	assert.Equal(t, 7, got.PR.Number)
 	require.Len(t, got.Tickets, 3)
@@ -63,7 +63,7 @@ func TestGetChangeContext_FromAPRNumber_WalksTheChain(t *testing.T) {
 
 func TestGetChangeContext_FromACommit_ResolvesItsPR(t *testing.T) {
 	p, r := changeFixture()
-	got, err := GetChangeContext(context.Background(), p, r, ChangeRef{Owner: "acme", Repo: "app", Commit: " abc123 "})
+	got, err := GetChangeContext(context.Background(), nil, p, r, ChangeRef{Owner: "acme", Repo: "app", Commit: " abc123 "})
 	require.NoError(t, err)
 	assert.Equal(t, 7, got.PR.Number)
 	assert.Equal(t, 7, r.askedNumber)
@@ -71,7 +71,7 @@ func TestGetChangeContext_FromACommit_ResolvesItsPR(t *testing.T) {
 
 func TestGetChangeContext_PRWithNoTickets_ReturnsEmptyLists(t *testing.T) {
 	p, _ := changeFixture()
-	got, err := GetChangeContext(context.Background(), p, &fakeChangeReader{}, ChangeRef{Owner: "acme", Repo: "app", Number: 7})
+	got, err := GetChangeContext(context.Background(), nil, p, &fakeChangeReader{}, ChangeRef{Owner: "acme", Repo: "app", Number: 7})
 	require.NoError(t, err)
 	assert.NotNil(t, got.Tickets)
 	assert.Empty(t, got.Tickets)
@@ -99,7 +99,7 @@ func TestGetChangeContext_Errors(t *testing.T) {
 			if tt.arrange != nil {
 				tt.arrange(p, r)
 			}
-			_, err := GetChangeContext(context.Background(), p, r, tt.ref)
+			_, err := GetChangeContext(context.Background(), nil, p, r, tt.ref)
 			require.Error(t, err)
 			if tt.want != nil {
 				assert.ErrorIs(t, err, tt.want)
@@ -110,7 +110,7 @@ func TestGetChangeContext_Errors(t *testing.T) {
 
 func TestGitHandler_ChangeContext(t *testing.T) {
 	p, r := changeFixture()
-	h := NewHandler(p).WithChangeContext(r).Routes()
+	h := NewHandler(p, nil).WithChangeContext(r).Routes()
 
 	rec := serve(t, h, http.MethodGet, "/api/repos/acme/app/change-context?pr=7")
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
@@ -121,5 +121,5 @@ func TestGitHandler_ChangeContext(t *testing.T) {
 	assert.Equal(t, http.StatusOK, serve(t, h, http.MethodGet, "/api/repos/acme/app/change-context?commit=abc").Code)
 	assert.Equal(t, http.StatusBadRequest, serve(t, h, http.MethodGet, "/api/repos/acme/app/change-context?pr=x").Code)
 	assert.Equal(t, http.StatusBadRequest, serve(t, h, http.MethodGet, "/api/repos/acme/app/change-context").Code)
-	assert.Equal(t, http.StatusNotFound, serve(t, NewHandler(p).Routes(), http.MethodGet, "/api/repos/acme/app/change-context?pr=7").Code, "no reader wired, no route")
+	assert.Equal(t, http.StatusNotFound, serve(t, NewHandler(p, nil).Routes(), http.MethodGet, "/api/repos/acme/app/change-context?pr=7").Code, "no reader wired, no route")
 }

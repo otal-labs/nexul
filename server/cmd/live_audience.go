@@ -96,7 +96,7 @@ var liveRules = map[string]liveRule{
 
 	memories.TopicCreated: memoryFrame,
 	memories.TopicUpdated: memoryFrame,
-	memories.TopicDeleted: anywhere(permissions.MemoriesRead),
+	memories.TopicDeleted: memoryDeletedFrame,
 
 	chat.TopicConversationCreated: conversationFrame,
 	chat.TopicMessageCreated:      conversationFrame,
@@ -242,6 +242,14 @@ func memoryFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool 
 		} `json:"memory"`
 	}
 	return decode(raw, &p) && a.access.Require(ctx, p.Memory.WorkspaceID, permissions.MemoriesRead) == nil
+}
+
+// memoryDeletedFrame reads the workspace the memory lived in; a frame from before it carried one reaches nobody.
+func memoryDeletedFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
+	var p struct {
+		WorkspaceID string `json:"workspace_id"`
+	}
+	return decode(raw, &p) && a.access.Require(ctx, p.WorkspaceID, permissions.MemoriesRead) == nil
 }
 
 // conversationFrame covers every chat-shaped payload: a conversation, a message, or a bare conversation id.

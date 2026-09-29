@@ -13,12 +13,13 @@ import (
 // Handler adapts the gitprovider use-cases to the HTTP/JSON gateway (ADR 0019); the browser never talks to MCP directly.
 type Handler struct {
 	p  GitProvider
+	g  Gate
 	cc ChangeContextReader
 }
 
 // NewHandler wires the gitprovider REST gateway over the given provider.
-func NewHandler(p GitProvider) *Handler {
-	return &Handler{p: p}
+func NewHandler(p GitProvider, g Gate) *Handler {
+	return &Handler{p: p, g: g}
 }
 
 // WithChangeContext adds the change-context route, which walks a PR or commit back to its tickets and decisions.
@@ -40,7 +41,7 @@ func (h *Handler) Routes() http.Handler {
 }
 
 func (h *Handler) listPRs(w http.ResponseWriter, r *http.Request) {
-	prs, err := ListPRs(r.Context(), h.p, r.PathValue("owner"), r.PathValue("repo"), PROpts{
+	prs, err := ListPRs(r.Context(), h.g, h.p, r.PathValue("owner"), r.PathValue("repo"), PROpts{
 		State: cmp.Or(r.URL.Query().Get("state"), "open"),
 	})
 	if err != nil {
@@ -56,7 +57,7 @@ func (h *Handler) getPR(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, fmt.Errorf("%w: number must be a positive integer", apperrs.ErrInvalid))
 		return
 	}
-	pr, err := GetPR(r.Context(), h.p, r.PathValue("owner"), r.PathValue("repo"), number)
+	pr, err := GetPR(r.Context(), h.g, h.p, r.PathValue("owner"), r.PathValue("repo"), number)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -65,7 +66,7 @@ func (h *Handler) getPR(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) getRepo(w http.ResponseWriter, r *http.Request) {
-	repo, err := GetRepo(r.Context(), h.p, r.PathValue("owner"), r.PathValue("repo"))
+	repo, err := GetRepo(r.Context(), h.g, h.p, r.PathValue("owner"), r.PathValue("repo"))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -84,7 +85,7 @@ func (h *Handler) changeContext(w http.ResponseWriter, r *http.Request) {
 		}
 		ref.Number = number
 	}
-	out, err := GetChangeContext(r.Context(), h.p, h.cc, ref)
+	out, err := GetChangeContext(r.Context(), h.g, h.p, h.cc, ref)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

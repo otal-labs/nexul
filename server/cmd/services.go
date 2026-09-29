@@ -126,6 +126,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	topoSvc.SetGate(accessSvc)
 	deploySvc.SetGate(accessSvc)
 	reviewSvc := codereview.NewService(store.CodeReviews)
+	reviewSvc.SetGate(projectEntityGate{access: accessSvc, projects: store.Projects, tickets: store.Tickets})
 	automationsSvc := automations.NewService(store.Automations, automationPermissionGate{svc: accessSvc})
 	// DefaultDefinitions supplies the board pair's bundled default automation code.
 	automationVersionsSvc := automations.NewVersionsService(store.AutomationVersions, store.Automations, automationPermissionGate{svc: accessSvc})
@@ -163,6 +164,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		Store:          store.Connectors,
 		AppConfigStore: store.ConnectorAppConfig,
 		Owner:          instanceAdminGate{svc: authSvc},
+		Gate:           accessSvc,
 		Settings:       dnsSettingsAdapter{store.Settings},
 		Registry:       connectorsRegistry,
 	})
@@ -186,6 +188,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		InstanceOrigin: instanceOrigin(cfg.HTTPAddr),
 		Placement:      dnsInstancePlacement{runners: store.Runners, machines: store.Machines},
 	})
+	dnsSvc.SetGate(accessSvc)
 	dnsHandler := dns.NewHandler(dnsSvc)
 	// deploy needs dns, dns needs deploy's Containers/Provisioner, so neither builds the other in its constructor.
 	deploySvc.SetGatewayLookup(deployGatewayLookupAdapter{dns: dnsSvc})
@@ -233,7 +236,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	authSvc.SetPendingInviteResolver(pendingInviteResolverGate{svc: tenancySvc})
 	workspaceSvc := workspace.NewService(store.Projects, store.Categories, store.TicketTypes, store.Statuses, accessSvc, workspaceGate{svc: tenancySvc})
 	workspaceSvc.SetTicketProjects(workspaceTicketProjects{tickets: store.Tickets})
-	memoriesSvc := memories.NewService(store.Memories, memoriesPermissionGate{svc: accessSvc}, memoriesProjectLookup{projects: store.Projects}, memoriesAttachmentsGate{svc: attachmentsSvc}, memoriesMembershipGate{members: store.WorkspaceMembers})
+	memoriesSvc := memories.NewService(store.Memories, memoriesPermissionGate{svc: accessSvc}, memoriesProjectLookup{projects: store.Projects}, memoriesAttachmentsGate{svc: attachmentsSvc}, membershipGate{members: store.WorkspaceMembers})
 	// HasPermission's role-mask layer needs both roles and tenancy, wired only after the cycle above closes.
 	accessSvc.SetRoles(accessRoleResolver{tenancy: tenancySvc, roles: rolesSvc})
 	accessSvc.SetDocWorkspaces(accessDocWorkspaceResolver{docs: store.Docs, projects: store.Projects})
@@ -242,6 +245,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	// accessSvc.Can already matches chat.DocAccess's shape (ADR 0017 seam), so it wires in directly.
 	chatSvc.SetDocAccess(accessSvc)
 	chatSvc.SetGate(accessSvc)
+	chatSvc.SetMembership(membershipGate{members: store.WorkspaceMembers})
 	ticketsSvc.SetTesting(tickets.Testing{
 		Stages:  ticketStages{statuses: store.Statuses},
 		Threads: ticketThreads{chat: chatSvc, projects: store.Projects},
@@ -264,6 +268,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	// Its own key, derived from the auth secret, signs the tokens host workers dial in with.
 	automationHostsSvc := automations.NewHostsService(store.AutomationHosts, store.Automations, crypto.DeriveKey("nexul automations host token key:"+cfg.AuthSecret)).
 		WithAdminGate(instanceAdminGate{svc: authSvc}).
+		WithGate(accessSvc).
 		WithInstanceURL(dnsSettingsAdapter{store.Settings}).
 		WithEnrollDir(filepath.Join(filepath.Dir(cfg.DBPath), "enroll"))
 	automationsSvc.SetHosts(automationHostsSvc)

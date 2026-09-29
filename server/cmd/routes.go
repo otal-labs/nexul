@@ -82,9 +82,10 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	// One-release alias while the web moves off the old name.
 	mountGateway(apiMux, "/api/services", deployHandler)
 	mountGateway(apiMux, "/api/reviews", codereview.NewHandler(svc.reviewSvc).Routes())
+	repoGate := projectEntityGate{access: svc.accessSvc, projects: store.Projects, tickets: store.Tickets}
 	changeContext := changeContextReader{tickets: svc.ticketsSvc, docs: svc.docsSvc, workspace: svc.workspaceSvc, memories: svc.memoriesSvc}
-	mountGateway(apiMux, "/api/repos", gitprovider.NewHandler(svc.gitRouter).WithChangeContext(changeContext).Routes())
-	mountGateway(apiMux, "/api/repositories", repository.NewHandler(svc.repositoryScanner, svc.repositoryScanner).Routes())
+	mountGateway(apiMux, "/api/repos", gitprovider.NewHandler(svc.gitRouter, repoGate).WithChangeContext(changeContext).Routes())
+	mountGateway(apiMux, "/api/repositories", repository.NewHandler(svc.repositoryScanner, svc.repositoryScanner, svc.accessSvc).Routes())
 	mountGateway(apiMux, "/api/permissions", access.NewHandler(svc.accessSvc).Routes())
 	mountGateway(apiMux, "/api/mentions", mentions.NewHandler(svc.mentionsSvc).Routes())
 	mountGateway(apiMux, "/api/projects", withUserID(workspace.WithUserID)(workspace.NewHandler(svc.workspaceSvc).Routes()))
@@ -148,8 +149,10 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 		Notifications:           svc.notifSvc,
 		Git:                     svc.gitRouter,
 		ChangeContext:           changeContext,
+		GitGate:                 repoGate,
 		Repository:              svc.repositoryScanner,
 		RepositoryInstallations: svc.repositoryScanner,
+		RepositoryGate:          svc.accessSvc,
 		Runner:                  runnerSvc,
 		Hosts: map[string]composite.HostKind{
 			"runner":      runnerHostKind{svc: runnerSvc},
