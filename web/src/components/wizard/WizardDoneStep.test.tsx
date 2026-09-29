@@ -7,6 +7,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { WizardDoneStep } from "@/components/wizard/WizardDoneStep";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
 
+const access = vi.hoisted(() => ({ areas: ["stacks", "topology", "tickets"] as string[] }));
+vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
+
+beforeEach(() => {
+  access.areas = ["stacks", "topology", "tickets"];
+});
+
 const mocks = vi.hoisted(() => ({ get: vi.fn(), confirm: vi.fn() }));
 vi.mock("@/api/client", () => ({ api: { get: mocks.get }, errorMessage: vi.fn() }));
 vi.mock("@/hooks/useConfirmationDialog", () => ({ useConfirmationDialog: () => ({ open: mocks.confirm }) }));
@@ -84,5 +91,14 @@ describe("WizardDoneStep", () => {
     expect(await screen.findByText("canvas page")).toBeInTheDocument();
     expect(mocks.confirm).not.toHaveBeenCalled();
     expect(screen.queryByRole("button", { name: "Start the interview" })).not.toBeInTheDocument();
+  });
+
+  it("offers only the destinations the viewer can read", async () => {
+    access.areas = ["topology"];
+    useProjectWizardStore.getState().setStackId("s-1");
+    mockApi([{ id: "mem-i", project_id: "p-1", kind: "interview" }]);
+    renderStep();
+    expect(await screen.findByRole("button", { name: "View on the canvas" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "View stack" })).not.toBeInTheDocument();
   });
 });

@@ -43,17 +43,31 @@ const listItem = {
   updated_at: "2026-08-02T12:00:00Z",
 };
 
+// Answers the viewer's own role so the New doc button can be shown or hidden; everything else comes from `data`.
+const mockGet = (data: (url: string) => unknown, permissions: string[] = ["docs:write"]) =>
+  vi.mocked(api.get).mockImplementation(async (url: string) =>
+    url === "/api/workspaces/ws-1/me" ? { data: { role_name: "Member", permissions } } : { data: data(url) },
+  );
+
 beforeEach(() => {
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
 });
 
 describe("DocsPage", () => {
   it("renders docs from the gateway", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: [listItem] });
+    mockGet(() => [listItem]);
     renderPage();
     expect(await screen.findByText("Storage Spine")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "New doc" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "New doc" })).toBeInTheDocument();
+  });
+
+  it("hides New doc from a member without docs:write", async () => {
+    mockGet(() => [listItem], ["docs:read"]);
+    renderPage();
+    expect(await screen.findByText("Storage Spine")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "New doc" })).not.toBeInTheDocument();
   });
 
   it("points at the project wizard when the workspace has no project yet", async () => {
@@ -68,22 +82,16 @@ describe("DocsPage", () => {
   });
 
   it("shows the shared empty state when there are no docs", async () => {
-    vi.mocked(api.get).mockImplementation(async (url: string) => {
-      if (url.startsWith("/api/projects")) return { data: [{ id: "p-1", name: "Backend", position: 0, created_at: "", updated_at: "" }] };
-      return { data: [] };
-    });
+    mockGet((url) => (url.startsWith("/api/projects") ? [{ id: "p-1", name: "Backend", position: 0, created_at: "", updated_at: "" }] : []));
     renderPage();
     expect(await screen.findByText("No docs yet.")).toBeInTheDocument();
     // the create action stays available on an empty page (first doc UX)
-    expect(screen.getByRole("button", { name: "New doc" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "New doc" })).toBeInTheDocument();
   });
 
   it("creates a doc through the dialog", async () => {
     const user = userEvent.setup();
-    vi.mocked(api.get).mockImplementation(async (url: string) => {
-      if (url.startsWith("/api/projects")) return { data: [{ id: "p-1", name: "Backend", position: 0, created_at: "", updated_at: "" }] };
-      return { data: [listItem] };
-    });
+    mockGet((url) => (url.startsWith("/api/projects") ? [{ id: "p-1", name: "Backend", position: 0, created_at: "", updated_at: "" }] : [listItem]));
     vi.mocked(api.post).mockResolvedValue({
       data: {
         id: "doc-1",
@@ -112,7 +120,7 @@ describe("DocsPage", () => {
 
   it("opens the permissions dialog for selected docs", async () => {
     const user = userEvent.setup();
-    vi.mocked(api.get).mockResolvedValue({ data: [listItem, { ...listItem, id: "doc-2", title: "Event Bus" }] });
+    mockGet(() => [listItem, { ...listItem, id: "doc-2", title: "Event Bus" }]);
     renderPage();
 
     await user.click(await screen.findByLabelText("Select Storage Spine"));

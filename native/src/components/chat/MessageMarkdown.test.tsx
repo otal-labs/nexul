@@ -9,6 +9,9 @@ jest.mock("@/stores/sessionStore", () => ({
   useSessionStore: { getState: () => ({ host: "https://nexul.example.com" }) },
 }));
 
+let mockCanReadTickets = true;
+jest.mock("@/hooks/WorkspaceHooks", () => ({ useAreaAccess: () => (area: string) => area === "tickets" && mockCanReadTickets }));
+
 // Stands in for the native view, which reports a tapped link as { url }; here the whole markdown is that one link.
 jest.mock("react-native-enriched-markdown", () => {
   const { Text } = jest.requireActual("react-native");
@@ -24,6 +27,7 @@ jest.mock("react-native-enriched-markdown", () => {
 const openURL = jest.spyOn(Linking, "openURL").mockResolvedValue(true);
 
 beforeEach(() => {
+  mockCanReadTickets = true;
   mockPush.mockReset();
   openURL.mockClear();
 });
@@ -54,5 +58,15 @@ test.each([
   await userEvent.press(screen.getByRole("link"));
 
   expect(openURL).toHaveBeenCalledWith(opened);
+  expect(mockPush).not.toHaveBeenCalled();
+});
+
+test("a ticket link opens in the browser, not the Board tab, without tickets:read", async () => {
+  mockCanReadTickets = false;
+  await render(<MessageMarkdown markdown="/tickets/t-9" />);
+
+  await userEvent.press(screen.getByRole("link"));
+
+  expect(openURL).toHaveBeenCalledWith("https://nexul.example.com/tickets/t-9");
   expect(mockPush).not.toHaveBeenCalled();
 });

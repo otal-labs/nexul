@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ProjectSettingsPage } from "@/pages/ProjectSettingsPage";
 import { api } from "@/api/client";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
@@ -48,6 +49,26 @@ beforeEach(() => {
 });
 
 describe("ProjectSettingsPage", () => {
+  const renderMissingProject = (permissions: string[]) => {
+    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions } };
+      return { data: [] };
+    });
+    renderPage("/projects/NOPE/settings");
+  };
+
+  it("offers the board from a missing project to a member who can read tickets", async () => {
+    renderMissingProject(["tickets:read"]);
+    expect(await screen.findByRole("link", { name: "Go to your board" })).toHaveAttribute("href", "/board");
+  });
+
+  it("does not offer the board from a missing project without tickets:read", async () => {
+    renderMissingProject(["projects:read"]);
+    expect(await screen.findByText("Project not found")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Go to your board" })).not.toBeInTheDocument();
+  });
+
   it("shows an error state", async () => {
     vi.mocked(api.get).mockRejectedValue(new Error("boom"));
     renderPage();

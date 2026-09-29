@@ -7,6 +7,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DeployPage } from "@/pages/DeployPage";
 
+const access = vi.hoisted(() => ({ areas: ["stacks"] as string[] }));
+vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
+
+beforeEach(() => {
+  access.areas = ["stacks"];
+});
+
 const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }));
 
 vi.mock("@/api/client", () => ({
@@ -180,5 +187,13 @@ describe("DeployPage", () => {
     mocks.get.mockRejectedValue(new Error("nope"));
     renderPage();
     expect(await screen.findByRole("alert")).toBeInTheDocument();
+  });
+
+  it("drops the back link to deploy history when the viewer can't read stacks", async () => {
+    access.areas = [];
+    mockApi(deploy({}), lines);
+    renderPage();
+    expect(await screen.findByRole("heading", { name: "api" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /back to deploy history/i })).not.toBeInTheDocument();
   });
 });

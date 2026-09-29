@@ -5,6 +5,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RunnersPanel } from "@/components/runner/RunnersPanel";
 
+const access = vi.hoisted(() => ({ areas: ["newProject"] as string[] }));
+vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
+
+beforeEach(() => {
+  access.areas = ["newProject"];
+});
+
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
   errorMessage: vi.fn(),
@@ -125,5 +132,18 @@ describe("RunnersPanel", () => {
     expect(await screen.findByRole("alert")).toBeInTheDocument();
     expect(screen.getByText("Failed to load runners")).toBeInTheDocument();
     expect(screen.getByText("boom")).toBeInTheDocument();
+  });
+
+  it("hides Import from this machine without projects:write", async () => {
+    access.areas = [];
+    mocks.get.mockImplementation((url: string) => {
+      if (url === "/api/runners") return Promise.resolve({ data: [onlineRunner] });
+      if (url === "/api/machines") return Promise.resolve({ data: [machine] });
+      return Promise.resolve({ data: [] });
+    });
+    renderPanel();
+    expect(await screen.findByRole("heading", { name: "prod" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /import from this machine/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /add a runner to this machine/i })).toBeInTheDocument();
   });
 });

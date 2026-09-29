@@ -10,11 +10,13 @@ import {
 } from "@/components/settings/ProjectSettingsNav";
 import { ProjectSettingsContent } from "@/components/settings/ProjectSettingsContent";
 import { Button } from "@/components/ui/button";
+import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFetchProject, useFetchProjects } from "@/hooks/ProjectHooks";
 import { resolveProject } from "@/models/Project";
 
 export const ProjectSettingsPage = () => {
   // The URL token is the project's prefix or (old links) its id, same resolution rule as the board route.
+  const canOpenBoard = useAreaAccess()?.("tickets") ?? false;
   const { projectId: routeParam = "", section: rawSection } = useParams();
   const { data: projects = [], isPending, error } = useFetchProjects();
   const resolved = resolveProject(projects, routeParam);
@@ -31,9 +33,11 @@ export const ProjectSettingsPage = () => {
         <EmptyState
           title="Project not found"
           action={
-            <Button asChild size="sm">
-              <Link to="/board">Go to your board</Link>
-            </Button>
+            canOpenBoard && (
+              <Button asChild size="sm">
+                <Link to="/board">Go to your board</Link>
+              </Button>
+            )
           }
         />
       )}

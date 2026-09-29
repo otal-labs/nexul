@@ -7,6 +7,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ProjectWizardImportPage } from "@/pages/ProjectWizardImportPage";
 import { pickOption } from "@/test/pickOption";
 
+const access = vi.hoisted(() => ({ areas: ["topology"] as string[] }));
+vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
+
+beforeEach(() => {
+  access.areas = ["topology"];
+});
+
 const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), errorMessage: vi.fn(() => "") }));
 
 vi.mock("@/api/client", () => ({
@@ -182,5 +189,24 @@ describe("ProjectWizardImportPage", () => {
       </QueryClientProvider>,
     );
     expect(await screen.findByRole("combobox", { name: "Machine" })).toHaveTextContent("prod");
+  });
+
+  it("does not link to the canvas after an import when the viewer can't read topology", async () => {
+    access.areas = [];
+    mocks.post.mockImplementation(async (url: string) => {
+      if (url === "/api/machines/m-1/discover") return { data: report };
+      return { data: { stacks: [{ id: "s-1", name: "myapp" }], gateways: [] } };
+    });
+    renderPage();
+    const user = userEvent.setup();
+
+    await pickOption(user, "Machine", "prod");
+    await user.click(screen.getByRole("button", { name: /discover/i }));
+    await screen.findByText("myapp");
+    await pickOption(user, "Project", "Backend");
+    await user.click(screen.getByRole("button", { name: /^import$/i }));
+
+    await screen.findByText(/imported 1 stack/i);
+    expect(screen.queryByRole("link", { name: /view on the canvas/i })).not.toBeInTheDocument();
   });
 });

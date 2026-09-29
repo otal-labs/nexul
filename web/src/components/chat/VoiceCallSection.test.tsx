@@ -7,6 +7,13 @@ import { VoiceCallSection } from "@/components/chat/VoiceCallSection";
 import type { Conversation } from "@/models/Chat";
 import { useVoiceCallStore, type VoiceCallStatus } from "@/stores/voiceCallStore";
 
+const access = vi.hoisted(() => ({ sections: ["connectors"] as string[] }));
+vi.mock("@/hooks/AccessHooks", () => ({ useCanOpenSection: (section: string) => access.sections.includes(section) }));
+
+beforeEach(() => {
+  access.sections = ["connectors"];
+});
+
 // The tile avatar lookup fetches the workspace's people via react-query; it is not what these tests
 // exercise, so it's stubbed to an unknown person instead of wiring a QueryClient.
 vi.mock("@/hooks/PeopleHooks", () => ({
@@ -91,5 +98,15 @@ describe("VoiceCallSection", () => {
     expect(screen.getByText("network unreachable")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Retry" }));
     expect(retry).toHaveBeenCalled();
+  });
+
+  it("keeps the Open Configuration link away from a viewer who can't open Connectors", () => {
+    access.sections = [];
+    stageCall("not_configured");
+    renderSection(true);
+
+    expect(screen.getByText(/needs a LiveKit connector/)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Open Configuration" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Dismiss" })).toBeInTheDocument();
   });
 });

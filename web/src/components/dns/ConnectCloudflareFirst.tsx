@@ -1,10 +1,12 @@
 import { useNavigate } from "react-router";
 
 import { Button } from "@/components/ui/button";
+import { useCanOpenSection } from "@/hooks/AccessHooks";
 
 // DNS needs the Cloudflare connector; the owner wizard's Connect step is the usual place, Settings is the fallback.
 export const ConnectCloudflareFirst = () => {
   const navigate = useNavigate();
+  const canConnect = useCanOpenSection("connectors");
 
   return (
     <div className="space-y-4">
@@ -15,9 +17,11 @@ export const ConnectCloudflareFirst = () => {
           token, then come back here.
         </p>
       </div>
-      <Button variant="outline" onClick={() => navigate("/configuration/connectors")}>
-        Go to Configuration
-      </Button>
+      {canConnect && (
+        <Button variant="outline" onClick={() => navigate("/configuration/connectors")}>
+          Go to Configuration
+        </Button>
+      )}
     </div>
   );
 };

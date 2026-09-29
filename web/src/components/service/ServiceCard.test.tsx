@@ -1,9 +1,16 @@
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ServiceCard } from "@/components/service/ServiceCard";
 import { DeployStatus, DeployStrategy, type ServiceDef } from "@/models/Service";
+
+const access = vi.hoisted(() => ({ areas: ["stacks"] as string[] }));
+vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
+
+beforeEach(() => {
+  access.areas = ["stacks"];
+});
 
 const baseService = (overrides: Partial<ServiceDef> = {}): ServiceDef => ({
   id: "svc-1",
@@ -57,5 +64,12 @@ describe("ServiceCard", () => {
       "href",
       "/services/svc-1",
     );
+  });
+
+  it("renders a plain row, not a link, when the viewer can't read stacks", () => {
+    access.areas = [];
+    renderCard(baseService());
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(screen.getByText("api")).toBeInTheDocument();
   });
 });

@@ -5,6 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DeployHistorySection } from "@/components/service/DeployHistorySection";
 import { DeployStatus, DeployStrategy, type Deploy } from "@/models/Stack";
 
+const access = vi.hoisted(() => ({ areas: ["deploys"] as string[] }));
+vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
+
 const deploys: Deploy[] = [
   {
     id: "d-1",

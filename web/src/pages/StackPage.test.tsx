@@ -7,6 +7,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { StackPage } from "@/pages/StackPage";
 
+const access = vi.hoisted(() => ({ areas: ["projects", "topology", "newProject"] as string[] }));
+vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
+
+beforeEach(() => {
+  access.areas = ["projects", "topology", "newProject"];
+});
+
 const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), patch: vi.fn(), _delete: vi.fn() }));
 
 vi.mock("@/api/client", () => ({
@@ -264,5 +271,18 @@ describe("StackPage", () => {
     expect(screen.getByText("last deploy 3h ago")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Deploy history" })).toBeInTheDocument();
     expect(screen.getByText("d-1")).toBeInTheDocument();
+  });
+
+  it("drops the back link and the attach-repository link for a viewer without those areas", async () => {
+    access.areas = [];
+    mocks.get.mockImplementation((url: string) => {
+      if (url === "/api/stacks/stack-1") return Promise.resolve({ data: { ...stack, managed: false } });
+      if (url === "/api/stacks/stack-1/services") return Promise.resolve({ data: [container] });
+      return Promise.resolve({ data: [] });
+    });
+    renderPage();
+    expect(await screen.findByRole("heading", { name: "api" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /back to project/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /attach repository/i })).not.toBeInTheDocument();
   });
 });

@@ -4,10 +4,12 @@ import { Container } from "@/components/Container";
 import { Logo } from "@/components/Logo";
 import { PlayTrailPreview } from "@/components/play/PlayTrailPreview";
 import { Button } from "@/components/ui/button";
+import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useSessionStore } from "@/stores/sessionStore";
 
 export const HomePage = () => {
   const isLoggedIn = useSessionStore((s) => s.isLoggedIn);
+  const can = useAreaAccess();
 
   return (
     <div className="blueprint-bg min-h-screen">
@@ -28,12 +30,16 @@ export const HomePage = () => {
         <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
           {isLoggedIn ? (
             <>
-              <Button asChild size="lg">
-                <Link to="/board">Open the board</Link>
-              </Button>
-              <Button asChild variant="outline" size="lg">
-                <Link to="/topology">View topology</Link>
-              </Button>
+              {can?.("tickets") && (
+                <Button asChild size="lg">
+                  <Link to="/board">Open the board</Link>
+                </Button>
+              )}
+              {can?.("topology") && (
+                <Button asChild variant="outline" size="lg">
+                  <Link to="/topology">View topology</Link>
+                </Button>
+              )}
             </>
           ) : (
             <>

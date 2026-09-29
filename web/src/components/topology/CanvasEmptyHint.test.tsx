@@ -1,8 +1,15 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CanvasEmptyHint } from "@/components/topology/CanvasEmptyHint";
+
+const access = vi.hoisted(() => ({ areas: ["newProject"] as string[] }));
+vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
+
+beforeEach(() => {
+  access.areas = ["newProject"];
+});
 
 const renderHint = (onAddNode: () => void) =>
   render(
@@ -24,5 +31,12 @@ describe("CanvasEmptyHint", () => {
     renderHint(onAddNode);
     fireEvent.click(screen.getByRole("button", { name: /add a node/i }));
     expect(onAddNode).toHaveBeenCalledTimes(1);
+  });
+
+  it("hides Add a service without projects:write and keeps Add a node", () => {
+    access.areas = [];
+    renderHint(() => {});
+    expect(screen.queryByRole("link", { name: /add a service/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /add a node/i })).toBeInTheDocument();
   });
 });

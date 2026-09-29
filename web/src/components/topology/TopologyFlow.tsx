@@ -25,6 +25,7 @@ import { RelationEdge as RelationEdgeView } from "@/components/topology/Relation
 import { RouteEdge as RouteEdgeView } from "@/components/topology/RouteEdge";
 import { ServiceNode as ServiceNodeView } from "@/components/topology/ServiceNode";
 import { TopologyPalette } from "@/components/topology/TopologyPalette";
+import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFetchTopology, useSaveTopology } from "@/hooks/TopologyHooks";
 import { useTopologyView } from "@/hooks/useTopologyView";
 import { NodeType, type ExternalNode, type NetworkNode, type RelationEdge, type TopologyNode } from "@/models/Topology";
@@ -42,6 +43,7 @@ const edgeTypes = { relation: RelationEdgeView, route: RouteEdgeView };
 // Needs the ReactFlowProvider mounted by TopologyCanvas.
 export const TopologyFlow = () => {
   const navigate = useNavigate();
+  const canOpenStack = useAreaAccess()?.("stacks") ?? false;
   const nodes = useFlowStore((s) => s.nodes);
   const storeViewport = useFlowStore((s) => s.setViewport);
   const selectedNodeId = useFlowStore((s) => s.selectedNodeId);
@@ -75,7 +77,7 @@ export const TopologyFlow = () => {
   // ran has none yet, so the click is a no-op rather than a broken link.
   const handleNodeClick: NodeMouseHandler<TopologyNode> = (_, node) => {
     if (node.type === NodeType.Service || node.type === "gateway") {
-      if (node.data.stackId) void navigate(`/stacks/${node.data.stackId}`);
+      if (node.data.stackId && canOpenStack) void navigate(`/stacks/${node.data.stackId}`);
       return;
     }
     if (node.type === NodeType.Network || node.type === NodeType.External) selectNode(node.id);

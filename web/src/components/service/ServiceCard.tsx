@@ -2,6 +2,7 @@ import { Link } from "react-router";
 
 import { DeployStatusBadge } from "@/components/service/DeployStatusBadge";
 import { HealthDot } from "@/components/service/HealthDot";
+import { useAreaAccess } from "@/hooks/AccessHooks";
 import type { DeployStatus as DeployStatusType, ServiceDef } from "@/models/Service";
 
 // Stagger the first screenful of rows in; the rest mounts together instantly (never stagger a long list).
@@ -22,19 +23,11 @@ const imageLine = (service: ServiceDef): string => {
 };
 
 // `status` degrades gracefully to no dot/badge until a per-service health query is wired up.
-export const ServiceCard = ({ service, status, index }: ServiceCardProps) => (
-  <li
-    className={
-      index !== undefined && index < STAGGER_LIMIT
-        ? "animate-in fade-in-0 slide-in-from-bottom-1 fill-mode-backwards duration-150 ease-out"
-        : undefined
-    }
-    style={index !== undefined && index < STAGGER_LIMIT ? { animationDelay: `${index * STAGGER_STEP_MS}ms` } : undefined}
-  >
-    <Link
-      to={`/services/${service.id}`}
-      className="flex items-center gap-3 px-4 py-3 transition-colors duration-[120ms] ease-standard hover:bg-accent/40"
-    >
+export const ServiceCard = ({ service, status, index }: ServiceCardProps) => {
+  const canOpen = useAreaAccess()?.("stacks") ?? false;
+  const rowClass = "flex items-center gap-3 px-4 py-3";
+  const row = (
+    <>
       {status && <HealthDot status={status} className="shrink-0" />}
       <span className="min-w-0 flex-1 truncate font-medium">{service.name}</span>
       <span className="hidden w-48 shrink-0 truncate font-mono text-xs text-muted-foreground sm:inline">
@@ -46,6 +39,26 @@ export const ServiceCard = ({ service, status, index }: ServiceCardProps) => (
           {service.strategy}
         </span>
       </span>
-    </Link>
-  </li>
-);
+    </>
+  );
+  return (
+    <li
+      className={
+        index !== undefined && index < STAGGER_LIMIT
+          ? "animate-in fade-in-0 slide-in-from-bottom-1 fill-mode-backwards duration-150 ease-out"
+          : undefined
+      }
+      style={index !== undefined && index < STAGGER_LIMIT ? { animationDelay: `${index * STAGGER_STEP_MS}ms` } : undefined}
+    >
+      {canOpen && (
+        <Link
+          to={`/services/${service.id}`}
+          className={`${rowClass} transition-colors duration-[120ms] ease-standard hover:bg-accent/40`}
+        >
+          {row}
+        </Link>
+      )}
+      {!canOpen && <div className={rowClass}>{row}</div>}
+    </li>
+  );
+};

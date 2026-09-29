@@ -6,10 +6,12 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { ProjectInterview } from "@/components/memory/ProjectInterview";
 import { Button } from "@/components/ui/button";
+import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { resolveProject } from "@/models/Project";
 
 export const InterviewPage = () => {
+  const canOpenBoard = useAreaAccess()?.("tickets") ?? false;
   const { projectId: routeParam = "" } = useParams();
   const { data: projects, isPending, error } = useFetchProjects();
   const project = projects && resolveProject(projects, routeParam);
@@ -22,9 +24,11 @@ export const InterviewPage = () => {
         <EmptyState
           title="Project not found"
           action={
-            <Button asChild size="sm">
-              <Link to="/board">Go to your board</Link>
-            </Button>
+            canOpenBoard && (
+              <Button asChild size="sm">
+                <Link to="/board">Go to your board</Link>
+              </Button>
+            )
           }
         />
       )}

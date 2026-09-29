@@ -42,9 +42,10 @@ const docNotification = {
 };
 
 // Serves the selected workspace's inbox; any other path is a request the screen should not make.
-const mockInbox = (notifications: unknown[]) =>
+const mockInbox = (notifications: unknown[], permissions: string[] = ["tickets:read"]) =>
   jest.mocked(api.get).mockImplementation((path: string) => {
     if (path === "/api/workspaces") return Promise.resolve([{ id: "ws-1", name: "Acme" }]);
+    if (path === "/api/workspaces/ws-1/me") return Promise.resolve({ role_name: "Member", permissions });
     if (path === "/api/notifications?workspace_id=ws-1") return Promise.resolve(notifications);
     return Promise.reject(new Error(`unexpected GET ${path}`));
   });
@@ -100,6 +101,19 @@ describe("InboxScreen", () => {
 
     expect(api.post).not.toHaveBeenCalled();
     expect(mockPush).toHaveBeenCalledWith("/more/docs/doc-1", { withAnchor: true });
+  });
+
+  test("tapping a ticket notification marks it read but stays in the inbox without tickets:read", async () => {
+    mockInbox([ticketNotification], []);
+    jest.mocked(api.post).mockResolvedValue(undefined);
+    await renderScreen();
+    await screen.findByText("Write migrations");
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith("/api/workspaces/ws-1/me"));
+
+    await userEvent.setup().press(screen.getByRole("button", { name: /Write migrations/ }));
+
+    expect(api.post).toHaveBeenCalledWith("/api/notifications/n1/read");
+    expect(mockPush).not.toHaveBeenCalled();
   });
 
   test("shows the empty state when there are no notifications", async () => {
