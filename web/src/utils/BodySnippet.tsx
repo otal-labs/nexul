@@ -1,4 +1,5 @@
 interface RichNode {
+  type?: string;
   text?: string;
   content?: RichNode[];
 }
@@ -8,7 +9,8 @@ const plainText = (node: RichNode): string => node.text ?? (node.content ?? []).
 const firstLine = (body: string): string =>
   (body.split("\n").find((line) => line.trim() !== "") ?? "").trim().replace(/^[#>*\- ]+/, "");
 
-// The client's copy of the server's richtext.Snippet: a structured body's first block with text, else a legacy body's first line.
+// The client's copy of the server's richtext.Snippet: the first prose block's text, else the first heading's, else a
+// legacy body's first line.
 export const bodySnippet = (body: string): string => {
   let root: unknown;
   try {
@@ -18,9 +20,7 @@ export const bodySnippet = (body: string): string => {
   }
   if (typeof root !== "object" || root === null) return firstLine(body);
   const blocks = Array.isArray(root) ? (root as RichNode[]) : ((root as RichNode).content ?? []);
-  for (const block of blocks) {
-    const text = plainText(block).trim();
-    if (text !== "") return text;
-  }
-  return "";
+  const texts = blocks.map((block) => ({ heading: block.type === "heading", text: plainText(block).trim() }));
+  const prose = texts.find((t) => !t.heading && t.text !== "");
+  return (prose ?? texts.find((t) => t.text !== ""))?.text ?? "";
 };

@@ -344,7 +344,8 @@ func TestSnippet(t *testing.T) {
 		limit int
 		want  string
 	}{
-		{"skips empty blocks to the first text", `{"type":"doc","content":[{"type":"paragraph"},{"type":"heading","content":[{"type":"text","text":"Deploy "},{"type":"text","text":"notes","marks":[{"type":"bold"}]}]}]}`, 100, "Deploy notes"},
+		{"skips empty blocks and headings to the first prose", `{"type":"doc","content":[{"type":"paragraph"},{"type":"heading","content":[{"type":"text","text":"Spec"}]},{"type":"paragraph","content":[{"type":"text","text":"Deploy "},{"type":"text","text":"notes","marks":[{"type":"bold"}]}]}]}`, 100, "Deploy notes"},
+		{"a body of headings alone takes the first", `{"type":"doc","content":[{"type":"heading","content":[{"type":"text","text":"Spec"}]}]}`, 100, "Spec"},
 		{"legacy markdown takes its first line without the heading marks", "\n## Rollback plan\nsecond line", 100, "Rollback plan"},
 		{"cuts to the limit in runes", `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"ééééé"}]}]}`, 3, "ééé"},
 		{"an empty doc has none", `{"type":"doc","content":[]}`, 100, ""},

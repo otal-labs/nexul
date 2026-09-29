@@ -126,14 +126,25 @@ func rewriteAttachmentAttrs(attrs map[string]any, idMap map[string]string) {
 }
 
 // Snippet is the plain text of a body's first block that has any, cut to limit runes, for a one-line list preview.
+// Headings are passed over while prose follows, since a doc's first heading tends to repeat its title.
 func Snippet(body string, limit int) string {
 	doc, err := UnmarshalJSON(body)
 	if err != nil {
 		return cutRunes(strings.TrimLeft(firstLine(body), "#>-* "), limit)
 	}
-	for _, n := range doc.Content {
+	if text := firstText(doc.Content, true); text != "" {
+		return cutRunes(text, limit)
+	}
+	return cutRunes(firstText(doc.Content, false), limit)
+}
+
+func firstText(blocks []Node, skipHeadings bool) string {
+	for _, n := range blocks {
+		if skipHeadings && n.Type == "heading" {
+			continue
+		}
 		if text := strings.TrimSpace(plainText(n)); text != "" {
-			return cutRunes(text, limit)
+			return text
 		}
 	}
 	return ""

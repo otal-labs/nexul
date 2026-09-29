@@ -34,16 +34,16 @@ export const MemoryListRow = ({ memory, projectToken, selected }: MemoryListRowP
         snippet={snippet}
         selected={selected}
         meta={
-          <>
-            {memory.always_included && (
-              <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] whitespace-nowrap text-muted-foreground">
-                always in context
-              </span>
-            )}
+          <span className="flex flex-col items-end gap-0.5">
             <span className="font-mono text-[11px] text-muted-foreground tabular-nums">
               {formatUpdatedAgo(memory.updated_at)}
             </span>
-          </>
+            {memory.always_included && (
+              <span className="rounded-full bg-muted px-1.5 py-px text-[10px] whitespace-nowrap text-muted-foreground">
+                always in context
+              </span>
+            )}
+          </span>
         }
         actions={(onClone || onDelete) && <RowActions itemLabel={memory.title} onClone={onClone} onDelete={onDelete} />}
         trailing={<MemoryPinSwitch memory={memory} label={`Always include ${memory.title}`} size="sm" />}
