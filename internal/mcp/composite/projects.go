@@ -159,7 +159,7 @@ type projectUpdateIn struct {
 	ID            string             `json:"id" jsonschema:"The project's id (a UUID), from project_list."`
 	Name          *string            `json:"name,omitempty" jsonschema:"A new display name."`
 	Icon          *string            `json:"icon,omitempty" jsonschema:"A display icon: Box, Rocket, Server, Globe, Database, Layers, Terminal, Shield, Zap, Package, Cpu, or Cloud. An empty string clears it."`
-	Prefix        *string            `json:"prefix,omitempty" jsonschema:"2 to 5 letters for a project that has no prefix yet, for example REF. An existing prefix never changes, since ticket keys are built from it."`
+	Prefix        *string            `json:"prefix,omitempty" jsonschema:"2 to 5 letters or digits, starting with a letter, for a project that has no prefix yet, for example REF or P1. An existing prefix never changes, since ticket keys are built from it."`
 	Position      *int               `json:"position,omitempty" jsonschema:"The project's place in the workspace's order, 0 for first."`
 	TestsLocation *string            `json:"tests_location,omitempty" jsonschema:"Where the tests live: same (in the repository that deploys), separate (in a tests repository), or an empty string to withdraw the answer."`
 	AddRepos      []repoAddIn        `json:"add_repos,omitempty" jsonschema:"Repositories to attach; a repository belongs to one project only."`

@@ -5,7 +5,7 @@ import { InstanceUpgradeSchema, isUpgradeInProgress, UpgradeRecordStatus } from 
 import { NotificationKind, SubjectType } from "@/models/Notification";
 import { SaveDocFormSchema } from "@/models/Doc";
 import { QueuedJobSchema, RequestKind, RunnerSchema } from "@/models/Runner";
-import { cardPerson, reporterLabel, SaveTicketFormSchema, TicketStatus, type Ticket } from "@/models/Ticket";
+import { cardPerson, parseTicketKey, reporterLabel, SaveTicketFormSchema, TicketStatus, type Ticket } from "@/models/Ticket";
 import { VersionSchema } from "@/models/Version";
 
 describe("ReviewStatus", () => {
@@ -338,5 +338,19 @@ describe("SubjectType", () => {
   it("mirrors the backend subject type strings", () => {
     expect(SubjectType.Ticket).toBe("ticket");
     expect(SubjectType.Doc).toBe("doc");
+  });
+});
+
+describe("parseTicketKey", () => {
+  it.each([
+    ["NX-12", { prefix: "NX", number: 12 }],
+    ["P1-12", { prefix: "P1", number: 12 }],
+    ["v2api-3", { prefix: "v2api", number: 3 }],
+  ])("parses %s", (param, want) => {
+    expect(parseTicketKey(param)).toEqual(want);
+  });
+
+  it.each(["1P-12", "P-12", "PHASE1-12", "P1-", "0d4f6a1e-3c2b-4e8a-9f10-5b7c8d9e0a1b"])("does not parse %s", (param) => {
+    expect(parseTicketKey(param)).toBeUndefined();
   });
 });

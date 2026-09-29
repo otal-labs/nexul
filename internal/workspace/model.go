@@ -10,7 +10,7 @@ import (
 type Project struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
-	// Prefix is an immutable 2-5 uppercase tag, unique per workspace, rendering a human ticket id (PREFIX-N).
+	// Prefix is an immutable 2-5 character uppercase tag (a letter, then letters or digits), unique per workspace, rendering a human ticket id (PREFIX-N).
 	Prefix   string `json:"prefix"`
 	Position int    `json:"position"`
 	// WorkspaceID nests this project under a Workspace; immutable once set.

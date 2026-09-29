@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { projectTokenFromPath, switchProjectPath, type Project } from "@/models/Project";
+import { projectTokenFromPath, SaveProjectFormSchema, switchProjectPath, type Project } from "@/models/Project";
 
 describe("projectTokenFromPath", () => {
   it.each([
@@ -30,5 +30,16 @@ describe("switchProjectPath", () => {
     ["/runners", "/board/FE"],
   ])("%s → %s", (pathname, want) => {
     expect(switchProjectPath(pathname, project)).toBe(want);
+  });
+});
+
+describe("SaveProjectFormSchema prefix", () => {
+  it.each(["P1", "PH", "PH1", "V2API", "nx"])("accepts %s", (prefix) => {
+    expect(SaveProjectFormSchema.safeParse({ name: "Phase 1", prefix, icon: "" }).success).toBe(true);
+  });
+
+  it.each(["1P", "P", "P-1", "PHASE1X", ""])("rejects %j with the prefix message", (prefix) => {
+    const result = SaveProjectFormSchema.safeParse({ name: "Phase 1", prefix, icon: "" });
+    expect(result.error?.issues[0]?.message).toBe("Prefix is 2–5 letters or digits, starting with a letter");
   });
 });

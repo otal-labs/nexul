@@ -39,7 +39,14 @@ export const WizardProjectStep = ({ onDone }: WizardProjectStepProps) => {
         placeholder="e.g. Backend platform"
         autoFocus
       />
-      <FormInput control={form.control} name="prefix" label="Prefix" placeholder="e.g. BE" maxLength={5} />
+      <FormInput
+        control={form.control}
+        name="prefix"
+        label="Prefix"
+        placeholder="e.g. BE"
+        maxLength={5}
+        transform={(value) => value.toUpperCase()}
+      />
       <div className="flex flex-wrap items-center gap-2">
         <Button type="submit" disabled={form.formState.isSubmitting}>
           {form.formState.isSubmitting ? "Creating…" : "Continue"}

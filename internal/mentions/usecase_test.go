@@ -352,6 +352,19 @@ func TestSearch_KeyMatch_ExactPrefixNumber(t *testing.T) {
 	assert.Equal(t, SearchResult{Type: "ticket", ID: "t-1", Title: "Fix the router", StatusLabel: "Open", CanOpen: true}, results[0])
 }
 
+func TestSearch_KeyMatch_PrefixWithDigit(t *testing.T) {
+	tickets := &fakeTicketSource{
+		tickets: map[string]Ticket{},
+		byKey:   map[string]Ticket{"P1-12": {ID: "t-1", Title: "Fix the router", Status: "open"}},
+	}
+	svc := newTestService(t, tickets, nil, nil, nil)
+
+	results, err := svc.Search(actorCtx("u-1"), "P1-12", 20)
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+	assert.Equal(t, "t-1", results[0].ID)
+}
+
 func TestSearch_KeyMatch_WrongCaseFallsThroughToTitleSearch(t *testing.T) {
 	tickets := &fakeTicketSource{
 		tickets: map[string]Ticket{"t-1": {ID: "t-1", Title: "erf-1 something", Status: "open"}},

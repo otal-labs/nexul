@@ -665,30 +665,34 @@ func TestCreate(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, 0, p.Position)
 	})
-	t.Run("lowercases and trims are normalized to uppercase", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		p, err := s.Create(context.Background(), "u-1", "ws-1", "Frontend", " fe ", "")
-		require.NoError(t, err)
-		assert.Equal(t, "FE", p.Prefix)
-	})
-	t.Run("rejects a prefix shorter than 2 letters", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.Create(context.Background(), "u-1", "ws-1", "Frontend", "F", "")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("rejects a prefix longer than 5 letters", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.Create(context.Background(), "u-1", "ws-1", "Frontend", "FRONTS", "")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
-	t.Run("rejects a prefix with non-letters", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, true)
-		_, err := s.Create(context.Background(), "u-1", "ws-1", "Frontend", "FE2", "")
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-	})
+	prefixShapes := []struct {
+		name   string
+		prefix string
+		want   string
+	}{
+		{"a letter then a digit", "P1", "P1"},
+		{"two letters", "PH", "PH"},
+		{"a letter, a digit, a letter", "PH1", "PH1"},
+		{"five characters with a digit", "V2API", "V2API"},
+		{"lowercase and padding are normalized", " nx ", "NX"},
+		{"starting with a digit", "1P", ""},
+		{"a single letter", "P", ""},
+		{"a hyphen", "P-1", ""},
+		{"six characters", "PHASE1X", ""},
+		{"empty", "", ""},
+	}
+	for _, tt := range prefixShapes {
+		t.Run("prefix shape: "+tt.name, func(t *testing.T) {
+			s, _, _ := newOwnerRepo(t, true)
+			p, err := s.Create(context.Background(), "u-1", "ws-1", "Phase 1", tt.prefix, "")
+			if tt.want == "" {
+				require.ErrorIs(t, err, apperrs.ErrInvalid)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, p.Prefix)
+		})
+	}
 	t.Run("rejects a prefix already used by another project", func(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)
 		repo.projects["p-1"] = &Project{ID: "p-1", Name: "Backend", Prefix: "BE", WorkspaceID: "ws-1"}
@@ -830,7 +834,7 @@ func TestSetPrefix(t *testing.T) {
 	t.Run("invalid format prefix is rejected", func(t *testing.T) {
 		s, repo, _ := newOwnerRepo(t, true)
 		repo.projects["p-1"] = &Project{ID: "p-1", Name: "General", WorkspaceID: "ws-1"}
-		_, err := s.SetPrefix(context.Background(), "u-1", "p-1", "gen1")
+		_, err := s.SetPrefix(context.Background(), "u-1", "p-1", "1gen")
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 	})

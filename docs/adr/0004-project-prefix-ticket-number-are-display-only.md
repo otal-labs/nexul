@@ -13,3 +13,5 @@ because `internal/gitprovider/ticketid.go` already parses this exact
 `PREFIX-NUMBER` shape out of branch names and commit messages — changing a
 project's prefix later would silently break any reference already written
 into git history.
+
+Amended: a prefix is 2-5 characters, a letter followed by letters or digits (`P1`, `V2API`), not letters only.

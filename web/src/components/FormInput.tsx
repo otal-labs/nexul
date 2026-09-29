@@ -18,6 +18,8 @@ interface FormInputProps<T extends FieldValues>
   id?: string;
   // Keeps the accessible name but hides it visually, for a field whose purpose is obvious from context.
   hideLabel?: boolean;
+  // Rewrites the value as the user types, so the stored value is already normalized.
+  transform?: (value: string) => string;
 }
 
 export const FormInput = <T extends FieldValues>({
@@ -26,6 +28,7 @@ export const FormInput = <T extends FieldValues>({
   label,
   id,
   hideLabel,
+  transform,
   ...props
 }: FormInputProps<T>) => {
   const { errors } = useFormState({ control });
@@ -41,7 +44,13 @@ export const FormInput = <T extends FieldValues>({
         control={control}
         name={name}
         render={({ field }) => (
-          <Input id={fieldId} aria-invalid={message != null} {...props} {...field} />
+          <Input
+            id={fieldId}
+            aria-invalid={message != null}
+            {...props}
+            {...field}
+            onChange={(e) => field.onChange(transform?.(e.target.value) ?? e)}
+          />
         )}
       />
       {message && (

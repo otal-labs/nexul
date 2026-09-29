@@ -31,7 +31,7 @@ type messageTarget struct {
 }
 
 // ticketKey matches a ticket's human key; chat cannot resolve one, and a missing ticket's thread would list as empty.
-var ticketKey = regexp.MustCompile(`(?i)^[a-z]{2,5}-\d+$`)
+var ticketKey = regexp.MustCompile(`(?i)^[a-z][a-z0-9]{1,4}-\d+$`)
 
 type messageListIn struct {
 	messageTarget

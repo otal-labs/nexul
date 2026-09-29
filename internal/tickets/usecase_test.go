@@ -594,21 +594,29 @@ func TestGet(t *testing.T) {
 
 func TestResolve(t *testing.T) {
 	repo := newFakeRepo()
-	repo.prefixes = map[string]string{"p-1": "REF"}
+	repo.prefixes = map[string]string{"p-1": "REF", "p-2": "P1", "p-3": "1P", "p-4": "PHASE1"}
 	repo.tickets["t-1"] = &Ticket{ID: "t-1", ProjectID: "p-1", Number: 102}
+	repo.tickets["t-2"] = &Ticket{ID: "t-2", ProjectID: "p-2", Number: 12}
+	repo.tickets["t-3"] = &Ticket{ID: "t-3", ProjectID: "p-3", Number: 12}
+	repo.tickets["t-4"] = &Ticket{ID: "t-4", ProjectID: "p-4", Number: 12}
 	s := newTestService(repo)
 	tests := []struct {
 		name    string
 		in      string
+		wantID  string
 		wantErr error
 	}{
-		{"empty is invalid", " ", apperrs.ErrInvalid},
-		{"a key past the int range is invalid", "REF-99999999999999999999", apperrs.ErrInvalid},
-		{"a missing key is not found", "REF-7", apperrs.ErrNotFound},
-		{"a missing id is not found", "nope", apperrs.ErrNotFound},
-		{"by id", "t-1", nil},
-		{"by key", "REF-102", nil},
-		{"by a lowercase key", " ref-102 ", nil},
+		{"empty is invalid", " ", "", apperrs.ErrInvalid},
+		{"a key past the int range is invalid", "REF-99999999999999999999", "", apperrs.ErrInvalid},
+		{"a missing key is not found", "REF-7", "", apperrs.ErrNotFound},
+		{"a missing id is not found", "nope", "", apperrs.ErrNotFound},
+		{"by id", "t-1", "t-1", nil},
+		{"by key", "REF-102", "t-1", nil},
+		{"by a lowercase key", " ref-102 ", "t-1", nil},
+		{"by a key whose prefix has a digit", "P1-12", "t-2", nil},
+		{"by a lowercase key whose prefix has a digit", "p1-12", "t-2", nil},
+		{"a prefix starting with a digit is not a key", "1P-12", "", apperrs.ErrNotFound},
+		{"a six character prefix is not a key", "PHASE1-12", "", apperrs.ErrNotFound},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -618,7 +626,7 @@ func TestResolve(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			assert.Equal(t, "t-1", got.ID)
+			assert.Equal(t, tt.wantID, got.ID)
 		})
 	}
 }

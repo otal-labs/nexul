@@ -13,7 +13,7 @@ Each project gets its own board, its own docs list, and its own settings. Nothin
 
 A project only ever comes from the project wizard. A new workspace has none: the owner lands in the wizard right after the owner wizard, and until a project exists the sidebar, the board, and the docs list each show a **New project** action instead. Afterwards, open the sidebar and pick **New project**. Either way it starts the project wizard, which walks you straight from an empty project to a deployed service:
 
-1. **Project** — name and prefix (2-5 letters, used to render ticket ids like `BE-42`).
+1. **Project** — name and prefix (2-5 letters or digits, starting with a letter, used to render ticket ids like `BE-42` or `P1-12`).
 2. **Repository** — say where the project's tests live, in the repository you deploy or in a separate one (see [A tests repository](#a-tests-repository)), then pick one of your installed GitHub repositories to deploy (see [GitHub App](/docs/guide/github-app/)).
 3. **Service** — the wizard scans the repository for a Dockerfile or compose file and proposes a candidate; pick the machine to deploy it on (see [Runners](/docs/guide/runners/)).
 4. **Env** — only shown if the repository has a `.env.example`; fill in the values it lists.
