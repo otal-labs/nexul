@@ -15,6 +15,8 @@ export const TeamSection = () => {
   const { data: team, isPending, error } = useFetchTeam();
   const [params, setParams] = useSearchParams();
   const personId = params.get("person");
+  const scope = team && !team.can_manage_accounts ? "The people in the workspaces you manage" : "Everyone registered on this instance";
+  const description = `${scope} and what they can reach in each workspace. New people join through invitation links.`;
 
   const open = (id: string | null) =>
     setParams(
@@ -31,7 +33,7 @@ export const TeamSection = () => {
     <SettingsCard
       id="team"
       title="Team"
-      description="Everyone registered on this instance and what they can reach in each workspace. New people join through invitation links."
+      description={description}
       footer={<CreateInvitationDialog />}
     >
       {isPending && <LoadingDisplay />}

@@ -47,4 +47,6 @@ export interface TeamWorkspace {
 export interface Team {
   people: TeamPerson[];
   workspaces: TeamWorkspace[];
+  // False for a viewer who manages members somewhere but doesn't administer the instance: no account status actions.
+  can_manage_accounts: boolean;
 }

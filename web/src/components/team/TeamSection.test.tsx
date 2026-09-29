@@ -12,6 +12,7 @@ vi.mock("@/api/client", () => ({ api: mocks, errorMessage: vi.fn() }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const team: Team = {
+  can_manage_accounts: true,
   workspaces: [
     { id: "ws-nexul", name: "Nexul", can_manage_members: true, roles: [{ id: "r-owner", name: "Owner", is_owner: true }, { id: "r-editor", name: "Editor", is_owner: false }] },
     { id: "ws-acme", name: "Acme", can_manage_members: false, roles: [{ id: "r-acme-owner", name: "Owner", is_owner: true }, { id: "r-viewer", name: "Viewer", is_owner: false }] },
@@ -28,8 +29,8 @@ const team: Team = {
   ],
 };
 
-const renderSection = (route = "/configuration/team") => {
-  mocks.get.mockImplementation((url: string) => Promise.resolve({ data: url === "/api/team" ? team : [] }));
+const renderSection = (route = "/configuration/team", data: Team = team) => {
+  mocks.get.mockImplementation((url: string) => Promise.resolve({ data: url === "/api/team" ? data : [] }));
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
@@ -61,13 +62,21 @@ describe("TeamSection", () => {
 
     const acme = within(await screen.findByRole("listitem", { name: "Acme" }));
     expect(acme.getByText("Viewer")).toBeInTheDocument();
-    expect(acme.getByText(/you need members:write in Acme/)).toBeInTheDocument();
+    expect(acme.getByText("Read only: you can't manage members in Acme.")).toBeInTheDocument();
     expect(acme.queryByRole("combobox")).not.toBeInTheDocument();
     expect(acme.queryByRole("button", { name: /remove from/i })).not.toBeInTheDocument();
 
+    expect(screen.getByRole("button", { name: "Disable" })).toBeInTheDocument();
     const nexul = within(screen.getByRole("listitem", { name: "Nexul" }));
     expect(nexul.getByRole("combobox", { name: "Role in Nexul" })).toBeInTheDocument();
     expect(nexul.getByRole("button", { name: "Remove from Nexul" })).toBeInTheDocument();
+  });
+
+  it("offers account actions only to a viewer who administers the instance", async () => {
+    renderSection("/configuration/team?person=u-bob", { ...team, can_manage_accounts: false });
+
+    await screen.findByRole("listitem", { name: "Nexul" });
+    expect(screen.queryByRole("button", { name: /disable|remove account/i })).not.toBeInTheDocument();
   });
 
   it("adds the person to a workspace they are not in with the chosen role", async () => {

@@ -5,11 +5,13 @@ import { api, errorMessage } from "@/api/client";
 import { getWorkspaceMembersKey } from "@/hooks/MemberHooks";
 import { getTeamKey, type Team } from "@/models/Team";
 
-// Instance administrators only; the server answers each workspace's can_manage_members for the viewer.
-export const useFetchTeam = () =>
+// The server scopes it: everything for an instance administrator, else only the workspaces the viewer manages.
+export const useFetchTeam = (enabled = true) =>
   useQuery({
     queryKey: [getTeamKey],
     queryFn: async () => (await api.get<Team>("/api/team")).data,
+    enabled,
+    retry: false,
   });
 
 const useTeamMutation = <TInput,>(request: (input: TInput) => Promise<unknown>, success: string) => {

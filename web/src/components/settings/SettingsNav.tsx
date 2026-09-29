@@ -44,11 +44,14 @@ export interface SettingsVisibility {
   showPlays: boolean;
   showInterviewTemplate: boolean;
   showMentionLayout: boolean;
+  // Team also opens to anyone who manages members in a workspace, scoped to those workspaces.
+  showTeam: boolean;
 }
 
 // The sections the viewer may open, in nav order; the page falls back to the first when the URL names none of them.
-export const visibleSettingsSections = (visibility: SettingsVisibility): SettingsSection[] =>
-  SETTINGS_SECTIONS.filter((section) => {
+export const visibleSettingsSections = (visibility: SettingsVisibility): SettingsSection[] => {
+  const sections = SETTINGS_SECTIONS.filter((section) => {
+    if (section === "team") return visibility.isInstanceAdmin || visibility.showTeam;
     if (INSTANCE_SECTIONS.includes(section)) return visibility.isInstanceAdmin;
     if (section === "roles") return visibility.showRoles;
     if (section === "plays") return visibility.showPlays;
@@ -56,18 +59,30 @@ export const visibleSettingsSections = (visibility: SettingsVisibility): Setting
     if (section === "mentions") return visibility.showMentionLayout;
     return true;
   });
+  if (visibility.isInstanceAdmin || !sections.includes("team")) return sections;
+  // Without the instance, Team is a workspace-scoped section, so it sits with them ahead of Danger zone.
+  const workspaceOnly: SettingsSection[] = sections.filter((section) => section !== "team");
+  workspaceOnly.splice(workspaceOnly.indexOf("danger"), 0, "team");
+  return workspaceOnly;
+};
 
 interface SettingsNavProps {
   active: SettingsSection;
   sections: SettingsSection[];
+  isInstanceAdmin: boolean;
 }
 
-export const SettingsNav = ({ active, sections }: SettingsNavProps) => {
+const groupOf = (section: SettingsSection, isInstanceAdmin: boolean): string => {
+  if (section === "team") return isInstanceAdmin ? INSTANCE_GROUP : WORKSPACE_GROUP;
+  return INSTANCE_SECTIONS.includes(section) ? INSTANCE_GROUP : WORKSPACE_GROUP;
+};
+
+export const SettingsNav = ({ active, sections, isInstanceAdmin }: SettingsNavProps) => {
   const items: SettingsSectionNavItem[] = sections.map((section) => ({
     section,
     label: sectionLabels[section],
     danger: section === "danger",
-    group: INSTANCE_SECTIONS.includes(section) ? INSTANCE_GROUP : WORKSPACE_GROUP,
+    group: groupOf(section, isInstanceAdmin),
   }));
 
   return <SettingsSectionNav ariaLabel="Configuration sections" basePath="/configuration" active={active} items={items} />;

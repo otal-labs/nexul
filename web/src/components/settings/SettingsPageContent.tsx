@@ -47,7 +47,6 @@ const ConnectorsPanel = ({ isInstanceAdmin }: { isInstanceAdmin: boolean }) => (
 
 const DnsPanel = ({ isInstanceAdmin }: { isInstanceAdmin: boolean }) => <>{isInstanceAdmin && <GatewaysSection />}</>;
 
-const TeamPanel = ({ isInstanceAdmin }: { isInstanceAdmin: boolean }) => <>{isInstanceAdmin && <TeamSection />}</>;
 
 const DangerPanel = ({ settings }: { settings: InstanceSettings | undefined }) => (
   <>{settings && <DangerZoneSection />}</>
@@ -87,6 +86,6 @@ export const SettingsPageContent = ({
     {section === "sign-in" && <SignInPanel settings={settings} isInstanceAdmin={isInstanceAdmin} />}
     {section === "connectors" && <ConnectorsPanel isInstanceAdmin={isInstanceAdmin} />}
     {section === "dns" && <DnsPanel isInstanceAdmin={isInstanceAdmin} />}
-    {section === "team" && <TeamPanel isInstanceAdmin={isInstanceAdmin} />}
+    {section === "team" && <TeamSection />}
   </>
 );

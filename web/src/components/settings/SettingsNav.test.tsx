@@ -16,6 +16,7 @@ const nothing: SettingsVisibility = {
   showPlays: false,
   showInterviewTemplate: false,
   showMentionLayout: false,
+  showTeam: false,
 };
 
 const everything: SettingsVisibility = {
@@ -24,12 +25,13 @@ const everything: SettingsVisibility = {
   showPlays: true,
   showInterviewTemplate: true,
   showMentionLayout: true,
+  showTeam: true,
 };
 
 const renderNav = (visibility: SettingsVisibility, active = "danger" as const) =>
   render(
     <MemoryRouter initialEntries={["/configuration"]}>
-      <SettingsNav active={active} sections={visibleSettingsSections(visibility)} />
+      <SettingsNav active={active} sections={visibleSettingsSections(visibility)} isInstanceAdmin={visibility.isInstanceAdmin} />
     </MemoryRouter>,
   );
 
@@ -59,8 +61,14 @@ describe("SettingsNav", () => {
     renderNav({ ...everything, isInstanceAdmin: false });
     expect(screen.queryByText("Whole instance")).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Instance" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Team" })).not.toBeInTheDocument();
     expect(screen.getByText("This workspace")).toBeInTheDocument();
+  });
+
+  it("puts Team with the workspace sections, ahead of Danger zone, for a member manager who isn't an instance admin", () => {
+    renderNav({ ...nothing, showRoles: true, showTeam: true });
+    const nav = within(screen.getByRole("navigation", { name: "Configuration sections" }));
+    expect(nav.getAllByRole("listitem").map((item) => item.textContent)).toEqual(["This workspace", "Roles", "Team", "Danger zone"]);
+    expect(nav.getByRole("link", { name: "Team" })).toHaveAttribute("href", "/configuration/team");
   });
 
   it("hides every gated workspace section until its flag is set, leaving Danger zone", () => {

@@ -29,14 +29,14 @@ export const TeamPersonSheet = ({ personId, onClose }: TeamPersonSheetProps) => 
               </div>
               <AccountStatusLabel status={person.status} />
             </div>
-            <TeamAccountActions person={person} />
+            {team?.can_manage_accounts && <TeamAccountActions person={person} />}
           </SheetHeader>
         )}
         {person && team && (
           <section aria-labelledby="team-workspace-access" className="space-y-3 p-4">
             <div>
               <h3 id="team-workspace-access" className="text-sm font-semibold">Workspace access</h3>
-              <p className="text-sm text-muted-foreground">Every workspace on the instance. Changing one needs members:write in that workspace.</p>
+              <p className="text-sm text-muted-foreground">You can change the workspaces where you manage members.</p>
             </div>
             <ul className="divide-y divide-border overflow-hidden rounded-md border bg-card">
               {team.workspaces.map((workspace) => (

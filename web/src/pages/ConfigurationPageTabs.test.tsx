@@ -27,6 +27,7 @@ const settings = { instance_url: "https://deploy.example.com", settings_version:
 const routeGet = (admin: boolean, permissions: string[]) => (url: string) => {
   if (url === "/api/auth/me") return Promise.resolve({ data: { user: { can_create_workspace: admin } } });
   if (url === "/api/workspaces/ws-1/me") return Promise.resolve({ data: { role_name: "Owner", permissions } });
+  if (url === "/api/team") return Promise.reject(new Error("403"));
   if (url === "/api/connectors") {
     return Promise.resolve({
       data: [{ connector: { id: "github", name: "GitHub" }, status: { configured: true } }],
@@ -85,6 +86,13 @@ describe("ConfigurationPage sections", () => {
 
     expect(await screen.findByText("Team card")).toBeInTheDocument();
     expect(screen.getByLabelText("location")).toHaveTextContent(/^\/configuration\/team(\?person=u-1)?$/);
+  });
+
+  it("shows Team among the workspace sections to a members:write holder who isn't an instance admin", async () => {
+    renderPage("/configuration/team", false, ["members:write"]);
+
+    expect(await screen.findByText("Team card")).toBeInTheDocument();
+    expect(screen.queryByText("Whole instance")).not.toBeInTheDocument();
   });
 
   it("hides every whole-instance section from a non-admin, and an instance link falls back", async () => {

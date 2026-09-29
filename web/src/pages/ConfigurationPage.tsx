@@ -7,6 +7,7 @@ import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { isSettingsSection, SettingsNav, visibleSettingsSections } from "@/components/settings/SettingsNav";
 import { SettingsPageContent } from "@/components/settings/SettingsPageContent";
 import { useFetchMe, useFetchSettings } from "@/hooks/AuthHooks";
+import { useFetchTeam } from "@/hooks/TeamHooks";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import { legacyConfigurationTarget } from "@/utils/SettingsRedirects";
 
@@ -22,6 +23,9 @@ export const ConfigurationPage = () => {
   const canManageMentionLayout = useHasPermission("workspaces:write");
   const canReadMemories = useHasPermission("memories:read");
   const isInstanceAdmin = me?.user?.can_create_workspace ?? false;
+  const canManageMembers = useHasPermission("members:write");
+  // Members may be managed in a workspace other than the selected one; the scoped Team read answers that.
+  const { data: team } = useFetchTeam(!!me && !isInstanceAdmin && !canManageMembers);
 
   const sections = visibleSettingsSections({
     isInstanceAdmin,
@@ -29,6 +33,7 @@ export const ConfigurationPage = () => {
     showPlays: canReadPlays,
     showInterviewTemplate: canReadMemories,
     showMentionLayout: canManageMentionLayout,
+    showTeam: canManageMembers || !!team,
   });
 
   const { section: rawSection } = useParams();
@@ -48,7 +53,7 @@ export const ConfigurationPage = () => {
         subtitle="What this workspace can contain and who holds keys, and how the whole instance connects."
       />
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
-        <SettingsNav active={section} sections={sections} />
+        <SettingsNav active={section} sections={sections} isInstanceAdmin={isInstanceAdmin} />
         <div className="min-w-0 flex-1 space-y-6">
           {isPending && <LoadingDisplay />}
           {error && <ErrorDisplay error={error} />}
