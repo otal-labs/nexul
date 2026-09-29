@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { api } from "@/api/client";
 import { unreadBadge, useFetchNotifications, useFetchUnreadCount } from "@/hooks/NotificationHooks";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 jest.mock("@/api/client", () => ({
   api: { get: jest.fn(), post: jest.fn() },
@@ -12,6 +13,7 @@ jest.mock("@/api/client", () => ({
 const notification = {
   id: "n1",
   user_id: "u1",
+  workspace_id: "ws-1",
   kind: "doc.created",
   subject_type: "doc",
   subject_id: "doc-1",
@@ -25,26 +27,32 @@ const wrapper = ({ children }: { children: ReactNode }) => {
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 };
 
+const serve = (path: string, body: unknown) =>
+  jest.mocked(api.get).mockImplementation((requested: string) => {
+    if (requested === "/api/workspaces") return Promise.resolve([{ id: "ws-1", name: "Acme" }]);
+    if (requested === path) return Promise.resolve(body);
+    return Promise.reject(new Error(`unexpected GET ${requested}`));
+  });
+
 beforeEach(() => {
   jest.mocked(api.get).mockReset();
   jest.mocked(api.post).mockReset();
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
 });
 
 describe("useFetchNotifications", () => {
-  test("loads the notification list", async () => {
-    jest.mocked(api.get).mockResolvedValue([notification]);
+  test("loads only the selected workspace's notifications", async () => {
+    serve("/api/notifications?workspace_id=ws-1", [notification]);
     const { result } = await renderHook(() => useFetchNotifications(), { wrapper });
     await waitFor(() => expect(result.current.data).toEqual([notification]));
-    expect(api.get).toHaveBeenCalledWith("/api/notifications");
   });
 });
 
 describe("useFetchUnreadCount", () => {
-  test("loads the unread count", async () => {
-    jest.mocked(api.get).mockResolvedValue({ count: 2 });
+  test("counts only the selected workspace's unread notifications, for the tab badge", async () => {
+    serve("/api/notifications/unread-count?workspace_id=ws-1", { count: 2 });
     const { result } = await renderHook(() => useFetchUnreadCount(), { wrapper });
     await waitFor(() => expect(result.current.data).toEqual({ count: 2 }));
-    expect(api.get).toHaveBeenCalledWith("/api/notifications/unread-count");
   });
 });
 

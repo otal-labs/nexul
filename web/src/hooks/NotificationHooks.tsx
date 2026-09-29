@@ -3,22 +3,31 @@ import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
 import type { Notification, UnreadCount } from "@/models/Notification";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 export const getNotificationsKey = "getNotifications";
 export const getUnreadCountKey = "getUnreadCount";
 
-export const useFetchNotifications = () =>
-  useQuery({
-    queryKey: [getNotificationsKey],
-    queryFn: async () => (await api.get<Notification[]>("/api/notifications")).data,
+// The inbox and its badge follow the selected workspace, like every other workspace-scoped page.
+export const useFetchNotifications = () => {
+  const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
+  return useQuery({
+    queryKey: [getNotificationsKey, workspaceId],
+    queryFn: async () =>
+      (await api.get<Notification[]>("/api/notifications", { params: { workspace_id: workspaceId } })).data,
   });
+};
 
-export const useFetchUnreadCount = (enabled = true) =>
-  useQuery({
-    queryKey: [getUnreadCountKey],
-    queryFn: async () => (await api.get<UnreadCount>("/api/notifications/unread-count")).data,
+export const useFetchUnreadCount = (enabled = true) => {
+  const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
+  return useQuery({
+    queryKey: [getUnreadCountKey, workspaceId],
+    queryFn: async () =>
+      (await api.get<UnreadCount>("/api/notifications/unread-count", { params: { workspace_id: workspaceId } }))
+        .data,
     enabled,
   });
+};
 
 export const useMarkNotificationRead = () => {
   const client = useQueryClient();
@@ -35,7 +44,10 @@ export const useMarkNotificationRead = () => {
 export const useMarkAllNotificationsRead = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async () => api.post("/api/notifications/read-all"),
+    mutationFn: async () =>
+      api.post("/api/notifications/read-all", undefined, {
+        params: { workspace_id: useWorkspaceStore.getState().selectedWorkspaceId },
+      }),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getNotificationsKey] });
       await client.invalidateQueries({ queryKey: [getUnreadCountKey] });

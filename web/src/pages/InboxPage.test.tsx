@@ -21,6 +21,7 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 const ticketNotification = {
   id: "n1",
   user_id: "u1",
+  workspace_id: "ws-1",
   kind: "ticket.assigned",
   subject_type: "ticket",
   subject_id: "t-1",
@@ -32,6 +33,7 @@ const ticketNotification = {
 const docNotification = {
   id: "n2",
   user_id: "u1",
+  workspace_id: "ws-1",
   kind: "doc.updated",
   subject_type: "doc",
   subject_id: "doc-1",
@@ -134,7 +136,7 @@ describe("InboxPage", () => {
     renderPage();
 
     await user.click(await screen.findByRole("button", { name: "Mark all read" }));
-    expect(api.post).toHaveBeenCalledWith("/api/notifications/read-all");
+    expect(api.post).toHaveBeenCalledWith("/api/notifications/read-all", undefined, expect.anything());
   });
 
   it("shows the empty state when there are no notifications", async () => {

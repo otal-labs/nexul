@@ -22,6 +22,7 @@ export type SubjectType = (typeof SubjectType)[keyof typeof SubjectType];
 export interface Notification {
   id: string;
   user_id: string;
+  workspace_id: string;
   kind: NotificationKind;
   subject_type: SubjectType;
   subject_id: string;
