@@ -42,4 +42,18 @@ Rejected: checking reads in the HTTP handlers, which the MCP tools would not inh
 would have changed every live consumer in the web and phone clients; and gating chat and the inbox on `chat:read`
 and `notifications:read`, which would let an owner cut a member off from their own conversations.
 
+Also covers, with no rule changed: DNS (zones, records, gateways, exposures, hostnames), connectors, machines, and
+automations hosts are instance-level and checked against every workspace, with the table's own `dns:*`,
+`connectors:*`, `machines:read`, and `automations:read`; the connector app registration stays instance-admin. The
+seams other domains call into DNS (a computer's tunnel, a stack's exposures on teardown) stay unchecked, since
+their caller checks its own action. A pull request is read with `repos:read`, and a code review record with
+`reviews:read`, in the workspace of the project its repository belongs to; a ticket's reviews also need the ticket,
+and leave out the ones the caller may not read. The project wizard's repository list and scan span the whole GitHub
+installation, not one project, so they take `projects:write`, what making a project from one needs, in any
+workspace. A DM's participants must all be members of its workspace, and one who is not reads as not found, as
+someone who does not exist would. The board's per-card PR counts and thread markers leave out tickets the caller
+cannot read, stopping an agent turn takes reading its conversation, and a deleted memory's live frame carries its
+workspace so only that workspace's readers receive it. A setup pass acts as the server: the setup routes confine
+it, and nobody is a member yet to check it against.
+
 Supersedes ADR 0023, and the "every signed-in member reaches every stack" paragraph of ADR 0079. Decided 2026-09-29.

@@ -232,8 +232,8 @@ _Avoid_: Compose project, resource, application
 A stack that belongs to the instance rather than to a project: the backing
 stack of a gateway, the tunnel or reverse proxy first run deploys among
 them. It never builds from a repository, shows on Topology and in
-Configuration → DNS, and is reached by whoever can reach stacks at all, since a
-stack's project never gates access to it.
+Configuration → DNS, and is checked like the topology: holding the stack
+action in any of the caller's workspaces is enough.
 _Avoid_: System stack, infrastructure project
 
 **Stack slug**:
@@ -415,9 +415,9 @@ One capability, written `<domain>:<action>` where the action is `read`,
 declares for an act that is neither (`plays:run`, `memories:clone`,
 `roles:clone`, `docs:thread`). One vocabulary for every actor: a role, a
 scoped token, and the agent are checked against the same values. Checked in
-the workspace the entity belongs to; runners, the topology, machines, and the
-instance's own stacks, which belong to none, against every workspace the
-caller is in. What every member reads (the project list, channels, their own
+the workspace the entity belongs to; runners, the topology, machines, DNS,
+connectors, and the instance's own stacks, which belong to none, against every
+workspace the caller is in. What every member reads (the project list, channels, their own
 DMs and inbox, People) takes membership, not a permission.
 _Avoid_: Right, privilege, capability, ACL entry
 
