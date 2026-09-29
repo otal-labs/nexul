@@ -10,11 +10,12 @@ import (
 type Handler struct {
 	s Scanner
 	l InstallationLister
+	g Gate
 }
 
 // NewHandler wires the repository REST gateway over the given scanner and installation reader.
-func NewHandler(s Scanner, l InstallationLister) *Handler {
-	return &Handler{s: s, l: l}
+func NewHandler(s Scanner, l InstallationLister, g Gate) *Handler {
+	return &Handler{s: s, l: l, g: g}
 }
 
 // Routes returns the repository REST endpoints.
@@ -38,7 +39,7 @@ func (h *Handler) scan(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	result, err := Scan(r.Context(), h.s, req.Owner, req.Name, req.Ref)
+	result, err := Scan(r.Context(), h.g, h.s, req.Owner, req.Name, req.Ref)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -47,7 +48,7 @@ func (h *Handler) scan(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
-	repos, err := ListRepos(r.Context(), h.s)
+	repos, err := ListRepos(r.Context(), h.g, h.s)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -56,7 +57,7 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) installations(w http.ResponseWriter, r *http.Request) {
-	installs, err := ListInstallations(r.Context(), h.l)
+	installs, err := ListInstallations(r.Context(), h.g, h.l)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

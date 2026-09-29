@@ -20,7 +20,7 @@ func serve(t *testing.T, h http.Handler, method, path string) *httptest.Response
 }
 
 func newGitHandler(p GitProvider) http.Handler {
-	return NewHandler(p).Routes()
+	return NewHandler(p, nil).Routes()
 }
 
 func prsHandler(t *testing.T) http.Handler {

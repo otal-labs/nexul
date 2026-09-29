@@ -22,7 +22,7 @@ func serve(t *testing.T, s *fakeScanner, method, path, body string) *httptest.Re
 		r = httptest.NewRequest(method, path, nil)
 	}
 	rec := httptest.NewRecorder()
-	NewHandler(s, s).Routes().ServeHTTP(rec, r)
+	NewHandler(s, s, nil).Routes().ServeHTTP(rec, r)
 	return rec
 }
 

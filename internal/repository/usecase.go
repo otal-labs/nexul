@@ -10,11 +10,28 @@ import (
 	"strings"
 
 	apperrors "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
+
+// Gate is the permission check the project wizard's repository reads pass. An installation's repositories belong to
+// no project yet, so a caller needs projects:write, what making a project from one takes, in any workspace (ADR 0087).
+type Gate interface {
+	RequireAnywhere(ctx context.Context, action permissions.Action) error
+}
+
+func requireWizard(ctx context.Context, g Gate) error {
+	if g == nil {
+		return permissions.Ungated(ctx)
+	}
+	return g.RequireAnywhere(ctx, permissions.ProjectsWrite)
+}
 
 // Scan reads owner/name's tree at ref (the repo's default branch when ref is empty) and proposes deployable
 // candidates: one per compose file, one per standalone Dockerfile, compose sorted before Dockerfile.
-func Scan(ctx context.Context, s Scanner, owner, name, ref string) (*ScanResult, error) {
+func Scan(ctx context.Context, g Gate, s Scanner, owner, name, ref string) (*ScanResult, error) {
+	if err := requireWizard(ctx, g); err != nil {
+		return nil, err
+	}
 	if owner == "" || name == "" {
 		return nil, fmt.Errorf("%w: owner and name are required", apperrors.ErrInvalid)
 	}
@@ -108,7 +125,10 @@ func nonNil[T any](s []T) []T {
 }
 
 // ListRepos lists every repository the connected installation grants.
-func ListRepos(ctx context.Context, s Scanner) ([]Repo, error) {
+func ListRepos(ctx context.Context, g Gate, s Scanner) ([]Repo, error) {
+	if err := requireWizard(ctx, g); err != nil {
+		return nil, err
+	}
 	repos, err := s.ListInstallationRepos(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list installation repositories: %w", err)
@@ -117,7 +137,10 @@ func ListRepos(ctx context.Context, s Scanner) ([]Repo, error) {
 }
 
 // ListInstallations lists the accounts and organisations whose repositories the connector can read.
-func ListInstallations(ctx context.Context, l InstallationLister) ([]Installation, error) {
+func ListInstallations(ctx context.Context, g Gate, l InstallationLister) ([]Installation, error) {
+	if err := requireWizard(ctx, g); err != nil {
+		return nil, err
+	}
 	installs, err := l.ListInstallations(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list installations: %w", err)
