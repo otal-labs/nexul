@@ -3,6 +3,7 @@ package storage_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,8 +17,20 @@ import (
 	"github.com/otal-labs/nexul/internal/tenancy"
 )
 
-// testAccountGate mirrors server/cmd's accountGate over the real users table.
-type testAccountGate struct{ users *storage.UsersRepo }
+// testAccountGate mirrors server/cmd's accountGate over the real users and sessions tables; online stands in for the live sockets.
+type testAccountGate struct {
+	users    *storage.UsersRepo
+	sessions *storage.SessionsRepo
+	online   map[string]bool
+}
+
+func (g testAccountGate) Presence(ctx context.Context) (map[string]bool, map[string]time.Time, error) {
+	if g.sessions == nil {
+		return g.online, nil, nil
+	}
+	seen, err := g.sessions.LastActiveByUser(ctx)
+	return g.online, seen, err
+}
 
 func (g testAccountGate) ListAccounts(ctx context.Context) ([]*tenancy.TeamAccount, error) {
 	users, err := g.users.ListUsers(ctx)
@@ -69,6 +82,8 @@ type teamFixture struct {
 	viewer       *roles.Role
 	nexulOwnerID string
 	users        *storage.UsersRepo
+	sessions     *storage.SessionsRepo
+	online       map[string]bool
 }
 
 // newTeamFixture: admin and dana administer the instance; admin owns Nexul and is only a Viewer in dana's Acme.
@@ -78,7 +93,8 @@ func newTeamFixture(t *testing.T) teamFixture {
 	s := storage.New(newDB(t), []byte("0123456789abcdef0123456789abcdef"))
 	accessSvc := access.NewService(s.Access, realUsers{s.Users})
 	rolesSvc := roles.NewService(s.Roles, nil)
-	svc := tenancy.NewService(s.Workspaces, s.WorkspaceMembers, s.WorkspaceInvites, testRoleGate{svc: rolesSvc}, testInstanceAdminGate{users: s.Users}, testRoleNameGate{svc: rolesSvc}, testWorkspacePermissionGate{svc: accessSvc}, testAllowlistGate{}, testUserLookupGate{}, testChannelGate{}, testPlaysGate{}, testAccountGate{users: s.Users})
+	online := map[string]bool{}
+	svc := tenancy.NewService(s.Workspaces, s.WorkspaceMembers, s.WorkspaceInvites, testRoleGate{svc: rolesSvc}, testInstanceAdminGate{users: s.Users}, testRoleNameGate{svc: rolesSvc}, testWorkspacePermissionGate{svc: accessSvc}, testAllowlistGate{}, testUserLookupGate{}, testChannelGate{}, testPlaysGate{}, testAccountGate{users: s.Users, sessions: s.Sessions, online: online})
 	rolesSvc.SetMemberGate(testMemberGate{svc: svc})
 	accessSvc.SetRoles(accessRoleResolver{tenancy: svc, roles: rolesSvc})
 
@@ -100,7 +116,7 @@ func newTeamFixture(t *testing.T) teamFixture {
 
 	require.NoError(t, svc.AddMember(ctx, "dana", acme.ID, "admin", viewer.ID))
 	require.NoError(t, svc.AddMember(ctx, "dana", acme.ID, "carol", viewer.ID))
-	return teamFixture{svc: svc, roles: rolesSvc, nexul: nexul, acme: acme, editor: editor, viewer: viewer, nexulOwnerID: ownerID, users: s.Users}
+	return teamFixture{svc: svc, roles: rolesSvc, nexul: nexul, acme: acme, editor: editor, viewer: viewer, nexulOwnerID: ownerID, users: s.Users, sessions: s.Sessions, online: online}
 }
 
 func personByLogin(t *testing.T, team *tenancy.Team, login string) *tenancy.TeamPerson {
@@ -173,6 +189,7 @@ func TestIntegration_ListTeam_WorkspaceManager_SeesOnlyTheWorkspacesTheyManage(t
 	manager, err := f.roles.Create(ctx, f.nexul.ID, "admin", "Manager", permissions.SetOf(permissions.MembersWrite))
 	require.NoError(t, err)
 	require.NoError(t, f.svc.AddMember(ctx, "admin", f.nexul.ID, "bob", manager.ID))
+	f.online["carol"], f.online["dana"] = true, true
 
 	team, err := f.svc.ListTeam(ctx, "bob")
 	require.NoError(t, err)
@@ -187,7 +204,41 @@ func TestIntegration_ListTeam_WorkspaceManager_SeesOnlyTheWorkspacesTheyManage(t
 			assert.Equal(t, f.nexul.ID, m.WorkspaceID, "%s's access elsewhere is left out", p.Login)
 		}
 	}
-	assert.ElementsMatch(t, []string{"admin", "bob"}, logins, "carol and dana hold nothing in Nexul")
+	assert.ElementsMatch(t, []string{"admin", "bob"}, logins, "carol and dana hold nothing in Nexul, online or not")
+}
+
+func seedSession(t *testing.T, f teamFixture, id, userID string, lastActive time.Time) {
+	t.Helper()
+	require.NoError(t, f.sessions.CreateSession(t.Context(), &auth.Session{
+		ID: id, UserID: userID, TokenHash: "hash-" + id, Client: auth.ClientBrowser,
+		CreatedAt: lastActive, LastActiveAt: lastActive, ExpiresAt: lastActive.Add(24 * time.Hour),
+	}))
+}
+
+func TestIntegration_ListTeam_OnlineFirstThenLatestSessionActivity(t *testing.T) {
+	ctx := t.Context()
+	f := newTeamFixture(t)
+	now := time.Now().UTC().Truncate(time.Second)
+	seedSession(t, f, "bob-laptop", "bob", now.Add(-2*time.Hour))
+	seedSession(t, f, "bob-phone", "bob", now.Add(-5*time.Hour))
+	seedSession(t, f, "carol-laptop", "carol", now.Add(-time.Hour))
+	seedSession(t, f, "dana-laptop", "dana", now.Add(-72*time.Hour))
+	f.online["dana"] = true
+
+	team, err := f.svc.ListTeam(ctx, "admin")
+	require.NoError(t, err)
+
+	logins := []string{}
+	for _, p := range team.People {
+		logins = append(logins, p.Login)
+	}
+	assert.Equal(t, []string{"dana", "carol", "bob", "admin"}, logins, "online first, then most recently seen, never-seen last")
+	assert.True(t, personByLogin(t, team, "dana").Online)
+	assert.False(t, personByLogin(t, team, "carol").Online)
+	bob := personByLogin(t, team, "bob")
+	require.NotNil(t, bob.LastSeenAt)
+	assert.Equal(t, now.Add(-2*time.Hour), *bob.LastSeenAt, "last seen is the latest of bob's sessions")
+	assert.Nil(t, personByLogin(t, team, "admin").LastSeenAt, "no session row, no last seen")
 }
 
 // Instance admin is not workspace admin (ADR 0024): every membership edit in Acme needs members:write in Acme.

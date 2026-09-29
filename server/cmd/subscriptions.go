@@ -254,6 +254,12 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 		})
 	}
 
+	// Live-only and naming nobody: open Team pages refetch, which applies the Team's own scoping to who is online.
+	svc.presenceKeeper.SetOnlineChanged(func(string) {
+		// A nil payload cannot fail to marshal, and a failed write already drops that browser.
+		_ = liveHub.Publish(ctx, "account.presence_changed", nil)
+	})
+
 	// In-progress reply text pushes to liveHub as ephemeral frames; only the final reply is durable, via PostAgentReply.
 	agentSvc := agent.NewService(agent.Config{
 		Conversations: agentConversations{svc: svc.chatSvc, projects: svc.workspaceSvc},

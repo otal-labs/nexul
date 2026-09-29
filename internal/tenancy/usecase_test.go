@@ -387,6 +387,10 @@ func (g *fakeAccountGate) Account(_ context.Context, userID string) (*TeamAccoun
 	return &TeamAccount{ID: userID, Login: userID, Status: "active"}, nil
 }
 
+func (g *fakeAccountGate) Presence(context.Context) (map[string]bool, map[string]time.Time, error) {
+	return nil, nil, nil
+}
+
 func newTestService(repo *fakeRepo) *Service {
 	s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), newFakeRoleNameGate(), newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{}, newFakeAccountGate())
 	s.now = func() time.Time { return fixedNow }

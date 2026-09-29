@@ -96,6 +96,9 @@ type TeamAccount struct {
 	Status             string    `json:"status"`
 	CanCreateWorkspace bool      `json:"can_create_workspace"`
 	CreatedAt          time.Time `json:"created_at"`
+	// Online is a live browser socket open right now; LastSeenAt is their latest session activity, nil once signed out everywhere.
+	Online     bool       `json:"online"`
+	LastSeenAt *time.Time `json:"last_seen_at"`
 	// AvatarOverride is the uploaded picture as a data URI; it leaves the server only through the avatar route.
 	AvatarOverride string `json:"-"`
 }

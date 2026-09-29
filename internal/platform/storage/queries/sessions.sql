@@ -26,3 +26,6 @@ UPDATE sessions SET push_token = ? WHERE id = ? AND user_id = ?;
 -- name: ListPushTargets :many
 SELECT id, user_id, push_token FROM sessions
 WHERE client = 'phone' AND push_token IS NOT NULL AND expires_at > sqlc.arg(now) AND user_id IN (sqlc.slice('user_ids'));
+
+-- name: ListSessionLastActive :many
+SELECT user_id, CAST(MAX(last_active_at) AS INTEGER) AS last_active_at FROM sessions GROUP BY user_id;

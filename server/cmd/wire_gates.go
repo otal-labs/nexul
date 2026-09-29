@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"time"
 
 	"net/http"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
 	"github.com/otal-labs/nexul/internal/plays"
+	"github.com/otal-labs/nexul/internal/presence"
 	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/tenancy"
 	"github.com/otal-labs/nexul/internal/workspace"
@@ -62,7 +64,17 @@ func (g userLookupGate) LoginForUserID(ctx context.Context, userID string) (stri
 
 // accountGate adapts auth's registered accounts to tenancy's AccountGate seam (ADR 0017: tenancy never imports auth).
 type accountGate struct {
-	svc *auth.Service
+	svc      *auth.Service
+	presence *presence.Keeper
+}
+
+// Presence reads online from the live-events sockets, since last_active_at is only written once an hour.
+func (g accountGate) Presence(ctx context.Context) (map[string]bool, map[string]time.Time, error) {
+	seen, err := g.svc.LastSeen(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	return g.presence.Online(), seen, nil
 }
 
 func (g accountGate) ListAccounts(ctx context.Context) ([]*tenancy.TeamAccount, error) {

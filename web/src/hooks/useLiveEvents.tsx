@@ -126,6 +126,8 @@ const pushTopics: Record<string, string[]> = {
   "account.reactivated": [getTeamKey],
   "account.removed": [getTeamKey, getWorkspacePeopleKey],
   "account.restored": [getTeamKey],
+  // Someone's first socket opening or last one closing; the frame names nobody, the refetch applies the Team's scoping.
+  "account.presence_changed": [getTeamKey],
   // A new name or picture reaches every open screen that shows the person, the saver's other devices included.
   "account.profile_updated": [getWorkspacePeopleKey, getTeamKey, getMeKey],
   "workspace.member.added": [getTeamKey, getWorkspacePeopleKey, getWorkspacesKey],

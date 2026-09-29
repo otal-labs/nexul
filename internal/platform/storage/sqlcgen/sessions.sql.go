@@ -163,6 +163,38 @@ func (q *Queries) ListPushTargets(ctx context.Context, arg ListPushTargetsParams
 	return items, nil
 }
 
+const listSessionLastActive = `-- name: ListSessionLastActive :many
+SELECT user_id, CAST(MAX(last_active_at) AS INTEGER) AS last_active_at FROM sessions GROUP BY user_id
+`
+
+type ListSessionLastActiveRow struct {
+	UserID       string
+	LastActiveAt int64
+}
+
+func (q *Queries) ListSessionLastActive(ctx context.Context) ([]ListSessionLastActiveRow, error) {
+	rows, err := q.db.QueryContext(ctx, listSessionLastActive)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSessionLastActiveRow
+	for rows.Next() {
+		var i ListSessionLastActiveRow
+		if err := rows.Scan(&i.UserID, &i.LastActiveAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSessionsByUser = `-- name: ListSessionsByUser :many
 SELECT id, user_id, token_hash, client, platform, label, ip, created_at, last_active_at, expires_at, push_token FROM sessions WHERE user_id = ? ORDER BY last_active_at DESC, id
 `

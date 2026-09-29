@@ -1,7 +1,6 @@
-import { UserX } from "lucide-react";
+import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { RowActionsMenu } from "@/components/settings/RowActionsMenu";
 import { TeamOverridesForm } from "@/components/team/TeamOverridesForm";
 import { TeamReadOnlyReason } from "@/components/team/TeamReadOnlyReason";
 import { TeamRoleSelect } from "@/components/team/TeamRoleSelect";
@@ -16,11 +15,6 @@ interface TeamMembershipItemProps {
   membership: TeamMembership;
 }
 
-const overridesLabel = ({ allow, deny }: TeamMembership): string => {
-  if (allow.length === 0 && deny.length === 0) return "No overrides on top of the role";
-  return `Overrides: ${allow.length} allowed, ${deny.length} denied on top of the role`;
-};
-
 const roleChipClass =
   "inline-flex shrink-0 items-center rounded-full bg-muted px-2 py-0.5 font-mono text-[11px] font-medium uppercase tracking-wide text-muted-foreground";
 
@@ -28,8 +22,10 @@ export const TeamMembershipItem = ({ person, workspace, membership }: TeamMember
   const changeRole = useChangeTeamMemberRole();
   const remove = useRemoveTeamMember();
   const { open: confirm } = useConfirmationDialog();
+  const [editingOverrides, setEditingOverrides] = useState(false);
   const editable = workspace.can_manage_members && !membership.is_owner;
   const readOnly = !workspace.can_manage_members && !membership.is_owner;
+  const hasOverrides = membership.allow.length > 0 || membership.deny.length > 0;
   const target = { workspaceId: workspace.id, userId: person.id };
 
   const removeFromWorkspace = async () => {
@@ -42,8 +38,8 @@ export const TeamMembershipItem = ({ person, workspace, membership }: TeamMember
   };
 
   return (
-    <>
-      <div className="flex flex-wrap items-center gap-2">
+    <li aria-label={workspace.name} className="space-y-2 px-3 py-2.5">
+      <div className="flex items-center gap-2">
         <span className="min-w-0 flex-1 truncate font-medium">{workspace.name}</span>
         {membership.is_owner && <span className={roleChipClass}>Owner</span>}
         {readOnly && <span className="text-sm text-muted-foreground">{membership.role_name}</span>}
@@ -57,24 +53,25 @@ export const TeamMembershipItem = ({ person, workspace, membership }: TeamMember
           />
         )}
         {editable && (
-          <Button type="button" variant="ghost" size="icon" aria-label={`Remove from ${workspace.name}`} title="Remove from workspace" disabled={remove.isPending} onClick={() => void removeFromWorkspace()}>
-            <UserX className="size-4" />
-          </Button>
+          <RowActionsMenu
+            subject={workspace.name}
+            actions={[
+              { label: "Edit overrides", onSelect: () => setEditingOverrides(true) },
+              { label: "Remove from workspace", destructive: true, disabled: remove.isPending, onSelect: () => void removeFromWorkspace() },
+            ]}
+          />
         )}
       </div>
       {membership.is_owner && <p className="text-xs text-muted-foreground">The Owner role can&apos;t be changed or removed, and it bypasses overrides.</p>}
       {readOnly && <TeamReadOnlyReason workspaceName={workspace.name} />}
-      {readOnly && <p className="text-xs text-muted-foreground">{overridesLabel(membership)}</p>}
-      {editable && (
-        <Collapsible>
-          <CollapsibleTrigger type="button" className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
-            {overridesLabel(membership)} · Edit
-          </CollapsibleTrigger>
-          <CollapsibleContent className="mt-3">
-            <TeamOverridesForm key={`${membership.allow.join()}|${membership.deny.join()}`} target={target} membership={membership} />
-          </CollapsibleContent>
-        </Collapsible>
+      {hasOverrides && (
+        <p className="text-xs text-muted-foreground">
+          Overrides: {membership.allow.length} allowed, {membership.deny.length} denied on top of the role
+        </p>
       )}
-    </>
+      {editingOverrides && (
+        <TeamOverridesForm key={`${membership.allow.join()}|${membership.deny.join()}`} target={target} membership={membership} onDone={() => setEditingOverrides(false)} />
+      )}
+    </li>
   );
 };

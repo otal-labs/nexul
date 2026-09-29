@@ -3,7 +3,7 @@ import { ChevronRight } from "lucide-react";
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { AccountStatusLabel } from "@/components/team/AccountStatusLabel";
 import type { TeamPerson } from "@/models/Team";
-import { accessSummary, personName } from "@/utils/TeamUtility";
+import { personName, presenceText } from "@/utils/TeamUtility";
 
 interface TeamPersonRowProps {
   person: TeamPerson;
@@ -11,9 +11,7 @@ interface TeamPersonRowProps {
   onOpen: (id: string) => void;
 }
 
-export const TeamPersonRow = ({ person, index, onOpen }: TeamPersonRowProps) => {
-  const summary = accessSummary(person);
-  return (
+export const TeamPersonRow = ({ person, index, onOpen }: TeamPersonRowProps) => (
     <li>
       <button
         type="button"
@@ -27,12 +25,11 @@ export const TeamPersonRow = ({ person, index, onOpen }: TeamPersonRowProps) => 
           <span className="block truncate font-medium">{personName(person)}</span>
           <span className="block truncate font-mono text-xs text-muted-foreground">@{person.login}</span>
         </span>
-        <span className="hidden min-w-0 flex-1 truncate text-right text-sm text-muted-foreground md:block">
-          {summary || "No workspace access"}
+        <span className="hidden shrink-0 text-right text-sm text-muted-foreground md:block">
+          {presenceText(person)}
         </span>
-        <AccountStatusLabel status={person.status} />
+        <AccountStatusLabel status={person.status} online={person.online} />
         <ChevronRight aria-hidden className="size-4 shrink-0 text-muted-foreground" />
       </button>
     </li>
-  );
-};
+);

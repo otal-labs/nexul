@@ -7,7 +7,7 @@ import { CreateInvitationDialog } from "@/components/member/CreateInvitationDial
 import { InvitationsFeed } from "@/components/member/InvitationsFeed";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { TeamFeed } from "@/components/team/TeamFeed";
-import { TeamPersonSheet } from "@/components/team/TeamPersonSheet";
+import { TeamPersonDialog } from "@/components/team/TeamPersonDialog";
 import { useFetchTeam } from "@/hooks/TeamHooks";
 
 // The open person lives in ?person= so a detail is linkable and survives a refresh.
@@ -41,7 +41,7 @@ export const TeamSection = () => {
       {team && team.people.length === 0 && <NoDataDisplay message="No one is registered yet — create an invitation link to add someone." />}
       {team && team.people.length > 0 && <TeamFeed people={team.people} onOpen={open} />}
       <InvitationsFeed />
-      <TeamPersonSheet personId={personId} onClose={() => open(null)} />
+      <TeamPersonDialog personId={personId} onClose={() => open(null)} />
     </SettingsCard>
   );
 };

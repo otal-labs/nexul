@@ -155,6 +155,15 @@ func (s *Service) ListSessions(ctx context.Context, userID, currentID string) ([
 	return sessions, nil
 }
 
+// LastSeen is each user's latest session activity, accurate to sessionTouchInterval; a signed-out user is absent.
+func (s *Service) LastSeen(ctx context.Context) (map[string]time.Time, error) {
+	seen, err := s.cfg.Sessions.LastActiveByUser(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("last seen: %w", err)
+	}
+	return seen, nil
+}
+
 // SignOutSession deletes one of the user's sessions; that token's next request fails.
 func (s *Service) SignOutSession(ctx context.Context, userID, id string) error {
 	sessions, err := s.cfg.Sessions.ListSessionsByUser(ctx, userID)

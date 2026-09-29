@@ -162,7 +162,9 @@ the title, then a muted meta line, then a `border-b border-border` hairline
 before the content. `DocDetail.tsx` and `TicketDetail.tsx` are the reference.
 Only a page with a genuine single-record view gets this header. In-context
 inspection that does not warrant leaving a list opens a right-anchored drawer
-instead; a page that works as a full detail view is not forced into a drawer.
+instead, or a centered dialog when the record is a short form of its own (the
+Team's person dialog, its body scrolling between a fixed header and footer); a
+page that works as a full detail view is not forced into a drawer.
 
 Empty and loading state. A centered icon in a `bg-muted/60` square (not a
 circle), a title, an optional message, an optional action, inside a
