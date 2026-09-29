@@ -32,13 +32,10 @@ func mentionsTestDB(t *testing.T) *sql.DB {
 	return db
 }
 
-func seedMentionsUser(t *testing.T, s *storage.Store, id string, owner bool) {
+func seedMentionsUser(t *testing.T, s *storage.Store, id string) {
 	t.Helper()
 	_, _, err := s.Users.UpsertUser(context.Background(), &auth.Identity{UserID: id, Provider: auth.ProviderGitHub, ProviderUserID: id, Login: id})
 	require.NoError(t, err)
-	if owner {
-		require.NoError(t, s.Users.SetCanCreateWorkspace(context.Background(), id, true))
-	}
 }
 
 // TestIntegration_MentionsOverRealStorage covers ticket/doc chip resolution over real SQLite, access-aware.
@@ -47,8 +44,8 @@ func TestIntegration_MentionsOverRealStorage(t *testing.T) {
 	db := mentionsTestDB(t)
 	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
 
-	seedMentionsUser(t, s, "u-alice", false)
-	seedMentionsUser(t, s, "u-owner", true)
+	seedMentionsUser(t, s, "u-alice")
+	seedMentionsUser(t, s, "u-owner")
 
 	aliceCtx := identity.WithActor(ctx, identity.Actor{ID: "u-alice"})
 	ownerCtx := identity.WithActor(ctx, identity.Actor{ID: "u-owner"})
@@ -103,7 +100,7 @@ func TestIntegration_MentionsOverRealStorage(t *testing.T) {
 	})
 
 	t.Run("granted user opens the doc", func(t *testing.T) {
-		// can_create_workspace doesn't bypass doc checks; u-owner proves access via an explicit grant like any other user.
+		// u-owner is no workspace's Owner here, so it proves access via an explicit grant like any other user.
 		require.NoError(t, s.Access.Set(ctx, "doc", "d-locked", "u-owner", permissions.SetOf(permissions.DocsRead), nil))
 		chips, err := svc.Resolve(ownerCtx, []mentions.Ref{{Type: "doc", ID: "d-locked"}})
 		require.NoError(t, err)

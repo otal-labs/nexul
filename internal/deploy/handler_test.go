@@ -33,7 +33,7 @@ func decodeDeploy(t *testing.T, rec *httptest.ResponseRecorder, v any) {
 }
 
 func withActor(r *http.Request) *http.Request {
-	return r.WithContext(identity.WithActor(r.Context(), identity.Actor{ID: "user-1", CanCreateWorkspace: true}))
+	return r.WithContext(identity.WithActor(r.Context(), identity.Actor{ID: "user-1"}))
 }
 
 func TestDeployRoutes_Deploy_ValidationError(t *testing.T) {

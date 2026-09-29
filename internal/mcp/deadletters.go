@@ -6,9 +6,14 @@ import (
 	"time"
 
 	"github.com/otal-labs/nexul/internal/platform/eventbus/deadletter"
-	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
+
+// anywhereGate is the instance-level permission check (ADR 0087): the caller holds the action in any workspace.
+type anywhereGate interface {
+	RequireAnywhere(ctx context.Context, action permissions.Action) error
+}
 
 // deadLetterResult is a dead letter as the model reads it: the payload as JSON, not base64 bytes.
 type deadLetterResult struct {
@@ -31,17 +36,17 @@ type deadLetterReplayIn struct {
 	ID string `json:"id" jsonschema:"The dead letter's id, from dead_letter_list."`
 }
 
-// deadLetterTools read and replay every domain's failed events, so both are instance-admin only.
-func deadLetterTools(store deadletter.Storer, pub deadletter.Publisher, admin identity.InstanceAdmin) []mcptool.Tool {
+// deadLetterTools read and replay every domain's failed events, so they take instance:read and instance:write.
+func deadLetterTools(store deadletter.Storer, pub deadletter.Publisher, gate anywhereGate) []mcptool.Tool {
 	return []mcptool.Tool{
 		mcptool.New("dead_letter_list", "List dead letters",
 			"Lists events that exhausted their retries or failed permanently, newest first, with the error each one "+
 				"hit and its payload. Use it to diagnose a failure the event bus could not process, then "+
-				"dead_letter_replay to retry one once the cause is fixed. Instance admins only, because payloads carry "+
-				"every domain's data.",
+				"dead_letter_replay to retry one once the cause is fixed. Needs instance:read in any workspace, "+
+				"because payloads carry every domain's data.",
 			mcptool.Hints{ReadOnly: true, Local: true},
 			func(ctx context.Context, in deadLetterListIn) (any, error) {
-				if err := identity.RequireInstanceAdmin(ctx, admin); err != nil {
+				if err := gate.RequireAnywhere(ctx, permissions.InstanceRead); err != nil {
 					return nil, err
 				}
 				letters, err := store.List(ctx, deadLetterScan, 0)
@@ -53,10 +58,10 @@ func deadLetterTools(store deadletter.Storer, pub deadletter.Publisher, admin id
 		mcptool.New("dead_letter_replay", "Replay dead letter",
 			"Republishes a dead letter to its original topic and removes it from the store, so every consumer of "+
 				"that topic runs again. Use it only after fixing what made the event fail; dead_letter_list shows the "+
-				"error. Instance admins only.",
+				"error. Needs instance:write in any workspace.",
 			mcptool.Hints{},
 			func(ctx context.Context, in deadLetterReplayIn) (any, error) {
-				if err := identity.RequireInstanceAdmin(ctx, admin); err != nil {
+				if err := gate.RequireAnywhere(ctx, permissions.InstanceWrite); err != nil {
 					return nil, err
 				}
 				if err := deadletter.Replay(ctx, store, pub, in.ID); err != nil {

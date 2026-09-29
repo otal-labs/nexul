@@ -31,7 +31,6 @@ func TestUsersRepo_UpsertUser_Create(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, created)
 	assert.Equal(t, "onik97", u.Login)
-	assert.False(t, u.CanCreateWorkspace)
 	assert.False(t, u.CreatedAt.IsZero())
 }
 
@@ -55,7 +54,6 @@ func TestUsersRepo_UpsertUser_UpdatesProviderFieldsNotFlags(t *testing.T) {
 	s := newTestStore(t)
 	_, _, err := s.Users.UpsertUser(context.Background(), newTestUser("u1", "42", "old-login"))
 	require.NoError(t, err)
-	require.NoError(t, s.Users.SetCanCreateWorkspace(context.Background(), "u1", true))
 	require.NoError(t, s.Users.MarkFirstLoginDone(context.Background(), "u1"))
 
 	renamed := newTestUser("", "42", "new-login")
@@ -65,7 +63,6 @@ func TestUsersRepo_UpsertUser_UpdatesProviderFieldsNotFlags(t *testing.T) {
 	assert.False(t, created)
 	assert.Equal(t, "new-login", u.Login)
 	assert.Equal(t, "Renamed", u.Name)
-	assert.True(t, u.CanCreateWorkspace, "re-login must not reset owner flag")
 	assert.True(t, u.FirstLoginDone, "re-login must not reset onboarding flag")
 
 	byKey, err := s.Users.GetUserByProvider(context.Background(), auth.ProviderGitHub, "42")
@@ -80,39 +77,46 @@ func TestUsersRepo_GetUserByID_NotFound(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
-func TestUsersRepo_CanCreateWorkspaceExists(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	exists, err := s.Users.CanCreateWorkspaceExists(context.Background())
+// makeOwner puts userID in workspaceID under that workspace's Owner role, creating the role the first time.
+func makeOwner(t *testing.T, s *Store, userID, workspaceID string) {
+	t.Helper()
+	_, err := s.db.ExecContext(t.Context(), `INSERT OR IGNORE INTO workspaces (id, name, created_at, updated_at) VALUES (?, ?, 1, 1)`, workspaceID, workspaceID)
 	require.NoError(t, err)
-	assert.False(t, exists)
-
-	_, _, err = s.Users.UpsertUser(context.Background(), newTestUser("u1", "1", "a"))
+	_, err = s.db.ExecContext(t.Context(), `INSERT OR IGNORE INTO roles (id, workspace_id, name, is_owner_role, created_at, updated_at, permissions) VALUES (?, ?, 'Owner', 1, 1, 1, '[]')`, "owner-"+workspaceID, workspaceID)
 	require.NoError(t, err)
-	exists, err = s.Users.CanCreateWorkspaceExists(context.Background())
+	_, err = s.db.ExecContext(t.Context(), `INSERT INTO workspace_members (user_id, workspace_id, role_id, created_at) VALUES (?, ?, ?, 1)`, userID, workspaceID, "owner-"+workspaceID)
 	require.NoError(t, err)
-	assert.False(t, exists)
-
-	require.NoError(t, s.Users.SetCanCreateWorkspace(context.Background(), "u1", true))
-	exists, err = s.Users.CanCreateWorkspaceExists(context.Background())
-	require.NoError(t, err)
-	assert.True(t, exists)
 }
 
-func TestUsersRepo_SetCanCreateWorkspace_MissingUser(t *testing.T) {
+func TestUsersRepo_ListActiveOwnerIDs(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
-	err := s.Users.SetCanCreateWorkspace(context.Background(), "ghost", true)
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
+	ctx := t.Context()
+	owners, err := s.Users.ListActiveOwnerIDs(ctx)
+	require.NoError(t, err)
+	assert.Empty(t, owners, "no owner before the owner wizard")
+
+	for _, id := range []string{"u1", "u2", "u3"} {
+		_, _, err := s.Users.UpsertUser(ctx, newTestUser(id, id, id))
+		require.NoError(t, err)
+	}
+	makeOwner(t, s, "u1", "workspace-default")
+	makeOwner(t, s, "u2", "ws-2")
+	makeOwner(t, s, "u2", "workspace-default")
+	require.NoError(t, s.Users.SetAccountStatus(ctx, "u2", auth.AccountDisabled))
+
+	owners, err = s.Users.ListActiveOwnerIDs(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"u1"}, owners, "a disabled Owner and a plain account are left out")
 }
 
-func TestUsersRepo_SetAccountStatus_LastActiveAdmin_IsRejectedAtomically(t *testing.T) {
+func TestUsersRepo_SetAccountStatus_LastActiveOwner_IsRejectedAtomically(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
 	ctx := t.Context()
 	_, _, err := s.Users.UpsertUser(ctx, newTestUser("u1", "1", "owner"))
 	require.NoError(t, err)
-	require.NoError(t, s.Users.SetCanCreateWorkspace(ctx, "u1", true))
+	makeOwner(t, s, "u1", "workspace-default")
 
 	err = s.Users.SetAccountStatus(ctx, "u1", auth.AccountDisabled)
 	require.ErrorIs(t, err, apperrs.ErrConflict)
@@ -121,19 +125,20 @@ func TestUsersRepo_SetAccountStatus_LastActiveAdmin_IsRejectedAtomically(t *test
 	assert.Equal(t, auth.AccountActive, user.AccountStatus)
 }
 
-func TestUsersRepo_SetAccountStatus_AllowsChangingWhenAnotherAdminIsActive(t *testing.T) {
+func TestUsersRepo_SetAccountStatus_AllowsChangingWhenAnotherOwnerIsActive(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
 	ctx := t.Context()
 	for _, id := range []string{"u1", "u2"} {
 		_, _, err := s.Users.UpsertUser(ctx, newTestUser(id, id, id))
 		require.NoError(t, err)
-		require.NoError(t, s.Users.SetCanCreateWorkspace(ctx, id, true))
 	}
+	makeOwner(t, s, "u1", "workspace-default")
+	makeOwner(t, s, "u2", "ws-2")
 	require.NoError(t, s.Users.SetAccountStatus(ctx, "u1", auth.AccountDisabled))
-	count, err := s.Users.CountActiveAdmins(ctx)
+	owners, err := s.Users.ListActiveOwnerIDs(ctx)
 	require.NoError(t, err)
-	assert.Equal(t, 1, count)
+	assert.Equal(t, []string{"u2"}, owners)
 }
 
 func TestUsersRepo_SetAccountStatus_RemovedCleansAccessAndWritesEvent(t *testing.T) {
@@ -144,7 +149,6 @@ func TestUsersRepo_SetAccountStatus_RemovedCleansAccessAndWritesEvent(t *testing
 	require.NoError(t, err)
 	_, _, err = s.Users.UpsertUser(ctx, newTestUser("u2", "2", "member"))
 	require.NoError(t, err)
-	require.NoError(t, s.Users.SetCanCreateWorkspace(ctx, "u1", true))
 	_, err = s.db.ExecContext(ctx, `INSERT INTO workspace_members (user_id, workspace_id, role_id, created_at) VALUES ('u2', 'workspace-default', 'role-missing', 1)`)
 	// The seeded schema may not have a role for the default workspace; use the user-independent cleanup assertions below.
 	if err != nil {

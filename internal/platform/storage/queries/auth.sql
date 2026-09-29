@@ -2,8 +2,8 @@
 SELECT COUNT(*) FROM users;
 
 -- name: InsertUser :exec
-INSERT INTO users (id, login, name, avatar_url, can_create_workspace, first_login_done, created_at, updated_at)
-VALUES (?, ?, ?, ?, 0, 0, ?, ?);
+INSERT INTO users (id, login, name, avatar_url, first_login_done, created_at, updated_at)
+VALUES (?, ?, ?, ?, 0, ?, ?);
 
 -- name: GetUserByIdentity :one
 SELECT u.* FROM users u JOIN user_identities i ON i.user_id = u.id
@@ -33,8 +33,11 @@ DELETE FROM user_identities WHERE user_id = ? AND provider = ?;
 -- name: SetAccountStatus :execrows
 UPDATE users SET account_status = ?, updated_at = ? WHERE id = ?;
 
--- name: CountActiveAdmins :one
-SELECT COUNT(*) FROM users WHERE can_create_workspace = 1 AND account_status = 'active';
+-- name: ListActiveOwnerIDs :many
+SELECT DISTINCT m.user_id FROM workspace_members m
+JOIN roles r ON r.id = m.role_id AND r.is_owner_role = 1
+JOIN users u ON u.id = m.user_id AND u.account_status = 'active'
+ORDER BY m.user_id;
 
 -- name: DeleteAccountMemberships :exec
 DELETE FROM workspace_members WHERE user_id = ?;
@@ -56,12 +59,6 @@ DELETE FROM invitations WHERE invited_by = ? AND redeemed_at IS NULL;
 
 -- name: GetUserByID :one
 SELECT * FROM users WHERE id = ?;
-
--- name: CountCanCreateWorkspace :one
-SELECT COUNT(*) FROM users WHERE can_create_workspace = 1;
-
--- name: SetCanCreateWorkspace :execrows
-UPDATE users SET can_create_workspace = ?, updated_at = ? WHERE id = ?;
 
 -- name: MarkFirstLoginDone :execrows
 UPDATE users SET first_login_done = 1, updated_at = ? WHERE id = ?;

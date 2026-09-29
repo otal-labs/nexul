@@ -158,23 +158,22 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 			"runner":      runnerHostKind{svc: runnerSvc},
 			"automations": automationsHostKind{svc: svc.automationHostsSvc},
 		},
-		DNS:           svc.dnsSvc,
-		Automations:   svc.automationsSvc,
-		Access:        svc.accessSvc,
-		Auth:          svc.authSvc,
-		Invitations:   svc.invitationSvc,
-		Workspaces:    svc.tenancySvc,
-		Roles:         svc.rolesSvc,
-		Mentions:      svc.mentionsSvc,
-		Chat:          svc.chatSvc,
-		Plays:         svc.playsSvc,
-		PlayRuns:      svc.playsRunner,
-		Pairing:       svc.pairingSvc,
-		DeadLetter:    store.DeadLetters,
-		InstanceAdmin: instanceAdminGate{svc: svc.authSvc},
-		Publisher:     bus,
-		Logger:        logger,
-		InstanceURL:   dnsSettingsAdapter{store.Settings}.GetInstanceURL,
+		DNS:         svc.dnsSvc,
+		Automations: svc.automationsSvc,
+		Access:      svc.accessSvc,
+		Auth:        svc.authSvc,
+		Invitations: svc.invitationSvc,
+		Workspaces:  svc.tenancySvc,
+		Roles:       svc.rolesSvc,
+		Mentions:    svc.mentionsSvc,
+		Chat:        svc.chatSvc,
+		Plays:       svc.playsSvc,
+		PlayRuns:    svc.playsRunner,
+		Pairing:     svc.pairingSvc,
+		DeadLetter:  store.DeadLetters,
+		Publisher:   bus,
+		Logger:      logger,
+		InstanceURL: dnsSettingsAdapter{store.Settings}.GetInstanceURL,
 	})
 
 	httpMux := httpx.NewServeMux()
@@ -269,8 +268,8 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("POST", "/api/logs", "Relay a batch of browser log records (console errors, uncaught exceptions)", "logs")
 	spec.Register("GET", "/api/about", "Public: the product name and this build's version, so a client can confirm the address is a Nexul server new enough for it", "version")
 	spec.Register("GET", "/api/version", "This build's version, channel, the channel's latest release, and the release notes since this build; ?refresh=1 skips the release cache", "version")
-	spec.Register("GET", "/api/instance/upgrade", "Instance-admin: running version, latest release, and whether an upgrade can start now; ?refresh=1 skips the release cache", "version")
-	spec.Register("POST", "/api/instance/upgrade", "Instance-admin: upgrade the instance to the channel's newest release", "version")
+	spec.Register("GET", "/api/instance/upgrade", "Needs instance:read: running version, latest release, and whether an upgrade can start now; ?refresh=1 skips the release cache", "version")
+	spec.Register("POST", "/api/instance/upgrade", "Needs instance:write: upgrade the instance to the channel's newest release", "version")
 	spec.Register("POST", "/api/auth/tokens", "Mint a personal access token", "auth")
 	spec.Register("GET", "/api/auth/tokens", "List personal access tokens", "auth")
 	spec.Register("DELETE", "/api/auth/tokens/{id}", "Revoke a personal access token", "auth")
@@ -311,7 +310,7 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("GET", "/api/projects", "List projects", "projects")
 	spec.Register("POST", "/api/projects", "Create a project", "projects")
 	spec.Register("GET", "/api/workspaces", "List the caller's workspaces", "workspaces")
-	spec.Register("POST", "/api/workspaces", "Create a workspace", "workspaces")
+	spec.Register("POST", "/api/workspaces", "Create a workspace; needs workspaces:create in any workspace", "workspaces")
 	spec.Register("GET", "/api/workspaces/{workspaceID}/people", "List a workspace's people: id, login, display name, picture; any member may read it", "workspaces")
 	spec.Register("GET", "/api/people/{userID}/avatar", "Get a person's uploaded picture; the URL comes from the people list", "workspaces")
 	spec.Register("GET", "/api/workspaces/{workspaceID}/roles", "List a workspace's roles", "roles")
@@ -330,15 +329,15 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("DELETE", "/api/automations/{id}/token", "Revoke an automation's token", "automations")
 	spec.Register("PATCH", "/api/automations/{id}/host", "Place an automation on an automations host (null: the instance host)", "automations")
 	spec.Register("GET", "/api/automation-hosts", "List automations hosts", "automation-hosts")
-	spec.Register("POST", "/api/automation-hosts/enrollments", "Instance-admin: mint a one-time automations host enrollment code and its install commands", "automation-hosts")
+	spec.Register("POST", "/api/automation-hosts/enrollments", "Needs automations:write: mint a one-time automations host enrollment code and its install commands", "automation-hosts")
 	spec.Register("POST", "/api/automation-hosts/enroll", "Trade an enrollment code for the automations host's own credential (public)", "automation-hosts")
-	spec.Register("DELETE", "/api/automation-hosts/{id}", "Instance-admin: remove an automations host, revoking its credential", "automation-hosts")
+	spec.Register("DELETE", "/api/automation-hosts/{id}", "Needs automations:delete: remove an automations host, revoking its credential", "automation-hosts")
 	spec.Register("POST", "/api/automation-hosts/self/remove", "Remove the automations host whose credential is the bearer token", "automation-hosts")
 	spec.Register("GET", "/api/automation-hosts/self/assignments", "The enabled automations placed on the calling host, each with its worker's token (host credential)", "automation-hosts")
 	spec.Register("GET", "/api/runners", "List runners", "runners")
-	spec.Register("POST", "/api/runners/enrollments", "Instance-admin: mint a one-time runner enrollment code and its install commands", "runners")
+	spec.Register("POST", "/api/runners/enrollments", "Needs runners:write: mint a one-time runner enrollment code and its install commands", "runners")
 	spec.Register("POST", "/api/runners/enroll", "Trade an enrollment code for the runner's own credential (public)", "runners")
-	spec.Register("DELETE", "/api/runners/{id}", "Instance-admin: remove a runner, revoking its credential", "runners")
+	spec.Register("DELETE", "/api/runners/{id}", "Needs runners:delete: remove a runner, revoking its credential", "runners")
 	spec.Register("POST", "/api/runners/self/remove", "Remove the runner whose credential is the bearer token", "runners")
 	spec.Register("GET", "/api/runners/download/{target}", "Download the runner binary for a target (runner credential)", "runners")
 	spec.Register("GET", "/api/runners/latest-version", "Latest published runner version", "runners")

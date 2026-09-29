@@ -9,6 +9,7 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 // fakeGitHub implements GitHubClient without network access.
@@ -48,10 +49,40 @@ type fakeUserStore struct {
 	seq        int
 	// profileEvents records what SetProfileOverride was asked to write to the outbox.
 	profileEvents []eventbus.OutboxEvent
+	// owners hold some workspace's Owner role, and with it every permission.
+	owners map[string]bool
 }
 
 func newFakeUserStore() *fakeUserStore {
-	return &fakeUserStore{byID: map[string]*User{}, byKey: map[string]string{}, identities: map[string]*Identity{}}
+	return &fakeUserStore{byID: map[string]*User{}, byKey: map[string]string{}, identities: map[string]*Identity{},
+		owners: map[string]bool{}}
+}
+
+func (f *fakeUserStore) setOwner(id string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.owners[id] = true
+}
+
+// fakePermissions answers the instance-level checks from the store: an Owner holds everything, anyone else nothing.
+type fakePermissions struct{ users *fakeUserStore }
+
+func (p fakePermissions) HoldsAnywhere(_ context.Context, userID string, _ permissions.Action) (bool, error) {
+	p.users.mu.Lock()
+	defer p.users.mu.Unlock()
+	return p.users.owners[userID], nil
+}
+
+func (p fakePermissions) PermissionsAnywhere(_ context.Context, userID string) ([]string, error) {
+	p.users.mu.Lock()
+	defer p.users.mu.Unlock()
+	out := []string{}
+	for _, a := range permissions.AllActions() {
+		if p.users.owners[userID] {
+			out = append(out, string(a))
+		}
+	}
+	return out, nil
 }
 
 func userKey(p Provider, pid string) string { return string(p) + ":" + pid }
@@ -206,26 +237,17 @@ func (f *fakeUserStore) ListUsers(_ context.Context) ([]*User, error) {
 	return out, nil
 }
 
-func (f *fakeUserStore) CanCreateWorkspaceExists(_ context.Context) (bool, error) {
+func (f *fakeUserStore) ListActiveOwnerIDs(_ context.Context) ([]string, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	for _, u := range f.byID {
-		if u.CanCreateWorkspace {
-			return true, nil
+	out := []string{}
+	for id := range f.owners {
+		if u, ok := f.byID[id]; ok && accountIsActive(u.AccountStatus) {
+			out = append(out, id)
 		}
 	}
-	return false, nil
-}
-
-func (f *fakeUserStore) SetCanCreateWorkspace(_ context.Context, id string, can bool) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	u, ok := f.byID[id]
-	if !ok {
-		return apperrs.ErrNotFound
-	}
-	u.CanCreateWorkspace = can
-	return nil
+	sort.Strings(out)
+	return out, nil
 }
 
 func (f *fakeUserStore) SetAccountStatus(_ context.Context, id string, status AccountStatus, _ ...eventbus.OutboxEvent) error {
@@ -243,18 +265,6 @@ func (f *fakeUserStore) CountUsers(_ context.Context) (int, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return len(f.byID), nil
-}
-
-func (f *fakeUserStore) CountActiveAdmins(_ context.Context) (int, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	count := 0
-	for _, u := range f.byID {
-		if u.CanCreateWorkspace && u.AccountStatus == AccountActive {
-			count++
-		}
-	}
-	return count, nil
 }
 
 func (f *fakeUserStore) MarkFirstLoginDone(_ context.Context, id string) error {
@@ -611,6 +621,8 @@ type fakeDefaultWorkspace struct {
 	mu    sync.Mutex
 	bound []string
 	err   error
+	// users, when set, records the bound user as an Owner the way the real membership would.
+	users *fakeUserStore
 }
 
 func (f *fakeDefaultWorkspace) BindDefaultWorkspaceOwner(_ context.Context, userID string) error {
@@ -620,6 +632,9 @@ func (f *fakeDefaultWorkspace) BindDefaultWorkspaceOwner(_ context.Context, user
 		return f.err
 	}
 	f.bound = append(f.bound, userID)
+	if f.users != nil {
+		f.users.setOwner(userID)
+	}
 	return nil
 }
 
@@ -771,7 +786,14 @@ type fakePublicAddress struct{ addr PublicAddress }
 func (f fakePublicAddress) PublicAddress(context.Context) PublicAddress { return f.addr }
 
 func newTestService(gh GitHubClient, users UserStore, allowlist AllowlistStore, settings SettingsStore) *Service {
+	defaultWorkspace := &fakeDefaultWorkspace{}
+	var perms PermissionGate
+	if store, ok := users.(*fakeUserStore); ok {
+		defaultWorkspace.users = store
+		perms = fakePermissions{users: store}
+	}
 	return NewService(Config{
+		Permissions:      perms,
 		SetupCodes:       &fakeSetupCodes{},
 		PublicAddress:    fakePublicAddress{addr: PublicAddress{IPv4: "203.0.113.7"}},
 		Secret:           []byte("test-secret"),
@@ -779,7 +801,7 @@ func newTestService(gh GitHubClient, users UserStore, allowlist AllowlistStore, 
 		Users:            users,
 		Allowlist:        allowlist,
 		Settings:         settings,
-		DefaultWorkspace: &fakeDefaultWorkspace{},
+		DefaultWorkspace: defaultWorkspace,
 		PendingInvites:   &fakePendingInviteResolver{},
 		Now:              func() time.Time { return time.Unix(1_700_000_000, 0) },
 		Sessions:         newFakeSessionStore(),

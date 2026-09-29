@@ -22,19 +22,6 @@ import (
 	"github.com/otal-labs/nexul/internal/tenancy"
 )
 
-// instanceAdminGate adapts auth's can_create_workspace fact to every domain's gate seam (ADR 0017).
-type instanceAdminGate struct {
-	svc *auth.Service
-}
-
-func (g instanceAdminGate) CanCreateWorkspace(ctx context.Context, userID string) (bool, error) {
-	u, err := g.svc.GetUserByID(ctx, userID)
-	if err != nil {
-		return false, err
-	}
-	return u.CanCreateWorkspace, nil
-}
-
 // allowlistGate adapts auth's sign-in allowlist to tenancy's AllowlistGate seam (ADR 0017: tenancy never imports auth).
 type allowlistGate struct {
 	svc *auth.Service
@@ -103,7 +90,7 @@ func toTeamAccount(u *auth.User) *tenancy.TeamAccount {
 	}
 	a := &tenancy.TeamAccount{
 		ID: u.ID, Login: u.Login, Name: u.Name, AvatarURL: u.AvatarURL,
-		Status: string(status), CanCreateWorkspace: u.CanCreateWorkspace, CreatedAt: u.CreatedAt,
+		Status: string(status), CreatedAt: u.CreatedAt,
 	}
 	if u.DisplayName != nil {
 		a.DisplayName = *u.DisplayName
@@ -207,6 +194,14 @@ func (g roleNameGate) IsOwnerRole(ctx context.Context, workspaceID, roleID strin
 		return false, err
 	}
 	return r.IsOwnerRole, nil
+}
+
+func (g roleNameGate) RolePermissions(ctx context.Context, workspaceID, roleID string) (permissions.Set, error) {
+	r, err := g.svc.Get(ctx, workspaceID, roleID)
+	if err != nil {
+		return nil, err
+	}
+	return r.Permissions, nil
 }
 
 // workspacePermissionGate adapts access's HasPermission to tenancy's seam (ADR 0017); backs the `/me` permissions field.

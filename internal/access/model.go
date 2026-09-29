@@ -19,10 +19,9 @@ type Overwrite struct {
 
 // User is mirrored here so access never imports auth (ADR 0017).
 type User struct {
-	ID                 string `json:"id"`
-	Login              string `json:"login"`
-	Name               string `json:"name"`
-	CanCreateWorkspace bool   `json:"can_create_workspace"`
+	ID    string `json:"id"`
+	Login string `json:"login"`
+	Name  string `json:"name"`
 }
 
 // RoleInfo is mirrored here so access never imports roles (ADR 0017).

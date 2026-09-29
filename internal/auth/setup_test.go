@@ -199,7 +199,6 @@ func TestRequireAuth_SetupPass(t *testing.T) {
 			}
 			require.NotNil(t, seen)
 			assert.Equal(t, SetupUserID, seen.ID)
-			assert.False(t, seen.CanCreateWorkspace)
 		})
 	}
 }

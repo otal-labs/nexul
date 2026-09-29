@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 // memAppConfigStore is a minimal in-memory AppConfigStore for tests.
@@ -32,27 +33,29 @@ func (m *memAppConfigStore) SetAppConfig(_ context.Context, c AppConfig) error {
 	return nil
 }
 
-// fakeOwnerGate is a canned OwnerGate for tests: userID "owner" holds the
-// instance-admin bit, everyone else doesn't.
+// fakeOwnerGate is a canned Gate for tests: the ownerIDs hold connectors:write, everyone else doesn't, and the
+// context-based check lets every call through.
 type fakeOwnerGate struct {
 	ownerIDs map[string]bool
 	err      error
 }
 
-func (f *fakeOwnerGate) CanCreateWorkspace(_ context.Context, userID string) (bool, error) {
+func (f *fakeOwnerGate) RequireAnywhere(context.Context, permissions.Action) error { return nil }
+
+func (f *fakeOwnerGate) HoldsAnywhere(_ context.Context, userID string, _ permissions.Action) (bool, error) {
 	if f.err != nil {
 		return false, f.err
 	}
 	return f.ownerIDs[userID], nil
 }
 
-func testAppConfigService(t *testing.T, owner OwnerGate) (*Service, *memAppConfigStore) {
+func testAppConfigService(t *testing.T, owner Gate) (*Service, *memAppConfigStore) {
 	t.Helper()
 	appStore := newMemAppConfigStore()
 	svc := NewService(Config{
 		Store:          newMemStore(),
 		AppConfigStore: appStore,
-		Owner:          owner,
+		Gate:           owner,
 		Registry: []Connector{
 			{ID: "github", Name: "GitHub", Description: "d", Category: "development"},
 			{ID: "google", Name: "Google", Description: "d", Category: "productivity"},
@@ -76,7 +79,7 @@ func TestSetAppConfig_VerifierRejects_NothingStored(t *testing.T) {
 	svc := NewService(Config{
 		Store:          newMemStore(),
 		AppConfigStore: appStore,
-		Owner:          owner,
+		Gate:           owner,
 		Registry: []Connector{
 			{ID: "github", Name: "GitHub", Description: "d", Category: "development", OAuth: &fakeAppVerifier{err: fmt.Errorf("%w: GitHub rejected the client secret", apperrs.ErrInvalid)}},
 		},

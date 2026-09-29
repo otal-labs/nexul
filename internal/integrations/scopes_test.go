@@ -204,6 +204,7 @@ func TestScopeAllows(t *testing.T) {
 		{"roles: write", "POST", "/api/roles", []Scope{Scope("roles:write")}, true},
 
 		{"runner enrollment denylisted even with runners:write", "POST", "/api/runners/enrollments", []Scope{Scope("runners:write")}, false},
+		{"instance upgrade denylisted even with instance:write", "POST", "/api/instance/upgrade", []Scope{Scope("instance:write")}, false},
 		{"runners list still allowed", "GET", "/api/runners", []Scope{Scope("runners:read")}, true},
 
 		{"unknown domain", "GET", "/api/billing", []Scope{ScopeEventsRead}, false},
@@ -230,7 +231,7 @@ func TestCatalog_CoversEveryGrantableScopeOnce(t *testing.T) {
 		seen[sc] = true
 	}
 	assert.Len(t, seen, len(allScopes))
-	assert.Len(t, seen, 70)
+	assert.Len(t, seen, 78)
 }
 
 func TestCatalog_EveryValueParses(t *testing.T) {

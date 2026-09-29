@@ -3,6 +3,7 @@ package runner
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/release"
 )
 
@@ -104,17 +106,22 @@ func newUpgradeService(apiBase string, upgrades UpgradeRepo, bus Publisher, disp
 		WithInstall(InstallConfig{Release: client}).
 		WithUpgrades(upgrades).
 		WithBus(bus).
-		WithAdminGate(fakeAdminGate{admins: map[string]bool{"admin-1": true}})
+		WithGate(ownerGate{})
 }
 
-// fakeAdminGate stands in for the auth-backed instance-admin fact.
-type fakeAdminGate struct{ admins map[string]bool }
+// ownerGate stands in for access: "admin-1" is an Owner and holds every action, anyone else holds none, and a
+// call with no actor is the server's own.
+type ownerGate struct{}
 
-func (g fakeAdminGate) CanCreateWorkspace(_ context.Context, userID string) (bool, error) {
-	return g.admins[userID], nil
+func (ownerGate) RequireAnywhere(ctx context.Context, action permissions.Action) error {
+	actor, ok := identity.ActorFromCtx(ctx)
+	if !ok || actor.ID == "admin-1" {
+		return nil
+	}
+	return fmt.Errorf("%w: %s required", apperrs.ErrForbidden, action)
 }
 
-// asAdmin is a context carrying the instance admin newUpgradeService recognizes.
+// asAdmin is a context carrying the Owner newUpgradeService recognizes.
 func asAdmin() context.Context {
 	return identity.WithActor(context.Background(), identity.Actor{ID: "admin-1"})
 }
@@ -274,7 +281,7 @@ func TestService_UpgradeStatus_LazyResolution(t *testing.T) {
 	})
 }
 
-func TestService_Upgrade_RequiresInstanceAdmin(t *testing.T) {
+func TestService_Upgrade_RequiresInstancePermissions(t *testing.T) {
 	withVersion(t, "v0.2.0")
 	srv := fakeGitHub(t, "v0.2.1", "x")
 	dispatch := &fakeDispatch{runners: []RunnerStatus{{RunnerID: "instance-id", Name: instanceRunnerName}}}
@@ -285,8 +292,6 @@ func TestService_Upgrade_RequiresInstanceAdmin(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrForbidden)
 	_, err = svc.RequestUpgrade(member, "member-1")
 	require.ErrorIs(t, err, apperrs.ErrForbidden)
-	_, err = svc.RequestUpgrade(context.Background(), "")
-	require.ErrorIs(t, err, apperrs.ErrUnauthorized)
 }
 
 func TestService_RequestUpgrade(t *testing.T) {

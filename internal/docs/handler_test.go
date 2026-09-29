@@ -21,7 +21,7 @@ func serve(t *testing.T, h http.Handler, method, path, body string) *httptest.Re
 		r = strings.NewReader(body)
 	}
 	req := httptest.NewRequest(method, path, r)
-	req = req.WithContext(identity.WithActor(req.Context(), identity.Actor{ID: "user-1", CanCreateWorkspace: false}))
+	req = req.WithContext(identity.WithActor(req.Context(), identity.Actor{ID: "user-1"}))
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	return rec

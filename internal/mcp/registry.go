@@ -23,7 +23,6 @@ import (
 	"github.com/otal-labs/nexul/internal/mentions"
 	"github.com/otal-labs/nexul/internal/pairing"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/deadletter"
-	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/repository"
@@ -69,8 +68,6 @@ type RegistryOptions struct {
 	Pairing     *pairing.Service
 	DeadLetter  deadletter.Storer
 	Publisher   deadletter.Publisher
-	// InstanceAdmin gates the dead-letter tools, which read and replay every domain's failed events.
-	InstanceAdmin identity.InstanceAdmin
 	// InstanceURL is the configured public URL; a browser request from any other origin is refused.
 	InstanceURL func(context.Context) (string, error)
 	Logger      *slog.Logger
@@ -117,7 +114,7 @@ func registryTools(opts RegistryOptions) []mcptool.Tool {
 		pairing.MCPTools(opts.Pairing),
 		plays.MCPTools(opts.Plays),
 		plays.RunMCPTools(opts.PlayRuns),
-		deadLetterTools(opts.DeadLetter, opts.Publisher, opts.InstanceAdmin),
+		deadLetterTools(opts.DeadLetter, opts.Publisher, opts.Access),
 	)
 }
 

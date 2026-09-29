@@ -16,3 +16,10 @@ type MemberGate interface {
 	// MemberRoleID returns the role id userID holds in workspaceID.
 	MemberRoleID(ctx context.Context, workspaceID, userID string) (string, error)
 }
+
+// PermissionGate reads what a user holds in a workspace without roles importing access (ADR 0017), so a role never
+// grants more than whoever writes it holds (ADR 0088).
+type PermissionGate interface {
+	// WorkspacePermissions returns every action userID holds in workspaceID; an Owner's is every action.
+	WorkspacePermissions(ctx context.Context, userID, workspaceID string) []string
+}

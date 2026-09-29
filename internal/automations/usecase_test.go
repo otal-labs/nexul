@@ -36,14 +36,14 @@ func TestService_Create(t *testing.T) {
 	})
 	t.Run("unknown scope is rejected when a resolver is wired", func(t *testing.T) {
 		svc := NewService(newFakeRepo(), allowAll("creator-1"))
-		svc.SetGateway(nil, func([]string) ([]string, error) { return nil, apperrs.ErrInvalid }, nil)
+		svc.SetGateway(nil, func([]string) ([]string, error) { return nil, apperrs.ErrInvalid })
 		_, _, err := svc.Create(context.Background(), "creator-1", "typo", []string{"ticket:write"})
 		require.ErrorIs(t, err, apperrs.ErrInvalid)
 	})
 
 	t.Run("stored scopes are the resolver's effective set", func(t *testing.T) {
 		svc := NewService(newFakeRepo(), allowAll("creator-1"))
-		svc.SetGateway(nil, func([]string) ([]string, error) { return []string{"tickets:write", "tickets:read"}, nil }, nil)
+		svc.SetGateway(nil, func([]string) ([]string, error) { return []string{"tickets:write", "tickets:read"}, nil })
 		a, _, err := svc.Create(context.Background(), "creator-1", "expanded", []string{"tickets:write"})
 		require.NoError(t, err)
 		assert.Equal(t, []string{"tickets:write", "tickets:read"}, a.Scopes)

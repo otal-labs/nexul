@@ -238,7 +238,7 @@ func (h *Handler) appConfig(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, st)
 }
 
-// setAppConfig stores connectorID's app-level OAuth registration (CN3a); the use-case enforces the owner-only check.
+// setAppConfig stores connectorID's app-level OAuth registration (CN3a); the use-case enforces connectors:write.
 func (h *Handler) setAppConfig(w http.ResponseWriter, r *http.Request) {
 	connectorID := r.PathValue("id")
 	userID := UserIDFromCtx(r.Context())

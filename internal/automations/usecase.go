@@ -29,10 +29,9 @@ type Service struct {
 	perm  PermissionGate
 	now   func() time.Time
 	conns ConnectionRegistry
-	// scopeAllows and owner back the HTTP gateway; nil until SetGateway wires them.
+	// scopeAllows backs the HTTP gateway; nil until SetGateway wires it.
 	scopeAllows   ScopeGate
 	resolveScopes ScopeResolver
-	owner         OwnerGate
 	// hosts checks host-scoped tokens and backs placement; nil until SetHosts wires it.
 	hosts *HostsService
 }

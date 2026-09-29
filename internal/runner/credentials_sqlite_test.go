@@ -19,6 +19,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/hostcred"
 	"github.com/otal-labs/nexul/internal/platform/identity"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
 	"github.com/otal-labs/nexul/internal/runner"
 )
@@ -54,9 +55,9 @@ func (b *syncBus) Subscribe(_ context.Context, topic string, h eventbus.Handler)
 
 var quiet = slog.New(slog.NewTextHandler(io.Discard, nil))
 
-type adminGate struct{}
+type allowGate struct{}
 
-func (adminGate) CanCreateWorkspace(context.Context, string) (bool, error) { return true, nil }
+func (allowGate) RequireAnywhere(context.Context, permissions.Action) error { return nil }
 
 type settings struct{ url string }
 
@@ -127,7 +128,7 @@ func newInstance(t *testing.T) *instance {
 	go func() { _ = h.Run(ctx) }()
 	svc := runner.NewService(store.Runners, h).WithMachines(store.Machines).
 		WithInstall(runner.InstallConfig{Settings: settings{url: "https://nexul.example.com"}}).
-		WithAdminGate(adminGate{}).WithBus(bus)
+		WithGate(allowGate{}).WithBus(bus)
 
 	api := runner.NewHTTPHandler(svc)
 	routes, public := api.Routes(), api.PublicRoutes()

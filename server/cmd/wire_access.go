@@ -70,14 +70,6 @@ type accessUsers struct {
 	users *storage.UsersRepo
 }
 
-func (a accessUsers) GetUserByID(ctx context.Context, id string) (*access.User, error) {
-	u, err := a.users.GetUserByID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	return mapAccessUser(u), nil
-}
-
 func (a accessUsers) ListUsers(ctx context.Context) ([]*access.User, error) {
 	us, err := a.users.ListUsers(ctx)
 	if err != nil {
@@ -91,7 +83,7 @@ func (a accessUsers) ListUsers(ctx context.Context) ([]*access.User, error) {
 }
 
 func mapAccessUser(u *auth.User) *access.User {
-	return &access.User{ID: u.ID, Login: u.Login, Name: u.Name, CanCreateWorkspace: u.CanCreateWorkspace}
+	return &access.User{ID: u.ID, Login: u.Login, Name: u.Name}
 }
 
 // accessScopes reads projects and memberships from storage: a check that went through a gated use-case would

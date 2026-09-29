@@ -21,7 +21,7 @@ import (
 func ownerRequest(t *testing.T, method, path, body string) *http.Request {
 	t.Helper()
 	req := httptest.NewRequest(method, path, strings.NewReader(body))
-	ctx := identity.WithActor(req.Context(), identity.Actor{ID: "owner-1", CanCreateWorkspace: true})
+	ctx := identity.WithActor(req.Context(), identity.Actor{ID: "owner-1"})
 	return req.WithContext(ctx)
 }
 

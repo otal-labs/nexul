@@ -36,17 +36,16 @@ func AccountTools(a AccountStatusSetter, t Team) []mcptool.Tool {
 
 // accountResult is one person on the Team: the account without its sign-in identities, plus its workspace access.
 type accountResult struct {
-	ID                 string             `json:"id"`
-	Login              string             `json:"login"`
-	Name               string             `json:"name"`
-	DisplayName        string             `json:"display_name,omitempty"`
-	AvatarURL          string             `json:"avatar_url,omitempty"`
-	Status             string             `json:"status"`
-	CanCreateWorkspace bool               `json:"can_create_workspace"`
-	CreatedAt          time.Time          `json:"created_at"`
-	Online             bool               `json:"online"`
-	LastSeenAt         *time.Time         `json:"last_seen_at"`
-	Workspaces         []membershipResult `json:"workspaces"`
+	ID          string             `json:"id"`
+	Login       string             `json:"login"`
+	Name        string             `json:"name"`
+	DisplayName string             `json:"display_name,omitempty"`
+	AvatarURL   string             `json:"avatar_url,omitempty"`
+	Status      string             `json:"status"`
+	CreatedAt   time.Time          `json:"created_at"`
+	Online      bool               `json:"online"`
+	LastSeenAt  *time.Time         `json:"last_seen_at"`
+	Workspaces  []membershipResult `json:"workspaces"`
 }
 
 type membershipResult struct {
@@ -73,7 +72,7 @@ type accountWorkspaceIn struct {
 
 type accountUpdateIn struct {
 	ID                 string               `json:"id" jsonschema:"The account's id, from account_list."`
-	Status             auth.AccountStatus   `json:"status,omitempty" jsonschema:"active or disabled. active reactivates a disabled account and restores a removed one. Instance administrators only."`
+	Status             auth.AccountStatus   `json:"status,omitempty" jsonschema:"active or disabled. active reactivates a disabled account and restores a removed one. Needs accounts:write in any workspace."`
 	Workspaces         []accountWorkspaceIn `json:"workspaces,omitempty" jsonschema:"Workspace access to set: adds the account to a workspace it is not in with role_id, changes its role where it is a member, and replaces its overrides where allow or deny is sent."`
 	RemoveWorkspaceIDs []string             `json:"remove_workspace_ids,omitempty" jsonschema:"Workspaces to take the account out of; its account and authored content stay."`
 }
@@ -89,8 +88,8 @@ func accountListTool(t Team) mcptool.Tool {
 			"when they were last seen (to the hour, null once signed out everywhere), and their workspace access, one "+
 			"entry per workspace with the role, whether that is the Owner role, the workspace-wide allow and deny "+
 			"overrides, and can_manage_members, whether you hold members:write there and so may change that access. "+
-			"An instance administrator sees every account and workspace; anyone else sees only the workspaces where "+
-			"they hold members:write and the people in them, and callers with neither are refused. Use account_get "+
+			"A holder of accounts:read in any workspace sees every account and workspace; anyone else sees only the "+
+			"workspaces where they hold members:write and the people in them, and callers with neither are refused. Use account_get "+
 			"for your own account, account_update to change an account's status or workspace access, and "+
 			"account_delete to remove it. People online come first, then the most recently seen.",
 		mcptool.Hints{ReadOnly: true, Local: true},
@@ -111,10 +110,10 @@ func accountUpdateTool(a AccountStatusSetter, t Team) mcptool.Tool {
 	return mcptool.New("account_update", "Update account",
 		"Changes an account's status and its workspace access. status disabled blocks sign-in while keeping "+
 			"memberships and credentials; active reactivates a disabled account, or restores a removed one without "+
-			"the access account_delete took away; status needs an instance administrator. workspaces adds the "+
+			"the access account_delete took away; status needs accounts:write in any workspace. workspaces adds the "+
 			"account to a workspace, changes its role, or replaces its overrides there, and remove_workspace_ids "+
-			"takes it out of one; each needs members:write in that workspace, and the Owner role can never be "+
-			"given, changed, or removed. Only the fields you send change. The changes apply in the order listed "+
+			"takes it out of one; each needs members:write in that workspace, a role or allow override may only "+
+			"carry permissions you hold there yourself, and the Owner role can never be given, changed, or removed. Only the fields you send change. The changes apply in the order listed "+
 			"here and stop at the first failure, whose message names the field and the ones already applied. "+
 			"Returns the fields applied and the account as account_list shows it to you, when it shows it at all.",
 		mcptool.Hints{Idempotent: true, Local: true},
@@ -200,7 +199,7 @@ func manageable(team *tenancy.Team) map[string]bool {
 func toAccountResult(p *tenancy.TeamPerson, canManage map[string]bool) accountResult {
 	r := accountResult{
 		ID: p.ID, Login: p.Login, Name: p.Name, DisplayName: p.DisplayName, AvatarURL: p.AvatarURL,
-		Status: p.Status, CanCreateWorkspace: p.CanCreateWorkspace, CreatedAt: p.CreatedAt,
+		Status: p.Status, CreatedAt: p.CreatedAt,
 		Online: p.Online, LastSeenAt: p.LastSeenAt,
 		Workspaces: make([]membershipResult, 0, len(p.Workspaces)),
 	}

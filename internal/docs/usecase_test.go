@@ -239,7 +239,7 @@ func newScriptedService(repo *fakeRepo, can bool, grantErr error) *Service {
 
 // testCtx returns a context carrying a fixed actor for permission checks.
 func testCtx() context.Context {
-	return identity.WithActor(context.Background(), identity.Actor{ID: "user-1", CanCreateWorkspace: false})
+	return identity.WithActor(context.Background(), identity.Actor{ID: "user-1"})
 }
 
 // fakeAccess is a docs.AccessChecker stub for unit tests.

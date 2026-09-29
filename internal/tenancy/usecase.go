@@ -39,7 +39,8 @@ func NewService(repo Repo, members MemberRepo, invites InviteRepo, roles RoleGat
 	return &Service{repo: repo, members: members, invites: invites, roles: roles, perm: perm, roleNames: roleNames, wsPerms: wsPerms, allowlist: allowlist, users: users, channels: channels, plays: plays, accounts: accounts, now: time.Now}
 }
 
-// Create adds a workspace and binds userID as its first member; requires the can_create_workspace bit.
+// Create adds a workspace and binds userID as its Owner; requires workspaces:create in any workspace, which makes
+// that permission as strong as Owner (ADR 0088).
 func (s *Service) Create(ctx context.Context, userID, name string) (*Workspace, error) {
 	userID = strings.TrimSpace(userID)
 	if userID == "" {
@@ -49,12 +50,12 @@ func (s *Service) Create(ctx context.Context, userID, name string) (*Workspace, 
 	if name == "" {
 		return nil, fmt.Errorf("%w: workspace name is required", apperrs.ErrInvalid)
 	}
-	ok, err := s.perm.CanCreateWorkspace(ctx, userID)
+	ok, err := s.perm.HoldsAnywhere(ctx, userID, permissions.WorkspacesCreate)
 	if err != nil {
-		return nil, fmt.Errorf("check create-workspace permission: %w", err)
+		return nil, fmt.Errorf("check %s: %w", permissions.WorkspacesCreate, err)
 	}
 	if !ok {
-		return nil, fmt.Errorf("%w: can_create_workspace permission required", apperrs.ErrForbidden)
+		return nil, fmt.Errorf("%w: %s required", apperrs.ErrForbidden, permissions.WorkspacesCreate)
 	}
 	now := s.now().UTC()
 	w := &Workspace{ID: ids.New(), Name: name, MentionChipTemplate: DefaultMentionChipTemplate, CreatedAt: now, UpdatedAt: now}
@@ -79,7 +80,7 @@ func (s *Service) Create(ctx context.Context, userID, name string) (*Workspace, 
 	return w, nil
 }
 
-// Rename requires the same can_create_workspace bit as Create since it's an instance-admin action.
+// Rename requires workspaces:write in the workspace being renamed.
 func (s *Service) Rename(ctx context.Context, userID, id, name string) (*Workspace, error) {
 	userID = strings.TrimSpace(userID)
 	if userID == "" {
@@ -89,12 +90,8 @@ func (s *Service) Rename(ctx context.Context, userID, id, name string) (*Workspa
 	if name == "" {
 		return nil, fmt.Errorf("%w: workspace name is required", apperrs.ErrInvalid)
 	}
-	ok, err := s.perm.CanCreateWorkspace(ctx, userID)
-	if err != nil {
-		return nil, fmt.Errorf("check create-workspace permission: %w", err)
-	}
-	if !ok {
-		return nil, fmt.Errorf("%w: can_create_workspace permission required", apperrs.ErrForbidden)
+	if err := s.requireWorkspacePermission(ctx, userID, id, permissions.WorkspacesWrite); err != nil {
+		return nil, err
 	}
 	current, err := s.Get(ctx, id)
 	if err != nil {
@@ -207,6 +204,20 @@ func (s *Service) requireManageWorkspaceMembers(ctx context.Context, actorID, wo
 	return s.requireWorkspacePermission(ctx, actorID, workspaceID, permissions.MembersWrite)
 }
 
+// requireHolds refuses a grant in workspaceID carrying an action actorID does not hold there (ADR 0088).
+func (s *Service) requireHolds(ctx context.Context, actorID, workspaceID string, grant permissions.Set) error {
+	return permissions.RequireHeld(grant, permissions.SetOfStrings(s.wsPerms.WorkspacePermissions(ctx, actorID, workspaceID)))
+}
+
+// requireHoldsRole refuses assigning roleID unless actorID holds every action it grants in workspaceID.
+func (s *Service) requireHoldsRole(ctx context.Context, actorID, workspaceID, roleID string) error {
+	grant, err := s.roleNames.RolePermissions(ctx, workspaceID, roleID)
+	if err != nil {
+		return fmt.Errorf("read role %s: %w", roleID, err)
+	}
+	return s.requireHolds(ctx, actorID, workspaceID, grant)
+}
+
 // InviteMember requires login to already be allowlisted; an unknown login is held pending until first sign-in.
 func (s *Service) InviteMember(ctx context.Context, actorID, workspaceID, login, roleID string) error {
 	workspaceID = strings.TrimSpace(workspaceID)
@@ -227,6 +238,9 @@ func (s *Service) InviteMember(ctx context.Context, actorID, workspaceID, login,
 	}
 	if isOwner {
 		return fmt.Errorf("%w: the Owner role cannot be assigned via invite", apperrs.ErrInvalid)
+	}
+	if err := s.requireHoldsRole(ctx, actorID, workspaceID, roleID); err != nil {
+		return err
 	}
 	allowed, err := s.allowlist.IsAllowlisted(ctx, login)
 	if err != nil {
@@ -346,33 +360,40 @@ func (s *Service) ChangeMemberRole(ctx context.Context, actorID, workspaceID, us
 	if isNewOwner {
 		return fmt.Errorf("%w: the Owner role cannot be assigned via invite", apperrs.ErrInvalid)
 	}
+	if err := s.requireHoldsRole(ctx, actorID, workspaceID, roleID); err != nil {
+		return err
+	}
 	if err := s.members.SetRole(ctx, workspaceID, userID, roleID, memberEvent(TopicWorkspaceMemberUpdated, actorID, workspaceID, userID)); err != nil {
 		return fmt.Errorf("set role for %s in workspace %s: %w", userID, workspaceID, err)
 	}
 	return nil
 }
 
-// ListTeam is every account with its access for an instance administrator; anyone else holding members:write
+// ListTeam is every account with its access for a holder of accounts:read; anyone else holding members:write
 // somewhere sees only the workspaces they manage and the people in them.
 func (s *Service) ListTeam(ctx context.Context, actorID string) (*Team, error) {
-	admin, err := s.perm.CanCreateWorkspace(ctx, actorID)
+	everyone, err := s.perm.HoldsAnywhere(ctx, actorID, permissions.AccountsRead)
 	if err != nil {
-		return nil, fmt.Errorf("check instance administrator: %w", err)
+		return nil, fmt.Errorf("check %s: %w", permissions.AccountsRead, err)
+	}
+	manageAccounts, err := s.perm.HoldsAnywhere(ctx, actorID, permissions.AccountsWrite)
+	if err != nil {
+		return nil, fmt.Errorf("check %s: %w", permissions.AccountsWrite, err)
 	}
 	workspaces, err := s.repo.ListWithRoles(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list workspaces: %w", err)
 	}
-	// Instance admin is not workspace admin (ADR 0024): each workspace answers for itself.
+	// Reading every account is not managing a workspace (ADR 0024): each workspace answers for itself.
 	visible := make([]*TeamWorkspace, 0, len(workspaces))
 	for _, w := range workspaces {
 		w.CanManageMembers = s.requireManageWorkspaceMembers(ctx, actorID, w.ID) == nil
-		if admin || w.CanManageMembers {
+		if everyone || w.CanManageMembers {
 			visible = append(visible, w)
 		}
 	}
-	if len(visible) == 0 && !admin {
-		return nil, fmt.Errorf("%w: instance administrator or members:write in a workspace required", apperrs.ErrForbidden)
+	if len(visible) == 0 && !everyone {
+		return nil, fmt.Errorf("%w: accounts:read or members:write in a workspace required", apperrs.ErrForbidden)
 	}
 	accounts, err := s.accounts.ListAccounts(ctx)
 	if err != nil {
@@ -386,7 +407,7 @@ func (s *Service) ListTeam(ctx context.Context, actorID string) (*Team, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read presence: %w", err)
 	}
-	people := teamPeople(accounts, memberships, visible, admin)
+	people := teamPeople(accounts, memberships, visible, everyone)
 	for _, p := range people {
 		p.Online = online[p.ID]
 		if at, ok := seen[p.ID]; ok {
@@ -394,7 +415,7 @@ func (s *Service) ListTeam(ctx context.Context, actorID string) (*Team, error) {
 		}
 	}
 	slices.SortStableFunc(people, byPresence)
-	return &Team{People: people, Workspaces: visible, CanManageAccounts: admin}, nil
+	return &Team{People: people, Workspaces: visible, CanManageAccounts: manageAccounts}, nil
 }
 
 // byPresence puts whoever is online first, then the most recently seen; ties keep the accounts' login order.
@@ -415,8 +436,8 @@ func lastSeen(p *TeamPerson) time.Time {
 	return *p.LastSeenAt
 }
 
-// teamPeople keeps only the visible workspaces' memberships; outside an admin's view, a person with none of them is left out.
-func teamPeople(accounts []*TeamAccount, memberships []*TeamMembership, visible []*TeamWorkspace, admin bool) []*TeamPerson {
+// teamPeople keeps only the visible workspaces' memberships; unless everyone is shown, a person with none of them is left out.
+func teamPeople(accounts []*TeamAccount, memberships []*TeamMembership, visible []*TeamWorkspace, everyone bool) []*TeamPerson {
 	shown := make(map[string]bool, len(visible))
 	for _, w := range visible {
 		shown[w.ID] = true
@@ -430,7 +451,7 @@ func teamPeople(accounts []*TeamAccount, memberships []*TeamMembership, visible 
 	people := make([]*TeamPerson, 0, len(accounts))
 	for _, a := range accounts {
 		held := byUser[a.ID]
-		if held == nil && !admin {
+		if held == nil && !everyone {
 			continue
 		}
 		if held == nil {
@@ -463,6 +484,9 @@ func (s *Service) AddMember(ctx context.Context, actorID, workspaceID, userID, r
 	}
 	if isOwner {
 		return fmt.Errorf("%w: the Owner role cannot be assigned", apperrs.ErrInvalid)
+	}
+	if err := s.requireHoldsRole(ctx, actorID, workspaceID, roleID); err != nil {
+		return err
 	}
 	account, err := s.accounts.Account(ctx, userID)
 	if err != nil {
@@ -506,10 +530,11 @@ func (s *Service) SetMemberOverrides(ctx context.Context, actorID, workspaceID, 
 	if isOwner {
 		return fmt.Errorf("%w: the workspace Owner bypasses permission overrides, so none can be set", apperrs.ErrInvalid)
 	}
-	nextAllow, nextDeny, err := s.members.Overrides(ctx, workspaceID, userID)
+	currentAllow, nextDeny, err := s.members.Overrides(ctx, workspaceID, userID)
 	if err != nil {
 		return fmt.Errorf("read overrides for %s in workspace %s: %w", userID, workspaceID, err)
 	}
+	nextAllow := currentAllow
 	if allow != nil {
 		nextAllow = permissions.SetOf(*allow...)
 	}
@@ -517,6 +542,10 @@ func (s *Service) SetMemberOverrides(ctx context.Context, actorID, workspaceID, 
 		nextDeny = permissions.SetOf(*deny...)
 	}
 	if err := validateOverrides(nextAllow, nextDeny); err != nil {
+		return err
+	}
+	// Only what the change adds is a grant; an allow the member already had may stay without the actor holding it.
+	if err := s.requireHolds(ctx, actorID, workspaceID, nextAllow.Except(currentAllow)); err != nil {
 		return err
 	}
 	if err := s.members.SetOverrides(ctx, workspaceID, userID, nextAllow, nextDeny, memberEvent(TopicWorkspaceMemberUpdated, actorID, workspaceID, userID)); err != nil {

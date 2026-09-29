@@ -31,11 +31,17 @@ func serveAccess(t *testing.T, h http.Handler, actor identity.Actor, method, pat
 
 func newAccessHarness() (*Service, *fakeRepo, *fakeUsers) {
 	users := newFakeUsers(
-		&User{ID: "owner", Login: "owner", CanCreateWorkspace: true},
+		&User{ID: "owner", Login: "owner"},
 		&User{ID: "alice", Login: "alice"},
 	)
 	repo := newFakeRepo()
-	return newService(repo, users), repo, users
+	s := newService(repo, users)
+	roles := newFakeRoles()
+	roles.set("ws-1", "owner", RoleInfo{IsOwnerRole: true})
+	roles.set("ws-1", "alice", RoleInfo{})
+	s.SetRoles(roles)
+	s.SetScopes(fakeScopes{workspaces: map[string][]string{"owner": {"ws-1"}, "alice": {"ws-1"}}})
+	return s, repo, users
 }
 
 func TestHandler_ListGrants(t *testing.T) {
@@ -46,7 +52,7 @@ func TestHandler_ListGrants(t *testing.T) {
 	h := NewHandler(svc).Routes()
 
 	t.Run("owner lists grants", func(t *testing.T) {
-		rec := serveAccess(t, h, identity.Actor{ID: "owner", CanCreateWorkspace: true}, http.MethodGet, "/api/permissions?doc_id=doc-1", "")
+		rec := serveAccess(t, h, identity.Actor{ID: "owner"}, http.MethodGet, "/api/permissions?doc_id=doc-1", "")
 		require.Equal(t, http.StatusOK, rec.Code)
 		var body struct {
 			Grants []*Overwrite `json:"grants"`
@@ -57,7 +63,7 @@ func TestHandler_ListGrants(t *testing.T) {
 		assert.ElementsMatch(t, []string{"owner", "alice"}, ids)
 	})
 	t.Run("missing doc_id is 400", func(t *testing.T) {
-		rec := serveAccess(t, h, identity.Actor{ID: "owner", CanCreateWorkspace: true}, http.MethodGet, "/api/permissions", "")
+		rec := serveAccess(t, h, identity.Actor{ID: "owner"}, http.MethodGet, "/api/permissions", "")
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 	t.Run("non-manager is 403", func(t *testing.T) {
@@ -116,7 +122,7 @@ func TestHandler_ListUsers(t *testing.T) {
 	h := NewHandler(svc).Routes()
 
 	t.Run("owner lists users", func(t *testing.T) {
-		rec := serveAccess(t, h, identity.Actor{ID: "owner", CanCreateWorkspace: true}, http.MethodGet, "/api/permissions/users", "")
+		rec := serveAccess(t, h, identity.Actor{ID: "owner"}, http.MethodGet, "/api/permissions/users", "")
 		require.Equal(t, http.StatusOK, rec.Code)
 		var body struct {
 			Users []*User `json:"users"`
@@ -149,7 +155,7 @@ func TestHandler_SetGrants(t *testing.T) {
 	h := NewHandler(svc).Routes()
 
 	t.Run("owner bulk applies", func(t *testing.T) {
-		rec := serveAccess(t, h, identity.Actor{ID: "owner", CanCreateWorkspace: true}, http.MethodPut, "/api/permissions",
+		rec := serveAccess(t, h, identity.Actor{ID: "owner"}, http.MethodPut, "/api/permissions",
 			`{"doc_ids":["doc-1"],"user_ids":["alice"],"actions":["docs:read","docs:write"],"grant":true}`)
 		assert.Equal(t, http.StatusNoContent, rec.Code)
 		g, err := repo.Get(context.Background(), resourceTypeDoc, "doc-1", "alice")
@@ -157,7 +163,7 @@ func TestHandler_SetGrants(t *testing.T) {
 		assert.Equal(t, permissions.SetOf(permissions.DocsRead, permissions.DocsWrite), g.Allow)
 	})
 	t.Run("unknown action is 400", func(t *testing.T) {
-		rec := serveAccess(t, h, identity.Actor{ID: "owner", CanCreateWorkspace: true}, http.MethodPut, "/api/permissions",
+		rec := serveAccess(t, h, identity.Actor{ID: "owner"}, http.MethodPut, "/api/permissions",
 			`{"doc_ids":["doc-1"],"user_ids":["alice"],"actions":["comment"],"grant":true}`)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
@@ -167,7 +173,7 @@ func TestHandler_SetGrants(t *testing.T) {
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 	})
 	t.Run("malformed body is 400", func(t *testing.T) {
-		rec := serveAccess(t, h, identity.Actor{ID: "owner", CanCreateWorkspace: true}, http.MethodPut, "/api/permissions", `{"doc_ids":`)
+		rec := serveAccess(t, h, identity.Actor{ID: "owner"}, http.MethodPut, "/api/permissions", `{"doc_ids":`)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 }

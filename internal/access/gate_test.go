@@ -37,7 +37,8 @@ func TestRequire(t *testing.T) {
 	roles.set("ws-b", "alice", RoleInfo{Permissions: permissions.SetOf(permissions.RunnersRead)})
 	s := newService(newFakeRepo(), newFakeUsers())
 	s.SetRoles(roles)
-	s.SetScopes(fakeScopes{projects: map[string]string{"p-1": "ws-a"}, workspaces: map[string][]string{"alice": {"ws-a", "ws-b"}}})
+	roles.set("ws-b", "olga", RoleInfo{IsOwnerRole: true})
+	s.SetScopes(fakeScopes{projects: map[string]string{"p-1": "ws-a"}, workspaces: map[string][]string{"alice": {"ws-a", "ws-b"}, "olga": {"ws-b"}}})
 	alice := identity.WithActor(context.Background(), identity.Actor{ID: "alice"})
 	defaultAutomation := identity.WithActor(context.Background(), identity.Actor{Automation: &identity.AutomationRef{ID: "a-1"}})
 
@@ -67,6 +68,9 @@ func TestRequire(t *testing.T) {
 		{"an instance-level action held nowhere is forbidden", func() error {
 			return s.RequireAnywhere(alice, permissions.TopologyRead)
 		}, apperrs.ErrForbidden},
+		{"an Owner of any workspace holds every instance-level action", func() error {
+			return s.RequireAnywhere(identity.WithActor(context.Background(), identity.Actor{ID: "olga"}), permissions.InstanceWrite)
+		}, nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -78,4 +82,28 @@ func TestRequire(t *testing.T) {
 			assert.ErrorIs(t, err, tt.want)
 		})
 	}
+}
+
+// TestPermissionsAnywhere pins what /me reports as the caller's instance-level grid: the union across every
+// workspace they belong to, so a client shows the same instance areas the server lets through.
+func TestPermissionsAnywhere(t *testing.T) {
+	roles := newFakeRoles()
+	roles.set("ws-a", "alice", RoleInfo{Permissions: permissions.SetOf(permissions.RunnersRead)})
+	roles.set("ws-b", "alice", RoleInfo{Permissions: permissions.SetOf(permissions.AccountsRead, permissions.DNSRead)})
+	roles.set("ws-b", "olga", RoleInfo{IsOwnerRole: true})
+	s := newService(newFakeRepo(), newFakeUsers())
+	s.SetRoles(roles)
+	s.SetScopes(fakeScopes{workspaces: map[string][]string{"alice": {"ws-a", "ws-b"}, "olga": {"ws-b"}}})
+
+	got, err := s.PermissionsAnywhere(context.Background(), "alice")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"runners:read", "dns:read", "accounts:read"}, got)
+
+	got, err = s.PermissionsAnywhere(context.Background(), "olga")
+	require.NoError(t, err)
+	assert.Len(t, got, len(permissions.AllActions()))
+
+	got, err = s.PermissionsAnywhere(context.Background(), "stranger")
+	require.NoError(t, err)
+	assert.Empty(t, got)
 }

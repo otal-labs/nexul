@@ -17,51 +17,63 @@ const Member Action = ""
 
 // Actions referenced by name from Go code; every other grid value is only ever built from the catalog.
 const (
-	DocsRead          Action = "docs:read"
-	DocsWrite         Action = "docs:write"
-	DocsDelete        Action = "docs:delete"
-	DocsThread        Action = "docs:thread"
-	PermissionsWrite  Action = "permissions:write"
-	ProjectsRead      Action = "projects:read"
-	ProjectsWrite     Action = "projects:write"
-	ProjectsDelete    Action = "projects:delete"
-	TicketsRead       Action = "tickets:read"
-	TicketsWrite      Action = "tickets:write"
-	TicketsDelete     Action = "tickets:delete"
-	StacksRead        Action = "stacks:read"
-	StacksWrite       Action = "stacks:write"
-	StacksDelete      Action = "stacks:delete"
-	DeploysRead       Action = "deploys:read"
-	DeploysWrite      Action = "deploys:write"
-	TopologyRead      Action = "topology:read"
-	TopologyWrite     Action = "topology:write"
-	TopologyDelete    Action = "topology:delete"
-	RunnersRead       Action = "runners:read"
-	MachinesRead      Action = "machines:read"
-	MachinesWrite     Action = "machines:write"
-	DNSRead           Action = "dns:read"
-	DNSWrite          Action = "dns:write"
-	DNSDelete         Action = "dns:delete"
-	ReviewsRead       Action = "reviews:read"
-	ReposRead         Action = "repos:read"
-	ConnectorsRead    Action = "connectors:read"
-	ConnectorsWrite   Action = "connectors:write"
-	ChatWrite         Action = "chat:write"
-	WorkspacesWrite   Action = "workspaces:write"
-	MembersWrite      Action = "members:write"
-	RolesWrite        Action = "roles:write"
-	RolesClone        Action = "roles:clone"
-	AutomationsRead   Action = "automations:read"
-	AutomationsWrite  Action = "automations:write"
-	AutomationsDelete Action = "automations:delete"
-	PlaysRead         Action = "plays:read"
-	PlaysWrite        Action = "plays:write"
-	PlaysDelete       Action = "plays:delete"
-	PlaysRun          Action = "plays:run"
-	MemoriesRead      Action = "memories:read"
-	MemoriesWrite     Action = "memories:write"
-	MemoriesDelete    Action = "memories:delete"
-	MemoriesClone     Action = "memories:clone"
+	DocsRead           Action = "docs:read"
+	DocsWrite          Action = "docs:write"
+	DocsDelete         Action = "docs:delete"
+	DocsThread         Action = "docs:thread"
+	PermissionsWrite   Action = "permissions:write"
+	ProjectsRead       Action = "projects:read"
+	ProjectsWrite      Action = "projects:write"
+	ProjectsDelete     Action = "projects:delete"
+	TicketsRead        Action = "tickets:read"
+	TicketsWrite       Action = "tickets:write"
+	TicketsDelete      Action = "tickets:delete"
+	StacksRead         Action = "stacks:read"
+	StacksWrite        Action = "stacks:write"
+	StacksDelete       Action = "stacks:delete"
+	DeploysRead        Action = "deploys:read"
+	DeploysWrite       Action = "deploys:write"
+	TopologyRead       Action = "topology:read"
+	TopologyWrite      Action = "topology:write"
+	TopologyDelete     Action = "topology:delete"
+	RunnersRead        Action = "runners:read"
+	RunnersWrite       Action = "runners:write"
+	RunnersDelete      Action = "runners:delete"
+	MachinesRead       Action = "machines:read"
+	MachinesWrite      Action = "machines:write"
+	DNSRead            Action = "dns:read"
+	DNSWrite           Action = "dns:write"
+	DNSDelete          Action = "dns:delete"
+	ReviewsRead        Action = "reviews:read"
+	ReposRead          Action = "repos:read"
+	ConnectorsRead     Action = "connectors:read"
+	ConnectorsWrite    Action = "connectors:write"
+	ChatWrite          Action = "chat:write"
+	WorkspacesWrite    Action = "workspaces:write"
+	WorkspacesCreate   Action = "workspaces:create"
+	MembersWrite       Action = "members:write"
+	RolesWrite         Action = "roles:write"
+	RolesClone         Action = "roles:clone"
+	AutomationsRead    Action = "automations:read"
+	AutomationsWrite   Action = "automations:write"
+	AutomationsDelete  Action = "automations:delete"
+	PlaysRead          Action = "plays:read"
+	PlaysWrite         Action = "plays:write"
+	PlaysDelete        Action = "plays:delete"
+	PlaysRun           Action = "plays:run"
+	MemoriesRead       Action = "memories:read"
+	MemoriesWrite      Action = "memories:write"
+	MemoriesDelete     Action = "memories:delete"
+	MemoriesClone      Action = "memories:clone"
+	InstanceRead       Action = "instance:read"
+	InstanceWrite      Action = "instance:write"
+	AccountsRead       Action = "accounts:read"
+	AccountsWrite      Action = "accounts:write"
+	AccountsDelete     Action = "accounts:delete"
+	IntegrationsRead   Action = "integrations:read"
+	IntegrationsWrite  Action = "integrations:write"
+	IntegrationsDelete Action = "integrations:delete"
+	AuditRead          Action = "audit:read"
 )
 
 const (
@@ -71,6 +83,7 @@ const (
 	run    = "run"
 	clone  = "clone"
 	thread = "thread"
+	create = "create"
 )
 
 // verbLabel is the owner-facing text for a domain-declared verb (ADR 0057): one line per verb, no per-domain switch.
@@ -79,6 +92,8 @@ var verbLabel = map[Action]string{
 	MemoriesClone: "Clone memories to another project or workspace",
 	RolesClone:    "Clone roles to another workspace",
 	DocsThread:    "See doc threads",
+	// The creator owns what they create, and an Owner holds every permission, so this one is as strong as Owner.
+	WorkspacesCreate: "Create workspaces",
 }
 
 // domainInfo is one row of the grid: an API domain, its display name, and the actions its routes expose.
@@ -104,10 +119,10 @@ var domainTable = []domainInfo{
 	{"permissions", "permissions", []string{read, write}},
 	{"mentions", "mentions", []string{read, write}},
 	{"projects", "projects and board settings", []string{read, write, delete}},
-	{"workspaces", "workspaces", []string{read, write, delete}},
+	{"workspaces", "workspaces", []string{read, write, delete, create}},
 	{"members", "members and invites", []string{read, write, delete}},
 	{"roles", "roles", []string{read, write, delete, clone}},
-	{"runners", "runners", []string{read}},
+	{"runners", "runners", []string{read, write, delete}},
 	{"machines", "machines", []string{read, write}},
 	{"dns", "DNS and gateways", []string{read, write, delete}},
 	{"notifications", "notifications", []string{read, write}},
@@ -118,6 +133,8 @@ var domainTable = []domainInfo{
 	{"connectors", "connectors", []string{read, write}},
 	{"events", "events", []string{read}},
 	{"audit", "audit log", []string{read}},
+	{"accounts", "accounts", []string{read, write, delete}},
+	{"instance", "instance settings, upgrades, and failed events", []string{read, write}},
 }
 
 // Info is one catalog entry: the action, its owner-facing label, and the domain/action pair grids render from.
@@ -200,6 +217,15 @@ func SetOf(actions ...Action) Set {
 	return slices.Compact(s)
 }
 
+// SetOfStrings builds a Set from wire strings, the shape a permission grid arrives in from another domain.
+func SetOfStrings(values []string) Set {
+	actions := make([]Action, len(values))
+	for i, v := range values {
+		actions[i] = Action(v)
+	}
+	return SetOf(actions...)
+}
+
 // CreatorGrant is what a document creator receives: every docs action plus the right to share it.
 var CreatorGrant = SetOf(DocsRead, DocsWrite, DocsDelete, PermissionsWrite)
 
@@ -217,6 +243,11 @@ func (s Set) With(action Action) Set {
 // Without returns a new set with action removed.
 func (s Set) Without(action Action) Set {
 	return SetOf(slices.DeleteFunc(slices.Clone(s), func(a Action) bool { return a == action })...)
+}
+
+// Except returns the actions in s that other lacks.
+func (s Set) Except(other Set) Set {
+	return SetOf(slices.DeleteFunc(slices.Clone(s), other.Has)...)
 }
 
 // Actions returns the set as a plain slice.

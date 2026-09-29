@@ -12,7 +12,6 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
-	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 func callTool(ctx context.Context, t *testing.T, s *Service, name, args string) (any, error) {
@@ -25,11 +24,6 @@ func callTool(ctx context.Context, t *testing.T, s *Service, name, args string) 
 	t.Fatalf("tool %s not found", name)
 	return nil, nil
 }
-
-// allowAnywhere passes every instance-level check, so a case reaches the rule it is about.
-type allowAnywhere struct{}
-
-func (allowAnywhere) RequireAnywhere(context.Context, permissions.Action) error { return nil }
 
 func asMember() context.Context {
 	return identity.WithActor(context.Background(), identity.Actor{ID: "member-1"})
@@ -48,7 +42,7 @@ func TestMCPTools_Surface(t *testing.T) {
 func TestMCPTools_Errors(t *testing.T) {
 	withVersion(t, "dev")
 	srv := fakeGitHub(t, "v0.2.0", "x")
-	upgrades := newUpgradeService(srv.URL, newFakeUpgradeRepo(), newFakeBus(), &fakeDispatch{}).WithMachines(newFakeMachineRepo()).WithGate(allowAnywhere{})
+	upgrades := newUpgradeService(srv.URL, newFakeUpgradeRepo(), newFakeBus(), &fakeDispatch{}).WithMachines(newFakeMachineRepo())
 	tests := []struct {
 		name string
 		ctx  context.Context
@@ -60,8 +54,8 @@ func TestMCPTools_Errors(t *testing.T) {
 		{"machine_list rejects an unknown key", asAdmin(), "machine_list", `{"machine":"prod"}`, apperrs.ErrInvalid, ""},
 		{"machine_discover needs an id", asAdmin(), "machine_discover", `{}`, apperrs.ErrInvalid, ""},
 		{"machine_discover of a missing machine", asAdmin(), "machine_discover", `{"id":"ghost"}`, apperrs.ErrNotFound, "machine_list"},
-		{"instance_get is for instance admins", asMember(), "instance_get", `{}`, apperrs.ErrForbidden, ""},
-		{"instance_upgrade is for instance admins", asMember(), "instance_upgrade", `{}`, apperrs.ErrForbidden, ""},
+		{"instance_get needs instance:read", asMember(), "instance_get", `{}`, apperrs.ErrForbidden, ""},
+		{"instance_upgrade needs instance:write", asMember(), "instance_upgrade", `{}`, apperrs.ErrForbidden, ""},
 		{"instance_upgrade refuses a dev build", asAdmin(), "instance_upgrade", `{}`, apperrs.ErrConflict, "dev build"},
 	}
 	for _, tt := range tests {

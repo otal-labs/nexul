@@ -23,6 +23,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus/testutil"
 	"github.com/otal-labs/nexul/internal/platform/hostcred"
 	"github.com/otal-labs/nexul/internal/platform/identity"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
 )
 
@@ -63,16 +64,21 @@ func adminCtx() context.Context {
 	return identity.WithActor(context.Background(), identity.Actor{ID: "admin"})
 }
 
+// allowAnywhere passes every instance-level check, standing in for an Owner.
+type allowAnywhere struct{}
+
+func (allowAnywhere) RequireAnywhere(context.Context, permissions.Action) error { return nil }
+
 // newHostsFixture serves the automations host endpoints, the placement endpoint, a token-gated self-read and the
 // dial-in socket over a real, migrated SQLite database, the way the composition root mounts them.
 func newHostsFixture(t *testing.T) *hostsFixture {
 	t.Helper()
 	_, store := newTestStore(t)
 	svc := automations.NewService(store.Automations, allowAllPerm{})
-	svc.SetGateway(func(string, string, []string) bool { return false }, nil, alwaysOwner{})
+	svc.SetGateway(func(string, string, []string) bool { return false }, nil)
 	enrollDir := filepath.Join(t.TempDir(), "enroll")
 	hosts := automations.NewHostsService(store.AutomationHosts, store.Automations, []byte("host-token-key")).
-		WithAdminGate(alwaysOwner{}).WithInstanceURL(instanceURL("https://nexul.example.com/")).WithEnrollDir(enrollDir)
+		WithGate(allowAnywhere{}).WithInstanceURL(instanceURL("https://nexul.example.com/")).WithEnrollDir(enrollDir)
 	svc.SetHosts(hosts)
 	dial := automations.NewDialinHandler(svc, automations.DialinConfig{
 		Repo: store.Automations, Cursors: store.AutomationCursors, EventLog: store.AutomationEventLog,
@@ -247,7 +253,7 @@ func TestHostEnroll_RefusedCodes(t *testing.T) {
 func TestHostCreateEnrollment_Refusals(t *testing.T) {
 	f := newHostsFixture(t)
 	f.enroll(t, "taken")
-	noURL := automations.NewHostsService(f.store.AutomationHosts, f.store.Automations, []byte("k")).WithAdminGate(alwaysOwner{})
+	noURL := automations.NewHostsService(f.store.AutomationHosts, f.store.Automations, []byte("k")).WithGate(allowAnywhere{})
 
 	tests := []struct {
 		name string
@@ -256,7 +262,6 @@ func TestHostCreateEnrollment_Refusals(t *testing.T) {
 		host string
 		want error
 	}{
-		{"no signed-in admin", f.hosts, context.Background(), "jobs", apperrs.ErrUnauthorized},
 		{"no instance URL to point the command at", noURL, adminCtx(), "jobs", apperrs.ErrConflict},
 		{"a name the installer cannot use", f.hosts, adminCtx(), "Jobs Box", apperrs.ErrInvalid},
 		{"a name already enrolled", f.hosts, adminCtx(), "taken", apperrs.ErrConflict},
@@ -423,7 +428,6 @@ func TestHostRemove(t *testing.T) {
 	_, err := f.svc.SetHost(adminCtx(), "admin", id, jobsID)
 	require.NoError(t, err)
 
-	assert.ErrorIs(t, f.hosts.Remove(context.Background(), jobsID), apperrs.ErrUnauthorized, "no signed-in admin")
 	status, _ := f.do(t, http.MethodDelete, "/api/automation-hosts/ghost", "", nil)
 	assert.Equal(t, http.StatusNotFound, status, "an unknown host")
 

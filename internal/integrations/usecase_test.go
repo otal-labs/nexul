@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 // fakeData is the shared in-memory backing store for the per-interface fakes
@@ -318,7 +319,7 @@ func itoa(n int) string {
 
 type fakeOwner struct{ ok bool }
 
-func (o fakeOwner) CanCreateWorkspace(ctx context.Context, userID string) (bool, error) {
+func (o fakeOwner) HoldsAnywhere(context.Context, string, permissions.Action) (bool, error) {
 	return o.ok, nil
 }
 
@@ -330,7 +331,7 @@ func newTestServiceWithOwner(f *fakeData, allowCreate bool) *Service {
 		Deliveries: &fakeDeliveryStore{d: f},
 		Schemas:    &fakeSchemaStore{d: f},
 		Audit:      &fakeAuditStore{d: f},
-		Owner:      fakeOwner{ok: allowCreate},
+		Perms:      fakeOwner{ok: allowCreate},
 		Now:        func() time.Time { return time.Date(2026, 8, 12, 12, 0, 0, 0, time.UTC) },
 	})
 }

@@ -19,6 +19,7 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/hostcred"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 // SetupUserID is the caller identity a setup pass carries; no user row ever has it.
@@ -235,13 +236,13 @@ func (s *Service) SetSetupInstanceURL(ctx context.Context, callerID, raw string)
 	return st.InstanceURL, nil
 }
 
-// PublicAddress reports the server's public addresses to a setup pass or an instance owner.
+// PublicAddress reports the server's public addresses to a setup pass or a holder of instance:read.
 func (s *Service) PublicAddress(ctx context.Context, callerID string) (PublicAddress, error) {
 	if callerID == "" {
 		return PublicAddress{}, apperrs.ErrUnauthorized
 	}
 	if callerID != SetupUserID {
-		if err := s.requireCanCreateWorkspace(ctx, callerID); err != nil {
+		if err := s.requireAnywhere(ctx, callerID, permissions.InstanceRead); err != nil {
 			return PublicAddress{}, err
 		}
 	}

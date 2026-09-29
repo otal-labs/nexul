@@ -209,7 +209,7 @@ func instanceGetTool(s *Service) mcptool.Tool {
 		"Returns the instance's running version and release channel, the channel's newest release, whether an "+
 			"upgrade can start now and if not why, and the latest upgrade record. Check it before instance_upgrade "+
 			"and poll it afterwards to see the upgrade complete or fail; refresh asks GitHub for a release published "+
-			"in the last few minutes. Instance admins only.",
+			"in the last few minutes. Needs instance:read in any workspace.",
 		mcptool.Hints{ReadOnly: true},
 		func(ctx context.Context, in instanceGetIn) (any, error) {
 			if in.Refresh {
@@ -224,7 +224,7 @@ func instanceUpgradeTool(s *Service) mcptool.Tool {
 		"Upgrades the instance to its channel's newest release, exactly as the settings page's Upgrade button "+
 			"does: the instance runner starts `nexul upgrade` on the host, which downloads the new release's binaries and restarts every Nexul service, so the "+
 			"server goes away for a while. It is refused with the reason when instance_get says an upgrade cannot "+
-			"start. Returns the pending upgrade record; poll instance_get for the outcome. Instance admins only.",
+			"start. Returns the pending upgrade record; poll instance_get for the outcome. Needs instance:write in any workspace.",
 		mcptool.Hints{},
 		func(ctx context.Context, _ struct{}) (any, error) {
 			return s.RequestUpgrade(ctx, mcpUpgradeActor(ctx))

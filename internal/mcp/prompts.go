@@ -75,7 +75,7 @@ func workflowPrompts() []prompt {
 			args:        []promptArg{{name: "deploy_id", description: "The failed deploy's id.", required: true}},
 			render: func(a map[string]string) string {
 				return fmt.Sprintf("Investigate failed deploy %s. Read it and its log with deploy_get, check the stack's "+
-					"services with stack_get and the topology with topology_get, and, if you are an instance admin, look "+
+					"services with stack_get and the topology with topology_get, and, if you hold instance:read, look "+
 					"for related failed events with dead_letter_list. Then propose a fix as a new ticket with "+
 					"ticket_create.", a["deploy_id"])
 			},

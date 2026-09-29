@@ -26,7 +26,7 @@ func (allowTickets) Require(context.Context, string, permissions.Action) error {
 func TestIntegration_PlaysLinkReader_OneHop(t *testing.T) {
 	ctx := context.Background()
 	s := storage.New(mentionsTestDB(t), []byte("0123456789abcdef0123456789abcdef"))
-	seedMentionsUser(t, s, "u-alice", false)
+	seedMentionsUser(t, s, "u-alice")
 	aliceCtx := identity.WithActor(ctx, identity.Actor{ID: "u-alice"})
 	body := `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"sessions last a day"}]}]}`
 	require.NoError(t, s.Docs.Create(ctx, &docs.Doc{ID: "d-open", Title: "Auth spec", Body: body, Version: 1}))

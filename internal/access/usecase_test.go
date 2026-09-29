@@ -115,16 +115,6 @@ func newFakeUsers(users ...*User) *fakeUsers {
 	return &fakeUsers{byID: byID}
 }
 
-func (f *fakeUsers) GetUserByID(_ context.Context, id string) (*User, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	u, ok := f.byID[id]
-	if !ok {
-		return nil, apperrs.ErrNotFound
-	}
-	return u, nil
-}
-
 func (f *fakeUsers) ListUsers(_ context.Context) ([]*User, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -165,7 +155,6 @@ func newService(repo Repo, users Users) *Service {
 
 func TestCan(t *testing.T) {
 	users := newFakeUsers(
-		&User{ID: "admin", CanCreateWorkspace: true},
 		&User{ID: "alice"},
 		&User{ID: "bob"},
 	)
@@ -176,8 +165,6 @@ func TestCan(t *testing.T) {
 		action permissions.Action
 		want   bool
 	}{
-		// Ticket 11: can_create_workspace must not bypass doc permission checks (see Can's doc comment); the equivalent bypass is the workspace-scoped Owner role, covered by TestHasPermission_Precedence and TestCan_ResolvesWorkspaceViaDocProject.
-		{"instance admin bit alone does not bypass", "admin", nil, permissions.DocsRead, false},
 		{"grant holds action", "alice", permissions.SetOf(permissions.DocsRead), permissions.DocsRead, true},
 		{"grant lacks action", "alice", permissions.SetOf(permissions.DocsRead), permissions.DocsWrite, false},
 		{"no grant denies", "bob", nil, permissions.DocsRead, false},
@@ -705,13 +692,17 @@ func TestListPlayGrants(t *testing.T) {
 
 func TestListUsers(t *testing.T) {
 	users := newFakeUsers(
-		&User{ID: "owner", CanCreateWorkspace: true},
+		&User{ID: "reader", Login: "reader"},
 		&User{ID: "manager", Login: "manager"},
 		&User{ID: "plain", Login: "plain"},
 	)
-	t.Run("instance admin lists the directory", func(t *testing.T) {
+	t.Run("an accounts:read holder in any workspace lists the directory", func(t *testing.T) {
 		s := newService(newFakeRepo(), users)
-		got, err := s.ListUsers(context.Background(), "owner")
+		roles := newFakeRoles()
+		roles.set("ws-b", "reader", RoleInfo{Permissions: permissions.SetOf(permissions.AccountsRead)})
+		s.SetRoles(roles)
+		s.SetScopes(fakeScopes{workspaces: map[string][]string{"reader": {"ws-a", "ws-b"}}})
+		got, err := s.ListUsers(context.Background(), "reader")
 		require.NoError(t, err)
 		assert.Len(t, got, 3)
 	})
@@ -727,21 +718,5 @@ func TestListUsers(t *testing.T) {
 		s := newService(newFakeRepo(), users)
 		_, err := s.ListUsers(context.Background(), "plain")
 		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
-	})
-}
-
-func TestInstanceAdminID(t *testing.T) {
-	t.Run("finds the instance admin", func(t *testing.T) {
-		users := newFakeUsers(&User{ID: "owner", CanCreateWorkspace: true}, &User{ID: "alice"})
-		s := newService(newFakeRepo(), users)
-		id, err := s.InstanceAdminID(context.Background())
-		require.NoError(t, err)
-		assert.Equal(t, "owner", id)
-	})
-	t.Run("no admin returns empty", func(t *testing.T) {
-		s := newService(newFakeRepo(), newFakeUsers(&User{ID: "alice"}))
-		id, err := s.InstanceAdminID(context.Background())
-		require.NoError(t, err)
-		assert.Equal(t, "", id)
 	})
 }

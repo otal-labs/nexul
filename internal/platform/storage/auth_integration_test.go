@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -18,6 +19,7 @@ import (
 	"github.com/otal-labs/nexul/internal/auth"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/hostcred"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 type ghServer struct {
@@ -45,13 +47,38 @@ func (g *ghServer) FetchUser(_ context.Context, _ string) (*auth.GitHubUser, err
 	return &auth.GitHubUser{ID: id, Login: login, Name: "Name " + login, AvatarURL: "https://avatar/" + login}, nil
 }
 
-// fakeDefaultWorkspace is a minimal stand-in for the tenancy domain's
-// BindDefaultWorkspaceOwner seam for these auth-domain integration tests,
-// which drive the real SQLite-backed auth.Service without wiring up the
-// tenancy domain.
-type fakeDefaultWorkspace struct{}
+// fakeDefaultWorkspace stands in for the tenancy domain's BindDefaultWorkspaceOwner seam for these auth-domain
+// integration tests: it writes the Owner membership straight to SQLite, which is what tenancy would persist.
+type fakeDefaultWorkspace struct {
+	t *testing.T
+	s *Store
+}
 
-func (fakeDefaultWorkspace) BindDefaultWorkspaceOwner(context.Context, string) error { return nil }
+func (f fakeDefaultWorkspace) BindDefaultWorkspaceOwner(_ context.Context, userID string) error {
+	makeOwner(f.t, f.s, userID, "workspace-default")
+	return nil
+}
+
+// ownerPermissions answers the instance-level checks the way access does for an Owner: every action, and nothing
+// for anyone else.
+type ownerPermissions struct{ users *UsersRepo }
+
+func (p ownerPermissions) HoldsAnywhere(ctx context.Context, userID string, _ permissions.Action) (bool, error) {
+	owners, err := p.users.ListActiveOwnerIDs(ctx)
+	return slices.Contains(owners, userID), err
+}
+
+func (p ownerPermissions) PermissionsAnywhere(ctx context.Context, userID string) ([]string, error) {
+	owners, err := p.users.ListActiveOwnerIDs(ctx)
+	if err != nil || !slices.Contains(owners, userID) {
+		return []string{}, err
+	}
+	out := []string{}
+	for _, a := range permissions.AllActions() {
+		out = append(out, string(a))
+	}
+	return out, nil
+}
 
 // fakePendingInviteResolver is a minimal stand-in for the tenancy domain's
 // ResolvePendingInvites seam (Membership invites) for these auth-domain
@@ -85,7 +112,8 @@ func TestAuthIntegration_OwnerBootstrapAndAdmission(t *testing.T) {
 		Settings:         store.Settings,
 		Sessions:         store.Sessions,
 		GitHub:           gh,
-		DefaultWorkspace: fakeDefaultWorkspace{},
+		DefaultWorkspace: fakeDefaultWorkspace{t: t, s: store},
+		Permissions:      ownerPermissions{users: store.Users},
 		PendingInvites:   fakePendingInviteResolver{},
 		Now:              func() time.Time { return time.Unix(1_700_000_000, 0) },
 	})
@@ -103,7 +131,7 @@ func TestAuthIntegration_OwnerBootstrapAndAdmission(t *testing.T) {
 		st, err = svc.Me(ctx, userID)
 		require.NoError(t, err)
 		assert.False(t, st.NeedsOwnerWizard)
-		assert.True(t, st.User.CanCreateWorkspace)
+		assert.Len(t, st.InstancePermissions, len(permissions.AllActions()))
 
 		conn, err := svc.GenerateConnectionToken(ctx, userID)
 		require.NoError(t, err)
@@ -118,9 +146,8 @@ func TestAuthIntegration_OwnerBootstrapAndAdmission(t *testing.T) {
 
 	t.Run("known active user signs in without allowlist", func(t *testing.T) {
 		owner := &auth.Identity{UserID: "owner-id", Provider: auth.ProviderGitHub, ProviderUserID: "1", Login: "owner"}
-		ownerRec, _, err := store.Users.UpsertUser(ctx, owner)
+		_, _, err := store.Users.UpsertUser(ctx, owner)
 		require.NoError(t, err)
-		require.NoError(t, store.Users.SetCanCreateWorkspace(ctx, ownerRec.ID, true))
 
 		member := &auth.Identity{UserID: "member-id", Provider: auth.ProviderGitHub, ProviderUserID: "2", Login: "member"}
 		_, _, err = store.Users.UpsertUser(ctx, member)
@@ -147,7 +174,8 @@ func TestAuthIntegration_HTTPGateway(t *testing.T) {
 		Settings:         store.Settings,
 		Sessions:         store.Sessions,
 		GitHub:           &ghServer{token: "at"},
-		DefaultWorkspace: fakeDefaultWorkspace{},
+		DefaultWorkspace: fakeDefaultWorkspace{t: t, s: store},
+		Permissions:      ownerPermissions{users: store.Users},
 		PendingInvites:   fakePendingInviteResolver{},
 	})
 
@@ -181,7 +209,7 @@ func TestAuthIntegration_HTTPGateway(t *testing.T) {
 	owReq.Header.Set("Authorization", "Bearer "+token)
 	mux.ServeHTTP(ow, owReq)
 	require.Equal(t, http.StatusOK, ow.Code)
-	assert.Contains(t, ow.Body.String(), `"can_create_workspace":true`)
+	assert.Contains(t, ow.Body.String(), `"instance:write"`, "the first user, as Owner, holds every instance-level permission")
 
 	// Members list is owner-only and now reachable.
 	mem := httptest.NewRecorder()
@@ -206,7 +234,8 @@ func TestAuthIntegration_PATLifecycle(t *testing.T) {
 		PATs:             store.PATs,
 		Sessions:         store.Sessions,
 		GitHub:           &ghServer{token: "at"},
-		DefaultWorkspace: fakeDefaultWorkspace{},
+		DefaultWorkspace: fakeDefaultWorkspace{t: t, s: store},
+		Permissions:      ownerPermissions{users: store.Users},
 		PendingInvites:   fakePendingInviteResolver{},
 	})
 
@@ -264,7 +293,8 @@ func TestAuthIntegration_SetupCodeLifecycle(t *testing.T) {
 		Sessions:         store.Sessions,
 		EnrollDir:        dir,
 		GitHub:           &ghServer{token: "at"},
-		DefaultWorkspace: fakeDefaultWorkspace{},
+		DefaultWorkspace: fakeDefaultWorkspace{t: t, s: store},
+		Permissions:      ownerPermissions{users: store.Users},
 		PendingInvites:   fakePendingInviteResolver{},
 	})
 

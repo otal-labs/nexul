@@ -8,8 +8,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/otal-labs/nexul/internal/platform/identity"
 )
 
 // fakeUserAuth mimics the auth middleware chain, marking the request
@@ -47,22 +45,11 @@ func allowScope(scope string) ScopeGate {
 	}
 }
 
-// fakeOwnerGate reports a fixed can_create_workspace bit for every user, or
-// fails every lookup when err is set.
-type fakeOwnerGate struct {
-	can bool
-	err error
-}
-
-func (f fakeOwnerGate) CanCreateWorkspace(context.Context, string) (bool, error) {
-	return f.can, f.err
-}
-
-func newGatewaySvc(t *testing.T, scope string, owner OwnerGate) (*Service, string) {
+func newGatewaySvc(t *testing.T, scope string, wired bool) (*Service, string) {
 	t.Helper()
 	svc := NewService(newFakeRepo(), allowAll("creator-1"))
-	if owner != nil {
-		svc.SetGateway(allowScope(scope), nil, owner)
+	if wired {
+		svc.SetGateway(allowScope(scope), nil)
 	}
 	a, raw, err := svc.Create(context.Background(), "creator-1", "webhook-relay", []string{scope})
 	require.NoError(t, err)
@@ -72,7 +59,7 @@ func newGatewaySvc(t *testing.T, scope string, owner OwnerGate) (*Service, strin
 
 func TestRequireAutomation(t *testing.T) {
 	t.Run("automation token with matching scope passes and acts as creator", func(t *testing.T) {
-		svc, raw := newGatewaySvc(t, "tickets:read", fakeOwnerGate{can: true})
+		svc, raw := newGatewaySvc(t, "tickets:read", true)
 		var gotActor string
 		next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			aa := AutomationFromCtx(r.Context())
@@ -91,7 +78,7 @@ func TestRequireAutomation(t *testing.T) {
 	})
 
 	t.Run("automation token without matching scope is forbidden", func(t *testing.T) {
-		svc, raw := newGatewaySvc(t, "tickets:read", fakeOwnerGate{can: true})
+		svc, raw := newGatewaySvc(t, "tickets:read", true)
 		handler := svc.RequireAutomation(fakeUserAuth, okHandler())
 		req := httptest.NewRequest(http.MethodPost, "/api/tickets", nil)
 		req.Header.Set("Authorization", "Bearer "+raw)
@@ -101,7 +88,7 @@ func TestRequireAutomation(t *testing.T) {
 	})
 
 	t.Run("gateway not wired denies rather than panics", func(t *testing.T) {
-		svc, raw := newGatewaySvc(t, "tickets:read", nil)
+		svc, raw := newGatewaySvc(t, "tickets:read", false)
 		handler := svc.RequireAutomation(fakeUserAuth, okHandler())
 		req := httptest.NewRequest(http.MethodGet, "/api/tickets", nil)
 		req.Header.Set("Authorization", "Bearer "+raw)
@@ -111,7 +98,7 @@ func TestRequireAutomation(t *testing.T) {
 	})
 
 	t.Run("invalid automation token is unauthorized", func(t *testing.T) {
-		svc, _ := newGatewaySvc(t, "tickets:read", fakeOwnerGate{can: true})
+		svc, _ := newGatewaySvc(t, "tickets:read", true)
 		handler := svc.RequireAutomation(fakeUserAuth, okHandler())
 		req := httptest.NewRequest(http.MethodGet, "/api/tickets", nil)
 		req.Header.Set("Authorization", "Bearer "+tokenPrefix+"AAAA")
@@ -121,7 +108,7 @@ func TestRequireAutomation(t *testing.T) {
 	})
 
 	t.Run("non-automation token falls through to user auth", func(t *testing.T) {
-		svc, _ := newGatewaySvc(t, "tickets:read", fakeOwnerGate{can: true})
+		svc, _ := newGatewaySvc(t, "tickets:read", true)
 		handler := svc.RequireAutomation(fakeUserAuth, okHandler())
 		req := httptest.NewRequest(http.MethodGet, "/api/tickets", nil)
 		req.Header.Set("Authorization", "Bearer session-token")
@@ -132,7 +119,7 @@ func TestRequireAutomation(t *testing.T) {
 	})
 
 	t.Run("revoked token rejected", func(t *testing.T) {
-		svc, raw := newGatewaySvc(t, "tickets:read", fakeOwnerGate{can: true})
+		svc, raw := newGatewaySvc(t, "tickets:read", true)
 		list, err := svc.List(context.Background(), "creator-1")
 		require.NoError(t, err)
 		require.Len(t, list, 1)
@@ -145,51 +132,11 @@ func TestRequireAutomation(t *testing.T) {
 		handler.ServeHTTP(rec, req)
 		assert.Equal(t, http.StatusUnauthorized, rec.Code)
 	})
-
-	t.Run("owner lookup failure denies workspace authority without failing the request", func(t *testing.T) {
-		svc, raw := newGatewaySvc(t, "tickets:read", fakeOwnerGate{err: assert.AnError})
-		var actor identity.Actor
-		next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			actor, _ = identity.ActorFromCtx(r.Context())
-			w.WriteHeader(http.StatusOK)
-		})
-		handler := svc.RequireAutomation(fakeUserAuth, next)
-		req := httptest.NewRequest(http.MethodGet, "/api/tickets", nil)
-		req.Header.Set("Authorization", "Bearer "+raw)
-		rec := httptest.NewRecorder()
-		handler.ServeHTTP(rec, req)
-		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, "creator-1", actor.ID)
-		assert.False(t, actor.CanCreateWorkspace)
-	})
-}
-
-func TestResolveOwner(t *testing.T) {
-	svc := NewService(newFakeRepo(), allowAll("creator-1"))
-
-	t.Run("no gate wired denies", func(t *testing.T) {
-		assert.False(t, svc.resolveOwner(context.Background(), "creator-1"))
-	})
-
-	t.Run("no creator denies without a lookup", func(t *testing.T) {
-		svc.SetGateway(nil, nil, fakeOwnerGate{err: assert.AnError})
-		assert.False(t, svc.resolveOwner(context.Background(), ""))
-	})
-
-	t.Run("gate error denies", func(t *testing.T) {
-		svc.SetGateway(nil, nil, fakeOwnerGate{err: assert.AnError})
-		assert.False(t, svc.resolveOwner(context.Background(), "creator-1"))
-	})
-
-	t.Run("gate grants", func(t *testing.T) {
-		svc.SetGateway(nil, nil, fakeOwnerGate{can: true})
-		assert.True(t, svc.resolveOwner(context.Background(), "creator-1"))
-	})
 }
 
 func TestRequireAutomation_SelfRead(t *testing.T) {
 	svc := NewService(newFakeRepo(), allowAll("creator-1"))
-	svc.SetGateway(allowScope("tickets:read"), nil, fakeOwnerGate{can: true})
+	svc.SetGateway(allowScope("tickets:read"), nil)
 	a, raw, err := svc.Create(context.Background(), "creator-1", "self-reader", []string{"docs:read"})
 	require.NoError(t, err)
 	other, _, err := svc.Create(context.Background(), "creator-1", "someone-else", []string{"docs:read"})

@@ -25,7 +25,7 @@ func (allowAll) DeleteByDoc(context.Context, string) error {
 
 // actorCtx returns a context carrying a fixed actor for use-case calls.
 func actorCtx() context.Context {
-	return identity.WithActor(context.Background(), identity.Actor{ID: "tester", CanCreateWorkspace: true})
+	return identity.WithActor(context.Background(), identity.Actor{ID: "tester"})
 }
 
 func (allowAll) RequireProject(context.Context, string, permissions.Action) error {

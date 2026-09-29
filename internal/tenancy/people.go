@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 // ListPeople needs only membership of workspaceID, never members:write: seeing who you work with is not managing them (ADR 0086).
@@ -69,7 +70,7 @@ func effectiveAvatarURL(a *TeamAccount) string {
 	return fmt.Sprintf("/api/people/%s/avatar?v=%x", a.ID, h.Sum64())
 }
 
-// Avatar returns a person's uploaded picture to themselves, to anyone sharing a workspace with them, and to an instance administrator.
+// Avatar returns a person's uploaded picture to themselves, to anyone sharing a workspace with them, and to a holder of accounts:read.
 func (s *Service) Avatar(ctx context.Context, actorID, userID string) (contentType string, data []byte, err error) {
 	userID = strings.TrimSpace(userID)
 	if err := s.requireSeesPerson(ctx, actorID, userID); err != nil {
@@ -89,11 +90,11 @@ func (s *Service) requireSeesPerson(ctx context.Context, actorID, userID string)
 	if actorID != "" && actorID == userID {
 		return nil
 	}
-	admin, err := s.perm.CanCreateWorkspace(ctx, actorID)
+	readsAccounts, err := s.perm.HoldsAnywhere(ctx, actorID, permissions.AccountsRead)
 	if err != nil {
-		return fmt.Errorf("check instance administrator: %w", err)
+		return fmt.Errorf("check accounts:read: %w", err)
 	}
-	if admin {
+	if readsAccounts {
 		return nil
 	}
 	workspaces, err := s.repo.ListForUser(ctx, actorID)

@@ -25,7 +25,7 @@ func newEnrollService(repo *fakeRunnerRepo, dispatch *fakeDispatch) *Service {
 	svc := NewService(repo, dispatch).
 		WithMachines(repo.machines).
 		WithInstall(InstallConfig{Settings: &fakeSettingsReader{url: "https://nexul.example.com/"}}).
-		WithAdminGate(fakeAdminGate{admins: map[string]bool{"admin-1": true}}).
+		WithGate(ownerGate{}).
 		WithBus(newFakeBus())
 	svc.now = func() time.Time { return enrollNow }
 	return svc
@@ -39,8 +39,7 @@ func TestService_CreateEnrollment_Refusals(t *testing.T) {
 		runner   string
 		want     error
 	}{
-		{"no actor", context.Background(), nil, "build-box", apperrs.ErrUnauthorized},
-		{"not an instance admin", asMember(), nil, "build-box", apperrs.ErrForbidden},
+		{"without runners:write", asMember(), nil, "build-box", apperrs.ErrForbidden},
 		{"no instance url yet", asAdmin(), &fakeSettingsReader{}, "build-box", apperrs.ErrConflict},
 		{"settings lookup fails", asAdmin(), &fakeSettingsReader{err: assert.AnError}, "build-box", assert.AnError},
 		{"empty name", asAdmin(), nil, " ", apperrs.ErrInvalid},
@@ -272,7 +271,7 @@ func TestService_WriteInstanceEnrollment(t *testing.T) {
 }
 
 func TestService_RemoveRunner(t *testing.T) {
-	t.Run("refused for anyone but an instance admin", func(t *testing.T) {
+	t.Run("refused without runners:delete", func(t *testing.T) {
 		repo := newFakeRunnerRepo()
 		repo.enrolled("r-1", "build-box", "")
 		dispatch := &fakeDispatch{}
@@ -344,7 +343,7 @@ func TestService_RemoveSelf(t *testing.T) {
 	})
 }
 
-// enrollmentServer mounts the session routes as an instance admin next to the public routes.
+// enrollmentServer mounts the session routes as the Owner next to the public routes.
 func enrollmentServer(t *testing.T, svc *Service) *httptest.Server {
 	t.Helper()
 	routes, public := NewHTTPHandler(svc).Routes(), NewHTTPHandler(svc).PublicRoutes()

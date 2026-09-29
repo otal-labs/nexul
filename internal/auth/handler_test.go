@@ -230,7 +230,7 @@ func seedOwner(t *testing.T, users *fakeUserStore, id, providerID, login string)
 	t.Helper()
 	_, _, err := users.UpsertUser(context.Background(), &Identity{UserID: id, Provider: ProviderGitHub, ProviderUserID: providerID, Login: login})
 	require.NoError(t, err)
-	require.NoError(t, users.SetCanCreateWorkspace(context.Background(), id, true))
+	users.setOwner(id)
 }
 
 // fakeGitHubAppVerifier answers Bootstrap's live App check with err.
@@ -409,7 +409,7 @@ func TestHandler_Me(t *testing.T) {
 	require.NoError(t, decodeJSON(rec, &st))
 	require.NotNil(t, st.User)
 	assert.Equal(t, "owner", st.User.Login)
-	assert.True(t, st.User.CanCreateWorkspace)
+	assert.Contains(t, st.InstancePermissions, "instance:write")
 	assert.False(t, st.NeedsOwnerWizard)
 }
 
@@ -425,13 +425,13 @@ func TestHandler_CompleteOwnerWizard(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 
-	t.Run("grants owner and saves url", func(t *testing.T) {
+	t.Run("makes the caller Owner and saves url", func(t *testing.T) {
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, protectedRequest(t, s, users, http.MethodPost, "/api/auth/onboarding/owner", "u1", `{"instance_url":"https://deploy.example.com"}`))
 		assert.Equal(t, http.StatusOK, rec.Code)
-		user, err := users.GetUserByID(context.Background(), "u1")
+		owners, err := users.ListActiveOwnerIDs(context.Background())
 		require.NoError(t, err)
-		assert.True(t, user.CanCreateWorkspace)
+		assert.Equal(t, []string{"u1"}, owners)
 		st, err := settings.Get(context.Background())
 		require.NoError(t, err)
 		assert.Equal(t, "https://deploy.example.com", st.InstanceURL)

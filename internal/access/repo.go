@@ -22,7 +22,6 @@ type Repo interface {
 
 // Users lets access use the auth user store without importing auth (ADR 0017).
 type Users interface {
-	GetUserByID(ctx context.Context, id string) (*User, error)
 	ListUsers(ctx context.Context) ([]*User, error)
 }
 
