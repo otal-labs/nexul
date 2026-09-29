@@ -88,7 +88,7 @@ export const ToolRow = ({ icon, label, mono = false, result, meta, status, index
         {pending && <span className="block size-1.5 rounded-full bg-muted-foreground/40" aria-hidden />}
         {running && (
           <span
-            className="block size-3.5 animate-spin rounded-full border-[1.5px] border-warning/25 border-t-warning"
+            className="block size-3.5 animate-spin motion-reduce:animate-none rounded-full border-[1.5px] border-warning/25 border-t-warning"
             role="img"
             aria-label="running"
           />

@@ -86,7 +86,7 @@ export const MentionSuggestions = forwardRef<
     >
       {props.loading && items.length === 0 && (
         <div className="flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground">
-          <Loader2Icon className="h-4 w-4 animate-spin" />
+          <Loader2Icon className="h-4 w-4 animate-spin motion-reduce:animate-none" />
           Searching…
         </div>
       )}

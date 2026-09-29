@@ -90,7 +90,7 @@ export const PlayButton = ({ play, projectId, targetType, targetId, variant = "o
           disabled={stopTrail.isPending}
           onClick={() => stopTrail.mutate(activeTrail.id)}
         >
-          <LoaderCircle className="size-3.5 animate-spin text-warning" aria-hidden />
+          <LoaderCircle className="size-3.5 animate-spin motion-reduce:animate-none text-warning" aria-hidden />
           {play.label}
           <Square className="ml-1 size-3 fill-current" aria-hidden />
         </Button>
@@ -103,7 +103,7 @@ export const PlayButton = ({ play, projectId, targetType, targetId, variant = "o
           title={reason || play.description}
           onClick={() => setDialogOpen(true)}
         >
-          {running && <LoaderCircle className="size-3.5 animate-spin text-warning" aria-hidden />}
+          {running && <LoaderCircle className="size-3.5 animate-spin motion-reduce:animate-none text-warning" aria-hidden />}
           {!running && <Sparkles className="size-3.5" aria-hidden />}
           {label ?? play.label}
         </Button>

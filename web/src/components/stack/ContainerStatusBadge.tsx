@@ -4,9 +4,9 @@ import { NoFillBadge } from "@/components/ui/badge";
 import { ContainerStatus, type ContainerStatus as ContainerStatusType } from "@/models/Stack";
 
 // Colored icon + text, never a filled/tinted chip; semantic tokens carry color instead of background tint.
-const config: Record<ContainerStatusType, { icon: LucideIcon; color: string }> = {
+const config: Record<ContainerStatusType, { icon: LucideIcon; color: string; iconClassName?: string }> = {
   [ContainerStatus.Pending]: { icon: Clock, color: "text-warning" },
-  [ContainerStatus.Running]: { icon: Loader2, color: "text-info" },
+  [ContainerStatus.Running]: { icon: Loader2, color: "text-info", iconClassName: "animate-spin motion-reduce:animate-none" },
   [ContainerStatus.Healthy]: { icon: CheckCircle2, color: "text-success" },
   [ContainerStatus.Exited]: { icon: XCircle, color: "text-destructive" },
   [ContainerStatus.Stopped]: { icon: MinusCircle, color: "text-muted-foreground" },
@@ -17,9 +17,9 @@ interface ContainerStatusBadgeProps {
 }
 
 export const ContainerStatusBadge = ({ status }: ContainerStatusBadgeProps) => {
-  const { icon, color } = config[status];
+  const { icon, color, iconClassName } = config[status];
   return (
-    <NoFillBadge icon={icon} color={color}>
+    <NoFillBadge icon={icon} color={color} iconClassName={iconClassName}>
       {status}
     </NoFillBadge>
   );
