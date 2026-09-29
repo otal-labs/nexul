@@ -29,15 +29,20 @@ const fonts = [
   },
 ];
 
+const version = "0.1.3";
+// Android only installs an update with a higher build number, so derive it from the version and every release climbs.
+const [major = 0, minor = 0, patch = 0] = version.split(".").map(Number);
+
 const config: ExpoConfig = {
   name: "Nexul",
   slug: "nexul",
-  version: "0.1.3",
+  version,
   scheme: "nexul",
   orientation: "portrait",
   userInterfaceStyle: "automatic",
   android: {
     package: "io.nexul.app",
+    versionCode: major * 10000 + minor * 100 + patch,
     ...(googleServicesFile && existsSync(googleServicesFile) && { googleServicesFile }),
   },
   runtimeVersion: { policy: "appVersion" },
