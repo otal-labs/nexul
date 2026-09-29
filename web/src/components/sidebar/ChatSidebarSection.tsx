@@ -4,6 +4,7 @@ import { useNavigate } from "react-router";
 import { VoiceOccupantList } from "@/components/chat/VoiceOccupantAvatars";
 import { SidebarSectionHeader } from "@/components/sidebar/SidebarSectionHeader";
 import { navLinkClass } from "@/components/SidebarNav";
+import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { useFetchChatUnread, useFetchConversations } from "@/hooks/ChatHooks";
 import { useNewConversationDialogs } from "@/hooks/useNewConversationDialogs";
@@ -85,6 +86,7 @@ export const ChatSidebarSection = ({ collapsed }: ChatSidebarSectionProps) => {
   const navigate = useNavigate();
   const occupancy = useVoiceOccupancy(!collapsed);
   const joinCall = useVoiceCallStore((s) => s.join);
+  const canCreate = useAreaAccess()?.("newConversation") ?? false;
   // A new text channel or DM opens straight away; a new voice channel waits in the list to be joined.
   const { openNewChannel, openNewDM } = useNewConversationDialogs(workspaceId, (conversation) => {
     if (conversation.kind === "voice_channel") return;
@@ -104,7 +106,11 @@ export const ChatSidebarSection = ({ collapsed }: ChatSidebarSectionProps) => {
   return (
     <div className="flex flex-col gap-0.5">
       <div className="flex flex-col gap-0.5">
-        <SidebarSectionHeader label="Channels" actionLabel="New channel" onAction={() => void openNewChannel(false)} />
+        <SidebarSectionHeader
+          label="Channels"
+          actionLabel="New channel"
+          onAction={canCreate ? () => void openNewChannel(false) : undefined}
+        />
           {channels.map((conversation) => (
             <ChatSidebarRow
               key={conversation.id}
@@ -119,7 +125,7 @@ export const ChatSidebarSection = ({ collapsed }: ChatSidebarSectionProps) => {
         <SidebarSectionHeader
           label="Voice channels"
           actionLabel="New voice channel"
-          onAction={() => void openNewChannel(true)}
+          onAction={canCreate ? () => void openNewChannel(true) : undefined}
         />
           {voiceChannels.map((conversation) => (
             <VoiceChannelSidebarRow
@@ -131,7 +137,11 @@ export const ChatSidebarSection = ({ collapsed }: ChatSidebarSectionProps) => {
           ))}
       </div>
       <div className="flex flex-col gap-0.5">
-        <SidebarSectionHeader label="Direct messages" actionLabel="New direct message" onAction={() => void openNewDM()} />
+        <SidebarSectionHeader
+          label="Direct messages"
+          actionLabel="New direct message"
+          onAction={canCreate ? () => void openNewDM() : undefined}
+        />
           {dms.map((conversation) => (
             <ChatSidebarRow
               key={conversation.id}

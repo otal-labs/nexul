@@ -90,6 +90,7 @@ const mockGet = (tickets: unknown[], projectList: typeof projects = projects, ca
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/projects") return { data: projectList };
     if (url === "/api/auth/me") return { data: { user: { login: "onik97" } } };
+    if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Owner", permissions: ["projects:write"] } };
     const projectMatch = /^\/api\/projects\/([^/]+)$/.exec(url);
     if (projectMatch) return { data: projectList.find((p) => p.id === projectMatch[1]) };
     if (url.startsWith("/api/categories")) return { data: categoryList };
@@ -344,12 +345,13 @@ describe("BoardPage routing", () => {
   });
 
   it("shows the create-first-project empty state when the workspace has zero projects", async () => {
+    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
     mockGet([], []);
     renderPage("/board");
 
     expect(await screen.findByText("No projects yet")).toBeInTheDocument();
     const user = userEvent.setup();
-    await user.click(screen.getByRole("link", { name: "New project" }));
+    await user.click(await screen.findByRole("link", { name: "New project" }));
     expect(await screen.findByText("project-wizard")).toBeInTheDocument();
   });
 

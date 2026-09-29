@@ -5,6 +5,7 @@ import { Popover } from "@/components/ui/popover";
 import { NewDocButton } from "@/components/sidebar/NewDocButton";
 import { ProjectSwitcherMenu } from "@/components/sidebar/ProjectSwitcherMenu";
 import { ProjectSwitcherTrigger } from "@/components/sidebar/ProjectSwitcherTrigger";
+import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { NEW_PROJECT_PATH, switchProjectPath, type Project } from "@/models/Project";
 
@@ -19,6 +20,7 @@ export const ProjectSwitcher = ({ projects, current, collapsed }: ProjectSwitche
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const selectProject = useWorkspaceStore((s) => s.selectProject);
+  const can = useAreaAccess();
 
   const handleSelect = (project: Project) => {
     setOpen(false);
@@ -40,10 +42,10 @@ export const ProjectSwitcher = ({ projects, current, collapsed }: ProjectSwitche
           projects={projects}
           currentId={current.id}
           onSelect={handleSelect}
-          onCreate={handleCreate}
+          onCreate={can?.("newProject") ? handleCreate : undefined}
         />
       </Popover>
-      {!collapsed && <NewDocButton project={current} />}
+      {!collapsed && can?.("newDoc") && <NewDocButton project={current} />}
     </div>
   );
 };

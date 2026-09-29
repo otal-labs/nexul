@@ -4,18 +4,20 @@ import { ScrollView, View } from "react-native";
 
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { Text } from "@/components/ui/text";
+import { useAreaAccess } from "@/hooks/WorkspaceHooks";
 import { useSessionStore } from "@/stores/sessionStore";
 
 // Docs and Runners land under this same tab as siblings build their own route folders; this screen only links by path.
 export const MoreScreen = () => {
   const router = useRouter();
   const host = useSessionStore((s) => s.host);
+  const canReadRunners = useAreaAccess()?.("runners") ?? false;
 
   return (
     <ScrollView className="flex-1 bg-background">
       <View className="mt-2">
         <SettingsRow label="Docs" onPress={() => router.push("/more/docs")} />
-        <SettingsRow label="Runners" onPress={() => router.push("/more/runners")} />
+        {canReadRunners && <SettingsRow label="Runners" onPress={() => router.push("/more/runners")} />}
         <SettingsRow label="Your settings" onPress={() => router.push("/more/settings")} />
       </View>
       <View className="items-center gap-1 px-4 py-6">

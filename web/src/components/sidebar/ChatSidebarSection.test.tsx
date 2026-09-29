@@ -64,6 +64,7 @@ beforeEach(() => {
     if (url === "/api/chat/unread") return { data: { c1: 7 } };
     if (url === "/api/auth/me") return { data: meResponse };
     if (url === "/api/voice/occupancy") return { data: occupancy };
+    if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions: ["chat:write"] } };
     if (url.startsWith("/api/workspaces/")) return { data: peopleResponse };
     return { data: {} };
   });
@@ -88,11 +89,12 @@ describe("ChatSidebarSection", () => {
     vi.mocked(api.get).mockImplementation(async (url: string) => {
       if (url === "/api/chat/conversations") return { data: [] };
       if (url === "/api/auth/me") return { data: meResponse };
+      if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions: ["chat:write"] } };
       return { data: {} };
     });
     renderSection();
     await waitFor(() => expect(api.get).toHaveBeenCalledWith("/api/chat/conversations", expect.anything()));
-    expect(screen.getByRole("button", { name: "New channel" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "New channel" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "New voice channel" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "New direct message" })).toBeInTheDocument();
   });

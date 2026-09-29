@@ -3,7 +3,7 @@ import { useParams } from "react-router";
 import { PermissionsForm, PermissionsFormSchema, type PermissionsFormData } from "@/components/access/PermissionsForm";
 import { Container } from "@/components/Container";
 import { DocDetail } from "@/components/doc/DocDetail";
-import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { DetailErrorDisplay } from "@/components/DetailErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { CreateTicketFooter } from "@/components/ticket/CreateTicketFooter";
 import { CreateTicketForm, emptyTicketForm } from "@/components/ticket/CreateTicketForm";
@@ -53,7 +53,7 @@ export const DocPage = ({ wsFactory, docId: docIdProp }: DocPageProps = {}) => {
   return (
     <Container className="p-6">
       {isPending && <LoadingDisplay />}
-      {error && <ErrorDisplay error={error} />}
+      {error && <DetailErrorDisplay error={error} embedded={docIdProp !== undefined} />}
       {doc && (
         <DocDetail
           doc={doc}

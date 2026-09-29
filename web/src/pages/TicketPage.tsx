@@ -1,7 +1,8 @@
 import { useParams } from "react-router";
 
 import { Container } from "@/components/Container";
-import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { DetailErrorDisplay } from "@/components/DetailErrorDisplay";
+import { ErrorScreen } from "@/components/ErrorScreen";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { TicketPageBody } from "@/components/ticket/TicketPageBody";
 import {
@@ -39,8 +40,8 @@ export const TicketPage = ({ ticketId: ticketIdProp }: TicketPageProps = {}) => 
   return (
     <Container className="p-6">
       {(isPending || resolving) && <LoadingDisplay />}
-      {error && <ErrorDisplay error={error} />}
-      {notFound && <ErrorDisplay title="Ticket not found" />}
+      {error && <DetailErrorDisplay error={error} embedded={ticketIdProp !== undefined} />}
+      {notFound && <ErrorScreen />}
       {data && (
         <TicketPageBody
           ticket={data}

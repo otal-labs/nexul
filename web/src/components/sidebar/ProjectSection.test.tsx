@@ -26,15 +26,21 @@ const projects = [
   { id: "p-2", name: "Frontend", prefix: "FE", position: 1, created_at: "", updated_at: "" },
 ];
 
-const docsByProject: Record<string, { id: string; project_id: string; title: string }[]> = {
-  "p-1": [{ id: "d-1", project_id: "p-1", title: "Runbook" }],
+const docsByProject: Record<string, { id: string; project_id: string; title: string; can_open: boolean }[]> = {
+  "p-1": [
+    { id: "d-1", project_id: "p-1", title: "Runbook", can_open: true },
+    { id: "d-2", project_id: "p-1", title: "Salaries", can_open: false },
+  ],
   "p-2": [],
 };
 
-const mockApi = (list: unknown[] = projects) => {
+const ownerPermissions = ["docs:read", "docs:write", "memories:read", "projects:read", "projects:write", "tickets:read"];
+
+const mockApi = (list: unknown[] = projects, permissions: string[] = ownerPermissions) => {
   vi.mocked(api.get).mockImplementation(async (url: string, config?: unknown) => {
     const projectId = (config as { params?: { project_id?: string } } | undefined)?.params?.project_id ?? "";
     if (url === "/api/projects") return { data: list };
+    if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions } };
     if (url === "/api/docs") return { data: docsByProject[projectId] ?? [] };
     return { data: [] };
   });
@@ -42,8 +48,8 @@ const mockApi = (list: unknown[] = projects) => {
 
 const LocationSpy = () => <div data-testid="location">{useLocation().pathname}</div>;
 
-const renderSection = ({ path = "/inbox", collapsed = false, list = projects } = {}) => {
-  mockApi(list);
+const renderSection = ({ path = "/inbox", collapsed = false, list = projects, permissions = ownerPermissions } = {}) => {
+  mockApi(list, permissions);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
@@ -58,7 +64,7 @@ const renderSection = ({ path = "/inbox", collapsed = false, list = projects } =
 
 beforeEach(() => {
   vi.mocked(api.get).mockReset();
-  useWorkspaceStore.setState({ selectedProjectId: "" });
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedProjectId: "" });
 });
 
 describe("ProjectSection", () => {
@@ -70,6 +76,7 @@ describe("ProjectSection", () => {
     expect(screen.getByRole("link", { name: "Board" })).toHaveAttribute("href", "/board/BE");
     expect(screen.getByRole("link", { name: "Interview" })).toHaveAttribute("href", "/projects/BE/interview");
     expect(await screen.findByRole("link", { name: "Runbook" })).toHaveAttribute("href", "/docs/BE/d-1");
+    expect(screen.queryByRole("link", { name: "Salaries" })).not.toBeInTheDocument();
     expect(screen.queryByText("Frontend")).not.toBeInTheDocument();
   });
 
@@ -126,6 +133,16 @@ describe("ProjectSection", () => {
     await user.click(await screen.findByRole("button", { name: "New project" }));
     expect(screen.getByTestId("location")).toHaveTextContent("/wizard/project/project");
     expect(screen.queryByRole("link", { name: "Board" })).not.toBeInTheDocument();
+  });
+
+  it("a viewer who may read but not create gets no New project and no New doc", async () => {
+    const user = userEvent.setup();
+    renderSection({ permissions: ["projects:read", "tickets:read"] });
+
+    await user.click(await screen.findByRole("button", { name: /BE.*Backend/ }));
+    expect(await screen.findByRole("button", { name: /FE.*Frontend/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "New project" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "New doc in Backend" })).not.toBeInTheDocument();
   });
 
   it("the + beside the switcher creates a doc in the current project", async () => {

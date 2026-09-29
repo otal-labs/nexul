@@ -5,7 +5,8 @@ import { useCSSVariable } from "uniwind";
 import { OFFLINE_BANNER_HEIGHT, useIsOffline } from "@/components/OfflineBanner";
 import { TabBar } from "@/components/TabBar";
 import { unreadBadge, useFetchUnreadCount } from "@/hooks/NotificationHooks";
-import { useEnsureWorkspaceSelected } from "@/hooks/WorkspaceHooks";
+import { useAreaAccess, useEnsureWorkspaceSelected } from "@/hooks/WorkspaceHooks";
+import type { Area } from "@/models/Access";
 
 export default function TabsLayout() {
   const [foreground, mutedForeground] = useCSSVariable([
@@ -16,6 +17,9 @@ export default function TabsLayout() {
   useEnsureWorkspaceSelected();
   const { data: unread } = useFetchUnreadCount();
   const badge = unreadBadge(unread?.count);
+  const can = useAreaAccess();
+  // href null drops a tab from the bar; it stays hidden until the viewer's permissions say it may be read.
+  const hiddenUnless = (area: Area) => (can?.(area) ? {} : { href: null });
 
   return (
     <Tabs
@@ -49,11 +53,16 @@ export default function TabsLayout() {
         options={{
           title: "Board",
           tabBarIcon: ({ color, size }) => <SquareKanban color={color} size={size} />,
+          ...hiddenUnless("tickets"),
         }}
       />
       <Tabs.Screen
         name="deploys"
-        options={{ title: "Deploys", tabBarIcon: ({ color, size }) => <Rocket color={color} size={size} /> }}
+        options={{
+          title: "Deploys",
+          tabBarIcon: ({ color, size }) => <Rocket color={color} size={size} />,
+          ...hiddenUnless("stacks"),
+        }}
       />
       <Tabs.Screen
         name="more"

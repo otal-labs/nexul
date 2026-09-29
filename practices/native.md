@@ -59,7 +59,9 @@ as written. In particular:
   named component from `src/components/<domain>/`. Tests never live under
   `src/app/`, because every file there is a route.
 - Navigation is a bottom tab bar (Inbox, Chat, Board, Deploys, More) with a
-  stack per tab. Detail screens push onto the tab's stack and use the platform
+  stack per tab. Board, Deploys and More's Runners follow the viewer's read
+  permission through `src/models/Access.tsx`, the mirror of the web table; a
+  deep link into one the viewer can't read renders the plain not-found state. Detail screens push onto the tab's stack and use the platform
   back gesture; a push into another tab passes `{ withAnchor: true }` so that
   tab's list stays underneath. Pickers and confirms open with `sheetOptions`
   (`src/lib/sheetOptions.ts`: a fitted form sheet with the native header

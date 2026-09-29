@@ -15,7 +15,9 @@ export class ApiError extends Error {
   }
 }
 
-export const isNotFound = (error: unknown): boolean => error instanceof ApiError && error.status === 404;
+// A 403 is the server refusing an item the viewer can't see; to the viewer it is as missing as a 404.
+export const isNotFound = (error: unknown): boolean =>
+  error instanceof ApiError && (error.status === 404 || error.status === 403);
 
 const isErrorBody = (body: unknown): body is ApiErrorBody =>
   typeof body === "object" && body !== null && typeof (body as ApiErrorBody).message === "string";

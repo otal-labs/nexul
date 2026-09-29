@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from "react-router";
 
 import { Container } from "@/components/Container";
-import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { DetailErrorDisplay } from "@/components/DetailErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { MemoryDetail } from "@/components/memory/MemoryDetail";
 import { useDeleteMemory, useFetchMemory, useUpdateMemory } from "@/hooks/MemoryHooks";
@@ -26,7 +26,7 @@ export const MemoryPage = ({ memoryId: memoryIdProp }: MemoryPageProps = {}) => 
   return (
     <Container className="p-6">
       {isPending && <LoadingDisplay />}
-      {error && <ErrorDisplay error={error} />}
+      {error && <DetailErrorDisplay error={error} embedded={memoryIdProp !== undefined} />}
       {memory && (
         <MemoryDetail
           memory={memory}
