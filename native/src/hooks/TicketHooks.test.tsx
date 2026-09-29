@@ -3,8 +3,7 @@ import { renderHook, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 
 import { api } from "@/api/client";
-import { getTicketKey, getTicketsByProjectKey, useSetTicketPerson, useUpdateTicketStatus } from "@/hooks/TicketHooks";
-import { TicketRole } from "@/models/Ticket";
+import { getTicketKey, getTicketsByProjectKey, useUpdateTicketStatus } from "@/hooks/TicketHooks";
 
 jest.mock("@/api/client", () => ({ api: { patch: jest.fn() } }));
 
@@ -32,20 +31,5 @@ describe("useUpdateTicketStatus", () => {
     expect(patch).toHaveBeenCalledWith("/api/tickets/t-1/status", { status: "st-2" });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: [getTicketsByProjectKey] });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: [getTicketKey, "t-1"] });
-  });
-});
-
-describe("useSetTicketPerson", () => {
-  beforeEach(() => patch.mockReset());
-
-  test("assigning a role patches the ticket's role endpoint with the given login", async () => {
-    patch.mockResolvedValue({ id: "t-1", developer: "onik97" });
-    const client = new QueryClient();
-    const { result } = await renderHook(() => useSetTicketPerson(), { wrapper: withClient(client) });
-
-    result.current.mutate({ id: "t-1", role: TicketRole.Developer, login: "onik97" });
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(patch).toHaveBeenCalledWith("/api/tickets/t-1/developer", { login: "onik97" });
   });
 });

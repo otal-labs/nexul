@@ -120,6 +120,9 @@ describe("ChatThreadScreen", () => {
   });
 
   test("messages render oldest to newest with the newest one shown", async () => {
+    // IDs deliberately don't sort the same way as arrival order, so a future implementation that orders by
+    // id instead of trusting the fetch order would fail this, instead of coincidentally passing anyway.
+    thread = [message("m3", "first", 1), message("m1", "second", 2), message("m2", "newest", 3)];
     await renderThread();
 
     expect(await screen.findByText("newest")).toBeTruthy();

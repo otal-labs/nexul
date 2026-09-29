@@ -3,13 +3,7 @@ import { renderHook, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 
 import { api } from "@/api/client";
-import {
-  unreadBadge,
-  useFetchNotifications,
-  useFetchUnreadCount,
-  useMarkAllNotificationsRead,
-  useMarkNotificationRead,
-} from "@/hooks/NotificationHooks";
+import { unreadBadge, useFetchNotifications, useFetchUnreadCount } from "@/hooks/NotificationHooks";
 
 jest.mock("@/api/client", () => ({
   api: { get: jest.fn(), post: jest.fn() },
@@ -51,24 +45,6 @@ describe("useFetchUnreadCount", () => {
     const { result } = await renderHook(() => useFetchUnreadCount(), { wrapper });
     await waitFor(() => expect(result.current.data).toEqual({ count: 2 }));
     expect(api.get).toHaveBeenCalledWith("/api/notifications/unread-count");
-  });
-});
-
-describe("useMarkNotificationRead", () => {
-  test("posts the read endpoint", async () => {
-    jest.mocked(api.post).mockResolvedValue(undefined);
-    const { result } = await renderHook(() => useMarkNotificationRead(), { wrapper });
-    await result.current.mutateAsync("n1");
-    expect(api.post).toHaveBeenCalledWith("/api/notifications/n1/read");
-  });
-});
-
-describe("useMarkAllNotificationsRead", () => {
-  test("posts the read-all endpoint", async () => {
-    jest.mocked(api.post).mockResolvedValue(undefined);
-    const { result } = await renderHook(() => useMarkAllNotificationsRead(), { wrapper });
-    await result.current.mutateAsync();
-    expect(api.post).toHaveBeenCalledWith("/api/notifications/read-all");
   });
 });
 

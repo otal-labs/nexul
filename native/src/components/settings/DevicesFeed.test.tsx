@@ -42,7 +42,7 @@ beforeEach(() => {
 
 describe("DevicesFeed", () => {
   test("shows the current device first, then the others", async () => {
-    await renderFeed([current, other]);
+    await renderFeed([other, current]);
 
     const rows = await screen.findAllByText(/Android · Pixel 9|Chrome · Desktop/);
     expect(rows.map((node) => node.props.children)).toEqual(["Android · Pixel 9", "Chrome · Desktop"]);
