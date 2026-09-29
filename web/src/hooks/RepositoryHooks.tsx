@@ -7,9 +7,11 @@ const getRepositoriesKey = "repositories";
 
 // Installation repositories only — every repo this list returns already has the App installed, so a scan
 // failing "not installed" on one of them is a race (App uninstalled since the list loaded), not the common case.
+// staleTime 0 so returning from GitHub's install page refetches on window focus and the new account shows up.
 export const useFetchRepositories = () =>
   useQuery({
     queryKey: [getRepositoriesKey],
+    staleTime: 0,
     queryFn: async () => (await api.get<{ repositories: Repo[] }>("/api/repositories")).data.repositories,
   });
 

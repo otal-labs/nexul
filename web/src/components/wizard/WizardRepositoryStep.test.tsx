@@ -73,6 +73,28 @@ describe("WizardRepositoryStep", () => {
     expect(useProjectWizardStore.getState().candidate?.name).toBe("api");
   });
 
+  it("points at GitHub's install page for the configured App so repositories from other accounts can appear", async () => {
+    mocks.get.mockImplementation(async (url: string) => ({
+      data: url === "/api/connectors/github/app-config" ? { configured: true, app_slug: "nexul-otal" } : { repositories: repos },
+    }));
+    renderStep();
+
+    const link = await screen.findByRole("link", { name: "Install it on another account or organisation" });
+    expect(link).toHaveAttribute("href", "https://github.com/apps/nexul-otal/installations/new");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(screen.getByText(/Repositories you only collaborate on appear once their owner installs it/)).toBeInTheDocument();
+  });
+
+  it("explains where repositories come from without a broken link when no App slug is configured", async () => {
+    mocks.get.mockImplementation(async (url: string) => ({
+      data: url === "/api/connectors/github/app-config" ? { configured: false } : { repositories: repos },
+    }));
+    renderStep();
+
+    expect(await screen.findByText(/Nexul only sees accounts where its GitHub App is installed/)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Install it on another account/ })).not.toBeInTheDocument();
+  });
+
   it("shows an install link when the App isn't installed on the picked repository", async () => {
     renderStep();
     const user = userEvent.setup();

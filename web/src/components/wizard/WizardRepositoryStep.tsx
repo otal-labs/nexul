@@ -8,6 +8,7 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { RepositoryInstallHint } from "@/components/wizard/RepositoryInstallHint";
 import { TestsLocationChoice } from "@/components/wizard/TestsLocationChoice";
 import { WizardSkipButton } from "@/components/wizard/WizardSkipButton";
 import { useFetchProjectRepos, useSaveTestsAnswer } from "@/hooks/ProjectHooks";
@@ -147,6 +148,7 @@ export const WizardRepositoryStep = ({ onDone }: WizardRepositoryStepProps) => {
           ))}
         </ul>
       )}
+      {repos && <RepositoryInstallHint />}
       {notInstalled && (
         <EmptyState
           icon={AlertCircle}
