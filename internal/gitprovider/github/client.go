@@ -2,6 +2,7 @@
 package github
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -134,21 +135,65 @@ func (c *Client) DeleteWebhook(ctx context.Context, owner, name, hookID string) 
 // connected user's token grants, fetched a page of installations at a time, a page of repos at a time.
 func (c *Client) ListInstallationRepos(ctx context.Context) ([]*gitprovider.Repo, error) {
 	var out []*gitprovider.Repo
+	err := c.eachInstallation(ctx, func(inst *githubapi.Installation) error {
+		repos, err := c.listInstallationRepos(ctx, inst.GetID())
+		if err != nil {
+			return fmt.Errorf("list repos for installation %d: %w", inst.GetID(), err)
+		}
+		out = append(out, repos...)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// ListInstallations implements gitprovider.GitProvider; only a "selected" installation costs a second request,
+// a one-item page read for its total_count.
+func (c *Client) ListInstallations(ctx context.Context) ([]*gitprovider.Installation, error) {
+	var out []*gitprovider.Installation
+	err := c.eachInstallation(ctx, func(inst *githubapi.Installation) error {
+		account := inst.GetAccount()
+		i := &gitprovider.Installation{
+			ID:                  inst.GetID(),
+			AccountLogin:        account.GetLogin(),
+			AccountType:         strings.ToLower(cmp.Or(account.GetType(), inst.GetTargetType())),
+			AccountAvatarURL:    account.GetAvatarURL(),
+			RepositorySelection: inst.GetRepositorySelection(),
+			HTMLURL:             inst.GetHTMLURL(),
+		}
+		if i.RepositorySelection == "selected" {
+			n, err := c.installationRepoCount(ctx, inst.GetID())
+			if err != nil {
+				return fmt.Errorf("count repos for installation %d: %w", inst.GetID(), err)
+			}
+			i.RepositoryCount = &n
+		}
+		out = append(out, i)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// eachInstallation walks every App installation the connected user's token can see, a page of 100 at a time.
+func (c *Client) eachInstallation(ctx context.Context, fn func(*githubapi.Installation) error) error {
 	opts := &githubapi.ListOptions{PerPage: 100}
 	for {
 		installs, resp, err := c.gh.Apps.ListUserInstallations(ctx, opts)
 		if err != nil {
-			return nil, fmt.Errorf("list installations: %w", mapErr(err))
+			return fmt.Errorf("list installations: %w", mapErr(err))
 		}
 		for _, inst := range installs {
-			repos, err := c.listInstallationRepos(ctx, inst.GetID())
-			if err != nil {
-				return nil, fmt.Errorf("list repos for installation %d: %w", inst.GetID(), err)
+			if err := fn(inst); err != nil {
+				return err
 			}
-			out = append(out, repos...)
 		}
 		if resp == nil || resp.NextPage == 0 {
-			return out, nil
+			return nil
 		}
 		opts.Page = resp.NextPage
 	}
@@ -156,7 +201,21 @@ func (c *Client) ListInstallationRepos(ctx context.Context) ([]*gitprovider.Repo
 
 // installationReposResponse is GitHub's paginated body for GET /user/installations/{id}/repositories.
 type installationReposResponse struct {
+	TotalCount   int                     `json:"total_count"`
 	Repositories []*githubapi.Repository `json:"repositories"`
+}
+
+// installationRepoCount reads one installation's repository total from a one-item page instead of paging them all.
+func (c *Client) installationRepoCount(ctx context.Context, installID int64) (int, error) {
+	req, err := c.gh.NewRequest("GET", fmt.Sprintf("user/installations/%d/repositories?per_page=1", installID), nil)
+	if err != nil {
+		return 0, err
+	}
+	var body installationReposResponse
+	if _, err := c.gh.Do(ctx, req, &body); err != nil {
+		return 0, mapErr(err)
+	}
+	return body.TotalCount, nil
 }
 
 // listInstallationRepos paginates one installation's repository list; go-github has no typed helper for this

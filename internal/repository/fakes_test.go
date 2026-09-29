@@ -11,11 +11,13 @@ type fakeScanner struct {
 	tree        []TreeEntry
 	files       map[string][]byte
 	repos       []Repo
+	installs    []Installation
 	resolvedRef string
 
-	listErr error
-	treeErr error
-	fileErr error
+	listErr    error
+	installErr error
+	treeErr    error
+	fileErr    error
 }
 
 func (f *fakeScanner) ListInstallationRepos(context.Context) ([]Repo, error) {
@@ -23,6 +25,13 @@ func (f *fakeScanner) ListInstallationRepos(context.Context) ([]Repo, error) {
 		return nil, f.listErr
 	}
 	return f.repos, nil
+}
+
+func (f *fakeScanner) ListInstallations(context.Context) ([]Installation, error) {
+	if f.installErr != nil {
+		return nil, f.installErr
+	}
+	return f.installs, nil
 }
 
 func (f *fakeScanner) GetTree(_ context.Context, _, _, ref string) (string, []TreeEntry, error) {

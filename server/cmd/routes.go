@@ -84,7 +84,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	mountGateway(apiMux, "/api/reviews", codereview.NewHandler(svc.reviewSvc).Routes())
 	changeContext := changeContextReader{tickets: svc.ticketsSvc, docs: svc.docsSvc, workspace: svc.workspaceSvc, memories: svc.memoriesSvc}
 	mountGateway(apiMux, "/api/repos", gitprovider.NewHandler(svc.gitRouter).WithChangeContext(changeContext).Routes())
-	mountGateway(apiMux, "/api/repositories", repository.NewHandler(svc.repositoryScanner).Routes())
+	mountGateway(apiMux, "/api/repositories", repository.NewHandler(svc.repositoryScanner, svc.repositoryScanner).Routes())
 	mountGateway(apiMux, "/api/permissions", access.NewHandler(svc.accessSvc).Routes())
 	mountGateway(apiMux, "/api/mentions", mentions.NewHandler(svc.mentionsSvc).Routes())
 	mountGateway(apiMux, "/api/projects", withUserID(workspace.WithUserID)(workspace.NewHandler(svc.workspaceSvc).Routes()))
@@ -138,18 +138,19 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	spec.AddSecuritySchemes()
 
 	mcpServer := mcp.New(mcp.RegistryOptions{
-		Docs:          svc.docsSvc,
-		Memories:      svc.memoriesSvc,
-		Tickets:       svc.ticketsSvc,
-		Topology:      svc.topoSvc,
-		Deploy:        svc.deploySvc,
-		Reviews:       svc.reviewSvc,
-		Workspace:     svc.workspaceSvc,
-		Notifications: svc.notifSvc,
-		Git:           svc.gitRouter,
-		ChangeContext: changeContext,
-		Repository:    svc.repositoryScanner,
-		Runner:        runnerSvc,
+		Docs:                    svc.docsSvc,
+		Memories:                svc.memoriesSvc,
+		Tickets:                 svc.ticketsSvc,
+		Topology:                svc.topoSvc,
+		Deploy:                  svc.deploySvc,
+		Reviews:                 svc.reviewSvc,
+		Workspace:               svc.workspaceSvc,
+		Notifications:           svc.notifSvc,
+		Git:                     svc.gitRouter,
+		ChangeContext:           changeContext,
+		Repository:              svc.repositoryScanner,
+		RepositoryInstallations: svc.repositoryScanner,
+		Runner:                  runnerSvc,
 		Hosts: map[string]composite.HostKind{
 			"runner":      runnerHostKind{svc: runnerSvc},
 			"automations": automationsHostKind{svc: svc.automationHostsSvc},
@@ -299,6 +300,7 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("GET", "/api/repos/{owner}/{repo}/prs", "List pull requests", "repos")
 	spec.Register("POST", "/api/repositories/scan", "Scan a repository's tree for deployable candidates", "repositories")
 	spec.Register("GET", "/api/repositories", "List repositories the connected GitHub App installation grants", "repositories")
+	spec.Register("GET", "/api/repositories/installations", "List the accounts and organisations the GitHub App is installed on", "repositories")
 	spec.Register("GET", "/api/permissions", "List document permission grants", "permissions")
 	spec.Register("GET", "/api/permissions/catalog", "List the permission grid roles, tokens, and grants share", "permissions")
 	spec.Register("GET", "/api/mentions/search", "Search mention targets for the @ picker", "mentions")

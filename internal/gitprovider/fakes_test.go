@@ -136,6 +136,10 @@ func (f *fakeProvider) ListInstallationRepos(context.Context) ([]*Repo, error) {
 	return f.installRepos, nil
 }
 
+func (f *fakeProvider) ListInstallations(context.Context) ([]*Installation, error) {
+	return nil, f.err
+}
+
 func (f *fakeProvider) GetTree(context.Context, string, string, string) ([]TreeEntry, error) {
 	if f.err != nil {
 		return nil, f.err

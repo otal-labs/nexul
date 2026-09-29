@@ -45,6 +45,23 @@ func (s repositoryScanner) ListInstallationRepos(ctx context.Context) ([]reposit
 	return out, nil
 }
 
+func (s repositoryScanner) ListInstallations(ctx context.Context) ([]repository.Installation, error) {
+	p, err := s.provider(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list installations: %w", err)
+	}
+	installs, err := p.ListInstallations(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list installations: %w", err)
+	}
+	out := make([]repository.Installation, 0, len(installs))
+	for _, i := range installs {
+		// Identical field sets: the conversion stops compiling the day the two types drift apart.
+		out = append(out, repository.Installation(*i))
+	}
+	return out, nil
+}
+
 func (s repositoryScanner) GetTree(ctx context.Context, owner, name, ref string) (string, []repository.TreeEntry, error) {
 	p, err := s.provider(ctx)
 	if err != nil {
