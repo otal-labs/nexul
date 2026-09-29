@@ -219,7 +219,7 @@ func (r *ProjectsRepo) GetRepoByFullName(ctx context.Context, owner, name string
 	if err != nil {
 		return workspace.RepoRef{}, fmt.Errorf("get repo %s/%s: %w", owner, name, notFoundIfNoRows(err))
 	}
-	return workspace.RepoRef{Owner: row.Owner, Name: row.Name, FullName: row.FullName, ConnectorID: row.ConnectorID, Role: workspace.RepoRole(row.Role)}, nil
+	return workspace.RepoRef{ProjectID: row.ProjectID, Owner: row.Owner, Name: row.Name, FullName: row.FullName, ConnectorID: row.ConnectorID, Role: workspace.RepoRole(row.Role)}, nil
 }
 
 // MoveTicket updates a ticket's project in place; the FK guarantees only an existing project can be referenced.

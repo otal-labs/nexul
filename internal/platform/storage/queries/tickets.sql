@@ -87,9 +87,6 @@ DELETE FROM ticket_labels WHERE ticket_id = ? AND label = ?;
 -- name: ListTicketLabels :many
 SELECT label FROM ticket_labels WHERE ticket_id = ? ORDER BY label;
 
--- name: ListAllTicketLabels :many
-SELECT DISTINCT label FROM ticket_labels ORDER BY label;
-
 -- name: ListTicketLabelsForTickets :many
 SELECT ticket_id, label FROM ticket_labels WHERE ticket_id IN (sqlc.slice('ids')) ORDER BY label;
 

@@ -12,6 +12,9 @@ import (
 // verb (ADR 0057); the same value gates a role, a token, and the agent.
 type Action string
 
+// Member is the empty action a permission check reads as "belongs to the workspace", for what every member may read.
+const Member Action = ""
+
 // Actions referenced by name from Go code; every other grid value is only ever built from the catalog.
 const (
 	DocsRead          Action = "docs:read"
@@ -19,7 +22,24 @@ const (
 	DocsDelete        Action = "docs:delete"
 	DocsThread        Action = "docs:thread"
 	PermissionsWrite  Action = "permissions:write"
+	ProjectsRead      Action = "projects:read"
 	ProjectsWrite     Action = "projects:write"
+	ProjectsDelete    Action = "projects:delete"
+	TicketsRead       Action = "tickets:read"
+	TicketsWrite      Action = "tickets:write"
+	TicketsDelete     Action = "tickets:delete"
+	StacksRead        Action = "stacks:read"
+	StacksWrite       Action = "stacks:write"
+	StacksDelete      Action = "stacks:delete"
+	DeploysRead       Action = "deploys:read"
+	DeploysWrite      Action = "deploys:write"
+	TopologyRead      Action = "topology:read"
+	TopologyWrite     Action = "topology:write"
+	TopologyDelete    Action = "topology:delete"
+	RunnersRead       Action = "runners:read"
+	MachinesWrite     Action = "machines:write"
+	DNSRead           Action = "dns:read"
+	ChatWrite         Action = "chat:write"
 	WorkspacesWrite   Action = "workspaces:write"
 	MembersWrite      Action = "members:write"
 	RolesWrite        Action = "roles:write"

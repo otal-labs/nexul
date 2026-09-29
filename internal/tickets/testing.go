@@ -11,6 +11,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 // Stages the testing step reads; they mirror workspace's fixed board stages, matched by stage and never by column name.
@@ -107,7 +108,7 @@ func (s *Service) TestTarget(ctx context.Context, id string) (TestTarget, error)
 
 // TestPass moves the ticket to the first done-stage column, fills an empty Tester, and posts who passed it to its thread.
 func (s *Service) TestPass(ctx context.Context, id string, viaMCP bool) (*Ticket, error) {
-	t, err := s.Get(ctx, id)
+	t, err := s.load(ctx, id, permissions.TicketsWrite)
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +161,7 @@ func (s *Service) TestFail(ctx context.Context, id string, report TestReport, vi
 	if err != nil {
 		return nil, err
 	}
-	t, err := s.Get(ctx, id)
+	t, err := s.load(ctx, id, permissions.TicketsWrite)
 	if err != nil {
 		return nil, err
 	}

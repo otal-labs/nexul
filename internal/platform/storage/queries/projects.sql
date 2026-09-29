@@ -32,7 +32,7 @@ DELETE FROM project_repos WHERE owner = ? AND name = ?;
 SELECT owner, name, full_name, connector_id, role FROM project_repos WHERE project_id = ? ORDER BY name;
 
 -- name: GetProjectRepoByOwnerAndName :one
-SELECT owner, name, full_name, connector_id, role FROM project_repos WHERE owner = ? AND name = ?;
+SELECT project_id, owner, name, full_name, connector_id, role FROM project_repos WHERE owner = ? AND name = ?;
 
 -- name: MoveTicketProject :execrows
 UPDATE tickets SET project_id = ? WHERE id = ?;

@@ -15,6 +15,13 @@ import (
 	"github.com/otal-labs/nexul/internal/tickets"
 )
 
+// allowTickets lets every ticket and chat call through, for tests about what the adapters do past the permission check.
+type allowTickets struct{}
+
+func (allowTickets) RequireProject(context.Context, string, permissions.Action) error { return nil }
+
+func (allowTickets) Require(context.Context, string, permissions.Action) error { return nil }
+
 // TestIntegration_PlaysLinkReader_OneHop reads a bug's origin, its PRs, and its blockers, skipping a doc the starter cannot open.
 func TestIntegration_PlaysLinkReader_OneHop(t *testing.T) {
 	ctx := context.Background()
@@ -27,6 +34,7 @@ func TestIntegration_PlaysLinkReader_OneHop(t *testing.T) {
 	require.NoError(t, s.Access.Set(ctx, "doc", "d-open", "u-alice", permissions.SetOf(permissions.DocsRead), nil))
 
 	ticketsSvc := tickets.NewService(s.Tickets, s.Statuses, nil)
+	ticketsSvc.SetGate(allowTickets{})
 	grand, err := ticketsSvc.Create(ctx, "project-general", "older work", "", "", "")
 	require.NoError(t, err)
 	origin, err := ticketsSvc.Create(ctx, "project-general", "Login page", "logs in", "d-open", "")

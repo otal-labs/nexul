@@ -1,0 +1,81 @@
+package access
+
+import (
+	"context"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/identity"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
+)
+
+type fakeScopes struct {
+	projects   map[string]string
+	workspaces map[string][]string
+}
+
+func (f fakeScopes) WorkspaceIDForProject(_ context.Context, projectID string) (string, error) {
+	ws, ok := f.projects[projectID]
+	if !ok {
+		return "", apperrs.ErrNotFound
+	}
+	return ws, nil
+}
+
+func (f fakeScopes) WorkspaceIDsForUser(_ context.Context, userID string) ([]string, error) {
+	return f.workspaces[userID], nil
+}
+
+// TestRequire covers what the gate adds over HasPermission: who is let through without a person to resolve, the
+// not-found answer a stranger gets, and the instance-level check across a caller's workspaces.
+func TestRequire(t *testing.T) {
+	roles := newFakeRoles()
+	roles.set("ws-a", "alice", RoleInfo{})
+	roles.set("ws-b", "alice", RoleInfo{Permissions: permissions.SetOf(permissions.RunnersRead)})
+	s := newService(newFakeRepo(), newFakeUsers())
+	s.SetRoles(roles)
+	s.SetScopes(fakeScopes{projects: map[string]string{"p-1": "ws-a"}, workspaces: map[string][]string{"alice": {"ws-a", "ws-b"}}})
+	alice := identity.WithActor(context.Background(), identity.Actor{ID: "alice"})
+	defaultAutomation := identity.WithActor(context.Background(), identity.Actor{Automation: &identity.AutomationRef{ID: "a-1"}})
+
+	tests := []struct {
+		name  string
+		check func() error
+		want  error
+	}{
+		{"the server's own call passes", func() error {
+			return s.Require(context.Background(), "ws-a", permissions.TicketsRead)
+		}, nil},
+		{"a shipped default automation passes on its gateway-checked scopes", func() error {
+			return s.RequireProject(defaultAutomation, "p-1", permissions.TicketsWrite)
+		}, nil},
+		{"an actor with no id is not a member", func() error {
+			return s.Require(identity.WithActor(context.Background(), identity.Actor{}), "ws-a", permissions.Member)
+		}, apperrs.ErrNotFound},
+		{"membership alone passes the member check", func() error {
+			return s.Require(alice, "ws-a", permissions.Member)
+		}, nil},
+		{"an unknown project is not found", func() error {
+			return s.RequireProject(alice, "p-gone", permissions.Member)
+		}, apperrs.ErrNotFound},
+		{"an instance-level read held in any of the caller's workspaces passes", func() error {
+			return s.RequireAnywhere(alice, permissions.RunnersRead)
+		}, nil},
+		{"an instance-level action held nowhere is forbidden", func() error {
+			return s.RequireAnywhere(alice, permissions.TopologyRead)
+		}, apperrs.ErrForbidden},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.check()
+			if tt.want == nil {
+				require.NoError(t, err)
+				return
+			}
+			assert.ErrorIs(t, err, tt.want)
+		})
+	}
+}

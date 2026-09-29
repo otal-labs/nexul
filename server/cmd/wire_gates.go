@@ -20,7 +20,6 @@ import (
 	"github.com/otal-labs/nexul/internal/presence"
 	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/tenancy"
-	"github.com/otal-labs/nexul/internal/workspace"
 )
 
 // instanceAdminGate adapts auth's can_create_workspace fact to every domain's gate seam (ADR 0017).
@@ -238,13 +237,14 @@ func (g memoriesPermissionGate) HasPermission(ctx context.Context, userID, works
 	return g.svc.HasPermission(ctx, userID, workspaceID, action, "", "")
 }
 
-// memoriesProjectLookup adapts workspace's Get to memories' ProjectLookup seam (ADR 0017: memories never imports workspace).
+// memoriesProjectLookup reads a project's workspace from storage for memories' ProjectLookup seam (ADR 0017), since
+// memories applies its own memories:read check on the result.
 type memoriesProjectLookup struct {
-	svc *workspace.Service
+	projects *storage.ProjectsRepo
 }
 
 func (g memoriesProjectLookup) WorkspaceForProject(ctx context.Context, projectID string) (string, error) {
-	p, err := g.svc.Get(ctx, projectID)
+	p, err := g.projects.Get(ctx, projectID)
 	if err != nil {
 		return "", err
 	}
@@ -287,14 +287,19 @@ func (g playsPermissionGate) HasPermission(ctx context.Context, userID, workspac
 	return g.svc.HasPermission(ctx, userID, workspaceID, action, resourceType, resourceID)
 }
 
-// notificationPermissionGate adapts access's HasPermission to workspace notifications' PermissionChecker seam
-// (ADR 0017), so memory.updated fan-out only reaches members who still hold memories:read.
+// notificationPermissionGate adapts access to workspace notifications' PermissionChecker seam (ADR 0017), so a
+// notice only reaches someone who may read its subject.
 type notificationPermissionGate struct {
 	svc *access.Service
 }
 
 func (g notificationPermissionGate) HasPermission(ctx context.Context, userID, workspaceID string, action permissions.Action) bool {
 	return g.svc.HasPermission(ctx, userID, workspaceID, action, "", "")
+}
+
+func (g notificationPermissionGate) CanReadDoc(ctx context.Context, userID, docID string) bool {
+	ok, err := g.svc.Can(ctx, userID, docID, permissions.DocsRead)
+	return err == nil && ok
 }
 
 // memoriesAttachmentsGate adapts attachments' owner-copy API to memories' AttachmentsCopier seam (ADR 0017:

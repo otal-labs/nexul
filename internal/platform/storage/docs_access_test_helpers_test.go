@@ -27,3 +27,7 @@ func (allowAll) DeleteByDoc(context.Context, string) error {
 func actorCtx() context.Context {
 	return identity.WithActor(context.Background(), identity.Actor{ID: "tester", CanCreateWorkspace: true})
 }
+
+func (allowAll) RequireProject(context.Context, string, permissions.Action) error {
+	return nil
+}

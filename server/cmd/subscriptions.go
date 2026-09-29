@@ -281,7 +281,7 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 		Trails:      store.PlayTrails,
 		Perm:        playsPermissionGate{svc: svc.accessSvc},
 		Targets:     playsTargetReader{tickets: svc.ticketsSvc, docs: svc.docsSvc, workspace: svc.workspaceSvc},
-		Projects:    playsProjectLookup{memoriesProjectLookup{svc: svc.workspaceSvc}},
+		Projects:    playsProjectLookup{memoriesProjectLookup{projects: store.Projects}},
 		Harness:     playsHarnessResolver{svc: svc.pairingSvc},
 		Memories:    playsMemoryReader{svc: svc.memoriesSvc},
 		Threads:     playsThreads{svc: svc.chatSvc},

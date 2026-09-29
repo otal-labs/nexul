@@ -300,10 +300,6 @@ func TestTicketsRepo_Labels(t *testing.T) {
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []string{"bug", "urgent"}, got.Labels)
 
-	all, err := s.Tickets.ListAllLabels(ctx)
-	require.NoError(t, err)
-	assert.ElementsMatch(t, []string{"bug", "urgent"}, all)
-
 	require.NoError(t, s.Tickets.AddLabel(ctx, "t-2", "urgent"))
 	got, err = s.Tickets.GetByID(ctx, "t-2")
 	require.NoError(t, err)

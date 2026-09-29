@@ -470,14 +470,6 @@ func (r *TicketsRepo) ListLabels(ctx context.Context, id string) ([]string, erro
 	return out, nil
 }
 
-func (r *TicketsRepo) ListAllLabels(ctx context.Context) ([]string, error) {
-	out, err := r.q.ListAllTicketLabels(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("list all labels: %w", err)
-	}
-	return out, nil
-}
-
 // SetLabelColor upserts a label's palette color within a project, so an unused label still works.
 func (r *TicketsRepo) SetLabelColor(ctx context.Context, projectID, label string, color colors.Color) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {

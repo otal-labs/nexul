@@ -30,3 +30,10 @@ func ActorFromCtx(ctx context.Context) (Actor, bool) {
 	a, ok := ctx.Value(actorKey{}).(Actor)
 	return a, ok
 }
+
+// Internal reports a call the server makes on its own behalf (event consumers, workers): every adapter attaches
+// an actor, so a context without one has no person asking.
+func Internal(ctx context.Context) bool {
+	_, ok := ActorFromCtx(ctx)
+	return !ok
+}

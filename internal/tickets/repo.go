@@ -76,8 +76,6 @@ type Repo interface {
 	RemoveLabel(ctx context.Context, id, label string) error
 	// ListLabels returns a ticket's labels.
 	ListLabels(ctx context.Context, id string) ([]string, error)
-	// ListAllLabels returns the distinct labels across all tickets, ordered, for the board filter bar.
-	ListAllLabels(ctx context.Context) ([]string, error)
 	// SetLabelColor works even for a label no ticket has used yet, with no separate registration step.
 	SetLabelColor(ctx context.Context, projectID, label string, color colors.Color) error
 	// LabelColors batches lookups in one query for the board, which renders many labels per screen.

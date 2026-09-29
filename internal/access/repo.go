@@ -38,6 +38,14 @@ type DocWorkspaceResolver interface {
 	WorkspaceIDForDoc(ctx context.Context, docID string) (string, error)
 }
 
+// Scopes resolves where a checked entity lives straight from storage, never through a gated use-case (ADR 0017).
+type Scopes interface {
+	// WorkspaceIDForProject returns ErrNotFound for an unknown project.
+	WorkspaceIDForProject(ctx context.Context, projectID string) (string, error)
+	// WorkspaceIDsForUser lists the workspaces userID is a member of.
+	WorkspaceIDsForUser(ctx context.Context, userID string) ([]string, error)
+}
+
 // PlayWorkspaceResolver resolves a play's own workspace so HasPermission/canManage apply to plays too (ADR 0017).
 type PlayWorkspaceResolver interface {
 	// WorkspaceIDForPlay returns "" if it can't be resolved (unknown play).

@@ -20,6 +20,8 @@ type AccessChecker interface {
 	GrantCreator(ctx context.Context, docID, creatorID string) error
 	// DeleteByDoc removes every permission overwrite on docID; called explicitly, permission_overwrites has no FK to docs.
 	DeleteByDoc(ctx context.Context, docID string) error
+	// RequireProject checks the caller holds action in projectID's workspace; permissions.Member asks for membership.
+	RequireProject(ctx context.Context, projectID string, action permissions.Action) error
 }
 
 // Service is the docs use-case layer (ADR 0019); permission checks run here so every adapter inherits them.
@@ -47,6 +49,9 @@ func (s *Service) Create(ctx context.Context, projectID, title, body string) (*D
 	actor, ok := identity.ActorFromCtx(ctx)
 	if !ok || actor.ID == "" {
 		return nil, fmt.Errorf("%w: an authenticated user is required", apperrs.ErrUnauthorized)
+	}
+	if err := s.requireProject(ctx, projectID, permissions.DocsWrite); err != nil {
+		return nil, err
 	}
 	body, err := richtext.Normalize(body)
 	if err != nil {
@@ -89,6 +94,9 @@ func (s *Service) Get(ctx context.Context, id string) (*Doc, error) {
 		return nil, fmt.Errorf("get doc %s: %w", id, err)
 	}
 	if err := s.require(ctx, d.ID, permissions.DocsRead); err != nil {
+		if memberErr := s.requireProject(ctx, d.ProjectID, permissions.Member); memberErr != nil {
+			return nil, memberErr
+		}
 		return nil, err
 	}
 	return d, nil
@@ -100,7 +108,7 @@ func (s *Service) List(ctx context.Context) ([]*DocListItem, error) {
 	if err != nil {
 		return nil, fmt.Errorf("list docs: %w", err)
 	}
-	return s.toListItems(ctx, ds), nil
+	return s.toListItems(ctx, ds)
 }
 
 // ListByProject returns the docs in a project, oldest first; the list stays flat, no sub-grouping (ADR 0025).
@@ -112,10 +120,18 @@ func (s *Service) ListByProject(ctx context.Context, projectID string) ([]*DocLi
 	if err != nil {
 		return nil, fmt.Errorf("list docs for project %s: %w", projectID, err)
 	}
-	return s.toListItems(ctx, ds), nil
+	return s.toListItems(ctx, ds)
 }
 
-func (s *Service) toListItems(ctx context.Context, ds []*Doc) []*DocListItem {
+// toListItems lists the docs of the workspaces the caller belongs to; inside one, a doc they can't open still
+// shows its title with can_open=false.
+func (s *Service) toListItems(ctx context.Context, ds []*Doc) ([]*DocListItem, error) {
+	ds, err := permissions.Filter(ds, func(d *Doc) string { return d.ProjectID }, func(projectID string) error {
+		return s.requireProject(ctx, projectID, permissions.Member)
+	})
+	if err != nil {
+		return nil, err
+	}
 	out := make([]*DocListItem, 0, len(ds))
 	for _, d := range ds {
 		item := &DocListItem{
@@ -129,7 +145,14 @@ func (s *Service) toListItems(ctx context.Context, ds []*Doc) []*DocListItem {
 		item.CanOpen = s.can(ctx, d.ID, permissions.DocsRead)
 		out = append(out, item)
 	}
-	return out
+	return out, nil
+}
+
+func (s *Service) requireProject(ctx context.Context, projectID string, action permissions.Action) error {
+	if s.access == nil {
+		return permissions.Ungated(ctx)
+	}
+	return s.access.RequireProject(ctx, projectID, action)
 }
 
 // Update replaces the title/body, bumps the version, appends a row, and enqueues doc.updated; requires the edit bit.

@@ -12,20 +12,32 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 var wsFixedNow = time.Date(2026, 8, 12, 9, 0, 0, 0, time.UTC)
 
-type fakeOwner struct {
-	mu          sync.Mutex
-	allowCreate bool
-	err         error
+// fakeGate answers every permission check the same way: allowed, forbidden, or failing with err.
+type fakeGate struct {
+	mu    sync.Mutex
+	allow bool
+	err   error
 }
 
-func (f *fakeOwner) CanCreateWorkspace(_ context.Context, _ string) (bool, error) {
+func (f *fakeGate) Require(_ context.Context, _ string, action permissions.Action) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return f.allowCreate, f.err
+	if f.err != nil {
+		return f.err
+	}
+	if !f.allow && action != permissions.Member {
+		return apperrs.ErrForbidden
+	}
+	return nil
+}
+
+func (f *fakeGate) RequireProject(ctx context.Context, _ string, action permissions.Action) error {
+	return f.Require(ctx, "", action)
 }
 
 type fakeWorkspaceGate struct {
@@ -260,7 +272,7 @@ func (f *fakeRepo) MoveTicket(_ context.Context, ticketID, projectID string) err
 	return nil
 }
 
-func newTestService(repo *fakeRepo, owner InstanceAdminGate) *Service {
+func newTestService(repo *fakeRepo, owner Gate) *Service {
 	s := NewService(repo, newFakeCategoryRepo(), newFakeTicketTypeRepo(), newFakeStatusRepo(), owner, &fakeWorkspaceGate{exists: true})
 	s.now = func() time.Time { return wsFixedNow }
 	return s
@@ -591,10 +603,10 @@ func (f *fakeStatusRepo) CountTickets(_ context.Context, _ string) (int, error) 
 	return f.count, nil
 }
 
-func newOwnerRepo(t *testing.T, allowCreate bool) (*Service, *fakeRepo, *fakeOwner) {
+func newOwnerRepo(t *testing.T, allow bool) (*Service, *fakeRepo, *fakeGate) {
 	t.Helper()
 	repo := newFakeRepo()
-	owner := &fakeOwner{allowCreate: allowCreate}
+	owner := &fakeGate{allow: allow}
 	return newTestService(repo, owner), repo, owner
 }
 
@@ -607,7 +619,7 @@ func TestCreate(t *testing.T) {
 	})
 	t.Run("unknown workspace is not found", func(t *testing.T) {
 		repo := newFakeRepo()
-		owner := &fakeOwner{allowCreate: true}
+		owner := &fakeGate{allow: true}
 		s := NewService(repo, newFakeCategoryRepo(), newFakeTicketTypeRepo(), newFakeStatusRepo(), owner, &fakeWorkspaceGate{exists: false})
 		_, err := s.Create(context.Background(), "u-1", "ws-1", "Backend", "BE", "")
 		require.Error(t, err)
@@ -615,7 +627,7 @@ func TestCreate(t *testing.T) {
 	})
 	t.Run("workspace gate error propagates", func(t *testing.T) {
 		repo := newFakeRepo()
-		owner := &fakeOwner{allowCreate: true}
+		owner := &fakeGate{allow: true}
 		wsGate := &fakeWorkspaceGate{err: errors.New("db down")}
 		s := NewService(repo, newFakeCategoryRepo(), newFakeTicketTypeRepo(), newFakeStatusRepo(), owner, wsGate)
 		_, err := s.Create(context.Background(), "u-1", "ws-1", "Backend", "BE", "")
@@ -1072,7 +1084,9 @@ func TestAddRepo(t *testing.T) {
 
 func TestRemoveRepo(t *testing.T) {
 	t.Run("non-owner is forbidden", func(t *testing.T) {
-		s, _, _ := newOwnerRepo(t, false)
+		s, repo, _ := newOwnerRepo(t, false)
+		repo.projects["p-1"] = &Project{ID: "p-1"}
+		require.NoError(t, repo.AddRepo(context.Background(), "p-1", RepoRef{Owner: "acme", Name: "app"}))
 		err := s.RemoveRepo(context.Background(), "u-1", "acme", "app")
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrForbidden))

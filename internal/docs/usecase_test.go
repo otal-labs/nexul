@@ -244,10 +244,11 @@ func testCtx() context.Context {
 
 // fakeAccess is a docs.AccessChecker stub for unit tests.
 type fakeAccess struct {
-	can       bool
-	canErr    error
-	grant     error
-	deleteErr error
+	can        bool
+	canErr     error
+	grant      error
+	deleteErr  error
+	projectErr error
 }
 
 func (f fakeAccess) Can(_ context.Context, _, _ string, _ permissions.Action) (bool, error) {
@@ -260,6 +261,10 @@ func (f fakeAccess) GrantCreator(_ context.Context, _, _ string) error {
 
 func (f fakeAccess) DeleteByDoc(_ context.Context, _ string) error {
 	return f.deleteErr
+}
+
+func (f fakeAccess) RequireProject(context.Context, string, permissions.Action) error {
+	return f.projectErr
 }
 
 func TestCreate(t *testing.T) {

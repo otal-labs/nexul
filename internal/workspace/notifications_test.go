@@ -247,8 +247,12 @@ func (f *fakeAccessChecker) HasPermission(_ context.Context, userID, _ string, _
 	return !f.denyUserIDs[userID]
 }
 
+func (f *fakeAccessChecker) CanReadDoc(_ context.Context, userID, _ string) bool {
+	return !f.denyUserIDs[userID]
+}
+
 func newTestNotifService(repo *fakeNotifRepo, users *fakeNotifUsers) *NotificationService {
-	return newTestNotifServiceWith(repo, users, &fakeMemberStore{byWorkspace: map[string][]string{}}, &fakeAccessChecker{})
+	return newTestNotifServiceWith(repo, users, nil, &fakeAccessChecker{})
 }
 
 func newTestNotifServiceWith(repo *fakeNotifRepo, users *fakeNotifUsers, members WorkspaceMemberStore, access PermissionChecker) *NotificationService {

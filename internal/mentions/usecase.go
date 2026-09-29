@@ -90,7 +90,7 @@ func (s *Service) resolveRef(ctx context.Context, actorID string, ref Ref) (Chip
 	return Chip{}, false, nil
 }
 
-// Search returns autocomplete entries: tickets (always openable) and docs filtered to what the actor can open.
+// Search returns autocomplete entries: tickets and docs, filtered to what the actor can open.
 func (s *Service) Search(ctx context.Context, query string, limit int) ([]SearchResult, error) {
 	if s.cfg.Tickets == nil || s.cfg.Docs == nil || s.cfg.Statuses == nil {
 		return nil, errors.New("mentions: resolution sources are not wired")
@@ -152,6 +152,9 @@ func (s *Service) resolveMentionKey(ctx context.Context, query string) (*SearchR
 		}
 		return nil, fmt.Errorf("resolve mention key %q: %w", query, err)
 	}
+	if !s.canOpenTicket(ctx, t.ProjectID) {
+		return nil, nil
+	}
 	return &SearchResult{Type: string(KindTicket), ID: t.ID, Title: t.Title, StatusLabel: s.statusLabel(ctx, t.Status), CanOpen: true}, nil
 }
 
@@ -162,11 +165,11 @@ func (s *Service) ticketSearchResults(ctx context.Context, hits []SearchHit, see
 			continue
 		}
 		seen[h.ID] = true
-		statusLabel := ""
-		if ticket, err := s.cfg.Tickets.GetByID(ctx, h.ID); err == nil {
-			statusLabel = s.statusLabel(ctx, ticket.Status)
+		ticket, err := s.cfg.Tickets.GetByID(ctx, h.ID)
+		if err != nil || !s.canOpenTicket(ctx, ticket.ProjectID) {
+			continue
 		}
-		results = append(results, SearchResult{Type: string(KindTicket), ID: h.ID, Title: h.Title, StatusLabel: statusLabel, CanOpen: true})
+		results = append(results, SearchResult{Type: string(KindTicket), ID: h.ID, Title: h.Title, StatusLabel: s.statusLabel(ctx, ticket.Status), CanOpen: true})
 	}
 	return results
 }
@@ -194,7 +197,7 @@ func (s *Service) resolveTicket(ctx context.Context, id string) (Chip, error) {
 		Title:          t.Title,
 		Status:         t.Status,
 		StatusLabel:    s.statusLabel(ctx, t.Status),
-		CanOpen:        true,
+		CanOpen:        s.canOpenTicket(ctx, t.ProjectID),
 		ProjectPrefix:  prefix,
 		ProjectNumber:  t.Number,
 		TypeLabel:      s.typeLabel(ctx, t.TypeID),
@@ -249,6 +252,13 @@ func (s *Service) typeLabel(ctx context.Context, id string) string {
 		return id
 	}
 	return tt.Name
+}
+
+func (s *Service) canOpenTicket(ctx context.Context, projectID string) bool {
+	if s.cfg.Access == nil {
+		return false
+	}
+	return s.cfg.Access.RequireProject(ctx, projectID, permissions.TicketsRead) == nil
 }
 
 func (s *Service) canOpenDoc(ctx context.Context, actorID, docID string) bool {

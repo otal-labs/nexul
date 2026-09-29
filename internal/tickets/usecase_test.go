@@ -17,6 +17,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/identity"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 var fixedNow = time.Date(2026, 8, 2, 12, 0, 0, 0, time.UTC)
@@ -335,9 +336,15 @@ func (f *fakeRepo) eventsFor(topic string) []eventbus.OutboxEvent {
 
 func newTestService(repo *fakeRepo) *Service {
 	s := NewService(repo, fakeStatusStore{}, nil)
+	s.SetGate(allowGate{})
 	s.now = func() time.Time { return fixedNow }
 	return s
 }
+
+// allowGate lets every caller through, for tests about what happens past the permission check.
+type allowGate struct{}
+
+func (allowGate) RequireProject(context.Context, string, permissions.Action) error { return nil }
 
 // fakeStatusStore accepts the seeded status columns; a non-existent status is rejected.
 type fakeStatusStore struct {
@@ -460,22 +467,6 @@ func (f *fakeRepo) ListLabels(_ context.Context, id string) ([]string, error) {
 		return nil, apperrs.ErrNotFound
 	}
 	return append([]string(nil), t.Labels...), nil
-}
-
-func (f *fakeRepo) ListAllLabels(_ context.Context) ([]string, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	seen := map[string]bool{}
-	var out []string
-	for _, t := range f.tickets {
-		for _, l := range t.Labels {
-			if !seen[l] {
-				seen[l] = true
-				out = append(out, l)
-			}
-		}
-	}
-	return out, nil
 }
 
 func (f *fakeRepo) SetLabelColor(_ context.Context, projectID, label string, color colors.Color) error {

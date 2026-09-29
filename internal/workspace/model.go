@@ -38,6 +38,8 @@ func (l TestsLocation) Valid() bool {
 
 // RepoRef is a git repository associated with a project (a repository belongs to exactly one project).
 type RepoRef struct {
+	// ProjectID is filled only by the owner/name lookup, which is the one read that doesn't start from the project.
+	ProjectID   string   `json:"-"`
 	Owner       string   `json:"owner"`
 	Name        string   `json:"name"`
 	FullName    string   `json:"full_name"`

@@ -26,24 +26,44 @@ type Service struct {
 	cats       CategoryRepo
 	types      TicketTypeRepo
 	statuses   StatusRepo
-	admin      InstanceAdminGate
+	gate       Gate
 	workspaces WorkspaceGate
+	tickets    TicketProjects
 	now        func() time.Time
 }
 
 // NewService wires the workspace use-cases over the given repos and gates.
-func NewService(repo Repo, cats CategoryRepo, types TicketTypeRepo, statuses StatusRepo, admin InstanceAdminGate, workspaces WorkspaceGate) *Service {
-	return &Service{repo: repo, cats: cats, types: types, statuses: statuses, admin: admin, workspaces: workspaces, now: time.Now}
+func NewService(repo Repo, cats CategoryRepo, types TicketTypeRepo, statuses StatusRepo, gate Gate, workspaces WorkspaceGate) *Service {
+	return &Service{repo: repo, cats: cats, types: types, statuses: statuses, gate: gate, workspaces: workspaces, now: time.Now}
 }
 
-// Create adds a project to a workspace with the next display position (owner only).
-func (s *Service) Create(ctx context.Context, userID, workspaceID, name, prefix string, icon ProjectIcon) (*Project, error) {
-	if err := s.requireOwner(ctx, userID); err != nil {
-		return nil, err
+// SetTicketProjects wires the ticket lookup a ticket move checks its source project through.
+func (s *Service) SetTicketProjects(t TicketProjects) { s.tickets = t }
+
+// requireIn checks action in workspaceID; permissions.Member asks only for membership.
+func (s *Service) requireIn(ctx context.Context, workspaceID string, action permissions.Action) error {
+	if s.gate == nil {
+		return permissions.Ungated(ctx)
 	}
+	return s.gate.Require(ctx, workspaceID, action)
+}
+
+// requireOn is requireIn in the workspace projectID belongs to.
+func (s *Service) requireOn(ctx context.Context, projectID string, action permissions.Action) error {
+	if s.gate == nil {
+		return permissions.Ungated(ctx)
+	}
+	return s.gate.RequireProject(ctx, projectID, action)
+}
+
+// Create adds a project to a workspace with the next display position (projects:write).
+func (s *Service) Create(ctx context.Context, userID, workspaceID, name, prefix string, icon ProjectIcon) (*Project, error) {
 	workspaceID = strings.TrimSpace(workspaceID)
 	if workspaceID == "" {
 		return nil, fmt.Errorf("%w: workspace id is required — create a workspace before creating a project", apperrs.ErrInvalid)
+	}
+	if err := s.requireIn(ctx, workspaceID, permissions.ProjectsWrite); err != nil {
+		return nil, err
 	}
 	ok, err := s.workspaces.WorkspaceExists(ctx, workspaceID)
 	if err != nil {
@@ -97,6 +117,9 @@ func (s *Service) Get(ctx context.Context, id string) (*Project, error) {
 	if err != nil {
 		return nil, fmt.Errorf("get project %s: %w", id, err)
 	}
+	if err := s.requireIn(ctx, p.WorkspaceID, permissions.Member); err != nil {
+		return nil, fmt.Errorf("get project %s: %w", id, err)
+	}
 	return p, nil
 }
 
@@ -106,6 +129,9 @@ func (s *Service) List(ctx context.Context, workspaceID string) ([]*Project, err
 	if workspaceID == "" {
 		return nil, fmt.Errorf("%w: workspace id is required", apperrs.ErrInvalid)
 	}
+	if err := s.requireIn(ctx, workspaceID, permissions.Member); err != nil {
+		return nil, err
+	}
 	projects, err := s.repo.List(ctx, workspaceID)
 	if err != nil {
 		return nil, fmt.Errorf("list projects: %w", err)
@@ -113,9 +139,9 @@ func (s *Service) List(ctx context.Context, workspaceID string) ([]*Project, err
 	return projects, nil
 }
 
-// Rename updates a project's name and/or icon (owner only); icon nil keeps current, "" clears it.
+// Rename updates a project's name and/or icon (projects:write); icon nil keeps current, "" clears it.
 func (s *Service) Rename(ctx context.Context, userID, id, name string, icon *ProjectIcon) (*Project, error) {
-	if err := s.requireOwner(ctx, userID); err != nil {
+	if err := s.requireOn(ctx, id, permissions.ProjectsWrite); err != nil {
 		return nil, err
 	}
 	name = strings.TrimSpace(name)
@@ -145,9 +171,9 @@ func (s *Service) Rename(ctx context.Context, userID, id, name string, icon *Pro
 	return &updated, nil
 }
 
-// SetPrefix is owner-only and refused if the project already has one.
+// SetPrefix needs projects:write and is refused if the project already has one.
 func (s *Service) SetPrefix(ctx context.Context, userID, id, prefix string) (*Project, error) {
-	if err := s.requireOwner(ctx, userID); err != nil {
+	if err := s.requireOn(ctx, id, permissions.ProjectsWrite); err != nil {
 		return nil, err
 	}
 	prefix = strings.ToUpper(strings.TrimSpace(prefix))
@@ -207,14 +233,14 @@ func validateReorderIDs(ids []string, existingIDs []string, noun string) error {
 	return nil
 }
 
-// Reorder sets a workspace's project display order (owner only); every project must appear exactly once.
+// Reorder sets a workspace's project display order (projects:write); every project must appear exactly once.
 func (s *Service) Reorder(ctx context.Context, userID, workspaceID string, ids []string) error {
-	if err := s.requireOwner(ctx, userID); err != nil {
-		return err
-	}
 	workspaceID = strings.TrimSpace(workspaceID)
 	if workspaceID == "" {
 		return fmt.Errorf("%w: workspace id is required", apperrs.ErrInvalid)
+	}
+	if err := s.requireIn(ctx, workspaceID, permissions.ProjectsWrite); err != nil {
+		return err
 	}
 	projects, err := s.repo.List(ctx, workspaceID)
 	if err != nil {
@@ -232,6 +258,13 @@ func (s *Service) Reorder(ctx context.Context, userID, workspaceID string, ids [
 
 // DeleteImpact reports what removing a project would affect, so the management UI can warn before the owner confirms.
 func (s *Service) DeleteImpact(ctx context.Context, id string) (DeleteImpact, error) {
+	if err := s.requireOn(ctx, id, permissions.ProjectsRead); err != nil {
+		return DeleteImpact{}, fmt.Errorf("impact of deleting project %s: %w", id, err)
+	}
+	return s.deleteImpact(ctx, id)
+}
+
+func (s *Service) deleteImpact(ctx context.Context, id string) (DeleteImpact, error) {
 	if _, err := s.repo.Get(ctx, id); err != nil {
 		return DeleteImpact{}, fmt.Errorf("impact of deleting project %s: %w", id, err)
 	}
@@ -250,12 +283,12 @@ func (s *Service) DeleteImpact(ctx context.Context, id string) (DeleteImpact, er
 	return DeleteImpact{Tickets: tickets, Repos: repos, Services: services}, nil
 }
 
-// Delete removes a project (owner only); refused while it has tickets, repos, or services, to avoid orphans.
+// Delete removes a project (projects:delete); refused while it has tickets, repos, or services, to avoid orphans.
 func (s *Service) Delete(ctx context.Context, userID, id string) error {
-	if err := s.requireOwner(ctx, userID); err != nil {
+	if err := s.requireOn(ctx, id, permissions.ProjectsDelete); err != nil {
 		return err
 	}
-	impact, err := s.DeleteImpact(ctx, id)
+	impact, err := s.deleteImpact(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -272,9 +305,9 @@ func (s *Service) Delete(ctx context.Context, userID, id string) error {
 // defaultConnectorID is assumed when the caller doesn't say; github is the only real connector today.
 const defaultConnectorID = "github"
 
-// AddRepo associates a repository with a project (owner only); a tests repository also records tests as separate.
+// AddRepo associates a repository with a project (projects:write); a tests repository also records tests as separate.
 func (s *Service) AddRepo(ctx context.Context, userID, projectID, owner, name, connectorID string, role RepoRole) error {
-	if err := s.requireOwner(ctx, userID); err != nil {
+	if err := s.requireOn(ctx, projectID, permissions.ProjectsWrite); err != nil {
 		return err
 	}
 	owner = strings.TrimSpace(owner)
@@ -306,9 +339,9 @@ func (s *Service) AddRepo(ctx context.Context, userID, projectID, owner, name, c
 	return err
 }
 
-// SetTestsLocation records where a project's tests live (owner only); "" withdraws the answer.
+// SetTestsLocation records where a project's tests live (projects:write); "" withdraws the answer.
 func (s *Service) SetTestsLocation(ctx context.Context, userID, projectID string, location TestsLocation) (*Project, error) {
-	if err := s.requireOwner(ctx, userID); err != nil {
+	if err := s.requireOn(ctx, projectID, permissions.ProjectsWrite); err != nil {
 		return nil, err
 	}
 	location = TestsLocation(strings.TrimSpace(string(location)))
@@ -332,15 +365,19 @@ func (s *Service) saveTestsLocation(ctx context.Context, project *Project, locat
 	return &updated, nil
 }
 
-// RemoveRepo dissociates a repository from its project (owner only).
+// RemoveRepo dissociates a repository from its project (projects:write).
 func (s *Service) RemoveRepo(ctx context.Context, userID, owner, name string) error {
-	if err := s.requireOwner(ctx, userID); err != nil {
-		return err
-	}
 	owner = strings.TrimSpace(owner)
 	name = strings.TrimSpace(name)
 	if owner == "" || name == "" {
 		return fmt.Errorf("%w: repo owner and name are required", apperrs.ErrInvalid)
+	}
+	ref, err := s.repo.GetRepoByFullName(ctx, owner, name)
+	if err != nil {
+		return fmt.Errorf("remove repo %s/%s: %w", owner, name, err)
+	}
+	if err := s.requireOn(ctx, ref.ProjectID, permissions.ProjectsWrite); err != nil {
+		return err
 	}
 	if err := s.repo.RemoveRepo(ctx, owner, name); err != nil {
 		return fmt.Errorf("remove repo %s/%s: %w", owner, name, err)
@@ -367,6 +404,9 @@ func (s *Service) ListRepos(ctx context.Context, projectID string) ([]RepoRef, e
 	if strings.TrimSpace(projectID) == "" {
 		return nil, fmt.Errorf("%w: project id is required", apperrs.ErrInvalid)
 	}
+	if err := s.requireOn(ctx, projectID, permissions.ProjectsRead); err != nil {
+		return nil, err
+	}
 	repos, err := s.repo.ListRepos(ctx, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("list repos for project %s: %w", projectID, err)
@@ -382,30 +422,33 @@ func (s *Service) MoveTicket(ctx context.Context, ticketID, projectID string) er
 	if _, err := s.repo.Get(ctx, projectID); err != nil {
 		return fmt.Errorf("move ticket to project %s: %w", projectID, err)
 	}
+	if err := s.requireOn(ctx, projectID, permissions.TicketsWrite); err != nil {
+		return fmt.Errorf("move ticket to project %s: %w", projectID, err)
+	}
+	if err := s.requireOnTicket(ctx, ticketID); err != nil {
+		return fmt.Errorf("move ticket %s: %w", ticketID, err)
+	}
 	if err := s.repo.MoveTicket(ctx, ticketID, projectID); err != nil {
 		return fmt.Errorf("move ticket %s: %w", ticketID, err)
 	}
 	return nil
 }
 
-// requireOwner enforces the instance-admin permission bit; an empty userID means a trusted adapter.
-func (s *Service) requireOwner(ctx context.Context, userID string) error {
-	if userID == "" {
-		return nil
+// requireOnTicket checks tickets:write in the project a ticket sits in now.
+func (s *Service) requireOnTicket(ctx context.Context, ticketID string) error {
+	if s.tickets == nil {
+		return permissions.Ungated(ctx)
 	}
-	ok, err := s.admin.CanCreateWorkspace(ctx, userID)
+	projectID, err := s.tickets.ProjectOfTicket(ctx, ticketID)
 	if err != nil {
-		return fmt.Errorf("check instance admin: %w", err)
+		return err
 	}
-	if !ok {
-		return fmt.Errorf("%w: owner role required", apperrs.ErrForbidden)
-	}
-	return nil
+	return s.requireOn(ctx, projectID, permissions.TicketsWrite)
 }
 
-// CreateCategory adds a category to a project with the next display position (owner only).
+// CreateCategory adds a category to a project with the next display position (projects:write).
 func (s *Service) CreateCategory(ctx context.Context, userID, projectID, name string, color colors.Color) (*Category, error) {
-	if err := s.requireOwner(ctx, userID); err != nil {
+	if err := s.requireOn(ctx, projectID, permissions.ProjectsWrite); err != nil {
 		return nil, err
 	}
 	projectID = strings.TrimSpace(projectID)
@@ -448,6 +491,9 @@ func (s *Service) GetCategory(ctx context.Context, id string) (*Category, error)
 	if err != nil {
 		return nil, fmt.Errorf("get category %s: %w", id, err)
 	}
+	if err := s.requireOn(ctx, c.ProjectID, permissions.Member); err != nil {
+		return nil, fmt.Errorf("get category %s: %w", id, err)
+	}
 	return c, nil
 }
 
@@ -457,13 +503,18 @@ func (s *Service) ListCategories(ctx context.Context) ([]*Category, error) {
 	if err != nil {
 		return nil, fmt.Errorf("list categories: %w", err)
 	}
-	return cats, nil
+	return permissions.Filter(cats, func(c *Category) string { return c.ProjectID }, func(projectID string) error {
+		return s.requireOn(ctx, projectID, permissions.Member)
+	})
 }
 
 // ListCategoriesByProject returns a project's categories ordered by position.
 func (s *Service) ListCategoriesByProject(ctx context.Context, projectID string) ([]*Category, error) {
 	if strings.TrimSpace(projectID) == "" {
 		return nil, fmt.Errorf("%w: project id is required", apperrs.ErrInvalid)
+	}
+	if err := s.requireOn(ctx, projectID, permissions.Member); err != nil {
+		return nil, err
 	}
 	cats, err := s.cats.ListByProject(ctx, projectID)
 	if err != nil {
@@ -472,11 +523,8 @@ func (s *Service) ListCategoriesByProject(ctx context.Context, projectID string)
 	return cats, nil
 }
 
-// RenameCategory updates a category's name and/or color (owner only); its identity never changes.
+// RenameCategory updates a category's name and/or color (projects:write); its identity never changes.
 func (s *Service) RenameCategory(ctx context.Context, userID, id, name string, color colors.Color) (*Category, error) {
-	if err := s.requireOwner(ctx, userID); err != nil {
-		return nil, err
-	}
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, fmt.Errorf("%w: category name is required", apperrs.ErrInvalid)
@@ -489,6 +537,9 @@ func (s *Service) RenameCategory(ctx context.Context, userID, id, name string, c
 	if err != nil {
 		return nil, fmt.Errorf("rename category %s: %w", id, err)
 	}
+	if err := s.requireOn(ctx, current.ProjectID, permissions.ProjectsWrite); err != nil {
+		return nil, err
+	}
 	updated := *current
 	updated.Name = name
 	updated.Color = color
@@ -500,9 +551,9 @@ func (s *Service) RenameCategory(ctx context.Context, userID, id, name string, c
 	return &updated, nil
 }
 
-// ReorderCategories sets a project's category display order (owner only); every category appears exactly once.
+// ReorderCategories sets a project's category display order (projects:write); every category appears exactly once.
 func (s *Service) ReorderCategories(ctx context.Context, userID, projectID string, ids []string) error {
-	if err := s.requireOwner(ctx, userID); err != nil {
+	if err := s.requireOn(ctx, projectID, permissions.ProjectsWrite); err != nil {
 		return err
 	}
 	if strings.TrimSpace(projectID) == "" {
@@ -522,13 +573,17 @@ func (s *Service) ReorderCategories(ctx context.Context, userID, projectID strin
 	return s.cats.Reorder(ctx, projectID, ids)
 }
 
-// DeleteCategory removes a category (owner only); its tickets become uncategorized rather than being deleted.
+// DeleteCategory removes a category (projects:delete); its tickets become uncategorized rather than being deleted.
 func (s *Service) DeleteCategory(ctx context.Context, userID, id string) error {
-	if err := s.requireOwner(ctx, userID); err != nil {
-		return err
-	}
 	if strings.TrimSpace(id) == "" {
 		return fmt.Errorf("%w: category id is required", apperrs.ErrInvalid)
+	}
+	current, err := s.cats.Get(ctx, id)
+	if err != nil {
+		return fmt.Errorf("delete category %s: %w", id, err)
+	}
+	if err := s.requireOn(ctx, current.ProjectID, permissions.ProjectsDelete); err != nil {
+		return err
 	}
 	if err := s.cats.Delete(ctx, id, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicCategoryDeleted, Payload: CategoryEvent{Category: Category{ID: id}}}); err != nil {
 		return fmt.Errorf("delete category %s: %w", id, err)
@@ -546,6 +601,9 @@ func (s *Service) MoveTicketToCategory(ctx context.Context, ticketID, categoryID
 			return fmt.Errorf("move ticket %s to category %s: %w", ticketID, categoryID, err)
 		}
 	}
+	if err := s.requireOnTicket(ctx, ticketID); err != nil {
+		return fmt.Errorf("move ticket %s: %w", ticketID, err)
+	}
 	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicTicketCategoryChanged, Payload: TicketCategoryChangedEvent{TicketID: ticketID, CategoryID: strings.TrimSpace(categoryID)}}
 	if err := s.cats.SetTicketCategory(ctx, ticketID, strings.TrimSpace(categoryID), evt); err != nil {
 		return fmt.Errorf("move ticket %s: %w", ticketID, err)
@@ -553,9 +611,9 @@ func (s *Service) MoveTicketToCategory(ctx context.Context, ticketID, categoryID
 	return nil
 }
 
-// CreateTicketType adds a project ticket type with the next display position (owner only).
+// CreateTicketType adds a project ticket type with the next display position (projects:write).
 func (s *Service) CreateTicketType(ctx context.Context, userID, projectID, name string, color colors.Color) (*TicketType, error) {
-	if err := s.requireOwner(ctx, userID); err != nil {
+	if err := s.requireOn(ctx, projectID, permissions.ProjectsWrite); err != nil {
 		return nil, err
 	}
 	projectID = strings.TrimSpace(projectID)
@@ -598,6 +656,9 @@ func (s *Service) GetTicketType(ctx context.Context, id string) (*TicketType, er
 	if err != nil {
 		return nil, fmt.Errorf("get ticket type %s: %w", id, err)
 	}
+	if err := s.requireOn(ctx, tt.ProjectID, permissions.Member); err != nil {
+		return nil, fmt.Errorf("get ticket type %s: %w", id, err)
+	}
 	return tt, nil
 }
 
@@ -606,6 +667,9 @@ func (s *Service) ListTicketTypesByProject(ctx context.Context, projectID string
 	if strings.TrimSpace(projectID) == "" {
 		return nil, fmt.Errorf("%w: project id is required", apperrs.ErrInvalid)
 	}
+	if err := s.requireOn(ctx, projectID, permissions.Member); err != nil {
+		return nil, err
+	}
 	types, err := s.types.ListByProject(ctx, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("list ticket types for project %s: %w", projectID, err)
@@ -613,11 +677,8 @@ func (s *Service) ListTicketTypesByProject(ctx context.Context, projectID string
 	return types, nil
 }
 
-// RenameTicketType updates a ticket type's name and/or color (owner only); its identity never changes.
+// RenameTicketType updates a ticket type's name and/or color (projects:write); its identity never changes.
 func (s *Service) RenameTicketType(ctx context.Context, userID, id, name string, color colors.Color) (*TicketType, error) {
-	if err := s.requireOwner(ctx, userID); err != nil {
-		return nil, err
-	}
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, fmt.Errorf("%w: ticket type name is required", apperrs.ErrInvalid)
@@ -630,6 +691,9 @@ func (s *Service) RenameTicketType(ctx context.Context, userID, id, name string,
 	if err != nil {
 		return nil, fmt.Errorf("rename ticket type %s: %w", id, err)
 	}
+	if err := s.requireOn(ctx, current.ProjectID, permissions.ProjectsWrite); err != nil {
+		return nil, err
+	}
 	updated := *current
 	updated.Name = name
 	updated.Color = color
@@ -641,14 +705,14 @@ func (s *Service) RenameTicketType(ctx context.Context, userID, id, name string,
 	return &updated, nil
 }
 
-// SetTicketTypeTemplate replaces a type's body template (owner only); existing tickets keep the body they were born with.
+// SetTicketTypeTemplate replaces a type's body template (projects:write); existing tickets keep the body they were born with.
 func (s *Service) SetTicketTypeTemplate(ctx context.Context, userID, id, template string) (*TicketType, error) {
-	if err := s.requireOwner(ctx, userID); err != nil {
-		return nil, err
-	}
 	current, err := s.types.Get(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("set ticket type template %s: %w", id, err)
+	}
+	if err := s.requireOn(ctx, current.ProjectID, permissions.ProjectsWrite); err != nil {
+		return nil, err
 	}
 	updated := *current
 	updated.BodyTemplate = template
@@ -660,9 +724,9 @@ func (s *Service) SetTicketTypeTemplate(ctx context.Context, userID, id, templat
 	return &updated, nil
 }
 
-// ReorderTicketTypes sets a project's ticket type display order (owner only); every type appears exactly once.
+// ReorderTicketTypes sets a project's ticket type display order (projects:write); every type appears exactly once.
 func (s *Service) ReorderTicketTypes(ctx context.Context, userID, projectID string, ids []string) error {
-	if err := s.requireOwner(ctx, userID); err != nil {
+	if err := s.requireOn(ctx, projectID, permissions.ProjectsWrite); err != nil {
 		return err
 	}
 	projectID = strings.TrimSpace(projectID)
@@ -683,13 +747,17 @@ func (s *Service) ReorderTicketTypes(ctx context.Context, userID, projectID stri
 	return s.types.Reorder(ctx, projectID, ids)
 }
 
-// DeleteTicketType removes a ticket type (owner only); refused while tickets still use it, so none is left orphaned.
+// DeleteTicketType removes a ticket type (projects:delete); refused while tickets still use it, so none is left orphaned.
 func (s *Service) DeleteTicketType(ctx context.Context, userID, id string) error {
-	if err := s.requireOwner(ctx, userID); err != nil {
-		return err
-	}
 	if strings.TrimSpace(id) == "" {
 		return fmt.Errorf("%w: ticket type id is required", apperrs.ErrInvalid)
+	}
+	current, err := s.types.Get(ctx, id)
+	if err != nil {
+		return fmt.Errorf("delete ticket type %s: %w", id, err)
+	}
+	if err := s.requireOn(ctx, current.ProjectID, permissions.ProjectsDelete); err != nil {
+		return err
 	}
 	count, err := s.types.CountTickets(ctx, id)
 	if err != nil {
@@ -704,9 +772,9 @@ func (s *Service) DeleteTicketType(ctx context.Context, userID, id string) error
 	return nil
 }
 
-// CreateStatus adds a project status column with the next display position (owner only).
+// CreateStatus adds a project status column with the next display position (projects:write).
 func (s *Service) CreateStatus(ctx context.Context, userID, projectID, name string, kind StatusKind, icon StatusIcon) (*Status, error) {
-	if err := s.requireOwner(ctx, userID); err != nil {
+	if err := s.requireOn(ctx, projectID, permissions.ProjectsWrite); err != nil {
 		return nil, err
 	}
 	projectID = strings.TrimSpace(projectID)
@@ -756,6 +824,9 @@ func (s *Service) GetStatus(ctx context.Context, id string) (*Status, error) {
 	if err != nil {
 		return nil, fmt.Errorf("get status %s: %w", id, err)
 	}
+	if err := s.requireOn(ctx, st.ProjectID, permissions.Member); err != nil {
+		return nil, fmt.Errorf("get status %s: %w", id, err)
+	}
 	return st, nil
 }
 
@@ -764,6 +835,9 @@ func (s *Service) ListStatusesByProject(ctx context.Context, projectID string) (
 	if strings.TrimSpace(projectID) == "" {
 		return nil, fmt.Errorf("%w: project id is required", apperrs.ErrInvalid)
 	}
+	if err := s.requireOn(ctx, projectID, permissions.Member); err != nil {
+		return nil, err
+	}
 	statuses, err := s.statuses.ListByProject(ctx, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("list statuses for project %s: %w", projectID, err)
@@ -771,11 +845,8 @@ func (s *Service) ListStatusesByProject(ctx context.Context, projectID string) (
 	return statuses, nil
 }
 
-// RenameStatus updates a status column's name, kind, and icon (owner only); existing tickets stay on it.
+// RenameStatus updates a status column's name, kind, and icon (projects:write); existing tickets stay on it.
 func (s *Service) RenameStatus(ctx context.Context, userID, id, name string, kind StatusKind, icon StatusIcon) (*Status, error) {
-	if err := s.requireOwner(ctx, userID); err != nil {
-		return nil, err
-	}
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, fmt.Errorf("%w: status name is required", apperrs.ErrInvalid)
@@ -792,6 +863,9 @@ func (s *Service) RenameStatus(ctx context.Context, userID, id, name string, kin
 	if err != nil {
 		return nil, fmt.Errorf("rename status %s: %w", id, err)
 	}
+	if err := s.requireOn(ctx, current.ProjectID, permissions.ProjectsWrite); err != nil {
+		return nil, err
+	}
 	updated := *current
 	updated.Name = name
 	updated.Kind = kind
@@ -804,9 +878,9 @@ func (s *Service) RenameStatus(ctx context.Context, userID, id, name string, kin
 	return &updated, nil
 }
 
-// ReorderStatuses sets a project's status column order (owner only, ticket 03); every status must appear exactly once.
+// ReorderStatuses sets a project's status column order (projects:write); every status must appear exactly once.
 func (s *Service) ReorderStatuses(ctx context.Context, userID, projectID string, ids []string) error {
-	if err := s.requireOwner(ctx, userID); err != nil {
+	if err := s.requireOn(ctx, projectID, permissions.ProjectsWrite); err != nil {
 		return err
 	}
 	projectID = strings.TrimSpace(projectID)
@@ -827,13 +901,17 @@ func (s *Service) ReorderStatuses(ctx context.Context, userID, projectID string,
 	return s.statuses.Reorder(ctx, projectID, ids)
 }
 
-// DeleteStatus removes a status column (owner only); refused while tickets still use it, so none is left orphaned.
+// DeleteStatus removes a status column (projects:delete); refused while tickets still use it, so none is left orphaned.
 func (s *Service) DeleteStatus(ctx context.Context, userID, id string) error {
-	if err := s.requireOwner(ctx, userID); err != nil {
-		return err
-	}
 	if strings.TrimSpace(id) == "" {
 		return fmt.Errorf("%w: status id is required", apperrs.ErrInvalid)
+	}
+	current, err := s.statuses.Get(ctx, id)
+	if err != nil {
+		return fmt.Errorf("delete status %s: %w", id, err)
+	}
+	if err := s.requireOn(ctx, current.ProjectID, permissions.ProjectsDelete); err != nil {
+		return err
 	}
 	count, err := s.statuses.CountTickets(ctx, id)
 	if err != nil {
@@ -873,11 +951,22 @@ func (s *NotificationService) List(ctx context.Context, userID, workspaceID stri
 	if limit < 1 {
 		limit = 50
 	}
-	ns, err := s.repo.List(ctx, userID, strings.TrimSpace(workspaceID), limit)
+	workspaceID = strings.TrimSpace(workspaceID)
+	if workspaceID != "" {
+		if err := s.requireMember(ctx, userID, workspaceID); err != nil {
+			return nil, err
+		}
+	}
+	ns, err := s.repo.List(ctx, userID, workspaceID, limit)
 	if err != nil {
 		return nil, fmt.Errorf("list notifications: %w", err)
 	}
-	return ns, nil
+	return permissions.Filter(ns, func(n *Notification) string { return n.WorkspaceID }, func(workspaceID string) error {
+		if workspaceID == "" {
+			return nil
+		}
+		return s.requireMember(ctx, userID, workspaceID)
+	})
 }
 
 // UnreadCount returns how many of the user's notifications in one workspace (or every workspace) are unread.
@@ -915,6 +1004,35 @@ func (s *NotificationService) MarkAllRead(ctx context.Context, userID, workspace
 		return fmt.Errorf("mark all read: %w", err)
 	}
 	return nil
+}
+
+// requireMember keeps a person's inbox to the workspaces they still belong to; one they left reads as not found.
+func (s *NotificationService) requireMember(ctx context.Context, userID, workspaceID string) error {
+	if s.members == nil {
+		return nil
+	}
+	ids, err := s.members.ListMemberUserIDs(ctx, workspaceID)
+	if err != nil {
+		return fmt.Errorf("list members of workspace %s: %w", workspaceID, err)
+	}
+	if !slices.Contains(ids, userID) {
+		return fmt.Errorf("%w: workspace %s", apperrs.ErrNotFound, workspaceID)
+	}
+	return nil
+}
+
+// canOpen keeps a notice from naming a ticket or doc its recipient may not read.
+func (s *NotificationService) canOpen(ctx context.Context, n notice, userID string) bool {
+	if s.access == nil {
+		return true
+	}
+	switch n.subjectType {
+	case SubjectTicket:
+		return s.access.HasPermission(ctx, userID, n.workspaceID, permissions.TicketsRead)
+	case SubjectDoc:
+		return s.access.CanReadDoc(ctx, userID, n.subjectID)
+	}
+	return true
 }
 
 // onTicketCreated fans out ticket.assigned to the developer and tester and ticket.mentioned to every @-mentioned user.
@@ -1131,9 +1249,9 @@ func (n notice) row(key, userID string, kind Kind, now time.Time) *Notification 
 
 // create writes the rows with both outbox events; every fan-out passes through here, so the actor is dropped once for all kinds.
 func (s *NotificationService) create(ctx context.Context, n notice, toCreate []*Notification) error {
-	if n.actorID != "" {
-		toCreate = slices.DeleteFunc(toCreate, func(row *Notification) bool { return row.UserID == n.actorID })
-	}
+	toCreate = slices.DeleteFunc(toCreate, func(row *Notification) bool {
+		return row.UserID == n.actorID || !s.canOpen(ctx, n, row.UserID)
+	})
 	if len(toCreate) == 0 {
 		return nil
 	}

@@ -63,6 +63,9 @@ func TestIntegration_MentionsOverRealStorage(t *testing.T) {
 	require.NoError(t, s.Tickets.UpdateStatus(ctx, ticket.ID, tickets.StatusOpen))
 
 	accessSvc := access.NewService(s.Access, accessUsers{users: s.Users})
+	accessSvc.SetScopes(accessScopes{projects: s.Projects, workspaces: s.Workspaces})
+	require.NoError(t, s.Access.Set(ctx, "workspace", "workspace-default", "u-alice", permissions.SetOf(permissions.TicketsRead), nil))
+	require.NoError(t, s.Access.Set(ctx, "workspace", "workspace-default", "u-owner", permissions.SetOf(permissions.TicketsRead), nil))
 	svc := mentions.New(mentions.Config{
 		Tickets:     mentionTicketSource{repo: s.Tickets},
 		Docs:        mentionDocSource{repo: s.Docs},

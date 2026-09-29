@@ -122,4 +122,5 @@ type TicketTypeSource interface {
 // AccessChecker reports whether a user may act on a document; tickets are workspace-level in v1, no check needed.
 type AccessChecker interface {
 	Can(ctx context.Context, userID, docID string, action permissions.Action) (bool, error)
+	RequireProject(ctx context.Context, projectID string, action permissions.Action) error
 }

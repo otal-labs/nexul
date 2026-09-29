@@ -14,6 +14,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
@@ -135,8 +136,10 @@ func newFixture(t *testing.T) fixture {
 
 	ts := tickets.NewService(ticketRepo{w: w}, statusStore{w}, nil)
 	ts.SetTicketTypes(typeLookup{w})
+	ts.SetGate(allowGate{})
 	ts.SetTesting(tickets.Testing{Targets: testTargets{w}})
 	ws := workspace.NewService(projectRepo{w: w}, categoryRepo{w: w}, typeRepo{w}, statusRepo{w}, ownerGate{w}, workspaceGate{})
+	ws.SetTicketProjects(ticketProjects{w})
 	return fixture{w: w, tickets: ts, projects: ws, reviews: codereview.NewService(reviewRepo{w: w})}
 }
 
@@ -323,22 +326,6 @@ func (r ticketRepo) RemoveLabel(_ context.Context, id, label string) error {
 	return r.edit(id, func(t *tickets.Ticket) {
 		t.Labels = slices.DeleteFunc(t.Labels, func(l string) bool { return l == label })
 	})
-}
-
-func (r ticketRepo) ListAllLabels(context.Context) ([]string, error) {
-	if err := r.w.check("ListAllLabels"); err != nil {
-		return nil, err
-	}
-	var all []string
-	for _, t := range r.w.tickets {
-		for _, l := range t.Labels {
-			if !slices.Contains(all, l) {
-				all = append(all, l)
-			}
-		}
-	}
-	slices.Sort(all)
-	return all, nil
 }
 
 func (r ticketRepo) SetLabelColor(_ context.Context, projectID, label string, color colors.Color) error {
@@ -549,6 +536,18 @@ func (r projectRepo) RemoveRepo(_ context.Context, owner, name string) error {
 	return nil
 }
 
+func (r projectRepo) GetRepoByFullName(_ context.Context, owner, name string) (workspace.RepoRef, error) {
+	for id, refs := range r.w.repos {
+		for _, ref := range refs {
+			if ref.Owner == owner && ref.Name == name {
+				ref.ProjectID = id
+				return ref, nil
+			}
+		}
+	}
+	return workspace.RepoRef{}, apperrs.ErrNotFound
+}
+
 func (r projectRepo) ListRepos(_ context.Context, projectID string) ([]workspace.RepoRef, error) {
 	if err := r.w.check("ListRepos"); err != nil {
 		return nil, err
@@ -664,7 +663,31 @@ func (r typeRepo) CountTickets(_ context.Context, id string) (int, error) {
 
 type ownerGate struct{ w *world }
 
-func (g ownerGate) CanCreateWorkspace(context.Context, string) (bool, error) { return g.w.owner, nil }
+func (g ownerGate) Require(_ context.Context, _ string, action permissions.Action) error {
+	if !g.w.owner && action != permissions.Member {
+		return apperrs.ErrForbidden
+	}
+	return nil
+}
+
+type ticketProjects struct{ w *world }
+
+func (p ticketProjects) ProjectOfTicket(_ context.Context, ticketID string) (string, error) {
+	t, ok := p.w.tickets[ticketID]
+	if !ok {
+		return "", apperrs.ErrNotFound
+	}
+	return t.ProjectID, nil
+}
+
+// allowGate lets every ticket call through; the ticket permission table is tested in the tickets package.
+type allowGate struct{}
+
+func (allowGate) RequireProject(context.Context, string, permissions.Action) error { return nil }
+
+func (g ownerGate) RequireProject(ctx context.Context, _ string, action permissions.Action) error {
+	return g.Require(ctx, "", action)
+}
 
 type workspaceGate struct{}
 
