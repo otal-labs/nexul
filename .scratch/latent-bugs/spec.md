@@ -5,6 +5,13 @@
 Small defects seen in passing that have no effort of their own. One heading
 each; delete the heading when it is fixed, delete the file when it is empty.
 
+## A data race shows up intermittently in the DNS tests
+
+One `make coverage` run on 2026-09-29 failed with a `-race` report in the
+`internal/dns` package tests, then passed three focused `-race` reruns and a
+second full coverage run. A race report is a real concurrent access, not
+timing noise; find the shared state it names and guard it.
+
 ## Live push broadcasts every user's session and token events to every browser
 
 The live hub sends `session.created`, `session.revoked`, and the personal
