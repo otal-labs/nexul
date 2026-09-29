@@ -26,7 +26,7 @@ export const AutomationDeleteButton = ({ automationId, onDeleted }: AutomationDe
 
   return (
     <div className="rounded-lg border border-destructive/30 p-4">
-      <Button type="button" variant="destructive" size="sm" onClick={onClick} disabled={deleteAutomation.isPending}>
+      <Button type="button" variant="destructive" size="sm" onClick={onClick} loading={deleteAutomation.isPending}>
         <Trash2 className="size-4" />
         Delete automation
       </Button>

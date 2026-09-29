@@ -25,7 +25,7 @@ export const ConnectDesktopCard = () => {
     >
       <div className="space-y-3 text-sm">
         <p className="text-muted-foreground">Holds only this server's address, never your account.</p>
-        <Button variant="outline" size="sm" onClick={copy} disabled={copyToken.isPending} aria-live="polite">
+        <Button variant="outline" size="sm" onClick={copy} loading={copyToken.isPending} aria-live="polite">
           {copied && (
             <Check
               className="size-4 animate-in fade-in-0 zoom-in-50 blur-in-[2px] text-success duration-200 ease-out"

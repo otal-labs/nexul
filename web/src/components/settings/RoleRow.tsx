@@ -113,7 +113,7 @@ export const RoleRow = ({ role, workspaceId, catalog }: RoleRowProps) => {
       <ConfirmDestroyButton
         icon={Trash2}
         idleLabel={`Delete role ${role.name}`}
-        disabled={deleteRole.isPending}
+        loading={deleteRole.isPending}
         onConfirm={() => deleteRole.mutate(role.id)}
       />
     </li>

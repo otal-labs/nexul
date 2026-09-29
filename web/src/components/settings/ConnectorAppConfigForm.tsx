@@ -84,8 +84,8 @@ export const ConnectorAppConfigForm = ({ connectorId, onSaved, current }: Connec
           {form.formState.errors.root.message}
         </p>
       )}
-      <Button type="submit" disabled={form.formState.isSubmitting}>
-        {form.formState.isSubmitting ? "Saving…" : "Save"}
+      <Button type="submit" loading={form.formState.isSubmitting}>
+        Save
       </Button>
     </form>
   );

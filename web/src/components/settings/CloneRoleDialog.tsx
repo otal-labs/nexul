@@ -85,8 +85,8 @@ export const CloneRoleDialog = ({ role, open, onClose }: CloneRoleDialogProps) =
             Cancel
           </Button>
           {hasTargets && (
-            <Button type="submit" form="clone-role-form" disabled={clone.isPending}>
-              {clone.isPending ? "Cloning…" : "Clone"}
+            <Button type="submit" form="clone-role-form" loading={clone.isPending}>
+              Clone
             </Button>
           )}
         </DialogFooter>

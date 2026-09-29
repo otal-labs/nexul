@@ -25,7 +25,7 @@ export const ComputerMCPToken = ({ computerId }: ComputerMCPTokenProps) => {
       {token === null && (
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs text-muted-foreground">No MCP token — its providers can't reach Nexul's MCP server.</p>
-          <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={() => mint.mutate()}>
+          <Button type="button" variant="ghost" size="sm" loading={mint.isPending} disabled={busy} onClick={() => mint.mutate()}>
             <KeyRound className="size-4" />
             Mint MCP token
           </Button>
@@ -38,7 +38,7 @@ export const ComputerMCPToken = ({ computerId }: ComputerMCPTokenProps) => {
             {token.last_used_at && ` · last used ${new Date(token.last_used_at).toLocaleDateString()}`}
           </p>
           <span className="flex shrink-0 items-center gap-1">
-            <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={() => mint.mutate()}>
+            <Button type="button" variant="ghost" size="sm" loading={mint.isPending} disabled={busy} onClick={() => mint.mutate()}>
               <KeyRound className="size-4" />
               Replace
             </Button>
@@ -46,6 +46,7 @@ export const ComputerMCPToken = ({ computerId }: ComputerMCPTokenProps) => {
               icon={Trash2}
               idleLabel="Revoke MCP token"
               confirmLabel="Revoke"
+              loading={revoke.isPending}
               disabled={busy}
               onConfirm={() => revoke.mutate(undefined, { onSuccess: () => mint.reset() })}
             />

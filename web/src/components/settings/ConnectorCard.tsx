@@ -71,12 +71,12 @@ export const ConnectorCard = ({ entry }: ConnectorCardProps) => {
           </Button>
         )}
         {unconfigured && !isManual && app_configured && (
-          <Button size="sm" onClick={onConnect} disabled={startOAuth.isPending}>
+          <Button size="sm" onClick={onConnect} loading={startOAuth.isPending}>
             Connect
           </Button>
         )}
         {available && status.configured && (
-          <Button size="sm" variant="outline" onClick={onDisconnect} disabled={disconnect.isPending}>
+          <Button size="sm" variant="outline" onClick={onDisconnect} loading={disconnect.isPending}>
             Disconnect
           </Button>
         )}

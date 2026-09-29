@@ -55,7 +55,7 @@ export const GatewaysSection = () => {
                   icon={Trash2}
                   idleLabel={`Delete gateway on ${gateway.docker_network}`}
                   confirmLabel="Delete"
-                  disabled={deleteGateway.isPending}
+                  loading={deleteGateway.isPending}
                   onConfirm={() => deleteGateway.mutate(gateway.id)}
                 />
               </span>

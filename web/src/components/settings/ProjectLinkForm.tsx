@@ -84,12 +84,12 @@ export const ProjectLinkForm = ({ projectId, link, computers }: ProjectLinkFormP
         setModel={(value) => form.setValue("model", value)}
       />
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" disabled={form.formState.isSubmitting}>
-          {form.formState.isSubmitting ? "Saving…" : "Save link"}
+        <Button type="submit" loading={form.formState.isSubmitting}>
+          Save link
         </Button>
         {isLinked && (
-          <Button type="button" variant="outline" onClick={onClear} disabled={clearLink.isPending}>
-            {clearLink.isPending ? "Clearing…" : "Clear link"}
+          <Button type="button" variant="outline" onClick={onClear} loading={clearLink.isPending}>
+            Clear link
           </Button>
         )}
       </div>

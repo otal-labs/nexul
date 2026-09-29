@@ -49,7 +49,7 @@ export const AutomationVersionRow = ({ automationId, version, canUpdate }: Autom
           variant="outline"
           size="sm"
           onClick={onRollback}
-          disabled={rollback.isPending}
+          loading={rollback.isPending}
         >
           <RotateCcw className="size-4" />
           Rollback

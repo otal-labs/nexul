@@ -120,7 +120,7 @@ export const BoardStatusColumnsSection = ({ projectId, statuses }: BoardStatusCo
                     size="icon"
                     variant="outline"
                     aria-label="Add column"
-                    disabled={statusForm.formState.isSubmitting}
+                    loading={statusForm.formState.isSubmitting}
                   >
                     <PlusIcon className="size-4" />
                   </Button>

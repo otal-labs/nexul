@@ -183,7 +183,8 @@ export const ChatComposer = ({ workspaceId, conversationId, placeholder = "Messa
           <Button
             size="icon"
             aria-label="Send message"
-            disabled={(value.trim() === "" && pending.length === 0) || sending || isUploading}
+            loading={sending}
+            disabled={(value.trim() === "" && pending.length === 0) || isUploading}
             onClick={() => void send()}
           >
             <SendHorizontal className="size-4" aria-hidden />

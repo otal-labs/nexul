@@ -79,8 +79,8 @@ export const NewAutomationDialog = () => {
               )}
             />
             <div className="flex flex-wrap gap-2">
-              <Button type="submit" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? "Creating…" : "Create automation"}
+              <Button type="submit" loading={form.formState.isSubmitting}>
+                Create automation
               </Button>
               <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
                 Cancel

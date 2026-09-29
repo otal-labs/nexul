@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -69,7 +69,13 @@ describe("WizardReachStep", () => {
     expect(screen.getByText("app.example.com")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /expose service/i }));
 
-    await vi.waitFor(() => expect(onDone).toHaveBeenCalled());
+    const progress = await screen.findByRole("list", { name: "Exposure progress" });
+    await vi.waitFor(() =>
+      expect(within(progress).getAllByRole("status").map((row) => row.dataset.state)).toEqual(Array(4).fill("ok")),
+    );
+    expect(onDone).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: /continue/i }));
+    expect(onDone).toHaveBeenCalled();
     expect(mocks.post).toHaveBeenCalledWith("/api/dns/exposures", {
       hostname: "app.example.com",
       service_id: "c1",
@@ -78,6 +84,36 @@ describe("WizardReachStep", () => {
       zone: "example.com",
     });
     expect(useProjectWizardStore.getState().exposureHostname).toMatch(/tunnel gateway/);
+  });
+
+  it("holds every stage pending while the server works, on a busy button", async () => {
+    mocks.post.mockReturnValue(new Promise(() => undefined));
+    renderStep();
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByLabelText("Subdomain"), "app");
+    await pickOption(user, "Zone", "example.com");
+    await user.click(screen.getByRole("button", { name: /expose service/i }));
+
+    const progress = await screen.findByRole("list", { name: "Exposure progress" });
+    expect(within(progress).getAllByRole("status").map((row) => row.dataset.state)).toEqual(Array(4).fill("pending"));
+    expect(screen.getByRole("button", { name: /expose service/i })).toHaveAttribute("aria-busy", "true");
+  });
+
+  it("shows the server's message and lets the owner retry when the exposure fails", async () => {
+    mocks.post.mockRejectedValue(new Error("gateway unreachable"));
+    mocks.errorMessage.mockReturnValue("gateway unreachable");
+    const { onDone } = renderStep();
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByLabelText("Subdomain"), "app");
+    await pickOption(user, "Zone", "example.com");
+    await user.click(screen.getByRole("button", { name: /expose service/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("gateway unreachable");
+    expect(screen.queryByRole("button", { name: /continue/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /expose service/i })).toBeEnabled();
+    expect(onDone).not.toHaveBeenCalled();
   });
 
   it("skips the reach step without creating an exposure", async () => {

@@ -28,7 +28,7 @@ export const NotificationsSidebar = ({
     <div className="flex h-14 items-center justify-between border-b border-border px-4">
       <h1 className="text-sm font-semibold">Inbox</h1>
       {notifications && notifications.length > 0 && (
-        <Button variant="ghost" size="sm" onClick={onMarkAllRead} disabled={isMarkingAllRead}>
+        <Button variant="ghost" size="sm" onClick={onMarkAllRead} loading={isMarkingAllRead}>
           Mark all read
         </Button>
       )}

@@ -135,9 +135,9 @@ export const WizardServiceStep = ({ onDone }: WizardServiceStepProps) => {
           type="button"
           onClick={() => void onAttach()}
           className="w-full sm:w-auto"
-          disabled={updateStack.isPending || deployStack.isPending}
+          loading={updateStack.isPending || deployStack.isPending}
         >
-          {updateStack.isPending || deployStack.isPending ? "Attaching…" : "Attach"}
+          Attach
         </Button>
       </div>
     );
@@ -176,8 +176,8 @@ export const WizardServiceStep = ({ onDone }: WizardServiceStepProps) => {
       {candidatePicker}
       <FormInput control={form.control} name="name" label="Name" placeholder="e.g. web" />
       <MachinePicker control={form.control} name="machine" />
-      <Button type="submit" className="w-full sm:w-auto" disabled={createStack.isPending}>
-        {createStack.isPending ? "Creating…" : envStepFollows ? "Create" : "Create & deploy"}
+      <Button type="submit" className="w-full sm:w-auto" loading={createStack.isPending}>
+        {envStepFollows ? "Create" : "Create & deploy"}
       </Button>
     </form>
   );

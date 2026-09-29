@@ -169,7 +169,7 @@ export const PlayRunForm = ({
         <Button variant="ghost" onClick={onDone}>
           Cancel
         </Button>
-        <Button onClick={() => void submit()} disabled={runPlay.isPending}>
+        <Button onClick={() => void submit()} loading={runPlay.isPending}>
           {confirmLabel}
         </Button>
       </DialogFooter>

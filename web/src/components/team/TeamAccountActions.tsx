@@ -32,22 +32,22 @@ export const TeamAccountActions = ({ person }: { person: TeamPerson }) => {
   return (
     <div className="flex flex-wrap items-center gap-1">
       {person.status === "active" && (
-        <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={() => void setStatus("disabled", "Disable", "no longer be able to sign in; their workspace access is kept")}>
+        <Button type="button" variant="ghost" size="sm" loading={update.isPending} disabled={busy} onClick={() => void setStatus("disabled", "Disable", "no longer be able to sign in; their workspace access is kept")}>
           <UserRoundX className="size-4" />Disable
         </Button>
       )}
       {person.status === "disabled" && (
-        <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={() => void setStatus("active", "Reactivate", "be able to sign in again")}>
+        <Button type="button" variant="ghost" size="sm" loading={update.isPending} disabled={busy} onClick={() => void setStatus("active", "Reactivate", "be able to sign in again")}>
           <UserRoundCheck className="size-4" />Reactivate
         </Button>
       )}
       {person.status === "removed" && (
-        <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={() => void setStatus("active", "Restore", "be able to sign in again, with no workspace access until you add it")}>
+        <Button type="button" variant="ghost" size="sm" loading={update.isPending} disabled={busy} onClick={() => void setStatus("active", "Restore", "be able to sign in again, with no workspace access until you add it")}>
           <UserRoundCheck className="size-4" />Restore
         </Button>
       )}
       {person.status !== "removed" && (
-        <Button type="button" variant="ghost" size="sm" className="hover:text-destructive" disabled={busy} onClick={() => void removeAccount()}>
+        <Button type="button" variant="ghost" size="sm" className="hover:text-destructive" loading={remove.isPending} disabled={busy} onClick={() => void removeAccount()}>
           <UserMinus className="size-4" />Remove account
         </Button>
       )}

@@ -67,8 +67,8 @@ export const AddBranchDeployRuleForm = ({ stack, onDone }: AddBranchDeployRuleFo
           className="bg-background font-mono text-xs"
         />
       )}
-      <Button type="submit" size="sm" disabled={updateStack.isPending}>
-        {updateStack.isPending ? "Saving…" : "Save rule"}
+      <Button type="submit" size="sm" loading={updateStack.isPending}>
+        Save rule
       </Button>
     </form>
   );

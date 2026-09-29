@@ -111,11 +111,11 @@ export const FreeNodeDialog = ({ node, onClose }: FreeNodeDialogProps) => {
               <Button variant="outline" type="button" onClick={onClose}>
                 Cancel
               </Button>
-              <Button variant="destructive" type="button" onClick={onDelete} disabled={removeNode.isPending}>
+              <Button variant="destructive" type="button" onClick={onDelete} loading={removeNode.isPending}>
                 Delete
               </Button>
-              <Button type="submit" disabled={save.isPending}>
-                {save.isPending ? "Saving…" : "Save"}
+              <Button type="submit" loading={save.isPending}>
+                Save
               </Button>
             </DialogFooter>
           </form>
@@ -142,11 +142,11 @@ export const FreeNodeDialog = ({ node, onClose }: FreeNodeDialogProps) => {
               <Button variant="outline" type="button" onClick={onClose}>
                 Cancel
               </Button>
-              <Button variant="destructive" type="button" onClick={onDelete} disabled={removeNode.isPending}>
+              <Button variant="destructive" type="button" onClick={onDelete} loading={removeNode.isPending}>
                 Delete
               </Button>
-              <Button type="submit" disabled={save.isPending}>
-                {save.isPending ? "Saving…" : "Save"}
+              <Button type="submit" loading={save.isPending}>
+                Save
               </Button>
             </DialogFooter>
           </form>

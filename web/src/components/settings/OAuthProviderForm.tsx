@@ -51,9 +51,8 @@ export const OAuthProviderForm = ({ provider, clientId, onSaved }: OAuthProvider
         placeholder={editing ? "Leave blank to keep the current secret" : copy.secretPlaceholder}
         autoComplete="new-password"
       />
-      <Button type="submit" disabled={form.formState.isSubmitting}>
-        {form.formState.isSubmitting && "Saving…"}
-        {!form.formState.isSubmitting && (editing ? "Save" : `Enable ${copy.label} sign-in`)}
+      <Button type="submit" loading={form.formState.isSubmitting}>
+        {editing ? "Save" : `Enable ${copy.label} sign-in`}
       </Button>
     </form>
   );

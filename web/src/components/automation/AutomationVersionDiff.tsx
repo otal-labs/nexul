@@ -32,8 +32,8 @@ export const AutomationVersionDiff = ({ automationId, diff, canUpdate }: Automat
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-sm font-semibold">Pending vs active</h2>
         {pending && canUpdate && (
-          <Button type="button" size="sm" onClick={() => merge.mutate(pending.id)} disabled={merge.isPending}>
-            {merge.isPending ? "Merging…" : "Merge"}
+          <Button type="button" size="sm" onClick={() => merge.mutate(pending.id)} loading={merge.isPending}>
+            Merge
           </Button>
         )}
       </div>

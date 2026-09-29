@@ -98,7 +98,7 @@ export const ExposeServiceDialog = ({ containers }: ExposeServiceDialogProps) =>
               onChangeValue={(value) => form.setValue("zone", zoneName(value), { shouldValidate: true })}
             />
             <DialogFooter>
-              <Button type="submit" disabled={createExposure.isPending}>
+              <Button type="submit" loading={createExposure.isPending}>
                 {createExposure.isPending ? "Exposing…" : "Expose"}
               </Button>
             </DialogFooter>

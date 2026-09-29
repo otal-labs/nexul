@@ -121,7 +121,7 @@ export const MemoryDetail = ({ memory, canWrite, canDelete, canClone, onSave, on
           <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
             {interview && <InterviewLengthMeter length={interviewLength} />}
             <Button
-              disabled={!dirty || saving}
+              loading={saving} disabled={!dirty}
               onClick={() => onSave({ title, when_to_use: whenToUse, body, always_included: alwaysIncluded })}
             >
               Save

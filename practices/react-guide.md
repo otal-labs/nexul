@@ -1211,6 +1211,9 @@ export const Button = ({ className, variant, size, ref, ...props }: ButtonProps)
 
 - Add primitives with `bunx shadcn@latest add <name>`.
 - Compose classes with `cn()`.
+- A button that starts a request takes `loading={mutation.isPending}` (or
+  `isSubmitting`): it disables, sets `aria-busy`, and swaps its leading icon for
+  a spinner. Keep a busy label only when the wait is long and worth naming.
 - Icons from `lucide-react`: `<Plus className="h-4 w-4" />`.
 - Named-export custom components; shadcn primitives follow whatever the CLI
   emits (it now generates React-19-compatible code).

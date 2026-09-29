@@ -45,8 +45,8 @@ export const AddRunnerForm = ({ machineName, pending, onSubmit }: AddRunnerFormP
           Optional. Used to clone private repositories; it goes into the command, never to this instance.
         </p>
       </div>
-      <Button type="submit" disabled={pending}>
-        {pending ? "Creating…" : "Create install command"}
+      <Button type="submit" loading={pending}>
+        Create install command
       </Button>
     </form>
   );

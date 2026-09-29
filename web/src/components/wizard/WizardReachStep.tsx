@@ -7,6 +7,7 @@ import { useShallow } from "zustand/react/shallow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { FormInput } from "@/components/FormInput";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
+import { ExposureTicker } from "@/components/wizard/ExposureTicker";
 import { FormSelect } from "@/components/ticket/FormSelect";
 import { Button } from "@/components/ui/button";
 import { useCreateServiceExposure, useFetchDnsZones, useFetchGateways } from "@/hooks/DnsHooks";
@@ -116,22 +117,20 @@ const ReachForm = ({
   const zoneName = (id: string) => zones.find((z) => z.id === id)?.name ?? "";
   const hostname = fullHostname(form.watch("subdomain"), form.watch("zone"));
 
-  const onSubmit = async (data: ReachFormData) => {
-    const host = fullHostname(data.subdomain, data.zone);
-    try {
-      const exposure = await createExposure.mutateAsync({
-        hostname: host,
+  const exposed = createExposure.data;
+  const via = exposed && gatewayName(exposed.gateway_id);
+  const exposedLabel = exposed && (via ? `${exposed.hostname} via a ${via} gateway` : exposed.hostname);
+
+  const onSubmit = (data: ReachFormData) =>
+    createExposure
+      .mutateAsync({
+        hostname: fullHostname(data.subdomain, data.zone),
         service_id: data.service_id,
         port: data.port,
         zone_id: data.zone_id,
         zone: data.zone,
-      });
-      const via = gatewayName(exposure.gateway_id);
-      onDone(exposure.id, via ? `${host} via a ${via} gateway` : host);
-    } catch {
-      // Errors surface through the hook's toast; exposure creation is retry-safe.
-    }
-  };
+      })
+      .catch(() => undefined); // the ticker shows the server's message; exposure creation is retry-safe
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
@@ -157,13 +156,23 @@ const ReachForm = ({
         <FormInput control={form.control} name="port" label="Port" type="number" />
       </div>
       {hostname && <p className="font-mono text-xs text-muted-foreground">{hostname}</p>}
+      <ExposureTicker status={createExposure.status} error={createExposure.error} result={exposedLabel} />
       <div className="flex flex-wrap gap-3">
-        <Button type="submit" disabled={createExposure.isPending}>
-          {createExposure.isPending ? "Exposing…" : "Expose service"}
-        </Button>
-        <Button type="button" variant="ghost" className="text-muted-foreground" onClick={onSkip}>
-          Skip for now
-        </Button>
+        {exposed && (
+          <Button type="button" onClick={() => onDone(exposed.id, exposedLabel ?? exposed.hostname)}>
+            Continue
+          </Button>
+        )}
+        {!exposed && (
+          <Button type="submit" loading={createExposure.isPending}>
+            Expose service
+          </Button>
+        )}
+        {!exposed && (
+          <Button type="button" variant="ghost" className="text-muted-foreground" onClick={onSkip}>
+            Skip for now
+          </Button>
+        )}
       </div>
     </form>
   );

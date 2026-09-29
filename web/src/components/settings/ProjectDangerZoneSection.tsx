@@ -56,7 +56,7 @@ export const ProjectDangerZoneSection = ({ project }: ProjectDangerZoneSectionPr
         <p className="text-sm text-muted-foreground">
           Remove this project and all associated data. This cannot be undone.
         </p>
-        <Button variant="destructive" className="shrink-0" onClick={() => void onDelete()}>
+        <Button variant="destructive" className="shrink-0" loading={deleteProject.isPending} onClick={() => void onDelete()}>
           Remove project
         </Button>
       </div>

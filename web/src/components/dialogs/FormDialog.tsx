@@ -148,7 +148,7 @@ export const FormDialog = ({
                 <Button variant="outline" onClick={handleCancel}>
                   {cancelLabel}
                 </Button>
-                <Button onClick={handleAction} disabled={busy}>
+                <Button onClick={handleAction} loading={busy}>
                   {okLabel}
                 </Button>
               </div>

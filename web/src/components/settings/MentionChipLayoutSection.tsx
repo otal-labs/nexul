@@ -58,8 +58,8 @@ export const MentionChipLayoutSection = ({ workspace }: MentionChipLayoutSection
               className="w-full min-w-0 flex-1 rounded-md border border-input bg-background px-3 py-2 font-mono text-sm shadow-xs outline-none focus-visible:ring-[3px] focus-visible:ring-ring/30 focus-visible:border-ring sm:w-96"
               spellCheck={false}
             />
-            <Button type="submit" disabled={updateTemplate.isPending}>
-              {updateTemplate.isPending ? "Saving…" : "Save"}
+            <Button type="submit" loading={updateTemplate.isPending}>
+              Save
             </Button>
           </div>
           <div className="mt-2 flex flex-wrap gap-1.5">

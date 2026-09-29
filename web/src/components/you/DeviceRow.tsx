@@ -43,7 +43,7 @@ export const DeviceRow = ({ session, arrived = false, leaving = false, onSignOut
       </p>
     </div>
     {!session.current && onSignOut && (
-      <ConfirmDestroyButton icon={XIcon} idleLabel="Sign out" confirmLabel="Sign out" onConfirm={onSignOut} disabled={leaving} />
+      <ConfirmDestroyButton icon={XIcon} idleLabel="Sign out" confirmLabel="Sign out" onConfirm={onSignOut} loading={leaving} />
     )}
   </li>
 );

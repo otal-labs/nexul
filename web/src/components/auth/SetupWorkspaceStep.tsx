@@ -58,7 +58,7 @@ const SetupWorkspaceForm = ({ workspaceName, onContinue }: SetupWorkspaceFormPro
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
       <FormInput control={form.control} name="name" label="Workspace name" placeholder="Acme" autoFocus />
-      <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+      <Button type="submit" className="w-full" loading={form.formState.isSubmitting}>
         Continue
       </Button>
     </form>

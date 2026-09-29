@@ -122,7 +122,7 @@ export const DevelopmentSection = ({ ticketId }: DevelopmentSectionProps) => {
                 label="Branch name"
                 placeholder="ticket/42"
               />
-              <Button type="submit" size="sm" disabled={linkBranch.isPending}>
+              <Button type="submit" size="sm" loading={linkBranch.isPending}>
                 <LinkIcon className="size-4" /> Link
               </Button>
             </form>
@@ -146,7 +146,7 @@ export const DevelopmentSection = ({ ticketId }: DevelopmentSectionProps) => {
                 placeholder="e.g. 42"
                 type="number"
               />
-              <Button type="submit" size="sm" disabled={linkPR.isPending}>
+              <Button type="submit" size="sm" loading={linkPR.isPending}>
                 <LinkIcon className="size-4" /> Link
               </Button>
             </form>

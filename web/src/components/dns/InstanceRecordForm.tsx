@@ -77,8 +77,8 @@ const InstanceRecordFields = ({ zones, onDone }: InstanceRecordFieldsProps) => {
         placeholder="203.0.113.10"
       />
       <InstanceHostNotice zone={zone} target={target} />
-      <Button type="submit" className="w-full sm:w-auto" disabled={createRecord.isPending || blocked}>
-        {createRecord.isPending ? "Creating record…" : "Create instance record"}
+      <Button type="submit" className="w-full sm:w-auto" loading={createRecord.isPending} disabled={blocked}>
+        Create instance record
       </Button>
     </form>
   );

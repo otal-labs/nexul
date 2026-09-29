@@ -66,8 +66,8 @@ export const InstanceUrlSection = ({ settings }: InstanceUrlSectionProps) => {
             placeholder="https://deploy.example.com"
             className="w-full sm:w-96"
           />
-          <Button type="submit" disabled={form.formState.isSubmitting}>
-            {form.formState.isSubmitting ? "Saving…" : "Save"}
+          <Button type="submit" loading={form.formState.isSubmitting}>
+            Save
           </Button>
         </div>
 

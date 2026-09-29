@@ -80,8 +80,8 @@ export const ProjectWizardImportPage = () => {
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={() => void runDiscover()} disabled={!machineId || discover.isPending}>
-              {discover.isPending ? "Scanning…" : "Discover"}
+            <Button onClick={() => void runDiscover()} loading={discover.isPending} disabled={!machineId}>
+              Discover
             </Button>
           </div>
         )}
@@ -130,8 +130,8 @@ export const ProjectWizardImportPage = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <Button onClick={() => void runImport()} disabled={!projectId || doImport.isPending}>
-                {doImport.isPending ? "Importing…" : "Import"}
+              <Button onClick={() => void runImport()} loading={doImport.isPending} disabled={!projectId}>
+                Import
               </Button>
             </div>
             {projects && projects.length === 0 && (

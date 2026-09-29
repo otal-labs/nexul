@@ -63,8 +63,8 @@ export const PairT3CodeForm = ({ computer, onPaired }: PairT3CodeFormProps) => {
           {form.formState.errors.root.message}
         </p>
       )}
-      <Button type="submit" disabled={pair.isPending}>
-        {pair.isPending ? "Pairing…" : "Pair T3 Code"}
+      <Button type="submit" loading={pair.isPending}>
+        Pair T3 Code
       </Button>
     </form>
   );

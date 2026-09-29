@@ -11,7 +11,7 @@ export const InvitationAcceptancePanel = ({ pending, onAccept, onDecline }: Invi
     <p className="text-sm font-medium">You will join these workspaces with the roles shown above.</p>
     <p className="text-xs text-muted-foreground">Permission overrides are applied only when you accept.</p>
     <div className="flex flex-col gap-2 sm:flex-row">
-      <Button type="button" className="flex-1" disabled={pending} onClick={onAccept}>{pending ? "Accepting…" : "Accept invitation"}</Button>
+      <Button type="button" className="flex-1" loading={pending} onClick={onAccept}>Accept invitation</Button>
       <Button type="button" variant="outline" className="flex-1" onClick={onDecline}>Decline</Button>
     </div>
   </div>

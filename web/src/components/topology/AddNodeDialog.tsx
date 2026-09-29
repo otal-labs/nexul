@@ -113,8 +113,8 @@ export const AddNodeDialog = ({ kind, open, onClose }: AddNodeDialogProps) => {
               <Button variant="outline" type="button" onClick={onClose}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={addNode.isPending}>
-                {addNode.isPending ? "Adding…" : "Add"}
+              <Button type="submit" loading={addNode.isPending}>
+                Add
               </Button>
             </DialogFooter>
           </form>
@@ -141,8 +141,8 @@ export const AddNodeDialog = ({ kind, open, onClose }: AddNodeDialogProps) => {
               <Button variant="outline" type="button" onClick={onClose}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={addNode.isPending}>
-                {addNode.isPending ? "Adding…" : "Add"}
+              <Button type="submit" loading={addNode.isPending}>
+                Add
               </Button>
             </DialogFooter>
           </form>

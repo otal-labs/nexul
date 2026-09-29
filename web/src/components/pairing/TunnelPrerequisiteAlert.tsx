@@ -47,7 +47,7 @@ export const TunnelPrerequisiteAlert = ({ reason, onRetry, retrying }: TunnelPre
               </a>
             </Button>
           )}
-          <Button type="button" size="sm" variant="outline" onClick={onRetry} disabled={retrying}>
+          <Button type="button" size="sm" variant="outline" onClick={onRetry} loading={retrying}>
             Try again
           </Button>
         </div>

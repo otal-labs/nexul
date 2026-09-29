@@ -50,7 +50,7 @@ export const TeamAddToWorkspaceRow = ({ person, workspaces }: TeamAddToWorkspace
             </SelectContent>
           </Select>
           <TeamRoleSelect label={`Role to add in ${workspace.name}`} roles={workspace.roles} value={roleId} onChange={setPickedRole} />
-          <Button type="button" variant="outline" size="sm" disabled={add.isPending} onClick={() => add.mutate({ workspaceId: workspace.id, userId: person.id, roleId })}>
+          <Button type="button" variant="outline" size="sm" loading={add.isPending} onClick={() => add.mutate({ workspaceId: workspace.id, userId: person.id, roleId })}>
             <UserPlus className="size-4" />Add
           </Button>
         </div>

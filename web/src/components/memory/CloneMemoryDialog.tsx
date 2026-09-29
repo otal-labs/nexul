@@ -79,8 +79,8 @@ export const CloneMemoryDialog = ({ memoryId, open, onClose }: CloneMemoryDialog
               <Button variant="outline" type="button" onClick={onClose}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={clone.isPending}>
-                {clone.isPending ? "Cloning…" : "Clone"}
+              <Button type="submit" loading={clone.isPending}>
+                Clone
               </Button>
             </DialogFooter>
           </form>

@@ -46,7 +46,7 @@ export const BranchDeployRuleRow = ({ stack, rule, index }: BranchDeployRuleRowP
               Overrides
             </Button>
           )}
-          <Button variant="ghost" size="sm" onClick={remove} disabled={updateStack.isPending}>
+          <Button variant="ghost" size="sm" onClick={remove} loading={updateStack.isPending}>
             Remove
           </Button>
         </div>

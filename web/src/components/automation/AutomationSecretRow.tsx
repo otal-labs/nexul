@@ -23,7 +23,7 @@ export const AutomationSecretRow = ({ secret }: AutomationSecretRowProps) => {
       <ConfirmDestroyButton
         icon={Trash2}
         idleLabel="Delete"
-        disabled={deleteSecret.isPending}
+        loading={deleteSecret.isPending}
         onConfirm={() => deleteSecret.mutate(secret.name)}
       />
     </li>

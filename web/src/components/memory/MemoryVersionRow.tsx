@@ -42,7 +42,7 @@ export const MemoryVersionRow = ({ memoryId, version, isCurrent, canRevert }: Me
         </p>
       </div>
       {!isCurrent && canRevert && (
-        <Button type="button" variant="outline" size="sm" onClick={onRevert} disabled={revert.isPending}>
+        <Button type="button" variant="outline" size="sm" onClick={onRevert} loading={revert.isPending}>
           <RotateCcw className="size-4" />
           Revert
         </Button>

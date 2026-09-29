@@ -45,7 +45,7 @@ const ExposureRow = ({ exposure, gateway, container, removing, onRemove }: Expos
         icon={Trash2}
         idleLabel={`Unexpose ${exposure.hostname}`}
         confirmLabel="Unexpose"
-        disabled={removing}
+        loading={removing}
         onConfirm={onRemove}
       />
     </span>
