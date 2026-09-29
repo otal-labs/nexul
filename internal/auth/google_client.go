@@ -49,7 +49,7 @@ func (c *HTTPGoogleClient) Exchange(ctx context.Context, code string) (string, e
 // exchangeCode is the standard authorization_code grant, shared by Google and Discord; GitHub has its own Exchange.
 func exchangeCode(ctx context.Context, hc *http.Client, name, tokenURL, clientID, clientSecret, redirectURI, code string) (string, error) {
 	if clientID == "" || clientSecret == "" {
-		return "", fmt.Errorf("%w: %s OAuth is not configured", apperrs.ErrInvalid, name)
+		return "", oauthNotConfigured(name)
 	}
 	form := url.Values{
 		"client_id":     {clientID},

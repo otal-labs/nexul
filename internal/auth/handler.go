@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -388,48 +389,103 @@ func (h *Handler) callbackGET(provider Provider) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 		defer cancel()
+		r = r.WithContext(ctx)
 		state := r.URL.Query().Get("state")
 		if state == "" {
 			h.stateless(w, r)
 			return
 		}
 		if cookie, cookieErr := r.Cookie(invitationStateCookie(hashCredential(state))); cookieErr == nil && cookie.Value == state {
-			h.invitationCallback(w, r.WithContext(ctx), provider, state)
+			h.invitationCallback(w, r, provider, state)
 			return
 		}
 		cookie, err := r.Cookie(stateCookie)
 		if err != nil || cookie.Value == "" || cookie.Value != state {
-			httpx.WriteError(w, fmt.Errorf("%w: oauth state mismatch", apperrs.ErrUnauthorized))
-			return
-		}
-		code := r.URL.Query().Get("code")
-		if code == "" {
-			httpx.WriteError(w, fmt.Errorf("%w: code is required", apperrs.ErrInvalid))
+			h.signInFailed(w, r, provider, signInStateMismatch, errors.New("oauth state mismatch"))
 			return
 		}
 		http.SetCookie(w, &http.Cookie{Name: stateCookie, Value: "", MaxAge: -1, Path: "/", HttpOnly: true, Secure: h.svc.secureCookie(ctx, r.TLS != nil)})
+		code := r.URL.Query().Get("code")
 		if IsLinkState(state) {
-			h.identityLinkCallback(w, r.WithContext(ctx), provider, state, code)
+			h.identityLinkCallback(w, r, provider, state, code)
+			return
+		}
+		if refusal := r.URL.Query().Get("error"); refusal != "" {
+			h.signInFailed(w, r, provider, providerRefusalCode(refusal), fmt.Errorf("provider returned error %q", refusal))
+			return
+		}
+		if code == "" {
+			h.signInFailed(w, r, provider, signInFailedCode, errors.New("callback has no code"))
 			return
 		}
 		token, err := h.svc.LoginWith(WithDevice(ctx, DeviceFromRequest(r)), provider, code)
 		if err != nil {
-			httpx.WriteError(w, err)
+			h.signInFailed(w, r, provider, signInErrorCode(err), err)
 			return
 		}
 		http.Redirect(w, r, h.spaOrigin(r)+"/login?token="+token, http.StatusFound)
 	}
 }
 
+// Reason codes a failed browser sign-in carries back to /login as ?error=; the web sign-in page owns their copy.
+const (
+	signInInvitationRequired = "invitation_required"
+	signInInvitationInvalid  = "invitation_invalid"
+	signInAccountDisabled    = "account_disabled"
+	signInAccountRemoved     = "account_removed"
+	signInAccessDenied       = "access_denied"
+	signInProviderError      = "provider_error"
+	signInStateMismatch      = "state_mismatch"
+	signInNotConfigured      = "not_configured"
+	signInFailedCode         = "sign_in_failed"
+)
+
+func signInErrorCode(err error) string {
+	if errors.Is(err, errInvitationRequired) {
+		return signInInvitationRequired
+	}
+	if errors.Is(err, errAccountDisabled) {
+		return signInAccountDisabled
+	}
+	if errors.Is(err, errAccountRemoved) {
+		return signInAccountRemoved
+	}
+	if errors.Is(err, errOAuthNotConfigured) {
+		return signInNotConfigured
+	}
+	return signInFailedCode
+}
+
+func providerRefusalCode(refusal string) string {
+	if refusal == "access_denied" {
+		return signInAccessDenied
+	}
+	return signInProviderError
+}
+
+// signInFailed answers a browser-navigated callback with a redirect to the sign-in page, never JSON; the real reason is logged, not sent.
+func (h *Handler) signInFailed(w http.ResponseWriter, r *http.Request, provider Provider, code string, err error) {
+	logging.FromCtx(r.Context()).Warn("sign-in failed", "provider", provider, "reason", code, "error", err)
+	http.Redirect(w, r, h.spaOrigin(r)+"/login?error="+code, http.StatusFound)
+}
+
 func (h *Handler) invitationCallback(w http.ResponseWriter, r *http.Request, provider Provider, state string) {
+	if refusal := r.URL.Query().Get("error"); refusal != "" {
+		h.signInFailed(w, r, provider, providerRefusalCode(refusal), fmt.Errorf("provider returned error %q", refusal))
+		return
+	}
 	code := r.URL.Query().Get("code")
 	if code == "" {
-		httpx.WriteError(w, invalidInvitationError())
+		h.signInFailed(w, r, provider, signInInvitationInvalid, errors.New("callback has no code"))
 		return
 	}
 	acceptance, err := h.svc.CompleteInvitationOAuth(r.Context(), provider, state, code)
 	if err != nil {
-		httpx.WriteError(w, classifyInvitationError(err))
+		reason := signInErrorCode(err)
+		if errors.Is(classifyInvitationError(err), apperrs.ErrNotFound) {
+			reason = signInInvitationInvalid
+		}
+		h.signInFailed(w, r, provider, reason, err)
 		return
 	}
 	http.SetCookie(w, &http.Cookie{Name: invitationStateCookie(hashCredential(state)), Value: "", MaxAge: -1, Path: "/", HttpOnly: true, Secure: h.svc.secureCookie(r.Context(), r.TLS != nil)})

@@ -36,6 +36,18 @@ const (
 	stateMaxAge          = 10 * time.Minute
 )
 
+// Sign-in refusals the browser callback tells apart; each still reads as ErrUnauthorized (or ErrInvalid) to JSON callers.
+var (
+	errInvitationRequired = fmt.Errorf("%w: invitation required", apperrs.ErrUnauthorized)
+	errAccountDisabled    = fmt.Errorf("%w: account is disabled", apperrs.ErrUnauthorized)
+	errAccountRemoved     = fmt.Errorf("%w: account was removed", apperrs.ErrUnauthorized)
+	errOAuthNotConfigured = fmt.Errorf("%w: OAuth is not configured", apperrs.ErrInvalid)
+)
+
+func oauthNotConfigured(provider string) error {
+	return fmt.Errorf("%w for %s", errOAuthNotConfigured, provider)
+}
+
 // ProviderClient is the slice of an OAuth provider's API the service calls, fakeable in tests.
 type ProviderClient interface {
 	Exchange(ctx context.Context, code string) (string, error)
@@ -68,7 +80,7 @@ func NewHTTPGitHubClient(clientID, clientSecret string, hc *http.Client) *HTTPGi
 // Exchange trades an authorization code for an access token.
 func (c *HTTPGitHubClient) Exchange(ctx context.Context, code string) (string, error) {
 	if c.clientID == "" || c.clientSecret == "" {
-		return "", fmt.Errorf("%w: GitHub OAuth is not configured", apperrs.ErrInvalid)
+		return "", oauthNotConfigured("GitHub")
 	}
 	form := url.Values{
 		"client_id":     {c.clientID},
@@ -244,14 +256,14 @@ func (s *Service) providerSettings(ctx context.Context, provider Provider) (Sett
 		return Settings{}, fmt.Errorf("%w: unknown sign-in provider %q", apperrs.ErrInvalid, provider)
 	}
 	if s.cfg.Settings == nil {
-		return Settings{}, fmt.Errorf("%w: %s OAuth is not configured", apperrs.ErrInvalid, provider)
+		return Settings{}, oauthNotConfigured(string(provider))
 	}
 	st, err := s.cfg.Settings.Get(ctx)
 	if err != nil {
 		return Settings{}, fmt.Errorf("get settings: %w", err)
 	}
 	if !st.ProviderConfigured(provider) {
-		return Settings{}, fmt.Errorf("%w: %s OAuth is not configured", apperrs.ErrInvalid, provider)
+		return Settings{}, oauthNotConfigured(string(provider))
 	}
 	return st, nil
 }
@@ -612,8 +624,11 @@ func providerIdentity(userID string, provider Provider, pu *ProviderUser) *Ident
 func (s *Service) findOrCreateLoginUser(ctx context.Context, identity *Identity) (*User, error) {
 	user, err := s.cfg.Users.GetUserByProvider(ctx, identity.Provider, identity.ProviderUserID)
 	if err == nil {
+		if user.AccountStatus == AccountRemoved {
+			return nil, errAccountRemoved
+		}
 		if !accountIsActive(user.AccountStatus) {
-			return nil, fmt.Errorf("%w: account is not active", apperrs.ErrUnauthorized)
+			return nil, errAccountDisabled
 		}
 		updated, _, err := s.cfg.Users.UpsertUser(ctx, identity)
 		if err != nil {
@@ -629,12 +644,12 @@ func (s *Service) findOrCreateLoginUser(ctx context.Context, identity *Identity)
 		return nil, fmt.Errorf("count users: %w", err)
 	}
 	if count != 0 {
-		return nil, fmt.Errorf("%w: invitation required", apperrs.ErrUnauthorized)
+		return nil, errInvitationRequired
 	}
 	user, err = s.cfg.Users.CreateFirstUser(ctx, identity, eventbus.OutboxEvent{ID: newUserID(), Topic: TopicAccountAdmitted, Payload: AccountLifecycleEvent{AccountID: identity.UserID}})
 	if err != nil {
 		if errors.Is(err, apperrs.ErrConflict) {
-			return nil, fmt.Errorf("%w: invitation required", apperrs.ErrUnauthorized)
+			return nil, errInvitationRequired
 		}
 		return nil, fmt.Errorf("create first user: %w", err)
 	}

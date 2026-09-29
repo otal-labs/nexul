@@ -9,6 +9,7 @@ import { Logo } from "@/components/Logo";
 import { DiscordMark, GithubMark, GoogleMark } from "@/components/ProviderMarks";
 import { Button } from "@/components/ui/button";
 import { useBootstrapStatus } from "@/hooks/AuthHooks";
+import { signInErrorMessage } from "@/models/SignInError";
 import { useSessionStore } from "@/stores/sessionStore";
 
 export const LoginPage = () => {
@@ -33,6 +34,7 @@ export const LoginPage = () => {
 
   const token = searchParams.get("token");
   const code = searchParams.get("code");
+  const failure = searchParams.get("error");
 
   // Must run exactly once; the ref guards against StrictMode double-invoking effects in dev.
   useEffect(() => {
@@ -74,6 +76,11 @@ export const LoginPage = () => {
                   : "One GitHub account, no passwords to remember."}
               </p>
             </div>
+            {failure != null && (
+              <div className="mt-6 text-left">
+                <ErrorDisplay title="Couldn't sign you in" message={signInErrorMessage(failure)} />
+              </div>
+            )}
             {exchange.error != null && (
               <div className="mt-6 text-left">
                 <ErrorDisplay error={exchange.error} />
