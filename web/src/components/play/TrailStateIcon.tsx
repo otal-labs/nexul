@@ -14,7 +14,7 @@ export const TrailStateIcon = ({ state, className }: TrailStateIconProps) => (
   <>
     {state === "waiting" && <CircleHelp className={cn("size-3.5 shrink-0 text-info", className)} role="img" aria-label="waiting" />}
     {isTrailActive(state) && state !== "waiting" && (
-      <LoaderCircle className={cn("size-3.5 shrink-0 animate-spin text-warning", className)} role="img" aria-label={state} />
+      <LoaderCircle className={cn("size-3.5 shrink-0 animate-spin motion-reduce:animate-none text-warning", className)} role="img" aria-label={state} />
     )}
     {state === "done" && <CheckCircle2 className={cn("size-3.5 shrink-0 text-success", className)} role="img" aria-label="done" />}
     {(state === "failed" || state === "interrupted") && (

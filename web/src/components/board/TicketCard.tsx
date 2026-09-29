@@ -89,7 +89,7 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
         </span>
         <span className="flex shrink-0 items-center gap-1.5 font-mono text-[10.5px] text-muted-foreground">
           {runActive && (
-            <LoaderCircle className="size-3 shrink-0 animate-spin text-warning" role="img" aria-label="A play is running" />
+            <LoaderCircle className="size-3 shrink-0 animate-spin motion-reduce:animate-none text-warning" role="img" aria-label="A play is running" />
           )}
           {prefix}-{ticket.number}
         </span>

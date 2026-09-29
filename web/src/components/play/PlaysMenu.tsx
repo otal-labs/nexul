@@ -72,7 +72,7 @@ export const PlaysMenu = ({ workspaceId, projectId, docId }: PlaysMenuProps) => 
               disabled={stopTrail.isPending}
               onClick={() => stopTrail.mutate(activeTrail.id)}
             >
-              <LoaderCircle className="size-3.5 animate-spin text-warning" aria-hidden />
+              <LoaderCircle className="size-3.5 animate-spin motion-reduce:animate-none text-warning" aria-hidden />
               Stop {activeTrail.play_label}
               <Square className="ml-1 size-3 fill-current" aria-hidden />
             </Button>
