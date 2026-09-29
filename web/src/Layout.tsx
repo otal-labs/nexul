@@ -3,6 +3,7 @@ import { Outlet, useLocation } from "react-router";
 
 import { PhoneBanner } from "@/components/PhoneBanner";
 import { Sidebar } from "@/components/sidebar/Sidebar";
+import { VoiceCallAudio } from "@/components/voice/VoiceCallAudio";
 import { useFetchUnreadCount } from "@/hooks/NotificationHooks";
 import { useEnsureWorkspaceSelected } from "@/hooks/WorkspaceHooks";
 import { useLiveEvents } from "@/hooks/useLiveEvents";
@@ -35,6 +36,7 @@ export const Layout = () => {
           <Outlet />
         </main>
       </div>
+      <VoiceCallAudio />
     </div>
   );
 };
