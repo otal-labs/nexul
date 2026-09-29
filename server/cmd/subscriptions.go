@@ -11,6 +11,7 @@ import (
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/codereview"
 	"github.com/otal-labs/nexul/internal/deploy"
+	"github.com/otal-labs/nexul/internal/dns"
 	"github.com/otal-labs/nexul/internal/docs"
 	"github.com/otal-labs/nexul/internal/eventcatalog"
 	"github.com/otal-labs/nexul/internal/gitprovider"
@@ -142,6 +143,67 @@ func topologyDeployStatusHandler(deploySvc *deploy.Service, topoSvc *topology.Se
 	}
 }
 
+// exposureReconcileHandler hands dns the containers a healthy deploy started, read off the event itself so it
+// never races the consumer that writes the same report into the services table.
+func exposureReconcileHandler(deploySvc *deploy.Service, dnsSvc *dns.Service) eventbus.Handler {
+	return func(ctx context.Context, ev eventbus.Event) error {
+		var e deploy.DeployStatusChangedEvent
+		if err := json.Unmarshal(ev.Payload, &e); err != nil {
+			return apperrs.Fatal(fmt.Errorf("parse %s: %w", deploy.TopicDeployStatusChanged, err))
+		}
+		if deploy.Status(e.Status) != deploy.StatusHealthy {
+			return nil
+		}
+		d, err := deploySvc.Get(ctx, e.ID)
+		if err != nil {
+			return err
+		}
+		stack, err := deploySvc.GetStack(ctx, d.StackID)
+		if err != nil {
+			return err
+		}
+		containers, err := deploySvc.ListServices(ctx, d.StackID)
+		if err != nil {
+			return err
+		}
+		return dnsSvc.ReconcileExposures(ctx, runningTargets(stack, containers, e.Services))
+	}
+}
+
+// runningTargets is each container of a healthy deploy as it runs now: its reported name and networks, or, when
+// the runner sent no report at all, the name and network it was started with.
+func runningTargets(stack *deploy.Stack, containers []*deploy.Container, observed []deploy.ObservedService) []dns.ExposureTarget {
+	report := make(map[string]deploy.ObservedService, len(observed))
+	for _, o := range observed {
+		report[o.Name] = o
+	}
+	out := make([]dns.ExposureTarget, 0, len(containers))
+	for _, c := range containers {
+		t := exposureTargetFor(stack, c)
+		o, reported := report[c.Name]
+		if len(observed) > 0 && !reported {
+			continue
+		}
+		if reported && o.Status != string(deploy.ServiceStatusRunning) && o.Status != string(deploy.ServiceStatusHealthy) {
+			continue
+		}
+		if reported {
+			t.Name, t.Networks = o.ContainerName, observedNetworkNames(o)
+		}
+		t.Running = true
+		out = append(out, *t)
+	}
+	return out
+}
+
+func observedNetworkNames(o deploy.ObservedService) []string {
+	out := make([]string, 0, len(o.Networks))
+	for _, n := range o.Networks {
+		out = append(out, n.Name)
+	}
+	return out
+}
+
 // containerNodeStatus maps one observed container onto its node's badge and address.
 func containerNodeStatus(svc *deploy.Container, deployStatus deploy.Status) (topology.ServiceStatus, string) {
 	address := ""
@@ -199,6 +261,8 @@ func wireDomainEventSubscriptions(ctx context.Context, bus *inprocess.Bus, svc *
 	// Deploy terminal states drive the anchored node's badge.
 	mustSubscribe(ctx, bus, "deploy.live_status", deploy.TopicDeployStatusChanged, "", topologyDeployStatusHandler(svc.deploySvc, svc.topoSvc))
 	mustSubscribe(ctx, bus, "deploy.log", deploy.TopicDeployLog, "", svc.deploySvc.HandleLog)
+	// A healthy deploy settles its containers' exposures: an exposure made mid-deploy would otherwise wait for the next one.
+	mustSubscribe(ctx, bus, "dns.exposure_reconcile", deploy.TopicDeployStatusChanged, "", exposureReconcileHandler(svc.deploySvc, svc.dnsSvc))
 
 	// Notification IDs derive from the source event, so redeliveries are idempotent.
 	mustSubscribe(ctx, bus, "notifications", tickets.TopicCreated, "", func(ctx context.Context, ev eventbus.Event) error {

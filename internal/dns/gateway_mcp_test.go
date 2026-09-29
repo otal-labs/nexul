@@ -49,7 +49,7 @@ func TestGatewayAndExposureTools_Errors(t *testing.T) {
 		{name: "an exposure to an unknown container is not found", tool: "exposure_create", want: apperrs.ErrNotFound,
 			args: `{"hostname":"app.example.com","service_id":"ghost","port":8080,"zone_id":"z1","zone":"example.com"}`},
 		{name: "a record write the token may not make is forbidden", tool: "exposure_create", want: apperrs.ErrForbidden,
-			args: `{"hostname":"app.example.com","service_id":"c-app","port":8080,"zone_id":"z1","zone":"example.com","gateway_id":"g1"}`,
+			args: `{"hostname":"new.example.com","service_id":"c-app","port":8080,"zone_id":"z1","zone":"example.com","gateway_id":"g1"}`,
 			setup: func(f *toolFakes) {
 				seedGateway(f, Gateway{ID: "g1", Kind: GatewayTunnel, TunnelID: "t1", DockerNetwork: "net1", Machine: "host1"})
 				f.records.createErr = apperrs.ErrForbidden
