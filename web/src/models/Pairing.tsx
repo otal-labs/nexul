@@ -116,6 +116,13 @@ export interface SetupRunRow {
   turnId?: string;
 }
 
+export const SETUP_STATE_LABEL: Record<SetupRunRow["state"], string> = {
+  queued: "Waiting",
+  running: "Running",
+  confirmed: "Confirmed",
+  failed: "Failed",
+};
+
 const turnRow = (t: SetupTurnSummary): SetupRunRow => ({
   provider: t.provider,
   name: t.provider_name || t.provider,
@@ -152,6 +159,10 @@ export const setupModelChoices = (providers: HarnessProvider[], defaults: Pairin
     const preselected = fromDefaults ?? p.models.find((m) => m.is_default)?.slug ?? "";
     return [{ provider: p.driver.toLowerCase(), name: p.name, models: p.models, preselected }];
   });
+
+// The row the transcript follows: the running one, else the last that ran so a finished run stays put, else the first.
+export const followedSetupRow = (rows: SetupRunRow[]): SetupRunRow | undefined =>
+  rows.find((r) => r.state === "running") ?? [...rows].reverse().find((r) => r.state !== "queued") ?? rows[0];
 
 export const setupRunning = (rows: SetupRunRow[]) => rows.some((r) => r.state === "running" || r.state === "queued");
 
