@@ -7,7 +7,9 @@ describe("ServerRefusedScreen", () => {
   test("names the host, both versions, and offers Retry", async () => {
     const onRetry = jest.fn();
     await render(
-      <ServerRefusedScreen host="https://nexul.example.com" version="v0.1.0" retrying={false} onRetry={onRetry} />,
+      <ServerRefusedScreen host="https://nexul.example.com" version="v0.1.0" retrying={false} onRetry={onRetry}>
+        {null}
+      </ServerRefusedScreen>,
     );
 
     expect(

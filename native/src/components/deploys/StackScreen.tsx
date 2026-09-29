@@ -8,7 +8,7 @@ import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { useFetchStack, useFetchStackDeploys, useFetchStackServices } from "@/hooks/StackHooks";
-import { DeployStrategy, latestDeploy } from "@/models/Stack";
+import { DeployStatus, DeployStrategy, latestDeploy } from "@/models/Stack";
 
 export const StackScreen = () => {
   const router = useRouter();
@@ -19,6 +19,8 @@ export const StackScreen = () => {
 
   const latest = latestDeploy(deploys);
   const canRedeploy = stack?.strategy === DeployStrategy.Run && !!latest?.image;
+  // The server refuses a second deploy while one is active; live deploy.updated events re-enable the button.
+  const deploying = latest?.status === DeployStatus.Pending || latest?.status === DeployStatus.Running;
 
   return (
     <ScrollView className="flex-1 bg-background">
@@ -36,11 +38,12 @@ export const StackScreen = () => {
 
           {canRedeploy && latest && (
             <Button
+              disabled={deploying}
               onPress={() =>
                 router.push({ pathname: "/deploys/redeploy", params: { stackId: stack.id, image: latest.image } })
               }
             >
-              <Text>Redeploy</Text>
+              <Text>{deploying ? "Deploy in progress" : "Redeploy"}</Text>
             </Button>
           )}
           {!canRedeploy && (

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { View } from "react-native";
 
 import { Button } from "@/components/ui/button";
@@ -9,9 +10,11 @@ interface ServerRefusedScreenProps {
   version: string;
   retrying: boolean;
   onRetry: () => void;
+  // The way out besides waiting for an upgrade: Sign out when signed in, another server when not.
+  children: ReactNode;
 }
 
-export const ServerRefusedScreen = ({ host, version, retrying, onRetry }: ServerRefusedScreenProps) => (
+export const ServerRefusedScreen = ({ host, version, retrying, onRetry, children }: ServerRefusedScreenProps) => (
   <View className="flex-1 justify-center gap-6 bg-background px-6">
     <Text className="leading-6">
       <Text className="font-mono">{host}</Text> runs <Text className="font-mono">{version}</Text>. This app needs{" "}
@@ -20,5 +23,6 @@ export const ServerRefusedScreen = ({ host, version, retrying, onRetry }: Server
     <Button variant="outline" disabled={retrying} onPress={onRetry}>
       <Text>Retry</Text>
     </Button>
+    {children}
   </View>
 );

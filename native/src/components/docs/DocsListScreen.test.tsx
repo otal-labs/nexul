@@ -82,6 +82,16 @@ describe("DocsListScreen", () => {
     expect(screen.queryByText("Alpha spec")).toBeNull();
   });
 
+  test("a project picked in another workspace gives way to this workspace's first project", async () => {
+    const docOther = { ...docA, id: "doc-o", project_id: "proj-other", title: "Other workspace spec" };
+    mockGet({ [projectA.id]: [docA], "proj-other": [docOther] });
+    useDocsProjectStore.setState({ selectedProjectId: "proj-other" });
+    await renderScreen();
+
+    expect(await screen.findByText("Alpha spec")).toBeTruthy();
+    expect(screen.queryByText("Other workspace spec")).toBeNull();
+  });
+
   test("shows the empty state when the project has no docs", async () => {
     mockGet({ [projectA.id]: [] });
     await renderScreen();

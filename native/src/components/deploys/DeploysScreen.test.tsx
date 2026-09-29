@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react-native";
 
 import { api } from "@/api/client";
 import { DeploysScreen } from "@/components/deploys/DeploysScreen";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 jest.mock("@/api/client", () => ({ api: { get: jest.fn() } }));
 
@@ -22,8 +23,10 @@ const deploysByStack: Record<string, unknown[]> = {
   "s-2": [],
 };
 
+// Stacks answer only when scoped to the selected workspace, so the list never shows another workspace's.
 const mockGet = (url: string) => {
-  if (url === "/api/stacks") return Promise.resolve(stacks);
+  if (url === "/api/workspaces") return Promise.resolve([{ id: "ws-1", name: "Acme" }]);
+  if (url === "/api/stacks?workspace_id=ws-1") return Promise.resolve(stacks);
   const match = /\/api\/stacks\/(.+)\/deploys/.exec(url);
   if (match?.[1]) return Promise.resolve(deploysByStack[match[1]] ?? []);
   throw new Error(`unexpected GET ${url}`);
@@ -39,6 +42,7 @@ const renderScreen = () => {
 };
 
 beforeEach(() => {
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   jest.mocked(api.get).mockReset().mockImplementation(mockGet);
   mockPush.mockReset();
 });
@@ -63,7 +67,7 @@ describe("DeploysScreen", () => {
   });
 
   test("shows the empty state when there are no stacks", async () => {
-    jest.mocked(api.get).mockImplementation((url: string) => (url === "/api/stacks" ? Promise.resolve([]) : mockGet(url)));
+    jest.mocked(api.get).mockImplementation((url: string) => (url.startsWith("/api/stacks?") ? Promise.resolve([]) : mockGet(url)));
     await renderScreen();
 
     expect(await screen.findByText("No stacks yet.")).toBeTruthy();

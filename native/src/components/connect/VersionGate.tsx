@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { View } from "react-native";
 
 import { ServerRefusedScreen } from "@/components/connect/ServerRefusedScreen";
+import { SignOutButton } from "@/components/settings/SignOutButton";
 import { useFetchAbout } from "@/hooks/ConnectHooks";
 import { serverIsSupported } from "@/lib/serverVersion";
 import { useSessionStore } from "@/stores/sessionStore";
@@ -24,7 +25,9 @@ export const VersionGate = ({ children }: VersionGateProps) => {
           version={refusedVersion}
           retrying={isFetching}
           onRetry={() => void refetch()}
-        />
+        >
+          <SignOutButton />
+        </ServerRefusedScreen>
       )}
       {!refusedVersion && children}
     </View>

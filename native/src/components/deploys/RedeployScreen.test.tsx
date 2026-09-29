@@ -1,12 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, userEvent } from "@testing-library/react-native";
 
-import { api } from "@/api/client";
+import { ApiError, api } from "@/api/client";
 import { RedeployScreen } from "@/components/deploys/RedeployScreen";
 
 jest.mock("@/api/client", () => ({
+  ...jest.requireActual("@/api/client"),
   api: { get: jest.fn(async () => ({ id: "s-1", name: "checkout-api" })), post: jest.fn() },
-  errorMessage: jest.fn(() => "Something went wrong"),
 }));
 
 const mockBack = jest.fn();
@@ -44,6 +44,19 @@ describe("RedeployScreen", () => {
     expect(api.post).toHaveBeenCalledWith("/api/deploys", { stack_id: "s-1", image: "api:2" });
     expect(await screen.findByText("Redeploy")).toBeTruthy();
     expect(mockBack).toHaveBeenCalled();
+  });
+
+  test("a deploy already running reads as a sentence, not the server's raw conflict", async () => {
+    jest.mocked(api.post).mockRejectedValue(
+      new ApiError(409, { message: 'conflict: stack "api" already has an active deploy', code: "CONFLICT" }, "POST failed: 409"),
+    );
+    await renderScreen();
+
+    await userEvent.setup().press(screen.getByRole("button", { name: "Redeploy" }));
+
+    expect(await screen.findByText("A deploy is already running on this stack. Redeploy once it finishes.")).toBeTruthy();
+    expect(screen.queryByText(/conflict:/)).toBeNull();
+    expect(mockBack).not.toHaveBeenCalled();
   });
 
   test("Cancel dismisses the sheet without deploying", async () => {
