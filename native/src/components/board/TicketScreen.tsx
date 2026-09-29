@@ -62,7 +62,7 @@ export const TicketScreen = () => {
                   params: { ticketId: ticket.id, projectId: ticket.project_id, currentStatusId: ticket.status },
                 })
               }
-              className="min-h-9 flex-row items-center gap-1.5 rounded-md border border-border px-2.5 active:bg-accent"
+              className="min-h-11 flex-row items-center gap-1.5 rounded-md border border-border px-2.5 active:bg-accent"
             >
               {status && <View className={cn("size-2 rounded-full", statusStageDot(status.kind))} />}
               <Text variant="small">{status?.name ?? "Status"}</Text>
@@ -97,9 +97,11 @@ export const TicketScreen = () => {
           </View>
 
           {setPerson.error && <ErrorDisplay error={setPerson.error} />}
-          <Button variant="outline" onPress={assignToMe} disabled={setPerson.isPending}>
-            <Text>Assign to me</Text>
-          </Button>
+          {ticket.developer !== me?.user.login && (
+            <Button variant="outline" onPress={assignToMe} disabled={setPerson.isPending}>
+              <Text>Assign to me</Text>
+            </Button>
+          )}
 
           <View className="gap-2 border-t border-border pt-3">
             <Text variant="small" className="text-muted-foreground">

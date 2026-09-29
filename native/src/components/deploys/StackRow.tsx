@@ -1,7 +1,7 @@
 import { Pressable, View } from "react-native";
 
 import { Text } from "@/components/ui/text";
-import { formatRelativeTime } from "@/lib/time";
+import { RelativeTime } from "@/components/RelativeTime";
 import { cn } from "@/lib/utils";
 import { deployStatusDot, type Deploy, type Stack } from "@/models/Stack";
 
@@ -29,7 +29,7 @@ export const StackRow = ({ stack, latest, onPress }: StackRowProps) => (
     </View>
     {latest && (
       <Text variant="small" className="shrink-0 font-mono text-muted-foreground">
-        {formatRelativeTime(latest.created_at)}
+        <RelativeTime iso={latest.created_at} />
       </Text>
     )}
     {!latest && <Text variant="small" className="shrink-0 text-muted-foreground">No deploys</Text>}

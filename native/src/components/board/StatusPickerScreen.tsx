@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Check } from "lucide-react-native";
 import { FlatList, Pressable, View } from "react-native";
+import { useCSSVariable } from "uniwind";
 
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
@@ -18,6 +19,7 @@ type StatusPickerParams = {
 
 export const StatusPickerScreen = () => {
   const router = useRouter();
+  const [foreground] = useCSSVariable(["--color-foreground"]);
   const { ticketId, projectId, currentStatusId } = useLocalSearchParams<StatusPickerParams>();
   const { data: statuses, error: statusesError, isPending } = useFetchProjectStatuses(projectId);
   const updateStatus = useUpdateTicketStatus();
@@ -42,7 +44,7 @@ export const StatusPickerScreen = () => {
               <Text className="min-w-0 flex-1 font-medium" numberOfLines={1}>
                 {item.name}
               </Text>
-              {item.id === currentStatusId && <Check size={16} className="text-foreground" />}
+              {item.id === currentStatusId && <Check size={16} color={String(foreground)} />}
             </Pressable>
           )}
         />

@@ -7,7 +7,7 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { Text } from "@/components/ui/text";
 import { useFetchDoc } from "@/hooks/DocHooks";
-import { formatRelativeTime } from "@/lib/time";
+import { RelativeTime } from "@/components/RelativeTime";
 
 interface DocScreenProps {
   docId: string;
@@ -29,7 +29,7 @@ export const DocScreen = ({ docId }: DocScreenProps) => {
         <ScrollView contentContainerClassName="gap-3 p-4">
           <Text variant="h3">{doc.title}</Text>
           <Text variant="muted" className="font-mono text-xs">
-            v{doc.version} · updated {formatRelativeTime(doc.updated_at)}
+            v{doc.version} · updated <RelativeTime iso={doc.updated_at} />
           </Text>
           <DocBody body={doc.body} />
         </ScrollView>

@@ -3,7 +3,7 @@ import { Alert, Pressable, View } from "react-native";
 import { useCSSVariable } from "uniwind";
 
 import { Text } from "@/components/ui/text";
-import { formatRelativeTime } from "@/lib/time";
+import { RelativeTime } from "@/components/RelativeTime";
 import type { Session } from "@/models/User";
 
 const PHONE_PLATFORMS = ["Android", "iOS"];
@@ -41,11 +41,11 @@ export const DeviceRow = ({ session, pending = false, onSignOut }: DeviceRowProp
           )}
         </View>
         <Text variant="muted" numberOfLines={1} className="font-mono text-xs">
-          {session.ip} · {session.current ? "active now" : formatRelativeTime(session.last_active_at)}
+          {session.ip} · {session.current ? "active now" : <RelativeTime iso={session.last_active_at} />}
         </Text>
       </View>
       {!session.current && onSignOut && (
-        <Pressable role="button" accessibilityLabel="Sign out" disabled={pending} onPress={confirmSignOut} className="p-2">
+        <Pressable role="button" accessibilityLabel="Sign out" disabled={pending} onPress={confirmSignOut} className="size-11 items-center justify-center">
           <X size={16} color={String(mutedForeground)} />
         </Pressable>
       )}

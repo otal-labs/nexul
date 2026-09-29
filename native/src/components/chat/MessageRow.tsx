@@ -2,7 +2,7 @@ import { View } from "react-native";
 
 import { MessageBody } from "@/components/chat/MessageBody";
 import { Text } from "@/components/ui/text";
-import { formatRelativeTime } from "@/lib/time";
+import { RelativeTime } from "@/components/RelativeTime";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/models/Chat";
 
@@ -21,7 +21,7 @@ export const MessageRow = ({ message, authorLogin }: MessageRowProps) => {
           <Text numberOfLines={1} className="shrink text-sm font-semibold">
             {message.author_kind === "agent" ? "Agent" : authorLogin}
           </Text>
-          <Text className="font-mono text-xs text-muted-foreground">{formatRelativeTime(message.created_at)}</Text>
+          <Text className="font-mono text-xs text-muted-foreground"><RelativeTime iso={message.created_at} /></Text>
           {message.edited_at && <Text className="text-xs text-muted-foreground">(edited)</Text>}
         </View>
       )}

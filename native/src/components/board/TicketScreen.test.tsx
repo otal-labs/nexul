@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, userEvent } from "@testing-library/react-native";
+import { render, screen, userEvent, waitFor } from "@testing-library/react-native";
 
 import { api } from "@/api/client";
 import { TicketScreen } from "@/components/board/TicketScreen";
@@ -30,15 +30,16 @@ const ticket = {
   status: "st-open",
   position: 0,
   number: 12,
-  developer: "onik97",
+  developer: "",
   tester: "",
   labels: null,
 };
+let currentTicket: typeof ticket = ticket;
 
 const mockGet = (url: string) => {
   if (url === "/api/workspaces") return Promise.resolve([{ id: "ws-1" }]);
   if (url.startsWith("/api/auth/me")) return Promise.resolve(me);
-  if (url === "/api/tickets/t-1") return Promise.resolve(ticket);
+  if (url === "/api/tickets/t-1") return Promise.resolve(currentTicket);
   if (url.startsWith("/api/projects/")) return Promise.resolve(project);
   if (url.startsWith("/api/statuses")) return Promise.resolve(statuses);
   if (url.startsWith("/api/ticket-types")) return Promise.resolve(ticketTypes);
@@ -55,6 +56,7 @@ const renderScreen = () => {
 };
 
 beforeEach(() => {
+  currentTicket = ticket;
   jest.mocked(api.get).mockReset().mockImplementation(mockGet);
   jest.mocked(api.patch).mockReset();
   jest.mocked(api.post).mockReset();
@@ -69,8 +71,7 @@ describe("TicketScreen", () => {
     expect(screen.getByText("NEX-12")).toBeTruthy();
     expect(screen.getByText("Open")).toBeTruthy();
     expect(screen.getByText("bug")).toBeTruthy();
-    expect(screen.getByText("onik97")).toBeTruthy();
-    expect(screen.getByText("No one")).toBeTruthy();
+    expect(screen.getAllByText("No one")).toHaveLength(2);
   });
 
   test("Assign to me sets the viewer as developer", async () => {
@@ -81,5 +82,14 @@ describe("TicketScreen", () => {
     await userEvent.setup().press(screen.getByRole("button", { name: "Assign to me" }));
 
     expect(api.patch).toHaveBeenCalledWith("/api/tickets/t-1/developer", { login: "onik97" });
+  });
+
+  test("Assign to me is hidden when the viewer is already the developer", async () => {
+    currentTicket = { ...ticket, developer: "onik97" };
+    await renderScreen();
+    await screen.findByText("Fix login");
+    await screen.findByText("onik97");
+
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Assign to me" })).toBeNull());
   });
 });
