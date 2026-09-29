@@ -11,10 +11,11 @@ Decision: one section, **Team**. An instance administrator finds it under
 Whole instance and sees everyone; anyone else who holds `members:write` in a
 workspace finds it under This workspace and sees only the workspaces they
 manage and the people in them, with no account actions. For an administrator
-it lists every registered account with its status and its presence; opening a person shows every workspace on the
-instance with their role and workspace-wide overrides there, lets the role
-be changed, the person be removed from or added to a workspace, and carries
-the account's own disable, reactivate, remove, and restore. Invitations move
+it lists every registered account with its status and its presence; opening a
+person shows, in a dialog, the workspaces they are in with their role and
+workspace-wide overrides there, lets the role be changed and the person be
+removed from a workspace or added to one the viewer manages, and carries the
+account's own disable, reactivate, remove, and restore. Invitations move
 with it. Roles stay under This workspace, because a role is defined by one
 workspace; Team only assigns them. The page reads one endpoint,
 `GET /api/team`, whose accounts come from auth through a gate and whose

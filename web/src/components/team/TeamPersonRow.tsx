@@ -25,7 +25,7 @@ export const TeamPersonRow = ({ person, index, onOpen }: TeamPersonRowProps) => 
           <span className="block truncate font-medium">{personName(person)}</span>
           <span className="block truncate font-mono text-xs text-muted-foreground">@{person.login}</span>
         </span>
-        <span className="hidden min-w-0 flex-1 truncate text-right text-sm text-muted-foreground md:block">
+        <span className="hidden shrink-0 text-right text-sm text-muted-foreground md:block">
           {presenceText(person)}
         </span>
         <AccountStatusLabel status={person.status} online={person.online} />

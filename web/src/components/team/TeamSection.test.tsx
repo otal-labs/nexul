@@ -17,6 +17,8 @@ const team: Team = {
     { id: "ws-nexul", name: "Nexul", can_manage_members: true, roles: [{ id: "r-owner", name: "Owner", is_owner: true }, { id: "r-editor", name: "Editor", is_owner: false }] },
     { id: "ws-acme", name: "Acme", can_manage_members: false, roles: [{ id: "r-acme-owner", name: "Owner", is_owner: true }, { id: "r-viewer", name: "Viewer", is_owner: false }] },
     { id: "ws-labs", name: "Labs", can_manage_members: true, roles: [{ id: "r-labs-owner", name: "Owner", is_owner: true }, { id: "r-tester", name: "Tester", is_owner: false }] },
+    { id: "ws-kit", name: "Kit", can_manage_members: true, roles: [{ id: "r-kit-owner", name: "Owner", is_owner: true }, { id: "r-guest", name: "Guest", is_owner: false }] },
+    { id: "ws-ops", name: "Ops", can_manage_members: false, roles: [{ id: "r-ops-owner", name: "Owner", is_owner: true }, { id: "r-oncall", name: "On call", is_owner: false }] },
   ],
   people: [
     {
@@ -80,21 +82,26 @@ describe("TeamSection", () => {
     expect(dotOf(eve)).toHaveClass("bg-muted-foreground");
   });
 
-  it("keeps a workspace the viewer cannot manage read-only, with the reason, and edits the one they can", async () => {
+  it("lists only the workspaces the person is in, read-only with the reason where the viewer can't manage members", async () => {
     const user = userEvent.setup();
     renderSection();
     await user.click(await screen.findByRole("button", { name: "Open Bob" }));
 
-    const acme = within(await screen.findByRole("listitem", { name: "Acme" }));
+    const dialog = within(await screen.findByRole("dialog", { name: "Bob" }));
+    expect(dialog.queryByRole("listitem", { name: "Labs" })).not.toBeInTheDocument();
+    expect(dialog.queryByRole("listitem", { name: "Ops" })).not.toBeInTheDocument();
+
+    const acme = within(dialog.getByRole("listitem", { name: "Acme" }));
     expect(acme.getByText("Viewer")).toBeInTheDocument();
     expect(acme.getByText("Read only: you can't manage members in Acme.")).toBeInTheDocument();
     expect(acme.queryByRole("combobox")).not.toBeInTheDocument();
-    expect(acme.queryByRole("button", { name: /remove from/i })).not.toBeInTheDocument();
+    expect(acme.queryByRole("button", { name: "Actions for Acme" })).not.toBeInTheDocument();
 
-    expect(screen.getByRole("button", { name: "Disable" })).toBeInTheDocument();
-    const nexul = within(screen.getByRole("listitem", { name: "Nexul" }));
+    const nexul = within(dialog.getByRole("listitem", { name: "Nexul" }));
     expect(nexul.getByRole("combobox", { name: "Role in Nexul" })).toBeInTheDocument();
-    expect(nexul.getByRole("button", { name: "Remove from Nexul" })).toBeInTheDocument();
+    await user.click(nexul.getByRole("button", { name: "Actions for Nexul" }));
+    expect(await screen.findByRole("button", { name: "Remove from workspace" })).toBeInTheDocument();
+    expect(dialog.getByRole("button", { name: "Disable" })).toBeInTheDocument();
   });
 
   it("offers account actions only to a viewer who administers the instance", async () => {
@@ -104,13 +111,18 @@ describe("TeamSection", () => {
     expect(screen.queryByRole("button", { name: /disable|remove account/i })).not.toBeInTheDocument();
   });
 
-  it("adds the person to a workspace they are not in with the chosen role", async () => {
+  it("opens from a link and adds the person to a workspace they are not in and the viewer manages", async () => {
     mocks.put.mockResolvedValue({ data: undefined });
     const user = userEvent.setup();
     renderSection("/configuration/team?person=u-bob");
 
-    const labs = within(await screen.findByRole("listitem", { name: "Labs" }));
-    await user.click(labs.getByRole("button", { name: "Add" }));
-    expect(mocks.put).toHaveBeenCalledWith("/api/workspaces/ws-labs/members/u-bob", { role_id: "r-tester" });
+    const dialog = within(await screen.findByRole("dialog", { name: "Bob" }));
+    await user.click(dialog.getByRole("combobox", { name: "Workspace to add to" }));
+    const offered = (await screen.findAllByRole("option")).map((option) => option.textContent);
+    expect(offered).toEqual(["Labs", "Kit"]);
+
+    await user.click(screen.getByRole("option", { name: "Kit" }));
+    await user.click(dialog.getByRole("button", { name: "Add" }));
+    expect(mocks.put).toHaveBeenCalledWith("/api/workspaces/ws-kit/members/u-bob", { role_id: "r-guest" });
   });
 });

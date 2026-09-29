@@ -12,6 +12,7 @@ import type { TeamMembership } from "@/models/Team";
 interface TeamOverridesFormProps {
   target: { workspaceId: string; userId: string };
   membership: TeamMembership;
+  onDone: () => void;
 }
 
 interface OverridesFormData {
@@ -20,7 +21,7 @@ interface OverridesFormData {
 }
 
 // The same allow levels and deny grid an invitation uses, applied to a member who already joined.
-export const TeamOverridesForm = ({ target, membership }: TeamOverridesFormProps) => {
+export const TeamOverridesForm = ({ target, membership, onDone }: TeamOverridesFormProps) => {
   const { data: catalog, isPending, error } = useFetchPermissionCatalog();
   const save = useSetTeamMemberOverrides();
   const form = useForm<OverridesFormData>({ defaultValues: { allow: membership.allow, deny: membership.deny } });
@@ -28,7 +29,7 @@ export const TeamOverridesForm = ({ target, membership }: TeamOverridesFormProps
   const overlap = allow.some((value) => deny.includes(value));
 
   return (
-    <form className="space-y-3" onSubmit={form.handleSubmit((values) => save.mutate({ ...target, ...values }))}>
+    <form className="space-y-3" onSubmit={form.handleSubmit((values) => save.mutate({ ...target, ...values }, { onSuccess: onDone }))}>
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {catalog && (
@@ -44,9 +45,14 @@ export const TeamOverridesForm = ({ target, membership }: TeamOverridesFormProps
         </div>
       )}
       {overlap && <p role="alert" className="text-sm text-destructive">A permission can&apos;t be allowed and denied at once.</p>}
-      <Button type="submit" size="sm" disabled={!form.formState.isDirty || overlap || save.isPending}>
-        Save overrides
-      </Button>
+      <div className="flex gap-2">
+        <Button type="submit" size="sm" disabled={!form.formState.isDirty || overlap || save.isPending}>
+          Save overrides
+        </Button>
+        <Button type="button" variant="ghost" size="sm" onClick={onDone}>
+          Cancel
+        </Button>
+      </div>
     </form>
   );
 };
