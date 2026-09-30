@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { api } from "@/api/client";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 import type { MentionChipData, MentionRef, MentionSearchResult } from "@/models/Mention";
 
 export const resolveMentionsKey = "resolveMentions";
@@ -13,10 +14,11 @@ export const resolveMentions = async (refs: MentionRef[]): Promise<MentionChipDa
   return res.data.chips;
 };
 
-// Backs the @ picker's autocomplete (tickets + docs).
+// Backs the @ picker's autocomplete: people of the selected workspace, tickets, and docs.
 export const searchMentions = async (query: string, limit = 8): Promise<MentionSearchResult[]> => {
+  const workspaceId = useWorkspaceStore.getState().selectedWorkspaceId;
   const res = await api.get<{ results: MentionSearchResult[] }>("/api/mentions/search", {
-    params: { q: query, limit },
+    params: { q: query, limit, ...(workspaceId && { workspace_id: workspaceId }) },
   });
   return res.data.results;
 };
