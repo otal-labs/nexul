@@ -7,7 +7,12 @@ export interface Repo {
   full_name: string;
   default_branch: string;
   html_url: string;
+  // The connector that listed it, "github" today; a provider the web has no mark for renders no icon.
+  provider: string;
 }
+
+// Fewer characters match too much of an installation; the server refuses a shorter q.
+export const REPOSITORY_SEARCH_MIN_LENGTH = 3;
 
 // One account or organisation the GitHub App is installed on; together they decide which repositories Nexul sees.
 export interface Installation {

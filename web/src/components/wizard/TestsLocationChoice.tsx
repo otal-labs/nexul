@@ -1,9 +1,8 @@
 import { useShallow } from "zustand/react/shallow";
 
-import { RepositoryInstallHint } from "@/components/wizard/RepositoryInstallHint";
+import { RepoProviderMark } from "@/components/ProviderMarks";
+import { RepositorySearch } from "@/components/wizard/RepositorySearch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useFetchRepositories } from "@/hooks/RepositoryHooks";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
 import { TestsLocation } from "@/enums/Project";
 
@@ -27,7 +26,6 @@ const TestsLocationRow = ({ value, label, description }: TestsLocationRowProps) 
 );
 
 const TestsRepoPicker = () => {
-  const { data: repos } = useFetchRepositories();
   const { testsRepo, setTestsRepo } = useProjectWizardStore(
     useShallow((s) => ({ testsRepo: s.testsRepo, setTestsRepo: s.setTestsRepo })),
   );
@@ -35,25 +33,13 @@ const TestsRepoPicker = () => {
   return (
     <div className="space-y-2 pt-3">
       <p className="text-xs text-muted-foreground">Attached to the project for the agent to read and run. Never deployed.</p>
-      <Select
-        value={testsRepo ? String(testsRepo.id) : ""}
-        onValueChange={(id) => {
-          const repo = repos?.find((r) => String(r.id) === id);
-          if (repo) setTestsRepo(repo);
-        }}
-      >
-        <SelectTrigger aria-label="Tests repository" className="w-full">
-          <SelectValue placeholder="Choose the tests repository…" />
-        </SelectTrigger>
-        <SelectContent>
-          {repos?.map((repo) => (
-            <SelectItem key={repo.id} value={String(repo.id)}>
-              {repo.full_name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <RepositoryInstallHint />
+      {testsRepo && (
+        <p className="flex items-center gap-2 text-sm">
+          <RepoProviderMark provider={testsRepo.provider} />
+          <span className="min-w-0 truncate font-medium">{testsRepo.full_name}</span>
+        </p>
+      )}
+      <RepositorySearch label="Search tests repositories" onSelect={setTestsRepo} />
     </div>
   );
 };

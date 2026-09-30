@@ -137,7 +137,7 @@ describe("useRemoveProjectRepo", () => {
 });
 
 describe("useSaveTestsAnswer", () => {
-  const e2e = { id: 7, owner: "acme", name: "e2e", full_name: "acme/e2e", default_branch: "main", html_url: "" };
+  const e2e = { id: 7, owner: "acme", name: "e2e", full_name: "acme/e2e", default_branch: "main", html_url: "", provider: "github" };
 
   it("records the answer when the tests repository is already attached", async () => {
     vi.mocked(api.put).mockResolvedValue({ data: {} });

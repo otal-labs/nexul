@@ -16,7 +16,9 @@ func MCPTools(s Scanner, l InstallationLister, g Gate) []mcptool.Tool {
 
 type repositoryListIn struct {
 	mcptool.PageArgs
-	Installations bool `json:"installations,omitempty" jsonschema:"When true, also return the accounts and organisations Nexul's GitHub App is installed on. Defaults to false."`
+	Query         string `json:"q,omitempty" jsonschema:"Keeps only repositories whose owner/name contains this text, ignoring case. At least 3 characters. Omit it to list every repository."`
+	Refresh       bool   `json:"refresh,omitempty" jsonschema:"When true, asks the git provider again instead of using the answer from the last minute, for an App just installed on another account. Defaults to false."`
+	Installations bool   `json:"installations,omitempty" jsonschema:"When true, also return the accounts and organisations Nexul's GitHub App is installed on. Defaults to false."`
 }
 
 // repositoryListOut is the page plus the installations behind it, returned only when they were asked for.
@@ -28,14 +30,15 @@ type repositoryListOut struct {
 func repositoryListTool(s Scanner, l InstallationLister, g Gate) mcptool.Tool {
 	return mcptool.New("repository_list", "List repositories",
 		"Lists the repositories the connected git provider installation can read, with owner, name, and default "+
-			"branch. Use it to pick a repository for repository_scan or pull_request_list. Returns at most 100 per page. "+
+			"branch. Use it to pick a repository for repository_scan or pull_request_list. Returns at most 100 per page; "+
+			"pass q to search by owner/name text. "+
 			"Only accounts with Nexul's GitHub App installed are listed; a missing repository means the App is not "+
 			"installed on its owner, which installs it at https://github.com/apps/<app slug>/installations/new. "+
 			"Pass installations to also see those accounts and organisations, whether each grants all or selected "+
 			"repositories, and the GitHub page where its access is managed.",
 		mcptool.Hints{ReadOnly: true},
 		func(ctx context.Context, in repositoryListIn) (any, error) {
-			repos, err := ListRepos(ctx, g, s)
+			repos, err := ListRepos(ctx, g, s, in.Query, in.Refresh)
 			if err != nil {
 				return nil, err
 			}

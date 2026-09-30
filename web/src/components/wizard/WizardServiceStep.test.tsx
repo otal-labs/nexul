@@ -19,7 +19,7 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const machines = [{ id: "m-1", name: "prod", stack_root: "/data/nexul", first_seen: "", last_seen: "" }];
 
-const repository = { id: 1, owner: "onik97", name: "api", full_name: "onik97/api", default_branch: "main", html_url: "" };
+const repository = { id: 1, owner: "onik97", name: "api", full_name: "onik97/api", default_branch: "main", html_url: "", provider: "github" };
 
 const attachStack = {
   id: "stack-9",

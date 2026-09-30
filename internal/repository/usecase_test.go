@@ -186,13 +186,36 @@ func TestScan_InvalidComposeYAMLIsNotACandidate(t *testing.T) {
 func TestListRepos(t *testing.T) {
 	t.Run("returns the scanner's repos", func(t *testing.T) {
 		s := &fakeScanner{repos: []Repo{{Owner: "acme", Name: "app"}}}
-		repos, err := ListRepos(context.Background(), nil, s)
+		repos, err := ListRepos(context.Background(), nil, s, "", false)
 		require.NoError(t, err)
 		assert.Equal(t, []Repo{{Owner: "acme", Name: "app"}}, repos)
 	})
+	t.Run("q keeps repositories whose full name contains it, ignoring case", func(t *testing.T) {
+		s := &fakeScanner{repos: []Repo{{FullName: "acme/api"}, {FullName: "Acme/Web-App"}, {FullName: "other/tool"}}}
+		repos, err := ListRepos(context.Background(), nil, s, " ACME/w ", false)
+		require.NoError(t, err)
+		assert.Equal(t, []Repo{{FullName: "Acme/Web-App"}}, repos)
+
+		repos, err = ListRepos(context.Background(), nil, s, "acme", false)
+		require.NoError(t, err)
+		assert.Len(t, repos, 2)
+	})
+	t.Run("q with no match is an empty list", func(t *testing.T) {
+		s := &fakeScanner{repos: []Repo{{FullName: "acme/api"}}}
+		repos, err := ListRepos(context.Background(), nil, s, "zzz", false)
+		require.NoError(t, err)
+		assert.NotNil(t, repos)
+		assert.Empty(t, repos)
+	})
+	t.Run("q shorter than three characters is invalid and never reaches the provider", func(t *testing.T) {
+		s := &fakeScanner{repos: []Repo{{FullName: "acme/api"}}}
+		_, err := ListRepos(context.Background(), nil, s, " ap ", false)
+		require.ErrorIs(t, err, apperrors.ErrInvalid)
+		assert.Zero(t, s.listCalls)
+	})
 	t.Run("propagates the scanner's error", func(t *testing.T) {
 		s := &fakeScanner{listErr: apperrors.ErrUnauthorized}
-		_, err := ListRepos(context.Background(), nil, s)
+		_, err := ListRepos(context.Background(), nil, s, "", false)
 		assert.ErrorIs(t, err, apperrors.ErrUnauthorized)
 	})
 }

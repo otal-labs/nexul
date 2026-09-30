@@ -11,6 +11,8 @@ type Repo struct {
 	FullName      string `json:"full_name"`
 	DefaultBranch string `json:"default_branch"`
 	HTMLURL       string `json:"html_url"`
+	// Provider is the connector that listed the repository ("github"); the web picks its mark from it.
+	Provider string `json:"provider"`
 }
 
 // Installation is one account or organisation the connector's GitHub App is installed on, visible to its user;
