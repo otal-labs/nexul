@@ -109,6 +109,10 @@ docs, deploys and runners on a phone, signed in by scanning a QR code,
 with push notifications and over-the-air updates. It is built and in device
 testing ahead of its first release; the map is in `.scratch/native-app/`.
 
+Being designed: **container logs**, reading what a deployed service prints
+from the stack page, the topology canvas, the phone, and agents through MCP.
+The wayfinder map is in `.scratch/container-logs/`.
+
 Parked until the repository migration lands: **bots**, webhook-driven bots
 that post into any conversation with Discord's payload and get their own tab
 in Settings. The wayfinder map in `.scratch/bots/` has the Discord contract,

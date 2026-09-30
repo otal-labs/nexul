@@ -67,6 +67,9 @@ git history, and anything durable it decided is an ADR.
   branch-driven deployments, LiveKit voice channels. Implemented; tickets 04
   and 11 await the owner's reaction to the built UI. Research findings in
   `research/`.
+- `.scratch/container-logs/` — wayfinder map charted 2026-09-30: reading a
+  deployed container's stdout and stderr from the stack page, the canvas,
+  the phone and MCP; tickets 01 to 07 open.
 - `.scratch/plays/` — plays: a pre-configured Agent turn fired from a
   ticket or doc page ("Fix with AI"), selectable memories with their own
   permission, doc threads, and persisted trails. Wayfinder map complete
