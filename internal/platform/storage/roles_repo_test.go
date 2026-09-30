@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/roles"
 )
@@ -102,12 +103,16 @@ func TestRolesRepo_Update(t *testing.T) {
 	role.Name = "Reviewers"
 	role.Permissions = permissions.SetOf(permissions.RolesWrite)
 	role.UpdatedAt = time.Now()
-	require.NoError(t, s.Roles.Update(context.Background(), role))
+	event := eventbus.OutboxEvent{ID: "evt-1", Topic: roles.TopicUpdated, Payload: roles.RoleEvent{RoleID: "role-1", WorkspaceID: "ws-1"}}
+	require.NoError(t, s.Roles.Update(context.Background(), role, event))
 
 	got, err := s.Roles.Get(context.Background(), "role-1")
 	require.NoError(t, err)
 	assert.Equal(t, "Reviewers", got.Name)
 	assert.True(t, got.Permissions.Has(permissions.RolesWrite))
+	var n int
+	require.NoError(t, s.db.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM outbox WHERE topic = ?`, roles.TopicUpdated).Scan(&n))
+	assert.Equal(t, 1, n)
 }
 
 func TestRolesRepo_Update_NotFound(t *testing.T) {

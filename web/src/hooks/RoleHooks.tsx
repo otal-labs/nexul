@@ -5,7 +5,7 @@ import { api, errorMessage } from "@/api/client";
 import type { Role } from "@/models/Role";
 import type { Workspace } from "@/models/Workspace";
 
-const getWorkspaceRolesKey = "getWorkspaceRoles";
+export const getWorkspaceRolesKey = "getWorkspaceRoles";
 
 // The invite dropdown's source, so invites assign from the workspace's own catalog, never a hardcoded pair.
 export const useFetchWorkspaceRoles = (workspaceId: string) =>

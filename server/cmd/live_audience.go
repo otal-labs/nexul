@@ -16,6 +16,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/plays"
+	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/runner"
 	"github.com/otal-labs/nexul/internal/tenancy"
 	"github.com/otal-labs/nexul/internal/tickets"
@@ -70,6 +71,7 @@ var liveRules = map[string]liveRule{
 	tenancy.TopicWorkspaceMemberRemoved: memberFrame,
 	tenancy.TopicWorkspaceMemberUpdated: memberFrame,
 	tenancy.TopicWorkspaceUpdated:       workspaceFrame,
+	roles.TopicUpdated:                  workspaceFrame,
 
 	tickets.TopicCreated:                 ticketFrame,
 	tickets.TopicUpdated:                 ticketFrame,

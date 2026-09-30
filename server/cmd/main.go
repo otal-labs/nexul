@@ -27,6 +27,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/logging"
 	"github.com/otal-labs/nexul/internal/platform/version"
+	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/runner"
 	"github.com/otal-labs/nexul/internal/tenancy"
 	"github.com/otal-labs/nexul/internal/tickets"
@@ -274,6 +275,7 @@ var livePushTopics = []string{
 	tenancy.TopicWorkspaceMemberRemoved,
 	tenancy.TopicWorkspaceMemberUpdated,
 	tenancy.TopicWorkspaceUpdated,
+	roles.TopicUpdated,
 }
 
 func fail(err error) {
