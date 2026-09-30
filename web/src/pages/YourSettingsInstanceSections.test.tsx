@@ -52,7 +52,7 @@ const renderPage = (route: string, anywhere = ownerBits, permissions: string[] =
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[route]}>
         <Routes>
-          <Route path="/settings/:section?" element={<YourSettingsPage />} />
+          <Route path="/settings/:section?/:tab?" element={<YourSettingsPage />} />
           <Route path="/acme/configuration/:section?" element={<p>Configuration page</p>} />
         </Routes>
         <LocationProbe />
@@ -122,7 +122,7 @@ describe("Settings page instance sections", () => {
       <QueryClientProvider client={client}>
         <MemoryRouter initialEntries={["/settings/instance"]}>
           <Routes>
-            <Route path="/settings/:section?" element={<YourSettingsPage />} />
+            <Route path="/settings/:section?/:tab?" element={<YourSettingsPage />} />
           </Routes>
         </MemoryRouter>
       </QueryClientProvider>,
@@ -146,8 +146,8 @@ describe("Settings page instance sections", () => {
     expect(screen.queryByText("URL card")).not.toBeInTheDocument();
   });
 
-  it("opens the Google sign-in tab from its ?tab=", async () => {
-    renderPage("/settings/sign-in?tab=google");
+  it("opens the Google sign-in tab from its path", async () => {
+    renderPage("/settings/sign-in/google");
 
     await selectedTab("Google");
     expect(screen.getByText("google card")).toBeInTheDocument();

@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { BoardSettingsSection } from "@/components/settings/BoardSettingsSection";
@@ -45,13 +45,15 @@ const ticketType = (overrides: Record<string, unknown> = {}) => ({
 
 const PROJECT_ID = "proj-1";
 
-// Columns, types, and label colors are separate tabs; tests open the one they exercise through ?tab=.
+// Columns, types, and label colors are separate tabs; tests open the one they exercise through the path.
 const renderSection = (tab = "columns") => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[`/projects/proj-1/settings/board?tab=${tab}`]}>
-        <BoardSettingsSection projectId={PROJECT_ID} />
+      <MemoryRouter initialEntries={[`/projects/proj-1/settings/board/${tab}`]}>
+        <Routes>
+          <Route path="/projects/:projectId/settings/board/:tab?" element={<BoardSettingsSection projectId={PROJECT_ID} />} />
+        </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -98,7 +100,9 @@ describe("BoardSettingsSection", () => {
     render(
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
         <MemoryRouter initialEntries={["/projects/proj-1/settings/board"]}>
-          <BoardSettingsSection projectId={PROJECT_ID} />
+          <Routes>
+            <Route path="/projects/:projectId/settings/board/:tab?" element={<BoardSettingsSection projectId={PROJECT_ID} />} />
+          </Routes>
         </MemoryRouter>
       </QueryClientProvider>,
     );

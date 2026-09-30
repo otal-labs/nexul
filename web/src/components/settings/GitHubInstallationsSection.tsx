@@ -7,11 +7,13 @@ import { GitHubInstallationsList } from "@/components/settings/GitHubInstallatio
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { Button } from "@/components/ui/button";
 import { useFetchConnectorAppConfig, useFetchConnectorStatus } from "@/hooks/ConnectorsHooks";
+import { useTabPath } from "@/hooks/useTabPath";
 import { githubAppInstallURL } from "@/models/Connectors";
 
 export const GitHubInstallationsSection = () => {
   const { data: app } = useFetchConnectorAppConfig("github");
   const { data: connector, error, isPending } = useFetchConnectorStatus("github");
+  const { tabPath } = useTabPath();
   if (!app?.configured) return null;
 
   return (
@@ -35,7 +37,7 @@ export const GitHubInstallationsSection = () => {
       {connector && !connector.status.configured && (
         <p className="text-sm text-muted-foreground">
           Connect GitHub on the{" "}
-          <Link to="?tab=connectors" className="underline underline-offset-2 hover:text-foreground">
+          <Link to={tabPath()} className="underline underline-offset-2 hover:text-foreground">
             Connectors tab
           </Link>{" "}
           to see where the App is installed.

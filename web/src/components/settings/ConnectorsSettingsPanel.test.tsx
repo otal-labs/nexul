@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ConnectorsSettingsPanel } from "@/components/settings/ConnectorsSettingsPanel";
@@ -31,8 +31,10 @@ const renderPanel = (anywhere: string[], app = { configured: true }) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={["/settings/connectors?tab=github-app"]}>
-        <ConnectorsSettingsPanel />
+      <MemoryRouter initialEntries={["/settings/connectors/github-app"]}>
+        <Routes>
+          <Route path="/settings/connectors/:tab?" element={<ConnectorsSettingsPanel />} />
+        </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
   );

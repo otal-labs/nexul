@@ -2,7 +2,7 @@ import { PageTabs, PageTabsContent } from "@/components/PageTabs";
 import { ComputersSection } from "@/components/settings/ComputersSection";
 import { PairingDefaultsSection } from "@/components/settings/PairingDefaultsSection";
 
-// Computers comes first so /settings/pairing?setup=<id> (no ?tab=) opens the setup summary it names.
+// Computers comes first so /settings/pairing?setup=<id> (no tab segment) opens the setup summary it names.
 export const PairingPanel = () => (
   <PageTabs
     label="T3 pairing settings"

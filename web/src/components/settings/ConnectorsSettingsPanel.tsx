@@ -5,7 +5,7 @@ import { ConnectorsSection } from "@/components/settings/ConnectorsSection";
 import { useHasInstancePermission } from "@/hooks/AccessHooks";
 import { useFetchConnectorAppConfig } from "@/hooks/ConnectorsHooks";
 
-// Connectors comes first so the OAuth callback (?connector=&connected=&error=, no ?tab=) lands where ConnectorsSection reads it.
+// Connectors comes first so the OAuth callback (?connector=&connected=&error=, no tab segment) lands where ConnectorsSection reads it.
 export const ConnectorsSettingsPanel = () => {
   // Managing the App takes connectors:write; the Installations card shows to anyone here once an App is registered.
   const canManageApp = useHasInstancePermission("connectors:write");

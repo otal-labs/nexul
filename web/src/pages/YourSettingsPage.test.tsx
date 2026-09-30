@@ -48,7 +48,7 @@ const renderPage = (route = "/settings") => {
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[route]}>
         <Routes>
-          <Route path="/settings/:section?" element={<YourSettingsPage />} />
+          <Route path="/settings/:section?/:tab?" element={<YourSettingsPage />} />
         </Routes>
         <LocationProbe />
       </MemoryRouter>
@@ -116,7 +116,7 @@ describe("YourSettingsPage", () => {
       data: { token: "dep_ABC123rawvalue", id: "pat-1", name: "ci agent", prefix: "rawvalue", created_at: "2026-08-12T00:00:00Z" },
     });
     const user = userEvent.setup();
-    renderPage("/settings/security?tab=tokens");
+    renderPage("/settings/security/tokens");
 
     await user.type(await screen.findByLabelText(/token name/i), "ci agent");
     await user.click(screen.getByRole("button", { name: /^create token$/i }));
@@ -140,7 +140,7 @@ describe("YourSettingsPage", () => {
     });
     mocks.del.mockResolvedValue({ data: patList([]) });
     const user = userEvent.setup();
-    renderPage("/settings/security?tab=tokens");
+    renderPage("/settings/security/tokens");
 
     expect(await screen.findByText("ci agent")).toBeInTheDocument();
     expect(screen.getByText("old token")).toBeInTheDocument();
