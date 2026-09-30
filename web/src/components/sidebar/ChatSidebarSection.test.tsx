@@ -37,14 +37,15 @@ const peopleResponse = {
   ],
 };
 
-const renderSection = (collapsed = false) => {
+const renderSection = (collapsed = false, path = "/") => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={["/"]}>
+      <MemoryRouter initialEntries={[path]}>
         <ContextAwareConfirmation.ConfirmationRoot />
+        <ChatSidebarSection collapsed={collapsed} />
         <Routes>
-          <Route path="/" element={<ChatSidebarSection collapsed={collapsed} />} />
+          <Route path="/" element={null} />
           <Route path="/acme/chat/:conversationId" element={<div>chat-page</div>} />
         </Routes>
       </MemoryRouter>
@@ -144,12 +145,31 @@ describe("ChatSidebarSection", () => {
     expect(await screen.findByTitle("Dana")).toBeInTheDocument();
   });
 
-  it("clicking a voice channel joins the call without leaving the page", async () => {
+  it("clicking a voice channel joins the call and opens its text chat", async () => {
     const user = userEvent.setup();
     renderSection();
     await user.click(await screen.findByText("huddle"));
 
-    expect(screen.queryByText("chat-page")).not.toBeInTheDocument();
+    expect(await screen.findByText("chat-page")).toBeInTheDocument();
     expect(useVoiceCallStore.getState().activeConversationId).toBe("c3");
+  });
+
+  it("lists doc threads under Threads, titled with their doc", async () => {
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === "/api/chat/conversations") {
+        return { data: [{ id: "c4", workspace_id: "ws-1", kind: "doc_thread", doc_id: "doc-1", created_by: "u1", created_at: "", updated_at: "" }] };
+      }
+      if (url === "/api/docs/doc-1") return { data: { id: "doc-1", title: "Runbook" } };
+      if (url === "/api/auth/me") return { data: meResponse };
+      return { data: {} };
+    });
+    renderSection();
+    expect(await screen.findByText("Runbook")).toBeInTheDocument();
+    expect(screen.getByText("Threads")).toBeInTheDocument();
+  });
+
+  it("marks the open conversation's row as the current page", async () => {
+    renderSection(false, "/acme/chat/c1");
+    expect(await screen.findByRole("link", { name: /general/ })).toHaveAttribute("aria-current", "page");
   });
 });

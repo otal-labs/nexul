@@ -11,7 +11,7 @@ interface ListDetailLayoutProps {
   placeholder: string;
 }
 
-// Chat's three panes (ADR 0060) for an editor: below lg one pane shows at a time, since the editor needs the width.
+// The app sidebar, a list, and the open record, for an editor: below lg one pane shows at a time, since the editor needs the width.
 export const ListDetailLayout = ({ list, detail, hasSelection, placeholder }: ListDetailLayoutProps) => (
   <div className="flex h-screen">
     <div

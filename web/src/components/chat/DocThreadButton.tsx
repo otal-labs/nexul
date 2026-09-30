@@ -11,7 +11,7 @@ interface DocThreadButtonProps {
   docId: string;
 }
 
-// Opens the doc's one thread on the chat page (ADR 0060), created on first use like a ticket's; hidden
+// Opens the doc's one thread on the chat page (ADR 0093), created on first use like a ticket's; hidden
 // for a caller without docs:thread on this doc.
 export const DocThreadButton = ({ workspaceId, docId }: DocThreadButtonProps) => {
   const canThread = useHasPermission("docs:thread");

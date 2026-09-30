@@ -1,6 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -22,8 +21,6 @@ const conversations = [
   { id: "c1", workspace_id: "ws-1", kind: "channel", name: "general", created_by: "u1", created_at: "", updated_at: "" },
   { id: "c2", workspace_id: "ws-1", kind: "doc_thread", doc_id: "doc-1", created_by: "u1", created_at: "", updated_at: "" },
 ];
-
-const docResponse = { id: "doc-1", project_id: "proj-1", title: "Runbook", body: "", version: 1, archived: false, created_at: "", updated_at: "" };
 
 const renderPage = (path = "/acme/chat") => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -47,7 +44,6 @@ beforeEach(() => {
     if (url === "/api/chat/conversations") return { data: conversations };
     if (url === "/api/chat/unread") return { data: {} };
     if (url === "/api/auth/me") return { data: meResponse };
-    if (url === "/api/docs/doc-1") return { data: docResponse };
     if (url.startsWith("/api/chat/conversations/")) return { data: [] };
     if (url === "/api/workspaces/ws-1/people") return { data: { people: [] } };
     return { data: {} };
@@ -55,28 +51,29 @@ beforeEach(() => {
 });
 
 describe("ChatPage", () => {
-  it("groups the list into chats and threads and prompts to pick one before a thread is open", async () => {
+  it("a bare /chat opens the first channel", async () => {
     renderPage();
-    expect(await screen.findByText("general")).toBeInTheDocument();
-    expect(screen.getByText("Chats")).toBeInTheDocument();
-    expect(screen.getByText("Threads")).toBeInTheDocument();
-    expect(await screen.findByText("Runbook")).toBeInTheDocument();
-    expect(screen.getByText("Select a conversation")).toBeInTheDocument();
+    expect(await screen.findByLabelText("Message")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Message general…")).toBeInTheDocument();
   });
 
   it("opens the conversation named in the URL with its composer", async () => {
     renderPage("/acme/chat/c1");
-    expect(await screen.findByLabelText("Message")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "general" })).toHaveAttribute("aria-current", "true");
+    expect(await screen.findByPlaceholderText("Message general…")).toBeInTheDocument();
   });
 
-  it("navigates to the picked conversation and back to the list", async () => {
-    const user = userEvent.setup();
+  it("says so when the URL names a conversation that is not in the workspace", async () => {
+    renderPage("/acme/chat/gone");
+    expect(await screen.findByText("Conversation not found")).toBeInTheDocument();
+  });
+
+  it("a workspace with no conversations shows the empty state instead of redirecting", async () => {
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === "/api/chat/conversations") return { data: [] };
+      return { data: {} };
+    });
     renderPage();
-    await user.click(await screen.findByText("general"));
-    await screen.findByLabelText("Message");
-    await user.click(screen.getByRole("button", { name: "Back to conversations" }));
-    expect(await screen.findByText("Select a conversation")).toBeInTheDocument();
+    expect(await screen.findByText("No conversations yet")).toBeInTheDocument();
   });
 });
 
@@ -110,8 +107,8 @@ describe("ChatPage for a member without members:write", () => {
     stagePeople("Lewis");
     renderPage("/acme/chat/c3");
     expect(await screen.findByText("Sup man")).toBeInTheDocument();
-    // The list row, the thread header, and the message author.
-    expect(await screen.findAllByText("Lewis")).toHaveLength(3);
+    // The thread header and the message author.
+    expect(await screen.findAllByText("Lewis")).toHaveLength(2);
     expect(screen.queryByText("u-lewis")).not.toBeInTheDocument();
   });
 
@@ -119,8 +116,8 @@ describe("ChatPage for a member without members:write", () => {
     stagePeople("");
     renderPage("/acme/chat/c3");
     expect(await screen.findByText("Sup man")).toBeInTheDocument();
-    // The list row, the thread header, and the message author.
-    expect(await screen.findAllByText("LewisWelch94")).toHaveLength(3);
+    // The thread header and the message author.
+    expect(await screen.findAllByText("LewisWelch94")).toHaveLength(2);
     expect(screen.queryByText("u-lewis")).not.toBeInTheDocument();
   });
 });

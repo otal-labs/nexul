@@ -191,7 +191,7 @@ export interface GroupedConversations {
   channels: Conversation[];
   voiceChannels: Conversation[];
   dms: Conversation[];
-  // Doc threads are the one thread kind listed here — reached from the chat page as well as the doc header (ticket 19).
+  // Doc threads are the one thread kind listed here — reached from the sidebar as well as the doc header.
   docThreads: Conversation[];
 }
 
@@ -202,3 +202,9 @@ export const groupConversations = (conversations: Conversation[]): GroupedConver
   dms: conversations.filter((c) => c.kind === "dm"),
   docThreads: conversations.filter((c) => c.kind === "doc_thread"),
 });
+
+// What a bare /chat opens: never a voice channel, since opening one there would not join it.
+export const defaultConversation = (conversations: Conversation[]): Conversation | undefined => {
+  const { channels, dms, docThreads } = groupConversations(conversations);
+  return channels[0] ?? dms[0] ?? docThreads[0];
+};
