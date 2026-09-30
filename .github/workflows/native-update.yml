@@ -41,4 +41,4 @@ jobs:
       - name: Publish the update
         env:
           RELEASE_CHANNEL: production
-        run: npx eoas@3.2.5 publish --branch production --platform android --nonInteractive --disableRepositoryCheck
+        run: npx eoas@3.2.5 publish --branch production --platform all --nonInteractive --disableRepositoryCheck

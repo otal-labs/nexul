@@ -473,6 +473,7 @@ func TestClient_ListIgnoresAppReleases(t *testing.T) {
 	at := func(h int) time.Time { return time.Date(2026, 9, 28, h, 0, 0, 0, time.UTC) }
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		require.NoError(t, jsonEncode(w, []ghRelease{
+			{TagName: "phone-v0.1.4-beta", Prerelease: true, PublishedAt: at(13)},
 			{TagName: "android-v0.1.0", Prerelease: true, PublishedAt: at(12)},
 			{TagName: "v0.2.0-beta.9", Prerelease: true, PublishedAt: at(10)},
 			{TagName: "v0.2.0-beta.8", Prerelease: true, PublishedAt: at(9)},

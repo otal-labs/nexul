@@ -87,26 +87,32 @@ Nexul has one version for the whole product, and git tags are that version
 
 ## The phone app — `native-release.yml` and `native-update.yml`
 
-The Android app has its own version, `version` in `native/app.config.ts`,
-and its own tags, `android-v<version>`, next to the server's `v…` tags. Both
-workflows run only by hand (`workflow_dispatch`); nothing about the app ships
-on push or on a schedule.
+The phone app has its own version, `version` in `native/app.config.ts`,
+and its own tags, `phone-v<version>-beta`, next to the server's `v…` tags.
+Both workflows release only by hand (`workflow_dispatch`); nothing about the
+app ships on push or on a schedule.
 
-- **`native-release.yml`** builds a signed release APK (`expo prebuild`,
+- **`native-release.yml`** builds a signed Android APK (`expo prebuild`,
   then `gradlew assembleRelease` with the keystore from the repository
-  secrets) and creates the GitHub release `android-v<version>` with
-  `nexul-android-<version>.apk` attached. It refuses to run when that tag
-  already exists. The release is never marked latest, and the server's
-  release client, `install.sh` and this site's changelog ignore every tag
-  that does not start with `v`, so a phone release cannot become the
-  server's latest.
+  secrets) and an unsigned iOS IPA on a macOS runner (`expo prebuild`,
+  `pod install`, then `xcodebuild archive` with signing off), and creates one
+  pre-release, `phone-v<version>-beta`, with `nexul-android-<version>.apk`
+  and `nexul-ios-<version>.ipa` attached. The run asks for the version and
+  refuses when it differs from `app.config.ts` or when the tag already
+  exists. There is no Apple Developer account: SideStore signs the IPA on the
+  iPhone with a free Apple ID at install time. The release is never marked
+  latest, and the server's release client, `install.sh` and this site's
+  changelog ignore every tag that does not start with `v` (the older
+  `android-v…` releases too), so a phone release cannot become the server's
+  latest. A pull request that touches `native/` builds the IPA as an
+  artifact and releases nothing.
 - **`native-update.yml`** publishes the JavaScript and assets of the
-  current commit to the self-hosted update server's `production` branch as
+  current commit, for Android and iOS, to the self-hosted update server's `production` branch as
   an over-the-air update. Phones running the same app version pick it up on
   their next launch. The run stops with an error before installing anything
   when the update server's token or variables are missing.
 - **Which one to run:** a change to a native dependency or to
-  `app.config.ts` bumps `version` and needs a new APK, because the runtime
+  `app.config.ts` bumps `version` and needs a new phone release, because the runtime
   version follows the app version and an update never crosses versions. A
   JavaScript-only change ships as an update within the current version.
 - **Secrets:** `ANDROID_KEYSTORE_BASE64` (the PKCS12 release keystore,
@@ -116,8 +122,8 @@ on push or on a schedule.
   key cannot install over the old one.
 - **Variables:** `NEXUL_UPDATES_URL`, the update server's manifest URL
   (`https://<update server>/manifest`), and `NEXUL_UPDATES_APP_ID`, the app's
-  id in the update server's dashboard. Both are baked into every APK and read
-  by the publish step, so an APK built without them never receives updates.
+  id in the update server's dashboard. Both are baked into every build and
+  read by the publish step, so a build without them never receives updates.
 - **Code signing of updates:** once the update server's certificate is
   committed as `native/certs/certificate.pem`, the app config adds it and
   every update must be signed by the server. Builds work without it; the

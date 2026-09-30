@@ -85,7 +85,7 @@ tag_name() {
 
 # newest_tag picks the most recently published release. GitHub orders the list by tag text, which puts beta.9
 # above beta.10, and a draft has no publish time, so it is never picked; a list without publish times keeps its order.
-# The phone app's android-v* releases share the repository and carry no server binaries, so only v* tags count.
+# The phone app's phone-v* and android-v* releases share the repository and carry no server binaries, so only v* tags count.
 newest_tag() {
   list=$(cat)
   newest=$(printf '%s' "$list" | tr ',' '\n' | awk '
