@@ -8,6 +8,7 @@ import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { useFetchStack, useFetchStackDeploys, useFetchStackServices } from "@/hooks/StackHooks";
+import { useAreaAccess } from "@/hooks/WorkspaceHooks";
 import { DeployStatus, DeployStrategy, latestDeploy } from "@/models/Stack";
 
 export const StackScreen = () => {
@@ -16,6 +17,12 @@ export const StackScreen = () => {
   const { data: stack, error, isPending } = useFetchStack(id);
   const { data: deploys, error: deploysError, isPending: deploysPending } = useFetchStackDeploys(id);
   const { data: containers, error: containersError, isPending: containersPending } = useFetchStackServices(id);
+  const canReadLogs = useAreaAccess()?.("stackLogs") === true;
+
+  const logsOpener = (stackId: string, service: string) => {
+    if (!canReadLogs) return undefined;
+    return () => router.push({ pathname: "/deploys/stack/[id]/logs/[service]", params: { id: stackId, service } });
+  };
 
   const latest = latestDeploy(deploys);
   const isRun = stack?.strategy === DeployStrategy.Run;
@@ -65,7 +72,9 @@ export const StackScreen = () => {
             {containersPending && <LoadingDisplay />}
             {containersError && <ErrorDisplay error={containersError} className="px-0" />}
             {containers && containers.length === 0 && <Text variant="muted">No services parsed yet.</Text>}
-            {containers && containers.length > 0 && containers.map((c) => <ContainerRow key={c.id} container={c} />)}
+            {containers &&
+              containers.length > 0 &&
+              containers.map((c) => <ContainerRow key={c.id} container={c} onOpenLogs={logsOpener(stack.id, c.name)} />)}
           </View>
 
           <View className="gap-2 border-t border-border pt-3">

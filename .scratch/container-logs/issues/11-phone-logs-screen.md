@@ -1,7 +1,7 @@
 # 11 — Logs on the phone
 
 **Type:** task
-**Status:** ready-for-agent
+**Status:** done
 **Blocked by:** 08
 
 ## What to build

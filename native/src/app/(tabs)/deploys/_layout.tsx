@@ -15,6 +15,7 @@ export default function DeploysLayout() {
       >
         <Stack.Screen name="index" options={{ title: "Deploys" }} />
         <Stack.Screen name="stack/[id]" options={{ title: "" }} />
+        <Stack.Screen name="stack/[id]/logs/[service]" options={{ title: "Logs" }} />
         <Stack.Screen name="deploy/[id]" options={{ title: "Deploy" }} />
       </Stack>
     </AreaGate>
