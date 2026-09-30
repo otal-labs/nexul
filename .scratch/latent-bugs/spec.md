@@ -93,3 +93,7 @@ defaults to Let's Encrypt, so certificates follow once routers exist.
 ## A scoped token without docs:thread can open a doc's thread
 
 The gateway derives a scoped token's scope from the path, so `POST /api/chat/docs/{docID}/thread` needs only `chat:write`, and the use-case then checks `docs:thread` against the token's creator, not the token. Add the route to `verbRouteScope` in `internal/integrations/gateway.go`, as the container logs routes are.
+
+## Logs of a missing container loop as "Runner offline"
+
+When a service's container does not exist, `docker logs` fails with a daemon error line that has no timestamp. The stream ends, and the web view and the phone reconnect. Each reconnect repeats the error lines, because deduplication keys on the timestamp. The marker also reads "Runner offline, reconnecting…", which is wrong: the runner is online and the container is missing. The server should send a distinct end reason for a missing container, and both clients should stop retrying on it and say so.
