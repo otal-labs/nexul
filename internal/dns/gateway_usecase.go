@@ -163,19 +163,38 @@ func (s *Service) DeleteGateway(ctx context.Context, gatewayID string) error {
 	if len(exposures) > 0 {
 		return fmt.Errorf("%w: gateway %s still has %d exposure(s) — remove them first", apperrs.ErrConflict, gatewayID, len(exposures))
 	}
-	if g.ServiceID != "" {
-		if s.provisioner == nil {
-			return apperrs.Fatal(fmt.Errorf("%w: entry-path provisioning is not wired", apperrs.ErrInvalid))
-		}
-		if err := s.provisioner.Deprovision(ctx, g.ServiceID); err != nil {
-			return fmt.Errorf("deprovision gateway %s: %w", gatewayID, err)
-		}
+	if err := s.deprovisionGateway(ctx, g); err != nil {
+		return err
 	}
 	evt := s.gatewayEvent(GatewayChangedEvent{
 		GatewayID: g.ID, Kind: g.Kind, DockerNetwork: g.DockerNetwork, Action: "deleted",
 	})
 	if err := s.repo.DeleteGateway(ctx, gatewayID, evt); err != nil {
 		return fmt.Errorf("delete gateway %s: %w", gatewayID, err)
+	}
+	return nil
+}
+
+// deprovisionGateway drops the stack behind g, unless it is the cloudflared its tunnel runs on: that agent also
+// carries the instance's own hostname, so only the gateway row goes.
+func (s *Service) deprovisionGateway(ctx context.Context, g *Gateway) error {
+	if g.ServiceID == "" {
+		return nil
+	}
+	if g.Kind == GatewayTunnel && g.TunnelID != "" {
+		t, err := s.repo.GetTunnel(ctx, g.TunnelID)
+		if err != nil && !errors.Is(err, apperrs.ErrNotFound) {
+			return fmt.Errorf("get tunnel %s: %w", g.TunnelID, err)
+		}
+		if err == nil && t.AgentServiceID == g.ServiceID {
+			return nil
+		}
+	}
+	if s.provisioner == nil {
+		return apperrs.Fatal(fmt.Errorf("%w: entry-path provisioning is not wired", apperrs.ErrInvalid))
+	}
+	if err := s.provisioner.Deprovision(ctx, g.ServiceID); err != nil {
+		return fmt.Errorf("deprovision gateway %s: %w", g.ID, err)
 	}
 	return nil
 }

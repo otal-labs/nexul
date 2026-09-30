@@ -132,6 +132,19 @@ func TestService_DeleteGateway_Deprovisions(t *testing.T) {
 	assert.True(t, errors.Is(err, apperrs.ErrNotFound))
 }
 
+func TestService_DeleteGateway_KeepsTheTunnelsOwnAgent(t *testing.T) {
+	repo := newFakeRepo()
+	prov := &fakeProvisioner{}
+	s := newGatewayService(repo, newFakeTunnelProvider(), prov, newFakeContainerLookup())
+	require.NoError(t, repo.SaveTunnel(context.Background(), Tunnel{ID: "t1", Name: "instance", AgentServiceID: "agent-stack"}))
+	require.NoError(t, repo.SaveGateway(context.Background(), Gateway{ID: "g1", Kind: GatewayTunnel, TunnelID: "t1", ServiceID: "agent-stack", Machine: "host1"}))
+
+	require.NoError(t, s.DeleteGateway(context.Background(), "g1"))
+	assert.Empty(t, prov.deprovisionCalls)
+	_, err := repo.GetGateway(context.Background(), "g1")
+	assert.True(t, errors.Is(err, apperrs.ErrNotFound))
+}
+
 func TestService_DeleteGateway_FailsWithExposures(t *testing.T) {
 	repo := newFakeRepo()
 	s := newGatewayService(repo, newFakeTunnelProvider(), &fakeProvisioner{}, newFakeContainerLookup())
