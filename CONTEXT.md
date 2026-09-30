@@ -77,6 +77,15 @@ harness as an attachment, capped at 10 MiB per image and 25 MiB per turn; an
 oversized or non-image reference becomes an "attachment omitted" note.
 _Avoid_: Backend (that is the Go server), Runtime, Driver
 
+**Model options**:
+The per-model settings a turn runs with, such as reasoning level, context
+window, and fast mode: whatever the harness lists for that model, with its
+defaults, read live from the harness and never kept as a list in Nexul. They
+are picked beside a model and stored with it (pairing defaults, project link,
+a play's trail, a computer's setup choices); an option left unset runs on the
+harness default, and picking another model starts it on its own defaults.
+_Avoid_: Traits, knobs, model settings
+
 **Paired computer**:
 A user's own machine running a harness, attached to their Nexul account.
 It is reached through its computer tunnel, or, for a machine the server can

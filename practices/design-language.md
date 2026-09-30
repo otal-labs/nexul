@@ -254,6 +254,16 @@ gutter marks every stderr line and is the only color in the view. A solid
 Jump to live control, never a translucent one, resumes following.
 `LogsView` in `web/src/components/logs/` is the reference.
 
+Model choice. Wherever a model is picked, it is one frame holding the model
+button, a hairline, then the model options button ("High · 1M"); a model with
+no options shows the model button alone. The model button opens a searchable
+list with a left rail (favourites, then one mark per provider), rows of name,
+a mono New mark, and the provider line under it, and legacy models grouped
+last under a mono microheader. The options button opens one section per
+option the model supports, the harness default marked. Provider marks are
+monochrome, in `currentColor`. `ModelChoice` in `web/src/components/model/`
+is the reference; a settings row puts it right of the label and description.
+
 Tabs. A view whose cards or sections are separate jobs (two or more of them)
 splits them into tabs instead of stacking them; a single-card view gets none,
 and a left section nav stays as it is, the tabs live inside the section. Tabs
