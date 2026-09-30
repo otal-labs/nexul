@@ -2,14 +2,12 @@ import { useParams } from "react-router";
 
 import { Container } from "@/components/Container";
 import { DetailErrorDisplay } from "@/components/DetailErrorDisplay";
-import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { ServiceHostnameSection } from "@/components/dns/ServiceHostnameSection";
 import { DeployHistorySection } from "@/components/service/DeployHistorySection";
-import { SettingsCard } from "@/components/settings/SettingsCard";
-import { ContainersTable } from "@/components/stack/ContainersTable";
 import { StackBranchDeploySection } from "@/components/stack/StackBranchDeploySection";
 import { StackDangerZoneSection } from "@/components/stack/StackDangerZoneSection";
+import { ServicesSection } from "@/components/stack/ServicesSection";
 import { StackDeployActions } from "@/components/stack/StackDeployActions";
 import { StackHeaderSection } from "@/components/stack/StackHeaderSection";
 import { DEFAULT_STACK_SECTION, isStackSection, StackNav, type StackSection } from "@/components/stack/StackNav";
@@ -20,7 +18,7 @@ import { useFetchStack, useFetchStackDeploys, useFetchStackServices } from "@/ho
 import { latestDeploy, type Container as StackContainer } from "@/models/Stack";
 import { projectSettingsPath, projectTokenById } from "@/models/Project";
 
-// A container's declared image, or the image observed running once the runner reports one.
+// A run stack's one container: its observed image, else the declared one. A compose stack has no single image.
 const imageOf = (c: StackContainer | undefined): string | undefined => c?.image || c?.declared.image;
 
 // Same section-per-view shape as the settings pages: the :section path segment drives the card, StackNav lists sections.
@@ -28,7 +26,7 @@ export const StackPage = () => {
   const { stackId = "", section: rawSection } = useParams();
   const { data: stack, isPending, error } = useFetchStack(stackId);
   const { data: projects = [] } = useFetchProjects();
-  const { data: services, isPending: servicesPending, error: servicesError } = useFetchStackServices(stackId);
+  const { data: services } = useFetchStackServices(stackId);
   const { data: deploys, isPending: deploysPending } = useFetchStackDeploys(stackId);
   const showExposures = useAreaAccess()?.("dns") ?? false;
   const { data: exposures } = useFetchExposures(showExposures);
@@ -47,7 +45,7 @@ export const StackPage = () => {
     .map((e) => e.hostname);
   // An instance stack (a gateway) has no project; Topology is where it lives.
   const projectPath = stack?.project_id ? projectSettingsPath(projectTokenById(projects, stack.project_id)) : "/topology";
-  const image = latest?.image || imageOf(services?.[0]);
+  const image = latest?.image || (stack?.strategy === "run" ? imageOf(services?.[0]) : undefined);
 
   return (
     <Container className="mx-auto max-w-5xl py-8">
@@ -68,15 +66,7 @@ export const StackPage = () => {
               {section === "overview" && (
                 <>
                   <StackDeployActions stack={stack} lastHealthy={lastHealthy} canRollback={canRollback} image={image} />
-                  <SettingsCard
-                    id="services"
-                    title="Services"
-                    description="Containers this stack declares, with what the runner last observed for each."
-                  >
-                    {servicesPending && <LoadingDisplay />}
-                    {servicesError && <ErrorDisplay error={servicesError} title="Could not load services" />}
-                    {services && <ContainersTable containers={services} />}
-                  </SettingsCard>
+                  <ServicesSection stackId={stack.id} />
                 </>
               )}
               {section === "exposures" && <ServiceHostnameSection containers={services ?? []} />}

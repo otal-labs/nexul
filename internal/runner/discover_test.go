@@ -66,7 +66,7 @@ func TestDiscoverHost_ExcludesSelfAndItsComposeProject(t *testing.T) {
 	cmd.on("docker", []string{"inspect", "--format", "{{json .}}", "sibling5678"},
 		`{"Id":"sibling5678","Name":"/server","Config":{"Image":"nexul-server","Labels":{"com.docker.compose.project":"nexul","com.docker.compose.service":"server"}},"State":{"Status":"running"},"NetworkSettings":{"Networks":{},"Ports":{}}}`)
 	cmd.on("docker", []string{"inspect", "--format", "{{json .}}", "web9999"},
-		`{"Id":"web9999","Name":"/myapp-web-1","Config":{"Image":"nginx:latest","Labels":{"com.docker.compose.project":"myapp","com.docker.compose.service":"web"}},"State":{"Status":"running"},"NetworkSettings":{"Networks":{"myapp_default":{"IPAddress":"172.20.0.2"}},"Ports":{"80/tcp":[{"HostIp":"0.0.0.0","HostPort":"8080"}]}}}`)
+		`{"Id":"web9999","Name":"/myapp-web-1","Config":{"Image":"nginx:latest","Labels":{"com.docker.compose.project":"myapp","com.docker.compose.service":"web"}},"State":{"Status":"running"},"NetworkSettings":{"Networks":{"myapp_default":{"IPAddress":"172.20.0.2"}},"Ports":{"80/tcp":[{"HostIp":"0.0.0.0","HostPort":"8080"}],"9000/tcp":null}}}`)
 	cmd.on("docker", []string{"network", "ls", "--format", "json"},
 		`{"Name":"bridge"}`+"\n"+`{"Name":"myapp_default"}`+"\n"+`{"Name":"host"}`+"\n")
 
@@ -82,7 +82,7 @@ func TestDiscoverHost_ExcludesSelfAndItsComposeProject(t *testing.T) {
 	require.Len(t, c.Networks, 1)
 	assert.Equal(t, "myapp_default", c.Networks[0].Name)
 	assert.Equal(t, "172.20.0.2", c.Networks[0].Address)
-	assert.Equal(t, []string{"8080:80/tcp"}, c.Ports)
+	assert.Equal(t, []string{"8080:80/tcp", "9000/tcp"}, c.Ports)
 
 	require.Len(t, report.Networks, 1, "builtin networks are excluded")
 	assert.Equal(t, "myapp_default", report.Networks[0].Name)

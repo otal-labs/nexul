@@ -126,7 +126,7 @@ type ObservedService struct {
 	// Status is one of running|healthy|exited, derived from docker inspect's State.Status and State.Health.Status.
 	Status   string            `json:"status"`
 	Networks []ObservedNetwork `json:"networks,omitempty"`
-	// Ports are published bindings formatted "host:container/proto".
+	// Ports are published bindings as "host:container/proto" and network-only ports as "container/proto".
 	Ports []string `json:"ports,omitempty"`
 }
 

@@ -164,9 +164,26 @@ export interface Container {
   image?: string;
   status: ContainerStatus;
   networks?: ContainerNetwork[];
+  // "host:container/proto" when published on the host, "container/proto" when reachable only on its networks.
   ports?: string[];
   observed_at?: string;
 }
+
+export interface ContainerPort {
+  container: number;
+  host?: string;
+  proto: string;
+}
+
+// Also reads a run stack's declared "host:container" form, which carries no protocol.
+export const parseContainerPort = (entry: string): ContainerPort | undefined => {
+  const [binding = "", proto = "tcp"] = entry.split("/");
+  const parts = binding.split(":");
+  const container = Number(parts.pop());
+  if (!Number.isInteger(container) || container <= 0) return undefined;
+  if (parts.length === 0) return { container, proto };
+  return { container, host: parts.join(":"), proto };
+};
 
 export const RuleFormSchema = z.object({
   pattern: z.string().trim().min(1, "Branch pattern is required"),

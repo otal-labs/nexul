@@ -224,7 +224,8 @@ beyond this row exists. The URL step is the whole navigation state.
 Stack detail page. The header keeps the detail-page shape (back link, mono
 slug, title, actions top right) and adds a facts grid: a mono microheader over
 each value (Status, Image, Runner, Strategy, Hostnames, Repository, or Network
-when no repository is attached). Below it the page is the settings shell:
+when no repository is attached); a compose stack runs several images, so it shows
+Services, a count with how many are not running, in Image's place. Below it the page is the settings shell:
 `SettingsSectionNav` driving a `/:section` path segment (Overview, Exposures, Branch deploys,
 Deploy history, Danger zone), one or two `SettingsCard`s per section. The nav
 is a scrolling top row below 1024px and a side column from it, on every
@@ -235,7 +236,11 @@ viewer may open shows no label. A card's action lives in its footer strip (`foot
 Expose, Add rule), never floating in the body, and a form that is not the
 section's main job stays collapsed behind that footer button. Lists inside a
 card are hairline rows in one bordered box. Nothing nests a card inside a
-card.
+card. The Services card has no column headers: each row is the service name and
+status over its image and a muted `container <name>` line, with how it is
+reached trailing right in mono (public hostnames as links, then
+`service:port` on the stack's network, then `host :port` when published on the
+machine); its footer names the networks and when the runner last looked.
 
 Tabs. A view whose cards or sections are separate jobs (two or more of them)
 splits them into tabs instead of stacking them; a single-card view gets none,
