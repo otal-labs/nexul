@@ -16,7 +16,7 @@ interface VoiceChannelSidebarRowProps {
 export const VoiceChannelSidebarRow = ({ conversation, occupants, unreadCount }: VoiceChannelSidebarRowProps) => {
   const joinCall = useVoiceCallStore((s) => s.join);
   return (
-    <div>
+    <div className="flex flex-col gap-0.5">
       <ChatSidebarRow
         conversationId={conversation.id}
         label={conversation.name ?? "Voice channel"}
@@ -24,8 +24,7 @@ export const VoiceChannelSidebarRow = ({ conversation, occupants, unreadCount }:
         unreadCount={unreadCount}
         onClick={() => void joinCall(conversation.id)}
       />
-      {/* px-2.5 + w-8 icon column + gap-2.5 (navLinkClass geometry) = the channel name's x. */}
-      <VoiceOccupantList occupants={occupants} className="pl-[3.25rem]" />
+      <VoiceOccupantList occupants={occupants} />
     </div>
   );
 };
