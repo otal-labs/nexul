@@ -14,18 +14,18 @@ interface SetupRunRowProps {
   onRetry: (provider: string) => void;
 }
 
-// The whole row picks the provider through its stretched button; Retry sits above that overlay.
+// One line per provider; the whole row picks it through its stretched button, Retry sits above that overlay, and the reason and model show in the transcript.
 const SetupRunRow = ({ row, index, selected, retryDisabled, onSelect, onRetry }: SetupRunRowProps) => {
   const done = row.state === "confirmed";
   return (
     <li
       className={cn(
-        "relative flex animate-in items-start gap-2.5 px-3 py-2.5 transition-colors fill-mode-backwards fade-in-0 slide-in-from-bottom-1 duration-200 ease-out hover:bg-accent/40",
+        "relative flex animate-in items-center gap-2.5 px-3 py-2 transition-colors fill-mode-backwards fade-in-0 slide-in-from-bottom-1 duration-200 ease-out hover:bg-accent/40",
         selected && "bg-muted hover:bg-muted",
       )}
       style={{ animationDelay: `${Math.min(index, 7) * 25}ms` }}
     >
-      <SetupStateGlyph state={row.state} className="mt-0.5" />
+      <SetupStateGlyph state={row.state} />
       <div className="min-w-0 flex-1">
         <button
           type="button"
@@ -36,10 +36,6 @@ const SetupRunRow = ({ row, index, selected, retryDisabled, onSelect, onRetry }:
           <span className={cn("transition-opacity duration-150 ease-standard", done && "text-muted-foreground line-through opacity-70")}>{row.name}</span>
           <span className="sr-only">: {SETUP_STATE_LABEL[row.state]}</span>
         </button>
-        <p className="text-xs break-words text-muted-foreground">
-          {row.status}
-          {row.model && <span className="font-mono whitespace-nowrap"> · {row.model}</span>}
-        </p>
       </div>
       {row.state === "failed" && (
         <Button type="button" variant="outline" size="sm" className="relative shrink-0" disabled={retryDisabled} onClick={() => onRetry(row.provider)}>

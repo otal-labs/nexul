@@ -322,6 +322,26 @@ func TestPairingRepo_SetSetupConfirmedAt_SetClearAndSurvivesRePair(t *testing.T)
 	assert.Equal(t, pairing.TopicSetupConfirmed, entries[0].Topic)
 }
 
+func TestPairingRepo_SetSetupSkippedProviders_RoundTripsAndSurvivesRePair(t *testing.T) {
+	t.Parallel()
+	s := newSetupTestStore(t)
+	got, err := s.Pairing.GetComputer(t.Context(), "u1", "c1")
+	require.NoError(t, err)
+	assert.Equal(t, []string{}, got.SetupSkipped, "a new computer skips nothing")
+
+	require.ErrorIs(t, s.Pairing.SetSetupSkippedProviders(t.Context(), "u2", "c1", []string{"codex"}), apperrs.ErrNotFound)
+	require.NoError(t, s.Pairing.SetSetupSkippedProviders(t.Context(), "u1", "c1", []string{"codex"}))
+	require.NoError(t, s.Pairing.SaveComputer(t.Context(), newTestComputer("c1", "u1", "renamed")))
+	got, err = s.Pairing.GetComputer(t.Context(), "u1", "c1")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"codex"}, got.SetupSkipped)
+
+	require.NoError(t, s.Pairing.SetSetupSkippedProviders(t.Context(), "u1", "c1", []string{}))
+	got, err = s.Pairing.GetComputer(t.Context(), "u1", "c1")
+	require.NoError(t, err)
+	assert.Equal(t, []string{}, got.SetupSkipped)
+}
+
 func TestPairingRepo_ProviderSetups_UpsertListAndCascade(t *testing.T) {
 	t.Parallel()
 	s := newSetupTestStore(t)

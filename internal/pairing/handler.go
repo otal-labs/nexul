@@ -87,10 +87,12 @@ func (h *Handler) getSetup(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, setup)
 }
 
-// startSetupRequest's Models maps a provider's driver kind to the model its setup turn runs on; Folder picks where the turns run.
+// startSetupRequest's Models maps a provider's driver kind to the model its setup turn runs on; Folder picks where the turns run;
+// Providers lists the driver kinds to set up, empty for every provider the harness lists.
 type startSetupRequest struct {
-	Models map[string]string `json:"models"`
-	Folder string            `json:"folder"`
+	Models    map[string]string `json:"models"`
+	Folder    string            `json:"folder"`
+	Providers []string          `json:"providers"`
 }
 
 func (h *Handler) startSetup(w http.ResponseWriter, r *http.Request) {
@@ -99,7 +101,7 @@ func (h *Handler) startSetup(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	run, err := h.svc.StartSetup(r.Context(), actorID(r), r.PathValue("id"), req.Models, req.Folder)
+	run, err := h.svc.StartSetup(r.Context(), actorID(r), r.PathValue("id"), req.Models, req.Folder, req.Providers)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

@@ -15,8 +15,8 @@ import { cn } from "@/lib/utils";
 const FRAME =
   "flex max-h-[min(90dvh,52rem)] flex-col gap-0 p-0 sm:max-w-[min(48rem,calc(100%-2rem))] max-sm:inset-0 max-sm:top-0 max-sm:left-0 max-sm:h-dvh max-sm:max-h-none max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-none max-sm:border-0";
 
-// Set up is two panes from md up: wider, and a fixed height so the panes hold still while the transcript streams.
-const SETUP_FRAME = "md:h-[min(90dvh,52rem)] md:max-w-[min(64rem,calc(100%-2rem))]";
+// Set up is two panes from md up: wider and taller, at a fixed height so the panes hold still while the transcript streams.
+const SETUP_FRAME = "md:h-[min(90dvh,56rem)] md:max-h-[min(90dvh,56rem)] md:max-w-[min(80rem,calc(100%-4rem))]";
 
 interface NextButtonProps {
   computerId: string;

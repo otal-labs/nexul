@@ -69,7 +69,7 @@ describe("setupRunRows", () => {
 });
 
 describe("providerSetupLines", () => {
-  const setup = (overrides: Partial<ComputerSetup>): ComputerSetup => ({ computer_id: "c1", confirmed_at: null, providers: [], turns: [], ...overrides });
+  const setup = (overrides: Partial<ComputerSetup>): ComputerSetup => ({ computer_id: "c1", confirmed_at: null, providers: [], skipped_providers: [], turns: [], ...overrides });
 
   it("joins confirmations and turns into one line per provider, a running turn first", () => {
     const lines = providerSetupLines(

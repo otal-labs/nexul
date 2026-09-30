@@ -96,6 +96,8 @@ export interface ComputerSetup {
   computer_id: string;
   confirmed_at: string | null;
   providers: ProviderSetup[];
+  // Driver kinds the last run left out; the Set up step opens with them switched off.
+  skipped_providers: string[];
   turns: SetupTurnSummary[];
 }
 

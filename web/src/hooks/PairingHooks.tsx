@@ -178,22 +178,24 @@ export const useFetchComputerSetup = (computerId: string) =>
   });
 
 // Model slugs keyed by driver kind; a provider left out or set to "" runs on its own default. An empty folder runs in the default project.
+// Providers are the driver kinds a full run covers, empty for every provider the computer lists.
 export interface RunSetupInput {
   models: Record<string, string>;
   folder: string;
+  providers?: string[];
   provider?: string;
 }
 
-// Without a provider it starts setup for every provider; with one it re-runs only that provider, on its picked model.
+// Without a provider it starts setup for the chosen providers; with one it re-runs only that provider, on its picked model.
 export const useRunSetup = (computerId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ models, folder, provider }: RunSetupInput) => {
+    mutationFn: async ({ models, folder, providers, provider }: RunSetupInput) => {
       if (provider) {
         const url = `/api/pairing/computers/${computerId}/setup/providers/${encodeURIComponent(provider)}/retry`;
         return (await api.post<SetupRun>(url, { model: models[provider] ?? "", folder })).data;
       }
-      return (await api.post<SetupRun>(`/api/pairing/computers/${computerId}/setup/runs`, { models, folder })).data;
+      return (await api.post<SetupRun>(`/api/pairing/computers/${computerId}/setup/runs`, { models, folder, ...(providers && providers.length > 0 ? { providers } : {}) })).data;
     },
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getComputerSetupKey, computerId] });

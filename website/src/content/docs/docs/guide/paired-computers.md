@@ -75,15 +75,17 @@ not usable even if its row remains.
 
 A provider cannot run `@Agent` or a play on a computer until an agent confirms
 its setup there. The dialog's **Set up** step runs that setup for you: one
-turn per provider, one after another, each on the model picked for it in the
-step (its own default unless you pick another). Each turn connects Nexul's MCP server to
+turn per provider you leave switched on, one after another, each on the model
+picked for it in the step (its own default unless you pick another). A provider
+you start setup without stays unconfirmed, and the step opens with it switched
+off next time. Each turn connects Nexul's MCP server to
 its provider with the computer's MCP token, installs the default skill set
 (mattpocock/skills) and the nexul-memory skill into `~/.claude/skills/` and
 `~/.agents/skills/`, and confirms the provider with the skills it discovered.
 Each confirmed turn also confirms the computer, so one failed provider never
 blocks the others. A failed provider can be retried on its own.
 
-The step shows one row per provider: waiting, running with the agent's steps
+The step shows one row per included provider: waiting, running with the agent's steps
 folded under it (one line per step, updated as it finishes), confirmed, or
 failed with **Retry**. Each computer row in
 **Your settings → T3 pairing** shows **Setup confirmed** or **Needs setup**, one line

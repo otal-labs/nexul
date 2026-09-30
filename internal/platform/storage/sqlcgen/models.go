@@ -537,23 +537,24 @@ type Outbox struct {
 }
 
 type PairingComputer struct {
-	ID                string
-	UserID            string
-	Name              string
-	ServerUrl         string
-	BearerToken       string
-	TokenExpiresAt    int64
-	HarnessVersion    string
-	CreatedAt         int64
-	UpdatedAt         int64
-	Kind              string
-	SetupConfirmedAt  sql.NullInt64
-	TunnelID          string
-	TunnelHostname    string
-	TunnelZoneID      string
-	TunnelRecordID    string
-	TunnelAccessAppID string
-	SetupMcpToken     string
+	ID                    string
+	UserID                string
+	Name                  string
+	ServerUrl             string
+	BearerToken           string
+	TokenExpiresAt        int64
+	HarnessVersion        string
+	CreatedAt             int64
+	UpdatedAt             int64
+	Kind                  string
+	SetupConfirmedAt      sql.NullInt64
+	TunnelID              string
+	TunnelHostname        string
+	TunnelZoneID          string
+	TunnelRecordID        string
+	TunnelAccessAppID     string
+	SetupMcpToken         string
+	SetupSkippedProviders string
 }
 
 type PairingProjectLink struct {
