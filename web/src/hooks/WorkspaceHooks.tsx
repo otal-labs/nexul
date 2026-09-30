@@ -37,7 +37,7 @@ export const useEnsureWorkspaceSelected = (enabled: boolean) => {
   }, [workspaces]);
 };
 
-const getMyRoleKey = "getMyRole";
+export const getMyRoleKey = "getMyRole";
 
 // Mirrors internal/tenancy/handler.go's meResponse; keep the two in sync.
 export interface MyWorkspaceInfo {

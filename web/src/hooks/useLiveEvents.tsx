@@ -14,7 +14,7 @@ import { getDnsExposuresKey, getDnsGatewaysKey } from "@/hooks/DnsHooks";
 import { getDocKey, getDocsKey } from "@/hooks/DocHooks";
 import { getInstanceUpgradeKey } from "@/hooks/InstanceUpgradeHooks";
 import { getWorkspacePeopleKey } from "@/hooks/PeopleHooks";
-import { followWorkspaceUpdate, getWorkspacesKey } from "@/hooks/WorkspaceHooks";
+import { followWorkspaceUpdate, getMyRoleKey, getWorkspacesKey } from "@/hooks/WorkspaceHooks";
 import { getTeamKey } from "@/models/Team";
 import { getMemoriesKey, getMemoryKey, getMemoryVersionsKey } from "@/hooks/MemoryHooks";
 import { getNotificationsKey, getUnreadCountKey } from "@/hooks/NotificationHooks";
@@ -26,6 +26,7 @@ import {
   getHarnessResolveKey,
   getMCPTokenKey,
 } from "@/hooks/PairingHooks";
+import { getWorkspaceRolesKey } from "@/hooks/RoleHooks";
 import { getRunnerQueueKey, getRunnersKey } from "@/hooks/RunnerHooks";
 import { getServiceDeploysKey, getServicesKey } from "@/hooks/ServiceHooks";
 import { getStackDeploysKey } from "@/hooks/StackHooks";
@@ -132,9 +133,11 @@ const pushTopics: Record<string, string[]> = {
   "account.presence_changed": [getTeamKey],
   // A new name or picture reaches every open screen that shows the person, the saver's other devices included.
   "account.profile_updated": [getWorkspacePeopleKey, getTeamKey, getMeKey],
-  "workspace.member.added": [getTeamKey, getWorkspacePeopleKey, getWorkspacesKey],
-  "workspace.member.removed": [getTeamKey, getWorkspacePeopleKey, getWorkspacesKey],
-  "workspace.member.updated": [getTeamKey],
+  // A role or override change reaches its holder's open tabs, so what they may do follows without a sign-out.
+  "workspace.member.added": [getTeamKey, getWorkspacePeopleKey, getWorkspacesKey, getMyRoleKey, getMeKey],
+  "workspace.member.removed": [getTeamKey, getWorkspacePeopleKey, getWorkspacesKey, getMyRoleKey, getMeKey],
+  "workspace.member.updated": [getTeamKey, getMyRoleKey, getMeKey],
+  "role.updated": [getMyRoleKey, getMeKey, getWorkspaceRolesKey],
 };
 
 // A full-text-replace snapshot of the in-progress @Agent turn bubble, keyed by conversation + message id.

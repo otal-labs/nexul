@@ -7,6 +7,7 @@ import (
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
 	"github.com/otal-labs/nexul/internal/roles"
 )
@@ -58,7 +59,7 @@ func (r *RolesRepo) List(ctx context.Context, workspaceID string) ([]*roles.Role
 	return out, nil
 }
 
-func (r *RolesRepo) Update(ctx context.Context, role *roles.Role) error {
+func (r *RolesRepo) Update(ctx context.Context, role *roles.Role, events ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).UpdateRole(ctx, sqlcgen.UpdateRoleParams{
 			Name: role.Name, Permissions: setJSON(role.Permissions), UpdatedAt: role.UpdatedAt.Unix(), ID: role.ID,
@@ -69,7 +70,7 @@ func (r *RolesRepo) Update(ctx context.Context, role *roles.Role) error {
 		if n == 0 {
 			return fmt.Errorf("update role %s: %w", role.ID, apperrs.ErrNotFound)
 		}
-		return nil
+		return insertOutboxRows(ctx, tx, events)
 	})
 }
 

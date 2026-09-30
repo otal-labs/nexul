@@ -94,6 +94,20 @@ describe("useLiveEvents dispatch", () => {
     expect(arrivals[0]).toMatchObject({ id: "s-phone", platform: "Android", label: "Pixel 8" });
   });
 
+  it("refetches the viewer's own permissions when a role or a member's grants change", async () => {
+    setup();
+    const socket = await connectedSocket();
+    const spy = invalidate();
+    const push = (topic: string, payload: Record<string, string>) =>
+      act(() => socket.message(JSON.stringify({ topic, type: "event", payload })));
+
+    push("workspace.member.updated", { user_id: "u1", workspace_id: "ws-1" });
+    push("role.updated", { role_id: "r-1", workspace_id: "ws-1" });
+
+    expect(spy.mock.calls.filter(([arg]) => arg?.queryKey?.[0] === "getMyRole")).toHaveLength(2);
+    expect(spy.mock.calls.filter(([arg]) => arg?.queryKey?.[0] === getMeKey)).toHaveLength(2);
+  });
+
   it("invalidates the runners query on a runner.connected push", async () => {
     setup();
     const socket = await connectedSocket();

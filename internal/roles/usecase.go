@@ -8,6 +8,7 @@ import (
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
@@ -162,7 +163,8 @@ func (s *Service) Update(ctx context.Context, workspaceID, roleID, actorUserID, 
 	r.Name = name
 	r.Permissions = perms
 	r.UpdatedAt = s.now().UTC()
-	if err := s.repo.Update(ctx, r); err != nil {
+	event := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: RoleEvent{RoleID: r.ID, WorkspaceID: r.WorkspaceID, ActorID: actorUserID}}
+	if err := s.repo.Update(ctx, r, event); err != nil {
 		return nil, fmt.Errorf("update role %s: %w", roleID, err)
 	}
 	return r, nil

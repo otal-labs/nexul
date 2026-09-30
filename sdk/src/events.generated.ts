@@ -72,6 +72,7 @@ export interface EventPayloads {
   "play.run_waiting": { "trail_id": string; "play_id": string; "play_label": string; "target_type": "ticket" | "doc" | "interview"; "target_id": string; "target_title"?: string; "starter_id": string; "via": "web" | "mcp"; "workspace_id"?: string; };
   "play.updated": { "play": { "id": string; "workspace_id": string; "label": string; "type": string; "description"?: string; "instructions"?: string; "enabled"?: boolean; "show_when_stage"?: string | null; "excluded_project_ids"?: string[]; "created_by"?: string; "created_at"?: string; "updated_at"?: string; }; };
   "review.status_changed": { "id": string; "repo": string; "pr_number": number; "status": string; "reviewer"?: string; };
+  "role.updated": { "role_id": string; "workspace_id": string; "actor_id"?: string; };
   "runner.connected": { "runner_id": string; "name"?: string; };
   "runner.disconnected": { "runner_id": string; "reason"?: string; };
   "runner.heartbeat": { "runner_id": string; "ts": number; };
@@ -179,6 +180,7 @@ export const TOPICS: Topic[] = [
   "play.run_waiting",
   "play.updated",
   "review.status_changed",
+  "role.updated",
   "runner.connected",
   "runner.disconnected",
   "runner.heartbeat",
@@ -284,6 +286,7 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "play.run_waiting": {"trail_id":"fixture-trail_id","play_id":"fixture-play_id","play_label":"fixture-play_label","target_type":"ticket","target_id":"fixture-target_id","target_title":"fixture-target_title","starter_id":"fixture-starter_id","via":"web","workspace_id":"fixture-workspace_id"},
   "play.updated": {"play":{"id":"fixture-id","workspace_id":"fixture-workspace_id","label":"fixture-label","type":"fixture-type","description":"fixture-description","instructions":"fixture-instructions","enabled":false,"show_when_stage":"fixture-show_when_stage","excluded_project_ids":["fixture-excluded_project_ids"],"created_by":"fixture-created_by","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"}},
   "review.status_changed": {"id":"fixture-id","repo":"fixture-repo","pr_number":1,"status":"fixture-status","reviewer":"fixture-reviewer"},
+  "role.updated": {"role_id":"fixture-role_id","workspace_id":"fixture-workspace_id","actor_id":"fixture-actor_id"},
   "runner.connected": {"runner_id":"fixture-runner_id","name":"fixture-name"},
   "runner.disconnected": {"runner_id":"fixture-runner_id","reason":"fixture-reason"},
   "runner.heartbeat": {"runner_id":"fixture-runner_id","ts":1},

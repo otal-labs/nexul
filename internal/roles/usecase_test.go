@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
@@ -25,6 +26,7 @@ type fakeRepo struct {
 	listErr   error
 	updateErr error
 	deleteErr error
+	events    []eventbus.OutboxEvent
 }
 
 func newFakeRepo() *fakeRepo {
@@ -75,7 +77,7 @@ func (f *fakeRepo) List(_ context.Context, workspaceID string) ([]*Role, error) 
 	return out, nil
 }
 
-func (f *fakeRepo) Update(_ context.Context, r *Role) error {
+func (f *fakeRepo) Update(_ context.Context, r *Role, events ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.updateErr != nil {
@@ -86,6 +88,7 @@ func (f *fakeRepo) Update(_ context.Context, r *Role) error {
 	}
 	cp := *r
 	f.byID[r.ID] = &cp
+	f.events = append(f.events, events...)
 	return nil
 }
 
@@ -371,6 +374,9 @@ func TestUpdate(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "Reviewers", r.Name)
 		assert.True(t, r.Permissions.Has(permissions.ProjectsWrite))
+		require.Len(t, repo.events, 1)
+		assert.Equal(t, TopicUpdated, repo.events[0].Topic)
+		assert.Equal(t, RoleEvent{RoleID: "role-editors", WorkspaceID: "ws-1", ActorID: "u-owner"}, repo.events[0].Payload)
 	})
 	t.Run("an edit may keep a permission the editor lacks but never add one", func(t *testing.T) {
 		repo, members := newFakeRepo(), newFakeMemberGate()
