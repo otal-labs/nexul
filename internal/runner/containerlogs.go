@@ -18,7 +18,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/ids"
 )
 
-// Container log limits (ADR 0090); logLineMaxBytes keeps any chunk under the server's 64KiB frame read limit.
+// Container log limits (ADR 0091); logLineMaxBytes keeps any chunk under the server's 64KiB frame read limit.
 const (
 	maxLogTail      = 1000
 	maxLogStreams   = 16

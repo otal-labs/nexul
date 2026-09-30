@@ -79,7 +79,7 @@ func (h *Handler) serviceLogs(w http.ResponseWriter, r *http.Request) {
 // logsWriteTimeout drops a viewer whose socket has not taken one message in this long.
 const logsWriteTimeout = 10 * time.Second
 
-// LogsSocket serves one viewer's live tail; closing the socket stops `docker logs` on the runner (ADR 0090).
+// LogsSocket serves one viewer's live tail; closing the socket stops `docker logs` on the runner (ADR 0091).
 func (h *Handler) LogsSocket(w http.ResponseWriter, r *http.Request) {
 	tail, err := logTail(r)
 	if err != nil {

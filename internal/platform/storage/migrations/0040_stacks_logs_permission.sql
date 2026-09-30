@@ -1,4 +1,4 @@
--- Reading container logs is its own verb (ADR 0090); every role that could already change a stack keeps seeing its output.
+-- Reading container logs is its own verb (ADR 0091); every role that could already change a stack keeps seeing its output.
 UPDATE roles SET permissions = (
     SELECT json_group_array(value) FROM (
         SELECT value FROM json_each(roles.permissions)

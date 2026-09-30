@@ -36,7 +36,7 @@ type LogFeed interface {
 	Close()
 }
 
-// LogSource is the runner seam that streams a container's logs from its machine (ADR 0090).
+// LogSource is the runner seam that streams a container's logs from its machine (ADR 0091).
 type LogSource interface {
 	OpenLogs(ctx context.Context, machine, container string, tail int, follow bool) (LogFeed, error)
 }
@@ -44,7 +44,7 @@ type LogSource interface {
 // SetLogSource wires the runner's log streams; unset, reading logs answers that no runner can serve them.
 func (s *Service) SetLogSource(l LogSource) { s.logs = l }
 
-// ServiceLogs opens a service's container logs with the stack's env values masked; Close stops the stream (ADR 0090).
+// ServiceLogs opens a service's container logs with the stack's env values masked; Close stops the stream (ADR 0091).
 func (s *Service) ServiceLogs(ctx context.Context, stackID, service string, tail int, follow bool) (LogFeed, error) {
 	if tail < 0 {
 		return nil, fmt.Errorf("%w: tail must be zero or more lines", apperrs.ErrInvalid)

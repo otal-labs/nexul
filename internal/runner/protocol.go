@@ -42,7 +42,7 @@ const (
 	FrameUpgradeResult   FrameType = "upgrade_result"
 	// FrameUninstall (server -> runner) says the runner was removed: it uninstalls its own service and exits.
 	FrameUninstall FrameType = "uninstall"
-	// Container logs (ADR 0090): logs_request and logs_cancel go to the runner, logs_chunk and logs_end come back.
+	// Container logs (ADR 0091): logs_request and logs_cancel go to the runner, logs_chunk and logs_end come back.
 	FrameLogsRequest FrameType = "logs_request"
 	FrameLogsChunk   FrameType = "logs_chunk"
 	FrameLogsEnd     FrameType = "logs_end"
