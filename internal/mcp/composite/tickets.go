@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/otal-labs/nexul/internal/codereview"
+	"github.com/otal-labs/nexul/internal/docs/richtext"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 	"github.com/otal-labs/nexul/internal/tickets"
@@ -121,8 +122,12 @@ func (n *names) ticket(ctx context.Context, t *tickets.Ticket) (ticketResult, er
 	if labels == nil {
 		labels = []string{}
 	}
+	body, err := richtext.ToMarkdown(t.Body)
+	if err != nil {
+		body = t.Body
+	}
 	return ticketResult{
-		ID: t.ID, Key: ticketKey(pn.prefix, t.Number), Title: t.Title, Body: t.Body, ProjectID: t.ProjectID,
+		ID: t.ID, Key: ticketKey(pn.prefix, t.Number), Title: t.Title, Body: body, ProjectID: t.ProjectID,
 		StatusID: string(t.Status), Status: pn.statuses[string(t.Status)],
 		TypeID: t.TypeID, Type: pn.types[t.TypeID], CategoryID: t.CategoryID, Category: pn.categories[t.CategoryID],
 		Developer: t.Developer, Tester: t.Tester, Reporter: t.Reporter, Labels: labels, DocID: t.DocID,

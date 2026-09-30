@@ -102,6 +102,16 @@ func TestTicketGet_Errors(t *testing.T) {
 	}
 }
 
+func TestTicketGet_BodyIsMarkdownWithPeopleAsAtLogin(t *testing.T) {
+	f := newFixture(t)
+	f.w.addTicket(&tickets.Ticket{ID: "t-9", ProjectID: "p-1", Title: "Pair on it", Status: "st-todo",
+		Body: `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"ask "},{"type":"mention","attrs":{"type":"person","id":"u-rix","label":"rixwavedev"}}]}]}`})
+
+	got, err := call(t, t.Context(), f.ticketTools(), "ticket_get", `{"id":"t-9"}`)
+	require.NoError(t, err)
+	assert.Equal(t, "ask [@rixwavedev](/people/u-rix)", got.(ticketDetail).Body)
+}
+
 func TestTicketGet(t *testing.T) {
 	f := newFixture(t)
 	f.w.addTicket(&tickets.Ticket{ID: "t-3", ProjectID: "p-1", Title: "Timeout crash", Status: "st-todo"})
