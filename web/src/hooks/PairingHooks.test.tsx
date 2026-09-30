@@ -33,14 +33,14 @@ describe("useHarnessReadiness", () => {
   it("is ready when the resolved computer is connected", async () => {
     mockRoutes({ resolve: { ok: true, computer_id: "c1" }, presence: { c1: "connected" } });
     const { result } = renderHook(() => useHarnessReadiness(), { wrapper });
-    await waitFor(() => expect(result.current).toEqual({ state: "ready", computerId: "c1", provider: "", model: "" }));
+    await waitFor(() => expect(result.current).toEqual({ state: "ready", computerId: "c1", provider: "", model: "", modelOptions: [] }));
   });
 
-  it("carries the resolved provider and model when ready", async () => {
-    mockRoutes({ resolve: { ok: true, computer_id: "c1", provider: "claude", model: "sonnet-5" }, presence: { c1: "connected" } });
+  it("carries the resolved provider, model, and model options when ready", async () => {
+    mockRoutes({ resolve: { ok: true, computer_id: "c1", provider: "claude", model: "sonnet-5", model_options: [{ id: "effort", value: "high" }] }, presence: { c1: "connected" } });
     const { result } = renderHook(() => useHarnessReadiness(), { wrapper });
     await waitFor(() =>
-      expect(result.current).toEqual({ state: "ready", computerId: "c1", provider: "claude", model: "sonnet-5" }),
+      expect(result.current).toEqual({ state: "ready", computerId: "c1", provider: "claude", model: "sonnet-5", modelOptions: [{ id: "effort", value: "high" }] }),
     );
   });
 
@@ -104,7 +104,7 @@ describe("useHarnessReadiness", () => {
   it("passes project_id through to the resolve call when given", async () => {
     mockRoutes({ resolve: { ok: true, computer_id: "c1" }, presence: { c1: "connected" } });
     const { result } = renderHook(() => useHarnessReadiness("proj-1"), { wrapper });
-    await waitFor(() => expect(result.current).toEqual({ state: "ready", computerId: "c1", provider: "", model: "" }));
+    await waitFor(() => expect(result.current).toEqual({ state: "ready", computerId: "c1", provider: "", model: "", modelOptions: [] }));
     expect(api.get).toHaveBeenCalledWith("/api/pairing/resolve", { params: { project_id: "proj-1" } });
   });
 

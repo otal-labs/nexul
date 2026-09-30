@@ -23,6 +23,7 @@ export const PairingDefaultsForm = ({ defaults, computers }: PairingDefaultsForm
       fallback_project_id: defaults.fallback_project_id ?? "",
       provider: defaults.provider ?? "",
       model: defaults.model ?? "",
+      model_options: defaults.model_options ?? [],
     },
     resolver: zodResolver(PairingDefaultsFormSchema),
   });
@@ -35,6 +36,7 @@ export const PairingDefaultsForm = ({ defaults, computers }: PairingDefaultsForm
         fallback_project_id: saved.fallback_project_id ?? "",
         provider: saved.provider ?? "",
         model: saved.model ?? "",
+        model_options: saved.model_options ?? [],
       });
     } catch {
       // Error is surfaced by the hook's toast; the form stays open to retry.
@@ -60,8 +62,14 @@ export const PairingDefaultsForm = ({ defaults, computers }: PairingDefaultsForm
         control={form.control}
         providerName="provider"
         modelName="model"
+        optionsName="model_options"
         computerId={form.watch("default_computer_id")}
-        setModel={(value) => form.setValue("model", value)}
+        description="Default model for chats and runs with no project link"
+        onPick={(provider, model, options) => {
+          form.setValue("provider", provider, { shouldDirty: true });
+          form.setValue("model", model, { shouldDirty: true });
+          form.setValue("model_options", options, { shouldDirty: true });
+        }}
       />
       <Button type="submit" loading={form.formState.isSubmitting}>
         Save defaults

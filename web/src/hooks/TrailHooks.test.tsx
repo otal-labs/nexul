@@ -106,6 +106,7 @@ describe("useRunPlay", () => {
         computer_id: "c-1",
         provider: "claude",
         model: "sonnet-5",
+        model_options: [{ id: "effort", value: "high" }],
       },
     });
 
@@ -118,6 +119,7 @@ describe("useRunPlay", () => {
       computer_id: "c-1",
       provider: "claude",
       model: "sonnet-5",
+      model_options: [{ id: "effort", value: "high" }],
     });
     expect((client.getQueryData(["getTrails", "ticket", "t-1"]) as Trail[])[0]?.id).toBe("tr-2");
   });
@@ -138,6 +140,7 @@ describe("useRunPlay", () => {
           computer_id: "",
           provider: "",
           model: "",
+          model_options: [],
         },
       })
       .catch(() => {});

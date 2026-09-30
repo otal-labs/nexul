@@ -237,6 +237,7 @@ export interface PairingDefaults {
   fallback_project_id?: string;
   provider?: string;
   model?: string;
+  model_options?: OptionSetting[];
 }
 
 // An empty computer_id means never linked; chat mentions fall back to the user's own pairing defaults.
@@ -246,6 +247,7 @@ export interface ProjectLink {
   harness_project_id?: string;
   provider?: string;
   model?: string;
+  model_options?: OptionSetting[];
 }
 
 export interface HarnessProject {
@@ -258,6 +260,34 @@ export interface HarnessProviderModel {
   slug: string;
   name: string;
   is_default?: boolean;
+  // Where a routed model comes from, such as "GitHub Copilot" under OpenCode.
+  sub_provider?: string;
+  is_new?: boolean;
+  is_legacy?: boolean;
+  options?: ModelOption[];
+}
+
+export interface OptionChoice {
+  id: string;
+  label: string;
+  description?: string;
+  is_default?: boolean;
+}
+
+// One setting the harness offers per model (reasoning level, context window, fast mode); a switch has no choices.
+export interface ModelOption {
+  id: string;
+  label: string;
+  description?: string;
+  type: "select" | "boolean";
+  choices?: OptionChoice[];
+  default_on?: boolean;
+}
+
+// One option set for a turn; an option left out runs on the harness default.
+export interface OptionSetting {
+  id: string;
+  value: string | boolean;
 }
 
 // A usable provider instance; id is the instanceId CreateThread routes on, driver the kind setup is confirmed under.
@@ -286,6 +316,7 @@ export const PairingDefaultsFormSchema = z.object({
   fallback_project_id: z.string(),
   provider: z.string(),
   model: z.string(),
+  model_options: z.array(z.object({ id: z.string(), value: z.union([z.string(), z.boolean()]) })),
 });
 
 export type PairingDefaultsFormData = z.infer<typeof PairingDefaultsFormSchema>;
@@ -295,6 +326,7 @@ export const ProjectLinkFormSchema = z.object({
   harness_project_id: z.string().trim().min(1, "T3 project id is required"),
   provider: z.string().trim(),
   model: z.string().trim(),
+  model_options: z.array(z.object({ id: z.string(), value: z.union([z.string(), z.boolean()]) })),
 });
 
 export type ProjectLinkFormData = z.infer<typeof ProjectLinkFormSchema>;
@@ -306,7 +338,7 @@ export const EXPIRY_WARNING_DAYS = 5;
 // can't, joined against presence. provider/model travel here so the run dialog's pill can preselect them
 // without a second call to the same resolve endpoint.
 export type HarnessReadiness =
-  | { state: "ready"; computerId: string; provider: string; model: string }
+  | { state: "ready"; computerId: string; provider: string; model: string; modelOptions: OptionSetting[] }
   | { state: "unpaired" | "expired" | "no_harness_project" | "no_default_computer" | "offline"; message: string };
 
 // Copy for every non-ready state; shared by the hook's join and the settings readiness line. Says harness, never computer.

@@ -26,6 +26,7 @@ export const ProjectLinkForm = ({ projectId, link, computers }: ProjectLinkFormP
       harness_project_id: link.harness_project_id ?? "",
       provider: link.provider ?? "",
       model: link.model ?? "",
+      model_options: link.model_options ?? [],
     },
     resolver: zodResolver(ProjectLinkFormSchema),
   });
@@ -38,6 +39,7 @@ export const ProjectLinkForm = ({ projectId, link, computers }: ProjectLinkFormP
         harness_project_id: saved.harness_project_id ?? "",
         provider: saved.provider ?? "",
         model: saved.model ?? "",
+        model_options: saved.model_options ?? [],
       });
     } catch {
       // Error is surfaced by the hook's toast; the form stays open to retry.
@@ -47,7 +49,7 @@ export const ProjectLinkForm = ({ projectId, link, computers }: ProjectLinkFormP
   const onClear = async () => {
     try {
       await clearLink.mutateAsync();
-      form.reset({ computer_id: "", harness_project_id: "", provider: "", model: "" });
+      form.reset({ computer_id: "", harness_project_id: "", provider: "", model: "", model_options: [] });
     } catch {
       // Error is surfaced by the hook's toast.
     }
@@ -80,8 +82,14 @@ export const ProjectLinkForm = ({ projectId, link, computers }: ProjectLinkFormP
         control={form.control}
         providerName="provider"
         modelName="model"
+        optionsName="model_options"
         computerId={form.watch("computer_id")}
-        setModel={(value) => form.setValue("model", value)}
+        description="Model for this project's agent turns"
+        onPick={(provider, model, options) => {
+          form.setValue("provider", provider, { shouldDirty: true });
+          form.setValue("model", model, { shouldDirty: true });
+          form.setValue("model_options", options, { shouldDirty: true });
+        }}
       />
       <div className="flex flex-wrap gap-2">
         <Button type="submit" loading={form.formState.isSubmitting}>

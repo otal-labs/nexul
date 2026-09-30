@@ -16,6 +16,7 @@ import {
   type HarnessReadiness,
   type MCPToken,
   type MintedMCPToken,
+  type OptionSetting,
   type PairComputerFormData,
   type PairField,
   type PairingDefaults,
@@ -53,6 +54,7 @@ interface ResolveResponse {
   computer_id?: string;
   provider?: string;
   model?: string;
+  model_options?: OptionSetting[];
 }
 
 export const useListComputers = () =>
@@ -274,7 +276,13 @@ export const useHarnessReadiness = (projectId?: string): HarnessReadiness | unde
   if (presence.data?.[computerId] !== "connected") {
     return { state: "offline", message: HARNESS_READINESS_COPY.offline };
   }
-  return { state: "ready", computerId, provider: resolve.data.provider ?? "", model: resolve.data.model ?? "" };
+  return {
+    state: "ready",
+    computerId,
+    provider: resolve.data.provider ?? "",
+    model: resolve.data.model ?? "",
+    modelOptions: resolve.data.model_options ?? [],
+  };
 };
 
 // Comes from the computer's live T3 server, so consumers fall back to manual id entry on error.

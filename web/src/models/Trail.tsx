@@ -1,3 +1,4 @@
+import type { OptionSetting } from "@/models/Pairing";
 import type { PlayType } from "@/models/Play";
 import type { HarnessQuestion, QuestionAnswer } from "@/models/Question";
 
@@ -90,6 +91,7 @@ export interface LatestChoices {
   computer_id: string;
   provider: string;
   model: string;
+  model_options?: OptionSetting[];
 }
 
 export interface RunPlayInput {
@@ -101,6 +103,7 @@ export interface RunPlayInput {
   computer_id: string;
   provider: string;
   model: string;
+  model_options: OptionSetting[];
 }
 
 const STATE_LABELS: Record<TrailState, string> = {
