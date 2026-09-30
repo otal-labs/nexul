@@ -47,9 +47,9 @@ export const MentionChip = ({ type, id, label, chip }: MentionChipProps) => {
 
   const content = (
     <>
-      <Icon className="h-3.5 w-3.5 shrink-0" />
-      <span className="min-w-0 truncate">{text}</span>
-      {!canOpen && <LockIcon className="h-3 w-3 shrink-0 text-muted-foreground" />}
+      <Icon className="size-[1.1em] shrink-0" />
+      <span className="mention-chip__label">{text}</span>
+      {!canOpen && <LockIcon className="size-[0.9em] shrink-0 text-muted-foreground" />}
     </>
   );
 

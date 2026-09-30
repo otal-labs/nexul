@@ -25,8 +25,12 @@ export const PersonMentionChip = ({ id, label }: PersonMentionChipProps) => {
       data-mention-type="person"
       data-mention-id={id}
     >
-      {person && <PersonAvatar login={person.login} src={person.avatar_url} className="size-4 text-[8px]" />}
-      <span className="min-w-0 truncate">{person ? personLabel(person) : fallback}</span>
+      {person && (
+        <span className="size-[1.1em] shrink-0">
+          <PersonAvatar login={person.login} src={person.avatar_url} className="size-full text-[0.6em]" />
+        </span>
+      )}
+      <span className="mention-chip__label">{person ? personLabel(person) : fallback}</span>
     </span>
   );
 };
