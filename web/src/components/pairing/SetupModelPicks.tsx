@@ -1,9 +1,7 @@
-import { HarnessProviderMark } from "@/components/model/HarnessProviderMark";
 import { ModelChoice } from "@/components/model/ModelChoice";
 import { Switch } from "@/components/ui/switch";
 
 import type { OptionSetting, SetupModelChoice } from "@/models/Pairing";
-import { cn } from "@/lib/utils";
 
 interface SetupModelPickProps {
   choice: SetupModelChoice;
@@ -16,31 +14,22 @@ interface SetupModelPickProps {
   onInclude: (provider: string, on: boolean) => void;
 }
 
-const SetupModelPick = ({ choice, value, options, included, disabled, onPick, onOptions, onInclude }: SetupModelPickProps) => {
-  const id = `setup-include-${choice.provider}`;
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="flex min-w-0 items-center gap-2.5">
-        <Switch id={id} checked={included} onCheckedChange={(on) => onInclude(choice.provider, on)} disabled={disabled} />
-        <HarnessProviderMark driver={choice.instance.driver} className={cn("size-4 shrink-0", !included && "text-muted-foreground")} />
-        <label htmlFor={id} className={cn("min-w-0 text-sm break-words", !included && "text-muted-foreground")}>
-          {choice.name}
-        </label>
-      </div>
-      <ModelChoice
-        providers={[choice.instance]}
-        value={{ provider: choice.instance.id, model: value }}
-        options={options}
-        onPick={(next) => onPick(choice.provider, next.model)}
-        onOptions={(next) => onOptions(choice.provider, next)}
-        label={`${choice.name} model`}
-        allowDefault
-        disabled={disabled || !included}
-        className="w-full"
-      />
-    </div>
-  );
-};
+const SetupModelPick = ({ choice, value, options, included, disabled, onPick, onOptions, onInclude }: SetupModelPickProps) => (
+  <div className="flex min-w-0 items-center gap-2.5">
+    <Switch aria-label={choice.name} checked={included} onCheckedChange={(on) => onInclude(choice.provider, on)} disabled={disabled} />
+    <ModelChoice
+      providers={[choice.instance]}
+      value={{ provider: choice.instance.id, model: value }}
+      options={options}
+      onPick={(next) => onPick(choice.provider, next.model)}
+      onOptions={(next) => onOptions(choice.provider, next)}
+      label={`${choice.name} model`}
+      allowDefault
+      disabled={disabled || !included}
+      className="flex-1"
+    />
+  </div>
+);
 
 interface SetupModelPicksProps {
   choices: SetupModelChoice[];
