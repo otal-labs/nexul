@@ -71,7 +71,8 @@ func TestCreateThread_DispatchesThreadCreate(t *testing.T) {
 	ctx := testCtx(t)
 	c := f.connect(t, ctx)
 
-	threadID, err := c.CreateThread(ctx, "proj-1", "Chat: #general", "claude-code", "opus-4", "")
+	options := []harness.OptionSetting{{ID: "effort", Value: "high"}, {ID: "fastMode", Value: true}}
+	threadID, err := c.CreateThread(ctx, "proj-1", "Chat: #general", "claude-code", "opus-4", options, "")
 	require.NoError(t, err)
 	require.NotEmpty(t, threadID)
 
@@ -80,7 +81,10 @@ func TestCreateThread_DispatchesThreadCreate(t *testing.T) {
 	assert.Equal(t, threadID, cmd["threadId"])
 	assert.Equal(t, "proj-1", cmd["projectId"])
 	assert.Equal(t, "Chat: #general", cmd["title"])
-	assert.Equal(t, map[string]any{"instanceId": "claude-code", "model": "opus-4"}, cmd["modelSelection"])
+	assert.Equal(t, map[string]any{"instanceId": "claude-code", "model": "opus-4", "options": []any{
+		map[string]any{"id": "effort", "value": "high"},
+		map[string]any{"id": "fastMode", "value": true},
+	}}, cmd["modelSelection"], "options travel in T3's canonical array shape, a switch as a real bool")
 	assert.Equal(t, RuntimeModeFullAccess, cmd["runtimeMode"], "empty runtimeMode defaults to full-access")
 	assert.Equal(t, "default", cmd["interactionMode"])
 	branch, ok := cmd["branch"]

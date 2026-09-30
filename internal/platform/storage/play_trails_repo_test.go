@@ -34,11 +34,14 @@ func TestPlayTrailsRepo_Create_Get_RoundTrip(t *testing.T) {
 	t.Parallel()
 	s := newTrailStore(t)
 	startedAt := time.Date(2026, 9, 17, 9, 0, 0, 0, time.UTC)
-	require.NoError(t, s.PlayTrails.CreateTrail(context.Background(), newTestTrail("tr-1", startedAt)))
+	tr := newTestTrail("tr-1", startedAt)
+	tr.ModelOptions = []harness.OptionSetting{{ID: "effort", Value: "high"}, {ID: "fastMode", Value: false}}
+	require.NoError(t, s.PlayTrails.CreateTrail(context.Background(), tr))
 
 	got, err := s.PlayTrails.GetTrail(context.Background(), "tr-1")
 	require.NoError(t, err)
 	assert.Equal(t, "Fix with AI", got.PlayLabel)
+	assert.Equal(t, tr.ModelOptions, got.ModelOptions, "the run's model options read back for the next run's choices")
 	assert.Equal(t, plays.TargetTicket, got.TargetType)
 	assert.Equal(t, plays.ViaWeb, got.Via)
 	assert.Equal(t, []string{"m-2", "m-1"}, got.SelectedMemoryIDs, "the repo keeps the order it was handed")

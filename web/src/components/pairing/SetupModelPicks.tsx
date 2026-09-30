@@ -1,50 +1,43 @@
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { HarnessProviderMark } from "@/components/model/HarnessProviderMark";
+import { ModelChoice } from "@/components/model/ModelChoice";
 import { Switch } from "@/components/ui/switch";
 
-import type { SetupModelChoice } from "@/models/Pairing";
+import type { OptionSetting, SetupModelChoice } from "@/models/Pairing";
 import { cn } from "@/lib/utils";
-
-// Radix Select reserves the empty value, so the provider's own default travels under this one.
-const PROVIDER_DEFAULT = "provider-default";
 
 interface SetupModelPickProps {
   choice: SetupModelChoice;
   value: string;
+  options: OptionSetting[];
   included: boolean;
   disabled: boolean;
   onPick: (provider: string, model: string) => void;
+  onOptions: (provider: string, options: OptionSetting[]) => void;
   onInclude: (provider: string, on: boolean) => void;
 }
 
-const SetupModelPick = ({ choice, value, included, disabled, onPick, onInclude }: SetupModelPickProps) => {
+const SetupModelPick = ({ choice, value, options, included, disabled, onPick, onOptions, onInclude }: SetupModelPickProps) => {
   const id = `setup-include-${choice.provider}`;
   return (
-    <div className="flex flex-col gap-2 @xs:flex-row @xs:items-center @xs:justify-between @xs:gap-3">
+    <div className="flex flex-col gap-2">
       <div className="flex min-w-0 items-center gap-2.5">
         <Switch id={id} checked={included} onCheckedChange={(on) => onInclude(choice.provider, on)} disabled={disabled} />
+        <HarnessProviderMark driver={choice.instance.driver} className={cn("size-4 shrink-0", !included && "text-muted-foreground")} />
         <label htmlFor={id} className={cn("min-w-0 text-sm break-words", !included && "text-muted-foreground")}>
           {choice.name}
         </label>
       </div>
-      <Select
-        value={value || PROVIDER_DEFAULT}
-        onValueChange={(v) => onPick(choice.provider, v === PROVIDER_DEFAULT ? "" : v)}
+      <ModelChoice
+        providers={[choice.instance]}
+        value={{ provider: choice.instance.id, model: value }}
+        options={options}
+        onPick={(next) => onPick(choice.provider, next.model)}
+        onOptions={(next) => onOptions(choice.provider, next)}
+        label={`${choice.name} model`}
+        allowDefault
         disabled={disabled || !included}
-      >
-        <SelectTrigger aria-label={`${choice.name} model`} className="h-8 @xs:w-52">
-          <span className="min-w-0 truncate">
-            <SelectValue />
-          </span>
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={PROVIDER_DEFAULT}>Provider default</SelectItem>
-          {choice.models.map((m) => (
-            <SelectItem key={m.slug} value={m.slug}>
-              {m.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+        className="w-full"
+      />
     </div>
   );
 };
@@ -52,14 +45,16 @@ const SetupModelPick = ({ choice, value, included, disabled, onPick, onInclude }
 interface SetupModelPicksProps {
   choices: SetupModelChoice[];
   models: Record<string, string>;
+  options: Record<string, OptionSetting[]>;
   included: string[];
   disabled: boolean;
   onPick: (provider: string, model: string) => void;
+  onOptions: (provider: string, options: OptionSetting[]) => void;
   onInclude: (provider: string, on: boolean) => void;
 }
 
-// Each provider T3 Code lists on this computer: a switch for whether setup covers it, and the model its turn runs on.
-export const SetupModelPicks = ({ choices, models, included, disabled, onPick, onInclude }: SetupModelPicksProps) => (
+// Each provider T3 Code lists on this computer: a switch for whether setup covers it, and the model and options its turn runs on.
+export const SetupModelPicks = ({ choices, models, options, included, disabled, onPick, onOptions, onInclude }: SetupModelPicksProps) => (
   <fieldset className="@container space-y-3">
     <legend className="mb-3 text-xs font-semibold">Models</legend>
     {choices.map((c) => (
@@ -67,9 +62,11 @@ export const SetupModelPicks = ({ choices, models, included, disabled, onPick, o
         key={c.provider}
         choice={c}
         value={models[c.provider] ?? ""}
+        options={options[c.provider] ?? []}
         included={included.includes(c.provider)}
         disabled={disabled}
         onPick={onPick}
+        onOptions={onOptions}
         onInclude={onInclude}
       />
     ))}

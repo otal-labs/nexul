@@ -17,7 +17,7 @@ type threadSub interface {
 
 // rpcConn is the slice of *Client Harness needs; clientAdapter narrows SubscribeThread's return type.
 type rpcConn interface {
-	CreateThread(ctx context.Context, t3ProjectID, title, providerInstanceID, model, runtimeMode string) (string, error)
+	CreateThread(ctx context.Context, t3ProjectID, title, providerInstanceID, model string, options []harness.OptionSetting, runtimeMode string) (string, error)
 	StartTurn(ctx context.Context, threadID, text, runtimeMode string, attachments []harness.Attachment) error
 	Interrupt(ctx context.Context, threadID string) error
 	RespondApproval(ctx context.Context, threadID, requestID, decision string) error
@@ -131,22 +131,21 @@ func (h *Harness) StartTurn(ctx context.Context, target harness.Target, title st
 }
 
 func (h *Harness) createThread(ctx context.Context, client rpcConn, target harness.Target, title string) (string, error) {
-	model := target.Model
-	if model == "" && target.Provider != "" {
+	if target.Model == "" && target.Provider != "" {
 		resolved, err := defaultModelFor(client, target.Provider)
 		if err != nil {
 			return "", err
 		}
-		model = resolved
+		target.Model = resolved
 	}
-	threadID, err := client.CreateThread(ctx, target.ProjectID, title, target.Provider, model, RuntimeModeFullAccess)
+	threadID, err := client.CreateThread(ctx, target.ProjectID, title, target.Provider, target.Model, target.ModelOptions, RuntimeModeFullAccess)
 	if err != nil {
 		return "", fmt.Errorf("create t3 thread: %w", err)
 	}
 	return threadID, nil
 }
 
-// defaultModelFor picks providerID's default model, falling back to its first, so an empty target.Model never
+// defaultModelFor picks providerID's default model, falling back to its first current one, so an empty target.Model never
 // reaches T3, which rejects an empty modelSelection.model as a defect.
 func defaultModelFor(client rpcConn, providerID string) (string, error) {
 	providers, err := client.Providers()
@@ -162,8 +161,10 @@ func defaultModelFor(client rpcConn, providerID string) (string, error) {
 				return m.Slug, nil
 			}
 		}
-		if len(p.Models) > 0 {
-			return p.Models[0].Slug, nil
+		for _, m := range p.Models {
+			if !m.IsLegacy {
+				return m.Slug, nil
+			}
 		}
 		return "", fmt.Errorf("%w: provider %s has no models", apperrs.ErrInvalid, providerID)
 	}

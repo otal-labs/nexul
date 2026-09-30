@@ -53,7 +53,7 @@ const computers = [
   { id: "c-1", name: "Onik's PC" },
   { id: "c-2", name: "VPS" },
 ];
-const providers = [{ id: "claude", name: "Claude", models: [{ slug: "sonnet-5", name: "Sonnet 5" }, { slug: "haiku", name: "Haiku" }] }];
+const providers = [{ id: "claude", driver: "claudeAgent", name: "Claude", models: [{ slug: "sonnet-5", name: "Sonnet 5" }, { slug: "haiku", name: "Haiku" }] }];
 
 let choices: LatestChoices;
 let resolve: { ok: boolean; computer_id?: string; provider?: string; model?: string; reason?: string };
@@ -160,6 +160,7 @@ describe("PlayRunDialog", () => {
       computer_id: "c-1",
       provider: "claude",
       model: "sonnet-5",
+      model_options: [],
     });
     await waitFor(() => expect(onClose).toHaveBeenCalled());
 

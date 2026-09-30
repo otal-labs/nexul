@@ -6,11 +6,14 @@ import { HarnessComputerField } from "@/components/settings/HarnessComputerField
 import { HarnessProviderModelFields } from "@/components/settings/HarnessProviderModelFields";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useFetchHarnessProviders, useFetchPresence, useListComputers } from "@/hooks/PairingHooks";
+import { findModel, optionsLabel } from "@/models/ModelPick";
+import type { OptionSetting } from "@/models/Pairing";
 
 export interface HarnessPick {
   computer_id: string;
   provider: string;
   model: string;
+  model_options: OptionSetting[];
 }
 
 interface HarnessPickerPillProps {
@@ -44,6 +47,7 @@ const HarnessPickerForm = ({ value, onChange }: HarnessPickerPillProps) => {
           onChangeValue={() => {
             form.setValue("provider", "");
             form.setValue("model", "");
+            form.setValue("model_options", []);
           }}
         />
       )}
@@ -52,8 +56,14 @@ const HarnessPickerForm = ({ value, onChange }: HarnessPickerPillProps) => {
           control={form.control}
           providerName="provider"
           modelName="model"
+          optionsName="model_options"
           computerId={form.watch("computer_id")}
-          setModel={(v) => form.setValue("model", v)}
+          description="For this run only"
+          onPick={(provider, model, options) => {
+            form.setValue("provider", provider);
+            form.setValue("model", model);
+            form.setValue("model_options", options);
+          }}
         />
       )}
     </div>
@@ -70,8 +80,10 @@ export const HarnessPickerPill = ({ value, onChange }: HarnessPickerPillProps) =
   const computerName = computers?.find((c) => c.id === value.computer_id)?.name;
   const providerEntry = providers?.find((p) => p.id === value.provider);
   const providerLabel = value.provider === "" ? "Provider default" : (providerEntry?.name ?? value.provider);
-  const modelLabel = value.model === "" ? "Model default" : (providerEntry?.models.find((m) => m.slug === value.model)?.name ?? value.model);
-  const label = computerName ? `${computerName} · ${providerLabel} · ${modelLabel}` : "Pick a harness";
+  const model = findModel(providers ?? [], value);
+  const modelLabel = value.model === "" ? "Model default" : (model?.name ?? value.model);
+  const optionsText = model?.options && value.model_options.length > 0 ? ` · ${optionsLabel(model.options, value.model_options)}` : "";
+  const label = computerName ? `${computerName} · ${providerLabel} · ${modelLabel}${optionsText}` : "Pick a harness";
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -84,7 +96,7 @@ export const HarnessPickerPill = ({ value, onChange }: HarnessPickerPillProps) =
           <ChevronDown className="size-3" aria-hidden />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-80">
+      <PopoverContent align="start" className="w-96">
         <HarnessPickerForm value={value} onChange={onChange} />
       </PopoverContent>
     </Popover>

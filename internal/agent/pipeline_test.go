@@ -124,8 +124,8 @@ func (f *fakeTargets) ResolveTarget(_ context.Context, _, _ string) (*pairing.Re
 	return f.target, f.err
 }
 
-func (f *fakeTargets) ResolveTargetOverride(_ context.Context, _, _, computerID, provider, model string) (*pairing.ResolvedTarget, error) {
-	f.override = &TargetOverride{ComputerID: computerID, Provider: provider, Model: model}
+func (f *fakeTargets) ResolveTargetOverride(_ context.Context, _, _, computerID, provider, model string, options []harness.OptionSetting) (*pairing.ResolvedTarget, error) {
+	f.override = &TargetOverride{ComputerID: computerID, Provider: provider, Model: model, ModelOptions: options}
 	return f.target, f.err
 }
 
@@ -747,19 +747,21 @@ func TestRunTurn_TargetOverride_ResolvedThroughTheOverrideSeam(t *testing.T) {
 	}}
 	targets := &fakeTargets{target: &pairing.ResolvedTarget{
 		Computer:         pairing.Computer{ID: "c-2", Kind: harness.KindT3Code, ServerURL: "http://t3.local"},
-		HarnessProjectID: "proj-1", Provider: "claude", Model: "sonnet-5",
+		HarnessProjectID: "proj-1", Provider: "claude", Model: "sonnet-5", ModelOptions: []harness.OptionSetting{{ID: "effort", Value: "high"}},
 	}}
 	svc := NewService(Config{Conversations: conv, Targets: targets, Harnesses: harnesstest.Registry(client), Live: &fakeLive{}})
 
+	override := TargetOverride{ComputerID: "c-2", Provider: "claude", Model: "sonnet-5", ModelOptions: []harness.OptionSetting{{ID: "effort", Value: "high"}}}
 	svc.RunTurn(context.Background(), TurnRequest{
 		ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "run it",
-		Target: &TargetOverride{ComputerID: "c-2", Provider: "claude", Model: "sonnet-5"},
+		Target: &override,
 	})
 
 	require.NotNil(t, targets.override)
-	assert.Equal(t, TargetOverride{ComputerID: "c-2", Provider: "claude", Model: "sonnet-5"}, *targets.override)
+	assert.Equal(t, override, *targets.override)
 	assert.Equal(t, "claude", gotTarget.Provider)
 	assert.Equal(t, "sonnet-5", gotTarget.Model)
+	assert.Equal(t, []harness.OptionSetting{{ID: "effort", Value: "high"}}, gotTarget.ModelOptions, "the resolved options reach the harness turn")
 }
 
 func TestRunTurn_AttachmentsReachTheHarness(t *testing.T) {

@@ -470,7 +470,7 @@ func TestService_ResolveTargetOverride_EmptyComputerFallsBackToResolveTarget(t *
 	_, err = svc.SetDefaults(context.Background(), "u1", Defaults{DefaultComputerID: c.ID, FallbackProjectID: "p", Provider: "opencode", Model: "gpt"})
 	require.NoError(t, err)
 
-	target, err := svc.resolveTargetOverride(context.Background(), "u1", "", "", "", "")
+	target, err := svc.resolveTargetOverride(context.Background(), "u1", "", "", modelPick{})
 	require.NoError(t, err)
 	assert.Equal(t, c.ID, target.Computer.ID)
 	assert.Equal(t, "opencode", target.Provider)
@@ -482,15 +482,19 @@ func TestService_ResolveTargetOverride_PinnedComputerWithExplicitProviderAndMode
 	svc := newTestService(repo, &fakeExchanger{result: harness.PairResult{BearerToken: "secret"}, version: "0.0.34"})
 	c, err := svc.Pair(context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
 	require.NoError(t, err)
-	_, err = svc.SetProjectLink(context.Background(), "u1", "proj-1", ProjectLink{ComputerID: c.ID, HarnessProjectID: "linked-proj"})
+	_, err = svc.SetProjectLink(context.Background(), "u1", "proj-1", ProjectLink{
+		ComputerID: c.ID, HarnessProjectID: "linked-proj", Model: "opus", ModelOptions: []harness.OptionSetting{{ID: "effort", Value: "low"}},
+	})
 	require.NoError(t, err)
 
-	target, err := svc.resolveTargetOverride(context.Background(), "u1", "proj-1", c.ID, "claude", "sonnet-5")
+	picked := []harness.OptionSetting{{ID: "fastMode", Value: true}}
+	target, err := svc.resolveTargetOverride(context.Background(), "u1", "proj-1", c.ID, modelPick{"claude", "sonnet-5", picked})
 	require.NoError(t, err)
 	assert.Equal(t, c.ID, target.Computer.ID)
 	assert.Equal(t, "linked-proj", target.HarnessProjectID)
 	assert.Equal(t, "claude", target.Provider)
 	assert.Equal(t, "sonnet-5", target.Model)
+	assert.Equal(t, picked, target.ModelOptions, "the link's options belong to its own model, never to the picked one")
 	assert.Equal(t, "secret", target.Computer.BearerToken)
 }
 
@@ -500,14 +504,17 @@ func TestService_ResolveTargetOverride_BlankProviderAndModelFillFromTheMatchingP
 	svc := newTestService(repo, &fakeExchanger{result: harness.PairResult{BearerToken: "b"}, version: "0.0.34"})
 	c, err := svc.Pair(context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
 	require.NoError(t, err)
-	_, err = svc.SetProjectLink(context.Background(), "u1", "proj-1", ProjectLink{ComputerID: c.ID, HarnessProjectID: "linked-proj", Provider: "claude", Model: "sonnet"})
+	_, err = svc.SetProjectLink(context.Background(), "u1", "proj-1", ProjectLink{
+		ComputerID: c.ID, HarnessProjectID: "linked-proj", Provider: "claude", Model: "sonnet", ModelOptions: []harness.OptionSetting{{ID: "effort", Value: "high"}},
+	})
 	require.NoError(t, err)
 
-	target, err := svc.resolveTargetOverride(context.Background(), "u1", "proj-1", c.ID, "", "")
+	target, err := svc.resolveTargetOverride(context.Background(), "u1", "proj-1", c.ID, modelPick{})
 	require.NoError(t, err)
 	assert.Equal(t, "linked-proj", target.HarnessProjectID)
 	assert.Equal(t, "claude", target.Provider)
 	assert.Equal(t, "sonnet", target.Model)
+	assert.Equal(t, []harness.OptionSetting{{ID: "effort", Value: "high"}}, target.ModelOptions, "a filled-in model brings its options")
 }
 
 func TestService_ResolveTargetOverride_BlankFieldsFillFromDefaultsWhenTheComputerIsTheirDefault(t *testing.T) {
@@ -519,7 +526,7 @@ func TestService_ResolveTargetOverride_BlankFieldsFillFromDefaultsWhenTheCompute
 	_, err = svc.SetDefaults(context.Background(), "u1", Defaults{DefaultComputerID: c.ID, FallbackProjectID: "default-proj", Provider: "opencode", Model: "gpt"})
 	require.NoError(t, err)
 
-	target, err := svc.resolveTargetOverride(context.Background(), "u1", "", c.ID, "", "")
+	target, err := svc.resolveTargetOverride(context.Background(), "u1", "", c.ID, modelPick{})
 	require.NoError(t, err)
 	assert.Equal(t, "default-proj", target.HarnessProjectID)
 	assert.Equal(t, "opencode", target.Provider)
@@ -533,7 +540,7 @@ func TestService_ResolveTargetOverride_NoProjectResolvesIsNoDefault(t *testing.T
 	c, err := svc.Pair(context.Background(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
 	require.NoError(t, err)
 
-	_, err = svc.ResolveTargetOverride(context.Background(), "u1", "", c.ID, "claude", "sonnet")
+	_, err = svc.ResolveTargetOverride(context.Background(), "u1", "", c.ID, "claude", "sonnet", nil)
 	var nc *NotConfiguredError
 	require.ErrorAs(t, err, &nc)
 	assert.Equal(t, ReasonNoDefault, nc.Reason)
@@ -546,7 +553,7 @@ func TestService_ResolveTargetOverride_RefusesAComputerNotOwnedByTheCaller(t *te
 	theirs, err := svc.Pair(context.Background(), "u2", harness.KindT3Code, "Their box", "https://h.example.com", "tok")
 	require.NoError(t, err)
 
-	_, err = svc.ResolveTargetOverride(context.Background(), "u1", "", theirs.ID, "claude", "sonnet")
+	_, err = svc.ResolveTargetOverride(context.Background(), "u1", "", theirs.ID, "claude", "sonnet", nil)
 	var nc *NotConfiguredError
 	require.ErrorAs(t, err, &nc)
 	assert.Equal(t, ReasonUnpaired, nc.Reason)
@@ -555,7 +562,7 @@ func TestService_ResolveTargetOverride_RefusesAComputerNotOwnedByTheCaller(t *te
 func TestService_ResolveTargetOverride_RequiresUser(t *testing.T) {
 	t.Parallel()
 	svc := newTestService(newFakeRepo(), &fakeExchanger{})
-	_, err := svc.ResolveTargetOverride(context.Background(), "", "proj-1", "c-1", "", "")
+	_, err := svc.ResolveTargetOverride(context.Background(), "", "proj-1", "c-1", "", "", nil)
 	require.ErrorIs(t, err, apperrs.ErrUnauthorized)
 }
 

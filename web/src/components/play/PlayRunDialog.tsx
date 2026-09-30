@@ -38,8 +38,8 @@ const PlayRunDialogBody = ({ play, projectId, targetType, targetId, onDone }: Pl
   const error = memories.error ?? statuses.error ?? choices.error;
   const resolvedHarness =
     readiness?.state === "ready"
-      ? { computer_id: readiness.computerId, provider: readiness.provider, model: readiness.model }
-      : { computer_id: "", provider: "", model: "" };
+      ? { computer_id: readiness.computerId, provider: readiness.provider, model: readiness.model, model_options: readiness.modelOptions }
+      : { computer_id: "", provider: "", model: "", model_options: [] };
 
   return (
     <div className="space-y-5">

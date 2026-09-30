@@ -57,7 +57,7 @@ export const PlayRunForm = ({
   // Last choice for this user, play, and project wins; else the resolved target (spec.md, "the run dialog").
   const [harness, setHarness] = useState<HarnessPick>(() =>
     choices.computer_id !== ""
-      ? { computer_id: choices.computer_id, provider: choices.provider, model: choices.model }
+      ? { computer_id: choices.computer_id, provider: choices.provider, model: choices.model, model_options: choices.model_options ?? [] }
       : resolvedHarness,
   );
   const isTicket = play.type === "ticket";
@@ -84,6 +84,7 @@ export const PlayRunForm = ({
           computer_id: harness.computer_id,
           provider: harness.provider,
           model: harness.model,
+          model_options: harness.model_options,
         },
       },
       { onSuccess: onDone },

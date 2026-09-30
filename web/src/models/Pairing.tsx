@@ -92,14 +92,24 @@ export interface ProviderSetup {
 }
 
 // Read-only in the browser: confirmations are written only by an agent through MCP (ADR 0063).
-export interface ComputerSetup {
+interface ComputerSetupState {
   computer_id: string;
   confirmed_at: string | null;
   providers: ProviderSetup[];
-  // Driver kinds the last run left out; the Set up step opens with them switched off.
-  skipped_providers: string[];
   turns: SetupTurnSummary[];
 }
+
+// The Set up step's saved choices, by lower-case driver kind; ComputerSetup carries them and Done or a run saves them.
+export interface SetupChoices {
+  // Switched off; the step opens with them off.
+  skipped_providers: string[];
+  // A key present with "" is the provider's own default; a key absent falls back to the preselection.
+  models: Record<string, string>;
+  model_options: Record<string, OptionSetting[]>;
+  folder: string;
+}
+
+export type ComputerSetup = ComputerSetupState & SetupChoices;
 
 export interface SetupRun {
   run_id: string;
@@ -149,17 +159,32 @@ export const setupRunRows = (turns: SetupTurnSummary[], run: SetupRun | undefine
 export interface SetupModelChoice {
   provider: string;
   name: string;
-  models: HarnessProviderModel[];
+  instance: HarnessProvider;
   preselected: string;
+  preselectedOptions: OptionSetting[];
 }
 
-// The harness's first instance of each driver, as setup runs them; the defaults' model wins on the default provider.
-export const setupModelChoices = (providers: HarnessProvider[], defaults: PairingDefaults | undefined): SetupModelChoice[] =>
+type Preselection = Pick<SetupModelChoice, "preselected" | "preselectedOptions">;
+
+// The saved pick wins, then the defaults' model on the default provider, then the provider's own default.
+const preselect = (p: HarnessProvider, defaults: PairingDefaults | undefined, saved: SetupChoices | undefined): Preselection => {
+  const driver = p.driver.toLowerCase();
+  const savedModel = saved?.models[driver];
+  if (savedModel !== undefined) return { preselected: savedModel, preselectedOptions: saved?.model_options[driver] ?? [] };
+  const fromDefaults = defaults?.provider === p.id ? p.models.find((m) => m.slug === defaults.model)?.slug : undefined;
+  if (fromDefaults) return { preselected: fromDefaults, preselectedOptions: defaults?.model_options ?? [] };
+  return { preselected: p.models.find((m) => m.is_default)?.slug ?? "", preselectedOptions: [] };
+};
+
+// The harness's first instance of each driver, as setup runs them.
+export const setupModelChoices = (
+  providers: HarnessProvider[],
+  defaults: PairingDefaults | undefined,
+  saved?: SetupChoices,
+): SetupModelChoice[] =>
   providers.flatMap((p, i) => {
     if (providers.findIndex((o) => o.driver.toLowerCase() === p.driver.toLowerCase()) !== i) return [];
-    const fromDefaults = defaults?.provider === p.id ? p.models.find((m) => m.slug === defaults.model)?.slug : undefined;
-    const preselected = fromDefaults ?? p.models.find((m) => m.is_default)?.slug ?? "";
-    return [{ provider: p.driver.toLowerCase(), name: p.name, models: p.models, preselected }];
+    return [{ provider: p.driver.toLowerCase(), name: p.name, instance: p, ...preselect(p, defaults, saved) }];
   });
 
 // The row the transcript follows: the running one, else the last that ran so a finished run stays put, else the first.
@@ -237,6 +262,7 @@ export interface PairingDefaults {
   fallback_project_id?: string;
   provider?: string;
   model?: string;
+  model_options?: OptionSetting[];
 }
 
 // An empty computer_id means never linked; chat mentions fall back to the user's own pairing defaults.
@@ -246,6 +272,7 @@ export interface ProjectLink {
   harness_project_id?: string;
   provider?: string;
   model?: string;
+  model_options?: OptionSetting[];
 }
 
 export interface HarnessProject {
@@ -258,6 +285,34 @@ export interface HarnessProviderModel {
   slug: string;
   name: string;
   is_default?: boolean;
+  // Where a routed model comes from, such as "GitHub Copilot" under OpenCode.
+  sub_provider?: string;
+  is_new?: boolean;
+  is_legacy?: boolean;
+  options?: ModelOption[];
+}
+
+export interface OptionChoice {
+  id: string;
+  label: string;
+  description?: string;
+  is_default?: boolean;
+}
+
+// One setting the harness offers per model (reasoning level, context window, fast mode); a switch has no choices.
+export interface ModelOption {
+  id: string;
+  label: string;
+  description?: string;
+  type: "select" | "boolean";
+  choices?: OptionChoice[];
+  default_on?: boolean;
+}
+
+// One option set for a turn; an option left out runs on the harness default.
+export interface OptionSetting {
+  id: string;
+  value: string | boolean;
 }
 
 // A usable provider instance; id is the instanceId CreateThread routes on, driver the kind setup is confirmed under.
@@ -286,6 +341,7 @@ export const PairingDefaultsFormSchema = z.object({
   fallback_project_id: z.string(),
   provider: z.string(),
   model: z.string(),
+  model_options: z.array(z.object({ id: z.string(), value: z.union([z.string(), z.boolean()]) })),
 });
 
 export type PairingDefaultsFormData = z.infer<typeof PairingDefaultsFormSchema>;
@@ -295,6 +351,7 @@ export const ProjectLinkFormSchema = z.object({
   harness_project_id: z.string().trim().min(1, "T3 project id is required"),
   provider: z.string().trim(),
   model: z.string().trim(),
+  model_options: z.array(z.object({ id: z.string(), value: z.union([z.string(), z.boolean()]) })),
 });
 
 export type ProjectLinkFormData = z.infer<typeof ProjectLinkFormSchema>;
@@ -306,7 +363,7 @@ export const EXPIRY_WARNING_DAYS = 5;
 // can't, joined against presence. provider/model travel here so the run dialog's pill can preselect them
 // without a second call to the same resolve endpoint.
 export type HarnessReadiness =
-  | { state: "ready"; computerId: string; provider: string; model: string }
+  | { state: "ready"; computerId: string; provider: string; model: string; modelOptions: OptionSetting[] }
   | { state: "unpaired" | "expired" | "no_harness_project" | "no_default_computer" | "offline"; message: string };
 
 // Copy for every non-ready state; shared by the hook's join and the settings readiness line. Says harness, never computer.

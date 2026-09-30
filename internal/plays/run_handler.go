@@ -19,14 +19,15 @@ func NewRunHandler(r *Runner) *RunHandler {
 }
 
 type runRequest struct {
-	TargetType         TargetType `json:"target_type"`
-	TargetID           string     `json:"target_id"`
-	MemoryIDs          []string   `json:"memory_ids"`
-	CustomInstructions string     `json:"custom_instructions"`
-	MoveToStatusID     string     `json:"move_to_status_id"`
-	ComputerID         string     `json:"computer_id"`
-	Provider           string     `json:"provider"`
-	Model              string     `json:"model"`
+	TargetType         TargetType              `json:"target_type"`
+	TargetID           string                  `json:"target_id"`
+	MemoryIDs          []string                `json:"memory_ids"`
+	CustomInstructions string                  `json:"custom_instructions"`
+	MoveToStatusID     string                  `json:"move_to_status_id"`
+	ComputerID         string                  `json:"computer_id"`
+	Provider           string                  `json:"provider"`
+	Model              string                  `json:"model"`
+	ModelOptions       []harness.OptionSetting `json:"model_options"`
 }
 
 // Routes returns the run endpoints. Latest choices take the play as a query parameter because a
@@ -98,7 +99,7 @@ func (h *RunHandler) run(w http.ResponseWriter, r *http.Request) {
 	trail, err := h.runner.Run(r.Context(), RunInput{
 		PlayID: r.PathValue("id"), TargetType: req.TargetType, TargetID: req.TargetID, MemoryIDs: req.MemoryIDs,
 		CustomInstructions: req.CustomInstructions, MoveToStatusID: req.MoveToStatusID,
-		ComputerID: req.ComputerID, Provider: req.Provider, Model: req.Model, Via: ViaWeb,
+		ComputerID: req.ComputerID, Provider: req.Provider, Model: req.Model, ModelOptions: req.ModelOptions, Via: ViaWeb,
 	})
 	if err != nil {
 		httpx.WriteError(w, err)

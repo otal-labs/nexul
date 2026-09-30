@@ -160,11 +160,13 @@ type Trail struct {
 	ComputerID         string     `json:"computer_id"`
 	Provider           string     `json:"provider"`
 	Model              string     `json:"model"`
-	HarnessSessionID   string     `json:"harness_session_id"`
-	State              TrailState `json:"state"`
-	StartedAt          time.Time  `json:"started_at"`
-	EndedAt            *time.Time `json:"ended_at"`
-	LastError          string     `json:"last_error"`
+	// ModelOptions are the options Model ran with; unset ones were the harness's defaults.
+	ModelOptions     []harness.OptionSetting `json:"model_options"`
+	HarnessSessionID string                  `json:"harness_session_id"`
+	State            TrailState              `json:"state"`
+	StartedAt        time.Time               `json:"started_at"`
+	EndedAt          *time.Time              `json:"ended_at"`
+	LastError        string                  `json:"last_error"`
 	// FailureReason is the harness refusal's reason (HarnessRefusal), "" for a run that failed any other way.
 	FailureReason  string          `json:"failure_reason"`
 	ReplyMessageID string          `json:"reply_message_id"`

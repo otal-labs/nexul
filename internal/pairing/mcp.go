@@ -50,12 +50,13 @@ type computerIDIn struct {
 }
 
 type computerSetupRunIn struct {
-	ComputerID string            `json:"computer_id" jsonschema:"The paired computer's id, from computer_list."`
-	Provider   string            `json:"provider,omitempty" jsonschema:"One provider's driver kind to run alone, for example codex, after its turn failed. Omit to run every provider the harness lists."`
-	Model      string            `json:"model,omitempty" jsonschema:"With provider only: the model slug its turn runs on, as the harness lists it. Omit for the provider's own default."`
-	Providers  []string          `json:"providers,omitempty" jsonschema:"Without provider only: the driver kinds to set up, for example [\"claude\", \"opencode\"]; the computer remembers the ones left out as skipped. Omit to run every provider the harness lists."`
-	Models     map[string]string `json:"models,omitempty" jsonschema:"Without provider only: the model slug each provider's turn runs on, keyed by driver kind, for example {\"codex\": \"gpt-5-mini\"}. A provider left out runs on its own default."`
-	Folder     string            `json:"folder,omitempty" jsonschema:"The absolute folder the turns run in, one a T3 Code project on that computer opens, for example /home/me/code/app. Omit for the pairing default, else the harness's first project."`
+	ComputerID   string                             `json:"computer_id" jsonschema:"The paired computer's id, from computer_list."`
+	Provider     string                             `json:"provider,omitempty" jsonschema:"One provider's driver kind to run alone, for example codex, after its turn failed. Omit to run every provider the harness lists."`
+	Model        string                             `json:"model,omitempty" jsonschema:"With provider only: the model slug its turn runs on, as the harness lists it. Omit for the provider's own default."`
+	Providers    []string                           `json:"providers,omitempty" jsonschema:"Without provider only: the driver kinds to set up, for example [\"claude\", \"opencode\"]; the computer remembers the ones left out as skipped. Omit to run every provider the harness lists."`
+	Models       map[string]string                  `json:"models,omitempty" jsonschema:"Without provider only: the model slug each provider's turn runs on, keyed by driver kind, for example {\"codex\": \"gpt-5-mini\"}. A provider left out runs on its own default."`
+	ModelOptions map[string][]harness.OptionSetting `json:"model_options,omitempty" jsonschema:"The options each provider's picked model runs with, keyed by driver kind like models, for example {\"codex\": [{\"id\": \"reasoningEffort\", \"value\": \"high\"}]}: a choice id for a select option such as reasoning level or context window, true or false for a switch such as fast mode, as the harness lists them per model. Only applies beside a picked model; an option left out keeps the harness default."`
+	Folder       string                             `json:"folder,omitempty" jsonschema:"The absolute folder the turns run in, one a T3 Code project on that computer opens, for example /home/me/code/app. Omit for the pairing default, else the harness's first project."`
 }
 
 type computerSetupUpdateIn struct {
@@ -253,9 +254,9 @@ func computerSetupRunTool(s *Service) mcptool.Tool {
 				return nil, fmt.Errorf("%w: providers applies to a run of several providers; with provider pass just that one", apperrs.ErrInvalid)
 			}
 			if in.Provider == "" {
-				return s.StartSetup(ctx, mcpActorID(ctx), in.ComputerID, in.Models, in.Folder, in.Providers)
+				return s.StartSetup(ctx, mcpActorID(ctx), in.ComputerID, in.Models, in.ModelOptions, in.Folder, in.Providers)
 			}
-			return s.RetrySetupProvider(ctx, mcpActorID(ctx), in.ComputerID, in.Provider, in.Model, in.Folder)
+			return s.RetrySetupProvider(ctx, mcpActorID(ctx), in.ComputerID, in.Provider, in.Model, in.ModelOptions[in.Provider], in.Folder)
 		})
 }
 

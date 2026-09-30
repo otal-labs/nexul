@@ -10,9 +10,7 @@ import { SetupTranscript } from "@/components/pairing/SetupTranscript";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { useFetchComputerSetup, useRunSetup } from "@/hooks/PairingHooks";
-import { useSetupFolder } from "@/hooks/useSetupFolder";
-import { useSetupModels } from "@/hooks/useSetupModels";
-import { useSetupProviders } from "@/hooks/useSetupProviders";
+import { useSetupChoices } from "@/hooks/useSetupChoices";
 import { followedSetupRow, setupRunRows, setupRunning, type Computer, type ComputerSetup } from "@/models/Pairing";
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/utils/TimeUtility";
@@ -44,9 +42,7 @@ interface SetupRunSectionProps {
 // The run just started lists its providers at once, a reopened dialog shows each provider's newest turn.
 const SetupRunSection = ({ computerId, setup, children }: SetupRunSectionProps) => {
   const run = useRunSetup(computerId);
-  const { choices, models, pick } = useSetupModels(computerId);
-  const { included, excluded, include } = useSetupProviders(choices, setup.skipped_providers);
-  const { projects, folder, pick: pickFolder } = useSetupFolder(computerId);
+  const { choices, models, options, pick, pickOptions, included, excluded, include, projects, folder, pickFolder } = useSetupChoices(setup);
   // A clicked provider pins the transcript; Start and Retry hand it back to following the run.
   const [picked, setPicked] = useState<string>();
   const allRows = setupRunRows(setup.turns, run.data);
@@ -58,7 +54,7 @@ const SetupRunSection = ({ computerId, setup, children }: SetupRunSectionProps) 
   const startLabel = setup.turns.length > 0 ? "Re-run setup" : "Start setup";
   const start = (provider?: string) => {
     setPicked(undefined);
-    run.mutate({ models, folder, providers: included, ...(provider ? { provider } : {}) });
+    run.mutate({ models, options, folder, providers: included, ...(provider ? { provider } : {}) });
   };
   return (
     <>
@@ -67,7 +63,16 @@ const SetupRunSection = ({ computerId, setup, children }: SetupRunSectionProps) 
           {children}
           {projects.length > 0 && <SetupFolderPick projects={projects} folder={folder} disabled={busy} onPick={pickFolder} />}
           {choices.length > 0 && (
-            <SetupModelPicks choices={choices} models={models} included={included} disabled={busy} onPick={pick} onInclude={include} />
+            <SetupModelPicks
+              choices={choices}
+              models={models}
+              options={options}
+              included={included}
+              disabled={busy}
+              onPick={pick}
+              onOptions={pickOptions}
+              onInclude={include}
+            />
           )}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             <Button type="button" onClick={() => start()} loading={busy} disabled={noneIncluded}>

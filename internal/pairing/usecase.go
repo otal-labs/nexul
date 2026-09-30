@@ -321,6 +321,11 @@ func (s *Service) SetDefaults(ctx context.Context, userID string, d Defaults) (D
 	d.FallbackProjectID = strings.TrimSpace(d.FallbackProjectID)
 	d.Provider = strings.TrimSpace(d.Provider)
 	d.Model = strings.TrimSpace(d.Model)
+	options, err := harness.CleanOptions(d.ModelOptions)
+	if err != nil {
+		return Defaults{}, err
+	}
+	d.ModelOptions = options
 	if err := s.repo.SaveDefaults(ctx, d); err != nil {
 		return Defaults{}, fmt.Errorf("save defaults: %w", err)
 	}
@@ -368,6 +373,10 @@ func (s *Service) SetProjectLink(ctx context.Context, userID, projectID string, 
 	link.HarnessProjectID = harnessProjectID
 	link.Provider = strings.TrimSpace(link.Provider)
 	link.Model = strings.TrimSpace(link.Model)
+	link.ModelOptions, err = harness.CleanOptions(link.ModelOptions)
+	if err != nil {
+		return ProjectLink{}, err
+	}
 	link.UpdatedAt = s.now().UTC()
 	if err := s.repo.SaveProjectLink(ctx, link); err != nil {
 		return ProjectLink{}, fmt.Errorf("save project link %s: %w", projectID, err)
@@ -396,6 +405,14 @@ type ResolvedTarget struct {
 	HarnessProjectID string
 	Provider         string
 	Model            string
+	ModelOptions     []harness.OptionSetting
+}
+
+// modelPick keeps a model's options beside it: they only mean something for the model they were picked with.
+type modelPick struct {
+	provider string
+	model    string
+	options  []harness.OptionSetting
 }
 
 // ResolveTarget picks the computer/harness project/provider/model a mention runs against, behind the setup gate.
@@ -407,9 +424,9 @@ func (s *Service) ResolveTarget(ctx context.Context, userID, projectID string) (
 	return s.requireSetup(ctx, target)
 }
 
-// ResolveTargetOverride resolves a run's pinned computer, provider, and model, behind the same setup gate.
-func (s *Service) ResolveTargetOverride(ctx context.Context, userID, projectID, computerID, provider, model string) (*ResolvedTarget, error) {
-	target, err := s.resolveTargetOverride(ctx, userID, projectID, computerID, provider, model)
+// ResolveTargetOverride resolves a run's pinned computer, provider, model and its options, behind the same setup gate.
+func (s *Service) ResolveTargetOverride(ctx context.Context, userID, projectID, computerID, provider, model string, options []harness.OptionSetting) (*ResolvedTarget, error) {
+	target, err := s.resolveTargetOverride(ctx, userID, projectID, computerID, modelPick{provider: provider, model: model, options: options})
 	if err != nil {
 		return nil, err
 	}
@@ -439,7 +456,7 @@ func (s *Service) ResolveSetupTurnTarget(ctx context.Context, userID, computerID
 		}
 		return &ResolvedTarget{Computer: session, HarnessProjectID: projectID, Provider: strings.TrimSpace(provider)}, nil
 	}
-	target, err := s.resolveTargetOverride(ctx, userID, "", computerID, provider, "")
+	target, err := s.resolveTargetOverride(ctx, userID, "", computerID, modelPick{provider: provider})
 	var nc *NotConfiguredError
 	if !errors.As(err, &nc) || nc.Reason != ReasonNoDefault {
 		return target, err
@@ -516,7 +533,7 @@ func (s *Service) resolveTarget(ctx context.Context, userID, projectID string) (
 		return nil, apperrs.Fatal(fmt.Errorf("%w: pairing encryption key is not configured", apperrs.ErrFatal))
 	}
 
-	computerID, harnessProjectID, provider, model, fromLink, err := s.resolveTargetSource(ctx, userID, projectID)
+	computerID, harnessProjectID, pick, fromLink, err := s.resolveTargetSource(ctx, userID, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -535,48 +552,49 @@ func (s *Service) resolveTarget(ctx context.Context, userID, projectID string) (
 	}
 	resolved := *computer
 	resolved.BearerToken = string(decrypted)
-	return &ResolvedTarget{Computer: resolved, HarnessProjectID: harnessProjectID, Provider: provider, Model: model}, nil
+	return &ResolvedTarget{Computer: resolved, HarnessProjectID: harnessProjectID, Provider: pick.provider, Model: pick.model, ModelOptions: pick.options}, nil
 }
 
 // resolveTargetSource: project link, then user defaults, then the user's sole paired computer if unambiguous.
-func (s *Service) resolveTargetSource(ctx context.Context, userID, projectID string) (computerID, harnessProjectID, provider, model string, fromLink bool, err error) {
+func (s *Service) resolveTargetSource(ctx context.Context, userID, projectID string) (computerID, harnessProjectID string, pick modelPick, fromLink bool, err error) {
 	if projectID = strings.TrimSpace(projectID); projectID != "" {
 		link, err := s.repo.GetProjectLink(ctx, projectID)
 		if err != nil {
-			return "", "", "", "", false, fmt.Errorf("get project link %s: %w", projectID, err)
+			return "", "", modelPick{}, false, fmt.Errorf("get project link %s: %w", projectID, err)
 		}
 		if link.ComputerID != "" {
-			return link.ComputerID, link.HarnessProjectID, link.Provider, link.Model, true, nil
+			return link.ComputerID, link.HarnessProjectID, modelPick{link.Provider, link.Model, link.ModelOptions}, true, nil
 		}
 	}
 
 	defaults, err := s.repo.GetDefaults(ctx, userID)
 	if err != nil {
-		return "", "", "", "", false, fmt.Errorf("get defaults: %w", err)
+		return "", "", modelPick{}, false, fmt.Errorf("get defaults: %w", err)
 	}
-	computerID, harnessProjectID, provider, model = defaults.DefaultComputerID, defaults.FallbackProjectID, defaults.Provider, defaults.Model
+	computerID, harnessProjectID = defaults.DefaultComputerID, defaults.FallbackProjectID
+	pick = modelPick{defaults.Provider, defaults.Model, defaults.ModelOptions}
 	if computerID != "" {
-		return computerID, harnessProjectID, provider, model, false, nil
+		return computerID, harnessProjectID, pick, false, nil
 	}
 
 	computers, err := s.repo.ListComputers(ctx, userID)
 	if err != nil {
-		return "", "", "", "", false, fmt.Errorf("list computers: %w", err)
+		return "", "", modelPick{}, false, fmt.Errorf("list computers: %w", err)
 	}
 	if len(computers) == 0 {
-		return "", "", "", "", false, &NotConfiguredError{Reason: ReasonUnpaired}
+		return "", "", modelPick{}, false, &NotConfiguredError{Reason: ReasonUnpaired}
 	}
 	if len(computers) > 1 {
-		return "", "", "", "", false, &NotConfiguredError{Reason: ReasonNoDefaultComputer}
+		return "", "", modelPick{}, false, &NotConfiguredError{Reason: ReasonNoDefaultComputer}
 	}
-	return computers[0].ID, harnessProjectID, provider, model, false, nil
+	return computers[0].ID, harnessProjectID, pick, false, nil
 }
 
 // resolveTargetOverride resolves a pinned computer, provider, and model with no setup gate: the computer must
 // be the caller's own; the harness project and any blank provider/model come from the project link when it
 // names this computer, else the caller's own fallback when this is their default computer — the same sources
 // resolveTarget's own resolution order reads, just checked against the caller's explicit choice of computer.
-func (s *Service) resolveTargetOverride(ctx context.Context, userID, projectID, computerID, provider, model string) (*ResolvedTarget, error) {
+func (s *Service) resolveTargetOverride(ctx context.Context, userID, projectID, computerID string, pick modelPick) (*ResolvedTarget, error) {
 	computerID = strings.TrimSpace(computerID)
 	if computerID == "" {
 		return s.resolveTarget(ctx, userID, projectID)
@@ -591,7 +609,8 @@ func (s *Service) resolveTargetOverride(ctx context.Context, userID, projectID, 
 	if err != nil {
 		return nil, err
 	}
-	harnessProjectID, provider, model, err := s.overrideProjectAndModel(ctx, userID, strings.TrimSpace(projectID), computerID, strings.TrimSpace(provider), strings.TrimSpace(model))
+	pick.provider, pick.model = strings.TrimSpace(pick.provider), strings.TrimSpace(pick.model)
+	harnessProjectID, pick, err := s.overrideProjectAndModel(ctx, userID, strings.TrimSpace(projectID), computerID, pick)
 	if err != nil {
 		return nil, err
 	}
@@ -604,48 +623,48 @@ func (s *Service) resolveTargetOverride(ctx context.Context, userID, projectID, 
 	}
 	resolved := *computer
 	resolved.BearerToken = string(decrypted)
-	return &ResolvedTarget{Computer: resolved, HarnessProjectID: harnessProjectID, Provider: provider, Model: model}, nil
+	return &ResolvedTarget{Computer: resolved, HarnessProjectID: harnessProjectID, Provider: pick.provider, Model: pick.model, ModelOptions: pick.options}, nil
 }
 
 // overrideProjectAndModel fills in the harness project and any blank provider/model from the project link
 // (when it names computerID) and the caller's own defaults (when computerID is their default computer).
-func (s *Service) overrideProjectAndModel(ctx context.Context, userID, projectID, computerID, provider, model string) (harnessProjectID, resolvedProvider, resolvedModel string, err error) {
-	resolvedProvider, resolvedModel = provider, model
+func (s *Service) overrideProjectAndModel(ctx context.Context, userID, projectID, computerID string, pick modelPick) (string, modelPick, error) {
+	harnessProjectID := ""
 	if projectID != "" {
 		link, err := s.repo.GetProjectLink(ctx, projectID)
 		if err != nil {
-			return "", "", "", fmt.Errorf("get project link %s: %w", projectID, err)
+			return "", modelPick{}, fmt.Errorf("get project link %s: %w", projectID, err)
 		}
 		if link.ComputerID == computerID {
 			harnessProjectID = link.HarnessProjectID
-			if resolvedProvider == "" {
-				resolvedProvider = link.Provider
-			}
-			if resolvedModel == "" {
-				resolvedModel = link.Model
-			}
+			pick = fillPick(pick, modelPick{link.Provider, link.Model, link.ModelOptions})
 		}
 	}
-	if harnessProjectID != "" && resolvedProvider != "" && resolvedModel != "" {
-		return harnessProjectID, resolvedProvider, resolvedModel, nil
+	if harnessProjectID != "" && pick.provider != "" && pick.model != "" {
+		return harnessProjectID, pick, nil
 	}
 	defaults, err := s.repo.GetDefaults(ctx, userID)
 	if err != nil {
-		return "", "", "", fmt.Errorf("get defaults: %w", err)
+		return "", modelPick{}, fmt.Errorf("get defaults: %w", err)
 	}
 	if defaults.DefaultComputerID != computerID {
-		return harnessProjectID, resolvedProvider, resolvedModel, nil
+		return harnessProjectID, pick, nil
 	}
 	if harnessProjectID == "" {
 		harnessProjectID = defaults.FallbackProjectID
 	}
-	if resolvedProvider == "" {
-		resolvedProvider = defaults.Provider
+	return harnessProjectID, fillPick(pick, modelPick{defaults.Provider, defaults.Model, defaults.ModelOptions}), nil
+}
+
+// fillPick fills a blank provider or model from fallback; a filled-in model brings its own options along.
+func fillPick(pick, fallback modelPick) modelPick {
+	if pick.provider == "" {
+		pick.provider = fallback.provider
 	}
-	if resolvedModel == "" {
-		resolvedModel = defaults.Model
+	if pick.model == "" {
+		pick.model, pick.options = fallback.model, fallback.options
 	}
-	return harnessProjectID, resolvedProvider, resolvedModel, nil
+	return pick
 }
 
 func (s *Service) fetchTargetComputer(ctx context.Context, userID, computerID string, fromLink bool) (*Computer, error) {
@@ -705,7 +724,23 @@ func (s *Service) GetSetup(ctx context.Context, userID, computerID string) (Setu
 	for i, p := range providers {
 		providers[i].SkillsOutdated = p.ConfirmedAt != nil && p.SkillsVersion != shipped.NexulMemory.Version
 	}
-	return Setup{ComputerID: computer.ID, ConfirmedAt: computer.SetupConfirmedAt, Providers: providers, SkippedProviders: computer.SetupSkipped, Turns: turns}, nil
+	return Setup{ComputerID: computer.ID, ConfirmedAt: computer.SetupConfirmedAt, Providers: providers, SetupChoices: computer.SetupChoices.withEmpty(), Turns: turns}, nil
+}
+
+// SaveSetupChoices keeps the Set up step's choices on the caller's own computer without running setup, and returns its setup.
+func (s *Service) SaveSetupChoices(ctx context.Context, userID, computerID string, choices SetupChoices) (Setup, error) {
+	computer, err := s.ownComputer(ctx, userID, computerID)
+	if err != nil {
+		return Setup{}, err
+	}
+	choices, err = choices.clean()
+	if err != nil {
+		return Setup{}, err
+	}
+	if err := s.repo.SaveSetupChoices(ctx, userID, computer.ID, choices); err != nil {
+		return Setup{}, fmt.Errorf("save setup choices for %s: %w", computer.ID, err)
+	}
+	return s.GetSetup(ctx, userID, computer.ID)
 }
 
 // ConfirmSetup records the caller's computer as set up overall; independent of any provider's confirmation.

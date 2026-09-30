@@ -97,6 +97,7 @@ describe("PairingDefaultsSection", () => {
         fallback_project_id: "proj-9",
         provider: "opencode",
         model: "",
+        model_options: [],
       }),
     );
   });

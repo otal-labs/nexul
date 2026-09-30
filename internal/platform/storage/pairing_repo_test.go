@@ -182,6 +182,7 @@ func TestPairingRepo_ProjectLink_RoundTrip(t *testing.T) {
 	link := pairing.ProjectLink{
 		ProjectID: "proj-1", ComputerID: "c1", HarnessProjectID: "t3-proj-1",
 		Provider: "claude", Model: "sonnet", UpdatedAt: time.Unix(1_000_000_000, 0).UTC(),
+		ModelOptions: []harness.OptionSetting{{ID: "effort", Value: "high"}, {ID: "fastMode", Value: true}},
 	}
 	require.NoError(t, s.Pairing.SaveProjectLink(ctx, link))
 
@@ -191,6 +192,7 @@ func TestPairingRepo_ProjectLink_RoundTrip(t *testing.T) {
 	assert.Equal(t, "t3-proj-1", got.HarnessProjectID)
 	assert.Equal(t, "claude", got.Provider)
 	assert.Equal(t, "sonnet", got.Model)
+	assert.Equal(t, link.ModelOptions, got.ModelOptions, "a switch reads back as a bool, a choice as a string")
 }
 
 func TestPairingRepo_SaveProjectLink_UpsertUpdatesInPlace(t *testing.T) {
@@ -247,7 +249,8 @@ func TestPairingRepo_Defaults_RoundTrip(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, pairing.Defaults{}, empty, "no row yet is a zero value, not an error")
 
-	d := pairing.Defaults{UserID: "u1", DefaultComputerID: "c1", FallbackProjectID: "proj-1", Provider: "claude", Model: "sonnet"}
+	d := pairing.Defaults{UserID: "u1", DefaultComputerID: "c1", FallbackProjectID: "proj-1", Provider: "claude", Model: "sonnet",
+		ModelOptions: []harness.OptionSetting{{ID: "contextWindow", Value: "1m"}}}
 	require.NoError(t, s.Pairing.SaveDefaults(ctx, d))
 
 	got, err := s.Pairing.GetDefaults(ctx, "u1")
@@ -256,6 +259,7 @@ func TestPairingRepo_Defaults_RoundTrip(t *testing.T) {
 	assert.Equal(t, "proj-1", got.FallbackProjectID)
 	assert.Equal(t, "claude", got.Provider)
 	assert.Equal(t, "sonnet", got.Model)
+	assert.Equal(t, d.ModelOptions, got.ModelOptions)
 }
 
 func TestPairingRepo_SaveDefaults_UpsertUpdatesInPlace(t *testing.T) {
@@ -322,24 +326,31 @@ func TestPairingRepo_SetSetupConfirmedAt_SetClearAndSurvivesRePair(t *testing.T)
 	assert.Equal(t, pairing.TopicSetupConfirmed, entries[0].Topic)
 }
 
-func TestPairingRepo_SetSetupSkippedProviders_RoundTripsAndSurvivesRePair(t *testing.T) {
+func TestPairingRepo_SaveSetupChoices_RoundTripsAndSurvivesRePair(t *testing.T) {
 	t.Parallel()
 	s := newSetupTestStore(t)
 	got, err := s.Pairing.GetComputer(t.Context(), "u1", "c1")
 	require.NoError(t, err)
-	assert.Equal(t, []string{}, got.SetupSkipped, "a new computer skips nothing")
+	empty := pairing.SetupChoices{Skipped: []string{}, Models: map[string]string{}, ModelOptions: map[string][]harness.OptionSetting{}}
+	assert.Equal(t, empty, got.SetupChoices, "a new computer skips nothing and has no saved picks")
 
-	require.ErrorIs(t, s.Pairing.SetSetupSkippedProviders(t.Context(), "u2", "c1", []string{"codex"}), apperrs.ErrNotFound)
-	require.NoError(t, s.Pairing.SetSetupSkippedProviders(t.Context(), "u1", "c1", []string{"codex"}))
+	choices := pairing.SetupChoices{
+		Skipped:      []string{"codex"},
+		Models:       map[string]string{"claudeagent": "claude-opus-5-5", "opencode": ""},
+		ModelOptions: map[string][]harness.OptionSetting{"claudeagent": {{ID: "effort", Value: "high"}, {ID: "fastMode", Value: true}}},
+		Folder:       "/home/me/app",
+	}
+	require.ErrorIs(t, s.Pairing.SaveSetupChoices(t.Context(), "u2", "c1", choices), apperrs.ErrNotFound)
+	require.NoError(t, s.Pairing.SaveSetupChoices(t.Context(), "u1", "c1", choices))
 	require.NoError(t, s.Pairing.SaveComputer(t.Context(), newTestComputer("c1", "u1", "renamed")))
 	got, err = s.Pairing.GetComputer(t.Context(), "u1", "c1")
 	require.NoError(t, err)
-	assert.Equal(t, []string{"codex"}, got.SetupSkipped)
+	assert.Equal(t, choices, got.SetupChoices, "re-pairing keeps the saved choices")
 
-	require.NoError(t, s.Pairing.SetSetupSkippedProviders(t.Context(), "u1", "c1", []string{}))
+	require.NoError(t, s.Pairing.SaveSetupChoices(t.Context(), "u1", "c1", empty))
 	got, err = s.Pairing.GetComputer(t.Context(), "u1", "c1")
 	require.NoError(t, err)
-	assert.Equal(t, []string{}, got.SetupSkipped)
+	assert.Equal(t, empty, got.SetupChoices)
 }
 
 func TestPairingRepo_ProviderSetups_UpsertListAndCascade(t *testing.T) {

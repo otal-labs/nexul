@@ -112,11 +112,11 @@ func TestResolveTargetOverride_StoredInstance_MapsToItsDriverKind(t *testing.T) 
 	f.confirmOverall(t)
 	f.confirmProvider(t, "claudeAgent")
 
-	target, err := f.svc.ResolveTargetOverride(t.Context(), "u1", "", f.computer.ID, "claude", "")
+	target, err := f.svc.ResolveTargetOverride(t.Context(), "u1", "", f.computer.ID, "claude", "", nil)
 	require.NoError(t, err)
 	assert.Equal(t, "claude", target.Provider)
 
-	_, err = f.svc.ResolveTargetOverride(t.Context(), "u1", "", f.computer.ID, "codex-main", "")
+	_, err = f.svc.ResolveTargetOverride(t.Context(), "u1", "", f.computer.ID, "codex-main", "", nil)
 	requireSetupRefusal(t, err, "Codex")
 }
 
@@ -147,7 +147,7 @@ func TestRequireSetup_HarnessAndStoreFailures_NeverPass(t *testing.T) {
 	t.Run("stored provider no longer on the computer", func(t *testing.T) {
 		t.Parallel()
 		f := newGateFixture(t)
-		_, err := f.svc.ResolveTargetOverride(t.Context(), "u1", "", f.computer.ID, "gone", "")
+		_, err := f.svc.ResolveTargetOverride(t.Context(), "u1", "", f.computer.ID, "gone", "", nil)
 		require.ErrorIs(t, err, apperrs.ErrInvalid)
 		assert.Contains(t, err.Error(), "gone")
 	})
@@ -172,7 +172,7 @@ func TestResolveTargetOverride_NoRequestArgument_BypassesTheGate(t *testing.T) {
 		for _, computerID := range []string{"", f.computer.ID} {
 			for _, provider := range []string{"", "codex-main", "claude", "CLAUDE", "claudeAgent", "codex", "setup"} {
 				for _, model := range []string{"", "gpt"} {
-					target, err := f.svc.ResolveTargetOverride(t.Context(), "u1", projectID, computerID, provider, model)
+					target, err := f.svc.ResolveTargetOverride(t.Context(), "u1", projectID, computerID, provider, model, nil)
 					require.Error(t, err, "project=%q computer=%q provider=%q model=%q", projectID, computerID, provider, model)
 					assert.Nil(t, target)
 				}

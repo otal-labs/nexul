@@ -24,14 +24,14 @@ describe("HarnessReadinessLine", () => {
   });
 
   it("names the computer when ready", () => {
-    mocks.useHarnessReadiness.mockReturnValue({ state: "ready", computerId: "c1", provider: "", model: "" });
+    mocks.useHarnessReadiness.mockReturnValue({ state: "ready", computerId: "c1", provider: "", model: "", modelOptions: [] });
     mocks.useListComputers.mockReturnValue({ data: [{ id: "c1", name: "Home" }] });
     render(<HarnessReadinessLine />);
     expect(screen.getByText("Ready to run plays on Home")).toBeInTheDocument();
   });
 
   it("falls back to a plain ready line when the computer name isn't loaded yet", () => {
-    mocks.useHarnessReadiness.mockReturnValue({ state: "ready", computerId: "c1", provider: "", model: "" });
+    mocks.useHarnessReadiness.mockReturnValue({ state: "ready", computerId: "c1", provider: "", model: "", modelOptions: [] });
     mocks.useListComputers.mockReturnValue({ data: undefined });
     render(<HarnessReadinessLine />);
     expect(screen.getByText("Ready to run plays")).toBeInTheDocument();

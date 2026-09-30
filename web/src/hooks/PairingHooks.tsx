@@ -16,12 +16,14 @@ import {
   type HarnessReadiness,
   type MCPToken,
   type MintedMCPToken,
+  type OptionSetting,
   type PairComputerFormData,
   type PairField,
   type PairingDefaults,
   type PairingDefaultsFormData,
   type ProjectLink,
   type ProjectLinkFormData,
+  type SetupChoices,
   type SetupRun,
   type TunnelPrerequisite,
   type TunnelStatus,
@@ -53,6 +55,7 @@ interface ResolveResponse {
   computer_id?: string;
   provider?: string;
   model?: string;
+  model_options?: OptionSetting[];
 }
 
 export const useListComputers = () =>
@@ -177,10 +180,11 @@ export const useFetchComputerSetup = (computerId: string) =>
     enabled: !!computerId,
   });
 
-// Model slugs keyed by driver kind; a provider left out or set to "" runs on its own default. An empty folder runs in the default project.
-// Providers are the driver kinds a full run covers, empty for every provider the computer lists.
+// Model slugs and their options keyed by driver kind; a provider left out or set to "" runs on its own default. An empty folder runs
+// in the default project. Providers are the driver kinds a full run covers, empty for every provider the computer lists.
 export interface RunSetupInput {
   models: Record<string, string>;
+  options: Record<string, OptionSetting[]>;
   folder: string;
   providers?: string[];
   provider?: string;
@@ -190,17 +194,29 @@ export interface RunSetupInput {
 export const useRunSetup = (computerId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ models, folder, providers, provider }: RunSetupInput) => {
+    mutationFn: async ({ models, options, folder, providers, provider }: RunSetupInput) => {
       if (provider) {
         const url = `/api/pairing/computers/${computerId}/setup/providers/${encodeURIComponent(provider)}/retry`;
-        return (await api.post<SetupRun>(url, { model: models[provider] ?? "", folder })).data;
+        return (await api.post<SetupRun>(url, { model: models[provider] ?? "", model_options: options[provider] ?? [], folder })).data;
       }
-      return (await api.post<SetupRun>(`/api/pairing/computers/${computerId}/setup/runs`, { models, folder, ...(providers && providers.length > 0 ? { providers } : {}) })).data;
+      const body = { models, model_options: options, folder, ...(providers && providers.length > 0 ? { providers } : {}) };
+      return (await api.post<SetupRun>(`/api/pairing/computers/${computerId}/setup/runs`, body)).data;
     },
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getComputerSetupKey, computerId] });
       toast.success("Setup started");
     },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
+// Done on the Set up step: keeps the switches, models, options, and folder without running anything.
+export const useSaveSetupChoices = (computerId: string) => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (choices: SetupChoices) =>
+      (await api.put<ComputerSetup>(`/api/pairing/computers/${computerId}/setup/choices`, choices)).data,
+    onSuccess: (setup) => client.setQueryData([getComputerSetupKey, computerId], setup),
     onError: (error) => toast.error(errorMessage(error)),
   });
 };
@@ -274,7 +290,13 @@ export const useHarnessReadiness = (projectId?: string): HarnessReadiness | unde
   if (presence.data?.[computerId] !== "connected") {
     return { state: "offline", message: HARNESS_READINESS_COPY.offline };
   }
-  return { state: "ready", computerId, provider: resolve.data.provider ?? "", model: resolve.data.model ?? "" };
+  return {
+    state: "ready",
+    computerId,
+    provider: resolve.data.provider ?? "",
+    model: resolve.data.model ?? "",
+    modelOptions: resolve.data.model_options ?? [],
+  };
 };
 
 // Comes from the computer's live T3 server, so consumers fall back to manual id entry on error.

@@ -37,7 +37,7 @@ func (q *Queries) DeletePairingProjectLink(ctx context.Context, projectID string
 }
 
 const getPairingComputer = `-- name: GetPairingComputer :one
-SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, setup_mcp_token, setup_skipped_providers FROM pairing_computers WHERE id = ? AND user_id = ?
+SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, setup_mcp_token, setup_skipped_providers, setup_models, setup_model_options, setup_folder FROM pairing_computers WHERE id = ? AND user_id = ?
 `
 
 type GetPairingComputerParams struct {
@@ -67,12 +67,15 @@ func (q *Queries) GetPairingComputer(ctx context.Context, arg GetPairingComputer
 		&i.TunnelAccessAppID,
 		&i.SetupMcpToken,
 		&i.SetupSkippedProviders,
+		&i.SetupModels,
+		&i.SetupModelOptions,
+		&i.SetupFolder,
 	)
 	return i, err
 }
 
 const getPairingComputerByID = `-- name: GetPairingComputerByID :one
-SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, setup_mcp_token, setup_skipped_providers FROM pairing_computers WHERE id = ?
+SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, setup_mcp_token, setup_skipped_providers, setup_models, setup_model_options, setup_folder FROM pairing_computers WHERE id = ?
 `
 
 func (q *Queries) GetPairingComputerByID(ctx context.Context, id string) (PairingComputer, error) {
@@ -97,12 +100,15 @@ func (q *Queries) GetPairingComputerByID(ctx context.Context, id string) (Pairin
 		&i.TunnelAccessAppID,
 		&i.SetupMcpToken,
 		&i.SetupSkippedProviders,
+		&i.SetupModels,
+		&i.SetupModelOptions,
+		&i.SetupFolder,
 	)
 	return i, err
 }
 
 const getPairingDefaults = `-- name: GetPairingDefaults :one
-SELECT default_computer_id, fallback_project_id, provider, model FROM pairing_user_defaults WHERE user_id = ?
+SELECT default_computer_id, fallback_project_id, provider, model, model_options FROM pairing_user_defaults WHERE user_id = ?
 `
 
 type GetPairingDefaultsRow struct {
@@ -110,6 +116,7 @@ type GetPairingDefaultsRow struct {
 	FallbackProjectID string
 	Provider          string
 	Model             string
+	ModelOptions      string
 }
 
 func (q *Queries) GetPairingDefaults(ctx context.Context, userID string) (GetPairingDefaultsRow, error) {
@@ -120,12 +127,13 @@ func (q *Queries) GetPairingDefaults(ctx context.Context, userID string) (GetPai
 		&i.FallbackProjectID,
 		&i.Provider,
 		&i.Model,
+		&i.ModelOptions,
 	)
 	return i, err
 }
 
 const getPairingProjectLink = `-- name: GetPairingProjectLink :one
-SELECT project_id, computer_id, harness_project_id, provider, model, updated_at FROM pairing_project_links WHERE project_id = ?
+SELECT project_id, computer_id, harness_project_id, provider, model, updated_at, model_options FROM pairing_project_links WHERE project_id = ?
 `
 
 func (q *Queries) GetPairingProjectLink(ctx context.Context, projectID string) (PairingProjectLink, error) {
@@ -138,12 +146,13 @@ func (q *Queries) GetPairingProjectLink(ctx context.Context, projectID string) (
 		&i.Provider,
 		&i.Model,
 		&i.UpdatedAt,
+		&i.ModelOptions,
 	)
 	return i, err
 }
 
 const listPairingComputers = `-- name: ListPairingComputers :many
-SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, setup_mcp_token, setup_skipped_providers FROM pairing_computers WHERE user_id = ? ORDER BY created_at DESC
+SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, setup_mcp_token, setup_skipped_providers, setup_models, setup_model_options, setup_folder FROM pairing_computers WHERE user_id = ? ORDER BY created_at DESC
 `
 
 func (q *Queries) ListPairingComputers(ctx context.Context, userID string) ([]PairingComputer, error) {
@@ -174,6 +183,9 @@ func (q *Queries) ListPairingComputers(ctx context.Context, userID string) ([]Pa
 			&i.TunnelAccessAppID,
 			&i.SetupMcpToken,
 			&i.SetupSkippedProviders,
+			&i.SetupModels,
+			&i.SetupModelOptions,
+			&i.SetupFolder,
 		); err != nil {
 			return nil, err
 		}
@@ -336,11 +348,11 @@ func (q *Queries) SavePairingComputer(ctx context.Context, arg SavePairingComput
 }
 
 const savePairingDefaults = `-- name: SavePairingDefaults :exec
-INSERT INTO pairing_user_defaults (user_id, default_computer_id, fallback_project_id, provider, model)
-VALUES (?, ?, ?, ?, ?)
+INSERT INTO pairing_user_defaults (user_id, default_computer_id, fallback_project_id, provider, model, model_options)
+VALUES (?, ?, ?, ?, ?, ?)
 ON CONFLICT(user_id) DO UPDATE SET
   default_computer_id = excluded.default_computer_id, fallback_project_id = excluded.fallback_project_id,
-  provider = excluded.provider, model = excluded.model
+  provider = excluded.provider, model = excluded.model, model_options = excluded.model_options
 `
 
 type SavePairingDefaultsParams struct {
@@ -349,6 +361,7 @@ type SavePairingDefaultsParams struct {
 	FallbackProjectID string
 	Provider          string
 	Model             string
+	ModelOptions      string
 }
 
 func (q *Queries) SavePairingDefaults(ctx context.Context, arg SavePairingDefaultsParams) error {
@@ -358,16 +371,17 @@ func (q *Queries) SavePairingDefaults(ctx context.Context, arg SavePairingDefaul
 		arg.FallbackProjectID,
 		arg.Provider,
 		arg.Model,
+		arg.ModelOptions,
 	)
 	return err
 }
 
 const savePairingProjectLink = `-- name: SavePairingProjectLink :exec
-INSERT INTO pairing_project_links (project_id, computer_id, harness_project_id, provider, model, updated_at)
-VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO pairing_project_links (project_id, computer_id, harness_project_id, provider, model, model_options, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(project_id) DO UPDATE SET
   computer_id = excluded.computer_id, harness_project_id = excluded.harness_project_id,
-  provider = excluded.provider, model = excluded.model, updated_at = excluded.updated_at
+  provider = excluded.provider, model = excluded.model, model_options = excluded.model_options, updated_at = excluded.updated_at
 `
 
 type SavePairingProjectLinkParams struct {
@@ -376,6 +390,7 @@ type SavePairingProjectLinkParams struct {
 	HarnessProjectID string
 	Provider         string
 	Model            string
+	ModelOptions     string
 	UpdatedAt        int64
 }
 
@@ -386,6 +401,7 @@ func (q *Queries) SavePairingProjectLink(ctx context.Context, arg SavePairingPro
 		arg.HarnessProjectID,
 		arg.Provider,
 		arg.Model,
+		arg.ModelOptions,
 		arg.UpdatedAt,
 	)
 	return err
@@ -461,6 +477,34 @@ func (q *Queries) SavePairingSetupTurn(ctx context.Context, arg SavePairingSetup
 	return err
 }
 
+const setPairingComputerSetupChoices = `-- name: SetPairingComputerSetupChoices :execrows
+UPDATE pairing_computers SET setup_skipped_providers = ?, setup_models = ?, setup_model_options = ?, setup_folder = ? WHERE id = ? AND user_id = ?
+`
+
+type SetPairingComputerSetupChoicesParams struct {
+	SetupSkippedProviders string
+	SetupModels           string
+	SetupModelOptions     string
+	SetupFolder           string
+	ID                    string
+	UserID                string
+}
+
+func (q *Queries) SetPairingComputerSetupChoices(ctx context.Context, arg SetPairingComputerSetupChoicesParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, setPairingComputerSetupChoices,
+		arg.SetupSkippedProviders,
+		arg.SetupModels,
+		arg.SetupModelOptions,
+		arg.SetupFolder,
+		arg.ID,
+		arg.UserID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const setPairingComputerSetupConfirmedAt = `-- name: SetPairingComputerSetupConfirmedAt :execrows
 UPDATE pairing_computers SET setup_confirmed_at = ? WHERE id = ? AND user_id = ?
 `
@@ -491,24 +535,6 @@ type SetPairingComputerSetupMCPTokenParams struct {
 
 func (q *Queries) SetPairingComputerSetupMCPToken(ctx context.Context, arg SetPairingComputerSetupMCPTokenParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, setPairingComputerSetupMCPToken, arg.SetupMcpToken, arg.ID, arg.UserID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
-}
-
-const setPairingComputerSetupSkippedProviders = `-- name: SetPairingComputerSetupSkippedProviders :execrows
-UPDATE pairing_computers SET setup_skipped_providers = ? WHERE id = ? AND user_id = ?
-`
-
-type SetPairingComputerSetupSkippedProvidersParams struct {
-	SetupSkippedProviders string
-	ID                    string
-	UserID                string
-}
-
-func (q *Queries) SetPairingComputerSetupSkippedProviders(ctx context.Context, arg SetPairingComputerSetupSkippedProvidersParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, setPairingComputerSetupSkippedProviders, arg.SetupSkippedProviders, arg.ID, arg.UserID)
 	if err != nil {
 		return 0, err
 	}
