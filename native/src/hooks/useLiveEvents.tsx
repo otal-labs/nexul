@@ -18,6 +18,9 @@ import { readSessionToken, useSessionStore } from "@/stores/sessionStore";
 const pushTopics: Record<string, string[]> = {
   "notification.created": [getNotificationsKey, getUnreadCountKey],
   "chat.conversation.created": [getChatConversationsKey],
+  "chat.conversation.updated": [getChatConversationsKey],
+  // An open thread of a deleted channel refetches into its error state instead of showing stale messages.
+  "chat.conversation.deleted": [getChatConversationsKey, getChatMessagesKey, getChatUnreadKey],
   "account.profile_updated": [getWorkspacePeopleKey],
   "account.removed": [getWorkspacePeopleKey],
   "workspace.member.added": [getWorkspacePeopleKey],
