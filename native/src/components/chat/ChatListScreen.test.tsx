@@ -43,6 +43,10 @@ const renderScreen = () =>
     </QueryClientProvider>,
   );
 
+// react-native loads ScrollView on first use and a cold transform cache takes seconds, which would land inside the first findBy instead of render.
+beforeAll(() => {
+  void jest.requireActual("react-native").ScrollView;
+});
 
 beforeEach(() => {
   useWorkspaceStore.setState({ selectedWorkspaceId: "w1" });
