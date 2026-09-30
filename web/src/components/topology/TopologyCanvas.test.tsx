@@ -24,6 +24,7 @@ const wrap = (ui: React.ReactNode) => (
       <Routes>
         <Route path="/acme/topology" element={ui} />
         <Route path="/acme/stacks/:stackId" element={<p>stack page</p>} />
+        <Route path="/acme/stacks/:stackId/logs/:service" element={<p>logs page</p>} />
       </Routes>
     </MemoryRouter>
   </QueryClientProvider>
@@ -116,6 +117,13 @@ describe("TopologyCanvas", () => {
     render(wrap(<TopologyCanvas />));
     fireEvent.click(await screen.findByText("api-gateway"));
     expect(await screen.findByText("stack page")).toBeInTheDocument();
+  });
+
+  it("opens the service's logs when the viewer can read them", async () => {
+    access.areas = ["stacks", "stackLogs"];
+    render(wrap(<TopologyCanvas />));
+    fireEvent.click(await screen.findByText("api-gateway"));
+    expect(await screen.findByText("logs page")).toBeInTheDocument();
   });
 
   it("does not open the stack page for a viewer who can't read stacks", async () => {

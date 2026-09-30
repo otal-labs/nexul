@@ -85,7 +85,7 @@ export const deriveWiring = (
     const container = containerById.get(n.data.service_id);
     const stack = container ? stackById.get(container.stack_id) : undefined;
     const gateway = gatewayByContainerId.get(n.data.service_id);
-    const extras = { target: stack?.machine, strategy: stack?.strategy, stackId: container?.stack_id };
+    const extras = { target: stack?.machine, strategy: stack?.strategy, stackId: container?.stack_id, serviceName: container?.name };
     // A gateway joins every network it serves, so boxing it would stack every box on top of it; it stays outside
     // and its card lists the networks instead.
     if (!gateway) {

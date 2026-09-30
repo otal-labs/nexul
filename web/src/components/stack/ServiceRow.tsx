@@ -1,4 +1,9 @@
+import { ScrollTextIcon } from "lucide-react";
+import { Link } from "react-router";
+
 import { ContainerStatusBadge } from "@/components/stack/ContainerStatusBadge";
+import { useAreaAccess } from "@/hooks/AccessHooks";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { parseContainerPort, type Container, type ContainerPort } from "@/models/Stack";
 
 interface ServiceRowProps {
@@ -26,6 +31,8 @@ const PortItem = ({ name, port }: { name: string; port: ContainerPort }) => (
 
 // Trailing column reads how the service is reached: public hostnames first, then its address on the stack's network.
 export const ServiceRow = ({ container, hostnames }: ServiceRowProps) => {
+  const wsPath = useWorkspacePath();
+  const canReadLogs = useAreaAccess()?.("stackLogs") ?? false;
   const image = imageOf(container);
   const ports = (container.ports ?? []).map(parseContainerPort).filter((p): p is ContainerPort => p != null);
 
@@ -35,6 +42,14 @@ export const ServiceRow = ({ container, hostnames }: ServiceRowProps) => {
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <span className="text-sm font-medium text-foreground">{container.name}</span>
           <ContainerStatusBadge status={container.status} />
+          {canReadLogs && (
+            <Link
+              to={wsPath(`/stacks/${container.stack_id}/logs/${container.name}`)}
+              className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground underline-offset-2 transition-colors duration-150 hover:text-foreground hover:underline"
+            >
+              <ScrollTextIcon className="size-3.5" aria-hidden /> Logs
+            </Link>
+          )}
         </div>
         {image && (
           <p className="truncate font-mono text-xs text-muted-foreground" title={image}>

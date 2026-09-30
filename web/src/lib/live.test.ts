@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { buildLiveURL } from "@/lib/live";
+import { buildLiveURL, buildLogsURL } from "@/lib/live";
 
 const originalWS = import.meta.env.VITE_WS_URL;
 
@@ -22,5 +22,13 @@ describe("buildLiveURL", () => {
   it("appends the token as a query param", () => {
     vi.stubEnv("VITE_WS_URL", undefined);
     expect(buildLiveURL("tok/ens")).toBe("ws://localhost:8080/ws/events?token=tok%2Fens");
+  });
+});
+
+describe("buildLogsURL", () => {
+  it("addresses the service's logs socket with the tail and the token", () => {
+    expect(buildLogsURL("tok/ens", "s-1", "web app", 20)).toBe(
+      "ws://localhost:8080/ws/stacks/s-1/services/web%20app/logs?tail=20&token=tok%2Fens",
+    );
   });
 });

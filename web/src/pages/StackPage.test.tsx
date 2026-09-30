@@ -107,6 +107,26 @@ describe("StackPage", () => {
     expect(screen.getByRole("heading", { name: "Services" })).toBeInTheDocument();
   });
 
+  it("links to the logs from the nav and from each Services row for a viewer who can read them", async () => {
+    access.areas = ["dns", "stackLogs"];
+    renderPage();
+    await screen.findByRole("heading", { name: "Services" });
+
+    const logsLinks = await screen.findAllByRole("link", { name: "Logs" });
+    expect(logsLinks.map((link) => link.getAttribute("href")).sort()).toEqual([
+      "/acme/stacks/stack-1/logs",
+      "/acme/stacks/stack-1/logs/api",
+    ]);
+  });
+
+  it("offers no Logs entry or link without stacks:logs", async () => {
+    renderPage();
+    await screen.findByRole("heading", { name: "Services" });
+    await screen.findByText(/api-api-1/);
+
+    expect(screen.queryByRole("link", { name: "Logs" })).not.toBeInTheDocument();
+  });
+
   it("offers no image field on a compose stack without a repository, only the attach hint", async () => {
     renderPage();
     await screen.findByRole("heading", { name: "Deploy" });

@@ -74,6 +74,7 @@ const workspaceRoutes: RouteObject[] = [
   { path: "runners", handle: gate("runners"), element: <RunnersPage /> },
   { path: "automations", handle: gate("automations"), element: <AutomationsPage /> },
   { path: "automations/:id", handle: gate("automations"), element: <AutomationPage /> },
+  { path: "stacks/:stackId/logs/:service?", handle: gate("stacks"), element: <StackPage forcedSection="logs" /> },
   { path: "stacks/:stackId/:section?", handle: gate("stacks"), element: <StackPage /> },
   { path: "stacks/:stackId/deploys/:deployId", handle: gate("deploys"), element: <DeployPage /> },
   { path: "configuration/:section?", handle: gate("configuration"), element: <ConfigurationPage /> },
