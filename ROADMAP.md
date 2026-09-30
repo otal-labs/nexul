@@ -90,6 +90,14 @@ its URL, so a shared link opens in the right workspace, and project prefixes
 are unique per workspace: two workspaces can both have a `WEB` project, and a
 ticket key resolves within its workspace (ADR 0089).
 
+### Container logs
+
+What a deployed service prints, read live from Docker through its runner and
+never stored (ADR 0091): a Logs section on the stack page with a tab per
+service and an errors filter, a link from each Services row, a click on a
+service node in the topology canvas, the phone, and `stack_get` for agents.
+Reading takes the `stacks:logs` permission, because output can carry secrets.
+
 ### The design pass
 
 A monochrome identity — "The Mono Console", light and dark as true inversions
@@ -115,10 +123,6 @@ In progress: **the Android app** in `native/`, with Inbox, Chat, the board,
 docs, deploys and runners on a phone, signed in by scanning a QR code,
 with push notifications and over-the-air updates. It is built and in device
 testing ahead of its first release; the map is in `.scratch/native-app/`.
-
-In progress: **container logs**, reading what a deployed service prints, live,
-from the stack page, the topology canvas, the phone, and agents through MCP.
-Decided and sliced into build tickets in `.scratch/container-logs/`.
 
 Parked until the repository migration lands: **bots**, webhook-driven bots
 that post into any conversation with Discord's payload and get their own tab

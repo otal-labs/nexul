@@ -9,6 +9,7 @@ import { StackBranchDeploySection } from "@/components/stack/StackBranchDeploySe
 import { StackDangerZoneSection } from "@/components/stack/StackDangerZoneSection";
 import { ServicesSection } from "@/components/stack/ServicesSection";
 import { StackDeployActions } from "@/components/stack/StackDeployActions";
+import { StackLogsSection } from "@/components/stack/StackLogsSection";
 import { StackHeaderSection } from "@/components/stack/StackHeaderSection";
 import { DEFAULT_STACK_SECTION, isStackSection, StackNav, type StackSection } from "@/components/stack/StackNav";
 import { useAreaAccess } from "@/hooks/AccessHooks";
@@ -22,14 +23,22 @@ import { projectSettingsPath, projectTokenById } from "@/models/Project";
 // A run stack's one container: its observed image, else the declared one. A compose stack has no single image.
 const imageOf = (c: StackContainer | undefined): string | undefined => c?.image || c?.declared.image;
 
+interface StackPageProps {
+  // The logs route carries a service instead of a section segment.
+  forcedSection?: StackSection;
+}
+
 // Same section-per-view shape as the settings pages: the :section path segment drives the card, StackNav lists sections.
-export const StackPage = () => {
-  const { stackId = "", section: rawSection } = useParams();
+export const StackPage = ({ forcedSection }: StackPageProps) => {
+  const { stackId = "", section: pathSection, service } = useParams();
+  const rawSection = forcedSection ?? pathSection;
   const { data: stack, isPending, error } = useFetchStack(stackId);
   const { data: projects = [] } = useFetchProjects();
   const { data: services } = useFetchStackServices(stackId);
   const { data: deploys, isPending: deploysPending } = useFetchStackDeploys(stackId);
-  const showExposures = useAreaAccess()?.("dns") ?? false;
+  const can = useAreaAccess();
+  const showExposures = can?.("dns") ?? false;
+  const showLogs = can?.("stackLogs") ?? false;
   const wsPath = useWorkspacePath();
   const { data: exposures } = useFetchExposures(showExposures);
 
@@ -63,7 +72,7 @@ export const StackPage = () => {
             hostnames={hostnames}
           />
           <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
-            <StackNav stackId={stack.id} active={section} showBranches={showBranches} showExposures={showExposures} />
+            <StackNav stackId={stack.id} active={section} showBranches={showBranches} showExposures={showExposures} showLogs={showLogs} />
             <div className="min-w-0 flex-1 space-y-6">
               {section === "overview" && (
                 <>
@@ -71,6 +80,7 @@ export const StackPage = () => {
                   <ServicesSection stackId={stack.id} />
                 </>
               )}
+              {section === "logs" && <StackLogsSection stackId={stack.id} service={service} />}
               {section === "exposures" && <ServiceHostnameSection containers={services ?? []} />}
               {section === "branches" && <StackBranchDeploySection stack={stack} />}
               {section === "history" && <DeployHistorySection deploys={deploys} isLoading={deploysPending} />}

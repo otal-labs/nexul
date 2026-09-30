@@ -7,11 +7,11 @@ const label: Record<Status, string> = { planned: 'Planned', 'in-progress': 'In p
 
 const items: { name: string; status: Status; summary: string }[] = [
 	{ name: 'Android app', status: 'in-progress', summary: 'Your inbox, chat, board, docs and deploys on your phone, signed in by scanning a QR code.' },
-	{ name: 'Container logs', status: 'in-progress', summary: 'Read what a running service prints, live, from the stack page, the canvas, your phone, or an agent.' },
 	{ name: 'Call notes', status: 'planned', summary: 'A voice call becomes notes and a summary in the doc, without anyone typing them.' },
 	{ name: 'Semantic search', status: 'planned', summary: 'Find docs and tickets by what they mean, not only by the words they share.' },
 	{ name: 'Runner labels', status: 'planned', summary: 'Route a job to the runners that carry the right labels, not just the right machine.' },
 	{ name: 'Automatic TLS', status: 'planned', summary: "Let's Encrypt certificates for services served straight from your server." },
+	{ name: 'Container logs', status: 'shipped', summary: 'Read what a running service prints, live, from the stack page, the canvas, your phone, or an agent.' },
 	{ name: 'Workspace links', status: 'shipped', summary: 'Every page link names its workspace, and each workspace can have its own WEB project and WEB-1 ticket.' },
 	{ name: 'Team', status: 'shipped', summary: 'Everyone on the instance in one list, and what each person can reach in every workspace, changed from one place.' },
 	{ name: 'Devices', status: 'shipped', summary: 'See every browser and phone signed in to your account, sign any of them out, and connect a phone with a QR code.' },

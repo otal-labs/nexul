@@ -1,7 +1,7 @@
 import { SettingsSectionNav } from "@/components/settings/SettingsSectionNav";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 
-export const STACK_SECTIONS = ["overview", "exposures", "branches", "history", "danger"] as const;
+export const STACK_SECTIONS = ["overview", "logs", "exposures", "branches", "history", "danger"] as const;
 
 export type StackSection = (typeof STACK_SECTIONS)[number];
 
@@ -12,6 +12,7 @@ export const isStackSection = (value: string | null | undefined): value is Stack
 
 const sectionLabels: Record<StackSection, string> = {
   overview: "Overview",
+  logs: "Logs",
   exposures: "Exposures",
   branches: "Branch deploys",
   history: "Deploy history",
@@ -25,19 +26,21 @@ interface StackNavProps {
   showBranches: boolean;
   // Exposures are DNS, read with dns:read rather than the stack's own bit.
   showExposures: boolean;
+  // Container logs carry secrets, so they are read with stacks:logs rather than the stack's own bit.
+  showLogs: boolean;
 }
 
-const visible = (section: StackSection, showBranches: boolean, showExposures: boolean) =>
-  (section !== "branches" || showBranches) && (section !== "exposures" || showExposures);
+const visible = (section: StackSection, showBranches: boolean, showExposures: boolean, showLogs: boolean) =>
+  (section !== "branches" || showBranches) && (section !== "exposures" || showExposures) && (section !== "logs" || showLogs);
 
-export const StackNav = ({ stackId, active, showBranches, showExposures }: StackNavProps) => {
+export const StackNav = ({ stackId, active, showBranches, showExposures, showLogs }: StackNavProps) => {
   const wsPath = useWorkspacePath();
   return (
     <SettingsSectionNav
       ariaLabel="Stack sections"
       basePath={wsPath(`/stacks/${stackId}`)}
       active={active}
-      items={STACK_SECTIONS.filter((section) => visible(section, showBranches, showExposures)).map((section) => ({
+      items={STACK_SECTIONS.filter((section) => visible(section, showBranches, showExposures, showLogs)).map((section) => ({
         section,
         label: sectionLabels[section],
         danger: section === "danger",

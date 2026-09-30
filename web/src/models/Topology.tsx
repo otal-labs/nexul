@@ -141,6 +141,8 @@ export type ServiceNodeExtras = {
   strategy?: string | undefined;
   // The owning stack's id (service_id is now a container id, spec §2) — lets a node click open its stack page.
   stackId?: string | undefined;
+  // The container's name in that stack, which is what its logs are addressed by.
+  serviceName?: string | undefined;
 };
 
 // A hostname routed to a service through a gateway; derived from exposures at render time, never persisted.
@@ -162,6 +164,7 @@ export type RouteRow = {
 export type GatewayNodeData = ServiceNodeData & {
   target?: string | undefined;
   stackId?: string | undefined;
+  serviceName?: string | undefined;
   kind: GatewayKind;
   routes: RouteRow[];
   // Every docker network the gateway is on; it sits outside the network boxes, so the card names them instead.

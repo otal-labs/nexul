@@ -226,7 +226,7 @@ slug, title, actions top right) and adds a facts grid: a mono microheader over
 each value (Status, Image, Runner, Strategy, Hostnames, Repository, or Network
 when no repository is attached); a compose stack runs several images, so it shows
 Services, a count with how many are not running, in Image's place. Below it the page is the settings shell:
-`SettingsSectionNav` driving a `/:section` path segment (Overview, Exposures, Branch deploys,
+`SettingsSectionNav` driving a `/:section` path segment (Overview, Logs, Exposures, Branch deploys,
 Deploy history, Danger zone), one or two `SettingsCard`s per section. The nav
 is a scrolling top row below 1024px and a side column from it, on every
 settings-style page (Your settings, Configuration, Project settings, Stack);
@@ -241,6 +241,18 @@ status over its image and a muted `container <name>` line, with how it is
 reached trailing right in mono (public hostnames as links, then
 `service:port` on the stack's network, then `host :port` when published on the
 machine); its footer names the networks and when the runner last looked.
+
+Logs view. The stack page's Logs section is a line tab row of the stack's
+services over one terminal-style block per service: a mono timestamp column
+and the raw line, wrapped lines indented under the text, dense rows, and a
+copy button in the block's corner. Above it sit All / Errors, Pause, Copy and
+Download, with one mono status marker at the end: Live while following, Paused
+after the button, Scrolled up once scrolling released following, and the
+connection's own state (reconnecting, ended) ahead of those. Errors means a
+line that looks like one by its text, from either stream. A thin `destructive`
+gutter marks every stderr line and is the only color in the view. A solid
+Jump to live control, never a translucent one, resumes following.
+`LogsView` in `web/src/components/logs/` is the reference.
 
 Tabs. A view whose cards or sections are separate jobs (two or more of them)
 splits them into tabs instead of stacking them; a single-card view gets none,

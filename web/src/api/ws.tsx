@@ -34,7 +34,7 @@ export const parseFrame = (raw: string): ServerFrame => {
   return { topic, type, payload };
 };
 
-const closeSocket = (socket: LiveSocket) => {
+export const closeSocket = (socket: LiveSocket) => {
   if (socket.readyState === WebSocket.CONNECTING) {
     // Closing mid-handshake logs a Chrome warning, so let it finish opening, then close.
     socket.onopen = () => socket.close();

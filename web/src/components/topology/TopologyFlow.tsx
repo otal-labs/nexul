@@ -45,7 +45,9 @@ const edgeTypes = { relation: RelationEdgeView, route: RouteEdgeView };
 export const TopologyFlow = () => {
   const navigate = useNavigate();
   const wsPath = useWorkspacePath();
-  const canOpenStack = useAreaAccess()?.("stacks") ?? false;
+  const can = useAreaAccess();
+  const canOpenStack = can?.("stacks") ?? false;
+  const canReadLogs = can?.("stackLogs") ?? false;
   const nodes = useFlowStore((s) => s.nodes);
   const storeViewport = useFlowStore((s) => s.setViewport);
   const selectedNodeId = useFlowStore((s) => s.selectedNodeId);
@@ -79,7 +81,11 @@ export const TopologyFlow = () => {
   // ran has none yet, so the click is a no-op rather than a broken link.
   const handleNodeClick: NodeMouseHandler<TopologyNode> = (_, node) => {
     if (node.type === NodeType.Service || node.type === "gateway") {
-      if (node.data.stackId && canOpenStack) void navigate(wsPath(`/stacks/${node.data.stackId}`));
+      const { stackId, serviceName } = node.data;
+      if (!stackId || !canOpenStack) return;
+      // With stacks:logs the click lands on the service's logs rather than the stack overview.
+      const logs = canReadLogs && serviceName ? `/logs/${encodeURIComponent(serviceName)}` : "";
+      void navigate(wsPath(`/stacks/${stackId}${logs}`));
       return;
     }
     if (node.type === NodeType.Network || node.type === NodeType.External) selectNode(node.id);
