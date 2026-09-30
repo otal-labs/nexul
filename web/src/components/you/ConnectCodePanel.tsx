@@ -27,33 +27,37 @@ export const ConnectCodePanel = () => {
   const qr = useMemo(() => data && qrDataUrl(connectLink(data)), [data]);
   const now = useNow(!!data);
   const remaining = data ? new Date(data.expires_at).getTime() - now : 0;
-  const expired = !data || remaining <= 0;
+  const expired = remaining <= 0;
+  const newCode = () => void refetch();
 
   return (
     <>
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
-      {(data || error) && (
-        <div className="@container mt-3">
+      {error && !data && (
+        <Button variant="outline" size="sm" className="mt-3" onClick={newCode} loading={isFetching}>
+          Try again
+        </Button>
+      )}
+      {data && qr && (
+        <div className="@container">
           {/* Two cards share the row from 1024px, so a card can be 240px wide: the text drops under the QR until the card has room. */}
           <div className="flex flex-col items-start gap-5 @sm:flex-row">
-            <div className="relative size-[9.25rem] shrink-0 rounded-md bg-white p-2.5">
-              {qr && (
-                <img
-                  key={data?.code}
-                  src={qr}
-                  alt="Sign-in code for the Nexul app"
-                  className={cn(
-                    "size-32 animate-in fade-in-0 animation-duration-150 ease-out transition-opacity duration-200",
-                    expired && "opacity-10",
-                  )}
-                />
-              )}
+            <div className="relative shrink-0 rounded-md bg-white p-2.5">
+              <img
+                key={data.code}
+                src={qr}
+                alt="Sign-in code for the Nexul app"
+                className={cn(
+                  "size-32 animate-in fade-in-0 animation-duration-150 ease-out transition-opacity duration-200",
+                  expired && "opacity-10",
+                )}
+              />
               {expired && (
                 <Button
                   size="sm"
                   className="absolute inset-0 m-auto w-fit animate-in fade-in-0 zoom-in-[0.97] duration-150 ease-out"
-                  onClick={() => void refetch()}
+                  onClick={newCode}
                   loading={isFetching}
                 >
                   <RefreshCw className="size-4" aria-hidden />
@@ -61,18 +65,16 @@ export const ConnectCodePanel = () => {
                 </Button>
               )}
             </div>
-            {data && (
-              <div className="min-w-0 space-y-3 text-sm">
-                <p className="text-muted-foreground">Works once, for two minutes. Nobody else can use it after your phone does.</p>
-                <p className="font-mono text-xs tabular-nums">
-                  <span className="text-muted-foreground">Code </span>
-                  {data.code}
-                </p>
-                <p className="font-mono text-xs tabular-nums text-muted-foreground">
-                  {expired ? "Expired" : `Expires in ${formatRemaining(remaining)}`}
-                </p>
-              </div>
-            )}
+            <div className="min-w-0 space-y-3 text-sm">
+              <p className="text-muted-foreground">Works once, for two minutes. Nobody else can use it after your phone does.</p>
+              <p className="font-mono text-xs tabular-nums">
+                <span className="text-muted-foreground">Code </span>
+                {data.code}
+              </p>
+              <p className="font-mono text-xs tabular-nums text-muted-foreground">
+                {expired ? "Expired" : `Expires in ${formatRemaining(remaining)}`}
+              </p>
+            </div>
           </div>
         </div>
       )}

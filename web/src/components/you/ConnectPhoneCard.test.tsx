@@ -42,7 +42,7 @@ describe("ConnectPhoneCard", () => {
     renderCard();
     expect(await screen.findByText("A signed-in device is required")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "New code" }));
+    await user.click(screen.getByRole("button", { name: "Try again" }));
 
     expect(await screen.findByText("7Q4F-K92M-3XYZ")).toBeInTheDocument();
   });
@@ -70,6 +70,19 @@ describe("ConnectPhoneCard", () => {
     expect(await screen.findByText("7Q4F-K92M-3XYZ")).toBeInTheDocument();
     expect(mocks.post).toHaveBeenCalledTimes(2);
     expect(screen.queryByText("Expired")).not.toBeInTheDocument();
+  });
+
+  it("keeps the faded QR and its button when a new code request fails", async () => {
+    mocks.post.mockResolvedValueOnce({ data: dead }).mockRejectedValue(new Error("boom"));
+    mocks.errorMessage.mockReturnValue("Could not issue a code");
+    const user = userEvent.setup();
+    renderCard();
+    await user.click(await screen.findByRole("button", { name: "New code" }));
+
+    expect(await screen.findByText("Could not issue a code")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Sign-in code for the Nexul app" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "New code" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
   });
 
   it("flips to the connected state when a phone arrives while the code is showing", async () => {
