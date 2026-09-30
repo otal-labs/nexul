@@ -1,7 +1,7 @@
 # 08 — Runner log frames, `stacks:logs`, and the logs routes
 
 **Type:** task
-**Status:** ready-for-agent
+**Status:** done
 **Blocked by:** None — can start immediately
 
 ## What to build
