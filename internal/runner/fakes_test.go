@@ -492,7 +492,19 @@ type fakeExecutor struct {
 	discoverFn   func(ctx context.Context) (DiscoverReport, error)
 	joinNetworks func(ctx context.Context, gatewayContainer string, networks []string, send func(Frame))
 	upgradeFn    func(ctx context.Context, req Frame, send func(Frame) error) error
+	logsFn       func(ctx context.Context, req Frame, send func(Frame))
 	uninstalls   []string
+}
+
+func (f *fakeExecutor) Logs(ctx context.Context, req Frame, send func(Frame)) {
+	f.mu.Lock()
+	fn := f.logsFn
+	f.mu.Unlock()
+	if fn == nil {
+		send(Frame{Type: FrameLogsEnd, ID: req.ID})
+		return
+	}
+	fn(ctx, req, send)
 }
 
 func (f *fakeExecutor) Uninstall(_ context.Context, name string) error {

@@ -260,9 +260,10 @@ The runner connects out to the server over one WebSocket (ADR 0031); the
 server never dials the runner, so a runner behind NAT works. Frames are JSON
 with a `type` discriminator, declared in `internal/runner/protocol.go`:
 
-- Server to runner: `assign_build`, `assign_deploy`, `cancel`.
+- Server to runner: `assign_build`, `assign_deploy`, `cancel`,
+  `logs_request`, `logs_cancel`.
 - Runner to server: `heartbeat`, `build_progress`, `build_result`,
-  `deploy_log`, `deploy_progress`, `deploy_result`.
+  `deploy_log`, `deploy_progress`, `deploy_result`, `logs_chunk`, `logs_end`.
 
 The server-side handler translates runner frames into bus events. It is a
 producer on the bus, not the bus.

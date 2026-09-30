@@ -53,6 +53,9 @@ type Client struct {
 	pendingUpdate *Frame
 	// writeMu serializes writes: a websocket.Conn allows only one writer at a time.
 	writeMu sync.Mutex
+	// logsMu/logs hold the cancel of every open container log stream, keyed by stream id.
+	logsMu sync.Mutex
+	logs   map[string]context.CancelFunc
 }
 
 // NewClient wires the runner client with sane defaults for unset durations.
@@ -75,7 +78,7 @@ func NewClient(cfg ClientConfig) *Client {
 	if cfg.BackoffMax <= 0 {
 		cfg.BackoffMax = 30 * time.Second
 	}
-	return &Client{cfg: cfg, log: cfg.Logger, hb: cfg.HeartbeatInterval}
+	return &Client{cfg: cfg, log: cfg.Logger, hb: cfg.HeartbeatInterval, logs: map[string]context.CancelFunc{}}
 }
 
 // errRemoved ends the connection loop: the server removed this runner, so reconnecting can never succeed.
@@ -154,6 +157,10 @@ func (c *Client) runOnce(ctx context.Context) (err error) {
 			go c.cfg.Executor.JoinNetworks(ctx, jn.GatewayContainer, jn.JoinNetworks, func(fr Frame) { c.sendFrame(ctx, conn, fr) })
 		case FrameUpdate:
 			go c.handleUpdate(ctx, *frame)
+		case FrameLogsRequest:
+			c.startLogs(ctx, conn, *frame)
+		case FrameLogsCancel:
+			c.stopLogs(frame.ID)
 		default:
 			c.log.Warn("unexpected server frame", "runner", c.cfg.Name, "type", frame.Type)
 		}

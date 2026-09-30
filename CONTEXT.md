@@ -284,6 +284,15 @@ address, status. A stack deploy creates or updates one service per
 container it started; an import adopts one per container found running.
 _Avoid_: Container (the Docker thing a service is a record of)
 
+**Container logs**:
+What a service's container prints on stdout and stderr, each line with its
+timestamp and stream, read live from Docker through the machine's runner and
+never stored in Nexul: a snapshot of the last lines, or a live tail that
+follows new ones. The stack's own env values are masked before a line leaves
+the server. Gated by `stacks:logs`.
+_Avoid_: Deploy log (the build and start output Nexul stores per deploy),
+service logs (Nexul's own, which OpenObserve holds)
+
 **Stack root**:
 The directory on a machine under which every stack's persistent checkout
 lives, at `stacks/<slug>/repo` beneath it. Set by the runner that creates the
@@ -434,7 +443,7 @@ _Avoid_: Ticket template, form, checklist
 One capability, written `<domain>:<action>` where the action is `read`,
 `write`, or `delete` (`docs:write`, `members:delete`), or a verb the domain
 declares for an act that is neither (`plays:run`, `memories:clone`,
-`roles:clone`, `docs:thread`, `docs:clone`). One vocabulary for every actor: a role, a
+`roles:clone`, `docs:thread`, `docs:clone`, `stacks:logs`). One vocabulary for every actor: a role, a
 scoped token, and the agent are checked against the same values. Checked in
 the workspace the entity belongs to; runners, the topology, machines, DNS,
 connectors, the instance's own stacks, and the instance itself (its settings,
@@ -585,7 +594,7 @@ internals.
 **Access** — what an actor may do. Permissions and access control. A
 permission is `<domain>:<read|write|delete>` (`docs:write`,
 `members:delete`), or a verb a domain declares beside those three
-(`plays:run`, `memories:clone`, `roles:clone`, `docs:thread`, `docs:clone`), one
+(`plays:run`, `memories:clone`, `roles:clone`, `docs:thread`, `docs:clone`, `stacks:logs`), one
 vocabulary shared by roles, token scopes, and the agent. Distinct from auth.
 
 **Auth** — who a user is. Identity and device sessions, via an owner-configured OAuth provider.

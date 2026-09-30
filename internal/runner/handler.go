@@ -79,6 +79,10 @@ type Handler struct {
 	discoverMu      sync.Mutex
 	discoverWaiters map[string]chan Frame
 
+	// logsMu/logSubs route logs_chunk and logs_end frames to the viewer's feed, keyed by stream id.
+	logsMu  sync.Mutex
+	logSubs map[string]logSub
+
 	// updateMu guards updateSettings/updateRelease: set once by SetUpdateSource after runnerSvc (and its release
 	// client) exist, since that happens after the handler is constructed in server/cmd/workers.go.
 	updateMu       sync.Mutex
@@ -129,6 +133,7 @@ func NewHandler(cfg HandlerConfig) *Handler {
 		cfg:             cfg,
 		conns:           make(map[string]*runnerConn),
 		discoverWaiters: make(map[string]chan Frame),
+		logSubs:         make(map[string]logSub),
 	}
 }
 
@@ -459,6 +464,7 @@ func (h *Handler) readLoop(ctx context.Context, c *runnerConn) {
 		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), h.cfg.WriteTimeout)
 		defer cancel()
 		h.removeConn(c)
+		h.endLogSubs(c)
 		if job := c.jobSnapshot(); job != nil {
 			h.publish(ctx, TopicDeployStatusChanged, DeployStatusChangedEvent{
 				ID: job.ID, Status: DeployStatusFailed, Error: "runner disconnected",
@@ -521,6 +527,9 @@ func (h *Handler) dispatchFrame(ctx context.Context, c *runnerConn, f Frame) err
 		})
 	case FrameDiscoverResult:
 		h.deliverDiscoverResult(f)
+		return nil
+	case FrameLogsChunk, FrameLogsEnd:
+		h.deliverLogs(f)
 		return nil
 	case FrameJoinNetworksResult:
 		if f.Status == BuildStatusFailed {
@@ -723,19 +732,23 @@ func (h *Handler) Cancel(ctx context.Context, id string) error {
 // connected is not an error, since the stack's next deploy carries the same join step (assign_deploy's own
 // gateway_container/join_networks fields).
 func (h *Handler) JoinNetworks(ctx context.Context, machine, gatewayContainer string, networks []string) error {
-	h.mu.Lock()
-	var c *runnerConn
-	for _, conn := range h.conns {
-		if conn.machine == machine {
-			c = conn
-			break
-		}
-	}
-	h.mu.Unlock()
+	c := h.connOnMachine(machine)
 	if c == nil {
 		return nil
 	}
 	return h.sendFrame(ctx, c, Frame{Type: FrameJoinNetworks, GatewayContainer: gatewayContainer, JoinNetworks: networks})
+}
+
+// connOnMachine returns any connected runner on machine, busy or not, or nil.
+func (h *Handler) connOnMachine(machine string) *runnerConn {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for _, c := range h.conns {
+		if c.machine == machine {
+			return c
+		}
+	}
+	return nil
 }
 
 // connNamed returns the connected runner named name, or nil.

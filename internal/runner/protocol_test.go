@@ -115,6 +115,34 @@ func TestFrame_Encode(t *testing.T) {
 			},
 			want: `{"type":"update","version":"v0.2.0","url":"https://instance/api/runners/download/linux-amd64?version=v0.2.0","sha256":"abc123"}`,
 		},
+		{
+			name: "logs_request wire shape",
+			got: func() Frame {
+				return Frame{Type: FrameLogsRequest, ID: "l1", Container: "shop-web-1", Tail: 200, Follow: true}
+			},
+			want: `{"type":"logs_request","id":"l1","container":"shop-web-1","tail":200,"follow":true}`,
+		},
+		{
+			name: "logs_chunk wire shape",
+			got: func() Frame {
+				return Frame{Type: FrameLogsChunk, ID: "l1", Lines: []ContainerLogLine{{TS: "2026-09-30T10:00:00.5Z", Stream: LogStreamStderr, Line: "boom"}}}
+			},
+			want: `{"type":"logs_chunk","id":"l1","lines":[{"ts":"2026-09-30T10:00:00.5Z","stream":"stderr","line":"boom"}]}`,
+		},
+		{
+			name: "logs_end wire shape",
+			got: func() Frame {
+				return Frame{Type: FrameLogsEnd, ID: "l1", Error: "No such container: shop-web-1"}
+			},
+			want: `{"type":"logs_end","id":"l1","error":"No such container: shop-web-1"}`,
+		},
+		{
+			name: "logs_cancel wire shape",
+			got: func() Frame {
+				return Frame{Type: FrameLogsCancel, ID: "l1"}
+			},
+			want: `{"type":"logs_cancel","id":"l1"}`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -149,6 +177,12 @@ func TestFrame_Encode_Invalid(t *testing.T) {
 		{name: "join_networks_result missing gateway_container", f: Frame{Type: FrameJoinNetworksResult, Status: BuildStatusSuccess}},
 		{name: "update missing url", f: Frame{Type: FrameUpdate, Version: "v0.2.0"}},
 		{name: "update missing version", f: Frame{Type: FrameUpdate, URL: "https://instance/download"}},
+		{name: "logs_request missing container", f: Frame{Type: FrameLogsRequest, ID: "l1"}},
+		{name: "logs_request negative tail", f: Frame{Type: FrameLogsRequest, ID: "l1", Container: "web", Tail: -1}},
+		{name: "logs_chunk without lines", f: Frame{Type: FrameLogsChunk, ID: "l1"}},
+		{name: "logs_chunk bad stream", f: Frame{Type: FrameLogsChunk, ID: "l1", Lines: []ContainerLogLine{{Stream: "stdin", Line: "x"}}}},
+		{name: "logs_end missing id", f: Frame{Type: FrameLogsEnd}},
+		{name: "logs_cancel missing id", f: Frame{Type: FrameLogsCancel}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

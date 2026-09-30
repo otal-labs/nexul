@@ -58,6 +58,7 @@ type Service struct {
 	discoverer  MachineDiscoverer
 	adopter     GatewayAdopter
 	gatewayJoin GatewayJoin
+	logs        LogSource
 	gate        Gate
 	now         func() time.Time
 }

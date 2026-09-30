@@ -3,11 +3,13 @@ package integrations
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"strings"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/httpx"
 	"github.com/otal-labs/nexul/internal/platform/identity"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 type ctxKey string
@@ -71,6 +73,31 @@ var exactDenylist = map[string]bool{
 	http.MethodPost + " /api/instance/upgrade":    true,
 }
 
+// verbRouteScope names the routes a domain-declared verb gates instead of the method's action (ADR 0057); the
+// /api/services alias serves the stack routes too.
+var verbRouteScope = map[string]Scope{
+	"GET /api/stacks/{id}/services/{name}/logs":   Scope(permissions.StacksLogs),
+	"GET /api/services/{id}/services/{name}/logs": Scope(permissions.StacksLogs),
+}
+
+// verbRoutes matches a request to its verbRouteScope pattern the way the serving mux would.
+var verbRoutes = func() *http.ServeMux {
+	mux := http.NewServeMux()
+	for pattern := range verbRouteScope {
+		mux.Handle(pattern, http.NotFoundHandler())
+	}
+	return mux
+}()
+
+// requiredScope is the verb a route declares, else "<domain>:<action>" from the path and method.
+func requiredScope(method, path, domain string) Scope {
+	_, pattern := verbRoutes.Handler(&http.Request{Method: method, URL: &url.URL{Path: path}})
+	if scope, ok := verbRouteScope[pattern]; ok {
+		return scope
+	}
+	return Scope(domain + ":" + string(requiredAction(method)))
+}
+
 // requiredAction maps an HTTP method to the action it needs: GET/HEAD read, DELETE delete, everything else write.
 func requiredAction(method string) action {
 	switch method {
@@ -94,7 +121,7 @@ func scopeAllows(method, path string, scopes []Scope) bool {
 	if domain == "" {
 		return false
 	}
-	required := Scope(domain + ":" + string(requiredAction(method)))
+	required := requiredScope(method, path, domain)
 	if !allScopes[required] {
 		return false
 	}
