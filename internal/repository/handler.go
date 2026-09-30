@@ -48,7 +48,7 @@ func (h *Handler) scan(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
-	repos, err := ListRepos(r.Context(), h.g, h.s)
+	repos, err := ListRepos(r.Context(), h.g, h.s, r.URL.Query().Get("q"), r.URL.Query().Get("refresh") == "1")
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

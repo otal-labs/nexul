@@ -47,3 +47,22 @@ export const LoginProviderMarks = ({ login }: LoginProviderMarksProps) => {
     </span>
   );
 };
+
+const repoProviders: Record<string, { label: string; Mark: typeof GithubMark }> = {
+  github: { label: "GitHub", Mark: GithubMark },
+};
+
+interface RepoProviderMarkProps {
+  provider: string;
+}
+
+// Where a repository lives; a provider without a mark here shows nothing rather than a guess.
+export const RepoProviderMark = ({ provider }: RepoProviderMarkProps) => {
+  const known = repoProviders[provider];
+  if (!known) return null;
+  return (
+    <span role="img" aria-label={known.label} title={known.label} className="shrink-0 text-muted-foreground">
+      <known.Mark className="size-4" />
+    </span>
+  );
+};

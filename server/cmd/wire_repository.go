@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
+	"time"
 
 	"github.com/otal-labs/nexul/internal/connectors"
 	"github.com/otal-labs/nexul/internal/gitprovider"
@@ -23,13 +25,48 @@ const githubConnectorID = "github"
 type repositoryScanner struct {
 	git        gitProviderRouter
 	appConfigs connectors.AppConfigStore
+	repos      *installationRepoCache
+}
+
+func newRepositoryScanner(git gitProviderRouter, appConfigs connectors.AppConfigStore) repositoryScanner {
+	return repositoryScanner{git: git, appConfigs: appConfigs, repos: &installationRepoCache{}}
+}
+
+// installationReposTTL bounds how long the connector's repository list is served without asking GitHub again; a
+// search fires a request per pause in typing, and each walk costs a call per installation and page.
+const installationReposTTL = time.Minute
+
+// installationRepoCache holds the GitHub connector's full repository list, the only connector the scanner reads.
+// One mutex spans the walk so searches that arrive while it runs wait for its result instead of starting their own.
+type installationRepoCache struct {
+	mu    sync.Mutex
+	at    time.Time
+	repos []repository.Repo
+}
+
+func (c *installationRepoCache) get(refresh bool, load func() ([]repository.Repo, error)) ([]repository.Repo, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if !refresh && !c.at.IsZero() && time.Since(c.at) < installationReposTTL {
+		return c.repos, nil
+	}
+	repos, err := load()
+	if err != nil {
+		return nil, err
+	}
+	c.repos, c.at = repos, time.Now()
+	return repos, nil
 }
 
 func (s repositoryScanner) provider(ctx context.Context) (gitprovider.GitProvider, error) {
 	return s.git.resolveConnector(ctx, githubConnectorID)
 }
 
-func (s repositoryScanner) ListInstallationRepos(ctx context.Context) ([]repository.Repo, error) {
+func (s repositoryScanner) ListInstallationRepos(ctx context.Context, refresh bool) ([]repository.Repo, error) {
+	return s.repos.get(refresh, func() ([]repository.Repo, error) { return s.listInstallationRepos(ctx) })
+}
+
+func (s repositoryScanner) listInstallationRepos(ctx context.Context) ([]repository.Repo, error) {
 	p, err := s.provider(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list installation repositories: %w", err)
@@ -132,5 +169,6 @@ func toRepositoryRepo(r *gitprovider.Repo) repository.Repo {
 		FullName:      r.FullName,
 		DefaultBranch: r.DefaultBranch,
 		HTMLURL:       r.HTMLURL,
+		Provider:      githubConnectorID,
 	}
 }

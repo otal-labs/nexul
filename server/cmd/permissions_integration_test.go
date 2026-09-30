@@ -125,7 +125,9 @@ func (noPRs) ListPRs(context.Context, string, string, gitprovider.PROpts) ([]*gi
 
 type noRepos struct{ repository.Scanner }
 
-func (noRepos) ListInstallationRepos(context.Context) ([]repository.Repo, error) { return nil, nil }
+func (noRepos) ListInstallationRepos(context.Context, bool) ([]repository.Repo, error) {
+	return nil, nil
+}
 
 func grant(actions ...string) permissions.Set {
 	out := make([]permissions.Action, len(actions))
@@ -337,7 +339,7 @@ func TestIntegration_PermissionTable(t *testing.T) {
 			return s.connectorsSvc.Disconnect(ctx, "cloudflare")
 		}, map[string]string{uOwner: ok, uReader: forbidden, uWriter: forbidden, uOutsider: forbidden}},
 		{"repositories: list the installation's", func(ctx context.Context) error {
-			_, err := repository.ListRepos(ctx, s.accessSvc, noRepos{})
+			_, err := repository.ListRepos(ctx, s.accessSvc, noRepos{}, "", false)
 			return err
 		}, map[string]string{uOwner: ok, uWriter: ok, uReader: forbidden, uOutsider: forbidden}},
 		{"pull requests: list a project repository's", func(ctx context.Context) error {

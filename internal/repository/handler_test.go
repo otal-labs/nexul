@@ -67,6 +67,22 @@ func TestHandler_List(t *testing.T) {
 		require.Len(t, body.Repositories, 1)
 		assert.Equal(t, "acme/app", body.Repositories[0].FullName)
 	})
+	t.Run("q searches and refresh reaches the scanner", func(t *testing.T) {
+		s := &fakeScanner{repos: []Repo{{FullName: "acme/app"}, {FullName: "acme/worker"}}}
+		rec := serve(t, s, http.MethodGet, "/api/repositories?q=WORK&refresh=1", "")
+		require.Equal(t, http.StatusOK, rec.Code)
+		var body struct {
+			Repositories []Repo `json:"repositories"`
+		}
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
+		require.Len(t, body.Repositories, 1)
+		assert.Equal(t, "acme/worker", body.Repositories[0].FullName)
+		assert.True(t, s.lastRefresh)
+	})
+	t.Run("a q under three characters is a 400", func(t *testing.T) {
+		rec := serve(t, &fakeScanner{}, http.MethodGet, "/api/repositories?q=ab", "")
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
 	t.Run("scanner error is a 500", func(t *testing.T) {
 		s := &fakeScanner{listErr: assertError{}}
 		rec := serve(t, s, http.MethodGet, "/api/repositories", "")

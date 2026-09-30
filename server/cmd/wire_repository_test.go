@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -27,7 +28,7 @@ func newTestRepositoryScanner(t *testing.T, h http.Handler, appSlug string) repo
 			"github": {ConnectorID: "github", BaseURL: srv.URL, AppSlug: appSlug},
 		}},
 	}
-	return repositoryScanner{git: router, appConfigs: router.appConfigs}
+	return newRepositoryScanner(router, router.appConfigs)
 }
 
 func repoJSONFixture(owner, name, defaultBranch string) string {
@@ -47,10 +48,51 @@ func TestRepositoryScanner_ListInstallationRepos(t *testing.T) {
 	})
 	s := newTestRepositoryScanner(t, mux, "my-app")
 
-	repos, err := s.ListInstallationRepos(context.Background())
+	repos, err := s.ListInstallationRepos(context.Background(), false)
 	require.NoError(t, err)
 	require.Len(t, repos, 1)
 	assert.Equal(t, "acme/app", repos[0].FullName)
+	assert.Equal(t, "github", repos[0].Provider)
+}
+
+func TestRepositoryScanner_ListInstallationRepos_Cache(t *testing.T) {
+	newScanner := func(t *testing.T, walks *atomic.Int32, failFirst bool) repositoryScanner {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/user/installations", func(w http.ResponseWriter, r *http.Request) {
+			if walks.Add(1) == 1 && failFirst {
+				http.Error(w, `{"message":"boom"}`, http.StatusInternalServerError)
+				return
+			}
+			_, _ = fmt.Fprintln(w, `{"installations":[]}`) // test server: write errors are irrelevant
+		})
+		return newTestRepositoryScanner(t, mux, "my-app")
+	}
+
+	t.Run("a second search is served without walking GitHub again, until a refresh", func(t *testing.T) {
+		var walks atomic.Int32
+		s := newScanner(t, &walks, false)
+
+		for range 2 {
+			_, err := s.ListInstallationRepos(t.Context(), false)
+			require.NoError(t, err)
+		}
+		assert.EqualValues(t, 1, walks.Load())
+
+		_, err := s.ListInstallationRepos(t.Context(), true)
+		require.NoError(t, err)
+		assert.EqualValues(t, 2, walks.Load())
+	})
+
+	t.Run("a failed walk is not remembered", func(t *testing.T) {
+		var walks atomic.Int32
+		s := newScanner(t, &walks, true)
+
+		_, err := s.ListInstallationRepos(t.Context(), false)
+		require.Error(t, err)
+		_, err = s.ListInstallationRepos(t.Context(), false)
+		require.NoError(t, err)
+		assert.EqualValues(t, 2, walks.Load())
+	})
 }
 
 func TestRepositoryScanner_GitHubRefusingTheTokenIsNotASignedOutSession(t *testing.T) {
@@ -60,7 +102,7 @@ func TestRepositoryScanner_GitHubRefusingTheTokenIsNotASignedOutSession(t *testi
 	})
 	s := newTestRepositoryScanner(t, mux, "my-app")
 
-	_, reposErr := s.ListInstallationRepos(context.Background())
+	_, reposErr := s.ListInstallationRepos(context.Background(), false)
 	_, installsErr := s.ListInstallations(context.Background())
 	for _, err := range []error{reposErr, installsErr} {
 		require.ErrorIs(t, err, apperrs.ErrForbidden)
@@ -138,7 +180,7 @@ func TestRepositoryScanner_GetTree(t *testing.T) {
 			connectors: &fakeGitTokenResolver{errs: map[string]error{"github": errors.New("credentials revoked")}},
 			appConfigs: &fakeAppConfigStore{cfgs: map[string]connectors.AppConfig{}},
 		}
-		s := repositoryScanner{git: router, appConfigs: router.appConfigs}
+		s := newRepositoryScanner(router, router.appConfigs)
 		_, _, err := s.GetTree(context.Background(), "acme", "app", "main")
 		require.Error(t, err)
 		assert.NotErrorIs(t, err, apperrs.ErrNotFound)

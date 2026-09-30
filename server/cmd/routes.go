@@ -301,7 +301,7 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("GET", "/api/reviews/{id}", "Get a code review", "reviews")
 	spec.Register("GET", "/api/repos/{owner}/{repo}/prs", "List pull requests", "repos")
 	spec.Register("POST", "/api/repositories/scan", "Scan a repository's tree for deployable candidates", "repositories")
-	spec.Register("GET", "/api/repositories", "List repositories the connected GitHub App installation grants", "repositories")
+	spec.Register("GET", "/api/repositories", "List repositories the connected GitHub App installation grants; ?q= (3 or more characters) keeps those whose owner/name contains it, ?refresh=1 skips the one-minute cache", "repositories")
 	spec.Register("GET", "/api/repositories/installations", "List the accounts and organisations the GitHub App is installed on", "repositories")
 	spec.Register("GET", "/api/permissions", "List document permission grants", "permissions")
 	spec.Register("GET", "/api/permissions/catalog", "List the permission grid roles, tokens, and grants share", "permissions")

@@ -13,6 +13,8 @@ type fakeScanner struct {
 	repos       []Repo
 	installs    []Installation
 	resolvedRef string
+	listCalls   int
+	lastRefresh bool
 
 	listErr    error
 	installErr error
@@ -20,7 +22,9 @@ type fakeScanner struct {
 	fileErr    error
 }
 
-func (f *fakeScanner) ListInstallationRepos(context.Context) ([]Repo, error) {
+func (f *fakeScanner) ListInstallationRepos(_ context.Context, refresh bool) ([]Repo, error) {
+	f.listCalls++
+	f.lastRefresh = refresh
 	if f.listErr != nil {
 		return nil, f.listErr
 	}

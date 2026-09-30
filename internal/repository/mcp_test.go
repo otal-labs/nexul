@@ -64,16 +64,26 @@ func TestRepositoryList_Pages(t *testing.T) {
 	assert.Equal(t, 2, page.Total)
 }
 
+func TestRepositoryList_SearchesByQ(t *testing.T) {
+	s := &fakeScanner{repos: []Repo{{ID: 1, FullName: "acme/api"}, {ID: 2, FullName: "acme/web"}}}
+	got, err := callTool(t, s, "repository_list", `{"q":"WEB","refresh":true}`)
+	require.NoError(t, err)
+	page := got.(mcptool.Page[Repo])
+	require.Len(t, page.Items, 1)
+	assert.Equal(t, "acme/web", page.Items[0].FullName)
+	assert.True(t, s.lastRefresh)
+}
+
 func TestRepositoryList_Installations(t *testing.T) {
 	s := &fakeScanner{
-		repos:    []Repo{{ID: 1, FullName: "acme/api"}},
+		repos:    []Repo{{ID: 1, FullName: "acme/api", Provider: "github"}},
 		installs: []Installation{{ID: 9, AccountLogin: "acme", AccountType: "organization", RepositorySelection: "all"}},
 	}
 	got, err := callTool(t, s, "repository_list", `{"installations":true}`)
 	require.NoError(t, err)
 	b, err := json.Marshal(got)
 	require.NoError(t, err)
-	assert.JSONEq(t, `{"items":[{"id":1,"owner":"","name":"","full_name":"acme/api","default_branch":"","html_url":""}],"total":1,"has_more":false,
+	assert.JSONEq(t, `{"items":[{"id":1,"owner":"","name":"","full_name":"acme/api","default_branch":"","html_url":"","provider":"github"}],"total":1,"has_more":false,
 		"installations":[{"id":9,"account_login":"acme","account_type":"organization","account_avatar_url":"","repository_selection":"all","html_url":""}]}`, string(b))
 }
 

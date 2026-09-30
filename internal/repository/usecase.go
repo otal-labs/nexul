@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	apperrors "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
@@ -124,16 +125,35 @@ func nonNil[T any](s []T) []T {
 	return s
 }
 
-// ListRepos lists every repository the connected installation grants.
-func ListRepos(ctx context.Context, g Gate, s Scanner) ([]Repo, error) {
+// MinSearchLength is the shortest q ListRepos accepts: fewer characters match too much of an installation to be
+// worth the walk.
+const MinSearchLength = 3
+
+// ListRepos lists the repositories the connected installation grants. A non-empty q keeps those whose full name
+// contains it, case-insensitively, and must be at least MinSearchLength characters; an empty q lists them all.
+// refresh skips the scanner's recent answer.
+func ListRepos(ctx context.Context, g Gate, s Scanner, q string, refresh bool) ([]Repo, error) {
 	if err := requireWizard(ctx, g); err != nil {
 		return nil, err
 	}
-	repos, err := s.ListInstallationRepos(ctx)
+	q = strings.ToLower(strings.TrimSpace(q))
+	if q != "" && utf8.RuneCountInString(q) < MinSearchLength {
+		return nil, fmt.Errorf("%w: q needs at least %d characters", apperrors.ErrInvalid, MinSearchLength)
+	}
+	repos, err := s.ListInstallationRepos(ctx, refresh)
 	if err != nil {
 		return nil, fmt.Errorf("list installation repositories: %w", err)
 	}
-	return repos, nil
+	if q == "" {
+		return nonNil(repos), nil
+	}
+	matches := []Repo{}
+	for _, r := range repos {
+		if strings.Contains(strings.ToLower(r.FullName), q) {
+			matches = append(matches, r)
+		}
+	}
+	return matches, nil
 }
 
 // ListInstallations lists the accounts and organisations whose repositories the connector can read.

@@ -254,7 +254,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	})
 	// gitRouter resolves per-repo since different projects' repos can live on different git hosts.
 	gitRouter := gitProviderRouter{workspace: workspaceSvc, connectors: connectorsSvc, appConfigs: store.ConnectorAppConfig}
-	repoScanner := repositoryScanner{git: gitRouter, appConfigs: store.ConnectorAppConfig}
+	repoScanner := newRepositoryScanner(gitRouter, store.ConnectorAppConfig)
 	integrationsSvc := integrations.NewService(integrations.Config{
 		Installs:   store.IntegrationInstalls,
 		Tokens:     store.IntegrationTokens,
