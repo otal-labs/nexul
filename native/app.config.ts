@@ -29,7 +29,7 @@ const fonts = [
   },
 ];
 
-const version = "0.1.4";
+const version = "0.1.5";
 // Android only installs an update with a higher build number, so derive it from the version and every release climbs.
 const [major = 0, minor = 0, patch = 0] = version.split(".").map(Number);
 const buildNumber = major * 10000 + minor * 100 + patch;
