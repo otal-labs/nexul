@@ -19,6 +19,7 @@ documentation disagree on an API, the documentation wins.
 | Client state | Zustand | Persisted through `expo-sqlite/kv-store` via `src/lib/storage.ts`; synchronous, so stores hydrate before first render |
 | Secrets | expo-secure-store | The session token and the instance it belongs to, nothing else; never in a Zustand store |
 | Fonts | expo-font config plugin | Inter and JetBrains Mono embedded at build time, one family each with its weights |
+| App icon, splash, notification icon | PNGs in `native/assets/`, generated | The master is `native/assets/mark.svg`; after changing it run `bun scripts/generateIcons.ts` in `web/` (headless Chromium through playwright) and commit the PNGs, including the web favicons and touch icons in `web/public/` |
 | Updates | expo-updates | Runtime version policy `appVersion`; `updates.url` comes from the environment at build time |
 | Push | expo-notifications | Registers on sign-in, clears on sign-out; `src/push/` |
 | Tests | jest-expo + React Native Testing Library | `bun run test` |
