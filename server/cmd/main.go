@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/otal-labs/nexul/internal/access"
 	"github.com/otal-labs/nexul/internal/auth"
 	"github.com/otal-labs/nexul/internal/automations"
 	"github.com/otal-labs/nexul/internal/chat"
@@ -276,6 +277,7 @@ var livePushTopics = []string{
 	tenancy.TopicWorkspaceMemberUpdated,
 	tenancy.TopicWorkspaceUpdated,
 	roles.TopicUpdated,
+	access.TopicGrantChanged,
 }
 
 func fail(err error) {

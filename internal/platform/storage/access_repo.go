@@ -9,6 +9,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/access"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
 )
@@ -42,7 +43,7 @@ func (r *AccessRepo) ListByResource(ctx context.Context, resourceType, resourceI
 	return toOverwrites(rows)
 }
 
-func (r *AccessRepo) Set(ctx context.Context, resourceType, resourceID, userID string, allow, deny permissions.Set) error {
+func (r *AccessRepo) Set(ctx context.Context, resourceType, resourceID, userID string, allow, deny permissions.Set, events ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
 		if len(allow) == 0 && len(deny) == 0 {
@@ -55,7 +56,7 @@ func (r *AccessRepo) Set(ctx context.Context, resourceType, resourceID, userID s
 			if n == 0 {
 				return fmt.Errorf("delete overwrite %s/%s/%s: %w", resourceType, resourceID, userID, apperrs.ErrNotFound)
 			}
-			return nil
+			return insertOutboxRows(ctx, tx, events)
 		}
 		n, err := q.UpsertOverwrite(ctx, sqlcgen.UpsertOverwriteParams{
 			ResourceType: resourceType, ResourceID: resourceID, UserID: userID,
@@ -67,7 +68,7 @@ func (r *AccessRepo) Set(ctx context.Context, resourceType, resourceID, userID s
 		if n == 0 {
 			return fmt.Errorf("set overwrite %s/%s/%s: %w", resourceType, resourceID, userID, apperrs.ErrConflict)
 		}
-		return nil
+		return insertOutboxRows(ctx, tx, events)
 	})
 }
 

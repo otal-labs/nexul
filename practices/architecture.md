@@ -48,10 +48,10 @@ nothing.
 
 Which domains this covers, as the tree stands:
 
-- Full five-file shape: `chat`, `codereview`, `deploy`, `dns`, `docs`,
-  `memories`, `pairing`, `plays`, `roles`, `runner`, `tenancy`, `tickets`,
-  `topology`, `workspace`.
-- No `events.go` yet: `access`, `attachments`, `automations`, `connectors`,
+- Full five-file shape: `access`, `chat`, `codereview`, `deploy`, `dns`,
+  `docs`, `memories`, `pairing`, `plays`, `roles`, `runner`, `tenancy`,
+  `tickets`, `topology`, `workspace`.
+- No `events.go` yet: `attachments`, `automations`, `connectors`,
   `integrations`. The file is added with the
   domain's first published event, never before, because an empty catalog entry
   is a contract nobody asked for.

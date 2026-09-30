@@ -3,6 +3,7 @@
 // Regenerate: bun run generate:events (from sdk/).
 
 export interface EventPayloads {
+  "access.grant.changed": { "resource_type": "doc" | "play"; "resource_id": string; "user_id": string; "actor_id"?: string; };
   "account.admitted": { "invitation_id"?: string; "user_id"?: string; };
   "account.disabled": { "account_id": string; "actor_id"?: string; };
   "account.profile_updated": { "account_id": string; };
@@ -111,6 +112,7 @@ export interface EventPayloads {
 export type Topic = keyof EventPayloads;
 
 export const TOPICS: Topic[] = [
+  "access.grant.changed",
   "account.admitted",
   "account.disabled",
   "account.profile_updated",
@@ -217,6 +219,7 @@ export const TOPICS: Topic[] = [
 ];
 
 export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
+  "access.grant.changed": {"resource_type":"doc","resource_id":"fixture-resource_id","user_id":"fixture-user_id","actor_id":"fixture-actor_id"},
   "account.admitted": {"invitation_id":"fixture-invitation_id","user_id":"fixture-user_id"},
   "account.disabled": {"account_id":"fixture-account_id","actor_id":"fixture-actor_id"},
   "account.profile_updated": {"account_id":"fixture-account_id"},

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "react-router";
 
 import { CanvasSchema } from "@/models/Topology";
@@ -14,7 +14,7 @@ import { getDnsExposuresKey, getDnsGatewaysKey } from "@/hooks/DnsHooks";
 import { getDocKey, getDocsKey } from "@/hooks/DocHooks";
 import { getInstanceUpgradeKey } from "@/hooks/InstanceUpgradeHooks";
 import { getWorkspacePeopleKey } from "@/hooks/PeopleHooks";
-import { followWorkspaceUpdate, getMyRoleKey, getWorkspacesKey } from "@/hooks/WorkspaceHooks";
+import { followWorkspaceUpdate, getMyRoleKey, getWorkspacesKey, type MyWorkspaceInfo } from "@/hooks/WorkspaceHooks";
 import { getTeamKey } from "@/models/Team";
 import { getMemoriesKey, getMemoryKey, getMemoryVersionsKey } from "@/hooks/MemoryHooks";
 import { getNotificationsKey, getUnreadCountKey } from "@/hooks/NotificationHooks";
@@ -133,11 +133,40 @@ const pushTopics: Record<string, string[]> = {
   "account.presence_changed": [getTeamKey],
   // A new name or picture reaches every open screen that shows the person, the saver's other devices included.
   "account.profile_updated": [getWorkspacePeopleKey, getTeamKey, getMeKey],
-  // A role or override change reaches its holder's open tabs, so what they may do follows without a sign-out.
-  "workspace.member.added": [getTeamKey, getWorkspacePeopleKey, getWorkspacesKey, getMyRoleKey, getMeKey],
-  "workspace.member.removed": [getTeamKey, getWorkspacePeopleKey, getWorkspacesKey, getMyRoleKey, getMeKey],
-  "workspace.member.updated": [getTeamKey, getMyRoleKey, getMeKey],
-  "role.updated": [getMyRoleKey, getMeKey, getWorkspaceRolesKey],
+  "workspace.member.added": [getTeamKey, getWorkspacePeopleKey, getWorkspacesKey],
+  "workspace.member.removed": [getTeamKey, getWorkspacePeopleKey, getWorkspacesKey],
+  "workspace.member.updated": [getTeamKey],
+  "role.updated": [getWorkspaceRolesKey],
+};
+
+// Topics that can change what someone may do; followPermissionChange works out whether that someone is the viewer.
+const permissionTopics = new Set([
+  "workspace.member.added",
+  "workspace.member.removed",
+  "workspace.member.updated",
+  "role.updated",
+  "access.grant.changed",
+]);
+
+const heldPermissions = (client: QueryClient) =>
+  JSON.stringify([
+    client.getQueriesData<MyWorkspaceInfo>({ queryKey: [getMyRoleKey] }).map(([, data]) => data?.permissions),
+    client.getQueryData<MeResponse>([getMeKey])?.instance_permissions,
+  ]);
+
+// Every read is checked on the server, so once the viewer's permissions move, all open reads refetch through those checks.
+const followPermissionChange = async (client: QueryClient, frame: ServerFrame) => {
+  const { user_id: userID } = frame.payload as { user_id?: string };
+  if (userID && userID === client.getQueryData<MeResponse>([getMeKey])?.user.id) {
+    await client.invalidateQueries();
+    return;
+  }
+  // A role frame names no holder, so the viewer's own permissions are refetched and compared.
+  if (frame.topic !== "role.updated") return;
+  const before = heldPermissions(client);
+  await Promise.all([client.refetchQueries({ queryKey: [getMyRoleKey] }), client.refetchQueries({ queryKey: [getMeKey] })]);
+  if (heldPermissions(client) === before) return;
+  await client.invalidateQueries();
 };
 
 // A full-text-replace snapshot of the in-progress @Agent turn bubble, keyed by conversation + message id.
@@ -265,6 +294,7 @@ const dispatch = (client: ReturnType<typeof useQueryClient>, onWorkspaceUpdated:
     useVoiceOccupancyStore.getState().setChannel(p.conversation_id, p.occupants);
     return;
   }
+  if (permissionTopics.has(frame.topic)) void followPermissionChange(client, frame);
   const keys = pushTopics[frame.topic];
   if (keys) {
     keys.forEach((key) => void client.invalidateQueries({ queryKey: [key] }));

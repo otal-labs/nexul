@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
@@ -20,6 +21,7 @@ type fakeRepo struct {
 	getErr     error
 	deleteErr  error
 	setErr     error
+	events     []eventbus.OutboxEvent
 }
 
 func newFakeRepo() *fakeRepo {
@@ -55,12 +57,13 @@ func (f *fakeRepo) ListByResource(_ context.Context, resourceType, resourceID st
 	return out, nil
 }
 
-func (f *fakeRepo) Set(_ context.Context, resourceType, resourceID, userID string, allow, deny permissions.Set) error {
+func (f *fakeRepo) Set(_ context.Context, resourceType, resourceID, userID string, allow, deny permissions.Set, events ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.setErr != nil {
 		return f.setErr
 	}
+	f.events = append(f.events, events...)
 	k := key(resourceType, resourceID, userID)
 	if len(allow) == 0 && len(deny) == 0 {
 		delete(f.overwrites, k)
@@ -518,6 +521,9 @@ func TestSetGrants(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, permissions.SetOf(permissions.DocsRead), ow.Allow)
 		}
+		require.Len(t, repo.events, 2)
+		assert.Equal(t, TopicGrantChanged, repo.events[0].Topic)
+		assert.Equal(t, GrantEvent{ResourceType: resourceTypeDoc, ResourceID: "doc-2", UserID: "alice", ActorID: "manager"}, repo.events[1].Payload)
 	})
 	t.Run("permissions:write holder can grant on their doc", func(t *testing.T) {
 		repo := newFakeRepo()
