@@ -32,6 +32,7 @@ const (
 	StacksRead         Action = "stacks:read"
 	StacksWrite        Action = "stacks:write"
 	StacksDelete       Action = "stacks:delete"
+	StacksLogs         Action = "stacks:logs"
 	DeploysRead        Action = "deploys:read"
 	DeploysWrite       Action = "deploys:write"
 	TopologyRead       Action = "topology:read"
@@ -85,6 +86,7 @@ const (
 	clone  = "clone"
 	thread = "thread"
 	create = "create"
+	logs   = "logs"
 )
 
 // verbLabel is the owner-facing text for a domain-declared verb (ADR 0057): one line per verb, no per-domain switch.
@@ -94,6 +96,7 @@ var verbLabel = map[Action]string{
 	RolesClone:    "Clone roles to another workspace",
 	DocsThread:    "See doc threads",
 	DocsClone:     "Clone docs into another project",
+	StacksLogs:    "Read container logs",
 	// The creator owns what they create, and an Owner holds every permission, so this one is as strong as Owner.
 	WorkspacesCreate: "Create workspaces",
 }
@@ -113,7 +116,7 @@ var domainTable = []domainInfo{
 	{"memories", "memories", []string{read, write, delete, clone}},
 	{"tickets", "tickets", []string{read, write, delete}},
 	{"deploys", "deploys", []string{read, write}},
-	{"stacks", "stacks", []string{read, write, delete}},
+	{"stacks", "stacks", []string{read, write, delete, logs}},
 	{"topology", "topology", []string{read, write, delete}},
 	{"reviews", "code reviews", []string{read}},
 	{"repos", "pull requests", []string{read}},
