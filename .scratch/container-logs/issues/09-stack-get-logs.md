@@ -1,7 +1,7 @@
 # 09 — `stack_get` returns a service's logs
 
 **Type:** task
-**Status:** ready-for-agent
+**Status:** done
 **Blocked by:** 08
 
 ## What to build
