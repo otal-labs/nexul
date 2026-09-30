@@ -34,6 +34,11 @@ export const ConnectCodePanel = () => {
     <>
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
+      {error && !data && (
+        <Button variant="outline" size="sm" className="mt-3" onClick={newCode} loading={isFetching}>
+          Try again
+        </Button>
+      )}
       {data && qr && (
         <div className="@container">
           {/* Two cards share the row from 1024px, so a card can be 240px wide: the text drops under the QR until the card has room. */}
@@ -69,10 +74,6 @@ export const ConnectCodePanel = () => {
               <p className="font-mono text-xs tabular-nums text-muted-foreground">
                 {expired ? "Expired" : `Expires in ${formatRemaining(remaining)}`}
               </p>
-              <Button variant="outline" size="sm" onClick={newCode} loading={isFetching}>
-                <RefreshCw className="size-4" aria-hidden />
-                New code
-              </Button>
             </div>
           </div>
         </div>
