@@ -8,8 +8,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/otal-labs/nexul/internal/access"
 	"github.com/otal-labs/nexul/internal/auth"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
 )
@@ -27,6 +29,26 @@ func seedUserForOverwrite(t *testing.T, s *storage.Store, userID string) {
 	_, _, err := s.Users.UpsertUser(context.Background(),
 		&auth.Identity{UserID: userID, Provider: auth.ProviderGitHub, ProviderUserID: userID, Login: userID})
 	require.NoError(t, err)
+}
+
+func TestAccessRepo_Set_WritesItsEventsWithTheRowAndTheRemoval(t *testing.T) {
+	ctx := context.Background()
+	s := newAccessStore(t)
+	seedUserForOverwrite(t, s, "user-1")
+	event := func(id string) eventbus.OutboxEvent {
+		return eventbus.OutboxEvent{ID: id, Topic: access.TopicGrantChanged, Payload: access.GrantEvent{ResourceType: "doc", ResourceID: "doc-1", UserID: "user-1"}}
+	}
+
+	require.NoError(t, s.Access.Set(ctx, "doc", "doc-1", "user-1", permissions.SetOf(permissions.DocsRead), nil, event("evt-grant")))
+	require.NoError(t, s.Access.Set(ctx, "doc", "doc-1", "user-1", nil, nil, event("evt-revoke")))
+
+	entries, err := s.Outbox.Unpublished(ctx, 10)
+	require.NoError(t, err)
+	var ids []string
+	for _, e := range entries {
+		ids = append(ids, e.ID)
+	}
+	assert.ElementsMatch(t, []string{"evt-grant", "evt-revoke"}, ids)
 }
 
 func TestAccessRepo_OverwriteCRUD(t *testing.T) {

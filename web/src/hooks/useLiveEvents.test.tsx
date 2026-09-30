@@ -8,7 +8,7 @@ import { useLiveEvents } from "@/hooks/useLiveEvents";
 import { getMeKey } from "@/hooks/AuthHooks";
 import { useAgentStreamStore } from "@/stores/agentStreamStore";
 import { useDeviceArrivalStore } from "@/stores/deviceArrivalStore";
-import { getWorkspacesKey } from "@/hooks/WorkspaceHooks";
+import { getMyRoleKey, getWorkspacesKey } from "@/hooks/WorkspaceHooks";
 import type { Workspace } from "@/models/Workspace";
 import { useFlowStore } from "@/stores/flowStore";
 import { usePlayRunStore } from "@/stores/playRunStore";
@@ -94,18 +94,46 @@ describe("useLiveEvents dispatch", () => {
     expect(arrivals[0]).toMatchObject({ id: "s-phone", platform: "Android", label: "Pixel 8" });
   });
 
-  it("refetches the viewer's own permissions when a role or a member's grants change", async () => {
-    setup();
-    const socket = await connectedSocket();
-    const spy = invalidate();
-    const push = (topic: string, payload: Record<string, string>) =>
+  describe("a permission change", () => {
+    const refetchedEverything = (spy: ReturnType<typeof invalidate>) => spy.mock.calls.some((args) => args[0] === undefined);
+    const push = (socket: FakeSocket, topic: string, payload: Record<string, string>) =>
       act(() => socket.message(JSON.stringify({ topic, type: "event", payload })));
 
-    push("workspace.member.updated", { user_id: "u1", workspace_id: "ws-1" });
-    push("role.updated", { role_id: "r-1", workspace_id: "ws-1" });
+    it.each(["workspace.member.updated", "workspace.member.removed", "access.grant.changed"])(
+      "refetches every open read when %s names the viewer, and nothing extra when it names someone else",
+      async (topic) => {
+        setup();
+        client.setQueryData([getMeKey], { user: { id: "u1" }, instance_permissions: [] });
+        const socket = await connectedSocket();
+        const spy = invalidate();
 
-    expect(spy.mock.calls.filter(([arg]) => arg?.queryKey?.[0] === "getMyRole")).toHaveLength(2);
-    expect(spy.mock.calls.filter(([arg]) => arg?.queryKey?.[0] === getMeKey)).toHaveLength(2);
+        push(socket, topic, { user_id: "u2", workspace_id: "ws-1", resource_type: "doc", resource_id: "d-1" });
+        expect(refetchedEverything(spy)).toBe(false);
+
+        push(socket, topic, { user_id: "u1", workspace_id: "ws-1", resource_type: "doc", resource_id: "d-1" });
+        await vi.waitFor(() => expect(refetchedEverything(spy)).toBe(true));
+      },
+    );
+
+    it("refetches every open read after role.updated only when the viewer's own permissions moved", async () => {
+      setup();
+      let held = ["docs:read"];
+      client.setQueryDefaults([getMyRoleKey], { queryFn: () => ({ role_name: "Editor", permissions: held }) });
+      client.setQueryDefaults([getMeKey], { queryFn: () => ({ user: { id: "u1" }, instance_permissions: [] }) });
+      await client.fetchQuery({ queryKey: [getMyRoleKey, "ws-1"] });
+      await client.fetchQuery({ queryKey: [getMeKey] });
+      const socket = await connectedSocket();
+      const spy = invalidate();
+      const roleFetches = () => client.getQueryState([getMyRoleKey, "ws-1"])?.dataUpdateCount;
+
+      push(socket, "role.updated", { role_id: "r-other", workspace_id: "ws-1" });
+      await vi.waitFor(() => expect(roleFetches()).toBe(2));
+      expect(refetchedEverything(spy)).toBe(false);
+
+      held = ["docs:read", "memories:read"];
+      push(socket, "role.updated", { role_id: "r-mine", workspace_id: "ws-1" });
+      await vi.waitFor(() => expect(refetchedEverything(spy)).toBe(true));
+    });
   });
 
   it("invalidates the runners query on a runner.connected push", async () => {

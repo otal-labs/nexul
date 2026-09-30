@@ -4,6 +4,7 @@ package eventcatalog
 import (
 	"slices"
 
+	"github.com/otal-labs/nexul/internal/access"
 	"github.com/otal-labs/nexul/internal/auth"
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/codereview"
@@ -44,6 +45,7 @@ func AllTopics() []string {
 		plays.Topics(),
 		pairing.Topics(),
 		roles.Topics(),
+		access.Topics(),
 	} {
 		all = append(all, topics...)
 	}

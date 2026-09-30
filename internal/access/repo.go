@@ -3,6 +3,7 @@ package access
 import (
 	"context"
 
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
@@ -13,7 +14,7 @@ type Repo interface {
 	// ListByResource returns every overwrite on one resource instance (e.g. every per-user grant on a document).
 	ListByResource(ctx context.Context, resourceType, resourceID string) ([]*Overwrite, error)
 	// Set upserts the allow/deny sets for (resourceType, resourceID, userID); both empty deletes the row.
-	Set(ctx context.Context, resourceType, resourceID, userID string, allow, deny permissions.Set) error
+	Set(ctx context.Context, resourceType, resourceID, userID string, allow, deny permissions.Set, events ...eventbus.OutboxEvent) error
 	// DeleteByResource removes every overwrite on one resource instance (doc delete/restore path).
 	DeleteByResource(ctx context.Context, resourceType, resourceID string) error
 	// HasAllowAny gates the user directory for permissions:write holders.

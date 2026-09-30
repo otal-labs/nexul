@@ -8,6 +8,8 @@ import (
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
@@ -217,7 +219,7 @@ func (s *Service) setGrants(ctx context.Context, actorID, resourceType string, r
 	}
 	for _, id := range resourceIDs {
 		for _, userID := range userIDs {
-			if err := s.applyGrant(ctx, resourceType, id, userID, actions, grant); err != nil {
+			if err := s.applyGrant(ctx, actorID, resourceType, id, userID, actions, grant); err != nil {
 				return err
 			}
 		}
@@ -305,7 +307,7 @@ func (s *Service) canManage(ctx context.Context, actorID, resourceType, resource
 
 // applyGrant maintains allow for a doc (default-deny: an explicit allow is what grants access) and deny for
 // a play (default-allow via the role grid: an explicit deny is the exclusion; grant=true clears it).
-func (s *Service) applyGrant(ctx context.Context, resourceType, resourceID, userID string, actions []permissions.Action, grant bool) error {
+func (s *Service) applyGrant(ctx context.Context, actorID, resourceType, resourceID, userID string, actions []permissions.Action, grant bool) error {
 	var allow, deny permissions.Set
 	existing, err := s.repo.Get(ctx, resourceType, resourceID, userID)
 	if err != nil && !errors.Is(err, apperrs.ErrNotFound) {
@@ -330,5 +332,6 @@ func (s *Service) applyGrant(ctx context.Context, resourceType, resourceID, user
 		}
 		allow = allow.Without(a)
 	}
-	return s.repo.Set(ctx, resourceType, resourceID, userID, allow, deny)
+	event := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicGrantChanged, Payload: GrantEvent{ResourceType: resourceType, ResourceID: resourceID, UserID: userID, ActorID: actorID}}
+	return s.repo.Set(ctx, resourceType, resourceID, userID, allow, deny, event)
 }
