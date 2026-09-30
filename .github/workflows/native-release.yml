@@ -11,8 +11,6 @@ on:
       version:
         description: The app version to release, as in native/app.config.ts
         required: true
-  push:
-    branches: [ci/phone-release-ios]
   pull_request:
     paths:
       - native/**
