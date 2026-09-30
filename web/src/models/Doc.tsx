@@ -8,6 +8,8 @@ export interface Doc {
   body: string;
   version: number;
   archived: boolean;
+  /** A locked doc refuses edits to its title and body until someone with docs:write unlocks it. */
+  locked: boolean;
   /** The author's user id; "" on a doc whose creator was never recorded. */
   created_by: string;
   created_at: string;
@@ -20,10 +22,10 @@ export interface DocListItem {
   title: string;
   version: number;
   archived: boolean;
+  locked: boolean;
   can_open: boolean;
   updated_at: string;
-  /** The author and the body's first line of text, sent only when can_open. */
-  created_by?: string;
+  /** The body's first line of text, sent only when can_open; the list search matches it. */
   snippet?: string;
 }
 

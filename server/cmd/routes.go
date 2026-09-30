@@ -283,6 +283,8 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("PUT", "/api/docs/{id}", "Update a doc", "docs")
 	spec.Register("DELETE", "/api/docs/{id}", "Delete a doc", "docs")
 	spec.Register("POST", "/api/docs/{id}/versions", "Snapshot the doc as a named milestone version", "docs")
+	spec.Register("POST", "/api/docs/{id}/lock", "Lock the doc read-only: its title and body refuse edits until unlocked (docs:write)", "docs")
+	spec.Register("POST", "/api/docs/{id}/unlock", "Unlock the doc so its title and body can be edited again (docs:write)", "docs")
 	spec.Register("POST", "/api/attachments", "Upload a file to a doc or ticket (multipart: file, doc_id|ticket_id)", "attachments")
 	spec.Register("GET", "/api/attachments", "List a doc or ticket's attachments", "attachments")
 	spec.Register("GET", "/api/attachments/{id}", "Download an attachment", "attachments")

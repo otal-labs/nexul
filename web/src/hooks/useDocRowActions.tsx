@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router";
 
 import { CloneDocForm } from "@/components/doc/CloneDocForm";
-import { useDeleteDoc } from "@/hooks/DocHooks";
+import { useDeleteDoc, useSetDocLocked } from "@/hooks/DocHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { useFormDialog } from "@/hooks/useFormDialog";
@@ -10,15 +10,17 @@ import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { CloneDocFormSchema, type CloneDocFormData, type DocListItem } from "@/models/Doc";
 import { docPath, projectTokenById } from "@/models/Project";
 
-// A row's Clone and Delete, each undefined when the viewer's role lacks it; the server still checks the doc itself.
+// A row's Lock, Clone, and Delete, each undefined when the viewer's role lacks it; the server still checks the doc itself.
 export const useDocRowActions = (doc: DocListItem, selected: boolean) => {
   const navigate = useNavigate();
 const wsPath = useWorkspacePath();
+  const canWrite = useHasPermission("docs:write");
   const canClone = useHasPermission("docs:clone");
   const canDelete = useHasPermission("docs:delete");
   const { open: openForm } = useFormDialog();
   const { open: confirm } = useConfirmationDialog();
   const deleteDoc = useDeleteDoc();
+  const setLocked = useSetDocLocked();
   const { data: projects } = useFetchProjects();
 
   // The dialog renders outside the router, so the move to the copy happens here once it resolves.
@@ -44,5 +46,9 @@ const wsPath = useWorkspacePath();
     });
   };
 
-  return { onClone: canClone ? () => void clone() : undefined, onDelete: canDelete ? () => void remove() : undefined };
+  return {
+    lock: canWrite ? { locked: doc.locked, onToggle: () => setLocked.mutate({ id: doc.id, locked: !doc.locked }) } : undefined,
+    onClone: canClone ? () => void clone() : undefined,
+    onDelete: canDelete ? () => void remove() : undefined,
+  };
 };

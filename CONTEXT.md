@@ -199,6 +199,13 @@ A doc's one conversation, the counterpart of a ticket thread: a real
 conversation people reply in, and where a doc play's run lands. Gated by
 `docs:thread`, so a reader of the doc need not see the work behind it.
 
+**Locked doc**:
+A doc set read-only for everyone as a guard against accidental edits: its
+title and body refuse every change, from people and agents alike, until it
+is unlocked. Anyone who may write the doc locks or unlocks it; archiving,
+cloning, and deleting still work, and a clone starts unlocked.
+_Avoid_: Frozen, protected, read-only doc
+
 **Voice channel**:
 Chat's fifth conversation kind — a Discord-style voice room with screen
 share and camera, backed by your own LiveKit server. Carries its own text

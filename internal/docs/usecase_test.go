@@ -137,6 +137,18 @@ func (f *fakeRepo) SetArchived(_ context.Context, id string, archived bool, evts
 	return nil
 }
 
+func (f *fakeRepo) SetLocked(_ context.Context, id string, locked bool, evts ...eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	d, ok := f.docs[id]
+	if !ok {
+		return apperrs.ErrNotFound
+	}
+	d.Locked = locked
+	f.events = append(f.events, evts...)
+	return nil
+}
+
 func (f *fakeRepo) Search(_ context.Context, query string, limit int) ([]SearchResult, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -244,14 +256,19 @@ func testCtx() context.Context {
 
 // fakeAccess is a docs.AccessChecker stub for unit tests.
 type fakeAccess struct {
-	can        bool
+	can bool
+	// allow, when set, grants exactly these actions and overrides can.
+	allow      []permissions.Action
 	canErr     error
 	grant      error
 	deleteErr  error
 	projectErr error
 }
 
-func (f fakeAccess) Can(_ context.Context, _, _ string, _ permissions.Action) (bool, error) {
+func (f fakeAccess) Can(_ context.Context, _, _ string, action permissions.Action) (bool, error) {
+	if f.allow != nil {
+		return slices.Contains(f.allow, action), f.canErr
+	}
 	return f.can, f.canErr
 }
 
@@ -580,6 +597,51 @@ func TestArchiveRestore(t *testing.T) {
 	restored, err := s.Restore(testCtx(), created.ID)
 	require.NoError(t, err)
 	assert.False(t, restored.Archived)
+}
+
+func TestLock_RefusesTitleAndBodyEditsUntilUnlocked(t *testing.T) {
+	repo := newFakeRepo()
+	s := newTestService(repo)
+	d := mustDoc(t, s, "project-1", "Spec", "body")
+
+	locked, err := s.Lock(testCtx(), d.ID)
+	require.NoError(t, err)
+	assert.True(t, locked.Locked)
+	updated := repo.eventsFor(TopicUpdated)
+	require.Len(t, updated, 1)
+	assert.True(t, updated[0].Payload.(UpdatedEvent).Doc.Locked, "the doc.updated push tells open editors to go read-only")
+
+	_, err = s.Update(testCtx(), d.ID, "Renamed", "new body")
+	require.ErrorIs(t, err, apperrs.ErrConflict)
+	require.ErrorIs(t, s.CommitCollab(testCtx(), d.ID, "Renamed", "new body"), apperrs.ErrConflict)
+	got, err := s.Get(testCtx(), d.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "Spec", got.Title)
+	assert.Equal(t, 1, got.Version, "a refused edit saves nothing")
+
+	clone, err := s.Clone(testCtx(), d.ID, "")
+	require.NoError(t, err)
+	assert.False(t, clone.Locked, "a clone of a locked doc comes out editable")
+
+	_, err = s.Unlock(testCtx(), d.ID)
+	require.NoError(t, err)
+	got, err = s.Update(testCtx(), d.ID, "Renamed", "new body")
+	require.NoError(t, err)
+	assert.Equal(t, "Renamed", got.Title)
+}
+
+func TestLock_NeedsDocsWrite(t *testing.T) {
+	repo := newFakeRepo()
+	d := mustDoc(t, newTestService(repo), "project-1", "Spec", "body")
+	readOnly := NewService(repo, fakeAccess{allow: []permissions.Action{permissions.DocsRead}}, nil)
+
+	_, err := readOnly.Lock(testCtx(), d.ID)
+	require.ErrorIs(t, err, apperrs.ErrForbidden)
+	_, err = newTestService(repo).Lock(testCtx(), d.ID)
+	require.NoError(t, err)
+	_, err = readOnly.Unlock(testCtx(), d.ID)
+	require.ErrorIs(t, err, apperrs.ErrForbidden)
+	assert.True(t, repo.docs[d.ID].Locked)
 }
 
 func TestList_Disclosure(t *testing.T) {

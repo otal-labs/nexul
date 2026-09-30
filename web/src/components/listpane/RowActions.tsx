@@ -1,35 +1,55 @@
-import { CopyIcon, MoreHorizontalIcon } from "lucide-react";
+import { CopyIcon, LockIcon, LockOpenIcon, MoreHorizontalIcon, Trash2Icon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface RowActionsProps {
   itemLabel: string;
   /** Each action is hidden when its handler is omitted (the viewer lacks the permission). */
+  lock?: { locked: boolean; onToggle: () => void } | undefined;
   onClone?: (() => void) | undefined;
   onDelete?: (() => void) | undefined;
 }
 
-export const RowActions = ({ itemLabel, onClone, onDelete }: RowActionsProps) => (
-  <>
-    {onClone && (
-      <Button variant="ghost" size="icon" className="size-7" aria-label={`Clone ${itemLabel}`} title="Clone" onClick={onClone}>
-        <CopyIcon className="size-3.5" aria-hidden />
+export const RowActions = ({ itemLabel, lock, onClone, onDelete }: RowActionsProps) => (
+  <DropdownMenu>
+    <DropdownMenuTrigger asChild>
+      <Button variant="ghost" size="icon" className="size-7" aria-label={`More actions for ${itemLabel}`}>
+        <MoreHorizontalIcon className="size-3.5" aria-hidden />
       </Button>
-    )}
-    {onDelete && (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="size-7" aria-label={`More actions for ${itemLabel}`}>
-            <MoreHorizontalIcon className="size-3.5" aria-hidden />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem variant="destructive" onSelect={onDelete}>
-            Delete
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    )}
-  </>
+    </DropdownMenuTrigger>
+    <DropdownMenuContent align="end" className="min-w-36">
+      {lock && !lock.locked && (
+        <DropdownMenuItem onSelect={lock.onToggle}>
+          <LockIcon aria-hidden />
+          Lock
+        </DropdownMenuItem>
+      )}
+      {lock?.locked && (
+        <DropdownMenuItem onSelect={lock.onToggle}>
+          <LockOpenIcon aria-hidden />
+          Unlock
+        </DropdownMenuItem>
+      )}
+      {onClone && (
+        <DropdownMenuItem onSelect={onClone}>
+          <CopyIcon aria-hidden />
+          Clone
+        </DropdownMenuItem>
+      )}
+      {onDelete && (!!lock || !!onClone) && <DropdownMenuSeparator />}
+      {onDelete && (
+        <DropdownMenuItem variant="destructive" onSelect={onDelete}>
+          <Trash2Icon aria-hidden />
+          Delete
+        </DropdownMenuItem>
+      )}
+    </DropdownMenuContent>
+  </DropdownMenu>
 );

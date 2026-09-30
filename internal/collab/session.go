@@ -14,7 +14,8 @@ var errPeerGone = errors.New("collab peer gone")
 // client is one joined connection; the write pump drains send and closes done on exit.
 type client struct {
 	id       string // actor id (auth user)
-	clientID int    // y client id announced in hello (presence routing)
+	mode     Mode
+	clientID int // y client id announced in hello (presence routing)
 	send     chan []byte
 	done     chan struct{} // closed by the pump when the peer is gone
 	closed   bool
@@ -57,8 +58,26 @@ func (s *session) sendInit(ctx context.Context, c *client) error {
 	return s.send(c, ServerMsg{Type: msgInit, Seq: replay.Seq, Snapshot: replay.Snapshot, Updates: replay.Increments, Presence: presence})
 }
 
+// writable refuses a viewer's writes and any write to a locked doc; a failed lock lookup refuses too.
+func (s *session) writable(ctx context.Context, c *client) bool {
+	if c.mode != ModeEdit {
+		s.log.Warn("collab: dropped a write from a viewer", "doc", s.docID, "user", c.id)
+		return false
+	}
+	// ponytail: one doc read per relayed update; cache the flag in the session if it ever shows in a profile.
+	locked, err := s.writer.Locked(ctx, s.docID)
+	if err != nil || locked {
+		s.log.Info("collab: dropped a write to a locked doc", "doc", s.docID, "user", c.id, "error", err)
+		return false
+	}
+	return true
+}
+
 // handleUpdate persists and relays one Y.js update; a persistence failure logs but still relays.
 func (s *session) handleUpdate(ctx context.Context, c *client, m ClientMsg) {
+	if !s.writable(ctx, c) {
+		return
+	}
 	var seq int64
 	stored, err := s.store.AppendUpdate(ctx, s.docID, c.id, KindUpdate, m.Update)
 	if err != nil {
@@ -77,6 +96,9 @@ func (s *session) handleUpdate(ctx context.Context, c *client, m ClientMsg) {
 
 // handleCommit persists a snapshot, trims already-applied increments, writes the canonical body, and broadcasts.
 func (s *session) handleCommit(ctx context.Context, c *client, m ClientMsg) {
+	if !s.writable(ctx, c) {
+		return
+	}
 	seq, err := s.store.AppendUpdate(ctx, s.docID, c.id, KindSnapshot, m.Update)
 	if err != nil {
 		s.log.Warn("collab: persist snapshot failed", "doc", s.docID, "error", err)

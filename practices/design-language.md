@@ -151,10 +151,14 @@ List pane. A page that edits one record beside its siblings (Docs, Memories)
 is the app sidebar, a 300px list, and the open record, the shape Chat has. The
 list heads with its title and a mono count, a ghost `+` icon button, and a
 search field. Rows are about 56px with 12px sides and hairline dividers: a
-13px medium title over a muted one-line preview, mono meta trailing right. The
+13px medium title over a muted one-line preview, mono meta trailing right. A
+row whose record already shows its details when open (Docs) is the title alone
+at about 40px, with a muted state icon after it (a lock) and no meta. The
 selected row is `bg-accent` with a 2px `muted-foreground` left edge, a hover
-`bg-accent/40`, never a boxed border. A row's actions (a Clone icon, a `…`
-menu) take the meta's place on hover and focus and stay on the selected row.
+`bg-accent/40`, never a boxed border. A row's actions are one `…` menu (Lock,
+Clone, then Delete in destructive after a separator), each item hidden without
+its permission and the `…` gone when none is left; it takes the meta's place
+on hover and focus and stays on the selected row.
 Group labels are 11px uppercase mono over a hairline. Below 1024px one pane
 shows at a time. `ListDetailLayout` and `ListPaneRow` in
 `web/src/components/listpane/` are the reference.

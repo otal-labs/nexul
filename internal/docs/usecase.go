@@ -219,6 +219,7 @@ func (s *Service) toListItems(ctx context.Context, ds []*Doc) ([]*DocListItem, e
 			Title:     d.Title,
 			Version:   d.Version,
 			Archived:  d.Archived,
+			Locked:    d.Locked,
 			UpdatedAt: d.UpdatedAt,
 		}
 		item.CanOpen = s.can(ctx, d.ID, permissions.DocsRead)
@@ -258,6 +259,9 @@ func (s *Service) Update(ctx context.Context, id, title, body string) (*Doc, err
 	if err := s.require(ctx, current.ID, permissions.DocsWrite); err != nil {
 		return nil, err
 	}
+	if current.Locked {
+		return nil, errLocked(current.ID)
+	}
 	mentioned := richtext.AddedPersonMentions(current.Body, body)
 	current.Title = title
 	current.Body = body
@@ -295,6 +299,46 @@ func (s *Service) setArchived(ctx context.Context, id string, archived bool) (*D
 		return nil, fmt.Errorf("archive doc %s: %w", id, err)
 	}
 	return current, nil
+}
+
+// Lock makes a doc read-only for everyone until Unlock, requiring docs:write; archive, clone, and delete still work.
+func (s *Service) Lock(ctx context.Context, id string) (*Doc, error) {
+	return s.setLocked(ctx, id, true)
+}
+
+func (s *Service) Unlock(ctx context.Context, id string) (*Doc, error) {
+	return s.setLocked(ctx, id, false)
+}
+
+func (s *Service) setLocked(ctx context.Context, id string, locked bool) (*Doc, error) {
+	if strings.TrimSpace(id) == "" {
+		return nil, fmt.Errorf("%w: id is required", apperrs.ErrInvalid)
+	}
+	current, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get doc %s: %w", id, err)
+	}
+	if err := s.require(ctx, current.ID, permissions.DocsWrite); err != nil {
+		return nil, err
+	}
+	current.Locked = locked
+	if err := s.repo.SetLocked(ctx, current.ID, locked, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: UpdatedEvent{Doc: *current, ActorID: actorID(ctx)}}); err != nil {
+		return nil, fmt.Errorf("lock doc %s: %w", id, err)
+	}
+	return current, nil
+}
+
+// Locked reports whether a doc refuses edits; the collab relay asks per update, having checked access at join.
+func (s *Service) Locked(ctx context.Context, id string) (bool, error) {
+	d, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return false, fmt.Errorf("get doc %s: %w", id, err)
+	}
+	return d.Locked, nil
+}
+
+func errLocked(id string) error {
+	return fmt.Errorf("%w: doc %s is locked; unlock it before changing its title or body", apperrs.ErrConflict, id)
 }
 
 // Delete removes a doc, requiring the delete bit, and publishes doc.deleted; referencing tickets reject via FK.
@@ -406,6 +450,9 @@ func (s *Service) CommitCollab(ctx context.Context, id, title, body string) erro
 	current, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("commit doc %s: %w", id, err)
+	}
+	if current.Locked {
+		return errLocked(current.ID)
 	}
 	// An empty title means "unchanged": commits carry the title only from the
 	// client that actually renamed, so a peer's body commit never resets it.

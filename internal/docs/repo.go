@@ -21,6 +21,7 @@ type Repo interface {
 	ListByProject(ctx context.Context, projectID string) ([]*Doc, error)
 	Update(ctx context.Context, d *Doc, evts ...eventbus.OutboxEvent) error
 	SetArchived(ctx context.Context, id string, archived bool, evts ...eventbus.OutboxEvent) error
+	SetLocked(ctx context.Context, id string, locked bool, evts ...eventbus.OutboxEvent) error
 	Delete(ctx context.Context, id string, evts ...eventbus.OutboxEvent) error
 	Search(ctx context.Context, query string, limit int) ([]SearchResult, error)
 	ListVersions(ctx context.Context, docID string) ([]*DocVersion, error)

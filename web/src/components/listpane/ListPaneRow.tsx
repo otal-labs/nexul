@@ -6,17 +6,19 @@ import { cn } from "@/lib/utils";
 interface ListPaneRowProps {
   to: string;
   title: string;
-  snippet: string;
+  /** A small state icon after the title, such as a lock. */
+  titleIcon?: ReactNode;
+  snippet?: string;
   selected: boolean;
   /** Time, avatar, chips: the action cluster takes their place on hover, focus, and selection. */
-  meta: ReactNode;
+  meta?: ReactNode;
   actions?: ReactNode;
   /** Always visible at the right edge, e.g. a switch. */
   trailing?: ReactNode;
 }
 
 // The link's ::after covers the row so the whole row opens it; actions and trailing sit above that layer.
-export const ListPaneRow = ({ to, title, snippet, selected, meta, actions, trailing }: ListPaneRowProps) => {
+export const ListPaneRow = ({ to, title, titleIcon, snippet = "", selected, meta, actions, trailing }: ListPaneRowProps) => {
   const ref = useRef<HTMLLIElement>(null);
 
   // A deep link can select a row far down the list.
@@ -28,7 +30,8 @@ export const ListPaneRow = ({ to, title, snippet, selected, meta, actions, trail
     <li
       ref={ref}
       className={cn(
-        "group relative flex min-h-14 items-center gap-2 border-l-2 px-3 transition-colors duration-150 ease-standard",
+        "group relative flex items-center gap-2 border-l-2 px-3 transition-colors duration-150 ease-standard",
+        snippet === "" ? "min-h-10" : "min-h-14",
         selected ? "border-muted-foreground bg-accent" : "border-transparent hover:bg-accent/40",
       )}
     >
@@ -37,18 +40,23 @@ export const ListPaneRow = ({ to, title, snippet, selected, meta, actions, trail
         aria-current={selected ? "page" : undefined}
         className="min-w-0 flex-1 py-2 outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-inset"
       >
-        <span className="block truncate text-[13px] font-medium text-foreground">{title}</span>
+        <span className="flex min-w-0 items-center gap-1.5">
+          <span className="truncate text-[13px] font-medium text-foreground">{title}</span>
+          {titleIcon}
+        </span>
         {snippet !== "" && <span className="block truncate text-xs text-muted-foreground">{snippet}</span>}
       </Link>
-      <div
-        className={cn(
-          "flex shrink-0 items-center gap-1.5",
-          !!actions && "group-focus-within:hidden group-hover:hidden group-has-[[data-state=open]]:hidden",
-          !!actions && selected && "hidden",
-        )}
-      >
-        {meta}
-      </div>
+      {!!meta && (
+        <div
+          className={cn(
+            "flex shrink-0 items-center gap-1.5",
+            !!actions && "group-focus-within:hidden group-hover:hidden group-has-[[data-state=open]]:hidden",
+            !!actions && selected && "hidden",
+          )}
+        >
+          {meta}
+        </div>
+      )}
       {!!actions && (
         <div
           className={cn(

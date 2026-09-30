@@ -1,5 +1,5 @@
-import { DocAuthorAvatar } from "@/components/doc/DocAuthorAvatar";
-import { formatUpdatedAgo } from "@/components/doc/docTime";
+import { LockIcon } from "lucide-react";
+
 import { ListPaneRow } from "@/components/listpane/ListPaneRow";
 import { RowActions } from "@/components/listpane/RowActions";
 import { useDocRowActions } from "@/hooks/useDocRowActions";
@@ -14,21 +14,15 @@ interface DocListRowProps {
 }
 
 export const DocListRow = ({ doc, projectToken, selected }: DocListRowProps) => {
-  const { onClone, onDelete } = useDocRowActions(doc, selected);
+  const { lock, onClone, onDelete } = useDocRowActions(doc, selected);
   const wsPath = useWorkspacePath();
   return (
     <ListPaneRow
       to={wsPath(docPath(projectToken, doc.id))}
       title={doc.title}
-      snippet={doc.snippet ?? ""}
+      titleIcon={doc.locked && <LockIcon className="size-3 shrink-0 text-muted-foreground" aria-label="Locked" />}
       selected={selected}
-      meta={
-        <>
-          <span className="font-mono text-[11px] text-muted-foreground tabular-nums">{formatUpdatedAgo(doc.updated_at)}</span>
-          {doc.created_by && <DocAuthorAvatar userId={doc.created_by} />}
-        </>
-      }
-      actions={(onClone || onDelete) && <RowActions itemLabel={doc.title} onClone={onClone} onDelete={onDelete} />}
+      actions={(lock || onClone || onDelete) && <RowActions itemLabel={doc.title} lock={lock} onClone={onClone} onDelete={onDelete} />}
     />
   );
 };

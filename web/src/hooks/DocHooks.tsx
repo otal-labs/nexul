@@ -67,6 +67,19 @@ export const useRestoreDoc = () => {
   });
 };
 
+export const useSetDocLocked = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, locked }: { id: string; locked: boolean }) =>
+      (await api.post<Doc>(`/api/docs/${id}/${locked ? "lock" : "unlock"}`)).data,
+    onSuccess: async (_, { id, locked }) => {
+      await client.invalidateQueries({ queryKey: [getDocsKey] });
+      await client.invalidateQueries({ queryKey: [getDocKey, id] });
+      toast.success(locked ? "Doc locked" : "Doc unlocked");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
 
 // projectId "" duplicates the doc in its own project.
 export const useCloneDoc = () => {

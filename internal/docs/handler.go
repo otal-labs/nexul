@@ -43,6 +43,8 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/docs/search", h.search)
 	mux.HandleFunc("POST /api/docs/{id}/archive", h.archive)
 	mux.HandleFunc("POST /api/docs/{id}/restore", h.restore)
+	mux.HandleFunc("POST /api/docs/{id}/lock", h.lock)
+	mux.HandleFunc("POST /api/docs/{id}/unlock", h.unlock)
 	mux.HandleFunc("POST /api/docs/{id}/clone", h.clone)
 	mux.HandleFunc("GET /api/docs/{id}/export", h.exportDoc)
 	mux.HandleFunc("GET /api/docs/{id}/versions/{version}", h.getVersion)
@@ -164,6 +166,24 @@ func (h *Handler) archive(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) restore(w http.ResponseWriter, r *http.Request) {
 	d, err := h.svc.Restore(r.Context(), r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, d)
+}
+
+func (h *Handler) lock(w http.ResponseWriter, r *http.Request) {
+	d, err := h.svc.Lock(r.Context(), r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, d)
+}
+
+func (h *Handler) unlock(w http.ResponseWriter, r *http.Request) {
+	d, err := h.svc.Unlock(r.Context(), r.PathValue("id"))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

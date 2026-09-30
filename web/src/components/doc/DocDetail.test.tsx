@@ -37,6 +37,7 @@ const doc: Doc = {
   body: "SQLite is the spine.",
   version: 2,
   archived: false,
+  locked: false,
   created_by: "u-1",
   created_at: "2026-08-02T12:00:00Z",
   updated_at: "2026-08-02T12:00:00Z",
@@ -52,7 +53,7 @@ const framesOf = (socket: FakeSocket, type: string) =>
 // (or advance fake timers) before FakeSocket's handlers apply.
 const flushConnect = () => act(() => new Promise((r) => setTimeout(r, 0)));
 
-const renderDetailRaw = (socket: FakeSocket) => {
+const renderDetailRaw = (socket: FakeSocket, shown: Doc = doc) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   // Prime the profile cache (production warms it via OnboardingGate): the collab
   // session's `name` is a session-rebuilding dep, so it must be present on the first render.
@@ -65,7 +66,7 @@ const renderDetailRaw = (socket: FakeSocket) => {
     <QueryClientProvider client={client}>
       <MemoryRouter>
         <DocDetail
-          doc={doc}
+          doc={shown}
           workspaceId="ws-1"
           wsFactory={() => socket}
           onCreateTicket={vi.fn()}
@@ -78,8 +79,8 @@ const renderDetailRaw = (socket: FakeSocket) => {
   );
 };
 
-const renderDetail = async (socket: FakeSocket) => {
-  const result = renderDetailRaw(socket);
+const renderDetail = async (socket: FakeSocket, shown: Doc = doc) => {
+  const result = renderDetailRaw(socket, shown);
   await flushConnect();
   return result;
 };
@@ -314,6 +315,28 @@ describe("DocDetail", () => {
 
     expect(await screen.findByRole("heading", { name: "Trail" })).toBeInTheDocument();
     expect(api.get).toHaveBeenCalledWith("/api/plays/runs", { params: { target_type: "doc", target_id: "doc-1" } });
+  });
+
+  it("renders a locked doc read-only with no edit session, and a writer can unlock it", async () => {
+    const user = userEvent.setup();
+    const defaultGet = vi.mocked(api.get).getMockImplementation();
+    vi.mocked(api.get).mockImplementation(async (url: string) =>
+      url === "/api/workspaces/ws-1/me"
+        ? { data: { role_name: "Member", permissions: ["docs:read", "docs:write"] } }
+        : defaultGet!(url),
+    );
+    vi.mocked(api.post).mockResolvedValue({ data: { ...doc, locked: false } });
+    const socket = new FakeSocket();
+    await renderDetail(socket, { ...doc, locked: true });
+
+    expect(screen.getByRole("heading", { name: "Storage Spine" })).toBeInTheDocument();
+    expect(screen.queryByTestId("doc-title-input")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Body")).not.toBeInTheDocument();
+    expect(socket.send).not.toHaveBeenCalled();
+    expect(screen.getByText("Locked")).toBeInTheDocument();
+
+    await user.click(await screen.findByRole("button", { name: "Unlock" }));
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith("/api/docs/doc-1/unlock"));
   });
 
   it("hides the Trail section for a caller without docs:thread", async () => {

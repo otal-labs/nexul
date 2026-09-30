@@ -24,19 +24,20 @@ vi.mock("@/pages/DocPage", async () => {
 
 const project = { id: "p-1", name: "Backend", prefix: "BE", position: 0, created_at: "", updated_at: "" };
 
-const doc = (id: string, title: string, updated_at: string, can_open = true) => ({
+const doc = (id: string, title: string, updated_at: string, can_open = true, locked = false) => ({
   id,
   project_id: "p-1",
   title,
   version: 1,
   archived: false,
+  locked,
   can_open,
   updated_at,
   ...(can_open ? { created_by: "u-1", snippet: `${title} notes` } : {}),
 });
 
 const docs = [
-  doc("doc-1", "Storage Spine", new Date().toISOString()),
+  doc("doc-1", "Storage Spine", new Date().toISOString(), true, true),
   doc("doc-2", "Rollback plan", "2020-01-01T12:00:00Z"),
   doc("doc-3", "Salaries", "2020-01-02T12:00:00Z", false),
 ];
@@ -96,13 +97,40 @@ describe("DocsPage", () => {
     expect(await screen.findByText("editing doc-2")).toBeInTheDocument();
   });
 
-  it("offers New doc and Clone only to a role that holds them", async () => {
+  it("shows each row as its title alone, marking a locked one", async () => {
+    renderPage("/acme/docs", ["docs:read"]);
+
+    const row = await screen.findByRole("link", { name: /Storage Spine/ });
+    expect(row).toHaveTextContent(/^Storage Spine$/);
+    expect(within(row).getByLabelText("Locked")).toBeInTheDocument();
+    expect(within(screen.getByRole("link", { name: /Rollback plan/ })).queryByLabelText("Locked")).not.toBeInTheDocument();
+  });
+
+  it("offers New doc and each row action only to a role that holds them", async () => {
+    const user = userEvent.setup();
     renderPage("/acme/docs", ["docs:read", "docs:delete"]);
 
-    // Delete's menu shows once the role has loaded, so the absences below are the role's, not a pending fetch's.
-    await screen.findByRole("button", { name: "More actions for Storage Spine" });
+    await user.click(await screen.findByRole("button", { name: "More actions for Storage Spine" }));
+    expect(await screen.findByRole("menuitem", { name: "Delete" })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "Unlock" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "Clone" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "New doc" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Clone Storage Spine" })).not.toBeInTheDocument();
+  });
+
+  it("locks and unlocks a doc from its row menu", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.post).mockResolvedValue({ data: {} });
+    renderPage("/acme/docs", ["docs:read", "docs:write", "docs:clone", "docs:delete"]);
+
+    await user.click(await screen.findByRole("button", { name: "More actions for Rollback plan" }));
+    const items = await screen.findAllByRole("menuitem");
+    expect(items.map((item) => item.textContent)).toEqual(["Lock", "Clone", "Delete"]);
+    await user.click(screen.getByRole("menuitem", { name: "Lock" }));
+    await vi.waitFor(() => expect(api.post).toHaveBeenCalledWith("/api/docs/doc-2/lock"));
+
+    await user.click(screen.getByRole("button", { name: "More actions for Storage Spine" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Unlock" }));
+    await vi.waitFor(() => expect(api.post).toHaveBeenCalledWith("/api/docs/doc-1/unlock"));
   });
 
   it("clones a doc into the project picked in Clone to…", async () => {
@@ -110,7 +138,8 @@ describe("DocsPage", () => {
     vi.mocked(api.post).mockResolvedValue({ data: { id: "doc-9", project_id: "p-1" } });
     renderPage("/acme/docs", ["docs:read", "docs:clone"], { "/api/projects": [project] });
 
-    await user.click(await screen.findByRole("button", { name: "Clone Storage Spine" }));
+    await user.click(await screen.findByRole("button", { name: "More actions for Storage Spine" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Clone" }));
     const dialog = await screen.findByRole("dialog", { name: "Clone to…" });
     await user.click(await within(dialog).findByRole("button", { name: "Clone" }));
 

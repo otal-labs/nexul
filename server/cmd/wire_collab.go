@@ -14,3 +14,7 @@ type collabDocWriter struct {
 func (w collabDocWriter) CommitCollab(ctx context.Context, docID, title, body string) error {
 	return w.docs.CommitCollab(ctx, docID, title, body)
 }
+
+func (w collabDocWriter) Locked(ctx context.Context, docID string) (bool, error) {
+	return w.docs.Locked(ctx, docID)
+}
