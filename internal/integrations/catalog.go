@@ -37,7 +37,8 @@ var catalogSchemas = map[string]string{
 					"updated_at": {"type": "string", "format": "date-time"}
 				}
 			},
-			"actor_id": {"type": "string"}
+			"actor_id": {"type": "string"},
+			"mentioned_user_ids": {"type": "array", "items": {"type": "string"}, "description": "People this save newly @-mentions, by user id."}
 		}
 	}`,
 	"doc.updated": `{
@@ -58,7 +59,8 @@ var catalogSchemas = map[string]string{
 					"updated_at": {"type": "string", "format": "date-time"}
 				}
 			},
-			"actor_id": {"type": "string"}
+			"actor_id": {"type": "string"},
+			"mentioned_user_ids": {"type": "array", "items": {"type": "string"}, "description": "People this save newly @-mentions, by user id."}
 		}
 	}`,
 	"ticket.created": `{
@@ -93,7 +95,8 @@ var catalogSchemas = map[string]string{
 					"updated_at": {"type": "string", "format": "date-time"},
 					"finished_at": {"type": ["string", "null"], "format": "date-time"}
 				}
-			}
+			},
+			"mentioned_user_ids": {"type": "array", "items": {"type": "string"}, "description": "People the body @-mentions, by user id."}
 		}
 	}`,
 	"ticket.status_changed": `{
@@ -501,7 +504,11 @@ var catalogSchemas = map[string]string{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",
 		"type": "object",
 		"required": ["ticket"],
-		"properties": {"ticket": {"type": "object"}}
+		"properties": {
+			"ticket": {"type": "object"},
+			"actor_id": {"type": "string"},
+			"mentioned_user_ids": {"type": "array", "items": {"type": "string"}, "description": "People this edit newly @-mentions, by user id."}
+		}
 	}`,
 	"ticket.assignee_changed": `{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",

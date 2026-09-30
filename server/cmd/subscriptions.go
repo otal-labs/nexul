@@ -268,6 +268,9 @@ func wireDomainEventSubscriptions(ctx context.Context, bus *inprocess.Bus, svc *
 	mustSubscribe(ctx, bus, "notifications", tickets.TopicCreated, "", func(ctx context.Context, ev eventbus.Event) error {
 		return workspace.HandleTicketCreated(ctx, svc.notifSvc, ev)
 	})
+	mustSubscribe(ctx, bus, "notifications", tickets.TopicUpdated, "", func(ctx context.Context, ev eventbus.Event) error {
+		return workspace.HandleTicketUpdated(ctx, svc.notifSvc, ev)
+	})
 	mustSubscribe(ctx, bus, "notifications", tickets.TopicStatusChanged, "", func(ctx context.Context, ev eventbus.Event) error {
 		return workspace.HandleTicketStatusChanged(ctx, svc.notifSvc, ev)
 	})

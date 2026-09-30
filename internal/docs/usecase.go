@@ -78,15 +78,15 @@ func (s *Service) Create(ctx context.Context, projectID, title, body string) (*D
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
-	if err := s.persistNew(ctx, d); err != nil {
+	if err := s.persistNew(ctx, d, richtext.PersonMentions(d.Body)); err != nil {
 		return nil, err
 	}
 	return d, nil
 }
 
 // persistNew writes a new doc with its doc.created event and grants its author full permissions on it.
-func (s *Service) persistNew(ctx context.Context, d *Doc) error {
-	if err := s.repo.Create(ctx, d, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicCreated, Payload: CreatedEvent{Doc: *d, ActorID: d.CreatedBy}}); err != nil {
+func (s *Service) persistNew(ctx context.Context, d *Doc, mentioned []string) error {
+	if err := s.repo.Create(ctx, d, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicCreated, Payload: CreatedEvent{Doc: *d, ActorID: d.CreatedBy, MentionedUserIDs: mentioned}}); err != nil {
 		return fmt.Errorf("create doc: %w", err)
 	}
 	if s.access != nil {
@@ -130,7 +130,7 @@ func (s *Service) Clone(ctx context.Context, id, destinationProjectID string) (*
 		ID: ids.New(), ProjectID: destinationProjectID, Title: title, Body: body,
 		Version: 1, CreatedBy: actorID(ctx), CreatedAt: now, UpdatedAt: now,
 	}
-	if err := s.persistNew(ctx, clone); err != nil {
+	if err := s.persistNew(ctx, clone, nil); err != nil {
 		return nil, err
 	}
 	if len(idMap) > 0 {
@@ -258,11 +258,12 @@ func (s *Service) Update(ctx context.Context, id, title, body string) (*Doc, err
 	if err := s.require(ctx, current.ID, permissions.DocsWrite); err != nil {
 		return nil, err
 	}
+	mentioned := richtext.AddedPersonMentions(current.Body, body)
 	current.Title = title
 	current.Body = body
 	current.Version++
 	current.UpdatedAt = s.now().UTC()
-	if err := s.repo.Update(ctx, current, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: UpdatedEvent{Doc: *current, ActorID: actorID(ctx)}}); err != nil {
+	if err := s.repo.Update(ctx, current, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: UpdatedEvent{Doc: *current, ActorID: actorID(ctx), MentionedUserIDs: mentioned}}); err != nil {
 		return nil, fmt.Errorf("update doc %s: %w", id, err)
 	}
 	return current, nil
@@ -411,10 +412,11 @@ func (s *Service) CommitCollab(ctx context.Context, id, title, body string) erro
 	if title = strings.TrimSpace(title); title != "" {
 		current.Title = title
 	}
+	mentioned := richtext.AddedPersonMentions(current.Body, body)
 	current.Body = body
 	current.Version++
 	current.UpdatedAt = s.now().UTC()
-	if err := s.repo.CommitBody(ctx, current, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: UpdatedEvent{Doc: *current, ActorID: actorID(ctx)}}); err != nil {
+	if err := s.repo.CommitBody(ctx, current, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: UpdatedEvent{Doc: *current, ActorID: actorID(ctx), MentionedUserIDs: mentioned}}); err != nil {
 		return fmt.Errorf("commit doc %s: %w", id, err)
 	}
 	return nil

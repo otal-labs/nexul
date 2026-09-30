@@ -1036,11 +1036,7 @@ func (s *NotificationService) canOpen(ctx context.Context, n notice, userID stri
 }
 
 // onTicketCreated fans out ticket.assigned to the developer and tester and ticket.mentioned to every @-mentioned user.
-func (s *NotificationService) onTicketCreated(ctx context.Context, t ticketRef) error {
-	recipients := []recipient{{Login: t.Developer, Kind: KindTicketAssigned}, {Login: t.Tester, Kind: KindTicketAssigned}}
-	for _, login := range extractMentions(t.Title + " " + t.Body) {
-		recipients = append(recipients, recipient{Login: login, Kind: KindTicketMentioned})
-	}
+func (s *NotificationService) onTicketCreated(ctx context.Context, t ticketRef, mentionedIDs []string) error {
 	actorID, err := s.userIDForLogin(ctx, t.Reporter.Login)
 	if err != nil {
 		return err
@@ -1048,6 +1044,31 @@ func (s *NotificationService) onTicketCreated(ctx context.Context, t ticketRef) 
 	n, err := s.notice(ctx, SubjectTicket, t.ID, t.Title, t.ProjectID, actorID)
 	if err != nil {
 		return err
+	}
+	mentionTitle := s.mentionTitle(ctx, n)
+	recipients := []recipient{{Login: t.Developer, Kind: KindTicketAssigned}, {Login: t.Tester, Kind: KindTicketAssigned}}
+	for _, login := range extractMentions(t.Title + " " + t.Body) {
+		recipients = append(recipients, recipient{Login: login, Kind: KindTicketMentioned, Title: mentionTitle})
+	}
+	for _, id := range mentionedIDs {
+		recipients = append(recipients, recipient{UserID: id, Kind: KindTicketMentioned, Title: mentionTitle})
+	}
+	return s.fanOut(ctx, evtKey(ctx), n, recipients)
+}
+
+// onTicketUpdated fans out ticket.mentioned to the people an edit newly @-mentions.
+func (s *NotificationService) onTicketUpdated(ctx context.Context, e ticketUpdatedEvent) error {
+	if len(e.MentionedUserIDs) == 0 {
+		return nil
+	}
+	n, err := s.notice(ctx, SubjectTicket, e.Ticket.ID, e.Ticket.Title, e.Ticket.ProjectID, e.ActorID)
+	if err != nil {
+		return err
+	}
+	mentionTitle := s.mentionTitle(ctx, n)
+	recipients := make([]recipient, 0, len(e.MentionedUserIDs))
+	for _, id := range e.MentionedUserIDs {
+		recipients = append(recipients, recipient{UserID: id, Kind: KindTicketMentioned, Title: mentionTitle})
 	}
 	return s.fanOut(ctx, evtKey(ctx), n, recipients)
 }
@@ -1068,12 +1089,13 @@ func (s *NotificationService) onTicketStatusChanged(ctx context.Context, t ticke
 	return s.fanOut(ctx, evtKey(ctx), n, recipients)
 }
 
-// onDocActivity fans out to every member of the doc's workspace; access is workspace-level, so every member.
-func (s *NotificationService) onDocActivity(ctx context.Context, d docRef, actorID string, kind Kind) error {
+// onDocActivity fans out to every member of the doc's workspace; a member the save newly @-mentions gets
+// doc.mentioned instead of the activity kind.
+func (s *NotificationService) onDocActivity(ctx context.Context, e docEvent, kind Kind) error {
 	if s.members == nil {
 		return nil
 	}
-	n, err := s.notice(ctx, SubjectDoc, d.ID, d.Title, d.ProjectID, actorID)
+	n, err := s.notice(ctx, SubjectDoc, e.Doc.ID, e.Doc.Title, e.Doc.ProjectID, e.ActorID)
 	if err != nil {
 		return err
 	}
@@ -1084,7 +1106,29 @@ func (s *NotificationService) onDocActivity(ctx context.Context, d docRef, actor
 	if err != nil {
 		return fmt.Errorf("list members for doc fan-out: %w", err)
 	}
-	return s.fanOutByUserID(ctx, evtKey(ctx), n, kind, userIDs)
+	mentionTitle := s.mentionTitle(ctx, n)
+	recipients := make([]recipient, 0, len(userIDs)+len(e.MentionedUserIDs))
+	for _, id := range e.MentionedUserIDs {
+		if slices.Contains(userIDs, id) {
+			recipients = append(recipients, recipient{UserID: id, Kind: KindDocMentioned, Title: mentionTitle})
+		}
+	}
+	for _, id := range userIDs {
+		recipients = append(recipients, recipient{UserID: id, Kind: kind})
+	}
+	return s.fanOut(ctx, evtKey(ctx), n, recipients)
+}
+
+// mentionTitle words a mention as "<author> mentioned you in <title>"; with no known author it stays the title.
+func (s *NotificationService) mentionTitle(ctx context.Context, n notice) string {
+	if n.actorID == "" {
+		return n.subjectTitle
+	}
+	name, err := s.users.NameForUserID(ctx, n.actorID)
+	if err != nil || name == "" {
+		return n.subjectTitle
+	}
+	return fmt.Sprintf("%s mentioned you in %s", name, n.subjectTitle)
 }
 
 // onMemoryUpdated fans out to every member of the memory's workspace who holds memories:read, excluding the
@@ -1187,36 +1231,58 @@ func (s *NotificationService) userIDForLogin(ctx context.Context, login string) 
 	return u.ID, nil
 }
 
-// recipient is one pending fan-out row: the recipient login and the notification kind to create.
+// recipient is one pending fan-out row: who by login or user id, the kind to create, and a title replacing the subject's.
 type recipient struct {
-	Login string
-	Kind  Kind
+	Login  string
+	UserID string
+	Kind   Kind
+	Title  string
 }
 
-// fanOut creates one notification per known recipient in a single outbox transaction, idempotent per event.
+// fanOut creates one notification per known recipient in a single outbox transaction, idempotent per event; a
+// person named twice keeps their first row.
 func (s *NotificationService) fanOut(ctx context.Context, key string, n notice, recipients []recipient) error {
 	now := s.now().UTC()
 	seen := map[string]bool{}
 	var toCreate []*Notification
 	for _, r := range recipients {
-		login := strings.TrimSpace(r.Login)
-		if login == "" || seen[login] {
-			continue
-		}
-		seen[login] = true
-		user, err := s.users.GetUserByLogin(ctx, login)
+		userID, err := s.recipientID(ctx, r)
 		if err != nil {
-			if errors.Is(err, apperrs.ErrNotFound) {
-				continue // not a member — no notification
-			}
-			return fmt.Errorf("resolve recipient %s: %w", login, err)
+			return err
 		}
-		if user == nil || strings.TrimSpace(user.ID) == "" {
+		if userID == "" || seen[userID] {
 			continue
 		}
-		toCreate = append(toCreate, n.row(key, user.ID, r.Kind, now))
+		seen[userID] = true
+		row := n.row(key, userID, r.Kind, now)
+		if r.Title != "" {
+			row.SubjectTitle = r.Title
+		}
+		toCreate = append(toCreate, row)
 	}
 	return s.create(ctx, n, toCreate)
+}
+
+// recipientID resolves a recipient to a user id; an unknown login is nobody to notify.
+func (s *NotificationService) recipientID(ctx context.Context, r recipient) (string, error) {
+	if id := strings.TrimSpace(r.UserID); id != "" {
+		return id, nil
+	}
+	login := strings.TrimSpace(r.Login)
+	if login == "" {
+		return "", nil
+	}
+	user, err := s.users.GetUserByLogin(ctx, login)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return "", nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("resolve recipient %s: %w", login, err)
+	}
+	if user == nil {
+		return "", nil
+	}
+	return strings.TrimSpace(user.ID), nil
 }
 
 // fanOutByUserID creates one notification per already-resolved user id, skipping fanOut's login lookup for
