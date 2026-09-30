@@ -260,8 +260,9 @@ no options shows the model button alone. The model button opens a searchable
 list with a left rail (favourites, then one mark per provider), rows of name,
 a mono New mark, and the provider line under it, and legacy models grouped
 last under a mono microheader. The options button opens one section per
-option the model supports, the harness default marked. Provider marks are
-monochrome, in `currentColor`. `ModelChoice` in `web/src/components/model/`
+option the model supports, the harness default marked. Provider marks keep the
+brand's own fills (a light and dark pair where the brand has one), an exception
+to color being status signal. `ModelChoice` in `web/src/components/model/`
 is the reference; a settings row puts it right of the label and description.
 
 Tabs. A view whose cards or sections are separate jobs (two or more of them)
