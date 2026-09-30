@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/otal-labs/nexul/internal/deploy"
+	"github.com/otal-labs/nexul/internal/integrations"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/hostcred"
 	"github.com/otal-labs/nexul/internal/platform/identity"
@@ -115,6 +116,24 @@ func TestIntegration_ContainerLogs(t *testing.T) {
 			assert.Equal(t, []deploy.ContainerLogLine{masked}, body.Lines)
 			req := <-fake.requests
 			assert.Equal(t, runner.Frame{Type: runner.FrameLogsRequest, ID: req.ID, Container: "shop-web-1", Tail: 5}, req)
+		}
+	})
+
+	t.Run("a scoped token reads logs only with stacks:logs, whatever its creator holds", func(t *testing.T) {
+		gateway := f.svc.integrationsSvc.RequireIntegration(func(h http.Handler) http.Handler { return h }, deploy.NewHandler(f.svc.deploySvc).Routes())
+		for scope, want := range map[integrations.Scope]int{"stacks:read": http.StatusForbidden, "stacks:logs": http.StatusOK} {
+			token, _, _, err := f.svc.integrationsSvc.Install(as(uOwner), uOwner, "logs-"+string(scope), integrations.TrustCommunity, "https://example.com/hook", []integrations.Scope{scope})
+			require.NoError(t, err)
+			for _, path := range []string{"/api/stacks/stack-shop/services/web/logs", "/api/services/stack-shop/services/web/logs"} {
+				req := httptest.NewRequest(http.MethodGet, path, nil)
+				req.Header.Set("Authorization", "Bearer "+token)
+				rec := httptest.NewRecorder()
+				gateway.ServeHTTP(rec, req)
+				assert.Equal(t, want, rec.Code, "%s on %s", scope, path)
+				if rec.Code == http.StatusOK {
+					<-fake.requests
+				}
+			}
 		}
 	})
 

@@ -21,7 +21,7 @@ Decision: Nexul reads a service's container logs live from Docker through the ru
   topic on `/ws/events`, which broadcasts to every socket and has no per-viewer start and stop. A viewer whose socket
   falls behind gets a skipped line instead of a growing buffer on the server.
 - Reading takes `stacks:logs` (ADR 0057), because output carries secrets. Every role holding `stacks:write` received
-  it on upgrade. Before a line leaves the server, every value of the stack's own env that is six characters or longer
+  it on upgrade, and a scoped token needs it among its own scopes, whatever its creator holds. Before a line leaves the server, every value of the stack's own env that is six characters or longer
   becomes `••••`.
 
 The trade-offs: the output of a container that a redeploy replaced or removed goes with it; there is no search across

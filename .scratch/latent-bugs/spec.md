@@ -89,3 +89,7 @@ The fix is either label support in the runner (a stack field plus the assign
 frame) or writing each exposure into the same file-provider config the gateway
 container renders on start. Every router on the https entry point already
 defaults to Let's Encrypt, so certificates follow once routers exist.
+
+## A scoped token without docs:thread can open a doc's thread
+
+The gateway derives a scoped token's scope from the path, so `POST /api/chat/docs/{docID}/thread` needs only `chat:write`, and the use-case then checks `docs:thread` against the token's creator, not the token. Add the route to `verbRouteScope` in `internal/integrations/gateway.go`, as the container logs routes are.
