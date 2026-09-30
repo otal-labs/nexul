@@ -1,23 +1,85 @@
-name: Native release
+name: Phone release
 
-# Builds the phone app's signed Android APK and attaches it to a GitHub release tagged android-v<version>, the version in
-# native/app.config.ts. Run by hand only; the server's own releases are release.yml. The release is never marked latest,
-# so releases/latest keeps pointing at the server's binaries for install.sh and `nexul upgrade`.
+# Builds the phone app at the version in native/app.config.ts: a signed Android APK and an unsigned iOS IPA, which
+# SideStore signs on the phone with the owner's own Apple ID. A hand run creates one GitHub release tagged
+# phone-v<version>-beta with both files. The release is never marked latest, so releases/latest keeps pointing at the
+# server's binaries for install.sh and `nexul upgrade`. A pull request that touches the app builds the IPA only, as an
+# artifact, and releases nothing.
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: The app version to release, as in native/app.config.ts
+        required: true
+  push:
+    branches: [ci/phone-release-ios]
+  pull_request:
+    paths:
+      - native/**
+      - .github/workflows/native-release.yml
 
 permissions:
   contents: read
 
 concurrency:
-  group: native-release
-  cancel-in-progress: false
+  group: native-release-${{ github.event_name == 'workflow_dispatch' && 'release' || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
+
+env:
+  RELEASE: ${{ github.event_name == 'workflow_dispatch' }}
 
 jobs:
-  release:
+  version:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: native
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.11
+      - run: bun install --frozen-lockfile
+      - name: Resolve the version and refuse an existing tag
+        id: version
+        env:
+          REQUESTED: ${{ inputs.version }}
+          NEXUL_UPDATES_URL: ${{ vars.NEXUL_UPDATES_URL }}
+          NEXUL_UPDATES_APP_ID: ${{ vars.NEXUL_UPDATES_APP_ID }}
+        run: |
+          set -euo pipefail
+          version=$(bunx expo config --type public --json | jq -r .version)
+          tag="phone-v$version-beta"
+          {
+            echo "version=$version"
+            echo "tag=$tag"
+          } >> "$GITHUB_OUTPUT"
+          if [[ "$RELEASE" != "true" ]]; then
+            echo "Building $version without a release"
+            exit 0
+          fi
+          if [[ "$REQUESTED" != "$version" ]]; then
+            echo "::error::Asked for $REQUESTED but native/app.config.ts is at $version." >&2
+            exit 1
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
+            echo "::error::Tag $tag already exists; bump version in native/app.config.ts first." >&2
+            exit 1
+          fi
+          if [[ -z "$NEXUL_UPDATES_URL" || -z "$NEXUL_UPDATES_APP_ID" ]]; then
+            echo "::warning::NEXUL_UPDATES_URL or NEXUL_UPDATES_APP_ID is unset; this build will never receive over-the-air updates."
+          fi
+          echo "Building $tag"
+
+  android:
+    needs: version
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: native
@@ -34,24 +96,6 @@ jobs:
           distribution: temurin
           java-version: 21
       - run: bun install --frozen-lockfile
-      - name: Resolve the version and refuse an existing tag
-        id: version
-        run: |
-          set -euo pipefail
-          version=$(bunx expo config --type public --json | jq -r .version)
-          tag="android-v$version"
-          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
-            echo "::error::Tag $tag already exists; bump version in native/app.config.ts first." >&2
-            exit 1
-          fi
-          if [[ -z "$NEXUL_UPDATES_URL" || -z "$NEXUL_UPDATES_APP_ID" ]]; then
-            echo "::warning::NEXUL_UPDATES_URL or NEXUL_UPDATES_APP_ID is unset; this APK will never receive over-the-air updates."
-          fi
-          echo "Building $tag"
-          {
-            echo "version=$version"
-            echo "tag=$tag"
-          } >> "$GITHUB_OUTPUT"
       - run: bun run prebuild
       - name: Decode the signing keystore
         env:
@@ -71,14 +115,77 @@ jobs:
           ORG_GRADLE_PROJECT_reactNativeArchitectures: arm64-v8a,x86_64
         # The Kotlin compile daemon hung at expo-updates' KSP step on a hosted runner for two hours; compile in-process instead.
         run: ./gradlew assembleRelease --no-daemon -Pkotlin.compiler.execution.strategy=in-process -Dorg.gradle.jvmargs="-Xmx6g -XX:MaxMetaspaceSize=1g"
+      - name: Name the APK
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: cp android/app/build/outputs/apk/release/app-release.apk "nexul-android-$VERSION.apk"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: android
+          path: native/nexul-android-${{ needs.version.outputs.version }}.apk
+          if-no-files-found: error
+
+  ios:
+    needs: version
+    runs-on: macos-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: native
+    env:
+      NEXUL_UPDATES_URL: ${{ vars.NEXUL_UPDATES_URL }}
+      NEXUL_UPDATES_APP_ID: ${{ vars.NEXUL_UPDATES_APP_ID }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.11
+      - run: bun install --frozen-lockfile
+      - run: bunx expo prebuild --platform ios --clean --no-install
+      - name: Install pods
+        working-directory: native/ios
+        run: pod install
+      # No Apple Developer account exists: the archive is unsigned and SideStore signs it at install time.
+      - name: Archive the app without signing
+        working-directory: native/ios
+        run: |
+          set -euo pipefail
+          xcodebuild archive -quiet -workspace Nexul.xcworkspace -scheme Nexul -configuration Release \
+            -destination generic/platform=iOS -archivePath "$RUNNER_TEMP/Nexul.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+      - name: Pack the IPA
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/ipa/Payload"
+          cp -R "$RUNNER_TEMP/Nexul.xcarchive/Products/Applications/Nexul.app" "$RUNNER_TEMP/ipa/Payload/"
+          (cd "$RUNNER_TEMP/ipa" && zip -qry "$GITHUB_WORKSPACE/native/nexul-ios-$VERSION.ipa" Payload)
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ios
+          path: native/nexul-ios-${{ needs.version.outputs.version }}.ipa
+          if-no-files-found: error
+
+  release:
+    needs: [version, android, ios]
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          merge-multiple: true
       - name: Create the release
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.version.outputs.version }}
-          TAG: ${{ steps.version.outputs.tag }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.version.outputs.version }}
+          TAG: ${{ needs.version.outputs.tag }}
         run: |
           set -euo pipefail
-          apk="nexul-android-$VERSION.apk"
-          cp android/app/build/outputs/apk/release/app-release.apk "$apk"
-          gh release create "$TAG" "$apk" --latest=false --title "Nexul for Android $VERSION" \
-            --notes "Sideload the APK on an Android phone. JavaScript changes within this version arrive over the air."
+          gh release create "$TAG" "nexul-android-$VERSION.apk" "nexul-ios-$VERSION.ipa" \
+            --target "$GITHUB_SHA" --prerelease --latest=false --title "Nexul for phones $VERSION beta" \
+            --notes "Sideload the APK on an Android phone, or install the IPA on an iPhone with SideStore. JavaScript changes within this version arrive over the air."
