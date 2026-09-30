@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { HealthDot } from "@/components/service/HealthDot";
 import { formatRelativeTime } from "@/components/service/DeployTime";
 import { useAreaAccess } from "@/hooks/AccessHooks";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { deployPath, type Deploy } from "@/models/Stack";
 
 interface DeployRowProps {
@@ -11,6 +12,7 @@ interface DeployRowProps {
 
 export const DeployRow = ({ deploy }: DeployRowProps) => {
   const canOpen = useAreaAccess()?.("deploys") ?? false;
+  const wsPath = useWorkspacePath();
   const rowClass = "flex items-center gap-3 px-3 py-2.5 text-sm";
   const row = (
     <>
@@ -33,7 +35,7 @@ export const DeployRow = ({ deploy }: DeployRowProps) => {
     <li>
       {canOpen && (
         <Link
-          to={deployPath(deploy)}
+          to={wsPath(deployPath(deploy))}
           className={`${rowClass} transition-colors duration-150 ease-standard hover:bg-accent/40`}
         >
           {row}

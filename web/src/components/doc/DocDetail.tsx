@@ -14,6 +14,7 @@ import { PlaysMenu } from "@/components/play/PlaysMenu";
 import { TrailSection } from "@/components/play/TrailSection";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { effectiveAvatar } from "@/models/User";
 import { useSessionStore } from "@/stores/sessionStore";
 import type { LiveSocket } from "@/api/ws";
@@ -47,6 +48,7 @@ export const DocDetail = ({
 }: DocDetailProps) => {
   const token = useSessionStore((s) => s.token);
   const canThread = useHasPermission("docs:thread");
+  const wsPath = useWorkspacePath();
   // Display name for the collab presence comes from useFetchMe, not sessionStore (F5).
   const { data: me } = useFetchMe();
   const { name: userName, avatar: userAvatar } = collabIdentity(me);
@@ -104,7 +106,7 @@ export const DocDetail = ({
     <div className="animate-in fade-in-0 slide-in-from-bottom-1 relative mx-auto w-full max-w-6xl duration-200 ease-out">
       <div className="flex items-center justify-between">
         <Link
-          to="/docs"
+          to={wsPath("/docs")}
           className="font-mono text-xs text-muted-foreground lg:invisible transition-colors duration-150 ease-standard hover:text-foreground"
         >
           ← All docs

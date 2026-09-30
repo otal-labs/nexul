@@ -3,7 +3,9 @@ import { persist } from "zustand/middleware";
 
 export type WorkspaceStore = {
   selectedWorkspaceId: string;
-  selectWorkspace: (id: string) => void;
+  // The selected workspace's slug, so links into it build without waiting for the workspace list.
+  selectedWorkspaceSlug: string;
+  selectWorkspace: (id: string, slug: string) => void;
   // Last-viewed project, so an unscoped /board visit redirects somewhere sensible.
   selectedProjectId: string;
   selectProject: (id: string) => void;
@@ -14,7 +16,8 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
   persist(
     (set) => ({
       selectedWorkspaceId: "",
-      selectWorkspace: (id) => set({ selectedWorkspaceId: id }),
+      selectedWorkspaceSlug: "",
+      selectWorkspace: (id, slug) => set({ selectedWorkspaceId: id, selectedWorkspaceSlug: slug }),
       selectedProjectId: "",
       selectProject: (id) => set({ selectedProjectId: id }),
     }),
@@ -22,6 +25,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
       name: "workspace",
       partialize: (state) => ({
         selectedWorkspaceId: state.selectedWorkspaceId,
+        selectedWorkspaceSlug: state.selectedWorkspaceSlug,
         selectedProjectId: state.selectedProjectId,
       }),
     },

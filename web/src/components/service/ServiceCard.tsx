@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { DeployStatusBadge } from "@/components/service/DeployStatusBadge";
 import { HealthDot } from "@/components/service/HealthDot";
 import { useAreaAccess } from "@/hooks/AccessHooks";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import type { DeployStatus as DeployStatusType, ServiceDef } from "@/models/Service";
 
 // Stagger the first screenful of rows in; the rest mounts together instantly (never stagger a long list).
@@ -25,6 +26,7 @@ const imageLine = (service: ServiceDef): string => {
 // `status` degrades gracefully to no dot/badge until a per-service health query is wired up.
 export const ServiceCard = ({ service, status, index }: ServiceCardProps) => {
   const canOpen = useAreaAccess()?.("stacks") ?? false;
+  const wsPath = useWorkspacePath();
   const rowClass = "flex items-center gap-3 px-4 py-3";
   const row = (
     <>
@@ -52,7 +54,7 @@ export const ServiceCard = ({ service, status, index }: ServiceCardProps) => {
     >
       {canOpen && (
         <Link
-          to={`/services/${service.id}`}
+          to={wsPath(`/stacks/${service.id}`)}
           className={`${rowClass} transition-colors duration-[120ms] ease-standard hover:bg-accent/40`}
         >
           {row}

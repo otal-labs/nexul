@@ -35,7 +35,7 @@ describe("DeployRow", () => {
       </MemoryRouter>,
     );
     const link = screen.getByRole("link");
-    expect(link).toHaveAttribute("href", "/stacks/stack-1/deploys/d-1");
+    expect(link).toHaveAttribute("href", "/acme/stacks/stack-1/deploys/d-1");
     expect(link).toHaveTextContent("repo build");
     expect(link).toHaveTextContent("d-1");
   });

@@ -81,7 +81,7 @@ describe("ProjectWizardImportPage", () => {
       standalone: ["redis"],
       gateways: [],
     });
-    expect(screen.getByRole("link", { name: /view on the canvas/i })).toHaveAttribute("href", "/topology");
+    expect(screen.getByRole("link", { name: /view on the canvas/i })).toHaveAttribute("href", "/acme/topology");
   });
 
   it("shows what a discovered tunnel already serves, and a describe failure on its own row", async () => {
@@ -183,7 +183,7 @@ describe("ProjectWizardImportPage", () => {
   it("preselects the machine from ?machine=", async () => {
     render(
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-        <MemoryRouter initialEntries={["/wizard/project/import?machine=m-1"]}>
+        <MemoryRouter initialEntries={["/acme/wizard/project/import?machine=m-1"]}>
           <ProjectWizardImportPage />
         </MemoryRouter>
       </QueryClientProvider>,

@@ -53,7 +53,7 @@ const renderPage = (route: string, anywhere = ownerBits, permissions: string[] =
       <MemoryRouter initialEntries={[route]}>
         <Routes>
           <Route path="/settings/:section?" element={<YourSettingsPage />} />
-          <Route path="/configuration/:section?" element={<p>Configuration page</p>} />
+          <Route path="/acme/configuration/:section?" element={<p>Configuration page</p>} />
         </Routes>
         <LocationProbe />
       </MemoryRouter>
@@ -135,7 +135,7 @@ describe("Settings page instance sections", () => {
     renderPage("/settings/team?person=u-1", ["members:write"]);
 
     expect(await screen.findByText("Configuration page")).toBeInTheDocument();
-    expect(screen.getByLabelText("location").textContent).toBe("/configuration/team?person=u-1");
+    expect(screen.getByLabelText("location").textContent).toBe("/acme/configuration/team?person=u-1");
   });
 
   it("gives sign-in providers their own section, one tab each with Discord first", async () => {

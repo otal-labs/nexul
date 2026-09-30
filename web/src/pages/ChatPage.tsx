@@ -6,6 +6,7 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { NoDataDisplay } from "@/components/NoDataDisplay";
 import { useFetchChatUnread, useFetchConversations } from "@/hooks/ChatHooks";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { cn } from "@/lib/utils";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
@@ -14,6 +15,7 @@ export const ChatPage = () => {
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const { conversationId } = useParams();
   const navigate = useNavigate();
+const wsPath = useWorkspacePath();
   const { data: conversations, error, isPending } = useFetchConversations(workspaceId);
   const { data: unread } = useFetchChatUnread(workspaceId);
   const selected = conversations?.find((c) => c.id === conversationId);
@@ -34,14 +36,14 @@ export const ChatPage = () => {
             conversations={conversations}
             unread={unread}
             selectedConversationId={selected?.id}
-            onSelect={(id) => void navigate(`/chat/${id}`)}
+            onSelect={(id) => void navigate(wsPath(`/chat/${id}`))}
           />
         </div>
       )}
       {conversations && (
         <div className={cn("min-w-0 flex-1 sm:flex sm:flex-col", selected ? "flex flex-col" : "hidden")}>
           {selected && (
-            <ConversationThread workspaceId={workspaceId} conversation={selected} onBack={() => void navigate("/chat")} />
+            <ConversationThread workspaceId={workspaceId} conversation={selected} onBack={() => void navigate(wsPath("/chat"))} />
           )}
           {!selected && (
             <div className="flex h-full items-center justify-center">

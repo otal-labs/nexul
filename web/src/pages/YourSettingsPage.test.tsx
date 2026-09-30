@@ -49,7 +49,6 @@ const renderPage = (route = "/settings") => {
       <MemoryRouter initialEntries={[route]}>
         <Routes>
           <Route path="/settings/:section?" element={<YourSettingsPage />} />
-          <Route path="/configuration/:section?" element={<p>Configuration page</p>} />
         </Routes>
         <LocationProbe />
       </MemoryRouter>
@@ -72,20 +71,6 @@ describe("YourSettingsPage", () => {
     expect(await screen.findByLabelText("Display name")).toHaveValue("Onik N");
     expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Security" })).toHaveAttribute("href", "/settings/security");
-  });
-
-  it("sends a workspace section link on Settings to Configuration with its query", async () => {
-    renderPage("/settings/roles?x=1");
-    expect(await screen.findByText("Configuration page")).toBeInTheDocument();
-    expect(screen.getByLabelText("location").textContent).toBe("/configuration/roles?x=1");
-  });
-
-  it("sends the old tokens section to the Tokens tab of Security", async () => {
-    renderPage("/settings/tokens?tab=personal");
-    expect(await screen.findByLabelText(/token name/i)).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Tokens", selected: true })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Devices" })).toBeInTheDocument();
-    expect(screen.getByLabelText("location")).toHaveTextContent("/settings/security?tab=tokens");
   });
 
   it("opens Security on the Devices tab with the desktop card and the device list", async () => {

@@ -17,10 +17,12 @@ import { PageTabs, PageTabsContent } from "@/components/PageTabs";
 import { useFetchAutomation } from "@/hooks/AutomationHooks";
 import { useFetchAutomationRuns } from "@/hooks/AutomationRunHooks";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 
 export const AutomationPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const wsPath = useWorkspacePath();
   const canUpdate = useHasPermission("automations:write");
   const canDelete = useHasPermission("automations:delete");
 
@@ -62,7 +64,7 @@ export const AutomationPage = () => {
               <AutomationVersionsFeed automationId={automation.id} canUpdate={canUpdate} />
             </PageTabsContent>
             <PageTabsContent value="danger">
-              <AutomationDeleteButton automationId={automation.id} onDeleted={() => navigate("/automations")} />
+              <AutomationDeleteButton automationId={automation.id} onDeleted={() => navigate(wsPath("/automations"))} />
             </PageTabsContent>
           </PageTabs>
         </div>

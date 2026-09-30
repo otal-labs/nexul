@@ -5,8 +5,9 @@ import { OwnerWizardStepPanel } from "@/components/auth/OwnerWizardStepPanel";
 import { WizardConfirmation } from "@/components/auth/WizardConfirmation";
 import { WizardLayout } from "@/components/auth/WizardLayout";
 import { useCompleteOwnerWizard, useFetchSettings } from "@/hooks/AuthHooks";
-import { useRenameWorkspace } from "@/hooks/WorkspaceHooks";
+import { useRenameWorkspace, useSelectedWorkspace } from "@/hooks/WorkspaceHooks";
 import { useOwnerWizardStore } from "@/stores/ownerWizardStore";
+import { slugify, workspacePath } from "@/models/Workspace";
 
 const CONFIRM_DELAY_MS = 900;
 const TOTAL_STEPS = 3;
@@ -41,6 +42,7 @@ export const OwnerWizardPage = () => {
   const { data: settings, isPending: settingsPending, error: settingsError } = useFetchSettings();
   const complete = useCompleteOwnerWizard();
   const renameWorkspace = useRenameWorkspace();
+  const selected = useSelectedWorkspace();
 
   const onBack = () => {
     if (step === 1) {
@@ -55,14 +57,17 @@ export const OwnerWizardPage = () => {
     setFinishing(true);
     try {
       await complete.mutateAsync(settings.instance_url);
+      let slug = selected?.slug ?? "";
       if (workspaceSetup?.workspaceName) {
-        await renameWorkspace.mutateAsync({ id: workspaceSetup.workspaceId, name: workspaceSetup.workspaceName });
+        // Nothing links to the workspace yet, so naming it here also names its URL.
+        const name = workspaceSetup.workspaceName;
+        slug = (await renameWorkspace.mutateAsync({ id: workspaceSetup.workspaceId, name, slug: slugify(name) })).slug;
       }
       resetProgress();
       setConfirmed(true);
       // Warm confirmation beat; a workspace starts with no project, so the project wizard is next.
       await new Promise((resolve) => setTimeout(resolve, CONFIRM_DELAY_MS));
-      navigate(FIRST_PROJECT_PATH, { replace: true });
+      navigate(workspacePath(slug, FIRST_PROJECT_PATH), { replace: true });
     } catch {
       // Error is surfaced by the hook's toast; the step stays open to retry.
       setFinishing(false);

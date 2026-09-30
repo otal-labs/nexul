@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
 import { useAreaAccess } from "@/hooks/AccessHooks";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 
 interface CanvasEmptyHintProps {
   onAddNode: () => void;
@@ -12,6 +13,7 @@ interface CanvasEmptyHintProps {
 // Wrapper ignores pointer events so pan/zoom still work underneath; only the CTAs are interactive.
 export const CanvasEmptyHint = ({ onAddNode }: CanvasEmptyHintProps) => {
   const canAddService = useAreaAccess()?.("newProject") ?? false;
+  const wsPath = useWorkspacePath();
   return (
     <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-6">
       <EmptyState
@@ -22,7 +24,7 @@ export const CanvasEmptyHint = ({ onAddNode }: CanvasEmptyHintProps) => {
           <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-3">
             {canAddService && (
               <Button asChild>
-                <Link to="/wizard/project/repository">Add a service</Link>
+                <Link to={wsPath("/wizard/project/repository")}>Add a service</Link>
               </Button>
             )}
             <Button variant="outline" onClick={onAddNode}>

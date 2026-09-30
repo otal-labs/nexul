@@ -46,7 +46,7 @@ const LocationSpy = () => <p data-testid="location">{useLocation().pathname}</p>
 const renderPage = (path: string, permissions: string[], overrides: Record<string, unknown> = {}) => {
   const endpoints: Record<string, unknown> = {
     "/api/projects": [project],
-    "/api/workspaces": [{ id: "ws-1", name: "Acme" }],
+    "/api/workspaces": [{ id: "ws-1", name: "Acme", slug: "acme" }],
     "/api/workspaces/ws-1/me": { role_name: "Member", permissions },
     "/api/docs": docs,
     ...overrides,
@@ -61,9 +61,9 @@ const renderPage = (path: string, permissions: string[], overrides: Record<strin
       <ContextAwareConfirmation.ConfirmationRoot />
       <MemoryRouter initialEntries={[path]}>
         <Routes>
-          <Route path="/docs" element={<DocsPage />} />
-          <Route path="/docs/:projectToken/:docId" element={<DocsPage />} />
-          <Route path="/docs/:docId" element={<DocsPage />} />
+          <Route path="/acme/docs" element={<DocsPage />} />
+          <Route path="/acme/docs/:projectToken/:docId" element={<DocsPage />} />
+          <Route path="/acme/docs/:docId" element={<DocsPage />} />
         </Routes>
         <LocationSpy />
       </MemoryRouter>
@@ -79,7 +79,7 @@ beforeEach(() => {
 
 describe("DocsPage", () => {
   it("lists the openable docs by day and opens the one the URL names", async () => {
-    renderPage("/docs/BE/doc-2", ["docs:read"]);
+    renderPage("/acme/docs/BE/doc-2", ["docs:read"]);
 
     const earlier = await screen.findByRole("region", { name: "Earlier" });
     expect(within(earlier).getByRole("link", { name: /Rollback plan/ })).toHaveAttribute("aria-current", "page");
@@ -90,14 +90,14 @@ describe("DocsPage", () => {
   });
 
   it("moves a bare doc link to its project's URL", async () => {
-    renderPage("/docs/doc-2", ["docs:read"], { "/api/docs/doc-2": { ...doc("doc-2", "Rollback plan", ""), body: "" } });
+    renderPage("/acme/docs/doc-2", ["docs:read"], { "/api/docs/doc-2": { ...doc("doc-2", "Rollback plan", ""), body: "" } });
 
-    await vi.waitFor(() => expect(screen.getByTestId("location")).toHaveTextContent("/docs/BE/doc-2"));
+    await vi.waitFor(() => expect(screen.getByTestId("location")).toHaveTextContent("/acme/docs/BE/doc-2"));
     expect(await screen.findByText("editing doc-2")).toBeInTheDocument();
   });
 
   it("offers New doc and Clone only to a role that holds them", async () => {
-    renderPage("/docs", ["docs:read", "docs:delete"]);
+    renderPage("/acme/docs", ["docs:read", "docs:delete"]);
 
     // Delete's menu shows once the role has loaded, so the absences below are the role's, not a pending fetch's.
     await screen.findByRole("button", { name: "More actions for Storage Spine" });
@@ -108,7 +108,7 @@ describe("DocsPage", () => {
   it("clones a doc into the project picked in Clone to…", async () => {
     const user = userEvent.setup();
     vi.mocked(api.post).mockResolvedValue({ data: { id: "doc-9", project_id: "p-1" } });
-    renderPage("/docs", ["docs:read", "docs:clone"], { "/api/projects": [project] });
+    renderPage("/acme/docs", ["docs:read", "docs:clone"], { "/api/projects": [project] });
 
     await user.click(await screen.findByRole("button", { name: "Clone Storage Spine" }));
     const dialog = await screen.findByRole("dialog", { name: "Clone to…" });
@@ -119,21 +119,21 @@ describe("DocsPage", () => {
   });
 
   it("says so, and offers a writer New doc, when the project has no docs", async () => {
-    renderPage("/docs", ["docs:read", "docs:write"], { "/api/docs": [] });
+    renderPage("/acme/docs", ["docs:read", "docs:write"], { "/api/docs": [] });
 
     expect(await screen.findByText("No docs yet")).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: "New doc" })).toBeInTheDocument();
   });
 
   it("points at the project wizard when the workspace has no project yet", async () => {
-    renderPage("/docs", ["projects:write"], { "/api/projects": [] });
+    renderPage("/acme/docs", ["projects:write"], { "/api/projects": [] });
 
     expect(await screen.findByText("No projects yet")).toBeInTheDocument();
-    expect(await screen.findByRole("link", { name: "New project" })).toHaveAttribute("href", "/wizard/project/project");
+    expect(await screen.findByRole("link", { name: "New project" })).toHaveAttribute("href", "/acme/wizard/project/project");
   });
 
   it("shows the shared error display when the list fails", async () => {
-    renderPage("/docs", ["docs:read"], { "/api/docs": new Error("boom") });
+    renderPage("/acme/docs", ["docs:read"], { "/api/docs": new Error("boom") });
 
     expect(await screen.findByText("Failed to load docs.")).toBeInTheDocument();
   });

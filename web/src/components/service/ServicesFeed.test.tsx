@@ -52,7 +52,7 @@ describe("ServicesFeed", () => {
         <ServicesFeed services={services} />
       </MemoryRouter>,
     );
-    expect(screen.getByRole("link", { name: /api/ })).toHaveAttribute("href", "/services/svc-1");
-    expect(screen.getByRole("link", { name: /db/ })).toHaveAttribute("href", "/services/svc-2");
+    expect(screen.getByRole("link", { name: /api/ })).toHaveAttribute("href", "/acme/stacks/svc-1");
+    expect(screen.getByRole("link", { name: /db/ })).toHaveAttribute("href", "/acme/stacks/svc-2");
   });
 });

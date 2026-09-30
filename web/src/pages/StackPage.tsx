@@ -15,6 +15,7 @@ import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFetchExposures } from "@/hooks/DnsHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { useFetchStack, useFetchStackDeploys, useFetchStackServices } from "@/hooks/StackHooks";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { latestDeploy, type Container as StackContainer } from "@/models/Stack";
 import { projectSettingsPath, projectTokenById } from "@/models/Project";
 
@@ -29,6 +30,7 @@ export const StackPage = () => {
   const { data: services } = useFetchStackServices(stackId);
   const { data: deploys, isPending: deploysPending } = useFetchStackDeploys(stackId);
   const showExposures = useAreaAccess()?.("dns") ?? false;
+  const wsPath = useWorkspacePath();
   const { data: exposures } = useFetchExposures(showExposures);
 
   const requested: StackSection = isStackSection(rawSection) ? rawSection : DEFAULT_STACK_SECTION;
@@ -44,7 +46,7 @@ export const StackPage = () => {
     .filter((e) => !!e.service_id && containerIds.has(e.service_id))
     .map((e) => e.hostname);
   // An instance stack (a gateway) has no project; Topology is where it lives.
-  const projectPath = stack?.project_id ? projectSettingsPath(projectTokenById(projects, stack.project_id)) : "/topology";
+  const projectPath = wsPath(stack?.project_id ? projectSettingsPath(projectTokenById(projects, stack.project_id)) : "/topology");
   const image = latest?.image || (stack?.strategy === "run" ? imageOf(services?.[0]) : undefined);
 
   return (

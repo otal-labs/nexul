@@ -6,12 +6,14 @@ import { WizardInterviewOffer } from "@/components/wizard/WizardInterviewOffer";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useInterviewOffer } from "@/hooks/useInterviewOffer";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
 import { interviewPath, projectTokenById } from "@/models/Project";
 
 // Terminal rung: what the wizard built, the interview offer while the project has none, and links to the stack and canvas.
 export const WizardDoneStep = () => {
   const navigate = useNavigate();
+const wsPath = useWorkspacePath();
   const can = useAreaAccess();
   const { name, machine, exposureHostname, stackId, projectId, projectName } = useProjectWizardStore(
     useShallow((s) => ({
@@ -27,7 +29,7 @@ export const WizardDoneStep = () => {
   const offer = useInterviewOffer(projectId, projectName ?? name);
 
   const go = (to: string) => {
-    navigate(to);
+    navigate(wsPath(to));
   };
   // Leaving any other way than the interview counts as skipping it, so it asks first.
   const leave = async (to: string) => {

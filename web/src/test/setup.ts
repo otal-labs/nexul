@@ -1,9 +1,16 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, configure } from "@testing-library/react";
-import { afterEach } from "vitest";
+import { afterEach, beforeEach } from "vitest";
+
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 // Whole-app imports and lazy dialogs can outlive the 1s default under load; 3s keeps genuine hangs visible.
 configure({ asyncUtilTimeout: 3000 });
+
+// Every test renders inside the workspace whose slug is "acme" unless it picks another.
+beforeEach(() => {
+  useWorkspaceStore.setState({ selectedWorkspaceSlug: "acme" });
+});
 
 // Radix portals leave scroll locks and aria-hidden marks when unmounted mid-open; scrub after every test.
 afterEach(() => {

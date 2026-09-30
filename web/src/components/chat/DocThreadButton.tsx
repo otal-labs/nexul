@@ -4,6 +4,7 @@ import { useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
 import { useGetOrCreateDocThread } from "@/hooks/ChatHooks";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 
 interface DocThreadButtonProps {
   workspaceId: string;
@@ -16,6 +17,7 @@ export const DocThreadButton = ({ workspaceId, docId }: DocThreadButtonProps) =>
   const canThread = useHasPermission("docs:thread");
   const getOrCreate = useGetOrCreateDocThread(workspaceId);
   const navigate = useNavigate();
+  const wsPath = useWorkspacePath();
 
   if (!canThread) return null;
 
@@ -25,7 +27,7 @@ export const DocThreadButton = ({ workspaceId, docId }: DocThreadButtonProps) =>
       size="icon"
       className="size-7"
       aria-label="Thread"
-      onClick={() => getOrCreate.mutate(docId, { onSuccess: (conversation) => void navigate(`/chat/${conversation.id}`) })}
+      onClick={() => getOrCreate.mutate(docId, { onSuccess: (conversation) => void navigate(wsPath(`/chat/${conversation.id}`)) })}
     >
       <MessageSquare className="size-4" aria-hidden />
     </Button>

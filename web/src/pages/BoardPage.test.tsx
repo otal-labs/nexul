@@ -69,17 +69,17 @@ const openCreateMenuItem = async (user: ReturnType<typeof userEvent.setup>, labe
   await user.click(await screen.findByRole("button", { name: label }));
 };
 
-// Every render of the board needs a resolved projectId (ticket 08), so most behavioral tests render the scoped route directly; the unscoped "/board" route is exercised in "BoardPage routing" below.
-const renderPage = (initialPath = "/board/p-1") => {
+// Every render of the board needs a resolved projectId (ticket 08), so most behavioral tests render the scoped route directly; the unscoped "/acme/board" route is exercised in "BoardPage routing" below.
+const renderPage = (initialPath = "/acme/board/p-1") => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
       <ContextAwareConfirmation.ConfirmationRoot />
       <MemoryRouter initialEntries={[initialPath]}>
         <Routes>
-          <Route path="/board" element={<BoardPage />} />
-          <Route path="/board/:projectId" element={<BoardPage />} />
-          <Route path="/wizard/project/project" element={<div>project-wizard</div>} />
+          <Route path="/acme/board" element={<BoardPage />} />
+          <Route path="/acme/board/:projectId" element={<BoardPage />} />
+          <Route path="/acme/wizard/project/project" element={<div>project-wizard</div>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -125,16 +125,16 @@ describe("BoardPage", () => {
 
   it("resolves a prefix URL (/board/BE) to the same project as its id, case-insensitively", async () => {
     mockGet([ticket("t-1", "p-1", "Fix login", "open")]);
-    renderPage("/board/be");
+    renderPage("/acme/board/be");
     expect(await screen.findByText("Fix login")).toBeInTheDocument();
     expect(screen.getByText("Backend")).toBeInTheDocument();
   });
 
   it("shows a not-found state for a token matching no project, instead of an empty board", async () => {
     mockGet([]);
-    renderPage("/board/project-general-randomstring");
+    renderPage("/acme/board/project-general-randomstring");
     expect(await screen.findByText("Project not found")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /go to your board/i })).toHaveAttribute("href", "/board");
+    expect(screen.getByRole("link", { name: /go to your board/i })).toHaveAttribute("href", "/acme/board");
   });
 
   it("filters by category", async () => {
@@ -255,7 +255,7 @@ describe("BoardPage", () => {
       }
       return Promise.resolve({ data: {} });
     });
-    renderPage("/board/p-1");
+    renderPage("/acme/board/p-1");
     expect(await screen.findByText("Fix login")).toBeInTheDocument();
 
     await openCreateMenuItem(user, "New category");
@@ -305,7 +305,7 @@ describe("BoardPage project-scoped route", () => {
   it("scopes to the project in the URL, hides the Projects filter, and titles the page with it", async () => {
     const user = userEvent.setup();
     mockGet([ticket("t-1", "p-1", "Fix login", "open", "c-1"), ticket("t-2", "p-2", "Wire FTS", "open")]);
-    renderPage("/board/p-1");
+    renderPage("/acme/board/p-1");
 
     expect(await screen.findByText("Fix login")).toBeInTheDocument();
     expect(screen.queryByText("Wire FTS")).not.toBeInTheDocument();
@@ -320,7 +320,7 @@ describe("BoardPage routing", () => {
   it("redirects to the last-viewed project from the workspace store", async () => {
     useWorkspaceStore.getState().selectProject("p-2");
     mockGet([ticket("t-1", "p-1", "Fix login", "open", "c-1"), ticket("t-2", "p-2", "Wire FTS", "open")]);
-    renderPage("/board");
+    renderPage("/acme/board");
 
     expect(await screen.findByText("Wire FTS")).toBeInTheDocument();
     expect(screen.queryByText("Fix login")).not.toBeInTheDocument();
@@ -329,7 +329,7 @@ describe("BoardPage routing", () => {
 
   it("falls back to the first project by position when nothing is remembered", async () => {
     mockGet([ticket("t-1", "p-1", "Fix login", "open", "c-1"), ticket("t-2", "p-2", "Wire FTS", "open")]);
-    renderPage("/board");
+    renderPage("/acme/board");
 
     expect(await screen.findByText("Fix login")).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Backend" })).toBeInTheDocument();
@@ -338,7 +338,7 @@ describe("BoardPage routing", () => {
   it("falls back to the first project by position when the remembered project no longer exists", async () => {
     useWorkspaceStore.getState().selectProject("p-deleted");
     mockGet([ticket("t-1", "p-1", "Fix login", "open", "c-1"), ticket("t-2", "p-2", "Wire FTS", "open")]);
-    renderPage("/board");
+    renderPage("/acme/board");
 
     expect(await screen.findByText("Fix login")).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Backend" })).toBeInTheDocument();
@@ -347,7 +347,7 @@ describe("BoardPage routing", () => {
   it("shows the create-first-project empty state when the workspace has zero projects", async () => {
     useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
     mockGet([], []);
-    renderPage("/board");
+    renderPage("/acme/board");
 
     expect(await screen.findByText("No projects yet")).toBeInTheDocument();
     const user = userEvent.setup();
@@ -357,7 +357,7 @@ describe("BoardPage routing", () => {
 
   it("remembers the project it lands on for the next unscoped visit", async () => {
     mockGet([ticket("t-1", "p-1", "Fix login", "open", "c-1")]);
-    renderPage("/board/p-2");
+    renderPage("/acme/board/p-2");
 
     await screen.findByRole("heading", { name: "Frontend" });
     expect(useWorkspaceStore.getState().selectedProjectId).toBe("p-2");
@@ -365,7 +365,7 @@ describe("BoardPage routing", () => {
 
   it("shows an error state when the project list itself fails to load", async () => {
     vi.mocked(api.get).mockRejectedValue(new Error("boom"));
-    renderPage("/board");
+    renderPage("/acme/board");
     expect(await screen.findByText("Failed to load the board.")).toBeInTheDocument();
   });
 });

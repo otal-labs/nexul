@@ -46,13 +46,13 @@ const interview: Memory = {
   updated_at: "",
 };
 
-const renderPage = (entry = "/projects/BE/interview") => {
+const renderPage = (entry = "/acme/projects/BE/interview") => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[entry]}>
         <Routes>
-          <Route path="/projects/:projectId/interview" element={<InterviewPage />} />
+          <Route path="/acme/projects/:projectId/interview" element={<InterviewPage />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -98,15 +98,15 @@ describe("InterviewPage", () => {
 
   it("says so when the project does not exist", async () => {
     mockMemories([]);
-    renderPage("/projects/NOPE/interview");
+    renderPage("/acme/projects/NOPE/interview");
     expect(await screen.findByText("Project not found")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Go to your board" })).toHaveAttribute("href", "/board");
+    expect(screen.getByRole("link", { name: "Go to your board" })).toHaveAttribute("href", "/acme/board");
   });
 
   it("does not send a viewer who can't read tickets to the board from a missing project", async () => {
     access.areas = [];
     mockMemories([]);
-    renderPage("/projects/NOPE/interview");
+    renderPage("/acme/projects/NOPE/interview");
     expect(await screen.findByText("Project not found")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Go to your board" })).not.toBeInTheDocument();
   });

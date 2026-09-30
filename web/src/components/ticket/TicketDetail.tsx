@@ -7,6 +7,7 @@ import { formatUpdatedAgo } from "@/components/doc/docTime";
 import { TicketStatusBadge } from "@/components/ticket/TicketStatusBadge";
 import { Input } from "@/components/ui/input";
 import { usePerson } from "@/hooks/PeopleHooks";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { personLabel } from "@/models/Person";
 import type { Project } from "@/models/Project";
 import { reporterLabel, type Ticket } from "@/models/Ticket";
@@ -38,6 +39,7 @@ export const TicketDetail = ({ ticket, project, onSave }: TicketDetailProps) => 
     onSaveRef.current = onSave;
   });
   const reporterPerson = usePerson(ticket.reporter.login ?? "");
+  const wsPath = useWorkspacePath();
   const reporter = reporterLabel(ticket.reporter, () => personLabel(reporterPerson));
 
   const flush = async () => {
@@ -81,7 +83,7 @@ export const TicketDetail = ({ ticket, project, onSave }: TicketDetailProps) => 
   return (
     <div className="space-y-6">
       <Link
-        to="/board"
+        to={wsPath("/board")}
         className="inline-block font-mono text-xs text-muted-foreground transition-colors duration-150 ease-standard hover:text-foreground"
       >
         ← Board

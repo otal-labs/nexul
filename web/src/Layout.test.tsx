@@ -96,7 +96,7 @@ describe("Layout", () => {
       if (url.endsWith("/me")) return { data: meResponse };
       if (url === "/api/projects") return { data: projects };
       if (url === "/api/team") throw new Error("403");
-      if (url === "/api/workspaces") return { data: [{ id: "ws-1", name: "Acme", created_at: "", updated_at: "" }] };
+      if (url === "/api/workspaces") return { data: [{ id: "ws-1", name: "Acme", slug: "acme", created_at: "", updated_at: "" }] };
       return { data: [] };
     });
   });
@@ -146,7 +146,7 @@ describe("Layout", () => {
     useSessionStore.setState({ token: "t", isLoggedIn: true });
     renderLayout();
     const inboxLink = screen.getByRole("link", { name: "Inbox" });
-    expect(inboxLink).toHaveAttribute("href", "/inbox");
+    expect(inboxLink).toHaveAttribute("href", "/acme/inbox");
     expect(inboxLink.compareDocumentPosition(await screen.findByRole("button", { name: "New project" }))).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     );
@@ -170,7 +170,7 @@ describe("Layout", () => {
     useSessionStore.setState({ token: "t", isLoggedIn: true });
     renderLayout();
     await screen.findByText("@onik97");
-    expect(await screen.findByRole("link", { name: "Configuration" })).toHaveAttribute("href", "/configuration");
+    expect(await screen.findByRole("link", { name: "Configuration" })).toHaveAttribute("href", "/acme/configuration");
     expect(screen.getByRole("link", { name: "Your settings" })).toHaveAttribute("href", "/settings");
     expect(screen.queryByRole("link", { name: "Members" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Settings" })).not.toBeInTheDocument();
@@ -217,15 +217,15 @@ describe("Layout", () => {
       name: "the Owner sees every entry and every create action",
       user: ownerUser,
       permissions: ownerGrid,
-      main: ["/inbox", "/chat", "/board/BE", "/projects/BE/interview", "/docs", "/memories", "/projects/BE/settings"],
-      workspace: ["/runners", "/topology", "/automations", "/configuration"],
+      main: ["/acme/inbox", "/acme/chat", "/acme/board/BE", "/acme/projects/BE/interview", "/acme/docs", "/acme/memories", "/acme/projects/BE/settings"],
+      workspace: ["/acme/runners", "/acme/topology", "/acme/automations", "/acme/configuration"],
       create: ["New channel", "New voice channel", "New direct message"],
     },
     {
       name: "a member who reads chat and tickets sees the board and nothing of the workspace",
       user: member,
       permissions: ["chat:read", "tickets:read"],
-      main: ["/inbox", "/chat", "/board/BE"],
+      main: ["/acme/inbox", "/acme/chat", "/acme/board/BE"],
       workspace: [],
       create: [],
     },
@@ -233,7 +233,7 @@ describe("Layout", () => {
       name: "a member who reads docs sees the one Docs entry and no Memories",
       user: member,
       permissions: ["docs:read"],
-      main: ["/inbox", "/chat", "/docs"],
+      main: ["/acme/inbox", "/acme/chat", "/acme/docs"],
       workspace: [],
       create: [],
     },
@@ -241,23 +241,23 @@ describe("Layout", () => {
       name: "a member who reads runners and topology sees only those two",
       user: member,
       permissions: ["runners:read", "topology:read"],
-      main: ["/inbox", "/chat"],
-      workspace: ["/runners", "/topology"],
+      main: ["/acme/inbox", "/acme/chat"],
+      workspace: ["/acme/runners", "/acme/topology"],
       create: [],
     },
     {
       name: "a member who manages roles reaches Configuration alone",
       user: member,
       permissions: ["roles:write"],
-      main: ["/inbox", "/chat"],
-      workspace: ["/configuration"],
+      main: ["/acme/inbox", "/acme/chat"],
+      workspace: ["/acme/configuration"],
       create: [],
     },
     {
       name: "a member who may only chat keeps chat and its create actions",
       user: member,
       permissions: ["chat:write"],
-      main: ["/inbox", "/chat"],
+      main: ["/acme/inbox", "/acme/chat"],
       workspace: [],
       create: ["New channel", "New voice channel", "New direct message"],
     },

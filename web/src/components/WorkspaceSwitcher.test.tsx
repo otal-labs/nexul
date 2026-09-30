@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ContextAwareConfirmation } from "react-confirm";
+import { MemoryRouter, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
@@ -30,8 +31,8 @@ const baseUser = {
 const baseMe = { user: baseUser, needs_owner_wizard: false, needs_first_login_wizard: false, instance_permissions: [] as string[] };
 
 const workspaces = [
-  { id: "ws-1", name: "Shopkeepers", created_at: "", updated_at: "" },
-  { id: "ws-2", name: "Arena's Hub", created_at: "", updated_at: "" },
+  { id: "ws-1", name: "Shopkeepers", slug: "shopkeepers", created_at: "", updated_at: "" },
+  { id: "ws-2", name: "Arena's Hub", slug: "arena-s-hub", created_at: "", updated_at: "" },
 ];
 
 // GET /api/workspaces feeds the switcher's list; GET /api/auth/me carries workspaces:create in instance_permissions (useFetchMe).
@@ -39,17 +40,24 @@ const mockApi = (
   wsList: unknown,
   me: typeof baseMe = baseMe,
 ) => {
-  vi.mocked(api.get).mockImplementation(async (url: string) =>
-    url === "/api/auth/me" ? { data: me } : { data: wsList },
-  );
+  vi.mocked(api.get).mockImplementation(async (url: string) => {
+    if (url === "/api/auth/me") return { data: me };
+    if (url.endsWith("/me")) return { data: { role_name: "Member", permissions: ["tickets:read"] } };
+    return { data: wsList };
+  });
 };
 
-const renderSwitcher = (collapsed = false) => {
+const Location = () => <p data-testid="location">{useLocation().pathname}</p>;
+
+const renderSwitcher = (collapsed = false, path = "/shopkeepers/board/ONLY") => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <ContextAwareConfirmation.ConfirmationRoot />
-      <WorkspaceSwitcher collapsed={collapsed} />
+      <MemoryRouter initialEntries={[path]}>
+        <ContextAwareConfirmation.ConfirmationRoot />
+        <WorkspaceSwitcher collapsed={collapsed} />
+        <Location />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 };
@@ -66,9 +74,9 @@ describe("WorkspaceSwitcher", () => {
 
   it("renders nothing while there are no workspaces", async () => {
     mockApi([]);
-    const { container } = renderSwitcher();
+    renderSwitcher();
     await waitFor(() => expect(api.get).toHaveBeenCalledWith("/api/workspaces"));
-    expect(container).toBeEmptyDOMElement();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 
   it("shows the current workspace and lists every workspace with a checkmark on the selected one", async () => {
@@ -89,7 +97,8 @@ describe("WorkspaceSwitcher", () => {
     expect(otherRow?.querySelector("svg.lucide-check")).toBeNull();
   });
 
-  it("selecting a different workspace updates the store and closes the popover", async () => {
+  it("keeps the section and drops the item when switching inside a workspace", async () => {
+    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedWorkspaceSlug: "shopkeepers" });
     mockApi(workspaces);
     const user = userEvent.setup();
     renderSwitcher();
@@ -97,9 +106,21 @@ describe("WorkspaceSwitcher", () => {
     await user.click(await screen.findByText("Shopkeepers"));
     await user.click(screen.getByText("Arena's Hub"));
 
-    expect(useWorkspaceStore.getState().selectedWorkspaceId).toBe("ws-2");
+    await waitFor(() => expect(screen.getByTestId("location")).toHaveTextContent("/arena-s-hub/board"));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(await screen.findByText("Arena's Hub")).toBeInTheDocument();
+  });
+
+  it("selects the workspace in place on a personal page, which has no workspace URL", async () => {
+    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedWorkspaceSlug: "shopkeepers" });
+    mockApi(workspaces);
+    const user = userEvent.setup();
+    renderSwitcher(false, "/settings/profile");
+
+    await user.click(await screen.findByText("Shopkeepers"));
+    await user.click(screen.getByText("Arena's Hub"));
+
+    expect(useWorkspaceStore.getState()).toMatchObject({ selectedWorkspaceId: "ws-2", selectedWorkspaceSlug: "arena-s-hub" });
+    expect(screen.getByTestId("location")).toHaveTextContent("/settings/profile");
   });
 
   it("keeps a valid persisted selection across refetches", async () => {
@@ -124,7 +145,7 @@ describe("WorkspaceSwitcher", () => {
   it("shows the New Workspace row with workspaces:create, and creates + switches on submit", async () => {
     mockApi(workspaces, { ...baseMe, instance_permissions: ["workspaces:create"] });
     vi.mocked(api.post).mockResolvedValue({
-      data: { id: "ws-3", name: "New Co", created_at: "", updated_at: "" },
+      data: { id: "ws-3", name: "New Co", slug: "new-co", created_at: "", updated_at: "" },
     });
     const user = userEvent.setup();
     renderSwitcher();
@@ -136,7 +157,7 @@ describe("WorkspaceSwitcher", () => {
     await user.click(screen.getByRole("button", { name: "Create workspace" }));
 
     expect(api.post).toHaveBeenCalledWith("/api/workspaces", { name: "New Co" });
-    await waitFor(() => expect(useWorkspaceStore.getState().selectedWorkspaceId).toBe("ws-3"));
+    await waitFor(() => expect(screen.getByTestId("location")).toHaveTextContent("/new-co"));
   });
 
   it("renders an icon-only trigger when collapsed", async () => {

@@ -10,6 +10,7 @@ import { useFetchChatUnread, useFetchConversations } from "@/hooks/ChatHooks";
 import { useNewConversationDialogs } from "@/hooks/useNewConversationDialogs";
 import { usePersonLookup } from "@/hooks/PeopleHooks";
 import { useVoiceOccupancy } from "@/hooks/VoiceHooks";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { cn } from "@/lib/utils";
 import { conversationLabel, groupConversations, type Conversation, type DMLabelContext } from "@/models/Chat";
 import type { VoiceOccupant } from "@/models/Voice";
@@ -84,13 +85,14 @@ export const ChatSidebarSection = ({ collapsed }: ChatSidebarSectionProps) => {
   const { data: me } = useFetchMe();
   const resolvePerson = usePersonLookup(workspaceId);
   const navigate = useNavigate();
+  const wsPath = useWorkspacePath();
   const occupancy = useVoiceOccupancy(!collapsed);
   const joinCall = useVoiceCallStore((s) => s.join);
   const canCreate = useAreaAccess()?.("newConversation") ?? false;
   // A new text channel or DM opens straight away; a new voice channel waits in the list to be joined.
   const { openNewChannel, openNewDM } = useNewConversationDialogs(workspaceId, (conversation) => {
     if (conversation.kind === "voice_channel") return;
-    void navigate(`/chat/${conversation.id}`);
+    void navigate(wsPath(`/chat/${conversation.id}`));
   });
 
   if (collapsed) return null;
@@ -117,7 +119,7 @@ export const ChatSidebarSection = ({ collapsed }: ChatSidebarSectionProps) => {
               conversation={conversation}
               unreadCount={unread?.[conversation.id] ?? 0}
               dmCtx={dmCtx}
-              onSelect={(id) => void navigate(`/chat/${id}`)}
+              onSelect={(id) => void navigate(wsPath(`/chat/${id}`))}
             />
           ))}
       </div>
@@ -148,7 +150,7 @@ export const ChatSidebarSection = ({ collapsed }: ChatSidebarSectionProps) => {
               conversation={conversation}
               unreadCount={unread?.[conversation.id] ?? 0}
               dmCtx={dmCtx}
-              onSelect={(id) => void navigate(`/chat/${id}`)}
+              onSelect={(id) => void navigate(wsPath(`/chat/${id}`))}
             />
           ))}
       </div>

@@ -105,7 +105,7 @@ describe("TicketTestSection", () => {
     mockApi({ url: "" });
     renderSection({ body: "" });
     expect(await screen.findByText(/No test environment yet/)).toBeInTheDocument();
-    expect(await screen.findByRole("link", { name: "web" })).toHaveAttribute("href", "/stacks/s-1/branches");
+    expect(await screen.findByRole("link", { name: "web" })).toHaveAttribute("href", "/acme/stacks/s-1/branches");
     expect(screen.getByText(/no Acceptance criteria section/)).toBeInTheDocument();
   });
 

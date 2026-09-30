@@ -7,6 +7,7 @@ import { RunnerRow } from "@/components/runner/RunnerRow";
 import { NoDataDisplay } from "@/components/NoDataDisplay";
 import { Button } from "@/components/ui/button";
 import { useAreaAccess } from "@/hooks/AccessHooks";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import type { Machine, Runner } from "@/models/Runner";
 import { formatRelativeTime } from "@/utils/TimeUtility";
 
@@ -17,6 +18,7 @@ interface MachineGroupProps {
 
 export const MachineGroup = ({ machine, runners }: MachineGroupProps) => {
   const canImport = useAreaAccess()?.("newProject") ?? false;
+  const wsPath = useWorkspacePath();
   return (
     <section className="space-y-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -37,7 +39,7 @@ export const MachineGroup = ({ machine, runners }: MachineGroupProps) => {
         <div className="flex flex-wrap items-center gap-2">
           {canImport && (
             <Button variant="outline" size="sm" asChild>
-              <Link to={`/wizard/project/import?machine=${machine.id}`}>
+              <Link to={wsPath(`/wizard/project/import?machine=${machine.id}`)}>
                 <DownloadIcon className="size-3.5" /> Import from this machine
               </Link>
             </Button>

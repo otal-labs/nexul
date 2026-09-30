@@ -38,7 +38,7 @@ const workspaceSections = (visibility: SettingsVisibility) =>
 
 const renderNav = (sections: SettingsSection[], active: SettingsSection = "danger") =>
   render(
-    <MemoryRouter initialEntries={["/configuration"]}>
+    <MemoryRouter initialEntries={["/acme/configuration"]}>
       <SettingsNav active={active} sections={sections} />
     </MemoryRouter>,
   );
@@ -54,14 +54,14 @@ describe("SettingsNav", () => {
       "Mention chips",
       "Danger zone",
     ]);
-    expect(nav.getByRole("link", { name: "Plays" })).toHaveAttribute("href", "/configuration/plays");
+    expect(nav.getByRole("link", { name: "Plays" })).toHaveAttribute("href", "/acme/configuration/plays");
   });
 
   it("puts Team with the workspace sections, ahead of Danger zone, for a member manager without accounts:read", () => {
     renderNav(workspaceSections({ ...nothing, showRoles: true, showTeam: true }));
     const nav = within(screen.getByRole("navigation", { name: "Configuration sections" }));
     expect(nav.getAllByRole("listitem").map((item) => item.textContent)).toEqual(["Roles", "Team", "Danger zone"]);
-    expect(nav.getByRole("link", { name: "Team" })).toHaveAttribute("href", "/configuration/team");
+    expect(nav.getByRole("link", { name: "Team" })).toHaveAttribute("href", "/acme/configuration/team");
   });
 
   it("hides every gated workspace section until its flag is set, leaving Danger zone", () => {

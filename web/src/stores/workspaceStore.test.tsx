@@ -14,9 +14,10 @@ describe("workspaceStore", () => {
     expect(useWorkspaceStore.getState().selectedProjectId).toBe("");
   });
 
-  it("selectWorkspace updates the selected id", () => {
-    useWorkspaceStore.getState().selectWorkspace("ws-2");
+  it("selectWorkspace updates the selected id and slug", () => {
+    useWorkspaceStore.getState().selectWorkspace("ws-2", "otal");
     expect(useWorkspaceStore.getState().selectedWorkspaceId).toBe("ws-2");
+    expect(useWorkspaceStore.getState().selectedWorkspaceSlug).toBe("otal");
   });
 
   it("selectProject updates the selected id", () => {
@@ -24,12 +25,13 @@ describe("workspaceStore", () => {
     expect(useWorkspaceStore.getState().selectedProjectId).toBe("p-2");
   });
 
-  it("persists selectedWorkspaceId and selectedProjectId, matching sessionStore's convention", () => {
-    useWorkspaceStore.getState().selectWorkspace("ws-2");
+  it("persists the selected workspace and project, matching sessionStore's convention", () => {
+    useWorkspaceStore.getState().selectWorkspace("ws-2", "otal");
     useWorkspaceStore.getState().selectProject("p-2");
 
     const stored = JSON.parse(localStorage.getItem("workspace") ?? "{}");
     expect(stored.state.selectedWorkspaceId).toBe("ws-2");
+    expect(stored.state.selectedWorkspaceSlug).toBe("otal");
     expect(stored.state.selectedProjectId).toBe("p-2");
   });
 });

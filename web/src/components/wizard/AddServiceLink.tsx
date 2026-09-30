@@ -3,6 +3,7 @@ import { Link } from "react-router";
 
 import { Button, type ButtonProps } from "@/components/ui/button";
 import { useAreaAccess } from "@/hooks/AccessHooks";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { NEW_PROJECT_PATH } from "@/models/Project";
 
 interface AddServiceLinkProps extends Omit<ButtonProps, "asChild" | "children"> {
@@ -15,10 +16,11 @@ interface AddServiceLinkProps extends Omit<ButtonProps, "asChild" | "children"> 
 // Exported for pages this ticket doesn't own (Topology's empty state) to render without duplicating the route.
 export const AddServiceLink = ({ projectId, children, variant, size, className, ...props }: AddServiceLinkProps) => {
   const canAdd = useAreaAccess()?.("newProject") ?? false;
+const wsPath = useWorkspacePath();
   if (!canAdd) return null;
   return (
     <Button asChild variant={variant} size={size} className={className} {...props}>
-      <Link to={projectId ? `/wizard/project/repository?project=${projectId}` : NEW_PROJECT_PATH}>
+      <Link to={wsPath(projectId ? `/wizard/project/repository?project=${projectId}` : NEW_PROJECT_PATH)}>
         <PlusIcon className="size-3.5" aria-hidden />
         {children ?? "Add service"}
       </Link>

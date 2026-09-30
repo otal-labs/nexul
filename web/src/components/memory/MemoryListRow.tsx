@@ -7,6 +7,7 @@ import { CloneMemoryDialog } from "@/components/memory/CloneMemoryDialog";
 import { MemoryPinSwitch } from "@/components/memory/MemoryPinSwitch";
 import { useConfirmDeleteMemory } from "@/hooks/useConfirmDeleteMemory";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { isWorkspaceMemory, type Memory } from "@/models/Memory";
 import { memoryPath } from "@/models/Project";
 import { bodySnippet } from "@/utils/BodySnippet";
@@ -22,6 +23,7 @@ export const MemoryListRow = ({ memory, projectToken, selected }: MemoryListRowP
   const canClone = useHasPermission("memories:clone");
   const canDelete = useHasPermission("memories:delete");
   const confirmDelete = useConfirmDeleteMemory();
+  const wsPath = useWorkspacePath();
   const snippet = useMemo(() => bodySnippet(memory.body), [memory.body]);
   const onClone = canClone ? () => setCloneOpen(true) : undefined;
   const onDelete = canDelete ? () => void confirmDelete(memory, selected) : undefined;
@@ -29,7 +31,7 @@ export const MemoryListRow = ({ memory, projectToken, selected }: MemoryListRowP
   return (
     <>
       <ListPaneRow
-        to={memoryPath(isWorkspaceMemory(memory) ? "" : projectToken, memory.id)}
+        to={wsPath(memoryPath(isWorkspaceMemory(memory) ? "" : projectToken, memory.id))}
         title={memory.title}
         snippet={snippet}
         selected={selected}

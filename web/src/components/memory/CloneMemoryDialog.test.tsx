@@ -21,8 +21,8 @@ vi.mock("react-router", async () => {
 });
 
 const workspaces = [
-  { id: "ws-1", name: "Engineering", created_at: "", updated_at: "" },
-  { id: "ws-2", name: "Marketing", created_at: "", updated_at: "" },
+  { id: "ws-1", name: "Engineering", slug: "engineering", created_at: "", updated_at: "" },
+  { id: "ws-2", name: "Marketing", slug: "marketing", created_at: "", updated_at: "" },
 ];
 const projectsByWorkspace: Record<string, unknown[]> = {
   "ws-1": [{ id: "project-1", name: "Backend", prefix: "BE", position: 0, icon: "", created_at: "", updated_at: "" }],
@@ -81,7 +81,7 @@ describe("CloneMemoryDialog", () => {
       }),
     );
     expect(onClose).toHaveBeenCalled();
-    expect(navigateSpy).toHaveBeenCalledWith("/memories/mem-2");
+    expect(navigateSpy).toHaveBeenCalledWith("/engineering/memories/mem-2");
   });
 
   it("clones to workspace scope and navigates to the clone", async () => {
@@ -101,7 +101,7 @@ describe("CloneMemoryDialog", () => {
       }),
     );
     expect(onClose).toHaveBeenCalled();
-    expect(navigateSpy).toHaveBeenCalledWith("/memories/mem-3");
+    expect(navigateSpy).toHaveBeenCalledWith("/marketing/memories/mem-3");
   });
 
   it("cancels without cloning", async () => {

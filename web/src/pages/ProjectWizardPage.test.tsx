@@ -47,10 +47,10 @@ const renderPage = (path: string | string[]) => {
       <RouterProvider
         router={createMemoryRouter(
           [
-            { path: "/wizard/project/:step", element: <ProjectWizardPage /> },
-            { path: "/", element: <p>home</p> },
-            { path: "/board", element: <p>board</p> },
-            { path: "/board/:token", element: <p>project board</p> },
+            { path: "/acme/wizard/project/:step", element: <ProjectWizardPage /> },
+            { path: "/acme", element: <p>home</p> },
+            { path: "/acme/board", element: <p>board</p> },
+            { path: "/acme/board/:token", element: <p>project board</p> },
           ],
           { initialEntries: entries, initialIndex: entries.length - 1 },
         )}
@@ -76,7 +76,7 @@ beforeEach(() => {
 
 describe("ProjectWizardPage", () => {
   it("offers no way to skip the info rung, since the project does not exist until it is created", async () => {
-    renderPage("/wizard/project/project");
+    renderPage("/acme/wizard/project/project");
 
     await screen.findByLabelText("Project name");
 
@@ -85,7 +85,7 @@ describe("ProjectWizardPage", () => {
 
   it("goes back from the info rung to the page the wizard was opened from, creating nothing", async () => {
     const user = userEvent.setup();
-    renderPage(["/board/p-1", "/wizard/project/project"]);
+    renderPage(["/acme/board/p-1", "/acme/wizard/project/project"]);
 
     await user.click(await screen.findByRole("button", { name: "Back" }));
 
@@ -95,7 +95,7 @@ describe("ProjectWizardPage", () => {
 
   it("goes back from a cold-opened info rung to the board", async () => {
     const user = userEvent.setup();
-    renderPage("/wizard/project/project");
+    renderPage("/acme/wizard/project/project");
 
     await user.click(await screen.findByRole("button", { name: "Back" }));
 
@@ -107,7 +107,7 @@ describe("ProjectWizardPage", () => {
     store.setProjectId("p-1", "Backend");
     store.setCandidate({ kind: "compose", path: "compose.yml", name: "api", services: [] });
     const user = userEvent.setup();
-    renderPage("/wizard/project/service");
+    renderPage("/acme/wizard/project/service");
     await screen.findByRole("heading", { name: "Service" });
 
     await user.click(screen.getByRole("button", { name: "Back" }));
@@ -121,7 +121,7 @@ describe("ProjectWizardPage", () => {
     store.setProjectId("p-1", "Backend");
     store.setCandidate({ kind: "compose", path: "compose.yml", name: "api", services: [] });
     store.setStackId("stack-1");
-    renderPage("/wizard/project/service");
+    renderPage("/acme/wizard/project/service");
     await screen.findByRole("heading", { name: "Service" });
 
     expect(screen.queryByRole("button", { name: "Back" })).not.toBeInTheDocument();
@@ -130,7 +130,7 @@ describe("ProjectWizardPage", () => {
   it("keeps the project it just created when the rest is skipped, and lands on its board", async () => {
     mocks.post.mockResolvedValueOnce({ data: project });
     const user = userEvent.setup();
-    renderPage("/wizard/project/project");
+    renderPage("/acme/wizard/project/project");
 
     await user.type(await screen.findByLabelText("Project name"), "Backend");
     await user.type(screen.getByLabelText("Prefix"), "BE");
@@ -145,13 +145,13 @@ describe("ProjectWizardPage", () => {
   });
 
   it("redirects an unknown step back to the project step", async () => {
-    renderPage("/wizard/project/nonsense");
+    renderPage("/acme/wizard/project/nonsense");
     expect(await screen.findByRole("heading", { name: "Info" })).toBeInTheDocument();
     expect(rung("Info")).toHaveAttribute("data-state", "current");
   });
 
   it("opens the project rung by default with everything after it upcoming", async () => {
-    renderPage("/wizard/project/project");
+    renderPage("/acme/wizard/project/project");
     await screen.findByRole("heading", { name: "Info" });
     expect(rung("Info")).toHaveAttribute("data-state", "current");
     expect(rung("Repository")).toHaveAttribute("data-state", "future");
@@ -163,7 +163,7 @@ describe("ProjectWizardPage", () => {
   });
 
   it("frames the project rung as the first project when the workspace has none", async () => {
-    renderPage("/wizard/project/project");
+    renderPage("/acme/wizard/project/project");
     expect(await screen.findByRole("heading", { name: /^create your first project$/i })).toBeInTheDocument();
   });
 
@@ -172,21 +172,21 @@ describe("ProjectWizardPage", () => {
       if (url === "/api/projects") return { data: [project] };
       return { data: [] };
     });
-    renderPage("/wizard/project/project");
+    renderPage("/acme/wizard/project/project");
     await screen.findByRole("heading", { name: "Info" });
     expect(await screen.findByRole("heading", { name: /^new project$/i })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /first project/i })).not.toBeInTheDocument();
   });
 
   it("falls back to the furthest rung the store can render when a later step is opened cold", async () => {
-    renderPage("/wizard/project/service");
+    renderPage("/acme/wizard/project/service");
     expect(await screen.findByRole("heading", { name: "Info" })).toBeInTheDocument();
     expect(rung("Info")).toHaveAttribute("data-state", "current");
     expect(rung("Service")).toHaveAttribute("data-state", "future");
   });
 
   it("door 2: preselects the project from ?project= and opens the repository rung with the project already done", async () => {
-    renderPage("/wizard/project/repository?project=p-1");
+    renderPage("/acme/wizard/project/repository?project=p-1");
     expect(await screen.findByRole("heading", { name: "Repository" })).toBeInTheDocument();
 
     const projectRung = rung("Info");
@@ -203,7 +203,7 @@ describe("ProjectWizardPage", () => {
       if (url === "/api/repositories") return { data: { repositories: [] } };
       return { data: [] };
     });
-    renderPage("/wizard/project/repository?stack=stack-1");
+    renderPage("/acme/wizard/project/repository?stack=stack-1");
     expect(await screen.findByRole("heading", { name: "Repository" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /^attach a repository$/i })).toBeInTheDocument();
 
@@ -217,7 +217,7 @@ describe("ProjectWizardPage", () => {
   it("goes back to home instead of the board when the viewer can't read tickets", async () => {
     access.areas = [];
     const user = userEvent.setup();
-    renderPage("/wizard/project/project");
+    renderPage("/acme/wizard/project/project");
 
     await user.click(await screen.findByRole("button", { name: "Back" }));
 

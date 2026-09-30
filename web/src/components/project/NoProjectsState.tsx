@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
 import { useAreaAccess } from "@/hooks/AccessHooks";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { NEW_PROJECT_PATH } from "@/models/Project";
 
 interface NoProjectsStateProps {
@@ -13,6 +14,7 @@ interface NoProjectsStateProps {
 // A workspace starts with no project; every page that needs one points at the project wizard instead of erroring.
 export const NoProjectsState = ({ message }: NoProjectsStateProps) => {
   const canCreate = useAreaAccess()?.("newProject") ?? false;
+  const wsPath = useWorkspacePath();
   return (
     <EmptyState
       icon={FolderPlusIcon}
@@ -21,7 +23,7 @@ export const NoProjectsState = ({ message }: NoProjectsStateProps) => {
       action={
         canCreate && (
           <Button asChild size="sm">
-            <Link to={NEW_PROJECT_PATH}>New project</Link>
+            <Link to={wsPath(NEW_PROJECT_PATH)}>New project</Link>
           </Button>
         )
       }

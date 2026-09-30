@@ -4,6 +4,7 @@ import { useShallow } from "zustand/react/shallow";
 import { sectionLabelClass, type SidebarNavEntry } from "@/components/SidebarNav";
 import { SidebarNavLink } from "@/components/sidebar/SidebarNavLink";
 import { useCanOpen } from "@/hooks/AccessHooks";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { cn } from "@/lib/utils";
 import { useSidebarStore } from "@/stores/sidebarStore";
 
@@ -24,6 +25,7 @@ export const DeploySidebarNav = ({ collapsed }: DeploySidebarNavProps) => {
     useShallow((s) => ({ open: s.workspaceNavOpen, toggle: s.toggleWorkspaceNav })),
   );
   const canOpen = useCanOpen();
+  const wsPath = useWorkspacePath();
   const entries = deployNav.filter((entry) => canOpen(entry.area) === true);
 
   if (entries.length === 0) return null;
@@ -52,7 +54,7 @@ export const DeploySidebarNav = ({ collapsed }: DeploySidebarNavProps) => {
           {entries.map((entry) => (
             <SidebarNavLink
               key={entry.to}
-              to={entry.to}
+              to={wsPath(entry.to)}
               label={entry.label}
               icon={entry.icon}
               collapsed={collapsed}

@@ -37,7 +37,7 @@ describe("DeploySidebarNav", () => {
     await renderNav();
 
     const header = screen.getByRole("button", { name: "Workspace" });
-    expect(screen.getByRole("link", { name: /Runners/ })).toHaveAttribute("href", "/runners");
+    expect(screen.getByRole("link", { name: /Runners/ })).toHaveAttribute("href", "/acme/runners");
 
     await user.click(header);
     expect(header).toHaveAttribute("aria-expanded", "false");
@@ -51,7 +51,7 @@ describe("DeploySidebarNav", () => {
   it("lists Configuration after Automations", async () => {
     await renderNav();
     const links = screen.getAllByRole("link").map((link) => link.getAttribute("href"));
-    expect(links).toEqual(["/runners", "/topology", "/automations", "/configuration"]);
+    expect(links).toEqual(["/acme/runners", "/acme/topology", "/acme/automations", "/acme/configuration"]);
   });
 
   it("leaves Configuration out for a viewer holding instance permissions but no workspace section", async () => {

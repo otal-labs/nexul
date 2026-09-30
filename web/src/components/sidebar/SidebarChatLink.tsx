@@ -3,6 +3,7 @@ import { NavLink } from "react-router";
 
 import { navLinkClass } from "@/components/SidebarNav";
 import { useFetchChatUnread } from "@/hooks/ChatHooks";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { cn } from "@/lib/utils";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
@@ -12,12 +13,13 @@ interface SidebarChatLinkProps {
 
 export const SidebarChatLink = ({ collapsed }: SidebarChatLinkProps) => {
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
+  const wsPath = useWorkspacePath();
   const { data: unread } = useFetchChatUnread(workspaceId);
   const unreadTotal = unread ? Object.values(unread).reduce((sum, n) => sum + n, 0) : 0;
 
   return (
     <NavLink
-      to="/chat"
+      to={wsPath("/chat")}
       className={({ isActive }) => cn(navLinkClass({ isActive }), "relative", collapsed && "justify-center px-0")}
       {...(collapsed ? { title: "Chat" } : {})}
     >

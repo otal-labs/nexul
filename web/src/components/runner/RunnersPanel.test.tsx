@@ -87,7 +87,7 @@ describe("RunnersPanel", () => {
     expect(screen.getByText("web")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /import from this machine/i })).toHaveAttribute(
       "href",
-      "/wizard/project/import?machine=m-1",
+      "/acme/wizard/project/import?machine=m-1",
     );
     expect(screen.getByRole("button", { name: /add a runner to this machine/i })).toBeInTheDocument();
 

@@ -57,10 +57,10 @@ const mockApi = (d: Record<string, unknown>, log: unknown[]) =>
 const renderPage = () =>
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <MemoryRouter initialEntries={["/stacks/stack-1/deploys/d-1"]}>
+      <MemoryRouter initialEntries={["/acme/stacks/stack-1/deploys/d-1"]}>
         <Routes>
-          <Route path="/stacks/:stackId/deploys/:deployId" element={<DeployPage />} />
-          <Route path="/stacks/:stackId" element={<p>stack page</p>} />
+          <Route path="/acme/stacks/:stackId/deploys/:deployId" element={<DeployPage />} />
+          <Route path="/acme/stacks/:stackId" element={<p>stack page</p>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -81,7 +81,7 @@ describe("DeployPage", () => {
     mockApi(deploy({}), lines);
     renderPage();
     expect(await screen.findByRole("heading", { name: "api" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /back to deploy history/i })).toHaveAttribute("href", "/stacks/stack-1/history");
+    expect(screen.getByRole("link", { name: /back to deploy history/i })).toHaveAttribute("href", "/acme/stacks/stack-1/history");
     expect(screen.getByText("d-1")).toBeInTheDocument();
     expect(screen.getByText("running")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Building and deploying" })).toBeInTheDocument();

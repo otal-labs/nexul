@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
@@ -23,14 +23,16 @@ export const useSelectedWorkspace = (): Workspace | undefined => {
   return workspaces?.find((w) => w.id === selectedWorkspaceId);
 };
 
-// F5 exception: repairs an empty or stale selection so every workspace-scoped query works even where no switcher renders (onboarding). getState() avoids clobbering a just-created id before refetch.
+// F5 exception: repairs an empty or stale selection (or a slug a rename moved) so every workspace-scoped query works even where no switcher renders (onboarding). getState() avoids clobbering a just-created id before refetch.
 export const useEnsureWorkspaceSelected = (enabled: boolean) => {
   const { data: workspaces } = useFetchWorkspaces(enabled);
   useEffect(() => {
     if (!workspaces) return;
-    const { selectedWorkspaceId, selectWorkspace } = useWorkspaceStore.getState();
-    const stillMember = workspaces.some((w) => w.id === selectedWorkspaceId);
-    if (!stillMember) selectWorkspace(workspaces[0]?.id ?? "");
+    const { selectedWorkspaceId, selectedWorkspaceSlug, selectWorkspace } = useWorkspaceStore.getState();
+    const selected = workspaces.find((w) => w.id === selectedWorkspaceId) ?? workspaces[0];
+    if (selected?.id !== selectedWorkspaceId || selected?.slug !== selectedWorkspaceSlug) {
+      selectWorkspace(selected?.id ?? "", selected?.slug ?? "");
+    }
   }, [workspaces]);
 };
 
@@ -42,13 +44,16 @@ export interface MyWorkspaceInfo {
   permissions: string[];
 }
 
-// Keyed by workspaceId so switching workspaces refetches; multiple call sites share the cache via dedupe.
-export const useFetchMyRole = (workspaceId: string) =>
-  useQuery({
+// Shared with the workspace switcher, which reads the target workspace's role before it navigates.
+export const myRoleQuery = (workspaceId: string) =>
+  queryOptions({
     queryKey: [getMyRoleKey, workspaceId],
     queryFn: async () => (await api.get<MyWorkspaceInfo>(`/api/workspaces/${workspaceId}/me`)).data,
     enabled: workspaceId !== "",
   });
+
+// Keyed by workspaceId so switching workspaces refetches; multiple call sites share the cache via dedupe.
+export const useFetchMyRole = (workspaceId: string) => useQuery(myRoleQuery(workspaceId));
 
 // The frontend's single hasPermission(value) helper; no call site should compute permissions itself.
 export const useHasPermission = (value: string): boolean => {
@@ -61,8 +66,8 @@ export const useHasPermission = (value: string): boolean => {
 export const useRenameWorkspace = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: { id: string; name: string }) =>
-      (await api.patch<Workspace>(`/api/workspaces/${payload.id}`, { name: payload.name })).data,
+    mutationFn: async ({ id, ...body }: { id: string; name: string; slug?: string }) =>
+      (await api.patch<Workspace>(`/api/workspaces/${id}`, body)).data,
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getWorkspacesKey] });
     },

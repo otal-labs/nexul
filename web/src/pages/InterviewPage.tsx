@@ -8,10 +8,12 @@ import { ProjectInterview } from "@/components/memory/ProjectInterview";
 import { Button } from "@/components/ui/button";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { resolveProject } from "@/models/Project";
 
 export const InterviewPage = () => {
   const canOpenBoard = useAreaAccess()?.("tickets") ?? false;
+  const wsPath = useWorkspacePath();
   const { projectId: routeParam = "" } = useParams();
   const { data: projects, isPending, error } = useFetchProjects();
   const project = projects && resolveProject(projects, routeParam);
@@ -26,7 +28,7 @@ export const InterviewPage = () => {
           action={
             canOpenBoard && (
               <Button asChild size="sm">
-                <Link to="/board">Go to your board</Link>
+                <Link to={wsPath("/board")}>Go to your board</Link>
               </Button>
             )
           }

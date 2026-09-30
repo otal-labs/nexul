@@ -84,7 +84,7 @@ export const InvitePreviewPage = () => {
       onSuccess: (result) => {
         setCredential("");
         login(result.token);
-        selectWorkspace(result.workspace_ids[0] ?? "");
+        selectWorkspace(result.workspace_ids[0] ?? "", "");
         navigate("/", { replace: true });
       },
     });

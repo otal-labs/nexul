@@ -93,7 +93,7 @@ describe("KanbanColumn", () => {
     const user = userEvent.setup();
     renderColumn();
     await user.click(screen.getByText("Fix login"));
-    expect(mockNavigate).toHaveBeenCalledWith("/tickets/t-1");
+    expect(mockNavigate).toHaveBeenCalledWith("/acme/tickets/t-1");
   });
 
   it("registers as a drop target scoped to the lane and column", () => {

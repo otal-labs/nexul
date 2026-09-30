@@ -3,6 +3,7 @@ import { Link } from "react-router";
 
 import { Button } from "@/components/ui/button";
 import { useFetchMemoriesByProject } from "@/hooks/MemoryHooks";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { useInterviewBannerStore } from "@/stores/interviewBannerStore";
 import { hasInterview } from "@/models/Memory";
 import { interviewPath, projectToken, type Project } from "@/models/Project";
@@ -16,6 +17,7 @@ export const InterviewBanner = ({ project }: InterviewBannerProps) => {
   const { data: memories } = useFetchMemoriesByProject(project.id);
   const dismissed = useInterviewBannerStore((s) => s.dismissedProjectIds.includes(project.id));
   const dismiss = useInterviewBannerStore((s) => s.dismiss);
+  const wsPath = useWorkspacePath();
 
   if (!memories || dismissed || hasInterview(memories, project.id)) return null;
 
@@ -30,7 +32,7 @@ export const InterviewBanner = ({ project }: InterviewBannerProps) => {
       </p>
       <div className="flex items-center gap-1">
         <Button asChild size="sm" variant="outline">
-          <Link to={interviewPath(projectToken(project))}>Run the interview</Link>
+          <Link to={wsPath(interviewPath(projectToken(project)))}>Run the interview</Link>
         </Button>
         <Button
           size="icon"

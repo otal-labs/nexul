@@ -13,38 +13,38 @@ const project: Project = { id: "p-1", name: "Backend", prefix: "BE", position: 0
 describe("ProjectSettingsNav", () => {
   it("renders one link per section, each pointing at its section param", () => {
     render(
-      <MemoryRouter initialEntries={["/projects/p-1/settings"]}>
+      <MemoryRouter initialEntries={["/acme/projects/p-1/settings"]}>
         <ProjectSettingsNav project={project} active="general" />
       </MemoryRouter>,
     );
 
     expect(screen.getByRole("link", { name: "General" })).toHaveAttribute(
       "href",
-      "/projects/BE/settings/general",
+      "/acme/projects/BE/settings/general",
     );
     expect(screen.getByRole("link", { name: "Categories" })).toHaveAttribute(
       "href",
-      "/projects/BE/settings/categories",
+      "/acme/projects/BE/settings/categories",
     );
     expect(screen.getByRole("link", { name: "Repositories" })).toHaveAttribute(
       "href",
-      "/projects/BE/settings/repositories",
+      "/acme/projects/BE/settings/repositories",
     );
     expect(screen.getByRole("link", { name: "Services" })).toHaveAttribute(
       "href",
-      "/projects/BE/settings/services",
+      "/acme/projects/BE/settings/services",
     );
     expect(screen.getByRole("link", { name: "Board" })).toHaveAttribute(
       "href",
-      "/projects/BE/settings/board",
+      "/acme/projects/BE/settings/board",
     );
     expect(screen.getByRole("link", { name: "T3 pairing" })).toHaveAttribute(
       "href",
-      "/projects/BE/settings/pairing",
+      "/acme/projects/BE/settings/pairing",
     );
     expect(screen.getByRole("link", { name: "Danger zone" })).toHaveAttribute(
       "href",
-      "/projects/BE/settings/danger",
+      "/acme/projects/BE/settings/danger",
     );
   });
 

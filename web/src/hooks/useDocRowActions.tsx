@@ -6,12 +6,14 @@ import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { CloneDocFormSchema, type CloneDocFormData, type DocListItem } from "@/models/Doc";
 import { docPath, projectTokenById } from "@/models/Project";
 
 // A row's Clone and Delete, each undefined when the viewer's role lacks it; the server still checks the doc itself.
 export const useDocRowActions = (doc: DocListItem, selected: boolean) => {
   const navigate = useNavigate();
+const wsPath = useWorkspacePath();
   const canClone = useHasPermission("docs:clone");
   const canDelete = useHasPermission("docs:delete");
   const { open: openForm } = useFormDialog();
@@ -29,7 +31,7 @@ export const useDocRowActions = (doc: DocListItem, selected: boolean) => {
       formOptions: { defaultValues: { project_id: doc.project_id } },
     });
     const cloned = result.data as (CloneDocFormData & { id?: string }) | null;
-    if (cloned?.id) void navigate(docPath(projectTokenById(projects ?? [], cloned.project_id), cloned.id));
+    if (cloned?.id) void navigate(wsPath(docPath(projectTokenById(projects ?? [], cloned.project_id), cloned.id)));
   };
 
   const remove = async () => {
@@ -37,7 +39,7 @@ export const useDocRowActions = (doc: DocListItem, selected: boolean) => {
     if (!ok) return;
     deleteDoc.mutate(doc.id, {
       onSuccess: () => {
-        if (selected) void navigate("/docs");
+        if (selected) void navigate(wsPath("/docs"));
       },
     });
   };

@@ -20,10 +20,10 @@ vi.mock("@/api/client", () => ({ api: { get: mocks.get, put: mocks.put }, errorM
 
 const wrap = (ui: React.ReactNode) => (
   <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-    <MemoryRouter initialEntries={["/topology"]}>
+    <MemoryRouter initialEntries={["/acme/topology"]}>
       <Routes>
-        <Route path="/topology" element={ui} />
-        <Route path="/stacks/:stackId" element={<p>stack page</p>} />
+        <Route path="/acme/topology" element={ui} />
+        <Route path="/acme/stacks/:stackId" element={<p>stack page</p>} />
       </Routes>
     </MemoryRouter>
   </QueryClientProvider>

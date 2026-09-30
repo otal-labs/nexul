@@ -18,7 +18,7 @@ const AtStep = () => {
 };
 
 const renderAt = (step: string) =>
-  render(<RouterProvider router={createMemoryRouter([{ path: "/wizard/project/:step", element: <AtStep /> }], { initialEntries: [`/wizard/project/${step}`] })} />);
+  render(<RouterProvider router={createMemoryRouter([{ path: "/acme/wizard/project/:step", element: <AtStep /> }], { initialEntries: [`/acme/wizard/project/${step}`] })} />);
 
 const items = () => within(screen.getByRole("list", { name: "Project wizard steps" })).getAllByRole("listitem");
 

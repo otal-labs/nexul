@@ -25,14 +25,14 @@ const conversations = [
 
 const docResponse = { id: "doc-1", project_id: "proj-1", title: "Runbook", body: "", version: 1, archived: false, created_at: "", updated_at: "" };
 
-const renderPage = (path = "/chat") => {
+const renderPage = (path = "/acme/chat") => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[path]}>
         <Routes>
-          <Route path="/chat" element={<ChatPage />} />
-          <Route path="/chat/:conversationId" element={<ChatPage />} />
+          <Route path="/acme/chat" element={<ChatPage />} />
+          <Route path="/acme/chat/:conversationId" element={<ChatPage />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -65,7 +65,7 @@ describe("ChatPage", () => {
   });
 
   it("opens the conversation named in the URL with its composer", async () => {
-    renderPage("/chat/c1");
+    renderPage("/acme/chat/c1");
     expect(await screen.findByLabelText("Message")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "general" })).toHaveAttribute("aria-current", "true");
   });
@@ -108,7 +108,7 @@ describe("ChatPage for a member without members:write", () => {
 
   it("names the DM and its author by their display name", async () => {
     stagePeople("Lewis");
-    renderPage("/chat/c3");
+    renderPage("/acme/chat/c3");
     expect(await screen.findByText("Sup man")).toBeInTheDocument();
     // The list row, the thread header, and the message author.
     expect(await screen.findAllByText("Lewis")).toHaveLength(3);
@@ -117,7 +117,7 @@ describe("ChatPage for a member without members:write", () => {
 
   it("falls back to the login when they have no display name", async () => {
     stagePeople("");
-    renderPage("/chat/c3");
+    renderPage("/acme/chat/c3");
     expect(await screen.findByText("Sup man")).toBeInTheDocument();
     // The list row, the thread header, and the message author.
     expect(await screen.findAllByText("LewisWelch94")).toHaveLength(3);

@@ -54,6 +54,7 @@ vi.mock("@/hooks/AuthHooks", () => ({
 
 vi.mock("@/hooks/WorkspaceHooks", () => ({
   useRenameWorkspace: () => ({ mutateAsync: mocks.renameWorkspaceMutateAsync }),
+  useSelectedWorkspace: () => ({ id: "workspace-default", slug: "default" }),
 }));
 
 const renderPage = () => {
@@ -66,7 +67,7 @@ const renderPage = () => {
           <Route path="/login" element={<div>Login page</div>} />
           <Route path="/wizard/onboarding/dns" element={<div>DNS page</div>} />
           <Route path="/" element={<div>Home page</div>} />
-          <Route path="/wizard/project/project" element={<div>Project wizard</div>} />
+          <Route path="/acme/wizard/project/project" element={<div>Project wizard</div>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -85,7 +86,7 @@ describe("OwnerWizardPage", () => {
     mocks.completeMutateAsync.mockReset();
     mocks.completeMutateAsync.mockResolvedValue({});
     mocks.renameWorkspaceMutateAsync.mockReset();
-    mocks.renameWorkspaceMutateAsync.mockResolvedValue({});
+    mocks.renameWorkspaceMutateAsync.mockResolvedValue({ slug: "acme" });
     mocks.useFetchConnectors.mockReturnValue({ data: connectorFixture, isPending: false, error: undefined });
   });
 
@@ -156,7 +157,7 @@ describe("OwnerWizardPage", () => {
 
     expect(screen.getByText("Connect your tools")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /finish setup/i }));
-    expect(mocks.renameWorkspaceMutateAsync).toHaveBeenCalledWith({ id: "workspace-default", name: "Acme" });
+    expect(mocks.renameWorkspaceMutateAsync).toHaveBeenCalledWith({ id: "workspace-default", name: "Acme", slug: "acme" });
   });
 
   it("finishes step 3 using the instance URL from settings (not empty), then opens the project wizard for the first project", async () => {
@@ -169,7 +170,7 @@ describe("OwnerWizardPage", () => {
 
     expect(mocks.completeMutateAsync).toHaveBeenCalledWith("https://deploy.example.com");
     // Applied only after CompleteOwnerWizard resolves, since the rename endpoint 403s until the caller is the default workspace's Owner.
-    expect(mocks.renameWorkspaceMutateAsync).toHaveBeenCalledWith({ id: "workspace-default", name: "Acme" });
+    expect(mocks.renameWorkspaceMutateAsync).toHaveBeenCalledWith({ id: "workspace-default", name: "Acme", slug: "acme" });
     expect(await screen.findByText("Workspace ready")).toBeInTheDocument();
     expect(await screen.findByText("Project wizard", {}, { timeout: 2000 })).toBeInTheDocument();
     expect(screen.queryByText("Home page")).not.toBeInTheDocument();

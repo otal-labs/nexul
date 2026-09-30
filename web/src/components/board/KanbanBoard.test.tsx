@@ -136,6 +136,6 @@ describe("KanbanBoard", () => {
       />,
     );
     await user.click(screen.getByText("Fix login"));
-    expect(mockNavigate).toHaveBeenCalledWith("/tickets/t-1");
+    expect(mockNavigate).toHaveBeenCalledWith("/acme/tickets/t-1");
   });
 });
