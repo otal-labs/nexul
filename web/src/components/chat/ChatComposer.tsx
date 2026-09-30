@@ -144,7 +144,7 @@ export const ChatComposer = ({ workspaceId, conversationId, placeholder = "Messa
 
   return (
     <div className="border-t border-border py-2" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
-      <div className="relative mx-auto w-full max-w-3xl px-3">
+      <div className="relative w-full px-3">
         {trigger && matches.length > 0 && (
           <ComposerMentionSuggestions matches={matches} selectedIndex={selectedIndex} onPick={pickMention} />
         )}

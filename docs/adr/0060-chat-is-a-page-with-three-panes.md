@@ -1,5 +1,7 @@
 # Chat is a page with three panes, not a floating dock
 
+Superseded by ADR 0093: the conversation list pane is gone, the app sidebar is the list.
+
 Supersedes ADR 0051. Chat's one surface is the `/chat/:conversationId` page:
 the app sidebar, a conversation list grouped into chats and threads, and the
 open thread. Opening a conversation from anywhere (the sidebar's channel rows,

@@ -86,7 +86,7 @@ export const MessageList = ({
         <MessageScrollerProvider autoScroll defaultScrollPosition="last-anchor">
           <MessageScroller className="min-h-0 flex-1">
             <MessageScrollerViewport>
-              <MessageScrollerContent className="mx-auto w-full max-w-3xl gap-0 py-2" aria-busy={stream?.streaming ?? false}>
+              <MessageScrollerContent className="w-full gap-0 py-2" aria-busy={stream?.streaming ?? false}>
                 {messages.map((message, i) => {
                   const continuation = isContinuation(messages[i - 1], message);
                   return (

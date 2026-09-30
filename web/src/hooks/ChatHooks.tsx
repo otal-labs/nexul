@@ -117,7 +117,7 @@ export const useFetchOrCreateInterviewThread = (workspaceId: string, projectId: 
     enabled: enabled && workspaceId !== "" && projectId !== "",
   });
 
-// The doc thread's Thread button navigates to the chat page (ADR 0060) rather than rendering inline like a ticket's,
+// The doc thread's Thread button navigates to the chat page (ADR 0093) rather than rendering inline like a ticket's,
 // so this is a mutation triggered by the click, not a query loaded on mount.
 export const useGetOrCreateDocThread = (workspaceId: string) => {
   const client = useQueryClient();

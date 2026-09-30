@@ -20,6 +20,8 @@ export const SidebarChatLink = ({ collapsed }: SidebarChatLinkProps) => {
   return (
     <NavLink
       to={wsPath("/chat")}
+      // Expanded, the open conversation's own sidebar row is the active one; collapsed, this link stands in for it.
+      end={!collapsed}
       className={({ isActive }) => cn(navLinkClass({ isActive }), "relative", collapsed && "justify-center px-0")}
       {...(collapsed ? { title: "Chat" } : {})}
     >

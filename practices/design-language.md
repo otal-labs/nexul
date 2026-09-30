@@ -148,7 +148,7 @@ renders per the badge rule above. A page that needs bulk actions uses a left
 checkbox column; no page invents its own selection affordance.
 
 List pane. A page that edits one record beside its siblings (Docs, Memories)
-is the app sidebar, a 300px list, and the open record, the shape Chat has. The
+is the app sidebar, a 300px list, and the open record. The
 list heads with its title and a mono count, a ghost `+` icon button, and a
 search field. Rows are about 56px with 12px sides and hairline dividers: a
 13px medium title over a muted one-line preview, mono meta trailing right. A
