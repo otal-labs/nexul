@@ -92,13 +92,13 @@ describe("InstanceRecordForm", () => {
     expect(await screen.findByText("deploy.example.com → 203.0.113.10")).toBeInTheDocument();
   });
 
-  it("blocks the record when the instance URL is outside the zone, pointing at Configuration", async () => {
+  it("blocks the record when the instance URL is outside the zone, pointing at Settings", async () => {
     mockGets(zones, "http://localhost:5173");
     renderForm();
     const user = userEvent.setup();
     await user.type(await screen.findByLabelText(/points to/i), "203.0.113.10");
     expect(await screen.findByRole("alert")).toHaveTextContent(/localhost:5173.*not under example\.com/i);
-    expect(screen.getByRole("link", { name: /configuration/i })).toHaveAttribute("href", "/configuration/instance");
+    expect(screen.getByRole("link", { name: /settings/i })).toHaveAttribute("href", "/settings/instance");
     expect(screen.getByRole("button", { name: /create instance record/i })).toBeDisabled();
   });
 

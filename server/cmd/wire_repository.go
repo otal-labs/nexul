@@ -156,7 +156,7 @@ func connectorRefused(err error) error {
 	if !errors.Is(err, apperrs.ErrUnauthorized) {
 		return err
 	}
-	return fmt.Errorf("GitHub refused the connector's token, reconnect GitHub in Configuration → Connectors: %w", apperrs.ErrForbidden)
+	return fmt.Errorf("GitHub refused the connector's token, reconnect GitHub in Settings → Connectors: %w", apperrs.ErrForbidden)
 }
 
 func toRepositoryRepo(r *gitprovider.Repo) repository.Repo {

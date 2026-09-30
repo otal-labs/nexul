@@ -24,7 +24,7 @@ describe("VoiceDockStatusRow", () => {
     renderRow();
     expect(screen.getByRole("link", { name: "LiveKit setup needed" })).toHaveAttribute(
       "href",
-      "/configuration/connectors",
+      "/settings/connectors",
     );
   });
 

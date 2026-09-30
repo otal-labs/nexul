@@ -20,7 +20,7 @@ export interface SettingsSectionNavItem {
   label: string;
   danger?: boolean;
   /** Items sharing a group render under one label; a group with no items shows no label. */
-  group?: string;
+  group?: string | undefined;
 }
 
 interface SettingsSectionNavProps {

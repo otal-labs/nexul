@@ -232,7 +232,7 @@ _Avoid_: Compose project, resource, application
 A stack that belongs to the instance rather than to a project: the backing
 stack of a gateway, the tunnel or reverse proxy first run deploys among
 them. It never builds from a repository, shows on Topology and in
-Configuration → DNS, and is checked like the topology: holding the stack
+Settings → DNS, and is checked like the topology: holding the stack
 action in any of the caller's workspaces is enough.
 _Avoid_: System stack, infrastructure project
 
@@ -445,11 +445,20 @@ _Avoid_: Allowlist status, membership status
 Everyone registered on the instance and what each can reach: every account
 with its Account status, whether it is online or when it was last seen, and,
 per workspace, its Role and workspace-wide Permission overwrites. A holder of
-`accounts:read` sees all of it; someone who manages members in a workspace sees
-only the workspaces they manage. A change
+`accounts:read` sees all of it, under Instance settings; someone who manages
+members in a workspace finds it in Configuration and sees only the workspaces
+they manage. A change
 inside a workspace always needs `members:write` there, and the Owner role is
 never given or taken through it.
 _Avoid_: Members (one workspace's roster), registered accounts, users
+
+**Instance settings**:
+The group on the Settings page for what belongs to the whole instance rather
+than one workspace: Instance, Team, Sign-in providers, Connectors, and DNS.
+Each entry shows only to a viewer holding its permission in any workspace, so
+a role holding one bit reaches that entry and nothing else. Workspace-level
+sections stay in Configuration.
+_Avoid_: Whole instance, admin settings
 
 **Display name**:
 What a person is called wherever they appear: the name they set in their

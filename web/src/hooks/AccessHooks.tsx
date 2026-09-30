@@ -1,4 +1,4 @@
-import { type SettingsSection, visibleSettingsSections } from "@/components/settings/SettingsNav";
+import { isInstanceSection, type SettingsSection, visibleSettingsSections } from "@/components/settings/SettingsNav";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { useFetchMyRole } from "@/hooks/WorkspaceHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
@@ -19,7 +19,7 @@ export const useHasInstancePermission = (value: string): boolean => {
   return hasPermission(me?.instance_permissions, value);
 };
 
-// The Configuration sections the viewer may open, in nav order; undefined until every gate behind them has answered.
+// Every Configuration and Settings section the viewer may open, in nav order; undefined until every gate behind them has answered.
 export const useVisibleSettingsSections = (): SettingsSection[] | undefined => {
   const selectedWorkspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const { data: me } = useFetchMe();
@@ -42,7 +42,21 @@ export const useVisibleSettingsSections = (): SettingsSection[] | undefined => {
   });
 };
 
-// Whether one Configuration section is open to the viewer; false while that is still loading, so a link never flashes.
+// The workspace sections of Configuration the viewer may open; the instance ones live on the Settings page.
+export const useConfigurationSections = (): SettingsSection[] | undefined => {
+  const sections = useVisibleSettingsSections();
+  const teamIsInstanceWide = useHasInstancePermission("accounts:read");
+  return sections?.filter((section) => !isInstanceSection(section, teamIsInstanceWide));
+};
+
+// The instance sections the viewer may open from the Settings page.
+export const useInstanceSettingsSections = (): SettingsSection[] | undefined => {
+  const sections = useVisibleSettingsSections();
+  const teamIsInstanceWide = useHasInstancePermission("accounts:read");
+  return sections?.filter((section) => isInstanceSection(section, teamIsInstanceWide));
+};
+
+// Whether one settings section is open to the viewer; false while that is still loading, so a link never flashes.
 export const useCanOpenSection = (section: SettingsSection): boolean =>
   useVisibleSettingsSections()?.includes(section) ?? false;
 
@@ -52,7 +66,7 @@ const opensConfiguration = (sections: SettingsSection[]) => sections.some((secti
 // Whether the viewer may open an area's page; undefined while that is still loading.
 export const useCanOpen = (): ((area: RouteArea) => boolean | undefined) => {
   const can = useAreaAccess();
-  const sections = useVisibleSettingsSections();
+  const sections = useConfigurationSections();
   return (area) => {
     if (area === "configuration") return sections && opensConfiguration(sections);
     return can && can(area);

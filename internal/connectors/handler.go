@@ -146,7 +146,7 @@ func (h *Handler) oauthCallback(w http.ResponseWriter, r *http.Request) {
 		h.redirectSPAError(w, r, connectorID, err.Error())
 		return
 	}
-	http.Redirect(w, r, h.spaBase(r)+"/configuration/connectors?connector="+url.QueryEscape(connectorID)+"&connected=1", http.StatusFound)
+	http.Redirect(w, r, h.spaBase(r)+"/settings/connectors?connector="+url.QueryEscape(connectorID)+"&connected=1", http.StatusFound)
 }
 
 // spaBase resolves the configured instance URL, not r.Host: a split-origin dev API origin isn't browser-reachable.
@@ -161,10 +161,10 @@ func (h *Handler) spaBase(r *http.Request) string {
 	return scheme + "://" + r.Host
 }
 
-// redirectSPAError lands an OAuth-callback failure back in the SPA Configuration page, where ConnectorsSection toasts it.
+// redirectSPAError lands an OAuth-callback failure back in the SPA Settings page, where ConnectorsSection toasts it.
 func (h *Handler) redirectSPAError(w http.ResponseWriter, r *http.Request, connectorID, msg string) {
 	http.Redirect(w, r,
-		h.spaBase(r)+"/configuration/connectors?connector="+url.QueryEscape(connectorID)+"&error="+url.QueryEscape(msg),
+		h.spaBase(r)+"/settings/connectors?connector="+url.QueryEscape(connectorID)+"&error="+url.QueryEscape(msg),
 		http.StatusFound)
 }
 

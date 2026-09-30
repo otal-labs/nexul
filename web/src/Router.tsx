@@ -102,8 +102,8 @@ const buildRoutes = (loggedIn: boolean): RouteObject[] => [
                 { path: "/services/:serviceId", handle: gate("stacks"), element: <ServicePage /> },
                 { path: "/stacks/:stackId/:section?", handle: gate("stacks"), element: <StackPage /> },
                 { path: "/stacks/:stackId/deploys/:deployId", handle: gate("deploys"), element: <DeployPage /> },
-                // Members folded into Configuration's Team; the pages themselves send moved section links there.
-                { path: "/members", element: <Navigate to="/configuration/team" replace /> },
+                // Members folded into Team on Settings; the pages themselves send moved section links there.
+                { path: "/members", element: <Navigate to="/settings/team" replace /> },
                 { path: "/settings/:section?", element: <YourSettingsPage /> },
                 { path: "/configuration/:section?", handle: gate("configuration"), element: <ConfigurationPage /> },
                 { path: "/projects/:projectId/settings/:section?", handle: gate("projects"), element: <ProjectSettingsPage /> },

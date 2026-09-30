@@ -48,7 +48,7 @@ The very first person to sign in becomes the workspace owner and lands in a thre
 
 1. **Introduce yourself.** Set the name and avatar other members will see, or keep the GitHub defaults.
 2. **Set up your workspace.** Name the workspace. That's all: a workspace starts with no project.
-3. **Connect your tools.** The same connectors list as Configuration → Connectors. Cloudflare already shows as connected if you took the tunnel path.
+3. **Connect your tools.** The same connectors list as Settings → Connectors. Cloudflare already shows as connected if you took the tunnel path.
 
 Finishing opens the [project wizard](/docs/guide/projects-and-repositories/#creating-a-project) to create your first project. The tunnel or reverse proxy set up in step 2 belongs to the instance, not to a project, so it's already running before any project exists.
 

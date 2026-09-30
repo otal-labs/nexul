@@ -3,10 +3,12 @@ import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 
 import {
+  isInstanceSection,
   isSettingsSection,
   SETTINGS_SECTIONS,
   SettingsNav,
   visibleSettingsSections,
+  type SettingsSection,
   type SettingsVisibility,
 } from "@/components/settings/SettingsNav";
 
@@ -30,56 +32,45 @@ const everything: SettingsVisibility = {
   showTeam: true,
 };
 
-const renderNav = (visibility: SettingsVisibility, active = "danger" as const) =>
+// What ConfigurationPage hands the nav: the visible sections with the instance ones taken out.
+const workspaceSections = (visibility: SettingsVisibility) =>
+  visibleSettingsSections(visibility).filter((section) => !isInstanceSection(section, visibility.teamIsInstanceWide));
+
+const renderNav = (sections: SettingsSection[], active: SettingsSection = "danger") =>
   render(
     <MemoryRouter initialEntries={["/configuration"]}>
-      <SettingsNav active={active} sections={visibleSettingsSections(visibility)} teamIsInstanceWide={visibility.teamIsInstanceWide} />
+      <SettingsNav active={active} sections={sections} />
     </MemoryRouter>,
   );
 
 describe("SettingsNav", () => {
-  it("renders every section in two labelled groups for a viewer holding every permission", () => {
-    renderNav(everything);
+  it("lists the workspace sections under /configuration with no group label, and none of the instance ones", () => {
+    renderNav(workspaceSections(everything));
     const nav = within(screen.getByRole("navigation", { name: "Configuration sections" }));
     expect(nav.getAllByRole("listitem").map((item) => item.textContent)).toEqual([
-      "This workspace",
       "Roles",
       "Plays",
       "Interview template",
       "Mention chips",
       "Danger zone",
-      "Whole instance",
-      "Instance",
-      "Team",
-      "Sign-in providers",
-      "Connectors",
-      "DNS",
     ]);
-    expect(nav.getByRole("link", { name: "Team" })).toHaveAttribute("href", "/configuration/team");
-    expect(nav.getByRole("link", { name: "Sign-in providers" })).toHaveAttribute("href", "/configuration/sign-in");
-  });
-
-  it("drops the whole-instance group and its label for a viewer holding none of its permissions", () => {
-    renderNav({ ...everything, instanceSections: [], teamIsInstanceWide: false, showTeam: false });
-    expect(screen.queryByText("Whole instance")).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Instance" })).not.toBeInTheDocument();
-    expect(screen.getByText("This workspace")).toBeInTheDocument();
+    expect(nav.getByRole("link", { name: "Plays" })).toHaveAttribute("href", "/configuration/plays");
   });
 
   it("puts Team with the workspace sections, ahead of Danger zone, for a member manager without accounts:read", () => {
-    renderNav({ ...nothing, showRoles: true, showTeam: true });
+    renderNav(workspaceSections({ ...nothing, showRoles: true, showTeam: true }));
     const nav = within(screen.getByRole("navigation", { name: "Configuration sections" }));
-    expect(nav.getAllByRole("listitem").map((item) => item.textContent)).toEqual(["This workspace", "Roles", "Team", "Danger zone"]);
+    expect(nav.getAllByRole("listitem").map((item) => item.textContent)).toEqual(["Roles", "Team", "Danger zone"]);
     expect(nav.getByRole("link", { name: "Team" })).toHaveAttribute("href", "/configuration/team");
   });
 
   it("hides every gated workspace section until its flag is set, leaving Danger zone", () => {
-    renderNav(nothing);
+    renderNav(workspaceSections(nothing));
     expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual(["Danger zone"]);
   });
 
   it("marks only the active section", () => {
-    renderNav(everything, "danger");
+    renderNav(workspaceSections(everything), "danger");
     expect(screen.getByRole("link", { name: "Danger zone" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: "Roles" })).not.toHaveAttribute("aria-current");
   });
@@ -91,8 +82,17 @@ describe("visibleSettingsSections", () => {
   });
 });
 
+describe("isInstanceSection", () => {
+  it("sends Team to Settings only for an accounts:read holder", () => {
+    expect(isInstanceSection("team", true)).toBe(true);
+    expect(isInstanceSection("team", false)).toBe(false);
+    expect(isInstanceSection("connectors", false)).toBe(true);
+    expect(isInstanceSection("roles", true)).toBe(false);
+  });
+});
+
 describe("isSettingsSection", () => {
-  it("accepts every known section and rejects the personal ones that moved out", () => {
+  it("accepts every known section and rejects the personal ones", () => {
     for (const section of SETTINGS_SECTIONS) expect(isSettingsSection(section)).toBe(true);
     for (const section of ["appearance", "tokens", "pairing", "nope", "", null, undefined]) {
       expect(isSettingsSection(section)).toBe(false);

@@ -47,7 +47,7 @@ Joining has these states:
 - **Join call** requests a short-lived LiveKit token.
 - **Connecting** can be cancelled.
 - **Voice needs a LiveKit connector** means a workspace owner must configure
-  LiveKit under **Configuration → Connectors**.
+  LiveKit under **Settings → Connectors**.
 - A connection error offers **Retry** or **Dismiss**.
 - A connected call shows the participants and controls for microphone,
   camera, screen sharing, and **Leave call**.

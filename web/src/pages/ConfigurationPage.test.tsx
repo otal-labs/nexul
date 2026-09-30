@@ -57,48 +57,6 @@ const renderPage = (route = "/configuration") => {
   );
 };
 
-describe("ConfigurationPage", () => {
-  beforeEach(() => {
-    mocks.get.mockReset();
-    mocks.put.mockReset();
-    mocks.post.mockReset();
-    mocks.patch.mockReset();
-    mocks.del.mockReset();
-    mocks.errorMessage.mockClear();
-    mocks.get.mockImplementation(mockGet);
-    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
-    useWorkspaceStore.persist.clearStorage();
-  });
-
-  it("shows the current instance url and derived callback", async () => {
-    renderPage("/configuration/instance");
-    expect(await screen.findByDisplayValue("https://deploy.example.com")).toBeInTheDocument();
-    expect(screen.getByText(/https:\/\/deploy\.example\.com\/auth\/callback/i)).toBeInTheDocument();
-  });
-
-  it("updates the instance url", async () => {
-    mocks.put.mockResolvedValue({ data: { ...settings, instance_url: "https://new.example.com", settings_version: 3 } });
-    const user = userEvent.setup();
-    renderPage("/configuration/instance");
-
-    const input = await screen.findByLabelText(/instance url/i);
-    await user.clear(input);
-    await user.type(input, "https://new.example.com");
-    await user.click(screen.getByRole("button", { name: /^save$/i }));
-
-    expect(mocks.put).toHaveBeenCalledWith("/api/auth/settings", {
-      instance_url: "https://new.example.com",
-    });
-  });
-
-  it("shows an error when settings fail to load", async () => {
-    mocks.get.mockRejectedValue(new Error("boom"));
-    mocks.errorMessage.mockReturnValue("Settings failed");
-    renderPage();
-    expect(await screen.findByText("Settings failed")).toBeInTheDocument();
-  });
-});
-
 describe("ConfigurationPage mention chip layout gating", () => {
   beforeEach(() => {
     mocks.get.mockImplementation(mockGet);
@@ -138,30 +96,5 @@ describe("ConfigurationPage mention chip layout gating", () => {
     expect(mocks.patch).toHaveBeenCalledWith("/api/workspaces/ws-1/mention-chip-template", {
       mention_chip_template: "{ticket.Status}",
     });
-  });
-});
-
-describe("ConfigurationPage whole-instance sections", () => {
-  beforeEach(() => {
-    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
-    useWorkspaceStore.persist.clearStorage();
-  });
-
-  // Each section opens with its own permission held in any workspace, which /me reports.
-  it.each([
-    { held: ["instance:read"], shown: ["Instance", "Sign-in providers"] },
-    { held: ["connectors:read"], shown: ["Connectors"] },
-    { held: ["dns:read"], shown: ["DNS"] },
-    { held: ["accounts:read"], shown: ["Team"] },
-  ])("with $held the Whole instance group lists $shown", async ({ held, shown }) => {
-    mocks.get.mockImplementation((url: string) =>
-      url === "/api/auth/me" ? Promise.resolve({ data: { user: {}, instance_permissions: held } }) : mockGet(url),
-    );
-    renderPage();
-
-    const nav = within(await screen.findByRole("navigation", { name: "Configuration sections" }));
-    await nav.findByText("Whole instance");
-    const instanceLinks = ["Instance", "Team", "Sign-in providers", "Connectors", "DNS"].filter((name) => nav.queryByRole("link", { name }));
-    expect(instanceLinks).toEqual(shown);
   });
 });

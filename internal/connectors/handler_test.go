@@ -156,8 +156,8 @@ func TestConnectFlow_StartCallbackList(t *testing.T) {
 	loc := cbRec.Header().Get("Location")
 	// Must target the configured instance URL (where the SPA actually lives),
 	// not the API host the provider redirect landed on.
-	if loc != "https://spa.example/configuration/connectors?connector=github&connected=1" {
-		t.Fatalf("oauth callback redirect = %q, want the instance URL's /configuration connectors section with connector=github", loc)
+	if loc != "https://spa.example/settings/connectors?connector=github&connected=1" {
+		t.Fatalf("oauth callback redirect = %q, want the instance URL's /settings connectors section with connector=github", loc)
 	}
 
 	// 3. the stored credential now shows up in List, connected by the user
@@ -196,8 +196,8 @@ func TestOAuthCallback_StateMismatch_RedirectsToSPAWithError(t *testing.T) {
 		t.Fatalf("status = %d, want 302 into the SPA on state mismatch, body %s", rec.Code, rec.Body.String())
 	}
 	loc := rec.Header().Get("Location")
-	if !strings.HasPrefix(loc, "https://spa.example/configuration/connectors?connector=github&error=") {
-		t.Fatalf("redirect = %q, want the SPA Configuration page with an error param", loc)
+	if !strings.HasPrefix(loc, "https://spa.example/settings/connectors?connector=github&error=") {
+		t.Fatalf("redirect = %q, want the SPA Settings page with an error param", loc)
 	}
 	if _, err := store.GetCredentials(context.Background(), "github"); err == nil {
 		t.Fatal("state mismatch must not store credentials")
@@ -254,8 +254,8 @@ func TestOAuthCallback_ExchangeFailure_RedirectsToSPAWithError(t *testing.T) {
 		t.Fatalf("status = %d, want 302 into the SPA, body %s", rec.Code, rec.Body.String())
 	}
 	loc := rec.Header().Get("Location")
-	if !strings.HasPrefix(loc, "https://spa.example/configuration/connectors?connector=github&error=") || !strings.Contains(loc, "provider+exploded") {
-		t.Fatalf("redirect = %q, want the SPA Configuration page carrying the failure message", loc)
+	if !strings.HasPrefix(loc, "https://spa.example/settings/connectors?connector=github&error=") || !strings.Contains(loc, "provider+exploded") {
+		t.Fatalf("redirect = %q, want the SPA Settings page carrying the failure message", loc)
 	}
 }
 

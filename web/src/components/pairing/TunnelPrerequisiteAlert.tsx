@@ -8,7 +8,7 @@ import type { TunnelPrerequisite } from "@/models/Pairing";
 const COPY: Record<TunnelPrerequisite, { title: string; body: string }> = {
   cloudflare_not_connected: {
     title: "Cloudflare isn't connected",
-    body: "Each computer gets its own tunnel in this instance's Cloudflare account. Connect Cloudflare in Configuration, then try again.",
+    body: "Each computer gets its own tunnel in this instance's Cloudflare account. Connect Cloudflare in Settings, then try again.",
   },
   zero_trust_disabled: {
     title: "Zero Trust isn't enabled",
@@ -36,7 +36,7 @@ export const TunnelPrerequisiteAlert = ({ reason, onRetry, retrying }: TunnelPre
         <div className="flex flex-wrap gap-2">
           {reason === "cloudflare_not_connected" && canConnect && (
             <Button asChild size="sm">
-              <Link to="/configuration/connectors">Connect Cloudflare</Link>
+              <Link to="/settings/connectors">Connect Cloudflare</Link>
             </Button>
           )}
           {reason === "zero_trust_disabled" && (

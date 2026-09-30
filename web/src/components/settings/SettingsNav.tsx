@@ -19,12 +19,11 @@ export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
 export const isSettingsSection = (value: string | null | undefined): value is SettingsSection =>
   !!value && (SETTINGS_SECTIONS as readonly string[]).includes(value);
 
-const WORKSPACE_GROUP = "This workspace";
-const INSTANCE_GROUP = "Whole instance";
+export const INSTANCE_GROUP = "Instance settings";
 
 const INSTANCE_SECTIONS: readonly SettingsSection[] = ["instance", "team", "sign-in", "connectors", "dns"];
 
-const sectionLabels: Record<SettingsSection, string> = {
+export const sectionLabels: Record<SettingsSection, string> = {
   roles: "Roles",
   plays: "Plays",
   interview: "Interview template",
@@ -38,10 +37,10 @@ const sectionLabels: Record<SettingsSection, string> = {
 };
 
 export interface SettingsVisibility {
-  // The whole-instance sections whose permission the viewer holds in some workspace (models/Access.tsx).
+  // The instance sections whose permission the viewer holds in some workspace (models/Access.tsx).
   instanceSections: readonly InstanceSection[];
-  // Team opens to an accounts:read holder, who sees everyone under Whole instance, and to anyone who manages
-  // members in a workspace, who sees those workspaces under This workspace.
+  // Team opens to an accounts:read holder, who sees everyone in Settings, and to anyone who manages
+  // members in a workspace, who sees those workspaces in Configuration.
   showTeam: boolean;
   teamIsInstanceWide: boolean;
   // Each gated workspace section renders only for its permission holder; the nav must not link to an empty section.
@@ -69,23 +68,22 @@ export const visibleSettingsSections = (visibility: SettingsVisibility): Setting
   return workspaceOnly;
 };
 
+// Instance sections live on the Settings page; Team is one of them only for an accounts:read holder.
+export const isInstanceSection = (section: SettingsSection, teamIsInstanceWide: boolean): boolean => {
+  if (section === "team") return teamIsInstanceWide;
+  return INSTANCE_SECTIONS.includes(section);
+};
+
 interface SettingsNavProps {
   active: SettingsSection;
   sections: SettingsSection[];
-  teamIsInstanceWide: boolean;
 }
 
-const groupOf = (section: SettingsSection, teamIsInstanceWide: boolean): string => {
-  if (section === "team") return teamIsInstanceWide ? INSTANCE_GROUP : WORKSPACE_GROUP;
-  return INSTANCE_SECTIONS.includes(section) ? INSTANCE_GROUP : WORKSPACE_GROUP;
-};
-
-export const SettingsNav = ({ active, sections, teamIsInstanceWide }: SettingsNavProps) => {
+export const SettingsNav = ({ active, sections }: SettingsNavProps) => {
   const items: SettingsSectionNavItem[] = sections.map((section) => ({
     section,
     label: sectionLabels[section],
     danger: section === "danger",
-    group: groupOf(section, teamIsInstanceWide),
   }));
 
   return <SettingsSectionNav ariaLabel="Configuration sections" basePath="/configuration" active={active} items={items} />;

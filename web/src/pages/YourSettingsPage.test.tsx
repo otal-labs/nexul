@@ -74,14 +74,10 @@ describe("YourSettingsPage", () => {
     expect(screen.getByRole("link", { name: "Security" })).toHaveAttribute("href", "/settings/security");
   });
 
-  it.each([
-    ["/settings/connectors?connector=github&connected=1", "/configuration/connectors?connector=github&connected=1"],
-    ["/settings/instance#instance-version", "/configuration/instance#instance-version"],
-    ["/settings/members", "/configuration/team"],
-  ])("sends a moved section link %s to %s with its query and hash", async (from, to) => {
-    renderPage(from);
+  it("sends a workspace section link on Settings to Configuration with its query", async () => {
+    renderPage("/settings/roles?x=1");
     expect(await screen.findByText("Configuration page")).toBeInTheDocument();
-    expect(screen.getByLabelText("location")).toHaveTextContent(to);
+    expect(screen.getByLabelText("location").textContent).toBe("/configuration/roles?x=1");
   });
 
   it("sends the old tokens section to the Tokens tab of Security", async () => {
