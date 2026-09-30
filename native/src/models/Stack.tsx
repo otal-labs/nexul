@@ -111,3 +111,17 @@ export interface DeployLogLine {
   phase: DeployPhase;
   text: string;
 }
+
+export type LogStream = "stdout" | "stderr";
+
+// One line a service's container printed, as the logs socket sends it; ts is an RFC 3339 time with nanoseconds.
+export interface ContainerLogLine {
+  ts: string;
+  stream: LogStream;
+  line: string;
+}
+
+// The phone's own row id, since a container log line has none.
+export interface ContainerLogEntry extends ContainerLogLine {
+  id: number;
+}
