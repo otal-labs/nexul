@@ -252,3 +252,55 @@ func TestListRooms_Unauthorized_NotRetryable(t *testing.T) {
 		t.Fatalf("ListRooms (401) = %v, must not be retryable (bad credential, not transient)", err)
 	}
 }
+
+func TestDeleteRoom(t *testing.T) {
+	t.Run("asks LiveKit to end the room with a room-create grant", func(t *testing.T) {
+		var gotRoom any
+		var gotGrant map[string]any
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			claims, err := parseJWT(r.Header.Get("Authorization")[len("Bearer "):], "secret1")
+			if err != nil {
+				t.Fatalf("request token failed verification: %v", err)
+			}
+			gotGrant, _ = claims["video"].(map[string]any)
+			var body map[string]any
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				t.Fatalf("decode request body: %v", err)
+			}
+			if r.URL.Path != "/twirp/livekit.RoomService/DeleteRoom" {
+				t.Fatalf("path = %s, want DeleteRoom", r.URL.Path)
+			}
+			gotRoom = body["room"]
+			_, _ = w.Write([]byte(`{}`))
+		}))
+		defer srv.Close()
+		c := &Client{WSURL: srv.URL, APIKey: "key1", APISecret: "secret1"}
+		if err := c.DeleteRoom(context.Background(), "conv-1"); err != nil {
+			t.Fatalf("DeleteRoom: %v", err)
+		}
+		if gotRoom != "conv-1" || gotGrant["roomCreate"] != true {
+			t.Fatalf("DeleteRoom sent room=%v grant=%v", gotRoom, gotGrant)
+		}
+	})
+	t.Run("a room LiveKit no longer has is already gone", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"code":"not_found","msg":"requested room does not exist"}`))
+		}))
+		defer srv.Close()
+		c := &Client{WSURL: srv.URL, APIKey: "key1", APISecret: "secret1"}
+		if err := c.DeleteRoom(context.Background(), "conv-1"); err != nil {
+			t.Fatalf("DeleteRoom (404) = %v, want nil", err)
+		}
+	})
+	t.Run("a server error is retryable", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusServiceUnavailable)
+		}))
+		defer srv.Close()
+		c := &Client{WSURL: srv.URL, APIKey: "key1", APISecret: "secret1"}
+		if err := c.DeleteRoom(context.Background(), "conv-1"); !errors.Is(err, apperrs.ErrRetryable) {
+			t.Fatalf("DeleteRoom (503) = %v, want ErrRetryable", err)
+		}
+	})
+}

@@ -2,7 +2,11 @@ package voice
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 
@@ -258,4 +262,50 @@ func TestOccupancy_Snapshot(t *testing.T) {
 	if len(got["conv-1"]) != 1 || got["conv-1"][0] != want[0] {
 		t.Errorf("Occupancy() = %+v, want conv-1: %+v", got, want)
 	}
+}
+
+func TestCloseRoom(t *testing.T) {
+	t.Run("ends the LiveKit room and empties its occupancy", func(t *testing.T) {
+		var deleted []string
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var body struct {
+				Room string `json:"room"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			deleted = append(deleted, strings.TrimPrefix(r.URL.Path, "/twirp/livekit.RoomService/")+" "+body.Room)
+			_, _ = w.Write([]byte(`{}`))
+		}))
+		defer srv.Close()
+		bus := &fakePublisher{}
+		s := newTestService(t, nil, &fakeCredentials{client: livekit.Client{WSURL: srv.URL, APIKey: "key1", APISecret: "secret1"}}, nil, bus)
+		s.occupancy.join("conv-1", Occupant{Identity: "u-1", Name: "Ada"})
+
+		if err := s.CloseRoom(context.Background(), "conv-1"); err != nil {
+			t.Fatalf("CloseRoom: %v", err)
+		}
+		if len(deleted) != 1 || deleted[0] != "DeleteRoom conv-1" {
+			t.Fatalf("LiveKit calls = %v, want one DeleteRoom of conv-1", deleted)
+		}
+		if got := s.occupancy.room("conv-1"); len(got) != 0 {
+			t.Fatalf("occupants after close = %v, want none", got)
+		}
+		events := bus.all()
+		if len(events) != 1 || events[0].ConversationID != "conv-1" || len(events[0].Occupants) != 0 {
+			t.Fatalf("published = %+v, want one empty occupancy for conv-1", events)
+		}
+	})
+
+	t.Run("without a LiveKit connector there is no room to close", func(t *testing.T) {
+		s := newTestService(t, nil, &fakeCredentials{err: errNotConfigured}, nil, nil)
+		if err := s.CloseRoom(context.Background(), "conv-1"); err != nil {
+			t.Fatalf("CloseRoom = %v, want nil", err)
+		}
+	})
+
+	t.Run("a credentials failure is returned so the event is retried", func(t *testing.T) {
+		s := newTestService(t, nil, &fakeCredentials{err: errors.New("database is locked")}, nil, nil)
+		if err := s.CloseRoom(context.Background(), "conv-1"); err == nil {
+			t.Fatal("CloseRoom = nil, want the credentials error")
+		}
+	})
 }

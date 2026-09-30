@@ -13,6 +13,7 @@ import type { Workspace } from "@/models/Workspace";
 import { useFlowStore } from "@/stores/flowStore";
 import { usePlayRunStore } from "@/stores/playRunStore";
 import { useSetupActivityStore } from "@/stores/setupActivityStore";
+import { useVoiceCallStore } from "@/stores/voiceCallStore";
 import { useVoiceOccupancyStore } from "@/stores/voiceOccupancyStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
@@ -590,6 +591,41 @@ describe("useLiveEvents dispatch", () => {
     });
     const node = useFlowStore.getState().nodes[0];
     expect(node?.type === "service" ? node.data.status : undefined).toBe("running");
+  });
+
+  describe("chat.conversation.deleted", () => {
+    const push = (socket: FakeSocket) =>
+      act(() =>
+        socket.message(
+          JSON.stringify({
+            topic: "chat.conversation.deleted",
+            type: "event",
+            payload: { conversation_id: "c-9", workspace_id: "ws-1", kind: "voice_channel", name: "huddle" },
+          }),
+        ),
+      );
+
+    it("sends a viewer of the deleted channel to the chat home, out of its call, and drops it from the list", async () => {
+      setup("/acme/chat/c-9");
+      useVoiceCallStore.setState({ activeConversationId: "c-9", status: "connected", room: null });
+      const socket = await connectedSocket();
+      const spy = invalidate();
+
+      push(socket);
+
+      expect(screen.getByTestId("location")).toHaveTextContent(/^\/acme\/chat$/);
+      expect(useVoiceCallStore.getState().activeConversationId).toBeNull();
+      expect(spy).toHaveBeenCalledWith({ queryKey: ["getChatConversations"] });
+    });
+
+    it("leaves someone on another conversation where they are", async () => {
+      setup("/acme/chat/c-1");
+      const socket = await connectedSocket();
+
+      push(socket);
+
+      expect(screen.getByTestId("location")).toHaveTextContent(/^\/acme\/chat\/c-1$/);
+    });
   });
 
   describe("workspace.updated", () => {

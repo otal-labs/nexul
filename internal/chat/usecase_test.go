@@ -14,6 +14,7 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
@@ -91,6 +92,41 @@ func (f *fakeRepo) GetConversation(_ context.Context, id string) (*Conversation,
 		return nil, apperrs.ErrNotFound
 	}
 	return c, nil
+}
+
+func (f *fakeRepo) RenameConversation(_ context.Context, id, name string, at time.Time, evts ...eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	c, ok := f.conversations[id]
+	if !ok {
+		return apperrs.ErrNotFound
+	}
+	renamed := *c
+	renamed.Name = name
+	for otherID, existing := range f.conversations {
+		if otherID != id && duplicateConversation(existing, &renamed) {
+			return apperrs.ErrConflict
+		}
+	}
+	c.Name, c.UpdatedAt = name, at
+	f.events = append(f.events, evts...)
+	return nil
+}
+
+func (f *fakeRepo) DeleteConversation(_ context.Context, id string, evts ...eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.conversations[id]; !ok {
+		return apperrs.ErrNotFound
+	}
+	delete(f.conversations, id)
+	for mid, m := range f.messages {
+		if m.ConversationID == id {
+			delete(f.messages, mid)
+		}
+	}
+	f.events = append(f.events, evts...)
+	return nil
 }
 
 func (f *fakeRepo) GetChannelByName(_ context.Context, workspaceID, name string) (*Conversation, error) {
@@ -1078,5 +1114,104 @@ func TestUnreadCounts(t *testing.T) {
 		otherCounts, err := s.UnreadCounts(context.Background(), "w-1", "other-user")
 		require.NoError(t, err)
 		assert.NotContains(t, otherCounts, thread.ID)
+	})
+}
+
+func TestRenameChannel(t *testing.T) {
+	ctx := context.Background()
+	t.Run("an empty name is invalid", func(t *testing.T) {
+		repo := newFakeRepo()
+		s := newTestService(repo)
+		c, err := s.CreateChannel(ctx, "w-1", "u-1", "eng")
+		require.NoError(t, err)
+		_, err = s.RenameChannel(ctx, c.ID, "  ")
+		require.ErrorIs(t, err, apperrs.ErrInvalid)
+	})
+	t.Run("takes the name rules create does", func(t *testing.T) {
+		repo := newFakeRepo()
+		s := newTestService(repo)
+		c, err := s.CreateVoiceChannel(ctx, "w-1", "u-1", "huddle")
+		require.NoError(t, err)
+		renamed, err := s.RenameChannel(ctx, c.ID, "  War Room ")
+		require.NoError(t, err)
+		assert.Equal(t, "War Room", renamed.Name, "trimmed and kept as typed")
+		assert.Equal(t, KindVoiceChannel, renamed.Kind)
+	})
+	t.Run("the name it already has changes nothing and publishes nothing", func(t *testing.T) {
+		repo := newFakeRepo()
+		s := newTestService(repo)
+		c, err := s.CreateChannel(ctx, "w-1", "u-1", "eng")
+		require.NoError(t, err)
+		_, err = s.RenameChannel(ctx, c.ID, " eng ")
+		require.NoError(t, err)
+		assert.Empty(t, repo.eventsFor(TopicConversationUpdated))
+	})
+	t.Run("the workspace's #general can be renamed", func(t *testing.T) {
+		repo := newFakeRepo()
+		s := newTestService(repo)
+		require.NoError(t, s.EnsureGeneralChannel(ctx, "w-1", "u-1"))
+		general, err := repo.GetChannelByName(ctx, "w-1", GeneralChannelName)
+		require.NoError(t, err)
+		renamed, err := s.RenameChannel(ctx, general.ID, "lobby")
+		require.NoError(t, err)
+		assert.Equal(t, "lobby", renamed.Name)
+		assert.True(t, renamed.General)
+	})
+}
+
+func TestDeleteChannel(t *testing.T) {
+	ctx := context.Background()
+	t.Run("the workspace's #general is never deleted, even once renamed", func(t *testing.T) {
+		repo := newFakeRepo()
+		s := newTestService(repo)
+		require.NoError(t, s.EnsureGeneralChannel(ctx, "w-1", "u-1"))
+		general, err := repo.GetChannelByName(ctx, "w-1", GeneralChannelName)
+		require.NoError(t, err)
+		_, err = s.RenameChannel(ctx, general.ID, "lobby")
+		require.NoError(t, err)
+
+		_, err = s.DeleteChannel(ctx, general.ID)
+		require.ErrorIs(t, err, apperrs.ErrInvalid)
+		_, err = repo.GetConversation(ctx, general.ID)
+		require.NoError(t, err, "#general is still there")
+		assert.Empty(t, repo.eventsFor(TopicConversationDeleted))
+	})
+	t.Run("a channel named general that is not the workspace's own can go", func(t *testing.T) {
+		repo := newFakeRepo()
+		s := newTestService(repo)
+		c, err := s.CreateVoiceChannel(ctx, "w-1", "u-1", "general")
+		require.NoError(t, err)
+		_, err = s.DeleteChannel(ctx, c.ID)
+		require.NoError(t, err)
+	})
+}
+
+func TestManageChannel_OnlyChannelsAndVoiceChannels(t *testing.T) {
+	ctx := context.Background()
+	repo := newFakeRepo()
+	s := newTestServiceWithDocAccess(repo, newFakeDocAccess("u-1:doc-1"))
+	dm, err := s.CreateDM(ctx, "w-1", "u-1", []string{"u-2"})
+	require.NoError(t, err)
+	ticket, err := s.GetOrCreateTicketThread(ctx, "w-1", "ticket-1", "u-1")
+	require.NoError(t, err)
+	doc, err := s.GetOrCreateDocThread(ctx, "w-1", "doc-1", "u-1")
+	require.NoError(t, err)
+	interview, err := s.GetOrCreateInterviewThread(ctx, "w-1", "project-1", "u-1")
+	require.NoError(t, err)
+
+	for _, c := range []*Conversation{dm, ticket, interview} {
+		t.Run(string(c.Kind), func(t *testing.T) {
+			_, err := s.RenameChannel(ctx, c.ID, "renamed")
+			require.ErrorIs(t, err, apperrs.ErrInvalid)
+			_, err = s.DeleteChannel(ctx, c.ID)
+			require.ErrorIs(t, err, apperrs.ErrInvalid)
+			_, err = repo.GetConversation(ctx, c.ID)
+			require.NoError(t, err)
+		})
+	}
+	t.Run("doc_thread, by someone who may see it", func(t *testing.T) {
+		userCtx := identity.WithActor(ctx, identity.Actor{ID: "u-1"})
+		_, err := s.DeleteChannel(userCtx, doc.ID)
+		require.ErrorIs(t, err, apperrs.ErrInvalid)
 	})
 }

@@ -1,4 +1,4 @@
-import { CopyIcon, LockIcon, LockOpenIcon, MoreHorizontalIcon, Trash2Icon } from "lucide-react";
+import { CopyIcon, LockIcon, LockOpenIcon, MoreHorizontalIcon, PencilIcon, Trash2Icon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -13,11 +13,12 @@ interface RowActionsProps {
   itemLabel: string;
   /** Each action is hidden when its handler is omitted (the viewer lacks the permission). */
   lock?: { locked: boolean; onToggle: () => void } | undefined;
+  onRename?: (() => void) | undefined;
   onClone?: (() => void) | undefined;
   onDelete?: (() => void) | undefined;
 }
 
-export const RowActions = ({ itemLabel, lock, onClone, onDelete }: RowActionsProps) => (
+export const RowActions = ({ itemLabel, lock, onRename, onClone, onDelete }: RowActionsProps) => (
   <DropdownMenu>
     <DropdownMenuTrigger asChild>
       <Button variant="ghost" size="icon" className="size-7" aria-label={`More actions for ${itemLabel}`}>
@@ -37,13 +38,19 @@ export const RowActions = ({ itemLabel, lock, onClone, onDelete }: RowActionsPro
           Unlock
         </DropdownMenuItem>
       )}
+      {onRename && (
+        <DropdownMenuItem onSelect={onRename}>
+          <PencilIcon aria-hidden />
+          Rename
+        </DropdownMenuItem>
+      )}
       {onClone && (
         <DropdownMenuItem onSelect={onClone}>
           <CopyIcon aria-hidden />
           Clone
         </DropdownMenuItem>
       )}
-      {onDelete && (!!lock || !!onClone) && <DropdownMenuSeparator />}
+      {onDelete && (!!lock || !!onRename || !!onClone) && <DropdownMenuSeparator />}
       {onDelete && (
         <DropdownMenuItem variant="destructive" onSelect={onDelete}>
           <Trash2Icon aria-hidden />

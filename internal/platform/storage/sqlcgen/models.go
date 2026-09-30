@@ -194,6 +194,7 @@ type Conversation struct {
 	AgentSyncedAt   int64
 	DocID           sql.NullString
 	ProjectID       sql.NullString
+	IsGeneral       int64
 }
 
 type ConversationParticipant struct {

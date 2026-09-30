@@ -29,7 +29,21 @@ export interface Conversation {
   updated_at: string;
   // Only populated for DMs.
   participant_ids?: string[];
+  // The workspace's own #general: it can be renamed but never deleted.
+  general?: boolean;
 }
+
+// The chat.conversation.deleted frame: the conversation is gone, so it names what was deleted.
+export interface ConversationDeleted {
+  conversation_id: string;
+  workspace_id: string;
+  kind: ConversationKind;
+  name: string;
+}
+
+// How a channel is named in a sentence: a text channel with its #, a voice channel as it is.
+export const channelMention = (c: { kind: ConversationKind; name?: string | undefined }): string =>
+  c.kind === "channel" ? `#${c.name ?? ""}` : (c.name ?? "");
 
 // The ticket, doc, or project interview a thread belongs to, as a play target; null for a conversation no play can run on.
 export const conversationPlayTarget = (c: Conversation): { type: PlayType; id: string } | null => {

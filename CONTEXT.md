@@ -206,6 +206,14 @@ is unlocked. Anyone who may write the doc locks or unlocks it; archiving,
 cloning, and deleting still work, and a clone starts unlocked.
 _Avoid_: Frozen, protected, read-only doc
 
+**Channel**:
+A workspace conversation every member reads and posts in: a text channel,
+named with a leading `#`, or a voice channel. Created and renamed with
+`channels:write`, deleted together with every message in it with
+`channels:delete`. Each workspace has one `#general`, made with the workspace,
+which can be renamed but never deleted.
+_Avoid_: Room, group, group chat
+
 **Voice channel**:
 Chat's fifth conversation kind — a Discord-style voice room with screen
 share and camera, backed by your own LiveKit server. Carries its own text

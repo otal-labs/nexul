@@ -18,8 +18,16 @@ The conversation list has two groups:
   page.
 
 Use the **New conversation** menu to create a channel, a voice channel, or a
-direct message. Channel names are stored in lower case. Every workspace gets a
+direct message. Channel names keep the case they are typed in, and two text
+channels can't share a name in any case. Every workspace gets a
 `general` channel when it is created.
+
+A channel's or voice channel's `…` menu in the sidebar renames or deletes it.
+Creating and renaming take `channels:write`, deleting takes `channels:delete`,
+and each item is hidden without its permission. Deleting removes the channel
+and every message in it for good, ends a voice channel's call for everyone in
+it, and sends anyone viewing it back to the chat page. The workspace's
+`general` channel can be renamed but not deleted.
 
 Messages are markdown. Type `@` to mention a workspace member or the fixed
 `@Agent` target. Press Enter to send and Shift+Enter for a new line. The
@@ -31,9 +39,10 @@ place in the conversation stays visible. Unread counts are per conversation
 and are marked read when the newest visible message is seen.
 
 Document threads need the `docs:thread` permission on the document. The
-permission catalog also includes the `chat` and `voice` domains. Chat routes
-are available under `/api/chat`; MCP exposes `conversation_list`,
-`message_list`, and `message_post`. The last two also take a `doc_id`,
+permission catalog also includes the `chat`, `channels`, and `voice` domains.
+Chat routes are available under `/api/chat`; MCP exposes `conversation_list`,
+`conversation_update`, `conversation_delete`, `message_list`, and
+`message_post`. The last two also take a `doc_id`,
 `ticket_id`, or interview `project_id` instead of a conversation id, and
 posting starts that thread the first time.
 
@@ -63,6 +72,7 @@ host the media service for you.
 The browser uses the HTTP gateway, not MCP, for this page. The main routes are
 `GET /api/chat/conversations`, `POST /api/chat/channels`,
 `POST /api/chat/voice-channels`, `POST /api/chat/dms`,
+`PATCH /api/chat/conversations/{id}` (rename), `DELETE /api/chat/conversations/{id}`,
 `GET /api/chat/conversations/{id}/messages`, and
 `POST /api/chat/conversations/{id}/messages`. Voice uses
 `POST /api/voice/{conversationID}/token`,

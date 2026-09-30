@@ -32,7 +32,7 @@ func (r *ChatRepo) CreateConversation(ctx context.Context, c *chat.Conversation,
 			DocID:           sql.NullString{String: c.DocID, Valid: c.DocID != ""},
 			ProjectID:       sql.NullString{String: c.ProjectID, Valid: c.ProjectID != ""},
 			ParentMessageID: c.ParentMessageID, CreatedBy: c.CreatedBy,
-			CreatedAt: c.CreatedAt.Unix(), UpdatedAt: c.UpdatedAt.Unix(),
+			CreatedAt: c.CreatedAt.Unix(), UpdatedAt: c.UpdatedAt.Unix(), IsGeneral: boolToInt(c.General),
 		})
 		if err != nil {
 			return fmt.Errorf("insert conversation %s: %w", c.ID, classifyWriteErr(err))
@@ -58,6 +58,34 @@ func (r *ChatRepo) GetConversation(ctx context.Context, id string) (*chat.Conver
 		return nil, fmt.Errorf("attach dm participants: %w", err)
 	}
 	return c, nil
+}
+
+// RenameConversation trips the channel-name unique index on a duplicate, the same conflict create reports.
+func (r *ChatRepo) RenameConversation(ctx context.Context, id, name string, at time.Time, evts ...eventbus.OutboxEvent) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		n, err := r.q.WithTx(tx).RenameConversation(ctx, sqlcgen.RenameConversationParams{Name: name, UpdatedAt: at.Unix(), ID: id})
+		if err != nil {
+			return fmt.Errorf("rename conversation %s: %w", id, classifyWriteErr(err))
+		}
+		if n == 0 {
+			return fmt.Errorf("rename conversation %s: %w", id, apperrs.ErrNotFound)
+		}
+		return enqueueChatOutbox(ctx, tx, evts)
+	})
+}
+
+// DeleteConversation relies on ON DELETE CASCADE for messages, participants, read state, and attachments.
+func (r *ChatRepo) DeleteConversation(ctx context.Context, id string, evts ...eventbus.OutboxEvent) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		n, err := r.q.WithTx(tx).DeleteConversation(ctx, id)
+		if err != nil {
+			return fmt.Errorf("delete conversation %s: %w", id, err)
+		}
+		if n == 0 {
+			return fmt.Errorf("delete conversation %s: %w", id, apperrs.ErrNotFound)
+		}
+		return enqueueChatOutbox(ctx, tx, evts)
+	})
 }
 
 func (r *ChatRepo) GetChannelByName(ctx context.Context, workspaceID, name string) (*chat.Conversation, error) {
@@ -288,7 +316,7 @@ func toConversation(row sqlcgen.Conversation) *chat.Conversation {
 		ID: row.ID, WorkspaceID: row.WorkspaceID, Kind: chat.Kind(row.Kind), Name: row.Name,
 		TicketID: row.TicketID.String, DocID: row.DocID.String, ProjectID: row.ProjectID.String, ParentMessageID: row.ParentMessageID, CreatedBy: row.CreatedBy,
 		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
-		AgentThreadID: row.AgentThreadID, AgentSyncedAt: time.Unix(row.AgentSyncedAt, 0).UTC(),
+		AgentThreadID: row.AgentThreadID, AgentSyncedAt: time.Unix(row.AgentSyncedAt, 0).UTC(), General: row.IsGeneral != 0,
 	}
 }
 

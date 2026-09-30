@@ -180,7 +180,7 @@ func newPermFixture(t *testing.T) permFixture {
 	for _, r := range []*roles.Role{
 		{ID: "role-owner", WorkspaceID: "workspace-default", Name: "Owner", IsOwnerRole: true},
 		{ID: "role-reader", WorkspaceID: "workspace-default", Name: "Reader", Permissions: grant(reads...)},
-		{ID: "role-writer", WorkspaceID: "workspace-default", Name: "Writer", Permissions: grant("tickets:read", "tickets:write", "projects:write", "docs:write", "chat:write")},
+		{ID: "role-writer", WorkspaceID: "workspace-default", Name: "Writer", Permissions: grant("tickets:read", "tickets:write", "projects:write", "docs:write", "chat:write", "channels:write")},
 		{ID: "role-plain", WorkspaceID: "workspace-default", Name: "Member"},
 		{ID: "role-steward", WorkspaceID: "workspace-default", Name: "Steward", Permissions: grant(instanceBits...)},
 		{ID: "role-clerk", WorkspaceID: "workspace-default", Name: "Clerk", Permissions: grant("accounts:read", "accounts:write")},
@@ -274,11 +274,34 @@ func TestIntegration_PermissionTable(t *testing.T) {
 			_, err := s.docsSvc.Clone(ctx, f.doc, "project-general")
 			return err
 		}, map[string]string{uOwner: ok, uCopier: ok, uEditor: forbidden, uCloner: forbidden, uWriter: forbidden, uOutsider: notFound}},
-		{"chat: create channel", func(ctx context.Context) error {
+		{"channels: create one", func(ctx context.Context) error {
 			actor, _ := identity.ActorFromCtx(ctx)
 			_, err := s.chatSvc.CreateChannel(ctx, "workspace-default", actor.ID, "room-"+actor.ID)
 			return err
 		}, map[string]string{uOwner: ok, uWriter: ok, uPlain: forbidden, uOutsider: notFound}},
+		{"channels: rename one", func(ctx context.Context) error {
+			c, err := s.chatSvc.CreateVoiceChannel(context.Background(), "workspace-default", uOwner, "rename-"+actorID(ctx))
+			require.NoError(t, err)
+			_, err = s.chatSvc.RenameChannel(ctx, c.ID, "renamed-"+actorID(ctx))
+			return err
+		}, map[string]string{uOwner: ok, uWriter: ok, uPlain: forbidden, uOutsider: notFound}},
+		{"channels: delete one", func(ctx context.Context) error {
+			c, err := s.chatSvc.CreateChannel(context.Background(), "workspace-default", uOwner, "delete-"+actorID(ctx))
+			require.NoError(t, err)
+			_, err = s.chatSvc.DeleteChannel(ctx, c.ID)
+			return err
+		}, map[string]string{uOwner: ok, uWriter: forbidden, uPlain: forbidden, uOutsider: notFound}},
+		{"channels: the workspace's #general is never deleted", func(ctx context.Context) error {
+			require.NoError(t, s.chatSvc.EnsureGeneralChannel(context.Background(), "workspace-default", uOwner))
+			general, err := f.store.Chat.GetChannelByName(context.Background(), "workspace-default", chat.GeneralChannelName)
+			require.NoError(t, err)
+			_, err = s.chatSvc.DeleteChannel(ctx, general.ID)
+			return err
+		}, map[string]string{uOwner: invalid, uWriter: forbidden, uOutsider: notFound}},
+		{"channels: a DM is not renamed", func(ctx context.Context) error {
+			_, err := s.chatSvc.RenameChannel(ctx, f.dm.ID, "secret")
+			return err
+		}, map[string]string{uOwner: invalid, uWriter: invalid, uPlain: notFound, uOutsider: notFound}},
 		{"chat: read a channel", func(ctx context.Context) error {
 			_, err := s.chatSvc.GetConversation(ctx, f.channel.ID)
 			return err

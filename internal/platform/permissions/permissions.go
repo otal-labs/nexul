@@ -51,6 +51,8 @@ const (
 	ConnectorsRead     Action = "connectors:read"
 	ConnectorsWrite    Action = "connectors:write"
 	ChatWrite          Action = "chat:write"
+	ChannelsWrite      Action = "channels:write"
+	ChannelsDelete     Action = "channels:delete"
 	WorkspacesWrite    Action = "workspaces:write"
 	WorkspacesCreate   Action = "workspaces:create"
 	MembersWrite       Action = "members:write"
@@ -132,6 +134,8 @@ var domainTable = []domainInfo{
 	{"dns", "DNS and gateways", []string{read, write, delete}},
 	{"notifications", "notifications", []string{read, write}},
 	{"chat", "chat", []string{read, write, delete}},
+	// channels:read rounds out the role editor's ladder; reading a channel takes only membership (ADR 0087).
+	{"channels", "channels", []string{read, write, delete}},
 	{"voice", "voice", []string{read, write}},
 	{"automations", "automations", []string{read, write, delete}},
 	{"integrations", "integrations", []string{read, write, delete}},

@@ -12,7 +12,7 @@ import (
 )
 
 const createConversation = `-- name: CreateConversation :exec
-INSERT INTO conversations (id, workspace_id, kind, name, ticket_id, doc_id, project_id, parent_message_id, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO conversations (id, workspace_id, kind, name, ticket_id, doc_id, project_id, parent_message_id, created_by, created_at, updated_at, is_general) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateConversationParams struct {
@@ -27,6 +27,7 @@ type CreateConversationParams struct {
 	CreatedBy       string
 	CreatedAt       int64
 	UpdatedAt       int64
+	IsGeneral       int64
 }
 
 func (q *Queries) CreateConversation(ctx context.Context, arg CreateConversationParams) error {
@@ -42,6 +43,7 @@ func (q *Queries) CreateConversation(ctx context.Context, arg CreateConversation
 		arg.CreatedBy,
 		arg.CreatedAt,
 		arg.UpdatedAt,
+		arg.IsGeneral,
 	)
 	return err
 }
@@ -77,6 +79,18 @@ func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) er
 	return err
 }
 
+const deleteConversation = `-- name: DeleteConversation :execrows
+DELETE FROM conversations WHERE id = ?
+`
+
+func (q *Queries) DeleteConversation(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteConversation, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const deleteMessage = `-- name: DeleteMessage :execrows
 UPDATE messages SET body = '', mentions = '[]', deleted_at = ?, updated_at = ? WHERE id = ?
 `
@@ -96,7 +110,7 @@ func (q *Queries) DeleteMessage(ctx context.Context, arg DeleteMessageParams) (i
 }
 
 const getChannelByName = `-- name: GetChannelByName :one
-SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id FROM conversations WHERE workspace_id = ? AND kind = 'channel' AND name = ? COLLATE NOCASE
+SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id, is_general FROM conversations WHERE workspace_id = ? AND kind = 'channel' AND name = ? COLLATE NOCASE
 `
 
 type GetChannelByNameParams struct {
@@ -121,12 +135,13 @@ func (q *Queries) GetChannelByName(ctx context.Context, arg GetChannelByNamePara
 		&i.AgentSyncedAt,
 		&i.DocID,
 		&i.ProjectID,
+		&i.IsGeneral,
 	)
 	return i, err
 }
 
 const getConversation = `-- name: GetConversation :one
-SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id FROM conversations WHERE id = ?
+SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id, is_general FROM conversations WHERE id = ?
 `
 
 func (q *Queries) GetConversation(ctx context.Context, id string) (Conversation, error) {
@@ -146,12 +161,13 @@ func (q *Queries) GetConversation(ctx context.Context, id string) (Conversation,
 		&i.AgentSyncedAt,
 		&i.DocID,
 		&i.ProjectID,
+		&i.IsGeneral,
 	)
 	return i, err
 }
 
 const getDocThread = `-- name: GetDocThread :one
-SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id FROM conversations WHERE doc_id = ?
+SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id, is_general FROM conversations WHERE doc_id = ?
 `
 
 func (q *Queries) GetDocThread(ctx context.Context, docID sql.NullString) (Conversation, error) {
@@ -171,12 +187,13 @@ func (q *Queries) GetDocThread(ctx context.Context, docID sql.NullString) (Conve
 		&i.AgentSyncedAt,
 		&i.DocID,
 		&i.ProjectID,
+		&i.IsGeneral,
 	)
 	return i, err
 }
 
 const getInterviewThread = `-- name: GetInterviewThread :one
-SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id FROM conversations WHERE project_id = ?
+SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id, is_general FROM conversations WHERE project_id = ?
 `
 
 func (q *Queries) GetInterviewThread(ctx context.Context, projectID sql.NullString) (Conversation, error) {
@@ -196,6 +213,7 @@ func (q *Queries) GetInterviewThread(ctx context.Context, projectID sql.NullStri
 		&i.AgentSyncedAt,
 		&i.DocID,
 		&i.ProjectID,
+		&i.IsGeneral,
 	)
 	return i, err
 }
@@ -224,7 +242,7 @@ func (q *Queries) GetMessage(ctx context.Context, id string) (Message, error) {
 }
 
 const getTicketThread = `-- name: GetTicketThread :one
-SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id FROM conversations WHERE ticket_id = ?
+SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id, is_general FROM conversations WHERE ticket_id = ?
 `
 
 func (q *Queries) GetTicketThread(ctx context.Context, ticketID sql.NullString) (Conversation, error) {
@@ -244,6 +262,7 @@ func (q *Queries) GetTicketThread(ctx context.Context, ticketID sql.NullString) 
 		&i.AgentSyncedAt,
 		&i.DocID,
 		&i.ProjectID,
+		&i.IsGeneral,
 	)
 	return i, err
 }
@@ -265,7 +284,7 @@ func (q *Queries) InsertConversationParticipant(ctx context.Context, arg InsertC
 }
 
 const listConversationsForUser = `-- name: ListConversationsForUser :many
-SELECT DISTINCT c.id, c.workspace_id, c.kind, c.name, c.ticket_id, c.parent_message_id, c.created_by, c.created_at, c.updated_at, c.agent_thread_id, c.agent_synced_at, c.doc_id, c.project_id FROM conversations c
+SELECT DISTINCT c.id, c.workspace_id, c.kind, c.name, c.ticket_id, c.parent_message_id, c.created_by, c.created_at, c.updated_at, c.agent_thread_id, c.agent_synced_at, c.doc_id, c.project_id, c.is_general FROM conversations c
 LEFT JOIN conversation_participants p ON p.conversation_id = c.id AND p.user_id = ?
 WHERE c.workspace_id = ? AND (c.kind IN ('channel', 'voice_channel', 'doc_thread') OR p.user_id IS NOT NULL)
 ORDER BY c.created_at
@@ -299,6 +318,7 @@ func (q *Queries) ListConversationsForUser(ctx context.Context, arg ListConversa
 			&i.AgentSyncedAt,
 			&i.DocID,
 			&i.ProjectID,
+			&i.IsGeneral,
 		); err != nil {
 			return nil, err
 		}
@@ -494,6 +514,24 @@ type MarkReadParams struct {
 func (q *Queries) MarkRead(ctx context.Context, arg MarkReadParams) error {
 	_, err := q.db.ExecContext(ctx, markRead, arg.UserID, arg.ConversationID, arg.LastReadAt)
 	return err
+}
+
+const renameConversation = `-- name: RenameConversation :execrows
+UPDATE conversations SET name = ?, updated_at = ? WHERE id = ?
+`
+
+type RenameConversationParams struct {
+	Name      string
+	UpdatedAt int64
+	ID        string
+}
+
+func (q *Queries) RenameConversation(ctx context.Context, arg RenameConversationParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, renameConversation, arg.Name, arg.UpdatedAt, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const setAgentSyncedAt = `-- name: SetAgentSyncedAt :execrows
