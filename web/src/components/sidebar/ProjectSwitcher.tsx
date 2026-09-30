@@ -2,12 +2,11 @@ import { useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 
 import { Popover } from "@/components/ui/popover";
-import { NewDocButton } from "@/components/sidebar/NewDocButton";
 import { ProjectSwitcherMenu } from "@/components/sidebar/ProjectSwitcherMenu";
-import { ProjectSwitcherTrigger } from "@/components/sidebar/ProjectSwitcherTrigger";
+import { SwitcherTrigger } from "@/components/SwitcherTrigger";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import { NEW_PROJECT_PATH, switchProjectPath, type Project } from "@/models/Project";
+import { NEW_PROJECT_PATH, projectTile, switchProjectPath, type Project } from "@/models/Project";
 
 interface ProjectSwitcherProps {
   projects: Project[];
@@ -35,17 +34,14 @@ export const ProjectSwitcher = ({ projects, current, collapsed }: ProjectSwitche
   };
 
   return (
-    <div className="group/project flex items-center">
-      <Popover open={open} onOpenChange={setOpen}>
-        <ProjectSwitcherTrigger current={current} collapsed={collapsed} />
-        <ProjectSwitcherMenu
-          projects={projects}
-          currentId={current.id}
-          onSelect={handleSelect}
-          onCreate={can?.("newProject") ? handleCreate : undefined}
-        />
-      </Popover>
-      {!collapsed && can?.("newDoc") && <NewDocButton project={current} />}
-    </div>
+    <Popover open={open} onOpenChange={setOpen}>
+      <SwitcherTrigger tile={projectTile(current)} name={current.name} collapsed={collapsed} />
+      <ProjectSwitcherMenu
+        projects={projects}
+        currentId={current.id}
+        onSelect={handleSelect}
+        onCreate={can?.("newProject") ? handleCreate : undefined}
+      />
+    </Popover>
   );
 };

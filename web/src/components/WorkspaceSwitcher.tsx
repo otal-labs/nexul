@@ -2,9 +2,9 @@ import { useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
 import { CreateWorkspaceForm } from "@/components/CreateWorkspaceForm";
+import { SwitcherTrigger } from "@/components/SwitcherTrigger";
 import { Popover } from "@/components/ui/popover";
 import { WorkspaceSwitcherMenu } from "@/components/WorkspaceSwitcherMenu";
-import { WorkspaceSwitcherTrigger } from "@/components/WorkspaceSwitcherTrigger";
 import { useHasInstancePermission } from "@/hooks/AccessHooks";
 import { useFetchWorkspaces } from "@/hooks/WorkspaceHooks";
 import { useFormDialog } from "@/hooks/useFormDialog";
@@ -54,7 +54,7 @@ export const WorkspaceSwitcher = ({ collapsed }: WorkspaceSwitcherProps) => {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <WorkspaceSwitcherTrigger current={current} collapsed={collapsed} />
+      <SwitcherTrigger tile={current.name[0] ?? ""} name={current.name} collapsed={collapsed} />
       <WorkspaceSwitcherMenu
         workspaces={workspaces}
         selectedWorkspaceId={selectedWorkspaceId}
