@@ -5,7 +5,7 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
-import { MessageBody } from "@/components/chat/MessageBody";
+import { DocBody } from "@/components/docs/DocBody";
 import { personLabel } from "@/models/Person";
 import { statusStageDot } from "@/models/Status";
 import { ticketKey, TicketRole } from "@/models/Ticket";
@@ -107,7 +107,7 @@ export const TicketScreen = () => {
             <Text variant="small" className="text-muted-foreground">
               Description
             </Text>
-            <MessageBody body={ticket.body} />
+            <DocBody body={ticket.body} />
           </View>
 
           {openThread.error && <ErrorDisplay error={openThread.error} className="px-0" />}

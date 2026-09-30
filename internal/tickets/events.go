@@ -24,11 +24,17 @@ func Topics() []string {
 // CreatedEvent field names are part of the published contract (ADR 0044) and are additive-only.
 type CreatedEvent struct {
 	Ticket Ticket `json:"ticket"`
+	// MentionedUserIDs are the people the body @-mentions, each told once in their inbox.
+	MentionedUserIDs []string `json:"mentioned_user_ids,omitempty"`
 }
 
 // UpdatedEvent is the payload for ticket.updated: a title/body edit; Ticket reflects the post-edit state.
 type UpdatedEvent struct {
 	Ticket Ticket `json:"ticket"`
+	// ActorID is the user who made the edit; empty for an automation.
+	ActorID string `json:"actor_id,omitempty"`
+	// MentionedUserIDs are the people the new body @-mentions that the previous one did not.
+	MentionedUserIDs []string `json:"mentioned_user_ids,omitempty"`
 }
 
 // StatusChangedEvent's RunID links an automation-performed transition to its run history entry.

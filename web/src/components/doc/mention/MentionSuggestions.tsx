@@ -2,6 +2,7 @@ import { forwardRef, useImperativeHandle, useState } from "react";
 import { FileTextIcon, Loader2Icon, TicketIcon } from "lucide-react";
 import type { SuggestionKeyDownProps, SuggestionProps } from "@tiptap/suggestion";
 
+import { PersonAvatar } from "@/components/PersonAvatar";
 import { cn, keepInView } from "@/lib/utils";
 import type { MentionSearchResult } from "@/models/Mention";
 
@@ -18,6 +19,7 @@ interface MentionSuggestionRowProps {
 // One entry of the @ picker (F1: named row component, not an inline list body).
 const MentionSuggestionRow = ({ item, selected, onSelect }: MentionSuggestionRowProps) => {
   const Icon = item.type === "ticket" ? TicketIcon : FileTextIcon;
+  const isPerson = item.type === "person";
   return (
     <button
       type="button"
@@ -31,15 +33,19 @@ const MentionSuggestionRow = ({ item, selected, onSelect }: MentionSuggestionRow
       onMouseDown={(event) => event.preventDefault()}
       onClick={onSelect}
     >
-      <Icon className="h-4 w-4 shrink-0" />
+      {isPerson && <PersonAvatar login={item.login ?? item.title} src={item.avatar_url} className="size-4 text-[8px]" />}
+      {!isPerson && <Icon className="h-4 w-4 shrink-0" />}
       <span className="min-w-0 truncate">{item.title}</span>
+      {isPerson && item.login && item.login !== item.title && (
+        <span className="min-w-0 truncate font-mono text-xs text-muted-foreground">@{item.login}</span>
+      )}
       {item.type === "ticket" && item.status_label && (
         <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
           {item.status_label}
         </span>
       )}
       <span className="ml-auto shrink-0 text-xs text-muted-foreground">
-        {item.type === "ticket" ? "ticket" : "doc"}
+        {item.type}
       </span>
     </button>
   );

@@ -1,4 +1,7 @@
+// What a chip resolves through /api/mentions/resolve; people resolve from the workspace's People instead.
 export type MentionType = "ticket" | "doc";
+
+export type MentionSearchType = MentionType | "person";
 
 export interface MentionRef {
   type: MentionType;
@@ -21,9 +24,14 @@ export interface MentionChipData {
 }
 
 export interface MentionSearchResult {
-  type: MentionType;
+  type: MentionSearchType;
+  // A person's user id.
   id: string;
+  // A person's display name.
   title: string;
   status_label?: string;
   can_open: boolean;
+  // People only.
+  login?: string;
+  avatar_url?: string;
 }

@@ -3,7 +3,11 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -14,10 +18,13 @@ import (
 	"github.com/otal-labs/nexul/internal/auth"
 	"github.com/otal-labs/nexul/internal/docs"
 	"github.com/otal-labs/nexul/internal/mentions"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
 	"github.com/otal-labs/nexul/internal/platform/storage/testutil"
+	"github.com/otal-labs/nexul/internal/roles"
+	"github.com/otal-labs/nexul/internal/tenancy"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
@@ -115,7 +122,7 @@ func TestIntegration_MentionsOverRealStorage(t *testing.T) {
 	})
 
 	t.Run("picker search excludes unreadable docs", func(t *testing.T) {
-		results, err := svc.Search(aliceCtx, "vault", 10)
+		results, err := svc.Search(aliceCtx, "vault", "", 10)
 		require.NoError(t, err)
 		for _, r := range results {
 			assert.NotEqual(t, "d-locked", r.ID, "unreadable doc never appears in the picker")
@@ -123,7 +130,7 @@ func TestIntegration_MentionsOverRealStorage(t *testing.T) {
 	})
 
 	t.Run("picker search finds tickets with status label", func(t *testing.T) {
-		results, err := svc.Search(aliceCtx, "fix", 10)
+		results, err := svc.Search(aliceCtx, "fix", "", 10)
 		require.NoError(t, err)
 		var found *mentions.SearchResult
 		for i := range results {
@@ -145,7 +152,7 @@ func TestIntegration_MentionsOverRealStorage(t *testing.T) {
 		keyTicket := &tickets.Ticket{ID: "tk-erf-1", ProjectID: "p-erf", Title: "Ship the router rewrite", Body: "body", Status: tickets.StatusOpen}
 		require.NoError(t, s.Tickets.Create(ctx, keyTicket)) // first ticket in p-erf, so number 1 -> ERF-1
 
-		results, err := svc.Search(aliceCtx, "ERF-1", 10)
+		results, err := svc.Search(aliceCtx, "ERF-1", "", 10)
 		require.NoError(t, err)
 		require.NotEmpty(t, results, "typing @ERF-1 must resolve the ticket directly, not just via title search")
 		assert.Equal(t, "ticket", results[0].Type)
@@ -158,5 +165,142 @@ func TestIntegration_MentionsOverRealStorage(t *testing.T) {
 		require.Len(t, chips, 1)
 		assert.Equal(t, "ERF", chips[0].ProjectPrefix)
 		assert.Equal(t, 1, chips[0].ProjectNumber)
+	})
+}
+
+// seedMentionPeople makes onik (writes docs and tickets), rixwavedev (reads them), and sam ("Rixa Stone", reads
+// neither) members of the default workspace, and rixoutsider an account outside it.
+func seedMentionPeople(t *testing.T, store *storage.Store) {
+	t.Helper()
+	ctx := context.Background()
+	for id, login := range map[string]string{"u-onik": "onik", "u-rix": "rixwavedev", "u-sam": "sam", "u-out": "rixoutsider"} {
+		_, _, err := store.Users.UpsertUser(ctx, &auth.Identity{UserID: id, Provider: auth.ProviderGitHub, ProviderUserID: id, Login: login})
+		require.NoError(t, err)
+	}
+	for id, name := range map[string]string{"u-sam": "Rixa Stone", "u-onik": "Onik"} {
+		require.NoError(t, store.Users.SetProfileOverride(ctx, id, &name, nil))
+	}
+	now := time.Now()
+	for _, r := range []*roles.Role{
+		{ID: "role-writer", Name: "Writer", Permissions: grant("docs:read", "docs:write", "tickets:read", "tickets:write")},
+		{ID: "role-reader", Name: "Reader", Permissions: grant("docs:read", "tickets:read")},
+		{ID: "role-member", Name: "Member"},
+	} {
+		r.WorkspaceID, r.CreatedAt, r.UpdatedAt = "workspace-default", now, now
+		require.NoError(t, store.Roles.Create(ctx, r))
+	}
+	for user, role := range map[string]string{"u-onik": "role-writer", "u-rix": "role-reader", "u-sam": "role-member"} {
+		require.NoError(t, store.WorkspaceMembers.AddMember(ctx, &tenancy.Member{UserID: user, WorkspaceID: "workspace-default", RoleID: role, CreatedAt: now}))
+	}
+}
+
+// TestMentionSearch_FindsWorkspacePeople guards the doc and ticket @ picker finding the workspace's people, as the
+// new-DM dialog does, by login and by display name, and never someone outside the workspace.
+func TestMentionSearch_FindsWorkspacePeople(t *testing.T) {
+	svc, store := newWired(t)
+	seedMentionPeople(t, store)
+	routes := mentions.NewHandler(svc.mentionsSvc).Routes()
+
+	for _, workspaceID := range []string{"", "workspace-default"} {
+		t.Run("workspace "+workspaceID, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/api/mentions/search?q=rix&limit=8&workspace_id="+workspaceID, nil)
+			req = req.WithContext(identity.WithActor(req.Context(), identity.Actor{ID: "u-onik"}))
+			rec := httptest.NewRecorder()
+			routes.ServeHTTP(rec, req)
+			require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+
+			var body struct {
+				Results []struct {
+					Type  string `json:"type"`
+					ID    string `json:"id"`
+					Title string `json:"title"`
+				} `json:"results"`
+			}
+			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
+			got := map[string]string{}
+			for _, r := range body.Results {
+				if r.Type == "person" {
+					got[r.ID] = r.Title
+				}
+			}
+			assert.Equal(t, map[string]string{"u-rix": "rixwavedev", "u-sam": "Rixa Stone"}, got)
+		})
+	}
+}
+
+// deliverNotifications runs every unpublished doc and ticket event through the inbox's handlers, as the relay would.
+func deliverNotifications(t *testing.T, svc *coreServices, store *storage.Store) {
+	t.Helper()
+	ctx := context.Background()
+	handlers := map[string]func(context.Context, *workspace.NotificationService, eventbus.Event) error{
+		docs.TopicCreated: workspace.HandleDocCreated, docs.TopicUpdated: workspace.HandleDocUpdated,
+		tickets.TopicCreated: workspace.HandleTicketCreated, tickets.TopicUpdated: workspace.HandleTicketUpdated,
+	}
+	entries, err := store.Outbox.Unpublished(ctx, 500)
+	require.NoError(t, err)
+	for _, e := range entries {
+		if handle, ok := handlers[e.Topic]; ok {
+			require.NoError(t, handle(ctx, svc.notifSvc, eventbus.Event{ID: e.ID, Topic: e.Topic, Payload: e.Payload}))
+		}
+		require.NoError(t, store.Outbox.MarkPublished(ctx, e.ID))
+	}
+}
+
+// inbox lists a person's notifications of one kind as their titles.
+func inbox(t *testing.T, svc *coreServices, userID string, kind workspace.Kind) []string {
+	t.Helper()
+	ns, err := svc.notifSvc.List(context.Background(), userID, "", 100)
+	require.NoError(t, err)
+	var titles []string
+	for _, n := range ns {
+		if n.Kind == kind {
+			titles = append(titles, n.SubjectTitle)
+		}
+	}
+	return titles
+}
+
+func personMentionBody(userIDs ...string) string {
+	nodes := make([]string, 0, len(userIDs))
+	for _, id := range userIDs {
+		nodes = append(nodes, `{"type":"mention","attrs":{"type":"person","id":"`+id+`","label":"x"}}`)
+	}
+	return `{"type":"doc","content":[{"type":"paragraph","content":[` + strings.Join(nodes, ",") + `]}]}`
+}
+
+// TestPersonMentions_NotifyOnceAndOnlyReaders saves a doc and a ticket the way the editor does and checks the inbox:
+// a newly mentioned reader is told once, never the author, never someone who cannot read it, never a non-member.
+func TestPersonMentions_NotifyOnceAndOnlyReaders(t *testing.T) {
+	svc, store := newWired(t)
+	seedMentionPeople(t, store)
+	onik := as("u-onik")
+
+	t.Run("doc", func(t *testing.T) {
+		doc, err := svc.docsSvc.Create(onik, "project-general", "Launch plan", personMentionBody("u-rix", "u-onik"))
+		require.NoError(t, err)
+		deliverNotifications(t, svc, store)
+		assert.Equal(t, []string{"Onik mentioned you in Launch plan"}, inbox(t, svc, "u-rix", workspace.KindDocMentioned))
+		assert.Empty(t, inbox(t, svc, "u-onik", workspace.KindDocMentioned), "a self-mention notifies nobody")
+		// Read, so the inbox's collapse of repeated unread rows cannot hide a second mention.
+		require.NoError(t, svc.notifSvc.MarkAllRead(context.Background(), "u-rix", ""))
+
+		_, err = svc.docsSvc.Update(onik, doc.ID, "Launch plan", personMentionBody("u-rix", "u-onik", "u-sam", "u-out"))
+		require.NoError(t, err)
+		deliverNotifications(t, svc, store)
+		assert.Len(t, inbox(t, svc, "u-rix", workspace.KindDocMentioned), 1, "re-saving an existing mention does not notify again")
+		assert.Empty(t, inbox(t, svc, "u-sam", workspace.KindDocMentioned), "sam cannot read docs")
+		assert.Empty(t, inbox(t, svc, "u-out", workspace.KindDocMentioned), "rixoutsider is not a member")
+	})
+
+	t.Run("ticket", func(t *testing.T) {
+		ticket, err := svc.ticketsSvc.Create(onik, "project-general", "Fix login", "", "", "")
+		require.NoError(t, err)
+		for range 2 {
+			_, err = svc.ticketsSvc.UpdateTicket(onik, ticket.ID, "Fix login", personMentionBody("u-rix"))
+			require.NoError(t, err)
+			deliverNotifications(t, svc, store)
+			require.NoError(t, svc.notifSvc.MarkAllRead(context.Background(), "u-rix", ""))
+		}
+		assert.Equal(t, []string{"Onik mentioned you in Fix login"}, inbox(t, svc, "u-rix", workspace.KindTicketMentioned))
 	})
 }

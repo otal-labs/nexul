@@ -4,6 +4,7 @@ export const NotificationKind = {
   TicketStatusChanged: "ticket.status_changed",
   DocCreated: "doc.created",
   DocUpdated: "doc.updated",
+  DocMentioned: "doc.mentioned",
   MemoryUpdated: "memory.updated",
   PlayRunFinished: "play.run_finished",
   PlayRunWaiting: "play.run_waiting",

@@ -3,10 +3,11 @@ import { cn } from "@/lib/utils";
 
 const kindLabels: Record<NotificationKind, string> = {
   [NotificationKind.TicketAssigned]: "assigned to you",
-  [NotificationKind.TicketMentioned]: "mentioned you",
+  [NotificationKind.TicketMentioned]: "mention",
   [NotificationKind.TicketStatusChanged]: "status changed",
   [NotificationKind.DocCreated]: "doc created",
   [NotificationKind.DocUpdated]: "doc updated",
+  [NotificationKind.DocMentioned]: "mention",
   [NotificationKind.MemoryUpdated]: "memory updated",
   [NotificationKind.PlayRunFinished]: "play run ended",
   [NotificationKind.PlayRunWaiting]: "needs your answer",

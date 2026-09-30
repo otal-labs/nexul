@@ -17,6 +17,8 @@ type CreatedEvent struct {
 	Doc Doc `json:"doc"`
 	// ActorID is the user who created the doc, so notifications skip them.
 	ActorID string `json:"actor_id,omitempty"`
+	// MentionedUserIDs are the people the body @-mentions, each told once in their inbox.
+	MentionedUserIDs []string `json:"mentioned_user_ids,omitempty"`
 }
 
 // UpdatedEvent is the payload for doc.updated.
@@ -24,6 +26,8 @@ type UpdatedEvent struct {
 	Doc Doc `json:"doc"`
 	// ActorID is the user whose edit, archive, or collaborative commit this is; empty when none is known.
 	ActorID string `json:"actor_id,omitempty"`
+	// MentionedUserIDs are the people this save @-mentions that the previous version did not.
+	MentionedUserIDs []string `json:"mentioned_user_ids,omitempty"`
 }
 
 // DeletedEvent is the doc.deleted payload; the doc is already gone by publish time, so consumers get identity only.

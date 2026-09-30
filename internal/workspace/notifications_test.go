@@ -199,6 +199,10 @@ func (f *fakeNotifUsers) ListUsers(_ context.Context) ([]*User, error) {
 	return append([]*User(nil), f.list...), nil
 }
 
+func (f *fakeNotifUsers) NameForUserID(ctx context.Context, userID string) (string, error) {
+	return f.LoginForUserID(ctx, userID)
+}
+
 func (f *fakeNotifUsers) LoginForUserID(_ context.Context, userID string) (string, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

@@ -2,10 +2,13 @@ package main
 
 import (
 	"context"
+	"errors"
 
 	"github.com/otal-labs/nexul/internal/docs"
 	"github.com/otal-labs/nexul/internal/mentions"
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/storage"
+	"github.com/otal-labs/nexul/internal/tenancy"
 	"github.com/otal-labs/nexul/internal/tickets"
 )
 
@@ -119,4 +122,43 @@ func (a mentionTicketTypeSource) Get(ctx context.Context, id string) (*mentions.
 		return nil, err
 	}
 	return &mentions.TicketType{ID: tt.ID, Name: tt.Name}, nil
+}
+
+// mentionPeopleSource adapts tenancy's People, readable by membership alone (ADR 0086), to mentions.
+type mentionPeopleSource struct {
+	svc *tenancy.Service
+}
+
+// People reads one workspace's people, or every workspace the actor belongs to; not being a member yields nobody.
+func (a mentionPeopleSource) People(ctx context.Context, actorID, workspaceID string) ([]mentions.Person, error) {
+	workspaceIDs := []string{workspaceID}
+	if workspaceID == "" {
+		workspaces, err := a.svc.ListForUser(ctx, actorID)
+		if err != nil {
+			return nil, err
+		}
+		workspaceIDs = workspaceIDs[:0]
+		for _, w := range workspaces {
+			workspaceIDs = append(workspaceIDs, w.ID)
+		}
+	}
+	seen := map[string]bool{}
+	var out []mentions.Person
+	for _, id := range workspaceIDs {
+		people, err := a.svc.ListPeople(ctx, actorID, id)
+		if errors.Is(err, apperrs.ErrForbidden) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		for _, p := range people {
+			if seen[p.UserID] {
+				continue
+			}
+			seen[p.UserID] = true
+			out = append(out, mentions.Person{UserID: p.UserID, Login: p.Login, DisplayName: p.DisplayName, AvatarURL: p.AvatarURL})
+		}
+	}
+	return out, nil
 }

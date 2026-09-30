@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import { RichTextEditor } from "@/components/doc/RichTextEditor";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { emptyDocJson, isStructuredBody } from "@/utils/RichtextUtility";
 
 vi.mock("@/api/client", () => ({
@@ -113,6 +114,42 @@ describe("RichTextEditor", () => {
     });
     expect(api.post).toHaveBeenCalledWith("/api/mentions/resolve", {
       refs: [{ type: "ticket", id: "t-1" }],
+    });
+  });
+
+  it("finds a workspace member on @ and inserts them as a chip showing their display name", async () => {
+    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
+    const rix = { user_id: "u-rix", login: "rixwavedev", display_name: "Rix Wave", avatar_url: "" };
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === "/api/mentions/search") {
+        return { data: { results: [{ type: "person", id: rix.user_id, title: rix.display_name, login: rix.login, can_open: true }] } };
+      }
+      if (url === "/api/workspaces/ws-1/people") return { data: { people: [rix] } };
+      throw new Error(`unexpected GET ${url}`);
+    });
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    renderEditor(emptyDocJson, onChange);
+
+    await user.click(screen.getByLabelText(/doc body/i));
+    await user.keyboard("@rix");
+    await user.click(await screen.findByRole("option", { name: /Rix Wave/ }));
+
+    await waitFor(() => {
+      expect(document.querySelector('span[data-mention-type="person"]')?.textContent).toBe("Rix Wave");
+    });
+    expect(api.get).toHaveBeenCalledWith("/api/mentions/search", { params: { q: "rix", limit: 8, workspace_id: "ws-1" } });
+    const emitted = JSON.parse(onChange.mock.calls.at(-1)?.[0] as string);
+    expect(emitted.content[0].content[0].attrs).toMatchObject({ type: "person", id: "u-rix", label: "rixwavedev" });
+  });
+
+  it("shows a person mention no longer in People as @unknown", async () => {
+    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
+    vi.mocked(api.get).mockResolvedValue({ data: { people: [] } });
+    renderEditor(`{"type":"doc","content":[{"type":"paragraph","content":[{"type":"mention","attrs":{"type":"person","id":"u-gone","label":"gone"}}]}]}`);
+
+    await waitFor(() => {
+      expect(document.querySelector('span[data-mention-type="person"]')?.textContent).toBe("@unknown");
     });
   });
 

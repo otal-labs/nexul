@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -25,6 +26,8 @@ type Config struct {
 	// Projects and TicketTypes resolve the chip template's tokens (spec.md 6); required like the sources above.
 	Projects    ProjectSource
 	TicketTypes TicketTypeSource
+	// People finds and resolves person mentions; without it neither search nor resolve returns people.
+	People PeopleSource
 }
 
 // Service resolves mention references and search targets for the @ picker.
@@ -37,12 +40,21 @@ func New(cfg Config) *Service {
 	return &Service{cfg: cfg}
 }
 
+// SetPeople wires People after construction, since it is built after this service.
+func (s *Service) SetPeople(p PeopleSource) {
+	s.cfg.People = p
+}
+
 // Resolve renders a batch of refs as chips; missing targets are omitted, unopenable ones get can_open=false.
 func (s *Service) Resolve(ctx context.Context, refs []Ref) ([]Chip, error) {
 	if s.cfg.Tickets == nil || s.cfg.Docs == nil || s.cfg.Statuses == nil || s.cfg.Projects == nil || s.cfg.TicketTypes == nil {
 		return nil, errors.New("mentions: resolution sources are not wired")
 	}
 	actor, err := s.actor(ctx)
+	if err != nil {
+		return nil, err
+	}
+	people, err := s.peopleFor(ctx, actor.ID, refs)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +66,7 @@ func (s *Service) Resolve(ctx context.Context, refs []Ref) ([]Chip, error) {
 			continue
 		}
 		seen[key] = true
-		chip, ok, err := s.resolveRef(ctx, actor.ID, ref)
+		chip, ok, err := s.resolveRef(ctx, actor.ID, people, ref)
 		if err != nil {
 			return nil, err
 		}
@@ -66,8 +78,11 @@ func (s *Service) Resolve(ctx context.Context, refs []Ref) ([]Chip, error) {
 }
 
 // resolveRef resolves one ref to a chip; ok is false when the target was not found.
-func (s *Service) resolveRef(ctx context.Context, actorID string, ref Ref) (Chip, bool, error) {
+func (s *Service) resolveRef(ctx context.Context, actorID string, people map[string]Person, ref Ref) (Chip, bool, error) {
 	switch ref.Type {
+	case string(KindPerson):
+		p, ok := people[ref.ID]
+		return personChip(p), ok, nil
 	case string(KindTicket):
 		chip, err := s.resolveTicket(ctx, ref.ID)
 		if err != nil {
@@ -90,8 +105,10 @@ func (s *Service) resolveRef(ctx context.Context, actorID string, ref Ref) (Chip
 	return Chip{}, false, nil
 }
 
-// Search returns autocomplete entries: tickets and docs, filtered to what the actor can open.
-func (s *Service) Search(ctx context.Context, query string, limit int) ([]SearchResult, error) {
+// Search returns autocomplete entries: people, tickets, and docs, filtered to what the actor can see. People come
+// from workspaceID's People, or from every workspace the actor shares when it is empty. A ticket key sorts first,
+// then people whose login or display name starts with the query, then tickets, docs, and the remaining people.
+func (s *Service) Search(ctx context.Context, query, workspaceID string, limit int) ([]SearchResult, error) {
 	if s.cfg.Tickets == nil || s.cfg.Docs == nil || s.cfg.Statuses == nil {
 		return nil, errors.New("mentions: resolution sources are not wired")
 	}
@@ -114,6 +131,11 @@ func (s *Service) Search(ctx context.Context, query string, limit int) ([]Search
 	if err != nil {
 		return nil, fmt.Errorf("search mention docs: %w", err)
 	}
+	people, err := s.people(ctx, actor.ID, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	startsWith, contains := matchPeople(people, query)
 
 	results := make([]SearchResult, 0, len(ticketHits)+len(docHits)+1)
 	seenTickets := map[string]bool{}
@@ -127,8 +149,10 @@ func (s *Service) Search(ctx context.Context, query string, limit int) ([]Search
 		seenTickets[keyResult.ID] = true
 	}
 
+	results = append(results, startsWith...)
 	results = append(results, s.ticketSearchResults(ctx, ticketHits, seenTickets)...)
 	results = append(results, s.docSearchResults(ctx, actor.ID, docHits)...)
+	results = append(results, contains...)
 	if len(results) > limit {
 		results = results[:limit]
 	}
@@ -183,6 +207,67 @@ func (s *Service) docSearchResults(ctx context.Context, actorID string, hits []S
 		results = append(results, SearchResult{Type: string(KindDoc), ID: h.ID, Title: h.Title, CanOpen: true})
 	}
 	return results
+}
+
+// people reads the People the actor sees; a missing source means no people rather than an error.
+func (s *Service) people(ctx context.Context, actorID, workspaceID string) ([]Person, error) {
+	if s.cfg.People == nil {
+		return nil, nil
+	}
+	people, err := s.cfg.People.People(ctx, actorID, strings.TrimSpace(workspaceID))
+	if err != nil {
+		return nil, fmt.Errorf("list people for mentions: %w", err)
+	}
+	return people, nil
+}
+
+// peopleFor indexes everyone the actor shares a workspace with by user id, reading them only when refs name a person.
+func (s *Service) peopleFor(ctx context.Context, actorID string, refs []Ref) (map[string]Person, error) {
+	if !slices.ContainsFunc(refs, func(r Ref) bool { return r.Type == string(KindPerson) }) {
+		return nil, nil
+	}
+	people, err := s.people(ctx, actorID, "")
+	if err != nil {
+		return nil, err
+	}
+	byID := make(map[string]Person, len(people))
+	for _, p := range people {
+		byID[p.UserID] = p
+	}
+	return byID, nil
+}
+
+// matchPeople splits case-insensitive login and display-name matches into prefix and substring hits, exact first.
+func matchPeople(people []Person, query string) (startsWith, contains []SearchResult) {
+	q := strings.ToLower(query)
+	var exact []SearchResult
+	for _, p := range people {
+		login, name := strings.ToLower(p.Login), strings.ToLower(p.DisplayName)
+		switch {
+		case login == q || name == q:
+			exact = append(exact, personResult(p))
+		case strings.HasPrefix(login, q) || strings.HasPrefix(name, q):
+			startsWith = append(startsWith, personResult(p))
+		case strings.Contains(login, q) || strings.Contains(name, q):
+			contains = append(contains, personResult(p))
+		}
+	}
+	return append(exact, startsWith...), contains
+}
+
+func personLabel(p Person) string {
+	if p.DisplayName != "" {
+		return p.DisplayName
+	}
+	return p.Login
+}
+
+func personResult(p Person) SearchResult {
+	return SearchResult{Type: string(KindPerson), ID: p.UserID, Title: personLabel(p), Login: p.Login, AvatarURL: p.AvatarURL, CanOpen: true}
+}
+
+func personChip(p Person) Chip {
+	return Chip{Type: string(KindPerson), ID: p.UserID, Title: personLabel(p), Login: p.Login, AvatarURL: p.AvatarURL, CanOpen: true}
 }
 
 func (s *Service) resolveTicket(ctx context.Context, id string) (Chip, error) {

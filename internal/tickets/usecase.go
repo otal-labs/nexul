@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/otal-labs/nexul/internal/docs/richtext"
 	"github.com/otal-labs/nexul/internal/platform/colors"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
@@ -196,7 +197,7 @@ func (s *Service) firstColumn(ctx context.Context, projectID string) (Status, er
 
 // persist writes the ticket, and its found-in link in the same transaction when it was filed with one.
 func (s *Service) persist(ctx context.Context, t *Ticket, opt CreateOptions) error {
-	created := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicCreated, Payload: CreatedEvent{Ticket: *t}}
+	created := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicCreated, Payload: CreatedEvent{Ticket: *t, MentionedUserIDs: richtext.PersonMentions(t.Body)}}
 	if opt.OriginID == "" && !opt.OriginUnknown {
 		return s.repo.Create(ctx, t, created)
 	}
@@ -435,7 +436,9 @@ func (s *Service) UpdateTicket(ctx context.Context, id, title, body string) (*Ti
 	updated.Title = title
 	updated.Body = body
 	updated.UpdatedAt = s.now().UTC()
-	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: UpdatedEvent{Ticket: updated}}
+	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: UpdatedEvent{
+		Ticket: updated, ActorID: statusActor(ctx).UserID, MentionedUserIDs: richtext.AddedPersonMentions(current.Body, body),
+	}}
 	if err := s.repo.UpdateTicket(ctx, id, title, body, evt); err != nil {
 		return nil, fmt.Errorf("update ticket %s: %w", id, err)
 	}

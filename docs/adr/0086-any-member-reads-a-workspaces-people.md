@@ -27,3 +27,4 @@ configures can hide a member's name from the rest of the workspace. The
 members list keeps `members:write` for everything about managing people.
 
 Decided 2026-09-29.
+Amended 2026-09-30: the doc and ticket @ picker (`GET /api/mentions/search`, `mention_search`) finds people through this same list.

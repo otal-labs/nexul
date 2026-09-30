@@ -204,6 +204,7 @@ const (
 	KindTicketStatus    Kind = "ticket.status_changed"
 	KindDocCreated      Kind = "doc.created"
 	KindDocUpdated      Kind = "doc.updated"
+	KindDocMentioned    Kind = "doc.mentioned"
 	KindMemoryUpdated   Kind = "memory.updated"
 	KindPlayRunFinished Kind = "play.run_finished"
 	KindPlayRunWaiting  Kind = "play.run_waiting"
