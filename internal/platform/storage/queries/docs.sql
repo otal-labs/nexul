@@ -19,6 +19,9 @@ UPDATE docs SET title = ?, body = ?, body_md = ?, version = ?, updated_at = ? WH
 -- name: SetDocArchived :execrows
 UPDATE docs SET archived = ?, updated_at = ? WHERE id = ?;
 
+-- name: SetDocLocked :execrows
+UPDATE docs SET locked = ? WHERE id = ?;
+
 -- name: DeleteDoc :execrows
 DELETE FROM docs WHERE id = ?;
 

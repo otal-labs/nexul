@@ -22,6 +22,7 @@ type docResult struct {
 	Body      string    `json:"body"`
 	Version   int       `json:"version"`
 	Archived  bool      `json:"archived"`
+	Locked    bool      `json:"locked"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
@@ -48,6 +49,7 @@ type docUpdateIn struct {
 	Title    *string `json:"title,omitempty" jsonschema:"New title. Omit to keep the current one."`
 	Body     *string `json:"body,omitempty" jsonschema:"New body as markdown, replacing the whole body. Omit to keep the current body."`
 	Archived *bool   `json:"archived,omitempty" jsonschema:"true archives the doc (hidden from search), false restores it. Omit to leave it as is."`
+	Locked   *bool   `json:"locked,omitempty" jsonschema:"true locks the doc read-only so its title and body refuse edits, false unlocks it. Omit to leave it as is."`
 }
 
 // MCPTools returns the docs tools.
@@ -108,7 +110,7 @@ func rankBySearch(ctx context.Context, s *Service, query string, items []*DocLis
 
 func docGetTool(s *Service) mcptool.Tool {
 	return mcptool.New("doc_get", "Get doc",
-		"Returns one doc with its full body as markdown, its project, version, and archived state. "+
+		"Returns one doc with its full body as markdown, its project, version, and archived and locked state. "+
 			"Use it after doc_list has given you the id, and before doc_update so you edit the current text. "+
 			"Fails with forbidden when you cannot read the doc.",
 		mcptool.Hints{ReadOnly: true, Local: true},
@@ -149,35 +151,67 @@ func createOrClone(ctx context.Context, s *Service, in docCreateIn) (*Doc, error
 
 func docUpdateTool(s *Service) mcptool.Tool {
 	return mcptool.New("doc_update", "Update doc",
-		"Changes a doc's title, body, or archived state; only the fields you send change. "+
+		"Changes a doc's title, body, archived, or locked state; only the fields you send change. "+
 			"A new title or body saves a new version, and archived true hides the doc from search until archived false restores it. "+
+			"A locked doc refuses title and body changes until locked false, which you may send with the edit to unlock first. "+
 			"Read the doc with doc_get first, because body replaces the whole body. "+
 			"Returns the doc as it now stands.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in docUpdateIn) (any, error) {
-			d, err := s.Get(ctx, in.ID)
+			d, err := updateDoc(ctx, s, in)
 			if err != nil {
 				return nil, err
 			}
-			var saved []string
-			if in.Title != nil {
-				saved = append(saved, "title")
-			}
-			if in.Body != nil {
-				saved = append(saved, "body")
-			}
-			if len(saved) > 0 {
-				if d, err = s.Update(ctx, in.ID, deref(in.Title, d.Title), deref(in.Body, d.Body)); err != nil {
-					return nil, err
-				}
-			}
-			if in.Archived != nil && *in.Archived != d.Archived {
-				if d, err = setArchived(ctx, s, in.ID, *in.Archived); err != nil {
-					return nil, archiveErr(saved, err)
-				}
-			}
 			return toDocResult(d)
 		})
+}
+
+// updateDoc unlocks before editing and locks after it, so one call can do either around a title or body change.
+func updateDoc(ctx context.Context, s *Service, in docUpdateIn) (*Doc, error) {
+	d, err := s.Get(ctx, in.ID)
+	if err != nil {
+		return nil, err
+	}
+	var applied []string
+	if is(in.Locked, false) && d.Locked {
+		if d, err = s.Unlock(ctx, in.ID); err != nil {
+			return nil, err
+		}
+		applied = append(applied, "locked")
+	}
+	if edited := editedFields(in); len(edited) > 0 {
+		if d, err = s.Update(ctx, in.ID, deref(in.Title, d.Title), deref(in.Body, d.Body)); err != nil {
+			return nil, stepErr(applied, "title and body", err)
+		}
+		applied = append(applied, edited...)
+	}
+	if in.Archived != nil && *in.Archived != d.Archived {
+		if d, err = setArchived(ctx, s, in.ID, *in.Archived); err != nil {
+			return nil, stepErr(applied, "archived", err)
+		}
+		applied = append(applied, "archived")
+	}
+	if is(in.Locked, true) && !d.Locked {
+		if d, err = s.Lock(ctx, in.ID); err != nil {
+			return nil, stepErr(applied, "locked", err)
+		}
+	}
+	return d, nil
+}
+
+func editedFields(in docUpdateIn) []string {
+	var edited []string
+	if in.Title != nil {
+		edited = append(edited, "title")
+	}
+	if in.Body != nil {
+		edited = append(edited, "body")
+	}
+	return edited
+}
+
+func is(p *bool, want bool) bool {
+	return p != nil && *p == want
 }
 
 func setArchived(ctx context.Context, s *Service, id string, archived bool) (*Doc, error) {
@@ -187,12 +221,12 @@ func setArchived(ctx context.Context, s *Service, id string, archived bool) (*Do
 	return s.Restore(ctx, id)
 }
 
-// archiveErr says which fields were already saved when only the archive step failed, even when err is hidden.
-func archiveErr(saved []string, err error) error {
-	if len(saved) == 0 {
+// stepErr says which fields were already saved when a later step failed, even when err is hidden.
+func stepErr(applied []string, step string, err error) error {
+	if len(applied) == 0 {
 		return err
 	}
-	return &mcptool.PartialError{Applied: saved, Err: fmt.Errorf("archived: %w", err)}
+	return &mcptool.PartialError{Applied: applied, Err: fmt.Errorf("%s: %w", step, err)}
 }
 
 func deref[T any](p *T, fallback T) T {
@@ -209,6 +243,6 @@ func toDocResult(d *Doc) (docResult, error) {
 	}
 	return docResult{
 		ID: d.ID, ProjectID: d.ProjectID, Title: d.Title, Body: md,
-		Version: d.Version, Archived: d.Archived, UpdatedAt: d.UpdatedAt,
+		Version: d.Version, Archived: d.Archived, Locked: d.Locked, UpdatedAt: d.UpdatedAt,
 	}, nil
 }

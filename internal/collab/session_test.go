@@ -84,9 +84,10 @@ func (f *fakeStore) TrimUpdates(_ context.Context, docID string, baseSeq int64) 
 
 // fakeWriter records canonical-body commits.
 type fakeWriter struct {
-	mu    sync.Mutex
-	calls []commitCall
-	fail  bool
+	mu     sync.Mutex
+	calls  []commitCall
+	fail   bool
+	locked bool
 }
 
 type commitCall struct {
@@ -101,6 +102,12 @@ func (f *fakeWriter) CommitCollab(_ context.Context, docID, title, body string) 
 	}
 	f.calls = append(f.calls, commitCall{docID: docID, title: title, body: body})
 	return nil
+}
+
+func (f *fakeWriter) Locked(context.Context, string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.locked, nil
 }
 
 func (f *fakeWriter) count() int {
@@ -123,7 +130,7 @@ func testLogger() *slog.Logger {
 }
 
 func newTestClient(id string) *client {
-	return &client{id: id, send: make(chan []byte, sendBuffer), done: make(chan struct{})}
+	return &client{id: id, mode: ModeEdit, send: make(chan []byte, sendBuffer), done: make(chan struct{})}
 }
 
 func newTestSession(store Store) *session {
@@ -170,6 +177,44 @@ func TestSessionUpdateRelaysToOthersOnly(t *testing.T) {
 	case raw := <-a.send:
 		t.Fatalf("sender received its own relay: %s", raw)
 	case <-time.After(50 * time.Millisecond):
+	}
+}
+
+func TestSessionRefusesWritesFromAViewerOrToALockedDoc(t *testing.T) {
+	tests := []struct {
+		name   string
+		mode   Mode
+		locked bool
+	}{
+		{"an editor on a locked doc", ModeEdit, true},
+		{"a viewer on an unlocked doc", ModeView, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			store := newFakeStore()
+			writer := &fakeWriter{locked: tt.locked}
+			s := newTestSession(store)
+			s.writer = writer
+			a := newTestClient("alice")
+			a.mode = tt.mode
+			b := newTestClient("bob")
+			s.join(a)
+			s.join(b)
+
+			s.handleUpdate(context.Background(), a, ClientMsg{Type: msgUpdate, Update: "dXNlcg=="})
+			s.handleCommit(context.Background(), a, ClientMsg{Type: msgCommit, Update: "c25hcA==", Title: "T", Body: `{"type":"doc"}`})
+
+			replay, err := store.LoadReplay(context.Background(), "doc-1")
+			require.NoError(t, err)
+			assert.Nil(t, replay.Snapshot, "no snapshot is stored")
+			assert.Empty(t, replay.Increments, "no update is stored")
+			assert.Zero(t, writer.count(), "the canonical body is not written")
+			select {
+			case raw := <-b.send:
+				t.Fatalf("a refused write reached a peer: %s", raw)
+			default:
+			}
+		})
 	}
 }
 

@@ -107,6 +107,20 @@ func (r *DocsRepo) SetArchived(ctx context.Context, id string, archived bool, ev
 	})
 }
 
+// SetLocked flips a doc's locked flag without bumping its version or its updated time.
+func (r *DocsRepo) SetLocked(ctx context.Context, id string, locked bool, evts ...eventbus.OutboxEvent) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		n, err := r.q.WithTx(tx).SetDocLocked(ctx, sqlcgen.SetDocLockedParams{Locked: int64(boolInt(locked)), ID: id})
+		if err != nil {
+			return fmt.Errorf("set locked %s: %w", id, err)
+		}
+		if n == 0 {
+			return fmt.Errorf("set locked %s: %w", id, apperrs.ErrNotFound)
+		}
+		return enqueueDocsOutbox(ctx, tx, evts)
+	})
+}
+
 // CommitBody writes converged state without a version row; FTS re-indexes on commit, not per keystroke.
 func (r *DocsRepo) CommitBody(ctx context.Context, d *docs.Doc, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
@@ -193,6 +207,7 @@ func toDoc(row sqlcgen.Doc) *docs.Doc {
 		Body:      row.Body,
 		Version:   int(row.Version),
 		Archived:  row.Archived != 0,
+		Locked:    row.Locked != 0,
 		CreatedBy: row.CreatedBy,
 		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(),
 		UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),

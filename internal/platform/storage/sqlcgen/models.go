@@ -322,6 +322,7 @@ type Doc struct {
 	BodyMd    string
 	ProjectID sql.NullString
 	CreatedBy string
+	Locked    int64
 }
 
 type DocVersion struct {

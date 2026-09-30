@@ -101,7 +101,7 @@ func (q *Queries) DeleteDoc(ctx context.Context, id string) (int64, error) {
 }
 
 const getDoc = `-- name: GetDoc :one
-SELECT id, title, body, version, created_at, updated_at, archived, body_md, project_id, created_by FROM docs WHERE id = ?
+SELECT id, title, body, version, created_at, updated_at, archived, body_md, project_id, created_by, locked FROM docs WHERE id = ?
 `
 
 func (q *Queries) GetDoc(ctx context.Context, id string) (Doc, error) {
@@ -118,6 +118,7 @@ func (q *Queries) GetDoc(ctx context.Context, id string) (Doc, error) {
 		&i.BodyMd,
 		&i.ProjectID,
 		&i.CreatedBy,
+		&i.Locked,
 	)
 	return i, err
 }
@@ -252,7 +253,7 @@ func (q *Queries) ListDocVersions(ctx context.Context, docID string) ([]ListDocV
 }
 
 const listDocs = `-- name: ListDocs :many
-SELECT id, title, body, version, created_at, updated_at, archived, body_md, project_id, created_by FROM docs ORDER BY created_at
+SELECT id, title, body, version, created_at, updated_at, archived, body_md, project_id, created_by, locked FROM docs ORDER BY created_at
 `
 
 func (q *Queries) ListDocs(ctx context.Context) ([]Doc, error) {
@@ -275,6 +276,7 @@ func (q *Queries) ListDocs(ctx context.Context) ([]Doc, error) {
 			&i.BodyMd,
 			&i.ProjectID,
 			&i.CreatedBy,
+			&i.Locked,
 		); err != nil {
 			return nil, err
 		}
@@ -290,7 +292,7 @@ func (q *Queries) ListDocs(ctx context.Context) ([]Doc, error) {
 }
 
 const listDocsByProject = `-- name: ListDocsByProject :many
-SELECT id, title, body, version, created_at, updated_at, archived, body_md, project_id, created_by FROM docs WHERE project_id = ? ORDER BY created_at
+SELECT id, title, body, version, created_at, updated_at, archived, body_md, project_id, created_by, locked FROM docs WHERE project_id = ? ORDER BY created_at
 `
 
 func (q *Queries) ListDocsByProject(ctx context.Context, projectID sql.NullString) ([]Doc, error) {
@@ -313,6 +315,7 @@ func (q *Queries) ListDocsByProject(ctx context.Context, projectID sql.NullStrin
 			&i.BodyMd,
 			&i.ProjectID,
 			&i.CreatedBy,
+			&i.Locked,
 		); err != nil {
 			return nil, err
 		}
@@ -339,6 +342,23 @@ type SetDocArchivedParams struct {
 
 func (q *Queries) SetDocArchived(ctx context.Context, arg SetDocArchivedParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, setDocArchived, arg.Archived, arg.UpdatedAt, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const setDocLocked = `-- name: SetDocLocked :execrows
+UPDATE docs SET locked = ? WHERE id = ?
+`
+
+type SetDocLockedParams struct {
+	Locked int64
+	ID     string
+}
+
+func (q *Queries) SetDocLocked(ctx context.Context, arg SetDocLockedParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, setDocLocked, arg.Locked, arg.ID)
 	if err != nil {
 		return 0, err
 	}

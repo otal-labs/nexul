@@ -49,4 +49,6 @@ type AccessChecker interface {
 // DocWriter commits skip heavyweight version rows: no version per keystroke or save.
 type DocWriter interface {
 	CommitCollab(ctx context.Context, docID, title, body string) error
+	// Locked reports a doc that refuses edits, so the relay drops its updates instead of storing them.
+	Locked(ctx context.Context, docID string) (bool, error)
 }

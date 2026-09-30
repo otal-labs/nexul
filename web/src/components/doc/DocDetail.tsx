@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { DocThreadButton } from "@/components/chat/DocThreadButton";
 import { DocActionsMenu } from "@/components/doc/DocActionsMenu";
 import { DocBodySection } from "@/components/doc/DocBodySection";
+import { DocLockedSignal } from "@/components/doc/DocLockedSignal";
 import { DocPresenceBar } from "@/components/doc/DocPresenceBar";
 import { DocTitleField } from "@/components/doc/DocTitleField";
 import { DocToc } from "@/components/doc/DocToc";
@@ -52,7 +53,8 @@ export const DocDetail = ({
   // Display name for the collab presence comes from useFetchMe, not sessionStore (F5).
   const { data: me } = useFetchMe();
   const { name: userName, avatar: userAvatar } = collabIdentity(me);
-  const session = useCollabSession(doc.id, "edit", userName, token, {
+  // A locked doc opens no edit session, so the title and body render read-only until it is unlocked.
+  const session = useCollabSession(doc.locked ? undefined : doc.id, "edit", userName, token, {
     ...(wsFactory ? { wsFactory } : {}),
     ...(userAvatar ? { avatar: userAvatar } : {}),
   });
@@ -112,6 +114,7 @@ export const DocDetail = ({
           ← All docs
         </Link>
         <div className="flex items-center gap-1">
+          {doc.locked && <DocLockedSignal docId={doc.id} />}
           <PlaysMenu workspaceId={workspaceId} projectId={doc.project_id} docId={doc.id} />
           <DocThreadButton workspaceId={workspaceId} docId={doc.id} />
           <DocActionsMenu

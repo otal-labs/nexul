@@ -88,7 +88,7 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	conn.SetReadLimit(MaxFrameBytes)
 
-	c := &client{id: actor.ID, send: make(chan []byte, sendBuffer), done: make(chan struct{})}
+	c := &client{id: actor.ID, mode: mode, send: make(chan []byte, sendBuffer), done: make(chan struct{})}
 	s := h.session(docID)
 	s.join(c)
 	h.log.Info("collab joined", "doc", docID, "user", actor.ID, "mode", mode)

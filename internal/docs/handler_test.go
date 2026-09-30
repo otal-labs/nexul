@@ -205,6 +205,26 @@ func TestDocsHandler_ArchiveRestore(t *testing.T) {
 	})
 }
 
+func TestDocsHandler_LockUnlock(t *testing.T) {
+	h, _ := newDocsHandler()
+	created := decodeDoc(t, serve(t, h, http.MethodPost, "/api/docs", `{"project_id":"project-1","title":"A","body":"1"}`))
+
+	rec := serve(t, h, http.MethodPost, "/api/docs/"+created.ID+"/lock", "")
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.True(t, decodeDoc(t, rec).Locked)
+
+	rec = serve(t, h, http.MethodPut, "/api/docs/"+created.ID, `{"title":"B","body":"2"}`)
+	assert.Equal(t, http.StatusConflict, rec.Code, "a locked doc refuses an edit")
+	assert.Contains(t, rec.Body.String(), "locked")
+
+	rec = serve(t, h, http.MethodPost, "/api/docs/"+created.ID+"/unlock", "")
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.False(t, decodeDoc(t, rec).Locked)
+
+	rec = serve(t, h, http.MethodPost, "/api/docs/nope/lock", "")
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+}
+
 func TestDocsHandler_Forbidden(t *testing.T) {
 	repo := newFakeRepo()
 	created, err := newTestService(repo).Create(testCtx(), "project-1", "A", "1")

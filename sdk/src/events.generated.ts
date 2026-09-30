@@ -39,9 +39,9 @@ export interface EventPayloads {
   "dns.gateway_changed": { "gateway_id": string; "kind"?: string; "docker_network"?: string; "action": "created" | "deleted"; };
   "dns.record_changed": { "zone_id": string; "zone"?: string; "record_id"?: string; "action": "created" | "updated" | "deleted"; "type"?: string; "name"?: string; "service"?: string; };
   "dns.tunnel_changed": { "tunnel_id": string; "name"?: string; "action": "created" | "routed" | "rotated" | "deleted"; "hostname"?: string; "service"?: string; };
-  "doc.created": { "doc": { "id": string; "title": string; "body"?: string; "version": number; "archived"?: boolean; "created_at"?: string; "updated_at"?: string; }; "actor_id"?: string; "mentioned_user_ids"?: string[]; };
+  "doc.created": { "doc": { "id": string; "title": string; "body"?: string; "version": number; "archived"?: boolean; "locked"?: boolean; "created_at"?: string; "updated_at"?: string; }; "actor_id"?: string; "mentioned_user_ids"?: string[]; };
   "doc.deleted": { "id": string; "title": string; };
-  "doc.updated": { "doc": { "id": string; "title": string; "body"?: string; "version": number; "archived"?: boolean; "created_at"?: string; "updated_at"?: string; }; "actor_id"?: string; "mentioned_user_ids"?: string[]; };
+  "doc.updated": { "doc": { "id": string; "title": string; "body"?: string; "version": number; "archived"?: boolean; "locked"?: boolean; "created_at"?: string; "updated_at"?: string; }; "actor_id"?: string; "mentioned_user_ids"?: string[]; };
   "git.branch_deleted": { "owner": string; "repo": string; "branch": string; };
   "git.pr_closed": { "owner": string; "repo": string; "pr": Record<string, unknown>; };
   "git.pr_comment": { "owner": string; "repo": string; "pr": { "number": number; }; "comment": { "body": string; "author": string; }; };
@@ -255,9 +255,9 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "dns.gateway_changed": {"gateway_id":"fixture-gateway_id","kind":"fixture-kind","docker_network":"fixture-docker_network","action":"created"},
   "dns.record_changed": {"zone_id":"fixture-zone_id","zone":"fixture-zone","record_id":"fixture-record_id","action":"created","type":"fixture-type","name":"fixture-name","service":"fixture-service"},
   "dns.tunnel_changed": {"tunnel_id":"fixture-tunnel_id","name":"fixture-name","action":"created","hostname":"fixture-hostname","service":"fixture-service"},
-  "doc.created": {"doc":{"id":"fixture-id","title":"fixture-title","body":"fixture-body","version":1,"archived":false,"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"},"actor_id":"fixture-actor_id","mentioned_user_ids":["fixture-mentioned_user_ids"]},
+  "doc.created": {"doc":{"id":"fixture-id","title":"fixture-title","body":"fixture-body","version":1,"archived":false,"locked":false,"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"},"actor_id":"fixture-actor_id","mentioned_user_ids":["fixture-mentioned_user_ids"]},
   "doc.deleted": {"id":"fixture-id","title":"fixture-title"},
-  "doc.updated": {"doc":{"id":"fixture-id","title":"fixture-title","body":"fixture-body","version":1,"archived":false,"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"},"actor_id":"fixture-actor_id","mentioned_user_ids":["fixture-mentioned_user_ids"]},
+  "doc.updated": {"doc":{"id":"fixture-id","title":"fixture-title","body":"fixture-body","version":1,"archived":false,"locked":false,"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"},"actor_id":"fixture-actor_id","mentioned_user_ids":["fixture-mentioned_user_ids"]},
   "git.branch_deleted": {"owner":"fixture-owner","repo":"fixture-repo","branch":"fixture-branch"},
   "git.pr_closed": {"owner":"fixture-owner","repo":"fixture-repo","pr":{}},
   "git.pr_comment": {"owner":"fixture-owner","repo":"fixture-repo","pr":{"number":1},"comment":{"body":"fixture-body","author":"fixture-author"}},

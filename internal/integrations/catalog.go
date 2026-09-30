@@ -36,6 +36,7 @@ var catalogSchemas = map[string]string{
 					"body": {"type": "string"},
 					"version": {"type": "integer"},
 					"archived": {"type": "boolean"},
+					"locked": {"type": "boolean"},
 					"created_at": {"type": "string", "format": "date-time"},
 					"updated_at": {"type": "string", "format": "date-time"}
 				}
@@ -58,6 +59,7 @@ var catalogSchemas = map[string]string{
 					"body": {"type": "string"},
 					"version": {"type": "integer"},
 					"archived": {"type": "boolean"},
+					"locked": {"type": "boolean"},
 					"created_at": {"type": "string", "format": "date-time"},
 					"updated_at": {"type": "string", "format": "date-time"}
 				}

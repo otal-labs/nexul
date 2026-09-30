@@ -3,6 +3,8 @@ import { SettingsIcon } from "lucide-react";
 import { DocTicketsSection } from "@/components/doc/DocTicketsSection";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useSetDocLocked } from "@/hooks/DocHooks";
+import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import type { Doc } from "@/models/Doc";
 
 interface DocActionsMenuProps {
@@ -20,6 +22,8 @@ export const DocActionsMenu = ({
   onArchive,
   onRestore,
 }: DocActionsMenuProps) => {
+  const canWrite = useHasPermission("docs:write");
+  const setLocked = useSetDocLocked();
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -34,6 +38,16 @@ export const DocActionsMenu = ({
         <Button variant="ghost" size="sm" className="w-full justify-start" onClick={onPermissions}>
           Permissions
         </Button>
+        {canWrite && !doc.locked && (
+          <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => setLocked.mutate({ id: doc.id, locked: true })}>
+            Lock
+          </Button>
+        )}
+        {canWrite && doc.locked && (
+          <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => setLocked.mutate({ id: doc.id, locked: false })}>
+            Unlock
+          </Button>
+        )}
         {!doc.archived && (
           <Button variant="ghost" size="sm" className="w-full justify-start" onClick={onArchive}>
             Archive

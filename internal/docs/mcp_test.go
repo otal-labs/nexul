@@ -107,9 +107,29 @@ func TestDocUpdate_OmittedFieldsKeepTheirValues(t *testing.T) {
 	assert.Equal(t, 3, out.(docResult).Version, "an empty update saves nothing")
 }
 
-func TestArchiveErr_SaysWhatWasSaved(t *testing.T) {
-	assert.Equal(t, apperrs.ErrForbidden, archiveErr(nil, apperrs.ErrForbidden))
-	err := archiveErr([]string{"title"}, apperrs.ErrForbidden)
+func TestDocUpdate_LockOrdersAroundTheEdit(t *testing.T) {
+	s := newTestService(newFakeRepo())
+	d := mustDoc(t, s, "project-1", "Spec", "body")
+
+	out, err := callTool(testCtx(), t, s, "doc_update", `{"id":"`+d.ID+`","title":"Final","locked":true}`)
+	require.NoError(t, err, "the title saves before the lock lands")
+	got := out.(docResult)
+	assert.Equal(t, "Final", got.Title)
+	assert.True(t, got.Locked)
+
+	_, err = callTool(testCtx(), t, s, "doc_update", `{"id":"`+d.ID+`","body":"changed"}`)
+	require.ErrorIs(t, err, apperrs.ErrConflict, "a locked doc refuses a body")
+
+	out, err = callTool(testCtx(), t, s, "doc_update", `{"id":"`+d.ID+`","body":"changed","locked":false}`)
+	require.NoError(t, err, "the unlock lands before the body saves")
+	got = out.(docResult)
+	assert.Equal(t, "changed", got.Body)
+	assert.False(t, got.Locked)
+}
+
+func TestStepErr_SaysWhatWasSaved(t *testing.T) {
+	assert.Equal(t, apperrs.ErrForbidden, stepErr(nil, "archived", apperrs.ErrForbidden))
+	err := stepErr([]string{"title"}, "archived", apperrs.ErrForbidden)
 	require.ErrorIs(t, err, apperrs.ErrForbidden)
 	assert.Contains(t, err.Error(), "already applied: title")
 	var partial *mcptool.PartialError

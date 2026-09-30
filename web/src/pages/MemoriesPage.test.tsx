@@ -112,19 +112,24 @@ describe("MemoriesPage", () => {
     await vi.waitFor(async () => expect(await rowSwitch("Naming rules")).not.toBeChecked());
   });
 
-  it("disables the row switch and hides Clone for a role without memories:write and memories:clone", async () => {
+  it("disables the row switch and leaves Clone out of the menu for a role without memories:write and memories:clone", async () => {
+    const user = userEvent.setup();
     renderPage("/memories", ["memories:read", "memories:delete"]);
 
     // Delete's menu shows once the role has loaded, so what follows is the role's answer, not a pending fetch's.
-    await screen.findByRole("button", { name: "More actions for Naming rules" });
+    const menu = await screen.findByRole("button", { name: "More actions for Naming rules" });
     expect(await rowSwitch("Naming rules")).toBeDisabled();
-    expect(screen.queryByRole("button", { name: "Clone Naming rules" })).not.toBeInTheDocument();
+    await user.click(menu);
+    expect(await screen.findByRole("menuitem", { name: "Delete" })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "Clone" })).not.toBeInTheDocument();
   });
 
-  it("shows Clone to a role with memories:clone", async () => {
+  it("offers Clone in the row menu to a role with memories:clone", async () => {
+    const user = userEvent.setup();
     renderPage("/memories", ["memories:read", "memories:clone"]);
 
-    expect(await screen.findByRole("button", { name: "Clone Naming rules" })).toBeInTheDocument();
+    await user.click(await screen.findByRole("button", { name: "More actions for Naming rules" }));
+    expect(await screen.findByRole("menuitem", { name: "Clone" })).toBeInTheDocument();
   });
 
   it("says so, and offers a writer New memory, when there are none", async () => {
