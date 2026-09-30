@@ -53,6 +53,10 @@ type docThreadRequest struct {
 	WorkspaceID string `json:"workspace_id"`
 }
 
+type renameConversationRequest struct {
+	Name string `json:"name"`
+}
+
 type postMessageRequest struct {
 	Body string `json:"body"`
 }
@@ -68,6 +72,8 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/chat/tickets/thread-status", h.hasTicketThreads)
 	mux.HandleFunc("POST /api/chat/docs/{docID}/thread", h.getOrCreateDocThread)
 	mux.HandleFunc("POST /api/chat/projects/{projectID}/interview-thread", h.getOrCreateInterviewThread)
+	mux.HandleFunc("PATCH /api/chat/conversations/{id}", h.renameConversation)
+	mux.HandleFunc("DELETE /api/chat/conversations/{id}", h.deleteConversation)
 	mux.HandleFunc("GET /api/chat/conversations/{id}/messages", h.listMessages)
 	mux.HandleFunc("POST /api/chat/conversations/{id}/messages", h.postMessage)
 	mux.HandleFunc("POST /api/chat/conversations/{id}/read", h.markRead)
@@ -112,6 +118,28 @@ func (h *Handler) createVoiceChannel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusCreated, c)
+}
+
+func (h *Handler) renameConversation(w http.ResponseWriter, r *http.Request) {
+	var req renameConversationRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	c, err := h.svc.RenameChannel(r.Context(), r.PathValue("id"), req.Name)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, c)
+}
+
+func (h *Handler) deleteConversation(w http.ResponseWriter, r *http.Request) {
+	if _, err := h.svc.DeleteChannel(r.Context(), r.PathValue("id")); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) createDM(w http.ResponseWriter, r *http.Request) {

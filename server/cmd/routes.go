@@ -379,6 +379,8 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("POST", "/api/chat/conversations/{id}/read", "Mark a conversation read", "chat")
 	spec.Register("GET", "/api/chat/unread", "Per-conversation unread counts", "chat")
 	spec.Register("POST", "/api/chat/voice-channels", "Create a voice channel", "chat")
+	spec.Register("PATCH", "/api/chat/conversations/{id}", "Rename a channel or voice channel", "chat")
+	spec.Register("DELETE", "/api/chat/conversations/{id}", "Delete a channel or voice channel and its messages", "chat")
 	spec.Register("POST", "/api/voice/{conversationID}/token", "Mint a LiveKit join token for a voice channel", "voice")
 	spec.Register("POST", "/api/voice/{conversationID}/leave", "Leave a voice channel (removes optimistic presence)", "voice")
 	spec.Register("GET", "/api/voice/occupancy", "Current voice channel occupancy", "voice")

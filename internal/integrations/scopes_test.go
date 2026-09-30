@@ -196,6 +196,12 @@ func TestScopeAllows(t *testing.T) {
 		{"integrations grantable: write", "POST", "/api/integrations", []Scope{Scope("integrations:write")}, true},
 		{"connectors grantable: read", "GET", "/api/connectors", []Scope{Scope("connectors:read")}, true},
 		{"connectors has no delete", "DELETE", "/api/connectors/c1", []Scope{Scope("connectors:read"), Scope("connectors:write")}, false},
+		{"a channel is created with channels:write", "POST", "/api/chat/channels", []Scope{Scope("channels:write")}, true},
+		{"chat:write no longer creates a channel", "POST", "/api/chat/voice-channels", []Scope{Scope("chat:write")}, false},
+		{"a channel is renamed with channels:write", "PATCH", "/api/chat/conversations/c1", []Scope{Scope("channels:write")}, true},
+		{"a channel is deleted with channels:delete", "DELETE", "/api/chat/conversations/c1", []Scope{Scope("channels:delete")}, true},
+		{"channels:write does not delete one", "DELETE", "/api/chat/conversations/c1", []Scope{Scope("channels:write"), Scope("chat:delete")}, false},
+		{"a DM still takes chat:write", "POST", "/api/chat/dms", []Scope{Scope("chat:write")}, true},
 		{"alias: agent routes to chat", "POST", "/api/agent/conversations/1/interrupt", []Scope{Scope("chat:write")}, true},
 		{"alias: agent denied with its own name", "POST", "/api/agent/conversations/1/interrupt", []Scope{Scope("agent:write")}, false},
 		{"alias: automation-secrets routes to automations", "GET", "/api/automation-secrets", []Scope{Scope("automations:read")}, true},
@@ -231,7 +237,7 @@ func TestCatalog_CoversEveryGrantableScopeOnce(t *testing.T) {
 		seen[sc] = true
 	}
 	assert.Len(t, seen, len(allScopes))
-	assert.Len(t, seen, 80)
+	assert.Len(t, seen, 83)
 }
 
 func TestCatalog_EveryValueParses(t *testing.T) {

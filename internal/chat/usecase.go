@@ -92,19 +92,18 @@ func (s *Service) SetDocAccess(a DocAccess) {
 	s.docAccess = a
 }
 
-// CreateChannel creates a workspace-scoped public channel; it takes chat:write in the workspace.
+// CreateChannel creates a workspace-scoped public channel; it takes channels:write in the workspace.
 func (s *Service) CreateChannel(ctx context.Context, workspaceID, creatorUserID, name string) (*Conversation, error) {
-	return s.createChannelKind(ctx, workspaceID, creatorUserID, name, KindChannel, true)
+	return s.createChannelKind(ctx, workspaceID, creatorUserID, name, KindChannel, false)
 }
 
 // CreateVoiceChannel creates a public voice channel; internal/voice owns the LiveKit side.
 func (s *Service) CreateVoiceChannel(ctx context.Context, workspaceID, creatorUserID, name string) (*Conversation, error) {
-	return s.createChannelKind(ctx, workspaceID, creatorUserID, name, KindVoiceChannel, true)
+	return s.createChannelKind(ctx, workspaceID, creatorUserID, name, KindVoiceChannel, false)
 }
 
-// createChannelKind is CreateChannel/CreateVoiceChannel's shared validate-and-create path; gated says whether the
-// caller needs chat:write, which a workspace's own #general, made as the workspace is born, does not.
-func (s *Service) createChannelKind(ctx context.Context, workspaceID, creatorUserID, name string, kind Kind, gated bool) (*Conversation, error) {
+// createChannelKind is the shared create path; general marks a workspace's own #general, which needs no channels:write.
+func (s *Service) createChannelKind(ctx context.Context, workspaceID, creatorUserID, name string, kind Kind, general bool) (*Conversation, error) {
 	workspaceID = strings.TrimSpace(workspaceID)
 	if workspaceID == "" {
 		return nil, fmt.Errorf("%w: workspace id is required", apperrs.ErrInvalid)
@@ -113,12 +112,12 @@ func (s *Service) createChannelKind(ctx context.Context, workspaceID, creatorUse
 	if creatorUserID == "" {
 		return nil, fmt.Errorf("%w: creator id is required", apperrs.ErrInvalid)
 	}
-	name = strings.TrimSpace(name)
-	if name == "" {
-		return nil, fmt.Errorf("%w: channel name is required", apperrs.ErrInvalid)
+	name, err := channelName(name)
+	if err != nil {
+		return nil, err
 	}
-	if gated {
-		if err := s.require(ctx, workspaceID, permissions.ChatWrite); err != nil {
+	if !general {
+		if err := s.require(ctx, workspaceID, permissions.ChannelsWrite); err != nil {
 			return nil, err
 		}
 	}
@@ -126,17 +125,96 @@ func (s *Service) createChannelKind(ctx context.Context, workspaceID, creatorUse
 		WorkspaceID: workspaceID,
 		Kind:        kind,
 		Name:        name,
+		General:     general,
 		CreatedBy:   creatorUserID,
 	}, []string{creatorUserID})
 }
 
+// channelName is the one validation a channel's name goes through, on create and on rename.
+func channelName(name string) (string, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return "", fmt.Errorf("%w: channel name is required", apperrs.ErrInvalid)
+	}
+	return name, nil
+}
+
 // EnsureGeneralChannel idempotently creates a workspace's #general channel (tenancy's ChannelGate seam).
 func (s *Service) EnsureGeneralChannel(ctx context.Context, workspaceID, creatorUserID string) error {
-	_, err := s.createChannelKind(ctx, workspaceID, creatorUserID, GeneralChannelName, KindChannel, false)
+	_, err := s.createChannelKind(ctx, workspaceID, creatorUserID, GeneralChannelName, KindChannel, true)
 	if err != nil && !errors.Is(err, apperrs.ErrConflict) {
 		return fmt.Errorf("ensure general channel for workspace %s: %w", workspaceID, err)
 	}
 	return nil
+}
+
+// RenameChannel renames a text or voice channel through the same name rules as creating one; it takes channels:write.
+func (s *Service) RenameChannel(ctx context.Context, id, name string) (*Conversation, error) {
+	name, err := channelName(name)
+	if err != nil {
+		return nil, err
+	}
+	c, err := s.manageableChannel(ctx, id, permissions.ChannelsWrite)
+	if err != nil {
+		return nil, err
+	}
+	if c.Name == name {
+		return c, nil
+	}
+	renamed := *c
+	renamed.Name, renamed.UpdatedAt = name, s.now().UTC()
+	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicConversationUpdated, Payload: ConversationUpdatedEvent{
+		ConversationID: c.ID, WorkspaceID: c.WorkspaceID, Kind: c.Kind, Name: name, PreviousName: c.Name, ActorID: actorID(ctx),
+	}}
+	if err := s.repo.RenameConversation(ctx, c.ID, name, renamed.UpdatedAt, evt); err != nil {
+		return nil, fmt.Errorf("rename %s conversation: %w", c.Kind, err)
+	}
+	return &renamed, nil
+}
+
+// DeleteChannel deletes a text or voice channel with its messages under channels:delete; #general is never deleted.
+func (s *Service) DeleteChannel(ctx context.Context, id string) (*Conversation, error) {
+	c, err := s.manageableChannel(ctx, id, permissions.ChannelsDelete)
+	if err != nil {
+		return nil, err
+	}
+	if c.General {
+		return nil, fmt.Errorf("%w: #%s is the workspace's general channel, which can be renamed but not deleted", apperrs.ErrInvalid, c.Name)
+	}
+	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicConversationDeleted, Payload: ConversationDeletedEvent{
+		ConversationID: c.ID, WorkspaceID: c.WorkspaceID, Kind: c.Kind, Name: c.Name, ActorID: actorID(ctx),
+	}}
+	if err := s.repo.DeleteConversation(ctx, c.ID, evt); err != nil {
+		return nil, fmt.Errorf("delete %s conversation: %w", c.Kind, err)
+	}
+	return c, nil
+}
+
+// manageableChannel checks, in order, that the caller reads the conversation, that it is a channel, and holds action.
+func (s *Service) manageableChannel(ctx context.Context, id string, action permissions.Action) (*Conversation, error) {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return nil, fmt.Errorf("%w: conversation id is required", apperrs.ErrInvalid)
+	}
+	c, err := s.repo.GetConversation(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get conversation %s: %w", id, err)
+	}
+	if err := s.requireRead(ctx, c, ""); err != nil {
+		return nil, err
+	}
+	if c.Kind != KindChannel && c.Kind != KindVoiceChannel {
+		return nil, fmt.Errorf("%w: only a channel or voice channel can be renamed or deleted, not a %s", apperrs.ErrInvalid, c.Kind)
+	}
+	if err := s.require(ctx, c.WorkspaceID, action); err != nil {
+		return nil, err
+	}
+	return c, nil
+}
+
+func actorID(ctx context.Context) string {
+	actor, _ := identity.ActorFromCtx(ctx)
+	return actor.ID
 }
 
 // CreateDM creates a direct-message conversation; v1 has no dedup lookup, each call is a new one.

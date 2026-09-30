@@ -109,6 +109,15 @@ func (c *Client) ListParticipants(ctx context.Context, room string) ([]Participa
 	return out, nil
 }
 
+// DeleteRoom ends room, disconnecting everyone in it; a room LiveKit no longer has counts as already gone.
+func (c *Client) DeleteRoom(ctx context.Context, room string) error {
+	err := c.call(ctx, "DeleteRoom", map[string]any{"roomCreate": true}, map[string]any{"room": room}, nil)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return nil
+	}
+	return err
+}
+
 // call issues one Twirp RoomService request; grants are per-method (roomList vs roomAdmin).
 func (c *Client) call(ctx context.Context, method string, grant map[string]any, body any, out any) (err error) {
 	now := time.Now().UTC()
@@ -145,6 +154,9 @@ func (c *Client) call(ctx context.Context, method string, grant map[string]any, 
 	}
 	if resp.StatusCode >= 500 {
 		return apperrs.Retryable(fmt.Errorf("livekit %s: status %d", method, resp.StatusCode))
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		return fmt.Errorf("%w: livekit %s: %s", apperrs.ErrNotFound, method, strings.TrimSpace(string(respBody)))
 	}
 	if resp.StatusCode >= 400 {
 		return fmt.Errorf("%w: livekit %s: status %d: %s", apperrs.ErrUnauthorized, method, resp.StatusCode, strings.TrimSpace(string(respBody)))

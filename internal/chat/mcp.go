@@ -44,6 +44,15 @@ type messagePostIn struct {
 	Body        string `json:"body" jsonschema:"The message as markdown. @login mentions a member and @Agent starts an agent turn."`
 }
 
+type conversationUpdateIn struct {
+	ID   string `json:"id" jsonschema:"The channel's or voice channel's id, from conversation_list."`
+	Name string `json:"name,omitempty" jsonschema:"The new name, without the leading #; omit to keep the current one."`
+}
+
+type conversationDeleteIn struct {
+	ID string `json:"id" jsonschema:"The channel's or voice channel's id, from conversation_list."`
+}
+
 type conversationResult struct {
 	ID             string    `json:"id"`
 	Kind           Kind      `json:"kind"`
@@ -68,7 +77,7 @@ type messageResult struct {
 
 // MCPTools returns the chat tools; each acts as the caller the identity context carries.
 func MCPTools(s *Service) []mcptool.Tool {
-	return []mcptool.Tool{conversationListTool(s), messageListTool(s), messagePostTool(s)}
+	return []mcptool.Tool{conversationListTool(s), conversationUpdateTool(s), conversationDeleteTool(s), messageListTool(s), messagePostTool(s)}
 }
 
 func conversationListTool(s *Service) mcptool.Tool {
@@ -89,13 +98,54 @@ func conversationListTool(s *Service) mcptool.Tool {
 			}
 			out := make([]conversationResult, 0, len(cs))
 			for _, c := range cs {
-				out = append(out, conversationResult{
-					ID: c.ID, Kind: c.Kind, Name: c.Name, TicketID: c.TicketID, DocID: c.DocID, ProjectID: c.ProjectID,
-					ParticipantIDs: c.ParticipantIDs, UpdatedAt: c.UpdatedAt,
-				})
+				out = append(out, toConversationResult(c))
 			}
 			return mcptool.Paginate(out, in.PageArgs), nil
 		})
+}
+
+func conversationUpdateTool(s *Service) mcptool.Tool {
+	return mcptool.New("conversation_update", "Rename channel",
+		"Renames a channel or voice channel; direct messages and doc, ticket, or interview threads have no name to change. "+
+			"It takes channels:write, and a name another channel in the workspace already has is refused. "+
+			"Omitting name leaves the channel as it is. Returns the channel with its new name.",
+		mcptool.Hints{Idempotent: true, Local: true},
+		func(ctx context.Context, in conversationUpdateIn) (any, error) {
+			if in.Name == "" {
+				c, err := s.GetConversation(ctx, in.ID)
+				if err != nil {
+					return nil, err
+				}
+				return toConversationResult(c), nil
+			}
+			c, err := s.RenameChannel(ctx, in.ID, in.Name)
+			if err != nil {
+				return nil, err
+			}
+			return toConversationResult(c), nil
+		})
+}
+
+func conversationDeleteTool(s *Service) mcptool.Tool {
+	return mcptool.New("conversation_delete", "Delete channel",
+		"Deletes a channel or voice channel and every message in it, for good; a voice channel's call ends for everyone in it. "+
+			"It takes channels:delete, and the workspace's general channel is never deleted. "+
+			"Direct messages and doc, ticket, or interview threads are not deleted here. Returns the deleted id.",
+		mcptool.Hints{Idempotent: true},
+		func(ctx context.Context, in conversationDeleteIn) (any, error) {
+			c, err := s.DeleteChannel(ctx, in.ID)
+			if err != nil {
+				return nil, err
+			}
+			return map[string]any{"id": c.ID, "deleted": true}, nil
+		})
+}
+
+func toConversationResult(c *Conversation) conversationResult {
+	return conversationResult{
+		ID: c.ID, Kind: c.Kind, Name: c.Name, TicketID: c.TicketID, DocID: c.DocID, ProjectID: c.ProjectID,
+		ParticipantIDs: c.ParticipantIDs, UpdatedAt: c.UpdatedAt,
+	}
 }
 
 func messageListTool(s *Service) mcptool.Tool {

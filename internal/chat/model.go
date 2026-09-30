@@ -46,6 +46,8 @@ type Conversation struct {
 	CreatedBy       string    `json:"created_by"`
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`
+	// General marks a workspace's #general, which may be renamed but never deleted.
+	General bool `json:"general,omitempty"`
 	// AgentThreadID is the durable T3 thread id, reused across mentions; internal to the agent pipeline.
 	AgentThreadID string `json:"-"`
 	// AgentSyncedAt is how far the agent pipeline has sent history as turn context; only later messages are new.

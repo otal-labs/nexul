@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -10,6 +11,8 @@ import (
 
 	"github.com/otal-labs/nexul/internal/chat"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/identity"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 var chatFixedNow = time.Date(2026, 8, 26, 12, 0, 0, 0, time.UTC)
@@ -462,4 +465,70 @@ func TestChatRepo_SetAgentThread_And_SetAgentSyncedAt(t *testing.T) {
 	assert.Equal(t, syncedAt.Unix(), got.AgentSyncedAt.Unix())
 
 	require.ErrorIs(t, s.Chat.SetAgentThread(context.Background(), "missing", "x"), apperrs.ErrNotFound)
+}
+
+// allowAll passes every permission check, for tests about what a change writes rather than who may make it.
+type allowAll struct{}
+
+func (allowAll) Require(context.Context, string, permissions.Action) error { return nil }
+
+func outboxPayload(t *testing.T, s *Store, topic string) []map[string]any {
+	t.Helper()
+	rows, err := s.db.QueryContext(t.Context(), `SELECT payload FROM outbox WHERE topic = ? ORDER BY created_at`, topic)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, rows.Close()) }()
+	var out []map[string]any
+	for rows.Next() {
+		var raw []byte
+		require.NoError(t, rows.Scan(&raw))
+		var p map[string]any
+		require.NoError(t, json.Unmarshal(raw, &p))
+		out = append(out, p)
+	}
+	require.NoError(t, rows.Err())
+	return out
+}
+
+func TestChatChannels_EveryChangeIsWrittenToTheOutboxWithIt(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	seedChatUser(t, s, "u-1")
+	svc := chat.NewService(s.Chat)
+	svc.SetGate(allowAll{})
+	ctx := identity.WithActor(t.Context(), identity.Actor{ID: "u-1"})
+
+	created, err := svc.CreateChannel(ctx, "workspace-default", "u-1", "eng")
+	require.NoError(t, err)
+	_, err = svc.CreateChannel(ctx, "workspace-default", "u-1", "ops")
+	require.NoError(t, err)
+	_, err = svc.PostMessage(ctx, created.ID, "u-1", "before the rename")
+	require.NoError(t, err)
+
+	createdEvents := outboxPayload(t, s, chat.TopicConversationCreated)
+	require.Len(t, createdEvents, 2)
+	assert.Equal(t, created.ID, createdEvents[0]["conversation"].(map[string]any)["id"])
+
+	_, err = svc.RenameChannel(ctx, created.ID, "OPS")
+	require.ErrorIs(t, err, apperrs.ErrConflict, "a name another channel has, in any case, conflicts as it does on create")
+	assert.Empty(t, outboxPayload(t, s, chat.TopicConversationUpdated), "a refused rename writes no event")
+
+	_, err = svc.RenameChannel(ctx, created.ID, "platform")
+	require.NoError(t, err)
+	assert.Equal(t, []map[string]any{{
+		"conversation_id": created.ID, "workspace_id": "workspace-default", "kind": "channel",
+		"name": "platform", "previous_name": "eng", "actor_id": "u-1",
+	}}, outboxPayload(t, s, chat.TopicConversationUpdated))
+
+	_, err = svc.DeleteChannel(ctx, created.ID)
+	require.NoError(t, err)
+	assert.Equal(t, []map[string]any{{
+		"conversation_id": created.ID, "workspace_id": "workspace-default", "kind": "channel",
+		"name": "platform", "actor_id": "u-1",
+	}}, outboxPayload(t, s, chat.TopicConversationDeleted))
+
+	_, err = s.Chat.GetConversation(t.Context(), created.ID)
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
+	var messages int
+	require.NoError(t, s.db.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM messages WHERE conversation_id = ?`, created.ID).Scan(&messages))
+	assert.Zero(t, messages, "its messages are deleted with it")
 }

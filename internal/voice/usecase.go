@@ -2,6 +2,7 @@ package voice
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -91,6 +92,26 @@ func (s *Service) Leave(ctx context.Context, conversationID, userID string) erro
 	}
 	occupants, changed := s.occupancy.leave(conversationID, userID)
 	return s.publishIfChanged(ctx, conversationID, occupants, changed)
+}
+
+// CloseRoom ends a deleted voice channel's call: LiveKit disconnects everyone still in it and its occupancy empties.
+func (s *Service) CloseRoom(ctx context.Context, conversationID string) error {
+	if s.occupancy.clear(conversationID) {
+		if err := s.publish(ctx, conversationID, []Occupant{}); err != nil {
+			return err
+		}
+	}
+	client, err := s.credentials.LiveKit(ctx)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return nil // no LiveKit connector, so no room to close
+	}
+	if err != nil {
+		return fmt.Errorf("livekit credentials: %w", err)
+	}
+	if err := client.DeleteRoom(ctx, conversationID); err != nil {
+		return fmt.Errorf("close livekit room %s: %w", conversationID, err)
+	}
+	return nil
 }
 
 // Occupancy returns the current occupant list of every voice channel the caller may read, the initial-render data

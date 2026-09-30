@@ -1058,6 +1058,31 @@ var catalogSchemas = map[string]string{
 		"required": ["conversation"],
 		"properties": {"conversation": {"type": "object"}}
 	}`,
+	"chat.conversation.updated": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["conversation_id", "workspace_id", "kind", "name", "previous_name"],
+		"properties": {
+			"conversation_id": {"type": "string"},
+			"workspace_id": {"type": "string"},
+			"kind": {"type": "string", "enum": ["channel", "voice_channel"]},
+			"name": {"type": "string"},
+			"previous_name": {"type": "string"},
+			"actor_id": {"type": "string"}
+		}
+	}`,
+	"chat.conversation.deleted": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["conversation_id", "workspace_id", "kind", "name"],
+		"properties": {
+			"conversation_id": {"type": "string"},
+			"workspace_id": {"type": "string"},
+			"kind": {"type": "string", "enum": ["channel", "voice_channel"]},
+			"name": {"type": "string"},
+			"actor_id": {"type": "string"}
+		}
+	}`,
 	"chat.message.created": `{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",
 		"type": "object",

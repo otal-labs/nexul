@@ -73,11 +73,14 @@ var exactDenylist = map[string]bool{
 	http.MethodPost + " /api/instance/upgrade":    true,
 }
 
-// verbRouteScope names the routes a domain-declared verb gates instead of the method's action (ADR 0057); the
-// /api/services alias serves the stack routes too.
+// verbRouteScope names routes gated by other than the path's domain and method: a verb (ADR 0057) or channels (ADR 0094).
 var verbRouteScope = map[string]Scope{
 	"GET /api/stacks/{id}/services/{name}/logs":   Scope(permissions.StacksLogs),
 	"GET /api/services/{id}/services/{name}/logs": Scope(permissions.StacksLogs),
+	"POST /api/chat/channels":                     Scope(permissions.ChannelsWrite),
+	"POST /api/chat/voice-channels":               Scope(permissions.ChannelsWrite),
+	"PATCH /api/chat/conversations/{id}":          Scope(permissions.ChannelsWrite),
+	"DELETE /api/chat/conversations/{id}":         Scope(permissions.ChannelsDelete),
 }
 
 // verbRoutes matches a request to its verbRouteScope pattern the way the serving mux would.

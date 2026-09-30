@@ -103,6 +103,9 @@ var liveRules = map[string]liveRule{
 	memories.TopicDeleted: memoryDeletedFrame,
 
 	chat.TopicConversationCreated: conversationFrame,
+	chat.TopicConversationUpdated: conversationFrame,
+	// A deleted channel can no longer be read, and every member of its workspace listed it.
+	chat.TopicConversationDeleted: workspaceFrame,
 	chat.TopicMessageCreated:      conversationFrame,
 	chat.TopicMessageUpdated:      conversationFrame,
 	chat.TopicMessageDeleted:      conversationFrame,

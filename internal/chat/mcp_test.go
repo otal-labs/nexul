@@ -50,7 +50,7 @@ func TestMCPTools_Surface(t *testing.T) {
 			assert.Equal(t, []string{"body"}, tool.InputSchema.Required)
 		}
 	}
-	assert.Equal(t, []string{"conversation_list", "message_list", "message_post"}, names)
+	assert.Equal(t, []string{"conversation_list", "conversation_update", "conversation_delete", "message_list", "message_post"}, names)
 }
 
 func keys[V any](m map[string]V) []string {
@@ -89,6 +89,8 @@ func TestMCPTools_Errors(t *testing.T) {
 		{"list a doc thread without docs:thread", as("u-1"), "message_list", `{"doc_id":"doc-1"}`, apperrs.ErrForbidden},
 		{"list a doc thread by id without docs:thread", as("u-1"), "message_list", `{"conversation_id":"` + docThread.ID + `"}`, apperrs.ErrForbidden},
 		{"post to a doc thread without docs:thread", as("u-1"), "message_post", `{"doc_id":"doc-1","body":"hi"}`, apperrs.ErrForbidden},
+		{"rename a missing conversation", as("u-1"), "conversation_update", `{"id":"nope","name":"eng"}`, apperrs.ErrNotFound},
+		{"delete a doc thread", as("owner"), "conversation_delete", `{"id":"` + docThread.ID + `"}`, apperrs.ErrInvalid},
 		{"list conversations without a caller", context.Background(), "conversation_list", `{"workspace_id":"w-1"}`, apperrs.ErrUnauthorized},
 		{"list messages without a caller", context.Background(), "message_list", `{"ticket_id":"t-1"}`, apperrs.ErrUnauthorized},
 		{"post without a caller", context.Background(), "message_post", `{"ticket_id":"t-1","body":"hi"}`, apperrs.ErrUnauthorized},
@@ -179,4 +181,25 @@ func TestConversationList(t *testing.T) {
 	}
 	assert.ElementsMatch(t, []string{general.ID, dm.ID, thread.ID}, ids("u-2"))
 	assert.ElementsMatch(t, []string{general.ID}, ids("u-1"), "no DM of others, no doc thread without docs:thread")
+}
+
+func TestConversationUpdateAndDelete(t *testing.T) {
+	repo := newFakeRepo()
+	s := newTestService(repo)
+	c, err := s.CreateChannel(context.Background(), "w-1", "u-1", "eng")
+	require.NoError(t, err)
+
+	out, err := callTool(as("u-1"), t, s, "conversation_update", `{"id":"`+c.ID+`"}`)
+	require.NoError(t, err)
+	assert.Equal(t, "eng", out.(conversationResult).Name, "an omitted name keeps the current one")
+
+	out, err = callTool(as("u-1"), t, s, "conversation_update", `{"id":"`+c.ID+`","name":"platform"}`)
+	require.NoError(t, err)
+	assert.Equal(t, "platform", out.(conversationResult).Name)
+
+	out, err = callTool(as("u-1"), t, s, "conversation_delete", `{"id":"`+c.ID+`"}`)
+	require.NoError(t, err)
+	assert.Equal(t, map[string]any{"id": c.ID, "deleted": true}, out)
+	_, err = callTool(as("u-1"), t, s, "conversation_delete", `{"id":"`+c.ID+`"}`)
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }

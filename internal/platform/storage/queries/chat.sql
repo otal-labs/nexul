@@ -1,5 +1,11 @@
 -- name: CreateConversation :exec
-INSERT INTO conversations (id, workspace_id, kind, name, ticket_id, doc_id, project_id, parent_message_id, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO conversations (id, workspace_id, kind, name, ticket_id, doc_id, project_id, parent_message_id, created_by, created_at, updated_at, is_general) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+-- name: RenameConversation :execrows
+UPDATE conversations SET name = ?, updated_at = ? WHERE id = ?;
+
+-- name: DeleteConversation :execrows
+DELETE FROM conversations WHERE id = ?;
 
 -- name: InsertConversationParticipant :exec
 INSERT INTO conversation_participants (conversation_id, user_id, created_at) VALUES (?, ?, ?)

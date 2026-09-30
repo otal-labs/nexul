@@ -2,11 +2,16 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/connectors"
 	"github.com/otal-labs/nexul/internal/livekit"
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/storage"
+	"github.com/otal-labs/nexul/internal/voice"
 )
 
 // voiceConversations adapts chat.Service to voice's ConversationChecker seam: voice never imports chat's internals.
@@ -52,4 +57,18 @@ func (v voiceUserNames) DisplayName(ctx context.Context, userID string) (string,
 		return u.Name, nil
 	}
 	return u.Login, nil
+}
+
+// voiceRoomCloseHandler ends a deleted voice channel's call, so nobody stays connected to a channel that is gone.
+func voiceRoomCloseHandler(svc *voice.Service) eventbus.Handler {
+	return func(ctx context.Context, ev eventbus.Event) error {
+		var e chat.ConversationDeletedEvent
+		if err := json.Unmarshal(ev.Payload, &e); err != nil {
+			return apperrs.Fatal(fmt.Errorf("parse %s: %w", chat.TopicConversationDeleted, err))
+		}
+		if e.Kind != chat.KindVoiceChannel {
+			return nil
+		}
+		return svc.CloseRoom(ctx, e.ConversationID)
+	}
 }

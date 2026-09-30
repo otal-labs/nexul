@@ -14,6 +14,8 @@ export interface EventPayloads {
   "category.deleted": { "category": Record<string, unknown>; };
   "category.updated": { "category": Record<string, unknown>; };
   "chat.conversation.created": { "conversation": Record<string, unknown>; };
+  "chat.conversation.deleted": { "conversation_id": string; "workspace_id": string; "kind": "channel" | "voice_channel"; "name": string; "actor_id"?: string; };
+  "chat.conversation.updated": { "conversation_id": string; "workspace_id": string; "kind": "channel" | "voice_channel"; "name": string; "previous_name": string; "actor_id"?: string; };
   "chat.message.created": { "message": Record<string, unknown>; };
   "chat.message.deleted": { "conversation_id": string; "message_id": string; "deleted_at": string; };
   "chat.message.updated": { "message": Record<string, unknown>; };
@@ -123,6 +125,8 @@ export const TOPICS: Topic[] = [
   "category.deleted",
   "category.updated",
   "chat.conversation.created",
+  "chat.conversation.deleted",
+  "chat.conversation.updated",
   "chat.message.created",
   "chat.message.deleted",
   "chat.message.updated",
@@ -230,6 +234,8 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "category.deleted": {"category":{}},
   "category.updated": {"category":{}},
   "chat.conversation.created": {"conversation":{}},
+  "chat.conversation.deleted": {"conversation_id":"fixture-conversation_id","workspace_id":"fixture-workspace_id","kind":"channel","name":"fixture-name","actor_id":"fixture-actor_id"},
+  "chat.conversation.updated": {"conversation_id":"fixture-conversation_id","workspace_id":"fixture-workspace_id","kind":"channel","name":"fixture-name","previous_name":"fixture-previous_name","actor_id":"fixture-actor_id"},
   "chat.message.created": {"message":{}},
   "chat.message.deleted": {"conversation_id":"fixture-conversation_id","message_id":"fixture-message_id","deleted_at":"2026-01-01T00:00:00Z"},
   "chat.message.updated": {"message":{}},
