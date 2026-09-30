@@ -232,6 +232,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	playsSvc := plays.NewService(store.Plays, playsPermissionGate{svc: accessSvc})
 	tenancySvc := tenancy.NewService(store.Workspaces, store.WorkspaceMembers, store.WorkspaceInvites, roleGate{svc: rolesSvc}, accessSvc, roleNameGate{svc: rolesSvc}, workspacePermissionGate{svc: accessSvc}, allowlistGate{svc: authSvc}, userLookupGate{svc: authSvc}, channelGate{svc: chatSvc}, playsGate{svc: playsSvc}, accountGate{svc: authSvc, presence: presenceKeeper})
 	rolesSvc.SetMemberGate(roleMemberGate{svc: tenancySvc})
+	mentionsSvc.SetPeople(mentionPeopleSource{svc: tenancySvc})
 	rolesSvc.SetPermissionGate(workspacePermissionGate{svc: accessSvc})
 	authSvc.SetDefaultWorkspace(defaultWorkspaceGate{svc: tenancySvc})
 	authSvc.SetPendingInviteResolver(pendingInviteResolverGate{svc: tenancySvc})

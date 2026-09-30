@@ -13,9 +13,11 @@ type Kind string
 const (
 	KindTicket Kind = "ticket"
 	KindDoc    Kind = "doc"
+	// KindPerson's id is a user id; the person comes from the workspace's People (ADR 0086).
+	KindPerson Kind = "person"
 )
 
-// Ref identifies one mention reference found in a document body; Type is one of KindTicket/KindDoc.
+// Ref identifies one mention reference found in a document body; Type is one of the Kind values.
 type Ref struct {
 	Type string `json:"type"`
 	ID   string `json:"id"`
@@ -37,6 +39,9 @@ type Chip struct {
 	DeveloperLabel string `json:"developer_label,omitempty"`
 	// DueLabel backs {ticket.Due}; always empty until tickets gain a due-date field, renders as "" not an error.
 	DueLabel string `json:"due_label,omitempty"`
+	// Login and AvatarURL are set on person chips only; Title is the person's display name.
+	Login     string `json:"login,omitempty"`
+	AvatarURL string `json:"avatar_url,omitempty"`
 }
 
 // SearchResult is one autocomplete entry for the mention picker; docs the actor cannot open are excluded.
@@ -46,6 +51,23 @@ type SearchResult struct {
 	Title       string `json:"title"`
 	StatusLabel string `json:"status_label,omitempty"`
 	CanOpen     bool   `json:"can_open"`
+	// Login and AvatarURL are set on person results only; Title is the person's display name.
+	Login     string `json:"login,omitempty"`
+	AvatarURL string `json:"avatar_url,omitempty"`
+}
+
+// Person is one of People: all any member of a workspace sees of another (ADR 0086).
+type Person struct {
+	UserID      string
+	Login       string
+	DisplayName string
+	AvatarURL   string
+}
+
+// PeopleSource reads People as the actor sees them: one workspace's people, or with no workspace
+// everyone who shares a workspace with the actor; a workspace the actor is not in yields nobody.
+type PeopleSource interface {
+	People(ctx context.Context, actorID, workspaceID string) ([]Person, error)
 }
 
 // Ticket is the slice of a ticket record the resolver needs (ADR 0017 seam onto tickets).

@@ -3,6 +3,9 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"path/filepath"
 	"testing"
 	"time"
@@ -18,6 +21,8 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
 	"github.com/otal-labs/nexul/internal/platform/storage/testutil"
+	"github.com/otal-labs/nexul/internal/roles"
+	"github.com/otal-labs/nexul/internal/tenancy"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/workspace"
 )
@@ -115,7 +120,7 @@ func TestIntegration_MentionsOverRealStorage(t *testing.T) {
 	})
 
 	t.Run("picker search excludes unreadable docs", func(t *testing.T) {
-		results, err := svc.Search(aliceCtx, "vault", 10)
+		results, err := svc.Search(aliceCtx, "vault", "", 10)
 		require.NoError(t, err)
 		for _, r := range results {
 			assert.NotEqual(t, "d-locked", r.ID, "unreadable doc never appears in the picker")
@@ -123,7 +128,7 @@ func TestIntegration_MentionsOverRealStorage(t *testing.T) {
 	})
 
 	t.Run("picker search finds tickets with status label", func(t *testing.T) {
-		results, err := svc.Search(aliceCtx, "fix", 10)
+		results, err := svc.Search(aliceCtx, "fix", "", 10)
 		require.NoError(t, err)
 		var found *mentions.SearchResult
 		for i := range results {
@@ -145,7 +150,7 @@ func TestIntegration_MentionsOverRealStorage(t *testing.T) {
 		keyTicket := &tickets.Ticket{ID: "tk-erf-1", ProjectID: "p-erf", Title: "Ship the router rewrite", Body: "body", Status: tickets.StatusOpen}
 		require.NoError(t, s.Tickets.Create(ctx, keyTicket)) // first ticket in p-erf, so number 1 -> ERF-1
 
-		results, err := svc.Search(aliceCtx, "ERF-1", 10)
+		results, err := svc.Search(aliceCtx, "ERF-1", "", 10)
 		require.NoError(t, err)
 		require.NotEmpty(t, results, "typing @ERF-1 must resolve the ticket directly, not just via title search")
 		assert.Equal(t, "ticket", results[0].Type)
@@ -159,4 +164,56 @@ func TestIntegration_MentionsOverRealStorage(t *testing.T) {
 		assert.Equal(t, "ERF", chips[0].ProjectPrefix)
 		assert.Equal(t, 1, chips[0].ProjectNumber)
 	})
+}
+
+// seedMentionPeople makes onik, rixwavedev, and sam ("Rixa Stone") members of the default workspace, and
+// rixoutsider an account outside it.
+func seedMentionPeople(t *testing.T, store *storage.Store) {
+	t.Helper()
+	ctx := context.Background()
+	for id, login := range map[string]string{"u-onik": "onik", "u-rix": "rixwavedev", "u-sam": "sam", "u-out": "rixoutsider"} {
+		_, _, err := store.Users.UpsertUser(ctx, &auth.Identity{UserID: id, Provider: auth.ProviderGitHub, ProviderUserID: id, Login: login})
+		require.NoError(t, err)
+	}
+	name := "Rixa Stone"
+	require.NoError(t, store.Users.SetProfileOverride(ctx, "u-sam", &name, nil))
+	now := time.Now()
+	require.NoError(t, store.Roles.Create(ctx, &roles.Role{ID: "role-member", WorkspaceID: "workspace-default", Name: "Member", CreatedAt: now, UpdatedAt: now}))
+	for _, id := range []string{"u-onik", "u-rix", "u-sam"} {
+		require.NoError(t, store.WorkspaceMembers.AddMember(ctx, &tenancy.Member{UserID: id, WorkspaceID: "workspace-default", RoleID: "role-member", CreatedAt: now}))
+	}
+}
+
+// TestMentionSearch_FindsWorkspacePeople guards the doc and ticket @ picker finding the workspace's people, as the
+// new-DM dialog does, by login and by display name, and never someone outside the workspace.
+func TestMentionSearch_FindsWorkspacePeople(t *testing.T) {
+	svc, store := newWired(t)
+	seedMentionPeople(t, store)
+	routes := mentions.NewHandler(svc.mentionsSvc).Routes()
+
+	for _, workspaceID := range []string{"", "workspace-default"} {
+		t.Run("workspace "+workspaceID, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/api/mentions/search?q=rix&limit=8&workspace_id="+workspaceID, nil)
+			req = req.WithContext(identity.WithActor(req.Context(), identity.Actor{ID: "u-onik"}))
+			rec := httptest.NewRecorder()
+			routes.ServeHTTP(rec, req)
+			require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+
+			var body struct {
+				Results []struct {
+					Type  string `json:"type"`
+					ID    string `json:"id"`
+					Title string `json:"title"`
+				} `json:"results"`
+			}
+			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
+			got := map[string]string{}
+			for _, r := range body.Results {
+				if r.Type == "person" {
+					got[r.ID] = r.Title
+				}
+			}
+			assert.Equal(t, map[string]string{"u-rix": "rixwavedev", "u-sam": "Rixa Stone"}, got)
+		})
+	}
 }
