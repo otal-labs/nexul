@@ -83,6 +83,13 @@ reach: open a person to change their role, overrides, or workspaces, or their
 account's status, with every workspace change still needing `members:write`
 in that workspace.
 
+### Workspace links
+
+Every page reached from a workspace's sidebar carries the workspace's slug in
+its URL, so a shared link opens in the right workspace, and project prefixes
+are unique per workspace: two workspaces can both have a `WEB` project, and a
+ticket key resolves within its workspace (ADR 0089).
+
 ### The design pass
 
 A monochrome identity — "The Mono Console", light and dark as true inversions

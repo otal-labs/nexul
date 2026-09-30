@@ -78,7 +78,7 @@ non-image attachment is recorded as omitted.
 ## The Interview play
 
 The Interview play runs on a project's Interview page
-(`/projects/<prefix>/interview`), where the button reads **Run the interview**,
+(`/<workspace>/projects/<prefix>/interview`), where the button reads **Run the interview**,
 or **Re-run the interview** once the project's interview memory exists. Its
 target is the project: `target_type` is `interview` and `target_id` is the
 project id. The run posts into the project's interview thread, a conversation

@@ -196,7 +196,10 @@ decide whether an agent picks the right tool.
 - **Parameters.** A tool's own object is `id`; any other object is
   `<object>_id` (`project_id`, `status_id`), so an agent never guesses which
   object an id belongs to. Where a human key exists, the
-  tool accepts it wherever it accepts the id (`REF-102` for a ticket).
+  tool accepts it wherever it accepts the id (`REF-102` for a ticket). A key
+  unique only within a workspace comes with an optional `workspace` (id or
+  slug); without it a key in several of the caller's workspaces is an error
+  naming them, never a guess (ADR 0089).
   Parameter names use the same `CONTEXT.md` vocabulary as tool names.
 - **Prompts are not tools.** Prompt names describe a workflow
   (`investigate_failure`) and never read like a tool's name, because clients

@@ -1387,6 +1387,14 @@ export const AppRouter = () => {
   Automations, Configuration) docked under the scroll area and foldable; the
   account menu (Support, Logout) and the Your settings gear at the bottom. Pages render inside `<main>` under
   `Container` (`mx-auto w-full max-w-7xl`).
+- Every page reached from a workspace's sidebar lives under `/:workspace`, the
+  workspace's slug (ADR 0089); personal and instance pages (`/settings/*`,
+  `/login`, `/invite`, `/setup`, the onboarding wizards) stay unprefixed.
+  `WorkspaceScope` resolves the slug and the store follows the URL, never the
+  other way round. Path builders in `models/` return workspace-relative paths
+  (`ticketPath`, `boardPath`); a link wraps them with `useWorkspacePath`
+  (`wsPath(boardPath(project))`). A moved or renamed path is not redirected:
+  the old one is not found.
 - Catch-all `*` renders `ErrorPage`, last.
 - Auth-gated routes added conditionally.
 - Permission-gated areas are listed once in `models/Access.tsx`. A sidebar

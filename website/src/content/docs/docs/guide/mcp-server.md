@@ -76,6 +76,12 @@ tickets. The same walk is `GET /api/repos/{owner}/{repo}/change-context` with
 `play_run` with `decisions_check` set to true reruns the decisions check on a
 done ticket whose check didn't run, on the caller's own paired computer.
 
+Ticket tools take a ticket's id or its key, such as `WEB-12`. A key is unique
+only within a workspace: when the key exists in more than one of your
+workspaces, pass `workspace` (its id or its slug from `workspace_list`), or the
+call is refused with the workspaces to choose from. Without it, a key found in
+just one of your workspaces resolves there.
+
 `ticket_create` files a bug (a ticket of the type named `bug`) only with
 `origin_id`, the ticket it was found in, or `origin_unknown` set to true, the
 same rule the web app applies.

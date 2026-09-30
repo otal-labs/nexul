@@ -7,8 +7,10 @@ sidebar:
 
 ## Chat
 
-Open `/chat` to see the chat page. A selected conversation has a URL such as
-`/chat/<conversation-id>`, so a refresh or shared link opens the same thread.
+Open `/<workspace>/chat` to see the chat page, where `<workspace>` is the
+workspace's slug. A selected conversation has a URL such as
+`/<workspace>/chat/<conversation-id>`, so a refresh or shared link opens the same
+thread.
 The conversation list has two groups:
 
 - **Chats** contains channels, voice channels, and direct messages.
