@@ -40,7 +40,7 @@ const computer = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
-const unconfirmed = { computer_id: "c1", confirmed_at: null, providers: [], turns: [] };
+const unconfirmed = { computer_id: "c1", confirmed_at: null, providers: [], skipped_providers: [], turns: [] };
 let setup: Record<string, unknown> = unconfirmed;
 
 const serveComputers = (computers: unknown[]) =>

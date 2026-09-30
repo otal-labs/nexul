@@ -12,12 +12,12 @@ interface SetupFolderPickProps {
 // The folder the setup turns run in, from the projects T3 Code opens; setup only writes user-level files, so any of them works.
 export const SetupFolderPick = ({ projects, folder, disabled, onPick }: SetupFolderPickProps) => (
   <div className="@container space-y-1.5">
-    <div className="flex flex-col gap-1.5 @sm:flex-row @sm:items-center @sm:justify-between @sm:gap-3">
+    <div className="flex flex-col gap-1.5 @xs:flex-row @xs:items-center @xs:justify-between @xs:gap-3">
       <label htmlFor="setup-folder" className="text-xs font-semibold">
         Folder
       </label>
       <Select value={folder} onValueChange={onPick} disabled={disabled}>
-        <SelectTrigger id="setup-folder" className="h-8 @sm:w-60">
+        <SelectTrigger id="setup-folder" className="h-8 @xs:w-52">
           <span className="min-w-0 truncate">
             <SelectValue>{projects.find((p) => p.path === folder)?.title}</SelectValue>
           </span>
