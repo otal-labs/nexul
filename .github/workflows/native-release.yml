@@ -102,15 +102,6 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/master' && github.event_name != 'workflow_dispatch' }}
-      - name: Install ccache for the native modules
-        run: |
-          sudo apt-get install -y --no-install-recommends ccache
-          echo "CCACHE_DIR=$HOME/.ccache" >> "$GITHUB_ENV"
-      - uses: actions/cache@v6
-        with:
-          path: ~/.ccache
-          key: ccache-android-${{ github.sha }}
-          restore-keys: ccache-android-
       - run: bun install --frozen-lockfile
       - run: bun run prebuild
       - name: Decode the signing keystore
@@ -129,15 +120,8 @@ jobs:
           ORG_GRADLE_PROJECT_nexulKeyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
           # Every phone we target is arm64; emulator builds are made locally. Each ABI is a full native compile.
           ORG_GRADLE_PROJECT_reactNativeArchitectures: arm64-v8a
-          # CMake reads these for every module's C++ compile; the path is fixed, so absolute paths still hit.
-          CMAKE_C_COMPILER_LAUNCHER: ccache
-          CMAKE_CXX_COMPILER_LAUNCHER: ccache
-          CCACHE_BASEDIR: ${{ github.workspace }}
-          CCACHE_MAXSIZE: 500M
         # The Kotlin compile daemon hung at expo-updates' KSP step on a hosted runner for two hours; compile in-process instead.
         run: ./gradlew assembleRelease --build-cache --no-daemon -Pkotlin.compiler.execution.strategy=in-process -Dorg.gradle.jvmargs="-Xmx6g -XX:MaxMetaspaceSize=1g"
-      - name: Show the ccache hit rate
-        run: ccache --show-stats
       - name: Name the APK
         env:
           VERSION: ${{ needs.version.outputs.version }}
@@ -163,20 +147,6 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.11
-      # ccache keeps its cache in a different default folder per version and platform; pin it.
-      - name: Install ccache
-        run: |
-          command -v ccache >/dev/null || brew install ccache
-          echo "CCACHE_DIR=$HOME/.ccache" >> "$GITHUB_ENV"
-      - name: Restore the bun and ccache caches
-        id: tools-cache
-        uses: actions/cache/restore@v6
-        with:
-          path: |
-            ~/.bun/install/cache
-            ~/.ccache
-          key: ios-tools-${{ hashFiles('native/bun.lock') }}-${{ github.sha }}
-          restore-keys: ios-tools-${{ hashFiles('native/bun.lock') }}-
       - run: bun install --frozen-lockfile
       - run: bunx expo prebuild --platform ios --clean --no-install
       # Prebuild wipes native/ios, so the pods are restored after it.
@@ -188,11 +158,10 @@ jobs:
             native/ios/Pods
             native/ios/Podfile.lock
             ~/Library/Caches/CocoaPods
-          key: ios-pods-${{ hashFiles('native/bun.lock', 'native/app.config.ts', 'native/plugins/**') }}
+            ~/Library/Caches/ReactNative
+          key: ios-pods-v2-${{ hashFiles('native/bun.lock', 'native/app.config.ts', 'native/plugins/**') }}
       - name: Install pods
         working-directory: native/ios
-        env:
-          USE_CCACHE: "1"
         run: pod install
       # No Apple Developer account exists: the archive is unsigned and SideStore signs it at install time.
       - name: Archive the app without signing
@@ -202,8 +171,6 @@ jobs:
           xcodebuild archive -quiet -workspace Nexul.xcworkspace -scheme Nexul -configuration Release \
             -destination generic/platform=iOS -archivePath "$RUNNER_TEMP/Nexul.xcarchive" \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
-      - name: Show the ccache hit rate
-        run: ccache --show-stats
       - name: Pack the IPA
         env:
           VERSION: ${{ needs.version.outputs.version }}
@@ -221,15 +188,8 @@ jobs:
             native/ios/Pods
             native/ios/Podfile.lock
             ~/Library/Caches/CocoaPods
+            ~/Library/Caches/ReactNative
           key: ${{ steps.pods-cache.outputs.cache-primary-key }}
-      - name: Save the bun and ccache caches
-        if: github.event_name != 'pull_request'
-        uses: actions/cache/save@v6
-        with:
-          path: |
-            ~/.bun/install/cache
-            ~/.ccache
-          key: ${{ steps.tools-cache.outputs.cache-primary-key }}
       - uses: actions/upload-artifact@v7
         with:
           name: ios

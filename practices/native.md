@@ -151,9 +151,9 @@ or on a schedule.
   `bun run prebuild` and builds `assembleRelease` for `arm64-v8a`
   only (every phone we target is arm64, emulator builds are made locally, and
   each extra ABI doubles the native compile) with the signing key from the
-  repository secrets. Gradle state and the C++ compiles are cached (setup-gradle
-  plus ccache on Android; CocoaPods, bun and ccache on iOS), written by hand
-  runs and master and read everywhere. The iOS job runs on a macOS runner:
+  repository secrets. Gradle's user home and build cache are restored with setup-gradle on
+  Android, and the pods with their downloaded prebuilds on iOS; hand runs and
+  master write those caches and everything else only reads them. The iOS job runs on a macOS runner:
   `expo prebuild --platform ios`, `pod install`, then an unsigned
   `xcodebuild archive` packed as an IPA. There is no Apple Developer account;
   SideStore signs the IPA on the phone with the owner's free Apple ID, which
