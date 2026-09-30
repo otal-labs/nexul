@@ -48,14 +48,15 @@ const useMarkdownStyle = (): MarkdownStyle => {
   }, [foreground, mutedForeground, border, surface]);
 };
 
-// Both doc URL shapes the web serves, /docs/<id> and /docs/<projectToken>/<id>, and ticket URLs, relative or on the instance.
+// Web doc and ticket pages under a workspace slug, which a ticket key needs, and a mention's own /docs/<id> or /tickets/<id>.
 // A ticket is only in-app for a viewer who has the Board tab; for anyone else it is the web page, which says it isn't found.
 const inAppRoute = (path: string, canReadTickets: boolean): Href | null => {
-  const doc = /^\/docs\/(?:[^/?#]+\/)?([^/?#]+)(?=[?#]|$)/.exec(path);
+  const doc = /^(?:\/[a-z0-9-]+\/docs\/(?:[^/?#]+\/)?|\/docs\/)([^/?#]+)(?=[?#]|$)/.exec(path);
   if (doc?.[1]) return `/more/docs/${doc[1]}`;
-  const ticket = /^\/tickets\/([^/?#]+)(?=[?#]|$)/.exec(path);
-  if (ticket?.[1] && canReadTickets) return `/board/ticket/${ticket[1]}`;
-  return null;
+  const ticket = /^(?:\/([a-z0-9-]+))?\/tickets\/([^/?#]+)(?=[?#]|$)/.exec(path);
+  if (!ticket?.[2] || !canReadTickets) return null;
+  if (ticket[1]) return { pathname: "/board/ticket/[id]", params: { id: ticket[2], workspace: ticket[1] } };
+  return `/board/ticket/${ticket[2]}`;
 };
 
 const openLink = (url: string, canReadTickets: boolean) => {

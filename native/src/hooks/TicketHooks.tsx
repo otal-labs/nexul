@@ -13,10 +13,12 @@ export const useFetchTicketsByProject = (projectId: string | undefined) =>
     enabled: !!projectId,
   });
 
-export const useFetchTicket = (id: string | undefined) =>
+// id may be a key such as WEB-1, which is unique only within a workspace, so a key comes with the workspace's slug.
+export const useFetchTicket = (id: string | undefined, workspace = "") =>
   useQuery({
-    queryKey: [getTicketKey, id],
-    queryFn: () => api.get<Ticket>(`/api/tickets/${id}`),
+    queryKey: [getTicketKey, id, workspace],
+    queryFn: () =>
+      api.get<Ticket>(`/api/tickets/${encodeURIComponent(id ?? "")}${workspace ? `?workspace=${encodeURIComponent(workspace)}` : ""}`),
     enabled: !!id,
   });
 
