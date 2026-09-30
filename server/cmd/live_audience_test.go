@@ -44,6 +44,7 @@ func TestLiveAudience_FramesFollowTheEntitysRead(t *testing.T) {
 		{chat.TopicMessageCreated, chat.MessageCreatedEvent{Message: chat.Message{ConversationID: f.dm.ID, Body: "hi"}}, map[string]bool{uWriter: true, uPlain: false, uOutsider: false}},
 		{deploy.TopicStackUpdated, deploy.StackEvent{Stack: *stack}, map[string]bool{uReader: true, uPlain: false}},
 		{auth.TopicSessionCreated, auth.SessionChangedEvent{UserID: uPlain}, map[string]bool{uPlain: true, uOwner: false}},
+		{tenancy.TopicWorkspaceUpdated, tenancy.WorkspaceEvent{WorkspaceID: "workspace-default", Name: "Acme", Slug: "acme"}, map[string]bool{uOwner: true, uPlain: true, uOutsider: false}},
 	}
 	for _, tc := range cases {
 		raw, err := json.Marshal(tc.payload)

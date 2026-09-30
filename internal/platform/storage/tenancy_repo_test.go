@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/tenancy"
 )
 
@@ -349,4 +350,25 @@ func TestWorkspacesRepo_SeededDefault_CarriesDefaultTemplate(t *testing.T) {
 	got, err := s.Workspaces.Get(context.Background(), tenancy.DefaultWorkspaceID)
 	require.NoError(t, err)
 	assert.Equal(t, tenancy.DefaultMentionChipTemplate, got.MentionChipTemplate)
+}
+
+func TestWorkspacesRepo_Update_WritesItsEventWithTheChange(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := context.Background()
+	require.NoError(t, s.Workspaces.Create(ctx, newTestWorkspace("ws-1", "Acme")))
+	countEvents := func() (n int) {
+		require.NoError(t, s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM outbox WHERE topic = ?`, tenancy.TopicWorkspaceUpdated).Scan(&n))
+		return n
+	}
+	event := eventbus.OutboxEvent{ID: "evt-1", Topic: tenancy.TopicWorkspaceUpdated, Payload: tenancy.WorkspaceEvent{WorkspaceID: "ws-1", Name: "Acme Labs", Slug: "acme-labs"}}
+
+	got := newTestWorkspace("ws-1", "Acme Labs")
+	require.NoError(t, s.Workspaces.Update(ctx, got, event))
+	assert.Equal(t, 1, countEvents())
+
+	missing := newTestWorkspace("ws-missing", "Ghost")
+	event.ID = "evt-2"
+	require.ErrorIs(t, s.Workspaces.Update(ctx, missing, event), apperrs.ErrNotFound)
+	assert.Equal(t, 1, countEvents(), "an update that changed nothing publishes nothing")
 }

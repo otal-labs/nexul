@@ -11,7 +11,7 @@ import (
 // Repo is the consumer-side persistence contract for workspaces; implemented in internal/platform/storage.
 type Repo interface {
 	Create(ctx context.Context, w *Workspace) error
-	Update(ctx context.Context, w *Workspace) error
+	Update(ctx context.Context, w *Workspace, events ...eventbus.OutboxEvent) error
 	Get(ctx context.Context, id string) (*Workspace, error)
 	// GetBySlug returns apperrs.ErrNotFound when no workspace holds slug.
 	GetBySlug(ctx context.Context, slug string) (*Workspace, error)

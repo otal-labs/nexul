@@ -104,6 +104,7 @@ export interface EventPayloads {
   "workspace.member.added": { "invitation_id"?: string; "user_id"?: string; "workspace_id"?: string; "actor_id"?: string; };
   "workspace.member.removed": { "user_id": string; "workspace_id": string; "actor_id"?: string; };
   "workspace.member.updated": { "user_id": string; "workspace_id": string; "actor_id"?: string; };
+  "workspace.updated": { "workspace_id": string; "name": string; "slug": string; "actor_id"?: string; };
 }
 
 export type Topic = keyof EventPayloads;
@@ -210,6 +211,7 @@ export const TOPICS: Topic[] = [
   "workspace.member.added",
   "workspace.member.removed",
   "workspace.member.updated",
+  "workspace.updated",
 ];
 
 export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
@@ -314,4 +316,5 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "workspace.member.added": {"invitation_id":"fixture-invitation_id","user_id":"fixture-user_id","workspace_id":"fixture-workspace_id","actor_id":"fixture-actor_id"},
   "workspace.member.removed": {"user_id":"fixture-user_id","workspace_id":"fixture-workspace_id","actor_id":"fixture-actor_id"},
   "workspace.member.updated": {"user_id":"fixture-user_id","workspace_id":"fixture-workspace_id","actor_id":"fixture-actor_id"},
+  "workspace.updated": {"workspace_id":"fixture-workspace_id","name":"fixture-name","slug":"fixture-slug","actor_id":"fixture-actor_id"},
 };

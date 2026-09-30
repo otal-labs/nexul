@@ -19,6 +19,7 @@ var catalogSchemas = map[string]string{
 	"workspace.member.added":   `{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","properties":{"invitation_id":{"type":"string"},"user_id":{"type":"string"},"workspace_id":{"type":"string"},"actor_id":{"type":"string"}}}`,
 	"workspace.member.removed": `{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","required":["user_id","workspace_id"],"properties":{"user_id":{"type":"string"},"workspace_id":{"type":"string"},"actor_id":{"type":"string"}}}`,
 	"workspace.member.updated": `{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","required":["user_id","workspace_id"],"properties":{"user_id":{"type":"string"},"workspace_id":{"type":"string"},"actor_id":{"type":"string"}}}`,
+	"workspace.updated":        `{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","required":["workspace_id","name","slug"],"properties":{"workspace_id":{"type":"string"},"name":{"type":"string"},"slug":{"type":"string"},"actor_id":{"type":"string"}}}`,
 	"doc.created": `{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",
 		"type": "object",

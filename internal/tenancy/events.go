@@ -9,6 +9,7 @@ const (
 	TopicWorkspaceMemberAdded   = "workspace.member.added"
 	TopicWorkspaceMemberRemoved = "workspace.member.removed"
 	TopicWorkspaceMemberUpdated = "workspace.member.updated"
+	TopicWorkspaceUpdated       = "workspace.updated"
 )
 
 func Topics() []string {
@@ -21,6 +22,7 @@ func Topics() []string {
 		TopicWorkspaceMemberAdded,
 		TopicWorkspaceMemberRemoved,
 		TopicWorkspaceMemberUpdated,
+		TopicWorkspaceUpdated,
 	}
 }
 
@@ -36,5 +38,13 @@ type InvitationEvent struct {
 type MemberEvent struct {
 	UserID      string `json:"user_id"`
 	WorkspaceID string `json:"workspace_id"`
+	ActorID     string `json:"actor_id,omitempty"`
+}
+
+// WorkspaceEvent is the payload of a rename or slug change; it carries the new name and slug so a client open on the workspace can move its URL.
+type WorkspaceEvent struct {
+	WorkspaceID string `json:"workspace_id"`
+	Name        string `json:"name"`
+	Slug        string `json:"slug"`
 	ActorID     string `json:"actor_id,omitempty"`
 }

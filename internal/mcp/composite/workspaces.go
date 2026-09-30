@@ -12,11 +12,12 @@ import (
 	"github.com/otal-labs/nexul/internal/tenancy"
 )
 
-// WorkspaceReader is the slice of the tenancy use-cases workspace_list reads.
-type WorkspaceReader interface {
+// WorkspaceService is the slice of the tenancy use-cases workspace_list and workspace_update call.
+type WorkspaceService interface {
 	ListForUser(ctx context.Context, userID string) ([]*tenancy.Workspace, error)
 	MemberRoleName(ctx context.Context, workspaceID, userID string) (string, error)
 	ListPeople(ctx context.Context, actorID, workspaceID string) ([]tenancy.Person, error)
+	Rename(ctx context.Context, userID, id string, name, slug *string) (*tenancy.Workspace, error)
 }
 
 // RoleReader is the slice of the roles use-cases workspace_list reads.
@@ -40,9 +41,49 @@ type workspaceResult struct {
 	PermissionCatalog []permissions.Info `json:"permission_catalog,omitempty"`
 }
 
-// WorkspaceTools lists the caller's workspaces, the ids the project, play, memory, role, and invitation tools are scoped by.
-func WorkspaceTools(w WorkspaceReader, r RoleReader) []mcptool.Tool {
-	return []mcptool.Tool{mcptool.New("workspace_list", "List workspaces",
+type workspaceUpdateIn struct {
+	ID   string  `json:"id" jsonschema:"The workspace to change, from workspace_list."`
+	Name *string `json:"name,omitempty" jsonschema:"The workspace's new display name, for example Rixwave Labs. Omit to keep it."`
+	Slug *string `json:"slug,omitempty" jsonschema:"The workspace's new name in web links, for example rixwave: lowercase letters and digits joined by single dashes, at most 48 characters, not a reserved path such as settings, and not taken by another workspace. Omit to keep it."`
+}
+
+type workspaceUpdateResult struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Slug string `json:"slug"`
+}
+
+// WorkspaceTools lists the caller's workspaces, the ids the project, play, memory, role, and invitation tools are
+// scoped by, and renames one.
+func WorkspaceTools(w WorkspaceService, r RoleReader) []mcptool.Tool {
+	return []mcptool.Tool{workspaceListTool(w, r), workspaceUpdateTool(w)}
+}
+
+func workspaceUpdateTool(w WorkspaceService) mcptool.Tool {
+	return mcptool.New("workspace_update", "Rename workspace or change its slug",
+		"Changes a workspace's display name, its slug, or both; a field you omit keeps its value. "+
+			"Changing the slug moves every web link into the workspace, so links using the old slug stop working and are not redirected; "+
+			"a rename that keeps the slug leaves every link working. "+
+			"Needs workspaces:write in that workspace. Returns the workspace's id, name, and slug as they now stand; workspace_list finds the id.",
+		mcptool.Hints{Idempotent: true, Local: true},
+		func(ctx context.Context, in workspaceUpdateIn) (any, error) {
+			a, ok := identity.ActorFromCtx(ctx)
+			if !ok || a.ID == "" {
+				return nil, fmt.Errorf("%w: changing a workspace needs a signed-in user", apperrs.ErrUnauthorized)
+			}
+			if in.Name == nil && in.Slug == nil {
+				return nil, fmt.Errorf("%w: send name, slug, or both", apperrs.ErrInvalid)
+			}
+			updated, err := w.Rename(ctx, a.ID, in.ID, in.Name, in.Slug)
+			if err != nil {
+				return nil, err
+			}
+			return workspaceUpdateResult{ID: updated.ID, Name: updated.Name, Slug: updated.Slug}, nil
+		})
+}
+
+func workspaceListTool(w WorkspaceService, r RoleReader) mcptool.Tool {
+	return mcptool.New("workspace_list", "List workspaces",
 		"Lists the workspaces you belong to, with each one's id, name, slug (its name in web links and the workspace "+
 			"a ticket tool takes to tell apart keys two workspaces share), and your role in it. Start here when a tool "+
 			"needs a workspace_id: project_list, play_list, and the memory, role, and invitation tools are scoped by "+
@@ -72,10 +113,10 @@ func WorkspaceTools(w WorkspaceReader, r RoleReader) []mcptool.Tool {
 				out = append(out, workspaceResult{ID: one.ID, Name: one.Name, Slug: one.Slug, Role: role})
 			}
 			return mcptool.Paginate(out, in.PageArgs), nil
-		})}
+		})
 }
 
-func workspaceWithRoles(ctx context.Context, w WorkspaceReader, r RoleReader, ws []*tenancy.Workspace, in workspaceListIn, userID string) (any, error) {
+func workspaceWithRoles(ctx context.Context, w WorkspaceService, r RoleReader, ws []*tenancy.Workspace, in workspaceListIn, userID string) (any, error) {
 	for _, one := range ws {
 		if one.ID != in.ID {
 			continue

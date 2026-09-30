@@ -36,7 +36,7 @@ func (r *WorkspacesRepo) Create(ctx context.Context, ws *tenancy.Workspace) erro
 	})
 }
 
-func (r *WorkspacesRepo) Update(ctx context.Context, ws *tenancy.Workspace) error {
+func (r *WorkspacesRepo) Update(ctx context.Context, ws *tenancy.Workspace, events ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).UpdateWorkspace(ctx, sqlcgen.UpdateWorkspaceParams{
 			Name: ws.Name, Slug: ws.Slug, MentionChipTemplate: ws.MentionChipTemplate, UpdatedAt: ws.UpdatedAt.Unix(), ID: ws.ID,
@@ -47,7 +47,7 @@ func (r *WorkspacesRepo) Update(ctx context.Context, ws *tenancy.Workspace) erro
 		if n == 0 {
 			return fmt.Errorf("update workspace %s: %w", ws.ID, apperrs.ErrNotFound)
 		}
-		return nil
+		return insertOutboxRows(ctx, tx, events)
 	})
 }
 
