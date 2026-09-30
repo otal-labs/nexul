@@ -143,6 +143,7 @@ test('the newest beta is the latest published, not the first in GitHub\'s tag-or
 
 test('a newer phone app release never wins over the server beta', async () => {
   const releases = JSON.stringify([
+    { tag_name: 'phone-v0.1.4-beta', draft: false, published_at: '2026-09-28T17:00:00Z' },
     { tag_name: 'android-v0.1.0', draft: false, published_at: '2026-09-28T16:00:00Z' },
     { tag_name: 'v0.2.0-beta.9', draft: false, published_at: '2026-09-28T10:45:25Z' },
   ]);

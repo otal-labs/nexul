@@ -57,7 +57,7 @@ export async function fetchReleases(repo: string): Promise<Release[]> {
 	const response = await fetch(`https://api.github.com/repos/${repo}/releases?per_page=100`, { headers });
 	if (!response.ok) throw new Error(`GET ${repo} releases failed: ${response.status}`);
 	const releases = (await response.json()) as ApiRelease[];
-	// android-v* releases are the phone app's; GitHub lists by day then tag text, so sort by publish time.
+	// phone-v* and android-v* releases are the phone app's; GitHub lists by day then tag text, so sort by publish time.
 	return releases
 		.filter((release) => !release.draft && release.tag_name.startsWith('v'))
 		.map(toRelease)

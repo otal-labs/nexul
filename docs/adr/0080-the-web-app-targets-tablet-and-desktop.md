@@ -24,3 +24,11 @@ Rejected: blocking the web app below 768px, which stops someone who only has
 a phone from doing anything at all when the page would mostly still work.
 
 Decided 2026-09-28.
+
+Amended 2026-09-30: the same app also ships for iPhone, as an unsigned IPA
+that SideStore signs at install time with the owner's free Apple ID, because
+no Apple Developer account exists and none will be paid for. The free signing
+strips the push entitlement, so iPhones get no push notifications. Both files
+ship in one pre-release tagged `phone-v<version>-beta`, which replaces the
+`android-v<version>` tags; the banner's link and the rule that only `v` tags
+are server releases are unchanged.

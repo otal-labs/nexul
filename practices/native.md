@@ -133,30 +133,38 @@ as written. In particular:
   `bun run test` are green, and the screen has been opened on an emulator in
   dark and light.
 - A change to a native dependency or to `app.config.ts` bumps `version` in
-  `app.config.ts` and ships a new APK, because the runtime version follows the
+  `app.config.ts` and ships a new phone release, because the runtime version follows the
   app version. A JavaScript-only change ships over the air within the same
-  version. A published update never reaches an APK with a different version.
+  version. A published update never reaches a build with a different version.
 - Adding a primitive: `bunx shadcn@latest add` with the Uniwind item from the
   react-native-reusables registry. Registry files execute in this project's
   tokens; a customised primitive is diffed, never overwritten wholesale.
 
-## 6. Releasing the APK and publishing updates
+## 6. Releasing the app and publishing updates
 
-Both workflows run by hand only (`workflow_dispatch`), never on push or on a
-schedule.
+Releases and updates happen by hand only (`workflow_dispatch`), never on push
+or on a schedule.
 
-- `native-release.yml` installs, runs `bun run prebuild`, builds
-  `assembleRelease` for `arm64-v8a` and `x86_64` only (32-bit ABIs double the
-  native compile for no current phone) with the signing key from the
-  repository secrets, and
-  creates the GitHub release `android-v<version>` with
-  `nexul-android-<version>.apk` attached. It refuses when the tag already
-  exists: bump `version` first. The release is created with `--latest=false`,
-  and the server's release client, `install.sh` and the changelog skip every
-  tag that does not start with `v`, so a phone release never becomes the
-  server's latest.
+- `native-release.yml` builds both platforms at the version in
+  `app.config.ts`, and a hand run must name that version. The Android job runs
+  `bun run prebuild` and builds `assembleRelease` for `arm64-v8a` and `x86_64`
+  only (32-bit ABIs double the native compile for no current phone) with the
+  signing key from the repository secrets. The iOS job runs on a macOS runner:
+  `expo prebuild --platform ios`, `pod install`, then an unsigned
+  `xcodebuild archive` packed as an IPA. There is no Apple Developer account;
+  SideStore signs the IPA on the phone with the owner's free Apple ID, which
+  strips the push entitlement, so push on iOS stays off and registration
+  fails soft. The last job creates one GitHub release,
+  `phone-v<version>-beta`, with `nexul-android-<version>.apk` and
+  `nexul-ios-<version>.ipa` attached. It refuses when the tag already exists:
+  bump `version` first. The release is created with `--prerelease
+  --latest=false`, and the server's release client, `install.sh` and the
+  changelog skip every tag that does not start with `v` (the older
+  `android-v*` releases included), so a phone release never becomes the
+  server's latest. A pull request that touches `native/` builds the IPA only,
+  as an artifact, and releases nothing.
 - `native-update.yml` publishes the JavaScript and assets of the current
-  commit to the update server's `production` branch with
+  commit, for both platforms, to the update server's `production` branch with
   `npx eoas@<server version> publish`. The CLI version is pinned to the
   server's; upgrade both together. The run fails before installing anything
   when `EOO_TOKEN`, `NEXUL_UPDATES_URL` or `NEXUL_UPDATES_APP_ID` is unset,
@@ -167,7 +175,7 @@ schedule.
 | `ANDROID_KEYSTORE_BASE64` | secret | The PKCS12 release keystore, base64 |
 | `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` | secrets | Its passwords and the key alias |
 | `EOO_TOKEN` | secret | A publish token from the update server's dashboard |
-| `NEXUL_UPDATES_URL` | variable | The manifest URL, `https://<update server>/manifest`; baked into every APK and read by the publish CLI |
+| `NEXUL_UPDATES_URL` | variable | The manifest URL, `https://<update server>/manifest`; baked into every build and read by the publish CLI |
 | `NEXUL_UPDATES_APP_ID` | variable | The app's id in the update server's dashboard, sent as the `expo-app-id` header |
 
 The signing key is generated once and never changes: an APK signed with a
