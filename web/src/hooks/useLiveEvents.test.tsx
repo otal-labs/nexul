@@ -1,5 +1,6 @@
-import { act, render } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { LiveSocket } from "@/api/ws";
@@ -7,10 +8,13 @@ import { useLiveEvents } from "@/hooks/useLiveEvents";
 import { getMeKey } from "@/hooks/AuthHooks";
 import { useAgentStreamStore } from "@/stores/agentStreamStore";
 import { useDeviceArrivalStore } from "@/stores/deviceArrivalStore";
+import { getWorkspacesKey } from "@/hooks/WorkspaceHooks";
+import type { Workspace } from "@/models/Workspace";
 import { useFlowStore } from "@/stores/flowStore";
 import { usePlayRunStore } from "@/stores/playRunStore";
 import { useSetupActivityStore } from "@/stores/setupActivityStore";
 import { useVoiceOccupancyStore } from "@/stores/voiceOccupancyStore";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 class FakeSocket implements LiveSocket {
   onopen: ((ev: unknown) => void) | null = null;
@@ -28,7 +32,8 @@ class FakeSocket implements LiveSocket {
 
 const Harness = ({ wsFactory }: { wsFactory: () => LiveSocket }) => {
   useLiveEvents("ws://live/ws/events", { wsFactory });
-  return null;
+  const { pathname, search } = useLocation();
+  return <p data-testid="location">{pathname + search}</p>;
 };
 
 describe("useLiveEvents dispatch", () => {
@@ -44,17 +49,19 @@ describe("useLiveEvents dispatch", () => {
     useDeviceArrivalStore.setState({ arrivals: [] });
   });
 
-  const setup = () => {
+  const setup = (path = "/") => {
     client = new QueryClient();
     render(
       <QueryClientProvider client={client}>
-        <Harness
-          wsFactory={() => {
-            const s = new FakeSocket();
-            sockets.push(s);
-            return s;
-          }}
-        />
+        <MemoryRouter initialEntries={[path]}>
+          <Harness
+            wsFactory={() => {
+              const s = new FakeSocket();
+              sockets.push(s);
+              return s;
+            }}
+          />
+        </MemoryRouter>
       </QueryClientProvider>,
     );
   };
@@ -541,5 +548,49 @@ describe("useLiveEvents dispatch", () => {
     });
     const node = useFlowStore.getState().nodes[0];
     expect(node?.type === "service" ? node.data.status : undefined).toBe("running");
+  });
+
+  describe("workspace.updated", () => {
+    const workspace = (id: string, slug: string, name: string): Workspace => ({
+      id,
+      slug,
+      name,
+      mention_chip_template: "",
+      created_at: "",
+      updated_at: "",
+    });
+    const push = (socket: FakeSocket, payload: Record<string, string>) =>
+      act(() => socket.message(JSON.stringify({ topic: "workspace.updated", type: "event", payload })));
+
+    beforeEach(() => {
+      useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedWorkspaceSlug: "acme" });
+    });
+
+    it("moves the open page onto the workspace's new slug, keeping the rest of the address, and renames it in the list", async () => {
+      setup("/acme/configuration/general?tab=x#top");
+      client.setQueryData([getWorkspacesKey], [workspace("ws-1", "acme", "Acme"), workspace("ws-2", "other", "Other")]);
+      const socket = await connectedSocket();
+
+      push(socket, { workspace_id: "ws-1", name: "Acme Labs", slug: "acme-labs" });
+
+      expect(screen.getByTestId("location")).toHaveTextContent("/acme-labs/configuration/general?tab=x");
+      expect(useWorkspaceStore.getState().selectedWorkspaceSlug).toBe("acme-labs");
+      expect(client.getQueryData<Workspace[]>([getWorkspacesKey])?.map((w) => [w.slug, w.name])).toEqual([
+        ["acme-labs", "Acme Labs"],
+        ["other", "Other"],
+      ]);
+    });
+
+    it("leaves the address alone when the renamed workspace is not the one on screen, and still refreshes the list", async () => {
+      setup("/acme/board");
+      client.setQueryData([getWorkspacesKey], [workspace("ws-1", "acme", "Acme"), workspace("ws-2", "other", "Other")]);
+      const socket = await connectedSocket();
+
+      push(socket, { workspace_id: "ws-2", name: "Other Co", slug: "other-co" });
+
+      expect(screen.getByTestId("location")).toHaveTextContent("/acme/board");
+      expect(useWorkspaceStore.getState().selectedWorkspaceSlug).toBe("acme");
+      expect(client.getQueryData<Workspace[]>([getWorkspacesKey])?.[1]?.slug).toBe("other-co");
+    });
   });
 });

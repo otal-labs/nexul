@@ -3,11 +3,18 @@ import { InterviewTemplateSection } from "@/components/settings/InterviewTemplat
 import { MentionChipLayoutSection } from "@/components/settings/MentionChipLayoutSection";
 import { PlaySettingsSection } from "@/components/settings/PlaySettingsSection";
 import { RoleSettingsSection } from "@/components/settings/RoleSettingsSection";
+import { WorkspaceGeneralSection } from "@/components/settings/WorkspaceGeneralSection";
 import { TeamSection } from "@/components/team/TeamSection";
 import type { SettingsSection } from "@/components/settings/SettingsNav";
 import { useSelectedWorkspace } from "@/hooks/WorkspaceHooks";
 
 // Thin same-file gates: each permission check gets its own function scope, not a wall of chained &&.
+// Keyed by workspace id so switching workspaces reseeds the form instead of keeping the previous name.
+const GeneralPanel = ({ canManageWorkspace }: { canManageWorkspace: boolean }) => {
+  const workspace = useSelectedWorkspace();
+  return <>{workspace && canManageWorkspace && <WorkspaceGeneralSection key={workspace.id} workspace={workspace} />}</>;
+};
+
 const RolesPanel = ({ canManageRoles }: { canManageRoles: boolean }) => (
   <>{canManageRoles && <RoleSettingsSection />}</>
 );
@@ -19,40 +26,41 @@ const PlaysPanel = ({ canReadPlays, canWritePlays, canDeletePlays }: {
 }) => <>{canReadPlays && <PlaySettingsSection canWrite={canWritePlays} canDelete={canDeletePlays} />}</>;
 
 // Keyed by workspace id so switching workspaces reseeds the form instead of keeping the previous template.
-const MentionsPanel = ({ canManageMentionLayout }: { canManageMentionLayout: boolean }) => {
+const MentionsPanel = ({ canManageWorkspace }: { canManageWorkspace: boolean }) => {
   const workspace = useSelectedWorkspace();
   return (
     <>
-      {workspace && canManageMentionLayout && <MentionChipLayoutSection key={workspace.id} workspace={workspace} />}
+      {workspace && canManageWorkspace && <MentionChipLayoutSection key={workspace.id} workspace={workspace} />}
     </>
   );
 };
 
 interface SettingsPageContentProps {
   section: SettingsSection;
+  canManageWorkspace: boolean;
   canManageRoles: boolean;
   canReadPlays: boolean;
   canWritePlays: boolean;
   canDeletePlays: boolean;
-  canManageMentionLayout: boolean;
 }
 
 // One card per workspace section (mirrors ProjectSettingsPage); the instance sections are InstanceSettingsContent.
 export const SettingsPageContent = ({
   section,
+  canManageWorkspace,
   canManageRoles,
   canReadPlays,
   canWritePlays,
   canDeletePlays,
-  canManageMentionLayout,
 }: SettingsPageContentProps) => (
   <>
+    {section === "general" && <GeneralPanel canManageWorkspace={canManageWorkspace} />}
     {section === "roles" && <RolesPanel canManageRoles={canManageRoles} />}
     {section === "plays" && (
       <PlaysPanel canReadPlays={canReadPlays} canWritePlays={canWritePlays} canDeletePlays={canDeletePlays} />
     )}
     {section === "interview" && <InterviewTemplateSection />}
-    {section === "mentions" && <MentionsPanel canManageMentionLayout={canManageMentionLayout} />}
+    {section === "mentions" && <MentionsPanel canManageWorkspace={canManageWorkspace} />}
     {section === "danger" && <DangerZoneSection />}
     {section === "team" && <TeamSection />}
   </>

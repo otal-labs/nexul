@@ -40,6 +40,10 @@ A project deploys from one repository. If its end-to-end or other tests live in 
 
 The answer is stored on the project as its tests location (`same` or `separate`), and the interview starts from it. It shows in the project's **Repositories** list, where the tests repository carries a `tests` marker and can be removed like any other. Over MCP, `project_update` attaches one through `add_repos` with `role: "tests"` (which also records the location as `separate`) and records or withdraws the answer through `tests_location`, and `project_get` returns each repository's role.
 
+## Renaming a workspace
+
+A workspace has a name, shown in the sidebar and the switcher, and a **slug**, its name in every link: `/<slug>/board`, `/<slug>/tickets/WEB-12`. Anyone holding `workspaces:write` in the workspace edits both under **Configuration → General**, the first section. Saving a new name changes nothing else. Saving a new URL moves every link into the workspace: links using the old address stop working and are not redirected, so the page says so under the field before you save. A slug is lowercase letters and digits joined by single dashes, at most 48 characters, not a path the app itself owns (such as `settings`), and not taken by another workspace; the form checks the first three as you type, and the server's answer to the last shows under the field. Everyone with the workspace open is moved onto the new address without a reload. Over MCP, `workspace_update` changes the same two fields.
+
 ## Team and roles
 
 Every workspace auto-creates a singleton **Owner** role at creation. It can't be deleted or renamed, and it implicitly holds every permission — an Owner is never locked out by a permission change.

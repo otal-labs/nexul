@@ -98,3 +98,34 @@ describe("ConfigurationPage mention chip layout gating", () => {
     });
   });
 });
+
+describe("ConfigurationPage general section gating", () => {
+  beforeEach(() => {
+    mocks.get.mockImplementation(mockGet);
+    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
+    useWorkspaceStore.persist.clearStorage();
+  });
+
+  it("hides General and its card without workspaces:write", async () => {
+    renderPage("/configuration/general");
+
+    await screen.findByRole("heading", { name: "Configuration" });
+    expect(screen.queryByRole("link", { name: "General" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Workspace" })).not.toBeInTheDocument();
+  });
+
+  it("opens on General, first in the nav, for a workspaces:write holder", async () => {
+    mocks.get.mockImplementation((url: string) => {
+      if (url === "/api/workspaces/ws-1/me") {
+        return Promise.resolve({ data: { role_name: "Owner", permissions: ["workspaces:write"] } });
+      }
+      return mockGet(url);
+    });
+    renderPage("/configuration");
+
+    const region = await screen.findByRole("region", { name: "Workspace" });
+    expect(within(region).getByLabelText("Name")).toHaveValue("Acme");
+    const nav = within(screen.getByRole("navigation", { name: "Configuration sections" }));
+    expect(nav.getAllByRole("link")[0]).toHaveTextContent("General");
+  });
+});

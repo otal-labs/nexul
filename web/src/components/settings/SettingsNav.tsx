@@ -3,6 +3,7 @@ import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import type { InstanceSection } from "@/models/Access";
 
 export const SETTINGS_SECTIONS = [
+  "general",
   "roles",
   "plays",
   "interview",
@@ -25,6 +26,7 @@ export const INSTANCE_GROUP = "Instance settings";
 const INSTANCE_SECTIONS: readonly SettingsSection[] = ["instance", "team", "sign-in", "connectors", "dns"];
 
 export const sectionLabels: Record<SettingsSection, string> = {
+  general: "General",
   roles: "Roles",
   plays: "Plays",
   interview: "Interview template",
@@ -45,6 +47,7 @@ export interface SettingsVisibility {
   showTeam: boolean;
   teamIsInstanceWide: boolean;
   // Each gated workspace section renders only for its permission holder; the nav must not link to an empty section.
+  showGeneral: boolean;
   showRoles: boolean;
   showPlays: boolean;
   showInterviewTemplate: boolean;
@@ -56,6 +59,7 @@ export const visibleSettingsSections = (visibility: SettingsVisibility): Setting
   const sections = SETTINGS_SECTIONS.filter((section) => {
     if (section === "team") return visibility.showTeam;
     if (INSTANCE_SECTIONS.includes(section)) return (visibility.instanceSections as readonly string[]).includes(section);
+    if (section === "general") return visibility.showGeneral;
     if (section === "roles") return visibility.showRoles;
     if (section === "plays") return visibility.showPlays;
     if (section === "interview") return visibility.showInterviewTemplate;

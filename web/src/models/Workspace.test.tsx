@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import type { RouteArea } from "@/models/Access";
-import { slugify, switchWorkspacePath, type WorkspaceAccess } from "@/models/Workspace";
+import {
+  normalizeSlugInput,
+  replaceWorkspaceSlug,
+  slugify,
+  switchWorkspacePath,
+  WorkspaceGeneralFormSchema,
+  type WorkspaceAccess,
+} from "@/models/Workspace";
 
 const access = (areas: RouteArea[], configurationSections: string[] = ["roles", "plays", "danger"]): WorkspaceAccess => ({
   canOpen: (area) => areas.includes(area),
@@ -57,5 +64,50 @@ describe("slugify", () => {
     ["!!!", "workspace"],
   ])("%s → %s, as the server derives it", (name, slug) => {
     expect(slugify(name)).toBe(slug);
+  });
+});
+
+describe("replaceWorkspaceSlug", () => {
+  it.each([
+    ["/acme", "/acme-labs"],
+    ["/acme/board/WEB", "/acme-labs/board/WEB"],
+    ["/acme-labs/board", undefined],
+    ["/acmeboard", undefined],
+    ["/settings/profile", undefined],
+  ])("%s becomes %s", (pathname, want) => {
+    expect(replaceWorkspaceSlug(pathname, "acme", "acme-labs")).toBe(want);
+  });
+});
+
+describe("normalizeSlugInput", () => {
+  it.each([
+    ["My App", "my-app"],
+    ["rix_wave!!", "rix-wave-"],
+    ["--lead", "lead"],
+    ["a   b", "a-b"],
+  ])("types %s as %s", (typed, kept) => {
+    expect(normalizeSlugInput(typed)).toBe(kept);
+  });
+});
+
+describe("WorkspaceGeneralFormSchema", () => {
+  const slugError = (slug: string) => {
+    const result = WorkspaceGeneralFormSchema.safeParse({ name: "Acme", slug });
+    return result.success ? undefined : result.error.issues[0]?.message;
+  };
+
+  it.each(["rixwave", "acme-2", "a"])("accepts %s", (slug) => {
+    expect(slugError(slug)).toBeUndefined();
+  });
+
+  it.each([
+    ["", "URL is required"],
+    ["acme-", "Use lowercase letters and digits, joined by single dashes"],
+    ["ac--me", "Use lowercase letters and digits, joined by single dashes"],
+    ["a".repeat(49), "URL can be at most 48 characters"],
+    ["settings", "That address is used by the app itself"],
+    ["wizard", "That address is used by the app itself"],
+  ])("refuses %s", (slug, message) => {
+    expect(slugError(slug)).toBe(message);
   });
 });

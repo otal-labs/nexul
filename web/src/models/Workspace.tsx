@@ -23,14 +23,56 @@ export const SaveWorkspaceFormSchema = z.object({
 
 export type SaveWorkspaceFormData = z.infer<typeof SaveWorkspaceFormSchema>;
 
+export const MAX_SLUG_LENGTH = 48;
+
 // Same rule as internal/tenancy's Slugify, so a name previews the slug the server derives from it.
 export const slugify = (name: string): string =>
   name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
-    .slice(0, 48)
+    .slice(0, MAX_SLUG_LENGTH)
     .replace(/-+$/, "") || "workspace";
+
+// The top-level paths the server and this app own; mirrors internal/tenancy's reservedSlugs, which the server enforces.
+export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
+  "api", "assets", "auth", "hooks", "invite", "login", "logout", "mcp", "onboarding", "openobserve", "settings",
+  "setup", "static", "swagger", "wizard", "ws",
+]);
+
+// Keeps what a person types in the URL field a slug in the making: lowercase, dashes for anything else, no doubled
+// or leading dash. A trailing dash stays so "my-app" can be typed; the schema refuses it until a letter follows.
+export const normalizeSlugInput = (value: string): string =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+/, "");
+
+export const WorkspaceGeneralFormSchema = z.object({
+  name: z.string().trim().min(1, "Workspace name is required"),
+  slug: z
+    .string()
+    .min(1, "URL is required")
+    .max(MAX_SLUG_LENGTH, `URL can be at most ${MAX_SLUG_LENGTH} characters`)
+    .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "Use lowercase letters and digits, joined by single dashes")
+    .refine((slug) => !RESERVED_SLUGS.has(slug), "That address is used by the app itself"),
+});
+
+export type WorkspaceGeneralFormData = z.infer<typeof WorkspaceGeneralFormSchema>;
+
+// The workspace.updated frame: the workspace's new name and slug.
+export interface WorkspaceUpdate {
+  workspace_id: string;
+  name: string;
+  slug: string;
+}
+
+// The same page under a workspace's new slug, or undefined when the path isn't inside that workspace.
+export const replaceWorkspaceSlug = (pathname: string, from: string, to: string): string | undefined => {
+  if (pathname === `/${from}`) return `/${to}`;
+  if (pathname.startsWith(`/${from}/`)) return `/${to}${pathname.slice(from.length + 1)}`;
+  return undefined;
+};
 
 // Prefixes a workspace-relative path ("/board", "/tickets/WEB-1") with the workspace's slug.
 export const workspacePath = (slug: string, path: string): string => `/${slug}${path === "/" ? "" : path}`;

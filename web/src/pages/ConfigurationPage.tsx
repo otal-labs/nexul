@@ -14,7 +14,7 @@ export const ConfigurationPage = () => {
   const canReadPlays = useHasPermission("plays:read");
   const canWritePlays = useHasPermission("plays:write");
   const canDeletePlays = useHasPermission("plays:delete");
-  const canManageMentionLayout = useHasPermission("workspaces:write");
+  const canManageWorkspace = useHasPermission("workspaces:write");
   const teamIsInstanceWide = useHasInstancePermission("accounts:read");
   const sections = useConfigurationSections() ?? [];
 
@@ -44,7 +44,7 @@ export const ConfigurationPage = () => {
             canReadPlays={canReadPlays}
             canWritePlays={canWritePlays}
             canDeletePlays={canDeletePlays}
-            canManageMentionLayout={canManageMentionLayout}
+            canManageWorkspace={canManageWorkspace}
           />
         </div>
       </div>
