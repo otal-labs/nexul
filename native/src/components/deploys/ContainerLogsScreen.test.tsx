@@ -1,4 +1,5 @@
 import { act, render, screen, userEvent } from "@testing-library/react-native";
+import { AppState, type AppStateStatus } from "react-native";
 
 import { api } from "@/api/client";
 import { ApiError } from "@/api/errors";
@@ -97,8 +98,15 @@ const scroll = (distanceFromEnd: number) =>
     }),
   );
 
+let appStateChange: (status: AppStateStatus) => void = () => undefined;
+
 beforeEach(() => {
   jest.useFakeTimers();
+  Object.assign(AppState, { currentState: "active" });
+  jest.spyOn(AppState, "addEventListener").mockImplementation((_, listener) => {
+    appStateChange = listener as (status: AppStateStatus) => void;
+    return { remove: jest.fn() };
+  });
   FakeSocket.all = [];
   mockFocus.clear();
   mockAccess.current = true;
@@ -108,7 +116,10 @@ beforeEach(() => {
   useSessionStore.getState().signIn("https://nexul.example.com", "tok");
 });
 
-afterEach(() => jest.useRealTimers());
+afterEach(() => {
+  jest.useRealTimers();
+  jest.restoreAllMocks();
+});
 
 const advance = (ms: number) => act(async () => void jest.advanceTimersByTime(ms));
 
@@ -214,6 +225,25 @@ describe("ContainerLogsScreen", () => {
 
     await act(async () => mockFocus.forEach((h) => h.run()));
     expect(FakeSocket.all).toHaveLength(2);
+  });
+
+  test("backgrounding the app closes the socket, and returning reopens it with the small tail, keeping the lines", async () => {
+    await render(<ContainerLogsScreen />);
+    await openSocket();
+    await emit([line(1), line(2)]);
+    const first = last();
+
+    await act(async () => appStateChange("background"));
+    expect(first.closed).toBe(true);
+    await advance(60_000);
+    expect(FakeSocket.all).toHaveLength(1);
+
+    await act(async () => appStateChange("active"));
+    expect(FakeSocket.all).toHaveLength(2);
+    expect(last().url).toContain("tail=20");
+    await openSocket();
+    await emit([line(2), line(3)]);
+    expect(screen.getAllByText(/^line \d$/).map((n) => n.props.children)).toEqual(["line 1", "line 2", "line 3"]);
   });
 
   test("only the last 2000 lines are kept", async () => {

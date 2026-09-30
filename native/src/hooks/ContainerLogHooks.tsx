@@ -1,5 +1,6 @@
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
+import { AppState, type AppStateStatus } from "react-native";
 
 import { api } from "@/api/client";
 import { errorMessage, isNotFound } from "@/api/errors";
@@ -37,7 +38,7 @@ export const useContainerLogs = (stackId: string, service: string, enabled: bool
       let socket: WebSocket | null = null;
       let timer: ReturnType<typeof setTimeout> | null = null;
       let attempt = 0;
-      let stopped = false;
+      let run = 0;
       let newest = "";
 
       const append = (incoming: ContainerLogLine[], after: string) =>
@@ -49,8 +50,8 @@ export const useContainerLogs = (stackId: string, service: string, enabled: bool
           return { ...prev, lines: [...prev.lines, ...added].slice(-MAX_LOG_LINES) };
         });
 
-      const retry = (reason: string | undefined) => {
-        if (stopped) return;
+      const retry = (reason: string | undefined, mine: number) => {
+        if (mine !== run) return;
         setLogs((prev) => ({ ...prev, status: "offline", reason }));
         const delay = Math.min(MAX_BACKOFF_MS, BASE_BACKOFF_MS * 2 ** attempt) + Math.random() * JITTER_MS;
         attempt += 1;
@@ -58,22 +59,23 @@ export const useContainerLogs = (stackId: string, service: string, enabled: bool
       };
 
       // A refused handshake reaches the socket as a bare close, so the snapshot route says why.
-      const explainFailure = () =>
+      const explainFailure = (mine: number) =>
         api.get(`/api/stacks/${stackId}/services/${encodeURIComponent(service)}/logs?tail=1`).then(
-          () => retry(undefined),
+          () => retry(undefined, mine),
           (error: unknown) => {
-            if (stopped) return;
+            if (mine !== run) return;
             if (isNotFound(error)) {
               setLogs((prev) => ({ ...prev, status: "forbidden" }));
               return;
             }
-            retry(errorMessage(error));
+            retry(errorMessage(error), mine);
           },
         );
 
       const connect = () => {
         const token = readSessionToken();
-        if (stopped || !token) return;
+        if (!token) return;
+        const mine = run;
         const after = newest;
         let opened = false;
         const ws = new WebSocket(buildLogsURL(host, token, stackId, service, after ? RECONNECT_TAIL : FIRST_TAIL));
@@ -96,29 +98,44 @@ export const useContainerLogs = (stackId: string, service: string, enabled: bool
         };
         ws.onclose = (ev) => {
           socket = null;
-          if (stopped) return;
+          if (mine !== run) return;
           if (!opened) {
-            void explainFailure();
+            void explainFailure(mine);
             return;
           }
           if (ev.code === 1000) {
             setLogs((prev) => ({ ...prev, status: "ended" }));
             return;
           }
-          retry(ev.reason || undefined);
+          retry(ev.reason || undefined, mine);
         };
       };
 
-      connect();
-      return () => {
-        stopped = true;
+      // Bumping run orphans every callback of the socket it closes, so a late probe cannot reopen it.
+      const close = () => {
+        run += 1;
         if (timer) clearTimeout(timer);
         if (socket) {
           socket.onopen = null;
           socket.onmessage = null;
           socket.onclose = null;
           socket.close();
+          socket = null;
         }
+      };
+
+      // Background closes the stream like blur does; foreground resumes with the small tail and keeps the lines.
+      const onAppState = (status: AppStateStatus) => {
+        close();
+        if (status !== "active") return;
+        attempt = 0;
+        connect();
+      };
+      onAppState(AppState.currentState);
+      const subscription = AppState.addEventListener("change", onAppState);
+      return () => {
+        subscription.remove();
+        close();
       };
     }, [enabled, host, stackId, service]),
   );
