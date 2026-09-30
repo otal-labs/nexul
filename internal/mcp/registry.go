@@ -145,7 +145,11 @@ func ticketResource(s *tickets.Service) resource {
 			if err != nil {
 				return "", err
 			}
-			return "# " + t.Title + "\n\nstatus: " + string(t.Status) + "\n\n" + t.Body, nil
+			md, err := richtext.ToMarkdown(t.Body)
+			if err != nil {
+				return "", fmt.Errorf("render ticket %s: %w", id, err)
+			}
+			return "# " + t.Title + "\n\nstatus: " + string(t.Status) + "\n\n" + md, nil
 		},
 	}
 }

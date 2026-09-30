@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { bodyToHtml, bodyToMarkdown } from "@/utils/RichtextUtility";
+import { bodyToHtml, bodyToMarkdown, parseBodyToJSON } from "@/utils/RichtextUtility";
 
 describe("bodyToHtml", () => {
   it("renders structured JSON as HTML", () => {
@@ -42,6 +42,13 @@ describe("bodyToMarkdown", () => {
   it("serializes mention nodes as canonical internal links", () => {
     const body = `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"see "},{"type":"mention","attrs":{"type":"ticket","id":"t-1","label":"Fix the bug"}},{"type":"text","text":" and "},{"type":"mention","attrs":{"type":"doc","id":"d-9","label":"Architecture"}}]}]}`;
     expect(bodyToMarkdown(body)).toBe("see [Fix the bug](/tickets/t-1) and [Architecture](/docs/d-9)");
+  });
+
+  it("writes a person mention as @login and reads it back to the user id, like the server", () => {
+    const body = `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"ping "},{"type":"mention","attrs":{"type":"person","id":"u-rix","label":"rixwavedev"}}]}]}`;
+    const markdown = bodyToMarkdown(body);
+    expect(markdown).toBe("ping [@rixwavedev](/people/u-rix)");
+    expect(parseBodyToJSON(markdown).content[0].content[1].attrs).toMatchObject({ type: "person", id: "u-rix", label: "rixwavedev" });
   });
 });
 

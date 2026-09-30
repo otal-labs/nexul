@@ -90,7 +90,15 @@ type NotificationPushItem struct {
 
 // ticketCreatedEvent is declared consumer-side so this package stays decoupled from tickets (ADR 0017).
 type ticketCreatedEvent struct {
-	Ticket ticketRef `json:"ticket"`
+	Ticket           ticketRef `json:"ticket"`
+	MentionedUserIDs []string  `json:"mentioned_user_ids"`
+}
+
+// ticketUpdatedEvent mirrors ticket.updated: a title or body edit and the people it newly mentions.
+type ticketUpdatedEvent struct {
+	Ticket           ticketRef `json:"ticket"`
+	ActorID          string    `json:"actor_id"`
+	MentionedUserIDs []string  `json:"mentioned_user_ids"`
 }
 
 // ticketStatusChangedEvent mirrors ticket.status_changed.
@@ -116,8 +124,9 @@ type ticketRef struct {
 
 // docEvent mirrors the docs domain's doc.created / doc.updated payloads.
 type docEvent struct {
-	Doc     docRef `json:"doc"`
-	ActorID string `json:"actor_id"`
+	Doc              docRef   `json:"doc"`
+	ActorID          string   `json:"actor_id"`
+	MentionedUserIDs []string `json:"mentioned_user_ids"`
 }
 
 // docRef is the slice of a doc the generation rules need.
@@ -188,7 +197,19 @@ func HandleTicketCreated(ctx context.Context, svc *NotificationService, ev event
 	if e.Ticket.ID == "" {
 		return apperrs.Fatal(fmt.Errorf("ticket.created missing ticket id"))
 	}
-	return svc.onTicketCreated(CtxWithEventKey(ctx, ev.ID), e.Ticket)
+	return svc.onTicketCreated(CtxWithEventKey(ctx, ev.ID), e.Ticket, e.MentionedUserIDs)
+}
+
+// HandleTicketUpdated tells each person an edit newly @-mentions, never the editor.
+func HandleTicketUpdated(ctx context.Context, svc *NotificationService, ev eventbus.Event) error {
+	var e ticketUpdatedEvent
+	if err := json.Unmarshal(ev.Payload, &e); err != nil {
+		return apperrs.Fatal(fmt.Errorf("parse ticket.updated: %w", err))
+	}
+	if e.Ticket.ID == "" {
+		return apperrs.Fatal(fmt.Errorf("ticket.updated missing ticket id"))
+	}
+	return svc.onTicketUpdated(CtxWithEventKey(ctx, ev.ID), e)
 }
 
 // HandleTicketStatusChanged notifies the developer, the tester, and @-mentioned users of that ticket, never the mover.
@@ -212,10 +233,11 @@ func HandleDocCreated(ctx context.Context, svc *NotificationService, ev eventbus
 	if e.Doc.ID == "" {
 		return apperrs.Fatal(fmt.Errorf("doc.created missing doc id"))
 	}
-	return svc.onDocActivity(CtxWithEventKey(ctx, ev.ID), e.Doc, e.ActorID, KindDocCreated)
+	return svc.onDocActivity(CtxWithEventKey(ctx, ev.ID), e, KindDocCreated)
 }
 
-// HandleDocUpdated notifies every member of the doc's workspace except whoever made the edit.
+// HandleDocUpdated notifies every member of the doc's workspace except whoever made the edit; people the edit
+// newly @-mentions get a mention instead.
 func HandleDocUpdated(ctx context.Context, svc *NotificationService, ev eventbus.Event) error {
 	var e docEvent
 	if err := json.Unmarshal(ev.Payload, &e); err != nil {
@@ -224,7 +246,7 @@ func HandleDocUpdated(ctx context.Context, svc *NotificationService, ev eventbus
 	if e.Doc.ID == "" {
 		return apperrs.Fatal(fmt.Errorf("doc.updated missing doc id"))
 	}
-	return svc.onDocActivity(CtxWithEventKey(ctx, ev.ID), e.Doc, e.ActorID, KindDocUpdated)
+	return svc.onDocActivity(CtxWithEventKey(ctx, ev.ID), e, KindDocUpdated)
 }
 
 // HandleMemoryUpdated notifies every workspace member who holds memories:read, except the author.

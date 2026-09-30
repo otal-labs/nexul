@@ -21,12 +21,18 @@ import { searchMentions } from "@/hooks/MentionHooks";
 import type { MentionRef, MentionSearchResult } from "@/models/Mention";
 
 // Matches a canonical mention link: the URL is the identifier, the label is just display text.
-const mentionLinkRe = /^\[([^\]]+)\]\((\/(?:tickets|docs)\/)([a-zA-Z0-9-]+)\)/;
+const mentionLinkRe = /^\[([^\]]+)\]\((\/(?:tickets|docs|people)\/)([a-zA-Z0-9-]+)\)/;
+
+const mentionPaths: Record<string, string> = { ticket: "/tickets/", doc: "/docs/", person: "/people/" };
+const mentionTypesByPath: Record<string, string> = { "/tickets/": "ticket", "/docs/": "doc", "/people/": "person" };
 
 // Must stay in sync with the Go converter (internal/docs/richtext/mention.go).
 function mentionHref(type: string, id: string): string {
-  return `/${type}s/${id}`;
+  return `${mentionPaths[type] ?? "/"}${id}`;
 }
+
+// A person mention's label is the bare login, written as @login in markdown.
+const mentionMarkdownLabel = (type: string, label: string) => (type === "person" ? `@${label}` : label);
 
 function escapeMarkdownLabel(label: string): string {
   return label.replace(/([\\[\]*_`~])/g, "\\$1");
@@ -112,24 +118,28 @@ export function buildEditorExtensions({
         name: "mention",
         level: "inline",
         start: (src: string) => {
-          const match = src.match(/\[[^\]]*\]\((?:\/tickets\/|\/docs\/)/);
+          const match = src.match(/\[[^\]]*\]\((?:\/tickets\/|\/docs\/|\/people\/)/);
           return match ? (match.index ?? -1) : -1;
         },
         tokenize: (src: string) => {
           const match = mentionLinkRe.exec(src);
           if (!match) return undefined;
-          const type = (match[2] ?? "").startsWith("/tickets/") ? "ticket" : "doc";
+          const type = mentionTypesByPath[match[2] ?? ""] ?? "doc";
+          const label = match[1] ?? "";
           return {
             type: "mention",
             raw: match[0],
-            attributes: { type, id: match[3] ?? "", label: match[1] ?? "" },
+            attributes: { type, id: match[3] ?? "", label: type === "person" ? label.replace(/^@/, "") : label },
           };
         },
       },
       parseMarkdown: (token, helpers) =>
         helpers.createNode("mention", token.attributes ?? {}),
-      renderMarkdown: (node) =>
-        `[${escapeMarkdownLabel(node.attrs?.label ?? node.attrs?.id ?? "")}](${mentionHref(node.attrs?.type ?? "", node.attrs?.id ?? "")})`,
+      renderMarkdown: (node) => {
+        const type = node.attrs?.type ?? "";
+        const label = mentionMarkdownLabel(type, node.attrs?.label ?? node.attrs?.id ?? "");
+        return `[${escapeMarkdownLabel(label)}](${mentionHref(type, node.attrs?.id ?? "")})`;
+      },
       addAttributes() {
         return {
           ...this.parent?.(),
@@ -172,11 +182,13 @@ export function buildEditorExtensions({
         },
         command: ({ editor, range, props }) => {
           const item = props as unknown as MentionSearchResult;
+          // A person keeps their user id and login; the chip shows their live display name.
+          const label = item.type === "person" ? (item.login ?? item.title) : item.title;
           editor
             .chain()
             .focus()
             .insertContentAt(range, [
-              { type: "mention", attrs: { type: item.type, id: item.id, label: item.title } },
+              { type: "mention", attrs: { type: item.type, id: item.id, label } },
               { type: "text", text: " " },
             ])
             .run();

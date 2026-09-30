@@ -464,7 +464,9 @@ _Avoid_: Whole instance, admin settings
 **Display name**:
 What a person is called wherever they appear: the name they set in their
 profile, else their sign-in account's name, else their login. The login
-stays where a handle is meant: an @mention and the line under a name.
+stays where a handle is meant: a chat @mention, a Mention written as
+markdown, and the line under a name. A person's Mention chip shows the
+display name.
 _Avoid_: Username, nickname, name (alone, that is the sign-in account's)
 
 **People**:
@@ -472,6 +474,15 @@ A workspace's members as any member sees them: login, display name, and
 picture, and nothing else. Readable by every member of that workspace,
 whatever their role; managing members is the Team's.
 _Avoid_: Directory, roster, members (the managed list with roles)
+
+**Mention**:
+An @-reference in a doc, ticket, or memory body to a ticket, a doc, or a
+person, stored as a node holding the target's id and shown as a live chip.
+A person's holds their user id and its chip shows their picture and
+display name from People; as markdown it is `[@login](/people/<user id>)`.
+Saving a doc or ticket that newly mentions someone tells them in their
+inbox. Chat's `@login` and `@Agent` are plain text in the message instead.
+_Avoid_: Tag, ping
 
 **Personal access token**:
 A long-lived, revocable credential (`dep_`) carrying exactly one user's own

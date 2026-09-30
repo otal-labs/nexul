@@ -68,8 +68,20 @@ const mentionMarkdown = (attrs: Record<string, unknown> = {}): string => {
   const id = String(attrs.id ?? "");
   if (attrs.type === "ticket") return `[${label}](/tickets/${id})`;
   if (attrs.type === "doc") return `[${label}](/docs/${id})`;
+  if (attrs.type === "person") return `**@${label}**`;
   return "";
 };
+
+// Names a person mention by user id; undefined keeps the login the mention was saved with.
+export type MentionName = (userId: string) => string | undefined;
+
+// Swaps each person mention's stored login for the name People gives it now.
+const namePeople = (nodes: RichNode[], nameFor: MentionName): RichNode[] =>
+  nodes.map((node) => {
+    const name = node.type === "mention" && node.attrs?.type === "person" ? nameFor(String(node.attrs.id ?? "")) : undefined;
+    const content = node.content && namePeople(node.content, nameFor);
+    return { ...node, ...(name !== undefined && { attrs: { ...node.attrs, label: name } }), ...(content && { content }) };
+  });
 
 const renderInlineMarkdown = (nodes: RichNode[]): string =>
   nodes
@@ -128,8 +140,10 @@ const renderBlockMarkdown = (node: RichNode, depth = 0): string => {
 
 // Converts a doc's stored body to markdown for the shared MessageBody/MessageMarkdown renderer; a legacy
 // non-JSON body (none in production data today) passes through unchanged, mirroring richtext.ToMarkdown.
-export const richBodyToMarkdown = (body: string): string => {
+export const richBodyToMarkdown = (body: string, nameFor: MentionName = () => undefined): string => {
   const blocks = parseRichBody(body);
   if (!blocks) return body;
-  return blocks.map((node) => renderBlockMarkdown(node)).join("\n\n");
+  return namePeople(blocks, nameFor)
+    .map((node) => renderBlockMarkdown(node))
+    .join("\n\n");
 };

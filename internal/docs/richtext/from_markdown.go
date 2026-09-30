@@ -269,7 +269,7 @@ func inlineEmphasis(v *ast.Emphasis, child ast.Node, source []byte, marks []Mark
 func inlineLink(v *ast.Link, child ast.Node, source []byte, marks []Mark) ([]Node, error) {
 	href := string(v.Destination)
 	if kind, id, ok := ParseMentionHref(href); ok {
-		label := inlineText(child, source)
+		label := mentionNodeLabel(kind, inlineText(child, source))
 		return []Node{{Type: "mention", Attrs: map[string]any{"type": kind, "id": id, "label": label}}}, nil
 	}
 	return inlines(child, source, append(cloneMarks(marks), Mark{Type: "link", Attrs: map[string]any{"href": href}}))

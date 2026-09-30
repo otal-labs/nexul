@@ -304,7 +304,7 @@ func TestSearch_CombinesAndFiltersDocs(t *testing.T) {
 	access := &fakeAccessChecker{canOpen: map[string]bool{"d-1": true, "d-2": false}}
 	svc := newTestService(t, tickets, docs, statuses, access)
 
-	results, err := svc.Search(actorCtx("u-1"), "auth", 20)
+	results, err := svc.Search(actorCtx("u-1"), "auth", "", 20)
 	require.NoError(t, err)
 
 	ids := make([]string, 0, len(results))
@@ -320,13 +320,13 @@ func TestSearch_Errors(t *testing.T) {
 	svc := newTestService(t, nil, nil, nil, nil)
 
 	t.Run("requires actor", func(t *testing.T) {
-		_, err := svc.Search(context.Background(), "auth", 20)
+		_, err := svc.Search(context.Background(), "auth", "", 20)
 		require.Error(t, err)
 		assert.ErrorIs(t, err, apperrs.ErrUnauthorized)
 	})
 
 	t.Run("requires query", func(t *testing.T) {
-		_, err := svc.Search(actorCtx("u-1"), "  ", 20)
+		_, err := svc.Search(actorCtx("u-1"), "  ", "", 20)
 		require.Error(t, err)
 		assert.ErrorIs(t, err, apperrs.ErrInvalid)
 	})
@@ -337,7 +337,7 @@ func TestSearch_Errors(t *testing.T) {
 			&fakeTicketSource{searchErr: boom},
 			&fakeDocSource{searchErr: boom},
 			nil, nil)
-		_, err := svc.Search(actorCtx("u-1"), "auth", 20)
+		_, err := svc.Search(actorCtx("u-1"), "auth", "", 20)
 		require.Error(t, err)
 	})
 }
@@ -350,7 +350,7 @@ func TestSearch_KeyMatch_ExactPrefixNumber(t *testing.T) {
 	statuses := &fakeStatusSource{statuses: map[string]Status{"open": {ID: "open", Name: "Open"}}}
 	svc := newTestService(t, tickets, nil, statuses, nil)
 
-	results, err := svc.Search(actorCtx("u-1"), "ERF-1", 20)
+	results, err := svc.Search(actorCtx("u-1"), "ERF-1", "", 20)
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	assert.Equal(t, SearchResult{Type: "ticket", ID: "t-1", Title: "Fix the router", StatusLabel: "Open", CanOpen: true}, results[0])
@@ -363,7 +363,7 @@ func TestSearch_KeyMatch_PrefixWithDigit(t *testing.T) {
 	}
 	svc := newTestService(t, tickets, nil, nil, nil)
 
-	results, err := svc.Search(actorCtx("u-1"), "P1-12", 20)
+	results, err := svc.Search(actorCtx("u-1"), "P1-12", "", 20)
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	assert.Equal(t, "t-1", results[0].ID)
@@ -378,7 +378,7 @@ func TestSearch_KeyMatch_WrongCaseFallsThroughToTitleSearch(t *testing.T) {
 	svc := newTestService(t, tickets, nil, nil, nil)
 
 	// Lowercase query never matches the uppercase-only key regex, so it's treated as a plain title search; the key match for "ERF-1" is not surfaced even though it exists.
-	results, err := svc.Search(actorCtx("u-1"), "erf-1", 20)
+	results, err := svc.Search(actorCtx("u-1"), "erf-1", "", 20)
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	assert.Equal(t, "t-1", results[0].ID)
@@ -392,7 +392,7 @@ func TestSearch_KeyMatch_NonexistentPrefixFallsThroughToTitleSearchOnly(t *testi
 	}
 	svc := newTestService(t, tickets, nil, nil, nil)
 
-	results, err := svc.Search(actorCtx("u-1"), "ZZZ-1", 20)
+	results, err := svc.Search(actorCtx("u-1"), "ZZZ-1", "", 20)
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	assert.Equal(t, "t-1", results[0].ID, "key regex matched but no ticket resolved, so title search still runs")
@@ -412,7 +412,7 @@ func TestSearch_KeyMatch_SortsFirstAndDedupsTitleHit(t *testing.T) {
 	access := &fakeAccessChecker{canOpen: map[string]bool{"d-1": true}}
 	svc := newTestService(t, tickets, docs, nil, access)
 
-	results, err := svc.Search(actorCtx("u-1"), "ERF-1", 20)
+	results, err := svc.Search(actorCtx("u-1"), "ERF-1", "", 20)
 	require.NoError(t, err)
 
 	ids := make([]string, 0, len(results))
@@ -434,7 +434,73 @@ func TestSearch_LimitClamping(t *testing.T) {
 	access := &fakeAccessChecker{canOpen: map[string]bool{"d-1": true}}
 	svc := newTestService(t, tickets, docs, nil, access)
 
-	results, err := svc.Search(actorCtx("u-1"), "q", 2)
+	results, err := svc.Search(actorCtx("u-1"), "q", "", 2)
 	require.NoError(t, err)
 	require.Len(t, results, 2)
+}
+
+// fakePeopleSource is People as the actor sees them, for every workspace alike.
+type fakePeopleSource struct {
+	people []Person
+	err    error
+}
+
+func (f *fakePeopleSource) People(context.Context, string, string) ([]Person, error) {
+	return f.people, f.err
+}
+
+func resultKeys(results []SearchResult) []string {
+	keys := make([]string, 0, len(results))
+	for _, r := range results {
+		keys = append(keys, r.Type+":"+r.ID)
+	}
+	return keys
+}
+
+func TestSearch_People_RankedAroundTickets(t *testing.T) {
+	svc := newTestService(t, &fakeTicketSource{
+		tickets: map[string]Ticket{"t-1": {ID: "t-1", Title: "Fix rix bug"}},
+		search:  []SearchHit{{ID: "t-1", Title: "Fix rix bug"}},
+	}, nil, nil, nil)
+	svc.SetPeople(&fakePeopleSource{people: []Person{
+		{UserID: "u-rix", Login: "rixwavedev", DisplayName: "Rix Wave"},
+		{UserID: "u-sam", Login: "sam", DisplayName: "Rixa Stone"},
+		{UserID: "u-mo", Login: "morix"},
+		{UserID: "u-bob", Login: "bob", DisplayName: "Bob"},
+		{UserID: "u-exact", Login: "rix"},
+	}})
+
+	results, err := svc.Search(actorCtx("u-1"), "RIX", "", 20)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"person:u-exact", "person:u-rix", "person:u-sam", "ticket:t-1", "person:u-mo"}, resultKeys(results),
+		"exact login first, login or display-name prefixes next, substring matches after tickets and docs")
+}
+
+func TestSearch_People_TicketKeyStillRanksFirst(t *testing.T) {
+	svc := newTestService(t, &fakeTicketSource{
+		tickets: map[string]Ticket{},
+		byKey:   map[string]Ticket{"P1-12": {ID: "t-12", Title: "Router"}},
+	}, nil, nil, nil)
+	svc.SetPeople(&fakePeopleSource{people: []Person{{UserID: "u-bot", Login: "p1-12bot"}}})
+
+	results, err := svc.Search(actorCtx("u-1"), "P1-12", "", 20)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"ticket:t-12", "person:u-bot"}, resultKeys(results))
+}
+
+func TestSearch_People_SourceErrorFails(t *testing.T) {
+	svc := newTestService(t, nil, nil, nil, nil)
+	svc.SetPeople(&fakePeopleSource{err: errors.New("people unavailable")})
+	_, err := svc.Search(actorCtx("u-1"), "rix", "", 20)
+	require.Error(t, err)
+}
+
+func TestResolve_Person(t *testing.T) {
+	svc := newTestService(t, nil, nil, nil, nil)
+	svc.SetPeople(&fakePeopleSource{people: []Person{{UserID: "u-rix", Login: "rixwavedev", DisplayName: "Rix Wave", AvatarURL: "/api/people/u-rix/avatar?v=1"}}})
+
+	chips, err := svc.Resolve(actorCtx("u-1"), []Ref{{Type: "person", ID: "u-rix"}, {Type: "person", ID: "u-gone"}})
+	require.NoError(t, err)
+	assert.Equal(t, []Chip{{Type: "person", ID: "u-rix", Title: "Rix Wave", Login: "rixwavedev", AvatarURL: "/api/people/u-rix/avatar?v=1", CanOpen: true}}, chips,
+		"a person the actor shares no workspace with is left out, like any missing target")
 }

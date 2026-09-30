@@ -1,6 +1,7 @@
 package richtext
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,6 +16,7 @@ func TestParseMentionHref(t *testing.T) {
 	}{
 		{"/tickets/t-1", "ticket", "t-1", true},
 		{"/docs/d-1", "doc", "d-1", true},
+		{"/people/u-1", "person", "u-1", true},
 		{"/tickets/", "", "", false},
 		{"/docs/", "", "", false},
 		{"/ticket/t-1", "", "", false},
@@ -30,7 +32,7 @@ func TestParseMentionHref(t *testing.T) {
 }
 
 func TestMentionHref_RoundTrip(t *testing.T) {
-	for _, kind := range []string{MentionTypeTicket, MentionTypeDoc} {
+	for _, kind := range []string{MentionTypeTicket, MentionTypeDoc, MentionTypePerson} {
 		href := MentionHref(kind, "abc-123")
 		gotKind, gotID, ok := ParseMentionHref(href)
 		require.True(t, ok, "round-trip %s", href)
@@ -93,6 +95,7 @@ func TestMentionMarkdown_RoundTrip(t *testing.T) {
 	for _, md := range []string{
 		"see [Fix the bug](/tickets/t-1) now",
 		"[Design doc](/docs/d-9) covers it",
+		"ping [@rix-wave](/people/u-1) please",
 	} {
 		doc, err := MarkdownToDoc(md)
 		require.NoError(t, err)
@@ -109,4 +112,43 @@ func TestMentionWithMarks_Serializes(t *testing.T) {
 	md, err := JSONToMarkdown(body)
 	require.NoError(t, err)
 	assert.Equal(t, "[Architecture](/docs/d-1)", md)
+}
+
+func TestPersonMention_MarkdownIsAtLoginAndNodeKeepsTheID(t *testing.T) {
+	body := `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"ping "},{"type":"mention","attrs":{"type":"person","id":"u-1","label":"rixwavedev"}}]}]}`
+	md, err := JSONToMarkdown(body)
+	require.NoError(t, err)
+	assert.Equal(t, "ping [@rixwavedev](/people/u-1)", md)
+
+	doc, err := MarkdownToDoc(md)
+	require.NoError(t, err)
+	mention := doc.Content[0].Content[1]
+	assert.Equal(t, map[string]any{"type": "person", "id": "u-1", "label": "rixwavedev"}, mention.Attrs)
+}
+
+func TestAddedPersonMentions(t *testing.T) {
+	mention := func(id string) string {
+		return `{"type":"mention","attrs":{"type":"person","id":"` + id + `","label":"x"}}`
+	}
+	body := func(nodes ...string) string {
+		return `{"type":"doc","content":[{"type":"paragraph","content":[` + strings.Join(nodes, ",") + `]}]}`
+	}
+	ticketMention := `{"type":"mention","attrs":{"type":"ticket","id":"t-1","label":"x"}}`
+	tests := []struct {
+		name          string
+		before, after string
+		want          []string
+	}{
+		{"new body mentions everyone once", "", body(mention("u-1"), mention("u-2"), mention("u-1")), []string{"u-1", "u-2"}},
+		{"re-save adds nobody", body(mention("u-1")), body(mention("u-1")), nil},
+		{"only the newcomer", body(mention("u-1")), body(mention("u-1"), mention("u-2")), []string{"u-2"}},
+		{"removing is not adding", body(mention("u-1")), body(), nil},
+		{"ticket and doc mentions are not people", "", body(ticketMention), nil},
+		{"legacy markdown body", "", "hi [@rix](/people/u-3)", []string{"u-3"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, AddedPersonMentions(tt.before, tt.after))
+		})
+	}
 }

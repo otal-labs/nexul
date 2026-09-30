@@ -168,7 +168,7 @@ func renderInline(nodes []Node) string {
 			}
 			closeMarks(&b, open, nil)
 			open = nil
-			b.WriteString("[" + escapeMarkdownText(label) + "](" + href + ")")
+			b.WriteString("[" + escapeMarkdownText(mentionMarkdownLabel(kind, label)) + "](" + href + ")")
 		case "text":
 			open = renderTextRun(&b, n.Text, n.Marks, open)
 		case "horizontalRule":

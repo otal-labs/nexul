@@ -28,6 +28,20 @@ func (a workspaceUserStore) LoginForUserID(ctx context.Context, userID string) (
 	return u.Login, nil
 }
 
+func (a workspaceUserStore) NameForUserID(ctx context.Context, userID string) (string, error) {
+	u, err := a.users.GetUserByID(ctx, userID)
+	if err != nil {
+		return "", err
+	}
+	if u.DisplayName != nil && *u.DisplayName != "" {
+		return *u.DisplayName, nil
+	}
+	if u.Name != "" {
+		return u.Name, nil
+	}
+	return u.Login, nil
+}
+
 // workspaceMembersStore adapts tenancy's raw membership store to workspace's WorkspaceMemberStore seam
 // (ADR 0017); it bypasses tenancy.Service on purpose, since the memory.updated fan-out has no acting user to
 // check MembersWrite with (a bus handler reacting to an event, not a request).

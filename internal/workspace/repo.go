@@ -98,6 +98,8 @@ type UserStore interface {
 	GetUserByLogin(ctx context.Context, login string) (*User, error)
 	// LoginForUserID reverses GetUserByLogin, for fan-out paths (memories) that already hold a user id.
 	LoginForUserID(ctx context.Context, userID string) (string, error)
+	// NameForUserID is what the person is called: their display name, else their account's name, else their login.
+	NameForUserID(ctx context.Context, userID string) (string, error)
 }
 
 // WorkspaceMemberStore resolves a workspace's member user ids, adapted at the composition root (ADR 0017)

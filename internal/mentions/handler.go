@@ -48,7 +48,7 @@ func (h *Handler) resolve(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) search(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query().Get("q")
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	results, err := h.svc.Search(r.Context(), q, limit)
+	results, err := h.svc.Search(r.Context(), q, r.URL.Query().Get("workspace_id"), limit)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
