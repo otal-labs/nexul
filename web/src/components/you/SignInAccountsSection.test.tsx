@@ -6,6 +6,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SignInAccountsSection } from "@/components/you/SignInAccountsSection";
 
+const access = vi.hoisted(() => ({ sections: [] as string[] }));
+
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
   post: vi.fn(),
@@ -18,6 +20,8 @@ vi.mock("@/api/client", () => ({
   api: { get: mocks.get, post: mocks.post, delete: mocks.del },
   errorMessage: (error: unknown) => (error instanceof Error ? error.message : String(error)),
 }));
+
+vi.mock("@/hooks/AccessHooks", () => ({ useCanOpenSection: (section: string) => access.sections.includes(section) }));
 
 vi.mock("sonner", () => ({ toast: { success: mocks.toastSuccess, error: mocks.toastError } }));
 
@@ -45,6 +49,7 @@ const renderSection = (route = "/settings/profile") => {
 
 describe("SignInAccountsSection", () => {
   beforeEach(() => {
+    access.sections = [];
     mocks.get.mockReset();
     mocks.post.mockReset();
     mocks.del.mockReset();
@@ -96,23 +101,24 @@ describe("SignInAccountsSection", () => {
     expect(mocks.toastError).toHaveBeenCalledTimes(1);
   });
 
-  it("offers someone with GitHub linked the App's install page on their own account", async () => {
-    mockGet([github], {}, "nexul-app");
+  it("links a GitHub row to the App's settings for someone who can open Connectors", async () => {
+    access.sections = ["connectors"];
+    mockGet([github, google], { google_configured: true }, "nexul-app");
     renderSection();
 
-    expect(await screen.findByRole("link", { name: /let nexul deploy your repositories/i })).toHaveAttribute(
+    expect(await screen.findByRole("link", { name: "GitHub App settings" })).toHaveAttribute(
       "href",
-      "https://github.com/apps/nexul-app/installations/new",
+      "/settings/connectors/github-app",
     );
-    expect(screen.getByText("Installs Nexul's GitHub App on your account; pick which repositories.")).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "GitHub App settings" })).toHaveLength(1);
+    expect(screen.queryByRole("link", { name: /let nexul deploy your repositories/i })).not.toBeInTheDocument();
   });
 
-  it("offers no install link while the instance's GitHub App has no slug", async () => {
-    mockGet([github], {});
+  it("hides the App settings link from someone who cannot open Connectors", async () => {
+    mockGet([github, google], { google_configured: true }, "nexul-app");
     renderSection();
 
-    expect(await screen.findByText("@onik97")).toBeInTheDocument();
-    await waitFor(() => expect(mocks.get).toHaveBeenCalledWith("/api/connectors/github/app-config"));
-    expect(screen.queryByRole("link", { name: /let nexul deploy your repositories/i })).not.toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Unlink GitHub" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "GitHub App settings" })).not.toBeInTheDocument();
   });
 });

@@ -21,7 +21,7 @@ const renderPage = (entry = "/tickets/t-1") => {
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[entry]}>
         <Routes>
-          <Route path="/tickets/:ticketId" element={<TicketPage />} />
+          <Route path="/tickets/:ticketId/:tab?" element={<TicketPage />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -186,9 +186,9 @@ describe("TicketPage tabs", () => {
     expect(await screen.findByText("No plays have run on this ticket yet.")).toBeInTheDocument();
   });
 
-  it("opens the tab named by ?tab=", async () => {
+  it("opens the tab named by the path", async () => {
     mockTicket();
-    renderPage("/tickets/t-1?tab=links");
+    renderPage("/tickets/t-1/links");
 
     expect(await screen.findByText("No blockers or found-in links.")).toBeInTheDocument();
   });

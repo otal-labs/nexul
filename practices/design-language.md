@@ -258,12 +258,13 @@ Tabs. A view whose cards or sections are separate jobs (two or more of them)
 splits them into tabs instead of stacking them; a single-card view gets none,
 and a left section nav stays as it is, the tabs live inside the section. Tabs
 are `PageTabs` in `web/src/components/PageTabs.tsx`: a monochrome line tab row
-on a hairline that scrolls sideways at narrow widths, the active tab in
-`?tab=` next to whatever else the URL holds, the first visible tab when
-`?tab=` is missing or unknown. A tab the viewer lacks permission for is
-hidden, not disabled, and a view left with one tab drops the row. Anything
-that deep-links into a tabbed view either names its `?tab=` or relies on the
-target being the first tab. A tab never opens blank: a section that renders
+on a hairline that scrolls sideways at narrow widths, the active tab the last
+path segment (`/settings/connectors/github-app`) with the query left alone,
+the first visible tab when the segment is missing or unknown. The first tab
+has no segment of its own. A tab the viewer lacks permission for is hidden,
+not disabled, and a view left with one tab drops the row. Anything that
+deep-links into a tabbed view builds its path with `useTabPath`, never by
+hand: `tabPath("versions")` names a tab and `tabPath()` the first one. A tab never opens blank: a section that renders
 nothing when empty says so in an `EmptyRow` instead. A filter that narrows one
 list (`ConnectorsSection`'s Connected and Not connected) is not a tab.
 

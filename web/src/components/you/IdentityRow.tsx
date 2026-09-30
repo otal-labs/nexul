@@ -1,10 +1,11 @@
 import type { ComponentType } from "react";
-import { Unlink } from "lucide-react";
+import { Settings, Unlink } from "lucide-react";
+import { Link } from "react-router";
 
 import { ConfirmDestroyButton } from "@/components/settings/ConfirmDestroyButton";
 import { Button } from "@/components/ui/button";
 import { DiscordMark, GithubMark, GoogleMark } from "@/components/ProviderMarks";
-import { GitHubInstallShortcut } from "@/components/you/GitHubInstallShortcut";
+import { useCanOpenSection } from "@/hooks/AccessHooks";
 import { useStartIdentityLink, useUnlinkIdentity } from "@/hooks/AuthHooks";
 import { providerLabel, type Identity, type Provider } from "@/models/User";
 
@@ -21,6 +22,7 @@ export const IdentityRow = ({ provider, identity, onlyOne }: IdentityRowProps) =
   const label = providerLabel[provider];
   const link = useStartIdentityLink();
   const unlink = useUnlinkIdentity();
+  const canOpenConnectors = useCanOpenSection("connectors");
   const account = identity && (provider === "github" ? `@${identity.login}` : identity.login);
 
   return (
@@ -31,8 +33,14 @@ export const IdentityRow = ({ provider, identity, onlyOne }: IdentityRowProps) =
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium">{label}</p>
         <p className="truncate font-mono text-xs text-muted-foreground">{account ?? "Not linked"}</p>
-        {provider === "github" && identity && <GitHubInstallShortcut />}
       </div>
+      {identity && provider === "github" && canOpenConnectors && (
+        <Button asChild variant="ghost" size="sm" aria-label="GitHub App settings" title="GitHub App settings">
+          <Link to="/settings/connectors/github-app">
+            <Settings className="size-4" />
+          </Link>
+        </Button>
+      )}
       {identity && !onlyOne && (
         <ConfirmDestroyButton
           icon={Unlink}

@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, Route, Routes } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 
 import { MemoryDetail } from "@/components/memory/MemoryDetail";
@@ -40,17 +40,24 @@ const renderDetail = (overrides: Partial<React.ComponentProps<typeof MemoryDetai
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter>
-        <MemoryDetail
-          memory={memory}
-          canWrite={false}
-          canDelete={false}
-          canClone={false}
-          onSave={vi.fn()}
-          onDelete={vi.fn()}
-          saving={false}
-          {...overrides}
-        />
+      <MemoryRouter initialEntries={["/memories/m1"]}>
+        <Routes>
+          <Route
+            path="/memories/:memoryId/:tab?"
+            element={
+              <MemoryDetail
+                memory={memory}
+                canWrite={false}
+                canDelete={false}
+                canClone={false}
+                onSave={vi.fn()}
+                onDelete={vi.fn()}
+                saving={false}
+                {...overrides}
+              />
+            }
+          />
+        </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
   );

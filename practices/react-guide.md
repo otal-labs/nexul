@@ -1395,6 +1395,12 @@ export const AppRouter = () => {
   (`ticketPath`, `boardPath`); a link wraps them with `useWorkspacePath`
   (`wsPath(boardPath(project))`). A moved or renamed path is not redirected:
   the old one is not found.
+- A tabbed page's route ends in `/:tab?` (`tickets/:ticketId/:tab?`,
+  `settings/:section?/:tab?`), and `PageTabs` reads it; links build tab paths
+  with `useTabPath`. Where `:tab` would swallow a sibling's `:id`
+  (`automations/hosts` beside `automations/:id`), the route table lists each
+  tab as a static route through `staticTabs`, which also wraps the bare path
+  so a tab switch keeps the page mounted. `?tab=` is not read.
 - Catch-all `*` renders `ErrorPage`, last.
 - Auth-gated routes added conditionally.
 - Permission-gated areas are listed once in `models/Access.tsx`. A sidebar

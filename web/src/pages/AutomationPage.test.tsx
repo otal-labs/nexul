@@ -46,7 +46,7 @@ const renderPage = (endpoints: Record<string, unknown>, route = "/automations/a1
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[route]}>
         <Routes>
-          <Route path="/automations/:id" element={<AutomationPage />} />
+          <Route path="/automations/:id/:tab?" element={<AutomationPage />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -82,10 +82,10 @@ describe("AutomationPage", () => {
     expect(await screen.findByText("error")).toBeInTheDocument();
   });
 
-  it("hides the Danger zone tab without automations:delete, even when ?tab=danger asks for it", async () => {
+  it("hides the Danger zone tab without automations:delete, even when the path asks for it", async () => {
     renderPage(
       { ...baseEndpoints, "/api/workspaces/ws-1/me": { role_name: "Viewer", permissions: [] } },
-      "/automations/a1?tab=danger",
+      "/automations/a1/danger",
     );
 
     expect(await screen.findByText("No runs yet")).toBeInTheDocument();
@@ -112,7 +112,7 @@ describe("AutomationPage", () => {
     const user = userEvent.setup();
     renderPage(
       { ...baseEndpoints, "/api/automations/a1/versions/diff": pendingDiff, "/api/automations/a1/versions": versions },
-      "/automations/a1?tab=configuration",
+      "/automations/a1/configuration",
     );
 
     await user.click(await screen.findByText(/pending review/));
@@ -121,8 +121,8 @@ describe("AutomationPage", () => {
     expect(await screen.findByText("#1")).toBeInTheDocument();
   });
 
-  it("opens ?tab=versions directly on version history", async () => {
-    renderPage({ ...baseEndpoints, "/api/automations/a1/versions": versions }, "/automations/a1?tab=versions");
+  it("opens /versions directly on version history", async () => {
+    renderPage({ ...baseEndpoints, "/api/automations/a1/versions": versions }, "/automations/a1/versions");
 
     expect(await screen.findByText("#1")).toBeInTheDocument();
   });

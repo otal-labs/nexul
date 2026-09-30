@@ -1,13 +1,14 @@
 import type { ReactNode } from "react";
-import { useSearchParams } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useTabPath } from "@/hooks/useTabPath";
 import { cn } from "@/lib/utils";
 
 export interface PageTab {
   value: string;
   label: string;
-  /** A hidden tab has no trigger and can't be selected, even by `?tab=`. */
+  /** A hidden tab has no trigger and can't be selected, even by its path segment. */
   hidden?: boolean;
 }
 
@@ -18,19 +19,17 @@ interface PageTabsProps {
   className?: string;
 }
 
-// The active tab lives in `?tab=` so it survives a reload and can be linked; a missing or unknown value falls back to the first visible tab.
+// The active tab is the path's last segment so it survives a reload and can be linked; the first visible tab has no segment, and a missing or unknown one falls back to it.
 export const PageTabs = ({ label, tabs, children, className }: PageTabsProps) => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { search } = useLocation();
+  const { current, tabPath } = useTabPath();
   const visible = tabs.filter((tab) => !tab.hidden);
-  const requested = searchParams.get("tab");
-  const active = visible.find((tab) => tab.value === requested) ?? visible[0];
+  const active = visible.find((tab) => tab.value === current) ?? visible[0];
   if (!active) return null;
 
   const select = (value: string) =>
-    setSearchParams((params) => {
-      params.set("tab", value);
-      return params;
-    });
+    navigate({ pathname: tabPath(value === visible[0]?.value ? undefined : value), search });
 
   return (
     <Tabs value={active.value} onValueChange={select} className={cn("gap-6", className)}>

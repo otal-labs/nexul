@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GitHubInstallationsSection } from "@/components/settings/GitHubInstallationsSection";
@@ -53,8 +53,10 @@ const renderSection = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter>
-        <GitHubInstallationsSection />
+      <MemoryRouter initialEntries={["/settings/connectors/github-app"]}>
+        <Routes>
+          <Route path="/settings/connectors/:tab?" element={<GitHubInstallationsSection />} />
+        </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -93,7 +95,7 @@ describe("GitHubInstallationsSection", () => {
     stubApi(app, false);
     renderSection();
 
-    expect(await screen.findByRole("link", { name: "Connectors tab" })).toHaveAttribute("href", "/?tab=connectors");
+    expect(await screen.findByRole("link", { name: "Connectors tab" })).toHaveAttribute("href", "/settings/connectors");
     expect(screen.getByText(/to see where the App is installed/)).toBeInTheDocument();
     expect(await addLink()).toHaveAttribute("href", "https://github.com/apps/nexul-otal/installations/new");
     expect(mocks.get).not.toHaveBeenCalledWith("/api/repositories/installations");

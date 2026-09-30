@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AutomationsPage } from "@/pages/AutomationsPage";
@@ -38,7 +38,9 @@ const renderPage = (route = "/automations") => {
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[route]}>
-        <AutomationsPage />
+        <Routes>
+          <Route path="/automations/:tab?" element={<AutomationsPage />} />
+        </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -72,18 +74,18 @@ describe("AutomationsPage", () => {
 
   it("offers New automation in the header on every tab", async () => {
     mocks.get.mockResolvedValue({ data: [] });
-    renderPage("/automations?tab=secrets");
+    renderPage("/automations/secrets");
 
     expect(await screen.findByRole("button", { name: "New automation" })).toBeInTheDocument();
   });
 
-  it("opens ?tab=secrets on the shared secrets pool", async () => {
+  it("opens /secrets on the shared secrets pool", async () => {
     mocks.get.mockImplementation(async (url: string) =>
       url === "/api/automation-secrets"
         ? { data: [{ name: "SLACK_WEBHOOK_URL", created_at: "2026-08-01T00:00:00Z", updated_at: "2026-08-01T00:00:00Z" }] }
         : { data: [] },
     );
-    renderPage("/automations?tab=secrets");
+    renderPage("/automations/secrets");
 
     expect(await screen.findByRole("tab", { name: "Secrets", selected: true })).toBeInTheDocument();
     expect(await screen.findByText("SLACK_WEBHOOK_URL")).toBeInTheDocument();
