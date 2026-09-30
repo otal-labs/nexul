@@ -4,10 +4,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { shouldPromptReload, useServerVersion } from "@/hooks/VersionHooks";
 
-const mocks = vi.hoisted(() => ({ get: vi.fn(), toast: vi.fn() }));
+const mocks = vi.hoisted(() => ({ get: vi.fn() }));
 
 vi.mock("@/api/client", () => ({ api: { get: mocks.get } }));
-vi.mock("sonner", () => ({ toast: mocks.toast }));
 
 const version = {
   version: "v0.2.0-beta-310",
@@ -79,13 +78,13 @@ describe("notifyIfServerUpdated", () => {
   const upgraded = { ...version, version: "v0.2.0-beta-331", update_available: false };
 
   beforeEach(() => {
-    mocks.toast.mockReset();
     vi.resetModules();
   });
 
-  it("goes to the network past a pre-upgrade cache and prompts a reload", async () => {
+  it("goes to the network past a pre-upgrade cache and flags the new version as pending", async () => {
     const { notifyIfServerUpdated, useServerVersion: freshUseServerVersion, getServerVersionKey } =
       await import("@/hooks/VersionHooks");
+    const { useServerUpdateStore } = await import("@/stores/serverUpdateStore");
     const client = new QueryClient({ defaultOptions: { queries: { staleTime: 30_000 } } });
     const FreshHarness = () => {
       freshUseServerVersion();
@@ -103,6 +102,6 @@ describe("notifyIfServerUpdated", () => {
     await notifyIfServerUpdated(client);
 
     expect(client.getQueryData([getServerVersionKey])).toEqual(upgraded);
-    expect(mocks.toast).toHaveBeenCalledWith("Nexul was updated", expect.anything());
+    expect(useServerUpdateStore.getState().pendingVersion).toBe("v0.2.0-beta-331");
   });
 });

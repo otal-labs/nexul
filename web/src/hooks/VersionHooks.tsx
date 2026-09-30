@@ -1,8 +1,8 @@
 import { useQuery, type QueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 
 import { api } from "@/api/client";
 import type { Version } from "@/models/Version";
+import { useServerUpdateStore } from "@/stores/serverUpdateStore";
 
 export const getServerVersionKey = "serverVersion";
 
@@ -28,7 +28,7 @@ export const shouldPromptReload = (initial: string | null, current: string): boo
   initial !== null && initial !== current;
 
 // Called on every live-events reconnect: refetches /api/version and, the first time it differs from
-// the version this tab started with, prompts a reload instead of leaving stale code running against
+// the version this tab started with, raises the update banner instead of leaving stale code running against
 // an upgraded server. staleTime 0 because the server may have restarted since the cached read.
 export const notifyIfServerUpdated = async (queryClient: QueryClient) => {
   const data = await queryClient.fetchQuery({
@@ -39,8 +39,5 @@ export const notifyIfServerUpdated = async (queryClient: QueryClient) => {
   if (firstVersion === null) firstVersion = data.version;
   if (reloadPromptShown || !shouldPromptReload(firstVersion, data.version)) return;
   reloadPromptShown = true;
-  toast("Nexul was updated", {
-    action: { label: "Reload", onClick: () => window.location.reload() },
-    duration: Infinity,
-  });
+  useServerUpdateStore.getState().setPending(data.version);
 };
