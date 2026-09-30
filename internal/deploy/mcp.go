@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strconv"
 	"time"
+	"unicode/utf8"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
@@ -19,6 +20,9 @@ const (
 	defaultLogLines = 200
 	maxLogLines     = 1000
 )
+
+// maxLogLineChars cuts a longer container log line, so one runaway line never floods the context.
+const maxLogLineChars = 2000
 
 // recentDeploys is how many of a stack's newest deploys stack_get carries.
 const recentDeploys = 10
@@ -159,7 +163,13 @@ func stackListTool(s *Service) mcptool.Tool {
 }
 
 type stackGetIn struct {
-	ID string `json:"id" jsonschema:"The stack's id, from stack_list."`
+	ID   string       `json:"id" jsonschema:"The stack's id, from stack_list."`
+	Logs *stackLogsIn `json:"logs,omitzero" jsonschema:"Also return the last lines a service's container printed. Needs the stacks:logs permission. Omit it for the stack alone."`
+}
+
+type stackLogsIn struct {
+	Service string `json:"service" jsonschema:"The service's name, from this stack's services."`
+	Lines   int    `json:"lines,omitzero" jsonschema:"How many of the last lines to return, 1 to 1000. Defaults to 200."`
 }
 
 // stackDetail is stack_get's answer: the stack plus what an agent reads next about it.
@@ -168,22 +178,62 @@ type stackDetail struct {
 	Services          []*Container   `json:"services"`
 	RecentDeploys     []deployResult `json:"recent_deploys"`
 	BranchDeployments []stackSummary `json:"branch_deployments,omitempty"`
+	Logs              *serviceLogs   `json:"logs,omitempty"`
+}
+
+type serviceLogs struct {
+	Service string             `json:"service"`
+	Lines   []ContainerLogLine `json:"lines"`
 }
 
 func stackGetTool(s *Service) mcptool.Tool {
 	return mcptool.New("stack_get", "Get stack",
 		"Returns one stack's definition with its services (the containers it runs, with image, status, networks, "+
 			"and ports), its ten most recent deploys, and its branch deployments. Environment variables are listed "+
-			"by key only; values never leave the server. Use it before stack_update or stack_deploy, and deploy_list "+
-			"for older deploys.",
-		mcptool.Hints{ReadOnly: true, Local: true},
+			"by key only; values never leave the server. Pass logs with a service name to also read that container's "+
+			"last lines (200 by default, at most 1000, each line cut at 2000 characters, environment values masked); "+
+			"that needs the stacks:logs permission and a connected runner on the stack's machine. Use it before "+
+			"stack_update or stack_deploy, and deploy_list for older deploys.",
+		mcptool.Hints{ReadOnly: true},
 		func(ctx context.Context, in stackGetIn) (any, error) {
 			stack, err := s.GetStack(ctx, in.ID)
 			if err != nil {
 				return nil, withHint(err, "stack_list lists stacks")
 			}
-			return stackDetailFor(ctx, s, stack)
+			detail, err := stackDetailFor(ctx, s, stack)
+			if err != nil || in.Logs == nil {
+				return detail, err
+			}
+			detail.Logs, err = serviceLogsFor(ctx, s, stack, *in.Logs)
+			return detail, err
 		})
+}
+
+func serviceLogsFor(ctx context.Context, s *Service, stack *Stack, in stackLogsIn) (*serviceLogs, error) {
+	lines := in.Lines
+	if lines < 1 {
+		lines = DefaultLogTail
+	}
+	got, err := s.ServiceLogSnapshot(ctx, stack.ID, in.Service, min(lines, maxLogLines))
+	if errors.Is(err, apperrs.ErrRetryable) {
+		// Retryable is hidden from the model as an internal error; the offline case is the one it can act on.
+		return nil, fmt.Errorf("%w: the logs of %s are unavailable, the runner on machine %q is offline or did not answer; retry once it reconnects",
+			apperrs.ErrConflict, in.Service, stack.Machine)
+	}
+	if err != nil {
+		return nil, err
+	}
+	for i := range got {
+		got[i].Line = cutLine(got[i].Line)
+	}
+	return &serviceLogs{Service: in.Service, Lines: got}, nil
+}
+
+func cutLine(line string) string {
+	if utf8.RuneCountInString(line) <= maxLogLineChars {
+		return line
+	}
+	return string([]rune(line)[:maxLogLineChars]) + "…"
 }
 
 func stackDetailFor(ctx context.Context, s *Service, stack *Stack) (stackDetail, error) {

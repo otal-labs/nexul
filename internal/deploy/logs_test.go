@@ -2,13 +2,16 @@ package deploy
 
 import (
 	"context"
+	"fmt"
 	"io"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 // fakeLogSource answers OpenLogs with canned lines, recording what the use-case asked the runner for.
@@ -115,4 +118,85 @@ func TestServiceLogs_Refusals(t *testing.T) {
 			assert.ErrorIs(t, err, tt.want)
 		})
 	}
+}
+
+// denyLogsGate holds stacks:read for everyone and refuses stacks:logs.
+type denyLogsGate struct{ allowGate }
+
+func (denyLogsGate) RequireProject(_ context.Context, _ string, action permissions.Action) error {
+	if action == permissions.StacksLogs {
+		return fmt.Errorf("%w: %s required", apperrs.ErrForbidden, action)
+	}
+	return nil
+}
+
+func TestStackGet_Logs(t *testing.T) {
+	web := Container{ID: "c1", Name: "web", ContainerName: "api-web-1"}
+
+	t.Run("returns the service's lines with the stack's env values masked", func(t *testing.T) {
+		src := &fakeLogSource{lines: []ContainerLogLine{
+			{TS: "t1", Stream: "stdout", Line: "listening on 8080"},
+			{TS: "t2", Stream: "stderr", Line: "token sk_live_abcdef rejected"},
+		}}
+		s := newLogsService(t, src, map[string]string{"API_KEY": "sk_live_abcdef"}, web)
+
+		got, err := call(t, s, "stack_get", `{"id":"svc-1","logs":{"service":"web"}}`)
+		require.NoError(t, err)
+		assert.JSONEq(t, `{"service":"web","lines":[
+			{"ts":"t1","stream":"stdout","line":"listening on 8080"},
+			{"ts":"t2","stream":"stderr","line":"token •••• rejected"}]}`, asJSON(t, got.(stackDetail).Logs))
+		assert.Equal(t, "api-web-1", src.container)
+	})
+
+	t.Run("lines defaults to 200 and is capped at 1000", func(t *testing.T) {
+		for _, tt := range []struct {
+			args string
+			tail int
+		}{
+			{`{"service":"web"}`, 200},
+			{`{"service":"web","lines":25}`, 25},
+			{`{"service":"web","lines":50000}`, 1000},
+		} {
+			src := &fakeLogSource{}
+			s := newLogsService(t, src, nil, web)
+			_, err := call(t, s, "stack_get", `{"id":"svc-1","logs":`+tt.args+`}`)
+			require.NoError(t, err)
+			assert.Equal(t, tt.tail, src.tail, tt.args)
+		}
+	})
+
+	t.Run("a line over 2000 characters is cut and ends in an ellipsis", func(t *testing.T) {
+		long := strings.Repeat("é", 2500)
+		src := &fakeLogSource{lines: []ContainerLogLine{{Stream: "stdout", Line: long}, {Stream: "stdout", Line: "short"}}}
+		s := newLogsService(t, src, nil, web)
+
+		got, err := call(t, s, "stack_get", `{"id":"svc-1","logs":{"service":"web"}}`)
+		require.NoError(t, err)
+		lines := got.(stackDetail).Logs.Lines
+		assert.Equal(t, strings.Repeat("é", 2000)+"…", lines[0].Line)
+		assert.Equal(t, "short", lines[1].Line)
+	})
+
+	t.Run("without stacks:logs the call fails and the runner is never asked", func(t *testing.T) {
+		src := &fakeLogSource{}
+		s := newLogsService(t, src, nil, web)
+		s.SetGate(denyLogsGate{})
+
+		_, err := call(t, s, "stack_get", `{"id":"svc-1","logs":{"service":"web"}}`)
+		require.ErrorIs(t, err, apperrs.ErrForbidden)
+		assert.Empty(t, src.container)
+
+		got, err := call(t, s, "stack_get", `{"id":"svc-1"}`)
+		require.NoError(t, err, "the rest of stack_get stays under stacks:read")
+		assert.Nil(t, got.(stackDetail).Logs)
+	})
+
+	t.Run("an offline runner names the machine", func(t *testing.T) {
+		src := &fakeLogSource{err: fmt.Errorf("%w: no runner is connected on machine %q", apperrs.ErrRetryable, "10.0.0.1:22")}
+		s := newLogsService(t, src, nil, web)
+
+		_, err := call(t, s, "stack_get", `{"id":"svc-1","logs":{"service":"web"}}`)
+		require.ErrorIs(t, err, apperrs.ErrConflict, "a sentinel the adapter passes through, not the hidden retryable")
+		assert.Contains(t, err.Error(), "10.0.0.1:22")
+	})
 }
