@@ -96,7 +96,7 @@ func (q *Queries) DeleteMessage(ctx context.Context, arg DeleteMessageParams) (i
 }
 
 const getChannelByName = `-- name: GetChannelByName :one
-SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id FROM conversations WHERE workspace_id = ? AND kind = 'channel' AND name = ?
+SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id FROM conversations WHERE workspace_id = ? AND kind = 'channel' AND name = ? COLLATE NOCASE
 `
 
 type GetChannelByNameParams struct {

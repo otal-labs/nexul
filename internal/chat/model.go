@@ -33,7 +33,7 @@ type Conversation struct {
 	ID          string `json:"id"`
 	WorkspaceID string `json:"workspace_id"`
 	Kind        Kind   `json:"kind"`
-	// Name is the channel display name (lower-cased, e.g. "general"); empty for every other kind.
+	// Name is the channel display name (as typed, e.g. "general"); empty for every other kind.
 	Name string `json:"name,omitempty"`
 	// TicketID is set only for KindTicketThread; the unique index on it enforces one thread per ticket.
 	TicketID string `json:"ticket_id,omitempty"`

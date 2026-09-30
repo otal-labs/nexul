@@ -19,7 +19,7 @@ type Repo interface {
 	// CreateConversation surfaces a duplicate channel/thread as ErrConflict; callers re-fetch instead of failing.
 	CreateConversation(ctx context.Context, c *Conversation, participantIDs []string, evts ...eventbus.OutboxEvent) error
 	GetConversation(ctx context.Context, id string) (*Conversation, error)
-	// GetChannelByName finds a workspace's channel by its (lower-cased) name; apperrs.ErrNotFound if none exists yet.
+	// GetChannelByName finds a workspace's channel by its name, ignoring case; apperrs.ErrNotFound if none exists yet.
 	GetChannelByName(ctx context.Context, workspaceID, name string) (*Conversation, error)
 	// GetTicketThread returns ErrNotFound if the thread hasn't been lazily created yet.
 	GetTicketThread(ctx context.Context, ticketID string) (*Conversation, error)

@@ -9,7 +9,7 @@ INSERT INTO conversation_participants (conversation_id, user_id, created_at) VAL
 SELECT * FROM conversations WHERE id = ?;
 
 -- name: GetChannelByName :one
-SELECT * FROM conversations WHERE workspace_id = ? AND kind = 'channel' AND name = ?;
+SELECT * FROM conversations WHERE workspace_id = ? AND kind = 'channel' AND name = ? COLLATE NOCASE;
 
 -- name: GetTicketThread :one
 SELECT * FROM conversations WHERE ticket_id = ?;

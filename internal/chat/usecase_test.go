@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sort"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -71,7 +72,7 @@ func (f *fakeRepo) CreateConversation(_ context.Context, c *Conversation, partic
 func duplicateConversation(existing, c *Conversation) bool {
 	switch c.Kind {
 	case KindChannel:
-		return existing.WorkspaceID == c.WorkspaceID && existing.Kind == KindChannel && existing.Name == c.Name
+		return existing.WorkspaceID == c.WorkspaceID && existing.Kind == KindChannel && strings.EqualFold(existing.Name, c.Name)
 	case KindTicketThread:
 		return existing.TicketID == c.TicketID
 	case KindDocThread:
@@ -96,7 +97,7 @@ func (f *fakeRepo) GetChannelByName(_ context.Context, workspaceID, name string)
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	for _, c := range f.conversations {
-		if c.WorkspaceID == workspaceID && c.Kind == KindChannel && c.Name == name {
+		if c.WorkspaceID == workspaceID && c.Kind == KindChannel && strings.EqualFold(c.Name, name) {
 			return c, nil
 		}
 	}
@@ -396,12 +397,12 @@ func TestCreateChannel(t *testing.T) {
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 	})
-	t.Run("creates a lower-cased channel and adds the creator as a participant", func(t *testing.T) {
+	t.Run("creates a channel with its typed case and adds the creator as a participant", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo)
 		c, err := s.CreateChannel(context.Background(), "w-1", "u-1", "Engineering")
 		require.NoError(t, err)
-		assert.Equal(t, "engineering", c.Name)
+		assert.Equal(t, "Engineering", c.Name)
 		assert.Equal(t, KindChannel, c.Kind)
 		assert.True(t, repo.participants[c.ID]["u-1"])
 		evts := repo.eventsFor(TopicConversationCreated)
@@ -410,12 +411,12 @@ func TestCreateChannel(t *testing.T) {
 		require.True(t, ok)
 		assert.Equal(t, c.ID, e.Conversation.ID)
 	})
-	t.Run("duplicate channel name in the workspace is a conflict", func(t *testing.T) {
+	t.Run("duplicate channel name in the workspace is a conflict regardless of case", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo)
 		_, err := s.CreateChannel(context.Background(), "w-1", "u-1", "eng")
 		require.NoError(t, err)
-		_, err = s.CreateChannel(context.Background(), "w-1", "u-2", "eng")
+		_, err = s.CreateChannel(context.Background(), "w-1", "u-2", "ENG")
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrConflict))
 	})
@@ -428,12 +429,12 @@ func TestCreateVoiceChannel(t *testing.T) {
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 	})
-	t.Run("creates a lower-cased voice channel and adds the creator as a participant", func(t *testing.T) {
+	t.Run("creates a voice channel with its typed case and adds the creator as a participant", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo)
-		c, err := s.CreateVoiceChannel(context.Background(), "w-1", "u-1", "War Room")
+		c, err := s.CreateVoiceChannel(context.Background(), "w-1", "u-1", " Voice Channel 1 ")
 		require.NoError(t, err)
-		assert.Equal(t, "war room", c.Name)
+		assert.Equal(t, "Voice Channel 1", c.Name)
 		assert.Equal(t, KindVoiceChannel, c.Kind)
 		assert.True(t, repo.participants[c.ID]["u-1"])
 		evts := repo.eventsFor(TopicConversationCreated)
