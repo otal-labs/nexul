@@ -7,8 +7,8 @@ name: Release
 # `resolve` picks.
 on:
   schedule:
-    # 03:17 UTC; off the hour, when scheduled runs queue longest.
-    - cron: "17 3 * * *"
+    # 00:07 UTC (01:07 in UK summer time); off the hour, when scheduled runs queue longest.
+    - cron: "7 0 * * *"
   push:
     tags:
       - "v*.*.*"

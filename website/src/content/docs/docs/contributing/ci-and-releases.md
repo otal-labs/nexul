@@ -50,7 +50,7 @@ A change that touches only `web/` never spins up a Go job, and vice versa.
 Nexul has one version for the whole product, and git tags are that version
 (ADR 0070). There is no version file in the repository.
 
-- **Beta** runs once a day at 03:17 UTC (ADR 0071). When `master` has moved
+- **Beta** runs once a day at 00:07 UTC (ADR 0071). When `master` has moved
   since its last release, it tags the head `v<line>.<n>-beta` (ADR 0084):
   `<line>` is `0.3` until a stable release starts a newer one, and `<n>` is
   one past the highest patch already tagged on that line, beta or stable
