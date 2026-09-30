@@ -118,7 +118,7 @@ export const TicketDetail = ({ ticket, project, onSave }: TicketDetailProps) => 
           {saveState === "saved" && " · saved"}
         </p>
       </div>
-      <div className="border-t border-border pt-6" onBlur={() => void flush()}>
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-card sm:p-10" onBlur={() => void flush()}>
         {onSave && (
           <RichTextEditor
             value={initialBody}
