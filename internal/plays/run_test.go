@@ -366,23 +366,26 @@ func TestRun_WorkspaceScopedMemory_PickableEvenThoughItIsNotTheProjectsOwn(t *te
 
 func TestRun_HarnessChoice_PassedToTheResolverAndRecordedOnTheTrail(t *testing.T) {
 	f := newRunnerFixture()
-	f.harness.resolved = HarnessChoice{ComputerID: "c-resolved", Provider: "claude", Model: "sonnet-5"}
+	resolvedOptions := []harness.OptionSetting{{ID: "effort", Value: "high"}}
+	f.harness.resolved = HarnessChoice{ComputerID: "c-resolved", Provider: "claude", Model: "sonnet-5", ModelOptions: resolvedOptions}
 	in := ticketRun()
 	in.ComputerID, in.Provider, in.Model = "c-picked", "opencode", "gpt"
+	in.ModelOptions = []harness.OptionSetting{{ID: " variant ", Value: "low"}}
 
 	trail, err := f.runner.Run(ctxAs(starter), in)
 	require.NoError(t, err)
 	<-f.turns.done
 
-	assert.Equal(t, HarnessChoice{ComputerID: "c-picked", Provider: "opencode", Model: "gpt"}, f.harness.lastChoice,
-		"the caller's pick reaches the resolver")
+	assert.Equal(t, HarnessChoice{ComputerID: "c-picked", Provider: "opencode", Model: "gpt", ModelOptions: []harness.OptionSetting{{ID: "variant", Value: "low"}}},
+		f.harness.lastChoice, "the caller's pick reaches the resolver, cleaned")
 	assert.Equal(t, "c-resolved", trail.ComputerID, "the trail records what the resolver actually picked")
 	assert.Equal(t, "claude", trail.Provider)
 	assert.Equal(t, "sonnet-5", trail.Model)
+	assert.Equal(t, resolvedOptions, trail.ModelOptions)
 
 	req := f.turns.last()
 	require.NotNil(t, req.Target)
-	assert.Equal(t, &agent.TargetOverride{ComputerID: "c-resolved", Provider: "claude", Model: "sonnet-5"}, req.Target,
+	assert.Equal(t, &agent.TargetOverride{ComputerID: "c-resolved", Provider: "claude", Model: "sonnet-5", ModelOptions: resolvedOptions}, req.Target,
 		"the turn resolves against exactly what the runner already checked, not re-resolving on its own")
 }
 

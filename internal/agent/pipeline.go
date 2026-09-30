@@ -95,15 +95,16 @@ type TargetResolver interface {
 	ResolveTarget(ctx context.Context, userID, projectID string) (*pairing.ResolvedTarget, error)
 	// ResolveTargetOverride pins the computer, provider, and model a turn resolves against, checked against
 	// the caller's own; plain strings, not a TargetOverride, so pairing's implementation needs no agent import.
-	ResolveTargetOverride(ctx context.Context, userID, projectID, computerID, provider, model string) (*pairing.ResolvedTarget, error)
+	ResolveTargetOverride(ctx context.Context, userID, projectID, computerID, provider, model string, options []harness.OptionSetting) (*pairing.ResolvedTarget, error)
 }
 
 // TargetOverride pins a turn's computer, provider, and model, chosen for one run instead of derived from
 // the caller's project link or pairing defaults (a play's own run dialog, ticket 31).
 type TargetOverride struct {
-	ComputerID string
-	Provider   string
-	Model      string
+	ComputerID   string
+	Provider     string
+	Model        string
+	ModelOptions []harness.OptionSetting
 }
 
 // Ticket is the slice of a ticket the pipeline needs for a ticket thread's prompt context and project resolution.
@@ -330,11 +331,12 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 	title := threadTitle(conv, ticket, doc)
 
 	turn := activeTurn{client: client, target: harness.Target{
-		Session:   target.Computer.Session(),
-		ProjectID: target.HarnessProjectID,
-		Provider:  target.Provider,
-		Model:     target.Model,
-		SessionID: conv.ThreadID,
+		Session:      target.Computer.Session(),
+		ProjectID:    target.HarnessProjectID,
+		Provider:     target.Provider,
+		Model:        target.Model,
+		ModelOptions: target.ModelOptions,
+		SessionID:    conv.ThreadID,
 	}}
 	s.setActive(conversationID, turn)
 	defer s.clearActive(conversationID)
@@ -379,7 +381,7 @@ func (s *Service) resolveTarget(ctx context.Context, userID, projectID string, o
 	if override == nil {
 		return s.targets.ResolveTarget(ctx, userID, projectID)
 	}
-	return s.targets.ResolveTargetOverride(ctx, userID, projectID, override.ComputerID, override.Provider, override.Model)
+	return s.targets.ResolveTargetOverride(ctx, userID, projectID, override.ComputerID, override.Provider, override.Model, override.ModelOptions)
 }
 
 // loadTicketContext fetches the thread's linked ticket, if any, for prompt context.

@@ -87,12 +87,13 @@ func (h *Handler) getSetup(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, setup)
 }
 
-// startSetupRequest's Models maps a provider's driver kind to the model its setup turn runs on; Folder picks where the turns run;
-// Providers lists the driver kinds to set up, empty for every provider the harness lists.
+// startSetupRequest's Models maps a provider's driver kind to the model its setup turn runs on, ModelOptions to that
+// model's options; Folder picks where the turns run; Providers lists the driver kinds to set up, empty for every provider the harness lists.
 type startSetupRequest struct {
-	Models    map[string]string `json:"models"`
-	Folder    string            `json:"folder"`
-	Providers []string          `json:"providers"`
+	Models       map[string]string                  `json:"models"`
+	ModelOptions map[string][]harness.OptionSetting `json:"model_options"`
+	Folder       string                             `json:"folder"`
+	Providers    []string                           `json:"providers"`
 }
 
 func (h *Handler) startSetup(w http.ResponseWriter, r *http.Request) {
@@ -101,7 +102,7 @@ func (h *Handler) startSetup(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	run, err := h.svc.StartSetup(r.Context(), actorID(r), r.PathValue("id"), req.Models, req.Folder, req.Providers)
+	run, err := h.svc.StartSetup(r.Context(), actorID(r), r.PathValue("id"), req.Models, req.ModelOptions, req.Folder, req.Providers)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -110,8 +111,9 @@ func (h *Handler) startSetup(w http.ResponseWriter, r *http.Request) {
 }
 
 type retrySetupRequest struct {
-	Model  string `json:"model"`
-	Folder string `json:"folder"`
+	Model        string                  `json:"model"`
+	ModelOptions []harness.OptionSetting `json:"model_options"`
+	Folder       string                  `json:"folder"`
 }
 
 func (h *Handler) retrySetupProvider(w http.ResponseWriter, r *http.Request) {
@@ -120,7 +122,7 @@ func (h *Handler) retrySetupProvider(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	run, err := h.svc.RetrySetupProvider(r.Context(), actorID(r), r.PathValue("id"), r.PathValue("provider"), req.Model, req.Folder)
+	run, err := h.svc.RetrySetupProvider(r.Context(), actorID(r), r.PathValue("id"), r.PathValue("provider"), req.Model, req.ModelOptions, req.Folder)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -311,6 +313,7 @@ func (h *Handler) resolve(w http.ResponseWriter, r *http.Request) {
 		"harness_project_id": target.HarnessProjectID,
 		"provider":           target.Provider,
 		"model":              target.Model,
+		"model_options":      target.ModelOptions,
 	})
 }
 
@@ -324,10 +327,11 @@ func (h *Handler) getDefaults(w http.ResponseWriter, r *http.Request) {
 }
 
 type defaultsRequest struct {
-	DefaultComputerID string `json:"default_computer_id"`
-	FallbackProjectID string `json:"fallback_project_id"`
-	Provider          string `json:"provider"`
-	Model             string `json:"model"`
+	DefaultComputerID string                  `json:"default_computer_id"`
+	FallbackProjectID string                  `json:"fallback_project_id"`
+	Provider          string                  `json:"provider"`
+	Model             string                  `json:"model"`
+	ModelOptions      []harness.OptionSetting `json:"model_options"`
 }
 
 func (h *Handler) setDefaults(w http.ResponseWriter, r *http.Request) {
@@ -341,6 +345,7 @@ func (h *Handler) setDefaults(w http.ResponseWriter, r *http.Request) {
 		FallbackProjectID: req.FallbackProjectID,
 		Provider:          req.Provider,
 		Model:             req.Model,
+		ModelOptions:      req.ModelOptions,
 	})
 	if err != nil {
 		httpx.WriteError(w, err)
@@ -359,10 +364,11 @@ func (h *Handler) getProjectLink(w http.ResponseWriter, r *http.Request) {
 }
 
 type projectLinkRequest struct {
-	ComputerID       string `json:"computer_id"`
-	HarnessProjectID string `json:"harness_project_id"`
-	Provider         string `json:"provider"`
-	Model            string `json:"model"`
+	ComputerID       string                  `json:"computer_id"`
+	HarnessProjectID string                  `json:"harness_project_id"`
+	Provider         string                  `json:"provider"`
+	Model            string                  `json:"model"`
+	ModelOptions     []harness.OptionSetting `json:"model_options"`
 }
 
 func (h *Handler) setProjectLink(w http.ResponseWriter, r *http.Request) {
@@ -376,6 +382,7 @@ func (h *Handler) setProjectLink(w http.ResponseWriter, r *http.Request) {
 		HarnessProjectID: req.HarnessProjectID,
 		Provider:         req.Provider,
 		Model:            req.Model,
+		ModelOptions:     req.ModelOptions,
 	})
 	if err != nil {
 		httpx.WriteError(w, err)

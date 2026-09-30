@@ -90,7 +90,7 @@ type playsHarnessResolver struct {
 }
 
 func (a playsHarnessResolver) ResolveTarget(ctx context.Context, userID, projectID string, choice plays.HarnessChoice) (plays.HarnessChoice, error) {
-	target, err := a.svc.ResolveTargetOverride(ctx, userID, projectID, choice.ComputerID, choice.Provider, choice.Model)
+	target, err := a.svc.ResolveTargetOverride(ctx, userID, projectID, choice.ComputerID, choice.Provider, choice.Model, choice.ModelOptions)
 	var nc *pairing.NotConfiguredError
 	if errors.As(err, &nc) {
 		return plays.HarnessChoice{}, &plays.HarnessRefusal{Reason: string(nc.Reason), ComputerID: nc.ComputerID, Provider: nc.ProviderID, Err: err}
@@ -98,7 +98,7 @@ func (a playsHarnessResolver) ResolveTarget(ctx context.Context, userID, project
 	if err != nil {
 		return plays.HarnessChoice{}, err
 	}
-	return plays.HarnessChoice{ComputerID: target.Computer.ID, Provider: target.Provider, Model: target.Model}, nil
+	return plays.HarnessChoice{ComputerID: target.Computer.ID, Provider: target.Provider, Model: target.Model, ModelOptions: target.ModelOptions}, nil
 }
 
 // playsMemoryReader adapts memories to the runner's MemoryReader seam, exporting each body to markdown (ADR 0026).

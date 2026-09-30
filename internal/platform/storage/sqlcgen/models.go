@@ -564,6 +564,7 @@ type PairingProjectLink struct {
 	Provider         string
 	Model            string
 	UpdatedAt        int64
+	ModelOptions     string
 }
 
 type PairingProviderSetup struct {
@@ -596,6 +597,7 @@ type PairingUserDefault struct {
 	FallbackProjectID string
 	Provider          string
 	Model             string
+	ModelOptions      string
 }
 
 type PermissionOverwrite struct {
@@ -661,6 +663,7 @@ type PlayTrail struct {
 	Model              string
 	Question           sql.NullString
 	FailureReason      string
+	ModelOptions       string
 }
 
 type ProcessedEvent struct {

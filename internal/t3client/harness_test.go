@@ -38,6 +38,7 @@ type fakeT3Client struct {
 	createThreadCalls  int
 	createThreadErr    error
 	createThreadModels []string
+	createThreadOpts   [][]harness.OptionSetting
 	nextThreadID       string
 
 	subscribeErr      error
@@ -68,9 +69,10 @@ func testPrompts() harness.TurnPrompts {
 	return harness.TurnPrompts{Full: "full-prompt", Incremental: "incremental-prompt"}
 }
 
-func (f *fakeT3Client) CreateThread(_ context.Context, _, _, _, model, _ string) (string, error) {
+func (f *fakeT3Client) CreateThread(_ context.Context, _, _, _, model string, options []harness.OptionSetting, _ string) (string, error) {
 	f.createThreadCalls++
 	f.createThreadModels = append(f.createThreadModels, model)
+	f.createThreadOpts = append(f.createThreadOpts, options)
 	if f.createThreadErr != nil {
 		return "", f.createThreadErr
 	}
@@ -273,16 +275,18 @@ func TestHarness_StartTurn_EmptyModelResolvesProviderDefault(t *testing.T) {
 	}
 	b := harnessWithFake(fake)
 
-	_, err := b.StartTurn(context.Background(), harness.Target{Provider: "claude-code"}, "title", testPrompts())
+	options := []harness.OptionSetting{{ID: "effort", Value: "high"}}
+	_, err := b.StartTurn(context.Background(), harness.Target{Provider: "claude-code", ModelOptions: options}, "title", testPrompts())
 	require.NoError(t, err)
 	assert.Equal(t, []string{"opus-4"}, fake.createThreadModels)
+	assert.Equal(t, [][]harness.OptionSetting{options}, fake.createThreadOpts, "the target's model options reach the new thread")
 }
 
-func TestHarness_StartTurn_EmptyModelFallsBackToFirstWhenNoDefault(t *testing.T) {
+func TestHarness_StartTurn_EmptyModelFallsBackToFirstCurrentWhenNoDefault(t *testing.T) {
 	fake := &fakeT3Client{
 		nextThreadID: "thread-new",
 		providers: []harness.Provider{
-			{ID: "claude-code", Models: []harness.ProviderModel{{Slug: "haiku-4"}, {Slug: "opus-4"}}},
+			{ID: "claude-code", Models: []harness.ProviderModel{{Slug: "old-3", IsLegacy: true}, {Slug: "haiku-4"}, {Slug: "opus-4"}}},
 		},
 		subscription: newFakeSubscription(Update{Terminal: &TurnResult{State: TurnDone}}),
 	}

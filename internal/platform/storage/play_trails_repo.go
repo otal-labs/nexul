@@ -36,6 +36,10 @@ func (r *PlayTrailsRepo) CreateTrail(ctx context.Context, t *plays.Trail, evts .
 	if err != nil {
 		return fmt.Errorf("encode question for trail %s: %w", t.ID, err)
 	}
+	options, err := marshalModelOptions(t.ModelOptions)
+	if err != nil {
+		return fmt.Errorf("encode model options for trail %s: %w", t.ID, err)
+	}
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		err := r.q.WithTx(tx).CreatePlayTrail(ctx, sqlcgen.CreatePlayTrailParams{
 			ID: t.ID, WorkspaceID: t.WorkspaceID, PlayID: t.PlayID, PlayLabel: t.PlayLabel,
@@ -43,8 +47,8 @@ func (r *PlayTrailsRepo) CreateTrail(ctx context.Context, t *plays.Trail, evts .
 			StarterID: t.StarterID, Via: string(t.Via), SelectedMemoryIds: memories, CustomInstructions: t.CustomInstructions,
 			MoveToStatusID: nullStringOrNil(t.MoveToStatusID), HarnessSessionID: t.HarnessSessionID, State: string(t.State),
 			StartedAt: t.StartedAt.Unix(), EndedAt: nullUnixPtr(t.EndedAt), LastError: t.LastError,
-			ReplyMessageID: t.ReplyMessageID, Activity: activity, ComputerID: t.ComputerID, Provider: t.Provider, Model: t.Model, Question: question,
-			FailureReason: t.FailureReason,
+			ReplyMessageID: t.ReplyMessageID, Activity: activity, ComputerID: t.ComputerID, Provider: t.Provider, Model: t.Model, ModelOptions: options,
+			Question: question, FailureReason: t.FailureReason,
 		})
 		if err != nil {
 			return fmt.Errorf("insert trail %s: %w", t.ID, classifyWriteErr(err))
@@ -167,6 +171,10 @@ func toTrail(row sqlcgen.PlayTrail) (*plays.Trail, error) {
 	if err != nil {
 		return nil, fmt.Errorf("decode activity for trail %s: %w", row.ID, err)
 	}
+	options, err := unmarshalModelOptions(row.ModelOptions)
+	if err != nil {
+		return nil, fmt.Errorf("decode model options for trail %s: %w", row.ID, err)
+	}
 	var endedAt *time.Time
 	if row.EndedAt.Valid {
 		at := time.Unix(row.EndedAt.Int64, 0).UTC()
@@ -184,7 +192,7 @@ func toTrail(row sqlcgen.PlayTrail) (*plays.Trail, error) {
 		TargetType: plays.TargetType(row.TargetType), TargetID: row.TargetID, ProjectID: row.ProjectID,
 		ConversationID: row.ConversationID, StarterID: row.StarterID, Via: plays.Via(row.Via),
 		SelectedMemoryIDs: memories, CustomInstructions: row.CustomInstructions, MoveToStatusID: row.MoveToStatusID.String,
-		ComputerID: row.ComputerID, Provider: row.Provider, Model: row.Model,
+		ComputerID: row.ComputerID, Provider: row.Provider, Model: row.Model, ModelOptions: options,
 		HarnessSessionID: row.HarnessSessionID, State: plays.TrailState(row.State),
 		StartedAt: time.Unix(row.StartedAt, 0).UTC(), EndedAt: endedAt, LastError: row.LastError, FailureReason: row.FailureReason,
 		ReplyMessageID: row.ReplyMessageID, Activity: activity, Question: question,

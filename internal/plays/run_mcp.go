@@ -35,16 +35,17 @@ type trailSummary struct {
 // trailDetail is one trail with its run choices, its question, and the newest steps; a step's raw detail stays out.
 type trailDetail struct {
 	trailSummary
-	SelectedMemoryIDs  []string       `json:"selected_memory_ids"`
-	CustomInstructions string         `json:"custom_instructions,omitempty"`
-	MoveToStatusID     string         `json:"move_to_status_id,omitempty"`
-	ComputerID         string         `json:"computer_id"`
-	Provider           string         `json:"provider"`
-	Model              string         `json:"model"`
-	ReplyMessageID     string         `json:"reply_message_id,omitempty"`
-	Question           *TrailQuestion `json:"question,omitempty"`
-	Steps              []trailStep    `json:"steps"`
-	StepsTotal         int            `json:"steps_total"`
+	SelectedMemoryIDs  []string                `json:"selected_memory_ids"`
+	CustomInstructions string                  `json:"custom_instructions,omitempty"`
+	MoveToStatusID     string                  `json:"move_to_status_id,omitempty"`
+	ComputerID         string                  `json:"computer_id"`
+	Provider           string                  `json:"provider"`
+	Model              string                  `json:"model"`
+	ModelOptions       []harness.OptionSetting `json:"model_options,omitempty"`
+	ReplyMessageID     string                  `json:"reply_message_id,omitempty"`
+	Question           *TrailQuestion          `json:"question,omitempty"`
+	Steps              []trailStep             `json:"steps"`
+	StepsTotal         int                     `json:"steps_total"`
 }
 
 type trailStep struct {
@@ -69,7 +70,7 @@ func toTrailDetail(t *Trail, steps int) trailDetail {
 	tail := t.Activity[max(len(t.Activity)-steps, 0):]
 	out := trailDetail{
 		trailSummary: toTrailSummary(t), SelectedMemoryIDs: t.SelectedMemoryIDs, CustomInstructions: t.CustomInstructions,
-		MoveToStatusID: t.MoveToStatusID, ComputerID: t.ComputerID, Provider: t.Provider, Model: t.Model,
+		MoveToStatusID: t.MoveToStatusID, ComputerID: t.ComputerID, Provider: t.Provider, Model: t.Model, ModelOptions: t.ModelOptions,
 		ReplyMessageID: t.ReplyMessageID, Question: t.Question, Steps: make([]trailStep, 0, len(tail)), StepsTotal: len(t.Activity),
 	}
 	for _, e := range tail {
@@ -79,16 +80,17 @@ func toTrailDetail(t *Trail, steps int) trailDetail {
 }
 
 type playRunIn struct {
-	PlayID             string     `json:"play_id,omitempty" jsonschema:"The play's id, from play_list. Required unless decisions_check is true."`
-	DecisionsCheck     bool       `json:"decisions_check,omitempty" jsonschema:"true runs the built-in decisions check again on a done ticket, instead of a play: pass it with target_type ticket and target_id, and no play_id or other run choices."`
-	TargetType         TargetType `json:"target_type" jsonschema:"What to run it on, matching the play's type: ticket, doc, or interview."`
-	TargetID           string     `json:"target_id" jsonschema:"The ticket's or doc's id (a UUID, not a ticket key such as REF-102), or for an interview the project's id."`
-	MemoryIDs          []string   `json:"memory_ids,omitempty" jsonschema:"Ids of the target project's memories to inline in full, from memory_list; the project's always-included memories come along anyway."`
-	CustomInstructions string     `json:"custom_instructions,omitempty" jsonschema:"Extra instructions for this run only; they win over the play's where the two conflict."`
-	MoveToStatusID     string     `json:"move_to_status_id,omitempty" jsonschema:"Ticket plays only: the status column to move the ticket to when the run ends done, from project_get."`
-	ComputerID         string     `json:"computer_id,omitempty" jsonschema:"One of the caller's own paired computers, from computer_list. Omit to use the project link or the caller's pairing defaults."`
-	Provider           string     `json:"provider,omitempty" jsonschema:"The harness provider to run on, for example claude. Omit to use the computer's default."`
-	Model              string     `json:"model,omitempty" jsonschema:"The model to run, for example sonnet-5. Omit to use the provider's default."`
+	PlayID             string                  `json:"play_id,omitempty" jsonschema:"The play's id, from play_list. Required unless decisions_check is true."`
+	DecisionsCheck     bool                    `json:"decisions_check,omitempty" jsonschema:"true runs the built-in decisions check again on a done ticket, instead of a play: pass it with target_type ticket and target_id, and no play_id or other run choices."`
+	TargetType         TargetType              `json:"target_type" jsonschema:"What to run it on, matching the play's type: ticket, doc, or interview."`
+	TargetID           string                  `json:"target_id" jsonschema:"The ticket's or doc's id (a UUID, not a ticket key such as REF-102), or for an interview the project's id."`
+	MemoryIDs          []string                `json:"memory_ids,omitempty" jsonschema:"Ids of the target project's memories to inline in full, from memory_list; the project's always-included memories come along anyway."`
+	CustomInstructions string                  `json:"custom_instructions,omitempty" jsonschema:"Extra instructions for this run only; they win over the play's where the two conflict."`
+	MoveToStatusID     string                  `json:"move_to_status_id,omitempty" jsonschema:"Ticket plays only: the status column to move the ticket to when the run ends done, from project_get."`
+	ComputerID         string                  `json:"computer_id,omitempty" jsonschema:"One of the caller's own paired computers, from computer_list. Omit to use the project link or the caller's pairing defaults."`
+	Provider           string                  `json:"provider,omitempty" jsonschema:"The harness provider to run on, for example claude. Omit to use the computer's default."`
+	Model              string                  `json:"model,omitempty" jsonschema:"The model to run, for example sonnet-5. Omit to use the provider's default."`
+	ModelOptions       []harness.OptionSetting `json:"model_options,omitempty" jsonschema:"Options for the picked model, for example [{\"id\": \"effort\", \"value\": \"high\"}, {\"id\": \"fastMode\", \"value\": true}]: a choice id for a select option such as reasoning level or context window, true or false for a switch such as fast mode, as the harness lists them per model. Only applies with model; an option left out keeps the harness default."`
 }
 
 type trailListIn struct {
@@ -188,11 +190,11 @@ func runPlay(ctx context.Context, r *Runner, in playRunIn) (*Trail, error) {
 		return r.Run(ctx, RunInput{
 			PlayID: in.PlayID, TargetType: in.TargetType, TargetID: in.TargetID, MemoryIDs: in.MemoryIDs,
 			CustomInstructions: in.CustomInstructions, MoveToStatusID: in.MoveToStatusID,
-			ComputerID: in.ComputerID, Provider: in.Provider, Model: in.Model, Via: ViaMCP,
+			ComputerID: in.ComputerID, Provider: in.Provider, Model: in.Model, ModelOptions: in.ModelOptions, Via: ViaMCP,
 		})
 	}
 	choices := in.PlayID != "" || len(in.MemoryIDs) > 0 || in.CustomInstructions != "" || in.MoveToStatusID != "" ||
-		in.ComputerID != "" || in.Provider != "" || in.Model != ""
+		in.ComputerID != "" || in.Provider != "" || in.Model != "" || len(in.ModelOptions) > 0
 	if choices || in.TargetType != TargetTicket {
 		return nil, fmt.Errorf("%w: decisions_check takes only target_type ticket and target_id; it runs with its own "+
 			"instructions on the caller's default computer", apperrs.ErrInvalid)

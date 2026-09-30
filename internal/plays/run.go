@@ -82,9 +82,10 @@ type ProjectLookup interface {
 // HarnessChoice is the computer, provider, and model a run uses: either the caller's pick from the run
 // dialog, or what the resolution picked from their project link or pairing defaults when they picked none.
 type HarnessChoice struct {
-	ComputerID string
-	Provider   string
-	Model      string
+	ComputerID   string
+	Provider     string
+	Model        string
+	ModelOptions []harness.OptionSetting
 }
 
 // HarnessResolver is the runner's seam onto pairing: the readiness check before a run is started, given the
@@ -231,16 +232,18 @@ type RunInput struct {
 	ComputerID         string
 	Provider           string
 	Model              string
+	ModelOptions       []harness.OptionSetting
 	Via                Via
 }
 
 // Choices is what the run dialog pre-selects from the starter's latest trail of a play in a project.
 type Choices struct {
-	MemoryIDs      []string `json:"memory_ids"`
-	MoveToStatusID string   `json:"move_to_status_id"`
-	ComputerID     string   `json:"computer_id"`
-	Provider       string   `json:"provider"`
-	Model          string   `json:"model"`
+	MemoryIDs      []string                `json:"memory_ids"`
+	MoveToStatusID string                  `json:"move_to_status_id"`
+	ComputerID     string                  `json:"computer_id"`
+	Provider       string                  `json:"provider"`
+	Model          string                  `json:"model"`
+	ModelOptions   []harness.OptionSetting `json:"model_options"`
 }
 
 // target is what the runner read about a ticket, doc, or interview at press time.
@@ -269,7 +272,11 @@ func (r *Runner) Run(ctx context.Context, in RunInput) (*Trail, error) {
 		CustomInstructions: strings.TrimSpace(in.CustomInstructions), MoveToStatusID: strings.TrimSpace(in.MoveToStatusID),
 		State: TrailStarting, StartedAt: r.now().UTC(), Activity: []ActivityEntry{},
 	}
-	return r.launch(ctx, play, trail, tgt, HarnessChoice{ComputerID: in.ComputerID, Provider: in.Provider, Model: in.Model}, false)
+	options, err := harness.CleanOptions(in.ModelOptions)
+	if err != nil {
+		return nil, err
+	}
+	return r.launch(ctx, play, trail, tgt, HarnessChoice{ComputerID: in.ComputerID, Provider: in.Provider, Model: in.Model, ModelOptions: options}, false)
 }
 
 // launch resolves the harness and starts the turn; a harness refusal is always kept as a failed trail, recordRefusals keeps the rest too.
@@ -290,7 +297,7 @@ func (r *Runner) launch(ctx context.Context, play *Play, trail *Trail, tgt targe
 		r.createFailed(ctx, trail, targetTitle, err.Error())
 		return nil, err
 	}
-	trail.ComputerID, trail.Provider, trail.Model = choice.ComputerID, choice.Provider, choice.Model
+	trail.ComputerID, trail.Provider, trail.Model, trail.ModelOptions = choice.ComputerID, choice.Provider, choice.Model, choice.ModelOptions
 	if err := r.refuseIfActive(ctx, trail.TargetType, trail.TargetID); err != nil {
 		return refuse(err)
 	}
@@ -325,7 +332,7 @@ func (r *Runner) launch(ctx context.Context, play *Play, trail *Trail, tgt targe
 	r.startTurn(ctx, trail, targetTitle, agent.TurnRequest{
 		ConversationID: conversationID, ViaUserID: trail.StarterID, RequestBody: body, Attachments: memoryAttachments,
 		ExtraRequestBlocks: requestBlocks(play, links, memoriesBlock, r.login(ctx, trail.StarterID), trail.CustomInstructions),
-		Target:             &agent.TargetOverride{ComputerID: choice.ComputerID, Provider: choice.Provider, Model: choice.Model},
+		Target:             &agent.TargetOverride{ComputerID: choice.ComputerID, Provider: choice.Provider, Model: choice.Model, ModelOptions: choice.ModelOptions},
 	}, false)
 	return &snapshot, nil
 }
@@ -375,7 +382,7 @@ func (r *Runner) Answer(ctx context.Context, trailID string, answer harness.Ques
 	snapshot := *trail
 	r.startTurn(ctx, trail, tgt.title, agent.TurnRequest{
 		ConversationID: trail.ConversationID, ViaUserID: trail.StarterID, RequestBody: body,
-		Target: &agent.TargetOverride{ComputerID: trail.ComputerID, Provider: trail.Provider, Model: trail.Model},
+		Target: &agent.TargetOverride{ComputerID: trail.ComputerID, Provider: trail.Provider, Model: trail.Model, ModelOptions: trail.ModelOptions},
 	}, true)
 	return &snapshot, nil
 }
@@ -1022,7 +1029,7 @@ func (r *Runner) LatestChoices(ctx context.Context, starterID, playID, projectID
 	if err != nil {
 		return nil, fmt.Errorf("latest trail for play %s: %w", playID, err)
 	}
-	return &Choices{MemoryIDs: t.SelectedMemoryIDs, MoveToStatusID: t.MoveToStatusID, ComputerID: t.ComputerID, Provider: t.Provider, Model: t.Model}, nil
+	return &Choices{MemoryIDs: t.SelectedMemoryIDs, MoveToStatusID: t.MoveToStatusID, ComputerID: t.ComputerID, Provider: t.Provider, Model: t.Model, ModelOptions: t.ModelOptions}, nil
 }
 
 func (r *Runner) requireTrailAccess(ctx context.Context, workspaceID string, targetType TargetType, targetID string) error {

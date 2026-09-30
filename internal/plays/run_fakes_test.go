@@ -293,7 +293,7 @@ func (f *fakeHarnessResolver) ResolveTarget(_ context.Context, _, _ string, choi
 	if f.err != nil {
 		return HarnessChoice{}, f.err
 	}
-	if f.resolved != (HarnessChoice{}) {
+	if f.resolved.ComputerID != "" {
 		return f.resolved, nil
 	}
 	return choice, nil
@@ -517,7 +517,7 @@ func (agentTargets) ResolveTarget(context.Context, string, string) (*pairing.Res
 	return &pairing.ResolvedTarget{Computer: pairing.Computer{ID: "c-1", Kind: "t3code"}, HarnessProjectID: "hp-1"}, nil
 }
 
-func (agentTargets) ResolveTargetOverride(_ context.Context, _, _, computerID, provider, model string) (*pairing.ResolvedTarget, error) {
+func (agentTargets) ResolveTargetOverride(_ context.Context, _, _, computerID, provider, model string, _ []harness.OptionSetting) (*pairing.ResolvedTarget, error) {
 	return &pairing.ResolvedTarget{Computer: pairing.Computer{ID: computerID, Kind: "t3code"}, HarnessProjectID: "hp-1", Provider: provider, Model: model}, nil
 }
 

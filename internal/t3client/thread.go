@@ -77,8 +77,9 @@ func (s *Subscription) Updates() <-chan Update { return s.updates }
 func (s *Subscription) Close() { s.cancel() }
 
 type modelSelection struct {
-	InstanceID string `json:"instanceId"`
-	Model      string `json:"model"`
+	InstanceID string                  `json:"instanceId"`
+	Model      string                  `json:"model"`
+	Options    []harness.OptionSetting `json:"options,omitempty"`
 }
 
 type threadCreateCommand struct {
@@ -159,7 +160,7 @@ func (c *Client) dispatch(ctx context.Context, command any) error {
 }
 
 // CreateThread creates a T3 thread in the given T3 project and returns its client-generated thread id.
-func (c *Client) CreateThread(ctx context.Context, t3ProjectID, title, providerInstanceID, model, runtimeMode string) (string, error) {
+func (c *Client) CreateThread(ctx context.Context, t3ProjectID, title, providerInstanceID, model string, options []harness.OptionSetting, runtimeMode string) (string, error) {
 	threadID := ids.New()
 	err := c.dispatch(ctx, threadCreateCommand{
 		Type:            "thread.create",
@@ -167,7 +168,7 @@ func (c *Client) CreateThread(ctx context.Context, t3ProjectID, title, providerI
 		ThreadID:        threadID,
 		ProjectID:       t3ProjectID,
 		Title:           title,
-		ModelSelection:  modelSelection{InstanceID: providerInstanceID, Model: model},
+		ModelSelection:  modelSelection{InstanceID: providerInstanceID, Model: model, Options: options},
 		RuntimeMode:     orRuntimeDefault(runtimeMode),
 		InteractionMode: "default",
 		CreatedAt:       isoNow(),

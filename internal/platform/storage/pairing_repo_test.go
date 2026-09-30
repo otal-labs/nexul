@@ -182,6 +182,7 @@ func TestPairingRepo_ProjectLink_RoundTrip(t *testing.T) {
 	link := pairing.ProjectLink{
 		ProjectID: "proj-1", ComputerID: "c1", HarnessProjectID: "t3-proj-1",
 		Provider: "claude", Model: "sonnet", UpdatedAt: time.Unix(1_000_000_000, 0).UTC(),
+		ModelOptions: []harness.OptionSetting{{ID: "effort", Value: "high"}, {ID: "fastMode", Value: true}},
 	}
 	require.NoError(t, s.Pairing.SaveProjectLink(ctx, link))
 
@@ -191,6 +192,7 @@ func TestPairingRepo_ProjectLink_RoundTrip(t *testing.T) {
 	assert.Equal(t, "t3-proj-1", got.HarnessProjectID)
 	assert.Equal(t, "claude", got.Provider)
 	assert.Equal(t, "sonnet", got.Model)
+	assert.Equal(t, link.ModelOptions, got.ModelOptions, "a switch reads back as a bool, a choice as a string")
 }
 
 func TestPairingRepo_SaveProjectLink_UpsertUpdatesInPlace(t *testing.T) {
@@ -247,7 +249,8 @@ func TestPairingRepo_Defaults_RoundTrip(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, pairing.Defaults{}, empty, "no row yet is a zero value, not an error")
 
-	d := pairing.Defaults{UserID: "u1", DefaultComputerID: "c1", FallbackProjectID: "proj-1", Provider: "claude", Model: "sonnet"}
+	d := pairing.Defaults{UserID: "u1", DefaultComputerID: "c1", FallbackProjectID: "proj-1", Provider: "claude", Model: "sonnet",
+		ModelOptions: []harness.OptionSetting{{ID: "contextWindow", Value: "1m"}}}
 	require.NoError(t, s.Pairing.SaveDefaults(ctx, d))
 
 	got, err := s.Pairing.GetDefaults(ctx, "u1")
@@ -256,6 +259,7 @@ func TestPairingRepo_Defaults_RoundTrip(t *testing.T) {
 	assert.Equal(t, "proj-1", got.FallbackProjectID)
 	assert.Equal(t, "claude", got.Provider)
 	assert.Equal(t, "sonnet", got.Model)
+	assert.Equal(t, d.ModelOptions, got.ModelOptions)
 }
 
 func TestPairingRepo_SaveDefaults_UpsertUpdatesInPlace(t *testing.T) {

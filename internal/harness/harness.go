@@ -4,9 +4,12 @@ package harness
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 )
 
 // Kind names a harness implementation; it is stored on every paired computer and picks the Client from a Registry.
@@ -36,11 +39,77 @@ type Project struct {
 	Path  string `json:"path"`
 }
 
-// ProviderModel is one model a provider instance offers.
+// ProviderModel is one model a provider instance offers, with the options a turn may set on it.
 type ProviderModel struct {
 	Slug      string `json:"slug"`
 	Name      string `json:"name"`
 	IsDefault bool   `json:"is_default,omitempty"`
+	// SubProvider names where a routed model comes from, such as "GitHub Copilot"; empty for the provider's own.
+	SubProvider string        `json:"sub_provider,omitempty"`
+	IsNew       bool          `json:"is_new,omitempty"`
+	IsLegacy    bool          `json:"is_legacy,omitempty"`
+	Options     []ModelOption `json:"options,omitempty"`
+}
+
+// OptionType is how a model option is set: one choice out of several, or on and off.
+type OptionType string
+
+const (
+	OptionSelect OptionType = "select"
+	OptionSwitch OptionType = "boolean"
+)
+
+// ModelOption is one setting the harness offers per model, such as reasoning level, context window, or fast mode.
+type ModelOption struct {
+	ID          string         `json:"id"`
+	Label       string         `json:"label"`
+	Description string         `json:"description,omitempty"`
+	Type        OptionType     `json:"type"`
+	Choices     []OptionChoice `json:"choices,omitempty"`
+	// DefaultOn is a switch's value when the turn leaves it unset.
+	DefaultOn bool `json:"default_on,omitempty"`
+}
+
+// OptionChoice is one choice of a select option.
+type OptionChoice struct {
+	ID          string `json:"id"`
+	Label       string `json:"label"`
+	Description string `json:"description,omitempty"`
+	IsDefault   bool   `json:"is_default,omitempty"`
+}
+
+// OptionSetting is one model option set for a turn: a choice id for a select, a bool for a switch.
+type OptionSetting struct {
+	ID    string `json:"id" jsonschema:"The option's id as the harness lists it, for example effort or fastMode."`
+	Value any    `json:"value" jsonschema:"A choice id for a select option, for example high; true or false for a switch."`
+}
+
+// CleanOptions trims and checks settings at a trust boundary; an unset option is left to the harness default.
+func CleanOptions(settings []OptionSetting) ([]OptionSetting, error) {
+	var out []OptionSetting
+	seen := map[string]bool{}
+	for _, s := range settings {
+		id := strings.TrimSpace(s.ID)
+		if id == "" {
+			return nil, fmt.Errorf("%w: a model option needs its id", apperrs.ErrInvalid)
+		}
+		if seen[id] {
+			return nil, fmt.Errorf("%w: model option %s is set twice", apperrs.ErrInvalid, id)
+		}
+		seen[id] = true
+		switch v := s.Value.(type) {
+		case bool:
+			out = append(out, OptionSetting{ID: id, Value: v})
+		case string:
+			if strings.TrimSpace(v) == "" {
+				return nil, fmt.Errorf("%w: model option %s needs a value", apperrs.ErrInvalid, id)
+			}
+			out = append(out, OptionSetting{ID: id, Value: strings.TrimSpace(v)})
+		default:
+			return nil, fmt.Errorf("%w: model option %s must be a choice id or true/false", apperrs.ErrInvalid, id)
+		}
+	}
+	return out, nil
 }
 
 // Provider is a usable provider instance; ID is what a turn routes on, Driver the kind setup is confirmed under.
@@ -57,6 +126,8 @@ type Target struct {
 	ProjectID string
 	Provider  string
 	Model     string
+	// ModelOptions ride with Model when the session is created; a reused session keeps its own.
+	ModelOptions []OptionSetting
 	// SessionID is the harness-side thread; empty means create one.
 	SessionID string
 }

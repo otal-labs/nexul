@@ -105,17 +105,25 @@ func (r *PairingRepo) GetProjectLink(ctx context.Context, projectID string) (pai
 		}
 		return pairing.ProjectLink{}, fmt.Errorf("get project link %s: %w", projectID, err)
 	}
+	options, err := unmarshalModelOptions(row.ModelOptions)
+	if err != nil {
+		return pairing.ProjectLink{}, fmt.Errorf("decode model options for project link %s: %w", projectID, err)
+	}
 	return pairing.ProjectLink{
 		ProjectID: row.ProjectID, ComputerID: row.ComputerID, HarnessProjectID: row.HarnessProjectID,
-		Provider: row.Provider, Model: row.Model, UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
+		Provider: row.Provider, Model: row.Model, ModelOptions: options, UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
 	}, nil
 }
 
 func (r *PairingRepo) SaveProjectLink(ctx context.Context, l pairing.ProjectLink) error {
+	options, err := marshalModelOptions(l.ModelOptions)
+	if err != nil {
+		return fmt.Errorf("encode model options for project link %s: %w", l.ProjectID, err)
+	}
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		err := r.q.WithTx(tx).SavePairingProjectLink(ctx, sqlcgen.SavePairingProjectLinkParams{
 			ProjectID: l.ProjectID, ComputerID: l.ComputerID, HarnessProjectID: l.HarnessProjectID,
-			Provider: l.Provider, Model: l.Model, UpdatedAt: l.UpdatedAt.Unix(),
+			Provider: l.Provider, Model: l.Model, ModelOptions: options, UpdatedAt: l.UpdatedAt.Unix(),
 		})
 		if err != nil {
 			return fmt.Errorf("save project link %s: %w", l.ProjectID, classifyWriteErr(err))
@@ -141,15 +149,24 @@ func (r *PairingRepo) GetDefaults(ctx context.Context, userID string) (pairing.D
 		}
 		return pairing.Defaults{}, fmt.Errorf("get defaults: %w", err)
 	}
+	options, err := unmarshalModelOptions(row.ModelOptions)
+	if err != nil {
+		return pairing.Defaults{}, fmt.Errorf("decode model options for defaults: %w", err)
+	}
 	return pairing.Defaults{
 		DefaultComputerID: row.DefaultComputerID.String,
 		FallbackProjectID: row.FallbackProjectID,
 		Provider:          row.Provider,
 		Model:             row.Model,
+		ModelOptions:      options,
 	}, nil
 }
 
 func (r *PairingRepo) SaveDefaults(ctx context.Context, d pairing.Defaults) error {
+	options, err := marshalModelOptions(d.ModelOptions)
+	if err != nil {
+		return fmt.Errorf("encode model options for %s: %w", d.UserID, err)
+	}
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		err := r.q.WithTx(tx).SavePairingDefaults(ctx, sqlcgen.SavePairingDefaultsParams{
 			UserID:            d.UserID,
@@ -157,6 +174,7 @@ func (r *PairingRepo) SaveDefaults(ctx context.Context, d pairing.Defaults) erro
 			FallbackProjectID: d.FallbackProjectID,
 			Provider:          d.Provider,
 			Model:             d.Model,
+			ModelOptions:      options,
 		})
 		if err != nil {
 			return fmt.Errorf("save defaults for %s: %w", d.UserID, classifyWriteErr(err))
@@ -319,4 +337,25 @@ func unixPtrFromNull(v sql.NullInt64) *time.Time {
 	}
 	t := time.Unix(v.Int64, 0).UTC()
 	return &t
+}
+
+// marshalModelOptions stores no options as "[]", the column default.
+func marshalModelOptions(options []harness.OptionSetting) (string, error) {
+	if len(options) == 0 {
+		return "[]", nil
+	}
+	b, err := json.Marshal(options)
+	return string(b), err
+}
+
+// unmarshalModelOptions reads the column back; an empty list is nil, as the domain never sets one.
+func unmarshalModelOptions(raw string) ([]harness.OptionSetting, error) {
+	var options []harness.OptionSetting
+	if err := json.Unmarshal([]byte(raw), &options); err != nil {
+		return nil, err
+	}
+	if len(options) == 0 {
+		return nil, nil
+	}
+	return options, nil
 }

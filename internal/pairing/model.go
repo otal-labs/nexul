@@ -193,9 +193,10 @@ type SetupRun struct {
 
 // SetupProvider is one provider a setup run covers, by driver kind and display name, with the model its turn runs on.
 type SetupProvider struct {
-	Provider string `json:"provider"`
-	Name     string `json:"name"`
-	Model    string `json:"model,omitempty"`
+	Provider     string                  `json:"provider"`
+	Name         string                  `json:"name"`
+	Model        string                  `json:"model,omitempty"`
+	ModelOptions []harness.OptionSetting `json:"model_options,omitempty"`
 }
 
 // ProviderOption is a provider instance as the pickers list it: still selectable while it needs setup.
@@ -220,16 +221,19 @@ type Defaults struct {
 	FallbackProjectID string `json:"fallback_project_id,omitempty"`
 	Provider          string `json:"provider,omitempty"`
 	Model             string `json:"model,omitempty"`
+	// ModelOptions are the options picked with Model; unset ones are the harness's defaults.
+	ModelOptions []harness.OptionSetting `json:"model_options,omitempty"`
 }
 
 // ProjectLink is the project-level pairing config; a zero value means unlinked, falling through to defaults.
 type ProjectLink struct {
-	ProjectID        string    `json:"project_id"`
-	ComputerID       string    `json:"computer_id,omitempty"`
-	HarnessProjectID string    `json:"harness_project_id,omitempty"`
-	Provider         string    `json:"provider,omitempty"`
-	Model            string    `json:"model,omitempty"`
-	UpdatedAt        time.Time `json:"updated_at,omitempty"`
+	ProjectID        string                  `json:"project_id"`
+	ComputerID       string                  `json:"computer_id,omitempty"`
+	HarnessProjectID string                  `json:"harness_project_id,omitempty"`
+	Provider         string                  `json:"provider,omitempty"`
+	Model            string                  `json:"model,omitempty"`
+	ModelOptions     []harness.OptionSetting `json:"model_options,omitempty"`
+	UpdatedAt        time.Time               `json:"updated_at,omitempty"`
 }
 
 // NotConfiguredReason distinguishes why ResolveTarget failed, for a specific reply, not one generic message.
