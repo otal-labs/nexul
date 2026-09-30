@@ -148,13 +148,13 @@ or on a schedule.
 
 - `native-release.yml` builds both platforms at the version in
   `app.config.ts`, and a hand run must name that version. The Android job runs
-  `bun run prebuild` and builds `assembleRelease` for `arm64-v8a`
-  only (every phone we target is arm64, emulator builds are made locally, and
-  each extra ABI doubles the native compile) with the signing key from the
-  repository secrets. Gradle's user home and build cache are restored with setup-gradle on
+  `bun run prebuild` and builds `assembleRelease` for `arm64-v8a` only (every
+  phone we target is arm64, emulator builds are made locally, and each extra
+  ABI doubles the native compile) with the signing key from the repository
+  secrets. Gradle's user home and build cache are restored with setup-gradle on
   Android, and the pods with their downloaded prebuilds on iOS; hand runs and
-  master write those caches and everything else only reads them. The iOS job runs on a macOS runner:
-  `expo prebuild --platform ios`, `pod install`, then an unsigned
+  master write those caches, everything else only reads them. The iOS job runs
+  on a macOS runner: `expo prebuild --platform ios`, `pod install`, then an unsigned
   `xcodebuild archive` packed as an IPA. There is no Apple Developer account;
   SideStore signs the IPA on the phone with the owner's free Apple ID, which
   strips the push entitlement, so push on iOS stays off and registration
@@ -162,8 +162,8 @@ or on a schedule.
   `phone-v<version>-beta`, with `nexul-android-<version>.apk` and
   `nexul-ios-<version>.ipa` attached. It refuses when the tag already exists:
   bump `version` first. A hand run with the `release` input unticked builds both
-  files as artifacts without checking the tag and skips the release. The release is created with `--prerelease
-  --latest=false`, and the server's release client, `install.sh` and the
+  files as artifacts without checking the tag and skips the release. The
+  release is created with `--prerelease --latest=false`, and the server's release client, `install.sh` and the
   changelog skip every tag that does not start with `v` (the older
   `android-v*` releases included), so a phone release never becomes the
   server's latest. A pull request that touches `native/` builds the IPA only,
