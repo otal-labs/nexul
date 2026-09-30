@@ -55,6 +55,8 @@ type Executor interface {
 	Upgrade(ctx context.Context, req Frame, send func(Frame) error) error
 	// Uninstall starts `nexul uninstall runner <name>` on the host, outside this runner's own service.
 	Uninstall(ctx context.Context, name string) error
+	// Logs streams one logs_request's container output, ending with logs_end (containerlogs.go).
+	Logs(ctx context.Context, req Frame, send func(Frame))
 }
 
 // ExecutorConfig is the host executor's view of the runner's environment.
@@ -65,11 +67,14 @@ type ExecutorConfig struct {
 	StackRoot string
 	// Ctl is the `nexul` command upgrades and uninstalls go through.
 	Ctl string
+	// Streams runs `docker logs` with separate stdout and stderr; nil means ShellStreamRunner.
+	Streams StreamRunner
 }
 
 // ShellExecutor runs builds and deploys on the host (ADR 0032).
 type ShellExecutor struct {
 	cmd       CommandRunner
+	streams   StreamRunner
 	gitToken  string
 	stackRoot string
 	ctl       string
@@ -81,7 +86,11 @@ func NewShellExecutor(cmd CommandRunner, cfg ExecutorConfig, log *slog.Logger) *
 	if cmd == nil {
 		cmd = ShellCommandRunner
 	}
-	return &ShellExecutor{cmd: cmd, gitToken: cfg.GitToken, stackRoot: cfg.StackRoot, ctl: cfg.Ctl, log: log}
+	streams := cfg.Streams
+	if streams == nil {
+		streams = ShellStreamRunner
+	}
+	return &ShellExecutor{cmd: cmd, streams: streams, gitToken: cfg.GitToken, stackRoot: cfg.StackRoot, ctl: cfg.Ctl, log: log}
 }
 
 // Discover scans this host's docker containers and networks (spec §3); selfID (os.Hostname()) excludes the

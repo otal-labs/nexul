@@ -52,3 +52,10 @@ func TestLineWriter_SplitsLines(t *testing.T) {
 func TestCmdString(t *testing.T) {
 	assert.Equal(t, "docker pull img", cmdString("docker", []string{"pull", "img"}))
 }
+
+func TestShellStreamRunner_KeepsStdoutAndStderrApart(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	require.NoError(t, ShellStreamRunner(t.Context(), &stdout, &stderr, "sh", "-c", "echo to-out; echo to-err >&2"))
+	assert.Equal(t, "to-out\n", stdout.String())
+	assert.Equal(t, "to-err\n", stderr.String())
+}

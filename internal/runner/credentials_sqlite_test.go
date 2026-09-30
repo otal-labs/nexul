@@ -90,6 +90,8 @@ func (e *recordingExecutor) Upgrade(context.Context, runner.Frame, func(runner.F
 	return nil
 }
 
+func (e *recordingExecutor) Logs(context.Context, runner.Frame, func(runner.Frame)) {}
+
 func (e *recordingExecutor) Uninstall(_ context.Context, name string) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()

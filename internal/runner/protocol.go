@@ -42,6 +42,11 @@ const (
 	FrameUpgradeResult   FrameType = "upgrade_result"
 	// FrameUninstall (server -> runner) says the runner was removed: it uninstalls its own service and exits.
 	FrameUninstall FrameType = "uninstall"
+	// Container logs (ADR 0090): logs_request and logs_cancel go to the runner, logs_chunk and logs_end come back.
+	FrameLogsRequest FrameType = "logs_request"
+	FrameLogsChunk   FrameType = "logs_chunk"
+	FrameLogsEnd     FrameType = "logs_end"
+	FrameLogsCancel  FrameType = "logs_cancel"
 )
 
 // Build and deploy statuses carried by result frames.
@@ -63,6 +68,9 @@ const (
 
 	UpgradeStatusStarted = "started"
 	UpgradeStatusFailed  = "failed"
+
+	LogStreamStdout = "stdout"
+	LogStreamStderr = "stderr"
 )
 
 // Frame is the flat JSON wire message of the runner protocol; per-type field requirements are enforced by Validate.
@@ -114,6 +122,18 @@ type Frame struct {
 	Version string `json:"version,omitempty"`
 	URL     string `json:"url,omitempty"`
 	Sha256  string `json:"sha256,omitempty"`
+	// Container, Tail and Follow carry a logs_request; Lines a logs_chunk.
+	Container string             `json:"container,omitempty"`
+	Tail      int                `json:"tail,omitempty"`
+	Follow    bool               `json:"follow,omitempty"`
+	Lines     []ContainerLogLine `json:"lines,omitempty"`
+}
+
+// ContainerLogLine is one line a container printed: Docker's RFC 3339 timestamp, stdout or stderr, and the text.
+type ContainerLogLine struct {
+	TS     string `json:"ts"`
+	Stream string `json:"stream"`
+	Line   string `json:"line"`
 }
 
 // ObservedService is one observed container in a deploy_result's report; named
@@ -160,6 +180,10 @@ var frameValidators = map[FrameType]func(*Frame) error{
 	FrameUpgradeProgress:    (*Frame).validateUpgradeProgress,
 	FrameUpgradeResult:      (*Frame).validateUpgradeResult,
 	FrameUninstall:          (*Frame).validateNothing,
+	FrameLogsRequest:        (*Frame).validateLogsRequest,
+	FrameLogsChunk:          (*Frame).validateLogsChunk,
+	FrameLogsEnd:            (*Frame).validateID,
+	FrameLogsCancel:         (*Frame).validateID,
 }
 
 // Validate checks the fields required by the frame's type; unknown types and malformed values return ErrInvalid.
@@ -287,6 +311,32 @@ func (f *Frame) validateUpgradeProgress() error {
 func (f *Frame) validateUpgradeResult() error {
 	if f.ID == "" || !oneOf(f.Status, UpgradeStatusStarted, UpgradeStatusFailed) {
 		return fmt.Errorf("%w: upgrade_result requires id and a valid status", apperrs.ErrInvalid)
+	}
+	return nil
+}
+
+func (f *Frame) validateLogsRequest() error {
+	if f.ID == "" || f.Container == "" || f.Tail < 0 {
+		return fmt.Errorf("%w: logs_request requires id, container and a tail of zero or more", apperrs.ErrInvalid)
+	}
+	return nil
+}
+
+func (f *Frame) validateLogsChunk() error {
+	if f.ID == "" || len(f.Lines) == 0 {
+		return fmt.Errorf("%w: logs_chunk requires id and lines", apperrs.ErrInvalid)
+	}
+	for _, l := range f.Lines {
+		if !oneOf(l.Stream, LogStreamStdout, LogStreamStderr) {
+			return fmt.Errorf("%w: logs_chunk line stream %q", apperrs.ErrInvalid, l.Stream)
+		}
+	}
+	return nil
+}
+
+func (f *Frame) validateID() error {
+	if f.ID == "" {
+		return fmt.Errorf("%w: %s requires id", apperrs.ErrInvalid, f.Type)
 	}
 	return nil
 }
