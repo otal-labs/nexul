@@ -1,6 +1,7 @@
 import { CarouselLayout, FocusLayout, FocusLayoutContainer, GridLayout, isTrackReference, useTracks } from "@livekit/components-react";
 import { Track } from "livekit-client";
 
+import { VoiceGridCell } from "@/components/chat/VoiceGridCell";
 import { VoiceTile } from "@/components/chat/VoiceTile";
 
 // GridLayout with placeholders so audio-only participants still get a tile; screen share gets FocusLayout.
@@ -27,7 +28,9 @@ export const VoiceCallStage = () => {
       )}
       {!screenShareTrack && (
         <GridLayout tracks={tracks} className="min-h-0 flex-1">
-          <VoiceTile />
+          <VoiceGridCell>
+            <VoiceTile />
+          </VoiceGridCell>
         </GridLayout>
       )}
     </>
