@@ -900,6 +900,7 @@ type Workspace struct {
 	CreatedAt           int64
 	UpdatedAt           int64
 	MentionChipTemplate string
+	Slug                string
 }
 
 type WorkspaceInvite struct {

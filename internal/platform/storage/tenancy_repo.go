@@ -26,7 +26,7 @@ type WorkspacesRepo struct {
 func (r *WorkspacesRepo) Create(ctx context.Context, ws *tenancy.Workspace) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		err := r.q.WithTx(tx).CreateWorkspace(ctx, sqlcgen.CreateWorkspaceParams{
-			ID: ws.ID, Name: ws.Name, MentionChipTemplate: ws.MentionChipTemplate,
+			ID: ws.ID, Name: ws.Name, Slug: ws.Slug, MentionChipTemplate: ws.MentionChipTemplate,
 			CreatedAt: ws.CreatedAt.Unix(), UpdatedAt: ws.UpdatedAt.Unix(),
 		})
 		if err != nil {
@@ -39,7 +39,7 @@ func (r *WorkspacesRepo) Create(ctx context.Context, ws *tenancy.Workspace) erro
 func (r *WorkspacesRepo) Update(ctx context.Context, ws *tenancy.Workspace) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).UpdateWorkspace(ctx, sqlcgen.UpdateWorkspaceParams{
-			Name: ws.Name, MentionChipTemplate: ws.MentionChipTemplate, UpdatedAt: ws.UpdatedAt.Unix(), ID: ws.ID,
+			Name: ws.Name, Slug: ws.Slug, MentionChipTemplate: ws.MentionChipTemplate, UpdatedAt: ws.UpdatedAt.Unix(), ID: ws.ID,
 		})
 		if err != nil {
 			return fmt.Errorf("update workspace %s: %w", ws.ID, classifyWriteErr(err))
@@ -55,6 +55,14 @@ func (r *WorkspacesRepo) Get(ctx context.Context, id string) (*tenancy.Workspace
 	row, err := r.q.GetWorkspace(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("get workspace %s: %w", id, notFoundIfNoRows(err))
+	}
+	return toWorkspace(row), nil
+}
+
+func (r *WorkspacesRepo) GetBySlug(ctx context.Context, slug string) (*tenancy.Workspace, error) {
+	row, err := r.q.GetWorkspaceBySlug(ctx, slug)
+	if err != nil {
+		return nil, fmt.Errorf("get workspace by slug %s: %w", slug, notFoundIfNoRows(err))
 	}
 	return toWorkspace(row), nil
 }
@@ -99,6 +107,7 @@ func toWorkspace(row sqlcgen.Workspace) *tenancy.Workspace {
 	return &tenancy.Workspace{
 		ID:                  row.ID,
 		Name:                row.Name,
+		Slug:                row.Slug,
 		MentionChipTemplate: row.MentionChipTemplate,
 		CreatedAt:           time.Unix(row.CreatedAt, 0).UTC(),
 		UpdatedAt:           time.Unix(row.UpdatedAt, 0).UTC(),

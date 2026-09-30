@@ -33,6 +33,7 @@ type workspaceListIn struct {
 type workspaceResult struct {
 	ID                string             `json:"id"`
 	Name              string             `json:"name"`
+	Slug              string             `json:"slug"`
 	Role              string             `json:"role"`
 	People            []tenancy.Person   `json:"people,omitempty"`
 	Roles             []roles.RoleResult `json:"roles,omitempty"`
@@ -42,7 +43,8 @@ type workspaceResult struct {
 // WorkspaceTools lists the caller's workspaces, the ids the project, play, memory, role, and invitation tools are scoped by.
 func WorkspaceTools(w WorkspaceReader, r RoleReader) []mcptool.Tool {
 	return []mcptool.Tool{mcptool.New("workspace_list", "List workspaces",
-		"Lists the workspaces you belong to, with each one's id, name, and your role in it. Start here when a tool "+
+		"Lists the workspaces you belong to, with each one's id, name, slug (its name in web links and the workspace "+
+			"a ticket tool takes to tell apart keys two workspaces share), and your role in it. Start here when a tool "+
 			"needs a workspace_id: project_list, play_list, and the memory, role, and invitation tools are scoped by "+
 			"workspace. With an id it returns only that workspace, with its people (user_id, login, display_name, avatar_url: "+
 			"how to name a chat message's author_id, and the login an @mention takes), its roles (id, name, whether it is "+
@@ -67,7 +69,7 @@ func WorkspaceTools(w WorkspaceReader, r RoleReader) []mcptool.Tool {
 				if err != nil {
 					return nil, err
 				}
-				out = append(out, workspaceResult{ID: one.ID, Name: one.Name, Role: role})
+				out = append(out, workspaceResult{ID: one.ID, Name: one.Name, Slug: one.Slug, Role: role})
 			}
 			return mcptool.Paginate(out, in.PageArgs), nil
 		})}
@@ -94,7 +96,7 @@ func workspaceWithRoles(ctx context.Context, w WorkspaceReader, r RoleReader, ws
 		for _, x := range rs {
 			shaped = append(shaped, roles.ToRoleResult(x))
 		}
-		res := workspaceResult{ID: one.ID, Name: one.Name, Role: role, People: people, Roles: shaped, PermissionCatalog: permissions.Catalog()}
+		res := workspaceResult{ID: one.ID, Name: one.Name, Slug: one.Slug, Role: role, People: people, Roles: shaped, PermissionCatalog: permissions.Catalog()}
 		return mcptool.Paginate([]workspaceResult{res}, in.PageArgs), nil
 	}
 	return nil, fmt.Errorf("%w: workspace %s is not one you belong to; workspace_list without an id lists yours", apperrs.ErrNotFound, in.ID)

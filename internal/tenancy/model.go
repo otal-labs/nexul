@@ -2,6 +2,8 @@
 package tenancy
 
 import (
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/otal-labs/nexul/internal/platform/permissions"
@@ -14,6 +16,8 @@ const DefaultMentionChipTemplate = "{ticket.Ticket} {ticket.Status}"
 type Workspace struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
+	// Slug names the workspace in every URL; unique on the instance and kept when the name changes.
+	Slug string `json:"slug"`
 	// MentionChipTemplate is the @-mention ticket chip layout with {ticket.Field} tokens; gated on workspaces:write.
 	MentionChipTemplate string    `json:"mention_chip_template"`
 	CreatedAt           time.Time `json:"created_at"`
@@ -153,4 +157,47 @@ type Team struct {
 	People            []*TeamPerson    `json:"people"`
 	Workspaces        []*TeamWorkspace `json:"workspaces"`
 	CanManageAccounts bool             `json:"can_manage_accounts"`
+}
+
+// maxSlugLength keeps a slug short enough to read in a URL; migration 0039 cuts backfilled slugs the same way.
+const maxSlugLength = 48
+
+var slugPattern = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
+
+// reservedSlugs are the top-level paths the server and the web app own; migration 0039 holds the same list.
+var reservedSlugs = map[string]bool{
+	"api": true, "assets": true, "auth": true, "hooks": true, "invite": true, "login": true, "logout": true,
+	"mcp": true, "onboarding": true, "openobserve": true, "settings": true, "setup": true, "static": true,
+	"swagger": true, "wizard": true, "ws": true,
+}
+
+// Slugify derives a slug from a workspace name exactly as migration 0039 does: ASCII letters and digits kept,
+// every other run of characters one dash, "workspace" when nothing is left.
+func Slugify(name string) string {
+	var b strings.Builder
+	for _, r := range name {
+		if r >= 'A' && r <= 'Z' {
+			r += 'a' - 'A'
+		}
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			b.WriteRune(r)
+			continue
+		}
+		if b.Len() > 0 && !strings.HasSuffix(b.String(), "-") {
+			b.WriteByte('-')
+		}
+	}
+	slug := strings.TrimRight(b.String(), "-")
+	if len(slug) > maxSlugLength {
+		slug = strings.TrimRight(slug[:maxSlugLength], "-")
+	}
+	if slug == "" {
+		return "workspace"
+	}
+	return slug
+}
+
+// ValidSlug reports whether slug is well formed and not a path the app itself owns.
+func ValidSlug(slug string) bool {
+	return len(slug) <= maxSlugLength && slugPattern.MatchString(slug) && !reservedSlugs[slug]
 }
