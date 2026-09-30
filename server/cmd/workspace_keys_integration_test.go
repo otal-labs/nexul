@@ -55,11 +55,15 @@ func TestIntegration_TicketKeysAreUniquePerWorkspace(t *testing.T) {
 	_, err = f.svc.ticketsSvc.Resolve(as(uReader), "rixwave", "WEB-1")
 	require.ErrorIs(t, err, apperrs.ErrNotFound, "a workspace the caller is not in reads as nothing there")
 
-	results, err := f.svc.mentionsSvc.Search(owner, "WEB-1", 20)
-	require.NoError(t, err)
-	var ids []string
-	for _, r := range results {
-		ids = append(ids, r.ID)
+	ticketIDs := func(workspaceID string) []string {
+		results, err := f.svc.mentionsSvc.Search(owner, "WEB-1", workspaceID, 20)
+		require.NoError(t, err)
+		var ids []string
+		for _, r := range results {
+			ids = append(ids, r.ID)
+		}
+		return ids
 	}
-	assert.ElementsMatch(t, []string{rixTicket.ID, otalTicket.ID}, ids, "the @ picker offers the key in every workspace")
+	assert.Equal(t, []string{otalTicket.ID}, ticketIDs(otal.ID), "the @ picker offers the key in the workspace it is used in")
+	assert.ElementsMatch(t, []string{rixTicket.ID, otalTicket.ID}, ticketIDs(""), "and in every workspace without one")
 }

@@ -45,14 +45,16 @@ func (a mentionTicketSource) Search(ctx context.Context, query string, limit int
 }
 
 // ListByKey resolves the @PREFIX-NUMBER mention path via the ticket's display id (ADR 0004, ADR 0089).
-func (a mentionTicketSource) ListByKey(ctx context.Context, prefix string, number int) ([]*mentions.Ticket, error) {
+func (a mentionTicketSource) ListByKey(ctx context.Context, workspaceID, prefix string, number int) ([]*mentions.Ticket, error) {
 	matches, err := a.repo.ListByKey(ctx, prefix, number)
 	if err != nil {
 		return nil, err
 	}
 	out := make([]*mentions.Ticket, 0, len(matches))
 	for _, m := range matches {
-		out = append(out, ticketToMentionTicket(m.Ticket))
+		if workspaceID == "" || m.WorkspaceID == workspaceID {
+			out = append(out, ticketToMentionTicket(m.Ticket))
+		}
 	}
 	return out, nil
 }

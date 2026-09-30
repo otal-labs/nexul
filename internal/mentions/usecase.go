@@ -140,7 +140,7 @@ func (s *Service) Search(ctx context.Context, query, workspaceID string, limit i
 	results := make([]SearchResult, 0, len(ticketHits)+len(docHits)+1)
 	seenTickets := map[string]bool{}
 
-	keyResults, err := s.resolveMentionKey(ctx, query)
+	keyResults, err := s.resolveMentionKey(ctx, query, workspaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +160,7 @@ func (s *Service) Search(ctx context.Context, query, workspaceID string, limit i
 }
 
 // resolveMentionKey returns the openable tickets an exact PREFIX-NUMBER names (spec.md 7), sorted first.
-func (s *Service) resolveMentionKey(ctx context.Context, query string) ([]SearchResult, error) {
+func (s *Service) resolveMentionKey(ctx context.Context, query, workspaceID string) ([]SearchResult, error) {
 	m := mentionKeyRe.FindStringSubmatch(query)
 	if m == nil {
 		return nil, nil
@@ -169,7 +169,7 @@ func (s *Service) resolveMentionKey(ctx context.Context, query string) ([]Search
 	if convErr != nil {
 		return nil, nil
 	}
-	ts, err := s.cfg.Tickets.ListByKey(ctx, m[1], number)
+	ts, err := s.cfg.Tickets.ListByKey(ctx, strings.TrimSpace(workspaceID), m[1], number)
 	if err != nil {
 		return nil, fmt.Errorf("resolve mention key %q: %w", query, err)
 	}

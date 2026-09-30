@@ -35,7 +35,7 @@ func (f *fakeTicketSource) Search(_ context.Context, _ string, _ int) ([]SearchH
 	return f.search, f.searchErr
 }
 
-func (f *fakeTicketSource) ListByKey(_ context.Context, prefix string, number int) ([]*Ticket, error) {
+func (f *fakeTicketSource) ListByKey(_ context.Context, _, prefix string, number int) ([]*Ticket, error) {
 	var out []*Ticket
 	for _, t := range f.byKey[fmt.Sprintf("%s-%d", prefix, number)] {
 		out = append(out, &t)
@@ -479,7 +479,7 @@ func TestSearch_People_RankedAroundTickets(t *testing.T) {
 func TestSearch_People_TicketKeyStillRanksFirst(t *testing.T) {
 	svc := newTestService(t, &fakeTicketSource{
 		tickets: map[string]Ticket{},
-		byKey:   map[string]Ticket{"P1-12": {ID: "t-12", Title: "Router"}},
+		byKey:   map[string][]Ticket{"P1-12": {{ID: "t-12", Title: "Router"}}},
 	}, nil, nil, nil)
 	svc.SetPeople(&fakePeopleSource{people: []Person{{UserID: "u-bot", Login: "p1-12bot"}}})
 

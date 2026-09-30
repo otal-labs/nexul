@@ -18,7 +18,7 @@ type mentionRef struct {
 
 type mentionSearchIn struct {
 	Query       string       `json:"query,omitempty" jsonschema:"Text to match against ticket and doc titles and bodies and people's logins and display names, or a ticket key such as REF-102, which sorts first."`
-	WorkspaceID string       `json:"workspace_id,omitempty" jsonschema:"Only find people in this workspace; omit to find anyone who shares a workspace with you."`
+	WorkspaceID string       `json:"workspace_id,omitempty" jsonschema:"Only find people, and the ticket a key such as REF-102 names, in this workspace; omit to search every workspace you share."`
 	Refs        []mentionRef `json:"refs,omitempty" jsonschema:"References to resolve to live chips instead of searching, for example the mentions found in a document."`
 	mcptool.PageArgs
 }
