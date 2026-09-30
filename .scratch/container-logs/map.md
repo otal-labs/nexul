@@ -45,12 +45,26 @@ container's own output needs a shell on the host.
   - `web/` is built at 768px first; the phone app covers phones.
   - No "v1" or version-tier framing.
 
+## Build tickets
+
+Every decision was settled on 2026-09-30 and sliced into tickets 08 to 11:
+the backend (runner frames, `stacks:logs`, the snapshot and live routes, the
+ADR), `stack_get` logs, the web Logs view, and the phone screen.
+
 ## Decisions so far
+
+- [01 — What a container's logs show](issues/01-what-logs-show.md) — a live tail read from Docker, timestamped, stderr marked, nothing stored; searchable history deferred.
+- [02 — Who may read container logs](issues/02-who-reads-logs.md) — its own verb `stacks:logs`, on by default wherever `stacks:write` is; the stack's env values masked.
+- [03 — How the runner serves logs on demand](issues/03-runner-log-stream.md) — request, chunk, end and cancel frames over `docker logs`; one stream per viewer, rate and count caps.
+- [04 — How logs reach the browser and the phone](issues/04-logs-to-the-browser.md) — a snapshot route plus a dedicated WebSocket per viewer whose lifetime is the stream.
+- [05 — Container logs through MCP](issues/05-logs-for-agents.md) — an optional `logs` argument on `stack_get`, bounded, masked, gated by `stacks:logs`.
+- [06 — Where logs open and how they look](issues/06-logs-look.md) — a Logs view in the stack page with service tabs, one terminal-style block, All / Errors, Pause, Copy, Download, a Live marker.
+- [07 — Container logs on the phone](issues/07-logs-on-the-phone.md) — tap a service row for a read-only following view.
 
 ## Not yet specified
 
 - Whether automations can subscribe to container output (an alert on a log
-  line). Out of reach until the source of truth for logs is decided.
+  line). It needs stored logs, so it waits for searchable history (ticket 01).
 
 ## Out of scope
 
