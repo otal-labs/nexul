@@ -266,11 +266,16 @@ func inspectContainer(ctx context.Context, cmd CommandRunner, id string) (Discov
 	}
 	sort.Slice(c.Networks, func(i, j int) bool { return c.Networks[i].Name < c.Networks[j].Name })
 	for portProto, bindings := range raw.NetworkSettings.Ports {
+		published := false
 		for _, b := range bindings {
 			if b.HostPort == "" {
 				continue
 			}
+			published = true
 			c.Ports = append(c.Ports, b.HostPort+":"+portProto)
+		}
+		if !published {
+			c.Ports = append(c.Ports, portProto)
 		}
 	}
 	sort.Strings(c.Ports)

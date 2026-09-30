@@ -246,7 +246,8 @@ the container by this name.
 **Observation report**:
 The list of containers a runner sends back with a terminal deploy result,
 one entry per container the stack started: name, image, status, networks with
-addresses, published ports. The only source of a service's observed facts;
+addresses, and ports (published ones with their host port, the rest as reachable
+on the container's networks only). The only source of a service's observed facts;
 the compose file remains the only source of its declared ones.
 _Avoid_: Status report, inspect result
 

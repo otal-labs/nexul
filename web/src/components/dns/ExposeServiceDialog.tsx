@@ -18,18 +18,14 @@ import {
 } from "@/components/ui/dialog";
 import { useCreateExposure, useFetchDnsZones } from "@/hooks/DnsHooks";
 import { ExposeServiceFormSchema, type ExposeServiceFormData, type Zone } from "@/models/DNS";
-import type { Container } from "@/models/Stack";
+import { parseContainerPort, type Container } from "@/models/Stack";
 
 interface ExposeServiceDialogProps {
   containers: Container[];
 }
 
-// A container's first published port, parsed from its "host:container" or bare "container" port strings.
-const firstPort = (c: Container): number | undefined => {
-  const raw = c.ports?.[0]?.split(":").pop();
-  const port = raw ? Number(raw) : NaN;
-  return Number.isFinite(port) && port > 0 ? port : undefined;
-};
+const firstPort = (c: Container): number | undefined =>
+  c.ports?.map(parseContainerPort).find((p) => p != null)?.container;
 
 // The gateway is resolved (reused or provisioned) by the backend now (spec §7) — this only picks the container,
 // port, hostname, and zone.

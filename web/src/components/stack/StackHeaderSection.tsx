@@ -5,6 +5,7 @@ import { Link } from "react-router";
 import { Fact } from "@/components/Fact";
 import { DeployStatusBadge } from "@/components/service/DeployStatusBadge";
 import { formatRelativeTime } from "@/components/service/DeployTime";
+import { ServicesFact } from "@/components/stack/ServicesFact";
 import { NoFillBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAreaAccess } from "@/hooks/AccessHooks";
@@ -73,10 +74,17 @@ export const StackHeaderSection = ({ stack, projectPath, latest, image, hostname
           )}
           {!latest && <span className="text-xs text-muted-foreground">No deploys yet</span>}
         </Fact>
-        <Fact label="Image">
-          {image && <Mono title={image}>{image}</Mono>}
-          {!image && <span className="text-muted-foreground">—</span>}
-        </Fact>
+        {stack.strategy === "compose" && (
+          <Fact label="Services">
+            <ServicesFact stackId={stack.id} />
+          </Fact>
+        )}
+        {stack.strategy !== "compose" && (
+          <Fact label="Image">
+            {image && <Mono title={image}>{image}</Mono>}
+            {!image && <span className="text-muted-foreground">—</span>}
+          </Fact>
+        )}
         <Fact label="Runner">
           <Mono>{stack.machine}</Mono>
         </Fact>

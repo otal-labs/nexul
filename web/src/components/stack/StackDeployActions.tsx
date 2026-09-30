@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router";
 
 import { FormInput } from "@/components/FormInput";
+import { formatRelativeTime } from "@/components/service/DeployTime";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { Button } from "@/components/ui/button";
 import { useDeployStack, useRollbackStack } from "@/hooks/StackHooks";
@@ -18,6 +19,9 @@ interface StackDeployActionsProps {
 }
 
 type DeployMutation = ReturnType<typeof useDeployStack>;
+
+// A compose deploy records no single image, so it is named by when it ran instead.
+const rollbackTarget = (d: Deploy): string => d.image || `the deploy from ${formatRelativeTime(d.created_at)}`;
 type RollbackMutation = ReturnType<typeof useRollbackStack>;
 
 interface BuildRefFormProps {
@@ -105,7 +109,7 @@ const RollbackButton = ({ stack, lastHealthy, canRollback, deployPending, rollba
       onClick={() => rollback.mutate(stack.id, { onSuccess: (created) => void navigate(deployPath(created)) })}
       loading={rollback.isPending}
       disabled={!canRollback || deployPending}
-      title={canRollback ? `Roll back to ${lastHealthy?.image}` : "No healthy deploy to roll back to"}
+      title={lastHealthy ? `Roll back to ${rollbackTarget(lastHealthy)}` : "No healthy deploy to roll back to"}
     >
       <RefreshCwIcon className="size-4" aria-hidden />
       {rollback.isPending ? "Rolling back…" : "Rollback"}
@@ -128,8 +132,9 @@ export const StackDeployActions = ({ stack, lastHealthy, canRollback, image }: S
       description="How this stack gets its next version."
       footer={
         <>
-          <p className="text-xs text-muted-foreground">
-            {canRollback && `Rollback re-deploys ${lastHealthy?.image}, the last healthy image.`}
+          <p className="min-w-0 flex-1 text-xs text-muted-foreground">
+            {lastHealthy?.image && `Rollback re-deploys ${lastHealthy.image}, the last healthy image.`}
+            {lastHealthy && !lastHealthy.image && `Rollback re-deploys ${rollbackTarget(lastHealthy)}, the last healthy one.`}
             {!canRollback && "Rollback needs at least one healthy deploy in this stack's history."}
           </p>
           <RollbackButton

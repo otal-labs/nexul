@@ -43,7 +43,7 @@ type inspectResult struct {
 }
 
 // observe builds the deploy_result services report (spec §4 step 3): every container the stack's strategy
-// started, each inspected for its live status, networks and published ports. An inspect failure is logged and
+// started, each inspected for its live status, networks and ports. An inspect failure is logged and
 // that container is skipped — the deploy already succeeded, a thin report beats failing a healthy deploy.
 func (e *ShellExecutor) observe(ctx context.Context, req DeployRequestedEvent) []ObservedService {
 	refs := e.containerRefs(ctx, req)
@@ -150,7 +150,8 @@ func containerNetworks(res inspectResult) []ObservedNetwork {
 	return out
 }
 
-// containerPorts lists published bindings as "host:container/proto", sorted by container port for determinism.
+// containerPorts lists published bindings as "host:container/proto" and ports reachable only on the container's
+// networks as "container/proto", sorted by container port for determinism.
 func containerPorts(res inspectResult) []string {
 	keys := make([]string, 0, len(res.NetworkSettings.Ports))
 	for key := range res.NetworkSettings.Ports {
@@ -165,10 +166,12 @@ func containerPorts(res inspectResult) []string {
 		if idx := strings.IndexByte(key, '/'); idx >= 0 {
 			containerPort, proto = key[:idx], key[idx+1:]
 		}
+		published := false
 		for _, binding := range res.NetworkSettings.Ports[key] {
 			if binding.HostPort == "" {
 				continue
 			}
+			published = true
 			// Docker reports one binding per host address (0.0.0.0 and ::), which is the same port twice here.
 			entry := fmt.Sprintf("%s:%s/%s", binding.HostPort, containerPort, proto)
 			if seen[entry] {
@@ -176,6 +179,9 @@ func containerPorts(res inspectResult) []string {
 			}
 			seen[entry] = true
 			out = append(out, entry)
+		}
+		if !published {
+			out = append(out, containerPort+"/"+proto)
 		}
 	}
 	return out

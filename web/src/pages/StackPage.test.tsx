@@ -174,14 +174,65 @@ describe("StackPage", () => {
     expect(mocks.get).not.toHaveBeenCalledWith("/api/dns/exposures");
   });
 
-  it("renders the services table from the stack's containers", async () => {
+  it("lists each service with its image, container, hostname and addresses", async () => {
+    const db = { ...container, id: "svc-2", name: "db", container_name: "api-db-1", image: "postgres:16", ports: ["5432/tcp"] };
+    mocks.get.mockImplementation((url: string) => {
+      if (url === "/api/stacks/stack-1") return Promise.resolve({ data: stack });
+      if (url === "/api/stacks/stack-1/services") return Promise.resolve({ data: [container, db] });
+      if (url === "/api/dns/exposures") {
+        return Promise.resolve({ data: [{ id: "exp-1", hostname: "app.example.com", service_id: container.id, port: 8080 }] });
+      }
+      return Promise.resolve({ data: [] });
+    });
     renderPage();
-    await screen.findByRole("heading", { name: "api" });
-    expect(screen.getByText("api-api-1")).toBeInTheDocument();
-    // Once in the header's Image fact, once in the table.
-    expect(screen.getAllByText("ghcr.io/onik/api:v1")).toHaveLength(2);
-    expect(screen.getByText("172.18.0.4", { exact: false })).toBeInTheDocument();
-    expect(screen.getByText("8080:8080")).toBeInTheDocument();
+
+    const api = await screen.findByRole("list", { name: "Addresses of api" });
+    expect(within(api).getByRole("link", { name: "app.example.com" })).toHaveAttribute("href", "https://app.example.com");
+    expect(within(api).getByText("api:8080")).toBeInTheDocument();
+    expect(within(api).getByText("host :8080")).toBeInTheDocument();
+    const dbAddresses = screen.getByRole("list", { name: "Addresses of db" });
+    expect(within(dbAddresses).getByText("db:5432")).toBeInTheDocument();
+    expect(within(dbAddresses).queryByText(/host/)).not.toBeInTheDocument();
+    expect(screen.getByText("container api-db-1")).toBeInTheDocument();
+    expect(screen.getByText("ghcr.io/onik/api:v1")).toBeInTheDocument();
+    expect(screen.getByText("2 services on api_default", { exact: false })).toBeInTheDocument();
+  });
+
+  it("counts a compose stack's services in the header instead of naming one image", async () => {
+    const stopped = { ...container, id: "svc-2", name: "worker", image: "worker:1", status: "exited" };
+    mocks.get.mockImplementation((url: string) => {
+      if (url === "/api/stacks/stack-1") return Promise.resolve({ data: stack });
+      if (url === "/api/stacks/stack-1/services") return Promise.resolve({ data: [container, stopped] });
+      return Promise.resolve({ data: [] });
+    });
+    renderPage();
+
+    expect(await screen.findByText("2 services", { selector: "span" })).toBeInTheDocument();
+    expect(screen.getByText("1 not running")).toBeInTheDocument();
+    expect(screen.queryByText("Image")).not.toBeInTheDocument();
+  });
+
+  it("names a compose rollback target by when it ran, since it has no single image", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(new Date("2026-08-12T12:00:00Z").getTime());
+    const healthy = {
+      id: "d-1",
+      stack_id: "stack-1",
+      service: "api",
+      target: "instance",
+      image: "",
+      status: "healthy",
+      strategy: "compose",
+      created_at: "2026-08-12T09:00:00Z",
+      updated_at: "2026-08-12T09:00:00Z",
+    };
+    mocks.get.mockImplementation((url: string) => {
+      if (url === "/api/stacks/stack-1") return Promise.resolve({ data: stack });
+      if (url === "/api/stacks/stack-1/deploys") return Promise.resolve({ data: [healthy] });
+      return Promise.resolve({ data: [] });
+    });
+    renderPage();
+
+    expect(await screen.findByText("Rollback re-deploys the deploy from 3h ago, the last healthy one.")).toBeInTheDocument();
   });
 
   it("shows an error display when the stack fails to load", async () => {
