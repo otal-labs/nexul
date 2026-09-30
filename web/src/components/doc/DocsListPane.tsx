@@ -37,7 +37,7 @@ export const DocsListPane = ({ docs, project, selectedId }: DocsListPaneProps) =
         onSearch={setSearch}
       />
       <div className="min-h-0 flex-1 overflow-y-auto pb-2">
-        {openable.length === 0 && <ListPaneEmpty icon={FileTextIcon} message="No docs yet" onNew={openCreateDoc} />}
+        {openable.length === 0 && <ListPaneEmpty icon={FileTextIcon} message="No docs yet" />}
         {openable.length > 0 && groups.length === 0 && <ListPaneNoMatch onClear={() => setSearch("")} />}
         {groups.map((group) => (
           <DocGroupSection key={group.label} group={group} projectToken={projectToken(project)} selectedId={selectedId} />
