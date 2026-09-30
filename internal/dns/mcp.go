@@ -26,7 +26,7 @@ func explainNotConnected(call func(context.Context, json.RawMessage) (any, error
 	return func(ctx context.Context, args json.RawMessage) (any, error) {
 		out, err := call(ctx, args)
 		if errors.Is(err, ErrCloudflareNotConnected) {
-			return nil, fmt.Errorf("%w: Cloudflare is not connected to this instance; someone holding connectors:write connects it in Configuration → Connectors, then retry",
+			return nil, fmt.Errorf("%w: Cloudflare is not connected to this instance; someone holding connectors:write connects it in Settings → Connectors, then retry",
 				apperrs.ErrInvalid)
 		}
 		return out, err

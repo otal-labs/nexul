@@ -74,8 +74,8 @@ describe("VoiceCallSection", () => {
     renderSection(true);
 
     expect(screen.getByText(/needs a LiveKit connector/)).toBeInTheDocument();
-    const settingsLink = screen.getByRole("link", { name: "Open Configuration" });
-    expect(settingsLink).toHaveAttribute("href", "/configuration/connectors");
+    const settingsLink = screen.getByRole("link", { name: "Open Settings" });
+    expect(settingsLink).toHaveAttribute("href", "/settings/connectors");
     // No disabled/dead join control in this state.
     expect(screen.queryByRole("button", { name: "Join call" })).not.toBeInTheDocument();
   });
@@ -100,13 +100,13 @@ describe("VoiceCallSection", () => {
     expect(retry).toHaveBeenCalled();
   });
 
-  it("keeps the Open Configuration link away from a viewer who can't open Connectors", () => {
+  it("keeps the Open Settings link away from a viewer who can't open Connectors", () => {
     access.sections = [];
     stageCall("not_configured");
     renderSection(true);
 
     expect(screen.getByText(/needs a LiveKit connector/)).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Open Configuration" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Open Settings" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Dismiss" })).toBeInTheDocument();
   });
 });

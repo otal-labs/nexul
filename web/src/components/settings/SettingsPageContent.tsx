@@ -1,16 +1,11 @@
-import { ConnectorsSettingsPanel } from "@/components/settings/ConnectorsSettingsPanel";
 import { DangerZoneSection } from "@/components/settings/DangerZoneSection";
-import { GatewaysSection } from "@/components/dns/GatewaysSection";
 import { InterviewTemplateSection } from "@/components/settings/InterviewTemplateSection";
-import { InstanceSettingsPanel } from "@/components/settings/InstanceSettingsPanel";
 import { MentionChipLayoutSection } from "@/components/settings/MentionChipLayoutSection";
 import { PlaySettingsSection } from "@/components/settings/PlaySettingsSection";
 import { RoleSettingsSection } from "@/components/settings/RoleSettingsSection";
-import { SignInProvidersPanel } from "@/components/settings/SignInProvidersPanel";
 import { TeamSection } from "@/components/team/TeamSection";
 import type { SettingsSection } from "@/components/settings/SettingsNav";
 import { useSelectedWorkspace } from "@/hooks/WorkspaceHooks";
-import type { InstanceSettings } from "@/models/User";
 
 // Thin same-file gates: each permission check gets its own function scope, not a wall of chained &&.
 const RolesPanel = ({ canManageRoles }: { canManageRoles: boolean }) => (
@@ -33,22 +28,8 @@ const MentionsPanel = ({ canManageMentionLayout }: { canManageMentionLayout: boo
   );
 };
 
-// The whole-instance sections need no gate here: ConfigurationPage only selects a section the viewer may open.
-const InstancePanel = ({ settings }: { settings: InstanceSettings | undefined }) => (
-  <>{settings && <InstanceSettingsPanel settings={settings} />}</>
-);
-
-const SignInPanel = ({ settings }: { settings: InstanceSettings | undefined }) => (
-  <>{settings && <SignInProvidersPanel settings={settings} />}</>
-);
-
-const DangerPanel = ({ settings }: { settings: InstanceSettings | undefined }) => (
-  <>{settings && <DangerZoneSection />}</>
-);
-
 interface SettingsPageContentProps {
   section: SettingsSection;
-  settings: InstanceSettings | undefined;
   canManageRoles: boolean;
   canReadPlays: boolean;
   canWritePlays: boolean;
@@ -56,10 +37,9 @@ interface SettingsPageContentProps {
   canManageMentionLayout: boolean;
 }
 
-// One card per section (mirrors ProjectSettingsPage); ConfigurationPage keeps only fetching and composing this.
+// One card per workspace section (mirrors ProjectSettingsPage); the instance sections are InstanceSettingsContent.
 export const SettingsPageContent = ({
   section,
-  settings,
   canManageRoles,
   canReadPlays,
   canWritePlays,
@@ -73,11 +53,7 @@ export const SettingsPageContent = ({
     )}
     {section === "interview" && <InterviewTemplateSection />}
     {section === "mentions" && <MentionsPanel canManageMentionLayout={canManageMentionLayout} />}
-    {section === "danger" && <DangerPanel settings={settings} />}
-    {section === "instance" && <InstancePanel settings={settings} />}
-    {section === "sign-in" && <SignInPanel settings={settings} />}
-    {section === "connectors" && <ConnectorsSettingsPanel />}
-    {section === "dns" && <GatewaysSection />}
+    {section === "danger" && <DangerZoneSection />}
     {section === "team" && <TeamSection />}
   </>
 );

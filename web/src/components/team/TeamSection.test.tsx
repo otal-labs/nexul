@@ -34,7 +34,7 @@ const team: Team = {
 
 const accountsBits = ["accounts:read", "accounts:write", "accounts:delete"];
 
-const renderSection = (route = "/configuration/team", data: Team = team, anywhere: string[] = accountsBits) => {
+const renderSection = (route = "/settings/team", data: Team = team, anywhere: string[] = accountsBits) => {
   mocks.get.mockImplementation((url: string) => {
     if (url === "/api/auth/me") return Promise.resolve({ data: { user: {}, instance_permissions: anywhere } });
     return Promise.resolve({ data: url === "/api/team" ? data : [] });
@@ -60,7 +60,7 @@ describe("TeamSection", () => {
     const person = (id: string, name: string, extra: Partial<TeamPerson>): TeamPerson => ({
       id, login: id, name, avatar_url: "", status: "active", created_at: "", online: false, last_seen_at: null, workspaces: [], ...extra,
     });
-    renderSection("/configuration/team", {
+    renderSection("/settings/team", {
       ...team,
       people: [
         person("u-ann", "Ann", { online: true, last_seen_at: hoursAgo(1) }),
@@ -115,7 +115,7 @@ describe("TeamSection", () => {
     { anywhere: ["accounts:write"], disable: true, remove: false },
     { anywhere: ["accounts:write", "accounts:delete"], disable: true, remove: true },
   ])("with $anywhere offers Disable: $disable, Remove account: $remove", async ({ anywhere, disable, remove }) => {
-    renderSection("/configuration/team?person=u-bob", team, anywhere);
+    renderSection("/settings/team?person=u-bob", team, anywhere);
 
     await screen.findByRole("listitem", { name: "Nexul" });
     await vi.waitFor(() => expect(!!screen.queryByRole("button", { name: "Disable" })).toBe(disable));
@@ -125,7 +125,7 @@ describe("TeamSection", () => {
   it("opens from a link and adds the person to a workspace they are not in and the viewer manages", async () => {
     mocks.put.mockResolvedValue({ data: undefined });
     const user = userEvent.setup();
-    renderSection("/configuration/team?person=u-bob");
+    renderSection("/settings/team?person=u-bob");
 
     const dialog = within(await screen.findByRole("dialog", { name: "Bob" }));
     await user.click(dialog.getByRole("combobox", { name: "Workspace to add to" }));

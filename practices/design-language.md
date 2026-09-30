@@ -229,7 +229,7 @@ when no repository is attached). Below it the page is the settings shell:
 Deploy history, Danger zone), one or two `SettingsCard`s per section. The nav
 is a scrolling top row below 1024px and a side column from it, on every
 settings-style page (Your settings, Configuration, Project settings, Stack);
-a nav with two jobs (Configuration's This workspace and Whole instance)
+a nav with two jobs (Your settings' You and Instance settings)
 labels each group with a mono microheader, and a group with nothing the
 viewer may open shows no label. A card's action lives in its footer strip (`footer` prop: Rollback,
 Expose, Add rule), never floating in the body, and a form that is not the

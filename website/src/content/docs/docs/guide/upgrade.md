@@ -9,7 +9,7 @@ Nexul ships prebuilt binaries, so an upgrade replaces the `nexul` command with t
 
 ## From the web UI
 
-Open **Configuration → Instance**. The **Instance version** section shows the running version, its channel, and the newest release on that channel. When a newer release exists, **Upgrade to vX** starts the upgrade after a confirmation. The same action exists as the `instance_upgrade` MCP tool.
+Open **Settings → Instance**. The **Instance version** section shows the running version, its channel, and the newest release on that channel. When a newer release exists, **Upgrade to vX** starts the upgrade after a confirmation. The same action exists as the `instance_upgrade` MCP tool.
 
 What happens: the server asks the `instance` runner to run `nexul upgrade --detach --version vX` on the server. `--detach` starts the upgrade outside the runner's own service, so it carries on while the runner and the server restart underneath it: on Linux as a transient systemd unit named `nexul-upgrade-<suffix>`, on a Mac or Windows PC as a background process. The browser reconnects on its own and the section reports **Upgraded to vX**. Expect under a minute of downtime while the services restart.
 

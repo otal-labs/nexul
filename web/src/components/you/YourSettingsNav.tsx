@@ -1,4 +1,6 @@
-import { SettingsSectionNav } from "@/components/settings/SettingsSectionNav";
+import { SettingsSectionNav, type SettingsSectionNavItem } from "@/components/settings/SettingsSectionNav";
+import { INSTANCE_GROUP, sectionLabels as instanceLabels, type SettingsSection } from "@/components/settings/SettingsNav";
+import { useInstanceSettingsSections } from "@/hooks/AccessHooks";
 
 export const YOUR_SETTINGS_SECTIONS = ["profile", "appearance", "security", "pairing"] as const;
 
@@ -9,6 +11,8 @@ export const DEFAULT_YOUR_SETTINGS_SECTION: YourSettingsSection = "profile";
 export const isYourSettingsSection = (value: string | null | undefined): value is YourSettingsSection =>
   !!value && (YOUR_SETTINGS_SECTIONS as readonly string[]).includes(value);
 
+const YOUR_GROUP = "You";
+
 const sectionLabels: Record<YourSettingsSection, string> = {
   profile: "Profile",
   appearance: "Appearance",
@@ -17,14 +21,17 @@ const sectionLabels: Record<YourSettingsSection, string> = {
 };
 
 interface YourSettingsNavProps {
-  active: YourSettingsSection;
+  active: YourSettingsSection | SettingsSection;
 }
 
-export const YourSettingsNav = ({ active }: YourSettingsNavProps) => (
-  <SettingsSectionNav
-    ariaLabel="Your settings sections"
-    basePath="/settings"
-    active={active}
-    items={YOUR_SETTINGS_SECTIONS.map((section) => ({ section, label: sectionLabels[section] }))}
-  />
-);
+// The instance group appears only for a viewer holding one of its permissions; without it the personal list carries no label.
+export const YourSettingsNav = ({ active }: YourSettingsNavProps) => {
+  const instanceSections = useInstanceSettingsSections() ?? [];
+  const personalGroup = instanceSections.length > 0 ? YOUR_GROUP : undefined;
+  const items: SettingsSectionNavItem[] = [
+    ...YOUR_SETTINGS_SECTIONS.map((section) => ({ section, label: sectionLabels[section], group: personalGroup })),
+    ...instanceSections.map((section) => ({ section, label: instanceLabels[section], group: INSTANCE_GROUP })),
+  ];
+
+  return <SettingsSectionNav ariaLabel="Settings sections" basePath="/settings" active={active} items={items} />;
+};

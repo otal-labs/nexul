@@ -269,7 +269,7 @@ describe("PairComputerDialog", () => {
     expect(await screen.findByLabelText(/one-time pairing token/i)).toBeInTheDocument();
     expect(mocks.post).not.toHaveBeenCalled();
   });
-  it("explains a missing Cloudflare connection without a Configuration link to a viewer who can't open Connectors", async () => {
+  it("explains a missing Cloudflare connection without a Settings link to a viewer who can't open Connectors", async () => {
     access.sections = [];
     mocks.post.mockRejectedValueOnce(apiError({ message: "missing", code: "INVALID", reason: "cloudflare_not_connected" }));
     const user = userEvent.setup();

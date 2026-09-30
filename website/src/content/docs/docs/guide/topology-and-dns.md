@@ -22,7 +22,7 @@ Each node's accent and status badge reflect what the runner last observed — he
 
 A **gateway** is a Nexul-deployed service — a Cloudflare tunnel or a reverse proxy — that gives one docker network reachability from the internet. On the canvas, a gateway node is a hub: a hostname pill wires into it on the left, one row per exposure names where that traffic lands (`service:port`, with the container's observed address alongside it once known), and a wire goes out to the matching service node on the right.
 
-Manage gateways directly from Configuration → DNS → Gateways, or let the DNS setup stepper create your first one for you. A gateway's stack belongs to the instance rather than to a project: it shows on Topology and in Configuration → DNS, and its stack page links back to Topology.
+Manage gateways directly from Settings → DNS → Gateways, or let the DNS setup stepper create your first one for you. A gateway's stack belongs to the instance rather than to a project: it shows on Topology and in Settings → DNS, and its stack page links back to Topology.
 
 ## Exposures
 
@@ -30,7 +30,7 @@ An **exposure** routes one hostname through a gateway to one of a stack's contai
 
 ## Setting up DNS
 
-The instance gets its own domain during first run, before GitHub (see [Setup wizard](/docs/guide/setup-wizard/)). To change how it's reached later, or to set up DNS on an instance installed before that, select **Set up DNS** under Configuration → DNS, which opens the DNS setup stepper at `/wizard/onboarding/dns`. It needs the Cloudflare connector connected first (see [GitHub App](/docs/guide/github-app/) for connecting the equivalent GitHub connector — Cloudflare connects with an API token the same way, from Configuration → Connectors).
+The instance gets its own domain during first run, before GitHub (see [Setup wizard](/docs/guide/setup-wizard/)). To change how it's reached later, or to set up DNS on an instance installed before that, select **Set up DNS** under Settings → DNS, which opens the DNS setup stepper at `/wizard/onboarding/dns`. It needs the Cloudflare connector connected first (see [GitHub App](/docs/guide/github-app/) for connecting the equivalent GitHub connector — Cloudflare connects with an API token the same way, from Settings → Connectors).
 
 ### Cloudflare API token permissions
 

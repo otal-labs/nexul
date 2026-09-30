@@ -18,8 +18,8 @@ export const ConnectCloudflareFirst = () => {
         </p>
       </div>
       {canConnect && (
-        <Button variant="outline" onClick={() => navigate("/configuration/connectors")}>
-          Go to Configuration
+        <Button variant="outline" onClick={() => navigate("/settings/connectors")}>
+          Go to Settings
         </Button>
       )}
     </div>

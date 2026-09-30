@@ -65,8 +65,9 @@ describe("route permissions", () => {
     { path: "/board", anywhere: [], permissions: ["chat:read"], page: null },
     { path: "/configuration", anywhere: [], permissions: ["chat:read"], page: null },
     { path: "/configuration", anywhere: [], permissions: ["roles:write"], page: "Configuration" },
-    { path: "/configuration", anywhere: ["instance:read"], permissions: [], page: "Configuration" },
+    { path: "/configuration", anywhere: ["instance:read"], permissions: [], page: null },
     { path: "/configuration", anywhere: ["members:write"], permissions: [], page: "Configuration" },
+    { path: "/settings", anywhere: ["connectors:read"], permissions: [], page: "Settings" },
     { path: "/inbox", anywhere: [], permissions: [], page: "Inbox" },
   ])("$path with $permissions (anywhere: $anywhere) opens $page", async ({ path, anywhere, permissions, page }) => {
     mockApi(anywhere, permissions);

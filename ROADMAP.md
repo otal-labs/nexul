@@ -69,9 +69,9 @@ installs on port 5123 so the proxy can own 80 and 443.
 
 ### Your settings, Devices, and connecting a phone
 
-Settings split by who they affect: your own settings behind a gear in the
-sidebar footer, and workspace and instance configuration in the Workspace
-section. Sessions are stored per device, so Devices lists every signed-in
+Settings split by who they affect: your own settings, and the instance's for
+whoever holds their permissions, behind a gear in the sidebar footer, and the
+workspace's configuration in the Workspace section. Sessions are stored per device, so Devices lists every signed-in
 browser, desktop app and phone and signs any of them out on its next request.
 Profile links several sign-in accounts to one user, and a phone connects by
 scanning a single-use QR code.

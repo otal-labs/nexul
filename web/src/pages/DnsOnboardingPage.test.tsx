@@ -35,7 +35,7 @@ const renderPage = () => {
         <Routes>
           <Route path="/wizard/onboarding/dns" element={<DnsOnboardingPage />} />
           <Route path="/" element={<div>home-page</div>} />
-          <Route path="/configuration/:section?" element={<div>settings-page</div>} />
+          <Route path="/settings/:section?" element={<div>settings-page</div>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -87,7 +87,7 @@ describe("DnsOnboardingPage", () => {
     expect(await screen.findByText(/connect cloudflare first/i)).toBeInTheDocument();
     expect(screen.queryByRole("radio", { name: /bare public address/i })).not.toBeInTheDocument();
     const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: /go to configuration/i }));
+    await user.click(screen.getByRole("button", { name: /go to settings/i }));
     expect(await screen.findByText("settings-page")).toBeInTheDocument();
   });
 
@@ -122,7 +122,7 @@ describe("DnsOnboardingPage", () => {
     expect(await screen.findByText("home-page")).toBeInTheDocument();
   });
 
-  it("offers no Configuration button to a viewer who can't open Connectors", async () => {
+  it("offers no Settings button to a viewer who can't open Connectors", async () => {
     access.sections = [];
     mocks.get.mockImplementation(async (url: string) => {
       if (url === "/api/connectors") return { data: cloudflareConnector(false) };
@@ -130,6 +130,6 @@ describe("DnsOnboardingPage", () => {
     });
     renderPage();
     expect(await screen.findByText(/connect cloudflare first/i)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /go to configuration/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /go to settings/i })).not.toBeInTheDocument();
   });
 });

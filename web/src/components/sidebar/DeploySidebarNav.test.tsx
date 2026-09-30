@@ -26,8 +26,8 @@ beforeEach(() => {
   useSidebarStore.setState({ workspaceNavOpen: true });
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   vi.mocked(api.get).mockImplementation(async (url: string) => {
-    if (url === "/api/auth/me") return { data: { user: {}, instance_permissions: ["instance:read"] } };
-    return { data: { role_name: "Owner", permissions: ["automations:read", "runners:read", "topology:read"] } };
+    if (url === "/api/auth/me") return { data: { user: {}, instance_permissions: [] } };
+    return { data: { role_name: "Owner", permissions: ["automations:read", "runners:read", "topology:read", "roles:write"] } };
   });
 });
 
@@ -52,6 +52,23 @@ describe("DeploySidebarNav", () => {
     await renderNav();
     const links = screen.getAllByRole("link").map((link) => link.getAttribute("href"));
     expect(links).toEqual(["/runners", "/topology", "/automations", "/configuration"]);
+  });
+
+  it("leaves Configuration out for a viewer holding instance permissions but no workspace section", async () => {
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === "/api/auth/me") return { data: { user: {}, instance_permissions: ["instance:read", "connectors:read", "accounts:read"] } };
+      return { data: { role_name: "Member", permissions: ["runners:read"] } };
+    });
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <DeploySidebarNav collapsed={false} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    await screen.findByRole("link", { name: /Runners/ });
+    expect(screen.queryByRole("link", { name: /Configuration/ })).not.toBeInTheDocument();
   });
 
   it("tags only Automations as work in progress", async () => {

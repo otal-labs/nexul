@@ -2,7 +2,7 @@ import { Link } from "react-router";
 
 import type { VersionChange, VersionLatest } from "@/models/Version";
 
-export const INSTANCE_VERSION_SECTION_URL = "/configuration/instance#instance-version";
+export const INSTANCE_VERSION_SECTION_URL = "/settings/instance#instance-version";
 
 interface UpdateChangelogProps {
   current: string;

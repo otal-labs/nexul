@@ -26,7 +26,7 @@ export const VoiceDockStatusRow = ({ status, channelName, onLeave }: VoiceDockSt
         {status === "not_configured" && (
           <p className="text-xs font-medium text-muted-foreground">
             {canConfigure && (
-              <Link to="/configuration/connectors" className="underline underline-offset-2 hover:text-foreground">
+              <Link to="/settings/connectors" className="underline underline-offset-2 hover:text-foreground">
                 LiveKit setup needed
               </Link>
             )}

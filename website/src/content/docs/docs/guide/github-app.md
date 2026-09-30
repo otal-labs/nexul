@@ -47,8 +47,8 @@ On the App's page, click Install App, choose your account, and pick **All reposi
 ## 3. Paste it into Nexul
 
 - **First run** (`/setup` on your domain) — OAuth client ID, client secret, App slug. The instance URL is already fixed by the domain step. This page shows the exact callback URL and verifies the slug against GitHub before letting you continue. See [Setup wizard](/docs/guide/setup-wizard/).
-- **Owner wizard's "Connect your tools" step, or Configuration → Connectors → GitHub → Connect** — the OAuth consent round trip. If you already authorized the App while installing it, there's no consent screen to click through.
-- **Rotating credentials** — the **GitHub App** tab under Configuration → Connectors takes a new client ID and secret at any time. Nothing lives in environment variables.
+- **Owner wizard's "Connect your tools" step, or Settings → Connectors → GitHub → Connect** — the OAuth consent round trip. If you already authorized the App while installing it, there's no consent screen to click through.
+- **Rotating credentials** — the **GitHub App** tab under Settings → Connectors takes a new client ID and secret at any time. Nothing lives in environment variables.
 
 ## 4. When you change permissions later
 
@@ -56,14 +56,14 @@ Raising or adding a permission on the App doesn't apply to installations that al
 
 ## Adding an organisation or another account
 
-Nexul sees a repository only when its GitHub App is installed on the account or organisation that owns it. **Configuration → Connectors → GitHub App** lists those accounts under **Installations** (once GitHub is connected), each with whether it grants all repositories or a selection, and a **Manage** link to change that on GitHub. **Add account or organisation** opens GitHub's install page, where you pick the account and its repositories; the list updates when you come back to the tab.
+Nexul sees a repository only when its GitHub App is installed on the account or organisation that owns it. **Settings → Connectors → GitHub App** lists those accounts under **Installations** (once GitHub is connected), each with whether it grants all repositories or a selection, and a **Manage** link to change that on GitHub. **Add account or organisation** opens GitHub's install page, where you pick the account and its repositories; the list updates when you come back to the tab.
 
 Repositories you only collaborate on belong to someone else, so the App has to be installed on their account. Anyone with GitHub linked can do that from **Your settings → Profile → Sign-in accounts → Let Nexul deploy your repositories**. Once they have, the repositories among them that the connected GitHub account collaborates on show up in the repository picker. Agents see the same list through `repository_list` with `installations` set.
 
 ## Which token is used where
 
 - Sign-in only uses the user's own token, and only to read their profile.
-- The connector token — the one Configuration → Connectors stores when you connect — is what the server uses for repositories, pull requests, webhooks, and release downloads, and what it hands a runner for a build job. Reconnecting in Configuration issues a fresh token; do that if a token ever ends up somewhere it shouldn't.
+- The connector token — the one Settings → Connectors stores when you connect — is what the server uses for repositories, pull requests, webhooks, and release downloads, and what it hands a runner for a build job. Reconnecting in Settings issues a fresh token; do that if a token ever ends up somewhere it shouldn't.
 
 ## Next step
 

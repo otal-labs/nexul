@@ -31,7 +31,7 @@ const renderPanel = (anywhere: string[], app = { configured: true }) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={["/configuration/connectors?tab=github-app"]}>
+      <MemoryRouter initialEntries={["/settings/connectors?tab=github-app"]}>
         <ConnectorsSettingsPanel />
       </MemoryRouter>
     </QueryClientProvider>,

@@ -2,14 +2,14 @@
 
 Configuration had two lists of the same people: Members, under This
 workspace, showed the selected workspace's roster with its roles and the
-invitation links; Registered accounts, under Whole instance, showed every
+invitation links; Registered accounts, under the instance sections, showed every
 account with its status. Seeing what one person could reach meant switching
 workspace and opening both, and giving an existing account access to another
 workspace had no path at all short of a new invitation.
 
 Decision: one section, **Team**. An instance administrator finds it under
-Whole instance and sees everyone; anyone else who holds `members:write` in a
-workspace finds it under This workspace and sees only the workspaces they
+Instance settings and sees everyone; anyone else who holds `members:write` in a
+workspace finds it in Configuration and sees only the workspaces they
 manage and the people in them, with no account actions. For an administrator
 it lists every registered account with its status and its presence; opening a
 person shows, in a dialog, the workspaces they are in with their role and
@@ -53,3 +53,8 @@ Decided 2026-09-29, amending ADR 0024 and ADR 0061. Amended by ADR 0088: the
 instance administrator is now whoever holds `accounts:read` in any workspace
 (seeing everyone) and `accounts:write` or `accounts:delete` (changing or
 removing an account).
+
+The instance sections moved from Configuration to the Settings page on
+2026-09-30, where the group is called Instance settings and each entry shows
+only to a holder of its permission; Team's scoped variant stayed in
+Configuration.
