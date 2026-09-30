@@ -69,7 +69,7 @@ git history, and anything durable it decided is an ADR.
   `research/`.
 - `.scratch/container-logs/` — wayfinder map charted 2026-09-30: reading a
   deployed container's stdout and stderr from the stack page, the canvas,
-  the phone and MCP; tickets 01 to 07 open.
+  the phone and MCP; decisions 01 to 07 resolved, build tickets 08 to 11.
 - `.scratch/plays/` — plays: a pre-configured Agent turn fired from a
   ticket or doc page ("Fix with AI"), selectable memories with their own
   permission, doc threads, and persisted trails. Wayfinder map complete
