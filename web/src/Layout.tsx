@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Outlet, useLocation } from "react-router";
 
 import { PhoneBanner } from "@/components/PhoneBanner";
+import { ServerUpdatedBanner } from "@/components/ServerUpdatedBanner";
 import { Sidebar } from "@/components/sidebar/Sidebar";
 import { VoiceCallAudio } from "@/components/voice/VoiceCallAudio";
 import { useFetchUnreadCount } from "@/hooks/NotificationHooks";
@@ -31,6 +32,7 @@ export const Layout = () => {
         />
       )}
       <div className="flex min-w-0 flex-1 flex-col">
+        <ServerUpdatedBanner />
         <PhoneBanner />
         <main className="flex-1">
           <Outlet />
