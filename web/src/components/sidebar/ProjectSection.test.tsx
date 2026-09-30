@@ -1,7 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { ContextAwareConfirmation } from "react-confirm";
 import { MemoryRouter, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -14,34 +13,17 @@ vi.mock("@/api/client", () => ({
   errorMessage: vi.fn(),
 }));
 
-vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
-
-// The real wrapper lazy-imports CreateDocForm (tiptap + yjs); under full-suite load that dynamic import can outlive findBy's timeout, so the test resolves it synchronously.
-vi.mock("@/components/doc/LazyCreateDocForm", async () => ({
-  LazyCreateDocForm: (await import("@/components/doc/CreateDocForm")).CreateDocForm,
-}));
-
 const projects = [
   { id: "p-1", name: "Backend", prefix: "BE", position: 0, created_at: "", updated_at: "" },
   { id: "p-2", name: "Frontend", prefix: "FE", position: 1, created_at: "", updated_at: "" },
 ];
 
-const docsByProject: Record<string, { id: string; project_id: string; title: string; can_open: boolean }[]> = {
-  "p-1": [
-    { id: "d-1", project_id: "p-1", title: "Runbook", can_open: true },
-    { id: "d-2", project_id: "p-1", title: "Salaries", can_open: false },
-  ],
-  "p-2": [],
-};
-
 const ownerPermissions = ["docs:read", "docs:write", "memories:read", "projects:read", "projects:write", "tickets:read"];
 
 const mockApi = (list: unknown[] = projects, permissions: string[] = ownerPermissions) => {
-  vi.mocked(api.get).mockImplementation(async (url: string, config?: unknown) => {
-    const projectId = (config as { params?: { project_id?: string } } | undefined)?.params?.project_id ?? "";
+  vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/projects") return { data: list };
     if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions } };
-    if (url === "/api/docs") return { data: docsByProject[projectId] ?? [] };
     return { data: [] };
   });
 };
@@ -54,7 +36,6 @@ const renderSection = ({ path = "/inbox", collapsed = false, list = projects, pe
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[path]}>
-        <ContextAwareConfirmation.ConfirmationRoot />
         <ProjectSection collapsed={collapsed} />
         <LocationSpy />
       </MemoryRouter>
@@ -122,7 +103,7 @@ describe("ProjectSection", () => {
     renderSection();
 
     await user.click(await screen.findByRole("button", { name: /BE.*Backend/ }));
-    await user.click(await screen.findByRole("button", { name: "New project" }));
+    await user.click(await screen.findByRole("button", { name: "New Project" }));
 
     expect(screen.getByTestId("location")).toHaveTextContent("/wizard/project/project");
   });
@@ -136,24 +117,37 @@ describe("ProjectSection", () => {
     expect(screen.queryByRole("link", { name: "Board" })).not.toBeInTheDocument();
   });
 
-  it("a viewer who may read but not create gets no New project and no New doc", async () => {
+  it("the menu lists every project and marks only the current one", async () => {
+    const user = userEvent.setup();
+    renderSection({ path: "/projects/FE/settings" });
+
+    await user.click(await screen.findByRole("button", { name: /FE.*Frontend/ }));
+
+    expect(await screen.findByRole("button", { name: /BE.*Backend/ })).not.toHaveAttribute("aria-current");
+    const items = screen.getAllByRole("button", { current: true });
+    expect(items).toHaveLength(1);
+    expect(items[0]).toHaveTextContent("Frontend");
+  });
+
+  it("has no + beside the switcher; New Project only appears inside the menu", async () => {
+    const user = userEvent.setup();
+    renderSection();
+
+    const trigger = await screen.findByRole("button", { name: /BE.*Backend/ });
+    expect(screen.queryByRole("button", { name: /new/i })).not.toBeInTheDocument();
+
+    await user.click(trigger);
+    expect(await screen.findByRole("button", { name: "New Project" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /new doc/i })).not.toBeInTheDocument();
+  });
+
+  it("a viewer who may read but not create gets no New Project", async () => {
     const user = userEvent.setup();
     renderSection({ permissions: ["projects:read", "tickets:read"] });
 
     await user.click(await screen.findByRole("button", { name: /BE.*Backend/ }));
     expect(await screen.findByRole("button", { name: /FE.*Frontend/ })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "New project" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "New doc in Backend" })).not.toBeInTheDocument();
-  });
-
-  it("the + beside the switcher creates a doc in the current project", async () => {
-    const user = userEvent.setup();
-    renderSection();
-
-    await user.click(await screen.findByRole("button", { name: "New doc in Backend" }));
-    const dialog = await screen.findByRole("dialog", { name: "New doc" });
-    expect(await within(dialog).findByLabelText("Title")).toBeInTheDocument();
-    expect(within(dialog).getByRole("button", { name: "Backend" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "New Project" })).not.toBeInTheDocument();
   });
 
   it("collapsed rail: the switcher shows the prefix and every page is an icon row", async () => {
@@ -163,6 +157,5 @@ describe("ProjectSection", () => {
     expect(trigger).toHaveAttribute("title", "Backend");
     expect(screen.getByRole("link", { name: "Board" })).toHaveAttribute("href", "/board/BE");
     expect(screen.queryByText("Project")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /New doc in/ })).not.toBeInTheDocument();
   });
 });
