@@ -3,6 +3,7 @@ import { formatUpdatedAgo } from "@/components/doc/docTime";
 import { ListPaneRow } from "@/components/listpane/ListPaneRow";
 import { RowActions } from "@/components/listpane/RowActions";
 import { useDocRowActions } from "@/hooks/useDocRowActions";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import type { DocListItem } from "@/models/Doc";
 import { docPath } from "@/models/Project";
 
@@ -14,9 +15,10 @@ interface DocListRowProps {
 
 export const DocListRow = ({ doc, projectToken, selected }: DocListRowProps) => {
   const { onClone, onDelete } = useDocRowActions(doc, selected);
+  const wsPath = useWorkspacePath();
   return (
     <ListPaneRow
-      to={docPath(projectToken, doc.id)}
+      to={wsPath(docPath(projectToken, doc.id))}
       title={doc.title}
       snippet={doc.snippet ?? ""}
       selected={selected}

@@ -235,7 +235,7 @@ describe("useCloneMemory", () => {
 
 describe("useFetchCloneDestinations", () => {
   it("groups projects by every workspace the user belongs to", async () => {
-    const workspaces = [{ id: "ws-1", name: "Engineering", created_at: "", updated_at: "" }];
+    const workspaces = [{ id: "ws-1", name: "Engineering", slug: "engineering", created_at: "", updated_at: "" }];
     const projects = [{ id: "project-1", name: "Backend", prefix: "BE", position: 0, icon: "", created_at: "", updated_at: "" }];
     vi.mocked(api.get).mockImplementation(async (url: string) => {
       if (url === "/api/workspaces") return { data: workspaces };

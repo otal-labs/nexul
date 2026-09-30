@@ -20,14 +20,14 @@ const project = { id: "p-1", name: "Backend", prefix: "BE", position: 0, created
 
 const categories = [{ id: "c-1", project_id: "p-1", name: "Sprint 1", position: 0, created_at: "", updated_at: "" }];
 
-const renderPage = (initialEntry = "/projects/p-1/settings") => {
+const renderPage = (initialEntry = "/acme/projects/p-1/settings") => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
       <ContextAwareConfirmation.ConfirmationRoot />
       <MemoryRouter initialEntries={[initialEntry]}>
         <Routes>
-          <Route path="/projects/:projectId/settings/:section?" element={<ProjectSettingsPage />} />
+          <Route path="/acme/projects/:projectId/settings/:section?" element={<ProjectSettingsPage />} />
           <Route path="/" element={<div>home</div>} />
         </Routes>
       </MemoryRouter>
@@ -55,12 +55,12 @@ describe("ProjectSettingsPage", () => {
       if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions } };
       return { data: [] };
     });
-    renderPage("/projects/NOPE/settings");
+    renderPage("/acme/projects/NOPE/settings");
   };
 
   it("offers the board from a missing project to a member who can read tickets", async () => {
     renderMissingProject(["tickets:read"]);
-    expect(await screen.findByRole("link", { name: "Go to your board" })).toHaveAttribute("href", "/board");
+    expect(await screen.findByRole("link", { name: "Go to your board" })).toHaveAttribute("href", "/acme/board");
   });
 
   it("does not offer the board from a missing project without tickets:read", async () => {
@@ -108,7 +108,7 @@ describe("ProjectSettingsPage", () => {
   });
 
   it("deep-links straight into a non-default section", async () => {
-    renderPage("/projects/p-1/settings/categories");
+    renderPage("/acme/projects/p-1/settings/categories");
 
     expect(await screen.findByText("Sprint 1")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "General" })).not.toBeInTheDocument();
@@ -150,7 +150,7 @@ describe("ProjectSettingsPage", () => {
       if (url === "/api/projects/p-1/impact") return { data: { tickets: 3, repos: 1, services: 0 } };
       return { data: [] };
     });
-    renderPage("/projects/p-1/settings/danger");
+    renderPage("/acme/projects/p-1/settings/danger");
 
     await user.click(await screen.findByRole("button", { name: "Remove project" }));
     expect(await screen.findByText(/still has affected work/i)).toBeInTheDocument();
@@ -163,7 +163,7 @@ describe("ProjectSettingsPage", () => {
   it("removes an empty project from the danger zone after confirming", async () => {
     const user = userEvent.setup();
     vi.mocked(api.delete).mockResolvedValue({ data: undefined });
-    renderPage("/projects/p-1/settings/danger");
+    renderPage("/acme/projects/p-1/settings/danger");
 
     await user.click(await screen.findByRole("button", { name: "Remove project" }));
     expect(await screen.findByText(/can be removed/i)).toBeInTheDocument();

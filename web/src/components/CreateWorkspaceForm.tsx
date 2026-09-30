@@ -11,8 +11,8 @@ export const CreateWorkspaceForm = () => {
 
   onSubmit(async ({ name }) => {
     const workspace = await createWorkspace.mutateAsync(name);
-    selectWorkspace(workspace.id);
-    return { name: workspace.name };
+    selectWorkspace(workspace.id, workspace.slug);
+    return { name: workspace.name, slug: workspace.slug };
   });
 
   return (

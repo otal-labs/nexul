@@ -57,8 +57,12 @@ func (s *Service) Create(ctx context.Context, userID, name string) (*Workspace, 
 	if !ok {
 		return nil, fmt.Errorf("%w: %s required", apperrs.ErrForbidden, permissions.WorkspacesCreate)
 	}
+	slug, err := s.freeSlug(ctx, Slugify(name))
+	if err != nil {
+		return nil, err
+	}
 	now := s.now().UTC()
-	w := &Workspace{ID: ids.New(), Name: name, MentionChipTemplate: DefaultMentionChipTemplate, CreatedAt: now, UpdatedAt: now}
+	w := &Workspace{ID: ids.New(), Name: name, Slug: slug, MentionChipTemplate: DefaultMentionChipTemplate, CreatedAt: now, UpdatedAt: now}
 	if err := s.repo.Create(ctx, w); err != nil {
 		return nil, fmt.Errorf("create workspace: %w", err)
 	}
@@ -80,8 +84,30 @@ func (s *Service) Create(ctx context.Context, userID, name string) (*Workspace, 
 	return w, nil
 }
 
-// Rename requires workspaces:write in the workspace being renamed.
-func (s *Service) Rename(ctx context.Context, userID, id, name string) (*Workspace, error) {
+// freeSlug returns base, or base-2, base-3, and so on: the first that is neither reserved nor taken.
+func (s *Service) freeSlug(ctx context.Context, base string) (string, error) {
+	for n := 1; ; n++ {
+		candidate := base
+		if n > 1 {
+			suffix := fmt.Sprintf("-%d", n)
+			candidate = strings.TrimRight(base[:min(len(base), maxSlugLength-len(suffix))], "-") + suffix
+		}
+		if reservedSlugs[candidate] {
+			continue
+		}
+		_, err := s.repo.GetBySlug(ctx, candidate)
+		if errors.Is(err, apperrs.ErrNotFound) {
+			return candidate, nil
+		}
+		if err != nil {
+			return "", fmt.Errorf("check slug %s: %w", candidate, err)
+		}
+	}
+}
+
+// Rename requires workspaces:write in the workspace being renamed. The slug changes only when slug is non-nil,
+// so links keep working through a rename unless the caller moves them on purpose.
+func (s *Service) Rename(ctx context.Context, userID, id, name string, slug *string) (*Workspace, error) {
 	userID = strings.TrimSpace(userID)
 	if userID == "" {
 		return nil, fmt.Errorf("%w: user id is required", apperrs.ErrInvalid)
@@ -99,11 +125,34 @@ func (s *Service) Rename(ctx context.Context, userID, id, name string) (*Workspa
 	}
 	updated := *current
 	updated.Name = name
+	if slug != nil {
+		if err := s.checkSlugFor(ctx, id, *slug); err != nil {
+			return nil, err
+		}
+		updated.Slug = *slug
+	}
 	updated.UpdatedAt = s.now().UTC()
 	if err := s.repo.Update(ctx, &updated); err != nil {
 		return nil, fmt.Errorf("rename workspace %s: %w", id, err)
 	}
 	return &updated, nil
+}
+
+func (s *Service) checkSlugFor(ctx context.Context, id, slug string) error {
+	if !ValidSlug(slug) {
+		return fmt.Errorf("%w: slug %q must be lowercase letters and digits joined by single dashes, at most %d characters, and not a reserved path such as settings", apperrs.ErrInvalid, slug, maxSlugLength)
+	}
+	other, err := s.repo.GetBySlug(ctx, slug)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("check slug %s: %w", slug, err)
+	}
+	if other.ID != id {
+		return fmt.Errorf("%w: slug %q is taken by another workspace", apperrs.ErrConflict, slug)
+	}
+	return nil
 }
 
 // SetMentionChipTemplate changes how @-mention ticket chips render in workspace id; requires workspaces:write there.

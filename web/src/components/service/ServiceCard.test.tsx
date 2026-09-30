@@ -62,7 +62,7 @@ describe("ServiceCard", () => {
     renderCard(baseService());
     expect(screen.getByRole("link", { name: /api/ })).toHaveAttribute(
       "href",
-      "/services/svc-1",
+      "/acme/stacks/svc-1",
     );
   });
 

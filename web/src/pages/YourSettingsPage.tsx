@@ -12,7 +12,7 @@ import {
   YourSettingsNav,
 } from "@/components/you/YourSettingsNav";
 import { useHasInstancePermission, useInstanceSettingsSections, useVisibleSettingsSections } from "@/hooks/AccessHooks";
-import { movedSettingsTarget } from "@/utils/SettingsRedirects";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 
 export const YourSettingsPage = () => {
   const { section: rawSection } = useParams();
@@ -20,10 +20,12 @@ export const YourSettingsPage = () => {
   const instanceSections = useInstanceSettingsSections();
   const visible = useVisibleSettingsSections();
   const teamIsInstanceWide = useHasInstancePermission("accounts:read");
+  const wsPath = useWorkspacePath();
   // A manager without accounts:read has Team in Configuration, scoped to their workspaces.
-  const scopedTeam =
-    rawSection === "team" && visible?.includes("team") && !teamIsInstanceWide ? `/configuration/team${search}${hash}` : undefined;
-  const moved = movedSettingsTarget(rawSection, search, hash) ?? scopedTeam;
+  const moved =
+    rawSection === "team" && visible?.includes("team") && !teamIsInstanceWide
+      ? `${wsPath("/configuration/team")}${search}${hash}`
+      : undefined;
   const instanceSection = isSettingsSection(rawSection) && instanceSections?.includes(rawSection) ? rawSection : undefined;
   // An instance link holds its place until permissions answer, so a deep link never flashes Profile first.
   const resolving = !instanceSections && isSettingsSection(rawSection);

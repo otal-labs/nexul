@@ -1,6 +1,7 @@
 import { FileTextIcon, LockIcon, TicketIcon, type LucideIcon } from "lucide-react";
 import { Link } from "react-router";
 
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { useSelectedWorkspace } from "@/hooks/WorkspaceHooks";
 import { cn } from "@/lib/utils";
 import type { MentionChipData, MentionType } from "@/models/Mention";
@@ -37,6 +38,7 @@ const textFor = (type: MentionType, template: string, chip: MentionChipData | un
 // Ticket text follows the workspace template (spec.md §6); inert with disclosed title if not openable.
 export const MentionChip = ({ type, id, label, chip }: MentionChipProps) => {
   const workspace = useSelectedWorkspace();
+  const wsPath = useWorkspacePath();
   const title = chip?.title || label;
   const canOpen = chip?.can_open ?? false;
   const Icon = MENTION_ICONS[type];
@@ -55,7 +57,7 @@ export const MentionChip = ({ type, id, label, chip }: MentionChipProps) => {
     <>
       {canOpen && (
         <Link
-          to={hrefFor(type, id)}
+          to={wsPath(hrefFor(type, id))}
           className="mention-chip"
           data-testid="mention-chip"
           data-can-open="true"

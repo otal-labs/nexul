@@ -38,6 +38,12 @@ type createWorkspaceRequest struct {
 	Name string `json:"name"`
 }
 
+type renameWorkspaceRequest struct {
+	Name string `json:"name"`
+	// Slug is left alone when omitted.
+	Slug *string `json:"slug,omitempty"`
+}
+
 // Routes are wrapped with the auth-user-id injection adapter before mounting behind RequireAuth.
 func (h *Handler) Routes() http.Handler {
 	mux := httpx.NewServeMux()
@@ -131,12 +137,12 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 
 // rename needs workspaces:write in the workspace: the owner wizard's finish step and workspace settings land here.
 func (h *Handler) rename(w http.ResponseWriter, r *http.Request) {
-	var req createWorkspaceRequest
+	var req renameWorkspaceRequest
 	if err := httpx.DecodeJSON(r, &req); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
-	ws, err := h.svc.Rename(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("workspaceID"), req.Name)
+	ws, err := h.svc.Rename(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("workspaceID"), req.Name, req.Slug)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

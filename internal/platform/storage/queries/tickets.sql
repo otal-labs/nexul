@@ -5,9 +5,14 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 -- name: GetTicket :one
 SELECT * FROM tickets WHERE id = ?;
 
--- name: GetTicketByPrefixAndNumber :many
--- Two rows mean the key is ambiguous: prefixes are unique per workspace, and a moved ticket keeps its number.
-SELECT tickets.* FROM tickets JOIN projects ON tickets.project_id = projects.id WHERE projects.prefix = ? AND tickets.number = ? LIMIT 2;
+-- name: ListTicketsByPrefixAndNumber :many
+-- A key repeats across workspaces, and inside one when a moved ticket keeps its number, so every match comes back.
+SELECT sqlc.embed(tickets), workspaces.id AS workspace_id, workspaces.slug AS workspace_slug
+FROM tickets
+JOIN projects ON tickets.project_id = projects.id
+JOIN workspaces ON workspaces.id = projects.workspace_id
+WHERE projects.prefix = ? AND tickets.number = ?
+ORDER BY workspaces.slug, tickets.created_at;
 
 -- name: ListTickets :many
 SELECT * FROM tickets ORDER BY created_at;

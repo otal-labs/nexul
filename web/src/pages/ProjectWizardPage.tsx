@@ -6,6 +6,7 @@ import { ProjectWizardStepContent } from "@/components/wizard/ProjectWizardStepC
 import { WizardProgress } from "@/components/wizard/WizardProgress";
 import { useFetchProject, useFetchProjects } from "@/hooks/ProjectHooks";
 import { useFetchStack } from "@/hooks/StackHooks";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { WizardSteps, type WizardStepId } from "@/models/ProjectWizard";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
 
@@ -89,6 +90,7 @@ export const ProjectWizardPage = () => {
   const { step } = useParams<{ step: string }>();
   const [searchParams] = useSearchParams();
   useSeedPreselectedProject();
+  const wsPath = useWorkspacePath();
   useSeedAttachStack();
   const reset = useProjectWizardStore((s) => s.reset);
   // Leaving ends the run, so the next visit starts clean; a project it already made resumes through Add a service.
@@ -104,7 +106,7 @@ export const ProjectWizardPage = () => {
 
   return (
     <>
-      {redirectTo && <Navigate to={redirectTo} replace />}
+      {redirectTo && <Navigate to={wsPath(redirectTo)} replace />}
       {!redirectTo && isWizardStep(step) && (
         <WizardLayout progress={<WizardProgress step={step} />} title={title} subtitle={subtitle}>
           <ProjectWizardStepContent step={step} />

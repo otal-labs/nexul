@@ -5,11 +5,13 @@ import { Logo } from "@/components/Logo";
 import { PlayTrailPreview } from "@/components/play/PlayTrailPreview";
 import { Button } from "@/components/ui/button";
 import { useAreaAccess } from "@/hooks/AccessHooks";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { useSessionStore } from "@/stores/sessionStore";
 
 export const HomePage = () => {
   const isLoggedIn = useSessionStore((s) => s.isLoggedIn);
   const can = useAreaAccess();
+  const wsPath = useWorkspacePath();
 
   return (
     <div className="blueprint-bg min-h-screen">
@@ -32,12 +34,12 @@ export const HomePage = () => {
             <>
               {can?.("tickets") && (
                 <Button asChild size="lg">
-                  <Link to="/board">Open the board</Link>
+                  <Link to={wsPath("/board")}>Open the board</Link>
                 </Button>
               )}
               {can?.("topology") && (
                 <Button asChild variant="outline" size="lg">
-                  <Link to="/topology">View topology</Link>
+                  <Link to={wsPath("/topology")}>View topology</Link>
                 </Button>
               )}
             </>

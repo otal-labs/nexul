@@ -1,6 +1,7 @@
 import { Ban, CheckCircle2, Circle, X } from "lucide-react";
 import { Link } from "react-router";
 
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { cn } from "@/lib/utils";
 import { linkedTicketKey, type LinkedTicket } from "@/models/TicketLink";
 
@@ -20,11 +21,12 @@ const stateOf = (ticket: LinkedTicket, waiting: boolean) => {
 export const LinkedTicketRow = ({ ticket, waiting = false, onRemove }: LinkedTicketRowProps) => {
   const { Icon, color, label } = stateOf(ticket, waiting);
   const key = linkedTicketKey(ticket);
+  const wsPath = useWorkspacePath();
 
   return (
     <li className="flex items-center gap-2 rounded-md px-2 py-1 transition-colors duration-150 ease-standard hover:bg-accent/40">
       <Icon className={cn("size-3.5 shrink-0", color)} role="img" aria-label={label} />
-      <Link to={`/tickets/${key}`} className="flex min-w-0 flex-1 items-center gap-2 py-1 text-sm">
+      <Link to={wsPath(`/tickets/${key}`)} className="flex min-w-0 flex-1 items-center gap-2 py-1 text-sm">
         <span className="shrink-0 font-mono text-xs text-muted-foreground">{key}</span>
         <span className="truncate">{ticket.title}</span>
       </Link>

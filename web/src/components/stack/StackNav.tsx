@@ -1,4 +1,5 @@
 import { SettingsSectionNav } from "@/components/settings/SettingsSectionNav";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 
 export const STACK_SECTIONS = ["overview", "exposures", "branches", "history", "danger"] as const;
 
@@ -29,15 +30,18 @@ interface StackNavProps {
 const visible = (section: StackSection, showBranches: boolean, showExposures: boolean) =>
   (section !== "branches" || showBranches) && (section !== "exposures" || showExposures);
 
-export const StackNav = ({ stackId, active, showBranches, showExposures }: StackNavProps) => (
-  <SettingsSectionNav
-    ariaLabel="Stack sections"
-    basePath={`/stacks/${stackId}`}
-    active={active}
-    items={STACK_SECTIONS.filter((section) => visible(section, showBranches, showExposures)).map((section) => ({
-      section,
-      label: sectionLabels[section],
-      danger: section === "danger",
-    }))}
-  />
-);
+export const StackNav = ({ stackId, active, showBranches, showExposures }: StackNavProps) => {
+  const wsPath = useWorkspacePath();
+  return (
+    <SettingsSectionNav
+      ariaLabel="Stack sections"
+      basePath={wsPath(`/stacks/${stackId}`)}
+      active={active}
+      items={STACK_SECTIONS.filter((section) => visible(section, showBranches, showExposures)).map((section) => ({
+        section,
+        label: sectionLabels[section],
+        danger: section === "danger",
+      }))}
+    />
+  );
+};

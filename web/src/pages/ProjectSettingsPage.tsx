@@ -12,11 +12,13 @@ import { ProjectSettingsContent } from "@/components/settings/ProjectSettingsCon
 import { Button } from "@/components/ui/button";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFetchProject, useFetchProjects } from "@/hooks/ProjectHooks";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { resolveProject } from "@/models/Project";
 
 export const ProjectSettingsPage = () => {
-  // The URL token is the project's prefix or (old links) its id, same resolution rule as the board route.
+  // The URL token is the project's prefix, or its id when it has none; the board route resolves it the same way.
   const canOpenBoard = useAreaAccess()?.("tickets") ?? false;
+  const wsPath = useWorkspacePath();
   const { projectId: routeParam = "", section: rawSection } = useParams();
   const { data: projects = [], isPending, error } = useFetchProjects();
   const resolved = resolveProject(projects, routeParam);
@@ -35,7 +37,7 @@ export const ProjectSettingsPage = () => {
           action={
             canOpenBoard && (
               <Button asChild size="sm">
-                <Link to="/board">Go to your board</Link>
+                <Link to={wsPath("/board")}>Go to your board</Link>
               </Button>
             )
           }

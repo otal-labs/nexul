@@ -15,8 +15,8 @@ func MCPTools(s *Service) []mcptool.Tool {
 }
 
 // resolve names the tool that finds tickets when the one asked for is missing.
-func resolve(ctx context.Context, s *Service, idOrKey string) (*Ticket, error) {
-	t, err := s.Resolve(ctx, idOrKey)
+func resolve(ctx context.Context, s *Service, workspace, idOrKey string) (*Ticket, error) {
+	t, err := s.Resolve(ctx, workspace, idOrKey)
 	if errors.Is(err, apperrs.ErrNotFound) {
 		return nil, fmt.Errorf("%w; ticket_list finds tickets by text or project", err)
 	}
@@ -24,7 +24,8 @@ func resolve(ctx context.Context, s *Service, idOrKey string) (*Ticket, error) {
 }
 
 type ticketDeleteIn struct {
-	ID string `json:"id" jsonschema:"The ticket's id or its key, for example REF-102."`
+	ID        string `json:"id" jsonschema:"The ticket's id or its key, for example REF-102."`
+	Workspace string `json:"workspace,omitempty" jsonschema:"The workspace to look a ticket key up in, by its id or slug from workspace_list, for example otal. Needed only when the key exists in more than one of your workspaces; an id needs none."`
 }
 
 func ticketDeleteTool(s *Service) mcptool.Tool {
@@ -34,7 +35,7 @@ func ticketDeleteTool(s *Service) mcptool.Tool {
 			"ticket_update instead, which keeps its history. Returns the deleted ticket's id.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in ticketDeleteIn) (any, error) {
-			t, err := resolve(ctx, s, in.ID)
+			t, err := resolve(ctx, s, in.Workspace, in.ID)
 			if err != nil {
 				return nil, err
 			}
@@ -47,6 +48,7 @@ func ticketDeleteTool(s *Service) mcptool.Tool {
 
 type ticketTestReportIn struct {
 	ID          string   `json:"id" jsonschema:"The ticket's id or its key, for example REF-102."`
+	Workspace   string   `json:"workspace,omitempty" jsonschema:"The workspace to look a ticket key up in, by its id or slug from workspace_list, for example otal. Needed only when the key exists in more than one of your workspaces; an id needs none."`
 	Outcome     string   `json:"outcome" jsonschema:"The test result: pass or fail."`
 	Actual      string   `json:"actual,omitempty" jsonschema:"What happened instead, in markdown. Required when outcome is fail."`
 	Steps       string   `json:"steps,omitempty" jsonschema:"Steps to reproduce the failure, in markdown."`
@@ -72,7 +74,7 @@ func ticketTestReportTool(s *Service) mcptool.Tool {
 			"status_id.",
 		mcptool.Hints{Local: true},
 		func(ctx context.Context, in ticketTestReportIn) (any, error) {
-			t, err := resolve(ctx, s, in.ID)
+			t, err := resolve(ctx, s, in.Workspace, in.ID)
 			if err != nil {
 				return nil, err
 			}

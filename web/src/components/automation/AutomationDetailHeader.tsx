@@ -5,6 +5,7 @@ import { AutomationConfigStatusBadge } from "@/components/automation/AutomationC
 import { AutomationKindBadge } from "@/components/automation/AutomationKindBadge";
 import { Switch } from "@/components/ui/switch";
 import { useSetAutomationEnabled } from "@/hooks/AutomationHooks";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import type { Automation } from "@/models/Automation";
 
 interface AutomationDetailHeaderProps {
@@ -13,11 +14,12 @@ interface AutomationDetailHeaderProps {
 
 export const AutomationDetailHeader = ({ automation }: AutomationDetailHeaderProps) => {
   const setEnabled = useSetAutomationEnabled();
+  const wsPath = useWorkspacePath();
 
   return (
     <div className="space-y-3 border-b border-border pb-6">
       <Link
-        to="/automations"
+        to={wsPath("/automations")}
         className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="size-3.5" aria-hidden />

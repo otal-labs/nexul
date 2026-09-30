@@ -49,7 +49,7 @@ describe("InterviewBanner", () => {
     mocks.get.mockResolvedValue({ data: [memory("")] });
     renderBanner();
     expect(await screen.findByText(/Backend has no interview yet/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Run the interview" })).toHaveAttribute("href", "/projects/BE/interview");
+    expect(screen.getByRole("link", { name: "Run the interview" })).toHaveAttribute("href", "/acme/projects/BE/interview");
   });
 
   it("stays away once the interview exists", async () => {

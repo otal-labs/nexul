@@ -16,7 +16,7 @@ Workflows:
 - Every update is a patch: send only the fields you mean to change; omitted fields keep their values.
 - Shipping: stack_deploy starts a deploy and returns its id. Poll deploy_get (status and log tail) and stack_get (service health) until it settles.
 
-Ids and lists: ids are opaque strings; ticket tools also accept a ticket's key, such as REF-102. Lists return items, total, has_more, and next_offset; pass next_offset back as offset for the next page.
+Ids and lists: ids are opaque strings; ticket tools also accept a ticket's key, such as REF-102, which is unique within a workspace: pass workspace (its id or slug) when two of yours share it. Lists return items, total, has_more, and next_offset; pass next_offset back as offset for the next page.
 
 Memories: before a task, check memory_list for notes whose when-to-use matches and read them with memory_get. Save durable facts with memory_create, or memory_update when one already covers the ground.
 

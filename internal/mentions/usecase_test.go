@@ -17,8 +17,8 @@ import (
 // fakeTicketSource is an in-memory TicketSource for tests.
 type fakeTicketSource struct {
 	tickets map[string]Ticket
-	// byKey maps "PREFIX-NUMBER" to a ticket, mirroring GetByPrefixAndNumber.
-	byKey     map[string]Ticket
+	// byKey maps "PREFIX-NUMBER" to every ticket holding that key, one per workspace.
+	byKey     map[string][]Ticket
 	search    []SearchHit
 	searchErr error
 }
@@ -35,12 +35,12 @@ func (f *fakeTicketSource) Search(_ context.Context, _ string, _ int) ([]SearchH
 	return f.search, f.searchErr
 }
 
-func (f *fakeTicketSource) GetByKey(_ context.Context, prefix string, number int) (*Ticket, error) {
-	t, ok := f.byKey[fmt.Sprintf("%s-%d", prefix, number)]
-	if !ok {
-		return nil, apperrs.ErrNotFound
+func (f *fakeTicketSource) ListByKey(_ context.Context, _, prefix string, number int) ([]*Ticket, error) {
+	var out []*Ticket
+	for _, t := range f.byKey[fmt.Sprintf("%s-%d", prefix, number)] {
+		out = append(out, &t)
 	}
-	return &t, nil
+	return out, nil
 }
 
 // fakeDocSource is an in-memory DocSource for tests.
@@ -345,7 +345,7 @@ func TestSearch_Errors(t *testing.T) {
 func TestSearch_KeyMatch_ExactPrefixNumber(t *testing.T) {
 	tickets := &fakeTicketSource{
 		tickets: map[string]Ticket{},
-		byKey:   map[string]Ticket{"ERF-1": {ID: "t-1", Title: "Fix the router", Status: "open"}},
+		byKey:   map[string][]Ticket{"ERF-1": {{ID: "t-1", Title: "Fix the router", Status: "open"}}},
 	}
 	statuses := &fakeStatusSource{statuses: map[string]Status{"open": {ID: "open", Name: "Open"}}}
 	svc := newTestService(t, tickets, nil, statuses, nil)
@@ -359,7 +359,7 @@ func TestSearch_KeyMatch_ExactPrefixNumber(t *testing.T) {
 func TestSearch_KeyMatch_PrefixWithDigit(t *testing.T) {
 	tickets := &fakeTicketSource{
 		tickets: map[string]Ticket{},
-		byKey:   map[string]Ticket{"P1-12": {ID: "t-1", Title: "Fix the router", Status: "open"}},
+		byKey:   map[string][]Ticket{"P1-12": {{ID: "t-1", Title: "Fix the router", Status: "open"}}},
 	}
 	svc := newTestService(t, tickets, nil, nil, nil)
 
@@ -372,7 +372,7 @@ func TestSearch_KeyMatch_PrefixWithDigit(t *testing.T) {
 func TestSearch_KeyMatch_WrongCaseFallsThroughToTitleSearch(t *testing.T) {
 	tickets := &fakeTicketSource{
 		tickets: map[string]Ticket{"t-1": {ID: "t-1", Title: "erf-1 something", Status: "open"}},
-		byKey:   map[string]Ticket{"ERF-1": {ID: "t-2", Title: "Fix the router", Status: "open"}},
+		byKey:   map[string][]Ticket{"ERF-1": {{ID: "t-2", Title: "Fix the router", Status: "open"}}},
 		search:  []SearchHit{{ID: "t-1", Title: "erf-1 something"}},
 	}
 	svc := newTestService(t, tickets, nil, nil, nil)
@@ -387,7 +387,7 @@ func TestSearch_KeyMatch_WrongCaseFallsThroughToTitleSearch(t *testing.T) {
 func TestSearch_KeyMatch_NonexistentPrefixFallsThroughToTitleSearchOnly(t *testing.T) {
 	tickets := &fakeTicketSource{
 		tickets: map[string]Ticket{"t-1": {ID: "t-1", Title: "ZZZ-1 mentioned in title", Status: "open"}},
-		byKey:   map[string]Ticket{}, // no project has prefix ZZZ
+		byKey:   map[string][]Ticket{}, // no project has prefix ZZZ
 		search:  []SearchHit{{ID: "t-1", Title: "ZZZ-1 mentioned in title"}},
 	}
 	svc := newTestService(t, tickets, nil, nil, nil)
@@ -401,7 +401,7 @@ func TestSearch_KeyMatch_NonexistentPrefixFallsThroughToTitleSearchOnly(t *testi
 func TestSearch_KeyMatch_SortsFirstAndDedupsTitleHit(t *testing.T) {
 	tickets := &fakeTicketSource{
 		tickets: map[string]Ticket{"t-2": {ID: "t-2", Title: "Some other ticket"}},
-		byKey:   map[string]Ticket{"ERF-1": {ID: "t-1", Title: "Fix the router", Status: "open"}},
+		byKey:   map[string][]Ticket{"ERF-1": {{ID: "t-1", Title: "Fix the router", Status: "open"}}},
 		// The key match's ticket also happens to surface via title search; must be deduped, not listed twice.
 		search: []SearchHit{{ID: "t-1", Title: "Fix the router"}, {ID: "t-2", Title: "Some other ticket"}},
 	}
@@ -479,7 +479,7 @@ func TestSearch_People_RankedAroundTickets(t *testing.T) {
 func TestSearch_People_TicketKeyStillRanksFirst(t *testing.T) {
 	svc := newTestService(t, &fakeTicketSource{
 		tickets: map[string]Ticket{},
-		byKey:   map[string]Ticket{"P1-12": {ID: "t-12", Title: "Router"}},
+		byKey:   map[string][]Ticket{"P1-12": {{ID: "t-12", Title: "Router"}}},
 	}, nil, nil, nil)
 	svc.SetPeople(&fakePeopleSource{people: []Person{{UserID: "u-bot", Login: "p1-12bot"}}})
 

@@ -33,7 +33,7 @@ const renderPage = (route: string, anywhere = everythingAnywhere, permissions: s
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[route]}>
         <Routes>
-          <Route path="/configuration/:section?" element={<ConfigurationPage />} />
+          <Route path="/acme/configuration/:section?" element={<ConfigurationPage />} />
           <Route path="/settings/:section?" element={<p>Settings page</p>} />
         </Routes>
         <LocationProbe />
@@ -50,7 +50,7 @@ describe("ConfigurationPage sections", () => {
   });
 
   it("lists only workspace sections, even for a viewer holding every instance permission", async () => {
-    renderPage("/configuration", everythingAnywhere, ["roles:write"]);
+    renderPage("/acme/configuration", everythingAnywhere, ["roles:write"]);
 
     const nav = within(await screen.findByRole("navigation", { name: "Configuration sections" }));
     expect(await screen.findByText("Roles card")).toBeInTheDocument();
@@ -58,29 +58,23 @@ describe("ConfigurationPage sections", () => {
   });
 
   it("lands an instance-only viewer on Danger zone, never on an instance section", async () => {
-    renderPage("/configuration/automation-secrets", ["connectors:read"]);
+    renderPage("/acme/configuration/automation-secrets", ["connectors:read"]);
 
     expect(await screen.findByRole("link", { name: "Danger zone" })).toHaveAttribute("aria-current", "page");
     expect(screen.queryByRole("link", { name: "Connectors" })).not.toBeInTheDocument();
   });
 
   it("keeps Team among the workspace sections of a members:write holder without accounts:read", async () => {
-    renderPage("/configuration/team", ["members:write"], ["members:write"]);
+    renderPage("/acme/configuration/team", ["members:write"], ["members:write"]);
 
     expect(await screen.findByText("Team card")).toBeInTheDocument();
-    expect(screen.getByLabelText("location")).toHaveTextContent("/configuration/team");
+    expect(screen.getByLabelText("location")).toHaveTextContent("/acme/configuration/team");
   });
 
-  // The path-to-path mapping is SettingsRedirects' own table; these prove the page applies it and keeps query and hash.
-  it.each([
-    ["/configuration/instance#instance-version", "/settings/instance#instance-version"],
-    ["/configuration/connectors?tab=github-app", "/settings/connectors?tab=github-app"],
-    ["/configuration/access?person=u-1", "/settings/team?person=u-1"],
-    ["/configuration/team?person=u-1", "/settings/team?person=u-1"],
-  ])("sends the old link %s to %s", async (from, to) => {
-    renderPage(from);
+  it("sends an accounts:read holder's Team to the instance-wide one on Settings, keeping the query", async () => {
+    renderPage("/acme/configuration/team?person=u-1");
 
     expect(await screen.findByText("Settings page")).toBeInTheDocument();
-    expect(screen.getByLabelText("location").textContent).toBe(to);
+    expect(screen.getByLabelText("location").textContent).toBe("/settings/team?person=u-1");
   });
 });

@@ -13,6 +13,8 @@ type Repo interface {
 	Create(ctx context.Context, w *Workspace) error
 	Update(ctx context.Context, w *Workspace) error
 	Get(ctx context.Context, id string) (*Workspace, error)
+	// GetBySlug returns apperrs.ErrNotFound when no workspace holds slug.
+	GetBySlug(ctx context.Context, slug string) (*Workspace, error)
 	// ListForUser returns the workspaces the given user is a member of, via workspace_members.
 	ListForUser(ctx context.Context, userID string) ([]*Workspace, error)
 	// ListWithRoles returns every workspace on the instance with its roles, Owner first; Roles are filled, CanManageMembers is not.

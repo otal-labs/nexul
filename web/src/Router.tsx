@@ -1,9 +1,10 @@
 import { lazy, Suspense, useMemo } from "react";
-import { Navigate, Outlet, createBrowserRouter, RouterProvider, type RouteObject } from "react-router";
+import { Outlet, createBrowserRouter, RouterProvider, type RouteObject } from "react-router";
 
 import { Layout } from "@/Layout";
 import { AreaGate } from "@/components/auth/AreaGate";
 import { OnboardingGate } from "@/components/auth/OnboardingGate";
+import { WorkspaceScope } from "@/components/workspace/WorkspaceScope";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { useBootstrapStatus } from "@/hooks/AuthHooks";
 import { AutomationPage } from "@/pages/AutomationPage";
@@ -26,10 +27,10 @@ import { ProjectSettingsPage } from "@/pages/ProjectSettingsPage";
 import { ProjectWizardImportPage } from "@/pages/ProjectWizardImportPage";
 import { ProjectWizardPage } from "@/pages/ProjectWizardPage";
 import { RunnersPage } from "@/pages/RunnersPage";
-import { ServicePage } from "@/pages/ServicePage";
 import { SetupPage } from "@/pages/SetupPage";
 import { StackPage } from "@/pages/StackPage";
 import { TicketPage } from "@/pages/TicketPage";
+import { WorkspaceEntryPage } from "@/pages/WorkspaceEntryPage";
 import { YourSettingsPage } from "@/pages/YourSettingsPage";
 import { useSessionStore } from "@/stores/sessionStore";
 import type { RouteAccess, RouteArea } from "@/models/Access";
@@ -41,6 +42,52 @@ const TopologyPage = lazy(() =>
 );
 
 const gate = (area: RouteArea): RouteAccess => ({ area });
+
+// Every page reached from a workspace's sidebar lives under its slug; personal and instance pages stay unprefixed.
+const workspaceRoutes: RouteObject[] = [
+  { index: true, element: <HomePage /> },
+  { path: "inbox", element: <InboxPage /> },
+  { path: "chat", element: <ChatPage /> },
+  { path: "chat/:conversationId", element: <ChatPage /> },
+  { path: "wizard/project/import", handle: gate("newProject"), element: <ProjectWizardImportPage /> },
+  { path: "wizard/project/:step", handle: gate("newProject"), element: <ProjectWizardPage /> },
+  {
+    path: "topology",
+    handle: gate("topology"),
+    element: (
+      <Suspense fallback={<LoadingDisplay />}>
+        <TopologyPage />
+      </Suspense>
+    ),
+  },
+  { path: "docs", element: <DocsPage /> },
+  { path: "docs/:projectToken/:docId", element: <DocsPage /> },
+  // Mention chips carry only the doc id; the page moves them to the project's URL.
+  { path: "docs/:docId", element: <DocsPage /> },
+  { path: "memories", handle: gate("memories"), element: <MemoriesPage /> },
+  { path: "memories/:projectToken/:memoryId", handle: gate("memories"), element: <MemoriesPage /> },
+  // A workspace memory's own URL; a project memory reached by id alone moves to its project's URL.
+  { path: "memories/:memoryId", handle: gate("memories"), element: <MemoriesPage /> },
+  { path: "board", handle: gate("tickets"), element: <BoardPage /> },
+  { path: "board/:projectId", handle: gate("tickets"), element: <BoardPage /> },
+  { path: "tickets/:ticketId", handle: gate("tickets"), element: <TicketPage /> },
+  { path: "runners", handle: gate("runners"), element: <RunnersPage /> },
+  { path: "automations", handle: gate("automations"), element: <AutomationsPage /> },
+  { path: "automations/:id", handle: gate("automations"), element: <AutomationPage /> },
+  { path: "stacks/:stackId/:section?", handle: gate("stacks"), element: <StackPage /> },
+  { path: "stacks/:stackId/deploys/:deployId", handle: gate("deploys"), element: <DeployPage /> },
+  { path: "configuration/:section?", handle: gate("configuration"), element: <ConfigurationPage /> },
+  { path: "projects/:projectId/settings/:section?", handle: gate("projects"), element: <ProjectSettingsPage /> },
+  {
+    path: "projects/:projectId/interview",
+    handle: gate("memories"),
+    element: (
+      <Suspense fallback={<LoadingDisplay />}>
+        <InterviewPage />
+      </Suspense>
+    ),
+  },
+];
 
 const buildRoutes = (loggedIn: boolean): RouteObject[] => [
   {
@@ -56,65 +103,29 @@ const buildRoutes = (loggedIn: boolean): RouteObject[] => [
         ? [
             { path: "/wizard/onboarding/owner", element: <OwnerWizardPage /> },
             { path: "/wizard/onboarding/profile", element: <FirstLoginWizardPage /> },
-            // Old onboarding paths redirect: onboarding lives under /wizard/… now.
-            { path: "/onboarding/owner", element: <Navigate to="/wizard/onboarding/owner" replace /> },
-            { path: "/onboarding/profile", element: <Navigate to="/wizard/onboarding/profile" replace /> },
-            { path: "/onboarding/dns", element: <Navigate to="/wizard/onboarding/dns" replace /> },
             {
               element: (
                 <OnboardingGate>
-                  <AreaGate>
-                    <Outlet />
-                  </AreaGate>
+                  <Outlet />
                 </OnboardingGate>
               ),
               children: [
-                { path: "/", element: <HomePage /> },
-                { path: "/inbox", element: <InboxPage /> },
-                { path: "/chat", element: <ChatPage /> },
-                { path: "/chat/:conversationId", element: <ChatPage /> },
+                { path: "/", element: <WorkspaceEntryPage /> },
                 { path: "/wizard/onboarding/dns", element: <DnsOnboardingPage /> },
-                { path: "/wizard/project/import", handle: gate("newProject"), element: <ProjectWizardImportPage /> },
-                { path: "/wizard/project/:step", handle: gate("newProject"), element: <ProjectWizardPage /> },
-                {
-                  path: "/topology",
-                  handle: gate("topology"),
-                  element: (
-                    <Suspense fallback={<LoadingDisplay />}>
-                      <TopologyPage />
-                    </Suspense>
-                  ),
-                },
-                { path: "/docs", element: <DocsPage /> },
-                { path: "/docs/:projectToken/:docId", element: <DocsPage /> },
-                // Old links and mention chips carry only the doc id; the page moves them to the project's URL.
-                { path: "/docs/:docId", element: <DocsPage /> },
-                { path: "/memories", handle: gate("memories"), element: <MemoriesPage /> },
-                { path: "/memories/:projectToken/:memoryId", handle: gate("memories"), element: <MemoriesPage /> },
-                // A workspace memory's own URL, and old project-memory links, which the page moves to the project's URL.
-                { path: "/memories/:memoryId", handle: gate("memories"), element: <MemoriesPage /> },
-                { path: "/board", handle: gate("tickets"), element: <BoardPage /> },
-                { path: "/board/:projectId", handle: gate("tickets"), element: <BoardPage /> },
-                { path: "/tickets/:ticketId", handle: gate("tickets"), element: <TicketPage /> },
-                { path: "/runners", handle: gate("runners"), element: <RunnersPage /> },
-                { path: "/automations", handle: gate("automations"), element: <AutomationsPage /> },
-                { path: "/automations/:id", handle: gate("automations"), element: <AutomationPage /> },
-                { path: "/services/:serviceId", handle: gate("stacks"), element: <ServicePage /> },
-                { path: "/stacks/:stackId/:section?", handle: gate("stacks"), element: <StackPage /> },
-                { path: "/stacks/:stackId/deploys/:deployId", handle: gate("deploys"), element: <DeployPage /> },
-                // Members folded into Team on Settings; the pages themselves send moved section links there.
-                { path: "/members", element: <Navigate to="/settings/team" replace /> },
                 { path: "/settings/:section?", element: <YourSettingsPage /> },
-                { path: "/configuration/:section?", handle: gate("configuration"), element: <ConfigurationPage /> },
-                { path: "/projects/:projectId/settings/:section?", handle: gate("projects"), element: <ProjectSettingsPage /> },
                 {
-                  path: "/projects/:projectId/interview",
-                  handle: gate("memories"),
-                  element: (
-                    <Suspense fallback={<LoadingDisplay />}>
-                      <InterviewPage />
-                    </Suspense>
-                  ),
+                  path: "/:workspace",
+                  element: <WorkspaceScope />,
+                  children: [
+                    {
+                      element: (
+                        <AreaGate>
+                          <Outlet />
+                        </AreaGate>
+                      ),
+                      children: workspaceRoutes,
+                    },
+                  ],
                 },
               ],
             },

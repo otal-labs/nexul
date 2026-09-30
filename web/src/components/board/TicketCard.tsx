@@ -15,6 +15,7 @@ import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
 import { useFetchLabelColors } from "@/hooks/TicketHooks";
 import { useFetchProjectTicketTypes } from "@/hooks/TicketTypeHooks";
 import { useIsTicketRunActive } from "@/hooks/TrailHooks";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { cn } from "@/lib/utils";
 import { personLabel } from "@/models/Person";
 import { cardPerson, ticketPath, type Ticket } from "@/models/Ticket";
@@ -100,9 +101,10 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
 
 const TicketCardImpl = ({ ticket, index = 0 }: TicketCardProps) => {
   const navigate = useNavigate();
+  const wsPath = useWorkspacePath();
   // Same cached query as TicketCardBody below — one request per board, not per card.
   const { data: project } = useFetchProject(ticket.project_id);
-  const path = ticketPath(ticket, project?.prefix);
+  const path = wsPath(ticketPath(ticket, project?.prefix));
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: ticket.id,
     data: { type: "card", ticketId: ticket.id, statusId: ticket.status, categoryId: ticket.category_id } satisfies DropTargetData,

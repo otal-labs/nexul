@@ -140,13 +140,13 @@ func (s *Service) Search(ctx context.Context, query, workspaceID string, limit i
 	results := make([]SearchResult, 0, len(ticketHits)+len(docHits)+1)
 	seenTickets := map[string]bool{}
 
-	keyResult, err := s.resolveMentionKey(ctx, query)
+	keyResults, err := s.resolveMentionKey(ctx, query, workspaceID)
 	if err != nil {
 		return nil, err
 	}
-	if keyResult != nil {
-		results = append(results, *keyResult)
-		seenTickets[keyResult.ID] = true
+	for _, r := range keyResults {
+		results = append(results, r)
+		seenTickets[r.ID] = true
 	}
 
 	results = append(results, startsWith...)
@@ -159,8 +159,8 @@ func (s *Service) Search(ctx context.Context, query, workspaceID string, limit i
 	return results, nil
 }
 
-// resolveMentionKey checks an exact PREFIX-NUMBER match (spec.md 7), sorted first; nil, nil means no match.
-func (s *Service) resolveMentionKey(ctx context.Context, query string) (*SearchResult, error) {
+// resolveMentionKey returns the openable tickets an exact PREFIX-NUMBER names (spec.md 7), sorted first.
+func (s *Service) resolveMentionKey(ctx context.Context, query, workspaceID string) ([]SearchResult, error) {
 	m := mentionKeyRe.FindStringSubmatch(query)
 	if m == nil {
 		return nil, nil
@@ -169,17 +169,17 @@ func (s *Service) resolveMentionKey(ctx context.Context, query string) (*SearchR
 	if convErr != nil {
 		return nil, nil
 	}
-	t, err := s.cfg.Tickets.GetByKey(ctx, m[1], number)
+	ts, err := s.cfg.Tickets.ListByKey(ctx, strings.TrimSpace(workspaceID), m[1], number)
 	if err != nil {
-		if errors.Is(err, apperrs.ErrNotFound) {
-			return nil, nil
-		}
 		return nil, fmt.Errorf("resolve mention key %q: %w", query, err)
 	}
-	if !s.canOpenTicket(ctx, t.ProjectID) {
-		return nil, nil
+	var out []SearchResult
+	for _, t := range ts {
+		if s.canOpenTicket(ctx, t.ProjectID) {
+			out = append(out, SearchResult{Type: string(KindTicket), ID: t.ID, Title: t.Title, StatusLabel: s.statusLabel(ctx, t.Status), CanOpen: true})
+		}
 	}
-	return &SearchResult{Type: string(KindTicket), ID: t.ID, Title: t.Title, StatusLabel: s.statusLabel(ctx, t.Status), CanOpen: true}, nil
+	return out, nil
 }
 
 func (s *Service) ticketSearchResults(ctx context.Context, hits []SearchHit, seen map[string]bool) []SearchResult {

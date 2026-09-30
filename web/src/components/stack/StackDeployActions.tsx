@@ -8,6 +8,7 @@ import { formatRelativeTime } from "@/components/service/DeployTime";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { Button } from "@/components/ui/button";
 import { useDeployStack, useRollbackStack } from "@/hooks/StackHooks";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { DeployRefFormSchema, deployPath, type Deploy, type DeployRefFormData, type Stack } from "@/models/Stack";
 
 interface StackDeployActionsProps {
@@ -37,11 +38,12 @@ const BuildRefForm = ({ stack, deploy }: BuildRefFormProps) => {
   });
   const isDeploying = deploy.isPending && !!deploy.variables?.ref;
   const navigate = useNavigate();
+  const wsPath = useWorkspacePath();
 
   const onSubmit = async ({ ref }: DeployRefFormData) => {
     try {
       const created = await deploy.mutateAsync({ stackId: stack.id, ref });
-      await navigate(deployPath(created));
+      await navigate(wsPath(deployPath(created)));
     } catch {
       // Error is surfaced by the hook's toast.
     }
@@ -70,6 +72,7 @@ interface RedeployRowProps {
 const RedeployRow = ({ stack, image, deploy }: RedeployRowProps) => {
   const isDeploying = deploy.isPending && !!deploy.variables?.image;
   const navigate = useNavigate();
+  const wsPath = useWorkspacePath();
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="min-w-0 space-y-1">
@@ -82,7 +85,7 @@ const RedeployRow = ({ stack, image, deploy }: RedeployRowProps) => {
         type="button"
         loading={isDeploying}
         disabled={deploy.isPending}
-        onClick={() => deploy.mutate({ stackId: stack.id, image }, { onSuccess: (created) => void navigate(deployPath(created)) })}
+        onClick={() => deploy.mutate({ stackId: stack.id, image }, { onSuccess: (created) => void navigate(wsPath(deployPath(created))) })}
       >
         <RocketIcon className="size-4" aria-hidden />
         {isDeploying ? "Redeploying…" : "Redeploy"}
@@ -101,12 +104,13 @@ interface RollbackButtonProps {
 
 const RollbackButton = ({ stack, lastHealthy, canRollback, deployPending, rollback }: RollbackButtonProps) => {
   const navigate = useNavigate();
+  const wsPath = useWorkspacePath();
   return (
     <Button
       type="button"
       variant="outline"
       size="sm"
-      onClick={() => rollback.mutate(stack.id, { onSuccess: (created) => void navigate(deployPath(created)) })}
+      onClick={() => rollback.mutate(stack.id, { onSuccess: (created) => void navigate(wsPath(deployPath(created))) })}
       loading={rollback.isPending}
       disabled={!canRollback || deployPending}
       title={lastHealthy ? `Roll back to ${rollbackTarget(lastHealthy)}` : "No healthy deploy to roll back to"}

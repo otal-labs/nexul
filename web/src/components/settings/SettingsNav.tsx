@@ -1,4 +1,5 @@
 import { SettingsSectionNav, type SettingsSectionNavItem } from "@/components/settings/SettingsSectionNav";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import type { InstanceSection } from "@/models/Access";
 
 export const SETTINGS_SECTIONS = [
@@ -80,11 +81,12 @@ interface SettingsNavProps {
 }
 
 export const SettingsNav = ({ active, sections }: SettingsNavProps) => {
+  const wsPath = useWorkspacePath();
   const items: SettingsSectionNavItem[] = sections.map((section) => ({
     section,
     label: sectionLabels[section],
     danger: section === "danger",
   }));
 
-  return <SettingsSectionNav ariaLabel="Configuration sections" basePath="/configuration" active={active} items={items} />;
+  return <SettingsSectionNav ariaLabel="Configuration sections" basePath={wsPath("/configuration")} active={active} items={items} />;
 };

@@ -30,7 +30,7 @@ const renderButton = () => {
       <MemoryRouter initialEntries={["/"]}>
         <Routes>
           <Route path="/" element={<DocThreadButton workspaceId="ws-1" docId="doc-1" />} />
-          <Route path="/chat/:conversationId" element={<div>chat-page</div>} />
+          <Route path="/acme/chat/:conversationId" element={<div>chat-page</div>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,

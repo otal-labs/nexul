@@ -23,6 +23,13 @@ projects, docs, and configuration; members switch between them in the normal
 UI via a picker. Sign-in itself stays instance-wide.
 _Avoid_: Organization, tenant, team (the Team is the instance's people)
 
+**Workspace slug**:
+The workspace's name in every URL of its pages (`/otal/board`): lowercase
+letters and digits joined by dashes, unique on the instance, derived from the
+name at creation and kept through a rename unless changed on purpose. The URL
+decides which workspace is on screen.
+_Avoid_: Workspace key, handle, subdomain
+
 **Project**:
 The grouping inside a workspace that tickets, docs, project memories,
 repositories, and stacks belong to. Only the project wizard makes one
@@ -30,6 +37,18 @@ repositories, and stacks belong to. Only the project wizard makes one
 status columns, ticket types, and a starter memory. Nothing seeds one: a new
 workspace, the owner's first included, has none until the wizard runs.
 _Avoid_: Board, app, default project
+
+**Prefix**:
+A project's 2-5 character tag, a letter then letters or digits, set once and
+unique within its workspace; it starts the project's ticket keys.
+_Avoid_: Project code, short name
+
+**Ticket key**:
+A ticket's human name, its project's prefix and its number (`WEB-12`). Unique
+only within a workspace, so a key lookup names the workspace, and a key in two
+of someone's workspaces is refused rather than guessed. The ticket's id stays
+the one reference that needs nothing else.
+_Avoid_: Ticket id (that is the UUID), ticket number (only the second half)
 
 **Instance**:
 One self-hosted install of Nexul, owned by one person or group.

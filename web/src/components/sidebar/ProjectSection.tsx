@@ -6,6 +6,7 @@ import { ProjectNav } from "@/components/sidebar/ProjectNav";
 import { ProjectSwitcher } from "@/components/sidebar/ProjectSwitcher";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useSidebarProject } from "@/hooks/useSidebarProject";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { NEW_PROJECT_PATH } from "@/models/Project";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +18,7 @@ interface ProjectSectionProps {
 export const ProjectSection = ({ collapsed }: ProjectSectionProps) => {
   const { projects, current } = useSidebarProject();
   const navigate = useNavigate();
+  const wsPath = useWorkspacePath();
   const can = useAreaAccess();
   const canCreate = can?.("newProject") ?? false;
   // The switcher only earns its place when the viewer can open something inside a project.
@@ -31,7 +33,7 @@ export const ProjectSection = ({ collapsed }: ProjectSectionProps) => {
       {offerCreate && (
         <button
           type="button"
-          onClick={() => void navigate(NEW_PROJECT_PATH)}
+          onClick={() => void navigate(wsPath(NEW_PROJECT_PATH))}
           title={collapsed ? "New project" : undefined}
           className={cn(navLinkClass({ isActive: false }), "w-full", collapsed && "justify-center px-0")}
         >

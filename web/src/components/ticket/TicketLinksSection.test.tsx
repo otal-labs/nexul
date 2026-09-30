@@ -110,7 +110,7 @@ describe("TicketLinksSection", () => {
     });
     renderSection();
     expect(await screen.findByText("Blocked by")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /BKS-2/ })).toHaveAttribute("href", "/tickets/BKS-2");
+    expect(screen.getByRole("link", { name: /BKS-2/ })).toHaveAttribute("href", "/acme/tickets/BKS-2");
     expect(screen.getByRole("img", { name: "Not done yet" })).toBeInTheDocument();
     expect(screen.getAllByRole("img", { name: "Done" })).toHaveLength(2);
     expect(screen.getByText("Blocks")).toBeInTheDocument();

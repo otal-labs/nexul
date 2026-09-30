@@ -30,11 +30,11 @@ const mockApi = (memories: unknown[]) =>
 const renderStep = () =>
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <MemoryRouter initialEntries={["/wizard/project/done"]}>
+      <MemoryRouter initialEntries={["/acme/wizard/project/done"]}>
         <Routes>
-          <Route path="/wizard/project/done" element={<WizardDoneStep />} />
-          <Route path="/projects/:projectId/interview" element={<p>interview page</p>} />
-          <Route path="/topology" element={<p>canvas page</p>} />
+          <Route path="/acme/wizard/project/done" element={<WizardDoneStep />} />
+          <Route path="/acme/projects/:projectId/interview" element={<p>interview page</p>} />
+          <Route path="/acme/topology" element={<p>canvas page</p>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,

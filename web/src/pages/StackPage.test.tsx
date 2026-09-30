@@ -45,13 +45,13 @@ const container = {
   ports: ["8080:8080"],
 };
 
-const renderPage = (path = "/stacks/stack-1") =>
+const renderPage = (path = "/acme/stacks/stack-1") =>
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <ContextAwareConfirmation.ConfirmationRoot />
       <MemoryRouter initialEntries={[path]}>
         <Routes>
-          <Route path="/stacks/:stackId/:section?" element={<StackPage />} />
+          <Route path="/acme/stacks/:stackId/:section?" element={<StackPage />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -92,7 +92,7 @@ describe("StackPage", () => {
     renderPage();
 
     expect(await screen.findByRole("heading", { name: "cloudflared-instance" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /back to topology/i })).toHaveAttribute("href", "/topology");
+    expect(screen.getByRole("link", { name: /back to topology/i })).toHaveAttribute("href", "/acme/topology");
     expect(screen.queryByRole("link", { name: /attach repository/i })).not.toBeInTheDocument();
   });
 
@@ -159,7 +159,7 @@ describe("StackPage", () => {
       }
       return Promise.resolve({ data: [] });
     });
-    renderPage("/stacks/stack-1/branches");
+    renderPage("/acme/stacks/stack-1/branches");
     await screen.findByRole("heading", { name: "api" });
     expect(screen.queryByRole("link", { name: "Branch deploys" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Deploy" })).toBeInTheDocument();
@@ -167,7 +167,7 @@ describe("StackPage", () => {
 
   it("hides the exposures section, and skips reading exposures, for a viewer who cannot read DNS", async () => {
     access.areas = ["projects", "topology"];
-    renderPage("/stacks/stack-1/exposures");
+    renderPage("/acme/stacks/stack-1/exposures");
     await screen.findByRole("heading", { name: "api" });
     expect(screen.queryByRole("link", { name: "Exposures" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Deploy" })).toBeInTheDocument();
@@ -258,13 +258,13 @@ describe("StackPage", () => {
     });
     renderPage();
     const link = await screen.findByRole("link", { name: /attach repository/i });
-    expect(link).toHaveAttribute("href", "/wizard/project/repository?stack=stack-1");
+    expect(link).toHaveAttribute("href", "/acme/wizard/project/repository?stack=stack-1");
   });
 
   it("deletes the stack from the danger zone after confirming", async () => {
     const user = userEvent.setup();
     mocks._delete.mockResolvedValue({ data: {} });
-    renderPage("/stacks/stack-1/danger");
+    renderPage("/acme/stacks/stack-1/danger");
 
     await user.click(await screen.findByRole("button", { name: "Delete stack" }));
     expect(await screen.findByRole("heading", { name: "Delete api?" })).toBeInTheDocument();
@@ -297,7 +297,7 @@ describe("StackPage", () => {
       }
       return Promise.resolve({ data: [] });
     });
-    renderPage("/stacks/stack-1/danger");
+    renderPage("/acme/stacks/stack-1/danger");
     const dangerZone = await screen.findByRole("region", { name: "Danger zone" });
     expect(within(dangerZone).getByText("app.example.com")).toBeInTheDocument();
   });
@@ -326,7 +326,7 @@ describe("StackPage", () => {
       }
       return Promise.resolve({ data: [] });
     });
-    renderPage("/stacks/stack-1/history");
+    renderPage("/acme/stacks/stack-1/history");
     expect(await screen.findAllByText("ghcr.io/onik/api:v1")).not.toHaveLength(0);
     expect(screen.getByText("last deploy 3h ago")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Deploy history" })).toBeInTheDocument();

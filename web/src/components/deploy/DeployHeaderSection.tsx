@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { DeployStatusBadge } from "@/components/service/DeployStatusBadge";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFetchStack } from "@/hooks/StackHooks";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import type { Deploy } from "@/models/Stack";
 
 interface DeployHeaderSectionProps {
@@ -13,6 +14,7 @@ interface DeployHeaderSectionProps {
 // Detail-page header shape: back link, mono id plus status, title, one muted meta line, hairline.
 export const DeployHeaderSection = ({ deploy }: DeployHeaderSectionProps) => {
   const canOpenStack = useAreaAccess()?.("stacks") ?? false;
+  const wsPath = useWorkspacePath();
   const { data: stack } = useFetchStack(deploy.stack_id);
   const branch = stack?.build_source?.branch;
 
@@ -20,7 +22,7 @@ export const DeployHeaderSection = ({ deploy }: DeployHeaderSectionProps) => {
     <header className="space-y-2 border-b border-border pb-6">
       {canOpenStack && (
         <Link
-          to={`/stacks/${deploy.stack_id}/history`}
+          to={wsPath(`/stacks/${deploy.stack_id}/history`)}
           className="inline-block font-mono text-xs text-muted-foreground transition-colors duration-150 ease-standard hover:text-foreground"
         >
           ← Back to deploy history

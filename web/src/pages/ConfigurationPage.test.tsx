@@ -29,7 +29,7 @@ const settings = {
   oauth_callback: "https://deploy.example.com/auth/callback",
 };
 
-const workspaces = [{ id: "ws-1", name: "Acme", mention_chip_template: "{ticket.Ticket} {ticket.Status}", created_at: "", updated_at: "" }];
+const workspaces = [{ id: "ws-1", name: "Acme", slug: "acme", mention_chip_template: "{ticket.Ticket} {ticket.Status}", created_at: "", updated_at: "" }];
 
 const instanceWide = ["instance:read", "instance:write", "accounts:read", "connectors:read", "dns:read"];
 

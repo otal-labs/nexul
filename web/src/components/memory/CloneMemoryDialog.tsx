@@ -9,6 +9,8 @@ import { FormSelect } from "@/components/ticket/FormSelect";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useCloneMemory, useFetchCloneDestinations } from "@/hooks/MemoryHooks";
+import { useFetchWorkspaces } from "@/hooks/WorkspaceHooks";
+import { workspacePath } from "@/models/Workspace";
 
 const cloneMemorySchema = z.object({
   destination: z.string().trim().min(1, "A destination is required"),
@@ -35,6 +37,7 @@ export const CloneMemoryDialog = ({ memoryId, open, onClose }: CloneMemoryDialog
   const navigate = useNavigate();
   const { data: destinations, error, isPending } = useFetchCloneDestinations();
   const clone = useCloneMemory();
+  const { data: workspaces } = useFetchWorkspaces();
   const form = useForm<CloneMemoryFormData>({
     resolver: zodResolver(cloneMemorySchema),
     defaultValues: { destination: "" },
@@ -52,7 +55,9 @@ export const CloneMemoryDialog = ({ memoryId, open, onClose }: CloneMemoryDialog
     try {
       const cloned = await clone.mutateAsync({ id: memoryId, projectId, workspaceId });
       onClose();
-      navigate(`/memories/${cloned.id}`);
+      // The copy may land in another workspace, so its URL takes that workspace's slug.
+      const slug = workspaces?.find((w) => w.id === workspaceId)?.slug ?? "";
+      navigate(workspacePath(slug, `/memories/${cloned.id}`));
     } catch {
       // Error is surfaced by the hook's toast.
     }

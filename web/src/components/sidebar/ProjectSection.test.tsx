@@ -30,7 +30,7 @@ const mockApi = (list: unknown[] = projects, permissions: string[] = ownerPermis
 
 const LocationSpy = () => <div data-testid="location">{useLocation().pathname}</div>;
 
-const renderSection = ({ path = "/inbox", collapsed = false, list = projects, permissions = ownerPermissions } = {}) => {
+const renderSection = ({ path = "/acme/inbox", collapsed = false, list = projects, permissions = ownerPermissions } = {}) => {
   mockApi(list, permissions);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
@@ -54,48 +54,48 @@ describe("ProjectSection", () => {
 
     expect(await screen.findByRole("button", { name: /BE.*Backend/ })).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "Settings" })).toHaveLength(1);
-    expect(screen.getByRole("link", { name: "Board" })).toHaveAttribute("href", "/board/BE");
-    expect(screen.getByRole("link", { name: "Interview" })).toHaveAttribute("href", "/projects/BE/interview");
-    expect(screen.getByRole("link", { name: "Docs" })).toHaveAttribute("href", "/docs");
-    expect(screen.getByRole("link", { name: "Memories" })).toHaveAttribute("href", "/memories");
+    expect(screen.getByRole("link", { name: "Board" })).toHaveAttribute("href", "/acme/board/BE");
+    expect(screen.getByRole("link", { name: "Interview" })).toHaveAttribute("href", "/acme/projects/BE/interview");
+    expect(screen.getByRole("link", { name: "Docs" })).toHaveAttribute("href", "/acme/docs");
+    expect(screen.getByRole("link", { name: "Memories" })).toHaveAttribute("href", "/acme/memories");
     expect(screen.queryByRole("link", { name: "Runbook" })).not.toBeInTheDocument();
     expect(screen.queryByText("Frontend")).not.toBeInTheDocument();
   });
 
   it("follows the project in the URL and remembers it", async () => {
-    renderSection({ path: "/projects/FE/settings" });
+    renderSection({ path: "/acme/projects/FE/settings" });
 
     expect(await screen.findByRole("button", { name: /FE.*Frontend/ })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/projects/FE/settings");
+    expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/acme/projects/FE/settings");
     expect(useWorkspaceStore.getState().selectedProjectId).toBe("p-2");
   });
 
   it("falls back to the last project visited off project pages", async () => {
     useWorkspaceStore.setState({ selectedProjectId: "p-2" });
-    renderSection({ path: "/runners" });
+    renderSection({ path: "/acme/runners" });
 
     expect(await screen.findByRole("button", { name: /FE.*Frontend/ })).toBeInTheDocument();
   });
 
   it("switching project keeps you on the same project page", async () => {
     const user = userEvent.setup();
-    renderSection({ path: "/projects/BE/settings" });
+    renderSection({ path: "/acme/projects/BE/settings" });
 
     await user.click(await screen.findByRole("button", { name: /BE.*Backend/ }));
     await user.click(await screen.findByRole("button", { name: /FE.*Frontend/ }));
 
-    expect(screen.getByTestId("location")).toHaveTextContent("/projects/FE/settings");
+    expect(screen.getByTestId("location")).toHaveTextContent("/acme/projects/FE/settings");
     expect(useWorkspaceStore.getState().selectedProjectId).toBe("p-2");
   });
 
   it("switching from a non-project page lands on the new project's board", async () => {
     const user = userEvent.setup();
-    renderSection({ path: "/runners" });
+    renderSection({ path: "/acme/runners" });
 
     await user.click(await screen.findByRole("button", { name: /BE.*Backend/ }));
     await user.click(await screen.findByRole("button", { name: /FE.*Frontend/ }));
 
-    expect(screen.getByTestId("location")).toHaveTextContent("/board/FE");
+    expect(screen.getByTestId("location")).toHaveTextContent("/acme/board/FE");
   });
 
   it("the switcher's New project opens the project wizard", async () => {
@@ -105,7 +105,7 @@ describe("ProjectSection", () => {
     await user.click(await screen.findByRole("button", { name: /BE.*Backend/ }));
     await user.click(await screen.findByRole("button", { name: "New Project" }));
 
-    expect(screen.getByTestId("location")).toHaveTextContent("/wizard/project/project");
+    expect(screen.getByTestId("location")).toHaveTextContent("/acme/wizard/project/project");
   });
 
   it("with no projects, offers New project instead of a switcher", async () => {
@@ -113,13 +113,13 @@ describe("ProjectSection", () => {
     renderSection({ list: [] });
 
     await user.click(await screen.findByRole("button", { name: "New project" }));
-    expect(screen.getByTestId("location")).toHaveTextContent("/wizard/project/project");
+    expect(screen.getByTestId("location")).toHaveTextContent("/acme/wizard/project/project");
     expect(screen.queryByRole("link", { name: "Board" })).not.toBeInTheDocument();
   });
 
   it("the menu lists every project and marks only the current one", async () => {
     const user = userEvent.setup();
-    renderSection({ path: "/projects/FE/settings" });
+    renderSection({ path: "/acme/projects/FE/settings" });
 
     await user.click(await screen.findByRole("button", { name: /FE.*Frontend/ }));
 
@@ -155,7 +155,7 @@ describe("ProjectSection", () => {
 
     const trigger = await screen.findByRole("button", { name: "BE" });
     expect(trigger).toHaveAttribute("title", "Backend");
-    expect(screen.getByRole("link", { name: "Board" })).toHaveAttribute("href", "/board/BE");
+    expect(screen.getByRole("link", { name: "Board" })).toHaveAttribute("href", "/acme/board/BE");
     expect(screen.queryByText("Project")).not.toBeInTheDocument();
   });
 });

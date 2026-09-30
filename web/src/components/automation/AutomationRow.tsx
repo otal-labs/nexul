@@ -4,6 +4,7 @@ import { AutomationConfigStatusBadge } from "@/components/automation/AutomationC
 import { AutomationKindBadge } from "@/components/automation/AutomationKindBadge";
 import { Switch } from "@/components/ui/switch";
 import { useSetAutomationEnabled } from "@/hooks/AutomationHooks";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import type { Automation } from "@/models/Automation";
 
 interface AutomationRowProps {
@@ -12,12 +13,13 @@ interface AutomationRowProps {
 
 export const AutomationRow = ({ automation }: AutomationRowProps) => {
   const setEnabled = useSetAutomationEnabled();
+  const wsPath = useWorkspacePath();
 
   return (
     <li className="flex items-center gap-3 p-4 transition-colors duration-150 ease-standard hover:bg-accent/40">
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <Link to={`/automations/${automation.id}`} className="truncate text-sm font-medium hover:underline">
+          <Link to={wsPath(`/automations/${automation.id}`)} className="truncate text-sm font-medium hover:underline">
             {automation.name}
           </Link>
           <AutomationKindBadge kind={automation.kind} />

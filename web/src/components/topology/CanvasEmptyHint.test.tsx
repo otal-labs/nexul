@@ -23,7 +23,7 @@ describe("CanvasEmptyHint", () => {
     renderHint(() => {});
     expect(screen.getByText("Your infra, drawn like you'd explain it.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /add a node/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /add a service/i })).toHaveAttribute("href", "/wizard/project/repository");
+    expect(screen.getByRole("link", { name: /add a service/i })).toHaveAttribute("href", "/acme/wizard/project/repository");
   });
 
   it("opens the add-node flow from the CTA", () => {

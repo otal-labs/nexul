@@ -9,6 +9,7 @@ import { ServicesFact } from "@/components/stack/ServicesFact";
 import { NoFillBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAreaAccess } from "@/hooks/AccessHooks";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import type { Deploy, Stack } from "@/models/Stack";
 
 interface StackHeaderSectionProps {
@@ -34,6 +35,7 @@ const repoLabel = (stack: Stack): string | undefined => {
 // Detail-page header (back link → mono slug → title) plus the locked facts grid: mono microheader over each value.
 export const StackHeaderSection = ({ stack, projectPath, latest, image, hostnames }: StackHeaderSectionProps) => {
   const can = useAreaAccess();
+  const wsPath = useWorkspacePath();
   const repo = repoLabel(stack);
   const [firstHostname, ...moreHostnames] = hostnames;
 
@@ -58,7 +60,7 @@ export const StackHeaderSection = ({ stack, projectPath, latest, image, hostname
           </div>
           {!stack.managed && !!stack.project_id && can?.("newProject") && (
             <Button variant="outline" size="sm" asChild>
-              <Link to={`/wizard/project/repository?stack=${stack.id}`}>
+              <Link to={wsPath(`/wizard/project/repository?stack=${stack.id}`)}>
                 <GitBranchIcon className="size-4" /> Attach repository
               </Link>
             </Button>

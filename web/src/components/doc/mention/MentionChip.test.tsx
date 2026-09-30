@@ -17,7 +17,7 @@ vi.mock("@/api/client", () => ({
 // The chip reads the selected workspace's template off the workspace list.
 const mockTemplate = (mention_chip_template: string) =>
   mocks.get.mockResolvedValue({
-    data: [{ id: "ws-1", name: "Acme", mention_chip_template, created_at: "", updated_at: "" }],
+    data: [{ id: "ws-1", name: "Acme", slug: "acme", mention_chip_template, created_at: "", updated_at: "" }],
   });
 
 const wrap = (ui: React.ReactNode) => {
@@ -43,7 +43,7 @@ describe("MentionChip", () => {
     render(wrap(<MentionChip type="ticket" id="t-1" label="old" chip={chip} />));
 
     const link = await screen.findByRole("link", { name: /Fix the bug/ });
-    expect(link).toHaveAttribute("href", "/tickets/t-1");
+    expect(link).toHaveAttribute("href", "/acme/tickets/t-1");
     expect(link).toHaveAttribute("data-can-open", "true");
     expect(link).toHaveTextContent("Fix the bug In progress");
   });
@@ -74,7 +74,7 @@ describe("MentionChip", () => {
     // render, so wait for the fully substituted text instead (only present once the
     // custom template resolves).
     const text = await screen.findByText("Fix the bug {ticket.NotAField}");
-    expect(text.closest("a")).toHaveAttribute("href", "/tickets/t-1");
+    expect(text.closest("a")).toHaveAttribute("href", "/acme/tickets/t-1");
   });
 
   it("renders a clickable doc chip linking to the doc, unaffected by the ticket template", async () => {
@@ -83,7 +83,7 @@ describe("MentionChip", () => {
     render(wrap(<MentionChip type="doc" id="d-9" label="old" chip={chip} />));
 
     const link = await screen.findByRole("link", { name: "Architecture" });
-    expect(link).toHaveAttribute("href", "/docs/d-9");
+    expect(link).toHaveAttribute("href", "/acme/docs/d-9");
   });
 
   it("renders an inert chip with disclosed title when the target cannot be opened", async () => {

@@ -18,7 +18,7 @@ export const Layout = () => {
   const { data: unread } = useFetchUnreadCount(isLoggedIn);
   useEnsureWorkspaceSelected(isLoggedIn);
   // Wizards own the whole viewport; the sidebar's workspace nav has nothing to point at mid-wizard.
-  const onboarding = useLocation().pathname.startsWith("/wizard/");
+  const onboarding = /^\/(?:[^/]+\/)?wizard\//.test(useLocation().pathname);
 
   return (
     <div className="flex min-h-screen">

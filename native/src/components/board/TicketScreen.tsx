@@ -20,8 +20,8 @@ import { cn } from "@/lib/utils";
 
 export const TicketScreen = () => {
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const { data: ticket, error, isPending } = useFetchTicket(id);
+  const { id, workspace } = useLocalSearchParams<{ id: string; workspace?: string }>();
+  const { data: ticket, error, isPending } = useFetchTicket(id, workspace);
   const { data: project } = useFetchProject(ticket?.project_id);
   const { data: statuses } = useFetchProjectStatuses(ticket?.project_id);
   const { data: ticketTypes } = useFetchProjectTicketTypes(ticket?.project_id);

@@ -116,8 +116,9 @@ type SearchHit struct {
 type TicketSource interface {
 	GetByID(ctx context.Context, id string) (*Ticket, error)
 	Search(ctx context.Context, query string, limit int) ([]SearchHit, error)
-	// GetByKey resolves a ticket by its PREFIX-NUMBER display id (ADR 0004).
-	GetByKey(ctx context.Context, prefix string, number int) (*Ticket, error)
+	// ListByKey returns the tickets whose PREFIX-NUMBER key matches in workspaceID, or in every workspace when it is
+	// empty, since a key repeats across workspaces (ADR 0089).
+	ListByKey(ctx context.Context, workspaceID, prefix string, number int) ([]*Ticket, error)
 }
 
 // DocSource is the consumer-side slice of the docs persistence layer the resolver needs.

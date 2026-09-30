@@ -18,6 +18,7 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 const workspace: Workspace = {
   id: "ws-1",
   name: "Acme",
+  slug: "acme",
   mention_chip_template: "{ticket.Ticket} {ticket.Status}",
   created_at: "",
   updated_at: "",

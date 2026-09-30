@@ -1,9 +1,11 @@
 package tickets
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -45,6 +47,8 @@ type fakeRepo struct {
 	ticketLinkErr error
 	doneStatuses  map[Status]bool
 	prefixes      map[string]string
+	// workspaces maps a project to its workspace's id and slug; unlisted projects sit in workspace-default.
+	workspaces map[string][2]string
 }
 
 func newFakeRepo() *fakeRepo {
@@ -79,19 +83,24 @@ func (f *fakeRepo) GetByID(_ context.Context, id string) (*Ticket, error) {
 	return t, nil
 }
 
-// GetByPrefixAndNumber reads the project prefix from prefixes, since tickets alone never store it.
-func (f *fakeRepo) GetByPrefixAndNumber(_ context.Context, prefix string, number int) (*Ticket, error) {
+// ListByKey reads the project prefix from prefixes, since tickets alone never store it.
+func (f *fakeRepo) ListByKey(_ context.Context, prefix string, number int) ([]KeyMatch, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.getErr != nil {
 		return nil, f.getErr
 	}
+	var out []KeyMatch
 	for _, t := range f.tickets {
 		if f.prefixes[t.ProjectID] == prefix && t.Number == number {
-			return t, nil
+			ws := cmp.Or(f.workspaces[t.ProjectID], [2]string{"workspace-default", "default"})
+			out = append(out, KeyMatch{Ticket: t, WorkspaceID: ws[0], WorkspaceSlug: ws[1]})
 		}
 	}
-	return nil, apperrs.ErrNotFound
+	slices.SortFunc(out, func(a, b KeyMatch) int {
+		return cmp.Or(cmp.Compare(a.WorkspaceSlug, b.WorkspaceSlug), cmp.Compare(a.Ticket.ID, b.Ticket.ID))
+	})
+	return out, nil
 }
 
 func (f *fakeRepo) List(_ context.Context) ([]*Ticket, error) {
@@ -585,35 +594,50 @@ func TestGet(t *testing.T) {
 
 func TestResolve(t *testing.T) {
 	repo := newFakeRepo()
-	repo.prefixes = map[string]string{"p-1": "REF", "p-2": "P1", "p-3": "1P", "p-4": "PHASE1"}
+	repo.prefixes = map[string]string{"p-1": "REF", "p-2": "P1", "p-3": "1P", "p-4": "PHASE1", "p-rix": "WEB", "p-otal": "WEB"}
+	repo.workspaces = map[string][2]string{"p-rix": {"ws-rix", "rixwave"}, "p-otal": {"ws-otal", "otal"}}
+	repo.tickets["t-rix"] = &Ticket{ID: "t-rix", ProjectID: "p-rix", Number: 1}
+	repo.tickets["t-otal"] = &Ticket{ID: "t-otal", ProjectID: "p-otal", Number: 1}
+	// A ticket moved into p-otal keeps its number, so WEB-2 names two tickets there.
+	repo.tickets["t-otal-2"] = &Ticket{ID: "t-otal-2", ProjectID: "p-otal", Number: 2}
+	repo.tickets["t-moved-in"] = &Ticket{ID: "t-moved-in", ProjectID: "p-otal", Number: 2}
 	repo.tickets["t-1"] = &Ticket{ID: "t-1", ProjectID: "p-1", Number: 102}
 	repo.tickets["t-2"] = &Ticket{ID: "t-2", ProjectID: "p-2", Number: 12}
 	repo.tickets["t-3"] = &Ticket{ID: "t-3", ProjectID: "p-3", Number: 12}
 	repo.tickets["t-4"] = &Ticket{ID: "t-4", ProjectID: "p-4", Number: 12}
 	s := newTestService(repo)
 	tests := []struct {
-		name    string
-		in      string
-		wantID  string
-		wantErr error
+		name      string
+		workspace string
+		in        string
+		wantID    string
+		wantErr   error
+		wantMsg   string
 	}{
-		{"empty is invalid", " ", "", apperrs.ErrInvalid},
-		{"a key past the int range is invalid", "REF-99999999999999999999", "", apperrs.ErrInvalid},
-		{"a missing key is not found", "REF-7", "", apperrs.ErrNotFound},
-		{"a missing id is not found", "nope", "", apperrs.ErrNotFound},
-		{"by id", "t-1", "t-1", nil},
-		{"by key", "REF-102", "t-1", nil},
-		{"by a lowercase key", " ref-102 ", "t-1", nil},
-		{"by a key whose prefix has a digit", "P1-12", "t-2", nil},
-		{"by a lowercase key whose prefix has a digit", "p1-12", "t-2", nil},
-		{"a prefix starting with a digit is not a key", "1P-12", "", apperrs.ErrNotFound},
-		{"a six character prefix is not a key", "PHASE1-12", "", apperrs.ErrNotFound},
+		{name: "empty is invalid", in: " ", wantErr: apperrs.ErrInvalid},
+		{name: "a key past the int range is invalid", in: "REF-99999999999999999999", wantErr: apperrs.ErrInvalid},
+		{name: "a missing key is not found", in: "REF-7", wantErr: apperrs.ErrNotFound},
+		{name: "a missing id is not found", in: "nope", wantErr: apperrs.ErrNotFound},
+		{name: "by id", in: "t-1", wantID: "t-1"},
+		{name: "by key", in: "REF-102", wantID: "t-1"},
+		{name: "by a lowercase key", in: " ref-102 ", wantID: "t-1"},
+		{name: "by a key whose prefix has a digit", in: "P1-12", wantID: "t-2"},
+		{name: "by a lowercase key whose prefix has a digit", in: "p1-12", wantID: "t-2"},
+		{name: "a prefix starting with a digit is not a key", in: "1P-12", wantErr: apperrs.ErrNotFound},
+		{name: "a six character prefix is not a key", in: "PHASE1-12", wantErr: apperrs.ErrNotFound},
+		{name: "a key in two workspaces names both", in: "WEB-1", wantErr: apperrs.ErrConflict, wantMsg: "WEB-1 exists in otal and rixwave; pass workspace"},
+		{name: "a workspace slug picks one", workspace: "rixwave", in: "web-1", wantID: "t-rix"},
+		{name: "a workspace id picks one", workspace: "ws-otal", in: "WEB-1", wantID: "t-otal"},
+		{name: "a workspace without the key is not found", workspace: "default", in: "WEB-1", wantErr: apperrs.ErrNotFound},
+		{name: "a key twice in one workspace asks for the id", workspace: "otal", in: "WEB-2", wantErr: apperrs.ErrConflict, wantMsg: "WEB-2 matches more than one ticket in otal; use the ticket's id"},
+		{name: "an id ignores the workspace", workspace: "rixwave", in: "t-otal", wantID: "t-otal"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := s.Resolve(t.Context(), tt.in)
+			got, err := s.Resolve(t.Context(), tt.workspace, tt.in)
 			if tt.wantErr != nil {
 				require.ErrorIs(t, err, tt.wantErr)
+				assert.ErrorContains(t, err, tt.wantMsg)
 				return
 			}
 			require.NoError(t, err)

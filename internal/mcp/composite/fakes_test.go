@@ -230,14 +230,24 @@ func (r ticketRepo) GetByID(_ context.Context, id string) (*tickets.Ticket, erro
 	return &c, nil
 }
 
-func (r ticketRepo) GetByPrefixAndNumber(ctx context.Context, prefix string, number int) (*tickets.Ticket, error) {
+func (r ticketRepo) ListByKey(ctx context.Context, prefix string, number int) ([]tickets.KeyMatch, error) {
+	var out []tickets.KeyMatch
 	for _, id := range r.w.order {
 		l := r.w.linked(id)
-		if l != nil && l.Prefix == prefix && l.Number == number {
-			return r.GetByID(ctx, id)
+		if l == nil || l.Prefix != prefix || l.Number != number {
+			continue
 		}
+		t, err := r.GetByID(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		p, err := r.w.projects.get(t.ProjectID)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, tickets.KeyMatch{Ticket: t, WorkspaceID: p.WorkspaceID, WorkspaceSlug: p.WorkspaceID})
 	}
-	return nil, apperrs.ErrNotFound
+	return out, nil
 }
 
 func (r ticketRepo) filter(keep func(*tickets.Ticket) bool) []*tickets.Ticket {

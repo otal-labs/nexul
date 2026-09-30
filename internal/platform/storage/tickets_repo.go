@@ -98,25 +98,23 @@ func (r *TicketsRepo) GetByID(ctx context.Context, id string) (*tickets.Ticket, 
 	return t, nil
 }
 
-// GetByPrefixAndNumber resolves a ticket via its PREFIX-NUMBER display id; a key two tickets share is a conflict, never a guess.
-func (r *TicketsRepo) GetByPrefixAndNumber(ctx context.Context, prefix string, number int) (*tickets.Ticket, error) {
-	rows, err := r.q.GetTicketByPrefixAndNumber(ctx, sqlcgen.GetTicketByPrefixAndNumberParams{Prefix: prefix, Number: int64(number)})
+// ListByKey returns every ticket whose key is PREFIX-NUMBER, with its workspace, ordered by workspace slug.
+func (r *TicketsRepo) ListByKey(ctx context.Context, prefix string, number int) ([]tickets.KeyMatch, error) {
+	rows, err := r.q.ListTicketsByPrefixAndNumber(ctx, sqlcgen.ListTicketsByPrefixAndNumberParams{Prefix: prefix, Number: int64(number)})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("list tickets by key %s-%d: %w", prefix, number, err)
 	}
-	if len(rows) == 0 {
-		return nil, apperrs.ErrNotFound
+	out := make([]tickets.KeyMatch, 0, len(rows))
+	for _, row := range rows {
+		t := toTicket(row.Ticket)
+		labels, err := r.ListLabels(ctx, t.ID)
+		if err != nil {
+			return nil, err
+		}
+		t.Labels = labels
+		out = append(out, tickets.KeyMatch{Ticket: t, WorkspaceID: row.WorkspaceID, WorkspaceSlug: row.WorkspaceSlug})
 	}
-	if len(rows) > 1 {
-		return nil, fmt.Errorf("%w: key %s-%d matches more than one ticket; use the ticket's id", apperrs.ErrConflict, prefix, number)
-	}
-	t := toTicket(rows[0])
-	labels, err := r.ListLabels(ctx, t.ID)
-	if err != nil {
-		return nil, err
-	}
-	t.Labels = labels
-	return t, nil
+	return out, nil
 }
 
 func (r *TicketsRepo) List(ctx context.Context) ([]*tickets.Ticket, error) {

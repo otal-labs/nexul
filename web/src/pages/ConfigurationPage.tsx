@@ -6,7 +6,6 @@ import { isSettingsSection, SettingsNav } from "@/components/settings/SettingsNa
 import { SettingsPageContent } from "@/components/settings/SettingsPageContent";
 import { useConfigurationSections, useHasInstancePermission } from "@/hooks/AccessHooks";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
-import { movedConfigurationTarget } from "@/utils/SettingsRedirects";
 
 // Same section-per-view shape as ProjectSettingsPage: the :section path segment drives the card, SettingsNav lists sections.
 export const ConfigurationPage = () => {
@@ -23,14 +22,13 @@ export const ConfigurationPage = () => {
   const { search, hash } = useLocation();
   // Team with accounts:read is the instance-wide one on Settings; only a workspace manager's scoped Team stays here.
   const teamMoved = rawSection === "team" && teamIsInstanceWide ? `/settings/team${search}${hash}` : undefined;
-  const moved = movedConfigurationTarget(rawSection, search, hash) ?? teamMoved;
   // A section the viewer can't open (unknown, or gated away) falls back to the first they can; Danger zone is never gated, so it's the last resort.
   const fallback = sections.find((candidate) => candidate !== "danger") ?? "danger";
   const section = isSettingsSection(rawSection) && sections.includes(rawSection) ? rawSection : fallback;
 
   return (
     <Container className="mx-auto max-w-5xl py-10">
-      {moved && <Navigate to={moved} replace />}
+      {teamMoved && <Navigate to={teamMoved} replace />}
       <PageHeader
         className="mb-8"
         eyebrow="Workspace"

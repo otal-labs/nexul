@@ -8,6 +8,7 @@ import { MemoriesListPane } from "@/components/memory/MemoriesListPane";
 import { NoProjectsState } from "@/components/project/NoProjectsState";
 import { useFetchMemoriesByProject, useFetchMemory } from "@/hooks/MemoryHooks";
 import { useSidebarProject } from "@/hooks/useSidebarProject";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { memoryPath, projectTokenById } from "@/models/Project";
 
 // Lazy: the editor's tiptap stack loads only once a memory is open.
@@ -18,6 +19,7 @@ const MemoryPage = lazy(() => import("@/pages/MemoryPage").then((m) => ({ defaul
 export const MemoriesPage = () => {
   const { projectToken, memoryId } = useParams();
   const { projects, current } = useSidebarProject();
+  const wsPath = useWorkspacePath();
   const { data: memories, error, isPending } = useFetchMemoriesByProject(current?.id ?? "");
   const { data: bareMemory } = useFetchMemory(projectToken ? undefined : memoryId);
   const movedProjectId = bareMemory?.project_id ?? "";
@@ -25,7 +27,7 @@ export const MemoriesPage = () => {
   return (
     <div>
       {bareMemory && movedProjectId !== "" && projects && (
-        <Navigate replace to={memoryPath(projectTokenById(projects, movedProjectId), bareMemory.id)} />
+        <Navigate replace to={wsPath(memoryPath(projectTokenById(projects, movedProjectId), bareMemory.id))} />
       )}
       {projects && projects.length === 0 && (
         <div className="p-6">

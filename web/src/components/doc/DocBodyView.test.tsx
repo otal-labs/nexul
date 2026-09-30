@@ -37,7 +37,7 @@ beforeEach(() => {
   // MentionChip reads the selected workspace's template off the workspace list; the default renders like the old fixed chip.
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   vi.mocked(api.get).mockResolvedValue({
-    data: [{ id: "ws-1", name: "Acme", mention_chip_template: "{ticket.Ticket} {ticket.Status}", created_at: "", updated_at: "" }],
+    data: [{ id: "ws-1", name: "Acme", slug: "acme", mention_chip_template: "{ticket.Ticket} {ticket.Status}", created_at: "", updated_at: "" }],
   });
   vi.mocked(api.post).mockReset();
   publishChips(new Map());
@@ -79,7 +79,7 @@ describe("DocBodyView", () => {
     renderBody(structuredWithMention);
 
     const link = await screen.findByRole("link", { name: /Fix the bug/ });
-    expect(link).toHaveAttribute("href", "/tickets/t-1");
+    expect(link).toHaveAttribute("href", "/acme/tickets/t-1");
     expect(link).toHaveTextContent("Fix the bug In progress");
   });
 
@@ -99,7 +99,7 @@ describe("DocBodyView", () => {
     renderBody("per [Fix the bug](/tickets/t-1) now");
 
     const link = await screen.findByRole("link", { name: /Fix the bug/ });
-    expect(link).toHaveAttribute("href", "/tickets/t-1");
+    expect(link).toHaveAttribute("href", "/acme/tickets/t-1");
   });
 
   it("leaves external links as plain links", async () => {

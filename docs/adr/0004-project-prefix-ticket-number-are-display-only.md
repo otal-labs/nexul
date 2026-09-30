@@ -15,3 +15,5 @@ project's prefix later would silently break any reference already written
 into git history.
 
 Amended: a prefix is 2-5 characters, a letter followed by letters or digits (`P1`, `V2API`), not letters only.
+
+Amended by ADR 0089: a prefix is unique within its workspace, in the database as well as the use-case, so two workspaces may share one; a key names a ticket only together with its workspace, and every key lookup takes one.

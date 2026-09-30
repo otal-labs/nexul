@@ -205,7 +205,7 @@ describe("TicketCard", () => {
     renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
     await screen.findByText("REF-142");
     await user.click(screen.getByRole("button", { name: /Fix login/ }));
-    expect(mockNavigate).toHaveBeenCalledWith("/tickets/REF-142");
+    expect(mockNavigate).toHaveBeenCalledWith("/acme/tickets/REF-142");
   });
 
   it("navigates with the UUID before the project (and its prefix) has loaded", async () => {
@@ -213,7 +213,7 @@ describe("TicketCard", () => {
     vi.mocked(api.get).mockImplementation(() => new Promise(() => {}));
     renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
     await user.click(screen.getByRole("button", { name: /Fix login/ }));
-    expect(mockNavigate).toHaveBeenCalledWith("/tickets/t-1");
+    expect(mockNavigate).toHaveBeenCalledWith("/acme/tickets/t-1");
   });
 
   it("marks the whole card draggable for @dnd-kit sensors", () => {
@@ -229,7 +229,7 @@ describe("TicketCard", () => {
     await screen.findByText("REF-142");
     screen.getByRole("button", { name: /Fix login/ }).focus();
     await user.keyboard("{Enter}");
-    expect(mockNavigate).toHaveBeenCalledWith("/tickets/REF-142");
+    expect(mockNavigate).toHaveBeenCalledWith("/acme/tickets/REF-142");
   });
 
   it("still renders and stays clickable when prefers-reduced-motion is on", async () => {
@@ -239,7 +239,7 @@ describe("TicketCard", () => {
     renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} index={3} />);
     await screen.findByText("REF-142");
     await user.click(screen.getByRole("button", { name: /Fix login/ }));
-    expect(mockNavigate).toHaveBeenCalledWith("/tickets/REF-142");
+    expect(mockNavigate).toHaveBeenCalledWith("/acme/tickets/REF-142");
     vi.unstubAllGlobals();
   });
 

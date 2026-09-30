@@ -45,7 +45,7 @@ const renderSection = (collapsed = false) => {
         <ContextAwareConfirmation.ConfirmationRoot />
         <Routes>
           <Route path="/" element={<ChatSidebarSection collapsed={collapsed} />} />
-          <Route path="/chat/:conversationId" element={<div>chat-page</div>} />
+          <Route path="/acme/chat/:conversationId" element={<div>chat-page</div>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,

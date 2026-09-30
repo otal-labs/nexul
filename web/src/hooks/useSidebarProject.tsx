@@ -1,14 +1,14 @@
 import { useEffect } from "react";
-import { useLocation } from "react-router";
 
 import { useFetchProjects } from "@/hooks/ProjectHooks";
+import { useWorkspacePathname } from "@/hooks/useWorkspacePath";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { projectTokenFromPath, resolveProject } from "@/models/Project";
 
 // The project the sidebar shows: the one the URL is on, else the last one visited, else the first.
 export const useSidebarProject = () => {
   const { data: projects } = useFetchProjects();
-  const { pathname } = useLocation();
+  const pathname = useWorkspacePathname();
   const selectedProjectId = useWorkspaceStore((s) => s.selectedProjectId);
   const selectProject = useWorkspaceStore((s) => s.selectProject);
 

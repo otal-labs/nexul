@@ -31,12 +31,13 @@ func (q *Queries) AddWorkspaceMember(ctx context.Context, arg AddWorkspaceMember
 }
 
 const createWorkspace = `-- name: CreateWorkspace :exec
-INSERT INTO workspaces (id, name, mention_chip_template, created_at, updated_at) VALUES (?, ?, ?, ?, ?)
+INSERT INTO workspaces (id, name, slug, mention_chip_template, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)
 `
 
 type CreateWorkspaceParams struct {
 	ID                  string
 	Name                string
+	Slug                string
 	MentionChipTemplate string
 	CreatedAt           int64
 	UpdatedAt           int64
@@ -46,6 +47,7 @@ func (q *Queries) CreateWorkspace(ctx context.Context, arg CreateWorkspaceParams
 	_, err := q.db.ExecContext(ctx, createWorkspace,
 		arg.ID,
 		arg.Name,
+		arg.Slug,
 		arg.MentionChipTemplate,
 		arg.CreatedAt,
 		arg.UpdatedAt,
@@ -68,7 +70,7 @@ func (q *Queries) DeleteWorkspaceInvite(ctx context.Context, arg DeleteWorkspace
 }
 
 const getWorkspace = `-- name: GetWorkspace :one
-SELECT id, name, created_at, updated_at, mention_chip_template FROM workspaces WHERE id = ?
+SELECT id, name, created_at, updated_at, mention_chip_template, slug FROM workspaces WHERE id = ?
 `
 
 func (q *Queries) GetWorkspace(ctx context.Context, id string) (Workspace, error) {
@@ -80,6 +82,25 @@ func (q *Queries) GetWorkspace(ctx context.Context, id string) (Workspace, error
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.MentionChipTemplate,
+		&i.Slug,
+	)
+	return i, err
+}
+
+const getWorkspaceBySlug = `-- name: GetWorkspaceBySlug :one
+SELECT id, name, created_at, updated_at, mention_chip_template, slug FROM workspaces WHERE slug = ?
+`
+
+func (q *Queries) GetWorkspaceBySlug(ctx context.Context, slug string) (Workspace, error) {
+	row := q.db.QueryRowContext(ctx, getWorkspaceBySlug, slug)
+	var i Workspace
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.MentionChipTemplate,
+		&i.Slug,
 	)
 	return i, err
 }
@@ -328,7 +349,7 @@ func (q *Queries) ListWorkspaceMembers(ctx context.Context, workspaceID string) 
 }
 
 const listWorkspacesForUser = `-- name: ListWorkspacesForUser :many
-SELECT w.id, w.name, w.created_at, w.updated_at, w.mention_chip_template
+SELECT w.id, w.name, w.created_at, w.updated_at, w.mention_chip_template, w.slug
 FROM workspaces w
 JOIN workspace_members m ON m.workspace_id = w.id
 WHERE m.user_id = ?
@@ -350,6 +371,7 @@ func (q *Queries) ListWorkspacesForUser(ctx context.Context, userID string) ([]W
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.MentionChipTemplate,
+			&i.Slug,
 		); err != nil {
 			return nil, err
 		}
@@ -400,11 +422,12 @@ func (q *Queries) SetWorkspaceMemberRole(ctx context.Context, arg SetWorkspaceMe
 }
 
 const updateWorkspace = `-- name: UpdateWorkspace :execrows
-UPDATE workspaces SET name = ?, mention_chip_template = ?, updated_at = ? WHERE id = ?
+UPDATE workspaces SET name = ?, slug = ?, mention_chip_template = ?, updated_at = ? WHERE id = ?
 `
 
 type UpdateWorkspaceParams struct {
 	Name                string
+	Slug                string
 	MentionChipTemplate string
 	UpdatedAt           int64
 	ID                  string
@@ -413,6 +436,7 @@ type UpdateWorkspaceParams struct {
 func (q *Queries) UpdateWorkspace(ctx context.Context, arg UpdateWorkspaceParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, updateWorkspace,
 		arg.Name,
+		arg.Slug,
 		arg.MentionChipTemplate,
 		arg.UpdatedAt,
 		arg.ID,

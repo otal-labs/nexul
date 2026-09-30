@@ -75,6 +75,17 @@ func (f *fakeRepo) Get(_ context.Context, id string) (*Workspace, error) {
 	return w, nil
 }
 
+func (f *fakeRepo) GetBySlug(_ context.Context, slug string) (*Workspace, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, w := range f.workspaces {
+		if w.Slug == slug {
+			return w, nil
+		}
+	}
+	return nil, apperrs.ErrNotFound
+}
+
 func (f *fakeRepo) ListForUser(_ context.Context, userID string) ([]*Workspace, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -438,6 +449,22 @@ func TestCreate(t *testing.T) {
 		require.Len(t, got, 1)
 		assert.Equal(t, w.ID, got[0].ID)
 	})
+	t.Run("slug comes from the name and steps past taken and reserved slugs", func(t *testing.T) {
+		repo := newFakeRepo()
+		repo.workspaces["taken"] = &Workspace{ID: "taken", Slug: "acme-labs"}
+		s := newTestService(repo)
+		for _, tc := range []struct{ name, want string }{
+			{"Acme Labs", "acme-labs-2"},
+			{"Acme Labs", "acme-labs-3"},
+			{"Settings", "settings-2"},
+			{strings.Repeat("x", 60), strings.Repeat("x", 48)},
+			{strings.Repeat("x", 60), strings.Repeat("x", 46) + "-2"},
+		} {
+			w, err := s.Create(context.Background(), "u-1", tc.name)
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, w.Slug, tc.name)
+		}
+	})
 	t.Run("binds the creator to the workspace's owner role", func(t *testing.T) {
 		repo := newFakeRepo()
 		s := newTestService(repo)
@@ -481,15 +508,13 @@ func TestCreate(t *testing.T) {
 func TestRename(t *testing.T) {
 	t.Run("renames and bumps updated_at", func(t *testing.T) {
 		repo := newFakeRepo()
-		repo.workspaces[DefaultWorkspaceID] = &Workspace{ID: DefaultWorkspaceID, Name: "Default"}
-		wsPerms := newFakeWorkspacePermissionGate()
-		wsPerms.perms["u-1"] = []string{"workspaces:write"}
-		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), newFakeRoleNameGate(), wsPerms, newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{}, newFakeAccountGate())
-		s.now = func() time.Time { return fixedNow }
+		repo.workspaces[DefaultWorkspaceID] = &Workspace{ID: DefaultWorkspaceID, Name: "Default", Slug: "default"}
+		s := newRenamingService(repo)
 
-		ws, err := s.Rename(context.Background(), "u-1", DefaultWorkspaceID, "  Acme  ")
+		ws, err := s.Rename(context.Background(), "u-1", DefaultWorkspaceID, "  Acme  ", nil)
 		require.NoError(t, err)
 		assert.Equal(t, "Acme", ws.Name)
+		assert.Equal(t, "default", ws.Slug, "a rename without a slug keeps every link working")
 		assert.Equal(t, fixedNow.UTC(), ws.UpdatedAt)
 
 		got, err := s.Get(context.Background(), DefaultWorkspaceID)
@@ -500,16 +525,61 @@ func TestRename(t *testing.T) {
 		repo := newFakeRepo()
 		repo.workspaces[DefaultWorkspaceID] = &Workspace{ID: DefaultWorkspaceID, Name: "Default"}
 		s := newTestService(repo)
-		_, err := s.Rename(context.Background(), "u-1", DefaultWorkspaceID, "Acme")
+		_, err := s.Rename(context.Background(), "u-1", DefaultWorkspaceID, "Acme", nil)
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
 	})
 	t.Run("empty name is invalid", func(t *testing.T) {
 		s := newTestService(newFakeRepo())
-		_, err := s.Rename(context.Background(), "u-1", DefaultWorkspaceID, "  ")
+		_, err := s.Rename(context.Background(), "u-1", DefaultWorkspaceID, "  ", nil)
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 	})
+	for _, tc := range []struct {
+		name, slug string
+		want       error
+	}{
+		{"moves to a free slug", "acme", nil},
+		{"keeps its own slug", "default", nil},
+		{"refuses another workspace's slug", "other", apperrs.ErrConflict},
+		{"refuses a reserved path", "settings", apperrs.ErrInvalid},
+		{"refuses uppercase", "Acme", apperrs.ErrInvalid},
+		{"refuses a double dash", "acme--labs", apperrs.ErrInvalid},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := newFakeRepo()
+			repo.workspaces[DefaultWorkspaceID] = &Workspace{ID: DefaultWorkspaceID, Name: "Default", Slug: "default"}
+			repo.workspaces["ws-other"] = &Workspace{ID: "ws-other", Name: "Other", Slug: "other"}
+			ws, err := newRenamingService(repo).Rename(context.Background(), "u-1", DefaultWorkspaceID, "Acme", &tc.slug)
+			if tc.want != nil {
+				assert.ErrorIs(t, err, tc.want)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tc.slug, ws.Slug)
+		})
+	}
+}
+
+func newRenamingService(repo *fakeRepo) *Service {
+	wsPerms := newFakeWorkspacePermissionGate()
+	wsPerms.perms["u-1"] = []string{"workspaces:write"}
+	s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), newFakeRoleNameGate(), wsPerms, newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{}, newFakeAccountGate())
+	s.now = func() time.Time { return fixedNow }
+	return s
+}
+
+func TestSlugify(t *testing.T) {
+	for name, want := range map[string]string{
+		"Rixwave Labs!": "rixwave-labs",
+		"  OTAL  ":      "otal",
+		"Café Crème":    "caf-cr-me",
+		"!!!":           "workspace",
+		"a--b__c":       "a-b-c",
+		"Team 2":        "team-2",
+	} {
+		assert.Equal(t, want, Slugify(name), name)
+	}
 }
 
 func TestBindDefaultWorkspaceOwner(t *testing.T) {

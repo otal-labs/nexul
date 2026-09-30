@@ -15,6 +15,7 @@ import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useDiscoverMachine, useFetchMachines, useImportMachine } from "@/hooks/MachineHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { useImportSelection } from "@/hooks/useImportSelection";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import type { GroupedDiscovery, ImportResult } from "@/models/Machine";
 import { NEW_PROJECT_PATH } from "@/models/Project";
 
@@ -24,6 +25,7 @@ import { NEW_PROJECT_PATH } from "@/models/Project";
 export const ProjectWizardImportPage = () => {
   const [searchParams] = useSearchParams();
   const canOpenTopology = useAreaAccess()?.("topology") ?? false;
+  const wsPath = useWorkspacePath();
   const [machineId, setMachineId] = useState(() => searchParams.get("machine") ?? "");
   const [projectId, setProjectId] = useState("");
   const [report, setReport] = useState<GroupedDiscovery | null>(null);
@@ -137,7 +139,7 @@ export const ProjectWizardImportPage = () => {
             {projects && projects.length === 0 && (
               <p className="text-sm text-muted-foreground">
                 Adopted stacks belong to a project.{" "}
-                <Link to={NEW_PROJECT_PATH} className="text-foreground underline underline-offset-2">
+                <Link to={wsPath(NEW_PROJECT_PATH)} className="text-foreground underline underline-offset-2">
                   Create a project
                 </Link>{" "}
                 first.
@@ -171,7 +173,7 @@ export const ProjectWizardImportPage = () => {
             ))}
             {canOpenTopology && (
               <Button asChild>
-                <Link to="/topology">View on the canvas</Link>
+                <Link to={wsPath("/topology")}>View on the canvas</Link>
               </Button>
             )}
           </div>

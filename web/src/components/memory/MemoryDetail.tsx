@@ -11,6 +11,7 @@ import { MemoryVersionsFeed } from "@/components/memory/MemoryVersionsFeed";
 import { PageTabs, PageTabsContent } from "@/components/PageTabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { isDecisionsLogMemory, isInterviewMemory, isWorkspaceMemory, type Memory } from "@/models/Memory";
 import { bodyToMarkdown } from "@/utils/RichtextUtility";
 
@@ -30,6 +31,7 @@ export const MemoryDetail = ({ memory, canWrite, canDelete, canClone, onSave, on
   const [whenToUse, setWhenToUse] = useState(memory.when_to_use);
   const [body, setBody] = useState(memory.body);
   const [cloneOpen, setCloneOpen] = useState(false);
+  const wsPath = useWorkspacePath();
   const interview = isInterviewMemory(memory);
   const decisionsLog = isDecisionsLogMemory(memory);
   const interviewLength = useMemo(() => (interview ? bodyToMarkdown(body).length : 0), [interview, body]);
@@ -41,7 +43,7 @@ export const MemoryDetail = ({ memory, canWrite, canDelete, canClone, onSave, on
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Link
-            to="/memories"
+            to={wsPath("/memories")}
             className="font-mono text-xs lg:hidden text-muted-foreground transition-colors duration-150 ease-standard hover:text-foreground"
           >
             ← All memories

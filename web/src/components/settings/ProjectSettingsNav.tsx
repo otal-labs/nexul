@@ -1,4 +1,5 @@
 import { SettingsSectionNav } from "@/components/settings/SettingsSectionNav";
+import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { projectSettingsPath, projectToken, type Project } from "@/models/Project";
 
 export const PROJECT_SETTINGS_SECTIONS = [
@@ -33,15 +34,18 @@ interface ProjectSettingsNavProps {
   active: ProjectSettingsSection;
 }
 
-export const ProjectSettingsNav = ({ project, active }: ProjectSettingsNavProps) => (
-  <SettingsSectionNav
-    ariaLabel="Project settings sections"
-    basePath={projectSettingsPath(projectToken(project))}
-    active={active}
-    items={PROJECT_SETTINGS_SECTIONS.map((section) => ({
-      section,
-      label: sectionLabels[section],
-      danger: section === "danger",
-    }))}
-  />
-);
+export const ProjectSettingsNav = ({ project, active }: ProjectSettingsNavProps) => {
+  const wsPath = useWorkspacePath();
+  return (
+    <SettingsSectionNav
+      ariaLabel="Project settings sections"
+      basePath={wsPath(projectSettingsPath(projectToken(project)))}
+      active={active}
+      items={PROJECT_SETTINGS_SECTIONS.map((section) => ({
+        section,
+        label: sectionLabels[section],
+        danger: section === "danger",
+      }))}
+    />
+  );
+};

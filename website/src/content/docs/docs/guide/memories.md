@@ -11,7 +11,7 @@ are not listed with docs.
 
 ## Scope and use
 
-Open **Memories** under the project in the sidebar (`/memories`). The list puts
+Open **Memories** under the project in the sidebar (`/<workspace>/memories`). The list puts
 always-included memories first under **Pinned**; each row's switch turns
 **Always included in every turn** on or off at once, and hovering a row shows
 **Clone** and a menu with **Delete**. The **New memory** dialog has a **Project**
@@ -41,7 +41,7 @@ through the `skill_get` tool.
 
 Each project has one **interview memory**: its stack, paradigm, testing
 strategy, principles, and vocabulary, written as rules. Open it from
-**Interview** under the project in the sidebar (`/projects/<prefix>/interview`).
+**Interview** under the project in the sidebar (`/<workspace>/projects/<prefix>/interview`).
 Until it exists the page offers **Start from the template**, which copies the
 workspace's Interview template into a new interview memory. The page's
 **Run the interview** button runs the workspace's Interview play instead: an

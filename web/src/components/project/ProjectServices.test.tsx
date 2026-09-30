@@ -55,7 +55,7 @@ beforeEach(() => {
 describe("ProjectServices", () => {
   it("lists services scoped to the project", async () => {
     renderServices();
-    expect(await screen.findByRole("link", { name: /api/ })).toHaveAttribute("href", "/services/svc-1");
+    expect(await screen.findByRole("link", { name: /api/ })).toHaveAttribute("href", "/acme/stacks/svc-1");
   });
 
   it("shows an empty state when there are no services", async () => {
@@ -69,7 +69,7 @@ describe("ProjectServices", () => {
     renderServices([]);
     expect(await screen.findByRole("link", { name: /new service/i })).toHaveAttribute(
       "href",
-      "/wizard/project/repository?project=p-1",
+      "/acme/wizard/project/repository?project=p-1",
     );
   });
 

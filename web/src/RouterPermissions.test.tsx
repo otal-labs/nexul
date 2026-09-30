@@ -33,8 +33,15 @@ const mockApi = (anywhere: string[], permissions: string[]) =>
     if (url === "/api/auth/me") {
       return { data: { user, needs_owner_wizard: false, needs_first_login_wizard: false, instance_permissions: anywhere } };
     }
-    if (url === "/api/workspaces") return { data: [{ id: "ws-1", name: "Acme", created_at: "", updated_at: "" }] };
-    if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions } };
+    if (url === "/api/workspaces") {
+      return {
+        data: [
+          { id: "ws-1", name: "Acme", slug: "acme", created_at: "", updated_at: "" },
+          { id: "ws-2", name: "Otal", slug: "otal", created_at: "", updated_at: "" },
+        ],
+      };
+    }
+    if (url === "/api/workspaces/ws-1/me" || url === "/api/workspaces/ws-2/me") return { data: { role_name: "Member", permissions } };
     if (url === "/api/team") throw forbidden;
     if (url === "/api/automations/a-1") throw forbidden;
     return { data: [] };
@@ -58,17 +65,17 @@ beforeEach(() => {
 
 describe("route permissions", () => {
   it.each([
-    { path: "/runners", anywhere: [], permissions: [], page: null },
-    { path: "/runners", anywhere: [], permissions: ["runners:read"], page: "Runners" },
-    { path: "/topology", anywhere: [], permissions: ["runners:read"], page: null },
-    { path: "/automations", anywhere: [], permissions: ["runners:read"], page: null },
-    { path: "/board", anywhere: [], permissions: ["chat:read"], page: null },
-    { path: "/configuration", anywhere: [], permissions: ["chat:read"], page: null },
-    { path: "/configuration", anywhere: [], permissions: ["roles:write"], page: "Configuration" },
-    { path: "/configuration", anywhere: ["instance:read"], permissions: [], page: null },
-    { path: "/configuration", anywhere: ["members:write"], permissions: [], page: "Configuration" },
+    { path: "/acme/runners", anywhere: [], permissions: [], page: null },
+    { path: "/acme/runners", anywhere: [], permissions: ["runners:read"], page: "Runners" },
+    { path: "/acme/topology", anywhere: [], permissions: ["runners:read"], page: null },
+    { path: "/acme/automations", anywhere: [], permissions: ["runners:read"], page: null },
+    { path: "/acme/board", anywhere: [], permissions: ["chat:read"], page: null },
+    { path: "/acme/configuration", anywhere: [], permissions: ["chat:read"], page: null },
+    { path: "/acme/configuration", anywhere: [], permissions: ["roles:write"], page: "Configuration" },
+    { path: "/acme/configuration", anywhere: ["instance:read"], permissions: [], page: null },
+    { path: "/acme/configuration", anywhere: ["members:write"], permissions: [], page: "Configuration" },
     { path: "/settings", anywhere: ["connectors:read"], permissions: [], page: "Settings" },
-    { path: "/inbox", anywhere: [], permissions: [], page: "Inbox" },
+    { path: "/acme/inbox", anywhere: [], permissions: [], page: "Inbox" },
   ])("$path with $permissions (anywhere: $anywhere) opens $page", async ({ path, anywhere, permissions, page }) => {
     mockApi(anywhere, permissions);
     renderAt(path);
@@ -83,8 +90,38 @@ describe("route permissions", () => {
 
   it("a deep link to an item the server refuses lands on not-found", async () => {
     mockApi([], ["automations:read"]);
-    renderAt("/automations/a-1");
+    renderAt("/acme/automations/a-1");
 
     expect(await screen.findByRole("heading", { name: "Page not found" })).toBeInTheDocument();
+  });
+});
+
+describe("workspace URLs", () => {
+  const everything = ["tickets:read", "docs:read", "memories:read", "runners:read", "topology:read", "roles:write"];
+
+  it("opens the selected workspace's home from /", async () => {
+    mockApi([], everything);
+    renderAt("/");
+
+    expect(await screen.findByRole("link", { name: "Open the board" })).toHaveAttribute("href", "/acme/board");
+    expect(window.location.pathname).toBe("/acme");
+  });
+
+  it.each(["/board", "/tickets/WEB-1", "/configuration/connectors", "/inbox", "/nope/board"])(
+    "%s is not found: old unprefixed paths and unknown slugs have no page",
+    async (path) => {
+      mockApi(["connectors:read"], everything);
+      renderAt(path);
+
+      expect(await screen.findByRole("heading", { name: "Page not found" })).toBeInTheDocument();
+    },
+  );
+
+  it("selects the workspace the URL names", async () => {
+    mockApi([], everything);
+    renderAt("/otal/inbox");
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Inbox" })).toBeInTheDocument();
+    expect(useWorkspaceStore.getState()).toMatchObject({ selectedWorkspaceId: "ws-2", selectedWorkspaceSlug: "otal" });
   });
 });
