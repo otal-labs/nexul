@@ -1,7 +1,9 @@
+import { HarnessProviderMark } from "@/components/model/HarnessProviderMark";
 import { ModelChoice } from "@/components/model/ModelChoice";
 import { Switch } from "@/components/ui/switch";
 
 import type { OptionSetting, SetupModelChoice } from "@/models/Pairing";
+import { cn } from "@/lib/utils";
 
 interface SetupModelPickProps {
   choice: SetupModelChoice;
@@ -17,6 +19,7 @@ interface SetupModelPickProps {
 const SetupModelPick = ({ choice, value, options, included, disabled, onPick, onOptions, onInclude }: SetupModelPickProps) => (
   <div className="flex min-w-0 items-center gap-2.5">
     <Switch aria-label={choice.name} checked={included} onCheckedChange={(on) => onInclude(choice.provider, on)} disabled={disabled} />
+    <HarnessProviderMark driver={choice.instance.driver} className={cn("size-4 shrink-0", !included && "opacity-50")} />
     <ModelChoice
       providers={[choice.instance]}
       value={{ provider: choice.instance.id, model: value }}
