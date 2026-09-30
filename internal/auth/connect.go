@@ -19,7 +19,6 @@ const (
 	connectCodeTTL      = 2 * time.Minute
 	exchangeMaxFailures = 5
 	exchangeWindow      = 10 * time.Minute
-	phonePlatform       = "Android"
 )
 
 var (
@@ -78,7 +77,15 @@ func (s *Service) ExchangeConnectCode(ctx context.Context, addr, code string, de
 	}
 	label := phoneLabel(dev.Model)
 	logging.FromCtx(ctx).Info("phone connected", "user_id", userID, "model", label, "os", dev.OS, "app_version", dev.AppVersion)
-	return s.CreateSession(WithDevice(ctx, Device{Client: ClientPhone, Platform: phonePlatform, Label: label, IP: addr}), userID)
+	return s.CreateSession(WithDevice(ctx, Device{Client: ClientPhone, Platform: phonePlatform(dev.OS), Label: label, IP: addr}), userID)
+}
+
+// phonePlatform names the phone's system from the OS it reports; only an iPhone says iOS.
+func phonePlatform(os string) string {
+	if strings.HasPrefix(os, "iOS") {
+		return "iOS"
+	}
+	return "Android"
 }
 
 func newConnectCode() (string, error) {

@@ -120,6 +120,14 @@ func TestExchangeConnectCode(t *testing.T) {
 		assert.Equal(t, s.cfg.Now().Add(phoneSessionTTL), ses.ExpiresAt)
 	})
 
+	t.Run("an iPhone is named iOS, not Android", func(t *testing.T) {
+		token, err := s.ExchangeConnectCode(context.Background(), "203.0.113.5", issue(t), ConnectDevice{Model: "iPhone 13 Pro", OS: "iOS 26.1"})
+		require.NoError(t, err)
+		_, ses, err := s.AuthenticateSession(context.Background(), token, "")
+		require.NoError(t, err)
+		assert.Equal(t, "iOS", ses.Platform)
+	})
+
 	t.Run("a nameless phone is still labelled", func(t *testing.T) {
 		token, err := s.ExchangeConnectCode(context.Background(), "203.0.113.4", issue(t), ConnectDevice{Model: "  "})
 		require.NoError(t, err)
