@@ -40,3 +40,36 @@ describe("richBodyToMarkdown", () => {
     expect(richBodyToMarkdown("Just plain text")).toBe("Just plain text");
   });
 });
+
+describe("richBodyToMarkdown person mentions", () => {
+  const body = JSON.stringify({
+    type: "doc",
+    content: [
+      {
+        type: "bulletList",
+        content: [
+          {
+            type: "listItem",
+            content: [
+              {
+                type: "paragraph",
+                content: [
+                  { type: "text", text: "ask " },
+                  { type: "mention", attrs: { type: "person", id: "u-rix", label: "rixwavedev" } },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
+
+  test("names the person by what People says now, not the saved id", () => {
+    expect(richBodyToMarkdown(body, (id) => (id === "u-rix" ? "Rix Wave" : undefined))).toBe("- ask **@Rix Wave**");
+  });
+
+  test("keeps the saved login until People loads", () => {
+    expect(richBodyToMarkdown(body)).toBe("- ask **@rixwavedev**");
+  });
+});
