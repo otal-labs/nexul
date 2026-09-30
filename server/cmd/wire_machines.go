@@ -81,6 +81,34 @@ func (a deployMachineDiscovererAdapter) DiscoverContainers(ctx context.Context, 
 	return out, nil
 }
 
+// deployLogSourceAdapter adapts the runner WS handler's log streams to deploy's LogSource seam (ADR 0017).
+type deployLogSourceAdapter struct {
+	handler *runner.Handler
+}
+
+func (a deployLogSourceAdapter) OpenLogs(ctx context.Context, machine, container string, tail int, follow bool) (deploy.LogFeed, error) {
+	feed, err := a.handler.OpenLogs(ctx, machine, container, tail, follow)
+	if err != nil {
+		return nil, err
+	}
+	return runnerLogFeed{feed: feed}, nil
+}
+
+type runnerLogFeed struct {
+	feed *runner.LogFeed
+}
+
+func (f runnerLogFeed) Next(ctx context.Context) ([]deploy.ContainerLogLine, error) {
+	lines, err := f.feed.Next(ctx)
+	out := make([]deploy.ContainerLogLine, len(lines))
+	for i, l := range lines {
+		out[i] = deploy.ContainerLogLine(l)
+	}
+	return out, err
+}
+
+func (f runnerLogFeed) Close() { f.feed.Close() }
+
 // runnerHostKind adapts the runner use-cases to the shared host_create and host_delete MCP tools.
 type runnerHostKind struct {
 	svc *runner.Service

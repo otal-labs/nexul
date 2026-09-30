@@ -179,6 +179,7 @@ func TestRequireAuth_SetupPass(t *testing.T) {
 		{"projects are off the allowlist: first run has none", http.MethodGet, "/api/projects", mustSetupPass, nil, http.StatusUnauthorized},
 		{"service deploys", http.MethodGet, "/api/services/s1/deploys", mustSetupPass, nil, http.StatusOK},
 		{"deploy log", http.MethodGet, "/api/deploys/d1/log", mustSetupPass, nil, http.StatusOK},
+		{"container logs are off the allowlist", http.MethodGet, "/api/stacks/s1/services/web/logs", mustSetupPass, nil, http.StatusUnauthorized},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -206,9 +207,11 @@ func TestRequireAuth_SetupPass(t *testing.T) {
 func TestRequireWS_RefusesSetupPass(t *testing.T) {
 	s, _, _, _ := newTestHarness(&fakeGitHub{})
 	h := s.RequireWS(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/ws/events?token="+mustSetupPass(t, s), nil))
-	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	for _, path := range []string{"/ws/events", "/ws/stacks/s1/services/web/logs"} {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path+"?token="+mustSetupPass(t, s), nil))
+		assert.Equal(t, http.StatusUnauthorized, rec.Code, path)
+	}
 }
 
 func TestService_WriteSetupCode(t *testing.T) {

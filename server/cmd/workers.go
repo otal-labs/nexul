@@ -42,6 +42,7 @@ func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *stor
 	})
 	// dns can only join a connected runner's gateway once the WS handler exists (workers start after core services).
 	svc.dnsSvc.SetRunnerJoin(dnsRunnerJoinAdapter{handler: wsHandler})
+	svc.deploySvc.SetLogSource(deployLogSourceAdapter{handler: wsHandler})
 	releaseClient := release.New(release.Config{
 		TokenSource: func(ctx context.Context) (string, error) {
 			return svc.connectorsSvc.AccessToken(ctx, "github")

@@ -26,3 +26,7 @@ Amended 2026-09-29: `docs:clone` joins them, for the same reason as
 `memories:clone`. Copying a doc into another project needs it on the source,
 beside `docs:read`, and `docs:write` in the destination project. Nobody held a
 doc clone before, so no role is backfilled.
+
+Amended 2026-09-30: `stacks:logs` joins them (ADR 0090). A container's output carries secrets a stack reader should
+not see, so reading it is neither `stacks:read` nor editing the stack. Every role that held `stacks:write` was
+backfilled with it.

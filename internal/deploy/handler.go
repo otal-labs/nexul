@@ -1,8 +1,18 @@
 package deploy
 
 import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
 	"net/http"
+	"strconv"
+	"time"
 
+	"github.com/coder/websocket"
+	"github.com/coder/websocket/wsjson"
+
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/httpx"
 )
 
@@ -44,6 +54,93 @@ func (h *Handler) mountStackRoutes(mux *httpx.ServeMux, prefix string) {
 	mux.HandleFunc("POST "+prefix+"/{id}/rollback", h.rollback)
 	mux.HandleFunc("GET "+prefix+"/{id}/deploys", h.listStackDeploys)
 	mux.HandleFunc("GET "+prefix+"/{id}/services", h.listServices)
+	mux.HandleFunc("GET "+prefix+"/{id}/services/{name}/logs", h.serviceLogs)
+}
+
+// logLines is the body of the snapshot route and of every live socket message.
+type logLines struct {
+	Lines []ContainerLogLine `json:"lines"`
+}
+
+func (h *Handler) serviceLogs(w http.ResponseWriter, r *http.Request) {
+	tail, err := logTail(r)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	lines, err := h.svc.ServiceLogSnapshot(r.Context(), r.PathValue("id"), r.PathValue("name"), tail)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, logLines{Lines: lines})
+}
+
+// logsWriteTimeout drops a viewer whose socket has not taken one message in this long.
+const logsWriteTimeout = 10 * time.Second
+
+// LogsSocket serves one viewer's live tail; closing the socket stops `docker logs` on the runner (ADR 0090).
+func (h *Handler) LogsSocket(w http.ResponseWriter, r *http.Request) {
+	tail, err := logTail(r)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	feed, err := h.svc.ServiceLogs(r.Context(), r.PathValue("id"), r.PathValue("name"), tail, true)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	defer feed.Close()
+	conn, err := websocket.Accept(w, r, nil)
+	if err != nil {
+		return
+	}
+	ctx := conn.CloseRead(r.Context())
+	for {
+		lines, err := feed.Next(ctx)
+		if err != nil {
+			closeLogsSocket(conn, err)
+			return
+		}
+		writeCtx, cancel := context.WithTimeout(ctx, logsWriteTimeout)
+		err = wsjson.Write(writeCtx, conn, logLines{Lines: lines})
+		cancel()
+		if err != nil {
+			_ = conn.CloseNow() // the viewer is gone or stuck; nothing is left to tell it
+			return
+		}
+	}
+}
+
+// closeLogsSocket tells the viewer why its stream ended; a close frame's reason is capped at 123 bytes.
+func closeLogsSocket(conn *websocket.Conn, err error) {
+	if errors.Is(err, io.EOF) {
+		_ = conn.Close(websocket.StatusNormalClosure, "the stream ended")
+		return
+	}
+	if errors.Is(err, context.Canceled) {
+		_ = conn.CloseNow() // the viewer closed first
+		return
+	}
+	reason := err.Error()
+	if len(reason) > 120 {
+		reason = reason[:120]
+	}
+	_ = conn.Close(websocket.StatusTryAgainLater, reason)
+}
+
+// logTail reads ?tail=, defaulting to DefaultLogTail; the runner caps it.
+func logTail(r *http.Request) (int, error) {
+	raw := r.URL.Query().Get("tail")
+	if raw == "" {
+		return DefaultLogTail, nil
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil {
+		return 0, fmt.Errorf("%w: tail must be a whole number of lines", apperrs.ErrInvalid)
+	}
+	return n, nil
 }
 
 func (h *Handler) deploy(w http.ResponseWriter, r *http.Request) {
