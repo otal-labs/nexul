@@ -5,7 +5,7 @@ package mcp
 const instructions = `Nexul is a self-hosted workspace where docs, tickets, chat, and deploys live together. These tools act as the signed-in user, with that user's permissions.
 
 Tool families, named object_verb:
-- Planning: workspace_list (the workspace ids other tools need), project_* (project_get lists a project's statuses, categories, ticket types, labels, and repositories), ticket_*, doc_*, memory_*.
+- Planning: workspace_list (the workspace ids other tools need) and workspace_update, project_* (project_get lists a project's statuses, categories, ticket types, labels, and repositories), ticket_*, doc_*, memory_*.
 - Conversation: conversation_list, message_list, message_post, mention_search, notification_*.
 - Shipping: stack_* (a stack is what gets deployed), deploy_*, machine_*, gateway_*, exposure_*, dns_*, topology_*, repository_*, pull_request_*.
 - Agents and automation: play_*, trail_* (a trail is the record of one play run), automation_*, computer_* (paired computers and their setup).

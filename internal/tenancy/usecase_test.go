@@ -52,13 +52,14 @@ func (f *fakeRepo) Create(_ context.Context, w *Workspace) error {
 	return nil
 }
 
-func (f *fakeRepo) Update(_ context.Context, w *Workspace) error {
+func (f *fakeRepo) Update(_ context.Context, w *Workspace, events ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if _, ok := f.workspaces[w.ID]; !ok {
 		return apperrs.ErrNotFound
 	}
 	f.workspaces[w.ID] = w
+	f.events = append(f.events, events...)
 	return nil
 }
 
@@ -511,7 +512,7 @@ func TestRename(t *testing.T) {
 		repo.workspaces[DefaultWorkspaceID] = &Workspace{ID: DefaultWorkspaceID, Name: "Default", Slug: "default"}
 		s := newRenamingService(repo)
 
-		ws, err := s.Rename(context.Background(), "u-1", DefaultWorkspaceID, "  Acme  ", nil)
+		ws, err := s.Rename(context.Background(), "u-1", DefaultWorkspaceID, ptr("  Acme  "), nil)
 		require.NoError(t, err)
 		assert.Equal(t, "Acme", ws.Name)
 		assert.Equal(t, "default", ws.Slug, "a rename without a slug keeps every link working")
@@ -525,13 +526,13 @@ func TestRename(t *testing.T) {
 		repo := newFakeRepo()
 		repo.workspaces[DefaultWorkspaceID] = &Workspace{ID: DefaultWorkspaceID, Name: "Default"}
 		s := newTestService(repo)
-		_, err := s.Rename(context.Background(), "u-1", DefaultWorkspaceID, "Acme", nil)
+		_, err := s.Rename(context.Background(), "u-1", DefaultWorkspaceID, ptr("Acme"), nil)
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
 	})
 	t.Run("empty name is invalid", func(t *testing.T) {
 		s := newTestService(newFakeRepo())
-		_, err := s.Rename(context.Background(), "u-1", DefaultWorkspaceID, "  ", nil)
+		_, err := s.Rename(context.Background(), "u-1", DefaultWorkspaceID, ptr("  "), nil)
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 	})
@@ -550,7 +551,7 @@ func TestRename(t *testing.T) {
 			repo := newFakeRepo()
 			repo.workspaces[DefaultWorkspaceID] = &Workspace{ID: DefaultWorkspaceID, Name: "Default", Slug: "default"}
 			repo.workspaces["ws-other"] = &Workspace{ID: "ws-other", Name: "Other", Slug: "other"}
-			ws, err := newRenamingService(repo).Rename(context.Background(), "u-1", DefaultWorkspaceID, "Acme", &tc.slug)
+			ws, err := newRenamingService(repo).Rename(context.Background(), "u-1", DefaultWorkspaceID, ptr("Acme"), &tc.slug)
 			if tc.want != nil {
 				assert.ErrorIs(t, err, tc.want)
 				return
@@ -560,6 +561,45 @@ func TestRename(t *testing.T) {
 		})
 	}
 }
+
+func TestRename_PublishesOnlyWhenSomethingChanges(t *testing.T) {
+	seed := func() *fakeRepo {
+		repo := newFakeRepo()
+		repo.workspaces[DefaultWorkspaceID] = &Workspace{ID: DefaultWorkspaceID, Name: "Default", Slug: "default"}
+		return repo
+	}
+	for _, tc := range []struct {
+		name       string
+		newName    *string
+		newSlug    *string
+		wantEvents []any
+	}{
+		{"a new name", ptr("Acme"), nil, []any{WorkspaceEvent{WorkspaceID: DefaultWorkspaceID, Name: "Acme", Slug: "default", ActorID: "u-1"}}},
+		{"a new slug alone keeps the name", nil, ptr("acme"), []any{WorkspaceEvent{WorkspaceID: DefaultWorkspaceID, Name: "Default", Slug: "acme", ActorID: "u-1"}}},
+		{"the same name and slug is a no-op", ptr(" Default "), ptr("default"), nil},
+		{"an empty patch is a no-op", nil, nil, nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := seed()
+			_, err := newRenamingService(repo).Rename(context.Background(), "u-1", DefaultWorkspaceID, tc.newName, tc.newSlug)
+			require.NoError(t, err)
+			var got []any
+			for _, e := range repo.events {
+				assert.Equal(t, TopicWorkspaceUpdated, e.Topic)
+				got = append(got, e.Payload)
+			}
+			assert.Equal(t, tc.wantEvents, got)
+		})
+	}
+	t.Run("a refused slug publishes nothing", func(t *testing.T) {
+		repo := seed()
+		_, err := newRenamingService(repo).Rename(context.Background(), "u-1", DefaultWorkspaceID, nil, ptr("settings"))
+		require.ErrorIs(t, err, apperrs.ErrInvalid)
+		assert.Empty(t, repo.events)
+	})
+}
+
+func ptr[T any](v T) *T { return &v }
 
 func newRenamingService(repo *fakeRepo) *Service {
 	wsPerms := newFakeWorkspacePermissionGate()

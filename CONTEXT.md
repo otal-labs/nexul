@@ -26,8 +26,9 @@ _Avoid_: Organization, tenant, team (the Team is the instance's people)
 **Workspace slug**:
 The workspace's name in every URL of its pages (`/otal/board`): lowercase
 letters and digits joined by dashes, unique on the instance, derived from the
-name at creation and kept through a rename unless changed on purpose. The URL
-decides which workspace is on screen.
+name at creation and kept through a rename unless changed on purpose, in
+Configuration → General or by `workspace_update`; old links then stop working
+and are not redirected. The URL decides which workspace is on screen.
 _Avoid_: Workspace key, handle, subdomain
 
 **Project**:

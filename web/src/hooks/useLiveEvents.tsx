@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useLocation, useNavigate } from "react-router";
 
 import { CanvasSchema } from "@/models/Topology";
 import {
@@ -13,7 +14,7 @@ import { getDnsExposuresKey, getDnsGatewaysKey } from "@/hooks/DnsHooks";
 import { getDocKey, getDocsKey } from "@/hooks/DocHooks";
 import { getInstanceUpgradeKey } from "@/hooks/InstanceUpgradeHooks";
 import { getWorkspacePeopleKey } from "@/hooks/PeopleHooks";
-import { getWorkspacesKey } from "@/hooks/WorkspaceHooks";
+import { followWorkspaceUpdate, getWorkspacesKey } from "@/hooks/WorkspaceHooks";
 import { getTeamKey } from "@/models/Team";
 import { getMemoriesKey, getMemoryKey, getMemoryVersionsKey } from "@/hooks/MemoryHooks";
 import { getNotificationsKey, getUnreadCountKey } from "@/hooks/NotificationHooks";
@@ -53,6 +54,7 @@ import { useSetupActivityStore } from "@/stores/setupActivityStore";
 import { useVoiceOccupancyStore } from "@/stores/voiceOccupancyStore";
 import { isTrailActive, type ActivityKind, type RunFrame } from "@/models/Trail";
 import type { VoiceOccupant } from "@/models/Voice";
+import type { WorkspaceUpdate } from "@/models/Workspace";
 
 // Maps push topics to the queries they invalidate.
 const pushTopics: Record<string, string[]> = {
@@ -180,7 +182,11 @@ interface OccupancyChangedPayload {
   occupants: VoiceOccupant[];
 }
 
-const dispatch = (client: ReturnType<typeof useQueryClient>) => (frame: ServerFrame) => {
+const dispatch = (client: ReturnType<typeof useQueryClient>, onWorkspaceUpdated: (update: WorkspaceUpdate) => void) => (frame: ServerFrame) => {
+  if (frame.topic === "workspace.updated") {
+    onWorkspaceUpdated(frame.payload as WorkspaceUpdate);
+    return;
+  }
   if (frame.topic === "topology") {
     const parsed = CanvasSchema.safeParse(frame.payload);
     if (parsed.success) useFlowStore.getState().applyServerPatch(parsed.data);
@@ -267,6 +273,13 @@ const dispatch = (client: ReturnType<typeof useQueryClient>) => (frame: ServerFr
 export const useLiveEvents = (url: string | null, opts: LiveEventsClientOptions = {}) => {
   const client = useQueryClient();
   const optsRef = useRef(opts);
+  const navigate = useNavigate();
+  const location = useLocation();
+  // The socket outlives every render, so a workspace rename reads the router's latest state from here.
+  const routerRef = useRef({ navigate, location });
+  useEffect(() => {
+    routerRef.current = { navigate, location };
+  });
 
   useEffect(() => {
     if (!url) return;
@@ -277,7 +290,9 @@ export const useLiveEvents = (url: string | null, opts: LiveEventsClientOptions 
         void notifyIfServerUpdated(client);
       },
     });
-    const unsubscribe = events.subscribe(dispatch(client));
+    const unsubscribe = events.subscribe(
+      dispatch(client, (update) => followWorkspaceUpdate(client, routerRef.current.navigate, routerRef.current.location, update)),
+    );
     events.connect();
     return () => {
       unsubscribe();

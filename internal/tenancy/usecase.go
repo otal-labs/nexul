@@ -105,15 +105,15 @@ func (s *Service) freeSlug(ctx context.Context, base string) (string, error) {
 	}
 }
 
-// Rename requires workspaces:write in the workspace being renamed. The slug changes only when slug is non-nil,
-// so links keep working through a rename unless the caller moves them on purpose.
-func (s *Service) Rename(ctx context.Context, userID, id, name string, slug *string) (*Workspace, error) {
+// Rename changes the name, the slug, or both, and requires workspaces:write in the workspace. A nil field is kept, so
+// links keep working through a rename unless the caller moves them on purpose; a change that alters neither is a no-op
+// that publishes nothing.
+func (s *Service) Rename(ctx context.Context, userID, id string, name, slug *string) (*Workspace, error) {
 	userID = strings.TrimSpace(userID)
 	if userID == "" {
 		return nil, fmt.Errorf("%w: user id is required", apperrs.ErrInvalid)
 	}
-	name = strings.TrimSpace(name)
-	if name == "" {
+	if name != nil && strings.TrimSpace(*name) == "" {
 		return nil, fmt.Errorf("%w: workspace name is required", apperrs.ErrInvalid)
 	}
 	if err := s.requireWorkspacePermission(ctx, userID, id, permissions.WorkspacesWrite); err != nil {
@@ -124,15 +124,21 @@ func (s *Service) Rename(ctx context.Context, userID, id, name string, slug *str
 		return nil, err
 	}
 	updated := *current
-	updated.Name = name
+	if name != nil {
+		updated.Name = strings.TrimSpace(*name)
+	}
 	if slug != nil {
 		if err := s.checkSlugFor(ctx, id, *slug); err != nil {
 			return nil, err
 		}
 		updated.Slug = *slug
 	}
+	if updated.Name == current.Name && updated.Slug == current.Slug {
+		return current, nil
+	}
 	updated.UpdatedAt = s.now().UTC()
-	if err := s.repo.Update(ctx, &updated); err != nil {
+	event := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicWorkspaceUpdated, Payload: WorkspaceEvent{WorkspaceID: id, Name: updated.Name, Slug: updated.Slug, ActorID: userID}}
+	if err := s.repo.Update(ctx, &updated, event); err != nil {
 		return nil, fmt.Errorf("rename workspace %s: %w", id, err)
 	}
 	return &updated, nil

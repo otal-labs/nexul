@@ -69,6 +69,7 @@ var liveRules = map[string]liveRule{
 	tenancy.TopicWorkspaceMemberAdded:   memberFrame,
 	tenancy.TopicWorkspaceMemberRemoved: memberFrame,
 	tenancy.TopicWorkspaceMemberUpdated: memberFrame,
+	tenancy.TopicWorkspaceUpdated:       workspaceFrame,
 
 	tickets.TopicCreated:                 ticketFrame,
 	tickets.TopicUpdated:                 ticketFrame,
@@ -168,6 +169,14 @@ func memberFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool 
 		return false
 	}
 	return p.UserID == actorID(ctx) || a.access.Require(ctx, p.WorkspaceID, permissions.Member) == nil
+}
+
+// workspaceFrame carries the workspace's new name and slug, which only its members may see.
+func workspaceFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
+	var p struct {
+		WorkspaceID string `json:"workspace_id"`
+	}
+	return decode(raw, &p) && a.access.Require(ctx, p.WorkspaceID, permissions.Member) == nil
 }
 
 func anywhere(action permissions.Action) liveRule {

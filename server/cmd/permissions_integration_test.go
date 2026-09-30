@@ -421,7 +421,8 @@ func TestIntegration_PermissionTable(t *testing.T) {
 			return err
 		}, instance},
 		{"workspaces: rename one (where it lives)", func(ctx context.Context) error {
-			_, err := s.tenancySvc.Rename(ctx, actorID(ctx), "workspace-default", "Default", nil)
+			name := "Default"
+			_, err := s.tenancySvc.Rename(ctx, actorID(ctx), "workspace-default", &name, nil)
 			return err
 		}, map[string]string{uOwner: ok, uSteward: forbidden, uPlain: forbidden, uOutsider: forbidden}},
 		{"runners: enroll one", func(ctx context.Context) error {

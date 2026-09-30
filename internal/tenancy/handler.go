@@ -39,8 +39,8 @@ type createWorkspaceRequest struct {
 }
 
 type renameWorkspaceRequest struct {
-	Name string `json:"name"`
-	// Slug is left alone when omitted.
+	// Name and Slug are left alone when omitted.
+	Name *string `json:"name,omitempty"`
 	Slug *string `json:"slug,omitempty"`
 }
 

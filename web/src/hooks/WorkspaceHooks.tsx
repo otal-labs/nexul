@@ -1,10 +1,11 @@
 import { useEffect } from "react";
-import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { useLocation, useNavigate, type Location, type NavigateFunction } from "react-router";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
 import { hasPermission } from "@/models/Permission";
-import type { Workspace } from "@/models/Workspace";
+import { replaceWorkspaceSlug, type Workspace, type WorkspaceUpdate } from "@/models/Workspace";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 export const getWorkspacesKey = "getWorkspaces";
@@ -72,6 +73,40 @@ export const useRenameWorkspace = () => {
       await client.invalidateQueries({ queryKey: [getWorkspacesKey] });
     },
     onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
+// Applies a workspace's new name and slug everywhere at once: the list the switchers read, the selection, and the
+// address bar when it sits inside that workspace, so nobody lands on a page the old slug no longer names.
+export const followWorkspaceUpdate = (
+  client: QueryClient,
+  navigate: NavigateFunction,
+  location: Pick<Location, "pathname" | "search" | "hash">,
+  update: WorkspaceUpdate,
+) => {
+  client.setQueryData<Workspace[]>([getWorkspacesKey], (list) =>
+    list?.map((w) => (w.id === update.workspace_id ? { ...w, name: update.name, slug: update.slug } : w)),
+  );
+  const { selectedWorkspaceId, selectedWorkspaceSlug, selectWorkspace } = useWorkspaceStore.getState();
+  if (selectedWorkspaceId === update.workspace_id && selectedWorkspaceSlug !== update.slug) {
+    const path = replaceWorkspaceSlug(location.pathname, selectedWorkspaceSlug, update.slug);
+    selectWorkspace(update.workspace_id, update.slug);
+    if (path) void navigate(`${path}${location.search}${location.hash}`, { replace: true });
+  }
+  void client.invalidateQueries({ queryKey: [getWorkspacesKey] });
+};
+
+// The Configuration General save: sends only the fields that changed. A refused slug shows inline on the form, so
+// the caller handles the error rather than a toast here.
+export const useUpdateWorkspace = () => {
+  const client = useQueryClient();
+  const navigate = useNavigate();
+  const location = useLocation();
+  return useMutation({
+    mutationFn: async ({ id, ...body }: { id: string; name?: string; slug?: string }) =>
+      (await api.patch<Workspace>(`/api/workspaces/${id}`, body)).data,
+    onSuccess: (saved) =>
+      followWorkspaceUpdate(client, navigate, location, { workspace_id: saved.id, name: saved.name, slug: saved.slug }),
   });
 };
 

@@ -307,3 +307,37 @@ func TestHandler_SetMentionChipTemplate(t *testing.T) {
 		assert.Equal(t, "{ticket.Project} {ticket.Ticket}", workspaces[0].MentionChipTemplate, "the list is where the browser reads the template")
 	})
 }
+
+func TestHandler_Rename(t *testing.T) {
+	newHandler := func(t *testing.T) (*Handler, string) {
+		t.Helper()
+		repo := newFakeRepo()
+		wsPerms := newFakeWorkspacePermissionGate()
+		svc := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), newFakeRoleNameGate(), wsPerms, newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{}, newFakeAccountGate())
+		w, err := svc.Create(context.Background(), "u-1", "Acme")
+		require.NoError(t, err)
+		_, err = svc.Create(context.Background(), "u-1", "Other")
+		require.NoError(t, err)
+		wsPerms.perms["u-1"] = []string{"workspaces:write"}
+		return NewHandler(svc), w.ID
+	}
+	t.Run("a slug alone keeps the name", func(t *testing.T) {
+		h, id := newHandler(t)
+		rec := do(t, h.Routes(), http.MethodPatch, "/api/workspaces/"+id, `{"slug":"acme-labs"}`, "u-1")
+		require.Equal(t, http.StatusOK, rec.Code)
+		var w Workspace
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &w))
+		assert.Equal(t, "Acme", w.Name)
+		assert.Equal(t, "acme-labs", w.Slug)
+	})
+	t.Run("a slug another workspace holds is a conflict", func(t *testing.T) {
+		h, id := newHandler(t)
+		rec := do(t, h.Routes(), http.MethodPatch, "/api/workspaces/"+id, `{"slug":"other"}`, "u-1")
+		assert.Equal(t, http.StatusConflict, rec.Code)
+	})
+	t.Run("a reserved slug is invalid", func(t *testing.T) {
+		h, id := newHandler(t)
+		rec := do(t, h.Routes(), http.MethodPatch, "/api/workspaces/"+id, `{"slug":"settings"}`, "u-1")
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+}

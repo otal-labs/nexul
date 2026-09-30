@@ -15,6 +15,7 @@ import {
 const nothing: SettingsVisibility = {
   instanceSections: [],
   teamIsInstanceWide: false,
+  showGeneral: false,
   showRoles: false,
   showPlays: false,
   showInterviewTemplate: false,
@@ -25,6 +26,7 @@ const nothing: SettingsVisibility = {
 const everything: SettingsVisibility = {
   instanceSections: ["instance", "sign-in", "connectors", "dns"],
   teamIsInstanceWide: true,
+  showGeneral: true,
   showRoles: true,
   showPlays: true,
   showInterviewTemplate: true,
@@ -48,12 +50,14 @@ describe("SettingsNav", () => {
     renderNav(workspaceSections(everything));
     const nav = within(screen.getByRole("navigation", { name: "Configuration sections" }));
     expect(nav.getAllByRole("listitem").map((item) => item.textContent)).toEqual([
+      "General",
       "Roles",
       "Plays",
       "Interview template",
       "Mention chips",
       "Danger zone",
     ]);
+    expect(nav.getByRole("link", { name: "General" })).toHaveAttribute("href", "/acme/configuration/general");
     expect(nav.getByRole("link", { name: "Plays" })).toHaveAttribute("href", "/acme/configuration/plays");
   });
 

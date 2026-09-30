@@ -1,4 +1,4 @@
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import {
   Controller,
   get,
@@ -20,6 +20,8 @@ interface FormInputProps<T extends FieldValues>
   hideLabel?: boolean;
   // Rewrites the value as the user types, so the stored value is already normalized.
   transform?: (value: string) => string;
+  // Fixed text before the input on the same line, such as the address a slug follows.
+  leading?: ReactNode;
 }
 
 export const FormInput = <T extends FieldValues>({
@@ -29,6 +31,7 @@ export const FormInput = <T extends FieldValues>({
   id,
   hideLabel,
   transform,
+  leading,
   ...props
 }: FormInputProps<T>) => {
   const { errors } = useFormState({ control });
@@ -40,19 +43,22 @@ export const FormInput = <T extends FieldValues>({
       <label htmlFor={fieldId} className={hideLabel ? "sr-only" : "text-sm font-medium"}>
         {label}
       </label>
-      <Controller
-        control={control}
-        name={name}
-        render={({ field }) => (
-          <Input
-            id={fieldId}
-            aria-invalid={message != null}
-            {...props}
-            {...field}
-            onChange={(e) => field.onChange(transform?.(e.target.value) ?? e)}
-          />
-        )}
-      />
+      <div className="flex items-center gap-1.5">
+        {leading && <span className="shrink-0 font-mono text-sm text-muted-foreground">{leading}</span>}
+        <Controller
+          control={control}
+          name={name}
+          render={({ field }) => (
+            <Input
+              id={fieldId}
+              aria-invalid={message != null}
+              {...props}
+              {...field}
+              onChange={(e) => field.onChange(transform?.(e.target.value) ?? e)}
+            />
+          )}
+        />
+      </div>
       {message && (
         <p
           role="alert"

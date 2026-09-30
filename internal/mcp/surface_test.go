@@ -16,7 +16,7 @@ import (
 
 // The rules below are practices/mcp.md sections 4 to 6, checked so they cannot drift.
 // toolBudget is raised only by an ADR naming why no existing tool could carry the capability (ADR 0081).
-const toolBudget = 102
+const toolBudget = 103
 
 var (
 	toolName = regexp.MustCompile(`^[a-z][a-z0-9_]{0,51}$`)

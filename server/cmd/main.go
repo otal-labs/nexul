@@ -273,6 +273,7 @@ var livePushTopics = []string{
 	tenancy.TopicWorkspaceMemberAdded,
 	tenancy.TopicWorkspaceMemberRemoved,
 	tenancy.TopicWorkspaceMemberUpdated,
+	tenancy.TopicWorkspaceUpdated,
 }
 
 func fail(err error) {
