@@ -8,8 +8,7 @@ const getInstallationsKey = "repository-installations";
 
 const searchDebounceMs = 250;
 
-// Resolves after ms, or rejects when the query is cancelled: the key changing (another keystroke) aborts the
-// signal, so only the last pause in typing goes on to fetch.
+// Rejects when a newer keystroke cancels the query, so only the last pause in typing fetches.
 const pause = (ms: number, signal: AbortSignal) =>
   new Promise<void>((resolve, reject) => {
     const timer = setTimeout(resolve, ms);
@@ -23,12 +22,7 @@ const pause = (ms: number, signal: AbortSignal) =>
     );
   });
 
-// Installation repositories matching the typed text, and nothing until it is long enough — every repo this returns
-// already has the App installed, so a scan failing "not installed" on one of them is a race, not the common case.
-// The debounce lives in the queryFn: a new key cancels the previous one during its pause, so no state or effect is
-// needed. Refetching a key that already has data (window focus after GitHub's install page, or a stale one revisited)
-// skips the pause and asks the server past its cache, so a newly installed account shows up. Data stays fresh for
-// 30s so backspacing over recent searches costs no request.
+// A refetch of a loaded search (e.g. focus after installing the App) skips the pause and bypasses the server cache.
 export const useSearchRepositories = (text: string) => {
   const q = text.trim();
   return useQuery({

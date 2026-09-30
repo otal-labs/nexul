@@ -32,12 +32,10 @@ func newRepositoryScanner(git gitProviderRouter, appConfigs connectors.AppConfig
 	return repositoryScanner{git: git, appConfigs: appConfigs, repos: &installationRepoCache{}}
 }
 
-// installationReposTTL bounds how long the connector's repository list is served without asking GitHub again; a
-// search fires a request per pause in typing, and each walk costs a call per installation and page.
+// installationReposTTL keeps per-keystroke searches from walking every installation and page on GitHub each time.
 const installationReposTTL = time.Minute
 
-// installationRepoCache holds the GitHub connector's full repository list, the only connector the scanner reads.
-// One mutex spans the walk so searches that arrive while it runs wait for its result instead of starting their own.
+// installationRepoCache holds one walk at a time so concurrent searches wait for it instead of starting their own.
 type installationRepoCache struct {
 	mu    sync.Mutex
 	at    time.Time

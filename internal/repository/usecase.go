@@ -125,13 +125,10 @@ func nonNil[T any](s []T) []T {
 	return s
 }
 
-// MinSearchLength is the shortest q ListRepos accepts: fewer characters match too much of an installation to be
-// worth the walk.
+// MinSearchLength is the shortest q accepted; fewer characters match too much of an installation to be worth it.
 const MinSearchLength = 3
 
-// ListRepos lists the repositories the connected installation grants. A non-empty q keeps those whose full name
-// contains it, case-insensitively, and must be at least MinSearchLength characters; an empty q lists them all.
-// refresh skips the scanner's recent answer.
+// ListRepos filters the installation's repositories by q (case-insensitive, empty lists all); refresh skips the cache.
 func ListRepos(ctx context.Context, g Gate, s Scanner, q string, refresh bool) ([]Repo, error) {
 	if err := requireWizard(ctx, g); err != nil {
 		return nil, err
