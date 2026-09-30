@@ -2,7 +2,7 @@ import { forwardRef, useImperativeHandle, useState } from "react";
 import { FileTextIcon, Loader2Icon, TicketIcon } from "lucide-react";
 import type { SuggestionKeyDownProps, SuggestionProps } from "@tiptap/suggestion";
 
-import { cn } from "@/lib/utils";
+import { cn, keepInView } from "@/lib/utils";
 import type { MentionSearchResult } from "@/models/Mention";
 
 export interface MentionSuggestionsRef {
@@ -23,6 +23,7 @@ const MentionSuggestionRow = ({ item, selected, onSelect }: MentionSuggestionRow
       type="button"
       role="option"
       aria-selected={selected}
+      ref={selected ? keepInView : undefined}
       className={cn(
         "flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm",
         selected && "bg-accent text-accent-foreground",
@@ -79,7 +80,7 @@ export const MentionSuggestions = forwardRef<
 
   return (
     <div
-      className="glass max-h-64 w-72 overflow-y-auto rounded-lg p-1 text-popover-foreground shadow-overlay"
+      className="max-h-64 w-72 overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-overlay"
       role="listbox"
       aria-label="Mention suggestions"
       data-testid="mention-suggestions"

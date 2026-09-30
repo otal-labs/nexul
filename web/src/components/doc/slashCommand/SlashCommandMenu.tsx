@@ -1,7 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
 import type { SuggestionKeyDownProps, SuggestionProps } from "@tiptap/suggestion";
 
-import { cn } from "@/lib/utils";
+import { cn, keepInView } from "@/lib/utils";
 import type { SlashCommandItem } from "@/components/doc/slashCommand/slashCommands";
 
 export interface SlashCommandMenuRef {
@@ -44,7 +44,7 @@ export const SlashCommandMenu = forwardRef<SlashCommandMenuRef, SuggestionProps<
 
     return (
       <div
-        className="glass max-h-64 w-56 overflow-y-auto rounded-lg p-1 text-popover-foreground shadow-overlay"
+        className="max-h-64 w-56 overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-overlay"
         role="listbox"
         aria-label="Insert block"
         data-testid="slash-command-menu"
@@ -60,6 +60,7 @@ export const SlashCommandMenu = forwardRef<SlashCommandMenuRef, SuggestionProps<
               type="button"
               role="option"
               aria-selected={index === selectedIndex}
+              ref={index === selectedIndex ? keepInView : undefined}
               className={cn(
                 "flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm",
                 index === selectedIndex && "bg-accent text-accent-foreground",

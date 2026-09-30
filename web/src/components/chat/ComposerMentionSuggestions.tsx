@@ -1,5 +1,5 @@
 import type { MentionCandidate } from "@/models/Chat";
-import { cn } from "@/lib/utils";
+import { cn, keepInView } from "@/lib/utils";
 
 interface ComposerMentionSuggestionsProps {
   matches: MentionCandidate[];
@@ -19,6 +19,7 @@ export const ComposerMentionSuggestions = ({ matches, selectedIndex, onPick }: C
         type="button"
         role="option"
         aria-selected={index === selectedIndex}
+        ref={index === selectedIndex ? keepInView : undefined}
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => onPick(candidate.handle)}
         className={cn(

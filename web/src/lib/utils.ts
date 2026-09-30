@@ -3,6 +3,9 @@ import { twMerge } from "tailwind-merge";
 
 export const cn = (...inputs: ClassValue[]) => twMerge(clsx(inputs));
 
+// Ref callback for the highlighted option of a scrollable list: keeps it visible as the selection moves.
+export const keepInView = (el: HTMLElement | null) => el?.scrollIntoView({ block: "nearest" });
+
 // Up to two initials from a display name, e.g. "bob" -> "B", "Jane Doe" -> "JD".
 export const initials = (name: string) =>
   name
