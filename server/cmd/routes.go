@@ -288,7 +288,7 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("DELETE", "/api/attachments/{id}", "Delete an attachment", "attachments")
 	spec.Register("GET", "/api/tickets", "List tickets", "tickets")
 	spec.Register("POST", "/api/tickets", "Create a ticket", "tickets")
-	spec.Register("GET", "/api/tickets/{id}", "Get a ticket", "tickets")
+	spec.Register("GET", "/api/tickets/{id}", "Get a ticket by id, or by key with ?workspace= naming its workspace", "tickets")
 	spec.Register("PATCH", "/api/tickets/{id}/status", "Transition a ticket's status", "tickets")
 	spec.Register("GET", "/api/deploys", "List deploys", "deploys")
 	spec.Register("POST", "/api/deploys", "Trigger a deploy", "deploys")

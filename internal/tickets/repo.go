@@ -55,8 +55,8 @@ type Repo interface {
 	LinkRepo
 	Create(ctx context.Context, t *Ticket, evts ...eventbus.OutboxEvent) error
 	GetByID(ctx context.Context, id string) (*Ticket, error)
-	// GetByPrefixAndNumber finds a ticket by its key, the project prefix and number (ADR 0004).
-	GetByPrefixAndNumber(ctx context.Context, prefix string, number int) (*Ticket, error)
+	// ListByKey finds every ticket whose key is PREFIX-NUMBER, in any workspace (ADR 0089).
+	ListByKey(ctx context.Context, prefix string, number int) ([]KeyMatch, error)
 	List(ctx context.Context) ([]*Ticket, error)
 	ListByDoc(ctx context.Context, docID string) ([]*Ticket, error)
 	ListByProject(ctx context.Context, projectID string) ([]*Ticket, error)

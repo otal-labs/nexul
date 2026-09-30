@@ -179,8 +179,9 @@ func (h *Handler) search(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, results)
 }
 
+// get takes an id or a key; ?workspace= (an id or slug) picks the workspace a key is unique in (ADR 0089).
 func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
-	t, err := h.svc.Get(r.Context(), r.PathValue("id"))
+	t, err := h.svc.Resolve(r.Context(), r.URL.Query().Get("workspace"), r.PathValue("id"))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

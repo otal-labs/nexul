@@ -32,8 +32,8 @@ const (
 )
 
 // resolveTicket names the tool that finds tickets when the one asked for is missing.
-func resolveTicket(ctx context.Context, t *tickets.Service, idOrKey string) (*tickets.Ticket, error) {
-	tk, err := t.Resolve(ctx, idOrKey)
+func resolveTicket(ctx context.Context, t *tickets.Service, workspace, idOrKey string) (*tickets.Ticket, error) {
+	tk, err := t.Resolve(ctx, workspace, idOrKey)
 	if errors.Is(err, apperrs.ErrNotFound) {
 		return nil, fmt.Errorf("%w; %s", err, ticketHint)
 	}
@@ -248,7 +248,8 @@ func linkedKey(l tickets.LinkedTicket) string {
 }
 
 type ticketGetIn struct {
-	ID string `json:"id" jsonschema:"The ticket's id (a UUID) or its key, for example REF-102."`
+	ID        string `json:"id" jsonschema:"The ticket's id (a UUID) or its key, for example REF-102."`
+	Workspace string `json:"workspace,omitempty" jsonschema:"The workspace to look a ticket key up in, by its id or slug from workspace_list, for example otal. Needed only when the key exists in more than one of your workspaces; an id needs none."`
 }
 
 type ticketDetail struct {
@@ -300,7 +301,7 @@ func ticketGetTool(t *tickets.Service, w *workspace.Service, r *codereview.Servi
 			"ticket_list.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in ticketGetIn) (any, error) {
-			tk, err := resolveTicket(ctx, t, in.ID)
+			tk, err := resolveTicket(ctx, t, in.Workspace, in.ID)
 			if err != nil {
 				return nil, err
 			}
@@ -395,7 +396,7 @@ func ticketCreateTool(t *tickets.Service, w *workspace.Service) mcptool.Tool {
 			"ticket_update; it starts in the project's first backlog column.",
 		mcptool.Hints{Additive: true, Local: true},
 		func(ctx context.Context, in ticketCreateIn) (any, error) {
-			originID, err := originOf(ctx, t, in.OriginID)
+			originID, err := originOf(ctx, t, w, in.ProjectID, in.OriginID)
 			if err != nil {
 				return nil, err
 			}
@@ -410,12 +411,28 @@ func ticketCreateTool(t *tickets.Service, w *workspace.Service) mcptool.Tool {
 		})
 }
 
+// keyScope is where related ticket keys resolve: the workspace the caller named, else the project's own.
+func keyScope(ctx context.Context, w *workspace.Service, named, projectID string) (string, error) {
+	if named != "" {
+		return named, nil
+	}
+	p, err := w.Get(ctx, projectID)
+	if err != nil {
+		return "", err
+	}
+	return p.WorkspaceID, nil
+}
+
 // originOf turns an origin key into its id; a missing origin is bad input to the new ticket, not a missing ticket.
-func originOf(ctx context.Context, t *tickets.Service, idOrKey string) (string, error) {
+func originOf(ctx context.Context, t *tickets.Service, w *workspace.Service, projectID, idOrKey string) (string, error) {
 	if strings.TrimSpace(idOrKey) == "" {
 		return "", nil
 	}
-	origin, err := t.Resolve(ctx, idOrKey)
+	scope, err := keyScope(ctx, w, "", projectID)
+	if err != nil {
+		return "", fmt.Errorf("%w (%s)", err, createHint)
+	}
+	origin, err := t.Resolve(ctx, scope, idOrKey)
 	if errors.Is(err, apperrs.ErrNotFound) {
 		return "", fmt.Errorf("%w: origin_id %s is not a ticket; %s", apperrs.ErrInvalid, idOrKey, ticketHint)
 	}
@@ -427,6 +444,7 @@ func originOf(ctx context.Context, t *tickets.Service, idOrKey string) (string, 
 
 type ticketUpdateIn struct {
 	ID               string        `json:"id" jsonschema:"The ticket's id (a UUID) or its key, for example REF-102."`
+	Workspace        string        `json:"workspace,omitempty" jsonschema:"The workspace to look ticket keys up in, by its id or slug from workspace_list, for example otal. Needed only when id is a key that exists in more than one of your workspaces; the keys in found_in_id and the blocker fields resolve in the ticket's own workspace unless this names another."`
 	Title            *string       `json:"title,omitempty" jsonschema:"A new title; it cannot be empty."`
 	Body             *string       `json:"body,omitempty" jsonschema:"A new body in markdown; an empty string clears it."`
 	ProjectID        *string       `json:"project_id,omitempty" jsonschema:"Move the ticket to this project, by its id from project_list; set status_id to one of its columns too."`
@@ -479,11 +497,15 @@ func ticketUpdateTool(t *tickets.Service, w *workspace.Service) mcptool.Tool {
 			if err := in.checkFoundIn(); err != nil {
 				return nil, err
 			}
-			tk, err := resolveTicket(ctx, t, in.ID)
+			tk, err := resolveTicket(ctx, t, in.Workspace, in.ID)
 			if err != nil {
 				return nil, err
 			}
-			u := ticketUpdate{t: t, w: w, id: tk.ID}
+			scope, err := keyScope(ctx, w, in.Workspace, tk.ProjectID)
+			if err != nil {
+				return nil, err
+			}
+			u := ticketUpdate{t: t, w: w, id: tk.ID, workspace: scope}
 			applied, err := runSteps(ctx, u.steps(in))
 			if err != nil {
 				return nil, err
@@ -518,6 +540,8 @@ type ticketUpdate struct {
 	t  *tickets.Service
 	w  *workspace.Service
 	id string
+	// workspace is where the keys in the link fields resolve.
+	workspace string
 }
 
 func (u ticketUpdate) steps(in ticketUpdateIn) []step {
@@ -638,7 +662,7 @@ func (u ticketUpdate) linkSteps(in ticketUpdateIn) []step {
 func (u ticketUpdate) foundIn(ctx context.Context, originRef string, unknown bool) error {
 	originID := ""
 	if originRef != "" {
-		origin, err := u.t.Resolve(ctx, originRef)
+		origin, err := u.t.Resolve(ctx, u.workspace, originRef)
 		if err != nil {
 			return err
 		}
@@ -648,7 +672,7 @@ func (u ticketUpdate) foundIn(ctx context.Context, originRef string, unknown boo
 }
 
 func (u ticketUpdate) blocker(ctx context.Context, ref string, apply func(ctx context.Context, id, blockerID string) (*tickets.LinkSet, error)) error {
-	blocker, err := u.t.Resolve(ctx, ref)
+	blocker, err := u.t.Resolve(ctx, u.workspace, ref)
 	if err != nil {
 		return err
 	}

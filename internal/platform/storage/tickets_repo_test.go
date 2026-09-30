@@ -31,7 +31,7 @@ func TestTicketsRepo_GetByID_NotFound(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
-func TestTicketsRepo_GetByPrefixAndNumber_RoundTrip(t *testing.T) {
+func TestTicketsRepo_ListByKey_RoundTrip(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
 	now := time.Date(2026, 8, 12, 9, 0, 0, 0, time.UTC)
@@ -43,17 +43,21 @@ func TestTicketsRepo_GetByPrefixAndNumber_RoundTrip(t *testing.T) {
 	want.ProjectID = "p-erf"
 	require.NoError(t, s.Tickets.Create(context.Background(), want))
 
-	got, err := s.Tickets.GetByPrefixAndNumber(context.Background(), "ERF", 1)
+	got, err := s.Tickets.ListByKey(context.Background(), "ERF", 1)
 	require.NoError(t, err)
-	assert.Equal(t, "t-1", got.ID)
-	assert.Equal(t, "Fix storage", got.Title)
+	require.Len(t, got, 1)
+	assert.Equal(t, "t-1", got[0].Ticket.ID)
+	assert.Equal(t, "Fix storage", got[0].Ticket.Title)
+	assert.Equal(t, "workspace-default", got[0].WorkspaceID)
+	assert.Equal(t, "default", got[0].WorkspaceSlug)
 }
 
-func TestTicketsRepo_GetByPrefixAndNumber_NotFound(t *testing.T) {
+func TestTicketsRepo_ListByKey_NoMatchIsEmpty(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
-	_, err := s.Tickets.GetByPrefixAndNumber(context.Background(), "ZZZ", 1)
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
+	got, err := s.Tickets.ListByKey(context.Background(), "ZZZ", 1)
+	require.NoError(t, err)
+	assert.Empty(t, got)
 }
 
 func TestTicketsRepo_Create_DuplicateID_Conflict(t *testing.T) {
@@ -292,7 +296,7 @@ func TestTicketsRepo_Delete_RemovesTicket(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
-func TestTicketsRepo_GetByPrefixAndNumber_AmbiguousKeyIsAConflict(t *testing.T) {
+func TestTicketsRepo_ListByKey_MovedTicketKeepsItsNumber(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
 	ctx := context.Background()
@@ -310,6 +314,7 @@ func TestTicketsRepo_GetByPrefixAndNumber_AmbiguousKeyIsAConflict(t *testing.T) 
 	require.NoError(t, s.Tickets.Create(ctx, moved))
 	require.NoError(t, s.Projects.MoveTicket(ctx, "t-2", "p-erf"))
 
-	_, err := s.Tickets.GetByPrefixAndNumber(ctx, "ERF", 1)
-	require.ErrorIs(t, err, apperrs.ErrConflict, "a moved ticket keeps its number, so ERF-1 names two tickets")
+	got, err := s.Tickets.ListByKey(ctx, "ERF", 1)
+	require.NoError(t, err)
+	assert.Len(t, got, 2, "a moved ticket keeps its number, so ERF-1 names two tickets")
 }

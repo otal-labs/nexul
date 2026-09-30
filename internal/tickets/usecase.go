@@ -1,6 +1,7 @@
 package tickets
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -306,8 +307,10 @@ func (s *Service) Get(ctx context.Context, id string) (*Ticket, error) {
 // ticketKey matches a ticket's human key, PREFIX-NUMBER (ADR 0004); a ticket id is a UUID and never matches.
 var ticketKey = regexp.MustCompile(`^([A-Za-z][A-Za-z0-9]{1,4})-([0-9]+)$`)
 
-// Resolve returns a ticket by its id or by its key, such as REF-102.
-func (s *Service) Resolve(ctx context.Context, idOrKey string) (*Ticket, error) {
+// Resolve returns a ticket by its id or by its key, such as REF-102. A key is unique only within a workspace, so
+// workspace (an id or a slug) picks one; without it the key resolves among the tickets the caller can read, and
+// matches in several workspaces are refused with their slugs rather than guessed (ADR 0089).
+func (s *Service) Resolve(ctx context.Context, workspace, idOrKey string) (*Ticket, error) {
 	idOrKey = strings.TrimSpace(idOrKey)
 	m := ticketKey.FindStringSubmatch(idOrKey)
 	if m == nil {
@@ -317,14 +320,49 @@ func (s *Service) Resolve(ctx context.Context, idOrKey string) (*Ticket, error) 
 	if err != nil {
 		return nil, fmt.Errorf("%w: ticket key %s has an out-of-range number", apperrs.ErrInvalid, idOrKey)
 	}
-	t, err := s.repo.GetByPrefixAndNumber(ctx, strings.ToUpper(m[1]), number)
+	key := strings.ToUpper(m[1]) + "-" + m[2]
+	matches, err := s.repo.ListByKey(ctx, strings.ToUpper(m[1]), number)
 	if err != nil {
-		return nil, fmt.Errorf("get ticket %s: %w", idOrKey, err)
+		return nil, fmt.Errorf("get ticket %s: %w", key, err)
 	}
-	if err := s.require(ctx, t.ProjectID, permissions.TicketsRead); err != nil {
-		return nil, fmt.Errorf("get ticket %s: %w", idOrKey, err)
+	workspace = strings.TrimSpace(workspace)
+	var readable []KeyMatch
+	var refused error
+	for _, km := range matches {
+		if workspace != "" && workspace != km.WorkspaceID && workspace != km.WorkspaceSlug {
+			continue
+		}
+		if err := s.require(ctx, km.Ticket.ProjectID, permissions.TicketsRead); err != nil {
+			refused = cmp.Or(refused, err)
+			continue
+		}
+		readable = append(readable, km)
 	}
-	return t, nil
+	if len(readable) == 1 {
+		return readable[0].Ticket, nil
+	}
+	if len(readable) > 1 {
+		return nil, ambiguousKey(key, readable)
+	}
+	if refused != nil {
+		return nil, fmt.Errorf("get ticket %s: %w", key, refused)
+	}
+	return nil, fmt.Errorf("get ticket %s: %w", key, apperrs.ErrNotFound)
+}
+
+// ambiguousKey names the workspaces a key was found in, so the caller can pass one of them.
+func ambiguousKey(key string, matches []KeyMatch) error {
+	var slugs []string
+	for _, km := range matches {
+		if !slices.Contains(slugs, km.WorkspaceSlug) {
+			slugs = append(slugs, km.WorkspaceSlug)
+		}
+	}
+	if len(slugs) == 1 {
+		return fmt.Errorf("%w: %s matches more than one ticket in %s; use the ticket's id", apperrs.ErrConflict, key, slugs[0])
+	}
+	last := len(slugs) - 1
+	return fmt.Errorf("%w: %s exists in %s and %s; pass workspace", apperrs.ErrConflict, key, strings.Join(slugs[:last], ", "), slugs[last])
 }
 
 // List returns every ticket the caller may read, oldest first.

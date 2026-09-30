@@ -10,6 +10,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 	"github.com/otal-labs/nexul/internal/tickets"
+	"github.com/otal-labs/nexul/internal/workspace"
 )
 
 func TestTicketTools_Names(t *testing.T) {
@@ -376,4 +377,26 @@ func TestTicketUpdate_PositionIsAnIndexInTheCell(t *testing.T) {
 	}
 	assert.Equal(t, map[string]int{"t-4": 0, "t-1": 1, "t-3": 2, "t-5": 7}, positions,
 		"the cell is renumbered so no two cards tie, and other cells are untouched")
+}
+
+func TestTicketKeys_ResolveWithinAWorkspace(t *testing.T) {
+	f := newFixture(t)
+	must(t, f.w.projects.put(&workspace.Project{ID: "p-9", Name: "Other backend", Prefix: "REF", WorkspaceID: "ws-2"}))
+	f.w.addTicket(&tickets.Ticket{ID: "t-9", ProjectID: "p-9", Title: "Other login", Status: "st-todo"})
+	f.w.addTicket(&tickets.Ticket{ID: "t-10", ProjectID: "p-9", Title: "Other sign-in", Status: "st-todo"})
+
+	_, err := call(t, t.Context(), f.ticketTools(), "ticket_get", `{"id":"REF-1"}`)
+	require.ErrorIs(t, err, apperrs.ErrConflict)
+	assert.ErrorContains(t, err, "REF-1 exists in ws-1 and ws-2; pass workspace")
+
+	got, err := call(t, t.Context(), f.ticketTools(), "ticket_get", `{"id":"REF-1","workspace":"ws-2"}`)
+	require.NoError(t, err)
+	assert.Equal(t, "t-9", got.(ticketDetail).ID)
+
+	_, err = call(t, t.Context(), f.ticketTools(), "ticket_update", `{"id":"t-9","add_blocker_ids":["REF-2"]}`)
+	require.NoError(t, err, "a blocker key resolves in the updated ticket's own workspace")
+	got, err = call(t, t.Context(), f.ticketTools(), "ticket_get", `{"id":"t-9"}`)
+	require.NoError(t, err)
+	require.Len(t, got.(ticketDetail).BlockedBy, 1)
+	assert.Equal(t, "t-10", got.(ticketDetail).BlockedBy[0].ID)
 }

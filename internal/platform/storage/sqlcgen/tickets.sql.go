@@ -121,59 +121,6 @@ func (q *Queries) GetTicket(ctx context.Context, id string) (Ticket, error) {
 	return i, err
 }
 
-const getTicketByPrefixAndNumber = `-- name: GetTicketByPrefixAndNumber :many
-SELECT tickets.id, tickets.title, tickets.body, tickets.status, tickets.doc_id, tickets.developer, tickets.created_at, tickets.updated_at, tickets.project_id, tickets.category_id, tickets.type_id, tickets.finished_at, tickets.position, tickets.number, tickets.tester, tickets.reporter_kind, tickets.reporter_login, tickets.reporter_automation_id, tickets.reporter_automation_name FROM tickets JOIN projects ON tickets.project_id = projects.id WHERE projects.prefix = ? AND tickets.number = ? LIMIT 2
-`
-
-type GetTicketByPrefixAndNumberParams struct {
-	Prefix string
-	Number int64
-}
-
-// Two rows mean the key is ambiguous: prefixes are unique per workspace, and a moved ticket keeps its number.
-func (q *Queries) GetTicketByPrefixAndNumber(ctx context.Context, arg GetTicketByPrefixAndNumberParams) ([]Ticket, error) {
-	rows, err := q.db.QueryContext(ctx, getTicketByPrefixAndNumber, arg.Prefix, arg.Number)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Ticket
-	for rows.Next() {
-		var i Ticket
-		if err := rows.Scan(
-			&i.ID,
-			&i.Title,
-			&i.Body,
-			&i.Status,
-			&i.DocID,
-			&i.Developer,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.ProjectID,
-			&i.CategoryID,
-			&i.TypeID,
-			&i.FinishedAt,
-			&i.Position,
-			&i.Number,
-			&i.Tester,
-			&i.ReporterKind,
-			&i.ReporterLogin,
-			&i.ReporterAutomationID,
-			&i.ReporterAutomationName,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const getTicketStatusAndCategory = `-- name: GetTicketStatusAndCategory :one
 SELECT status, category_id FROM tickets WHERE id = ?
 `
@@ -600,6 +547,72 @@ func (q *Queries) ListTicketsByDoc(ctx context.Context, docID sql.NullString) ([
 			&i.ReporterLogin,
 			&i.ReporterAutomationID,
 			&i.ReporterAutomationName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTicketsByPrefixAndNumber = `-- name: ListTicketsByPrefixAndNumber :many
+SELECT tickets.id, tickets.title, tickets.body, tickets.status, tickets.doc_id, tickets.developer, tickets.created_at, tickets.updated_at, tickets.project_id, tickets.category_id, tickets.type_id, tickets.finished_at, tickets.position, tickets.number, tickets.tester, tickets.reporter_kind, tickets.reporter_login, tickets.reporter_automation_id, tickets.reporter_automation_name, workspaces.id AS workspace_id, workspaces.slug AS workspace_slug
+FROM tickets
+JOIN projects ON tickets.project_id = projects.id
+JOIN workspaces ON workspaces.id = projects.workspace_id
+WHERE projects.prefix = ? AND tickets.number = ?
+ORDER BY workspaces.slug, tickets.created_at
+`
+
+type ListTicketsByPrefixAndNumberParams struct {
+	Prefix string
+	Number int64
+}
+
+type ListTicketsByPrefixAndNumberRow struct {
+	Ticket        Ticket
+	WorkspaceID   string
+	WorkspaceSlug string
+}
+
+// A key repeats across workspaces, and inside one when a moved ticket keeps its number, so every match comes back.
+func (q *Queries) ListTicketsByPrefixAndNumber(ctx context.Context, arg ListTicketsByPrefixAndNumberParams) ([]ListTicketsByPrefixAndNumberRow, error) {
+	rows, err := q.db.QueryContext(ctx, listTicketsByPrefixAndNumber, arg.Prefix, arg.Number)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTicketsByPrefixAndNumberRow
+	for rows.Next() {
+		var i ListTicketsByPrefixAndNumberRow
+		if err := rows.Scan(
+			&i.Ticket.ID,
+			&i.Ticket.Title,
+			&i.Ticket.Body,
+			&i.Ticket.Status,
+			&i.Ticket.DocID,
+			&i.Ticket.Developer,
+			&i.Ticket.CreatedAt,
+			&i.Ticket.UpdatedAt,
+			&i.Ticket.ProjectID,
+			&i.Ticket.CategoryID,
+			&i.Ticket.TypeID,
+			&i.Ticket.FinishedAt,
+			&i.Ticket.Position,
+			&i.Ticket.Number,
+			&i.Ticket.Tester,
+			&i.Ticket.ReporterKind,
+			&i.Ticket.ReporterLogin,
+			&i.Ticket.ReporterAutomationID,
+			&i.Ticket.ReporterAutomationName,
+			&i.WorkspaceID,
+			&i.WorkspaceSlug,
 		); err != nil {
 			return nil, err
 		}

@@ -17,6 +17,13 @@ const (
 	StatusClosed     Status = "closed"
 )
 
+// KeyMatch is a ticket found by its key, with the workspace the key is unique in (ADR 0089).
+type KeyMatch struct {
+	Ticket        *Ticket
+	WorkspaceID   string
+	WorkspaceSlug string
+}
+
 type Ticket struct {
 	ID         string `json:"id"`
 	ProjectID  string `json:"project_id"`
