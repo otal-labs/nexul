@@ -36,13 +36,14 @@ import { getProjectStatusesKey, getStatusesKey } from "@/hooks/StatusHooks";
 import { getTicketKey, getTicketLinksKey, getTicketsKey } from "@/hooks/TicketHooks";
 import { getBlockersKey, getTicketLinkSetKey } from "@/hooks/TicketLinkHooks";
 import {
+  followConversationDeleted,
   getChatConversationsKey,
   getChatTicketThreadStatusKey,
   getChatUnreadKey,
   markCachedMessageDeleted,
   upsertCachedMessage,
 } from "@/hooks/ChatHooks";
-import type { Message } from "@/models/Chat";
+import type { ConversationDeleted, Message } from "@/models/Chat";
 import type { MeResponse, SessionClient } from "@/models/User";
 import { getServerVersionKey, notifyIfServerUpdated } from "@/hooks/VersionHooks";
 import { setCachedTunnelStatus, type TunnelStatusChangedPayload } from "@/hooks/PairingHooks";
@@ -114,6 +115,8 @@ const pushTopics: Record<string, string[]> = {
   "status.updated": [getStatusesKey, getProjectStatusesKey, getTicketsKey, getTicketLinkSetKey, getBlockersKey],
   "status.deleted": [getStatusesKey, getProjectStatusesKey, getTicketsKey],
   "chat.conversation.created": [getChatConversationsKey],
+  "chat.conversation.updated": [getChatConversationsKey],
+  "chat.conversation.deleted": [getChatConversationsKey, getChatUnreadKey],
   "chat.message.created": [getChatConversationsKey, getChatUnreadKey],
   "chat.message.deleted": [getChatUnreadKey],
   "instance.upgrade_changed": [getInstanceUpgradeKey, getServerVersionKey],
@@ -214,11 +217,17 @@ interface OccupancyChangedPayload {
   occupants: VoiceOccupant[];
 }
 
-const dispatch = (client: ReturnType<typeof useQueryClient>, onWorkspaceUpdated: (update: WorkspaceUpdate) => void) => (frame: ServerFrame) => {
+interface RouterFollowers {
+  onWorkspaceUpdated: (update: WorkspaceUpdate) => void;
+  onConversationDeleted: (deleted: ConversationDeleted) => void;
+}
+
+const dispatch = (client: ReturnType<typeof useQueryClient>, router: RouterFollowers) => (frame: ServerFrame) => {
   if (frame.topic === "workspace.updated") {
-    onWorkspaceUpdated(frame.payload as WorkspaceUpdate);
+    router.onWorkspaceUpdated(frame.payload as WorkspaceUpdate);
     return;
   }
+  if (frame.topic === "chat.conversation.deleted") router.onConversationDeleted(frame.payload as ConversationDeleted);
   if (frame.topic === "topology") {
     const parsed = CanvasSchema.safeParse(frame.payload);
     if (parsed.success) useFlowStore.getState().applyServerPatch(parsed.data);
@@ -324,7 +333,10 @@ export const useLiveEvents = (url: string | null, opts: LiveEventsClientOptions 
       },
     });
     const unsubscribe = events.subscribe(
-      dispatch(client, (update) => followWorkspaceUpdate(client, routerRef.current.navigate, routerRef.current.location, update)),
+      dispatch(client, {
+        onWorkspaceUpdated: (update) => followWorkspaceUpdate(client, routerRef.current.navigate, routerRef.current.location, update),
+        onConversationDeleted: (deleted) => followConversationDeleted(routerRef.current.navigate, routerRef.current.location, deleted),
+      }),
     );
     events.connect();
     return () => {

@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { useLocation, useNavigate, type Location, type NavigateFunction } from "react-router";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
 import { getMeKey } from "@/hooks/AuthHooks";
 import { useFetchTicketsByProject } from "@/hooks/TicketHooks";
-import type { Conversation, Message, UnreadCounts } from "@/models/Chat";
+import { useVoiceCallStore } from "@/stores/voiceCallStore";
+import { channelMention, type Conversation, type ConversationDeleted, type Message, type UnreadCounts } from "@/models/Chat";
 import type { QuestionAnswers } from "@/models/Question";
 import type { MeResponse } from "@/models/User";
 
@@ -79,6 +81,50 @@ export const useCreateChannel = (workspaceId: string) => {
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getChatConversationsKey, workspaceId] });
       toast.success("Channel created");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
+export const useRenameChannel = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, name }: { id: string; name: string }) =>
+      (await api.patch<Conversation>(`/api/chat/conversations/${id}`, { name })).data,
+    onSuccess: async (renamed) => {
+      await client.invalidateQueries({ queryKey: [getChatConversationsKey, renamed.workspace_id] });
+      toast.success(`Renamed to ${channelMention(renamed)}`);
+    },
+  });
+};
+
+// One toast per deleted conversation, whether the deleter's own reply or the live frame lands first.
+const deletedToastId = (conversationId: string) => `conversation-deleted-${conversationId}`;
+
+// Leaves a conversation that was just deleted: its call ends and a viewer of it lands on the chat home.
+export const followConversationDeleted = (
+  navigate: NavigateFunction,
+  location: Pick<Location, "pathname">,
+  deleted: Pick<ConversationDeleted, "conversation_id" | "kind" | "name">,
+) => {
+  const call = useVoiceCallStore.getState();
+  if (call.activeConversationId === deleted.conversation_id) call.leave();
+  const suffix = `/chat/${deleted.conversation_id}`;
+  if (!location.pathname.endsWith(suffix)) return;
+  void navigate(location.pathname.slice(0, -deleted.conversation_id.length - 1), { replace: true });
+  toast.info(`${channelMention(deleted)} was deleted`, { id: deletedToastId(deleted.conversation_id) });
+};
+
+export const useDeleteChannel = () => {
+  const client = useQueryClient();
+  const navigate = useNavigate();
+  const location = useLocation();
+  return useMutation({
+    mutationFn: async (conversation: Conversation) => api.delete(`/api/chat/conversations/${conversation.id}`),
+    onSuccess: async (_result, conversation) => {
+      toast.success(`${channelMention(conversation)} deleted`, { id: deletedToastId(conversation.id) });
+      followConversationDeleted(navigate, location, { conversation_id: conversation.id, kind: conversation.kind, name: conversation.name ?? "" });
+      await client.invalidateQueries({ queryKey: [getChatConversationsKey, conversation.workspace_id] });
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

@@ -1,6 +1,7 @@
-import { Hash, Users } from "lucide-react";
+import { Users } from "lucide-react";
 import { useNavigate } from "react-router";
 
+import { ChannelSidebarRow } from "@/components/sidebar/ChannelSidebarRow";
 import { ChatSidebarRow } from "@/components/sidebar/ChatSidebarRow";
 import { DocThreadSidebarRow } from "@/components/sidebar/DocThreadSidebarRow";
 import { SidebarSectionHeader } from "@/components/sidebar/SidebarSectionHeader";
@@ -30,7 +31,9 @@ export const ChatSidebarSection = ({ collapsed }: ChatSidebarSectionProps) => {
   const navigate = useNavigate();
   const wsPath = useWorkspacePath();
   const occupancy = useVoiceOccupancy(!collapsed);
-  const canCreate = useAreaAccess()?.("newConversation") ?? false;
+  const can = useAreaAccess();
+  const canCreateChannel = can?.("editChannels") ?? false;
+  const canCreateDM = can?.("newConversation") ?? false;
   // A new text channel or DM opens straight away; a new voice channel waits in the list to be joined.
   const { openNewChannel, openNewDM } = useNewConversationDialogs(workspaceId, (conversation) => {
     if (conversation.kind === "voice_channel") return;
@@ -48,23 +51,17 @@ export const ChatSidebarSection = ({ collapsed }: ChatSidebarSectionProps) => {
         <SidebarSectionHeader
           label="Channels"
           actionLabel="New channel"
-          onAction={canCreate ? () => void openNewChannel(false) : undefined}
+          onAction={canCreateChannel ? () => void openNewChannel(false) : undefined}
         />
         {channels.map((conversation) => (
-          <ChatSidebarRow
-            key={conversation.id}
-            conversationId={conversation.id}
-            label={conversationLabel(conversation, dmCtx)}
-            icon={Hash}
-            unreadCount={unread?.[conversation.id] ?? 0}
-          />
+          <ChannelSidebarRow key={conversation.id} conversation={conversation} unreadCount={unread?.[conversation.id] ?? 0} />
         ))}
       </div>
       <div className="flex flex-col gap-0.5">
         <SidebarSectionHeader
           label="Voice channels"
           actionLabel="New voice channel"
-          onAction={canCreate ? () => void openNewChannel(true) : undefined}
+          onAction={canCreateChannel ? () => void openNewChannel(true) : undefined}
         />
         {voiceChannels.map((conversation) => (
           <VoiceChannelSidebarRow
@@ -79,7 +76,7 @@ export const ChatSidebarSection = ({ collapsed }: ChatSidebarSectionProps) => {
         <SidebarSectionHeader
           label="Direct messages"
           actionLabel="New direct message"
-          onAction={canCreate ? () => void openNewDM() : undefined}
+          onAction={canCreateDM ? () => void openNewDM() : undefined}
         />
         {dms.map((conversation) => (
           <ChatSidebarRow

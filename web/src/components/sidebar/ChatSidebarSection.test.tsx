@@ -12,7 +12,7 @@ import { useVoiceOccupancyStore } from "@/stores/voiceOccupancyStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 vi.mock("@/api/client", () => ({
-  api: { get: vi.fn(), post: vi.fn() },
+  api: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
   errorMessage: (error: unknown) => String(error),
 }));
 
@@ -23,10 +23,13 @@ const meResponse = {
 };
 
 const conversations = [
-  { id: "c1", workspace_id: "ws-1", kind: "channel", name: "general", created_by: "u1", created_at: "", updated_at: "" },
+  { id: "c1", workspace_id: "ws-1", kind: "channel", name: "general", general: true, created_by: "u1", created_at: "", updated_at: "" },
   { id: "c2", workspace_id: "ws-1", kind: "dm", created_by: "u1", created_at: "", updated_at: "", participant_ids: ["u1", "u2"] },
   { id: "c3", workspace_id: "ws-1", kind: "voice_channel", name: "huddle", created_by: "u1", created_at: "", updated_at: "" },
+  { id: "c5", workspace_id: "ws-1", kind: "channel", name: "eng", created_by: "u1", created_at: "", updated_at: "" },
 ];
+
+let permissions: string[] = [];
 
 const occupancy = { c3: [{ identity: "u2", name: "Dana" }] };
 
@@ -46,6 +49,7 @@ const renderSection = (collapsed = false, path = "/") => {
         <ChatSidebarSection collapsed={collapsed} />
         <Routes>
           <Route path="/" element={null} />
+          <Route path="/acme/chat" element={<div>chat-home</div>} />
           <Route path="/acme/chat/:conversationId" element={<div>chat-page</div>} />
         </Routes>
       </MemoryRouter>
@@ -54,18 +58,20 @@ const renderSection = (collapsed = false, path = "/") => {
 };
 
 beforeEach(() => {
+  permissions = ["chat:write", "channels:write"];
   useVoiceCallStore.setState({ activeConversationId: null });
   useVoiceOccupancyStore.setState({ occupancy: {} });
   localStorage.clear();
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
+  vi.mocked(api.delete).mockReset();
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/chat/conversations") return { data: conversations };
     if (url === "/api/chat/unread") return { data: { c1: 7 } };
     if (url === "/api/auth/me") return { data: meResponse };
     if (url === "/api/voice/occupancy") return { data: occupancy };
-    if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions: ["chat:write"] } };
+    if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions } };
     if (url.startsWith("/api/workspaces/")) return { data: peopleResponse };
     return { data: {} };
   });
@@ -90,7 +96,7 @@ describe("ChatSidebarSection", () => {
     vi.mocked(api.get).mockImplementation(async (url: string) => {
       if (url === "/api/chat/conversations") return { data: [] };
       if (url === "/api/auth/me") return { data: meResponse };
-      if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions: ["chat:write"] } };
+      if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions } };
       return { data: {} };
     });
     renderSection();
@@ -171,5 +177,75 @@ describe("ChatSidebarSection", () => {
   it("marks the open conversation's row as the current page", async () => {
     renderSection(false, "/acme/chat/c1");
     expect(await screen.findByRole("link", { name: /general/ })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("creates channels on channels:write and direct messages on chat:write", async () => {
+    permissions = ["chat:write"];
+    renderSection();
+    expect(await screen.findByRole("button", { name: "New direct message" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "New channel" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "New voice channel" })).not.toBeInTheDocument();
+  });
+
+  describe("a channel's … menu", () => {
+    const menuItems = async (channel: string) => {
+      const user = userEvent.setup();
+      await user.click(await screen.findByRole("button", { name: `More actions for ${channel}` }));
+      return (await screen.findAllByRole("menuitem")).map((item) => item.textContent);
+    };
+
+    it("offers Rename on channels:write and Delete on channels:delete, Delete last", async () => {
+      permissions = ["channels:write", "channels:delete"];
+      renderSection();
+      expect(await menuItems("#eng")).toEqual(["Rename", "Delete"]);
+    });
+
+    it("offers only what the viewer holds", async () => {
+      permissions = ["channels:delete"];
+      renderSection();
+      expect(await menuItems("huddle")).toEqual(["Delete"]);
+    });
+
+    it("never offers to delete the workspace's #general", async () => {
+      permissions = ["channels:write", "channels:delete"];
+      renderSection();
+      expect(await menuItems("#general")).toEqual(["Rename"]);
+    });
+
+    it("is gone when the viewer may neither rename nor delete", async () => {
+      permissions = ["chat:write"];
+      renderSection();
+      expect(await screen.findByText("eng")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /More actions/ })).not.toBeInTheDocument();
+    });
+
+    it("renames a channel through the name form", async () => {
+      vi.mocked(api.patch).mockResolvedValue({ data: { ...conversations[3], name: "platform" } });
+      const user = userEvent.setup();
+      renderSection();
+      await menuItems("#eng");
+      await user.click(screen.getByRole("menuitem", { name: "Rename" }));
+      const name = await screen.findByLabelText("Channel name");
+      await user.clear(name);
+      await user.type(name, "platform");
+      await user.click(screen.getByRole("button", { name: "Rename" }));
+
+      await waitFor(() => expect(api.patch).toHaveBeenCalledWith("/api/chat/conversations/c5", { name: "platform" }));
+    });
+
+    it("deletes the open channel after the confirm and sends the viewer to the chat home", async () => {
+      permissions = ["channels:delete"];
+      vi.mocked(api.delete).mockResolvedValue({ data: undefined });
+      const user = userEvent.setup();
+      renderSection(false, "/acme/chat/c5");
+      await menuItems("#eng");
+      await user.click(screen.getByRole("menuitem", { name: "Delete" }));
+      expect(await screen.findByText("Delete #eng?")).toBeInTheDocument();
+      expect(screen.getByText("Its messages are deleted for good.")).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Delete" }));
+
+      await waitFor(() => expect(api.delete).toHaveBeenCalledWith("/api/chat/conversations/c5"));
+      expect(await screen.findByText("chat-home")).toBeInTheDocument();
+    });
   });
 });

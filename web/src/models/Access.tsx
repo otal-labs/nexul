@@ -12,6 +12,8 @@ export const AREA_PERMISSION = {
   deploys: "deploys:read",
   dns: "dns:read",
   newConversation: "chat:write",
+  editChannels: "channels:write",
+  deleteChannels: "channels:delete",
   newProject: "projects:write",
   newDoc: "docs:write",
 } as const;

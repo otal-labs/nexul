@@ -32,6 +32,8 @@ vi.mock("@/api/client", async (importOriginal) => {
 // The server answers an Owner's `/me` with the whole grid; these are the actions the sidebar reads.
 const ownerGrid = [
   "automations:read",
+  "channels:delete",
+  "channels:write",
   "chat:read",
   "chat:write",
   "docs:read",
@@ -254,12 +256,12 @@ describe("Layout", () => {
       create: [],
     },
     {
-      name: "a member who may only chat keeps chat and its create actions",
+      name: "a member who may only chat starts direct messages but not channels",
       user: member,
       permissions: ["chat:write"],
       main: ["/acme/inbox", "/acme/chat"],
       workspace: [],
-      create: ["New channel", "New voice channel", "New direct message"],
+      create: ["New direct message"],
     },
   ])("sidebar by permission: $name", async ({ user, permissions, main, workspace, create }) => {
     useSessionStore.setState({ token: "t", isLoggedIn: true });
