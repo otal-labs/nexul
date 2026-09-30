@@ -41,6 +41,7 @@ const config: ExpoConfig = {
   scheme: "nexul",
   orientation: "portrait",
   userInterfaceStyle: "automatic",
+  icon: "./assets/icon.png",
   ios: {
     bundleIdentifier: "io.nexul.app",
     buildNumber: String(buildNumber),
@@ -48,6 +49,11 @@ const config: ExpoConfig = {
   },
   android: {
     package: "io.nexul.app",
+    adaptiveIcon: {
+      foregroundImage: "./assets/adaptive-foreground.png",
+      monochromeImage: "./assets/adaptive-monochrome.png",
+      backgroundColor: "#050505",
+    },
     versionCode: buildNumber,
     ...(googleServicesFile && existsSync(googleServicesFile) && { googleServicesFile }),
   },
@@ -68,7 +74,17 @@ const config: ExpoConfig = {
     "expo-router",
     "./plugins/withReleaseSigning",
     "expo-secure-store",
-    "expo-notifications",
+    // Android tints the white silhouette with this color; the muted foreground token reads on both the light and dark shade.
+    ["expo-notifications", { icon: "./assets/notification-icon.png", color: "#9a9a9a" }],
+    [
+      "expo-splash-screen",
+      {
+        image: "./assets/splash-icon.png",
+        backgroundColor: "#ececec",
+        imageWidth: 200,
+        dark: { image: "./assets/splash-icon-dark.png", backgroundColor: "#050505" },
+      },
+    ],
     [
       "expo-camera",
       {
