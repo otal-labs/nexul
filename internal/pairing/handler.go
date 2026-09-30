@@ -37,6 +37,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/pairing/computers/{id}/providers", h.listProviders)
 	// Read-only on purpose: a setup confirmation is written only through MCP (ADR 0063).
 	mux.HandleFunc("GET /api/pairing/computers/{id}/setup", h.getSetup)
+	mux.HandleFunc("PUT /api/pairing/computers/{id}/setup/choices", h.saveSetupChoices)
 	mux.HandleFunc("POST /api/pairing/computers/{id}/setup/runs", h.startSetup)
 	mux.HandleFunc("POST /api/pairing/computers/{id}/setup/providers/{provider}/retry", h.retrySetupProvider)
 	mux.HandleFunc("GET /api/pairing/resolve", h.resolve)
@@ -108,6 +109,20 @@ func (h *Handler) startSetup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusAccepted, run)
+}
+
+func (h *Handler) saveSetupChoices(w http.ResponseWriter, r *http.Request) {
+	var req SetupChoices
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	setup, err := h.svc.SaveSetupChoices(r.Context(), actorID(r), r.PathValue("id"), req)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, setup)
 }
 
 type retrySetupRequest struct {

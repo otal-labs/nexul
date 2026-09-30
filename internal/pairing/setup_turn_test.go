@@ -718,6 +718,40 @@ func TestStartSetup_PickedModels_RunBothSessionsOnThemAndAreRecorded(t *testing.
 	assert.Equal(t, "claude-haiku", retry.Providers[0].Model)
 	assert.Equal(t, []string{"claude=claude-haiku effort:max", "claude=claude-haiku effort:max"}, f.sessionModels()[before:])
 	assert.Equal(t, "claude-haiku", f.turns(retry.RunID)["claudeagent"].Model)
+
+	setup, err := f.svc.GetSetup(t.Context(), "u1", f.computer.ID)
+	require.NoError(t, err)
+	assert.Equal(t, map[string]string{"codex": "gpt-mini", "grok": "ignored"}, setup.Models, "the full run saved its picks; a retry never rewrites them")
+	assert.Equal(t, options["codex"], setup.ModelOptions["codex"])
+}
+
+func TestSaveSetupChoices_CleansAndKeepsThemForTheNextOpen(t *testing.T) {
+	t.Parallel()
+	f := newSetupFixture(t)
+
+	setup, err := f.svc.SaveSetupChoices(t.Context(), "u1", f.computer.ID, SetupChoices{
+		Skipped:      []string{" Codex ", "codex"},
+		Models:       map[string]string{"ClaudeAgent": " claude-opus-5-5 "},
+		ModelOptions: map[string][]harness.OptionSetting{"ClaudeAgent": {{ID: "effort", Value: "high"}}, "codex": {}},
+		Folder:       " /home/me/app ",
+	})
+	require.NoError(t, err)
+	want := SetupChoices{
+		Skipped:      []string{"codex"},
+		Models:       map[string]string{"claudeagent": "claude-opus-5-5"},
+		ModelOptions: map[string][]harness.OptionSetting{"claudeagent": {{ID: "effort", Value: "high"}}},
+		Folder:       "/home/me/app",
+	}
+	assert.Equal(t, want, setup.SetupChoices)
+	again, err := f.svc.GetSetup(t.Context(), "u1", f.computer.ID)
+	require.NoError(t, err)
+	assert.Equal(t, want, again.SetupChoices)
+	assert.Empty(t, f.sessionTitles(), "saving runs nothing")
+
+	_, err = f.svc.SaveSetupChoices(t.Context(), "u1", f.computer.ID, SetupChoices{ModelOptions: map[string][]harness.OptionSetting{"codex": {{ID: "effort", Value: 2.0}}}})
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
+	_, err = f.svc.SaveSetupChoices(t.Context(), "u2", f.computer.ID, SetupChoices{})
+	require.ErrorIs(t, err, apperrs.ErrNotFound, "another user's computer is not found, never saved")
 }
 
 func TestStartSetup_OnlyNamedProviders_RunsThoseAndRemembersTheRest(t *testing.T) {
@@ -735,7 +769,7 @@ func TestStartSetup_OnlyNamedProviders_RunsThoseAndRemembersTheRest(t *testing.T
 	assert.Len(t, finished.Providers, 1)
 	setup, err := f.svc.GetSetup(t.Context(), "u1", f.computer.ID)
 	require.NoError(t, err)
-	assert.Equal(t, []string{"codex"}, setup.SkippedProviders)
+	assert.Equal(t, []string{"codex"}, setup.Skipped)
 	require.NoError(t, f.resolveForPlay(t, "claude"))
 	require.Error(t, f.resolveForPlay(t, "codex-main"), "a skipped provider stays unconfirmed, so the gate still refuses it")
 
@@ -744,12 +778,12 @@ func TestStartSetup_OnlyNamedProviders_RunsThoseAndRemembersTheRest(t *testing.T
 	f.svc.setupRuns.Wait()
 	setup, err = f.svc.GetSetup(t.Context(), "u1", f.computer.ID)
 	require.NoError(t, err)
-	assert.Equal(t, []string{"codex"}, setup.SkippedProviders, "retrying one provider never rewrites the choice")
+	assert.Equal(t, []string{"codex"}, setup.Skipped, "retrying one provider never rewrites the choice")
 
 	f.start(t)
 	setup, err = f.svc.GetSetup(t.Context(), "u1", f.computer.ID)
 	require.NoError(t, err)
-	assert.Empty(t, setup.SkippedProviders, "a run of every provider leaves none skipped")
+	assert.Empty(t, setup.Skipped, "a run of every provider leaves none skipped")
 }
 
 func TestStartSetup_ToolCallUpdates_AreOneStep(t *testing.T) {

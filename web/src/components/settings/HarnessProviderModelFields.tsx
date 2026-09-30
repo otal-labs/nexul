@@ -1,11 +1,9 @@
 import { useWatch, type Control, type FieldValues, type Path } from "react-hook-form";
 
 import { FormInput } from "@/components/FormInput";
-import { ModelOptionsPicker } from "@/components/model/ModelOptionsPicker";
-import { ModelPicker } from "@/components/model/ModelPicker";
+import { ModelChoice } from "@/components/model/ModelChoice";
 import { ModelSettingRow } from "@/components/model/ModelSettingRow";
 import { useFetchHarnessProviders } from "@/hooks/PairingHooks";
-import { findModel } from "@/models/ModelPick";
 import type { OptionSetting } from "@/models/Pairing";
 
 interface HarnessProviderModelFieldsProps<T extends FieldValues> {
@@ -40,19 +38,15 @@ export const HarnessProviderModelFields = <T extends FieldValues>({
     <div className="space-y-1">
       {loaded && (
         <ModelSettingRow label="Model" description={description}>
-          <ModelPicker
+          <ModelChoice
             providers={loaded}
             value={{ provider, model }}
-            onChange={(next) => onPick(next.provider, next.model, [])}
+            options={options}
+            onPick={(next) => onPick(next.provider, next.model, [])}
+            onOptions={(next) => onPick(provider, model, next)}
             label="Model"
             allowDefault
-            className="w-56"
-          />
-          <ModelOptionsPicker
-            options={findModel(loaded, { provider, model })?.options ?? []}
-            value={options}
-            onChange={(next) => onPick(provider, model, next)}
-            label="Model options"
+            className="w-full md:w-96"
           />
         </ModelSettingRow>
       )}

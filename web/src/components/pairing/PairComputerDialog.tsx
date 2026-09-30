@@ -3,11 +3,13 @@ import { useState, type ReactNode } from "react";
 import { ConnectStep } from "@/components/pairing/ConnectStep";
 import { PairingStepTabs } from "@/components/pairing/PairingStepTabs";
 import { PairT3CodeStep } from "@/components/pairing/PairT3CodeStep";
+import { SetupDoneButton } from "@/components/pairing/SetupDoneButton";
 import { SetupStep } from "@/components/pairing/SetupStep";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { useFetchTunnelStatus } from "@/hooks/PairingHooks";
+import { useSetupDraftStore } from "@/stores/setupDraftStore";
 import { stillPairing, tunnelConnected, type Computer, type PairingStep } from "@/models/Pairing";
 import { cn } from "@/lib/utils";
 
@@ -67,8 +69,10 @@ export const PairComputerDialog = ({ trigger, existing, defaultOpen = false, onC
   const [computer, setComputer] = useState<Computer | undefined>(existing);
   const [paired, setPaired] = useState<Computer | undefined>(setupFor);
 
+  // Every way out but Done is Cancel: Esc, the corner close, and the Cancel button drop the Set up step's unsaved edits.
   const onOpenChange = (next: boolean) => {
     setOpen(next);
+    if (paired) useSetupDraftStore.getState().discard(paired.id);
     if (next) return;
     onClosed?.();
     setStep(first);
@@ -84,7 +88,11 @@ export const PairComputerDialog = ({ trigger, existing, defaultOpen = false, onC
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-      <DialogContent className={cn(FRAME, step === "setup" && SETUP_FRAME)}>
+      <DialogContent
+        className={cn(FRAME, step === "setup" && SETUP_FRAME)}
+        // A stray click beside a long setup must not throw the step's choices away; Cancel and Esc close it on purpose.
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <Tabs value={step} onValueChange={(v) => setStep(v as PairingStep)} className="flex min-h-0 flex-1 flex-col gap-0">
           <DialogHeader className="gap-3 border-b border-border px-4 pt-5 pb-4 text-left sm:px-6">
             <DialogTitle className="pr-8">{dialogTitle(existing, setupFor)}</DialogTitle>
@@ -103,18 +111,15 @@ export const PairComputerDialog = ({ trigger, existing, defaultOpen = false, onC
             </TabsContent>
           </div>
         </Tabs>
-        {step === "connect" && (
-          <div className="flex justify-end gap-2 border-t border-border px-4 py-3 sm:px-6">
-            <NextButton computerId={computer?.id ?? ""} onNext={() => setStep("pair")} />
-          </div>
-        )}
-        {step === "setup" && (
-          <div className="flex justify-end gap-2 border-t border-border px-4 py-3 sm:px-6">
-            <DialogClose asChild>
-              <Button type="button">Done</Button>
-            </DialogClose>
-          </div>
-        )}
+        <div className="flex justify-end gap-2 border-t border-border px-4 py-3 sm:px-6">
+          <DialogClose asChild>
+            <Button type="button" variant="outline">
+              Cancel
+            </Button>
+          </DialogClose>
+          {step === "connect" && <NextButton computerId={computer?.id ?? ""} onNext={() => setStep("pair")} />}
+          {step === "setup" && paired && <SetupDoneButton computerId={paired.id} onDone={() => onOpenChange(false)} />}
+        </div>
       </DialogContent>
     </Dialog>
   );

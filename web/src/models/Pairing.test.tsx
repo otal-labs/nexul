@@ -69,7 +69,7 @@ describe("setupRunRows", () => {
 });
 
 describe("providerSetupLines", () => {
-  const setup = (overrides: Partial<ComputerSetup>): ComputerSetup => ({ computer_id: "c1", confirmed_at: null, providers: [], skipped_providers: [], turns: [], ...overrides });
+  const setup = (overrides: Partial<ComputerSetup>): ComputerSetup => ({ computer_id: "c1", confirmed_at: null, providers: [], skipped_providers: [], models: {}, model_options: {}, folder: "", turns: [], ...overrides });
 
   it("joins confirmations and turns into one line per provider, a running turn first", () => {
     const lines = providerSetupLines(
@@ -127,6 +127,16 @@ describe("setupModelChoices", () => {
       ["claudeagent", "claude-big"],
       ["opencode", "pickle"],
       ["grok", ""],
+    ]);
+  });
+
+  it("prefers what the computer saved, even a saved provider default, and carries the options picked with each model", () => {
+    const saved = { skipped_providers: [], models: { claudeagent: "" }, model_options: { claudeagent: [{ id: "effort", value: "high" }] }, folder: "" };
+    const choices = setupModelChoices(providers, { provider: "opencode", model: "gpt", model_options: [{ id: "variant", value: "low" }] }, saved);
+    expect(choices.map((c) => [c.provider, c.preselected, c.preselectedOptions])).toEqual([
+      ["claudeagent", "", [{ id: "effort", value: "high" }]],
+      ["opencode", "gpt", [{ id: "variant", value: "low" }]],
+      ["grok", "", []],
     ]);
   });
 

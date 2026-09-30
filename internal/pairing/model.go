@@ -29,8 +29,8 @@ type Computer struct {
 	BearerToken string `json:"-"`
 	// SetupMCPToken is the encrypted MCP token the setup turns wrote into the providers' configs.
 	SetupMCPToken string `json:"-"`
-	// SetupSkipped holds the driver kinds the owner left out of setup runs on this computer.
-	SetupSkipped []string `json:"-"`
+	// SetupChoices are the Set up step's saved choices for this computer.
+	SetupChoices SetupChoices `json:"-"`
 	// Tunnel is nil for a computer paired by URL (ADR 0062).
 	Tunnel *ComputerTunnel `json:"tunnel,omitempty"`
 }
@@ -111,10 +111,56 @@ type Setup struct {
 	ComputerID  string          `json:"computer_id"`
 	ConfirmedAt *time.Time      `json:"confirmed_at"`
 	Providers   []ProviderSetup `json:"providers"`
-	// SkippedProviders are the driver kinds the owner's last run left out; the Set up step opens with them switched off.
-	SkippedProviders []string `json:"skipped_providers"`
+	// SetupChoices seed the Set up step when it opens.
+	SetupChoices
 	// Turns is each provider's newest setup turn, for a setup dialog opened mid-run.
 	Turns []SetupTurnSummary `json:"turns"`
+}
+
+// SetupChoices are what the Set up step last saved for a computer, by lower-case driver kind: the providers switched off,
+// each provider's model ("" for its own default) with that model's options, and the folder the turns run in.
+type SetupChoices struct {
+	Skipped      []string                           `json:"skipped_providers"`
+	Models       map[string]string                  `json:"models"`
+	ModelOptions map[string][]harness.OptionSetting `json:"model_options"`
+	Folder       string                             `json:"folder"`
+}
+
+// withEmpty swaps nil for empty, so the wire never carries null for a list or a map.
+func (c SetupChoices) withEmpty() SetupChoices {
+	if c.Skipped == nil {
+		c.Skipped = []string{}
+	}
+	if c.Models == nil {
+		c.Models = map[string]string{}
+	}
+	if c.ModelOptions == nil {
+		c.ModelOptions = map[string][]harness.OptionSetting{}
+	}
+	return c
+}
+
+// clean lower-cases the driver keys and checks the options; a nil list or map is stored as empty.
+func (c SetupChoices) clean() (SetupChoices, error) {
+	out := SetupChoices{Skipped: []string{}, Models: map[string]string{}, ModelOptions: map[string][]harness.OptionSetting{}, Folder: strings.TrimSpace(c.Folder)}
+	for _, driver := range c.Skipped {
+		if driver = strings.ToLower(strings.TrimSpace(driver)); driver != "" && !slices.Contains(out.Skipped, driver) {
+			out.Skipped = append(out.Skipped, driver)
+		}
+	}
+	for driver, model := range c.Models {
+		out.Models[strings.ToLower(strings.TrimSpace(driver))] = strings.TrimSpace(model)
+	}
+	for driver, options := range c.ModelOptions {
+		cleaned, err := harness.CleanOptions(options)
+		if err != nil {
+			return SetupChoices{}, err
+		}
+		if len(cleaned) > 0 {
+			out.ModelOptions[strings.ToLower(strings.TrimSpace(driver))] = cleaned
+		}
+	}
+	return out, nil
 }
 
 // SetupTurnSummary is one provider's newest setup turn without its transcript.

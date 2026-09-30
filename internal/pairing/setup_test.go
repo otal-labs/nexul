@@ -198,7 +198,7 @@ func TestHandler_GetSetup(t *testing.T) {
 
 	rec := doRequest(routes, http.MethodGet, "/api/pairing/computers/c1/setup", "u1", nil)
 	require.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `{"computer_id":"c1","confirmed_at":null,"providers":[],"skipped_providers":[],"turns":[]}`, rec.Body.String())
+	assert.JSONEq(t, `{"computer_id":"c1","confirmed_at":null,"providers":[],"skipped_providers":[],"models":{},"model_options":{},"folder":"","turns":[]}`, rec.Body.String())
 
 	rec = doRequest(routes, http.MethodGet, "/api/pairing/computers/c1/setup", "u2", nil)
 	assert.Equal(t, http.StatusNotFound, rec.Code, "another user's computer is invisible")
@@ -217,4 +217,28 @@ func TestHandler_Setup_HasNoWriteRoute(t *testing.T) {
 		}
 	}
 	assert.Empty(t, repo.outbox)
+}
+
+func TestHandler_SaveSetupChoices_RoundTripsThroughGetSetup(t *testing.T) {
+	t.Parallel()
+	h, repo, _ := newTestHandler()
+	repo.computers["c1"] = Computer{ID: "c1", UserID: "u1", Name: "home"}
+	routes := h.Routes()
+	body := map[string]any{
+		"skipped_providers": []string{"codex"},
+		"models":            map[string]string{"claudeagent": "claude-opus-5-5", "opencode": ""},
+		"model_options":     map[string]any{"claudeagent": []map[string]any{{"id": "effort", "value": "high"}, {"id": "fastMode", "value": true}}},
+		"folder":            "/home/me/app",
+	}
+
+	rec := doRequest(routes, http.MethodPut, "/api/pairing/computers/c1/setup/choices", "u1", body)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	rec = doRequest(routes, http.MethodGet, "/api/pairing/computers/c1/setup", "u1", nil)
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.JSONEq(t, `{"computer_id":"c1","confirmed_at":null,"providers":[],"turns":[],
+		"skipped_providers":["codex"],"models":{"claudeagent":"claude-opus-5-5","opencode":""},
+		"model_options":{"claudeagent":[{"id":"effort","value":"high"},{"id":"fastMode","value":true}]},"folder":"/home/me/app"}`, rec.Body.String())
+
+	rec = doRequest(routes, http.MethodPut, "/api/pairing/computers/c1/setup/choices", "u2", body)
+	assert.Equal(t, http.StatusNotFound, rec.Code, "another user's computer is invisible")
 }

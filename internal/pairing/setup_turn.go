@@ -41,19 +41,15 @@ func (s *Service) RetrySetupProvider(ctx context.Context, userID, computerID, pr
 }
 
 func (s *Service) startSetup(ctx context.Context, userID, computerID string, only []string, models map[string]string, options map[string][]harness.OptionSetting, folder string, remember bool) (*SetupRun, error) {
-	cleaned := make(map[string][]harness.OptionSetting, len(options))
-	for key, o := range options {
-		c, err := harness.CleanOptions(o)
-		if err != nil {
-			return nil, err
-		}
-		cleaned[key] = c
+	choices, err := SetupChoices{Models: models, ModelOptions: options, Folder: folder}.clean()
+	if err != nil {
+		return nil, err
 	}
 	session, err := s.sessionComputer(ctx, userID, computerID)
 	if err != nil {
 		return nil, err
 	}
-	folder = strings.TrimSpace(folder)
+	folder = choices.Folder
 	projectID, err := s.setupProject(ctx, session, folder)
 	if err != nil {
 		return nil, err
@@ -80,17 +76,18 @@ func (s *Service) startSetup(ctx context.Context, userID, computerID string, onl
 		return nil, err
 	}
 	if remember {
-		if err := s.repo.SetSetupSkippedProviders(ctx, userID, session.ID, skippedDrivers(detected, providers)); err != nil {
+		choices.Skipped = skippedDrivers(detected, providers)
+		if err := s.repo.SaveSetupChoices(ctx, userID, session.ID, choices); err != nil {
 			s.releaseSetup(session.ID)
 			return nil, err
 		}
 	}
 	run := &SetupRun{RunID: ids.New(), ComputerID: session.ID, Folder: folder, Providers: make([]SetupProvider, 0, len(providers)), projectID: projectID}
 	for _, p := range providers {
-		model := strings.TrimSpace(setupPick(models, p))
+		model := setupPick(choices.Models, p)
 		pick := SetupProvider{Provider: strings.ToLower(p.Driver), Name: p.Name, Model: model}
 		if model != "" {
-			pick.ModelOptions = setupPick(cleaned, p)
+			pick.ModelOptions = setupPick(choices.ModelOptions, p)
 		}
 		run.Providers = append(run.Providers, pick)
 	}

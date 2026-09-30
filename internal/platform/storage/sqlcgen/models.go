@@ -555,6 +555,9 @@ type PairingComputer struct {
 	TunnelAccessAppID     string
 	SetupMcpToken         string
 	SetupSkippedProviders string
+	SetupModels           string
+	SetupModelOptions     string
+	SetupFolder           string
 }
 
 type PairingProjectLink struct {

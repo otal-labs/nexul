@@ -40,8 +40,8 @@ type Repo interface {
 type SetupStore interface {
 	// SetSetupConfirmedAt sets or clears (nil) one of userID's own computers' overall confirmation, or ErrNotFound.
 	SetSetupConfirmedAt(ctx context.Context, userID, computerID string, at *time.Time, evt eventbus.OutboxEvent) error
-	// SetSetupSkippedProviders records the driver kinds left out of one of userID's own computers' setup runs, or ErrNotFound.
-	SetSetupSkippedProviders(ctx context.Context, userID, computerID string, skipped []string) error
+	// SaveSetupChoices records the Set up step's choices on one of userID's own computers, or ErrNotFound.
+	SaveSetupChoices(ctx context.Context, userID, computerID string, choices SetupChoices) error
 	// ListProviderSetups returns a computer's per-provider rows, ordered by provider.
 	ListProviderSetups(ctx context.Context, computerID string) ([]ProviderSetup, error)
 	// SaveProviderSetup upserts one provider's row on a computer; a nil ConfirmedAt records an un-confirmation.

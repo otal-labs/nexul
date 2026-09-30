@@ -92,14 +92,24 @@ export interface ProviderSetup {
 }
 
 // Read-only in the browser: confirmations are written only by an agent through MCP (ADR 0063).
-export interface ComputerSetup {
+interface ComputerSetupState {
   computer_id: string;
   confirmed_at: string | null;
   providers: ProviderSetup[];
-  // Driver kinds the last run left out; the Set up step opens with them switched off.
-  skipped_providers: string[];
   turns: SetupTurnSummary[];
 }
+
+// The Set up step's saved choices, by lower-case driver kind; ComputerSetup carries them and Done or a run saves them.
+export interface SetupChoices {
+  // Switched off; the step opens with them off.
+  skipped_providers: string[];
+  // A key present with "" is the provider's own default; a key absent falls back to the preselection.
+  models: Record<string, string>;
+  model_options: Record<string, OptionSetting[]>;
+  folder: string;
+}
+
+export type ComputerSetup = ComputerSetupState & SetupChoices;
 
 export interface SetupRun {
   run_id: string;
@@ -149,17 +159,32 @@ export const setupRunRows = (turns: SetupTurnSummary[], run: SetupRun | undefine
 export interface SetupModelChoice {
   provider: string;
   name: string;
-  models: HarnessProviderModel[];
+  instance: HarnessProvider;
   preselected: string;
+  preselectedOptions: OptionSetting[];
 }
 
-// The harness's first instance of each driver, as setup runs them; the defaults' model wins on the default provider.
-export const setupModelChoices = (providers: HarnessProvider[], defaults: PairingDefaults | undefined): SetupModelChoice[] =>
+type Preselection = Pick<SetupModelChoice, "preselected" | "preselectedOptions">;
+
+// The saved pick wins, then the defaults' model on the default provider, then the provider's own default.
+const preselect = (p: HarnessProvider, defaults: PairingDefaults | undefined, saved: SetupChoices | undefined): Preselection => {
+  const driver = p.driver.toLowerCase();
+  const savedModel = saved?.models[driver];
+  if (savedModel !== undefined) return { preselected: savedModel, preselectedOptions: saved?.model_options[driver] ?? [] };
+  const fromDefaults = defaults?.provider === p.id ? p.models.find((m) => m.slug === defaults.model)?.slug : undefined;
+  if (fromDefaults) return { preselected: fromDefaults, preselectedOptions: defaults?.model_options ?? [] };
+  return { preselected: p.models.find((m) => m.is_default)?.slug ?? "", preselectedOptions: [] };
+};
+
+// The harness's first instance of each driver, as setup runs them.
+export const setupModelChoices = (
+  providers: HarnessProvider[],
+  defaults: PairingDefaults | undefined,
+  saved?: SetupChoices,
+): SetupModelChoice[] =>
   providers.flatMap((p, i) => {
     if (providers.findIndex((o) => o.driver.toLowerCase() === p.driver.toLowerCase()) !== i) return [];
-    const fromDefaults = defaults?.provider === p.id ? p.models.find((m) => m.slug === defaults.model)?.slug : undefined;
-    const preselected = fromDefaults ?? p.models.find((m) => m.is_default)?.slug ?? "";
-    return [{ provider: p.driver.toLowerCase(), name: p.name, models: p.models, preselected }];
+    return [{ provider: p.driver.toLowerCase(), name: p.name, instance: p, ...preselect(p, defaults, saved) }];
   });
 
 // The row the transcript follows: the running one, else the last that ran so a finished run stays put, else the first.

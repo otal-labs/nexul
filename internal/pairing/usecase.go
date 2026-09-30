@@ -724,7 +724,23 @@ func (s *Service) GetSetup(ctx context.Context, userID, computerID string) (Setu
 	for i, p := range providers {
 		providers[i].SkillsOutdated = p.ConfirmedAt != nil && p.SkillsVersion != shipped.NexulMemory.Version
 	}
-	return Setup{ComputerID: computer.ID, ConfirmedAt: computer.SetupConfirmedAt, Providers: providers, SkippedProviders: computer.SetupSkipped, Turns: turns}, nil
+	return Setup{ComputerID: computer.ID, ConfirmedAt: computer.SetupConfirmedAt, Providers: providers, SetupChoices: computer.SetupChoices.withEmpty(), Turns: turns}, nil
+}
+
+// SaveSetupChoices keeps the Set up step's choices on the caller's own computer without running setup, and returns its setup.
+func (s *Service) SaveSetupChoices(ctx context.Context, userID, computerID string, choices SetupChoices) (Setup, error) {
+	computer, err := s.ownComputer(ctx, userID, computerID)
+	if err != nil {
+		return Setup{}, err
+	}
+	choices, err = choices.clean()
+	if err != nil {
+		return Setup{}, err
+	}
+	if err := s.repo.SaveSetupChoices(ctx, userID, computer.ID, choices); err != nil {
+		return Setup{}, fmt.Errorf("save setup choices for %s: %w", computer.ID, err)
+	}
+	return s.GetSetup(ctx, userID, computer.ID)
 }
 
 // ConfirmSetup records the caller's computer as set up overall; independent of any provider's confirmation.

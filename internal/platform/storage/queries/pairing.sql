@@ -77,5 +77,5 @@ WHERE t.computer_id = sqlc.arg(computer_id) AND t.id = (
 )
 ORDER BY t.provider;
 
--- name: SetPairingComputerSetupSkippedProviders :execrows
-UPDATE pairing_computers SET setup_skipped_providers = ? WHERE id = ? AND user_id = ?;
+-- name: SetPairingComputerSetupChoices :execrows
+UPDATE pairing_computers SET setup_skipped_providers = ?, setup_models = ?, setup_model_options = ?, setup_folder = ? WHERE id = ? AND user_id = ?;

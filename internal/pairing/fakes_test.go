@@ -152,14 +152,14 @@ func (f *fakeRepo) SetSetupConfirmedAt(_ context.Context, userID, computerID str
 	return nil
 }
 
-func (f *fakeRepo) SetSetupSkippedProviders(_ context.Context, userID, computerID string, skipped []string) error {
+func (f *fakeRepo) SaveSetupChoices(_ context.Context, userID, computerID string, choices SetupChoices) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	c, ok := f.computers[computerID]
 	if !ok || c.UserID != userID {
 		return apperrs.ErrNotFound
 	}
-	c.SetupSkipped = slices.Clone(skipped)
+	c.SetupChoices = choices
 	f.computers[computerID] = c
 	return nil
 }

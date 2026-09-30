@@ -198,20 +198,29 @@ func (r *PairingRepo) SetSetupConfirmedAt(ctx context.Context, userID, computerI
 	})
 }
 
-func (r *PairingRepo) SetSetupSkippedProviders(ctx context.Context, userID, computerID string, skipped []string) error {
-	encoded, err := json.Marshal(skipped)
+func (r *PairingRepo) SaveSetupChoices(ctx context.Context, userID, computerID string, c pairing.SetupChoices) error {
+	skipped, err := json.Marshal(c.Skipped)
 	if err != nil {
 		return fmt.Errorf("encode skipped providers: %w", err)
 	}
+	models, err := json.Marshal(c.Models)
+	if err != nil {
+		return fmt.Errorf("encode setup models: %w", err)
+	}
+	options, err := json.Marshal(c.ModelOptions)
+	if err != nil {
+		return fmt.Errorf("encode setup model options: %w", err)
+	}
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		n, err := r.q.WithTx(tx).SetPairingComputerSetupSkippedProviders(ctx, sqlcgen.SetPairingComputerSetupSkippedProvidersParams{
-			SetupSkippedProviders: string(encoded), ID: computerID, UserID: userID,
+		n, err := r.q.WithTx(tx).SetPairingComputerSetupChoices(ctx, sqlcgen.SetPairingComputerSetupChoicesParams{
+			SetupSkippedProviders: string(skipped), SetupModels: string(models), SetupModelOptions: string(options),
+			SetupFolder: c.Folder, ID: computerID, UserID: userID,
 		})
 		if err != nil {
-			return fmt.Errorf("set skipped providers for %s: %w", computerID, err)
+			return fmt.Errorf("save setup choices for %s: %w", computerID, err)
 		}
 		if n == 0 {
-			return fmt.Errorf("set skipped providers for %s: %w", computerID, apperrs.ErrNotFound)
+			return fmt.Errorf("save setup choices for %s: %w", computerID, apperrs.ErrNotFound)
 		}
 		return nil
 	})
@@ -305,19 +314,22 @@ func toPairingComputer(row sqlcgen.PairingComputer) pairing.Computer {
 		ID: row.ID, UserID: row.UserID, Kind: harness.Kind(row.Kind), Name: row.Name, ServerURL: row.ServerUrl, BearerToken: row.BearerToken,
 		TokenExpiresAt: time.Unix(row.TokenExpiresAt, 0).UTC(), HarnessVersion: row.HarnessVersion,
 		SetupConfirmedAt: unixPtrFromNull(row.SetupConfirmedAt), SetupMCPToken: row.SetupMcpToken,
-		SetupSkipped: decodeSkipped(row.SetupSkippedProviders),
-		CreatedAt:    time.Unix(row.CreatedAt, 0).UTC(), UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
+		SetupChoices: pairing.SetupChoices{
+			Skipped: decodeJSON(row.SetupSkippedProviders, []string{}), Models: decodeJSON(row.SetupModels, map[string]string{}),
+			ModelOptions: decodeJSON(row.SetupModelOptions, map[string][]harness.OptionSetting{}), Folder: row.SetupFolder,
+		},
+		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
 		Tunnel: toComputerTunnel(row),
 	}
 }
 
-// decodeSkipped reads the list this repo wrote; an unreadable value means no provider is skipped, so setup still covers them all.
-func decodeSkipped(raw string) []string {
-	skipped := []string{}
-	if err := json.Unmarshal([]byte(raw), &skipped); err != nil || skipped == nil {
-		return []string{}
+// decodeJSON reads a value this repo wrote; an unreadable one is empty, so setup opens on its own preselection.
+func decodeJSON[T any](raw string, empty T) T {
+	var v T
+	if err := json.Unmarshal([]byte(raw), &v); err != nil || raw == "null" {
+		return empty
 	}
-	return skipped
+	return v
 }
 
 func toComputerTunnel(row sqlcgen.PairingComputer) *pairing.ComputerTunnel {

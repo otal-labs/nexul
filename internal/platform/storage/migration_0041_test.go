@@ -22,6 +22,6 @@ VALUES ('c-old', 'u1', 't3code', 'home', 'https://home.example.com', 'sealed', 2
 
 	got, err := s.Pairing.GetComputer(t.Context(), "u1", "c-old")
 	require.NoError(t, err)
-	assert.Equal(t, []string{}, got.SetupSkipped, "an existing computer keeps setting up every provider")
+	assert.Equal(t, []string{}, got.SetupChoices.Skipped, "an existing computer keeps setting up every provider")
 	assert.NotNil(t, got.SetupConfirmedAt, "its confirmation is untouched")
 }
