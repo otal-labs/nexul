@@ -198,7 +198,7 @@ func TestHandler_GetSetup(t *testing.T) {
 
 	rec := doRequest(routes, http.MethodGet, "/api/pairing/computers/c1/setup", "u1", nil)
 	require.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `{"computer_id":"c1","confirmed_at":null,"providers":[],"turns":[]}`, rec.Body.String())
+	assert.JSONEq(t, `{"computer_id":"c1","confirmed_at":null,"providers":[],"skipped_providers":[],"turns":[]}`, rec.Body.String())
 
 	rec = doRequest(routes, http.MethodGet, "/api/pairing/computers/c1/setup", "u2", nil)
 	assert.Equal(t, http.StatusNotFound, rec.Code, "another user's computer is invisible")

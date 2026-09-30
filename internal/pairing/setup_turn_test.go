@@ -204,7 +204,7 @@ func (f *setupFixture) resolveForPlay(t *testing.T, provider string) error {
 
 func (f *setupFixture) start(t *testing.T) *SetupRun {
 	t.Helper()
-	run, err := f.svc.StartSetup(t.Context(), "u1", f.computer.ID, nil, "")
+	run, err := f.svc.StartSetup(t.Context(), "u1", f.computer.ID, nil, "", nil)
 	require.NoError(t, err)
 	f.svc.setupRuns.Wait()
 	return run
@@ -411,7 +411,7 @@ func TestStartSetup_ErrorPaths(t *testing.T) {
 		wantErr error
 	}{
 		{"another user's computer", nil, func(ctx context.Context, f *setupFixture) error {
-			_, err := f.svc.StartSetup(ctx, "u2", f.computer.ID, nil, "")
+			_, err := f.svc.StartSetup(ctx, "u2", f.computer.ID, nil, "", nil)
 			return err
 		}, apperrs.ErrNotFound},
 		{"no instance url", func(f *setupFixture) { f.svc.instance = fakeInstance{} }, nil, apperrs.ErrInvalid},
@@ -425,6 +425,10 @@ func TestStartSetup_ErrorPaths(t *testing.T) {
 		}, nil, apperrs.ErrInvalid},
 		{"retry a provider the harness does not list", nil, func(ctx context.Context, f *setupFixture) error {
 			_, err := f.svc.RetrySetupProvider(ctx, "u1", f.computer.ID, "grok", "", "")
+			return err
+		}, apperrs.ErrInvalid},
+		{"run limited to a provider the harness does not list", nil, func(ctx context.Context, f *setupFixture) error {
+			_, err := f.svc.StartSetup(ctx, "u1", f.computer.ID, nil, "", []string{"claudeagent", "grok"})
 			return err
 		}, apperrs.ErrInvalid},
 		{"retry without a provider", nil, func(ctx context.Context, f *setupFixture) error {
@@ -447,7 +451,7 @@ func TestStartSetup_ErrorPaths(t *testing.T) {
 			call := tt.call
 			if call == nil {
 				call = func(ctx context.Context, f *setupFixture) error {
-					_, err := f.svc.StartSetup(ctx, "u1", f.computer.ID, nil, "")
+					_, err := f.svc.StartSetup(ctx, "u1", f.computer.ID, nil, "", nil)
 					return err
 				}
 			}
@@ -468,7 +472,7 @@ func TestStartSetup_WhileRunning_IsAConflict(t *testing.T) {
 		<-release
 		return start(ctx, target, title, prompts)
 	}
-	_, err := f.svc.StartSetup(t.Context(), "u1", f.computer.ID, nil, "")
+	_, err := f.svc.StartSetup(t.Context(), "u1", f.computer.ID, nil, "", nil)
 	require.NoError(t, err)
 
 	_, err = f.svc.RetrySetupProvider(t.Context(), "u1", f.computer.ID, "codex", "", "")
@@ -476,7 +480,7 @@ func TestStartSetup_WhileRunning_IsAConflict(t *testing.T) {
 
 	close(release)
 	f.svc.setupRuns.Wait()
-	_, err = f.svc.StartSetup(t.Context(), "u1", f.computer.ID, nil, "")
+	_, err = f.svc.StartSetup(t.Context(), "u1", f.computer.ID, nil, "", nil)
 	require.NoError(t, err, "a finished run frees the computer")
 	f.svc.setupRuns.Wait()
 }
@@ -489,7 +493,7 @@ func TestSetupTurn_SaveFailure_IsLoggedAndTheRunCarriesOn(t *testing.T) {
 	f.repo.saveErr = errBoom
 	f.repo.mu.Unlock()
 
-	_, err := f.svc.StartSetup(t.Context(), "u1", f.computer.ID, nil, "")
+	_, err := f.svc.StartSetup(t.Context(), "u1", f.computer.ID, nil, "", nil)
 	require.NoError(t, err)
 	f.svc.setupRuns.Wait()
 	assert.Len(t, f.sessionTitles(), 8, "every session still ran")
@@ -526,7 +530,7 @@ func TestStartSetup_Folder_RunsEveryTurnInTheProjectThatOpensIt(t *testing.T) {
 		return []harness.Project{{ID: "t3-gone", Title: "Gone", Path: "/home/me/gone"}, {ID: "t3-app", Title: "App", Path: "/home/me/app"}}, nil
 	}
 
-	run, err := f.svc.StartSetup(t.Context(), "u1", f.computer.ID, nil, " /home/me/app ")
+	run, err := f.svc.StartSetup(t.Context(), "u1", f.computer.ID, nil, " /home/me/app ", nil)
 	require.NoError(t, err)
 	assert.Equal(t, "/home/me/app", run.Folder)
 	f.svc.setupRuns.Wait()
@@ -546,7 +550,7 @@ func TestStartSetup_Folder_NoProjectOpensIt_ListsTheFoldersThatDo(t *testing.T) 
 		return []harness.Project{{ID: "t3-app", Title: "App", Path: "/home/me/app"}}, nil
 	}
 
-	_, err := f.svc.StartSetup(t.Context(), "u1", f.computer.ID, nil, "/home/me/missing")
+	_, err := f.svc.StartSetup(t.Context(), "u1", f.computer.ID, nil, "/home/me/missing", nil)
 	require.ErrorIs(t, err, apperrs.ErrInvalid)
 	assert.Contains(t, err.Error(), "/home/me/app")
 
@@ -554,7 +558,7 @@ func TestStartSetup_Folder_NoProjectOpensIt_ListsTheFoldersThatDo(t *testing.T) 
 	require.ErrorIs(t, err, apperrs.ErrInvalid, "a retry checks the folder too")
 
 	f.exch.ListProjectsFn = func(context.Context, harness.Session) ([]harness.Project, error) { return nil, errBoom }
-	_, err = f.svc.StartSetup(t.Context(), "u1", f.computer.ID, nil, "/home/me/app")
+	_, err = f.svc.StartSetup(t.Context(), "u1", f.computer.ID, nil, "/home/me/app", nil)
 	require.ErrorIs(t, err, errBoom)
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -679,7 +683,7 @@ func TestStartSetup_PickedModels_RunBothSessionsOnThemAndAreRecorded(t *testing.
 	_, err := f.svc.SetDefaults(t.Context(), "u1", Defaults{DefaultComputerID: f.computer.ID, FallbackProjectID: "t3-home", Provider: "claude", Model: "claude-default"})
 	require.NoError(t, err)
 
-	run, err := f.svc.StartSetup(t.Context(), "u1", f.computer.ID, map[string]string{"Codex": " gpt-mini ", "grok": "ignored"}, "")
+	run, err := f.svc.StartSetup(t.Context(), "u1", f.computer.ID, map[string]string{"Codex": " gpt-mini ", "grok": "ignored"}, "", nil)
 	require.NoError(t, err)
 	f.svc.setupRuns.Wait()
 
@@ -702,6 +706,38 @@ func TestStartSetup_PickedModels_RunBothSessionsOnThemAndAreRecorded(t *testing.
 	assert.Equal(t, "claude-haiku", retry.Providers[0].Model)
 	assert.Equal(t, []string{"claude=claude-haiku", "claude=claude-haiku"}, f.sessionModels()[before:])
 	assert.Equal(t, "claude-haiku", f.turns(retry.RunID)["claudeagent"].Model)
+}
+
+func TestStartSetup_OnlyNamedProviders_RunsThoseAndRemembersTheRest(t *testing.T) {
+	t.Parallel()
+	f := newSetupFixture(t)
+
+	run, err := f.svc.StartSetup(t.Context(), "u1", f.computer.ID, nil, "", []string{"ClaudeAgent"})
+	require.NoError(t, err)
+	f.svc.setupRuns.Wait()
+
+	assert.Equal(t, []SetupProvider{{Provider: "claudeagent", Name: "Claude"}}, run.Providers)
+	assert.Equal(t, []string{"Nexul setup: Claude", "Nexul setup check: Claude"}, f.sessionTitles(), "a left-out provider gets no turn")
+	finished := f.finished(t, run.RunID)
+	assert.True(t, finished.Confirmed, "the computer confirms from the providers that ran, not from every provider it lists")
+	assert.Len(t, finished.Providers, 1)
+	setup, err := f.svc.GetSetup(t.Context(), "u1", f.computer.ID)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"codex"}, setup.SkippedProviders)
+	require.NoError(t, f.resolveForPlay(t, "claude"))
+	require.Error(t, f.resolveForPlay(t, "codex-main"), "a skipped provider stays unconfirmed, so the gate still refuses it")
+
+	_, err = f.svc.RetrySetupProvider(t.Context(), "u1", f.computer.ID, "codex", "", "")
+	require.NoError(t, err)
+	f.svc.setupRuns.Wait()
+	setup, err = f.svc.GetSetup(t.Context(), "u1", f.computer.ID)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"codex"}, setup.SkippedProviders, "retrying one provider never rewrites the choice")
+
+	f.start(t)
+	setup, err = f.svc.GetSetup(t.Context(), "u1", f.computer.ID)
+	require.NoError(t, err)
+	assert.Empty(t, setup.SkippedProviders, "a run of every provider leaves none skipped")
 }
 
 func TestStartSetup_ToolCallUpdates_AreOneStep(t *testing.T) {
@@ -739,6 +775,29 @@ func TestStartSetup_ToolCallUpdates_AreOneStep(t *testing.T) {
 	assert.Equal(t, "call-Nexul setup: Codex", f.bus.frames[0].CallID)
 	assert.Equal(t, f.bus.frames[0].CallID, f.bus.frames[1].CallID, "the live frames name the call, so the dialog updates its line")
 	assert.Equal(t, []string{"tool_call", "tool_result"}, []string{f.bus.frames[0].Kind, f.bus.frames[1].Kind}, "the dialog spins an open call until its result lands")
+}
+
+func TestSetupHandlers_ProvidersChoice(t *testing.T) {
+	t.Parallel()
+	f := newSetupFixture(t)
+	routes := NewHandler(f.svc).Routes()
+
+	rec := doRequest(routes, http.MethodPost, "/api/pairing/computers/"+f.computer.ID+"/setup/runs", "u1", map[string]any{"providers": []string{"claudeagent"}})
+	require.Equal(t, http.StatusAccepted, rec.Code, rec.Body.String())
+	assert.JSONEq(t, `[{"provider":"claudeagent","name":"Claude"}]`, providersJSON(t, rec.Body.Bytes()))
+	f.svc.setupRuns.Wait()
+
+	rec = doRequest(routes, http.MethodPost, "/api/pairing/computers/"+f.computer.ID+"/setup/runs", "u1", map[string]any{"providers": []string{"grok"}})
+	assert.Equal(t, http.StatusBadRequest, rec.Code, "a provider the computer does not list is refused")
+}
+
+func providersJSON(t *testing.T, body []byte) string {
+	t.Helper()
+	var run struct {
+		Providers json.RawMessage `json:"providers"`
+	}
+	require.NoError(t, json.Unmarshal(body, &run))
+	return string(run.Providers)
 }
 
 func TestSetupHandlers_ModelChoice(t *testing.T) {

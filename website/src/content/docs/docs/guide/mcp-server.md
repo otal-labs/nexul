@@ -57,8 +57,9 @@ both tunnel checks passing. With `name` and `server_url` instead, it pairs a
 machine the server can already reach by URL.
 
 `computer_setup_run` runs the same setup turns as the **Set up** step of the
-pairing dialog and returns at once. It takes an optional `models` object
-mapping a provider's driver kind to a model slug; with `provider` it runs
+pairing dialog and returns at once. An optional `providers` list sets up only
+those driver kinds; the computer remembers the others as skipped. It takes an
+optional `models` object mapping a provider's driver kind to a model slug; with `provider` it runs
 that one provider's turn again, on an optional `model`. A provider without a
 model runs on its own default. An optional `folder` runs the turns in the T3
 Code project that opens that absolute path, in place of the default project. Progress arrives as

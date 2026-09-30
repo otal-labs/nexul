@@ -29,6 +29,8 @@ type Computer struct {
 	BearerToken string `json:"-"`
 	// SetupMCPToken is the encrypted MCP token the setup turns wrote into the providers' configs.
 	SetupMCPToken string `json:"-"`
+	// SetupSkipped holds the driver kinds the owner left out of setup runs on this computer.
+	SetupSkipped []string `json:"-"`
 	// Tunnel is nil for a computer paired by URL (ADR 0062).
 	Tunnel *ComputerTunnel `json:"tunnel,omitempty"`
 }
@@ -109,6 +111,8 @@ type Setup struct {
 	ComputerID  string          `json:"computer_id"`
 	ConfirmedAt *time.Time      `json:"confirmed_at"`
 	Providers   []ProviderSetup `json:"providers"`
+	// SkippedProviders are the driver kinds the owner's last run left out; the Set up step opens with them switched off.
+	SkippedProviders []string `json:"skipped_providers"`
 	// Turns is each provider's newest setup turn, for a setup dialog opened mid-run.
 	Turns []SetupTurnSummary `json:"turns"`
 }

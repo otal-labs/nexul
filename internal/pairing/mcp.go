@@ -53,6 +53,7 @@ type computerSetupRunIn struct {
 	ComputerID string            `json:"computer_id" jsonschema:"The paired computer's id, from computer_list."`
 	Provider   string            `json:"provider,omitempty" jsonschema:"One provider's driver kind to run alone, for example codex, after its turn failed. Omit to run every provider the harness lists."`
 	Model      string            `json:"model,omitempty" jsonschema:"With provider only: the model slug its turn runs on, as the harness lists it. Omit for the provider's own default."`
+	Providers  []string          `json:"providers,omitempty" jsonschema:"Without provider only: the driver kinds to set up, for example [\"claude\", \"opencode\"]; the computer remembers the ones left out as skipped. Omit to run every provider the harness lists."`
 	Models     map[string]string `json:"models,omitempty" jsonschema:"Without provider only: the model slug each provider's turn runs on, keyed by driver kind, for example {\"codex\": \"gpt-5-mini\"}. A provider left out runs on its own default."`
 	Folder     string            `json:"folder,omitempty" jsonschema:"The absolute folder the turns run in, one a T3 Code project on that computer opens, for example /home/me/code/app. Omit for the pairing default, else the harness's first project."`
 }
@@ -235,6 +236,7 @@ func computerSetupRunTool(s *Service) mcptool.Tool {
 		"Starts setup on one of your paired computers: Nexul mints or reuses the computer's MCP token, then runs one "+
 			"setup turn per provider its harness lists, one after another, each connecting Nexul's MCP server, "+
 			"installing the default skills and nexul-memory, and confirming through computer_setup_update. Pass "+
+			"providers to set up only some of them (the rest are remembered as skipped), or "+
 			"provider to run only that provider's turn again after it failed; on a confirmed provider it re-verifies "+
 			"without undoing anything. Returns at once with the run and its providers; computer_list shows each "+
 			"provider's turn state as it progresses. Setup only writes user-level files, so pass folder to run it in any "+
@@ -247,8 +249,11 @@ func computerSetupRunTool(s *Service) mcptool.Tool {
 			if in.Provider != "" && len(in.Models) > 0 {
 				return nil, fmt.Errorf("%w: models applies to a run of every provider; with provider pass model instead", apperrs.ErrInvalid)
 			}
+			if in.Provider != "" && len(in.Providers) > 0 {
+				return nil, fmt.Errorf("%w: providers applies to a run of several providers; with provider pass just that one", apperrs.ErrInvalid)
+			}
 			if in.Provider == "" {
-				return s.StartSetup(ctx, mcpActorID(ctx), in.ComputerID, in.Models, in.Folder)
+				return s.StartSetup(ctx, mcpActorID(ctx), in.ComputerID, in.Models, in.Folder, in.Providers)
 			}
 			return s.RetrySetupProvider(ctx, mcpActorID(ctx), in.ComputerID, in.Provider, in.Model, in.Folder)
 		})

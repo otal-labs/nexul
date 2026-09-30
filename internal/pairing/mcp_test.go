@@ -69,6 +69,7 @@ func TestMCPTools_InvalidArguments(t *testing.T) {
 		{"setup run without a computer", "computer_setup_run", `{}`},
 		{"setup run with model but no provider", "computer_setup_run", `{"computer_id": "c1", "model": "gpt-big"}`},
 		{"setup run with provider and models", "computer_setup_run", `{"computer_id": "c1", "provider": "codex", "models": {"codex": "gpt-mini"}}`},
+		{"setup run with provider and providers", "computer_setup_run", `{"computer_id": "c1", "provider": "codex", "providers": ["claude"]}`},
 		{"setup run with a non-string model", "computer_setup_run", `{"computer_id": "c1", "models": {"codex": 7}}`},
 		{"setup update without confirmed", "computer_setup_update", `{"computer_id": "c1"}`},
 		{"setup update confirming a provider without skills", "computer_setup_update", `{"computer_id": "c1", "provider": "claude", "confirmed": true}`},
@@ -319,6 +320,11 @@ func TestComputerSetupRun_EveryProviderOrOneWithItsModel(t *testing.T) {
 	assert.Equal(t, []SetupProvider{{Provider: "codex", Name: "Codex", Model: "gpt-mini"}, {Provider: "claudeagent", Name: "Claude"}}, run.Providers)
 	f.svc.setupRuns.Wait()
 	assert.True(t, f.finished(t, run.RunID).Confirmed, "the confirm sessions confirmed through computer_setup_update")
+
+	out, err = callTool(t, ctx, f.svc, "computer_setup_run", `{"computer_id": "`+f.computer.ID+`", "providers": ["claudeagent"]}`)
+	require.NoError(t, err)
+	assert.Equal(t, []SetupProvider{{Provider: "claudeagent", Name: "Claude"}}, out.(*SetupRun).Providers)
+	f.svc.setupRuns.Wait()
 
 	out, err = callTool(t, ctx, f.svc, "computer_setup_run", `{"computer_id": "`+f.computer.ID+`", "provider": "codex", "model": "gpt-big"}`)
 	require.NoError(t, err)

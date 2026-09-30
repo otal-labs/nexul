@@ -37,7 +37,7 @@ func (q *Queries) DeletePairingProjectLink(ctx context.Context, projectID string
 }
 
 const getPairingComputer = `-- name: GetPairingComputer :one
-SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, setup_mcp_token FROM pairing_computers WHERE id = ? AND user_id = ?
+SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, setup_mcp_token, setup_skipped_providers FROM pairing_computers WHERE id = ? AND user_id = ?
 `
 
 type GetPairingComputerParams struct {
@@ -66,12 +66,13 @@ func (q *Queries) GetPairingComputer(ctx context.Context, arg GetPairingComputer
 		&i.TunnelRecordID,
 		&i.TunnelAccessAppID,
 		&i.SetupMcpToken,
+		&i.SetupSkippedProviders,
 	)
 	return i, err
 }
 
 const getPairingComputerByID = `-- name: GetPairingComputerByID :one
-SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, setup_mcp_token FROM pairing_computers WHERE id = ?
+SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, setup_mcp_token, setup_skipped_providers FROM pairing_computers WHERE id = ?
 `
 
 func (q *Queries) GetPairingComputerByID(ctx context.Context, id string) (PairingComputer, error) {
@@ -95,6 +96,7 @@ func (q *Queries) GetPairingComputerByID(ctx context.Context, id string) (Pairin
 		&i.TunnelRecordID,
 		&i.TunnelAccessAppID,
 		&i.SetupMcpToken,
+		&i.SetupSkippedProviders,
 	)
 	return i, err
 }
@@ -141,7 +143,7 @@ func (q *Queries) GetPairingProjectLink(ctx context.Context, projectID string) (
 }
 
 const listPairingComputers = `-- name: ListPairingComputers :many
-SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, setup_mcp_token FROM pairing_computers WHERE user_id = ? ORDER BY created_at DESC
+SELECT id, user_id, name, server_url, bearer_token, token_expires_at, harness_version, created_at, updated_at, kind, setup_confirmed_at, tunnel_id, tunnel_hostname, tunnel_zone_id, tunnel_record_id, tunnel_access_app_id, setup_mcp_token, setup_skipped_providers FROM pairing_computers WHERE user_id = ? ORDER BY created_at DESC
 `
 
 func (q *Queries) ListPairingComputers(ctx context.Context, userID string) ([]PairingComputer, error) {
@@ -171,6 +173,7 @@ func (q *Queries) ListPairingComputers(ctx context.Context, userID string) ([]Pa
 			&i.TunnelRecordID,
 			&i.TunnelAccessAppID,
 			&i.SetupMcpToken,
+			&i.SetupSkippedProviders,
 		); err != nil {
 			return nil, err
 		}
@@ -488,6 +491,24 @@ type SetPairingComputerSetupMCPTokenParams struct {
 
 func (q *Queries) SetPairingComputerSetupMCPToken(ctx context.Context, arg SetPairingComputerSetupMCPTokenParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, setPairingComputerSetupMCPToken, arg.SetupMcpToken, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const setPairingComputerSetupSkippedProviders = `-- name: SetPairingComputerSetupSkippedProviders :execrows
+UPDATE pairing_computers SET setup_skipped_providers = ? WHERE id = ? AND user_id = ?
+`
+
+type SetPairingComputerSetupSkippedProvidersParams struct {
+	SetupSkippedProviders string
+	ID                    string
+	UserID                string
+}
+
+func (q *Queries) SetPairingComputerSetupSkippedProviders(ctx context.Context, arg SetPairingComputerSetupSkippedProvidersParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, setPairingComputerSetupSkippedProviders, arg.SetupSkippedProviders, arg.ID, arg.UserID)
 	if err != nil {
 		return 0, err
 	}

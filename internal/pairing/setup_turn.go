@@ -25,9 +25,10 @@ type InstanceSettings interface {
 }
 
 // StartSetup runs one setup turn per provider in the background, each on its models entry (by driver), else the provider's default;
+// only narrows the run to those drivers or instance ids, empty for every provider, and the drivers it leaves out are remembered as skipped.
 // folder picks the harness project the turns run in, empty for the default.
-func (s *Service) StartSetup(ctx context.Context, userID, computerID string, models map[string]string, folder string) (*SetupRun, error) {
-	return s.startSetup(ctx, userID, computerID, "", models, folder)
+func (s *Service) StartSetup(ctx context.Context, userID, computerID string, models map[string]string, folder string, only []string) (*SetupRun, error) {
+	return s.startSetup(ctx, userID, computerID, only, models, folder, true)
 }
 
 // RetrySetupProvider runs one provider's setup turn alone on model, empty for its default; on a confirmed provider it re-verifies.
@@ -36,10 +37,10 @@ func (s *Service) RetrySetupProvider(ctx context.Context, userID, computerID, pr
 	if err != nil {
 		return nil, err
 	}
-	return s.startSetup(ctx, userID, computerID, provider, map[string]string{provider: model}, folder)
+	return s.startSetup(ctx, userID, computerID, []string{provider}, map[string]string{provider: model}, folder, false)
 }
 
-func (s *Service) startSetup(ctx context.Context, userID, computerID, only string, models map[string]string, folder string) (*SetupRun, error) {
+func (s *Service) startSetup(ctx context.Context, userID, computerID string, only []string, models map[string]string, folder string, remember bool) (*SetupRun, error) {
 	session, err := s.sessionComputer(ctx, userID, computerID)
 	if err != nil {
 		return nil, err
@@ -57,6 +58,7 @@ func (s *Service) startSetup(ctx context.Context, userID, computerID, only strin
 	if err != nil {
 		return nil, err
 	}
+	detected := detectedDrivers(providers)
 	providers, err = setupProviders(providers, only)
 	if err != nil {
 		return nil, err
@@ -68,6 +70,12 @@ func (s *Service) startSetup(ctx context.Context, userID, computerID, only strin
 	if err != nil {
 		s.releaseSetup(session.ID)
 		return nil, err
+	}
+	if remember {
+		if err := s.repo.SetSetupSkippedProviders(ctx, userID, session.ID, skippedDrivers(detected, providers)); err != nil {
+			s.releaseSetup(session.ID)
+			return nil, err
+		}
 	}
 	run := &SetupRun{RunID: ids.New(), ComputerID: session.ID, Folder: folder, Providers: make([]SetupProvider, 0, len(providers)), projectID: projectID}
 	for _, p := range providers {
@@ -116,12 +124,17 @@ func setupModel(models map[string]string, p harness.Provider) string {
 	return ""
 }
 
-// setupProviders keeps one instance per driver, since a confirmation is per driver; only narrows it to one driver or instance.
-func setupProviders(providers []harness.Provider, only string) ([]harness.Provider, error) {
+// setupProviders keeps one instance per driver, since a confirmation is per driver; only narrows it to the named drivers or instances.
+func setupProviders(providers []harness.Provider, only []string) ([]harness.Provider, error) {
+	for _, name := range only {
+		if !slices.ContainsFunc(providers, func(p harness.Provider) bool { return namesProvider(p, name) }) {
+			return nil, fmt.Errorf("%w: provider %s is not available on this computer", apperrs.ErrInvalid, name)
+		}
+	}
 	var out []harness.Provider
 	for _, p := range providers {
 		driver := strings.ToLower(p.Driver)
-		if only != "" && driver != only && strings.ToLower(p.ID) != only {
+		if len(only) > 0 && !slices.ContainsFunc(only, func(name string) bool { return namesProvider(p, name) }) {
 			continue
 		}
 		if slices.ContainsFunc(out, func(o harness.Provider) bool { return strings.ToLower(o.Driver) == driver }) {
@@ -129,13 +142,37 @@ func setupProviders(providers []harness.Provider, only string) ([]harness.Provid
 		}
 		out = append(out, p)
 	}
-	if len(out) > 0 {
-		return out, nil
+	if len(out) == 0 {
+		return nil, fmt.Errorf("%w: the harness lists no usable provider to set up", apperrs.ErrInvalid)
 	}
-	if only != "" {
-		return nil, fmt.Errorf("%w: provider %s is not available on this computer", apperrs.ErrInvalid, only)
+	return out, nil
+}
+
+// namesProvider is whether name, in any case, is p's driver kind or instance id.
+func namesProvider(p harness.Provider, name string) bool {
+	return strings.EqualFold(name, p.Driver) || strings.EqualFold(name, p.ID)
+}
+
+// detectedDrivers is the distinct driver kinds the harness lists, lowercase, in listed order.
+func detectedDrivers(providers []harness.Provider) []string {
+	var out []string
+	for _, p := range providers {
+		if driver := strings.ToLower(p.Driver); !slices.Contains(out, driver) {
+			out = append(out, driver)
+		}
 	}
-	return nil, fmt.Errorf("%w: the harness lists no usable provider to set up", apperrs.ErrInvalid)
+	return out
+}
+
+// skippedDrivers is every detected driver the run does not cover; never nil, so it stores as an empty list.
+func skippedDrivers(detected []string, run []harness.Provider) []string {
+	skipped := []string{}
+	for _, driver := range detected {
+		if !slices.ContainsFunc(run, func(p harness.Provider) bool { return strings.ToLower(p.Driver) == driver }) {
+			skipped = append(skipped, driver)
+		}
+	}
+	return skipped
 }
 
 func (s *Service) setupMCPURL(ctx context.Context) (string, error) {
