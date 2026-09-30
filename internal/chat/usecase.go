@@ -113,8 +113,7 @@ func (s *Service) createChannelKind(ctx context.Context, workspaceID, creatorUse
 	if creatorUserID == "" {
 		return nil, fmt.Errorf("%w: creator id is required", apperrs.ErrInvalid)
 	}
-	// Lower-cased: the unique index is case-sensitive, so "#General" and "#general" would otherwise coexist.
-	name = strings.ToLower(strings.TrimSpace(name))
+	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, fmt.Errorf("%w: channel name is required", apperrs.ErrInvalid)
 	}
