@@ -125,7 +125,7 @@ func TestWorkspaceList_WithIDReturnsPeopleRolesAndCatalog(t *testing.T) {
 		{ID: "role-editors", WorkspaceID: "ws-1", Name: "Editors", Permissions: []string{"docs:read", "roles:clone"}},
 	}, got.Roles)
 	assert.Equal(t, permissions.Catalog(), got.PermissionCatalog)
-	assert.Contains(t, got.PermissionCatalog, permissions.Info{Value: permissions.RolesClone, Label: "Clone roles to another workspace", Domain: "roles", Action: "clone"})
+	assert.Contains(t, got.PermissionCatalog, permissions.Info{Value: permissions.RolesClone, Label: "Clone roles to another workspace", Domain: "roles", Action: "clone", Area: permissions.AreaWorkspace})
 }
 
 func TestWorkspaceList_ListFailurePropagates(t *testing.T) {
