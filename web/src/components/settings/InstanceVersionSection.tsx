@@ -2,7 +2,7 @@ import { RefreshCw } from "lucide-react";
 
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { InstanceUpgradeProgress } from "@/components/settings/InstanceUpgradeProgress";
+import { InstanceUpgradeProgress, UpgradeElapsed } from "@/components/settings/InstanceUpgradeProgress";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,10 +37,13 @@ const InstanceVersionStatus = ({ data }: { data: InstanceUpgrade }) => {
 
   return (
     <div className="space-y-1">
-      <p className="flex items-center gap-2 text-base font-semibold">
-        <span aria-hidden className={cn("size-2 shrink-0 rounded-full", dot)} />
-        {headline}
-      </p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="flex items-center gap-2 text-base font-semibold">
+          <span aria-hidden className={cn("size-2 shrink-0 rounded-full", dot)} />
+          {headline}
+        </p>
+        {data.upgrade && isUpgradeInProgress(data.upgrade) && <UpgradeElapsed record={data.upgrade} />}
+      </div>
       <p className="text-sm text-muted-foreground">
         Running <span className="font-mono">{data.version}</span> on the {data.channel} channel
         {data.latest && (
