@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 
 import { buildLiveURL, LiveEventsClient, type ServerFrame } from "@/api/events";
+import { getMeKey } from "@/hooks/AuthHooks";
 import { getChatConversationsKey, getChatMessagesKey, getChatUnreadKey } from "@/hooks/ChatHooks";
 import { getDeployKey, getDeployLogKey } from "@/hooks/DeployHooks";
 import { getDocKey, getDocsKey } from "@/hooks/DocHooks";
@@ -12,6 +13,7 @@ import { getRunnersKey } from "@/hooks/RunnerHooks";
 import { getStackDeploysKey } from "@/hooks/StackHooks";
 import { getProjectStatusesKey } from "@/hooks/StatusHooks";
 import { getTicketKey, getTicketsByProjectKey } from "@/hooks/TicketHooks";
+import type { MeResponse } from "@/models/User";
 import { readSessionToken, useSessionStore } from "@/stores/sessionStore";
 
 // Maps push topics to the query keys they invalidate; each domain adds its rows as its screens land.
@@ -21,6 +23,8 @@ const pushTopics: Record<string, string[]> = {
   "chat.conversation.updated": [getChatConversationsKey],
   // An open thread of a deleted channel refetches into its error state instead of showing stale messages.
   "chat.conversation.deleted": [getChatConversationsKey, getChatMessagesKey, getChatUnreadKey],
+  // A private channel the viewer lost drops from the list, and its open thread refetches into not found.
+  "chat.conversation.members_changed": [getChatConversationsKey, getChatMessagesKey, getChatUnreadKey],
   "account.profile_updated": [getWorkspacePeopleKey],
   "account.removed": [getWorkspacePeopleKey],
   "workspace.member.added": [getWorkspacePeopleKey],
@@ -48,7 +52,26 @@ const pushTopics: Record<string, string[]> = {
   "deploy.updated": [getDeployKey, getDeployLogKey, getStackDeploysKey],
 };
 
+// Topics that can change what the person named as user_id may do, Project access included (ADR 0097).
+const permissionTopics = new Set([
+  "workspace.member.added",
+  "workspace.member.removed",
+  "workspace.member.updated",
+  "access.grant.changed",
+]);
+
+// Once the viewer's own access moves every open read refetches, so a project taken away turns its open screen revoked.
+const isViewersAccessChange = (client: QueryClient, frame: ServerFrame) => {
+  if (!permissionTopics.has(frame.topic)) return false;
+  const userID = (frame.payload as { user_id?: string } | null)?.user_id;
+  return !!userID && userID === client.getQueryData<MeResponse>([getMeKey])?.user.id;
+};
+
 export const dispatch = (client: QueryClient) => (frame: ServerFrame) => {
+  if (isViewersAccessChange(client, frame)) {
+    void client.invalidateQueries();
+    return;
+  }
   pushTopics[frame.topic]?.forEach((key) => void client.invalidateQueries({ queryKey: [key] }));
 };
 

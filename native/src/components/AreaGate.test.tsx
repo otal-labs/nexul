@@ -7,11 +7,13 @@ import BoardLayout from "@/app/(tabs)/board/_layout";
 import TabsLayout from "@/app/(tabs)/_layout";
 import { MoreScreen } from "@/components/settings/MoreScreen";
 import { Text } from "@/components/ui/text";
+import type { MyWorkspaceInfo } from "@/models/Workspace";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 jest.mock("@/api/client", () => ({ api: { get: jest.fn() } }));
 
 let permissions: string[] = [];
+let restriction: Pick<MyWorkspaceInfo, "restricted" | "projects"> = {};
 
 const renderApp = (initialUrl: string) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -39,10 +41,11 @@ const renderApp = (initialUrl: string) => {
 };
 
 beforeEach(() => {
+  restriction = {};
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   jest.mocked(api.get).mockImplementation(async (path: string) => {
     if (path === "/api/workspaces") return [{ id: "ws-1", name: "Acme" }];
-    if (path === "/api/workspaces/ws-1/me") return { role_name: "Member", permissions };
+    if (path === "/api/workspaces/ws-1/me") return { role_name: "Member", permissions, ...restriction };
     if (path.startsWith("/api/notifications/unread-count")) return { count: 0 };
     return [];
   });
@@ -80,6 +83,15 @@ describe("tabs by permission", () => {
     expect(await screen.findByRole("button", { name: tab("Board") })).toBeTruthy();
     expect(screen.getByText("Docs")).toBeTruthy();
     expect(screen.queryByText("Runners")).toBeNull();
+  });
+
+  test("a Restricted member's Project access opens the tab its project levels allow", async () => {
+    permissions = [];
+    restriction = { restricted: true, projects: [{ project_id: "p-1", actions: ["projects:read", "tickets:read"] }] };
+    await renderApp("/board");
+
+    expect(await screen.findByText("Board list")).toBeTruthy();
+    expect(tabs()).toEqual(["Inbox", "Chat", "Board", "More"]);
   });
 
   test("a deep link into a tab the viewer can't read is not found", async () => {

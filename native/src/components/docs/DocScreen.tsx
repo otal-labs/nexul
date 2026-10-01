@@ -5,6 +5,7 @@ import { ScrollView, View } from "react-native";
 import { DocBody } from "@/components/docs/DocBody";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
+import { ProjectRevokedGate } from "@/components/project/ProjectRevokedGate";
 import { Text } from "@/components/ui/text";
 import { useFetchDoc } from "@/hooks/DocHooks";
 import { RelativeTime } from "@/components/RelativeTime";
@@ -22,18 +23,20 @@ export const DocScreen = ({ docId }: DocScreenProps) => {
   }, [navigation, doc]);
 
   return (
-    <View className="flex-1 bg-background">
-      {isPending && <LoadingDisplay />}
-      {error && <ErrorDisplay error={error} notFound="This doc doesn't exist or was deleted." />}
-      {doc && (
-        <ScrollView contentContainerClassName="gap-3 p-4">
-          <Text variant="h3">{doc.title}</Text>
-          <Text variant="muted" className="font-mono text-xs">
-            v{doc.version} · updated <RelativeTime iso={doc.updated_at} />
-          </Text>
-          <DocBody body={doc.body} />
-        </ScrollView>
-      )}
-    </View>
+    <ProjectRevokedGate projectId={doc?.project_id}>
+      <View className="flex-1 bg-background">
+        {isPending && <LoadingDisplay />}
+        {error && <ErrorDisplay error={error} notFound="This doc doesn't exist or was deleted." />}
+        {doc && (
+          <ScrollView contentContainerClassName="gap-3 p-4">
+            <Text variant="h3">{doc.title}</Text>
+            <Text variant="muted" className="font-mono text-xs">
+              v{doc.version} · updated <RelativeTime iso={doc.updated_at} />
+            </Text>
+            <DocBody body={doc.body} />
+          </ScrollView>
+        )}
+      </View>
+    </ProjectRevokedGate>
   );
 };

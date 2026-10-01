@@ -1,8 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, userEvent, waitFor } from "@testing-library/react-native";
+import { act, render, screen, userEvent, waitFor } from "@testing-library/react-native";
 
 import { api } from "@/api/client";
+import { ApiError } from "@/api/errors";
 import { TicketScreen } from "@/components/board/TicketScreen";
+import { getProjectsKey } from "@/hooks/ProjectHooks";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 // The shared renderer pulls in the app query client and native markdown; the ticket screen only needs the body text.
 jest.mock("@/components/chat/MessageBody", () => {
@@ -47,13 +50,14 @@ const mockGet = (url: string) => {
   throw new Error(`unexpected GET ${url}`);
 };
 
-const renderScreen = () => {
+const renderScreen = async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  await render(
     <QueryClientProvider client={client}>
       <TicketScreen />
     </QueryClientProvider>,
   );
+  return client;
 };
 
 beforeEach(() => {
@@ -92,5 +96,25 @@ describe("TicketScreen", () => {
     await screen.findByText("onik97");
 
     await waitFor(() => expect(screen.queryByRole("button", { name: "Assign to me" })).toBeNull());
+  });
+
+  test("a ticket whose project is taken away while open turns revoked, not deleted", async () => {
+    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
+    let revoked = false;
+    jest.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url.startsWith("/api/projects?")) return revoked ? [] : [project];
+      if (url === "/api/tickets/t-1" && revoked) throw new ApiError(404, { message: "not found" }, "GET failed: 404");
+      return mockGet(url);
+    });
+    const client = await renderScreen();
+    await screen.findByText("Fix login");
+    await waitFor(() => expect(client.getQueryData([getProjectsKey, "ws-1"])).toEqual([project]));
+
+    revoked = true;
+    await act(() => client.invalidateQueries());
+
+    expect(await screen.findByText("You no longer have access to this project")).toBeTruthy();
+    expect(screen.queryByText("This ticket doesn't exist or was deleted.")).toBeNull();
+    expect(screen.queryByText("Fix login")).toBeNull();
   });
 });

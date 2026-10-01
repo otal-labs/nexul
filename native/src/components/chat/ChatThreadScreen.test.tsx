@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider, notifyManager } from "@tanstack/react
 import { act, render, screen, userEvent } from "@testing-library/react-native";
 
 import { api } from "@/api/client";
+import { ApiError } from "@/api/errors";
 import { ChatThreadScreen } from "@/components/chat/ChatThreadScreen";
 import { dispatch } from "@/hooks/useLiveEvents";
 import type { Message } from "@/models/Chat";
@@ -174,6 +175,25 @@ describe("ChatThreadScreen", () => {
     });
 
     expect(await screen.findByText("sent from the web")).toBeTruthy();
+  });
+
+  test("losing a private channel while it is open turns the thread into not found, with no stale messages", async () => {
+    const client = await renderThread();
+    await screen.findByText("newest");
+
+    get.mockImplementation(async (path: string) => {
+      if (path.startsWith("/api/chat/conversations/c1/messages")) throw new ApiError(404, { message: "not found" }, "GET failed: 404");
+      return respond(path);
+    });
+    const invalidate = jest.spyOn(client, "invalidateQueries");
+    await act(async () => {
+      dispatch(client)({ topic: "chat.conversation.members_changed", type: "event", payload: { conversation_id: "c1", removed_user_ids: ["me"] } });
+      await Promise.all(invalidate.mock.results.map((result) => result.value));
+    });
+
+    expect(await screen.findByText("This conversation doesn't exist or was deleted.")).toBeTruthy();
+    expect(screen.queryByText("newest")).toBeNull();
+    expect(screen.queryByLabelText("Message")).toBeNull();
   });
 
   // Android's Image drops the headers of a single source object, so only an array source reaches the private file route.
