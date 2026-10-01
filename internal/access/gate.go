@@ -31,7 +31,7 @@ func (s *Service) require(ctx context.Context, workspaceID, projectID string, ac
 	}
 	ws := s.layers(ctx, userID, workspaceID, projectID)
 	if !ws.owner && ws.hidden() {
-		return fmt.Errorf("%w: project %s", apperrs.ErrNotFound, projectID)
+		return apperrs.ErrNotFound
 	}
 	allowed := ws.owner || ws.has(action)
 	if action == "" {
