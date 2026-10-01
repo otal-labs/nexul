@@ -113,6 +113,31 @@ describe("TicketDetail", () => {
     expect(await screen.findByText(/· saved/)).toBeInTheDocument();
   });
 
+  it("saves a pasted multi-line title as one line", async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    renderDetail(ticket, { onSave });
+
+    const title = screen.getByRole("textbox", { name: "Ticket title" });
+    await user.clear(title);
+    await user.click(title);
+    await user.paste("First line\nSecond line");
+    await user.tab();
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledWith("First line Second line", expect.any(String)));
+  });
+
+  it("Enter in the title adds no line break", async () => {
+    const user = userEvent.setup();
+    renderDetail(ticket, { onSave: vi.fn().mockResolvedValue(undefined) });
+
+    const title = screen.getByRole("textbox", { name: "Ticket title" });
+    await user.click(title);
+    await user.keyboard("{Enter}");
+
+    expect(title).toHaveValue("Write migrations");
+  });
+
   it("autosaves without blur once the debounce elapses", async () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
     const user = userEvent.setup();

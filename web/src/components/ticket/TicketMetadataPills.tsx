@@ -5,6 +5,7 @@ import { PersonAvatar } from "@/components/PersonAvatar";
 import { TicketTypeIcon } from "@/components/board/ticketTypeIcon";
 import { useFormDialogContext } from "@/components/dialogs/FormDialogContext";
 import { PersonPickerList } from "@/components/ticket/PersonPickerList";
+import { TicketTypeOption } from "@/components/ticket/TicketTypeOption";
 import { selectTicketType } from "@/components/ticket/selectTicketType";
 import { menuItemClass, pillTriggerClass } from "@/components/ticket/ticketFormPillStyles";
 import { Input } from "@/components/ui/input";
@@ -46,7 +47,7 @@ export const TypePill = ({ ticketTypes }: TypePillProps) => {
                 setOpen(false);
               }}
             >
-              {type.name}
+              <TicketTypeOption name={type.name} selected={type.id === current?.id} iconClassName="text-muted-foreground" />
             </button>
           ))}
         </div>

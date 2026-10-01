@@ -5,7 +5,7 @@ import { DocBodyView } from "@/components/doc/DocBodyView";
 import { RichTextEditor } from "@/components/doc/RichTextEditor";
 import { formatUpdatedAgo } from "@/components/doc/docTime";
 import { TicketStatusBadge } from "@/components/ticket/TicketStatusBadge";
-import { Input } from "@/components/ui/input";
+import { TitleTextarea } from "@/components/TitleTextarea";
 import { usePerson } from "@/hooks/PeopleHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { personLabel } from "@/models/Person";
@@ -97,20 +97,20 @@ export const TicketDetail = ({ ticket, project, onSave }: TicketDetailProps) => 
         </div>
         {onSave && (
           <h1>
-            <Input
+            <TitleTextarea
               value={title}
-              onChange={(e) => {
-                setTitle(e.target.value);
-                titleRef.current = e.target.value;
+              onValueChange={(value) => {
+                setTitle(value);
+                titleRef.current = value;
                 schedule();
               }}
               onBlur={() => void flush()}
               aria-label="Ticket title"
-              className="h-auto w-full rounded-none border-0 bg-transparent px-0 py-0 text-3xl font-semibold tracking-tight focus-visible:ring-0 sm:text-4xl"
+              className="text-3xl sm:text-4xl"
             />
           </h1>
         )}
-        {!onSave && <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{ticket.title}</h1>}
+        {!onSave && <h1 className="text-center text-3xl font-semibold tracking-tight sm:text-4xl">{ticket.title}</h1>}
         <p className="font-mono text-xs text-muted-foreground">
           created {formatUpdatedAgo(ticket.created_at)}
           {reporter && ` by ${reporter}`} · updated {formatUpdatedAgo(ticket.updated_at)}
