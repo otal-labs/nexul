@@ -1,14 +1,17 @@
-import { Extension, type Editor } from "@tiptap/core";
+import { Extension, type ChainedCommands, type Editor } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { toast } from "sonner";
 
 import { errorMessage } from "@/api/client";
+import type { FileStage } from "@/components/doc/image/fileStage";
 import { uploadAttachment } from "@/hooks/AttachmentHooks";
-import { attachmentPath, isInlineImage, type AttachmentOwner } from "@/models/Attachment";
+import { attachmentPath, isInlineImage, uploadName, type AttachmentOwner } from "@/models/Attachment";
 
 export interface AttachmentUploadOptions {
-  /** Owner uploads attach to; null disables paste/drop/pick (read-only bodies, entity-less forms). */
+  /** Owner uploads attach to; with neither an owner nor a stage, paste/drop/pick is off (read-only bodies). */
   owner: AttachmentOwner | null;
+  /** A create form's holding area: files show from a local URL and upload once the entity exists. */
+  stage: FileStage | null;
   /** Fired after each batch lands so the page's attachment list can refetch. */
   onUploaded?: () => void;
 }
@@ -16,7 +19,7 @@ export interface AttachmentUploadOptions {
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
     attachmentUpload: {
-      /** Uploads files against the owner; inserts an image node, or a link for non-images, at pos or the caret. */
+      /** Uploads files against the owner, or stages them; inserts an image node, or a link for non-images, at pos or the caret. */
       insertFiles: (files: File[], pos?: number) => ReturnType;
       /** Opens the browser's file picker for images and inserts whatever is chosen. */
       pickImage: () => ReturnType;
@@ -26,20 +29,19 @@ declare module "@tiptap/core" {
 
 const filesFrom = (transfer: DataTransfer | null): File[] => Array.from(transfer?.files ?? []);
 
-async function insertFiles(editor: Editor, options: AttachmentUploadOptions, files: File[], pos?: number) {
-  if (!options.owner) return;
+const insertFile = (chain: () => ChainedCommands, at: number, name: string, contentType: string, href: string) => {
+  const content = isInlineImage(contentType)
+    ? { type: "image", attrs: { src: href, alt: name } }
+    : { type: "text", text: name, marks: [{ type: "link", attrs: { href } }] };
+  chain().focus().insertContentAt(at, content).run();
+};
+
+async function uploadFiles(editor: Editor, owner: AttachmentOwner, options: AttachmentUploadOptions, files: File[], pos?: number) {
   for (const file of files) {
     try {
-      const attachment = await uploadAttachment(options.owner, file, file.name || "Pasted image.png");
-      const href = attachmentPath(attachment.id);
-      const content = isInlineImage(attachment.content_type)
-        ? { type: "image", attrs: { src: href, alt: attachment.name } }
-        : { type: "text", text: attachment.name, marks: [{ type: "link", attrs: { href } }] };
-      editor
-        .chain()
-        .focus()
-        .insertContentAt(pos ?? editor.state.selection.to, content)
-        .run();
+      const attachment = await uploadAttachment(owner, file, uploadName(file));
+      const at = pos ?? editor.state.selection.to;
+      insertFile(() => editor.chain(), at, attachment.name, attachment.content_type, attachmentPath(attachment.id));
     } catch (error) {
       toast.error(errorMessage(error));
     }
@@ -47,34 +49,41 @@ async function insertFiles(editor: Editor, options: AttachmentUploadOptions, fil
   options.onUploaded?.();
 }
 
-// The one place files enter a body — paste/drop/picker all upload first, never inline base64.
+const acceptsFiles = (options: AttachmentUploadOptions): boolean => !!(options.owner || options.stage);
+
+// The one place files enter a body — paste/drop/picker upload (or stage) first, never inline base64.
 export const AttachmentUpload = Extension.create<AttachmentUploadOptions>({
   name: "attachmentUpload",
 
   addOptions() {
-    return { owner: null };
+    return { owner: null, stage: null };
   },
 
   addCommands() {
     return {
       insertFiles:
         (files, pos) =>
-        ({ editor }) => {
-          if (!this.options.owner || files.length === 0) return false;
-          void insertFiles(editor, this.options, files, pos);
+        ({ editor, chain, tr }) => {
+          const { owner, stage } = this.options;
+          if (files.length === 0) return false;
+          if (owner) {
+            void uploadFiles(editor, owner, this.options, files, pos);
+            return true;
+          }
+          if (!stage) return false;
+          // Staging is synchronous, so it inserts through this command's own transaction.
+          for (const file of files) insertFile(chain, pos ?? tr.selection.to, uploadName(file), file.type, stage.add(file));
           return true;
         },
       pickImage:
         () =>
         ({ editor }) => {
-          if (!this.options.owner) return false;
+          if (!acceptsFiles(this.options)) return false;
           const input = document.createElement("input");
           input.type = "file";
           input.accept = "image/*";
           input.multiple = true;
-          input.addEventListener("change", () => {
-            void insertFiles(editor, this.options, Array.from(input.files ?? []));
-          });
+          input.addEventListener("change", () => editor.commands.insertFiles(Array.from(input.files ?? [])));
           input.click();
           return true;
         },
@@ -105,8 +114,8 @@ export const AttachmentUpload = Extension.create<AttachmentUploadOptions>({
   },
 });
 
-// True only when the editor has an owner to upload against — hides the Image entry otherwise.
+// True only when the editor has an owner or a stage to take files — hides the Image entry otherwise.
 export const canUploadAttachments = (editor: Editor): boolean => {
   const ext = editor.extensionManager.extensions.find((e) => e.name === AttachmentUpload.name);
-  return !!(ext?.options as AttachmentUploadOptions | undefined)?.owner;
+  return !!ext && acceptsFiles(ext.options as AttachmentUploadOptions);
 };

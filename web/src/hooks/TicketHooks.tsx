@@ -64,14 +64,15 @@ export const useCreateTicket = () => {
 export const useUpdateTicket = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, title, body }: { id: string; title: string; body: string }) =>
+    // silent: the second half of a create (attaching its pasted files), which already said "Ticket created".
+    mutationFn: async ({ id, title, body }: { id: string; title: string; body: string; silent?: boolean }) =>
       (await api.patch<Ticket>(`/api/tickets/${id}`, { title, body })).data,
     onSuccess: async (_, vars) => {
       await client.invalidateQueries({ queryKey: [getTicketsKey] });
       await client.invalidateQueries({ queryKey: [getTicketKey, vars.id] });
       await client.invalidateQueries({ queryKey: [getTicketsByDocKey] });
       await client.invalidateQueries({ queryKey: [getTicketsByProjectKey] });
-      toast.success("Ticket updated");
+      if (!vars.silent) toast.success("Ticket updated");
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

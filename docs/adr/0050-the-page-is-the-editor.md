@@ -24,3 +24,6 @@ ticket (ADR 0027), so there is nothing to attach a pasted image to until the
 ticket has been created, and the full editor would offer a paste target that
 cannot work. The cost of reversing this is every editable surface in the
 product, so a new one follows the pattern rather than inventing its own.
+
+Superseded in part by ADR 0104: the create-ticket dialog uses the editor too, holding pasted files until the ticket
+exists.

@@ -1,10 +1,12 @@
 import type { ReactElement } from "react";
 import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ContextAwareConfirmation } from "react-confirm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { toast } from "sonner";
 
 import { api } from "@/api/client";
 import { CreateTicketFooter } from "@/components/ticket/CreateTicketFooter";
@@ -109,9 +111,43 @@ const renderWithRoot = (ui: ReactElement) =>
     </QueryClientProvider>,
   );
 
+// ProseMirror reads jsdom's DOM edits one key at a time; a burst of keys drops some.
+const typeInBody = async (user: ReturnType<typeof userEvent.setup>, text: string) => {
+  await user.click(screen.getByLabelText("Body"));
+  for (const key of text) await user.keyboard(key === " " ? "[Space]" : key);
+};
+
+const pasteFiles = (files: File[]) =>
+  fireEvent.paste(screen.getByLabelText("Body"), {
+    clipboardData: { files, items: [], types: ["Files"], getData: () => "" },
+  });
+
+// The created ticket is t-20; each upload is answered by name, and shot-fail.png is refused.
+const mockCreateWithUploads = () => {
+  let objectUrls = 0;
+  globalThis.URL.createObjectURL = vi.fn(() => `blob:staged-${++objectUrls}`);
+  globalThis.URL.revokeObjectURL = vi.fn();
+  vi.mocked(api.post).mockImplementation(async (url: string, payload: unknown) => {
+    if (url === "/api/tickets") return { data: { id: "t-20", title: "With a screenshot" } };
+    if (url !== "/api/attachments") return { data: { chips: [] } };
+    const name = (payload as FormData).get("name");
+    if (name === "shot-fail.png") throw new Error("too large");
+    return { data: { id: `a-${String(name)}`, name, content_type: "image/png", size: 3 } };
+  });
+  vi.mocked(api.patch).mockResolvedValue({ data: { id: "t-20" } });
+};
+
+const uploadedOwners = () =>
+  vi
+    .mocked(api.post)
+    .mock.calls.filter(([url]) => url === "/api/attachments")
+    .map(([, form]) => (form as FormData).get("ticket_id"));
+
 beforeEach(() => {
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
+  vi.mocked(api.patch).mockReset();
+  vi.mocked(toast.error).mockReset();
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   useWorkspaceStore.persist.clearStorage();
 });
@@ -308,11 +344,12 @@ describe("CreateTicketForm", () => {
     renderWithRoot(<TicketHarness />);
 
     await user.click(screen.getByRole("button", { name: "Open" }));
-    await vi.waitFor(() => expect(screen.getByLabelText("Body")).toHaveValue("## What needs doing\n\n"));
+    await vi.waitFor(() => expect(screen.getByLabelText("Body")).toHaveTextContent("What needs doing"));
     await user.click(await screen.findByRole("button", { name: "task" }));
     await user.click(await screen.findByRole("button", { name: "feature" }));
 
-    expect(screen.getByLabelText("Body")).toHaveValue("## Why\n\n");
+    await vi.waitFor(() => expect(screen.getByLabelText("Body")).toHaveTextContent("Why"));
+    expect(screen.getByLabelText("Body")).not.toHaveTextContent("What needs doing");
     await user.keyboard("{Escape}");
   });
 
@@ -323,12 +360,14 @@ describe("CreateTicketForm", () => {
 
     await user.click(screen.getByRole("button", { name: "Open" }));
     const body = await screen.findByLabelText("Body");
-    await vi.waitFor(() => expect(body).toHaveValue("## What needs doing\n\n"));
-    await user.type(body, "ship it");
+    await vi.waitFor(() => expect(body).toHaveTextContent("What needs doing"));
+    await typeInBody(user, "ship it");
     await user.click(await screen.findByRole("button", { name: "task" }));
     await user.click(await screen.findByRole("button", { name: "feature" }));
 
-    expect(body).toHaveValue("## What needs doing\n\nship it");
+    expect(body).toHaveTextContent("What needs doing");
+    expect(body).toHaveTextContent("ship it");
+    expect(body).not.toHaveTextContent("Why");
     await user.keyboard("{Escape}");
   });
 
@@ -341,13 +380,14 @@ describe("CreateTicketForm", () => {
     await user.click(screen.getByRole("button", { name: "Open" }));
     await user.click(await screen.findByRole("checkbox", { name: "Create more" }));
     const body = await screen.findByLabelText("Body");
-    await vi.waitFor(() => expect(body).toHaveValue("## What needs doing\n\n"));
+    await vi.waitFor(() => expect(body).toHaveTextContent("What needs doing"));
     await user.type(await screen.findByLabelText("Title"), "First ticket");
-    await user.type(body, "done");
+    await typeInBody(user, "done");
     await user.click(screen.getByRole("button", { name: "Create" }));
 
     await vi.waitFor(() => expect(api.post).toHaveBeenCalledTimes(1));
-    await vi.waitFor(() => expect(screen.getByLabelText("Body")).toHaveValue("## What needs doing\n\n"));
+    await vi.waitFor(() => expect(screen.getByLabelText("Body")).not.toHaveTextContent("done"));
+    expect(screen.getByLabelText("Body")).toHaveTextContent("What needs doing");
     await user.keyboard("{Escape}");
   });
 
@@ -364,16 +404,52 @@ describe("CreateTicketForm", () => {
 
     const titleInput = await screen.findByLabelText("Title");
     await user.type(titleInput, "First ticket");
-    await user.type(screen.getByLabelText("Body"), "First body");
+    await typeInBody(user, "First body");
     await user.click(screen.getByRole("button", { name: "Create" }));
 
     await vi.waitFor(() => expect(api.post).toHaveBeenCalledTimes(1));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(await screen.findByLabelText("Title")).toHaveValue("");
-    expect(screen.getByLabelText("Body")).toHaveValue("");
+    await vi.waitFor(() => expect(screen.getByLabelText("Body")).not.toHaveTextContent("First body"));
     // Non-title/body fields survive the reset, so a batch of tickets can share the same category.
     expect(screen.getByRole("button", { name: "Sprint 1" })).toBeInTheDocument();
 
     await user.keyboard("{Escape}");
+  });
+
+  it("attaches an image pasted before the ticket exists to the new ticket and saves its path in the body", async () => {
+    const user = userEvent.setup();
+    mockReferenceData();
+    mockCreateWithUploads();
+    renderWithRoot(<TicketHarness />);
+
+    await user.click(screen.getByRole("button", { name: "Open" }));
+    await user.type(await screen.findByLabelText("Title"), "With a screenshot");
+    pasteFiles([new File(["png"], "shot.png", { type: "image/png" })]);
+    await user.click(screen.getByRole("button", { name: "Create" }));
+
+    expect(await screen.findByText("t-20")).toBeInTheDocument();
+    expect(uploadedOwners()).toEqual(["t-20"]);
+    const saved = vi.mocked(api.patch).mock.calls.find(([url]) => url === "/api/tickets/t-20")?.[1] as { body: string };
+    expect(saved.body).toContain('"src":"/api/attachments/a-shot.png"');
+    expect(saved.body).not.toContain("blob:");
+  });
+
+  it("keeps the ticket and the other images when one staged upload fails, naming the failed file", async () => {
+    const user = userEvent.setup();
+    mockReferenceData();
+    mockCreateWithUploads();
+    renderWithRoot(<TicketHarness />);
+
+    await user.click(screen.getByRole("button", { name: "Open" }));
+    await user.type(await screen.findByLabelText("Title"), "With a screenshot");
+    pasteFiles([new File(["png"], "shot-fail.png", { type: "image/png" }), new File(["png"], "shot.png", { type: "image/png" })]);
+    await user.click(screen.getByRole("button", { name: "Create" }));
+
+    expect(await screen.findByText("t-20")).toBeInTheDocument();
+    expect(toast.error).toHaveBeenCalledWith(expect.stringContaining("shot-fail.png"));
+    const saved = vi.mocked(api.patch).mock.calls.find(([url]) => url === "/api/tickets/t-20")?.[1] as { body: string };
+    expect(saved.body).toContain('"src":"/api/attachments/a-shot.png"');
+    expect(saved.body).not.toContain("blob:");
   });
 });

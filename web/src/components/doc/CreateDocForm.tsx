@@ -3,9 +3,11 @@ import { useEffect } from "react";
 import { useFormDialogContext } from "@/components/dialogs/FormDialogContext";
 import { NoDataDisplay } from "@/components/NoDataDisplay";
 import { RichTextEditor } from "@/components/doc/RichTextEditor";
+import { createWithStagedFiles } from "@/components/doc/image/fileStage";
 import { dialogTitleInputClass } from "@/components/ticket/ticketFormPillStyles";
-import { useCreateDoc } from "@/hooks/DocHooks";
+import { useCreateDoc, useUpdateDoc } from "@/hooks/DocHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
+import { useFileStage } from "@/hooks/useFileStage";
 import type { SaveDocFormData } from "@/models/Doc";
 
 interface CreateDocFormProps {
@@ -17,6 +19,8 @@ export const CreateDocForm = ({ defaultProjectId = "" }: CreateDocFormProps) => 
   const { register, formState, getValues, setValue, watch, onSubmit, setLoading, submit } =
     useFormDialogContext<SaveDocFormData>();
   const createDoc = useCreateDoc();
+  const updateDoc = useUpdateDoc();
+  const stage = useFileStage();
   const { data: projects } = useFetchProjects();
 
   const ready = projects != null;
@@ -34,7 +38,11 @@ export const CreateDocForm = ({ defaultProjectId = "" }: CreateDocFormProps) => 
 
   // The folder belongs to the project the dialog opened in; picking another project files the doc in that one's default.
   onSubmit(async ({ folder_id, ...input }) => {
-    const doc = await createDoc.mutateAsync(input.project_id === defaultProjectId ? { ...input, folder_id } : input);
+    const doc = await createWithStagedFiles(stage, input.body, {
+      create: (body) => createDoc.mutateAsync(input.project_id === defaultProjectId ? { ...input, body, folder_id } : { ...input, body }),
+      ownerOf: (created) => ({ doc_id: created.id }),
+      save: (created, body) => updateDoc.mutateAsync({ id: created.id, title: created.title, body }),
+    });
     return { id: doc.id, ...input };
   });
 
@@ -71,7 +79,7 @@ export const CreateDocForm = ({ defaultProjectId = "" }: CreateDocFormProps) => 
             )}
           </div>
           <div className="max-h-[40dvh] overflow-y-auto">
-            <RichTextEditor compact value={watch("body")} onChange={(value) => setValue("body", value)} aria-label="Body" />
+            <RichTextEditor compact stage={stage} value={watch("body")} onChange={(value) => setValue("body", value)} aria-label="Body" />
           </div>
         </div>
       )}

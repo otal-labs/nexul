@@ -70,7 +70,7 @@ describe("BoardCreateMenu", () => {
     await user.click(screen.getByRole("button", { name: "Add" }));
     await user.click(await screen.findByRole("button", { name: "Report a bug" }));
     const dialog = await screen.findByRole("dialog");
-    await vi.waitFor(() => expect(within(dialog).getByRole("textbox", { name: "Body" })).toHaveValue("## Steps to reproduce\n\n"));
+    await vi.waitFor(() => expect(within(dialog).getByLabelText("Body")).toHaveTextContent("Steps to reproduce"));
     await user.type(within(dialog).getByRole("textbox", { name: "Title" }), "random crash");
     await user.click(within(dialog).getByRole("button", { name: "Report bug" }));
     expect(await within(dialog).findByText("Pick the ticket this bug was found in, or tick Origin unknown")).toBeInTheDocument();

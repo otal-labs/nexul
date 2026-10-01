@@ -2,14 +2,17 @@ import { useEffect, useMemo, useRef, type RefObject } from "react";
 
 import { useFormDialogContext } from "@/components/dialogs/FormDialogContext";
 import { NoDataDisplay } from "@/components/NoDataDisplay";
+import { RichTextEditor } from "@/components/doc/RichTextEditor";
+import { createWithStagedFiles } from "@/components/doc/image/fileStage";
 import { FoundInPill } from "@/components/ticket/FoundInPill";
 import { offeredTicketTypes, selectTicketType, type TicketTypeForm } from "@/components/ticket/selectTicketType";
 import { CategoryPill, DocChip, PersonPill, TypePill } from "@/components/ticket/TicketMetadataPills";
 import { dialogTitleInputClass } from "@/components/ticket/ticketFormPillStyles";
 import { useFetchCategories } from "@/hooks/CategoryHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
-import { useCreateTicket } from "@/hooks/TicketHooks";
+import { useCreateTicket, useUpdateTicket } from "@/hooks/TicketHooks";
 import { useFetchProjectTicketTypes } from "@/hooks/TicketTypeHooks";
+import { useFileStage } from "@/hooks/useFileStage";
 import type { Category } from "@/models/Category";
 import type { Project } from "@/models/Project";
 import type { SaveTicketFormData } from "@/models/Ticket";
@@ -93,6 +96,8 @@ export const CreateTicketForm = ({
   const { register, watch, setValue, getValues, formState, onSubmit, setLoading, submit } =
     useFormDialogContext<SaveTicketFormData>();
   const createTicket = useCreateTicket();
+  const updateTicket = useUpdateTicket();
+  const stage = useFileStage();
   const { data: projects } = useFetchProjects();
   const { data: categories } = useFetchCategories();
   const projectId = watch("project_id");
@@ -122,7 +127,11 @@ export const CreateTicketForm = ({
   }, [ready, projectId, ticketTypes]);
 
   onSubmit(async (input) => {
-    const ticket = await createTicket.mutateAsync(input);
+    const ticket = await createWithStagedFiles(stage, input.body, {
+      create: (body) => createTicket.mutateAsync({ ...input, body }),
+      ownerOf: (created) => ({ ticket_id: created.id }),
+      save: (created, body) => updateTicket.mutateAsync({ id: created.id, title: created.title, body, silent: true }),
+    });
     return { id: ticket.id, ...input };
   });
 
@@ -132,9 +141,11 @@ export const CreateTicketForm = ({
   return (
     <div
       className="space-y-3"
-      onKeyDown={(e) => {
+      // Capture: the body editor would otherwise take Mod-Enter as a line break before the form sees it.
+      onKeyDownCapture={(e) => {
         if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
           e.preventDefault();
+          e.stopPropagation();
           submit();
         }
       }}
@@ -159,13 +170,15 @@ export const CreateTicketForm = ({
               </p>
             )}
           </div>
-          <textarea
-            {...register("body")}
-            aria-label="Body"
-            rows={4}
-            placeholder="Add description…"
-            className="quiet-focus field-sizing-content max-h-[40dvh] min-h-20 w-full resize-none overflow-y-auto border-0 bg-transparent p-0 text-sm text-foreground caret-primary outline-none placeholder:text-muted-foreground"
-          />
+          <div className="max-h-[40dvh] overflow-y-auto">
+            <RichTextEditor
+              compact
+              stage={stage}
+              value={watch("body")}
+              onChange={(value) => setValue("body", value)}
+              aria-label="Body"
+            />
+          </div>
           <div className="flex flex-wrap items-center gap-1.5">
             <TypePill ticketTypes={ticketTypes ?? []} />
             <CategoryPill categories={projectCategories} />
