@@ -43,6 +43,7 @@ INSERT INTO deploys (id, stack_id, service, target, image, status, strategy, cre
 		every       bool
 	}{
 		{"a ticket event is its project's workspace", "ticket.finished", map[string]any{"ticket": map[string]any{"id": "t-b", "project_id": "p-b"}}, []string{"ws-b"}, false},
+		{"a doc folder event is its project's workspace", "doc.folder.deleted", map[string]any{"folder": map[string]any{"id": "f-b", "project_id": "p-b"}}, []string{"ws-b"}, false},
 		{"a deleted ticket names its project", "ticket.deleted", map[string]any{"id": "t-gone", "project_id": "p-a"}, []string{"workspace-default"}, false},
 		{"a PR reaches every workspace among its linked tickets", "git.pr_opened", map[string]any{"owner": "acme", "repo": "web", "pr": map[string]any{"linked_ticket_ids": []string{"t-a", "t-b"}}}, []string{"workspace-default", "ws-b"}, false},
 		{"a PR linking nothing is its repository's", "git.pr_merged", map[string]any{"owner": "acme", "repo": "web", "pr": map[string]any{}}, []string{"ws-b"}, false},

@@ -27,6 +27,7 @@ func (r *DocsRepo) Create(ctx context.Context, d *docs.Doc, evts ...eventbus.Out
 		err := q.CreateDoc(ctx, sqlcgen.CreateDocParams{
 			ID:        d.ID,
 			ProjectID: sql.NullString{String: d.ProjectID, Valid: d.ProjectID != ""},
+			FolderID:  d.FolderID,
 			Title:     d.Title,
 			Body:      d.Body,
 			BodyMd:    richtext.SearchText(d.Body),
@@ -203,6 +204,7 @@ func toDoc(row sqlcgen.Doc) *docs.Doc {
 	return &docs.Doc{
 		ID:        row.ID,
 		ProjectID: row.ProjectID.String,
+		FolderID:  row.FolderID,
 		Title:     row.Title,
 		Body:      row.Body,
 		Version:   int(row.Version),

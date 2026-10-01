@@ -326,6 +326,16 @@ type Doc struct {
 	ProjectID sql.NullString
 	CreatedBy string
 	Locked    int64
+	FolderID  string
+}
+
+type DocFolder struct {
+	ID        string
+	ProjectID string
+	Name      string
+	IsDefault int64
+	CreatedAt int64
+	UpdatedAt int64
 }
 
 type DocVersion struct {

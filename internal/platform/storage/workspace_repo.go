@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/otal-labs/nexul/internal/docs"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/storage/sqlcgen"
 	"github.com/otal-labs/nexul/internal/workspace"
@@ -35,7 +36,8 @@ func (r *ProjectsRepo) Create(ctx context.Context, p *workspace.Project) error {
 	})
 }
 
-// seedProjectDefaults inserts defaults in the same transaction as the project, so a board is always usable.
+// seedProjectDefaults inserts defaults in the same transaction as the project, so a board is always usable and a
+// new doc always has its default folder to land in.
 func seedProjectDefaults(ctx context.Context, q *sqlcgen.Queries, workspaceID, projectID string, at int64) error {
 	statuses := []struct {
 		name string
@@ -61,6 +63,12 @@ func seedProjectDefaults(ctx context.Context, q *sqlcgen.Queries, workspaceID, p
 		}); err != nil {
 			return fmt.Errorf("seed ticket type %q for project %s: %w", tt.Name, projectID, err)
 		}
+	}
+	created := time.Unix(at, 0).UTC()
+	if err := insertDocFolder(ctx, q, &docs.Folder{
+		ID: uuid.NewString(), ProjectID: projectID, Name: mainFolderName, IsDefault: true, CreatedAt: created, UpdatedAt: created,
+	}); err != nil {
+		return fmt.Errorf("seed default doc folder for project %s: %w", projectID, err)
 	}
 	memoryID := uuid.NewString()
 	if err := q.CreateMemory(ctx, sqlcgen.CreateMemoryParams{
