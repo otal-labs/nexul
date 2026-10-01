@@ -410,7 +410,7 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("GET", "/api/integrations/{id}/deliveries", "List webhook deliveries", "integrations")
 	spec.Register("GET", "/api/events/catalog", "Published event-schema catalog", "events")
 	spec.Register("GET", "/api/templates", "List every instance template, the code default where none was edited; any signed-in member", "templates")
-	spec.Register("GET", "/api/templates/{kind}", "Get one instance template; ?key= names a play or ticket type", "templates")
+	spec.Register("GET", "/api/templates/{kind}", "Get one template; ?key= names a play or ticket type, ?scope= with workspace_id or project_id reads it below the instance", "templates")
 	spec.Register("PUT", "/api/templates/{kind}", "Needs templates:write: replace an instance template's text", "templates")
 	spec.Register("DELETE", "/api/templates/{kind}", "Needs templates:write: reset an instance template to its code default; ?key= names a play or ticket type", "templates")
 	spec.Register("POST", "/api/templates/clone", "Copy a template's text from one layer over another; read where the source lives, write where the target does", "templates")

@@ -360,6 +360,26 @@ func TestHandler(t *testing.T) {
 	}
 }
 
+func TestHandler_GetBelowTheInstance_ReadsThatLocation(t *testing.T) {
+	routes := NewHandler(newFixture().svc).Routes()
+	get := func(path string) *httptest.ResponseRecorder {
+		rec := httptest.NewRecorder()
+		routes.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil).WithContext(as("member")))
+		return rec
+	}
+
+	rec := get("/api/templates/body?key=bug&scope=project&project_id=p-1")
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	var got Template
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+	assert.Equal(t, "bug in p-1", got.Body)
+	assert.Equal(t, "code bug", got.DefaultBody)
+	assert.True(t, got.Edited)
+
+	assert.Equal(t, http.StatusBadRequest, get("/api/templates/body?key=bug&scope=project").Code)
+	assert.Equal(t, http.StatusNotFound, get("/api/templates/body?key=chore&scope=project&project_id=p-2").Code)
+}
+
 func TestTopics(t *testing.T) {
 	assert.Equal(t, []string{"instance_template.updated"}, Topics())
 }
