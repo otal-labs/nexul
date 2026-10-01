@@ -291,6 +291,7 @@ func wireDomainEventSubscriptions(ctx context.Context, bus *inprocess.Bus, svc *
 	})
 
 	mustSubscribe(ctx, bus, "voice.close_room", chat.TopicConversationDeleted, "", voiceRoomCloseHandler(svc.voiceSvc))
+	mustSubscribe(ctx, bus, "voice.remove_from_call", chat.TopicConversationMembersChanged, "", voiceCallRemoveHandler(svc.voiceSvc))
 
 	// Pushes leave the request path here: the outbox event names the rows, the sender posts to Expo per phone.
 	mustSubscribe(ctx, bus, "push.notifications", workspace.TopicNotificationPushRequested, "", svc.pushSender.HandleNotificationPushRequested)

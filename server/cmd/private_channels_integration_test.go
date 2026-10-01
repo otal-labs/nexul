@@ -3,6 +3,10 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,7 +14,9 @@ import (
 
 	"github.com/otal-labs/nexul/internal/attachments"
 	"github.com/otal-labs/nexul/internal/chat"
+	"github.com/otal-labs/nexul/internal/connectors"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 )
 
 // TestIntegration_PrivateChannel walks every read of a private channel through the wired services: its members and
@@ -110,4 +116,64 @@ func TestIntegration_SwitchingPrivateReachesEveryOpenSidebar(t *testing.T) {
 	history, err := s.chatSvc.ListMessages(as(uPlain), f.channel.ID, uPlain, 50)
 	require.NoError(t, err)
 	require.Len(t, history, 1)
+}
+
+// TestIntegration_RemovalFromPrivateVoiceChannelEndsTheirCall delivers the real membership events as the relay would:
+// whoever loses the call is disconnected and cannot rejoin, and the Owner, who reads every private channel, stays.
+func TestIntegration_RemovalFromPrivateVoiceChannelEndsTheirCall(t *testing.T) {
+	f := newPermFixture(t)
+	s := f.svc
+	var disconnected []string
+	lk := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body struct{ Room, Identity string }
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		if strings.HasSuffix(r.URL.Path, "/RemoveParticipant") {
+			disconnected = append(disconnected, body.Identity)
+		}
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	t.Cleanup(lk.Close)
+	require.NoError(t, f.store.Connectors.SaveCredentials(t.Context(), connectors.Credentials{ConnectorID: "livekit",
+		ManualFields: map[string]string{"ws_url": lk.URL, "api_key": "key1", "api_secret": "secret1"}}))
+	handle := voiceCallRemoveHandler(s.voiceSvc)
+	deliver := func() []string {
+		disconnected = nil
+		entries, err := f.store.Outbox.Unpublished(t.Context(), 500)
+		require.NoError(t, err)
+		for _, e := range entries {
+			if e.Topic == chat.TopicConversationMembersChanged {
+				require.NoError(t, handle(t.Context(), eventbus.Event{ID: e.ID, Topic: e.Topic, Payload: e.Payload}))
+			}
+			require.NoError(t, f.store.Outbox.MarkPublished(t.Context(), e.ID))
+		}
+		slices.Sort(disconnected)
+		return disconnected
+	}
+
+	call, err := s.chatSvc.CreatePrivateChannel(as(uWriter), "workspace-default", uWriter, "leads-call", chat.KindVoiceChannel, []string{uReader, uPlain, uOwner})
+	require.NoError(t, err)
+	deliver()
+	_, err = s.chatSvc.RemoveChannelMembers(as(uWriter), call.ID, []string{uPlain})
+	require.NoError(t, err)
+	assert.Equal(t, []string{uPlain}, deliver(), "removed by someone else")
+	_, err = s.chatSvc.RemoveChannelMembers(as(uReader), call.ID, []string{uReader})
+	require.NoError(t, err)
+	assert.Equal(t, []string{uReader}, deliver(), "left")
+	_, err = s.chatSvc.RemoveChannelMembers(as(uOwner), call.ID, []string{uOwner})
+	require.NoError(t, err)
+	assert.Empty(t, deliver(), "the Owner left but still reads it")
+	for _, user := range []string{uPlain, uReader} {
+		_, err = s.voiceSvc.Join(as(user), call.ID, user)
+		require.ErrorIs(t, err, apperrs.ErrNotFound, "%s rejoins", user)
+	}
+
+	standup, err := s.chatSvc.CreateVoiceChannel(as(uWriter), "workspace-default", uWriter, "standup")
+	require.NoError(t, err)
+	deliver()
+	_, err = s.chatSvc.SetChannelPrivate(as(uWriter), standup.ID, true, []string{uReader})
+	require.NoError(t, err)
+	got := deliver()
+	assert.NotContains(t, got, uOwner, "switched private without the Owner")
+	assert.Contains(t, got, uPlain, "switched private without them")
+	assert.NotContains(t, got, uReader, "kept")
 }

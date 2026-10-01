@@ -16,6 +16,8 @@ type Occupant struct {
 // ConversationChecker is the consumer-side seam over chat (ADR 0017), confirming a conversation is a voice channel.
 type ConversationChecker interface {
 	IsVoiceChannel(ctx context.Context, conversationID string) (bool, error)
+	// Reads applies chat's read rule to userID, so the Owner reads every private channel without being a member.
+	Reads(ctx context.Context, conversationID, userID string) (bool, error)
 }
 
 // CredentialSource re-reads the credential per call, no restart needed (ADR 0017).

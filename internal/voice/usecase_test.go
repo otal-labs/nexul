@@ -4,11 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/otal-labs/nexul/internal/livekit"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -17,7 +21,8 @@ import (
 // fakeConversations is a test double for ConversationChecker.
 type fakeConversations struct {
 	voiceChannels map[string]bool
-	err           error
+	readers       map[string]bool
+	err, readsErr error
 }
 
 func (f *fakeConversations) IsVoiceChannel(_ context.Context, conversationID string) (bool, error) {
@@ -25,6 +30,10 @@ func (f *fakeConversations) IsVoiceChannel(_ context.Context, conversationID str
 		return false, f.err
 	}
 	return f.voiceChannels[conversationID], nil
+}
+
+func (f *fakeConversations) Reads(_ context.Context, _, userID string) (bool, error) {
+	return f.readers[userID], f.readsErr
 }
 
 // fakeCredentials is a test double for CredentialSource.
@@ -307,5 +316,63 @@ func TestCloseRoom(t *testing.T) {
 		if err := s.CloseRoom(context.Background(), "conv-1"); err == nil {
 			t.Fatal("CloseRoom = nil, want the credentials error")
 		}
+	})
+}
+
+// fakeLiveKit answers every RoomService call with status and records each as "<method> <room> <identity>".
+func fakeLiveKit(t *testing.T, status int) (*fakeCredentials, *[]string) {
+	t.Helper()
+	var calls []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body struct{ Room, Identity string }
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		calls = append(calls, strings.TrimPrefix(r.URL.Path, "/twirp/livekit.RoomService/")+" "+body.Room+" "+body.Identity)
+		w.WriteHeader(status)
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	t.Cleanup(srv.Close)
+	return &fakeCredentials{client: livekit.Client{WSURL: srv.URL, APIKey: "key1", APISecret: "secret1"}}, &calls
+}
+
+func TestRemoveFromCall(t *testing.T) {
+	voiceChannel := map[string]bool{"conv-1": true}
+
+	t.Run("disconnects whoever no longer reads the channel and keeps whoever still does", func(t *testing.T) {
+		cred, calls := fakeLiveKit(t, http.StatusOK)
+		bus := &fakePublisher{}
+		s := newTestService(t, &fakeConversations{voiceChannels: voiceChannel, readers: map[string]bool{"u-owner": true}}, cred, nil, bus)
+		s.occupancy.join("conv-1", Occupant{Identity: "u-owner", Name: "Owner"})
+		s.occupancy.join("conv-1", Occupant{Identity: "u-1", Name: "Ada"})
+
+		require.NoError(t, s.RemoveFromCall(t.Context(), "conv-1", []string{"u-owner", "u-1"}))
+		assert.Equal(t, []string{"RemoveParticipant conv-1 u-1"}, *calls)
+		assert.Equal(t, []Occupant{{Identity: "u-owner", Name: "Owner"}}, s.occupancy.room("conv-1"))
+		assert.Len(t, bus.all(), 1)
+	})
+
+	t.Run("a deleted channel is left to CloseRoom", func(t *testing.T) {
+		cred, calls := fakeLiveKit(t, http.StatusOK)
+		notFound := fmt.Errorf("%w: conversation conv-1", apperrs.ErrNotFound)
+		s := newTestService(t, &fakeConversations{err: notFound}, cred, nil, nil)
+		require.NoError(t, s.RemoveFromCall(t.Context(), "conv-1", []string{"u-1"}))
+		assert.Empty(t, *calls)
+	})
+
+	t.Run("without a LiveKit connector nobody is in a call", func(t *testing.T) {
+		s := newTestService(t, &fakeConversations{voiceChannels: voiceChannel}, &fakeCredentials{err: errNotConfigured}, nil, nil)
+		require.NoError(t, s.RemoveFromCall(t.Context(), "conv-1", []string{"u-1"}))
+	})
+
+	t.Run("a failed read check is returned so the event is retried", func(t *testing.T) {
+		cred, calls := fakeLiveKit(t, http.StatusOK)
+		s := newTestService(t, &fakeConversations{voiceChannels: voiceChannel, readsErr: errors.New("database is locked")}, cred, nil, nil)
+		require.Error(t, s.RemoveFromCall(t.Context(), "conv-1", []string{"u-1"}))
+		assert.Empty(t, *calls)
+	})
+
+	t.Run("a LiveKit outage is retryable", func(t *testing.T) {
+		cred, _ := fakeLiveKit(t, http.StatusServiceUnavailable)
+		s := newTestService(t, &fakeConversations{voiceChannels: voiceChannel}, cred, nil, nil)
+		require.ErrorIs(t, s.RemoveFromCall(t.Context(), "conv-1", []string{"u-1"}), apperrs.ErrRetryable)
 	})
 }
