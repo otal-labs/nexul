@@ -7,7 +7,6 @@ import { FormSelect } from "@/components/ticket/FormSelect";
 import { useCreateMemory } from "@/hooks/MemoryHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import type { CreateMemoryFormData } from "@/models/Memory";
-import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 interface CreateMemoryFormProps {
   defaultProjectId?: string;
@@ -19,7 +18,6 @@ export const CreateMemoryForm = ({ defaultProjectId = "" }: CreateMemoryFormProp
   const { control, setValue, watch, onSubmit, setLoading } = useFormDialogContext<CreateMemoryFormData>();
   const createMemory = useCreateMemory();
   const { data: projects } = useFetchProjects();
-  const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
 
   const ready = projects != null;
 
@@ -32,10 +30,6 @@ export const CreateMemoryForm = ({ defaultProjectId = "" }: CreateMemoryFormProp
     setValue("project_id", defaultProjectId);
   }, [ready, defaultProjectId, setValue]);
 
-  useEffect(() => {
-    setValue("workspace_id", workspaceId);
-  }, [workspaceId, setValue]);
-
   onSubmit(async (input) => {
     const memory = await createMemory.mutateAsync(input);
     return { id: memory.id, ...input };
@@ -45,13 +39,12 @@ export const CreateMemoryForm = ({ defaultProjectId = "" }: CreateMemoryFormProp
 
   return (
     <div className="space-y-4">
-      {/* "Workspace" rides the placeholder slot FormSelect already has for a "" value (see its Radix comment). */}
       <FormSelect
         control={control}
         name="project_id"
         label="Project"
         options={projectOptions}
-        placeholder="Workspace"
+        placeholder="Select a project"
       />
       <FormInput control={control} name="title" label="Title" placeholder="Memory title" />
       <FormInput

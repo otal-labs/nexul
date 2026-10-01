@@ -51,57 +51,31 @@ describe("CloneMemoryDialog", () => {
     });
   });
 
-  it("lists destination projects grouped by workspace, across every workspace the user belongs to", async () => {
+  it("lists only projects as destinations, across every workspace the user belongs to", async () => {
     renderDialog();
     await waitFor(() => expect(screen.getByRole("combobox")).toBeInTheDocument());
 
     const user = userEvent.setup();
     await user.click(screen.getByRole("combobox"));
 
-    expect(await screen.findByRole("option", { name: "Engineering / Workspace" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Engineering / Backend" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Marketing / Workspace" })).toBeInTheDocument();
+    expect(await screen.findByRole("option", { name: "Engineering / Backend" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Marketing / Website" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: /Workspace/ })).not.toBeInTheDocument();
   });
 
-  it("clones to the selected project and navigates to the clone", async () => {
+  it("clones to a project in another workspace and navigates to the clone under that project", async () => {
     mocks.post.mockResolvedValue({ data: { id: "mem-2" } });
     const { onClose } = renderDialog();
     const user = userEvent.setup();
 
     await waitFor(() => expect(screen.getByRole("combobox")).toBeInTheDocument());
     await user.click(screen.getByRole("combobox"));
-    await user.click(await screen.findByRole("option", { name: "Engineering / Backend" }));
+    await user.click(await screen.findByRole("option", { name: "Marketing / Website" }));
     await user.click(screen.getByRole("button", { name: "Clone" }));
 
-    await waitFor(() =>
-      expect(mocks.post).toHaveBeenCalledWith("/api/memories/mem-1/clone", {
-        project_id: "project-1",
-        workspace_id: "ws-1",
-      }),
-    );
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/memories/mem-1/clone", { project_id: "project-2" }));
     expect(onClose).toHaveBeenCalled();
-    expect(navigateSpy).toHaveBeenCalledWith("/engineering/memories/mem-2");
-  });
-
-  it("clones to workspace scope and navigates to the clone", async () => {
-    mocks.post.mockResolvedValue({ data: { id: "mem-3" } });
-    const { onClose } = renderDialog();
-    const user = userEvent.setup();
-
-    await waitFor(() => expect(screen.getByRole("combobox")).toBeInTheDocument());
-    await user.click(screen.getByRole("combobox"));
-    await user.click(await screen.findByRole("option", { name: "Marketing / Workspace" }));
-    await user.click(screen.getByRole("button", { name: "Clone" }));
-
-    await waitFor(() =>
-      expect(mocks.post).toHaveBeenCalledWith("/api/memories/mem-1/clone", {
-        project_id: "",
-        workspace_id: "ws-2",
-      }),
-    );
-    expect(onClose).toHaveBeenCalled();
-    expect(navigateSpy).toHaveBeenCalledWith("/marketing/memories/mem-3");
+    expect(navigateSpy).toHaveBeenCalledWith("/marketing/memories/WEB/mem-2");
   });
 
   it("cancels without cloning", async () => {

@@ -146,10 +146,8 @@ export const useRevertMemory = () => {
 export const useCloneMemory = () => {
   const client = useQueryClient();
   return useMutation({
-    // projectId "" clones to workspace scope; workspaceId always names the destination workspace.
-    mutationFn: async ({ id, projectId, workspaceId }: { id: string; projectId: string; workspaceId: string }) =>
-      (await api.post<Memory>(`/api/memories/${id}/clone`, { project_id: projectId, workspace_id: workspaceId }))
-        .data,
+    mutationFn: async ({ id, projectId }: { id: string; projectId: string }) =>
+      (await api.post<Memory>(`/api/memories/${id}/clone`, { project_id: projectId })).data,
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getMemoriesKey] });
       toast.success("Memory cloned");

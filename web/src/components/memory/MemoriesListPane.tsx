@@ -19,7 +19,6 @@ interface MemoriesListPaneProps {
 const matches = (memory: Memory, query: string) =>
   [memory.title, memory.when_to_use, bodySnippet(memory.body)].some((text) => text.toLowerCase().includes(query));
 
-// The project's memories and its workspace's, which reach every turn in the project too (ADR 0059).
 export const MemoriesListPane = ({ memories, project, selectedId }: MemoriesListPaneProps) => {
   const [search, setSearch] = useState("");
   const openCreateMemory = useCreateMemoryDialog(project.id);

@@ -106,16 +106,6 @@ describe("MemoryDetail", () => {
     expect(screen.getByTestId("rich-text-editor")).toBeInTheDocument();
   });
 
-  it("shows a Workspace pill for a workspace-scoped memory", () => {
-    renderDetail({ memory: { ...memory, project_id: "" } });
-    expect(screen.getByText("Workspace")).toBeInTheDocument();
-  });
-
-  it("hides the Workspace pill for a project-scoped memory", () => {
-    renderDetail();
-    expect(screen.queryByText("Workspace")).not.toBeInTheDocument();
-  });
-
   it("locks the interview memory on and counts it against the cap", () => {
     renderDetail({ canWrite: true, memory: { ...memory, kind: "interview", always_included: true, body: "x".repeat(8001) } });
     expect(screen.queryByLabelText("Always included")).not.toBeInTheDocument();

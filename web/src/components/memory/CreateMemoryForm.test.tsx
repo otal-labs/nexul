@@ -10,7 +10,6 @@ import { api } from "@/api/client";
 import { CreateMemoryForm } from "@/components/memory/CreateMemoryForm";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { CreateMemoryFormSchema, emptyCreateMemoryForm, type CreateMemoryFormData } from "@/models/Memory";
-import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
@@ -67,29 +66,25 @@ const renderWithRoot = (ui: ReactElement) =>
 beforeEach(() => {
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
-  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
 });
 
 describe("CreateMemoryForm", () => {
-  it("defaults the project select to Workspace and sends the workspace id", async () => {
+  it("refuses to create a memory with no project", async () => {
     const user = userEvent.setup();
     mockProjects();
-    vi.mocked(api.post).mockResolvedValue({ data: { id: "mem-1" } });
     renderWithRoot(<MemoryHarness />);
 
     await user.click(screen.getByRole("button", { name: "Open" }));
-    expect(await screen.findByRole("combobox", { name: "Project" })).toHaveTextContent("Workspace");
+    expect(await screen.findByRole("combobox", { name: "Project" })).toHaveTextContent("Select a project");
     await user.type(screen.getByLabelText("Title"), "New memory");
     await user.click(screen.getByRole("button", { name: "Create" }));
 
-    expect(await screen.findByText("mem-1")).toBeInTheDocument();
-    expect(api.post).toHaveBeenCalledWith(
-      "/api/memories",
-      expect.objectContaining({ project_id: "", workspace_id: "ws-1", title: "New memory" }),
-    );
+    expect(await screen.findByText("A project is required")).toBeInTheDocument();
+    expect(api.post).not.toHaveBeenCalled();
+    await user.keyboard("{Escape}");
   });
 
-  it("defaults to the given project instead of Workspace when one is passed", async () => {
+  it("defaults to the given project when one is passed", async () => {
     const user = userEvent.setup();
     mockProjects();
     renderWithRoot(<MemoryHarness defaultProjectId="p-1" />);
@@ -99,23 +94,7 @@ describe("CreateMemoryForm", () => {
     await user.keyboard("{Escape}");
   });
 
-  it("offers Workspace with no other options when there are no projects", async () => {
-    const user = userEvent.setup();
-    mockProjects([]);
-    renderWithRoot(<MemoryHarness />);
-
-    await user.click(screen.getByRole("button", { name: "Open" }));
-    await user.click(await screen.findByRole("combobox", { name: "Project" }));
-    expect(await screen.findByRole("option", { name: "Workspace" })).toBeInTheDocument();
-    expect(screen.getAllByRole("option")).toHaveLength(1);
-    await user.keyboard("{Escape}");
-
-    expect(screen.queryByText(/create a project first/i)).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Create" })).not.toBeDisabled();
-    await user.keyboard("{Escape}");
-  });
-
-  it("creates a project-scoped memory when a project is picked", async () => {
+  it("creates the memory in the picked project", async () => {
     const user = userEvent.setup();
     mockProjects();
     vi.mocked(api.post).mockResolvedValue({ data: { id: "mem-2" } });
@@ -128,9 +107,6 @@ describe("CreateMemoryForm", () => {
     await user.click(screen.getByRole("button", { name: "Create" }));
 
     expect(await screen.findByText("mem-2")).toBeInTheDocument();
-    expect(api.post).toHaveBeenCalledWith(
-      "/api/memories",
-      expect.objectContaining({ project_id: "p-2", workspace_id: "ws-1" }),
-    );
+    expect(api.post).toHaveBeenCalledWith("/api/memories", expect.objectContaining({ project_id: "p-2", title: "New memory" }));
   });
 });
