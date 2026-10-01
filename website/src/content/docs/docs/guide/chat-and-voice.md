@@ -62,6 +62,8 @@ Joining has these states:
 - A connection error offers **Retry** or **Dismiss**.
 - A connected call shows the participants and controls for microphone,
   camera, screen sharing, and **Leave call**.
+- A shared screen has a **Full screen** button in its corner (or double-click
+  it) that fills your monitor with just that screen; press Esc to exit.
 - If you are the only person in a call for 5 minutes, you leave it
   automatically, and the channel says why with a **Rejoin** button.
 
