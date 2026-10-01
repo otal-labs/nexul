@@ -15,21 +15,24 @@ stands when you start.
    `components/chat/RenameChannelForm.tsx`): lock icon, "Private channel",
    "Only members see it and read it.", and a switch; shown for text and
    voice channels with `channels:write`, never for `#general`.
-2. **Who stays**: turning it on opens "Who stays in #<channel>?" with a
+2. **Create private**: the create-channel form gains the same private
+   row; on, it shows the who-stays picker for starting members. A
+   Restricted member's form is private only, with the row fixed on.
+3. **Who stays**: turning it on opens "Who stays in #<channel>?" with a
    count, a search field, and a checkable people list, the person switching
    checked and fixed. Turning it off confirms that the whole workspace will
    read its history.
-3. **Members list** for a private channel: a count, "Add people" (any
+4. **Members list** for a private channel: a count, "Add people" (any
    member), a `…` per row to remove (with `channels:write`), and a
    destructive "Leave channel" (hidden for the last member).
-4. **Sidebar**: a private channel shows a trailing muted lock. A Restricted
+5. **Sidebar**: a private channel shows a trailing muted lock. A Restricted
    member's sidebar shows only their projects, only their private channels,
    and DMs; nothing else changes because the server already filters.
-5. **Live** (`hooks/useLiveEvents.tsx`, `hooks/ChatHooks.tsx`): on
+6. **Live** (`hooks/useLiveEvents.tsx`, `hooks/ChatHooks.tsx`): on
    `chat.conversation.members_changed`, refetch conversations; a channel
    removed from the caller drops from the sidebar, and an open one shows
    the not-found state.
-6. Every change confirms with a toast naming the channel.
+7. Every change confirms with a toast naming the channel.
 
 ## Acceptance criteria
 

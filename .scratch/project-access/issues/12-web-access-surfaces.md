@@ -8,10 +8,11 @@
 ## What to build
 
 Every web surface for Restricted members and Project access, over ticket
-08's routes. The visual treatment of each level control follows ticket 07,
-which is being redone (level controls are moving to compact trailing
-dropdowns with described levels); build placement and behaviour from this
-ticket and the look from ticket 07 as it stands when you start.
+08's routes. The visual treatment of each level control follows ticket 07
+(the trailing-dropdown rows, not segmented strips; `components/access/`
+is rebuilt to it, and `practices/design-language.md` gains the Permission
+rows pattern entry and its card-rule exception in the same change).
+Placement and behaviour come from this ticket.
 
 1. **Role editor** (`web/src/components/settings/RoleSettingsSection.tsx`,
    `CreateRoleForm.tsx`, `RoleRow.tsx`): split the level list under two

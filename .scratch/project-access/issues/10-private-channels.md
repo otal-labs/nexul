@@ -18,6 +18,10 @@ conversation, plus the chat side of a Restricted member.
      and voice channels only, `#general` (`is_general`) refused as invalid.
      Going private writes the caller plus `keepUserIDs` (workspace members
      only) as members; going public drops the member rows.
+   - Creating a channel takes `private` and starting members (the same
+     who-stays rule). A Restricted member may create only private channels
+     (created private with them in it) and may never make a channel public;
+     both are refused as forbidden otherwise.
    - `AddChannelMembers`: any member of the private channel, workspace
      members only. `RemoveChannelMembers`: someone else takes
      `channels:write`; yourself is leaving; the last member cannot leave.

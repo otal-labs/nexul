@@ -27,7 +27,8 @@ MCP (ticket 11) and the web (ticket 12).
    and are refused with no project; `RequireProject` with the empty action
    (may open the project) means a row with anything in it; doc checks
    (`Can`, `resolveDocWorkspace`) resolve the doc's project and apply the
-   project layer before the doc overwrite. `HoldsAnywhere`,
+   project layer before the doc overwrite; a doc in a project a restricted
+   member cannot open is not found whatever the doc's overwrite allows. `HoldsAnywhere`,
    `PermissionsAnywhere`, and `RequireAnywhere` skip restricted memberships
    through a scopes query returning unrestricted workspaces only. Unrestricted
    members answer exactly as before.
@@ -90,7 +91,8 @@ MCP (ticket 11) and the web (ticket 12).
 - [ ] Table-driven resolver tests, error paths first: restricted member with
       no rows sees no project; project-area action with no project refused;
       instance-area action refused in-workspace and anywhere; doc overwrite on
-      top of the project layer; Owner unaffected; unrestricted unchanged
+      top of the project layer, and a doc allow in a hidden project still not
+      found; Owner unaffected; unrestricted unchanged
 - [ ] A restricted caller gets not found for a hidden project, ticket, doc,
       stack, deploy, its board settings, and its ticket attachments, through
       HTTP and the use-case

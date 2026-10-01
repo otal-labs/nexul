@@ -29,7 +29,8 @@ client should not see.
   area (None, Read, Write, Delete, plus the area's verbs, the same editor as
   roles, ADR 0078). For a Restricted member it is the whole answer inside
   that project; the role adds nothing there. A doc's own sharing still sits
-  on top of the project's level.
+  on top of the project's level, but only inside a project the person can
+  open: sharing never reaches into a hidden project.
 - **Areas.** Every permission domain has one area:
 
   | Area | Domains | Restricted member |
@@ -60,7 +61,9 @@ The resolver, after the Owner bypass, for a restricted membership:
 - "may open this project" (the project list, a project's own read, its board
   settings, project-scoped live frames) means holding a row with anything in
   it;
-- a doc check applies the project layer, then the doc's own overwrite.
+- a doc check applies the project layer, then the doc's own overwrite;
+  a doc in a project the Restricted member cannot open is not found
+  whatever its own overwrite says.
 
 Unrestricted members and server calls answer exactly as today.
 `RequireProject` (`internal/access/gate.go`) is the seam; tickets, docs,
@@ -288,22 +291,25 @@ collide; take the next free number before merging if master has gained one.
   Members reuse `conversation_participants`. Every existing channel stays
   public.
 
-## Open for the owner
+## Decided after charting
 
-Each has the reading the tickets build to until the owner says otherwise.
+Raised while writing this spec and decided under the owner's delegation;
+each follows "hidden means invisible".
 
-- **A doc shared with a Restricted member in a hidden project.** Ticket 03
-  puts the doc's overwrite on top of the project layer, so an allow on the
-  doc opens that one doc even when the project is hidden. Built as written;
-  the project's name may then show on the doc page.
-- **A Restricted member with `channels:write`.** Creating a channel or making
-  one public leaves them with a channel they cannot see. Built as allowed;
-  the result simply drops from their list.
-- **Creating a channel private.** Ticket 04 settled switching, not creation;
-  the create form stays public-only and the switch follows.
-- **The phone app.** It reads the same server, so every filter reaches it
-  with no change; showing a private channel's lock or the revoked state
-  there is not assigned to any ticket.
+- **A doc shared into a hidden project stays hidden.** A doc's overwrite
+  only adjusts access inside a project the Restricted member can open; it
+  never opens a doc, or reveals its project's name, in a project they hold
+  no access to.
+- **A Restricted member creates only private channels.** With
+  `channels:write` they may create a channel, which is created private with
+  them in it, and may not make any channel public, so they never create
+  something they then cannot see.
+- **A channel may be created private.** The create form and the use-case
+  take `private` and the starting members, the same who-stays list as
+  switching.
+- **The phone app** reads the same server, so every filter reaches it with
+  no change and a hidden item reads as not found there. Showing a private
+  channel's lock and the revoked state on the phone is follow-up work.
 
 ## Out of scope
 
@@ -315,4 +321,5 @@ Each has the reading the tickets build to until the owner says otherwise.
 - Hiding people's names. Every member still reads the workspace's people
   (ADR 0086); project names and contents are the leak, names are not.
 - A tool to create a channel.
+- The phone app's lock icon and revoked state (follow-up).
 - Editing Project access from project settings; it is read-only there.
