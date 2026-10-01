@@ -25,7 +25,9 @@ picked for it.
 The row shows **Setup confirmed** or **Needs setup**, with each provider's
 confirmed-at time, and updates while setup runs. Select **Re-run setup** after
 adding a provider or moving to a new machine. It re-checks and changes nothing
-that already works.
+that already works. When a new release only brings newer skills, the row offers
+**Update skills** instead, a single short turn that refreshes them for every
+provider on the computer.
 
 For what each setup turn does, see
 [Paired computers](/docs/guide/paired-computers/#set-up-a-computer).

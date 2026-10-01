@@ -3,6 +3,7 @@ import { Link } from "react-router";
 
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { INSTANCE_VERSION_SECTION_URL, UpdateChangelog } from "@/components/sidebar/UpdateChangelog";
+import { UpdateDot } from "@/components/UpdateDot";
 import { useServerVersion } from "@/hooks/VersionHooks";
 import { cn } from "@/lib/utils";
 
@@ -29,7 +30,7 @@ export const UpdateButton = ({ enabled, className }: UpdateButtonProps) => {
           )}
         >
           <DownloadIcon className="size-4" aria-hidden />
-          <span className="absolute top-1 right-1 size-1.5 rounded-full bg-warning ring-2 ring-surface-2" aria-hidden />
+          <UpdateDot />
         </Link>
       </HoverCardTrigger>
       <HoverCardContent side="right" align="start" sideOffset={8} className="w-[min(18rem,calc(100vw-5rem))] p-0">

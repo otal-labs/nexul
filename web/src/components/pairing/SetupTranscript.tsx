@@ -90,7 +90,10 @@ export const SetupTranscript = ({ row, runningName, retryDisabled, onRetry }: Se
         <header className="flex items-center gap-2 border-b border-border px-4 py-2.5">
           <SetupStateGlyph state={row.state} />
           <h3 className="min-w-0 truncate text-sm font-medium">{row.name}</h3>
-          <span className="text-xs text-muted-foreground">{SETUP_STATE_LABEL[row.state]}</span>
+          <span className="text-xs text-muted-foreground">
+            {SETUP_STATE_LABEL[row.state]}
+            {row.kind === "skills" && " · skills update"}
+          </span>
           {row.model && <span className="ml-auto truncate font-mono text-[11px] text-muted-foreground">{row.model}</span>}
         </header>
       )}

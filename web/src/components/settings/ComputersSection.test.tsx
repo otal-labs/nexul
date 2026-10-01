@@ -180,20 +180,50 @@ describe("ComputersSection", () => {
     expect(mocks.del).not.toHaveBeenCalled();
   });
 
-  it("signals out-of-date skills on a confirmed provider and points at re-running setup", async () => {
+  it("leads with Update skills when out-of-date skills are all that is left, and starts it in the Set up dialog", async () => {
+    const at = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+    setup = {
+      computer_id: "c1",
+      confirmed_at: at,
+      providers: [
+        { provider: "codex", confirmed_at: at, skills: ["tdd"], skills_version: "old", skills_outdated: true },
+        { provider: "opencode", confirmed_at: at, skills: ["tdd"], skills_version: "old", skills_outdated: true },
+      ],
+      skipped_providers: [],
+      models: {},
+      model_options: {},
+      folder: "",
+      turns: [],
+    };
+    serveComputers([computer()]);
+    mocks.post.mockResolvedValue({ data: { run_id: "r1", computer_id: "c1", providers: [{ provider: "codex", name: "Codex" }] } });
+    const user = userEvent.setup();
+    renderSection();
+
+    expect(await screen.findAllByText("skills out of date")).toHaveLength(2);
+    expect(screen.getByText("Setup confirmed")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /re-run setup/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /update skills/i }));
+
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/skills"));
+    expect(mocks.post).toHaveBeenCalledTimes(1);
+    expect(await screen.findByRole("dialog", { name: /set up home/i })).toBeInTheDocument();
+  });
+
+  it("keeps Re-run setup alone when something besides skills needs setup", async () => {
     const at = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
     setup = {
       computer_id: "c1",
       confirmed_at: at,
       providers: [{ provider: "codex", confirmed_at: at, skills: ["tdd"], skills_version: "old", skills_outdated: true }],
-      turns: [],
+      turns: [{ run_id: "r0", turn_id: "t0", provider: "opencode", provider_name: "OpenCode", kind: "setup", state: "failed", status: "npx missing", updated_at: at }],
     };
     serveComputers([computer()]);
     renderSection();
 
-    expect(await screen.findByText("skills out of date")).toBeInTheDocument();
-    expect(screen.getByText("Setup confirmed")).toBeInTheDocument();
+    expect(await screen.findByText("setup failed")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /re-run setup/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /update skills/i })).not.toBeInTheDocument();
   });
 
   it("has no separate Pair by URL button; URL pairing lives in the dialog", async () => {

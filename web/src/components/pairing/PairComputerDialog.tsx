@@ -53,6 +53,8 @@ const dialogTitle = (existing: Computer | undefined, setupFor: Computer | undefi
 interface PairComputerDialogProps {
   // Absent for a row that only opens the dialog while its computer is still pairing.
   trigger?: ReactNode;
+  // A second way in, placed after trigger, for an action that starts work and then shows it in the dialog.
+  primaryTrigger?: ReactNode;
   // A paired computer opens straight at Set up; one still pairing resumes at Connect with its tunnel.
   existing?: Computer | undefined;
   // Opens on mount, for a link straight to a computer's Set up step; onClosed lets that link's URL forget it.
@@ -61,7 +63,7 @@ interface PairComputerDialogProps {
 }
 
 // Pair a computer: connect its tunnel, pair T3 Code over it, then set it up.
-export const PairComputerDialog = ({ trigger, existing, defaultOpen = false, onClosed }: PairComputerDialogProps) => {
+export const PairComputerDialog = ({ trigger, primaryTrigger, existing, defaultOpen = false, onClosed }: PairComputerDialogProps) => {
   const setupFor = existing && !stillPairing(existing) ? existing : undefined;
   const first: PairingStep = setupFor ? "setup" : "connect";
   const [open, setOpen] = useState(defaultOpen);
@@ -88,6 +90,7 @@ export const PairComputerDialog = ({ trigger, existing, defaultOpen = false, onC
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
+      {primaryTrigger && <DialogTrigger asChild>{primaryTrigger}</DialogTrigger>}
       <DialogContent
         className={cn(FRAME, step === "setup" && SETUP_FRAME)}
         // A stray click beside a long setup must not throw the step's choices away; Cancel and Esc close it on purpose.

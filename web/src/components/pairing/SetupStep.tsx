@@ -9,7 +9,7 @@ import { SetupRunRows } from "@/components/pairing/SetupRunRows";
 import { SetupTranscript } from "@/components/pairing/SetupTranscript";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { useFetchComputerSetup, useRunSetup } from "@/hooks/PairingHooks";
+import { useFetchComputerSetup, useRunSetup, useUpdateSkills } from "@/hooks/ComputerSetupHooks";
 import { useSetupChoices } from "@/hooks/useSetupChoices";
 import { followedSetupRow, setupRunRows, setupRunning, type Computer, type ComputerSetup } from "@/models/Pairing";
 import { cn } from "@/lib/utils";
@@ -42,6 +42,7 @@ interface SetupRunSectionProps {
 // The run just started lists its providers at once, a reopened dialog shows each provider's newest turn.
 const SetupRunSection = ({ computerId, setup, children }: SetupRunSectionProps) => {
   const run = useRunSetup(computerId);
+  const update = useUpdateSkills(computerId);
   const { choices, models, options, pick, pickOptions, included, excluded, include, projects, folder, pickFolder } = useSetupChoices(setup);
   // A clicked provider pins the transcript; Start and Retry hand it back to following the run.
   const [picked, setPicked] = useState<string>();
@@ -49,12 +50,18 @@ const SetupRunSection = ({ computerId, setup, children }: SetupRunSectionProps) 
   const rows = allRows.filter((r) => !excluded.includes(r.provider));
   const selected = rows.find((r) => r.provider === picked) ?? followedSetupRow(rows);
   const running = rows.find((r) => r.state === "running");
-  const busy = run.isPending || setupRunning(allRows);
+  const busy = run.isPending || update.isPending || setupRunning(allRows);
   const noneIncluded = choices.length > 0 && included.length === 0;
   const startLabel = setup.turns.length > 0 ? "Re-run setup" : "Start setup";
   const start = (provider?: string) => {
     setPicked(undefined);
     run.mutate({ models, options, folder, providers: included, ...(provider ? { provider } : {}) });
+  };
+  // A failed skills update retries as an update; any other row re-runs that provider's setup.
+  const retry = (provider: string) => {
+    if (rows.find((r) => r.provider === provider)?.kind !== "skills") return start(provider);
+    setPicked(undefined);
+    update.mutate();
   };
   return (
     <>
@@ -90,11 +97,11 @@ const SetupRunSection = ({ computerId, setup, children }: SetupRunSectionProps) 
         </div>
         {rows.length > 0 && (
           <div className="max-md:mt-6 md:px-6 md:pb-6">
-            <SetupRunRows rows={rows} selected={selected?.provider} retryDisabled={busy} onSelect={setPicked} onRetry={start} />
+            <SetupRunRows rows={rows} selected={selected?.provider} retryDisabled={busy} onSelect={setPicked} onRetry={retry} />
           </div>
         )}
       </div>
-      <SetupTranscript row={selected} runningName={running?.name} retryDisabled={busy} onRetry={start} />
+      <SetupTranscript row={selected} runningName={running?.name} retryDisabled={busy} onRetry={retry} />
     </>
   );
 };

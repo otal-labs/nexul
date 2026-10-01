@@ -22,8 +22,8 @@ import type { MyWorkspaceInfo } from "@/models/Permission";
 import { getMemoriesKey, getMemoryKey, getMemoryVersionsKey } from "@/hooks/MemoryHooks";
 import { getNotificationsKey, getUnreadCountKey } from "@/hooks/NotificationHooks";
 import { getMeKey, getPATsKey, getSessionsKey } from "@/hooks/AuthHooks";
+import { getComputerSetupKey } from "@/hooks/ComputerSetupHooks";
 import {
-  getComputerSetupKey,
   getComputersKey,
   getHarnessProvidersKey,
   getHarnessResolveKey,

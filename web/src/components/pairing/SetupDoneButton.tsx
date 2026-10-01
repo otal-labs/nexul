@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { useFetchComputerSetup, useSaveSetupChoices } from "@/hooks/PairingHooks";
+import { useFetchComputerSetup, useSaveSetupChoices } from "@/hooks/ComputerSetupHooks";
 import { useSetupChoices } from "@/hooks/useSetupChoices";
 import type { ComputerSetup } from "@/models/Pairing";
 

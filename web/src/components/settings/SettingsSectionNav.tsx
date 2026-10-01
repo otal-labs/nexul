@@ -1,6 +1,7 @@
 import { Fragment } from "react";
 import { Link } from "react-router";
 
+import { UpdateDot } from "@/components/UpdateDot";
 import { cn } from "@/lib/utils";
 
 const itemClass = (isActive: boolean, danger: boolean) =>
@@ -19,6 +20,8 @@ export interface SettingsSectionNavItem {
   section: string;
   label: string;
   danger?: boolean;
+  /** Set to show the update dot beside the label, with this as its screen-reader hint. */
+  dot?: string | undefined;
   /** Items sharing a group render under one label; a group with no items shows no label. */
   group?: string | undefined;
 }
@@ -54,7 +57,10 @@ export const SettingsSectionNav = ({ ariaLabel, basePath, items, active }: Setti
               aria-current={active === item.section ? "page" : undefined}
               className={itemClass(active === item.section, item.danger ?? false)}
             >
-              {item.label}
+              <span className="relative">
+                {item.label}
+                {item.dot && <UpdateDot label={item.dot} className="-top-0.5 -right-2 ring-0" />}
+              </span>
             </Link>
           </li>
         </Fragment>
