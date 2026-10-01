@@ -1196,8 +1196,8 @@ func (s *NotificationService) mentionTitle(ctx context.Context, n notice) string
 	return fmt.Sprintf("%s mentioned you in %s", name, n.subjectTitle)
 }
 
-// onMemoryUpdated fans out to every member of the memory's workspace who holds memories:read, excluding the
-// author (ticket 17); membership and the permission bit decide, not every registered user.
+// onMemoryUpdated fans out to every member of the memory's workspace who may read memories in its project, excluding
+// the author; membership and Project access decide, not every registered user.
 func (s *NotificationService) onMemoryUpdated(ctx context.Context, m memoryRef, authorID, authorVia string) error {
 	if s.members == nil || s.access == nil {
 		return nil
@@ -1216,7 +1216,7 @@ func (s *NotificationService) onMemoryUpdated(ctx context.Context, m memoryRef, 
 	subjectTitle := fmt.Sprintf("%s — v%d by %s", m.Title, m.Version, authorLabel)
 	var recipients []string
 	for _, uid := range userIDs {
-		if !s.access.HasPermission(ctx, uid, m.WorkspaceID, permissions.MemoriesRead) {
+		if !s.access.CanInProject(ctx, uid, m.ProjectID, permissions.MemoriesRead) {
 			continue
 		}
 		recipients = append(recipients, uid)

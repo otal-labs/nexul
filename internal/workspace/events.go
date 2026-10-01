@@ -148,6 +148,7 @@ type memoryUpdatedEvent struct {
 type memoryRef struct {
 	ID          string `json:"id"`
 	WorkspaceID string `json:"workspace_id"`
+	ProjectID   string `json:"project_id"`
 	Title       string `json:"title"`
 	Version     int    `json:"version"`
 }

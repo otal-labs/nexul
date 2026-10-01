@@ -150,25 +150,11 @@ func (s *Service) requireOwner(ctx context.Context, owner Owner, docAction, memo
 	if !ok || actor.ID == "" {
 		return identity.Actor{}, fmt.Errorf("%w: an authenticated user is required", apperrs.ErrUnauthorized)
 	}
-	set := 0
-	for _, id := range []string{owner.DocID, owner.TicketID, owner.ConversationID, owner.MemoryID} {
-		if id != "" {
-			set++
-		}
-	}
-	if set != 1 {
+	if ownersSet(owner) != 1 {
 		return identity.Actor{}, fmt.Errorf("%w: exactly one of doc_id, ticket_id, conversation_id, or memory_id is required", apperrs.ErrInvalid)
 	}
 	if owner.MemoryID != "" {
-		// Fail closed: a service without a wired memory access checker must deny, never silently allow.
-		if s.memoryAccess == nil {
-			return identity.Actor{}, fmt.Errorf("%w: no %s permission on memory %s", apperrs.ErrForbidden, memoryAction, owner.MemoryID)
-		}
-		allowed, err := s.memoryAccess.Can(ctx, actor.ID, owner.MemoryID, memoryAction)
-		if err != nil || !allowed {
-			return identity.Actor{}, fmt.Errorf("%w: no %s permission on memory %s", apperrs.ErrForbidden, memoryAction, owner.MemoryID)
-		}
-		return actor, nil
+		return actor, s.requireMemory(ctx, actor.ID, owner.MemoryID, memoryAction)
 	}
 	if owner.ConversationID != "" {
 		return actor, s.requireConversation(ctx, owner.ConversationID)
@@ -188,6 +174,28 @@ func (s *Service) requireOwner(ctx context.Context, owner Owner, docAction, memo
 		return identity.Actor{}, fmt.Errorf("%w: no %s permission on doc %s", apperrs.ErrForbidden, docAction, owner.DocID)
 	}
 	return actor, nil
+}
+
+func ownersSet(owner Owner) int {
+	set := 0
+	for _, id := range []string{owner.DocID, owner.TicketID, owner.ConversationID, owner.MemoryID} {
+		if id != "" {
+			set++
+		}
+	}
+	return set
+}
+
+// requireMemory fails closed: a service without a wired memory access checker must deny, never silently allow.
+func (s *Service) requireMemory(ctx context.Context, userID, memoryID string, action permissions.Action) error {
+	if s.memoryAccess == nil {
+		return fmt.Errorf("%w: no %s permission on memory %s", apperrs.ErrForbidden, action, memoryID)
+	}
+	allowed, err := s.memoryAccess.Can(ctx, userID, memoryID, action)
+	if err != nil || !allowed {
+		return fmt.Errorf("%w: no %s permission on memory %s", apperrs.ErrForbidden, action, memoryID)
+	}
+	return nil
 }
 
 // requireConversation fails closed when no conversation read check is wired.

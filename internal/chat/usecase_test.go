@@ -769,7 +769,9 @@ func (projectMemoriesGate) RequireProject(_ context.Context, projectID string, _
 	return nil
 }
 
-func (projectMemoriesGate) RequireTicket(context.Context, string, permissions.Action) error { return nil }
+func (projectMemoriesGate) RequireTicket(context.Context, string, permissions.Action) error {
+	return nil
+}
 
 func TestInterviewThread_IsReadThroughItsProjectsMemories(t *testing.T) {
 	repo := newFakeRepo()
