@@ -22,3 +22,12 @@ export const groupDocsByDay = (docs: DocListItem[], sortBy: DocSortField, now: D
   }
   return groups.filter((group) => group.docs.length > 0);
 };
+
+// Pinned docs lead in the order they were pinned, whatever the sort; ids not in the list are skipped.
+export const groupDocs = (docs: DocListItem[], sortBy: DocSortField, pinnedIds: string[], now: Date = new Date()): DocGroup[] => {
+  const byId = new Map(docs.map((doc) => [doc.id, doc]));
+  const pinned = pinnedIds.flatMap((id) => byId.get(id) ?? []);
+  const pinnedSet = new Set(pinned.map((doc) => doc.id));
+  const days = groupDocsByDay(docs.filter((doc) => !pinnedSet.has(doc.id)), sortBy, now);
+  return pinned.length > 0 ? [{ label: "Pinned", docs: pinned }, ...days] : days;
+};

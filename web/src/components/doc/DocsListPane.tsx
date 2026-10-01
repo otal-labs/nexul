@@ -3,10 +3,11 @@ import { FileTextIcon } from "lucide-react";
 
 import { DocGroupSection } from "@/components/doc/DocGroupSection";
 import { DocSortToggle } from "@/components/doc/DocSortToggle";
-import { groupDocsByDay } from "@/components/doc/docGroups";
+import { groupDocs } from "@/components/doc/docGroups";
 import { ListPaneEmpty, ListPaneNoMatch } from "@/components/listpane/ListPaneEmpty";
 import { ListPaneHeader } from "@/components/listpane/ListPaneHeader";
 import { useCreateDocDialog } from "@/hooks/useCreateDocDialog";
+import { useDocPins } from "@/hooks/useDocPins";
 import { useDocSortStore } from "@/stores/docSortStore";
 import type { DocListItem } from "@/models/Doc";
 import { projectToken, type Project } from "@/models/Project";
@@ -24,10 +25,11 @@ const matches = (doc: DocListItem, query: string) =>
 export const DocsListPane = ({ docs, project, selectedId }: DocsListPaneProps) => {
   const [search, setSearch] = useState("");
   const sortBy = useDocSortStore((s) => s.sortBy);
+  const { pinnedIds } = useDocPins();
   const openCreateDoc = useCreateDocDialog(project.id);
   const openable = docs.filter((doc) => doc.can_open);
   const query = search.trim().toLowerCase();
-  const groups = groupDocsByDay(query === "" ? openable : openable.filter((doc) => matches(doc, query)), sortBy);
+  const groups = groupDocs(query === "" ? openable : openable.filter((doc) => matches(doc, query)), sortBy, pinnedIds);
 
   return (
     <div className="flex h-full min-h-0 flex-col">

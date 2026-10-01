@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { groupDocsByDay } from "@/components/doc/docGroups";
+import { groupDocs, groupDocsByDay } from "@/components/doc/docGroups";
 import type { DocListItem } from "@/models/Doc";
 
 const NOW = new Date(2026, 9, 1, 12, 0, 0);
@@ -48,5 +48,34 @@ describe("groupDocsByDay", () => {
       ["Yesterday", ["yday"]],
       ["Earlier", ["old"]],
     ]);
+  });
+});
+
+describe("groupDocs", () => {
+  const all = [doc("new", at(0), at(0)), doc("yday", at(1), at(1)), doc("old", at(4), at(4))];
+  const shape = (groups: ReturnType<typeof groupDocs>) => groups.map((g) => [g.label, g.docs.map((d) => d.id)]);
+
+  it("leads with Pinned in pin order and drops those docs from their day group", () => {
+    expect(shape(groupDocs(all, "created_at", ["old", "new"], NOW))).toEqual([
+      ["Pinned", ["old", "new"]],
+      ["Yesterday", ["yday"]],
+    ]);
+  });
+
+  it("ignores pinned ids that are not in the list", () => {
+    expect(shape(groupDocs(all, "created_at", ["gone", "yday"], NOW))).toEqual([
+      ["Pinned", ["yday"]],
+      ["Today", ["new"]],
+      ["Earlier", ["old"]],
+    ]);
+  });
+
+  it("has no Pinned group when nothing pinned is listed", () => {
+    expect(groupDocs(all, "created_at", ["gone"], NOW).map((g) => g.label)).toEqual(["Today", "Yesterday", "Earlier"]);
+  });
+
+  it("keeps the pin order whichever way the day groups sort", () => {
+    const pinned = ["old", "new"];
+    expect(shape(groupDocs(all, "updated_at", pinned, NOW))[0]).toEqual(["Pinned", pinned]);
   });
 });

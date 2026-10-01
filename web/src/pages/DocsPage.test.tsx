@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import { DocsPage } from "@/pages/DocsPage";
+import { usePinnedDocStore } from "@/stores/pinnedDocStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 vi.mock("@/api/client", () => ({
@@ -75,6 +76,7 @@ const renderPage = (path: string, permissions: string[], overrides: Record<strin
 
 beforeEach(() => {
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedProjectId: "" });
+  usePinnedDocStore.setState({ pinned: {} });
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
 });
@@ -125,13 +127,29 @@ describe("DocsPage", () => {
 
     await user.click(await screen.findByRole("button", { name: "More actions for Rollback plan" }));
     const items = await screen.findAllByRole("menuitem");
-    expect(items.map((item) => item.textContent)).toEqual(["Lock", "Clone", "Delete"]);
+    expect(items.map((item) => item.textContent)).toEqual(["Pin", "Lock", "Clone", "Delete"]);
     await user.click(screen.getByRole("menuitem", { name: "Lock" }));
     await vi.waitFor(() => expect(api.post).toHaveBeenCalledWith("/api/docs/doc-2/lock"));
 
     await user.click(screen.getByRole("button", { name: "More actions for Storage Spine" }));
     await user.click(await screen.findByRole("menuitem", { name: "Unlock" }));
     await vi.waitFor(() => expect(api.post).toHaveBeenCalledWith("/api/docs/doc-1/unlock"));
+  });
+
+  it("moves a doc into Pinned from its row menu and back out on Unpin", async () => {
+    const user = userEvent.setup();
+    renderPage("/acme/docs", ["docs:read"]);
+
+    await user.click(await screen.findByRole("button", { name: "More actions for Rollback plan" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Pin" }));
+    const pinned = await screen.findByRole("region", { name: "Pinned" });
+    expect(within(pinned).getByRole("link", { name: /Rollback plan/ })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Earlier" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "More actions for Rollback plan" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Unpin" }));
+    expect(await screen.findByRole("region", { name: "Earlier" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Pinned" })).not.toBeInTheDocument();
   });
 
   it("clones a doc into the project picked in Clone to…", async () => {

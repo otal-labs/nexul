@@ -159,8 +159,10 @@ at about 40px, with a muted state icon after it (a lock) and no meta. The
 selected row is `bg-accent` with a 2px `muted-foreground` left edge, a hover
 `bg-accent/40`, never a boxed border. A row's actions are one `…` menu (Lock,
 Clone, then Delete in destructive after a separator), each item hidden without
-its permission and the `…` gone when none is left; it takes the meta's place
-on hover and focus and stays on the selected row.
+its permission and the `…` gone when none is left; Docs adds Pin first, which
+needs no permission and lifts the doc into a leading Pinned group kept in the
+browser. The menu takes the meta's place on hover and focus and stays on the
+selected row.
 Group labels are 11px uppercase mono over a hairline. Below 1024px one pane
 shows at a time. `ListDetailLayout` and `ListPaneRow` in
 `web/src/components/listpane/` are the reference.
