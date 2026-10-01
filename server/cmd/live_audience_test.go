@@ -13,6 +13,7 @@ import (
 	"github.com/otal-labs/nexul/internal/auth"
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/deploy"
+	"github.com/otal-labs/nexul/internal/docs"
 	"github.com/otal-labs/nexul/internal/memories"
 	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/roles"
@@ -48,6 +49,7 @@ func TestLiveAudience_FramesFollowTheEntitysRead(t *testing.T) {
 		{tenancy.TopicWorkspaceUpdated, tenancy.WorkspaceEvent{WorkspaceID: "workspace-default", Name: "Acme", Slug: "acme"}, map[string]bool{uOwner: true, uPlain: true, uOutsider: false}},
 		{access.TopicGrantChanged, access.GrantEvent{ResourceType: "doc", ResourceID: "doc-1", UserID: uPlain}, map[string]bool{uPlain: true, uOwner: false, uOutsider: false}},
 		{roles.TopicUpdated, roles.RoleEvent{RoleID: "role-1", WorkspaceID: "workspace-default"}, map[string]bool{uOwner: true, uPlain: true, uOutsider: false}},
+		{docs.TopicFolderCreated, docs.FolderEvent{Folder: docs.Folder{ID: "f-1", ProjectID: "project-general", Name: "GetSource"}}, map[string]bool{uReader: true, uPlain: false, uOutsider: false}},
 	}
 	for _, tc := range cases {
 		raw, err := json.Marshal(tc.payload)

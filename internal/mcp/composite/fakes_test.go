@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/otal-labs/nexul/internal/codereview"
+	"github.com/otal-labs/nexul/internal/docs"
 	"github.com/otal-labs/nexul/internal/platform/colors"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
@@ -104,6 +105,7 @@ type fixture struct {
 	tickets  *tickets.Service
 	projects *workspace.Service
 	reviews  *codereview.Service
+	folders  *docFolders
 }
 
 // newFixture seeds project REF with three columns, two types, a category, and tickets REF-1 (todo) and REF-2 (done).
@@ -142,7 +144,11 @@ func newFixture(t *testing.T) fixture {
 	ws.SetTicketProjects(ticketProjects{w})
 	reviews := codereview.NewService(reviewRepo{w: w})
 	reviews.SetGate(allowGate{})
-	return fixture{w: w, tickets: ts, projects: ws, reviews: reviews}
+	folders := &docFolders{items: []*docs.Folder{
+		{ID: "f-main", ProjectID: "p-1", Name: "Main", IsDefault: true},
+		{ID: "f-web", ProjectID: "p-2", Name: "Main", IsDefault: true},
+	}}
+	return fixture{w: w, tickets: ts, projects: ws, reviews: reviews, folders: folders}
 }
 
 func must(t *testing.T, err error) {
@@ -184,7 +190,7 @@ func (f fixture) ticketTools() []mcptool.Tool {
 }
 
 func (f fixture) projectTools() []mcptool.Tool {
-	return ProjectTools(f.projects, f.tickets)
+	return ProjectTools(f.projects, f.tickets, f.folders)
 }
 
 func call(t *testing.T, ctx context.Context, tools []mcptool.Tool, name, args string) (any, error) {
@@ -708,3 +714,43 @@ func (g ownerGate) RequireProject(ctx context.Context, _ string, action permissi
 type workspaceGate struct{}
 
 func (workspaceGate) WorkspaceExists(context.Context, string) (bool, error) { return true, nil }
+
+// docFolders stands in for the docs use-cases; their rules are the docs domain's own tests.
+type docFolders struct {
+	items []*docs.Folder
+}
+
+func (d *docFolders) ListFolders(_ context.Context, projectID string) ([]*docs.Folder, error) {
+	var out []*docs.Folder
+	for _, f := range d.items {
+		if f.ProjectID == projectID {
+			out = append(out, f)
+		}
+	}
+	return out, nil
+}
+
+func (d *docFolders) CreateFolder(_ context.Context, projectID, name string) (*docs.Folder, error) {
+	f := &docs.Folder{ID: "f-" + strings.ToLower(name), ProjectID: projectID, Name: name}
+	d.items = append(d.items, f)
+	return f, nil
+}
+
+func (d *docFolders) RenameFolder(_ context.Context, id, name string) (*docs.Folder, error) {
+	for _, f := range d.items {
+		if f.ID == id {
+			f.Name = name
+			return f, nil
+		}
+	}
+	return nil, apperrs.ErrNotFound
+}
+
+func (d *docFolders) DeleteFolder(_ context.Context, id string) error {
+	n := len(d.items)
+	d.items = slices.DeleteFunc(d.items, func(f *docs.Folder) bool { return f.ID == id && !f.IsDefault })
+	if len(d.items) == n {
+		return apperrs.ErrInvalid
+	}
+	return nil
+}

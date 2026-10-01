@@ -18,6 +18,7 @@ const docSearchScan = 1000
 type docResult struct {
 	ID        string    `json:"id"`
 	ProjectID string    `json:"project_id"`
+	FolderID  string    `json:"folder_id"`
 	Title     string    `json:"title"`
 	Body      string    `json:"body"`
 	Version   int       `json:"version"`
@@ -29,6 +30,7 @@ type docResult struct {
 type docListIn struct {
 	Query           string `json:"query,omitempty" jsonschema:"Full-text search over titles and bodies, for example deploy rollback. Omit to browse. Archived docs never match a search."`
 	ProjectID       string `json:"project_id,omitempty" jsonschema:"Only docs in this project; project_list lists projects. Omit for every project."`
+	FolderID        string `json:"folder_id,omitempty" jsonschema:"Only docs in this folder; project_get lists a project's doc_folders. Omit for every folder."`
 	IncludeArchived bool   `json:"include_archived,omitzero" jsonschema:"Also list archived docs when browsing without a query. Defaults to false."`
 	mcptool.PageArgs
 }
@@ -41,6 +43,7 @@ type docCreateIn struct {
 	ProjectID   string `json:"project_id" jsonschema:"The project the doc belongs to; project_list lists projects."`
 	Title       string `json:"title,omitempty" jsonschema:"The doc's title, for example Storage spine. Required unless clone_from_id is set."`
 	Body        string `json:"body,omitempty" jsonschema:"The doc's body as markdown. Omit for an empty doc."`
+	FolderID    string `json:"folder_id,omitempty" jsonschema:"The folder of project_id the new doc goes in, from project_get's doc_folders. Omit for the project's default folder. Not allowed with clone_from_id."`
 	CloneFromID string `json:"clone_from_id,omitempty" jsonschema:"The id of a doc to copy, from doc_list, with its attachments, into project_id instead of writing a new one. Its own project_id duplicates it there."`
 }
 
@@ -50,6 +53,7 @@ type docUpdateIn struct {
 	Body     *string `json:"body,omitempty" jsonschema:"New body as markdown, replacing the whole body. Omit to keep the current body."`
 	Archived *bool   `json:"archived,omitempty" jsonschema:"true archives the doc (hidden from search), false restores it. Omit to leave it as is."`
 	Locked   *bool   `json:"locked,omitempty" jsonschema:"true locks the doc read-only so its title and body refuse edits, false unlocks it. Omit to leave it as is."`
+	FolderID *string `json:"folder_id,omitempty" jsonschema:"Moves the doc to this folder of its own project, from project_get's doc_folders; a locked doc moves too. Omit to leave it where it is."`
 }
 
 // MCPTools returns the docs tools.
@@ -59,9 +63,9 @@ func MCPTools(s *Service) []mcptool.Tool {
 
 func docListTool(s *Service) mcptool.Tool {
 	return mcptool.New("doc_list", "List docs",
-		"Lists docs by title, or full-text searches them when query is set, optionally within one project. "+
+		"Lists docs by title, or full-text searches them when query is set, optionally within one project or one folder. "+
 			"Use it to find a doc's id, then doc_get to read its body. "+
-			"Returns items without bodies, ranked by relevance with a query and oldest first without one; "+
+			"Returns items without bodies, each with its folder_id, ranked by relevance with a query and oldest first without one; "+
 			"a doc you cannot open is listed with can_open false when browsing and left out of a search. "+
 			"Archived docs are hidden unless include_archived is set.",
 		mcptool.Hints{ReadOnly: true, Local: true},
@@ -77,6 +81,9 @@ func docListTool(s *Service) mcptool.Tool {
 			}
 			if !in.IncludeArchived {
 				items = slices.DeleteFunc(items, func(d *DocListItem) bool { return d.Archived })
+			}
+			if in.FolderID != "" {
+				items = slices.DeleteFunc(items, func(d *DocListItem) bool { return d.FolderID != in.FolderID })
 			}
 			return mcptool.Paginate(items, in.PageArgs), nil
 		})
@@ -110,7 +117,7 @@ func rankBySearch(ctx context.Context, s *Service, query string, items []*DocLis
 
 func docGetTool(s *Service) mcptool.Tool {
 	return mcptool.New("doc_get", "Get doc",
-		"Returns one doc with its full body as markdown, its project, version, and archived and locked state. "+
+		"Returns one doc with its full body as markdown, its project and folder, version, and archived and locked state. "+
 			"Use it after doc_list has given you the id, and before doc_update so you edit the current text. "+
 			"Fails with forbidden when you cannot read the doc.",
 		mcptool.Hints{ReadOnly: true, Local: true},
@@ -127,6 +134,7 @@ func docCreateTool(s *Service) mcptool.Tool {
 	return mcptool.New("doc_create", "Create doc",
 		"Creates a doc in a project from a markdown title and body, or copies one with clone_from_id, and makes you its owner. "+
 			"Use it for documentation and requirements people read; notes meant for agents belong in memory_create instead. "+
+			"A new doc goes in folder_id, or the project's default folder; a copy goes in the destination's default folder, or beside the original within its own project. "+
 			"Copying needs docs:clone on the source and docs:write in the destination project. "+
 			"Returns the new doc with its body as markdown.",
 		mcptool.Hints{Additive: true, Local: true},
@@ -141,17 +149,17 @@ func docCreateTool(s *Service) mcptool.Tool {
 
 func createOrClone(ctx context.Context, s *Service, in docCreateIn) (*Doc, error) {
 	if in.CloneFromID == "" {
-		return s.Create(ctx, in.ProjectID, in.Title, in.Body)
+		return s.CreateInFolder(ctx, in.ProjectID, in.FolderID, in.Title, in.Body)
 	}
-	if in.Title != "" || in.Body != "" {
-		return nil, fmt.Errorf("%w: clone_from_id copies the source's title and body; omit both, then change the copy with doc_update", apperrs.ErrInvalid)
+	if in.Title != "" || in.Body != "" || in.FolderID != "" {
+		return nil, fmt.Errorf("%w: clone_from_id copies the source's title and body into a default place; omit title, body, and folder_id, then change the copy with doc_update", apperrs.ErrInvalid)
 	}
 	return s.Clone(ctx, in.CloneFromID, in.ProjectID)
 }
 
 func docUpdateTool(s *Service) mcptool.Tool {
 	return mcptool.New("doc_update", "Update doc",
-		"Changes a doc's title, body, archived, or locked state; only the fields you send change. "+
+		"Changes a doc's title, body, folder, archived, or locked state; only the fields you send change. "+
 			"A new title or body saves a new version, and archived true hides the doc from search until archived false restores it. "+
 			"A locked doc refuses title and body changes until locked false, which you may send with the edit to unlock first. "+
 			"Read the doc with doc_get first, because body replaces the whole body. "+
@@ -185,11 +193,8 @@ func updateDoc(ctx context.Context, s *Service, in docUpdateIn) (*Doc, error) {
 		}
 		applied = append(applied, edited...)
 	}
-	if in.Archived != nil && *in.Archived != d.Archived {
-		if d, err = setArchived(ctx, s, in.ID, *in.Archived); err != nil {
-			return nil, stepErr(applied, "archived", err)
-		}
-		applied = append(applied, "archived")
+	if d, applied, err = placeDoc(ctx, s, in, d, applied); err != nil {
+		return nil, err
 	}
 	if is(in.Locked, true) && !d.Locked {
 		if d, err = s.Lock(ctx, in.ID); err != nil {
@@ -197,6 +202,24 @@ func updateDoc(ctx context.Context, s *Service, in docUpdateIn) (*Doc, error) {
 		}
 	}
 	return d, nil
+}
+
+// placeDoc applies the folder and archived fields, the ones that change where a doc shows rather than its text.
+func placeDoc(ctx context.Context, s *Service, in docUpdateIn, d *Doc, applied []string) (*Doc, []string, error) {
+	var err error
+	if in.FolderID != nil && *in.FolderID != d.FolderID {
+		if d, err = s.MoveToFolder(ctx, in.ID, *in.FolderID); err != nil {
+			return nil, applied, stepErr(applied, "folder_id", err)
+		}
+		applied = append(applied, "folder_id")
+	}
+	if in.Archived != nil && *in.Archived != d.Archived {
+		if d, err = setArchived(ctx, s, in.ID, *in.Archived); err != nil {
+			return nil, applied, stepErr(applied, "archived", err)
+		}
+		applied = append(applied, "archived")
+	}
+	return d, applied, nil
 }
 
 func editedFields(in docUpdateIn) []string {
@@ -242,7 +265,7 @@ func toDocResult(d *Doc) (docResult, error) {
 		return docResult{}, fmt.Errorf("render doc %s: %w", d.ID, err)
 	}
 	return docResult{
-		ID: d.ID, ProjectID: d.ProjectID, Title: d.Title, Body: md,
+		ID: d.ID, ProjectID: d.ProjectID, FolderID: d.FolderID, Title: d.Title, Body: md,
 		Version: d.Version, Archived: d.Archived, Locked: d.Locked, UpdatedAt: d.UpdatedAt,
 	}, nil
 }

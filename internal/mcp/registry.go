@@ -92,7 +92,7 @@ func registryTools(opts RegistryOptions) []mcptool.Tool {
 		memories.MCPTools(opts.Memories),
 		composite.TicketTools(opts.Tickets, opts.Workspace, opts.Reviews),
 		tickets.MCPTools(opts.Tickets),
-		composite.ProjectTools(opts.Workspace, opts.Tickets),
+		composite.ProjectTools(opts.Workspace, opts.Tickets, opts.Docs),
 		workspace.MCPTools(opts.Workspace),
 		workspace.NotificationMCPTools(opts.Notifications),
 		topology.MCPTools(opts.Topology),

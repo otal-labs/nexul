@@ -218,3 +218,23 @@ func TestProjectUpdate_ListedValuesAreAccepted(t *testing.T) {
 		assert.NoError(t, err, icon)
 	}
 }
+
+func TestProjectTools_DocFolders(t *testing.T) {
+	f := newFixture(t)
+	got, err := call(t, asUser(t.Context()), f.projectTools(), "project_update", `{"id":"p-1",
+		"doc_folders":{"create":[{"name":"GetSource"},{"name":"Scratch"}],"update":[{"id":"f-main","name":"Episodes"}],"delete":["f-scratch"]}}`)
+	require.NoError(t, err)
+	res := got.(projectUpdateResult)
+	assert.Equal(t, []string{"doc_folders.create[0]", "doc_folders.create[1]", "doc_folders.update[0]", "doc_folders.delete[0]"}, res.Applied)
+	assert.Equal(t, []docFolderResult{
+		{ID: "f-main", Name: "Episodes", IsDefault: true},
+		{ID: "f-getsource", Name: "GetSource"},
+	}, res.Project.DocFolders, "project_get's view lists them, the default first")
+
+	_, err = call(t, asUser(t.Context()), f.projectTools(), "project_update", `{"id":"p-1","doc_folders":{"update":[{"id":"f-web","name":"x"}]}}`)
+	require.ErrorIs(t, err, apperrs.ErrInvalid, "another project's folder is refused")
+	_, err = call(t, asUser(t.Context()), f.projectTools(), "project_update", `{"id":"p-1","doc_folders":{"delete":["f-web"]}}`)
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
+	web, _ := f.folders.ListFolders(t.Context(), "p-2")
+	assert.Equal(t, "Main", web[0].Name)
+}

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/otal-labs/nexul/internal/docs"
 	"github.com/otal-labs/nexul/internal/platform/colors"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
@@ -13,9 +14,17 @@ import (
 	"github.com/otal-labs/nexul/internal/workspace"
 )
 
-// ProjectTools are the project tools that also read and set label colors, which the tickets domain owns.
-func ProjectTools(w *workspace.Service, t *tickets.Service) []mcptool.Tool {
-	return []mcptool.Tool{projectGetTool(w, t), projectUpdateTool(w, t)}
+// DocFolders is the slice of the docs use-cases project_get and project_update read and change doc folders through.
+type DocFolders interface {
+	ListFolders(ctx context.Context, projectID string) ([]*docs.Folder, error)
+	CreateFolder(ctx context.Context, projectID, name string) (*docs.Folder, error)
+	RenameFolder(ctx context.Context, id, name string) (*docs.Folder, error)
+	DeleteFolder(ctx context.Context, id string) error
+}
+
+// ProjectTools are the project tools that also read and set label colors and doc folders, which tickets and docs own.
+func ProjectTools(w *workspace.Service, t *tickets.Service, d DocFolders) []mcptool.Tool {
+	return []mcptool.Tool{projectGetTool(w, t, d), projectUpdateTool(w, t, d)}
 }
 
 // projectDetail is everything an agent needs before filing or moving a ticket in a project.
@@ -26,7 +35,14 @@ type projectDetail struct {
 	Categories   []categoryResult       `json:"categories"`
 	TicketTypes  []ticketTypeResult     `json:"ticket_types"`
 	Labels       []labelResult          `json:"labels"`
+	DocFolders   []docFolderResult      `json:"doc_folders"`
 	DeleteImpact workspace.DeleteImpact `json:"delete_impact"`
+}
+
+type docFolderResult struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	IsDefault bool   `json:"is_default"`
 }
 
 type statusResult struct {
@@ -61,22 +77,23 @@ type projectGetIn struct {
 	ID string `json:"id" jsonschema:"The project's id (a UUID), from project_list."`
 }
 
-func projectGetTool(w *workspace.Service, t *tickets.Service) mcptool.Tool {
+func projectGetTool(w *workspace.Service, t *tickets.Service, d DocFolders) mcptool.Tool {
 	return mcptool.New("project_get", "Get project",
 		"Returns one project with everything needed to file and move its tickets: its status columns in board "+
 			"order (each with its stage: backlog, progress, review, testing, or done), categories, ticket types "+
 			"(each with the body_template a new ticket fills), labels with this project's colors, repositories "+
-			"(each with its role, app or tests), where its tests live, and delete_impact, the tickets, repositories, "+
+			"(each with its role, app or tests), where its tests live, its doc folders (the default first, where a "+
+			"new doc goes unless doc_create names another), and delete_impact, the tickets, repositories, "+
 			"and services that block deleting it. Call it before ticket_create or ticket_update to get valid "+
-			"status, type, and category ids; change any of these with project_update. Use project_list to find a "+
-			"project's id.",
+			"status, type, and category ids, and before doc_create or doc_update to get folder ids; change any of "+
+			"these with project_update. Use project_list to find a project's id.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in projectGetIn) (any, error) {
-			return projectView(ctx, w, t, in.ID)
+			return projectView(ctx, w, t, d, in.ID)
 		})
 }
 
-func projectView(ctx context.Context, w *workspace.Service, t *tickets.Service, id string) (projectDetail, error) {
+func projectView(ctx context.Context, w *workspace.Service, t *tickets.Service, folders DocFolders, id string) (projectDetail, error) {
 	p, err := getProject(ctx, w, id)
 	if err != nil {
 		return projectDetail{}, err
@@ -92,6 +109,9 @@ func projectView(ctx context.Context, w *workspace.Service, t *tickets.Service, 
 		return d, err
 	}
 	if d.Labels, err = projectLabels(ctx, t, id); err != nil {
+		return d, err
+	}
+	if d.DocFolders, err = projectDocFolders(ctx, folders, id); err != nil {
 		return d, err
 	}
 	d.DeleteImpact, err = w.DeleteImpact(ctx, id)
@@ -155,6 +175,19 @@ func projectLabels(ctx context.Context, t *tickets.Service, projectID string) ([
 	return out, nil
 }
 
+// projectDocFolders lists the folders the caller may see: every one with docs:write, else those holding a doc they can open.
+func projectDocFolders(ctx context.Context, d DocFolders, projectID string) ([]docFolderResult, error) {
+	folders, err := d.ListFolders(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]docFolderResult, 0, len(folders))
+	for _, f := range folders {
+		out = append(out, docFolderResult{ID: f.ID, Name: f.Name, IsDefault: f.IsDefault})
+	}
+	return out, nil
+}
+
 type projectUpdateIn struct {
 	ID            string             `json:"id" jsonschema:"The project's id (a UUID), from project_list."`
 	Name          *string            `json:"name,omitempty" jsonschema:"A new display name."`
@@ -168,6 +201,22 @@ type projectUpdateIn struct {
 	Categories    *categoryChanges   `json:"categories,omitempty" jsonschema:"Categories to create, change, or delete."`
 	TicketTypes   *ticketTypeChanges `json:"ticket_types,omitempty" jsonschema:"Ticket types to create, change, or delete."`
 	LabelColors   []labelColorIn     `json:"label_colors,omitempty" jsonschema:"Colors for labels in this project, even for a label no ticket uses yet."`
+	DocFolders    *docFolderChanges  `json:"doc_folders,omitempty" jsonschema:"Doc folders to create, rename, or delete; these need docs:write."`
+}
+
+type docFolderChanges struct {
+	Create []docFolderCreateIn `json:"create,omitempty" jsonschema:"New folders, listed after the existing ones."`
+	Update []docFolderUpdateIn `json:"update,omitempty" jsonschema:"Folders to rename, the default one included."`
+	Delete []string            `json:"delete,omitempty" jsonschema:"Ids of folders to delete; their docs move to the default folder, never deleted, and the default folder itself is refused."`
+}
+
+type docFolderCreateIn struct {
+	Name string `json:"name" jsonschema:"The folder's name, unique in the project ignoring case, for example GetSource."`
+}
+
+type docFolderUpdateIn struct {
+	ID   string `json:"id" jsonschema:"The folder's id, from project_get's doc_folders."`
+	Name string `json:"name" jsonschema:"The folder's new name, unique in the project ignoring case."`
 }
 
 type repoAddIn struct {
@@ -250,14 +299,15 @@ type projectUpdateResult struct {
 	Project projectDetail `json:"project"`
 }
 
-func projectUpdateTool(w *workspace.Service, t *tickets.Service) mcptool.Tool {
+func projectUpdateTool(w *workspace.Service, t *tickets.Service, d DocFolders) mcptool.Tool {
 	return mcptool.New("project_update", "Update project",
 		"Changes a project: its name, icon, prefix (only when it has none), place in the workspace, and tests "+
 			"location; attaches and detaches repositories; creates, changes, reorders (position), and deletes its "+
-			"status columns, categories, and ticket types; and sets label colors. Only the fields you send change; "+
+			"status columns, categories, and ticket types; sets label colors; and creates, renames, and deletes doc "+
+			"folders. Only the fields you send change; "+
 			"an omitted field keeps its value. The changes apply in the order the fields are listed here, creates "+
 			"before updates before deletes, and stop at the first failure, whose message names the field and the "+
-			"ones already applied. Owners only, except label colors. Returns the updated project as project_get "+
+			"ones already applied. Owners only, except label colors and doc folders, which take docs:write. Returns the updated project as project_get "+
 			"shows it, with new ids, and the list of fields applied.",
 		mcptool.Hints{Local: true},
 		func(ctx context.Context, in projectUpdateIn) (any, error) {
@@ -268,12 +318,12 @@ func projectUpdateTool(w *workspace.Service, t *tickets.Service) mcptool.Tool {
 			if _, err := getProject(ctx, w, in.ID); err != nil {
 				return nil, err
 			}
-			u := projectUpdate{w: w, t: t, actor: actor, id: in.ID}
+			u := projectUpdate{w: w, t: t, folders: d, actor: actor, id: in.ID}
 			applied, err := runSteps(ctx, u.steps(in))
 			if err != nil {
 				return nil, err
 			}
-			view, err := projectView(ctx, w, t, in.ID)
+			view, err := projectView(ctx, w, t, d, in.ID)
 			if err != nil {
 				return nil, err
 			}
@@ -285,6 +335,7 @@ func projectUpdateTool(w *workspace.Service, t *tickets.Service) mcptool.Tool {
 type projectUpdate struct {
 	w         *workspace.Service
 	t         *tickets.Service
+	folders   DocFolders
 	actor, id string
 }
 
@@ -313,7 +364,50 @@ func (u projectUpdate) steps(in projectUpdateIn) []step {
 			return discard(u.t.SetLabelColor(ctx, u.id, lc.Label, colors.Color(lc.Color)))
 		}})
 	}
+	return append(steps, u.docFolderSteps(in.DocFolders)...)
+}
+
+func (u projectUpdate) docFolderSteps(c *docFolderChanges) []step {
+	if c == nil {
+		return nil
+	}
+	var steps []step
+	for i, f := range c.Create {
+		steps = append(steps, step{fmt.Sprintf("doc_folders.create[%d]", i), "", func(ctx context.Context) error {
+			return discard(u.folders.CreateFolder(ctx, u.id, f.Name))
+		}})
+	}
+	for i, f := range c.Update {
+		steps = append(steps, step{fmt.Sprintf("doc_folders.update[%d]", i), idHint, func(ctx context.Context) error {
+			if err := u.ownsFolder(ctx, f.ID); err != nil {
+				return err
+			}
+			return discard(u.folders.RenameFolder(ctx, f.ID, f.Name))
+		}})
+	}
+	for i, id := range c.Delete {
+		steps = append(steps, step{fmt.Sprintf("doc_folders.delete[%d]", i), idHint, func(ctx context.Context) error {
+			if err := u.ownsFolder(ctx, id); err != nil {
+				return err
+			}
+			return u.folders.DeleteFolder(ctx, id)
+		}})
+	}
 	return steps
+}
+
+// ownsFolder refuses a folder of another project, which the use-cases would change by id alone.
+func (u projectUpdate) ownsFolder(ctx context.Context, id string) error {
+	folders, err := u.folders.ListFolders(ctx, u.id)
+	if err != nil {
+		return err
+	}
+	for _, f := range folders {
+		if f.ID == id {
+			return nil
+		}
+	}
+	return fmt.Errorf("%w: doc folder %s is not in this project", apperrs.ErrInvalid, id)
 }
 
 func (u projectUpdate) rename(ctx context.Context, name, icon *string) error {
