@@ -934,6 +934,7 @@ type NotificationService struct {
 	members  WorkspaceMemberStore
 	access   PermissionChecker
 	projects ProjectReader
+	watchers DocWatchers
 	now      func() time.Time
 }
 
@@ -942,6 +943,12 @@ type NotificationService struct {
 // projects resolves a ticket's or doc's workspace.
 func NewNotificationService(repo NotificationRepo, users UserStore, members WorkspaceMemberStore, access PermissionChecker, projects ProjectReader) *NotificationService {
 	return &NotificationService{repo: repo, users: users, members: members, access: access, projects: projects, now: time.Now}
+}
+
+// WithDocWatchers sets who a doc's changes notify; without it a doc save notifies only the people it mentions.
+func (s *NotificationService) WithDocWatchers(w DocWatchers) *NotificationService {
+	s.watchers = w
+	return s
 }
 
 // List returns a user's notifications in one workspace (every workspace when workspaceID is empty), newest first.
@@ -1130,12 +1137,8 @@ func (s *NotificationService) onTicketStatusChanged(ctx context.Context, t ticke
 	return s.fanOut(ctx, evtKey(ctx), n, recipients)
 }
 
-// onDocActivity fans out to every member of the doc's workspace; a member the save newly @-mentions gets
-// doc.mentioned instead of the activity kind.
+// onDocActivity tells the doc's watchers but the actor, and newly mentioned members with doc.mentioned (ADR 0101).
 func (s *NotificationService) onDocActivity(ctx context.Context, e docEvent, kind Kind) error {
-	if s.members == nil {
-		return nil
-	}
 	n, err := s.notice(ctx, SubjectDoc, e.Doc.ID, e.Doc.Title, e.Doc.ProjectID, e.ActorID)
 	if err != nil {
 		return err
@@ -1143,21 +1146,39 @@ func (s *NotificationService) onDocActivity(ctx context.Context, e docEvent, kin
 	if n.workspaceID == "" {
 		return nil
 	}
-	userIDs, err := s.members.ListMemberUserIDs(ctx, n.workspaceID)
+	recipients, err := s.docMentionRecipients(ctx, n, e.MentionedUserIDs)
 	if err != nil {
-		return fmt.Errorf("list members for doc fan-out: %w", err)
+		return err
 	}
-	mentionTitle := s.mentionTitle(ctx, n)
-	recipients := make([]recipient, 0, len(userIDs)+len(e.MentionedUserIDs))
-	for _, id := range e.MentionedUserIDs {
-		if slices.Contains(userIDs, id) {
-			recipients = append(recipients, recipient{UserID: id, Kind: KindDocMentioned, Title: mentionTitle})
+	if s.watchers != nil {
+		ids, err := s.watchers.ListDocWatcherIDs(ctx, e.Doc.ID)
+		if err != nil {
+			return fmt.Errorf("list watchers of doc %s: %w", e.Doc.ID, err)
+		}
+		for _, id := range ids {
+			recipients = append(recipients, recipient{UserID: id, Kind: kind})
 		}
 	}
-	for _, id := range userIDs {
-		recipients = append(recipients, recipient{UserID: id, Kind: kind})
-	}
 	return s.fanOut(ctx, evtKey(ctx), n, recipients)
+}
+
+// docMentionRecipients keeps the mentioned people who are members of the doc's workspace.
+func (s *NotificationService) docMentionRecipients(ctx context.Context, n notice, mentioned []string) ([]recipient, error) {
+	if len(mentioned) == 0 || s.members == nil {
+		return nil, nil
+	}
+	members, err := s.members.ListMemberUserIDs(ctx, n.workspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("list members for doc mentions: %w", err)
+	}
+	mentionTitle := s.mentionTitle(ctx, n)
+	var out []recipient
+	for _, id := range mentioned {
+		if slices.Contains(members, id) {
+			out = append(out, recipient{UserID: id, Kind: KindDocMentioned, Title: mentionTitle})
+		}
+	}
+	return out, nil
 }
 
 // mentionTitle words a mention as "<author> mentioned you in <title>"; with no known author it stays the title.

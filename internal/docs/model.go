@@ -56,3 +56,24 @@ type Folder struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
+
+// WatcherSource says how someone came to watch a doc: added for creating or editing it, or by choosing to.
+type WatcherSource string
+
+const (
+	WatcherAuto   WatcherSource = "auto"
+	WatcherManual WatcherSource = "manual"
+)
+
+// Watcher is a person who gets a doc's change notifications (ADR 0101).
+type Watcher struct {
+	UserID    string        `json:"user_id"`
+	Source    WatcherSource `json:"source"`
+	CreatedAt time.Time     `json:"created_at"`
+}
+
+// Watchers is a doc's watchers as one person sees them, with whether that person is one.
+type Watchers struct {
+	Watchers []*Watcher `json:"watchers"`
+	Watching bool       `json:"watching"`
+}

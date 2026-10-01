@@ -214,6 +214,7 @@ var livePushTopics = []string{
 	docs.TopicFolderCreated,
 	docs.TopicFolderUpdated,
 	docs.TopicFolderDeleted,
+	docs.TopicWatchersChanged,
 	runner.TopicRunnerConnected,
 	runner.TopicRunnerDisconnected,
 	runner.TopicDeployBuildStarted,

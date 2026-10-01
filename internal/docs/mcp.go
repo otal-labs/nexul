@@ -25,6 +25,14 @@ type docResult struct {
 	Archived  bool      `json:"archived"`
 	Locked    bool      `json:"locked"`
 	UpdatedAt time.Time `json:"updated_at"`
+	// Watchers are the people who get the doc's change notifications; Watching says whether the caller is one.
+	Watchers []watcherResult `json:"watchers"`
+	Watching bool            `json:"watching"`
+}
+
+type watcherResult struct {
+	UserID string        `json:"user_id"`
+	Source WatcherSource `json:"source"`
 }
 
 type docListIn struct {
@@ -54,6 +62,7 @@ type docUpdateIn struct {
 	Archived *bool   `json:"archived,omitempty" jsonschema:"true archives the doc (hidden from search), false restores it. Omit to leave it as is."`
 	Locked   *bool   `json:"locked,omitempty" jsonschema:"true locks the doc read-only so its title and body refuse edits, false unlocks it. Omit to leave it as is."`
 	FolderID *string `json:"folder_id,omitempty" jsonschema:"Moves the doc to this folder of its own project, from project_get's doc_folders; every doc lives in exactly one folder, and a locked doc moves too. Omit to leave it where it is."`
+	Watch    *bool   `json:"watch,omitempty" jsonschema:"true makes you a watcher of the doc, so its edits reach your notifications; false stops that, and your own later edits do not start it again. Needs only read access. Omit to leave it as is."`
 }
 
 // MCPTools returns the docs tools.
@@ -118,7 +127,8 @@ func rankBySearch(ctx context.Context, s *Service, query string, items []*DocLis
 
 func docGetTool(s *Service) mcptool.Tool {
 	return mcptool.New("doc_get", "Get doc",
-		"Returns one doc with its full body as markdown, its project, the folder it lives in (folder_id), version, and archived and locked state. "+
+		"Returns one doc with its full body as markdown, its project, the folder it lives in (folder_id), version, archived and locked state, "+
+			"and its watchers: the people its edits notify, who are its creator, everyone who edited it, and anyone who chose to watch, with watching true when you are one. "+
 			"Use it after doc_list has given you the id, and before doc_update so you edit the current text. "+
 			"Fails with forbidden when you cannot read the doc.",
 		mcptool.Hints{ReadOnly: true, Local: true},
@@ -127,7 +137,7 @@ func docGetTool(s *Service) mcptool.Tool {
 			if err != nil {
 				return nil, err
 			}
-			return toDocResult(d)
+			return toDocResult(ctx, s, d)
 		})
 }
 
@@ -145,7 +155,7 @@ func docCreateTool(s *Service) mcptool.Tool {
 			if err != nil {
 				return nil, err
 			}
-			return toDocResult(d)
+			return toDocResult(ctx, s, d)
 		})
 }
 
@@ -161,10 +171,11 @@ func createOrClone(ctx context.Context, s *Service, in docCreateIn) (*Doc, error
 
 func docUpdateTool(s *Service) mcptool.Tool {
 	return mcptool.New("doc_update", "Update doc",
-		"Changes a doc's title, body, folder, archived, or locked state; only the fields you send change. "+
+		"Changes a doc's title, body, folder, archived, or locked state, or whether you watch it; only the fields you send change. "+
 			"folder_id moves the doc to another folder of its project, one of the folders project_get lists. "+
 			"A new title or body saves a new version, and archived true hides the doc from search until archived false restores it. "+
 			"A locked doc refuses title and body changes until locked false, which you may send with the edit to unlock first. "+
+			"A title or body edit makes you a watcher, notified of the doc's later edits, unless you stopped watching it; watch true or false starts or stops that for you alone. "+
 			"Read the doc with doc_get first, because body replaces the whole body. "+
 			"Returns the doc as it now stands.",
 		mcptool.Hints{Idempotent: true, Local: true},
@@ -173,7 +184,7 @@ func docUpdateTool(s *Service) mcptool.Tool {
 			if err != nil {
 				return nil, err
 			}
-			return toDocResult(d)
+			return toDocResult(ctx, s, d)
 		})
 }
 
@@ -202,6 +213,12 @@ func updateDoc(ctx context.Context, s *Service, in docUpdateIn) (*Doc, error) {
 	if is(in.Locked, true) && !d.Locked {
 		if d, err = s.Lock(ctx, in.ID); err != nil {
 			return nil, stepErr(applied, "locked", err)
+		}
+		applied = append(applied, "locked")
+	}
+	if in.Watch != nil {
+		if _, err := s.SetWatching(ctx, in.ID, *in.Watch); err != nil {
+			return nil, stepErr(applied, "watch", err)
 		}
 	}
 	return d, nil
@@ -262,13 +279,22 @@ func deref[T any](p *T, fallback T) T {
 	return *p
 }
 
-func toDocResult(d *Doc) (docResult, error) {
+func toDocResult(ctx context.Context, s *Service, d *Doc) (docResult, error) {
 	md, err := richtext.ToMarkdown(d.Body)
 	if err != nil {
 		return docResult{}, fmt.Errorf("render doc %s: %w", d.ID, err)
 	}
+	ws, err := s.watchersOf(ctx, d.ID)
+	if err != nil {
+		return docResult{}, err
+	}
+	watchers := make([]watcherResult, 0, len(ws.Watchers))
+	for _, w := range ws.Watchers {
+		watchers = append(watchers, watcherResult{UserID: w.UserID, Source: w.Source})
+	}
 	return docResult{
 		ID: d.ID, ProjectID: d.ProjectID, FolderID: d.FolderID, Title: d.Title, Body: md,
 		Version: d.Version, Archived: d.Archived, Locked: d.Locked, UpdatedAt: d.UpdatedAt,
+		Watchers: watchers, Watching: ws.Watching,
 	}, nil
 }

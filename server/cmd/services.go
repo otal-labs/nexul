@@ -274,7 +274,8 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		WithEnrollDir(filepath.Join(filepath.Dir(cfg.DBPath), "enroll"))
 	automationsSvc.SetHosts(automationHostsSvc)
 
-	notifSvc := workspace.NewNotificationService(store.Notifications, workspaceUserStore{users: store.Users}, workspaceMembersStore{members: store.WorkspaceMembers}, notificationPermissionGate{svc: accessSvc}, store.Projects)
+	notifSvc := workspace.NewNotificationService(store.Notifications, workspaceUserStore{users: store.Users}, workspaceMembersStore{members: store.WorkspaceMembers}, notificationPermissionGate{svc: accessSvc}, store.Projects).
+		WithDocWatchers(docWatchersAdapter{repo: store.Docs})
 	pushSender := push.New(push.Config{
 		Tokens:     store.Sessions,
 		Workspaces: pushWorkspaceNamer{workspaces: store.Workspaces},

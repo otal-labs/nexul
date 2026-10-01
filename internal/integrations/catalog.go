@@ -712,6 +712,25 @@ var catalogSchemas = map[string]string{
 			"actor_id": {"type": "string"}
 		}
 	}`,
+	"doc.watchers.changed": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"description": "Someone started or stopped watching a doc, choosing to; a watcher gets the doc's change notifications. Being added for creating or editing the doc rides doc.created and doc.updated instead.",
+		"required": ["doc", "user_id", "watching"],
+		"properties": {
+			"doc": {
+				"type": "object",
+				"required": ["id", "project_id", "title"],
+				"properties": {
+					"id": {"type": "string"},
+					"project_id": {"type": "string"},
+					"title": {"type": "string"}
+				}
+			},
+			"user_id": {"type": "string"},
+			"watching": {"type": "boolean", "description": "true when they started watching, false when they stopped."}
+		}
+	}`,
 	"play.created": `{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",
 		"type": "object",

@@ -284,7 +284,7 @@ func (s *Service) Update(ctx context.Context, id, title, body string) (*Doc, err
 	current.Body = body
 	current.Version++
 	current.UpdatedAt = s.now().UTC()
-	if err := s.repo.Update(ctx, current, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: UpdatedEvent{Doc: *current, ActorID: actorID(ctx), MentionedUserIDs: mentioned}}); err != nil {
+	if err := s.repo.Update(ctx, current, actorID(ctx), eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: UpdatedEvent{Doc: *current, ActorID: actorID(ctx), MentionedUserIDs: mentioned}}); err != nil {
 		return nil, fmt.Errorf("update doc %s: %w", id, err)
 	}
 	return current, nil
@@ -480,7 +480,7 @@ func (s *Service) CommitCollab(ctx context.Context, id, title, body string) erro
 	current.Body = body
 	current.Version++
 	current.UpdatedAt = s.now().UTC()
-	if err := s.repo.CommitBody(ctx, current, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: UpdatedEvent{Doc: *current, ActorID: actorID(ctx), MentionedUserIDs: mentioned}}); err != nil {
+	if err := s.repo.CommitBody(ctx, current, actorID(ctx), eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: UpdatedEvent{Doc: *current, ActorID: actorID(ctx), MentionedUserIDs: mentioned}}); err != nil {
 		return fmt.Errorf("commit doc %s: %w", id, err)
 	}
 	return nil

@@ -111,6 +111,11 @@ type WorkspaceMemberStore interface {
 	ListMemberUserIDs(ctx context.Context, workspaceID string) ([]string, error)
 }
 
+// DocWatchers resolves a doc's watchers, adapted at the composition root onto the docs domain (ADR 0017).
+type DocWatchers interface {
+	ListDocWatcherIDs(ctx context.Context, docID string) ([]string, error)
+}
+
 // PermissionChecker adapts access (ADR 0017), so a notice only reaches someone who may open its subject.
 type PermissionChecker interface {
 	HasPermission(ctx context.Context, userID, workspaceID string, action permissions.Action) bool

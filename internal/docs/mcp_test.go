@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 )
 
@@ -64,6 +65,7 @@ func TestMCPTools_Errors(t *testing.T) {
 		{"update a missing doc", allowed, testCtx(), "doc_update", `{"id":"nope","title":"x"}`, apperrs.ErrNotFound},
 		{"get without read", denied, testCtx(), "doc_get", `{"id":"` + d.ID + `"}`, apperrs.ErrForbidden},
 		{"update without read or write", denied, testCtx(), "doc_update", `{"id":"` + d.ID + `","title":"x"}`, apperrs.ErrForbidden},
+		{"watch without read", denied, testCtx(), "doc_update", `{"id":"` + d.ID + `","watch":true}`, apperrs.ErrForbidden},
 		{"create without an actor", allowed, context.Background(), "doc_create", `{"project_id":"project-1","title":"Spec"}`, apperrs.ErrUnauthorized},
 	}
 	for _, tt := range tests {
@@ -125,6 +127,33 @@ func TestDocUpdate_LockOrdersAroundTheEdit(t *testing.T) {
 	got = out.(docResult)
 	assert.Equal(t, "changed", got.Body)
 	assert.False(t, got.Locked)
+}
+
+func TestDocUpdate_WatchStartsAndStopsForTheCallerOnly(t *testing.T) {
+	s := newTestService(newFakeRepo())
+	d := mustDoc(t, s, "project-1", "Spec", "body")
+	other := identity.WithActor(context.Background(), identity.Actor{ID: "user-2"})
+
+	out, err := callTool(testCtx(), t, s, "doc_update", `{"id":"`+d.ID+`","watch":true}`)
+	require.NoError(t, err)
+	got := out.(docResult)
+	assert.True(t, got.Watching)
+	assert.Equal(t, []watcherResult{{UserID: "user-1", Source: WatcherManual}}, got.Watchers)
+	assert.Equal(t, 1, got.Version, "watching is not an edit")
+
+	out, err = callTool(other, t, s, "doc_get", `{"id":"`+d.ID+`"}`)
+	require.NoError(t, err)
+	assert.False(t, out.(docResult).Watching, "watching is the caller's own, never someone else's")
+	assert.Len(t, out.(docResult).Watchers, 1)
+
+	out, err = callTool(testCtx(), t, s, "doc_update", `{"id":"`+d.ID+`","title":"Renamed"}`)
+	require.NoError(t, err)
+	assert.True(t, out.(docResult).Watching, "an update without watch leaves it as is")
+
+	out, err = callTool(testCtx(), t, s, "doc_update", `{"id":"`+d.ID+`","watch":false}`)
+	require.NoError(t, err)
+	assert.False(t, out.(docResult).Watching)
+	assert.Empty(t, out.(docResult).Watchers)
 }
 
 func TestStepErr_SaysWhatWasSaved(t *testing.T) {

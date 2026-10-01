@@ -92,12 +92,13 @@ beforeEach(() => {
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
   // The collab display name comes from GET /api/auth/me (useFetchMe); PlaysMenu's
-  // harness-readiness check needs a well-shaped presence map; every other GET
-  // here (tickets/mentions) stays empty.
+  // harness-readiness check needs a well-shaped presence map, the Watch control a
+  // watcher list; every other GET here (tickets/mentions) stays empty.
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/auth/me") return { data: { user: { name: "Alice" }, needs_owner_wizard: false, needs_first_login_wizard: false } };
     if (url === "/api/pairing/presence") return { data: { computers: {} } };
     if (url === "/api/pairing/resolve") return { data: { ok: false, reason: "unpaired" } };
+    if (url === "/api/docs/doc-1/watchers") return { data: { watchers: [], watching: false } };
     return { data: [] };
   });
   vi.mocked(api.post).mockResolvedValue({ data: { chips: [] } });
@@ -278,6 +279,7 @@ describe("DocDetail", () => {
       if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions: ["docs:thread"] } };
       if (url === "/api/pairing/presence") return { data: { computers: {} } };
       if (url === "/api/pairing/resolve") return { data: { ok: false, reason: "unpaired" } };
+      if (url === "/api/docs/doc-1/watchers") return { data: { watchers: [], watching: false } };
       if (url === "/api/plays/runs") {
         return {
           data: [

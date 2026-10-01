@@ -241,6 +241,30 @@ func TestDocsHandler_LockUnlock(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 }
 
+func TestDocsHandler_WatchUnwatch(t *testing.T) {
+	h, _ := newDocsHandler()
+	created := decodeDoc(t, serve(t, h, http.MethodPost, "/api/docs", `{"project_id":"project-1","title":"A","body":"1"}`))
+	watchers := func(rec *httptest.ResponseRecorder) Watchers {
+		t.Helper()
+		require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+		var ws Watchers
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &ws))
+		return ws
+	}
+
+	got := watchers(serve(t, h, http.MethodPut, "/api/docs/"+created.ID+"/watchers/me", ""))
+	assert.True(t, got.Watching)
+	assert.Len(t, got.Watchers, 1)
+	assert.True(t, watchers(serve(t, h, http.MethodGet, "/api/docs/"+created.ID+"/watchers", "")).Watching)
+
+	got = watchers(serve(t, h, http.MethodDelete, "/api/docs/"+created.ID+"/watchers/me", ""))
+	assert.False(t, got.Watching)
+	assert.NotNil(t, got.Watchers, "an empty list is [], never null")
+	assert.Empty(t, got.Watchers)
+
+	assert.Equal(t, http.StatusNotFound, serve(t, h, http.MethodPut, "/api/docs/nope/watchers/me", "").Code)
+}
+
 func TestDocsHandler_Forbidden(t *testing.T) {
 	repo := newFakeRepo()
 	created, err := newTestService(repo).Create(testCtx(), "project-1", "A", "1")

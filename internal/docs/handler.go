@@ -57,6 +57,9 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/docs/{id}/versions/{version}", h.getVersion)
 	mux.HandleFunc("GET /api/docs/{id}/versions", h.listVersions)
 	mux.HandleFunc("POST /api/docs/{id}/versions", h.createNamedVersion)
+	mux.HandleFunc("GET /api/docs/{id}/watchers", h.listWatchers)
+	mux.HandleFunc("PUT /api/docs/{id}/watchers/me", h.watch)
+	mux.HandleFunc("DELETE /api/docs/{id}/watchers/me", h.unwatch)
 	mux.HandleFunc("GET /api/docs/{id}", h.get)
 	mux.HandleFunc("PUT /api/docs/{id}", h.update)
 	mux.HandleFunc("DELETE /api/docs/{id}", h.delete)
@@ -248,4 +251,31 @@ func (h *Handler) getVersion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, v)
+}
+
+func (h *Handler) listWatchers(w http.ResponseWriter, r *http.Request) {
+	ws, err := h.svc.Watchers(r.Context(), r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, ws)
+}
+
+func (h *Handler) watch(w http.ResponseWriter, r *http.Request) {
+	h.setWatching(w, r, true)
+}
+
+func (h *Handler) unwatch(w http.ResponseWriter, r *http.Request) {
+	h.setWatching(w, r, false)
+}
+
+// setWatching answers with the doc's watchers as they now stand, so the caller can redraw the count.
+func (h *Handler) setWatching(w http.ResponseWriter, r *http.Request, watching bool) {
+	ws, err := h.svc.SetWatching(r.Context(), r.PathValue("id"), watching)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, ws)
 }

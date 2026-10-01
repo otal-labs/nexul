@@ -9,11 +9,13 @@ const (
 	TopicFolderCreated = "doc.folder.created"
 	TopicFolderUpdated = "doc.folder.updated"
 	TopicFolderDeleted = "doc.folder.deleted"
+	// TopicWatchersChanged is someone starting or stopping watching a doc; an edit adding its editor rides doc.updated.
+	TopicWatchersChanged = "doc.watchers.changed"
 )
 
 // Topics returns every topic the docs domain publishes.
 func Topics() []string {
-	return []string{TopicCreated, TopicUpdated, TopicDeleted, TopicMoved, TopicFolderCreated, TopicFolderUpdated, TopicFolderDeleted}
+	return []string{TopicCreated, TopicUpdated, TopicDeleted, TopicMoved, TopicFolderCreated, TopicFolderUpdated, TopicFolderDeleted, TopicWatchersChanged}
 }
 
 // CreatedEvent is the payload for doc.created; field names are part of the event contract (ADR 0044) and additive-only.
@@ -66,4 +68,18 @@ type FolderDeletedEvent struct {
 	Folder          Folder `json:"folder"`
 	MovedToFolderID string `json:"moved_to_folder_id"`
 	ActorID         string `json:"actor_id,omitempty"`
+}
+
+// WatchersChangedEvent is the doc.watchers.changed payload: who started (watching true) or stopped watching which doc.
+type WatchersChangedEvent struct {
+	Doc      WatchedDoc `json:"doc"`
+	UserID   string     `json:"user_id"`
+	Watching bool       `json:"watching"`
+}
+
+// WatchedDoc is the slice of a doc a watcher change names; the body never travels with it.
+type WatchedDoc struct {
+	ID        string `json:"id"`
+	ProjectID string `json:"project_id"`
+	Title     string `json:"title"`
 }
