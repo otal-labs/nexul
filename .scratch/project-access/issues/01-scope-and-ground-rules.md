@@ -16,7 +16,8 @@ Settled with the owner while charting, 2026-10-01.
 - **Why not a workspace per client.** Projects live where the team works. A
   client giving feedback on one OTAL project belongs in OTAL, and must not
   see the others.
-- **Per person, hidden by default.** Each membership is either "All
+- **Per person, hidden by default.** (Shown as an Every project row rather
+  than a switch, per ticket 05.) Each membership is either "All
   projects" (today's behaviour, every existing member after the upgrade) or
   "Only these projects" (a Restricted member). A Restricted member sees a
   project only once given access; projects created later stay hidden.
