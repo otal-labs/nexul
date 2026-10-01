@@ -70,12 +70,13 @@ even their names.
 - [Project access and private channels over MCP](issues/06-mcp-surface.md)
   — new fields on `account_list`, `account_update`, `invitation_create`,
   `project_get`, `conversation_list`, `conversation_update`; no new tool.
+- [How it looks](issues/07-look.md) — an accordion of project rows under the
+  Every project row, one open at a time; the role editor's two microheaders;
+  People with access in project settings; the private channel row and its
+  who-stays picker; the delete line; the revoked-page empty state.
 
 ## Not yet specified
 
-- What an open page shows the moment its project is taken away from the
-  person looking at it (the frames stop; does the page fall to not found,
-  bounce to the board, or say why).
 - Notices, inbox entries, and agent trails created before someone was
   restricted that point at a project now hidden from them.
 - How a play's excluded-projects list and a restricted member's Project
