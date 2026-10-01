@@ -104,8 +104,8 @@ describe("MessageList agent stream bubble lifecycle", () => {
     );
     renderList([message({})]);
     expect(screen.getByText(/Working for \d+s/)).toBeInTheDocument();
-    expect(screen.getByText('Read: {"file_path":"main.go"}')).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "tool call" })).toBeInTheDocument();
+    expect(screen.getByText("Read: main.go")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "file" })).toBeInTheDocument();
   });
 
   it("hides the stop button once the frame stops streaming", () => {
@@ -256,7 +256,7 @@ describe("MessageList play runs in a ticket thread", () => {
     expect(document.querySelector('[data-slot="bubble"]')).toHaveTextContent("Started Fix with AI");
 
     await userEvent.click(group);
-    expect(screen.getByText('Read: {"file_path":"handler.go"}')).toBeInTheDocument();
+    expect(screen.getByText("Read: handler.go")).toBeInTheDocument();
     expect(screen.getByText("Edit: /src/handler.go")).toBeInTheDocument();
   });
 

@@ -30,6 +30,7 @@ const (
 	capturedFileChangeDone      = `{"type":"thread.activity-appended","payload":{"threadId":"th-1","activity":{"id":"54f4c3ca","createdAt":"2026-09-18T09:48:40.523Z","tone":"tool","kind":"tool.completed","summary":"File change","payload":{"itemType":"file_change","toolCallId":"toolu_019Tp4","status":"completed","title":"File change","detail":"Edit: {\"file_path\":\"/workspace/nexul/.golangci.yml\",\"old_string\":\"  exclusions:...","data":{"toolName":"Edit","input":{"file_path":"/workspace/nexul/.golangci.yml","old_string":"  exclusions:\n    paths:\n","new_string":"  exclusions:\n    paths:\n      - node_modules\n"},"result":{"tool_use_id":"toolu_019Tp4","type":"tool_result","content":"The file /workspace/nexul/.golangci.yml has been updated successfully."}}},"turnId":"b53b23b9"}}}`
 	capturedImageView           = `{"type":"thread.activity-appended","payload":{"threadId":"th-1","activity":{"id":"bdd91722","createdAt":"2026-09-17T18:43:58.967Z","tone":"tool","kind":"tool.updated","summary":"Image view","payload":{"itemType":"image_view","toolCallId":"toolu_013kfA","status":"inProgress","title":"Image view","detail":"/workspace/docs/architecture.png","data":{"imagePath":"/workspace/docs/architecture.png","toolName":"Read"}},"turnId":"024a1ded"}}}`
 	capturedCodexCommandStarted = `{"type":"thread.activity-appended","payload":{"threadId":"th-1","activity":{"id":"b0c48bc3","createdAt":"2026-09-27T14:06:25.337Z","tone":"tool","kind":"tool.started","summary":"Ran command started","payload":{"itemType":"command_execution","toolCallId":"exec-b0c48bc3","status":"inProgress","title":"Ran command","detail":"/bin/bash -lc \"nl -ba MEMORY.md\"","data":{"item":{"aggregatedOutput":null,"command":"/bin/bash -lc \"nl -ba MEMORY.md\"","cwd":"/home/me/nexul","exitCode":null,"id":"exec-b0c48bc3"}}},"turnId":"2e274277"}}}`
+	capturedCodexMCPDone        = `{"type":"thread.activity-appended","payload":{"threadId":"th-1","activity":{"id":"74b502a5","createdAt":"2026-10-01T20:42:28.652Z","tone":"tool","kind":"tool.completed","summary":"nexul · computer_setup_update","payload":{"itemType":"mcp_tool_call","toolCallId":"exec-d37d6da2","status":"completed","title":"nexul · computer_setup_update","data":{"item":{"arguments":{"computer_id":"01a0e569","confirmed":true},"error":null,"id":"exec-d37d6da2","result":{"content":[{"type":"text","text":"{\"computer_id\":\"01a0e569\"}"}]},"server":"nexul","status":"completed","tool":"computer_setup_update","type":"mcpToolCall"}}},"turnId":"c631a68a"}}}`
 	capturedFileChangeMCP       = `{"type":"thread.activity-appended","payload":{"threadId":"th-1","activity":{"id":"e12bcfd2","createdAt":"2026-09-18T09:49:37.566Z","tone":"tool","kind":"tool.started","summary":"File change started","payload":{"itemType":"file_change","toolCallId":"toolu_01DCSg","status":"inProgress","title":"File change","detail":"mcp__github__create_pull_request: {}","data":{"toolName":"mcp__github__create_pull_request","input":{}}},"turnId":"b53b23b9"}}}`
 )
 
@@ -174,4 +175,18 @@ func TestQuotedField(t *testing.T) {
 			assert.Equal(t, tt.want, quotedField(tt.label, "file_path"))
 		})
 	}
+}
+
+func TestEventUpdate_CodexMCPCall_DetailCarriesItsItemsArgumentsAndResult(t *testing.T) {
+	a := activityOf(t, capturedCodexMCPDone)
+	assert.Equal(t, harness.ActivityToolResult, a.Kind)
+	assert.Equal(t, "nexul · computer_setup_update", a.Tool)
+	assert.Equal(t, "nexul · computer_setup_update", a.Summary, "the label stays T3's server · tool title, not the arguments")
+	var detail struct {
+		Input  map[string]any `json:"input"`
+		Result map[string]any `json:"result"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(a.Detail), &detail), "Codex carries an MCP call's arguments and result only in data.item")
+	assert.Equal(t, "01a0e569", detail.Input["computer_id"])
+	assert.NotEmpty(t, detail.Result["content"])
 }

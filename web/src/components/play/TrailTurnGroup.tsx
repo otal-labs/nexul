@@ -34,12 +34,12 @@ export const TrailTurnGroup = ({ entries, running, from, until }: TrailTurnGroup
           className="size-3.5 shrink-0 text-muted-foreground transition-transform duration-150 ease-standard group-data-[state=open]:rotate-90"
           aria-hidden
         />
-        <span className="text-sm font-medium">{headline(running, seconds)}</span>
+        <span className="text-sm text-muted-foreground tabular-nums">{headline(running, seconds)}</span>
       </CollapsibleTrigger>
-      <p className="pl-5 text-xs text-muted-foreground">{turnSummary(turnCounts(entries))}</p>
+      <p className="pl-5 text-xs text-muted-foreground/80">{turnSummary(turnCounts(entries))}</p>
       <CollapsibleContent>
         {entries.length > 0 && (
-          <ul className="mt-1.5 flex flex-col gap-1">
+          <ul className="mt-1 flex flex-col">
             {entries.map((entry, i) => (
               <TrailActionRow
                 key={`${entry.call_id || entry.at}-${i}`}

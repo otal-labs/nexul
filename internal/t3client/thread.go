@@ -391,9 +391,11 @@ type toolPayload struct {
 		ToolName  string `json:"toolName"`
 		Command   string `json:"command"`
 		ImagePath string `json:"imagePath"`
-		// Item is Codex's raw item, the only place its command rides.
+		// Item is Codex's raw item, the only place its command and an MCP call's arguments and result ride.
 		Item struct {
-			Command string `json:"command"`
+			Command   string          `json:"command"`
+			Arguments json.RawMessage `json:"arguments"`
+			Result    json.RawMessage `json:"result"`
 		} `json:"item"`
 		Input  json.RawMessage `json:"input"`
 		Result json.RawMessage `json:"result"`
@@ -511,6 +513,16 @@ func firstNonEmpty(values ...string) string {
 	return ""
 }
 
+// firstNonEmptyJSON skips an absent or null value, so a Codex item's fields stand in for the input and result it lacks.
+func firstNonEmptyJSON(values ...json.RawMessage) json.RawMessage {
+	for _, v := range values {
+		if len(v) > 0 && string(v) != "null" {
+			return v
+		}
+	}
+	return nil
+}
+
 // quotedField reads the string value of key out of a JSON-looking label that may be cut short, so it never parses.
 func quotedField(label, key string) string {
 	marker := `"` + key + `":"`
@@ -527,10 +539,12 @@ func quotedField(label, key string) string {
 }
 
 func (c *Client) detailJSON(p toolPayload) string {
-	if len(p.Data.Input) == 0 && len(p.Data.Result) == 0 {
+	input := firstNonEmptyJSON(p.Data.Input, p.Data.Item.Arguments)
+	result := firstNonEmptyJSON(p.Data.Result, p.Data.Item.Result)
+	if len(input) == 0 && len(result) == 0 {
 		return ""
 	}
-	b, err := json.Marshal(activityDetail{Input: p.Data.Input, Result: p.Data.Result})
+	b, err := json.Marshal(activityDetail{Input: input, Result: result})
 	if err != nil {
 		c.log.Debug("t3client: tool activity detail not encoded", "error", err)
 		return ""

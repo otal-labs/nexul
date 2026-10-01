@@ -32,9 +32,9 @@ describe("SetupTranscript", () => {
 
     expect(screen.getByText(said)).toBeInTheDocument();
     expect(screen.getByText("Used 1 tool and ran 1 command")).toBeInTheDocument();
-    expect(screen.queryByText(listed)).not.toBeInTheDocument();
+    expect(screen.queryByText("ls ~/.claude/skills")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Working/ })).toBeInTheDocument();
-    expect(screen.getByText(running)).toBeInTheDocument();
+    expect(screen.getByText("python3 - <<'PY'")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "running" })).toBeInTheDocument();
   });
 
@@ -43,7 +43,7 @@ describe("SetupTranscript", () => {
 
     rerender(<SetupTranscript row={row("confirmed")} runningName={undefined} retryDisabled={false} onRetry={() => {}} />);
 
-    expect(screen.queryByText(running)).not.toBeInTheDocument();
+    expect(screen.queryByText("python3 - <<'PY'")).not.toBeInTheDocument();
     expect(screen.getByText("Ran 1 command")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Working/ })).not.toBeInTheDocument();
     expect(screen.getByText(/Confirmed with 119 skills/)).toBeInTheDocument();
