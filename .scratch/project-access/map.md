@@ -59,6 +59,10 @@ even their names.
   `permission_overwrites` rows of type project, `RequireProject` as the one
   seam, instance checks skip restricted memberships, existing events carry
   the changes live.
+- [Private channels](issues/04-private-channels.md) — switchable both ways,
+  members add, `channels:write` removes, `#general` always public, voice the
+  same, non-members see nothing, the Owner sees everything, DMs open both
+  ways.
 
 ## Not yet specified
 
