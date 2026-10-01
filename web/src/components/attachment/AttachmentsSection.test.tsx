@@ -1,11 +1,14 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ComponentProps } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AttachmentsSection } from "@/components/attachment/AttachmentsSection";
 import { api } from "@/api/client";
-import type { Attachment } from "@/models/Attachment";
+import { getMyRoleKey } from "@/hooks/WorkspaceHooks";
+import type { Attachment, AttachmentOwner } from "@/models/Attachment";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn(), delete: vi.fn() },
@@ -31,14 +34,21 @@ const image: Attachment = {
 
 const pdf: Attachment = { ...image, id: "a-2", name: "spec.pdf", content_type: "application/pdf", size: 5 * 1024 * 1024 };
 
-const renderSection = () =>
-  render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <AttachmentsSection owner={{ ticket_id: "t-1" }} />
+let grants: string[] = [];
+
+const renderSection = (permissions: string[] = ["tickets:write"], owner: AttachmentOwner = { ticket_id: "t-1" }) => {
+  grants = permissions;
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  client.setQueryData([getMyRoleKey, "ws-1"], { role_name: "Member", permissions });
+  return render(
+    <QueryClientProvider client={client}>
+      <AttachmentsSection owner={owner as ComponentProps<typeof AttachmentsSection>["owner"]} />
     </QueryClientProvider>,
   );
+};
 
 beforeEach(() => {
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedProjectId: "" });
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
   vi.mocked(api.delete).mockReset();
@@ -47,6 +57,7 @@ beforeEach(() => {
   globalThis.URL.revokeObjectURL = vi.fn();
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/attachments") return { data: [image, pdf] };
+    if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions: grants } };
     return { data: new Blob(["png"]) };
   });
 });
@@ -85,6 +96,22 @@ describe("AttachmentsSection", () => {
     const form = vi.mocked(api.post).mock.calls[0]?.[1] as FormData;
     expect(form.get("ticket_id")).toBe("t-1");
     expect(form.get("file")).toBe(file);
+  });
+
+  it.each([
+    ["a doc", { doc_id: "d-1" }, "tickets:write", "docs:write"],
+    ["a ticket", { ticket_id: "t-1" }, "docs:write", "tickets:write"],
+    ["a memory", { memory_id: "m-1" }, "tickets:write", "memories:write"],
+  ] as const)("offers upload on %s only with that owner's write permission", async (_name, owner, other, needed) => {
+    const wrong = renderSection(["docs:read", other], owner);
+    await screen.findByText("shot.png");
+    expect(screen.queryByRole("button", { name: "Add attachment" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Attachment file")).not.toBeInTheDocument();
+    wrong.unmount();
+
+    renderSection([needed], owner);
+    await screen.findByText("shot.png");
+    expect(screen.getByRole("button", { name: "Add attachment" })).toBeInTheDocument();
   });
 
   it("deletes after confirmation and not when cancelled", async () => {

@@ -5,18 +5,29 @@ import { AttachmentRow } from "@/components/attachment/AttachmentRow";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { useFetchAttachments, useUploadAttachment } from "@/hooks/AttachmentHooks";
+import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import { cn } from "@/lib/utils";
 import type { AttachmentOwner } from "@/models/Attachment";
 
 interface AttachmentsSectionProps {
-  owner: AttachmentOwner;
+  owner: SectionOwner;
   className?: string;
 }
+
+// Chat attachments take only read access to the conversation, so no section shows for one.
+type SectionOwner = Exclude<AttachmentOwner, { conversation_id: string }>;
+
+const writePermission = (owner: SectionOwner): string => {
+  if ("doc_id" in owner) return "docs:write";
+  if ("ticket_id" in owner) return "tickets:write";
+  return "memories:write";
+};
 
 // Everything pasted into the body shows up here too; files render as hover-revealing pills.
 export const AttachmentsSection = ({ owner, className }: AttachmentsSectionProps) => {
   const { data, error, isPending } = useFetchAttachments(owner);
   const upload = useUploadAttachment();
+  const canWrite = useHasPermission(writePermission(owner));
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   return (
@@ -26,6 +37,8 @@ export const AttachmentsSection = ({ owner, className }: AttachmentsSectionProps
           Attachments
           {data && data.length > 0 && <span className="ml-1.5 tabular-nums">{data.length}</span>}
         </h2>
+        {canWrite && (
+          <>
         <button
           type="button"
           aria-label="Add attachment"
@@ -46,6 +59,8 @@ export const AttachmentsSection = ({ owner, className }: AttachmentsSectionProps
             e.target.value = "";
           }}
         />
+          </>
+        )}
       </div>
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
