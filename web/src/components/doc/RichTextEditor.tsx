@@ -13,6 +13,7 @@ import {
   buildEditorExtensions,
   extractMentionRefs,
 } from "@/components/doc/mention/editorExtensions";
+import type { FileStage } from "@/components/doc/image/fileStage";
 import { publishChips } from "@/components/doc/mention/mentionChipsStore";
 import { getAttachmentsKey } from "@/hooks/AttachmentHooks";
 import { useResolveMentions } from "@/hooks/MentionHooks";
@@ -30,6 +31,8 @@ interface RichTextEditorProps {
   "aria-label"?: string;
   /** The doc or ticket that pasted, dropped, or picked files attach to; without it the body accepts no files. */
   attachTo?: AttachmentOwner;
+  /** A create dialog's holding area for files pasted before the entity exists; it uploads them after creating. */
+  stage?: FileStage;
   /** A dialog's short body: no gutter "+", a short minimum height, and the ticket dialog's placeholder. */
   compact?: boolean;
   /** Binds to a live collab session (ws-25); body seeds only once the server confirms nothing to replay. */
@@ -66,6 +69,7 @@ export const RichTextEditor = ({
   onHeadingsChange,
   "aria-label": ariaLabel,
   attachTo,
+  stage,
   compact = false,
   collab,
 }: RichTextEditorProps) => {
@@ -74,6 +78,7 @@ export const RichTextEditor = ({
   const extensionOptions = {
     plusMenu: !compact,
     attachTo: attachTo ?? null,
+    stage: stage ?? null,
     onUploaded: () => void queryClient.invalidateQueries({ queryKey: [getAttachmentsKey] }),
   };
   // Tracks last applied value; only external changes re-apply, starting null to load initial value.

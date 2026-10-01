@@ -42,6 +42,20 @@ export const useCreateDoc = () => {
   });
 };
 
+// The doc page edits through its live session; this REST save is the follow-up of a doc created with pasted files.
+export const useUpdateDoc = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, title, body }: { id: string; title: string; body: string }) =>
+      (await api.put<Doc>(`/api/docs/${id}`, { title, body })).data,
+    onSuccess: async (_, vars) => {
+      await client.invalidateQueries({ queryKey: [getDocsKey] });
+      await client.invalidateQueries({ queryKey: [getDocKey, vars.id] });
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
 export const useArchiveDoc = () => {
   const client = useQueryClient();
   return useMutation({

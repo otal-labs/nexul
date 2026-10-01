@@ -2,12 +2,17 @@ import type { UseFormReturn } from "react-hook-form";
 
 import type { SaveTicketFormData } from "@/models/Ticket";
 import { isBugType, type TicketType } from "@/models/TicketType";
+import { bodyToHtml, emptyDocJson } from "@/utils/RichtextUtility";
 
 export type TicketTypeForm = Pick<UseFormReturn<SaveTicketFormData>, "setValue" | "getValues">;
 
+// Compared as rendered HTML: the editor hands back a template as JSON, not the markdown it was seeded with.
+const blankBodies = new Set(["", bodyToHtml(emptyDocJson)]);
+
 // The body follows the type only while it is empty or still an unedited template, so typed text is never replaced.
 export const bodyForType = (body: string, ticketTypes: TicketType[], typeId: string): string => {
-  const untouched = body.trim() === "" || ticketTypes.some((t) => t.body_template === body);
+  const html = bodyToHtml(body);
+  const untouched = blankBodies.has(html) || ticketTypes.some((t) => bodyToHtml(t.body_template) === html);
   if (!untouched) return body;
   return ticketTypes.find((t) => t.id === typeId)?.body_template ?? "";
 };

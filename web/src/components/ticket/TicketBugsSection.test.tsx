@@ -95,7 +95,7 @@ describe("TicketBugsSection", () => {
     const dialog = await screen.findByRole("dialog");
     expect(await within(dialog).findByRole("button", { name: /Found in BKS-1/ })).toBeInTheDocument();
     expect(within(dialog).queryByRole("checkbox", { name: "Origin unknown" })).not.toBeInTheDocument();
-    await vi.waitFor(() => expect(within(dialog).getByRole("textbox", { name: "Body" })).toHaveValue("## Steps"));
+    await vi.waitFor(() => expect(within(dialog).getByLabelText("Body")).toHaveTextContent("Steps"));
     await user.type(within(dialog).getByRole("textbox", { name: "Title" }), "books 500s");
     await user.click(within(dialog).getByRole("button", { name: "Report bug" }));
     await vi.waitFor(() =>

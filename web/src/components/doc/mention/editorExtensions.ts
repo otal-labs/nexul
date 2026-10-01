@@ -85,6 +85,8 @@ export interface EditorExtensionOptions {
   collab?: boolean;
   /** The doc or ticket pasted/dropped files attach to; omitted for read-only bodies. */
   attachTo?: AttachmentUploadOptions["owner"];
+  /** Where a create form holds files until its entity exists; only used without attachTo. */
+  stage?: AttachmentUploadOptions["stage"];
   onUploaded?: AttachmentUploadOptions["onUploaded"];
   /** The gutter "+" beside an empty line; "/" still opens the same menu without it. */
   plusMenu?: boolean;
@@ -93,6 +95,7 @@ export interface EditorExtensionOptions {
 export function buildEditorExtensions({
   collab = false,
   attachTo = null,
+  stage = null,
   onUploaded,
   plusMenu = true,
 }: EditorExtensionOptions = {}) {
@@ -110,7 +113,7 @@ export function buildEditorExtensions({
         return ReactNodeViewRenderer(AttachmentImageView);
       },
     }),
-    AttachmentUpload.configure({ owner: attachTo, ...(onUploaded ? { onUploaded } : {}) }),
+    AttachmentUpload.configure({ owner: attachTo, stage, ...(onUploaded ? { onUploaded } : {}) }),
     SlashCommandExtension,
     ...(plusMenu ? [PlusMenuExtension] : []),
     Mention.extend({

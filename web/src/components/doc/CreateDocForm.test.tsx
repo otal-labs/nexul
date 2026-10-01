@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ContextAwareConfirmation } from "react-confirm";
 import { MemoryRouter } from "react-router";
@@ -66,6 +66,7 @@ const docPosts = () => vi.mocked(api.post).mock.calls.filter(([url]) => url === 
 beforeEach(() => {
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
+  vi.mocked(api.put).mockReset();
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
 });
 
@@ -133,5 +134,32 @@ describe("New doc dialog", () => {
     expect(await within(dialog).findByText(/create a project first/i)).toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: "Create" })).toBeDisabled();
     await user.keyboard("{Escape}");
+  });
+
+  it("attaches an image pasted before the doc exists to the new doc and saves its path in the body", async () => {
+    mockApi();
+    globalThis.URL.createObjectURL = vi.fn(() => "blob:staged-1");
+    globalThis.URL.revokeObjectURL = vi.fn();
+    vi.mocked(api.post).mockImplementation(async (url: string) => {
+      if (url === "/api/docs") return { data: { id: "doc-1", title: "Runbook" } };
+      if (url === "/api/attachments") return { data: { id: "a-7", name: "shot.png", content_type: "image/png", size: 3 } };
+      return { data: { chips: [] } };
+    });
+    vi.mocked(api.put).mockResolvedValue({ data: { id: "doc-1" } });
+    const { user, dialog } = await openDialog();
+
+    await user.type(await within(dialog).findByLabelText("Title"), "Runbook");
+    fireEvent.paste(within(dialog).getByLabelText("Body"), {
+      clipboardData: { files: [new File(["png"], "shot.png", { type: "image/png" })], items: [], types: ["Files"], getData: () => "" },
+    });
+    await user.click(within(dialog).getByRole("button", { name: "Create" }));
+
+    await vi.waitFor(() => expect(api.put).toHaveBeenCalled());
+    const upload = vi.mocked(api.post).mock.calls.find(([url]) => url === "/api/attachments")?.[1] as FormData;
+    expect(upload.get("doc_id")).toBe("doc-1");
+    expect(docPosts()[0]?.[1]).not.toMatchObject({ body: expect.stringContaining("blob:") });
+    const [url, saved] = vi.mocked(api.put).mock.calls[0] as [string, { body: string }];
+    expect(url).toBe("/api/docs/doc-1");
+    expect(saved.body).toContain('"src":"/api/attachments/a-7"');
   });
 });
