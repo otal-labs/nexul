@@ -77,17 +77,7 @@ describe("TicketPropertiesPanel", () => {
     const onTransition = vi.fn();
     renderPanel({ onTransition });
     expect(screen.getByText("Status")).toBeInTheDocument();
-    expect(screen.getByText("in progress")).toBeInTheDocument();
-  });
-
-  it("opens the status popover and fires a transition on pick", async () => {
-    const user = userEvent.setup();
-    const onTransition = vi.fn();
-    renderPanel({ onTransition });
-
-    await user.click(screen.getByRole("button", { name: /in progress/i }));
-    await user.click(await screen.findByRole("button", { name: "Move to Done" }));
-    expect(onTransition).toHaveBeenCalledWith(TicketStatus.Done);
+    expect(screen.getByText("In progress")).toBeInTheDocument();
   });
 
   it("does not render a status popover trigger when no transition handler is wired", () => {

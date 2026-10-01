@@ -16,7 +16,6 @@ import {
   SaveTicketFormSchema,
   TicketStatus,
   type SaveTicketFormData,
-  type TicketStatus as TicketStatusType,
 } from "@/models/Ticket";
 
 // Drops run strictly in sequence: a status change re-appends the ticket server-side, so its position must follow it.
@@ -65,7 +64,7 @@ export const useBoardActions = ({ projects, selectedProjectIds, projectId }: Use
     });
 
   const moveTicket = async (ticketId: string, status: string) => {
-    await updateStatus.mutateAsync({ id: ticketId, status: status as TicketStatusType });
+    await updateStatus.mutateAsync({ id: ticketId, status });
   };
 
   // Create lands in the project's first column, so another column follows up with the same status-move mutation.
@@ -88,7 +87,7 @@ export const useBoardActions = ({ projects, selectedProjectIds, projectId }: Use
   // Every step is silent and the board refetches once at the end, so no intermediate server order ever flashes through.
   const runDropAction = async (action: DragMoveAction) => {
     if (action.kind === "status") {
-      await updateStatus.mutateAsync({ id: action.ticketId, status: action.status as TicketStatusType, silent: true });
+      await updateStatus.mutateAsync({ id: action.ticketId, status: action.status, silent: true });
       return;
     }
     if (action.kind === "category" && !action.categoryId) {

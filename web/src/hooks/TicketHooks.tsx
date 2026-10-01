@@ -10,7 +10,6 @@ import {
   type SaveTicketFormData,
   type Ticket,
   type TicketLinks,
-  type TicketStatus,
 } from "@/models/Ticket";
 
 export const getTicketsKey = "getTickets";
@@ -82,7 +81,7 @@ export const useUpdateTicketStatus = () => {
   const client = useQueryClient();
   return useMutation({
     // silent: part of a board drop, which refetches once at the end (useBoardActions) instead of per step.
-    mutationFn: async ({ id, status }: { id: string; status: TicketStatus; silent?: boolean }) =>
+    mutationFn: async ({ id, status }: { id: string; status: string; silent?: boolean }) =>
       (await api.patch<Ticket>(`/api/tickets/${id}/status`, { status })).data,
     onSuccess: async (_, vars) => {
       if (vars.silent) return;

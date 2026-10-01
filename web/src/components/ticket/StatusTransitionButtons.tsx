@@ -1,45 +1,43 @@
-import { TicketStatus, type Ticket, type TicketStatus as TicketStatusType } from "@/models/Ticket";
+import { CheckIcon } from "lucide-react";
+
+import { StatusMark } from "@/components/board/StatusIcon";
+import { menuItemClass } from "@/components/ticket/ticketPropertyRowStyle";
+import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
+import type { BoardStatus } from "@/models/Status";
+import type { Ticket } from "@/models/Ticket";
 
 interface StatusTransitionButtonsProps {
   ticket: Ticket;
-  onTransition: (status: TicketStatusType) => Promise<void> | void;
-  disabled?: boolean;
+  onTransition: (statusId: string) => Promise<void> | void;
 }
 
-const statusLabels: Record<TicketStatusType, string> = {
-  [TicketStatus.Open]: "Open",
-  [TicketStatus.InProgress]: "In progress",
-  [TicketStatus.Done]: "Done",
-  [TicketStatus.Closed]: "Closed",
-};
-
-const available: Record<TicketStatusType, TicketStatusType[]> = {
-  [TicketStatus.Open]: [TicketStatus.InProgress, TicketStatus.Done, TicketStatus.Closed],
-  [TicketStatus.InProgress]: [TicketStatus.Done, TicketStatus.Closed],
-  [TicketStatus.Done]: [TicketStatus.InProgress, TicketStatus.Closed],
-  [TicketStatus.Closed]: [TicketStatus.Open],
-};
-
 // Meant to sit inside a Popover anchored to the status badge, not as a standalone row.
-export const StatusTransitionButtons = ({
-  ticket,
-  onTransition,
-  disabled = false,
-}: StatusTransitionButtonsProps) => {
-  const next = available[ticket.status] ?? [];
+export const StatusTransitionButtons = ({ ticket, onTransition }: StatusTransitionButtonsProps) => {
+  const { data: statuses } = useFetchProjectStatuses(ticket.project_id);
   return (
-    <div className="flex flex-col">
-      {next.map((status) => (
-        <button
-          key={status}
-          type="button"
-          disabled={disabled}
-          onClick={() => void onTransition(status)}
-          className="rounded-md px-2 py-1.5 text-left text-xs text-foreground transition-colors duration-150 ease-standard hover:bg-accent disabled:pointer-events-none disabled:opacity-50"
-        >
-          Move to {statusLabels[status]}
-        </button>
+    <div className="flex flex-col gap-0.5">
+      {statuses?.map((status) => (
+        <StatusOption
+          key={status.id}
+          status={status}
+          current={status.id === ticket.status}
+          onPick={() => void onTransition(status.id)}
+        />
       ))}
     </div>
   );
 };
+
+interface StatusOptionProps {
+  status: BoardStatus;
+  current: boolean;
+  onPick: () => void;
+}
+
+const StatusOption = ({ status, current, onPick }: StatusOptionProps) => (
+  <button type="button" className={menuItemClass} onClick={current ? undefined : onPick}>
+    <StatusMark status={status} className="size-3.5" />
+    <span className="min-w-0 flex-1 truncate">{status.name}</span>
+    {current && <CheckIcon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />}
+  </button>
+);

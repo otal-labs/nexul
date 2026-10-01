@@ -1,27 +1,44 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { api } from "@/api/client";
 import { TicketStatusBadge } from "@/components/ticket/TicketStatusBadge";
-import { TicketStatus } from "@/models/Ticket";
+
+vi.mock("@/api/client", () => ({ api: { get: vi.fn() } }));
+
+const statuses = [
+  { id: "st-backlog", name: "Backlog", kind: "backlog", icon: "", position: 0 },
+  { id: "st-review", name: "In review", kind: "review", icon: "CircleDot", position: 0 },
+];
+
+const renderBadge = (status: string) =>
+  render(
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <TicketStatusBadge ticket={{ project_id: "p-1", status }} />
+    </QueryClientProvider>,
+  );
+
+beforeEach(() => {
+  vi.mocked(api.get).mockReset();
+  vi.mocked(api.get).mockResolvedValue({ data: statuses });
+});
 
 describe("TicketStatusBadge", () => {
-  it("renders each status as a colored icon + text, with no fill/border", () => {
-    const { container, rerender } = render(<TicketStatusBadge status={TicketStatus.Open} />);
-    let badge = screen.getByText("open");
-    expect(badge).toHaveClass("text-info");
-    expect(badge).not.toHaveClass("bg-info/15");
-    expect(container.querySelector("svg[aria-hidden]")).toBeInTheDocument();
+  it("shows the project's status name for a status id", async () => {
+    renderBadge("st-review");
+    expect(await screen.findByText("In review")).toBeInTheDocument();
+    expect(screen.queryByText("st-review")).not.toBeInTheDocument();
+  });
 
-    rerender(<TicketStatusBadge status={TicketStatus.InProgress} />);
-    badge = screen.getByText("in progress");
-    expect(badge).toHaveClass("text-warning");
+  it("shows a readable name for a ticket still holding a legacy status", async () => {
+    renderBadge("in_progress");
+    expect(await screen.findByText("In progress")).toBeInTheDocument();
+  });
 
-    rerender(<TicketStatusBadge status={TicketStatus.Done} />);
-    badge = screen.getByText("done");
-    expect(badge).toHaveClass("text-success");
-
-    rerender(<TicketStatusBadge status={TicketStatus.Closed} />);
-    badge = screen.getByText("closed");
-    expect(badge).toHaveClass("text-muted-foreground");
+  it("shows Unknown status instead of an id the project does not have", async () => {
+    renderBadge("cb722f8f-0000-4000-8000-000000000000");
+    expect(await screen.findByText("Unknown status")).toBeInTheDocument();
+    expect(screen.queryByText(/cb722f8f/)).not.toBeInTheDocument();
   });
 });

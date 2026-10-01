@@ -41,7 +41,8 @@ export interface Ticket {
   type_id: string;
   title: string;
   body: string;
-  status: TicketStatus;
+  // A project status id; tickets older than per-project statuses can still hold a TicketStatus value.
+  status: string;
   // Scoped to the ticket's current (status, category_id) pair; resets to the end of the pair on a move.
   position: number;
   // Per-project sequential number, combined with the project's prefix for a human-readable PREFIX-N id.
