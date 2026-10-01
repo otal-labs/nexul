@@ -77,8 +77,8 @@ export const KanbanColumn = ({
           <PlusIcon className="size-4" aria-hidden />
         </button>
       </h4>
-      {/* Capped so a long column scrolls on its own instead of stretching the whole lane. */}
-      <div className="flex max-h-[70vh] min-h-16 flex-col gap-1.5 overflow-y-auto">
+      {/* Capped at five two-line cards plus gaps (31.5rem) so scrolling depends on the ticket count, not the window height. */}
+      <div className="flex max-h-[31.5rem] min-h-16 flex-col gap-1.5 overflow-y-auto">
         <SortableContext items={tickets.map((t) => t.id)} strategy={verticalListSortingStrategy}>
           {tickets.map((ticket, index) => (
             <TicketCard key={ticket.id} ticket={ticket} index={index} />
