@@ -97,7 +97,7 @@ Everything below is in the AGPL edition and runs on your own servers. The
 | Chat | ✅ | Channels, direct messages, and one thread per ticket and per doc, laid out as sidebar, list, and thread. Mention a person or `@Agent`, and the events you care about land in an inbox. |
 | Voice | ✅ | Voice rooms with screen share and camera on a LiveKit server you run. Each channel carries its own text chat and shows who is in the call. |
 | Plays | ✅ | One-button agent runs fired from a ticket or a doc ("Fix with AI", "To tickets via AI"). A run executes on the user's own paired coding harness with that user's permissions, and its transcript lands in the thread as a trail you can read, stop, or answer. |
-| Memories | ✅ | Notes written for agents, per workspace or per project, with an index sent on every agent turn. Versioned, revertible, and writable by agents too. |
+| Memories | ✅ | Notes written for agents, per project, with an index sent on every agent turn in it. Versioned, revertible, and writable by agents too. |
 | Code review | ✅ | A mirror of each linked PR's review state, listed on the ticket. Nexul does not host review threads. |
 | Git providers | ✅ | GitHub through a GitHub App: repositories, branches, pull requests, and webhooks, behind a provider interface. |
 | Stacks and deploys | ✅ | A repository becomes a stack (a compose file, or a Dockerfile as a stack of one) that a runner deploys with `docker compose up`. History, cancel, one-click rollback, branch deploy rules with a preview deployment per branch, and import of containers already running on a machine. |

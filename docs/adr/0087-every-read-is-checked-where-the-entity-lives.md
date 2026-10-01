@@ -62,3 +62,5 @@ same way. Amended by ADR 0095, which scopes automations to a workspace and holds
 its own. Amended by ADR 0094, which moves creating a channel or voice channel to `channels:write`.
 Amended by ADR 0097: a Restricted member reads only the projects they hold Project access to, and a restricted
 membership counts for no instance-level area. Amended by ADR 0098: a private channel is read by its members only.
+Amended by ADR 0099: a memory, its frames included, is checked in its project, and a deleted memory's frame carries
+the project.
