@@ -605,6 +605,16 @@ h3 {
   min-height: 5rem;
 }
 
+/* A dialog's template headings stay real headings but read at body size, so they label rather than dominate. */
+.doc-editor-compact .tiptap :is(h1, h2, h3) {
+  font-size: 1em;
+  margin: 0.5em 0 0;
+}
+
+.doc-editor-compact .tiptap > :first-child {
+  margin-top: 0;
+}
+
 /* Gutter "+" (PlusMenuExtension): a bare glyph, not a boxed button — appears
    only next to the current empty line, matching the editor's "no box" rule. */
 .plus-menu-button {
