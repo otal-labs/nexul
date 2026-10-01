@@ -26,7 +26,6 @@ const getSettingsKey = "getSettings";
 export const getPATsKey = "getPATs";
 export const getSessionsKey = "getSessions";
 export const getIdentitiesKey = "getIdentities";
-export const getConnectCodeKey = "getConnectCode";
 export const getBootstrapStatusKey = "getBootstrapStatus";
 
 export const useFetchMe = () =>
@@ -161,16 +160,10 @@ export const useListSessions = () =>
     queryFn: async () => (await api.get<{ sessions: Session[] }>("/api/auth/sessions")).data,
   });
 
-// A query, not a mutation: mounting asks for a code, refetch is "New code", and the old QR stays up until the new one lands.
+// A mutation, not a query: a code is issued only when the user asks, so visiting the page requests nothing.
 export const useConnectCode = () =>
-  useQuery({
-    queryKey: [getConnectCodeKey],
-    queryFn: async () => (await api.post<ConnectCode>("/api/auth/connect-codes")).data,
-    staleTime: Infinity,
-    gcTime: 0,
-    retry: false,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
+  useMutation({
+    mutationFn: async () => (await api.post<ConnectCode>("/api/auth/connect-codes")).data,
   });
 
 export const useSignOutSession = () => {
