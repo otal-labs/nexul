@@ -68,7 +68,7 @@ export const DocDetail = ({
   // Only the renaming client sends a title; empty title on the wire means "unchanged".
   const titleDirtyRef = useRef(false);
   const lastCommittedTitleRef = useRef(doc.title);
-  const titleInputRef = useRef<HTMLInputElement | null>(null);
+  const titleInputRef = useRef<HTMLTextAreaElement | null>(null);
   const articleRef = useRef<HTMLElement | null>(null);
   const lastPointerSent = useRef(0);
 
