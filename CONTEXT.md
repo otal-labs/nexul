@@ -540,7 +540,7 @@ A Channel only its members see and read, rather than every member of the
 workspace; to anyone else it reads as not found. Switched either way with
 `channels:write`; a member adds people, `channels:write` removes them, and
 anyone but the last member may leave. The workspace Owner sees every one.
-Its messages, like a DM's, reach no Integration or Automation.
+Its events, a DM's too, reach no Integration or Automation.
 `#general` is never private.
 _Avoid_: Group, locked channel, hidden channel
 

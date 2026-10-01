@@ -183,8 +183,8 @@ func TestSetChannelPrivate_SwitchesBothWays(t *testing.T) {
 	require.Len(t, events, 2, "going private, then public; the no-op published nothing")
 	assert.Equal(t, ConversationMembersChangedEvent{
 		ConversationID: f.eng.ID, WorkspaceID: "w-1", Private: true,
-		AddedUserIDs: []string{"u-1", "u-2"}, RemovedUserIDs: []string{"u-3", "u-owner"}, ActorID: "u-1",
-	}, events[0], "a switch to private names everyone who lost it as removed")
+		AddedUserIDs: []string{"u-1", "u-2"}, RemovedUserIDs: []string{"u-3", "u-owner"}, ActorID: "u-1", MembersOnly: true,
+	}, events[0], "a switch to private names everyone who lost it as removed, and only for its members")
 	assert.Equal(t, ConversationMembersChangedEvent{
 		ConversationID: f.eng.ID, WorkspaceID: "w-1", Private: false,
 		AddedUserIDs: []string{}, RemovedUserIDs: []string{}, ActorID: "u-1",
@@ -424,4 +424,41 @@ func TestMessageEvents_MarkDMAndPrivateChannelMessagesMembersOnly(t *testing.T) 
 			}
 		})
 	}
+}
+
+func TestConversationEvents_MarkDMAndPrivateChannelsMembersOnly(t *testing.T) {
+	f := newPrivateFixture(t)
+	dm, err := f.s.CreateDM(as("u-1"), "w-1", "u-1", []string{"u-3"})
+	require.NoError(t, err)
+	for _, c := range []*Conversation{f.eng, f.secret} {
+		_, err = f.s.RenameChannel(as("u-1"), c.ID, c.Name+"-renamed")
+		require.NoError(t, err)
+	}
+	_, err = f.s.AddChannelMembers(as("u-1"), f.secret.ID, []string{"u-3"})
+	require.NoError(t, err)
+	for _, c := range []*Conversation{f.eng, f.secret} {
+		_, err = f.s.DeleteChannel(as("u-1"), c.ID)
+		require.NoError(t, err)
+	}
+
+	want := map[string]bool{f.eng.ID: false, f.secret.ID: true, dm.ID: true}
+	seen := map[string]int{}
+	for _, e := range f.repo.events {
+		raw, err := json.Marshal(e.Payload)
+		require.NoError(t, err)
+		var p struct {
+			ConversationID string `json:"conversation_id"`
+			Conversation   struct {
+				ID string `json:"id"`
+			} `json:"conversation"`
+			MembersOnly bool `json:"members_only"`
+		}
+		require.NoError(t, json.Unmarshal(raw, &p))
+		id := p.ConversationID + p.Conversation.ID
+		assert.Equal(t, want[id], p.MembersOnly, "%s of %s", e.Topic, id)
+		seen[e.Topic]++
+	}
+	assert.Equal(t, map[string]int{
+		TopicConversationCreated: 3, TopicConversationUpdated: 2, TopicConversationMembersChanged: 1, TopicConversationDeleted: 2,
+	}, seen)
 }

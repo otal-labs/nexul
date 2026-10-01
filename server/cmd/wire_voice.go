@@ -27,6 +27,10 @@ func (v voiceConversations) IsVoiceChannel(ctx context.Context, conversationID s
 	return c.Kind == chat.KindVoiceChannel, nil
 }
 
+func (v voiceConversations) MembersOnly(ctx context.Context, conversationID string) (bool, error) {
+	return v.svc.MembersOnly(ctx, conversationID)
+}
+
 // voiceCredentials adapts ManualCredentials to voice's CredentialSource seam; built fresh per call, never cached.
 type voiceCredentials struct {
 	svc *connectors.Service
