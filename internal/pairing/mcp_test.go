@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 	shipped "github.com/otal-labs/nexul/internal/platform/skills"
@@ -75,6 +76,14 @@ func TestMCPTools_InvalidArguments(t *testing.T) {
 		{"setup update confirming a provider without skills", "computer_setup_update", `{"computer_id": "c1", "provider": "claude", "confirmed": true}`},
 		{"setup update with skills but no provider", "computer_setup_update", `{"computer_id": "c1", "confirmed": true, "skills": ["tdd"]}`},
 		{"setup update withdrawing with skills", "computer_setup_update", `{"computer_id": "c1", "provider": "claude", "confirmed": false, "skills": ["tdd"]}`},
+		{"setup run skills only with a provider", "computer_setup_run", `{"computer_id": "c1", "skills_only": true, "provider": "codex"}`},
+		{"setup run skills only with providers", "computer_setup_run", `{"computer_id": "c1", "skills_only": true, "providers": ["codex"]}`},
+		{"setup run skills only with models", "computer_setup_run", `{"computer_id": "c1", "skills_only": true, "models": {"codex": "gpt-mini"}}`},
+		{"setup run skills only with a folder", "computer_setup_run", `{"computer_id": "c1", "skills_only": true, "folder": "/code"}`},
+		{"setup update with a skills version and a provider", "computer_setup_update", `{"computer_id": "c1", "provider": "codex", "confirmed": true, "skills_version": "abc"}`},
+		{"setup update withdrawing with a skills version", "computer_setup_update", `{"computer_id": "c1", "confirmed": false, "skills_version": "abc"}`},
+		{"setup update with an older skills version", "computer_setup_update", `{"computer_id": "c1", "confirmed": true, "skills_version": "0ld0ld0ld0ld"}`},
+		{"setup update with a skills version before any provider is confirmed", "computer_setup_update", `{"computer_id": "c1", "confirmed": true, "skills_version": "` + shipped.NexulMemory.Version + `"}`},
 		{"setup update with a non-string skill", "computer_setup_update", `{"computer_id": "c1", "provider": "claude", "confirmed": true, "skills": ["tdd", 3]}`},
 		{"token create naming another user", "computer_mcp_token_create", `{"computer_id": "c1", "user_id": "u2"}`},
 		{"token delete without a computer", "computer_mcp_token_delete", `{}`},
@@ -173,6 +182,53 @@ func TestComputerSetupUpdate_ChangesOnlyTheNamedConfirmation(t *testing.T) {
 
 	setup = update(`{"computer_id": "c1", "confirmed": false}`)
 	assert.Nil(t, setup.ConfirmedAt, "withdrawing again changes nothing more")
+}
+
+func TestComputerSetupUpdate_SkillsVersion_MarksEveryConfirmedProviderCurrent(t *testing.T) {
+	t.Parallel()
+	svc, repo := newSetupService(t)
+	for _, p := range []ProviderSetup{
+		{Provider: "claude", ConfirmedAt: &testNow, Skills: []string{"nexul-memory"}, SkillsVersion: "0ld0ld0ld0ld"},
+		{Provider: "codex", ConfirmedAt: &testNow, Skills: []string{"tdd"}},
+		{Provider: "opencode", Skills: []string{}},
+	} {
+		require.NoError(t, repo.SaveProviderSetup(t.Context(), "c1", p, testNow, eventbus.OutboxEvent{}))
+	}
+	repo.outbox = nil
+
+	out, err := callTool(t, actorCtx(t, "u1"), svc, "computer_setup_update", `{"computer_id": "c1", "confirmed": true, "skills_version": "`+shipped.NexulMemory.Version+`"}`)
+	require.NoError(t, err)
+
+	setup := out.(Setup)
+	assert.Nil(t, setup.ConfirmedAt, "a skills report never confirms the computer")
+	for _, p := range setup.Providers {
+		assert.False(t, p.SkillsOutdated, p.Provider)
+		if p.Provider == "opencode" {
+			assert.Empty(t, p.SkillsVersion, "an unconfirmed provider gets nothing recorded")
+			continue
+		}
+		assert.Equal(t, shipped.NexulMemory.Version, p.SkillsVersion, p.Provider)
+		assert.Equal(t, &testNow, p.ConfirmedAt, "%s keeps its confirmation time", p.Provider)
+	}
+	require.Len(t, repo.outbox, 2, "one change event per provider whose record moved, so the browser follows it")
+	assert.Equal(t, TopicSetupConfirmed, repo.outbox[0].Topic)
+
+	_, err = callTool(t, actorCtx(t, "u1"), svc, "computer_setup_update", `{"computer_id": "c1", "confirmed": true, "skills_version": "`+shipped.NexulMemory.Version+`"}`)
+	require.NoError(t, err)
+	assert.Len(t, repo.outbox, 2, "repeating the report changes nothing more")
+}
+
+func TestComputerSetupRun_SkillsOnly_UpdatesThroughOneProvider(t *testing.T) {
+	t.Parallel()
+	f := newSetupFixture(t)
+	f.outdate(t)
+
+	out, err := callTool(t, actorCtx(t, "u1"), f.svc, "computer_setup_run", `{"computer_id": "`+f.computer.ID+`", "skills_only": true}`)
+
+	require.NoError(t, err)
+	assert.Equal(t, []SetupProvider{{Provider: "codex", Name: "Codex"}}, out.(*SetupRun).Providers)
+	f.svc.setupRuns.Wait()
+	assert.Equal(t, map[string]bool{"codex": false, "claudeagent": false}, f.outdated(t))
 }
 
 func confirmedProviders(s Setup) map[string]bool {
@@ -358,10 +414,13 @@ func TestConfirmInstructions_NameOnlyToolsThatExist(t *testing.T) {
 	for _, tool := range MCPTools(svc) {
 		names[tool.Name] = true
 	}
-	named := regexp.MustCompile("`(computer_[a-z_]+)`").FindAllStringSubmatch(confirmInstructions(setupPrompt{ComputerID: "c1", Driver: "codex"}), -1)
-	require.NotEmpty(t, named)
-	for _, m := range named {
-		assert.True(t, names[m[1]], "the confirm session is told to call %s", m[1])
+	prompt := setupPrompt{ComputerID: "c1", Driver: "codex"}
+	for _, instructions := range []string{confirmInstructions(prompt), skillsUpdateInstructions(prompt)} {
+		named := regexp.MustCompile("`((?:computer|skill)_[a-z_]+)`").FindAllStringSubmatch(instructions, -1)
+		require.NotEmpty(t, named)
+		for _, m := range named {
+			assert.True(t, names[m[1]], "a setup session is told to call %s", m[1])
+		}
 	}
 }
 

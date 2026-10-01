@@ -10,6 +10,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/harness"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	shipped "github.com/otal-labs/nexul/internal/platform/skills"
 )
 
 // Computer has no upstream refresh flow, so TokenExpiresAt governs expiry.
@@ -169,6 +170,7 @@ type SetupTurnSummary struct {
 	TurnID       string         `json:"turn_id"`
 	Provider     string         `json:"provider"`
 	ProviderName string         `json:"provider_name"`
+	Kind         SetupTurnKind  `json:"kind"`
 	State        SetupTurnState `json:"state"`
 	Status       string         `json:"status"`
 	// Model is the model slug the turn ran on; empty means the provider's own default.
@@ -183,8 +185,13 @@ type ProviderSetup struct {
 	Skills      []string   `json:"skills"`
 	// SkillsVersion is the nexul-memory version the confirming setup installed; empty for confirmations older than versioning.
 	SkillsVersion string `json:"skills_version"`
-	// SkillsOutdated is a signal, never a gate (ADR 0063): re-running setup refreshes the skill.
+	// SkillsOutdated is a signal, never a gate (ADR 0063): a skills update or a setup re-run refreshes the skill.
 	SkillsOutdated bool `json:"skills_outdated"`
+}
+
+// outdated is a confirmed provider whose recorded skills are not the ones this release ships.
+func (p ProviderSetup) outdated() bool {
+	return p.ConfirmedAt != nil && p.SkillsVersion != shipped.NexulMemory.Version
 }
 
 // SetupTurnState is where one provider's setup turn stands.
@@ -196,7 +203,17 @@ const (
 	SetupTurnFailed    SetupTurnState = "failed"
 )
 
-// SetupTurn is one provider's setup on a computer: a prepare session and a confirm session, one transcript.
+// SetupTurnKind is the job a turn did, so a failed one retries as the same job.
+type SetupTurnKind string
+
+const (
+	// SetupTurnSetup connects Nexul's MCP server, installs the skills, and confirms the provider.
+	SetupTurnSetup SetupTurnKind = "setup"
+	// SetupTurnSkills only rewrites Nexul's skills in the folders every provider on the computer reads.
+	SetupTurnSkills SetupTurnKind = "skills"
+)
+
+// SetupTurn is one provider's turn on a computer: a setup (a prepare session and a confirm session) or a skills update, one transcript.
 type SetupTurn struct {
 	ID           string
 	RunID        string
@@ -205,6 +222,7 @@ type SetupTurn struct {
 	Provider     string
 	ProviderName string
 	Model        string
+	Kind         SetupTurnKind
 	State        SetupTurnState
 	// Status is the short line the setup dialog shows under the provider.
 	Status     string

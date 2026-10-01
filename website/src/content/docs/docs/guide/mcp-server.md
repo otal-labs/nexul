@@ -75,7 +75,11 @@ those driver kinds; the computer remembers the others as skipped. It takes an
 optional `models` object mapping a provider's driver kind to a model slug; with `provider` it runs
 that one provider's turn again, on an optional `model`. A provider without a
 model runs on its own default. An optional `folder` runs the turns in the T3
-Code project that opens that absolute path, in place of the default project. Progress arrives as
+Code project that opens that absolute path, in place of the default project. With
+`skills_only: true` and nothing else, it runs the **Update skills** turn instead: one
+provider rewrites Nexul's skills from `skill_get` and reports the version with
+`computer_setup_update` and `skills_version`, which clears skills out of date for
+every confirmed provider on the computer. Progress arrives as
 `computer.setup_turn_changed` and `computer.setup_finished` events. The
 confirmations themselves are made only by the agent in each turn, through
 `computer_setup_update`.

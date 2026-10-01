@@ -31,12 +31,34 @@ func prepareInstructions(p setupPrompt) string {
 	b.WriteString("   - In a new empty temporary directory, run `npx -y skills@latest add mattpocock/skills --skill '*' --agent claude-code --copy --yes`. It writes the skills under `.claude/skills/` in that directory.\n")
 	b.WriteString("   - Copy each skill directory it wrote into ~/.claude/skills/ and into ~/.agents/skills/, creating them if needed and skipping any name already present, then delete the temporary directory.\n")
 	memory := skills.NexulMemory
-	fmt.Fprintf(&b, "3. Install the nexul-memory skill at %s and at %s: write the file at the end of these instructions, exactly as given, wherever it is missing or its frontmatter's `metadata.version` is not %q. An older copy is Nexul's own, so replace it.\n", memory.Paths()[0], memory.Paths()[1], memory.Version)
+	b.WriteString("3. " + skillInstallStep(memory, "the file at the end of these instructions"))
 	fmt.Fprintf(&b, "4. Verify that every skill from step 2 and nexul-memory has a SKILL.md in both %s\n\n", skillLocations)
 	b.WriteString("End with one line saying what you connected, installed, and verified.\n\n")
 	b.WriteString("The nexul-memory SKILL.md:\n\n````markdown\n")
 	b.WriteString(memory.Content)
 	b.WriteString("````\n")
+	return b.String()
+}
+
+// skillInstallStep is how every turn writes one of Nexul's skills from source, so setup and a skills update share one rule.
+func skillInstallStep(skill skills.Skill, source string) string {
+	return fmt.Sprintf("Install the %s skill at %s and at %s: write %s, exactly as given, wherever it is missing or its frontmatter's `metadata.version` is not %q. An older copy is Nexul's own, so replace it.\n",
+		skill.Name, skill.Paths()[0], skill.Paths()[1], source, skill.Version)
+}
+
+// skillsUpdateInstructions is a skills update's one session: fetch each skill over MCP, write it where every provider reads it, report the version.
+func skillsUpdateInstructions(p setupPrompt) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "You are updating Nexul's skills on this computer (%s). Work unattended: never ask a question; if a step fails, stop and say which step failed and why. Change nothing but the skill files below.\n\n", p.ComputerName)
+	names := skills.Names()
+	for i, name := range names {
+		skill, _ := skills.Get(name)
+		fmt.Fprintf(&b, "%d. Call Nexul's MCP tool `skill_get` with name %q. %s", i+1, name, skillInstallStep(skill, "the `content` it returns"))
+	}
+	fmt.Fprintf(&b, "%d. Verify that each skill above has a SKILL.md in both %s with that version.\n", len(names)+1, skillLocations)
+	fmt.Fprintf(&b, "%d. Call Nexul's MCP tool `computer_setup_update` with computer_id %q, confirmed true, and skills_version %q, and nothing else. Do not call it if Nexul's MCP tools are not available in this session or a write failed; say what failed instead.\n",
+		len(names)+2, p.ComputerID, skills.NexulMemory.Version)
+	b.WriteString("\nEnd with one line saying what you updated.\n")
 	return b.String()
 }
 

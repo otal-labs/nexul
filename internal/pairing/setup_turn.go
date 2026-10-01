@@ -40,6 +40,90 @@ func (s *Service) RetrySetupProvider(ctx context.Context, userID, computerID, pr
 	return s.startSetup(ctx, userID, computerID, []string{provider}, map[string]string{provider: model}, map[string][]harness.OptionSetting{provider: options}, folder, false)
 }
 
+// UpdateSkills rewrites Nexul's skills on the caller's computer in one turn on its first confirmed provider, in setup's order,
+// on that provider's saved model and folder. The skills live in folders every provider reads, so the version the turn reports
+// is recorded for every confirmed provider; it reconnects nothing and confirms no provider.
+func (s *Service) UpdateSkills(ctx context.Context, userID, computerID string) (*SetupRun, error) {
+	session, err := s.sessionComputer(ctx, userID, computerID)
+	if err != nil {
+		return nil, err
+	}
+	setups, err := s.repo.ListProviderSetups(ctx, session.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list provider setups for %s: %w", session.ID, err)
+	}
+	if !slices.ContainsFunc(setups, ProviderSetup.outdated) {
+		return nil, fmt.Errorf("%w: no confirmed provider on %s has out-of-date skills; run setup to confirm a provider instead", apperrs.ErrInvalid, session.Name)
+	}
+	choices := session.SetupChoices
+	projectID, err := s.setupProject(ctx, session, choices.Folder)
+	if err != nil {
+		return nil, err
+	}
+	p, err := s.firstConfirmedProvider(ctx, session, setups)
+	if err != nil {
+		return nil, err
+	}
+	if !s.claimSetup(session.ID) {
+		return nil, fmt.Errorf("%w: setup is already running on %s", apperrs.ErrConflict, session.Name)
+	}
+	pick := SetupProvider{Provider: strings.ToLower(p.Driver), Name: p.Name, Model: setupPick(choices.Models, p)}
+	if pick.Model != "" {
+		pick.ModelOptions = setupPick(choices.ModelOptions, p)
+	}
+	run := &SetupRun{RunID: ids.New(), ComputerID: session.ID, Folder: choices.Folder, Providers: []SetupProvider{pick}, projectID: projectID}
+	prompt := setupPrompt{ComputerID: session.ID, ComputerName: session.Name, Driver: p.Driver, ProviderName: p.Name}
+	runCtx := context.WithoutCancel(ctx)
+	s.setupRuns.Go(func() {
+		defer s.releaseSetup(session.ID)
+		turn := s.runSkillsTurn(runCtx, userID, *run, p, pick, prompt)
+		s.saveSetupTurn(runCtx, turn, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicSetupFinished, Payload: SetupFinishedEvent{
+			ComputerID: session.ID, UserID: userID, RunID: run.RunID, Confirmed: s.computerConfirmed(runCtx, userID, session.ID),
+			Providers: []SetupTurnOutcome{{Provider: turn.Provider, State: turn.State, Status: turn.Status}},
+		}})
+	})
+	return run, nil
+}
+
+// firstConfirmedProvider is the harness's first provider, one per driver as setup orders them, whose driver is confirmed.
+func (s *Service) firstConfirmedProvider(ctx context.Context, session Computer, setups []ProviderSetup) (harness.Provider, error) {
+	providers, err := s.harnessProviders(ctx, session)
+	if err != nil {
+		return harness.Provider{}, err
+	}
+	providers, err = setupProviders(providers, nil)
+	if err != nil {
+		return harness.Provider{}, err
+	}
+	for _, p := range providers {
+		driver := strings.ToLower(p.Driver)
+		if slices.ContainsFunc(setups, func(row ProviderSetup) bool { return row.Provider == driver && row.ConfirmedAt != nil }) {
+			return p, nil
+		}
+	}
+	return harness.Provider{}, fmt.Errorf("%w: T3 Code on %s lists none of its confirmed providers; run setup for the ones it lists instead", apperrs.ErrInvalid, session.Name)
+}
+
+// runSkillsTurn is one session that rewrites the skills from skill_get and reports their version through computer_setup_update.
+func (s *Service) runSkillsTurn(ctx context.Context, userID string, run SetupRun, p harness.Provider, pick SetupProvider, prompt setupPrompt) SetupTurn {
+	turn, client, ht, err := s.beginSetupTurn(ctx, userID, run, p, pick, SetupTurnSkills, "Updating skills")
+	if err != nil {
+		return s.endSetupTurn(turn, SetupTurnFailed, err.Error())
+	}
+	if reason := s.runSetupSession(ctx, client, ht, &turn, "Nexul skills update: "+p.Name, skillsUpdateInstructions(prompt)); reason != "" {
+		return s.endSetupTurn(turn, SetupTurnFailed, reason)
+	}
+	setups, err := s.repo.ListProviderSetups(ctx, run.ComputerID)
+	if err != nil {
+		return s.endSetupTurn(turn, SetupTurnFailed, fmt.Sprintf("list provider setups for %s: %s", run.ComputerID, err))
+	}
+	// The update only starts while a provider is outdated, so none left outdated means this turn's report landed.
+	if slices.ContainsFunc(setups, ProviderSetup.outdated) {
+		return s.endSetupTurn(turn, SetupTurnFailed, "The turn ended without reporting the skills it wrote")
+	}
+	return s.endSetupTurn(turn, SetupTurnConfirmed, "Skills updated for every confirmed provider")
+}
+
 func (s *Service) startSetup(ctx context.Context, userID, computerID string, only []string, models map[string]string, options map[string][]harness.OptionSetting, folder string, remember bool) (*SetupRun, error) {
 	choices, err := SetupChoices{Models: models, ModelOptions: options, Folder: folder}.clean()
 	if err != nil {
@@ -275,24 +359,33 @@ func (s *Service) runSetup(ctx context.Context, userID string, run SetupRun, pro
 	}
 }
 
-// runSetupTurn is a prepare session that connects MCP and installs skills, then a fresh session that loads them and confirms.
-func (s *Service) runSetupTurn(ctx context.Context, userID string, run SetupRun, p harness.Provider, pick SetupProvider, prompt setupPrompt) SetupTurn {
-	computerID := run.ComputerID
+// beginSetupTurn saves the provider's turn as running, then resolves where its sessions run.
+func (s *Service) beginSetupTurn(ctx context.Context, userID string, run SetupRun, p harness.Provider, pick SetupProvider, kind SetupTurnKind, status string) (SetupTurn, harness.Client, harness.Target, error) {
 	turn := SetupTurn{
-		ID: ids.New(), RunID: run.RunID, ComputerID: computerID, UserID: userID, Provider: strings.ToLower(p.Driver), ProviderName: p.Name, Model: pick.Model,
-		State: SetupTurnRunning, Status: "Connecting Nexul and installing skills", Transcript: []harness.Activity{}, StartedAt: s.now().UTC(),
+		ID: ids.New(), RunID: run.RunID, ComputerID: run.ComputerID, UserID: userID, Provider: strings.ToLower(p.Driver), ProviderName: p.Name, Model: pick.Model,
+		Kind: kind, State: SetupTurnRunning, Status: status, Transcript: []harness.Activity{}, StartedAt: s.now().UTC(),
 	}
 	s.saveSetupTurn(ctx, turn)
-	target, err := s.ResolveSetupTurnTarget(ctx, userID, computerID, p.ID, run.projectID)
+	target, err := s.ResolveSetupTurnTarget(ctx, userID, run.ComputerID, p.ID, run.projectID)
 	if err != nil {
-		return s.endSetupTurn(turn, SetupTurnFailed, err.Error())
+		return turn, nil, harness.Target{}, err
 	}
 	client, err := s.client(target.Computer.Kind)
 	if err != nil {
+		return turn, nil, harness.Target{}, err
+	}
+	// Sessions run on the picked model only: the pairing defaults' model belongs to one provider, not every provider.
+	ht := harness.Target{Session: target.Computer.Session(), ProjectID: target.HarnessProjectID, Provider: target.Provider, Model: pick.Model, ModelOptions: pick.ModelOptions}
+	return turn, client, ht, nil
+}
+
+// runSetupTurn is a prepare session that connects MCP and installs skills, then a fresh session that loads them and confirms.
+func (s *Service) runSetupTurn(ctx context.Context, userID string, run SetupRun, p harness.Provider, pick SetupProvider, prompt setupPrompt) SetupTurn {
+	computerID := run.ComputerID
+	turn, client, ht, err := s.beginSetupTurn(ctx, userID, run, p, pick, SetupTurnSetup, "Connecting Nexul and installing skills")
+	if err != nil {
 		return s.endSetupTurn(turn, SetupTurnFailed, err.Error())
 	}
-	// Both sessions run on the picked model only: the pairing defaults' model belongs to one provider, not every provider.
-	ht := harness.Target{Session: target.Computer.Session(), ProjectID: target.HarnessProjectID, Provider: target.Provider, Model: pick.Model, ModelOptions: pick.ModelOptions}
 	if reason := s.runSetupSession(ctx, client, ht, &turn, "Nexul setup: "+p.Name, prepareInstructions(prompt)); reason != "" {
 		return s.endSetupTurn(turn, SetupTurnFailed, reason)
 	}

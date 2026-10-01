@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -756,7 +757,7 @@ func (s *Service) GetSetup(ctx context.Context, userID, computerID string) (Setu
 		return Setup{}, fmt.Errorf("list setup turns for %s: %w", computer.ID, err)
 	}
 	for i, p := range providers {
-		providers[i].SkillsOutdated = p.ConfirmedAt != nil && p.SkillsVersion != shipped.NexulMemory.Version
+		providers[i].SkillsOutdated = p.outdated()
 	}
 	return Setup{ComputerID: computer.ID, ConfirmedAt: computer.SetupConfirmedAt, Providers: providers, SetupChoices: computer.SetupChoices.withEmpty(), Turns: turns}, nil
 }
@@ -820,6 +821,36 @@ func (s *Service) ConfirmProviderSetup(ctx context.Context, userID, computerID, 
 	now := s.now().UTC()
 	// The setup that confirms has just written the current skill, so that is the version this provider now holds.
 	return s.saveProviderSetup(ctx, userID, computerID, ProviderSetup{Provider: provider, ConfirmedAt: &now, Skills: skills, SkillsVersion: shipped.NexulMemory.Version})
+}
+
+// RecordSkillsVersion records that the skill folders on the caller's computer hold version, for every confirmed provider since
+// they all read the same folders; it changes no confirmation. Only the version skill_get returns is accepted.
+func (s *Service) RecordSkillsVersion(ctx context.Context, userID, computerID, version string) (Setup, error) {
+	if version != shipped.NexulMemory.Version {
+		return Setup{}, fmt.Errorf("%w: skills_version %q is not the current nexul-memory version; skill_get returns it", apperrs.ErrInvalid, version)
+	}
+	computer, err := s.ownComputer(ctx, userID, computerID)
+	if err != nil {
+		return Setup{}, err
+	}
+	setups, err := s.repo.ListProviderSetups(ctx, computer.ID)
+	if err != nil {
+		return Setup{}, fmt.Errorf("list provider setups for %s: %w", computer.ID, err)
+	}
+	if !slices.ContainsFunc(setups, func(p ProviderSetup) bool { return p.ConfirmedAt != nil }) {
+		return Setup{}, fmt.Errorf("%w: no provider on %s is confirmed; run setup to confirm one first", apperrs.ErrInvalid, computer.Name)
+	}
+	for _, p := range setups {
+		if !p.outdated() {
+			continue
+		}
+		p.SkillsVersion = version
+		evt := setupEvent(SetupChangedEvent{ComputerID: computer.ID, UserID: userID, Provider: p.Provider, ConfirmedAt: p.ConfirmedAt, Skills: p.Skills})
+		if err := s.repo.SaveProviderSetup(ctx, computer.ID, p, s.now().UTC(), evt); err != nil {
+			return Setup{}, fmt.Errorf("save %s skills version for %s: %w", p.Provider, computer.ID, err)
+		}
+	}
+	return s.GetSetup(ctx, userID, computer.ID)
 }
 
 // UnconfirmProviderSetup withdraws a provider's confirmation on the caller's computer and clears its skills list.

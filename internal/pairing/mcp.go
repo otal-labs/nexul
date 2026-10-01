@@ -57,13 +57,15 @@ type computerSetupRunIn struct {
 	Models       map[string]string                  `json:"models,omitempty" jsonschema:"Without provider only: the model slug each provider's turn runs on, keyed by driver kind, for example {\"codex\": \"gpt-5-mini\"}. A provider left out runs on its own default."`
 	ModelOptions map[string][]harness.OptionSetting `json:"model_options,omitempty" jsonschema:"The options each provider's picked model runs with, keyed by driver kind like models, for example {\"codex\": [{\"id\": \"reasoningEffort\", \"value\": \"high\"}]}: a choice id for a select option such as reasoning level or context window, true or false for a switch such as fast mode, as the harness lists them per model. Only applies beside a picked model; an option left out keeps the harness default."`
 	Folder       string                             `json:"folder,omitempty" jsonschema:"The absolute folder the turns run in, one a T3 Code project on that computer opens, for example /home/me/code/app. Omit for the pairing default, else the harness's first project."`
+	SkillsOnly   bool                               `json:"skills_only,omitempty" jsonschema:"true to only update Nexul's skills, alone with computer_id: one turn on the first confirmed provider, on its saved model and folder, for a computer whose providers are confirmed but show skills_outdated."`
 }
 
 type computerSetupUpdateIn struct {
-	ComputerID string   `json:"computer_id" jsonschema:"The paired computer's id, from computer_list."`
-	Provider   string   `json:"provider,omitempty" jsonschema:"A provider's driver kind, for example claude, codex, or opencode, to change that provider's confirmation. Omit to change the computer's overall confirmation."`
-	Confirmed  bool     `json:"confirmed" jsonschema:"true confirms, false withdraws the confirmation."`
-	Skills     []string `json:"skills,omitempty" jsonschema:"With provider and confirmed true, required: the skill names this session's harness reported as discovered, for example [\"tdd\", \"nexul-memory\"]."`
+	ComputerID    string   `json:"computer_id" jsonschema:"The paired computer's id, from computer_list."`
+	Provider      string   `json:"provider,omitempty" jsonschema:"A provider's driver kind, for example claude, codex, or opencode, to change that provider's confirmation. Omit to change the computer's overall confirmation."`
+	Confirmed     bool     `json:"confirmed" jsonschema:"true confirms, false withdraws the confirmation."`
+	Skills        []string `json:"skills,omitempty" jsonschema:"With provider and confirmed true, required: the skill names this session's harness reported as discovered, for example [\"tdd\", \"nexul-memory\"]."`
+	SkillsVersion string   `json:"skills_version,omitempty" jsonschema:"Without provider and with confirmed true: the nexul-memory version you just wrote from skill_get into every path it lists, for example 3f9a1c0b2d4e. Records it for every confirmed provider on the computer and changes no confirmation."`
 }
 
 // computerResult is a computer as an agent reads it: no bearer token, and its setup and MCP token only on a list.
@@ -239,11 +241,17 @@ func computerSetupRunTool(s *Service) mcptool.Tool {
 			"installing the default skills and nexul-memory, and confirming through computer_setup_update. Pass "+
 			"providers to set up only some of them (the rest are remembered as skipped), or "+
 			"provider to run only that provider's turn again after it failed; on a confirmed provider it re-verifies "+
-			"without undoing anything. Returns at once with the run and its providers; computer_list shows each "+
+			"without undoing anything. Pass skills_only when computer_list shows skills_outdated on confirmed providers "+
+			"and nothing else needs setup: one short turn on the first confirmed provider rewrites Nexul's skills from "+
+			"skill_get into the folders every provider reads and reports the version for all of them, with no MCP "+
+			"reconnect and no per-provider check. Returns at once with the run and its providers; computer_list shows each "+
 			"provider's turn state as it progresses. Setup only writes user-level files, so pass folder to run it in any "+
-			"project folder when the default one is gone. Only one setup runs on a computer at a time.",
+			"project folder when the default one is gone. Only one setup or skills update runs on a computer at a time.",
 		mcptool.Hints{},
 		func(ctx context.Context, in computerSetupRunIn) (any, error) {
+			if in.SkillsOnly {
+				return updateSkills(ctx, s, in)
+			}
 			if in.Provider == "" && in.Model != "" {
 				return nil, fmt.Errorf("%w: model applies to one provider; pass provider too, or models to pick per provider", apperrs.ErrInvalid)
 			}
@@ -260,6 +268,14 @@ func computerSetupRunTool(s *Service) mcptool.Tool {
 		})
 }
 
+// updateSkills is computer_setup_run's skills_only mode, which picks its own provider, model, and folder.
+func updateSkills(ctx context.Context, s *Service, in computerSetupRunIn) (*SetupRun, error) {
+	if in.Provider != "" || in.Model != "" || len(in.Providers) > 0 || len(in.Models) > 0 || len(in.ModelOptions) > 0 || in.Folder != "" {
+		return nil, fmt.Errorf("%w: skills_only goes alone with computer_id; it runs on the first confirmed provider with its saved model and folder", apperrs.ErrInvalid)
+	}
+	return s.UpdateSkills(ctx, mcpActorID(ctx), in.ComputerID)
+}
+
 func computerSetupUpdateTool(s *Service) mcptool.Tool {
 	return mcptool.New("computer_setup_update", "Update setup confirmation",
 		"Confirms or withdraws a setup confirmation on one of your paired computers; agent work runs there only while "+
@@ -267,10 +283,18 @@ func computerSetupUpdateTool(s *Service) mcptool.Tool {
 			"it records that Nexul's MCP server is connected to that provider and its harness reports the given "+
 			"skills; without provider it confirms the computer overall, the last step of its setup. Confirmed false "+
 			"withdraws the one named, and withdrawing the overall confirmation also revokes the computer's MCP token. "+
+			"With skills_version and confirmed true, alone, it records the nexul-memory version you just wrote from "+
+			"skill_get for every confirmed provider, since they read the same skill folders, and confirms nothing. "+
 			"Only this tool writes a confirmation, and repeating a call changes nothing more; returns the computer's "+
 			"setup, which computer_list also shows.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in computerSetupUpdateIn) (any, error) {
+			if in.SkillsVersion != "" && (in.Provider != "" || len(in.Skills) > 0 || !in.Confirmed) {
+				return nil, fmt.Errorf("%w: skills_version goes alone with computer_id and confirmed true", apperrs.ErrInvalid)
+			}
+			if in.SkillsVersion != "" {
+				return s.RecordSkillsVersion(ctx, mcpActorID(ctx), in.ComputerID, in.SkillsVersion)
+			}
 			if len(in.Skills) > 0 && (in.Provider == "" || !in.Confirmed) {
 				return nil, fmt.Errorf("%w: skills go only with provider and confirmed true", apperrs.ErrInvalid)
 			}

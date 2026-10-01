@@ -280,7 +280,7 @@ func (r *PairingRepo) SaveSetupTurn(ctx context.Context, t pairing.SetupTurn, ev
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		err := r.q.WithTx(tx).SavePairingSetupTurn(ctx, sqlcgen.SavePairingSetupTurnParams{
 			ID: t.ID, RunID: t.RunID, ComputerID: t.ComputerID, Provider: t.Provider, ProviderName: t.ProviderName, Model: t.Model,
-			State: string(t.State), Status: t.Status, Transcript: string(transcript), StartedAt: t.StartedAt.Unix(),
+			Kind: string(t.Kind), State: string(t.State), Status: t.Status, Transcript: string(transcript), StartedAt: t.StartedAt.Unix(),
 			UpdatedAt: t.UpdatedAt.Unix(), EndedAt: nullUnixPtr(t.EndedAt),
 		})
 		if err != nil {
@@ -299,7 +299,7 @@ func (r *PairingRepo) ListLatestSetupTurns(ctx context.Context, computerID strin
 	for _, row := range rows {
 		out = append(out, pairing.SetupTurnSummary{
 			RunID: row.RunID, TurnID: row.ID, Provider: row.Provider, ProviderName: row.ProviderName, Model: row.Model,
-			State: pairing.SetupTurnState(row.State), Status: row.Status, UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
+			Kind: pairing.SetupTurnKind(row.Kind), State: pairing.SetupTurnState(row.State), Status: row.Status, UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
 		})
 	}
 	return out, nil
