@@ -25,12 +25,12 @@ const PlaysPanel = ({ canReadPlays, canWritePlays, canDeletePlays }: {
   canDeletePlays: boolean;
 }) => <>{canReadPlays && <PlaySettingsSection canWrite={canWritePlays} canDelete={canDeletePlays} />}</>;
 
-// Keyed by workspace id so switching workspaces reseeds the form instead of keeping the previous template.
+// Keyed by workspace and text so a switch or an instance change reseeds the form instead of keeping the old template.
 const MentionsPanel = ({ canManageWorkspace }: { canManageWorkspace: boolean }) => {
   const workspace = useSelectedWorkspace();
   return (
     <>
-      {workspace && canManageWorkspace && <MentionChipLayoutSection key={workspace.id} workspace={workspace} />}
+      {workspace && canManageWorkspace && <MentionChipLayoutSection key={`${workspace.id}:${workspace.mention_chip_template}`} workspace={workspace} />}
     </>
   );
 };

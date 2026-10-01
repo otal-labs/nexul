@@ -60,8 +60,10 @@ architecture, error handling and logging, testing, code style, dependency
 policy, security and secrets, performance budgets, CI gates, branching and
 commits, docs and decision records, UI, and vocabulary. It is markdown under
 the same cap. Until a workspace edits it, the workspace shows the instance's
-Interview template and follows it as it changes; **Reset to default** drops the
-workspace's own and follows the instance's again. A project's interview copies
+Interview template and follows it as it changes, and a line over the editor
+says which: "Following the instance template" or "Edited for this workspace".
+**Reset to instance template** drops the workspace's own and follows the
+instance's again. A project's interview copies
 the template once, so editing the template never changes an existing
 interview, and editing an interview never changes the template.
 
@@ -92,6 +94,20 @@ into another project's `bug` type. Plays match by built-in key and ticket types
 by name, ignoring case; when the target has no match the clone fails and says
 so.
 
+The instance templates are edited in **Settings → Templates**, under Instance
+settings, which shows to anyone holding `templates:write`. It lists the nine
+templates under Interview, Mention chip, Play instructions, and Ticket bodies,
+each marked Default or with who edited it and when. Each opens the same editor
+its kind has in a workspace or project, with **Save**, **Reset to default**,
+and **Clone to…**. **Clone to…** also sits beside the workspace and project
+editors: **Configuration → Interview template**, **Mention chips**, each
+built-in play in **Plays**, and a ticket type's menu in project settings. It
+asks where to (the instance, a workspace, or a project), offers only the places
+you can edit, and asks before overwriting one that has its own text. A built-in
+play or a `task`, `bug`, or `feature` type says whether it matches the
+instance's template or differs from it, with **Reset to instance template**
+when it differs.
+
 Every member reads the instance templates. Writing one needs
 `templates:write`, an instance-level permission held in any workspace, which
 the Owner holds. Below the instance each place keeps its own permission: the
@@ -102,7 +118,8 @@ target does.
 
 Over HTTP, `GET /api/templates` lists the instance templates;
 `GET`, `PUT`, and `DELETE /api/templates/{kind}` (with `?key=` or a `key`
-field) read, replace, and reset one; and `POST /api/templates/clone` and
+field) read, replace, and reset one, and `GET` with `?scope=workspace` and
+`workspace_id`, or `?scope=project` and `project_id`, reads it below the instance; and `POST /api/templates/clone` and
 `POST /api/templates/reset` work at any layer. MCP has `template_get` and
 `template_update`, which take a `scope` of `instance`, `workspace`, or
 `project`; `template_update` also takes `reset` or `clone_from`. An instance

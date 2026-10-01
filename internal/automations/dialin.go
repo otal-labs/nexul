@@ -14,6 +14,7 @@ import (
 	"github.com/coder/websocket/wsjson"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/ids"
 )
 
@@ -335,8 +336,11 @@ func (h *DialinHandler) deliverBatch(ctx context.Context, c *automationConn, wor
 	return true
 }
 
-// inScope reports whether ev happened in workspaceID, or is instance-level and so reaches every workspace.
+// inScope reports whether ev happened in workspaceID or is instance-level; a members-only event reaches no automation.
 func (h *DialinHandler) inScope(ctx context.Context, workspaceID string, ev LogEvent) (bool, error) {
+	if eventbus.MembersOnly(ev.Payload) {
+		return false, nil
+	}
 	if h.cfg.Scope == nil {
 		return true, nil
 	}

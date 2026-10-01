@@ -32,6 +32,7 @@ const play: Play = {
   enabled: true,
   show_when_stage: "progress",
   excluded_project_ids: [],
+  builtin_key: "",
   created_by: "u-1",
   created_at: "",
   updated_at: "",

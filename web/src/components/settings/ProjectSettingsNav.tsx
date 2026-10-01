@@ -8,7 +8,6 @@ export const PROJECT_SETTINGS_SECTIONS = [
   "repositories",
   "services",
   "board",
-  "pairing",
   "danger",
 ] as const;
 
@@ -25,7 +24,6 @@ const sectionLabels: Record<ProjectSettingsSection, string> = {
   repositories: "Repositories",
   services: "Services",
   board: "Board",
-  pairing: "T3 pairing",
   danger: "Danger zone",
 };
 

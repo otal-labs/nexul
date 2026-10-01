@@ -3,7 +3,7 @@ import { useEffect } from "react";
 
 import { api } from "@/api/client";
 import { AREA_PERMISSION, type Area } from "@/models/Access";
-import type { MyWorkspaceInfo, Workspace } from "@/models/Workspace";
+import { projectPermissions, type MyWorkspaceInfo, type Workspace } from "@/models/Workspace";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 export const getWorkspacesKey = "getWorkspaces";
@@ -35,10 +35,12 @@ export const useFetchMyRole = () => {
 };
 
 // Undefined until permissions first arrive; isFetched, since a failed read refetches as pending and must not blink.
-export const useAreaAccess = (): ((area: Area) => boolean) | undefined => {
+// Answers for projectId as the server does for a Restricted member (ADR 0097); with none, for any project.
+export const useAreaAccess = (projectId?: string): ((area: Area) => boolean) | undefined => {
   const { data, isFetched } = useFetchMyRole();
   if (!isFetched) return undefined;
-  return (area) => (data?.permissions ?? []).includes(AREA_PERMISSION[area]);
+  const held = projectPermissions(data, projectId);
+  return (area) => held.includes(AREA_PERMISSION[area]);
 };
 
 // F5 exception: repairs an empty or stale selection so the switcher and every workspace-scoped screen has one to read.

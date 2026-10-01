@@ -14,6 +14,7 @@ export const SETTINGS_SECTIONS = [
   "sign-in",
   "connectors",
   "dns",
+  "templates",
 ] as const;
 
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
@@ -23,7 +24,7 @@ export const isSettingsSection = (value: string | null | undefined): value is Se
 
 export const INSTANCE_GROUP = "Instance settings";
 
-const INSTANCE_SECTIONS: readonly SettingsSection[] = ["instance", "team", "sign-in", "connectors", "dns"];
+const INSTANCE_SECTIONS: readonly SettingsSection[] = ["instance", "team", "sign-in", "connectors", "dns", "templates"];
 
 export const sectionLabels: Record<SettingsSection, string> = {
   general: "General",
@@ -37,6 +38,7 @@ export const sectionLabels: Record<SettingsSection, string> = {
   connectors: "Connectors",
   dns: "DNS",
   team: "Team",
+  templates: "Templates",
 };
 
 export interface SettingsVisibility {

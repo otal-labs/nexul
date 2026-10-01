@@ -28,7 +28,7 @@ vi.mock("@/components/team/TeamSection", () => ({ TeamSection: () => <p>Team car
 const settings = { instance_url: "https://deploy.example.com", settings_version: 1 };
 
 // The Owner of a workspace holds every instance bit.
-const ownerBits = ["instance:read", "accounts:read", "members:write", "connectors:read", "connectors:write", "dns:read"];
+const ownerBits = ["instance:read", "accounts:read", "members:write", "connectors:read", "connectors:write", "dns:read", "templates:write"];
 
 const routeGet = (anywhere: string[], permissions: string[] = []) => (url: string) => {
   if (url === "/api/auth/me") return Promise.resolve({ data: { user: {}, instance_permissions: anywhere } });
@@ -73,8 +73,11 @@ describe("Settings page instance sections", () => {
 
   // Each section opens with its own permission held in any workspace, which /me reports.
   it.each([
-    { held: ownerBits, shown: ["Instance", "Team", "Sign-in providers", "Connectors", "DNS"] },
+    { held: ownerBits, shown: ["Instance", "Team", "Sign-in providers", "Connectors", "DNS", "Templates"] },
     { held: ["instance:read"], shown: ["Instance", "Sign-in providers"] },
+    // Every member reads the instance templates through their workspaces; only templates:write opens the editor.
+    { held: ["instance:read", "templates:read"], shown: ["Instance", "Sign-in providers"] },
+    { held: ["templates:write"], shown: ["Templates"] },
     { held: ["connectors:read"], shown: ["Connectors"] },
     { held: ["dns:read"], shown: ["DNS"] },
     { held: ["accounts:read"], shown: ["Team"] },
@@ -84,7 +87,7 @@ describe("Settings page instance sections", () => {
     const nav = within(await screen.findByRole("navigation", { name: "Settings sections" }));
     await nav.findByText("Instance settings");
     expect(nav.getByText("You")).toBeInTheDocument();
-    const instanceLinks = ["Instance", "Team", "Sign-in providers", "Connectors", "DNS"].filter((name) => nav.queryByRole("link", { name }));
+    const instanceLinks = ["Instance", "Team", "Sign-in providers", "Connectors", "DNS", "Templates"].filter((name) => nav.queryByRole("link", { name }));
     expect(instanceLinks).toEqual(shown);
   });
 

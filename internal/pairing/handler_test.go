@@ -167,6 +167,10 @@ func TestHandler_ProjectLink_GetSetClear(t *testing.T) {
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &link))
 	assert.Equal(t, created.ID, link.ComputerID)
 
+	rec = doRequest(routes, http.MethodGet, "/api/pairing/projects", "u1", nil)
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.JSONEq(t, `{"links":[{"project_id":"proj-1","computer_id":"`+created.ID+`","harness_project_id":"t3-proj-1","provider":"claude","model":"sonnet","updated_at":"`+link.UpdatedAt.Format(time.RFC3339Nano)+`"}]}`, rec.Body.String())
+
 	rec = doRequest(routes, http.MethodDelete, "/api/pairing/projects/proj-1", "u1", nil)
 	require.Equal(t, http.StatusOK, rec.Code)
 

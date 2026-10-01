@@ -20,6 +20,7 @@ const workspace: Workspace = {
   name: "Acme",
   slug: "acme",
   mention_chip_template: "{ticket.Ticket} {ticket.Status}",
+  mention_chip_template_edited: false,
   created_at: "",
   updated_at: "",
 };

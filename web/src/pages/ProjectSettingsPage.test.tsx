@@ -83,7 +83,7 @@ describe("ProjectSettingsPage", () => {
     expect(screen.getByRole("link", { name: "Repositories" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Services" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Board" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "T3 pairing" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "T3 pairing" })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Danger zone" })).toBeInTheDocument();
   });
 

@@ -24,7 +24,7 @@ const nothing: SettingsVisibility = {
 };
 
 const everything: SettingsVisibility = {
-  instanceSections: ["instance", "sign-in", "connectors", "dns"],
+  instanceSections: ["instance", "sign-in", "connectors", "dns", "templates"],
   teamIsInstanceWide: true,
   showGeneral: true,
   showRoles: true,

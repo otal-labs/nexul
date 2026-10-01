@@ -1183,7 +1183,10 @@ var catalogSchemas = map[string]string{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",
 		"type": "object",
 		"required": ["conversation"],
-		"properties": {"conversation": {"type": "object"}}
+		"properties": {
+			"conversation": {"type": "object"},
+			"members_only": {"type": "boolean", "description": "Set on a DM's or a private channel's creation, which is never delivered to integrations or automations."}
+		}
 	}`,
 	"chat.conversation.updated": `{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1195,7 +1198,8 @@ var catalogSchemas = map[string]string{
 			"kind": {"type": "string", "enum": ["channel", "voice_channel"]},
 			"name": {"type": "string"},
 			"previous_name": {"type": "string"},
-			"actor_id": {"type": "string"}
+			"actor_id": {"type": "string"},
+			"members_only": {"type": "boolean", "description": "Set on a private channel's event, which is never delivered to integrations or automations."}
 		}
 	}`,
 	"chat.conversation.deleted": `{
@@ -1209,7 +1213,8 @@ var catalogSchemas = map[string]string{
 			"name": {"type": "string"},
 			"actor_id": {"type": "string"},
 			"private": {"type": "boolean"},
-			"member_ids": {"type": "array", "items": {"type": "string"}}
+			"member_ids": {"type": "array", "items": {"type": "string"}},
+			"members_only": {"type": "boolean", "description": "Set on a private channel's event, which is never delivered to integrations or automations."}
 		}
 	}`,
 	"chat.conversation.members_changed": `{
@@ -1222,20 +1227,27 @@ var catalogSchemas = map[string]string{
 			"private": {"type": "boolean"},
 			"added_user_ids": {"type": "array", "items": {"type": "string"}},
 			"removed_user_ids": {"type": "array", "items": {"type": "string"}},
-			"actor_id": {"type": "string"}
+			"actor_id": {"type": "string"},
+			"members_only": {"type": "boolean", "description": "Set on a private channel's change, a switch to private included, which is never delivered to integrations or automations."}
 		}
 	}`,
 	"chat.message.created": `{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",
 		"type": "object",
 		"required": ["message"],
-		"properties": {"message": {"type": "object"}}
+		"properties": {
+			"message": {"type": "object"},
+			"members_only": {"type": "boolean", "description": "Set on a DM or private channel's message, which is never delivered to integrations or automations."}
+		}
 	}`,
 	"chat.message.updated": `{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",
 		"type": "object",
 		"required": ["message"],
-		"properties": {"message": {"type": "object"}}
+		"properties": {
+			"message": {"type": "object"},
+			"members_only": {"type": "boolean", "description": "Set on a DM or private channel's message, which is never delivered to integrations or automations."}
+		}
 	}`,
 	"chat.message.deleted": `{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1244,7 +1256,8 @@ var catalogSchemas = map[string]string{
 		"properties": {
 			"conversation_id": {"type": "string"},
 			"message_id": {"type": "string"},
-			"deleted_at": {"type": "string", "format": "date-time"}
+			"deleted_at": {"type": "string", "format": "date-time"},
+			"members_only": {"type": "boolean", "description": "Set on a DM or private channel's message, which is never delivered to integrations or automations."}
 		}
 	}`,
 	"voice.occupancy.changed": `{
@@ -1263,7 +1276,8 @@ var catalogSchemas = map[string]string{
 						"name": {"type": "string"}
 					}
 				}
-			}
+			},
+			"members_only": {"type": "boolean", "description": "Set on a private voice channel's call, which is never delivered to integrations or automations."}
 		}
 	}`,
 }

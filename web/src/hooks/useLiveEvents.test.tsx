@@ -103,6 +103,16 @@ describe("useLiveEvents dispatch", () => {
     expect(spy).toHaveBeenCalledWith({ queryKey: ["getNotifications"] });
   });
 
+  it("refetches every template view on instance_template.updated, so unedited workspaces show the new text", async () => {
+    setup();
+    const socket = await connectedSocket();
+    const spy = invalidate();
+    act(() => socket.message(JSON.stringify({ topic: "instance_template.updated", type: "event", payload: { kind: "interview", key: "" } })));
+    for (const key of ["getTemplates", "getWorkspaces", "getInterviewTemplate", "getWorkspacePlays", "getProjectTicketTypes"]) {
+      expect(spy).toHaveBeenCalledWith({ queryKey: [key] });
+    }
+  });
+
   describe("a permission change", () => {
     const refetchedEverything = (spy: ReturnType<typeof invalidate>) => spy.mock.calls.some((args) => args[0] === undefined);
     const push = (socket: FakeSocket, topic: string, payload: Record<string, string>) =>
@@ -663,6 +673,7 @@ describe("useLiveEvents dispatch", () => {
       slug,
       name,
       mention_chip_template: "",
+      mention_chip_template_edited: false,
       created_at: "",
       updated_at: "",
     });

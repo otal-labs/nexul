@@ -52,7 +52,12 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
-	t, err := h.svc.Get(r.Context(), r.PathValue("kind"), r.URL.Query().Get("key"), Instance)
+	q := r.URL.Query()
+	at := Instance
+	if scope := q.Get("scope"); scope != "" {
+		at = Location{Scope: Scope(scope), WorkspaceID: q.Get("workspace_id"), ProjectID: q.Get("project_id")}
+	}
+	t, err := h.svc.Get(r.Context(), r.PathValue("kind"), q.Get("key"), at)
 	respond(w, t, err)
 }
 

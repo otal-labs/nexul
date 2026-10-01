@@ -6,6 +6,7 @@ import { attachmentPath, formatBytes, isInlineImage, type Attachment } from "@/m
 
 interface AttachmentRowProps {
   attachment: Attachment;
+  canDelete: boolean;
 }
 
 // Collapsed until the pill is hovered or focused, so a resting pill is only thumb, name, and size.
@@ -14,7 +15,7 @@ const actionsClass =
 const iconButtonClass =
   "flex size-5 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 ease-standard hover:bg-muted/60 hover:text-foreground";
 
-export const AttachmentRow = ({ attachment }: AttachmentRowProps) => {
+export const AttachmentRow = ({ attachment, canDelete }: AttachmentRowProps) => {
   const inline = isInlineImage(attachment.content_type);
   const { data: thumb } = useAttachmentBlob(inline ? attachmentPath(attachment.id) : null);
   const deleteAttachment = useDeleteAttachment();
@@ -44,6 +45,7 @@ export const AttachmentRow = ({ attachment }: AttachmentRowProps) => {
         >
           <DownloadIcon className="size-3" aria-hidden />
         </button>
+        {canDelete && (
         <button
           type="button"
           aria-label={`Delete ${attachment.name}`}
@@ -53,6 +55,7 @@ export const AttachmentRow = ({ attachment }: AttachmentRowProps) => {
         >
           <Trash2Icon className="size-3" aria-hidden />
         </button>
+        )}
       </span>
     </li>
   );

@@ -17,7 +17,8 @@ non-member cannot tell a call is on.
   beyond reach.
 - **DMs are open both ways**, Restricted members included, since everyone already sees everyone's name (ADR 0086).
 - Membership changes publish `chat.conversation.members_changed`, reaching the channel's readers and the people it
-  removed; a private channel's deletion reaches only its members and the Owner.
+  removed; internal/voice consumes it and disconnects from a voice channel's call each removed person who no longer
+  reads it, so the Owner stays. A private channel's deletion reaches only its members and the Owner.
 
 The trade-offs: the Owner can read every private channel, which is the price of no channel ever being lost; a
 private channel turned public exposes its history, warned about rather than prevented. Each read of a channel now
@@ -28,3 +29,7 @@ the Owner, which leaves one nobody can manage once its members are gone.
 
 Amends ADR 0094, whose "reading a channel takes membership alone" now holds for public channels only, and ADR 0087's
 list of what every member reads. Decided 2026-10-01.
+
+Amended 2026-10-01: a private channel's and a DM's events (messages, creation, renames, member changes and the switch to
+private, deletion, and a private voice channel's occupancy) carry `members_only` and reach no integration or
+automation, the way they reach no non-member.

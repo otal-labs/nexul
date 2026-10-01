@@ -25,6 +25,8 @@ func Topics() []string {
 // ConversationCreatedEvent field names are part of the published contract (ADR 0044) and are additive-only.
 type ConversationCreatedEvent struct {
 	Conversation Conversation `json:"conversation"`
+	// MembersOnly marks a DM or private channel; the event then never reaches integrations or automations.
+	MembersOnly bool `json:"members_only,omitempty"`
 }
 
 // ConversationUpdatedEvent is the payload for chat.conversation.updated: a channel's new name beside the one it replaced.
@@ -35,6 +37,7 @@ type ConversationUpdatedEvent struct {
 	Name           string `json:"name"`
 	PreviousName   string `json:"previous_name"`
 	ActorID        string `json:"actor_id,omitempty"`
+	MembersOnly    bool   `json:"members_only,omitempty"`
 }
 
 // ConversationDeletedEvent names what chat.conversation.deleted removed, since nothing is left to fetch.
@@ -45,8 +48,9 @@ type ConversationDeletedEvent struct {
 	Name           string `json:"name"`
 	ActorID        string `json:"actor_id,omitempty"`
 	// Private and MemberIDs say who could read a private channel, so its deletion reaches only them and the Owner.
-	Private   bool     `json:"private,omitempty"`
-	MemberIDs []string `json:"member_ids,omitempty"`
+	Private     bool     `json:"private,omitempty"`
+	MemberIDs   []string `json:"member_ids,omitempty"`
+	MembersOnly bool     `json:"members_only,omitempty"`
 }
 
 // ConversationMembersChangedEvent carries ids only; a switch to private names everyone not kept as removed.
@@ -57,16 +61,20 @@ type ConversationMembersChangedEvent struct {
 	AddedUserIDs   []string `json:"added_user_ids"`
 	RemovedUserIDs []string `json:"removed_user_ids"`
 	ActorID        string   `json:"actor_id,omitempty"`
+	MembersOnly    bool     `json:"members_only,omitempty"`
 }
 
 // MessageCreatedEvent is the payload for chat.message.created.
 type MessageCreatedEvent struct {
 	Message Message `json:"message"`
+	// MembersOnly marks a DM or private channel's message, which never reaches integrations or automations.
+	MembersOnly bool `json:"members_only,omitempty"`
 }
 
 // MessageUpdatedEvent is the payload for chat.message.updated: Message reflects the post-edit state.
 type MessageUpdatedEvent struct {
-	Message Message `json:"message"`
+	Message     Message `json:"message"`
+	MembersOnly bool    `json:"members_only,omitempty"`
 }
 
 // MessageDeletedEvent's body is already cleared (soft delete), so consumers get identity + timing only.
@@ -74,4 +82,5 @@ type MessageDeletedEvent struct {
 	ConversationID string    `json:"conversation_id"`
 	MessageID      string    `json:"message_id"`
 	DeletedAt      time.Time `json:"deleted_at"`
+	MembersOnly    bool      `json:"members_only,omitempty"`
 }

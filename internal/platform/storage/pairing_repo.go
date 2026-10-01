@@ -88,29 +88,40 @@ func (r *PairingRepo) DeleteComputer(ctx context.Context, userID, id string, evt
 	})
 }
 
-func (r *PairingRepo) GetComputerByID(ctx context.Context, id string) (*pairing.Computer, error) {
-	row, err := r.q.GetPairingComputerByID(ctx, id)
-	if err != nil {
-		return nil, fmt.Errorf("get computer %s: %w", id, notFoundIfNoRows(err))
-	}
-	c := toPairingComputer(row)
-	return &c, nil
-}
-
-func (r *PairingRepo) GetProjectLink(ctx context.Context, projectID string) (pairing.ProjectLink, error) {
-	row, err := r.q.GetPairingProjectLink(ctx, projectID)
+func (r *PairingRepo) GetProjectLink(ctx context.Context, userID, projectID string) (pairing.ProjectLink, error) {
+	row, err := r.q.GetPairingProjectLink(ctx, sqlcgen.GetPairingProjectLinkParams{UserID: userID, ProjectID: projectID})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return pairing.ProjectLink{}, nil
 		}
 		return pairing.ProjectLink{}, fmt.Errorf("get project link %s: %w", projectID, err)
 	}
+	return toProjectLink(row)
+}
+
+func (r *PairingRepo) ListProjectLinks(ctx context.Context, userID string) ([]pairing.ProjectLink, error) {
+	rows, err := r.q.ListPairingProjectLinks(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list project links: %w", err)
+	}
+	out := make([]pairing.ProjectLink, 0, len(rows))
+	for _, row := range rows {
+		link, err := toProjectLink(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, link)
+	}
+	return out, nil
+}
+
+func toProjectLink(row sqlcgen.PairingProjectLink) (pairing.ProjectLink, error) {
 	options, err := unmarshalModelOptions(row.ModelOptions)
 	if err != nil {
-		return pairing.ProjectLink{}, fmt.Errorf("decode model options for project link %s: %w", projectID, err)
+		return pairing.ProjectLink{}, fmt.Errorf("decode model options for project link %s: %w", row.ProjectID, err)
 	}
 	return pairing.ProjectLink{
-		ProjectID: row.ProjectID, ComputerID: row.ComputerID, HarnessProjectID: row.HarnessProjectID,
+		UserID: row.UserID, ProjectID: row.ProjectID, ComputerID: row.ComputerID, HarnessProjectID: row.HarnessProjectID,
 		Provider: row.Provider, Model: row.Model, ModelOptions: options, UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
 	}, nil
 }
@@ -122,7 +133,7 @@ func (r *PairingRepo) SaveProjectLink(ctx context.Context, l pairing.ProjectLink
 	}
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		err := r.q.WithTx(tx).SavePairingProjectLink(ctx, sqlcgen.SavePairingProjectLinkParams{
-			ProjectID: l.ProjectID, ComputerID: l.ComputerID, HarnessProjectID: l.HarnessProjectID,
+			UserID: l.UserID, ProjectID: l.ProjectID, ComputerID: l.ComputerID, HarnessProjectID: l.HarnessProjectID,
 			Provider: l.Provider, Model: l.Model, ModelOptions: options, UpdatedAt: l.UpdatedAt.Unix(),
 		})
 		if err != nil {
@@ -132,9 +143,9 @@ func (r *PairingRepo) SaveProjectLink(ctx context.Context, l pairing.ProjectLink
 	})
 }
 
-func (r *PairingRepo) DeleteProjectLink(ctx context.Context, projectID string) error {
+func (r *PairingRepo) DeleteProjectLink(ctx context.Context, userID, projectID string) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		if err := r.q.WithTx(tx).DeletePairingProjectLink(ctx, projectID); err != nil {
+		if err := r.q.WithTx(tx).DeletePairingProjectLink(ctx, sqlcgen.DeletePairingProjectLinkParams{UserID: userID, ProjectID: projectID}); err != nil {
 			return fmt.Errorf("clear project link %s: %w", projectID, err)
 		}
 		return nil
