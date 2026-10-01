@@ -1,6 +1,7 @@
 import { TriangleAlert } from "lucide-react";
 import { useNavigate } from "react-router";
 
+import { RestrictedMembersLoseAccess } from "@/components/settings/RestrictedMembersLoseAccess";
 import { SettingsCard } from "@/components/settings/SettingsCard";
 import { Button } from "@/components/ui/button";
 import { useDeleteProject, useFetchProjectDeleteImpact } from "@/hooks/ProjectHooks";
@@ -40,10 +41,12 @@ export const ProjectDangerZoneSection = ({ project }: ProjectDangerZoneSectionPr
       });
       return;
     }
+    const losing = impact.restricted_members ?? [];
     const ok = await confirmDelete({
       message: "This project is empty and can be removed. This cannot be undone.",
       title: `Remove ${project.name}?`,
       confirmLabel: "Remove",
+      details: losing.length > 0 && <RestrictedMembersLoseAccess members={losing} />,
     });
     if (!ok) return;
     await deleteProject.mutateAsync(project.id);

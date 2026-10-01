@@ -25,8 +25,8 @@ const team: Team = {
       id: "u-bob", login: "bob", name: "Bob", avatar_url: "", status: "active", created_at: "",
       online: true, last_seen_at: null,
       workspaces: [
-        { workspace_id: "ws-nexul", workspace_name: "Nexul", role_id: "r-editor", role_name: "Editor", is_owner: false, allow: [], deny: [] },
-        { workspace_id: "ws-acme", workspace_name: "Acme", role_id: "r-viewer", role_name: "Viewer", is_owner: false, allow: [], deny: [] },
+        { workspace_id: "ws-nexul", workspace_name: "Nexul", role_id: "r-editor", role_name: "Editor", is_owner: false, allow: [], deny: [], every_project: "role", projects: [] },
+        { workspace_id: "ws-acme", workspace_name: "Acme", role_id: "r-viewer", role_name: "Viewer", is_owner: false, allow: [], deny: [], every_project: "role", projects: [] },
       ],
     },
   ],

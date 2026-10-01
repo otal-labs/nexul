@@ -20,18 +20,23 @@ const projects = [
 
 const ownerPermissions = ["docs:read", "docs:write", "memories:read", "projects:read", "projects:write", "tickets:read"];
 
-const mockApi = (list: unknown[] = projects, permissions: string[] = ownerPermissions) => {
+interface MeExtra {
+  restricted?: boolean;
+  projects?: { project_id: string; actions: string[] }[];
+}
+
+const mockApi = (list: unknown[] = projects, permissions: string[] = ownerPermissions, me: MeExtra = {}) => {
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/projects") return { data: list };
-    if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions } };
+    if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions, ...me } };
     return { data: [] };
   });
 };
 
 const LocationSpy = () => <div data-testid="location">{useLocation().pathname}</div>;
 
-const renderSection = ({ path = "/acme/inbox", collapsed = false, list = projects, permissions = ownerPermissions } = {}) => {
-  mockApi(list, permissions);
+const renderSection = ({ path = "/acme/inbox", collapsed = false, list = projects, permissions = ownerPermissions, me = {} as MeExtra } = {}) => {
+  mockApi(list, permissions, me);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
@@ -157,5 +162,21 @@ describe("ProjectSection", () => {
     expect(trigger).toHaveAttribute("title", "Backend");
     expect(screen.getByRole("link", { name: "Board" })).toHaveAttribute("href", "/acme/board/BE");
     expect(screen.queryByText("Project")).not.toBeInTheDocument();
+  });
+
+  it("shows a Restricted member the project section with what they hold on the project in view", async () => {
+    const me = {
+      restricted: true,
+      projects: [
+        { project_id: "p-1", actions: ["tickets:read", "tickets:write"] },
+        { project_id: "p-2", actions: ["docs:read", "projects:read"] },
+      ],
+    };
+    renderSection({ path: "/acme/board/BE", permissions: ["chat:read"], me });
+
+    expect(await screen.findByRole("button", { name: /BE.*Backend/ })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Board" })).toHaveAttribute("href", "/acme/board/BE");
+    expect(screen.queryByRole("link", { name: "Docs" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Settings" })).not.toBeInTheDocument();
   });
 });

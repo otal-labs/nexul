@@ -10,9 +10,9 @@ interface ProjectNavProps {
   collapsed: boolean;
 }
 
-// Every row follows the viewer's workspace permissions; the Docs page itself lists only the docs they can open.
+// Every row follows what the viewer holds in this project; the Docs page itself lists only the docs they can open.
 export const ProjectNav = ({ project, collapsed }: ProjectNavProps) => {
-  const can = useAreaAccess();
+  const can = useAreaAccess(project.id);
   const wsPath = useWorkspacePath();
   return (
     <div className="flex flex-col gap-0.5">

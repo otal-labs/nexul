@@ -1,63 +1,31 @@
 import { describe, expect, it } from "vitest";
 
-import { hasPermission, SetPermissionsSchema } from "@/models/Permission";
+import { projectPermissions, workspaceWidePermissions, type MyWorkspaceInfo } from "@/models/Permission";
 
-describe("SetPermissionsSchema", () => {
-  it("accepts a bulk set", () => {
-    const data = SetPermissionsSchema.parse({
-      doc_ids: ["doc-1", "doc-2"],
-      user_ids: ["u1"],
-      actions: ["docs:read", "docs:write"],
-      grant: true,
-    });
-    expect("doc_ids" in data).toBe(true);
-    if ("doc_ids" in data) expect(data.doc_ids).toHaveLength(2);
-    expect(data.grant).toBe(true);
+const restricted: MyWorkspaceInfo = {
+  role_name: "Client",
+  permissions: ["chat:read"],
+  restricted: true,
+  projects: [
+    { project_id: "p-web", actions: ["tickets:read", "tickets:write"] },
+    { project_id: "p-api", actions: ["docs:read"] },
+  ],
+};
+
+describe("a Restricted member's /me", () => {
+  it("answers a project action from that project's access alone", () => {
+    expect(projectPermissions(restricted, "p-web")).toEqual(["chat:read", "tickets:read", "tickets:write"]);
+    expect(projectPermissions(restricted, "p-api")).not.toContain("tickets:read");
+    expect(projectPermissions(restricted, "")).toEqual(workspaceWidePermissions(restricted));
   });
 
-  it("rejects empty doc/user/action lists", () => {
-    expect(
-      SetPermissionsSchema.safeParse({ doc_ids: [], user_ids: ["u1"], actions: ["docs:read"], grant: true }).success,
-    ).toBe(false);
-    expect(
-      SetPermissionsSchema.safeParse({ doc_ids: ["doc-1"], user_ids: [], actions: ["docs:read"], grant: true })
-        .success,
-    ).toBe(false);
-    expect(
-      SetPermissionsSchema.safeParse({ doc_ids: ["doc-1"], user_ids: ["u1"], actions: [], grant: true }).success,
-    ).toBe(false);
+  it("opens an area held in any of their projects", () => {
+    expect(workspaceWidePermissions(restricted)).toEqual(expect.arrayContaining(["tickets:read", "docs:read", "chat:read"]));
   });
 
-  it("accepts a play exclusion (ticket 21)", () => {
-    const data = SetPermissionsSchema.parse({
-      resource_type: "play",
-      resource_ids: ["play-1"],
-      user_ids: ["u1"],
-      actions: ["plays:run"],
-      grant: false,
-    });
-    expect("resource_ids" in data).toBe(true);
-    if ("resource_ids" in data) expect(data.resource_ids).toEqual(["play-1"]);
-    expect(data.grant).toBe(false);
-  });
-
-  it("rejects an empty resource_ids list on a play exclusion", () => {
-    expect(
-      SetPermissionsSchema.safeParse({
-        resource_type: "play",
-        resource_ids: [],
-        user_ids: ["u1"],
-        actions: ["plays:run"],
-        grant: false,
-      }).success,
-    ).toBe(false);
-  });
-});
-
-describe("hasPermission", () => {
-  it("checks the raw string value against the permissions list", () => {
-    expect(hasPermission(["docs:read", "projects:write"], "projects:write")).toBe(true);
-    expect(hasPermission(["docs:read"], "projects:write")).toBe(false);
-    expect(hasPermission(undefined, "projects:write")).toBe(false);
+  it("leaves an unrestricted member's permissions as the role gives them, on every project", () => {
+    const member: MyWorkspaceInfo = { role_name: "Editor", permissions: ["tickets:read"] };
+    expect(projectPermissions(member, "p-any")).toEqual(["tickets:read"]);
+    expect(workspaceWidePermissions(member)).toEqual(["tickets:read"]);
   });
 });

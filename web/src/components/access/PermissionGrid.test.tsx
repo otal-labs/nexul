@@ -6,14 +6,14 @@ import { PermissionGrid } from "@/components/access/PermissionGrid";
 import type { PermissionInfo } from "@/models/Permission";
 
 const catalog: PermissionInfo[] = [
-  { value: "docs:read", label: "Read docs", domain: "docs", action: "read" },
-  { value: "docs:write", label: "Create and update docs", domain: "docs", action: "write" },
-  { value: "docs:thread", label: "See doc threads", domain: "docs", action: "thread" },
-  { value: "reviews:read", label: "Read reviews", domain: "reviews", action: "read" },
-  { value: "deploys:read", label: "Read deploys", domain: "deploys", action: "read" },
-  { value: "deploys:write", label: "Trigger deploys", domain: "deploys", action: "write" },
-  { value: "plays:read", label: "Read plays", domain: "plays", action: "read" },
-  { value: "plays:run", label: "Run plays", domain: "plays", action: "run" },
+  { value: "docs:read", label: "Read docs", domain: "docs", action: "read", area: "workspace" },
+  { value: "docs:write", label: "Create and update docs", domain: "docs", action: "write", area: "workspace" },
+  { value: "docs:thread", label: "See doc threads", domain: "docs", action: "thread", area: "workspace" },
+  { value: "reviews:read", label: "Read reviews", domain: "reviews", action: "read", area: "workspace" },
+  { value: "deploys:read", label: "Read deploys", domain: "deploys", action: "read", area: "workspace" },
+  { value: "deploys:write", label: "Trigger deploys", domain: "deploys", action: "write", area: "workspace" },
+  { value: "plays:read", label: "Read plays", domain: "plays", action: "read", area: "workspace" },
+  { value: "plays:run", label: "Run plays", domain: "plays", action: "run", area: "workspace" },
 ];
 
 describe("PermissionGrid", () => {

@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Microheader } from "@/components/access/Microheader";
 import { EmptyRow } from "@/components/EmptyRow";
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { AccountStatusLabel } from "@/components/team/AccountStatusLabel";
@@ -38,10 +39,12 @@ export const TeamPersonDialog = ({ personId, onClose }: TeamPersonDialogProps) =
         )}
         {person && team && (
           <section aria-labelledby="team-person-workspaces" className="min-h-0 flex-1 space-y-3 overflow-y-auto px-6 py-4">
-            <h3 id="team-person-workspaces" className="text-sm font-semibold">Workspaces</h3>
+            <Microheader id="team-person-workspaces" className="pb-1">
+              Workspaces
+            </Microheader>
             {person.workspaces.length === 0 && <EmptyRow>Not a member of any workspace you can see.</EmptyRow>}
             {person.workspaces.length > 0 && (
-              <ul className="divide-y divide-border rounded-md border border-border bg-card">
+              <ul className="space-y-4">
                 {person.workspaces.map((membership) => {
                   const workspace = workspaceById.get(membership.workspace_id);
                   return workspace && <TeamMembershipItem key={membership.workspace_id} person={person} workspace={workspace} membership={membership} />;

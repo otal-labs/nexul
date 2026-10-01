@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { BoardFilterBar, type BoardFilters } from "@/components/board/BoardFilterBar";
 import type { StatusKind } from "@/models/Status";
 
@@ -42,6 +43,7 @@ const mockReferenceData = ({
 } = {}) => {
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/projects") return { data: projectList };
+    if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Owner", permissions: ["tickets:write"] } };
     if (url === "/api/categories") return { data: categoryList };
     if (url === "/api/tickets/labels") return { data: labels };
     if (url === "/api/ticket-types") return { data: typeList };
@@ -96,6 +98,7 @@ const openFilterPopover = async (user: ReturnType<typeof userEvent.setup>) =>
 
 beforeEach(() => {
   vi.mocked(api.get).mockReset();
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   mockReferenceData();
 });
 
@@ -109,6 +112,20 @@ describe("BoardFilterBar", () => {
   it("renders the create menu next to the filter trigger", async () => {
     renderFilterBar();
     expect(await screen.findByRole("button", { name: "Add" })).toBeInTheDocument();
+  });
+
+  it("leaves the create menu out on a project where the viewer may only read tickets", async () => {
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === "/api/workspaces/ws-1/me") {
+        return { data: { role_name: "Client", permissions: [], restricted: true, projects: [{ project_id: "p-1", actions: ["tickets:read"] }] } };
+      }
+      return { data: url === "/api/projects" ? projects : [] };
+    });
+    useWorkspaceStore.setState({ selectedProjectId: "p-1" });
+    renderFilterBar();
+    expect(await screen.findByRole("button", { name: /^Filter/ })).toBeInTheDocument();
+    await vi.waitFor(() => expect(api.get).toHaveBeenCalledWith("/api/workspaces/ws-1/me"));
+    expect(screen.queryByRole("button", { name: "Add" })).not.toBeInTheDocument();
   });
 
   it("hides the Projects filter row and toggle when the board is project-scoped", async () => {

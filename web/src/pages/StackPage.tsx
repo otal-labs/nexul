@@ -36,7 +36,7 @@ export const StackPage = ({ forcedSection }: StackPageProps) => {
   const { data: projects = [] } = useFetchProjects();
   const { data: services } = useFetchStackServices(stackId);
   const { data: deploys, isPending: deploysPending } = useFetchStackDeploys(stackId);
-  const can = useAreaAccess();
+  const can = useAreaAccess(stack?.project_id || undefined);
   const showExposures = can?.("dns") ?? false;
   const showLogs = can?.("stackLogs") ?? false;
   const wsPath = useWorkspacePath();

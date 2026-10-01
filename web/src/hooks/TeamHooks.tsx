@@ -2,8 +2,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
-import { getWorkspacePeopleKey } from "@/hooks/PeopleHooks";
-import { getTeamKey, type Team } from "@/models/Team";
+import { getProjectPeopleKey, getWorkspacePeopleKey } from "@/hooks/PeopleHooks";
+import { getProjectAccessKey } from "@/hooks/ProjectHooks";
+import { getTeamKey, type EveryProject, type Team } from "@/models/Team";
 
 // The server scopes it: everything for an accounts:read holder, else only the workspaces the viewer manages.
 export const useFetchTeam = (enabled = true) =>
@@ -14,16 +15,18 @@ export const useFetchTeam = (enabled = true) =>
     retry: false,
   });
 
-const useTeamMutation = <TInput,>(request: (input: TInput) => Promise<unknown>, success: string) => {
+const useTeamMutation = <TInput,>(request: (input: TInput) => Promise<unknown>, success: string | ((input: TInput) => string)) => {
   const client = useQueryClient();
   return useMutation({
     mutationFn: request,
-    onSuccess: async () => {
+    onSuccess: async (_, input) => {
       await Promise.all([
         client.invalidateQueries({ queryKey: [getTeamKey] }),
         client.invalidateQueries({ queryKey: [getWorkspacePeopleKey] }),
+        client.invalidateQueries({ queryKey: [getProjectAccessKey] }),
+        client.invalidateQueries({ queryKey: [getProjectPeopleKey] }),
       ]);
-      toast.success(success);
+      toast.success(typeof success === "string" ? success : success(input));
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
@@ -47,6 +50,20 @@ export const useSetTeamMemberOverrides = () =>
   useTeamMutation(
     (input: MemberTarget & { allow: string[]; deny: string[] }) => api.patch(memberPath(input), { allow: input.allow, deny: input.deny }),
     "Overrides saved",
+  );
+
+// The toast names the person and the change, since the dialog can hold several workspaces and projects at once.
+export const useSetTeamEveryProject = () =>
+  useTeamMutation(
+    (input: MemberTarget & { everyProject: EveryProject; message: string }) => api.patch(memberPath(input), { every_project: input.everyProject }),
+    (input) => input.message,
+  );
+
+export const useSetTeamProjectAccess = () =>
+  useTeamMutation(
+    (input: MemberTarget & { projectId: string; allow: string[]; message: string }) =>
+      api.patch(memberPath(input), { project_access: [{ project_id: input.projectId, allow: input.allow }] }),
+    (input) => input.message,
   );
 
 export const useRemoveTeamMember = () =>

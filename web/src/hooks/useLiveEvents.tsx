@@ -14,9 +14,11 @@ import { getDnsExposuresKey, getDnsGatewaysKey } from "@/hooks/DnsHooks";
 import { getDocKey, getDocsKey } from "@/hooks/DocHooks";
 import { getDocFoldersKey } from "@/hooks/DocFolderHooks";
 import { getInstanceUpgradeKey } from "@/hooks/InstanceUpgradeHooks";
-import { getWorkspacePeopleKey } from "@/hooks/PeopleHooks";
-import { followWorkspaceUpdate, getMyRoleKey, getWorkspacesKey, type MyWorkspaceInfo } from "@/hooks/WorkspaceHooks";
+import { getProjectPeopleKey, getWorkspacePeopleKey } from "@/hooks/PeopleHooks";
+import { getProjectAccessKey } from "@/hooks/ProjectHooks";
+import { followWorkspaceUpdate, getMyRoleKey, getWorkspacesKey } from "@/hooks/WorkspaceHooks";
 import { getTeamKey } from "@/models/Team";
+import type { MyWorkspaceInfo } from "@/models/Permission";
 import { getMemoriesKey, getMemoryKey, getMemoryVersionsKey } from "@/hooks/MemoryHooks";
 import { getNotificationsKey, getUnreadCountKey } from "@/hooks/NotificationHooks";
 import { getMeKey, getPATsKey, getSessionsKey } from "@/hooks/AuthHooks";
@@ -144,7 +146,9 @@ const pushTopics: Record<string, string[]> = {
   "account.profile_updated": [getWorkspacePeopleKey, getTeamKey, getMeKey],
   "workspace.member.added": [getTeamKey, getWorkspacePeopleKey, getWorkspacesKey],
   "workspace.member.removed": [getTeamKey, getWorkspacePeopleKey, getWorkspacesKey],
-  "workspace.member.updated": [getTeamKey],
+  "workspace.member.updated": [getTeamKey, getProjectAccessKey, getProjectPeopleKey],
+  // Someone else's Project access moved: who a manager sees with access, and who the pickers offer.
+  "access.grant.changed": [getTeamKey, getProjectAccessKey, getProjectPeopleKey],
   "role.updated": [getWorkspaceRolesKey],
 };
 
@@ -159,7 +163,7 @@ const permissionTopics = new Set([
 
 const heldPermissions = (client: QueryClient) =>
   JSON.stringify([
-    client.getQueriesData<MyWorkspaceInfo>({ queryKey: [getMyRoleKey] }).map(([, data]) => data?.permissions),
+    client.getQueriesData<MyWorkspaceInfo>({ queryKey: [getMyRoleKey] }).map(([, data]) => [data?.permissions, data?.projects]),
     client.getQueryData<MeResponse>([getMeKey])?.instance_permissions,
   ]);
 

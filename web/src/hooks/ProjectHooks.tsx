@@ -3,23 +3,33 @@ import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
 import { RepoRole, TestsLocation } from "@/enums/Project";
-import type { DeleteImpact, Project, RepoRef } from "@/models/Project";
+import type { DeleteImpact, Project, ProjectAccessEntry, RepoRef } from "@/models/Project";
 import type { Repo } from "@/models/Repository";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 export const getProjectsKey = "getProjects";
+export const getProjectAccessKey = "getProjectAccess";
 const getProjectReposKey = "getProjectRepos";
 
-// Reads selectedWorkspaceId internally so the key refetches on workspace switch with no per-caller wiring.
-export const useFetchProjects = (enabled = true) => {
-  const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
-  return useQuery({
+// The projects of a workspace the viewer may open; Team and invitations read workspaces other than the selected one.
+export const useFetchWorkspaceProjects = (workspaceId: string, enabled = true) =>
+  useQuery({
     queryKey: [getProjectsKey, workspaceId],
-    queryFn: async () =>
-      (await api.get<Project[]>("/api/projects", { params: { workspace_id: workspaceId } })).data,
+    queryFn: async () => (await api.get<Project[]>("/api/projects", { params: { workspace_id: workspaceId } })).data,
     enabled,
   });
-};
+
+// Reads selectedWorkspaceId internally so the key refetches on workspace switch with no per-caller wiring.
+export const useFetchProjects = (enabled = true) =>
+  useFetchWorkspaceProjects(useWorkspaceStore((s) => s.selectedWorkspaceId), enabled);
+
+// The Restricted members who may open a project; the server answers holders of members:write only.
+export const useFetchProjectAccess = (projectId: string, enabled = true) =>
+  useQuery({
+    queryKey: [getProjectAccessKey, projectId],
+    queryFn: async () => (await api.get<{ access: ProjectAccessEntry[] }>(`/api/projects/${projectId}/access`)).data.access,
+    enabled,
+  });
 
 export const useFetchProject = (id: string | undefined) =>
   useQuery({

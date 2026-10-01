@@ -57,10 +57,10 @@ const mockReferenceData = (
     ticketTypes: mockTicketTypes = ticketTypes,
   } = options;
   vi.mocked(api.get).mockImplementation(async (url: string) => {
+    if (url.endsWith("/people")) return { data: { people: members } };
     if (url.startsWith("/api/projects")) return { data: mockProjects };
     if (url.startsWith("/api/categories")) return { data: mockCategories };
     if (url.startsWith("/api/ticket-types")) return { data: mockTicketTypes };
-    if (url.startsWith("/api/workspaces/") && url.endsWith("/people")) return { data: { people: members } };
     if (url.startsWith("/api/docs/")) return { data: { id: "doc-9", title: options.docTitle ?? "Runbook", project_id: "p-1" } };
     return { data: [] };
   });

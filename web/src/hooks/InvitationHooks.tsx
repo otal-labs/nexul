@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
-import { getInvitationPreviewKey } from "@/models/Invitation";
+import { getInvitationPreviewKey, invitationRequest } from "@/models/Invitation";
 import type {
   ActiveInvitation,
   CreateInvitationFormData,
@@ -28,7 +28,7 @@ export const useCreateInvitation = () => {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async (input: CreateInvitationFormData) =>
-      (await api.post<CreatedInvitation>("/api/invitations", input)).data,
+      (await api.post<CreatedInvitation>("/api/invitations", invitationRequest(input))).data,
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getInvitationsKey] });
       toast.success("Invitation created — copy the link now");

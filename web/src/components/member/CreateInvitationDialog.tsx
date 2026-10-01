@@ -4,6 +4,7 @@ import { Check, Copy, Plus } from "lucide-react";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { CreateInvitationFormSchema, type CreateInvitationFormData, type CreatedInvitation } from "@/models/Invitation";
+import { EveryProject } from "@/models/Team";
 import { Button } from "@/components/ui/button";
 import { CreateInvitationForm } from "@/components/member/CreateInvitationForm";
 
@@ -22,7 +23,7 @@ export const CreateInvitationDialog = () => {
       schema: CreateInvitationFormSchema,
       okLabel: "Create link",
       form: <CreateInvitationForm onCreated={setCreated} />,
-      formOptions: { defaultValues: { expires_in_days: 7, grants: [{ workspace_id: selectedWorkspaceId, role_id: "", allow: [], deny: [] }] } },
+      formOptions: { defaultValues: { expires_in_days: 7, grants: [{ workspace_id: selectedWorkspaceId, role_id: "", allow: [], deny: [], every_project: EveryProject.Role, project_access: [] }] } },
       dialogClassName: "max-w-2xl",
     });
   };
