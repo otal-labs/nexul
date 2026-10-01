@@ -442,6 +442,9 @@ const questionTool = "AskUserQuestion"
 
 const summaryRunes = 160
 
+// shellTool names a command whose provider names no tool (Codex, OpenCode), so it reads as a command like Claude's Bash.
+const shellTool = "Shell"
+
 // toolActivity maps one tool-tone activity onto the harness seam; a payload that fails to decode keeps T3's own label.
 func (c *Client) toolActivity(a wireActivity) *harness.Activity {
 	var p toolPayload
@@ -456,6 +459,9 @@ func (c *Client) toolActivity(a wireActivity) *harness.Activity {
 		kind = harness.ActivityQuestion
 	}
 	tool := p.Data.ToolName
+	if tool == "" && p.ItemType == itemCommand {
+		tool = shellTool
+	}
 	if tool == "" {
 		tool = p.Title
 	}

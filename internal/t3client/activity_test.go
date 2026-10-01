@@ -135,6 +135,7 @@ func TestEventUpdate_CodexCommand_LabelIsTheCommandFromItsItem(t *testing.T) {
 	assert.Equal(t, harness.ActivityToolCall, a.Kind)
 	assert.Equal(t, "exec-b0c48bc3", a.CallID)
 	assert.Equal(t, `/bin/bash -lc "nl -ba MEMORY.md"`, a.Summary, "Codex carries the command only in data.item, never T3's bare phrase")
+	assert.Equal(t, "Shell", a.Tool, "Codex names no tool for a command, so it reads as a shell command, not T3's \"Ran command\" title")
 }
 
 func TestEventUpdate_FileChange_LabelIsThePath(t *testing.T) {

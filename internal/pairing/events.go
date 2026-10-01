@@ -103,4 +103,9 @@ type SetupTurnActivityEvent struct {
 	CallID string `json:"call_id,omitempty"`
 	// Kind is the step's harness.ActivityKind; tool_call means the call is still open.
 	Kind string `json:"kind,omitempty"`
+	// Tool names the tool a call ran, so the dialog tells a command from any other tool.
+	Tool string `json:"tool,omitempty"`
+	// Text is a text step's whole message, which the dialog shows as prose; Status stays its one-line preview.
+	Text string    `json:"text,omitempty"`
+	At   time.Time `json:"at"`
 }

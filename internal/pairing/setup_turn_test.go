@@ -823,6 +823,43 @@ func TestStartSetup_ToolCallUpdates_AreOneStep(t *testing.T) {
 	assert.Equal(t, []string{"tool_call", "tool_result"}, []string{f.bus.frames[0].Kind, f.bus.frames[1].Kind}, "the dialog spins an open call until its result lands")
 }
 
+func TestStartSetup_ClosedMessages_StreamAsTextStepsBetweenTheTools(t *testing.T) {
+	t.Parallel()
+	f := newSetupFixture(t)
+	start := f.exch.StartTurnFn
+	f.exch.StartTurnFn = func(ctx context.Context, target harness.Target, title string, prompts harness.TurnPrompts) (harness.StartResult, error) {
+		res, err := start(ctx, target, title, prompts)
+		if err != nil {
+			return res, err
+		}
+		updates := make(chan harness.Update, 8)
+		updates <- harness.Update{Snapshot: &harness.Snapshot{MessageID: "m0", Text: "I'll check", Streaming: true}}
+		updates <- harness.Update{Snapshot: &harness.Snapshot{MessageID: "m0", Text: "I'll check both skill folders first."}}
+		for u := range res.Updates {
+			updates <- u
+		}
+		close(updates)
+		res.Updates = updates
+		return res, nil
+	}
+
+	run := f.start(t)
+
+	var kinds []string
+	for _, a := range f.turns(run.RunID)["codex"].Transcript {
+		kinds = append(kinds, string(a.Kind)+":"+a.Summary)
+	}
+	session := []string{"text:I'll check both skill folders first.", "tool_call:writing the config", "text:All set."}
+	assert.Equal(t, append(session, session...), kinds, "each closed message is a step where it was said in both Codex sessions, a streaming one is not")
+	f.bus.mu.Lock()
+	defer f.bus.mu.Unlock()
+	first, tool := f.bus.frames[0], f.bus.frames[1]
+	assert.Equal(t, "I'll check both skill folders first.", first.Text, "a text frame carries the whole sentence for the prose")
+	assert.False(t, first.At.IsZero())
+	assert.Equal(t, "bash", tool.Tool, "the dialog tells a command from a tool by its name")
+	assert.Empty(t, tool.Text, "a tool frame carries no prose")
+}
+
 func TestSetupHandlers_ProvidersChoice(t *testing.T) {
 	t.Parallel()
 	f := newSetupFixture(t)

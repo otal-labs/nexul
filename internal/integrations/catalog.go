@@ -920,7 +920,10 @@ var catalogSchemas = map[string]string{
 			"provider": {"type": "string"},
 			"status": {"type": "string"},
 			"call_id": {"type": "string"},
-			"kind": {"type": "string", "enum": ["tool_call", "tool_result", "text", "question", "other"]}
+			"kind": {"type": "string", "enum": ["tool_call", "tool_result", "text", "question", "other"]},
+			"tool": {"type": "string"},
+			"text": {"type": "string"},
+			"at": {"type": "string"}
 		}
 	}`,
 	"personal_access_token.minted": `{
