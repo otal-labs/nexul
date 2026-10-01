@@ -63,6 +63,13 @@ even their names.
   members add, `channels:write` removes, `#general` always public, voice the
   same, non-members see nothing, the Owner sees everything, DMs open both
   ways.
+- [Invitations and the edges of a Restricted member](issues/05-restricted-member-edges.md)
+  — no mode switch: an Every project row (From role or None) over one row
+  per project with area levels; invitations carry it; pickers skip members
+  without access; delete names who loses access.
+- [Project access and private channels over MCP](issues/06-mcp-surface.md)
+  — new fields on `account_list`, `account_update`, `invitation_create`,
+  `project_get`, `conversation_list`, `conversation_update`; no new tool.
 
 ## Not yet specified
 
