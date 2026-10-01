@@ -53,10 +53,19 @@ const (
 
 // Service is the plays use-case layer: workspace-scoped play definitions (ADR 0055).
 type Service struct {
-	repo Repo
-	perm PermissionGate
-	now  func() time.Time
+	repo     Repo
+	perm     PermissionGate
+	instance InstanceTemplates
+	now      func() time.Time
 }
+
+// InstanceTemplates reads the instance's text for a template kind and key, the code default until edited (ADR 0103).
+type InstanceTemplates interface {
+	Effective(ctx context.Context, kind, key string) (string, error)
+}
+
+// SetInstanceTemplates wires the instance layer a new workspace's built-in plays take their instructions from.
+func (s *Service) SetInstanceTemplates(t InstanceTemplates) { s.instance = t }
 
 // NewService wires the plays use-cases over the given repo and permission gate.
 func NewService(repo Repo, perm PermissionGate) *Service {
@@ -215,8 +224,41 @@ func (s *Service) Delete(ctx context.Context, workspaceID, id string) error {
 	return nil
 }
 
-// SeedDefaults creates the four out-of-the-box plays for a fresh workspace (ticket 02); no permission gate,
-// the same way CreateOwnerRole seeds a workspace's first role: there is no member yet to hold plays:write.
+// TemplateKind names built-in play instructions among the instance templates (ADR 0103).
+const TemplateKind = "play_instructions"
+
+// Builtin is one seeded play: the stable key a clone matches it by, and what a new workspace gets.
+type Builtin struct {
+	Key           string
+	Label         string
+	Type          Type
+	Description   string
+	Instructions  string
+	ShowWhenStage *Stage
+}
+
+// Builtins lists the seeded plays in seeding order; their instructions are the instance templates' code defaults.
+func Builtins() []Builtin {
+	progress, testingStage := StageProgress, StageTesting
+	return []Builtin{
+		{Key: "fix-with-ai", Label: "Fix with AI", Type: TypeTicket, ShowWhenStage: &progress,
+			Description:  "Reads the ticket, implements a fix on its own branch, and opens a pull request.",
+			Instructions: fixWithAIInstructions},
+		{Key: "to-tickets-via-ai", Label: "To tickets via AI", Type: TypeDoc,
+			Description:  "Splits a doc into tickets a developer could pick up independently.",
+			Instructions: toTicketsInstructions},
+		{Key: "interview", Label: "Interview", Type: TypeInterview,
+			Description:  "Asks one question at a time to record this project's rules for agents, and amends them on a re-run.",
+			Instructions: interviewInstructions},
+		{Key: "test-with-ai", Label: "Test with AI", Type: TypeTicket, ShowWhenStage: &testingStage,
+			Description:  "Tests the ticket on its test environment against its acceptance criteria, then passes or fails it.",
+			Instructions: testWithAIInstructions},
+	}
+}
+
+// SeedDefaults creates the four out-of-the-box plays for a fresh workspace (ticket 02), each with the instance's
+// instructions for it; no permission gate, the same way CreateOwnerRole seeds a workspace's first role: there is no
+// member yet to hold plays:write.
 // Idempotent: the default workspace already carries its plays from migrations by the time the Owner
 // Wizard binds someone to it, so a workspace that already has plays is left alone.
 func (s *Service) SeedDefaults(ctx context.Context, workspaceID string) error {
@@ -228,34 +270,16 @@ func (s *Service) SeedDefaults(ctx context.Context, workspaceID string) error {
 		return nil
 	}
 	now := s.now().UTC()
-	progress, testingStage := StageProgress, StageTesting
-	seeds := []*Play{
-		{
-			ID: ids.New(), WorkspaceID: workspaceID, Label: "Fix with AI", Type: TypeTicket,
-			Description:  "Reads the ticket, implements a fix on its own branch, and opens a pull request.",
-			Instructions: fixWithAIInstructions, Enabled: true, ShowWhenStage: &progress,
+	for _, b := range Builtins() {
+		instructions, err := s.instanceInstructions(ctx, b)
+		if err != nil {
+			return err
+		}
+		p := &Play{
+			ID: ids.New(), WorkspaceID: workspaceID, Label: b.Label, Type: b.Type, Description: b.Description,
+			Instructions: instructions, Enabled: true, ShowWhenStage: b.ShowWhenStage, BuiltinKey: b.Key,
 			CreatedAt: now, UpdatedAt: now,
-		},
-		{
-			ID: ids.New(), WorkspaceID: workspaceID, Label: "To tickets via AI", Type: TypeDoc,
-			Description:  "Splits a doc into tickets a developer could pick up independently.",
-			Instructions: toTicketsInstructions, Enabled: true,
-			CreatedAt: now, UpdatedAt: now,
-		},
-		{
-			ID: ids.New(), WorkspaceID: workspaceID, Label: "Interview", Type: TypeInterview,
-			Description:  "Asks one question at a time to record this project's rules for agents, and amends them on a re-run.",
-			Instructions: interviewInstructions, Enabled: true,
-			CreatedAt: now, UpdatedAt: now,
-		},
-		{
-			ID: ids.New(), WorkspaceID: workspaceID, Label: "Test with AI", Type: TypeTicket,
-			Description:  "Tests the ticket on its test environment against its acceptance criteria, then passes or fails it.",
-			Instructions: testWithAIInstructions, Enabled: true, ShowWhenStage: &testingStage,
-			CreatedAt: now, UpdatedAt: now,
-		},
-	}
-	for _, p := range seeds {
+		}
 		if err := p.Validate(); err != nil {
 			return err
 		}
@@ -264,6 +288,56 @@ func (s *Service) SeedDefaults(ctx context.Context, workspaceID string) error {
 		}
 	}
 	return nil
+}
+
+func (s *Service) instanceInstructions(ctx context.Context, b Builtin) (string, error) {
+	if s.instance == nil {
+		return b.Instructions, nil
+	}
+	body, err := s.instance.Effective(ctx, TemplateKind, b.Key)
+	if err != nil {
+		return "", fmt.Errorf("get the instance instructions for %s: %w", b.Key, err)
+	}
+	return body, nil
+}
+
+// BuiltinPlay returns workspaceID's copy of the built-in play key (plays:read); a deleted one is not found.
+func (s *Service) BuiltinPlay(ctx context.Context, workspaceID, key string) (*Play, error) {
+	if err := s.require(ctx, workspaceID, permissions.PlaysRead); err != nil {
+		return nil, err
+	}
+	return s.builtin(ctx, workspaceID, key)
+}
+
+// SetBuiltinInstructions replaces the instructions of workspaceID's copy of the built-in play key (plays:write).
+func (s *Service) SetBuiltinInstructions(ctx context.Context, workspaceID, key, instructions string) (*Play, error) {
+	if err := s.require(ctx, workspaceID, permissions.PlaysWrite); err != nil {
+		return nil, err
+	}
+	p, err := s.builtin(ctx, workspaceID, key)
+	if err != nil {
+		return nil, err
+	}
+	p.Instructions = instructions
+	p.UpdatedAt = s.now().UTC()
+	if err := s.repo.Update(ctx, p, s.event(TopicUpdated, UpdatedEvent{Play: *p})); err != nil {
+		return nil, fmt.Errorf("update play %s: %w", p.ID, err)
+	}
+	return p, nil
+}
+
+func (s *Service) builtin(ctx context.Context, workspaceID, key string) (*Play, error) {
+	list, err := s.repo.List(ctx, strings.TrimSpace(workspaceID))
+	if err != nil {
+		return nil, fmt.Errorf("list plays for workspace %s: %w", workspaceID, err)
+	}
+	key = strings.TrimSpace(key)
+	for _, p := range list {
+		if p.BuiltinKey != "" && strings.EqualFold(p.BuiltinKey, key) {
+			return p, nil
+		}
+	}
+	return nil, fmt.Errorf("%w: workspace %s has no built-in play %q; it was deleted, or the key is not one of fix-with-ai, to-tickets-via-ai, interview, test-with-ai", apperrs.ErrNotFound, workspaceID, key)
 }
 
 func (s *Service) getInWorkspace(ctx context.Context, workspaceID, id string) (*Play, error) {

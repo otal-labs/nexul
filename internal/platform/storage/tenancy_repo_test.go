@@ -318,7 +318,7 @@ func TestWorkspacesRepo_MentionChipTemplate_RoundTrip(t *testing.T) {
 	s := newTestStore(t)
 	ctx := context.Background()
 	ws := newTestWorkspace("ws-1", "Acme")
-	ws.MentionChipTemplate = "{ticket.Project} {ticket.Ticket}"
+	ws.MentionChipTemplate, ws.MentionChipTemplateEdited = "{ticket.Project} {ticket.Ticket}", true
 	require.NoError(t, s.Workspaces.Create(ctx, ws))
 
 	got, err := s.Workspaces.Get(ctx, "ws-1")
@@ -343,13 +343,19 @@ func TestWorkspacesRepo_MentionChipTemplate_RoundTrip(t *testing.T) {
 	assert.Equal(t, "{ticket.Status}", listed[0].MentionChipTemplate)
 }
 
-// The seeded default workspace predates the column, so the migration's default is what its chips render with.
-func TestWorkspacesRepo_SeededDefault_CarriesDefaultTemplate(t *testing.T) {
+// The seeded default workspace never chose a chip template, so it follows the instance's (ADR 0103).
+func TestWorkspacesRepo_SeededDefault_FollowsTheInstanceChipTemplate(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
 	got, err := s.Workspaces.Get(context.Background(), tenancy.DefaultWorkspaceID)
 	require.NoError(t, err)
-	assert.Equal(t, tenancy.DefaultMentionChipTemplate, got.MentionChipTemplate)
+	assert.False(t, got.MentionChipTemplateEdited)
+
+	got.MentionChipTemplate = "{ticket.Status}"
+	require.NoError(t, s.Workspaces.Update(context.Background(), got))
+	got, err = s.Workspaces.Get(context.Background(), tenancy.DefaultWorkspaceID)
+	require.NoError(t, err)
+	assert.False(t, got.MentionChipTemplateEdited, "an update that never edited the template keeps following")
 }
 
 func TestWorkspacesRepo_Update_WritesItsEventWithTheChange(t *testing.T) {

@@ -19,6 +19,7 @@ import (
 	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/runner"
+	"github.com/otal-labs/nexul/internal/templates"
 	"github.com/otal-labs/nexul/internal/tenancy"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/voice"
@@ -53,6 +54,7 @@ var liveRules = map[string]liveRule{
 	auth.TopicAccountRemoved:           everyone,
 	auth.TopicAccountRestored:          everyone,
 	auth.TopicProfileUpdated:           everyone,
+	templates.TopicUpdated:             everyone,
 
 	auth.TopicTokenMinted:            ownFrame,
 	auth.TopicTokenRevoked:           ownFrame,

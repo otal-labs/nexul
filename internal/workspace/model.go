@@ -21,6 +21,8 @@ type Project struct {
 	TestsLocation TestsLocation `json:"tests_location"`
 	CreatedAt     time.Time     `json:"created_at"`
 	UpdatedAt     time.Time     `json:"updated_at"`
+	// SeedTicketTypes are the types creating the project seeds; empty seeds DefaultTicketTypes.
+	SeedTicketTypes []TicketType `json:"-"`
 }
 
 // TestsLocation says whether a project's tests live in its deployed repository or in a separate tests repository.
@@ -85,7 +87,10 @@ type TicketType struct {
 	UpdatedAt    time.Time `json:"updated_at"`
 }
 
-// DefaultTicketTypes are every new project's types in board order; migration 0009 backfills the same templates.
+// TemplateKind names ticket type body templates among the instance templates, keyed by type name (ADR 0103).
+const TemplateKind = "ticket_body"
+
+// DefaultTicketTypes are every new project's types in board order, with the code defaults of their body templates.
 var DefaultTicketTypes = []TicketType{
 	{Name: "task", BodyTemplate: "## What needs doing\n\n\n## Acceptance criteria\n\n"},
 	{Name: "bug", BodyTemplate: "## Steps to reproduce\n\n\n## Expected result\n\n\n## Actual result\n\n\n## Provide screenshot\n\n"},

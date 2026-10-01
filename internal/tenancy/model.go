@@ -12,6 +12,9 @@ import (
 // DefaultMentionChipTemplate renders a chip as the fixed icon+title+status it showed before templates existed.
 const DefaultMentionChipTemplate = "{ticket.Ticket} {ticket.Status}"
 
+// TemplateKind names the mention chip template among the instance templates (ADR 0103).
+const TemplateKind = "mention_chip"
+
 // Workspace's Owner implicitly has full access to everything inside it.
 type Workspace struct {
 	ID   string `json:"id"`
@@ -19,9 +22,11 @@ type Workspace struct {
 	// Slug names the workspace in every URL; unique on the instance and kept when the name changes.
 	Slug string `json:"slug"`
 	// MentionChipTemplate is the @-mention ticket chip layout with {ticket.Field} tokens; gated on workspaces:write.
-	MentionChipTemplate string    `json:"mention_chip_template"`
-	CreatedAt           time.Time `json:"created_at"`
-	UpdatedAt           time.Time `json:"updated_at"`
+	MentionChipTemplate string `json:"mention_chip_template"`
+	// MentionChipTemplateEdited is false while the workspace follows the instance's chip template (ADR 0103).
+	MentionChipTemplateEdited bool      `json:"mention_chip_template_edited"`
+	CreatedAt                 time.Time `json:"created_at"`
+	UpdatedAt                 time.Time `json:"updated_at"`
 }
 
 // Member is one person's place in a workspace; Restricted is their Every project row set to None (ADR 0097).

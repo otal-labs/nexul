@@ -17,6 +17,7 @@ import (
 	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/runner"
+	"github.com/otal-labs/nexul/internal/templates"
 	"github.com/otal-labs/nexul/internal/tenancy"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/topology"
@@ -46,6 +47,7 @@ func AllTopics() []string {
 		pairing.Topics(),
 		roles.Topics(),
 		access.Topics(),
+		templates.Topics(),
 	} {
 		all = append(all, topics...)
 	}

@@ -30,8 +30,17 @@ type Service struct {
 	gate       Gate
 	workspaces WorkspaceGate
 	tickets    TicketProjects
+	instance   InstanceTemplates
 	now        func() time.Time
 }
+
+// InstanceTemplates reads the instance's text for a template kind and key, the code default until edited (ADR 0103).
+type InstanceTemplates interface {
+	Effective(ctx context.Context, kind, key string) (string, error)
+}
+
+// SetInstanceTemplates wires the instance layer a new project's ticket types take their body templates from.
+func (s *Service) SetInstanceTemplates(t InstanceTemplates) { s.instance = t }
 
 // NewService wires the workspace use-cases over the given repos and gates.
 func NewService(repo Repo, cats CategoryRepo, types TicketTypeRepo, statuses StatusRepo, gate Gate, workspaces WorkspaceGate) *Service {
@@ -85,23 +94,16 @@ func (s *Service) Create(ctx context.Context, userID, workspaceID, name, prefix 
 	if icon != "" && !validProjectIcons[icon] {
 		return nil, fmt.Errorf("%w: project icon must be one of the suggested icons", apperrs.ErrInvalid)
 	}
-	projects, err := s.repo.List(ctx, workspaceID)
+	position, err := s.nextPosition(ctx, workspaceID, prefix)
 	if err != nil {
-		return nil, fmt.Errorf("list projects: %w", err)
-	}
-	for _, p := range projects {
-		if p.Prefix == prefix {
-			return nil, fmt.Errorf("%w: project prefix %q is already in use", apperrs.ErrInvalid, prefix)
-		}
-	}
-	position := len(projects)
-	for _, p := range projects {
-		if p.Position >= position {
-			position = p.Position + 1
-		}
+		return nil, err
 	}
 	now := s.now().UTC()
-	p := &Project{ID: ids.New(), Name: name, Prefix: prefix, Position: position, WorkspaceID: workspaceID, Icon: icon, CreatedAt: now, UpdatedAt: now}
+	types, err := s.seedTicketTypes(ctx)
+	if err != nil {
+		return nil, err
+	}
+	p := &Project{ID: ids.New(), Name: name, Prefix: prefix, Position: position, WorkspaceID: workspaceID, Icon: icon, CreatedAt: now, UpdatedAt: now, SeedTicketTypes: types}
 	// Default statuses/types are seeded by ProjectsRepo.Create in the same transaction, not here.
 	if err := s.repo.Create(ctx, p); err != nil {
 		return nil, fmt.Errorf("create project: %w", err)
@@ -731,6 +733,54 @@ func (s *Service) RenameTicketType(ctx context.Context, userID, id, name string,
 		return nil, fmt.Errorf("rename ticket type %s: %w", id, err)
 	}
 	return &updated, nil
+}
+
+// nextPosition is the display position after workspaceID's last project, refusing a prefix already in use there.
+func (s *Service) nextPosition(ctx context.Context, workspaceID, prefix string) (int, error) {
+	projects, err := s.repo.List(ctx, workspaceID)
+	if err != nil {
+		return 0, fmt.Errorf("list projects: %w", err)
+	}
+	position := len(projects)
+	for _, p := range projects {
+		if p.Prefix == prefix {
+			return 0, fmt.Errorf("%w: project prefix %q is already in use", apperrs.ErrInvalid, prefix)
+		}
+		if p.Position >= position {
+			position = p.Position + 1
+		}
+	}
+	return position, nil
+}
+
+// seedTicketTypes is DefaultTicketTypes with the instance's body templates, copied into the project once (ADR 0103).
+func (s *Service) seedTicketTypes(ctx context.Context) ([]TicketType, error) {
+	types := slices.Clone(DefaultTicketTypes)
+	if s.instance == nil {
+		return types, nil
+	}
+	for i := range types {
+		body, err := s.instance.Effective(ctx, TemplateKind, types[i].Name)
+		if err != nil {
+			return nil, fmt.Errorf("get the instance body template for %s: %w", types[i].Name, err)
+		}
+		types[i].BodyTemplate = body
+	}
+	return types, nil
+}
+
+// TicketTypeNamed returns projectID's ticket type whose name matches name, ignoring case (membership).
+func (s *Service) TicketTypeNamed(ctx context.Context, projectID, name string) (*TicketType, error) {
+	types, err := s.ListTicketTypesByProject(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+	for _, t := range types {
+		if strings.EqualFold(t.Name, strings.TrimSpace(name)) {
+			return t, nil
+		}
+	}
+	return nil, fmt.Errorf("%w: project %s has no ticket type named %q", apperrs.ErrNotFound, projectID, name)
 }
 
 // SetTicketTypeTemplate replaces a type's body template (projects:write); existing tickets keep the body they were born with.

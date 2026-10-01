@@ -33,13 +33,17 @@ func (r *ProjectsRepo) Create(ctx context.Context, p *workspace.Project) error {
 		if err != nil {
 			return fmt.Errorf("insert project %s: %w", p.ID, classifyWriteErr(err))
 		}
-		return seedProjectDefaults(ctx, q, p.WorkspaceID, p.ID, p.CreatedAt.Unix())
+		types := p.SeedTicketTypes
+		if len(types) == 0 {
+			types = workspace.DefaultTicketTypes
+		}
+		return seedProjectDefaults(ctx, q, p.WorkspaceID, p.ID, types, p.CreatedAt.Unix())
 	})
 }
 
 // seedProjectDefaults inserts defaults in the same transaction as the project, so a board is always usable and a
 // new doc always has its default folder to land in.
-func seedProjectDefaults(ctx context.Context, q *sqlcgen.Queries, workspaceID, projectID string, at int64) error {
+func seedProjectDefaults(ctx context.Context, q *sqlcgen.Queries, workspaceID, projectID string, types []workspace.TicketType, at int64) error {
 	statuses := []struct {
 		name string
 		kind string
@@ -57,7 +61,7 @@ func seedProjectDefaults(ctx context.Context, q *sqlcgen.Queries, workspaceID, p
 			return fmt.Errorf("seed status %q for project %s: %w", st.name, projectID, err)
 		}
 	}
-	for i, tt := range workspace.DefaultTicketTypes {
+	for i, tt := range types {
 		if err := q.SeedProjectTicketType(ctx, sqlcgen.SeedProjectTicketTypeParams{
 			ID: uuid.NewString(), ProjectID: projectID, Name: tt.Name, Position: int64(i),
 			BodyTemplate: tt.BodyTemplate, CreatedAt: at, UpdatedAt: at,

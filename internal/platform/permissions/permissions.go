@@ -78,6 +78,8 @@ const (
 	IntegrationsWrite  Action = "integrations:write"
 	IntegrationsDelete Action = "integrations:delete"
 	AuditRead          Action = "audit:read"
+	TemplatesRead      Action = "templates:read"
+	TemplatesWrite     Action = "templates:write"
 )
 
 const (
@@ -155,6 +157,8 @@ var domainTable = []domainInfo{
 	{"audit", "audit log", []string{read}, AreaInstance},
 	{"accounts", "accounts", []string{read, write, delete}, AreaInstance},
 	{"instance", "instance settings, upgrades, and failed events", []string{read, write}, AreaInstance},
+	// templates:read scopes a token's reads; a signed-in member reads instance templates with membership alone.
+	{"templates", "instance templates", []string{read, write}, AreaInstance},
 }
 
 // Info is one catalog entry: the action, its owner-facing label, and the domain/action pair grids render from.

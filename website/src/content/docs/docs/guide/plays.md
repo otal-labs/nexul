@@ -19,6 +19,13 @@ Open **Configuration → Plays**. Every workspace starts with four ordinary play
 - **Interview** is an interview play, run from a project's Interview page.
 - **Test with AI** is a ticket play shown in the Testing stage.
 
+Each keeps a built-in key (`fix-with-ai`, `to-tickets-via-ai`, `interview`,
+`test-with-ai`) through renames. A new workspace's copies take their
+instructions from the instance's templates (see
+[Templates](/docs/guide/memories/#templates)); editing those never rewrites a
+workspace that already exists, and resetting a built-in play's instructions
+gives it the instance's current text.
+
 The same screen can create, edit, exclude users from, and delete plays. A play
 has these fields:
 

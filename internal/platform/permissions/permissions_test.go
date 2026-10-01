@@ -10,12 +10,12 @@ import (
 
 func TestCatalog_GridShape(t *testing.T) {
 	catalog := Catalog()
-	require.Len(t, catalog, 83)
+	require.Len(t, catalog, 85)
 	assert.Equal(t, Info{Value: "docs:read", Label: "Read docs", Domain: "docs", Action: "read", Area: AreaProject}, catalog[0])
 	assert.Equal(t, Info{Value: "docs:write", Label: "Create and update docs", Domain: "docs", Action: "write", Area: AreaProject}, catalog[1])
 	assert.Equal(t, Info{Value: "docs:delete", Label: "Delete docs", Domain: "docs", Action: "delete", Area: AreaProject}, catalog[2])
 	assert.Equal(t, Info{Value: "docs:thread", Label: "See doc threads", Domain: "docs", Action: "thread", Area: AreaProject}, catalog[3])
-	assert.Equal(t, Action("instance:write"), catalog[len(catalog)-1].Value)
+	assert.Equal(t, Action("templates:write"), catalog[len(catalog)-1].Value)
 
 	seen := map[Action]bool{}
 	domains := map[string]bool{}
@@ -25,7 +25,7 @@ func TestCatalog_GridShape(t *testing.T) {
 		domains[info.Domain] = true
 		assert.Equal(t, Action(info.Domain+":"+info.Action), info.Value)
 	}
-	assert.Len(t, domains, 31)
+	assert.Len(t, domains, 32)
 	assert.Equal(t, AllActions(), func() []Action {
 		out := make([]Action, 0, len(catalog))
 		for _, info := range catalog {

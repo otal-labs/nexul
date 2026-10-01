@@ -47,7 +47,6 @@ func TestMCPTools_Surface(t *testing.T) {
 	}
 	assert.Equal(t, []string{
 		"memory_list", "memory_get", "memory_create", "memory_update", "memory_delete",
-		"interview_template_get", "interview_template_update",
 	}, names)
 }
 
@@ -85,7 +84,6 @@ func TestMCPTools_Errors(t *testing.T) {
 		{"update to a blank title", allowed, testCtx(), "memory_update", `{` + id + `,"title":" "}`, apperrs.ErrInvalid},
 		{"revert mixed with a field", allowed, testCtx(), "memory_update", `{` + id + `,"revert_to_version":1,"title":"x"}`, apperrs.ErrInvalid},
 		{"interview body over the cap", allowed, testCtx(), "memory_update", `{"id":"` + interview.ID + `","body":"` + strings.Repeat("a", MaxInterviewChars+1) + `"}`, apperrs.ErrInvalid},
-		{"template update without a workspace", allowed, testCtx(), "interview_template_update", `{"body":"x"}`, apperrs.ErrInvalid},
 		{"get a missing memory", allowed, testCtx(), "memory_get", `{"id":"nope"}`, apperrs.ErrNotFound},
 		{"get a missing version", allowed, testCtx(), "memory_get", `{` + id + `,"version":9}`, apperrs.ErrNotFound},
 		{"update a missing memory", allowed, testCtx(), "memory_update", `{"id":"nope","title":"x"}`, apperrs.ErrNotFound},
@@ -95,7 +93,6 @@ func TestMCPTools_Errors(t *testing.T) {
 		{"get without read", denied, testCtx(), "memory_get", `{` + id + `}`, apperrs.ErrForbidden},
 		{"update without access", denied, testCtx(), "memory_update", `{` + id + `,"title":"x"}`, apperrs.ErrForbidden},
 		{"delete without delete", denied, testCtx(), "memory_delete", `{` + id + `}`, apperrs.ErrForbidden},
-		{"template update without write", denied, testCtx(), "interview_template_update", `{"workspace_id":"workspace-1","body":"x"}`, apperrs.ErrForbidden},
 		{"create without an actor", allowed, context.Background(), "memory_create", `{"project_id":"project-1","title":"x"}`, apperrs.ErrUnauthorized},
 	}
 	for _, tt := range tests {
@@ -141,17 +138,6 @@ func TestMemoryUpdate_RevertToVersion(t *testing.T) {
 	v, err := s.GetVersion(testCtx(), m.ID, 3)
 	require.NoError(t, err)
 	assert.Equal(t, viaMCP, v.AuthorVia)
-}
-
-func TestInterviewTemplateUpdate_OmittedBodyKeepsTheTemplate(t *testing.T) {
-	s := newTestService(newFakeRepo())
-	mustCall(t, s, "interview_template_update", `{"workspace_id":"workspace-1","body":"## Mine"}`)
-
-	got := mustCall(t, s, "interview_template_update", `{"workspace_id":"workspace-1"}`).(*InterviewTemplate)
-	assert.Equal(t, "## Mine", got.Body)
-	got = mustCall(t, s, "interview_template_get", `{"workspace_id":"workspace-1"}`).(*InterviewTemplate)
-	assert.Equal(t, "## Mine", got.Body)
-	assert.Equal(t, DefaultInterviewTemplate, got.DefaultBody)
 }
 
 func TestMemoryCreate(t *testing.T) {

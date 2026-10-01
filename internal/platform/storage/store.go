@@ -70,6 +70,7 @@ type Store struct {
 	ConnectorAppConfig    *ConnectorAppConfigRepo
 	Chat                  *ChatRepo
 	Pairing               *PairingRepo
+	InstanceTemplates     *InstanceTemplatesRepo
 }
 
 // New builds a Store over db; encKey is the AES-256 key repos use to encrypt secrets, derived once at startup.
@@ -135,6 +136,7 @@ func New(db *sql.DB, encKey []byte) *Store {
 		ConnectorAppConfig:    &ConnectorAppConfigRepo{db: db, w: w, q: q, encKey: encKey},
 		Chat:                  &ChatRepo{db: db, w: w, q: q},
 		Pairing:               &PairingRepo{db: db, w: w, q: q},
+		InstanceTemplates:     &InstanceTemplatesRepo{db: db, w: w, q: q},
 	}
 }
 
