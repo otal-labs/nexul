@@ -10,6 +10,9 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 )
 
@@ -302,5 +305,37 @@ func TestDeleteRoom(t *testing.T) {
 		if err := c.DeleteRoom(context.Background(), "conv-1"); !errors.Is(err, apperrs.ErrRetryable) {
 			t.Fatalf("DeleteRoom (503) = %v, want ErrRetryable", err)
 		}
+	})
+}
+
+func TestRemoveParticipant(t *testing.T) {
+	t.Run("asks LiveKit to disconnect the identity with a room-admin grant for that room", func(t *testing.T) {
+		var gotPath string
+		var gotBody, gotGrant map[string]any
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			claims, err := parseJWT(r.Header.Get("Authorization")[len("Bearer "):], "secret1")
+			if err != nil {
+				t.Errorf("request token failed verification: %v", err)
+			}
+			gotGrant, _ = claims["video"].(map[string]any)
+			gotPath = r.URL.Path
+			_ = json.NewDecoder(r.Body).Decode(&gotBody)
+			_, _ = w.Write([]byte(`{}`))
+		}))
+		defer srv.Close()
+		c := &Client{WSURL: srv.URL, APIKey: "key1", APISecret: "secret1"}
+		require.NoError(t, c.RemoveParticipant(t.Context(), "conv-1", "u-1"))
+		assert.Equal(t, "/twirp/livekit.RoomService/RemoveParticipant", gotPath)
+		assert.Equal(t, map[string]any{"room": "conv-1", "identity": "u-1"}, gotBody)
+		assert.Equal(t, map[string]any{"roomAdmin": true, "room": "conv-1"}, gotGrant)
+	})
+	t.Run("someone LiveKit no longer has in the room is already gone", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"code":"not_found","msg":"participant not found"}`))
+		}))
+		defer srv.Close()
+		c := &Client{WSURL: srv.URL, APIKey: "key1", APISecret: "secret1"}
+		require.NoError(t, c.RemoveParticipant(t.Context(), "conv-1", "u-1"))
 	})
 }

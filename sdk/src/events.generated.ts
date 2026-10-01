@@ -13,13 +13,13 @@ export interface EventPayloads {
   "category.created": { "category": Record<string, unknown>; };
   "category.deleted": { "category": Record<string, unknown>; };
   "category.updated": { "category": Record<string, unknown>; };
-  "chat.conversation.created": { "conversation": Record<string, unknown>; };
-  "chat.conversation.deleted": { "conversation_id": string; "workspace_id": string; "kind": "channel" | "voice_channel"; "name": string; "actor_id"?: string; "private"?: boolean; "member_ids"?: string[]; };
-  "chat.conversation.members_changed": { "conversation_id": string; "workspace_id": string; "private": boolean; "added_user_ids": string[]; "removed_user_ids": string[]; "actor_id"?: string; };
-  "chat.conversation.updated": { "conversation_id": string; "workspace_id": string; "kind": "channel" | "voice_channel"; "name": string; "previous_name": string; "actor_id"?: string; };
-  "chat.message.created": { "message": Record<string, unknown>; };
-  "chat.message.deleted": { "conversation_id": string; "message_id": string; "deleted_at": string; };
-  "chat.message.updated": { "message": Record<string, unknown>; };
+  "chat.conversation.created": { "conversation": Record<string, unknown>; "members_only"?: boolean; };
+  "chat.conversation.deleted": { "conversation_id": string; "workspace_id": string; "kind": "channel" | "voice_channel"; "name": string; "actor_id"?: string; "private"?: boolean; "member_ids"?: string[]; "members_only"?: boolean; };
+  "chat.conversation.members_changed": { "conversation_id": string; "workspace_id": string; "private": boolean; "added_user_ids": string[]; "removed_user_ids": string[]; "actor_id"?: string; "members_only"?: boolean; };
+  "chat.conversation.updated": { "conversation_id": string; "workspace_id": string; "kind": "channel" | "voice_channel"; "name": string; "previous_name": string; "actor_id"?: string; "members_only"?: boolean; };
+  "chat.message.created": { "message": Record<string, unknown>; "members_only"?: boolean; };
+  "chat.message.deleted": { "conversation_id": string; "message_id": string; "deleted_at": string; "members_only"?: boolean; };
+  "chat.message.updated": { "message": Record<string, unknown>; "members_only"?: boolean; };
   "computer.paired": { "computer_id": string; "user_id": string; "server_url": string; "harness_version"?: string; "token_expires_at": string; };
   "computer.setup_confirmed": { "computer_id": string; "user_id": string; "provider"?: string; "confirmed_at"?: string; "skills"?: string[]; };
   "computer.setup_finished": { "computer_id": string; "user_id": string; "run_id": string; "confirmed": boolean; "providers": { "provider": string; "state": "running" | "confirmed" | "failed"; "status": string; }[]; };
@@ -111,7 +111,7 @@ export interface EventPayloads {
   "ticket_type.deleted": { "ticket_type": Record<string, unknown>; };
   "ticket_type.updated": { "ticket_type": Record<string, unknown>; };
   "topology.updated": { "environment": string; "canvas"?: Record<string, unknown>; };
-  "voice.occupancy.changed": { "conversation_id": string; "occupants": { "identity": string; "name": string; }[]; };
+  "voice.occupancy.changed": { "conversation_id": string; "occupants": { "identity": string; "name": string; }[]; "members_only"?: boolean; };
   "workspace.member.added": { "invitation_id"?: string; "user_id"?: string; "workspace_id"?: string; "actor_id"?: string; };
   "workspace.member.removed": { "user_id": string; "workspace_id": string; "actor_id"?: string; };
   "workspace.member.updated": { "user_id": string; "workspace_id": string; "actor_id"?: string; };
@@ -247,13 +247,13 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "category.created": {"category":{}},
   "category.deleted": {"category":{}},
   "category.updated": {"category":{}},
-  "chat.conversation.created": {"conversation":{}},
-  "chat.conversation.deleted": {"conversation_id":"fixture-conversation_id","workspace_id":"fixture-workspace_id","kind":"channel","name":"fixture-name","actor_id":"fixture-actor_id","private":false,"member_ids":["fixture-member_ids"]},
-  "chat.conversation.members_changed": {"conversation_id":"fixture-conversation_id","workspace_id":"fixture-workspace_id","private":false,"added_user_ids":["fixture-added_user_ids"],"removed_user_ids":["fixture-removed_user_ids"],"actor_id":"fixture-actor_id"},
-  "chat.conversation.updated": {"conversation_id":"fixture-conversation_id","workspace_id":"fixture-workspace_id","kind":"channel","name":"fixture-name","previous_name":"fixture-previous_name","actor_id":"fixture-actor_id"},
-  "chat.message.created": {"message":{}},
-  "chat.message.deleted": {"conversation_id":"fixture-conversation_id","message_id":"fixture-message_id","deleted_at":"2026-01-01T00:00:00Z"},
-  "chat.message.updated": {"message":{}},
+  "chat.conversation.created": {"conversation":{},"members_only":false},
+  "chat.conversation.deleted": {"conversation_id":"fixture-conversation_id","workspace_id":"fixture-workspace_id","kind":"channel","name":"fixture-name","actor_id":"fixture-actor_id","private":false,"member_ids":["fixture-member_ids"],"members_only":false},
+  "chat.conversation.members_changed": {"conversation_id":"fixture-conversation_id","workspace_id":"fixture-workspace_id","private":false,"added_user_ids":["fixture-added_user_ids"],"removed_user_ids":["fixture-removed_user_ids"],"actor_id":"fixture-actor_id","members_only":false},
+  "chat.conversation.updated": {"conversation_id":"fixture-conversation_id","workspace_id":"fixture-workspace_id","kind":"channel","name":"fixture-name","previous_name":"fixture-previous_name","actor_id":"fixture-actor_id","members_only":false},
+  "chat.message.created": {"message":{},"members_only":false},
+  "chat.message.deleted": {"conversation_id":"fixture-conversation_id","message_id":"fixture-message_id","deleted_at":"2026-01-01T00:00:00Z","members_only":false},
+  "chat.message.updated": {"message":{},"members_only":false},
   "computer.paired": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","server_url":"fixture-server_url","harness_version":"fixture-harness_version","token_expires_at":"2026-01-01T00:00:00Z"},
   "computer.setup_confirmed": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","provider":"fixture-provider","confirmed_at":"2026-01-01T00:00:00Z","skills":["fixture-skills"]},
   "computer.setup_finished": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","run_id":"fixture-run_id","confirmed":false,"providers":[{"provider":"fixture-provider","state":"running","status":"fixture-status"}]},
@@ -345,7 +345,7 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "ticket_type.deleted": {"ticket_type":{}},
   "ticket_type.updated": {"ticket_type":{}},
   "topology.updated": {"environment":"fixture-environment","canvas":{}},
-  "voice.occupancy.changed": {"conversation_id":"fixture-conversation_id","occupants":[{"identity":"fixture-identity","name":"fixture-name"}]},
+  "voice.occupancy.changed": {"conversation_id":"fixture-conversation_id","occupants":[{"identity":"fixture-identity","name":"fixture-name"}],"members_only":false},
   "workspace.member.added": {"invitation_id":"fixture-invitation_id","user_id":"fixture-user_id","workspace_id":"fixture-workspace_id","actor_id":"fixture-actor_id"},
   "workspace.member.removed": {"user_id":"fixture-user_id","workspace_id":"fixture-workspace_id","actor_id":"fixture-actor_id"},
   "workspace.member.updated": {"user_id":"fixture-user_id","workspace_id":"fixture-workspace_id","actor_id":"fixture-actor_id"},

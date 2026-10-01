@@ -43,6 +43,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/pairing/resolve", h.resolve)
 	mux.HandleFunc("GET /api/pairing/defaults", h.getDefaults)
 	mux.HandleFunc("PUT /api/pairing/defaults", h.setDefaults)
+	mux.HandleFunc("GET /api/pairing/projects", h.listProjectLinks)
 	mux.HandleFunc("GET /api/pairing/projects/{id}", h.getProjectLink)
 	mux.HandleFunc("PUT /api/pairing/projects/{id}", h.setProjectLink)
 	mux.HandleFunc("DELETE /api/pairing/projects/{id}", h.clearProjectLink)
@@ -367,6 +368,15 @@ func (h *Handler) setDefaults(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, d)
+}
+
+func (h *Handler) listProjectLinks(w http.ResponseWriter, r *http.Request) {
+	links, err := h.svc.ListProjectLinks(r.Context(), actorID(r))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"links": links})
 }
 
 func (h *Handler) getProjectLink(w http.ResponseWriter, r *http.Request) {

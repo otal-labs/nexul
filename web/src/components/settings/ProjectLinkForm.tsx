@@ -5,19 +5,20 @@ import { Button } from "@/components/ui/button";
 import { FormSelect } from "@/components/ticket/FormSelect";
 import { HarnessProjectField } from "@/components/settings/HarnessProjectField";
 import { HarnessProviderModelFields } from "@/components/settings/HarnessProviderModelFields";
-import { useClearProjectLink, useSetProjectLink } from "@/hooks/PairingHooks";
+import { useClearProjectLink, useSetProjectLink } from "@/hooks/PairingProjectHooks";
 import { ProjectLinkFormSchema, type Computer, type ProjectLink, type ProjectLinkFormData } from "@/models/Pairing";
 
 interface ProjectLinkFormProps {
   projectId: string;
+  projectName: string;
   link: ProjectLink;
   computers: Computer[];
 }
 
 // Split out so defaultValues only seed from a loaded `link` — same F2 "= [] trap" fix.
-export const ProjectLinkForm = ({ projectId, link, computers }: ProjectLinkFormProps) => {
-  const setLink = useSetProjectLink(projectId);
-  const clearLink = useClearProjectLink(projectId);
+export const ProjectLinkForm = ({ projectId, projectName, link, computers }: ProjectLinkFormProps) => {
+  const setLink = useSetProjectLink(projectId, projectName);
+  const clearLink = useClearProjectLink(projectId, projectName);
   const isLinked = !!link.computer_id;
 
   const form = useForm<ProjectLinkFormData>({
@@ -55,21 +56,13 @@ export const ProjectLinkForm = ({ projectId, link, computers }: ProjectLinkFormP
     }
   };
 
-  if (computers.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        Pair a computer in your pairing settings first, then come back to link one to this project.
-      </p>
-    );
-  }
-
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
       <FormSelect
         control={form.control}
         name="computer_id"
         label="Computer"
-        placeholder="Not linked"
+        placeholder="Pick a computer"
         options={computers.map((c) => ({ value: c.id, label: c.name }))}
       />
       <HarnessProjectField
@@ -84,7 +77,7 @@ export const ProjectLinkForm = ({ projectId, link, computers }: ProjectLinkFormP
         modelName="model"
         optionsName="model_options"
         computerId={form.watch("computer_id")}
-        description="Model for this project's agent turns"
+        description="Model for your agent turns in this project"
         onPick={(provider, model, options) => {
           form.setValue("provider", provider, { shouldDirty: true });
           form.setValue("model", model, { shouldDirty: true });
@@ -93,11 +86,11 @@ export const ProjectLinkForm = ({ projectId, link, computers }: ProjectLinkFormP
       />
       <div className="flex flex-wrap gap-2">
         <Button type="submit" loading={form.formState.isSubmitting}>
-          Save link
+          Save
         </Button>
         {isLinked && (
           <Button type="button" variant="outline" onClick={onClear} loading={clearLink.isPending}>
-            Clear link
+            Use my defaults
           </Button>
         )}
       </div>

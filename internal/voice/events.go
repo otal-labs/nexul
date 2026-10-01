@@ -12,4 +12,6 @@ func Topics() []string {
 type OccupancyChangedEvent struct {
 	ConversationID string     `json:"conversation_id"`
 	Occupants      []Occupant `json:"occupants"`
+	// MembersOnly marks a private voice channel's call, which never reaches integrations or automations.
+	MembersOnly bool `json:"members_only,omitempty"`
 }

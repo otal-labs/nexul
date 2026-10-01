@@ -118,6 +118,16 @@ func (c *Client) DeleteRoom(ctx context.Context, room string) error {
 	return err
 }
 
+// RemoveParticipant disconnects identity from room; someone LiveKit no longer has there counts as already gone.
+func (c *Client) RemoveParticipant(ctx context.Context, room, identity string) error {
+	err := c.call(ctx, "RemoveParticipant", map[string]any{"roomAdmin": true, "room": room},
+		map[string]any{"room": room, "identity": identity}, nil)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return nil
+	}
+	return err
+}
+
 // call issues one Twirp RoomService request; grants are per-method (roomList vs roomAdmin).
 func (c *Client) call(ctx context.Context, method string, grant map[string]any, body any, out any) (err error) {
 	now := time.Now().UTC()

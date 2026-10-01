@@ -10,9 +10,6 @@ ON CONFLICT(id) DO UPDATE SET
 -- name: GetPairingComputer :one
 SELECT * FROM pairing_computers WHERE id = ? AND user_id = ?;
 
--- name: GetPairingComputerByID :one
-SELECT * FROM pairing_computers WHERE id = ?;
-
 -- name: ListPairingComputers :many
 SELECT * FROM pairing_computers WHERE user_id = ? ORDER BY created_at DESC;
 
@@ -23,17 +20,20 @@ SELECT EXISTS (SELECT 1 FROM pairing_computers WHERE tunnel_hostname = ? AND tun
 DELETE FROM pairing_computers WHERE id = ? AND user_id = ?;
 
 -- name: GetPairingProjectLink :one
-SELECT * FROM pairing_project_links WHERE project_id = ?;
+SELECT * FROM pairing_project_links WHERE user_id = ? AND project_id = ?;
+
+-- name: ListPairingProjectLinks :many
+SELECT * FROM pairing_project_links WHERE user_id = ? ORDER BY project_id;
 
 -- name: SavePairingProjectLink :exec
-INSERT INTO pairing_project_links (project_id, computer_id, harness_project_id, provider, model, model_options, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?)
-ON CONFLICT(project_id) DO UPDATE SET
+INSERT INTO pairing_project_links (user_id, project_id, computer_id, harness_project_id, provider, model, model_options, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(user_id, project_id) DO UPDATE SET
   computer_id = excluded.computer_id, harness_project_id = excluded.harness_project_id,
   provider = excluded.provider, model = excluded.model, model_options = excluded.model_options, updated_at = excluded.updated_at;
 
 -- name: DeletePairingProjectLink :exec
-DELETE FROM pairing_project_links WHERE project_id = ?;
+DELETE FROM pairing_project_links WHERE user_id = ? AND project_id = ?;
 
 -- name: GetPairingDefaults :one
 SELECT default_computer_id, fallback_project_id, provider, model, model_options FROM pairing_user_defaults WHERE user_id = ?;

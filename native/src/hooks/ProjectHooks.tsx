@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 
 import { api } from "@/api/client";
 import { useCurrentWorkspaceId } from "@/hooks/WorkspaceHooks";
@@ -22,3 +23,12 @@ export const useFetchProject = (id: string | undefined) =>
     queryFn: () => api.get<Project>(`/api/projects/${id}`),
     enabled: !!id,
   });
+
+// True once a project this screen showed leaves the viewer's list; one it never showed stays the screen's own not found.
+export const useRevokedProject = (projectId: string | undefined): boolean => {
+  const { data: projects } = useFetchProjects();
+  const [opened, setOpened] = useState<string>();
+  const found = !!projectId && !!projects?.some((project) => project.id === projectId);
+  if (found && opened !== projectId) setOpened(projectId);
+  return !!projectId && !!projects && !found && opened === projectId;
+};

@@ -58,6 +58,11 @@ type Conversation struct {
 	ParticipantIDs []string `json:"participant_ids,omitempty"`
 }
 
+// membersOnly reports a conversation read by its members alone: a DM or a private channel.
+func (c *Conversation) membersOnly() bool {
+	return c.Kind == KindDM || c.Private
+}
+
 // MentionKind labels a parsed mention's target.
 type MentionKind string
 

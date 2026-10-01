@@ -85,7 +85,7 @@ describe("useHarnessReadiness", () => {
     await waitFor(() =>
       expect(result.current).toEqual({
         state: "no_harness_project",
-        message: "Pick a harness project for this project, or set a fallback in Settings",
+        message: "Link this project in Settings → T3 pairing → Projects, or set a fallback under Defaults",
       }),
     );
   });

@@ -8,7 +8,7 @@ import { useWorkspaceStore } from "@/stores/workspaceStore";
 jest.mock("expo-secure-store", () => ({ getItem: () => null, setItem: jest.fn(), deleteItemAsync: jest.fn() }));
 
 // The icon package ships untransformed ESM; the rows are asserted by text, not by icon.
-jest.mock("lucide-react-native", () => ({ FileText: () => null, Hash: () => null, SquareKanban: () => null, User: () => null }));
+jest.mock("lucide-react-native", () => ({ FileText: () => null, Hash: () => null, Lock: () => null, SquareKanban: () => null, User: () => null }));
 
 const mockPush = jest.fn();
 jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush }) }));
@@ -108,6 +108,22 @@ describe("ChatListScreen", () => {
     expect(await screen.findByRole("button", { name: "ana" })).toBeTruthy();
     expect(screen.getByLabelText("3 unread")).toBeTruthy();
     expect(screen.queryByText("standup")).toBeNull();
+  });
+
+  test("a private channel is named private, a public one is not", async () => {
+    get.mockImplementation(async (path: string) => {
+      if (path === "/api/chat/conversations?workspace_id=w1")
+        return [
+          { id: "c1", workspace_id: "w1", kind: "channel", name: "general", private: false, created_by: "me", created_at: "", updated_at: "" },
+          { id: "c4", workspace_id: "w1", kind: "channel", name: "clients", private: true, created_by: "me", created_at: "", updated_at: "" },
+        ];
+      if (path in responses) return responses[path];
+      throw new Error(`unexpected GET ${path}`);
+    });
+    await renderScreen();
+
+    expect(await screen.findByRole("button", { name: "clients, private" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "general" })).toBeTruthy();
   });
 
   test("tapping a row opens its thread", async () => {
