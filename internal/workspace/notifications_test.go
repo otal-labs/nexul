@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"maps"
 	"strconv"
 	"strings"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -31,6 +33,8 @@ type fakeNotifRepo struct {
 	listErr   error
 	countErr  error
 	markErr   error
+	deleteErr error
+	cutoffs   [][2]time.Time
 }
 
 func newFakeNotifRepo() *fakeNotifRepo {
@@ -126,7 +130,7 @@ func (f *fakeNotifRepo) UnreadByProject(_ context.Context, userID, workspaceID s
 	return out, nil
 }
 
-func (f *fakeNotifRepo) MarkRead(_ context.Context, userID, id string) error {
+func (f *fakeNotifRepo) MarkRead(_ context.Context, userID, id string, _ time.Time) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.markErr != nil {
@@ -140,7 +144,7 @@ func (f *fakeNotifRepo) MarkRead(_ context.Context, userID, id string) error {
 	return nil
 }
 
-func (f *fakeNotifRepo) MarkAllRead(_ context.Context, userID, workspaceID string) error {
+func (f *fakeNotifRepo) MarkAllRead(_ context.Context, userID, workspaceID string, _ time.Time) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.markErr != nil {
@@ -152,6 +156,24 @@ func (f *fakeNotifRepo) MarkAllRead(_ context.Context, userID, workspaceID strin
 		}
 	}
 	return nil
+}
+
+// DeleteExpired records each pass's cutoffs (read before, created before); deleteErr fails one pass, then clears.
+func (f *fakeNotifRepo) DeleteExpired(_ context.Context, readBefore, createdBefore time.Time) (int64, int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.cutoffs = append(f.cutoffs, [2]time.Time{readBefore, createdBefore})
+	if err := f.deleteErr; err != nil {
+		f.deleteErr = nil
+		return 0, 0, err
+	}
+	return 1, 1, nil
+}
+
+func (f *fakeNotifRepo) cleanupPasses() [][2]time.Time {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([][2]time.Time(nil), f.cutoffs...)
 }
 
 func (f *fakeNotifRepo) notifsFor(userID string) []*Notification {
@@ -338,7 +360,7 @@ func TestNotifUnreadCount(t *testing.T) {
 		repo := newFakeNotifRepo()
 		repo.create(t, &Notification{ID: "n1", UserID: "u1"})
 		repo.create(t, &Notification{ID: "n2", UserID: "u1"})
-		require.NoError(t, repo.MarkRead(context.Background(), "u1", "n1"))
+		require.NoError(t, repo.MarkRead(context.Background(), "u1", "n1", notifFixedNow))
 		s := newTestNotifService(repo, newFakeNotifUsers())
 		n, err := s.UnreadCount(context.Background(), "u1", "")
 		require.NoError(t, err)
@@ -605,31 +627,26 @@ func TestHandleTicketStatusChanged(t *testing.T) {
 	})
 }
 
+// fakeDocWatchers maps a doc id to its watchers' user ids.
+type fakeDocWatchers struct {
+	byDoc map[string][]string
+	err   error
+}
+
+func (f *fakeDocWatchers) ListDocWatcherIDs(_ context.Context, docID string) ([]string, error) {
+	return f.byDoc[docID], f.err
+}
+
+// TestHandleDocCreatedAndUpdated covers the handlers' failure and redelivery paths; who is told is checked end to end
+// over real storage in server/cmd's doc watcher tests.
 func TestHandleDocCreatedAndUpdated(t *testing.T) {
 	docPayload := map[string]any{"doc": map[string]any{"id": "d-1", "title": "Spec", "project_id": "p-1"}}
 	users := func() *fakeNotifUsers { return newFakeNotifUsers(notifUser("u1", "onik97"), notifUser("u2", "alice")) }
 	wsMembers := func() *fakeMemberStore {
-		return &fakeMemberStore{byWorkspace: map[string][]string{"ws-1": {"u1", "u2"}, "ws-2": {"u3"}}}
+		return &fakeMemberStore{byWorkspace: map[string][]string{"ws-1": {"u1", "u2"}}}
 	}
+	watching := func(ids ...string) *fakeDocWatchers { return &fakeDocWatchers{byDoc: map[string][]string{"d-1": ids}} }
 
-	t.Run("doc.created fans out to every member of the doc's workspace", func(t *testing.T) {
-		repo := newFakeNotifRepo()
-		s := newTestNotifServiceWith(repo, users(), wsMembers(), &fakeAccessChecker{})
-		require.NoError(t, HandleDocCreated(context.Background(), s, notifEvFor(t, "doc.created", docPayload)))
-		require.Len(t, repo.notifsFor("u1"), 1)
-		assert.Equal(t, KindDocCreated, repo.notifsFor("u1")[0].Kind)
-		assert.Equal(t, SubjectDoc, repo.notifsFor("u1")[0].SubjectType)
-		assert.Equal(t, "ws-1", repo.notifsFor("u1")[0].WorkspaceID)
-		require.Len(t, repo.notifsFor("u2"), 1)
-		assert.Empty(t, repo.notifsFor("u3"), "a member of another workspace is not told")
-	})
-	t.Run("doc.updated fans out to every member of the doc's workspace", func(t *testing.T) {
-		repo := newFakeNotifRepo()
-		s := newTestNotifServiceWith(repo, users(), wsMembers(), &fakeAccessChecker{})
-		require.NoError(t, HandleDocUpdated(context.Background(), s, notifEvFor(t, "doc.updated", docPayload)))
-		require.Len(t, repo.notifsFor("u1"), 1)
-		assert.Equal(t, KindDocUpdated, repo.notifsFor("u1")[0].Kind)
-	})
 	t.Run("malformed payload is fatal", func(t *testing.T) {
 		s := newTestNotifService(newFakeNotifRepo(), newFakeNotifUsers())
 		err := HandleDocCreated(context.Background(), s, eventbus.Event{ID: "e1", Payload: []byte(`{`)})
@@ -638,17 +655,25 @@ func TestHandleDocCreatedAndUpdated(t *testing.T) {
 	})
 	t.Run("fan-out is idempotent per source event", func(t *testing.T) {
 		repo := newFakeNotifRepo()
-		s := newTestNotifServiceWith(repo, users(), wsMembers(), &fakeAccessChecker{})
-		ev := notifEvFor(t, "doc.created", docPayload)
-		require.NoError(t, HandleDocCreated(context.Background(), s, ev))
-		require.NoError(t, HandleDocCreated(context.Background(), s, ev))
+		s := newTestNotifServiceWith(repo, users(), wsMembers(), &fakeAccessChecker{}).WithDocWatchers(watching("u1"))
+		ev := notifEvFor(t, "doc.updated", docPayload)
+		require.NoError(t, HandleDocUpdated(context.Background(), s, ev))
+		require.NoError(t, HandleDocUpdated(context.Background(), s, ev))
 		require.Len(t, repo.notifsFor("u1"), 1)
 	})
-	t.Run("member store failure propagates", func(t *testing.T) {
+	t.Run("watcher lookup failure propagates so the bus retries", func(t *testing.T) {
+		watchers := watching("u1")
+		watchers.err = errors.New("db down")
+		s := newTestNotifServiceWith(newFakeNotifRepo(), users(), wsMembers(), &fakeAccessChecker{}).WithDocWatchers(watchers)
+		err := HandleDocUpdated(context.Background(), s, notifEvFor(t, "doc.updated", docPayload))
+		assert.ErrorIs(t, err, watchers.err)
+	})
+	t.Run("member store failure propagates when the save mentions someone", func(t *testing.T) {
 		members := wsMembers()
 		members.err = errors.New("db down")
 		s := newTestNotifServiceWith(newFakeNotifRepo(), users(), members, &fakeAccessChecker{})
-		err := HandleDocCreated(context.Background(), s, notifEvFor(t, "doc.created", docPayload))
+		mentioning := map[string]any{"doc": docPayload["doc"], "mentioned_user_ids": []string{"u2"}}
+		err := HandleDocCreated(context.Background(), s, notifEvFor(t, "doc.created", mentioning))
 		assert.ErrorIs(t, err, members.err)
 	})
 }
@@ -712,14 +737,14 @@ func TestFanOut_TheActorIsNeverNotifiedOfTheirOwnAction(t *testing.T) {
 			map[string]any{"ticket": selfFiled}},
 		{"ticket.status_changed moved by its developer", HandleTicketStatusChanged, "ticket.status_changed",
 			map[string]any{"ticket": ticket, "actor": map[string]any{"kind": "user", "user_id": "u1"}}},
-		{"doc.created by a member", HandleDocCreated, "doc.created", map[string]any{"doc": doc, "actor_id": "u1"}},
-		{"doc.updated by a member", HandleDocUpdated, "doc.updated", map[string]any{"doc": doc, "actor_id": "u1"}},
+		{"doc.updated by a watcher", HandleDocUpdated, "doc.updated", map[string]any{"doc": doc, "actor_id": "u1"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := newFakeNotifRepo()
 			members := &fakeMemberStore{byWorkspace: map[string][]string{"ws-1": {"u1", "u2"}}}
-			s := newTestNotifServiceWith(repo, newFakeNotifUsers(notifUser("u1", "onik97"), notifUser("u2", "alice")), members, &fakeAccessChecker{})
+			s := newTestNotifServiceWith(repo, newFakeNotifUsers(notifUser("u1", "onik97"), notifUser("u2", "alice")), members, &fakeAccessChecker{}).
+				WithDocWatchers(&fakeDocWatchers{byDoc: map[string][]string{"d-1": {"u1", "u2"}}})
 			require.NoError(t, tt.handle(context.Background(), s, notifEvFor(t, tt.topic, tt.body)))
 			assert.Empty(t, repo.notifsFor("u1"), "the actor is not notified")
 			assert.Len(t, repo.notifsFor("u2"), 1, "everyone else still is")
@@ -811,4 +836,37 @@ func TestHandlePlayRunWaiting(t *testing.T) {
 
 	err := HandlePlayRunWaiting(context.Background(), s, notifEvFor(t, "play.run_waiting", map[string]any{"trail_id": "tr-1"}))
 	require.ErrorIs(t, err, apperrs.ErrFatal)
+}
+
+func TestNotificationRunCleanupLoop_RunsAMinuteAfterStartThenDaily_SurvivingAFailedPass(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		repo := newFakeNotifRepo()
+		repo.deleteErr = errors.New("database is locked")
+		s := NewNotificationService(repo, nil, nil, nil, nil)
+		ctx, cancel := context.WithCancel(t.Context())
+		done := make(chan struct{})
+		start := time.Now()
+		go func() {
+			s.RunCleanupLoop(ctx, slog.New(slog.DiscardHandler))
+			close(done)
+		}()
+
+		synctest.Wait()
+		assert.Empty(t, repo.cleanupPasses(), "nothing is deleted while the server is still starting")
+
+		time.Sleep(time.Minute)
+		synctest.Wait()
+		passes := repo.cleanupPasses()
+		require.Len(t, passes, 1, "the first pass runs shortly after start, not a day later")
+		firstRun := start.Add(time.Minute)
+		assert.Equal(t, firstRun.Add(-90*24*time.Hour), passes[0][0], "read notifications are kept 90 days after they were read")
+		assert.Equal(t, firstRun.Add(-180*24*time.Hour), passes[0][1], "every notification is kept 180 days after it was sent")
+
+		time.Sleep(24 * time.Hour)
+		synctest.Wait()
+		assert.Len(t, repo.cleanupPasses(), 2, "a failed pass does not stop the next day's")
+
+		cancel()
+		<-done
+	})
 }

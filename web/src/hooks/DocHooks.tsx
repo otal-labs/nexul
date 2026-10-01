@@ -2,10 +2,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
-import type { Doc, DocListItem, SaveDocFormData } from "@/models/Doc";
+import type { Doc, DocListItem, DocWatchers, SaveDocFormData } from "@/models/Doc";
 
 export const getDocsKey = "getDocs";
 export const getDocKey = "getDoc";
+export const getDocWatchersKey = "getDocWatchers";
 
 export const useFetchDocs = () =>
   useQuery({
@@ -104,6 +105,29 @@ export const useDeleteDoc = () => {
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getDocsKey] });
       toast.success("Doc deleted");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
+export const useFetchDocWatchers = (docId: string) =>
+  useQuery({
+    queryKey: [getDocWatchersKey, docId],
+    queryFn: async () => (await api.get<DocWatchers>(`/api/docs/${docId}/watchers`)).data,
+    enabled: !!docId,
+  });
+
+// Watching is the viewer's own; the response is the doc's watchers as they now stand, so it replaces the cache.
+export const useSetDocWatching = (docId: string) => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (watching: boolean) => {
+      const url = `/api/docs/${docId}/watchers/me`;
+      return (watching ? await api.put<DocWatchers>(url) : await api.delete<DocWatchers>(url)).data;
+    },
+    onSuccess: (watchers) => {
+      client.setQueryData([getDocWatchersKey, docId], watchers);
+      toast.success(watchers.watching ? "Watching this doc" : "Stopped watching this doc");
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

@@ -95,7 +95,7 @@ func TestDocsRepo_List_ReturnsAll(t *testing.T) {
 func TestDocsRepo_Update_NotFound(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
-	err := s.Docs.Update(context.Background(), newTestDoc("missing"))
+	err := s.Docs.Update(context.Background(), newTestDoc("missing"), "")
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
@@ -108,7 +108,7 @@ func TestDocsRepo_Update_PersistsChanges(t *testing.T) {
 	d.Title = "Renamed"
 	d.Body = "changed body"
 	d.Version = 2
-	require.NoError(t, s.Docs.Update(context.Background(), d))
+	require.NoError(t, s.Docs.Update(context.Background(), d, ""))
 
 	got, err := s.Docs.GetByID(context.Background(), "doc-1")
 	require.NoError(t, err)
@@ -185,7 +185,7 @@ func TestDocsRepo_UpdateRewritesSearchText(t *testing.T) {
 	updated := newTestDoc("doc-1")
 	updated.Body = `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"new searchable content"}]}]}`
 	updated.Version = 2
-	require.NoError(t, s.Docs.Update(context.Background(), updated))
+	require.NoError(t, s.Docs.Update(context.Background(), updated, ""))
 
 	got, err := s.Docs.Search(context.Background(), "new", 10)
 	require.NoError(t, err)
@@ -208,7 +208,7 @@ func TestDocsRepo_CommitBody_NoVersionRowAndReindexes(t *testing.T) {
 	updated.Title = "Committed"
 	updated.Body = `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"merged-state"}]}]}`
 	updated.Version = 2
-	require.NoError(t, s.Docs.CommitBody(ctx, updated))
+	require.NoError(t, s.Docs.CommitBody(ctx, updated, ""))
 
 	got, err := s.Docs.GetByID(ctx, "doc-1")
 	require.NoError(t, err)
@@ -232,7 +232,7 @@ func TestDocsRepo_CommitBody_NoVersionRowAndReindexes(t *testing.T) {
 func TestDocsRepo_CommitBody_MissingDoc(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
-	err := s.Docs.CommitBody(context.Background(), newTestDoc("nope"))
+	err := s.Docs.CommitBody(context.Background(), newTestDoc("nope"), "")
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 

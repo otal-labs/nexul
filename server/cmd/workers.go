@@ -80,6 +80,7 @@ func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *stor
 		fail(fmt.Errorf("write instance automations host enrollment: %w", err))
 	}
 	go automations.RunCleanupLoop(ctx, svc.automationRunsSvc, 30*24*time.Hour, time.Hour, logger)
+	go svc.notifSvc.RunCleanupLoop(ctx, logger)
 
 	return wsHandler, runnerSvc, runnerHTTP, automationsDialin
 }

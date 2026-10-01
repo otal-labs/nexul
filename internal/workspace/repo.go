@@ -2,6 +2,7 @@ package workspace
 
 import (
 	"context"
+	"time"
 
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
@@ -50,8 +51,10 @@ type NotificationRepo interface {
 	// List, UnreadByProject, and MarkAllRead span every workspace when workspaceID is empty.
 	List(ctx context.Context, userID, workspaceID string, limit int) ([]*Notification, error)
 	UnreadByProject(ctx context.Context, userID, workspaceID string) ([]UnreadGroup, error)
-	MarkRead(ctx context.Context, userID, id string) error
-	MarkAllRead(ctx context.Context, userID, workspaceID string) error
+	MarkRead(ctx context.Context, userID, id string, at time.Time) error
+	MarkAllRead(ctx context.Context, userID, workspaceID string, at time.Time) error
+	// DeleteExpired returns how many read notifications and how many old ones it deleted.
+	DeleteExpired(ctx context.Context, readBefore, createdBefore time.Time) (read, old int64, err error)
 }
 
 // ProjectReader resolves a notification subject's project to the workspace the notification belongs to.
@@ -108,6 +111,11 @@ type UserStore interface {
 // onto tenancy's membership store; a memory notice fans out to its workspace's members, unlike docs' every-registered-user one.
 type WorkspaceMemberStore interface {
 	ListMemberUserIDs(ctx context.Context, workspaceID string) ([]string, error)
+}
+
+// DocWatchers resolves a doc's watchers, adapted at the composition root onto the docs domain (ADR 0017).
+type DocWatchers interface {
+	ListDocWatcherIDs(ctx context.Context, docID string) ([]string, error)
 }
 
 // PermissionChecker adapts access (ADR 0017), so a notice only reaches someone who may open its subject.

@@ -7,6 +7,7 @@ import { DocBodySection } from "@/components/doc/DocBodySection";
 import { DocLockedSignal } from "@/components/doc/DocLockedSignal";
 import { DocPresenceBar } from "@/components/doc/DocPresenceBar";
 import { DocTitleField } from "@/components/doc/DocTitleField";
+import { DocWatchButton } from "@/components/doc/DocWatchButton";
 import { DocToc } from "@/components/doc/DocToc";
 import { PointerOverlay } from "@/components/doc/collab/PointerOverlay";
 import { useCollabSession } from "@/components/doc/collab/useCollabSession";
@@ -127,6 +128,7 @@ export const DocDetail = ({
             <div className="flex items-center gap-1">
               {doc.locked && <DocLockedSignal docId={doc.id} />}
               <PlaysMenu workspaceId={workspaceId} projectId={doc.project_id} docId={doc.id} />
+              <DocWatchButton docId={doc.id} />
               <DocThreadButton workspaceId={workspaceId} docId={doc.id} />
               <DocActionsMenu
                 doc={doc}

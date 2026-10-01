@@ -2,38 +2,51 @@ package storage
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/otal-labs/nexul/internal/docs"
 )
 
-// TestMigration0050_WorkspaceMemoriesGoWithTheirVersionsAndAttachments upgrades a database holding a workspace
-// memory and a project memory, each with a version and an attachment; migrations run with foreign keys off, so
-// nothing cascades for free.
-func TestMigration0050_WorkspaceMemoriesGoWithTheirVersionsAndAttachments(t *testing.T) {
+func TestMigration0050_CreatorsAndVersionAuthorsWatchTheirDocs(t *testing.T) {
 	db := migrateBefore(t, "0050")
 	_, err := db.Exec(`
+INSERT INTO users (id, login, created_at, updated_at) VALUES ('u-onik', 'onik', 0, 0), ('u-rix', 'rix', 0, 0);
 INSERT INTO projects (id, name, prefix, position, workspace_id, created_at, updated_at) VALUES ('p-web', 'Web', 'WEB', 0, 'workspace-default', 0, 0);
-INSERT INTO memories (id, workspace_id, project_id, title, body, version, created_at, updated_at) VALUES
-    ('m-ws', 'workspace-default', NULL, 'Team tone', '', 2, 0, 0),
-    ('m-web', 'workspace-default', 'p-web', 'Deploy quirks', '', 1, 0, 0);
-INSERT INTO memory_versions (id, memory_id, version, title, body, created_at) VALUES
-    ('v-ws-1', 'm-ws', 1, 'Team tone', '', 0),
-    ('v-ws-2', 'm-ws', 2, 'Team tone', '', 0),
-    ('v-web-1', 'm-web', 1, 'Deploy quirks', '', 0);
-INSERT INTO attachments (id, memory_id, name, content_type, size, data, created_at) VALUES
-    ('a-ws', 'm-ws', 'tone.png', 'image/png', 1, x'00', 0),
-    ('a-web', 'm-web', 'deploy.png', 'image/png', 1, x'00', 0);
+INSERT INTO docs (id, title, body, project_id, folder_id, version, archived, locked, created_by, created_at, updated_at) VALUES
+    ('d-plan', 'Plan', '', 'p-web', '', 3, 0, 0, 'u-onik', 100, 300),
+    ('d-seeded', 'Seeded', '', 'p-web', '', 1, 0, 0, '', 200, 200),
+    ('d-system', 'System', '', 'p-web', '', 1, 0, 0, 'system', 200, 200);
+INSERT INTO doc_versions (doc_id, version, title, body, name, author_id, created_at) VALUES
+    ('d-plan', 1, 'Plan', '', '', '', 100),
+    ('d-plan', 2, 'Plan', '', 'Draft', 'u-rix', 200),
+    ('d-plan', 3, 'Plan', '', 'Final', 'u-rix', 300),
+    ('d-plan', 4, 'Plan', '', 'Mine', 'u-onik', 400),
+    ('d-seeded', 1, 'Seeded', '', 'Kickoff', 'u-rix', 250),
+    ('d-system', 1, 'System', '', 'Import', 'nexul-system', 250);
 `)
 	require.NoError(t, err)
 
 	require.NoError(t, Migrate(db), "0050 and every later migration apply on top, as an upgrade would")
+	s := New(db, testEncKey)
+	ctx := t.Context()
 
-	assert.Zero(t, count(t, db, `SELECT COUNT(*) FROM memories WHERE project_id IS NULL`))
-	assert.Zero(t, count(t, db, `SELECT COUNT(*) FROM memory_versions WHERE memory_id = 'm-ws'`))
-	assert.Zero(t, count(t, db, `SELECT COUNT(*) FROM attachments WHERE memory_id = 'm-ws'`))
-	assert.Equal(t, 1, count(t, db, `SELECT COUNT(*) FROM memories WHERE id = 'm-web'`), "project memories are untouched")
-	assert.Equal(t, 1, count(t, db, `SELECT COUNT(*) FROM memory_versions WHERE memory_id = 'm-web'`))
-	assert.Equal(t, 1, count(t, db, `SELECT COUNT(*) FROM attachments WHERE memory_id = 'm-web'`))
-	assert.Zero(t, count(t, db, `SELECT COUNT(*) FROM sqlite_master WHERE name = 'idx_memories_workspace_scoped'`))
+	watchers := func(docID string) map[string]docs.WatcherSource {
+		ws, err := s.Docs.ListWatchers(ctx, docID)
+		require.NoError(t, err)
+		out := map[string]docs.WatcherSource{}
+		for _, w := range ws {
+			out[w.UserID] = w.Source
+		}
+		return out
+	}
+	assert.Equal(t, map[string]docs.WatcherSource{"u-onik": docs.WatcherAuto, "u-rix": docs.WatcherAuto}, watchers("d-plan"),
+		"the creator and each distinct version author, once")
+	assert.Equal(t, map[string]docs.WatcherSource{"u-rix": docs.WatcherAuto}, watchers("d-seeded"), "a doc with no creator keeps its authors")
+	assert.Empty(t, watchers("d-system"), "a creator or author who is not a user is skipped")
+
+	require.NoError(t, s.Docs.SetWatching(ctx, "d-plan", "u-rix", false, time.Now()))
+	assert.NotContains(t, watchers("d-plan"), "u-rix", "a backfilled watcher can stop watching like any other")
 }

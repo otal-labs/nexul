@@ -30,7 +30,7 @@ func (r *NotificationsRepo) CreateMany(ctx context.Context, ns []*workspace.Noti
 		for _, n := range ns {
 			rows, err := q.CreateNotificationIfAbsent(ctx, sqlcgen.CreateNotificationIfAbsentParams{
 				ID: n.ID, UserID: n.UserID, WorkspaceID: n.WorkspaceID, Kind: string(n.Kind), SubjectType: string(n.SubjectType),
-				SubjectID: n.SubjectID, SubjectTitle: n.SubjectTitle, Read: int64(boolInt(n.Read)), CreatedAt: n.CreatedAt.Unix(),
+				SubjectID: n.SubjectID, SubjectTitle: n.SubjectTitle, Read: int64(boolInt(n.Read)), ReadAt: nullUnixPtr(n.ReadAt), CreatedAt: n.CreatedAt.Unix(),
 			})
 			if err != nil {
 				if errors.Is(classifyWriteErr(err), apperrs.ErrConflict) {
@@ -74,9 +74,9 @@ func (r *NotificationsRepo) UnreadByProject(ctx context.Context, userID, workspa
 	return out, nil
 }
 
-func (r *NotificationsRepo) MarkRead(ctx context.Context, userID, id string) error {
+func (r *NotificationsRepo) MarkRead(ctx context.Context, userID, id string, at time.Time) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		n, err := r.q.WithTx(tx).MarkNotificationRead(ctx, sqlcgen.MarkNotificationReadParams{ID: id, UserID: userID})
+		n, err := r.q.WithTx(tx).MarkNotificationRead(ctx, sqlcgen.MarkNotificationReadParams{ID: id, UserID: userID, ReadAt: nullUnixPtr(&at)})
 		if err != nil {
 			return fmt.Errorf("mark notification %s read: %w", id, err)
 		}
@@ -87,13 +87,28 @@ func (r *NotificationsRepo) MarkRead(ctx context.Context, userID, id string) err
 	})
 }
 
-func (r *NotificationsRepo) MarkAllRead(ctx context.Context, userID, workspaceID string) error {
+func (r *NotificationsRepo) MarkAllRead(ctx context.Context, userID, workspaceID string, at time.Time) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		if err := r.q.WithTx(tx).MarkAllNotificationsRead(ctx, sqlcgen.MarkAllNotificationsReadParams{UserID: userID, WorkspaceID: workspaceID}); err != nil {
+		if err := r.q.WithTx(tx).MarkAllNotificationsRead(ctx, sqlcgen.MarkAllNotificationsReadParams{UserID: userID, WorkspaceID: workspaceID, ReadAt: nullUnixPtr(&at)}); err != nil {
 			return fmt.Errorf("mark all notifications read for %s: %w", userID, err)
 		}
 		return nil
 	})
+}
+
+// DeleteExpired deletes every notification created before createdBefore, then every one read before readBefore.
+func (r *NotificationsRepo) DeleteExpired(ctx context.Context, readBefore, createdBefore time.Time) (read, old int64, err error) {
+	err = r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		q := r.q.WithTx(tx)
+		if old, err = q.DeleteNotificationsCreatedBefore(ctx, createdBefore.Unix()); err != nil {
+			return fmt.Errorf("delete notifications created before %s: %w", createdBefore, err)
+		}
+		if read, err = q.DeleteNotificationsReadBefore(ctx, nullUnixPtr(&readBefore)); err != nil {
+			return fmt.Errorf("delete notifications read before %s: %w", readBefore, err)
+		}
+		return nil
+	})
+	return read, old, err
 }
 
 func toNotification(row sqlcgen.Notification) *workspace.Notification {
@@ -106,6 +121,7 @@ func toNotification(row sqlcgen.Notification) *workspace.Notification {
 		SubjectID:    row.SubjectID,
 		SubjectTitle: row.SubjectTitle,
 		Read:         row.Read != 0,
+		ReadAt:       unixPtrFromNull(row.ReadAt),
 		CreatedAt:    time.Unix(row.CreatedAt, 0).UTC(),
 	}
 }

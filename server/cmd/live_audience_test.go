@@ -51,6 +51,7 @@ func TestLiveAudience_FramesFollowTheEntitysRead(t *testing.T) {
 		{roles.TopicUpdated, roles.RoleEvent{RoleID: "role-1", WorkspaceID: "workspace-default"}, map[string]bool{uOwner: true, uPlain: true, uOutsider: false}},
 		{docs.TopicFolderCreated, docs.FolderEvent{Folder: docs.Folder{ID: "f-1", ProjectID: "project-general", Name: "GetSource"}}, map[string]bool{uReader: true, uPlain: false, uOutsider: false}},
 		{memories.TopicUpdated, memories.UpdatedEvent{Memory: memories.MemoryRef{ID: "memory-1", WorkspaceID: "workspace-default", ProjectID: "project-general"}}, map[string]bool{uReader: true, uPlain: false, uOutsider: false}},
+		{docs.TopicWatchersChanged, docs.WatchersChangedEvent{Doc: docs.WatchedDoc{ID: f.doc, ProjectID: "project-general"}, UserID: uReader, Watching: true}, map[string]bool{uReader: true, uPlain: false, uOutsider: false}},
 	}
 	for _, tc := range cases {
 		raw, err := json.Marshal(tc.payload)

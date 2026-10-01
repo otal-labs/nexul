@@ -14,8 +14,8 @@ import (
 	"github.com/otal-labs/nexul/internal/workspace"
 )
 
-func TestMigration0049_ExistingMembersAndGrantsStayFromRole(t *testing.T) {
-	db := migrateBefore(t, "0049")
+func TestMigration0051_ExistingMembersAndGrantsStayFromRole(t *testing.T) {
+	db := migrateBefore(t, "0051")
 	_, err := db.Exec(`
 INSERT INTO users (id, login, created_at, updated_at) VALUES ('u-owner', 'owner', 0, 0), ('u-dev', 'dev', 0, 0);
 INSERT INTO roles (id, workspace_id, name, is_owner_role, created_at, updated_at, permissions) VALUES
@@ -30,7 +30,7 @@ INSERT INTO invitation_grants (invitation_id, workspace_id, role_id, allow_json,
 `)
 	require.NoError(t, err)
 
-	require.NoError(t, Migrate(db), "0049 and every later migration apply on top, as an upgrade would")
+	require.NoError(t, Migrate(db), "0051 and every later migration apply on top, as an upgrade would")
 	s := New(db, testEncKey)
 	ctx := t.Context()
 

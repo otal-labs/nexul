@@ -114,7 +114,7 @@ func TestSearchDocs_TracksUpdates(t *testing.T) {
 	d := newTestDoc("doc-1")
 	d.Body = "spine is now postgresql free"
 	d.Version = 2
-	require.NoError(t, s.Docs.Update(context.Background(), d))
+	require.NoError(t, s.Docs.Update(context.Background(), d, ""))
 
 	gone, err := s.Docs.Search(context.Background(), "sqlite", 10)
 	require.NoError(t, err)

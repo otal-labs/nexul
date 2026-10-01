@@ -11,7 +11,7 @@ import {
 import { useFlowStore } from "@/stores/flowStore";
 import { getDeployKey, getDeployLogKey } from "@/hooks/DeployHooks";
 import { getDnsExposuresKey, getDnsGatewaysKey } from "@/hooks/DnsHooks";
-import { getDocKey, getDocsKey } from "@/hooks/DocHooks";
+import { getDocKey, getDocsKey, getDocWatchersKey } from "@/hooks/DocHooks";
 import { getDocFoldersKey } from "@/hooks/DocFolderHooks";
 import { getInstanceUpgradeKey } from "@/hooks/InstanceUpgradeHooks";
 import { getProjectPeopleKey, getWorkspacePeopleKey } from "@/hooks/PeopleHooks";
@@ -100,7 +100,9 @@ const pushTopics: Record<string, string[]> = {
   "category.updated": [getCategoriesKey, getProjectCategoriesKey],
   "category.deleted": [getCategoriesKey, getProjectCategoriesKey],
   "doc.created": [getDocsKey],
-  "doc.updated": [getDocsKey, getDocKey],
+  // An edit makes its editor a watcher, which the Watch control's count shows.
+  "doc.updated": [getDocsKey, getDocKey, getDocWatchersKey],
+  "doc.watchers.changed": [getDocWatchersKey],
   // The inbox groups doc rows by the folder each doc is in now, so a move, rename, or delete regroups it.
   "doc.moved": [getDocsKey, getDocKey, getDocFoldersKey, getNotificationsKey],
   "doc.folder.created": [getDocFoldersKey],

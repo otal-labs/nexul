@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"regexp"
 	"slices"
 	"strings"
@@ -961,6 +962,7 @@ type NotificationService struct {
 	access   PermissionChecker
 	projects ProjectReader
 	tickets  TicketProjects
+	watchers DocWatchers
 	now      func() time.Time
 }
 
@@ -972,6 +974,12 @@ func (s *NotificationService) SetTicketProjects(t TicketProjects) { s.tickets = 
 // projects resolves a ticket's or doc's workspace.
 func NewNotificationService(repo NotificationRepo, users UserStore, members WorkspaceMemberStore, access PermissionChecker, projects ProjectReader) *NotificationService {
 	return &NotificationService{repo: repo, users: users, members: members, access: access, projects: projects, now: time.Now}
+}
+
+// WithDocWatchers sets who a doc's changes notify; without it a doc save notifies only the people it mentions.
+func (s *NotificationService) WithDocWatchers(w DocWatchers) *NotificationService {
+	s.watchers = w
+	return s
 }
 
 // List returns a user's notifications in one workspace (every workspace when workspaceID is empty), newest first.
@@ -1039,7 +1047,7 @@ func (s *NotificationService) MarkRead(ctx context.Context, userID, id string) e
 	if strings.TrimSpace(id) == "" {
 		return fmt.Errorf("%w: notification id is required", apperrs.ErrInvalid)
 	}
-	if err := s.repo.MarkRead(ctx, userID, id); err != nil {
+	if err := s.repo.MarkRead(ctx, userID, id, s.now().UTC()); err != nil {
 		return fmt.Errorf("mark notification %s read: %w", id, err)
 	}
 	return nil
@@ -1050,10 +1058,50 @@ func (s *NotificationService) MarkAllRead(ctx context.Context, userID, workspace
 	if strings.TrimSpace(userID) == "" {
 		return fmt.Errorf("%w: user id is required", apperrs.ErrInvalid)
 	}
-	if err := s.repo.MarkAllRead(ctx, userID, strings.TrimSpace(workspaceID)); err != nil {
+	if err := s.repo.MarkAllRead(ctx, userID, strings.TrimSpace(workspaceID), s.now().UTC()); err != nil {
 		return fmt.Errorf("mark all read: %w", err)
 	}
 	return nil
+}
+
+// Retention keeps the inbox bounded, since nothing else ever deletes a notification (ADR 0100).
+const (
+	readNotificationRetention   = 90 * 24 * time.Hour
+	notificationRetention       = 180 * 24 * time.Hour
+	notificationCleanupDelay    = time.Minute
+	notificationCleanupInterval = 24 * time.Hour
+)
+
+// CleanupExpired applies the retention rule (ADR 0100), unchecked because it runs from a background loop, not a request.
+func (s *NotificationService) CleanupExpired(ctx context.Context) (read, old int64, err error) {
+	now := s.now()
+	read, old, err = s.repo.DeleteExpired(ctx, now.Add(-readNotificationRetention), now.Add(-notificationRetention))
+	if err != nil {
+		return 0, 0, fmt.Errorf("clean up expired notifications: %w", err)
+	}
+	return read, old, nil
+}
+
+// RunCleanupLoop runs CleanupExpired a minute after start and daily after that, until ctx is cancelled.
+func (s *NotificationService) RunCleanupLoop(ctx context.Context, log *slog.Logger) {
+	timer := time.NewTimer(notificationCleanupDelay)
+	defer timer.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-timer.C:
+		}
+		timer.Reset(notificationCleanupInterval)
+		read, old, err := s.CleanupExpired(ctx)
+		if err != nil {
+			log.Warn("notification retention cleanup failed", "error", err)
+			continue
+		}
+		if read+old > 0 {
+			log.Info("notification retention cleanup", "read_deleted", read, "old_deleted", old)
+		}
+	}
 }
 
 // requireMember keeps a person's inbox to the workspaces they still belong to; one they left reads as not found.
@@ -1154,12 +1202,8 @@ func (s *NotificationService) onTicketStatusChanged(ctx context.Context, t ticke
 	return s.fanOut(ctx, evtKey(ctx), n, recipients)
 }
 
-// onDocActivity fans out to every member of the doc's workspace; a member the save newly @-mentions gets
-// doc.mentioned instead of the activity kind.
+// onDocActivity tells the doc's watchers but the actor, and newly mentioned members with doc.mentioned (ADR 0101).
 func (s *NotificationService) onDocActivity(ctx context.Context, e docEvent, kind Kind) error {
-	if s.members == nil {
-		return nil
-	}
 	n, err := s.notice(ctx, SubjectDoc, e.Doc.ID, e.Doc.Title, e.Doc.ProjectID, e.ActorID)
 	if err != nil {
 		return err
@@ -1167,21 +1211,39 @@ func (s *NotificationService) onDocActivity(ctx context.Context, e docEvent, kin
 	if n.workspaceID == "" {
 		return nil
 	}
-	userIDs, err := s.members.ListMemberUserIDs(ctx, n.workspaceID)
+	recipients, err := s.docMentionRecipients(ctx, n, e.MentionedUserIDs)
 	if err != nil {
-		return fmt.Errorf("list members for doc fan-out: %w", err)
+		return err
 	}
-	mentionTitle := s.mentionTitle(ctx, n)
-	recipients := make([]recipient, 0, len(userIDs)+len(e.MentionedUserIDs))
-	for _, id := range e.MentionedUserIDs {
-		if slices.Contains(userIDs, id) {
-			recipients = append(recipients, recipient{UserID: id, Kind: KindDocMentioned, Title: mentionTitle})
+	if s.watchers != nil {
+		ids, err := s.watchers.ListDocWatcherIDs(ctx, e.Doc.ID)
+		if err != nil {
+			return fmt.Errorf("list watchers of doc %s: %w", e.Doc.ID, err)
+		}
+		for _, id := range ids {
+			recipients = append(recipients, recipient{UserID: id, Kind: kind})
 		}
 	}
-	for _, id := range userIDs {
-		recipients = append(recipients, recipient{UserID: id, Kind: kind})
-	}
 	return s.fanOut(ctx, evtKey(ctx), n, recipients)
+}
+
+// docMentionRecipients keeps the mentioned people who are members of the doc's workspace.
+func (s *NotificationService) docMentionRecipients(ctx context.Context, n notice, mentioned []string) ([]recipient, error) {
+	if len(mentioned) == 0 || s.members == nil {
+		return nil, nil
+	}
+	members, err := s.members.ListMemberUserIDs(ctx, n.workspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("list members for doc mentions: %w", err)
+	}
+	mentionTitle := s.mentionTitle(ctx, n)
+	var out []recipient
+	for _, id := range mentioned {
+		if slices.Contains(members, id) {
+			out = append(out, recipient{UserID: id, Kind: KindDocMentioned, Title: mentionTitle})
+		}
+	}
+	return out, nil
 }
 
 // mentionTitle words a mention as "<author> mentioned you in <title>"; with no known author it stays the title.

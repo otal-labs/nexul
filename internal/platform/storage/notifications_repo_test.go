@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"strconv"
 	"testing"
 	"time"
 
@@ -95,7 +96,7 @@ func TestNotificationsRepo_CreateMany_CollapsesWhileUnread(t *testing.T) {
 	require.Len(t, ns, 1)
 
 	// Reading the row re-arms the next notification for that subject.
-	require.NoError(t, s.Notifications.MarkRead(context.Background(), "u1", "c1"))
+	require.NoError(t, s.Notifications.MarkRead(context.Background(), "u1", "c1", time.Now()))
 	again := newTestNotification("c3", "u1", false)
 	require.NoError(t, s.Notifications.CreateMany(context.Background(), []*workspace.Notification{again}))
 	ns, err = s.Notifications.List(context.Background(), "u1", "", 50)
@@ -175,13 +176,17 @@ func TestNotificationsRepo_MarkRead_NotFoundForOtherUser(t *testing.T) {
 	mustCreateUser(t, s, "u2", "alice")
 	require.NoError(t, s.Notifications.CreateMany(context.Background(), []*workspace.Notification{newTestNotification("n1", "u1", false)}))
 
-	err := s.Notifications.MarkRead(context.Background(), "u2", "n1")
+	readAt := time.Date(2026, 8, 3, 9, 0, 0, 0, time.UTC)
+	err := s.Notifications.MarkRead(context.Background(), "u2", "n1", readAt)
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 
-	require.NoError(t, s.Notifications.MarkRead(context.Background(), "u1", "n1"))
+	require.NoError(t, s.Notifications.MarkRead(context.Background(), "u1", "n1", readAt))
+	require.NoError(t, s.Notifications.MarkRead(context.Background(), "u1", "n1", readAt.Add(48*time.Hour)))
 	ns, err := s.Notifications.List(context.Background(), "u1", "", 50)
 	require.NoError(t, err)
 	assert.True(t, ns[0].Read)
+	require.NotNil(t, ns[0].ReadAt, "reading records when, which retention counts from")
+	assert.Equal(t, readAt, *ns[0].ReadAt, "reading it again keeps the first read time, so retention is never extended")
 }
 
 func TestNotificationsRepo_MarkAllRead_ScopedToUser(t *testing.T) {
@@ -193,17 +198,21 @@ func TestNotificationsRepo_MarkAllRead_ScopedToUser(t *testing.T) {
 	require.NoError(t, s.Notifications.CreateMany(context.Background(), []*workspace.Notification{newTestNotification("n2", "u1", false)}))
 	require.NoError(t, s.Notifications.CreateMany(context.Background(), []*workspace.Notification{newTestNotification("n3", "u2", false)}))
 
-	require.NoError(t, s.Notifications.MarkAllRead(context.Background(), "u1", ""))
+	readAt := time.Date(2026, 8, 3, 9, 0, 0, 0, time.UTC)
+	require.NoError(t, s.Notifications.MarkAllRead(context.Background(), "u1", "", readAt))
 
 	u1, err := s.Notifications.List(context.Background(), "u1", "", 50)
 	require.NoError(t, err)
 	for _, n := range u1 {
 		assert.True(t, n.Read)
+		require.NotNil(t, n.ReadAt)
+		assert.Equal(t, readAt, *n.ReadAt)
 	}
 	u2, err := s.Notifications.List(context.Background(), "u2", "", 50)
 	require.NoError(t, err)
 	for _, n := range u2 {
 		assert.False(t, n.Read)
+		assert.Nil(t, n.ReadAt)
 	}
 }
 
@@ -230,7 +239,7 @@ func TestNotificationsRepo_WorkspaceFilter_ScopesListCountAndReadAll(t *testing.
 	require.NoError(t, err)
 	assert.Equal(t, []workspace.UnreadGroup{{WorkspaceID: "ws-2", Unread: 2}}, count)
 
-	require.NoError(t, s.Notifications.MarkAllRead(ctx, "u1", "ws-2"))
+	require.NoError(t, s.Notifications.MarkAllRead(ctx, "u1", "ws-2", time.Now()))
 	count, err = s.Notifications.UnreadByProject(ctx, "u1", "")
 	require.NoError(t, err)
 	assert.Equal(t, []workspace.UnreadGroup{{WorkspaceID: "ws-1", Unread: 1}}, count, "read-all in ws-2 leaves ws-1 unread")
@@ -278,4 +287,47 @@ func TestNotificationsRepo_List_CarriesTheDocsCurrentFolder(t *testing.T) {
 	got = byID()
 	assert.Equal(t, "folder-general-main", got["n-ep"].FolderID, "the folder is read at list time, so a move shows")
 	assert.True(t, got["n-ep"].FolderIsDefault)
+}
+
+func TestNotificationsRepo_DeleteExpired_DeletesExactlyPastEachCutoff(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+	s := newTestStore(t)
+	mustCreateUser(t, s, "u1", "onik97")
+	readBefore := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
+	createdBefore := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	at := func(t time.Time, seconds int) *time.Time {
+		v := t.Add(time.Duration(seconds) * time.Second)
+		return &v
+	}
+	rows := []struct {
+		id        string
+		createdAt time.Time
+		readAt    *time.Time
+	}{
+		{"read-past", *at(createdBefore, 10), at(readBefore, -1)},
+		{"read-at-cutoff", *at(createdBefore, 10), at(readBefore, 0)},
+		{"unread-recent", *at(createdBefore, 10), nil},
+		{"unread-past", *at(createdBefore, -1), nil},
+		{"unread-at-cutoff", *at(createdBefore, 0), nil},
+		{"read-recently-sent-long-ago", *at(createdBefore, -1), at(readBefore, 60)},
+	}
+	for i, r := range rows {
+		n := newTestNotification(r.id, "u1", r.readAt != nil)
+		n.SubjectID, n.CreatedAt, n.ReadAt = "d-"+strconv.Itoa(i), r.createdAt, r.readAt
+		require.NoError(t, s.Notifications.CreateMany(ctx, []*workspace.Notification{n}))
+	}
+
+	read, old, err := s.Notifications.DeleteExpired(ctx, readBefore, createdBefore)
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), read)
+	assert.Equal(t, int64(2), old, "an old notification goes whether or not it was read")
+
+	ns, err := s.Notifications.List(ctx, "u1", "", 50)
+	require.NoError(t, err)
+	var kept []string
+	for _, n := range ns {
+		kept = append(kept, n.ID)
+	}
+	assert.ElementsMatch(t, []string{"read-at-cutoff", "unread-recent", "unread-at-cutoff"}, kept)
 }

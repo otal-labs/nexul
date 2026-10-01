@@ -10,8 +10,8 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 )
 
-func TestMigration0051_ChannelsFromBeforeItStayPublicAndCanGoPrivate(t *testing.T) {
-	db := migrateBefore(t, "0051")
+func TestMigration0053_ChannelsFromBeforeItStayPublicAndCanGoPrivate(t *testing.T) {
+	db := migrateBefore(t, "0053")
 	_, err := db.Exec(`
 INSERT INTO users (id, login, created_at, updated_at) VALUES ('u-1', 'one', 1, 1), ('u-2', 'two', 1, 1);
 INSERT INTO conversations (id, workspace_id, kind, name, created_by, created_at, updated_at) VALUES
@@ -20,7 +20,7 @@ INSERT INTO conversation_participants (conversation_id, user_id, created_at) VAL
 `)
 	require.NoError(t, err)
 
-	require.NoError(t, Migrate(db), "0051 and every later migration apply on top, as an upgrade would")
+	require.NoError(t, Migrate(db), "0053 and every later migration apply on top, as an upgrade would")
 	s := New(db, testEncKey)
 	ctx := t.Context()
 
