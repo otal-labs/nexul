@@ -220,6 +220,7 @@ func (s *Service) toListItems(ctx context.Context, ds []*Doc) ([]*DocListItem, e
 			Version:   d.Version,
 			Archived:  d.Archived,
 			Locked:    d.Locked,
+			CreatedAt: d.CreatedAt,
 			UpdatedAt: d.UpdatedAt,
 		}
 		item.CanOpen = s.can(ctx, d.ID, permissions.DocsRead)

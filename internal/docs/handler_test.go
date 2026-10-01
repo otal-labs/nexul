@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -99,6 +100,21 @@ func TestDocsHandler_ListByProject(t *testing.T) {
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &list))
 	require.Len(t, list, 1)
 	assert.Equal(t, "In project", list[0].Title)
+}
+
+func TestDocsHandler_ListKeepsCreationTimeAfterAnEdit(t *testing.T) {
+	h, repo := newDocsHandler()
+	created := decodeDoc(t, serve(t, h, http.MethodPost, "/api/docs", `{"project_id":"project-1","title":"A","body":"1"}`))
+	edited := repo.docs[created.ID].UpdatedAt.Add(48 * time.Hour)
+	repo.docs[created.ID].UpdatedAt = edited
+
+	rec := serve(t, h, http.MethodGet, "/api/docs?project_id=project-1", "")
+	require.Equal(t, http.StatusOK, rec.Code)
+	var list []DocListItem
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &list))
+	require.Len(t, list, 1)
+	assert.True(t, list[0].CreatedAt.Equal(created.CreatedAt), "created_at must stay the creation time")
+	assert.True(t, list[0].UpdatedAt.Equal(edited))
 }
 
 func TestDocsHandler_Update(t *testing.T) {

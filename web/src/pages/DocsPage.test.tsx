@@ -32,6 +32,7 @@ const doc = (id: string, title: string, updated_at: string, can_open = true, loc
   archived: false,
   locked,
   can_open,
+  created_at: updated_at,
   updated_at,
   ...(can_open ? { created_by: "u-1", snippet: `${title} notes` } : {}),
 });

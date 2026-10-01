@@ -37,6 +37,7 @@ type DocListItem struct {
 	Archived  bool      `json:"archived"`
 	Locked    bool      `json:"locked"`
 	CanOpen   bool      `json:"can_open"`
+	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	// Filled only when CanOpen, so a doc the caller can't open discloses its title alone.
 	CreatedBy string `json:"created_by,omitempty"`
