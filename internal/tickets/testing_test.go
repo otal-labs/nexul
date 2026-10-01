@@ -293,9 +293,9 @@ func TestTestResult_SignsByPath(t *testing.T) {
 		wantActor Actor
 	}{
 		{"pass over HTTP", pass(false), TopicTestPassed, "Passed by onik97", Actor{Kind: ActorKindUser, UserID: "u-1"}},
-		{"pass over MCP", pass(true), TopicTestPassed, "Passed by Nexul · for onik97", Actor{Kind: ActorKindUserMCP, UserID: "u-1"}},
+		{"pass over MCP", pass(true), TopicTestPassed, "Passed by Nexul · from onik97", Actor{Kind: ActorKindUserMCP, UserID: "u-1"}},
 		{"fail over HTTP", fail(false), TopicTestFailed, "Test failed\n\n## Actual result\nbroken", Actor{Kind: ActorKindUser, UserID: "u-1"}},
-		{"fail over MCP", fail(true), TopicTestFailed, "Test failed by Nexul · for onik97\n\n## Actual result\nbroken", Actor{Kind: ActorKindUserMCP, UserID: "u-1"}},
+		{"fail over MCP", fail(true), TopicTestFailed, "Test failed by Nexul · from onik97\n\n## Actual result\nbroken", Actor{Kind: ActorKindUserMCP, UserID: "u-1"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -94,9 +94,9 @@ branch deployment on production's network with nothing overridden; an empty
 `url` means no safe environment exists yet. `ticket_test_report` with
 `outcome` `pass` moves the ticket to the first done-stage column, makes the
 caller its tester only when none is assigned, and posts "Passed by Nexul ·
-for <login>", with the test URL, to the ticket's thread. With `outcome`
+from <login>", with the test URL, to the ticket's thread. With `outcome`
 `fail` it posts the steps, expected result, actual result, and screenshot
-attachment ids to the ticket's thread under "Test failed by Nexul · for
+attachment ids to the ticket's thread under "Test failed by Nexul · from
 <login>" and moves it back to the first progress-stage column; it refuses a
 done ticket, which takes a new bug found in it instead. Both record the move
 as made by `user:mcp`. The Pass and Fail buttons sign with the person's own

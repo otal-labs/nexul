@@ -28,9 +28,9 @@ export const TicketReporterRow = ({ ticket }: TicketReporterRowProps) => {
       )}
       {!isNexul && name && <PersonAvatar login={person.login} src={person.avatar_url} className="size-4 text-[8px]" />}
       <span className="w-16 shrink-0 text-xs text-muted-foreground">Reporter</span>
-      <span className="flex min-w-0 flex-col">
-        <span className="truncate text-xs text-foreground">{name || "Unknown"}</span>
-        {onBehalfOf && <span className="truncate text-[11px] text-muted-foreground">{onBehalfOf}</span>}
+      <span className="min-w-0 truncate text-xs">
+        <span className="text-foreground">{name || "Unknown"}</span>
+        {onBehalfOf && <span className="text-muted-foreground"> {onBehalfOf}</span>}
       </span>
     </div>
   );

@@ -74,7 +74,7 @@ describe("TicketDetail", () => {
     expect(screen.getByText(/ by onik97 · updated/)).toBeInTheDocument();
     unmount();
     renderDetail({ ...ticket, reporter: { kind: "user:mcp", login: "lena" } });
-    expect(screen.getByText(/ by Nexul · for lena · updated/)).toBeInTheDocument();
+    expect(screen.getByText(/ by Nexul · from lena · updated/)).toBeInTheDocument();
   });
 
   it("falls back to the raw ticket id when no project is provided", () => {

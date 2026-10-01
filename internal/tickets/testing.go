@@ -217,10 +217,10 @@ func (s *Service) caller(ctx context.Context) (string, error) {
 	return s.login(ctx, actor.ID), nil
 }
 
-// signedBy names a test result's tester; through MCP it reads as Nexul acting for them, as a reporter does.
+// signedBy names a test result's tester; through MCP it reads as Nexul acting on their behalf, as a reporter does.
 func signedBy(tester string, viaMCP bool) string {
 	if viaMCP {
-		return "Nexul · for " + tester
+		return "Nexul · from " + tester
 	}
 	return tester
 }
