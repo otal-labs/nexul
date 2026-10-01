@@ -12,6 +12,7 @@ import type { AttachmentOwner } from "@/models/Attachment";
 interface AttachmentsSectionProps {
   owner: SectionOwner;
   className?: string;
+  actionPlacement?: "beside-label" | "end";
 }
 
 // Chat attachments take only read access to the conversation, so no section shows for one.
@@ -24,7 +25,7 @@ const writePermission = (owner: SectionOwner): string => {
 };
 
 // Everything pasted into the body shows up here too; files render as hover-revealing pills.
-export const AttachmentsSection = ({ owner, className }: AttachmentsSectionProps) => {
+export const AttachmentsSection = ({ owner, className, actionPlacement = "beside-label" }: AttachmentsSectionProps) => {
   const { data, error, isPending } = useFetchAttachments(owner);
   const upload = useUploadAttachment();
   const canWrite = useHasPermission(writePermission(owner));
@@ -32,7 +33,7 @@ export const AttachmentsSection = ({ owner, className }: AttachmentsSectionProps
 
   return (
     <section className={cn("space-y-2", className)} aria-label="Attachments">
-      <div className="flex items-center justify-between">
+      <div className={cn("flex items-center gap-1.5", actionPlacement === "end" && "justify-between")}>
         <h2 className="font-mono text-[11px] font-semibold tracking-[0.08em] text-muted-foreground/80 uppercase">
           Attachments
           {data && data.length > 0 && <span className="ml-1.5 tabular-nums">{data.length}</span>}
