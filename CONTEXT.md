@@ -484,6 +484,24 @@ or on one resource. Most-specific wins; deny beats allow inside a layer. The
 workspace Owner bypasses all of it.
 _Avoid_: Grant, share, ACL
 
+**Restricted member**:
+A workspace member set to see only the projects they hold Project access to,
+instead of every project. A project they hold none on is invisible to them,
+its name included, and their role still decides what they do in the
+workspace itself.
+_Avoid_: Guest, client (Client is a role someone named), external member
+
+**Project access**:
+The levels one person holds in one project, per project area, from None to
+Delete. For a Restricted member it is the whole answer inside that project;
+everyone else gets a role's project areas on every project.
+_Avoid_: Project role, project membership, project grant, share
+
+**Private channel**:
+A Channel only its members see and read, rather than every member of the
+workspace.
+_Avoid_: Group, locked channel, hidden channel
+
 **Invitation**:
 A single-use bearer link that admits one person to the instance and grants a
 chosen Role plus optional Permission overwrites in one or more Workspaces. The
