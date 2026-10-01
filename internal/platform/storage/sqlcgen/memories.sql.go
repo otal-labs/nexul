@@ -196,19 +196,11 @@ func (q *Queries) InsertMemoryVersion(ctx context.Context, arg InsertMemoryVersi
 }
 
 const listMemoriesByProject = `-- name: ListMemoriesByProject :many
-SELECT id, workspace_id, project_id, title, when_to_use, body, always_included, version, created_by, created_at, updated_by, updated_at, kind FROM memories
-WHERE project_id = ? OR (project_id IS NULL AND workspace_id = ?)
-ORDER BY project_id IS NOT NULL, project_id, created_at
+SELECT id, workspace_id, project_id, title, when_to_use, body, always_included, version, created_by, created_at, updated_by, updated_at, kind FROM memories WHERE project_id = ? ORDER BY created_at
 `
 
-type ListMemoriesByProjectParams struct {
-	ProjectID   sql.NullString
-	WorkspaceID string
-}
-
-// The project's own memories plus its workspace's workspace-scoped ones, workspace-scoped first.
-func (q *Queries) ListMemoriesByProject(ctx context.Context, arg ListMemoriesByProjectParams) ([]Memory, error) {
-	rows, err := q.db.QueryContext(ctx, listMemoriesByProject, arg.ProjectID, arg.WorkspaceID)
+func (q *Queries) ListMemoriesByProject(ctx context.Context, projectID sql.NullString) ([]Memory, error) {
+	rows, err := q.db.QueryContext(ctx, listMemoriesByProject, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -245,7 +237,7 @@ func (q *Queries) ListMemoriesByProject(ctx context.Context, arg ListMemoriesByP
 }
 
 const listMemoriesByWorkspace = `-- name: ListMemoriesByWorkspace :many
-SELECT id, workspace_id, project_id, title, when_to_use, body, always_included, version, created_by, created_at, updated_by, updated_at, kind FROM memories WHERE workspace_id = ? ORDER BY project_id IS NOT NULL, project_id, created_at
+SELECT id, workspace_id, project_id, title, when_to_use, body, always_included, version, created_by, created_at, updated_by, updated_at, kind FROM memories WHERE workspace_id = ? ORDER BY project_id, created_at
 `
 
 func (q *Queries) ListMemoriesByWorkspace(ctx context.Context, workspaceID string) ([]Memory, error) {
@@ -310,47 +302,6 @@ func (q *Queries) ListMemoryVersions(ctx context.Context, memoryID string) ([]Me
 			&i.AuthorID,
 			&i.AuthorVia,
 			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listWorkspaceScopedMemories = `-- name: ListWorkspaceScopedMemories :many
-SELECT id, workspace_id, project_id, title, when_to_use, body, always_included, version, created_by, created_at, updated_by, updated_at, kind FROM memories WHERE workspace_id = ? AND project_id IS NULL ORDER BY created_at
-`
-
-func (q *Queries) ListWorkspaceScopedMemories(ctx context.Context, workspaceID string) ([]Memory, error) {
-	rows, err := q.db.QueryContext(ctx, listWorkspaceScopedMemories, workspaceID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Memory
-	for rows.Next() {
-		var i Memory
-		if err := rows.Scan(
-			&i.ID,
-			&i.WorkspaceID,
-			&i.ProjectID,
-			&i.Title,
-			&i.WhenToUse,
-			&i.Body,
-			&i.AlwaysIncluded,
-			&i.Version,
-			&i.CreatedBy,
-			&i.CreatedAt,
-			&i.UpdatedBy,
-			&i.UpdatedAt,
-			&i.Kind,
 		); err != nil {
 			return nil, err
 		}

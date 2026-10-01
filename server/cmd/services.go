@@ -238,7 +238,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	authSvc.SetPendingInviteResolver(pendingInviteResolverGate{svc: tenancySvc})
 	workspaceSvc := workspace.NewService(store.Projects, store.Categories, store.TicketTypes, store.Statuses, accessSvc, workspaceGate{svc: tenancySvc})
 	workspaceSvc.SetTicketProjects(workspaceTicketProjects{tickets: store.Tickets})
-	memoriesSvc := memories.NewService(store.Memories, memoriesPermissionGate{svc: accessSvc}, memoriesProjectLookup{projects: store.Projects}, memoriesAttachmentsGate{svc: attachmentsSvc}, membershipGate{members: store.WorkspaceMembers})
+	memoriesSvc := memories.NewService(store.Memories, accessSvc, memoriesProjectLookup{projects: store.Projects}, memoriesAttachmentsGate{svc: attachmentsSvc})
 	// HasPermission's role-mask layer needs both roles and tenancy, wired only after the cycle above closes.
 	accessSvc.SetRoles(accessRoleResolver{tenancy: tenancySvc, roles: rolesSvc})
 	accessSvc.SetDocWorkspaces(accessDocWorkspaceResolver{docs: store.Docs, projects: store.Projects})

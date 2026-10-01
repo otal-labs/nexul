@@ -15,16 +15,14 @@ import (
 	"github.com/otal-labs/nexul/internal/harness/harnesstest"
 )
 
-// fakeProjectMemories is a MemoriesReader keyed by workspace and project id, so a test can prove a call for
-// the wrong (or empty) id gets nothing back for that slice — real memories.Service.ListMemoryItems behaves
-// the same way (ADR 0059: workspace-scoped memories reach every turn, project ones only their own thread).
+// fakeProjectMemories is a MemoriesReader keyed by project id, so a test can prove a call for the wrong (or
+// empty) id gets nothing back, as real memories.Service.ListMemoryItems does.
 type fakeProjectMemories struct {
-	byWorkspace map[string][]MemoryItem
-	byProject   map[string][]MemoryItem
+	byProject map[string][]MemoryItem
 }
 
-func (f *fakeProjectMemories) ListMemories(_ context.Context, workspaceID, projectID string) (MemoriesIndex, error) {
-	return MemoriesIndex{Workspace: f.byWorkspace[workspaceID], Project: f.byProject[projectID]}, nil
+func (f *fakeProjectMemories) ListMemories(_ context.Context, projectID string) (MemoriesIndex, error) {
+	return MemoriesIndex{Project: f.byProject[projectID]}, nil
 }
 
 // captureFullAndIncremental wires a Service whose harness client records both prompts StartTurn was called with.
@@ -67,39 +65,6 @@ func TestRunTurn_TicketThread_AlwaysIncludedMemoryInlinedInFullInBothPrompts(t *
 		assert.Contains(t, prompt, "Always-included memories, follow them:")
 		assert.Contains(t, prompt, "### Working in this project\nStanding rule body text.")
 	}
-}
-
-func TestRunTurn_ChannelWithNoProject_InlinesWorkspaceAlwaysIncludedMemories(t *testing.T) {
-	conv := newFakeConversations(Conversation{ID: "conv-1", WorkspaceID: "ws-1"}) // no ticket, no doc: no project
-	mem := &fakeProjectMemories{byWorkspace: map[string][]MemoryItem{
-		"ws-1": {
-			{Name: "Team tone", WhenToUse: "always", AlwaysIncluded: true, Body: "Standing rule body text."},
-		},
-	}}
-	svc, got := captureFullAndIncremental(t, Config{Conversations: conv, Memories: mem})
-
-	svc.RunTurn(context.Background(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent go"})
-
-	for _, prompt := range []string{got.Full, got.Incremental} {
-		assert.Contains(t, prompt, "Always-included memories, follow them:")
-		assert.Contains(t, prompt, "### Team tone\nStanding rule body text.")
-	}
-}
-
-func TestRunTurn_ChannelWithNoProjectOrWorkspace_InlinesNoAlwaysIncludedMemories(t *testing.T) {
-	conv := newFakeConversations(Conversation{ID: "conv-1"}) // no ticket, no doc, no workspace
-	mem := &fakeProjectMemories{byWorkspace: map[string][]MemoryItem{
-		"ws-1": {
-			{Name: "Team tone", WhenToUse: "always", AlwaysIncluded: true, Body: "Standing rule body text."},
-		},
-	}}
-	svc, got := captureFullAndIncremental(t, Config{Conversations: conv, Memories: mem})
-
-	svc.RunTurn(context.Background(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent go"})
-
-	assert.NotContains(t, got.Full, "Always-included memories, follow them:")
-	assert.NotContains(t, got.Full, "Standing rule body text")
-	assert.NotContains(t, got.Incremental, "Standing rule body text")
 }
 
 func TestRunTurn_MemoriesIndex_ExcludesAlwaysIncludedMemories(t *testing.T) {
@@ -188,8 +153,8 @@ func TestRunTurn_AlwaysIncludedMemoryImage_TravelsAsAttachment(t *testing.T) {
 
 func TestSplitAlwaysIncluded_InterviewLeads_SoATrimNeverDropsIt(t *testing.T) {
 	_, always := splitAlwaysIncluded(MemoriesIndex{
-		Workspace: []MemoryItem{{Name: "Team tone", AlwaysIncluded: true, Body: strings.Repeat("w", MaxMemoryChars)}},
 		Project: []MemoryItem{
+			{Name: "Team tone", AlwaysIncluded: true, Body: strings.Repeat("w", MaxMemoryChars)},
 			{Name: "Working here", AlwaysIncluded: true, Body: "p"},
 			{Name: "Interview", AlwaysIncluded: true, Interview: true, Body: "Go only."},
 		},

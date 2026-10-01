@@ -95,21 +95,10 @@ func (r *MemoriesRepo) ListByWorkspace(ctx context.Context, workspaceID string) 
 	return toMemoriesList(rows), nil
 }
 
-func (r *MemoriesRepo) ListByProject(ctx context.Context, projectID, workspaceID string) ([]*memories.Memory, error) {
-	rows, err := r.q.ListMemoriesByProject(ctx, sqlcgen.ListMemoriesByProjectParams{
-		ProjectID:   sql.NullString{String: projectID, Valid: true},
-		WorkspaceID: workspaceID,
-	})
+func (r *MemoriesRepo) ListByProject(ctx context.Context, projectID string) ([]*memories.Memory, error) {
+	rows, err := r.q.ListMemoriesByProject(ctx, nullString(projectID))
 	if err != nil {
 		return nil, fmt.Errorf("list memories for project %s: %w", projectID, err)
-	}
-	return toMemoriesList(rows), nil
-}
-
-func (r *MemoriesRepo) ListWorkspaceScoped(ctx context.Context, workspaceID string) ([]*memories.Memory, error) {
-	rows, err := r.q.ListWorkspaceScopedMemories(ctx, workspaceID)
-	if err != nil {
-		return nil, fmt.Errorf("list workspace-scoped memories for workspace %s: %w", workspaceID, err)
 	}
 	return toMemoriesList(rows), nil
 }

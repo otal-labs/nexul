@@ -24,10 +24,10 @@ const (
 var listItem = regexp.MustCompile(`^([-*+]|\d+\.)\s`)
 
 // CreateWithKind creates an ordinary memory (kind empty) or the project's decisions log; the interview has CreateInterview.
-func (s *Service) CreateWithKind(ctx context.Context, kind, projectID, workspaceID, title, whenToUse, body string, alwaysIncluded bool, via string) (*Memory, error) {
+func (s *Service) CreateWithKind(ctx context.Context, kind, projectID, title, whenToUse, body string, alwaysIncluded bool, via string) (*Memory, error) {
 	switch strings.TrimSpace(kind) {
 	case "":
-		return s.Create(ctx, projectID, workspaceID, title, whenToUse, body, alwaysIncluded, via)
+		return s.Create(ctx, projectID, title, whenToUse, body, alwaysIncluded, via)
 	case KindDecisionsLog:
 		return s.createDecisionsLog(ctx, projectID, title, whenToUse, body, via)
 	}
@@ -44,11 +44,8 @@ func (s *Service) createDecisionsLog(ctx context.Context, projectID, title, when
 	if !ok || actor.ID == "" {
 		return nil, fmt.Errorf("%w: an authenticated user is required", apperrs.ErrUnauthorized)
 	}
-	workspaceID, err := s.projects.WorkspaceForProject(ctx, projectID)
+	workspaceID, err := s.projectForWrite(ctx, projectID, permissions.MemoriesWrite)
 	if err != nil {
-		return nil, fmt.Errorf("resolve workspace for project %s: %w", projectID, err)
-	}
-	if err := s.require(ctx, workspaceID, permissions.MemoriesWrite); err != nil {
 		return nil, err
 	}
 	existing, err := s.repo.GetByProjectKind(ctx, projectID, KindDecisionsLog)
@@ -89,11 +86,7 @@ func (s *Service) DecisionEntriesCiting(ctx context.Context, projectID string, r
 	if projectID == "" {
 		return nil, fmt.Errorf("%w: project id is required", apperrs.ErrInvalid)
 	}
-	workspaceID, err := s.projects.WorkspaceForProject(ctx, projectID)
-	if err != nil {
-		return nil, fmt.Errorf("resolve workspace for project %s: %w", projectID, err)
-	}
-	if err := s.require(ctx, workspaceID, permissions.MemoriesRead); err != nil {
+	if err := s.requireProject(ctx, projectID, permissions.MemoriesRead); err != nil {
 		return nil, err
 	}
 	log, err := s.repo.GetByProjectKind(ctx, projectID, KindDecisionsLog)

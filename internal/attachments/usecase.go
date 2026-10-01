@@ -25,9 +25,8 @@ type AccessChecker interface {
 	Can(ctx context.Context, userID, docID string, action permissions.Action) (bool, error)
 }
 
-// MemoryAccessChecker lets attachments check the memories domain's workspace-scoped permission bits for
-// memory-owned files (ADR 0017: attachments never imports memories); memoryID resolves to a workspace on
-// the other side of the gate.
+// MemoryAccessChecker lets attachments check the memories domain's permission bits for memory-owned files
+// (ADR 0017: attachments never imports memories); memoryID resolves to its project on the other side of the gate.
 type MemoryAccessChecker interface {
 	Can(ctx context.Context, userID, memoryID string, action permissions.Action) (bool, error)
 }
@@ -127,7 +126,7 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 
 // requireOwner needs only an authenticated user for ticket/conversation owners (workspace/chat-wide perms).
 // docAction gates a doc owner via the per-doc AccessChecker; memoryAction gates a memory owner via the
-// workspace-scoped MemoryAccessChecker (memories has no per-resource overwrite grid, unlike docs).
+// MemoryAccessChecker on the memory's project (memories has no per-resource overwrite grid, unlike docs).
 func (s *Service) requireOwner(ctx context.Context, owner Owner, docAction, memoryAction permissions.Action) (identity.Actor, error) {
 	actor, ok := identity.ActorFromCtx(ctx)
 	if !ok || actor.ID == "" {

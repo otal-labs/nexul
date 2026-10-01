@@ -348,22 +348,6 @@ func TestRun_StartsTurnWithBlocksInOrder(t *testing.T) {
 	require.NotNil(t, req.Observer)
 }
 
-func TestRun_WorkspaceScopedMemory_PickableEvenThoughItIsNotTheProjectsOwn(t *testing.T) {
-	// A workspace-scoped memory shows up under every project ListForProject is asked about (ADR 0059); the
-	// fake mirrors that by listing it under both projectID and otherProj, standing in for the union the real
-	// memories.Service.ListForProject returns.
-	f := newRunnerFixture()
-	wsMem := "m-workspace"
-	f.mems.byProject[projectID] = append(f.mems.byProject[projectID], Memory{ID: wsMem, Title: "Team tone", Markdown: "be terse"})
-	f.mems.byProject[otherProj] = append(f.mems.byProject[otherProj], Memory{ID: wsMem, Title: "Team tone", Markdown: "be terse"})
-	in := ticketRun()
-	in.MemoryIDs = []string{wsMem}
-
-	trail, err := f.runner.Run(ctxAs(starter), in)
-	require.NoError(t, err)
-	assert.Contains(t, trail.SelectedMemoryIDs, wsMem)
-}
-
 func TestRun_HarnessChoice_PassedToTheResolverAndRecordedOnTheTrail(t *testing.T) {
 	f := newRunnerFixture()
 	resolvedOptions := []harness.OptionSetting{{ID: "effort", Value: "high"}}

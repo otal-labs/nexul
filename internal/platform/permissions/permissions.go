@@ -94,7 +94,7 @@ const (
 // verbLabel is the owner-facing text for a domain-declared verb (ADR 0057): one line per verb, no per-domain switch.
 var verbLabel = map[Action]string{
 	PlaysRun:      "Run plays",
-	MemoriesClone: "Clone memories to another project or workspace",
+	MemoriesClone: "Clone memories to another project",
 	RolesClone:    "Clone roles to another workspace",
 	DocsThread:    "See doc threads",
 	DocsClone:     "Clone docs into another project",

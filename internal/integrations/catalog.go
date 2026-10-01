@@ -875,6 +875,7 @@ var catalogSchemas = map[string]string{
 		"properties": {
 			"id": {"type": "string"},
 			"workspace_id": {"type": "string"},
+			"project_id": {"type": "string"},
 			"title": {"type": "string"},
 			"author_id": {"type": "string"}
 		}

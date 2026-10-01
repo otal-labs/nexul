@@ -214,18 +214,8 @@ func (g workspacePermissionGate) WorkspacePermissions(ctx context.Context, userI
 	return g.svc.WorkspacePermissions(ctx, userID, workspaceID)
 }
 
-// memoriesPermissionGate adapts access's HasPermission to memories' seam (ADR 0017); memories are workspace-scoped
-// for real (denormalized per row), so it takes workspaceID.
-type memoriesPermissionGate struct {
-	svc *access.Service
-}
-
-func (g memoriesPermissionGate) HasPermission(ctx context.Context, userID, workspaceID string, action permissions.Action) bool {
-	return g.svc.HasPermission(ctx, userID, workspaceID, action, "", "")
-}
-
-// memoriesProjectLookup reads a project's workspace from storage for memories' ProjectLookup seam (ADR 0017), since
-// memories applies its own memories:read check on the result.
+// memoriesProjectLookup reads a project's workspace from storage for memories' ProjectLookup seam (ADR 0017), so a
+// new memory can denormalize it.
 type memoriesProjectLookup struct {
 	projects *storage.ProjectsRepo
 }
@@ -320,8 +310,7 @@ func (g docsAttachmentsGate) CopyOwnerWithIDs(ctx context.Context, fromDocID, to
 	return g.svc.CopyAttachmentsWithIDs(ctx, attachments.Owner{DocID: fromDocID}, attachments.Owner{DocID: toDocID}, idMap)
 }
 
-// membershipGate adapts tenancy's raw membership store to the membership seams of memories (Clone's destination
-// workspace) and chat (a DM's participants), ADR 0017.
+// membershipGate adapts tenancy's raw membership store to chat's membership seam (a DM's participants), ADR 0017.
 type membershipGate struct {
 	members *storage.WorkspaceMembersRepo
 }
@@ -337,17 +326,17 @@ func (g membershipGate) IsMember(ctx context.Context, userID, workspaceID string
 	return true, nil
 }
 
-// memoryAttachmentsAccessGate adapts a memory's stored workspace id plus access's HasPermission to
-// attachments' MemoryAccessChecker seam (ADR 0017): attachments never imports memories.
+// memoryAttachmentsAccessGate checks a memory's file through its project for attachments' MemoryAccessChecker
+// seam (ADR 0017, ADR 0099); the actor comes from ctx, the same one attachments read the user id from.
 type memoryAttachmentsAccessGate struct {
 	memories *storage.MemoriesRepo
 	access   *access.Service
 }
 
-func (g memoryAttachmentsAccessGate) Can(ctx context.Context, userID, memoryID string, action permissions.Action) (bool, error) {
+func (g memoryAttachmentsAccessGate) Can(ctx context.Context, _, memoryID string, action permissions.Action) (bool, error) {
 	m, err := g.memories.GetByID(ctx, memoryID)
 	if err != nil {
 		return false, err
 	}
-	return g.access.HasPermission(ctx, userID, m.WorkspaceID, action, "", ""), nil
+	return g.access.RequireProject(ctx, m.ProjectID, action) == nil, nil
 }

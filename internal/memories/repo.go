@@ -15,11 +15,7 @@ type Repo interface {
 	// GetByProjectKind returns a project's memory of a special kind, or ErrNotFound.
 	GetByProjectKind(ctx context.Context, projectID, kind string) (*Memory, error)
 	ListByWorkspace(ctx context.Context, workspaceID string) ([]*Memory, error)
-	// ListByProject returns the project's own memories plus its workspace's workspace-scoped ones,
-	// workspace-scoped first (ADR 0059).
-	ListByProject(ctx context.Context, projectID, workspaceID string) ([]*Memory, error)
-	// ListWorkspaceScoped returns only a workspace's workspace-scoped memories (ADR 0059).
-	ListWorkspaceScoped(ctx context.Context, workspaceID string) ([]*Memory, error)
+	ListByProject(ctx context.Context, projectID string) ([]*Memory, error)
 	Update(ctx context.Context, m *Memory, authorVia string, evts ...eventbus.OutboxEvent) error
 	Delete(ctx context.Context, id string, evts ...eventbus.OutboxEvent) error
 	// ListVersions returns a memory's version history, newest first.
