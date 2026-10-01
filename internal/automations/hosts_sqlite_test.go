@@ -35,7 +35,11 @@ func (u instanceURL) GetInstanceURL(context.Context) (string, error) { return st
 type recordingConns struct {
 	mu   sync.Mutex
 	ids  []string
-	next automations.ConnectionRegistry
+	next automations.DeliveryRegistry
+}
+
+func (c *recordingConns) SkipBacklog(ctx context.Context, automationID string) error {
+	return c.next.SkipBacklog(ctx, automationID)
 }
 
 func (c *recordingConns) Disconnect(automationID, reason string) {

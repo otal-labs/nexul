@@ -436,6 +436,10 @@ func (f *fakeConnRegistry) Disconnect(automationID, reason string) {
 	f.reasons = append(f.reasons, reason)
 }
 
+func (f *fakeConnRegistry) SkipBacklog(context.Context, string) error {
+	return nil
+}
+
 func (f *fakeConnRegistry) calledWith() ([]string, []string) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

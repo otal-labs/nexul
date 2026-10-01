@@ -28,7 +28,7 @@ type Service struct {
 	repo  Repo
 	perm  PermissionGate
 	now   func() time.Time
-	conns ConnectionRegistry
+	conns DeliveryRegistry
 	// scopeAllows backs the HTTP gateway; nil until SetGateway wires it.
 	scopeAllows   ScopeGate
 	resolveScopes ScopeResolver
@@ -42,7 +42,7 @@ func NewService(repo Repo, perm PermissionGate) *Service {
 }
 
 // SetConnectionRegistry wires the dial-in registry after construction, closing a cycle the constructor can't.
-func (s *Service) SetConnectionRegistry(r ConnectionRegistry) {
+func (s *Service) SetConnectionRegistry(r DeliveryRegistry) {
 	s.conns = r
 }
 
@@ -148,6 +148,12 @@ func (s *Service) SetEnabled(ctx context.Context, actorID, id string, enabled bo
 	}
 	if a.Enabled == enabled {
 		return a, nil
+	}
+	// Events published while it was off are skipped, not replayed on enable; the cursor otherwise resumes downtime.
+	if enabled && s.conns != nil {
+		if err := s.conns.SkipBacklog(ctx, id); err != nil {
+			return nil, fmt.Errorf("skip automation %s backlog: %w", id, err)
+		}
 	}
 	a.Enabled = enabled
 	a.UpdatedAt = s.now().UTC()
