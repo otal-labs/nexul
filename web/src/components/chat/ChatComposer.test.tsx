@@ -71,7 +71,7 @@ describe("ChatComposer", () => {
   it("does not send an empty or whitespace-only message", async () => {
     const user = userEvent.setup();
     const { onSend } = renderComposer();
-    await user.click(screen.getByRole("button", { name: "Send message" }));
+    await user.type(screen.getByLabelText("Message"), "{Enter}");
     expect(onSend).not.toHaveBeenCalled();
     await user.type(screen.getByLabelText("Message"), "   ");
     await user.keyboard("{Enter}");
@@ -118,7 +118,7 @@ describe("ChatComposer", () => {
     expect(form.get("conversation_id")).toBe("c-1");
 
     await screen.findByAltText("shot.png");
-    await user.click(screen.getByRole("button", { name: "Send message" }));
+    await user.type(screen.getByLabelText("Message"), "{Enter}");
     await waitFor(() => expect(onSend).toHaveBeenCalledWith("![shot.png](/api/attachments/a-1)"));
   });
 
@@ -150,7 +150,7 @@ describe("ChatComposer", () => {
     expect(screen.queryByAltText("shot.png")).not.toBeInTheDocument();
   });
 
-  it("disables Send while an upload is in flight", async () => {
+  it("does not send on Enter while an upload is in flight, then sends once it finishes", async () => {
     let resolveUpload: (value: { data: unknown }) => void = () => {};
     vi.mocked(api.post).mockReturnValue(
       new Promise((resolve) => {
@@ -158,13 +158,18 @@ describe("ChatComposer", () => {
       }) as ReturnType<typeof api.post>,
     );
     const user = userEvent.setup();
-    renderComposer();
+    const { onSend } = renderComposer();
+    const input = screen.getByLabelText("Message");
 
+    await user.type(input, "look");
     await user.upload(screen.getByLabelText("Choose image files"), pngFile());
-    expect(screen.getByRole("button", { name: "Send message" })).toBeDisabled();
+    await user.type(input, "{Enter}");
+    expect(onSend).not.toHaveBeenCalled();
 
     resolveUpload({ data: { id: "a-1", conversation_id: "c-1", name: "shot.png", content_type: "image/png", size: 3 } });
-    await waitFor(() => expect(screen.getByRole("button", { name: "Send message" })).not.toBeDisabled());
+    await screen.findByAltText("shot.png");
+    await user.type(input, "{Enter}");
+    await waitFor(() => expect(onSend).toHaveBeenCalledWith("look\n![shot.png](/api/attachments/a-1)"));
   });
 
   it("sends an image-only message with no text", async () => {
@@ -176,9 +181,7 @@ describe("ChatComposer", () => {
 
     await user.upload(screen.getByLabelText("Choose image files"), pngFile());
     await screen.findByAltText("shot.png");
-    expect(screen.getByRole("button", { name: "Send message" })).not.toBeDisabled();
-
-    await user.click(screen.getByRole("button", { name: "Send message" }));
+    await user.type(screen.getByLabelText("Message"), "{Enter}");
     await waitFor(() => expect(onSend).toHaveBeenCalledWith("![shot.png](/api/attachments/a-1)"));
   });
 });

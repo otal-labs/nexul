@@ -1,4 +1,4 @@
-import { ImagePlus, SendHorizontal } from "lucide-react";
+import { ImagePlus } from "lucide-react";
 import {
   useRef,
   useState,
@@ -150,18 +150,6 @@ export const ChatComposer = ({ workspaceId, conversationId, placeholder = "Messa
         )}
         {pending.length > 0 && <ComposerAttachmentStrip pending={pending} onRemove={remove} />}
         <div className="flex items-end gap-2">
-          <Textarea
-            ref={textareaRef}
-            aria-label="Message"
-            placeholder={placeholder}
-            value={value}
-            onChange={handleChange}
-            onKeyDown={handleKeyDown}
-            onClick={handleClickOrKeyUp}
-            onPaste={handlePaste}
-            rows={1}
-            className="min-h-9 flex-1 resize-none text-sm"
-          />
           <input
             ref={fileInputRef}
             type="file"
@@ -180,15 +168,18 @@ export const ChatComposer = ({ workspaceId, conversationId, placeholder = "Messa
           >
             <ImagePlus className="size-4" aria-hidden />
           </Button>
-          <Button
-            size="icon"
-            aria-label="Send message"
-            loading={sending}
-            disabled={(value.trim() === "" && pending.length === 0) || isUploading}
-            onClick={() => void send()}
-          >
-            <SendHorizontal className="size-4" aria-hidden />
-          </Button>
+          <Textarea
+            ref={textareaRef}
+            aria-label="Message"
+            placeholder={placeholder}
+            value={value}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            onClick={handleClickOrKeyUp}
+            onPaste={handlePaste}
+            rows={1}
+            className="quiet-focus min-h-9 flex-1 resize-none text-sm focus-visible:border-ring/40 focus-visible:ring-0"
+          />
         </div>
       </div>
     </div>
