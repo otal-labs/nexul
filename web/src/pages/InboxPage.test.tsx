@@ -111,6 +111,14 @@ describe("InboxPage", () => {
     expect(within(list).getByRole("button", { name: /Write migrations/ })).toHaveAttribute("aria-current", "true");
   });
 
+  it("shows when it happened on every row, tickets as well as docs", async () => {
+    mockApi();
+    renderPage();
+    const list = await screen.findByRole("navigation", { name: "Notifications" });
+    expect(await within(list).findByRole("button", { name: /Write migrations.*assigned to you.*\d+d ago/ })).toBeInTheDocument();
+    expect(within(list).getByRole("button", { name: /Spec.*\d+d ago/ })).toBeInTheDocument();
+  });
+
   it("marks an unread notification read and loads its source when selected", async () => {
     mockApi();
     vi.mocked(api.post).mockResolvedValue({ data: undefined });

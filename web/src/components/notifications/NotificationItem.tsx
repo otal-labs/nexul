@@ -30,9 +30,7 @@ export const NotificationItem = ({ row, inset = false }: NotificationItemProps) 
         <p className={cn("truncate text-sm", unread ? "font-semibold" : "font-medium text-muted-foreground")}>{row.title}</p>
         <p className="flex gap-2 text-xs text-muted-foreground">
           <span className="truncate">{row.summary}</span>
-          {row.type === "doc" && (
-            <span className="ml-auto shrink-0 font-mono tabular-nums">{formatRelativeTime(row.notification.created_at)}</span>
-          )}
+          <span className="ml-auto shrink-0 font-mono tabular-nums">{formatRelativeTime(row.notification.created_at)}</span>
         </p>
       </div>
     </button>

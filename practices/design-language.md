@@ -185,7 +185,8 @@ trailing in mono, unread while any of them is. Docs outside their project's
 default folder sit under a folder row built from the same `FolderToggle` as
 the Docs pane's, its meta "4 docs · 7 updates", expanded until collapsed and
 kept per browser; inside it a title drops a leading folder name. Every other
-notification is its own row, and all of them interleave by newest activity.
+notification is its own row with the same trailing time, and all of them
+interleave by newest activity.
 
 Filter bar. A horizontal row of pill controls directly under the page header:
 a search field, then filter pills (`h-9 rounded-md border border-border
