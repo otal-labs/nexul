@@ -10,7 +10,7 @@ interface DocPresenceBarProps {
 }
 
 export const DocPresenceBar = ({ participants, connected, updatedAt }: DocPresenceBarProps) => (
-  <div className="flex items-center justify-center gap-3">
+  <div className="flex items-center gap-3">
     <PresenceSection participants={participants} />
     {connected != null && (
       <span
