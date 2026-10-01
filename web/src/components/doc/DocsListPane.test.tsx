@@ -3,14 +3,20 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DocsListPane } from "@/components/doc/DocsListPane";
+import type { DocFolderGroup } from "@/components/doc/docGroups";
 import type { DocListItem } from "@/models/Doc";
+import type { DocFolder } from "@/models/DocFolder";
 import type { Project } from "@/models/Project";
 import { useDocSortStore } from "@/stores/docSortStore";
 
+const main: DocFolder = { id: "f-main", project_id: "project-1", name: "Main", is_default: true, created_at: "", updated_at: "" };
+
 vi.mock("@/hooks/useCreateDocDialog", () => ({ useCreateDocDialog: () => undefined }));
-vi.mock("@/components/doc/DocGroupSection", () => ({
-  DocGroupSection: ({ group }: { group: { docs: { id: string }[] } }) => (
-    <ul>
+vi.mock("@/components/doc/NewDocFolderButton", () => ({ NewDocFolderButton: () => null }));
+vi.mock("@/hooks/DocFolderHooks", () => ({ useFetchDocFolders: () => ({ data: [main], error: null, isPending: false }) }));
+vi.mock("@/components/doc/DocFolderSection", () => ({
+  DocFolderSection: ({ group, forceOpen }: { group: DocFolderGroup; forceOpen: boolean }) => (
+    <ul aria-label={`${group.folder.name}${forceOpen ? " (open)" : ""}`}>
       {group.docs.map((doc) => (
         <li key={doc.id}>{doc.id}</li>
       ))}
@@ -21,6 +27,7 @@ vi.mock("@/components/doc/DocGroupSection", () => ({
 const doc = (id: string, created: string, updated: string): DocListItem => ({
   id,
   project_id: "project-1",
+  folder_id: "f-main",
   title: id,
   version: 1,
   archived: false,
@@ -39,7 +46,7 @@ const docs = [
 
 const listed = () => screen.getAllByRole("listitem").map((li) => li.textContent);
 
-describe("DocsListPane sort", () => {
+describe("DocsListPane", () => {
   beforeEach(() => {
     useDocSortStore.setState({ sortBy: "created_at" });
   });
@@ -53,5 +60,15 @@ describe("DocsListPane sort", () => {
 
     await userEvent.click(screen.getByRole("radio", { name: "Sort by created" }));
     expect(listed()).toEqual(["EP07", "EP06", "EP01"]);
+  });
+
+  it("opens every matching folder while a search runs, and says when nothing matches", async () => {
+    render(<DocsListPane docs={docs} project={{ id: "project-1" } as Project} selectedId={undefined} />);
+    await userEvent.type(screen.getByRole("textbox", { name: "Search docs" }), "ep06");
+    expect(screen.getByRole("list", { name: "Main (open)" })).toBeInTheDocument();
+    expect(listed()).toEqual(["EP06"]);
+
+    await userEvent.type(screen.getByRole("textbox", { name: "Search docs" }), "x");
+    expect(screen.getByText("Nothing matches")).toBeInTheDocument();
   });
 });

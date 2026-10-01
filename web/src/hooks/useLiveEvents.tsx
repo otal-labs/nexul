@@ -12,6 +12,7 @@ import { useFlowStore } from "@/stores/flowStore";
 import { getDeployKey, getDeployLogKey } from "@/hooks/DeployHooks";
 import { getDnsExposuresKey, getDnsGatewaysKey } from "@/hooks/DnsHooks";
 import { getDocKey, getDocsKey } from "@/hooks/DocHooks";
+import { getDocFoldersKey } from "@/hooks/DocFolderHooks";
 import { getInstanceUpgradeKey } from "@/hooks/InstanceUpgradeHooks";
 import { getWorkspacePeopleKey } from "@/hooks/PeopleHooks";
 import { followWorkspaceUpdate, getMyRoleKey, getWorkspacesKey, type MyWorkspaceInfo } from "@/hooks/WorkspaceHooks";
@@ -98,6 +99,10 @@ const pushTopics: Record<string, string[]> = {
   "category.deleted": [getCategoriesKey, getProjectCategoriesKey],
   "doc.created": [getDocsKey],
   "doc.updated": [getDocsKey, getDocKey],
+  "doc.moved": [getDocsKey, getDocKey, getDocFoldersKey],
+  "doc.folder.created": [getDocFoldersKey],
+  "doc.folder.updated": [getDocFoldersKey],
+  "doc.folder.deleted": [getDocFoldersKey, getDocsKey],
   "ticket.created": [getTicketsKey],
   "ticket.updated": [getTicketsKey, getTicketKey, getTicketLinksKey, getTrailsKey, getTicketLinkSetKey, getBlockersKey],
   // A blocker reaching a done-stage column clears the blocked card the moment it moves.

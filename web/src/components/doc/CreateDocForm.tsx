@@ -32,8 +32,9 @@ export const CreateDocForm = ({ defaultProjectId = "" }: CreateDocFormProps) => 
     setValue("project_id", (defaultProjectId || projects[0]?.id) ?? "");
   }, [ready, projects, defaultProjectId, getValues, setValue]);
 
-  onSubmit(async (input) => {
-    const doc = await createDoc.mutateAsync(input);
+  // The folder belongs to the project the dialog opened in; picking another project files the doc in that one's default.
+  onSubmit(async ({ folder_id, ...input }) => {
+    const doc = await createDoc.mutateAsync(input.project_id === defaultProjectId ? { ...input, folder_id } : input);
     return { id: doc.id, ...input };
   });
 

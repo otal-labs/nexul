@@ -25,9 +25,13 @@ vi.mock("@/pages/DocPage", async () => {
 
 const project = { id: "p-1", name: "Backend", prefix: "BE", position: 0, created_at: "", updated_at: "" };
 
-const doc = (id: string, title: string, updated_at: string, can_open = true, locked = false) => ({
+const main = { id: "f-main", project_id: "p-1", name: "Main", is_default: true, created_at: "", updated_at: "" };
+const getSource = { id: "f-gs", project_id: "p-1", name: "GetSource", is_default: false, created_at: "", updated_at: "" };
+
+const doc = (id: string, title: string, updated_at: string, can_open = true, locked = false, folder_id = "f-main") => ({
   id,
   project_id: "p-1",
+  folder_id,
   title,
   version: 1,
   archived: false,
@@ -40,7 +44,7 @@ const doc = (id: string, title: string, updated_at: string, can_open = true, loc
 
 const docs = [
   doc("doc-1", "Storage Spine", new Date().toISOString(), true, true),
-  doc("doc-2", "Rollback plan", "2020-01-01T12:00:00Z"),
+  doc("doc-2", "Rollback plan", "2020-01-01T12:00:00Z", true, false, "f-gs"),
   doc("doc-3", "Salaries", "2020-01-02T12:00:00Z", false),
 ];
 
@@ -52,6 +56,7 @@ const renderPage = (path: string, permissions: string[], overrides: Record<strin
     "/api/workspaces": [{ id: "ws-1", name: "Acme", slug: "acme" }],
     "/api/workspaces/ws-1/me": { role_name: "Member", permissions },
     "/api/docs": docs,
+    "/api/docs/folders": [main, getSource],
     ...overrides,
   };
   vi.mocked(api.get).mockImplementation(async (url: string) => {
@@ -82,13 +87,13 @@ beforeEach(() => {
 });
 
 describe("DocsPage", () => {
-  it("lists the openable docs by day and opens the one the URL names", async () => {
+  it("lists the openable docs by folder and opens the one the URL names", async () => {
     renderPage("/acme/docs/BE/doc-2", ["docs:read"]);
 
-    const earlier = await screen.findByRole("region", { name: "Earlier" });
-    expect(within(earlier).getByRole("link", { name: /Rollback plan/ })).toHaveAttribute("aria-current", "page");
-    const today = screen.getByRole("region", { name: "Today" });
-    expect(within(today).getByRole("link", { name: /Storage Spine/ })).not.toHaveAttribute("aria-current");
+    const folder = await screen.findByRole("region", { name: "GetSource" });
+    expect(within(folder).getByRole("link", { name: /Rollback plan/ })).toHaveAttribute("aria-current", "page");
+    const mainFolder = screen.getByRole("region", { name: "Main" });
+    expect(within(mainFolder).getByRole("link", { name: /Storage Spine/ })).not.toHaveAttribute("aria-current");
     expect(screen.queryByText("Salaries")).not.toBeInTheDocument();
     expect(await screen.findByText("editing doc-2")).toBeInTheDocument();
   });
@@ -127,7 +132,7 @@ describe("DocsPage", () => {
 
     await user.click(await screen.findByRole("button", { name: "More actions for Rollback plan" }));
     const items = await screen.findAllByRole("menuitem");
-    expect(items.map((item) => item.textContent)).toEqual(["Pin", "Lock", "Clone", "Delete"]);
+    expect(items.map((item) => item.textContent)).toEqual(["Pin", "Lock", "Move to folder", "Clone", "Delete"]);
     await user.click(screen.getByRole("menuitem", { name: "Lock" }));
     await vi.waitFor(() => expect(api.post).toHaveBeenCalledWith("/api/docs/doc-2/lock"));
 
@@ -144,11 +149,11 @@ describe("DocsPage", () => {
     await user.click(await screen.findByRole("menuitem", { name: "Pin" }));
     const pinned = await screen.findByRole("region", { name: "Pinned" });
     expect(within(pinned).getByRole("link", { name: /Rollback plan/ })).toBeInTheDocument();
-    expect(screen.queryByRole("region", { name: "Earlier" })).not.toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "GetSource" })).queryByRole("link")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "More actions for Rollback plan" }));
     await user.click(await screen.findByRole("menuitem", { name: "Unpin" }));
-    expect(await screen.findByRole("region", { name: "Earlier" })).toBeInTheDocument();
+    expect(await within(screen.getByRole("region", { name: "GetSource" })).findByRole("link", { name: /Rollback plan/ })).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Pinned" })).not.toBeInTheDocument();
   });
 
@@ -166,11 +171,58 @@ describe("DocsPage", () => {
     expect(await screen.findByText("editing doc-9")).toBeInTheDocument();
   });
 
-  it("says so, and offers a writer New doc, when the project has no docs", async () => {
+  it("shows a writer the empty folders, with New doc, when the project has no docs", async () => {
     renderPage("/acme/docs", ["docs:read", "docs:write"], { "/api/docs": [] });
 
-    expect(await screen.findByText("No docs yet")).toBeInTheDocument();
+    expect(await within(await screen.findByRole("region", { name: "Main" })).findByText("No docs")).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: "New doc" })).toBeInTheDocument();
+  });
+
+  it("says so when the viewer can open no doc, so the server shows them no folder", async () => {
+    renderPage("/acme/docs", ["docs:read"], { "/api/docs": [], "/api/docs/folders": [] });
+
+    expect(await screen.findByText("No docs yet")).toBeInTheDocument();
+  });
+
+  it("moves a doc to another folder from its row menu", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.post).mockResolvedValue({ data: {} });
+    renderPage("/acme/docs", ["docs:read", "docs:write"]);
+
+    await user.click(await screen.findByRole("button", { name: "More actions for Storage Spine" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Move to folder" }));
+    screen.getByRole("menuitemradio", { name: "GetSource" }).focus();
+    await user.keyboard("{Enter}");
+    await vi.waitFor(() => expect(api.post).toHaveBeenCalledWith("/api/docs/doc-1/move", { folder_id: "f-gs" }));
+  });
+
+  it("creates a folder from the header and deletes one after saying where its docs go", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.post).mockResolvedValue({ data: {} });
+    vi.mocked(api.delete).mockResolvedValue({ data: {} });
+    renderPage("/acme/docs", ["docs:read", "docs:write"]);
+
+    await user.click(await screen.findByRole("button", { name: "New folder" }));
+    const dialog = await screen.findByRole("dialog", { name: "New folder" });
+    await user.type(within(dialog).getByLabelText("Name"), "Episodes");
+    await user.click(within(dialog).getByRole("button", { name: "Create" }));
+    await vi.waitFor(() => expect(api.post).toHaveBeenCalledWith("/api/docs/folders", { project_id: "p-1", name: "Episodes" }));
+
+    await user.click(screen.getByRole("button", { name: "More actions for GetSource" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
+    const confirm = await screen.findByRole("dialog", { name: "Delete GetSource?" });
+    expect(within(confirm).getByText("1 doc moves to Main; none is deleted.")).toBeInTheDocument();
+    await user.click(within(confirm).getByRole("button", { name: "Delete" }));
+    await vi.waitFor(() => expect(api.delete).toHaveBeenCalledWith("/api/docs/folders/f-gs"));
+  });
+
+  it("never offers to delete the default folder", async () => {
+    const user = userEvent.setup();
+    renderPage("/acme/docs", ["docs:read", "docs:write"]);
+
+    await user.click(await screen.findByRole("button", { name: "More actions for Main" }));
+    expect(await screen.findByRole("menuitem", { name: "Rename" })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "Delete" })).not.toBeInTheDocument();
   });
 
   it("points at the project wizard when the workspace has no project yet", async () => {

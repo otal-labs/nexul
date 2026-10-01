@@ -1,11 +1,16 @@
 import { useState } from "react";
 import { FileTextIcon } from "lucide-react";
 
+import { DocFolderSection } from "@/components/doc/DocFolderSection";
 import { DocGroupSection } from "@/components/doc/DocGroupSection";
 import { DocSortToggle } from "@/components/doc/DocSortToggle";
 import { groupDocs } from "@/components/doc/docGroups";
+import { NewDocFolderButton } from "@/components/doc/NewDocFolderButton";
+import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { ListPaneEmpty, ListPaneNoMatch } from "@/components/listpane/ListPaneEmpty";
 import { ListPaneHeader } from "@/components/listpane/ListPaneHeader";
+import { LoadingDisplay } from "@/components/LoadingDisplay";
+import { useFetchDocFolders } from "@/hooks/DocFolderHooks";
 import { useCreateDocDialog } from "@/hooks/useCreateDocDialog";
 import { useDocPins } from "@/hooks/useDocPins";
 import { useDocSortStore } from "@/stores/docSortStore";
@@ -18,18 +23,21 @@ interface DocsListPaneProps {
   selectedId: string | undefined;
 }
 
-const matches = (doc: DocListItem, query: string) =>
+const matches = (query: string) => (doc: DocListItem) =>
   doc.title.toLowerCase().includes(query) || (doc.snippet ?? "").toLowerCase().includes(query);
 
-// Lists only the docs the viewer can open; the server still names the others, with can_open false.
+// Lists only the docs the viewer can open, by folder; the server still names the others, with can_open false.
 export const DocsListPane = ({ docs, project, selectedId }: DocsListPaneProps) => {
   const [search, setSearch] = useState("");
   const sortBy = useDocSortStore((s) => s.sortBy);
   const { pinnedIds } = useDocPins();
   const openCreateDoc = useCreateDocDialog(project.id);
+  const { data: folders, error, isPending } = useFetchDocFolders(project.id);
   const openable = docs.filter((doc) => doc.can_open);
   const query = search.trim().toLowerCase();
-  const groups = groupDocs(query === "" ? openable : openable.filter((doc) => matches(doc, query)), sortBy, pinnedIds);
+  const searching = query !== "";
+  const groups = folders && groupDocs({ docs: openable, folders, sortBy, pinnedIds, match: searching ? matches(query) : undefined });
+  const token = projectToken(project);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -40,13 +48,23 @@ export const DocsListPane = ({ docs, project, selectedId }: DocsListPaneProps) =
         onNew={openCreateDoc}
         search={search}
         onSearch={setSearch}
-        controls={<DocSortToggle />}
+        controls={
+          <>
+            <DocSortToggle />
+            <NewDocFolderButton projectId={project.id} />
+          </>
+        }
       />
       <div className="min-h-0 flex-1 overflow-y-auto pb-2">
-        {openable.length === 0 && <ListPaneEmpty icon={FileTextIcon} message="No docs yet" />}
-        {openable.length > 0 && groups.length === 0 && <ListPaneNoMatch onClear={() => setSearch("")} />}
-        {groups.map((group) => (
-          <DocGroupSection key={group.label} group={group} projectToken={projectToken(project)} selectedId={selectedId} />
+        {isPending && <LoadingDisplay />}
+        {error && <ErrorDisplay error={error} title="Failed to load folders." />}
+        {groups && groups.folders.length === 0 && !searching && <ListPaneEmpty icon={FileTextIcon} message="No docs yet" />}
+        {groups && groups.folders.length === 0 && groups.pinned.length === 0 && searching && <ListPaneNoMatch onClear={() => setSearch("")} />}
+        {groups && groups.pinned.length > 0 && (
+          <DocGroupSection group={{ label: "Pinned", docs: groups.pinned }} projectToken={token} selectedId={selectedId} />
+        )}
+        {groups?.folders.map((group) => (
+          <DocFolderSection key={group.folder.id} group={group} projectToken={token} selectedId={selectedId} forceOpen={searching} />
         ))}
       </div>
     </div>
