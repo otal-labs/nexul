@@ -2,6 +2,7 @@ package chat
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"slices"
 	"testing"
@@ -386,4 +387,41 @@ func TestRestrictedMember_ReadsDMsTheirPrivateChannelsAndReadableThreads(t *test
 	assert.NotContains(t, counts, f.eng.ID)
 	assert.Contains(t, counts, f.secret.ID)
 	assert.ElementsMatch(t, []string{f.secret.ID, f.eng.ID, dm.ID}, listedIDs(t, f.s, "u-1"), "everyone else lists as before")
+}
+
+func TestMessageEvents_MarkDMAndPrivateChannelMessagesMembersOnly(t *testing.T) {
+	f := newPrivateFixture(t)
+	dm, err := f.s.CreateDM(as("u-1"), "w-1", "u-1", []string{"u-3"})
+	require.NoError(t, err)
+	thread, err := f.s.GetOrCreateTicketThread(as("u-1"), "w-1", "ticket-1", "u-1")
+	require.NoError(t, err)
+	tests := []struct {
+		name        string
+		c           *Conversation
+		membersOnly bool
+	}{
+		{"a public channel", f.eng, false},
+		{"a ticket thread", thread, false},
+		{"a private channel", f.secret, true},
+		{"a DM", dm, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f.repo.events = nil
+			m, err := f.s.PostMessage(as("u-1"), tt.c.ID, "u-1", "hi")
+			require.NoError(t, err)
+			_, err = f.s.EditMessage(as("u-1"), m.ID, "u-1", "edited")
+			require.NoError(t, err)
+			require.NoError(t, f.s.DeleteMessage(as("u-1"), m.ID, "u-1"))
+			for _, topic := range []string{TopicMessageCreated, TopicMessageUpdated, TopicMessageDeleted} {
+				evts := f.repo.eventsFor(topic)
+				require.Len(t, evts, 1)
+				raw, err := json.Marshal(evts[0].Payload)
+				require.NoError(t, err)
+				var payload map[string]any
+				require.NoError(t, json.Unmarshal(raw, &payload))
+				assert.Equal(t, tt.membersOnly, payload["members_only"] == true, topic)
+			}
+		})
+	}
 }

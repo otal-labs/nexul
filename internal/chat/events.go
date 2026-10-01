@@ -62,11 +62,14 @@ type ConversationMembersChangedEvent struct {
 // MessageCreatedEvent is the payload for chat.message.created.
 type MessageCreatedEvent struct {
 	Message Message `json:"message"`
+	// MembersOnly marks a DM or private channel's message, which never reaches integrations or automations.
+	MembersOnly bool `json:"members_only,omitempty"`
 }
 
 // MessageUpdatedEvent is the payload for chat.message.updated: Message reflects the post-edit state.
 type MessageUpdatedEvent struct {
-	Message Message `json:"message"`
+	Message     Message `json:"message"`
+	MembersOnly bool    `json:"members_only,omitempty"`
 }
 
 // MessageDeletedEvent's body is already cleared (soft delete), so consumers get identity + timing only.
@@ -74,4 +77,5 @@ type MessageDeletedEvent struct {
 	ConversationID string    `json:"conversation_id"`
 	MessageID      string    `json:"message_id"`
 	DeletedAt      time.Time `json:"deleted_at"`
+	MembersOnly    bool      `json:"members_only,omitempty"`
 }

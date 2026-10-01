@@ -962,11 +962,11 @@ func TestPostMessage(t *testing.T) {
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 	})
-	t.Run("posting to a nonexistent conversation is a conflict", func(t *testing.T) {
+	t.Run("posting to a nonexistent conversation is not found", func(t *testing.T) {
 		s := newTestService(newFakeRepo())
 		_, err := s.PostMessage(context.Background(), "missing", "u-1", "hi")
 		require.Error(t, err)
-		assert.True(t, errors.Is(err, apperrs.ErrConflict))
+		assert.True(t, errors.Is(err, apperrs.ErrNotFound))
 	})
 	t.Run("posts and parses mentions, enqueueing chat.message.created", func(t *testing.T) {
 		repo := newFakeRepo()

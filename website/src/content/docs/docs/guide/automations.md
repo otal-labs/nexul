@@ -5,7 +5,7 @@ sidebar:
   order: 12
 ---
 
-An automation is first-party code: when an event happens in your workspace, a function runs. Automations belong to a workspace: each one hears only that workspace's events, plus instance-level ones such as runners and DNS, and switching or configuring one on a workspace's Automations page changes it there alone. Every workspace has its own copy of each default automation. There's no rule builder or condition DSL — customization means writing code against the Nexul SDK.
+An automation is first-party code: when an event happens in your workspace, a function runs. Automations belong to a workspace: each one hears only that workspace's events, plus instance-level ones such as runners and DNS, and switching or configuring one on a workspace's Automations page changes it there alone. Messages in a direct message or a private channel never reach an automation. Every workspace has its own copy of each default automation. There's no rule builder or condition DSL — customization means writing code against the Nexul SDK.
 
 ## The model
 

@@ -1217,13 +1217,19 @@ var catalogSchemas = map[string]string{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",
 		"type": "object",
 		"required": ["message"],
-		"properties": {"message": {"type": "object"}}
+		"properties": {
+			"message": {"type": "object"},
+			"members_only": {"type": "boolean", "description": "Set on a DM or private channel's message, which is never delivered to integrations or automations."}
+		}
 	}`,
 	"chat.message.updated": `{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",
 		"type": "object",
 		"required": ["message"],
-		"properties": {"message": {"type": "object"}}
+		"properties": {
+			"message": {"type": "object"},
+			"members_only": {"type": "boolean", "description": "Set on a DM or private channel's message, which is never delivered to integrations or automations."}
+		}
 	}`,
 	"chat.message.deleted": `{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1232,7 +1238,8 @@ var catalogSchemas = map[string]string{
 		"properties": {
 			"conversation_id": {"type": "string"},
 			"message_id": {"type": "string"},
-			"deleted_at": {"type": "string", "format": "date-time"}
+			"deleted_at": {"type": "string", "format": "date-time"},
+			"members_only": {"type": "boolean", "description": "Set on a DM or private channel's message, which is never delivered to integrations or automations."}
 		}
 	}`,
 	"voice.occupancy.changed": `{

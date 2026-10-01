@@ -53,6 +53,7 @@ Third-party integrations receive events as signed, durable HTTP POST deliveries 
 
 - Each delivery carries `X-Nexul-Signature` (an HMAC over the payload, `sha256=<hex>`, keyed to the integration's own webhook secret) and `X-Nexul-Delivery-Id`, so a receiver can verify authenticity and dedupe retries.
 - Delivery is backed by the transactional outbox with retry and a dead-letter queue — durable, at-least-once.
+- Messages in a direct message or a private channel are never delivered, so an integration hears only what the whole workspace could read.
 - Every event topic has a published, versioned JSON Schema. The full catalog is served at:
 
 ```

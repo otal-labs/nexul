@@ -920,6 +920,10 @@ func (s *Service) postMessage(ctx context.Context, conversationID, authorID, bod
 	if body == "" {
 		return nil, fmt.Errorf("%w: message body is required", apperrs.ErrInvalid)
 	}
+	membersOnly, err := s.membersOnly(ctx, conversationID)
+	if err != nil {
+		return nil, fmt.Errorf("post message to conversation %s: %w", conversationID, err)
+	}
 	now := s.now().UTC()
 	m := &Message{
 		ID:             ids.New(),
@@ -931,11 +935,20 @@ func (s *Service) postMessage(ctx context.Context, conversationID, authorID, bod
 		CreatedAt:      now,
 		UpdatedAt:      now,
 	}
-	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicMessageCreated, Payload: MessageCreatedEvent{Message: *m}}
+	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicMessageCreated, Payload: MessageCreatedEvent{Message: *m, MembersOnly: membersOnly}}
 	if err := s.repo.CreateMessage(ctx, m, evt); err != nil {
 		return nil, fmt.Errorf("post message to conversation %s: %w", conversationID, err)
 	}
 	return m, nil
+}
+
+// membersOnly reports whether a conversation is read by its members alone: a DM or a private channel.
+func (s *Service) membersOnly(ctx context.Context, conversationID string) (bool, error) {
+	c, err := s.repo.GetConversation(ctx, conversationID)
+	if err != nil {
+		return false, err
+	}
+	return c.Kind == KindDM || c.Private, nil
 }
 
 // EditMessage edits a message's body in place; only its author may edit it, and never a deleted one.
@@ -962,13 +975,17 @@ func (s *Service) EditMessage(ctx context.Context, messageID, authorID, body str
 	if current.AuthorID != authorID {
 		return nil, fmt.Errorf("%w: only the author may edit this message", apperrs.ErrForbidden)
 	}
+	membersOnly, err := s.membersOnly(ctx, current.ConversationID)
+	if err != nil {
+		return nil, fmt.Errorf("edit message %s: %w", messageID, err)
+	}
 	now := s.now().UTC()
 	updated := *current
 	updated.Body = body
 	updated.Mentions = ParseMentions(body)
 	updated.EditedAt = &now
 	updated.UpdatedAt = now
-	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicMessageUpdated, Payload: MessageUpdatedEvent{Message: updated}}
+	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicMessageUpdated, Payload: MessageUpdatedEvent{Message: updated, MembersOnly: membersOnly}}
 	if err := s.repo.UpdateMessage(ctx, messageID, updated.Body, updated.Mentions, now, evt); err != nil {
 		return nil, fmt.Errorf("edit message %s: %w", messageID, err)
 	}
@@ -995,8 +1012,12 @@ func (s *Service) DeleteMessage(ctx context.Context, messageID, authorID string)
 	if current.AuthorID != authorID {
 		return fmt.Errorf("%w: only the author may delete this message", apperrs.ErrForbidden)
 	}
+	membersOnly, err := s.membersOnly(ctx, current.ConversationID)
+	if err != nil {
+		return fmt.Errorf("delete message %s: %w", messageID, err)
+	}
 	now := s.now().UTC()
-	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicMessageDeleted, Payload: MessageDeletedEvent{ConversationID: current.ConversationID, MessageID: messageID, DeletedAt: now}}
+	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicMessageDeleted, Payload: MessageDeletedEvent{ConversationID: current.ConversationID, MessageID: messageID, DeletedAt: now, MembersOnly: membersOnly}}
 	if err := s.repo.DeleteMessage(ctx, messageID, now, evt); err != nil {
 		return fmt.Errorf("delete message %s: %w", messageID, err)
 	}

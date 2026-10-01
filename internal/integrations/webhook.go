@@ -39,6 +39,9 @@ type deliveryEnvelope struct {
 
 // HandleEvent enqueues one delivery per active subscription on the event's topic.
 func (f *FanoutHandler) HandleEvent(ctx context.Context, ev eventbus.Event) error {
+	if eventbus.MembersOnly(ev.Payload) {
+		return nil
+	}
 	subs, err := f.service.cfg.Subs.ListByTopic(ctx, ev.Topic)
 	if err != nil {
 		return fmt.Errorf("fanout: list subscriptions for %s: %w", ev.Topic, err)
