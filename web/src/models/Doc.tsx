@@ -24,10 +24,13 @@ export interface DocListItem {
   archived: boolean;
   locked: boolean;
   can_open: boolean;
+  created_at: string;
   updated_at: string;
   /** The body's first line of text, sent only when can_open; the list search matches it. */
   snippet?: string;
 }
+
+export type DocSortField = "created_at" | "updated_at";
 
 export const SaveDocFormSchema = z.object({
   project_id: z.string().min(1, "A project is required"),
