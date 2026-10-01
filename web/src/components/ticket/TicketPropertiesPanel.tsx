@@ -1,7 +1,5 @@
 import type { ReactNode } from "react";
 
-import { AttachmentsSection } from "@/components/attachment/AttachmentsSection";
-import { DevelopmentSection } from "@/components/ticket/DevelopmentSection";
 import { TicketLabelsRow } from "@/components/ticket/TicketLabelsRow";
 import { TicketPersonRow } from "@/components/ticket/TicketPersonRow";
 import { TicketReporterRow } from "@/components/ticket/TicketReporterRow";
@@ -11,7 +9,7 @@ import { TicketRole, type Ticket } from "@/models/Ticket";
 
 interface TicketPropertiesPanelProps {
   ticket: Ticket;
-  /** Extra rail sections rendered below Attachments (e.g. the ticket page's review list). */
+  /** The rail sections below Properties, in order. */
   children?: ReactNode;
   onTransition?: (statusId: string) => Promise<void> | void;
   onSetType?: (ticketId: string, typeId: string) => Promise<void> | void;
@@ -33,7 +31,7 @@ export const TicketPropertiesPanel = ({
   onAddLabel,
   onRemoveLabel,
 }: TicketPropertiesPanelProps) => (
-  <aside className="hidden self-start space-y-5 text-sm lg:sticky lg:top-4 lg:block">
+  <aside className="min-w-0 space-y-5 self-start text-sm lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:overflow-y-auto">
     <section className="space-y-0.5">
       <h2 className={microheaderClass}>Properties</h2>
       <div className="flex flex-col">
@@ -49,8 +47,6 @@ export const TicketPropertiesPanel = ({
         <TicketTypeRow ticket={ticket} {...(onSetType ? { onSetType } : {})} />
       </div>
     </section>
-    <DevelopmentSection ticketId={ticket.id} />
-    <AttachmentsSection owner={{ ticket_id: ticket.id }} className="px-2" actionPlacement="end" />
     {children}
   </aside>
 );

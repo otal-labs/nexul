@@ -1,7 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { ContextAwareConfirmation } from "react-confirm";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -82,7 +81,6 @@ const renderSection = (overrides: Partial<Ticket> = {}) => {
     <QueryClientProvider client={client}>
       <MemoryRouter>
         <TicketLinksSection ticket={{ ...ticket, ...overrides }} />
-        <ContextAwareConfirmation.ConfirmationRoot />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -105,7 +103,6 @@ describe("TicketLinksSection", () => {
       blocked_by: [linked("t-2", 2, "backend /books"), linked("t-3", 3, "auth", true)],
       blocks: [linked("t-4", 4, "mobile /books")],
       found_in: linked("t-5", 5, "books v1", true),
-      bugs_found: [linked("t-6", 6, "books 500s")],
       blocked: true,
     });
     renderSection();
@@ -115,8 +112,21 @@ describe("TicketLinksSection", () => {
     expect(screen.getAllByRole("img", { name: "Done" })).toHaveLength(2);
     expect(screen.getByText("Blocks")).toBeInTheDocument();
     expect(screen.getByText("Found in")).toBeInTheDocument();
-    expect(screen.getByText("Bugs found in this")).toBeInTheDocument();
-    expect(screen.getByText("books 500s")).toBeInTheDocument();
+  });
+
+  it("shows only the key in a row and opens the title and description on keyboard focus", async () => {
+    mockApi({ ...emptySet, blocks: [linked("t-4", 4, "mobile /books")] });
+    const body = JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Port the list to mobile." }] }] });
+    const get = vi.mocked(api.get).getMockImplementation()!;
+    vi.mocked(api.get).mockImplementation(async (url: string) =>
+      url === "/api/tickets/t-4" ? { data: { ...ticket, id: "t-4", title: "mobile /books", body } } : get(url),
+    );
+    renderSection();
+    const key = await screen.findByRole("link", { name: /BKS-4/ });
+    expect(key).toHaveTextContent(/^BKS-4$/);
+    act(() => key.focus());
+    expect(await screen.findByText("Port the list to mobile.")).toBeInTheDocument();
+    expect(screen.getByText("mobile /books")).toBeInTheDocument();
   });
 
   it("removes a blocker and a found-in link", async () => {
@@ -165,32 +175,5 @@ describe("TicketLinksSection", () => {
     await user.click(await screen.findByRole("button", { name: /BKS-2/ }));
     expect(api.put).toHaveBeenCalledWith("/api/tickets/t-1/found-in", { origin_id: "t-2" });
     await vi.waitFor(() => expect(toast.error).toHaveBeenCalledWith("that would form a cycle"));
-  });
-
-  it("titles a done ticket's bugs as found after done", async () => {
-    mockApi({ ...emptySet, bugs_found: [linked("t-6", 6, "books 500s")] });
-    renderSection({ status: "st-shipped" as Ticket["status"] });
-    expect(await screen.findByText("Bugs found after done")).toBeInTheDocument();
-    expect(screen.queryByText("Bugs found in this")).not.toBeInTheDocument();
-  });
-
-  it("reports a bug found in this ticket with the link pre-filled and the bug template", async () => {
-    mockApi(emptySet);
-    vi.mocked(api.post).mockResolvedValue({ data: { id: "t-9" } });
-    const user = userEvent.setup();
-    renderSection();
-    await user.click(await screen.findByRole("button", { name: "Report a bug" }));
-    const dialog = await screen.findByRole("dialog");
-    expect(await within(dialog).findByRole("button", { name: /Found in BKS-1/ })).toBeInTheDocument();
-    expect(within(dialog).queryByRole("checkbox", { name: "Origin unknown" })).not.toBeInTheDocument();
-    await vi.waitFor(() => expect(within(dialog).getByRole("textbox", { name: "Body" })).toHaveValue("## Steps"));
-    await user.type(within(dialog).getByRole("textbox", { name: "Title" }), "books 500s");
-    await user.click(within(dialog).getByRole("button", { name: "Report bug" }));
-    await vi.waitFor(() =>
-      expect(api.post).toHaveBeenCalledWith(
-        "/api/tickets",
-        expect.objectContaining({ title: "books 500s", type_id: "tt-bug", origin_id: "t-1", project_id: "p-1" }),
-      ),
-    );
   });
 });

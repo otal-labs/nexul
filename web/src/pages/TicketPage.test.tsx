@@ -21,7 +21,7 @@ const renderPage = (entry = "/tickets/t-1") => {
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[entry]}>
         <Routes>
-          <Route path="/tickets/:ticketId/:tab?" element={<TicketPage />} />
+          <Route path="/tickets/:ticketId" element={<TicketPage />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -153,50 +153,31 @@ describe("TicketPage", () => {
   });
 });
 
-describe("TicketPage tabs", () => {
+describe("TicketPage sections", () => {
   beforeEach(() => {
     useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   });
 
-  it("drops Thread and Activity without a workspace, opening on Testing", async () => {
+  it("drops the Thread and the Trail without a workspace", async () => {
     useWorkspaceStore.setState({ selectedWorkspaceId: "" });
     mockTicket();
     renderPage();
 
-    expect(await screen.findByRole("tab", { name: "Testing", selected: true })).toBeInTheDocument();
-    expect(screen.queryByRole("tab", { name: "Thread" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("tab", { name: "Activity" })).not.toBeInTheDocument();
+    expect(await screen.findByText("No bugs reported.")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Thread" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Trail" })).not.toBeInTheDocument();
   });
 
-  it("keeps the ticket body on top and opens the Thread tab below it", async () => {
+  it("shows the thread under the body with no tab row, and every rail section says something when empty", async () => {
     mockTicket();
     renderPage();
 
     expect(await screen.findByRole("heading", { name: "Write migrations" })).toBeInTheDocument();
-    expect(await screen.findByRole("tab", { name: "Thread", selected: true })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Thread" })).toBeInTheDocument();
-    expect(screen.queryByText("Linked tickets")).not.toBeInTheDocument();
-  });
-
-  it("switches to Testing, Links, and Activity, each saying something when empty", async () => {
-    const user = userEvent.setup();
-    mockTicket();
-    renderPage();
-
-    await user.click(await screen.findByRole("tab", { name: "Testing" }));
-    expect(await screen.findByText(/once the ticket reaches a Testing column/)).toBeInTheDocument();
-
-    await user.click(screen.getByRole("tab", { name: "Links" }));
+    expect(await screen.findByRole("heading", { name: "Thread" })).toBeInTheDocument();
+    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+    expect(await screen.findByText("Pass and fail open in a Testing column.")).toBeInTheDocument();
     expect(await screen.findByText("No blockers or found-in links.")).toBeInTheDocument();
-
-    await user.click(screen.getByRole("tab", { name: "Activity" }));
+    expect(await screen.findByText("No bugs reported.")).toBeInTheDocument();
     expect(await screen.findByText("No plays have run on this ticket yet.")).toBeInTheDocument();
-  });
-
-  it("opens the tab named by the path", async () => {
-    mockTicket();
-    renderPage("/tickets/t-1/links");
-
-    expect(await screen.findByText("No blockers or found-in links.")).toBeInTheDocument();
   });
 });

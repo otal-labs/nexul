@@ -36,7 +36,7 @@ export const AddTicketLinkMenu = ({ ticketId }: AddTicketLinkMenuProps) => {
         <button
           type="button"
           aria-label="Link a ticket"
-          className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 ease-standard hover:bg-muted/50 hover:text-foreground"
+          className="flex size-5 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 ease-standard hover:bg-muted/50 hover:text-foreground"
         >
           <PlusIcon className="size-3.5" aria-hidden />
         </button>

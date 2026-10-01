@@ -187,10 +187,4 @@ describe("TicketPropertiesPanel", () => {
     await user.click(await screen.findByRole("button", { name: "bug" }));
     expect(onSetType).toHaveBeenCalledWith("t-1", "ticket-type-bug");
   });
-
-  it("renders the Development group with its own microheader", async () => {
-    renderPanel();
-    expect(await screen.findByText("Development")).toBeInTheDocument();
-    expect(await screen.findByText("No branches or PRs linked yet.")).toBeInTheDocument();
-  });
 });

@@ -5,7 +5,7 @@ interface LinkGroupSectionProps {
   children: ReactNode;
 }
 
-// One titled direction inside the linked-tickets section (blocked by, blocks, found in, bugs found in this).
+// One titled group of linked tickets inside the Links or Bugs rail section.
 export const LinkGroupSection = ({ title, children }: LinkGroupSectionProps) => (
   <div className="space-y-0.5">
     <h3 className="px-2 text-xs text-muted-foreground">{title}</h3>
