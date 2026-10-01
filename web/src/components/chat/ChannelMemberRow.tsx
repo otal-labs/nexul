@@ -1,6 +1,7 @@
 import { MoreHorizontalIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { DialogClose } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { useAreaAccess } from "@/hooks/AccessHooks";
@@ -14,11 +15,9 @@ interface ChannelMemberRowProps {
   channel: Conversation;
   userId: string;
   isYou: boolean;
-  // Closes the channel's settings when a message opens elsewhere.
-  onLeaveDialog: () => void;
 }
 
-export const ChannelMemberRow = ({ channel, userId, isYou, onLeaveDialog }: ChannelMemberRowProps) => {
+export const ChannelMemberRow = ({ channel, userId, isYou }: ChannelMemberRowProps) => {
   const person = usePerson(userId);
   const name = personLabel(person);
   const can = useAreaAccess();
@@ -41,14 +40,9 @@ export const ChannelMemberRow = ({ channel, userId, isYou, onLeaveDialog }: Chan
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="min-w-44">
             {message && (
-              <DropdownMenuItem
-                onSelect={() => {
-                  onLeaveDialog();
-                  message();
-                }}
-              >
-                Send a message
-              </DropdownMenuItem>
+              <DialogClose asChild>
+                <DropdownMenuItem onSelect={message}>Send a message</DropdownMenuItem>
+              </DialogClose>
             )}
             {message && canRemove && <DropdownMenuSeparator />}
             {canRemove && (

@@ -54,6 +54,7 @@ const renderSidebar = () => {
         <ChatSidebarSection collapsed={false} />
         <Routes>
           <Route path="/acme/chat" element={<div>chat-home</div>} />
+          <Route path="/acme/chat/dm-fahad" element={<div>dm-with-fahad</div>} />
           <Route path="/acme/chat/:conversationId" element={<div>chat-page</div>} />
         </Routes>
       </MemoryRouter>
@@ -213,6 +214,20 @@ describe("a channel's settings", () => {
     await waitFor(() => expect(api.post).toHaveBeenCalledWith("/api/chat/conversations/c5/leave"));
     expect(await screen.findByText("chat-home")).toBeInTheDocument();
     expect(mocks.toast.success).toHaveBeenCalledWith("You left #eng");
+  });
+
+  it("sends a message through the existing DM and closes the settings", async () => {
+    const dm: Conversation = { id: "dm-fahad", workspace_id: "ws-1", kind: "dm", created_by: "u1", created_at: "", updated_at: "", participant_ids: ["u2", "u1"] };
+    conversations = [channel({ private: true, participant_ids: ["u1", "u2"] }), dm];
+    const u = user();
+    renderSidebar();
+    const dialog = await openSettings(u);
+    await u.click(within(dialog).getByRole("button", { name: "Actions for Fahad" }));
+    await u.click(await screen.findByRole("menuitem", { name: "Send a message" }));
+
+    expect(await screen.findByText("dm-with-fahad")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(api.post).not.toHaveBeenCalled();
   });
 
   it("marks a private channel in the sidebar with a lock", async () => {

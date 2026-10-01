@@ -34,13 +34,15 @@ it, and sends anyone viewing it back to the chat page. The workspace's
 A text or voice channel can be private: only its members see it and read it.
 To anyone else it is gone, from the conversation list, unread counts, links,
 messages, attachments, and a voice channel's call and occupancy. The
-workspace Owner sees every private channel, messages included.
+workspace Owner sees every private channel, messages included. In the sidebar
+a private channel trails a lock.
 
-- **Create one private** from the **New conversation** menu and pick its
-  starting members. A member who sees only some of a workspace's projects can
-  create only private channels.
-- **Make a channel private** from its settings with `channels:write`. You stay
-  in it and pick who else stays; everyone else loses it at once.
+- **Create one private** with the `+` beside Channels or Voice channels: turn
+  on **Private channel** and pick its starting members. A member who sees only
+  some of a workspace's projects can create only private channels.
+- **Make a channel private** from **Settings** in its `…` menu, with
+  `channels:write`. You stay in it and pick who else stays; everyone else
+  loses it at once. Settings also lists a private channel's members.
 - **Make it public again** with `channels:write`. The member list is dropped
   and the whole workspace can read its history, including what was said while
   it was private.

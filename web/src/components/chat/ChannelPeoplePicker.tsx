@@ -32,7 +32,7 @@ export const ChannelPeoplePicker = ({ value, onChange, excludeIds = [], keepsVie
   const toggle = (userId: string, on: boolean) => onChange(on ? [...value, userId] : value.filter((id) => id !== userId));
 
   return (
-    <div>
+    <div className="min-w-0">
       <div className="flex min-h-11 items-center gap-3 py-1.5">
         <p className="min-w-0 flex-1 truncate font-mono text-[11px] tracking-wide text-muted-foreground uppercase">
           {picked} of {shown.length} people

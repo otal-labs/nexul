@@ -20,7 +20,7 @@ export const AddChannelPeopleForm = ({ channel }: AddChannelPeopleFormProps) => 
   });
 
   return (
-    <div className="space-y-2">
+    <div className="min-w-0 space-y-2">
       <Controller
         control={control}
         name="user_ids"

@@ -20,12 +20,12 @@ export const ChannelSettingsDialog = ({ conversationId, onClose }: ChannelSettin
     <Dialog open={!!channel} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         {channel && (
-          <DialogHeader className="pr-8">
-            <DialogTitle className="truncate">{channelMention(channel)}</DialogTitle>
+          <DialogHeader className="min-w-0 pr-8">
+            <DialogTitle className="break-words">{channelMention(channel)}</DialogTitle>
             <DialogDescription>Who sees it and who is in it.</DialogDescription>
           </DialogHeader>
         )}
-        {channel && <ChannelSettingsCard channel={channel} onClose={onClose} />}
+        {channel && <ChannelSettingsCard channel={channel} />}
         <DialogFooter>
           <DialogClose asChild>
             <Button size="sm">Done</Button>

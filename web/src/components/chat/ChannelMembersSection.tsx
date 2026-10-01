@@ -8,11 +8,10 @@ import type { Conversation } from "@/models/Chat";
 
 interface ChannelMembersSectionProps {
   channel: Conversation;
-  onLeaveDialog: () => void;
 }
 
 // A private channel's members: anyone in it adds people, and anyone but the last member leaves.
-export const ChannelMembersSection = ({ channel, onLeaveDialog }: ChannelMembersSectionProps) => {
+export const ChannelMembersSection = ({ channel }: ChannelMembersSectionProps) => {
   const { data: me } = useFetchMe();
   const { addPeople, leave } = useChannelSettingsActions(channel);
   const memberIds = channel.participant_ids ?? [];
@@ -31,7 +30,7 @@ export const ChannelMembersSection = ({ channel, onLeaveDialog }: ChannelMembers
       </div>
       <ul className="divide-y divide-border border-b border-border">
         {memberIds.map((userId) => (
-          <ChannelMemberRow key={userId} channel={channel} userId={userId} isYou={userId === me?.user.id} onLeaveDialog={onLeaveDialog} />
+          <ChannelMemberRow key={userId} channel={channel} userId={userId} isYou={userId === me?.user.id} />
         ))}
       </ul>
       {isMember && memberIds.length > 1 && (

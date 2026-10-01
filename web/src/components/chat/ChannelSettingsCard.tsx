@@ -9,11 +9,10 @@ import { cn } from "@/lib/utils";
 
 interface ChannelSettingsCardProps {
   channel: Conversation;
-  onClose: () => void;
 }
 
 // The private switch over a private channel's members; a Restricted member's channel stays private.
-export const ChannelSettingsCard = ({ channel, onClose }: ChannelSettingsCardProps) => {
+export const ChannelSettingsCard = ({ channel }: ChannelSettingsCardProps) => {
   const can = useAreaAccess();
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const { data: role } = useFetchMyRole(workspaceId);
@@ -22,7 +21,7 @@ export const ChannelSettingsCard = ({ channel, onClose }: ChannelSettingsCardPro
   const isPrivate = channel.private ?? false;
 
   return (
-    <div className={cn("rounded-lg border border-border bg-card px-4", isPrivate && "pb-4")}>
+    <div className={cn("min-w-0 rounded-lg border border-border bg-card px-4", isPrivate && "pb-4")}>
       {canSwitch && (
         <PrivateChannelRow
           checked={isPrivate}
@@ -31,7 +30,7 @@ export const ChannelSettingsCard = ({ channel, onClose }: ChannelSettingsCardPro
           className={cn(isPrivate && "border-b border-border")}
         />
       )}
-      {isPrivate && <ChannelMembersSection channel={channel} onLeaveDialog={onClose} />}
+      {isPrivate && <ChannelMembersSection channel={channel} />}
     </div>
   );
 };
