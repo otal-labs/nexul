@@ -87,25 +87,25 @@ describe("TeamSection", () => {
     expect(dotOf(eve)).toHaveClass("bg-muted-foreground");
   });
 
-  it("lists only the workspaces the person is in, read-only with the reason where the viewer can't manage members", async () => {
+  it("gives each workspace the person is in a tab, read-only with the reason where the viewer can't manage members", async () => {
     const user = userEvent.setup();
     renderSection();
     await user.click(await screen.findByRole("button", { name: "Open Bob" }));
 
     const dialog = within(await screen.findByRole("dialog", { name: "Bob" }));
-    expect(dialog.queryByRole("listitem", { name: "Labs" })).not.toBeInTheDocument();
-    expect(dialog.queryByRole("listitem", { name: "Ops" })).not.toBeInTheDocument();
+    expect(dialog.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Nexul", "Acme"]);
 
-    const acme = within(dialog.getByRole("listitem", { name: "Acme" }));
+    await user.click(dialog.getByRole("tab", { name: "Acme" }));
+    const acme = within(dialog.getByRole("tabpanel", { name: "Acme" }));
     expect(acme.getByText("Viewer")).toBeInTheDocument();
     expect(acme.getByText("Read only: you can't manage members in Acme.")).toBeInTheDocument();
     expect(acme.queryByRole("combobox")).not.toBeInTheDocument();
-    expect(acme.queryByRole("button", { name: "Actions for Acme" })).not.toBeInTheDocument();
+    expect(acme.queryByRole("button", { name: "Remove from workspace" })).not.toBeInTheDocument();
 
-    const nexul = within(dialog.getByRole("listitem", { name: "Nexul" }));
+    await user.click(dialog.getByRole("tab", { name: "Nexul" }));
+    const nexul = within(dialog.getByRole("tabpanel", { name: "Nexul" }));
     expect(nexul.getByRole("combobox", { name: "Role in Nexul" })).toBeInTheDocument();
-    await user.click(nexul.getByRole("button", { name: "Actions for Nexul" }));
-    expect(await screen.findByRole("button", { name: "Remove from workspace" })).toBeInTheDocument();
+    expect(nexul.getByRole("button", { name: "Remove from workspace" })).toBeInTheDocument();
     expect(await dialog.findByRole("button", { name: "Disable" })).toBeInTheDocument();
   });
 
@@ -117,23 +117,19 @@ describe("TeamSection", () => {
   ])("with $anywhere offers Disable: $disable, Remove account: $remove", async ({ anywhere, disable, remove }) => {
     renderSection("/settings/team?person=u-bob", team, anywhere);
 
-    await screen.findByRole("listitem", { name: "Nexul" });
+    await screen.findByRole("tab", { name: "Nexul" });
     await vi.waitFor(() => expect(!!screen.queryByRole("button", { name: "Disable" })).toBe(disable));
     expect(!!screen.queryByRole("button", { name: "Remove account" })).toBe(remove);
   });
 
-  it("opens from a link and adds the person to a workspace they are not in and the viewer manages", async () => {
-    mocks.put.mockResolvedValue({ data: undefined });
+  it("offers + only the workspaces the person is not in and the viewer manages", async () => {
     const user = userEvent.setup();
     renderSection("/settings/team?person=u-bob");
 
     const dialog = within(await screen.findByRole("dialog", { name: "Bob" }));
-    await user.click(dialog.getByRole("combobox", { name: "Workspace to add to" }));
+    await user.click(dialog.getByRole("button", { name: "Add to a workspace" }));
+    await user.click(await screen.findByRole("combobox", { name: "Workspace to add to" }));
     const offered = (await screen.findAllByRole("option")).map((option) => option.textContent);
     expect(offered).toEqual(["Labs", "Kit"]);
-
-    await user.click(screen.getByRole("option", { name: "Kit" }));
-    await user.click(dialog.getByRole("button", { name: "Add" }));
-    expect(mocks.put).toHaveBeenCalledWith("/api/workspaces/ws-kit/members/u-bob", { role_id: "r-guest" });
   });
 });

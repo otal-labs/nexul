@@ -15,16 +15,16 @@ export const RoleLevelSections = ({ catalog, value, onChange }: RoleLevelSection
   return (
     <div className="space-y-5">
       {workspace.length > 0 && (
-        <section className="space-y-1">
+        <section className="space-y-2">
           <Microheader>Workspace</Microheader>
-          <PermissionLevels entries={workspace} value={value} onChange={onChange} className="border-t border-border" />
+          <PermissionLevels entries={workspace} value={value} onChange={onChange} />
         </section>
       )}
       {project.length > 0 && (
-        <section className="space-y-1">
+        <section className="space-y-2">
           <Microheader>Every project</Microheader>
           <p className="text-sm text-muted-foreground">Applies to members whose Every project is From role.</p>
-          <PermissionLevels entries={project} value={value} onChange={onChange} everyLabel="Every area" className="border-t border-border" />
+          <PermissionLevels entries={project} value={value} onChange={onChange} everyLabel="Every area" />
         </section>
       )}
     </div>

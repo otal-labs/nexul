@@ -116,12 +116,14 @@ export const RoleRow = ({ role, workspaceId, catalog }: RoleRowProps) => {
         </Button>
       )}
       {canClone && <CloneRoleDialog role={role} open={cloning} onClose={() => setCloning(false)} />}
-      <ConfirmDestroyButton
-        icon={Trash2}
-        idleLabel={`Delete role ${role.name}`}
-        loading={deleteRole.isPending}
-        onConfirm={() => deleteRole.mutate(role.id)}
-      />
+      {!editing && (
+        <ConfirmDestroyButton
+          icon={Trash2}
+          idleLabel={`Delete role ${role.name}`}
+          loading={deleteRole.isPending}
+          onConfirm={() => deleteRole.mutate(role.id)}
+        />
+      )}
     </li>
   );
 };

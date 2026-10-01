@@ -26,7 +26,7 @@ describe("invitationRequest", () => {
   const grant = { workspace_id: "ws-1", role_id: "r-1", allow: [], deny: [] };
   const access = [{ project_id: "p-1", allow: ["tickets:read"] }, { project_id: "p-2", allow: [] }];
 
-  it("sends the chosen projects only under Only chosen projects, without the ones taken back to None", () => {
+  it("sends the chosen projects only under Chosen projects, without the ones taken back to None", () => {
     const sent = invitationRequest({ expires_in_days: 7, grants: [{ ...grant, every_project: "none", project_access: access }] });
     expect(sent.grants[0]?.project_access).toEqual([{ project_id: "p-1", allow: ["tickets:read"] }]);
   });

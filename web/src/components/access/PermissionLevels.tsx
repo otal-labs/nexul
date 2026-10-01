@@ -1,7 +1,5 @@
-import { LevelDropdown } from "@/components/access/LevelDropdown";
-import { LevelRow } from "@/components/access/LevelRow";
 import { PermissionDomainRow } from "@/components/access/PermissionDomainRow";
-import { cn } from "@/lib/utils";
+import { PermissionLevelControl } from "@/components/access/PermissionLevelControl";
 import type { PermissionInfo } from "@/models/Permission";
 import { domainsOf, uniformLevelOf, withLevelEverywhere } from "@/models/PermissionLevel";
 
@@ -11,29 +9,27 @@ interface PermissionLevelsProps {
   onChange: (value: string[]) => void;
   // The top row that sets every domain at once ("Every domain", "Every area").
   everyLabel?: string;
-  disabled?: boolean;
-  className?: string;
 }
 
-// One hairline row per domain, led by a row that sets them all; it reads Custom once the rows differ.
-export const PermissionLevels = ({ entries, value, onChange, everyLabel = "Every domain", disabled = false, className }: PermissionLevelsProps) => {
+// One access level per domain plus a row that sets them all; extra verbs (run, clone, thread) sit beside the level.
+export const PermissionLevels = ({ entries, value, onChange, everyLabel = "Every domain" }: PermissionLevelsProps) => {
   const domains = domainsOf(entries);
   const top = Math.max(0, ...domains.map((domain) => domain.levels.length));
-  const uniform = uniformLevelOf(domains, value);
+
   return (
-    <ul className={cn("divide-y divide-border", className)}>
-      <LevelRow name={everyLabel} strong>
-        <LevelDropdown
-          label={everyLabel}
+    <ul className="@container divide-y divide-border overflow-hidden rounded-md border border-input">
+      <li className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 bg-muted/40 px-2 py-2 @md:px-3 @md:grid-cols-[minmax(0,1fr)_auto_auto]">
+        <span className="truncate text-sm font-medium">{everyLabel}</span>
+        <span />
+        <PermissionLevelControl
+          label={`${everyLabel} access`}
           levelCount={top}
-          level={uniform}
-          display={uniform === undefined ? "Custom" : undefined}
-          disabled={disabled}
+          level={uniformLevelOf(domains, value)}
           onLevel={(level) => onChange(withLevelEverywhere(value, domains, level))}
         />
-      </LevelRow>
+      </li>
       {domains.map((domain) => (
-        <PermissionDomainRow key={domain.domain} domain={domain} value={value} onChange={onChange} disabled={disabled} />
+        <PermissionDomainRow key={domain.domain} domain={domain} value={value} onChange={onChange} />
       ))}
     </ul>
   );

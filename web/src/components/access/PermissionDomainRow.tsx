@@ -1,51 +1,43 @@
-import { LevelDropdown } from "@/components/access/LevelDropdown";
-import { LevelRow } from "@/components/access/LevelRow";
-import { DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { levelLabel, levelOf, withExtra, withLevel, type PermissionDomain } from "@/models/PermissionLevel";
+import { PermissionLevelControl } from "@/components/access/PermissionLevelControl";
+import { Toggle } from "@/components/ui/toggle";
+import { usePermissionLock } from "@/hooks/usePermissionLock";
+import { levelOf, withExtra, withLevel, type PermissionDomain } from "@/models/PermissionLevel";
 
 interface PermissionDomainRowProps {
   domain: PermissionDomain;
   value: string[];
   onChange: (value: string[]) => void;
-  disabled?: boolean;
 }
 
-const capitalize = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1);
-
-// The domain's verbs read in the value ("Write + Clone") and are ticked under "Also allow" in the same menu.
-export const PermissionDomainRow = ({ domain, value, onChange, disabled = false }: PermissionDomainRowProps) => {
-  const level = levelOf(domain, value);
-  const hasExtras = domain.extras.length > 0;
+export const PermissionDomainRow = ({ domain, value, onChange }: PermissionDomainRowProps) => {
+  const disabled = usePermissionLock();
   return (
-    <LevelRow name={domain.name}>
-      <LevelDropdown
+    <li className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 px-2 py-2 @md:px-3 @md:grid-cols-[minmax(0,1fr)_auto_auto]">
+      <span className="truncate text-sm">{domain.name}</span>
+      <div className="flex items-center gap-1.5">
+        {domain.extras.map((extra) => (
+          <Toggle
+            key={extra.value}
+            variant="outline"
+            size="sm"
+            aria-label={extra.label}
+            title={extra.label}
+            disabled={disabled}
+            pressed={value.includes(extra.value)}
+            onPressedChange={(on) => onChange(withExtra(value, extra, on))}
+            className="h-7 px-2 text-xs capitalize text-muted-foreground data-[state=on]:bg-accent data-[state=on]:text-foreground"
+          >
+            {extra.action}
+          </Toggle>
+        ))}
+      </div>
+      <PermissionLevelControl
         label={`${domain.name} access`}
         levelCount={domain.levels.length}
-        level={level}
-        display={levelLabel(domain, value)}
+        level={levelOf(domain, value)}
         disabled={disabled}
-        onLevel={(next) => onChange(withLevel(value, domain, next))}
-      >
-        {hasExtras && <DropdownMenuSeparator />}
-        {hasExtras && (
-          <DropdownMenuLabel className="font-mono text-[11px] font-normal tracking-wide text-muted-foreground uppercase">
-            Also allow
-          </DropdownMenuLabel>
-        )}
-        {domain.extras.map((extra) => (
-          <DropdownMenuCheckboxItem
-            key={extra.value}
-            checked={value.includes(extra.value)}
-            onSelect={(event) => event.preventDefault()}
-            onCheckedChange={(on) => onChange(withExtra(value, extra, on === true))}
-          >
-            <span className="flex flex-col">
-              <span>{capitalize(extra.action)}</span>
-              <span className="text-xs text-muted-foreground">{extra.label}</span>
-            </span>
-          </DropdownMenuCheckboxItem>
-        ))}
-      </LevelDropdown>
-    </LevelRow>
+        onLevel={(level) => onChange(withLevel(value, domain, level))}
+      />
+    </li>
   );
 };
