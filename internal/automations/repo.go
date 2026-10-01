@@ -22,6 +22,12 @@ type ConnectionRegistry interface {
 	Disconnect(automationID, reason string)
 }
 
+// DeliveryRegistry is the use-cases' handle on dial-in delivery: dropping a connection and skipping missed events.
+type DeliveryRegistry interface {
+	ConnectionRegistry
+	SkipBacklog(ctx context.Context, automationID string) error
+}
+
 // PermissionGate is the consumer-side slice of access's HasPermission check (ADR 0017), gating automation.* actions.
 type PermissionGate interface {
 	HasPermission(ctx context.Context, userID string, action permissions.Action) bool

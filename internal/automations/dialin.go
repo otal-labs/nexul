@@ -301,11 +301,20 @@ func (h *DialinHandler) deliverLoop(ctx context.Context, c *automationConn) {
 			continue
 		}
 		for _, ev := range events {
+			// Re-read per event: a disable mid-batch must hold even if the host never stops its worker.
+			if !h.enabled(ctx, c.id) {
+				break
+			}
 			if !h.deliverOne(ctx, c, ev) {
 				return
 			}
 		}
 	}
+}
+
+func (h *DialinHandler) enabled(ctx context.Context, automationID string) bool {
+	a, err := h.cfg.Repo.Get(ctx, automationID)
+	return err == nil && a.Enabled
 }
 
 // ensureCursor writes a row even if zero, so a later connect never mistakes itself for the first (ADR 0046).
@@ -317,12 +326,14 @@ func (h *DialinHandler) ensureCursor(ctx context.Context, automationID string) e
 	if ok {
 		return nil
 	}
-	latest, ok, err := h.cfg.EventLog.Latest(ctx)
+	return h.SkipBacklog(ctx, automationID)
+}
+
+// SkipBacklog moves the automation's cursor to the newest event, so nothing published before now is delivered.
+func (h *DialinHandler) SkipBacklog(ctx context.Context, automationID string) error {
+	latest, _, err := h.cfg.EventLog.Latest(ctx)
 	if err != nil {
 		return err
-	}
-	if !ok {
-		return h.cfg.Cursors.Set(ctx, automationID, Cursor{})
 	}
 	return h.cfg.Cursors.Set(ctx, automationID, latest)
 }

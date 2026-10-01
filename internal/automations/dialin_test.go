@@ -234,6 +234,54 @@ func TestDialinHandler_DisabledAutomation_NoDelivery(t *testing.T) {
 	assert.Error(t, err, "a disabled automation must not receive delivery")
 }
 
+func TestDialinHandler_DisabledMidBatch_StopsDeliveringTheRest(t *testing.T) {
+	setup := newDialinSetup(t)
+	created, token, err := setup.svc.Create(t.Context(), "owner", "x", []string{"tickets:read"})
+	require.NoError(t, err)
+	_, err = setup.svc.SetEnabled(t.Context(), "owner", created.ID, true)
+	require.NoError(t, err)
+
+	conn := dialAnnounce(t, setup.wsURL(token), automations.Frame{Subscriptions: []string{"ticket.created"}})
+	now := time.Now()
+	setup.seedEvent(t, "ev-1", "ticket.created", `{}`, now)
+	setup.seedEvent(t, "ev-2", "ticket.created", `{}`, now)
+
+	var ev automations.Frame
+	require.NoError(t, wsjson.Read(t.Context(), conn, &ev))
+	require.Equal(t, "ev-1", ev.EventID)
+	_, err = setup.svc.SetEnabled(t.Context(), "owner", created.ID, false)
+	require.NoError(t, err)
+	require.NoError(t, wsjson.Write(t.Context(), conn, automations.Frame{Type: automations.FrameRunFinished, RunID: ev.RunID, Outcome: automations.OutcomeSuccess}))
+
+	ctx, cancel := context.WithTimeout(t.Context(), 150*time.Millisecond)
+	defer cancel()
+	var f automations.Frame
+	assert.Error(t, wsjson.Read(ctx, conn, &f), "an automation disabled mid-batch must not receive the rest of the batch")
+}
+
+func TestDialinHandler_Reenabled_SkipsEventsFromWhileDisabled(t *testing.T) {
+	setup := newDialinSetup(t)
+	created, token, err := setup.svc.Create(t.Context(), "owner", "x", []string{"tickets:read"})
+	require.NoError(t, err)
+	_, err = setup.svc.SetEnabled(t.Context(), "owner", created.ID, true)
+	require.NoError(t, err)
+	conn := dialAnnounce(t, setup.wsURL(token), automations.Frame{Subscriptions: []string{"ticket.created"}})
+
+	_, err = setup.svc.SetEnabled(t.Context(), "owner", created.ID, false)
+	require.NoError(t, err)
+	now := time.Now()
+	setup.seedEvent(t, "ev-while-off", "ticket.created", `{}`, now)
+	_, err = setup.svc.SetEnabled(t.Context(), "owner", created.ID, true)
+	require.NoError(t, err)
+	setup.seedEvent(t, "ev-after-on", "ticket.created", `{}`, now.Add(time.Second))
+
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	var ev automations.Frame
+	require.NoError(t, wsjson.Read(ctx, conn, &ev))
+	assert.Equal(t, "ev-after-on", ev.EventID, "an event published while the automation was off must never be delivered")
+}
+
 func TestDialinHandler_UnsubscribedTopic_NoDelivery(t *testing.T) {
 	setup := newDialinSetup(t)
 	created, token, err := setup.svc.Create(context.Background(), "owner", "x", []string{"tickets:read"})
