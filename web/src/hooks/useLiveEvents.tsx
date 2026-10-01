@@ -199,7 +199,10 @@ interface SetupTurnActivityPayload {
   turn_id: string;
   status: string;
   call_id?: string;
-  kind?: string;
+  kind?: ActivityKind;
+  tool?: string;
+  text?: string;
+  at?: string;
 }
 
 // The metadata of a session that just signed in; never the token.
@@ -287,7 +290,9 @@ const dispatch = (client: ReturnType<typeof useQueryClient>, router: RouterFollo
   }
   if (frame.topic === "computer.setup_turn_activity") {
     const p = frame.payload as SetupTurnActivityPayload;
-    useSetupActivityStore.getState().push(p.turn_id, p.status, p.call_id, p.kind === "tool_call");
+    useSetupActivityStore
+      .getState()
+      .push(p.turn_id, { kind: p.kind ?? "other", call_id: p.call_id ?? "", tool: p.tool ?? "", summary: p.status, detail: p.text ?? "", at: p.at ?? "" });
     return;
   }
   if (frame.topic === "session.created") {

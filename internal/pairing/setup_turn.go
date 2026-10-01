@@ -350,6 +350,9 @@ func (s *Service) setupUpdate(ctx context.Context, turn *SetupTurn, u harness.Up
 	}
 	if u.Snapshot != nil && u.Snapshot.Text != "" {
 		*reply = u.Snapshot.Text
+		if !u.Snapshot.Streaming {
+			s.recordSetupText(ctx, turn, reply)
+		}
 		return "", false
 	}
 	if u.Question != nil {
@@ -358,9 +361,7 @@ func (s *Service) setupUpdate(ctx context.Context, turn *SetupTurn, u harness.Up
 	if u.Terminal == nil {
 		return "", false
 	}
-	if *reply != "" {
-		s.recordSetupActivity(ctx, turn, harness.Activity{Kind: harness.ActivityText, Summary: harness.Preview(*reply, 160), Detail: harness.CapDetail(*reply), At: s.now().UTC()})
-	}
+	s.recordSetupText(ctx, turn, reply)
 	if u.Terminal.State == harness.TurnDone {
 		return "", true
 	}
@@ -370,6 +371,15 @@ func (s *Service) setupUpdate(ctx context.Context, turn *SetupTurn, u harness.Up
 	return "The setup turn ended " + string(u.Terminal.State), true
 }
 
+// recordSetupText records a closed message as a text step where it was said, then clears it so it is never recorded twice.
+func (s *Service) recordSetupText(ctx context.Context, turn *SetupTurn, reply *string) {
+	if *reply == "" {
+		return
+	}
+	s.recordSetupActivity(ctx, turn, harness.Activity{Kind: harness.ActivityText, Summary: harness.Preview(*reply, 160), Detail: harness.CapDetail(*reply), At: s.now().UTC()})
+	*reply = ""
+}
+
 // recordSetupActivity hides tokens as the step enters the transcript, so neither the saved turn nor the live line carries one.
 func (s *Service) recordSetupActivity(ctx context.Context, turn *SetupTurn, a harness.Activity) {
 	a.Summary, a.Detail = redact.Tokens(a.Summary), redact.Tokens(a.Detail)
@@ -377,10 +387,14 @@ func (s *Service) recordSetupActivity(ctx context.Context, turn *SetupTurn, a ha
 	if s.bus == nil || a.Summary == "" {
 		return
 	}
-	err := s.bus.Publish(ctx, TopicSetupTurnActivity, SetupTurnActivityEvent{
+	frame := SetupTurnActivityEvent{
 		ComputerID: turn.ComputerID, UserID: turn.UserID, RunID: turn.RunID, TurnID: turn.ID, Provider: turn.Provider,
-		Status: harness.Preview(a.Summary, 120), CallID: a.CallID, Kind: string(a.Kind),
-	})
+		Status: harness.Preview(a.Summary, 120), CallID: a.CallID, Kind: string(a.Kind), Tool: a.Tool, At: a.At,
+	}
+	if a.Kind == harness.ActivityText {
+		frame.Text = a.Detail
+	}
+	err := s.bus.Publish(ctx, TopicSetupTurnActivity, frame)
 	if err != nil {
 		logging.FromCtx(ctx).Warn("publish setup turn activity", "computer_id", turn.ComputerID, "error", err)
 	}

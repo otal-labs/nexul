@@ -10,6 +10,7 @@ import { setCachedTunnelStatus } from "@/hooks/PairingHooks";
 import { useSetupActivityStore } from "@/stores/setupActivityStore";
 import { useSetupDraftStore } from "@/stores/setupDraftStore";
 import type { Computer, ComputerSetup, HarnessProject, HarnessProvider, PairingDefaults, SetupTurnState } from "@/models/Pairing";
+import type { ActivityKind } from "@/models/Trail";
 import { pickOption } from "@/test/pickOption";
 
 const access = vi.hoisted(() => ({ sections: ["connectors"] as string[] }));
@@ -384,9 +385,11 @@ describe("PairComputerDialog opened at Set up", () => {
     expect(screen.getByRole("button", { name: /codex/i })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: /re-run setup/i })).toBeDisabled();
 
-    act(() => useSetupActivityStore.getState().push("t2", "nexul mcp add", "call-1", true));
-    act(() => useSetupActivityStore.getState().push("t2", "nexul mcp add", "call-1"));
-    act(() => useSetupActivityStore.getState().push("t2", "ls ~/.claude/skills", "call-2", true));
+    const push = (kind: ActivityKind, summary: string, call_id: string) =>
+      act(() => useSetupActivityStore.getState().push("t2", { kind, call_id, tool: "Shell", summary, detail: "", at: "" }));
+    push("tool_call", "nexul mcp add", "call-1");
+    push("tool_result", "nexul mcp add", "call-1");
+    push("tool_call", "ls ~/.claude/skills", "call-2");
     const log = screen.getByRole("log", { name: "Codex steps" });
     expect(within(log).getAllByText(/nexul mcp add|ls ~\/\.claude\/skills/).map((l) => l.textContent)).toEqual(["nexul mcp add", "ls ~/.claude/skills"]);
 

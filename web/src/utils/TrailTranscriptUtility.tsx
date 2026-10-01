@@ -90,6 +90,25 @@ export const segmentTranscript = (trail: Trail, steps: ActivityEntry[], state: T
   return out;
 };
 
+// Each message is prose and the tools between two messages fold into a group; empty until the first step lands.
+export const segmentSetupTurn = (steps: ActivityEntry[], running: boolean): TranscriptSegment[] => {
+  const out: TranscriptSegment[] = [];
+  let entries: ActivityEntry[] = [];
+  let from: string | null = null;
+  for (const step of steps) {
+    if (step.kind !== "text") {
+      entries.push(step);
+      continue;
+    }
+    if (entries.length > 0) out.push({ kind: "turn", entries, running: false, from, until: step.at });
+    out.push({ kind: "reply", entry: step });
+    entries = [];
+    from = step.at;
+  }
+  if (entries.length > 0 || (running && steps.length > 0)) out.push({ kind: "turn", entries, running, from, until: null });
+  return out;
+};
+
 export interface TurnCounts {
   tools: number;
   commands: number;

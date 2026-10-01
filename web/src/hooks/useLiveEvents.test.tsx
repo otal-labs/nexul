@@ -498,20 +498,19 @@ describe("useLiveEvents dispatch", () => {
     expect(spy).toHaveBeenCalledWith({ queryKey: ["getHarnessProviders"] });
   });
 
-  it("appends a setup turn's steps to the activity store without refetching, one line per tool call", async () => {
+  it("appends a setup turn's steps to the activity store without refetching, one row per tool call, a message whole", async () => {
     useSetupActivityStore.setState({ steps: {} });
     setup();
     const socket = await connectedSocket();
     const spy = invalidate();
-    const activity = (status: string, kind: string, call_id?: string) =>
-      JSON.stringify({ topic: "computer.setup_turn_activity", type: "event", payload: { computer_id: "c1", turn_id: "t1", provider: "codex", status, call_id, kind } });
-    act(() => socket.message(activity("nexul mcp add", "tool_call", "call-1")));
-    expect(useSetupActivityStore.getState().steps.t1?.[0]?.open).toBe(true);
-    act(() => socket.message(activity("nexul mcp add", "tool_result", "call-1")));
-    act(() => socket.message(activity("All set.", "text")));
+    const activity = (extra: Record<string, string>) =>
+      JSON.stringify({ topic: "computer.setup_turn_activity", type: "event", payload: { computer_id: "c1", turn_id: "t1", provider: "codex", ...extra } });
+    act(() => socket.message(activity({ status: "nexul mcp add", kind: "tool_call", call_id: "call-1", tool: "Shell", at: "2026-10-01T10:00:00Z" })));
+    act(() => socket.message(activity({ status: "nexul mcp add", kind: "tool_result", call_id: "call-1", tool: "Shell", at: "2026-10-01T10:00:02Z" })));
+    act(() => socket.message(activity({ status: "All set. Codex…", kind: "text", text: "All set. Codex is confirmed.", at: "2026-10-01T10:00:05Z" })));
     expect(useSetupActivityStore.getState().steps.t1).toEqual([
-      { callId: "call-1", line: "nexul mcp add", open: false },
-      { callId: "", line: "All set.", open: false },
+      { kind: "tool_result", call_id: "call-1", tool: "Shell", summary: "nexul mcp add", detail: "", at: "2026-10-01T10:00:02Z" },
+      { kind: "text", call_id: "", tool: "", summary: "All set. Codex…", detail: "All set. Codex is confirmed.", at: "2026-10-01T10:00:05Z" },
     ]);
     expect(spy).not.toHaveBeenCalled();
   });
