@@ -62,6 +62,8 @@ Joining has these states:
 - A connection error offers **Retry** or **Dismiss**.
 - A connected call shows the participants and controls for microphone,
   camera, screen sharing, and **Leave call**.
+- If you are the only person in a call for 5 minutes, you leave it
+  automatically, and the channel says why with a **Rejoin** button.
 
 The instance sends occupancy changes to the browser over its live event stream.
 The LiveKit connector is the instance's own server connection; Nexul does not

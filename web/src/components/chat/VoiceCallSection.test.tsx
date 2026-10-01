@@ -58,7 +58,29 @@ describe("VoiceCallSection", () => {
 
     expect(screen.getByText("Not connected to this voice channel")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Join call" }));
-    expect(join).toHaveBeenCalledWith("c1");
+    expect(join).toHaveBeenCalledWith("c1", "huddle");
+  });
+
+  it("after leaving a call for being alone, says why in place of the join bar and Rejoin rejoins the channel", async () => {
+    const user = userEvent.setup();
+    const join = vi.fn();
+    const reason = "You left huddle because you were alone in the call for 5 minutes.";
+    useVoiceCallStore.setState({ join, leftAlone: { conversationId: "c1", reason } });
+    renderSection(false);
+
+    expect(screen.getByText(reason)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Join call" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Rejoin" }));
+    expect(join).toHaveBeenCalledWith("c1", "huddle");
+  });
+
+  it("drops the reason once the person moves away from the channel", () => {
+    useVoiceCallStore.setState({ leftAlone: { conversationId: "c1", reason: "You left huddle because you were alone in the call for 5 minutes." } });
+    const { unmount } = renderSection(false);
+
+    unmount();
+
+    expect(useVoiceCallStore.getState().leftAlone).toBeNull();
   });
 
   it("shows a connecting state with a cancel affordance", () => {

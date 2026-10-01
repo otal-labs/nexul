@@ -4,7 +4,7 @@ import { VoiceOccupantList } from "@/components/chat/VoiceOccupantAvatars";
 import { RowActions } from "@/components/listpane/RowActions";
 import { ChatSidebarRow } from "@/components/sidebar/ChatSidebarRow";
 import { useChannelRowActions } from "@/hooks/useChannelRowActions";
-import type { Conversation } from "@/models/Chat";
+import { channelMention, type Conversation } from "@/models/Chat";
 import type { VoiceOccupant } from "@/models/Voice";
 import { useVoiceCallStore } from "@/stores/voiceCallStore";
 
@@ -26,7 +26,7 @@ export const VoiceChannelSidebarRow = ({ conversation, occupants, unreadCount }:
         label={label}
         icon={Volume2}
         unreadCount={unreadCount}
-        onClick={() => void joinCall(conversation.id)}
+        onClick={() => void joinCall(conversation.id, channelMention(conversation))}
         actions={(onRename || onDelete) && <RowActions itemLabel={label} onRename={onRename} onDelete={onDelete} />}
       />
       <VoiceOccupantList occupants={occupants} />

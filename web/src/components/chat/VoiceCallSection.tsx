@@ -1,4 +1,5 @@
-import { AlertTriangle, Loader2, Settings } from "lucide-react";
+import { AlertTriangle, Clock, Loader2, Settings } from "lucide-react";
+import { useEffect } from "react";
 import { Link } from "react-router";
 import type { Room } from "livekit-client";
 import { useShallow } from "zustand/react/shallow";
@@ -6,7 +7,7 @@ import { useShallow } from "zustand/react/shallow";
 import { ConnectedCall } from "@/components/chat/ConnectedCall";
 import { Button } from "@/components/ui/button";
 import { useCanOpenSection } from "@/hooks/AccessHooks";
-import type { Conversation } from "@/models/Chat";
+import { channelMention, type Conversation } from "@/models/Chat";
 import { useVoiceCallStore, type VoiceCallStatus } from "@/stores/voiceCallStore";
 
 interface VoiceCallSectionProps {
@@ -15,9 +16,10 @@ interface VoiceCallSectionProps {
   active: boolean;
 }
 
-type CallPhase = "joinPrompt" | "connecting" | "notConfigured" | "error" | "connected" | "hidden";
+type CallPhase = "leftAlone" | "joinPrompt" | "connecting" | "notConfigured" | "error" | "connected" | "hidden";
 
-const deriveCallPhase = (active: boolean, status: VoiceCallStatus, room: Room | null): CallPhase => {
+const deriveCallPhase = (active: boolean, leftAlone: boolean, status: VoiceCallStatus, room: Room | null): CallPhase => {
+  if (!active && leftAlone) return "leftAlone";
   if (!active) return "joinPrompt";
   if (status === "connecting" || status === "idle") return "connecting";
   if (status === "not_configured") return "notConfigured";
@@ -29,24 +31,40 @@ const deriveCallPhase = (active: boolean, status: VoiceCallStatus, room: Room | 
 // States read from voiceCallStore, which owns the connection; the call survives this panel closing.
 export const VoiceCallSection = ({ conversation, active }: VoiceCallSectionProps) => {
   const canConfigure = useCanOpenSection("connectors");
-  const { status, room, error, join, leave, retry } = useVoiceCallStore(
+  const { leftAlone, status, room, error, join, leave, retry, clearLeftAlone } = useVoiceCallStore(
     useShallow((s) => ({
+      leftAlone: s.leftAlone?.conversationId === conversation.id ? s.leftAlone.reason : undefined,
       status: s.status,
       room: s.room,
       error: s.error,
       join: s.join,
       leave: s.leave,
       retry: s.retry,
+      clearLeftAlone: s.clearLeftAlone,
     })),
   );
-  const phase = deriveCallPhase(active, status, room);
+  const phase = deriveCallPhase(active, leftAlone !== undefined, status, room);
+  const joinThis = () => void join(conversation.id, channelMention(conversation));
+  // The reason stays only while this channel stays open; moving to another one drops it.
+  useEffect(() => () => clearLeftAlone(conversation.id), [clearLeftAlone, conversation.id]);
 
   return (
     <>
+      {phase === "leftAlone" && (
+        <div className="flex shrink-0 flex-col gap-2 border-b border-border bg-muted/30 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+          <span className="flex items-start gap-2 text-xs text-muted-foreground">
+            <Clock className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+            {leftAlone}
+          </span>
+          <Button size="sm" className="shrink-0 self-start sm:self-auto" onClick={joinThis}>
+            Rejoin
+          </Button>
+        </div>
+      )}
       {phase === "joinPrompt" && (
         <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-muted/30 px-3 py-2">
           <span className="text-xs text-muted-foreground">Not connected to this voice channel</span>
-          <Button size="sm" onClick={() => void join(conversation.id)}>
+          <Button size="sm" onClick={joinThis}>
             Join call
           </Button>
         </div>
