@@ -50,7 +50,7 @@ export const TicketPropertiesPanel = ({
       </div>
     </section>
     <DevelopmentSection ticketId={ticket.id} />
-    <AttachmentsSection owner={{ ticket_id: ticket.id }} className="px-2" />
+    <AttachmentsSection owner={{ ticket_id: ticket.id }} className="px-2" actionPlacement="end" />
     {children}
   </aside>
 );
