@@ -114,6 +114,51 @@ func (s *Service) CloseRoom(ctx context.Context, conversationID string) error {
 	return nil
 }
 
+// RemoveFromCall disconnects each of userIDs who can no longer read the voice channel, so leaving a private channel
+// or being removed from one ends their part in its call; anyone who still reads it, the Owner included, stays.
+func (s *Service) RemoveFromCall(ctx context.Context, conversationID string, userIDs []string) error {
+	ok, err := s.conversations.IsVoiceChannel(ctx, conversationID)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return nil // deleted since, and CloseRoom ends its call
+	}
+	if err != nil {
+		return fmt.Errorf("check voice channel %s: %w", conversationID, err)
+	}
+	if !ok {
+		return nil
+	}
+	var gone []string
+	for _, userID := range userIDs {
+		reads, err := s.conversations.Reads(ctx, conversationID, userID)
+		if err != nil {
+			return fmt.Errorf("check %s still reads %s: %w", userID, conversationID, err)
+		}
+		if !reads {
+			gone = append(gone, userID)
+		}
+	}
+	if len(gone) == 0 {
+		return nil
+	}
+	client, err := s.credentials.LiveKit(ctx)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return nil // no LiveKit connector, so nobody is in a call
+	}
+	if err != nil {
+		return fmt.Errorf("livekit credentials: %w", err)
+	}
+	for _, userID := range gone {
+		if err := client.RemoveParticipant(ctx, conversationID, userID); err != nil {
+			return fmt.Errorf("remove %s from livekit room %s: %w", userID, conversationID, err)
+		}
+		occupants, changed := s.occupancy.leave(conversationID, userID)
+		if err := s.publishIfChanged(ctx, conversationID, occupants, changed); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Occupancy returns the current occupant list of every voice channel the caller may read, the initial-render data
 // source; a channel of a workspace they are not in is left out.
 func (s *Service) Occupancy(ctx context.Context) map[string][]Occupant {
