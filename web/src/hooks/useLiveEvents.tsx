@@ -123,6 +123,8 @@ const pushTopics: Record<string, string[]> = {
   "chat.conversation.created": [getChatConversationsKey],
   "chat.conversation.updated": [getChatConversationsKey],
   "chat.conversation.deleted": [getChatConversationsKey, getChatUnreadKey],
+  // A channel switched private or public, or someone added or removed, appears in or drops from each reader's list.
+  "chat.conversation.members_changed": [getChatConversationsKey, getChatUnreadKey],
   "chat.message.created": [getChatConversationsKey, getChatUnreadKey],
   "chat.message.deleted": [getChatUnreadKey],
   "instance.upgrade_changed": [getInstanceUpgradeKey, getServerVersionKey],

@@ -1,10 +1,7 @@
 import { useEffect } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
 
-import { api, errorMessage } from "@/api/client";
-import { getChatConversationsKey } from "@/hooks/ChatHooks";
-import type { Conversation } from "@/models/Chat";
+import { api } from "@/api/client";
 import type { VoiceOccupancy } from "@/models/Voice";
 import { useVoiceOccupancyStore } from "@/stores/voiceOccupancyStore";
 
@@ -29,15 +26,3 @@ export const useVoiceOccupancy = (enabled = true): VoiceOccupancy => {
   return occupancy;
 };
 
-export const useCreateVoiceChannel = (workspaceId: string) => {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: async (name: string) =>
-      (await api.post<Conversation>("/api/chat/voice-channels", { workspace_id: workspaceId, name })).data,
-    onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: [getChatConversationsKey, workspaceId] });
-      toast.success("Voice channel created");
-    },
-    onError: (error) => toast.error(errorMessage(error)),
-  });
-};

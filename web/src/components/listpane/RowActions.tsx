@@ -1,4 +1,15 @@
-import { CopyIcon, FolderInputIcon, LockIcon, LockOpenIcon, MoreHorizontalIcon, PencilIcon, PinIcon, PinOffIcon, Trash2Icon } from "lucide-react";
+import {
+  CopyIcon,
+  FolderInputIcon,
+  LockIcon,
+  LockOpenIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  PinIcon,
+  PinOffIcon,
+  Settings2Icon,
+  Trash2Icon,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -22,12 +33,13 @@ interface RowActionsProps {
   lock?: { locked: boolean; onToggle: () => void } | undefined;
   /** The places the item can move to, the current one checked. */
   moveTo?: { label: string; options: { id: string; name: string }[]; currentId: string; onMove: (id: string) => void } | undefined;
+  onSettings?: (() => void) | undefined;
   onRename?: (() => void) | undefined;
   onClone?: (() => void) | undefined;
   onDelete?: (() => void) | undefined;
 }
 
-export const RowActions = ({ itemLabel, pin, lock, moveTo, onRename, onClone, onDelete }: RowActionsProps) => (
+export const RowActions = ({ itemLabel, pin, lock, moveTo, onSettings, onRename, onClone, onDelete }: RowActionsProps) => (
   <DropdownMenu>
     <DropdownMenuTrigger asChild>
       <Button variant="ghost" size="icon" className="size-7" aria-label={`More actions for ${itemLabel}`}>
@@ -35,6 +47,12 @@ export const RowActions = ({ itemLabel, pin, lock, moveTo, onRename, onClone, on
       </Button>
     </DropdownMenuTrigger>
     <DropdownMenuContent align="end" className="min-w-36">
+      {onSettings && (
+        <DropdownMenuItem onSelect={onSettings}>
+          <Settings2Icon aria-hidden />
+          Settings
+        </DropdownMenuItem>
+      )}
       {pin && (
         <DropdownMenuItem onSelect={pin.onToggle}>
           {pin.pinned ? <PinOffIcon aria-hidden /> : <PinIcon aria-hidden />}
@@ -82,7 +100,7 @@ export const RowActions = ({ itemLabel, pin, lock, moveTo, onRename, onClone, on
           Clone
         </DropdownMenuItem>
       )}
-      {onDelete && (!!pin || !!lock || !!moveTo || !!onRename || !!onClone) && <DropdownMenuSeparator />}
+      {onDelete && (!!onSettings || !!pin || !!lock || !!moveTo || !!onRename || !!onClone) && <DropdownMenuSeparator />}
       {onDelete && (
         <DropdownMenuItem variant="destructive" onSelect={onDelete}>
           <Trash2Icon aria-hidden />

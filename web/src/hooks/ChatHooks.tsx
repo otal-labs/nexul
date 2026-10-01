@@ -6,7 +6,14 @@ import { api, errorMessage } from "@/api/client";
 import { getMeKey } from "@/hooks/AuthHooks";
 import { useFetchTicketsByProject } from "@/hooks/TicketHooks";
 import { useVoiceCallStore } from "@/stores/voiceCallStore";
-import { channelMention, type Conversation, type ConversationDeleted, type Message, type UnreadCounts } from "@/models/Chat";
+import {
+  channelMention,
+  type Conversation,
+  type ConversationDeleted,
+  type CreateChannelFormData,
+  type Message,
+  type UnreadCounts,
+} from "@/models/Chat";
 import type { QuestionAnswers } from "@/models/Question";
 import type { MeResponse } from "@/models/User";
 
@@ -73,16 +80,22 @@ export const useFetchTicketThreadStatus = (ticketId: string | undefined) =>
     enabled: !!ticketId,
   });
 
+// A public channel sends only its name; a private one adds who starts in it besides the creator.
 export const useCreateChannel = (workspaceId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (name: string) =>
-      (await api.post<Conversation>("/api/chat/channels", { workspace_id: workspaceId, name })).data,
-    onSuccess: async () => {
+    mutationFn: async ({ voice, name, private: isPrivate, member_ids }: CreateChannelFormData & { voice: boolean }) =>
+      (
+        await api.post<Conversation>(voice ? "/api/chat/voice-channels" : "/api/chat/channels", {
+          workspace_id: workspaceId,
+          name,
+          ...(isPrivate && { private: true, member_ids }),
+        })
+      ).data,
+    onSuccess: async (created) => {
       await client.invalidateQueries({ queryKey: [getChatConversationsKey, workspaceId] });
-      toast.success("Channel created");
+      toast.success(`${channelMention(created)} created`);
     },
-    onError: (error) => toast.error(errorMessage(error)),
   });
 };
 
@@ -101,6 +114,13 @@ export const useRenameChannel = () => {
 // One toast per deleted conversation, whether the deleter's own reply or the live frame lands first.
 const deletedToastId = (conversationId: string) => `conversation-deleted-${conversationId}`;
 
+// Sends a viewer of the conversation to the chat home; false when they are looking at something else.
+export const leaveConversationPage = (navigate: NavigateFunction, location: Pick<Location, "pathname">, conversationId: string) => {
+  if (!location.pathname.endsWith(`/chat/${conversationId}`)) return false;
+  void navigate(location.pathname.slice(0, -conversationId.length - 1), { replace: true });
+  return true;
+};
+
 // Leaves a conversation that was just deleted: its call ends and a viewer of it lands on the chat home.
 export const followConversationDeleted = (
   navigate: NavigateFunction,
@@ -109,9 +129,7 @@ export const followConversationDeleted = (
 ) => {
   const call = useVoiceCallStore.getState();
   if (call.activeConversationId === deleted.conversation_id) call.leave();
-  const suffix = `/chat/${deleted.conversation_id}`;
-  if (!location.pathname.endsWith(suffix)) return;
-  void navigate(location.pathname.slice(0, -deleted.conversation_id.length - 1), { replace: true });
+  if (!leaveConversationPage(navigate, location, deleted.conversation_id)) return;
   toast.info(`${channelMention(deleted)} was deleted`, { id: deletedToastId(deleted.conversation_id) });
 };
 

@@ -43,6 +43,8 @@ export const getMyRoleKey = "getMyRole";
 export interface MyWorkspaceInfo {
   role_name: string;
   permissions: string[];
+  // A Restricted member sees only the projects they hold Project access to (ADR 0097).
+  restricted?: boolean;
 }
 
 // Shared with the workspace switcher, which reads the target workspace's role before it navigates.
