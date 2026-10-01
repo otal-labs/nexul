@@ -8,8 +8,8 @@ import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { FormSelect } from "@/components/ticket/FormSelect";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useCloneMemory, useFetchCloneDestinations } from "@/hooks/MemoryHooks";
-import { useFetchWorkspaces } from "@/hooks/WorkspaceHooks";
+import { useCloneMemory, useFetchCloneDestinations, type CloneDestination } from "@/hooks/MemoryHooks";
+import { memoryPath, projectToken } from "@/models/Project";
 import { workspacePath } from "@/models/Workspace";
 
 const cloneMemorySchema = z.object({
@@ -24,40 +24,35 @@ interface CloneMemoryDialogProps {
   onClose: () => void;
 }
 
-// destination packs "<workspaceId>::<projectId>" into one FormSelect value; projectId "" targets workspace scope.
-const encodeDestination = (workspaceId: string, projectId: string) => `${workspaceId}::${projectId}`;
-const decodeDestination = (destination: string) => {
-  const [workspaceId = "", projectId = ""] = destination.split("::");
-  return { workspaceId, projectId };
-};
+// One per project, keeping the workspace slug and project token the clone's URL needs.
+const cloneTargets = (destinations: CloneDestination[]) =>
+  destinations.flatMap((d) =>
+    d.projects
+      .map((p) => ({ value: p.id, label: `${d.workspace.name} / ${p.name}`, slug: d.workspace.slug, token: projectToken(p) }))
+      .sort((a, b) => a.label.localeCompare(b.label)),
+  );
 
 // Flattened, not option-grouped: the shared FormSelect has no group support, so each option's label carries
-// its workspace prefix ("Engineering / Backend"); each workspace also offers a "Workspace" option for workspace scope.
+// its workspace prefix ("Engineering / Backend"). A memory always lands in a project.
 export const CloneMemoryDialog = ({ memoryId, open, onClose }: CloneMemoryDialogProps) => {
   const navigate = useNavigate();
   const { data: destinations, error, isPending } = useFetchCloneDestinations();
   const clone = useCloneMemory();
-  const { data: workspaces } = useFetchWorkspaces();
   const form = useForm<CloneMemoryFormData>({
     resolver: zodResolver(cloneMemorySchema),
     defaultValues: { destination: "" },
   });
 
-  const options = (destinations ?? []).flatMap((d) => [
-    { value: encodeDestination(d.workspace.id, ""), label: `${d.workspace.name} / Workspace` },
-    ...d.projects
-      .map((p) => ({ value: encodeDestination(d.workspace.id, p.id), label: `${d.workspace.name} / ${p.name}` }))
-      .sort((a, b) => a.label.localeCompare(b.label)),
-  ]);
+  const targets = cloneTargets(destinations ?? []);
 
   const onSubmit = async (data: CloneMemoryFormData) => {
-    const { workspaceId, projectId } = decodeDestination(data.destination);
+    const target = targets.find((t) => t.value === data.destination);
+    if (!target) return;
     try {
-      const cloned = await clone.mutateAsync({ id: memoryId, projectId, workspaceId });
+      const cloned = await clone.mutateAsync({ id: memoryId, projectId: target.value });
       onClose();
       // The copy may land in another workspace, so its URL takes that workspace's slug.
-      const slug = workspaces?.find((w) => w.id === workspaceId)?.slug ?? "";
-      navigate(workspacePath(slug, `/memories/${cloned.id}`));
+      navigate(workspacePath(target.slug, memoryPath(target.token, cloned.id)));
     } catch {
       // Error is surfaced by the hook's toast.
     }
@@ -77,8 +72,8 @@ export const CloneMemoryDialog = ({ memoryId, open, onClose }: CloneMemoryDialog
               control={form.control}
               name="destination"
               label="Destination"
-              options={options}
-              placeholder="Select a destination"
+              options={targets}
+              placeholder="Select a project"
             />
             <DialogFooter>
               <Button variant="outline" type="button" onClick={onClose}>

@@ -36,6 +36,7 @@ func (s *Service) SetMembership(m Membership) { s.members = m }
 // ADR 0042); permissions.Member asks only that the caller belongs to the workspace.
 type Gate interface {
 	Require(ctx context.Context, workspaceID string, action permissions.Action) error
+	RequireProject(ctx context.Context, projectID string, action permissions.Action) error
 }
 
 // SetGate wires the permission check; unset, only the server's own calls pass.
@@ -46,6 +47,21 @@ func (s *Service) require(ctx context.Context, workspaceID string, action permis
 		return permissions.Ungated(ctx)
 	}
 	return s.gate.Require(ctx, workspaceID, action)
+}
+
+func (s *Service) requireProject(ctx context.Context, projectID string, action permissions.Action) error {
+	if s.gate == nil {
+		return permissions.Ungated(ctx)
+	}
+	return s.gate.RequireProject(ctx, projectID, action)
+}
+
+// requireKind is the read c's kind takes; an interview thread is read through its project's memories (ADR 0099).
+func (s *Service) requireKind(ctx context.Context, c *Conversation) error {
+	if c.Kind == KindInterviewThread {
+		return s.requireProject(ctx, c.ProjectID, permissions.MemoriesRead)
+	}
+	return s.require(ctx, c.WorkspaceID, readAction(c.Kind))
 }
 
 // readAction is what reading a conversation takes: any member reads channels and DMs they are in, while a ticket
@@ -63,7 +79,7 @@ func readAction(kind Kind) permissions.Action {
 // requireRead checks callerID (the actor when empty) may read c: a doc thread takes docs:thread (ADR 0057), and a
 // DM they are not part of reads as not found.
 func (s *Service) requireRead(ctx context.Context, c *Conversation, callerID string) error {
-	if err := s.require(ctx, c.WorkspaceID, readAction(c.Kind)); err != nil {
+	if err := s.requireKind(ctx, c); err != nil {
 		return err
 	}
 	if callerID == "" {
@@ -363,7 +379,7 @@ func (s *Service) GetOrCreateInterviewThread(ctx context.Context, workspaceID, p
 	if workspaceID == "" {
 		return nil, fmt.Errorf("%w: workspace id is required", apperrs.ErrInvalid)
 	}
-	if err := s.require(ctx, workspaceID, permissions.MemoriesRead); err != nil {
+	if err := s.requireProject(ctx, projectID, permissions.MemoriesRead); err != nil {
 		return nil, err
 	}
 	if creatorUserID == "" {

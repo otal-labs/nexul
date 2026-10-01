@@ -1,6 +1,6 @@
 ---
 title: Memories
-description: Write durable Agent context at workspace or project scope, with versions and explicit permissions.
+description: Write durable Agent context for a project, with versions and explicit permissions.
 sidebar:
   order: 11
 ---
@@ -15,13 +15,12 @@ Open **Memories** under the project in the sidebar (`/<workspace>/memories`). Th
 always-included memories first under **Pinned**; each row's switch turns
 **Always included in every turn** on or off at once, and hovering a row shows
 **Clone** and a menu with **Delete**. The **New memory** dialog has a **Project**
-selector. Its `Workspace` option creates a workspace-scoped memory. Choosing a
-project creates a project-scoped memory.
+selector, and every memory belongs to the project picked there.
 
-- A workspace memory reaches every Agent turn in that workspace, including a
-  plain chat with no ticket or document.
-- A project memory reaches turns for that project.
-- A project's list shows workspace memories first, then its own memories.
+- A memory reaches Agent turns for its project: a ticket, a doc, or the
+  interview.
+- A plain chat with no ticket or document carries no memories.
+- A rule meant for several projects is cloned into each of them.
 
 Each memory has a **Title**, a one-line **When to use** hint, a rich-text body,
 and an **Always included in every turn** switch. Always-included memories are
@@ -88,16 +87,17 @@ is explicit: select **Save**. A memory is not live-collaborative like a doc.
 Every save appends a version. The version list supports **Revert**, which writes
 a new version rather than deleting history.
 
-**Clone to…** copies a memory into another project or directly into a workspace.
-The copy is independent and can change without changing the source.
+**Clone to…** copies a memory into another project, in any workspace you
+belong to. The copy is independent and can change without changing the source.
 
 ## Permissions and API
 
 The permission catalog has four memory actions:
 `memories:read`, `memories:write`, `memories:delete`, and
-`memories:clone`. Reading the list or a memory needs `memories:read`.
-Creating, editing, and reverting need `memories:write`. Delete and clone use
-their matching actions. Agents can write through the same use-case and MCP
+`memories:clone`. Each is checked on the memory's project. Reading the list or a
+memory needs `memories:read`. Creating, editing, and reverting need
+`memories:write`. Delete and clone use their matching actions, and a clone also
+needs `memories:write` on the destination project. Agents can write through the same use-case and MCP
 permissions as people.
 
 The HTTP routes are `/api/memories`, `/api/memories/{id}`,

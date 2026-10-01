@@ -12,7 +12,7 @@ import { PageTabs, PageTabsContent } from "@/components/PageTabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
-import { isDecisionsLogMemory, isInterviewMemory, isWorkspaceMemory, type Memory } from "@/models/Memory";
+import { isDecisionsLogMemory, isInterviewMemory, type Memory } from "@/models/Memory";
 import { bodyToMarkdown } from "@/utils/RichtextUtility";
 
 interface MemoryDetailProps {
@@ -48,11 +48,6 @@ export const MemoryDetail = ({ memory, canWrite, canDelete, canClone, onSave, on
           >
             ← All memories
           </Link>
-          {isWorkspaceMemory(memory) && (
-            <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-              Workspace
-            </span>
-          )}
         </div>
         <div className="flex items-center gap-2">
           {canClone && (

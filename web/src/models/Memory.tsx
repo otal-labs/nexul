@@ -17,10 +17,8 @@ export interface Memory {
   updated_at: string;
 }
 
-// project_id "" means workspace scope; workspace_id is always sent alongside it.
 export const CreateMemoryFormSchema = z.object({
-  workspace_id: z.string().min(1, "A workspace is required"),
-  project_id: z.string(),
+  project_id: z.string().min(1, "A project is required"),
   title: z.string().min(1, "Title is required"),
   when_to_use: z.string(),
   always_included: z.boolean(),
@@ -29,14 +27,11 @@ export const CreateMemoryFormSchema = z.object({
 export type CreateMemoryFormData = z.infer<typeof CreateMemoryFormSchema>;
 
 export const emptyCreateMemoryForm = (): CreateMemoryFormData => ({
-  workspace_id: "",
   project_id: "",
   title: "",
   when_to_use: "",
   always_included: false,
 });
-
-export const isWorkspaceMemory = (memory: Memory): boolean => memory.project_id === "";
 
 export const INTERVIEW_KIND = "interview";
 

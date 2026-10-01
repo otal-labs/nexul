@@ -85,8 +85,7 @@ func (f *fakeRepo) ListByWorkspace(_ context.Context, workspaceID string) ([]*Me
 	return out, nil
 }
 
-// ListByProject mirrors the real query: the project's own memories plus its workspace's workspace-scoped ones.
-func (f *fakeRepo) ListByProject(_ context.Context, projectID, workspaceID string) ([]*Memory, error) {
+func (f *fakeRepo) ListByProject(_ context.Context, projectID string) ([]*Memory, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.listErr != nil {
@@ -94,23 +93,7 @@ func (f *fakeRepo) ListByProject(_ context.Context, projectID, workspaceID strin
 	}
 	var out []*Memory
 	for _, m := range f.memories {
-		if m.ProjectID == projectID || (m.ProjectID == "" && m.WorkspaceID == workspaceID) {
-			cp := *m
-			out = append(out, &cp)
-		}
-	}
-	return out, nil
-}
-
-func (f *fakeRepo) ListWorkspaceScoped(_ context.Context, workspaceID string) ([]*Memory, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	if f.listErr != nil {
-		return nil, f.listErr
-	}
-	var out []*Memory
-	for _, m := range f.memories {
-		if m.ProjectID == "" && m.WorkspaceID == workspaceID {
+		if m.ProjectID == projectID {
 			cp := *m
 			out = append(out, &cp)
 		}
@@ -192,18 +175,39 @@ func (f *fakeRepo) eventsFor(topic string) []eventbus.OutboxEvent {
 	return out
 }
 
-// fakeAccess is a PermissionGate stub for unit tests. deny overrides can for a specific
-// "<workspaceID>:<action>" key, letting Clone tests deny exactly one of its three checks.
+// fakeAccess is an AccessGate stub answering as access does: can answers every action check, deny refuses one
+// "<scope>:<action>" key (a project or workspace id), membership alone passes, and a project outside
+// testProjects or a scope in outside is not found.
 type fakeAccess struct {
-	can  bool
-	deny map[string]bool
+	can     bool
+	deny    map[string]bool
+	outside map[string]bool
 }
 
-func (f fakeAccess) HasPermission(_ context.Context, _, workspaceID string, action permissions.Action) bool {
-	if allowed, ok := f.deny[workspaceID+":"+string(action)]; ok {
-		return allowed
+var testProjects = map[string]string{"project-1": "workspace-1", "project-2": "workspace-2"}
+
+func (f fakeAccess) Require(_ context.Context, workspaceID string, action permissions.Action) error {
+	return f.check(workspaceID, action)
+}
+
+func (f fakeAccess) RequireProject(_ context.Context, projectID string, action permissions.Action) error {
+	if _, ok := testProjects[projectID]; !ok {
+		return fmt.Errorf("%w: project %s", apperrs.ErrNotFound, projectID)
 	}
-	return f.can
+	return f.check(projectID, action)
+}
+
+func (f fakeAccess) check(scope string, action permissions.Action) error {
+	if f.outside[scope] {
+		return fmt.Errorf("%w: %s", apperrs.ErrNotFound, scope)
+	}
+	if action == permissions.Member {
+		return nil
+	}
+	if !f.can || f.deny[scope+":"+string(action)] {
+		return fmt.Errorf("%w: %s required", apperrs.ErrForbidden, action)
+	}
+	return nil
 }
 
 // fakeProjects is a ProjectLookup stub mapping project id to workspace id.
@@ -243,24 +247,6 @@ func (f *fakeAttachments) CopyOwnerWithIDs(_ context.Context, from, to string, i
 	return nil
 }
 
-// fakeMembership is a WorkspaceMembership stub mapping workspace id to member user ids.
-type fakeMembership struct {
-	members map[string][]string
-	err     error
-}
-
-func (f fakeMembership) IsMember(_ context.Context, userID, workspaceID string) (bool, error) {
-	if f.err != nil {
-		return false, f.err
-	}
-	for _, m := range f.members[workspaceID] {
-		if m == userID {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
 func newTestService(repo *fakeRepo) *Service {
 	return newTestServiceWith(repo, fakeAccess{can: true})
 }
@@ -269,9 +255,8 @@ func newDenyService(repo *fakeRepo) *Service {
 	return newTestServiceWith(repo, fakeAccess{can: false})
 }
 
-func newTestServiceWith(repo *fakeRepo, access PermissionGate) *Service {
-	s := NewService(repo, access, fakeProjects{workspaces: map[string]string{"project-1": "workspace-1", "project-2": "workspace-2"}},
-		&fakeAttachments{ownerIDs: map[string][]string{}}, fakeMembership{members: map[string][]string{"workspace-1": {"user-1"}, "workspace-2": {"user-1"}}})
+func newTestServiceWith(repo *fakeRepo, access AccessGate) *Service {
+	s := NewService(repo, access, fakeProjects{workspaces: testProjects}, &fakeAttachments{ownerIDs: map[string][]string{}})
 	s.now = func() time.Time { return fixedNow }
 	return s
 }
@@ -280,49 +265,38 @@ func testCtx() context.Context {
 	return identity.WithActor(context.Background(), identity.Actor{ID: "user-1"})
 }
 
-func TestCreate_EmptyProjectIDAndWorkspaceID_IsInvalid(t *testing.T) {
-	s := newTestService(newFakeRepo())
-	_, err := s.Create(testCtx(), " ", " ", "Title", "when", "body", false, "")
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, apperrs.ErrInvalid))
+func TestCreate_RequiresMemoriesWrite(t *testing.T) {
+	deny := newDenyService(newFakeRepo())
+	_, err := deny.Create(testCtx(), "project-1", "Title", "when", "body", false, "")
+	require.ErrorIs(t, err, apperrs.ErrForbidden)
 }
 
-func TestCreate_EmptyProjectID_CreatesWorkspaceScopedMemory(t *testing.T) {
+func TestCreate_NoProject_IsInvalid(t *testing.T) {
 	repo := newFakeRepo()
-	s := newTestService(repo)
-	m, err := s.Create(testCtx(), "", "workspace-1", "Team tone", "when", "body", false, "")
-	require.NoError(t, err)
-	assert.Empty(t, m.ProjectID)
-	assert.Equal(t, "workspace-1", m.WorkspaceID)
-	require.Len(t, repo.eventsFor(TopicCreated), 1)
+	_, err := newTestService(repo).Create(testCtx(), " ", "Team tone", "when", "body", false, "")
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
+	assert.Empty(t, repo.memories, "a memory always names a project")
 }
 
 func TestCreate_EmptyTitle_IsInvalid(t *testing.T) {
 	s := newTestService(newFakeRepo())
-	_, err := s.Create(testCtx(), "project-1", "", " ", "when", "body", false, "")
+	_, err := s.Create(testCtx(), "project-1", " ", "when", "body", false, "")
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 }
 
 func TestCreate_NoActor_IsUnauthorized(t *testing.T) {
 	s := newTestService(newFakeRepo())
-	_, err := s.Create(context.Background(), "project-1", "", "Title", "when", "body", false, "")
+	_, err := s.Create(context.Background(), "project-1", "Title", "when", "body", false, "")
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, apperrs.ErrUnauthorized))
 }
 
 func TestCreate_UnknownProject_PropagatesLookupError(t *testing.T) {
 	s := newTestService(newFakeRepo())
-	_, err := s.Create(testCtx(), "missing-project", "", "Title", "when", "body", false, "")
+	_, err := s.Create(testCtx(), "missing-project", "Title", "when", "body", false, "")
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, apperrs.ErrNotFound))
-}
-
-func TestCreate_RequiresMemoriesWrite(t *testing.T) {
-	deny := newDenyService(newFakeRepo())
-	_, err := deny.Create(testCtx(), "project-1", "", "Title", "when", "body", false, "")
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, apperrs.ErrForbidden))
 }
 
 func TestCreate_CapsWhenToUse_AndPublishesCreated(t *testing.T) {
@@ -330,7 +304,7 @@ func TestCreate_CapsWhenToUse_AndPublishesCreated(t *testing.T) {
 	s := newTestService(repo)
 	long := strings.Repeat("x", maxWhenToUseChars+50)
 
-	m, err := s.Create(testCtx(), "project-1", "", "Deploy quirks", "  "+long+"  ", "body", true, "")
+	m, err := s.Create(testCtx(), "project-1", "Deploy quirks", "  "+long+"  ", "body", true, "")
 	require.NoError(t, err)
 	assert.Equal(t, "workspace-1", m.WorkspaceID)
 	assert.Equal(t, "project-1", m.ProjectID)
@@ -357,7 +331,7 @@ func TestGet_MissingMemory_PropagatesNotFound(t *testing.T) {
 func TestGet_RequiresMemoriesRead(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo)
-	m, err := s.Create(testCtx(), "project-1", "", "Title", "when", "body", false, "")
+	m, err := s.Create(testCtx(), "project-1", "Title", "when", "body", false, "")
 	require.NoError(t, err)
 
 	deny := newDenyService(repo)
@@ -373,17 +347,32 @@ func TestList_EmptyWorkspaceID_IsInvalid(t *testing.T) {
 	assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 }
 
-func TestList_RequiresMemoriesRead(t *testing.T) {
-	deny := newDenyService(newFakeRepo())
-	_, err := deny.List(testCtx(), "workspace-1")
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, apperrs.ErrForbidden))
+func TestList_OutsideTheWorkspace_IsNotFound(t *testing.T) {
+	s := newTestServiceWith(newFakeRepo(), fakeAccess{can: true, outside: map[string]bool{"workspace-1": true}})
+	_, err := s.List(testCtx(), "workspace-1")
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
+}
+
+func TestList_LeavesOutProjectsTheCallerCannotRead(t *testing.T) {
+	repo := newFakeRepo()
+	s := newTestService(repo)
+	_, err := s.Create(testCtx(), "project-1", "Readable", "when", "body", false, "")
+	require.NoError(t, err)
+	hidden, err := s.Create(testCtx(), "project-2", "Hidden", "when", "body", false, "")
+	require.NoError(t, err)
+	hidden.WorkspaceID = "workspace-1"
+	repo.memories[hidden.ID] = hidden
+
+	got, err := newTestServiceWith(repo, fakeAccess{can: true, deny: map[string]bool{"project-2:memories:read": true}}).List(testCtx(), "workspace-1")
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	assert.Equal(t, "Readable", got[0].Title)
 }
 
 func TestList_ReturnsWorkspaceMemories(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo)
-	_, err := s.Create(testCtx(), "project-1", "", "Title", "when", "body", false, "")
+	_, err := s.Create(testCtx(), "project-1", "Title", "when", "body", false, "")
 	require.NoError(t, err)
 
 	got, err := s.List(testCtx(), "workspace-1")
@@ -405,58 +394,30 @@ func TestListForProject_RequiresMemoriesRead(t *testing.T) {
 	assert.True(t, errors.Is(err, apperrs.ErrForbidden))
 }
 
-func TestListMemoryItems_EmptyWorkspaceAndProjectID_ReturnsEmptyNoError(t *testing.T) {
-	deny := newDenyService(newFakeRepo())
-	workspace, project, err := deny.ListMemoryItems(context.Background(), "", "")
+func TestListMemoryItems_NoProject_ReturnsNone(t *testing.T) {
+	repo := newFakeRepo()
+	_, err := newTestService(repo).Create(testCtx(), "project-1", "Deploy quirks", "when to use", "body", false, "")
 	require.NoError(t, err)
-	assert.Empty(t, workspace)
-	assert.Empty(t, project)
+
+	items, err := newTestService(repo).ListMemoryItems(context.Background(), " ")
+	require.NoError(t, err)
+	assert.Empty(t, items, "a turn with no project carries no memories")
 }
 
-func TestListMemoryItems_NoActorInContext_StillReturnsItems(t *testing.T) {
+func TestListMemoryItems_NoActorInContext_ReturnsTheProjectsItems(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo)
-	_, err := s.Create(testCtx(), "project-1", "", "Deploy quirks", "when to use", "body", false, "")
+	_, err := s.Create(testCtx(), "project-1", "Deploy quirks", "when to use", "body", false, "")
+	require.NoError(t, err)
+	_, err = s.Create(testCtx(), "project-2", "Other project", "when to use", "body", false, "")
 	require.NoError(t, err)
 
-	// The turn pipeline runs with no acting-user context; this seam carries no permission check by design.
-	workspace, project, err := s.ListMemoryItems(context.Background(), "workspace-1", "project-1")
+	// The turn pipeline reads the index on the server's behalf; this seam carries no permission check by design.
+	items, err := newDenyService(repo).ListMemoryItems(context.Background(), "project-1")
 	require.NoError(t, err)
-	assert.Empty(t, workspace)
-	require.Len(t, project, 1)
-	assert.Equal(t, "Deploy quirks", project[0].Title)
-	assert.Equal(t, "when to use", project[0].WhenToUse)
-}
-
-func TestListMemoryItems_EmptyProjectID_ReturnsWorkspaceScopedOnly(t *testing.T) {
-	repo := newFakeRepo()
-	s := newTestService(repo)
-	_, err := s.Create(testCtx(), "project-1", "", "Deploy quirks", "when to use", "body", false, "")
-	require.NoError(t, err)
-	_, err = s.Create(testCtx(), "", "workspace-1", "Team tone", "when to use", "body", false, "")
-	require.NoError(t, err)
-
-	workspace, project, err := s.ListMemoryItems(context.Background(), "workspace-1", "")
-	require.NoError(t, err)
-	require.Len(t, workspace, 1)
-	assert.Equal(t, "Team tone", workspace[0].Title)
-	assert.Empty(t, project)
-}
-
-func TestListMemoryItems_WithProjectID_SplitsWorkspaceAndProjectItems(t *testing.T) {
-	repo := newFakeRepo()
-	s := newTestService(repo)
-	_, err := s.Create(testCtx(), "project-1", "", "Deploy quirks", "when to use", "body", false, "")
-	require.NoError(t, err)
-	_, err = s.Create(testCtx(), "", "workspace-1", "Team tone", "when to use", "body", false, "")
-	require.NoError(t, err)
-
-	workspace, project, err := s.ListMemoryItems(context.Background(), "workspace-1", "project-1")
-	require.NoError(t, err)
-	require.Len(t, workspace, 1)
-	assert.Equal(t, "Team tone", workspace[0].Title)
-	require.Len(t, project, 1)
-	assert.Equal(t, "Deploy quirks", project[0].Title)
+	require.Len(t, items, 1)
+	assert.Equal(t, "Deploy quirks", items[0].Title)
+	assert.Equal(t, "when to use", items[0].WhenToUse)
 }
 
 func TestUpdate_EmptyID_IsInvalid(t *testing.T) {
@@ -483,7 +444,7 @@ func TestUpdate_MissingMemory_PropagatesNotFound(t *testing.T) {
 func TestUpdate_RequiresMemoriesWrite(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo)
-	m, err := s.Create(testCtx(), "project-1", "", "Title", "when", "body", false, "")
+	m, err := s.Create(testCtx(), "project-1", "Title", "when", "body", false, "")
 	require.NoError(t, err)
 
 	deny := newDenyService(repo)
@@ -495,7 +456,7 @@ func TestUpdate_RequiresMemoriesWrite(t *testing.T) {
 func TestUpdate_ReplacesFields_AndPublishesUpdated(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo)
-	m, err := s.Create(testCtx(), "project-1", "", "Title", "when", "body", false, "")
+	m, err := s.Create(testCtx(), "project-1", "Title", "when", "body", false, "")
 	require.NoError(t, err)
 
 	got, err := s.Update(testCtx(), m.ID, "New title", "new when", "new body", true, "")
@@ -524,7 +485,7 @@ func TestDelete_MissingMemory_PropagatesNotFound(t *testing.T) {
 func TestDelete_RequiresMemoriesDelete(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo)
-	m, err := s.Create(testCtx(), "project-1", "", "Title", "when", "body", false, "")
+	m, err := s.Create(testCtx(), "project-1", "Title", "when", "body", false, "")
 	require.NoError(t, err)
 
 	deny := newDenyService(repo)
@@ -536,7 +497,7 @@ func TestDelete_RequiresMemoriesDelete(t *testing.T) {
 func TestDelete_RemovesMemory_AndPublishesDeleted(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo)
-	m, err := s.Create(testCtx(), "project-1", "", "Title", "when", "body", false, "")
+	m, err := s.Create(testCtx(), "project-1", "Title", "when", "body", false, "")
 	require.NoError(t, err)
 
 	require.NoError(t, s.Delete(testCtx(), m.ID))
@@ -549,7 +510,7 @@ func TestDelete_RemovesMemory_AndPublishesDeleted(t *testing.T) {
 func TestExportMarkdown_RendersBody(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo)
-	m, err := s.Create(testCtx(), "project-1", "", "Title", "when", "plain body", false, "")
+	m, err := s.Create(testCtx(), "project-1", "Title", "when", "plain body", false, "")
 	require.NoError(t, err)
 
 	md, err := s.ExportMarkdown(testCtx(), m.ID)
@@ -560,7 +521,7 @@ func TestExportMarkdown_RendersBody(t *testing.T) {
 func TestUpdate_TwiceThenRevertToFirst_AppendsThirdVersionMatchingIt(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo)
-	m, err := s.Create(testCtx(), "project-1", "", "Title", "when", "v1 body", false, "")
+	m, err := s.Create(testCtx(), "project-1", "Title", "when", "v1 body", false, "")
 	require.NoError(t, err)
 	require.Equal(t, 1, m.Version)
 
@@ -588,7 +549,7 @@ func TestUpdate_TwiceThenRevertToFirst_AppendsThirdVersionMatchingIt(t *testing.
 func TestCreate_ViaMCP_TagsFirstVersion(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo)
-	m, err := s.Create(testCtx(), "project-1", "", "Title", "when", "body", false, "mcp")
+	m, err := s.Create(testCtx(), "project-1", "Title", "when", "body", false, "mcp")
 	require.NoError(t, err)
 
 	v, err := s.GetVersion(testCtx(), m.ID, 1)
@@ -600,7 +561,7 @@ func TestCreate_ViaMCP_TagsFirstVersion(t *testing.T) {
 func TestUpdate_ViaMCP_TagsVersion(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo)
-	m, err := s.Create(testCtx(), "project-1", "", "Title", "when", "body", false, "")
+	m, err := s.Create(testCtx(), "project-1", "Title", "when", "body", false, "")
 	require.NoError(t, err)
 
 	_, err = s.Update(testCtx(), m.ID, "Title", "when", "new body", false, "mcp")
@@ -614,7 +575,7 @@ func TestUpdate_ViaMCP_TagsVersion(t *testing.T) {
 func TestListVersions_RequiresMemoriesRead(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo)
-	m, err := s.Create(testCtx(), "project-1", "", "Title", "when", "body", false, "")
+	m, err := s.Create(testCtx(), "project-1", "Title", "when", "body", false, "")
 	require.NoError(t, err)
 
 	deny := newDenyService(repo)
@@ -633,7 +594,7 @@ func TestGetVersion_NegativeVersion_IsInvalid(t *testing.T) {
 func TestRevert_RequiresMemoriesWrite_NotJustRead(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo)
-	m, err := s.Create(testCtx(), "project-1", "", "Title", "when", "body", false, "")
+	m, err := s.Create(testCtx(), "project-1", "Title", "when", "body", false, "")
 	require.NoError(t, err)
 
 	deny := newDenyService(repo)
@@ -643,90 +604,64 @@ func TestRevert_RequiresMemoriesWrite_NotJustRead(t *testing.T) {
 }
 
 func TestCan_NilAccessGate_FailsClosed(t *testing.T) {
-	s := NewService(newFakeRepo(), nil, fakeProjects{workspaces: map[string]string{"project-1": "workspace-1"}},
-		nil, nil)
-	_, err := s.Create(testCtx(), "project-1", "", "Title", "when", "body", false, "")
+	s := NewService(newFakeRepo(), nil, fakeProjects{workspaces: testProjects}, nil)
+	_, err := s.Create(testCtx(), "project-1", "Title", "when", "body", false, "")
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, apperrs.ErrForbidden))
-}
-
-func TestClone_EmptyDestinationProjectIDAndWorkspaceID_IsInvalid(t *testing.T) {
-	repo := newFakeRepo()
-	s := newTestService(repo)
-	m, err := s.Create(testCtx(), "project-1", "", "Title", "when", "body", false, "")
-	require.NoError(t, err)
-
-	_, err = s.Clone(testCtx(), m.ID, " ", " ")
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, apperrs.ErrInvalid))
-}
-
-func TestClone_EmptyDestinationProjectID_ClonesToWorkspace(t *testing.T) {
-	repo := newFakeRepo()
-	s := newTestService(repo)
-	m, err := s.Create(testCtx(), "project-1", "", "Title", "when", "body", false, "")
-	require.NoError(t, err)
-
-	clone, err := s.Clone(testCtx(), m.ID, "", "workspace-2")
-	require.NoError(t, err)
-	assert.Empty(t, clone.ProjectID)
-	assert.Equal(t, "workspace-2", clone.WorkspaceID)
 }
 
 func TestClone_MissingMemoriesClone_NamesThatPermission(t *testing.T) {
 	repo := newFakeRepo()
-	s := newTestService(repo)
-	m, err := s.Create(testCtx(), "project-1", "", "Title", "when", "body", false, "")
+	m, err := newTestService(repo).Create(testCtx(), "project-1", "Title", "when", "body", false, "")
 	require.NoError(t, err)
 
-	deny := newDenyService(repo)
-	_, err = deny.Clone(testCtx(), m.ID, "project-2", "")
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, apperrs.ErrForbidden))
+	_, err = newDenyService(repo).Clone(testCtx(), m.ID, "project-2")
+	require.ErrorIs(t, err, apperrs.ErrForbidden)
 	assert.Contains(t, err.Error(), "memories:clone")
 }
 
-func TestClone_NotMemberOfDestinationWorkspace_NamesMembership(t *testing.T) {
+func TestClone_NoDestinationProject_IsInvalid(t *testing.T) {
 	repo := newFakeRepo()
-	s := NewService(repo, fakeAccess{can: true}, fakeProjects{workspaces: map[string]string{"project-1": "workspace-1", "project-2": "workspace-2"}},
-		&fakeAttachments{ownerIDs: map[string][]string{}}, fakeMembership{members: map[string][]string{"workspace-1": {"user-1"}}})
-	s.now = func() time.Time { return fixedNow }
-	m, err := s.Create(testCtx(), "project-1", "", "Title", "when", "body", false, "")
+	s := newTestService(repo)
+	m, err := s.Create(testCtx(), "project-1", "Title", "when", "body", false, "")
 	require.NoError(t, err)
 
-	_, err = s.Clone(testCtx(), m.ID, "project-2", "")
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, apperrs.ErrForbidden))
-	assert.Contains(t, err.Error(), "member")
+	_, err = s.Clone(testCtx(), m.ID, " ")
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
+	assert.Len(t, repo.memories, 1, "there is no workspace to clone into")
+}
+
+func TestClone_DestinationInAWorkspaceTheCallerIsOutside_IsNotFound(t *testing.T) {
+	repo := newFakeRepo()
+	m, err := newTestService(repo).Create(testCtx(), "project-1", "Title", "when", "body", false, "")
+	require.NoError(t, err)
+
+	s := newTestServiceWith(repo, fakeAccess{can: true, outside: map[string]bool{"project-2": true}})
+	_, err = s.Clone(testCtx(), m.ID, "project-2")
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
 func TestClone_MissingDestinationMemoriesWrite_NamesThatPermission(t *testing.T) {
 	repo := newFakeRepo()
-	source := newTestService(repo)
-	m, err := source.Create(testCtx(), "project-1", "", "Title", "when", "body", false, "")
+	m, err := newTestService(repo).Create(testCtx(), "project-1", "Title", "when", "body", false, "")
 	require.NoError(t, err)
 
-	// memories:clone on workspace-1 stays allowed; only memories:write on the destination is denied.
-	access := fakeAccess{can: true, deny: map[string]bool{"workspace-2:memories:write": false}}
-	s := NewService(repo, access, fakeProjects{workspaces: map[string]string{"project-1": "workspace-1", "project-2": "workspace-2"}},
-		&fakeAttachments{ownerIDs: map[string][]string{}}, fakeMembership{members: map[string][]string{"workspace-1": {"user-1"}, "workspace-2": {"user-1"}}})
-	s.now = func() time.Time { return fixedNow }
-
-	_, err = s.Clone(testCtx(), m.ID, "project-2", "")
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, apperrs.ErrForbidden))
+	// memories:clone on the source stays allowed; only memories:write on the destination project is denied.
+	s := newTestServiceWith(repo, fakeAccess{can: true, deny: map[string]bool{"project-2:memories:write": true}})
+	_, err = s.Clone(testCtx(), m.ID, "project-2")
+	require.ErrorIs(t, err, apperrs.ErrForbidden)
 	assert.Contains(t, err.Error(), "memories:write")
 }
 
 func TestClone_CopiesFieldsAndStartsFreshVersionHistory(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo)
-	m, err := s.Create(testCtx(), "project-1", "", "Original", "when to use", "body text", true, "")
+	m, err := s.Create(testCtx(), "project-1", "Original", "when to use", "body text", true, "")
 	require.NoError(t, err)
 	_, err = s.Update(testCtx(), m.ID, "Original", "when to use", "body text v2", true, "")
 	require.NoError(t, err)
 
-	clone, err := s.Clone(testCtx(), m.ID, "project-2", "")
+	clone, err := s.Clone(testCtx(), m.ID, "project-2")
 	require.NoError(t, err)
 	assert.NotEqual(t, m.ID, clone.ID)
 	assert.Equal(t, "workspace-2", clone.WorkspaceID)
@@ -749,16 +684,15 @@ func TestClone_CopiesFieldsAndStartsFreshVersionHistory(t *testing.T) {
 func TestClone_CopiesAttachmentsAndRewritesBodyReferences(t *testing.T) {
 	repo := newFakeRepo()
 	attachmentsCopier := &fakeAttachments{ownerIDs: map[string][]string{}}
-	s := NewService(repo, fakeAccess{can: true}, fakeProjects{workspaces: map[string]string{"project-1": "workspace-1", "project-2": "workspace-2"}},
-		attachmentsCopier, fakeMembership{members: map[string][]string{"workspace-1": {"user-1"}, "workspace-2": {"user-1"}}})
+	s := NewService(repo, fakeAccess{can: true}, fakeProjects{workspaces: testProjects}, attachmentsCopier)
 	s.now = func() time.Time { return fixedNow }
 
 	body := `{"type":"doc","content":[{"type":"image","attrs":{"src":"/api/attachments/att-1","alt":"shot"}}]}`
-	m, err := s.Create(testCtx(), "project-1", "", "Title", "when", body, false, "")
+	m, err := s.Create(testCtx(), "project-1", "Title", "when", body, false, "")
 	require.NoError(t, err)
 	attachmentsCopier.ownerIDs[m.ID] = []string{"att-1"}
 
-	clone, err := s.Clone(testCtx(), m.ID, "project-2", "")
+	clone, err := s.Clone(testCtx(), m.ID, "project-2")
 	require.NoError(t, err)
 	require.Len(t, attachmentsCopier.copies, 1)
 	call := attachmentsCopier.copies[0]

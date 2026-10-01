@@ -148,17 +148,17 @@ func (f *fakeTickets) Get(_ context.Context, _ string) (Ticket, error) {
 }
 
 type fakeMemories struct {
-	mu              sync.Mutex
-	calledWorkspace string
-	calledProject   string
-	idx             MemoriesIndex
-	err             error
+	mu            sync.Mutex
+	called        bool
+	calledProject string
+	idx           MemoriesIndex
+	err           error
 }
 
-func (f *fakeMemories) ListMemories(_ context.Context, workspaceID, projectID string) (MemoriesIndex, error) {
+func (f *fakeMemories) ListMemories(_ context.Context, projectID string) (MemoriesIndex, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.calledWorkspace = workspaceID
+	f.called = true
 	f.calledProject = projectID
 	return f.idx, f.err
 }
@@ -420,7 +420,7 @@ func TestRunTurn_HappyPath_StreamsFramesAndPersistsFinalReply(t *testing.T) {
 
 // --- memories index wiring ---------------------------------------------
 
-func TestRunTurn_LoadsMemoriesIndexIntoPrompt(t *testing.T) {
+func TestRunTurn_PlainChat_CarriesNoMemoryIndex(t *testing.T) {
 	conv := newFakeConversations(Conversation{ID: "conv-1", WorkspaceID: "workspace-default"})
 	client := &fakeHarness{startResult: harness.StartResult{
 		Updates: updatesChan(harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}}),
@@ -437,13 +437,13 @@ func TestRunTurn_LoadsMemoriesIndexIntoPrompt(t *testing.T) {
 	require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
 	waitFor(t, time.Second, func() bool { return client.snapshotPrompt() != "" })
 
-	assert.Equal(t, "", mem.calledProject, "a non-ticket-thread conversation has no project")
-	assert.Equal(t, "workspace-default", mem.calledWorkspace, "the conversation's workspace still resolves with no project (ADR 0059)")
-	assert.Contains(t, client.snapshotPrompt(), "Coding style: always")
+	assert.False(t, mem.called, "a conversation with no ticket or doc has no project, so no memories (ADR 0099)")
+	assert.NotContains(t, client.snapshotPrompt(), "Coding style")
+	assert.Contains(t, client.snapshotPrompt(), "no memories saved yet")
 }
 
 func TestRunTurn_MemoriesLookupFailure_IsBestEffort(t *testing.T) {
-	conv := newFakeConversations(Conversation{ID: "conv-1"})
+	conv := newFakeConversations(Conversation{ID: "conv-1", ProjectID: "proj-7"})
 	client := &fakeHarness{startResult: harness.StartResult{
 		Updates: updatesChan(harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}}),
 	}}
@@ -459,6 +459,9 @@ func TestRunTurn_MemoriesLookupFailure_IsBestEffort(t *testing.T) {
 	require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
 	waitFor(t, time.Second, func() bool { return client.snapshotPrompt() != "" })
 
+	mem.mu.Lock()
+	defer mem.mu.Unlock()
+	require.True(t, mem.called)
 	assert.Contains(t, client.snapshotPrompt(), "no memories saved yet", "a failed lookup falls back to an empty index rather than blocking the turn")
 }
 

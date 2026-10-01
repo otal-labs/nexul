@@ -40,8 +40,18 @@ func decodeMemory(t *testing.T, rec *httptest.ResponseRecorder) *Memory {
 }
 
 func TestMemoriesHandler_Create(t *testing.T) {
-	h, _ := newMemoriesHandler()
+	h, repo := newMemoriesHandler()
 
+	t.Run("without memories:write is 403", func(t *testing.T) {
+		deny := NewHandler(newDenyService(newFakeRepo())).Routes()
+		rec := serve(t, deny, http.MethodPost, "/api/memories", `{"project_id":"project-1","title":"Title"}`)
+		assert.Equal(t, http.StatusForbidden, rec.Code)
+	})
+	t.Run("a workspace with no project is 400", func(t *testing.T) {
+		rec := serve(t, h, http.MethodPost, "/api/memories", `{"workspace_id":"workspace-1","title":"Team tone"}`)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		assert.Empty(t, repo.memories)
+	})
 	t.Run("creates a memory", func(t *testing.T) {
 		rec := serve(t, h, http.MethodPost, "/api/memories", `{"project_id":"project-1","title":"Deploy quirks","when_to_use":"when deploying","body":"body","always_included":true}`)
 		require.Equal(t, http.StatusCreated, rec.Code)
@@ -56,20 +66,9 @@ func TestMemoriesHandler_Create(t *testing.T) {
 		rec := serve(t, h, http.MethodPost, "/api/memories", `{"project_id":"project-1","title":""}`)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
-	t.Run("missing project_id and workspace_id is 400", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPost, "/api/memories", `{"title":"Title"}`)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
 	t.Run("malformed body is 400", func(t *testing.T) {
 		rec := serve(t, h, http.MethodPost, "/api/memories", `{"title":`)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-	t.Run("empty project_id with workspace_id creates a workspace-scoped memory", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPost, "/api/memories", `{"workspace_id":"workspace-1","title":"Team tone"}`)
-		require.Equal(t, http.StatusCreated, rec.Code)
-		m := decodeMemory(t, rec)
-		assert.Empty(t, m.ProjectID)
-		assert.Equal(t, "workspace-1", m.WorkspaceID)
 	})
 }
 
@@ -195,9 +194,19 @@ func TestMemoriesHandler_VersionsAndRevert(t *testing.T) {
 }
 
 func TestMemoriesHandler_Clone(t *testing.T) {
-	h, _ := newMemoriesHandler()
+	h, repo := newMemoriesHandler()
 	created := decodeMemory(t, serve(t, h, http.MethodPost, "/api/memories", `{"project_id":"project-1","title":"A","body":"body"}`))
 
+	t.Run("without memories:clone is 403", func(t *testing.T) {
+		deny := NewHandler(newDenyService(repo)).Routes()
+		rec := serve(t, deny, http.MethodPost, "/api/memories/"+created.ID+"/clone", `{"project_id":"project-2"}`)
+		assert.Equal(t, http.StatusForbidden, rec.Code)
+	})
+	t.Run("a workspace with no project is 400", func(t *testing.T) {
+		rec := serve(t, h, http.MethodPost, "/api/memories/"+created.ID+"/clone", `{"workspace_id":"workspace-1"}`)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		assert.Len(t, repo.memories, 1)
+	})
 	t.Run("clones to another project", func(t *testing.T) {
 		rec := serve(t, h, http.MethodPost, "/api/memories/"+created.ID+"/clone", `{"project_id":"project-2"}`)
 		require.Equal(t, http.StatusCreated, rec.Code)
@@ -205,10 +214,6 @@ func TestMemoriesHandler_Clone(t *testing.T) {
 		assert.NotEqual(t, created.ID, clone.ID)
 		assert.Equal(t, "project-2", clone.ProjectID)
 		assert.Equal(t, 1, clone.Version)
-	})
-	t.Run("missing destination project id and workspace id is 400", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPost, "/api/memories/"+created.ID+"/clone", `{}`)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 	t.Run("malformed clone body is 400", func(t *testing.T) {
 		rec := serve(t, h, http.MethodPost, "/api/memories/"+created.ID+"/clone", `{"project_id":`)
@@ -218,18 +223,11 @@ func TestMemoriesHandler_Clone(t *testing.T) {
 		rec := serve(t, h, http.MethodPost, "/api/memories/nope/clone", `{"project_id":"project-2"}`)
 		assert.Equal(t, http.StatusNotFound, rec.Code)
 	})
-	t.Run("empty project_id with workspace_id clones to the workspace", func(t *testing.T) {
-		rec := serve(t, h, http.MethodPost, "/api/memories/"+created.ID+"/clone", `{"workspace_id":"workspace-1"}`)
-		require.Equal(t, http.StatusCreated, rec.Code)
-		clone := decodeMemory(t, rec)
-		assert.Empty(t, clone.ProjectID)
-		assert.Equal(t, "workspace-1", clone.WorkspaceID)
-	})
 }
 
 func TestMemoriesHandler_Forbidden(t *testing.T) {
 	repo := newFakeRepo()
-	created, err := newTestService(repo).Create(testCtx(), "project-1", "", "A", "when", "body", false, "")
+	created, err := newTestService(repo).Create(testCtx(), "project-1", "A", "when", "body", false, "")
 	require.NoError(t, err)
 	h := NewHandler(newDenyService(repo)).Routes()
 

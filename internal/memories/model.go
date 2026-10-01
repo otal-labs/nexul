@@ -11,12 +11,11 @@ const KindDecisionsLog = "decisions_log"
 // MaxInterviewChars caps the interview memory and the Interview template, measured as exported markdown.
 const MaxInterviewChars = 8_000
 
-// Memory is an agent-facing note (ADR 0056): own entity, never a doc. ProjectID empty means the memory belongs
-// to the whole workspace instead of one project (ADR 0059).
+// Memory is an agent-facing note (ADR 0056): own entity, never a doc, always in one project (ADR 0099).
 type Memory struct {
 	ID          string `json:"id"`
 	WorkspaceID string `json:"workspace_id"`
-	ProjectID   string `json:"project_id,omitempty"`
+	ProjectID   string `json:"project_id"`
 	// Kind is empty for an ordinary memory; a special kind is unique per project (KindInterview).
 	Kind      string `json:"kind"`
 	Title     string `json:"title"`

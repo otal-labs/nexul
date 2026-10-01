@@ -44,25 +44,16 @@ type MemoryItem struct {
 	Body      string
 }
 
-// MemoriesIndex is every memory available to a turn: the workspace's workspace-scoped memories, reaching
-// every turn including a plain chat with no ticket or doc, and the current project's own memories, if any
-// (ADR 0059). The zero value is nil-safe and renders as "no memories saved yet". Callers building a prompt
-// split this with splitAlwaysIncluded before handing it to instructionsBlock/memoriesBlock, which render the
-// index of the rest only.
+// MemoriesIndex is every memory available to a turn: the current project's memories, none for a plain chat with
+// no ticket or doc (ADR 0099). The zero value is nil-safe and renders as "no memories saved yet". Callers building
+// a prompt split this with splitAlwaysIncluded before handing it to instructionsBlock/memoriesBlock, which render
+// the index of the rest only.
 type MemoriesIndex struct {
-	Workspace []MemoryItem
-	Project   []MemoryItem
+	Project []MemoryItem
 }
 
 // splitAlwaysIncluded separates always-included memories from the index; the project's interview leads them.
 func splitAlwaysIncluded(mem MemoriesIndex) (index MemoriesIndex, always []InlinedMemory) {
-	for _, m := range mem.Workspace {
-		if !m.AlwaysIncluded {
-			index.Workspace = append(index.Workspace, m)
-			continue
-		}
-		always = append(always, InlinedMemory{Title: m.Name, Body: m.Body})
-	}
 	for _, m := range mem.Project {
 		if !m.AlwaysIncluded {
 			index.Project = append(index.Project, m)
@@ -197,14 +188,14 @@ func instructionsBlock(mem MemoriesIndex) string {
 // memoriesBlock's fallback text is duplicated in the nexul-memory skill file; edit both together.
 func memoriesBlock(mem MemoriesIndex) string {
 	fallback := "Memories: durable notes for agents, shared across the team, " +
-		"not per-user. A memory belongs to the workspace, reaching every turn, " +
-		"or to one project. Always-included memories at either scope are " +
-		"inlined in full elsewhere in this prompt as standing rules to follow; " +
-		"the index below lists the rest by title and when-to-use only — fetch " +
-		"one's full content with the memory_get MCP tool using its id when its " +
-		"when-to-use matches. Save a new one, or update an existing one, with " +
-		"memory_create/memory_update; omit project_id to save at workspace " +
-		"scope. Use your judgment to save a durable fact worth remembering, " +
+		"not per-user. A memory belongs to one project and reaches only that " +
+		"project's turns; a chat with no ticket or doc has none. Always-included " +
+		"memories are inlined in full elsewhere in this prompt as standing rules " +
+		"to follow; the index below lists the rest by title and when-to-use " +
+		"only — fetch one's full content with the memory_get MCP tool using its " +
+		"id when its when-to-use matches. Save a new one, or update an existing " +
+		"one, with memory_create/memory_update, passing the project's " +
+		"project_id. Use your judgment to save a durable fact worth remembering, " +
 		"and always save one when a user says something like \"@Agent remember " +
 		"X\". Keep the set curated — update an existing memory instead of " +
 		"creating a near-duplicate. (If your installed nexul-memory skill's " +
@@ -237,12 +228,6 @@ func fitMemoriesIndex(mem MemoriesIndex, budget int) ([]string, bool) {
 		budget = 0
 	}
 	var lines []string
-	if len(mem.Workspace) > 0 {
-		lines = append(lines, "Workspace memories:")
-		for _, m := range mem.Workspace {
-			lines = append(lines, memoryLine(m))
-		}
-	}
 	if len(mem.Project) > 0 {
 		lines = append(lines, "This project's memories:")
 		for _, m := range mem.Project {

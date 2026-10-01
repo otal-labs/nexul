@@ -10,11 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useRunPlay } from "@/hooks/TrailHooks";
 import { useConfirmBlockedRun } from "@/hooks/useConfirmBlockedRun";
-import { isWorkspaceMemory, type Memory } from "@/models/Memory";
+import type { Memory } from "@/models/Memory";
 import type { Play, PlayType } from "@/models/Play";
 import type { BoardStatus } from "@/models/Status";
 import type { LatestChoices } from "@/models/Trail";
-import { cn } from "@/lib/utils";
 
 interface PlayRunFormProps {
   play: Play;
@@ -64,9 +63,6 @@ export const PlayRunForm = ({
   const column = isTicket && moveTo !== NO_MOVE && columns.find((c) => c.id === moveTo);
   const confirmLabel = column ? `Run ${play.label} · then ${column.name}` : `Run ${play.label}`;
 
-  const workspaceMemories = memories.filter(isWorkspaceMemory);
-  const projectMemories = memories.filter((memory) => !isWorkspaceMemory(memory));
-
   const toggle = (id: string) =>
     setSelected((current) => (current.includes(id) ? current.filter((m) => m !== id) : [...current, id]));
 
@@ -98,19 +94,7 @@ export const PlayRunForm = ({
         {memories.length === 0 && <EmptyRow className="py-3">No memories in this project yet.</EmptyRow>}
         {memories.length > 0 && (
           <div className="rounded-md border border-border">
-            {workspaceMemories.length > 0 && <p className={cn(microheaderClass, "px-3 pt-2")}>Workspace</p>}
-            {workspaceMemories.map((memory) => (
-              <MemoryPickRow
-                key={memory.id}
-                memory={memory}
-                checked={memory.always_included || selected.includes(memory.id)}
-                onToggle={() => toggle(memory.id)}
-              />
-            ))}
-            {workspaceMemories.length > 0 && projectMemories.length > 0 && (
-              <p className={cn(microheaderClass, "px-3 pt-2")}>This project</p>
-            )}
-            {projectMemories.map((memory) => (
+            {memories.map((memory) => (
               <MemoryPickRow
                 key={memory.id}
                 memory={memory}

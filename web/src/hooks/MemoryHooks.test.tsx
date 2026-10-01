@@ -74,7 +74,7 @@ beforeEach(() => {
 });
 
 describe("useFetchMemories", () => {
-  it("loads the workspace-scoped memory list", async () => {
+  it("loads the workspace's memory list", async () => {
     vi.mocked(api.get).mockResolvedValue({ data: [memory] });
     const { result } = renderHook(() => useFetchMemories("ws-1"), { wrapper });
     await waitFor(() => expect(result.current.data).toEqual([memory]));
@@ -123,14 +123,12 @@ describe("useCreateMemory", () => {
     vi.mocked(api.post).mockResolvedValue({ data: memory });
     const { result } = renderHook(() => useCreateMemory(), { wrapper });
     await result.current.mutateAsync({
-      workspace_id: "ws-1",
       project_id: "project-1",
       title: "Deploy quirks",
       when_to_use: "use this if touching deploy config",
       always_included: false,
     });
     expect(api.post).toHaveBeenCalledWith("/api/memories", {
-      workspace_id: "ws-1",
       project_id: "project-1",
       title: "Deploy quirks",
       when_to_use: "use this if touching deploy config",
@@ -144,7 +142,6 @@ describe("useCreateMemory", () => {
     const { result } = renderHook(() => useCreateMemory(), { wrapper });
     await result.current
       .mutateAsync({
-        workspace_id: "ws-1",
         project_id: "project-1",
         title: "Deploy quirks",
         when_to_use: "",
@@ -217,19 +214,9 @@ describe("useCloneMemory", () => {
   it("posts the destination project and invalidates the list", async () => {
     vi.mocked(api.post).mockResolvedValue({ data: { ...memory, id: "mem-2", project_id: "project-2" } });
     const { result } = renderHook(() => useCloneMemory(), { wrapper });
-    const clone = await result.current.mutateAsync({ id: "mem-1", projectId: "project-2", workspaceId: "ws-1" });
-    expect(api.post).toHaveBeenCalledWith("/api/memories/mem-1/clone", {
-      project_id: "project-2",
-      workspace_id: "ws-1",
-    });
+    const clone = await result.current.mutateAsync({ id: "mem-1", projectId: "project-2" });
+    expect(api.post).toHaveBeenCalledWith("/api/memories/mem-1/clone", { project_id: "project-2" });
     expect(clone.id).toBe("mem-2");
-  });
-
-  it("clones to workspace scope with an empty project id", async () => {
-    vi.mocked(api.post).mockResolvedValue({ data: { ...memory, id: "mem-3", project_id: "" } });
-    const { result } = renderHook(() => useCloneMemory(), { wrapper });
-    await result.current.mutateAsync({ id: "mem-1", projectId: "", workspaceId: "ws-1" });
-    expect(api.post).toHaveBeenCalledWith("/api/memories/mem-1/clone", { project_id: "", workspace_id: "ws-1" });
   });
 });
 

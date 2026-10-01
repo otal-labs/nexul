@@ -937,7 +937,7 @@ type NotificationService struct {
 }
 
 // NewNotificationService wires the notification use-cases; delivery goes through the outbox, not a direct
-// publish. members and access back the workspace-scoped, permission-gated fan-out memory.updated needs, and
+// publish. members and access back memory.updated's permission-gated fan-out to a workspace's members, and
 // projects resolves a ticket's or doc's workspace.
 func NewNotificationService(repo NotificationRepo, users UserStore, members WorkspaceMemberStore, access PermissionChecker, projects ProjectReader) *NotificationService {
 	return &NotificationService{repo: repo, users: users, members: members, access: access, projects: projects, now: time.Now}

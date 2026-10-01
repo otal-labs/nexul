@@ -6,16 +6,10 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 SELECT * FROM memories WHERE id = ?;
 
 -- name: ListMemoriesByWorkspace :many
-SELECT * FROM memories WHERE workspace_id = ? ORDER BY project_id IS NOT NULL, project_id, created_at;
+SELECT * FROM memories WHERE workspace_id = ? ORDER BY project_id, created_at;
 
 -- name: ListMemoriesByProject :many
--- The project's own memories plus its workspace's workspace-scoped ones, workspace-scoped first.
-SELECT * FROM memories
-WHERE project_id = ? OR (project_id IS NULL AND workspace_id = ?)
-ORDER BY project_id IS NOT NULL, project_id, created_at;
-
--- name: ListWorkspaceScopedMemories :many
-SELECT * FROM memories WHERE workspace_id = ? AND project_id IS NULL ORDER BY created_at;
+SELECT * FROM memories WHERE project_id = ? ORDER BY created_at;
 
 -- name: UpdateMemory :execrows
 UPDATE memories SET title = ?, when_to_use = ?, body = ?, always_included = ?, version = ?, updated_by = ?, updated_at = ? WHERE id = ?;

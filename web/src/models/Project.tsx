@@ -79,9 +79,7 @@ export const interviewPath = (token: string): string => `/projects/${token}/inte
 
 export const docPath = (token: string, docId: string): string => `/docs/${token}/${docId}`;
 
-// token "" is a workspace-scoped memory: the bare, project-less route.
-export const memoryPath = (token: string, memoryId: string): string =>
-  token !== "" ? `/memories/${token}/${memoryId}` : `/memories/${memoryId}`;
+export const memoryPath = (token: string, memoryId: string): string => `/memories/${token}/${memoryId}`;
 
 export interface RepoRef {
   owner: string;

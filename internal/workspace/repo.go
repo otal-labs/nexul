@@ -103,7 +103,7 @@ type UserStore interface {
 }
 
 // WorkspaceMemberStore resolves a workspace's member user ids, adapted at the composition root (ADR 0017)
-// onto tenancy's membership store; memories are workspace-scoped, unlike docs' every-registered-user fan-out.
+// onto tenancy's membership store; a memory notice fans out to its workspace's members, unlike docs' every-registered-user one.
 type WorkspaceMemberStore interface {
 	ListMemberUserIDs(ctx context.Context, workspaceID string) ([]string, error)
 }

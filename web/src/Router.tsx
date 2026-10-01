@@ -75,8 +75,6 @@ const workspaceRoutes: RouteObject[] = [
   { path: "docs/:docId", element: <DocsPage /> },
   { path: "memories", handle: gate("memories"), element: <MemoriesPage /> },
   { path: "memories/:projectToken/:memoryId/:tab?", handle: gate("memories"), element: <MemoriesPage /> },
-  // A workspace memory's own URL; a project memory reached by id alone moves to its project's URL.
-  ...staticTabs("memories/:memoryId", ["attachments", "versions"], "memories", <MemoriesPage />),
   { path: "board", handle: gate("tickets"), element: <BoardPage /> },
   { path: "board/:projectId", handle: gate("tickets"), element: <BoardPage /> },
   { path: "tickets/:ticketId/:tab?", handle: gate("tickets"), element: <TicketPage /> },

@@ -87,42 +87,13 @@ func TestMemoriesRepo_ListByProject_IncludesTheSeededDefault(t *testing.T) {
 	require.NoError(t, s.Projects.Create(context.Background(), newTestProject("p-1", "Backend", 0)))
 	require.NoError(t, s.Memories.Create(context.Background(), newTestMemory("mem-1", "p-1"), ""))
 
-	got, err := s.Memories.ListByProject(context.Background(), "p-1", "workspace-default")
+	got, err := s.Memories.ListByProject(context.Background(), "p-1")
 	require.NoError(t, err)
 	// One row seeded at project creation (ProjectsRepo.Create) plus the one this test just created.
 	require.Len(t, got, 2)
 	assert.Equal(t, "Working in this project", got[0].Title)
 	assert.True(t, got[0].AlwaysIncluded)
 	assert.Equal(t, "mem-1", got[1].ID)
-}
-
-func TestMemoriesRepo_ListByProject_WorkspaceScopedComesFirst(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	require.NoError(t, s.Projects.Create(context.Background(), newTestProject("p-1", "Backend", 0)))
-	require.NoError(t, s.Memories.Create(context.Background(), newTestMemory("mem-1", "p-1"), ""))
-	require.NoError(t, s.Memories.Create(context.Background(), newTestMemory("mem-ws", ""), ""))
-
-	got, err := s.Memories.ListByProject(context.Background(), "p-1", "workspace-default")
-	require.NoError(t, err)
-	// Seeded default + mem-1 (both project p-1) plus the workspace-scoped mem-ws.
-	require.Len(t, got, 3)
-	assert.Equal(t, "mem-ws", got[0].ID)
-	assert.Empty(t, got[0].ProjectID)
-}
-
-func TestMemoriesRepo_ListWorkspaceScoped_ReturnsOnlyWorkspaceMemories(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	require.NoError(t, s.Projects.Create(context.Background(), newTestProject("p-1", "Backend", 0)))
-	require.NoError(t, s.Memories.Create(context.Background(), newTestMemory("mem-1", "p-1"), ""))
-	require.NoError(t, s.Memories.Create(context.Background(), newTestMemory("mem-ws", ""), ""))
-
-	got, err := s.Memories.ListWorkspaceScoped(context.Background(), "workspace-default")
-	require.NoError(t, err)
-	require.Len(t, got, 1)
-	assert.Equal(t, "mem-ws", got[0].ID)
-	assert.Empty(t, got[0].ProjectID)
 }
 
 func TestMemoriesRepo_ListByWorkspace_OrdersByProjectThenCreatedAt(t *testing.T) {
@@ -137,20 +108,6 @@ func TestMemoriesRepo_ListByWorkspace_OrdersByProjectThenCreatedAt(t *testing.T)
 	require.NoError(t, err)
 	// The two fresh projects' seeded defaults plus project-general's own seeded row plus the two created here.
 	require.Len(t, got, 5)
-}
-
-func TestMemoriesRepo_ListByWorkspace_WorkspaceScopedSortsFirst(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	require.NoError(t, s.Projects.Create(context.Background(), newTestProject("p-1", "Backend", 0)))
-	require.NoError(t, s.Memories.Create(context.Background(), newTestMemory("mem-1", "p-1"), ""))
-	require.NoError(t, s.Memories.Create(context.Background(), newTestMemory("mem-ws", ""), ""))
-
-	got, err := s.Memories.ListByWorkspace(context.Background(), "workspace-default")
-	require.NoError(t, err)
-	require.NotEmpty(t, got)
-	assert.Equal(t, "mem-ws", got[0].ID)
-	assert.Empty(t, got[0].ProjectID)
 }
 
 func TestMemoriesRepo_Update_PersistsFieldsAndAppendsVersion(t *testing.T) {
@@ -239,7 +196,7 @@ func TestProjectsRepo_Create_SeedsAnAlwaysIncludedMemory(t *testing.T) {
 	s := newTestStore(t)
 	require.NoError(t, s.Projects.Create(context.Background(), newTestProject("p-1", "Backend", 0)))
 
-	got, err := s.Memories.ListByProject(context.Background(), "p-1", "workspace-default")
+	got, err := s.Memories.ListByProject(context.Background(), "p-1")
 	require.NoError(t, err)
 	require.Len(t, got, 1)
 	assert.Equal(t, "Working in this project", got[0].Title)

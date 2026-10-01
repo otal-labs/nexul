@@ -71,11 +71,8 @@ func (s *Service) CreateInterview(ctx context.Context, projectID, via string) (*
 	if !ok || actor.ID == "" {
 		return nil, fmt.Errorf("%w: an authenticated user is required", apperrs.ErrUnauthorized)
 	}
-	workspaceID, err := s.projects.WorkspaceForProject(ctx, projectID)
+	workspaceID, err := s.projectForWrite(ctx, projectID, permissions.MemoriesWrite)
 	if err != nil {
-		return nil, fmt.Errorf("resolve workspace for project %s: %w", projectID, err)
-	}
-	if err := s.require(ctx, workspaceID, permissions.MemoriesWrite); err != nil {
 		return nil, err
 	}
 	existing, err := s.repo.GetByProjectKind(ctx, projectID, KindInterview)

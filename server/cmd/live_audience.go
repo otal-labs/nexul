@@ -267,18 +267,18 @@ func readsDoc(ctx context.Context, a liveAudience, id string) bool {
 func memoryFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
 	var p struct {
 		Memory struct {
-			WorkspaceID string `json:"workspace_id"`
+			ProjectID string `json:"project_id"`
 		} `json:"memory"`
 	}
-	return decode(raw, &p) && a.access.Require(ctx, p.Memory.WorkspaceID, permissions.MemoriesRead) == nil
+	return decode(raw, &p) && a.access.RequireProject(ctx, p.Memory.ProjectID, permissions.MemoriesRead) == nil
 }
 
-// memoryDeletedFrame reads the workspace the memory lived in; a frame from before it carried one reaches nobody.
+// memoryDeletedFrame reads the project the memory lived in; a frame from before it carried one reaches nobody.
 func memoryDeletedFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
 	var p struct {
-		WorkspaceID string `json:"workspace_id"`
+		ProjectID string `json:"project_id"`
 	}
-	return decode(raw, &p) && a.access.Require(ctx, p.WorkspaceID, permissions.MemoriesRead) == nil
+	return decode(raw, &p) && p.ProjectID != "" && a.access.RequireProject(ctx, p.ProjectID, permissions.MemoriesRead) == nil
 }
 
 // conversationFrame covers every chat-shaped payload: a conversation, a message, or a bare conversation id.
