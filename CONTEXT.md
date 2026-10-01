@@ -596,7 +596,8 @@ _Avoid_: Members (one workspace's roster), registered accounts, users
 
 **Instance settings**:
 The group on the Settings page for what belongs to the whole instance rather
-than one workspace: Instance, Team, Sign-in providers, Connectors, and DNS.
+than one workspace: Instance, Team, Sign-in providers, Connectors, DNS, and
+Templates.
 Each entry shows only to a viewer holding its permission in any workspace, so
 a role holding one bit reaches that entry and nothing else. Workspace-level
 sections stay in Configuration.

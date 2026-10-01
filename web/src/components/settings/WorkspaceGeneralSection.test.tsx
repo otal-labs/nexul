@@ -18,7 +18,7 @@ vi.mock("@/api/client", () => ({
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
-const acme: Workspace = { id: "ws-1", name: "Acme", slug: "acme", mention_chip_template: "", created_at: "", updated_at: "" };
+const acme: Workspace = { id: "ws-1", name: "Acme", slug: "acme", mention_chip_template: "", mention_chip_template_edited: false, created_at: "", updated_at: "" };
 
 const Where = () => <p data-testid="location">{useLocation().pathname}</p>;
 

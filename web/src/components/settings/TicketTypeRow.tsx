@@ -3,7 +3,9 @@ import { useState, type FocusEvent } from "react";
 import { ColorSwatchButton } from "@/components/settings/ColorSwatchButton";
 import { RowActionsMenu } from "@/components/settings/RowActionsMenu";
 import { TicketTypeTemplateForm } from "@/components/settings/TicketTypeTemplateForm";
+import { TicketTypeTemplateLine } from "@/components/settings/TicketTypeTemplateLine";
 import { useDeleteTicketType, useRenameTicketType } from "@/hooks/TicketTypeHooks";
+import { useCloneTemplateDialog } from "@/hooks/useCloneTemplateDialog";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import {
   SaveTicketTypeTemplateFormSchema,
@@ -13,13 +15,15 @@ import {
 
 interface TicketTypeRowProps {
   type: TicketType;
+  projectId: string;
 }
 
-export const TicketTypeRow = ({ type }: TicketTypeRowProps) => {
+export const TicketTypeRow = ({ type, projectId }: TicketTypeRowProps) => {
   const renameTicketType = useRenameTicketType();
   const deleteTicketType = useDeleteTicketType();
   const [editing, setEditing] = useState(false);
   const { open: openTemplate } = useFormDialog();
+  const openClone = useCloneTemplateDialog();
 
   const editTemplate = () =>
     openTemplate<SaveTicketTypeTemplateFormData>({
@@ -55,7 +59,12 @@ export const TicketTypeRow = ({ type }: TicketTypeRowProps) => {
           }}
         />
       )}
-      {!editing && <span className="flex-1 text-sm font-medium">{type.name}</span>}
+      {!editing && (
+        <div className="min-w-0 flex-1">
+          <span className="text-sm font-medium">{type.name}</span>
+          <TicketTypeTemplateLine type={type} projectId={projectId} />
+        </div>
+      )}
       <ColorSwatchButton
         label={`Color for ${type.name}`}
         value={type.color}
@@ -66,6 +75,11 @@ export const TicketTypeRow = ({ type }: TicketTypeRowProps) => {
         actions={[
           { label: "Rename", onSelect: () => setEditing(true) },
           { label: "Edit template", onSelect: () => void editTemplate() },
+          {
+            label: "Clone template to…",
+            onSelect: () =>
+              void openClone({ kind: "ticket_body", key: type.name, name: type.name, from: { scope: "project", project_id: projectId } }),
+          },
           { label: "Delete", destructive: true, onSelect: () => deleteTicketType.mutate(type.id) },
         ]}
       />

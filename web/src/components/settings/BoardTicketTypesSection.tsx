@@ -30,7 +30,7 @@ export const BoardTicketTypesSection = ({ projectId, ticketTypes }: BoardTicketT
       {ticketTypes && ticketTypes.length > 0 && (
         <ul className="mt-3 divide-y divide-border">
           {ticketTypes.map((type) => (
-            <TicketTypeRow key={type.id} type={type} />
+            <TicketTypeRow key={type.id} type={type} projectId={projectId} />
           ))}
         </ul>
       )}

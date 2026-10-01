@@ -31,7 +31,7 @@ const renderRow = () =>
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <ContextAwareConfirmation.ConfirmationRoot />
       <ul>
-        <TicketTypeRow type={bug} />
+        <TicketTypeRow type={bug} projectId="p-1" />
       </ul>
     </QueryClientProvider>,
   );

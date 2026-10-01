@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from "react";
 
-import { InterviewLengthMeter } from "@/components/memory/InterviewLengthMeter";
+import { InterviewTemplateField } from "@/components/settings/InterviewTemplateField";
+import { TemplateOriginLine } from "@/components/templates/TemplateOriginLine";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { useSaveInterviewTemplate } from "@/hooks/MemoryHooks";
+import { useCloneTemplateDialog } from "@/hooks/useCloneTemplateDialog";
 import type { InterviewTemplate } from "@/models/InterviewTemplate";
 
 interface InterviewTemplateFormProps {
@@ -14,6 +15,8 @@ interface InterviewTemplateFormProps {
 export const InterviewTemplateForm = ({ template, canWrite }: InterviewTemplateFormProps) => {
   const [body, setBody] = useState(template.body);
   const saveTemplate = useSaveInterviewTemplate();
+  const openClone = useCloneTemplateDialog();
+  const at = { scope: "workspace" as const, workspace_id: template.workspace_id };
 
   const onSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -22,35 +25,27 @@ export const InterviewTemplateForm = ({ template, canWrite }: InterviewTemplateF
 
   return (
     <form onSubmit={onSubmit} className="space-y-3">
-      <label htmlFor="interview-template-body" className="block text-xs font-medium text-muted-foreground">
-        Template (markdown)
-      </label>
-      <Textarea
-        id="interview-template-body"
-        value={body}
-        onChange={(e) => setBody(e.target.value)}
-        readOnly={!canWrite}
-        rows={16}
-        spellCheck={false}
-        className="font-mono text-xs"
+      <TemplateOriginLine
+        kind="interview"
+        templateKey=""
+        at={at}
+        state={template.edited ? "edited" : "following"}
+        canReset={canWrite}
       />
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <InterviewLengthMeter length={body.length} />
+      <InterviewTemplateField id="interview-template-body" value={body} onChange={setBody} readOnly={!canWrite} />
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => void openClone({ kind: "interview", key: "", name: "Interview", from: at })}
+        >
+          Clone to…
+        </Button>
         {canWrite && (
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={body === template.default_body}
-              onClick={() => setBody(template.default_body)}
-            >
-              Reset to default
-            </Button>
-            <Button type="submit" size="sm" loading={saveTemplate.isPending} disabled={body === template.body}>
-              Save
-            </Button>
-          </div>
+          <Button type="submit" size="sm" loading={saveTemplate.isPending} disabled={body === template.body}>
+            Save
+          </Button>
         )}
       </div>
     </form>

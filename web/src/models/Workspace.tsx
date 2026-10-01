@@ -10,6 +10,8 @@ export interface Workspace {
   slug: string;
   // A free-text template with {ticket.Field} placeholders; any member reads it, only workspaces:write can change it.
   mention_chip_template: string;
+  // False while the workspace follows the instance's chip template; mention_chip_template is always the resolved text.
+  mention_chip_template_edited: boolean;
   created_at: string;
   updated_at: string;
 }

@@ -27,6 +27,7 @@ export const INSTANCE_SECTION_PERMISSION = {
   "sign-in": "instance:read",
   connectors: "connectors:read",
   dns: "dns:read",
+  templates: "templates:write",
 } as const;
 
 export type InstanceSection = keyof typeof INSTANCE_SECTION_PERMISSION;

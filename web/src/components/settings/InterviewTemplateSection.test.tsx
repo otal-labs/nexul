@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { ContextAwareConfirmation } from "react-confirm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
@@ -12,12 +13,16 @@ vi.mock("@/api/client", () => ({
   errorMessage: vi.fn(),
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
-vi.mock("@/hooks/WorkspaceHooks", () => ({ useHasPermission: () => true }));
+vi.mock("@/hooks/WorkspaceHooks", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/hooks/WorkspaceHooks")>()),
+  useHasPermission: () => true,
+}));
 
 const template = {
   workspace_id: "ws-1",
   body: "## Mine",
   default_body: "## Stack and versions",
+  edited: true,
   updated_by: "u-1",
   updated_at: "2026-09-24T12:00:00Z",
 };
@@ -26,6 +31,7 @@ const renderSection = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
+      <ContextAwareConfirmation.ConfirmationRoot />
       <InterviewTemplateSection />
     </QueryClientProvider>,
   );
@@ -57,13 +63,28 @@ describe("InterviewTemplateSection", () => {
     expect(api.put).toHaveBeenCalledWith("/api/memories/interview-template", { workspace_id: "ws-1", body: "## Mine!" });
   });
 
-  it("resets to the seeded categories", async () => {
-    const user = userEvent.setup();
+  it("says it follows the instance template while the workspace has not edited its own", async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: { ...template, body: "## Instance", default_body: "## Instance", edited: false } });
     renderSection();
 
-    await user.click(await screen.findByRole("button", { name: "Reset to default" }));
-    expect(screen.getByLabelText("Template (markdown)")).toHaveValue("## Stack and versions");
-    expect(screen.getByRole("button", { name: "Reset to default" })).toBeDisabled();
+    expect(await screen.findByText("Following the instance template")).toBeInTheDocument();
+    expect(screen.getByLabelText("Template (markdown)")).toHaveValue("## Instance");
+    expect(screen.queryByRole("button", { name: "Reset to instance template" })).not.toBeInTheDocument();
+  });
+
+  it("resets an edited workspace template to the instance's after a confirm", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.post).mockResolvedValue({ data: {} });
+    renderSection();
+
+    expect(await screen.findByText("Edited for this workspace")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Reset to instance template" }));
+    await user.click(await screen.findByRole("button", { name: "Reset" }));
+    expect(api.post).toHaveBeenCalledWith("/api/templates/reset", {
+      kind: "interview",
+      key: "",
+      at: { scope: "workspace", workspace_id: "ws-1" },
+    });
   });
 
   it("warns once the template is over the cap", async () => {
