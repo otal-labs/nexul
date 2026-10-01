@@ -1,25 +1,28 @@
 import { CreateChannelForm } from "@/components/chat/CreateChannelForm";
 import { CreateDMForm } from "@/components/chat/CreateDMForm";
 import { useFormDialog } from "@/hooks/useFormDialog";
+import { useFetchMyRole } from "@/hooks/WorkspaceHooks";
 import {
-  SaveChannelFormSchema,
+  CreateChannelFormSchema,
   SaveDMFormSchema,
   type Conversation,
-  type SaveChannelFormData,
+  type CreateChannelFormData,
   type SaveDMFormData,
 } from "@/models/Chat";
 
 // The create dialogs for a channel, a voice channel and a direct message, shared by the chat list and the sidebar.
 export const useNewConversationDialogs = (workspaceId: string, onCreated: (conversation: Conversation) => void) => {
   const { open } = useFormDialog();
+  const { data: role } = useFetchMyRole(workspaceId);
+  const privateOnly = role?.restricted === true;
 
   const openNewChannel = (voice: boolean) =>
-    open<SaveChannelFormData>({
+    open<CreateChannelFormData>({
       title: voice ? "New voice channel" : "New channel",
-      schema: SaveChannelFormSchema,
+      schema: CreateChannelFormSchema,
       okLabel: voice ? "Create voice channel" : "Create channel",
-      form: <CreateChannelForm workspaceId={workspaceId} voice={voice} onCreated={onCreated} />,
-      formOptions: { defaultValues: { name: "" } },
+      form: <CreateChannelForm workspaceId={workspaceId} voice={voice} privateOnly={privateOnly} onCreated={onCreated} />,
+      formOptions: { defaultValues: { name: "", private: privateOnly, member_ids: [] } },
     });
 
   const openNewDM = () =>

@@ -284,6 +284,12 @@ describe("useLiveEvents dispatch", () => {
     );
     expect(spy).toHaveBeenCalledWith({ queryKey: ["getChatUnread"] });
     expect(spy).not.toHaveBeenCalledWith({ queryKey: ["getChatMessages"] });
+    spy.mockClear();
+    act(() =>
+      socket.message(JSON.stringify({ topic: "chat.conversation.members_changed", type: "event", payload: {} })),
+    );
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["getChatConversations"] });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["getChatUnread"] });
   });
 
   it("patches the cached message list from chat message frames instead of refetching", async () => {

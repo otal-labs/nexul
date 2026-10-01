@@ -11,14 +11,22 @@ interface ChannelSidebarRowProps {
 }
 
 export const ChannelSidebarRow = ({ conversation, unreadCount }: ChannelSidebarRowProps) => {
-  const { onRename, onDelete } = useChannelRowActions(conversation);
+  const { onSettings, onRename, onDelete, settingsDialog } = useChannelRowActions(conversation);
   return (
-    <ChatSidebarRow
-      conversationId={conversation.id}
-      label={conversation.name ?? "Channel"}
-      icon={Hash}
-      unreadCount={unreadCount}
-      actions={(onRename || onDelete) && <RowActions itemLabel={channelMention(conversation)} onRename={onRename} onDelete={onDelete} />}
-    />
+    <>
+      <ChatSidebarRow
+        conversationId={conversation.id}
+        label={conversation.name ?? "Channel"}
+        icon={Hash}
+        isPrivate={conversation.private}
+        unreadCount={unreadCount}
+        actions={
+          (onSettings || onRename || onDelete) && (
+            <RowActions itemLabel={channelMention(conversation)} onSettings={onSettings} onRename={onRename} onDelete={onDelete} />
+          )
+        }
+      />
+      {settingsDialog}
+    </>
   );
 };

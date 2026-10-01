@@ -27,10 +27,12 @@ export interface Conversation {
   created_by: string;
   created_at: string;
   updated_at: string;
-  // Only populated for DMs.
+  // A DM's people, or a private channel's members.
   participant_ids?: string[];
-  // The workspace's own #general: it can be renamed but never deleted.
+  // The workspace's own #general: it can be renamed but never deleted, and is always public.
   general?: boolean;
+  // Only its members (and the Owner) see and read a private channel (ADR 0098).
+  private?: boolean;
 }
 
 // The chat.conversation.deleted frame: the conversation is gone, so it names what was deleted.
@@ -119,6 +121,30 @@ export const SaveChannelFormSchema = z.object({
   name: z.string().trim().min(1, "Channel name is required"),
 });
 export type SaveChannelFormData = z.infer<typeof SaveChannelFormSchema>;
+
+export const CreateChannelFormSchema = SaveChannelFormSchema.extend({
+  private: z.boolean(),
+  member_ids: z.array(z.string()),
+});
+export type CreateChannelFormData = z.infer<typeof CreateChannelFormSchema>;
+
+// Who stays when a channel turns private, or who joins it; the person switching always stays.
+export const ChannelPeopleFormSchema = z.object({
+  user_ids: z.array(z.string()),
+});
+export type ChannelPeopleFormData = z.infer<typeof ChannelPeopleFormSchema>;
+
+export const AddChannelPeopleFormSchema = z.object({
+  user_ids: z.array(z.string()).min(1, "Pick at least one person"),
+});
+
+// The DM between exactly these people, if one already exists.
+export const findDM = (conversations: Conversation[], userIds: string[]): Conversation | undefined => {
+  const wanted = new Set(userIds);
+  return conversations.find(
+    (c) => c.kind === "dm" && c.participant_ids?.length === wanted.size && c.participant_ids.every((id) => wanted.has(id)),
+  );
+};
 
 export const SaveDMFormSchema = z.object({
   participant_ids: z.array(z.string()).min(1, "Pick at least one person"),

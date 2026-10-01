@@ -194,10 +194,10 @@ describe("ChatSidebarSection", () => {
       return (await screen.findAllByRole("menuitem")).map((item) => item.textContent);
     };
 
-    it("offers Rename on channels:write and Delete on channels:delete, Delete last", async () => {
+    it("offers Settings and Rename on channels:write and Delete on channels:delete, Delete last", async () => {
       permissions = ["channels:write", "channels:delete"];
       renderSection();
-      expect(await menuItems("#eng")).toEqual(["Rename", "Delete"]);
+      expect(await menuItems("#eng")).toEqual(["Settings", "Rename", "Delete"]);
     });
 
     it("offers only what the viewer holds", async () => {
