@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/otal-labs/nexul/internal/auth"
+	"github.com/otal-labs/nexul/internal/docs"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/workspace"
@@ -233,4 +234,48 @@ func TestNotificationsRepo_WorkspaceFilter_ScopesListCountAndReadAll(t *testing.
 	count, err = s.Notifications.UnreadCount(ctx, "u1", "")
 	require.NoError(t, err)
 	assert.Equal(t, 1, count, "read-all in ws-2 leaves ws-1 unread")
+}
+
+func TestNotificationsRepo_List_CarriesTheDocsCurrentFolder(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := t.Context()
+	mustCreateUser(t, s, "u1", "onik97")
+	require.NoError(t, s.Docs.CreateFolder(ctx, &docs.Folder{ID: "f-gs", ProjectID: "project-general", Name: "GetSource"}))
+	ep := newTestDoc("d-ep07")
+	ep.FolderID = "f-gs"
+	require.NoError(t, s.Docs.Create(ctx, ep))
+	inMain := newTestDoc("d-main")
+	inMain.FolderID = "folder-general-main"
+	require.NoError(t, s.Docs.Create(ctx, inMain))
+
+	docNote := newTestNotification("n-ep", "u1", false)
+	docNote.SubjectID = "d-ep07"
+	mainNote := newTestNotification("n-main", "u1", false)
+	mainNote.SubjectID = "d-main"
+	ticketNote := newTestNotification("n-ticket", "u1", false)
+	ticketNote.Kind, ticketNote.SubjectType, ticketNote.SubjectID = workspace.KindTicketAssigned, workspace.SubjectTicket, "d-ep07"
+	require.NoError(t, s.Notifications.CreateMany(ctx, []*workspace.Notification{docNote, mainNote, ticketNote}))
+
+	byID := func() map[string]*workspace.Notification {
+		ns, err := s.Notifications.List(ctx, "u1", "", 50)
+		require.NoError(t, err)
+		out := map[string]*workspace.Notification{}
+		for _, n := range ns {
+			out[n.ID] = n
+		}
+		return out
+	}
+	got := byID()
+	assert.Equal(t, "f-gs", got["n-ep"].FolderID)
+	assert.Equal(t, "GetSource", got["n-ep"].FolderName)
+	assert.False(t, got["n-ep"].FolderIsDefault)
+	assert.Equal(t, "folder-general-main", got["n-main"].FolderID)
+	assert.True(t, got["n-main"].FolderIsDefault)
+	assert.Empty(t, got["n-ticket"].FolderID, "a ticket sharing the doc's id is not a doc")
+
+	require.NoError(t, s.Docs.SetDocFolder(ctx, "d-ep07", "folder-general-main"))
+	got = byID()
+	assert.Equal(t, "folder-general-main", got["n-ep"].FolderID, "the folder is read at list time, so a move shows")
+	assert.True(t, got["n-ep"].FolderIsDefault)
 }

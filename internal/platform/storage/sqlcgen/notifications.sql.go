@@ -67,9 +67,12 @@ func (q *Queries) CreateNotificationIfAbsent(ctx context.Context, arg CreateNoti
 }
 
 const listNotifications = `-- name: ListNotifications :many
-SELECT id, user_id, kind, subject_type, subject_id, subject_title, read, created_at, workspace_id FROM notifications
-WHERE user_id = ?1 AND (?2 = '' OR workspace_id = ?2)
-ORDER BY created_at DESC LIMIT ?3
+SELECT n.id, n.user_id, n.kind, n.subject_type, n.subject_id, n.subject_title, n.read, n.created_at, n.workspace_id, COALESCE(f.id, '') AS folder_id, COALESCE(f.name, '') AS folder_name, COALESCE(f.is_default, 0) AS folder_is_default
+FROM notifications n
+LEFT JOIN docs d ON n.subject_type = 'doc' AND d.id = n.subject_id
+LEFT JOIN doc_folders f ON f.id = d.folder_id
+WHERE n.user_id = ?1 AND (?2 = '' OR n.workspace_id = ?2)
+ORDER BY n.created_at DESC LIMIT ?3
 `
 
 type ListNotificationsParams struct {
@@ -78,26 +81,37 @@ type ListNotificationsParams struct {
 	Limit       int64
 }
 
+type ListNotificationsRow struct {
+	Notification    Notification
+	FolderID        string
+	FolderName      string
+	FolderIsDefault int64
+}
+
 // An empty workspace_id lists every workspace, the unscoped inbox older clients still ask for.
-func (q *Queries) ListNotifications(ctx context.Context, arg ListNotificationsParams) ([]Notification, error) {
+// A doc's folder is joined in at read time, never stored on the row, because the doc can move after it was sent.
+func (q *Queries) ListNotifications(ctx context.Context, arg ListNotificationsParams) ([]ListNotificationsRow, error) {
 	rows, err := q.db.QueryContext(ctx, listNotifications, arg.UserID, arg.WorkspaceID, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Notification
+	var items []ListNotificationsRow
 	for rows.Next() {
-		var i Notification
+		var i ListNotificationsRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.UserID,
-			&i.Kind,
-			&i.SubjectType,
-			&i.SubjectID,
-			&i.SubjectTitle,
-			&i.Read,
-			&i.CreatedAt,
-			&i.WorkspaceID,
+			&i.Notification.ID,
+			&i.Notification.UserID,
+			&i.Notification.Kind,
+			&i.Notification.SubjectType,
+			&i.Notification.SubjectID,
+			&i.Notification.SubjectTitle,
+			&i.Notification.Read,
+			&i.Notification.CreatedAt,
+			&i.Notification.WorkspaceID,
+			&i.FolderID,
+			&i.FolderName,
+			&i.FolderIsDefault,
 		); err != nil {
 			return nil, err
 		}

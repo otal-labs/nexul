@@ -27,14 +27,17 @@ type notificationUpdateIn struct {
 }
 
 type notificationResult struct {
-	ID           string      `json:"id"`
-	WorkspaceID  string      `json:"workspace_id"`
-	Kind         Kind        `json:"kind"`
-	SubjectType  SubjectType `json:"subject_type"`
-	SubjectID    string      `json:"subject_id"`
-	SubjectTitle string      `json:"subject_title"`
-	Read         bool        `json:"read"`
-	CreatedAt    time.Time   `json:"created_at"`
+	ID              string      `json:"id"`
+	WorkspaceID     string      `json:"workspace_id"`
+	Kind            Kind        `json:"kind"`
+	SubjectType     SubjectType `json:"subject_type"`
+	SubjectID       string      `json:"subject_id"`
+	SubjectTitle    string      `json:"subject_title"`
+	Read            bool        `json:"read"`
+	CreatedAt       time.Time   `json:"created_at"`
+	FolderID        string      `json:"folder_id,omitempty"`
+	FolderName      string      `json:"folder_name,omitempty"`
+	FolderIsDefault bool        `json:"folder_is_default,omitempty"`
 }
 
 type notificationUpdated struct {
@@ -48,6 +51,7 @@ func NotificationMCPTools(s *NotificationService) []mcptool.Tool {
 	return []mcptool.Tool{
 		mcptool.New("notification_list", "List notifications",
 			"Lists your own notifications newest first: what happened (kind), to which ticket, doc, or memory (subject), and whether you have read it. "+
+				"A doc's item also names the folder the doc is in now (folder_id, folder_name, folder_is_default for its project's default folder), so items can be grouped by folder. "+
 				"Set workspace_id to see one workspace's inbox and unread_only to see only what is new, then mark items read with notification_update. "+
 				"It never shows another user's inbox.",
 			mcptool.Hints{ReadOnly: true, Local: true},
@@ -67,7 +71,7 @@ func NotificationMCPTools(s *NotificationService) []mcptool.Tool {
 				for _, n := range ns {
 					out = append(out, notificationResult{
 						ID: n.ID, WorkspaceID: n.WorkspaceID, Kind: n.Kind, SubjectType: n.SubjectType, SubjectID: n.SubjectID, SubjectTitle: n.SubjectTitle,
-						Read: n.Read, CreatedAt: n.CreatedAt,
+						Read: n.Read, CreatedAt: n.CreatedAt, FolderID: n.FolderID, FolderName: n.FolderName, FolderIsDefault: n.FolderIsDefault,
 					})
 				}
 				return mcptool.Paginate(out, in.PageArgs), nil

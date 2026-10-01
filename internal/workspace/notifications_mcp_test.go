@@ -34,6 +34,7 @@ func seededInbox(t *testing.T) *NotificationService {
 	repo := newFakeNotifRepo()
 	n1, n2 := mkNotif("n1", "u1"), mkNotif("n2", "u1")
 	n1.WorkspaceID, n2.WorkspaceID = "ws-1", "ws-2"
+	n2.FolderID, n2.FolderName = "f-gs", "GetSource"
 	repo.create(t, n1)
 	repo.create(t, n2)
 	repo.create(t, mkNotif("n3", "u2"))
@@ -126,6 +127,8 @@ func TestNotificationList(t *testing.T) {
 	require.Len(t, unread.Items, 1)
 	assert.Equal(t, "n2", unread.Items[0].ID)
 	assert.Equal(t, "Spec", unread.Items[0].SubjectTitle)
+	assert.Equal(t, "f-gs", unread.Items[0].FolderID, "a doc's folder reaches agents as it reaches the browser")
+	assert.Equal(t, "GetSource", unread.Items[0].FolderName)
 	assert.True(t, page(`{"limit":1}`).HasMore)
 	inWS2 := page(`{"workspace_id":"ws-2"}`)
 	require.Len(t, inWS2.Items, 1, "only the named workspace's notifications")
