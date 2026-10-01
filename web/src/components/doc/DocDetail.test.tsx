@@ -201,6 +201,33 @@ describe("DocDetail", () => {
     expect(title).toHaveValue("Storage Spine v2");
   });
 
+  it("flattens a pasted multi-line title to one line", async () => {
+    const user = userEvent.setup();
+    const socket = new FakeSocket();
+    await renderDetail(socket);
+    socket.onopen?.({});
+
+    const title = screen.getByTestId("doc-title-input");
+    await user.clear(title);
+    await user.click(title);
+    await user.paste("First line\nSecond line");
+
+    expect(title).toHaveValue("First line Second line");
+  });
+
+  it("Shift+Enter in the title adds no line break", async () => {
+    const user = userEvent.setup();
+    const socket = new FakeSocket();
+    await renderDetail(socket);
+    socket.onopen?.({});
+
+    const title = screen.getByTestId("doc-title-input");
+    await user.click(title);
+    await user.keyboard("{Shift>}{Enter}{/Shift}");
+
+    expect(title).toHaveValue("Storage Spine");
+  });
+
   it("Enter commits the rename immediately, carrying the typed title", async () => {
     const user = userEvent.setup();
     const socket = new FakeSocket();
