@@ -7,12 +7,12 @@ const label: Record<Status, string> = { planned: 'Planned', 'in-progress': 'In p
 
 const items: { name: string; status: Status; summary: string }[] = [
 	{ name: 'Phone app', status: 'in-progress', summary: 'Your inbox, chat, board, docs, deploys and logs on Android or iPhone, signed in by scanning a QR code.' },
-	{ name: 'Project access', status: 'planned', summary: 'Give someone, such as a client, only the projects they need, with what they can do set per project. Everything else stays invisible to them.' },
-	{ name: 'Private channels', status: 'planned', summary: 'Channels only the people you add can see and read.' },
 	{ name: 'Call notes', status: 'planned', summary: 'A voice call becomes notes and a summary in the doc, without anyone typing them.' },
 	{ name: 'Semantic search', status: 'planned', summary: 'Find docs and tickets by what they mean, not only by the words they share.' },
 	{ name: 'Runner labels', status: 'planned', summary: 'Route a job to the runners that carry the right labels, not just the right machine.' },
 	{ name: 'Automatic TLS', status: 'planned', summary: "Let's Encrypt certificates for services served straight from your server." },
+	{ name: 'Project access', status: 'shipped', summary: 'Give someone, such as a client, only the projects they need, with what they can do set per project. Everything else stays invisible to them.' },
+	{ name: 'Private channels', status: 'shipped', summary: 'Channels only the people you add can see and read.' },
 	{ name: 'Container logs', status: 'shipped', summary: 'Read what a running service prints, live, from the stack page, the canvas, your phone, or an agent.' },
 	{ name: 'Workspace links', status: 'shipped', summary: 'Every page link names its workspace, and each workspace can have its own WEB project and WEB-1 ticket.' },
 	{ name: 'Team', status: 'shipped', summary: 'Everyone on the instance in one list, and what each person can reach in every workspace, changed from one place.' },
