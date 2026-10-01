@@ -40,7 +40,8 @@ even their names.
 - ADRs this effort will need: Restricted members and Project access
   (amends ADR 0087's "the project list takes membership only" and ADR
   0094's "reading a channel takes membership alone"), and private channels
-  if ticket 04 lands somewhere surprising.
+  if ticket 04 lands somewhere surprising; and workspace memories removed
+  (supersedes ADR 0059, and the build updates CONTEXT.md's Memory entry).
 
 ## Decisions so far
 
@@ -49,6 +50,15 @@ even their names.
   project area; the role editor splits into Workspace and Every project;
   restricted members get no instance-level areas and no workspace channels
   except private ones they are in; set from the Team dialog.
+- [Which permission areas are project areas](issues/02-project-areas.md) —
+  the role editor's split row by row; memories become project-only and
+  workspace memories are deleted; projects keep one row, so a Restricted
+  member never creates a project; doc sharing is a project area.
+- [How project access is stored and checked](issues/03-storage-and-checks.md)
+  — a `restricted` column on the membership, project access as
+  `permission_overwrites` rows of type project, `RequireProject` as the one
+  seam, instance checks skip restricted memberships, existing events carry
+  the changes live.
 
 ## Not yet specified
 

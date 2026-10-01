@@ -42,9 +42,9 @@ Settled with the owner while charting, 2026-10-01.
   open through it, whatever the role carries.
 - **People stay visible.** ADR 0086 stands; a Restricted member still sees
   the workspace's names and pictures.
-- **Workspace memories** reach a Restricted member's agent turns only if
-  their role reads memories; otherwise they are left out of the turn, not
-  just the list.
+- ~~**Workspace memories** reach a Restricted member's agent turns only if
+  their role reads memories.~~ Superseded by ticket 02: workspace memories
+  are removed.
 - **Who sets it.** Anyone with `members:write` in the workspace, in the Team
   dialog on the person's workspace row. Project settings shows who has
   access, read-only for now. Nobody grants a level they don't hold.

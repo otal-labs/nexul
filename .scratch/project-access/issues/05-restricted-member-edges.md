@@ -13,8 +13,6 @@ How does a Restricted member arrive, and what happens at the edges?
   someone edits their row?
 - Switching a person from "All projects" to "Only these projects": what is
   preselected, and what they keep.
-- A Restricted member whose role lets them create a project: do they get
-  access to it, and at what level?
 - A hidden project's ticket that assigns or @mentions a Restricted member,
   and a link to it pasted in a DM they read.
 - A project archived or deleted while people hold access to it.
