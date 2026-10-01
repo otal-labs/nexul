@@ -5,10 +5,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import {
-  useFetchNotifications,
+  useFetchInbox,
   useFetchUnreadCount,
   useMarkAllNotificationsRead,
-  useMarkNotificationRead,
+  useMarkNotificationsRead,
 } from "@/hooks/NotificationHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
@@ -45,11 +45,11 @@ beforeEach(() => {
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
 });
 
-describe("useFetchNotifications", () => {
+describe("useFetchInbox", () => {
   it("loads the selected workspace's notifications", async () => {
     vi.mocked(api.get).mockResolvedValue({ data: [notification] });
-    const { result } = renderHook(() => useFetchNotifications(), { wrapper });
-    await waitFor(() => expect(result.current.data).toEqual([notification]));
+    const { result } = renderHook(() => useFetchInbox(), { wrapper });
+    await waitFor(() => expect(result.current.data?.map((e) => e.key)).toEqual(["doc:doc-1"]));
     expect(api.get).toHaveBeenCalledWith("/api/notifications", { params: { workspace_id: "ws-1" } });
   });
 });
@@ -63,18 +63,18 @@ describe("useFetchUnreadCount", () => {
   });
 });
 
-describe("useMarkNotificationRead", () => {
+describe("useMarkNotificationsRead", () => {
   it("posts the read endpoint", async () => {
     vi.mocked(api.post).mockResolvedValue({ data: undefined });
-    const { result } = renderHook(() => useMarkNotificationRead(), { wrapper });
-    await result.current.mutateAsync("n1");
+    const { result } = renderHook(() => useMarkNotificationsRead(), { wrapper });
+    await result.current.mutateAsync(["n1"]);
     expect(api.post).toHaveBeenCalledWith("/api/notifications/n1/read");
   });
 
   it("surfaces an api error", async () => {
     vi.mocked(api.post).mockRejectedValue(new Error("boom"));
-    const { result } = renderHook(() => useMarkNotificationRead(), { wrapper });
-    await result.current.mutateAsync("n1").catch(() => {});
+    const { result } = renderHook(() => useMarkNotificationsRead(), { wrapper });
+    await result.current.mutateAsync(["n1"]).catch(() => {});
     await waitFor(() => expect(result.current.isError).toBe(true));
   });
 });

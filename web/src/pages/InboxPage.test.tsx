@@ -6,6 +6,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import { InboxPage } from "@/pages/InboxPage";
+import { useInboxFolderStore } from "@/stores/inboxFolderStore";
+import { useInboxStore } from "@/stores/inboxStore";
 
 vi.mock("@/components/doc/collab/useCollabSession", () => ({
   useCollabSession: () => null,
@@ -82,19 +84,22 @@ const renderPage = () => {
   );
 };
 
-const mockApi = () =>
-  vi.mocked(api.get).mockImplementation((url: string) => {
+const mockApiResponse = (url: string) => {
     if (url === "/api/notifications") return Promise.resolve({ data: [ticketNotification, docNotification] });
     if (url === "/api/tickets/t-1") return Promise.resolve({ data: ticketData });
     if (url === "/api/tickets/t-1/ticket-links") return Promise.resolve({ data: { found_in: null, origin_unknown: false, bugs_found: [], blocked_by: [], blocks: [], blocked: false } });
     if (url === "/api/docs/doc-1") return Promise.resolve({ data: docData });
     if (url === "/api/pairing/presence") return Promise.resolve({ data: { computers: {} } });
     return Promise.resolve({ data: [] });
-  });
+};
+
+const mockApi = () => vi.mocked(api.get).mockImplementation(mockApiResponse);
 
 beforeEach(() => {
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
+  useInboxStore.setState({ selectedKey: null });
+  useInboxFolderStore.setState({ collapsed: [] });
 });
 
 describe("InboxPage", () => {
@@ -102,6 +107,8 @@ describe("InboxPage", () => {
     mockApi();
     renderPage();
     expect(await screen.findByRole("heading", { name: "Write migrations" })).toBeInTheDocument();
+    const list = screen.getByRole("navigation", { name: "Notifications" });
+    expect(within(list).getByRole("button", { name: /Write migrations/ })).toHaveAttribute("aria-current", "true");
   });
 
   it("marks an unread notification read and loads its source when selected", async () => {
@@ -127,6 +134,51 @@ describe("InboxPage", () => {
     const list = screen.getByRole("navigation", { name: "Notifications" });
     await user.click(within(list).getByRole("button", { name: /Write migrations/ }));
     expect(api.post).toHaveBeenCalledWith("/api/notifications/n1/read");
+  });
+
+  it("opens a doc grouped under its folder and marks every unread notification about it read", async () => {
+    const inGetSource = { subject_type: "doc", subject_id: "doc-ep07", subject_title: "GetSource EP07: Bluesky feeds", folder_id: "f-gs", folder_name: "GetSource", folder_is_default: false };
+    vi.mocked(api.get).mockImplementation((url: string) => {
+      if (url === "/api/notifications")
+        return Promise.resolve({
+          data: [
+            ticketNotification,
+            { ...docNotification, ...inGetSource, id: "u2", kind: "doc.updated", read: false, created_at: "2026-08-12T10:00:00Z" },
+            { ...docNotification, ...inGetSource, id: "u1", kind: "doc.updated", read: true, created_at: "2026-08-12T09:00:00Z" },
+            { ...docNotification, ...inGetSource, id: "c1", kind: "doc.created", read: false, created_at: "2026-08-12T08:00:00Z" },
+          ],
+        });
+      if (url === "/api/docs/doc-ep07") return Promise.resolve({ data: { ...docData, id: "doc-ep07", title: "GetSource EP07: Bluesky feeds" } });
+      return mockApiResponse(url);
+    });
+    vi.mocked(api.post).mockResolvedValue({ data: undefined });
+    const user = userEvent.setup();
+    renderPage();
+
+    const folder = await screen.findByRole("region", { name: "GetSource" });
+    expect(within(folder).getByRole("button", { name: /GetSource/ })).toHaveTextContent("1 doc · 3 updates");
+    await user.click(within(folder).getByRole("button", { name: /EP07: Bluesky feeds/ }));
+
+    expect(await screen.findByRole("heading", { name: "GetSource EP07: Bluesky feeds" })).toBeInTheDocument();
+    expect(vi.mocked(api.post).mock.calls.map(([url]) => url).sort()).toEqual([
+      "/api/notifications/c1/read",
+      "/api/notifications/u2/read",
+    ]);
+  });
+
+  it("hides a folder's docs when it is collapsed", async () => {
+    vi.mocked(api.get).mockImplementation((url: string) => {
+      if (url === "/api/notifications")
+        return Promise.resolve({ data: [ticketNotification, { ...docNotification, subject_title: "GetSource EP01", folder_id: "f-gs", folder_name: "GetSource", folder_is_default: false }] });
+      return mockApiResponse(url);
+    });
+    const user = userEvent.setup();
+    renderPage();
+
+    const folder = await screen.findByRole("region", { name: "GetSource" });
+    expect(within(folder).getByText("EP01")).toBeInTheDocument();
+    await user.click(within(folder).getByRole("button", { expanded: true }));
+    expect(within(folder).queryByText("EP01")).not.toBeInTheDocument();
   });
 
   it("marks all notifications read", async () => {
