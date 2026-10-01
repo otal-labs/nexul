@@ -2,7 +2,7 @@ import { ChevronRight, CircleHelp, Dot, FileText, Terminal, Wrench } from "lucid
 
 import { ToolRow, type ToolRowStatus } from "@/components/play/ToolRowVisual";
 import { TrailStepDetail } from "@/components/play/TrailStepDetail";
-import { isCommandTool, isFailedStep, isFileReadTool, isFileTool, isMcpTool, stepLabel, type ActivityEntry } from "@/models/Trail";
+import { isCommandTool, isFailedStep, isFileReadTool, isFileTool, stepLabel, type ActivityEntry } from "@/models/Trail";
 
 interface TrailActionRowProps {
   entry: ActivityEntry;
@@ -46,7 +46,6 @@ export const TrailActionRow = ({ entry, index = 0, live = false, entrance = true
     <ToolRow
       icon={entry.kind !== "text" && <KindIcon entry={entry} />}
       label={stepLabel(entry)}
-      mono={(isTool(entry) && !isMcpTool(entry.tool)) || entry.kind === "question"}
       status={statusOf(entry, live)}
       index={index}
       trailing={trailing}

@@ -9,9 +9,8 @@ export type ToolRowStatus = "running" | "failed" | "idle";
 interface ToolRowProps {
   // icon is absent for the Agent's own sentence, which reads as prose from the icon column.
   icon?: ReactNode;
-  // label is the row's one line, truncated; mono for a command, a path, or arguments, plain for a name or a sentence.
+  // label is the row's one line, truncated; a step (icon) is set in mono, the Agent's sentence (no icon) in the body font.
   label: string;
-  mono?: boolean;
   status: ToolRowStatus;
   index?: number;
   trailing?: ReactNode | undefined;
@@ -32,7 +31,7 @@ const rowVariants: Variants = {
 
 // One action as a flat line: a bare muted icon, the label, a spinner while it runs, and a fixed slot for the expand
 // chevron so every label ends at the same edge. Color only on a failed icon and the spinner.
-export const ToolRow = ({ icon, label, mono = false, status, index = 0, trailing, entrance = true }: ToolRowProps) => {
+export const ToolRow = ({ icon, label, status, index = 0, trailing, entrance = true }: ToolRowProps) => {
   const reduced = useReducedMotion();
   const still = reduced || !entrance;
   const failed = status === "failed";
@@ -56,9 +55,8 @@ export const ToolRow = ({ icon, label, mono = false, status, index = 0, trailing
       )}
       <span
         className={cn(
-          "min-w-0 flex-1 text-sm leading-relaxed",
-          icon ? "truncate text-muted-foreground" : "px-1 text-foreground/80",
-          mono && "font-mono text-xs",
+          "min-w-0 flex-1 leading-relaxed",
+          icon ? "truncate font-mono text-xs text-muted-foreground" : "px-1 text-sm text-foreground/80",
         )}
       >
         {label}
