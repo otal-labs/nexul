@@ -235,6 +235,7 @@ func TestProjectTools_DocFolders(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrInvalid, "another project's folder is refused")
 	_, err = call(t, asUser(t.Context()), f.projectTools(), "project_update", `{"id":"p-1","doc_folders":{"delete":["f-web"]}}`)
 	require.ErrorIs(t, err, apperrs.ErrInvalid)
+	assert.Contains(t, err.Error(), "project_get lists the project's doc folders", "the error says where valid folder ids come from")
 	web, _ := f.folders.ListFolders(t.Context(), "p-2")
 	assert.Equal(t, "Main", web[0].Name)
 }

@@ -124,3 +124,7 @@ func undescribed(s *jsonschema.Schema, prefix string) []string {
 	}
 	return out
 }
+
+func TestInstructions_StayUnderTheCap(t *testing.T) {
+	assert.LessOrEqual(t, len(instructions), 2048, "practices/mcp.md section 9: clients show them at session start")
+}

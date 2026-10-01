@@ -181,7 +181,7 @@ func folderName(name string) (string, error) {
 
 func folderWriteErr(name string, err error) error {
 	if errors.Is(err, apperrs.ErrConflict) {
-		return fmt.Errorf("%w: this project already has a folder named %s", err, name)
+		return fmt.Errorf("%w: this project already has a folder named %s", apperrs.ErrConflict, name)
 	}
 	return fmt.Errorf("save folder %s: %w", name, err)
 }

@@ -82,8 +82,9 @@ func projectGetTool(w *workspace.Service, t *tickets.Service, d DocFolders) mcpt
 		"Returns one project with everything needed to file and move its tickets: its status columns in board "+
 			"order (each with its stage: backlog, progress, review, testing, or done), categories, ticket types "+
 			"(each with the body_template a new ticket fills), labels with this project's colors, repositories "+
-			"(each with its role, app or tests), where its tests live, its doc folders (the default first, where a "+
-			"new doc goes unless doc_create names another), and delete_impact, the tickets, repositories, "+
+			"(each with its role, app or tests), where its tests live, its doc folders (the one-level groups every "+
+			"doc lives in exactly one of, the default Main first, where a new doc goes unless doc_create names "+
+			"another), and delete_impact, the tickets, repositories, "+
 			"and services that block deleting it. Call it before ticket_create or ticket_update to get valid "+
 			"status, type, and category ids, and before doc_create or doc_update to get folder ids; change any of "+
 			"these with project_update. Use project_list to find a project's id.",
@@ -201,7 +202,7 @@ type projectUpdateIn struct {
 	Categories    *categoryChanges   `json:"categories,omitempty" jsonschema:"Categories to create, change, or delete."`
 	TicketTypes   *ticketTypeChanges `json:"ticket_types,omitempty" jsonschema:"Ticket types to create, change, or delete."`
 	LabelColors   []labelColorIn     `json:"label_colors,omitempty" jsonschema:"Colors for labels in this project, even for a label no ticket uses yet."`
-	DocFolders    *docFolderChanges  `json:"doc_folders,omitempty" jsonschema:"Doc folders to create, rename, or delete; these need docs:write."`
+	DocFolders    *docFolderChanges  `json:"doc_folders,omitempty" jsonschema:"Doc folders to create, rename, or delete. A folder groups the project's docs one level deep and every doc lives in exactly one; the default folder, Main, takes new docs and can be renamed but never deleted. Needs docs:write."`
 }
 
 type docFolderChanges struct {
@@ -304,7 +305,7 @@ func projectUpdateTool(w *workspace.Service, t *tickets.Service, d DocFolders) m
 		"Changes a project: its name, icon, prefix (only when it has none), place in the workspace, and tests "+
 			"location; attaches and detaches repositories; creates, changes, reorders (position), and deletes its "+
 			"status columns, categories, and ticket types; sets label colors; and creates, renames, and deletes doc "+
-			"folders. Only the fields you send change; "+
+			"folders, the groups a project's docs live in (doc_update moves a doc between them). Only the fields you send change; "+
 			"an omitted field keeps its value. The changes apply in the order the fields are listed here, creates "+
 			"before updates before deletes, and stop at the first failure, whose message names the field and the "+
 			"ones already applied. Owners only, except label colors and doc folders, which take docs:write. Returns the updated project as project_get "+
@@ -367,6 +368,8 @@ func (u projectUpdate) steps(in projectUpdateIn) []step {
 	return append(steps, u.docFolderSteps(in.DocFolders)...)
 }
 
+const docFolderHint = "project_get lists the project's doc folders"
+
 func (u projectUpdate) docFolderSteps(c *docFolderChanges) []step {
 	if c == nil {
 		return nil
@@ -378,7 +381,7 @@ func (u projectUpdate) docFolderSteps(c *docFolderChanges) []step {
 		}})
 	}
 	for i, f := range c.Update {
-		steps = append(steps, step{fmt.Sprintf("doc_folders.update[%d]", i), idHint, func(ctx context.Context) error {
+		steps = append(steps, step{fmt.Sprintf("doc_folders.update[%d]", i), docFolderHint, func(ctx context.Context) error {
 			if err := u.ownsFolder(ctx, f.ID); err != nil {
 				return err
 			}
@@ -386,7 +389,7 @@ func (u projectUpdate) docFolderSteps(c *docFolderChanges) []step {
 		}})
 	}
 	for i, id := range c.Delete {
-		steps = append(steps, step{fmt.Sprintf("doc_folders.delete[%d]", i), idHint, func(ctx context.Context) error {
+		steps = append(steps, step{fmt.Sprintf("doc_folders.delete[%d]", i), docFolderHint, func(ctx context.Context) error {
 			if err := u.ownsFolder(ctx, id); err != nil {
 				return err
 			}
