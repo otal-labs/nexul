@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ContextAwareConfirmation } from "react-confirm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -40,11 +40,9 @@ describe("CreateInvitationForm", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Invite" }));
-    await user.click(await screen.findByRole("combobox", { name: "Every project for the invited person" }));
-    await user.click(await screen.findByRole("option", { name: "Only chosen projects" }));
-    expect(await screen.findByText("Projects · 0 of 2")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Web access: None" }));
-    await user.click(await screen.findByRole("menuitemradio", { name: /^Read/ }));
+    const everyProject = await screen.findByRole("radiogroup", { name: "Every project for the invited person" });
+    await user.click(within(everyProject).getByRole("radio", { name: "Chosen projects" }));
+    await user.click(within(await screen.findByRole("radiogroup", { name: "Web access" })).getByRole("radio", { name: "Read" }));
     await user.click(screen.getByRole("button", { name: "Create link" }));
 
     await vi.waitFor(() =>

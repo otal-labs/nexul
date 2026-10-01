@@ -1,44 +1,49 @@
 import { LayersIcon, LockIcon } from "lucide-react";
 
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { usePointerCloseFocus } from "@/hooks/usePointerCloseFocus";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { EveryProject } from "@/models/Team";
 
 interface EveryProjectRowProps {
-  // Who the row is about, for the select's accessible name.
+  // Who the row is about, for the control's accessible name.
   subject: string;
   value: EveryProject;
   onChange: (value: EveryProject) => void;
-  // Read-only: the value reads as text, the way a role does for someone who can't manage members.
   disabled?: boolean;
 }
 
-// The control that decides whether the project list exists at all, so it is the full-size one on the row.
+const itemClass =
+  "h-7 px-3 text-xs text-muted-foreground transition-colors duration-150 ease-standard data-[state=on]:bg-accent data-[state=on]:text-foreground";
+
+// The list's lead row, like Every domain on a role: it decides whether the project rows below apply at all.
 export const EveryProjectRow = ({ subject, value, onChange, disabled = false }: EveryProjectRowProps) => {
   const restricted = value === EveryProject.None;
   const Icon = restricted ? LockIcon : LayersIcon;
-  const { triggerProps, contentProps } = usePointerCloseFocus<HTMLButtonElement>();
   return (
-    <div className="flex min-h-14 items-center gap-3 py-2">
+    <li className="flex flex-wrap items-center gap-x-3 gap-y-2 bg-muted/40 px-2 py-2 @md:px-3">
       <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 basis-48">
         <p className="text-sm font-medium">Every project</p>
-        <p className="text-sm text-muted-foreground">
-          {restricted ? "Sees only the projects below. New projects stay hidden." : "Every project, at their role's level."}
+        <p className="text-xs text-muted-foreground">
+          {restricted ? "Sees only the projects given below. New projects stay hidden." : "Every project at their role's level. Pick Chosen projects to set each one."}
         </p>
       </div>
-      {disabled && <span className="shrink-0 text-sm text-muted-foreground">{restricted ? "Only chosen projects" : "From role"}</span>}
-      {!disabled && (
-        <Select value={value} onValueChange={(next) => onChange(next === EveryProject.None ? EveryProject.None : EveryProject.Role)}>
-          <SelectTrigger {...triggerProps} aria-label={`Every project for ${subject}`} className="h-9 w-48 shrink-0">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent align="end" {...contentProps}>
-            <SelectItem value={EveryProject.Role}>From role</SelectItem>
-            <SelectItem value={EveryProject.None}>Only chosen projects</SelectItem>
-          </SelectContent>
-        </Select>
-      )}
-    </div>
+      <ToggleGroup
+        type="single"
+        variant="outline"
+        size="sm"
+        role="radiogroup"
+        aria-label={`Every project for ${subject}`}
+        disabled={disabled}
+        value={value}
+        onValueChange={(next) => next && onChange(next === EveryProject.None ? EveryProject.None : EveryProject.Role)}
+      >
+        <ToggleGroupItem value={EveryProject.Role} className={itemClass}>
+          From role
+        </ToggleGroupItem>
+        <ToggleGroupItem value={EveryProject.None} className={itemClass}>
+          Chosen projects
+        </ToggleGroupItem>
+      </ToggleGroup>
+    </li>
   );
 };

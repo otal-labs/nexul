@@ -130,7 +130,8 @@ card's own pill row (`pillClass` in `web/src/components/board/ticketTypeColor.ts
 | Terminal-window motif, neutral glow | Code, log, and hero surfaces read as consoles; a neutral glow no longer implies an accent |
 | Status and label as icon or dot plus text | Readable in both themes; tinted fills washed out once several hues appeared together |
 | Board cards: type and label as tinted pills | Re-tested on the card layout where the pill row sits alone under the title with the id opposite; the 15% tint with a 700/400 text shade stayed legible in both themes, so the board keeps pills while every other surface stays icon-or-dot |
-| Permission rows on the surface, levels in a trailing dropdown | A strip of level buttons per domain made a wall of identical controls and boxes nested three deep; one quiet value per row keeps the common one-level case cheap and puts detail one menu away |
+| Permission levels as a segmented strip per domain, projects listed the same way | The owner found the trailing level dropdowns harder to read and set than the strip, where every rung up to the level fills and the whole list reads at a glance; Project access uses the same list so a role and a person read alike |
+| Person dialog: a tab per workspace, changes held until Confirm | Several workspaces stacked in one scroll mixed their controls, and applying each change on the spot made the dialog change under the owner; tabs separate the workspaces and Confirm makes the edit one deliberate act |
 
 ## Pattern spec
 
@@ -285,30 +286,38 @@ reached trailing right in mono (public hostnames as links, then
 machine); its footer names the networks and when the runner last looked.
 
 Permission rows. Wherever access is set (a role, a person's overrides and
-Project access, an invitation, an automation's scopes) each domain or project
-is a 44px hairline row straight on the surface it sits on, under a mono
-microheader, never a bordered box inside a card or dialog and never a
-segmented strip of buttons. The name sits left; the level trails right as a
-compact dropdown: muted text with a chevron ("Write", "Read + Run",
-"Custom"). Its menu lists None "No access", Read "Open and read", Write
-"Create and edit", and Delete "Also delete", each with that line under it,
-then the domain's verbs as checkable items under an "Also allow" label, then,
-where access can go, a destructive "Remove access" last. A group leads with an
-"Every domain" or "Every area" row that sets them all and reads Custom when
-the rows differ. The role editor splits its rows under Workspace (with the
-instance areas) and Every project, from the catalog's area. A person's
-workspace entry is the role select, then the Every project row (a muted icon,
-"Every project" over its one-line consequence, a full-size select: From role
-or Only chosen projects), and under Only chosen projects a `Projects · 1 of 5`
-microheader with a search field from five projects, then one row per project
-whose value is its shared level or Custom with a mono summary under the name
-("tickets Write · docs Read"). Its menu's "Customize areas…" opens that
-project's area rows inline and indented, one project at a time, closed by a
-"Hide areas" link under them. A viewer who can't change a row sees its value
-as plain text with no chevron. Focus rings show for keyboard focus only.
-`PermissionLevels`, `ProjectAccessBlock`, and `LevelDropdown` in
-`web/src/components/access/` are the reference; deny overrides keep the
-checkbox grid (`PermissionGrid`).
+Project access, an invitation, an automation's scopes) the domains sit in one
+bordered list (`rounded-md border border-input`, hairline dividers), led by an
+"Every domain" or "Every area" row on a `bg-muted/40` strip that sets them
+all and selects no rung once the rows differ. Each domain row is the name on
+the left, its extra verbs (Run, Clone, Thread) as small outline toggles, then
+the level as a segmented strip of None, Read, Write, Delete where every rung
+up to the chosen one fills, so it reads as "this much access". The role
+editor splits its lists under Workspace (with the instance areas) and Every
+project, from the catalog's area. Project access is the same list: an Every
+project lead row (a muted icon, "Every project" over its one-line
+consequence, and a From role / Chosen projects segmented pair), then one row
+per project with the same level strip and an "Areas" toggle that opens that
+project's area rows indented under it; a project whose areas differ selects
+no rung and shows a mono summary under its name ("tickets Write · docs
+Read"). Under From role the project rows are disabled. A viewer who can't
+change a list sees it disabled. `PermissionLevels`, `PermissionLevelControl`,
+and `ProjectAccessBlock` in `web/src/components/access/` are the reference;
+deny overrides keep the checkbox grid (`PermissionGrid`).
+
+Person dialog. The Team's person dialog holds one browser-style tab per
+workspace the person is in: a row of tabs on a hairline that scrolls
+sideways, the selected tab bordered on three sides and joined to the panel
+below, no close button on a tab, and a ghost `+` after the last one that
+opens a popover to pick a workspace and a role. A tab's panel is that
+workspace's role, overrides, Project access, and "Remove from workspace".
+Every change is held until Confirm: a tab with held changes shows a small
+`foreground` dot, the footer is Cancel and Confirm (disabled with nothing
+held), closing with held changes asks "Discard changes?", and a refused
+change shows as a destructive line above the footer while the rest stays
+held. Account actions (Disable, Remove account) sit at the footer's left and
+apply at once. `TeamPersonDialog` and `TeamWorkspaceTabs` in
+`web/src/components/team/` are the reference.
 
 Logs view. The stack page's Logs section is a line tab row of the stack's
 services over one terminal-style block per service: a mono timestamp column

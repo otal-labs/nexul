@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
-import userEvent, { type UserEvent } from "@testing-library/user-event";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RoleSettingsSection } from "@/components/settings/RoleSettingsSection";
@@ -32,10 +32,8 @@ const catalog = [
   { value: "roles:clone", label: "Clone roles to another workspace", domain: "roles", action: "clone", area: "workspace" },
 ];
 
-const pickLevel = async (user: UserEvent, scope: HTMLElement, row: string, level: string) => {
-  await user.click(within(scope).getByRole("button", { name: new RegExp(`^${row}( access)?:`) }));
-  await user.click(await screen.findByRole("menuitemradio", { name: new RegExp(`^${level}`) }));
-};
+const level = (scope: HTMLElement, domain: string, name: string) =>
+  within(within(scope).getByRole("radiogroup", { name: `${domain} access` })).getByRole("radio", { name });
 
 const role = (overrides: Record<string, unknown> = {}) => ({
   id: "role-editor",
@@ -125,8 +123,8 @@ describe("RoleSettingsSection", () => {
     await user.click(await screen.findByRole("button", { name: /new role/i }));
     await user.type(screen.getByLabelText("New role name"), "Editor");
     const form = screen.getByLabelText("New role name").closest("form")!;
-    await pickLevel(user, form, "Every domain", "Read");
-    await pickLevel(user, form, "Projects", "Write");
+    await user.click(level(form, "Every domain", "Read"));
+    await user.click(level(form, "Projects", "Write"));
     await user.click(screen.getByRole("button", { name: /create role/i }));
 
     expect(mocks.post).toHaveBeenCalledWith("/api/workspaces/ws-1/roles", {
@@ -143,10 +141,10 @@ describe("RoleSettingsSection", () => {
     await user.click(await screen.findByRole("button", { name: /new role/i }));
     const workspace = screen.getByRole("heading", { name: "Workspace" }).closest("section")!;
     const everyProject = screen.getByRole("heading", { name: "Every project" }).closest("section")!;
-    expect(within(workspace).getByRole("button", { name: /^Members access:/ })).toBeInTheDocument();
-    expect(within(workspace).queryByRole("button", { name: /^Projects access:/ })).not.toBeInTheDocument();
-    expect(within(everyProject).getByRole("button", { name: /^Every area:/ })).toBeInTheDocument();
-    expect(within(everyProject).getByRole("button", { name: /^Projects access:/ })).toBeInTheDocument();
+    expect(within(workspace).getByRole("radiogroup", { name: "Members access" })).toBeInTheDocument();
+    expect(within(workspace).queryByRole("radiogroup", { name: "Projects access" })).not.toBeInTheDocument();
+    expect(within(everyProject).getByRole("radiogroup", { name: "Every area access" })).toBeInTheDocument();
+    expect(within(everyProject).getByRole("radiogroup", { name: "Projects access" })).toBeInTheDocument();
     expect(screen.getByText("Applies to members whose Every project is From role.")).toBeInTheDocument();
   });
 
@@ -189,7 +187,7 @@ describe("RoleSettingsSection", () => {
     const row = input.closest("li")!;
     await user.clear(input);
     await user.type(input, "Reviewer");
-    await pickLevel(user, row, "Roles", "Write");
+    await user.click(level(row, "Roles", "Write"));
     await user.click(screen.getByRole("button", { name: "Save role" }));
 
     expect(mocks.patch).toHaveBeenCalledWith("/api/workspaces/ws-1/roles/role-editor", {
@@ -238,9 +236,7 @@ describe("RoleSettingsSection", () => {
     renderSection();
 
     await user.click(await screen.findByRole("button", { name: "Rename role Editor" }));
-    await user.click(screen.getByRole("button", { name: /^Roles access:/ }));
-    await user.click(await screen.findByRole("menuitemcheckbox", { name: /^Clone/ }));
-    await user.keyboard("{Escape}");
+    await user.click(screen.getByRole("button", { name: "Clone roles to another workspace" }));
     await user.click(screen.getByRole("button", { name: "Save role" }));
 
     expect(mocks.patch).toHaveBeenCalledWith("/api/workspaces/ws-1/roles/role-editor", {

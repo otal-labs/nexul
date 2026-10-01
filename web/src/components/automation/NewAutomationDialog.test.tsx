@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
-import userEvent, { type UserEvent } from "@testing-library/user-event";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { NewAutomationDialog } from "@/components/automation/NewAutomationDialog";
@@ -46,10 +46,8 @@ describe("NewAutomationDialog", () => {
     });
   });
 
-  const pickLevel = async (user: UserEvent, domain: string, name: string) => {
-    await user.click(await screen.findByRole("button", { name: new RegExp(`^${domain} access:`) }));
-    await user.click(await screen.findByRole("menuitemradio", { name: new RegExp(`^${name}`) }));
-  };
+  const level = async (domain: string, name: string) =>
+    within(await screen.findByRole("radiogroup", { name: `${domain} access` })).getByRole("radio", { name });
 
   it("opens the create form, then reveals the minted token and SDK commands on success", async () => {
     mocks.post.mockResolvedValue({
@@ -63,8 +61,8 @@ describe("NewAutomationDialog", () => {
 
     await user.click(screen.getByRole("button", { name: "New automation" }));
     await user.type(screen.getByLabelText("Name"), "Slack notifier");
-    await pickLevel(user, "Tickets", "Write");
-    await pickLevel(user, "Events", "Read");
+    await user.click(await level("Tickets", "Write"));
+    await user.click(await level("Events", "Read"));
     await user.click(screen.getByRole("button", { name: "Create automation" }));
 
     expect(mocks.post).toHaveBeenCalledWith("/api/automations", {
@@ -84,7 +82,7 @@ describe("NewAutomationDialog", () => {
 
     await user.click(screen.getByRole("button", { name: "New automation" }));
     await user.type(screen.getByLabelText("Name"), "x");
-    await pickLevel(user, "Tickets", "Read");
+    await user.click(await level("Tickets", "Read"));
     await user.click(screen.getByRole("button", { name: "Create automation" }));
     expect(await screen.findByText("dep_once")).toBeInTheDocument();
 
@@ -103,9 +101,9 @@ describe("NewAutomationDialog", () => {
 
     await user.click(screen.getByRole("button", { name: "New automation" }));
     await user.type(screen.getByLabelText("Name"), "x");
-    await pickLevel(user, "Docs", "Read");
-    await pickLevel(user, "Tickets", "Read");
-    await pickLevel(user, "Docs", "None");
+    await user.click(await level("Docs", "Read"));
+    await user.click(await level("Tickets", "Read"));
+    await user.click(await level("Docs", "None"));
     await user.click(screen.getByRole("button", { name: "Create automation" }));
 
     expect(mocks.post).toHaveBeenCalledWith("/api/automations", { name: "x", scopes: ["tickets:read"], workspace_id: "ws-1" });

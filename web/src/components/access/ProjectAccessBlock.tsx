@@ -1,6 +1,12 @@
 import { EveryProjectRow } from "@/components/access/EveryProjectRow";
-import { ProjectAccessList, type AccessProject } from "@/components/access/ProjectAccessList";
+import { ProjectAccessRow } from "@/components/access/ProjectAccessRow";
+import { EmptyRow } from "@/components/EmptyRow";
 import { EveryProject } from "@/models/Team";
+
+export interface AccessProject {
+  id: string;
+  name: string;
+}
 
 interface ProjectAccessBlockProps {
   subject: string;
@@ -12,15 +18,22 @@ interface ProjectAccessBlockProps {
   disabled?: boolean;
 }
 
-// The Every project row, then, for someone held to chosen projects, one row per project: the Team dialog and
-// invitations share it.
+// The project list in the shape of a role's domain list: Every project leads, one row per project under it, held while
+// it reads From role. The Team dialog and invitations share it.
 export const ProjectAccessBlock = ({ subject, everyProject, onEveryProject, projects, access, onProjectAccess, disabled = false }: ProjectAccessBlockProps) => (
-  <div>
-    <EveryProjectRow subject={subject} value={everyProject} onChange={onEveryProject} disabled={disabled} />
-    {everyProject === EveryProject.None && (
-      <div className="border-t border-border">
-        <ProjectAccessList projects={projects} access={access} onChange={onProjectAccess} disabled={disabled} />
-      </div>
-    )}
+  <div className="space-y-2">
+    <ul className="@container divide-y divide-border overflow-hidden rounded-md border border-input">
+      <EveryProjectRow subject={subject} value={everyProject} onChange={onEveryProject} disabled={disabled} />
+      {projects.map((project) => (
+        <ProjectAccessRow
+          key={project.id}
+          name={project.name}
+          value={access[project.id] ?? []}
+          onChange={(allow) => onProjectAccess(project.id, allow)}
+          disabled={disabled || everyProject === EveryProject.Role}
+        />
+      ))}
+    </ul>
+    {projects.length === 0 && <EmptyRow>No projects to give access to yet.</EmptyRow>}
   </div>
 );

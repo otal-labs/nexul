@@ -1,13 +1,16 @@
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Microheader } from "@/components/access/Microheader";
-import { EmptyRow } from "@/components/EmptyRow";
+import { useReducer, useState } from "react";
+import { toast } from "sonner";
+
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { AccountStatusLabel } from "@/components/team/AccountStatusLabel";
-import { TeamAccountActions } from "@/components/team/TeamAccountActions";
-import { TeamAddToWorkspaceRow } from "@/components/team/TeamAddToWorkspaceRow";
-import { TeamMembershipItem } from "@/components/team/TeamMembershipItem";
-import { useFetchTeam } from "@/hooks/TeamHooks";
+import { TeamDialogFooter } from "@/components/team/TeamDialogFooter";
+import { TeamWorkspaceTabs } from "@/components/team/TeamWorkspaceTabs";
+import { useApplyMemberStep, useFetchTeam } from "@/hooks/TeamHooks";
+import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
+import { MemberDraftContext } from "@/hooks/useMemberDraft";
+import { errorMessage } from "@/api/client";
+import { hasOverlap, memberDraftReducer, memberSteps, type MemberStep } from "@/models/MemberDraft";
 import { personName, presenceText } from "@/utils/TeamUtility";
 
 interface TeamPersonDialogProps {
@@ -15,17 +18,63 @@ interface TeamPersonDialogProps {
   onClose: () => void;
 }
 
-// Reads the person from the Team query the list already holds, so a change refreshes both at once.
+const stepText = (step: MemberStep): string => {
+  if (step.kind === "add") return `add to ${step.workspaceName}`;
+  if (step.kind === "remove") return `remove from ${step.workspaceName}`;
+  return `update ${step.workspaceName}`;
+};
+
+// Every workspace change is held until Confirm; account status in the footer still applies on its own.
 export const TeamPersonDialog = ({ personId, onClose }: TeamPersonDialogProps) => {
   const { data: team } = useFetchTeam();
   const person = team?.people.find((candidate) => candidate.id === personId);
-  const workspaceById = new Map(team?.workspaces.map((workspace) => [workspace.id, workspace]));
+  const [draft, dispatch] = useReducer(memberDraftReducer, {});
+  const [failure, setFailure] = useState<string>();
+  const [applying, setApplying] = useState(false);
+  const apply = useApplyMemberStep();
+  const { open: ask } = useConfirmationDialog();
+  const steps = person && team ? memberSteps(person, team.workspaces, draft) : [];
+  const blocked = !!person && hasOverlap(person, draft);
+
+  const finish = () => {
+    dispatch({ type: "reset" });
+    setFailure(undefined);
+    onClose();
+  };
+
+  const close = async () => {
+    if (steps.length > 0) {
+      const discard = await ask({ title: "Discard changes?", message: "What you changed here hasn't been confirmed and will be lost.", confirmLabel: "Discard" });
+      if (!discard) return;
+    }
+    finish();
+  };
+
+  // Stops at the first refusal and keeps whatever has not applied yet, so a second Confirm resends only that.
+  const confirm = async () => {
+    if (!person) return;
+    setApplying(true);
+    setFailure(undefined);
+    for (const step of steps) {
+      try {
+        await apply.mutateAsync({ userId: person.id, step });
+      } catch (error) {
+        setFailure(`Couldn't ${stepText(step)}: ${errorMessage(error)}`);
+        setApplying(false);
+        return;
+      }
+      dispatch({ type: "applied", step });
+    }
+    setApplying(false);
+    toast.success(`${personName(person)}'s access saved`);
+    finish();
+  };
 
   return (
-    <Dialog open={!!person} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="flex max-h-[min(90dvh,48rem)] flex-col gap-0 p-0 sm:max-w-[34rem]">
+    <Dialog open={!!person} onOpenChange={(open) => !open && void close()}>
+      <DialogContent className="flex max-h-[min(90dvh,52rem)] flex-col gap-0 p-0 sm:max-w-[40rem]">
         {person && (
-          <DialogHeader className="flex-row items-center gap-3 border-b border-border px-6 pt-6 pb-4 pr-12 text-left">
+          <DialogHeader className="flex-row items-center gap-3 px-6 pt-6 pb-4 pr-12 text-left">
             <PersonAvatar login={person.login} src={person.avatar_url} className="size-10" />
             <div className="min-w-0 flex-1 space-y-1">
               <DialogTitle className="truncate">{personName(person)}</DialogTitle>
@@ -38,31 +87,19 @@ export const TeamPersonDialog = ({ personId, onClose }: TeamPersonDialogProps) =
           </DialogHeader>
         )}
         {person && team && (
-          <section aria-labelledby="team-person-workspaces" className="min-h-0 flex-1 space-y-3 overflow-y-auto px-6 py-4">
-            <Microheader id="team-person-workspaces" className="pb-1">
-              Workspaces
-            </Microheader>
-            {person.workspaces.length === 0 && <EmptyRow>Not a member of any workspace you can see.</EmptyRow>}
-            {person.workspaces.length > 0 && (
-              <ul className="space-y-4">
-                {person.workspaces.map((membership) => {
-                  const workspace = workspaceById.get(membership.workspace_id);
-                  return workspace && <TeamMembershipItem key={membership.workspace_id} person={person} workspace={workspace} membership={membership} />;
-                })}
-              </ul>
-            )}
-            <TeamAddToWorkspaceRow person={person} workspaces={team.workspaces} />
-          </section>
+          <MemberDraftContext value={{ person, draft, dispatch }}>
+            <TeamWorkspaceTabs workspaces={team.workspaces} steps={steps} />
+          </MemberDraftContext>
         )}
         {person && team && (
-          <DialogFooter className="flex-row items-center justify-between border-t border-border px-6 py-3 sm:justify-between">
-            <TeamAccountActions person={person} />
-            <DialogClose asChild>
-              <Button type="button" size="sm" className="ml-auto">
-                Done
-              </Button>
-            </DialogClose>
-          </DialogFooter>
+          <TeamDialogFooter
+            person={person}
+            failure={failure}
+            canConfirm={steps.length > 0 && !blocked}
+            applying={applying}
+            onCancel={() => void close()}
+            onConfirm={() => void confirm()}
+          />
         )}
       </DialogContent>
     </Dialog>
