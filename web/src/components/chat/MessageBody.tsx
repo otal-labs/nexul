@@ -1,21 +1,31 @@
-import type { ReactNode } from "react";
+import type { ClipboardEvent } from "react";
 
 import { MessageImage } from "@/components/chat/MessageImage";
+import { MessageLink } from "@/components/chat/MessageLink";
 import { splitMessageBody, type MessageBodySegment } from "@/models/Chat";
+import { tokenizeMessageText, type MessageTextPart } from "@/utils/MessageTextUtility";
 
-// Plain text with line breaks kept and each @mention bolded; no markdown-string renderer exists in the app yet.
-const renderTextSegment = (text: string, mentionHandles: string[]): ReactNode => {
-  if (mentionHandles.length === 0) return text;
-  const escaped = mentionHandles.map((h) => h.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-  const pattern = new RegExp(`@(?:${escaped.join("|")})\\b`, "gi");
-  const parts = text.split(pattern);
-  const matches = text.match(pattern) ?? [];
-  return parts.map((part, i) => (
-    <span key={i}>
-      {part}
-      {matches[i] && <strong className="font-semibold">{matches[i]}</strong>}
-    </span>
-  ));
+// Plain text with line breaks kept, each @mention bolded, and http(s) URLs linked; no markdown-string renderer exists in the app yet.
+const MessageTextPartView = ({ part }: { part: MessageTextPart }) => (
+  <>
+    {part.kind === "text" && part.text}
+    {part.kind === "mention" && <strong className="font-semibold">{part.text}</strong>}
+    {part.kind === "link" && <MessageLink url={part.url} />}
+  </>
+);
+
+// A pill shows a label, so a selection inside one message copies each pill as its URL instead.
+const copyPillUrls = (event: ClipboardEvent<HTMLParagraphElement>) => {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) return;
+  const range = selection.getRangeAt(0);
+  if (!event.currentTarget.contains(range.commonAncestorContainer)) return;
+  const fragment = range.cloneContents();
+  const pills = fragment.querySelectorAll<HTMLElement>("[data-url]");
+  if (pills.length === 0) return;
+  pills.forEach((pill) => pill.replaceWith(pill.dataset.url ?? ""));
+  event.clipboardData.setData("text/plain", fragment.textContent);
+  event.preventDefault();
 };
 
 interface MessageSegmentProps {
@@ -26,7 +36,13 @@ interface MessageSegmentProps {
 const MessageSegment = ({ segment, mentionHandles }: MessageSegmentProps) => (
   <>
     {segment.kind === "image" && <MessageImage src={segment.src} alt={segment.alt} />}
-    {segment.kind === "text" && <p className="whitespace-pre-wrap">{renderTextSegment(segment.text, mentionHandles)}</p>}
+    {segment.kind === "text" && (
+      <p className="whitespace-pre-wrap" onCopy={copyPillUrls}>
+        {tokenizeMessageText(segment.text, mentionHandles).map((part, i) => (
+          <MessageTextPartView key={i} part={part} />
+        ))}
+      </p>
+    )}
   </>
 );
 
