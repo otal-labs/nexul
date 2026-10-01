@@ -1,6 +1,7 @@
 import { EveryProjectRow } from "@/components/access/EveryProjectRow";
 import { ProjectAccessRow } from "@/components/access/ProjectAccessRow";
 import { EmptyRow } from "@/components/EmptyRow";
+import { PermissionLockContext } from "@/hooks/usePermissionLock";
 import { EveryProject } from "@/models/Team";
 
 export interface AccessProject {
@@ -24,15 +25,11 @@ export const ProjectAccessBlock = ({ subject, everyProject, onEveryProject, proj
   <div className="space-y-2">
     <ul className="@container divide-y divide-border overflow-hidden rounded-md border border-input">
       <EveryProjectRow subject={subject} value={everyProject} onChange={onEveryProject} disabled={disabled} />
-      {projects.map((project) => (
-        <ProjectAccessRow
-          key={project.id}
-          name={project.name}
-          value={access[project.id] ?? []}
-          onChange={(allow) => onProjectAccess(project.id, allow)}
-          disabled={disabled || everyProject === EveryProject.Role}
-        />
-      ))}
+      <PermissionLockContext value={disabled || everyProject === EveryProject.Role}>
+        {projects.map((project) => (
+          <ProjectAccessRow key={project.id} name={project.name} value={access[project.id] ?? []} onChange={(allow) => onProjectAccess(project.id, allow)} />
+        ))}
+      </PermissionLockContext>
     </ul>
     {projects.length === 0 && <EmptyRow>No projects to give access to yet.</EmptyRow>}
   </div>

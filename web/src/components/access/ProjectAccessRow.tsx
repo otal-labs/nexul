@@ -4,6 +4,7 @@ import { ChevronDownIcon } from "lucide-react";
 import { PermissionDomainRow } from "@/components/access/PermissionDomainRow";
 import { PermissionLevelControl } from "@/components/access/PermissionLevelControl";
 import { useProjectAreas } from "@/hooks/PermissionHooks";
+import { usePermissionLock } from "@/hooks/usePermissionLock";
 import { cn } from "@/lib/utils";
 import { accessSummary, uniformLevelOf, withLevelEverywhere } from "@/models/PermissionLevel";
 
@@ -11,12 +12,12 @@ interface ProjectAccessRowProps {
   name: string;
   value: string[];
   onChange: (value: string[]) => void;
-  disabled?: boolean;
 }
 
 // One level for the whole project, like a domain row; its areas open underneath, each with its own level.
-export const ProjectAccessRow = ({ name, value, onChange, disabled = false }: ProjectAccessRowProps) => {
+export const ProjectAccessRow = ({ name, value, onChange }: ProjectAccessRowProps) => {
   const areas = useProjectAreas();
+  const disabled = usePermissionLock();
   const [open, setOpen] = useState(false);
   const top = Math.max(0, ...areas.map((area) => area.levels.length));
   const uniform = uniformLevelOf(areas, value);
@@ -49,7 +50,7 @@ export const ProjectAccessRow = ({ name, value, onChange, disabled = false }: Pr
       {open && (
         <ul className="animate-in fade-in-0 slide-in-from-top-1 divide-y divide-border border-t border-border pl-4 duration-150 ease-out">
           {areas.map((area) => (
-            <PermissionDomainRow key={area.domain} domain={area} value={value} onChange={onChange} disabled={disabled} />
+            <PermissionDomainRow key={area.domain} domain={area} value={value} onChange={onChange} />
           ))}
         </ul>
       )}
