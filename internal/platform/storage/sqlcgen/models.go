@@ -348,6 +348,15 @@ type DocVersion struct {
 	AuthorID  string
 }
 
+type DocWatcher struct {
+	DocID     string
+	UserID    string
+	Watching  int64
+	Source    string
+	CreatedAt int64
+	UpdatedAt int64
+}
+
 type DocsFt struct {
 	Title  string
 	BodyMd string

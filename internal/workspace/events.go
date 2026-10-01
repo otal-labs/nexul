@@ -224,7 +224,7 @@ func HandleTicketStatusChanged(ctx context.Context, svc *NotificationService, ev
 	return svc.onTicketStatusChanged(CtxWithEventKey(ctx, ev.ID), e.Ticket, e.Actor.UserID)
 }
 
-// HandleDocCreated notifies every member of the doc's workspace except whoever created it.
+// HandleDocCreated tells the people the new doc @-mentions; nobody else is watching it yet but its creator.
 func HandleDocCreated(ctx context.Context, svc *NotificationService, ev eventbus.Event) error {
 	var e docEvent
 	if err := json.Unmarshal(ev.Payload, &e); err != nil {
@@ -236,8 +236,7 @@ func HandleDocCreated(ctx context.Context, svc *NotificationService, ev eventbus
 	return svc.onDocActivity(CtxWithEventKey(ctx, ev.ID), e, KindDocCreated)
 }
 
-// HandleDocUpdated notifies every member of the doc's workspace except whoever made the edit; people the edit
-// newly @-mentions get a mention instead.
+// HandleDocUpdated notifies the doc's watchers except the editor; people the edit newly @-mentions get a mention instead.
 func HandleDocUpdated(ctx context.Context, svc *NotificationService, ev eventbus.Event) error {
 	var e docEvent
 	if err := json.Unmarshal(ev.Payload, &e); err != nil {

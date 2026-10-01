@@ -48,6 +48,7 @@ export interface EventPayloads {
   "doc.folder.updated": { "folder": { "id": string; "project_id": string; "name": string; "is_default": boolean; "created_at"?: string; "updated_at"?: string; }; "previous_name": string; "actor_id"?: string; };
   "doc.moved": { "doc": { "id": string; "project_id": string; "folder_id": string; "title": string; }; "from_folder_id": string; "actor_id"?: string; };
   "doc.updated": { "doc": { "id": string; "project_id"?: string; "folder_id"?: string; "title": string; "body"?: string; "version": number; "archived"?: boolean; "locked"?: boolean; "created_at"?: string; "updated_at"?: string; }; "actor_id"?: string; "mentioned_user_ids"?: string[]; };
+  "doc.watchers.changed": { "doc": { "id": string; "project_id": string; "title": string; }; "user_id": string; "watching": boolean; };
   "git.branch_deleted": { "owner": string; "repo": string; "branch": string; };
   "git.pr_closed": { "owner": string; "repo": string; "pr": Record<string, unknown>; };
   "git.pr_comment": { "owner": string; "repo": string; "pr": { "number": number; }; "comment": { "body": string; "author": string; }; };
@@ -163,6 +164,7 @@ export const TOPICS: Topic[] = [
   "doc.folder.updated",
   "doc.moved",
   "doc.updated",
+  "doc.watchers.changed",
   "git.branch_deleted",
   "git.pr_closed",
   "git.pr_comment",
@@ -276,6 +278,7 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "doc.folder.updated": {"folder":{"id":"fixture-id","project_id":"fixture-project_id","name":"fixture-name","is_default":false,"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"},"previous_name":"fixture-previous_name","actor_id":"fixture-actor_id"},
   "doc.moved": {"doc":{"id":"fixture-id","project_id":"fixture-project_id","folder_id":"fixture-folder_id","title":"fixture-title"},"from_folder_id":"fixture-from_folder_id","actor_id":"fixture-actor_id"},
   "doc.updated": {"doc":{"id":"fixture-id","project_id":"fixture-project_id","folder_id":"fixture-folder_id","title":"fixture-title","body":"fixture-body","version":1,"archived":false,"locked":false,"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"},"actor_id":"fixture-actor_id","mentioned_user_ids":["fixture-mentioned_user_ids"]},
+  "doc.watchers.changed": {"doc":{"id":"fixture-id","project_id":"fixture-project_id","title":"fixture-title"},"user_id":"fixture-user_id","watching":false},
   "git.branch_deleted": {"owner":"fixture-owner","repo":"fixture-repo","branch":"fixture-branch"},
   "git.pr_closed": {"owner":"fixture-owner","repo":"fixture-repo","pr":{}},
   "git.pr_comment": {"owner":"fixture-owner","repo":"fixture-repo","pr":{"number":1},"comment":{"body":"fixture-body","author":"fixture-author"}},

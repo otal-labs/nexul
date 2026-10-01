@@ -73,3 +73,20 @@ func (a pushWorkspaceNamer) WorkspaceName(ctx context.Context, workspaceID strin
 	}
 	return w.Name, nil
 }
+
+// docWatchersAdapter names a doc's watchers to the inbox, which may not import docs (ADR 0017).
+type docWatchersAdapter struct {
+	repo *storage.DocsRepo
+}
+
+func (a docWatchersAdapter) ListDocWatcherIDs(ctx context.Context, docID string) ([]string, error) {
+	ws, err := a.repo.ListWatchers(ctx, docID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, len(ws))
+	for i, w := range ws {
+		out[i] = w.UserID
+	}
+	return out, nil
+}

@@ -35,6 +35,7 @@ type fakeRepo struct {
 	commitErr error
 	deleteErr error
 	searchErr error
+	watching  map[string]bool
 }
 
 func newFakeRepo() *fakeRepo {
@@ -97,7 +98,7 @@ func (f *fakeRepo) ListByProject(_ context.Context, projectID string) ([]*Doc, e
 	return out, nil
 }
 
-func (f *fakeRepo) Update(_ context.Context, d *Doc, evts ...eventbus.OutboxEvent) error {
+func (f *fakeRepo) Update(_ context.Context, d *Doc, _ string, evts ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.updateErr != nil {
@@ -193,7 +194,7 @@ func (f *fakeRepo) appendVersion(d *Doc) {
 	})
 }
 
-func (f *fakeRepo) CommitBody(_ context.Context, d *Doc, evts ...eventbus.OutboxEvent) error {
+func (f *fakeRepo) CommitBody(_ context.Context, d *Doc, _ string, evts ...eventbus.OutboxEvent) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.commitErr != nil {
@@ -203,6 +204,30 @@ func (f *fakeRepo) CommitBody(_ context.Context, d *Doc, evts ...eventbus.Outbox
 		return apperrs.ErrNotFound
 	}
 	f.docs[d.ID] = d
+	f.events = append(f.events, evts...)
+	return nil
+}
+
+// ListWatchers and SetWatching keep only explicit choices; auto-adds are a storage concern, tested against SQLite.
+func (f *fakeRepo) ListWatchers(_ context.Context, docID string) ([]*Watcher, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := []*Watcher{}
+	for key, on := range f.watching {
+		if doc, user, _ := strings.Cut(key, "/"); on && doc == docID {
+			out = append(out, &Watcher{UserID: user, Source: WatcherManual})
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeRepo) SetWatching(_ context.Context, docID, userID string, watching bool, _ time.Time, evts ...eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.watching == nil {
+		f.watching = map[string]bool{}
+	}
+	f.watching[docID+"/"+userID] = watching
 	f.events = append(f.events, evts...)
 	return nil
 }

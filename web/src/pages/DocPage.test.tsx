@@ -76,6 +76,7 @@ describe("DocPage", () => {
       if (url.startsWith("/api/ticket-types"))
         return Promise.resolve({ data: [{ id: "ticket-type-task", name: "task", position: 0, created_at: "", updated_at: "" }] });
       if (url === "/api/pairing/presence") return Promise.resolve({ data: { computers: {} } });
+      if (url === "/api/docs/doc-1/watchers") return Promise.resolve({ data: { watchers: [], watching: false } });
       return Promise.resolve({ data: [] });
     });
 
@@ -95,6 +96,7 @@ describe("DocPage", () => {
       if (url.startsWith("/api/ticket-types"))
         return Promise.resolve({ data: [{ id: "ticket-type-task", name: "task", position: 0, created_at: "", updated_at: "" }] });
       if (url === "/api/pairing/presence") return Promise.resolve({ data: { computers: {} } });
+      if (url === "/api/docs/doc-1/watchers") return Promise.resolve({ data: { watchers: [], watching: false } });
       return Promise.resolve({ data: [] });
     });
     vi.mocked(api.post).mockResolvedValue({ data: ticketData("t-1", "New task", "doc-1") });

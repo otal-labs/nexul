@@ -206,6 +206,16 @@ is unlocked. Anyone who may write the doc locks or unlocks it; archiving,
 cloning, and deleting still work, and a clone starts unlocked.
 _Avoid_: Frozen, protected, read-only doc
 
+**Watcher**:
+A person who gets a doc's change notifications. A doc's creator becomes one by
+creating it, and anyone who saves an edit to its title or body by saving it,
+through the browser, MCP, or a play acting for them. Anyone who can open the
+doc may start or stop watching it, for themselves only. Stopping sticks: their
+own later edits do not make them a watcher again until they choose to watch.
+An edit tells every watcher but its editor; a mention tells the person
+mentioned whether or not they watch, and does not make them a watcher.
+_Avoid_: Follower, subscriber
+
 **Folder**:
 A group of a project's docs, one level deep: every doc lives in exactly one
 folder of its project. Each project has a default folder, Main, where a new

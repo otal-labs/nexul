@@ -106,6 +106,13 @@ Pin a doc to keep it at the top of the list (kept per browser). The list is
 ordered by creation date, with a toggle for last edited, and the Docs and
 Memories list pane can be resized.
 
+### A quieter inbox
+
+A doc's edits notify its watchers instead of the whole workspace: its creator,
+everyone who edited it, and anyone who chose to watch it from the doc's header
+or over MCP; anyone can stop watching, and that sticks. Read notifications are
+deleted after 90 days and every notification after 180.
+
 ### Automations per workspace
 
 An automation belongs to one workspace and each workspace has its own

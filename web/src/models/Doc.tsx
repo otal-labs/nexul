@@ -33,6 +33,21 @@ export interface DocListItem {
   snippet?: string;
 }
 
+/** How someone came to watch a doc: added for creating or editing it, or by choosing to. */
+export type DocWatcherSource = "auto" | "manual";
+
+export interface DocWatcher {
+  user_id: string;
+  source: DocWatcherSource;
+  created_at: string;
+}
+
+/** The people a doc's edits notify, and whether the viewer is one of them. */
+export interface DocWatchers {
+  watchers: DocWatcher[];
+  watching: boolean;
+}
+
 export type DocSortField = "created_at" | "updated_at";
 
 export const SaveDocFormSchema = z.object({

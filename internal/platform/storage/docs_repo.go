@@ -43,6 +43,9 @@ func (r *DocsRepo) Create(ctx context.Context, d *docs.Doc, evts ...eventbus.Out
 		if err := insertDocVersion(ctx, q, d); err != nil {
 			return err
 		}
+		if err := addAutoWatcher(ctx, q, d.ID, d.CreatedBy, d.CreatedAt); err != nil {
+			return err
+		}
 		return enqueueDocsOutbox(ctx, tx, evts)
 	})
 }
@@ -72,7 +75,7 @@ func (r *DocsRepo) ListByProject(ctx context.Context, projectID string) ([]*docs
 	return toDocs(rows), nil
 }
 
-func (r *DocsRepo) Update(ctx context.Context, d *docs.Doc, evts ...eventbus.OutboxEvent) error {
+func (r *DocsRepo) Update(ctx context.Context, d *docs.Doc, editorID string, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		q := r.q.WithTx(tx)
 		n, err := q.UpdateDoc(ctx, sqlcgen.UpdateDocParams{
@@ -86,6 +89,9 @@ func (r *DocsRepo) Update(ctx context.Context, d *docs.Doc, evts ...eventbus.Out
 			return fmt.Errorf("update doc %s: %w", d.ID, apperrs.ErrNotFound)
 		}
 		if err := insertDocVersion(ctx, q, d); err != nil {
+			return err
+		}
+		if err := addAutoWatcher(ctx, q, d.ID, editorID, d.UpdatedAt); err != nil {
 			return err
 		}
 		return enqueueDocsOutbox(ctx, tx, evts)
@@ -123,9 +129,10 @@ func (r *DocsRepo) SetLocked(ctx context.Context, id string, locked bool, evts .
 }
 
 // CommitBody writes converged state without a version row; FTS re-indexes on commit, not per keystroke.
-func (r *DocsRepo) CommitBody(ctx context.Context, d *docs.Doc, evts ...eventbus.OutboxEvent) error {
+func (r *DocsRepo) CommitBody(ctx context.Context, d *docs.Doc, editorID string, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		n, err := r.q.WithTx(tx).CommitDocBody(ctx, sqlcgen.CommitDocBodyParams{
+		q := r.q.WithTx(tx)
+		n, err := q.CommitDocBody(ctx, sqlcgen.CommitDocBodyParams{
 			Title: d.Title, Body: d.Body, BodyMd: richtext.SearchText(d.Body),
 			Version: int64(d.Version), UpdatedAt: d.UpdatedAt.Unix(), ID: d.ID,
 		})
@@ -134,6 +141,9 @@ func (r *DocsRepo) CommitBody(ctx context.Context, d *docs.Doc, evts ...eventbus
 		}
 		if n == 0 {
 			return fmt.Errorf("commit body doc %s: %w", d.ID, apperrs.ErrNotFound)
+		}
+		if err := addAutoWatcher(ctx, q, d.ID, editorID, d.UpdatedAt); err != nil {
+			return err
 		}
 		return enqueueDocsOutbox(ctx, tx, evts)
 	})
@@ -241,4 +251,39 @@ func enqueueDocsOutbox(ctx context.Context, tx *sql.Tx, evts []eventbus.OutboxEv
 		}
 	}
 	return nil
+}
+
+// addAutoWatcher makes the person behind a save a watcher of the doc, unless they stopped watching it (ADR 0101).
+func addAutoWatcher(ctx context.Context, q *sqlcgen.Queries, docID, userID string, at time.Time) error {
+	if userID == "" {
+		return nil
+	}
+	if err := q.AddAutoDocWatcher(ctx, sqlcgen.AddAutoDocWatcherParams{DocID: docID, UserID: userID, At: at.Unix()}); err != nil {
+		return fmt.Errorf("add watcher %s to doc %s: %w", userID, docID, err)
+	}
+	return nil
+}
+
+func (r *DocsRepo) ListWatchers(ctx context.Context, docID string) ([]*docs.Watcher, error) {
+	rows, err := r.q.ListDocWatchers(ctx, docID)
+	if err != nil {
+		return nil, fmt.Errorf("list watchers of doc %s: %w", docID, err)
+	}
+	out := make([]*docs.Watcher, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, &docs.Watcher{UserID: row.UserID, Source: docs.WatcherSource(row.Source), CreatedAt: time.Unix(row.CreatedAt, 0).UTC()})
+	}
+	return out, nil
+}
+
+func (r *DocsRepo) SetWatching(ctx context.Context, docID, userID string, watching bool, at time.Time, evts ...eventbus.OutboxEvent) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		err := r.q.WithTx(tx).SetDocWatching(ctx, sqlcgen.SetDocWatchingParams{
+			DocID: docID, UserID: userID, Watching: int64(boolInt(watching)), At: at.Unix(),
+		})
+		if err != nil {
+			return fmt.Errorf("set %s watching doc %s: %w", userID, docID, classifyWriteErr(err))
+		}
+		return enqueueDocsOutbox(ctx, tx, evts)
+	})
 }
