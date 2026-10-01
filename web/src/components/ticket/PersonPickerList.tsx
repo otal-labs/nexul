@@ -2,21 +2,21 @@ import { useState } from "react";
 
 import { PersonAvatar } from "@/components/PersonAvatar";
 import { Input } from "@/components/ui/input";
-import { useFetchWorkspacePeople } from "@/hooks/PeopleHooks";
-import { useWorkspaceStore } from "@/stores/workspaceStore";
+import { useFetchProjectPeople } from "@/hooks/PeopleHooks";
 import { personLabel } from "@/models/Person";
 
 const menuItemClass =
   "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-xs text-foreground outline-none transition-colors duration-150 ease-standard hover:bg-accent/60 focus-visible:bg-accent/60";
 
 interface PersonPickerListProps {
+  // The ticket's project: only people who may open it can develop or test it.
+  projectId: string | undefined;
   onSelect: (login: string) => void;
 }
 
 // Shared member list body for every popover; callers own the Popover/trigger around it.
-export const PersonPickerList = ({ onSelect }: PersonPickerListProps) => {
-  const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
-  const { data: people } = useFetchWorkspacePeople(workspaceId);
+export const PersonPickerList = ({ projectId, onSelect }: PersonPickerListProps) => {
+  const { data: people } = useFetchProjectPeople(projectId);
   const [search, setSearch] = useState("");
   const query = search.trim().toLowerCase();
   const filtered = (people ?? []).filter((p) => `${p.login} ${p.display_name}`.toLowerCase().includes(query));

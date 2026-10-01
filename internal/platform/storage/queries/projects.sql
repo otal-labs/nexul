@@ -36,3 +36,12 @@ SELECT project_id, owner, name, full_name, connector_id, role FROM project_repos
 
 -- name: MoveTicketProject :execrows
 UPDATE tickets SET project_id = ? WHERE id = ?;
+
+-- name: ListProjectRestrictedAccess :many
+SELECT po.user_id, u.login, u.name, COALESCE(u.display_name, '') AS display_name, po.allow
+FROM permission_overwrites po
+JOIN projects p ON p.id = po.resource_id
+JOIN workspace_members m ON m.workspace_id = p.workspace_id AND m.user_id = po.user_id
+JOIN users u ON u.id = po.user_id
+WHERE po.resource_type = 'project' AND po.resource_id = ? AND m.restricted = 1 AND po.allow != '[]'
+ORDER BY u.login, u.id;

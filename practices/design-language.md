@@ -130,6 +130,7 @@ card's own pill row (`pillClass` in `web/src/components/board/ticketTypeColor.ts
 | Terminal-window motif, neutral glow | Code, log, and hero surfaces read as consoles; a neutral glow no longer implies an accent |
 | Status and label as icon or dot plus text | Readable in both themes; tinted fills washed out once several hues appeared together |
 | Board cards: type and label as tinted pills | Re-tested on the card layout where the pill row sits alone under the title with the id opposite; the 15% tint with a 700/400 text shade stayed legible in both themes, so the board keeps pills while every other surface stays icon-or-dot |
+| Permission rows on the surface, levels in a trailing dropdown | A strip of level buttons per domain made a wall of identical controls and boxes nested three deep; one quiet value per row keeps the common one-level case cheap and puts detail one menu away |
 
 ## Pattern spec
 
@@ -264,12 +265,39 @@ labels each group with a mono microheader, and a group with nothing the
 viewer may open shows no label. A card's action lives in its footer strip (`footer` prop: Rollback,
 Expose, Add rule), never floating in the body, and a form that is not the
 section's main job stays collapsed behind that footer button. Lists inside a
-card are hairline rows in one bordered box. Nothing nests a card inside a
-card. The Services card has no column headers: each row is the service name and
+card are hairline rows in one bordered box, except permission and access rows
+(Permission rows, below), which sit straight on the card or dialog surface.
+Nothing nests a card inside a card. The Services card has no column headers: each row is the service name and
 status over its image and a muted `container <name>` line, with how it is
 reached trailing right in mono (public hostnames as links, then
 `service:port` on the stack's network, then `host :port` when published on the
 machine); its footer names the networks and when the runner last looked.
+
+Permission rows. Wherever access is set (a role, a person's overrides and
+Project access, an invitation, an automation's scopes) each domain or project
+is a 44px hairline row straight on the surface it sits on, under a mono
+microheader, never a bordered box inside a card or dialog and never a
+segmented strip of buttons. The name sits left; the level trails right as a
+compact dropdown: muted text with a chevron ("Write", "Read + Run",
+"Custom"). Its menu lists None "No access", Read "Open and read", Write
+"Create and edit", and Delete "Also delete", each with that line under it,
+then the domain's verbs as checkable items under an "Also allow" label, then,
+where access can go, a destructive "Remove access" last. A group leads with an
+"Every domain" or "Every area" row that sets them all and reads Custom when
+the rows differ. The role editor splits its rows under Workspace (with the
+instance areas) and Every project, from the catalog's area. A person's
+workspace entry is the role select, then the Every project row (a muted icon,
+"Every project" over its one-line consequence, a full-size select: From role
+or Only chosen projects), and under Only chosen projects a `Projects · 1 of 5`
+microheader with a search field from five projects, then one row per project
+whose value is its shared level or Custom with a mono summary under the name
+("tickets Write · docs Read"). Its menu's "Customize areas…" opens that
+project's area rows inline and indented, one project at a time, closed by a
+"Hide areas" link under them. A viewer who can't change a row sees its value
+as plain text with no chevron. Focus rings show for keyboard focus only.
+`PermissionLevels`, `ProjectAccessBlock`, and `LevelDropdown` in
+`web/src/components/access/` are the reference; deny overrides keep the
+checkbox grid (`PermissionGrid`).
 
 Logs view. The stack page's Logs section is a line tab row of the stack's
 services over one terminal-style block per service: a mono timestamp column

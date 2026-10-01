@@ -4,7 +4,7 @@ import { useNavigate } from "react-router";
 import { navLinkClass, sectionLabelClass } from "@/components/SidebarNav";
 import { ProjectNav } from "@/components/sidebar/ProjectNav";
 import { ProjectSwitcher } from "@/components/sidebar/ProjectSwitcher";
-import { useAreaAccess } from "@/hooks/AccessHooks";
+import { useAnyProjectAreaAccess } from "@/hooks/AccessHooks";
 import { useSidebarProject } from "@/hooks/useSidebarProject";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { NEW_PROJECT_PATH } from "@/models/Project";
@@ -19,9 +19,9 @@ export const ProjectSection = ({ collapsed }: ProjectSectionProps) => {
   const { projects, current } = useSidebarProject();
   const navigate = useNavigate();
   const wsPath = useWorkspacePath();
-  const can = useAreaAccess();
+  const can = useAnyProjectAreaAccess();
   const canCreate = can?.("newProject") ?? false;
-  // The switcher only earns its place when the viewer can open something inside a project.
+  // The switcher only earns its place when the viewer can open something inside some project.
   const readsProjects = !!can && (["projects", "tickets", "memories", "docs"] as const).some((area) => can(area));
   const offerCreate = !!projects && projects.length === 0 && canCreate;
   const showSwitcher = readsProjects && !!current;

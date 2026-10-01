@@ -21,7 +21,7 @@ func TestCreateWithKind_DecisionsLog_DefaultsAndNeverAlwaysIncluded(t *testing.T
 	repo := newFakeRepo()
 	s := newTestService(repo)
 
-	m, err := s.CreateWithKind(testCtx(), KindDecisionsLog, "project-1", "", " ", "", "2026-09-24 — first", true, "mcp")
+	m, err := s.CreateWithKind(testCtx(), KindDecisionsLog, "project-1", " ", "", "2026-09-24 — first", true, "mcp")
 	require.NoError(t, err)
 	assert.Equal(t, KindDecisionsLog, m.Kind)
 	assert.Equal(t, decisionsLogTitle, m.Title)
@@ -37,7 +37,7 @@ func TestCreateWithKind_DecisionsLog_DefaultsAndNeverAlwaysIncluded(t *testing.T
 
 func TestCreateWithKind_Ordinary_CreatesAPlainMemory(t *testing.T) {
 	s := newTestService(newFakeRepo())
-	m, err := s.CreateWithKind(testCtx(), "", "project-1", "", "Notes", "", "body", true, "")
+	m, err := s.CreateWithKind(testCtx(), "", "project-1", "Notes", "", "body", true, "")
 	require.NoError(t, err)
 	assert.Empty(t, m.Kind)
 	assert.True(t, m.AlwaysIncluded)
@@ -46,7 +46,7 @@ func TestCreateWithKind_Ordinary_CreatesAPlainMemory(t *testing.T) {
 func TestCreateWithKind_Errors(t *testing.T) {
 	existing := func() *Service {
 		s := newTestService(newFakeRepo())
-		_, err := s.CreateWithKind(testCtx(), KindDecisionsLog, "project-1", "", "", "", "x", false, "")
+		_, err := s.CreateWithKind(testCtx(), KindDecisionsLog, "project-1", "", "", "x", false, "")
 		if err != nil {
 			panic(err)
 		}
@@ -78,7 +78,7 @@ func TestCreateWithKind_Errors(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := tt.svc().CreateWithKind(tt.ctx, tt.kind, tt.project, "", "", "", "body", false, "")
+			_, err := tt.svc().CreateWithKind(tt.ctx, tt.kind, tt.project, "", "", "body", false, "")
 			require.Error(t, err)
 			if tt.want != nil {
 				assert.ErrorIs(t, err, tt.want)
@@ -89,7 +89,7 @@ func TestCreateWithKind_Errors(t *testing.T) {
 
 func TestDecisionEntriesCiting_ReturnsOnlyEntriesNamingTheTickets(t *testing.T) {
 	s := newTestService(newFakeRepo())
-	_, err := s.CreateWithKind(testCtx(), KindDecisionsLog, "project-1", "", "", "", logBody, false, "")
+	_, err := s.CreateWithKind(testCtx(), KindDecisionsLog, "project-1", "", "", logBody, false, "")
 	require.NoError(t, err)
 
 	byLink, err := s.DecisionEntriesCiting(testCtx(), "project-1", []string{"/tickets/t-12"})

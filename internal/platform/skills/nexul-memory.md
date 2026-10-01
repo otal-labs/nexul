@@ -1,17 +1,17 @@
 ---
 name: nexul-memory
-description: Use Nexul's memories — durable notes for agents at workspace or project scope, own entity from docs — before and during any task.
+description: Use Nexul's memories — durable notes for agents, each in one project, own entity from docs — before and during any task.
 ---
 
 # Nexul memory protocol
 
 Memories are durable, human-editable notes for agents, not people: their own
-entity with a table, page, and permission, never a doc. Each belongs to the
-workspace or to one project. Workspace memories reach every turn; project
-memories reach only that project's turns. Every chat turn already carries
-the applicable always-included memories inlined in full as standing rules,
-plus an index (name + when-to-use only) of the rest; this skill applies the
-same protocol in your own local T3 sessions.
+entity with a table, page, and permission, never a doc. Each belongs to one
+project and reaches only that project's turns; a chat with no ticket or doc
+has none. Every project turn already carries the project's always-included
+memories inlined in full as standing rules, plus an index (name +
+when-to-use only) of the rest; this skill applies the same protocol in your
+own local T3 sessions.
 
 ## Read
 
@@ -33,9 +33,9 @@ Save a memory when:
 - A user says something like "@Agent remember X" — always save when asked,
   even if it seems minor.
 
-Create a new memory with `memory_create`: pass a `project_id` to scope it to
-that project, or omit it to save at workspace scope. Prefer project scope
-unless the fact holds for every project. Update an existing one with
+Create a new memory with `memory_create`, passing the `project_id` of the
+project it belongs to. A fact that holds for several projects is saved in
+each, or copied with `clone_from_id`. Update an existing one with
 `memory_update` if one already covers the same ground. Humans can always
 edit memories directly on the Memories page — that's the safety valve for a
 wrong or stale memory.

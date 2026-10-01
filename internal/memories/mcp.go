@@ -16,10 +16,8 @@ const viaMCP = "mcp"
 // memoryGetVersions bounds the version history memory_get returns; older versions stay readable by number.
 const memoryGetVersions = 50
 
-// Users' installed nexul-memory skill copies name these memory tools and arguments and are never rewritten: keep both.
 type memoryListIn struct {
-	ProjectID   string `json:"project_id,omitempty" jsonschema:"A project's id: lists its workspace memories first, then its own."`
-	WorkspaceID string `json:"workspace_id,omitempty" jsonschema:"A workspace's id: lists only its workspace memories. Required when project_id is omitted."`
+	ProjectID string `json:"project_id" jsonschema:"The project whose memories to list, from project_list."`
 	mcptool.PageArgs
 }
 
@@ -29,14 +27,13 @@ type memoryGetIn struct {
 }
 
 type memoryCreateIn struct {
-	ProjectID      string `json:"project_id,omitempty" jsonschema:"The project the memory belongs to. Omit to save at workspace scope, where workspace_id is then required."`
-	WorkspaceID    string `json:"workspace_id,omitempty" jsonschema:"The workspace for a workspace-scoped memory; ignored when project_id is set."`
+	ProjectID      string `json:"project_id" jsonschema:"The project the memory belongs to, or the destination of a copy, from project_list."`
 	Title          string `json:"title,omitempty" jsonschema:"The memory's title, for example Deploy quirks. Required for an ordinary memory."`
 	WhenToUse      string `json:"when_to_use,omitempty" jsonschema:"One short line saying when the memory applies, for example use this if you are writing React code."`
 	Body           string `json:"body,omitempty" jsonschema:"The memory's body as markdown."`
 	AlwaysIncluded bool   `json:"always_included,omitzero" jsonschema:"true inlines the memory in full in every agent turn it reaches. Defaults to false."`
 	Kind           string `json:"kind,omitempty" jsonschema:"Omit for an ordinary memory. decisions_log creates the project's decisions log; interview, sent with project_id alone, returns the project's interview memory, creating it from the Interview template the first time."`
-	CloneFromID    string `json:"clone_from_id,omitempty" jsonschema:"The id of a memory to copy, from memory_list, with its attachments, into project_id or workspace_id instead of writing a new one."`
+	CloneFromID    string `json:"clone_from_id,omitempty" jsonschema:"The id of a memory to copy, from memory_list, with its attachments, into project_id instead of writing a new one."`
 }
 
 type memoryUpdateIn struct {
@@ -64,7 +61,7 @@ type templateUpdateIn struct {
 // memoryListItem is a memory's index entry: enough to decide relevance, never the body.
 type memoryListItem struct {
 	ID             string `json:"id"`
-	ProjectID      string `json:"project_id,omitempty"`
+	ProjectID      string `json:"project_id"`
 	Kind           string `json:"kind,omitempty"`
 	Title          string `json:"title"`
 	WhenToUse      string `json:"when_to_use"`
@@ -75,7 +72,7 @@ type memoryListItem struct {
 type memoryResult struct {
 	ID             string              `json:"id"`
 	WorkspaceID    string              `json:"workspace_id"`
-	ProjectID      string              `json:"project_id,omitempty"`
+	ProjectID      string              `json:"project_id"`
 	Kind           string              `json:"kind,omitempty"`
 	Title          string              `json:"title"`
 	WhenToUse      string              `json:"when_to_use"`
@@ -106,12 +103,12 @@ func MCPTools(s *Service) []mcptool.Tool {
 
 func memoryListTool(s *Service) mcptool.Tool {
 	return mcptool.New("memory_list", "List memories",
-		"Lists memories by title and when-to-use line only, no body. "+
-			"With project_id it returns the project's workspace memories first, then its own; with workspace_id alone, only the workspace's. "+
+		"Lists a project's memories by title and when-to-use line only, no body. "+
+			"Every memory belongs to one project, so project_id is required. "+
 			"Pick the ones whose when-to-use matches your task and read them with memory_get.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in memoryListIn) (any, error) {
-			ms, err := listMemories(ctx, s, in.ProjectID, in.WorkspaceID)
+			ms, err := s.ListForProject(ctx, in.ProjectID)
 			if err != nil {
 				return nil, err
 			}
@@ -123,13 +120,6 @@ func memoryListTool(s *Service) mcptool.Tool {
 			}
 			return mcptool.Paginate(items, in.PageArgs), nil
 		})
-}
-
-func listMemories(ctx context.Context, s *Service, projectID, workspaceID string) ([]*Memory, error) {
-	if projectID != "" {
-		return s.ListForProject(ctx, projectID)
-	}
-	return s.ListWorkspaceScoped(ctx, workspaceID)
 }
 
 func memoryGetTool(s *Service) mcptool.Tool {
@@ -165,10 +155,10 @@ func memoryGetTool(s *Service) mcptool.Tool {
 
 func memoryCreateTool(s *Service) mcptool.Tool {
 	return mcptool.New("memory_create", "Create memory",
-		"Saves a note for agents at project scope (project_id) or workspace scope (workspace_id), or copies one with clone_from_id. "+
+		"Saves a note for agents in a project, or copies one into it with clone_from_id; every memory belongs to one project. "+
 			"Save a durable fact worth remembering; if a memory already covers the ground, change it with memory_update instead. "+
 			"kind decisions_log creates the project's decisions log (one per project, never sent every turn), and kind interview returns the project's interview memory, "+
-			"creating it from the Interview template the first time; both need project_id. "+
+			"creating it from the Interview template the first time. "+
 			"Copying needs memories:clone on the source and memories:write at the destination. "+
 			"Returns the memory with its body as markdown.",
 		mcptool.Hints{Additive: true, Local: true},
@@ -186,7 +176,7 @@ func createMemory(ctx context.Context, s *Service, in memoryCreateIn) (*Memory, 
 		if in.hasContent() {
 			return nil, fmt.Errorf("%w: clone_from_id copies the source's content; omit kind, title, when_to_use, body, and always_included, then change the copy with memory_update", apperrs.ErrInvalid)
 		}
-		return s.Clone(ctx, in.CloneFromID, in.ProjectID, in.WorkspaceID)
+		return s.Clone(ctx, in.CloneFromID, in.ProjectID)
 	}
 	if in.Kind == KindInterview {
 		if in.hasText() {
@@ -194,7 +184,7 @@ func createMemory(ctx context.Context, s *Service, in memoryCreateIn) (*Memory, 
 		}
 		return s.CreateInterview(ctx, in.ProjectID, viaMCP)
 	}
-	return s.CreateWithKind(ctx, in.Kind, in.ProjectID, in.WorkspaceID, in.Title, in.WhenToUse, in.Body, in.AlwaysIncluded, viaMCP)
+	return s.CreateWithKind(ctx, in.Kind, in.ProjectID, in.Title, in.WhenToUse, in.Body, in.AlwaysIncluded, viaMCP)
 }
 
 func (in memoryCreateIn) hasContent() bool {

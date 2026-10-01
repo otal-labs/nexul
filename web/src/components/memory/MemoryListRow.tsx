@@ -8,7 +8,7 @@ import { MemoryPinSwitch } from "@/components/memory/MemoryPinSwitch";
 import { useConfirmDeleteMemory } from "@/hooks/useConfirmDeleteMemory";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
-import { isWorkspaceMemory, type Memory } from "@/models/Memory";
+import type { Memory } from "@/models/Memory";
 import { memoryPath } from "@/models/Project";
 import { bodySnippet } from "@/utils/BodySnippet";
 
@@ -31,7 +31,7 @@ export const MemoryListRow = ({ memory, projectToken, selected }: MemoryListRowP
   return (
     <>
       <ListPaneRow
-        to={wsPath(memoryPath(isWorkspaceMemory(memory) ? "" : projectToken, memory.id))}
+        to={wsPath(memoryPath(projectToken, memory.id))}
         title={memory.title}
         snippet={snippet}
         selected={selected}

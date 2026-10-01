@@ -28,4 +28,6 @@ type User struct {
 type RoleInfo struct {
 	IsOwnerRole bool
 	Permissions permissions.Set
+	// Restricted is a Restricted member's membership: project areas answer from Project access alone (ADR 0097).
+	Restricted bool
 }

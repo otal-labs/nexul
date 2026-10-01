@@ -10,21 +10,48 @@ import (
 	"database/sql"
 )
 
-const countUnreadNotifications = `-- name: CountUnreadNotifications :one
-SELECT COUNT(*) FROM notifications
-WHERE user_id = ?1 AND read = 0 AND (?2 = '' OR workspace_id = ?2)
+const countUnreadNotificationsByProject = `-- name: CountUnreadNotificationsByProject :many
+SELECT n.workspace_id, CAST(COALESCE(t.project_id, d.project_id, m.project_id, '') AS TEXT) AS project_id, COUNT(*) AS unread
+FROM notifications n
+LEFT JOIN docs d ON n.subject_type = 'doc' AND d.id = n.subject_id
+LEFT JOIN tickets t ON n.subject_type = 'ticket' AND t.id = n.subject_id
+LEFT JOIN memories m ON n.subject_type = 'memory' AND m.id = n.subject_id
+WHERE n.user_id = ?1 AND n.read = 0 AND (?2 = '' OR n.workspace_id = ?2)
+GROUP BY n.workspace_id, 2
 `
 
-type CountUnreadNotificationsParams struct {
+type CountUnreadNotificationsByProjectParams struct {
 	UserID      string
 	WorkspaceID interface{}
 }
 
-func (q *Queries) CountUnreadNotifications(ctx context.Context, arg CountUnreadNotificationsParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countUnreadNotifications, arg.UserID, arg.WorkspaceID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
+type CountUnreadNotificationsByProjectRow struct {
+	WorkspaceID string
+	ProjectID   string
+	Unread      int64
+}
+
+func (q *Queries) CountUnreadNotificationsByProject(ctx context.Context, arg CountUnreadNotificationsByProjectParams) ([]CountUnreadNotificationsByProjectRow, error) {
+	rows, err := q.db.QueryContext(ctx, countUnreadNotificationsByProject, arg.UserID, arg.WorkspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountUnreadNotificationsByProjectRow
+	for rows.Next() {
+		var i CountUnreadNotificationsByProjectRow
+		if err := rows.Scan(&i.WorkspaceID, &i.ProjectID, &i.Unread); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const createNotificationIfAbsent = `-- name: CreateNotificationIfAbsent :execrows
@@ -94,10 +121,13 @@ func (q *Queries) DeleteNotificationsReadBefore(ctx context.Context, readAt sql.
 }
 
 const listNotifications = `-- name: ListNotifications :many
-SELECT n.id, n.user_id, n.kind, n.subject_type, n.subject_id, n.subject_title, n.read, n.created_at, n.workspace_id, n.read_at, COALESCE(f.id, '') AS folder_id, COALESCE(f.name, '') AS folder_name, COALESCE(f.is_default, 0) AS folder_is_default
+SELECT n.id, n.user_id, n.kind, n.subject_type, n.subject_id, n.subject_title, n.read, n.created_at, n.workspace_id, n.read_at, COALESCE(f.id, '') AS folder_id, COALESCE(f.name, '') AS folder_name, COALESCE(f.is_default, 0) AS folder_is_default,
+       CAST(COALESCE(t.project_id, d.project_id, m.project_id, '') AS TEXT) AS project_id
 FROM notifications n
 LEFT JOIN docs d ON n.subject_type = 'doc' AND d.id = n.subject_id
 LEFT JOIN doc_folders f ON f.id = d.folder_id
+LEFT JOIN tickets t ON n.subject_type = 'ticket' AND t.id = n.subject_id
+LEFT JOIN memories m ON n.subject_type = 'memory' AND m.id = n.subject_id
 WHERE n.user_id = ?1 AND (?2 = '' OR n.workspace_id = ?2)
 ORDER BY n.created_at DESC LIMIT ?3
 `
@@ -113,10 +143,12 @@ type ListNotificationsRow struct {
 	FolderID        string
 	FolderName      string
 	FolderIsDefault int64
+	ProjectID       string
 }
 
 // An empty workspace_id lists every workspace, the unscoped inbox older clients still ask for.
 // A doc's folder is joined in at read time, never stored on the row, because the doc can move after it was sent.
+// The subject's project is joined in too, so a notice about a project its reader can no longer open is left out at read time.
 func (q *Queries) ListNotifications(ctx context.Context, arg ListNotificationsParams) ([]ListNotificationsRow, error) {
 	rows, err := q.db.QueryContext(ctx, listNotifications, arg.UserID, arg.WorkspaceID, arg.Limit)
 	if err != nil {
@@ -140,6 +172,7 @@ func (q *Queries) ListNotifications(ctx context.Context, arg ListNotificationsPa
 			&i.FolderID,
 			&i.FolderName,
 			&i.FolderIsDefault,
+			&i.ProjectID,
 		); err != nil {
 			return nil, err
 		}

@@ -76,6 +76,23 @@ func (h *Handler) PeopleRoutes() http.Handler {
 	return mux
 }
 
+// ProjectPeopleRoutes serves who may open a project; registered as an exact pattern under /api/projects.
+func (h *Handler) ProjectPeopleRoutes() http.Handler {
+	mux := httpx.NewServeMux()
+	mux.HandleFunc("GET /api/projects/{projectID}/people", h.listProjectPeople)
+	return mux
+}
+
+// listProjectPeople answers anyone who may open the project: the pickers a ticket's developer and tester come from.
+func (h *Handler) listProjectPeople(w http.ResponseWriter, r *http.Request) {
+	people, err := h.svc.ListProjectPeople(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("projectID"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, People{People: people})
+}
+
 // listPeople answers any member of the workspace, since seeing who you work with needs no permission.
 func (h *Handler) listPeople(w http.ResponseWriter, r *http.Request) {
 	people, err := h.svc.ListPeople(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("workspaceID"))
@@ -169,10 +186,13 @@ func (h *Handler) setMentionChipTemplate(w http.ResponseWriter, r *http.Request)
 	httpx.WriteJSON(w, http.StatusOK, ws)
 }
 
-// meResponse is the /me wire shape the frontend's hasPermission(action) helper reads directly.
+// meResponse is the /me wire shape the frontend's hasPermission(action) helper reads directly; a Restricted member
+// also gets the projects they may open, since permissions then carries no project area.
 type meResponse struct {
-	RoleName    string   `json:"role_name"`
-	Permissions []string `json:"permissions"`
+	RoleName    string      `json:"role_name"`
+	Permissions []string    `json:"permissions"`
+	Restricted  bool        `json:"restricted"`
+	Projects    []MeProject `json:"projects,omitempty"`
 }
 
 // me is re-fetched whenever useWorkspaceStore's selectedWorkspaceId changes.
@@ -185,7 +205,12 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	permissions := h.svc.MemberPermissions(r.Context(), workspaceID, userID)
-	httpx.WriteJSON(w, http.StatusOK, meResponse{RoleName: roleName, Permissions: permissions})
+	restricted, projects, err := h.svc.MemberProjects(r.Context(), workspaceID, userID)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, meResponse{RoleName: roleName, Permissions: permissions, Restricted: restricted, Projects: projects})
 }
 
 type inviteMemberRequest struct {
@@ -197,11 +222,19 @@ type addMemberRequest struct {
 	RoleID string `json:"role_id"`
 }
 
-// changeMemberRoleRequest is a patch: an omitted field keeps its value, and allow or deny replace that set.
+// changeMemberRoleRequest is a patch: an omitted field keeps its value, allow or deny replace that set, and each
+// project_access entry replaces that project's levels, an empty allow taking the project away.
 type changeMemberRoleRequest struct {
-	RoleID string           `json:"role_id"`
-	Allow  *permissions.Set `json:"allow"`
-	Deny   *permissions.Set `json:"deny"`
+	RoleID        string               `json:"role_id"`
+	Allow         *permissions.Set     `json:"allow"`
+	Deny          *permissions.Set     `json:"deny"`
+	EveryProject  *string              `json:"every_project"`
+	ProjectAccess []projectAccessPatch `json:"project_access"`
+}
+
+type projectAccessPatch struct {
+	ProjectID string          `json:"project_id"`
+	Allow     permissions.Set `json:"allow"`
 }
 
 // listMembers requires members:write.
@@ -267,19 +300,36 @@ func (h *Handler) changeMemberRole(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	ctx, actorID, workspaceID, userID := r.Context(), UserIDFromCtx(r.Context()), r.PathValue("workspaceID"), r.PathValue("userID")
+	if err := h.patchMember(r.Context(), UserIDFromCtx(r.Context()), r.PathValue("workspaceID"), r.PathValue("userID"), req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// patchMember applies the fields a PATCH names in order: role, overrides, Every project, then each project's levels.
+func (h *Handler) patchMember(ctx context.Context, actorID, workspaceID, userID string, req changeMemberRoleRequest) error {
 	overrides := req.Allow != nil || req.Deny != nil
-	if req.RoleID != "" || !overrides {
+	access := req.EveryProject != nil || req.ProjectAccess != nil
+	if req.RoleID != "" || (!overrides && !access) {
 		if err := h.svc.ChangeMemberRole(ctx, actorID, workspaceID, userID, req.RoleID); err != nil {
-			httpx.WriteError(w, err)
-			return
+			return err
 		}
 	}
 	if overrides {
 		if err := h.svc.SetMemberOverrides(ctx, actorID, workspaceID, userID, req.Allow, req.Deny); err != nil {
-			httpx.WriteError(w, err)
-			return
+			return err
 		}
 	}
-	w.WriteHeader(http.StatusNoContent)
+	if req.EveryProject != nil {
+		if err := h.svc.SetEveryProject(ctx, actorID, workspaceID, userID, *req.EveryProject); err != nil {
+			return err
+		}
+	}
+	for _, p := range req.ProjectAccess {
+		if err := h.svc.SetProjectAccess(ctx, actorID, workspaceID, userID, p.ProjectID, p.Allow); err != nil {
+			return err
+		}
+	}
+	return nil
 }

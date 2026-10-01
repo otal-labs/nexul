@@ -4,7 +4,7 @@ import { useLocation, useNavigate, type Location, type NavigateFunction } from "
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
-import { hasPermission } from "@/models/Permission";
+import { hasPermission, projectPermissions, type MyWorkspaceInfo } from "@/models/Permission";
 import { replaceWorkspaceSlug, type Workspace, type WorkspaceUpdate } from "@/models/Workspace";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
@@ -39,12 +39,6 @@ export const useEnsureWorkspaceSelected = (enabled: boolean) => {
 
 export const getMyRoleKey = "getMyRole";
 
-// Mirrors internal/tenancy/handler.go's meResponse; keep the two in sync.
-export interface MyWorkspaceInfo {
-  role_name: string;
-  permissions: string[];
-}
-
 // Shared with the workspace switcher, which reads the target workspace's role before it navigates.
 export const myRoleQuery = (workspaceId: string) =>
   queryOptions({
@@ -56,11 +50,13 @@ export const myRoleQuery = (workspaceId: string) =>
 // Keyed by workspaceId so switching workspaces refetches; multiple call sites share the cache via dedupe.
 export const useFetchMyRole = (workspaceId: string) => useQuery(myRoleQuery(workspaceId));
 
-// The frontend's single hasPermission(value) helper; no call site should compute permissions itself.
+// The frontend's single hasPermission(value) helper; no call site should compute permissions itself. A project
+// action answers for the project in view, which is what the server checks for a Restricted member.
 export const useHasPermission = (value: string): boolean => {
   const selectedWorkspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
+  const selectedProjectId = useWorkspaceStore((s) => s.selectedProjectId);
   const { data } = useFetchMyRole(selectedWorkspaceId);
-  return hasPermission(data?.permissions, value);
+  return hasPermission(projectPermissions(data, selectedProjectId), value);
 };
 
 // No success toast: the owner wizard batches this with other finish-step mutations and shows its own confirmation.

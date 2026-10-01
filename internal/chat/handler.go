@@ -36,8 +36,19 @@ func NewHandler(svc *Service) *Handler {
 }
 
 type createChannelRequest struct {
-	WorkspaceID string `json:"workspace_id"`
-	Name        string `json:"name"`
+	WorkspaceID string   `json:"workspace_id"`
+	Name        string   `json:"name"`
+	Private     bool     `json:"private"`
+	MemberIDs   []string `json:"member_ids"`
+}
+
+type setPrivateRequest struct {
+	Private   bool     `json:"private"`
+	MemberIDs []string `json:"member_ids"`
+}
+
+type addMembersRequest struct {
+	UserIDs []string `json:"user_ids"`
 }
 
 type createDMRequest struct {
@@ -74,6 +85,10 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("POST /api/chat/projects/{projectID}/interview-thread", h.getOrCreateInterviewThread)
 	mux.HandleFunc("PATCH /api/chat/conversations/{id}", h.renameConversation)
 	mux.HandleFunc("DELETE /api/chat/conversations/{id}", h.deleteConversation)
+	mux.HandleFunc("PUT /api/chat/conversations/{id}/private", h.setPrivate)
+	mux.HandleFunc("POST /api/chat/conversations/{id}/members", h.addMembers)
+	mux.HandleFunc("DELETE /api/chat/conversations/{id}/members/{userID}", h.removeMember)
+	mux.HandleFunc("POST /api/chat/conversations/{id}/leave", h.leave)
 	mux.HandleFunc("GET /api/chat/conversations/{id}/messages", h.listMessages)
 	mux.HandleFunc("POST /api/chat/conversations/{id}/messages", h.postMessage)
 	mux.HandleFunc("POST /api/chat/conversations/{id}/read", h.markRead)
@@ -93,12 +108,20 @@ func (h *Handler) listConversations(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) createChannel(w http.ResponseWriter, r *http.Request) {
+	h.create(w, r, KindChannel, h.svc.CreateChannel)
+}
+
+func (h *Handler) createVoiceChannel(w http.ResponseWriter, r *http.Request) {
+	h.create(w, r, KindVoiceChannel, h.svc.CreateVoiceChannel)
+}
+
+func (h *Handler) create(w http.ResponseWriter, r *http.Request, kind Kind, public func(ctx context.Context, workspaceID, creatorUserID, name string) (*Conversation, error)) {
 	var req createChannelRequest
 	if err := httpx.DecodeJSON(r, &req); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
-	c, err := h.svc.CreateChannel(r.Context(), req.WorkspaceID, UserIDFromCtx(r.Context()), req.Name)
+	c, err := h.createAs(r.Context(), req, kind, public)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -106,18 +129,48 @@ func (h *Handler) createChannel(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusCreated, c)
 }
 
-func (h *Handler) createVoiceChannel(w http.ResponseWriter, r *http.Request) {
-	var req createChannelRequest
+func (h *Handler) createAs(ctx context.Context, req createChannelRequest, kind Kind, public func(ctx context.Context, workspaceID, creatorUserID, name string) (*Conversation, error)) (*Conversation, error) {
+	creator := UserIDFromCtx(ctx)
+	if req.Private {
+		return h.svc.CreatePrivateChannel(ctx, req.WorkspaceID, creator, req.Name, kind, req.MemberIDs)
+	}
+	return public(ctx, req.WorkspaceID, creator, req.Name)
+}
+
+func (h *Handler) setPrivate(w http.ResponseWriter, r *http.Request) {
+	var req setPrivateRequest
 	if err := httpx.DecodeJSON(r, &req); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
-	c, err := h.svc.CreateVoiceChannel(r.Context(), req.WorkspaceID, UserIDFromCtx(r.Context()), req.Name)
-	if err != nil {
+	h.writeConversation(w)(h.svc.SetChannelPrivate(r.Context(), r.PathValue("id"), req.Private, req.MemberIDs))
+}
+
+func (h *Handler) addMembers(w http.ResponseWriter, r *http.Request) {
+	var req addMembersRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
-	httpx.WriteJSON(w, http.StatusCreated, c)
+	h.writeConversation(w)(h.svc.AddChannelMembers(r.Context(), r.PathValue("id"), req.UserIDs))
+}
+
+func (h *Handler) removeMember(w http.ResponseWriter, r *http.Request) {
+	h.writeConversation(w)(h.svc.RemoveChannelMembers(r.Context(), r.PathValue("id"), []string{r.PathValue("userID")}))
+}
+
+func (h *Handler) leave(w http.ResponseWriter, r *http.Request) {
+	h.writeConversation(w)(h.svc.RemoveChannelMembers(r.Context(), r.PathValue("id"), []string{UserIDFromCtx(r.Context())}))
+}
+
+func (h *Handler) writeConversation(w http.ResponseWriter) func(*Conversation, error) {
+	return func(c *Conversation, err error) {
+		if err != nil {
+			httpx.WriteError(w, err)
+			return
+		}
+		httpx.WriteJSON(w, http.StatusOK, c)
+	}
 }
 
 func (h *Handler) renameConversation(w http.ResponseWriter, r *http.Request) {

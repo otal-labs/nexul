@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { EveryProject, type ProjectGrant } from "@/models/Team";
+
 export const InvitationProvider = {
   GitHub: "github",
   Google: "google",
@@ -17,6 +19,8 @@ export interface InvitationGrant {
   role_name: string;
   allow: string[];
   deny: string[];
+  every_project?: EveryProject;
+  project_access?: ProjectGrant[];
 }
 
 export interface InvitationPreview {
@@ -53,6 +57,8 @@ export interface InvitationGrantInput {
   role_id: string;
   allow: string[];
   deny: string[];
+  every_project?: EveryProject | undefined;
+  project_access?: ProjectGrant[] | undefined;
 }
 
 export const InvitationGrantFormSchema = z
@@ -61,6 +67,9 @@ export const InvitationGrantFormSchema = z
     role_id: z.string().min(1, "Choose a role"),
     allow: z.array(z.string()),
     deny: z.array(z.string()),
+    // Omitted means From role; under None the person lands restricted to project_access.
+    every_project: z.enum([EveryProject.Role, EveryProject.None]).optional(),
+    project_access: z.array(z.object({ project_id: z.string().min(1), allow: z.array(z.string()) })).optional(),
   })
   .refine((grant) => grant.allow.every((value) => !grant.deny.includes(value)), {
     message: "A permission cannot be allowed and denied at the same time",
@@ -73,6 +82,15 @@ export const CreateInvitationFormSchema = z.object({
 });
 
 export type CreateInvitationFormData = z.infer<typeof CreateInvitationFormSchema>;
+
+// Project access only travels with None; levels picked before switching back to From role stay behind.
+export const invitationRequest = (input: CreateInvitationFormData): CreateInvitationFormData => ({
+  ...input,
+  grants: input.grants.map((grant) => ({
+    ...grant,
+    project_access: grant.every_project === EveryProject.None ? (grant.project_access ?? []).filter((access) => access.allow.length > 0) : [],
+  })),
+});
 
 export const hasDuplicateInvitationWorkspaces = (grants: readonly InvitationGrantInput[]): boolean =>
   new Set(grants.map((grant) => grant.workspace_id)).size !== grants.length;

@@ -47,6 +47,7 @@ type UpdatedEvent struct {
 type DeletedEvent struct {
 	ID          string `json:"id"`
 	WorkspaceID string `json:"workspace_id"`
+	ProjectID   string `json:"project_id"`
 	Title       string `json:"title"`
 	AuthorID    string `json:"author_id"`
 }

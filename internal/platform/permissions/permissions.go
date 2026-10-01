@@ -94,7 +94,7 @@ const (
 // verbLabel is the owner-facing text for a domain-declared verb (ADR 0057): one line per verb, no per-domain switch.
 var verbLabel = map[Action]string{
 	PlaysRun:      "Run plays",
-	MemoriesClone: "Clone memories to another project or workspace",
+	MemoriesClone: "Clone memories to another project",
 	RolesClone:    "Clone roles to another workspace",
 	DocsThread:    "See doc threads",
 	DocsClone:     "Clone docs into another project",
@@ -103,47 +103,58 @@ var verbLabel = map[Action]string{
 	WorkspacesCreate: "Create workspaces",
 }
 
-// domainInfo is one row of the grid: an API domain, its display name, and the actions its routes expose.
+// Area is where a domain's permission applies (ADR 0097): inside one project, across the workspace, or instance-wide.
+type Area string
+
+// The three areas; a Restricted member answers project areas from Project access and holds no instance area.
+const (
+	AreaProject   Area = "project"
+	AreaWorkspace Area = "workspace"
+	AreaInstance  Area = "instance"
+)
+
+// domainInfo is one row of the grid: an API domain, its display name, the actions its routes expose, and its area.
 type domainInfo struct {
 	domain  string
 	display string
 	actions []string
+	area    Area
 }
 
 // domainTable is the single source every catalog, valid-action set, and web grid derives from (display order).
 var domainTable = []domainInfo{
-	{"docs", "docs", []string{read, write, delete, thread, clone}},
-	{"attachments", "attachments", []string{read, write, delete}},
-	{"plays", "plays", []string{read, write, delete, run}},
-	{"memories", "memories", []string{read, write, delete, clone}},
-	{"tickets", "tickets", []string{read, write, delete}},
-	{"deploys", "deploys", []string{read, write}},
-	{"stacks", "stacks", []string{read, write, delete, logs}},
-	{"topology", "topology", []string{read, write, delete}},
-	{"reviews", "code reviews", []string{read}},
-	{"repos", "pull requests", []string{read}},
-	{"repositories", "repositories", []string{read, write}},
-	{"permissions", "permissions", []string{read, write}},
-	{"mentions", "mentions", []string{read, write}},
-	{"projects", "projects and board settings", []string{read, write, delete}},
-	{"workspaces", "workspaces", []string{read, write, delete, create}},
-	{"members", "members and invites", []string{read, write, delete}},
-	{"roles", "roles", []string{read, write, delete, clone}},
-	{"runners", "runners", []string{read, write, delete}},
-	{"machines", "machines", []string{read, write}},
-	{"dns", "DNS and gateways", []string{read, write, delete}},
-	{"notifications", "notifications", []string{read, write}},
-	{"chat", "chat", []string{read, write, delete}},
+	{"docs", "docs", []string{read, write, delete, thread, clone}, AreaProject},
+	{"attachments", "attachments", []string{read, write, delete}, AreaProject},
+	{"plays", "plays", []string{read, write, delete, run}, AreaWorkspace},
+	{"memories", "memories", []string{read, write, delete, clone}, AreaProject},
+	{"tickets", "tickets", []string{read, write, delete}, AreaProject},
+	{"deploys", "deploys", []string{read, write}, AreaProject},
+	{"stacks", "stacks", []string{read, write, delete, logs}, AreaProject},
+	{"topology", "topology", []string{read, write, delete}, AreaInstance},
+	{"reviews", "code reviews", []string{read}, AreaProject},
+	{"repos", "pull requests", []string{read}, AreaProject},
+	{"repositories", "repositories", []string{read, write}, AreaProject},
+	{"permissions", "permissions", []string{read, write}, AreaProject},
+	{"mentions", "mentions", []string{read, write}, AreaWorkspace},
+	{"projects", "projects and board settings", []string{read, write, delete}, AreaProject},
+	{"workspaces", "workspaces", []string{read, write, delete, create}, AreaWorkspace},
+	{"members", "members and invites", []string{read, write, delete}, AreaWorkspace},
+	{"roles", "roles", []string{read, write, delete, clone}, AreaWorkspace},
+	{"runners", "runners", []string{read, write, delete}, AreaInstance},
+	{"machines", "machines", []string{read, write}, AreaInstance},
+	{"dns", "DNS and gateways", []string{read, write, delete}, AreaInstance},
+	{"notifications", "notifications", []string{read, write}, AreaWorkspace},
+	{"chat", "chat", []string{read, write, delete}, AreaWorkspace},
 	// channels:read rounds out the role editor's ladder; reading a channel takes only membership (ADR 0087).
-	{"channels", "channels", []string{read, write, delete}},
-	{"voice", "voice", []string{read, write}},
-	{"automations", "automations", []string{read, write, delete}},
-	{"integrations", "integrations", []string{read, write, delete}},
-	{"connectors", "connectors", []string{read, write}},
-	{"events", "events", []string{read}},
-	{"audit", "audit log", []string{read}},
-	{"accounts", "accounts", []string{read, write, delete}},
-	{"instance", "instance settings, upgrades, and failed events", []string{read, write}},
+	{"channels", "channels", []string{read, write, delete}, AreaWorkspace},
+	{"voice", "voice", []string{read, write}, AreaWorkspace},
+	{"automations", "automations", []string{read, write, delete}, AreaInstance},
+	{"integrations", "integrations", []string{read, write, delete}, AreaInstance},
+	{"connectors", "connectors", []string{read, write}, AreaInstance},
+	{"events", "events", []string{read}, AreaInstance},
+	{"audit", "audit log", []string{read}, AreaInstance},
+	{"accounts", "accounts", []string{read, write, delete}, AreaInstance},
+	{"instance", "instance settings, upgrades, and failed events", []string{read, write}, AreaInstance},
 }
 
 // Info is one catalog entry: the action, its owner-facing label, and the domain/action pair grids render from.
@@ -152,6 +163,7 @@ type Info struct {
 	Label  string `json:"label"`
 	Domain string `json:"domain"`
 	Action string `json:"action"`
+	Area   Area   `json:"area"`
 }
 
 // Catalog lists every action in display order, so clients render the gate's vocabulary, not their own copy.
@@ -165,6 +177,7 @@ func Catalog() []Info {
 				Label:  label(value, a, d.display),
 				Domain: d.domain,
 				Action: a,
+				Area:   d.area,
 			})
 		}
 	}
@@ -185,6 +198,25 @@ func label(value Action, a, display string) string {
 }
 
 var known = buildKnown()
+
+var areas = buildAreas()
+
+func buildAreas() map[string]Area {
+	out := make(map[string]Area, len(domainTable))
+	for _, d := range domainTable {
+		out[d.domain] = d.area
+	}
+	return out
+}
+
+// AreaOf is the area of action's domain; the empty Member action and anything off the grid are workspace-wide.
+func AreaOf(action Action) Area {
+	domain, _, _ := strings.Cut(string(action), ":")
+	if area, ok := areas[domain]; ok {
+		return area
+	}
+	return AreaWorkspace
+}
 
 func buildKnown() map[Action]bool {
 	out := make(map[Action]bool, len(domainTable)*3)

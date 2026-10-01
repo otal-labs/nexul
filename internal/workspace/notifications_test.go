@@ -115,19 +115,19 @@ func (f *fakeNotifRepo) List(_ context.Context, userID, workspaceID string, limi
 	return all, nil
 }
 
-func (f *fakeNotifRepo) UnreadCount(_ context.Context, userID, workspaceID string) (int, error) {
+func (f *fakeNotifRepo) UnreadByProject(_ context.Context, userID, workspaceID string) ([]UnreadGroup, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.countErr != nil {
-		return 0, f.countErr
+		return nil, f.countErr
 	}
-	n := 0
+	var out []UnreadGroup
 	for _, notif := range f.byUser[userID] {
 		if !notif.Read && inWorkspace(notif, workspaceID) {
-			n++
+			out = append(out, UnreadGroup{WorkspaceID: notif.WorkspaceID, ProjectID: notif.ProjectID, Unread: 1})
 		}
 	}
-	return n, nil
+	return out, nil
 }
 
 func (f *fakeNotifRepo) MarkRead(_ context.Context, userID, id string, _ time.Time) error {
@@ -266,7 +266,12 @@ func (f *fakeProjects) Get(_ context.Context, id string) (*Project, error) {
 
 // fakeAccessChecker is a PermissionChecker stub gating memory.updated fan-out by a fixed allow/deny set.
 type fakeAccessChecker struct {
-	denyUserIDs map[string]bool
+	denyUserIDs   map[string]bool
+	denyInProject map[string]bool // "user:project"
+}
+
+func (f *fakeAccessChecker) CanInProject(_ context.Context, userID, projectID string, _ permissions.Action) bool {
+	return !f.denyUserIDs[userID] && !f.denyInProject[userID+":"+projectID]
 }
 
 func (f *fakeAccessChecker) HasPermission(_ context.Context, userID, _ string, _ permissions.Action) bool {
@@ -436,6 +441,22 @@ func TestHandleMemoryUpdated(t *testing.T) {
 		"author_id":  "u1",
 		"author_via": "",
 	}
+
+	t.Run("skips a member who may not read memories in the memory's project", func(t *testing.T) {
+		repo := newFakeNotifRepo()
+		users := newFakeNotifUsers(notifUser("u1", "onik97"), notifUser("u2", "alice"))
+		members := &fakeMemberStore{byWorkspace: map[string][]string{"ws-1": {"u1", "u2"}}}
+		access := &fakeAccessChecker{denyInProject: map[string]bool{"u2:p-2": true}}
+		s := newTestNotifServiceWith(repo, users, members, access)
+		hidden := map[string]any{
+			"memory":    map[string]any{"id": "m-2", "workspace_id": "ws-1", "project_id": "p-2", "title": "Hidden", "version": 1},
+			"author_id": "u1",
+		}
+
+		require.NoError(t, HandleMemoryUpdated(context.Background(), s, notifEvFor(t, "memory.updated", hidden)))
+
+		assert.Empty(t, repo.notifsFor("u2"))
+	})
 
 	t.Run("fans out to every member with memories:read, excluding the author", func(t *testing.T) {
 		repo := newFakeNotifRepo()

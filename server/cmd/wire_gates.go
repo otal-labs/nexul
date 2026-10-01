@@ -214,18 +214,27 @@ func (g workspacePermissionGate) WorkspacePermissions(ctx context.Context, userI
 	return g.svc.WorkspacePermissions(ctx, userID, workspaceID)
 }
 
-// memoriesPermissionGate adapts access's HasPermission to memories' seam (ADR 0017); memories are workspace-scoped
-// for real (denormalized per row), so it takes workspaceID.
-type memoriesPermissionGate struct {
-	svc *access.Service
+// tenancyProjectGate reads a project's workspace from storage and what someone holds inside it from access, for
+// tenancy's Project access use-cases (ADR 0017).
+type tenancyProjectGate struct {
+	projects *storage.ProjectsRepo
+	access   *access.Service
 }
 
-func (g memoriesPermissionGate) HasPermission(ctx context.Context, userID, workspaceID string, action permissions.Action) bool {
-	return g.svc.HasPermission(ctx, userID, workspaceID, action, "", "")
+func (g tenancyProjectGate) ProjectWorkspace(ctx context.Context, projectID string) (string, error) {
+	p, err := g.projects.Get(ctx, projectID)
+	if err != nil {
+		return "", err
+	}
+	return p.WorkspaceID, nil
 }
 
-// memoriesProjectLookup reads a project's workspace from storage for memories' ProjectLookup seam (ADR 0017), since
-// memories applies its own memories:read check on the result.
+func (g tenancyProjectGate) ProjectPermissions(ctx context.Context, userID, projectID string) ([]string, bool) {
+	return g.access.ProjectPermissions(ctx, userID, projectID)
+}
+
+// memoriesProjectLookup reads a project's workspace from storage for memories' ProjectLookup seam (ADR 0017), so a
+// new memory can denormalize it.
 type memoriesProjectLookup struct {
 	projects *storage.ProjectsRepo
 }
@@ -284,6 +293,10 @@ type notificationPermissionGate struct {
 	svc *access.Service
 }
 
+func (g notificationPermissionGate) CanInProject(ctx context.Context, userID, projectID string, action permissions.Action) bool {
+	return g.svc.CanInProject(ctx, userID, projectID, action)
+}
+
 func (g notificationPermissionGate) HasPermission(ctx context.Context, userID, workspaceID string, action permissions.Action) bool {
 	return g.svc.HasPermission(ctx, userID, workspaceID, action, "", "")
 }
@@ -320,8 +333,7 @@ func (g docsAttachmentsGate) CopyOwnerWithIDs(ctx context.Context, fromDocID, to
 	return g.svc.CopyAttachmentsWithIDs(ctx, attachments.Owner{DocID: fromDocID}, attachments.Owner{DocID: toDocID}, idMap)
 }
 
-// membershipGate adapts tenancy's raw membership store to the membership seams of memories (Clone's destination
-// workspace) and chat (a DM's participants), ADR 0017.
+// membershipGate adapts tenancy's raw membership store to chat's membership seam (a DM's participants), ADR 0017.
 type membershipGate struct {
 	members *storage.WorkspaceMembersRepo
 }
@@ -337,17 +349,75 @@ func (g membershipGate) IsMember(ctx context.Context, userID, workspaceID string
 	return true, nil
 }
 
-// memoryAttachmentsAccessGate adapts a memory's stored workspace id plus access's HasPermission to
-// attachments' MemoryAccessChecker seam (ADR 0017): attachments never imports memories.
+func (g membershipGate) MemberIDs(ctx context.Context, workspaceID string) ([]string, error) {
+	members, err := g.members.ListByWorkspace(ctx, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, len(members))
+	for i, m := range members {
+		ids[i] = m.UserID
+	}
+	return ids, nil
+}
+
+// chatStanding answers chat's Owner and Restricted member lookups from the person's membership.
+type chatStanding struct {
+	roles accessRoleResolver
+}
+
+func (c chatStanding) IsOwner(ctx context.Context, userID, workspaceID string) (bool, error) {
+	info, err := c.roles.MemberRole(ctx, workspaceID, userID)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return info.IsOwnerRole, nil
+}
+
+func (c chatStanding) IsRestricted(ctx context.Context, userID, workspaceID string) (bool, error) {
+	info, err := c.roles.MemberRole(ctx, workspaceID, userID)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return info.Restricted && !info.IsOwnerRole, nil
+}
+
+// chatThreadGate checks a ticket thread through its ticket's project and an interview thread through its project.
+type chatThreadGate struct {
+	projectEntityGate
+}
+
+func (g chatThreadGate) RequireProject(ctx context.Context, projectID string, action permissions.Action) error {
+	return g.access.RequireProject(ctx, projectID, action)
+}
+
+// chatAttachmentConversations lets attachments read a conversation-owned file through reading the conversation.
+type chatAttachmentConversations struct {
+	svc *chat.Service
+}
+
+func (g chatAttachmentConversations) RequireRead(ctx context.Context, conversationID string) error {
+	_, err := g.svc.GetConversation(ctx, conversationID)
+	return err
+}
+
+// memoryAttachmentsAccessGate checks a memory's file through its project for attachments' MemoryAccessChecker
+// seam (ADR 0017, ADR 0099); the actor comes from ctx, the same one attachments read the user id from.
 type memoryAttachmentsAccessGate struct {
 	memories *storage.MemoriesRepo
 	access   *access.Service
 }
 
-func (g memoryAttachmentsAccessGate) Can(ctx context.Context, userID, memoryID string, action permissions.Action) (bool, error) {
+func (g memoryAttachmentsAccessGate) Can(ctx context.Context, _, memoryID string, action permissions.Action) (bool, error) {
 	m, err := g.memories.GetByID(ctx, memoryID)
 	if err != nil {
 		return false, err
 	}
-	return g.access.HasPermission(ctx, userID, m.WorkspaceID, action, "", ""), nil
+	return g.access.RequireProject(ctx, m.ProjectID, action) == nil, nil
 }

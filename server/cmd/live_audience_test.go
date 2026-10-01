@@ -50,6 +50,7 @@ func TestLiveAudience_FramesFollowTheEntitysRead(t *testing.T) {
 		{access.TopicGrantChanged, access.GrantEvent{ResourceType: "doc", ResourceID: "doc-1", UserID: uPlain}, map[string]bool{uPlain: true, uOwner: false, uOutsider: false}},
 		{roles.TopicUpdated, roles.RoleEvent{RoleID: "role-1", WorkspaceID: "workspace-default"}, map[string]bool{uOwner: true, uPlain: true, uOutsider: false}},
 		{docs.TopicFolderCreated, docs.FolderEvent{Folder: docs.Folder{ID: "f-1", ProjectID: "project-general", Name: "GetSource"}}, map[string]bool{uReader: true, uPlain: false, uOutsider: false}},
+		{memories.TopicUpdated, memories.UpdatedEvent{Memory: memories.MemoryRef{ID: "memory-1", WorkspaceID: "workspace-default", ProjectID: "project-general"}}, map[string]bool{uReader: true, uPlain: false, uOutsider: false}},
 		{docs.TopicWatchersChanged, docs.WatchersChangedEvent{Doc: docs.WatchedDoc{ID: f.doc, ProjectID: "project-general"}, UserID: uReader, Watching: true}, map[string]bool{uReader: true, uPlain: false, uOutsider: false}},
 	}
 	for _, tc := range cases {
@@ -61,9 +62,10 @@ func TestLiveAudience_FramesFollowTheEntitysRead(t *testing.T) {
 	}
 }
 
-// TestLiveAudience_MemoryDeletedStaysInItsWorkspace: the deleted frame carries the memory's title, so it reaches
-// readers of the memory's own workspace, not someone who reads memories in another one.
-func TestLiveAudience_MemoryDeletedStaysInItsWorkspace(t *testing.T) {
+// TestLiveAudience_MemoryDeletedStaysInItsProject: the deleted frame carries the memory's title, so it reaches
+// readers of the memory's own project, not someone who reads memories in another workspace, and a frame from before
+// it named its project reaches nobody.
+func TestLiveAudience_MemoryDeletedStaysInItsProject(t *testing.T) {
 	f := newPermFixture(t)
 	ctx := t.Context()
 	now := time.Now()
@@ -71,9 +73,14 @@ func TestLiveAudience_MemoryDeletedStaysInItsWorkspace(t *testing.T) {
 	require.NoError(t, f.store.Roles.Create(ctx, &roles.Role{ID: "role-other-reader", WorkspaceID: "workspace-other", Name: "Reader", Permissions: grant("memories:read"), CreatedAt: now, UpdatedAt: now}))
 	require.NoError(t, f.store.WorkspaceMembers.AddMember(ctx, &tenancy.Member{UserID: uOutsider, WorkspaceID: "workspace-other", RoleID: "role-other-reader", CreatedAt: now}))
 	a := liveAudience{access: f.svc.accessSvc}
-	raw, err := json.Marshal(memories.DeletedEvent{ID: "memory-1", WorkspaceID: "workspace-default", Title: "Deploy keys", AuthorID: uOwner})
+	deleted := memories.DeletedEvent{ID: "memory-1", WorkspaceID: "workspace-default", ProjectID: "project-general", Title: "Deploy keys", AuthorID: uOwner}
+	raw, err := json.Marshal(deleted)
 	require.NoError(t, err)
 	for user, want := range map[string]bool{uReader: true, uPlain: false, uOutsider: false} {
 		assert.Equal(t, want, a.allows(as(user), memories.TopicDeleted, json.RawMessage(raw)), "as %s", user)
 	}
+	deleted.ProjectID = ""
+	raw, err = json.Marshal(deleted)
+	require.NoError(t, err)
+	assert.False(t, a.allows(as(uOwner), memories.TopicDeleted, json.RawMessage(raw)))
 }

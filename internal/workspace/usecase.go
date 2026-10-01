@@ -118,13 +118,13 @@ func (s *Service) Get(ctx context.Context, id string) (*Project, error) {
 	if err != nil {
 		return nil, fmt.Errorf("get project %s: %w", id, err)
 	}
-	if err := s.requireIn(ctx, p.WorkspaceID, permissions.Member); err != nil {
+	if err := s.requireOn(ctx, id, permissions.Member); err != nil {
 		return nil, fmt.Errorf("get project %s: %w", id, err)
 	}
 	return p, nil
 }
 
-// List returns a workspace's projects ordered by position.
+// List returns the workspace's projects the caller may open, ordered by position (ADR 0097).
 func (s *Service) List(ctx context.Context, workspaceID string) ([]*Project, error) {
 	workspaceID = strings.TrimSpace(workspaceID)
 	if workspaceID == "" {
@@ -137,7 +137,26 @@ func (s *Service) List(ctx context.Context, workspaceID string) ([]*Project, err
 	if err != nil {
 		return nil, fmt.Errorf("list projects: %w", err)
 	}
-	return projects, nil
+	return permissions.Filter(projects, func(p *Project) string { return p.ID }, func(projectID string) error {
+		return s.requireOn(ctx, projectID, permissions.Member)
+	})
+}
+
+// ProjectAccess lists the Restricted members who may open projectID and what they hold there; it takes
+// members:write in the project's workspace, since it shows the people a manager sets access for.
+func (s *Service) ProjectAccess(ctx context.Context, projectID string) ([]ProjectAccessEntry, error) {
+	p, err := s.Get(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.requireIn(ctx, p.WorkspaceID, permissions.MembersWrite); err != nil {
+		return nil, err
+	}
+	entries, err := s.repo.ListRestrictedAccess(ctx, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("list access to project %s: %w", projectID, err)
+	}
+	return entries, nil
 }
 
 // Rename updates a project's name and/or icon (projects:write); icon nil keeps current, "" clears it.
@@ -281,7 +300,15 @@ func (s *Service) deleteImpact(ctx context.Context, id string) (DeleteImpact, er
 	if err != nil {
 		return DeleteImpact{}, fmt.Errorf("impact of deleting project %s: %w", id, err)
 	}
-	return DeleteImpact{Tickets: tickets, Repos: repos, Services: services}, nil
+	access, err := s.repo.ListRestrictedAccess(ctx, id)
+	if err != nil {
+		return DeleteImpact{}, fmt.Errorf("impact of deleting project %s: %w", id, err)
+	}
+	losing := make([]RestrictedMember, len(access))
+	for i, a := range access {
+		losing[i] = a.RestrictedMember
+	}
+	return DeleteImpact{Tickets: tickets, Repos: repos, Services: services, RestrictedMembers: losing}, nil
 }
 
 // Delete removes a project (projects:delete); refused while it has tickets, repos, or services, to avoid orphans.
@@ -934,12 +961,16 @@ type NotificationService struct {
 	members  WorkspaceMemberStore
 	access   PermissionChecker
 	projects ProjectReader
+	tickets  TicketProjects
 	watchers DocWatchers
 	now      func() time.Time
 }
 
+// SetTicketProjects wires the ticket lookup a ticket notice whose event names no project is checked through.
+func (s *NotificationService) SetTicketProjects(t TicketProjects) { s.tickets = t }
+
 // NewNotificationService wires the notification use-cases; delivery goes through the outbox, not a direct
-// publish. members and access back the workspace-scoped, permission-gated fan-out memory.updated needs, and
+// publish. members and access back memory.updated's permission-gated fan-out to a workspace's members, and
 // projects resolves a ticket's or doc's workspace.
 func NewNotificationService(repo NotificationRepo, users UserStore, members WorkspaceMemberStore, access PermissionChecker, projects ProjectReader) *NotificationService {
 	return &NotificationService{repo: repo, users: users, members: members, access: access, projects: projects, now: time.Now}
@@ -969,12 +1000,25 @@ func (s *NotificationService) List(ctx context.Context, userID, workspaceID stri
 	if err != nil {
 		return nil, fmt.Errorf("list notifications: %w", err)
 	}
-	return permissions.Filter(ns, func(n *Notification) string { return n.WorkspaceID }, func(workspaceID string) error {
+	ns, err = permissions.Filter(ns, func(n *Notification) string { return n.WorkspaceID }, func(workspaceID string) error {
 		if workspaceID == "" {
 			return nil
 		}
 		return s.requireMember(ctx, userID, workspaceID)
 	})
+	if err != nil {
+		return nil, err
+	}
+	return slices.DeleteFunc(ns, func(n *Notification) bool { return !s.opensProject(ctx, userID, n.ProjectID) }), nil
+}
+
+// opensProject keeps a notice about a project its reader can no longer open out of their inbox; the row stays, so
+// access given back brings it back.
+func (s *NotificationService) opensProject(ctx context.Context, userID, projectID string) bool {
+	if projectID == "" || s.access == nil {
+		return true
+	}
+	return s.access.CanInProject(ctx, userID, projectID, permissions.Member)
 }
 
 // UnreadCount returns how many of the user's notifications in one workspace (or every workspace) are unread.
@@ -982,9 +1026,15 @@ func (s *NotificationService) UnreadCount(ctx context.Context, userID, workspace
 	if strings.TrimSpace(userID) == "" {
 		return 0, fmt.Errorf("%w: user id is required", apperrs.ErrInvalid)
 	}
-	n, err := s.repo.UnreadCount(ctx, userID, strings.TrimSpace(workspaceID))
+	groups, err := s.repo.UnreadByProject(ctx, userID, strings.TrimSpace(workspaceID))
 	if err != nil {
 		return 0, fmt.Errorf("unread count: %w", err)
+	}
+	n := 0
+	for _, g := range groups {
+		if s.opensProject(ctx, userID, g.ProjectID) {
+			n += g.Unread
+		}
 	}
 	return n, nil
 }
@@ -1076,11 +1126,26 @@ func (s *NotificationService) canOpen(ctx context.Context, n notice, userID stri
 	}
 	switch n.subjectType {
 	case SubjectTicket:
+		if projectID := s.ticketProject(ctx, n); projectID != "" {
+			return s.access.CanInProject(ctx, userID, projectID, permissions.TicketsRead)
+		}
 		return s.access.HasPermission(ctx, userID, n.workspaceID, permissions.TicketsRead)
 	case SubjectDoc:
 		return s.access.CanReadDoc(ctx, userID, n.subjectID)
 	}
 	return true
+}
+
+// ticketProject is the project a ticket notice is about: named by its event, else read from the ticket itself.
+func (s *NotificationService) ticketProject(ctx context.Context, n notice) string {
+	if n.projectID != "" || s.tickets == nil {
+		return n.projectID
+	}
+	projectID, err := s.tickets.ProjectOfTicket(ctx, n.subjectID)
+	if err != nil {
+		return ""
+	}
+	return projectID
 }
 
 // onTicketCreated fans out ticket.assigned to the developer and tester and ticket.mentioned to every @-mentioned user.
@@ -1193,8 +1258,8 @@ func (s *NotificationService) mentionTitle(ctx context.Context, n notice) string
 	return fmt.Sprintf("%s mentioned you in %s", name, n.subjectTitle)
 }
 
-// onMemoryUpdated fans out to every member of the memory's workspace who holds memories:read, excluding the
-// author (ticket 17); membership and the permission bit decide, not every registered user.
+// onMemoryUpdated fans out to every member of the memory's workspace who may read memories in its project, excluding
+// the author; membership and Project access decide, not every registered user.
 func (s *NotificationService) onMemoryUpdated(ctx context.Context, m memoryRef, authorID, authorVia string) error {
 	if s.members == nil || s.access == nil {
 		return nil
@@ -1213,7 +1278,7 @@ func (s *NotificationService) onMemoryUpdated(ctx context.Context, m memoryRef, 
 	subjectTitle := fmt.Sprintf("%s — v%d by %s", m.Title, m.Version, authorLabel)
 	var recipients []string
 	for _, uid := range userIDs {
-		if !s.access.HasPermission(ctx, uid, m.WorkspaceID, permissions.MemoriesRead) {
+		if !s.access.CanInProject(ctx, uid, m.ProjectID, permissions.MemoriesRead) {
 			continue
 		}
 		recipients = append(recipients, uid)
@@ -1256,12 +1321,13 @@ type notice struct {
 	subjectID    string
 	subjectTitle string
 	workspaceID  string
+	projectID    string
 	actorID      string
 }
 
 // notice resolves the subject's project to its workspace; a project deleted since the event leaves it unscoped.
 func (s *NotificationService) notice(ctx context.Context, subjectType SubjectType, subjectID, subjectTitle, projectID, actorID string) (notice, error) {
-	n := notice{subjectType: subjectType, subjectID: subjectID, subjectTitle: subjectTitle, actorID: actorID}
+	n := notice{subjectType: subjectType, subjectID: subjectID, subjectTitle: subjectTitle, projectID: projectID, actorID: actorID}
 	if s.projects == nil || strings.TrimSpace(projectID) == "" {
 		return n, nil
 	}

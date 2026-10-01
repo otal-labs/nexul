@@ -124,6 +124,22 @@ describe("useLiveEvents dispatch", () => {
       },
     );
 
+    it.each(["access.grant.changed", "workspace.member.updated"])(
+      "refreshes Team, People with access, and the pickers when %s moves someone else's Project access",
+      async (topic) => {
+        setup();
+        client.setQueryData([getMeKey], { user: { id: "u1" }, instance_permissions: [] });
+        const socket = await connectedSocket();
+        const spy = invalidate();
+
+        push(socket, topic, { user_id: "u2", workspace_id: "ws-1", resource_type: "project", resource_id: "p-1" });
+
+        expect(spy).toHaveBeenCalledWith({ queryKey: ["getTeam"] });
+        expect(spy).toHaveBeenCalledWith({ queryKey: ["getProjectAccess"] });
+        expect(spy).toHaveBeenCalledWith({ queryKey: ["getProjectPeople"] });
+      },
+    );
+
     it("refetches every open read after role.updated only when the viewer's own permissions moved", async () => {
       setup();
       let held = ["docs:read"];
@@ -284,6 +300,12 @@ describe("useLiveEvents dispatch", () => {
     );
     expect(spy).toHaveBeenCalledWith({ queryKey: ["getChatUnread"] });
     expect(spy).not.toHaveBeenCalledWith({ queryKey: ["getChatMessages"] });
+    spy.mockClear();
+    act(() =>
+      socket.message(JSON.stringify({ topic: "chat.conversation.members_changed", type: "event", payload: {} })),
+    );
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["getChatConversations"] });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["getChatUnread"] });
   });
 
   it("patches the cached message list from chat message frames instead of refetching", async () => {

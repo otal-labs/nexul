@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"fmt"
@@ -133,15 +134,37 @@ func (r *ProjectsRepo) Update(ctx context.Context, p *workspace.Project) error {
 
 func (r *ProjectsRepo) Delete(ctx context.Context, id string) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		n, err := r.q.WithTx(tx).DeleteProject(ctx, id)
+		q := r.q.WithTx(tx)
+		n, err := q.DeleteProject(ctx, id)
 		if err != nil {
 			return fmt.Errorf("delete project %s: %w", id, err)
 		}
 		if n == 0 {
 			return fmt.Errorf("delete project %s: %w", id, apperrs.ErrNotFound)
 		}
+		if err := q.DeleteOverwritesByResource(ctx, sqlcgen.DeleteOverwritesByResourceParams{ResourceType: projectResourceType, ResourceID: id}); err != nil {
+			return fmt.Errorf("delete access to project %s: %w", id, err)
+		}
 		return nil
 	})
+}
+
+// ListRestrictedAccess names each Restricted member by what People shows: display name, else account name, else login.
+func (r *ProjectsRepo) ListRestrictedAccess(ctx context.Context, projectID string) ([]workspace.ProjectAccessEntry, error) {
+	rows, err := r.q.ListProjectRestrictedAccess(ctx, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("list access to project %s: %w", projectID, err)
+	}
+	out := make([]workspace.ProjectAccessEntry, 0, len(rows))
+	for _, row := range rows {
+		allow, err := parseSet(row.Allow)
+		if err != nil {
+			return nil, fmt.Errorf("decode access of %s to project %s: %w", row.UserID, projectID, err)
+		}
+		name := cmp.Or(row.DisplayName, row.Name, row.Login)
+		out = append(out, workspace.ProjectAccessEntry{RestrictedMember: workspace.RestrictedMember{UserID: row.UserID, Name: name}, Actions: allow})
+	}
+	return out, nil
 }
 
 // Reorder assigns each project's position by its index in ids, in one transaction so a reorder is atomic.

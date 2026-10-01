@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import { DocDetail } from "@/components/doc/DocDetail";
 import { getMeKey } from "@/hooks/AuthHooks";
+import { getMyRoleKey } from "@/hooks/WorkspaceHooks";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import type { LiveSocket } from "@/api/ws";
@@ -54,7 +55,9 @@ const framesOf = (socket: FakeSocket, type: string) =>
 // (or advance fake timers) before FakeSocket's handlers apply.
 const flushConnect = () => act(() => new Promise((r) => setTimeout(r, 0)));
 
-const renderDetailRaw = (socket: FakeSocket, shown: Doc = doc) => {
+const writer = ["docs:read", "docs:write"];
+
+const renderDetailRaw = (socket: FakeSocket, shown: Doc = doc, permissions: string[] = writer) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   // Prime the profile cache (production warms it via OnboardingGate): the collab
   // session's `name` is a session-rebuilding dep, so it must be present on the first render.
@@ -63,6 +66,7 @@ const renderDetailRaw = (socket: FakeSocket, shown: Doc = doc) => {
     needs_owner_wizard: false,
     needs_first_login_wizard: false,
   });
+  client.setQueryData([getMyRoleKey, "ws-1"], { role_name: "Member", permissions });
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
@@ -80,8 +84,8 @@ const renderDetailRaw = (socket: FakeSocket, shown: Doc = doc) => {
   );
 };
 
-const renderDetail = async (socket: FakeSocket, shown: Doc = doc) => {
-  const result = renderDetailRaw(socket, shown);
+const renderDetail = async (socket: FakeSocket, shown: Doc = doc, permissions: string[] = writer) => {
+  const result = renderDetailRaw(socket, shown, permissions);
   await flushConnect();
   return result;
 };
@@ -96,6 +100,7 @@ beforeEach(() => {
   // watcher list; every other GET here (tickets/mentions) stays empty.
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/auth/me") return { data: { user: { name: "Alice" }, needs_owner_wizard: false, needs_first_login_wizard: false } };
+    if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions: writer } };
     if (url === "/api/pairing/presence") return { data: { computers: {} } };
     if (url === "/api/pairing/resolve") return { data: { ok: false, reason: "unpaired" } };
     if (url === "/api/docs/doc-1/watchers") return { data: { watchers: [], watching: false } };
@@ -340,6 +345,21 @@ describe("DocDetail", () => {
 
     await user.click(await screen.findByRole("button", { name: "Unlock" }));
     await waitFor(() => expect(api.post).toHaveBeenCalledWith("/api/docs/doc-1/unlock"));
+  });
+
+  it("shows a reader without docs:write the body read-only, with no edit session the server would refuse", async () => {
+    const reader = ["docs:read"];
+    const defaultGet = vi.mocked(api.get).getMockImplementation();
+    vi.mocked(api.get).mockImplementation(async (url: string) =>
+      url === "/api/workspaces/ws-1/me" ? { data: { role_name: "Member", permissions: reader } } : defaultGet!(url),
+    );
+    const socket = new FakeSocket();
+    await renderDetail(socket, doc, reader);
+
+    expect(await screen.findByText("SQLite is the spine.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Storage Spine" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Body")).not.toBeInTheDocument();
+    expect(socket.send).not.toHaveBeenCalled();
   });
 
   it("hides the Trail section for a caller without docs:thread", async () => {

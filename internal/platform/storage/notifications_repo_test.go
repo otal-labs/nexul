@@ -164,9 +164,9 @@ func TestNotificationsRepo_UnreadCount(t *testing.T) {
 	require.NoError(t, s.Notifications.CreateMany(context.Background(), []*workspace.Notification{newTestNotification("n1", "u1", false)}))
 	require.NoError(t, s.Notifications.CreateMany(context.Background(), []*workspace.Notification{newTestNotification("n2", "u1", true)}))
 
-	n, err := s.Notifications.UnreadCount(context.Background(), "u1", "")
+	n, err := s.Notifications.UnreadByProject(context.Background(), "u1", "")
 	require.NoError(t, err)
-	assert.Equal(t, 1, n)
+	assert.Equal(t, []workspace.UnreadGroup{{Unread: 1}}, n)
 }
 
 func TestNotificationsRepo_MarkRead_NotFoundForOtherUser(t *testing.T) {
@@ -235,14 +235,14 @@ func TestNotificationsRepo_WorkspaceFilter_ScopesListCountAndReadAll(t *testing.
 	require.NoError(t, err)
 	assert.Len(t, all, 3, "no workspace lists every workspace")
 
-	count, err := s.Notifications.UnreadCount(ctx, "u1", "ws-2")
+	count, err := s.Notifications.UnreadByProject(ctx, "u1", "ws-2")
 	require.NoError(t, err)
-	assert.Equal(t, 2, count)
+	assert.Equal(t, []workspace.UnreadGroup{{WorkspaceID: "ws-2", Unread: 2}}, count)
 
 	require.NoError(t, s.Notifications.MarkAllRead(ctx, "u1", "ws-2", time.Now()))
-	count, err = s.Notifications.UnreadCount(ctx, "u1", "")
+	count, err = s.Notifications.UnreadByProject(ctx, "u1", "")
 	require.NoError(t, err)
-	assert.Equal(t, 1, count, "read-all in ws-2 leaves ws-1 unread")
+	assert.Equal(t, []workspace.UnreadGroup{{WorkspaceID: "ws-1", Unread: 1}}, count, "read-all in ws-2 leaves ws-1 unread")
 }
 
 func TestNotificationsRepo_List_CarriesTheDocsCurrentFolder(t *testing.T) {

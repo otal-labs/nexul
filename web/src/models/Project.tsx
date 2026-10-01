@@ -63,6 +63,13 @@ export const projectTokenFromPath = (pathname: string): string | undefined => {
   return undefined;
 };
 
+// A ticket page names its project by the key's prefix ("/tickets/WEB-12").
+const ticketProjectPath = /^\/tickets\/([A-Za-z][A-Za-z0-9]{1,4})-\d+(?:\/|$)/;
+
+// The token of the project a page shows, ticket pages included; undefined on pages that belong to no one project.
+export const openProjectToken = (pathname: string): string | undefined =>
+  projectTokenFromPath(pathname) ?? ticketProjectPath.exec(pathname)?.[1];
+
 // Switching project keeps you on its settings or interview; anywhere else lands on the new project's board.
 export const switchProjectPath = (pathname: string, project: Project): string => {
   const page = /^\/projects\/[^/]+\/(settings|interview)/.exec(pathname)?.[1];
@@ -79,9 +86,7 @@ export const interviewPath = (token: string): string => `/projects/${token}/inte
 
 export const docPath = (token: string, docId: string): string => `/docs/${token}/${docId}`;
 
-// token "" is a workspace-scoped memory: the bare, project-less route.
-export const memoryPath = (token: string, memoryId: string): string =>
-  token !== "" ? `/memories/${token}/${memoryId}` : `/memories/${memoryId}`;
+export const memoryPath = (token: string, memoryId: string): string => `/memories/${token}/${memoryId}`;
 
 export interface RepoRef {
   owner: string;
@@ -92,10 +97,21 @@ export interface RepoRef {
   role: RepoRole;
 }
 
+// A Restricted member holding access to a project, named the way People shows them.
+export interface RestrictedMember {
+  user_id: string;
+  name: string;
+}
+
 export interface DeleteImpact {
   tickets: number;
   repos: number;
   services: number;
+  restricted_members?: RestrictedMember[];
+}
+
+export interface ProjectAccessEntry extends RestrictedMember {
+  actions: string[];
 }
 
 export const SaveProjectFormSchema = z.object({

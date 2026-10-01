@@ -138,22 +138,6 @@ func TestComposePrompt_MemoriesIndexRendersTheProjectScope(t *testing.T) {
 	assert.Contains(t, out, "@Agent remember")
 }
 
-func TestComposePrompt_MemoriesIndexRendersWorkspaceBeforeProject(t *testing.T) {
-	out := ComposePrompt(PromptInput{
-		Memories: MemoriesIndex{
-			Workspace: []MemoryItem{{Name: "Team tone", WhenToUse: "always applies"}},
-			Project:   []MemoryItem{{Name: "Deploy quirks", WhenToUse: "use this if you are touching deploy config"}},
-		},
-		RequestAuthor: "onik97",
-		RequestBody:   "@Agent go",
-	})
-	assert.Contains(t, out, "Workspace memories:")
-	assert.Contains(t, out, "- Team tone: always applies")
-	assert.Contains(t, out, "This project's memories:")
-	assert.Contains(t, out, "- Deploy quirks: use this if you are touching deploy config")
-	assert.Less(t, strings.Index(out, "Workspace memories:"), strings.Index(out, "This project's memories:"), "workspace memories render before the project's own")
-}
-
 func TestComposePrompt_NoMemoriesFallsBackGracefully(t *testing.T) {
 	out := ComposePrompt(PromptInput{RequestAuthor: "onik97", RequestBody: "@Agent go"})
 	assert.Contains(t, out, "no memories saved yet")
@@ -184,16 +168,6 @@ func TestFitMemoriesIndex_KeepsEverythingWhenItFits(t *testing.T) {
 	lines, truncated := fitMemoriesIndex(MemoriesIndex{Project: []MemoryItem{{Name: "a", WhenToUse: "b"}}}, 1000)
 	assert.False(t, truncated)
 	assert.Equal(t, []string{"This project's memories:", "- a: b"}, lines)
-}
-
-func TestFitMemoriesIndex_WorkspaceBeforeProject(t *testing.T) {
-	mem := MemoriesIndex{
-		Workspace: []MemoryItem{{Name: "w", WhenToUse: "x"}},
-		Project:   []MemoryItem{{Name: "a", WhenToUse: "b"}},
-	}
-	lines, truncated := fitMemoriesIndex(mem, 1000)
-	assert.False(t, truncated)
-	assert.Equal(t, []string{"Workspace memories:", "- w: x", "This project's memories:", "- a: b"}, lines)
 }
 
 func TestFitMemoriesIndex_DropsFromTheEndWhenOverBudget(t *testing.T) {

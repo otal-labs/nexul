@@ -189,7 +189,7 @@ func (s *Service) Update(ctx context.Context, workspaceID, id string, in UpdateI
 	p.Instructions = in.Instructions
 	p.Enabled = in.Enabled
 	p.ShowWhenStage = in.ShowWhenStage
-	p.ExcludedProjectIDs = normalizeIDs(in.ExcludedProjectIDs)
+	p.ExcludedProjectIDs = normalizeIDs(slices.Concat(in.ExcludedProjectIDs, s.unseenExclusions(ctx, p)))
 	p.UpdatedAt = s.now().UTC()
 	if err := p.Validate(); err != nil {
 		return nil, err
@@ -283,6 +283,17 @@ func (s *Service) getInWorkspace(ctx context.Context, workspaceID, id string) (*
 		return nil, fmt.Errorf("get play %s: %w", id, apperrs.ErrNotFound)
 	}
 	return p, nil
+}
+
+// unseenExclusions are the play's excluded projects its editor cannot open: they never saw them, so saving keeps them.
+func (s *Service) unseenExclusions(ctx context.Context, p *Play) []string {
+	var out []string
+	for _, projectID := range p.ExcludedProjectIDs {
+		if !s.perm.HasPermission(ctx, actorID(ctx), p.WorkspaceID, permissions.Member, resourceTypeProject, projectID) {
+			out = append(out, projectID)
+		}
+	}
+	return out
 }
 
 func (s *Service) require(ctx context.Context, workspaceID string, action permissions.Action) error {

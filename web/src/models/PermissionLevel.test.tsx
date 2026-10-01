@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import type { PermissionInfo } from "@/models/Permission";
 import {
+  accessSummary,
+  changeSummary,
+  domainsIn,
   domainsOf,
+  projectLevelLabel,
   levelOf,
   summarize,
   uniformLevelOf,
@@ -12,11 +16,11 @@ import {
 } from "@/models/PermissionLevel";
 
 const catalog: PermissionInfo[] = [
-  { value: "docs:read", label: "Read docs", domain: "docs", action: "read" },
-  { value: "docs:write", label: "Create and update docs", domain: "docs", action: "write" },
-  { value: "docs:delete", label: "Delete docs", domain: "docs", action: "delete" },
-  { value: "docs:thread", label: "See doc threads", domain: "docs", action: "thread" },
-  { value: "audit:read", label: "Read audit log", domain: "audit", action: "read" },
+  { value: "docs:read", label: "Read docs", domain: "docs", action: "read", area: "workspace" },
+  { value: "docs:write", label: "Create and update docs", domain: "docs", action: "write", area: "workspace" },
+  { value: "docs:delete", label: "Delete docs", domain: "docs", action: "delete", area: "workspace" },
+  { value: "docs:thread", label: "See doc threads", domain: "docs", action: "thread", area: "workspace" },
+  { value: "audit:read", label: "Read audit log", domain: "audit", action: "read", area: "workspace" },
 ];
 
 const domains = domainsOf(catalog);
@@ -59,8 +63,8 @@ describe("PermissionLevel", () => {
 
   it("summarises one line per touched domain when no level is shared by most", () => {
     const tickets = domainsOf([
-      { value: "tickets:read", label: "Read tickets", domain: "tickets", action: "read" },
-      { value: "tickets:write", label: "Create and update tickets", domain: "tickets", action: "write" },
+      { value: "tickets:read", label: "Read tickets", domain: "tickets", action: "read", area: "workspace" },
+      { value: "tickets:write", label: "Create and update tickets", domain: "tickets", action: "write", area: "workspace" },
     ])[0]!;
     expect(summarize([docs, audit, tickets], ["docs:read", "docs:write", "docs:delete", "docs:thread", "tickets:read"])).toEqual([
       "Docs · Delete + Thread",
@@ -75,5 +79,32 @@ describe("PermissionLevel", () => {
       "Everything else · Read",
     ]);
     expect(summarize([docs, audit], ["docs:read", "audit:read"])).toEqual(["Every domain · Read"]);
+  });
+
+  describe("project areas", () => {
+    const areaCatalog: PermissionInfo[] = [
+      { value: "tickets:read", label: "Read tickets", domain: "tickets", action: "read", area: "project" },
+      { value: "tickets:write", label: "Create and update tickets", domain: "tickets", action: "write", area: "project" },
+      { value: "chat:read", label: "Read chat", domain: "chat", action: "read", area: "workspace" },
+      { value: "repos:read", label: "Read pull requests", domain: "repos", action: "read", area: "project" },
+    ];
+    const areas = domainsIn(areaCatalog, ["project"]);
+
+    it("takes only the domains of the given areas", () => {
+      expect(areas.map((area) => area.domain)).toEqual(["tickets", "repos"]);
+    });
+
+    it("reads a project as its shared level, or Custom with a summary of each area once they differ", () => {
+      expect(projectLevelLabel(areas, ["tickets:read", "repos:read"])).toBe("Read");
+      expect(accessSummary(areas, ["tickets:read", "repos:read"])).toBe("every area Read");
+      expect(projectLevelLabel(areas, ["tickets:read", "tickets:write"])).toBe("Custom");
+      expect(accessSummary(areas, ["tickets:read", "tickets:write"])).toBe("tickets Write");
+      expect(accessSummary(areas, [])).toBe("None");
+    });
+
+    it("names what one change moved, for the toast", () => {
+      expect(changeSummary(areas, [], ["tickets:read", "tickets:write"])).toBe("tickets → Write");
+      expect(changeSummary(areas, [], ["tickets:read", "repos:read"])).toBe("every area → Read");
+    });
   });
 });

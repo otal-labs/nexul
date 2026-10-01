@@ -135,6 +135,7 @@ export const PersonPill = ({ field, label }: PersonPillProps) => {
   const [open, setOpen] = useState(false);
   // Submits the member's login verbatim; the pill shows their display name.
   const login = watch(field);
+  const projectId = watch("project_id");
   const person = usePerson(login ?? "");
   const name = login ? personLabel(person) : "";
 
@@ -149,6 +150,7 @@ export const PersonPill = ({ field, label }: PersonPillProps) => {
       </PopoverTrigger>
       <PopoverContent align="start" className="w-56 p-1.5">
         <PersonPickerList
+          projectId={projectId}
           onSelect={(next) => {
             setValue(field, next);
             setOpen(false);

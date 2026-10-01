@@ -3,6 +3,7 @@ import { Outlet, createBrowserRouter, RouterProvider, type RouteObject } from "r
 
 import { Layout } from "@/Layout";
 import { AreaGate } from "@/components/auth/AreaGate";
+import { ProjectRevokedGate } from "@/components/project/ProjectRevokedGate";
 import { OnboardingGate } from "@/components/auth/OnboardingGate";
 import { WorkspaceScope } from "@/components/workspace/WorkspaceScope";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
@@ -75,8 +76,6 @@ const workspaceRoutes: RouteObject[] = [
   { path: "docs/:docId", element: <DocsPage /> },
   { path: "memories", handle: gate("memories"), element: <MemoriesPage /> },
   { path: "memories/:projectToken/:memoryId/:tab?", handle: gate("memories"), element: <MemoriesPage /> },
-  // A workspace memory's own URL; a project memory reached by id alone moves to its project's URL.
-  ...staticTabs("memories/:memoryId", ["attachments", "versions"], "memories", <MemoriesPage />),
   { path: "board", handle: gate("tickets"), element: <BoardPage /> },
   { path: "board/:projectId", handle: gate("tickets"), element: <BoardPage /> },
   { path: "tickets/:ticketId/:tab?", handle: gate("tickets"), element: <TicketPage /> },
@@ -129,9 +128,11 @@ const buildRoutes = (loggedIn: boolean): RouteObject[] => [
                   children: [
                     {
                       element: (
-                        <AreaGate>
-                          <Outlet />
-                        </AreaGate>
+                        <ProjectRevokedGate>
+                          <AreaGate>
+                            <Outlet />
+                          </AreaGate>
+                        </ProjectRevokedGate>
                       ),
                       children: workspaceRoutes,
                     },

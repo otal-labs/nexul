@@ -277,16 +277,6 @@ describe("PlayRunDialog", () => {
     );
   });
 
-  it("groups workspace-scoped memories under a Workspace heading above the project's own", async () => {
-    const workspaceMemory = { id: "m-ws", title: "House style", when_to_use: "Always", always_included: false, project_id: "" };
-    mockApi(["plays:run", "tickets:write"], [workspaceMemory, ...memories]);
-    renderDialog();
-
-    expect(await screen.findByRole("checkbox", { name: "House style" })).toBeInTheDocument();
-    const headings = await screen.findAllByText(/^(Workspace|This project)$/);
-    expect(headings.map((h) => h.textContent)).toEqual(["Workspace", "This project"]);
-  });
-
   it("cannot pick an offline computer", async () => {
     const user = userEvent.setup();
     mockApi(["plays:run", "tickets:write"]);

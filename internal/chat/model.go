@@ -46,13 +46,15 @@ type Conversation struct {
 	CreatedBy       string    `json:"created_by"`
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`
-	// General marks a workspace's #general, which may be renamed but never deleted.
+	// General marks a workspace's #general, which may be renamed but never deleted, and is always public.
 	General bool `json:"general,omitempty"`
+	// Private marks a channel only its members read (ADR 0098); its members are its ParticipantIDs.
+	Private bool `json:"private"`
 	// AgentThreadID is the durable T3 thread id, reused across mentions; internal to the agent pipeline.
 	AgentThreadID string `json:"-"`
 	// AgentSyncedAt is how far the agent pipeline has sent history as turn context; only later messages are new.
 	AgentSyncedAt time.Time `json:"-"`
-	// ParticipantIDs is only populated for KindDM; channels' implicit membership makes the list misleading there.
+	// ParticipantIDs is populated for a DM and a private channel; a public channel's readers are implicit.
 	ParticipantIDs []string `json:"participant_ids,omitempty"`
 }
 

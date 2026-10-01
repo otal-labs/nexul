@@ -57,6 +57,7 @@ func roleUpdateTool(s *Service) mcptool.Tool {
 			"with clone_from_id it copies that custom role from its own workspace into workspace_id, renamed to \"<name> (copy)\" when the name is taken; "+
 			"with id it changes only the fields you send. "+
 			"workspace_list with the workspace's id lists its roles and the permission_catalog of valid permissions, and the Owner role can't be edited or cloned. "+
+			"A permission whose catalog area is project reaches only members whose every_project is role; a Restricted member's project levels come from account_update's project_access instead. "+
 			"Returns the role as it now stands; remove one with role_delete.",
 		mcptool.Hints{Local: true},
 		func(ctx context.Context, in roleUpdateIn) (any, error) {

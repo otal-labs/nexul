@@ -23,6 +23,12 @@ type Repo interface {
 	RenameConversation(ctx context.Context, id, name string, at time.Time, evts ...eventbus.OutboxEvent) error
 	// DeleteConversation removes the conversation with its messages, participants, read state, and attachments.
 	DeleteConversation(ctx context.Context, id string, evts ...eventbus.OutboxEvent) error
+	// SetChannelPrivate switches a channel and replaces its members in one transaction; a public channel keeps none.
+	SetChannelPrivate(ctx context.Context, id string, private bool, memberIDs []string, at time.Time, evts ...eventbus.OutboxEvent) error
+	// AddParticipants adds members to a conversation; someone already in it stays as they are.
+	AddParticipants(ctx context.Context, id string, userIDs []string, at time.Time, evts ...eventbus.OutboxEvent) error
+	// RemoveParticipants removes members from a conversation; someone not in it is skipped.
+	RemoveParticipants(ctx context.Context, id string, userIDs []string, evts ...eventbus.OutboxEvent) error
 	// GetChannelByName finds a workspace's channel by its name, ignoring case; apperrs.ErrNotFound if none exists yet.
 	GetChannelByName(ctx context.Context, workspaceID, name string) (*Conversation, error)
 	// GetTicketThread returns ErrNotFound if the thread hasn't been lazily created yet.
@@ -54,15 +60,12 @@ type Repo interface {
 
 	// MarkRead advances userID's read cursor on conversationID to at (upsert).
 	MarkRead(ctx context.Context, conversationID, userID string, at time.Time) error
-	// UnreadCounts includes a conversation with zero unread rather than omitting it; Kind/DocID let the
-	// use-case drop doc threads the caller lacks docs:thread on before the count reaches the caller.
+	// UnreadCounts includes a conversation with zero unread rather than omitting it.
 	UnreadCounts(ctx context.Context, workspaceID, userID string) ([]UnreadCount, error)
 }
 
 // UnreadCount is one conversation's unread state.
 type UnreadCount struct {
 	ConversationID string
-	Kind           Kind
-	DocID          string
 	Count          int
 }

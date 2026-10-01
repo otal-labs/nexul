@@ -31,9 +31,9 @@ func mustCall(t *testing.T, s *Service, name, args string) any {
 	return out
 }
 
-func mustMemory(t *testing.T, s *Service, projectID, workspaceID, title, whenToUse, body string, always bool) *Memory {
+func mustMemory(t *testing.T, s *Service, projectID, title, whenToUse, body string, always bool) *Memory {
 	t.Helper()
-	m, err := s.Create(testCtx(), projectID, workspaceID, title, whenToUse, body, always, "")
+	m, err := s.Create(testCtx(), projectID, title, whenToUse, body, always, "")
 	require.NoError(t, err)
 	return m
 }
@@ -54,7 +54,7 @@ func TestMCPTools_Surface(t *testing.T) {
 func TestMCPTools_Errors(t *testing.T) {
 	repo := newFakeRepo()
 	allowed, denied := newTestService(repo), newDenyService(repo)
-	m := mustMemory(t, allowed, "project-1", "", "Title", "when", "body", false)
+	m := mustMemory(t, allowed, "project-1", "Title", "when", "body", false)
 	interview, err := allowed.CreateInterview(testCtx(), "project-1", "")
 	require.NoError(t, err)
 	id := `"id":"` + m.ID + `"`
@@ -68,9 +68,15 @@ func TestMCPTools_Errors(t *testing.T) {
 	}{
 		{"get without id", allowed, testCtx(), "memory_get", `{}`, apperrs.ErrInvalid},
 		{"get a non-positive version", allowed, testCtx(), "memory_get", `{` + id + `,"version":-1}`, apperrs.ErrInvalid},
-		{"list with neither project nor workspace", allowed, testCtx(), "memory_list", `{}`, apperrs.ErrInvalid},
+		{"list without read", denied, testCtx(), "memory_list", `{"project_id":"project-1"}`, apperrs.ErrForbidden},
+		{"create without write", denied, testCtx(), "memory_create", `{"project_id":"project-1","title":"x"}`, apperrs.ErrForbidden},
+		{"clone without memories:clone", denied, testCtx(), "memory_create", `{"clone_from_id":"` + m.ID + `","project_id":"project-2"}`, apperrs.ErrForbidden},
+		{"list without a project", allowed, testCtx(), "memory_list", `{}`, apperrs.ErrInvalid},
+		{"list by workspace alone", allowed, testCtx(), "memory_list", `{"workspace_id":"workspace-1"}`, apperrs.ErrInvalid},
+		{"create without a project", allowed, testCtx(), "memory_create", `{"title":"Tone"}`, apperrs.ErrInvalid},
+		{"create in a workspace alone", allowed, testCtx(), "memory_create", `{"workspace_id":"workspace-1","title":"Tone"}`, apperrs.ErrInvalid},
+		{"clone into a workspace alone", allowed, testCtx(), "memory_create", `{"clone_from_id":"` + m.ID + `","workspace_id":"workspace-1"}`, apperrs.ErrInvalid},
 		{"create an ordinary memory without a title", allowed, testCtx(), "memory_create", `{"project_id":"project-1"}`, apperrs.ErrInvalid},
-		{"create at workspace scope without a workspace", allowed, testCtx(), "memory_create", `{"title":"Tone"}`, apperrs.ErrInvalid},
 		{"create an unknown kind", allowed, testCtx(), "memory_create", `{"project_id":"project-1","title":"x","kind":"notes"}`, apperrs.ErrInvalid},
 		{"clone with new content", allowed, testCtx(), "memory_create", `{"clone_from_id":"` + m.ID + `","project_id":"project-2","title":"x"}`, apperrs.ErrInvalid},
 		{"clone with nowhere to go", allowed, testCtx(), "memory_create", `{"clone_from_id":"` + m.ID + `"}`, apperrs.ErrInvalid},
@@ -86,9 +92,7 @@ func TestMCPTools_Errors(t *testing.T) {
 		{"revert to a missing version", allowed, testCtx(), "memory_update", `{` + id + `,"revert_to_version":9}`, apperrs.ErrNotFound},
 		{"delete a missing memory", allowed, testCtx(), "memory_delete", `{"id":"nope"}`, apperrs.ErrNotFound},
 		{"interview of a missing project", allowed, testCtx(), "memory_create", `{"project_id":"nope","kind":"interview"}`, apperrs.ErrNotFound},
-		{"list without read", denied, testCtx(), "memory_list", `{"project_id":"project-1"}`, apperrs.ErrForbidden},
 		{"get without read", denied, testCtx(), "memory_get", `{` + id + `}`, apperrs.ErrForbidden},
-		{"create without write", denied, testCtx(), "memory_create", `{"project_id":"project-1","title":"x"}`, apperrs.ErrForbidden},
 		{"update without access", denied, testCtx(), "memory_update", `{` + id + `,"title":"x"}`, apperrs.ErrForbidden},
 		{"delete without delete", denied, testCtx(), "memory_delete", `{` + id + `}`, apperrs.ErrForbidden},
 		{"template update without write", denied, testCtx(), "interview_template_update", `{"workspace_id":"workspace-1","body":"x"}`, apperrs.ErrForbidden},
@@ -104,7 +108,7 @@ func TestMCPTools_Errors(t *testing.T) {
 
 func TestMemoryUpdate_OmittedFieldsKeepTheirValues(t *testing.T) {
 	s := newTestService(newFakeRepo())
-	m := mustMemory(t, s, "project-1", "", "Title", "when deploying", "**v1**", true)
+	m := mustMemory(t, s, "project-1", "Title", "when deploying", "**v1**", true)
 
 	got := mustCall(t, s, "memory_update", `{"id":"`+m.ID+`","title":"Renamed"}`).(memoryResult)
 	assert.Equal(t, "Renamed", got.Title)
@@ -128,7 +132,7 @@ func TestMemoryUpdate_OmittedFieldsKeepTheirValues(t *testing.T) {
 
 func TestMemoryUpdate_RevertToVersion(t *testing.T) {
 	s := newTestService(newFakeRepo())
-	m := mustMemory(t, s, "project-1", "", "Title", "when", "v1", false)
+	m := mustMemory(t, s, "project-1", "Title", "when", "v1", false)
 	mustCall(t, s, "memory_update", `{"id":"`+m.ID+`","body":"v2"}`)
 
 	got := mustCall(t, s, "memory_update", `{"id":"`+m.ID+`","revert_to_version":1}`).(memoryResult)
@@ -162,11 +166,6 @@ func TestMemoryCreate(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, viaMCP, v.AuthorVia)
 	})
-	t.Run("a workspace memory", func(t *testing.T) {
-		got := mustCall(t, s, "memory_create", `{"workspace_id":"workspace-1","title":"Team tone"}`).(memoryResult)
-		assert.Empty(t, got.ProjectID)
-		assert.Equal(t, "workspace-1", got.WorkspaceID)
-	})
 	t.Run("the decisions log, once per project", func(t *testing.T) {
 		got := mustCall(t, s, "memory_create", `{"project_id":"project-2","kind":"decisions_log","body":"entry","always_included":true}`).(memoryResult)
 		assert.Equal(t, KindDecisionsLog, got.Kind)
@@ -182,7 +181,7 @@ func TestMemoryCreate(t *testing.T) {
 		assert.Equal(t, first.ID, again.ID)
 	})
 	t.Run("a clone into another project", func(t *testing.T) {
-		src := mustMemory(t, s, "project-1", "", "Source", "when", "body", false)
+		src := mustMemory(t, s, "project-1", "Source", "when", "body", false)
 		got := mustCall(t, s, "memory_create", `{"clone_from_id":"`+src.ID+`","project_id":"project-2"}`).(memoryResult)
 		assert.NotEqual(t, src.ID, got.ID)
 		assert.Equal(t, "project-2", got.ProjectID)
@@ -192,7 +191,7 @@ func TestMemoryCreate(t *testing.T) {
 
 func TestMemoryGet(t *testing.T) {
 	s := newTestService(newFakeRepo())
-	m := mustMemory(t, s, "project-1", "", "Title", "when", "v1", false)
+	m := mustMemory(t, s, "project-1", "Title", "when", "v1", false)
 	mustCall(t, s, "memory_update", `{"id":"`+m.ID+`","title":"Renamed","body":"# v2"}`)
 
 	got := mustCall(t, s, "memory_get", `{"id":"`+m.ID+`"}`).(memoryResult)
@@ -222,21 +221,20 @@ func TestVersionInfos_KeepsTheNewest(t *testing.T) {
 
 func TestMemoryList(t *testing.T) {
 	s := newTestService(newFakeRepo())
-	mustMemory(t, s, "project-1", "", "Project note", "when", "secret body", false)
-	mustMemory(t, s, "", "workspace-1", "Team tone", "always", "body", true)
+	mustMemory(t, s, "project-1", "Project note", "when", "secret body", false)
+	mustMemory(t, s, "project-1", "Team tone", "always", "body", true)
+	mustMemory(t, s, "project-2", "Elsewhere", "when", "body", false)
 
 	page := func(t *testing.T, args string) mcptool.Page[memoryListItem] {
 		t.Helper()
 		return mustCall(t, s, "memory_list", args).(mcptool.Page[memoryListItem])
 	}
-	t.Run("a project's list includes its workspace memories", func(t *testing.T) {
-		assert.Equal(t, 2, page(t, `{"project_id":"project-1"}`).Total)
-	})
-	t.Run("a workspace's list has only workspace memories", func(t *testing.T) {
-		p := page(t, `{"workspace_id":"workspace-1"}`)
-		require.Len(t, p.Items, 1)
-		assert.Equal(t, "Team tone", p.Items[0].Title)
-		assert.True(t, p.Items[0].AlwaysIncluded)
+	t.Run("a project's list has only its own memories", func(t *testing.T) {
+		p := page(t, `{"project_id":"project-1"}`)
+		assert.Equal(t, 2, p.Total)
+		for _, item := range p.Items {
+			assert.Equal(t, "project-1", item.ProjectID)
+		}
 	})
 	t.Run("items carry no body", func(t *testing.T) {
 		b, err := json.Marshal(page(t, `{"project_id":"project-1"}`))
@@ -252,7 +250,7 @@ func TestMemoryList(t *testing.T) {
 
 func TestMemoryDelete_ReturnsWhatItDeleted(t *testing.T) {
 	s := newTestService(newFakeRepo())
-	m := mustMemory(t, s, "project-1", "", "Title", "when", "body", false)
+	m := mustMemory(t, s, "project-1", "Title", "when", "body", false)
 	assert.Equal(t, mcptool.Gone(m.ID), mustCall(t, s, "memory_delete", `{"id":"`+m.ID+`"}`))
 	_, err := s.Get(testCtx(), m.ID)
 	require.ErrorIs(t, err, apperrs.ErrNotFound)

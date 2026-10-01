@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/otal-labs/nexul/internal/platform/colors"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 // Project is the organizational grouping inside a workspace; tickets belong to exactly one, ordered by Position.
@@ -193,6 +194,20 @@ type DeleteImpact struct {
 	Tickets  int `json:"tickets"`
 	Repos    int `json:"repos"`
 	Services int `json:"services"`
+	// RestrictedMembers lose access with the project; a signal for the confirmation, not a gate.
+	RestrictedMembers []RestrictedMember `json:"restricted_members"`
+}
+
+// RestrictedMember is a Restricted member holding access to a project, by id and the name People shows.
+type RestrictedMember struct {
+	UserID string `json:"user_id"`
+	Name   string `json:"name"`
+}
+
+// ProjectAccessEntry is one Restricted member's access to a project, as the actions their levels expand to.
+type ProjectAccessEntry struct {
+	RestrictedMember
+	Actions permissions.Set `json:"actions"`
 }
 
 // Kind values are part of the wire contract (ADR 0044) and are additive-only.
@@ -235,4 +250,13 @@ type Notification struct {
 	FolderID        string `json:"folder_id,omitempty"`
 	FolderName      string `json:"folder_name,omitempty"`
 	FolderIsDefault bool   `json:"folder_is_default,omitempty"`
+	// ProjectID is the subject's project as it is now, read at list time so a hidden project's notices drop out.
+	ProjectID string `json:"-"`
+}
+
+// UnreadGroup is how many unread notices one inbox holds about one project ("" for a subject with none).
+type UnreadGroup struct {
+	WorkspaceID string
+	ProjectID   string
+	Unread      int
 }

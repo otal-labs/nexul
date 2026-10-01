@@ -30,13 +30,14 @@ func ProjectTools(w *workspace.Service, t *tickets.Service, d DocFolders) []mcpt
 // projectDetail is everything an agent needs before filing or moving a ticket in a project.
 type projectDetail struct {
 	*workspace.Project
-	Repositories []workspace.RepoRef    `json:"repositories"`
-	Statuses     []statusResult         `json:"statuses"`
-	Categories   []categoryResult       `json:"categories"`
-	TicketTypes  []ticketTypeResult     `json:"ticket_types"`
-	Labels       []labelResult          `json:"labels"`
-	DocFolders   []docFolderResult      `json:"doc_folders"`
-	DeleteImpact workspace.DeleteImpact `json:"delete_impact"`
+	Repositories []workspace.RepoRef            `json:"repositories"`
+	Statuses     []statusResult                 `json:"statuses"`
+	Categories   []categoryResult               `json:"categories"`
+	TicketTypes  []ticketTypeResult             `json:"ticket_types"`
+	Labels       []labelResult                  `json:"labels"`
+	DocFolders   []docFolderResult              `json:"doc_folders"`
+	DeleteImpact workspace.DeleteImpact         `json:"delete_impact"`
+	Access       []workspace.ProjectAccessEntry `json:"access"`
 }
 
 type docFolderResult struct {
@@ -84,8 +85,10 @@ func projectGetTool(w *workspace.Service, t *tickets.Service, d DocFolders) mcpt
 			"(each with the body_template a new ticket fills), labels with this project's colors, repositories "+
 			"(each with its role, app or tests), where its tests live, its doc folders (the one-level groups every "+
 			"doc lives in exactly one of, the default Main first, where a new doc goes unless doc_create names "+
-			"another), and delete_impact, the tickets, repositories, "+
-			"and services that block deleting it. Call it before ticket_create or ticket_update to get valid "+
+			"another), delete_impact, the tickets, repositories, "+
+			"and services that block deleting it and the Restricted members who lose access with it, and access, the "+
+			"Restricted members who may open it with the actions they hold, filled only when you hold members:write in "+
+			"its workspace and empty otherwise; account_update changes that access. Call it before ticket_create or ticket_update to get valid "+
 			"status, type, and category ids, and before doc_create or doc_update to get folder ids; change any of "+
 			"these with project_update. Use project_list to find a project's id.",
 		mcptool.Hints{ReadOnly: true, Local: true},
@@ -115,8 +118,20 @@ func projectView(ctx context.Context, w *workspace.Service, t *tickets.Service, 
 	if d.DocFolders, err = projectDocFolders(ctx, folders, id); err != nil {
 		return d, err
 	}
-	d.DeleteImpact, err = w.DeleteImpact(ctx, id)
+	if d.DeleteImpact, err = w.DeleteImpact(ctx, id); err != nil {
+		return d, err
+	}
+	d.Access, err = projectAccess(ctx, w, id)
 	return d, err
+}
+
+// projectAccess is empty rather than an error for a caller without members:write, so project_get still answers.
+func projectAccess(ctx context.Context, w *workspace.Service, id string) ([]workspace.ProjectAccessEntry, error) {
+	entries, err := w.ProjectAccess(ctx, id)
+	if errors.Is(err, apperrs.ErrForbidden) {
+		return []workspace.ProjectAccessEntry{}, nil
+	}
+	return entries, err
 }
 
 // getProject names the tool that lists projects when the one asked for is missing.

@@ -36,6 +36,22 @@ type MemberRepo interface {
 	SetOverrides(ctx context.Context, workspaceID, userID string, allow, deny permissions.Set, events ...eventbus.OutboxEvent) error
 	// ListAllMemberships returns every membership on the instance with its workspace, role, and overrides.
 	ListAllMemberships(ctx context.Context) ([]*TeamMembership, error)
+	ProjectAccessRepo
+}
+
+// ProjectAccessRepo persists Every project and Project access (ADR 0097); Project access rows are permission
+// overwrites with resource_type "project" (ADR 0042).
+type ProjectAccessRepo interface {
+	// Member returns userID's membership of workspaceID, or apperrs.ErrNotFound.
+	Member(ctx context.Context, workspaceID, userID string) (*Member, error)
+	// SetRestricted switches userID's Every project row; their Project access rows are kept either way.
+	SetRestricted(ctx context.Context, workspaceID, userID string, restricted bool, events ...eventbus.OutboxEvent) error
+	// ProjectAccess lists userID's Project access in workspaceID's projects, in project order.
+	ProjectAccess(ctx context.Context, workspaceID, userID string) ([]*ProjectAccess, error)
+	// SetProjectAccess replaces userID's levels on projectID; an empty allow deletes the row.
+	SetProjectAccess(ctx context.Context, projectID, userID string, allow permissions.Set, events ...eventbus.OutboxEvent) error
+	// ListAllProjectAccess lists every Project access row on the instance, in project order.
+	ListAllProjectAccess(ctx context.Context) ([]*ProjectAccess, error)
 }
 
 // InviteRepo is the consumer-side persistence contract for pending workspace invites.
@@ -101,6 +117,15 @@ type AccountGate interface {
 type WorkspacePermissionGate interface {
 	// WorkspacePermissions returns the workspace-scoped action names userID holds in workspaceID.
 	WorkspacePermissions(ctx context.Context, userID, workspaceID string) []string
+}
+
+// ProjectGate reads where a project lives and what someone holds inside it, without tenancy importing workspace or
+// access (ADR 0017).
+type ProjectGate interface {
+	// ProjectWorkspace returns the workspace projectID belongs to, or apperrs.ErrNotFound.
+	ProjectWorkspace(ctx context.Context, projectID string) (string, error)
+	// ProjectPermissions is every action userID holds inside projectID; opens is false when it is hidden from them.
+	ProjectPermissions(ctx context.Context, userID, projectID string) (actions []string, opens bool)
 }
 
 // ChannelGate creates a new workspace's #general channel without tenancy importing chat (ADR 0017).

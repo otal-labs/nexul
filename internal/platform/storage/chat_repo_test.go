@@ -472,6 +472,8 @@ type allowAll struct{}
 
 func (allowAll) Require(context.Context, string, permissions.Action) error { return nil }
 
+func (allowAll) RequireProject(context.Context, string, permissions.Action) error { return nil }
+
 func outboxPayload(t *testing.T, s *Store, topic string) []map[string]any {
 	t.Helper()
 	rows, err := s.db.QueryContext(t.Context(), `SELECT payload FROM outbox WHERE topic = ? ORDER BY created_at`, topic)

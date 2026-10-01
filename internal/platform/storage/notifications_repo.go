@@ -62,12 +62,16 @@ func (r *NotificationsRepo) List(ctx context.Context, userID, workspaceID string
 	return toNotifications(rows), nil
 }
 
-func (r *NotificationsRepo) UnreadCount(ctx context.Context, userID, workspaceID string) (int, error) {
-	n, err := r.q.CountUnreadNotifications(ctx, sqlcgen.CountUnreadNotificationsParams{UserID: userID, WorkspaceID: workspaceID})
+func (r *NotificationsRepo) UnreadByProject(ctx context.Context, userID, workspaceID string) ([]workspace.UnreadGroup, error) {
+	rows, err := r.q.CountUnreadNotificationsByProject(ctx, sqlcgen.CountUnreadNotificationsByProjectParams{UserID: userID, WorkspaceID: workspaceID})
 	if err != nil {
-		return 0, fmt.Errorf("unread count for %s: %w", userID, err)
+		return nil, fmt.Errorf("unread count for %s: %w", userID, err)
 	}
-	return int(n), nil
+	out := make([]workspace.UnreadGroup, len(rows))
+	for i, row := range rows {
+		out[i] = workspace.UnreadGroup{WorkspaceID: row.WorkspaceID, ProjectID: row.ProjectID, Unread: int(row.Unread)}
+	}
+	return out, nil
 }
 
 func (r *NotificationsRepo) MarkRead(ctx context.Context, userID, id string, at time.Time) error {
@@ -127,6 +131,7 @@ func toNotifications(rows []sqlcgen.ListNotificationsRow) []*workspace.Notificat
 	for _, row := range rows {
 		n := toNotification(row.Notification)
 		n.FolderID, n.FolderName, n.FolderIsDefault = row.FolderID, row.FolderName, row.FolderIsDefault != 0
+		n.ProjectID = row.ProjectID
 		out = append(out, n)
 	}
 	return out

@@ -53,7 +53,7 @@ var scopeRules = map[string]scopeRule{
 	"workspace.member.updated": workspaceScope, "workspace.updated": workspaceScope, "role.updated": workspaceScope,
 	"interview_template.updated": workspaceScope, "memory.deleted": workspaceScope, "play.deleted": workspaceScope,
 	"play.run_started": workspaceScope, "play.run_waiting": workspaceScope, "play.run_finished": workspaceScope,
-	"chat.conversation.updated": workspaceScope, "chat.conversation.deleted": workspaceScope,
+	"chat.conversation.updated": workspaceScope, "chat.conversation.deleted": workspaceScope, "chat.conversation.members_changed": workspaceScope,
 	"play.created": nestedWorkspaceScope("play"), "play.updated": nestedWorkspaceScope("play"),
 	"memory.created": nestedWorkspaceScope("memory"), "memory.updated": nestedWorkspaceScope("memory"),
 	"chat.conversation.created": nestedWorkspaceScope("conversation"),
@@ -323,7 +323,7 @@ func pushScope(_ context.Context, _ *storage.EventWorkspacesRepo, raw json.RawMe
 	return ids, false, nil
 }
 
-// grantScope reads where the changed grant applies: a workspace, or the doc or play it was set on.
+// grantScope reads where the changed grant applies: a workspace, or the doc, play, or project it was set on.
 func grantScope(ctx context.Context, l *storage.EventWorkspacesRepo, raw json.RawMessage) ([]string, bool, error) {
 	var p struct {
 		ResourceType string `json:"resource_type"`
@@ -339,6 +339,8 @@ func grantScope(ctx context.Context, l *storage.EventWorkspacesRepo, raw json.Ra
 		return one(l.OfDoc(ctx, p.ResourceID))
 	case "play":
 		return one(l.OfPlay(ctx, p.ResourceID))
+	case "project":
+		return one(l.OfProject(ctx, p.ResourceID))
 	}
 	return nil, true, nil
 }

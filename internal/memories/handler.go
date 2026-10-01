@@ -19,9 +19,7 @@ func NewHandler(svc *Service) *Handler {
 }
 
 type saveMemoryRequest struct {
-	// ProjectID empty makes the memory workspace-scoped (ADR 0059); WorkspaceID is then required and ignored otherwise.
 	ProjectID      string `json:"project_id"`
-	WorkspaceID    string `json:"workspace_id"`
 	Title          string `json:"title"`
 	WhenToUse      string `json:"when_to_use"`
 	Body           string `json:"body"`
@@ -31,9 +29,7 @@ type saveMemoryRequest struct {
 }
 
 type cloneMemoryRequest struct {
-	// ProjectID empty clones to the workspace (ADR 0059); WorkspaceID is then required and ignored otherwise.
-	ProjectID   string `json:"project_id"`
-	WorkspaceID string `json:"workspace_id"`
+	ProjectID string `json:"project_id"`
 }
 
 // Routes returns the memories REST endpoints. Browser calls never carry MCP provenance, so every use-case
@@ -61,7 +57,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	m, err := h.svc.CreateWithKind(r.Context(), req.Kind, req.ProjectID, req.WorkspaceID, req.Title, req.WhenToUse, req.Body, req.AlwaysIncluded, "")
+	m, err := h.svc.CreateWithKind(r.Context(), req.Kind, req.ProjectID, req.Title, req.WhenToUse, req.Body, req.AlwaysIncluded, "")
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -166,7 +162,7 @@ func (h *Handler) clone(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	m, err := h.svc.Clone(r.Context(), r.PathValue("id"), req.ProjectID, req.WorkspaceID)
+	m, err := h.svc.Clone(r.Context(), r.PathValue("id"), req.ProjectID)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

@@ -145,7 +145,7 @@ func TestHandler_Catalog_ReturnsTheWholeGridInOrder(t *testing.T) {
 	}
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
 	assert.Equal(t, permissions.Catalog(), body.Permissions)
-	assert.Equal(t, permissions.Info{Value: "docs:read", Label: "Read docs", Domain: "docs", Action: "read"}, body.Permissions[0])
+	assert.Equal(t, permissions.Info{Value: "docs:read", Label: "Read docs", Domain: "docs", Action: "read", Area: permissions.AreaProject}, body.Permissions[0])
 }
 
 func TestHandler_SetGrants(t *testing.T) {

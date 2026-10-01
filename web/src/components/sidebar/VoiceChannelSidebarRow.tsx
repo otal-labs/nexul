@@ -17,7 +17,7 @@ interface VoiceChannelSidebarRowProps {
 // One click joins the call and opens the channel's text chat; joining an already-joined channel is a no-op.
 export const VoiceChannelSidebarRow = ({ conversation, occupants, unreadCount }: VoiceChannelSidebarRowProps) => {
   const joinCall = useVoiceCallStore((s) => s.join);
-  const { onRename, onDelete } = useChannelRowActions(conversation);
+  const { onSettings, onRename, onDelete, settingsDialog } = useChannelRowActions(conversation);
   const label = conversation.name ?? "Voice channel";
   return (
     <div className="flex flex-col gap-0.5">
@@ -25,11 +25,17 @@ export const VoiceChannelSidebarRow = ({ conversation, occupants, unreadCount }:
         conversationId={conversation.id}
         label={label}
         icon={Volume2}
+        isPrivate={conversation.private}
         unreadCount={unreadCount}
         onClick={() => void joinCall(conversation.id, channelMention(conversation))}
-        actions={(onRename || onDelete) && <RowActions itemLabel={label} onRename={onRename} onDelete={onDelete} />}
+        actions={
+          (onSettings || onRename || onDelete) && (
+            <RowActions itemLabel={label} onSettings={onSettings} onRename={onRename} onDelete={onDelete} />
+          )
+        }
       />
       <VoiceOccupantList occupants={occupants} />
+      {settingsDialog}
     </div>
   );
 };

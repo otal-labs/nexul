@@ -86,6 +86,8 @@ type world struct {
 	types      rows[*workspace.TicketType]
 	reviews    map[string][]*codereview.CodeReview
 	owner      bool
+	denied     permissions.Action
+	access     []workspace.ProjectAccessEntry
 	target     tickets.TestTarget
 	fail       string
 }
@@ -542,6 +544,10 @@ func (r projectRepo) CountRepos(_ context.Context, projectID string) (int, error
 
 func (r projectRepo) CountServices(context.Context, string) (int, error) { return 0, nil }
 
+func (r projectRepo) ListRestrictedAccess(context.Context, string) ([]workspace.ProjectAccessEntry, error) {
+	return r.w.access, nil
+}
+
 func (r projectRepo) AddRepo(_ context.Context, projectID string, ref workspace.RepoRef) error {
 	r.w.repos[projectID] = append(r.w.repos[projectID], ref)
 	return nil
@@ -682,7 +688,7 @@ func (r typeRepo) CountTickets(_ context.Context, id string) (int, error) {
 type ownerGate struct{ w *world }
 
 func (g ownerGate) Require(_ context.Context, _ string, action permissions.Action) error {
-	if !g.w.owner && action != permissions.Member {
+	if (!g.w.owner && action != permissions.Member) || (g.w.denied != "" && action == g.w.denied) {
 		return apperrs.ErrForbidden
 	}
 	return nil

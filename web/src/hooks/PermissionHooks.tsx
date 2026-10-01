@@ -1,9 +1,11 @@
+import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
 import { getDocsKey } from "@/hooks/DocHooks";
-import type { PermissionGrant, PermissionInfo, PermissionUser, SetPermissionsInput } from "@/models/Permission";
+import { PermissionArea, type PermissionGrant, type PermissionInfo, type PermissionUser, type SetPermissionsInput } from "@/models/Permission";
+import { domainsIn, type PermissionDomain } from "@/models/PermissionLevel";
 
 const getGrantsKey = (resourceType: string, resourceId: string) => ["getGrants", resourceType, resourceId];
 const getPermissionUsersKey = "getPermissionUsers";
@@ -37,6 +39,12 @@ export const useFetchPermissionCatalog = () =>
       (await api.get<{ permissions: PermissionInfo[] }>("/api/permissions/catalog")).data.permissions,
     staleTime: Infinity,
   });
+
+// The project areas Project access is set in, from the catalog; empty until it arrives.
+export const useProjectAreas = (): PermissionDomain[] => {
+  const { data: catalog } = useFetchPermissionCatalog();
+  return useMemo(() => domainsIn(catalog ?? [], [PermissionArea.Project]), [catalog]);
+};
 
 type PlayPermissionsInput = Extract<SetPermissionsInput, { resource_type: "play" }>;
 

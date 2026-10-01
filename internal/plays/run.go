@@ -21,8 +21,9 @@ import (
 
 // Resource types the access overwrite table keys per-resource permissions on; they mirror access's own.
 const (
-	resourceTypePlay = "play"
-	resourceTypeDoc  = "doc"
+	resourceTypePlay    = "play"
+	resourceTypeDoc     = "doc"
+	resourceTypeProject = "project"
 )
 
 // HarnessSilenceTimeout ends a run whose harness has sent nothing for this long; a run that keeps reporting has no ceiling.
@@ -426,6 +427,9 @@ func (r *Runner) checkPlay(ctx context.Context, starter string, play *Play, proj
 	}
 	if !play.Enabled {
 		return fmt.Errorf("%w: play %q is disabled", apperrs.ErrInvalid, play.Label)
+	}
+	if !r.perm.HasPermission(ctx, starter, workspaceID, permissions.Member, resourceTypeProject, projectID) {
+		return fmt.Errorf("get project %s: %w", projectID, apperrs.ErrNotFound)
 	}
 	if slices.Contains(play.ExcludedProjectIDs, projectID) {
 		return fmt.Errorf("%w: play %q is excluded from this project", apperrs.ErrInvalid, play.Label)
@@ -950,10 +954,19 @@ func (r *Runner) GetTrail(ctx context.Context, id string) (*Trail, error) {
 	if err != nil {
 		return nil, fmt.Errorf("get trail %s: %w", id, err)
 	}
+	if !r.opensProject(ctx, t) {
+		return nil, fmt.Errorf("get trail %s: %w", id, apperrs.ErrNotFound)
+	}
 	if err := r.requireTrailAccess(ctx, t.WorkspaceID, t.TargetType, t.TargetID); err != nil {
 		return nil, err
 	}
 	return t, nil
+}
+
+// opensProject keeps a trail on a project its reader can no longer open out of every read; the row stays, so access
+// given back brings it back.
+func (r *Runner) opensProject(ctx context.Context, t *Trail) bool {
+	return t.ProjectID == "" || r.perm.HasPermission(ctx, actorID(ctx), t.WorkspaceID, permissions.Member, resourceTypeProject, t.ProjectID)
 }
 
 // ListTrails returns a target's trails newest first, under the same gate as GetTrail.
@@ -966,6 +979,7 @@ func (r *Runner) ListTrails(ctx context.Context, targetType TargetType, targetID
 	if err != nil {
 		return nil, fmt.Errorf("list trails for %s %s: %w", targetType, targetID, err)
 	}
+	list = slices.DeleteFunc(list, func(t *Trail) bool { return !r.opensProject(ctx, t) })
 	if len(list) == 0 {
 		return []*Trail{}, nil
 	}
@@ -1002,7 +1016,7 @@ func (r *Runner) ActiveTrails(ctx context.Context, targetType TargetType, target
 			ok = r.perm.HasPermission(ctx, actor, t.WorkspaceID, permissions.PlaysRead, "", "")
 			readable[t.WorkspaceID] = ok
 		}
-		if ok {
+		if ok && r.opensProject(ctx, t) {
 			out[t.TargetID] = t.ID
 		}
 	}

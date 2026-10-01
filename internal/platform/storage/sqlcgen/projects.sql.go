@@ -172,6 +172,53 @@ func (q *Queries) ListProjectRepos(ctx context.Context, projectID string) ([]Lis
 	return items, nil
 }
 
+const listProjectRestrictedAccess = `-- name: ListProjectRestrictedAccess :many
+SELECT po.user_id, u.login, u.name, COALESCE(u.display_name, '') AS display_name, po.allow
+FROM permission_overwrites po
+JOIN projects p ON p.id = po.resource_id
+JOIN workspace_members m ON m.workspace_id = p.workspace_id AND m.user_id = po.user_id
+JOIN users u ON u.id = po.user_id
+WHERE po.resource_type = 'project' AND po.resource_id = ? AND m.restricted = 1 AND po.allow != '[]'
+ORDER BY u.login, u.id
+`
+
+type ListProjectRestrictedAccessRow struct {
+	UserID      string
+	Login       string
+	Name        string
+	DisplayName string
+	Allow       string
+}
+
+func (q *Queries) ListProjectRestrictedAccess(ctx context.Context, resourceID string) ([]ListProjectRestrictedAccessRow, error) {
+	rows, err := q.db.QueryContext(ctx, listProjectRestrictedAccess, resourceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListProjectRestrictedAccessRow
+	for rows.Next() {
+		var i ListProjectRestrictedAccessRow
+		if err := rows.Scan(
+			&i.UserID,
+			&i.Login,
+			&i.Name,
+			&i.DisplayName,
+			&i.Allow,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listProjectsByWorkspace = `-- name: ListProjectsByWorkspace :many
 SELECT id, name, prefix, position, workspace_id, created_at, updated_at, icon, tests_location FROM projects WHERE workspace_id = ? ORDER BY position, id
 `

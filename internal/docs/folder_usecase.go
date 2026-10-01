@@ -116,9 +116,6 @@ func (s *Service) MoveToFolder(ctx context.Context, docID, folderID string) (*Do
 		return nil, fmt.Errorf("move doc %s: %w", docID, err)
 	}
 	if err := s.require(ctx, d.ID, permissions.DocsWrite); err != nil {
-		if memberErr := s.requireProject(ctx, d.ProjectID, permissions.Member); memberErr != nil {
-			return nil, memberErr
-		}
 		return nil, err
 	}
 	to, err := s.folderIn(ctx, d.ProjectID, folderID)

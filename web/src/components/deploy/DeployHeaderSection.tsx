@@ -13,9 +13,9 @@ interface DeployHeaderSectionProps {
 
 // Detail-page header shape: back link, mono id plus status, title, one muted meta line, hairline.
 export const DeployHeaderSection = ({ deploy }: DeployHeaderSectionProps) => {
-  const canOpenStack = useAreaAccess()?.("stacks") ?? false;
   const wsPath = useWorkspacePath();
   const { data: stack } = useFetchStack(deploy.stack_id);
+  const canOpenStack = useAreaAccess(stack?.project_id || undefined)?.("stacks") ?? false;
   const branch = stack?.build_source?.branch;
 
   return (

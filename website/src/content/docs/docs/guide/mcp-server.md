@@ -44,12 +44,24 @@ need `instance:read` to see and `instance:write` to act on, held in any
 workspace, as they do in the web app.
 
 `account_list` is the Team: every account with its status and, per workspace
-it belongs to, its role, its overrides, and whether you may change that
-access. A holder of `accounts:read` in any workspace sees everyone; anyone else
-sees only the workspaces where they manage members and the people in them. `account_update` changes the status, and through `workspaces` and
-`remove_workspace_ids` adds an account to a workspace, changes its role or
-overrides there, or takes it out; each workspace change needs `members:write`
-in that workspace.
+it belongs to, its role, its overrides, its Every project row
+(`every_project`: `role` or `none`), and whether you may change that access.
+Under `none` the person is a Restricted member, and `projects` lists the
+Project access they hold, on projects you can open yourself. A holder of
+`accounts:read` in any workspace sees everyone; anyone else sees only the
+workspaces where they manage members and the people in them. `account_update`
+changes the status, and through `workspaces` and `remove_workspace_ids` adds an
+account to a workspace, changes its role, overrides, `every_project`, or
+`project_access` (the levels on each project named; an empty `allow` takes the
+project away) there, or takes it out; each workspace change needs
+`members:write` in that workspace, and nobody grants a level they don't hold.
+`invitation_create` takes the same `every_project` and `project_access` per
+grant, and `project_get` returns `access`, the Restricted members who may open
+the project, to a holder of `members:write` in its workspace.
+
+A Restricted member sees only the projects they hold access to, and so do
+their tokens and paired agents: anything in another project reads as not
+found.
 
 `computer_pair` takes the one-time token `t3 pair` prints. With `id` it pairs
 a computer tunnel over its hostname, once `computer_list` with that id reports

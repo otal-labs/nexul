@@ -97,3 +97,15 @@ The gateway derives a scoped token's scope from the path, so `POST /api/chat/doc
 ## Logs of a missing container loop as "Runner offline"
 
 When a service's container does not exist, `docker logs` fails with a daemon error line that has no timestamp. The stream ends, and the web view and the phone reconnect. Each reconnect repeats the error lines, because deduplication keys on the timestamp. The marker also reads "Runner offline, reconnecting…", which is wrong: the runner is online and the container is missing. The server should send a distinct end reason for a missing container, and both clients should stop retrying on it and say so.
+
+## A doc reader sees "Add attachment"
+
+The doc page shows the attachment button to someone without `docs:write`; the server refuses the upload with 403, so nothing leaks, but the button should hide like the other write actions.
+
+## Removal from a private voice channel leaves the person in the call
+
+Removing someone from a private voice channel, or switching it private without them, drops it from their sidebar but does not end their LiveKit participation, so a call already in progress keeps them in it. `internal/voice` consumes `chat.conversation.deleted` to end rooms; it should also consume `chat.conversation.members_changed` and remove the `removed_user_ids` from the room. The web cannot do it client-side without also kicking the Owner, who reads every private channel.
+
+## Private channel messages reach workspace automations and integrations
+
+Message events from a private channel are delivered to workspace-scoped automations and integration subscriptions the same way DMs already are, so a private channel is private from people but not from installed integrations. Decide whether a delivery should carry the conversation's audience, or whether private-channel and DM messages leave the integration feed.

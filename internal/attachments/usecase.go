@@ -25,20 +25,37 @@ type AccessChecker interface {
 	Can(ctx context.Context, userID, docID string, action permissions.Action) (bool, error)
 }
 
-// MemoryAccessChecker lets attachments check the memories domain's workspace-scoped permission bits for
-// memory-owned files (ADR 0017: attachments never imports memories); memoryID resolves to a workspace on
-// the other side of the gate.
+// MemoryAccessChecker lets attachments check the memories domain's permission bits for memory-owned files
+// (ADR 0017: attachments never imports memories); memoryID resolves to its project on the other side of the gate.
 type MemoryAccessChecker interface {
 	Can(ctx context.Context, userID, memoryID string, action permissions.Action) (bool, error)
 }
 
+// ConversationReader checks a conversation-owned file through reading the conversation (ADR 0098).
+type ConversationReader interface {
+	RequireRead(ctx context.Context, conversationID string) error
+}
+
+// TicketAccess lets attachments check a ticket's own bits, in its project, for ticket-owned files (ADR 0017).
+type TicketAccess interface {
+	RequireTicket(ctx context.Context, ticketID string, action permissions.Action) error
+}
+
 // Service runs permission checks so HTTP and any later MCP adapter inherit them (ADR 0019).
 type Service struct {
-	repo         Repo
-	access       AccessChecker
-	memoryAccess MemoryAccessChecker
-	now          func() time.Time
+	repo          Repo
+	access        AccessChecker
+	memoryAccess  MemoryAccessChecker
+	conversations ConversationReader
+	tickets       TicketAccess
+	now           func() time.Time
 }
+
+// SetConversations wires the conversation read check; unset, a conversation's files are refused.
+func (s *Service) SetConversations(c ConversationReader) { s.conversations = c }
+
+// SetTicketAccess wires the ticket check; unset, a ticket's files are refused.
+func (s *Service) SetTicketAccess(t TicketAccess) { s.tickets = t }
 
 // NewService wires the attachments use-cases over the given repo, doc access checker, and memory access checker.
 func NewService(repo Repo, access AccessChecker, memoryAccess MemoryAccessChecker) *Service {
@@ -125,33 +142,25 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-// requireOwner needs only an authenticated user for ticket/conversation owners (workspace/chat-wide perms).
+// requireOwner checks a conversation owner through reading the conversation and a ticket owner in its project.
 // docAction gates a doc owner via the per-doc AccessChecker; memoryAction gates a memory owner via the
-// workspace-scoped MemoryAccessChecker (memories has no per-resource overwrite grid, unlike docs).
+// MemoryAccessChecker on the memory's project (memories has no per-resource overwrite grid, unlike docs).
 func (s *Service) requireOwner(ctx context.Context, owner Owner, docAction, memoryAction permissions.Action) (identity.Actor, error) {
 	actor, ok := identity.ActorFromCtx(ctx)
 	if !ok || actor.ID == "" {
 		return identity.Actor{}, fmt.Errorf("%w: an authenticated user is required", apperrs.ErrUnauthorized)
 	}
-	set := 0
-	for _, id := range []string{owner.DocID, owner.TicketID, owner.ConversationID, owner.MemoryID} {
-		if id != "" {
-			set++
-		}
-	}
-	if set != 1 {
+	if ownersSet(owner) != 1 {
 		return identity.Actor{}, fmt.Errorf("%w: exactly one of doc_id, ticket_id, conversation_id, or memory_id is required", apperrs.ErrInvalid)
 	}
 	if owner.MemoryID != "" {
-		// Fail closed: a service without a wired memory access checker must deny, never silently allow.
-		if s.memoryAccess == nil {
-			return identity.Actor{}, fmt.Errorf("%w: no %s permission on memory %s", apperrs.ErrForbidden, memoryAction, owner.MemoryID)
-		}
-		allowed, err := s.memoryAccess.Can(ctx, actor.ID, owner.MemoryID, memoryAction)
-		if err != nil || !allowed {
-			return identity.Actor{}, fmt.Errorf("%w: no %s permission on memory %s", apperrs.ErrForbidden, memoryAction, owner.MemoryID)
-		}
-		return actor, nil
+		return actor, s.requireMemory(ctx, actor.ID, owner.MemoryID, memoryAction)
+	}
+	if owner.ConversationID != "" {
+		return actor, s.requireConversation(ctx, owner.ConversationID)
+	}
+	if owner.TicketID != "" {
+		return actor, s.requireTicket(ctx, owner.TicketID, docAction)
 	}
 	if owner.DocID == "" {
 		return actor, nil
@@ -165,6 +174,49 @@ func (s *Service) requireOwner(ctx context.Context, owner Owner, docAction, memo
 		return identity.Actor{}, fmt.Errorf("%w: no %s permission on doc %s", apperrs.ErrForbidden, docAction, owner.DocID)
 	}
 	return actor, nil
+}
+
+func ownersSet(owner Owner) int {
+	set := 0
+	for _, id := range []string{owner.DocID, owner.TicketID, owner.ConversationID, owner.MemoryID} {
+		if id != "" {
+			set++
+		}
+	}
+	return set
+}
+
+// requireMemory fails closed: a service without a wired memory access checker must deny, never silently allow.
+func (s *Service) requireMemory(ctx context.Context, userID, memoryID string, action permissions.Action) error {
+	if s.memoryAccess == nil {
+		return fmt.Errorf("%w: no %s permission on memory %s", apperrs.ErrForbidden, action, memoryID)
+	}
+	allowed, err := s.memoryAccess.Can(ctx, userID, memoryID, action)
+	if err != nil || !allowed {
+		return fmt.Errorf("%w: no %s permission on memory %s", apperrs.ErrForbidden, action, memoryID)
+	}
+	return nil
+}
+
+// requireConversation fails closed when no conversation read check is wired.
+func (s *Service) requireConversation(ctx context.Context, conversationID string) error {
+	if s.conversations == nil {
+		return fmt.Errorf("%w: no read check for conversation %s", apperrs.ErrForbidden, conversationID)
+	}
+	return s.conversations.RequireRead(ctx, conversationID)
+}
+
+// requireTicket reads a ticket's file through tickets:read and changes one through tickets:write, so a ticket in a
+// hidden project keeps its files hidden too.
+func (s *Service) requireTicket(ctx context.Context, ticketID string, docAction permissions.Action) error {
+	action := permissions.TicketsWrite
+	if docAction == permissions.DocsRead {
+		action = permissions.TicketsRead
+	}
+	if s.tickets == nil {
+		return fmt.Errorf("%w: no %s permission on ticket %s", apperrs.ErrForbidden, action, ticketID)
+	}
+	return s.tickets.RequireTicket(ctx, ticketID, action)
 }
 
 // ListOwnerAttachmentIDs returns an owner's attachment ids with no permission check; a trusted cross-domain

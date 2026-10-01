@@ -1,4 +1,4 @@
-import type { PermissionInfo } from "@/models/Permission";
+import type { PermissionArea, PermissionInfo } from "@/models/Permission";
 
 // Read, write, delete stack: each level grants every action before it, so a domain is one choice, not three boxes.
 const LEVEL_ACTIONS = ["read", "write", "delete"];
@@ -99,4 +99,44 @@ export const summarize = (domains: PermissionDomain[], value: string[]): string[
   if (base === 0) return exceptions;
   const rest = exceptions.length === 0 ? "Every domain" : "Everything else";
   return [...exceptions, `${rest} · ${levelName(base)}`];
+};
+
+// One line under each rung in a level menu, so the ladder explains itself where it is picked.
+export const LEVEL_HINTS = ["No access", "Open and read", "Create and edit", "Also delete"];
+
+// A domain's level with its extra verbs, the way a level dropdown reads ("Write + Clone").
+export const levelLabel = (domain: PermissionDomain, value: string[]): string => {
+  const extras = domain.extras.filter((extra) => value.includes(extra.value)).map((extra) => capitalize(extra.action));
+  return [levelName(levelOf(domain, value)), ...extras].join(" + ");
+};
+
+// The domains of the given areas, in catalog order: the role editor's two sections and a project's areas.
+export const domainsIn = (entries: PermissionInfo[], areas: readonly PermissionArea[]): PermissionDomain[] =>
+  domainsOf(entries.filter((entry) => areas.includes(entry.area)));
+
+// A project's one dropdown value: its shared level, or Custom once its areas differ.
+export const projectLevelLabel = (domains: PermissionDomain[], value: string[]): string => {
+  const uniform = uniformLevelOf(domains, value);
+  if (uniform === undefined) return "Custom";
+  return levelName(uniform);
+};
+
+// "tickets Write · docs Read": the areas with any level, or the one shared level; "None" when nothing is held.
+export const accessSummary = (domains: PermissionDomain[], value: string[]): string => {
+  const uniform = uniformLevelOf(domains, value);
+  if (uniform !== undefined && uniform > 0) return `every area ${levelName(uniform)}`;
+  const parts = domains
+    .filter((domain) => levelOf(domain, value) > 0)
+    .map((domain) => `${domain.name.toLowerCase()} ${levelName(levelOf(domain, value))}`);
+  if (parts.length === 0) return "None";
+  return parts.join(" · ");
+};
+
+// What one edit changed, for the toast: "tickets → Write", or "every area → Read" when several moved.
+export const changeSummary = (domains: PermissionDomain[], before: string[], after: string[]): string => {
+  const changed = domains.filter((domain) => levelLabel(domain, before) !== levelLabel(domain, after));
+  const first = changed[0];
+  if (!first) return "access updated";
+  if (changed.length > 1) return `every area → ${projectLevelLabel(domains, after)}`;
+  return `${first.name.toLowerCase()} → ${levelLabel(first, after)}`;
 };

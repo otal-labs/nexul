@@ -3,15 +3,28 @@ import { useFetchMe } from "@/hooks/AuthHooks";
 import { useFetchMyRole } from "@/hooks/WorkspaceHooks";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { AREA_PERMISSION, INSTANCE_SECTION_PERMISSION, type Area, type InstanceSection, type RouteArea } from "@/models/Access";
-import { hasPermission } from "@/models/Permission";
+import { hasPermission, projectPermissions, workspaceWidePermissions } from "@/models/Permission";
 import type { WorkspaceAccess } from "@/models/Workspace";
 
 // Undefined until permissions first arrive; isFetched, since a failed read refetches as pending and must not blink.
-export const useAreaAccess = (): ((area: Area) => boolean) | undefined => {
+// A project area answers for projectId, else the project in view, which is what the server checks for a Restricted
+// member; an unrestricted member's answer is the same on every project.
+export const useAreaAccess = (projectId?: string): ((area: Area) => boolean) | undefined => {
+  const selectedWorkspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
+  const selectedProjectId = useWorkspaceStore((s) => s.selectedProjectId);
+  const { data, isFetched } = useFetchMyRole(selectedWorkspaceId);
+  if (!isFetched) return undefined;
+  const held = projectPermissions(data, projectId ?? selectedProjectId);
+  return (area) => hasPermission(held, AREA_PERMISSION[area]);
+};
+
+// Whether the viewer holds an area in any project, for what stands for all of them (the sidebar's project section).
+export const useAnyProjectAreaAccess = (): ((area: Area) => boolean) | undefined => {
   const selectedWorkspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const { data, isFetched } = useFetchMyRole(selectedWorkspaceId);
   if (!isFetched) return undefined;
-  return (area) => hasPermission(data?.permissions, AREA_PERMISSION[area]);
+  const held = workspaceWidePermissions(data);
+  return (area) => hasPermission(held, AREA_PERMISSION[area]);
 };
 
 // Whether the viewer holds value in any workspace, which is what the server checks an instance-level action against.

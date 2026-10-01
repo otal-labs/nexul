@@ -147,12 +147,12 @@ type agentMemories struct {
 	svc *memories.Service
 }
 
-func (a agentMemories) ListMemories(ctx context.Context, workspaceID, projectID string) (agent.MemoriesIndex, error) {
-	workspaceItems, projectItems, err := a.svc.ListMemoryItems(ctx, workspaceID, projectID)
+func (a agentMemories) ListMemories(ctx context.Context, projectID string) (agent.MemoriesIndex, error) {
+	items, err := a.svc.ListMemoryItems(ctx, projectID)
 	if err != nil {
 		return agent.MemoriesIndex{}, err
 	}
-	return agent.MemoriesIndex{Workspace: toAgentMemoryItems(workspaceItems), Project: toAgentMemoryItems(projectItems)}, nil
+	return agent.MemoriesIndex{Project: toAgentMemoryItems(items)}, nil
 }
 
 func toAgentMemoryItems(items []memories.MemoryItem) []agent.MemoryItem {

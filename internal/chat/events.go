@@ -7,15 +7,17 @@ const (
 	TopicConversationCreated = "chat.conversation.created"
 	TopicConversationUpdated = "chat.conversation.updated"
 	TopicConversationDeleted = "chat.conversation.deleted"
-	TopicMessageCreated      = "chat.message.created"
-	TopicMessageUpdated      = "chat.message.updated"
-	TopicMessageDeleted      = "chat.message.deleted"
+	// TopicConversationMembersChanged is a private channel's members changing, or a channel switching private or public.
+	TopicConversationMembersChanged = "chat.conversation.members_changed"
+	TopicMessageCreated             = "chat.message.created"
+	TopicMessageUpdated             = "chat.message.updated"
+	TopicMessageDeleted             = "chat.message.deleted"
 )
 
 // Topics returns every topic the chat domain publishes.
 func Topics() []string {
 	return []string{
-		TopicConversationCreated, TopicConversationUpdated, TopicConversationDeleted,
+		TopicConversationCreated, TopicConversationUpdated, TopicConversationDeleted, TopicConversationMembersChanged,
 		TopicMessageCreated, TopicMessageUpdated, TopicMessageDeleted,
 	}
 }
@@ -42,6 +44,19 @@ type ConversationDeletedEvent struct {
 	Kind           Kind   `json:"kind"`
 	Name           string `json:"name"`
 	ActorID        string `json:"actor_id,omitempty"`
+	// Private and MemberIDs say who could read a private channel, so its deletion reaches only them and the Owner.
+	Private   bool     `json:"private,omitempty"`
+	MemberIDs []string `json:"member_ids,omitempty"`
+}
+
+// ConversationMembersChangedEvent carries ids only; a switch to private names everyone not kept as removed.
+type ConversationMembersChangedEvent struct {
+	ConversationID string   `json:"conversation_id"`
+	WorkspaceID    string   `json:"workspace_id"`
+	Private        bool     `json:"private"`
+	AddedUserIDs   []string `json:"added_user_ids"`
+	RemovedUserIDs []string `json:"removed_user_ids"`
+	ActorID        string   `json:"actor_id,omitempty"`
 }
 
 // MessageCreatedEvent is the payload for chat.message.created.

@@ -136,10 +136,9 @@ type UserReader interface {
 	Login(ctx context.Context, userID string) (string, error)
 }
 
-// MemoriesReader is the pipeline's seam onto memories (ADR 0017); a memory belongs to the workspace or to one
-// project (ADR 0059), so every turn resolves its workspace even when projectID is empty (a plain chat).
+// MemoriesReader is the pipeline's seam onto memories (ADR 0017); a memory belongs to one project (ADR 0099).
 type MemoriesReader interface {
-	ListMemories(ctx context.Context, workspaceID, projectID string) (MemoriesIndex, error)
+	ListMemories(ctx context.Context, projectID string) (MemoriesIndex, error)
 }
 
 // LivePublisher is the ephemeral live-hub seam; streaming bypasses the outbox.
@@ -423,7 +422,7 @@ func (s *Service) buildTurnPrompts(ctx context.Context, conv Conversation, ticke
 	}
 	budget := NewAttachmentBudget()
 	actorCtx := identity.WithActor(ctx, identity.Actor{ID: req.ViaUserID})
-	index, alwaysIncludedBlock, memoryAttachments := s.splitMemories(actorCtx, conv.WorkspaceID, projectID, budget)
+	index, alwaysIncludedBlock, memoryAttachments := s.splitMemories(actorCtx, projectID, budget)
 	targetAttachments := s.extractTargetAttachments(actorCtx, ticket, doc, budget)
 	in := PromptInput{
 		Ticket:             ticket,
@@ -460,11 +459,11 @@ func (s *Service) extractTargetAttachments(ctx context.Context, ticket *TicketCo
 	return nil
 }
 
-// splitMemories loads a turn's memories index (workspace-scoped plus the project's own) and separates its
-// always-included memories, inlined in full as an extra request block with their images extracted for the
-// harness, from the index of the rest.
-func (s *Service) splitMemories(ctx context.Context, workspaceID, projectID string, budget *AttachmentBudget) (MemoriesIndex, string, []harness.Attachment) {
-	index, always := splitAlwaysIncluded(s.loadMemories(ctx, workspaceID, projectID))
+// splitMemories loads a turn's memories index (the project's memories) and separates its always-included
+// memories, inlined in full as an extra request block with their images extracted for the harness, from the
+// index of the rest.
+func (s *Service) splitMemories(ctx context.Context, projectID string, budget *AttachmentBudget) (MemoriesIndex, string, []harness.Attachment) {
+	index, always := splitAlwaysIncluded(s.loadMemories(ctx, projectID))
 	if len(always) == 0 {
 		return index, "", nil
 	}
@@ -675,13 +674,14 @@ func (s *Service) warnVersionIfChanged(ctx context.Context, conversationID, viaU
 }
 
 // loadMemories fetches the memories index, best-effort: a failure logs and returns empty, never blocks the turn.
-func (s *Service) loadMemories(ctx context.Context, workspaceID, projectID string) MemoriesIndex {
-	if s.memories == nil {
+// A turn with no project (a plain chat) carries no memories (ADR 0099).
+func (s *Service) loadMemories(ctx context.Context, projectID string) MemoriesIndex {
+	if s.memories == nil || projectID == "" {
 		return MemoriesIndex{}
 	}
-	idx, err := s.memories.ListMemories(ctx, workspaceID, projectID)
+	idx, err := s.memories.ListMemories(ctx, projectID)
 	if err != nil {
-		s.log.Warn("agent: load memories index failed", "workspace", workspaceID, "project", projectID, "error", err)
+		s.log.Warn("agent: load memories index failed", "project", projectID, "error", err)
 		return MemoriesIndex{}
 	}
 	return idx

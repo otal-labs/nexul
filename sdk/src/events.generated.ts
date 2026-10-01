@@ -3,7 +3,7 @@
 // Regenerate: bun run generate:events (from sdk/).
 
 export interface EventPayloads {
-  "access.grant.changed": { "resource_type": "doc" | "play"; "resource_id": string; "user_id": string; "actor_id"?: string; };
+  "access.grant.changed": { "resource_type": "doc" | "play" | "project"; "resource_id": string; "user_id": string; "actor_id"?: string; };
   "account.admitted": { "invitation_id"?: string; "user_id"?: string; };
   "account.disabled": { "account_id": string; "actor_id"?: string; };
   "account.profile_updated": { "account_id": string; };
@@ -14,7 +14,8 @@ export interface EventPayloads {
   "category.deleted": { "category": Record<string, unknown>; };
   "category.updated": { "category": Record<string, unknown>; };
   "chat.conversation.created": { "conversation": Record<string, unknown>; };
-  "chat.conversation.deleted": { "conversation_id": string; "workspace_id": string; "kind": "channel" | "voice_channel"; "name": string; "actor_id"?: string; };
+  "chat.conversation.deleted": { "conversation_id": string; "workspace_id": string; "kind": "channel" | "voice_channel"; "name": string; "actor_id"?: string; "private"?: boolean; "member_ids"?: string[]; };
+  "chat.conversation.members_changed": { "conversation_id": string; "workspace_id": string; "private": boolean; "added_user_ids": string[]; "removed_user_ids": string[]; "actor_id"?: string; };
   "chat.conversation.updated": { "conversation_id": string; "workspace_id": string; "kind": "channel" | "voice_channel"; "name": string; "previous_name": string; "actor_id"?: string; };
   "chat.message.created": { "message": Record<string, unknown>; };
   "chat.message.deleted": { "conversation_id": string; "message_id": string; "deleted_at": string; };
@@ -67,7 +68,7 @@ export interface EventPayloads {
   "invitation.redeemed": { "invitation_id"?: string; "user_id"?: string; };
   "invitation.revoked": { "invitation_id"?: string; "actor_id"?: string; };
   "memory.created": { "memory": { "id": string; "workspace_id": string; "project_id": string; "kind"?: string; "title": string; "when_to_use"?: string; "always_included"?: boolean; "updated_at"?: string; }; "author_id": string; };
-  "memory.deleted": { "id": string; "workspace_id"?: string; "title": string; "author_id": string; };
+  "memory.deleted": { "id": string; "workspace_id"?: string; "project_id"?: string; "title": string; "author_id": string; };
   "memory.updated": { "memory": { "id": string; "workspace_id": string; "project_id": string; "kind"?: string; "title": string; "when_to_use"?: string; "always_included"?: boolean; "updated_at"?: string; }; "author_id": string; };
   "notification.created": Record<string, unknown>;
   "notification.push_requested": { "notifications": { "id": string; "user_id": string; "workspace_id"?: string; }[]; };
@@ -131,6 +132,7 @@ export const TOPICS: Topic[] = [
   "category.updated",
   "chat.conversation.created",
   "chat.conversation.deleted",
+  "chat.conversation.members_changed",
   "chat.conversation.updated",
   "chat.message.created",
   "chat.message.deleted",
@@ -244,7 +246,8 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "category.deleted": {"category":{}},
   "category.updated": {"category":{}},
   "chat.conversation.created": {"conversation":{}},
-  "chat.conversation.deleted": {"conversation_id":"fixture-conversation_id","workspace_id":"fixture-workspace_id","kind":"channel","name":"fixture-name","actor_id":"fixture-actor_id"},
+  "chat.conversation.deleted": {"conversation_id":"fixture-conversation_id","workspace_id":"fixture-workspace_id","kind":"channel","name":"fixture-name","actor_id":"fixture-actor_id","private":false,"member_ids":["fixture-member_ids"]},
+  "chat.conversation.members_changed": {"conversation_id":"fixture-conversation_id","workspace_id":"fixture-workspace_id","private":false,"added_user_ids":["fixture-added_user_ids"],"removed_user_ids":["fixture-removed_user_ids"],"actor_id":"fixture-actor_id"},
   "chat.conversation.updated": {"conversation_id":"fixture-conversation_id","workspace_id":"fixture-workspace_id","kind":"channel","name":"fixture-name","previous_name":"fixture-previous_name","actor_id":"fixture-actor_id"},
   "chat.message.created": {"message":{}},
   "chat.message.deleted": {"conversation_id":"fixture-conversation_id","message_id":"fixture-message_id","deleted_at":"2026-01-01T00:00:00Z"},
@@ -297,7 +300,7 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "invitation.redeemed": {"invitation_id":"fixture-invitation_id","user_id":"fixture-user_id"},
   "invitation.revoked": {"invitation_id":"fixture-invitation_id","actor_id":"fixture-actor_id"},
   "memory.created": {"memory":{"id":"fixture-id","workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","kind":"fixture-kind","title":"fixture-title","when_to_use":"fixture-when_to_use","always_included":false,"updated_at":"2026-01-01T00:00:00Z"},"author_id":"fixture-author_id"},
-  "memory.deleted": {"id":"fixture-id","workspace_id":"fixture-workspace_id","title":"fixture-title","author_id":"fixture-author_id"},
+  "memory.deleted": {"id":"fixture-id","workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","title":"fixture-title","author_id":"fixture-author_id"},
   "memory.updated": {"memory":{"id":"fixture-id","workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","kind":"fixture-kind","title":"fixture-title","when_to_use":"fixture-when_to_use","always_included":false,"updated_at":"2026-01-01T00:00:00Z"},"author_id":"fixture-author_id"},
   "notification.created": {},
   "notification.push_requested": {"notifications":[{"id":"fixture-id","user_id":"fixture-user_id","workspace_id":"fixture-workspace_id"}]},

@@ -125,6 +125,9 @@ func TestRun_Refusals_LeaveNoTrail(t *testing.T) {
 		{"unknown ticket", nil, func() RunInput { in := ticketRun(); in.TargetID = "t-missing"; return in }, apperrs.ErrNotFound, ""},
 		{"play from another workspace", nil, func() RunInput { in := ticketRun(); in.TargetID = "t-foreign"; return in }, apperrs.ErrNotFound, ""},
 		{"disabled", func(f *runnerFixture) { f.plays.byID[fixPlayID].Enabled = false }, ticketRun, apperrs.ErrInvalid, "is disabled"},
+		{"an interview on a project hidden from the starter", func(f *runnerFixture) { f.perm.hideProject(starter, projectID) }, func() RunInput {
+			return RunInput{PlayID: intPlayID, TargetType: TargetInterview, TargetID: projectID}
+		}, apperrs.ErrNotFound, "get project"},
 		{"excluded from the project", func(f *runnerFixture) { f.plays.byID[fixPlayID].ExcludedProjectIDs = []string{projectID} }, ticketRun, apperrs.ErrInvalid, "excluded from this project"},
 		{"denied plays:run", func(f *runnerFixture) { f.perm.grants[starter] = []permissions.Action{permissions.PlaysRead} }, ticketRun, apperrs.ErrForbidden, "plays:run required"},
 		{"denied on this play", func(f *runnerFixture) { f.perm.deny(starter, fixPlayID) }, ticketRun, apperrs.ErrForbidden, "plays:run required"},
@@ -346,22 +349,6 @@ func TestRun_StartsTurnWithBlocksInOrder(t *testing.T) {
 	assert.Equal(t, "Memories the user selected for this run, follow them:\n### Deploy quirks\npicked body", req.ExtraRequestBlocks[1])
 	assert.Equal(t, "Instructions from login-u-1 for this run; where these conflict with the play's instructions, these win:\nTouch only the docs.", req.ExtraRequestBlocks[2])
 	require.NotNil(t, req.Observer)
-}
-
-func TestRun_WorkspaceScopedMemory_PickableEvenThoughItIsNotTheProjectsOwn(t *testing.T) {
-	// A workspace-scoped memory shows up under every project ListForProject is asked about (ADR 0059); the
-	// fake mirrors that by listing it under both projectID and otherProj, standing in for the union the real
-	// memories.Service.ListForProject returns.
-	f := newRunnerFixture()
-	wsMem := "m-workspace"
-	f.mems.byProject[projectID] = append(f.mems.byProject[projectID], Memory{ID: wsMem, Title: "Team tone", Markdown: "be terse"})
-	f.mems.byProject[otherProj] = append(f.mems.byProject[otherProj], Memory{ID: wsMem, Title: "Team tone", Markdown: "be terse"})
-	in := ticketRun()
-	in.MemoryIDs = []string{wsMem}
-
-	trail, err := f.runner.Run(ctxAs(starter), in)
-	require.NoError(t, err)
-	assert.Contains(t, trail.SelectedMemoryIDs, wsMem)
 }
 
 func TestRun_HarnessChoice_PassedToTheResolverAndRecordedOnTheTrail(t *testing.T) {

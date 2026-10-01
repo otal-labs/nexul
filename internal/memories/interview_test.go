@@ -170,7 +170,7 @@ func TestUpdate_InterviewMemoryOverTheCap_IsRefusedWithTheCount(t *testing.T) {
 
 func TestUpdate_OrdinaryMemoryOverTheInterviewCap_IsAllowed(t *testing.T) {
 	s := newTestService(newFakeRepo())
-	m, err := s.Create(testCtx(), "project-1", "", "Notes", "", "x", false, "")
+	m, err := s.Create(testCtx(), "project-1", "Notes", "", "x", false, "")
 	require.NoError(t, err)
 
 	got, err := s.Update(testCtx(), m.ID, "Notes", "", strings.Repeat("a", MaxInterviewChars+1), false, "")
@@ -196,7 +196,7 @@ func TestClone_InterviewMemory_BecomesAnOrdinaryMemory(t *testing.T) {
 	m, err := s.CreateInterview(testCtx(), "project-1", "")
 	require.NoError(t, err)
 
-	clone, err := s.Clone(testCtx(), m.ID, "project-2", "")
+	clone, err := s.Clone(testCtx(), m.ID, "project-2")
 	require.NoError(t, err)
 	assert.Empty(t, clone.Kind)
 }
@@ -206,7 +206,7 @@ func TestListMemoryItems_CarriesTheKind(t *testing.T) {
 	_, err := s.CreateInterview(testCtx(), "project-1", "")
 	require.NoError(t, err)
 
-	_, projectItems, err := s.ListMemoryItems(context.Background(), "workspace-1", "project-1")
+	projectItems, err := s.ListMemoryItems(context.Background(), "project-1")
 	require.NoError(t, err)
 	require.Len(t, projectItems, 1)
 	assert.Equal(t, KindInterview, projectItems[0].Kind)

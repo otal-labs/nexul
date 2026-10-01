@@ -7,6 +7,7 @@ import (
 	"math"
 	"regexp"
 	"slices"
+	"strings"
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -45,8 +46,12 @@ type messagePostIn struct {
 }
 
 type conversationUpdateIn struct {
-	ID   string `json:"id" jsonschema:"The channel's or voice channel's id, from conversation_list."`
-	Name string `json:"name,omitempty" jsonschema:"The new name, without the leading #; omit to keep the current one."`
+	ID              string   `json:"id" jsonschema:"The channel's or voice channel's id, from conversation_list."`
+	Name            string   `json:"name,omitempty" jsonschema:"The new name, without the leading #; omit to keep the current one."`
+	Private         *bool    `json:"private,omitempty" jsonschema:"true makes the channel private, false makes it public and opens its history to the whole workspace; omit to keep it as it is."`
+	MemberIDs       []string `json:"member_ids,omitempty" jsonschema:"With private true: the user ids, besides you, who stay in the channel; everyone else loses it. mention_search finds a person's user id."`
+	AddMemberIDs    []string `json:"add_member_ids,omitempty" jsonschema:"User ids of workspace members to add to a private channel."`
+	RemoveMemberIDs []string `json:"remove_member_ids,omitempty" jsonschema:"User ids to remove from a private channel; your own id leaves it."`
 }
 
 type conversationDeleteIn struct {
@@ -61,6 +66,8 @@ type conversationResult struct {
 	DocID          string    `json:"doc_id,omitempty"`
 	ProjectID      string    `json:"project_id,omitempty"`
 	ParticipantIDs []string  `json:"participant_ids,omitempty"`
+	Private        bool      `json:"private"`
+	MemberIDs      []string  `json:"member_ids,omitempty"`
 	UpdatedAt      time.Time `json:"updated_at"`
 }
 
@@ -82,10 +89,11 @@ func MCPTools(s *Service) []mcptool.Tool {
 
 func conversationListTool(s *Service) mcptool.Tool {
 	return mcptool.New("conversation_list", "List conversations",
-		"Lists your conversations in a workspace: every channel, plus the direct messages and threads you take part in. "+
+		"Lists your conversations in a workspace: every public channel and the private channels you are in, plus the direct messages and threads you take part in. "+
 			"Use it to find a conversation's id for message_list or message_post; a doc's, ticket's, or project interview's thread "+
 			"can also be reached there by the doc_id, ticket_id, or project_id alone. "+
-			"Each item has its kind (channel, dm, ticket_thread, doc_thread, interview_thread, voice_channel) and what it belongs to.",
+			"Each item has its kind (channel, dm, ticket_thread, doc_thread, interview_thread, voice_channel), what it belongs to, "+
+			"and whether it is private, with a private channel's member_ids.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in conversationListIn) (any, error) {
 			caller, err := callerID(ctx)
@@ -105,22 +113,47 @@ func conversationListTool(s *Service) mcptool.Tool {
 }
 
 func conversationUpdateTool(s *Service) mcptool.Tool {
-	return mcptool.New("conversation_update", "Rename channel",
-		"Renames a channel or voice channel; direct messages and doc, ticket, or interview threads have no name to change. "+
-			"It takes channels:write, and a name another channel in the workspace already has is refused. "+
-			"Omitting name leaves the channel as it is. Returns the channel with its new name.",
+	return mcptool.New("conversation_update", "Update channel",
+		"Renames a channel or voice channel, makes it private or public, and adds or removes a private channel's members; "+
+			"direct messages and doc, ticket, or interview threads have none of these to change. "+
+			"Renaming and switching private or public take channels:write; going private keeps you and member_ids and "+
+			"everyone else loses the channel, and the workspace's general channel is always public. "+
+			"Anyone in a private channel may add workspace members, removing someone else takes channels:write, "+
+			"and removing yourself leaves, except as its last member. "+
+			"Omitted fields keep their value; the changes apply in the order name, private, add, remove, and an error says which applied. "+
+			"Returns the channel as it ends up.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in conversationUpdateIn) (any, error) {
-			if in.Name == "" {
-				c, err := s.GetConversation(ctx, in.ID)
+			if len(in.MemberIDs) > 0 && (in.Private == nil || !*in.Private) {
+				return nil, fmt.Errorf("%w: member_ids names who stays when private is true; add_member_ids adds people to a private channel", apperrs.ErrInvalid)
+			}
+			c, err := s.GetConversation(ctx, in.ID)
+			if err != nil {
+				return nil, err
+			}
+			steps := []struct {
+				field string
+				set   bool
+				apply func() (*Conversation, error)
+			}{
+				{"name", in.Name != "", func() (*Conversation, error) { return s.RenameChannel(ctx, in.ID, in.Name) }},
+				{"private", in.Private != nil, func() (*Conversation, error) { return s.SetChannelPrivate(ctx, in.ID, *in.Private, in.MemberIDs) }},
+				{"add_member_ids", len(in.AddMemberIDs) > 0, func() (*Conversation, error) { return s.AddChannelMembers(ctx, in.ID, in.AddMemberIDs) }},
+				{"remove_member_ids", len(in.RemoveMemberIDs) > 0, func() (*Conversation, error) { return s.RemoveChannelMembers(ctx, in.ID, in.RemoveMemberIDs) }},
+			}
+			var applied []string
+			for _, step := range steps {
+				if !step.set {
+					continue
+				}
+				next, err := step.apply()
+				if err != nil && len(applied) > 0 {
+					return nil, fmt.Errorf("%w (already applied: %s)", err, strings.Join(applied, ", "))
+				}
 				if err != nil {
 					return nil, err
 				}
-				return toConversationResult(c), nil
-			}
-			c, err := s.RenameChannel(ctx, in.ID, in.Name)
-			if err != nil {
-				return nil, err
+				c, applied = next, append(applied, step.field)
 			}
 			return toConversationResult(c), nil
 		})
@@ -142,10 +175,16 @@ func conversationDeleteTool(s *Service) mcptool.Tool {
 }
 
 func toConversationResult(c *Conversation) conversationResult {
-	return conversationResult{
+	out := conversationResult{
 		ID: c.ID, Kind: c.Kind, Name: c.Name, TicketID: c.TicketID, DocID: c.DocID, ProjectID: c.ProjectID,
-		ParticipantIDs: c.ParticipantIDs, UpdatedAt: c.UpdatedAt,
+		Private: c.Private, UpdatedAt: c.UpdatedAt,
 	}
+	if c.Private {
+		out.MemberIDs = c.ParticipantIDs
+		return out
+	}
+	out.ParticipantIDs = c.ParticipantIDs
+	return out
 }
 
 func messageListTool(s *Service) mcptool.Tool {

@@ -36,6 +36,7 @@ type fakeRepo struct {
 	markReadErr           error
 	unreadCountsErr       error
 	hasTicketThreadsErr   error
+	membersErr            error
 }
 
 func newFakeRepo() *fakeRepo {
@@ -91,7 +92,66 @@ func (f *fakeRepo) GetConversation(_ context.Context, id string) (*Conversation,
 	if !ok {
 		return nil, apperrs.ErrNotFound
 	}
-	return c, nil
+	return f.withParticipants(c), nil
+}
+
+// withParticipants mirrors the real repo: a DM and a private channel carry their participant ids.
+func (f *fakeRepo) withParticipants(c *Conversation) *Conversation {
+	cp := *c
+	cp.ParticipantIDs = nil
+	if c.Kind != KindDM && !c.Private {
+		return &cp
+	}
+	for uid := range f.participants[c.ID] {
+		cp.ParticipantIDs = append(cp.ParticipantIDs, uid)
+	}
+	sort.Strings(cp.ParticipantIDs)
+	return &cp
+}
+
+func (f *fakeRepo) SetChannelPrivate(_ context.Context, id string, private bool, memberIDs []string, at time.Time, evts ...eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.membersErr != nil {
+		return f.membersErr
+	}
+	c, ok := f.conversations[id]
+	if !ok {
+		return apperrs.ErrNotFound
+	}
+	c.Private, c.UpdatedAt = private, at
+	f.participants[id] = map[string]bool{}
+	for _, uid := range memberIDs {
+		f.participants[id][uid] = true
+	}
+	f.events = append(f.events, evts...)
+	return nil
+}
+
+func (f *fakeRepo) AddParticipants(_ context.Context, id string, userIDs []string, _ time.Time, evts ...eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.membersErr != nil {
+		return f.membersErr
+	}
+	for _, uid := range userIDs {
+		f.participants[id][uid] = true
+	}
+	f.events = append(f.events, evts...)
+	return nil
+}
+
+func (f *fakeRepo) RemoveParticipants(_ context.Context, id string, userIDs []string, evts ...eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.membersErr != nil {
+		return f.membersErr
+	}
+	for _, uid := range userIDs {
+		delete(f.participants[id], uid)
+	}
+	f.events = append(f.events, evts...)
+	return nil
 }
 
 func (f *fakeRepo) RenameConversation(_ context.Context, id, name string, at time.Time, evts ...eventbus.OutboxEvent) error {
@@ -200,8 +260,8 @@ func (f *fakeRepo) ListConversationsForUser(_ context.Context, workspaceID, user
 		if c.WorkspaceID != workspaceID {
 			continue
 		}
-		if c.Kind == KindChannel || c.Kind == KindDocThread || f.participants[c.ID][userID] {
-			out = append(out, c)
+		if c.Kind == KindChannel || c.Kind == KindVoiceChannel || c.Kind == KindDocThread || f.participants[c.ID][userID] {
+			out = append(out, f.withParticipants(c))
 		}
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].CreatedAt.Before(out[j].CreatedAt) })
@@ -358,7 +418,7 @@ func (f *fakeRepo) UnreadCounts(_ context.Context, workspaceID, userID string) (
 				count++
 			}
 		}
-		out = append(out, UnreadCount{ConversationID: c.ID, Kind: c.Kind, DocID: c.DocID, Count: count})
+		out = append(out, UnreadCount{ConversationID: c.ID, Count: count})
 	}
 	return out, nil
 }
@@ -386,6 +446,8 @@ func newTestService(repo *fakeRepo) *Service {
 type allowGate struct{}
 
 func (allowGate) Require(context.Context, string, permissions.Action) error { return nil }
+
+func (allowGate) RequireProject(context.Context, string, permissions.Action) error { return nil }
 
 // fakeDocAccess is an in-memory chat.DocAccess for doc thread permission tests; allowed keys "userID:docID".
 type fakeDocAccess struct {
@@ -688,6 +750,46 @@ func TestGetOrCreateInterviewThread(t *testing.T) {
 		_, err := newTestService(repo).GetOrCreateInterviewThread(context.Background(), "w-1", "p-1", "u-1")
 		require.ErrorContains(t, err, "disk full")
 	})
+}
+
+// projectMemoriesGate holds memories:read only on project p-1, never workspace-wide, as Project access does.
+type projectMemoriesGate struct{}
+
+func (projectMemoriesGate) Require(_ context.Context, _ string, action permissions.Action) error {
+	if action == permissions.MemoriesRead {
+		return apperrs.ErrForbidden
+	}
+	return nil
+}
+
+func (projectMemoriesGate) RequireProject(_ context.Context, projectID string, _ permissions.Action) error {
+	if projectID != "p-1" {
+		return apperrs.ErrForbidden
+	}
+	return nil
+}
+
+func (projectMemoriesGate) RequireTicket(context.Context, string, permissions.Action) error {
+	return nil
+}
+
+func TestInterviewThread_IsReadThroughItsProjectsMemories(t *testing.T) {
+	repo := newFakeRepo()
+	thread, err := newTestService(repo).GetOrCreateInterviewThread(context.Background(), "w-1", "p-1", "u-1")
+	require.NoError(t, err)
+	other, err := newTestService(repo).GetOrCreateInterviewThread(context.Background(), "w-1", "p-2", "u-1")
+	require.NoError(t, err)
+	s := newTestService(repo)
+	s.SetGate(projectMemoriesGate{})
+	s.SetThreadGate(projectMemoriesGate{})
+	ctx := identity.WithActor(context.Background(), identity.Actor{ID: "u-2"})
+
+	_, err = s.GetConversation(ctx, thread.ID)
+	require.NoError(t, err)
+	_, err = s.GetConversation(ctx, other.ID)
+	require.ErrorIs(t, err, apperrs.ErrForbidden)
+	_, err = s.GetOrCreateInterviewThread(ctx, "w-1", "p-3", "u-2")
+	require.ErrorIs(t, err, apperrs.ErrForbidden, "starting one takes the project's memories:read too")
 }
 
 func TestExistingThread(t *testing.T) {

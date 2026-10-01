@@ -126,6 +126,15 @@ pills. A call can share the screen full screen, and leaves on its own after
 five minutes with nobody else in it. The composer is simpler: Enter sends.
 A computer's setup transcript reads like a play run.
 
+### Project access and private channels
+
+A workspace member, such as a client, can be held to the projects they are
+given: their Every project row says None, and each project they may open
+carries its own level per area. Every other project stays invisible to them,
+names included, over the browser, MCP, search, and live updates, and taking
+access away closes an open page on the spot. Channels can be private to the
+people in them, and memories always belong to one project. ADRs 0097 to 0099.
+
 ### The design pass
 
 A monochrome identity — "The Mono Console", light and dark as true inversions
@@ -151,12 +160,6 @@ In progress: **the phone app** in `native/`, an Android APK and an unsigned iPho
 docs, deploys and runners on a phone, signed in by scanning a QR code,
 with push notifications and over-the-air updates. It is built and in device
 testing ahead of its first release; the map is in `.scratch/native-app/`.
-
-Specced: **project access**, so a member such as a client can be held
-to the projects they are given, with what they may do set per project, and
-the rest of the workspace's projects stay invisible to them, names included.
-Private channels come with it, and memories become project-only. The spec
-and its tickets are in `.scratch/project-access/`.
 
 Parked until the repository migration lands: **bots**, webhook-driven bots
 that post into any conversation with Discord's payload and get their own tab

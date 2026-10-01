@@ -5,6 +5,7 @@ import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { unknownPerson, type PeopleList, type Person } from "@/models/Person";
 
 export const getWorkspacePeopleKey = "getWorkspacePeople";
+export const getProjectPeopleKey = "getProjectPeople";
 
 // Any member may read it, unlike the members list, which needs members:write.
 export const useFetchWorkspacePeople = (workspaceId: string | undefined) =>
@@ -12,6 +13,14 @@ export const useFetchWorkspacePeople = (workspaceId: string | undefined) =>
     queryKey: [getWorkspacePeopleKey, workspaceId],
     queryFn: async () => (await api.get<PeopleList>(`/api/workspaces/${workspaceId}/people`)).data.people,
     enabled: !!workspaceId,
+  });
+
+// The people who may open a project, Restricted members without access left out: a ticket's developer and tester.
+export const useFetchProjectPeople = (projectId: string | undefined) =>
+  useQuery({
+    queryKey: [getProjectPeopleKey, projectId],
+    queryFn: async () => (await api.get<PeopleList>(`/api/projects/${projectId}/people`)).data.people,
+    enabled: !!projectId,
   });
 
 // One shared directory fetch; chat holds user ids and tickets hold logins, so either resolves.

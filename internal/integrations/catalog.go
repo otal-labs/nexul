@@ -21,7 +21,7 @@ var catalogSchemas = map[string]string{
 	"workspace.member.updated": `{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","required":["user_id","workspace_id"],"properties":{"user_id":{"type":"string"},"workspace_id":{"type":"string"},"actor_id":{"type":"string"}}}`,
 	"workspace.updated":        `{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","required":["workspace_id","name","slug"],"properties":{"workspace_id":{"type":"string"},"name":{"type":"string"},"slug":{"type":"string"},"actor_id":{"type":"string"}}}`,
 	"role.updated":             `{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","required":["role_id","workspace_id"],"properties":{"role_id":{"type":"string"},"workspace_id":{"type":"string"},"actor_id":{"type":"string"}}}`,
-	"access.grant.changed":     `{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","required":["resource_type","resource_id","user_id"],"properties":{"resource_type":{"type":"string","enum":["doc","play"]},"resource_id":{"type":"string"},"user_id":{"type":"string"},"actor_id":{"type":"string"}}}`,
+	"access.grant.changed":     `{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","required":["resource_type","resource_id","user_id"],"properties":{"resource_type":{"type":"string","enum":["doc","play","project"]},"resource_id":{"type":"string"},"user_id":{"type":"string"},"actor_id":{"type":"string"}}}`,
 	"doc.created": `{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",
 		"type": "object",
@@ -894,6 +894,7 @@ var catalogSchemas = map[string]string{
 		"properties": {
 			"id": {"type": "string"},
 			"workspace_id": {"type": "string"},
+			"project_id": {"type": "string"},
 			"title": {"type": "string"},
 			"author_id": {"type": "string"}
 		}
@@ -1194,6 +1195,21 @@ var catalogSchemas = map[string]string{
 			"workspace_id": {"type": "string"},
 			"kind": {"type": "string", "enum": ["channel", "voice_channel"]},
 			"name": {"type": "string"},
+			"actor_id": {"type": "string"},
+			"private": {"type": "boolean"},
+			"member_ids": {"type": "array", "items": {"type": "string"}}
+		}
+	}`,
+	"chat.conversation.members_changed": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["conversation_id", "workspace_id", "private", "added_user_ids", "removed_user_ids"],
+		"properties": {
+			"conversation_id": {"type": "string"},
+			"workspace_id": {"type": "string"},
+			"private": {"type": "boolean"},
+			"added_user_ids": {"type": "array", "items": {"type": "string"}},
+			"removed_user_ids": {"type": "array", "items": {"type": "string"}},
 			"actor_id": {"type": "string"}
 		}
 	}`,
