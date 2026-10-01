@@ -1,31 +1,53 @@
 import type { KeyboardEvent, PointerEvent } from "react";
 import { useRef } from "react";
 
-import { LIST_PANE_MAX, LIST_PANE_MIN, useListPaneStore } from "@/stores/listPaneStore";
+import { clampListPaneWidth, LIST_PANE_MAX, LIST_PANE_MIN, useListPaneStore } from "@/stores/listPaneStore";
 
 const KEY_STEP = 16;
+
+type Drag = { pane: HTMLElement | null; startX: number; startWidth: number; x: number; frame: number };
+
+const dragWidth = (d: Drag) => clampListPaneWidth(d.startWidth + d.x - d.startX);
+
+const paint = (d: Drag) => d.pane?.style.setProperty("--list-pane-width", `${dragWidth(d)}px`);
 
 // A drag handle on the list pane's right edge, shown from lg up where the list sits beside the record.
 export const ListPaneResizeHandle = () => {
   const width = useListPaneStore((s) => s.width);
   const setWidth = useListPaneStore((s) => s.setWidth);
   const reset = useListPaneStore((s) => s.reset);
-  const drag = useRef<{ startX: number; startWidth: number } | null>(null);
+  const drag = useRef<Drag | null>(null);
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
     // Stops the browser starting a text selection that the drag would then extend.
     e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
-    drag.current = { startX: e.clientX, startWidth: width };
+    const pane = e.currentTarget.parentElement;
+    // The open record skips re-laying out its off-screen blocks until release (index.css).
+    pane?.setAttribute("data-resizing", "");
+    drag.current = { pane, startX: e.clientX, startWidth: width, x: e.clientX, frame: 0 };
   };
 
+  // Pointer events outpace frames and each width change reflows the open record, so paint once a frame and save on release.
   const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
-    if (!drag.current) return;
-    setWidth(drag.current.startWidth + e.clientX - drag.current.startX);
+    const d = drag.current;
+    if (!d) return;
+    d.x = e.clientX;
+    if (d.frame) return;
+    d.frame = requestAnimationFrame(() => {
+      d.frame = 0;
+      paint(d);
+    });
   };
 
   const onPointerEnd = () => {
+    const d = drag.current;
+    if (!d) return;
     drag.current = null;
+    cancelAnimationFrame(d.frame);
+    paint(d);
+    d.pane?.removeAttribute("data-resizing");
+    setWidth(dragWidth(d));
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
