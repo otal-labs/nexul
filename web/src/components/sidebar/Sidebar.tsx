@@ -14,7 +14,7 @@ interface SidebarProps {
 export const Sidebar = ({ collapsed, onToggleCollapse, isLoggedIn, unreadCount }: SidebarProps) => (
   <aside
     className={cn(
-      "sticky top-0 flex h-screen shrink-0 flex-col border-r border-border bg-surface-2",
+      "sticky top-0 z-20 flex h-screen shrink-0 flex-col border-r border-border bg-surface-2",
       collapsed ? "w-14" : "w-60",
     )}
   >
