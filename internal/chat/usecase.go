@@ -276,6 +276,7 @@ func (s *Service) RenameChannel(ctx context.Context, id, name string) (*Conversa
 	renamed.Name, renamed.UpdatedAt = name, s.now().UTC()
 	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicConversationUpdated, Payload: ConversationUpdatedEvent{
 		ConversationID: c.ID, WorkspaceID: c.WorkspaceID, Kind: c.Kind, Name: name, PreviousName: c.Name, ActorID: actorID(ctx),
+		MembersOnly: c.Private,
 	}}
 	if err := s.repo.RenameConversation(ctx, c.ID, name, renamed.UpdatedAt, evt); err != nil {
 		return nil, fmt.Errorf("rename %s conversation: %w", c.Kind, err)
@@ -294,7 +295,7 @@ func (s *Service) DeleteChannel(ctx context.Context, id string) (*Conversation, 
 	}
 	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicConversationDeleted, Payload: ConversationDeletedEvent{
 		ConversationID: c.ID, WorkspaceID: c.WorkspaceID, Kind: c.Kind, Name: c.Name, ActorID: actorID(ctx),
-		Private: c.Private, MemberIDs: c.ParticipantIDs,
+		Private: c.Private, MemberIDs: c.ParticipantIDs, MembersOnly: c.Private,
 	}}
 	if err := s.repo.DeleteConversation(ctx, c.ID, evt); err != nil {
 		return nil, fmt.Errorf("delete %s conversation: %w", c.Kind, err)
@@ -432,7 +433,7 @@ func (s *Service) privateChannel(ctx context.Context, id string) (*Conversation,
 func (s *Service) membersChanged(ctx context.Context, c *Conversation, added, removed []string) eventbus.OutboxEvent {
 	return eventbus.OutboxEvent{ID: ids.New(), Topic: TopicConversationMembersChanged, Payload: ConversationMembersChangedEvent{
 		ConversationID: c.ID, WorkspaceID: c.WorkspaceID, Private: c.Private,
-		AddedUserIDs: nonNil(added), RemovedUserIDs: nonNil(removed), ActorID: actorID(ctx),
+		AddedUserIDs: nonNil(added), RemovedUserIDs: nonNil(removed), ActorID: actorID(ctx), MembersOnly: c.Private,
 	}}
 }
 
@@ -739,7 +740,7 @@ func (s *Service) createConversation(ctx context.Context, c *Conversation, parti
 	c.ID = ids.New()
 	c.CreatedAt = now
 	c.UpdatedAt = now
-	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicConversationCreated, Payload: ConversationCreatedEvent{Conversation: *c}}
+	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicConversationCreated, Payload: ConversationCreatedEvent{Conversation: *c, MembersOnly: c.membersOnly()}}
 	if err := s.repo.CreateConversation(ctx, c, participantIDs, evt); err != nil {
 		return nil, fmt.Errorf("create %s conversation: %w", c.Kind, err)
 	}
@@ -920,6 +921,10 @@ func (s *Service) postMessage(ctx context.Context, conversationID, authorID, bod
 	if body == "" {
 		return nil, fmt.Errorf("%w: message body is required", apperrs.ErrInvalid)
 	}
+	membersOnly, err := s.MembersOnly(ctx, conversationID)
+	if err != nil {
+		return nil, fmt.Errorf("post message to conversation %s: %w", conversationID, err)
+	}
 	now := s.now().UTC()
 	m := &Message{
 		ID:             ids.New(),
@@ -931,11 +936,20 @@ func (s *Service) postMessage(ctx context.Context, conversationID, authorID, bod
 		CreatedAt:      now,
 		UpdatedAt:      now,
 	}
-	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicMessageCreated, Payload: MessageCreatedEvent{Message: *m}}
+	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicMessageCreated, Payload: MessageCreatedEvent{Message: *m, MembersOnly: membersOnly}}
 	if err := s.repo.CreateMessage(ctx, m, evt); err != nil {
 		return nil, fmt.Errorf("post message to conversation %s: %w", conversationID, err)
 	}
 	return m, nil
+}
+
+// MembersOnly reports whether a conversation is read by its members alone; the server's own seam, so unchecked.
+func (s *Service) MembersOnly(ctx context.Context, conversationID string) (bool, error) {
+	c, err := s.repo.GetConversation(ctx, conversationID)
+	if err != nil {
+		return false, err
+	}
+	return c.membersOnly(), nil
 }
 
 // EditMessage edits a message's body in place; only its author may edit it, and never a deleted one.
@@ -962,13 +976,17 @@ func (s *Service) EditMessage(ctx context.Context, messageID, authorID, body str
 	if current.AuthorID != authorID {
 		return nil, fmt.Errorf("%w: only the author may edit this message", apperrs.ErrForbidden)
 	}
+	membersOnly, err := s.MembersOnly(ctx, current.ConversationID)
+	if err != nil {
+		return nil, fmt.Errorf("edit message %s: %w", messageID, err)
+	}
 	now := s.now().UTC()
 	updated := *current
 	updated.Body = body
 	updated.Mentions = ParseMentions(body)
 	updated.EditedAt = &now
 	updated.UpdatedAt = now
-	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicMessageUpdated, Payload: MessageUpdatedEvent{Message: updated}}
+	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicMessageUpdated, Payload: MessageUpdatedEvent{Message: updated, MembersOnly: membersOnly}}
 	if err := s.repo.UpdateMessage(ctx, messageID, updated.Body, updated.Mentions, now, evt); err != nil {
 		return nil, fmt.Errorf("edit message %s: %w", messageID, err)
 	}
@@ -995,8 +1013,12 @@ func (s *Service) DeleteMessage(ctx context.Context, messageID, authorID string)
 	if current.AuthorID != authorID {
 		return fmt.Errorf("%w: only the author may delete this message", apperrs.ErrForbidden)
 	}
+	membersOnly, err := s.MembersOnly(ctx, current.ConversationID)
+	if err != nil {
+		return fmt.Errorf("delete message %s: %w", messageID, err)
+	}
 	now := s.now().UTC()
-	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicMessageDeleted, Payload: MessageDeletedEvent{ConversationID: current.ConversationID, MessageID: messageID, DeletedAt: now}}
+	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicMessageDeleted, Payload: MessageDeletedEvent{ConversationID: current.ConversationID, MessageID: messageID, DeletedAt: now, MembersOnly: membersOnly}}
 	if err := s.repo.DeleteMessage(ctx, messageID, now, evt); err != nil {
 		return fmt.Errorf("delete message %s: %w", messageID, err)
 	}

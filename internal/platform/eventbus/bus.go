@@ -43,3 +43,11 @@ func Chain(h Handler, ms ...Middleware) Handler {
 	}
 	return h
 }
+
+// MembersOnly reports a payload marked "members_only": only the people it concerns see it, never an integration or automation.
+func MembersOnly(payload []byte) bool {
+	var p struct {
+		MembersOnly bool `json:"members_only"`
+	}
+	return json.Unmarshal(payload, &p) == nil && p.MembersOnly
+}

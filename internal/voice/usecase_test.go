@@ -20,9 +20,9 @@ import (
 
 // fakeConversations is a test double for ConversationChecker.
 type fakeConversations struct {
-	voiceChannels map[string]bool
-	readers       map[string]bool
-	err, readsErr error
+	voiceChannels, private map[string]bool
+	readers                map[string]bool
+	err, readsErr          error
 }
 
 func (f *fakeConversations) IsVoiceChannel(_ context.Context, conversationID string) (bool, error) {
@@ -34,6 +34,13 @@ func (f *fakeConversations) IsVoiceChannel(_ context.Context, conversationID str
 
 func (f *fakeConversations) Reads(_ context.Context, _, userID string) (bool, error) {
 	return f.readers[userID], f.readsErr
+}
+
+func (f *fakeConversations) MembersOnly(_ context.Context, conversationID string) (bool, error) {
+	if !f.voiceChannels[conversationID] {
+		return false, apperrs.ErrNotFound
+	}
+	return f.private[conversationID], f.err
 }
 
 // fakeCredentials is a test double for CredentialSource.
@@ -375,4 +382,40 @@ func TestRemoveFromCall(t *testing.T) {
 		s := newTestService(t, &fakeConversations{voiceChannels: voiceChannel}, cred, nil, nil)
 		require.ErrorIs(t, s.RemoveFromCall(t.Context(), "conv-1", []string{"u-1"}), apperrs.ErrRetryable)
 	})
+}
+
+func TestOccupancyEvents_MarkPrivateVoiceChannelsMembersOnly(t *testing.T) {
+	conv := &fakeConversations{voiceChannels: map[string]bool{"public": true, "private": true}, private: map[string]bool{"private": true}}
+	tests := []struct {
+		name, room  string
+		membersOnly bool
+	}{
+		{"a public voice channel", "public", false},
+		{"a private voice channel", "private", true},
+		{"a channel that is gone counts as private", "deleted", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			bus := &fakePublisher{}
+			s := newTestService(t, conv, nil, nil, bus)
+			if err := s.HandleWebhook(t.Context(), livekit.Event{Type: "participant_joined", Room: tt.room, ParticipantIdentity: "u-1"}); err != nil {
+				t.Fatalf("HandleWebhook: %v", err)
+			}
+			evts := bus.all()
+			if len(evts) != 1 {
+				t.Fatalf("published events = %+v, want 1", evts)
+			}
+			raw, err := json.Marshal(evts[0])
+			if err != nil {
+				t.Fatal(err)
+			}
+			var p map[string]any
+			if err := json.Unmarshal(raw, &p); err != nil {
+				t.Fatal(err)
+			}
+			if got := p["members_only"] == true; got != tt.membersOnly {
+				t.Errorf("members_only = %v, want %v", got, tt.membersOnly)
+			}
+		})
+	}
 }

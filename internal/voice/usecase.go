@@ -202,5 +202,9 @@ func (s *Service) publish(ctx context.Context, room string, occupants []Occupant
 	if s.bus == nil {
 		return nil
 	}
-	return s.bus.Publish(ctx, TopicOccupancyChanged, OccupancyChangedEvent{ConversationID: room, Occupants: occupants})
+	// A failed lookup, a just-deleted channel's included, counts as private: the call stays off the outbound feeds.
+	membersOnly, err := s.conversations.MembersOnly(ctx, room)
+	return s.bus.Publish(ctx, TopicOccupancyChanged, OccupancyChangedEvent{
+		ConversationID: room, Occupants: occupants, MembersOnly: membersOnly || err != nil,
+	})
 }

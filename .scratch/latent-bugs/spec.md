@@ -98,10 +98,6 @@ The gateway derives a scoped token's scope from the path, so `POST /api/chat/doc
 
 When a service's container does not exist, `docker logs` fails with a daemon error line that has no timestamp. The stream ends, and the web view and the phone reconnect. Each reconnect repeats the error lines, because deduplication keys on the timestamp. The marker also reads "Runner offline, reconnecting…", which is wrong: the runner is online and the container is missing. The server should send a distinct end reason for a missing container, and both clients should stop retrying on it and say so.
 
-## Private channel messages reach workspace automations and integrations
-
-Message events from a private channel are delivered to workspace-scoped automations and integration subscriptions the same way DMs already are, so a private channel is private from people but not from installed integrations. Decide whether a delivery should carry the conversation's audience, or whether private-channel and DM messages leave the integration feed.
-
 ## A removed person's voice join token still works until it expires
 
 Removal from a private voice channel disconnects the person, and they cannot get a new join token, but one they already hold stays valid for its six-hour lifetime, so a hand-built client could reconnect. LiveKit's RemoveParticipant accepts a token-revocation timestamp that would close this on servers new enough to support it; the other lever is a shorter token lifetime with refresh. Removal from the workspace and switching someone to restricted publish no channel membership change, so neither ends a call either.
