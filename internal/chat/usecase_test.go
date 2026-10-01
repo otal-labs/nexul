@@ -693,7 +693,7 @@ func TestGetOrCreateInterviewThread(t *testing.T) {
 }
 
 // projectMemoriesGate holds memories:read only on project p-1, never workspace-wide, as Project access does.
-type projectMemoriesGate struct{ allowGate }
+type projectMemoriesGate struct{}
 
 func (projectMemoriesGate) Require(_ context.Context, _ string, action permissions.Action) error {
 	if action == permissions.MemoriesRead {

@@ -55,7 +55,7 @@ func TestCatalog_DomainDeclaredVerbs(t *testing.T) {
 		{MemoriesRead, "Read memories", "memories", "read"},
 		{MemoriesWrite, "Create and update memories", "memories", "write"},
 		{MemoriesDelete, "Delete memories", "memories", "delete"},
-		{MemoriesClone, "Clone memories to another project or workspace", "memories", "clone"},
+		{MemoriesClone, "Clone memories to another project", "memories", "clone"},
 		{DocsThread, "See doc threads", "docs", "thread"},
 		{DocsClone, "Clone docs into another project", "docs", "clone"},
 		{StacksLogs, "Read container logs", "stacks", "logs"},
