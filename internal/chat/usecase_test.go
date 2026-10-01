@@ -387,6 +387,8 @@ type allowGate struct{}
 
 func (allowGate) Require(context.Context, string, permissions.Action) error { return nil }
 
+func (allowGate) RequireProject(context.Context, string, permissions.Action) error { return nil }
+
 // fakeDocAccess is an in-memory chat.DocAccess for doc thread permission tests; allowed keys "userID:docID".
 type fakeDocAccess struct {
 	allowed map[string]bool
@@ -688,6 +690,41 @@ func TestGetOrCreateInterviewThread(t *testing.T) {
 		_, err := newTestService(repo).GetOrCreateInterviewThread(context.Background(), "w-1", "p-1", "u-1")
 		require.ErrorContains(t, err, "disk full")
 	})
+}
+
+// projectMemoriesGate holds memories:read only on project p-1, never workspace-wide, as Project access does.
+type projectMemoriesGate struct{ allowGate }
+
+func (projectMemoriesGate) Require(_ context.Context, _ string, action permissions.Action) error {
+	if action == permissions.MemoriesRead {
+		return apperrs.ErrForbidden
+	}
+	return nil
+}
+
+func (projectMemoriesGate) RequireProject(_ context.Context, projectID string, _ permissions.Action) error {
+	if projectID != "p-1" {
+		return apperrs.ErrForbidden
+	}
+	return nil
+}
+
+func TestInterviewThread_IsReadThroughItsProjectsMemories(t *testing.T) {
+	repo := newFakeRepo()
+	thread, err := newTestService(repo).GetOrCreateInterviewThread(context.Background(), "w-1", "p-1", "u-1")
+	require.NoError(t, err)
+	other, err := newTestService(repo).GetOrCreateInterviewThread(context.Background(), "w-1", "p-2", "u-1")
+	require.NoError(t, err)
+	s := newTestService(repo)
+	s.SetGate(projectMemoriesGate{})
+	ctx := identity.WithActor(context.Background(), identity.Actor{ID: "u-2"})
+
+	_, err = s.GetConversation(ctx, thread.ID)
+	require.NoError(t, err)
+	_, err = s.GetConversation(ctx, other.ID)
+	require.ErrorIs(t, err, apperrs.ErrForbidden)
+	_, err = s.GetOrCreateInterviewThread(ctx, "w-1", "p-3", "u-2")
+	require.ErrorIs(t, err, apperrs.ErrForbidden, "starting one takes the project's memories:read too")
 }
 
 func TestExistingThread(t *testing.T) {
