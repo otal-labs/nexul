@@ -98,6 +98,27 @@ service and an errors filter, a link from each Services row, a click on a
 service node in the topology canvas, the phone, and `stack_get` for agents.
 Reading takes the `stacks:logs` permission, because output can carry secrets.
 
+### Docs folders, pinning and order
+
+A project's docs are grouped into folders, with a default Main folder; move,
+rename and delete them from the Docs page, and agents manage them over MCP.
+Pin a doc to keep it at the top of the list (kept per browser). The list is
+ordered by creation date, with a toggle for last edited, and the Docs and
+Memories list pane can be resized.
+
+### Automations per workspace
+
+An automation belongs to one workspace and each workspace has its own
+switches. The built-in Decisions check has a per-workspace switch, off by
+default, and a switched-off automation receives no events.
+
+### Chat and calls
+
+Links in messages are clickable, and links to this instance open in the app as
+pills. A call can share the screen full screen, and leaves on its own after
+five minutes with nobody else in it. The composer is simpler: Enter sends.
+A computer's setup transcript reads like a play run.
+
 ### The design pass
 
 A monochrome identity — "The Mono Console", light and dark as true inversions
@@ -169,7 +190,7 @@ without changing the core architecture.
   tickets 04 and 11).
 - **Smaller gaps**, too thin for a spec: offline doc edits do not survive a
   closed tab (the collaboration state is memory-only); a project's docs list
-  has no manual or recency ordering; MCP tools for automation versions and
+  has no manual ordering; MCP tools for automation versions and
   secrets; the GitHub webhook subscribes only `pull_request`; permission
   overwrites are wired for documents only, and the grid has no `comment`
   action; the profile display-name override is read only by the wizard; the
@@ -191,7 +212,7 @@ without changing the core architecture.
 
 Shelved for now, specs kept: the integration store (`.scratch/integration-store/`)
 and a second git host, GitLab and Gitea (`.scratch/second-git-host/`), and
-workspace-scoped runners, automations, and integrations
+workspace-scoped runners and integrations
 (`.scratch/workspace-scoped-automation-surfaces/`).
 
 ---
