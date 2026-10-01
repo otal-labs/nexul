@@ -161,7 +161,6 @@ describe("TrailSection", () => {
     const steps = within(dialog).getAllByRole("listitem");
     expect(steps).toHaveLength(1);
     expect(steps[0]).toHaveTextContent('Read: {"file_path":"main.go"}');
-    expect(steps[0]).toHaveTextContent("→package main");
     expect(within(steps[0]!).getByRole("img", { name: "tool result" })).toBeInTheDocument();
 
     expect(within(steps[0]!).getByText("Arguments")).not.toBeVisible();
@@ -209,7 +208,7 @@ describe("TrailSection", () => {
     );
     const steps = within(dialog).getAllByRole("listitem");
     expect(steps).toHaveLength(1);
-    expect(steps[0]).toHaveTextContent("→ok");
-    expect(within(steps[0]!).getByRole("img", { name: "done" })).toBeInTheDocument();
+    expect(steps[0]).toHaveTextContent(/^go test/);
+    expect(within(steps[0]!).queryByRole("img", { name: "running" })).not.toBeInTheDocument();
   });
 });

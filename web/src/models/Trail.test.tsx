@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { mergeLiveStep, mergeLiveSteps, stepLabel, trailSummary, type ActivityEntry } from "@/models/Trail";
+import { mergeLiveStep, mergeLiveSteps, stepLabel, trailSummary, unwrapShellCommand, type ActivityEntry } from "@/models/Trail";
 
 const call: ActivityEntry = { kind: "tool_call", call_id: "c-1", tool: "Bash", summary: "go test", at: "2026-09-18T10:00:00Z" };
 const result: ActivityEntry = { ...call, kind: "tool_result", detail: '{"input":{},"result":{"content":"ok"}}', at: "2026-09-18T10:00:04Z" };
@@ -12,6 +12,35 @@ describe("stepLabel", () => {
     expect(stepLabel(read)).toBe('Read: {"file_path":"main.go"}');
     expect(stepLabel(call)).toBe("go test");
     expect(stepLabel(text)).toBe("Done");
+  });
+
+  it("names an MCP call by its server and tool, whichever way the harness spells it, without the arguments", () => {
+    expect(stepLabel({ ...read, tool: "mcp__nexul__skill_get", summary: '{"name":"nexul-memory"}' })).toBe("Nexul · skill_get");
+    expect(stepLabel({ ...read, tool: "nexul · computer_setup_update", summary: "nexul · computer_setup_update" })).toBe("Nexul · computer_setup_update");
+  });
+
+  it("falls back to the tool name alone when the call carries no server and no arguments of its own", () => {
+    expect(stepLabel({ ...read, tool: "skill_get", summary: "skill_get" })).toBe("skill_get");
+  });
+
+  it("drops the shell wrapper from a command and the failed marker from any step", () => {
+    expect(stepLabel({ ...call, tool: "Shell", summary: `/bin/bash -lc "rg -n 'Nexul MCP' /home/dev"` })).toBe("rg -n 'Nexul MCP' /home/dev");
+    expect(stepLabel({ ...result, summary: "go test ./... · failed" })).toBe("go test ./...");
+  });
+});
+
+describe("unwrapShellCommand", () => {
+  it.each([
+    ["a bash login wrapper in double quotes", `/bin/bash -lc "cat /etc/hosts"`, "cat /etc/hosts"],
+    ["a bare bash wrapper in single quotes", `bash -lc 'go test ./...'`, "go test ./..."],
+    ["an sh wrapper with no quotes", "sh -c ls", "ls"],
+    ["nested quotes inside the wrapper", String.raw`/bin/bash -lc "rg -n 'a|b' \"$HOME\""`, String.raw`rg -n 'a|b' \"$HOME\"`],
+    ["a wrapper cut short before its closing quote", `/bin/bash -lc "rg -n 'Nexul MCP|skill_get' /home/onik/.codex/mem…`, "rg -n 'Nexul MCP|skill_get' /home/onik/.codex/mem…"],
+    ["no wrapper", "go test ./...", "go test ./..."],
+    ["a command that only mentions bash", "bash scripts/build.sh", "bash scripts/build.sh"],
+    ["empty", "", ""],
+  ])("%s", (_name, command, want) => {
+    expect(unwrapShellCommand(command)).toBe(want);
   });
 });
 

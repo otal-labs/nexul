@@ -1,5 +1,6 @@
 interface TrailStepDetailProps {
   detail: string;
+  at: string;
 }
 
 interface DetailBlocks {
@@ -30,14 +31,21 @@ const parseBlocks = (detail: string): DetailBlocks | null => {
   }
 };
 
+const clock = (iso: string): string | undefined => {
+  if (iso === "" || iso.startsWith("0001-")) return undefined;
+  return new Date(iso).toLocaleTimeString([], { hour12: false });
+};
+
 const blockClass = "max-h-72 overflow-auto rounded-md border border-border bg-background p-2 font-mono text-[10px] leading-relaxed whitespace-pre-wrap break-all";
 const labelClass = "font-mono text-[10px] font-semibold tracking-[0.08em] text-muted-foreground/80 uppercase";
 
-// The expanded half of a step row: the arguments and, when present, the result, each in its own mono block.
-export const TrailStepDetail = ({ detail }: TrailStepDetailProps) => {
+// The expanded half of a step row: when it happened, the arguments and, when present, the result, each in its own mono block.
+export const TrailStepDetail = ({ detail, at }: TrailStepDetailProps) => {
   const blocks = parseBlocks(detail);
+  const time = clock(at);
   return (
-    <div className="space-y-2 py-1 pr-2 pl-11.5">
+    <div className="space-y-2 py-1 pr-2 pl-8">
+      {time && <p className="font-mono text-[10px] text-muted-foreground tabular-nums">{time}</p>}
       {blocks === null && <pre className={blockClass}>{detail}</pre>}
       {blocks !== null && blocks.input !== undefined && (
         <div className="space-y-1">

@@ -125,11 +125,48 @@ const truncateSummaryError = (text: string): string => {
   return `${firstLine.slice(0, SUMMARY_ERROR_MAX_LENGTH)}…`;
 };
 
-// One line for a step: `tool: args` for a tool call, the command alone for a command, the summary alone for text,
-// notes, and legacy lines.
+// Mirrors the " · failed" the harness appends to a failed tool's summary; the row shows failure on its icon instead.
+export const FAILED_SUFFIX = " · failed";
+
+export const isFailedStep = (entry: ActivityEntry): boolean => entry.kind === "tool_result" && entry.summary.endsWith(FAILED_SUFFIX);
+
+const SHELL_WRAPPER = /^(?:\S*\/)?(?:bash|sh|zsh) +-l?c +/;
+
+// The command a `/bin/bash -lc "…"` style wrapper runs, outer quotes off; a summary cut short keeps its open quote's text.
+export const unwrapShellCommand = (command: string): string => {
+  const match = SHELL_WRAPPER.exec(command);
+  if (!match) return command;
+  const inner = command.slice(match[0].length).trim();
+  const quote = inner.charAt(0);
+  if (quote !== '"' && quote !== "'") return inner;
+  const closed = inner.length > 1 && inner.endsWith(quote);
+  return (closed ? inner.slice(1, -1) : inner.slice(1)).trim();
+};
+
+const MCP_TOOL_NAME = /^mcp__(.+?)__(.+)$/;
+const SERVER_SEPARATOR = " · ";
+
+// The server and tool of an MCP call: Claude names it mcp__<server>__<tool>, Codex arrives titled "<server> · <tool>".
+const mcpParts = (tool: string): { server: string; name: string } | null => {
+  const match = MCP_TOOL_NAME.exec(tool);
+  if (match?.[1] && match[2]) return { server: match[1], name: match[2] };
+  const at = tool.indexOf(SERVER_SEPARATOR);
+  if (at <= 0) return null;
+  return { server: tool.slice(0, at), name: tool.slice(at + SERVER_SEPARATOR.length) };
+};
+
+export const isMcpTool = (tool: string | undefined): boolean => tool !== undefined && mcpParts(tool) !== null;
+
+// One line for a step: `Server · tool` for an MCP call, the command alone out of its shell wrapper, `tool: args` for
+// any other tool, the tool alone when its summary only repeats it, the summary alone for text, notes, and legacy lines.
 export const stepLabel = (entry: ActivityEntry): string => {
-  if (!entry.tool || isCommandTool(entry.tool)) return entry.summary;
-  return `${entry.tool}: ${entry.summary}`;
+  const summary = entry.summary.endsWith(FAILED_SUFFIX) ? entry.summary.slice(0, -FAILED_SUFFIX.length) : entry.summary;
+  if (!entry.tool) return summary;
+  if (isCommandTool(entry.tool)) return unwrapShellCommand(summary);
+  const mcp = mcpParts(entry.tool);
+  if (mcp) return `${mcp.server.charAt(0).toUpperCase()}${mcp.server.slice(1)}${SERVER_SEPARATOR}${mcp.name}`;
+  if (summary === "" || summary === entry.tool) return entry.tool;
+  return `${entry.tool}: ${summary}`;
 };
 
 const lastIndexOfCall = (activity: ActivityEntry[], callId: string): number => {

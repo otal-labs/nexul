@@ -190,7 +190,7 @@ and its time), never a bare line, so the trail reads as a transcript. The
 transcript is the Agent's turn as a conversation: the starter's "Started
 <play>" message, one collapsible "Worked for" group per turn holding what
 the Agent said between actions and each action as a row (a command names
-its command, a file change its path), the question card and the answer
+its command, a file change its path, an MCP call its server and tool), the question card and the answer
 where they happened, the final reply as prose, and the runner's own notes
 (a skipped move, a stop) as muted lines.
 Persisted, never ephemeral; the "Trail" section on a

@@ -29,17 +29,23 @@ describe("TrailActionRow", () => {
     expect(screen.getByRole("img", { name: "running" })).toBeInTheDocument();
   });
 
-  it("a tool call in a finished trail sits as a dot, not a spinner", () => {
+  it("a tool call in a finished trail neither spins nor carries a check mark", () => {
     renderRow(entry({}));
     expect(screen.queryByRole("img", { name: "running" })).not.toBeInTheDocument();
     expect(screen.queryByRole("img", { name: "done" })).not.toBeInTheDocument();
   });
 
-  it("a command row shows the command alone under a terminal icon", () => {
-    renderRow(entry({ tool: "Bash", summary: "go test ./..." }));
+  it("an MCP call reads as its server and tool under a wrench", () => {
+    renderRow(entry({ kind: "tool_result", tool: "mcp__nexul__skill_get", summary: '{"name":"nexul-memory"}' }));
+    expect(screen.getByRole("img", { name: "tool result" })).toBeInTheDocument();
+    expect(screen.getByText("Nexul · skill_get")).toBeInTheDocument();
+  });
+
+  it("a command row shows the command alone, out of its shell wrapper, under a terminal icon", () => {
+    renderRow(entry({ tool: "Shell", summary: `/bin/bash -lc "go test ./..."` }));
     expect(screen.getByRole("img", { name: "command" })).toBeInTheDocument();
     expect(screen.getByText("go test ./...")).toBeInTheDocument();
-    expect(screen.queryByText(/Bash/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/bash|Shell/)).not.toBeInTheDocument();
   });
 
   it("a file change row names the path under a file icon", () => {
@@ -48,7 +54,7 @@ describe("TrailActionRow", () => {
     expect(screen.getByText("Edit: /home/dev/Code/nexul/.golangci.yml")).toBeInTheDocument();
   });
 
-  it("a tool result gets a check, a result preview, and expands to its arguments and result", async () => {
+  it("a finished row is one line with no time, check, or result preview, and expands to its arguments, result and time", async () => {
     const user = userEvent.setup();
     renderRow(
       entry({
@@ -56,30 +62,47 @@ describe("TrailActionRow", () => {
         detail: '{"input":{"file_path":"main.go"},"result":{"type":"tool_result","content":"package main\\n\\nfunc main() {}"}}',
       }),
     );
-    expect(screen.getByRole("img", { name: "tool result" })).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "done" })).toBeInTheDocument();
-    expect(screen.getByText("→")).toBeInTheDocument();
-    expect(screen.getByText("package main func main() {}", { selector: "span" })).toBeInTheDocument();
+    const row = screen.getByRole("listitem");
+    expect(row).toHaveTextContent(/^Read: \{"file_path":"main.go"\}/);
+    expect(screen.queryByRole("img", { name: "done" })).not.toBeInTheDocument();
+    expect(screen.queryByText("package main func main() {}", { selector: "span" })).not.toBeInTheDocument();
+    const time = new Date("2026-09-18T10:00:00Z").toLocaleTimeString([], { hour12: false });
+    expect(screen.getByText(time)).not.toBeVisible();
 
-    expect(screen.getByText("Arguments")).not.toBeVisible();
     await user.click(screen.getByText('Read: {"file_path":"main.go"}'));
+    expect(screen.getByText(time)).toBeVisible();
     expect(screen.getByText("Arguments")).toBeVisible();
     expect(screen.getByText('{ "file_path": "main.go" }', { normalizer: (s) => s.replace(/\s+/g, " ").trim() })).toBeInTheDocument();
-    expect(screen.getByText("Result")).toBeInTheDocument();
     expect(screen.getByText("package main func main() {}", { selector: "pre", normalizer: (s) => s.replace(/\s+/g, " ").trim() })).toBeInTheDocument();
   });
 
-  it("a failed result keeps the label suffix and shows a cross instead of a check", () => {
-    renderRow(entry({ kind: "tool_result", tool: "Bash", summary: "go test · failed", detail: '{"input":{"command":"go test"}}' }));
-    expect(screen.getByText("go test · failed")).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "failed" })).toBeInTheDocument();
-    expect(screen.queryByRole("img", { name: "done" })).not.toBeInTheDocument();
+  it("a row with nothing to expand has no expander", () => {
+    renderRow(entry({ kind: "tool_result" }));
+    expect(screen.getByText('Read: {"file_path":"main.go"}')).toBeInTheDocument();
+    expect(screen.queryByRole("group")).not.toBeInTheDocument();
   });
 
-  it("the Agent's own sentence is a reasoning row that expands to the full text", async () => {
+  it("a failed command marks its icon failed, drops the marker from the label, and shows the error when expanded", async () => {
+    const user = userEvent.setup();
+    renderRow(
+      entry({
+        kind: "tool_result",
+        tool: "Bash",
+        summary: "go test · failed",
+        detail: '{"input":{"command":"go test"},"result":{"content":"FAIL nexul/internal/plays"}}',
+      }),
+    );
+    expect(screen.getByRole("img", { name: "failed" })).toBeInTheDocument();
+    expect(screen.getByText("go test")).toBeInTheDocument();
+    expect(screen.queryByText(/· failed/)).not.toBeInTheDocument();
+    await user.click(screen.getByText("go test"));
+    expect(screen.getByText("FAIL nexul/internal/plays")).toBeVisible();
+  });
+
+  it("the Agent's own sentence reads as prose with no icon and expands to the full text", async () => {
     const user = userEvent.setup();
     renderRow({ kind: "text", summary: "Opened PR #7", detail: "Opened PR #7\n\nAll tests pass.", at: "2026-09-18T10:00:09Z" });
-    expect(screen.getByRole("img", { name: "reasoning" })).toBeInTheDocument();
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
     expect(screen.getByText("Opened PR #7")).toBeInTheDocument();
     expect(screen.getByText(/All tests pass\./)).not.toBeVisible();
     await user.click(screen.getByText("Opened PR #7"));
