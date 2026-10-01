@@ -271,8 +271,9 @@ type Defaults struct {
 	ModelOptions []harness.OptionSetting `json:"model_options,omitempty"`
 }
 
-// ProjectLink is the project-level pairing config; a zero value means unlinked, falling through to defaults.
+// ProjectLink is one person's pairing config for one project (ADR 0102); a zero value falls through to their defaults.
 type ProjectLink struct {
+	UserID           string                  `json:"-"`
 	ProjectID        string                  `json:"project_id"`
 	ComputerID       string                  `json:"computer_id,omitempty"`
 	HarnessProjectID string                  `json:"harness_project_id,omitempty"`

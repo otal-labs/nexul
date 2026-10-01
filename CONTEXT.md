@@ -81,7 +81,7 @@ _Avoid_: Backend (that is the Go server), Runtime, Driver
 The per-model settings a turn runs with, such as reasoning level, context
 window, and fast mode: whatever the harness lists for that model, with its
 defaults, read live from the harness and never kept as a list in Nexul. They
-are picked beside a model and stored with it (pairing defaults, project link,
+are picked beside a model and stored with it (pairing defaults, a project link,
 a play's trail, a computer's setup choices); an option left unset runs on the
 harness default, and picking another model starts it on its own defaults.
 _Avoid_: Traits, knobs, model settings
@@ -91,6 +91,14 @@ A user's own machine running a harness, attached to their Nexul account.
 It is reached through its computer tunnel, or, for a machine the server can
 already reach, by URL. Owned by one user; nobody else can run on it.
 _Avoid_: Device, host, runner (a runner builds and deploys)
+
+**Project link**:
+One person's choice of paired computer, T3 project, provider, model, and
+model options for one project they can open, set in Your settings → T3
+pairing → Projects. Each person has their own; nobody else's turns use it.
+A person with no link for a project runs there on their own pairing
+defaults (ADR 0102).
+_Avoid_: Project pairing, shared link
 
 **Computer tunnel**:
 The outbound connection a paired computer keeps open to the instance's own
@@ -190,8 +198,8 @@ on again in the same trail and session), then one of `done`, `failed`, or
 from `waiting` too; fifteen minutes of harness silence fails it. A ticket
 move it makes carries actor kind `play`.
 Also records the computer, provider, and model the run used, whether the
-starter picked them in the run dialog or they came from the project link
-or the starter's own pairing defaults (ADR 0058).
+starter picked them in the run dialog or they came from the starter's own
+project link or pairing defaults (ADR 0058).
 _Avoid_: Run history, log, execution
 
 **Doc thread**:

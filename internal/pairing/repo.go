@@ -25,15 +25,14 @@ type Repo interface {
 	// SaveDefaults upserts userID's defaults row.
 	SaveDefaults(ctx context.Context, d Defaults) error
 
-	// GetComputerByID returns a computer by id regardless of owner; ResolveTarget uses it for project-linked computers.
-	GetComputerByID(ctx context.Context, id string) (*Computer, error)
-
-	// GetProjectLink returns projectID's link, or a zero ProjectLink if never linked (optional, like GetDefaults).
-	GetProjectLink(ctx context.Context, projectID string) (ProjectLink, error)
-	// SaveProjectLink upserts a project's link row.
+	// GetProjectLink returns userID's own link for projectID, or a zero ProjectLink if they never set one.
+	GetProjectLink(ctx context.Context, userID, projectID string) (ProjectLink, error)
+	// ListProjectLinks returns every link userID has set, ordered by project.
+	ListProjectLinks(ctx context.Context, userID string) ([]ProjectLink, error)
+	// SaveProjectLink upserts link.UserID's own link for link.ProjectID.
 	SaveProjectLink(ctx context.Context, link ProjectLink) error
-	// DeleteProjectLink clears projectID's link. A no-op if the project was never linked.
-	DeleteProjectLink(ctx context.Context, projectID string) error
+	// DeleteProjectLink clears userID's link for projectID. A no-op if they never set one.
+	DeleteProjectLink(ctx context.Context, userID, projectID string) error
 }
 
 // SetupStore persists setup confirmations; each write carries its event for the outbox in the same transaction.
