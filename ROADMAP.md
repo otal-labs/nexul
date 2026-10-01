@@ -145,10 +145,11 @@ docs, deploys and runners on a phone, signed in by scanning a QR code,
 with push notifications and over-the-air updates. It is built and in device
 testing ahead of its first release; the map is in `.scratch/native-app/`.
 
-Being charted: **project access**, so a member such as a client can be held
+Specced: **project access**, so a member such as a client can be held
 to the projects they are given, with what they may do set per project, and
 the rest of the workspace's projects stay invisible to them, names included.
-Private channels come with it. The map is in `.scratch/project-access/`.
+Private channels come with it, and memories become project-only. The spec
+and its tickets are in `.scratch/project-access/`.
 
 Parked until the repository migration lands: **bots**, webhook-driven bots
 that post into any conversation with Discord's payload and get their own tab
@@ -181,7 +182,7 @@ without changing the core architecture.
   (`.scratch/branch-from-ticket/`); one search box across every entity
   (`.scratch/global-search/`).
 - **Chat and voice depth** — the message features v1 left out (emoji
-  reactions, read receipts, typing indicators, private channels), interactive
+  reactions, read receipts, typing indicators), interactive
   in-chat approvals instead of today's auto-decline, per-user memories and
   multiple named agents, and on the voice side DM and group calls, `@Agent` in
   a call, and recordings for standups.

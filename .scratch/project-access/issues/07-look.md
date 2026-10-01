@@ -22,50 +22,62 @@ Run through `design-mode`; the owner picks from live variants.
 
 ## Answer
 
-Prototyped 2026-10-01 with three variants of the project rows, judged at
-768, 1024, and 1440px with worst-case names; the owner delegated the pick.
+Prototyped 2026-10-01 in two rounds; the owner delegated both picks. The
+first round (an accordion of None/Read/Write/Delete strips per area) was
+rejected: a wall of identical controls, boxes nested three deep, rows
+doubling at 768px, the one-level common case costing as much as per-area
+detail, and the Every project control the smallest thing on screen. The
+second round, below, replaced it.
 
-- **Team dialog, project rows: an accordion.** Under the workspace's role
-  select, one bordered box: the Every project row first (muted lock icon,
-  "Every project" over a one-line consequence, From role / None on the
-  right, on the raised `bg-muted/40` surface the role editor's "Every domain"
-  row uses). From role reads "Every project, through their role." and shows
-  nothing below. None reads "Sees only the projects below. New projects
-  stay hidden." and lists every project under a mono `1 of 5 projects`
-  microheader and a search field: each row is a chevron, the project name,
-  and a mono summary of what is granted ("None", or "tickets Write · docs
-  Read · memories Read"). Opening a row shows the existing level list for
-  project areas only, with an "Every area" row on top. One project is open
-  at a time, so the dialog never grows past one project's areas. Rejected: a
-  two-pane list and detail, which truncates names and summaries at the
-  dialog's width; listing only granted projects with an Add popover, which
-  hides the None rows and needs a starting level nobody chose.
-- **Invitation dialog:** the same box under the workspace and role selects.
-- **Role editor:** the level list splits under two mono microheaders,
-  Workspace (with the instance areas) and Every project, the second with
-  the line "Applies to members whose Every project is From role." and an
-  "Every area" row of its own.
-- **Project settings, People with access:** a settings card listing the
-  Restricted members who can open the project (initials avatar, name, mono
-  summary), "Change access from Team." in the footer, and an empty row ("No
-  restricted member can open <project>.") when there are none.
-- **Private channel:** in channel settings, a row in the same shape as Every
-  project (lock icon, "Private channel", "Only members see it and read it.")
-  with a switch. Turning it on opens "Who stays in #<channel>?": a mono
-  count, a search field, and a checkable people list with the person
-  switching checked and fixed. A private channel lists its members with a
-  mono count, "Add people", a `…` per row for removal, and a destructive
-  "Leave channel" action.
-- **Project delete confirmation:** adds a bordered line, "Fahad and 1 other
-  restricted member lose access.", with the names under it.
-- **A Restricted member's sidebar:** only their projects in the project
-  switcher, only their private channels (each with a trailing muted lock),
-  and DMs as usual.
-- **Access taken while a page is open:** the page body becomes the standard
-  empty state, "You no longer have access to this project", "Someone changed
-  your access. Projects you can still open are in the sidebar.", and a "Go
-  to Home" action.
+- **A level is a compact trailing dropdown**, never a strip of buttons: the
+  row's name on the left, the current level as muted text with a chevron on
+  the right ("Write", "Read + Run"). Its menu lists None "No access", Read
+  "Open and read", Write "Create and edit", Delete "Also delete", each with
+  that one-line description, then the area's verbs as checkable items under
+  "Also allow", then, where a grant can go, a destructive "Remove access"
+  last. Rows are about 44px hairline rows on the surface they sit on, under
+  mono microheaders; no bordered box inside a card or dialog.
+- **Team dialog workspace entry:** the role select, then the Every project
+  row (muted icon, "Every project" over a one-line consequence, a full-size
+  select on the right: "From role", reading "Every project, at their role's
+  level.", or "Only chosen projects", reading "Sees only the projects below.
+  New projects stay hidden."). Under Only chosen projects: a `Projects · 1 of
+  5` microheader with a search field from five projects, then one row per
+  project with one dropdown for the whole project, its value the uniform
+  level or "Custom" with a mono summary under the name ("tickets Write ·
+  docs Read"). The menu's "Customize areas…" opens that project's area rows
+  inline, indented, one project at a time, each area with its own dropdown,
+  closed again by a "Hide areas" link under them. Focus rings show for
+  keyboard focus only. Rejected in the second round: area rows in a popover
+  (two layers deep, capped at eight of eleven areas) and a second dialog
+  step (loses sight of the list and the Every project row).
+- **Invitation dialog:** the same block under the workspace and role
+  selects.
+- **Role editor:** every domain is a row with the trailing dropdown, under
+  two mono microheaders, Workspace (with the instance areas) and Every
+  project ("Applies to members whose Every project is From role."), each
+  with an "Every domain" / "Every area" row on top reading "Custom" when
+  rows differ.
+- **Project settings, People with access:** a settings card with hairline
+  rows straight on its surface (initials avatar, name, mono summary), "Change
+  access from Team." in the footer, an empty row when there are none.
+- **Private channel:** one card with the "Private channel" row (lock icon,
+  "Only members see it and read it.", a switch) over the member rows (count,
+  "Add people", a `…` per row with "Send a message" and, after a separator,
+  "Remove from channel"), and a destructive "Leave channel". Turning it on
+  opens "Who stays in #<channel>?": a count, a search field, a checkable
+  people list with the person switching checked and fixed.
+- **Project delete confirmation:** a line "Fahad and 1 other restricted
+  member lose access." with the names under it.
+- **A Restricted member's sidebar:** only their projects, only their private
+  channels (trailing muted lock), DMs as usual.
+- **Access taken while a page is open:** the standard empty state, "You no
+  longer have access to this project", "Someone changed your access.
+  Projects you can still open are in the sidebar.", "Go to Home".
 - **Every change** confirms with a toast naming the person and the project,
   or the channel.
-- Motion follows the design-language baseline (row open and toast at 150 to
-  200ms `--ease-out`, level changes at 150ms `--ease-standard`); nothing new.
+- Motion follows the design-language baseline; nothing new.
+- `practices/design-language.md` gains a "Permission rows" pattern entry
+  with the above, and its card rule ("Lists inside a card are hairline rows
+  in one bordered box") gains the exception for permission and access rows,
+  which sit straight on the card or dialog surface.

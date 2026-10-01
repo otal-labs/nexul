@@ -1,5 +1,7 @@
 # Private instances admit users through single-use invitation links
 
+Amended by ADR 0097: a workspace grant in the package also carries Every project and, under None, Project access per project.
+
 This supersedes the allowlist decision in ADR 0040 and the first, two-step
 admission rule in ADR 0024. Authentication remains provider OAuth, instance
 administration remains separate from Workspace Roles, and a Role still lives

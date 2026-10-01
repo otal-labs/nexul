@@ -107,14 +107,13 @@ _Avoid_: Onboarded, verified, setup flag
 
 **Memory**:
 A note written for agents, not people: a title, a one-line when-to-use
-phrase, and a rich-text body, belonging to the workspace or to one project.
-A workspace memory reaches every turn, including a plain chat with no
-ticket or doc; a project memory reaches only that project's turns. Every
-Agent turn carries the index of the workspace's memories plus, when there
-is one, the project's own; a play run inlines the ones the user picked.
+phrase, and a rich-text body, belonging to exactly one project. It reaches
+only that project's turns: an Agent turn on a ticket, doc, or interview
+carries the index of its project's memories, a play run inlines the ones
+the user picked, and a plain chat with no ticket or doc carries none.
 Agents may write memories too. Every save appends a version with its
 author, and any version can be reverted to. Cloned, never shared, to
-another project or to a workspace. Plural in the UI: "memories".
+another project. Plural in the UI: "memories".
 _Avoid_: Doc (docs are for clients and requirements), skill, note
 
 **Interview**:
@@ -219,8 +218,9 @@ _Avoid_: Category (that groups tickets on the board), section (a heading
 inside a doc), collection (the retired workspace-wide doc grouping)
 
 **Channel**:
-A workspace conversation every member reads and posts in: a text channel,
-named with a leading `#`, or a voice channel. Created and renamed with
+A workspace conversation its readers post in: a text channel, named with a
+leading `#`, or a voice channel. Every member reads a public channel except a
+Restricted member; a Private channel only its members read. Created and renamed with
 `channels:write`, deleted together with every message in it with
 `channels:delete`. Each workspace has one `#general`, made with the workspace,
 which can be renamed but never deleted.
@@ -487,9 +487,12 @@ scoped token, and the agent are checked against the same values. Checked in
 the workspace the entity belongs to; runners, the topology, machines, DNS,
 connectors, the instance's own stacks, and the instance itself (its settings,
 upgrades, accounts, workspace creation), which belong to none, against every
-workspace the caller is in. The Owner of any workspace therefore holds every
-instance-level permission, and nobody grants a permission they don't hold. What every member reads (the project list, channels, their own
-DMs and inbox, People) takes membership, not a permission.
+workspace the caller is in and not a Restricted member of. The Owner of any workspace therefore holds every
+instance-level permission, and nobody grants a permission they don't hold. What every member reads (the project list, public
+channels, their own DMs and inbox, People) takes membership, not a permission; a Restricted member's project list
+is the projects they hold Project access to, and they read no public channel. Each domain is a project area, a
+workspace area, or an instance area; a role's project areas reach every project only for members whose Every
+project is From role.
 _Avoid_: Right, privilege, capability, ACL entry, instance admin (holding the
 instance's permissions is what that meant)
 
@@ -500,26 +503,40 @@ workspace Owner bypasses all of it.
 _Avoid_: Grant, share, ACL
 
 **Restricted member**:
-A workspace member set to see only the projects they hold Project access to,
-instead of every project. A project they hold none on is invisible to them,
-its name included, and their role still decides what they do in the
-workspace itself.
+A workspace member whose Every project is None: they see only the projects
+they hold Project access to, instead of every project. A project they hold
+none on is invisible to them, its name included, and so are projects made
+later. Their role still decides the workspace areas; it opens no instance
+area, and of channels they read only the Private channels they are in, plus
+DMs and the threads of what they can read. The Owner is never one.
 _Avoid_: Guest, client (Client is a role someone named), external member
 
 **Project access**:
 The levels one person holds in one project, per project area, from None to
-Delete. For a Restricted member it is the whole answer inside that project;
-everyone else gets a role's project areas on every project.
+Delete. For a Restricted member it is the whole answer inside that project,
+with a doc's own sharing on top; everyone else gets a role's project areas
+on every project. Set from Team, or carried by an Invitation.
 _Avoid_: Project role, project membership, project grant, share
+
+**Every project**:
+The first row of a person's access in a workspace: From role, where the
+role's project areas apply on every project, new ones included, or None,
+which makes them a Restricted member. Every member upgraded from before it
+existed is From role.
+_Avoid_: All projects, access mode, restricted switch
 
 **Private channel**:
 A Channel only its members see and read, rather than every member of the
-workspace.
+workspace; to anyone else it reads as not found. Switched either way with
+`channels:write`; a member adds people, `channels:write` removes them, and
+anyone but the last member may leave. The workspace Owner sees every one.
+`#general` is never private.
 _Avoid_: Group, locked channel, hidden channel
 
 **Invitation**:
 A single-use bearer link that admits one person to the instance and grants a
-chosen Role plus optional Permission overwrites in one or more Workspaces. The
+chosen Role plus optional Permission overwrites, and the Every project row
+with any Project access, in one or more Workspaces. The
 link expires after one or seven days and is not bound to a provider identity.
 _Avoid_: Allowlist entry, invite code, join link
 
@@ -531,7 +548,8 @@ _Avoid_: Allowlist status, membership status
 **Team**:
 Everyone registered on the instance and what each can reach: every account
 with its Account status, whether it is online or when it was last seen, and,
-per workspace, its Role and workspace-wide Permission overwrites. A holder of
+per workspace, its Role, workspace-wide Permission overwrites, Every project
+row, and Project access. A holder of
 `accounts:read` sees all of it, under Instance settings; someone who manages
 members in a workspace finds it in Configuration and sees only the workspaces
 they manage. A change

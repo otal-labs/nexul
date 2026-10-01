@@ -53,4 +53,4 @@ from another.
 
 Supersedes the instance-administration layer of ADR 0024 (sign-in and per-membership roles stand) and the last
 active administrator rule of ADR 0061. Amends ADR 0085, whose Team now answers to `accounts:read`, and ADR 0087.
-Decided 2026-09-29.
+Decided 2026-09-29. Amended by ADR 0097: a restricted membership holds no instance bit, whatever its role carries.
