@@ -110,12 +110,13 @@ project's folder no longer exists. Transcripts are kept with the token hidden.
 ## Choose defaults
 
 The **Defaults** tab in **Your settings → T3 pairing** is used by `@Agent` in a
-channel or direct message that has no project link. It has these fields:
+channel or direct message outside a project, and in every project you have not
+linked. It has these fields:
 
 - **Default computer**. Leave it empty when only one paired computer should be
   resolved automatically.
-- **Fallback T3 project**. The project used when the chat context has no
-  project.
+- **Fallback T3 project**. The T3 project used when no project link of yours
+  applies.
 - **Provider** and **Model**. Optional overrides. Empty values use the
   computer or provider default.
 
@@ -125,10 +126,16 @@ readiness state. A paired computer without a T3 project produces
 
 ## Link a project
 
-Open a project's **Settings → T3 pairing** card to choose a **Computer**, a
-**T3 project**, and optional **Provider** and **Model**. The project link wins
-over the user's defaults. Clearing the link makes future Agent turns use the
-user's defaults again.
+The **Projects** tab in **Your settings → T3 pairing** lists every project you
+can open, grouped by workspace when you belong to more than one. Each row reads
+back what your turns there run on, such as `onik-desktop · nexul · Sonnet 5`,
+or **Uses your defaults**. Open a row to choose one of your own computers, a
+**T3 project**, and optional **Provider** and **Model**, then select **Save**.
+
+A link is yours alone. Each teammate links the same project to their own
+computer, and your link never sends their turns to your machine. It wins over
+your defaults in that project; **Use my defaults** clears it. With no paired
+computer, the tab points you to **Computers** first.
 
 The browser resolves a target before a play or chat mention starts. The UI
 reports the reason when it cannot run:
@@ -136,7 +143,7 @@ reports the reason when it cannot run:
 - `unpaired`: pair a computer in Your settings, or finish pairing one still in
   progress.
 - `expired`: re-pair the expired computer.
-- `no_harness_project`: select a project link or set a fallback project.
+- `no_harness_project`: link the project on the **Projects** tab or set a fallback project.
 - `no_default_computer`: choose a default when more than one computer is
   paired.
 - `offline`: the computer is not connected.

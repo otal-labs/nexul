@@ -146,26 +146,6 @@ func TestPairingRepo_DeleteComputer_NotFound(t *testing.T) {
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
-func TestPairingRepo_GetComputerByID_IgnoresOwner(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	ctx := context.Background()
-	_, _, err := s.Users.UpsertUser(ctx, newTestUser("u1", "42", "onik97"))
-	require.NoError(t, err)
-	require.NoError(t, s.Pairing.SaveComputer(ctx, newTestComputer("c1", "u1", "home")))
-
-	got, err := s.Pairing.GetComputerByID(ctx, "c1")
-	require.NoError(t, err)
-	assert.Equal(t, "home", got.Name)
-}
-
-func TestPairingRepo_GetComputerByID_NotFound(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	_, err := s.Pairing.GetComputerByID(context.Background(), "missing")
-	require.ErrorIs(t, err, apperrs.ErrNotFound)
-}
-
 func TestPairingRepo_ProjectLink_RoundTrip(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
@@ -175,66 +155,61 @@ func TestPairingRepo_ProjectLink_RoundTrip(t *testing.T) {
 	require.NoError(t, s.Pairing.SaveComputer(ctx, newTestComputer("c1", "u1", "home")))
 	require.NoError(t, s.Projects.Create(ctx, newTestProject("proj-1", "Project One", 0)))
 
-	empty, err := s.Pairing.GetProjectLink(ctx, "proj-1")
+	empty, err := s.Pairing.GetProjectLink(ctx, "u1", "proj-1")
 	require.NoError(t, err)
 	assert.Equal(t, pairing.ProjectLink{}, empty, "unlinked project is a zero value, not an error")
 
 	link := pairing.ProjectLink{
-		ProjectID: "proj-1", ComputerID: "c1", HarnessProjectID: "t3-proj-1",
+		UserID: "u1", ProjectID: "proj-1", ComputerID: "c1", HarnessProjectID: "t3-proj-1",
 		Provider: "claude", Model: "sonnet", UpdatedAt: time.Unix(1_000_000_000, 0).UTC(),
 		ModelOptions: []harness.OptionSetting{{ID: "effort", Value: "high"}, {ID: "fastMode", Value: true}},
 	}
 	require.NoError(t, s.Pairing.SaveProjectLink(ctx, link))
 
-	got, err := s.Pairing.GetProjectLink(ctx, "proj-1")
+	got, err := s.Pairing.GetProjectLink(ctx, "u1", "proj-1")
 	require.NoError(t, err)
-	assert.Equal(t, "c1", got.ComputerID)
-	assert.Equal(t, "t3-proj-1", got.HarnessProjectID)
-	assert.Equal(t, "claude", got.Provider)
-	assert.Equal(t, "sonnet", got.Model)
-	assert.Equal(t, link.ModelOptions, got.ModelOptions, "a switch reads back as a bool, a choice as a string")
+	assert.Equal(t, link, got, "a switch reads back as a bool, a choice as a string")
 }
 
-func TestPairingRepo_SaveProjectLink_UpsertUpdatesInPlace(t *testing.T) {
+func TestPairingRepo_ProjectLinks_AreKeptPerPerson(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
 	ctx := context.Background()
-	_, _, err := s.Users.UpsertUser(ctx, newTestUser("u1", "42", "onik97"))
-	require.NoError(t, err)
+	for _, u := range []string{"u1", "u2"} {
+		_, _, err := s.Users.UpsertUser(ctx, newTestUser(u, u, u))
+		require.NoError(t, err)
+	}
 	require.NoError(t, s.Pairing.SaveComputer(ctx, newTestComputer("c1", "u1", "home")))
 	require.NoError(t, s.Pairing.SaveComputer(ctx, newTestComputer("c2", "u1", "vps")))
+	require.NoError(t, s.Pairing.SaveComputer(ctx, newTestComputer("c3", "u2", "theirs")))
 	require.NoError(t, s.Projects.Create(ctx, newTestProject("proj-1", "Project One", 0)))
+	require.NoError(t, s.Projects.Create(ctx, newTestProject("proj-2", "Project Two", 1)))
 
-	require.NoError(t, s.Pairing.SaveProjectLink(ctx, pairing.ProjectLink{ProjectID: "proj-1", ComputerID: "c1", HarnessProjectID: "p1"}))
-	require.NoError(t, s.Pairing.SaveProjectLink(ctx, pairing.ProjectLink{ProjectID: "proj-1", ComputerID: "c2", HarnessProjectID: "p2"}))
+	require.NoError(t, s.Pairing.SaveProjectLink(ctx, pairing.ProjectLink{UserID: "u1", ProjectID: "proj-2", ComputerID: "c1", HarnessProjectID: "p2"}))
+	require.NoError(t, s.Pairing.SaveProjectLink(ctx, pairing.ProjectLink{UserID: "u1", ProjectID: "proj-1", ComputerID: "c1", HarnessProjectID: "p1"}))
+	require.NoError(t, s.Pairing.SaveProjectLink(ctx, pairing.ProjectLink{UserID: "u2", ProjectID: "proj-1", ComputerID: "c3", HarnessProjectID: "theirs"}))
+	require.NoError(t, s.Pairing.SaveProjectLink(ctx, pairing.ProjectLink{UserID: "u1", ProjectID: "proj-1", ComputerID: "c2", HarnessProjectID: "p1-moved"}))
 
-	got, err := s.Pairing.GetProjectLink(ctx, "proj-1")
+	links, err := s.Pairing.ListProjectLinks(ctx, "u1")
 	require.NoError(t, err)
-	assert.Equal(t, "c2", got.ComputerID)
-	assert.Equal(t, "p2", got.HarnessProjectID)
-}
+	require.Len(t, links, 2)
+	assert.Equal(t, "proj-1", links[0].ProjectID)
+	assert.Equal(t, "c2", links[0].ComputerID, "saving again updates the person's own row in place")
+	assert.Equal(t, "proj-2", links[1].ProjectID)
 
-func TestPairingRepo_DeleteProjectLink(t *testing.T) {
-	t.Parallel()
-	s := newTestStore(t)
-	ctx := context.Background()
-	_, _, err := s.Users.UpsertUser(ctx, newTestUser("u1", "42", "onik97"))
+	require.NoError(t, s.Pairing.DeleteProjectLink(ctx, "u1", "proj-1"))
+	mine, err := s.Pairing.GetProjectLink(ctx, "u1", "proj-1")
 	require.NoError(t, err)
-	require.NoError(t, s.Pairing.SaveComputer(ctx, newTestComputer("c1", "u1", "home")))
-	require.NoError(t, s.Projects.Create(ctx, newTestProject("proj-1", "Project One", 0)))
-	require.NoError(t, s.Pairing.SaveProjectLink(ctx, pairing.ProjectLink{ProjectID: "proj-1", ComputerID: "c1", HarnessProjectID: "p1"}))
-
-	require.NoError(t, s.Pairing.DeleteProjectLink(ctx, "proj-1"))
-
-	got, err := s.Pairing.GetProjectLink(ctx, "proj-1")
+	assert.Empty(t, mine.ComputerID)
+	theirs, err := s.Pairing.GetProjectLink(ctx, "u2", "proj-1")
 	require.NoError(t, err)
-	assert.Equal(t, pairing.ProjectLink{}, got)
+	assert.Equal(t, "c3", theirs.ComputerID, "neither a save nor a clear touches another person's link")
 }
 
 func TestPairingRepo_DeleteProjectLink_NeverLinkedIsNoop(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
-	require.NoError(t, s.Pairing.DeleteProjectLink(context.Background(), "proj-missing"))
+	require.NoError(t, s.Pairing.DeleteProjectLink(context.Background(), "u1", "proj-missing"))
 }
 
 func TestPairingRepo_Defaults_RoundTrip(t *testing.T) {

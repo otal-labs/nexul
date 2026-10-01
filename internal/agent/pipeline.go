@@ -646,7 +646,7 @@ func (s *Service) replyNotConfigured(ctx context.Context, conversationID, viaUse
 	case pairing.ReasonExpiredToken:
 		msg = "@Agent's paired computer's session has expired — re-pair it in Settings → Pairing."
 	case pairing.ReasonNoDefault:
-		msg = "@Agent needs a project on the paired computer to run against — link one in this project's settings, or set a fallback in Settings → Pairing."
+		msg = "@Agent needs a project on the paired computer to run against — link this project in Settings → T3 pairing → Projects, or set a fallback under Defaults."
 	case pairing.ReasonNoDefaultComputer:
 		msg = "@Agent found several paired computers — pick a default one in Settings → Pairing."
 	case pairing.ReasonSetupRequired, pairing.ReasonOffline:

@@ -1,5 +1,7 @@
 # 0058. A play run may pick its own computer, provider, and model
 
+Amended by ADR 0102: the project link the run dialog resolves from is the starter's own, never a teammate's.
+
 A run may pin the computer, provider, and model in the run dialog instead of
 always inheriting the project link or the starter's pairing defaults. The
 dialog preselects the resolved target, or the starter's own last choice for

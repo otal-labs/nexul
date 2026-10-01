@@ -256,7 +256,7 @@ export type CreateComputerTunnelFormData = z.infer<typeof CreateComputerTunnelFo
 export const HARNESS_LABELS: Record<string, string> = { t3code: "T3 Code" };
 export const harnessLabel = (kind: string) => HARNESS_LABELS[kind] ?? kind;
 
-// A user's pairing defaults for chat contexts with no linked project.
+// A user's pairing defaults, for chats outside a project and projects they haven't linked.
 export interface PairingDefaults {
   default_computer_id?: string;
   fallback_project_id?: string;
@@ -265,7 +265,7 @@ export interface PairingDefaults {
   model_options?: OptionSetting[];
 }
 
-// An empty computer_id means never linked; chat mentions fall back to the user's own pairing defaults.
+// The caller's own link for one project (ADR 0102); an empty computer_id means they never set one.
 export interface ProjectLink {
   project_id?: string;
   computer_id?: string;
@@ -370,7 +370,7 @@ export type HarnessReadiness =
 export const HARNESS_READINESS_COPY: Record<Exclude<HarnessReadiness["state"], "ready">, string> = {
   unpaired: "Pair a harness in Settings to run plays",
   expired: "Your harness pairing has expired, re-pair it in Settings",
-  no_harness_project: "Pick a harness project for this project, or set a fallback in Settings",
+  no_harness_project: "Link this project in Settings → T3 pairing → Projects, or set a fallback under Defaults",
   no_default_computer: "Several harnesses are paired, pick a default in Settings",
   offline: "Your harness is offline",
 };

@@ -38,10 +38,6 @@ describe("ProjectSettingsNav", () => {
       "href",
       "/acme/projects/BE/settings/board",
     );
-    expect(screen.getByRole("link", { name: "T3 pairing" })).toHaveAttribute(
-      "href",
-      "/acme/projects/BE/settings/pairing",
-    );
     expect(screen.getByRole("link", { name: "Danger zone" })).toHaveAttribute(
       "href",
       "/acme/projects/BE/settings/danger",
@@ -68,12 +64,12 @@ describe("isProjectSettingsSection", () => {
     expect(isProjectSettingsSection("repositories")).toBe(true);
     expect(isProjectSettingsSection("services")).toBe(true);
     expect(isProjectSettingsSection("board")).toBe(true);
-    expect(isProjectSettingsSection("pairing")).toBe(true);
     expect(isProjectSettingsSection("danger")).toBe(true);
   });
 
   it("rejects anything else", () => {
     expect(isProjectSettingsSection("nope")).toBe(false);
+    expect(isProjectSettingsSection("pairing")).toBe(false);
     expect(isProjectSettingsSection(null)).toBe(false);
     expect(isProjectSettingsSection(undefined)).toBe(false);
     expect(isProjectSettingsSection("")).toBe(false);
