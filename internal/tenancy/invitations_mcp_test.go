@@ -52,6 +52,7 @@ func TestInvitationTools_ErrorPaths(t *testing.T) {
 		{"create with a bare string grant", nil, "invitation_create", `{"grants": ["ws-1"]}`, apperrs.ErrInvalid},
 		{"create with a grant missing its role", nil, "invitation_create", `{"grants": [{"workspace_id": "ws-1"}]}`, apperrs.ErrInvalid},
 		{"create with an unknown permission", nil, "invitation_create", `{"grants": [{"workspace_id": "ws-1", "role_id": "r", "allow": ["comment"]}]}`, apperrs.ErrInvalid},
+		{"create with an unknown project level", nil, "invitation_create", `{"grants": [{"workspace_id": "ws-1", "role_id": "r", "every_project": "none", "project_access": [{"project_id": "p-1", "allow": ["tickets:fly"]}]}]}`, apperrs.ErrInvalid},
 		{"create with no grants", nil, "invitation_create", `{"grants": []}`, apperrs.ErrInvalid},
 		{"create lasting three days", nil, "invitation_create", `{"grants": [{"workspace_id": "ws-1", "role_id": "r"}], "expires_in_days": 3}`, apperrs.ErrInvalid},
 		{"delete without an id", nil, "invitation_delete", `{}`, apperrs.ErrInvalid},
@@ -78,7 +79,7 @@ func TestInvitationCreate_TypedGrantsAndTheLinkOnce(t *testing.T) {
 	svc, repo := newInvitationServiceFixture()
 
 	got, err := callInvitationTool(t, svc, "invitation_create",
-		`{"grants": [{"workspace_id": "ws-1", "role_id": "role-editor", "allow": ["docs:write"], "deny": ["members:write"]}]}`)
+		`{"grants": [{"workspace_id": "ws-1", "role_id": "role-editor", "allow": ["docs:write"], "deny": ["members:write"], "every_project": "none", "project_access": [{"project_id": "p-web", "allow": ["tickets:read"]}]}]}`)
 	require.NoError(t, err)
 	created := got.(*CreatedInvitation)
 	assert.True(t, strings.HasPrefix(created.URL, "https://nexul.example/invite#"))
@@ -88,6 +89,8 @@ func TestInvitationCreate_TypedGrantsAndTheLinkOnce(t *testing.T) {
 	assert.Equal(t, "role-editor", grant.RoleID)
 	assert.Equal(t, permissions.SetOf(permissions.DocsWrite), grant.Allow)
 	assert.Equal(t, permissions.SetOf(permissions.MembersWrite), grant.Deny)
+	assert.True(t, grant.Restricted())
+	assert.Equal(t, []*ProjectAccess{{ProjectID: "p-web", Allow: permissions.SetOf(permissions.TicketsRead)}}, grant.ProjectAccess)
 }
 
 func TestInvitationListAndDelete(t *testing.T) {
