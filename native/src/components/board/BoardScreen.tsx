@@ -6,13 +6,16 @@ import { useCSSVariable } from "uniwind";
 
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
+import { PlaceholderScreen } from "@/components/PlaceholderScreen";
+import { ProjectRevokedState } from "@/components/project/ProjectRevokedState";
 import { Text } from "@/components/ui/text";
 import { StatusSection } from "@/components/board/StatusSection";
 import { useFetchMe } from "@/hooks/AuthHooks";
-import { useFetchProjects } from "@/hooks/ProjectHooks";
+import { useFetchProjects, useRevokedProject } from "@/hooks/ProjectHooks";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
 import { useFetchTicketsByProject } from "@/hooks/TicketHooks";
 import { useFetchProjectTicketTypes } from "@/hooks/TicketTypeHooks";
+import { useAreaAccess } from "@/hooks/WorkspaceHooks";
 import { cn } from "@/lib/utils";
 import { effectiveProject } from "@/models/Project";
 import { useBoardStore } from "@/stores/boardStore";
@@ -24,12 +27,16 @@ export const BoardScreen = () => {
   const { data: me } = useFetchMe(true);
   const { data: projects, error: projectsError, isPending: projectsPending } = useFetchProjects();
   const selectedProjectId = useBoardStore((s) => s.selectedProjectId);
-  const project = effectiveProject(projects, selectedProjectId);
-  const { data: statuses, error: statusesError, isPending: statusesPending } = useFetchProjectStatuses(project?.id);
-  const { data: tickets, error: ticketsError, isPending: ticketsPending } = useFetchTicketsByProject(project?.id);
-  const { data: ticketTypes } = useFetchProjectTicketTypes(project?.id);
+  // A picked project taken away while open stays revoked instead of the board quietly showing another one.
+  const revoked = useRevokedProject(selectedProjectId ?? undefined);
+  const project = revoked ? undefined : effectiveProject(projects, selectedProjectId);
+  const canReadTickets = useAreaAccess(project?.id)?.("tickets");
+  const boardId = canReadTickets ? project?.id : undefined;
+  const { data: statuses, error: statusesError, isPending: statusesPending } = useFetchProjectStatuses(boardId);
+  const { data: tickets, error: ticketsError, isPending: ticketsPending } = useFetchTicketsByProject(boardId);
+  const { data: ticketTypes } = useFetchProjectTicketTypes(boardId);
 
-  const isPending = projectsPending || (!!project && (statusesPending || ticketsPending));
+  const isPending = projectsPending || (!!boardId && (statusesPending || ticketsPending));
   const error = projectsError ?? statusesError ?? ticketsError;
   const filteredTickets =
     mineOnly && me ? tickets?.filter((t) => t.developer === me.user.login || t.tester === me.user.login) : tickets;
@@ -66,14 +73,16 @@ export const BoardScreen = () => {
       )}
       {isPending && <LoadingDisplay message="Loading the board…" />}
       {error && <ErrorDisplay error={error} />}
-      {projects && projects.length === 0 && (
+      {revoked && <ProjectRevokedState />}
+      {project && canReadTickets === false && <PlaceholderScreen message="This page doesn't exist." />}
+      {!revoked && projects && projects.length === 0 && (
         <View className="flex-1 items-center justify-center px-6">
           <Text variant="muted" className="text-center">
             No projects yet.
           </Text>
         </View>
       )}
-      {project && statuses && filteredTickets && (
+      {project && boardId && statuses && filteredTickets && (
         <ScrollView className="flex-1">
           {statuses.map((status) => (
             <StatusSection

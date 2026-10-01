@@ -62,7 +62,12 @@ as written. In particular:
 - Navigation is a bottom tab bar (Inbox, Chat, Board, Deploys, More) with a
   stack per tab. Board, Deploys and More's Runners follow the viewer's read
   permission through `src/models/Access.tsx`, the mirror of the web table; a
-  deep link into one the viewer can't read renders the plain not-found state. Detail screens push onto the tab's stack and use the platform
+  deep link into one the viewer can't read renders the plain not-found state.
+  For a Restricted member (ADR 0097) a tab opens on what they hold in any
+  project and a project's own screen on that project's levels
+  (`useAreaAccess(projectId)`). A screen whose project is taken away while it
+  is open (the Board's pick, a ticket, a doc) shows `ProjectRevokedState`
+  with a way to the Inbox; a project it never showed stays plain not found. Detail screens push onto the tab's stack and use the platform
   back gesture; a push into another tab passes `{ withAnchor: true }` so that
   tab's list stays underneath. Pickers and confirms open with `sheetOptions`
   (`src/lib/sheetOptions.ts`: a fitted form sheet with the native header

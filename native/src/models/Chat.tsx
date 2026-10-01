@@ -21,6 +21,8 @@ export interface Conversation {
   created_at: string;
   updated_at: string;
   participant_ids?: string[];
+  // Only its members (and the Owner) see and read a private channel (ADR 0098).
+  private?: boolean;
 }
 
 export type AuthorKind = "user" | "agent" | "system";

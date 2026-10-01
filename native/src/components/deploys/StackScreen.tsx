@@ -17,7 +17,7 @@ export const StackScreen = () => {
   const { data: stack, error, isPending } = useFetchStack(id);
   const { data: deploys, error: deploysError, isPending: deploysPending } = useFetchStackDeploys(id);
   const { data: containers, error: containersError, isPending: containersPending } = useFetchStackServices(id);
-  const canReadLogs = useAreaAccess()?.("stackLogs") === true;
+  const canReadLogs = useAreaAccess(stack?.project_id || undefined)?.("stackLogs") === true;
 
   const logsOpener = (stackId: string, service: string) => {
     if (!canReadLogs) return undefined;

@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { FileText, Hash, SquareKanban, User } from "lucide-react-native";
+import { FileText, Hash, Lock, SquareKanban, User } from "lucide-react-native";
 import { Pressable } from "react-native";
 import { useCSSVariable } from "uniwind";
 
@@ -28,7 +28,7 @@ export const ConversationRow = ({ conversation, unreadCount, dmCtx }: Conversati
   return (
     <Pressable
       role="button"
-      aria-label={label}
+      aria-label={conversation.private ? `${label}, private` : label}
       onPress={() => router.push({ pathname: "/chat/[id]", params: { id: conversation.id } })}
       className="min-h-12 flex-row items-center gap-3 border-b border-border px-4 py-3 active:bg-accent"
     >
@@ -36,6 +36,7 @@ export const ConversationRow = ({ conversation, unreadCount, dmCtx }: Conversati
       <Text numberOfLines={1} className={cn("flex-1", unreadCount > 0 && "font-semibold")}>
         {label}
       </Text>
+      {conversation.private && <Lock color={String(mutedForeground)} size={12} />}
       {unreadCount > 0 && (
         <Text aria-label={`${unreadCount} unread`} className="font-mono text-xs text-muted-foreground">
           {unreadCount}
