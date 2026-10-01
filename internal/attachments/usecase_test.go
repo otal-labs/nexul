@@ -103,8 +103,20 @@ func newTestService(repo *fakeRepo, access AccessChecker) *Service {
 
 func newTestServiceWithMemoryAccess(repo *fakeRepo, access AccessChecker, memoryAccess MemoryAccessChecker) *Service {
 	s := NewService(repo, access, memoryAccess)
+	s.SetConversations(fakeConversations{"conv-1": nil})
 	s.now = func() time.Time { return fixedNow }
 	return s
+}
+
+// fakeConversations answers a conversation read from its map; an id it does not hold reads as not found.
+type fakeConversations map[string]error
+
+func (f fakeConversations) RequireRead(_ context.Context, conversationID string) error {
+	err, ok := f[conversationID]
+	if !ok {
+		return apperrs.ErrNotFound
+	}
+	return err
 }
 
 func testCtx() context.Context {
@@ -248,29 +260,41 @@ func TestListOwnerAttachmentIDs_NoPermissionCheck(t *testing.T) {
 	assert.Empty(t, memoryAccess.calls)
 }
 
-// TestConversationAttachment_NoAccessCheck covers upload/list/get/delete for a conversation owner: chat v1 enforces no per-conversation permission, so an authenticated actor is all requireOwner needs, and access.Can is never called.
-func TestConversationAttachment_NoAccessCheck(t *testing.T) {
+// TestConversationAttachment_GoesThroughReadingTheConversation: a conversation's file is read, uploaded, and deleted
+// through reading the conversation, so a private channel's file cannot be fetched by id (ADR 0098).
+func TestConversationAttachment_GoesThroughReadingTheConversation(t *testing.T) {
 	repo := newFakeRepo()
 	access := &fakeAccess{can: false}
 	s := newTestService(repo, access)
-
 	a, err := s.Upload(testCtx(), Owner{ConversationID: "conv-1"}, "shot.png", pngBytes)
 	require.NoError(t, err)
 	assert.Equal(t, "conv-1", a.ConversationID)
-	assert.Empty(t, access.calls)
+
+	for name, readers := range map[string]ConversationReader{
+		"a conversation the caller cannot read": fakeConversations{},
+		"no read check wired":                   nil,
+	} {
+		t.Run(name, func(t *testing.T) {
+			hidden := newTestService(repo, access)
+			hidden.SetConversations(readers)
+			_, err := hidden.Upload(testCtx(), Owner{ConversationID: "conv-1"}, "more.png", pngBytes)
+			assert.True(t, permissions.Refused(err), "upload: %v", err)
+			_, err = hidden.List(testCtx(), Owner{ConversationID: "conv-1"})
+			assert.True(t, permissions.Refused(err), "list: %v", err)
+			_, err = hidden.Get(testCtx(), a.ID)
+			assert.True(t, permissions.Refused(err), "get: %v", err)
+			assert.True(t, permissions.Refused(hidden.Delete(testCtx(), a.ID)), "delete")
+		})
+	}
 
 	as, err := s.List(testCtx(), Owner{ConversationID: "conv-1"})
 	require.NoError(t, err)
 	require.Len(t, as, 1)
-	assert.Empty(t, access.calls)
-
 	got, err := s.Get(testCtx(), a.ID)
 	require.NoError(t, err)
 	assert.Equal(t, pngBytes, got.Data)
-	assert.Empty(t, access.calls)
-
 	require.NoError(t, s.Delete(testCtx(), a.ID))
-	assert.Empty(t, access.calls)
+	assert.Empty(t, access.calls, "a conversation's file never asks the doc check")
 }
 
 func TestUpload_RepoErrors(t *testing.T) {

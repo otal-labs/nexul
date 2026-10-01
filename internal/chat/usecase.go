@@ -20,14 +20,35 @@ type Service struct {
 	repo      Repo
 	docAccess DocAccess
 	gate      Gate
+	threads   ThreadGate
+	standing  Standing
 	members   Membership
 	now       func() time.Time
 }
 
-// Membership answers whether a person belongs to a workspace, so a DM only ever joins its own members.
+// Membership answers who belongs to a workspace, so a DM or a private channel only ever holds its own members.
 type Membership interface {
 	IsMember(ctx context.Context, userID, workspaceID string) (bool, error)
+	MemberIDs(ctx context.Context, workspaceID string) ([]string, error)
 }
+
+// ThreadGate checks a ticket or interview thread through its project, so threads follow Project access (ADR 0097).
+type ThreadGate interface {
+	RequireTicket(ctx context.Context, ticketID string, action permissions.Action) error
+	RequireProject(ctx context.Context, projectID string, action permissions.Action) error
+}
+
+// SetThreadGate wires the per-project thread check; unset, a thread is checked in its workspace instead.
+func (s *Service) SetThreadGate(g ThreadGate) { s.threads = g }
+
+// Standing: the Owner reads every private channel (ADR 0098), a Restricted member no public one (ADR 0097).
+type Standing interface {
+	IsOwner(ctx context.Context, userID, workspaceID string) (bool, error)
+	IsRestricted(ctx context.Context, userID, workspaceID string) (bool, error)
+}
+
+// SetStanding wires the Owner and Restricted member lookups; unset, nobody is either.
+func (s *Service) SetStanding(st Standing) { s.standing = st }
 
 // SetMembership wires the membership lookup; unset, only the server's own calls may start a DM.
 func (s *Service) SetMembership(m Membership) { s.members = m }
@@ -48,22 +69,31 @@ func (s *Service) require(ctx context.Context, workspaceID string, action permis
 	return s.gate.Require(ctx, workspaceID, action)
 }
 
-// readAction is what reading a conversation takes: any member reads channels and DMs they are in, while a ticket
-// or interview thread is read by whoever may read the ticket or the project's memories.
-func readAction(kind Kind) permissions.Action {
-	switch kind {
-	case KindTicketThread:
-		return permissions.TicketsRead
-	case KindInterviewThread:
-		return permissions.MemoriesRead
-	}
-	return permissions.Member
+// projectThread reports a kind read through its project: a ticket or an interview thread.
+func projectThread(kind Kind) bool {
+	return kind == KindTicketThread || kind == KindInterviewThread
 }
 
-// requireRead checks callerID (the actor when empty) may read c: a doc thread takes docs:thread (ADR 0057), and a
-// DM they are not part of reads as not found.
+// requireGate is the gate's part of reading c: a ticket or interview thread through its project, else membership.
+func (s *Service) requireGate(ctx context.Context, c *Conversation) error {
+	switch c.Kind {
+	case KindTicketThread:
+		if s.threads == nil {
+			return s.require(ctx, c.WorkspaceID, permissions.TicketsRead)
+		}
+		return s.threads.RequireTicket(ctx, c.TicketID, permissions.TicketsRead)
+	case KindInterviewThread:
+		if s.threads == nil {
+			return s.require(ctx, c.WorkspaceID, permissions.MemoriesRead)
+		}
+		return s.threads.RequireProject(ctx, c.ProjectID, permissions.MemoriesRead)
+	}
+	return s.require(ctx, c.WorkspaceID, permissions.Member)
+}
+
+// requireRead checks callerID (the actor when empty) may read c: the gate's part, then the person's own.
 func (s *Service) requireRead(ctx context.Context, c *Conversation, callerID string) error {
-	if err := s.require(ctx, c.WorkspaceID, readAction(c.Kind)); err != nil {
+	if err := s.requireGate(ctx, c); err != nil {
 		return err
 	}
 	if callerID == "" {
@@ -73,13 +103,66 @@ func (s *Service) requireRead(ctx context.Context, c *Conversation, callerID str
 		}
 		callerID = actor.ID
 	}
-	if c.Kind == KindDocThread && !s.canThread(ctx, callerID, c.DocID) {
+	return s.reads(ctx, s.viewer(callerID, c.WorkspaceID), c)
+}
+
+// reads is the person's part of reading c: docs:thread on a doc thread, a DM's participants, a channel's standing.
+func (s *Service) reads(ctx context.Context, v *viewer, c *Conversation) error {
+	if c.Kind == KindDocThread && !s.canThread(ctx, v.userID, c.DocID) {
 		return fmt.Errorf("%w: docs:thread required on doc %s", apperrs.ErrForbidden, c.DocID)
 	}
-	if c.Kind == KindDM && !slices.Contains(c.ParticipantIDs, callerID) {
+	if c.Kind == KindDM && !slices.Contains(c.ParticipantIDs, v.userID) {
+		return fmt.Errorf("%w: conversation %s", apperrs.ErrNotFound, c.ID)
+	}
+	if c.Kind != KindChannel && c.Kind != KindVoiceChannel {
+		return nil
+	}
+	visible, err := v.readsChannel(ctx, c)
+	if err != nil {
+		return err
+	}
+	if !visible {
 		return fmt.Errorf("%w: conversation %s", apperrs.ErrNotFound, c.ID)
 	}
 	return nil
+}
+
+// viewer is one person in one workspace; their standing is looked up at most once, and only when a channel needs it.
+type viewer struct {
+	standing            Standing
+	userID, workspaceID string
+	owner, restricted   *bool
+}
+
+func (s *Service) viewer(userID, workspaceID string) *viewer {
+	return &viewer{standing: s.standing, userID: userID, workspaceID: workspaceID}
+}
+
+// readsChannel: a private channel is read by its members and the Owner, a public one by everyone but a Restricted member.
+func (v *viewer) readsChannel(ctx context.Context, c *Conversation) (bool, error) {
+	if !c.Private {
+		restricted, err := v.memo(ctx, &v.restricted, Standing.IsRestricted)
+		return !restricted, err
+	}
+	if slices.Contains(c.ParticipantIDs, v.userID) {
+		return true, nil
+	}
+	return v.memo(ctx, &v.owner, Standing.IsOwner)
+}
+
+func (v *viewer) memo(ctx context.Context, cached **bool, ask func(Standing, context.Context, string, string) (bool, error)) (bool, error) {
+	if *cached != nil {
+		return **cached, nil
+	}
+	if v.standing == nil || v.userID == "" {
+		return false, nil
+	}
+	answer, err := ask(v.standing, ctx, v.userID, v.workspaceID)
+	if err != nil {
+		return false, fmt.Errorf("standing of %s in workspace %s: %w", v.userID, v.workspaceID, err)
+	}
+	*cached = &answer
+	return answer, nil
 }
 
 // NewService wires the chat use-cases over the given repo.
@@ -94,40 +177,68 @@ func (s *Service) SetDocAccess(a DocAccess) {
 
 // CreateChannel creates a workspace-scoped public channel; it takes channels:write in the workspace.
 func (s *Service) CreateChannel(ctx context.Context, workspaceID, creatorUserID, name string) (*Conversation, error) {
-	return s.createChannelKind(ctx, workspaceID, creatorUserID, name, KindChannel, false)
+	return s.createChannelKind(ctx, &Conversation{WorkspaceID: workspaceID, Kind: KindChannel, Name: name, CreatedBy: creatorUserID}, nil)
 }
 
 // CreateVoiceChannel creates a public voice channel; internal/voice owns the LiveKit side.
 func (s *Service) CreateVoiceChannel(ctx context.Context, workspaceID, creatorUserID, name string) (*Conversation, error) {
-	return s.createChannelKind(ctx, workspaceID, creatorUserID, name, KindVoiceChannel, false)
+	return s.createChannelKind(ctx, &Conversation{WorkspaceID: workspaceID, Kind: KindVoiceChannel, Name: name, CreatedBy: creatorUserID}, nil)
 }
 
-// createChannelKind is the shared create path; general marks a workspace's own #general, which needs no channels:write.
-func (s *Service) createChannelKind(ctx context.Context, workspaceID, creatorUserID, name string, kind Kind, general bool) (*Conversation, error) {
-	workspaceID = strings.TrimSpace(workspaceID)
-	if workspaceID == "" {
+// CreatePrivateChannel creates a text or voice channel whose members are its creator and memberIDs (ADR 0098).
+func (s *Service) CreatePrivateChannel(ctx context.Context, workspaceID, creatorUserID, name string, kind Kind, memberIDs []string) (*Conversation, error) {
+	if kind != KindChannel && kind != KindVoiceChannel {
+		return nil, fmt.Errorf("%w: only a channel or voice channel can be private, not a %s", apperrs.ErrInvalid, kind)
+	}
+	return s.createChannelKind(ctx, &Conversation{WorkspaceID: workspaceID, Kind: kind, Name: name, CreatedBy: creatorUserID, Private: true}, memberIDs)
+}
+
+// createChannelKind is the shared create path; a workspace's own #general needs no channels:write.
+func (s *Service) createChannelKind(ctx context.Context, c *Conversation, memberIDs []string) (*Conversation, error) {
+	c.WorkspaceID = strings.TrimSpace(c.WorkspaceID)
+	if c.WorkspaceID == "" {
 		return nil, fmt.Errorf("%w: workspace id is required", apperrs.ErrInvalid)
 	}
-	creatorUserID = strings.TrimSpace(creatorUserID)
-	if creatorUserID == "" {
+	c.CreatedBy = strings.TrimSpace(c.CreatedBy)
+	if c.CreatedBy == "" {
 		return nil, fmt.Errorf("%w: creator id is required", apperrs.ErrInvalid)
 	}
-	name, err := channelName(name)
+	name, err := channelName(c.Name)
 	if err != nil {
 		return nil, err
 	}
-	if !general {
-		if err := s.require(ctx, workspaceID, permissions.ChannelsWrite); err != nil {
+	c.Name = name
+	if c.General {
+		return s.createConversation(ctx, c, []string{c.CreatedBy})
+	}
+	if err := s.require(ctx, c.WorkspaceID, permissions.ChannelsWrite); err != nil {
+		return nil, err
+	}
+	if !c.Private {
+		if err := s.refuseRestricted(ctx, c.CreatedBy, c.WorkspaceID); err != nil {
 			return nil, err
 		}
+		return s.createConversation(ctx, c, []string{c.CreatedBy})
 	}
-	return s.createConversation(ctx, &Conversation{
-		WorkspaceID: workspaceID,
-		Kind:        kind,
-		Name:        name,
-		General:     general,
-		CreatedBy:   creatorUserID,
-	}, []string{creatorUserID})
+	members := dedupeParticipants(c.CreatedBy, memberIDs)
+	if err := s.requireMembers(ctx, c.WorkspaceID, members); err != nil {
+		return nil, err
+	}
+	c.ParticipantIDs = members
+	return s.createConversation(ctx, c, members)
+}
+
+// refuseRestricted refuses a Restricted member anything that leaves a channel public, which they could not then read.
+func (s *Service) refuseRestricted(ctx context.Context, userID, workspaceID string) error {
+	v := s.viewer(userID, workspaceID)
+	restricted, err := v.memo(ctx, &v.restricted, Standing.IsRestricted)
+	if err != nil {
+		return err
+	}
+	if restricted {
+		return fmt.Errorf("%w: a member who sees only some projects may only have private channels", apperrs.ErrForbidden)
+	}
+	return nil
 }
 
 // channelName is the one validation a channel's name goes through, on create and on rename.
@@ -141,7 +252,7 @@ func channelName(name string) (string, error) {
 
 // EnsureGeneralChannel idempotently creates a workspace's #general channel (tenancy's ChannelGate seam).
 func (s *Service) EnsureGeneralChannel(ctx context.Context, workspaceID, creatorUserID string) error {
-	_, err := s.createChannelKind(ctx, workspaceID, creatorUserID, GeneralChannelName, KindChannel, true)
+	_, err := s.createChannelKind(ctx, &Conversation{WorkspaceID: workspaceID, Kind: KindChannel, Name: GeneralChannelName, CreatedBy: creatorUserID, General: true}, nil)
 	if err != nil && !errors.Is(err, apperrs.ErrConflict) {
 		return fmt.Errorf("ensure general channel for workspace %s: %w", workspaceID, err)
 	}
@@ -183,11 +294,175 @@ func (s *Service) DeleteChannel(ctx context.Context, id string) (*Conversation, 
 	}
 	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicConversationDeleted, Payload: ConversationDeletedEvent{
 		ConversationID: c.ID, WorkspaceID: c.WorkspaceID, Kind: c.Kind, Name: c.Name, ActorID: actorID(ctx),
+		Private: c.Private, MemberIDs: c.ParticipantIDs,
 	}}
 	if err := s.repo.DeleteConversation(ctx, c.ID, evt); err != nil {
 		return nil, fmt.Errorf("delete %s conversation: %w", c.Kind, err)
 	}
 	return c, nil
+}
+
+// ReadsDeleted reports whether the caller could read the channel a chat.conversation.deleted event removed.
+func (s *Service) ReadsDeleted(ctx context.Context, e ConversationDeletedEvent) bool {
+	c := &Conversation{ID: e.ConversationID, WorkspaceID: e.WorkspaceID, Kind: e.Kind, Private: e.Private, ParticipantIDs: e.MemberIDs}
+	return s.requireRead(ctx, c, "") == nil
+}
+
+// SetChannelPrivate switches a channel private, keeping the caller and keepUserIDs, or public (ADR 0098).
+func (s *Service) SetChannelPrivate(ctx context.Context, id string, private bool, keepUserIDs []string) (*Conversation, error) {
+	c, err := s.manageableChannel(ctx, id, permissions.ChannelsWrite)
+	if err != nil {
+		return nil, err
+	}
+	if c.General {
+		return nil, fmt.Errorf("%w: #%s is the workspace's general channel, which is always public", apperrs.ErrInvalid, c.Name)
+	}
+	if c.Private == private {
+		return c, nil
+	}
+	actor := actorID(ctx)
+	if !private {
+		if err := s.refuseRestricted(ctx, actor, c.WorkspaceID); err != nil {
+			return nil, err
+		}
+		return s.switchPrivate(ctx, c, false, nil, nil)
+	}
+	members := cleanIDs(append([]string{actor}, keepUserIDs...))
+	if len(members) == 0 {
+		return nil, fmt.Errorf("%w: a private channel needs at least one member", apperrs.ErrInvalid)
+	}
+	if err := s.requireMembers(ctx, c.WorkspaceID, members); err != nil {
+		return nil, err
+	}
+	everyone, err := s.workspaceMemberIDs(ctx, c.WorkspaceID)
+	if err != nil {
+		return nil, err
+	}
+	removed := slices.DeleteFunc(everyone, func(id string) bool { return slices.Contains(members, id) })
+	return s.switchPrivate(ctx, c, true, members, removed)
+}
+
+func (s *Service) switchPrivate(ctx context.Context, c *Conversation, private bool, members, removed []string) (*Conversation, error) {
+	switched := *c
+	switched.Private, switched.ParticipantIDs, switched.UpdatedAt = private, members, s.now().UTC()
+	evt := s.membersChanged(ctx, &switched, members, removed)
+	if err := s.repo.SetChannelPrivate(ctx, c.ID, private, members, switched.UpdatedAt, evt); err != nil {
+		return nil, fmt.Errorf("set %s conversation private: %w", c.Kind, err)
+	}
+	return &switched, nil
+}
+
+// AddChannelMembers adds workspace members to a private channel; anyone who reads it may (ADR 0098).
+func (s *Service) AddChannelMembers(ctx context.Context, id string, userIDs []string) (*Conversation, error) {
+	c, err := s.privateChannel(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	added := slices.DeleteFunc(cleanIDs(userIDs), func(id string) bool { return slices.Contains(c.ParticipantIDs, id) })
+	if len(added) == 0 {
+		return c, nil
+	}
+	if err := s.requireMembers(ctx, c.WorkspaceID, added); err != nil {
+		return nil, err
+	}
+	updated := *c
+	updated.ParticipantIDs = append(slices.Clone(c.ParticipantIDs), added...)
+	evt := s.membersChanged(ctx, &updated, added, nil)
+	if err := s.repo.AddParticipants(ctx, c.ID, added, s.now().UTC(), evt); err != nil {
+		return nil, fmt.Errorf("add members to %s conversation: %w", c.Kind, err)
+	}
+	return &updated, nil
+}
+
+// RemoveChannelMembers removes people from a private channel; removing anyone but yourself takes channels:write.
+func (s *Service) RemoveChannelMembers(ctx context.Context, id string, userIDs []string) (*Conversation, error) {
+	c, err := s.privateChannel(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	userIDs = cleanIDs(userIDs)
+	if len(userIDs) == 0 {
+		return nil, fmt.Errorf("%w: name at least one member to remove", apperrs.ErrInvalid)
+	}
+	actor := actorID(ctx)
+	if slices.ContainsFunc(userIDs, func(id string) bool { return id != actor }) {
+		if err := s.require(ctx, c.WorkspaceID, permissions.ChannelsWrite); err != nil {
+			return nil, err
+		}
+	}
+	removed := slices.DeleteFunc(slices.Clone(userIDs), func(id string) bool { return !slices.Contains(c.ParticipantIDs, id) })
+	if len(removed) == 0 {
+		return c, nil
+	}
+	remaining := slices.DeleteFunc(slices.Clone(c.ParticipantIDs), func(id string) bool { return slices.Contains(removed, id) })
+	if len(remaining) == 0 {
+		return nil, fmt.Errorf("%w: the last member cannot leave #%s; make it public or delete it instead", apperrs.ErrInvalid, c.Name)
+	}
+	updated := *c
+	updated.ParticipantIDs = remaining
+	evt := s.membersChanged(ctx, &updated, nil, removed)
+	if err := s.repo.RemoveParticipants(ctx, c.ID, removed, evt); err != nil {
+		return nil, fmt.Errorf("remove members from %s conversation: %w", c.Kind, err)
+	}
+	return &updated, nil
+}
+
+// privateChannel checks, in order, that the caller reads the conversation and that it is a private channel.
+func (s *Service) privateChannel(ctx context.Context, id string) (*Conversation, error) {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return nil, fmt.Errorf("%w: conversation id is required", apperrs.ErrInvalid)
+	}
+	c, err := s.repo.GetConversation(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get conversation %s: %w", id, err)
+	}
+	if err := s.requireRead(ctx, c, ""); err != nil {
+		return nil, err
+	}
+	if c.Kind != KindChannel && c.Kind != KindVoiceChannel {
+		return nil, fmt.Errorf("%w: only a channel or voice channel has members to manage, not a %s", apperrs.ErrInvalid, c.Kind)
+	}
+	if !c.Private {
+		return nil, fmt.Errorf("%w: #%s is public, so every member reads it; make it private to choose its members", apperrs.ErrInvalid, c.Name)
+	}
+	return c, nil
+}
+
+func (s *Service) membersChanged(ctx context.Context, c *Conversation, added, removed []string) eventbus.OutboxEvent {
+	return eventbus.OutboxEvent{ID: ids.New(), Topic: TopicConversationMembersChanged, Payload: ConversationMembersChangedEvent{
+		ConversationID: c.ID, WorkspaceID: c.WorkspaceID, Private: c.Private,
+		AddedUserIDs: nonNil(added), RemovedUserIDs: nonNil(removed), ActorID: actorID(ctx),
+	}}
+}
+
+func (s *Service) workspaceMemberIDs(ctx context.Context, workspaceID string) ([]string, error) {
+	if s.members == nil {
+		return nil, nil
+	}
+	ids, err := s.members.MemberIDs(ctx, workspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("list members of workspace %s: %w", workspaceID, err)
+	}
+	return ids, nil
+}
+
+// cleanIDs trims blanks and drops duplicates, keeping order.
+func cleanIDs(in []string) []string {
+	out := make([]string, 0, len(in))
+	for _, id := range in {
+		if id = strings.TrimSpace(id); id != "" && !slices.Contains(out, id) {
+			out = append(out, id)
+		}
+	}
+	return out
+}
+
+func nonNil(ids []string) []string {
+	if ids == nil {
+		return []string{}
+	}
+	return ids
 }
 
 // manageableChannel checks, in order, that the caller reads the conversation, that it is a channel, and holds action.
@@ -276,19 +551,16 @@ func (s *Service) GetOrCreateTicketThread(ctx context.Context, workspaceID, tick
 	if workspaceID == "" {
 		return nil, fmt.Errorf("%w: workspace id is required", apperrs.ErrInvalid)
 	}
-	if err := s.require(ctx, workspaceID, permissions.TicketsRead); err != nil {
+	thread := &Conversation{WorkspaceID: workspaceID, Kind: KindTicketThread, TicketID: ticketID}
+	if err := s.requireNewThread(ctx, thread); err != nil {
 		return nil, err
 	}
 	creatorUserID = strings.TrimSpace(creatorUserID)
 	if creatorUserID == "" {
 		return nil, fmt.Errorf("%w: creator id is required", apperrs.ErrInvalid)
 	}
-	created, err := s.createConversation(ctx, &Conversation{
-		WorkspaceID: workspaceID,
-		Kind:        KindTicketThread,
-		TicketID:    ticketID,
-		CreatedBy:   creatorUserID,
-	}, []string{creatorUserID})
+	thread.CreatedBy = creatorUserID
+	created, err := s.createConversation(ctx, thread, []string{creatorUserID})
 	if err == nil {
 		return created, nil
 	}
@@ -363,18 +635,15 @@ func (s *Service) GetOrCreateInterviewThread(ctx context.Context, workspaceID, p
 	if workspaceID == "" {
 		return nil, fmt.Errorf("%w: workspace id is required", apperrs.ErrInvalid)
 	}
-	if err := s.require(ctx, workspaceID, permissions.MemoriesRead); err != nil {
+	thread := &Conversation{WorkspaceID: workspaceID, Kind: KindInterviewThread, ProjectID: projectID}
+	if err := s.requireNewThread(ctx, thread); err != nil {
 		return nil, err
 	}
 	if creatorUserID == "" {
 		return nil, fmt.Errorf("%w: creator id is required", apperrs.ErrInvalid)
 	}
-	created, err := s.createConversation(ctx, &Conversation{
-		WorkspaceID: workspaceID,
-		Kind:        KindInterviewThread,
-		ProjectID:   projectID,
-		CreatedBy:   creatorUserID,
-	}, []string{creatorUserID})
+	thread.CreatedBy = creatorUserID
+	created, err := s.createConversation(ctx, thread, []string{creatorUserID})
 	if err == nil {
 		return created, nil
 	}
@@ -386,6 +655,14 @@ func (s *Service) GetOrCreateInterviewThread(ctx context.Context, workspaceID, p
 		return nil, fmt.Errorf("get interview thread for project %s after conflict: %w", projectID, getErr)
 	}
 	return existing, nil
+}
+
+// requireNewThread checks a thread about to start: membership of its workspace, then its project.
+func (s *Service) requireNewThread(ctx context.Context, thread *Conversation) error {
+	if err := s.require(ctx, thread.WorkspaceID, permissions.Member); err != nil {
+		return err
+	}
+	return s.requireGate(ctx, thread)
 }
 
 // ExistingThread returns a doc, ticket, or interview thread without creating it, ErrNotFound until one exists; doc threads need docs:thread.
@@ -418,18 +695,23 @@ func (s *Service) ExistingThread(ctx context.Context, kind Kind, targetID, calle
 	return c, nil
 }
 
-// readableKinds answers, per conversation kind, whether the caller may read it in workspaceID, asking the gate
-// once for each thread kind rather than once per conversation.
-func (s *Service) readableKinds(ctx context.Context, workspaceID string) (func(Kind) bool, error) {
-	allowed := map[permissions.Action]bool{permissions.Member: true}
-	for _, action := range []permissions.Action{permissions.TicketsRead, permissions.MemoriesRead} {
-		err := s.require(ctx, workspaceID, action)
+// listed keeps the conversations the caller reads; membership was checked once, and threads ask their project.
+func (s *Service) listed(ctx context.Context, workspaceID, userID string, cs []*Conversation) ([]*Conversation, error) {
+	v := s.viewer(userID, workspaceID)
+	out := make([]*Conversation, 0, len(cs))
+	for _, c := range cs {
+		err := s.reads(ctx, v, c)
+		if err == nil && projectThread(c.Kind) {
+			err = s.requireGate(ctx, c)
+		}
 		if err != nil && !permissions.Refused(err) {
 			return nil, err
 		}
-		allowed[action] = err == nil
+		if err == nil {
+			out = append(out, c)
+		}
 	}
-	return func(k Kind) bool { return allowed[readAction(k)] }, nil
+	return out, nil
 }
 
 // canThread reports whether userID holds docs:thread on docID; a service with no wired DocAccess fails closed.
@@ -500,15 +782,16 @@ func (s *Service) HasTicketThreads(ctx context.Context, ticketIDs []string) (map
 		}
 		threads = append(threads, thread)
 	}
-	readable, err := permissions.Filter(threads, func(c *Conversation) string { return c.WorkspaceID }, func(workspaceID string) error {
-		return s.require(ctx, workspaceID, readAction(KindTicketThread))
-	})
-	if err != nil {
-		return nil, fmt.Errorf("has ticket threads: %w", err)
-	}
-	visible := make(map[string]bool, len(readable))
-	for _, c := range readable {
-		visible[c.TicketID] = true
+	// ponytail: one check per thread through its ticket's project; ask once per project if boards get slow.
+	visible := make(map[string]bool, len(threads))
+	for _, c := range threads {
+		err := s.requireGate(ctx, c)
+		if err != nil && !permissions.Refused(err) {
+			return nil, fmt.Errorf("has ticket threads: %w", err)
+		}
+		if err == nil {
+			visible[c.TicketID] = true
+		}
 	}
 	return visible, nil
 }
@@ -570,18 +853,7 @@ func (s *Service) ListConversations(ctx context.Context, workspaceID, userID str
 	if err != nil {
 		return nil, fmt.Errorf("list conversations for user %s: %w", userID, err)
 	}
-	readable, err := s.readableKinds(ctx, workspaceID)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]*Conversation, 0, len(cs))
-	for _, c := range cs {
-		if !readable(c.Kind) || (c.Kind == KindDocThread && !s.canThread(ctx, userID, c.DocID)) {
-			continue
-		}
-		out = append(out, c)
-	}
-	return out, nil
+	return s.listed(ctx, workspaceID, userID, cs)
 }
 
 // ListMessages returns a conversation's messages oldest-first; callerID gates a doc thread's messages.
@@ -750,33 +1022,25 @@ func (s *Service) MarkRead(ctx context.Context, conversationID, userID string) e
 	return nil
 }
 
-// UnreadCounts returns userID's unread message count per conversation, the nav badge's data source.
+// UnreadCounts returns userID's unread message count per conversation their list shows, the nav badge's data source.
 func (s *Service) UnreadCounts(ctx context.Context, workspaceID, userID string) (map[string]int, error) {
-	workspaceID = strings.TrimSpace(workspaceID)
-	if workspaceID == "" {
-		return nil, fmt.Errorf("%w: workspace id is required", apperrs.ErrInvalid)
-	}
-	userID = strings.TrimSpace(userID)
-	if userID == "" {
-		return nil, fmt.Errorf("%w: user id is required", apperrs.ErrInvalid)
-	}
-	if err := s.require(ctx, workspaceID, permissions.Member); err != nil {
+	listed, err := s.ListConversations(ctx, workspaceID, userID)
+	if err != nil {
 		return nil, err
 	}
-	rows, err := s.repo.UnreadCounts(ctx, workspaceID, userID)
+	rows, err := s.repo.UnreadCounts(ctx, strings.TrimSpace(workspaceID), strings.TrimSpace(userID))
 	if err != nil {
 		return nil, fmt.Errorf("unread counts for user %s: %w", userID, err)
 	}
-	readable, err := s.readableKinds(ctx, workspaceID)
-	if err != nil {
-		return nil, err
+	shown := make(map[string]bool, len(listed))
+	for _, c := range listed {
+		shown[c.ID] = true
 	}
 	counts := make(map[string]int, len(rows))
 	for _, r := range rows {
-		if !readable(r.Kind) || (r.Kind == KindDocThread && !s.canThread(ctx, userID, r.DocID)) {
-			continue
+		if shown[r.ConversationID] {
+			counts[r.ConversationID] = r.Count
 		}
-		counts[r.ConversationID] = r.Count
 	}
 	return counts, nil
 }

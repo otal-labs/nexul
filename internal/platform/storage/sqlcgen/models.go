@@ -197,6 +197,7 @@ type Conversation struct {
 	DocID           sql.NullString
 	ProjectID       sql.NullString
 	IsGeneral       int64
+	Private         int64
 }
 
 type ConversationParticipant struct {

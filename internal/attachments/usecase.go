@@ -32,13 +32,22 @@ type MemoryAccessChecker interface {
 	Can(ctx context.Context, userID, memoryID string, action permissions.Action) (bool, error)
 }
 
+// ConversationReader checks a conversation-owned file through reading the conversation (ADR 0098).
+type ConversationReader interface {
+	RequireRead(ctx context.Context, conversationID string) error
+}
+
 // Service runs permission checks so HTTP and any later MCP adapter inherit them (ADR 0019).
 type Service struct {
-	repo         Repo
-	access       AccessChecker
-	memoryAccess MemoryAccessChecker
-	now          func() time.Time
+	repo          Repo
+	access        AccessChecker
+	memoryAccess  MemoryAccessChecker
+	conversations ConversationReader
+	now           func() time.Time
 }
+
+// SetConversations wires the conversation read check; unset, a conversation's files are refused.
+func (s *Service) SetConversations(c ConversationReader) { s.conversations = c }
 
 // NewService wires the attachments use-cases over the given repo, doc access checker, and memory access checker.
 func NewService(repo Repo, access AccessChecker, memoryAccess MemoryAccessChecker) *Service {
@@ -125,7 +134,7 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-// requireOwner needs only an authenticated user for ticket/conversation owners (workspace/chat-wide perms).
+// requireOwner needs only an authenticated user for a ticket owner, and reading the conversation for a conversation's.
 // docAction gates a doc owner via the per-doc AccessChecker; memoryAction gates a memory owner via the
 // workspace-scoped MemoryAccessChecker (memories has no per-resource overwrite grid, unlike docs).
 func (s *Service) requireOwner(ctx context.Context, owner Owner, docAction, memoryAction permissions.Action) (identity.Actor, error) {
@@ -153,6 +162,9 @@ func (s *Service) requireOwner(ctx context.Context, owner Owner, docAction, memo
 		}
 		return actor, nil
 	}
+	if owner.ConversationID != "" {
+		return actor, s.requireConversation(ctx, owner.ConversationID)
+	}
 	if owner.DocID == "" {
 		return actor, nil
 	}
@@ -165,6 +177,14 @@ func (s *Service) requireOwner(ctx context.Context, owner Owner, docAction, memo
 		return identity.Actor{}, fmt.Errorf("%w: no %s permission on doc %s", apperrs.ErrForbidden, docAction, owner.DocID)
 	}
 	return actor, nil
+}
+
+// requireConversation fails closed when no conversation read check is wired.
+func (s *Service) requireConversation(ctx context.Context, conversationID string) error {
+	if s.conversations == nil {
+		return fmt.Errorf("%w: no read check for conversation %s", apperrs.ErrForbidden, conversationID)
+	}
+	return s.conversations.RequireRead(ctx, conversationID)
 }
 
 // ListOwnerAttachmentIDs returns an owner's attachment ids with no permission check; a trusted cross-domain

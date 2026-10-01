@@ -12,7 +12,7 @@ import (
 )
 
 const createConversation = `-- name: CreateConversation :exec
-INSERT INTO conversations (id, workspace_id, kind, name, ticket_id, doc_id, project_id, parent_message_id, created_by, created_at, updated_at, is_general) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO conversations (id, workspace_id, kind, name, ticket_id, doc_id, project_id, parent_message_id, created_by, created_at, updated_at, is_general, private) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateConversationParams struct {
@@ -28,6 +28,7 @@ type CreateConversationParams struct {
 	CreatedAt       int64
 	UpdatedAt       int64
 	IsGeneral       int64
+	Private         int64
 }
 
 func (q *Queries) CreateConversation(ctx context.Context, arg CreateConversationParams) error {
@@ -44,6 +45,7 @@ func (q *Queries) CreateConversation(ctx context.Context, arg CreateConversation
 		arg.CreatedAt,
 		arg.UpdatedAt,
 		arg.IsGeneral,
+		arg.Private,
 	)
 	return err
 }
@@ -91,6 +93,29 @@ func (q *Queries) DeleteConversation(ctx context.Context, id string) (int64, err
 	return result.RowsAffected()
 }
 
+const deleteConversationParticipant = `-- name: DeleteConversationParticipant :exec
+DELETE FROM conversation_participants WHERE conversation_id = ? AND user_id = ?
+`
+
+type DeleteConversationParticipantParams struct {
+	ConversationID string
+	UserID         string
+}
+
+func (q *Queries) DeleteConversationParticipant(ctx context.Context, arg DeleteConversationParticipantParams) error {
+	_, err := q.db.ExecContext(ctx, deleteConversationParticipant, arg.ConversationID, arg.UserID)
+	return err
+}
+
+const deleteConversationParticipants = `-- name: DeleteConversationParticipants :exec
+DELETE FROM conversation_participants WHERE conversation_id = ?
+`
+
+func (q *Queries) DeleteConversationParticipants(ctx context.Context, conversationID string) error {
+	_, err := q.db.ExecContext(ctx, deleteConversationParticipants, conversationID)
+	return err
+}
+
 const deleteMessage = `-- name: DeleteMessage :execrows
 UPDATE messages SET body = '', mentions = '[]', deleted_at = ?, updated_at = ? WHERE id = ?
 `
@@ -110,7 +135,7 @@ func (q *Queries) DeleteMessage(ctx context.Context, arg DeleteMessageParams) (i
 }
 
 const getChannelByName = `-- name: GetChannelByName :one
-SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id, is_general FROM conversations WHERE workspace_id = ? AND kind = 'channel' AND name = ? COLLATE NOCASE
+SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id, is_general, private FROM conversations WHERE workspace_id = ? AND kind = 'channel' AND name = ? COLLATE NOCASE
 `
 
 type GetChannelByNameParams struct {
@@ -136,12 +161,13 @@ func (q *Queries) GetChannelByName(ctx context.Context, arg GetChannelByNamePara
 		&i.DocID,
 		&i.ProjectID,
 		&i.IsGeneral,
+		&i.Private,
 	)
 	return i, err
 }
 
 const getConversation = `-- name: GetConversation :one
-SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id, is_general FROM conversations WHERE id = ?
+SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id, is_general, private FROM conversations WHERE id = ?
 `
 
 func (q *Queries) GetConversation(ctx context.Context, id string) (Conversation, error) {
@@ -162,12 +188,13 @@ func (q *Queries) GetConversation(ctx context.Context, id string) (Conversation,
 		&i.DocID,
 		&i.ProjectID,
 		&i.IsGeneral,
+		&i.Private,
 	)
 	return i, err
 }
 
 const getDocThread = `-- name: GetDocThread :one
-SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id, is_general FROM conversations WHERE doc_id = ?
+SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id, is_general, private FROM conversations WHERE doc_id = ?
 `
 
 func (q *Queries) GetDocThread(ctx context.Context, docID sql.NullString) (Conversation, error) {
@@ -188,12 +215,13 @@ func (q *Queries) GetDocThread(ctx context.Context, docID sql.NullString) (Conve
 		&i.DocID,
 		&i.ProjectID,
 		&i.IsGeneral,
+		&i.Private,
 	)
 	return i, err
 }
 
 const getInterviewThread = `-- name: GetInterviewThread :one
-SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id, is_general FROM conversations WHERE project_id = ?
+SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id, is_general, private FROM conversations WHERE project_id = ?
 `
 
 func (q *Queries) GetInterviewThread(ctx context.Context, projectID sql.NullString) (Conversation, error) {
@@ -214,6 +242,7 @@ func (q *Queries) GetInterviewThread(ctx context.Context, projectID sql.NullStri
 		&i.DocID,
 		&i.ProjectID,
 		&i.IsGeneral,
+		&i.Private,
 	)
 	return i, err
 }
@@ -242,7 +271,7 @@ func (q *Queries) GetMessage(ctx context.Context, id string) (Message, error) {
 }
 
 const getTicketThread = `-- name: GetTicketThread :one
-SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id, is_general FROM conversations WHERE ticket_id = ?
+SELECT id, workspace_id, kind, name, ticket_id, parent_message_id, created_by, created_at, updated_at, agent_thread_id, agent_synced_at, doc_id, project_id, is_general, private FROM conversations WHERE ticket_id = ?
 `
 
 func (q *Queries) GetTicketThread(ctx context.Context, ticketID sql.NullString) (Conversation, error) {
@@ -263,6 +292,7 @@ func (q *Queries) GetTicketThread(ctx context.Context, ticketID sql.NullString) 
 		&i.DocID,
 		&i.ProjectID,
 		&i.IsGeneral,
+		&i.Private,
 	)
 	return i, err
 }
@@ -284,7 +314,7 @@ func (q *Queries) InsertConversationParticipant(ctx context.Context, arg InsertC
 }
 
 const listConversationsForUser = `-- name: ListConversationsForUser :many
-SELECT DISTINCT c.id, c.workspace_id, c.kind, c.name, c.ticket_id, c.parent_message_id, c.created_by, c.created_at, c.updated_at, c.agent_thread_id, c.agent_synced_at, c.doc_id, c.project_id, c.is_general FROM conversations c
+SELECT DISTINCT c.id, c.workspace_id, c.kind, c.name, c.ticket_id, c.parent_message_id, c.created_by, c.created_at, c.updated_at, c.agent_thread_id, c.agent_synced_at, c.doc_id, c.project_id, c.is_general, c.private FROM conversations c
 LEFT JOIN conversation_participants p ON p.conversation_id = c.id AND p.user_id = ?
 WHERE c.workspace_id = ? AND (c.kind IN ('channel', 'voice_channel', 'doc_thread') OR p.user_id IS NOT NULL)
 ORDER BY c.created_at
@@ -319,6 +349,7 @@ func (q *Queries) ListConversationsForUser(ctx context.Context, arg ListConversa
 			&i.DocID,
 			&i.ProjectID,
 			&i.IsGeneral,
+			&i.Private,
 		); err != nil {
 			return nil, err
 		}
@@ -568,8 +599,26 @@ func (q *Queries) SetAgentThread(ctx context.Context, arg SetAgentThreadParams) 
 	return result.RowsAffected()
 }
 
+const setConversationPrivate = `-- name: SetConversationPrivate :execrows
+UPDATE conversations SET private = ?, updated_at = ? WHERE id = ?
+`
+
+type SetConversationPrivateParams struct {
+	Private   int64
+	UpdatedAt int64
+	ID        string
+}
+
+func (q *Queries) SetConversationPrivate(ctx context.Context, arg SetConversationPrivateParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, setConversationPrivate, arg.Private, arg.UpdatedAt, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const unreadCounts = `-- name: UnreadCounts :many
-SELECT c.id, c.kind, c.doc_id, COUNT(m.id) AS count FROM conversations c
+SELECT c.id, COUNT(m.id) AS count FROM conversations c
 LEFT JOIN conversation_participants p ON p.conversation_id = c.id AND p.user_id = ?1
 LEFT JOIN conversation_unread_state u ON u.conversation_id = c.id AND u.user_id = ?1
 LEFT JOIN messages m ON m.conversation_id = c.id AND m.deleted_at IS NULL AND m.author_id != ?1 AND m.created_at > COALESCE(u.last_read_at, 0)
@@ -584,8 +633,6 @@ type UnreadCountsParams struct {
 
 type UnreadCountsRow struct {
 	ID    string
-	Kind  string
-	DocID sql.NullString
 	Count int64
 }
 
@@ -598,12 +645,7 @@ func (q *Queries) UnreadCounts(ctx context.Context, arg UnreadCountsParams) ([]U
 	var items []UnreadCountsRow
 	for rows.Next() {
 		var i UnreadCountsRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.Kind,
-			&i.DocID,
-			&i.Count,
-		); err != nil {
+		if err := rows.Scan(&i.ID, &i.Count); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

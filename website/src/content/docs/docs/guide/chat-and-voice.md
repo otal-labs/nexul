@@ -29,6 +29,27 @@ and every message in it for good, ends a voice channel's call for everyone in
 it, and sends anyone viewing it back to the chat page. The workspace's
 `general` channel can be renamed but not deleted.
 
+## Private channels
+
+A text or voice channel can be private: only its members see it and read it.
+To anyone else it is gone, from the conversation list, unread counts, links,
+messages, attachments, and a voice channel's call and occupancy. The
+workspace Owner sees every private channel, messages included.
+
+- **Create one private** from the **New conversation** menu and pick its
+  starting members. A member who sees only some of a workspace's projects can
+  create only private channels.
+- **Make a channel private** from its settings with `channels:write`. You stay
+  in it and pick who else stays; everyone else loses it at once.
+- **Make it public again** with `channels:write`. The member list is dropped
+  and the whole workspace can read its history, including what was said while
+  it was private.
+- **Members.** Anyone in a private channel can add people from the workspace.
+  Removing someone else takes `channels:write`. Anyone can leave, except the
+  last member.
+
+The workspace's `general` channel is always public.
+
 Messages are markdown. Type `@` to mention a workspace member or the fixed
 `@Agent` target. Press Enter to send and Shift+Enter for a new line. The
 composer accepts images pasted, dropped, or selected with the attachment
@@ -42,7 +63,11 @@ Document threads need the `docs:thread` permission on the document. The
 permission catalog also includes the `chat`, `channels`, and `voice` domains.
 Chat routes are available under `/api/chat`; MCP exposes `conversation_list`,
 `conversation_update`, `conversation_delete`, `message_list`, and
-`message_post`. The last two also take a `doc_id`,
+`message_post`. `conversation_list` marks each channel `private` and lists a
+private channel's `member_ids`. `conversation_update` renames a channel,
+switches it with `private` (and `member_ids` naming who stays), and adds or
+removes members with `add_member_ids` and `remove_member_ids`, where your own
+id leaves. `message_list` and `message_post` also take a `doc_id`,
 `ticket_id`, or interview `project_id` instead of a conversation id, and
 posting starts that thread the first time.
 
@@ -75,8 +100,10 @@ host the media service for you.
 
 The browser uses the HTTP gateway, not MCP, for this page. The main routes are
 `GET /api/chat/conversations`, `POST /api/chat/channels`,
-`POST /api/chat/voice-channels`, `POST /api/chat/dms`,
+`POST /api/chat/voice-channels` (both take `private` and `member_ids`), `POST /api/chat/dms`,
 `PATCH /api/chat/conversations/{id}` (rename), `DELETE /api/chat/conversations/{id}`,
+`PUT /api/chat/conversations/{id}/private`, `POST /api/chat/conversations/{id}/members`,
+`DELETE /api/chat/conversations/{id}/members/{userID}`, `POST /api/chat/conversations/{id}/leave`,
 `GET /api/chat/conversations/{id}/messages`, and
 `POST /api/chat/conversations/{id}/messages`. Voice uses
 `POST /api/voice/{conversationID}/token`,
