@@ -97,7 +97,7 @@ func TestTicketTestReportTool(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, testReportResult{ID: "t1", Outcome: "fail", StatusID: "build"}, got)
 		require.Len(t, f.threads.posts, 1)
-		assert.True(t, strings.HasPrefix(f.threads.posts[0].body, "Test failed by Nexul · for onik97\n"))
+		assert.True(t, strings.HasPrefix(f.threads.posts[0].body, "Test failed by Nexul · from onik97\n"))
 		assert.Contains(t, f.threads.posts[0].body, "![screenshot](/api/attachments/att-9)")
 	})
 	t.Run("pass moves the ticket to done and makes the caller its tester", func(t *testing.T) {
@@ -105,6 +105,6 @@ func TestTicketTestReportTool(t *testing.T) {
 		got, err := callTool(t, asUser(t.Context()), MCPTools(f.svc), "ticket_test_report", `{"id":"t1","outcome":"pass"}`)
 		require.NoError(t, err)
 		assert.Equal(t, testReportResult{ID: "t1", Outcome: "pass", StatusID: "shipped", Tester: "onik97"}, got)
-		assert.Equal(t, []threadPost{{ticketID: "t1", authorID: "u-1", body: "Passed by Nexul · for onik97"}}, f.threads.posts)
+		assert.Equal(t, []threadPost{{ticketID: "t1", authorID: "u-1", body: "Passed by Nexul · from onik97"}}, f.threads.posts)
 	})
 }

@@ -121,11 +121,11 @@ describe("TicketPropertiesPanel", () => {
     expect(screen.getAllByText("onik97").length).toBeGreaterThan(0);
   });
 
-  it("shows Nexul with the person it filed for, or the automation's name", () => {
+  it("shows Nexul with the person it filed from, or the automation's name", () => {
     const { rerenderWithTicket } = renderPanel();
     rerenderWithTicket({ ...ticket, reporter: { kind: "user:mcp", login: "lena" } });
     expect(screen.getByText("Nexul")).toBeInTheDocument();
-    expect(screen.getByText("for lena")).toBeInTheDocument();
+    expect(screen.getByText("from lena")).toBeInTheDocument();
 
     rerenderWithTicket({ ...ticket, reporter: { kind: "automation", automation_id: "a-1", automation_name: "Triage" } });
     expect(screen.getByText("Nexul")).toBeInTheDocument();

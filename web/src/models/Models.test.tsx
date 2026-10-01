@@ -194,7 +194,7 @@ describe("SaveDocFormSchema", () => {
 describe("ticket people", () => {
   it("labels each reporter kind", () => {
     expect(reporterLabel({ kind: "user", login: "onik97" })).toBe("onik97");
-    expect(reporterLabel({ kind: "user:mcp", login: "onik97" })).toBe("Nexul · for onik97");
+    expect(reporterLabel({ kind: "user:mcp", login: "onik97" })).toBe("Nexul · from onik97");
     expect(reporterLabel({ kind: "automation", automation_name: "Triage" })).toBe("Nexul · Triage");
     expect(reporterLabel({ kind: "user:mcp" })).toBe("Nexul");
   });

@@ -67,9 +67,9 @@ export const reporterName = (reporter: TicketReporter, nameOf: NameOf = asLogin)
   return "Nexul";
 };
 
-// The line under "Nexul": the person it ran for, or the automation that filed the ticket.
+// Follows "Nexul": the person it ran from, or the automation that filed the ticket.
 export const reporterOnBehalfOf = (reporter: TicketReporter, nameOf: NameOf = asLogin): string => {
-  if (reporter.kind === ReporterKind.UserMCP) return reporter.login ? `for ${nameOf(reporter.login)}` : "";
+  if (reporter.kind === ReporterKind.UserMCP) return reporter.login ? `from ${nameOf(reporter.login)}` : "";
   if (reporter.kind === ReporterKind.Automation) return reporter.automation_name ?? "";
   return "";
 };

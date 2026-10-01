@@ -116,10 +116,10 @@ interview calls for an automated end-to-end suite, it also adds or extends a
 test covering the criteria.
 
 It then records the result with `ticket_test_report`, whose `pass` and `fail`
-outcomes do what the panel's buttons do, signed "Nexul · for" the person who ran
-the play. A pass posts "Passed by Nexul · for <login>" and moves the card to
+outcomes do what the panel's buttons do, signed "Nexul · from" the person who ran
+the play. A pass posts "Passed by Nexul · from <login>" and moves the card to
 the first Done column. A fail posts the bug template (steps to reproduce,
-expected result, actual result) under "Test failed by Nexul · for <login>" to
+expected result, actual result) under "Test failed by Nexul · from <login>" to
 the ticket's thread and moves the card back to In progress. Leave the run dialog's success column empty for this play, because
 the result already moves the card.
 

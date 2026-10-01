@@ -94,7 +94,7 @@ no users yet, move quick):
   bugs require a "found in" link and carry a template; done is never
   reopened (before done the card moves back, after done a linked bug is
   filed); the fixing agent gets one hop of origin context; humans and agents
-  file bugs; every ticket gets a reporter (agents show as "Nexul · for
+  file bugs; every ticket gets a reporter (agents show as "Nexul · from
   <person>"); "blocked by" links with a board icon and a play confirm, never
   a gate. Signals over gates, room for mistakes. Every ticket type carries a
   body template (bug: steps, expected, actual, screenshot; feature and task

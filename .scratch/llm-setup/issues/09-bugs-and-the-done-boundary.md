@@ -44,8 +44,8 @@ restrictions, room for mistakes — signals over gates.
   bug** button on any ticket pre-fills the link, the create dialog requires
   it, and an MCP tool takes it.
 - **Reporter on every ticket** (tickets record no creator today): a person
-  when a person filed it; **Nexul**, shown like a user with the person it ran
-  for beneath ("Nexul · for Onik"), when a play, @Agent, or MCP call filed
+  when a person filed it; **Nexul**, shown like a user with the person it came
+  from beside it ("Nexul · from Onik"), when a play, @Agent, or MCP call filed
   it; Nexul with the automation's name when an automation did.
 - **"Blocked by" links** (the owner's example: frontend `/books` blocked by
   backend `/books`), also moved from the parked spec: they clear by

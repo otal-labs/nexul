@@ -27,7 +27,7 @@ Facts and decisions to start from (2026-09-23): the board already has a
 fixed `testing` stage between review and done. The bugs grilling settled
 that a bug found before done moves the card back to progress, a bug found
 after done is a new ticket with a required "found in" link, and agents may
-file bugs as QA — reported as "Nexul · for <person>".
+file bugs as QA — reported as "Nexul · from <person>".
 
 ## Answer
 
@@ -58,7 +58,7 @@ template now carries that section, see the rename below), and **Pass** /
 **Three people on a ticket.** *Assignee* is renamed **Developer**, and
 **Tester** and **Reporter** join it. Developer and Tester are one person
 each, optional; Reporter is set at creation and never edited (agent-filed
-tickets show "Nexul · for <person>"). Cards show the developer, or the tester
+tickets show "Nexul · from <person>"). Cards show the developer, or the tester
 in testing columns. Anyone who can see a ticket may still press Pass or
 Fail; the Tester field gives QA people a "waiting for me to test" view.
 
