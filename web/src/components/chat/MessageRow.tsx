@@ -1,14 +1,13 @@
-import { Pencil, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { ChatQuestionCard } from "@/components/chat/ChatQuestionCard";
+import { MessageActions } from "@/components/chat/MessageActions";
 import { MessageBody } from "@/components/chat/MessageBody";
 import { MessageEditForm } from "@/components/chat/MessageEditForm";
 import { MessageContinuationTime, MessageRowAvatar, MessageRowHeader, type MessageAlign } from "@/components/chat/MessageRowHeader";
 import { MessageTrailTurns } from "@/components/chat/MessageTrailTurns";
 import { TrailQuestionBody } from "@/components/play/TrailQuestionCard";
 import { TrailReplyProse } from "@/components/play/TrailReplyProse";
-import { Button } from "@/components/ui/button";
 import { Message, MessageAvatar, MessageContent } from "@/components/ui/message";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { cn } from "@/lib/utils";
@@ -32,7 +31,14 @@ interface MessageRowProps {
 }
 
 // timeOnHover is the clock time a grouped message of yours reveals beside its bubble, in place of the header it dropped.
-const MessageBubble = ({ message, align, timeOnHover }: { message: ChatMessage; align: MessageAlign; timeOnHover: boolean }) => (
+interface MessageBubbleProps {
+  message: ChatMessage;
+  align: MessageAlign;
+  timeOnHover: boolean;
+  actions: ReactNode;
+}
+
+const MessageBubble = ({ message, align, timeOnHover, actions }: MessageBubbleProps) => (
   <div
     data-slot="bubble"
     className={cn(
@@ -46,6 +52,7 @@ const MessageBubble = ({ message, align, timeOnHover }: { message: ChatMessage; 
         className="absolute top-1/2 right-full mr-2 -translate-y-1/2 opacity-0 transition-opacity duration-150 ease-standard group-focus-within:opacity-100 group-hover:opacity-100"
       />
     )}
+    {actions}
     <MessageBody body={message.body} mentionHandles={(message.mentions ?? []).map((m) => m.handle)} />
   </div>
 );
@@ -135,19 +142,16 @@ export const MessageRow = ({ message, author, isOwn, continuation = false, quest
             {editing && (
               <MessageEditForm draft={draft} onDraftChange={setDraft} onCancel={() => setEditing(false)} onSave={() => void saveEdit()} />
             )}
-            {!editing && !isAgent && <MessageBubble message={message} align={align} timeOnHover={continuation && align === "end"} />}
+            {!editing && !isAgent && (
+              <MessageBubble
+                message={message}
+                align={align}
+                timeOnHover={continuation && align === "end"}
+                actions={canEditOrDelete && <MessageActions onEdit={startEdit} onDelete={() => void remove()} />}
+              />
+            )}
             {!editing && isAgent && <AgentMessageBody message={message} trailBlock={trailBlock} questionAnswered={questionAnswered} />}
           </MessageContent>
-          {canEditOrDelete && !editing && (
-            <div className="flex h-fit shrink-0 gap-0.5 self-center opacity-0 transition-opacity duration-150 ease-standard group-focus-within:opacity-100 group-hover:opacity-100">
-              <Button size="icon" variant="ghost" className="size-6" aria-label="Edit message" onClick={startEdit}>
-                <Pencil className="size-3.5" aria-hidden />
-              </Button>
-              <Button size="icon" variant="ghost" className="size-6" aria-label="Delete message" onClick={() => void remove()}>
-                <Trash2 className="size-3.5" aria-hidden />
-              </Button>
-            </div>
-          )}
         </Message>
       )}
     </>
