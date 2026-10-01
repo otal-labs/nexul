@@ -10,32 +10,34 @@ const installState = (started: boolean, offline: boolean): CheckOutcome["state"]
   return "pending";
 };
 
+export const UpgradeElapsed = ({ record }: { record: InstanceUpgradeRecord }) => {
+  const elapsed = useElapsedSeconds(Date.parse(record.created_at));
+
+  return <span className="font-mono text-xs text-muted-foreground tabular-nums">{elapsed}s</span>;
+};
+
 export const InstanceUpgradeProgress = ({ record }: { record: InstanceUpgradeRecord }) => {
   const { error } = useInstanceUpgrade();
-  const elapsed = useElapsedSeconds(Date.parse(record.created_at));
   const started = record.status === UpgradeRecordStatus.Started;
   const offline = Boolean(error);
 
   return (
-    <div className="space-y-2">
-      <ul className="space-y-3">
-        <TickerRow
-          label="Hand the upgrade to this machine"
-          why="The instance runner starts nexul upgrade beside the server"
-          outcome={{ state: started ? "ok" : "pending" }}
-        />
-        <TickerRow
-          label={`Install ${record.to_version} and restart`}
-          why="Nexul goes offline for a moment while its services restart"
-          outcome={{ state: installState(started, offline) }}
-        />
-        <TickerRow
-          label={`Come back on ${record.to_version}`}
-          why="This page reconnects on its own, no refresh needed"
-          outcome={{ state: offline ? "pending" : "idle" }}
-        />
-      </ul>
-      <p className="font-mono text-xs text-muted-foreground tabular-nums">{elapsed}s</p>
-    </div>
+    <ul className="space-y-3">
+      <TickerRow
+        label="Hand the upgrade to this machine"
+        why="The instance runner starts nexul upgrade beside the server"
+        outcome={{ state: started ? "ok" : "pending" }}
+      />
+      <TickerRow
+        label={`Install ${record.to_version} and restart`}
+        why="Nexul goes offline for a moment while its services restart"
+        outcome={{ state: installState(started, offline) }}
+      />
+      <TickerRow
+        label={`Come back on ${record.to_version}`}
+        why="This page reconnects on its own, no refresh needed"
+        outcome={{ state: offline ? "pending" : "idle" }}
+      />
+    </ul>
   );
 };

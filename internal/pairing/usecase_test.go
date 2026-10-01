@@ -21,6 +21,7 @@ func newTestService(repo *fakeRepo, exch *fakeExchanger) *Service {
 		EncryptionKey: testEncKey,
 		Now:           func() time.Time { return time.Date(2026, 8, 26, 12, 0, 0, 0, time.UTC) },
 		Tokens:        newFakeTokens(),
+		Projects:      fakeProjects{},
 	})
 }
 
@@ -350,19 +351,84 @@ func TestService_ResolveTarget_FallsBackToUserDefaults(t *testing.T) {
 	assert.Equal(t, "default-proj", target.HarnessProjectID)
 }
 
-func TestService_ResolveTarget_ProjectLinkedComputerNotOwnedByCaller(t *testing.T) {
+// TestService_ProjectLink_EachPersonResolvesTheirOwn guards ADR 0102: a teammate's link never sends someone else's
+// turns to the teammate's computer, and two people's links for one project sit side by side.
+func TestService_ProjectLink_EachPersonResolvesTheirOwn(t *testing.T) {
 	t.Parallel()
 	repo := newFakeRepo()
 	svc := newTestService(repo, &fakeExchanger{result: harness.PairResult{BearerToken: "b"}, version: "0.0.34"})
-	// u2 owns and links the computer to proj-1; u1 (a teammate) mentions @Agent there.
-	linked, err := svc.Pair(context.Background(), "u2", harness.KindT3Code, "Shared", "https://h.example.com", "tok")
+	ctx := t.Context()
+	theirs, err := svc.Pair(ctx, "u2", harness.KindT3Code, "Their box", "https://h.example.com", "tok")
 	require.NoError(t, err)
-	_, err = svc.SetProjectLink(context.Background(), "u2", "proj-1", ProjectLink{ComputerID: linked.ID, HarnessProjectID: "proj"})
+	mine, err := svc.Pair(ctx, "u1", harness.KindT3Code, "My box", "https://m.example.com", "tok")
+	require.NoError(t, err)
+	_, err = svc.SetDefaults(ctx, "u1", Defaults{DefaultComputerID: mine.ID, FallbackProjectID: "my-fallback"})
+	require.NoError(t, err)
+	_, err = svc.SetProjectLink(ctx, "u2", "proj-1", ProjectLink{ComputerID: theirs.ID, HarnessProjectID: "their-proj"})
 	require.NoError(t, err)
 
-	target, err := svc.resolveTarget(context.Background(), "u1", "proj-1")
-	require.NoError(t, err, "a project-linked computer resolves for any mentioning user, not just its owner")
-	assert.Equal(t, linked.ID, target.Computer.ID)
+	target, err := svc.resolveTarget(ctx, "u1", "proj-1")
+	require.NoError(t, err)
+	assert.Equal(t, mine.ID, target.Computer.ID, "with no link of their own, a person falls back to their own defaults")
+	assert.Equal(t, "my-fallback", target.HarnessProjectID)
+	got, err := svc.GetProjectLink(ctx, "u1", "proj-1")
+	require.NoError(t, err)
+	assert.Empty(t, got.ComputerID, "a teammate's link is not read back as theirs")
+
+	_, err = svc.SetProjectLink(ctx, "u1", "proj-1", ProjectLink{ComputerID: mine.ID, HarnessProjectID: "my-proj"})
+	require.NoError(t, err)
+	target, err = svc.resolveTarget(ctx, "u2", "proj-1")
+	require.NoError(t, err)
+	assert.Equal(t, theirs.ID, target.Computer.ID, "setting one person's link leaves the other's in place")
+	assert.Equal(t, "their-proj", target.HarnessProjectID)
+}
+
+// TestService_ProjectLink_HiddenProjectIsNotFound guards ADR 0097 on the link routes: a project the caller can't open
+// reads, writes, and clears as not found, and nothing is stored.
+func TestService_ProjectLink_HiddenProjectIsNotFound(t *testing.T) {
+	t.Parallel()
+	repo := newFakeRepo()
+	svc := NewService(Config{Repo: repo, Harnesses: registry(&fakeExchanger{result: harness.PairResult{BearerToken: "b"}, version: "0.0.34"}),
+		EncryptionKey: testEncKey, Projects: fakeProjects{hidden: []string{"proj-hidden"}}})
+	c, err := svc.Pair(t.Context(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+	require.NoError(t, err)
+
+	calls := map[string]func() error{
+		"get": func() error { _, err := svc.GetProjectLink(t.Context(), "u1", "proj-hidden"); return err },
+		"set": func() error {
+			_, err := svc.SetProjectLink(t.Context(), "u1", "proj-hidden", ProjectLink{ComputerID: c.ID, HarnessProjectID: "p"})
+			return err
+		},
+		"clear": func() error { return svc.ClearProjectLink(t.Context(), "u1", "proj-hidden") },
+	}
+	for name, call := range calls {
+		t.Run(name, func(t *testing.T) {
+			require.ErrorIs(t, call(), apperrs.ErrNotFound)
+		})
+	}
+	assert.Empty(t, repo.projectLinks)
+}
+
+// TestService_ListProjectLinks_OwnLinksOnProjectsTheyCanOpen guards the Projects tab's read: a teammate's links and a
+// link on a project since hidden from the caller stay out.
+func TestService_ListProjectLinks_OwnLinksOnProjectsTheyCanOpen(t *testing.T) {
+	t.Parallel()
+	repo := newFakeRepo()
+	svc := NewService(Config{Repo: repo, Projects: fakeProjects{hidden: []string{"proj-hidden"}}})
+	for _, link := range []ProjectLink{
+		{UserID: "u1", ProjectID: "proj-2", ComputerID: "c1", HarnessProjectID: "p2"},
+		{UserID: "u1", ProjectID: "proj-1", ComputerID: "c1", HarnessProjectID: "p1"},
+		{UserID: "u1", ProjectID: "proj-hidden", ComputerID: "c1", HarnessProjectID: "ph"},
+		{UserID: "u2", ProjectID: "proj-1", ComputerID: "c2", HarnessProjectID: "theirs"},
+	} {
+		require.NoError(t, repo.SaveProjectLink(t.Context(), link))
+	}
+
+	links, err := svc.ListProjectLinks(t.Context(), "u1")
+	require.NoError(t, err)
+	require.Len(t, links, 2)
+	assert.Equal(t, []string{"proj-1", "proj-2"}, []string{links[0].ProjectID, links[1].ProjectID})
+	assert.Equal(t, "p1", links[0].HarnessProjectID)
 }
 
 func TestService_ResolveTarget_NotConfiguredReasons(t *testing.T) {

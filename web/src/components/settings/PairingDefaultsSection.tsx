@@ -14,8 +14,8 @@ export const PairingDefaultsSection = () => {
     <SettingsCard
       id="pairing-defaults"
       title="Defaults"
-      description="Used by @Agent in channels and DMs that aren't linked to a project — a project's own
-        settings can link a different computer, T3 project, and provider/model that override these."
+      description="Used by @Agent in channels and DMs outside a project, and in every project you haven't linked
+        on the Projects tab."
     >
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}

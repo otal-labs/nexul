@@ -4,7 +4,6 @@ import { ProjectServices } from "@/components/project/ProjectServices";
 import { BoardSettingsSection } from "@/components/settings/BoardSettingsSection";
 import { ProjectDangerZoneSection } from "@/components/settings/ProjectDangerZoneSection";
 import { ProjectGeneralSection } from "@/components/settings/ProjectGeneralSection";
-import { ProjectLinkSection } from "@/components/settings/ProjectLinkSection";
 import { ProjectPeopleAccessSection } from "@/components/settings/ProjectPeopleAccessSection";
 import { ProjectSettingsNav, type ProjectSettingsSection } from "@/components/settings/ProjectSettingsNav";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
@@ -33,7 +32,6 @@ export const ProjectSettingsContent = ({ project, section }: ProjectSettingsCont
           {section === "repositories" && <ProjectRepos projectId={project.id} />}
           {section === "services" && <ProjectServices projectId={project.id} />}
           {section === "board" && <BoardSettingsSection projectId={project.id} />}
-          {section === "pairing" && <ProjectLinkSection projectId={project.id} />}
           {section === "danger" && <ProjectDangerZoneSection project={project} />}
         </div>
       </div>

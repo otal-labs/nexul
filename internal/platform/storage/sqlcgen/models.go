@@ -588,13 +588,14 @@ type PairingComputer struct {
 }
 
 type PairingProjectLink struct {
+	UserID           string
 	ProjectID        string
 	ComputerID       string
 	HarnessProjectID string
 	Provider         string
 	Model            string
-	UpdatedAt        int64
 	ModelOptions     string
+	UpdatedAt        int64
 }
 
 type PairingProviderSetup struct {

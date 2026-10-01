@@ -13,6 +13,7 @@ import (
 	"github.com/otal-labs/nexul/internal/harness/harnesstest"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 // fakeRepo is an in-memory pairing.Repo for use-case tests.
@@ -99,24 +100,25 @@ func (f *fakeRepo) SaveDefaults(_ context.Context, d Defaults) error {
 	return nil
 }
 
-func (f *fakeRepo) GetComputerByID(_ context.Context, id string) (*Computer, error) {
+func linkKey(userID, projectID string) string { return userID + "|" + projectID }
+
+func (f *fakeRepo) GetProjectLink(_ context.Context, userID, projectID string) (ProjectLink, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if f.getErr != nil {
-		return nil, f.getErr
-	}
-	c, ok := f.computers[id]
-	if !ok {
-		return nil, apperrs.ErrNotFound
-	}
-	copied := c
-	return &copied, nil
+	return f.projectLinks[linkKey(userID, projectID)], nil
 }
 
-func (f *fakeRepo) GetProjectLink(_ context.Context, projectID string) (ProjectLink, error) {
+func (f *fakeRepo) ListProjectLinks(_ context.Context, userID string) ([]ProjectLink, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return f.projectLinks[projectID], nil
+	out := []ProjectLink{}
+	for _, link := range f.projectLinks {
+		if link.UserID == userID {
+			out = append(out, link)
+		}
+	}
+	slices.SortFunc(out, func(a, b ProjectLink) int { return strings.Compare(a.ProjectID, b.ProjectID) })
+	return out, nil
 }
 
 func (f *fakeRepo) SaveProjectLink(_ context.Context, link ProjectLink) error {
@@ -125,14 +127,26 @@ func (f *fakeRepo) SaveProjectLink(_ context.Context, link ProjectLink) error {
 	if f.saveErr != nil {
 		return f.saveErr
 	}
-	f.projectLinks[link.ProjectID] = link
+	f.projectLinks[linkKey(link.UserID, link.ProjectID)] = link
 	return nil
 }
 
-func (f *fakeRepo) DeleteProjectLink(_ context.Context, projectID string) error {
+func (f *fakeRepo) DeleteProjectLink(_ context.Context, userID, projectID string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	delete(f.projectLinks, projectID)
+	delete(f.projectLinks, linkKey(userID, projectID))
+	return nil
+}
+
+// fakeProjects hides the projects listed in hidden, the way access answers for a Restricted member (ADR 0097).
+type fakeProjects struct {
+	hidden []string
+}
+
+func (f fakeProjects) RequireProject(_ context.Context, projectID string, _ permissions.Action) error {
+	if slices.Contains(f.hidden, projectID) {
+		return apperrs.ErrNotFound
+	}
 	return nil
 }
 

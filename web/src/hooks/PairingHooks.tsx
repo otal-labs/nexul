@@ -21,8 +21,6 @@ import {
   type PairField,
   type PairingDefaults,
   type PairingDefaultsFormData,
-  type ProjectLink,
-  type ProjectLinkFormData,
   type SetupChoices,
   type SetupRun,
   type TunnelPrerequisite,
@@ -31,7 +29,6 @@ import {
 
 export const getComputersKey = "getComputers";
 export const getPairingDefaultsKey = "getPairingDefaults";
-export const getProjectLinkKey = "getProjectLink";
 export const getHarnessProjectsKey = "getHarnessProjects";
 export const getPairingPresenceKey = "getPairingPresence";
 export const getHarnessProvidersKey = "getHarnessProviders";
@@ -333,40 +330,6 @@ export const useUpdatePairingDefaults = () => {
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getPairingDefaultsKey] });
       toast.success("Defaults updated");
-    },
-    onError: (error) => toast.error(errorMessage(error)),
-  });
-};
-
-export const useFetchProjectLink = (projectId: string) =>
-  useQuery({
-    queryKey: [getProjectLinkKey, projectId],
-    queryFn: async () => (await api.get<ProjectLink>(`/api/pairing/projects/${projectId}`)).data,
-    enabled: !!projectId,
-  });
-
-export const useSetProjectLink = (projectId: string) => {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: async (input: ProjectLinkFormData) =>
-      (await api.put<ProjectLink>(`/api/pairing/projects/${projectId}`, input)).data,
-    onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: [getProjectLinkKey, projectId] });
-      toast.success("Project link saved");
-    },
-    onError: (error) => toast.error(errorMessage(error)),
-  });
-};
-
-export const useClearProjectLink = (projectId: string) => {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: async () => {
-      await api.delete(`/api/pairing/projects/${projectId}`);
-    },
-    onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: [getProjectLinkKey, projectId] });
-      toast.success("Project link cleared");
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
