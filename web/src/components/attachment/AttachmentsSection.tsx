@@ -68,7 +68,7 @@ export const AttachmentsSection = ({ owner, className }: AttachmentsSectionProps
       {data && data.length > 0 && (
         <ul className="flex flex-wrap gap-1.5">
           {data.map((attachment) => (
-            <AttachmentRow key={attachment.id} attachment={attachment} />
+            <AttachmentRow key={attachment.id} attachment={attachment} canDelete={canWrite} />
           ))}
         </ul>
       )}

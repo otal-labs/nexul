@@ -102,16 +102,19 @@ describe("AttachmentsSection", () => {
     ["a doc", { doc_id: "d-1" }, "tickets:write", "docs:write"],
     ["a ticket", { ticket_id: "t-1" }, "docs:write", "tickets:write"],
     ["a memory", { memory_id: "m-1" }, "tickets:write", "memories:write"],
-  ] as const)("offers upload on %s only with that owner's write permission", async (_name, owner, other, needed) => {
+  ] as const)("offers upload and delete on %s only with that owner's write permission", async (_name, owner, other, needed) => {
     const wrong = renderSection(["docs:read", other], owner);
     await screen.findByText("shot.png");
     expect(screen.queryByRole("button", { name: "Add attachment" })).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Attachment file")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Download spec.pdf" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Delete spec.pdf" })).not.toBeInTheDocument();
     wrong.unmount();
 
     renderSection([needed], owner);
     await screen.findByText("shot.png");
     expect(screen.getByRole("button", { name: "Add attachment" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Delete spec.pdf" })).toBeInTheDocument();
   });
 
   it("deletes after confirmation and not when cancelled", async () => {
