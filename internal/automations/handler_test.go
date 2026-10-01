@@ -33,7 +33,7 @@ func TestHandler_CreateAndList(t *testing.T) {
 	svc := newTestService(newFakeRepo(), allowAll("owner"))
 	h := NewHandler(svc).Routes()
 
-	rec := serve(t, h, "owner", http.MethodPost, "/api/automations", `{"name":"My automation","scopes":["tickets:read"]}`)
+	rec := serve(t, h, "owner", http.MethodPost, "/api/automations", `{"workspace_id":"ws-1","name":"My automation","scopes":["tickets:read"]}`)
 	require.Equal(t, http.StatusCreated, rec.Code)
 	assert.NotContains(t, rec.Body.String(), "token_hash", "the stored hash must never reach the wire")
 	var created tokenResponse
@@ -52,16 +52,23 @@ func TestHandler_CreateAndList(t *testing.T) {
 		rec := serve(t, h, "", http.MethodGet, "/api/automations", "")
 		assert.Equal(t, http.StatusUnauthorized, rec.Code)
 	})
-	t.Run("non-privileged actor is 403", func(t *testing.T) {
-		rec := serve(t, h, "alice", http.MethodGet, "/api/automations", "")
+	t.Run("non-privileged actor is 403 on a workspace's list, and sees nothing across workspaces", func(t *testing.T) {
+		rec := serve(t, h, "alice", http.MethodGet, "/api/automations?workspace_id=ws-1", "")
 		assert.Equal(t, http.StatusForbidden, rec.Code)
+		rec = serve(t, h, "alice", http.MethodGet, "/api/automations", "")
+		require.Equal(t, http.StatusOK, rec.Code)
+		assert.JSONEq(t, `[]`, rec.Body.String())
+	})
+	t.Run("create without a workspace is 400", func(t *testing.T) {
+		rec := serve(t, h, "owner", http.MethodPost, "/api/automations", `{"name":"x","scopes":["tickets:read"]}`)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 }
 
 func TestHandler_GetUpdateEnableDelete(t *testing.T) {
 	svc := newTestService(newFakeRepo(), allowAll("owner"))
 	h := NewHandler(svc).Routes()
-	rec := serve(t, h, "owner", http.MethodPost, "/api/automations", `{"name":"x","scopes":["tickets:read"]}`)
+	rec := serve(t, h, "owner", http.MethodPost, "/api/automations", `{"workspace_id":"ws-1","name":"x","scopes":["tickets:read"]}`)
 	var created tokenResponse
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &created))
 	id := created.Automation.ID
@@ -95,7 +102,7 @@ func TestHandler_GetUpdateEnableDelete(t *testing.T) {
 func TestHandler_TokenMintAndRevoke(t *testing.T) {
 	svc := newTestService(newFakeRepo(), allowAll("owner"))
 	h := NewHandler(svc).Routes()
-	rec := serve(t, h, "owner", http.MethodPost, "/api/automations", `{"name":"x","scopes":["tickets:read"]}`)
+	rec := serve(t, h, "owner", http.MethodPost, "/api/automations", `{"workspace_id":"ws-1","name":"x","scopes":["tickets:read"]}`)
 	var created tokenResponse
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &created))
 	id := created.Automation.ID

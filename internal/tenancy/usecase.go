@@ -29,14 +29,14 @@ type Service struct {
 	allowlist AllowlistGate
 	users     UserLookupGate
 	channels  ChannelGate
-	plays     PlaysGate
+	defaults  DefaultsGate
 	accounts  AccountGate
 	now       func() time.Time
 }
 
 // NewService wires the tenancy use-cases over their repos and permission gates.
-func NewService(repo Repo, members MemberRepo, invites InviteRepo, roles RoleGate, perm PermissionGate, roleNames RoleNameGate, wsPerms WorkspacePermissionGate, allowlist AllowlistGate, users UserLookupGate, channels ChannelGate, plays PlaysGate, accounts AccountGate) *Service {
-	return &Service{repo: repo, members: members, invites: invites, roles: roles, perm: perm, roleNames: roleNames, wsPerms: wsPerms, allowlist: allowlist, users: users, channels: channels, plays: plays, accounts: accounts, now: time.Now}
+func NewService(repo Repo, members MemberRepo, invites InviteRepo, roles RoleGate, perm PermissionGate, roleNames RoleNameGate, wsPerms WorkspacePermissionGate, allowlist AllowlistGate, users UserLookupGate, channels ChannelGate, defaults DefaultsGate, accounts AccountGate) *Service {
+	return &Service{repo: repo, members: members, invites: invites, roles: roles, perm: perm, roleNames: roleNames, wsPerms: wsPerms, allowlist: allowlist, users: users, channels: channels, defaults: defaults, accounts: accounts, now: time.Now}
 }
 
 // Create adds a workspace and binds userID as its Owner; requires workspaces:create in any workspace, which makes
@@ -78,8 +78,8 @@ func (s *Service) Create(ctx context.Context, userID, name string) (*Workspace, 
 	if err := s.channels.CreateGeneralChannel(ctx, w.ID, userID); err != nil {
 		return nil, fmt.Errorf("create general channel for workspace %s: %w", w.ID, err)
 	}
-	if err := s.plays.SeedDefaultPlays(ctx, w.ID); err != nil {
-		return nil, fmt.Errorf("seed default plays for workspace %s: %w", w.ID, err)
+	if err := s.defaults.SeedWorkspaceDefaults(ctx, w.ID); err != nil {
+		return nil, fmt.Errorf("seed defaults for workspace %s: %w", w.ID, err)
 	}
 	return w, nil
 }
@@ -204,8 +204,8 @@ func (s *Service) BindDefaultWorkspaceOwner(ctx context.Context, userID string) 
 	if err := s.channels.CreateGeneralChannel(ctx, DefaultWorkspaceID, userID); err != nil {
 		return fmt.Errorf("create general channel for default workspace: %w", err)
 	}
-	if err := s.plays.SeedDefaultPlays(ctx, DefaultWorkspaceID); err != nil {
-		return fmt.Errorf("seed default plays for default workspace: %w", err)
+	if err := s.defaults.SeedWorkspaceDefaults(ctx, DefaultWorkspaceID); err != nil {
+		return fmt.Errorf("seed defaults for default workspace: %w", err)
 	}
 	return nil
 }

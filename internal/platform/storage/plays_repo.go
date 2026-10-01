@@ -148,3 +148,26 @@ func toPlay(row sqlcgen.Play) (*plays.Play, error) {
 		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
 	}, nil
 }
+
+// DecisionsCheckEnabled reads workspaceID's decisions check switch.
+func (r *PlaysRepo) DecisionsCheckEnabled(ctx context.Context, workspaceID string) (bool, error) {
+	on, err := r.q.GetDecisionsCheckEnabled(ctx, workspaceID)
+	if err != nil {
+		return false, fmt.Errorf("get decisions check switch for workspace %s: %w", workspaceID, notFoundIfNoRows(err))
+	}
+	return on != 0, nil
+}
+
+// SetDecisionsCheckEnabled flips workspaceID's decisions check switch.
+func (r *PlaysRepo) SetDecisionsCheckEnabled(ctx context.Context, workspaceID string, enabled bool) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		n, err := r.q.WithTx(tx).SetDecisionsCheckEnabled(ctx, sqlcgen.SetDecisionsCheckEnabledParams{DecisionsCheckEnabled: int64(boolInt(enabled)), ID: workspaceID})
+		if err != nil {
+			return classifyWriteErr(err)
+		}
+		if n == 0 {
+			return apperrs.ErrNotFound
+		}
+		return nil
+	})
+}

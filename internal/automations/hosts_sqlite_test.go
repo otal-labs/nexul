@@ -182,7 +182,7 @@ func (f *hostsFixture) tokenFor(t *testing.T, credential, automationID string) s
 
 func (f *hostsFixture) createAutomation(t *testing.T, name string, enabled bool) string {
 	t.Helper()
-	a, _, err := f.svc.Create(adminCtx(), "admin", name, []string{"tickets:read"})
+	a, _, err := f.svc.Create(adminCtx(), "admin", "ws-1", name, []string{"tickets:read"})
 	require.NoError(t, err)
 	if enabled {
 		_, err = f.svc.SetEnabled(adminCtx(), "admin", a.ID, true)

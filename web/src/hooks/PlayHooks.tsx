@@ -76,3 +76,29 @@ export const useDeletePlay = (workspaceId: string) => {
     onError: (error) => toast.error(errorMessage(error)),
   });
 };
+
+export const getDecisionsCheckKey = "getDecisionsCheck";
+
+// The built-in decisions check, listed among the default automations with its per-workspace switch.
+export const useFetchDecisionsCheck = () => {
+  const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
+  return useQuery({
+    queryKey: [getDecisionsCheckKey, workspaceId],
+    queryFn: async () => (await api.get<Play>(`/api/workspaces/${workspaceId}/plays/decisions-check`)).data,
+    enabled: workspaceId !== "",
+  });
+};
+
+export const useSetDecisionsCheckEnabled = () => {
+  const client = useQueryClient();
+  const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
+  return useMutation({
+    mutationFn: async (enabled: boolean) =>
+      (await api.patch<Play>(`/api/workspaces/${workspaceId}/plays/decisions-check`, { enabled })).data,
+    onSuccess: async (check) => {
+      await client.invalidateQueries({ queryKey: [getDecisionsCheckKey] });
+      toast.success(check.enabled ? "Decisions check enabled" : "Decisions check disabled");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};

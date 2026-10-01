@@ -125,8 +125,10 @@ the result already moves the card.
 
 ## The decisions check
 
-When a ticket enters a column in the Done stage, Nexul fires the built-in
-**Decisions check** once, with no button. It runs like a play started by the
+When a ticket enters a column in the Done stage, and the workspace has the
+check switched on, Nexul fires the built-in **Decisions check** once, with no
+button. The switch is on the Automations page, among the default automations,
+and starts off. It runs like a play started by the
 person who moved the card, on their paired computer. When an automation moved
 it, as the default automation does once the ticket's pull requests merge, it
 runs on the ticket's developer's computer instead. The Agent reads the

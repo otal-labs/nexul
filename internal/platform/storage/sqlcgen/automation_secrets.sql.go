@@ -10,16 +10,21 @@ import (
 )
 
 const deleteAutomationSecret = `-- name: DeleteAutomationSecret :exec
-DELETE FROM automation_secrets WHERE name = ?
+DELETE FROM automation_secrets WHERE workspace_id = ? AND name = ?
 `
 
-func (q *Queries) DeleteAutomationSecret(ctx context.Context, name string) error {
-	_, err := q.db.ExecContext(ctx, deleteAutomationSecret, name)
+type DeleteAutomationSecretParams struct {
+	WorkspaceID string
+	Name        string
+}
+
+func (q *Queries) DeleteAutomationSecret(ctx context.Context, arg DeleteAutomationSecretParams) error {
+	_, err := q.db.ExecContext(ctx, deleteAutomationSecret, arg.WorkspaceID, arg.Name)
 	return err
 }
 
 const listAutomationSecretMeta = `-- name: ListAutomationSecretMeta :many
-SELECT name, created_at, updated_at FROM automation_secrets ORDER BY name
+SELECT name, created_at, updated_at FROM automation_secrets WHERE workspace_id = ? ORDER BY name
 `
 
 type ListAutomationSecretMetaRow struct {
@@ -28,8 +33,8 @@ type ListAutomationSecretMetaRow struct {
 	UpdatedAt int64
 }
 
-func (q *Queries) ListAutomationSecretMeta(ctx context.Context) ([]ListAutomationSecretMetaRow, error) {
-	rows, err := q.db.QueryContext(ctx, listAutomationSecretMeta)
+func (q *Queries) ListAutomationSecretMeta(ctx context.Context, workspaceID string) ([]ListAutomationSecretMetaRow, error) {
+	rows, err := q.db.QueryContext(ctx, listAutomationSecretMeta, workspaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +57,7 @@ func (q *Queries) ListAutomationSecretMeta(ctx context.Context) ([]ListAutomatio
 }
 
 const listAutomationSecretValues = `-- name: ListAutomationSecretValues :many
-SELECT name, value FROM automation_secrets
+SELECT name, value FROM automation_secrets WHERE workspace_id = ?
 `
 
 type ListAutomationSecretValuesRow struct {
@@ -60,8 +65,8 @@ type ListAutomationSecretValuesRow struct {
 	Value string
 }
 
-func (q *Queries) ListAutomationSecretValues(ctx context.Context) ([]ListAutomationSecretValuesRow, error) {
-	rows, err := q.db.QueryContext(ctx, listAutomationSecretValues)
+func (q *Queries) ListAutomationSecretValues(ctx context.Context, workspaceID string) ([]ListAutomationSecretValuesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listAutomationSecretValues, workspaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -84,19 +89,21 @@ func (q *Queries) ListAutomationSecretValues(ctx context.Context) ([]ListAutomat
 }
 
 const setAutomationSecret = `-- name: SetAutomationSecret :exec
-INSERT INTO automation_secrets (name, value, created_at, updated_at) VALUES (?, ?, ?, ?)
-ON CONFLICT(name) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+INSERT INTO automation_secrets (workspace_id, name, value, created_at, updated_at) VALUES (?, ?, ?, ?, ?)
+ON CONFLICT(workspace_id, name) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
 `
 
 type SetAutomationSecretParams struct {
-	Name      string
-	Value     string
-	CreatedAt int64
-	UpdatedAt int64
+	WorkspaceID string
+	Name        string
+	Value       string
+	CreatedAt   int64
+	UpdatedAt   int64
 }
 
 func (q *Queries) SetAutomationSecret(ctx context.Context, arg SetAutomationSecretParams) error {
 	_, err := q.db.ExecContext(ctx, setAutomationSecret,
+		arg.WorkspaceID,
 		arg.Name,
 		arg.Value,
 		arg.CreatedAt,

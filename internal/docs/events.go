@@ -32,6 +32,7 @@ type UpdatedEvent struct {
 
 // DeletedEvent is the doc.deleted payload; the doc is already gone by publish time, so consumers get identity only.
 type DeletedEvent struct {
-	ID    string `json:"id"`
-	Title string `json:"title"`
+	ID        string `json:"id"`
+	Title     string `json:"title"`
+	ProjectID string `json:"project_id"`
 }

@@ -11,12 +11,13 @@ import (
 )
 
 const createAutomation = `-- name: CreateAutomation :exec
-INSERT INTO automations (id, name, description, kind, enabled, subscriptions, config_schema, config_values, scopes, created_by, token_hash, token_prefix, token_revoked_at, host_id, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO automations (id, workspace_id, name, description, kind, enabled, subscriptions, config_schema, config_values, scopes, created_by, token_hash, token_prefix, token_revoked_at, host_id, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateAutomationParams struct {
 	ID             string
+	WorkspaceID    string
 	Name           string
 	Description    string
 	Kind           string
@@ -37,6 +38,7 @@ type CreateAutomationParams struct {
 func (q *Queries) CreateAutomation(ctx context.Context, arg CreateAutomationParams) error {
 	_, err := q.db.ExecContext(ctx, createAutomation,
 		arg.ID,
+		arg.WorkspaceID,
 		arg.Name,
 		arg.Description,
 		arg.Kind,
@@ -69,7 +71,7 @@ func (q *Queries) DeleteAutomation(ctx context.Context, id string) (int64, error
 }
 
 const getAutomation = `-- name: GetAutomation :one
-SELECT id, name, description, kind, enabled, subscriptions, config_schema, config_values, scopes, token_hash, token_prefix, token_revoked_at, created_at, updated_at, created_by, host_id FROM automations WHERE id = ?
+SELECT id, name, description, kind, enabled, subscriptions, config_schema, config_values, scopes, token_hash, token_prefix, token_revoked_at, created_at, updated_at, created_by, host_id, workspace_id FROM automations WHERE id = ?
 `
 
 func (q *Queries) GetAutomation(ctx context.Context, id string) (Automation, error) {
@@ -92,12 +94,13 @@ func (q *Queries) GetAutomation(ctx context.Context, id string) (Automation, err
 		&i.UpdatedAt,
 		&i.CreatedBy,
 		&i.HostID,
+		&i.WorkspaceID,
 	)
 	return i, err
 }
 
 const getAutomationByTokenHash = `-- name: GetAutomationByTokenHash :one
-SELECT id, name, description, kind, enabled, subscriptions, config_schema, config_values, scopes, token_hash, token_prefix, token_revoked_at, created_at, updated_at, created_by, host_id FROM automations WHERE token_hash = ?
+SELECT id, name, description, kind, enabled, subscriptions, config_schema, config_values, scopes, token_hash, token_prefix, token_revoked_at, created_at, updated_at, created_by, host_id, workspace_id FROM automations WHERE token_hash = ?
 `
 
 func (q *Queries) GetAutomationByTokenHash(ctx context.Context, tokenHash string) (Automation, error) {
@@ -120,12 +123,13 @@ func (q *Queries) GetAutomationByTokenHash(ctx context.Context, tokenHash string
 		&i.UpdatedAt,
 		&i.CreatedBy,
 		&i.HostID,
+		&i.WorkspaceID,
 	)
 	return i, err
 }
 
 const listAutomations = `-- name: ListAutomations :many
-SELECT id, name, description, kind, enabled, subscriptions, config_schema, config_values, scopes, token_hash, token_prefix, token_revoked_at, created_at, updated_at, created_by, host_id FROM automations ORDER BY created_at
+SELECT id, name, description, kind, enabled, subscriptions, config_schema, config_values, scopes, token_hash, token_prefix, token_revoked_at, created_at, updated_at, created_by, host_id, workspace_id FROM automations ORDER BY created_at
 `
 
 func (q *Queries) ListAutomations(ctx context.Context) ([]Automation, error) {
@@ -154,6 +158,7 @@ func (q *Queries) ListAutomations(ctx context.Context) ([]Automation, error) {
 			&i.UpdatedAt,
 			&i.CreatedBy,
 			&i.HostID,
+			&i.WorkspaceID,
 		); err != nil {
 			return nil, err
 		}

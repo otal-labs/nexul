@@ -1,5 +1,7 @@
 # Automations dial in to the instance; Nexul never calls out to them
 
+Amended by ADR 0095: an automation hears only the events of its own workspace, plus instance-level ones.
+
 Amended by ADR 0075: each automation is placed on one automations host, which fetches its assignments and the host-scoped tokens its workers dial in with.
 
 Amended: a disabled automation is delivered nothing, checked before every event, and enabling it moves its cursor to the newest event, so what happened while it was off is skipped rather than replayed. The cursor resumes downtime, not a deliberate pause.

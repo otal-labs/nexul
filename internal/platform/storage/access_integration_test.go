@@ -76,7 +76,7 @@ func joinDefaultWorkspace(t *testing.T, s *storage.Store, accessSvc *access.Serv
 	t.Helper()
 	ctx := context.Background()
 	rolesSvc := roles.NewService(s.Roles, nil)
-	tenancySvc := tenancy.NewService(s.Workspaces, s.WorkspaceMembers, s.WorkspaceInvites, testRoleGate{svc: rolesSvc}, testPermissionGate{}, testRoleNameGate{svc: rolesSvc}, testWorkspacePermissionGate{svc: accessSvc}, testAllowlistGate{}, testUserLookupGate{}, testChannelGate{}, testPlaysGate{}, testAccountGate{users: s.Users})
+	tenancySvc := tenancy.NewService(s.Workspaces, s.WorkspaceMembers, s.WorkspaceInvites, testRoleGate{svc: rolesSvc}, testPermissionGate{}, testRoleNameGate{svc: rolesSvc}, testWorkspacePermissionGate{svc: accessSvc}, testAllowlistGate{}, testUserLookupGate{}, testChannelGate{}, testDefaultsGate{}, testAccountGate{users: s.Users})
 	rolesSvc.SetMemberGate(testMemberGate{svc: tenancySvc})
 	accessSvc.SetRoles(accessRoleResolver{tenancy: tenancySvc, roles: rolesSvc})
 	accessSvc.SetScopes(testScopes{s: s})
@@ -299,11 +299,11 @@ func (testChannelGate) CreateGeneralChannel(context.Context, string, string) err
 	return nil
 }
 
-// testPlaysGate mirrors server/cmd/wire_gates.go's playsGate adapter (ticket 20). This test exercises
+// testDefaultsGate mirrors server/cmd/wire_gates.go's playsGate adapter (ticket 20). This test exercises
 // HasPermission's precedence chain, not plays, so it's a no-op.
-type testPlaysGate struct{}
+type testDefaultsGate struct{}
 
-func (testPlaysGate) SeedDefaultPlays(context.Context, string) error {
+func (testDefaultsGate) SeedWorkspaceDefaults(context.Context, string) error {
 	return nil
 }
 
@@ -339,7 +339,7 @@ func TestIntegration_HasPermission_WorkspacePrecedence(t *testing.T) {
 	accessSvc := access.NewService(s.Access, realUsers{s.Users})
 
 	rolesSvc := roles.NewService(s.Roles, nil)
-	tenancySvc := tenancy.NewService(s.Workspaces, s.WorkspaceMembers, s.WorkspaceInvites, testRoleGate{svc: rolesSvc}, testPermissionGate{}, testRoleNameGate{svc: rolesSvc}, testWorkspacePermissionGate{svc: accessSvc}, testAllowlistGate{}, testUserLookupGate{}, testChannelGate{}, testPlaysGate{}, testAccountGate{users: s.Users})
+	tenancySvc := tenancy.NewService(s.Workspaces, s.WorkspaceMembers, s.WorkspaceInvites, testRoleGate{svc: rolesSvc}, testPermissionGate{}, testRoleNameGate{svc: rolesSvc}, testWorkspacePermissionGate{svc: accessSvc}, testAllowlistGate{}, testUserLookupGate{}, testChannelGate{}, testDefaultsGate{}, testAccountGate{users: s.Users})
 	rolesSvc.SetMemberGate(testMemberGate{svc: tenancySvc})
 	rolesSvc.SetPermissionGate(testWorkspacePermissionGate{svc: accessSvc})
 	accessSvc.SetRoles(accessRoleResolver{tenancy: tenancySvc, roles: rolesSvc})

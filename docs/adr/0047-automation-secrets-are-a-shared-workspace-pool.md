@@ -1,5 +1,7 @@
 # Automation secrets are one shared workspace pool, readable by every automation
 
+Amended by ADR 0095: the pool is now stored per workspace, and an automation reads only its own workspace's pool.
+
 Secrets are set once per workspace, encrypted at rest, write-only after save,
 and delivered to every automation as `ctx.secrets.NAME` — the GitHub Actions
 shape, not per-automation isolation.

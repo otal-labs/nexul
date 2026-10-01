@@ -135,6 +135,8 @@ type StackDeletedEvent struct {
 	ID         string   `json:"id"`
 	Name       string   `json:"name"`
 	ServiceIDs []string `json:"service_ids,omitempty"`
+	// ProjectID is empty for an instance stack, which belongs to no workspace.
+	ProjectID string `json:"project_id,omitempty"`
 }
 
 // PushTrigger mirrors gitprovider's PushEvent wire shape so deploy never imports gitprovider (ADR 0017).

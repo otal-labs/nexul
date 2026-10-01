@@ -50,11 +50,11 @@ type playCreateIn struct {
 
 type playUpdateIn struct {
 	WorkspaceID        string    `json:"workspace_id" jsonschema:"The workspace's id (a UUID); project_list shows it on every project."`
-	ID                 string    `json:"id" jsonschema:"The play's id, from play_list."`
+	ID                 string    `json:"id" jsonschema:"The play's id, from play_list, or decisions-check for the built-in decisions check's per-workspace switch."`
 	Label              *string   `json:"label,omitempty" jsonschema:"New button text; omit to keep it."`
 	Description        *string   `json:"description,omitempty" jsonschema:"New one-line description; omit to keep it, an empty string clears it."`
 	Instructions       *string   `json:"instructions,omitempty" jsonschema:"New base instructions as markdown, replacing the old ones whole; omit to keep them."`
-	Enabled            *bool     `json:"enabled,omitempty" jsonschema:"true shows the play and lets it run, false hides it; omit to keep it."`
+	Enabled            *bool     `json:"enabled,omitempty" jsonschema:"true shows the play and lets it run, false hides it; omit to keep it. With id decisions-check, true makes a ticket entering done start the check in this workspace and false stops it; it is off by default."`
 	ShowWhenStage      *Stage    `json:"show_when_stage,omitempty" jsonschema:"Ticket plays only: the board stage (backlog, progress, review, testing, or done) whose tickets show the button; omit to keep it."`
 	ExcludedProjectIDs *[]string `json:"excluded_project_ids,omitempty" jsonschema:"Ids of projects where the play never shows, replacing the whole list; an empty list clears it, omit to keep it."`
 }
@@ -71,7 +71,9 @@ func MCPTools(s *Service) []mcptool.Tool {
 			"Lists a workspace's plays sorted by label, each with its type, instructions, enabled switch, stage, "+
 				"and excluded projects. Without type it lists every definition and needs plays:read; with type (and "+
 				"project_id, plus stage for ticket plays) it lists only the plays the caller may run on that target, "+
-				"which is what to check before play_run. Paged, 50 per page by default.",
+				"which is what to check before play_run. Without type, a caller with automations:read also gets the built-in "+
+				"decisions-check play, whose enabled field is the workspace's own switch, off by default; play_update flips "+
+				"it. Paged, 50 per page by default.",
 			mcptool.Hints{ReadOnly: true, Local: true},
 			func(ctx context.Context, in playListIn) (any, error) {
 				list, err := listPlays(ctx, s, in)
@@ -104,9 +106,14 @@ func MCPTools(s *Service) []mcptool.Tool {
 			"Changes a play's label, description, instructions, enabled switch, stage, or excluded projects. Only "+
 				"the fields you pass change; the rest keep their values, and a play's type never changes. Use enabled "+
 				"false to hide a play without deleting it, and play_delete to remove it. Returns the updated play. "+
-				"Needs plays:read and plays:write.",
+				"Needs plays:read and plays:write. With id decisions-check it switches the built-in decisions check, which "+
+				"runs when a ticket reaches done, on or off for that one workspace; it is off by default in every workspace. "+
+				"Pass only enabled, which needs automations:write, since the check lists among the default automations.",
 			mcptool.Hints{Idempotent: true, Local: true},
 			func(ctx context.Context, in playUpdateIn) (any, error) {
+				if in.ID == DecisionsCheckPlayID {
+					return switchDecisionsCheck(ctx, s, in)
+				}
 				p, err := s.Get(ctx, in.WorkspaceID, in.ID)
 				if err != nil {
 					return nil, playNotFoundHint(err)
@@ -136,9 +143,32 @@ func listPlays(ctx context.Context, s *Service, in playListIn) ([]*Play, error) 
 		return nil, fmt.Errorf("%w: project_id and stage narrow the list only together with type (ticket, doc, or interview)", apperrs.ErrInvalid)
 	}
 	if in.Type == "" {
-		return s.List(ctx, in.WorkspaceID)
+		list, err := s.List(ctx, in.WorkspaceID)
+		if err != nil {
+			return nil, err
+		}
+		check, err := s.DecisionsCheck(ctx, in.WorkspaceID)
+		if errors.Is(err, apperrs.ErrForbidden) {
+			return list, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		return append(list, check), nil
 	}
 	return s.ListApplicable(ctx, in.WorkspaceID, actorID(ctx), in.ProjectID, in.Type, optionalStage(in.Stage))
+}
+
+// switchDecisionsCheck takes only enabled: the check's label, instructions, and stage are built in.
+func switchDecisionsCheck(ctx context.Context, s *Service, in playUpdateIn) (any, error) {
+	if in.Enabled == nil || in.Label != nil || in.Description != nil || in.Instructions != nil || in.ShowWhenStage != nil || in.ExcludedProjectIDs != nil {
+		return nil, fmt.Errorf("%w: the decisions check takes only enabled", apperrs.ErrInvalid)
+	}
+	p, err := s.SetDecisionsCheckEnabled(ctx, in.WorkspaceID, *in.Enabled)
+	if err != nil {
+		return nil, err
+	}
+	return toPlayResult(p), nil
 }
 
 // overlayPlay keeps every field the call left out, so a rename never disables the play or wipes its instructions.

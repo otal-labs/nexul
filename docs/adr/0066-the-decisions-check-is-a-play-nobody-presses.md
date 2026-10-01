@@ -1,5 +1,7 @@
 # The decisions check is a play nobody presses
 
+Amended: the check has an on/off switch per workspace, listed among the default automations on the Automations page and switched with `automations:write` (HTTP `PATCH /api/workspaces/{id}/plays/decisions-check`, MCP `play_update` with id `decisions-check`). Off, a ticket entering done starts no check; a person can still run it on a done ticket. It starts off in every workspace, existing and new, because a run nobody asked for spends someone's agent time and reads as an automation running while every switch on the page is off.
+
 Amended: agents rerun the check with `play_run` and `decisions_check: true`; `decisions_check_run` folded into it to keep the MCP surface under its budget (ADR 0068).
 
 ADR 0055 says nothing fires a play but a person. The decisions check is the

@@ -145,7 +145,8 @@ done-stage column: on the paired computer of the person who moved the card,
 or the ticket's developer's when an automation moved it. It adds a
 decisions-log entry, marks an older one superseded, or leaves the log alone.
 A check that cannot start stays on the ticket as "Decisions check didn't run"
-with a way to run it again.
+with a way to run it again. Each workspace switches it on or off among the
+default automations; it starts off.
 _Avoid_: Closing summary, retrospective, done hook
 
 **Play**:
@@ -360,9 +361,12 @@ A guided multi-step flow that ends in something working, reached under
 **Automation**:
 First-party event-driven code: when an event happens, a function runs.
 Written in TS/JS against the SDK — **Default automations** ship with the
-instance, **Custom automations** are owner-written. An automation connects
-out to the instance and acts back through the API with its own scoped token;
-Nexul never calls in to it.
+instance, **Custom automations** are owner-written. An automation belongs to
+one workspace: it hears that workspace's events (and instance-level ones),
+reads that workspace's secrets, and is switched and configured there; every
+workspace has its own copy of each default. An automation connects out to the
+instance and acts back through the API with its own scoped token; Nexul never
+calls in to it.
 _Avoid_: Rule, workflow (the v1 rule engine is gone)
 
 **Automations host**:

@@ -22,14 +22,14 @@ type AutomationSecretsRepo struct {
 }
 
 // Set upserts name's value, encrypting before it reaches SQL; created_at is preserved across a replace.
-func (r *AutomationSecretsRepo) Set(ctx context.Context, name, value string, now time.Time) error {
+func (r *AutomationSecretsRepo) Set(ctx context.Context, workspaceID, name, value string, now time.Time) error {
 	enc, err := crypto.Encrypt(r.encKey, []byte(value))
 	if err != nil {
 		return fmt.Errorf("encrypt secret %s: %w", name, err)
 	}
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		err := r.q.WithTx(tx).SetAutomationSecret(ctx, sqlcgen.SetAutomationSecretParams{
-			Name: name, Value: enc, CreatedAt: now.Unix(), UpdatedAt: now.Unix(),
+			WorkspaceID: workspaceID, Name: name, Value: enc, CreatedAt: now.Unix(), UpdatedAt: now.Unix(),
 		})
 		if err != nil {
 			return classifyWriteErr(err)
@@ -39,9 +39,9 @@ func (r *AutomationSecretsRepo) Set(ctx context.Context, name, value string, now
 }
 
 // Delete removes name. Deleting a name that was never set is a no-op.
-func (r *AutomationSecretsRepo) Delete(ctx context.Context, name string) error {
+func (r *AutomationSecretsRepo) Delete(ctx context.Context, workspaceID, name string) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		if err := r.q.WithTx(tx).DeleteAutomationSecret(ctx, name); err != nil {
+		if err := r.q.WithTx(tx).DeleteAutomationSecret(ctx, sqlcgen.DeleteAutomationSecretParams{WorkspaceID: workspaceID, Name: name}); err != nil {
 			return fmt.Errorf("delete secret %s: %w", name, err)
 		}
 		return nil
@@ -49,8 +49,8 @@ func (r *AutomationSecretsRepo) Delete(ctx context.Context, name string) error {
 }
 
 // List returns every secret's name and timestamps — never a value.
-func (r *AutomationSecretsRepo) List(ctx context.Context) ([]automations.SecretMeta, error) {
-	rows, err := r.q.ListAutomationSecretMeta(ctx)
+func (r *AutomationSecretsRepo) List(ctx context.Context, workspaceID string) ([]automations.SecretMeta, error) {
+	rows, err := r.q.ListAutomationSecretMeta(ctx, workspaceID)
 	if err != nil {
 		return nil, fmt.Errorf("list secrets: %w", err)
 	}
@@ -66,8 +66,8 @@ func (r *AutomationSecretsRepo) List(ctx context.Context) ([]automations.SecretM
 }
 
 // All decrypts every stored secret into a name->value map; never call this on a path that reaches an HTTP response.
-func (r *AutomationSecretsRepo) All(ctx context.Context) (map[string]string, error) {
-	rows, err := r.q.ListAutomationSecretValues(ctx)
+func (r *AutomationSecretsRepo) All(ctx context.Context, workspaceID string) (map[string]string, error) {
+	rows, err := r.q.ListAutomationSecretValues(ctx, workspaceID)
 	if err != nil {
 		return nil, fmt.Errorf("load secrets: %w", err)
 	}

@@ -16,6 +16,9 @@ type Repo interface {
 	List(ctx context.Context, workspaceID string) ([]*Play, error)
 	Update(ctx context.Context, p *Play, evts ...eventbus.OutboxEvent) error
 	Delete(ctx context.Context, id string, evts ...eventbus.OutboxEvent) error
+	// DecisionsCheckEnabled and SetDecisionsCheckEnabled hold the built-in decisions check's per-workspace switch.
+	DecisionsCheckEnabled(ctx context.Context, workspaceID string) (bool, error)
+	SetDecisionsCheckEnabled(ctx context.Context, workspaceID string, enabled bool) error
 }
 
 // TrailRepo is the consumer-side persistence contract for trails; implemented in internal/platform/storage.

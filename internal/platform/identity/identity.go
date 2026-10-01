@@ -14,6 +14,8 @@ type Actor struct {
 type AutomationRef struct {
 	ID   string
 	Name string
+	// WorkspaceID is the workspace the automation belongs to; a shipped default is held to it (ADR 0095).
+	WorkspaceID string
 }
 
 type actorKey struct{}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -12,6 +13,7 @@ import (
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 // newDecisionsFixture is the runner fixture with a progress column, two done columns, and a user who may not run plays.
@@ -20,6 +22,7 @@ func newDecisionsFixture() *runnerFixture {
 	f.targets.statuses["st-progress"] = StatusTarget{Name: "Doing", Stage: StageProgress}
 	f.targets.statuses["st-shipped"] = StatusTarget{Name: "Shipped", Stage: StageDone}
 	f.targets.setTicketStage(ticketID, StageDone)
+	f.plays.decisionsCheck[workspaceID] = true
 	return f
 }
 
@@ -63,6 +66,24 @@ func TestHandleTicketStatusChanged_EnteringDone_FiresExactlyOneCheck(t *testing.
 	assert.Contains(t, req.ExtraRequestBlocks[0], "Play: Decisions check")
 	assert.Contains(t, req.ExtraRequestBlocks[0], "decisions_log")
 	assert.Equal(t, "Started Decisions check", f.threads.snapshot()[0].body)
+}
+
+func TestHandleTicketStatusChanged_SwitchedOff_StartsNoCheck(t *testing.T) {
+	f := newDecisionsFixture()
+	f.plays.decisionsCheck[workspaceID] = false
+
+	require.NoError(t, f.runner.HandleTicketStatusChanged(context.Background(), moveEvent(t, "st-progress", "st-done", "user", starter, "")))
+
+	assert.Empty(t, f.trails.all(), "a workspace with the check off starts no run and keeps no failed trail")
+}
+
+func TestRetryDecisionsCheck_SwitchedOff_StillRunsForTheCaller(t *testing.T) {
+	f := newDecisionsFixture()
+	f.plays.decisionsCheck[workspaceID] = false
+	_, err := f.runner.RetryDecisionsCheck(ctxAs(starter), ticketID, ViaWeb)
+	require.NoError(t, err)
+	<-f.turns.done
+	assert.Len(t, decisionTrails(f), 1)
 }
 
 func TestHandleTicketStatusChanged_NotAnEntryIntoDone_DoesNothing(t *testing.T) {
@@ -258,4 +279,33 @@ func TestDecisionsCheckRun_HTTPAndMCP(t *testing.T) {
 	assert.Equal(t, ViaMCP, out.(trailSummary).Via)
 	_, err = callTool(t, tools, ctxAs(starter), "play_run", `{"decisions_check":true,"target_type":"ticket","target_id":""}`)
 	require.ErrorIs(t, err, apperrs.ErrInvalid)
+}
+
+func TestDecisionsCheckSwitch_HTTPAndMCP(t *testing.T) {
+	repo := newFakeRepo()
+	perm := newFakePerm(map[string][]permissions.Action{
+		"owner":  {permissions.AutomationsRead, permissions.AutomationsWrite, permissions.PlaysRead},
+		"viewer": {permissions.AutomationsRead},
+	})
+	s := newTestService(repo, perm)
+	h := NewHandler(s).Routes()
+	path := "/api/workspaces/" + workspaceID + "/plays/decisions-check"
+
+	rec := do(t, h, http.MethodGet, path, "", "viewer")
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), `"enabled":false`, "a workspace starts with the check off")
+	assert.Equal(t, http.StatusForbidden, do(t, h, http.MethodPatch, path, `{"enabled":true}`, "viewer").Code, "switching takes automations:write")
+	rec = do(t, h, http.MethodPatch, path, `{"enabled":true}`, "owner")
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.True(t, repo.decisionsCheck[workspaceID])
+
+	tools := MCPTools(s)
+	_, err := callTool(t, tools, ctxAs("owner"), "play_update", `{"workspace_id":"`+workspaceID+`","id":"decisions-check","label":"x"}`)
+	require.ErrorIs(t, err, apperrs.ErrInvalid, "the check's label and instructions are built in")
+	out, err := callTool(t, tools, ctxAs("owner"), "play_update", `{"workspace_id":"`+workspaceID+`","id":"decisions-check","enabled":false}`)
+	require.NoError(t, err)
+	assert.False(t, out.(playResult).Enabled)
+	listed, err := callTool(t, tools, ctxAs("owner"), "play_list", `{"workspace_id":"`+workspaceID+`"}`)
+	require.NoError(t, err)
+	assert.Contains(t, fmt.Sprint(listed), DecisionsCheckPlayID, "play_list shows the switch to those who may read it")
 }

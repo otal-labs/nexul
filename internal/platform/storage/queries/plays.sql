@@ -14,3 +14,9 @@ WHERE id = ?;
 
 -- name: DeletePlay :execrows
 DELETE FROM plays WHERE id = ?;
+
+-- name: GetDecisionsCheckEnabled :one
+SELECT decisions_check_enabled FROM workspaces WHERE id = ?;
+
+-- name: SetDecisionsCheckEnabled :execrows
+UPDATE workspaces SET decisions_check_enabled = ? WHERE id = ?;

@@ -77,6 +77,14 @@ tickets. The same walk is `GET /api/repos/{owner}/{repo}/change-context` with
 `play_run` with `decisions_check` set to true reruns the decisions check on a
 done ticket whose check didn't run, on the caller's own paired computer.
 
+Automations belong to a workspace. `automation_list` takes a `workspace_id`
+(without one it lists every workspace's you can read), `automation_create`
+needs one, and every result carries its `workspace_id`. `automation_update`
+with `enabled` switches one automation in its own workspace only. The
+decisions check is a per-workspace switch, off by default: `play_list` shows
+it as the play `decisions-check`, and `play_update` with that id and
+`enabled` turns it on or off.
+
 Ticket tools take a ticket's id or its key, such as `WEB-12`. A key is unique
 only within a workspace: when the key exists in more than one of your
 workspaces, pass `workspace` (its id or its slug from `workspace_list`), or the

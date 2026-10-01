@@ -25,6 +25,7 @@ func (k Kind) valid() bool {
 // Automation is one first-party event-driven program; code overwrites its declared fields at each dial-in.
 type Automation struct {
 	ID             string          `json:"id"`
+	WorkspaceID    string          `json:"workspace_id"`
 	Name           string          `json:"name"`
 	Description    string          `json:"description"`
 	Kind           Kind            `json:"kind"`

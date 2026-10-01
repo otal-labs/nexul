@@ -10,6 +10,7 @@ import {
 
 const baseAutomation = (overrides: Partial<Automation> = {}): Automation => ({
   id: "a1",
+  workspace_id: "ws-1",
   name: "Ticket finished",
   description: "Moves a ticket to done",
   kind: AutomationKind.Default,

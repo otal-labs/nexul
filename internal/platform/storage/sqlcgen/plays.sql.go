@@ -60,6 +60,17 @@ func (q *Queries) DeletePlay(ctx context.Context, id string) (int64, error) {
 	return result.RowsAffected()
 }
 
+const getDecisionsCheckEnabled = `-- name: GetDecisionsCheckEnabled :one
+SELECT decisions_check_enabled FROM workspaces WHERE id = ?
+`
+
+func (q *Queries) GetDecisionsCheckEnabled(ctx context.Context, id string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getDecisionsCheckEnabled, id)
+	var decisions_check_enabled int64
+	err := row.Scan(&decisions_check_enabled)
+	return decisions_check_enabled, err
+}
+
 const getPlay = `-- name: GetPlay :one
 SELECT id, workspace_id, label, type, description, instructions, enabled, show_when_stage, excluded_project_ids, created_by, created_at, updated_at FROM plays WHERE id = ?
 `
@@ -122,6 +133,23 @@ func (q *Queries) ListPlays(ctx context.Context, workspaceID string) ([]Play, er
 		return nil, err
 	}
 	return items, nil
+}
+
+const setDecisionsCheckEnabled = `-- name: SetDecisionsCheckEnabled :execrows
+UPDATE workspaces SET decisions_check_enabled = ? WHERE id = ?
+`
+
+type SetDecisionsCheckEnabledParams struct {
+	DecisionsCheckEnabled int64
+	ID                    string
+}
+
+func (q *Queries) SetDecisionsCheckEnabled(ctx context.Context, arg SetDecisionsCheckEnabledParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, setDecisionsCheckEnabled, arg.DecisionsCheckEnabled, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const updatePlay = `-- name: UpdatePlay :execrows

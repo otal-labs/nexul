@@ -18,6 +18,7 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const automation = (overrides: Partial<Automation> = {}): Automation => ({
   id: "a1",
+  workspace_id: "ws-1",
   name: "Ticket finished",
   description: "",
   kind: AutomationKind.Custom,

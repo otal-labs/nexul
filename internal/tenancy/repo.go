@@ -109,8 +109,8 @@ type ChannelGate interface {
 	CreateGeneralChannel(ctx context.Context, workspaceID, creatorUserID string) error
 }
 
-// PlaysGate seeds a new workspace's default plays without tenancy importing plays (ADR 0017).
-type PlaysGate interface {
-	// SeedDefaultPlays creates "Fix with AI", "To tickets via AI", and "Interview" for workspaceID (ticket 02).
-	SeedDefaultPlays(ctx context.Context, workspaceID string) error
+// DefaultsGate seeds a new workspace's default plays and default automations without tenancy importing either (ADR 0017).
+type DefaultsGate interface {
+	// SeedWorkspaceDefaults creates workspaceID's default plays and default automations; idempotent.
+	SeedWorkspaceDefaults(ctx context.Context, workspaceID string) error
 }

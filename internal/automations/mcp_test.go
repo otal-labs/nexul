@@ -39,7 +39,7 @@ func mcpFixture(t *testing.T, repo Repo) ([]mcptool.Tool, string, string) {
 		"viewer": {permissions.AutomationsRead},
 	})
 	svc := newTestService(repo, perm)
-	a, token, err := svc.Create(mcpCtx("owner"), "owner", "Close stale tickets", []string{"tickets:read"})
+	a, token, err := svc.Create(mcpCtx("owner"), "owner", "ws-1", "Close stale tickets", []string{"tickets:read"})
 	require.NoError(t, err)
 	return MCPTools(svc), a.ID, token
 }
@@ -76,8 +76,8 @@ func TestMCPTools_ErrorPaths(t *testing.T) {
 		{"delete of a missing automation", "owner", "automation_delete", `{"id":"missing"}`, apperrs.ErrNotFound},
 		{"rotating a missing automation's token", "owner", "automation_token_create", `{"id":"missing"}`, apperrs.ErrNotFound},
 		{"no actor", "", "automation_list", `{}`, apperrs.ErrUnauthorized},
-		{"a stranger cannot list", "stranger", "automation_list", `{}`, apperrs.ErrForbidden},
-		{"a viewer cannot create", "viewer", "automation_create", `{"name":"x","scopes":["tickets:read"]}`, apperrs.ErrForbidden},
+		{"a stranger cannot list a workspace", "stranger", "automation_list", `{"workspace_id":"ws-1"}`, apperrs.ErrForbidden},
+		{"a viewer cannot create", "viewer", "automation_create", `{"workspace_id":"ws-1","name":"x","scopes":["tickets:read"]}`, apperrs.ErrForbidden},
 		{"a viewer cannot update", "viewer", "automation_update", `{"id":"$ID","enabled":true}`, apperrs.ErrForbidden},
 		{"a viewer cannot delete", "viewer", "automation_delete", `{"id":"$ID"}`, apperrs.ErrForbidden},
 		{"a viewer cannot rotate the token", "viewer", "automation_token_create", `{"id":"$ID"}`, apperrs.ErrForbidden},
@@ -169,7 +169,7 @@ func TestMCPTools_Lifecycle(t *testing.T) {
 	tools := MCPTools(svc)
 	ctx := mcpCtx("owner")
 
-	out, err := callTool(t, tools, ctx, "automation_create", `{"name":"My automation","scopes":["tickets:read"]}`)
+	out, err := callTool(t, tools, ctx, "automation_create", `{"workspace_id":"ws-1","name":"My automation","scopes":["tickets:read"]}`)
 	require.NoError(t, err)
 	created := out.(mintedTokenResult)
 	id := created.Automation.ID

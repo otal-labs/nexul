@@ -17,6 +17,8 @@ const DecisionsCheckPlayID = "decisions-check"
 
 const decisionsCheckLabel = "Decisions check"
 
+const decisionsCheckDescription = "When a ticket reaches done, an agent decides whether it changed how the project works and logs it."
+
 const decisionsCheckInstructions = "This ticket just reached done. Decide whether it changed how the project works: a new pattern, " +
 	"a library added or dropped, a rule or an earlier decision reversed. Routine work that follows the existing patterns " +
 	"changes nothing. Read the ticket and its linked pull requests with `ticket_get`, each pull request with " +
@@ -29,13 +31,45 @@ const decisionsCheckInstructions = "This ticket just reached done. Decide whethe
 	"entry as it is. Save with `memory_update` on the log; if the project has no log yet, create it with `memory_create` " +
 	"passing `kind` `decisions_log` and the project id. Reply with the entry you wrote."
 
-// decisionsCheckPlay is the built-in play the check runs as; no workspace lists, edits, disables, or excludes it.
-func decisionsCheckPlay(workspaceID string) *Play {
+// decisionsCheckPlay is the built-in play the check runs as; a workspace only switches it on or off.
+func decisionsCheckPlay(workspaceID string, enabled bool) *Play {
 	stage := StageDone
 	return &Play{
 		ID: DecisionsCheckPlayID, WorkspaceID: workspaceID, Label: decisionsCheckLabel, Type: TypeTicket,
-		Instructions: decisionsCheckInstructions, Enabled: true, ShowWhenStage: &stage,
+		Description: decisionsCheckDescription, Instructions: decisionsCheckInstructions, Enabled: enabled, ShowWhenStage: &stage,
+		ExcludedProjectIDs: []string{},
 	}
+}
+
+// DecisionsCheck returns workspaceID's check with its switch, read with automations:read as it lists among them.
+func (s *Service) DecisionsCheck(ctx context.Context, workspaceID string) (*Play, error) {
+	workspaceID = strings.TrimSpace(workspaceID)
+	if workspaceID == "" {
+		return nil, fmt.Errorf("%w: workspace id is required", apperrs.ErrInvalid)
+	}
+	if err := s.require(ctx, workspaceID, permissions.AutomationsRead); err != nil {
+		return nil, err
+	}
+	enabled, err := s.repo.DecisionsCheckEnabled(ctx, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	return decisionsCheckPlay(workspaceID, enabled), nil
+}
+
+// SetDecisionsCheckEnabled switches workspaceID's decisions check; off, a ticket entering done starts no check.
+func (s *Service) SetDecisionsCheckEnabled(ctx context.Context, workspaceID string, enabled bool) (*Play, error) {
+	workspaceID = strings.TrimSpace(workspaceID)
+	if workspaceID == "" {
+		return nil, fmt.Errorf("%w: workspace id is required", apperrs.ErrInvalid)
+	}
+	if err := s.require(ctx, workspaceID, permissions.AutomationsWrite); err != nil {
+		return nil, err
+	}
+	if err := s.repo.SetDecisionsCheckEnabled(ctx, workspaceID, enabled); err != nil {
+		return nil, fmt.Errorf("switch decisions check for workspace %s: %w", workspaceID, err)
+	}
+	return decisionsCheckPlay(workspaceID, enabled), nil
 }
 
 // RetryDecisionsCheck reruns the check on a done ticket on the caller's own harness, keeping refusals the way a pressed play does.
@@ -64,7 +98,14 @@ func (r *Runner) startDecisionsCheck(ctx context.Context, ticketID, starter stri
 	if err != nil {
 		return nil, fmt.Errorf("resolve workspace for project %s: %w", tgt.projectID, err)
 	}
-	play := decisionsCheckPlay(workspaceID)
+	// Switched off, a ticket entering done starts nothing; a person asking for the check still gets it.
+	if record {
+		enabled, err := r.plays.DecisionsCheckEnabled(ctx, workspaceID)
+		if err != nil || !enabled {
+			return nil, err
+		}
+	}
+	play := decisionsCheckPlay(workspaceID, true)
 	trail := &Trail{
 		ID: ids.New(), WorkspaceID: workspaceID, PlayID: play.ID, PlayLabel: play.Label, TargetType: TargetTicket,
 		TargetID: ticketID, ProjectID: tgt.projectID, StarterID: starter, Via: via, SelectedMemoryIDs: []string{},

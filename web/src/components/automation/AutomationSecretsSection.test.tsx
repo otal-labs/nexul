@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AutomationSecretsSection } from "@/components/automation/AutomationSecretsSection";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn(), del: vi.fn() }));
 
@@ -25,6 +26,7 @@ const renderSection = () => {
 
 describe("AutomationSecretsSection", () => {
   beforeEach(() => {
+    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
     mocks.get.mockReset();
     mocks.put.mockReset();
     mocks.del.mockReset();
@@ -50,7 +52,7 @@ describe("AutomationSecretsSection", () => {
     await user.type(screen.getByLabelText("Value"), "shh");
     await user.click(screen.getByRole("button", { name: "Save secret" }));
 
-    expect(mocks.put).toHaveBeenCalledWith("/api/automation-secrets/API_KEY", { value: "shh" });
+    expect(mocks.put).toHaveBeenCalledWith("/api/automation-secrets/API_KEY", { value: "shh" }, { params: { workspace_id: "ws-1" } });
   });
 
   it("rejects a name that doesn't match the allowed pattern", async () => {
@@ -78,6 +80,6 @@ describe("AutomationSecretsSection", () => {
     await user.click(screen.getByRole("button", { name: "Delete" }));
     await user.click(screen.getByRole("button", { name: "Confirm" }));
 
-    expect(mocks.del).toHaveBeenCalledWith("/api/automation-secrets/API_KEY");
+    expect(mocks.del).toHaveBeenCalledWith("/api/automation-secrets/API_KEY", { params: { workspace_id: "ws-1" } });
   });
 });
