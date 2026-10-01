@@ -38,6 +38,7 @@ export const TicketPersonRow = ({ ticket, role }: TicketPersonRowProps) => {
       </PopoverTrigger>
       <PopoverContent align="start" className="w-56 p-1.5">
         <PersonPickerList
+          projectId={ticket.project_id}
           onSelect={(next) => {
             setOpen(false);
             setPerson.mutate({ id: ticket.id, role, login: next });

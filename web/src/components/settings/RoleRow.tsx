@@ -1,13 +1,15 @@
-import { useState, type FocusEvent, type KeyboardEvent } from "react";
+import { useState, type FormEvent, type KeyboardEvent } from "react";
 import { CopyIcon, CrownIcon, PencilIcon, Trash2 } from "lucide-react";
 
-import { PermissionLevels } from "@/components/access/PermissionLevels";
+import { RoleLevelSections } from "@/components/access/RoleLevelSections";
 import { CloneRoleDialog } from "@/components/settings/CloneRoleDialog";
 import { ConfirmDestroyButton } from "@/components/settings/ConfirmDestroyButton";
 import { NoFillBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useDeleteWorkspaceRole, useUpdateWorkspaceRole } from "@/hooks/RoleHooks";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
+import { cn } from "@/lib/utils";
 import type { PermissionInfo } from "@/models/Permission";
 import { domainsOf, summarize } from "@/models/PermissionLevel";
 import type { Role } from "@/models/Role";
@@ -48,7 +50,8 @@ export const RoleRow = ({ role, workspaceId, catalog }: RoleRowProps) => {
   };
 
   // Full-replacement update so an untouched field isn't silently cleared; one atomic commit path.
-  const commit = () => {
+  const commit = (event: FormEvent) => {
+    event.preventDefault();
     const name = nameDraft.trim();
     if (name) {
       void updateRole.mutateAsync({ roleId: role.id, name, actions: actionsDraft });
@@ -56,29 +59,32 @@ export const RoleRow = ({ role, workspaceId, catalog }: RoleRowProps) => {
     setEditing(false);
   };
 
-  const handleGroupBlur = (event: FocusEvent<HTMLDivElement>) => {
-    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) commit();
-  };
-
   const handleNameKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Enter") commit();
     if (event.key === "Escape") setEditing(false);
   };
 
   return (
-    <li className="flex items-center gap-2 bg-card px-3 py-3 transition-colors duration-150 ease-standard hover:bg-accent/40">
+    <li className={cn("flex items-center gap-2 bg-card px-3 py-3 transition-colors duration-150 ease-standard", !editing && "hover:bg-accent/40")}>
       {editing && (
-        <div onBlur={handleGroupBlur} className="flex flex-1 flex-col gap-3">
-          <input
-            className="min-w-0 rounded-md border border-input px-2 py-1 text-sm"
+        <form onSubmit={commit} className="flex flex-1 flex-col gap-3">
+          <Input
             aria-label="Role name"
             value={nameDraft}
             autoFocus
             onChange={(event) => setNameDraft(event.target.value)}
             onKeyDown={handleNameKeyDown}
+            className="h-9"
           />
-          <PermissionLevels entries={catalog} value={actionsDraft} onChange={setActionsDraft} />
-        </div>
+          <RoleLevelSections catalog={catalog} value={actionsDraft} onChange={setActionsDraft} />
+          <div className="flex gap-2">
+            <Button type="submit" size="sm">
+              Save role
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(false)}>
+              Cancel
+            </Button>
+          </div>
+        </form>
       )}
       {!editing && (
         <div className="flex flex-1 flex-col gap-1.5">

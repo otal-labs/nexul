@@ -34,7 +34,7 @@ const repoLabel = (stack: Stack): string | undefined => {
 
 // Detail-page header (back link → mono slug → title) plus the locked facts grid: mono microheader over each value.
 export const StackHeaderSection = ({ stack, projectPath, latest, image, hostnames }: StackHeaderSectionProps) => {
-  const can = useAreaAccess();
+  const can = useAreaAccess(stack.project_id || undefined);
   const wsPath = useWorkspacePath();
   const repo = repoLabel(stack);
   const [firstHostname, ...moreHostnames] = hostnames;

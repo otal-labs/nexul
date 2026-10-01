@@ -90,7 +90,7 @@ const mockGet = (tickets: unknown[], projectList: typeof projects = projects, ca
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/projects") return { data: projectList };
     if (url === "/api/auth/me") return { data: { user: { login: "onik97" } } };
-    if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Owner", permissions: ["projects:write"] } };
+    if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Owner", permissions: ["projects:write", "tickets:write"] } };
     const projectMatch = /^\/api\/projects\/([^/]+)$/.exec(url);
     if (projectMatch) return { data: projectList.find((p) => p.id === projectMatch[1]) };
     if (url.startsWith("/api/categories")) return { data: categoryList };
@@ -106,7 +106,7 @@ beforeEach(() => {
   vi.mocked(api.post).mockReset();
   vi.mocked(api.patch).mockReset();
   // Last-viewed project is read from this store (ticket 08); start every test from a clean slate so redirect targets are deterministic.
-  useWorkspaceStore.setState({ selectedWorkspaceId: "", selectedProjectId: "" });
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedProjectId: "" });
   useWorkspaceStore.persist.clearStorage();
   localStorage.clear();
 });
@@ -197,6 +197,7 @@ describe("BoardPage", () => {
     let currentCategories = [...categories];
     vi.mocked(api.get).mockImplementation(async (url: string) => {
       if (url === "/api/auth/me") return { data: { user: { login: "onik97" } } };
+      if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Owner", permissions: ["projects:write", "tickets:write"] } };
       if (url.startsWith("/api/projects")) return { data: projects };
       if (url.startsWith("/api/categories")) return { data: currentCategories };
       if (url.startsWith("/api/statuses")) return { data: statuses };
@@ -234,6 +235,7 @@ describe("BoardPage", () => {
     let currentCategories = [...categories];
     vi.mocked(api.get).mockImplementation(async (url: string) => {
       if (url === "/api/auth/me") return { data: { user: { login: "onik97" } } };
+      if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Owner", permissions: ["projects:write", "tickets:write"] } };
       if (url.startsWith("/api/projects")) return { data: projects };
       if (url.startsWith("/api/categories")) return { data: currentCategories };
       if (url.startsWith("/api/statuses")) return { data: statuses };
@@ -286,6 +288,7 @@ describe("BoardPage", () => {
   it("does not show the empty state while tickets are still loading", async () => {
     vi.mocked(api.get).mockImplementation(async (url: string) => {
       if (url === "/api/auth/me") return { data: { user: { login: "onik97" } } };
+      if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Owner", permissions: ["projects:write", "tickets:write"] } };
       if (url.startsWith("/api/projects")) return { data: projects };
       if (url.startsWith("/api/categories")) return { data: categories };
       if (url.startsWith("/api/statuses")) return { data: statuses };
@@ -414,6 +417,7 @@ describe("BoardPage label filter", () => {
     const user = userEvent.setup();
     vi.mocked(api.get).mockImplementation(async (url: string) => {
       if (url === "/api/auth/me") return { data: { user: { login: "onik97" } } };
+      if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Owner", permissions: ["projects:write", "tickets:write"] } };
       if (url.startsWith("/api/projects")) return { data: projects };
       if (url.startsWith("/api/categories")) return { data: categories };
       if (url.startsWith("/api/statuses")) return { data: statuses };

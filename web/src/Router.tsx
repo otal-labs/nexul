@@ -3,6 +3,7 @@ import { Outlet, createBrowserRouter, RouterProvider, type RouteObject } from "r
 
 import { Layout } from "@/Layout";
 import { AreaGate } from "@/components/auth/AreaGate";
+import { ProjectRevokedGate } from "@/components/project/ProjectRevokedGate";
 import { OnboardingGate } from "@/components/auth/OnboardingGate";
 import { WorkspaceScope } from "@/components/workspace/WorkspaceScope";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
@@ -127,9 +128,11 @@ const buildRoutes = (loggedIn: boolean): RouteObject[] => [
                   children: [
                     {
                       element: (
-                        <AreaGate>
-                          <Outlet />
-                        </AreaGate>
+                        <ProjectRevokedGate>
+                          <AreaGate>
+                            <Outlet />
+                          </AreaGate>
+                        </ProjectRevokedGate>
                       ),
                       children: workspaceRoutes,
                     },

@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { useWorkspacePathname } from "@/hooks/useWorkspacePath";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
-import { projectTokenFromPath, resolveProject } from "@/models/Project";
+import { openProjectToken, resolveProject } from "@/models/Project";
 
 // The project the sidebar shows: the one the URL is on, else the last one visited, else the first.
 export const useSidebarProject = () => {
@@ -12,7 +12,7 @@ export const useSidebarProject = () => {
   const selectedProjectId = useWorkspaceStore((s) => s.selectedProjectId);
   const selectProject = useWorkspaceStore((s) => s.selectProject);
 
-  const token = projectTokenFromPath(pathname);
+  const token = openProjectToken(pathname);
   const routed = token && projects ? resolveProject(projects, token) : undefined;
   const current = routed ?? projects?.find((p) => p.id === selectedProjectId) ?? projects?.[0];
   const routedId = routed?.id;

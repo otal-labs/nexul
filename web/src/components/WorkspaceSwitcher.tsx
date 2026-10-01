@@ -11,6 +11,7 @@ import { useHasInstancePermission, workspaceAccess } from "@/hooks/AccessHooks";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { myRoleQuery, useFetchWorkspaces } from "@/hooks/WorkspaceHooks";
 import { useFormDialog } from "@/hooks/useFormDialog";
+import { workspaceWidePermissions } from "@/models/Permission";
 import { SaveWorkspaceFormSchema, switchWorkspacePath, workspacePath, type SaveWorkspaceFormData } from "@/models/Workspace";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
@@ -60,7 +61,7 @@ export const WorkspaceSwitcher = ({ collapsed }: WorkspaceSwitcherProps) => {
     const inWorkspace = !!current && (pathname === prefix || pathname.startsWith(`${prefix}/`));
     if (!target || !inWorkspace) return selectWorkspace(workspaceId, target?.slug ?? "");
     const role = await client.fetchQuery(myRoleQuery(workspaceId)).catch(() => undefined);
-    void navigate(switchWorkspacePath(pathname, target.slug, workspaceAccess(me?.instance_permissions, role?.permissions ?? [])));
+    void navigate(switchWorkspacePath(pathname, target.slug, workspaceAccess(me?.instance_permissions, workspaceWidePermissions(role))));
   };
 
   // Nothing to switch between yet; same "render nothing" convention as AccountMenu.

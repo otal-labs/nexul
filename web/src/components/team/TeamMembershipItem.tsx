@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { RowActionsMenu } from "@/components/settings/RowActionsMenu";
 import { TeamOverridesForm } from "@/components/team/TeamOverridesForm";
+import { TeamProjectAccess } from "@/components/team/TeamProjectAccess";
 import { TeamReadOnlyReason } from "@/components/team/TeamReadOnlyReason";
 import { TeamRoleSelect } from "@/components/team/TeamRoleSelect";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
@@ -38,9 +39,9 @@ export const TeamMembershipItem = ({ person, workspace, membership }: TeamMember
   };
 
   return (
-    <li aria-label={workspace.name} className="space-y-2 px-3 py-2.5">
-      <div className="flex items-center gap-2">
-        <span className="min-w-0 flex-1 truncate font-medium">{workspace.name}</span>
+    <li aria-label={workspace.name} className="pb-2">
+      <div className="flex min-h-11 items-center gap-2 border-b border-border py-1.5">
+        <span className="min-w-0 flex-1 truncate text-sm font-medium">{workspace.name}</span>
         {membership.is_owner && <span className={roleChipClass}>Owner</span>}
         {readOnly && <span className="text-sm text-muted-foreground">{membership.role_name}</span>}
         {editable && (
@@ -62,16 +63,17 @@ export const TeamMembershipItem = ({ person, workspace, membership }: TeamMember
           />
         )}
       </div>
-      {membership.is_owner && <p className="text-xs text-muted-foreground">The Owner role can&apos;t be changed or removed, and it bypasses overrides.</p>}
+      {membership.is_owner && <p className="pt-2 text-xs text-muted-foreground">The Owner role can&apos;t be changed or removed, and it bypasses overrides and Project access.</p>}
       {readOnly && <TeamReadOnlyReason workspaceName={workspace.name} />}
       {hasOverrides && (
-        <p className="text-xs text-muted-foreground">
+        <p className="pt-2 text-xs text-muted-foreground">
           Overrides: {membership.allow.length} allowed, {membership.deny.length} denied on top of the role
         </p>
       )}
       {editingOverrides && (
         <TeamOverridesForm key={`${membership.allow.join()}|${membership.deny.join()}`} target={target} membership={membership} onDone={() => setEditingOverrides(false)} />
       )}
+      {!membership.is_owner && <TeamProjectAccess person={person} workspace={workspace} membership={membership} />}
     </li>
   );
 };

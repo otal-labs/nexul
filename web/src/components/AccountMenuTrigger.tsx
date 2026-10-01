@@ -1,7 +1,7 @@
 import { ChevronsUpDownIcon } from "lucide-react";
 
 import { PopoverTrigger } from "@/components/ui/popover";
-import type { MyWorkspaceInfo } from "@/hooks/WorkspaceHooks";
+import type { MyWorkspaceInfo } from "@/models/Permission";
 import { cn } from "@/lib/utils";
 import { effectiveAvatar } from "@/models/User";
 import type { User } from "@/models/User";

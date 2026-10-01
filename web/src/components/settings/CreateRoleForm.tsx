@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { PlusIcon } from "lucide-react";
 
-import { PermissionLevels } from "@/components/access/PermissionLevels";
+import { RoleLevelSections } from "@/components/access/RoleLevelSections";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -62,7 +62,7 @@ export const CreateRoleForm = ({ workspaceId, roles, catalog, onDone }: CreateRo
           </Select>
         )}
       </div>
-      <PermissionLevels entries={catalog} value={actions} onChange={setActions} />
+      <RoleLevelSections catalog={catalog} value={actions} onChange={setActions} />
       <div className="flex flex-wrap gap-2">
         <Button type="submit" loading={createRole.isPending}>
           <PlusIcon className="size-4" />
