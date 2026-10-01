@@ -95,6 +95,14 @@ describe("useLiveEvents dispatch", () => {
     expect(arrivals[0]).toMatchObject({ id: "s-phone", platform: "Android", label: "Pixel 8" });
   });
 
+  it.each(["doc.moved", "doc.folder.updated", "doc.folder.deleted"])("refetches the inbox on %s, whose rows group by a doc's folder", async (topic) => {
+    setup();
+    const socket = await connectedSocket();
+    const spy = invalidate();
+    act(() => socket.message(JSON.stringify({ topic, type: "event", payload: { id: "d-1" } })));
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["getNotifications"] });
+  });
+
   describe("a permission change", () => {
     const refetchedEverything = (spy: ReturnType<typeof invalidate>) => spy.mock.calls.some((args) => args[0] === undefined);
     const push = (socket: FakeSocket, topic: string, payload: Record<string, string>) =>

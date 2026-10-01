@@ -106,10 +106,12 @@ func toNotification(row sqlcgen.Notification) *workspace.Notification {
 	}
 }
 
-func toNotifications(rows []sqlcgen.Notification) []*workspace.Notification {
+func toNotifications(rows []sqlcgen.ListNotificationsRow) []*workspace.Notification {
 	var out []*workspace.Notification
 	for _, row := range rows {
-		out = append(out, toNotification(row))
+		n := toNotification(row.Notification)
+		n.FolderID, n.FolderName, n.FolderIsDefault = row.FolderID, row.FolderName, row.FolderIsDefault != 0
+		out = append(out, n)
 	}
 	return out
 }

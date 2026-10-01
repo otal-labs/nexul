@@ -99,10 +99,11 @@ const pushTopics: Record<string, string[]> = {
   "category.deleted": [getCategoriesKey, getProjectCategoriesKey],
   "doc.created": [getDocsKey],
   "doc.updated": [getDocsKey, getDocKey],
-  "doc.moved": [getDocsKey, getDocKey, getDocFoldersKey],
+  // The inbox groups doc rows by the folder each doc is in now, so a move, rename, or delete regroups it.
+  "doc.moved": [getDocsKey, getDocKey, getDocFoldersKey, getNotificationsKey],
   "doc.folder.created": [getDocFoldersKey],
-  "doc.folder.updated": [getDocFoldersKey],
-  "doc.folder.deleted": [getDocFoldersKey, getDocsKey],
+  "doc.folder.updated": [getDocFoldersKey, getNotificationsKey],
+  "doc.folder.deleted": [getDocFoldersKey, getDocsKey, getNotificationsKey],
   "ticket.created": [getTicketsKey],
   "ticket.updated": [getTicketsKey, getTicketKey, getTicketLinksKey, getTrailsKey, getTicketLinkSetKey, getBlockersKey],
   // A blocker reaching a done-stage column clears the blocked card the moment it moves.

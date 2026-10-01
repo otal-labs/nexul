@@ -15,9 +15,9 @@ vi.mock("@/hooks/useLiveEvents", () => ({
 }));
 
 vi.mock("@/hooks/NotificationHooks", () => ({
-  useFetchNotifications: () => ({ data: [] }),
+  useFetchInbox: () => ({ data: [] }),
   useFetchUnreadCount: vi.fn(() => ({ data: { count: 0 } })),
-  useMarkNotificationRead: () => ({ mutate: vi.fn(), isPending: false }),
+  useMarkNotificationsRead: () => ({ mutate: vi.fn(), isPending: false }),
   useMarkAllNotificationsRead: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 

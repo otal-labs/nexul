@@ -30,6 +30,10 @@ export interface Notification {
   subject_title: string;
   read: boolean;
   created_at: string;
+  /** A doc's folder as it is now; absent for tickets and memories. */
+  folder_id?: string;
+  folder_name?: string;
+  folder_is_default?: boolean;
 }
 
 export interface UnreadCount {

@@ -9,9 +9,13 @@ WHERE NOT EXISTS (
 
 -- name: ListNotifications :many
 -- An empty workspace_id lists every workspace, the unscoped inbox older clients still ask for.
-SELECT * FROM notifications
-WHERE user_id = sqlc.arg(user_id) AND (sqlc.arg(workspace_id) = '' OR workspace_id = sqlc.arg(workspace_id))
-ORDER BY created_at DESC LIMIT sqlc.arg(limit);
+-- A doc's folder is joined in at read time, never stored on the row, because the doc can move after it was sent.
+SELECT sqlc.embed(n), COALESCE(f.id, '') AS folder_id, COALESCE(f.name, '') AS folder_name, COALESCE(f.is_default, 0) AS folder_is_default
+FROM notifications n
+LEFT JOIN docs d ON n.subject_type = 'doc' AND d.id = n.subject_id
+LEFT JOIN doc_folders f ON f.id = d.folder_id
+WHERE n.user_id = sqlc.arg(user_id) AND (sqlc.arg(workspace_id) = '' OR n.workspace_id = sqlc.arg(workspace_id))
+ORDER BY n.created_at DESC LIMIT sqlc.arg(limit);
 
 -- name: CountUnreadNotifications :one
 SELECT COUNT(*) FROM notifications
