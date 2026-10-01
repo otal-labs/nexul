@@ -23,6 +23,9 @@ const resourceTypePlay = "play"
 // resourceTypeWorkspace keys a workspace-wide override by resource_id = the workspace id.
 const resourceTypeWorkspace = "workspace"
 
+// resourceTypeProject keys a Restricted member's Project access by resource_id = the project id (ADR 0097).
+const resourceTypeProject = "project"
+
 // Service is the access use-case layer (ADR 0019): permission overwrites and the HasPermission/Can checks.
 type Service struct {
 	repo          Repo
@@ -54,31 +57,53 @@ func (s *Service) SetPlayWorkspaces(r PlayWorkspaceResolver) {
 	s.playWorkspace = r
 }
 
-// HasPermission checks Owner bypass, then role set, then workspace overwrite, then resource overwrite, in order.
+// HasPermission checks Owner bypass, then role set, then workspace overwrite, then resource overwrite, in order. For
+// a Restricted member a doc or "project" resource puts the project's access between the workspace and the resource.
 func (s *Service) HasPermission(ctx context.Context, userID, workspaceID string, action permissions.Action, resourceType, resourceID string) bool {
 	if userID == "" {
 		return false
 	}
-	ws := s.workspaceLayers(ctx, userID, workspaceID)
+	projectID := ""
+	switch resourceType {
+	case resourceTypeProject:
+		projectID = resourceID
+	case resourceTypeDoc:
+		_, projectID = s.resolveDoc(ctx, resourceID)
+	}
+	return s.check(ctx, userID, workspaceID, projectID, action, resourceType, resourceID)
+}
+
+func (s *Service) check(ctx context.Context, userID, workspaceID, projectID string, action permissions.Action, resourceType, resourceID string) bool {
+	ws := s.layers(ctx, userID, workspaceID, projectID)
 	if ws.owner {
 		return true
 	}
+	if ws.hidden() {
+		return false
+	}
+	if action == permissions.Member {
+		return ws.member
+	}
 	allowed := ws.has(action)
-	if resourceType != "" && resourceID != "" {
-		if ow, err := s.repo.Get(ctx, resourceType, resourceID, userID); err == nil {
-			allowed = applyOverwrite(allowed, ow, action)
-		}
+	if resourceType == "" || resourceType == resourceTypeProject || resourceID == "" {
+		return allowed
+	}
+	if ow, err := s.repo.Get(ctx, resourceType, resourceID, userID); err == nil {
+		allowed = applyOverwrite(allowed, ow, action)
 	}
 	return allowed
 }
 
-// workspaceLayers is the role set and workspace-wide overwrite for one user, fetched once so a
-// whole-grid answer (WorkspacePermissions) costs the same lookups as a single check.
+// workspaceLayers is the role set, workspace-wide overwrite, and for a Restricted member the Project access of the
+// project asked about, fetched once so a whole-grid answer costs the same lookups as a single check.
 type workspaceLayers struct {
-	member    bool
-	owner     bool
-	role      permissions.Set
-	overwrite *Overwrite
+	member     bool
+	owner      bool
+	restricted bool
+	role       permissions.Set
+	overwrite  *Overwrite
+	inProject  bool
+	project    permissions.Set
 }
 
 func (s *Service) workspaceLayers(ctx context.Context, userID, workspaceID string) workspaceLayers {
@@ -90,6 +115,7 @@ func (s *Service) workspaceLayers(ctx context.Context, userID, workspaceID strin
 		if info, err := s.roles.MemberRole(ctx, workspaceID, userID); err == nil {
 			ws.member = true
 			ws.owner = info.IsOwnerRole
+			ws.restricted = info.Restricted && !info.IsOwnerRole
 			ws.role = info.Permissions
 		}
 	}
@@ -99,7 +125,34 @@ func (s *Service) workspaceLayers(ctx context.Context, userID, workspaceID strin
 	return ws
 }
 
+// layers adds projectID's Project access to a Restricted member's workspace layers; the rows are read only while the
+// member is restricted, so a From role member's stored rows change nothing.
+func (s *Service) layers(ctx context.Context, userID, workspaceID, projectID string) workspaceLayers {
+	ws := s.workspaceLayers(ctx, userID, workspaceID)
+	if !ws.restricted || projectID == "" {
+		return ws
+	}
+	ws.inProject = true
+	if ow, err := s.repo.Get(ctx, resourceTypeProject, projectID, userID); err == nil {
+		ws.project = ow.Allow
+	}
+	return ws
+}
+
+// hidden is a project a Restricted member holds no access to: it reads as not found, whatever else would allow.
+func (ws workspaceLayers) hidden() bool {
+	return ws.restricted && ws.inProject && len(ws.project) == 0
+}
+
 func (ws workspaceLayers) has(action permissions.Action) bool {
+	if ws.restricted {
+		switch permissions.AreaOf(action) {
+		case permissions.AreaInstance:
+			return false
+		case permissions.AreaProject:
+			return ws.project.Has(action)
+		}
+	}
 	allowed := ws.role.Has(action)
 	if ws.overwrite == nil {
 		return allowed
@@ -107,12 +160,7 @@ func (ws workspaceLayers) has(action permissions.Action) bool {
 	return applyOverwrite(allowed, ws.overwrite, action)
 }
 
-// WorkspacePermissions returns every grid action userID holds in workspaceID (feeds /api/workspaces/{id}/me).
-func (s *Service) WorkspacePermissions(ctx context.Context, userID, workspaceID string) []string {
-	if userID == "" {
-		return []string{}
-	}
-	ws := s.workspaceLayers(ctx, userID, workspaceID)
+func (ws workspaceLayers) actions() []string {
 	all := permissions.AllActions()
 	out := make([]string, 0, len(all))
 	for _, a := range all {
@@ -121,6 +169,44 @@ func (s *Service) WorkspacePermissions(ctx context.Context, userID, workspaceID 
 		}
 	}
 	return out
+}
+
+// WorkspacePermissions returns every grid action userID holds in workspaceID with no project named, which for a
+// Restricted member leaves out every project and instance area (feeds /api/workspaces/{id}/me).
+func (s *Service) WorkspacePermissions(ctx context.Context, userID, workspaceID string) []string {
+	if userID == "" {
+		return []string{}
+	}
+	return s.workspaceLayers(ctx, userID, workspaceID).actions()
+}
+
+// ProjectPermissions returns every grid action userID holds inside projectID; opens is false when the project is
+// unknown, outside their workspaces, or hidden from them.
+func (s *Service) ProjectPermissions(ctx context.Context, userID, projectID string) (actions []string, opens bool) {
+	if userID == "" {
+		return []string{}, false
+	}
+	workspaceID, err := s.projectWorkspace(ctx, projectID)
+	if err != nil {
+		return []string{}, false
+	}
+	ws := s.layers(ctx, userID, workspaceID, projectID)
+	if !ws.member || (!ws.owner && ws.hidden()) {
+		return []string{}, false
+	}
+	return ws.actions(), true
+}
+
+// CanInProject reports whether userID holds action inside projectID; the empty action asks whether they may open it.
+func (s *Service) CanInProject(ctx context.Context, userID, projectID string, action permissions.Action) bool {
+	if userID == "" {
+		return false
+	}
+	workspaceID, err := s.projectWorkspace(ctx, projectID)
+	if err != nil {
+		return false
+	}
+	return s.check(ctx, userID, workspaceID, projectID, action, "", "")
 }
 
 // applyOverwrite: deny wins over allow within a row; a row naming neither leaves the state untouched.
@@ -134,24 +220,26 @@ func applyOverwrite(allowed bool, ow *Overwrite, action permissions.Action) bool
 	return allowed
 }
 
-// Can reports whether userID may perform action on docID.
+// Can reports whether userID may perform action on docID; in a project hidden from a Restricted member the doc's
+// own overwrite allows nothing.
 func (s *Service) Can(ctx context.Context, userID, docID string, action permissions.Action) (bool, error) {
 	if userID == "" {
 		return false, nil
 	}
-	return s.HasPermission(ctx, userID, s.resolveDocWorkspace(ctx, docID), action, resourceTypeDoc, docID), nil
+	workspaceID, projectID := s.resolveDoc(ctx, docID)
+	return s.check(ctx, userID, workspaceID, projectID, action, resourceTypeDoc, docID), nil
 }
 
-// resolveDocWorkspace resolves docID's workspace via its project for HasPermission's workspace-scoped layers.
-func (s *Service) resolveDocWorkspace(ctx context.Context, docID string) string {
+// resolveDoc resolves docID's workspace and project for the workspace- and project-scoped layers.
+func (s *Service) resolveDoc(ctx context.Context, docID string) (workspaceID, projectID string) {
 	if s.docWorkspace == nil {
-		return ""
+		return "", ""
 	}
-	workspaceID, err := s.docWorkspace.WorkspaceIDForDoc(ctx, docID)
+	workspaceID, projectID, err := s.docWorkspace.DocScope(ctx, docID)
 	if err != nil {
-		return ""
+		return "", ""
 	}
-	return workspaceID
+	return workspaceID, projectID
 }
 
 // resolvePlayWorkspace resolves playID's own workspace (a play carries it directly, unlike a doc).
@@ -301,8 +389,7 @@ func (s *Service) canManage(ctx context.Context, actorID, resourceType, resource
 		workspaceID := s.resolvePlayWorkspace(ctx, resourceID)
 		return s.HasPermission(ctx, actorID, workspaceID, permissions.PlaysWrite, resourceTypePlay, resourceID), nil
 	}
-	workspaceID := s.resolveDocWorkspace(ctx, resourceID)
-	return s.HasPermission(ctx, actorID, workspaceID, permissions.PermissionsWrite, resourceTypeDoc, resourceID), nil
+	return s.Can(ctx, actorID, resourceID, permissions.PermissionsWrite)
 }
 
 // applyGrant maintains allow for a doc (default-deny: an explicit allow is what grants access) and deny for

@@ -214,6 +214,25 @@ func (g workspacePermissionGate) WorkspacePermissions(ctx context.Context, userI
 	return g.svc.WorkspacePermissions(ctx, userID, workspaceID)
 }
 
+// tenancyProjectGate reads a project's workspace from storage and what someone holds inside it from access, for
+// tenancy's Project access use-cases (ADR 0017).
+type tenancyProjectGate struct {
+	projects *storage.ProjectsRepo
+	access   *access.Service
+}
+
+func (g tenancyProjectGate) ProjectWorkspace(ctx context.Context, projectID string) (string, error) {
+	p, err := g.projects.Get(ctx, projectID)
+	if err != nil {
+		return "", err
+	}
+	return p.WorkspaceID, nil
+}
+
+func (g tenancyProjectGate) ProjectPermissions(ctx context.Context, userID, projectID string) ([]string, bool) {
+	return g.access.ProjectPermissions(ctx, userID, projectID)
+}
+
 // memoriesPermissionGate adapts access's HasPermission to memories' seam (ADR 0017); memories are workspace-scoped
 // for real (denormalized per row), so it takes workspaceID.
 type memoriesPermissionGate struct {
@@ -282,6 +301,10 @@ func (g playsPermissionGate) HasPermission(ctx context.Context, userID, workspac
 // notice only reaches someone who may read its subject.
 type notificationPermissionGate struct {
 	svc *access.Service
+}
+
+func (g notificationPermissionGate) CanInProject(ctx context.Context, userID, projectID string, action permissions.Action) bool {
+	return g.svc.CanInProject(ctx, userID, projectID, action)
 }
 
 func (g notificationPermissionGate) HasPermission(ctx context.Context, userID, workspaceID string, action permissions.Action) bool {

@@ -111,19 +111,19 @@ func (f *fakeNotifRepo) List(_ context.Context, userID, workspaceID string, limi
 	return all, nil
 }
 
-func (f *fakeNotifRepo) UnreadCount(_ context.Context, userID, workspaceID string) (int, error) {
+func (f *fakeNotifRepo) UnreadByProject(_ context.Context, userID, workspaceID string) ([]UnreadGroup, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.countErr != nil {
-		return 0, f.countErr
+		return nil, f.countErr
 	}
-	n := 0
+	var out []UnreadGroup
 	for _, notif := range f.byUser[userID] {
 		if !notif.Read && inWorkspace(notif, workspaceID) {
-			n++
+			out = append(out, UnreadGroup{WorkspaceID: notif.WorkspaceID, ProjectID: notif.ProjectID, Unread: 1})
 		}
 	}
-	return n, nil
+	return out, nil
 }
 
 func (f *fakeNotifRepo) MarkRead(_ context.Context, userID, id string) error {
@@ -245,6 +245,10 @@ func (f *fakeProjects) Get(_ context.Context, id string) (*Project, error) {
 // fakeAccessChecker is a PermissionChecker stub gating memory.updated fan-out by a fixed allow/deny set.
 type fakeAccessChecker struct {
 	denyUserIDs map[string]bool
+}
+
+func (f *fakeAccessChecker) CanInProject(_ context.Context, userID, _ string, _ permissions.Action) bool {
+	return !f.denyUserIDs[userID]
 }
 
 func (f *fakeAccessChecker) HasPermission(_ context.Context, userID, _ string, _ permissions.Action) bool {

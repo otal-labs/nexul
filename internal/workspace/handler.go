@@ -107,6 +107,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("PUT /api/projects/{id}/tests-location", h.setTestsLocation)
 	mux.HandleFunc("DELETE /api/projects/{id}", h.delete)
 	mux.HandleFunc("GET /api/projects/{id}/impact", h.impact)
+	mux.HandleFunc("GET /api/projects/{id}/access", h.access)
 	mux.HandleFunc("GET /api/projects/{id}/repos", h.listRepos)
 	mux.HandleFunc("POST /api/projects/{id}/repos", h.addRepo)
 	mux.HandleFunc("DELETE /api/projects/repos/{owner}/{name}", h.removeRepo)
@@ -227,6 +228,16 @@ func (h *Handler) impact(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, impact)
+}
+
+// access lists the Restricted members holding access to the project, for project settings' People with access.
+func (h *Handler) access(w http.ResponseWriter, r *http.Request) {
+	entries, err := h.svc.ProjectAccess(r.Context(), r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"access": entries})
 }
 
 func (h *Handler) reorder(w http.ResponseWriter, r *http.Request) {

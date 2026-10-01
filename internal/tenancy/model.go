@@ -24,12 +24,36 @@ type Workspace struct {
 	UpdatedAt           time.Time `json:"updated_at"`
 }
 
-// Member's RoleID is currently always the workspace's Owner role, assigned via Service.Create.
+// Member is one person's place in a workspace; Restricted is their Every project row set to None (ADR 0097).
 type Member struct {
 	UserID      string    `json:"user_id"`
 	WorkspaceID string    `json:"workspace_id"`
 	RoleID      string    `json:"role_id"`
 	CreatedAt   time.Time `json:"created_at"`
+	Restricted  bool      `json:"restricted"`
+}
+
+// Every project values: From role (the role's project areas on every project) or None (a Restricted member).
+const (
+	EveryProjectRole = "role"
+	EveryProjectNone = "none"
+)
+
+// everyProject is the wire value of a membership's Every project row.
+func everyProject(restricted bool) string {
+	if restricted {
+		return EveryProjectNone
+	}
+	return EveryProjectRole
+}
+
+// ProjectAccess is one project's levels for a Restricted member, held as the actions they expand to.
+type ProjectAccess struct {
+	ProjectID   string          `json:"project_id"`
+	ProjectName string          `json:"project_name,omitempty"`
+	Allow       permissions.Set `json:"allow"`
+	UserID      string          `json:"-"`
+	WorkspaceID string          `json:"-"`
 }
 
 // Invite resolves into a real Member the moment that login's first User row is created.
@@ -58,6 +82,14 @@ type InvitationGrant struct {
 	RoleName      string          `json:"role_name,omitempty"`
 	Allow         permissions.Set `json:"allow"`
 	Deny          permissions.Set `json:"deny"`
+	// EveryProject is "role" (also when empty) or "none", which lands the person restricted to ProjectAccess.
+	EveryProject  string           `json:"every_project,omitempty"`
+	ProjectAccess []*ProjectAccess `json:"project_access,omitempty"`
+}
+
+// Restricted reports whether the grant admits a Restricted member.
+func (g *InvitationGrant) Restricted() bool {
+	return g.EveryProject == EveryProjectNone
 }
 
 type InvitationIdentity struct {
@@ -119,16 +151,20 @@ type People struct {
 	People []Person `json:"people"`
 }
 
-// TeamMembership is one person's place in one workspace: its role and their workspace-wide overrides.
+// TeamMembership is one person's place in one workspace: its role, their workspace-wide overrides, their Every
+// project row, and the projects they hold access to that the viewer may open.
 type TeamMembership struct {
-	UserID        string          `json:"-"`
-	WorkspaceID   string          `json:"workspace_id"`
-	WorkspaceName string          `json:"workspace_name"`
-	RoleID        string          `json:"role_id"`
-	RoleName      string          `json:"role_name"`
-	IsOwner       bool            `json:"is_owner"`
-	Allow         permissions.Set `json:"allow"`
-	Deny          permissions.Set `json:"deny"`
+	UserID        string           `json:"-"`
+	WorkspaceID   string           `json:"workspace_id"`
+	WorkspaceName string           `json:"workspace_name"`
+	RoleID        string           `json:"role_id"`
+	RoleName      string           `json:"role_name"`
+	IsOwner       bool             `json:"is_owner"`
+	Allow         permissions.Set  `json:"allow"`
+	Deny          permissions.Set  `json:"deny"`
+	Restricted    bool             `json:"-"`
+	EveryProject  string           `json:"every_project"`
+	Projects      []*ProjectAccess `json:"projects"`
 }
 
 // TeamPerson is one registered account with every workspace membership it holds.

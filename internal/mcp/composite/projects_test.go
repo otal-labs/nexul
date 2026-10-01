@@ -58,7 +58,7 @@ func TestProjectGet(t *testing.T) {
 	assert.Equal(t, "## What needs doing\n", d.TicketTypes[0].BodyTemplate)
 	assert.Equal(t, []labelResult{{Name: "urgent", Color: colors.Orange}}, d.Labels)
 	assert.Equal(t, "otal-labs/nexul", d.Repositories[0].FullName)
-	assert.Equal(t, workspace.DeleteImpact{Tickets: 2, Repos: 1}, d.DeleteImpact)
+	assert.Equal(t, workspace.DeleteImpact{Tickets: 2, Repos: 1, RestrictedMembers: []workspace.RestrictedMember{}}, d.DeleteImpact)
 }
 
 func TestProjectUpdate_Errors(t *testing.T) {

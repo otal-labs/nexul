@@ -58,16 +58,8 @@ func (sc testScopes) WorkspaceIDForProject(ctx context.Context, projectID string
 	return p.WorkspaceID, nil
 }
 
-func (sc testScopes) WorkspaceIDsForUser(ctx context.Context, userID string) ([]string, error) {
-	ws, err := sc.s.Workspaces.ListForUser(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]string, len(ws))
-	for i, w := range ws {
-		out[i] = w.ID
-	}
-	return out, nil
+func (sc testScopes) UnrestrictedWorkspaceIDsForUser(ctx context.Context, userID string) ([]string, error) {
+	return sc.s.WorkspaceMembers.UnrestrictedWorkspaceIDs(ctx, userID)
 }
 
 // joinDefaultWorkspace wires accessSvc's role and scope lookups over real storage and makes each user a member of
@@ -316,15 +308,15 @@ type accessRoleResolver struct {
 }
 
 func (a accessRoleResolver) MemberRole(ctx context.Context, workspaceID, userID string) (access.RoleInfo, error) {
-	roleID, err := a.tenancy.MemberRoleID(ctx, workspaceID, userID)
+	m, err := a.tenancy.Member(ctx, workspaceID, userID)
 	if err != nil {
 		return access.RoleInfo{}, err
 	}
-	r, err := a.roles.Get(ctx, workspaceID, roleID)
+	r, err := a.roles.Get(ctx, workspaceID, m.RoleID)
 	if err != nil {
 		return access.RoleInfo{}, err
 	}
-	return access.RoleInfo{IsOwnerRole: r.IsOwnerRole, Permissions: r.Permissions}, nil
+	return access.RoleInfo{IsOwnerRole: r.IsOwnerRole, Permissions: r.Permissions, Restricted: m.Restricted}, nil
 }
 
 // TestIntegration_HasPermission_WorkspacePrecedence covers the Discord-order
@@ -371,8 +363,8 @@ func TestIntegration_HasPermission_WorkspacePrecedence(t *testing.T) {
 
 	// A resource-instance allow overrides the workspace-wide deny —
 	// most-specific overwrite wins overall.
-	require.NoError(t, s.Access.Set(ctx, "project", "proj-1", "alice", permissions.SetOf(permissions.ProjectsWrite), nil))
-	assert.True(t, accessSvc.HasPermission(ctx, "alice", ws.ID, permissions.ProjectsWrite, "project", "proj-1"),
+	require.NoError(t, s.Access.Set(ctx, "doc", "doc-1", "alice", permissions.SetOf(permissions.ProjectsWrite), nil))
+	assert.True(t, accessSvc.HasPermission(ctx, "alice", ws.ID, permissions.ProjectsWrite, "doc", "doc-1"),
 		"resource-instance allow beats workspace-wide deny")
 	assert.False(t, accessSvc.HasPermission(ctx, "alice", ws.ID, permissions.ProjectsWrite, "", ""),
 		"the resource-instance overwrite doesn't leak into a check with no resource")

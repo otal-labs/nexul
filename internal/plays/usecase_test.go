@@ -115,6 +115,20 @@ func TestUpdate_LeavesTypeUnchanged(t *testing.T) {
 	assert.False(t, updated.Enabled)
 }
 
+// An editor never saw the excluded projects hidden from them, so saving keeps those ids (ADR 0097).
+func TestUpdate_KeepsExclusionsOfProjectsTheEditorCannotOpen(t *testing.T) {
+	repo := newFakeRepo()
+	perm := allowAll("owner")
+	s := newTestService(repo, perm)
+	p, err := s.Create(ctxAs("owner"), workspaceID, CreateInput{Label: "Doc", Type: TypeDoc, ExcludedProjectIDs: []string{"p-hidden", "p-seen"}})
+	require.NoError(t, err)
+	perm.hideProject("owner", "p-hidden")
+
+	updated, err := s.Update(ctxAs("owner"), workspaceID, p.ID, UpdateInput{Label: "Doc", ExcludedProjectIDs: []string{"p-new"}})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"p-hidden", "p-new"}, updated.ExcludedProjectIDs, "a project they can see and dropped goes; a hidden one stays")
+}
+
 func TestUpdate_TicketPlayDroppingStage_ReturnsValidationError(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo, allowAll("owner"))

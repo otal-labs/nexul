@@ -446,11 +446,13 @@ type Invitation struct {
 }
 
 type InvitationGrant struct {
-	InvitationID string
-	WorkspaceID  string
-	RoleID       string
-	AllowJson    string
-	DenyJson     string
+	InvitationID      string
+	WorkspaceID       string
+	RoleID            string
+	AllowJson         string
+	DenyJson          string
+	Restricted        int64
+	ProjectAccessJson string
 }
 
 type InvitationOauthHandoff struct {
@@ -938,4 +940,5 @@ type WorkspaceMember struct {
 	WorkspaceID string
 	RoleID      string
 	CreatedAt   int64
+	Restricted  int64
 }

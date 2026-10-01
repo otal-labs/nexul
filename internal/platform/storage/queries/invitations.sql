@@ -3,8 +3,8 @@ INSERT INTO invitations (id, token_hash, invited_by, created_at, expires_at)
 VALUES (?, ?, ?, ?, ?);
 
 -- name: CreateInvitationGrant :exec
-INSERT INTO invitation_grants (invitation_id, workspace_id, role_id, allow_json, deny_json)
-VALUES (?, ?, ?, ?, ?);
+INSERT INTO invitation_grants (invitation_id, workspace_id, role_id, allow_json, deny_json, restricted, project_access_json)
+VALUES (?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetInvitationByTokenHash :one
 SELECT id, token_hash, invited_by, created_at, expires_at, redeemed_at, redeemed_by
@@ -62,7 +62,7 @@ ORDER BY i.created_at, i.id
 LIMIT ?;
 
 -- name: ListInvitationGrantsByInvitation :many
-SELECT invitation_id, workspace_id, role_id, allow_json, deny_json
+SELECT *
 FROM invitation_grants
 WHERE invitation_id = ?
 ORDER BY workspace_id;
@@ -84,7 +84,7 @@ FROM roles
 WHERE id = ? AND workspace_id = ?;
 
 -- name: GetInvitationCreatorWorkspaceAccess :one
-SELECT r.is_owner_role, r.permissions, po.allow, po.deny
+SELECT r.is_owner_role, r.permissions, po.allow, po.deny, m.restricted
 FROM workspace_members m
 JOIN roles r ON r.id = m.role_id
 LEFT JOIN permission_overwrites po
@@ -99,9 +99,20 @@ FROM workspace_members
 WHERE workspace_id = ? AND user_id = ?;
 
 -- name: AddInvitationMember :exec
-INSERT INTO workspace_members (user_id, workspace_id, role_id, created_at)
-VALUES (?, ?, ?, ?)
+INSERT INTO workspace_members (user_id, workspace_id, role_id, created_at, restricted)
+VALUES (?, ?, ?, ?, ?)
 ON CONFLICT(user_id, workspace_id) DO NOTHING;
+
+-- name: GetProjectForInvitationGrant :one
+SELECT id, workspace_id, name FROM projects WHERE id = ?;
+
+-- name: GetInvitationCreatorProjectAccess :one
+SELECT allow FROM permission_overwrites WHERE resource_type = 'project' AND resource_id = ? AND user_id = ?;
+
+-- name: AddInvitationProjectAccess :exec
+INSERT INTO permission_overwrites (resource_type, resource_id, user_id, allow, deny, created_at, updated_at)
+VALUES ('project', ?, ?, ?, '[]', ?, ?)
+ON CONFLICT(resource_type, resource_id, user_id) DO NOTHING;
 
 -- name: AddInvitationOverwrite :exec
 INSERT INTO permission_overwrites (resource_type, resource_id, user_id, allow, deny, created_at, updated_at)

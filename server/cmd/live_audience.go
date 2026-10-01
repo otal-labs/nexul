@@ -66,7 +66,7 @@ var liveRules = map[string]liveRule{
 	pairing.TopicSetupTurnChanged:    ownFrame,
 	pairing.TopicSetupFinished:       ownFrame,
 	pairing.TopicSetupTurnActivity:   ownFrame,
-	access.TopicGrantChanged:         ownFrame,
+	access.TopicGrantChanged:         grantFrame,
 
 	tenancy.TopicWorkspaceMemberAdded:   memberFrame,
 	tenancy.TopicWorkspaceMemberRemoved: memberFrame,
@@ -168,6 +168,18 @@ func ownFrame(ctx context.Context, _ liveAudience, raw json.RawMessage) bool {
 		UserID string `json:"user_id"`
 	}
 	return decode(raw, &p) && p.UserID != "" && p.UserID == actorID(ctx)
+}
+
+// grantFrame reaches the person whose grant changed and, for Project access, whoever manages the project's workspace.
+func grantFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
+	var p struct {
+		ResourceType string `json:"resource_type"`
+		ResourceID   string `json:"resource_id"`
+	}
+	if ownFrame(ctx, a, raw) {
+		return true
+	}
+	return decode(raw, &p) && p.ResourceType == "project" && a.access.RequireProject(ctx, p.ResourceID, permissions.MembersWrite) == nil
 }
 
 func memberFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {

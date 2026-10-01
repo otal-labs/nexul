@@ -542,6 +542,10 @@ func (r projectRepo) CountRepos(_ context.Context, projectID string) (int, error
 
 func (r projectRepo) CountServices(context.Context, string) (int, error) { return 0, nil }
 
+func (r projectRepo) ListRestrictedAccess(context.Context, string) ([]workspace.ProjectAccessEntry, error) {
+	return nil, nil
+}
+
 func (r projectRepo) AddRepo(_ context.Context, projectID string, ref workspace.RepoRef) error {
 	r.w.repos[projectID] = append(r.w.repos[projectID], ref)
 	return nil

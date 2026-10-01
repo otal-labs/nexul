@@ -125,6 +125,9 @@ func TestRun_Refusals_LeaveNoTrail(t *testing.T) {
 		{"unknown ticket", nil, func() RunInput { in := ticketRun(); in.TargetID = "t-missing"; return in }, apperrs.ErrNotFound, ""},
 		{"play from another workspace", nil, func() RunInput { in := ticketRun(); in.TargetID = "t-foreign"; return in }, apperrs.ErrNotFound, ""},
 		{"disabled", func(f *runnerFixture) { f.plays.byID[fixPlayID].Enabled = false }, ticketRun, apperrs.ErrInvalid, "is disabled"},
+		{"an interview on a project hidden from the starter", func(f *runnerFixture) { f.perm.hideProject(starter, projectID) }, func() RunInput {
+			return RunInput{PlayID: intPlayID, TargetType: TargetInterview, TargetID: projectID}
+		}, apperrs.ErrNotFound, "get project"},
 		{"excluded from the project", func(f *runnerFixture) { f.plays.byID[fixPlayID].ExcludedProjectIDs = []string{projectID} }, ticketRun, apperrs.ErrInvalid, "excluded from this project"},
 		{"denied plays:run", func(f *runnerFixture) { f.perm.grants[starter] = []permissions.Action{permissions.PlaysRead} }, ticketRun, apperrs.ErrForbidden, "plays:run required"},
 		{"denied on this play", func(f *runnerFixture) { f.perm.deny(starter, fixPlayID) }, ticketRun, apperrs.ErrForbidden, "plays:run required"},

@@ -40,14 +40,16 @@ type Repo interface {
 	// GetRepoByFullName looks up a RepoRef by owner/name regardless of project.
 	GetRepoByFullName(ctx context.Context, owner, name string) (RepoRef, error)
 	MoveTicket(ctx context.Context, ticketID, projectID string) error
+	// ListRestrictedAccess lists the Restricted members holding access to projectID (ADR 0097).
+	ListRestrictedAccess(ctx context.Context, projectID string) ([]ProjectAccessEntry, error)
 }
 
 // NotificationRepo is the consumer-side persistence contract for the workspace notifications capability.
 type NotificationRepo interface {
 	CreateMany(ctx context.Context, ns []*Notification, evts ...eventbus.OutboxEvent) error
-	// List, UnreadCount, and MarkAllRead span every workspace when workspaceID is empty.
+	// List, UnreadByProject, and MarkAllRead span every workspace when workspaceID is empty.
 	List(ctx context.Context, userID, workspaceID string, limit int) ([]*Notification, error)
-	UnreadCount(ctx context.Context, userID, workspaceID string) (int, error)
+	UnreadByProject(ctx context.Context, userID, workspaceID string) ([]UnreadGroup, error)
 	MarkRead(ctx context.Context, userID, id string) error
 	MarkAllRead(ctx context.Context, userID, workspaceID string) error
 }
@@ -110,6 +112,8 @@ type WorkspaceMemberStore interface {
 
 // PermissionChecker adapts access (ADR 0017), so a notice only reaches someone who may open its subject.
 type PermissionChecker interface {
+	// CanInProject reports whether userID holds action inside projectID; the empty action asks whether they may open it.
+	CanInProject(ctx context.Context, userID, projectID string, action permissions.Action) bool
 	HasPermission(ctx context.Context, userID, workspaceID string, action permissions.Action) bool
 	CanReadDoc(ctx context.Context, userID, docID string) bool
 }

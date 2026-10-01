@@ -172,7 +172,7 @@ func TestHandler_Impact(t *testing.T) {
 		require.Equal(t, http.StatusOK, rec.Code)
 		var impact DeleteImpact
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &impact))
-		assert.Equal(t, DeleteImpact{Tickets: 1}, impact)
+		assert.Equal(t, DeleteImpact{Tickets: 1, RestrictedMembers: []RestrictedMember{}}, impact)
 	})
 	t.Run("missing project is 404", func(t *testing.T) {
 		h, _ := newTestHandler(t, true)

@@ -31,6 +31,7 @@ type Service struct {
 	channels  ChannelGate
 	defaults  DefaultsGate
 	accounts  AccountGate
+	projects  ProjectGate
 	now       func() time.Time
 }
 
@@ -217,6 +218,15 @@ func (s *Service) MemberRoleID(ctx context.Context, workspaceID, userID string) 
 		return "", fmt.Errorf("resolve role for user %s in workspace %s: %w", userID, workspaceID, err)
 	}
 	return roleID, nil
+}
+
+// Member returns userID's membership of workspaceID, Every project included; apperrs.ErrNotFound for a non-member.
+func (s *Service) Member(ctx context.Context, workspaceID, userID string) (*Member, error) {
+	m, err := s.members.Member(ctx, workspaceID, userID)
+	if err != nil {
+		return nil, fmt.Errorf("resolve membership of %s in workspace %s: %w", userID, workspaceID, err)
+	}
+	return m, nil
 }
 
 // MemberRoleName resolves the role id via MemberRoleID, then its name via RoleNameGate.
@@ -457,6 +467,9 @@ func (s *Service) ListTeam(ctx context.Context, actorID string) (*Team, error) {
 	memberships, err := s.members.ListAllMemberships(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list memberships: %w", err)
+	}
+	if err := s.teamProjects(ctx, actorID, memberships); err != nil {
+		return nil, err
 	}
 	online, seen, err := s.accounts.Presence(ctx)
 	if err != nil {

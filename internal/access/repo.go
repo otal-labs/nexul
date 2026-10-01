@@ -32,18 +32,18 @@ type RoleResolver interface {
 	MemberRole(ctx context.Context, workspaceID, userID string) (RoleInfo, error)
 }
 
-// DocWorkspaceResolver resolves a doc's workspace via its project so HasPermission applies to docs too.
+// DocWorkspaceResolver resolves a doc's project and its workspace so HasPermission applies to docs too.
 type DocWorkspaceResolver interface {
-	// WorkspaceIDForDoc returns "" if it can't be resolved (unknown doc, unset project, ...).
-	WorkspaceIDForDoc(ctx context.Context, docID string) (string, error)
+	// DocScope returns empty ids if they can't be resolved (unknown doc, unset project, ...).
+	DocScope(ctx context.Context, docID string) (workspaceID, projectID string, err error)
 }
 
 // Scopes resolves where a checked entity lives straight from storage, never through a gated use-case (ADR 0017).
 type Scopes interface {
 	// WorkspaceIDForProject returns ErrNotFound for an unknown project.
 	WorkspaceIDForProject(ctx context.Context, projectID string) (string, error)
-	// WorkspaceIDsForUser lists the workspaces userID is a member of.
-	WorkspaceIDsForUser(ctx context.Context, userID string) ([]string, error)
+	// UnrestrictedWorkspaceIDsForUser lists the workspaces userID is a member of and not a Restricted member of.
+	UnrestrictedWorkspaceIDsForUser(ctx context.Context, userID string) ([]string, error)
 }
 
 // PlayWorkspaceResolver resolves a play's own workspace so HasPermission/canManage apply to plays too (ADR 0017).

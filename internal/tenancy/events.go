@@ -10,6 +10,8 @@ const (
 	TopicWorkspaceMemberRemoved = "workspace.member.removed"
 	TopicWorkspaceMemberUpdated = "workspace.member.updated"
 	TopicWorkspaceUpdated       = "workspace.updated"
+	// TopicProjectAccessChanged is the access domain's grant topic, shared so a Project access change rides it (ADR 0097).
+	TopicProjectAccessChanged = "access.grant.changed"
 )
 
 func Topics() []string {
@@ -23,7 +25,17 @@ func Topics() []string {
 		TopicWorkspaceMemberRemoved,
 		TopicWorkspaceMemberUpdated,
 		TopicWorkspaceUpdated,
+		TopicProjectAccessChanged,
 	}
+}
+
+// ProjectAccessEvent is access.grant.changed for one person's Project access; it reaches them and the workspace's
+// holders of members:write.
+type ProjectAccessEvent struct {
+	ResourceType string `json:"resource_type"`
+	ResourceID   string `json:"resource_id"`
+	UserID       string `json:"user_id"`
+	ActorID      string `json:"actor_id,omitempty"`
 }
 
 type InvitationEvent struct {

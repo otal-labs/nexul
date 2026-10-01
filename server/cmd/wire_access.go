@@ -33,15 +33,15 @@ type accessRoleResolver struct {
 }
 
 func (a accessRoleResolver) MemberRole(ctx context.Context, workspaceID, userID string) (access.RoleInfo, error) {
-	roleID, err := a.tenancy.MemberRoleID(ctx, workspaceID, userID)
+	m, err := a.tenancy.Member(ctx, workspaceID, userID)
 	if err != nil {
 		return access.RoleInfo{}, err
 	}
-	r, err := a.roles.Get(ctx, workspaceID, roleID)
+	r, err := a.roles.Get(ctx, workspaceID, m.RoleID)
 	if err != nil {
 		return access.RoleInfo{}, err
 	}
-	return access.RoleInfo{IsOwnerRole: r.IsOwnerRole, Permissions: r.Permissions}, nil
+	return access.RoleInfo{IsOwnerRole: r.IsOwnerRole, Permissions: r.Permissions, Restricted: m.Restricted}, nil
 }
 
 // accessDocWorkspaceResolver reads from the repo directly to avoid recursing into a permission check.
@@ -50,19 +50,19 @@ type accessDocWorkspaceResolver struct {
 	projects *storage.ProjectsRepo
 }
 
-func (a accessDocWorkspaceResolver) WorkspaceIDForDoc(ctx context.Context, docID string) (string, error) {
+func (a accessDocWorkspaceResolver) DocScope(ctx context.Context, docID string) (string, string, error) {
 	d, err := a.docs.GetByID(ctx, docID)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	if d.ProjectID == "" {
-		return "", nil
+		return "", "", nil
 	}
 	p, err := a.projects.Get(ctx, d.ProjectID)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	return p.WorkspaceID, nil
+	return p.WorkspaceID, d.ProjectID, nil
 }
 
 // accessUsers adapts UsersRepo to access's Users interface, mapping auth.User to access.User (ADR 0017).
@@ -89,8 +89,8 @@ func mapAccessUser(u *auth.User) *access.User {
 // accessScopes reads projects and memberships from storage: a check that went through a gated use-case would
 // ask itself for permission.
 type accessScopes struct {
-	projects   *storage.ProjectsRepo
-	workspaces *storage.WorkspacesRepo
+	projects *storage.ProjectsRepo
+	members  *storage.WorkspaceMembersRepo
 }
 
 func (a accessScopes) WorkspaceIDForProject(ctx context.Context, projectID string) (string, error) {
@@ -101,16 +101,8 @@ func (a accessScopes) WorkspaceIDForProject(ctx context.Context, projectID strin
 	return p.WorkspaceID, nil
 }
 
-func (a accessScopes) WorkspaceIDsForUser(ctx context.Context, userID string) ([]string, error) {
-	ws, err := a.workspaces.ListForUser(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]string, len(ws))
-	for i, w := range ws {
-		out[i] = w.ID
-	}
-	return out, nil
+func (a accessScopes) UnrestrictedWorkspaceIDsForUser(ctx context.Context, userID string) ([]string, error) {
+	return a.members.UnrestrictedWorkspaceIDs(ctx, userID)
 }
 
 // workspaceTicketProjects reads a ticket's project from storage for the workspace domain's ticket moves (ADR 0017).
@@ -154,4 +146,19 @@ func (g projectEntityGate) RequireTicket(ctx context.Context, ticketID string, a
 		return err
 	}
 	return g.access.RequireProject(ctx, t.ProjectID, action)
+}
+
+// ticketProjectPeople resolves a ticket person's login and asks access whether they may open the project; a login
+// nobody signed in with stays accepted, as before people were checked.
+type ticketProjectPeople struct {
+	users  userLookupGate
+	access *access.Service
+}
+
+func (g ticketProjectPeople) MayOpen(ctx context.Context, login, projectID string) (bool, error) {
+	userID, found, err := g.users.UserIDForLogin(ctx, login)
+	if err != nil || !found {
+		return !found, err
+	}
+	return g.access.CanInProject(ctx, userID, projectID, permissions.Member), nil
 }

@@ -119,6 +119,9 @@ var _ tenancy.MemberRepo = (*WorkspaceMembersRepo)(nil)
 // workspaceResourceType is the permission_overwrites resource type of a workspace-wide overwrite (ADR 0042).
 const workspaceResourceType = "workspace"
 
+// projectResourceType is the permission_overwrites resource type of a Restricted member's Project access (ADR 0097).
+const projectResourceType = "project"
+
 // WorkspaceMembersRepo persists the tenancy domain's workspace_members join table (ticket 07).
 type WorkspaceMembersRepo struct {
 	db *sql.DB
@@ -158,17 +161,107 @@ func (r *WorkspaceMembersRepo) ListByWorkspace(ctx context.Context, workspaceID 
 	return out, nil
 }
 
+// RemoveMember also deletes their Project access in the workspace's projects, so coming back starts from nothing.
 func (r *WorkspaceMembersRepo) RemoveMember(ctx context.Context, workspaceID, userID string, events ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		n, err := r.q.WithTx(tx).RemoveWorkspaceMember(ctx, sqlcgen.RemoveWorkspaceMemberParams{WorkspaceID: workspaceID, UserID: userID})
+		q := r.q.WithTx(tx)
+		n, err := q.RemoveWorkspaceMember(ctx, sqlcgen.RemoveWorkspaceMemberParams{WorkspaceID: workspaceID, UserID: userID})
 		if err != nil {
 			return fmt.Errorf("remove member %s from workspace %s: %w", userID, workspaceID, err)
 		}
 		if n == 0 {
 			return fmt.Errorf("remove member %s from workspace %s: %w", userID, workspaceID, apperrs.ErrNotFound)
 		}
+		if err := q.DeleteMemberProjectAccess(ctx, sqlcgen.DeleteMemberProjectAccessParams{UserID: userID, WorkspaceID: workspaceID}); err != nil {
+			return fmt.Errorf("remove project access of %s in workspace %s: %w", userID, workspaceID, err)
+		}
 		return insertOutboxRows(ctx, tx, events)
 	})
+}
+
+func (r *WorkspaceMembersRepo) Member(ctx context.Context, workspaceID, userID string) (*tenancy.Member, error) {
+	row, err := r.q.GetWorkspaceMember(ctx, sqlcgen.GetWorkspaceMemberParams{WorkspaceID: workspaceID, UserID: userID})
+	if err != nil {
+		return nil, fmt.Errorf("member %s of workspace %s: %w", userID, workspaceID, notFoundIfNoRows(err))
+	}
+	return toMember(row), nil
+}
+
+// UnrestrictedWorkspaceIDs lists the workspaces userID belongs to with Every project From role, what instance-level
+// checks count (ADR 0097).
+func (r *WorkspaceMembersRepo) UnrestrictedWorkspaceIDs(ctx context.Context, userID string) ([]string, error) {
+	ids, err := r.q.ListUnrestrictedWorkspaceIDsForUser(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list unrestricted workspaces of %s: %w", userID, err)
+	}
+	return ids, nil
+}
+
+func (r *WorkspaceMembersRepo) SetRestricted(ctx context.Context, workspaceID, userID string, restricted bool, events ...eventbus.OutboxEvent) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		n, err := r.q.WithTx(tx).SetWorkspaceMemberRestricted(ctx, sqlcgen.SetWorkspaceMemberRestrictedParams{
+			Restricted: boolToInt(restricted), WorkspaceID: workspaceID, UserID: userID,
+		})
+		if err != nil {
+			return fmt.Errorf("set every project for %s in workspace %s: %w", userID, workspaceID, err)
+		}
+		if n == 0 {
+			return fmt.Errorf("set every project for %s in workspace %s: %w", userID, workspaceID, apperrs.ErrNotFound)
+		}
+		return insertOutboxRows(ctx, tx, events)
+	})
+}
+
+func (r *WorkspaceMembersRepo) ProjectAccess(ctx context.Context, workspaceID, userID string) ([]*tenancy.ProjectAccess, error) {
+	rows, err := r.q.ListMemberProjectAccess(ctx, sqlcgen.ListMemberProjectAccessParams{UserID: userID, WorkspaceID: workspaceID})
+	if err != nil {
+		return nil, fmt.Errorf("list project access of %s in workspace %s: %w", userID, workspaceID, err)
+	}
+	out := make([]*tenancy.ProjectAccess, 0, len(rows))
+	for _, row := range rows {
+		allow, err := parseSet(row.Allow)
+		if err != nil {
+			return nil, fmt.Errorf("decode project access of %s on %s: %w", userID, row.ProjectID, err)
+		}
+		out = append(out, &tenancy.ProjectAccess{ProjectID: row.ProjectID, ProjectName: row.ProjectName, Allow: allow, UserID: userID, WorkspaceID: workspaceID})
+	}
+	return out, nil
+}
+
+func (r *WorkspaceMembersRepo) SetProjectAccess(ctx context.Context, projectID, userID string, allow permissions.Set, events ...eventbus.OutboxEvent) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		q := r.q.WithTx(tx)
+		if len(allow) == 0 {
+			if _, err := q.DeleteOverwrite(ctx, sqlcgen.DeleteOverwriteParams{ResourceType: projectResourceType, ResourceID: projectID, UserID: userID}); err != nil {
+				return fmt.Errorf("remove project access of %s on %s: %w", userID, projectID, err)
+			}
+			return insertOutboxRows(ctx, tx, events)
+		}
+		_, err := q.UpsertOverwrite(ctx, sqlcgen.UpsertOverwriteParams{
+			ResourceType: projectResourceType, ResourceID: projectID, UserID: userID,
+			Allow: setJSON(allow), Deny: setJSON(nil), Now: time.Now().Unix(),
+		})
+		if err != nil {
+			return fmt.Errorf("set project access of %s on %s: %w", userID, projectID, classifyWriteErr(err))
+		}
+		return insertOutboxRows(ctx, tx, events)
+	})
+}
+
+func (r *WorkspaceMembersRepo) ListAllProjectAccess(ctx context.Context) ([]*tenancy.ProjectAccess, error) {
+	rows, err := r.q.ListTeamProjectAccess(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list project access: %w", err)
+	}
+	out := make([]*tenancy.ProjectAccess, 0, len(rows))
+	for _, row := range rows {
+		allow, err := parseSet(row.Allow)
+		if err != nil {
+			return nil, fmt.Errorf("decode project access of %s on %s: %w", row.UserID, row.ProjectID, err)
+		}
+		out = append(out, &tenancy.ProjectAccess{ProjectID: row.ProjectID, ProjectName: row.ProjectName, Allow: allow, UserID: row.UserID, WorkspaceID: row.WorkspaceID})
+	}
+	return out, nil
 }
 
 func (r *WorkspaceMembersRepo) SetRole(ctx context.Context, workspaceID, userID, roleID string, events ...eventbus.OutboxEvent) error {
@@ -240,6 +333,7 @@ func (r *WorkspaceMembersRepo) ListAllMemberships(ctx context.Context) ([]*tenan
 		out = append(out, &tenancy.TeamMembership{
 			UserID: row.UserID, WorkspaceID: row.WorkspaceID, WorkspaceName: row.WorkspaceName,
 			RoleID: row.RoleID, RoleName: row.RoleName, IsOwner: row.IsOwnerRole != 0, Allow: allow, Deny: deny,
+			Restricted: row.Restricted != 0,
 		})
 	}
 	return out, nil
@@ -251,6 +345,7 @@ func toMember(row sqlcgen.WorkspaceMember) *tenancy.Member {
 		WorkspaceID: row.WorkspaceID,
 		RoleID:      row.RoleID,
 		CreatedAt:   time.Unix(row.CreatedAt, 0).UTC(),
+		Restricted:  row.Restricted != 0,
 	}
 }
 
