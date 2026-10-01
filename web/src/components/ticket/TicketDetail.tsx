@@ -89,7 +89,7 @@ export const TicketDetail = ({ ticket, project, onSave }: TicketDetailProps) => 
         ← Board
       </Link>
       <div className="space-y-3">
-        <div className="flex items-center justify-center gap-2">
+        <div className="flex items-center gap-2">
           <span className="font-mono text-xs text-muted-foreground">
             {project ? `${project.prefix}-${ticket.number}` : ticket.id}
           </span>
@@ -111,7 +111,7 @@ export const TicketDetail = ({ ticket, project, onSave }: TicketDetailProps) => 
           </h1>
         )}
         {!onSave && <h1 className="text-center text-3xl font-semibold tracking-tight sm:text-4xl">{ticket.title}</h1>}
-        <p className="text-center font-mono text-xs text-muted-foreground">
+        <p className="font-mono text-xs text-muted-foreground">
           created {formatUpdatedAgo(ticket.created_at)}
           {reporter && ` by ${reporter}`} · updated {formatUpdatedAgo(ticket.updated_at)}
           {saveState === "saving" && " · saving…"}
