@@ -289,7 +289,8 @@ func TestDialinHandler_DeliversOnlyItsOwnWorkspacesEvents(t *testing.T) {
 	now := time.Now()
 	setup.seedEvent(t, "ev-other", "ticket.created", `{"ws":"ws-2"}`, now)
 	setup.seedEvent(t, "ev-instance", "ticket.created", `{"ws":"*"}`, now.Add(time.Second))
-	setup.seedEvent(t, "ev-own", "ticket.created", `{"ws":"ws-1"}`, now.Add(2*time.Second))
+	setup.seedEvent(t, "ev-own-members-only", "ticket.created", `{"ws":"ws-1","members_only":true}`, now.Add(2*time.Second))
+	setup.seedEvent(t, "ev-own", "ticket.created", `{"ws":"ws-1"}`, now.Add(3*time.Second))
 
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
@@ -300,7 +301,7 @@ func TestDialinHandler_DeliversOnlyItsOwnWorkspacesEvents(t *testing.T) {
 		got = append(got, ev.EventID)
 		require.NoError(t, wsjson.Write(ctx, conn, automations.Frame{Type: automations.FrameRunFinished, RunID: ev.RunID, Outcome: automations.OutcomeSuccess}))
 	}
-	assert.Equal(t, []string{"ev-instance", "ev-own"}, got, "another workspace's event is skipped; an instance-level one reaches every workspace")
+	assert.Equal(t, []string{"ev-instance", "ev-own"}, got, "another workspace's event and a members-only one are skipped; an instance-level one reaches every workspace")
 }
 
 func TestDialinHandler_Reenabled_SkipsEventsFromWhileDisabled(t *testing.T) {

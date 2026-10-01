@@ -2,6 +2,7 @@ import { useLocalSearchParams } from "expo-router";
 import { useHeaderHeight } from "expo-router/react-navigation";
 import { KeyboardAvoidingView, View } from "react-native";
 
+import { isNotFound } from "@/api/errors";
 import { ChatComposer } from "@/components/chat/ChatComposer";
 import { ChatThreadTitle } from "@/components/chat/ChatThreadTitle";
 import { MessageList } from "@/components/chat/MessageList";
@@ -12,7 +13,10 @@ import { useFetchMessages, useMarkThreadRead } from "@/hooks/ChatHooks";
 
 export const ChatThreadScreen = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data: messages, error, isPending } = useFetchMessages(id);
+  const { data, error, isPending } = useFetchMessages(id);
+  // A refetch keeps the last messages; a thread that is gone (deleted, or a private channel the viewer left) drops them.
+  const gone = isNotFound(error);
+  const messages = gone ? undefined : data;
   useMarkThreadRead(id, messages?.at(-1)?.id);
   // Edge-to-edge Android never resizes the window for the keyboard, and this view's frame starts below the header.
   const headerHeight = useHeaderHeight();
@@ -27,7 +31,7 @@ export const ChatThreadScreen = () => {
       )}
       {messages && messages.length === 0 && <PlaceholderScreen message="No messages yet." />}
       {messages && messages.length > 0 && <MessageList messages={messages} />}
-      <ChatComposer conversationId={id} />
+      {!gone && <ChatComposer conversationId={id} />}
     </KeyboardAvoidingView>
   );
 };

@@ -49,6 +49,9 @@ a private channel trails a lock.
 - **Members.** Anyone in a private channel can add people from the workspace.
   Removing someone else takes `channels:write`. Anyone can leave, except the
   last member.
+- **Automations and integrations** never receive a private channel's events:
+  its messages, its creation, renames, member changes, and deletion, or who is
+  in its call. A direct message's creation and messages are kept from them too.
 
 The workspace's `general` channel is always public.
 

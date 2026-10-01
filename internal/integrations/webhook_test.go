@@ -99,6 +99,26 @@ func TestFanoutHandler(t *testing.T) {
 		assert.Empty(t, deliveries)
 	})
 
+	t.Run("a members-only event produces no delivery", func(t *testing.T) {
+		svc, _, install := setup(t, []Scope{ScopeEventsRead})
+		require.NoError(t, svc.Subscribe(context.Background(), "user-1", install.ID, "chat.message.created"))
+
+		fh := NewFanoutHandler(svc)
+		for id, payload := range map[string]string{
+			"evt-dm":     `{"message":{"id":"m1","body":"between us"},"members_only":true}`,
+			"evt-public": `{"message":{"id":"m2","body":"hello all"}}`,
+		} {
+			require.NoError(t, fh.HandleEvent(context.Background(), eventbus.Event{
+				ID: id, Topic: "chat.message.created", Timestamp: time.Now().UTC(), Payload: json.RawMessage(payload),
+			}))
+		}
+
+		deliveries, err := svc.ListDeliveries(context.Background(), "user-1", install.ID)
+		require.NoError(t, err)
+		require.Len(t, deliveries, 1)
+		assert.Equal(t, "evt-public", deliveries[0].EventID)
+	})
+
 	t.Run("revoked install is skipped", func(t *testing.T) {
 		svc, _, install := setup(t, []Scope{ScopeEventsRead})
 		require.NoError(t, svc.Subscribe(context.Background(), "user-1", install.ID, "ticket.created"))
