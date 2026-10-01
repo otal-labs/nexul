@@ -19,15 +19,18 @@ import (
 var fixedNow = time.Date(2026, 8, 19, 9, 0, 0, 0, time.UTC)
 
 type fakeRepo struct {
-	mu         sync.Mutex
-	workspaces map[string]*Workspace
-	members    map[string][]string           // workspaceID -> userIDs
-	roleIDs    map[string]map[string]string  // workspaceID -> userID -> roleID
-	overrides  map[string][2]permissions.Set // workspaceID/userID -> allow, deny
-	events     []eventbus.OutboxEvent
-	createErr  error
-	getErr     error
-	listErr    error
+	mu             sync.Mutex
+	workspaces     map[string]*Workspace
+	members        map[string][]string                   // workspaceID -> userIDs
+	roleIDs        map[string]map[string]string          // workspaceID -> userID -> roleID
+	overrides      map[string][2]permissions.Set         // workspaceID/userID -> allow, deny
+	restricted     map[string]bool                       // workspaceID/userID
+	access         map[string]map[string]permissions.Set // workspaceID/userID -> projectID -> allow
+	teamWorkspaces []*TeamWorkspace
+	events         []eventbus.OutboxEvent
+	createErr      error
+	getErr         error
+	listErr        error
 }
 
 func newFakeRepo() *fakeRepo {
@@ -36,6 +39,8 @@ func newFakeRepo() *fakeRepo {
 		members:    map[string][]string{},
 		roleIDs:    map[string]map[string]string{},
 		overrides:  map[string][2]permissions.Set{},
+		restricted: map[string]bool{},
+		access:     map[string]map[string]permissions.Set{},
 	}
 }
 
@@ -105,7 +110,7 @@ func (f *fakeRepo) ListForUser(_ context.Context, userID string) ([]*Workspace, 
 }
 
 func (f *fakeRepo) ListWithRoles(context.Context) ([]*TeamWorkspace, error) {
-	return nil, nil
+	return f.teamWorkspaces, nil
 }
 
 func (f *fakeRepo) AddMember(_ context.Context, m *Member, events ...eventbus.OutboxEvent) error {
@@ -149,6 +154,7 @@ func (f *fakeRepo) RemoveMember(_ context.Context, workspaceID, userID string, e
 		if u == userID {
 			f.members[workspaceID] = append(users[:i], users[i+1:]...)
 			delete(f.roleIDs[workspaceID], userID)
+			delete(f.access, workspaceID+"/"+userID)
 			return nil
 		}
 	}
@@ -182,7 +188,74 @@ func (f *fakeRepo) SetOverrides(_ context.Context, workspaceID, userID string, a
 }
 
 func (f *fakeRepo) ListAllMemberships(context.Context) ([]*TeamMembership, error) {
-	return nil, nil
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []*TeamMembership
+	for workspaceID, users := range f.members {
+		for _, userID := range users {
+			out = append(out, &TeamMembership{UserID: userID, WorkspaceID: workspaceID, RoleID: f.roleIDs[workspaceID][userID], Restricted: f.restricted[workspaceID+"/"+userID]})
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeRepo) Member(_ context.Context, workspaceID, userID string) (*Member, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	roleID, ok := f.roleIDs[workspaceID][userID]
+	if !ok {
+		return nil, apperrs.ErrNotFound
+	}
+	return &Member{UserID: userID, WorkspaceID: workspaceID, RoleID: roleID, Restricted: f.restricted[workspaceID+"/"+userID]}, nil
+}
+
+func (f *fakeRepo) SetRestricted(_ context.Context, workspaceID, userID string, restricted bool, events ...eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.restricted[workspaceID+"/"+userID] = restricted
+	f.events = append(f.events, events...)
+	return nil
+}
+
+// projectWorkspace is the fixture's one project-to-workspace mapping, shared with fakeProjects.
+var projectWorkspace = map[string]string{"p-web": "ws-1", "p-api": "ws-1", "p-other": "ws-2"}
+
+func (f *fakeRepo) ProjectAccess(_ context.Context, workspaceID, userID string) ([]*ProjectAccess, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []*ProjectAccess
+	for projectID, allow := range f.access[workspaceID+"/"+userID] {
+		out = append(out, &ProjectAccess{ProjectID: projectID, Allow: allow, UserID: userID, WorkspaceID: workspaceID})
+	}
+	return out, nil
+}
+
+func (f *fakeRepo) SetProjectAccess(_ context.Context, projectID, userID string, allow permissions.Set, events ...eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	key := projectWorkspace[projectID] + "/" + userID
+	if f.access[key] == nil {
+		f.access[key] = map[string]permissions.Set{}
+	}
+	f.access[key][projectID] = allow
+	if len(allow) == 0 {
+		delete(f.access[key], projectID)
+	}
+	f.events = append(f.events, events...)
+	return nil
+}
+
+func (f *fakeRepo) ListAllProjectAccess(context.Context) ([]*ProjectAccess, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []*ProjectAccess
+	for key, projects := range f.access {
+		workspaceID, userID, _ := strings.Cut(key, "/")
+		for projectID, allow := range projects {
+			out = append(out, &ProjectAccess{ProjectID: projectID, Allow: allow, UserID: userID, WorkspaceID: workspaceID})
+		}
+	}
+	return out, nil
 }
 
 // fakeInviteRepo is a minimal stand-in for the storage layer's WorkspaceInvitesRepo (separate from fakeRepo since InviteRepo and MemberRepo both declare a same-named, differently-typed ListByWorkspace that one Go type can't implement both of).
@@ -844,6 +917,7 @@ type inviteTestFixture struct {
 	allowlist *fakeAllowlistGate
 	users     *fakeUserLookupGate
 	nameGate  *fakeRoleNameGate
+	accounts  *fakeAccountGate
 	svc       *Service
 }
 
@@ -855,8 +929,9 @@ func newInviteFixture() *inviteTestFixture {
 		allowlist: newFakeAllowlistGate(),
 		users:     newFakeUserLookupGate(),
 		nameGate:  newFakeRoleNameGate(),
+		accounts:  newFakeAccountGate(),
 	}
-	f.svc = NewService(f.repo, f.repo, f.invites, &fakeRoleGate{}, newFakePermissionGate(), f.nameGate, f.wsPerms, f.allowlist, f.users, &fakeChannelGate{}, &fakeDefaultsGate{}, newFakeAccountGate())
+	f.svc = NewService(f.repo, f.repo, f.invites, &fakeRoleGate{}, newFakePermissionGate(), f.nameGate, f.wsPerms, f.allowlist, f.users, &fakeChannelGate{}, &fakeDefaultsGate{}, f.accounts)
 	f.svc.now = func() time.Time { return fixedNow }
 	return f
 }

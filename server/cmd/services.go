@@ -106,6 +106,7 @@ type coreServices struct {
 func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, bus *inprocess.Bus, logger *slog.Logger) *coreServices {
 	accessSvc := access.NewService(store.Access, accessUsers{store.Users})
 	attachmentsSvc := attachments.NewService(store.Attachments, accessSvc, memoryAttachmentsAccessGate{memories: store.Memories, access: accessSvc})
+	attachmentsSvc.SetTicketAccess(projectEntityGate{access: accessSvc, projects: store.Projects, tickets: store.Tickets})
 	docsSvc := docs.NewService(store.Docs, accessSvc, docsAttachmentsGate{svc: attachmentsSvc})
 
 	// The hub relays/persists Y.js updates and commits via the docs use-case layer (ADR 0017 seam, collab never imports docs).
@@ -231,6 +232,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	voiceWebhookHandler := voice.NewWebhookHandler(voiceSvc, voiceCredentials{svc: connectorsSvc}, logger)
 	playsSvc := plays.NewService(store.Plays, playsPermissionGate{svc: accessSvc})
 	tenancySvc := tenancy.NewService(store.Workspaces, store.WorkspaceMembers, store.WorkspaceInvites, roleGate{svc: rolesSvc}, accessSvc, roleNameGate{svc: rolesSvc}, workspacePermissionGate{svc: accessSvc}, allowlistGate{svc: authSvc}, userLookupGate{svc: authSvc}, channelGate{svc: chatSvc}, workspaceDefaultsGate{plays: playsSvc, automations: automationSeeder}, accountGate{svc: authSvc, presence: presenceKeeper})
+	tenancySvc.SetProjects(tenancyProjectGate{projects: store.Projects, access: accessSvc})
 	rolesSvc.SetMemberGate(roleMemberGate{svc: tenancySvc})
 	mentionsSvc.SetPeople(mentionPeopleSource{svc: tenancySvc})
 	rolesSvc.SetPermissionGate(workspacePermissionGate{svc: accessSvc})
@@ -242,7 +244,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	// HasPermission's role-mask layer needs both roles and tenancy, wired only after the cycle above closes.
 	accessSvc.SetRoles(accessRoleResolver{tenancy: tenancySvc, roles: rolesSvc})
 	accessSvc.SetDocWorkspaces(accessDocWorkspaceResolver{docs: store.Docs, projects: store.Projects})
-	accessSvc.SetScopes(accessScopes{projects: store.Projects, workspaces: store.Workspaces})
+	accessSvc.SetScopes(accessScopes{projects: store.Projects, members: store.WorkspaceMembers})
 	accessSvc.SetPlayWorkspaces(accessPlayWorkspaceResolver{plays: store.Plays})
 	// accessSvc.Can already matches chat.DocAccess's shape (ADR 0017 seam), so it wires in directly.
 	chatSvc.SetDocAccess(accessSvc)
@@ -251,6 +253,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	chatSvc.SetThreadGate(chatThreadGate{projectEntityGate{access: accessSvc, projects: store.Projects, tickets: store.Tickets}})
 	chatSvc.SetStanding(chatStanding{roles: accessRoleResolver{tenancy: tenancySvc, roles: rolesSvc}})
 	attachmentsSvc.SetConversations(chatAttachmentConversations{svc: chatSvc})
+	ticketsSvc.SetProjectPeople(ticketProjectPeople{users: userLookupGate{svc: authSvc}, access: accessSvc})
 	ticketsSvc.SetTesting(tickets.Testing{
 		Stages:  ticketStages{statuses: store.Statuses},
 		Threads: ticketThreads{chat: chatSvc, projects: store.Projects},
@@ -278,6 +281,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	automationsSvc.SetHosts(automationHostsSvc)
 
 	notifSvc := workspace.NewNotificationService(store.Notifications, workspaceUserStore{users: store.Users}, workspaceMembersStore{members: store.WorkspaceMembers}, notificationPermissionGate{svc: accessSvc}, store.Projects)
+	notifSvc.SetTicketProjects(workspaceTicketProjects{tickets: store.Tickets})
 	pushSender := push.New(push.Config{
 		Tokens:     store.Sessions,
 		Workspaces: pushWorkspaceNamer{workspaces: store.Workspaces},

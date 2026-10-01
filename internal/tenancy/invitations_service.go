@@ -13,6 +13,7 @@ import (
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/ids"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 type InstanceURLGate interface {
@@ -34,6 +35,14 @@ type InvitationGrantPreview struct {
 	WorkspaceName string `json:"workspace_name"`
 	RoleID        string `json:"role_id"`
 	RoleName      string `json:"role_name"`
+	EveryProject  string `json:"every_project"`
+	// Projects names the projects a restricted grant opens, by name only: their levels are the inviter's business.
+	Projects []InvitationProjectPreview `json:"projects"`
+}
+
+type InvitationProjectPreview struct {
+	ProjectID   string `json:"project_id"`
+	ProjectName string `json:"project_name"`
 }
 
 type InvitationPreview struct {
@@ -150,7 +159,11 @@ func (s *InvitationService) Redeem(ctx context.Context, acceptanceHash string, i
 func (s *InvitationService) preview(ctx context.Context, invitation *Invitation) *InvitationPreview {
 	preview := &InvitationPreview{InstanceURL: strings.TrimRight(strings.TrimSpace(s.instanceURL.InstanceURL(ctx)), "/"), ExpiresAt: invitation.ExpiresAt, Grants: make([]*InvitationGrantPreview, 0, len(invitation.Grants))}
 	for _, grant := range invitation.Grants {
-		preview.Grants = append(preview.Grants, &InvitationGrantPreview{WorkspaceID: grant.WorkspaceID, WorkspaceName: grant.WorkspaceName, RoleID: grant.RoleID, RoleName: grant.RoleName})
+		projects := make([]InvitationProjectPreview, len(grant.ProjectAccess))
+		for i, pa := range grant.ProjectAccess {
+			projects[i] = InvitationProjectPreview{ProjectID: pa.ProjectID, ProjectName: pa.ProjectName}
+		}
+		preview.Grants = append(preview.Grants, &InvitationGrantPreview{WorkspaceID: grant.WorkspaceID, WorkspaceName: grant.WorkspaceName, RoleID: grant.RoleID, RoleName: grant.RoleName, EveryProject: everyProject(grant.Restricted()), Projects: projects})
 	}
 	return preview
 }
@@ -165,6 +178,14 @@ func cloneInvitationGrants(grants []*InvitationGrant) []*InvitationGrant {
 		copy := *grant
 		copy.Allow = grant.Allow.Actions()
 		copy.Deny = grant.Deny.Actions()
+		copy.ProjectAccess = make([]*ProjectAccess, 0, len(grant.ProjectAccess))
+		for _, pa := range grant.ProjectAccess {
+			if pa == nil {
+				copy.ProjectAccess = append(copy.ProjectAccess, nil)
+				continue
+			}
+			copy.ProjectAccess = append(copy.ProjectAccess, &ProjectAccess{ProjectID: pa.ProjectID, Allow: permissions.SetOf(pa.Allow...)})
+		}
 		out = append(out, &copy)
 	}
 	return out

@@ -25,7 +25,7 @@ func (f fakeScopes) WorkspaceIDForProject(_ context.Context, projectID string) (
 	return ws, nil
 }
 
-func (f fakeScopes) WorkspaceIDsForUser(_ context.Context, userID string) ([]string, error) {
+func (f fakeScopes) UnrestrictedWorkspaceIDsForUser(_ context.Context, userID string) ([]string, error) {
 	return f.workspaces[userID], nil
 }
 

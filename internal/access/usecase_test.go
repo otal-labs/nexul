@@ -195,15 +195,16 @@ func TestCan(t *testing.T) {
 
 // fakeDocWorkspace is an in-memory access.DocWorkspaceResolver for tests.
 type fakeDocWorkspace struct {
-	byDoc map[string]string
-	err   error
+	byDoc     map[string]string
+	projectOf map[string]string
+	err       error
 }
 
-func (f *fakeDocWorkspace) WorkspaceIDForDoc(_ context.Context, docID string) (string, error) {
+func (f *fakeDocWorkspace) DocScope(_ context.Context, docID string) (string, string, error) {
 	if f.err != nil {
-		return "", f.err
+		return "", "", f.err
 	}
-	return f.byDoc[docID], nil
+	return f.byDoc[docID], f.projectOf[docID], nil
 }
 
 // TestCan_ResolvesWorkspaceViaDocProject covers ticket 10: once a DocWorkspaceResolver is wired, Can resolves the doc's workspace via its project so the role-mask layer applies to docs too, not just the resource-instance overwrite docs had before ticket 10.
@@ -303,10 +304,10 @@ func TestHasPermission_Precedence(t *testing.T) {
 		roles := newFakeRoles()
 		roles.set(ws, "alice", RoleInfo{Permissions: permissions.SetOf(permissions.ProjectsWrite)})
 		require.NoError(t, repo.Set(context.Background(), "workspace", ws, "alice", nil, permissions.SetOf(permissions.ProjectsWrite)))
-		require.NoError(t, repo.Set(context.Background(), "project", "proj-1", "alice", permissions.SetOf(permissions.ProjectsWrite), nil))
+		require.NoError(t, repo.Set(context.Background(), "doc", "doc-1", "alice", permissions.SetOf(permissions.ProjectsWrite), nil))
 		s := newService(repo, newFakeUsers())
 		s.SetRoles(roles)
-		assert.True(t, s.HasPermission(context.Background(), "alice", ws, permissions.ProjectsWrite, "project", "proj-1"))
+		assert.True(t, s.HasPermission(context.Background(), "alice", ws, permissions.ProjectsWrite, "doc", "doc-1"))
 	})
 
 	t.Run("resource-instance deny beats workspace-wide allow", func(t *testing.T) {
@@ -314,20 +315,20 @@ func TestHasPermission_Precedence(t *testing.T) {
 		roles := newFakeRoles()
 		roles.set(ws, "alice", RoleInfo{})
 		require.NoError(t, repo.Set(context.Background(), "workspace", ws, "alice", permissions.SetOf(permissions.ProjectsWrite), nil))
-		require.NoError(t, repo.Set(context.Background(), "project", "proj-1", "alice", nil, permissions.SetOf(permissions.ProjectsWrite)))
+		require.NoError(t, repo.Set(context.Background(), "doc", "doc-1", "alice", nil, permissions.SetOf(permissions.ProjectsWrite)))
 		s := newService(repo, newFakeUsers())
 		s.SetRoles(roles)
-		assert.False(t, s.HasPermission(context.Background(), "alice", ws, permissions.ProjectsWrite, "project", "proj-1"))
+		assert.False(t, s.HasPermission(context.Background(), "alice", ws, permissions.ProjectsWrite, "doc", "doc-1"))
 	})
 
 	t.Run("resource-instance deny beats role allow with no workspace overwrite at all", func(t *testing.T) {
 		repo := newFakeRepo()
 		roles := newFakeRoles()
 		roles.set(ws, "alice", RoleInfo{Permissions: permissions.SetOf(permissions.ProjectsWrite)})
-		require.NoError(t, repo.Set(context.Background(), "project", "proj-1", "alice", nil, permissions.SetOf(permissions.ProjectsWrite)))
+		require.NoError(t, repo.Set(context.Background(), "doc", "doc-1", "alice", nil, permissions.SetOf(permissions.ProjectsWrite)))
 		s := newService(repo, newFakeUsers())
 		s.SetRoles(roles)
-		assert.False(t, s.HasPermission(context.Background(), "alice", ws, permissions.ProjectsWrite, "project", "proj-1"))
+		assert.False(t, s.HasPermission(context.Background(), "alice", ws, permissions.ProjectsWrite, "doc", "doc-1"))
 	})
 
 	t.Run("no resourceType/resourceID skips the resource-instance layer entirely", func(t *testing.T) {

@@ -36,17 +36,26 @@ type ConversationReader interface {
 	RequireRead(ctx context.Context, conversationID string) error
 }
 
+// TicketAccess lets attachments check a ticket's own bits, in its project, for ticket-owned files (ADR 0017).
+type TicketAccess interface {
+	RequireTicket(ctx context.Context, ticketID string, action permissions.Action) error
+}
+
 // Service runs permission checks so HTTP and any later MCP adapter inherit them (ADR 0019).
 type Service struct {
 	repo          Repo
 	access        AccessChecker
 	memoryAccess  MemoryAccessChecker
 	conversations ConversationReader
+	tickets       TicketAccess
 	now           func() time.Time
 }
 
 // SetConversations wires the conversation read check; unset, a conversation's files are refused.
 func (s *Service) SetConversations(c ConversationReader) { s.conversations = c }
+
+// SetTicketAccess wires the ticket check; unset, a ticket's files are refused.
+func (s *Service) SetTicketAccess(t TicketAccess) { s.tickets = t }
 
 // NewService wires the attachments use-cases over the given repo, doc access checker, and memory access checker.
 func NewService(repo Repo, access AccessChecker, memoryAccess MemoryAccessChecker) *Service {
@@ -133,7 +142,7 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-// requireOwner needs only an authenticated user for a ticket owner, and reading the conversation for a conversation's.
+// requireOwner checks a conversation owner through reading the conversation and a ticket owner in its project.
 // docAction gates a doc owner via the per-doc AccessChecker; memoryAction gates a memory owner via the
 // MemoryAccessChecker on the memory's project (memories has no per-resource overwrite grid, unlike docs).
 func (s *Service) requireOwner(ctx context.Context, owner Owner, docAction, memoryAction permissions.Action) (identity.Actor, error) {
@@ -164,6 +173,9 @@ func (s *Service) requireOwner(ctx context.Context, owner Owner, docAction, memo
 	if owner.ConversationID != "" {
 		return actor, s.requireConversation(ctx, owner.ConversationID)
 	}
+	if owner.TicketID != "" {
+		return actor, s.requireTicket(ctx, owner.TicketID, docAction)
+	}
 	if owner.DocID == "" {
 		return actor, nil
 	}
@@ -184,6 +196,19 @@ func (s *Service) requireConversation(ctx context.Context, conversationID string
 		return fmt.Errorf("%w: no read check for conversation %s", apperrs.ErrForbidden, conversationID)
 	}
 	return s.conversations.RequireRead(ctx, conversationID)
+}
+
+// requireTicket reads a ticket's file through tickets:read and changes one through tickets:write, so a ticket in a
+// hidden project keeps its files hidden too.
+func (s *Service) requireTicket(ctx context.Context, ticketID string, docAction permissions.Action) error {
+	action := permissions.TicketsWrite
+	if docAction == permissions.DocsRead {
+		action = permissions.TicketsRead
+	}
+	if s.tickets == nil {
+		return fmt.Errorf("%w: no %s permission on ticket %s", apperrs.ErrForbidden, action, ticketID)
+	}
+	return s.tickets.RequireTicket(ctx, ticketID, action)
 }
 
 // ListOwnerAttachmentIDs returns an owner's attachment ids with no permission check; a trusted cross-domain

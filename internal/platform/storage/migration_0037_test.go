@@ -37,16 +37,8 @@ func (sc storeScopes) WorkspaceIDForProject(ctx context.Context, projectID strin
 	return p.WorkspaceID, nil
 }
 
-func (sc storeScopes) WorkspaceIDsForUser(ctx context.Context, userID string) ([]string, error) {
-	ws, err := sc.s.Workspaces.ListForUser(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]string, len(ws))
-	for i, w := range ws {
-		out[i] = w.ID
-	}
-	return out, nil
+func (sc storeScopes) UnrestrictedWorkspaceIDsForUser(ctx context.Context, userID string) ([]string, error) {
+	return sc.s.WorkspaceMembers.UnrestrictedWorkspaceIDs(ctx, userID)
 }
 
 // formerAdminActions is everything the instance-admin flag used to open (ADR 0088).

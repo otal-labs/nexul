@@ -188,9 +188,6 @@ func (s *Service) Get(ctx context.Context, id string) (*Doc, error) {
 		return nil, fmt.Errorf("get doc %s: %w", id, err)
 	}
 	if err := s.require(ctx, d.ID, permissions.DocsRead); err != nil {
-		if memberErr := s.requireProject(ctx, d.ProjectID, permissions.Member); memberErr != nil {
-			return nil, memberErr
-		}
 		return nil, err
 	}
 	return d, nil
@@ -521,12 +518,17 @@ func (s *Service) CreateNamedVersion(ctx context.Context, docID, name string) (*
 	return v, nil
 }
 
+// require answers a doc its caller may not open the project of, or belongs to no workspace of, as not found.
 func (s *Service) require(ctx context.Context, docID string, action permissions.Action) error {
-	ok := s.can(ctx, docID, action)
-	if !ok {
-		return fmt.Errorf("%w: no %s permission on doc %s", apperrs.ErrForbidden, action, docID)
+	if s.can(ctx, docID, action) {
+		return nil
 	}
-	return nil
+	if d, err := s.repo.GetByID(ctx, docID); err == nil {
+		if memberErr := s.requireProject(ctx, d.ProjectID, permissions.Member); memberErr != nil {
+			return memberErr
+		}
+	}
+	return fmt.Errorf("%w: no %s permission on doc %s", apperrs.ErrForbidden, action, docID)
 }
 
 func (s *Service) can(ctx context.Context, docID string, action permissions.Action) bool {

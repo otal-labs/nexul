@@ -126,6 +126,9 @@ func newFakePerm(grants map[string][]permissions.Action) *fakePerm {
 }
 
 func (f *fakePerm) HasPermission(_ context.Context, userID, _ string, action permissions.Action, resourceType, resourceID string) bool {
+	if action == permissions.Member && resourceType == resourceTypeProject {
+		return !f.denied[userID][resourceType+":"+resourceID]
+	}
 	granted := false
 	for _, a := range f.grants[userID] {
 		if a == action {
@@ -140,6 +143,11 @@ func (f *fakePerm) HasPermission(_ context.Context, userID, _ string, action per
 		return false
 	}
 	return true
+}
+
+// hideProject makes projectID one userID may not open, as a Restricted member holding no access there.
+func (f *fakePerm) hideProject(userID, projectID string) {
+	f.denyResource(userID, resourceTypeProject, projectID)
 }
 
 func (f *fakePerm) deny(userID, playID string) {

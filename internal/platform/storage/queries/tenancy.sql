@@ -24,7 +24,35 @@ INSERT INTO workspace_members (user_id, workspace_id, role_id, created_at) VALUE
 SELECT role_id FROM workspace_members WHERE workspace_id = ? AND user_id = ?;
 
 -- name: ListWorkspaceMembers :many
-SELECT user_id, workspace_id, role_id, created_at FROM workspace_members WHERE workspace_id = ? ORDER BY created_at, user_id;
+SELECT * FROM workspace_members WHERE workspace_id = ? ORDER BY created_at, user_id;
+
+-- name: GetWorkspaceMember :one
+SELECT * FROM workspace_members WHERE workspace_id = ? AND user_id = ?;
+
+-- name: SetWorkspaceMemberRestricted :execrows
+UPDATE workspace_members SET restricted = ? WHERE workspace_id = ? AND user_id = ?;
+
+-- name: ListUnrestrictedWorkspaceIDsForUser :many
+SELECT workspace_id FROM workspace_members WHERE user_id = ? AND restricted = 0 ORDER BY created_at, workspace_id;
+
+-- name: DeleteMemberProjectAccess :exec
+DELETE FROM permission_overwrites
+WHERE resource_type = 'project' AND user_id = ?
+  AND resource_id IN (SELECT id FROM projects WHERE workspace_id = ?);
+
+-- name: ListMemberProjectAccess :many
+SELECT po.resource_id AS project_id, p.name AS project_name, po.allow
+FROM permission_overwrites po
+JOIN projects p ON p.id = po.resource_id
+WHERE po.resource_type = 'project' AND po.user_id = ? AND p.workspace_id = ? AND po.allow != '[]'
+ORDER BY p.position, p.id;
+
+-- name: ListTeamProjectAccess :many
+SELECT po.user_id, p.workspace_id, po.resource_id AS project_id, p.name AS project_name, po.allow
+FROM permission_overwrites po
+JOIN projects p ON p.id = po.resource_id
+WHERE po.resource_type = 'project' AND po.allow != '[]'
+ORDER BY p.position, p.id;
 
 -- name: RemoveWorkspaceMember :execrows
 DELETE FROM workspace_members WHERE workspace_id = ? AND user_id = ?;
@@ -52,7 +80,7 @@ SELECT workspace_id, login, role_id, invited_by, created_at
 FROM workspace_invites WHERE login = ? ORDER BY created_at, workspace_id;
 
 -- name: ListTeamMemberships :many
-SELECT m.user_id, m.workspace_id, w.name AS workspace_name, m.role_id, r.name AS role_name, r.is_owner_role,
+SELECT m.user_id, m.workspace_id, w.name AS workspace_name, m.role_id, r.name AS role_name, r.is_owner_role, m.restricted,
        COALESCE(po.allow, '[]') AS allow, COALESCE(po.deny, '[]') AS deny
 FROM workspace_members m
 JOIN workspaces w ON w.id = m.workspace_id

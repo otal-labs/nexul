@@ -11,10 +11,10 @@ import (
 func TestCatalog_GridShape(t *testing.T) {
 	catalog := Catalog()
 	require.Len(t, catalog, 83)
-	assert.Equal(t, Info{Value: "docs:read", Label: "Read docs", Domain: "docs", Action: "read"}, catalog[0])
-	assert.Equal(t, Info{Value: "docs:write", Label: "Create and update docs", Domain: "docs", Action: "write"}, catalog[1])
-	assert.Equal(t, Info{Value: "docs:delete", Label: "Delete docs", Domain: "docs", Action: "delete"}, catalog[2])
-	assert.Equal(t, Info{Value: "docs:thread", Label: "See doc threads", Domain: "docs", Action: "thread"}, catalog[3])
+	assert.Equal(t, Info{Value: "docs:read", Label: "Read docs", Domain: "docs", Action: "read", Area: AreaProject}, catalog[0])
+	assert.Equal(t, Info{Value: "docs:write", Label: "Create and update docs", Domain: "docs", Action: "write", Area: AreaProject}, catalog[1])
+	assert.Equal(t, Info{Value: "docs:delete", Label: "Delete docs", Domain: "docs", Action: "delete", Area: AreaProject}, catalog[2])
+	assert.Equal(t, Info{Value: "docs:thread", Label: "See doc threads", Domain: "docs", Action: "thread", Area: AreaProject}, catalog[3])
 	assert.Equal(t, Action("instance:write"), catalog[len(catalog)-1].Value)
 
 	seen := map[Action]bool{}
@@ -33,6 +33,33 @@ func TestCatalog_GridShape(t *testing.T) {
 		}
 		return out
 	}())
+}
+
+// The area decides what a Restricted member reaches (ADR 0097), so the rows that sit on a non-obvious side are pinned.
+func TestAreaOf(t *testing.T) {
+	tests := []struct {
+		action Action
+		want   Area
+	}{
+		{Member, AreaWorkspace},
+		{"bogus:read", AreaWorkspace},
+		{PermissionsWrite, AreaProject},
+		{ProjectsWrite, AreaProject},
+		{"attachments:read", AreaProject},
+		{"repositories:write", AreaProject},
+		{PlaysRun, AreaWorkspace},
+		{MembersWrite, AreaWorkspace},
+		{WorkspacesCreate, AreaWorkspace},
+		{AutomationsRead, AreaInstance},
+		{"events:read", AreaInstance},
+		{TopologyRead, AreaInstance},
+	}
+	for _, tt := range tests {
+		assert.Equal(t, tt.want, AreaOf(tt.action), string(tt.action))
+	}
+	for _, info := range Catalog() {
+		assert.Equal(t, AreaOf(info.Value), info.Area, "the catalog serves the area the resolver uses for %s", info.Value)
+	}
 }
 
 func TestCatalog_DomainDeclaredVerbs(t *testing.T) {
@@ -66,6 +93,7 @@ func TestCatalog_DomainDeclaredVerbs(t *testing.T) {
 		t.Run(string(tt.value), func(t *testing.T) {
 			info, ok := byValue[tt.value]
 			require.True(t, ok, "catalog is missing %q", tt.value)
+			info.Area = ""
 			assert.Equal(t, Info{Value: tt.value, Label: tt.label, Domain: tt.domain, Action: tt.action}, info)
 		})
 	}

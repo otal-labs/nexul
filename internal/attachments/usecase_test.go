@@ -97,6 +97,22 @@ func (f *fakeMemoryAccess) Can(_ context.Context, _, _ string, action permission
 	return f.can, f.canErr
 }
 
+// fakeTickets answers a ticket check: a hidden ticket is not found, a read-only one refuses writes.
+type fakeTickets struct {
+	hidden   map[string]bool
+	readOnly map[string]bool
+}
+
+func (f *fakeTickets) RequireTicket(_ context.Context, ticketID string, action permissions.Action) error {
+	if f.hidden[ticketID] {
+		return apperrs.ErrNotFound
+	}
+	if f.readOnly[ticketID] && action != permissions.TicketsRead {
+		return apperrs.ErrForbidden
+	}
+	return nil
+}
+
 func newTestService(repo *fakeRepo, access AccessChecker) *Service {
 	return newTestServiceWithMemoryAccess(repo, access, &fakeMemoryAccess{can: true})
 }
@@ -104,6 +120,7 @@ func newTestService(repo *fakeRepo, access AccessChecker) *Service {
 func newTestServiceWithMemoryAccess(repo *fakeRepo, access AccessChecker, memoryAccess MemoryAccessChecker) *Service {
 	s := NewService(repo, access, memoryAccess)
 	s.SetConversations(fakeConversations{"conv-1": nil})
+	s.SetTicketAccess(&fakeTickets{})
 	s.now = func() time.Time { return fixedNow }
 	return s
 }
@@ -258,6 +275,52 @@ func TestListOwnerAttachmentIDs_NoPermissionCheck(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, ids, 1)
 	assert.Empty(t, memoryAccess.calls)
+}
+
+// A ticket's files follow the ticket (ADR 0097): a ticket in a project hidden from the caller keeps its files hidden.
+func TestTicketAttachment_FollowsTheTicket(t *testing.T) {
+	repo := newFakeRepo()
+	s := newTestService(repo, &fakeAccess{can: true})
+	hiddenFile, err := s.Upload(testCtx(), Owner{TicketID: "t-hidden"}, "a.png", pngBytes)
+	require.NoError(t, err)
+	readOnlyFile, err := s.Upload(testCtx(), Owner{TicketID: "t-read"}, "b.png", pngBytes)
+	require.NoError(t, err)
+	s.SetTicketAccess(&fakeTickets{hidden: map[string]bool{"t-hidden": true}, readOnly: map[string]bool{"t-read": true}})
+
+	tests := []struct {
+		name string
+		call func() error
+		want error
+	}{
+		{"upload to a hidden ticket", func() error {
+			_, err := s.Upload(testCtx(), Owner{TicketID: "t-hidden"}, "c.png", pngBytes)
+			return err
+		}, apperrs.ErrNotFound},
+		{"read a hidden ticket's file", func() error { _, err := s.Get(testCtx(), hiddenFile.ID); return err }, apperrs.ErrNotFound},
+		{"list a hidden ticket's files", func() error { _, err := s.List(testCtx(), Owner{TicketID: "t-hidden"}); return err }, apperrs.ErrNotFound},
+		{"delete a hidden ticket's file", func() error { return s.Delete(testCtx(), hiddenFile.ID) }, apperrs.ErrNotFound},
+		{"upload without tickets:write", func() error {
+			_, err := s.Upload(testCtx(), Owner{TicketID: "t-read"}, "c.png", pngBytes)
+			return err
+		}, apperrs.ErrForbidden},
+		{"delete without tickets:write", func() error { return s.Delete(testCtx(), readOnlyFile.ID) }, apperrs.ErrForbidden},
+		{"read with tickets:read", func() error { _, err := s.Get(testCtx(), readOnlyFile.ID); return err }, nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.call()
+			if tt.want == nil {
+				require.NoError(t, err)
+				return
+			}
+			require.ErrorIs(t, err, tt.want)
+		})
+	}
+	t.Run("an unwired ticket check refuses", func(t *testing.T) {
+		unwired := NewService(repo, &fakeAccess{can: true}, &fakeMemoryAccess{can: true})
+		_, err := unwired.Get(testCtx(), readOnlyFile.ID)
+		require.ErrorIs(t, err, apperrs.ErrForbidden)
+	})
 }
 
 // TestConversationAttachment_GoesThroughReadingTheConversation: a conversation's file is read, uploaded, and deleted
