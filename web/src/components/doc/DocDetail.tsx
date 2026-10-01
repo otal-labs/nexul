@@ -105,79 +105,83 @@ export const DocDetail = ({
   };
 
   return (
-    <div className="animate-in fade-in-0 slide-in-from-bottom-1 relative mx-auto w-full max-w-6xl duration-200 ease-out">
-      <div className="flex items-center justify-between">
-        <Link
-          to={wsPath("/docs")}
-          className="font-mono text-xs text-muted-foreground lg:invisible transition-colors duration-150 ease-standard hover:text-foreground"
-        >
-          ← All docs
-        </Link>
-        <div className="flex items-center gap-1">
-          {doc.locked && <DocLockedSignal docId={doc.id} />}
-          <PlaysMenu workspaceId={workspaceId} projectId={doc.project_id} docId={doc.id} />
-          <DocThreadButton workspaceId={workspaceId} docId={doc.id} />
-          <DocActionsMenu
-            doc={doc}
-            onCreateTicket={onCreateTicket}
-            onPermissions={onPermissions}
-            onArchive={onArchive}
-            onRestore={onRestore}
-          />
+    <div className="@container animate-in fade-in-0 slide-in-from-bottom-1 mx-auto w-full max-w-6xl duration-200 ease-out">
+      <div className="@4xl:flex @4xl:gap-8">
+        {headings.length > 0 && (
+          <div className="hidden w-56 shrink-0 pt-16 @4xl:block">
+            <div className="sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto">
+              <DocToc headings={headings} />
+            </div>
+          </div>
+        )}
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between">
+            <Link
+              to={wsPath("/docs")}
+              className="font-mono text-xs text-muted-foreground lg:invisible transition-colors duration-150 ease-standard hover:text-foreground"
+            >
+              ← All docs
+            </Link>
+            <div className="flex items-center gap-1">
+              {doc.locked && <DocLockedSignal docId={doc.id} />}
+              <PlaysMenu workspaceId={workspaceId} projectId={doc.project_id} docId={doc.id} />
+              <DocThreadButton workspaceId={workspaceId} docId={doc.id} />
+              <DocActionsMenu
+                doc={doc}
+                onCreateTicket={onCreateTicket}
+                onPermissions={onPermissions}
+                onArchive={onArchive}
+                onRestore={onRestore}
+              />
+            </div>
+          </div>
+
+          <article
+            ref={articleRef}
+            className="relative mt-4 rounded-2xl border border-border bg-card p-6 shadow-card sm:p-10 lg:p-14"
+            onPointerMove={(e) => {
+              if (!session) return;
+              // ~20Hz is plenty for a presence pointer and keeps awareness frames cheap.
+              const now = performance.now();
+              if (now - lastPointerSent.current < 50) return;
+              lastPointerSent.current = now;
+              const rect = articleRef.current?.getBoundingClientRect();
+              if (!rect) return;
+              session.provider.awareness.setLocalStateField("pointer", {
+                x: Math.round(e.clientX - rect.left),
+                y: Math.round(e.clientY - rect.top),
+              });
+            }}
+            onPointerLeave={() => session?.provider.awareness.setLocalStateField("pointer", null)}
+          >
+            {session && <PointerOverlay awareness={session.provider.awareness} selfID={session.doc.clientID} />}
+            <DocPresenceBar participants={participants} connected={session?.connected} updatedAt={doc.updated_at} />
+            <DocTitleField
+              editable={!!session}
+              title={title}
+              staticTitle={doc.title}
+              onChange={(value) => {
+                setTitle(value);
+                titleRef.current = value;
+              }}
+              onBlur={confirmTitle}
+              inputRef={titleInputRef}
+            />
+
+            <DocBodySection
+              doc={doc}
+              session={session}
+              onBodyChange={(json) => {
+                bodyRef.current = json;
+              }}
+              onHeadingsChange={setHeadings}
+            />
+          </article>
+
+          {canThread && <TrailSection workspaceId={workspaceId} targetType="doc" targetId={doc.id} />}
         </div>
       </div>
-
-      {headings.length > 0 && (
-        <div className="pointer-events-none absolute top-16 right-full bottom-0 hidden w-56 xl:block">
-          <div className="pointer-events-auto sticky top-6 mr-8">
-            <DocToc headings={headings} />
-          </div>
-        </div>
-      )}
-
-      <article
-        ref={articleRef}
-        className="relative mt-4 rounded-2xl border border-border bg-card p-6 shadow-card sm:p-10 lg:p-14"
-        onPointerMove={(e) => {
-          if (!session) return;
-          // ~20Hz is plenty for a presence pointer and keeps awareness frames cheap.
-          const now = performance.now();
-          if (now - lastPointerSent.current < 50) return;
-          lastPointerSent.current = now;
-          const rect = articleRef.current?.getBoundingClientRect();
-          if (!rect) return;
-          session.provider.awareness.setLocalStateField("pointer", {
-            x: Math.round(e.clientX - rect.left),
-            y: Math.round(e.clientY - rect.top),
-          });
-        }}
-        onPointerLeave={() => session?.provider.awareness.setLocalStateField("pointer", null)}
-      >
-        {session && <PointerOverlay awareness={session.provider.awareness} selfID={session.doc.clientID} />}
-        <DocPresenceBar participants={participants} connected={session?.connected} updatedAt={doc.updated_at} />
-        <DocTitleField
-          editable={!!session}
-          title={title}
-          staticTitle={doc.title}
-          onChange={(value) => {
-            setTitle(value);
-            titleRef.current = value;
-          }}
-          onBlur={confirmTitle}
-          inputRef={titleInputRef}
-        />
-
-        <DocBodySection
-          doc={doc}
-          session={session}
-          onBodyChange={(json) => {
-            bodyRef.current = json;
-          }}
-          onHeadingsChange={setHeadings}
-        />
-      </article>
-
-      {canThread && <TrailSection workspaceId={workspaceId} targetType="doc" targetId={doc.id} />}
     </div>
   );
 };
