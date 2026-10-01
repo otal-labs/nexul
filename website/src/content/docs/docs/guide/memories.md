@@ -54,15 +54,76 @@ run. It is capped at 8,000 characters of markdown; the editor counts against
 the cap, and a save over it is refused with the count. It versions and
 reverts like any memory. A clone of it is an ordinary memory.
 
-The **Interview template** lives in **Configuration → Interview template**. A new
-workspace starts with one heading per category: stack and versions,
+The **Interview template** lives in **Configuration → Interview template**. Out
+of the box it has one heading per category: stack and versions,
 architecture, error handling and logging, testing, code style, dependency
 policy, security and secrets, performance budgets, CI gates, branching and
 commits, docs and decision records, UI, and vocabulary. It is markdown under
-the same cap, and **Reset to default** restores the seeded categories. A
-project's interview copies the template once, so editing the template never
-changes an existing interview, and editing an interview never changes the
-template.
+the same cap. Until a workspace edits it, the workspace shows the instance's
+Interview template and follows it as it changes, and a line over the editor
+says which: "Following the instance template" or "Edited for this workspace".
+**Reset to instance template** drops the workspace's own and follows the
+instance's again. A project's interview copies
+the template once, so editing the template never changes an existing
+interview, and editing an interview never changes the template.
+
+## Templates
+
+Four kinds of text start a workspace or project off, and each has an instance
+version every workspace and project starts from:
+
+| Kind | Key | Lives below the instance in | Below the instance |
+|---|---|---|---|
+| `interview`, the Interview template | none | each workspace | follows the instance until edited |
+| `mention_chip`, how a ticket mention chip renders | none | each workspace | follows the instance until edited |
+| `play_instructions`, a built-in play's instructions | the play's built-in key | each workspace's play | copied when the workspace is created |
+| `ticket_body`, a ticket type's body template | the type's name (`task`, `bug`, `feature`) | each project's type | copied when the project is created |
+
+A template resolves the code default, then the instance's, then the
+workspace's or project's. One nobody edited at the instance is the code
+default. A copied template never changes when the instance's does: only
+workspaces and projects created afterwards start from the new text. Resetting a
+workspace's or project's template gives it the instance's current text;
+resetting the instance's gives the code default.
+
+**Clone** copies one template's text from the instance, a workspace, or a
+project over another, overwriting it: the instance's Interview into a
+workspace, one workspace's Fix with AI instructions into another's, a
+workspace's chip layout up to the instance, or a project's `Bug` body template
+into another project's `bug` type. Plays match by built-in key and ticket types
+by name, ignoring case; when the target has no match the clone fails and says
+so.
+
+The instance templates are edited in **Settings → Templates**, under Instance
+settings, which shows to anyone holding `templates:write`. It lists the nine
+templates under Interview, Mention chip, Play instructions, and Ticket bodies,
+each marked Default or with who edited it and when. Each opens the same editor
+its kind has in a workspace or project, with **Save**, **Reset to default**,
+and **Clone to…**. **Clone to…** also sits beside the workspace and project
+editors: **Configuration → Interview template**, **Mention chips**, each
+built-in play in **Plays**, and a ticket type's menu in project settings. It
+asks where to (the instance, a workspace, or a project), offers only the places
+you can edit, and asks before overwriting one that has its own text. A built-in
+play or a `task`, `bug`, or `feature` type says whether it matches the
+instance's template or differs from it, with **Reset to instance template**
+when it differs.
+
+Every member reads the instance templates. Writing one needs
+`templates:write`, an instance-level permission held in any workspace, which
+the Owner holds. Below the instance each place keeps its own permission: the
+Interview template takes `memories:write` in the workspace, the chip
+`workspaces:write`, a play `plays:write`, and a body template `projects:write`
+in the project. A clone needs read where the source lives and write where the
+target does.
+
+Over HTTP, `GET /api/templates` lists the instance templates;
+`GET`, `PUT`, and `DELETE /api/templates/{kind}` (with `?key=` or a `key`
+field) read, replace, and reset one, and `GET` with `?scope=workspace` and
+`workspace_id`, or `?scope=project` and `project_id`, reads it below the instance; and `POST /api/templates/clone` and
+`POST /api/templates/reset` work at any layer. MCP has `template_get` and
+`template_update`, which take a `scope` of `instance`, `workspace`, or
+`project`; `template_update` also takes `reset` or `clone_from`. An instance
+change publishes `instance_template.updated`.
 
 ## The decisions log
 
@@ -107,8 +168,9 @@ project's interview), and `/api/memories/interview-template`. MCP registers
 `memory_list`, `memory_get` (with `version` to read an older version),
 `memory_create` (with `clone_from_id` to copy a memory, or `kind`
 `interview` to create or return a project's interview), `memory_update`
-(with `revert_to_version` to restore one), `memory_delete`,
-`interview_template_get`, and `interview_template_update`. A memory's `kind` is `interview` for the
+(with `revert_to_version` to restore one), and `memory_delete`; the Interview
+template is read and changed with `template_get` and `template_update` (see
+[Templates](#templates)). A memory's `kind` is `interview` for the
 interview memory, `decisions_log` for the decisions log, and empty otherwise;
 `memory.created` and `memory.updated` carry it, and saving the template
 publishes `interview_template.updated`. `memory_create` and

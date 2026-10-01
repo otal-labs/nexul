@@ -69,6 +69,7 @@ const interviewPlay: Play = {
   enabled: true,
   show_when_stage: null,
   excluded_project_ids: [],
+  builtin_key: "",
   created_by: "",
   created_at: "",
   updated_at: "",

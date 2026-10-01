@@ -30,6 +30,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/version"
 	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/runner"
+	"github.com/otal-labs/nexul/internal/templates"
 	"github.com/otal-labs/nexul/internal/tenancy"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/voice"
@@ -286,6 +287,7 @@ var livePushTopics = []string{
 	tenancy.TopicWorkspaceUpdated,
 	roles.TopicUpdated,
 	access.TopicGrantChanged,
+	templates.TopicUpdated,
 }
 
 func fail(err error) {

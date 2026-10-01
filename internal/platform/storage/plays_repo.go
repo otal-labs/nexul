@@ -34,7 +34,7 @@ func (r *PlaysRepo) Create(ctx context.Context, p *plays.Play, evts ...eventbus.
 			ID: p.ID, WorkspaceID: p.WorkspaceID, Label: p.Label, Type: string(p.Type),
 			Description: p.Description, Instructions: p.Instructions, Enabled: int64(boolInt(p.Enabled)),
 			ShowWhenStage: nullStage(p.ShowWhenStage), ExcludedProjectIds: excluded,
-			CreatedBy: p.CreatedBy, CreatedAt: p.CreatedAt.Unix(), UpdatedAt: p.UpdatedAt.Unix(),
+			CreatedBy: p.CreatedBy, CreatedAt: p.CreatedAt.Unix(), UpdatedAt: p.UpdatedAt.Unix(), BuiltinKey: p.BuiltinKey,
 		})
 		if err != nil {
 			return fmt.Errorf("insert play %s: %w", p.ID, classifyWriteErr(err))
@@ -144,7 +144,7 @@ func toPlay(row sqlcgen.Play) (*plays.Play, error) {
 	return &plays.Play{
 		ID: row.ID, WorkspaceID: row.WorkspaceID, Label: row.Label, Type: plays.Type(row.Type),
 		Description: row.Description, Instructions: row.Instructions, Enabled: row.Enabled != 0,
-		ShowWhenStage: stage, ExcludedProjectIDs: excluded, CreatedBy: row.CreatedBy,
+		ShowWhenStage: stage, ExcludedProjectIDs: excluded, CreatedBy: row.CreatedBy, BuiltinKey: row.BuiltinKey,
 		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
 	}, nil
 }

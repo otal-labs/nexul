@@ -1,6 +1,7 @@
 import { Trash2 } from "lucide-react";
 
 import { PermissionsForm, PermissionsFormSchema, type PermissionsFormData } from "@/components/access/PermissionsForm";
+import { PlayTemplateLine } from "@/components/play/PlayTemplateLine";
 import { ConfirmDestroyButton } from "@/components/settings/ConfirmDestroyButton";
 import { NoFillBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,7 @@ export const PlayRow = ({ play, workspaceId, canWrite, canDelete, onEdit }: Play
           {excludedCount > 0 && <NoFillBadge color="text-muted-foreground">{excludedCount} excluded</NoFillBadge>}
         </div>
         {play.description && <p className="text-xs text-muted-foreground">{play.description}</p>}
+        {play.builtin_key && <PlayTemplateLine play={play} canWrite={canWrite} />}
       </div>
       <div className="flex shrink-0 items-center gap-1">
         {canWrite && (

@@ -34,6 +34,7 @@ import (
 	"github.com/otal-labs/nexul/internal/repository"
 	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/runner"
+	"github.com/otal-labs/nexul/internal/templates"
 	"github.com/otal-labs/nexul/internal/tenancy"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/topology"
@@ -73,6 +74,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	apiMux := httpx.NewServeMux()
 	mountGateway(apiMux, "/api/docs", docs.NewHandler(svc.docsSvc).Routes())
 	mountGateway(apiMux, "/api/memories", memories.NewHandler(svc.memoriesSvc).Routes())
+	mountGateway(apiMux, "/api/templates", templates.NewHandler(svc.templatesSvc).Routes())
 	mountGateway(apiMux, "/api/attachments", attachments.NewHandler(svc.attachmentsSvc).Routes())
 	mountGateway(apiMux, "/api/tickets", tickets.NewHandler(svc.ticketsSvc).Routes())
 	mountGateway(apiMux, "/api/topology", topology.NewHandler(svc.topoSvc).Routes())
@@ -143,6 +145,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	mcpServer := mcp.New(mcp.RegistryOptions{
 		Docs:                    svc.docsSvc,
 		Memories:                svc.memoriesSvc,
+		Templates:               svc.templatesSvc,
 		Tickets:                 svc.ticketsSvc,
 		Topology:                svc.topoSvc,
 		Deploy:                  svc.deploySvc,
@@ -266,6 +269,7 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.SetTagDescription("audit", "Audit log")
 	spec.SetTagDescription("logs", "Browser log relay into the server's log sinks")
 	spec.SetTagDescription("version", "Build version, channel, and update check")
+	spec.SetTagDescription("templates", "Instance templates, and cloning or resetting a template at any layer")
 
 	spec.Register("GET", "/api/auth/me", "Current user + onboarding state", "auth")
 	spec.Register("POST", "/api/logs", "Relay a batch of browser log records (console errors, uncaught exceptions)", "logs")
@@ -405,5 +409,11 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("DELETE", "/api/integrations/{id}/subscriptions/{topic}", "Unsubscribe from a topic", "integrations")
 	spec.Register("GET", "/api/integrations/{id}/deliveries", "List webhook deliveries", "integrations")
 	spec.Register("GET", "/api/events/catalog", "Published event-schema catalog", "events")
+	spec.Register("GET", "/api/templates", "List every instance template, the code default where none was edited; any signed-in member", "templates")
+	spec.Register("GET", "/api/templates/{kind}", "Get one template; ?key= names a play or ticket type, ?scope= with workspace_id or project_id reads it below the instance", "templates")
+	spec.Register("PUT", "/api/templates/{kind}", "Needs templates:write: replace an instance template's text", "templates")
+	spec.Register("DELETE", "/api/templates/{kind}", "Needs templates:write: reset an instance template to its code default; ?key= names a play or ticket type", "templates")
+	spec.Register("POST", "/api/templates/clone", "Copy a template's text from one layer over another; read where the source lives, write where the target does", "templates")
+	spec.Register("POST", "/api/templates/reset", "Reset a template at a layer: the instance to its code default, a workspace or project to the instance's text", "templates")
 	spec.Register("GET", "/api/audit", "Audit log", "audit")
 }

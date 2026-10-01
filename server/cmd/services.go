@@ -36,6 +36,7 @@ import (
 	"github.com/otal-labs/nexul/internal/push"
 	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/t3client"
+	"github.com/otal-labs/nexul/internal/templates"
 	"github.com/otal-labs/nexul/internal/tenancy"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/topology"
@@ -92,6 +93,7 @@ type coreServices struct {
 
 	tenancySvc   *tenancy.Service
 	workspaceSvc *workspace.Service
+	templatesSvc *templates.Service
 
 	gitRouter         gitProviderRouter
 	repositoryScanner repositoryScanner
@@ -242,6 +244,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	workspaceSvc := workspace.NewService(store.Projects, store.Categories, store.TicketTypes, store.Statuses, accessSvc, workspaceGate{svc: tenancySvc})
 	workspaceSvc.SetTicketProjects(workspaceTicketProjects{tickets: store.Tickets})
 	memoriesSvc := memories.NewService(store.Memories, accessSvc, memoriesProjectLookup{projects: store.Projects}, memoriesAttachmentsGate{svc: attachmentsSvc})
+	templatesSvc := wireTemplates(store, accessSvc, memoriesSvc, tenancySvc, playsSvc, workspaceSvc)
 	// HasPermission's role-mask layer needs both roles and tenancy, wired only after the cycle above closes.
 	accessSvc.SetRoles(accessRoleResolver{tenancy: tenancySvc, roles: rolesSvc})
 	accessSvc.SetDocWorkspaces(accessDocWorkspaceResolver{docs: store.Docs, projects: store.Projects})
@@ -337,6 +340,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 
 		tenancySvc:   tenancySvc,
 		workspaceSvc: workspaceSvc,
+		templatesSvc: templatesSvc,
 
 		gitRouter:         gitRouter,
 		repositoryScanner: repoScanner,

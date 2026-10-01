@@ -21,7 +21,8 @@ and `offset` and return `items`, `total`, `has_more`, and `next_offset`.
 | Workspaces and projects | `workspace_list`, `workspace_update`, `project_list`, `project_get`, `project_create`, `project_update`, `project_delete` |
 | Tickets | `ticket_list`, `ticket_get`, `ticket_create`, `ticket_update`, `ticket_delete`, `ticket_test_report` |
 | Docs | `doc_list`, `doc_get`, `doc_create`, `doc_update` |
-| Memories | `memory_list`, `memory_get`, `memory_create`, `memory_update`, `memory_delete`, `interview_template_get`, `interview_template_update` |
+| Memories | `memory_list`, `memory_get`, `memory_create`, `memory_update`, `memory_delete` |
+| Templates | `template_get`, `template_update` |
 | Chat and notifications | `conversation_list`, `conversation_update`, `conversation_delete`, `message_list`, `message_post`, `mention_search`, `notification_list`, `notification_update` |
 | Stacks and deploys | `stack_list`, `stack_get`, `stack_create`, `stack_update`, `stack_delete`, `stack_deploy`, `deploy_list`, `deploy_get`, `deploy_cancel` |
 | Machines and the instance | `machine_list`, `machine_discover`, `machine_import`, `host_create`, `host_delete`, `instance_get`, `instance_upgrade` |

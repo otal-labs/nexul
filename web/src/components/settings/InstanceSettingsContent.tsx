@@ -5,6 +5,7 @@ import { ConnectorsSettingsPanel } from "@/components/settings/ConnectorsSetting
 import { InstanceSettingsPanel } from "@/components/settings/InstanceSettingsPanel";
 import type { SettingsSection } from "@/components/settings/SettingsNav";
 import { SignInProvidersPanel } from "@/components/settings/SignInProvidersPanel";
+import { InstanceTemplatesSection } from "@/components/templates/InstanceTemplatesSection";
 import { TeamSection } from "@/components/team/TeamSection";
 import { useFetchSettings } from "@/hooks/AuthHooks";
 
@@ -42,5 +43,6 @@ export const InstanceSettingsContent = ({ section }: InstanceSettingsContentProp
     {section === "connectors" && <ConnectorsSettingsPanel />}
     {section === "dns" && <GatewaysSection />}
     {section === "team" && <TeamSection />}
+    {section === "templates" && <InstanceTemplatesSection />}
   </>
 );

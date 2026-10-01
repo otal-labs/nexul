@@ -909,6 +909,18 @@ var catalogSchemas = map[string]string{
 			"updated_at": {"type": "string", "format": "date-time"}
 		}
 	}`,
+	"instance_template.updated": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["kind", "key", "author_id", "reset"],
+		"properties": {
+			"kind": {"type": "string", "enum": ["interview", "mention_chip", "play_instructions", "ticket_body"]},
+			"key": {"type": "string"},
+			"author_id": {"type": "string"},
+			"updated_at": {"type": "string", "format": "date-time"},
+			"reset": {"type": "boolean"}
+		}
+	}`,
 	"computer.paired": `{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",
 		"type": "object",

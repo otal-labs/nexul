@@ -51,6 +51,7 @@ import type { MeResponse, SessionClient } from "@/models/User";
 import { getServerVersionKey, notifyIfServerUpdated } from "@/hooks/VersionHooks";
 import { setCachedTunnelStatus, type TunnelStatusChangedPayload } from "@/hooks/PairingHooks";
 import { getApplicablePlaysKey, getWorkspacePlaysKey } from "@/hooks/PlayHooks";
+import { TEMPLATE_QUERY_KEYS } from "@/hooks/TemplateHooks";
 import { getActiveTrailsKey, getTrailKey, getTrailsKey } from "@/hooks/TrailHooks";
 import { useAgentStreamStore } from "@/stores/agentStreamStore";
 import { usePlayRunStore } from "@/stores/playRunStore";
@@ -135,6 +136,8 @@ const pushTopics: Record<string, string[]> = {
   "play.created": [getWorkspacePlaysKey, getApplicablePlaysKey],
   "play.updated": [getWorkspacePlaysKey, getApplicablePlaysKey],
   "play.deleted": [getWorkspacePlaysKey, getApplicablePlaysKey],
+  // An instance template changes what every unedited workspace shows and what each copy is compared with.
+  "instance_template.updated": TEMPLATE_QUERY_KEYS,
   "memory.created": [getMemoriesKey],
   "memory.updated": [getMemoriesKey, getMemoryKey, getMemoryVersionsKey],
   "memory.deleted": [getMemoriesKey, getMemoryKey],

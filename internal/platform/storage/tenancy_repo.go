@@ -26,7 +26,7 @@ type WorkspacesRepo struct {
 func (r *WorkspacesRepo) Create(ctx context.Context, ws *tenancy.Workspace) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		err := r.q.WithTx(tx).CreateWorkspace(ctx, sqlcgen.CreateWorkspaceParams{
-			ID: ws.ID, Name: ws.Name, Slug: ws.Slug, MentionChipTemplate: ws.MentionChipTemplate,
+			ID: ws.ID, Name: ws.Name, Slug: ws.Slug, MentionChipTemplate: storedChip(ws),
 			CreatedAt: ws.CreatedAt.Unix(), UpdatedAt: ws.UpdatedAt.Unix(),
 		})
 		if err != nil {
@@ -39,7 +39,7 @@ func (r *WorkspacesRepo) Create(ctx context.Context, ws *tenancy.Workspace) erro
 func (r *WorkspacesRepo) Update(ctx context.Context, ws *tenancy.Workspace, events ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).UpdateWorkspace(ctx, sqlcgen.UpdateWorkspaceParams{
-			Name: ws.Name, Slug: ws.Slug, MentionChipTemplate: ws.MentionChipTemplate, UpdatedAt: ws.UpdatedAt.Unix(), ID: ws.ID,
+			Name: ws.Name, Slug: ws.Slug, MentionChipTemplate: storedChip(ws), UpdatedAt: ws.UpdatedAt.Unix(), ID: ws.ID,
 		})
 		if err != nil {
 			return fmt.Errorf("update workspace %s: %w", ws.ID, classifyWriteErr(err))
@@ -105,13 +105,22 @@ func (r *WorkspacesRepo) ListWithRoles(ctx context.Context) ([]*tenancy.TeamWork
 
 func toWorkspace(row sqlcgen.Workspace) *tenancy.Workspace {
 	return &tenancy.Workspace{
-		ID:                  row.ID,
-		Name:                row.Name,
-		Slug:                row.Slug,
-		MentionChipTemplate: row.MentionChipTemplate,
-		CreatedAt:           time.Unix(row.CreatedAt, 0).UTC(),
-		UpdatedAt:           time.Unix(row.UpdatedAt, 0).UTC(),
+		ID:                        row.ID,
+		Name:                      row.Name,
+		Slug:                      row.Slug,
+		MentionChipTemplate:       row.MentionChipTemplate,
+		MentionChipTemplateEdited: row.MentionChipTemplate != "",
+		CreatedAt:                 time.Unix(row.CreatedAt, 0).UTC(),
+		UpdatedAt:                 time.Unix(row.UpdatedAt, 0).UTC(),
 	}
+}
+
+// storedChip is the column's value: empty while the workspace follows the instance's chip template (ADR 0103).
+func storedChip(ws *tenancy.Workspace) string {
+	if !ws.MentionChipTemplateEdited {
+		return ""
+	}
+	return ws.MentionChipTemplate
 }
 
 var _ tenancy.MemberRepo = (*WorkspaceMembersRepo)(nil)

@@ -50,6 +50,15 @@ func (q *Queries) CreateMemory(ctx context.Context, arg CreateMemoryParams) erro
 	return err
 }
 
+const deleteInterviewTemplate = `-- name: DeleteInterviewTemplate :exec
+DELETE FROM interview_templates WHERE workspace_id = ?
+`
+
+func (q *Queries) DeleteInterviewTemplate(ctx context.Context, workspaceID string) error {
+	_, err := q.db.ExecContext(ctx, deleteInterviewTemplate, workspaceID)
+	return err
+}
+
 const deleteMemory = `-- name: DeleteMemory :execrows
 DELETE FROM memories WHERE id = ?
 `

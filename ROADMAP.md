@@ -135,6 +135,16 @@ names included, over the browser, MCP, search, and live updates, and taking
 access away closes an open page on the spot. Channels can be private to the
 people in them, and memories always belong to one project. ADRs 0097 to 0099.
 
+### Instance templates
+
+The Interview and mention chip templates, the built-in plays' instructions,
+and the task, bug, and feature body templates each have an instance version,
+edited in Settings → Templates, that every new workspace and project starts
+from. An unedited workspace follows the instance's Interview and chip layout
+live, each editor says whether it follows, matches, or differs, and any
+template can be cloned to the instance, another workspace, or another project.
+ADR 0103.
+
 ### The design pass
 
 A monochrome identity — "The Mono Console", light and dark as true inversions

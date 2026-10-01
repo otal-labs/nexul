@@ -28,6 +28,7 @@ import (
 	"github.com/otal-labs/nexul/internal/repository"
 	"github.com/otal-labs/nexul/internal/roles"
 	"github.com/otal-labs/nexul/internal/runner"
+	"github.com/otal-labs/nexul/internal/templates"
 	"github.com/otal-labs/nexul/internal/tenancy"
 	"github.com/otal-labs/nexul/internal/tickets"
 	"github.com/otal-labs/nexul/internal/topology"
@@ -38,6 +39,7 @@ import (
 type RegistryOptions struct {
 	Docs          *docs.Service
 	Memories      *memories.Service
+	Templates     *templates.Service
 	Tickets       *tickets.Service
 	Topology      *topology.Service
 	Deploy        *deploy.Service
@@ -90,6 +92,7 @@ func registryTools(opts RegistryOptions) []mcptool.Tool {
 	return slices.Concat(
 		docs.MCPTools(opts.Docs),
 		memories.MCPTools(opts.Memories),
+		templates.MCPTools(opts.Templates),
 		composite.TicketTools(opts.Tickets, opts.Workspace, opts.Reviews),
 		tickets.MCPTools(opts.Tickets),
 		composite.ProjectTools(opts.Workspace, opts.Tickets, opts.Docs),

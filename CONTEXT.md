@@ -129,7 +129,8 @@ The conversation that establishes a project's rules for agents: its stack,
 paradigm, testing strategy, principles, and vocabulary, asked one question
 at a time by the Interview play and answered by a person, with the agent
 able to read the codebase for answers first. Its questions start from the
-workspace's Interview template. It happens in the project's interview
+workspace's Interview template, which is the instance template until the
+workspace edits its own. It happens in the project's interview
 thread, a conversation of its own shown on the project's Interview page.
 Re-running it amends the interview memory rather than starting over.
 _Avoid_: Onboarding, questionnaire, setup
@@ -169,7 +170,8 @@ the ticket moves to on success is chosen at run time. Every workspace,
 new or existing, is seeded with the same four, "Fix with AI" (ticket,
 progress stage), "To tickets via AI" (doc), "Interview" (interview), and
 "Test with AI" (ticket, testing stage), as ordinary plays a member
-may edit or delete. Seen and fired with `plays:run`, managed with
+may edit or delete; each keeps a built-in key through renames, and a new
+workspace's start from the instance template of their instructions. Seen and fired with `plays:run`, managed with
 `plays:read`, `plays:write`, `plays:delete`. A named user can be excluded
 from one play: a permission overwrite denying that user `plays:run` on the
 play, set from the play's own settings page.
@@ -490,9 +492,25 @@ _Avoid_: Depends on, dependency, blocker stage
 
 **Body template**:
 The markdown sections a ticket type pre-fills into a new ticket's body, edited
-on the type in project settings. Guidance only: never validated, and editing
-it never rewrites a ticket already born from it.
+on the type in project settings. A new project's task, bug, and feature types
+start from the instance template of the same name. Guidance only: never
+validated, and editing it never rewrites a ticket already born from it.
 _Avoid_: Ticket template, form, checklist
+
+**Instance template**:
+The instance's own version of a template that every workspace or project
+starts from: the Interview template, the mention chip template, each built-in
+play's instructions, and each default ticket type's body template. A template
+resolves code default, then instance template, then workspace or project; one
+nobody edited at the instance is the code default. A workspace's Interview and
+mention chip templates follow the instance's until the workspace edits its
+own, while play instructions and body templates are copied in when the
+workspace or project is created and never rewritten. Resetting a workspace's
+or project's template gives it the instance's; resetting the instance's gives
+the code default. Any template can be cloned over another of the same kind,
+plays matched by their built-in key and ticket types by name. Read by every
+member, edited with `templates:write`.
+_Avoid_: Global template, default template (that is the code's), master copy
 
 ### Identity and access
 
@@ -578,7 +596,8 @@ _Avoid_: Members (one workspace's roster), registered accounts, users
 
 **Instance settings**:
 The group on the Settings page for what belongs to the whole instance rather
-than one workspace: Instance, Team, Sign-in providers, Connectors, and DNS.
+than one workspace: Instance, Team, Sign-in providers, Connectors, DNS, and
+Templates.
 Each entry shows only to a viewer holding its permission in any workspace, so
 a role holding one bit reaches that entry and nothing else. Workspace-level
 sections stay in Configuration.

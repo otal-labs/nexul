@@ -15,11 +15,11 @@ export const InterviewTemplateSection = () => {
     <SettingsCard
       id="interview-template"
       title="Interview template"
-      description="Where every new project's interview starts. A project copies it once: editing the template later never changes an existing interview, and editing an interview never changes the template."
+      description="Where every new project's interview starts. It follows the instance template until this workspace saves its own. A project copies it once: editing the template later never changes an existing interview."
     >
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
-      {template && <InterviewTemplateForm key={template.updated_at} template={template} canWrite={canWrite} />}
+      {template && <InterviewTemplateForm key={`${template.edited}:${template.body}`} template={template} canWrite={canWrite} />}
     </SettingsCard>
   );
 };

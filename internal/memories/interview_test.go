@@ -59,6 +59,14 @@ func (f *fakeRepo) SaveInterviewTemplate(_ context.Context, t *InterviewTemplate
 	return nil
 }
 
+func (f *fakeRepo) DeleteInterviewTemplate(_ context.Context, workspaceID string, evts ...eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	delete(f.templates, workspaceID)
+	f.events = append(f.events, evts...)
+	return nil
+}
+
 func markdownOf(t *testing.T, body string) string {
 	t.Helper()
 	md, err := richtext.ToMarkdown(body)

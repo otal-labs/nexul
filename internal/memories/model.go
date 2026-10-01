@@ -62,8 +62,10 @@ type MemoryVersion struct {
 type InterviewTemplate struct {
 	WorkspaceID string `json:"workspace_id"`
 	Body        string `json:"body"`
-	// DefaultBody is the seeded categories, so an editor can reset to them.
-	DefaultBody string    `json:"default_body"`
-	UpdatedBy   string    `json:"updated_by"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	// DefaultBody is the instance's Interview template, what an unedited workspace follows and a reset returns to.
+	DefaultBody string `json:"default_body"`
+	// Edited is true once the workspace saved its own; until then Body follows the instance's live.
+	Edited    bool      `json:"edited"`
+	UpdatedBy string    `json:"updated_by"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
