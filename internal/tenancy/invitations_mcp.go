@@ -16,10 +16,17 @@ func MCPTools(s *InvitationService) []mcptool.Tool {
 }
 
 type invitationGrantIn struct {
-	WorkspaceID string   `json:"workspace_id" jsonschema:"The workspace the invitation admits the person to."`
-	RoleID      string   `json:"role_id" jsonschema:"The role they get in that workspace."`
-	Allow       []string `json:"allow,omitempty" jsonschema:"Permissions allowed on top of the role, each <domain>:<action>, for example [\"docs:write\"]."`
-	Deny        []string `json:"deny,omitempty" jsonschema:"Permissions denied despite the role, each <domain>:<action>, for example [\"members:write\"]."`
+	WorkspaceID   string                `json:"workspace_id" jsonschema:"The workspace the invitation admits the person to."`
+	RoleID        string                `json:"role_id" jsonschema:"The role they get in that workspace."`
+	Allow         []string              `json:"allow,omitempty" jsonschema:"Permissions allowed on top of the role, each <domain>:<action>, for example [\"docs:write\"]."`
+	Deny          []string              `json:"deny,omitempty" jsonschema:"Permissions denied despite the role, each <domain>:<action>, for example [\"members:write\"]."`
+	EveryProject  string                `json:"every_project,omitempty" jsonschema:"role (the default: the role's project areas apply on every project) or none (a Restricted member, who sees only the projects in project_access)."`
+	ProjectAccess []invitationProjectIn `json:"project_access,omitempty" jsonschema:"With every_project none, the projects the person may open, one entry per project of that workspace."`
+}
+
+type invitationProjectIn struct {
+	ProjectID string   `json:"project_id" jsonschema:"A project of that workspace, from project_list."`
+	Allow     []string `json:"allow" jsonschema:"The levels on that project, each a project-area <domain>:<action> from permission_catalog, for example [\"tickets:read\",\"tickets:write\"]."`
 }
 
 type invitationCreateIn struct {
@@ -39,6 +46,8 @@ func invitationCreateTool(s *InvitationService) mcptool.Tool {
 	return mcptool.New("invitation_create", "Create invitation",
 		"Creates a single-use invitation link that admits one person to the instance with the given role, plus "+
 			"optional permission overwrites, in each listed workspace. You need members:write in every one of them. "+
+			"A grant with every_project none admits a Restricted member who sees only the projects in its project_access; "+
+			"you may give only levels you hold on each project, and every level is checked again when the link is redeemed. "+
 			"The returned url carries the only copy of the link's secret and is never shown again, so hand it straight "+
 			"to the person being invited; invitation_list shows the invitation without it, and invitation_delete "+
 			"revokes it.",
@@ -55,8 +64,8 @@ func invitationCreateTool(s *InvitationService) mcptool.Tool {
 func invitationListTool(s *InvitationService) mcptool.Tool {
 	return mcptool.New("invitation_list", "List invitations",
 		"Lists the unredeemed, unexpired invitations you may manage, meaning you hold members:write in every "+
-			"workspace each one grants. Each shows its workspaces and roles, who invited, and when it expires, never "+
-			"its link. Use invitation_create for a new link and invitation_delete to revoke one.",
+			"workspace each one grants. Each shows its workspaces and roles, any every_project none with its "+
+			"project_access, who invited, and when it expires, never its link. Use invitation_create for a new link and invitation_delete to revoke one.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in invitationListIn) (any, error) {
 			invitations, err := s.List(ctx, actorID(ctx))
@@ -92,7 +101,15 @@ func invitationGrants(in []invitationGrantIn) ([]*InvitationGrant, error) {
 		if err != nil {
 			return nil, err
 		}
-		grants = append(grants, &InvitationGrant{WorkspaceID: g.WorkspaceID, RoleID: g.RoleID, Allow: allow, Deny: deny})
+		projects := make([]*ProjectAccess, 0, len(g.ProjectAccess))
+		for _, p := range g.ProjectAccess {
+			levels, err := actionSet(p.Allow)
+			if err != nil {
+				return nil, err
+			}
+			projects = append(projects, &ProjectAccess{ProjectID: p.ProjectID, Allow: levels})
+		}
+		grants = append(grants, &InvitationGrant{WorkspaceID: g.WorkspaceID, RoleID: g.RoleID, Allow: allow, Deny: deny, EveryProject: g.EveryProject, ProjectAccess: projects})
 	}
 	return grants, nil
 }
