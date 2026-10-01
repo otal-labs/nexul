@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { setCachedTunnelStatus } from "@/hooks/PairingHooks";
 import { useSetupActivityStore } from "@/stores/setupActivityStore";
 import { useSetupDraftStore } from "@/stores/setupDraftStore";
-import type { Computer, ComputerSetup, HarnessProject, HarnessProvider, PairingDefaults, SetupTurnState } from "@/models/Pairing";
+import type { Computer, ComputerSetup, HarnessProject, HarnessProvider, PairingDefaults, SetupTurnKind, SetupTurnState } from "@/models/Pairing";
 import type { ActivityKind } from "@/models/Trail";
 import { pickOption } from "@/test/pickOption";
 
@@ -301,6 +301,7 @@ describe("PairComputerDialog opened at Set up", () => {
     turn_id,
     provider,
     provider_name: name,
+    kind: "setup" as SetupTurnKind,
     state,
     status,
     updated_at: "2026-09-24T00:00:00Z",
@@ -350,6 +351,23 @@ describe("PairComputerDialog opened at Set up", () => {
 
     await user.click(list.getByRole("button", { name: /^retry$/i }));
     await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/providers/opencode/retry", { model: "", model_options: [], folder: "" }));
+    expect(mocks.post).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries a failed skills update as another update, not a setup of that provider", async () => {
+    setup = {
+      ...emptySetup,
+      confirmed_at: "2026-09-24T00:00:00Z",
+      turns: [turn("claudeagent", "Claude", "confirmed", "Confirmed with 12 skills"), { ...turn("codex", "Codex", "failed", "permission denied"), kind: "skills" }],
+    };
+    mocks.post.mockResolvedValue({ data: { run_id: "r1", computer_id: "c1", providers: [{ provider: "codex", name: "Codex" }] } });
+    const user = userEvent.setup();
+    renderDialog(paired);
+
+    await user.click(screen.getByRole("button", { name: /^open$/i }));
+    await user.click(await screen.findByRole("button", { name: /retry codex/i }));
+
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledWith("/api/pairing/computers/c1/setup/skills"));
     expect(mocks.post).toHaveBeenCalledTimes(1);
   });
 

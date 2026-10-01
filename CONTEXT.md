@@ -111,6 +111,10 @@ An agent's assessment, recorded through MCP and nowhere else, that a paired
 computer is ready for agent work: once overall, and once per provider on
 that computer. Unconfirmed means the provider cannot run agent work there.
 Nothing ever withdraws it except an agent un-confirming it through MCP.
+Each provider's confirmation also records the version of Nexul's skills it
+found; an older one shows as skills out of date, a signal, never a block. A
+skills update, one agent turn that rewrites the skills on the computer, records
+the new version for every confirmed provider there and confirms nothing.
 _Avoid_: Onboarded, verified, setup flag
 
 **Memory**:

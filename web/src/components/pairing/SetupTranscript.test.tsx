@@ -6,7 +6,7 @@ import { useSetupActivityStore } from "@/stores/setupActivityStore";
 import type { SetupRunRow } from "@/models/Pairing";
 import type { ActivityEntry } from "@/models/Trail";
 
-const row = (state: SetupRunRow["state"]): SetupRunRow => ({ provider: "codex", name: "Codex", state, status: "Confirmed with 119 skills", model: "", turnId: "t1" });
+const row = (state: SetupRunRow["state"]): SetupRunRow => ({ provider: "codex", name: "Codex", kind: "setup", state, status: "Confirmed with 119 skills", model: "", turnId: "t1" });
 
 const said = "Nexul's MCP tools are available, and the installed nexul-memory version matches. I'll finish checking the skills.";
 const listed = '/bin/bash -lc "ls ~/.claude/skills"';

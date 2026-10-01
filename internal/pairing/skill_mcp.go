@@ -23,8 +23,9 @@ func skillGetTool() mcptool.Tool {
 	return mcptool.New("skill_get", "Get skill",
 		"Returns the current version of a skill Nexul installs on paired computers, with the full SKILL.md content and "+
 			"the paths it belongs at. Compare its version with the metadata.version of the installed copy; when they "+
-			"differ, write the returned content over every listed path. Setup does the same on a re-run, and "+
-			"computer_list flags a provider whose installed skills are out of date.",
+			"differ, write the returned content over every listed path, then report the version with "+
+			"computer_setup_update. computer_list flags a provider whose installed skills are out of date, and "+
+			"computer_setup_run with skills_only runs that update on the computer for you.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(_ context.Context, in skillGetIn) (any, error) {
 			skill, ok := shipped.Get(in.Name)

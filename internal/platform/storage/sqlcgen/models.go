@@ -628,6 +628,7 @@ type PairingSetupTurn struct {
 	UpdatedAt    int64
 	EndedAt      sql.NullInt64
 	Model        string
+	Kind         string
 }
 
 type PairingUserDefault struct {

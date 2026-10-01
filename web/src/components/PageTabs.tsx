@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { UpdateDot } from "@/components/UpdateDot";
 import { useTabPath } from "@/hooks/useTabPath";
 import { cn } from "@/lib/utils";
 
@@ -10,6 +11,8 @@ export interface PageTab {
   label: string;
   /** A hidden tab has no trigger and can't be selected, even by its path segment. */
   hidden?: boolean;
+  /** Set to show the update dot beside the label, with this as its screen-reader hint. */
+  dot?: string | undefined;
 }
 
 interface PageTabsProps {
@@ -45,7 +48,10 @@ export const PageTabs = ({ label, tabs, children, className }: PageTabsProps) =>
               value={tab.value}
               className="flex-none px-3 group-data-[orientation=horizontal]/tabs:after:bottom-[-1px]"
             >
-              {tab.label}
+              <span className="relative">
+                {tab.label}
+                {tab.dot && <UpdateDot label={tab.dot} className="-top-0.5 -right-2 ring-0" />}
+              </span>
             </TabsTrigger>
           ))}
         </TabsList>

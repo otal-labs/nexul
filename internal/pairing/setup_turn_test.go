@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -122,7 +123,7 @@ func (f *setupFixture) startTurn(ctx context.Context, target harness.Target, tit
 	f.mu.Unlock()
 	updates := make(chan harness.Update, 4)
 	updates <- harness.Update{Activity: &harness.Activity{Kind: harness.ActivityToolCall, Tool: "bash", Summary: "writing the config", Detail: prompts.Full}}
-	if !failing && !skip && strings.HasPrefix(title, "Nexul setup check") {
+	if !failing && !skip && (strings.HasPrefix(title, "Nexul setup check") || strings.HasPrefix(title, "Nexul skills update")) {
 		if err := f.confirmAsPrompted(ctx, setupDrivers[target.Provider], prompts.Full); err != nil {
 			return harness.StartResult{}, err
 		}
@@ -136,7 +137,10 @@ func (f *setupFixture) startTurn(ctx context.Context, target harness.Target, tit
 	return harness.StartResult{SessionID: "s-" + title, Updates: updates}, nil
 }
 
-// confirmAsPrompted calls computer_setup_update with the arguments the confirm session's instructions spell out.
+// promptedVersion is the skills_version a skills update's instructions tell the agent to report.
+var promptedVersion = regexp.MustCompile(`skills_version "([0-9a-f]+)"`)
+
+// confirmAsPrompted calls computer_setup_update with the arguments the confirm or skills update session's instructions spell out.
 func (f *setupFixture) confirmAsPrompted(ctx context.Context, driver, prompt string) error {
 	if !strings.Contains(prompt, "`computer_setup_update` with computer_id") {
 		return nil
@@ -144,6 +148,10 @@ func (f *setupFixture) confirmAsPrompted(ctx context.Context, driver, prompt str
 	tools := MCPTools(f.svc)
 	update := tools[slices.IndexFunc(tools, func(tool mcptool.Tool) bool { return tool.Name == "computer_setup_update" })]
 	ctx = identity.WithActor(ctx, identity.Actor{ID: "u1"})
+	if m := promptedVersion.FindStringSubmatch(prompt); m != nil {
+		_, err := update.Call(ctx, json.RawMessage(fmt.Sprintf(`{"computer_id":%q,"confirmed":true,"skills_version":%q}`, f.computer.ID, m[1])))
+		return err
+	}
 	args := fmt.Sprintf(`{"computer_id":%q,"provider":%q,"confirmed":true,"skills":["tdd","nexul-memory"]}`, f.computer.ID, driver)
 	if _, err := update.Call(ctx, json.RawMessage(args)); err != nil {
 		return err

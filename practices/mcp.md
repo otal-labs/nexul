@@ -378,7 +378,8 @@ and need more than an edit:
   text changes the version: setup rewrites an outdated copy, the skill
   refreshes itself through `skill_get`, agent turns ignore a copy whose
   version is not the current one, and each computer shows "skills out of
-  date" until setup re-runs. A rename of a tool it names is therefore an edit
+  date" until a skills update (`computer_setup_run` with `skills_only`) or a
+  setup re-run reports the new version. A rename of a tool it names is therefore an edit
   to the skill file in the same change, never a reason to keep the old name.
 
 ---

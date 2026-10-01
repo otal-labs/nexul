@@ -69,11 +69,15 @@ export type PairingStep = (typeof PAIRING_STEPS)[number]["value"];
 
 export type SetupTurnState = "running" | "confirmed" | "failed";
 
+// Mirrors pairing.SetupTurnKind: a full setup of the provider, or a skills update that rewrote the shared skill folders.
+export type SetupTurnKind = "setup" | "skills";
+
 export interface SetupTurnSummary {
   run_id: string;
   turn_id: string;
   provider: string;
   provider_name: string;
+  kind: SetupTurnKind;
   state: SetupTurnState;
   status: string;
   // The model slug the turn ran on; empty means the provider's own default.
@@ -86,7 +90,7 @@ export interface ProviderSetup {
   provider: string;
   confirmed_at: string | null;
   skills: string[];
-  // The nexul-memory version its confirming setup installed; outdated is a signal to re-run setup, never a block.
+  // The nexul-memory version last recorded for it; outdated is a signal to update skills, never a block.
   skills_version: string;
   skills_outdated: boolean;
 }
@@ -122,6 +126,7 @@ export interface SetupRun {
 export interface SetupRunRow {
   provider: string;
   name: string;
+  kind: SetupTurnKind;
   state: SetupTurnState | "queued";
   status: string;
   model: string;
@@ -138,6 +143,7 @@ export const SETUP_STATE_LABEL: Record<SetupRunRow["state"], string> = {
 const turnRow = (t: SetupTurnSummary): SetupRunRow => ({
   provider: t.provider,
   name: t.provider_name || t.provider,
+  kind: t.kind,
   state: t.state,
   status: t.status,
   model: t.model ?? "",
@@ -149,7 +155,7 @@ export const setupRunRows = (turns: SetupTurnSummary[], run: SetupRun | undefine
   const inRun = (run?.providers ?? []).map((p): SetupRunRow => {
     const turn = turns.find((t) => t.provider === p.provider && t.run_id === run?.run_id);
     if (turn) return turnRow(turn);
-    return { provider: p.provider, name: p.name, state: "queued", status: "Waiting for its turn", model: p.model ?? "" };
+    return { provider: p.provider, name: p.name, kind: "setup", state: "queued", status: "Waiting for its turn", model: p.model ?? "" };
   });
   const rest = turns.filter((t) => !inRun.some((r) => r.provider === t.provider)).map(turnRow);
   return [...inRun, ...rest];
@@ -197,6 +203,8 @@ export interface ProviderSetupLine {
   provider: string;
   name: string;
   state: SetupTurnState | "unconfirmed";
+  // The kind of its newest turn, so a running skills update reads as one.
+  kind: SetupTurnKind;
   confirmedAt: string | null;
   skillsOutdated: boolean;
 }
@@ -208,12 +216,23 @@ export const providerSetupLines = (setup: ComputerSetup): ProviderSetupLine[] =>
     const turn = setup.turns.find((t) => t.provider === provider);
     const row = setup.providers.find((p) => p.provider === provider);
     const confirmedAt = row?.confirmed_at ?? null;
-    const base = { provider, name: turn?.provider_name || provider, confirmedAt, skillsOutdated: row?.skills_outdated ?? false };
+    const base = { provider, name: turn?.provider_name || provider, kind: turn?.kind ?? "setup", confirmedAt, skillsOutdated: row?.skills_outdated ?? false };
     if (turn?.state === "running") return { ...base, state: "running" };
     if (confirmedAt) return { ...base, state: "confirmed" };
     if (turn?.state === "failed") return { ...base, state: "failed" };
     return { ...base, state: "unconfirmed" };
   });
+};
+
+// The hint every update dot for out-of-date skills reads out.
+export const SKILLS_OUTDATED = "skills out of date";
+
+export const hasOutdatedSkills = (setup: ComputerSetup) => setup.providers.some((p) => p.skills_outdated);
+
+// Update skills fits only a confirmed computer whose every provider line is confirmed and where skills are what is left.
+export const onlySkillsOutdated = (setup: ComputerSetup) => {
+  const lines = providerSetupLines(setup);
+  return setup.confirmed_at !== null && lines.every((l) => l.state === "confirmed") && lines.some((l) => l.skillsOutdated);
 };
 
 // Mirrors pairing.RefusalDetails, the error envelope's details when agent work is refused at target resolution.

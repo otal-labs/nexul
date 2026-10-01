@@ -97,9 +97,17 @@ Setup never overwrites an installed mattpocock skill and keeps the token the
 providers already hold, so re-running it on a confirmed computer only
 re-checks. The nexul-memory skill is Nexul's own and carries a version: setup
 replaces a copy whose version is older, and a provider confirmed with an older
-copy shows **skills out of date** in its row, beside **Re-run setup**. That is a signal,
+copy shows **skills out of date** in its row. That is a signal,
 not a block; agent work keeps running, and turns follow the current memory
-protocol from their own prompt until the skill is refreshed. An agent can also
+protocol from their own prompt until the skill is refreshed. A yellow dot on the
+settings gear and on **T3 pairing** says one of your computers needs it. When
+skills are the only thing out of date, the row's main button is **Update skills**:
+one short turn on the computer's first confirmed provider fetches each Nexul skill
+with `skill_get`, writes it into both skill folders, and reports the version, which
+clears the flag for every provider on that computer, since they all read the same
+folders. It reconnects nothing and confirms nothing, and streams into the same
+transcript as setup; a failed update keeps the flag and offers **Retry**.
+**Re-run setup** stays beside it for a full setup. An agent can also
 refresh it without setup: the skill tells it to compare its version with the
 `skill_get` MCP tool once per session and rewrite itself when they differ. Turns
 run in the folder picked under **Folder**, one of the projects T3 Code opens,

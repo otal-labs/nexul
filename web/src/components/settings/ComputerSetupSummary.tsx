@@ -1,12 +1,12 @@
-import { Wrench } from "lucide-react";
+import { RefreshCw, Wrench } from "lucide-react";
 import { useSearchParams } from "react-router";
 
 import { Button } from "@/components/ui/button";
 import { PairComputerDialog } from "@/components/pairing/PairComputerDialog";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { useFetchComputerSetup } from "@/hooks/PairingHooks";
-import { providerSetupLines, type Computer, type ComputerSetup, type ProviderSetupLine } from "@/models/Pairing";
+import { useFetchComputerSetup, useUpdateSkills } from "@/hooks/ComputerSetupHooks";
+import { onlySkillsOutdated, providerSetupLines, SKILLS_OUTDATED, type Computer, type ComputerSetup, type ProviderSetupLine } from "@/models/Pairing";
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/utils/TimeUtility";
 
@@ -18,8 +18,9 @@ const LINE_DOT: Record<ProviderSetupLine["state"], string> = {
 };
 
 const lineLabel = (line: ProviderSetupLine) => {
+  if (line.state === "running" && line.kind === "skills") return "updating skills…";
   if (line.state === "running") return "setting up…";
-  if (line.state === "confirmed" && line.skillsOutdated) return "skills out of date";
+  if (line.state === "confirmed" && line.skillsOutdated) return SKILLS_OUTDATED;
   if (line.state === "confirmed" && line.confirmedAt) return `confirmed ${formatRelativeTime(line.confirmedAt)}`;
   if (line.state === "failed") return "setup failed";
   return "not confirmed";
@@ -53,9 +54,10 @@ interface SetupDetailsProps {
   setup: ComputerSetup;
 }
 
-// Read-only by design: the button only opens the dialog, and an agent alone changes a confirmation through MCP.
+// Read-only by design: the buttons only start turns and open the dialog, and an agent alone changes a confirmation through MCP.
 const SetupDetails = ({ computer, setup }: SetupDetailsProps) => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const update = useUpdateSkills(computer.id);
   const lines = providerSetupLines(setup);
   const confirmed = setup.confirmed_at !== null;
   return (
@@ -73,17 +75,27 @@ const SetupDetails = ({ computer, setup }: SetupDetailsProps) => {
           </ul>
         )}
       </div>
-      <PairComputerDialog
-        existing={computer}
-        defaultOpen={searchParams.get("setup") === computer.id}
-        onClosed={() => setSearchParams((params) => withoutSetup(params), { replace: true })}
-        trigger={
-          <Button type="button" variant="outline" size="sm">
-            <Wrench className="size-4" aria-hidden />
-            {confirmed ? "Re-run setup" : "Set up"}
-          </Button>
-        }
-      />
+      <div className="flex shrink-0 flex-wrap items-center gap-2">
+        <PairComputerDialog
+          existing={computer}
+          defaultOpen={searchParams.get("setup") === computer.id}
+          onClosed={() => setSearchParams((params) => withoutSetup(params), { replace: true })}
+          trigger={
+            <Button type="button" variant="outline" size="sm">
+              <Wrench className="size-4" aria-hidden />
+              {confirmed ? "Re-run setup" : "Set up"}
+            </Button>
+          }
+          primaryTrigger={
+            onlySkillsOutdated(setup) && (
+              <Button type="button" size="sm" loading={update.isPending} onClick={() => update.mutate()}>
+                <RefreshCw className="size-4" aria-hidden />
+                Update skills
+              </Button>
+            )
+          }
+        />
+      </div>
     </div>
   );
 };
