@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"regexp"
 	"slices"
 	"strings"
@@ -989,7 +990,7 @@ func (s *NotificationService) MarkRead(ctx context.Context, userID, id string) e
 	if strings.TrimSpace(id) == "" {
 		return fmt.Errorf("%w: notification id is required", apperrs.ErrInvalid)
 	}
-	if err := s.repo.MarkRead(ctx, userID, id); err != nil {
+	if err := s.repo.MarkRead(ctx, userID, id, s.now().UTC()); err != nil {
 		return fmt.Errorf("mark notification %s read: %w", id, err)
 	}
 	return nil
@@ -1000,10 +1001,50 @@ func (s *NotificationService) MarkAllRead(ctx context.Context, userID, workspace
 	if strings.TrimSpace(userID) == "" {
 		return fmt.Errorf("%w: user id is required", apperrs.ErrInvalid)
 	}
-	if err := s.repo.MarkAllRead(ctx, userID, strings.TrimSpace(workspaceID)); err != nil {
+	if err := s.repo.MarkAllRead(ctx, userID, strings.TrimSpace(workspaceID), s.now().UTC()); err != nil {
 		return fmt.Errorf("mark all read: %w", err)
 	}
 	return nil
+}
+
+// Retention keeps the inbox bounded, since nothing else ever deletes a notification (ADR 0100).
+const (
+	readNotificationRetention   = 90 * 24 * time.Hour
+	notificationRetention       = 180 * 24 * time.Hour
+	notificationCleanupDelay    = time.Minute
+	notificationCleanupInterval = 24 * time.Hour
+)
+
+// CleanupExpired applies the retention rule (ADR 0100), unchecked because it runs from a background loop, not a request.
+func (s *NotificationService) CleanupExpired(ctx context.Context) (read, old int64, err error) {
+	now := s.now()
+	read, old, err = s.repo.DeleteExpired(ctx, now.Add(-readNotificationRetention), now.Add(-notificationRetention))
+	if err != nil {
+		return 0, 0, fmt.Errorf("clean up expired notifications: %w", err)
+	}
+	return read, old, nil
+}
+
+// RunCleanupLoop runs CleanupExpired a minute after start and daily after that, until ctx is cancelled.
+func (s *NotificationService) RunCleanupLoop(ctx context.Context, log *slog.Logger) {
+	timer := time.NewTimer(notificationCleanupDelay)
+	defer timer.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-timer.C:
+		}
+		timer.Reset(notificationCleanupInterval)
+		read, old, err := s.CleanupExpired(ctx)
+		if err != nil {
+			log.Warn("notification retention cleanup failed", "error", err)
+			continue
+		}
+		if read+old > 0 {
+			log.Info("notification retention cleanup", "read_deleted", read, "old_deleted", old)
+		}
+	}
 }
 
 // requireMember keeps a person's inbox to the workspaces they still belong to; one they left reads as not found.

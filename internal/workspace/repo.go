@@ -2,6 +2,7 @@ package workspace
 
 import (
 	"context"
+	"time"
 
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
@@ -48,8 +49,10 @@ type NotificationRepo interface {
 	// List, UnreadCount, and MarkAllRead span every workspace when workspaceID is empty.
 	List(ctx context.Context, userID, workspaceID string, limit int) ([]*Notification, error)
 	UnreadCount(ctx context.Context, userID, workspaceID string) (int, error)
-	MarkRead(ctx context.Context, userID, id string) error
-	MarkAllRead(ctx context.Context, userID, workspaceID string) error
+	MarkRead(ctx context.Context, userID, id string, at time.Time) error
+	MarkAllRead(ctx context.Context, userID, workspaceID string, at time.Time) error
+	// DeleteExpired returns how many read notifications and how many old ones it deleted.
+	DeleteExpired(ctx context.Context, readBefore, createdBefore time.Time) (read, old int64, err error)
 }
 
 // ProjectReader resolves a notification subject's project to the workspace the notification belongs to.

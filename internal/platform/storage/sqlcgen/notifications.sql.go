@@ -7,6 +7,7 @@ package sqlcgen
 
 import (
 	"context"
+	"database/sql"
 )
 
 const countUnreadNotifications = `-- name: CountUnreadNotifications :one
@@ -27,8 +28,8 @@ func (q *Queries) CountUnreadNotifications(ctx context.Context, arg CountUnreadN
 }
 
 const createNotificationIfAbsent = `-- name: CreateNotificationIfAbsent :execrows
-INSERT INTO notifications (id, user_id, workspace_id, kind, subject_type, subject_id, subject_title, read, created_at)
-SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9
+INSERT INTO notifications (id, user_id, workspace_id, kind, subject_type, subject_id, subject_title, read, read_at, created_at)
+SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10
 WHERE NOT EXISTS (
   SELECT 1 FROM notifications
   WHERE user_id = ?2 AND workspace_id = ?3 AND kind = ?4 AND subject_type = ?5 AND subject_id = ?6 AND read = 0
@@ -44,6 +45,7 @@ type CreateNotificationIfAbsentParams struct {
 	SubjectID    string
 	SubjectTitle string
 	Read         int64
+	ReadAt       sql.NullInt64
 	CreatedAt    int64
 }
 
@@ -58,6 +60,7 @@ func (q *Queries) CreateNotificationIfAbsent(ctx context.Context, arg CreateNoti
 		arg.SubjectID,
 		arg.SubjectTitle,
 		arg.Read,
+		arg.ReadAt,
 		arg.CreatedAt,
 	)
 	if err != nil {
@@ -66,8 +69,32 @@ func (q *Queries) CreateNotificationIfAbsent(ctx context.Context, arg CreateNoti
 	return result.RowsAffected()
 }
 
+const deleteNotificationsCreatedBefore = `-- name: DeleteNotificationsCreatedBefore :execrows
+DELETE FROM notifications WHERE created_at < ?
+`
+
+func (q *Queries) DeleteNotificationsCreatedBefore(ctx context.Context, createdAt int64) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteNotificationsCreatedBefore, createdAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const deleteNotificationsReadBefore = `-- name: DeleteNotificationsReadBefore :execrows
+DELETE FROM notifications WHERE read_at IS NOT NULL AND read_at < ?
+`
+
+func (q *Queries) DeleteNotificationsReadBefore(ctx context.Context, readAt sql.NullInt64) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteNotificationsReadBefore, readAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const listNotifications = `-- name: ListNotifications :many
-SELECT n.id, n.user_id, n.kind, n.subject_type, n.subject_id, n.subject_title, n.read, n.created_at, n.workspace_id, COALESCE(f.id, '') AS folder_id, COALESCE(f.name, '') AS folder_name, COALESCE(f.is_default, 0) AS folder_is_default
+SELECT n.id, n.user_id, n.kind, n.subject_type, n.subject_id, n.subject_title, n.read, n.created_at, n.workspace_id, n.read_at, COALESCE(f.id, '') AS folder_id, COALESCE(f.name, '') AS folder_name, COALESCE(f.is_default, 0) AS folder_is_default
 FROM notifications n
 LEFT JOIN docs d ON n.subject_type = 'doc' AND d.id = n.subject_id
 LEFT JOIN doc_folders f ON f.id = d.folder_id
@@ -109,6 +136,7 @@ func (q *Queries) ListNotifications(ctx context.Context, arg ListNotificationsPa
 			&i.Notification.Read,
 			&i.Notification.CreatedAt,
 			&i.Notification.WorkspaceID,
+			&i.Notification.ReadAt,
 			&i.FolderID,
 			&i.FolderName,
 			&i.FolderIsDefault,
@@ -127,31 +155,34 @@ func (q *Queries) ListNotifications(ctx context.Context, arg ListNotificationsPa
 }
 
 const markAllNotificationsRead = `-- name: MarkAllNotificationsRead :exec
-UPDATE notifications SET read = 1
-WHERE user_id = ?1 AND read = 0 AND (?2 = '' OR workspace_id = ?2)
+UPDATE notifications SET read = 1, read_at = ?1
+WHERE user_id = ?2 AND read = 0 AND (?3 = '' OR workspace_id = ?3)
 `
 
 type MarkAllNotificationsReadParams struct {
+	ReadAt      sql.NullInt64
 	UserID      string
 	WorkspaceID interface{}
 }
 
 func (q *Queries) MarkAllNotificationsRead(ctx context.Context, arg MarkAllNotificationsReadParams) error {
-	_, err := q.db.ExecContext(ctx, markAllNotificationsRead, arg.UserID, arg.WorkspaceID)
+	_, err := q.db.ExecContext(ctx, markAllNotificationsRead, arg.ReadAt, arg.UserID, arg.WorkspaceID)
 	return err
 }
 
 const markNotificationRead = `-- name: MarkNotificationRead :execrows
-UPDATE notifications SET read = 1 WHERE id = ? AND user_id = ?
+UPDATE notifications SET read = 1, read_at = COALESCE(read_at, ?1) WHERE id = ?2 AND user_id = ?3
 `
 
 type MarkNotificationReadParams struct {
+	ReadAt sql.NullInt64
 	ID     string
 	UserID string
 }
 
+// Reading an already read row keeps its first read time, so marking it again never extends its retention.
 func (q *Queries) MarkNotificationRead(ctx context.Context, arg MarkNotificationReadParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, markNotificationRead, arg.ID, arg.UserID)
+	result, err := q.db.ExecContext(ctx, markNotificationRead, arg.ReadAt, arg.ID, arg.UserID)
 	if err != nil {
 		return 0, err
 	}

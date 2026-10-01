@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"maps"
 	"strconv"
 	"strings"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -31,6 +33,8 @@ type fakeNotifRepo struct {
 	listErr   error
 	countErr  error
 	markErr   error
+	deleteErr error
+	cutoffs   [][2]time.Time
 }
 
 func newFakeNotifRepo() *fakeNotifRepo {
@@ -126,7 +130,7 @@ func (f *fakeNotifRepo) UnreadCount(_ context.Context, userID, workspaceID strin
 	return n, nil
 }
 
-func (f *fakeNotifRepo) MarkRead(_ context.Context, userID, id string) error {
+func (f *fakeNotifRepo) MarkRead(_ context.Context, userID, id string, _ time.Time) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.markErr != nil {
@@ -140,7 +144,7 @@ func (f *fakeNotifRepo) MarkRead(_ context.Context, userID, id string) error {
 	return nil
 }
 
-func (f *fakeNotifRepo) MarkAllRead(_ context.Context, userID, workspaceID string) error {
+func (f *fakeNotifRepo) MarkAllRead(_ context.Context, userID, workspaceID string, _ time.Time) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.markErr != nil {
@@ -152,6 +156,24 @@ func (f *fakeNotifRepo) MarkAllRead(_ context.Context, userID, workspaceID strin
 		}
 	}
 	return nil
+}
+
+// DeleteExpired records each pass's cutoffs (read before, created before); deleteErr fails one pass, then clears.
+func (f *fakeNotifRepo) DeleteExpired(_ context.Context, readBefore, createdBefore time.Time) (int64, int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.cutoffs = append(f.cutoffs, [2]time.Time{readBefore, createdBefore})
+	if err := f.deleteErr; err != nil {
+		f.deleteErr = nil
+		return 0, 0, err
+	}
+	return 1, 1, nil
+}
+
+func (f *fakeNotifRepo) cleanupPasses() [][2]time.Time {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([][2]time.Time(nil), f.cutoffs...)
 }
 
 func (f *fakeNotifRepo) notifsFor(userID string) []*Notification {
@@ -333,7 +355,7 @@ func TestNotifUnreadCount(t *testing.T) {
 		repo := newFakeNotifRepo()
 		repo.create(t, &Notification{ID: "n1", UserID: "u1"})
 		repo.create(t, &Notification{ID: "n2", UserID: "u1"})
-		require.NoError(t, repo.MarkRead(context.Background(), "u1", "n1"))
+		require.NoError(t, repo.MarkRead(context.Background(), "u1", "n1", notifFixedNow))
 		s := newTestNotifService(repo, newFakeNotifUsers())
 		n, err := s.UnreadCount(context.Background(), "u1", "")
 		require.NoError(t, err)
@@ -790,4 +812,37 @@ func TestHandlePlayRunWaiting(t *testing.T) {
 
 	err := HandlePlayRunWaiting(context.Background(), s, notifEvFor(t, "play.run_waiting", map[string]any{"trail_id": "tr-1"}))
 	require.ErrorIs(t, err, apperrs.ErrFatal)
+}
+
+func TestNotificationRunCleanupLoop_RunsAMinuteAfterStartThenDaily_SurvivingAFailedPass(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		repo := newFakeNotifRepo()
+		repo.deleteErr = errors.New("database is locked")
+		s := NewNotificationService(repo, nil, nil, nil, nil)
+		ctx, cancel := context.WithCancel(t.Context())
+		done := make(chan struct{})
+		start := time.Now()
+		go func() {
+			s.RunCleanupLoop(ctx, slog.New(slog.DiscardHandler))
+			close(done)
+		}()
+
+		synctest.Wait()
+		assert.Empty(t, repo.cleanupPasses(), "nothing is deleted while the server is still starting")
+
+		time.Sleep(time.Minute)
+		synctest.Wait()
+		passes := repo.cleanupPasses()
+		require.Len(t, passes, 1, "the first pass runs shortly after start, not a day later")
+		firstRun := start.Add(time.Minute)
+		assert.Equal(t, firstRun.Add(-90*24*time.Hour), passes[0][0], "read notifications are kept 90 days after they were read")
+		assert.Equal(t, firstRun.Add(-180*24*time.Hour), passes[0][1], "every notification is kept 180 days after it was sent")
+
+		time.Sleep(24 * time.Hour)
+		synctest.Wait()
+		assert.Len(t, repo.cleanupPasses(), 2, "a failed pass does not stop the next day's")
+
+		cancel()
+		<-done
+	})
 }

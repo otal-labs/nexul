@@ -540,6 +540,7 @@ type Notification struct {
 	Read         int64
 	CreatedAt    int64
 	WorkspaceID  string
+	ReadAt       sql.NullInt64
 }
 
 type Outbox struct {

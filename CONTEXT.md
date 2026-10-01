@@ -726,7 +726,8 @@ occupancy, over a bring-your-own LiveKit server.
 **Workspace** — the workspace boundary itself, its members, its settings, and
 notifications. Notifications are a capability here rather than a domain of
 their own: every domain publishes events, and the workspace turns the ones a
-member cares about into an inbox.
+member cares about into an inbox. A read notification is deleted 90 days after it was
+read, and any notification 180 days after it was sent.
 
 ### How we talk about the code
 
