@@ -4,14 +4,20 @@ import { toast } from "sonner";
 import { api, errorMessage } from "@/api/client";
 import type { Automation, AutomationTokenMint } from "@/models/Automation";
 import type { PermissionInfo } from "@/models/Permission";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 export const getAutomationsKey = "getAutomations";
 
-export const useFetchAutomations = () =>
-  useQuery({
-    queryKey: [getAutomationsKey],
-    queryFn: async () => (await api.get<Automation[]>("/api/automations")).data,
+// Automations belong to a workspace: the page lists the selected one's.
+export const useFetchAutomations = () => {
+  const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
+  return useQuery({
+    queryKey: [getAutomationsKey, workspaceId],
+    queryFn: async () =>
+      (await api.get<Automation[]>("/api/automations", { params: { workspace_id: workspaceId } })).data,
+    enabled: workspaceId !== "",
   });
+};
 
 export const useFetchAutomation = (id: string | undefined) =>
   useQuery({
@@ -29,9 +35,10 @@ export const useFetchScopeCatalog = () =>
 
 export const useCreateAutomation = () => {
   const client = useQueryClient();
+  const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   return useMutation({
     mutationFn: async (input: { name: string; scopes: string[] }) =>
-      (await api.post<AutomationTokenMint>("/api/automations", input)).data,
+      (await api.post<AutomationTokenMint>("/api/automations", { ...input, workspace_id: workspaceId })).data,
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getAutomationsKey] });
       toast.success("Automation created");

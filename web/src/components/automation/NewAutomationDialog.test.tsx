@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { NewAutomationDialog } from "@/components/automation/NewAutomationDialog";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 const mocks = vi.hoisted(() => ({ post: vi.fn(), get: vi.fn() }));
 
@@ -25,6 +26,7 @@ const renderPanel = () => {
 
 describe("NewAutomationDialog", () => {
   beforeEach(() => {
+    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
     mocks.post.mockReset();
     mocks.get.mockReset();
     mocks.get.mockImplementation((url: string) => {
@@ -66,6 +68,7 @@ describe("NewAutomationDialog", () => {
     expect(mocks.post).toHaveBeenCalledWith("/api/automations", {
       name: "Slack notifier",
       scopes: ["tickets:read", "tickets:write", "events:read"],
+      workspace_id: "ws-1",
     });
     expect(await screen.findByText("Slack notifier created")).toBeInTheDocument();
     expect(screen.getByText("dep_secret_abc123")).toBeInTheDocument();
@@ -103,7 +106,7 @@ describe("NewAutomationDialog", () => {
     await user.click(await level("Docs", "None"));
     await user.click(screen.getByRole("button", { name: "Create automation" }));
 
-    expect(mocks.post).toHaveBeenCalledWith("/api/automations", { name: "x", scopes: ["tickets:read"] });
+    expect(mocks.post).toHaveBeenCalledWith("/api/automations", { name: "x", scopes: ["tickets:read"], workspace_id: "ws-1" });
   });
 
   it("requires a name and at least one scope before submitting", async () => {

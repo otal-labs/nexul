@@ -16,7 +16,7 @@ func NewSecretsHandler(svc *SecretsService) *SecretsHandler {
 	return &SecretsHandler{svc: svc}
 }
 
-// Routes returns the workspace secrets REST endpoints (list/set/delete by name).
+// Routes returns the workspace secrets REST endpoints (list/set/delete by name), each naming its workspace_id in the query.
 func (h *SecretsHandler) Routes() http.Handler {
 	mux := httpx.NewServeMux()
 	mux.HandleFunc("GET /api/automation-secrets", h.list)
@@ -30,7 +30,7 @@ type setSecretRequest struct {
 }
 
 func (h *SecretsHandler) list(w http.ResponseWriter, r *http.Request) {
-	list, err := h.svc.List(r.Context(), actorID(r))
+	list, err := h.svc.List(r.Context(), actorID(r), r.URL.Query().Get("workspace_id"))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -44,7 +44,7 @@ func (h *SecretsHandler) set(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	if err := h.svc.Set(r.Context(), actorID(r), r.PathValue("name"), req.Value); err != nil {
+	if err := h.svc.Set(r.Context(), actorID(r), r.URL.Query().Get("workspace_id"), r.PathValue("name"), req.Value); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
@@ -52,7 +52,7 @@ func (h *SecretsHandler) set(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *SecretsHandler) delete(w http.ResponseWriter, r *http.Request) {
-	if err := h.svc.Delete(r.Context(), actorID(r), r.PathValue("name")); err != nil {
+	if err := h.svc.Delete(r.Context(), actorID(r), r.URL.Query().Get("workspace_id"), r.PathValue("name")); err != nil {
 		httpx.WriteError(w, err)
 		return
 	}

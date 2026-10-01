@@ -354,7 +354,7 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 	if err := s.require(ctx, d.ID, permissions.DocsDelete); err != nil {
 		return err
 	}
-	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicDeleted, Payload: DeletedEvent{ID: d.ID, Title: d.Title}}
+	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicDeleted, Payload: DeletedEvent{ID: d.ID, Title: d.Title, ProjectID: d.ProjectID}}
 	if err := s.repo.Delete(ctx, id, evt); err != nil {
 		return fmt.Errorf("delete doc %s: %w", id, err)
 	}

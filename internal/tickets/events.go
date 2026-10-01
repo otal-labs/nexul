@@ -75,8 +75,9 @@ type FinishedEvent struct {
 
 // DeletedEvent's ticket is already gone (hard delete), so consumers get identity only.
 type DeletedEvent struct {
-	ID    string `json:"id"`
-	Title string `json:"title"`
+	ID        string `json:"id"`
+	Title     string `json:"title"`
+	ProjectID string `json:"project_id"`
 }
 
 // LinkEvent is the payload for ticket.link_created and ticket.link_deleted.

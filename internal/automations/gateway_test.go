@@ -51,7 +51,7 @@ func newGatewaySvc(t *testing.T, scope string, wired bool) (*Service, string) {
 	if wired {
 		svc.SetGateway(allowScope(scope), nil)
 	}
-	a, raw, err := svc.Create(context.Background(), "creator-1", "webhook-relay", []string{scope})
+	a, raw, err := svc.Create(context.Background(), "creator-1", "ws-1", "webhook-relay", []string{scope})
 	require.NoError(t, err)
 	require.NotEmpty(t, a.CreatedBy)
 	return svc, raw
@@ -120,7 +120,7 @@ func TestRequireAutomation(t *testing.T) {
 
 	t.Run("revoked token rejected", func(t *testing.T) {
 		svc, raw := newGatewaySvc(t, "tickets:read", true)
-		list, err := svc.List(context.Background(), "creator-1")
+		list, err := svc.List(context.Background(), "creator-1", "")
 		require.NoError(t, err)
 		require.Len(t, list, 1)
 		_, err = svc.RevokeToken(context.Background(), "creator-1", list[0].ID)
@@ -137,9 +137,9 @@ func TestRequireAutomation(t *testing.T) {
 func TestRequireAutomation_SelfRead(t *testing.T) {
 	svc := NewService(newFakeRepo(), allowAll("creator-1"))
 	svc.SetGateway(allowScope("tickets:read"), nil)
-	a, raw, err := svc.Create(context.Background(), "creator-1", "self-reader", []string{"docs:read"})
+	a, raw, err := svc.Create(context.Background(), "creator-1", "ws-1", "self-reader", []string{"docs:read"})
 	require.NoError(t, err)
-	other, _, err := svc.Create(context.Background(), "creator-1", "someone-else", []string{"docs:read"})
+	other, _, err := svc.Create(context.Background(), "creator-1", "ws-1", "someone-else", []string{"docs:read"})
 	require.NoError(t, err)
 	handler := svc.RequireAutomation(fakeUserAuth, okHandler())
 

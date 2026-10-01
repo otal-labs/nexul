@@ -10,8 +10,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func newTestSeeder(automationsRepo Repo, versionsRepo VersionsRepo, defs []DefaultDefinition) *Seeder {
-	s := NewSeeder(automationsRepo, newTestVersionsService(automationsRepo, versionsRepo, allowAll("system")), defs, slog.Default())
+// workspaceList is a fixed WorkspaceLister.
+type workspaceList []string
+
+func (l workspaceList) ListWorkspaceIDs(context.Context) ([]string, error) { return l, nil }
+
+func newTestSeeder(automationsRepo Repo, versionsRepo VersionsRepo, defs []DefaultDefinition, workspaceIDs ...string) *Seeder {
+	if len(workspaceIDs) == 0 {
+		workspaceIDs = []string{"home"}
+	}
+	s := NewSeeder(automationsRepo, newTestVersionsService(automationsRepo, versionsRepo, allowAll("system")), defs, workspaceList(workspaceIDs), "home", slog.Default())
 	s.now = func() time.Time { return time.Date(2026, 8, 28, 12, 0, 0, 0, time.UTC) }
 	return s
 }
@@ -36,6 +44,22 @@ func TestSeeder_Seed(t *testing.T) {
 		assert.Equal(t, KindDefault, a.Kind)
 		assert.True(t, a.Enabled)
 		assert.Equal(t, def.Name, a.Name)
+	})
+
+	t.Run("every workspace gets its own default, and the home workspace keeps the definition's id", func(t *testing.T) {
+		autoRepo := newFakeRepo()
+		vRepo := newFakeVersionsRepo()
+		s := newTestSeeder(autoRepo, vRepo, []DefaultDefinition{def}, "home", "ws-2")
+		require.NoError(t, s.Seed(context.Background()))
+
+		home, err := autoRepo.Get(context.Background(), def.ID)
+		require.NoError(t, err)
+		assert.Equal(t, "home", home.WorkspaceID)
+		other, err := autoRepo.Get(context.Background(), def.ID+"-ws-2")
+		require.NoError(t, err)
+		assert.Equal(t, "ws-2", other.WorkspaceID)
+		_, err = vRepo.Active(context.Background(), other.ID)
+		require.NoError(t, err, "each workspace's default carries its own code")
 	})
 
 	t.Run("the first seed activates the code directly, no manual merge needed", func(t *testing.T) {
@@ -163,6 +187,6 @@ func TestSeeder_Seed(t *testing.T) {
 }
 
 func TestNewSeeder_NilLoggerDefaults(t *testing.T) {
-	s := NewSeeder(newFakeRepo(), newTestVersionsService(newFakeRepo(), newFakeVersionsRepo(), allowAll("system")), nil, nil)
+	s := NewSeeder(newFakeRepo(), newTestVersionsService(newFakeRepo(), newFakeVersionsRepo(), allowAll("system")), nil, workspaceList{}, "home", nil)
 	assert.NotNil(t, s.log)
 }

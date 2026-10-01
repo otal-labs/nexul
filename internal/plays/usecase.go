@@ -209,7 +209,7 @@ func (s *Service) Delete(ctx context.Context, workspaceID, id string) error {
 	if err != nil {
 		return err
 	}
-	if err := s.repo.Delete(ctx, id, s.event(TopicDeleted, DeletedEvent{ID: p.ID, Label: p.Label})); err != nil {
+	if err := s.repo.Delete(ctx, id, s.event(TopicDeleted, DeletedEvent{ID: p.ID, Label: p.Label, WorkspaceID: p.WorkspaceID})); err != nil {
 		return fmt.Errorf("delete play %s: %w", id, err)
 	}
 	return nil

@@ -458,7 +458,8 @@ var catalogSchemas = map[string]string{
 		"required": ["id", "name"],
 		"properties": {
 			"id": {"type": "string"},
-			"name": {"type": "string"}
+			"name": {"type": "string"},
+			"project_id": {"type": "string"}
 		}
 	}`,
 	"git.push": `{
@@ -552,7 +553,8 @@ var catalogSchemas = map[string]string{
 		"required": ["id", "title"],
 		"properties": {
 			"id": {"type": "string"},
-			"title": {"type": "string"}
+			"title": {"type": "string"},
+			"project_id": {"type": "string"}
 		}
 	}`,
 	"ticket.link_created": `{
@@ -618,7 +620,8 @@ var catalogSchemas = map[string]string{
 		"required": ["id", "title"],
 		"properties": {
 			"id": {"type": "string"},
-			"title": {"type": "string"}
+			"title": {"type": "string"},
+			"project_id": {"type": "string"}
 		}
 	}`,
 	"play.created": `{
@@ -677,7 +680,8 @@ var catalogSchemas = map[string]string{
 		"required": ["id", "label"],
 		"properties": {
 			"id": {"type": "string"},
-			"label": {"type": "string"}
+			"label": {"type": "string"},
+			"workspace_id": {"type": "string"}
 		}
 	}`,
 	"play.run_started": `{

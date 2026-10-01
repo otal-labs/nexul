@@ -28,7 +28,7 @@ type DeliveryRegistry interface {
 	SkipBacklog(ctx context.Context, automationID string) error
 }
 
-// PermissionGate is the consumer-side slice of access's HasPermission check (ADR 0017), gating automation.* actions.
+// PermissionGate is access's check in one workspace (ADR 0087): not found outside it, forbidden without the action.
 type PermissionGate interface {
-	HasPermission(ctx context.Context, userID string, action permissions.Action) bool
+	Require(ctx context.Context, workspaceID string, action permissions.Action) error
 }

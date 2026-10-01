@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"slices"
 	"sync"
 	"time"
 
@@ -28,6 +29,8 @@ type DialinConfig struct {
 	Runs RunsRepo
 	// Secrets is pushed to the automation at connect; defaults to NoopSecretsProvider.
 	Secrets SecretsProvider
+	// Scope holds each event to the automations of the workspace it happened in; nil delivers every event.
+	Scope EventScope
 	// Logger for lifecycle and failure logs; defaults to slog.Default().
 	Logger *slog.Logger
 	// PollInterval is how often an idle connection checks for new matching events; defaults to 500ms.
@@ -177,7 +180,7 @@ func (h *DialinHandler) handleConn(ctx context.Context, automationID string, ws 
 		h.log.Warn("initialize automation cursor failed", "automation_id", automationID, "error", err)
 	}
 
-	secrets, err := h.cfg.Secrets.AllSecrets(ctx)
+	secrets, err := h.cfg.Secrets.AllSecrets(ctx, automation.WorkspaceID)
 	if err != nil {
 		h.log.Warn("load workspace secrets failed", "automation_id", automationID, "error", err)
 		secrets = map[string]string{}
@@ -300,16 +303,48 @@ func (h *DialinHandler) deliverLoop(ctx context.Context, c *automationConn) {
 			h.log.Warn("read event log failed", "automation_id", c.id, "error", err)
 			continue
 		}
-		for _, ev := range events {
-			// Re-read per event: a disable mid-batch must hold even if the host never stops its worker.
-			if !h.enabled(ctx, c.id) {
-				break
-			}
-			if !h.deliverOne(ctx, c, ev) {
-				return
-			}
+		if !h.deliverBatch(ctx, c, automation.WorkspaceID, events) {
+			return
 		}
 	}
+}
+
+// deliverBatch delivers events in order, skipping other workspaces' past the cursor; false means the connection is closing.
+func (h *DialinHandler) deliverBatch(ctx context.Context, c *automationConn, workspaceID string, events []LogEvent) bool {
+	for _, ev := range events {
+		// Re-read per event: a disable mid-batch must hold even if the host never stops its worker.
+		if !h.enabled(ctx, c.id) {
+			return true
+		}
+		inScope, err := h.inScope(ctx, workspaceID, ev)
+		if err != nil {
+			h.log.Warn("resolve event workspace failed", "automation_id", c.id, "event_id", ev.ID, "error", err)
+			return true
+		}
+		if !inScope {
+			if err := h.cfg.Cursors.Set(ctx, c.id, Cursor{CreatedAt: ev.CreatedAt, ID: ev.ID}); err != nil {
+				h.log.Warn("persist automation cursor failed", "automation_id", c.id, "error", err)
+				return true
+			}
+			continue
+		}
+		if !h.deliverOne(ctx, c, ev) {
+			return false
+		}
+	}
+	return true
+}
+
+// inScope reports whether ev happened in workspaceID, or is instance-level and so reaches every workspace.
+func (h *DialinHandler) inScope(ctx context.Context, workspaceID string, ev LogEvent) (bool, error) {
+	if h.cfg.Scope == nil {
+		return true, nil
+	}
+	workspaceIDs, every, err := h.cfg.Scope.Workspaces(ctx, ev.Topic, ev.Payload)
+	if err != nil {
+		return false, err
+	}
+	return every || slices.Contains(workspaceIDs, workspaceID), nil
 }
 
 func (h *DialinHandler) enabled(ctx context.Context, automationID string) bool {

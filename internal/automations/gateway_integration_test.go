@@ -11,17 +11,20 @@ import (
 
 	"github.com/otal-labs/nexul/internal/automations"
 	"github.com/otal-labs/nexul/internal/integrations"
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/testutil"
+	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
-// allowAutomationPerm grants every automation.* action to userID, standing
-// in for the access domain's HasPermission the way the composition root's
-// automationPermissionGate does.
+// allowAutomationPerm grants every automation.* action to userID, standing in for the access domain's Require.
 type allowAutomationPerm struct{ userID string }
 
-func (g allowAutomationPerm) HasPermission(_ context.Context, userID string, action permissions.Action) bool {
-	return userID == g.userID
+func (g allowAutomationPerm) Require(ctx context.Context, _ string, action permissions.Action) error {
+	if actor, _ := identity.ActorFromCtx(ctx); actor.ID == g.userID {
+		return nil
+	}
+	return apperrs.ErrForbidden
 }
 
 func fellThroughUserAuth(next http.Handler) http.Handler {
@@ -41,7 +44,7 @@ func TestRequireAutomation_EndToEndScopedTicketsRead(t *testing.T) {
 	svc := automations.NewService(store.Automations, allowAutomationPerm{userID: "creator-1"})
 	svc.SetGateway(integrations.ScopeAllows, integrations.ResolveScopes)
 
-	_, raw, err := svc.Create(context.Background(), "creator-1", "ticket-reader", []string{"tickets:read"})
+	_, raw, err := svc.Create(context.Background(), "creator-1", "ws-1", "ticket-reader", []string{"tickets:read"})
 	require.NoError(t, err)
 
 	ticketsHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -81,12 +84,12 @@ func TestCreate_ScopesUseTheIntegrationsVocabulary(t *testing.T) {
 	svc.SetGateway(integrations.ScopeAllows, integrations.ResolveScopes)
 
 	t.Run("a typo'd scope is rejected instead of minting a token the gate refuses everywhere", func(t *testing.T) {
-		_, _, err := svc.Create(context.Background(), "creator-1", "typo", []string{"ticket:write"})
+		_, _, err := svc.Create(context.Background(), "creator-1", "ws-1", "typo", []string{"ticket:write"})
 		require.Error(t, err)
 	})
 
 	t.Run("a write scope stores the reads it implies", func(t *testing.T) {
-		a, _, err := svc.Create(context.Background(), "creator-1", "writer", []string{"tickets:write"})
+		a, _, err := svc.Create(context.Background(), "creator-1", "ws-1", "writer", []string{"tickets:write"})
 		require.NoError(t, err)
 		assert.ElementsMatch(t, []string{"tickets:write", "tickets:read"}, a.Scopes)
 	})

@@ -697,7 +697,7 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 	if err != nil {
 		return fmt.Errorf("delete ticket %s: %w", id, err)
 	}
-	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicDeleted, Payload: DeletedEvent{ID: t.ID, Title: t.Title}}
+	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicDeleted, Payload: DeletedEvent{ID: t.ID, Title: t.Title, ProjectID: t.ProjectID}}
 	if err := s.repo.Delete(ctx, id, evt); err != nil {
 		return fmt.Errorf("delete ticket %s: %w", id, err)
 	}

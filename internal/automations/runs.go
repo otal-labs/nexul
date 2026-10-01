@@ -62,19 +62,20 @@ func appendCappedLog(buf, chunk string) string {
 
 // RunsService is the read-side use-case for run history, kept separate from the CRUD gateway.
 type RunsService struct {
-	repo RunsRepo
-	perm PermissionGate
+	repo        RunsRepo
+	automations Repo
+	perm        PermissionGate
 }
 
 // NewRunsService wires the run-history use-cases over the given repo and
 // permission gate.
-func NewRunsService(repo RunsRepo, perm PermissionGate) *RunsService {
-	return &RunsService{repo: repo, perm: perm}
+func NewRunsService(repo RunsRepo, automations Repo, perm PermissionGate) *RunsService {
+	return &RunsService{repo: repo, automations: automations, perm: perm}
 }
 
 // ListByAutomation returns the automation's run history, newest first.
 func (s *RunsService) ListByAutomation(ctx context.Context, actorID, automationID string, limit int) ([]Run, error) {
-	if err := requirePermission(ctx, s.perm, actorID, permissions.AutomationsRead); err != nil {
+	if _, err := requireOn(ctx, s.perm, s.automations, actorID, automationID, permissions.AutomationsRead); err != nil {
 		return nil, err
 	}
 	runs, err := s.repo.ListByAutomation(ctx, automationID, limit)
@@ -86,7 +87,7 @@ func (s *RunsService) ListByAutomation(ctx context.Context, actorID, automationI
 
 // Get returns one run's full report; it 404s on a mismatched automation, so run ids can't be probed by guessing.
 func (s *RunsService) Get(ctx context.Context, actorID, automationID, runID string) (*Run, error) {
-	if err := requirePermission(ctx, s.perm, actorID, permissions.AutomationsRead); err != nil {
+	if _, err := requireOn(ctx, s.perm, s.automations, actorID, automationID, permissions.AutomationsRead); err != nil {
 		return nil, err
 	}
 	run, err := s.repo.Get(ctx, runID)

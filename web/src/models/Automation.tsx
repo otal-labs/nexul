@@ -5,6 +5,7 @@ import type { AutomationKind } from "@/enums/Automation";
 // Name/description/subscriptions/config_schema are code-declared and overwritten by the SDK on every dial-in.
 export interface Automation {
   id: string;
+  workspace_id: string;
   name: string;
   description: string;
   kind: AutomationKind;

@@ -75,9 +75,13 @@ func (s *Service) AuthenticateToken(ctx context.Context, raw string) (*Automatio
 	return a, nil
 }
 
-// Create mints a new Custom automation shell and token; the raw token is returned once, only its hash is stored.
-func (s *Service) Create(ctx context.Context, actorID, name string, scopes []string) (*Automation, string, error) {
-	if err := s.require(ctx, actorID, permissions.AutomationsWrite); err != nil {
+// Create mints a new Custom automation shell and token in workspaceID; the raw token is returned once, only its hash is stored.
+func (s *Service) Create(ctx context.Context, actorID, workspaceID, name string, scopes []string) (*Automation, string, error) {
+	workspaceID = strings.TrimSpace(workspaceID)
+	if workspaceID == "" {
+		return nil, "", fmt.Errorf("%w: workspace id is required", apperrs.ErrInvalid)
+	}
+	if err := s.require(ctx, actorID, workspaceID, permissions.AutomationsWrite); err != nil {
 		return nil, "", err
 	}
 	normalized, err := normalizeScopes(scopes)
@@ -96,6 +100,7 @@ func (s *Service) Create(ctx context.Context, actorID, name string, scopes []str
 	now := s.now().UTC()
 	a := &Automation{
 		ID:           ids.New(),
+		WorkspaceID:  workspaceID,
 		Name:         strings.TrimSpace(name),
 		Kind:         KindCustom,
 		Enabled:      false,
@@ -117,32 +122,38 @@ func (s *Service) Create(ctx context.Context, actorID, name string, scopes []str
 	return a, raw, nil
 }
 
-// List returns every automation, defaults included.
-func (s *Service) List(ctx context.Context, actorID string) ([]Automation, error) {
-	if err := s.require(ctx, actorID, permissions.AutomationsRead); err != nil {
+// List returns workspaceID's automations, defaults included; an empty workspaceID lists every workspace the caller reads.
+func (s *Service) List(ctx context.Context, actorID, workspaceID string) ([]Automation, error) {
+	workspaceID = strings.TrimSpace(workspaceID)
+	// Across workspaces, only a missing caller fails the whole list; a workspace the caller cannot read is left out.
+	if err := s.require(ctx, actorID, workspaceID, permissions.AutomationsRead); err != nil && (workspaceID != "" || errors.Is(err, apperrs.ErrUnauthorized)) {
 		return nil, err
 	}
-	list, err := s.repo.List(ctx)
+	all, err := s.repo.List(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list automations: %w", err)
+	}
+	list := []Automation{}
+	for _, a := range all {
+		if workspaceID != "" && a.WorkspaceID != workspaceID {
+			continue
+		}
+		if workspaceID == "" && s.require(ctx, actorID, a.WorkspaceID, permissions.AutomationsRead) != nil {
+			continue
+		}
+		list = append(list, a)
 	}
 	return list, nil
 }
 
 // Get returns a single automation by id.
 func (s *Service) Get(ctx context.Context, actorID, id string) (*Automation, error) {
-	if err := s.require(ctx, actorID, permissions.AutomationsRead); err != nil {
-		return nil, err
-	}
-	return s.getByID(ctx, id)
+	return s.getChecked(ctx, actorID, id, permissions.AutomationsRead)
 }
 
 // SetEnabled toggles an automation; disabled means no event delivery and no worker.
 func (s *Service) SetEnabled(ctx context.Context, actorID, id string, enabled bool) (*Automation, error) {
-	if err := s.require(ctx, actorID, permissions.AutomationsWrite); err != nil {
-		return nil, err
-	}
-	a, err := s.getByID(ctx, id)
+	a, err := s.getChecked(ctx, actorID, id, permissions.AutomationsWrite)
 	if err != nil {
 		return nil, err
 	}
@@ -166,10 +177,7 @@ func (s *Service) SetEnabled(ctx context.Context, actorID, id string, enabled bo
 // SetHost places an automation on the automations host hostID; empty places it on the bundled instance host. Its
 // live connection drops, so the new host's worker takes over.
 func (s *Service) SetHost(ctx context.Context, actorID, id, hostID string) (*Automation, error) {
-	if err := s.require(ctx, actorID, permissions.AutomationsWrite); err != nil {
-		return nil, err
-	}
-	a, err := s.getByID(ctx, id)
+	a, err := s.getChecked(ctx, actorID, id, permissions.AutomationsWrite)
 	if err != nil {
 		return nil, err
 	}
@@ -221,13 +229,10 @@ func equalHost(a, b *string) bool {
 
 // UpdateConfigValues' schema validation is the SDK's job, not this one's.
 func (s *Service) UpdateConfigValues(ctx context.Context, actorID, id string, values json.RawMessage) (*Automation, error) {
-	if err := s.require(ctx, actorID, permissions.AutomationsWrite); err != nil {
-		return nil, err
-	}
 	if !json.Valid(values) {
 		return nil, fmt.Errorf("%w: config values must be valid JSON", apperrs.ErrInvalid)
 	}
-	a, err := s.getByID(ctx, id)
+	a, err := s.getChecked(ctx, actorID, id, permissions.AutomationsWrite)
 	if err != nil {
 		return nil, err
 	}
@@ -241,7 +246,7 @@ func (s *Service) UpdateConfigValues(ctx context.Context, actorID, id string, va
 
 // Delete removes an automation permanently, revoking its token so it can never authenticate again.
 func (s *Service) Delete(ctx context.Context, actorID, id string) error {
-	if err := s.require(ctx, actorID, permissions.AutomationsDelete); err != nil {
+	if _, err := s.getChecked(ctx, actorID, id, permissions.AutomationsDelete); err != nil {
 		return err
 	}
 	if err := s.repo.Delete(ctx, id); err != nil {
@@ -255,10 +260,7 @@ func (s *Service) Delete(ctx context.Context, actorID, id string) error {
 
 // MintToken rotates a token; the previous hash is overwritten, not kept, so it stops authenticating immediately.
 func (s *Service) MintToken(ctx context.Context, actorID, id string) (*Automation, string, error) {
-	if err := s.require(ctx, actorID, permissions.AutomationsWrite); err != nil {
-		return nil, "", err
-	}
-	a, err := s.getByID(ctx, id)
+	a, err := s.getChecked(ctx, actorID, id, permissions.AutomationsWrite)
 	if err != nil {
 		return nil, "", err
 	}
@@ -282,10 +284,7 @@ func (s *Service) MintToken(ctx context.Context, actorID, id string) (*Automatio
 
 // RevokeToken invalidates an automation's current token immediately; minting a new one restores it.
 func (s *Service) RevokeToken(ctx context.Context, actorID, id string) (*Automation, error) {
-	if err := s.require(ctx, actorID, permissions.AutomationsWrite); err != nil {
-		return nil, err
-	}
-	a, err := s.getByID(ctx, id)
+	a, err := s.getChecked(ctx, actorID, id, permissions.AutomationsWrite)
 	if err != nil {
 		return nil, err
 	}
@@ -344,12 +343,32 @@ func (s *Service) getByID(ctx context.Context, id string) (*Automation, error) {
 	return a, nil
 }
 
-func (s *Service) require(ctx context.Context, actorID string, action permissions.Action) error {
-	return requirePermission(ctx, s.perm, actorID, action)
+// getChecked reads an automation and checks action in its own workspace (ADR 0087).
+func (s *Service) getChecked(ctx context.Context, actorID, id string, action permissions.Action) (*Automation, error) {
+	return requireOn(ctx, s.perm, s.repo, actorID, id, action)
+}
+
+func (s *Service) require(ctx context.Context, actorID, workspaceID string, action permissions.Action) error {
+	return requirePermission(ctx, s.perm, actorID, workspaceID, action)
+}
+
+// requireOn reads automationID and checks action in the workspace it belongs to.
+func requireOn(ctx context.Context, perm PermissionGate, repo Repo, actorID, automationID string, action permissions.Action) (*Automation, error) {
+	if strings.TrimSpace(automationID) == "" {
+		return nil, fmt.Errorf("%w: automation id is required", apperrs.ErrInvalid)
+	}
+	a, err := repo.Get(ctx, automationID)
+	if err != nil {
+		return nil, fmt.Errorf("get automation %s: %w", automationID, err)
+	}
+	if err := requirePermission(ctx, perm, actorID, a.WorkspaceID, action); err != nil {
+		return nil, err
+	}
+	return a, nil
 }
 
 // requirePermission is the shared check every automations use-case enforces automation.* actions through.
-func requirePermission(ctx context.Context, perm PermissionGate, actorID string, action permissions.Action) error {
+func requirePermission(ctx context.Context, perm PermissionGate, actorID, workspaceID string, action permissions.Action) error {
 	// RequireAutomation only reaches an automation's own subtree, so this read is a self-read needing no permission.
 	if actor, ok := identity.ActorFromCtx(ctx); ok && actor.Automation != nil && action == permissions.AutomationsRead {
 		return nil
@@ -357,10 +376,14 @@ func requirePermission(ctx context.Context, perm PermissionGate, actorID string,
 	if strings.TrimSpace(actorID) == "" {
 		return fmt.Errorf("%w: actor is required", apperrs.ErrUnauthorized)
 	}
-	if perm == nil || !perm.HasPermission(ctx, actorID, action) {
+	if perm == nil {
 		return fmt.Errorf("%w: %s required", apperrs.ErrForbidden, action)
 	}
-	return nil
+	// The use-cases name their actor; an adapter has already put the same one on ctx.
+	if _, ok := identity.ActorFromCtx(ctx); !ok {
+		ctx = identity.WithActor(ctx, identity.Actor{ID: actorID})
+	}
+	return perm.Require(ctx, workspaceID, action)
 }
 
 // mintToken generates a raw token, its hash, and a display prefix to recognize it without seeing it again.

@@ -44,8 +44,9 @@ func (h *Handler) Routes() http.Handler {
 }
 
 type createRequest struct {
-	Name   string   `json:"name"`
-	Scopes []string `json:"scopes"`
+	WorkspaceID string   `json:"workspace_id"`
+	Name        string   `json:"name"`
+	Scopes      []string `json:"scopes"`
 }
 
 // tokenResponse wraps an automation alongside its raw token, returned once
@@ -61,7 +62,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	a, token, err := h.svc.Create(r.Context(), actorID(r), req.Name, req.Scopes)
+	a, token, err := h.svc.Create(r.Context(), actorID(r), req.WorkspaceID, req.Name, req.Scopes)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
@@ -70,7 +71,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
-	list, err := h.svc.List(r.Context(), actorID(r))
+	list, err := h.svc.List(r.Context(), actorID(r), r.URL.Query().Get("workspace_id"))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

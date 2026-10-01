@@ -66,10 +66,7 @@ func NewVersionsService(repo VersionsRepo, automations Repo, perm PermissionGate
 
 // Push lands code as a pending version; it never activates itself, so the diff against active catches mistakes.
 func (s *VersionsService) Push(ctx context.Context, actorID, automationID, code, message string) (*Version, error) {
-	if err := requirePermission(ctx, s.perm, actorID, permissions.AutomationsWrite); err != nil {
-		return nil, err
-	}
-	if err := s.mustExist(ctx, automationID); err != nil {
+	if _, err := requireOn(ctx, s.perm, s.automations, actorID, automationID, permissions.AutomationsWrite); err != nil {
 		return nil, err
 	}
 	if strings.TrimSpace(code) == "" {
@@ -92,10 +89,7 @@ func (s *VersionsService) Push(ctx context.Context, actorID, automationID, code,
 
 // Activate repoints the active version to versionID, the one operation behind both the merge and rollback endpoints.
 func (s *VersionsService) Activate(ctx context.Context, actorID, automationID, versionID string) (*Version, error) {
-	if err := requirePermission(ctx, s.perm, actorID, permissions.AutomationsWrite); err != nil {
-		return nil, err
-	}
-	if err := s.mustExist(ctx, automationID); err != nil {
+	if _, err := requireOn(ctx, s.perm, s.automations, actorID, automationID, permissions.AutomationsWrite); err != nil {
 		return nil, err
 	}
 	if strings.TrimSpace(versionID) == "" {
@@ -110,10 +104,7 @@ func (s *VersionsService) Activate(ctx context.Context, actorID, automationID, v
 
 // List returns every version of automationID, newest first.
 func (s *VersionsService) List(ctx context.Context, actorID, automationID string) ([]Version, error) {
-	if err := requirePermission(ctx, s.perm, actorID, permissions.AutomationsRead); err != nil {
-		return nil, err
-	}
-	if err := s.mustExist(ctx, automationID); err != nil {
+	if _, err := requireOn(ctx, s.perm, s.automations, actorID, automationID, permissions.AutomationsRead); err != nil {
 		return nil, err
 	}
 	list, err := s.repo.ListByAutomation(ctx, automationID)
@@ -125,10 +116,7 @@ func (s *VersionsService) List(ctx context.Context, actorID, automationID string
 
 // Get pulls one version's full code, backing the SDK's pull command.
 func (s *VersionsService) Get(ctx context.Context, actorID, automationID, versionID string) (*Version, error) {
-	if err := requirePermission(ctx, s.perm, actorID, permissions.AutomationsRead); err != nil {
-		return nil, err
-	}
-	if err := s.mustExist(ctx, automationID); err != nil {
+	if _, err := requireOn(ctx, s.perm, s.automations, actorID, automationID, permissions.AutomationsRead); err != nil {
 		return nil, err
 	}
 	v, err := s.repo.Get(ctx, automationID, versionID)
@@ -140,10 +128,7 @@ func (s *VersionsService) Get(ctx context.Context, actorID, automationID, versio
 
 // Diff returns the active and pending versions for the UI to diff client-side; pending is nil when there is none.
 func (s *VersionsService) Diff(ctx context.Context, actorID, automationID string) (active, pending *Version, err error) {
-	if err := requirePermission(ctx, s.perm, actorID, permissions.AutomationsRead); err != nil {
-		return nil, nil, err
-	}
-	if err := s.mustExist(ctx, automationID); err != nil {
+	if _, err := requireOn(ctx, s.perm, s.automations, actorID, automationID, permissions.AutomationsRead); err != nil {
 		return nil, nil, err
 	}
 	active, err = s.repo.Active(ctx, automationID)
@@ -200,14 +185,4 @@ func (s *VersionsService) SeedVersion(ctx context.Context, automationID, code, m
 		return nil, fmt.Errorf("land upgrade version for automation %s: %w", automationID, err)
 	}
 	return v, nil
-}
-
-func (s *VersionsService) mustExist(ctx context.Context, automationID string) error {
-	if strings.TrimSpace(automationID) == "" {
-		return fmt.Errorf("%w: automation id is required", apperrs.ErrInvalid)
-	}
-	if _, err := s.automations.Get(ctx, automationID); err != nil {
-		return fmt.Errorf("get automation %s: %w", automationID, err)
-	}
-	return nil
 }

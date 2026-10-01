@@ -22,7 +22,7 @@ func (s *Service) SetScopes(sc Scopes) {
 func (s *Service) Require(ctx context.Context, workspaceID string, action permissions.Action) error {
 	userID, checked := caller(ctx)
 	if !checked {
-		return nil
+		return defaultAutomationInside(ctx, workspaceID)
 	}
 	ws := s.workspaceLayers(ctx, userID, workspaceID)
 	allowed := ws.owner || ws.has(action)
@@ -40,7 +40,7 @@ func (s *Service) Require(ctx context.Context, workspaceID string, action permis
 
 // RequireProject is Require in the workspace projectID belongs to; an unknown project is ErrNotFound.
 func (s *Service) RequireProject(ctx context.Context, projectID string, action permissions.Action) error {
-	if _, checked := caller(ctx); !checked {
+	if _, checked := caller(ctx); !checked && defaultAutomationWorkspace(ctx) == "" {
 		return nil
 	}
 	workspaceID, err := s.projectWorkspace(ctx, projectID)
@@ -126,6 +126,24 @@ func caller(ctx context.Context) (userID string, checked bool) {
 		return "", false
 	}
 	return actor.ID, true
+}
+
+// defaultAutomationInside holds a shipped default automation, whose scopes are its whole grant, to its own workspace.
+func defaultAutomationInside(ctx context.Context, workspaceID string) error {
+	home := defaultAutomationWorkspace(ctx)
+	if home == "" || home == workspaceID {
+		return nil
+	}
+	return fmt.Errorf("%w: workspace %s", apperrs.ErrNotFound, workspaceID)
+}
+
+// defaultAutomationWorkspace is the workspace of the creator-less automation on ctx, or "" for any other caller.
+func defaultAutomationWorkspace(ctx context.Context) string {
+	actor, ok := identity.ActorFromCtx(ctx)
+	if !ok || actor.ID != "" || actor.Automation == nil {
+		return ""
+	}
+	return actor.Automation.WorkspaceID
 }
 
 func (s *Service) projectWorkspace(ctx context.Context, projectID string) (string, error) {

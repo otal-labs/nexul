@@ -40,7 +40,7 @@ func TestRequire(t *testing.T) {
 	roles.set("ws-b", "olga", RoleInfo{IsOwnerRole: true})
 	s.SetScopes(fakeScopes{projects: map[string]string{"p-1": "ws-a"}, workspaces: map[string][]string{"alice": {"ws-a", "ws-b"}, "olga": {"ws-b"}}})
 	alice := identity.WithActor(context.Background(), identity.Actor{ID: "alice"})
-	defaultAutomation := identity.WithActor(context.Background(), identity.Actor{Automation: &identity.AutomationRef{ID: "a-1"}})
+	defaultAutomation := identity.WithActor(context.Background(), identity.Actor{Automation: &identity.AutomationRef{ID: "a-1", WorkspaceID: "ws-a"}})
 
 	tests := []struct {
 		name  string
@@ -53,6 +53,13 @@ func TestRequire(t *testing.T) {
 		{"a shipped default automation passes on its gateway-checked scopes", func() error {
 			return s.RequireProject(defaultAutomation, "p-1", permissions.TicketsWrite)
 		}, nil},
+		{"a shipped default automation is held to its own workspace", func() error {
+			return s.Require(defaultAutomation, "ws-b", permissions.TicketsRead)
+		}, apperrs.ErrNotFound},
+		{"a shipped default automation cannot reach another workspace's project", func() error {
+			s.SetScopes(fakeScopes{projects: map[string]string{"p-1": "ws-a", "p-2": "ws-b"}, workspaces: map[string][]string{"alice": {"ws-a", "ws-b"}, "olga": {"ws-b"}}})
+			return s.RequireProject(defaultAutomation, "p-2", permissions.TicketsWrite)
+		}, apperrs.ErrNotFound},
 		{"an actor with no id is not a member", func() error {
 			return s.Require(identity.WithActor(context.Background(), identity.Actor{}), "ws-a", permissions.Member)
 		}, apperrs.ErrNotFound},

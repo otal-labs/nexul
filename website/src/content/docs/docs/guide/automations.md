@@ -5,7 +5,7 @@ sidebar:
   order: 12
 ---
 
-An automation is first-party code: when an event happens in your workspace, a function runs. There's no rule builder or condition DSL — customization means writing code against the Nexul SDK.
+An automation is first-party code: when an event happens in your workspace, a function runs. Automations belong to a workspace: each one hears only that workspace's events, plus instance-level ones such as runners and DNS, and switching or configuring one on a workspace's Automations page changes it there alone. Every workspace has its own copy of each default automation. There's no rule builder or condition DSL — customization means writing code against the Nexul SDK.
 
 ## The model
 
@@ -44,7 +44,7 @@ Run it on the machine. It installs the host as the `nexul-automations-<name>` se
 
 Each automation gets a scoped token minted when you create it; you pick its scopes from the same [permission vocabulary](/docs/guide/api-and-tokens/) integrations use. The token is what gates what the automation's code can touch through the API — including changing Nexul itself. Revoking it kills access immediately.
 
-Secrets are a shared workspace pool, GitHub-Actions-style: set a name and value once on the **Secrets** tab of the Automations page, and every automation can read it as `ctx.secrets.NAME`. Values are write-only after saving — names stay visible, values never do.
+Secrets are a shared pool per workspace, GitHub-Actions-style: set a name and value once on the **Secrets** tab of the Automations page, and every automation in that workspace can read it as `ctx.secrets.NAME`. Another workspace's automations never see it. Values are write-only after saving — names stay visible, values never do.
 
 ## The SDK
 
@@ -93,3 +93,11 @@ The `testing` module (`sdk/src/testing.ts`) exports `createMockContext`, the sam
 ## Versions
 
 Every push creates an immutable version — code, who pushed it, when, and an optional message — landing as pending. The diff view against the active version is where you catch what you didn't mean to change. Rolling back means repointing at an older version, the same mechanism as any other merge.
+
+## The decisions check
+
+The Automations page also lists the built-in **Decisions check** among the defaults (see Plays). It has no code or config of its own, only a switch: on, a ticket that enters a Done column gets the check; off, nothing runs. It starts off in every workspace. Switching it takes `automations:write`; over HTTP it is `PATCH /api/workspaces/{workspaceID}/plays/decisions-check` with `{"enabled": true}`, and over MCP `play_update` with `id` `decisions-check` and `enabled`.
+
+## Over HTTP and MCP
+
+`GET /api/automations?workspace_id=…` lists one workspace's automations; without `workspace_id` it lists every workspace's you can read. `POST /api/automations` needs `workspace_id` in its body, and the secrets routes (`/api/automation-secrets`) need `workspace_id` in the query. `automation_list` and `automation_create` take the same `workspace_id`.

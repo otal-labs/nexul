@@ -24,7 +24,7 @@ func newTestService(repo Repo, perm PermissionGate) *Service {
 func TestService_Create(t *testing.T) {
 	t.Run("mints a custom automation with a token returned once", func(t *testing.T) {
 		s := newTestService(newFakeRepo(), allowAll("owner"))
-		a, token, err := s.Create(context.Background(), "owner", "My automation", []string{"tickets:write"})
+		a, token, err := s.Create(context.Background(), "owner", "ws-1", "My automation", []string{"tickets:write"})
 		require.NoError(t, err)
 		assert.Equal(t, "My automation", a.Name)
 		assert.Equal(t, KindCustom, a.Kind)
@@ -37,36 +37,36 @@ func TestService_Create(t *testing.T) {
 	t.Run("unknown scope is rejected when a resolver is wired", func(t *testing.T) {
 		svc := NewService(newFakeRepo(), allowAll("creator-1"))
 		svc.SetGateway(nil, func([]string) ([]string, error) { return nil, apperrs.ErrInvalid })
-		_, _, err := svc.Create(context.Background(), "creator-1", "typo", []string{"ticket:write"})
+		_, _, err := svc.Create(context.Background(), "creator-1", "ws-1", "typo", []string{"ticket:write"})
 		require.ErrorIs(t, err, apperrs.ErrInvalid)
 	})
 
 	t.Run("stored scopes are the resolver's effective set", func(t *testing.T) {
 		svc := NewService(newFakeRepo(), allowAll("creator-1"))
 		svc.SetGateway(nil, func([]string) ([]string, error) { return []string{"tickets:write", "tickets:read"}, nil })
-		a, _, err := svc.Create(context.Background(), "creator-1", "expanded", []string{"tickets:write"})
+		a, _, err := svc.Create(context.Background(), "creator-1", "ws-1", "expanded", []string{"tickets:write"})
 		require.NoError(t, err)
 		assert.Equal(t, []string{"tickets:write", "tickets:read"}, a.Scopes)
 	})
 
 	t.Run("no scopes is invalid", func(t *testing.T) {
 		s := newTestService(newFakeRepo(), allowAll("owner"))
-		_, _, err := s.Create(context.Background(), "owner", "x", nil)
+		_, _, err := s.Create(context.Background(), "owner", "ws-1", "x", nil)
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 	})
 	t.Run("empty name is invalid", func(t *testing.T) {
 		s := newTestService(newFakeRepo(), allowAll("owner"))
-		_, _, err := s.Create(context.Background(), "owner", "  ", []string{"tickets:read"})
+		_, _, err := s.Create(context.Background(), "owner", "ws-1", "  ", []string{"tickets:read"})
 		assert.True(t, errors.Is(err, apperrs.ErrInvalid))
 	})
 	t.Run("no actor is unauthorized", func(t *testing.T) {
 		s := newTestService(newFakeRepo(), allowAll("owner"))
-		_, _, err := s.Create(context.Background(), "", "x", []string{"tickets:read"})
+		_, _, err := s.Create(context.Background(), "", "ws-1", "x", []string{"tickets:read"})
 		assert.True(t, errors.Is(err, apperrs.ErrUnauthorized))
 	})
 	t.Run("actor without automations:write is forbidden", func(t *testing.T) {
 		s := newTestService(newFakeRepo(), newFakePerm(nil))
-		_, _, err := s.Create(context.Background(), "alice", "x", []string{"tickets:read"})
+		_, _, err := s.Create(context.Background(), "alice", "ws-1", "x", []string{"tickets:read"})
 		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
 	})
 }
@@ -74,14 +74,17 @@ func TestService_Create(t *testing.T) {
 func TestService_ListAndGet(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo, allowAll("owner"))
-	created, _, err := s.Create(context.Background(), "owner", "x", []string{"tickets:read"})
+	created, _, err := s.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
 	require.NoError(t, err)
 
 	t.Run("list requires automations:read", func(t *testing.T) {
-		_, err := s.List(context.Background(), "owner")
+		_, err := s.List(context.Background(), "owner", "")
 		require.NoError(t, err)
-		_, err = s.List(context.Background(), "alice")
+		_, err = s.List(context.Background(), "alice", "ws-1")
 		assert.True(t, errors.Is(err, apperrs.ErrForbidden))
+		list, err := s.List(context.Background(), "alice", "")
+		require.NoError(t, err)
+		assert.Empty(t, list, "across workspaces, the ones alice cannot read are left out")
 	})
 	t.Run("get returns the created automation", func(t *testing.T) {
 		got, err := s.Get(context.Background(), "owner", created.ID)
@@ -106,7 +109,7 @@ func TestService_ListAndGet(t *testing.T) {
 func TestService_SetEnabled(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo, allowAll("owner"))
-	created, _, err := s.Create(context.Background(), "owner", "x", []string{"tickets:read"})
+	created, _, err := s.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
 	require.NoError(t, err)
 	require.False(t, created.Enabled)
 
@@ -128,7 +131,7 @@ func TestService_SetEnabled(t *testing.T) {
 func TestService_UpdateConfigValues(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo, allowAll("owner"))
-	created, _, err := s.Create(context.Background(), "owner", "x", []string{"tickets:read"})
+	created, _, err := s.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
 	require.NoError(t, err)
 
 	t.Run("replaces config values", func(t *testing.T) {
@@ -145,7 +148,7 @@ func TestService_UpdateConfigValues(t *testing.T) {
 func TestService_Delete(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo, allowAll("owner"))
-	created, _, err := s.Create(context.Background(), "owner", "x", []string{"tickets:read"})
+	created, _, err := s.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
 	require.NoError(t, err)
 
 	require.NoError(t, s.Delete(context.Background(), "owner", created.ID))
@@ -156,7 +159,7 @@ func TestService_Delete(t *testing.T) {
 func TestService_TokenLifecycle(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo, allowAll("owner"))
-	created, firstToken, err := s.Create(context.Background(), "owner", "x", []string{"tickets:read"})
+	created, firstToken, err := s.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
 	require.NoError(t, err)
 
 	t.Run("mint rotates the token", func(t *testing.T) {
@@ -187,7 +190,7 @@ func TestService_TokenLifecycle(t *testing.T) {
 func TestService_SyncFromCode(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo, allowAll("owner"))
-	created, _, err := s.Create(context.Background(), "owner", "placeholder", []string{"tickets:read"})
+	created, _, err := s.Create(context.Background(), "owner", "ws-1", "placeholder", []string{"tickets:read"})
 	require.NoError(t, err)
 
 	a, err := s.SyncFromCode(context.Background(), created.ID, "Ticket finished", "Moves finished tickets to done", []string{"ticket.finished"}, json.RawMessage(`{"status":{"type":"string"}}`))
@@ -211,7 +214,7 @@ func TestService_SyncFromCode(t *testing.T) {
 func TestService_AuthenticateToken(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo, allowAll("owner"))
-	created, token, err := s.Create(context.Background(), "owner", "x", []string{"tickets:read"})
+	created, token, err := s.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
 	require.NoError(t, err)
 
 	t.Run("valid token resolves the automation", func(t *testing.T) {
@@ -238,7 +241,7 @@ func TestService_AuthenticateToken(t *testing.T) {
 func TestService_RevokeToken_DisconnectsLiveConnection(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo, allowAll("owner"))
-	created, _, err := s.Create(context.Background(), "owner", "x", []string{"tickets:read"})
+	created, _, err := s.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
 	require.NoError(t, err)
 
 	conns := &fakeConnRegistry{}
@@ -256,7 +259,7 @@ func TestService_RevokeToken_DisconnectsLiveConnection(t *testing.T) {
 func TestService_MintToken_DisconnectsLiveConnection(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo, allowAll("owner"))
-	created, _, err := s.Create(context.Background(), "owner", "x", []string{"tickets:read"})
+	created, _, err := s.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
 	require.NoError(t, err)
 
 	conns := &fakeConnRegistry{}
@@ -274,7 +277,7 @@ func TestService_MintToken_DisconnectsLiveConnection(t *testing.T) {
 func TestService_RevokeToken_AlreadyRevoked_DoesNotDisconnectAgain(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo, allowAll("owner"))
-	created, _, err := s.Create(context.Background(), "owner", "x", []string{"tickets:read"})
+	created, _, err := s.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
 	require.NoError(t, err)
 
 	conns := &fakeConnRegistry{}
@@ -292,7 +295,7 @@ func TestService_RevokeToken_AlreadyRevoked_DoesNotDisconnectAgain(t *testing.T)
 func TestService_Delete_DisconnectsLiveConnection(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo, allowAll("owner"))
-	created, _, err := s.Create(context.Background(), "owner", "x", []string{"tickets:read"})
+	created, _, err := s.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
 	require.NoError(t, err)
 
 	conns := &fakeConnRegistry{}
@@ -309,7 +312,7 @@ func TestService_Delete_DisconnectsLiveConnection(t *testing.T) {
 func TestService_RevokeToken_NoConnectionRegistry_DoesNotPanic(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo, allowAll("owner"))
-	created, _, err := s.Create(context.Background(), "owner", "x", []string{"tickets:read"})
+	created, _, err := s.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
 	require.NoError(t, err)
 
 	_, err = s.RevokeToken(context.Background(), "owner", created.ID)
@@ -318,7 +321,7 @@ func TestService_RevokeToken_NoConnectionRegistry_DoesNotPanic(t *testing.T) {
 
 func TestService_SyncFromCode_UnchangedAnnounceDoesNotTouchUpdatedAt(t *testing.T) {
 	s := newTestService(newFakeRepo(), allowAll("owner"))
-	created, _, err := s.Create(context.Background(), "owner", "x", []string{"tickets:read"})
+	created, _, err := s.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
 	require.NoError(t, err)
 	schema := json.RawMessage(`{"type":"object"}`)
 
@@ -336,4 +339,36 @@ func TestService_SyncFromCode_UnchangedAnnounceDoesNotTouchUpdatedAt(t *testing.
 	changed, err := s.SyncFromCode(context.Background(), created.ID, "Synced", "new desc", []string{"ticket.created"}, nil)
 	require.NoError(t, err)
 	assert.Equal(t, first.Add(time.Hour), changed.UpdatedAt)
+}
+
+func TestService_WorkspaceScope(t *testing.T) {
+	perm := allowAll("owner")
+	perm.members = map[string][]string{"owner": {"ws-1"}}
+	repo := newFakeRepo()
+	s := newTestService(repo, perm)
+	ours, _, err := s.Create(context.Background(), "owner", "ws-1", "ours", []string{"tickets:read"})
+	require.NoError(t, err)
+	repo.rows["theirs"] = &Automation{ID: "theirs", WorkspaceID: "ws-2", Name: "theirs", Kind: KindDefault}
+
+	t.Run("a workspace's list holds only its own automations", func(t *testing.T) {
+		list, err := s.List(context.Background(), "owner", "ws-1")
+		require.NoError(t, err)
+		require.Len(t, list, 1)
+		assert.Equal(t, ours.ID, list[0].ID)
+	})
+	t.Run("the list across workspaces leaves out one the caller is not in", func(t *testing.T) {
+		list, err := s.List(context.Background(), "owner", "")
+		require.NoError(t, err)
+		require.Len(t, list, 1)
+		assert.Equal(t, ours.ID, list[0].ID)
+	})
+	t.Run("switching another workspace's automation is not found, and leaves it alone", func(t *testing.T) {
+		_, err := s.SetEnabled(context.Background(), "owner", "theirs", true)
+		require.ErrorIs(t, err, apperrs.ErrNotFound)
+		assert.False(t, repo.rows["theirs"].Enabled)
+	})
+	t.Run("creating in a workspace the caller is not in is not found", func(t *testing.T) {
+		_, _, err := s.Create(context.Background(), "owner", "ws-2", "x", []string{"tickets:read"})
+		require.ErrorIs(t, err, apperrs.ErrNotFound)
+	})
 }

@@ -58,4 +58,5 @@ it, and nobody is a member yet to check it against.
 
 Supersedes ADR 0023, and the "every signed-in member reaches every stack" paragraph of ADR 0079. Decided 2026-09-29.
 Amended by ADR 0088, which replaces the instance-admin bit with permissions checked against every workspace in the
-same way. Amended by ADR 0094, which moves creating a channel or voice channel to `channels:write`.
+same way. Amended by ADR 0095, which scopes automations to a workspace and holds a shipped default automation to
+its own. Amended by ADR 0094, which moves creating a channel or voice channel to `channels:write`.

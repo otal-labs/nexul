@@ -255,13 +255,13 @@ func (g *fakeChannelGate) CreateGeneralChannel(_ context.Context, _, _ string) e
 	return g.createErr
 }
 
-// fakePlaysGate is a no-op stand-in for the plays domain's PlaysGate seam (ticket 20); tenancy tests care
+// fakeDefaultsGate is a no-op stand-in for the plays domain's DefaultsGate seam (ticket 20); tenancy tests care
 // about workspace/role/membership bookkeeping, not plays.
-type fakePlaysGate struct {
+type fakeDefaultsGate struct {
 	seedErr error
 }
 
-func (g *fakePlaysGate) SeedDefaultPlays(_ context.Context, _ string) error {
+func (g *fakeDefaultsGate) SeedWorkspaceDefaults(_ context.Context, _ string) error {
 	return g.seedErr
 }
 
@@ -411,7 +411,7 @@ func (g *fakeAccountGate) Presence(context.Context) (map[string]bool, map[string
 }
 
 func newTestService(repo *fakeRepo) *Service {
-	s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), newFakeRoleNameGate(), newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{}, newFakeAccountGate())
+	s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), newFakeRoleNameGate(), newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakeDefaultsGate{}, newFakeAccountGate())
 	s.now = func() time.Time { return fixedNow }
 	return s
 }
@@ -478,7 +478,7 @@ func TestCreate(t *testing.T) {
 	})
 	t.Run("role gate error propagates and skips adding the member", func(t *testing.T) {
 		repo := newFakeRepo()
-		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{createErr: errors.New("roles unavailable")}, newFakePermissionGate(), newFakeRoleNameGate(), newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{}, newFakeAccountGate())
+		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{createErr: errors.New("roles unavailable")}, newFakePermissionGate(), newFakeRoleNameGate(), newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakeDefaultsGate{}, newFakeAccountGate())
 		s.now = func() time.Time { return fixedNow }
 		_, err := s.Create(context.Background(), "u-1", "Acme")
 		require.Error(t, err)
@@ -490,7 +490,7 @@ func TestCreate(t *testing.T) {
 	})
 	t.Run("without workspaces:create is forbidden", func(t *testing.T) {
 		repo := newFakeRepo()
-		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, &fakePermissionGate{allow: false}, newFakeRoleNameGate(), newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{}, newFakeAccountGate())
+		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, &fakePermissionGate{allow: false}, newFakeRoleNameGate(), newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakeDefaultsGate{}, newFakeAccountGate())
 		s.now = func() time.Time { return fixedNow }
 		_, err := s.Create(context.Background(), "u-1", "Acme")
 		require.Error(t, err)
@@ -498,7 +498,7 @@ func TestCreate(t *testing.T) {
 	})
 	t.Run("permission gate error propagates", func(t *testing.T) {
 		repo := newFakeRepo()
-		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, &fakePermissionGate{err: errors.New("gate down")}, newFakeRoleNameGate(), newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{}, newFakeAccountGate())
+		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, &fakePermissionGate{err: errors.New("gate down")}, newFakeRoleNameGate(), newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakeDefaultsGate{}, newFakeAccountGate())
 		s.now = func() time.Time { return fixedNow }
 		_, err := s.Create(context.Background(), "u-1", "Acme")
 		require.Error(t, err)
@@ -604,7 +604,7 @@ func ptr[T any](v T) *T { return &v }
 func newRenamingService(repo *fakeRepo) *Service {
 	wsPerms := newFakeWorkspacePermissionGate()
 	wsPerms.perms["u-1"] = []string{"workspaces:write"}
-	s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), newFakeRoleNameGate(), wsPerms, newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{}, newFakeAccountGate())
+	s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), newFakeRoleNameGate(), wsPerms, newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakeDefaultsGate{}, newFakeAccountGate())
 	s.now = func() time.Time { return fixedNow }
 	return s
 }
@@ -656,7 +656,7 @@ func TestBindDefaultWorkspaceOwner(t *testing.T) {
 	t.Run("role gate error propagates", func(t *testing.T) {
 		repo := newFakeRepo()
 		repo.workspaces[DefaultWorkspaceID] = &Workspace{ID: DefaultWorkspaceID, Name: "Default"}
-		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{createErr: errors.New("roles unavailable")}, newFakePermissionGate(), newFakeRoleNameGate(), newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{}, newFakeAccountGate())
+		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{createErr: errors.New("roles unavailable")}, newFakePermissionGate(), newFakeRoleNameGate(), newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakeDefaultsGate{}, newFakeAccountGate())
 		s.now = func() time.Time { return fixedNow }
 		err := s.BindDefaultWorkspaceOwner(context.Background(), "u-1")
 		require.Error(t, err)
@@ -718,7 +718,7 @@ func TestMemberRoleName(t *testing.T) {
 	t.Run("returns the owner role's name for the workspace creator", func(t *testing.T) {
 		repo := newFakeRepo()
 		nameGate := newFakeRoleNameGate()
-		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), nameGate, newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{}, newFakeAccountGate())
+		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), nameGate, newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakeDefaultsGate{}, newFakeAccountGate())
 		s.now = func() time.Time { return fixedNow }
 		w, err := s.Create(context.Background(), "u-1", "Acme")
 		require.NoError(t, err)
@@ -731,7 +731,7 @@ func TestMemberRoleName(t *testing.T) {
 	t.Run("returns a custom role's real name", func(t *testing.T) {
 		repo := newFakeRepo()
 		nameGate := newFakeRoleNameGate()
-		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), nameGate, newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{}, newFakeAccountGate())
+		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), nameGate, newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakeDefaultsGate{}, newFakeAccountGate())
 		s.now = func() time.Time { return fixedNow }
 		require.NoError(t, repo.AddMember(context.Background(), &Member{UserID: "u-2", WorkspaceID: "ws-1", RoleID: "role-editor"}))
 		nameGate.names["role-editor"] = "Editor"
@@ -744,7 +744,7 @@ func TestMemberRoleName(t *testing.T) {
 		repo := newFakeRepo()
 		nameGate := newFakeRoleNameGate()
 		nameGate.err = errors.New("roles unavailable")
-		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), nameGate, newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{}, newFakeAccountGate())
+		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), nameGate, newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakeDefaultsGate{}, newFakeAccountGate())
 		s.now = func() time.Time { return fixedNow }
 		w, err := s.Create(context.Background(), "u-1", "Acme")
 		require.NoError(t, err)
@@ -759,7 +759,7 @@ func TestMemberPermissions(t *testing.T) {
 	t.Run("delegates to the workspace-permission gate", func(t *testing.T) {
 		repo := newFakeRepo()
 		wsPerms := newFakeWorkspacePermissionGate()
-		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), newFakeRoleNameGate(), wsPerms, newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{}, newFakeAccountGate())
+		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), newFakeRoleNameGate(), wsPerms, newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakeDefaultsGate{}, newFakeAccountGate())
 		s.now = func() time.Time { return fixedNow }
 		w, err := s.Create(context.Background(), "u-1", "Acme")
 		require.NoError(t, err)
@@ -856,7 +856,7 @@ func newInviteFixture() *inviteTestFixture {
 		users:     newFakeUserLookupGate(),
 		nameGate:  newFakeRoleNameGate(),
 	}
-	f.svc = NewService(f.repo, f.repo, f.invites, &fakeRoleGate{}, newFakePermissionGate(), f.nameGate, f.wsPerms, f.allowlist, f.users, &fakeChannelGate{}, &fakePlaysGate{}, newFakeAccountGate())
+	f.svc = NewService(f.repo, f.repo, f.invites, &fakeRoleGate{}, newFakePermissionGate(), f.nameGate, f.wsPerms, f.allowlist, f.users, &fakeChannelGate{}, &fakeDefaultsGate{}, newFakeAccountGate())
 	f.svc.now = func() time.Time { return fixedNow }
 	return f
 }
@@ -1089,7 +1089,7 @@ func TestSetMentionChipTemplate(t *testing.T) {
 	newFixture := func() (*Service, *fakeRepo, *fakeWorkspacePermissionGate) {
 		repo := newFakeRepo()
 		wsPerms := newFakeWorkspacePermissionGate()
-		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), newFakeRoleNameGate(), wsPerms, newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{}, newFakeAccountGate())
+		s := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), newFakeRoleNameGate(), wsPerms, newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakeDefaultsGate{}, newFakeAccountGate())
 		s.now = func() time.Time { return fixedNow }
 		return s, repo, wsPerms
 	}

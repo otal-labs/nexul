@@ -53,6 +53,7 @@ type Automation struct {
 	UpdatedAt      int64
 	CreatedBy      string
 	HostID         sql.NullString
+	WorkspaceID    string
 }
 
 type AutomationCursor struct {
@@ -104,10 +105,11 @@ type AutomationRun struct {
 }
 
 type AutomationSecret struct {
-	Name      string
-	Value     string
-	CreatedAt int64
-	UpdatedAt int64
+	WorkspaceID string
+	Name        string
+	Value       string
+	CreatedAt   int64
+	UpdatedAt   int64
 }
 
 type AutomationVersion struct {
@@ -904,12 +906,13 @@ type UserIdentity struct {
 }
 
 type Workspace struct {
-	ID                  string
-	Name                string
-	CreatedAt           int64
-	UpdatedAt           int64
-	MentionChipTemplate string
-	Slug                string
+	ID                    string
+	Name                  string
+	CreatedAt             int64
+	UpdatedAt             int64
+	MentionChipTemplate   string
+	Slug                  string
+	DecisionsCheckEnabled int64
 }
 
 type WorkspaceInvite struct {

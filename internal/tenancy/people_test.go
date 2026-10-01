@@ -24,7 +24,7 @@ func newPeopleFixture(t *testing.T) (*Handler, *Service, *fakeAccountGate) {
 	accounts.accounts["bob"] = &TeamAccount{ID: "bob", Login: "bob", Status: "active"}
 	perm := newFakePermissionGate()
 	perm.allow = false
-	svc := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, perm, newFakeRoleNameGate(), newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{}, accounts)
+	svc := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, perm, newFakeRoleNameGate(), newFakeWorkspacePermissionGate(), newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakeDefaultsGate{}, accounts)
 	return NewHandler(svc), svc, accounts
 }
 

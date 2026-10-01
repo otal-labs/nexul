@@ -49,13 +49,13 @@ func TestAppendCappedLog_AlreadyAtCap_DiscardsChunk(t *testing.T) {
 }
 
 func TestRunsService_ListByAutomation_NoPermission_ReturnsForbidden(t *testing.T) {
-	svc := NewRunsService(newFakeRunsRepo(), newFakePerm(nil))
+	svc := NewRunsService(newFakeRunsRepo(), runsAutomations(), newFakePerm(nil))
 	_, err := svc.ListByAutomation(context.Background(), "u1", "a1", 10)
 	require.Error(t, err)
 }
 
 func TestRunsService_ListByAutomation_EmptyActor_ReturnsUnauthorized(t *testing.T) {
-	svc := NewRunsService(newFakeRunsRepo(), allowAll("u1"))
+	svc := NewRunsService(newFakeRunsRepo(), runsAutomations(), allowAll("u1"))
 	_, err := svc.ListByAutomation(context.Background(), "", "a1", 10)
 	require.Error(t, err)
 }
@@ -65,7 +65,7 @@ func TestRunsService_ListByAutomation_ReturnsOnlyMatchingAutomation(t *testing.T
 	require.NoError(t, repo.Create(context.Background(), &Run{ID: "r1", AutomationID: "a1", CreatedAt: time.Now()}))
 	require.NoError(t, repo.Create(context.Background(), &Run{ID: "r2", AutomationID: "a2", CreatedAt: time.Now()}))
 
-	svc := NewRunsService(repo, allowAll("u1"))
+	svc := NewRunsService(repo, runsAutomations(), allowAll("u1"))
 	runs, err := svc.ListByAutomation(context.Background(), "u1", "a1", 10)
 	require.NoError(t, err)
 	require.Len(t, runs, 1)
@@ -73,13 +73,13 @@ func TestRunsService_ListByAutomation_ReturnsOnlyMatchingAutomation(t *testing.T
 }
 
 func TestRunsService_Get_NoPermission_ReturnsForbidden(t *testing.T) {
-	svc := NewRunsService(newFakeRunsRepo(), newFakePerm(nil))
+	svc := NewRunsService(newFakeRunsRepo(), runsAutomations(), newFakePerm(nil))
 	_, err := svc.Get(context.Background(), "u1", "a1", "r1")
 	require.Error(t, err)
 }
 
 func TestRunsService_Get_UnknownRun_ReturnsNotFound(t *testing.T) {
-	svc := NewRunsService(newFakeRunsRepo(), allowAll("u1"))
+	svc := NewRunsService(newFakeRunsRepo(), runsAutomations(), allowAll("u1"))
 	_, err := svc.Get(context.Background(), "u1", "a1", "missing")
 	require.Error(t, err)
 }
@@ -88,7 +88,7 @@ func TestRunsService_Get_WrongAutomation_ReturnsNotFound(t *testing.T) {
 	repo := newFakeRunsRepo()
 	require.NoError(t, repo.Create(context.Background(), &Run{ID: "r1", AutomationID: "a1"}))
 
-	svc := NewRunsService(repo, allowAll("u1"))
+	svc := NewRunsService(repo, runsAutomations(), allowAll("u1"))
 	_, err := svc.Get(context.Background(), "u1", "a2", "r1")
 	require.Error(t, err)
 }
@@ -97,7 +97,7 @@ func TestRunsService_Get_Matching_ReturnsRun(t *testing.T) {
 	repo := newFakeRunsRepo()
 	require.NoError(t, repo.Create(context.Background(), &Run{ID: "r1", AutomationID: "a1", Logs: "hi"}))
 
-	svc := NewRunsService(repo, allowAll("u1"))
+	svc := NewRunsService(repo, runsAutomations(), allowAll("u1"))
 	run, err := svc.Get(context.Background(), "u1", "a1", "r1")
 	require.NoError(t, err)
 	assert.Equal(t, "hi", run.Logs)
@@ -108,7 +108,7 @@ func TestRunsService_Cleanup_DeletesOldRuns(t *testing.T) {
 	require.NoError(t, repo.Create(context.Background(), &Run{ID: "old", AutomationID: "a1", CreatedAt: time.Now().Add(-40 * 24 * time.Hour)}))
 	require.NoError(t, repo.Create(context.Background(), &Run{ID: "new", AutomationID: "a1", CreatedAt: time.Now()}))
 
-	svc := NewRunsService(repo, allowAll("u1"))
+	svc := NewRunsService(repo, runsAutomations(), allowAll("u1"))
 	n, err := svc.Cleanup(context.Background(), 30*24*time.Hour)
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), n)
@@ -120,7 +120,7 @@ func TestRunsService_Cleanup_DeletesOldRuns(t *testing.T) {
 }
 
 func TestRunCleanupLoop_StopsOnContextCancel(t *testing.T) {
-	svc := NewRunsService(newFakeRunsRepo(), allowAll("u1"))
+	svc := NewRunsService(newFakeRunsRepo(), runsAutomations(), allowAll("u1"))
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	go func() {
@@ -138,7 +138,7 @@ func TestRunCleanupLoop_StopsOnContextCancel(t *testing.T) {
 func TestRunCleanupLoop_DeletesOnTick(t *testing.T) {
 	repo := newFakeRunsRepo()
 	require.NoError(t, repo.Create(context.Background(), &Run{ID: "old", AutomationID: "a1", CreatedAt: time.Now().Add(-40 * 24 * time.Hour)}))
-	svc := NewRunsService(repo, allowAll("u1"))
+	svc := NewRunsService(repo, runsAutomations(), allowAll("u1"))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -152,7 +152,7 @@ func TestRunCleanupLoop_DeletesOnTick(t *testing.T) {
 
 func TestRunCleanupLoop_CleanupError_LogsAndContinues(t *testing.T) {
 	repo := &erroringRunsRepo{fakeRunsRepo: newFakeRunsRepo()}
-	svc := NewRunsService(repo, allowAll("u1"))
+	svc := NewRunsService(repo, runsAutomations(), allowAll("u1"))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
@@ -177,7 +177,7 @@ func withActor(r *http.Request, id string) *http.Request {
 func TestRunsHandler_List_ReturnsRuns(t *testing.T) {
 	repo := newFakeRunsRepo()
 	require.NoError(t, repo.Create(context.Background(), &Run{ID: "r1", AutomationID: "a1", CreatedAt: time.Now()}))
-	h := NewRunsHandler(NewRunsService(repo, allowAll("u1")))
+	h := NewRunsHandler(NewRunsService(repo, runsAutomations(), allowAll("u1")))
 
 	req := withActor(httptest.NewRequest(http.MethodGet, "/api/automations/a1/runs", nil), "u1")
 	req.SetPathValue("id", "a1")
@@ -191,7 +191,7 @@ func TestRunsHandler_List_ReturnsRuns(t *testing.T) {
 }
 
 func TestRunsHandler_List_Forbidden_ReturnsError(t *testing.T) {
-	h := NewRunsHandler(NewRunsService(newFakeRunsRepo(), newFakePerm(nil)))
+	h := NewRunsHandler(NewRunsService(newFakeRunsRepo(), runsAutomations(), newFakePerm(nil)))
 
 	req := withActor(httptest.NewRequest(http.MethodGet, "/api/automations/a1/runs", nil), "u1")
 	req.SetPathValue("id", "a1")
@@ -202,7 +202,7 @@ func TestRunsHandler_List_Forbidden_ReturnsError(t *testing.T) {
 }
 
 func TestRunsHandler_Get_UnknownRun_ReturnsNotFound(t *testing.T) {
-	h := NewRunsHandler(NewRunsService(newFakeRunsRepo(), allowAll("u1")))
+	h := NewRunsHandler(NewRunsService(newFakeRunsRepo(), runsAutomations(), allowAll("u1")))
 
 	req := withActor(httptest.NewRequest(http.MethodGet, "/api/automations/a1/runs/missing", nil), "u1")
 	req.SetPathValue("id", "a1")
@@ -216,7 +216,7 @@ func TestRunsHandler_Get_UnknownRun_ReturnsNotFound(t *testing.T) {
 func TestRunsHandler_Get_Found_ReturnsRun(t *testing.T) {
 	repo := newFakeRunsRepo()
 	require.NoError(t, repo.Create(context.Background(), &Run{ID: "r1", AutomationID: "a1", Logs: "log line"}))
-	h := NewRunsHandler(NewRunsService(repo, allowAll("u1")))
+	h := NewRunsHandler(NewRunsService(repo, runsAutomations(), allowAll("u1")))
 
 	req := withActor(httptest.NewRequest(http.MethodGet, "/api/automations/a1/runs/r1", nil), "u1")
 	req.SetPathValue("id", "a1")
@@ -235,7 +235,7 @@ func TestRunsHandler_List_DefaultAndCustomLimit(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		require.NoError(t, repo.Create(context.Background(), &Run{ID: string(rune('a' + i)), AutomationID: "a1", CreatedAt: time.Now()}))
 	}
-	h := NewRunsHandler(NewRunsService(repo, allowAll("u1")))
+	h := NewRunsHandler(NewRunsService(repo, runsAutomations(), allowAll("u1")))
 
 	req := withActor(httptest.NewRequest(http.MethodGet, "/api/automations/a1/runs?limit=2", nil), "u1")
 	req.SetPathValue("id", "a1")
@@ -245,4 +245,13 @@ func TestRunsHandler_List_DefaultAndCustomLimit(t *testing.T) {
 	var runs []Run
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &runs))
 	assert.Len(t, runs, 2)
+}
+
+// runsAutomations holds the automations a1 and a2 the run tests read, both in ws-1.
+func runsAutomations() *fakeRepo {
+	repo := newFakeRepo()
+	for _, id := range []string{"a1", "a2"} {
+		repo.rows[id] = &Automation{ID: id, WorkspaceID: "ws-1"}
+	}
+	return repo
 }

@@ -112,7 +112,7 @@ func TestHandler_Me(t *testing.T) {
 	t.Run("returns the caller's resolved permission list", func(t *testing.T) {
 		repo := newFakeRepo()
 		wsPerms := newFakeWorkspacePermissionGate()
-		svc := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), newFakeRoleNameGate(), wsPerms, newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{}, newFakeAccountGate())
+		svc := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), newFakeRoleNameGate(), wsPerms, newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakeDefaultsGate{}, newFakeAccountGate())
 		h := NewHandler(svc)
 		createRec := do(t, h.Routes(), http.MethodPost, "/api/workspaces", `{"name":"Acme"}`, "u-1")
 		require.Equal(t, http.StatusCreated, createRec.Code)
@@ -274,7 +274,7 @@ func TestHandler_SetMentionChipTemplate(t *testing.T) {
 		t.Helper()
 		repo := newFakeRepo()
 		wsPerms := newFakeWorkspacePermissionGate()
-		svc := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), newFakeRoleNameGate(), wsPerms, newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{}, newFakeAccountGate())
+		svc := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), newFakeRoleNameGate(), wsPerms, newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakeDefaultsGate{}, newFakeAccountGate())
 		w, err := svc.Create(context.Background(), "u-1", "Acme")
 		require.NoError(t, err)
 		wsPerms.perms["u-1"] = perms
@@ -313,7 +313,7 @@ func TestHandler_Rename(t *testing.T) {
 		t.Helper()
 		repo := newFakeRepo()
 		wsPerms := newFakeWorkspacePermissionGate()
-		svc := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), newFakeRoleNameGate(), wsPerms, newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakePlaysGate{}, newFakeAccountGate())
+		svc := NewService(repo, repo, newFakeInviteRepo(), &fakeRoleGate{}, newFakePermissionGate(), newFakeRoleNameGate(), wsPerms, newFakeAllowlistGate(), newFakeUserLookupGate(), &fakeChannelGate{}, &fakeDefaultsGate{}, newFakeAccountGate())
 		w, err := svc.Create(context.Background(), "u-1", "Acme")
 		require.NoError(t, err)
 		_, err = svc.Create(context.Background(), "u-1", "Other")

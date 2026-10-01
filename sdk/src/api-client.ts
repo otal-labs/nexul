@@ -58,7 +58,9 @@ export class ApiClient {
   }
 
   readonly automations = {
-    list: <T = unknown>() => this.request<T>("GET", "/api/automations"),
+    // Without a workspace it lists every workspace's automations the token's creator can read.
+    list: <T = unknown>(workspaceId?: string) =>
+      this.request<T>("GET", `/api/automations${workspaceId ? `?workspace_id=${encodeURIComponent(workspaceId)}` : ""}`),
     get: <T = unknown>(id: string) => this.request<T>("GET", `/api/automations/${id}`),
     updateConfig: <T = unknown>(id: string, configValues: unknown) =>
       this.request<T>("PATCH", `/api/automations/${id}/config`, { config_values: configValues }),

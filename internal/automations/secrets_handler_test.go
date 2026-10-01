@@ -20,12 +20,12 @@ func newTestSecretsHandler(t *testing.T) http.Handler {
 func TestSecretsHandler_SetListDelete(t *testing.T) {
 	h := newTestSecretsHandler(t)
 
-	rec := serve(t, h, "owner", http.MethodPut, "/api/automation-secrets/API_KEY", `{"value":"`+secretValueMarker+`"}`)
+	rec := serve(t, h, "owner", http.MethodPut, "/api/automation-secrets/API_KEY?workspace_id=ws-1", `{"value":"`+secretValueMarker+`"}`)
 	require.Equal(t, http.StatusNoContent, rec.Code)
 	assert.NotContains(t, rec.Body.String(), secretValueMarker, "the value must never echo back in the set response")
 
 	t.Run("list shows the name, never the value", func(t *testing.T) {
-		rec := serve(t, h, "owner", http.MethodGet, "/api/automation-secrets", "")
+		rec := serve(t, h, "owner", http.MethodGet, "/api/automation-secrets?workspace_id=ws-1", "")
 		require.Equal(t, http.StatusOK, rec.Code)
 		assert.NotContains(t, rec.Body.String(), secretValueMarker, "a secret value must never appear in any response body")
 		var list []SecretMeta
@@ -35,42 +35,42 @@ func TestSecretsHandler_SetListDelete(t *testing.T) {
 	})
 
 	t.Run("delete removes it", func(t *testing.T) {
-		rec := serve(t, h, "owner", http.MethodDelete, "/api/automation-secrets/API_KEY", "")
+		rec := serve(t, h, "owner", http.MethodDelete, "/api/automation-secrets/API_KEY?workspace_id=ws-1", "")
 		require.Equal(t, http.StatusNoContent, rec.Code)
-		rec = serve(t, h, "owner", http.MethodGet, "/api/automation-secrets", "")
+		rec = serve(t, h, "owner", http.MethodGet, "/api/automation-secrets?workspace_id=ws-1", "")
 		var list []SecretMeta
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &list))
 		assert.Empty(t, list)
 	})
 
 	t.Run("no actor is 401", func(t *testing.T) {
-		rec := serve(t, h, "", http.MethodGet, "/api/automation-secrets", "")
+		rec := serve(t, h, "", http.MethodGet, "/api/automation-secrets?workspace_id=ws-1", "")
 		assert.Equal(t, http.StatusUnauthorized, rec.Code)
 	})
 
 	t.Run("non-privileged actor is 403 on set", func(t *testing.T) {
-		rec := serve(t, h, "alice", http.MethodPut, "/api/automation-secrets/API_KEY", `{"value":"x"}`)
+		rec := serve(t, h, "alice", http.MethodPut, "/api/automation-secrets/API_KEY?workspace_id=ws-1", `{"value":"x"}`)
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 	})
 
 	t.Run("invalid name is 400 and never echoes the attempted value", func(t *testing.T) {
-		rec := serve(t, h, "owner", http.MethodPut, "/api/automation-secrets/bad-name", `{"value":"`+secretValueMarker+`"}`)
+		rec := serve(t, h, "owner", http.MethodPut, "/api/automation-secrets/bad-name?workspace_id=ws-1", `{"value":"`+secretValueMarker+`"}`)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 		assert.NotContains(t, rec.Body.String(), secretValueMarker)
 	})
 
 	t.Run("malformed set body is 400 and never echoes the raw body", func(t *testing.T) {
-		rec := serve(t, h, "owner", http.MethodPut, "/api/automation-secrets/API_KEY", `{not json`)
+		rec := serve(t, h, "owner", http.MethodPut, "/api/automation-secrets/API_KEY?workspace_id=ws-1", `{not json`)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 
 	t.Run("non-privileged actor is 403 on delete", func(t *testing.T) {
-		rec := serve(t, h, "alice", http.MethodDelete, "/api/automation-secrets/API_KEY", "")
+		rec := serve(t, h, "alice", http.MethodDelete, "/api/automation-secrets/API_KEY?workspace_id=ws-1", "")
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 	})
 
 	t.Run("non-privileged actor is 403 on list", func(t *testing.T) {
-		rec := serve(t, h, "alice", http.MethodGet, "/api/automation-secrets", "")
+		rec := serve(t, h, "alice", http.MethodGet, "/api/automation-secrets?workspace_id=ws-1", "")
 		assert.Equal(t, http.StatusForbidden, rec.Code)
 	})
 }

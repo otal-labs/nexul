@@ -127,12 +127,12 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	deploySvc.SetGate(accessSvc)
 	reviewSvc := codereview.NewService(store.CodeReviews)
 	reviewSvc.SetGate(projectEntityGate{access: accessSvc, projects: store.Projects, tickets: store.Tickets})
-	automationsSvc := automations.NewService(store.Automations, automationPermissionGate{svc: accessSvc})
+	automationsSvc := automations.NewService(store.Automations, accessSvc)
 	// DefaultDefinitions supplies the board pair's bundled default automation code.
-	automationVersionsSvc := automations.NewVersionsService(store.AutomationVersions, store.Automations, automationPermissionGate{svc: accessSvc})
-	automationSecretsSvc := automations.NewSecretsService(store.AutomationSecrets, automationPermissionGate{svc: accessSvc})
-	automationSeeder := automations.NewSeeder(store.Automations, automationVersionsSvc, automations.DefaultDefinitions(), logger)
-	automationRunsSvc := automations.NewRunsService(store.AutomationRuns, automationPermissionGate{svc: accessSvc})
+	automationVersionsSvc := automations.NewVersionsService(store.AutomationVersions, store.Automations, accessSvc)
+	automationSecretsSvc := automations.NewSecretsService(store.AutomationSecrets, accessSvc)
+	automationSeeder := automations.NewSeeder(store.Automations, automationVersionsSvc, automations.DefaultDefinitions(), store.EventWorkspaces, tenancy.DefaultWorkspaceID, logger)
+	automationRunsSvc := automations.NewRunsService(store.AutomationRuns, store.Automations, accessSvc)
 	if cfg.DevLogin {
 		logger.Warn("DEV AUTH BYPASS ENABLED — /auth/dev-login mints sessions with no GitHub round trip; never set NEXUL_DEV_LOGIN in production")
 	}
@@ -230,7 +230,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	voiceHandler := voice.NewHandler(voiceSvc)
 	voiceWebhookHandler := voice.NewWebhookHandler(voiceSvc, voiceCredentials{svc: connectorsSvc}, logger)
 	playsSvc := plays.NewService(store.Plays, playsPermissionGate{svc: accessSvc})
-	tenancySvc := tenancy.NewService(store.Workspaces, store.WorkspaceMembers, store.WorkspaceInvites, roleGate{svc: rolesSvc}, accessSvc, roleNameGate{svc: rolesSvc}, workspacePermissionGate{svc: accessSvc}, allowlistGate{svc: authSvc}, userLookupGate{svc: authSvc}, channelGate{svc: chatSvc}, playsGate{svc: playsSvc}, accountGate{svc: authSvc, presence: presenceKeeper})
+	tenancySvc := tenancy.NewService(store.Workspaces, store.WorkspaceMembers, store.WorkspaceInvites, roleGate{svc: rolesSvc}, accessSvc, roleNameGate{svc: rolesSvc}, workspacePermissionGate{svc: accessSvc}, allowlistGate{svc: authSvc}, userLookupGate{svc: authSvc}, channelGate{svc: chatSvc}, workspaceDefaultsGate{plays: playsSvc, automations: automationSeeder}, accountGate{svc: authSvc, presence: presenceKeeper})
 	rolesSvc.SetMemberGate(roleMemberGate{svc: tenancySvc})
 	mentionsSvc.SetPeople(mentionPeopleSource{svc: tenancySvc})
 	rolesSvc.SetPermissionGate(workspacePermissionGate{svc: accessSvc})

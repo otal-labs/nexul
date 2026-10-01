@@ -25,11 +25,11 @@ type SecretMeta struct {
 
 // SecretsRepo is the consumer-side persistence contract for the secrets pool, encrypted at rest (platform/crypto).
 type SecretsRepo interface {
-	Set(ctx context.Context, name, value string, now time.Time) error
-	Delete(ctx context.Context, name string) error
-	List(ctx context.Context) ([]SecretMeta, error)
-	// All returns every secret decrypted as name->value, for the delivery layer only, never an HTTP response.
-	All(ctx context.Context) (map[string]string, error)
+	Set(ctx context.Context, workspaceID, name, value string, now time.Time) error
+	Delete(ctx context.Context, workspaceID, name string) error
+	List(ctx context.Context, workspaceID string) ([]SecretMeta, error)
+	// All returns workspaceID's secrets decrypted as name->value, for the delivery layer only, never an HTTP response.
+	All(ctx context.Context, workspaceID string) (map[string]string, error)
 }
 
 // SecretsService is the secrets use-case layer (ADR 0047): a shared, GitHub-Actions-style pool, values never read back.
@@ -47,8 +47,8 @@ func NewSecretsService(repo SecretsRepo, perm PermissionGate) *SecretsService {
 
 // Set creates or replaces name's value. There is no partial update — saving
 // always overwrites the whole value, matching GitHub Actions secrets.
-func (s *SecretsService) Set(ctx context.Context, actorID, name, value string) error {
-	if err := requirePermission(ctx, s.perm, actorID, permissions.AutomationsWrite); err != nil {
+func (s *SecretsService) Set(ctx context.Context, actorID, workspaceID, name, value string) error {
+	if err := s.require(ctx, actorID, workspaceID, permissions.AutomationsWrite); err != nil {
 		return err
 	}
 	name = strings.TrimSpace(name)
@@ -58,7 +58,7 @@ func (s *SecretsService) Set(ctx context.Context, actorID, name, value string) e
 	if value == "" {
 		return fmt.Errorf("%w: secret value is required", apperrs.ErrInvalid)
 	}
-	if err := s.repo.Set(ctx, name, value, s.now().UTC()); err != nil {
+	if err := s.repo.Set(ctx, workspaceID, name, value, s.now().UTC()); err != nil {
 		return fmt.Errorf("set secret %s: %w", name, err)
 	}
 	return nil
@@ -66,35 +66,35 @@ func (s *SecretsService) Set(ctx context.Context, actorID, name, value string) e
 
 // Delete removes name from the pool. Deleting a name that was never set is
 // a no-op rather than an error, matching Automation deletion's shape.
-func (s *SecretsService) Delete(ctx context.Context, actorID, name string) error {
-	if err := requirePermission(ctx, s.perm, actorID, permissions.AutomationsWrite); err != nil {
+func (s *SecretsService) Delete(ctx context.Context, actorID, workspaceID, name string) error {
+	if err := s.require(ctx, actorID, workspaceID, permissions.AutomationsWrite); err != nil {
 		return err
 	}
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return fmt.Errorf("%w: secret name is required", apperrs.ErrInvalid)
 	}
-	if err := s.repo.Delete(ctx, name); err != nil {
+	if err := s.repo.Delete(ctx, workspaceID, name); err != nil {
 		return fmt.Errorf("delete secret %s: %w", name, err)
 	}
 	return nil
 }
 
-// List returns every secret's name and timestamps — never a value.
-func (s *SecretsService) List(ctx context.Context, actorID string) ([]SecretMeta, error) {
-	if err := requirePermission(ctx, s.perm, actorID, permissions.AutomationsRead); err != nil {
+// List returns workspaceID's secret names and timestamps — never a value.
+func (s *SecretsService) List(ctx context.Context, actorID, workspaceID string) ([]SecretMeta, error) {
+	if err := s.require(ctx, actorID, workspaceID, permissions.AutomationsRead); err != nil {
 		return nil, err
 	}
-	list, err := s.repo.List(ctx)
+	list, err := s.repo.List(ctx, workspaceID)
 	if err != nil {
 		return nil, fmt.Errorf("list secrets: %w", err)
 	}
 	return list, nil
 }
 
-// Secrets returns every secret decrypted as name->value; ungated, an internal call the dial-in host makes.
-func (s *SecretsService) Secrets(ctx context.Context) (map[string]string, error) {
-	all, err := s.repo.All(ctx)
+// Secrets returns workspaceID's secrets decrypted as name->value; ungated, an internal call the dial-in host makes.
+func (s *SecretsService) Secrets(ctx context.Context, workspaceID string) (map[string]string, error) {
+	all, err := s.repo.All(ctx, workspaceID)
 	if err != nil {
 		return nil, fmt.Errorf("load secrets: %w", err)
 	}
@@ -104,14 +104,22 @@ func (s *SecretsService) Secrets(ctx context.Context) (map[string]string, error)
 // SecretsProvider is the narrow consumer seam the dial-in layer uses to
 // build ctx.secrets for a connected automation (ADR 0046).
 type SecretsProvider interface {
-	// AllSecrets returns every workspace secret's plaintext name/value pair.
-	AllSecrets(ctx context.Context) (map[string]string, error)
+	// AllSecrets returns workspaceID's plaintext secret name/value pairs.
+	AllSecrets(ctx context.Context, workspaceID string) (map[string]string, error)
 }
 
 // AllSecrets satisfies SecretsProvider so the dial-in layer consumes the
 // real pool directly.
-func (s *SecretsService) AllSecrets(ctx context.Context) (map[string]string, error) {
-	return s.Secrets(ctx)
+func (s *SecretsService) AllSecrets(ctx context.Context, workspaceID string) (map[string]string, error) {
+	return s.Secrets(ctx, workspaceID)
+}
+
+// require refuses an empty workspace, then checks action in it.
+func (s *SecretsService) require(ctx context.Context, actorID, workspaceID string, action permissions.Action) error {
+	if strings.TrimSpace(workspaceID) == "" {
+		return fmt.Errorf("%w: workspace id is required", apperrs.ErrInvalid)
+	}
+	return requirePermission(ctx, s.perm, actorID, workspaceID, action)
 }
 
 // NoopSecretsProvider keeps dial-in usable with no secrets pool wired
@@ -119,6 +127,6 @@ func (s *SecretsService) AllSecrets(ctx context.Context) (map[string]string, err
 type NoopSecretsProvider struct{}
 
 // AllSecrets always returns an empty pool.
-func (NoopSecretsProvider) AllSecrets(context.Context) (map[string]string, error) {
+func (NoopSecretsProvider) AllSecrets(context.Context, string) (map[string]string, error) {
 	return map[string]string{}, nil
 }

@@ -40,8 +40,9 @@ type UpdatedEvent struct {
 
 // DeletedEvent is the play.deleted payload; the play is already gone by publish time, identity only.
 type DeletedEvent struct {
-	ID    string `json:"id"`
-	Label string `json:"label"`
+	ID          string `json:"id"`
+	Label       string `json:"label"`
+	WorkspaceID string `json:"workspace_id"`
 }
 
 // RunRef identifies one run in the run events: the trail, the play, the target, and who pressed it.

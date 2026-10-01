@@ -38,4 +38,15 @@ describe("ApiClient", () => {
     expect(url).toBe("https://x/api/automations/auto-1/versions");
     expect(JSON.parse(init!.body as string)).toEqual({ code: "console.log(1)", message: "initial" });
   });
+
+  it("lists one workspace's automations when given one, and every readable workspace's without", async () => {
+    const fetchImpl = fakeFetch({ status: 200, body: [] });
+    const api = new ApiClient({ baseUrl: "https://x", token: "t", fetchImpl });
+    await api.automations.list("ws-1");
+    await api.automations.list();
+    expect(fetchImpl.mock.calls.map(([url]) => url)).toEqual([
+      "https://x/api/automations?workspace_id=ws-1",
+      "https://x/api/automations",
+    ]);
+  });
 });

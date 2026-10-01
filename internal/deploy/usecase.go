@@ -428,7 +428,7 @@ func (s *Service) DeleteStack(ctx context.Context, id string) error {
 	evt := eventbus.OutboxEvent{
 		ID:      ids.New(),
 		Topic:   TopicStackDeleted,
-		Payload: StackDeletedEvent{ID: stack.ID, Name: stack.Name, ServiceIDs: serviceIDs},
+		Payload: StackDeletedEvent{ID: stack.ID, Name: stack.Name, ServiceIDs: serviceIDs, ProjectID: stack.ProjectID},
 	}
 	if err := s.stacks.Delete(ctx, id, evt); err != nil {
 		return fmt.Errorf("delete stack %s: %w", id, err)

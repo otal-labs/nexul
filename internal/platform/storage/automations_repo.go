@@ -32,6 +32,7 @@ func (r *AutomationsRepo) Create(ctx context.Context, a *automations.Automation)
 		}
 		err = r.q.WithTx(tx).CreateAutomation(ctx, sqlcgen.CreateAutomationParams{
 			ID:             a.ID,
+			WorkspaceID:    a.WorkspaceID,
 			Name:           a.Name,
 			Description:    a.Description,
 			Kind:           string(a.Kind),
@@ -139,6 +140,7 @@ func (r *AutomationsRepo) Delete(ctx context.Context, id string) error {
 func toAutomation(row sqlcgen.Automation) (*automations.Automation, error) {
 	a := &automations.Automation{
 		ID:          row.ID,
+		WorkspaceID: row.WorkspaceID,
 		Name:        row.Name,
 		Description: row.Description,
 		Kind:        automations.Kind(row.Kind),

@@ -25,6 +25,7 @@ vi.mock("@/stores/workspaceStore", () => ({
 
 const automation = (): Automation => ({
   id: "a1",
+  workspace_id: "ws-1",
   name: "Ticket finished",
   description: "",
   kind: AutomationKind.Default,

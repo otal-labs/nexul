@@ -59,7 +59,7 @@ func (s *Service) RequireAutomation(userAuth func(http.Handler) http.Handler, ne
 		ctx := context.WithValue(r.Context(), automationCtxKey, &AutomationAuth{Automation: a})
 		ctx = identity.WithActor(ctx, identity.Actor{
 			ID:         a.CreatedBy,
-			Automation: &identity.AutomationRef{ID: a.ID, Name: a.Name},
+			Automation: &identity.AutomationRef{ID: a.ID, Name: a.Name, WorkspaceID: a.WorkspaceID},
 		})
 		r = r.WithContext(ctx)
 		next.ServeHTTP(w, r)

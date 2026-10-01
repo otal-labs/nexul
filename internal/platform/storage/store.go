@@ -57,6 +57,7 @@ type Store struct {
 	AutomationRuns        *AutomationRunsRepo
 	AutomationCursors     *AutomationCursorsRepo
 	AutomationEventLog    *AutomationEventLogRepo
+	EventWorkspaces       *EventWorkspacesRepo
 	Notifications         *NotificationsRepo
 	Collab                *CollabRepo
 	IntegrationInstalls   *IntegrationInstallsRepo
@@ -121,6 +122,7 @@ func New(db *sql.DB, encKey []byte) *Store {
 		AutomationRuns:        &AutomationRunsRepo{db: db, w: w, q: q},
 		AutomationCursors:     &AutomationCursorsRepo{db: db, w: w, q: q},
 		AutomationEventLog:    &AutomationEventLogRepo{db: db, q: q},
+		EventWorkspaces:       &EventWorkspacesRepo{q: q},
 		Notifications:         &NotificationsRepo{db: db, w: w, q: q},
 		Collab:                &CollabRepo{db: db, w: w, q: q},
 		IntegrationInstalls:   &IntegrationInstallsRepo{db: db, w: w, q: q},

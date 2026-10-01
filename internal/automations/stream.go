@@ -34,3 +34,8 @@ type CursorRepo interface {
 	Get(ctx context.Context, automationID string) (cursor Cursor, ok bool, err error)
 	Set(ctx context.Context, automationID string, cursor Cursor) error
 }
+
+// EventScope names the workspaces an event happened in; every marks an instance-level event, reaching all of them.
+type EventScope interface {
+	Workspaces(ctx context.Context, topic string, payload []byte) (workspaceIDs []string, every bool, err error)
+}

@@ -10,6 +10,7 @@ import (
 	"github.com/otal-labs/nexul/internal/access"
 	"github.com/otal-labs/nexul/internal/attachments"
 	"github.com/otal-labs/nexul/internal/auth"
+	"github.com/otal-labs/nexul/internal/automations"
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/connectors"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -213,17 +214,8 @@ func (g workspacePermissionGate) WorkspacePermissions(ctx context.Context, userI
 	return g.svc.WorkspacePermissions(ctx, userID, workspaceID)
 }
 
-// automationPermissionGate adapts access's HasPermission to automations' seam (ADR 0017), scoped to tenancy.DefaultWorkspaceID.
-type automationPermissionGate struct {
-	svc *access.Service
-}
-
-func (g automationPermissionGate) HasPermission(ctx context.Context, userID string, action permissions.Action) bool {
-	return g.svc.HasPermission(ctx, userID, tenancy.DefaultWorkspaceID, action, "", "")
-}
-
 // memoriesPermissionGate adapts access's HasPermission to memories' seam (ADR 0017); memories are workspace-scoped
-// for real (denormalized per row), unlike automations' single hardcoded workspace, so it takes workspaceID.
+// for real (denormalized per row), so it takes workspaceID.
 type memoriesPermissionGate struct {
 	svc *access.Service
 }
@@ -264,16 +256,20 @@ func (g roleMemberGate) MemberRoleID(ctx context.Context, workspaceID, userID st
 	return g.svc.MemberRoleID(ctx, workspaceID, userID)
 }
 
-// playsGate adapts plays' SeedDefaults to tenancy's PlaysGate seam (ADR 0017: tenancy never imports plays).
-type playsGate struct {
-	svc *plays.Service
+// workspaceDefaultsGate seeds a workspace's default plays and automations for tenancy's DefaultsGate seam (ADR 0017).
+type workspaceDefaultsGate struct {
+	plays       *plays.Service
+	automations *automations.Seeder
 }
 
-func (g playsGate) SeedDefaultPlays(ctx context.Context, workspaceID string) error {
-	return g.svc.SeedDefaults(ctx, workspaceID)
+func (g workspaceDefaultsGate) SeedWorkspaceDefaults(ctx context.Context, workspaceID string) error {
+	if err := g.plays.SeedDefaults(ctx, workspaceID); err != nil {
+		return err
+	}
+	return g.automations.SeedWorkspace(ctx, workspaceID)
 }
 
-// playsPermissionGate adapts access's HasPermission to plays' seam (ADR 0017), workspace-scoped unlike automations.
+// playsPermissionGate adapts access's HasPermission to plays' seam (ADR 0017).
 type playsPermissionGate struct {
 	svc *access.Service
 }

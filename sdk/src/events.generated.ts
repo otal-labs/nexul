@@ -42,7 +42,7 @@ export interface EventPayloads {
   "dns.record_changed": { "zone_id": string; "zone"?: string; "record_id"?: string; "action": "created" | "updated" | "deleted"; "type"?: string; "name"?: string; "service"?: string; };
   "dns.tunnel_changed": { "tunnel_id": string; "name"?: string; "action": "created" | "routed" | "rotated" | "deleted"; "hostname"?: string; "service"?: string; };
   "doc.created": { "doc": { "id": string; "title": string; "body"?: string; "version": number; "archived"?: boolean; "locked"?: boolean; "created_at"?: string; "updated_at"?: string; }; "actor_id"?: string; "mentioned_user_ids"?: string[]; };
-  "doc.deleted": { "id": string; "title": string; };
+  "doc.deleted": { "id": string; "title": string; "project_id"?: string; };
   "doc.updated": { "doc": { "id": string; "title": string; "body"?: string; "version": number; "archived"?: boolean; "locked"?: boolean; "created_at"?: string; "updated_at"?: string; }; "actor_id"?: string; "mentioned_user_ids"?: string[]; };
   "git.branch_deleted": { "owner": string; "repo": string; "branch": string; };
   "git.pr_closed": { "owner": string; "repo": string; "pr": Record<string, unknown>; };
@@ -69,7 +69,7 @@ export interface EventPayloads {
   "personal_access_token.minted": { "token_id": string; "user_id": string; "name": string; "computer_id"?: string; };
   "personal_access_token.revoked": { "token_id": string; "user_id": string; "name": string; "computer_id"?: string; };
   "play.created": { "play": { "id": string; "workspace_id": string; "label": string; "type": string; "description"?: string; "instructions"?: string; "enabled"?: boolean; "show_when_stage"?: string | null; "excluded_project_ids"?: string[]; "created_by"?: string; "created_at"?: string; "updated_at"?: string; }; };
-  "play.deleted": { "id": string; "label": string; };
+  "play.deleted": { "id": string; "label": string; "workspace_id"?: string; };
   "play.run_finished": { "trail_id": string; "play_id": string; "play_label": string; "target_type": "ticket" | "doc" | "interview"; "target_id": string; "target_title"?: string; "starter_id": string; "via": "web" | "mcp"; "workspace_id"?: string; "outcome": "done" | "failed" | "interrupted"; "last_error"?: string; "reply_message_id"?: string; };
   "play.run_started": { "trail_id": string; "play_id": string; "play_label": string; "target_type": "ticket" | "doc" | "interview"; "target_id": string; "target_title"?: string; "starter_id": string; "via": "web" | "mcp"; "workspace_id"?: string; "harness_session_id"?: string; };
   "play.run_waiting": { "trail_id": string; "play_id": string; "play_label": string; "target_type": "ticket" | "doc" | "interview"; "target_id": string; "target_title"?: string; "starter_id": string; "via": "web" | "mcp"; "workspace_id"?: string; };
@@ -80,7 +80,7 @@ export interface EventPayloads {
   "runner.disconnected": { "runner_id": string; "reason"?: string; };
   "runner.heartbeat": { "runner_id": string; "ts": number; };
   "service.created": { "service": Record<string, unknown>; };
-  "service.deleted": { "id": string; "name": string; };
+  "service.deleted": { "id": string; "name": string; "project_id"?: string; };
   "service.updated": { "service": Record<string, unknown>; };
   "session.created": { "session_id": string; "user_id": string; "client": "browser" | "desktop" | "phone"; "platform"?: string; "label"?: string; };
   "session.revoked": { "session_id": string; "user_id": string; "client": "browser" | "desktop" | "phone"; "platform"?: string; "label"?: string; };
@@ -90,7 +90,7 @@ export interface EventPayloads {
   "ticket.assignee_changed": { "ticket": Record<string, unknown>; "from": string; "to": string; };
   "ticket.category_changed": { "ticket_id": string; "category_id": string; };
   "ticket.created": { "ticket": { "id": string; "project_id"?: string; "title": string; "body"?: string; "status": "open" | "in_progress" | "done" | "closed"; "doc_id"?: string; "assignee"?: string; "developer"?: string; "tester"?: string; "reporter"?: { "kind": "user" | "user:mcp" | "automation"; "login"?: string; "automation_id"?: string; "automation_name"?: string; }; "created_at"?: string; "updated_at"?: string; "finished_at"?: string | null; }; "mentioned_user_ids"?: string[]; };
-  "ticket.deleted": { "id": string; "title": string; };
+  "ticket.deleted": { "id": string; "title": string; "project_id"?: string; };
   "ticket.developer_changed": { "ticket": Record<string, unknown>; "from": string; "to": string; };
   "ticket.finished": { "ticket": Record<string, unknown>; };
   "ticket.link_created": { "link": { "ticket_id": string; "kind": "found_in" | "blocked_by"; "target_id": string; "created_at"?: string; }; };
@@ -262,7 +262,7 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "dns.record_changed": {"zone_id":"fixture-zone_id","zone":"fixture-zone","record_id":"fixture-record_id","action":"created","type":"fixture-type","name":"fixture-name","service":"fixture-service"},
   "dns.tunnel_changed": {"tunnel_id":"fixture-tunnel_id","name":"fixture-name","action":"created","hostname":"fixture-hostname","service":"fixture-service"},
   "doc.created": {"doc":{"id":"fixture-id","title":"fixture-title","body":"fixture-body","version":1,"archived":false,"locked":false,"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"},"actor_id":"fixture-actor_id","mentioned_user_ids":["fixture-mentioned_user_ids"]},
-  "doc.deleted": {"id":"fixture-id","title":"fixture-title"},
+  "doc.deleted": {"id":"fixture-id","title":"fixture-title","project_id":"fixture-project_id"},
   "doc.updated": {"doc":{"id":"fixture-id","title":"fixture-title","body":"fixture-body","version":1,"archived":false,"locked":false,"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"},"actor_id":"fixture-actor_id","mentioned_user_ids":["fixture-mentioned_user_ids"]},
   "git.branch_deleted": {"owner":"fixture-owner","repo":"fixture-repo","branch":"fixture-branch"},
   "git.pr_closed": {"owner":"fixture-owner","repo":"fixture-repo","pr":{}},
@@ -289,7 +289,7 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "personal_access_token.minted": {"token_id":"fixture-token_id","user_id":"fixture-user_id","name":"fixture-name","computer_id":"fixture-computer_id"},
   "personal_access_token.revoked": {"token_id":"fixture-token_id","user_id":"fixture-user_id","name":"fixture-name","computer_id":"fixture-computer_id"},
   "play.created": {"play":{"id":"fixture-id","workspace_id":"fixture-workspace_id","label":"fixture-label","type":"fixture-type","description":"fixture-description","instructions":"fixture-instructions","enabled":false,"show_when_stage":"fixture-show_when_stage","excluded_project_ids":["fixture-excluded_project_ids"],"created_by":"fixture-created_by","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"}},
-  "play.deleted": {"id":"fixture-id","label":"fixture-label"},
+  "play.deleted": {"id":"fixture-id","label":"fixture-label","workspace_id":"fixture-workspace_id"},
   "play.run_finished": {"trail_id":"fixture-trail_id","play_id":"fixture-play_id","play_label":"fixture-play_label","target_type":"ticket","target_id":"fixture-target_id","target_title":"fixture-target_title","starter_id":"fixture-starter_id","via":"web","workspace_id":"fixture-workspace_id","outcome":"done","last_error":"fixture-last_error","reply_message_id":"fixture-reply_message_id"},
   "play.run_started": {"trail_id":"fixture-trail_id","play_id":"fixture-play_id","play_label":"fixture-play_label","target_type":"ticket","target_id":"fixture-target_id","target_title":"fixture-target_title","starter_id":"fixture-starter_id","via":"web","workspace_id":"fixture-workspace_id","harness_session_id":"fixture-harness_session_id"},
   "play.run_waiting": {"trail_id":"fixture-trail_id","play_id":"fixture-play_id","play_label":"fixture-play_label","target_type":"ticket","target_id":"fixture-target_id","target_title":"fixture-target_title","starter_id":"fixture-starter_id","via":"web","workspace_id":"fixture-workspace_id"},
@@ -300,7 +300,7 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "runner.disconnected": {"runner_id":"fixture-runner_id","reason":"fixture-reason"},
   "runner.heartbeat": {"runner_id":"fixture-runner_id","ts":1},
   "service.created": {"service":{}},
-  "service.deleted": {"id":"fixture-id","name":"fixture-name"},
+  "service.deleted": {"id":"fixture-id","name":"fixture-name","project_id":"fixture-project_id"},
   "service.updated": {"service":{}},
   "session.created": {"session_id":"fixture-session_id","user_id":"fixture-user_id","client":"browser","platform":"fixture-platform","label":"fixture-label"},
   "session.revoked": {"session_id":"fixture-session_id","user_id":"fixture-user_id","client":"browser","platform":"fixture-platform","label":"fixture-label"},
@@ -310,7 +310,7 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "ticket.assignee_changed": {"ticket":{},"from":"fixture-from","to":"fixture-to"},
   "ticket.category_changed": {"ticket_id":"fixture-ticket_id","category_id":"fixture-category_id"},
   "ticket.created": {"ticket":{"id":"fixture-id","project_id":"fixture-project_id","title":"fixture-title","body":"fixture-body","status":"open","doc_id":"fixture-doc_id","assignee":"fixture-assignee","developer":"fixture-developer","tester":"fixture-tester","reporter":{"kind":"user","login":"fixture-login","automation_id":"fixture-automation_id","automation_name":"fixture-automation_name"},"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z","finished_at":"2026-01-01T00:00:00Z"},"mentioned_user_ids":["fixture-mentioned_user_ids"]},
-  "ticket.deleted": {"id":"fixture-id","title":"fixture-title"},
+  "ticket.deleted": {"id":"fixture-id","title":"fixture-title","project_id":"fixture-project_id"},
   "ticket.developer_changed": {"ticket":{},"from":"fixture-from","to":"fixture-to"},
   "ticket.finished": {"ticket":{}},
   "ticket.link_created": {"link":{"ticket_id":"fixture-ticket_id","kind":"found_in","target_id":"fixture-target_id","created_at":"2026-01-01T00:00:00Z"}},

@@ -3,12 +3,16 @@ package automations
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
+	"slices"
+	"strings"
 	"sync"
 	"time"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
@@ -91,24 +95,25 @@ func (f *fakeRepo) Delete(_ context.Context, id string) error {
 	return nil
 }
 
-// fakePerm grants exactly the actions listed per user; an absent user holds
-// nothing. denyAll, when set, fails HasPermission for every user (simulates
-// no PermissionGate wired, distinct from a wired gate that denies).
+// fakePerm grants the listed actions per user in every workspace, or only members' ones; outside it is not found.
 type fakePerm struct {
-	grants map[string][]permissions.Action
+	grants  map[string][]permissions.Action
+	members map[string][]string
 }
 
 func newFakePerm(grants map[string][]permissions.Action) *fakePerm {
 	return &fakePerm{grants: grants}
 }
 
-func (f *fakePerm) HasPermission(_ context.Context, userID string, action permissions.Action) bool {
-	for _, a := range f.grants[userID] {
-		if a == action {
-			return true
-		}
+func (f *fakePerm) Require(ctx context.Context, workspaceID string, action permissions.Action) error {
+	actor, _ := identity.ActorFromCtx(ctx)
+	if ws, ok := f.members[actor.ID]; ok && !slices.Contains(ws, workspaceID) {
+		return fmt.Errorf("%w: workspace %s", apperrs.ErrNotFound, workspaceID)
 	}
-	return false
+	if slices.Contains(f.grants[actor.ID], action) {
+		return nil
+	}
+	return fmt.Errorf("%w: %s required", apperrs.ErrForbidden, action)
 }
 
 // allowAll grants a user every automation action, the common "owner" fixture.
@@ -250,9 +255,13 @@ func newFakeSecretsRepo() *fakeSecretsRepo {
 	}{}}
 }
 
-func (f *fakeSecretsRepo) Set(_ context.Context, name, value string, now time.Time) error {
+// secretKey keys a secret by workspace and name, the real table's primary key.
+func secretKey(workspaceID, name string) string { return workspaceID + "/" + name }
+
+func (f *fakeSecretsRepo) Set(_ context.Context, workspaceID, name, value string, now time.Time) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	name = secretKey(workspaceID, name)
 	row, existed := f.rows[name]
 	if !existed {
 		row.createdAt = now
@@ -263,29 +272,35 @@ func (f *fakeSecretsRepo) Set(_ context.Context, name, value string, now time.Ti
 	return nil
 }
 
-func (f *fakeSecretsRepo) Delete(_ context.Context, name string) error {
+func (f *fakeSecretsRepo) Delete(_ context.Context, workspaceID, name string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	delete(f.rows, name)
+	delete(f.rows, secretKey(workspaceID, name))
 	return nil
 }
 
-func (f *fakeSecretsRepo) List(_ context.Context) ([]SecretMeta, error) {
+func (f *fakeSecretsRepo) List(_ context.Context, workspaceID string) ([]SecretMeta, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	out := make([]SecretMeta, 0, len(f.rows))
-	for name, row := range f.rows {
+	for key, row := range f.rows {
+		name, ok := strings.CutPrefix(key, workspaceID+"/")
+		if !ok {
+			continue
+		}
 		out = append(out, SecretMeta{Name: name, CreatedAt: row.createdAt, UpdatedAt: row.updatedAt})
 	}
 	return out, nil
 }
 
-func (f *fakeSecretsRepo) All(_ context.Context) (map[string]string, error) {
+func (f *fakeSecretsRepo) All(_ context.Context, workspaceID string) (map[string]string, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	out := make(map[string]string, len(f.rows))
-	for name, row := range f.rows {
-		out[name] = row.value
+	for key, row := range f.rows {
+		if name, ok := strings.CutPrefix(key, workspaceID+"/"); ok {
+			out[name] = row.value
+		}
 	}
 	return out, nil
 }
@@ -393,32 +408,32 @@ func newErroringSecretsRepo() *erroringSecretsRepo {
 	return &erroringSecretsRepo{fakeSecretsRepo: newFakeSecretsRepo()}
 }
 
-func (f *erroringSecretsRepo) Set(ctx context.Context, name, value string, now time.Time) error {
+func (f *erroringSecretsRepo) Set(ctx context.Context, workspaceID, name, value string, now time.Time) error {
 	if f.setErr != nil {
 		return f.setErr
 	}
-	return f.fakeSecretsRepo.Set(ctx, name, value, now)
+	return f.fakeSecretsRepo.Set(ctx, workspaceID, name, value, now)
 }
 
-func (f *erroringSecretsRepo) Delete(ctx context.Context, name string) error {
+func (f *erroringSecretsRepo) Delete(ctx context.Context, workspaceID, name string) error {
 	if f.deleteErr != nil {
 		return f.deleteErr
 	}
-	return f.fakeSecretsRepo.Delete(ctx, name)
+	return f.fakeSecretsRepo.Delete(ctx, workspaceID, name)
 }
 
-func (f *erroringSecretsRepo) List(ctx context.Context) ([]SecretMeta, error) {
+func (f *erroringSecretsRepo) List(ctx context.Context, workspaceID string) ([]SecretMeta, error) {
 	if f.listErr != nil {
 		return nil, f.listErr
 	}
-	return f.fakeSecretsRepo.List(ctx)
+	return f.fakeSecretsRepo.List(ctx, workspaceID)
 }
 
-func (f *erroringSecretsRepo) All(ctx context.Context) (map[string]string, error) {
+func (f *erroringSecretsRepo) All(ctx context.Context, workspaceID string) (map[string]string, error) {
 	if f.allErr != nil {
 		return nil, f.allErr
 	}
-	return f.fakeSecretsRepo.All(ctx)
+	return f.fakeSecretsRepo.All(ctx, workspaceID)
 }
 
 // fakeConnRegistry records Disconnect calls (the testing standard: a fake

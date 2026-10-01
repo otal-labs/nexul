@@ -19,10 +19,25 @@ type fakeRepo struct {
 	listErr   error
 	updateErr error
 	deleteErr error
+	// decisionsCheck holds each workspace's decisions check switch; absent is off, as a new workspace starts.
+	decisionsCheck map[string]bool
 }
 
 func newFakeRepo() *fakeRepo {
-	return &fakeRepo{byID: map[string]*Play{}}
+	return &fakeRepo{byID: map[string]*Play{}, decisionsCheck: map[string]bool{}}
+}
+
+func (f *fakeRepo) DecisionsCheckEnabled(_ context.Context, workspaceID string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.decisionsCheck[workspaceID], nil
+}
+
+func (f *fakeRepo) SetDecisionsCheckEnabled(_ context.Context, workspaceID string, enabled bool) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.decisionsCheck[workspaceID] = enabled
+	return nil
 }
 
 func (f *fakeRepo) Create(_ context.Context, p *Play, evts ...eventbus.OutboxEvent) error {

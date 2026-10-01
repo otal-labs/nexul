@@ -32,7 +32,7 @@ import (
 // usecase_test.go).
 type allowAllPerm struct{}
 
-func (allowAllPerm) HasPermission(context.Context, string, permissions.Action) bool { return true }
+func (allowAllPerm) Require(context.Context, string, permissions.Action) error { return nil }
 
 func newTestStore(t *testing.T) (*sql.DB, *storage.Store) {
 	t.Helper()
@@ -50,7 +50,20 @@ type dialinSetup struct {
 	srv *httptest.Server
 }
 
-func newDialinSetup(t *testing.T) *dialinSetup {
+// payloadScope reads an event's workspace from its "ws" field; "*" marks an instance-level event.
+type payloadScope struct{}
+
+func (payloadScope) Workspaces(_ context.Context, _ string, payload []byte) ([]string, bool, error) {
+	var p struct {
+		WS string `json:"ws"`
+	}
+	if err := json.Unmarshal(payload, &p); err != nil {
+		return nil, false, err
+	}
+	return []string{p.WS}, p.WS == "*", nil
+}
+
+func newDialinSetup(t *testing.T, scope ...automations.EventScope) *dialinSetup {
 	t.Helper()
 	db, store := newTestStore(t)
 	svc := automations.NewService(store.Automations, allowAllPerm{})
@@ -62,6 +75,12 @@ func newDialinSetup(t *testing.T) *dialinSetup {
 		Logger:       testutil.DiscardLogger(),
 		PollInterval: 10 * time.Millisecond,
 	})
+	if len(scope) > 0 {
+		dh = automations.NewDialinHandler(svc, automations.DialinConfig{
+			Repo: store.Automations, Cursors: store.AutomationCursors, EventLog: store.AutomationEventLog,
+			Runs: store.AutomationRuns, Logger: testutil.DiscardLogger(), PollInterval: 10 * time.Millisecond, Scope: scope[0],
+		})
+	}
 	svc.SetConnectionRegistry(dh)
 	srv := httptest.NewServer(dh)
 	t.Cleanup(srv.Close)
@@ -118,7 +137,7 @@ func TestDialinHandler_ServeHTTP_NoToken_Refuses(t *testing.T) {
 
 func TestDialinHandler_ServeHTTP_RevokedToken_Refuses(t *testing.T) {
 	setup := newDialinSetup(t)
-	created, token, err := setup.svc.Create(context.Background(), "owner", "x", []string{"tickets:read"})
+	created, token, err := setup.svc.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
 	require.NoError(t, err)
 	_, err = setup.svc.RevokeToken(context.Background(), "owner", created.ID)
 	require.NoError(t, err)
@@ -131,7 +150,7 @@ func TestDialinHandler_ServeHTTP_RevokedToken_Refuses(t *testing.T) {
 
 func TestDialinHandler_Announce_SyncsCodeAndHelloCarriesConfig(t *testing.T) {
 	setup := newDialinSetup(t)
-	created, token, err := setup.svc.Create(context.Background(), "owner", "x", []string{"tickets:read"})
+	created, token, err := setup.svc.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
 	require.NoError(t, err)
 	_, err = setup.svc.UpdateConfigValues(context.Background(), "owner", created.ID, json.RawMessage(`{"status":"done"}`))
 	require.NoError(t, err)
@@ -161,7 +180,7 @@ func TestDialinHandler_Announce_SyncsCodeAndHelloCarriesConfig(t *testing.T) {
 
 func TestDialinHandler_AnnounceNotFirst_ClosesConnection(t *testing.T) {
 	setup := newDialinSetup(t)
-	_, token, err := setup.svc.Create(context.Background(), "owner", "x", []string{"tickets:read"})
+	_, token, err := setup.svc.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
 	require.NoError(t, err)
 
 	conn, _, err := websocket.Dial(context.Background(), setup.wsURL(token), nil)
@@ -178,7 +197,7 @@ func TestDialinHandler_AnnounceNotFirst_ClosesConnection(t *testing.T) {
 
 func TestDialinHandler_DeliversSubscribedEvent_RunSuccess_AdvancesCursor(t *testing.T) {
 	setup := newDialinSetup(t)
-	created, token, err := setup.svc.Create(context.Background(), "owner", "x", []string{"tickets:read"})
+	created, token, err := setup.svc.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
 	require.NoError(t, err)
 	_, err = setup.svc.SetEnabled(context.Background(), "owner", created.ID, true)
 	require.NoError(t, err)
@@ -220,7 +239,7 @@ func TestDialinHandler_DeliversSubscribedEvent_RunSuccess_AdvancesCursor(t *test
 
 func TestDialinHandler_DisabledAutomation_NoDelivery(t *testing.T) {
 	setup := newDialinSetup(t)
-	_, token, err := setup.svc.Create(context.Background(), "owner", "x", []string{"tickets:read"})
+	_, token, err := setup.svc.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
 	require.NoError(t, err)
 	// left disabled
 
@@ -236,7 +255,7 @@ func TestDialinHandler_DisabledAutomation_NoDelivery(t *testing.T) {
 
 func TestDialinHandler_DisabledMidBatch_StopsDeliveringTheRest(t *testing.T) {
 	setup := newDialinSetup(t)
-	created, token, err := setup.svc.Create(t.Context(), "owner", "x", []string{"tickets:read"})
+	created, token, err := setup.svc.Create(t.Context(), "owner", "ws-1", "x", []string{"tickets:read"})
 	require.NoError(t, err)
 	_, err = setup.svc.SetEnabled(t.Context(), "owner", created.ID, true)
 	require.NoError(t, err)
@@ -259,9 +278,34 @@ func TestDialinHandler_DisabledMidBatch_StopsDeliveringTheRest(t *testing.T) {
 	assert.Error(t, wsjson.Read(ctx, conn, &f), "an automation disabled mid-batch must not receive the rest of the batch")
 }
 
+func TestDialinHandler_DeliversOnlyItsOwnWorkspacesEvents(t *testing.T) {
+	setup := newDialinSetup(t, payloadScope{})
+	created, token, err := setup.svc.Create(t.Context(), "owner", "ws-1", "x", []string{"tickets:read"})
+	require.NoError(t, err)
+	_, err = setup.svc.SetEnabled(t.Context(), "owner", created.ID, true)
+	require.NoError(t, err)
+	conn := dialAnnounce(t, setup.wsURL(token), automations.Frame{Subscriptions: []string{"ticket.created"}})
+
+	now := time.Now()
+	setup.seedEvent(t, "ev-other", "ticket.created", `{"ws":"ws-2"}`, now)
+	setup.seedEvent(t, "ev-instance", "ticket.created", `{"ws":"*"}`, now.Add(time.Second))
+	setup.seedEvent(t, "ev-own", "ticket.created", `{"ws":"ws-1"}`, now.Add(2*time.Second))
+
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	var got []string
+	for range 2 {
+		var ev automations.Frame
+		require.NoError(t, wsjson.Read(ctx, conn, &ev))
+		got = append(got, ev.EventID)
+		require.NoError(t, wsjson.Write(ctx, conn, automations.Frame{Type: automations.FrameRunFinished, RunID: ev.RunID, Outcome: automations.OutcomeSuccess}))
+	}
+	assert.Equal(t, []string{"ev-instance", "ev-own"}, got, "another workspace's event is skipped; an instance-level one reaches every workspace")
+}
+
 func TestDialinHandler_Reenabled_SkipsEventsFromWhileDisabled(t *testing.T) {
 	setup := newDialinSetup(t)
-	created, token, err := setup.svc.Create(t.Context(), "owner", "x", []string{"tickets:read"})
+	created, token, err := setup.svc.Create(t.Context(), "owner", "ws-1", "x", []string{"tickets:read"})
 	require.NoError(t, err)
 	_, err = setup.svc.SetEnabled(t.Context(), "owner", created.ID, true)
 	require.NoError(t, err)
@@ -284,7 +328,7 @@ func TestDialinHandler_Reenabled_SkipsEventsFromWhileDisabled(t *testing.T) {
 
 func TestDialinHandler_UnsubscribedTopic_NoDelivery(t *testing.T) {
 	setup := newDialinSetup(t)
-	created, token, err := setup.svc.Create(context.Background(), "owner", "x", []string{"tickets:read"})
+	created, token, err := setup.svc.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
 	require.NoError(t, err)
 	_, err = setup.svc.SetEnabled(context.Background(), "owner", created.ID, true)
 	require.NoError(t, err)
@@ -305,7 +349,7 @@ func TestDialinHandler_UnsubscribedTopic_NoDelivery(t *testing.T) {
 // event is redelivered once the automation reconnects (ADR 0046).
 func TestDialinHandler_CrashMidRun_RedeliveredOnReconnect(t *testing.T) {
 	setup := newDialinSetup(t)
-	created, token, err := setup.svc.Create(context.Background(), "owner", "x", []string{"tickets:read"})
+	created, token, err := setup.svc.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
 	require.NoError(t, err)
 	_, err = setup.svc.SetEnabled(context.Background(), "owner", created.ID, true)
 	require.NoError(t, err)
@@ -345,7 +389,7 @@ func TestDialinHandler_CrashMidRun_RedeliveredOnReconnect(t *testing.T) {
 
 func TestDialinHandler_RunCrashedFrame_DoesNotAdvanceCursor(t *testing.T) {
 	setup := newDialinSetup(t)
-	created, token, err := setup.svc.Create(context.Background(), "owner", "x", []string{"tickets:read"})
+	created, token, err := setup.svc.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
 	require.NoError(t, err)
 	_, err = setup.svc.SetEnabled(context.Background(), "owner", created.ID, true)
 	require.NoError(t, err)
@@ -377,7 +421,7 @@ func TestDialinHandler_RunFinishedFailure_StillAdvancesCursor(t *testing.T) {
 	// A caught exception/falsy return is a clean, reported failure —
 	// the event was fully processed, so it must not be redelivered forever.
 	setup := newDialinSetup(t)
-	created, token, err := setup.svc.Create(context.Background(), "owner", "x", []string{"tickets:read"})
+	created, token, err := setup.svc.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
 	require.NoError(t, err)
 	_, err = setup.svc.SetEnabled(context.Background(), "owner", created.ID, true)
 	require.NoError(t, err)
@@ -398,7 +442,7 @@ func TestDialinHandler_RunFinishedFailure_StillAdvancesCursor(t *testing.T) {
 
 func TestDialinHandler_UnexpectedFrameFromAutomation_LoggedNotFatal(t *testing.T) {
 	setup := newDialinSetup(t)
-	_, token, err := setup.svc.Create(context.Background(), "owner", "x", []string{"tickets:read"})
+	_, token, err := setup.svc.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
 	require.NoError(t, err)
 
 	conn := dialAnnounce(t, setup.wsURL(token), automations.Frame{})
@@ -412,7 +456,7 @@ func TestDialinHandler_UnexpectedFrameFromAutomation_LoggedNotFatal(t *testing.T
 
 func TestDialinHandler_RevokeWhileConnected_DisconnectsSocket(t *testing.T) {
 	setup := newDialinSetup(t)
-	created, token, err := setup.svc.Create(context.Background(), "owner", "x", []string{"tickets:read"})
+	created, token, err := setup.svc.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
 	require.NoError(t, err)
 
 	conn := dialAnnounce(t, setup.wsURL(token), automations.Frame{})
@@ -429,9 +473,9 @@ func TestDialinHandler_RevokeWhileConnected_DisconnectsSocket(t *testing.T) {
 
 func TestDialinHandler_CloseAll_ClosesEveryLiveConnection(t *testing.T) {
 	setup := newDialinSetup(t)
-	_, token1, err := setup.svc.Create(context.Background(), "owner", "a", []string{"tickets:read"})
+	_, token1, err := setup.svc.Create(context.Background(), "owner", "ws-1", "a", []string{"tickets:read"})
 	require.NoError(t, err)
-	_, token2, err := setup.svc.Create(context.Background(), "owner", "b", []string{"tickets:read"})
+	_, token2, err := setup.svc.Create(context.Background(), "owner", "ws-1", "b", []string{"tickets:read"})
 	require.NoError(t, err)
 
 	conn1 := dialAnnounce(t, setup.wsURL(token1), automations.Frame{})
@@ -452,7 +496,7 @@ func TestDialinHandler_AnnounceBlankAfterTrim_ClosesConnection(t *testing.T) {
 	// otherwise-well-formed announce can still fail sync (a different branch
 	// than "no announce frame at all").
 	setup := newDialinSetup(t)
-	_, token, err := setup.svc.Create(context.Background(), "owner", "x", []string{"tickets:read"})
+	_, token, err := setup.svc.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
 	require.NoError(t, err)
 
 	conn, _, err := websocket.Dial(context.Background(), setup.wsURL(token), nil)
@@ -469,7 +513,7 @@ func TestDialinHandler_AnnounceBlankAfterTrim_ClosesConnection(t *testing.T) {
 
 func TestDialinHandler_NewConnectionReplacesOld(t *testing.T) {
 	setup := newDialinSetup(t)
-	_, token, err := setup.svc.Create(context.Background(), "owner", "x", []string{"tickets:read"})
+	_, token, err := setup.svc.Create(context.Background(), "owner", "ws-1", "x", []string{"tickets:read"})
 	require.NoError(t, err)
 
 	conn1 := dialAnnounce(t, setup.wsURL(token), automations.Frame{})
