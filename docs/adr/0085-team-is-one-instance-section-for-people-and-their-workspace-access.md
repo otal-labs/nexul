@@ -49,7 +49,8 @@ refetches and the server's scoping decides who it may see. It is not a catalog
 event, since presence is not a domain change and must not reach integrations.
 Presence is on the Team and `account_list` only, never the people directory.
 
-Decided 2026-09-29, amending ADR 0024 and ADR 0061. Amended by ADR 0088: the
+Decided 2026-09-29, amending ADR 0024 and ADR 0061. Amended by ADR 0097: a person's workspace entry also
+sets Every project and, under None, Project access per project. Amended by ADR 0088: the
 instance administrator is now whoever holds `accounts:read` in any workspace
 (seeing everyone) and `accounts:write` or `accounts:delete` (changing or
 removing an account).

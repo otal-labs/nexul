@@ -1,5 +1,7 @@
 # 0059. Memories may also be workspace-scoped
 
+Superseded by ADR 0099: memories are project-scoped only, and the workspace-scoped ones are deleted.
+
 A memory may now belong to the workspace instead of one project:
 `project_id` is nullable, and empty means workspace scope. Create, list, and
 clone all take an optional project id; when it is empty a workspace id is

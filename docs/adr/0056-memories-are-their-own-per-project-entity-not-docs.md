@@ -22,4 +22,5 @@ migration is moot.
 
 Decided 2026-09-16.
 
-Superseded in part by ADR 0059: memories may also be workspace-scoped.
+Superseded in part by ADR 0059: memories may also be workspace-scoped. ADR 0099 supersedes ADR 0059, so memories
+are project-scoped only again.

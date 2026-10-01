@@ -63,10 +63,11 @@ git history, and anything durable it decided is an ADR.
   split (Your settings, Configuration, Devices with QR phone sign-in and
   stored per-device sessions), then an Android app in `native/` with
   self-hosted OTA updates. Research findings in `research/`.
-- `.scratch/project-access/` — wayfinder map charted 2026-10-01: a member
-  held to the projects they are given access to, with levels set per
-  project, the role editor split into Workspace and Every project, and
-  private channels.
+- `.scratch/project-access/` — wayfinder map charted 2026-10-01 and
+  complete: a member held to the projects they are given access to, with
+  levels set per project, the role editor split into Workspace and Every
+  project, and private channels. `spec.md` holds the spec (ADRs 0097 to
+  0099); implementation tickets 08 to 14 slice it.
 - `.scratch/integrations/` — three tracks: Cloudflare deploy→domain,
   branch-driven deployments, LiveKit voice channels. Implemented; tickets 04
   and 11 await the owner's reaction to the built UI. Research findings in

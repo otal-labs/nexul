@@ -77,10 +77,12 @@ even their names.
 
 ## Not yet specified
 
-- Notices, inbox entries, and agent trails created before someone was
-  restricted that point at a project now hidden from them.
-- How a play's excluded-projects list and a restricted member's Project
-  access meet when they run a play.
+Nothing. The destination is reached: [spec.md](spec.md) holds the spec,
+with ADRs 0097 to 0099, and implementation tickets 08 to 14 slice it. The
+spec settles the last two fog items (notices, inbox entries, and trails
+pointing at a now-hidden project are filtered at read time with the rows
+kept; running a play needs both the play allowed on the project and the
+target readable through Project access).
 
 ## Out of scope
 

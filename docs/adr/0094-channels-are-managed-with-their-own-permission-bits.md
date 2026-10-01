@@ -1,5 +1,7 @@
 # Channels are managed with their own permission bits
 
+Amended by ADR 0098: a channel may be private, and reading a private channel takes being one of its members.
+
 A channel or voice channel could be created but never renamed or deleted, by anyone, through any adapter. Creating one
 took `chat:write` (ADR 0087), the same bit that starts a direct message, so an owner could not let people talk in DMs
 without also letting them add channels to the whole workspace's sidebar.
