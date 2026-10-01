@@ -229,6 +229,7 @@ type Notification struct {
 	SubjectID    string      `json:"subject_id"`
 	SubjectTitle string      `json:"subject_title"`
 	Read         bool        `json:"read"`
+	ReadAt       *time.Time  `json:"read_at,omitempty"`
 	CreatedAt    time.Time   `json:"created_at"`
 	// The Folder fields name a doc subject's folder as it is now, read at list time because a doc can move (ADR 0096).
 	FolderID        string `json:"folder_id,omitempty"`
