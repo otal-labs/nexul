@@ -14,7 +14,7 @@ interface DocListRowProps {
 }
 
 export const DocListRow = ({ doc, projectToken, selected }: DocListRowProps) => {
-  const { lock, onClone, onDelete } = useDocRowActions(doc, selected);
+  const { pin, lock, onClone, onDelete } = useDocRowActions(doc, selected);
   const wsPath = useWorkspacePath();
   return (
     <ListPaneRow
@@ -22,7 +22,7 @@ export const DocListRow = ({ doc, projectToken, selected }: DocListRowProps) => 
       title={doc.title}
       titleIcon={doc.locked && <LockIcon className="size-3 shrink-0 text-muted-foreground" aria-label="Locked" />}
       selected={selected}
-      actions={(lock || onClone || onDelete) && <RowActions itemLabel={doc.title} lock={lock} onClone={onClone} onDelete={onDelete} />}
+      actions={<RowActions itemLabel={doc.title} pin={pin} lock={lock} onClone={onClone} onDelete={onDelete} />}
     />
   );
 };

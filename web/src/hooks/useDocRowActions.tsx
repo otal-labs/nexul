@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { CloneDocForm } from "@/components/doc/CloneDocForm";
 import { useDeleteDoc, useSetDocLocked } from "@/hooks/DocHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
+import { useDocPins } from "@/hooks/useDocPins";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
@@ -10,10 +11,11 @@ import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { CloneDocFormSchema, type CloneDocFormData, type DocListItem } from "@/models/Doc";
 import { docPath, projectTokenById } from "@/models/Project";
 
-// A row's Lock, Clone, and Delete, each undefined when the viewer's role lacks it; the server still checks the doc itself.
+// A row's Pin, plus Lock, Clone, and Delete, each of those undefined when the viewer's role lacks it; the server still checks the doc itself.
 export const useDocRowActions = (doc: DocListItem, selected: boolean) => {
   const navigate = useNavigate();
-const wsPath = useWorkspacePath();
+  const wsPath = useWorkspacePath();
+  const { pinnedIds, toggle } = useDocPins();
   const canWrite = useHasPermission("docs:write");
   const canClone = useHasPermission("docs:clone");
   const canDelete = useHasPermission("docs:delete");
@@ -47,6 +49,7 @@ const wsPath = useWorkspacePath();
   };
 
   return {
+    pin: { pinned: pinnedIds.includes(doc.id), onToggle: () => toggle(doc.id) },
     lock: canWrite ? { locked: doc.locked, onToggle: () => setLocked.mutate({ id: doc.id, locked: !doc.locked }) } : undefined,
     onClone: canClone ? () => void clone() : undefined,
     onDelete: canDelete ? () => void remove() : undefined,
