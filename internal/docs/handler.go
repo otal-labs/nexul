@@ -19,8 +19,10 @@ func NewHandler(svc *Service) *Handler {
 	return &Handler{svc: svc}
 }
 
+// saveDocRequest's FolderID places a new doc; empty is the project's default folder.
 type saveDocRequest struct {
 	ProjectID string `json:"project_id"`
+	FolderID  string `json:"folder_id"`
 	Title     string `json:"title"`
 	Body      string `json:"body"`
 }
@@ -41,6 +43,11 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("POST /api/docs", h.create)
 	mux.HandleFunc("GET /api/docs", h.list)
 	mux.HandleFunc("GET /api/docs/search", h.search)
+	mux.HandleFunc("GET /api/docs/folders", h.listFolders)
+	mux.HandleFunc("POST /api/docs/folders", h.createFolder)
+	mux.HandleFunc("PUT /api/docs/folders/{id}", h.renameFolder)
+	mux.HandleFunc("DELETE /api/docs/folders/{id}", h.deleteFolder)
+	mux.HandleFunc("POST /api/docs/{id}/move", h.move)
 	mux.HandleFunc("POST /api/docs/{id}/archive", h.archive)
 	mux.HandleFunc("POST /api/docs/{id}/restore", h.restore)
 	mux.HandleFunc("POST /api/docs/{id}/lock", h.lock)
@@ -62,7 +69,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	d, err := h.svc.Create(r.Context(), req.ProjectID, req.Title, req.Body)
+	d, err := h.svc.CreateInFolder(r.Context(), req.ProjectID, req.FolderID, req.Title, req.Body)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

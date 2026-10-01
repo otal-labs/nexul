@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 interface ListPaneRowProps {
   to: string;
   title: string;
+  /** A small kind icon before the title, such as a doc's page. */
+  leading?: ReactNode;
   /** A small state icon after the title, such as a lock. */
   titleIcon?: ReactNode;
   snippet?: string;
@@ -18,7 +20,7 @@ interface ListPaneRowProps {
 }
 
 // The link's ::after covers the row so the whole row opens it; actions and trailing sit above that layer.
-export const ListPaneRow = ({ to, title, titleIcon, snippet = "", selected, meta, actions, trailing }: ListPaneRowProps) => {
+export const ListPaneRow = ({ to, title, leading, titleIcon, snippet = "", selected, meta, actions, trailing }: ListPaneRowProps) => {
   const ref = useRef<HTMLLIElement>(null);
 
   // A deep link can select a row far down the list.
@@ -41,6 +43,7 @@ export const ListPaneRow = ({ to, title, titleIcon, snippet = "", selected, meta
         className="min-w-0 flex-1 py-2 outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-inset"
       >
         <span className="flex min-w-0 items-center gap-1.5">
+          {leading}
           <span className="truncate text-[13px] font-medium text-foreground">{title}</span>
           {titleIcon}
         </span>

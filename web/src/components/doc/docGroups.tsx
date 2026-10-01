@@ -1,33 +1,49 @@
 import type { DocListItem, DocSortField } from "@/models/Doc";
+import type { DocFolder } from "@/models/DocFolder";
 
 export interface DocGroup {
   label: string;
   docs: DocListItem[];
 }
 
-// Newest first by the chosen timestamp, bucketed by the viewer's own calendar day on that same timestamp; empty buckets are dropped.
-export const groupDocsByDay = (docs: DocListItem[], sortBy: DocSortField, now: Date = new Date()): DocGroup[] => {
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).getTime();
-  const groups: DocGroup[] = [
-    { label: "Today", docs: [] },
-    { label: "Yesterday", docs: [] },
-    { label: "Earlier", docs: [] },
-  ];
-  const newestFirst = [...docs].sort((a, b) => Date.parse(b[sortBy]) - Date.parse(a[sortBy]));
-  for (const doc of newestFirst) {
-    const at = Date.parse(doc[sortBy]);
-    const bucket = at >= today ? 0 : at >= yesterday ? 1 : 2;
-    groups[bucket]?.docs.push(doc);
-  }
-  return groups.filter((group) => group.docs.length > 0);
-};
+export interface DocFolderGroup {
+  folder: DocFolder;
+  /** The folder's listed rows: matching, not pinned, newest first. */
+  docs: DocListItem[];
+  /** Every doc in the folder the viewer can open, pinned and unmatched ones included. */
+  total: number;
+}
 
-// Pinned docs lead in the order they were pinned, whatever the sort; ids not in the list are skipped.
-export const groupDocs = (docs: DocListItem[], sortBy: DocSortField, pinnedIds: string[], now: Date = new Date()): DocGroup[] => {
-  const byId = new Map(docs.map((doc) => [doc.id, doc]));
+export interface DocListGroups {
+  pinned: DocListItem[];
+  folders: DocFolderGroup[];
+}
+
+interface GroupDocsInput {
+  docs: DocListItem[];
+  /** In the server's order: the default folder first, then creation order. */
+  folders: DocFolder[];
+  sortBy: DocSortField;
+  pinnedIds: string[];
+  /** Set while a search runs; folders with nothing matching are left out. */
+  match?: ((doc: DocListItem) => boolean) | undefined;
+}
+
+// A doc whose folder is not listed (the folder list lagging a move) shows under the default folder.
+export const groupDocs = ({ docs, folders, sortBy, pinnedIds, match }: GroupDocsInput): DocListGroups => {
+  const fallback = (folders.find((f) => f.is_default) ?? folders[0])?.id;
+  const known = new Set(folders.map((f) => f.id));
+  const folderOf = (doc: DocListItem) => (known.has(doc.folder_id) ? doc.folder_id : fallback);
+  const shown = match ? docs.filter(match) : docs;
+  const byId = new Map(shown.map((doc) => [doc.id, doc]));
   const pinned = pinnedIds.flatMap((id) => byId.get(id) ?? []);
   const pinnedSet = new Set(pinned.map((doc) => doc.id));
-  const days = groupDocsByDay(docs.filter((doc) => !pinnedSet.has(doc.id)), sortBy, now);
-  return pinned.length > 0 ? [{ label: "Pinned", docs: pinned }, ...days] : days;
+  const newestFirst = shown.filter((doc) => !pinnedSet.has(doc.id)).sort((a, b) => Date.parse(b[sortBy]) - Date.parse(a[sortBy]));
+  const groups = folders.map((folder) => ({
+    folder,
+    docs: newestFirst.filter((doc) => folderOf(doc) === folder.id),
+    total: docs.filter((doc) => folderOf(doc) === folder.id).length,
+  }));
+  if (!match) return { pinned, folders: groups };
+  return { pinned, folders: groups.filter((g) => g.docs.length > 0) };
 };

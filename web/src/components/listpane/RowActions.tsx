@@ -1,11 +1,16 @@
-import { CopyIcon, LockIcon, LockOpenIcon, MoreHorizontalIcon, PencilIcon, PinIcon, PinOffIcon, Trash2Icon } from "lucide-react";
+import { CopyIcon, FolderInputIcon, LockIcon, LockOpenIcon, MoreHorizontalIcon, PencilIcon, PinIcon, PinOffIcon, Trash2Icon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -15,12 +20,14 @@ interface RowActionsProps {
   /** Pin and Unpin are a personal view setting, so nothing gates them; hidden when omitted. */
   pin?: { pinned: boolean; onToggle: () => void } | undefined;
   lock?: { locked: boolean; onToggle: () => void } | undefined;
+  /** The places the item can move to, the current one checked. */
+  moveTo?: { label: string; options: { id: string; name: string }[]; currentId: string; onMove: (id: string) => void } | undefined;
   onRename?: (() => void) | undefined;
   onClone?: (() => void) | undefined;
   onDelete?: (() => void) | undefined;
 }
 
-export const RowActions = ({ itemLabel, pin, lock, onRename, onClone, onDelete }: RowActionsProps) => (
+export const RowActions = ({ itemLabel, pin, lock, moveTo, onRename, onClone, onDelete }: RowActionsProps) => (
   <DropdownMenu>
     <DropdownMenuTrigger asChild>
       <Button variant="ghost" size="icon" className="size-7" aria-label={`More actions for ${itemLabel}`}>
@@ -46,6 +53,23 @@ export const RowActions = ({ itemLabel, pin, lock, onRename, onClone, onDelete }
           Unlock
         </DropdownMenuItem>
       )}
+      {moveTo && (
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <FolderInputIcon aria-hidden />
+            {moveTo.label}
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent className="min-w-36">
+            <DropdownMenuRadioGroup value={moveTo.currentId} onValueChange={moveTo.onMove}>
+              {moveTo.options.map((option) => (
+                <DropdownMenuRadioItem key={option.id} value={option.id}>
+                  {option.name}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+      )}
       {onRename && (
         <DropdownMenuItem onSelect={onRename}>
           <PencilIcon aria-hidden />
@@ -58,7 +82,7 @@ export const RowActions = ({ itemLabel, pin, lock, onRename, onClone, onDelete }
           Clone
         </DropdownMenuItem>
       )}
-      {onDelete && (!!pin || !!lock || !!onRename || !!onClone) && <DropdownMenuSeparator />}
+      {onDelete && (!!pin || !!lock || !!moveTo || !!onRename || !!onClone) && <DropdownMenuSeparator />}
       {onDelete && (
         <DropdownMenuItem variant="destructive" onSelect={onDelete}>
           <Trash2Icon aria-hidden />

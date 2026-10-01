@@ -1,14 +1,22 @@
 import { describe, expect, it } from "vitest";
 
-import { groupDocs, groupDocsByDay } from "@/components/doc/docGroups";
+import { groupDocs, type DocListGroups } from "@/components/doc/docGroups";
 import type { DocListItem } from "@/models/Doc";
+import type { DocFolder } from "@/models/DocFolder";
 
-const NOW = new Date(2026, 9, 1, 12, 0, 0);
-const at = (daysAgo: number, hour = 9) => new Date(2026, 9, 1 - daysAgo, hour).toISOString();
-
-const doc = (id: string, created: string, updated: string): DocListItem => ({
+const folder = (id: string, name: string, isDefault = false): DocFolder => ({
   id,
   project_id: "project-1",
+  name,
+  is_default: isDefault,
+  created_at: "2026-01-01T00:00:00Z",
+  updated_at: "2026-01-01T00:00:00Z",
+});
+
+const doc = (id: string, folderId: string, created: string, updated = created): DocListItem => ({
+  id,
+  project_id: "project-1",
+  folder_id: folderId,
   title: id,
   version: 1,
   archived: false,
@@ -18,64 +26,59 @@ const doc = (id: string, created: string, updated: string): DocListItem => ({
   updated_at: updated,
 });
 
-// EP01 was made first and edited today; EP06 and EP07 were made on later days and left alone.
-const docs = [doc("EP06", at(3), at(3)), doc("EP01", at(5), at(0)), doc("EP07", at(2), at(2))];
-const ids = (groups: ReturnType<typeof groupDocsByDay>) => groups.flatMap((g) => g.docs.map((d) => d.id));
+const main = folder("f-main", "Main", true);
+const getSource = folder("f-gs", "GetSource");
+const empty = folder("f-empty", "Empty");
+const folders = [main, getSource, empty];
 
-describe("groupDocsByDay", () => {
-  it("keeps an edited old doc in its created position when sorting by created", () => {
-    expect(ids(groupDocsByDay(docs, "created_at", NOW))).toEqual(["EP07", "EP06", "EP01"]);
-  });
+// EP01 was made first and edited last; EP02 and the roadmap were left alone after they were made.
+const docs = [
+  doc("roadmap", "f-main", "2026-01-02T09:00:00Z"),
+  doc("EP01", "f-gs", "2026-01-01T09:00:00Z", "2026-01-09T09:00:00Z"),
+  doc("EP02", "f-gs", "2026-01-03T09:00:00Z"),
+];
 
-  it("buckets by creation day when sorting by created", () => {
-    const groups = groupDocsByDay(docs, "created_at", NOW);
-    expect(groups.map((g) => g.label)).toEqual(["Earlier"]);
-  });
-
-  it("lifts an edited doc to the top and into Today when sorting by last edited", () => {
-    const groups = groupDocsByDay(docs, "updated_at", NOW);
-    expect(groups.map((g) => [g.label, g.docs.map((d) => d.id)])).toEqual([
-      ["Today", ["EP01"]],
-      ["Earlier", ["EP07", "EP06"]],
-    ]);
-  });
-
-  it("splits Today, Yesterday and Earlier on the chosen timestamp", () => {
-    const mixed = [doc("old", at(4), at(4)), doc("yday", at(1), at(1)), doc("new", at(0), at(0))];
-    const groups = groupDocsByDay(mixed, "created_at", NOW);
-    expect(groups.map((g) => [g.label, g.docs.map((d) => d.id)])).toEqual([
-      ["Today", ["new"]],
-      ["Yesterday", ["yday"]],
-      ["Earlier", ["old"]],
-    ]);
-  });
+const shape = (groups: DocListGroups) => ({
+  pinned: groups.pinned.map((d) => d.id),
+  folders: groups.folders.map((g) => [g.folder.name, g.docs.map((d) => d.id), g.total]),
 });
 
 describe("groupDocs", () => {
-  const all = [doc("new", at(0), at(0)), doc("yday", at(1), at(1)), doc("old", at(4), at(4))];
-  const shape = (groups: ReturnType<typeof groupDocs>) => groups.map((g) => [g.label, g.docs.map((d) => d.id)]);
-
-  it("leads with Pinned in pin order and drops those docs from their day group", () => {
-    expect(shape(groupDocs(all, "created_at", ["old", "new"], NOW))).toEqual([
-      ["Pinned", ["old", "new"]],
-      ["Yesterday", ["yday"]],
-    ]);
+  it("groups docs under their folders in the order given, keeping empty folders", () => {
+    expect(shape(groupDocs({ docs, folders, sortBy: "created_at", pinnedIds: [] }))).toEqual({
+      pinned: [],
+      folders: [
+        ["Main", ["roadmap"], 1],
+        ["GetSource", ["EP02", "EP01"], 2],
+        ["Empty", [], 0],
+      ],
+    });
   });
 
-  it("ignores pinned ids that are not in the list", () => {
-    expect(shape(groupDocs(all, "created_at", ["gone", "yday"], NOW))).toEqual([
-      ["Pinned", ["yday"]],
-      ["Today", ["new"]],
-      ["Earlier", ["old"]],
-    ]);
+  it("orders a folder's docs newest first by the chosen timestamp", () => {
+    const groups = groupDocs({ docs, folders, sortBy: "updated_at", pinnedIds: [] });
+    expect(groups.folders[1]?.docs.map((d) => d.id)).toEqual(["EP01", "EP02"]);
   });
 
-  it("has no Pinned group when nothing pinned is listed", () => {
-    expect(groupDocs(all, "created_at", ["gone"], NOW).map((g) => g.label)).toEqual(["Today", "Yesterday", "Earlier"]);
+  it("lifts pinned docs into Pinned in pin order, still counting them in their folder", () => {
+    expect(shape(groupDocs({ docs, folders, sortBy: "created_at", pinnedIds: ["gone", "EP01", "roadmap"] }))).toEqual({
+      pinned: ["EP01", "roadmap"],
+      folders: [
+        ["Main", [], 1],
+        ["GetSource", ["EP02"], 2],
+        ["Empty", [], 0],
+      ],
+    });
   });
 
-  it("keeps the pin order whichever way the day groups sort", () => {
-    const pinned = ["old", "new"];
-    expect(shape(groupDocs(all, "updated_at", pinned, NOW))[0]).toEqual(["Pinned", pinned]);
+  it("files a doc whose folder is not listed under the default folder", () => {
+    const stray = doc("stray", "f-unknown", "2026-01-04T09:00:00Z");
+    const groups = groupDocs({ docs: [...docs, stray], folders, sortBy: "created_at", pinnedIds: [] });
+    expect(groups.folders[0]?.docs.map((d) => d.id)).toEqual(["stray", "roadmap"]);
+  });
+
+  it("while searching, hides folders without a match and keeps every doc in a folder's count", () => {
+    const groups = groupDocs({ docs, folders, sortBy: "created_at", pinnedIds: ["roadmap"], match: (d) => d.id.startsWith("EP0") });
+    expect(shape(groups)).toEqual({ pinned: [], folders: [["GetSource", ["EP02", "EP01"], 2]] });
   });
 });

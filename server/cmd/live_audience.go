@@ -95,8 +95,12 @@ var liveRules = map[string]liveRule{
 	workspace.TopicStatusUpdated:     boardFrame("status"),
 	workspace.TopicStatusDeleted:     boardFrame("status"),
 
-	docs.TopicCreated: docFrame,
-	docs.TopicUpdated: docFrame,
+	docs.TopicCreated:       docFrame,
+	docs.TopicUpdated:       docFrame,
+	docs.TopicMoved:         docFrame,
+	docs.TopicFolderCreated: docFolderFrame,
+	docs.TopicFolderUpdated: docFolderFrame,
+	docs.TopicFolderDeleted: docFolderFrame,
 
 	memories.TopicCreated: memoryFrame,
 	memories.TopicUpdated: memoryFrame,
@@ -243,6 +247,16 @@ func docFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
 		} `json:"doc"`
 	}
 	return decode(raw, &p) && readsDoc(ctx, a, p.Doc.ID)
+}
+
+// docFolderFrame carries a folder's name, which a reader of the project's docs sees in the Docs list.
+func docFolderFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
+	var p struct {
+		Folder struct {
+			ProjectID string `json:"project_id"`
+		} `json:"folder"`
+	}
+	return decode(raw, &p) && a.access.RequireProject(ctx, p.Folder.ProjectID, permissions.DocsRead) == nil
 }
 
 func readsDoc(ctx context.Context, a liveAudience, id string) bool {

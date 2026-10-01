@@ -38,8 +38,8 @@ const mockApi = (list: unknown[] = projects) => {
   });
 };
 
-const Opener = () => {
-  const open = useCreateDocDialog("p-1");
+const Opener = ({ folderId }: { folderId?: string | undefined }) => {
+  const open = useCreateDocDialog("p-1", folderId);
   return (
     <button type="button" onClick={open}>
       Open
@@ -47,13 +47,13 @@ const Opener = () => {
   );
 };
 
-const openDialog = async () => {
+const openDialog = async (folderId?: string) => {
   const user = userEvent.setup();
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <MemoryRouter>
         <ContextAwareConfirmation.ConfirmationRoot />
-        <Opener />
+        <Opener folderId={folderId} />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -91,6 +91,27 @@ describe("New doc dialog", () => {
     expect(payload.title).toBe("Rollback plan");
     expect(JSON.parse(payload.body)).toMatchObject({ type: "doc" });
     expect(payload.body).toContain("Drain first");
+  });
+
+  it("files a doc started from a folder in that folder", async () => {
+    mockApi();
+    const { user, dialog } = await openDialog("f-gs");
+    await user.type(await within(dialog).findByLabelText("Title"), "EP01");
+    await user.click(within(dialog).getByRole("button", { name: "Create" }));
+    await vi.waitFor(() => expect(docPosts()).toHaveLength(1));
+    expect(docPosts()[0]?.[1]).toMatchObject({ project_id: "p-1", folder_id: "f-gs" });
+  });
+
+  it("drops the folder when another project is picked, which files the doc in that project's default folder", async () => {
+    mockApi();
+    const { user, dialog } = await openDialog("f-gs");
+    await user.type(await within(dialog).findByLabelText("Title"), "Elsewhere");
+    await user.click(within(dialog).getByRole("button", { name: "Backend" }));
+    await user.click(await screen.findByRole("button", { name: "Frontend" }));
+    await user.click(within(dialog).getByRole("button", { name: "Create" }));
+    await vi.waitFor(() => expect(docPosts()).toHaveLength(1));
+    expect(docPosts()[0]?.[1]).toMatchObject({ project_id: "p-2" });
+    expect(docPosts()[0]?.[1]).not.toHaveProperty("folder_id");
   });
 
   it("rejects an empty title without submitting", async () => {

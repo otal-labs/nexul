@@ -46,8 +46,14 @@ func NewService(repo Repo, access AccessChecker, attachments AttachmentsCopier) 
 	return &Service{repo: repo, access: access, attachments: attachments, now: time.Now}
 }
 
-// Create validates and persists a new doc (v1), enqueuing doc.created and granting the creator full permissions.
+// Create validates and persists a new doc in its project's default folder; see CreateInFolder.
 func (s *Service) Create(ctx context.Context, projectID, title, body string) (*Doc, error) {
+	return s.CreateInFolder(ctx, projectID, "", title, body)
+}
+
+// CreateInFolder persists a new doc (v1) in folderID, or the project's default folder when empty, enqueuing
+// doc.created and granting the creator full permissions.
+func (s *Service) CreateInFolder(ctx context.Context, projectID, folderID, title, body string) (*Doc, error) {
 	projectID = strings.TrimSpace(projectID)
 	if projectID == "" {
 		return nil, fmt.Errorf("%w: project id is required — create a project before creating docs", apperrs.ErrInvalid)
@@ -67,10 +73,15 @@ func (s *Service) Create(ctx context.Context, projectID, title, body string) (*D
 	if err != nil {
 		return nil, fmt.Errorf("%w: body is not valid document content", apperrs.ErrInvalid)
 	}
+	folderID, err = s.folderIn(ctx, projectID, folderID)
+	if err != nil {
+		return nil, err
+	}
 	now := s.now().UTC()
 	d := &Doc{
 		ID:        ids.New(),
 		ProjectID: projectID,
+		FolderID:  folderID,
 		Title:     title,
 		Body:      body,
 		Version:   1,
@@ -97,9 +108,9 @@ func (s *Service) persistNew(ctx context.Context, d *Doc, mentioned []string) er
 	return nil
 }
 
-// Clone copies a doc, with its attachments, into destinationProjectID as a new doc with a fresh history; an empty
-// destination duplicates it in its own project with " (copy)" on the title. Needs docs:read and docs:clone on the
-// source and docs:write in the destination project.
+// Clone copies a doc, with its attachments, into destinationProjectID's default folder as a new doc with a fresh
+// history; an empty destination duplicates it beside the original with " (copy)" on the title. Needs docs:read and
+// docs:clone on the source and docs:write in the destination project.
 func (s *Service) Clone(ctx context.Context, id, destinationProjectID string) (*Doc, error) {
 	source, err := s.Get(ctx, id)
 	if err != nil {
@@ -108,13 +119,17 @@ func (s *Service) Clone(ctx context.Context, id, destinationProjectID string) (*
 	if err := s.require(ctx, source.ID, permissions.DocsClone); err != nil {
 		return nil, err
 	}
-	title := source.Title
+	title, folderID := source.Title, ""
 	destinationProjectID = strings.TrimSpace(destinationProjectID)
 	if destinationProjectID == "" || destinationProjectID == source.ProjectID {
-		destinationProjectID = source.ProjectID
+		destinationProjectID, folderID = source.ProjectID, source.FolderID
 		title += " (copy)"
 	}
 	if err := s.requireProject(ctx, destinationProjectID, permissions.DocsWrite); err != nil {
+		return nil, err
+	}
+	folderID, err = s.folderIn(ctx, destinationProjectID, folderID)
+	if err != nil {
 		return nil, err
 	}
 	idMap, err := s.attachmentIDMap(ctx, source.ID)
@@ -127,7 +142,7 @@ func (s *Service) Clone(ctx context.Context, id, destinationProjectID string) (*
 	}
 	now := s.now().UTC()
 	clone := &Doc{
-		ID: ids.New(), ProjectID: destinationProjectID, Title: title, Body: body,
+		ID: ids.New(), ProjectID: destinationProjectID, FolderID: folderID, Title: title, Body: body,
 		Version: 1, CreatedBy: actorID(ctx), CreatedAt: now, UpdatedAt: now,
 	}
 	if err := s.persistNew(ctx, clone, nil); err != nil {
@@ -190,7 +205,7 @@ func (s *Service) List(ctx context.Context) ([]*DocListItem, error) {
 	return s.toListItems(ctx, ds)
 }
 
-// ListByProject returns the docs in a project, oldest first; the list stays flat, no sub-grouping (ADR 0025).
+// ListByProject returns the docs in a project, oldest first, each naming its folder (ADR 0096).
 func (s *Service) ListByProject(ctx context.Context, projectID string) ([]*DocListItem, error) {
 	if strings.TrimSpace(projectID) == "" {
 		return nil, fmt.Errorf("%w: project id is required", apperrs.ErrInvalid)
@@ -216,6 +231,7 @@ func (s *Service) toListItems(ctx context.Context, ds []*Doc) ([]*DocListItem, e
 		item := &DocListItem{
 			ID:        d.ID,
 			ProjectID: d.ProjectID,
+			FolderID:  d.FolderID,
 			Title:     d.Title,
 			Version:   d.Version,
 			Archived:  d.Archived,

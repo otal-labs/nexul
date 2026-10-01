@@ -12,8 +12,23 @@ type SearchResult struct {
 	Rank  float64 `json:"rank"`
 }
 
+// FolderRepo persists a project's doc folders; mutations carry events for the outbox write.
+type FolderRepo interface {
+	// ListFolders returns a project's folders, the default first, then the rest in creation order.
+	ListFolders(ctx context.Context, projectID string) ([]*Folder, error)
+	GetFolder(ctx context.Context, id string) (*Folder, error)
+	DefaultFolder(ctx context.Context, projectID string) (*Folder, error)
+	// CreateFolder returns ErrConflict when the project already has a folder of that name, ignoring case.
+	CreateFolder(ctx context.Context, f *Folder, evts ...eventbus.OutboxEvent) error
+	RenameFolder(ctx context.Context, f *Folder, evts ...eventbus.OutboxEvent) error
+	// DeleteFolder moves the folder's docs into toFolderID and deletes the folder in one transaction.
+	DeleteFolder(ctx context.Context, id, toFolderID string, evts ...eventbus.OutboxEvent) error
+	SetDocFolder(ctx context.Context, docID, folderID string, evts ...eventbus.OutboxEvent) error
+}
+
 // Repo is the consumer-side persistence contract for docs; mutations carry events for the outbox write.
 type Repo interface {
+	FolderRepo
 	Create(ctx context.Context, d *Doc, evts ...eventbus.OutboxEvent) error
 	GetByID(ctx context.Context, id string) (*Doc, error)
 	List(ctx context.Context) ([]*Doc, error)

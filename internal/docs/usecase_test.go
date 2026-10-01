@@ -26,6 +26,7 @@ type fakeRepo struct {
 	mu        sync.Mutex
 	docs      map[string]*Doc
 	versions  map[string][]*DocVersion
+	folders   []*Folder
 	events    []eventbus.OutboxEvent
 	createErr error
 	getErr    error
@@ -263,6 +264,8 @@ type fakeAccess struct {
 	grant      error
 	deleteErr  error
 	projectErr error
+	// projectAllow, when set, makes RequireProject pass only for membership and these actions.
+	projectAllow []permissions.Action
 }
 
 func (f fakeAccess) Can(_ context.Context, _, _ string, action permissions.Action) (bool, error) {
@@ -280,7 +283,10 @@ func (f fakeAccess) DeleteByDoc(_ context.Context, _ string) error {
 	return f.deleteErr
 }
 
-func (f fakeAccess) RequireProject(context.Context, string, permissions.Action) error {
+func (f fakeAccess) RequireProject(_ context.Context, _ string, action permissions.Action) error {
+	if f.projectAllow != nil && action != permissions.Member && !slices.Contains(f.projectAllow, action) {
+		return apperrs.ErrForbidden
+	}
 	return f.projectErr
 }
 

@@ -200,3 +200,29 @@ func TestDocList(t *testing.T) {
 		assert.False(t, p.Items[0].CanOpen)
 	})
 }
+
+func TestDocTools_Folders(t *testing.T) {
+	repo := newFakeRepo()
+	s := newTestService(repo)
+	getSource, err := s.CreateFolder(testCtx(), "project-1", "GetSource")
+	require.NoError(t, err)
+	stays := mustDoc(t, s, "project-1", "Roadmap", "")
+
+	got, err := callTool(testCtx(), t, s, "doc_create", `{"project_id":"project-1","folder_id":"`+getSource.ID+`","title":"EP01"}`)
+	require.NoError(t, err)
+	ep01 := got.(docResult)
+	assert.Equal(t, getSource.ID, ep01.FolderID)
+
+	got, err = callTool(testCtx(), t, s, "doc_update", `{"id":"`+stays.ID+`","folder_id":"`+getSource.ID+`","title":"Roadmap v2"}`)
+	require.NoError(t, err)
+	moved := got.(docResult)
+	assert.Equal(t, getSource.ID, moved.FolderID, "folder_id moves the doc")
+	assert.Equal(t, "Roadmap v2", moved.Title, "alongside the other fields sent")
+
+	got, err = callTool(testCtx(), t, s, "doc_list", `{"folder_id":"main-project-1"}`)
+	require.NoError(t, err)
+	assert.Empty(t, got.(mcptool.Page[*DocListItem]).Items, "both docs left Main")
+
+	_, err = callTool(testCtx(), t, s, "doc_create", `{"project_id":"project-1","clone_from_id":"`+ep01.ID+`","folder_id":"`+getSource.ID+`"}`)
+	require.ErrorIs(t, err, apperrs.ErrInvalid, "a copy's folder is not chosen at copy time")
+}

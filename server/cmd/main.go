@@ -210,6 +210,10 @@ func withIdentity(next http.Handler) http.Handler {
 var livePushTopics = []string{
 	docs.TopicCreated,
 	docs.TopicUpdated,
+	docs.TopicMoved,
+	docs.TopicFolderCreated,
+	docs.TopicFolderUpdated,
+	docs.TopicFolderDeleted,
 	runner.TopicRunnerConnected,
 	runner.TopicRunnerDisconnected,
 	runner.TopicDeployBuildStarted,

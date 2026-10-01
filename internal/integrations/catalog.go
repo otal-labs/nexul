@@ -32,6 +32,8 @@ var catalogSchemas = map[string]string{
 				"required": ["id", "title", "version"],
 				"properties": {
 					"id": {"type": "string"},
+					"project_id": {"type": "string"},
+					"folder_id": {"type": "string", "description": "The project folder the doc lives in."},
 					"title": {"type": "string"},
 					"body": {"type": "string"},
 					"version": {"type": "integer"},
@@ -55,6 +57,8 @@ var catalogSchemas = map[string]string{
 				"required": ["id", "title", "version"],
 				"properties": {
 					"id": {"type": "string"},
+					"project_id": {"type": "string"},
+					"folder_id": {"type": "string", "description": "The project folder the doc lives in."},
 					"title": {"type": "string"},
 					"body": {"type": "string"},
 					"version": {"type": "integer"},
@@ -622,6 +626,90 @@ var catalogSchemas = map[string]string{
 			"id": {"type": "string"},
 			"title": {"type": "string"},
 			"project_id": {"type": "string"}
+		}
+	}`,
+	"doc.moved": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"description": "A doc moved to another folder of its project; doc carries its new folder_id.",
+		"required": ["doc", "from_folder_id"],
+		"properties": {
+			"doc": {
+				"type": "object",
+				"required": ["id", "project_id", "folder_id", "title"],
+				"properties": {
+					"id": {"type": "string"},
+					"project_id": {"type": "string"},
+					"folder_id": {"type": "string"},
+					"title": {"type": "string"}
+				}
+			},
+			"from_folder_id": {"type": "string"},
+			"actor_id": {"type": "string"}
+		}
+	}`,
+	"doc.folder.created": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["folder"],
+		"properties": {
+			"folder": {
+				"type": "object",
+				"required": ["id", "project_id", "name", "is_default"],
+				"properties": {
+					"id": {"type": "string"},
+					"project_id": {"type": "string"},
+					"name": {"type": "string"},
+					"is_default": {"type": "boolean", "description": "The project's default folder, where new docs land; it is never deleted."},
+					"created_at": {"type": "string", "format": "date-time"},
+					"updated_at": {"type": "string", "format": "date-time"}
+				}
+			},
+			"actor_id": {"type": "string"}
+		}
+	}`,
+	"doc.folder.updated": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"description": "A doc folder was renamed.",
+		"required": ["folder", "previous_name"],
+		"properties": {
+			"folder": {
+				"type": "object",
+				"required": ["id", "project_id", "name", "is_default"],
+				"properties": {
+					"id": {"type": "string"},
+					"project_id": {"type": "string"},
+					"name": {"type": "string"},
+					"is_default": {"type": "boolean", "description": "The project's default folder, where new docs land; it is never deleted."},
+					"created_at": {"type": "string", "format": "date-time"},
+					"updated_at": {"type": "string", "format": "date-time"}
+				}
+			},
+			"previous_name": {"type": "string"},
+			"actor_id": {"type": "string"}
+		}
+	}`,
+	"doc.folder.deleted": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"description": "A doc folder was deleted; its docs moved to the project's default folder, never deleted.",
+		"required": ["folder", "moved_to_folder_id"],
+		"properties": {
+			"folder": {
+				"type": "object",
+				"required": ["id", "project_id", "name", "is_default"],
+				"properties": {
+					"id": {"type": "string"},
+					"project_id": {"type": "string"},
+					"name": {"type": "string"},
+					"is_default": {"type": "boolean", "description": "The project's default folder, where new docs land; it is never deleted."},
+					"created_at": {"type": "string", "format": "date-time"},
+					"updated_at": {"type": "string", "format": "date-time"}
+				}
+			},
+			"moved_to_folder_id": {"type": "string"},
+			"actor_id": {"type": "string"}
 		}
 	}`,
 	"play.created": `{

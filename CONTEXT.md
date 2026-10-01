@@ -207,6 +207,17 @@ is unlocked. Anyone who may write the doc locks or unlocks it; archiving,
 cloning, and deleting still work, and a clone starts unlocked.
 _Avoid_: Frozen, protected, read-only doc
 
+**Folder**:
+A group of a project's docs, one level deep: every doc lives in exactly one
+folder of its project. Each project has a default folder, Main, where a new
+doc lands unless it was started in another folder; it can be renamed but
+never deleted, and deleting any other folder moves its docs there, never
+deleting one. A doc copied into another project lands in that project's
+default folder. Made, renamed, and deleted, and docs moved between them, with
+`docs:write`; a reader sees only the folders holding a doc they can open.
+_Avoid_: Category (that groups tickets on the board), section (a heading
+inside a doc), collection (the retired workspace-wide doc grouping)
+
 **Channel**:
 A workspace conversation every member reads and posts in: a text channel,
 named with a leading `#`, or a voice channel. Created and renamed with
@@ -666,8 +677,8 @@ network internet reachability via hostnames — the canonical term for what's
 elsewhere been called an "exit node" or "entry path"; an **exposure** routes
 one hostname through a gateway to a container.
 
-**Docs** — documentation as the source of truth, with `@` cross-references to
-tickets and other docs.
+**Docs** — documentation as the source of truth, grouped into each project's
+folders, with `@` cross-references to tickets and other docs.
 
 **Git provider** — the abstraction over GitHub and future providers: branches,
 PRs, webhooks.

@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router";
 
 import { CloneDocForm } from "@/components/doc/CloneDocForm";
+import { useFetchDocFolders, useMoveDoc } from "@/hooks/DocFolderHooks";
 import { useDeleteDoc, useSetDocLocked } from "@/hooks/DocHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { useDocPins } from "@/hooks/useDocPins";
@@ -11,7 +12,8 @@ import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { CloneDocFormSchema, type CloneDocFormData, type DocListItem } from "@/models/Doc";
 import { docPath, projectTokenById } from "@/models/Project";
 
-// A row's Pin, plus Lock, Clone, and Delete, each of those undefined when the viewer's role lacks it; the server still checks the doc itself.
+// A row's Pin, plus Lock, Move to folder, Clone, and Delete, each of those undefined when the viewer's role lacks it; the
+// server still checks the doc itself.
 export const useDocRowActions = (doc: DocListItem, selected: boolean) => {
   const navigate = useNavigate();
   const wsPath = useWorkspacePath();
@@ -24,6 +26,8 @@ export const useDocRowActions = (doc: DocListItem, selected: boolean) => {
   const deleteDoc = useDeleteDoc();
   const setLocked = useSetDocLocked();
   const { data: projects } = useFetchProjects();
+  const { data: folders } = useFetchDocFolders(doc.project_id);
+  const moveDoc = useMoveDoc();
 
   // The dialog renders outside the router, so the move to the copy happens here once it resolves.
   const clone = async () => {
@@ -51,6 +55,10 @@ export const useDocRowActions = (doc: DocListItem, selected: boolean) => {
   return {
     pin: { pinned: pinnedIds.includes(doc.id), onToggle: () => toggle(doc.id) },
     lock: canWrite ? { locked: doc.locked, onToggle: () => setLocked.mutate({ id: doc.id, locked: !doc.locked }) } : undefined,
+    moveTo:
+      canWrite && folders && folders.length > 1
+        ? { label: "Move to folder", options: folders, currentId: doc.folder_id, onMove: (folderId: string) => moveDoc.mutate({ id: doc.id, folderId }) }
+        : undefined,
     onClone: canClone ? () => void clone() : undefined,
     onDelete: canDelete ? () => void remove() : undefined,
   };

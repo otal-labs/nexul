@@ -56,12 +56,13 @@ func (q *Queries) CommitDocBody(ctx context.Context, arg CommitDocBodyParams) (i
 }
 
 const createDoc = `-- name: CreateDoc :exec
-INSERT INTO docs (id, project_id, title, body, body_md, version, archived, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO docs (id, project_id, folder_id, title, body, body_md, version, archived, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateDocParams struct {
 	ID        string
 	ProjectID sql.NullString
+	FolderID  string
 	Title     string
 	Body      string
 	BodyMd    string
@@ -76,6 +77,7 @@ func (q *Queries) CreateDoc(ctx context.Context, arg CreateDocParams) error {
 	_, err := q.db.ExecContext(ctx, createDoc,
 		arg.ID,
 		arg.ProjectID,
+		arg.FolderID,
 		arg.Title,
 		arg.Body,
 		arg.BodyMd,
@@ -101,7 +103,7 @@ func (q *Queries) DeleteDoc(ctx context.Context, id string) (int64, error) {
 }
 
 const getDoc = `-- name: GetDoc :one
-SELECT id, title, body, version, created_at, updated_at, archived, body_md, project_id, created_by, locked FROM docs WHERE id = ?
+SELECT id, title, body, version, created_at, updated_at, archived, body_md, project_id, created_by, locked, folder_id FROM docs WHERE id = ?
 `
 
 func (q *Queries) GetDoc(ctx context.Context, id string) (Doc, error) {
@@ -119,6 +121,7 @@ func (q *Queries) GetDoc(ctx context.Context, id string) (Doc, error) {
 		&i.ProjectID,
 		&i.CreatedBy,
 		&i.Locked,
+		&i.FolderID,
 	)
 	return i, err
 }
@@ -253,7 +256,7 @@ func (q *Queries) ListDocVersions(ctx context.Context, docID string) ([]ListDocV
 }
 
 const listDocs = `-- name: ListDocs :many
-SELECT id, title, body, version, created_at, updated_at, archived, body_md, project_id, created_by, locked FROM docs ORDER BY created_at
+SELECT id, title, body, version, created_at, updated_at, archived, body_md, project_id, created_by, locked, folder_id FROM docs ORDER BY created_at
 `
 
 func (q *Queries) ListDocs(ctx context.Context) ([]Doc, error) {
@@ -277,6 +280,7 @@ func (q *Queries) ListDocs(ctx context.Context) ([]Doc, error) {
 			&i.ProjectID,
 			&i.CreatedBy,
 			&i.Locked,
+			&i.FolderID,
 		); err != nil {
 			return nil, err
 		}
@@ -292,7 +296,7 @@ func (q *Queries) ListDocs(ctx context.Context) ([]Doc, error) {
 }
 
 const listDocsByProject = `-- name: ListDocsByProject :many
-SELECT id, title, body, version, created_at, updated_at, archived, body_md, project_id, created_by, locked FROM docs WHERE project_id = ? ORDER BY created_at
+SELECT id, title, body, version, created_at, updated_at, archived, body_md, project_id, created_by, locked, folder_id FROM docs WHERE project_id = ? ORDER BY created_at
 `
 
 func (q *Queries) ListDocsByProject(ctx context.Context, projectID sql.NullString) ([]Doc, error) {
@@ -316,6 +320,7 @@ func (q *Queries) ListDocsByProject(ctx context.Context, projectID sql.NullStrin
 			&i.ProjectID,
 			&i.CreatedBy,
 			&i.Locked,
+			&i.FolderID,
 		); err != nil {
 			return nil, err
 		}

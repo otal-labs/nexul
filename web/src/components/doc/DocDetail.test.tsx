@@ -33,6 +33,7 @@ class FakeSocket implements LiveSocket {
 const doc: Doc = {
   id: "doc-1",
   project_id: "p-1",
+  folder_id: "f-main",
   title: "Storage Spine",
   body: "SQLite is the spine.",
   version: 2,

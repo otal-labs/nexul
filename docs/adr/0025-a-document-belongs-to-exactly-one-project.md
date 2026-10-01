@@ -23,3 +23,5 @@ project does it with an explicit mention.
 References are stored as canonical internal Markdown links carrying the
 entity type and stable id (`/tickets/<id>`); titles are labels and never
 identifiers, so renaming a target can never break a reference.
+
+Amended by ADR 0096: a project's docs are grouped into folders, one level deep, each doc in exactly one.

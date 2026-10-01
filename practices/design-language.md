@@ -161,9 +161,21 @@ selected row is `bg-accent` with a 2px `muted-foreground` left edge, a hover
 Clone, then Delete in destructive after a separator), each item hidden without
 its permission and the `…` gone when none is left; Docs adds Pin first, which
 needs no permission and lifts the doc into a leading Pinned group kept in the
-browser. The menu takes the meta's place on hover and focus and stays on the
-selected row.
-Group labels are 11px uppercase mono over a hairline. Below 1024px one pane
+browser, and Move to folder after Lock, a submenu of the project's folders with
+the current one checked. The menu takes the meta's place on hover and focus and
+stays on the selected row.
+Group labels are 11px uppercase mono over a hairline. Docs groups its rows by
+folder below Pinned, the default folder first and the rest in creation order:
+a folder row is a chevron, a muted lucide `Folder` (`FolderOpen` while open),
+the name in the group-label style, and a muted mono count, and it toggles on
+click, collapsed folders kept per browser and project. On hover and focus a
+`+` (new doc in that folder) and a `…` (Rename, then Delete, never on the
+default folder) take the count's place. Doc rows lead with a muted `FileText`
+icon aligned under the folder icon, and an empty open folder says "No docs" in
+one muted line. A search shows matching docs inside their folders, hides the
+folders without a match, and opens collapsed ones while it runs. The header
+puts a ghost `FolderPlus` (New folder) beside the `+`, for writers only. No
+folder carries a color. Below 1024px one pane
 shows at a time. `ListDetailLayout` and `ListPaneRow` in
 `web/src/components/listpane/` are the reference.
 

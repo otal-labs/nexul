@@ -7,7 +7,9 @@ type Doc struct {
 	Title string `json:"title"`
 	Body  string `json:"body"`
 	// ProjectID is the project this doc belongs to; mandatory, mirrors Ticket.ProjectID (ADR 0025).
-	ProjectID string    `json:"project_id"`
+	ProjectID string `json:"project_id"`
+	// FolderID is the project folder the doc lives in; every doc is in exactly one (ADR 0096).
+	FolderID  string    `json:"folder_id"`
 	Version   int       `json:"version"`
 	Archived  bool      `json:"archived"`
 	Locked    bool      `json:"locked"`
@@ -32,6 +34,7 @@ type DocListItem struct {
 	ID string `json:"id"`
 	// ProjectID lets the frontend group/filter the list by project (ticket 10), matching Ticket.ProjectID.
 	ProjectID string    `json:"project_id"`
+	FolderID  string    `json:"folder_id"`
 	Title     string    `json:"title"`
 	Version   int       `json:"version"`
 	Archived  bool      `json:"archived"`
@@ -42,4 +45,14 @@ type DocListItem struct {
 	// Filled only when CanOpen, so a doc the caller can't open discloses its title alone.
 	CreatedBy string `json:"created_by,omitempty"`
 	Snippet   string `json:"snippet,omitempty"`
+}
+
+// Folder groups a project's docs one level deep; each project has one default folder, which is never deleted.
+type Folder struct {
+	ID        string    `json:"id"`
+	ProjectID string    `json:"project_id"`
+	Name      string    `json:"name"`
+	IsDefault bool      `json:"is_default"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
