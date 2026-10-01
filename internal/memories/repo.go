@@ -28,4 +28,6 @@ type Repo interface {
 type TemplateRepo interface {
 	GetInterviewTemplate(ctx context.Context, workspaceID string) (*InterviewTemplate, error)
 	SaveInterviewTemplate(ctx context.Context, t *InterviewTemplate, evts ...eventbus.OutboxEvent) error
+	// DeleteInterviewTemplate drops the workspace's own template so it follows the instance's again.
+	DeleteInterviewTemplate(ctx context.Context, workspaceID string, evts ...eventbus.OutboxEvent) error
 }

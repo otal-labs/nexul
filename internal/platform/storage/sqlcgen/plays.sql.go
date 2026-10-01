@@ -11,8 +11,8 @@ import (
 )
 
 const createPlay = `-- name: CreatePlay :exec
-INSERT INTO plays (id, workspace_id, label, type, description, instructions, enabled, show_when_stage, excluded_project_ids, created_by, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO plays (id, workspace_id, label, type, description, instructions, enabled, show_when_stage, excluded_project_ids, created_by, created_at, updated_at, builtin_key)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreatePlayParams struct {
@@ -28,6 +28,7 @@ type CreatePlayParams struct {
 	CreatedBy          string
 	CreatedAt          int64
 	UpdatedAt          int64
+	BuiltinKey         string
 }
 
 func (q *Queries) CreatePlay(ctx context.Context, arg CreatePlayParams) error {
@@ -44,6 +45,7 @@ func (q *Queries) CreatePlay(ctx context.Context, arg CreatePlayParams) error {
 		arg.CreatedBy,
 		arg.CreatedAt,
 		arg.UpdatedAt,
+		arg.BuiltinKey,
 	)
 	return err
 }
@@ -72,7 +74,7 @@ func (q *Queries) GetDecisionsCheckEnabled(ctx context.Context, id string) (int6
 }
 
 const getPlay = `-- name: GetPlay :one
-SELECT id, workspace_id, label, type, description, instructions, enabled, show_when_stage, excluded_project_ids, created_by, created_at, updated_at FROM plays WHERE id = ?
+SELECT id, workspace_id, label, type, description, instructions, enabled, show_when_stage, excluded_project_ids, created_by, created_at, updated_at, builtin_key FROM plays WHERE id = ?
 `
 
 func (q *Queries) GetPlay(ctx context.Context, id string) (Play, error) {
@@ -91,12 +93,13 @@ func (q *Queries) GetPlay(ctx context.Context, id string) (Play, error) {
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.BuiltinKey,
 	)
 	return i, err
 }
 
 const listPlays = `-- name: ListPlays :many
-SELECT id, workspace_id, label, type, description, instructions, enabled, show_when_stage, excluded_project_ids, created_by, created_at, updated_at FROM plays WHERE workspace_id = ? ORDER BY label
+SELECT id, workspace_id, label, type, description, instructions, enabled, show_when_stage, excluded_project_ids, created_by, created_at, updated_at, builtin_key FROM plays WHERE workspace_id = ? ORDER BY label
 `
 
 func (q *Queries) ListPlays(ctx context.Context, workspaceID string) ([]Play, error) {
@@ -121,6 +124,7 @@ func (q *Queries) ListPlays(ctx context.Context, workspaceID string) ([]Play, er
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.BuiltinKey,
 		); err != nil {
 			return nil, err
 		}

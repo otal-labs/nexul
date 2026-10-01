@@ -32,8 +32,17 @@ type Service struct {
 	defaults  DefaultsGate
 	accounts  AccountGate
 	projects  ProjectGate
+	instance  InstanceTemplates
 	now       func() time.Time
 }
+
+// InstanceTemplates reads the instance's text for a template kind and key, the code default until edited (ADR 0103).
+type InstanceTemplates interface {
+	Effective(ctx context.Context, kind, key string) (string, error)
+}
+
+// SetInstanceTemplates wires the instance layer an unedited workspace's mention chip template follows.
+func (s *Service) SetInstanceTemplates(t InstanceTemplates) { s.instance = t }
 
 // NewService wires the tenancy use-cases over their repos and permission gates.
 func NewService(repo Repo, members MemberRepo, invites InviteRepo, roles RoleGate, perm PermissionGate, roleNames RoleNameGate, wsPerms WorkspacePermissionGate, allowlist AllowlistGate, users UserLookupGate, channels ChannelGate, defaults DefaultsGate, accounts AccountGate) *Service {
@@ -63,7 +72,7 @@ func (s *Service) Create(ctx context.Context, userID, name string) (*Workspace, 
 		return nil, err
 	}
 	now := s.now().UTC()
-	w := &Workspace{ID: ids.New(), Name: name, Slug: slug, MentionChipTemplate: DefaultMentionChipTemplate, CreatedAt: now, UpdatedAt: now}
+	w := &Workspace{ID: ids.New(), Name: name, Slug: slug, CreatedAt: now, UpdatedAt: now}
 	if err := s.repo.Create(ctx, w); err != nil {
 		return nil, fmt.Errorf("create workspace: %w", err)
 	}
@@ -82,7 +91,7 @@ func (s *Service) Create(ctx context.Context, userID, name string) (*Workspace, 
 	if err := s.defaults.SeedWorkspaceDefaults(ctx, w.ID); err != nil {
 		return nil, fmt.Errorf("seed defaults for workspace %s: %w", w.ID, err)
 	}
-	return w, nil
+	return w, s.withChips(ctx, w)
 }
 
 // freeSlug returns base, or base-2, base-3, and so on: the first that is neither reserved nor taken.
@@ -163,6 +172,7 @@ func (s *Service) checkSlugFor(ctx context.Context, id, slug string) error {
 }
 
 // SetMentionChipTemplate changes how @-mention ticket chips render in workspace id; requires workspaces:write there.
+// An empty template drops the workspace's own, so it follows the instance's again.
 func (s *Service) SetMentionChipTemplate(ctx context.Context, actorID, id, template string) (*Workspace, error) {
 	id = strings.TrimSpace(id)
 	if err := s.requireWorkspacePermission(ctx, actorID, id, permissions.WorkspacesWrite); err != nil {
@@ -174,11 +184,55 @@ func (s *Service) SetMentionChipTemplate(ctx context.Context, actorID, id, templ
 	}
 	updated := *current
 	updated.MentionChipTemplate = template
+	updated.MentionChipTemplateEdited = strings.TrimSpace(template) != ""
 	updated.UpdatedAt = s.now().UTC()
-	if err := s.repo.Update(ctx, &updated); err != nil {
+	event := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicWorkspaceUpdated, Payload: WorkspaceEvent{WorkspaceID: id, Name: updated.Name, Slug: updated.Slug, ActorID: actorID}}
+	if err := s.repo.Update(ctx, &updated, event); err != nil {
 		return nil, fmt.Errorf("set mention chip template for workspace %s: %w", id, err)
 	}
-	return &updated, nil
+	return &updated, s.withChips(ctx, &updated)
+}
+
+// MentionChipTemplate is the chip template a member of workspace id sees, and whether the workspace edited its own.
+func (s *Service) MentionChipTemplate(ctx context.Context, actorID, id string) (string, bool, error) {
+	if _, err := s.members.RoleIDFor(ctx, id, actorID); err != nil {
+		return "", false, fmt.Errorf("workspace %s: %w", id, err)
+	}
+	w, err := s.Get(ctx, id)
+	if err != nil {
+		return "", false, err
+	}
+	return w.MentionChipTemplate, w.MentionChipTemplateEdited, nil
+}
+
+// withChips fills in the instance's chip template wherever a workspace has not edited its own.
+func (s *Service) withChips(ctx context.Context, ws ...*Workspace) error {
+	instance := ""
+	for _, w := range ws {
+		if w.MentionChipTemplateEdited {
+			continue
+		}
+		if instance == "" {
+			body, err := s.instanceChip(ctx)
+			if err != nil {
+				return err
+			}
+			instance = body
+		}
+		w.MentionChipTemplate = instance
+	}
+	return nil
+}
+
+func (s *Service) instanceChip(ctx context.Context) (string, error) {
+	if s.instance == nil {
+		return DefaultMentionChipTemplate, nil
+	}
+	body, err := s.instance.Effective(ctx, TemplateKind, "")
+	if err != nil {
+		return "", fmt.Errorf("get the instance mention chip template: %w", err)
+	}
+	return body, nil
 }
 
 // BindDefaultWorkspaceOwner binds userID as owner of the pre-seeded default workspace without creating a new row.
@@ -668,7 +722,7 @@ func (s *Service) Get(ctx context.Context, id string) (*Workspace, error) {
 	if err != nil {
 		return nil, fmt.Errorf("get workspace %s: %w", id, err)
 	}
-	return w, nil
+	return w, s.withChips(ctx, w)
 }
 
 // ListForUser returns the workspaces userID is a member of.
@@ -681,5 +735,5 @@ func (s *Service) ListForUser(ctx context.Context, userID string) ([]*Workspace,
 	if err != nil {
 		return nil, fmt.Errorf("list workspaces for user %s: %w", userID, err)
 	}
-	return ws, nil
+	return ws, s.withChips(ctx, ws...)
 }

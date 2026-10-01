@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/otal-labs/nexul/internal/docs/richtext"
@@ -20,7 +21,10 @@ const (
 	interviewWhenToUse = "This project's rules: stack, paradigm, testing, principles, and vocabulary."
 )
 
-// DefaultInterviewTemplate is the Interview template a workspace starts with, one heading per category.
+// TemplateKind names the Interview template among the instance templates (ADR 0103).
+const TemplateKind = "interview"
+
+// DefaultInterviewTemplate is the code default of the Interview template, one heading per category.
 const DefaultInterviewTemplate = `## Stack and versions
 Languages, frameworks, and the versions this project pins.
 
@@ -103,7 +107,7 @@ func (s *Service) CreateInterview(ctx context.Context, projectID, via string) (*
 	return m, nil
 }
 
-// InterviewTemplate returns the workspace's Interview template, the default until one is saved.
+// InterviewTemplate returns the workspace's Interview template, the instance's until the workspace saves its own.
 func (s *Service) InterviewTemplate(ctx context.Context, workspaceID string) (*InterviewTemplate, error) {
 	workspaceID = strings.TrimSpace(workspaceID)
 	if workspaceID == "" {
@@ -128,29 +132,72 @@ func (s *Service) SaveInterviewTemplate(ctx context.Context, workspaceID, body s
 	if err := s.require(ctx, workspaceID, permissions.MemoriesWrite); err != nil {
 		return nil, err
 	}
-	if err := checkInterviewLength("Interview template", body); err != nil {
+	if err := CheckInterviewTemplate(body); err != nil {
 		return nil, err
 	}
-	t := &InterviewTemplate{WorkspaceID: workspaceID, Body: body, DefaultBody: DefaultInterviewTemplate, UpdatedBy: actor.ID, UpdatedAt: s.now().UTC()}
-	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicInterviewTemplateUpdated, Payload: InterviewTemplateUpdatedEvent{
-		WorkspaceID: workspaceID, AuthorID: actor.ID, UpdatedAt: t.UpdatedAt,
-	}}
-	if err := s.repo.SaveInterviewTemplate(ctx, t, evt); err != nil {
+	now := s.now().UTC()
+	t := &InterviewTemplate{WorkspaceID: workspaceID, Body: body, Edited: true, UpdatedBy: actor.ID, UpdatedAt: now}
+	if err := s.repo.SaveInterviewTemplate(ctx, t, s.templateEvent(workspaceID, actor.ID, now)); err != nil {
 		return nil, fmt.Errorf("save interview template for workspace %s: %w", workspaceID, err)
 	}
-	return t, nil
+	return s.loadTemplate(ctx, workspaceID)
+}
+
+// ResetInterviewTemplate drops the workspace's own Interview template, so it follows the instance's again.
+func (s *Service) ResetInterviewTemplate(ctx context.Context, workspaceID string) (*InterviewTemplate, error) {
+	workspaceID = strings.TrimSpace(workspaceID)
+	if workspaceID == "" {
+		return nil, fmt.Errorf("%w: workspace id is required", apperrs.ErrInvalid)
+	}
+	actor, ok := identity.ActorFromCtx(ctx)
+	if !ok || actor.ID == "" {
+		return nil, fmt.Errorf("%w: an authenticated user is required", apperrs.ErrUnauthorized)
+	}
+	if err := s.require(ctx, workspaceID, permissions.MemoriesWrite); err != nil {
+		return nil, err
+	}
+	if err := s.repo.DeleteInterviewTemplate(ctx, workspaceID, s.templateEvent(workspaceID, actor.ID, s.now().UTC())); err != nil {
+		return nil, fmt.Errorf("reset interview template for workspace %s: %w", workspaceID, err)
+	}
+	return s.loadTemplate(ctx, workspaceID)
+}
+
+// CheckInterviewTemplate refuses an Interview template over the interview memory's cap, at any layer.
+func CheckInterviewTemplate(body string) error {
+	return checkInterviewLength("Interview template", body)
+}
+
+func (s *Service) templateEvent(workspaceID, authorID string, at time.Time) eventbus.OutboxEvent {
+	return eventbus.OutboxEvent{ID: ids.New(), Topic: TopicInterviewTemplateUpdated, Payload: InterviewTemplateUpdatedEvent{
+		WorkspaceID: workspaceID, AuthorID: authorID, UpdatedAt: at,
+	}}
 }
 
 func (s *Service) loadTemplate(ctx context.Context, workspaceID string) (*InterviewTemplate, error) {
+	instance, err := s.instanceTemplate(ctx)
+	if err != nil {
+		return nil, err
+	}
 	t, err := s.repo.GetInterviewTemplate(ctx, workspaceID)
 	if errors.Is(err, apperrs.ErrNotFound) {
-		return &InterviewTemplate{WorkspaceID: workspaceID, Body: DefaultInterviewTemplate, DefaultBody: DefaultInterviewTemplate}, nil
+		return &InterviewTemplate{WorkspaceID: workspaceID, Body: instance, DefaultBody: instance}, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("get interview template for workspace %s: %w", workspaceID, err)
 	}
-	t.DefaultBody = DefaultInterviewTemplate
+	t.DefaultBody, t.Edited = instance, true
 	return t, nil
+}
+
+func (s *Service) instanceTemplate(ctx context.Context) (string, error) {
+	if s.instance == nil {
+		return DefaultInterviewTemplate, nil
+	}
+	body, err := s.instance.Effective(ctx, TemplateKind, "")
+	if err != nil {
+		return "", fmt.Errorf("get the instance interview template: %w", err)
+	}
+	return body, nil
 }
 
 // checkInterviewBody enforces MaxInterviewChars on a stored rich-text body, measured as the markdown a turn sends.

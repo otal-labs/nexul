@@ -87,6 +87,15 @@ func (r *MemoriesRepo) SaveInterviewTemplate(ctx context.Context, t *memories.In
 	})
 }
 
+func (r *MemoriesRepo) DeleteInterviewTemplate(ctx context.Context, workspaceID string, evts ...eventbus.OutboxEvent) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		if err := r.q.WithTx(tx).DeleteInterviewTemplate(ctx, workspaceID); err != nil {
+			return fmt.Errorf("delete interview template for workspace %s: %w", workspaceID, err)
+		}
+		return enqueueMemoriesOutbox(ctx, tx, evts)
+	})
+}
+
 func (r *MemoriesRepo) ListByWorkspace(ctx context.Context, workspaceID string) ([]*memories.Memory, error) {
 	rows, err := r.q.ListMemoriesByWorkspace(ctx, workspaceID)
 	if err != nil {

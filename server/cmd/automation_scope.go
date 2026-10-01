@@ -47,7 +47,7 @@ var scopeRules = map[string]scopeRule{
 	"instance.upgrade_requested": instanceScope, "instance.upgrade_changed": instanceScope,
 	"topology.updated": instanceScope, "notification.created": instanceScope,
 	"dns.record_changed": instanceScope, "dns.tunnel_changed": instanceScope, "dns.gateway_changed": instanceScope,
-	"dns.exposure_changed": instanceScope,
+	"dns.exposure_changed": instanceScope, "instance_template.updated": instanceScope,
 
 	"workspace.member.added": workspaceScope, "workspace.member.removed": workspaceScope,
 	"workspace.member.updated": workspaceScope, "workspace.updated": workspaceScope, "role.updated": workspaceScope,

@@ -44,8 +44,17 @@ type Service struct {
 	access      AccessGate
 	projects    ProjectLookup
 	attachments AttachmentsCopier
+	instance    InstanceTemplates
 	now         func() time.Time
 }
+
+// InstanceTemplates reads the instance's text for a template kind and key, the code default until edited (ADR 0103).
+type InstanceTemplates interface {
+	Effective(ctx context.Context, kind, key string) (string, error)
+}
+
+// SetInstanceTemplates wires the instance layer an unedited workspace Interview template follows.
+func (s *Service) SetInstanceTemplates(t InstanceTemplates) { s.instance = t }
 
 // NewService wires the memories use-cases over the given repo, access gate, project lookup, and attachments
 // copier (for Clone).

@@ -38,3 +38,6 @@ SELECT * FROM interview_templates WHERE workspace_id = ?;
 -- name: UpsertInterviewTemplate :exec
 INSERT INTO interview_templates (workspace_id, body, updated_by, updated_at) VALUES (?, ?, ?, ?)
 ON CONFLICT (workspace_id) DO UPDATE SET body = excluded.body, updated_by = excluded.updated_by, updated_at = excluded.updated_at;
+
+-- name: DeleteInterviewTemplate :exec
+DELETE FROM interview_templates WHERE workspace_id = ?;

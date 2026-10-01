@@ -48,18 +48,20 @@ func (s Stage) valid() bool {
 
 // Play is one workspace's pre-configured Agent turn, fired by a person from a ticket or a doc (ADR 0055).
 type Play struct {
-	ID                 string    `json:"id"`
-	WorkspaceID        string    `json:"workspace_id"`
-	Label              string    `json:"label"`
-	Type               Type      `json:"type"`
-	Description        string    `json:"description"`
-	Instructions       string    `json:"instructions"`
-	Enabled            bool      `json:"enabled"`
-	ShowWhenStage      *Stage    `json:"show_when_stage"`
-	ExcludedProjectIDs []string  `json:"excluded_project_ids"`
-	CreatedBy          string    `json:"created_by"`
-	CreatedAt          time.Time `json:"created_at"`
-	UpdatedAt          time.Time `json:"updated_at"`
+	ID                 string   `json:"id"`
+	WorkspaceID        string   `json:"workspace_id"`
+	Label              string   `json:"label"`
+	Type               Type     `json:"type"`
+	Description        string   `json:"description"`
+	Instructions       string   `json:"instructions"`
+	Enabled            bool     `json:"enabled"`
+	ShowWhenStage      *Stage   `json:"show_when_stage"`
+	ExcludedProjectIDs []string `json:"excluded_project_ids"`
+	// BuiltinKey names the seeded play this one is, kept through renames; empty for a play a person created.
+	BuiltinKey string    `json:"builtin_key"`
+	CreatedBy  string    `json:"created_by"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 // TargetType names what a play was fired from and pairs with Type; an interview target's id is its project's id.

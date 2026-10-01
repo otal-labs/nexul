@@ -49,15 +49,6 @@ type memoryDeleteIn struct {
 	ID string `json:"id" jsonschema:"The memory's id, from memory_list."`
 }
 
-type templateGetIn struct {
-	WorkspaceID string `json:"workspace_id" jsonschema:"The workspace whose Interview template to read."`
-}
-
-type templateUpdateIn struct {
-	WorkspaceID string  `json:"workspace_id" jsonschema:"The workspace whose Interview template to change."`
-	Body        *string `json:"body,omitempty" jsonschema:"The new template as markdown, at most 8,000 characters. Omit to keep the current template."`
-}
-
 // memoryListItem is a memory's index entry: enough to decide relevance, never the body.
 type memoryListItem struct {
 	ID             string `json:"id"`
@@ -93,11 +84,10 @@ type memoryVersionInfo struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// MCPTools returns the memories and Interview template tools.
+// MCPTools returns the memories tools; the Interview template is read and changed through template_get and template_update.
 func MCPTools(s *Service) []mcptool.Tool {
 	return []mcptool.Tool{
 		memoryListTool(s), memoryGetTool(s), memoryCreateTool(s), memoryUpdateTool(s), memoryDeleteTool(s),
-		templateGetTool(s), templateUpdateTool(s),
 	}
 }
 
@@ -240,31 +230,6 @@ func memoryDeleteTool(s *Service) mcptool.Tool {
 				return nil, err
 			}
 			return mcptool.Gone(in.ID), nil
-		})
-}
-
-func templateGetTool(s *Service) mcptool.Tool {
-	return mcptool.New("interview_template_get", "Get Interview template",
-		"Returns the workspace's Interview template as markdown, the headings each new project's interview memory starts from, plus default_body, the seeded template. "+
-			"Use it to see what an interview will ask before running one. "+
-			"Change it with interview_template_update.",
-		mcptool.Hints{ReadOnly: true, Local: true},
-		func(ctx context.Context, in templateGetIn) (any, error) {
-			return s.InterviewTemplate(ctx, in.WorkspaceID)
-		})
-}
-
-func templateUpdateTool(s *Service) mcptool.Tool {
-	return mcptool.New("interview_template_update", "Update Interview template",
-		"Replaces the workspace's Interview template with a markdown body of at most 8,000 characters. "+
-			"Only projects whose interview memory is created afterwards start from it; existing interview memories are not changed, so edit those with memory_update. "+
-			"Returns the template as it now stands.",
-		mcptool.Hints{Idempotent: true, Local: true},
-		func(ctx context.Context, in templateUpdateIn) (any, error) {
-			if in.Body == nil {
-				return s.InterviewTemplate(ctx, in.WorkspaceID)
-			}
-			return s.SaveInterviewTemplate(ctx, in.WorkspaceID, *in.Body)
 		})
 }
 

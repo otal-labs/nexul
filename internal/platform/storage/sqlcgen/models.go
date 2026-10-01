@@ -383,6 +383,14 @@ type InstanceSetting struct {
 	DiscordOauthClientSecret string
 }
 
+type InstanceTemplate struct {
+	Kind      string
+	Key       string
+	Body      string
+	UpdatedBy string
+	UpdatedAt int64
+}
+
 type InstanceUpgrade struct {
 	ID          string
 	FromVersion string
@@ -665,6 +673,7 @@ type Play struct {
 	CreatedBy          string
 	CreatedAt          int64
 	UpdatedAt          int64
+	BuiltinKey         string
 }
 
 type PlayTrail struct {
