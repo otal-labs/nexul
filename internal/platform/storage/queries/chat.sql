@@ -1,11 +1,20 @@
 -- name: CreateConversation :exec
-INSERT INTO conversations (id, workspace_id, kind, name, ticket_id, doc_id, project_id, parent_message_id, created_by, created_at, updated_at, is_general) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO conversations (id, workspace_id, kind, name, ticket_id, doc_id, project_id, parent_message_id, created_by, created_at, updated_at, is_general, private) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: RenameConversation :execrows
 UPDATE conversations SET name = ?, updated_at = ? WHERE id = ?;
 
 -- name: DeleteConversation :execrows
 DELETE FROM conversations WHERE id = ?;
+
+-- name: SetConversationPrivate :execrows
+UPDATE conversations SET private = ?, updated_at = ? WHERE id = ?;
+
+-- name: DeleteConversationParticipants :exec
+DELETE FROM conversation_participants WHERE conversation_id = ?;
+
+-- name: DeleteConversationParticipant :exec
+DELETE FROM conversation_participants WHERE conversation_id = ? AND user_id = ?;
 
 -- name: InsertConversationParticipant :exec
 INSERT INTO conversation_participants (conversation_id, user_id, created_at) VALUES (?, ?, ?)
@@ -67,7 +76,7 @@ INSERT INTO conversation_unread_state (user_id, conversation_id, last_read_at) V
     ON CONFLICT(user_id, conversation_id) DO UPDATE SET last_read_at = excluded.last_read_at;
 
 -- name: UnreadCounts :many
-SELECT c.id, c.kind, c.doc_id, COUNT(m.id) AS count FROM conversations c
+SELECT c.id, COUNT(m.id) AS count FROM conversations c
 LEFT JOIN conversation_participants p ON p.conversation_id = c.id AND p.user_id = sqlc.arg(user_id)
 LEFT JOIN conversation_unread_state u ON u.conversation_id = c.id AND u.user_id = sqlc.arg(user_id)
 LEFT JOIN messages m ON m.conversation_id = c.id AND m.deleted_at IS NULL AND m.author_id != sqlc.arg(user_id) AND m.created_at > COALESCE(u.last_read_at, 0)

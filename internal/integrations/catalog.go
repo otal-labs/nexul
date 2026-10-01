@@ -1176,6 +1176,21 @@ var catalogSchemas = map[string]string{
 			"workspace_id": {"type": "string"},
 			"kind": {"type": "string", "enum": ["channel", "voice_channel"]},
 			"name": {"type": "string"},
+			"actor_id": {"type": "string"},
+			"private": {"type": "boolean"},
+			"member_ids": {"type": "array", "items": {"type": "string"}}
+		}
+	}`,
+	"chat.conversation.members_changed": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["conversation_id", "workspace_id", "private", "added_user_ids", "removed_user_ids"],
+		"properties": {
+			"conversation_id": {"type": "string"},
+			"workspace_id": {"type": "string"},
+			"private": {"type": "boolean"},
+			"added_user_ids": {"type": "array", "items": {"type": "string"}},
+			"removed_user_ids": {"type": "array", "items": {"type": "string"}},
 			"actor_id": {"type": "string"}
 		}
 	}`,

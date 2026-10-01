@@ -248,6 +248,9 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	chatSvc.SetDocAccess(accessSvc)
 	chatSvc.SetGate(accessSvc)
 	chatSvc.SetMembership(membershipGate{members: store.WorkspaceMembers})
+	chatSvc.SetThreadGate(chatThreadGate{projectEntityGate{access: accessSvc, projects: store.Projects, tickets: store.Tickets}})
+	chatSvc.SetStanding(chatStanding{roles: accessRoleResolver{tenancy: tenancySvc, roles: rolesSvc}})
+	attachmentsSvc.SetConversations(chatAttachmentConversations{svc: chatSvc})
 	ticketsSvc.SetTesting(tickets.Testing{
 		Stages:  ticketStages{statuses: store.Statuses},
 		Threads: ticketThreads{chat: chatSvc, projects: store.Projects},

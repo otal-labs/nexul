@@ -32,16 +32,65 @@ func (r *ChatRepo) CreateConversation(ctx context.Context, c *chat.Conversation,
 			DocID:           sql.NullString{String: c.DocID, Valid: c.DocID != ""},
 			ProjectID:       sql.NullString{String: c.ProjectID, Valid: c.ProjectID != ""},
 			ParentMessageID: c.ParentMessageID, CreatedBy: c.CreatedBy,
-			CreatedAt: c.CreatedAt.Unix(), UpdatedAt: c.UpdatedAt.Unix(), IsGeneral: boolToInt(c.General),
+			CreatedAt: c.CreatedAt.Unix(), UpdatedAt: c.UpdatedAt.Unix(), IsGeneral: boolToInt(c.General), Private: boolToInt(c.Private),
 		})
 		if err != nil {
 			return fmt.Errorf("insert conversation %s: %w", c.ID, classifyWriteErr(err))
 		}
-		for _, uid := range participantIDs {
-			if err := q.InsertConversationParticipant(ctx, sqlcgen.InsertConversationParticipantParams{
-				ConversationID: c.ID, UserID: uid, CreatedAt: c.CreatedAt.Unix(),
-			}); err != nil {
-				return fmt.Errorf("add participant %s to conversation %s: %w", uid, c.ID, classifyWriteErr(err))
+		if err := insertParticipants(ctx, q, c.ID, participantIDs, c.CreatedAt); err != nil {
+			return err
+		}
+		return enqueueChatOutbox(ctx, tx, evts)
+	})
+}
+
+func insertParticipants(ctx context.Context, q *sqlcgen.Queries, conversationID string, userIDs []string, at time.Time) error {
+	for _, uid := range userIDs {
+		if err := q.InsertConversationParticipant(ctx, sqlcgen.InsertConversationParticipantParams{
+			ConversationID: conversationID, UserID: uid, CreatedAt: at.Unix(),
+		}); err != nil {
+			return fmt.Errorf("add participant %s to conversation %s: %w", uid, conversationID, classifyWriteErr(err))
+		}
+	}
+	return nil
+}
+
+// SetChannelPrivate drops every participant row first, so a public channel's leftover creator row never makes a member.
+func (r *ChatRepo) SetChannelPrivate(ctx context.Context, id string, private bool, memberIDs []string, at time.Time, evts ...eventbus.OutboxEvent) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		q := r.q.WithTx(tx)
+		n, err := q.SetConversationPrivate(ctx, sqlcgen.SetConversationPrivateParams{Private: boolToInt(private), UpdatedAt: at.Unix(), ID: id})
+		if err != nil {
+			return fmt.Errorf("set conversation %s private: %w", id, classifyWriteErr(err))
+		}
+		if n == 0 {
+			return fmt.Errorf("set conversation %s private: %w", id, apperrs.ErrNotFound)
+		}
+		if err := q.DeleteConversationParticipants(ctx, id); err != nil {
+			return fmt.Errorf("clear participants of conversation %s: %w", id, err)
+		}
+		if err := insertParticipants(ctx, q, id, memberIDs, at); err != nil {
+			return err
+		}
+		return enqueueChatOutbox(ctx, tx, evts)
+	})
+}
+
+func (r *ChatRepo) AddParticipants(ctx context.Context, id string, userIDs []string, at time.Time, evts ...eventbus.OutboxEvent) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		if err := insertParticipants(ctx, r.q.WithTx(tx), id, userIDs, at); err != nil {
+			return err
+		}
+		return enqueueChatOutbox(ctx, tx, evts)
+	})
+}
+
+func (r *ChatRepo) RemoveParticipants(ctx context.Context, id string, userIDs []string, evts ...eventbus.OutboxEvent) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		q := r.q.WithTx(tx)
+		for _, uid := range userIDs {
+			if err := q.DeleteConversationParticipant(ctx, sqlcgen.DeleteConversationParticipantParams{ConversationID: id, UserID: uid}); err != nil {
+				return fmt.Errorf("remove participant %s from conversation %s: %w", uid, id, err)
 			}
 		}
 		return enqueueChatOutbox(ctx, tx, evts)
@@ -54,8 +103,8 @@ func (r *ChatRepo) GetConversation(ctx context.Context, id string) (*chat.Conver
 		return nil, fmt.Errorf("get conversation %s: %w", id, notFoundIfNoRows(err))
 	}
 	c := toConversation(row)
-	if err := r.attachDMParticipants(ctx, []*chat.Conversation{c}); err != nil {
-		return nil, fmt.Errorf("attach dm participants: %w", err)
+	if err := r.attachParticipants(ctx, []*chat.Conversation{c}); err != nil {
+		return nil, fmt.Errorf("attach participants: %w", err)
 	}
 	return c, nil
 }
@@ -147,18 +196,18 @@ func (r *ChatRepo) ListConversationsForUser(ctx context.Context, workspaceID, us
 		return nil, fmt.Errorf("list conversations for user %s: %w", userID, err)
 	}
 	out := toConversations(rows)
-	if err := r.attachDMParticipants(ctx, out); err != nil {
-		return nil, fmt.Errorf("attach dm participants: %w", err)
+	if err := r.attachParticipants(ctx, out); err != nil {
+		return nil, fmt.Errorf("attach participants: %w", err)
 	}
 	return out, nil
 }
 
-// attachDMParticipants batch-fills ParticipantIDs on every DM — one query for the page, not one per conversation.
-func (r *ChatRepo) attachDMParticipants(ctx context.Context, cs []*chat.Conversation) error {
+// attachParticipants batch-fills ParticipantIDs on every DM and private channel — one query for the page, not one per conversation.
+func (r *ChatRepo) attachParticipants(ctx context.Context, cs []*chat.Conversation) error {
 	byID := make(map[string]*chat.Conversation, len(cs))
 	ids := make([]string, 0, len(cs))
 	for _, c := range cs {
-		if c.Kind != chat.KindDM {
+		if c.Kind != chat.KindDM && !c.Private {
 			continue
 		}
 		byID[c.ID] = c
@@ -169,7 +218,7 @@ func (r *ChatRepo) attachDMParticipants(ctx context.Context, cs []*chat.Conversa
 	}
 	rows, err := r.q.ListParticipantsByConversationIDs(ctx, ids)
 	if err != nil {
-		return fmt.Errorf("list dm participants: %w", err)
+		return fmt.Errorf("list participants: %w", err)
 	}
 	for _, row := range rows {
 		if c, ok := byID[row.ConversationID]; ok {
@@ -306,7 +355,7 @@ func (r *ChatRepo) UnreadCounts(ctx context.Context, workspaceID, userID string)
 	}
 	out := make([]chat.UnreadCount, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, chat.UnreadCount{ConversationID: row.ID, Kind: chat.Kind(row.Kind), DocID: row.DocID.String, Count: int(row.Count)})
+		out = append(out, chat.UnreadCount{ConversationID: row.ID, Count: int(row.Count)})
 	}
 	return out, nil
 }
@@ -317,6 +366,7 @@ func toConversation(row sqlcgen.Conversation) *chat.Conversation {
 		TicketID: row.TicketID.String, DocID: row.DocID.String, ProjectID: row.ProjectID.String, ParentMessageID: row.ParentMessageID, CreatedBy: row.CreatedBy,
 		CreatedAt: time.Unix(row.CreatedAt, 0).UTC(), UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
 		AgentThreadID: row.AgentThreadID, AgentSyncedAt: time.Unix(row.AgentSyncedAt, 0).UTC(), General: row.IsGeneral != 0,
+		Private: row.Private != 0,
 	}
 }
 

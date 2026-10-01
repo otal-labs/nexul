@@ -14,7 +14,8 @@ export interface EventPayloads {
   "category.deleted": { "category": Record<string, unknown>; };
   "category.updated": { "category": Record<string, unknown>; };
   "chat.conversation.created": { "conversation": Record<string, unknown>; };
-  "chat.conversation.deleted": { "conversation_id": string; "workspace_id": string; "kind": "channel" | "voice_channel"; "name": string; "actor_id"?: string; };
+  "chat.conversation.deleted": { "conversation_id": string; "workspace_id": string; "kind": "channel" | "voice_channel"; "name": string; "actor_id"?: string; "private"?: boolean; "member_ids"?: string[]; };
+  "chat.conversation.members_changed": { "conversation_id": string; "workspace_id": string; "private": boolean; "added_user_ids": string[]; "removed_user_ids": string[]; "actor_id"?: string; };
   "chat.conversation.updated": { "conversation_id": string; "workspace_id": string; "kind": "channel" | "voice_channel"; "name": string; "previous_name": string; "actor_id"?: string; };
   "chat.message.created": { "message": Record<string, unknown>; };
   "chat.message.deleted": { "conversation_id": string; "message_id": string; "deleted_at": string; };
@@ -130,6 +131,7 @@ export const TOPICS: Topic[] = [
   "category.updated",
   "chat.conversation.created",
   "chat.conversation.deleted",
+  "chat.conversation.members_changed",
   "chat.conversation.updated",
   "chat.message.created",
   "chat.message.deleted",
@@ -242,7 +244,8 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "category.deleted": {"category":{}},
   "category.updated": {"category":{}},
   "chat.conversation.created": {"conversation":{}},
-  "chat.conversation.deleted": {"conversation_id":"fixture-conversation_id","workspace_id":"fixture-workspace_id","kind":"channel","name":"fixture-name","actor_id":"fixture-actor_id"},
+  "chat.conversation.deleted": {"conversation_id":"fixture-conversation_id","workspace_id":"fixture-workspace_id","kind":"channel","name":"fixture-name","actor_id":"fixture-actor_id","private":false,"member_ids":["fixture-member_ids"]},
+  "chat.conversation.members_changed": {"conversation_id":"fixture-conversation_id","workspace_id":"fixture-workspace_id","private":false,"added_user_ids":["fixture-added_user_ids"],"removed_user_ids":["fixture-removed_user_ids"],"actor_id":"fixture-actor_id"},
   "chat.conversation.updated": {"conversation_id":"fixture-conversation_id","workspace_id":"fixture-workspace_id","kind":"channel","name":"fixture-name","previous_name":"fixture-previous_name","actor_id":"fixture-actor_id"},
   "chat.message.created": {"message":{}},
   "chat.message.deleted": {"conversation_id":"fixture-conversation_id","message_id":"fixture-message_id","deleted_at":"2026-01-01T00:00:00Z"},

@@ -326,6 +326,58 @@ func (g membershipGate) IsMember(ctx context.Context, userID, workspaceID string
 	return true, nil
 }
 
+func (g membershipGate) MemberIDs(ctx context.Context, workspaceID string) ([]string, error) {
+	members, err := g.members.ListByWorkspace(ctx, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, len(members))
+	for i, m := range members {
+		ids[i] = m.UserID
+	}
+	return ids, nil
+}
+
+// chatStanding answers chat's Owner and Restricted member lookups from the person's membership.
+type chatStanding struct {
+	roles accessRoleResolver
+}
+
+func (c chatStanding) IsOwner(ctx context.Context, userID, workspaceID string) (bool, error) {
+	info, err := c.roles.MemberRole(ctx, workspaceID, userID)
+	if errors.Is(err, apperrs.ErrNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return info.IsOwnerRole, nil
+}
+
+// IsRestricted answers no until restricted memberships exist (.scratch/project-access ticket 08).
+func (chatStanding) IsRestricted(context.Context, string, string) (bool, error) {
+	return false, nil
+}
+
+// chatThreadGate checks a ticket thread through its ticket's project and an interview thread through its project.
+type chatThreadGate struct {
+	projectEntityGate
+}
+
+func (g chatThreadGate) RequireProject(ctx context.Context, projectID string, action permissions.Action) error {
+	return g.access.RequireProject(ctx, projectID, action)
+}
+
+// chatAttachmentConversations lets attachments read a conversation-owned file through reading the conversation.
+type chatAttachmentConversations struct {
+	svc *chat.Service
+}
+
+func (g chatAttachmentConversations) RequireRead(ctx context.Context, conversationID string) error {
+	_, err := g.svc.GetConversation(ctx, conversationID)
+	return err
+}
+
 // memoryAttachmentsAccessGate checks a memory's file through its project for attachments' MemoryAccessChecker
 // seam (ADR 0017, ADR 0099); the actor comes from ctx, the same one attachments read the user id from.
 type memoryAttachmentsAccessGate struct {

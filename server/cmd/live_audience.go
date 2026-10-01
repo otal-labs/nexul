@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"slices"
 
 	"github.com/otal-labs/nexul/internal/access"
 	"github.com/otal-labs/nexul/internal/agent"
@@ -106,16 +107,16 @@ var liveRules = map[string]liveRule{
 	memories.TopicUpdated: memoryFrame,
 	memories.TopicDeleted: memoryDeletedFrame,
 
-	chat.TopicConversationCreated: conversationFrame,
-	chat.TopicConversationUpdated: conversationFrame,
-	// A deleted channel can no longer be read, and every member of its workspace listed it.
-	chat.TopicConversationDeleted: workspaceFrame,
-	chat.TopicMessageCreated:      conversationFrame,
-	chat.TopicMessageUpdated:      conversationFrame,
-	chat.TopicMessageDeleted:      conversationFrame,
-	voice.TopicOccupancyChanged:   conversationFrame,
-	agent.TopicAgentStream:        conversationFrame,
-	plays.TopicPlayRun:            playRunFrame,
+	chat.TopicConversationCreated:        conversationFrame,
+	chat.TopicConversationUpdated:        conversationFrame,
+	chat.TopicConversationDeleted:        conversationDeletedFrame,
+	chat.TopicConversationMembersChanged: membersChangedFrame,
+	chat.TopicMessageCreated:             conversationFrame,
+	chat.TopicMessageUpdated:             conversationFrame,
+	chat.TopicMessageDeleted:             conversationFrame,
+	voice.TopicOccupancyChanged:          conversationFrame,
+	agent.TopicAgentStream:               conversationFrame,
+	plays.TopicPlayRun:                   playRunFrame,
 
 	deploy.TopicStackCreated:         stackFrame,
 	deploy.TopicStackUpdated:         stackFrame,
@@ -298,6 +299,21 @@ func conversationFrame(ctx context.Context, a liveAudience, raw json.RawMessage)
 	id := p.ConversationID + p.Conversation.ID + p.Message.ConversationID
 	_, err := a.chat.GetConversation(ctx, id)
 	return err == nil
+}
+
+// conversationDeletedFrame reaches whoever could read the channel before it went: a private one's members and the Owner.
+func conversationDeletedFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
+	var p chat.ConversationDeletedEvent
+	return decode(raw, &p) && a.chat.ReadsDeleted(ctx, p)
+}
+
+// membersChangedFrame reaches the channel's readers and the people it removed, who can no longer read it.
+func membersChangedFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
+	var p chat.ConversationMembersChangedEvent
+	if !decode(raw, &p) {
+		return false
+	}
+	return slices.Contains(p.RemovedUserIDs, actorID(ctx)) || conversationFrame(ctx, a, raw)
 }
 
 func playRunFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {

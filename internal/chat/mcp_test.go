@@ -203,3 +203,83 @@ func TestConversationUpdateAndDelete(t *testing.T) {
 	_, err = callTool(as("u-1"), t, s, "conversation_delete", `{"id":"`+c.ID+`"}`)
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
+
+func TestConversationList_PrivateChannels(t *testing.T) {
+	f := newPrivateFixture(t)
+	items := func(userID string) map[string]conversationResult {
+		out, err := callTool(as(userID), t, f.s, "conversation_list", `{"workspace_id":"w-1"}`)
+		require.NoError(t, err)
+		byID := map[string]conversationResult{}
+		for _, c := range out.(mcptool.Page[conversationResult]).Items {
+			byID[c.ID] = c
+		}
+		return byID
+	}
+	member := items("u-2")
+	assert.True(t, member[f.secret.ID].Private)
+	assert.Equal(t, []string{"u-1", "u-2"}, member[f.secret.ID].MemberIDs)
+	assert.Empty(t, member[f.secret.ID].ParticipantIDs)
+	assert.False(t, member[f.eng.ID].Private)
+	assert.Empty(t, member[f.eng.ID].MemberIDs)
+	assert.NotContains(t, items("u-3"), f.secret.ID, "a private channel the caller is not in is absent")
+	assert.Contains(t, items("u-owner"), f.secret.ID, "the Owner sees them all")
+}
+
+func TestConversationUpdate_PrivateAndMembers(t *testing.T) {
+	t.Run("refusals", func(t *testing.T) {
+		f := newPrivateFixture(t)
+		tests := []struct {
+			name    string
+			actor   string
+			args    string
+			wantErr error
+		}{
+			{"member_ids without going private", "u-1", `{"id":"` + f.eng.ID + `","member_ids":["u-2"]}`, apperrs.ErrInvalid},
+			{"member_ids while going public", "u-1", `{"id":"` + f.secret.ID + `","private":false,"member_ids":["u-2"]}`, apperrs.ErrInvalid},
+			{"a private channel the caller is not in", "u-3", `{"id":"` + f.secret.ID + `","add_member_ids":["u-3"]}`, apperrs.ErrNotFound},
+			{"removing someone else without channels:write", "u-2", `{"id":"` + f.secret.ID + `","remove_member_ids":["u-1"]}`, apperrs.ErrForbidden},
+			{"switching without channels:write", "u-2", `{"id":"` + f.secret.ID + `","private":false}`, apperrs.ErrForbidden},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				_, err := callTool(as(tt.actor), t, f.s, "conversation_update", tt.args)
+				require.ErrorIs(t, err, tt.wantErr)
+			})
+		}
+	})
+	t.Run("an error after a change says what already applied", func(t *testing.T) {
+		f := newPrivateFixture(t)
+		_, err := callTool(as("u-1"), t, f.s, "conversation_update", `{"id":"`+f.secret.ID+`","name":"hush","remove_member_ids":["u-1","u-2"]}`)
+		require.ErrorIs(t, err, apperrs.ErrInvalid)
+		assert.ErrorContains(t, err, "already applied: name")
+	})
+	t.Run("each field applies and omitted ones keep their value", func(t *testing.T) {
+		f := newPrivateFixture(t)
+		update := func(actor, fields string) conversationResult {
+			out, err := callTool(as(actor), t, f.s, "conversation_update", `{"id":"`+f.eng.ID+`"`+fields+`}`)
+			require.NoError(t, err)
+			return out.(conversationResult)
+		}
+		got := update("u-1", `,"private":true,"member_ids":["u-2"]`)
+		assert.True(t, got.Private)
+		assert.Equal(t, []string{"u-1", "u-2"}, got.MemberIDs)
+
+		got = update("u-1", `,"name":"platform"`)
+		assert.Equal(t, "platform", got.Name)
+		assert.True(t, got.Private, "a rename keeps the channel private")
+		assert.Equal(t, []string{"u-1", "u-2"}, got.MemberIDs)
+
+		got = update("u-2", `,"add_member_ids":["u-3"]`)
+		assert.Equal(t, []string{"u-1", "u-2", "u-3"}, got.MemberIDs)
+		got = update("u-3", `,"remove_member_ids":["u-3"]`)
+		assert.Equal(t, []string{"u-1", "u-2"}, got.MemberIDs, "your own id leaves")
+
+		got = update("u-1", ``)
+		assert.Equal(t, "platform", got.Name)
+		assert.True(t, got.Private)
+
+		got = update("u-1", `,"private":false`)
+		assert.False(t, got.Private)
+		assert.Empty(t, got.MemberIDs)
+	})
+}
