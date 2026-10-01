@@ -208,6 +208,17 @@ instead, or a centered dialog when the record is a short form of its own (the
 Team's person dialog, its body scrolling between a fixed header and footer); a
 page that works as a full detail view is not forced into a drawer.
 
+Ticket rail. The ticket page is the body and its Thread in the main column
+and an 18rem rail beside it from 1024px, stacked under them below. The rail
+is a run of sections, each a mono uppercase microheader with its one action
+trailing as a ghost `+`, compact rows, and a muted one-line sentence
+when empty ("No bugs reported."): Properties, Development, Reviews,
+Attachments, Links, Testing, Bugs, Trail, Plays. A linked ticket is its
+status icon and mono key only; hovering or focusing the key opens a hover
+card with the title, two clamped lines of description, and the status, and a
+remove `×` shows on the row's hover and focus. `TicketPageBody` is the
+reference.
+
 Empty and loading state. A centered icon in a `bg-muted/60` square (not a
 circle), a title, an optional message, an optional action, inside a
 dashed-border container; this is `EmptyState.tsx`. One muted icon, no

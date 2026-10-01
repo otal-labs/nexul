@@ -1395,7 +1395,7 @@ export const AppRouter = () => {
   (`ticketPath`, `boardPath`); a link wraps them with `useWorkspacePath`
   (`wsPath(boardPath(project))`). A moved or renamed path is not redirected:
   the old one is not found.
-- A tabbed page's route ends in `/:tab?` (`tickets/:ticketId/:tab?`,
+- A tabbed page's route ends in `/:tab?` (`automations/:id/:tab?`,
   `settings/:section?/:tab?`), and `PageTabs` reads it; links build tab paths
   with `useTabPath`. Where `:tab` would swallow a sibling's `:id`
   (`automations/hosts` beside `automations/:id`), the route table lists each

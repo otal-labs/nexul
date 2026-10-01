@@ -80,7 +80,7 @@ describe("TicketTestSection", () => {
   it("explains when pass and fail open, without offering them, outside a testing-stage column", async () => {
     mockApi({ url: "" });
     renderSection({ status: "st-build" as Ticket["status"] });
-    expect(await screen.findByText(/once the ticket reaches a Testing column/)).toBeInTheDocument();
+    expect(await screen.findByText("Pass and fail open in a Testing column.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Pass" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Fail" })).not.toBeInTheDocument();
   });

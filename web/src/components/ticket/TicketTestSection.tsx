@@ -1,7 +1,6 @@
 import { Check, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { EmptyRow } from "@/components/EmptyRow";
 import { AcceptanceCriteriaBlock } from "@/components/ticket/AcceptanceCriteriaBlock";
 import { TestTargetRow } from "@/components/ticket/TestTargetRow";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
@@ -17,7 +16,7 @@ interface TicketTestSectionProps {
   ticket: Ticket;
 }
 
-// Sits in the main column so testers on a phone see it; anyone who can see the ticket may pass or fail it.
+// Anyone who can see the ticket may pass or fail it.
 export const TicketTestSection = ({ ticket }: TicketTestSectionProps) => {
   const { data: statuses } = useFetchProjectStatuses(ticket.project_id);
   const pass = useTestPass();
@@ -26,21 +25,21 @@ export const TicketTestSection = ({ ticket }: TicketTestSectionProps) => {
   if (!statuses) return null;
 
   return (
-    <section aria-labelledby="test-this" className="space-y-4 border-t border-border pt-6">
-      <h2 id="test-this" className={microheaderClass}>
-        Test this
+    <section aria-labelledby="ticket-testing" className="space-y-2">
+      <h2 id="ticket-testing" className={microheaderClass}>
+        Testing
       </h2>
-      {!testing && <EmptyRow>Pass and fail open once the ticket reaches a Testing column.</EmptyRow>}
+      {!testing && <p className="px-2 text-xs text-muted-foreground">Pass and fail open in a Testing column.</p>}
       {testing && (
-        <div className="space-y-4">
+        <div className="space-y-3">
           <TestTargetRow ticket={ticket} />
           <AcceptanceCriteriaBlock ticket={ticket} />
           <div className="flex gap-2 px-2">
-            <Button className="flex-1 sm:flex-none" loading={pass.isPending} onClick={() => pass.mutate(ticket.id)}>
+            <Button size="sm" className="flex-1" loading={pass.isPending} onClick={() => pass.mutate(ticket.id)}>
               <Check className="size-4" aria-hidden />
               Pass
             </Button>
-            <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => void openFail(ticket.id)}>
+            <Button size="sm" variant="outline" className="flex-1" onClick={() => void openFail(ticket.id)}>
               <X className="size-4" aria-hidden />
               Fail
             </Button>

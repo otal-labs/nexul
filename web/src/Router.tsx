@@ -78,7 +78,7 @@ const workspaceRoutes: RouteObject[] = [
   { path: "memories/:projectToken/:memoryId/:tab?", handle: gate("memories"), element: <MemoriesPage /> },
   { path: "board", handle: gate("tickets"), element: <BoardPage /> },
   { path: "board/:projectId", handle: gate("tickets"), element: <BoardPage /> },
-  { path: "tickets/:ticketId/:tab?", handle: gate("tickets"), element: <TicketPage /> },
+  { path: "tickets/:ticketId", handle: gate("tickets"), element: <TicketPage /> },
   { path: "runners", handle: gate("runners"), element: <RunnersPage /> },
   ...staticTabs("automations", ["hosts", "secrets"], "automations", <AutomationsPage />),
   { path: "automations/:id/:tab?", handle: gate("automations"), element: <AutomationPage /> },

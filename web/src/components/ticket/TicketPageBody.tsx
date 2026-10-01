@@ -1,19 +1,17 @@
+import { AttachmentsSection } from "@/components/attachment/AttachmentsSection";
 import { TicketThreadSection } from "@/components/chat/TicketThreadSection";
 import { ReviewPanel } from "@/components/codereview/ReviewPanel";
-import { PageTabs, PageTabsContent } from "@/components/PageTabs";
 import { DecisionsCheckNotice } from "@/components/play/DecisionsCheckNotice";
-import { PlaysBottomBar } from "@/components/play/PlaysBottomBar";
 import { PlaysRailSection } from "@/components/play/PlaysRailSection";
 import { TrailSection } from "@/components/play/TrailSection";
+import { DevelopmentSection } from "@/components/ticket/DevelopmentSection";
+import { TicketBugsSection } from "@/components/ticket/TicketBugsSection";
 import { TicketDetail } from "@/components/ticket/TicketDetail";
 import { TicketLinksSection } from "@/components/ticket/TicketLinksSection";
 import { TicketPropertiesPanel } from "@/components/ticket/TicketPropertiesPanel";
 import { TicketTestSection } from "@/components/ticket/TicketTestSection";
 import type { Project } from "@/models/Project";
 import type { Ticket } from "@/models/Ticket";
-
-// The tab row already draws the hairline these sections open with when stacked.
-const tabBodyClass = "[&>*:first-child]:border-t-0 [&>*:first-child]:pt-0";
 
 interface TicketPageBodyProps {
   ticket: Ticket;
@@ -39,34 +37,7 @@ export const TicketPageBody = ({
   <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_18rem]">
     <div className="min-w-0 space-y-8">
       <TicketDetail key={ticket.id} ticket={ticket} {...(project ? { project } : {})} onSave={onSave} />
-      <PageTabs
-        label="Ticket sections"
-        tabs={[
-          { value: "thread", label: "Thread", hidden: !workspaceId },
-          { value: "testing", label: "Testing" },
-          { value: "links", label: "Links" },
-          { value: "activity", label: "Activity", hidden: !workspaceId },
-        ]}
-      >
-        <PageTabsContent value="thread" className={tabBodyClass}>
-          <TicketThreadSection workspaceId={workspaceId} ticketId={ticket.id} />
-        </PageTabsContent>
-        <PageTabsContent value="testing" className={tabBodyClass}>
-          <TicketTestSection ticket={ticket} />
-        </PageTabsContent>
-        <PageTabsContent value="links" className={tabBodyClass}>
-          <TicketLinksSection ticket={ticket} />
-          <DecisionsCheckNotice ticketId={ticket.id} />
-        </PageTabsContent>
-        <PageTabsContent value="activity" className={tabBodyClass}>
-          <TrailSection
-            workspaceId={workspaceId}
-            targetType="ticket"
-            targetId={ticket.id}
-            emptyMessage="No plays have run on this ticket yet."
-          />
-        </PageTabsContent>
-      </PageTabs>
+      {workspaceId !== "" && <TicketThreadSection workspaceId={workspaceId} ticketId={ticket.id} />}
     </div>
     <TicketPropertiesPanel
       ticket={ticket}
@@ -75,9 +46,23 @@ export const TicketPageBody = ({
       onAddLabel={onAddLabel}
       onRemoveLabel={onRemoveLabel}
     >
-      <PlaysRailSection ticket={ticket} />
+      <DevelopmentSection ticketId={ticket.id} />
       <ReviewPanel ticketId={ticket.id} />
+      <AttachmentsSection owner={{ ticket_id: ticket.id }} className="px-2" actionPlacement="end" />
+      <TicketLinksSection ticket={ticket} />
+      <DecisionsCheckNotice ticketId={ticket.id} />
+      <TicketTestSection ticket={ticket} />
+      <TicketBugsSection ticket={ticket} />
+      {workspaceId !== "" && (
+        <TrailSection
+          workspaceId={workspaceId}
+          targetType="ticket"
+          targetId={ticket.id}
+          emptyMessage="No plays have run on this ticket yet."
+          className="border-t-0 pt-0"
+        />
+      )}
+      <PlaysRailSection ticket={ticket} />
     </TicketPropertiesPanel>
-    <PlaysBottomBar ticket={ticket} />
   </div>
 );

@@ -1,3 +1,4 @@
+import { generateText } from "@tiptap/core";
 import { MarkdownManager } from "@tiptap/markdown";
 import { generateHTML } from "@tiptap/html";
 
@@ -51,4 +52,8 @@ export function bodyToMarkdown(body: string): string {
     return body;
   }
   return manager().serialize(JSON.parse(body));
+}
+
+export function bodyToPlainText(body: string): string {
+  return generateText(parseBodyToJSON(body), extensions, { blockSeparator: " " }).trim();
 }
