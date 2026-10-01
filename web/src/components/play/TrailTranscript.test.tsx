@@ -99,7 +99,7 @@ describe("TrailTranscript as a conversation", () => {
     expect(rows).toHaveLength(3);
     expect(within(rows[0]!).queryByRole("img")).not.toBeInTheDocument();
     expect(rows[0]).toHaveTextContent("Reading the handler first.");
-    expect(rows[1]).toHaveTextContent('Read: {"file_path":"handler.go"}');
+    expect(rows[1]).toHaveTextContent("Read: handler.go");
     expect(rows[2]).toHaveTextContent("go test ./...");
     expect(rows[2]).not.toHaveTextContent("· failed");
     expect(within(rows[2]!).getByRole("img", { name: "failed" })).toBeInTheDocument();

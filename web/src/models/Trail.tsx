@@ -22,10 +22,12 @@ export type ActivityKind = (typeof ACTIVITY_KINDS)[number];
 
 // The harness's built-in tools whose row reads the command or the path alone, as the harness itself labels them.
 const COMMAND_TOOLS = new Set(["Bash", "Shell"]);
-const FILE_TOOLS = new Set(["Edit", "Write", "MultiEdit", "NotebookEdit"]);
+const FILE_CHANGE_TOOLS = new Set(["Edit", "Write", "MultiEdit", "NotebookEdit"]);
+const FILE_READ_TOOLS = new Set(["Read", "Glob", "Grep", "LS", "NotebookRead"]);
 
 export const isCommandTool = (tool: string | undefined): boolean => tool !== undefined && COMMAND_TOOLS.has(tool);
-export const isFileTool = (tool: string | undefined): boolean => tool !== undefined && FILE_TOOLS.has(tool);
+export const isFileReadTool = (tool: string | undefined): boolean => tool !== undefined && FILE_READ_TOOLS.has(tool);
+export const isFileTool = (tool: string | undefined): boolean => tool !== undefined && (FILE_CHANGE_TOOLS.has(tool) || FILE_READ_TOOLS.has(tool));
 
 // Mirrors internal/plays.ActivityEntry, one step of a trail's transcript; detail is JSON ({input, result}) or plain text.
 export interface ActivityEntry {
@@ -143,7 +145,7 @@ export const unwrapShellCommand = (command: string): string => {
   return (closed ? inner.slice(1, -1) : inner.slice(1)).trim();
 };
 
-const MCP_TOOL_NAME = /^mcp__(.+?)__(.+)$/;
+const MCP_TOOL_NAME = /^mcp__(.+?)__(.+)$/i;
 const SERVER_SEPARATOR = " · ";
 
 // The server and tool of an MCP call: Claude names it mcp__<server>__<tool>, Codex arrives titled "<server> · <tool>".
@@ -155,10 +157,25 @@ const mcpParts = (tool: string): { server: string; name: string } | null => {
   return { server: tool.slice(0, at), name: tool.slice(at + SERVER_SEPARATOR.length) };
 };
 
+const READ_TARGET_KEYS = ["file_path", "notebook_path", "pattern", "path"];
+
+// The path or pattern a read-type tool's JSON arguments name; null when the summary is not whole JSON (a cut-short preview).
+const readTarget = (summary: string): string | null => {
+  try {
+    const args: unknown = JSON.parse(summary);
+    if (typeof args !== "object" || args === null) return null;
+    const values = args as Record<string, unknown>;
+    const key = READ_TARGET_KEYS.find((k) => typeof values[k] === "string" && values[k] !== "");
+    return key === undefined ? null : (values[key] as string);
+  } catch {
+    return null;
+  }
+};
+
 export const isMcpTool = (tool: string | undefined): boolean => tool !== undefined && mcpParts(tool) !== null;
 
 // One line for a step: `Server · tool` for an MCP call, the command alone out of its shell wrapper, `tool: args` for
-// any other tool, the tool alone when its summary only repeats it, the summary alone for text, notes, and legacy lines.
+// any other tool with a file read's path or pattern for its arguments, the tool alone when its summary only repeats it, the summary alone for text, notes, and legacy lines.
 export const stepLabel = (entry: ActivityEntry): string => {
   const summary = entry.summary.endsWith(FAILED_SUFFIX) ? entry.summary.slice(0, -FAILED_SUFFIX.length) : entry.summary;
   if (!entry.tool) return summary;
@@ -166,7 +183,8 @@ export const stepLabel = (entry: ActivityEntry): string => {
   const mcp = mcpParts(entry.tool);
   if (mcp) return `${mcp.server.charAt(0).toUpperCase()}${mcp.server.slice(1)}${SERVER_SEPARATOR}${mcp.name}`;
   if (summary === "" || summary === entry.tool) return entry.tool;
-  return `${entry.tool}: ${summary}`;
+  const target = isFileReadTool(entry.tool) ? readTarget(summary) : null;
+  return `${entry.tool}: ${target ?? summary}`;
 };
 
 const lastIndexOfCall = (activity: ActivityEntry[], callId: string): number => {

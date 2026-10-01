@@ -23,9 +23,9 @@ const renderRow = (e: ActivityEntry, live = false) =>
 
 describe("TrailActionRow", () => {
   it("a tool call reads `tool: args` in one line under a wrench, and spins while live", () => {
-    renderRow(entry({}), true);
+    renderRow(entry({ tool: "WebFetch", summary: '{"url":"https://nexul.io"}' }), true);
     expect(screen.getByRole("img", { name: "tool call" })).toBeInTheDocument();
-    expect(screen.getByText('Read: {"file_path":"main.go"}')).toBeInTheDocument();
+    expect(screen.getByText('WebFetch: {"url":"https://nexul.io"}')).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "running" })).toBeInTheDocument();
   });
 
@@ -54,6 +54,12 @@ describe("TrailActionRow", () => {
     expect(screen.getByText("Edit: /home/dev/Code/nexul/.golangci.yml")).toBeInTheDocument();
   });
 
+  it("a file read names its path under a file icon", () => {
+    renderRow(entry({ kind: "tool_result" }));
+    expect(screen.getByRole("img", { name: "file" })).toBeInTheDocument();
+    expect(screen.getByText("Read: main.go")).toBeInTheDocument();
+  });
+
   it("a finished row is one line with no time, check, or result preview, and expands to its arguments, result and time", async () => {
     const user = userEvent.setup();
     renderRow(
@@ -63,13 +69,13 @@ describe("TrailActionRow", () => {
       }),
     );
     const row = screen.getByRole("listitem");
-    expect(row).toHaveTextContent(/^Read: \{"file_path":"main.go"\}/);
+    expect(row).toHaveTextContent(/^Read: main\.go/);
     expect(screen.queryByRole("img", { name: "done" })).not.toBeInTheDocument();
     expect(screen.queryByText("package main func main() {}", { selector: "span" })).not.toBeInTheDocument();
     const time = new Date("2026-09-18T10:00:00Z").toLocaleTimeString([], { hour12: false });
     expect(screen.getByText(time)).not.toBeVisible();
 
-    await user.click(screen.getByText('Read: {"file_path":"main.go"}'));
+    await user.click(screen.getByText("Read: main.go"));
     expect(screen.getByText(time)).toBeVisible();
     expect(screen.getByText("Arguments")).toBeVisible();
     expect(screen.getByText('{ "file_path": "main.go" }', { normalizer: (s) => s.replace(/\s+/g, " ").trim() })).toBeInTheDocument();
@@ -78,7 +84,7 @@ describe("TrailActionRow", () => {
 
   it("a row with nothing to expand has no expander", () => {
     renderRow(entry({ kind: "tool_result" }));
-    expect(screen.getByText('Read: {"file_path":"main.go"}')).toBeInTheDocument();
+    expect(screen.getByText("Read: main.go")).toBeInTheDocument();
     expect(screen.queryByRole("group")).not.toBeInTheDocument();
   });
 

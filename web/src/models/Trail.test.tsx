@@ -9,9 +9,16 @@ const read: ActivityEntry = { kind: "tool_call", call_id: "c-2", tool: "Read", s
 
 describe("stepLabel", () => {
   it("reads `tool: args` for a tool, the command alone for a command, and leaves a text step alone", () => {
-    expect(stepLabel(read)).toBe('Read: {"file_path":"main.go"}');
+    expect(stepLabel(read)).toBe("Read: main.go");
     expect(stepLabel(call)).toBe("go test");
     expect(stepLabel(text)).toBe("Done");
+  });
+
+  it("names a read-type file tool by the path or pattern its JSON arguments carry, and keeps today's label otherwise", () => {
+    expect(stepLabel({ ...read, summary: '{"file_path":"/home/dev/web/src/models/Trail.tsx"}' })).toBe("Read: /home/dev/web/src/models/Trail.tsx");
+    expect(stepLabel({ ...read, tool: "Grep", summary: '{"pattern":"stepLabel","path":"web/src"}' })).toBe("Grep: stepLabel");
+    expect(stepLabel({ ...read, tool: "Glob", summary: '{"pattern":"**/*.tsx"}' })).toBe("Glob: **/*.tsx");
+    expect(stepLabel({ ...read, summary: '{"file_path":"/home/dev/a-path-cut-sho…' })).toBe('Read: {"file_path":"/home/dev/a-path-cut-sho…');
   });
 
   it("names an MCP call by its server and tool, whichever way the harness spells it, without the arguments", () => {

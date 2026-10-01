@@ -160,11 +160,11 @@ describe("TrailSection", () => {
     await user.click(within(dialog).getByRole("button", { name: /Worked for 3m/ }));
     const steps = within(dialog).getAllByRole("listitem");
     expect(steps).toHaveLength(1);
-    expect(steps[0]).toHaveTextContent('Read: {"file_path":"main.go"}');
-    expect(within(steps[0]!).getByRole("img", { name: "tool result" })).toBeInTheDocument();
+    expect(steps[0]).toHaveTextContent("Read: main.go");
+    expect(within(steps[0]!).getByRole("img", { name: "file" })).toBeInTheDocument();
 
     expect(within(steps[0]!).getByText("Arguments")).not.toBeVisible();
-    await user.click(within(steps[0]!).getByText('Read: {"file_path":"main.go"}'));
+    await user.click(within(steps[0]!).getByText("Read: main.go"));
     expect(within(steps[0]!).getByText("Arguments")).toBeVisible();
     expect(steps[0]).toHaveTextContent('"file_path": "main.go"');
     expect(within(steps[0]!).getByText("Result")).toBeVisible();

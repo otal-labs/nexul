@@ -2,7 +2,7 @@ import { ChevronRight, CircleHelp, Dot, FileText, Terminal, Wrench } from "lucid
 
 import { ToolRow, type ToolRowStatus } from "@/components/play/ToolRowVisual";
 import { TrailStepDetail } from "@/components/play/TrailStepDetail";
-import { isCommandTool, isFailedStep, isFileTool, isMcpTool, stepLabel, type ActivityEntry } from "@/models/Trail";
+import { isCommandTool, isFailedStep, isFileReadTool, isFileTool, isMcpTool, stepLabel, type ActivityEntry } from "@/models/Trail";
 
 interface TrailActionRowProps {
   entry: ActivityEntry;
@@ -17,14 +17,14 @@ const iconClass = "size-4";
 
 const isTool = (entry: ActivityEntry): boolean => entry.kind === "tool_call" || entry.kind === "tool_result";
 
-// A terminal for a command, a file for a file change, a wrench for an MCP call or any other tool; the Agent's own
+// A terminal for a command, a file for a file read or change, a wrench for an MCP call or any other tool; the Agent's own
 // sentence has none and reads as prose.
 const KindIcon = ({ entry }: { entry: ActivityEntry }) => {
   const tool = isTool(entry);
   return (
     <>
       {tool && isCommandTool(entry.tool) && <Terminal className={iconClass} role="img" aria-label="command" />}
-      {tool && isFileTool(entry.tool) && <FileText className={iconClass} role="img" aria-label="file change" />}
+      {tool && isFileTool(entry.tool) && <FileText className={iconClass} role="img" aria-label={isFileReadTool(entry.tool) ? "file" : "file change"} />}
       {tool && !isCommandTool(entry.tool) && !isFileTool(entry.tool) && (
         <Wrench className={iconClass} role="img" aria-label={entry.kind === "tool_call" ? "tool call" : "tool result"} />
       )}
