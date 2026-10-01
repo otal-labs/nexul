@@ -1,6 +1,7 @@
-import { CarouselLayout, FocusLayout, FocusLayoutContainer, GridLayout, isTrackReference, useTracks } from "@livekit/components-react";
+import { CarouselLayout, FocusLayoutContainer, GridLayout, isTrackReference, useTracks } from "@livekit/components-react";
 import { Track } from "livekit-client";
 
+import { ScreenShareTile } from "@/components/chat/ScreenShareTile";
 import { VoiceGridCell } from "@/components/chat/VoiceGridCell";
 import { VoiceTile } from "@/components/chat/VoiceTile";
 
@@ -23,7 +24,7 @@ export const VoiceCallStage = () => {
           <CarouselLayout tracks={rest}>
             <VoiceTile />
           </CarouselLayout>
-          <FocusLayout trackRef={screenShareTrack} />
+          <ScreenShareTile trackRef={screenShareTrack} />
         </FocusLayoutContainer>
       )}
       {!screenShareTrack && (
