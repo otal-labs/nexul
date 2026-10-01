@@ -25,7 +25,9 @@ export const MemoryPickRow = ({ memory, checked, onToggle }: MemoryPickRowProps)
         {memory.always_included && <LockIcon className="size-3 text-muted-foreground" role="img" aria-label="Always included" />}
       </span>
       {memory.when_to_use !== "" && (
-        <span className="block truncate font-mono text-[11px] text-muted-foreground">{memory.when_to_use}</span>
+        <span className="block truncate font-mono text-[11px] text-muted-foreground" title={memory.when_to_use}>
+          {memory.when_to_use}
+        </span>
       )}
     </span>
   </label>
