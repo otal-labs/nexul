@@ -49,12 +49,13 @@ export const DocDetail = ({
 }: DocDetailProps) => {
   const token = useSessionStore((s) => s.token);
   const canThread = useHasPermission("docs:thread");
+  const canWrite = useHasPermission("docs:write");
   const wsPath = useWorkspacePath();
   // Display name for the collab presence comes from useFetchMe, not sessionStore (F5).
   const { data: me } = useFetchMe();
   const { name: userName, avatar: userAvatar } = collabIdentity(me);
-  // A locked doc opens no edit session, so the title and body render read-only until it is unlocked.
-  const session = useCollabSession(doc.locked ? undefined : doc.id, "edit", userName, token, {
+  // A locked doc, or a reader the server would refuse an edit session, renders the title and body read-only.
+  const session = useCollabSession(doc.locked || !canWrite ? undefined : doc.id, "edit", userName, token, {
     ...(wsFactory ? { wsFactory } : {}),
     ...(userAvatar ? { avatar: userAvatar } : {}),
   });

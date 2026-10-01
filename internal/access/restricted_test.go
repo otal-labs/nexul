@@ -131,3 +131,15 @@ func TestRestrictedMember_NoRowsSeesNoProject(t *testing.T) {
 	assert.False(t, s.CanInProject(context.Background(), "client", "p-unknown", permissions.Member))
 	assert.False(t, s.CanInProject(context.Background(), "", "p-open", permissions.Member))
 }
+
+// A hidden project's not found carries no id, so an error reached through a ticket or doc never confirms which
+// hidden project holds it (ADR 0087).
+func TestRestrictedMember_HiddenNotFoundNamesNoProject(t *testing.T) {
+	s, _ := restrictedFixture(t)
+	client := identity.WithActor(context.Background(), identity.Actor{ID: "client"})
+
+	err := s.RequireProject(client, "p-hidden", permissions.TicketsRead)
+
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
+	assert.NotContains(t, err.Error(), "p-hidden")
+}
