@@ -93,7 +93,7 @@ export const TicketDetail = ({ ticket, project, onSave }: TicketDetailProps) => 
           <span className="font-mono text-xs text-muted-foreground">
             {project ? `${project.prefix}-${ticket.number}` : ticket.id}
           </span>
-          <TicketStatusBadge status={ticket.status} />
+          <TicketStatusBadge ticket={ticket} />
         </div>
         {onSave && (
           <h1>

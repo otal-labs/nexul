@@ -10,7 +10,7 @@ import { TicketLinksSection } from "@/components/ticket/TicketLinksSection";
 import { TicketPropertiesPanel } from "@/components/ticket/TicketPropertiesPanel";
 import { TicketTestSection } from "@/components/ticket/TicketTestSection";
 import type { Project } from "@/models/Project";
-import type { Ticket, TicketStatus as TicketStatusType } from "@/models/Ticket";
+import type { Ticket } from "@/models/Ticket";
 
 // The tab row already draws the hairline these sections open with when stacked.
 const tabBodyClass = "[&>*:first-child]:border-t-0 [&>*:first-child]:pt-0";
@@ -20,7 +20,7 @@ interface TicketPageBodyProps {
   project: Project | undefined;
   workspaceId: string;
   onSave: (title: string, body: string) => Promise<void>;
-  onTransition: (status: TicketStatusType) => Promise<void>;
+  onTransition: (statusId: string) => Promise<void>;
   onSetType: (ticketId: string, typeId: string) => Promise<void>;
   onAddLabel: (ticketId: string, label: string) => Promise<void>;
   onRemoveLabel: (ticketId: string, label: string) => Promise<void>;

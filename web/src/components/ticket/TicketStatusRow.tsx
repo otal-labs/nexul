@@ -2,11 +2,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { StatusTransitionButtons } from "@/components/ticket/StatusTransitionButtons";
 import { TicketStatusBadge } from "@/components/ticket/TicketStatusBadge";
 import { editableRowClass, rowClass } from "@/components/ticket/ticketPropertyRowStyle";
-import type { Ticket, TicketStatus as TicketStatusType } from "@/models/Ticket";
+import type { Ticket } from "@/models/Ticket";
 
 interface TicketStatusRowProps {
   ticket: Ticket;
-  onTransition?: (status: TicketStatusType) => Promise<void> | void;
+  onTransition?: (statusId: string) => Promise<void> | void;
 }
 
 export const TicketStatusRow = ({ ticket, onTransition }: TicketStatusRowProps) => {
@@ -14,7 +14,7 @@ export const TicketStatusRow = ({ ticket, onTransition }: TicketStatusRowProps) 
     return (
       <div className={rowClass}>
         <span className="sr-only">Status</span>
-        <TicketStatusBadge status={ticket.status} />
+        <TicketStatusBadge ticket={ticket} />
       </div>
     );
   }
@@ -23,7 +23,7 @@ export const TicketStatusRow = ({ ticket, onTransition }: TicketStatusRowProps) 
       <span className="sr-only">Status</span>
       <Popover>
         <PopoverTrigger className={editableRowClass}>
-          <TicketStatusBadge status={ticket.status} />
+          <TicketStatusBadge ticket={ticket} />
         </PopoverTrigger>
         <PopoverContent className="w-44 p-1" align="start">
           <StatusTransitionButtons ticket={ticket} onTransition={onTransition} />

@@ -35,7 +35,7 @@ const ticketData = {
   type_id: "ticket-type-task",
   title: "Write migrations",
   body: "Add the runner.",
-  status: "in_progress",
+  status: "st-progress",
   number: 7,
   doc_id: "doc-1",
   developer: "",
@@ -49,6 +49,12 @@ const ticketData = {
 const projectData = [
   { id: "p-1", name: "Backend", prefix: "BE", position: 0, created_at: "", updated_at: "" },
   { id: "p-2", name: "Frontend", prefix: "FE", position: 1, created_at: "", updated_at: "" },
+];
+
+const statusData = [
+  { id: "st-backlog", name: "Backlog", kind: "backlog", icon: "", position: 0 },
+  { id: "st-progress", name: "In progress", kind: "progress", icon: "", position: 0 },
+  { id: "st-done", name: "Shipped", kind: "done", icon: "CircleCheckBig", position: 0 },
 ];
 
 const reviewData = [
@@ -67,6 +73,7 @@ const reviewData = [
 const mockTicket = () => vi.mocked(api.get).mockImplementation((url: string) => {
   if (url === "/api/tickets/t-1") return Promise.resolve({ data: ticketData });
   if (url.startsWith("/api/projects")) return Promise.resolve({ data: projectData });
+  if (url === "/api/statuses") return Promise.resolve({ data: statusData });
   if (url === "/api/tickets/t-1/links") return Promise.resolve({ data: { prs: [], branches: [] } });
   if (url === "/api/tickets/t-1/ticket-links") return Promise.resolve({ data: { found_in: null, origin_unknown: false, bugs_found: [], blocked_by: [], blocks: [], blocked: false } });
   return Promise.resolve({ data: [] });
@@ -86,8 +93,8 @@ describe("TicketPage", () => {
     expect(await screen.findByRole("heading", { name: "Write migrations" })).toBeInTheDocument();
     expect(screen.getByText("BE-7")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "in progress" }));
-    expect(screen.getByRole("button", { name: "Move to Done" })).toBeInTheDocument();
+    await user.click(await screen.findByRole("button", { name: "In progress" }));
+    expect(await screen.findByRole("button", { name: "Shipped" })).toBeInTheDocument();
     expect(await screen.findByText("No branches or PRs linked yet.")).toBeInTheDocument();
   });
 
@@ -111,12 +118,12 @@ describe("TicketPage", () => {
   it("transitions the ticket status", async () => {
     const user = userEvent.setup();
     mockTicket();
-    vi.mocked(api.patch).mockResolvedValue({ data: { ...ticketData, status: "done" } });
+    vi.mocked(api.patch).mockResolvedValue({ data: { ...ticketData, status: "st-done" } });
     renderPage();
 
-    await user.click(await screen.findByRole("button", { name: "in progress" }));
-    await user.click(await screen.findByRole("button", { name: "Move to Done" }));
-    expect(api.patch).toHaveBeenCalledWith("/api/tickets/t-1/status", { status: "done" });
+    await user.click(await screen.findByRole("button", { name: "In progress" }));
+    await user.click(await screen.findByRole("button", { name: "Shipped" }));
+    expect(api.patch).toHaveBeenCalledWith("/api/tickets/t-1/status", { status: "st-done" });
   });
 
   it("resolves a /tickets/PREFIX-NUMBER url to the same ticket as its uuid url", async () => {

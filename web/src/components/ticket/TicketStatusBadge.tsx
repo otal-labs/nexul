@@ -1,29 +1,29 @@
-import { CheckCircle2Icon, CircleIcon, ClockIcon, XCircleIcon } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { StatusMark } from "@/components/board/StatusIcon";
+import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
+import { StatusKind } from "@/models/Status";
+import { TicketStatus, type Ticket } from "@/models/Ticket";
 
-import { NoFillBadge } from "@/components/ui/badge";
-import { TicketStatus, type TicketStatus as TicketStatusType } from "@/models/Ticket";
-
-const icons: Record<TicketStatusType, LucideIcon> = {
-  [TicketStatus.Open]: CircleIcon,
-  [TicketStatus.InProgress]: ClockIcon,
-  [TicketStatus.Done]: CheckCircle2Icon,
-  [TicketStatus.Closed]: XCircleIcon,
-};
-
-const colors: Record<TicketStatusType, string> = {
-  [TicketStatus.Open]: "text-info",
-  [TicketStatus.InProgress]: "text-warning",
-  [TicketStatus.Done]: "text-success",
-  [TicketStatus.Closed]: "text-muted-foreground",
+// Tickets filed before statuses became per-project columns can still hold one of these values.
+const legacyStatuses: Record<string, { name: string; kind: StatusKind; icon: string }> = {
+  [TicketStatus.Open]: { name: "Open", kind: StatusKind.Backlog, icon: "" },
+  [TicketStatus.InProgress]: { name: "In progress", kind: StatusKind.Progress, icon: "" },
+  [TicketStatus.Done]: { name: "Done", kind: StatusKind.Done, icon: "" },
+  [TicketStatus.Closed]: { name: "Closed", kind: StatusKind.Backlog, icon: "CircleX" },
 };
 
 interface TicketStatusBadgeProps {
-  status: TicketStatusType;
+  ticket: Pick<Ticket, "project_id" | "status">;
 }
 
-export const TicketStatusBadge = ({ status }: TicketStatusBadgeProps) => (
-  <NoFillBadge icon={icons[status]} color={colors[status]}>
-    {status.replace("_", " ")}
-  </NoFillBadge>
-);
+export const TicketStatusBadge = ({ ticket }: TicketStatusBadgeProps) => {
+  const { data: statuses, isPending } = useFetchProjectStatuses(ticket.project_id);
+  const status = statuses?.find((s) => s.id === ticket.status) ?? legacyStatuses[ticket.status];
+  if (!status && isPending) return null;
+  return (
+    <span className="inline-flex w-fit items-center gap-1.5 text-xs font-medium">
+      {status && <StatusMark status={status} className="size-3" />}
+      {status && status.name}
+      {!status && <span className="text-muted-foreground">Unknown status</span>}
+    </span>
+  );
+};

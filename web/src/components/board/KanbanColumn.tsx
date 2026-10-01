@@ -1,11 +1,11 @@
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { GripVerticalIcon, PlusIcon } from "lucide-react";
 
-import { isStatusIconName, StatusIcon } from "@/components/board/StatusIcon";
+import { StatusMark } from "@/components/board/StatusIcon";
 import { TicketCard } from "@/components/board/TicketCard";
 import type { DropTargetData } from "@/components/board/dragMove";
 import { cn } from "@/lib/utils";
-import { statusStage, type BoardStatus } from "@/models/Status";
+import type { BoardStatus } from "@/models/Status";
 import type { Ticket } from "@/models/Ticket";
 
 interface KanbanColumnProps {
@@ -31,8 +31,6 @@ export const KanbanColumn = ({
     id: droppableId,
     data,
   });
-  const stage = statusStage(column.kind);
-  const hasIcon = isStatusIconName(column.icon);
 
   return (
     <section
@@ -60,8 +58,7 @@ export const KanbanColumn = ({
           <GripVerticalIcon className="size-3.5" aria-hidden />
         </button>
         <span className="flex min-w-0 items-center gap-1.5">
-          {hasIcon && <StatusIcon icon={column.icon} className={cn("size-3.5 shrink-0", stage.text)} />}
-          {!hasIcon && <span className={cn("size-2 shrink-0 rounded-full", stage.dot)} aria-hidden />}
+          <StatusMark status={column} className="size-3.5" />
           <span className="truncate text-sm font-medium">{column.name}</span>
         </span>
         <span className="font-mono text-xs tabular-nums text-muted-foreground" aria-label={`${tickets.length} tickets`}>

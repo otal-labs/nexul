@@ -1,6 +1,6 @@
 import type { DragMoveAction, DropTargetData } from "@/components/board/dragMove";
 import type { Swimlane } from "@/components/board/KanbanBoard";
-import type { Ticket, TicketStatus } from "@/models/Ticket";
+import type { Ticket } from "@/models/Ticket";
 
 export interface DragCell {
   status: string;
@@ -40,7 +40,7 @@ export const applyDragPreview = (swimlanes: Swimlane[], activeTicketId: string, 
     const cellTickets = withoutActive.filter((t) => t.status === cell.status).sort((a, b) => a.position - b.position);
     const anchorIndex = cellTickets.findIndex((t) => t.id === cell.anchor?.ticketId);
     const insertAt = anchorIndex === -1 ? cellTickets.length : anchorIndex + (cell.anchor?.after ? 1 : 0);
-    const ghost: Ticket = { ...active, status: cell.status as TicketStatus, category_id: cell.categoryId };
+    const ghost: Ticket = { ...active, status: cell.status, category_id: cell.categoryId };
     cellTickets.splice(insertAt, 0, ghost);
     // Renumbered so the column's sort-by-position shows the ghost exactly where it slid in.
     const renumbered = cellTickets.map((t, position) => ({ ...t, position }));
@@ -58,7 +58,7 @@ export const applyDropResult = (swimlanes: Swimlane[], activeTicketId: string, a
   const positions = new Map(
     actions.flatMap((a) => (a.kind === "reorder" ? a.updates.map((u) => [u.ticketId, u.position] as const) : [])),
   );
-  const moved: Ticket = { ...active, status: status as TicketStatus, category_id: categoryId };
+  const moved: Ticket = { ...active, status, category_id: categoryId };
 
   return swimlanes.map((lane) => {
     const others = lane.tickets.filter((t) => t.id !== activeTicketId);
