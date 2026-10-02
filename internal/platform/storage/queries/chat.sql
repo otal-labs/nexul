@@ -74,6 +74,12 @@ UPDATE messages SET body = '', mentions = '[]', attachment_id = NULL, deleted_at
 -- name: ListNoteFiles :many
 SELECT id, name, data FROM attachments WHERE id IN (sqlc.slice('ids'));
 
+-- name: TouchNoteMessage :execrows
+UPDATE messages SET updated_at = ? WHERE id = ? AND attachment_id = ? AND deleted_at IS NULL;
+
+-- name: ReplaceNoteFileData :execrows
+UPDATE attachments SET data = ?, size = ? WHERE id = ?;
+
 -- name: DeleteNoteImages :exec
 DELETE FROM attachments WHERE conversation_id = sqlc.arg(conversation_id) AND content_type LIKE 'image/%' AND id IN (sqlc.slice('ids'));
 

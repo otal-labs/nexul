@@ -293,6 +293,28 @@ func (r *ChatRepo) ListNoteFiles(ctx context.Context, attachmentIDs []string) ([
 	return out, nil
 }
 
+// ReplaceNoteFile touches the message first, so a note deleted meanwhile refuses the write instead of reviving its file.
+func (r *ChatRepo) ReplaceNoteFile(ctx context.Context, m *chat.Message, markdown string, at time.Time, evts ...eventbus.OutboxEvent) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		q := r.q.WithTx(tx)
+		n, err := q.TouchNoteMessage(ctx, sqlcgen.TouchNoteMessageParams{UpdatedAt: at.Unix(), ID: m.ID, AttachmentID: nullString(m.AttachmentID)})
+		if err != nil {
+			return fmt.Errorf("touch note %s: %w", m.ID, classifyWriteErr(err))
+		}
+		if n == 0 {
+			return fmt.Errorf("replace note %s: %w", m.ID, apperrs.ErrNotFound)
+		}
+		n, err = q.ReplaceNoteFileData(ctx, sqlcgen.ReplaceNoteFileDataParams{Data: []byte(markdown), Size: int64(len(markdown)), ID: m.AttachmentID})
+		if err != nil {
+			return fmt.Errorf("replace note file %s: %w", m.AttachmentID, classifyWriteErr(err))
+		}
+		if n == 0 {
+			return fmt.Errorf("replace note file %s: %w", m.AttachmentID, apperrs.ErrNotFound)
+		}
+		return enqueueChatOutbox(ctx, tx, evts)
+	})
+}
+
 // DeleteNote has no foreign key to lean on (messages.attachment_id has none), so it deletes the file by hand.
 func (r *ChatRepo) DeleteNote(ctx context.Context, m *chat.Message, imageIDs []string, deletedAt time.Time, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {

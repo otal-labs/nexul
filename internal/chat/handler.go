@@ -74,6 +74,10 @@ type postMessageRequest struct {
 	File *NoteFileInput `json:"file,omitempty"`
 }
 
+type replaceNoteRequest struct {
+	Markdown string `json:"markdown"`
+}
+
 // Routes returns the chat REST endpoints.
 func (h *Handler) Routes() http.Handler {
 	mux := httpx.NewServeMux()
@@ -97,6 +101,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/chat/unread", h.unreadCounts)
 	mux.HandleFunc("PATCH /api/chat/messages/{id}", h.editMessage)
 	mux.HandleFunc("DELETE /api/chat/messages/{id}", h.deleteMessage)
+	mux.HandleFunc("PUT /api/chat/messages/{id}/note", h.replaceNote)
 	return mux
 }
 
@@ -306,6 +311,20 @@ func (h *Handler) editMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	m, err := h.svc.EditMessage(r.Context(), r.PathValue("id"), UserIDFromCtx(r.Context()), req.Body)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, m)
+}
+
+func (h *Handler) replaceNote(w http.ResponseWriter, r *http.Request) {
+	var req replaceNoteRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	m, _, err := h.svc.ReplaceNote(r.Context(), r.PathValue("id"), UserIDFromCtx(r.Context()), req.Markdown)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

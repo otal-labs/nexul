@@ -415,6 +415,19 @@ func (f *fakeRepo) DeleteNote(ctx context.Context, m *Message, imageIDs []string
 	return nil
 }
 
+func (f *fakeRepo) ReplaceNoteFile(_ context.Context, m *Message, markdown string, at time.Time, evts ...eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	stored, ok := f.messages[m.ID]
+	if !ok || stored.DeletedAt != nil {
+		return apperrs.ErrNotFound
+	}
+	stored.UpdatedAt = at
+	f.files[m.AttachmentID] = &NoteFile{ID: m.AttachmentID, Name: f.files[m.AttachmentID].Name, Markdown: markdown}
+	f.events = append(f.events, evts...)
+	return nil
+}
+
 func (f *fakeRepo) IsNoteFile(_ context.Context, _, attachmentID string) (bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

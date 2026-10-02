@@ -30,6 +30,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/config"
 	"github.com/otal-labs/nexul/internal/platform/crypto"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/inprocess"
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
 	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/presence"
@@ -51,6 +52,7 @@ type coreServices struct {
 	memoriesSvc    *memories.Service
 	attachmentsSvc *attachments.Service
 	collabHub      *collab.Hub
+	notesHub       *collab.Hub
 
 	ticketsSvc  *tickets.Service
 	mentionsSvc *mentions.Service
@@ -112,7 +114,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	docsSvc := docs.NewService(store.Docs, accessSvc, docsAttachmentsGate{svc: attachmentsSvc})
 
 	// The hub relays/persists Y.js updates and commits via the docs use-case layer (ADR 0017 seam, collab never imports docs).
-	collabHub := collab.NewHub(logger, store.Collab, accessSvc, collabDocWriter{docsSvc})
+	collabHub := collab.NewHub(logger, store.Collab, accessSvc, collabDocWriter{docsSvc}, permissions.DocsWrite, permissions.DocsRead)
 	docsSvc.SetLiveSessions(collabHub)
 	ticketsSvc := tickets.NewService(store.Tickets, store.Statuses, workspaceUserStore{users: store.Users})
 	ticketsSvc.SetTicketTypes(store.TicketTypes)
@@ -258,6 +260,9 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	chatSvc.SetThreadGate(chatThreadGate{projectEntityGate{access: accessSvc, projects: store.Projects, tickets: store.Tickets}})
 	chatSvc.SetStanding(chatStanding{roles: accessRoleResolver{tenancy: tenancySvc, roles: rolesSvc}})
 	attachmentsSvc.SetConversations(chatAttachmentConversations{svc: chatSvc})
+	// A note's file is its only stored state, so its live rooms keep theirs in memory; readers never join (ADR 0110).
+	notesHub := collab.NewHub(logger, collab.NewMemoryStore(), collabNoteRooms{chatSvc}, collabNoteRooms{chatSvc}, permissions.TicketsWrite, permissions.TicketsWrite)
+	chatSvc.SetNoteLive(notesHub)
 	ticketsSvc.SetProjectPeople(ticketProjectPeople{users: userLookupGate{svc: authSvc}, access: accessSvc})
 	ticketsSvc.SetTesting(tickets.Testing{
 		Stages:  ticketStages{statuses: store.Statuses},
@@ -301,6 +306,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		memoriesSvc:    memoriesSvc,
 		attachmentsSvc: attachmentsSvc,
 		collabHub:      collabHub,
+		notesHub:       notesHub,
 
 		ticketsSvc:  ticketsSvc,
 		mentionsSvc: mentionsSvc,

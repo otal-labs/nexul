@@ -5,6 +5,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
 func TestParseClientMsg(t *testing.T) {
@@ -40,12 +42,15 @@ func TestParseClientMsg(t *testing.T) {
 }
 
 func TestModeAction(t *testing.T) {
-	_, _, err := modeAction("edit")
+	h := &Hub{edit: permissions.TicketsWrite, view: permissions.TicketsRead}
+	_, action, err := h.modeAction("edit")
 	require.NoError(t, err)
-	_, _, err = modeAction("view")
+	assert.Equal(t, permissions.TicketsWrite, action)
+	_, action, err = h.modeAction("view")
 	require.NoError(t, err)
-	_, _, err = modeAction("admin")
+	assert.Equal(t, permissions.TicketsRead, action)
+	_, _, err = h.modeAction("admin")
 	require.Error(t, err)
-	_, _, err = modeAction("")
+	_, _, err = h.modeAction("")
 	require.Error(t, err)
 }

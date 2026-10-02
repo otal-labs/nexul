@@ -1245,7 +1245,7 @@ var catalogSchemas = map[string]string{
 		"type": "object",
 		"required": ["message"],
 		"properties": {
-			"message": {"type": "object"},
+			"message": {"type": "object", "description": "The message after the change: an edited body, or a note whose markdown file changed, which moves its updated_at and leaves its body as it was."},
 			"members_only": {"type": "boolean", "description": "Set on a DM or private channel's message, which is never delivered to integrations or automations."}
 		}
 	}`,

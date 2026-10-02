@@ -212,7 +212,8 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 		svc.integrationsSvc.AuditLog(resolveAuditActor, apiMux),
 	))
 	httpMux.Handle("/ws/events", svc.authSvc.RequireWS(withIdentity(liveEventsHandler(svc.presenceKeeper, liveHub))))
-	httpMux.Handle("GET /ws/collab/{docID}", svc.authSvc.RequireWS(withIdentity(svc.collabHub)))
+	httpMux.Handle("GET /ws/collab/{id}", svc.authSvc.RequireWS(withIdentity(svc.collabHub)))
+	httpMux.Handle("GET /ws/collab/notes/{id}", svc.authSvc.RequireWS(withIdentity(svc.notesHub)))
 	httpMux.Handle("GET /ws/stacks/{id}/services/{name}/logs", svc.authSvc.RequireWS(withIdentity(http.HandlerFunc(deploy.NewHandler(svc.deploySvc).LogsSocket))))
 	httpMux.Handle("/ws/automations", automationsDialin)
 	httpMux.Handle("/ws/runner", wsHandler)
@@ -385,6 +386,7 @@ func registerOpenAPIRoutes(spec *openapi.Spec, routes []httpx.Route) {
 	spec.Register("POST", "/api/chat/conversations/{id}/messages", "Post a message", "chat")
 	spec.Register("PATCH", "/api/chat/messages/{id}", "Edit a message (author only)", "chat")
 	spec.Register("DELETE", "/api/chat/messages/{id}", "Delete a message (author only)", "chat")
+	spec.Register("PUT", "/api/chat/messages/{id}/note", "Replace a note's markdown file, resetting its live editing room", "chat")
 	spec.Register("POST", "/api/chat/conversations/{id}/read", "Mark a conversation read", "chat")
 	spec.Register("GET", "/api/chat/unread", "Per-conversation unread counts", "chat")
 	spec.Register("POST", "/api/chat/voice-channels", "Create a voice channel", "chat")

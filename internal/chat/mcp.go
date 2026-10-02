@@ -42,12 +42,13 @@ type messageListIn struct {
 type messagePostIn struct {
 	messageTarget
 	WorkspaceID string      `json:"workspace_id,omitempty" jsonschema:"The workspace of the doc, ticket, or project; needed only when its thread does not exist yet."`
-	Body        string      `json:"body" jsonschema:"The message as markdown. @login mentions a member and @Agent starts an agent turn."`
-	File        *noteFileIn `json:"file,omitempty" jsonschema:"A markdown file to carry with the message, which makes the post a note; only a ticket's thread takes one. Lasting context on a ticket goes here, since the ticket body is the person's spec."`
+	Body        string      `json:"body,omitempty" jsonschema:"The message as markdown, required for a post. @login mentions a member and @Agent starts an agent turn."`
+	File        *noteFileIn `json:"file,omitempty" jsonschema:"A markdown file to carry with the message, which makes the post a note; only a ticket's thread takes one. Lasting context on a ticket goes here, since the ticket body is the person's spec. With note_id it replaces that note's file instead."`
 }
 
 type noteFileIn struct {
-	Name     string `json:"name" jsonschema:"The file's name, such as handoff.md; it always ends in .md."`
+	NoteID   string `json:"note_id,omitempty" jsonschema:"An existing note's message id, from message_list: replaces that note's file with markdown instead of posting, and leaves out the target, body, and name."`
+	Name     string `json:"name,omitempty" jsonschema:"The new note's file name, such as handoff.md; it always ends in .md."`
 	Markdown string `json:"markdown" jsonschema:"The file's content as markdown."`
 }
 
@@ -251,12 +252,16 @@ func messagePostTool(s *Service) mcptool.Tool {
 			"Mentioning @Agent starts an agent turn on your own paired computer. "+
 			"With file, the post is a note on a ticket's thread: it shows as the Agent on your behalf, starts no turn, "+
 			"needs tickets:write on the ticket, and carries the file; message_list returns it. "+
-			"Returns the posted message and its conversation_id.",
+			"With file.note_id it replaces that note's file instead, even while people are editing it live; their unsaved typing is dropped. "+
+			"Returns the posted or replaced message and its conversation_id.",
 		mcptool.Hints{},
 		func(ctx context.Context, in messagePostIn) (any, error) {
 			caller, err := callerID(ctx)
 			if err != nil {
 				return nil, err
+			}
+			if in.File != nil && in.File.NoteID != "" {
+				return replaceNote(ctx, s, in, caller)
 			}
 			id, err := threadFor(ctx, s, in.messageTarget, in.WorkspaceID, caller)
 			if err != nil {
@@ -275,6 +280,18 @@ func messagePostTool(s *Service) mcptool.Tool {
 			}
 			return toMessageResult(m, file), nil
 		})
+}
+
+// replaceNote is message_post with file.note_id: the note's file changes, its message does not.
+func replaceNote(ctx context.Context, s *Service, in messagePostIn, caller string) (any, error) {
+	if in.Body != "" || in.File.Name != "" || in.messageTarget != (messageTarget{}) {
+		return nil, fmt.Errorf("%w: with file.note_id, pass only file.markdown; a note's message, name, and thread stay as they are", apperrs.ErrInvalid)
+	}
+	m, file, err := s.ReplaceNote(ctx, in.File.NoteID, caller, in.File.Markdown)
+	if err != nil {
+		return nil, err
+	}
+	return toMessageResult(m, file), nil
 }
 
 // target returns the thread kind and id named, an empty kind for a conversation id, or ErrInvalid unless exactly one is set.

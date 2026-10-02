@@ -168,6 +168,31 @@ describe("useCollabSession", () => {
     expect(onRemoteTitle).toHaveBeenCalledWith("Agent title");
   });
 
+  // A note's room reloads the note's own query on a reset; reloading the doc key would rejoin with the stale file.
+  it("joins a note's room by its path and, on a reset, reloads the query the caller names", async () => {
+    const urls: string[] = [];
+    const { socket } = makeSocket();
+    const factory = (url: string) => {
+      urls.push(url);
+      return socket;
+    };
+    const client = new QueryClient();
+    const invalidate = vi.spyOn(client, "invalidateQueries");
+    const { result } = renderHook(
+      () =>
+        useCollabSession("notes/m-1", "edit", "Alice", "token-1", { wsFactory: factory, reloadKey: ["noteFile", "m-1"] }),
+      { wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider> },
+    );
+    const first = result.current!;
+    await flushConnect();
+    expect(urls[0]).toBe("ws://test/ws/collab/notes/m-1?mode=edit&token=token-1");
+    act(() => socket.onopen?.({}));
+
+    act(() => socket.dispatch(JSON.stringify({ type: "reset" })));
+    await waitFor(() => expect(result.current?.doc).not.toBe(first.doc));
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["noteFile", "m-1"] });
+  });
+
   // Guards two regressions: StrictMode's double-invoke permanently killing the session, and the
   // throwaway instance that fix left opening a real socket of its own.
   it("reconnects cleanly through a StrictMode double-invoke instead of dying on the synthetic cleanup", async () => {

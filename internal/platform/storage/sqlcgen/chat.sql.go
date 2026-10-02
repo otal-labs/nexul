@@ -649,6 +649,24 @@ func (q *Queries) RenameConversation(ctx context.Context, arg RenameConversation
 	return result.RowsAffected()
 }
 
+const replaceNoteFileData = `-- name: ReplaceNoteFileData :execrows
+UPDATE attachments SET data = ?, size = ? WHERE id = ?
+`
+
+type ReplaceNoteFileDataParams struct {
+	Data []byte
+	Size int64
+	ID   string
+}
+
+func (q *Queries) ReplaceNoteFileData(ctx context.Context, arg ReplaceNoteFileDataParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, replaceNoteFileData, arg.Data, arg.Size, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const setAgentSyncedAt = `-- name: SetAgentSyncedAt :execrows
 UPDATE conversations SET agent_synced_at = ? WHERE id = ?
 `
@@ -695,6 +713,24 @@ type SetConversationPrivateParams struct {
 
 func (q *Queries) SetConversationPrivate(ctx context.Context, arg SetConversationPrivateParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, setConversationPrivate, arg.Private, arg.UpdatedAt, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const touchNoteMessage = `-- name: TouchNoteMessage :execrows
+UPDATE messages SET updated_at = ? WHERE id = ? AND attachment_id = ? AND deleted_at IS NULL
+`
+
+type TouchNoteMessageParams struct {
+	UpdatedAt    int64
+	ID           string
+	AttachmentID sql.NullString
+}
+
+func (q *Queries) TouchNoteMessage(ctx context.Context, arg TouchNoteMessageParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, touchNoteMessage, arg.UpdatedAt, arg.ID, arg.AttachmentID)
 	if err != nil {
 		return 0, err
 	}
