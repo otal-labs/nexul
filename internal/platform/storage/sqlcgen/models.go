@@ -882,6 +882,12 @@ type TicketLink struct {
 	CreatedAt int64
 }
 
+type TicketNotesFt struct {
+	TicketID     string
+	AttachmentID string
+	Body         string
+}
+
 type TicketPrLink struct {
 	TicketID string
 	PrOwner  string

@@ -34,3 +34,6 @@ Rejected: a new tool, which the tool budget had no room for; carrying the file a
 tool, which ADR 0027 already declined; and a markdown link in the body, which agent messages never parse.
 
 Decided 2026-10-02.
+
+Amended 2026-10-02: ticket search finds a note's markdown. It is indexed in `ticket_notes_fts`, kept current by triggers on
+the message insert and on the file's update and delete, and a note-only match ranks after every title or body match.

@@ -30,10 +30,32 @@ func (r *DocsRepo) Search(ctx context.Context, query string, limit int) ([]docs.
 	return out, nil
 }
 
+// Search ranks title and body matches first, then tickets found only through a note's text.
 func (r *TicketsRepo) Search(ctx context.Context, query string, limit int) ([]tickets.SearchResult, error) {
 	hits, err := queryFTS(ctx, r.db, "tickets_fts", "tickets", "id", query, limit, false)
 	if err != nil {
 		return nil, fmt.Errorf("search tickets: %w", err)
+	}
+	// hand-written: sqlc cannot express an FTS5 table as the operand of MATCH or bm25
+	// MATERIALIZED stops SQLite flattening bm25 into the GROUP BY, where FTS5 refuses to run it.
+	noteHits, err := scanFTS(ctx, r.db, `WITH n AS MATERIALIZED (SELECT ticket_id, bm25(ticket_notes_fts) AS rank FROM ticket_notes_fts WHERE ticket_notes_fts MATCH ?)
+		SELECT t.id, t.title, MIN(n.rank) AS best FROM n JOIN tickets t ON t.id = n.ticket_id GROUP BY t.id ORDER BY best LIMIT ?`,
+		ftsQuery(query), limit)
+	if err != nil {
+		return nil, fmt.Errorf("search ticket notes: %w", err)
+	}
+	seen := make(map[string]bool, len(hits))
+	for _, h := range hits {
+		seen[h.id] = true
+	}
+	for _, h := range noteHits {
+		if len(hits) >= limit {
+			break
+		}
+		if seen[h.id] {
+			continue
+		}
+		hits = append(hits, h)
 	}
 	out := make([]tickets.SearchResult, 0, len(hits))
 	for _, h := range hits {
@@ -43,7 +65,7 @@ func (r *TicketsRepo) Search(ctx context.Context, query string, limit int) ([]ti
 }
 
 // excludeArchived adds `AND j.archived = 0` so archived docs never appear in search; tickets have no archived flag.
-func queryFTS(ctx context.Context, db *sql.DB, ftsTable, joinTable, idCol, query string, limit int, excludeArchived bool) (out []ftsHit, err error) {
+func queryFTS(ctx context.Context, db *sql.DB, ftsTable, joinTable, idCol, query string, limit int, excludeArchived bool) ([]ftsHit, error) {
 	archived := ""
 	if excludeArchived {
 		archived = " AND j.archived = 0"
@@ -52,7 +74,11 @@ func queryFTS(ctx context.Context, db *sql.DB, ftsTable, joinTable, idCol, query
 	stmt := fmt.Sprintf(
 		`SELECT j.%s, j.title, bm25(%s) AS rank FROM %s JOIN %s j ON j.rowid = %s.rowid WHERE %s MATCH ?%s ORDER BY rank LIMIT ?`,
 		idCol, ftsTable, ftsTable, joinTable, ftsTable, ftsTable, archived)
-	rows, err := db.QueryContext(ctx, stmt, ftsQuery(query), limit)
+	return scanFTS(ctx, db, stmt, ftsQuery(query), limit)
+}
+
+func scanFTS(ctx context.Context, db *sql.DB, stmt string, args ...any) (out []ftsHit, err error) {
+	rows, err := db.QueryContext(ctx, stmt, args...)
 	if err != nil {
 		return nil, err
 	}

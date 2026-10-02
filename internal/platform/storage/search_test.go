@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/docs"
 	"github.com/otal-labs/nexul/internal/tickets"
 )
@@ -168,4 +169,71 @@ func TestSearchTickets_NoMatch_Empty(t *testing.T) {
 	got, err := s.Tickets.Search(context.Background(), "nonexistenttermxyz", 10)
 	require.NoError(t, err)
 	assert.Empty(t, got)
+}
+
+// seedNoteThread files ticket ticketID with a thread conv-<ticketID> and returns a note-posting helper on it.
+func seedNoteThread(t *testing.T, s *Store, ticketID, title, body string) func(noteID, markdown string) *chat.Message {
+	t.Helper()
+	ctx := context.Background()
+	tk := newTestTicket(ticketID, "")
+	tk.Title, tk.Body = title, body
+	require.NoError(t, s.Tickets.Create(ctx, tk))
+	convID := "conv-" + ticketID
+	require.NoError(t, s.Chat.CreateConversation(ctx, newTestConversation(convID, chat.KindTicketThread, "", ticketID, "u-1"), []string{"u-1"}))
+	return func(noteID, markdown string) *chat.Message {
+		m := &chat.Message{ID: noteID, ConversationID: convID, AuthorID: "u-1", AuthorKind: chat.AuthorAgent,
+			AttachmentID: noteID + "-file", CreatedAt: chatFixedNow, UpdatedAt: chatFixedNow}
+		require.NoError(t, s.Chat.CreateNote(ctx, m, &chat.NoteFile{ID: m.AttachmentID, Name: "context.md", Markdown: markdown}))
+		return m
+	}
+}
+
+func searchIDs(t *testing.T, s *Store, query string) []string {
+	t.Helper()
+	hits, err := s.Tickets.Search(context.Background(), query, 10)
+	require.NoError(t, err)
+	ids := make([]string, 0, len(hits))
+	for _, h := range hits {
+		ids = append(ids, h.ID)
+	}
+	return ids
+}
+
+func TestSearchTickets_NoteText_FindsItsTicketAfterTitleAndBodyMatches(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	seedChatUser(t, s, "u-1")
+	postOnBodyMatch := seedNoteThread(t, s, "t-body", "Flaky deploys", "the runner drops its websocket")
+	postOnNoteOnly := seedNoteThread(t, s, "t-note", "Slow board", "columns lag")
+	postOnBodyMatch("n-1", "websocket again")
+	postOnNoteOnly("n-2", "# Context\n\nwebsocket websocket websocket reconnect storm")
+	postOnNoteOnly("n-3", "the websocket keeps closing")
+
+	assert.Equal(t, []string{"t-body", "t-note"}, searchIDs(t, s, "websocket"),
+		"a title or body match ranks above a note-only match, and each ticket appears once")
+}
+
+func TestSearchTickets_DeletedNote_StopsMatching(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	seedChatUser(t, s, "u-1")
+	note := seedNoteThread(t, s, "t-1", "Slow board", "columns lag")("n-1", "reconnect storm")
+	require.Equal(t, []string{"t-1"}, searchIDs(t, s, "reconnect"))
+
+	require.NoError(t, s.Chat.DeleteNote(context.Background(), note, nil, chatFixedNow))
+
+	assert.Empty(t, searchIDs(t, s, "reconnect"))
+}
+
+func TestSearchTickets_ReplacedNoteFile_MatchesItsNewTextOnly(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	seedChatUser(t, s, "u-1")
+	note := seedNoteThread(t, s, "t-1", "Slow board", "columns lag")("n-1", "reconnect storm")
+
+	_, err := s.db.Exec(`UPDATE attachments SET data = ?, size = ? WHERE id = ?`, []byte("virtualized rows"), 16, note.AttachmentID)
+	require.NoError(t, err)
+
+	assert.Empty(t, searchIDs(t, s, "reconnect"), "the replaced text no longer matches")
+	assert.Equal(t, []string{"t-1"}, searchIDs(t, s, "virtualized"))
 }
