@@ -12,6 +12,8 @@ import { TicketDetail } from "@/components/ticket/TicketDetail";
 import { TicketLinksSection } from "@/components/ticket/TicketLinksSection";
 import { TicketPropertiesPanel } from "@/components/ticket/TicketPropertiesPanel";
 import { TicketTestSection } from "@/components/ticket/TicketTestSection";
+import { NoteVariantSwitcher } from "@/components/note/NoteVariantSwitcher";
+import { useNoteVariant } from "@/components/note/noteVariants";
 import { ThreadPaneResizeHandle } from "@/components/ticket/ThreadPaneResizeHandle";
 import { ThreadVariantSwitcher } from "@/components/ticket/ThreadVariantSwitcher";
 import { useThreadVariant } from "@/components/ticket/threadVariants";
@@ -44,10 +46,12 @@ export const TicketPageBody = ({
 }: TicketPageBodyProps) => {
   const variant = useThreadVariant(embedded);
   const threadWidth = useThreadPaneStore((s) => s.width);
+  const note = useNoteVariant();
   const gridStyle = variant.wide && threadWidth !== null ? { "--thread-pane-width": `${threadWidth}px` } : undefined;
   return (
     <div className={variant.grid} data-thread-grid="" style={gridStyle as CSSProperties | undefined}>
       {!embedded && <ThreadVariantSwitcher current={variant} />}
+      {!embedded && <NoteVariantSwitcher current={note.variant} reader={note.reader} />}
       <div className={variant.body}>
         <TicketDetail key={ticket.id} ticket={ticket} {...(project ? { project } : {})} onSave={onSave} />
       </div>

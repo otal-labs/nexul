@@ -68,3 +68,13 @@ export const downloadAttachment = async (attachment: Attachment): Promise<void> 
   a.click();
   URL.revokeObjectURL(url);
 };
+
+export const getAttachmentTextKey = "getAttachmentText";
+
+// A note's markdown file as text; prototype only, so no live refresh yet.
+export const useAttachmentText = (id: string | undefined) =>
+  useQuery({
+    queryKey: [getAttachmentTextKey, id],
+    queryFn: async () => (await api.get<string>(attachmentPath(id ?? ""), { responseType: "text" })).data,
+    enabled: !!id,
+  });

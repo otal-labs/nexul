@@ -6,6 +6,7 @@ import { MessageBody } from "@/components/chat/MessageBody";
 import { MessageEditForm } from "@/components/chat/MessageEditForm";
 import { MessageContinuationTime, MessageRowAvatar, MessageRowHeader, type MessageAlign } from "@/components/chat/MessageRowHeader";
 import { MessageTrailTurns } from "@/components/chat/MessageTrailTurns";
+import { NoteMessage } from "@/components/note/NoteMessage";
 import { TrailQuestionBody } from "@/components/play/TrailQuestionCard";
 import { TrailReplyProse } from "@/components/play/TrailReplyProse";
 import { Message, MessageAvatar, MessageContent } from "@/components/ui/message";
@@ -77,7 +78,8 @@ const AgentMessageBody = ({ message, trailBlock, questionAnswered }: AgentMessag
   return (
     <>
       {trailBlock && trailBlock.turns.length > 0 && <MessageTrailTurns turns={trailBlock.turns} />}
-      {question === null && <TrailReplyProse text={message.body} />}
+      {question === null && message.attachment_id && <NoteMessage message={message} />}
+      {question === null && !message.attachment_id && <TrailReplyProse text={message.body} />}
       {question !== null && trailBlock && <TrailQuestionBody trail={trailBlock.trail} />}
       {question !== null && !trailBlock && (
         <ChatQuestionCard conversationId={message.conversation_id} question={question} answered={questionAnswered} />
