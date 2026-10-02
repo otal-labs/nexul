@@ -323,7 +323,7 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 	}
 	s.warnVersionIfChanged(ctx, conversationID, viaUserID, client, target.Computer)
 
-	prompts, err := s.buildTurnPrompts(ctx, conv, ticket, doc, projectID, req)
+	prompts, sentThrough, err := s.buildTurnPrompts(ctx, conv, ticket, doc, projectID, req)
 	if err != nil {
 		s.log.Error("agent: list context messages failed", "conversation", conversationID, "error", err)
 		failed(fmt.Sprintf("list context messages: %v", err))
@@ -350,13 +350,10 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 		return
 	}
 	s.announceTurnStarted(ctx, conversationID, conv.ThreadID, &turn, result)
+	s.markSent(ctx, conversationID, sentThrough)
 	obs.OnStarted(turn.target.SessionID)
 
 	finalText, term := s.drainTurn(ctx, conversationID, viaUserID, result.Updates, obs)
-
-	if err := s.conversations.MarkSynced(ctx, conversationID, s.now().UTC()); err != nil {
-		s.log.Error("agent: mark synced failed", "conversation", conversationID, "error", err)
-	}
 
 	s.finishTurn(ctx, conversationID, viaUserID, finalText, term, obs)
 }
@@ -413,34 +410,57 @@ func (s *Service) loadDocContext(ctx context.Context, conv Conversation, viaUser
 	return &DocContext{Title: d.Title, Body: d.BodyMarkdown}, d.ProjectID
 }
 
-// buildTurnPrompts assembles the full and incremental prompts from unsynced history plus the new request.
-func (s *Service) buildTurnPrompts(ctx context.Context, conv Conversation, ticket *TicketContext, doc *DocContext, projectID string, req TurnRequest) (harness.TurnPrompts, error) {
+// buildTurnPrompts assembles both prompts from unsent history plus the request, and returns the newest time it sends.
+func (s *Service) buildTurnPrompts(ctx context.Context, conv Conversation, ticket *TicketContext, doc *DocContext, projectID string, req TurnRequest) (harness.TurnPrompts, time.Time, error) {
 	history, err := s.conversations.MessagesSince(ctx, conv.ID, conv.SyncedAt)
 	if err != nil {
-		return harness.TurnPrompts{}, err
+		return harness.TurnPrompts{}, time.Time{}, err
 	}
-	ctxMsgs := make([]ContextMessage, len(history))
-	for i, m := range history {
-		ctxMsgs[i] = ContextMessage{Author: s.authorLabel(ctx, m.AuthorID, m.AuthorKind), Body: m.Body, At: m.CreatedAt}
-	}
+	all, others, sentThrough := s.contextMessages(ctx, history)
 	budget := NewAttachmentBudget()
 	actorCtx := identity.WithActor(ctx, identity.Actor{ID: req.ViaUserID})
 	index, alwaysIncludedBlock, memoryAttachments := s.splitMemories(actorCtx, projectID, budget, req.MemoriesByReference)
 	targetAttachments := s.extractTargetAttachments(actorCtx, ticket, doc, budget)
-	in := PromptInput{
+	full := PromptInput{
 		Ticket:             ticket,
 		Doc:                doc,
-		ContextMessages:    ctxMsgs,
+		ContextMessages:    all,
 		Memories:           index,
 		RequestAuthor:      s.authorLabel(ctx, req.ViaUserID, "user"),
 		RequestBody:        req.RequestBody,
 		RequestAt:          s.now().UTC(),
-		ExtraRequestBlocks: prependBlock(alwaysIncludedBlock, req.ExtraRequestBlocks),
+		ExtraRequestBlocks: append(prependBlock(alwaysIncludedBlock, slices.Clone(req.ExtraRequestBlocks)), req.FreshSessionBlocks...),
 	}
+	incremental := full
+	incremental.ContextMessages = others
+	incremental.ExtraRequestBlocks = req.ExtraRequestBlocks
 	attachments := append(append([]harness.Attachment{}, memoryAttachments...), targetAttachments...)
-	full := in
-	full.ExtraRequestBlocks = append(slices.Clone(in.ExtraRequestBlocks), req.FreshSessionBlocks...)
-	return harness.TurnPrompts{Full: ComposePrompt(full), Incremental: ComposeIncrementalPrompt(in), Attachments: attachments}, nil
+	return harness.TurnPrompts{Full: ComposePrompt(full), Incremental: ComposeIncrementalPrompt(incremental), Attachments: attachments}, sentThrough, nil
+}
+
+// contextMessages resolves history; others drops the Agent's own replies, which a live session already holds.
+func (s *Service) contextMessages(ctx context.Context, history []ConversationMessage) (all, others []ContextMessage, newest time.Time) {
+	for _, m := range history {
+		cm := ContextMessage{Author: s.authorLabel(ctx, m.AuthorID, m.AuthorKind), Body: m.Body, At: m.CreatedAt}
+		all = append(all, cm)
+		if m.CreatedAt.After(newest) {
+			newest = m.CreatedAt
+		}
+		if m.AuthorKind != "agent" {
+			others = append(others, cm)
+		}
+	}
+	return all, others, newest
+}
+
+// markSent advances the cursor once the harness has the prompt, so a mention mid-turn sends only what came after.
+func (s *Service) markSent(ctx context.Context, conversationID string, through time.Time) {
+	if through.IsZero() {
+		return
+	}
+	if err := s.conversations.MarkSynced(ctx, conversationID, through); err != nil {
+		s.log.Error("agent: mark synced failed", "conversation", conversationID, "error", err)
+	}
 }
 
 // extractTargetAttachments rewrites the ticket or doc body's embedded attachment references in place (they
