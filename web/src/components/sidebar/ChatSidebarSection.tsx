@@ -21,7 +21,7 @@ interface ChatSidebarSectionProps {
   collapsed: boolean;
 }
 
-// Collapsed rail hides the list entirely (no room for labels); the Chat nav link still reaches the page.
+// Collapsed rail hides the list entirely (no room for labels); expand the sidebar to switch conversations.
 export const ChatSidebarSection = ({ collapsed }: ChatSidebarSectionProps) => {
   const workspaceId = useWorkspaceStore((s) => s.selectedWorkspaceId);
   const { data: conversations } = useFetchConversations(collapsed ? undefined : workspaceId);
