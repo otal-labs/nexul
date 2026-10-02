@@ -72,9 +72,10 @@ through MCP.
 The agent tool running on a user's paired computer that executes an Agent
 turn (T3 Code today, others later). The server talks to every harness through
 one interface, `harness.Client`, with one implementation per kind. An image
-embedded in an inlined memory, a ticket body, or a doc body travels to the
-harness as an attachment, capped at 10 MiB per image and 25 MiB per turn; an
-oversized or non-image reference becomes an "attachment omitted" note.
+embedded in a ticket body, a doc body, or an always-included memory an
+`@Agent` turn inlines travels to the harness as an attachment, capped at
+10 MiB per image and 25 MiB per turn; an oversized or non-image reference
+becomes an "attachment omitted" note.
 _Avoid_: Backend (that is the Go server), Runtime, Driver
 
 **Model options**:
@@ -121,8 +122,9 @@ _Avoid_: Onboarded, verified, setup flag
 A note written for agents, not people: a title, a one-line when-to-use
 phrase, and a rich-text body, belonging to exactly one project. It reaches
 only that project's turns: an Agent turn on a ticket, doc, or interview
-carries the index of its project's memories, a play run inlines the ones
-the user picked, and a plain chat with no ticket or doc carries none.
+carries the index of its project's memories, a play run names the ones
+the user picked for the agent to read first, and a plain chat with no
+ticket or doc carries none.
 Agents may write memories too. Every save appends a version with its
 author, and any version can be reverted to. Cloned, never shared, to
 another project. Plural in the UI: "memories".
@@ -141,7 +143,8 @@ _Avoid_: Onboarding, questionnaire, setup
 
 **Interview memory**:
 The project memory an interview produces, written as rules and kept short,
-and included in full in every agent turn in that project.
+and included in full in every `@Agent` turn in that project; a play run
+names it for the agent to read first.
 _Avoid_: Practices doc, guidelines, rules file
 
 **Decisions log**:

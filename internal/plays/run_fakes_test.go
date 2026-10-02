@@ -472,13 +472,14 @@ func (fakeUsers) UserID(_ context.Context, login string) (string, error) {
 // --- the agent pipeline's own seams, for the happy path against harnesstest.Client -------------------------
 
 type agentConvs struct {
-	mu      sync.Mutex
-	replies []string
-	notes   []string
+	projectID string
+	mu        sync.Mutex
+	replies   []string
+	notes     []string
 }
 
 func (a *agentConvs) GetConversation(_ context.Context, id string) (agent.Conversation, error) {
-	return agent.Conversation{ID: id}, nil
+	return agent.Conversation{ID: id, ProjectID: a.projectID}, nil
 }
 
 func (a *agentConvs) MessagesSince(context.Context, string, time.Time) ([]agent.ConversationMessage, error) {
@@ -519,6 +520,12 @@ func (agentTargets) ResolveTarget(context.Context, string, string) (*pairing.Res
 
 func (agentTargets) ResolveTargetOverride(_ context.Context, _, _, computerID, provider, model string, _ []harness.OptionSetting) (*pairing.ResolvedTarget, error) {
 	return &pairing.ResolvedTarget{Computer: pairing.Computer{ID: computerID, Kind: "t3code"}, HarnessProjectID: "hp-1", Provider: provider, Model: model}, nil
+}
+
+type agentMems struct{ index agent.MemoriesIndex }
+
+func (a agentMems) ListMemories(context.Context, string) (agent.MemoriesIndex, error) {
+	return a.index, nil
 }
 
 type agentLive struct{}

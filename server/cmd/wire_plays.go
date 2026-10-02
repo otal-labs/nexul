@@ -7,7 +7,6 @@ import (
 
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/docs"
-	"github.com/otal-labs/nexul/internal/docs/richtext"
 	"github.com/otal-labs/nexul/internal/memories"
 	"github.com/otal-labs/nexul/internal/pairing"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -101,7 +100,7 @@ func (a playsHarnessResolver) ResolveTarget(ctx context.Context, userID, project
 	return plays.HarnessChoice{ComputerID: target.Computer.ID, Provider: target.Provider, Model: target.Model, ModelOptions: target.ModelOptions}, nil
 }
 
-// playsMemoryReader adapts memories to the runner's MemoryReader seam, exporting each body to markdown (ADR 0026).
+// playsMemoryReader adapts memories to the runner's MemoryReader seam.
 type playsMemoryReader struct {
 	svc *memories.Service
 }
@@ -113,11 +112,7 @@ func (a playsMemoryReader) ListForProject(ctx context.Context, projectID string)
 	}
 	out := make([]plays.Memory, 0, len(ms))
 	for _, m := range ms {
-		md, err := richtext.ToMarkdown(m.Body)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, plays.Memory{ID: m.ID, Title: m.Title, Markdown: md, AlwaysIncluded: m.AlwaysIncluded})
+		out = append(out, plays.Memory{ID: m.ID, Title: m.Title, WhenToUse: m.WhenToUse, AlwaysIncluded: m.AlwaysIncluded, Interview: m.Kind == memories.KindInterview})
 	}
 	return out, nil
 }

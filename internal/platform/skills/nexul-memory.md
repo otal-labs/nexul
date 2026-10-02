@@ -8,15 +8,19 @@ description: Use Nexul's memories — durable notes for agents, each in one proj
 Memories are durable, human-editable notes for agents, not people: their own
 entity with a table, page, and permission, never a doc. Each belongs to one
 project and reaches only that project's turns; a chat with no ticket or doc
-has none. Every project turn already carries the project's always-included
-memories inlined in full as standing rules, plus an index (name +
-when-to-use only) of the rest; this skill applies the same protocol in your
-own local T3 sessions.
+has none. Every project turn carries the project's always-included memories
+as standing rules, plus an index (name + when-to-use only) of the rest. An
+`@Agent` turn inlines them in full; a play run instead names its memories,
+the always-included ones and the ones picked for the run, to read first.
+This skill applies the same protocol in your own local T3 sessions.
 
 ## Read
 
 1. Treat any always-included memories already inlined in the turn as
-   standing rules — no need to fetch them again.
+   standing rules — no need to fetch them again. When the turn names
+   memories to read first, read each with `memory_get` before anything else
+   and follow them the same way; if one cannot be read, say which and carry
+   on without it.
 2. Look at the memories index for the rest (or call `memory_list` for the
    current project if none was provided).
 3. Pick the memories whose when-to-use line matches what you're about to

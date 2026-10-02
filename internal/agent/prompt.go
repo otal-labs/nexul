@@ -18,7 +18,7 @@ const (
 	MaxTurnAttachmentBytes = 25 << 20
 )
 
-// MaxMemoryChars caps one memory inlined in full; MaxInlinedMemoryChars caps a whole run's selection.
+// MaxMemoryChars caps one memory inlined in full; MaxInlinedMemoryChars caps a turn's always-included memories together.
 const (
 	MaxMemoryChars        = 20_000
 	MaxInlinedMemoryChars = 60_000
@@ -190,10 +190,11 @@ func memoriesBlock(mem MemoriesIndex) string {
 	fallback := "Memories: durable notes for agents, shared across the team, " +
 		"not per-user. A memory belongs to one project and reaches only that " +
 		"project's turns; a chat with no ticket or doc has none. Always-included " +
-		"memories are inlined in full elsewhere in this prompt as standing rules " +
-		"to follow; the index below lists the rest by title and when-to-use " +
-		"only — fetch one's full content with the memory_get MCP tool using its " +
-		"id when its when-to-use matches. Save a new one, or update an existing " +
+		"memories are standing rules to follow: this prompt either carries them " +
+		"in full or names them to read first with memory_get. The index below " +
+		"lists the rest by title and when-to-use only — fetch one's full " +
+		"content with the memory_get MCP tool using its id when its " +
+		"when-to-use matches. Save a new one, or update an existing " +
 		"one, with memory_create/memory_update, passing the project's " +
 		"project_id. Use your judgment to save a durable fact worth remembering, " +
 		"and always save one when a user says something like \"@Agent remember " +

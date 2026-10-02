@@ -107,12 +107,13 @@ func (e *HarnessRefusal) Error() string { return e.Err.Error() }
 
 func (e *HarnessRefusal) Unwrap() error { return e.Err }
 
-// Memory is the slice of a memory the runner inlines, its body already exported to markdown.
+// Memory is the slice of a memory the runner names for the agent to read; never its body (ADR 0105).
 type Memory struct {
 	ID             string
 	Title          string
-	Markdown       string
+	WhenToUse      string
 	AlwaysIncluded bool
+	Interview      bool
 }
 
 // MemoryReader is the runner's seam onto memories (ADR 0017).
@@ -166,34 +167,31 @@ type RunnerConfig struct {
 	Live     LivePublisher
 	Users    UserReader
 	// Links is optional; nil means a ticket play runs without its found-in and blocked-by context.
-	Links LinkReader
-	// Attachments is optional; nil means images embedded in an inlined memory are left as markdown, unresolved.
-	Attachments agent.AttachmentReader
-	Logger      *slog.Logger
-	Now         func() time.Time
+	Links  LinkReader
+	Logger *slog.Logger
+	Now    func() time.Time
 	// SilenceTimeout defaults to HarnessSilenceTimeout; tests shorten it.
 	SilenceTimeout time.Duration
 }
 
 // Runner starts play runs and keeps their trails (ADR 0055).
 type Runner struct {
-	plays       Repo
-	trails      TrailRepo
-	perm        PermissionGate
-	targets     TargetReader
-	projects    ProjectLookup
-	harness     HarnessResolver
-	memories    MemoryReader
-	threads     Threads
-	turns       TurnRunner
-	tickets     StatusMover
-	live        LivePublisher
-	users       UserReader
-	links       LinkReader
-	attachments agent.AttachmentReader
-	log         *slog.Logger
-	now         func() time.Time
-	silence     time.Duration
+	plays    Repo
+	trails   TrailRepo
+	perm     PermissionGate
+	targets  TargetReader
+	projects ProjectLookup
+	harness  HarnessResolver
+	memories MemoryReader
+	threads  Threads
+	turns    TurnRunner
+	tickets  StatusMover
+	live     LivePublisher
+	users    UserReader
+	links    LinkReader
+	log      *slog.Logger
+	now      func() time.Time
+	silence  time.Duration
 
 	mu   sync.Mutex
 	runs map[string]*trailObserver // trail id -> the live run, so it can be stopped
@@ -216,7 +214,7 @@ func NewRunner(cfg RunnerConfig) *Runner {
 	return &Runner{
 		plays: cfg.Plays, trails: redactedTrails{cfg.Trails}, perm: cfg.Perm, targets: cfg.Targets, projects: cfg.Projects,
 		harness: cfg.Harness, memories: cfg.Memories, threads: redactedThreads{cfg.Threads}, turns: cfg.Turns, tickets: cfg.Tickets,
-		live: cfg.Live, users: cfg.Users, links: cfg.Links, attachments: cfg.Attachments, log: cfg.Logger, now: cfg.Now, silence: cfg.SilenceTimeout,
+		live: cfg.Live, users: cfg.Users, links: cfg.Links, log: cfg.Logger, now: cfg.Now, silence: cfg.SilenceTimeout,
 		runs: map[string]*trailObserver{},
 	}
 }
@@ -302,7 +300,7 @@ func (r *Runner) launch(ctx context.Context, play *Play, trail *Trail, tgt targe
 	if err := r.refuseIfActive(ctx, trail.TargetType, trail.TargetID); err != nil {
 		return refuse(err)
 	}
-	memoriesBlock, memoryIDs, memoryAttachments, err := r.inlineMemories(ctx, trail.ProjectID, trail.SelectedMemoryIDs)
+	memoriesBlock, memoryIDs, err := r.memoriesToRead(ctx, trail.ProjectID, trail.SelectedMemoryIDs)
 	if err != nil {
 		return refuse(err)
 	}
@@ -331,7 +329,7 @@ func (r *Runner) launch(ctx context.Context, play *Play, trail *Trail, tgt targe
 	// Copied before the turn starts: from here on the observer's goroutine owns trail.
 	snapshot := *trail
 	r.startTurn(ctx, trail, targetTitle, agent.TurnRequest{
-		ConversationID: conversationID, ViaUserID: trail.StarterID, RequestBody: body, Attachments: memoryAttachments,
+		ConversationID: conversationID, ViaUserID: trail.StarterID, RequestBody: body, MemoriesByReference: true,
 		ExtraRequestBlocks: requestBlocks(play, links, memoriesBlock, r.login(ctx, trail.StarterID), trail.CustomInstructions),
 		Target:             &agent.TargetOverride{ComputerID: choice.ComputerID, Provider: choice.Provider, Model: choice.Model, ModelOptions: choice.ModelOptions},
 	}, false)
@@ -382,7 +380,7 @@ func (r *Runner) Answer(ctx context.Context, trailID string, answer harness.Ques
 	}
 	snapshot := *trail
 	r.startTurn(ctx, trail, tgt.title, agent.TurnRequest{
-		ConversationID: trail.ConversationID, ViaUserID: trail.StarterID, RequestBody: body,
+		ConversationID: trail.ConversationID, ViaUserID: trail.StarterID, RequestBody: body, MemoriesByReference: true,
 		Target: &agent.TargetOverride{ComputerID: trail.ComputerID, Provider: trail.Provider, Model: trail.Model, ModelOptions: trail.ModelOptions},
 	}, true)
 	return &snapshot, nil
@@ -478,58 +476,56 @@ func (r *Runner) refuseIfActive(ctx context.Context, targetType TargetType, targ
 	return nil
 }
 
-// inlineMemories renders the caller's selection, refusing an id outside the project and a selection over the
-// ceilings; always-included memories count toward the ceiling first and lead the returned ids, but the turn
-// pipeline inlines their bodies itself, so the play's block carries only the picked ones. Each picked memory's
-// markdown goes through the attachment helper on one shared budget, so an embedded image travels to the harness
-// alongside text that names it instead of its URL.
-func (r *Runner) inlineMemories(ctx context.Context, projectID string, selected []string) (string, []string, []harness.Attachment, error) {
+// memoriesReadFirst opens a run's memories block; it names the read tool, so the MCP surface test catches a rename.
+const memoriesReadFirst = "Memories to read first: before doing anything else, read each memory below in full with `memory_get`, " +
+	"passing its `id`, and follow them as standing rules for this run. If one cannot be read, say which in your first " +
+	"message and carry on without it."
+
+// memoriesToRead names the run's memories for the agent to read itself, refusing an id outside the project: the
+// always-included ones, then the interview memory, then the rest of the selection. The returned ids are in that order.
+func (r *Runner) memoriesToRead(ctx context.Context, projectID string, selected []string) (string, []string, error) {
 	all, err := r.memories.ListForProject(ctx, projectID)
 	if err != nil {
-		return "", nil, nil, fmt.Errorf("list memories for project %s: %w", projectID, err)
+		return "", nil, fmt.Errorf("list memories for project %s: %w", projectID, err)
 	}
-	inProject := make(map[string]bool, len(all))
+	byID := make(map[string]Memory, len(all))
 	for _, m := range all {
-		inProject[m.ID] = true
+		byID[m.ID] = m
 	}
-	wanted := make(map[string]bool, len(selected))
+	var ordered []Memory
+	for _, m := range all {
+		if m.AlwaysIncluded && !m.Interview {
+			ordered = append(ordered, m)
+		}
+	}
+	for _, m := range all {
+		if m.Interview {
+			ordered = append(ordered, m)
+		}
+	}
 	for _, id := range selected {
-		if !inProject[id] {
-			return "", nil, nil, fmt.Errorf("%w: memory %s is not in this project", apperrs.ErrInvalid, id)
+		m, ok := byID[id]
+		if !ok {
+			return "", nil, fmt.Errorf("%w: memory %s is not in this project", apperrs.ErrInvalid, id)
 		}
-		wanted[id] = true
-	}
-	budget := agent.NewAttachmentBudget()
-	var counted, picked []agent.InlinedMemory
-	var attachments []harness.Attachment
-	inlined := []string{}
-	for _, m := range all {
-		if m.AlwaysIncluded {
-			counted = append(counted, agent.InlinedMemory{Title: m.Title, Body: m.Markdown})
-			inlined = append(inlined, m.ID)
+		if !m.AlwaysIncluded && !m.Interview {
+			ordered = append(ordered, m)
 		}
 	}
-	for _, m := range all {
-		if wanted[m.ID] && !m.AlwaysIncluded {
-			body, atts := agent.ExtractAttachments(ctx, m.Markdown, r.attachments, budget)
-			item := agent.InlinedMemory{Title: m.Title, Body: body}
-			counted = append(counted, item)
-			picked = append(picked, item)
-			attachments = append(attachments, atts...)
-			inlined = append(inlined, m.ID)
+	ids := make([]string, 0, len(ordered))
+	if len(ordered) == 0 {
+		return "", ids, nil
+	}
+	var b strings.Builder
+	b.WriteString(memoriesReadFirst)
+	for _, m := range ordered {
+		ids = append(ids, m.ID)
+		fmt.Fprintf(&b, "\n- %s (id %s)", m.Title, m.ID)
+		if m.WhenToUse != "" {
+			b.WriteString(": " + m.WhenToUse)
 		}
 	}
-	if _, _, err := agent.InlineMemories(counted, agent.DefaultInlineLimits()); err != nil {
-		return "", nil, nil, err
-	}
-	if len(picked) == 0 {
-		return "", inlined, nil, nil
-	}
-	block, _, err := agent.InlineMemories(picked, agent.DefaultInlineLimits())
-	if err != nil {
-		return "", nil, nil, err
-	}
-	return block, inlined, attachments, nil
+	return b.String(), ids, nil
 }
 
 func (r *Runner) openThread(ctx context.Context, workspaceID string, targetType TargetType, targetID, starter string) (string, error) {
@@ -896,7 +892,7 @@ func startedMessage(label, custom string) string {
 func requestBlocks(play *Play, links []string, memoriesBlock, login, custom string) []string {
 	blocks := append([]string{"Play: " + play.Label + "\n" + play.Instructions}, links...)
 	if memoriesBlock != "" {
-		blocks = append(blocks, "Memories the user selected for this run, follow them:\n"+memoriesBlock)
+		blocks = append(blocks, memoriesBlock)
 	}
 	if custom != "" {
 		blocks = append(blocks, fmt.Sprintf("Instructions from %s for this run; where these conflict with the play's instructions, these win:\n%s", login, custom))

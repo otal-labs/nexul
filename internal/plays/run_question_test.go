@@ -108,6 +108,7 @@ func TestAnswer_TurnGone_ResumesAFreshTurnOnTheSameTrail(t *testing.T) {
 	assert.Equal(t, trail.ConversationID, req.ConversationID)
 	assert.Equal(t, starter, req.ViaUserID)
 	assert.Empty(t, req.ExtraRequestBlocks)
+	assert.True(t, req.MemoriesByReference, "a resumed play turn inlines no memory either")
 	assert.Len(t, f.trails.all(), 1, "same trail")
 	assert.Empty(t, f.turns.answered, "nothing to answer on a turn that is gone")
 

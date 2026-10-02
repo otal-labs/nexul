@@ -22,7 +22,8 @@ A **play** is a pre-configured Agent turn a user fires from a ticket page or
 a doc page with one button. Two ship out of the box: "Fix with AI" on
 tickets in the progress stage, and "To tickets via AI" on docs. A play runs
 on the clicking user's own paired harness, posts into the target's thread,
-inlines the memories the user picked, and, for a ticket, moves it to a
+names the memories the user picked for the Agent to read first (ADR 0105),
+and, for a ticket, moves it to a
 chosen column when the harness reports the turn done. Every press leaves a
 **trail**: the choices made, every step the Agent took, and the outcome.
 
@@ -88,8 +89,8 @@ express all of this without over-granting `write`.
   and the last selected memories are pre-selected next time, read from the
   user's latest trail. A remembered column that no longer exists is not
   pre-selected. No default memories live on the definition.
-- A selection whose inlined memories exceed the per-run ceiling is refused
-  in the dialog with the totals shown. The dialog also shows which computer,
+- A selection is never refused for its size; the run names the memories
+  instead of inlining them (ADR 0105). The dialog also shows which computer,
   provider, and model the run will use, preselected from the project link
   or the user's pairing defaults, changeable per run (ADR 0058, amending
   this section's earlier "nothing else is asked per click").
@@ -134,8 +135,8 @@ express all of this without over-granting `write`.
 - Block order: the fixed Agent instructions (identity, whoami check,
   memories index) as today; the target (ticket, or doc as markdown) ; the
   conversation so far; then the run request. The request holds the play's
-  name and base instructions, the inlined memories under "Memories the user
-  selected for this run, follow them", and the custom instructions under
+  name and base instructions, the memories to read first by id (ADR 0105),
+  and the custom instructions under
   "Instructions from <user> for this run; where these conflict with the
   play's instructions, these win". Play material rides inside the request so
   the reused-session incremental prompt carries it.

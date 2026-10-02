@@ -52,7 +52,7 @@ export const useFetchActiveTrails = (projectId: string | undefined) => {
   });
 };
 
-// Errors render inside the run dialog (the over-ceiling refusal carries its totals), so no toast here.
+// Errors render inside the run dialog, so no toast here.
 export const useRunPlay = () => {
   const client = useQueryClient();
   return useMutation({

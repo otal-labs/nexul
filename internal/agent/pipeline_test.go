@@ -767,26 +767,6 @@ func TestRunTurn_TargetOverride_ResolvedThroughTheOverrideSeam(t *testing.T) {
 	assert.Equal(t, []harness.OptionSetting{{ID: "effort", Value: "high"}}, gotTarget.ModelOptions, "the resolved options reach the harness turn")
 }
 
-func TestRunTurn_AttachmentsReachTheHarness(t *testing.T) {
-	conv := newFakeConversations(Conversation{ID: "conv-1"})
-	var got harness.TurnPrompts
-	client := &harnesstest.Client{StartTurnFn: func(_ context.Context, _ harness.Target, _ string, prompts harness.TurnPrompts) (harness.StartResult, error) {
-		got = prompts
-		return harness.StartResult{SessionID: "thread-1", Updates: updatesChan(harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}})}, nil
-	}}
-	svc := NewService(Config{
-		Conversations: conv,
-		Targets:       &fakeTargets{target: testTarget()},
-		Harnesses:     harnesstest.Registry(client),
-		Live:          &fakeLive{},
-	})
-	attachments := []harness.Attachment{{Name: "shot.png", MIME: "image/png", Bytes: []byte{1, 2, 3}}}
-
-	svc.RunTurn(context.Background(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "look", Attachments: attachments})
-
-	assert.Equal(t, attachments, got.Attachments)
-}
-
 func TestRunTurn_TicketThread_EmbeddedImage_AttachesAndRewritesPrompt(t *testing.T) {
 	conv := newFakeConversations(Conversation{ID: "conv-1", IsTicketThread: true, TicketID: "tix-1"})
 	var got harness.TurnPrompts
