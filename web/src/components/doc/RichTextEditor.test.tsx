@@ -3,9 +3,11 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as Y from "yjs";
 
 import { api } from "@/api/client";
 import { RichTextEditor } from "@/components/doc/RichTextEditor";
+import { RelayCollabProvider } from "@/lib/collab/provider";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { emptyDocJson, isStructuredBody } from "@/utils/RichtextUtility";
 
@@ -18,9 +20,29 @@ const structured = `{"type":"doc","content":[{"type":"paragraph","content":[{"ty
 
 const withMention = `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"see "},{"type":"mention","attrs":{"type":"ticket","id":"t-1","label":"Fix the bug"}},{"type":"text","text":" now"}]}]}`;
 
+const trailingImage = "Intro\n\n![x](https://example.com/x.png)";
+
+// The server picked this editor to seed a fresh room; the provider never connects, so only the seed runs.
+const renderSeedingEditor = (value: string, onChange: (json: string) => void) => {
+  const doc = new Y.Doc();
+  const provider = new RelayCollabProvider({ url: "ws://test/collab", doc });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter>
+        <RichTextEditor
+          value={value}
+          onChange={onChange}
+          collab={{ doc, provider, user: { name: "Ann", color: "#3b82f6" }, seed: true }}
+        />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+};
+
 const renderEditor = (
   value: string,
-  onChange = () => {},
+  onChange: (json: string) => void = () => {},
   onHeadingsChange?: (headings: { id: string; text: string; level: number }[]) => void,
 ) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -214,5 +236,28 @@ describe("RichTextEditor", () => {
       const last = onHeadingsChange.mock.calls.at(-1)?.[0];
       expect(last).toEqual([{ id: "overview", text: "Overview", level: 1 }]);
     });
+  });
+
+  it.each([
+    {
+      path: "the initial value",
+      mount: (onChange: (json: string) => void) => renderEditor(trailingImage, onChange),
+    },
+    {
+      path: "the collab seed",
+      mount: (onChange: (json: string) => void) => renderSeedingEditor(trailingImage, onChange),
+    },
+  ])("keeps a trailing image when typing after tabbing in, with the body loaded by $path", async ({ mount }) => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    mount(onChange);
+    await screen.findByAltText("x");
+
+    await user.tab();
+    await user.keyboard("typed");
+
+    await waitFor(() => expect(onChange.mock.calls.at(-1)?.[0]).toContain("typed"));
+    const body = onChange.mock.calls.at(-1)?.[0] as string;
+    expect(body).toContain('"type":"image"');
   });
 });
