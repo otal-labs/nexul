@@ -220,9 +220,10 @@ conversation people reply in, and where a doc play's run lands. Gated by
 
 **Note**:
 What an agent leaves on a ticket instead of growing its body: one Agent
-message in the ticket's thread carrying a markdown file attached to the
-ticket, which a person opens, edits, and saves. The body stays the ticket's
-spec and changes only when a person asks.
+message in the ticket's thread together with the markdown file it carries,
+which anyone who may edit the ticket opens and edits live, the way a doc is
+edited. Message and file are one thing: deleting the message deletes the
+file. The body stays the ticket's spec and changes only when a person asks.
 _Avoid_: Comment, addendum, memory (a memory is written for agents)
 
 **Locked doc**:
