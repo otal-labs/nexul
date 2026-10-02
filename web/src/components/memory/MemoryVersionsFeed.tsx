@@ -2,6 +2,7 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { MemoryVersionRow } from "@/components/memory/MemoryVersionRow";
 import { useFetchMemoryVersions } from "@/hooks/MemoryHooks";
+import { cn } from "@/lib/utils";
 
 interface MemoryVersionsFeedProps {
   memoryId: string;
@@ -14,16 +15,17 @@ interface MemoryVersionsFeedProps {
 // Newest first, matching GET /api/memories/{id}/versions; the current version has no revert action.
 export const MemoryVersionsFeed = ({ memoryId, currentVersion, canRevert, rowLayout = "inline" }: MemoryVersionsFeedProps) => {
   const { data, error, isPending } = useFetchMemoryVersions(memoryId);
+  const stacked = rowLayout === "stacked";
 
   return (
-    <section className="space-y-3" aria-label="Versions">
-      <h2 className="font-mono text-[11px] font-semibold tracking-[0.08em] text-muted-foreground/80 uppercase">
+    <section className={stacked ? "space-y-0.5" : "space-y-3"} aria-label="Versions">
+      <h2 className={cn("font-mono text-[11px] font-semibold tracking-[0.08em] text-muted-foreground/80 uppercase", stacked && "pb-1")}>
         Versions
       </h2>
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
       {data && (
-        <ul className="divide-y divide-border overflow-hidden rounded-md border">
+        <ul className={cn(stacked ? "-mx-2" : "divide-y divide-border overflow-hidden rounded-md border")}>
           {data.map((version) => (
             <MemoryVersionRow
               key={version.id}

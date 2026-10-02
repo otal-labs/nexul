@@ -30,13 +30,13 @@ const version = (overrides: Partial<MemoryVersion> = {}): MemoryVersion => ({
   ...overrides,
 });
 
-const renderRow = (v: MemoryVersion, isCurrent: boolean, canRevert: boolean) => {
+const renderRow = (v: MemoryVersion, isCurrent: boolean, canRevert: boolean, layout: "inline" | "stacked" = "inline") => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
       <ContextAwareConfirmation.ConfirmationRoot />
       <ul>
-        <MemoryVersionRow memoryId="mem-1" version={v} isCurrent={isCurrent} canRevert={canRevert} />
+        <MemoryVersionRow memoryId="mem-1" version={v} isCurrent={isCurrent} canRevert={canRevert} layout={layout} />
       </ul>
     </QueryClientProvider>,
   );
@@ -78,5 +78,22 @@ describe("MemoryVersionRow", () => {
     await user.click(await screen.findByRole("button", { name: "Confirm" }));
 
     expect(mocks.post).toHaveBeenCalledWith("/api/memories/mem-1/revert", { version: 2 });
+  });
+
+  it("reverts from the rail row's icon button", async () => {
+    mocks.post.mockResolvedValue({ data: { id: "mem-1" } });
+    const user = userEvent.setup();
+    renderRow(version(), false, true, "stacked");
+
+    await user.click(screen.getByRole("button", { name: "Revert to v2" }));
+    await user.click(await screen.findByRole("button", { name: "Confirm" }));
+
+    expect(mocks.post).toHaveBeenCalledWith("/api/memories/mem-1/revert", { version: 2 });
+  });
+
+  it("marks the current version in the rail row instead of offering revert", () => {
+    renderRow(version(), true, true, "stacked");
+    expect(screen.getByText("current")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Revert/ })).not.toBeInTheDocument();
   });
 });
