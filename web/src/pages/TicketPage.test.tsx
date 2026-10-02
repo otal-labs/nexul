@@ -81,6 +81,7 @@ const mockTicket = (overrides: Record<string, unknown> = {}) => vi.mocked(api.ge
 });
 
 beforeEach(() => {
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   vi.mocked(api.get).mockReset();
   vi.mocked(api.patch).mockReset();
   vi.mocked(api.post).mockReset();
@@ -155,10 +156,6 @@ describe("TicketPage", () => {
 });
 
 describe("TicketPage sections", () => {
-  beforeEach(() => {
-    useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
-  });
-
   it("drops the Thread and the Trail without a workspace", async () => {
     useWorkspaceStore.setState({ selectedWorkspaceId: "" });
     mockTicket();

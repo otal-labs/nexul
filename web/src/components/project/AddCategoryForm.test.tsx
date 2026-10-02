@@ -10,6 +10,7 @@ import { api } from "@/api/client";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { SaveCategoryFormSchema, type SaveCategoryFormData } from "@/models/Category";
 import { pickOption } from "@/test/pickOption";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
@@ -64,6 +65,7 @@ const renderHarness = (projectId?: string) => {
 };
 
 beforeEach(() => {
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
 });

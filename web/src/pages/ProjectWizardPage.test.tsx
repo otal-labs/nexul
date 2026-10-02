@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ProjectWizardPage } from "@/pages/ProjectWizardPage";
 import { useProjectWizardStore } from "@/stores/projectWizardStore";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 const access = vi.hoisted(() => ({ areas: ["tickets"] as string[] }));
 vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
@@ -65,6 +66,7 @@ const rung = (label: string) =>
     .find((item) => item.textContent?.includes(label))!;
 
 beforeEach(() => {
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   mocks.get.mockReset();
   mocks.get.mockImplementation(async (url: string) => {
     if (url === "/api/projects/p-1") return { data: project };

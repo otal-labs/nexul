@@ -10,6 +10,7 @@ import { api } from "@/api/client";
 import { CreateMemoryForm } from "@/components/memory/CreateMemoryForm";
 import { useFormDialog } from "@/hooks/useFormDialog";
 import { CreateMemoryFormSchema, emptyCreateMemoryForm, type CreateMemoryFormData } from "@/models/Memory";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
@@ -64,6 +65,7 @@ const renderWithRoot = (ui: ReactElement) =>
   );
 
 beforeEach(() => {
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
 });
