@@ -53,11 +53,12 @@ describe("PlaysRailSection", () => {
     expect(await screen.findByRole("button", { name: /Fix with AI/ })).toBeInTheDocument();
   });
 
-  it("says so, instead of vanishing, when no play applies to the stage", async () => {
+  it("renders nothing when no play applies", async () => {
     mockApi([]);
     renderSection();
-    expect(await screen.findByRole("heading", { name: "Plays" })).toBeInTheDocument();
-    expect(await screen.findByText("No plays for this stage.")).toBeInTheDocument();
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith("/api/workspaces/ws-1/plays/applicable", expect.anything()));
+    expect(screen.queryByRole("heading", { name: "Plays" })).not.toBeInTheDocument();
+    expect(screen.queryByText("No plays for this stage.")).not.toBeInTheDocument();
   });
 
   it("stays hidden for a member who cannot run plays", async () => {
