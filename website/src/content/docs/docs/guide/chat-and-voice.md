@@ -84,7 +84,8 @@ file. Select the pill to open the file in a dialog. With `tickets:write` you
 edit it in place, live with anyone else in it, it saves as you type, and
 pasted images become files of the same thread; you can also delete the note
 from there. Without it you read the file, and it refreshes when someone
-changes it.
+changes it. A note whose file has a table opens read-only for everyone until
+the editor supports tables, so an edit never drops the table.
 
 To change a note's file, pass `file` with the note's `note_id` and the new
 `markdown` and nothing else, or call `PUT /api/chat/messages/{id}/note` with

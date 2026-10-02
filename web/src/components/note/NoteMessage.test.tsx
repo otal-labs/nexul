@@ -43,18 +43,18 @@ class FakeWebSocket {
   close() {}
 }
 
-const routes = (permissions: string[]): Record<string, unknown> => ({
+const routes = (permissions: string[], markdown: string): Record<string, unknown> => ({
   "/api/attachments": [
     { id: "a1", conversation_id: "c1", name: "rollout.md", content_type: "text/markdown", size: 2048, uploaded_by: "u1", created_at: "" },
   ],
-  "/api/attachments/a1": "# Rollout\n\nShip behind the flag first.",
+  "/api/attachments/a1": markdown,
   "/api/tickets/t1": { id: "t1", project_id: "p1" },
   "/api/workspaces/ws-1/me": { role_name: "Member", permissions },
   "/api/auth/me": { user: { id: "u2", name: "Lena", avatar_url: "" } },
 });
 
-const renderNote = (permissions: string[]) => {
-  const table = routes(permissions);
+const renderNote = (permissions: string[], markdown = "# Rollout\n\nShip behind the flag first.") => {
+  const table = routes(permissions, markdown);
   vi.mocked(api.get).mockImplementation(async (url: string) => ({ data: table[url] ?? [] }));
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
@@ -104,6 +104,17 @@ describe("A note in the thread", () => {
     await waitFor(() => expect(sockets).toHaveLength(1));
     expect(sockets[0]).toContain("/ws/collab/notes/m1?");
     expect(screen.getByRole("button", { name: /delete/i })).toBeInTheDocument();
+  });
+
+  it("keeps a note with a table read-only for a writer, so no save can drop it, but still offers delete", async () => {
+    renderNote(["tickets:read", "tickets:write"], "| Push | Build |\n|---|---|\n| 1 | 2m 41s |");
+    const { dialog } = await openNote();
+
+    expect(await screen.findByText("Tables can't be edited here yet, so this note is read-only.")).toBeInTheDocument();
+    expect(dialog).toHaveTextContent("read only");
+    expect(screen.queryByLabelText("Note")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /delete/i })).toBeInTheDocument();
+    expect(sockets).toEqual([]);
   });
 
   it("deletes the note's message only once the writer confirms", async () => {
