@@ -1,5 +1,8 @@
 # Wayfinder map: ticket flow
 
+**Status (2026-10-02): COMPLETE, sliced.** Planning tickets 01–07
+resolved; implementation tickets 08–15 are `ready-for-agent` in `issues/`.
+
 Charted 2026-10-02 with the owner. Two tracks that keep a ticket page
 readable as agents work on it: the thread moves beside the body, and an
 agent adds context as a note in the thread instead of growing the body.
@@ -63,15 +66,19 @@ step after this map.
   hub keyed on the note's message, the markdown file the only thing stored,
   live state in memory; an agent's edit replaces the file and resets the
   room; images can be pasted in.
+- [The note pill and its file dialog](issues/05-note-pill-and-dialog-look.md):
+  a compact file pill under the one-liner, a centred dialog the width of
+  the body card, always editable.
+- Graduated from the fog with the owner: a note notifies nobody on its own
+  (the agent @mentions someone in the one-liner when it needs attention);
+  a note's text is found by ticket search; a play's trail result stays its
+  final word, and its agent leaves a note only when it judges there is
+  lasting context; the phone app shows a note's pill and opens it
+  read-only, editing stays on the web.
 
 ## Not yet specified
 
-- Whether a new note reaches anyone: an Inbox entry, a notification to the
-  ticket's people, or nothing beyond the thread.
-- Whether a note's file is found by search, alongside the ticket body.
-- Whether a play run leaves its closing summary as a note instead of a plain
-  message.
-- How the phone app shows a note's pill and file.
+Nothing left: every patch graduated.
 
 ## Out of scope
 
