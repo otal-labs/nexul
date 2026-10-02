@@ -174,8 +174,9 @@ testing ahead of its first release; the map is in `.scratch/native-app/`.
 In progress: **ticket flow**. A ticket's thread moves into a resizable
 pane beside the body on wide screens, and agents leave notes instead of
 growing the body: one message in the thread with a markdown file, opened
-and edited live in a dialog. It is built and waits on its walkthrough on a
-real instance; the map and its tickets are in `.scratch/ticket-flow/`.
+and edited live in a dialog. Built and walked through on a real install;
+the phone check and one editor fix remain, tracked in `.scratch/ticket-flow/`.
+Docs, ticket bodies, memories, and notes also gained editable tables.
 
 Parked until the repository migration lands: **bots**, webhook-driven bots
 that post into any conversation with Discord's payload and get their own tab

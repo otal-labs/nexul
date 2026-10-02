@@ -21,11 +21,5 @@ read-only view, note search on the web and over MCP, the table guard, a doc
 written over MCP while open, and deleting a note. Open:
 
 - The phone step is untested; it needs the owner's device.
-- A note with a markdown table opens read-only with the guard line and its
-  file stays byte-identical, but the read-only render shows no table at all:
-  the heading and paragraphs around it render, the rows are dropped. Readers
-  see the same. Recheck once the editor supports tables.
-- Every fresh page load asks `GET /api/projects?workspace_id=` before a
-  workspace is selected and gets a 400. Gating the query on a workspace id
-  fixes it, but about twenty component and page tests render without a
-  selected workspace and would need one first.
+- Tables: fixed by editor table support (#315), which also removed the
+  read-only guard; recheck a note with a table when the phone step runs.
