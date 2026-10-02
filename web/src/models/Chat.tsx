@@ -81,6 +81,9 @@ export interface Message {
   pending?: boolean;
 }
 
+// A note is an Agent message carrying a markdown file; it is left mid-turn, so it neither ends a turn nor answers one.
+export const isNote = (message: Message): boolean => message.author_kind === "agent" && !!message.attachment_id;
+
 const CONTINUATION_WINDOW_MS = 5 * 60_000;
 
 // A message continues the previous one's group when it is the same person's ordinary message, at most five minutes after

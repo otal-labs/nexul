@@ -62,13 +62,13 @@ describe("threadTrailBlocks", () => {
     const t = trail({ state: "interrupted", reply_message_id: "", activity: [read, reply, note] });
     const blocks = threadTrailBlocks([run(t)]);
     expect(blocks.byReplyMessageId).toEqual({});
-    expect(blocks.byNoteBody["Run stopped by onik."]?.turns.map((turn) => turn.entries)).toEqual([[read], [reply]]);
+    expect(blocks.bySystemBody["Run stopped by onik."]?.turns.map((turn) => turn.entries)).toEqual([[read], [reply]]);
   });
 
   it("a note after the reply carries no turns", () => {
     const t = trail({ activity: [read, reply, { ...note, summary: "Ticket is already in done; not moving it back" }] });
     const blocks = threadTrailBlocks([run(t)]);
-    expect(blocks.byNoteBody).toEqual({});
+    expect(blocks.bySystemBody).toEqual({});
     expect(blocks.byReplyMessageId["reply-1"]?.turns).toHaveLength(1);
   });
 });

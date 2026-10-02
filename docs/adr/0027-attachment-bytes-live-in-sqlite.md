@@ -25,4 +25,4 @@ renders each file as `![name](/api/attachments/<id>)`, so an agent reading a
 doc or ticket can already follow its attachments, and an upload tool would
 have to carry bytes over the tool protocol to earn its place.
 
-Decided 2026-08-28.
+Decided 2026-08-28. Amended by ADR 0108: `message_post` writes a note's markdown file.

@@ -66,6 +66,6 @@ func (r redactedThreads) PostMessage(ctx context.Context, conversationID, author
 	return r.Threads.PostMessage(ctx, conversationID, authorID, redact.Tokens(body))
 }
 
-func (r redactedThreads) PostSystemNote(ctx context.Context, conversationID, viaUserID, body string) error {
-	return r.Threads.PostSystemNote(ctx, conversationID, viaUserID, redact.Tokens(body))
+func (r redactedThreads) PostSystemMessage(ctx context.Context, conversationID, viaUserID, body string) error {
+	return r.Threads.PostSystemMessage(ctx, conversationID, viaUserID, redact.Tokens(body))
 }

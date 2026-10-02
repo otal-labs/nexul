@@ -48,20 +48,20 @@ func ExtractAttachments(ctx context.Context, markdown string, reader AttachmentR
 	if budget == nil {
 		budget = NewAttachmentBudget()
 	}
-	fetched := map[string]string{} // id -> the note already resolved for it this call
+	fetched := map[string]string{} // id -> the line already resolved for it this call
 	var atts []harness.Attachment
 	rewritten := attachmentRefPattern.ReplaceAllStringFunc(markdown, func(match string) string {
 		groups := attachmentRefPattern.FindStringSubmatch(match)
 		label, id := groups[1], groups[2]
-		if note, ok := fetched[id]; ok {
-			return note
+		if line, ok := fetched[id]; ok {
+			return line
 		}
-		note, att := resolveAttachment(ctx, id, label, reader, budget)
-		fetched[id] = note
+		line, att := resolveAttachment(ctx, id, label, reader, budget)
+		fetched[id] = line
 		if att != nil {
 			atts = append(atts, *att)
 		}
-		return note
+		return line
 	})
 	return rewritten, atts
 }
@@ -76,19 +76,19 @@ func resolveAttachment(ctx context.Context, id, label string, reader AttachmentR
 	stored, err := reader.Get(ctx, id)
 	if err != nil {
 		slog.Default().Warn("agent: fetch attachment for turn failed", "attachment", id, "error", err)
-		return omittedNote(fallback), nil
+		return omittedLine(fallback), nil
 	}
 	if !strings.HasPrefix(stored.MIME, "image/") || len(stored.Bytes) > MaxAttachmentBytes || len(stored.Bytes) > budget.Remaining {
-		return omittedNote(stored.Name), nil
+		return omittedLine(stored.Name), nil
 	}
 	budget.Remaining -= len(stored.Bytes)
-	return attachmentNote(stored.Name), &harness.Attachment{Name: stored.Name, MIME: stored.MIME, Bytes: stored.Bytes}
+	return attachmentLine(stored.Name), &harness.Attachment{Name: stored.Name, MIME: stored.MIME, Bytes: stored.Bytes}
 }
 
-func omittedNote(name string) string {
+func omittedLine(name string) string {
 	return fmt.Sprintf("[attachment omitted: %s]", name)
 }
 
-func attachmentNote(name string) string {
+func attachmentLine(name string) string {
 	return fmt.Sprintf("[image: %s, attached to this turn]", name)
 }

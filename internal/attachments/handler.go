@@ -112,8 +112,7 @@ func (h *Handler) serve(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Length", strconv.Itoa(len(a.Data)))
 	w.Header().Set("Content-Disposition", mime.FormatMediaType(disposition, map[string]string{"filename": a.Name}))
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	// IDs are unique and bytes never change, so the browser may keep a copy for as long as it likes.
-	w.Header().Set("Cache-Control", "private, max-age=31536000, immutable")
+	w.Header().Set("Cache-Control", cacheControl(a))
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(a.Data)
 }
@@ -124,4 +123,12 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// cacheControl lets the browser keep an image forever, since its bytes never change; a note's file is edited in place.
+func cacheControl(a *Attachment) string {
+	if a.Inline() {
+		return "private, max-age=31536000, immutable"
+	}
+	return "private, no-cache"
 }

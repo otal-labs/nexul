@@ -24,7 +24,7 @@ export interface ThreadRun {
 export interface ThreadTrailBlocks {
   byReplyMessageId: Record<string, TrailBlock>;
   byQuestionRequestId: Record<string, TrailBlock>;
-  byNoteBody: Record<string, TrailBlock>;
+  bySystemBody: Record<string, TrailBlock>;
   live: TrailBlock | null;
 }
 
@@ -44,7 +44,7 @@ const placeRun = (run: ThreadRun, out: ThreadTrailBlocks) => {
       turns.push({ kind: "turn", entries: [segment.entry], running: false, from: null, until: segment.entry.at });
     }
     if (segment.kind === "reply" && trail.reply_message_id !== "" && turns.length > 0) out.byReplyMessageId[trail.reply_message_id] = { trail, turns: take() };
-    if (segment.kind === "note" && turns.length > 0) out.byNoteBody[segment.text] = { trail, turns: take() };
+    if (segment.kind === "note" && turns.length > 0) out.bySystemBody[segment.text] = { trail, turns: take() };
   }
   if (isTrailActive(run.state) && run.state !== "waiting") {
     out.live = { trail, turns };
@@ -58,15 +58,15 @@ const placeRun = (run: ThreadRun, out: ThreadTrailBlocks) => {
 };
 
 export const threadTrailBlocks = (runs: ThreadRun[]): ThreadTrailBlocks => {
-  const out: ThreadTrailBlocks = { byReplyMessageId: {}, byQuestionRequestId: {}, byNoteBody: {}, live: null };
+  const out: ThreadTrailBlocks = { byReplyMessageId: {}, byQuestionRequestId: {}, bySystemBody: {}, live: null };
   runs.forEach((run) => placeRun(run, out));
   return out;
 };
 
-// The block a message carries, if a run led to it: a system note by its text, an Agent question by its request id,
+// The block a message carries, if a run led to it: a system message by its text, an Agent question by its request id,
 // any other Agent message as the reply a run ended on.
 export const trailBlockFor = (message: Message, blocks: ThreadTrailBlocks): TrailBlock | undefined => {
-  if (message.author_kind === "system") return blocks.byNoteBody[message.body];
+  if (message.author_kind === "system") return blocks.bySystemBody[message.body];
   if (message.author_kind !== "agent") return undefined;
   const question = parseQuestionMessage(message.body);
   if (question !== null) return blocks.byQuestionRequestId[question.request_id];

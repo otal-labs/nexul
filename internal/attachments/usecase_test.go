@@ -125,7 +125,8 @@ func newTestServiceWithMemoryAccess(repo *fakeRepo, access AccessChecker, memory
 	return s
 }
 
-// fakeConversations answers a conversation read from its map; an id it does not hold reads as not found.
+// fakeConversations answers a conversation read from its map; an id it does not hold reads as not found, and a
+// "note:<attachment id>" key marks that file as a note's.
 type fakeConversations map[string]error
 
 func (f fakeConversations) RequireRead(_ context.Context, conversationID string) error {
@@ -134,6 +135,11 @@ func (f fakeConversations) RequireRead(_ context.Context, conversationID string)
 		return apperrs.ErrNotFound
 	}
 	return err
+}
+
+func (f fakeConversations) IsNoteFile(_ context.Context, _, attachmentID string) (bool, error) {
+	_, ok := f["note:"+attachmentID]
+	return ok, nil
 }
 
 func testCtx() context.Context {

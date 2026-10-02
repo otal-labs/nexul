@@ -70,6 +70,8 @@ type renameConversationRequest struct {
 
 type postMessageRequest struct {
 	Body string `json:"body"`
+	// File makes the post a note, which only a ticket's thread takes.
+	File *NoteFileInput `json:"file,omitempty"`
 }
 
 // Routes returns the chat REST endpoints.
@@ -281,12 +283,20 @@ func (h *Handler) postMessage(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	m, err := h.svc.PostMessage(r.Context(), r.PathValue("id"), UserIDFromCtx(r.Context()), req.Body)
+	m, err := h.post(r.Context(), r.PathValue("id"), req)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
 	httpx.WriteJSON(w, http.StatusCreated, m)
+}
+
+func (h *Handler) post(ctx context.Context, conversationID string, req postMessageRequest) (*Message, error) {
+	if req.File == nil {
+		return h.svc.PostMessage(ctx, conversationID, UserIDFromCtx(ctx), req.Body)
+	}
+	m, _, err := h.svc.PostNote(ctx, conversationID, UserIDFromCtx(ctx), req.Body, *req.File)
+	return m, err
 }
 
 func (h *Handler) editMessage(w http.ResponseWriter, r *http.Request) {

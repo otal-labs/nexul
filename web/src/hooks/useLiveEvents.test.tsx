@@ -459,6 +459,22 @@ describe("useLiveEvents dispatch", () => {
     expect(useAgentStreamStore.getState().streams.c1).toBeUndefined();
   });
 
+  it("leaves the agent stream store alone for a note left mid-turn", async () => {
+    setup();
+    const socket = await connectedSocket();
+    act(() => useAgentStreamStore.getState().setStream("c1", { messageId: "stream-1", text: "still going", streaming: true }));
+    act(() =>
+      socket.message(
+        JSON.stringify({
+          topic: "chat.message.created",
+          type: "event",
+          payload: { message: { conversation_id: "c1", author_kind: "agent", attachment_id: "f1" } },
+        }),
+      ),
+    );
+    expect(useAgentStreamStore.getState().streams.c1).toBeDefined();
+  });
+
   it("leaves the agent stream store alone for a plain user message", async () => {
     setup();
     const socket = await connectedSocket();

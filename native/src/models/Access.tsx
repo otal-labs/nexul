@@ -16,6 +16,7 @@ export const AREA_PERMISSION = {
   deleteChannels: "channels:delete",
   newProject: "projects:write",
   newDoc: "docs:write",
+  editNotes: "tickets:write",
 } as const;
 
 export type Area = keyof typeof AREA_PERMISSION;

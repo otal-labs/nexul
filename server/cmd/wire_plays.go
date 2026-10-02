@@ -154,7 +154,7 @@ func (a playsThreads) PostMessage(ctx context.Context, conversationID, authorID,
 	return m.ID, nil
 }
 
-func (a playsThreads) PostSystemNote(ctx context.Context, conversationID, viaUserID, body string) error {
+func (a playsThreads) PostSystemMessage(ctx context.Context, conversationID, viaUserID, body string) error {
 	_, err := a.svc.PostSystemMessage(ctx, conversationID, viaUserID, body)
 	return err
 }

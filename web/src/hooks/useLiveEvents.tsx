@@ -46,7 +46,7 @@ import {
   markCachedMessageDeleted,
   upsertCachedMessage,
 } from "@/hooks/ChatHooks";
-import type { ConversationDeleted, Message } from "@/models/Chat";
+import { isNote, type ConversationDeleted, type Message } from "@/models/Chat";
 import type { MeResponse, SessionClient } from "@/models/User";
 import { getServerVersionKey, notifyIfServerUpdated } from "@/hooks/VersionHooks";
 import { setCachedTunnelStatus, type TunnelStatusChangedPayload } from "@/hooks/PairingHooks";
@@ -293,8 +293,8 @@ const dispatch = (client: ReturnType<typeof useQueryClient>, router: RouterFollo
   if (frame.topic === "chat.message.created" || frame.topic === "chat.message.updated") {
     const p = frame.payload as MessagePayload;
     if (p.message) upsertCachedMessage(client, p.message);
-    // Once the turn's real message lands (author_kind "agent"), the ephemeral stream bubble yields to it.
-    if (p.message?.author_kind === "agent") useAgentStreamStore.getState().clearStream(p.message.conversation_id);
+    // Once the turn's real message lands (author_kind "agent"), the ephemeral stream bubble yields to it; a note does not end it.
+    if (p.message?.author_kind === "agent" && !isNote(p.message)) useAgentStreamStore.getState().clearStream(p.message.conversation_id);
     if (frame.topic === "chat.message.updated") return;
   }
   if (frame.topic === "chat.message.deleted") {

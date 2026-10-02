@@ -147,10 +147,11 @@ func TestHandler_ListServeDelete(t *testing.T) {
 		body, _ := io.ReadAll(rec.Body)
 		assert.Equal(t, pngBytes, body)
 	})
-	t.Run("serves svg as a download", func(t *testing.T) {
+	t.Run("serves svg as a download the browser asks about again", func(t *testing.T) {
 		rec := serve(h, httptest.NewRequest(http.MethodGet, "/api/attachments/"+svg.ID, nil))
 		require.Equal(t, http.StatusOK, rec.Code)
 		assert.True(t, strings.HasPrefix(rec.Header().Get("Content-Disposition"), "attachment;"), rec.Header().Get("Content-Disposition"))
+		assert.Equal(t, "private, no-cache", rec.Header().Get("Cache-Control"), "a note's file changes in place")
 	})
 	t.Run("missing is 404", func(t *testing.T) {
 		rec := serve(h, httptest.NewRequest(http.MethodGet, "/api/attachments/nope", nil))

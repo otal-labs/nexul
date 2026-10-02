@@ -57,9 +57,16 @@ func (a agentConversations) MessagesSince(ctx context.Context, conversationID st
 	if err != nil {
 		return nil, err
 	}
+	files, err := a.svc.NoteFiles(ctx, ms)
+	if err != nil {
+		return nil, err
+	}
 	out := make([]agent.ConversationMessage, len(ms))
 	for i, m := range ms {
 		out[i] = agent.ConversationMessage{AuthorID: m.AuthorID, AuthorKind: string(m.AuthorKind), Body: m.Body, CreatedAt: m.CreatedAt}
+		if f, ok := files[m.AttachmentID]; ok {
+			out[i].Note = &agent.NoteFile{Name: f.Name, Markdown: f.Markdown}
+		}
 	}
 	return out, nil
 }
@@ -80,7 +87,7 @@ func (a agentConversations) PostAgentReply(ctx context.Context, conversationID, 
 	return m.ID, nil
 }
 
-func (a agentConversations) PostSystemNote(ctx context.Context, conversationID, viaUserID, body string) error {
+func (a agentConversations) PostSystemMessage(ctx context.Context, conversationID, viaUserID, body string) error {
 	_, err := a.svc.PostSystemMessage(ctx, conversationID, viaUserID, body)
 	return err
 }

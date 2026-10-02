@@ -46,7 +46,7 @@ func TestMCPTools_Surface(t *testing.T) {
 		assert.NotEmpty(t, tool.Title, tool.Name)
 		assert.NotEmpty(t, tool.Description, tool.Name)
 		if tool.Name == "message_post" {
-			assert.ElementsMatch(t, []string{"conversation_id", "doc_id", "ticket_id", "project_id", "workspace_id", "body"}, keys(tool.InputSchema.Properties))
+			assert.ElementsMatch(t, []string{"conversation_id", "doc_id", "ticket_id", "project_id", "workspace_id", "body", "file"}, keys(tool.InputSchema.Properties))
 			assert.Equal(t, []string{"body"}, tool.InputSchema.Required)
 		}
 	}

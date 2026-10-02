@@ -112,8 +112,8 @@ func TestRunTurn_OverCeilingAlwaysIncludedMemories_TrimmedWithNoteLoggedTurnStil
 
 	// RunTurn blocks until the turn ends; by the time it returns the trim must not have kept the turn from
 	// completing normally.
-	replies, notes := conv.snapshot()
-	assert.Empty(t, notes, "the turn must complete normally despite the trim, not fail")
+	replies, systemPosts := conv.snapshot()
+	assert.Empty(t, systemPosts, "the turn must complete normally despite the trim, not fail")
 	assert.NotEmpty(t, replies)
 }
 

@@ -94,13 +94,26 @@ type Message struct {
 	AuthorKind     AuthorKind `json:"author_kind"`
 	Body           string     `json:"body"`
 	Mentions       []Mention  `json:"mentions"`
-	// AttachmentID is a nullable attachments door; no v1 use-case sets it yet.
+	// AttachmentID is set only on a note: the conversation file holding the note's markdown (ADR 0108).
 	AttachmentID string     `json:"attachment_id,omitempty"`
 	EditedAt     *time.Time `json:"edited_at,omitempty"`
 	// DeletedAt marks a soft delete; the row stays so surrounding messages keep their order.
 	DeletedAt *time.Time `json:"deleted_at,omitempty"`
 	CreatedAt time.Time  `json:"created_at"`
 	UpdatedAt time.Time  `json:"updated_at"`
+}
+
+// NoteFileInput is the markdown file a note carries, as posted; Name is forced to end in .md.
+type NoteFileInput struct {
+	Name     string `json:"name"`
+	Markdown string `json:"markdown"`
+}
+
+// NoteFile is a note's markdown file, stored as an attachment owned by the note's conversation (ADR 0108).
+type NoteFile struct {
+	ID       string
+	Name     string
+	Markdown string
 }
 
 // mentionPattern matches a login-shaped @token; it doesn't validate against real workspace members.

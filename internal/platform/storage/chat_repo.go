@@ -230,24 +230,101 @@ func (r *ChatRepo) attachParticipants(ctx context.Context, cs []*chat.Conversati
 
 func (r *ChatRepo) CreateMessage(ctx context.Context, m *chat.Message, evts ...eventbus.OutboxEvent) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
-		mentionsJSON, err := json.Marshal(m.Mentions)
-		if err != nil {
-			return fmt.Errorf("marshal mentions: %w", err)
-		}
-		authorKind := m.AuthorKind
-		if authorKind == "" {
-			authorKind = chat.AuthorUser
-		}
-		err = r.q.WithTx(tx).CreateMessage(ctx, sqlcgen.CreateMessageParams{
-			ID: m.ID, ConversationID: m.ConversationID, AuthorID: m.AuthorID, AuthorKind: string(authorKind),
-			Body: m.Body, Mentions: string(mentionsJSON), AttachmentID: sql.NullString{String: m.AttachmentID, Valid: m.AttachmentID != ""},
-			CreatedAt: m.CreatedAt.Unix(), UpdatedAt: m.UpdatedAt.Unix(),
-		})
-		if err != nil {
-			return fmt.Errorf("insert message %s: %w", m.ID, classifyWriteErr(err))
+		if err := insertMessage(ctx, r.q.WithTx(tx), m); err != nil {
+			return err
 		}
 		return enqueueChatOutbox(ctx, tx, evts)
 	})
+}
+
+func insertMessage(ctx context.Context, q *sqlcgen.Queries, m *chat.Message) error {
+	mentionsJSON, err := json.Marshal(m.Mentions)
+	if err != nil {
+		return fmt.Errorf("marshal mentions: %w", err)
+	}
+	authorKind := m.AuthorKind
+	if authorKind == "" {
+		authorKind = chat.AuthorUser
+	}
+	err = q.CreateMessage(ctx, sqlcgen.CreateMessageParams{
+		ID: m.ID, ConversationID: m.ConversationID, AuthorID: m.AuthorID, AuthorKind: string(authorKind),
+		Body: m.Body, Mentions: string(mentionsJSON), AttachmentID: sql.NullString{String: m.AttachmentID, Valid: m.AttachmentID != ""},
+		CreatedAt: m.CreatedAt.Unix(), UpdatedAt: m.UpdatedAt.Unix(),
+	})
+	if err != nil {
+		return fmt.Errorf("insert message %s: %w", m.ID, classifyWriteErr(err))
+	}
+	return nil
+}
+
+// noteContentType is fixed rather than sniffed: the server writes a note's file, and markdown is never served inline.
+const noteContentType = "text/markdown; charset=utf-8"
+
+// CreateNote inserts the file before the message, so the message never points at a file that is not there.
+func (r *ChatRepo) CreateNote(ctx context.Context, m *chat.Message, file *chat.NoteFile, evts ...eventbus.OutboxEvent) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		q := r.q.WithTx(tx)
+		err := q.CreateAttachment(ctx, sqlcgen.CreateAttachmentParams{
+			ID: file.ID, ConversationID: nullString(m.ConversationID), Name: file.Name, ContentType: noteContentType,
+			Size: int64(len(file.Markdown)), UploadedBy: m.AuthorID, CreatedAt: m.CreatedAt.Unix(), Data: []byte(file.Markdown),
+		})
+		if err != nil {
+			return fmt.Errorf("insert note file %s: %w", file.ID, classifyWriteErr(err))
+		}
+		if err := insertMessage(ctx, q, m); err != nil {
+			return err
+		}
+		return enqueueChatOutbox(ctx, tx, evts)
+	})
+}
+
+func (r *ChatRepo) ListNoteFiles(ctx context.Context, attachmentIDs []string) ([]*chat.NoteFile, error) {
+	if len(attachmentIDs) == 0 {
+		return nil, nil
+	}
+	rows, err := r.q.ListNoteFiles(ctx, attachmentIDs)
+	if err != nil {
+		return nil, fmt.Errorf("list note files: %w", err)
+	}
+	out := make([]*chat.NoteFile, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, &chat.NoteFile{ID: row.ID, Name: row.Name, Markdown: string(row.Data)})
+	}
+	return out, nil
+}
+
+// DeleteNote has no foreign key to lean on (messages.attachment_id has none), so it deletes the file by hand.
+func (r *ChatRepo) DeleteNote(ctx context.Context, m *chat.Message, imageIDs []string, deletedAt time.Time, evts ...eventbus.OutboxEvent) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		q := r.q.WithTx(tx)
+		n, err := q.DeleteMessage(ctx, sqlcgen.DeleteMessageParams{
+			DeletedAt: sql.NullInt64{Int64: deletedAt.Unix(), Valid: true}, UpdatedAt: deletedAt.Unix(), ID: m.ID,
+		})
+		if err != nil {
+			return fmt.Errorf("delete note %s: %w", m.ID, classifyWriteErr(err))
+		}
+		if n == 0 {
+			return fmt.Errorf("delete note %s: %w", m.ID, apperrs.ErrNotFound)
+		}
+		if _, err := q.DeleteAttachment(ctx, m.AttachmentID); err != nil {
+			return fmt.Errorf("delete note file %s: %w", m.AttachmentID, err)
+		}
+		if len(imageIDs) > 0 {
+			err := q.DeleteNoteImages(ctx, sqlcgen.DeleteNoteImagesParams{ConversationID: nullString(m.ConversationID), Ids: imageIDs})
+			if err != nil {
+				return fmt.Errorf("delete images of note %s: %w", m.ID, err)
+			}
+		}
+		return enqueueChatOutbox(ctx, tx, evts)
+	})
+}
+
+func (r *ChatRepo) IsNoteFile(ctx context.Context, conversationID, attachmentID string) (bool, error) {
+	ok, err := r.q.IsNoteFile(ctx, sqlcgen.IsNoteFileParams{ConversationID: conversationID, AttachmentID: nullString(attachmentID)})
+	if err != nil {
+		return false, fmt.Errorf("is note file %s: %w", attachmentID, err)
+	}
+	return ok, nil
 }
 
 // SetAgentThread persists a conversation's durable T3 thread id (ticket 13).
