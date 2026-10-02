@@ -7,18 +7,15 @@ sidebar:
 
 ## Chat
 
-Open `/<workspace>/chat` to see the chat page, where `<workspace>` is the
-workspace's slug. A selected conversation has a URL such as
+Conversations live in the sidebar, in four groups: Channels, Voice channels,
+Direct messages, and Threads (document threads, shown once one exists; ticket
+threads stay on their ticket page). Each row shows its own unread badge. Click
+one to open it at full width. A selected conversation has a URL such as
 `/<workspace>/chat/<conversation-id>`, so a refresh or shared link opens the same
-thread.
-The conversation list has two groups:
+thread, and `/<workspace>/chat` opens the first channel.
 
-- **Chats** contains channels, voice channels, and direct messages.
-- **Threads** contains document threads. Ticket threads stay on their ticket
-  page.
-
-Use the **New conversation** menu to create a channel, a voice channel, or a
-direct message. Channel names keep the case they are typed in, and two text
+Use the **+** beside Channels, Voice channels, or Direct messages to create
+one. Channel names keep the case they are typed in, and two text
 channels can't share a name in any case. Every workspace gets a
 `general` channel when it is created.
 
