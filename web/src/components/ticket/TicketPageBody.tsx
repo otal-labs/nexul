@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react";
+
 import { AttachmentsSection } from "@/components/attachment/AttachmentsSection";
 import { TicketThreadSection } from "@/components/chat/TicketThreadSection";
 import { ReviewPanel } from "@/components/codereview/ReviewPanel";
@@ -10,10 +12,12 @@ import { TicketDetail } from "@/components/ticket/TicketDetail";
 import { TicketLinksSection } from "@/components/ticket/TicketLinksSection";
 import { TicketPropertiesPanel } from "@/components/ticket/TicketPropertiesPanel";
 import { TicketTestSection } from "@/components/ticket/TicketTestSection";
+import { ThreadPaneResizeHandle } from "@/components/ticket/ThreadPaneResizeHandle";
 import { ThreadVariantSwitcher } from "@/components/ticket/ThreadVariantSwitcher";
 import { useThreadVariant } from "@/components/ticket/threadVariants";
 import type { Project } from "@/models/Project";
 import type { Ticket } from "@/models/Ticket";
+import { useThreadPaneStore } from "@/stores/threadPaneStore";
 
 interface TicketPageBodyProps {
   ticket: Ticket;
@@ -39,8 +43,10 @@ export const TicketPageBody = ({
   embedded,
 }: TicketPageBodyProps) => {
   const variant = useThreadVariant(embedded);
+  const threadWidth = useThreadPaneStore((s) => s.width);
+  const gridStyle = variant.wide && threadWidth !== null ? { "--thread-pane-width": `${threadWidth}px` } : undefined;
   return (
-    <div className={variant.grid}>
+    <div className={variant.grid} data-thread-grid="" style={gridStyle as CSSProperties | undefined}>
       {!embedded && <ThreadVariantSwitcher current={variant} />}
       <div className={variant.body}>
         <TicketDetail key={ticket.id} ticket={ticket} {...(project ? { project } : {})} onSave={onSave} />
@@ -48,6 +54,7 @@ export const TicketPageBody = ({
       {workspaceId !== "" && (
         <div className={variant.thread}>
           <TicketThreadSection workspaceId={workspaceId} ticketId={ticket.id} variant={variant} />
+          {variant.wide && <ThreadPaneResizeHandle />}
         </div>
       )}
       <div className={variant.rail}>
