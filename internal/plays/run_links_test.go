@@ -40,7 +40,7 @@ func TestRun_BugPlay_CarriesOneHopOfOriginContext(t *testing.T) {
 	<-f.turns.done
 
 	blocks := f.turns.last().ExtraRequestBlocks
-	require.Len(t, blocks, 2, "the play, then the origin")
+	require.Len(t, blocks, 3, "the play, the origin, then the memories to read")
 	origin := blocks[1]
 	assert.Contains(t, origin, `This bug was found in NEX-7 "Login page"`)
 	assert.Contains(t, origin, "Origin ticket body:\n## Acceptance criteria\nlogs in")

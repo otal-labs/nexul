@@ -193,16 +193,16 @@ describe("PlayRunDialog", () => {
     expect(api.post).toHaveBeenCalledWith("/api/plays/play-1/run", expect.objectContaining({ move_to_status_id: "" }));
   });
 
-  it("shows an over-ceiling refusal inside the dialog and keeps it open", async () => {
+  it("shows a refusal inside the dialog and keeps it open", async () => {
     const user = userEvent.setup();
     mockApi(["plays:run", "tickets:write"]);
     vi.mocked(api.post).mockRejectedValue({
-      response: { status: 400, data: { message: "the 2 selected memories total 61,000 characters, over the 60,000 per-run ceiling", code: "invalid" } },
+      response: { status: 400, data: { message: "memory m-9 is not in this project", code: "invalid" } },
     });
     const { onClose } = renderDialog();
 
     await user.click(await screen.findByRole("button", { name: "Run Fix with AI · then In review" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("over the 60,000 per-run ceiling");
+    expect(await screen.findByRole("alert")).toHaveTextContent("memory m-9 is not in this project");
     expect(onClose).not.toHaveBeenCalled();
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });

@@ -46,7 +46,7 @@ match the current target.
 
 Use the play button on a ticket or document. The run dialog can choose:
 
-- memories to inline;
+- memories for the Agent to read first;
 - custom instructions;
 - the ticket column to move to on success;
 - a paired computer, provider, and model.
@@ -77,9 +77,13 @@ answer it and the same trail continues. The starter or a `plays:write` holder
 can stop a run, including one in `waiting`. Fifteen minutes without Harness
 activity fails the run. A trail keeps the newest 300 activity entries.
 
-Selected memories must fit the run limits: 20,000 characters per memory and
-60,000 characters for the selected memories together. Images passed through a
-turn are limited to 10 MiB each and 25 MiB in total. An oversized or
+The run's prompt carries no memory bodies. It names the interview memory,
+then the other always-included memories, then the ones picked for the run,
+each with its id, and the Agent reads each one with `memory_get` before it
+starts.
+A memory it cannot read is named in its first message and skipped, so memory
+size never stops a run. Images passed through a turn are limited to 10 MiB each
+and 25 MiB in total. An oversized or
 non-image attachment is recorded as omitted.
 
 ## The Interview play

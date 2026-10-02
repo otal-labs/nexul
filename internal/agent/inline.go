@@ -4,17 +4,15 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
-
-	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 )
 
-// InlinedMemory is one memory carried in full inside a run's request block.
+// InlinedMemory is one always-included memory carried in full inside a turn's request block.
 type InlinedMemory struct {
 	Title string
 	Body  string
 }
 
-// InlineLimits are the per-memory and per-run character ceilings a selection must fit.
+// InlineLimits are the per-memory and per-turn character ceilings the inlined memories must fit.
 type InlineLimits struct {
 	PerMemory int
 	PerRun    int
@@ -25,64 +23,33 @@ func DefaultInlineLimits() InlineLimits {
 	return InlineLimits{PerMemory: MaxMemoryChars, PerRun: MaxInlinedMemoryChars}
 }
 
-// InlineTotals is what a selection adds up to; the run dialog shows them when a selection is refused.
-type InlineTotals struct {
-	Memories     int    `json:"memories"`
-	Chars        int    `json:"chars"`
-	LargestChars int    `json:"largest_chars"`
-	LargestTitle string `json:"largest_title"`
-}
-
-// OverCeilingError refuses a selection over a ceiling, carrying the totals and the limits it broke.
-type OverCeilingError struct {
-	Totals InlineTotals
-	Limits InlineLimits
-}
-
-func (e *OverCeilingError) Error() string {
-	if e.Totals.LargestChars > e.Limits.PerMemory {
-		return fmt.Sprintf("memory %q is %d characters, over the %d per-memory ceiling", e.Totals.LargestTitle, e.Totals.LargestChars, e.Limits.PerMemory)
-	}
-	return fmt.Sprintf("the %d selected memories total %d characters, over the %d per-run ceiling", e.Totals.Memories, e.Totals.Chars, e.Limits.PerRun)
-}
-
-func (e *OverCeilingError) Unwrap() error { return apperrs.ErrInvalid }
-
-// InlineMemories renders items in order as one block, refusing the whole selection when any memory or the
-// total is over limits; the totals come back either way so a caller can show them.
-func InlineMemories(items []InlinedMemory, limits InlineLimits) (string, InlineTotals, error) {
-	totals := InlineTotals{Memories: len(items)}
+// renderMemories renders items in order as one block, and whether every memory and their total fit limits.
+func renderMemories(items []InlinedMemory, limits InlineLimits) (string, bool) {
 	var b strings.Builder
+	total := 0
+	fits := true
 	for i, m := range items {
-		n := len(m.Body)
-		totals.Chars += n
-		if n > totals.LargestChars {
-			totals.LargestChars, totals.LargestTitle = n, m.Title
-		}
+		total += len(m.Body)
+		fits = fits && len(m.Body) <= limits.PerMemory
 		if i > 0 {
 			b.WriteString("\n\n")
 		}
 		fmt.Fprintf(&b, "### %s\n%s", m.Title, m.Body)
 	}
-	if totals.LargestChars > limits.PerMemory || totals.Chars > limits.PerRun {
-		return "", totals, &OverCeilingError{Totals: totals, Limits: limits}
-	}
-	return b.String(), totals, nil
+	return b.String(), fits && total <= limits.PerRun
 }
 
-// InlineMemoriesTrimmed renders like InlineMemories, but never refuses a selection: over a ceiling, it drops
-// items from the end until the rest fits, truncating a lone oversized survivor as a last resort, and logs the
-// trim at warn with a "[... trimmed to fit ...]" note appended. It is for material a turn sends best-effort
-// (a project's standing always-included memories); InlineMemories' hard refusal stays for a run the user
-// hand-picked, where dropping one silently would be the wrong call.
+// InlineMemoriesTrimmed renders items as one block, never refusing them: over a ceiling, it drops items from the
+// end until the rest fits, truncating a lone oversized survivor as a last resort, and logs the trim at warn with a
+// "[... trimmed to fit ...]" note appended. It is for a project's standing always-included memories, sent best-effort.
 func InlineMemoriesTrimmed(items []InlinedMemory, limits InlineLimits, log *slog.Logger) string {
-	block, _, err := InlineMemories(items, limits)
-	if err == nil {
+	block, fits := renderMemories(items, limits)
+	if fits {
 		return block
 	}
 	kept := trimToFit(items, limits)
-	block, _, err = InlineMemories(kept, limits)
-	if err != nil {
+	block, fits = renderMemories(kept, limits)
+	if !fits {
 		log.Warn("agent: always-included memories still over ceiling after trimming, dropping them all",
 			"total", len(items), "per_memory_limit", limits.PerMemory, "per_run_limit", limits.PerRun)
 		return ""
@@ -97,7 +64,7 @@ func InlineMemoriesTrimmed(items []InlinedMemory, limits InlineLimits, log *slog
 func trimToFit(items []InlinedMemory, limits InlineLimits) []InlinedMemory {
 	kept := append([]InlinedMemory(nil), items...)
 	for len(kept) > 1 {
-		if _, _, err := InlineMemories(kept, limits); err == nil {
+		if _, fits := renderMemories(kept, limits); fits {
 			return kept
 		}
 		kept = kept[:len(kept)-1]

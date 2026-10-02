@@ -84,7 +84,7 @@ type playRunIn struct {
 	DecisionsCheck     bool                    `json:"decisions_check,omitempty" jsonschema:"true runs the built-in decisions check again on a done ticket, instead of a play: pass it with target_type ticket and target_id, and no play_id or other run choices."`
 	TargetType         TargetType              `json:"target_type" jsonschema:"What to run it on, matching the play's type: ticket, doc, or interview."`
 	TargetID           string                  `json:"target_id" jsonschema:"The ticket's or doc's id (a UUID, not a ticket key such as REF-102), or for an interview the project's id."`
-	MemoryIDs          []string                `json:"memory_ids,omitempty" jsonschema:"Ids of the target project's memories to inline in full, from memory_list; the project's always-included memories come along anyway."`
+	MemoryIDs          []string                `json:"memory_ids,omitempty" jsonschema:"Ids of the target project's memories the agent reads before the run, from memory_list; the project's always-included memories come along anyway."`
 	CustomInstructions string                  `json:"custom_instructions,omitempty" jsonschema:"Extra instructions for this run only; they win over the play's where the two conflict."`
 	MoveToStatusID     string                  `json:"move_to_status_id,omitempty" jsonschema:"Ticket plays only: the status column to move the ticket to when the run ends done, from project_get."`
 	ComputerID         string                  `json:"computer_id,omitempty" jsonschema:"One of the caller's own paired computers, from computer_list. Omit to use the caller's own link for this project, else their pairing defaults."`

@@ -67,8 +67,8 @@ is its own effort after this map.
   box, and for a ticket play the move-to column, each pre-selected from the
   user's last run of that play in that project. Provider and model come from pairing settings. Nothing
   else per click until the owner has seen it.
-- **Selected memories are inlined in full** into the prompt; the rest of the
-  index rides along as today.
+- **Selected memories are named to read first** in the prompt, never inlined
+  (ADR 0105); the rest of the index rides along as today.
 - **Memories get their own permission** (`memories:read`, `memories:write`),
   split from docs. Their model is ticket 01's decision.
 - **Every run is persisted** (play, target, starter, timestamps, outcome)

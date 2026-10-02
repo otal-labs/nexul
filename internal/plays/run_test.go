@@ -78,10 +78,10 @@ func newRunnerFixture() *runnerFixture {
 	}
 	f.mems = &fakeMemories{byProject: map[string][]Memory{
 		projectID: {
-			{ID: pickedMem, Title: "Deploy quirks", Markdown: "picked body", AlwaysIncluded: false},
-			{ID: alwaysMem, Title: "Working here", Markdown: "always body", AlwaysIncluded: true},
+			{ID: pickedMem, Title: "Deploy quirks", WhenToUse: "use this when deploying"},
+			{ID: alwaysMem, Title: "Working here", AlwaysIncluded: true},
 		},
-		otherProj: {{ID: otherMem, Title: "Elsewhere", Markdown: "other"}},
+		otherProj: {{ID: otherMem, Title: "Elsewhere"}},
 	}}
 	stage := StageProgress
 	f.plays.byID[fixPlayID] = &Play{ID: fixPlayID, WorkspaceID: workspaceID, Label: "Fix with AI", Type: TypeTicket, Instructions: "Fix the ticket.", Enabled: true, ShowWhenStage: &stage}
@@ -280,23 +280,6 @@ func TestRun_FinishedTrail_DoesNotBlockTheNextRun(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestRun_OverCeiling_RefusedWithTotals(t *testing.T) {
-	f := newRunnerFixture()
-	f.mems.byProject[projectID] = append(f.mems.byProject[projectID], Memory{ID: "m-huge", Title: "Huge", Markdown: strings.Repeat("x", agent.MaxMemoryChars+1)})
-	in := ticketRun()
-	in.MemoryIDs = []string{"m-huge"}
-
-	_, err := f.runner.Run(ctxAs(starter), in)
-
-	var oc *agent.OverCeilingError
-	require.ErrorAs(t, err, &oc)
-	assert.ErrorIs(t, err, apperrs.ErrInvalid)
-	assert.Equal(t, 2, oc.Totals.Memories, "the always-included memory counts too")
-	assert.Equal(t, "Huge", oc.Totals.LargestTitle)
-	assert.Equal(t, agent.MaxMemoryChars+1, oc.Totals.LargestChars)
-	assert.Empty(t, f.trails.all())
-}
-
 func TestRun_PostStartedMessageFails_TrailFailed(t *testing.T) {
 	f := newRunnerFixture()
 	f.threads.postErr = errors.New("chat down")
@@ -346,7 +329,7 @@ func TestRun_StartsTurnWithBlocksInOrder(t *testing.T) {
 	assert.Equal(t, posts[0].body, req.RequestBody)
 	require.Len(t, req.ExtraRequestBlocks, 3)
 	assert.Equal(t, "Play: Fix with AI\nFix the ticket.", req.ExtraRequestBlocks[0])
-	assert.Equal(t, "Memories the user selected for this run, follow them:\n### Deploy quirks\npicked body", req.ExtraRequestBlocks[1])
+	assert.Equal(t, readFirst+"\n- Working here (id m-always)\n- Deploy quirks (id m-pick): use this when deploying", req.ExtraRequestBlocks[1])
 	assert.Equal(t, "Instructions from login-u-1 for this run; where these conflict with the play's instructions, these win:\nTouch only the docs.", req.ExtraRequestBlocks[2])
 	require.NotNil(t, req.Observer)
 }
@@ -503,7 +486,7 @@ func TestRun_AgainstHarness_TrailFollowsTheTurn(t *testing.T) {
 
 	for name, prompt := range map[string]string{"full": full, "incremental": incremental} {
 		play := strings.Index(prompt, "Play: Fix with AI\nFix the ticket.")
-		mems := strings.Index(prompt, "Memories the user selected for this run, follow them:\n### Deploy quirks\npicked body")
+		mems := strings.Index(prompt, readFirst)
 		custom := strings.Index(prompt, "Instructions from login-u-1 for this run; where these conflict with the play's instructions, these win:\nTouch only the docs.")
 		request := strings.Index(prompt, "Started Fix with AI")
 		assert.True(t, request >= 0 && request < play && play < mems && mems < custom, "%s prompt orders request, play, memories, custom: %d %d %d %d", name, request, play, mems, custom)
@@ -557,59 +540,51 @@ func doneUpdates() chan harness.Update {
 	return ch
 }
 
-func TestRun_MemoryEmbeddedImage_ProducesOneAttachment(t *testing.T) {
+const readFirst = "Memories to read first: before doing anything else, read each memory below in full with `memory_get`, " +
+	"passing its `id`, and follow them as standing rules for this run. If one cannot be read, say which in your first " +
+	"message and carry on without it."
+
+func TestRun_Memories_NamedToReadFirstInOrder_NoBodyHoweverLarge(t *testing.T) {
 	f := newRunnerFixture()
-	f.mems.byProject[projectID] = append(f.mems.byProject[projectID],
-		Memory{ID: "m-img", Title: "Screenshot memory", Markdown: "see ![shot](/api/attachments/att-1)"})
-	f.runner.attachments = &fakeAttachmentReader{items: map[string]agent.StoredAttachment{
-		"att-1": {Name: "shot.png", MIME: "image/png", Bytes: []byte{1, 2, 3}},
-	}}
+	huge := strings.Repeat("x", 70_000)
+	f.mems.byProject[projectID] = []Memory{
+		{ID: "m-int", Title: "Interview", WhenToUse: "the project's rules", AlwaysIncluded: true, Interview: true},
+		{ID: "m-b", Title: "Release notes", WhenToUse: "use this when releasing"},
+		{ID: alwaysMem, Title: "Working here", AlwaysIncluded: true},
+		{ID: "m-a", Title: "Deploy quirks", WhenToUse: "use this when deploying"},
+	}
 	var got harness.TurnPrompts
 	client := &harnesstest.Client{StartTurnFn: func(_ context.Context, _ harness.Target, _ string, prompts harness.TurnPrompts) (harness.StartResult, error) {
 		got = prompts
 		return harness.StartResult{SessionID: "sess-1", Updates: doneUpdates()}, nil
 	}}
-	newHarnessRunner(f, client)
+	f.runner.turns = agent.NewService(agent.Config{
+		Conversations: &agentConvs{projectID: projectID}, Targets: agentTargets{}, Harnesses: harnesstest.Registry(client), Live: agentLive{},
+		Memories: agentMems{agent.MemoriesIndex{Project: []agent.MemoryItem{
+			{Name: "Interview", AlwaysIncluded: true, Interview: true, Body: "interview body " + huge},
+			{Name: "Working here", AlwaysIncluded: true, Body: "always body ![shot](/api/attachments/att-1) " + huge},
+			{Name: "Deploy quirks", WhenToUse: "use this when deploying"},
+		}}},
+		Attachments: &fakeAttachmentReader{items: map[string]agent.StoredAttachment{"att-1": {Name: "shot.png", MIME: "image/png", Bytes: []byte{1}}}},
+	})
 	in := ticketRun()
-	in.MemoryIDs = []string{"m-img"}
+	in.MemoryIDs = []string{"m-b", "m-a", "m-int"}
 
-	_, err := f.runner.Run(ctxAs(starter), in)
+	trail, err := f.runner.Run(ctxAs(starter), in)
 	require.NoError(t, err)
-	<-f.trails.terminal
+	final := <-f.trails.terminal
 
-	require.Len(t, got.Attachments, 1)
-	assert.Equal(t, "shot.png", got.Attachments[0].Name)
-	assert.Equal(t, "image/png", got.Attachments[0].MIME)
-	assert.Contains(t, got.Full, "### Screenshot memory\nsee [image: shot.png, attached to this turn]")
-}
-
-func TestRun_MemoryOversizedOrNonImage_OmittedWithNoAttachment(t *testing.T) {
-	f := newRunnerFixture()
-	oversized := make([]byte, agent.MaxAttachmentBytes+1)
-	f.mems.byProject[projectID] = append(f.mems.byProject[projectID],
-		Memory{ID: "m-big", Title: "Big screenshot", Markdown: "![big](/api/attachments/att-big)"},
-		Memory{ID: "m-pdf", Title: "Spec", Markdown: "[spec](/api/attachments/att-pdf)"},
-	)
-	f.runner.attachments = &fakeAttachmentReader{items: map[string]agent.StoredAttachment{
-		"att-big": {Name: "huge.png", MIME: "image/png", Bytes: oversized},
-		"att-pdf": {Name: "spec.pdf", MIME: "application/pdf", Bytes: []byte{1, 2, 3}},
-	}}
-	var got harness.TurnPrompts
-	client := &harnesstest.Client{StartTurnFn: func(_ context.Context, _ harness.Target, _ string, prompts harness.TurnPrompts) (harness.StartResult, error) {
-		got = prompts
-		return harness.StartResult{SessionID: "sess-2", Updates: doneUpdates()}, nil
-	}}
-	newHarnessRunner(f, client)
-	in := ticketRun()
-	in.MemoryIDs = []string{"m-big", "m-pdf"}
-
-	_, err := f.runner.Run(ctxAs(starter), in)
-	require.NoError(t, err)
-	<-f.trails.terminal
-
-	assert.Empty(t, got.Attachments)
-	assert.Contains(t, got.Full, "[attachment omitted: huge.png]")
-	assert.Contains(t, got.Full, "[attachment omitted: spec.pdf]")
+	assert.Equal(t, TrailDone, final.State, "a selection the inlining ceilings refused now runs")
+	assert.Equal(t, []string{"m-int", alwaysMem, "m-a", "m-b"}, trail.SelectedMemoryIDs, "the trail records the selection in the order the agent reads it")
+	block := readFirst + "\n- Interview (id m-int): the project's rules\n- Working here (id m-always)\n" +
+		"- Deploy quirks (id m-a): use this when deploying\n- Release notes (id m-b): use this when releasing"
+	for name, prompt := range map[string]string{"full": got.Full, "incremental": got.Incremental} {
+		assert.Contains(t, prompt, block, name)
+		assert.NotContains(t, prompt, "interview body", name)
+		assert.NotContains(t, prompt, "always body", name)
+		assert.NotContains(t, prompt, "Always-included memories, follow them:", name)
+	}
+	assert.Empty(t, got.Attachments, "an image in a memory is the agent's to fetch, not the run's to attach")
 }
 
 func TestTrail_AppendActivity_CapsAtMaxDroppingOldest(t *testing.T) {

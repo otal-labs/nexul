@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -271,8 +272,10 @@ type TurnRequest struct {
 	RequestBody    string
 	// ExtraRequestBlocks are appended inside the request block, in order, after the request body.
 	ExtraRequestBlocks []string
-	// Attachments travel to the harness with the prompt.
-	Attachments []harness.Attachment
+	// FreshSessionBlocks follow ExtraRequestBlocks in the full prompt only: what a resumed run's lost session needs again.
+	FreshSessionBlocks []string
+	// MemoriesByReference means the caller names the turn's memories for the agent to read, so none is inlined (a play run, ADR 0105).
+	MemoriesByReference bool
 	// Target is optional; nil means resolve the caller's own project link or pairing defaults as usual.
 	Target *TargetOverride
 	// Observer is optional; nil means nobody keeps a record beyond the conversation itself.
@@ -422,7 +425,7 @@ func (s *Service) buildTurnPrompts(ctx context.Context, conv Conversation, ticke
 	}
 	budget := NewAttachmentBudget()
 	actorCtx := identity.WithActor(ctx, identity.Actor{ID: req.ViaUserID})
-	index, alwaysIncludedBlock, memoryAttachments := s.splitMemories(actorCtx, projectID, budget)
+	index, alwaysIncludedBlock, memoryAttachments := s.splitMemories(actorCtx, projectID, budget, req.MemoriesByReference)
 	targetAttachments := s.extractTargetAttachments(actorCtx, ticket, doc, budget)
 	in := PromptInput{
 		Ticket:             ticket,
@@ -434,10 +437,10 @@ func (s *Service) buildTurnPrompts(ctx context.Context, conv Conversation, ticke
 		RequestAt:          s.now().UTC(),
 		ExtraRequestBlocks: prependBlock(alwaysIncludedBlock, req.ExtraRequestBlocks),
 	}
-	attachments := append([]harness.Attachment{}, req.Attachments...)
-	attachments = append(attachments, memoryAttachments...)
-	attachments = append(attachments, targetAttachments...)
-	return harness.TurnPrompts{Full: ComposePrompt(in), Incremental: ComposeIncrementalPrompt(in), Attachments: attachments}, nil
+	attachments := append(append([]harness.Attachment{}, memoryAttachments...), targetAttachments...)
+	full := in
+	full.ExtraRequestBlocks = append(slices.Clone(in.ExtraRequestBlocks), req.FreshSessionBlocks...)
+	return harness.TurnPrompts{Full: ComposePrompt(full), Incremental: ComposeIncrementalPrompt(in), Attachments: attachments}, nil
 }
 
 // extractTargetAttachments rewrites the ticket or doc body's embedded attachment references in place (they
@@ -461,10 +464,10 @@ func (s *Service) extractTargetAttachments(ctx context.Context, ticket *TicketCo
 
 // splitMemories loads a turn's memories index (the project's memories) and separates its always-included
 // memories, inlined in full as an extra request block with their images extracted for the harness, from the
-// index of the rest.
-func (s *Service) splitMemories(ctx context.Context, projectID string, budget *AttachmentBudget) (MemoriesIndex, string, []harness.Attachment) {
+// index of the rest; byReference leaves them out, for a caller that names them to read instead.
+func (s *Service) splitMemories(ctx context.Context, projectID string, budget *AttachmentBudget, byReference bool) (MemoriesIndex, string, []harness.Attachment) {
 	index, always := splitAlwaysIncluded(s.loadMemories(ctx, projectID))
-	if len(always) == 0 {
+	if len(always) == 0 || byReference {
 		return index, "", nil
 	}
 	var attachments []harness.Attachment

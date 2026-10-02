@@ -24,10 +24,12 @@ selector, and every memory belongs to the project picked there.
 
 Each memory has a **Title**, a one-line **When to use** hint, a rich-text body,
 and an **Always included in every turn** switch. Always-included memories are
-sent in full as standing context. Other memories appear in the turn's index;
-the Agent can select one when it needs the body. A single full memory is capped
-at 20,000 characters, and selected memories in a play run are capped at 60,000
-characters together.
+standing context: an `@Agent` mention sends them in full, and a play run names
+them for the Agent to read first. Other memories appear in the turn's index;
+the Agent can select one when it needs the body. An `@Agent` mention inlines at
+most 20,000 characters of one memory and 60,000 of all of them together,
+dropping the last ones past that. A play run has no such limit, because the
+Agent reads each memory itself.
 
 The [setup wizard](/docs/guide/computer-setup/) installs the nexul-memory
 skill, which carries the same protocol, on every paired computer. It points
@@ -47,10 +49,10 @@ workspace's Interview template into a new interview memory. The page's
 Agent asks one question at a time and writes the memory for you, and
 **Re-run the interview** amends it later. See [Plays](/docs/guide/plays/).
 
-The interview memory is sent in full with every Agent turn in the project,
-every play and every `@Agent` mention, ahead of the other always-included
-memories. It has no always-included switch and cannot be left out of a play
-run. It is capped at 8,000 characters of markdown; the editor counts against
+The interview memory reaches every Agent turn in the project: an `@Agent`
+mention carries it in full, ahead of the other always-included memories, and
+every play names it for the Agent to read before anything else. It has no
+always-included switch and cannot be left out of a play run. It is capped at 8,000 characters of markdown; the editor counts against
 the cap, and a save over it is refused with the count. It versions and
 reverts like any memory. A clone of it is an ordinary memory.
 

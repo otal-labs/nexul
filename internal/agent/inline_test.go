@@ -2,68 +2,17 @@ package agent
 
 import (
 	"bytes"
-	"errors"
 	"log/slog"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
-	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 )
-
-func TestInlineMemories_RendersInOrderWithTotals(t *testing.T) {
-	block, totals, err := InlineMemories([]InlinedMemory{
-		{Title: "Working here", Body: "always"},
-		{Title: "Deploy quirks", Body: "picked one"},
-	}, DefaultInlineLimits())
-	require.NoError(t, err)
-	assert.Equal(t, "### Working here\nalways\n\n### Deploy quirks\npicked one", block)
-	assert.Equal(t, InlineTotals{Memories: 2, Chars: 16, LargestChars: 10, LargestTitle: "Deploy quirks"}, totals)
-}
-
-func TestInlineMemories_Empty_IsEmptyBlock(t *testing.T) {
-	block, totals, err := InlineMemories(nil, DefaultInlineLimits())
-	require.NoError(t, err)
-	assert.Empty(t, block)
-	assert.Equal(t, InlineTotals{}, totals)
-}
-
-func TestInlineMemories_OverPerMemoryCeiling_RefusesWithTotals(t *testing.T) {
-	limits := InlineLimits{PerMemory: 5, PerRun: 100}
-	_, totals, err := InlineMemories([]InlinedMemory{{Title: "Small", Body: "ok"}, {Title: "Big", Body: "too long"}}, limits)
-	var oc *OverCeilingError
-	require.ErrorAs(t, err, &oc)
-	assert.ErrorIs(t, err, apperrs.ErrInvalid)
-	assert.Equal(t, InlineTotals{Memories: 2, Chars: 10, LargestChars: 8, LargestTitle: "Big"}, totals)
-	assert.Equal(t, totals, oc.Totals)
-	assert.Equal(t, limits, oc.Limits)
-	assert.Equal(t, `memory "Big" is 8 characters, over the 5 per-memory ceiling`, err.Error())
-}
-
-func TestInlineMemories_OverPerRunCeiling_RefusesWithTotals(t *testing.T) {
-	limits := InlineLimits{PerMemory: 10, PerRun: 12}
-	_, totals, err := InlineMemories([]InlinedMemory{{Title: "A", Body: "1234567"}, {Title: "B", Body: "1234567"}}, limits)
-	var oc *OverCeilingError
-	require.True(t, errors.As(err, &oc))
-	assert.Equal(t, 14, totals.Chars)
-	assert.Equal(t, "the 2 selected memories total 14 characters, over the 12 per-run ceiling", err.Error())
-}
-
-func TestInlineMemories_DefaultLimits_MatchConstants(t *testing.T) {
-	limits := DefaultInlineLimits()
-	assert.Equal(t, MaxMemoryChars, limits.PerMemory)
-	assert.Equal(t, MaxInlinedMemoryChars, limits.PerRun)
-	_, _, err := InlineMemories([]InlinedMemory{{Title: "Huge", Body: strings.Repeat("x", MaxMemoryChars+1)}}, limits)
-	require.Error(t, err)
-}
 
 func TestInlineMemoriesTrimmed_UnderCeiling_ReturnsPlainBlockNoLog(t *testing.T) {
 	var buf bytes.Buffer
 	log := slog.New(slog.NewTextHandler(&buf, nil))
-	block := InlineMemoriesTrimmed([]InlinedMemory{{Title: "A", Body: "short"}}, DefaultInlineLimits(), log)
-	assert.Equal(t, "### A\nshort", block)
+	block := InlineMemoriesTrimmed([]InlinedMemory{{Title: "A", Body: "short"}, {Title: "B", Body: "next"}}, DefaultInlineLimits(), log)
+	assert.Equal(t, "### A\nshort\n\n### B\nnext", block)
 	assert.Empty(t, buf.String(), "a selection that already fits never logs a trim")
 }
 

@@ -348,21 +348,20 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 	agentHandler := agent.NewHandler(agentSvc)
 	// A play run is an Agent turn with a trail (ADR 0055), so the runner sits on the same pipeline the mentions use.
 	svc.playsRunner = plays.NewRunner(plays.RunnerConfig{
-		Plays:       store.Plays,
-		Trails:      store.PlayTrails,
-		Perm:        playsPermissionGate{svc: svc.accessSvc},
-		Targets:     playsTargetReader{tickets: svc.ticketsSvc, docs: svc.docsSvc, workspace: svc.workspaceSvc},
-		Projects:    playsProjectLookup{memoriesProjectLookup{projects: store.Projects}},
-		Harness:     playsHarnessResolver{svc: svc.pairingSvc},
-		Memories:    playsMemoryReader{svc: svc.memoriesSvc},
-		Threads:     playsThreads{svc: svc.chatSvc},
-		Turns:       agentSvc,
-		Tickets:     playsStatusMover{svc: svc.ticketsSvc},
-		Live:        liveHub,
-		Users:       agentUserReader{users: store.Users},
-		Links:       playsLinkReader{tickets: svc.ticketsSvc, docs: agentDocReader{svc: svc.docsSvc}},
-		Attachments: agentAttachmentReader{svc: svc.attachmentsSvc},
-		Logger:      logger,
+		Plays:    store.Plays,
+		Trails:   store.PlayTrails,
+		Perm:     playsPermissionGate{svc: svc.accessSvc},
+		Targets:  playsTargetReader{tickets: svc.ticketsSvc, docs: svc.docsSvc, workspace: svc.workspaceSvc},
+		Projects: playsProjectLookup{memoriesProjectLookup{projects: store.Projects}},
+		Harness:  playsHarnessResolver{svc: svc.pairingSvc},
+		Memories: playsMemoryReader{svc: svc.memoriesSvc},
+		Threads:  playsThreads{svc: svc.chatSvc},
+		Turns:    agentSvc,
+		Tickets:  playsStatusMover{svc: svc.ticketsSvc},
+		Live:     liveHub,
+		Users:    agentUserReader{users: store.Users},
+		Links:    playsLinkReader{tickets: svc.ticketsSvc, docs: agentDocReader{svc: svc.docsSvc}},
+		Logger:   logger,
 	})
 
 	// A ticket entering done fires the built-in decisions check on the mover's or the developer's harness.

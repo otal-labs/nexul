@@ -1,5 +1,8 @@
 # The interview memory is in every agent turn
 
+Superseded in part by ADR 0105: a play run names the interview memory for the agent to read first instead of
+carrying it in full; an `@Agent` mention still carries it in full.
+
 A project's interview memory holds its stack, paradigm, testing strategy,
 principles, and vocabulary, written as rules. It is included in full in
 every agent turn in that project, every play and every `@Agent` mention, and
