@@ -348,7 +348,8 @@ describe("DocDetail", () => {
     const socket = new FakeSocket();
     await renderDetail(socket);
 
-    expect(await screen.findByRole("heading", { name: "Trail" })).toBeInTheDocument();
+    // The rail and the below-article placement both mount (CSS shows one), so the heading appears twice.
+    expect((await screen.findAllByRole("heading", { name: "Trail" })).length).toBeGreaterThan(0);
     expect(api.get).toHaveBeenCalledWith("/api/plays/runs", { params: { target_type: "doc", target_id: "doc-1" } });
   });
 
