@@ -110,9 +110,9 @@ type TrailQuestion struct {
 	AskedAt time.Time               `json:"asked_at"`
 }
 
-// ActivityNote is a runner's own line on the trail (a skipped move, a stop), not harness activity; the transcript
-// shows it as a muted line between turns.
-const ActivityNote harness.ActivityKind = "note"
+// ActivityNote is a runner's own line on the trail (a skipped move, a stop) or the harness's line about the run (a
+// reconnect); the transcript shows it as a muted line between turns.
+const ActivityNote = harness.ActivityNote
 
 // MaxTrailActivityLines caps the captured harness activity; the oldest steps drop first.
 const MaxTrailActivityLines = 300

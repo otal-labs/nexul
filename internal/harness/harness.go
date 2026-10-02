@@ -154,6 +154,8 @@ const (
 	ActivityText       ActivityKind = "text"
 	ActivityQuestion   ActivityKind = "question"
 	ActivityOther      ActivityKind = "other"
+	// ActivityNote is a line about the run itself rather than a step of the agent's, shown muted.
+	ActivityNote ActivityKind = "note"
 )
 
 // MaxActivityDetail caps Activity.Detail: a tool result can carry a whole file, and a trail keeps hundreds of steps.
