@@ -28,6 +28,7 @@ type fakeT3 struct {
 
 	configCalls atomic.Int32
 	subscribed  chan string         // requestId of each subscribeThread stream
+	subscribeIn chan map[string]any // payload of each subscribeThread request
 	acks        chan string         // requestId of each Ack frame received
 	dispatched  chan map[string]any // payload of each dispatchCommand (auto-acked)
 
@@ -49,6 +50,7 @@ func newFakeT3(t *testing.T) *fakeT3 {
 		ticket:      "ws-ticket-1",
 		ticketField: "ticket",
 		subscribed:  make(chan string, 4),
+		subscribeIn: make(chan map[string]any, 4),
 		acks:        make(chan string, 16),
 		dispatched:  make(chan map[string]any, 16),
 	}
@@ -124,6 +126,14 @@ func (f *fakeT3) handleWS(w http.ResponseWriter, r *http.Request) {
 			f.write(exitSuccess(idString(env.ID), map[string]any{"sequence": 1}))
 			f.dispatched <- cmd
 		case "orchestration.subscribeThread":
+			var in map[string]any
+			if err := json.Unmarshal(env.Payload, &in); err != nil {
+				f.t.Errorf("fake: undecodable subscribe payload: %v", err)
+			}
+			select {
+			case f.subscribeIn <- in:
+			default:
+			}
 			f.subscribed <- idString(env.ID)
 		case "orchestration.subscribeShell":
 			f.write(chunk(idString(env.ID), map[string]any{"kind": "snapshot", "snapshot": map[string]any{
@@ -146,6 +156,13 @@ func (f *fakeT3) write(v any) {
 	if err := wsjson.Write(context.Background(), f.conn, v); err != nil {
 		f.t.Logf("fake: write failed: %v", err)
 	}
+}
+
+// drop kills the current socket without a close frame, the way a tunnel or network blip ends it.
+func (f *fakeT3) drop() {
+	f.connMu.Lock()
+	defer f.connMu.Unlock()
+	_ = f.conn.CloseNow()
 }
 
 // writeRaw pushes arbitrary bytes as one text frame (malformed-frame tests).

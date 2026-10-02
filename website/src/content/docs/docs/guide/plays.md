@@ -75,7 +75,12 @@ Trail states are `starting`, `running`, `waiting`, `done`, `failed`, and
 `interrupted`. `waiting` means the Agent asked a question. The starter can
 answer it and the same trail continues. The starter or a `plays:write` holder
 can stop a run, including one in `waiting`. Fifteen minutes without Harness
-activity fails the run. A trail keeps the newest 300 activity entries.
+activity fails the run. If the connection to the computer drops mid-run, the
+trail shows **Reconnecting to T3 Code…** and Nexul keeps redialing for five
+minutes; once it is back, the steps taken while it was away land in order and
+the run ends as the Agent ended it. Only a connection that stays down past
+those five minutes fails the run. A trail keeps the newest 300 activity
+entries.
 
 The run's prompt carries no memory bodies. It names the interview memory,
 then the other always-included memories, then the ones picked for the run,

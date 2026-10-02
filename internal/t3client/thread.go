@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -68,13 +69,18 @@ type Update struct {
 type Subscription struct {
 	updates chan Update
 	cancel  context.CancelFunc
+	// dropped is set before updates closes when the connection died mid-turn; ResumeThread continues from it.
+	dropped *turnWatch
 }
 
-// Updates yields snapshots/approvals and finally one Terminal, then closes.
+// Updates yields snapshots/approvals and finally one Terminal, then closes; a dropped connection closes it without one.
 func (s *Subscription) Updates() <-chan Update { return s.updates }
 
 // Close stops watching; the server-side stream is interrupted best-effort.
 func (s *Subscription) Close() { s.cancel() }
+
+// Dropped is the watch to resume once Updates has closed without a Terminal because the connection died; nil otherwise.
+func (s *Subscription) Dropped() *turnWatch { return s.dropped }
 
 type modelSelection struct {
 	InstanceID string                  `json:"instanceId"`
@@ -151,6 +157,8 @@ type threadUserInputRespondCommand struct {
 
 type subscribeThreadInput struct {
 	ThreadID string `json:"threadId"`
+	// AfterSequence makes T3 replay this thread's events after that global sequence instead of sending a snapshot.
+	AfterSequence int64 `json:"afterSequence,omitempty"`
 }
 
 // dispatch routes one client command through orchestration.dispatchCommand; the ack carries nothing callers need.
@@ -249,19 +257,29 @@ func encodeAnswers(answer harness.QuestionAnswer) map[string]any {
 
 // SubscribeThread watches until a terminal state, ctx ends, or the connection drops; open before StartTurn.
 func (c *Client) SubscribeThread(ctx context.Context, threadID string) (*Subscription, error) {
+	return c.subscribe(ctx, threadID, &turnWatch{})
+}
+
+// ResumeThread carries a dropped watch on over this connection, reporting only what the watch has not seen yet.
+func (c *Client) ResumeThread(ctx context.Context, threadID string, w *turnWatch) (*Subscription, error) {
+	return c.subscribe(ctx, threadID, w)
+}
+
+func (c *Client) subscribe(ctx context.Context, threadID string, w *turnWatch) (*Subscription, error) {
 	id, ch := c.register()
-	env := requestEnvelope{Tag: "Request", ID: id, RPCTag: "orchestration.subscribeThread", Payload: subscribeThreadInput{ThreadID: threadID}, Headers: [][]string{}}
+	input := subscribeThreadInput{ThreadID: threadID, AfterSequence: w.lastSeq}
+	env := requestEnvelope{Tag: "Request", ID: id, RPCTag: "orchestration.subscribeThread", Payload: input, Headers: [][]string{}}
 	if err := c.send(ctx, env); err != nil {
 		c.unregister(id)
 		return nil, apperrs.Retryable(fmt.Errorf("subscribe thread: %w", err))
 	}
 	subCtx, cancel := context.WithCancel(ctx)
 	sub := &Subscription{updates: make(chan Update, 16), cancel: cancel}
-	go c.runSubscription(subCtx, id, ch, sub)
+	go c.runSubscription(subCtx, id, ch, sub, w)
 	return sub, nil
 }
 
-func (c *Client) runSubscription(ctx context.Context, id string, ch chan serverEnvelope, sub *Subscription) {
+func (c *Client) runSubscription(ctx context.Context, id string, ch chan serverEnvelope, sub *Subscription, w *turnWatch) {
 	defer func() {
 		c.unregister(id)
 		_ = c.send(c.ctx, interruptEnvelope{Tag: "Interrupt", RequestID: id})
@@ -275,16 +293,17 @@ func (c *Client) runSubscription(ctx context.Context, id string, ch chan serverE
 			return false
 		}
 	}
-	var w turnWatch
 	for {
 		select {
 		case env := <-ch:
 			switch env.Tag {
 			case "Chunk":
 				for _, raw := range env.Values {
-					update, terminal := c.streamItemUpdate(raw, &w)
-					if update != nil && !emit(*update) {
-						return
+					updates, terminal := c.streamItemUpdates(raw, w)
+					for _, u := range updates {
+						if !emit(u) {
+							return
+						}
 					}
 					if terminal != nil {
 						emit(Update{Terminal: terminal})
@@ -293,16 +312,25 @@ func (c *Client) runSubscription(ctx context.Context, id string, ch chan serverE
 				}
 				c.ack(id)
 			case "Exit":
-				emit(Update{Terminal: &TurnResult{State: TurnError, LastError: "subscription stream ended before the turn completed"}})
+				emit(Update{Terminal: &TurnResult{State: TurnError, LastError: exitReason(env.Exit)}})
 				return
 			}
 		case <-ctx.Done():
 			return
 		case <-c.done:
-			emit(Update{Terminal: &TurnResult{State: TurnError, LastError: fmt.Sprintf("T3 connection lost: %v", c.err)}})
+			c.log.Warn("t3client: connection lost mid-turn", "request", id, "last_sequence", w.lastSeq, "error", c.err)
+			sub.dropped = w
 			return
 		}
 	}
+}
+
+// exitReason is why a thread stream ended early; a failure carries T3's cause, such as the thread no longer existing.
+func exitReason(raw json.RawMessage) string {
+	if _, err := decodeExit("subscribe thread", raw, nil); err != nil {
+		return err.Error()
+	}
+	return "subscription stream ended before the turn completed"
 }
 
 // turnWatch: "done" needs both the session settling and the reply closing; settling alone arrived 33s early once.
@@ -311,6 +339,18 @@ type turnWatch struct {
 	settled     bool
 	replyClosed bool
 	text        map[string]string // messageID -> text summed from streaming deltas
+	// lastSeq is the highest global event sequence applied, the cursor a resume replays after and dedupes against.
+	lastSeq int64
+	// synced marks the first snapshot taken; seen holds message and activity ids reported or older than the turn.
+	synced bool
+	seen   map[string]bool
+}
+
+func (w *turnWatch) see(id string) {
+	if w.seen == nil {
+		w.seen = map[string]bool{}
+	}
+	w.seen[id] = true
 }
 
 // accumulate mirrors T3's own reducer: a streaming event appends its delta, a closing one replaces only when non-empty.
@@ -345,9 +385,10 @@ type streamItem struct {
 }
 
 type wireEvent struct {
-	Type    string          `json:"type"`
-	Tag     string          `json:"_tag"`
-	Payload json.RawMessage `json:"payload"`
+	Sequence int64           `json:"sequence"`
+	Type     string          `json:"type"`
+	Tag      string          `json:"_tag"`
+	Payload  json.RawMessage `json:"payload"`
 }
 
 type messageSentPayload struct {
@@ -357,12 +398,31 @@ type messageSentPayload struct {
 	Streaming bool   `json:"streaming"`
 }
 
+type wireSession struct {
+	Status       string  `json:"status"`
+	ActiveTurnID *string `json:"activeTurnId"`
+	LastError    *string `json:"lastError"`
+}
+
 type sessionSetPayload struct {
-	Session struct {
-		Status       string  `json:"status"`
-		ActiveTurnID *string `json:"activeTurnId"`
-		LastError    *string `json:"lastError"`
-	} `json:"session"`
+	Session wireSession `json:"session"`
+}
+
+// threadSnapshot is the slice of T3's thread detail snapshot a watch reads: what the thread holds and where it stands.
+type threadSnapshot struct {
+	SnapshotSequence int64 `json:"snapshotSequence"`
+	Thread           struct {
+		DeletedAt *string `json:"deletedAt"`
+		Messages  []struct {
+			ID        string `json:"id"`
+			Role      string `json:"role"`
+			Text      string `json:"text"`
+			Streaming bool   `json:"streaming"`
+			UpdatedAt string `json:"updatedAt"`
+		} `json:"messages"`
+		Activities []wireActivity `json:"activities"`
+		Session    *wireSession   `json:"session"`
+	} `json:"thread"`
 }
 
 type wireActivity struct {
@@ -552,7 +612,7 @@ func (c *Client) detailJSON(p toolPayload) string {
 	return harness.CapDetail(string(b))
 }
 
-func (c *Client) streamItemUpdate(raw json.RawMessage, w *turnWatch) (*Update, *TurnResult) {
+func (c *Client) streamItemUpdates(raw json.RawMessage, w *turnWatch) ([]Update, *TurnResult) {
 	var item streamItem
 	if err := json.Unmarshal(raw, &item); err != nil {
 		c.log.Warn("t3client: malformed stream item skipped", "error", err, "item", snippet(raw))
@@ -562,15 +622,83 @@ func (c *Client) streamItemUpdate(raw json.RawMessage, w *turnWatch) (*Update, *
 	case "synchronized":
 		return nil, nil
 	case "snapshot":
-		// The full-thread snapshot only carries history from before we subscribed; turn watching starts from live events.
-		c.log.Debug("t3client: thread snapshot skipped", "bytes", len(item.Snapshot))
-		return nil, nil
+		return c.snapshotUpdates(item.Snapshot, w)
 	case "event":
-		return c.eventUpdate(item.Event, w)
+		update, terminal := c.eventUpdate(item.Event, w)
+		if update == nil {
+			return nil, terminal
+		}
+		return []Update{*update}, terminal
 	default:
 		c.log.Debug("t3client: unknown stream item kind skipped", "kind", item.Kind, "item", snippet(raw))
 		return nil, nil
 	}
+}
+
+// snapshotUpdates remembers the first snapshot as history; a later one answers a resume T3 could not replay.
+func (c *Client) snapshotUpdates(raw json.RawMessage, w *turnWatch) ([]Update, *TurnResult) {
+	var s threadSnapshot
+	if err := json.Unmarshal(raw, &s); err != nil {
+		c.log.Warn("t3client: malformed thread snapshot skipped", "error", err, "snapshot", snippet(raw))
+		return nil, nil
+	}
+	if !w.synced {
+		w.synced = true
+		for _, m := range s.Thread.Messages {
+			w.see(m.ID)
+		}
+		for _, a := range s.Thread.Activities {
+			w.see(a.ID)
+		}
+		return nil, nil
+	}
+	if s.Thread.DeletedAt != nil {
+		return nil, &TurnResult{State: TurnError, LastError: "the thread was deleted in T3 Code"}
+	}
+	missed := c.missedUpdates(s, w)
+	w.lastSeq = max(w.lastSeq, s.SnapshotSequence)
+	if s.Thread.Session == nil {
+		return missed, nil
+	}
+	return missed, c.sessionTerminal(sessionSetPayload{Session: *s.Thread.Session}, w)
+}
+
+// missedUpdates is every step and reply in s the watch has not reported, in the order they happened.
+func (c *Client) missedUpdates(s threadSnapshot, w *turnWatch) []Update {
+	type timed struct {
+		at string
+		u  Update
+	}
+	var missed []timed
+	for _, a := range s.Thread.Activities {
+		if w.seen[a.ID] {
+			continue
+		}
+		w.see(a.ID)
+		w.turnSeen = true
+		if u := c.activityUpdate(a); u != nil {
+			missed = append(missed, timed{a.CreatedAt, *u})
+		}
+	}
+	for _, m := range s.Thread.Messages {
+		if m.Role != "assistant" || w.seen[m.ID] {
+			continue
+		}
+		w.turnSeen = true
+		text := w.accumulate(messageSentPayload{MessageID: m.ID, Text: m.Text})
+		if !m.Streaming {
+			w.see(m.ID)
+			w.replyClosed = true
+		}
+		missed = append(missed, timed{m.UpdatedAt, Update{Snapshot: &MessageSnapshot{MessageID: m.ID, Text: text, Streaming: m.Streaming}}})
+	}
+	// ISO timestamps in one format sort as strings; a reply sorts by its last change so it lands after its steps.
+	sort.SliceStable(missed, func(i, j int) bool { return missed[i].at < missed[j].at })
+	out := make([]Update, 0, len(missed))
+	for _, m := range missed {
+		out = append(out, m.u)
+	}
+	return out
 }
 
 func (c *Client) eventUpdate(raw json.RawMessage, w *turnWatch) (*Update, *TurnResult) {
@@ -578,6 +706,12 @@ func (c *Client) eventUpdate(raw json.RawMessage, w *turnWatch) (*Update, *TurnR
 	if err := json.Unmarshal(raw, &ev); err != nil {
 		c.log.Warn("t3client: malformed event skipped", "error", err, "event", snippet(raw))
 		return nil, nil
+	}
+	if ev.Sequence > 0 {
+		if ev.Sequence <= w.lastSeq {
+			return nil, nil
+		}
+		w.lastSeq = ev.Sequence
 	}
 	eventType := ev.Type
 	if eventType == "" {
@@ -595,6 +729,7 @@ func (c *Client) eventUpdate(raw json.RawMessage, w *turnWatch) (*Update, *TurnR
 		}
 		w.turnSeen = true
 		if !p.Streaming {
+			w.see(p.MessageID)
 			w.replyClosed = true
 		}
 		return &Update{Snapshot: &MessageSnapshot{MessageID: p.MessageID, Text: w.accumulate(p), Streaming: p.Streaming}}, w.done()
@@ -606,40 +741,41 @@ func (c *Client) eventUpdate(raw json.RawMessage, w *turnWatch) (*Update, *TurnR
 		}
 		return nil, c.sessionTerminal(p, w)
 	case "thread.activity-appended":
-		return c.activityUpdate(ev.Payload), nil
+		var p activityAppendedPayload
+		if err := json.Unmarshal(ev.Payload, &p); err != nil {
+			c.log.Warn("t3client: malformed activity-appended payload skipped", "error", err, "payload", snippet(ev.Payload))
+			return nil, nil
+		}
+		w.see(p.Activity.ID)
+		return c.activityUpdate(p.Activity), nil
 	default:
 		c.log.Debug("t3client: unknown event type skipped", "type", eventType)
 		return nil, nil
 	}
 }
 
-// activityUpdate maps one thread.activity-appended by tone: tool steps, the user-input question, and approvals.
-func (c *Client) activityUpdate(payload json.RawMessage) *Update {
-	var p activityAppendedPayload
-	if err := json.Unmarshal(payload, &p); err != nil {
-		c.log.Warn("t3client: malformed activity-appended payload skipped", "error", err, "payload", snippet(payload))
-		return nil
-	}
+// activityUpdate maps one thread activity by tone: tool steps, the user-input question, and approvals.
+func (c *Client) activityUpdate(a wireActivity) *Update {
 	switch {
-	case p.Activity.Tone == "error":
-		c.log.Warn("t3client: thread error activity", "kind", p.Activity.Kind, "summary", p.Activity.Summary)
+	case a.Tone == "error":
+		c.log.Warn("t3client: thread error activity", "kind", a.Kind, "summary", a.Summary)
 		return nil
-	case p.Activity.Tone == "tool":
-		return &Update{Activity: c.toolActivity(p.Activity)}
-	case p.Activity.Tone == "info" && p.Activity.Kind == userInputRequested:
-		return c.questionUpdate(p.Activity)
-	case p.Activity.Tone != "approval":
+	case a.Tone == "tool":
+		return &Update{Activity: c.toolActivity(a)}
+	case a.Tone == "info" && a.Kind == userInputRequested:
+		return c.questionUpdate(a)
+	case a.Tone != "approval":
 		return nil
 	}
 	// The approval payload shape is unknown upstream; log it loudly to learn it from real captures.
 	c.log.Warn("t3client: approval request received (payload shape unverified upstream)",
-		"activity_id", p.Activity.ID, "kind", p.Activity.Kind, "summary", p.Activity.Summary,
-		"raw_payload", snippet(p.Activity.Payload))
+		"activity_id", a.ID, "kind", a.Kind, "summary", a.Summary,
+		"raw_payload", snippet(a.Payload))
 	return &Update{Approval: &ApprovalRequest{
-		RequestID:  approvalRequestID(p.Activity.ID, p.Activity.Payload),
-		Kind:       p.Activity.Kind,
-		Summary:    p.Activity.Summary,
-		RawPayload: p.Activity.Payload,
+		RequestID:  approvalRequestID(a.ID, a.Payload),
+		Kind:       a.Kind,
+		Summary:    a.Summary,
+		RawPayload: a.Payload,
 	}}
 }
 

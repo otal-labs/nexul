@@ -194,8 +194,8 @@ transcript is the Agent's turn as a conversation: the starter's "Started
 <play>" message, one collapsible "Worked for" group per turn holding what
 the Agent said between actions and each action as a row (a command names
 its command, a file change its path, an MCP call its server and tool), the question card and the answer
-where they happened, the final reply as prose, and the runner's own notes
-(a skipped move, a stop) as muted lines.
+where they happened, the final reply as prose, and the notes about the run
+itself (a skipped move, a stop, a reconnect) as muted lines.
 Persisted, never ephemeral; the "Trail" section on a
 ticket, doc, or Interview page lists them, and the target's thread shows the same turn
 groups above the Agent's reply, question, or closing note, so the run reads
@@ -204,7 +204,9 @@ the harness accepts, `waiting` while the Agent's question to the starter is
 unanswered (the ticket stays put, the silence clock pauses, answering runs
 on again in the same trail and session), then one of `done`, `failed`, or
 `interrupted`. Stop (the starter or a `plays:write` holder) interrupts it,
-from `waiting` too; fifteen minutes of harness silence fails it. A ticket
+from `waiting` too; fifteen minutes of harness silence fails it. A dropped
+harness connection does not: the turn is redialed and resumed where it left
+off, and fails only if it stays down for five minutes. A ticket
 move it makes carries actor kind `play`.
 Also records the computer, provider, and model the run used, whether the
 starter picked them in the run dialog or they came from the starter's own

@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
+	"time"
 
 	"github.com/otal-labs/nexul/internal/harness"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -13,6 +15,7 @@ import (
 type threadSub interface {
 	Updates() <-chan Update
 	Close()
+	Dropped() *turnWatch
 }
 
 // rpcConn is the slice of *Client Harness needs; clientAdapter narrows SubscribeThread's return type.
@@ -23,6 +26,7 @@ type rpcConn interface {
 	RespondApproval(ctx context.Context, threadID, requestID, decision string) error
 	RespondUserInput(ctx context.Context, threadID, requestID string, answer harness.QuestionAnswer) error
 	SubscribeThread(ctx context.Context, threadID string) (threadSub, error)
+	ResumeThread(ctx context.Context, threadID string, w *turnWatch) (threadSub, error)
 	Providers() ([]harness.Provider, error)
 	Close() error
 }
@@ -31,6 +35,10 @@ type clientAdapter struct{ *Client }
 
 func (a clientAdapter) SubscribeThread(ctx context.Context, threadID string) (threadSub, error) {
 	return a.Client.SubscribeThread(ctx, threadID)
+}
+
+func (a clientAdapter) ResumeThread(ctx context.Context, threadID string, w *turnWatch) (threadSub, error) {
+	return a.Client.ResumeThread(ctx, threadID, w)
 }
 
 func connect(ctx context.Context, s harness.Session, opts Options) (rpcConn, error) {
@@ -126,7 +134,7 @@ func (h *Harness) StartTurn(ctx context.Context, target harness.Target, title st
 	}
 
 	updates := make(chan harness.Update, 16)
-	go h.pump(ctx, client, threadID, sub, updates)
+	go h.pump(ctx, target.Session, client, threadID, sub, updates)
 	return harness.StartResult{SessionID: threadID, Updates: updates}, nil
 }
 
@@ -184,10 +192,98 @@ func (h *Harness) subscribeAndStart(ctx context.Context, client rpcConn, threadI
 	return sub, nil
 }
 
-func (h *Harness) pump(ctx context.Context, client rpcConn, threadID string, sub threadSub, out chan<- harness.Update) {
+// reconnectWindow outlasts a tunnel restart or network switch, yet stays inside T3's replay range and callers' silence limits.
+const (
+	reconnectWindow     = 5 * time.Minute
+	reconnectMinBackoff = time.Second
+	reconnectMaxBackoff = 30 * time.Second
+)
+
+// reconnectingNote is the muted line a turn shows while its connection is being redialed.
+const reconnectingNote = "Reconnecting to T3 Code…"
+
+// pump forwards one turn's updates; a dropped connection is redialed and the watch resumed, never surfaced as an end.
+func (h *Harness) pump(ctx context.Context, s harness.Session, client rpcConn, threadID string, sub threadSub, out chan<- harness.Update) {
 	defer close(out)
-	defer func() { _ = client.Close() }()
-	defer sub.Close()
+	for {
+		h.forward(ctx, client, threadID, sub, out)
+		sub.Close()
+		// The turn's connection is finished with either way; a close error on a dead socket says nothing new.
+		_ = client.Close()
+		dropped := sub.Dropped()
+		if dropped == nil {
+			return
+		}
+		client, sub = h.reconnect(ctx, s, threadID, dropped, out)
+		if sub == nil {
+			return
+		}
+	}
+}
+
+// reconnect redials with backoff until the watch resumes, the window closes, or T3 refuses the session.
+func (h *Harness) reconnect(ctx context.Context, s harness.Session, threadID string, w *turnWatch, out chan<- harness.Update) (rpcConn, threadSub) {
+	out <- harness.Update{Activity: &harness.Activity{Kind: harness.ActivityNote, Summary: reconnectingNote, At: time.Now().UTC()}}
+	deadline := time.Now().Add(reconnectWindow)
+	backoff := reconnectMinBackoff
+	for {
+		client, sub, err := h.resume(ctx, deadline, s, threadID, w)
+		if err == nil {
+			h.logger().Info("t3client: turn resumed after a dropped connection", "thread", threadID, "after_sequence", w.lastSeq)
+			return client, sub
+		}
+		h.logger().Warn("t3client: reconnect failed", "thread", threadID, "error", err)
+		if errors.Is(err, apperrs.ErrUnauthorized) {
+			out <- giveUp(fmt.Sprintf("Lost the connection to T3 Code and it refused to reconnect: %v", err))
+			return nil, nil
+		}
+		remaining := time.Until(deadline)
+		if remaining <= 0 {
+			out <- giveUp(fmt.Sprintf("Lost the connection to T3 Code and couldn't reconnect for %s: %v", formatWindow(reconnectWindow), err))
+			return nil, nil
+		}
+		select {
+		case <-ctx.Done():
+			return nil, nil
+		case <-time.After(min(backoff, remaining)):
+		}
+		backoff = min(backoff*2, reconnectMaxBackoff)
+	}
+}
+
+// resume bounds the dial by the window, since a tunnel can hang a request; the resumed watch lives on ctx.
+func (h *Harness) resume(ctx context.Context, deadline time.Time, s harness.Session, threadID string, w *turnWatch) (rpcConn, threadSub, error) {
+	dialCtx, cancel := context.WithDeadline(ctx, deadline)
+	defer cancel()
+	client, err := h.connect(dialCtx, s, h.Options)
+	if err != nil {
+		return nil, nil, err
+	}
+	sub, err := client.ResumeThread(ctx, threadID, w)
+	if err != nil {
+		_ = client.Close() // the resume error is the one worth reporting
+		return nil, nil, err
+	}
+	return client, sub, nil
+}
+
+func (h *Harness) logger() *slog.Logger {
+	if h.Options.Logger != nil {
+		return h.Options.Logger
+	}
+	return slog.Default()
+}
+
+func giveUp(reason string) harness.Update {
+	return harness.Update{Terminal: &harness.TurnResult{State: harness.TurnError, LastError: reason}}
+}
+
+// formatWindow renders a whole-minute window as "5m" rather than Duration's "5m0s".
+func formatWindow(d time.Duration) string {
+	return fmt.Sprintf("%dm", int(d.Minutes()))
+}
+
+func (h *Harness) forward(ctx context.Context, client rpcConn, threadID string, sub threadSub, out chan<- harness.Update) {
 	for u := range sub.Updates() {
 		switch {
 		case u.Snapshot != nil:
