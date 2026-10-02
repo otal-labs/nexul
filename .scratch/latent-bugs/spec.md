@@ -121,3 +121,10 @@ Only the first editor of an empty room seeds it, and the seed passes to
 another editor when the seeder leaves normally. When the hub drops the
 seeder as a slow connection instead, nobody else is told to seed, so the
 room can stay empty until someone reloads.
+
+## A person's save changes the end of a note's file
+
+Saving a note from the editor drops the file's final newline, or adds one
+when the note ends in an image, so a note an agent wrote changes bytes on
+its first human save even when nothing visible changed. Seen in the ticket
+flow walkthrough; normalise the trailing newline in one direction.
