@@ -9,7 +9,9 @@ safe; large artifacts are not an attachment use case.
 
 An attachment is owned by exactly one doc, ticket, or conversation, never
 shared between them, so deleting the owner cascades cleanly and no
-reference-counting is needed. Content type is sniffed server-side, not taken
+reference-counting is needed. A conversation's file is read and uploaded with
+the conversation, but only the person who uploaded it deletes it, the way a
+message is deleted by its author alone. Content type is sniffed server-side, not taken
 from the upload: only raster images are served inline, and everything else —
 including SVG, which can carry scripts — is served as a download with
 `nosniff`. Because the gateway authenticates with a bearer token, the browser
