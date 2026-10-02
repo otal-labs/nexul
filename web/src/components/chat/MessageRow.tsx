@@ -6,13 +6,13 @@ import { MessageBody } from "@/components/chat/MessageBody";
 import { MessageEditForm } from "@/components/chat/MessageEditForm";
 import { MessageContinuationTime, MessageRowAvatar, MessageRowHeader, type MessageAlign } from "@/components/chat/MessageRowHeader";
 import { MessageTrailTurns } from "@/components/chat/MessageTrailTurns";
-import { NoteFilePill } from "@/components/chat/NoteFilePill";
+import { NoteMessage } from "@/components/note/NoteMessage";
 import { TrailQuestionBody } from "@/components/play/TrailQuestionCard";
 import { TrailReplyProse } from "@/components/play/TrailReplyProse";
 import { Message, MessageAvatar, MessageContent } from "@/components/ui/message";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { cn } from "@/lib/utils";
-import type { Message as ChatMessage } from "@/models/Chat";
+import { isNote, type Message as ChatMessage } from "@/models/Chat";
 import type { Person } from "@/models/Person";
 import { parseQuestionMessage } from "@/models/Question";
 import type { TrailBlock } from "@/utils/ThreadTrailUtility";
@@ -27,6 +27,8 @@ interface MessageRowProps {
   questionAnswered?: boolean;
   // trailBlock is the run that led to this message: its turns render above it, and its question is answered on the trail.
   trailBlock?: TrailBlock | undefined;
+  // ticketId is the ticket a ticket thread belongs to, whose write permission edits and deletes its notes.
+  ticketId?: string | undefined;
   onEdit: (messageId: string, body: string) => Promise<void>;
   onDelete: (messageId: string) => Promise<void>;
 }
@@ -79,7 +81,6 @@ const AgentMessageBody = ({ message, trailBlock, questionAnswered }: AgentMessag
     <>
       {trailBlock && trailBlock.turns.length > 0 && <MessageTrailTurns turns={trailBlock.turns} />}
       {question === null && <TrailReplyProse text={message.body} />}
-      {message.attachment_id && <NoteFilePill conversationId={message.conversation_id} attachmentId={message.attachment_id} />}
       {question !== null && trailBlock && <TrailQuestionBody trail={trailBlock.trail} />}
       {question !== null && !trailBlock && (
         <ChatQuestionCard conversationId={message.conversation_id} question={question} answered={questionAnswered} />
@@ -89,7 +90,7 @@ const AgentMessageBody = ({ message, trailBlock, questionAnswered }: AgentMessag
 };
 
 // Your own messages sit right-aligned with no header; everyone else gets an avatar + name/time header.
-export const MessageRow = ({ message, author, isOwn, continuation = false, questionAnswered = false, trailBlock, onEdit, onDelete }: MessageRowProps) => {
+export const MessageRow = ({ message, author, isOwn, continuation = false, questionAnswered = false, trailBlock, ticketId, onEdit, onDelete }: MessageRowProps) => {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(message.body);
   const { open: confirmDelete } = useConfirmationDialog();
@@ -153,6 +154,7 @@ export const MessageRow = ({ message, author, isOwn, continuation = false, quest
               />
             )}
             {!editing && isAgent && <AgentMessageBody message={message} trailBlock={trailBlock} questionAnswered={questionAnswered} />}
+            {!editing && isNote(message) && <NoteMessage message={message} ticketId={ticketId} />}
           </MessageContent>
         </Message>
       )}

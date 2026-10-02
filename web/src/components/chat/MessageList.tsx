@@ -106,6 +106,7 @@ export const MessageList = ({
                         continuation={continuation}
                         questionAnswered={message.author_kind === "agent" && answeredAfter(messages, i)}
                         trailBlock={trailBlockFor(message, blocks)}
+                        ticketId={conversation.ticket_id}
                         onEdit={onEdit}
                         onDelete={onDelete}
                       />

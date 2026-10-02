@@ -22,6 +22,8 @@ import type { MyWorkspaceInfo } from "@/models/Permission";
 import { getMemoriesKey, getMemoryKey, getMemoryVersionsKey } from "@/hooks/MemoryHooks";
 import { getNotificationsKey, getUnreadCountKey } from "@/hooks/NotificationHooks";
 import { getMeKey, getPATsKey, getSessionsKey } from "@/hooks/AuthHooks";
+import { getAttachmentsKey } from "@/hooks/AttachmentHooks";
+import { getNoteTextKey } from "@/hooks/NoteHooks";
 import { getComputerSetupKey } from "@/hooks/ComputerSetupHooks";
 import {
   getComputersKey,
@@ -295,6 +297,11 @@ const dispatch = (client: ReturnType<typeof useQueryClient>, router: RouterFollo
     if (p.message) upsertCachedMessage(client, p.message);
     // Once the turn's real message lands (author_kind "agent"), the ephemeral stream bubble yields to it; a note does not end it.
     if (p.message?.author_kind === "agent" && !isNote(p.message)) useAgentStreamStore.getState().clearStream(p.message.conversation_id);
+    // A note's file changed under its message: open renders and the pill's size follow it; an open editor follows its room.
+    if (frame.topic === "chat.message.updated" && p.message && isNote(p.message)) {
+      void client.invalidateQueries({ queryKey: [getNoteTextKey, p.message.attachment_id] });
+      void client.invalidateQueries({ queryKey: [getAttachmentsKey, { conversation_id: p.message.conversation_id }] });
+    }
     if (frame.topic === "chat.message.updated") return;
   }
   if (frame.topic === "chat.message.deleted") {
