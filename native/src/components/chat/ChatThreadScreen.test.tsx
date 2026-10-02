@@ -23,9 +23,14 @@ jest.mock("expo-network", () => ({
   getNetworkStateAsync: () => Promise.resolve({ isConnected: true }),
 }));
 
-jest.mock("expo-router", () => ({ useLocalSearchParams: () => ({ id: "c1" }), Stack: { Screen: () => null } }));
+const mockPush = jest.fn();
+jest.mock("expo-router", () => ({
+  useLocalSearchParams: () => ({ id: "c1" }),
+  useRouter: () => ({ push: mockPush }),
+  Stack: { Screen: () => null },
+}));
 jest.mock("expo-router/react-navigation", () => ({ useHeaderHeight: () => 0 }));
-jest.mock("lucide-react-native", () => ({ SendHorizontal: () => null }));
+jest.mock("lucide-react-native", () => ({ SendHorizontal: () => null, FileText: () => null }));
 jest.mock("react-native-enriched-markdown", () => jest.requireActual("react-native-enriched-markdown/jest"));
 
 // Jest has no layout pass, so this stand-in renders every row in data order and keeps the props for the anchoring checks.
@@ -72,6 +77,9 @@ const respond = async (path: string): Promise<unknown> => {
   if (path === "/api/workspaces/w1/people") return { people: [{ user_id: "ana", login: "ana97", display_name: "Ana Lima", avatar_url: "" }] };
   if (path === "/api/chat/conversations?workspace_id=w1") return [];
   if (path.startsWith("/api/chat/conversations/c1/messages")) return thread;
+  if (path === "/api/attachments?conversation_id=c1") {
+    return [{ id: "f1", conversation_id: "c1", name: "findings.md", content_type: "text/markdown", size: 2048, created_at: "2026-09-28T10:00:00Z" }];
+  }
   throw new Error(`unexpected GET ${path}`);
 };
 
@@ -88,6 +96,7 @@ const renderThread = async () => {
 describe("ChatThreadScreen", () => {
   beforeEach(() => {
     get.mockReset();
+    mockPush.mockReset();
     post.mockReset();
     post.mockResolvedValue(null);
     get.mockImplementation(respond);
@@ -105,6 +114,25 @@ describe("ChatThreadScreen", () => {
 
     expect(await screen.findByText("thread failed")).toBeTruthy();
     expect(screen.getByLabelText("Message")).toBeTruthy();
+  });
+
+  test("a note shows its summary and file pill, and the pill opens the note", async () => {
+    thread = [{ ...message("n1", "Found the cause", 1), author_kind: "agent", attachment_id: "f1" }];
+    await renderThread();
+
+    expect(await screen.findByText("Found the cause")).toBeTruthy();
+    expect(screen.getByText("2 KB")).toBeTruthy();
+    await userEvent.press(await screen.findByRole("button", { name: "Open findings.md" }));
+
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/chat/note/[id]", params: { id: "f1", name: "findings.md" } });
+  });
+
+  test("an agent message without a file shows no pill", async () => {
+    thread = [{ ...message("n1", "Just a reply", 1), author_kind: "agent" }];
+    await renderThread();
+
+    expect(await screen.findByText("Just a reply")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /^Open / })).toBeNull();
   });
 
   test("a failed send takes the optimistic row back and restores the draft", async () => {

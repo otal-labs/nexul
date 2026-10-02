@@ -137,3 +137,6 @@ export const splitMessageBody = (body: string): MessageBodySegment[] => {
   flush();
   return segments;
 };
+
+// A note is an Agent message carrying a markdown file (ADR 0108).
+export const isNote = (message: Message): boolean => message.author_kind === "agent" && !!message.attachment_id;
