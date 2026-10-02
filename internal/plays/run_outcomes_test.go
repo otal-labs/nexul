@@ -125,6 +125,7 @@ func TestFinish_NoMoveWhenNotDoneOrNotATicketOrNothingChosen(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			f := newRunnerFixture()
+			f.locks.locked[docID] = true // an already locked doc adds no start note, leaving only outcome notes to count
 			_, obs := driveTurn(t, f, tt.in)
 			obs.OnFinished(tt.res, "")
 			assert.Empty(t, f.mover.snapshot())

@@ -120,7 +120,9 @@ func RunMCPTools(r *Runner) []mcptool.Tool {
 		mcptool.New("play_run", "Run play",
 			"Starts a play on a ticket, a doc, or a project's interview as the calling user, on that user's own "+
 				"paired computer, and posts the run into the target's thread. Check play_list with type first to see "+
-				"which plays the caller may run there; one run at a time per target. With decisions_check true instead "+
+				"which plays the caller may run there; one run at a time per target. A doc play locks its doc as the run "+
+				"starts and leaves it locked, so the doc's title and body refuse edits until someone unlocks it. "+
+				"With decisions_check true instead "+
 				"of a play_id it reruns the built-in decisions check on a done ticket, which reads the ticket, its pull "+
 				"requests, and the project's decisions log, then adds an entry, marks a reversed one superseded, or "+
 				"leaves the log alone; use that when the ticket shows the decisions check didn't run. Returns the trail "+

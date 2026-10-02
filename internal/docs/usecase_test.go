@@ -661,18 +661,46 @@ func TestLock_RefusesTitleAndBodyEditsUntilUnlocked(t *testing.T) {
 	assert.Equal(t, "Renamed", got.Title)
 }
 
-func TestLock_NeedsDocsWrite(t *testing.T) {
+func TestLock_NeedsDocsLock(t *testing.T) {
 	repo := newFakeRepo()
 	d := mustDoc(t, newTestService(repo), "project-1", "Spec", "body")
-	readOnly := NewService(repo, fakeAccess{allow: []permissions.Action{permissions.DocsRead}}, nil)
+	writer := NewService(repo, fakeAccess{allow: []permissions.Action{permissions.DocsRead, permissions.DocsWrite}}, nil)
+	locker := NewService(repo, fakeAccess{allow: []permissions.Action{permissions.DocsRead, permissions.DocsLock}}, nil)
 
-	_, err := readOnly.Lock(testCtx(), d.ID)
-	require.ErrorIs(t, err, apperrs.ErrForbidden)
-	_, err = newTestService(repo).Lock(testCtx(), d.ID)
+	_, err := writer.Lock(testCtx(), d.ID)
+	require.ErrorIs(t, err, apperrs.ErrForbidden, "docs:write alone no longer locks")
+	assert.False(t, repo.docs[d.ID].Locked)
+	_, err = locker.Lock(testCtx(), d.ID)
 	require.NoError(t, err)
-	_, err = readOnly.Unlock(testCtx(), d.ID)
-	require.ErrorIs(t, err, apperrs.ErrForbidden)
+	_, err = writer.Unlock(testCtx(), d.ID)
+	require.ErrorIs(t, err, apperrs.ErrForbidden, "nor unlocks")
 	assert.True(t, repo.docs[d.ID].Locked)
+	_, err = locker.Unlock(testCtx(), d.ID)
+	require.NoError(t, err)
+	assert.False(t, repo.docs[d.ID].Locked)
+}
+
+func TestLockForPlay_LocksWithoutDocsLockAndOnlyOnce(t *testing.T) {
+	repo := newFakeRepo()
+	d := mustDoc(t, newTestService(repo), "project-1", "Spec", "body")
+	reader := newDenyService(repo)
+
+	changed, err := reader.LockForPlay(testCtx(), d.ID)
+	require.NoError(t, err)
+	assert.True(t, changed)
+	assert.True(t, repo.docs[d.ID].Locked, "starting a doc play locks the doc whatever the starter's bits")
+	updated := repo.eventsFor(TopicUpdated)
+	require.Len(t, updated, 1)
+	assert.True(t, updated[0].Payload.(UpdatedEvent).Doc.Locked, "the lock reaches open pages like any other")
+	assert.Equal(t, "user-1", updated[0].Payload.(UpdatedEvent).ActorID, "the starter is the one who locked it")
+
+	changed, err = reader.LockForPlay(testCtx(), d.ID)
+	require.NoError(t, err)
+	assert.False(t, changed, "an already locked doc is left as it is")
+	assert.Len(t, repo.eventsFor(TopicUpdated), 1)
+
+	_, err = reader.LockForPlay(testCtx(), "missing")
+	require.ErrorIs(t, err, apperrs.ErrNotFound)
 }
 
 func TestList_Disclosure(t *testing.T) {

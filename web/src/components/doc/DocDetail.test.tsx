@@ -353,12 +353,12 @@ describe("DocDetail", () => {
     expect(api.get).toHaveBeenCalledWith("/api/plays/runs", { params: { target_type: "doc", target_id: "doc-1" } });
   });
 
-  it("renders a locked doc read-only with no edit session, and a writer can unlock it", async () => {
+  it("renders a locked doc read-only with no edit session, and a holder of docs:lock can unlock it", async () => {
     const user = userEvent.setup();
     const defaultGet = vi.mocked(api.get).getMockImplementation();
     vi.mocked(api.get).mockImplementation(async (url: string) =>
       url === "/api/workspaces/ws-1/me"
-        ? { data: { role_name: "Member", permissions: ["docs:read", "docs:write"] } }
+        ? { data: { role_name: "Member", permissions: ["docs:read", "docs:lock"] } }
         : defaultGet!(url),
     );
     vi.mocked(api.post).mockResolvedValue({ data: { ...doc, locked: false } });
@@ -373,6 +373,19 @@ describe("DocDetail", () => {
 
     await user.click(await screen.findByRole("button", { name: "Unlock" }));
     await waitFor(() => expect(api.post).toHaveBeenCalledWith("/api/docs/doc-1/unlock"));
+  });
+
+  it("shows a writer without docs:lock that the doc is locked, with no way to unlock it", async () => {
+    const defaultGet = vi.mocked(api.get).getMockImplementation();
+    vi.mocked(api.get).mockImplementation(async (url: string) =>
+      url === "/api/workspaces/ws-1/me"
+        ? { data: { role_name: "Member", permissions: ["docs:read", "docs:write"] } }
+        : defaultGet!(url),
+    );
+    await renderDetail(new FakeSocket(), { ...doc, locked: true });
+
+    expect(await screen.findByText("Locked")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Unlock" })).not.toBeInTheDocument();
   });
 
   it("shows a reader without docs:write the body read-only, with no edit session the server would refuse", async () => {

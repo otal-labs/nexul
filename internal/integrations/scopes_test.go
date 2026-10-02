@@ -202,6 +202,10 @@ func TestScopeAllows(t *testing.T) {
 		{"a channel is deleted with channels:delete", "DELETE", "/api/chat/conversations/c1", []Scope{Scope("channels:delete")}, true},
 		{"channels:write does not delete one", "DELETE", "/api/chat/conversations/c1", []Scope{Scope("channels:write"), Scope("chat:delete")}, false},
 		{"a DM still takes chat:write", "POST", "/api/chat/dms", []Scope{Scope("chat:write")}, true},
+		{"a doc is locked with docs:lock", "POST", "/api/docs/d1/lock", []Scope{Scope("docs:lock")}, true},
+		{"a doc is unlocked with docs:lock", "POST", "/api/docs/d1/unlock", []Scope{Scope("docs:lock")}, true},
+		{"docs:write no longer locks a doc", "POST", "/api/docs/d1/lock", []Scope{ScopeDocsWrite}, false},
+		{"docs:write no longer unlocks a doc", "POST", "/api/docs/d1/unlock", []Scope{ScopeDocsWrite}, false},
 		{"alias: agent routes to chat", "POST", "/api/agent/conversations/1/interrupt", []Scope{Scope("chat:write")}, true},
 		{"alias: agent denied with its own name", "POST", "/api/agent/conversations/1/interrupt", []Scope{Scope("agent:write")}, false},
 		{"alias: automation-secrets routes to automations", "GET", "/api/automation-secrets", []Scope{Scope("automations:read")}, true},
@@ -237,7 +241,7 @@ func TestCatalog_CoversEveryGrantableScopeOnce(t *testing.T) {
 		seen[sc] = true
 	}
 	assert.Len(t, seen, len(allScopes))
-	assert.Len(t, seen, 85)
+	assert.Len(t, seen, 86)
 }
 
 func TestCatalog_EveryValueParses(t *testing.T) {

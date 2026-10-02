@@ -22,7 +22,7 @@ YAML file.
 
 One vocabulary covers every actor: a permission is `<domain>:<action>`, where
 the action is usually `read`, `write`, or `delete`. Some domains also declare
-a verb: `docs:thread`, `docs:clone`, `plays:run`, `memories:clone`, and `roles:clone`. The
+a verb: `docs:thread`, `docs:clone`, `docs:lock`, `plays:run`, `memories:clone`, and `roles:clone`. The
 full catalog is served at:
 
 ```

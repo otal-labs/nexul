@@ -56,6 +56,14 @@ type TargetReader interface {
 	GetStatus(ctx context.Context, id string) (StatusTarget, error)
 }
 
+// docLockedNote is the trail's and the thread's line for a doc play locking its doc (ADR 0107).
+const docLockedNote = "Locked the doc because the run started; it stays locked after the run ends."
+
+// DocLocker locks a doc play's doc as the run starts, whatever the starter's own bits; true when it was unlocked.
+type DocLocker interface {
+	LockForPlay(ctx context.Context, docID string) (bool, error)
+}
+
 // PlayActor is the provenance a play's ticket move carries: the play's label, the trail, who started it, and how.
 type PlayActor struct {
 	PlayLabel string
@@ -159,6 +167,7 @@ type RunnerConfig struct {
 	Trails   TrailRepo
 	Perm     PermissionGate
 	Targets  TargetReader
+	Docs     DocLocker
 	Projects ProjectLookup
 	Harness  HarnessResolver
 	Memories MemoryReader
@@ -181,6 +190,7 @@ type Runner struct {
 	trails   TrailRepo
 	perm     PermissionGate
 	targets  TargetReader
+	docs     DocLocker
 	projects ProjectLookup
 	harness  HarnessResolver
 	memories MemoryReader
@@ -213,7 +223,7 @@ func NewRunner(cfg RunnerConfig) *Runner {
 		cfg.Live = redact.Live{Publisher: cfg.Live}
 	}
 	return &Runner{
-		plays: cfg.Plays, trails: redactedTrails{cfg.Trails}, perm: cfg.Perm, targets: cfg.Targets, projects: cfg.Projects,
+		plays: cfg.Plays, trails: redactedTrails{cfg.Trails}, perm: cfg.Perm, targets: cfg.Targets, docs: cfg.Docs, projects: cfg.Projects,
 		harness: cfg.Harness, memories: cfg.Memories, threads: redactedThreads{cfg.Threads}, turns: cfg.Turns, tickets: cfg.Tickets,
 		live: cfg.Live, users: cfg.Users, links: cfg.Links, log: cfg.Logger, now: cfg.Now, silence: cfg.SilenceTimeout,
 		runs: map[string]*trailObserver{},
@@ -327,6 +337,9 @@ func (r *Runner) launch(ctx context.Context, play *Play, trail *Trail, tgt targe
 		r.finish(ctx, trail, targetTitle, harness.TurnResult{State: harness.TurnError, LastError: reason}, "", "Run failed: "+reason)
 		return nil, fmt.Errorf("post started message: %w", err)
 	}
+	if trail.TargetType == TargetDoc {
+		r.lockDoc(ctx, trail)
+	}
 	// Copied before the turn starts: from here on the observer's goroutine owns trail.
 	snapshot := *trail
 	r.startTurn(ctx, trail, targetTitle, agent.TurnRequest{
@@ -335,6 +348,23 @@ func (r *Runner) launch(ctx context.Context, play *Play, trail *Trail, tgt targe
 		Target:             &agent.TargetOverride{ComputerID: choice.ComputerID, Provider: choice.Provider, Model: choice.Model, ModelOptions: choice.ModelOptions},
 	}, false)
 	return &snapshot, nil
+}
+
+// lockDoc locks a doc play's doc as the run starts and leaves it locked (ADR 0107); a failed lock is logged, never the run's failure.
+func (r *Runner) lockDoc(ctx context.Context, trail *Trail) {
+	if r.docs == nil {
+		return
+	}
+	locked, err := r.docs.LockForPlay(ctx, trail.TargetID)
+	if err != nil {
+		r.log.Warn("plays: lock doc failed", "trail", trail.ID, "doc", trail.TargetID, "error", err)
+		return
+	}
+	if !locked {
+		return
+	}
+	r.note(ctx, trail, docLockedNote)
+	r.save(ctx, trail)
 }
 
 // Answer resolves a waiting run's question: the answer is posted as the caller's message and handed to the live

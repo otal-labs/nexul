@@ -43,6 +43,7 @@ type runnerFixture struct {
 	trails  *fakeTrailRepo
 	perm    *fakePerm
 	targets *fakeTargets
+	locks   *fakeDocLocks
 	harness *fakeHarnessResolver
 	mems    *fakeMemories
 	threads *fakeThreads
@@ -62,6 +63,7 @@ func newRunnerFixture() *runnerFixture {
 		turns:   newFakeTurns(),
 		mover:   &fakeMover{},
 		live:    &fakeLive{},
+		locks:   &fakeDocLocks{locked: map[string]bool{}},
 		clock:   fixedNow,
 	}
 	f.targets = &fakeTargets{
@@ -88,7 +90,7 @@ func newRunnerFixture() *runnerFixture {
 	f.plays.byID[docPlayID] = &Play{ID: docPlayID, WorkspaceID: workspaceID, Label: "To tickets via AI", Type: TypeDoc, Instructions: "Split the doc.", Enabled: true}
 	f.plays.byID[intPlayID] = &Play{ID: intPlayID, WorkspaceID: workspaceID, Label: "Interview", Type: TypeInterview, Instructions: "Interview them.", Enabled: true}
 	f.runner = NewRunner(RunnerConfig{
-		Plays: f.plays, Trails: f.trails, Perm: f.perm, Targets: f.targets,
+		Plays: f.plays, Trails: f.trails, Perm: f.perm, Targets: f.targets, Docs: f.locks,
 		Projects: &fakeProjects{
 			workspaces: map[string]string{projectID: workspaceID, otherProj: workspaceID, foreignPrj: foreignWS},
 			projects:   map[string]ProjectTarget{projectID: {Name: "Nexul", TestsLocation: "separate"}, otherProj: {Name: "Other"}},
@@ -408,6 +410,48 @@ func TestRun_DocPlay_UsesDocThread(t *testing.T) {
 	assert.Equal(t, "conv-doc-"+docID, trail.ConversationID)
 	assert.Equal(t, ViaMCP, trail.Via)
 	assert.Equal(t, TargetDoc, trail.TargetType)
+}
+
+// A doc play locks its doc as it starts and never unlocks it; the starter needs no docs:lock (the fixture grants none).
+func TestRun_DocPlay_LocksTheDocAndLeavesItLocked(t *testing.T) {
+	tests := []struct {
+		name      string
+		arrange   func(f *runnerFixture)
+		wantNotes []string
+		wantLock  bool
+	}{
+		{"an unlocked doc is locked", nil, []string{docLockedNote}, true},
+		{"an already locked doc is left as it is", func(f *runnerFixture) { f.locks.locked[docID] = true }, []string{}, true},
+		{"a failed lock never fails the run", func(f *runnerFixture) { f.locks.err = errors.New("db down") }, []string{}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := newRunnerFixture()
+			if tt.arrange != nil {
+				tt.arrange(f)
+			}
+			trail, obs := driveTurn(t, f, RunInput{PlayID: docPlayID, TargetType: TargetDoc, TargetID: docID})
+			assert.Equal(t, tt.wantNotes, f.threads.noteBodies())
+			stored, err := f.trails.GetTrail(context.Background(), trail.ID)
+			require.NoError(t, err)
+			assert.Equal(t, len(tt.wantNotes), len(stored.Activity), "the trail carries the same note as the thread")
+
+			obs.OnFinished(harness.TurnResult{State: harness.TurnDone}, "reply-1")
+
+			locked, calls := f.locks.state(docID)
+			assert.Equal(t, tt.wantLock, locked, "still locked after the run ends")
+			assert.Equal(t, 1, calls, "locked once, as the run starts")
+		})
+	}
+}
+
+func TestRun_TicketPlay_LocksNothing(t *testing.T) {
+	f := newRunnerFixture()
+	_, obs := driveTurn(t, f, ticketRun())
+	obs.OnFinished(harness.TurnResult{State: harness.TurnDone}, "")
+
+	_, calls := f.locks.state(docID)
+	assert.Zero(t, calls)
 }
 
 func TestRun_InterviewPlay_PostsInTheInterviewThreadWithTheProjectsAnswers(t *testing.T) {

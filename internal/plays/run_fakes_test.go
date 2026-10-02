@@ -194,6 +194,34 @@ func (f *fakeTargets) GetStatus(_ context.Context, id string) (StatusTarget, err
 	return s, nil
 }
 
+// fakeDocLocks is the DocLocker: which docs are locked, how often a lock was asked for, and an error to fail with.
+type fakeDocLocks struct {
+	mu     sync.Mutex
+	locked map[string]bool
+	calls  int
+	err    error
+}
+
+func (f *fakeDocLocks) LockForPlay(_ context.Context, docID string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.calls++
+	if f.err != nil {
+		return false, f.err
+	}
+	if f.locked[docID] {
+		return false, nil
+	}
+	f.locked[docID] = true
+	return true, nil
+}
+
+func (f *fakeDocLocks) state(docID string) (locked bool, calls int) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.locked[docID], f.calls
+}
+
 func (f *fakeTargets) setTicketStage(id string, stage Stage) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

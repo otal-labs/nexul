@@ -10,7 +10,7 @@ import (
 
 func TestCatalog_GridShape(t *testing.T) {
 	catalog := Catalog()
-	require.Len(t, catalog, 85)
+	require.Len(t, catalog, 86)
 	assert.Equal(t, Info{Value: "docs:read", Label: "Read docs", Domain: "docs", Action: "read", Area: AreaProject}, catalog[0])
 	assert.Equal(t, Info{Value: "docs:write", Label: "Create and update docs", Domain: "docs", Action: "write", Area: AreaProject}, catalog[1])
 	assert.Equal(t, Info{Value: "docs:delete", Label: "Delete docs", Domain: "docs", Action: "delete", Area: AreaProject}, catalog[2])
@@ -85,6 +85,7 @@ func TestCatalog_DomainDeclaredVerbs(t *testing.T) {
 		{MemoriesClone, "Clone memories to another project", "memories", "clone"},
 		{DocsThread, "See doc threads", "docs", "thread"},
 		{DocsClone, "Clone docs into another project", "docs", "clone"},
+		{DocsLock, "Lock and unlock docs", "docs", "lock"},
 		{StacksLogs, "Read container logs", "stacks", "logs"},
 		{RolesClone, "Clone roles to another workspace", "roles", "clone"},
 		{WorkspacesCreate, "Create workspaces", "workspaces", "create"},
@@ -119,6 +120,8 @@ func TestParseAction(t *testing.T) {
 		{"memories clone", "memories:clone", MemoriesClone, true},
 		{"roles clone", "roles:clone", RolesClone, true},
 		{"docs thread", "docs:thread", DocsThread, true},
+		{"docs lock", "docs:lock", DocsLock, true},
+		{"a verb only docs declared", "tickets:lock", "", false},
 		{"stacks logs", "stacks:logs", StacksLogs, true},
 		{"a verb only stacks declared", "deploys:logs", "", false},
 		{"channels write", "channels:write", ChannelsWrite, true},
@@ -138,7 +141,7 @@ func TestParseAction(t *testing.T) {
 
 func TestSet_HasWithWithout(t *testing.T) {
 	t.Run("creator grant covers docs and sharing, nothing workspace-wide", func(t *testing.T) {
-		for _, a := range []Action{DocsRead, DocsWrite, DocsDelete, PermissionsWrite} {
+		for _, a := range []Action{DocsRead, DocsWrite, DocsDelete, DocsLock, PermissionsWrite} {
 			assert.True(t, CreatorGrant.Has(a))
 		}
 		assert.False(t, CreatorGrant.Has(MembersWrite))

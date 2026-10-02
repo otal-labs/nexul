@@ -66,6 +66,14 @@ A bug filed with its origin unknown is run with that said plainly. A play on a
 blocked ticket asks "are you sure?" before it runs, and the Agent is told each
 blocker and whether it is done.
 
+A doc play locks its doc as the run starts, so the doc's title and body
+refuse edits from people and agents alike, and leaves it locked when the run
+ends. Starting the play needs no `docs:lock`; someone holding it unlocks the
+doc when it should change again. A doc that was already locked stays as it
+was. The trail and the doc's thread say the run locked it. A custom doc play
+meant to edit its own doc is refused by that lock; the built-in **To tickets
+via AI** only reads its doc.
+
 Each press creates a persisted **Trail**. It records the starter, target,
 selected memories, instructions, resolved Harness choice, structured activity,
 the Agent reply, and the outcome. The trail is visible from the target and its

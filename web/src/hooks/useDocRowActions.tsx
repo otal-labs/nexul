@@ -20,6 +20,7 @@ export const useDocRowActions = (doc: DocListItem, selected: boolean) => {
   const { pinnedIds, toggle } = useDocPins();
   const canWrite = useHasPermission("docs:write");
   const canClone = useHasPermission("docs:clone");
+  const canLock = useHasPermission("docs:lock");
   const canDelete = useHasPermission("docs:delete");
   const { open: openForm } = useFormDialog();
   const { open: confirm } = useConfirmationDialog();
@@ -54,7 +55,7 @@ export const useDocRowActions = (doc: DocListItem, selected: boolean) => {
 
   return {
     pin: { pinned: pinnedIds.includes(doc.id), onToggle: () => toggle(doc.id) },
-    lock: canWrite ? { locked: doc.locked, onToggle: () => setLocked.mutate({ id: doc.id, locked: !doc.locked }) } : undefined,
+    lock: canLock ? { locked: doc.locked, onToggle: () => setLocked.mutate({ id: doc.id, locked: !doc.locked }) } : undefined,
     moveTo:
       canWrite && folders && folders.length > 1
         ? { label: "Move to folder", options: folders, currentId: doc.folder_id, onMove: (folderId: string) => moveDoc.mutate({ id: doc.id, folderId }) }

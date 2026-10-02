@@ -60,7 +60,7 @@ type docUpdateIn struct {
 	Title    *string `json:"title,omitempty" jsonschema:"New title. Omit to keep the current one."`
 	Body     *string `json:"body,omitempty" jsonschema:"New body as markdown, replacing the whole body. Omit to keep the current body."`
 	Archived *bool   `json:"archived,omitempty" jsonschema:"true archives the doc (hidden from search), false restores it. Omit to leave it as is."`
-	Locked   *bool   `json:"locked,omitempty" jsonschema:"true locks the doc read-only so its title and body refuse edits, false unlocks it. Omit to leave it as is."`
+	Locked   *bool   `json:"locked,omitempty" jsonschema:"true locks the doc read-only so its title and body refuse edits, false unlocks it; either needs docs:lock. Omit to leave it as is."`
 	FolderID *string `json:"folder_id,omitempty" jsonschema:"Moves the doc to this folder of its own project, from project_get's doc_folders; every doc lives in exactly one folder, and a locked doc moves too. Omit to leave it where it is."`
 	Watch    *bool   `json:"watch,omitempty" jsonschema:"true makes you a watcher of the doc, so its edits reach your notifications; false stops that, and your own later edits do not start it again. Needs only read access. Omit to leave it as is."`
 }
@@ -174,7 +174,8 @@ func docUpdateTool(s *Service) mcptool.Tool {
 		"Changes a doc's title, body, folder, archived, or locked state, or whether you watch it; only the fields you send change. "+
 			"folder_id moves the doc to another folder of its project, one of the folders project_get lists. "+
 			"A new title or body saves a new version, and archived true hides the doc from search until archived false restores it. "+
-			"A locked doc refuses title and body changes until locked false, which you may send with the edit to unlock first. "+
+			"A locked doc refuses title and body changes until locked false, which you may send with the edit to unlock first; "+
+			"locking and unlocking need docs:lock, and a doc play locks its doc when its run starts. "+
 			"A title or body edit makes you a watcher, notified of the doc's later edits, unless you stopped watching it; watch true or false starts or stops that for you alone. "+
 			"Read the doc with doc_get first, because body replaces the whole body. "+
 			"Returns the doc as it now stands.",
