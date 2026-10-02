@@ -143,7 +143,7 @@ func TestRunHandler_Active(t *testing.T) {
 	var tr Trail
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &tr))
 
-	rec = do(t, h, http.MethodGet, "/api/plays/runs/active?ticket_ids=t-1,t-2,", "", starter)
+	rec = do(t, h, http.MethodGet, "/api/plays/runs/active?target_type=ticket&target_ids=t-1,t-2,", "", starter)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	var body struct {
 		Active map[string]string `json:"active"`
@@ -151,13 +151,19 @@ func TestRunHandler_Active(t *testing.T) {
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
 	assert.Equal(t, map[string]string{"t-1": tr.ID}, body.Active)
 
-	rec = do(t, h, http.MethodGet, "/api/plays/runs/active?ticket_ids=t-1", "", "stranger")
+	rec = do(t, h, http.MethodGet, "/api/plays/runs/active?target_type=ticket&target_ids=t-1", "", "stranger")
 	require.Equal(t, http.StatusOK, rec.Code)
 	assert.JSONEq(t, `{"active":{}}`, rec.Body.String(), "a caller without plays:read sees no trail rather than an error")
 
-	rec = do(t, h, http.MethodGet, "/api/plays/runs/active", "", starter)
+	rec = do(t, h, http.MethodGet, "/api/plays/runs/active?target_type=ticket", "", starter)
 	require.Equal(t, http.StatusOK, rec.Code)
 	assert.JSONEq(t, `{"active":{}}`, rec.Body.String())
+
+	rec = do(t, h, http.MethodGet, "/api/plays/runs/active?target_type=doc&target_ids=t-1", "", starter)
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.JSONEq(t, `{"active":{}}`, rec.Body.String(), "a ticket's run is not reported for a doc with the same id")
+
+	assert.Equal(t, http.StatusBadRequest, do(t, h, http.MethodGet, "/api/plays/runs/active?target_ids=t-1", "", starter).Code)
 }
 
 func TestRunHandler_Answer(t *testing.T) {

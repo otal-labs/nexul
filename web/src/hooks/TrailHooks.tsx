@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
+import { useFetchDocsByProject } from "@/hooks/DocHooks";
 import { useFetchTicketsByProject } from "@/hooks/TicketHooks";
 import { conversationPlayTarget, type Conversation } from "@/models/Chat";
 import type { PlayType } from "@/models/Play";
@@ -39,17 +40,24 @@ export const useFetchLatestChoices = (playId: string, projectId: string) =>
     enabled: playId !== "" && projectId !== "",
   });
 
-// Batched per project like the chat thread indicator: every TicketCard shares the key, so a board fires one request.
-export const useFetchActiveTrails = (projectId: string | undefined) => {
-  const { data: tickets } = useFetchTicketsByProject(projectId);
-  const ids = tickets?.map((t) => t.id) ?? [];
-  return useQuery({
-    queryKey: [getActiveTrailsKey, projectId, ids],
+// One request per project and target type: every row of a board or list shares the key.
+const useFetchActiveTargets = (targetType: PlayType, projectId: string | undefined, ids: string[]) =>
+  useQuery({
+    queryKey: [getActiveTrailsKey, targetType, projectId, ids],
     queryFn: async () =>
-      (await api.get<{ active: Record<string, string> }>("/api/plays/runs/active", { params: { ticket_ids: ids.join(",") } })).data
-        .active ?? {},
+      (await api.get<{ active: Record<string, string> }>("/api/plays/runs/active", { params: { target_type: targetType, target_ids: ids.join(",") } }))
+        .data.active ?? {},
     enabled: !!projectId && ids.length > 0,
   });
+
+export const useFetchActiveTrails = (projectId: string | undefined) => {
+  const { data: tickets } = useFetchTicketsByProject(projectId);
+  return useFetchActiveTargets("ticket", projectId, tickets?.map((t) => t.id) ?? []);
+};
+
+export const useFetchActiveDocTrails = (projectId: string) => {
+  const { data: docs } = useFetchDocsByProject(projectId);
+  return useFetchActiveTargets("doc", projectId, docs?.map((d) => d.id) ?? []);
 };
 
 // Errors render inside the run dialog, so no toast here.
@@ -178,13 +186,20 @@ export const useActiveTrail = (targetType: PlayType, targetId: string): Trail | 
   return trails?.find((t) => isTrailActive(frames[t.id]?.state ?? t.state));
 };
 
-// The board card's question: joins the on-load batch answer with live frames so a start or end flips it without a refetch.
-export const useIsTicketRunActive = (projectId: string, ticketId: string): boolean => {
-  const { data: active } = useFetchActiveTrails(projectId);
-  const knownTrailId = active?.[ticketId];
-  const liveTrailId = usePlayRunStore((s) => s.activeByTarget[targetKey("ticket", ticketId)]);
+// Joins the on-load batch answer with live frames so a start or end flips it without a refetch.
+const useRunActive = (targetType: PlayType, targetId: string, active: Record<string, string> | undefined): boolean => {
+  const knownTrailId = active?.[targetId];
+  const liveTrailId = usePlayRunStore((s) => s.activeByTarget[targetKey(targetType, targetId)]);
   const knownFrameState = usePlayRunStore((s) => (knownTrailId ? s.frames[knownTrailId]?.state : undefined));
   if (liveTrailId) return true;
   if (knownFrameState) return isTrailActive(knownFrameState);
   return knownTrailId !== undefined;
 };
+
+// The board card's question.
+export const useIsTicketRunActive = (projectId: string, ticketId: string): boolean =>
+  useRunActive("ticket", ticketId, useFetchActiveTrails(projectId).data);
+
+// The doc list row's question.
+export const useIsDocRunActive = (projectId: string, docId: string): boolean =>
+  useRunActive("doc", docId, useFetchActiveDocTrails(projectId).data);
