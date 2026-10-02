@@ -1,7 +1,7 @@
 # 03: How an agent leaves a note over MCP
 
 Type: grilling
-Status: open
+Status: resolved
 Blocked by: 02
 
 ## Question
@@ -20,3 +20,25 @@ starting an agent turn. What is that call?
   note too.
 
 Technical: arrives as a decided answer for a yes or no.
+
+## Answer
+
+- `message_post` gains an optional file (name and markdown) that only a
+  ticket's thread accepts; the name is forced to end in `.md`. No new tool:
+  the server is at 104 against a budget of 105.
+- A post with a file is a note: it posts as the Agent on behalf of the
+  caller ("Agent · via <person>") and never starts a turn, because turns
+  start only for user-authored messages. A post without a file keeps
+  posting as the caller, so `@Agent` over MCP still works.
+- Leaving a note needs `tickets:write` on the ticket, checked in the
+  use-case so the gateway and MCP agree; Access.tsx gets the line.
+- Agents read notes through `message_list` on the ticket's thread, which
+  returns a note's markdown with its message. Today a non-image file in a
+  turn becomes "[attachment omitted]" and follow-up prompts drop
+  Agent-authored messages, so both paths need to carry note text.
+- The HTTP gateway takes the same file field on its post-message route.
+- Build-time traps: the code already calls system messages "notes"
+  (`PostSystemMessage`, `byNoteBody`, `passedNote`), so rename one side;
+  `clearStream` in `useLiveEvents.tsx` and `answeredAfter` in
+  `MessageList.tsx` treat any Agent message as a turn's end and must skip
+  notes.

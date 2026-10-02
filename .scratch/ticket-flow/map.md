@@ -7,9 +7,9 @@ agent adds context as a note in the thread instead of growing the body.
 ## Destination
 
 Every decision locked for both tracks, ready to slice into build tickets:
-the thread as a left column on the ticket page, and notes (an Agent message
-in the ticket's thread carrying a markdown file attached to the ticket,
-opened, edited, and saved in a dialog). Planning only; the build is its own
+the thread as a resizable left pane on the ticket page, and notes (an Agent
+message in the ticket's thread carrying a markdown file, opened and edited
+live in a dialog). Planning only; the build is its own
 step after this map.
 
 ## Notes
@@ -17,8 +17,7 @@ step after this map.
 - Decided while charting: one map for both tracks; the thread sits in a left
   column beside the body on wide screens, the way a doc's "On this page" list
   does, and drops back under the body when the screen is narrower; a note's
-  file is `.md` and belongs to the ticket, so it also lists under the
-  ticket's attachments; the body is the ticket's spec and changes only when a
+  file is `.md`; the body is the ticket's spec and changes only when a
   person asks, everything an agent adds afterwards is a note, and an agent
   may suggest the person edit the body when the spec itself looks wrong.
 - Technical tickets arrive as a decided answer for a yes or no; look tickets
@@ -44,6 +43,22 @@ step after this map.
   (comments and activity on tickets, needs-triage).
 
 ## Decisions so far
+
+- [The thread column on the ticket page](issues/01-thread-column-look.md):
+  full width, the thread pane flush to the sidebar with a drag-resizable
+  width and the composer at its foot; the rail flush right.
+- [Where a note's file lives and how its message points at it](issues/02-note-file-and-message-link.md):
+  the file belongs to the thread, linked by the message's attachment field;
+  message and file are deleted together and never list under the ticket's
+  attachments.
+- [How an agent leaves a note over MCP](issues/03-agent-leaves-a-note-over-mcp.md):
+  a file option on `message_post`, posted as the Agent and never starting a
+  turn, needing `tickets:write`; agents read notes through `message_list`.
+- [Editing a note's file](issues/04-editing-a-note-file.md): live like a
+  doc, by anyone who may write the ticket, agents included; a save replaces
+  the file with no history; only notes are editable.
+- [What agents are told about the body and notes](issues/06-what-agents-are-told.md):
+  the tool descriptions and one line in every agent turn on a ticket.
 
 ## Not yet specified
 
