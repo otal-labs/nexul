@@ -575,8 +575,8 @@ func TestRun_Memories_NamedToReadFirstInOrder_NoBodyHoweverLarge(t *testing.T) {
 	final := <-f.trails.terminal
 
 	assert.Equal(t, TrailDone, final.State, "a selection the inlining ceilings refused now runs")
-	assert.Equal(t, []string{alwaysMem, "m-int", "m-a", "m-b"}, trail.SelectedMemoryIDs, "the trail records the selection in the order the agent reads it")
-	block := readFirst + "\n- Working here (id m-always)\n- Interview (id m-int): the project's rules\n" +
+	assert.Equal(t, []string{"m-int", alwaysMem, "m-a", "m-b"}, trail.SelectedMemoryIDs, "the trail records the selection in the order the agent reads it")
+	block := readFirst + "\n- Interview (id m-int): the project's rules\n- Working here (id m-always)\n" +
 		"- Deploy quirks (id m-a): use this when deploying\n- Release notes (id m-b): use this when releasing"
 	for name, prompt := range map[string]string{"full": got.Full, "incremental": got.Incremental} {
 		assert.Contains(t, prompt, block, name)

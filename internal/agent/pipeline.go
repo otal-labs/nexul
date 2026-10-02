@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -271,6 +272,8 @@ type TurnRequest struct {
 	RequestBody    string
 	// ExtraRequestBlocks are appended inside the request block, in order, after the request body.
 	ExtraRequestBlocks []string
+	// FreshSessionBlocks follow ExtraRequestBlocks in the full prompt only: what a resumed run's lost session needs again.
+	FreshSessionBlocks []string
 	// MemoriesByReference means the caller names the turn's memories for the agent to read, so none is inlined (a play run, ADR 0105).
 	MemoriesByReference bool
 	// Target is optional; nil means resolve the caller's own project link or pairing defaults as usual.
@@ -435,7 +438,9 @@ func (s *Service) buildTurnPrompts(ctx context.Context, conv Conversation, ticke
 		ExtraRequestBlocks: prependBlock(alwaysIncludedBlock, req.ExtraRequestBlocks),
 	}
 	attachments := append(append([]harness.Attachment{}, memoryAttachments...), targetAttachments...)
-	return harness.TurnPrompts{Full: ComposePrompt(in), Incremental: ComposeIncrementalPrompt(in), Attachments: attachments}, nil
+	full := in
+	full.ExtraRequestBlocks = append(slices.Clone(in.ExtraRequestBlocks), req.FreshSessionBlocks...)
+	return harness.TurnPrompts{Full: ComposePrompt(full), Incremental: ComposeIncrementalPrompt(in), Attachments: attachments}, nil
 }
 
 // extractTargetAttachments rewrites the ticket or doc body's embedded attachment references in place (they

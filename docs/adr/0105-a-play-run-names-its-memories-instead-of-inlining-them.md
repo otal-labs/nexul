@@ -9,10 +9,11 @@ ceilings, a run over them was refused before it started, and images in a memory 
 The owner called that a hazard when making a prompt: a picked memory could stop a run, and nobody can see from the
 dialog how big a memory is.
 
-Decision: a play run's prompt carries no memory body. It names each memory, always-included ones first, then the
-interview memory, then the picked ones, with its id, name, and when-to-use line, and tells the agent to read each
-with `memory_get` before doing anything else and to follow them as standing rules for the run. A memory the agent
-cannot read is named in its first message and skipped, a signal rather than a stop. The selection, its check
+Decision: a play run's prompt carries no memory body. It names each memory, the interview memory first as in
+ADR 0065, then the other always-included ones, then the picked ones, with its id, name, and when-to-use line, and
+tells the agent to read each with `memory_get` before doing anything else and to follow them as standing rules for
+the run. A memory the agent cannot read is named in its first message and skipped, a signal rather than a stop. An
+answer that resumes a run on a session the harness has lost names them again from the trail's recorded selection. The selection, its check
 against the project, and the trail's record of it are unchanged; the size ceilings and the refusal are gone for
 plays.
 

@@ -94,7 +94,9 @@ func TestAnswer_LiveTurn_ContinuesTheSameTrail(t *testing.T) {
 
 func TestAnswer_TurnGone_ResumesAFreshTurnOnTheSameTrail(t *testing.T) {
 	f := heldFixture(t)
-	trail, obs := driveTurn(t, f, ticketRun())
+	in := ticketRun()
+	in.MemoryIDs = []string{pickedMem}
+	trail, obs := driveTurn(t, f, in)
 	obs.OnStarted("sess-1")
 	obs.OnQuestion(askedQuestion())
 	obs.OnFinished(harness.TurnResult{State: harness.TurnDone}, "")
@@ -109,6 +111,8 @@ func TestAnswer_TurnGone_ResumesAFreshTurnOnTheSameTrail(t *testing.T) {
 	assert.Equal(t, starter, req.ViaUserID)
 	assert.Empty(t, req.ExtraRequestBlocks)
 	assert.True(t, req.MemoriesByReference, "a resumed play turn inlines no memory either")
+	assert.Equal(t, []string{readFirst + "\n- Working here (id m-always)\n- Deploy quirks (id m-pick): use this when deploying"},
+		req.FreshSessionBlocks, "a session the harness lost hears the recorded memories again")
 	assert.Len(t, f.trails.all(), 1, "same trail")
 	assert.Empty(t, f.turns.answered, "nothing to answer on a turn that is gone")
 

@@ -14,6 +14,7 @@ import (
 	"github.com/otal-labs/nexul/internal/harness"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/redact"
@@ -381,7 +382,8 @@ func (r *Runner) Answer(ctx context.Context, trailID string, answer harness.Ques
 	snapshot := *trail
 	r.startTurn(ctx, trail, tgt.title, agent.TurnRequest{
 		ConversationID: trail.ConversationID, ViaUserID: trail.StarterID, RequestBody: body, MemoriesByReference: true,
-		Target: &agent.TargetOverride{ComputerID: trail.ComputerID, Provider: trail.Provider, Model: trail.Model, ModelOptions: trail.ModelOptions},
+		FreshSessionBlocks: r.recordedMemoriesBlock(ctx, trail),
+		Target:             &agent.TargetOverride{ComputerID: trail.ComputerID, Provider: trail.Provider, Model: trail.Model, ModelOptions: trail.ModelOptions},
 	}, true)
 	return &snapshot, nil
 }
@@ -482,31 +484,56 @@ const memoriesReadFirst = "Memories to read first: before doing anything else, r
 	"message and carry on without it."
 
 // memoriesToRead names the run's memories for the agent to read itself, refusing an id outside the project: the
-// always-included ones, then the interview memory, then the rest of the selection. The returned ids are in that order.
+// interview memory, then the other always-included ones, then the rest of the selection. The ids come back in that order.
 func (r *Runner) memoriesToRead(ctx context.Context, projectID string, selected []string) (string, []string, error) {
 	all, err := r.memories.ListForProject(ctx, projectID)
 	if err != nil {
 		return "", nil, fmt.Errorf("list memories for project %s: %w", projectID, err)
 	}
+	block, ids, missing := readFirstBlock(all, selected)
+	if len(missing) > 0 {
+		return "", nil, fmt.Errorf("%w: memory %s is not in this project", apperrs.ErrInvalid, missing[0])
+	}
+	return block, ids, nil
+}
+
+// recordedMemoriesBlock renders a trail's recorded selection again, read as its starter as the turn runs; a memory deleted
+// since is left out, and a failed read leaves the block out, so the answer still goes through.
+func (r *Runner) recordedMemoriesBlock(ctx context.Context, trail *Trail) []string {
+	all, err := r.memories.ListForProject(identity.WithActor(ctx, identity.Actor{ID: trail.StarterID}), trail.ProjectID)
+	if err != nil {
+		r.log.Warn("plays: answer could not list the run's memories", "trail", trail.ID, "error", err)
+		return nil
+	}
+	block, _, _ := readFirstBlock(all, trail.SelectedMemoryIDs)
+	if block == "" {
+		return nil
+	}
+	return []string{block}
+}
+
+// readFirstBlock renders the memories block from the project's memories and a selection, and the selected ids it
+// could not find there.
+func readFirstBlock(all []Memory, selected []string) (string, []string, []string) {
 	byID := make(map[string]Memory, len(all))
+	var ordered []Memory
 	for _, m := range all {
 		byID[m.ID] = m
+		if m.Interview {
+			ordered = append(ordered, m)
+		}
 	}
-	var ordered []Memory
 	for _, m := range all {
 		if m.AlwaysIncluded && !m.Interview {
 			ordered = append(ordered, m)
 		}
 	}
-	for _, m := range all {
-		if m.Interview {
-			ordered = append(ordered, m)
-		}
-	}
+	var missing []string
 	for _, id := range selected {
 		m, ok := byID[id]
 		if !ok {
-			return "", nil, fmt.Errorf("%w: memory %s is not in this project", apperrs.ErrInvalid, id)
+			missing = append(missing, id)
+			continue
 		}
 		if !m.AlwaysIncluded && !m.Interview {
 			ordered = append(ordered, m)
@@ -514,7 +541,7 @@ func (r *Runner) memoriesToRead(ctx context.Context, projectID string, selected 
 	}
 	ids := make([]string, 0, len(ordered))
 	if len(ordered) == 0 {
-		return "", ids, nil
+		return "", ids, missing
 	}
 	var b strings.Builder
 	b.WriteString(memoriesReadFirst)
@@ -525,7 +552,7 @@ func (r *Runner) memoriesToRead(ctx context.Context, projectID string, selected 
 			b.WriteString(": " + m.WhenToUse)
 		}
 	}
-	return b.String(), ids, nil
+	return b.String(), ids, missing
 }
 
 func (r *Runner) openThread(ctx context.Context, workspaceID string, targetType TargetType, targetID, starter string) (string, error) {

@@ -165,3 +165,14 @@ func TestSplitAlwaysIncluded_InterviewLeads_SoATrimNeverDropsIt(t *testing.T) {
 	block := InlineMemoriesTrimmed(always, InlineLimits{PerMemory: MaxMemoryChars, PerRun: MaxMemoryChars}, slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)))
 	assert.Contains(t, block, "### Interview\nGo only.")
 }
+
+func TestRunTurn_FreshSessionBlocks_InTheFullPromptOnly(t *testing.T) {
+	svc, got := captureFullAndIncremental(t, Config{Conversations: newFakeConversations(Conversation{ID: "conv-1", ThreadID: "thread-reused"})})
+
+	svc.RunTurn(context.Background(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "Answered: Yes",
+		ExtraRequestBlocks: []string{"every prompt"}, FreshSessionBlocks: []string{"Memories to read first: m-1"}})
+
+	assert.Contains(t, got.Full, "Answered: Yes\n\nevery prompt\n\nMemories to read first: m-1")
+	assert.Contains(t, got.Incremental, "every prompt")
+	assert.NotContains(t, got.Incremental, "Memories to read first", "a live session already read them")
+}
