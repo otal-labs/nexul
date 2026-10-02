@@ -124,7 +124,7 @@ func (s *Service) List(ctx context.Context, owner Owner) ([]*Attachment, error) 
 	return as, nil
 }
 
-// Delete leaves any body still referencing this attachment with a dangling image.
+// Delete leaves bodies referencing it with a dangling image; a conversation's file goes only by its uploader's hand.
 func (s *Service) Delete(ctx context.Context, id string) error {
 	if strings.TrimSpace(id) == "" {
 		return fmt.Errorf("%w: id is required", apperrs.ErrInvalid)
@@ -133,8 +133,12 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 	if err != nil {
 		return fmt.Errorf("delete attachment %s: %w", id, err)
 	}
-	if _, err := s.requireOwner(ctx, a.Owner(), permissions.DocsWrite, permissions.MemoriesWrite); err != nil {
+	actor, err := s.requireOwner(ctx, a.Owner(), permissions.DocsWrite, permissions.MemoriesWrite)
+	if err != nil {
 		return err
+	}
+	if a.ConversationID != "" && a.UploadedBy != actor.ID {
+		return fmt.Errorf("%w: only the uploader may delete this file", apperrs.ErrForbidden)
 	}
 	if err := s.repo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("delete attachment %s: %w", id, err)
