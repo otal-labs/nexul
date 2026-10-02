@@ -127,13 +127,19 @@ func (h *RunHandler) list(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, list)
 }
 
-// active answers the board's one batched question per project: which of these tickets has a run going.
+// active answers the one batched question per project: which of these targets has a run going. ticket_ids alone
+// stays accepted as target_type=ticket (ADR 0082: the HTTP API only grows).
 func (h *RunHandler) active(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	targetType, raw := TargetType(q.Get("target_type")), q.Get("target_ids")
+	if targetType == "" && q.Has("ticket_ids") {
+		targetType, raw = TargetTicket, q.Get("ticket_ids")
+	}
 	var ids []string
-	if raw := r.URL.Query().Get("ticket_ids"); raw != "" {
+	if raw != "" {
 		ids = strings.Split(raw, ",")
 	}
-	active, err := h.runner.ActiveTrails(r.Context(), TargetTicket, ids)
+	active, err := h.runner.ActiveTrails(r.Context(), targetType, ids)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

@@ -189,7 +189,7 @@ describe("useFetchActiveTrails / useIsTicketRunActive", () => {
     mockBoard({ "t-1": "tr-1" });
     const { result } = renderHook(() => useFetchActiveTrails("p-1"), { wrapper });
     await waitFor(() => expect(result.current.data).toEqual({ "t-1": "tr-1" }));
-    expect(api.get).toHaveBeenCalledWith("/api/plays/runs/active", { params: { ticket_ids: "t-1,t-2" } });
+    expect(api.get).toHaveBeenCalledWith("/api/plays/runs/active", { params: { target_type: "ticket", target_ids: "t-1,t-2" } });
   });
 
   it("reads the on-load answer, then follows live frames without a refetch", async () => {
