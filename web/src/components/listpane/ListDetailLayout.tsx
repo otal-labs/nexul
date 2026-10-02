@@ -29,7 +29,8 @@ export const ListDetailLayout = ({ list, detail, hasSelection, placeholder }: Li
         {list}
         <ListPaneResizeHandle />
       </div>
-      <div className={cn("min-w-0 flex-1 overflow-y-auto lg:block", hasSelection ? "block" : "hidden")}>
+      {/* relative keeps absolutely positioned content (sr-only file inputs) inside the scroll clip instead of stretching the page */}
+      <div className={cn("relative min-w-0 flex-1 overflow-y-auto lg:block", hasSelection ? "block" : "hidden")}>
         {hasSelection && detail}
         {!hasSelection && (
           <div className="flex h-full items-center justify-center">
