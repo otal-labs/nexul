@@ -6,6 +6,7 @@ import { LazyVoiceCallSection } from "@/components/chat/LazyVoiceCallSection";
 import { MessageList } from "@/components/chat/MessageList";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
+import { cn } from "@/lib/utils";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { usePersonLookup } from "@/hooks/PeopleHooks";
 import {
@@ -24,11 +25,12 @@ interface ConversationThreadProps {
   conversation: Conversation;
   /** Default true; a ticket page hides it since the ticket's own header names the thread. */
   showHeader?: boolean;
+  composerTop?: boolean;
 }
 
 const CONVERSATION_ICONS: Partial<Record<Conversation["kind"], LucideIcon>> = { voice_channel: Volume2, dm: Users };
 
-export const ConversationThread = ({ workspaceId, conversation, showHeader = true }: ConversationThreadProps) => {
+export const ConversationThread = ({ workspaceId, conversation, showHeader = true, composerTop = false }: ConversationThreadProps) => {
   const { data: me } = useFetchMe();
   const { data: messages, error, isPending } = useFetchMessages(conversation.id);
   const resolvePerson = usePersonLookup(workspaceId);
@@ -86,14 +88,16 @@ export const ConversationThread = ({ workspaceId, conversation, showHeader = tru
           onInterruptAgent={() => void interruptAgent.mutateAsync()}
         />
       )}
-      <ChatComposer
-        workspaceId={workspaceId}
-        conversationId={conversation.id}
-        placeholder={`Message ${label}…`}
-        onSend={async (body) => {
-          await postMessage.mutateAsync(body);
-        }}
-      />
+      <div className={cn(composerTop && "order-first [&>div]:border-t-0 [&>div]:border-b")}>
+        <ChatComposer
+          workspaceId={workspaceId}
+          conversationId={conversation.id}
+          placeholder={`Message ${label}…`}
+          onSend={async (body) => {
+            await postMessage.mutateAsync(body);
+          }}
+        />
+      </div>
     </div>
   );
 };

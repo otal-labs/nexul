@@ -1,11 +1,12 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { MessageSquare } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { cn } from "@/lib/utils";
 import { ConversationThread } from "@/components/chat/ConversationThread";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
+import { ThreadStartPrompt } from "@/components/chat/ThreadStartPrompt";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { Button } from "@/components/ui/button";
+import { STACKED, type ThreadVariant } from "@/components/ticket/threadVariants";
 import {
   getChatThreadIndicatorsKey,
   getChatTicketThreadStatusKey,
@@ -16,10 +17,11 @@ import {
 interface TicketThreadSectionProps {
   workspaceId: string;
   ticketId: string;
+  variant?: ThreadVariant;
 }
 
 // "starting" is local UI state for the one-shot "Start chat" click; an existing thread loads on its own.
-export const TicketThreadSection = ({ workspaceId, ticketId }: TicketThreadSectionProps) => {
+export const TicketThreadSection = ({ workspaceId, ticketId, variant = STACKED }: TicketThreadSectionProps) => {
   const [starting, setStarting] = useState(false);
   const client = useQueryClient();
   const { data: status, isPending: statusPending } = useFetchTicketThreadStatus(ticketId);
@@ -34,20 +36,22 @@ export const TicketThreadSection = ({ workspaceId, ticketId }: TicketThreadSecti
   }, [conversation, client, ticketId]);
 
   return (
-    <div className="space-y-3 border-t border-border pt-6">
-      <h2 className="text-sm font-semibold tracking-tight">Thread</h2>
+    <div className={variant.frame}>
+      <h2 className="shrink-0 text-sm font-semibold tracking-tight">Thread</h2>
       {statusPending && <LoadingDisplay label="Loading thread…" />}
       {!statusPending && !shouldLoad && (
-        <Button variant="outline" size="sm" onClick={() => setStarting(true)}>
-          <MessageSquare className="size-4" aria-hidden />
-          Start chat
-        </Button>
+        <ThreadStartPrompt empty={variant.empty} onStart={() => setStarting(true)} />
       )}
       {shouldLoad && isPending && <LoadingDisplay label="Loading thread…" />}
       {shouldLoad && error && <ErrorDisplay error={error} title="Failed to load the thread." />}
       {conversation && (
-        <div className="h-96 overflow-hidden rounded-lg border border-border">
-          <ConversationThread workspaceId={workspaceId} conversation={conversation} showHeader={false} />
+        <div className={cn("overflow-hidden rounded-lg border border-border", variant.box)}>
+          <ConversationThread
+            workspaceId={workspaceId}
+            conversation={conversation}
+            showHeader={false}
+            composerTop={variant.composerTop}
+          />
         </div>
       )}
     </div>

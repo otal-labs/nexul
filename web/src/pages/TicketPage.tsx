@@ -47,6 +47,7 @@ export const TicketPage = ({ ticketId: ticketIdProp }: TicketPageProps = {}) => 
           ticket={data}
           project={project || undefined}
           workspaceId={workspaceId}
+          embedded={ticketIdProp !== undefined}
           onSave={async (title, body) => {
             await updateTicket.mutateAsync({ id: data.id, title, body });
           }}
