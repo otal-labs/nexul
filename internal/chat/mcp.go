@@ -43,7 +43,7 @@ type messagePostIn struct {
 	messageTarget
 	WorkspaceID string      `json:"workspace_id,omitempty" jsonschema:"The workspace of the doc, ticket, or project; needed only when its thread does not exist yet."`
 	Body        string      `json:"body" jsonschema:"The message as markdown. @login mentions a member and @Agent starts an agent turn."`
-	File        *noteFileIn `json:"file,omitempty" jsonschema:"A markdown file to carry with the message, which makes the post a note; only a ticket's thread takes one."`
+	File        *noteFileIn `json:"file,omitempty" jsonschema:"A markdown file to carry with the message, which makes the post a note; only a ticket's thread takes one. Lasting context on a ticket goes here, since the ticket body is the person's spec."`
 }
 
 type noteFileIn struct {

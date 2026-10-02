@@ -53,11 +53,13 @@ func TestComposePrompt_TicketThreadIncludesTicket(t *testing.T) {
 	})
 	assert.Contains(t, out, "Ticket: Fix the thing")
 	assert.Contains(t, out, "It's broken.")
+	assert.Contains(t, out, "It's broken.\n\nThe ticket body above is its spec: change it only when a person asks.")
 }
 
 func TestComposePrompt_NoTicketOmitsTicketBlock(t *testing.T) {
 	out := ComposePrompt(PromptInput{RequestAuthor: "onik97", RequestBody: "hi"})
 	assert.NotContains(t, out, "Ticket:")
+	assert.NotContains(t, out, "change it only when a person asks")
 }
 
 func TestComposePrompt_DocThreadIncludesDoc(t *testing.T) {
@@ -69,6 +71,7 @@ func TestComposePrompt_DocThreadIncludesDoc(t *testing.T) {
 	assert.Contains(t, out, "Doc: Runbook")
 	assert.Contains(t, out, "Restart the service like so.")
 	assert.NotContains(t, out, docTrimNote)
+	assert.NotContains(t, out, "change it only when a person asks")
 }
 
 func TestComposePrompt_NoDocOmitsDocBlock(t *testing.T) {

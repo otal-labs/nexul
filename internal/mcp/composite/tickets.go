@@ -446,7 +446,7 @@ type ticketUpdateIn struct {
 	ID               string        `json:"id" jsonschema:"The ticket's id (a UUID) or its key, for example REF-102."`
 	Workspace        string        `json:"workspace,omitempty" jsonschema:"The workspace to look ticket keys up in, by its id or slug from workspace_list, for example otal. Needed only when id is a key that exists in more than one of your workspaces; the keys in found_in_id and the blocker fields resolve in the ticket's own workspace unless this names another."`
 	Title            *string       `json:"title,omitempty" jsonschema:"A new title; it cannot be empty."`
-	Body             *string       `json:"body,omitempty" jsonschema:"A new body in markdown; an empty string clears it."`
+	Body             *string       `json:"body,omitempty" jsonschema:"The ticket's spec, as markdown; an empty string clears it. Change it only when a person asks; add anything you learn afterwards as a note with message_post's file, and if the spec looks wrong, say so and suggest the person edit it."`
 	ProjectID        *string       `json:"project_id,omitempty" jsonschema:"Move the ticket to this project, by its id from project_list; set status_id to one of its columns too."`
 	StatusID         *string       `json:"status_id,omitempty" jsonschema:"Move the ticket to this status column, by its id from project_get. It lands at the bottom of the column."`
 	Position         *int          `json:"position,omitempty" jsonschema:"The ticket's place in its column, 0 for the top."`
