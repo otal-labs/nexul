@@ -82,8 +82,7 @@ git history, and anything durable it decided is an ADR.
 - `.scratch/ticket-flow/` — the thread as a resizable pane beside a
   ticket's body, and notes: an agent's additions as an Agent message in the
   thread with a markdown file, instead of edits to the body. Wayfinder map
-  charted 2026-10-02; open: live editing a note, then the note pill and
-  dialog look.
+  charted 2026-10-02; open: the note pill and dialog look, then slicing.
 - `.scratch/mcp-parity/` — web capabilities no MCP tool reaches yet, one
   bullet each, `needs-triage`.
 - `.scratch/pre-release/` — four standing pre-release items, all open.
