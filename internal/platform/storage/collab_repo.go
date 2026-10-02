@@ -92,6 +92,30 @@ func toStoredUpdate(row sqlcgen.CollabUpdate) *collab.StoredUpdate {
 	}
 }
 
+// Reset deletes a doc's whole update log and raises its session seq past every seq the log held.
+func (r *CollabRepo) Reset(ctx context.Context, docID string) (int64, error) {
+	var seq int64
+	err := r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		q := r.q.WithTx(tx)
+		if err := q.DeleteCollabUpdates(ctx, docID); err != nil {
+			return fmt.Errorf("delete updates for doc %s: %w", docID, err)
+		}
+		err := q.BumpCollabSessionSeq(ctx, sqlcgen.BumpCollabSessionSeqParams{DocID: docID, LastCommitAt: time.Now().Unix()})
+		if err != nil {
+			return fmt.Errorf("bump collab session %s: %w", docID, classifyWriteErr(err))
+		}
+		seq, err = q.GetCollabSessionSeq(ctx, docID)
+		if err != nil {
+			return fmt.Errorf("load session seq for doc %s: %w", docID, err)
+		}
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	return seq, nil
+}
+
 // TrimUpdates deletes increments at or below baseSeq, keeping every snapshot; callers trim only to what it covers.
 func (r *CollabRepo) TrimUpdates(ctx context.Context, docID string, baseSeq int64) error {
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {

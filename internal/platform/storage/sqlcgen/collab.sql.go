@@ -35,6 +35,30 @@ func (q *Queries) AppendCollabUpdate(ctx context.Context, arg AppendCollabUpdate
 	return result.LastInsertId()
 }
 
+const bumpCollabSessionSeq = `-- name: BumpCollabSessionSeq :exec
+INSERT INTO collab_sessions (doc_id, last_seq, last_commit_at) VALUES (?, 1, ?)
+ON CONFLICT(doc_id) DO UPDATE SET last_seq = collab_sessions.last_seq + 1
+`
+
+type BumpCollabSessionSeqParams struct {
+	DocID        string
+	LastCommitAt int64
+}
+
+func (q *Queries) BumpCollabSessionSeq(ctx context.Context, arg BumpCollabSessionSeqParams) error {
+	_, err := q.db.ExecContext(ctx, bumpCollabSessionSeq, arg.DocID, arg.LastCommitAt)
+	return err
+}
+
+const deleteCollabUpdates = `-- name: DeleteCollabUpdates :exec
+DELETE FROM collab_updates WHERE doc_id = ?
+`
+
+func (q *Queries) DeleteCollabUpdates(ctx context.Context, docID string) error {
+	_, err := q.db.ExecContext(ctx, deleteCollabUpdates, docID)
+	return err
+}
+
 const getCollabSessionSeq = `-- name: GetCollabSessionSeq :one
 SELECT last_seq FROM collab_sessions WHERE doc_id = ?
 `

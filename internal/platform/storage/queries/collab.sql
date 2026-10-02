@@ -16,3 +16,10 @@ SELECT last_seq FROM collab_sessions WHERE doc_id = ?;
 
 -- name: TrimCollabUpdates :exec
 DELETE FROM collab_updates WHERE doc_id = ? AND kind = 'update' AND seq <= ?;
+
+-- name: DeleteCollabUpdates :exec
+DELETE FROM collab_updates WHERE doc_id = ?;
+
+-- name: BumpCollabSessionSeq :exec
+INSERT INTO collab_sessions (doc_id, last_seq, last_commit_at) VALUES (?, 1, ?)
+ON CONFLICT(doc_id) DO UPDATE SET last_seq = collab_sessions.last_seq + 1;

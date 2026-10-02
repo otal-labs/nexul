@@ -48,7 +48,24 @@ export interface LeaveFrame {
   client_id: number;
 }
 
-export type ServerFrame = InitFrame | RelayUpdateFrame | RelayPresenceFrame | RelayCommitFrame | LeaveFrame;
+/** This client is the one to load the doc's body into the empty room. */
+export interface SeedFrame {
+  type: "seed";
+}
+
+/** A server-side write replaced the room's state: drop the local one and rejoin. */
+export interface ResetFrame {
+  type: "reset";
+}
+
+export type ServerFrame =
+  | InitFrame
+  | RelayUpdateFrame
+  | RelayPresenceFrame
+  | RelayCommitFrame
+  | LeaveFrame
+  | SeedFrame
+  | ResetFrame;
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null;
 
@@ -103,6 +120,10 @@ export const parseServerFrame = (raw: string): ServerFrame => {
       return parseCommitFrame(data);
     case "leave":
       return parseLeaveFrame(data);
+    case "seed":
+      return { type: "seed" };
+    case "reset":
+      return { type: "reset" };
     default:
       throw new Error(`unknown collab frame type ${String(data.type)}`);
   }

@@ -35,13 +35,12 @@ interface RichTextEditorProps {
   stage?: FileStage;
   /** A dialog's short body: no gutter "+", a short minimum height, and the ticket dialog's placeholder. */
   compact?: boolean;
-  /** Binds to a live collab session (ws-25); body seeds only once the server confirms nothing to replay. */
+  /** Binds to a live collab session; the body loads into it only when the server picks this editor to seed. */
   collab?: {
     doc: Y.Doc;
     provider: RelayCollabProvider;
     user: { name: string; color: string };
-    serverReady: boolean;
-    hasServerState: boolean;
+    seed: boolean;
   };
 }
 
@@ -122,17 +121,11 @@ export const RichTextEditor = ({
     setBody(editor, value);
   }, [editor, collab, value]);
 
-  // Seeds only after the server confirms nothing to replay — earlier would push stale content into the CRDT.
+  // Only the editor the server picks seeds an empty room; two seeding it would show the body twice.
   useEffect(() => {
-    if (!editor || !collab || seeded.current) return;
-    if (!collab.serverReady) return;
-    if (collab.hasServerState) {
-      seeded.current = true;
-      return;
-    }
-    if (value === "") return;
+    if (!editor || !collab?.seed || seeded.current || value === "") return;
     seeded.current = true;
-    setBody(editor, value);
+    collab.provider.seed(() => setBody(editor, value));
   }, [editor, collab, value]);
 
   // Resolves mention refs in one batched query so chips stay live while editing.

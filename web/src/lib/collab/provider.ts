@@ -21,11 +21,14 @@ export interface CollabProviderOptions {
   getState?: () => { title: string; body: string } | null;
   /** Commit interval; a no-op unless local edits are pending. Default 5s. */
   commitIntervalMs?: number;
-  onInit?: (init: InitFrame) => void;
   onStatus?: (status: "connecting" | "connected" | "disconnected") => void;
   onApplyError?: (error: unknown) => void;
   /** A peer renamed the doc (commit relay carried a title). */
   onRemoteTitle?: (title: string) => void;
+  /** The server picked this client to load the doc's body into the empty room. */
+  onSeed?: () => void;
+  /** A server-side write replaced the room's state; this provider's state is stale and it should be replaced. */
+  onReset?: () => void;
 }
 
 // Owns the Y.Doc<->transport; the server just relays updates, CRDT merge happens client-side.
@@ -40,9 +43,9 @@ export class RelayCollabProvider {
   private attempt = 0;
   private destroyed = false;
   private connected = false;
-  private pending: Uint8Array[] = [];
+  private inited = false;
+  private seeding = false;
   private _lastSeq = 0;
-  private _hasServerState = false;
   private _dirty = false;
 
   constructor(options: CollabProviderOptions) {
@@ -60,11 +63,6 @@ export class RelayCollabProvider {
     return this.connected;
   }
 
-  /** True once the server has replayed stored state (never seeds then). */
-  get hasServerState(): boolean {
-    return this._hasServerState;
-  }
-
   /** True while local edits are not yet persisted by a commit. */
   get dirty(): boolean {
     return this._dirty;
@@ -77,7 +75,11 @@ export class RelayCollabProvider {
   connect() {
     if (this.destroyed) return;
     this.options.onStatus?.("connecting");
-    const socket = (this.options.wsFactory ?? ((u) => new WebSocket(u) as unknown as LiveSocket))(this.options.url);
+    // A rejoin names the last seq it saw, so the server can tell it about a reset it missed while away.
+    const url = this.inited
+      ? `${this.options.url}${this.options.url.includes("?") ? "&" : "?"}since=${this._lastSeq}`
+      : this.options.url;
+    const socket = (this.options.wsFactory ?? ((u) => new WebSocket(u) as unknown as LiveSocket))(url);
     this.socket = socket;
     socket.onopen = () => this.handleOpen();
     socket.onmessage = (ev) => this.handleMessage(ev.data);
@@ -104,6 +106,16 @@ export class RelayCollabProvider {
     this._dirty = true;
   }
 
+  /** Loads the doc's body into an empty room: relayed like an edit but never committed, since it mirrors the stored body. */
+  seed(apply: () => void) {
+    this.seeding = true;
+    try {
+      apply();
+    } finally {
+      this.seeding = false;
+    }
+  }
+
   /** Force a commit of the converged state (Save button / unmount). */
   flushCommit() {
     if (!this.connected || !this._dirty) return;
@@ -123,13 +135,6 @@ export class RelayCollabProvider {
     this.connected = true;
     this.options.onStatus?.("connected");
     this.send({ type: "hello", client_id: this.doc.clientID });
-    // Y.js merges are commutative, so replay order of these queued edits never matters server-side.
-    if (this.pending.length > 0) {
-      const merged = Y.mergeUpdates(this.pending);
-      this.pending = [];
-      this.send({ type: "update", update: toBase64(merged) });
-      this._dirty = true;
-    }
     this.sendAwareness();
     if (this.commitTimer) clearInterval(this.commitTimer);
     this.commitTimer = setInterval(
@@ -185,21 +190,44 @@ export class RelayCollabProvider {
         if (frame.seq > this._lastSeq) this._lastSeq = frame.seq;
         if (frame.title) this.options.onRemoteTitle?.(frame.title);
         break;
+      case "seed":
+        this.options.onSeed?.();
+        break;
+      case "reset":
+        this.options.onReset?.();
+        break;
     }
   }
 
   private applyReplay(init: InitFrame) {
+    const rejoin = this.inited;
+    this.inited = true;
     this._lastSeq = init.seq;
-    if (init.snapshot) {
-      this._hasServerState = true;
-      this.applyRemote(init.snapshot.payload);
-    }
-    if (init.updates.length > 0) {
-      this._hasServerState = true;
-      for (const u of init.updates) this.applyRemote(u.payload);
-    }
+    const stored = [...(init.snapshot ? [init.snapshot] : []), ...init.updates].map((u) => u.payload);
+    for (const payload of stored) this.applyRemote(payload);
     for (const p of init.presence) applyAwarenessUpdate(this.awareness, fromBase64(p.payload), REMOTE);
-    this.options.onInit?.(init);
+    if (rejoin || this._dirty) this.resync(stored);
+  }
+
+  // Sends what this doc holds and the server lacks: edits made offline, or sent into a socket that had already died.
+  private resync(stored: string[]) {
+    const server = new Y.Doc();
+    try {
+      for (const payload of stored) Y.applyUpdate(server, fromBase64(payload));
+    } catch {
+      server.destroy();
+      return; // applyRemote already surfaced the unresolvable replay
+    }
+    const missing = Y.encodeStateAsUpdate(this.doc, Y.encodeStateVector(server));
+    let changed = false;
+    server.on("update", () => {
+      changed = true;
+    });
+    Y.applyUpdate(server, missing);
+    server.destroy();
+    if (!changed) return;
+    this.send({ type: "update", update: toBase64(missing) });
+    this._dirty = true;
   }
 
   private applyRemote(payload: string) {
@@ -213,12 +241,10 @@ export class RelayCollabProvider {
 
   private handleDocUpdate = (update: Uint8Array, origin: unknown) => {
     if (origin === REMOTE) return;
-    this._dirty = true;
-    if (this.connected) {
-      this.send({ type: "update", update: toBase64(update) });
-      return;
-    }
-    this.pending.push(update);
+    if (!this.seeding) this._dirty = true;
+    // Offline edits wait for the next init's resync, which sends everything the server lacks.
+    if (!this.connected) return;
+    this.send({ type: "update", update: toBase64(update) });
   };
 
   private handleAwarenessChange = (changes: unknown, origin: unknown) => {

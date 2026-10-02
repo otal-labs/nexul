@@ -19,6 +19,7 @@ type client struct {
 	send     chan []byte
 	done     chan struct{} // closed by the pump when the peer is gone
 	closed   bool
+	stale    bool // joined before a reset, so its writes describe state the room no longer holds
 }
 
 // session is one document's live collaboration room; a persistence failure logs but still relays.
@@ -28,12 +29,18 @@ type session struct {
 	store  Store
 	writer DocWriter
 
+	// writeMu fences each stored write against Hub.Reset, so none lands between a server-side write and the reset.
+	writeMu sync.Mutex
+
 	mu        sync.Mutex
 	clients   map[*client]struct{}
 	presence  map[int]string // y client id → base64 awareness state
 	seq       int64          // latest seq persisted for this doc
 	lastBody  string         // last canonical body committed (write dedupe)
 	lastTitle string         // last canonical title committed (write dedupe)
+	resetSeq  int64          // commits whose base predates the last reset are dropped
+	hasState  bool           // the room holds stored or relayed state, so nobody seeds it
+	seeder    *client        // the one joiner told to seed the empty room
 }
 
 func (s *session) join(c *client) {
@@ -50,18 +57,44 @@ func (s *session) sendInit(ctx context.Context, c *client) error {
 	}
 	s.mu.Lock()
 	s.seq = replay.Seq
+	if replay.Snapshot != nil || len(replay.Increments) > 0 {
+		s.hasState = true
+	}
+	seed := s.claimSeed(c)
 	presence := make([]PresenceMsg, 0, len(s.presence))
 	for id, p := range s.presence {
 		presence = append(presence, PresenceMsg{ClientID: id, Payload: p})
 	}
 	s.mu.Unlock()
-	return s.send(c, ServerMsg{Type: msgInit, Seq: replay.Seq, Snapshot: replay.Snapshot, Updates: replay.Increments, Presence: presence})
+	if err := s.send(c, ServerMsg{Type: msgInit, Seq: replay.Seq, Snapshot: replay.Snapshot, Updates: replay.Increments, Presence: presence}); err != nil {
+		return err
+	}
+	if !seed {
+		return nil
+	}
+	return s.send(c, ServerMsg{Type: msgSeed})
+}
+
+// claimSeed makes c the empty room's one seeder, since two seeding it would show the body twice; callers hold s.mu.
+func (s *session) claimSeed(c *client) bool {
+	if s.hasState || s.seeder != nil || c.mode != ModeEdit || c.stale || c.closed {
+		return false
+	}
+	s.seeder = c
+	return true
 }
 
 // writable refuses a viewer's writes and any write to a locked doc; a failed lock lookup refuses too.
 func (s *session) writable(ctx context.Context, c *client) bool {
 	if c.mode != ModeEdit {
 		s.log.Warn("collab: dropped a write from a viewer", "doc", s.docID, "user", c.id)
+		return false
+	}
+	s.mu.Lock()
+	stale := c.stale
+	s.mu.Unlock()
+	if stale {
+		s.log.Info("collab: dropped a write made before a reset", "doc", s.docID, "user", c.id)
 		return false
 	}
 	// ponytail: one doc read per relayed update; cache the flag in the session if it ever shows in a profile.
@@ -75,6 +108,8 @@ func (s *session) writable(ctx context.Context, c *client) bool {
 
 // handleUpdate persists and relays one Y.js update; a persistence failure logs but still relays.
 func (s *session) handleUpdate(ctx context.Context, c *client, m ClientMsg) {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
 	if !s.writable(ctx, c) {
 		return
 	}
@@ -83,20 +118,30 @@ func (s *session) handleUpdate(ctx context.Context, c *client, m ClientMsg) {
 	if err != nil {
 		s.log.Warn("collab: persist update failed; relaying anyway", "doc", s.docID, "error", err)
 	}
+	s.mu.Lock()
+	s.hasState = true
 	if err == nil {
 		seq = stored
-		s.mu.Lock()
 		if seq > s.seq {
 			s.seq = seq
 		}
-		s.mu.Unlock()
 	}
+	s.mu.Unlock()
 	s.broadcast(c, ServerMsg{Type: msgUpdate, From: c.id, Seq: seq, Payload: m.Update})
 }
 
 // handleCommit persists a snapshot, trims already-applied increments, writes the canonical body, and broadcasts.
 func (s *session) handleCommit(ctx context.Context, c *client, m ClientMsg) {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
 	if !s.writable(ctx, c) {
+		return
+	}
+	s.mu.Lock()
+	predatesReset := m.BaseSeq < s.resetSeq
+	s.mu.Unlock()
+	if predatesReset {
+		s.log.Info("collab: dropped a commit based on state from before a reset", "doc", s.docID, "user", c.id)
 		return
 	}
 	seq, err := s.store.AppendUpdate(ctx, s.docID, c.id, KindSnapshot, m.Update)
@@ -108,6 +153,7 @@ func (s *session) handleCommit(ctx context.Context, c *client, m ClientMsg) {
 		s.log.Warn("collab: trim updates failed", "doc", s.docID, "error", err)
 	}
 	s.mu.Lock()
+	s.hasState = true
 	if seq > s.seq {
 		s.seq = seq
 	}
@@ -157,8 +203,39 @@ func (s *session) leave(c *client) {
 	delete(s.presence, c.clientID)
 	delete(s.clients, c)
 	c.closed = true
+	next := s.handOffSeed(c)
 	s.mu.Unlock()
 	s.broadcast(nil, ServerMsg{Type: msgLeave, ClientID: c.clientID})
+	if next != nil {
+		_ = s.send(next, ServerMsg{Type: msgSeed}) // a peer gone mid-handoff leaves the next join to claim the seed
+	}
+}
+
+// handOffSeed passes the seed on when the seeder leaves an empty room unseeded; callers hold s.mu.
+func (s *session) handOffSeed(gone *client) *client {
+	if s.seeder != gone {
+		return nil
+	}
+	s.seeder = nil
+	for c := range s.clients {
+		if s.claimSeed(c) {
+			return c
+		}
+	}
+	return nil
+}
+
+// reset forgets the room's state after a server-side write: current participants turn stale and are told to rejoin.
+func (s *session) reset(seq int64) {
+	s.mu.Lock()
+	s.resetSeq, s.seq = seq, seq
+	s.lastBody, s.lastTitle = "", ""
+	s.hasState, s.seeder = false, nil
+	for c := range s.clients {
+		c.stale = true
+	}
+	s.mu.Unlock()
+	s.broadcast(nil, ServerMsg{Type: msgReset, Seq: seq})
 }
 
 // broadcast sends to every participant but one; a stuck peer is dropped, never blocking the session.

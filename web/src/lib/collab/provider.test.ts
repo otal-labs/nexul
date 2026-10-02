@@ -69,8 +69,7 @@ describe("RelayCollabProvider", () => {
     inc.getText("body").insert(5, " world");
     const increment = encode(inc);
 
-    const onInit = vi.fn();
-    const { doc, socket, provider } = setup({ onInit });
+    const { doc, socket, provider } = setup();
     socket.dispatch(
       JSON.stringify({
         type: "init",
@@ -82,39 +81,79 @@ describe("RelayCollabProvider", () => {
     );
 
     expect(doc.getText("body").toString()).toBe("hello world");
-    expect(provider.hasServerState).toBe(true);
     expect(provider.lastSeq).toBe(7);
-    expect(onInit).toHaveBeenCalledOnce();
   });
 
-  it("marks hasServerState when the replay is empty (fresh doc)", () => {
-    const { socket, provider } = setup();
-    socket.dispatch(JSON.stringify({ type: "init", seq: 0, snapshot: null, updates: [], presence: [] }));
-    expect(provider.hasServerState).toBe(false);
-    expect(provider.lastSeq).toBe(0);
-  });
-
-  it("relays local edits immediately and rebroadcasts after reconnect", () => {
-    const { doc, socket } = setup();
-    doc.getText("body").insert(0, "offline edit");
-    expect(socket.framesOf("update")).toHaveLength(1);
-    expect(doc.getText("body").toString()).toBe("offline edit");
+  // A server restart drops the frames in flight; the old reconnect resent only edits queued after the close, so text
+  // typed just before it, whose commit died too, never reached the server or the other editors.
+  it("resends on a rejoin whatever the server's replay lacks, including edits sent into a dying socket", () => {
+    vi.useFakeTimers();
+    const socket = new FakeSocket();
+    const urls: string[] = [];
+    const doc = new Y.Doc();
+    const provider = new RelayCollabProvider({
+      url: "ws://test/collab/doc-1?mode=edit&token=t",
+      doc,
+      getState: () => ({ title: "", body: "{}" }),
+      wsFactory: (url) => {
+        urls.push(url);
+        return socket;
+      },
+    });
+    provider.connect();
+    socket.onopen?.({});
+    socket.dispatch(JSON.stringify({ type: "init", seq: 4, snapshot: null, updates: [], presence: [] }));
+    doc.getText("body").insert(0, "lost in flight");
+    provider.flushCommit();
+    expect(provider.dirty).toBe(false);
 
     socket.onclose?.({});
-    doc.getText("body").insert(12, " while down");
-    expect(socket.framesOf("update")).toHaveLength(1); // buffered, not sent
-
+    doc.getText("body").insert(14, ", typed offline");
+    vi.advanceTimersByTime(1000);
+    const sentBeforeRejoin = socket.sent.length;
     socket.onopen?.({});
-    const updates = socket.framesOf("update");
-    expect(updates).toHaveLength(2);
-    // The reconnect flush is a delta against the session state the server already has (the first edit), so a fresh doc must apply both frames in order to reconstruct the content.
-    const merged = new Y.Doc();
-    const first = updates[0] as unknown as { update: string };
-    const replay = updates[1] as unknown as { update: string };
-    Y.applyUpdate(merged, fromBase64(first.update));
-    Y.applyUpdate(merged, fromBase64(replay.update));
-    expect(merged.getText("body").toString()).toBe("offline edit while down");
+    socket.dispatch(JSON.stringify({ type: "init", seq: 4, snapshot: null, updates: [], presence: [] }));
+
+    const resent = socket
+      .frames<{ type: string; update: string }>()
+      .slice(sentBeforeRejoin)
+      .filter((f) => f.type === "update");
+    expect(resent).toHaveLength(1);
+    const server = new Y.Doc();
+    Y.applyUpdate(server, fromBase64(resent[0]!.update));
+    expect(server.getText("body").toString()).toBe("lost in flight, typed offline");
+    expect(provider.dirty).toBe(true);
+    expect(urls[1]).toBe("ws://test/collab/doc-1?mode=edit&token=t&since=4");
+    provider.destroy();
+    vi.useRealTimers();
   });
+
+  it("sends nothing on a rejoin the server's replay already covers", () => {
+    vi.useFakeTimers();
+    const { doc, socket, provider } = setup();
+    socket.dispatch(JSON.stringify({ type: "init", seq: 0, snapshot: null, updates: [], presence: [] }));
+    doc.getText("body").insert(0, "stored");
+    const stored = socket.frames<{ type: string; update: string }>().find((f) => f.type === "update")!;
+
+    socket.onclose?.({});
+    vi.advanceTimersByTime(1000);
+    const sentBeforeRejoin = socket.sent.length;
+    socket.onopen?.({});
+    socket.dispatch(
+      JSON.stringify({
+        type: "init",
+        seq: 1,
+        snapshot: null,
+        updates: [{ seq: 1, kind: "update", actor_id: "alice", payload: stored.update }],
+        presence: [],
+      }),
+    );
+    expect(socket.frames<{ type: string }>().slice(sentBeforeRejoin).filter((f) => f.type === "update")).toHaveLength(0);
+    provider.destroy();
+    vi.useRealTimers();
+  });
+
+
 
   it("applies relayed remote updates and tracks base_seq", () => {
     const { doc, socket, provider } = setup();

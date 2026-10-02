@@ -3,8 +3,10 @@ package collab
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -40,6 +42,7 @@ type Hub struct {
 
 	mu       sync.Mutex
 	sessions map[string]*session
+	resets   map[string]int64 // room id → last reset seq, kept past the room; ponytail: lost on restart, persist it if that bites
 }
 
 // NewHub wires a collab hub. A nil logger defaults to slog.Default().
@@ -53,6 +56,7 @@ func NewHub(logger *slog.Logger, store Store, access AccessChecker, writer DocWr
 		access:   access,
 		writer:   writer,
 		sessions: make(map[string]*session),
+		resets:   make(map[string]int64),
 	}
 }
 
@@ -87,6 +91,13 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	conn.SetReadLimit(MaxFrameBytes)
+
+	if h.missedReset(docID, r.URL.Query().Get("since")) {
+		h.log.Info("collab rejoin predates a reset", "doc", docID, "user", actor.ID)
+		_ = writeFrame(conn, []byte(`{"type":"`+msgReset+`"}`)) // the close below ends the exchange either way
+		_ = conn.Close(websocket.StatusNormalClosure, "reset")
+		return
+	}
 
 	c := &client{id: actor.ID, mode: mode, send: make(chan []byte, sendBuffer), done: make(chan struct{})}
 	s := h.session(docID)
@@ -159,6 +170,47 @@ func (h *Hub) dispatch(ctx context.Context, c *client, s *session, data []byte) 
 	}
 }
 
+// missedReset reports a rejoin whose last seen seq predates the room's last reset, so its local state is stale.
+func (h *Hub) missedReset(roomID, since string) bool {
+	if since == "" {
+		return false
+	}
+	seq, err := strconv.ParseInt(since, 10, 64)
+	if err != nil {
+		return false
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return seq < h.resets[roomID]
+}
+
+// Reset runs write fenced against the room's live edits, then drops the room's stored state and sends every
+// participant a reset, so a server-side write wins over open editors and they reload it.
+func (h *Hub) Reset(ctx context.Context, roomID string, write func(context.Context) error) error {
+	h.mu.Lock()
+	s := h.sessions[roomID]
+	h.mu.Unlock()
+	if s != nil {
+		s.writeMu.Lock()
+		defer s.writeMu.Unlock()
+	}
+	if err := write(ctx); err != nil {
+		return err
+	}
+	seq, err := h.store.Reset(ctx, roomID)
+	if err != nil {
+		return fmt.Errorf("reset collab room %s: %w", roomID, err)
+	}
+	h.mu.Lock()
+	h.resets[roomID] = seq
+	s = h.sessions[roomID]
+	h.mu.Unlock()
+	if s != nil {
+		s.reset(seq)
+	}
+	return nil
+}
+
 // session rooms are reclaimed when their last client leaves; the store keeps the persisted state.
 func (h *Hub) session(docID string) *session {
 	h.mu.Lock()
@@ -172,6 +224,7 @@ func (h *Hub) session(docID string) *session {
 			writer:   h.writer,
 			clients:  make(map[*client]struct{}),
 			presence: make(map[int]string),
+			resetSeq: h.resets[docID],
 		}
 		h.sessions[docID] = s
 	}

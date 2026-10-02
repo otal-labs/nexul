@@ -19,6 +19,8 @@ const (
 	msgCommit   = "commit"
 	msgPresence = "presence"
 	msgLeave    = "leave"
+	msgSeed     = "seed"  // server→client: load the doc's body into the empty room; only one joiner is told
+	msgReset    = "reset" // server→client: a server-side write replaced the room's state; drop yours and rejoin
 )
 
 // ClientMsg is the wire shape of a client→server frame.

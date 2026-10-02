@@ -105,3 +105,35 @@ func TestCollabRepo_UpdateLogCascadesWithDocDelete(t *testing.T) {
 	require.NoError(t, s.Docs.Delete(ctx, "doc-1"))
 	assert.Empty(t, collabUpdatesFor(t, s, "doc-1"))
 }
+
+// TestCollabRepo_ResetDropsLogAndRaisesSeq pins what a reset promises the hub: nothing left to replay, and a seq no
+// pre-reset client can have seen, which later appends never fall below.
+func TestCollabRepo_ResetDropsLogAndRaisesSeq(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	ctx := context.Background()
+	require.NoError(t, s.Docs.Create(ctx, newTestDoc("doc-1")))
+	_, err := s.Collab.AppendUpdate(ctx, "doc-1", "alice", collab.KindUpdate, "dXA9MQ==")
+	require.NoError(t, err)
+	last, err := s.Collab.AppendUpdate(ctx, "doc-1", "alice", collab.KindSnapshot, "c25hcA==")
+	require.NoError(t, err)
+
+	seq, err := s.Collab.Reset(ctx, "doc-1")
+	require.NoError(t, err)
+	assert.Greater(t, seq, last)
+
+	replay, err := s.Collab.LoadReplay(ctx, "doc-1")
+	require.NoError(t, err)
+	assert.Nil(t, replay.Snapshot)
+	assert.Empty(t, replay.Increments)
+	assert.Equal(t, seq, replay.Seq)
+
+	next, err := s.Collab.AppendUpdate(ctx, "doc-1", "bob", collab.KindUpdate, "dXA9Mg==")
+	require.NoError(t, err)
+	assert.GreaterOrEqual(t, next, seq)
+
+	require.NoError(t, s.Docs.Create(ctx, newTestDoc("doc-untouched")))
+	first, err := s.Collab.Reset(ctx, "doc-untouched")
+	require.NoError(t, err)
+	assert.Positive(t, first, "a doc never edited live still gets a seq above the zero a client starts from")
+}
