@@ -209,8 +209,16 @@ instead, or a centered dialog when the record is a short form of its own (the
 Team's person dialog, its body scrolling between a fixed header and footer); a
 page that works as a full detail view is not forced into a drawer.
 
-Ticket rail. The ticket page is the body and its Thread in the main column
-and an 18rem rail beside it from 1024px, stacked under them below. The rail
+Ticket page. The page runs the full width beside the sidebar, with no centred
+cap: the Thread is a pane on the left, the body in the middle, and an 18rem
+rail flush right. The pane is sticky and the viewport tall with the composer at
+its foot, and its width is dragged like the list pane (handle on its right
+edge, 288 to 640px, arrow keys, double-click back to its share of the page,
+saved once on release, kept in the browser). The body text holds a readable
+measure inside its card. Breakpoints follow the width of the page, not the
+screen: the pane from 736px, the rail beside the body from 1120px, and below
+them the Thread and then the rail drop under the body. A ticket opened inside
+another page (the Inbox split view) keeps the Thread under the body. The rail
 is a run of sections, each a mono uppercase microheader with its one action
 trailing as a ghost `+`, compact rows, and a muted one-line sentence
 when empty ("No bugs reported."): Properties, Plays, Development, Reviews,

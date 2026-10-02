@@ -5,6 +5,7 @@ import { DetailErrorDisplay } from "@/components/DetailErrorDisplay";
 import { ErrorScreen } from "@/components/ErrorScreen";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { TicketPageBody } from "@/components/ticket/TicketPageBody";
+import { ticketPageLayout } from "@/components/ticket/ticketPageLayout";
 import {
   useAddLabel,
   useFetchTicket,
@@ -35,18 +36,20 @@ export const TicketPage = ({ ticketId: ticketIdProp }: TicketPageProps = {}) => 
   const addLabel = useAddLabel();
   const removeLabel = useRemoveLabel();
 
+  const embedded = ticketIdProp !== undefined;
   const project = data && projects.find((p) => p.id === data.project_id);
 
   return (
-    <Container className="p-6">
+    <Container className={ticketPageLayout(embedded).container}>
       {(isPending || resolving) && <LoadingDisplay />}
-      {error && <DetailErrorDisplay error={error} embedded={ticketIdProp !== undefined} />}
+      {error && <DetailErrorDisplay error={error} embedded={embedded} />}
       {notFound && <ErrorScreen />}
       {data && (
         <TicketPageBody
           ticket={data}
           project={project || undefined}
           workspaceId={workspaceId}
+          embedded={embedded}
           onSave={async (title, body) => {
             await updateTicket.mutateAsync({ id: data.id, title, body });
           }}
