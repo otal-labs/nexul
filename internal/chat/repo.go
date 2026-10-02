@@ -44,7 +44,7 @@ type Repo interface {
 
 	// SetAgentThread is set on the first agent turn, and again if the backend transparently recreates a gone thread.
 	SetAgentThread(ctx context.Context, conversationID, threadID string) error
-	// SetAgentSyncedAt is set once a turn's updates are drained, so the next mention only sends what's new.
+	// SetAgentSyncedAt is set once a turn's prompt reaches the harness, so the next mention only sends what's new.
 	SetAgentSyncedAt(ctx context.Context, conversationID string, at time.Time) error
 
 	CreateMessage(ctx context.Context, m *Message, evts ...eventbus.OutboxEvent) error

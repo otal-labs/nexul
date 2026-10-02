@@ -293,7 +293,7 @@ type Attachment struct {
 type TurnPrompts struct {
 	Full        string
 	Incremental string
-	// Attachments ride along whichever prompt the harness picks.
+	// Attachments belong to Full: they are the images its ticket, doc, and memory bodies refer to.
 	Attachments []Attachment
 }
 

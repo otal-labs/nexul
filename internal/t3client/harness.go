@@ -107,17 +107,17 @@ func (h *Harness) StartTurn(ctx context.Context, target harness.Target, title st
 
 	threadID := target.SessionID
 	usedStored := threadID != ""
-	prompt := prompts.Incremental
+	prompt, attachments := prompts.Incremental, []harness.Attachment(nil)
 	if threadID == "" {
 		threadID, err = h.createThread(ctx, client, target, title)
 		if err != nil {
 			_ = client.Close()
 			return harness.StartResult{}, err
 		}
-		prompt = prompts.Full
+		prompt, attachments = prompts.Full, prompts.Attachments
 	}
 
-	sub, err := h.subscribeAndStart(ctx, client, threadID, prompt, prompts.Attachments)
+	sub, err := h.subscribeAndStart(ctx, client, threadID, prompt, attachments)
 	if err != nil && usedStored {
 		// A stored thread id may be stale server-side; any failure on reuse gets exactly one retry with a fresh thread.
 		threadID, err = h.createThread(ctx, client, target, title)

@@ -24,8 +24,9 @@ selector, and every memory belongs to the project picked there.
 
 Each memory has a **Title**, a one-line **When to use** hint, a rich-text body,
 and an **Always included in every turn** switch. Always-included memories are
-standing context: an `@Agent` mention sends them in full, and a play run names
-them for the Agent to read first. Other memories appear in the turn's index;
+standing context: an `@Agent` mention sends them in full when it starts the
+Agent's session, a follow-up in the same conversation does not repeat them, and
+a play run names them for the Agent to read first. Other memories appear in the turn's index;
 the Agent can select one when it needs the body. An `@Agent` mention inlines at
 most 20,000 characters of one memory and 60,000 of all of them together,
 dropping the last ones past that. A play run has no such limit, because the

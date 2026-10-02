@@ -200,7 +200,7 @@ func TestHarness_StartTurn_RecreatesGoneThreadAndRetriesOnce(t *testing.T) {
 	drain(t, result.Updates)
 }
 
-func TestHarness_StartTurn_AttachmentsRideAlongOnTheFreshThreadRetry(t *testing.T) {
+func TestHarness_StartTurn_AttachmentsRideWithTheFullPromptOnly(t *testing.T) {
 	fake := &fakeT3Client{
 		nextThreadID:      "thread-fresh",
 		startTurnFailOnce: true,
@@ -214,8 +214,8 @@ func TestHarness_StartTurn_AttachmentsRideAlongOnTheFreshThreadRetry(t *testing.
 	require.NoError(t, err)
 	assert.Equal(t, "thread-fresh", result.SessionID)
 	require.Len(t, fake.sentAttachments, 2)
-	assert.Equal(t, prompts.Attachments, fake.sentAttachments[0], "the reused thread gets the attachments")
-	assert.Equal(t, prompts.Attachments, fake.sentAttachments[1], "so does the fresh replacement thread")
+	assert.Empty(t, fake.sentAttachments[0], "the reused thread already holds them")
+	assert.Equal(t, prompts.Attachments, fake.sentAttachments[1], "the fresh replacement thread gets them with the full prompt")
 	drain(t, result.Updates)
 }
 

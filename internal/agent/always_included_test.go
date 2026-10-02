@@ -46,7 +46,7 @@ func captureFullAndIncremental(t *testing.T, cfg Config) (svc *Service, got *har
 	return NewService(cfg), got
 }
 
-func TestRunTurn_TicketThread_AlwaysIncludedMemoryInlinedInFullInBothPrompts(t *testing.T) {
+func TestRunTurn_TicketThread_AlwaysIncludedMemoryInlinedInFull(t *testing.T) {
 	conv := newFakeConversations(Conversation{ID: "conv-1", IsTicketThread: true, TicketID: "t-1", ThreadID: "thread-reused"})
 	mem := &fakeProjectMemories{byProject: map[string][]MemoryItem{
 		"proj-1": {
@@ -61,10 +61,8 @@ func TestRunTurn_TicketThread_AlwaysIncludedMemoryInlinedInFullInBothPrompts(t *
 
 	svc.RunTurn(context.Background(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent go"})
 
-	for _, prompt := range []string{got.Full, got.Incremental} {
-		assert.Contains(t, prompt, "Always-included memories, follow them:")
-		assert.Contains(t, prompt, "### Working in this project\nStanding rule body text.")
-	}
+	assert.Contains(t, got.Full, "Always-included memories, follow them:")
+	assert.Contains(t, got.Full, "### Working in this project\nStanding rule body text.")
 }
 
 func TestRunTurn_MemoriesIndex_ExcludesAlwaysIncludedMemories(t *testing.T) {
@@ -148,7 +146,6 @@ func TestRunTurn_AlwaysIncludedMemoryImage_TravelsAsAttachment(t *testing.T) {
 	require.Len(t, got.Attachments, 1)
 	assert.Equal(t, "diagram.png", got.Attachments[0].Name)
 	assert.Contains(t, got.Full, "Layout: [image: diagram.png, attached to this turn] end")
-	assert.Contains(t, got.Incremental, "Layout: [image: diagram.png, attached to this turn] end")
 }
 
 func TestSplitAlwaysIncluded_InterviewLeads_SoATrimNeverDropsIt(t *testing.T) {

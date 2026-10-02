@@ -34,11 +34,13 @@ type fakeConversations struct {
 	history []ConversationMessage
 	histErr error
 
-	threads       map[string]string
-	syncedAt      map[string]time.Time
-	replies       []fakeNote
-	notes         []fakeNote
-	userPosts     []fakeNote
+	threads   map[string]string
+	syncedAt  map[string]time.Time
+	replies   []fakeNote
+	notes     []fakeNote
+	userPosts []fakeNote
+	// now, when set, stamps each posted Agent reply into history the way chat stores it.
+	now           func() time.Time
 	postReplyErr  error
 	postNoteErr   error
 	setThreadErr  error
@@ -49,15 +51,32 @@ func newFakeConversations(conv Conversation) *fakeConversations {
 	return &fakeConversations{conv: conv, threads: map[string]string{}, syncedAt: map[string]time.Time{}}
 }
 
-func (f *fakeConversations) GetConversation(_ context.Context, _ string) (Conversation, error) {
+func (f *fakeConversations) GetConversation(_ context.Context, id string) (Conversation, error) {
 	if f.getErr != nil {
 		return Conversation{}, f.getErr
 	}
-	return f.conv, nil
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	c := f.conv
+	if thread, ok := f.threads[id]; ok {
+		c.ThreadID = thread
+	}
+	if at, ok := f.syncedAt[id]; ok {
+		c.SyncedAt = at
+	}
+	return c, nil
 }
 
-func (f *fakeConversations) MessagesSince(_ context.Context, _ string, _ time.Time) ([]ConversationMessage, error) {
-	return f.history, f.histErr
+func (f *fakeConversations) MessagesSince(_ context.Context, _ string, since time.Time) ([]ConversationMessage, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []ConversationMessage
+	for _, m := range f.history {
+		if since.IsZero() || m.CreatedAt.After(since) {
+			out = append(out, m)
+		}
+	}
+	return out, f.histErr
 }
 
 func (f *fakeConversations) SetThread(_ context.Context, conversationID, threadID string) error {
@@ -87,6 +106,9 @@ func (f *fakeConversations) PostAgentReply(_ context.Context, conversationID, vi
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.replies = append(f.replies, fakeNote{conversationID, viaUserID, body})
+	if f.now != nil {
+		f.history = append(f.history, ConversationMessage{AuthorID: viaUserID, AuthorKind: "agent", Body: body, CreatedAt: f.now()})
+	}
 	return fmt.Sprintf("reply-%d", len(f.replies)), nil
 }
 
@@ -414,7 +436,6 @@ func TestRunTurn_HappyPath_StreamsFramesAndPersistsFinalReply(t *testing.T) {
 	assert.Empty(t, notes)
 
 	assert.Equal(t, "thread-new", conv.threads["conv-1"])
-	assert.False(t, conv.syncedAt["conv-1"].IsZero())
 	assert.Contains(t, client.lastPrompt, "New message from")
 }
 
@@ -537,12 +558,7 @@ func TestRunTurn_VersionCheck_WarnsOnlyOnBaseReleaseChange(t *testing.T) {
 			Harnesses:     registryOf(client),
 			Live:          &fakeLive{},
 		})
-		require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
-		waitFor(t, time.Second, func() bool {
-			conv.mu.Lock()
-			defer conv.mu.Unlock()
-			return !conv.syncedAt["conv-1"].IsZero()
-		})
+		svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent go"})
 		_, notes := conv.snapshot()
 		assert.Empty(t, notes)
 	})
@@ -582,12 +598,7 @@ func TestRunTurn_ContextMessagesAreCapped(t *testing.T) {
 		Harnesses:     registryOf(client),
 		Live:          &fakeLive{},
 	})
-	require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
-	waitFor(t, time.Second, func() bool {
-		conv.mu.Lock()
-		defer conv.mu.Unlock()
-		return !conv.syncedAt["conv-1"].IsZero()
-	})
+	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent go"})
 	assert.LessOrEqual(t, len(client.lastPrompt), MaxPromptChars)
 }
 
@@ -658,12 +669,7 @@ func TestRunTurn_DocThread_PromptIncludesDocTitleAndBody(t *testing.T) {
 		Docs:          &fakeDocs{doc: Doc{ProjectID: "proj-9", Title: "Runbook", BodyMarkdown: "Restart the service like so."}},
 		Live:          &fakeLive{},
 	})
-	require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
-	waitFor(t, time.Second, func() bool {
-		conv.mu.Lock()
-		defer conv.mu.Unlock()
-		return !conv.syncedAt["conv-1"].IsZero()
-	})
+	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent go"})
 
 	assert.Contains(t, client.lastPrompt, "Doc: Runbook")
 	assert.Contains(t, client.lastPrompt, "Restart the service like so.")
@@ -679,12 +685,7 @@ func TestRunTurn_DocThread_OversizedBodyIsTrimmedWithNote(t *testing.T) {
 		Docs:          &fakeDocs{doc: Doc{ProjectID: "proj-9", Title: "Huge doc", BodyMarkdown: strings.Repeat("x", MaxPromptChars*2)}},
 		Live:          &fakeLive{},
 	})
-	require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
-	waitFor(t, time.Second, func() bool {
-		conv.mu.Lock()
-		defer conv.mu.Unlock()
-		return !conv.syncedAt["conv-1"].IsZero()
-	})
+	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent go"})
 
 	assert.LessOrEqual(t, len(client.lastPrompt), MaxPromptChars)
 	assert.Contains(t, client.lastPrompt, docTrimNote)
@@ -699,12 +700,7 @@ func TestRunTurn_DocThread_NoDocReader_RunsWithoutDocContext(t *testing.T) {
 		Harnesses:     registryOf(client),
 		Live:          &fakeLive{},
 	})
-	require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
-	waitFor(t, time.Second, func() bool {
-		conv.mu.Lock()
-		defer conv.mu.Unlock()
-		return !conv.syncedAt["conv-1"].IsZero()
-	})
+	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent go"})
 
 	assert.NotContains(t, client.lastPrompt, "Doc:")
 }
@@ -862,4 +858,140 @@ func TestInterrupt_CallsHarnessWithTheActiveTarget(t *testing.T) {
 	require.NoError(t, svc.Interrupt(context.Background(), "conv-1"))
 	<-client.interruptCh
 	close(release)
+}
+
+// --- follow-up turns on a live session -------------------------------------------
+
+type startedTurn struct {
+	sessionID string
+	prompts   harness.TurnPrompts
+}
+
+// followUpHarness records every StartTurn and answers each with sessionIDs[i] (the last one repeats) and updates[i].
+type followUpHarness struct {
+	mu         sync.Mutex
+	turns      []startedTurn
+	sessionIDs []string
+	updates    []<-chan harness.Update
+}
+
+func (h *followUpHarness) client() *harnesstest.Client {
+	return &harnesstest.Client{StartTurnFn: func(_ context.Context, target harness.Target, _ string, prompts harness.TurnPrompts) (harness.StartResult, error) {
+		h.mu.Lock()
+		defer h.mu.Unlock()
+		i := len(h.turns)
+		h.turns = append(h.turns, startedTurn{sessionID: target.SessionID, prompts: prompts})
+		return harness.StartResult{SessionID: h.sessionIDs[min(i, len(h.sessionIDs)-1)], Updates: h.updates[i]}, nil
+	}}
+}
+
+func (h *followUpHarness) started() []startedTurn {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return append([]startedTurn{}, h.turns...)
+}
+
+func replyThenDone(text string) <-chan harness.Update {
+	return updatesChan(
+		harness.Update{Snapshot: &harness.Snapshot{MessageID: "m-" + text, Text: text, Streaming: false}},
+		harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}},
+	)
+}
+
+func minuteOf(m int) time.Time { return time.Date(2026, 10, 2, 15, m, 0, 0, time.UTC) }
+
+// ticketThreadWithStandingRules is a ticket thread in a project with an always-included memory, so a re-sent
+// full prompt is visible in a follow-up; the Agent's replies land in history at minute 33.
+func ticketThreadWithStandingRules(h *followUpHarness) (*Service, *fakeConversations) {
+	conv := newFakeConversations(Conversation{ID: "conv-1", IsTicketThread: true, TicketID: "t-1"})
+	conv.now = func() time.Time { return minuteOf(33) }
+	svc := NewService(Config{
+		Conversations: conv,
+		Targets:       &fakeTargets{target: testTarget()},
+		Harnesses:     harnesstest.Registry(h.client()),
+		Tickets:       &fakeTickets{ticket: Ticket{ProjectID: "proj-1", Title: "Login broken", Body: "Steps to reproduce"}},
+		Memories: &fakeProjectMemories{byProject: map[string][]MemoryItem{"proj-1": {
+			{Name: "Working here", AlwaysIncluded: true, Body: "Standing rule body text."},
+		}}},
+		Live: &fakeLive{},
+		Now:  func() time.Time { return minuteOf(40) },
+	})
+	return svc, conv
+}
+
+func TestRunTurn_TicketThread_SecondMention_ReusesTheSessionWithOnlyWhatIsNew(t *testing.T) {
+	h := &followUpHarness{sessionIDs: []string{"thread-1"}, updates: []<-chan harness.Update{replyThenDone("first answer"), replyThenDone("second answer")}}
+	svc, conv := ticketThreadWithStandingRules(h)
+	conv.history = []ConversationMessage{
+		{AuthorID: "u-2", AuthorKind: "user", Body: "context from before", CreatedAt: minuteOf(30)},
+		{AuthorID: "u-1", AuthorKind: "user", Body: "@Agent first", CreatedAt: minuteOf(32)},
+	}
+	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent first"})
+
+	conv.history = append(conv.history,
+		ConversationMessage{AuthorID: "u-2", AuthorKind: "user", Body: "looks good", CreatedAt: minuteOf(34)},
+		ConversationMessage{AuthorID: "u-1", AuthorKind: "user", Body: "@Agent second", CreatedAt: minuteOf(35)},
+	)
+	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent second"})
+
+	turns := h.started()
+	require.Len(t, turns, 2)
+	assert.Equal(t, "thread-1", turns[1].sessionID, "the second mention runs on the first one's session")
+	follow := turns[1].prompts.Incremental
+	assert.NotContains(t, follow, "You are Agent", "the session already holds the instructions")
+	assert.NotContains(t, follow, "Standing rule body text.", "the session already holds the always-included memories")
+	assert.NotContains(t, follow, "Steps to reproduce", "the session already holds the ticket")
+	assert.True(t, strings.HasPrefix(follow, "New messages since your last turn:\n[2026-10-02 15:34] u-2: looks good\n[2026-10-02 15:35] u-1: @Agent second\n\n"),
+		"only what was posted after the first turn, without the Agent's own reply: %q", follow)
+}
+
+func TestRunTurn_MentionWhileTheLastTurnRuns_SendsOnlyMessagesAfterThatTurnsPrompt(t *testing.T) {
+	running := make(chan harness.Update)
+	h := &followUpHarness{sessionIDs: []string{"thread-1"}, updates: []<-chan harness.Update{running, replyThenDone("second answer")}}
+	svc, conv := ticketThreadWithStandingRules(h)
+	conv.history = []ConversationMessage{{AuthorID: "u-1", AuthorKind: "user", Body: "@Agent first", CreatedAt: minuteOf(32)}}
+	firstDone := make(chan struct{})
+	go func() {
+		defer close(firstDone)
+		svc.RunTurn(context.Background(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent first"})
+	}()
+	// The first turn is draining once it takes an update, so its session and cursor are already recorded.
+	running <- harness.Update{Activity: &harness.Activity{Kind: harness.ActivityToolCall, Summary: "Read main.go"}}
+
+	conv.mu.Lock()
+	conv.history = append(conv.history,
+		ConversationMessage{AuthorID: "u-2", AuthorKind: "user", Body: "while you work", CreatedAt: minuteOf(33)},
+		ConversationMessage{AuthorID: "u-1", AuthorKind: "user", Body: "@Agent second", CreatedAt: minuteOf(34)},
+	)
+	conv.mu.Unlock()
+	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent second"})
+	close(running)
+	<-firstDone
+
+	turns := h.started()
+	require.Len(t, turns, 2)
+	assert.Equal(t, "thread-1", turns[1].sessionID)
+	assert.True(t, strings.HasPrefix(turns[1].prompts.Incremental, "New messages since your last turn:\n[2026-10-02 15:33] u-2: while you work\n[2026-10-02 15:34] u-1: @Agent second\n\n"),
+		"the running turn's messages were already sent: %q", turns[1].prompts.Incremental)
+}
+
+func TestRunTurn_FollowUpOnALostSession_FullPromptRebuildsIt(t *testing.T) {
+	h := &followUpHarness{sessionIDs: []string{"thread-1", "thread-2"}, updates: []<-chan harness.Update{replyThenDone("first answer"), replyThenDone("second answer")}}
+	svc, conv := ticketThreadWithStandingRules(h)
+	conv.history = []ConversationMessage{{AuthorID: "u-1", AuthorKind: "user", Body: "@Agent first", CreatedAt: minuteOf(32)}}
+	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent first"})
+	conv.history = append(conv.history, ConversationMessage{AuthorID: "u-1", AuthorKind: "user", Body: "@Agent second", CreatedAt: minuteOf(35)})
+
+	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent second"})
+
+	turns := h.started()
+	require.Len(t, turns, 2)
+	full := turns[1].prompts.Full
+	assert.Contains(t, full, "You are Agent")
+	assert.Contains(t, full, "Standing rule body text.")
+	assert.Contains(t, full, "Ticket: Login broken\n\nSteps to reproduce")
+	assert.Contains(t, full, "Agent: first answer", "a replacement session never saw the Agent's own reply")
+	conv.mu.Lock()
+	defer conv.mu.Unlock()
+	assert.Equal(t, "thread-2", conv.threads["conv-1"], "the next mention reuses the replacement session")
 }
