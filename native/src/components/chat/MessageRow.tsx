@@ -1,10 +1,11 @@
 import { View } from "react-native";
 
 import { MessageBody } from "@/components/chat/MessageBody";
+import { NoteFilePill } from "@/components/chat/NoteFilePill";
 import { Text } from "@/components/ui/text";
 import { RelativeTime } from "@/components/RelativeTime";
 import { cn } from "@/lib/utils";
-import type { Message } from "@/models/Chat";
+import { isNote, type Message } from "@/models/Chat";
 
 interface MessageRowProps {
   message: Message;
@@ -28,6 +29,7 @@ export const MessageRow = ({ message, authorName, continuation = false }: Messag
         </View>
       )}
       {!isSystem && <MessageBody body={message.body} />}
+      {isNote(message) && <NoteFilePill conversationId={message.conversation_id} attachmentId={message.attachment_id ?? ""} />}
     </View>
   );
 };
