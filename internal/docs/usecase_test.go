@@ -434,6 +434,40 @@ func TestUpdate(t *testing.T) {
 		require.Len(t, updatedEvts, 1)
 		assert.Equal(t, "user-1", updatedEvts[0].Payload.(UpdatedEvent).ActorID, "names the editor so notifications skip them")
 	})
+	t.Run("a new body goes through the live session reset, a rename alone does not", func(t *testing.T) {
+		repo := newFakeRepo()
+		s := newTestService(repo)
+		live := &fakeLive{}
+		s.SetLiveSessions(live)
+		created, err := s.Create(testCtx(), "project-1", "title", "body")
+		require.NoError(t, err)
+
+		_, err = s.Update(testCtx(), created.ID, "title", "new body")
+		require.NoError(t, err)
+		_, err = s.Update(testCtx(), created.ID, "Renamed", "new body")
+		require.NoError(t, err)
+
+		assert.Equal(t, []string{created.ID}, live.resets)
+		assert.Len(t, repo.eventsFor(TopicUpdated), 2, "both edits are saved")
+
+		live.err = errors.New("reset failed")
+		_, err = s.Update(testCtx(), created.ID, "Renamed", "third body")
+		assert.ErrorIs(t, err, live.err)
+	})
+}
+
+// fakeLive records the rooms reset and runs the fenced write the way the hub does.
+type fakeLive struct {
+	resets []string
+	err    error
+}
+
+func (f *fakeLive) Reset(ctx context.Context, docID string, write func(context.Context) error) error {
+	if err := write(ctx); err != nil {
+		return err
+	}
+	f.resets = append(f.resets, docID)
+	return f.err
 }
 
 func TestDelete(t *testing.T) {

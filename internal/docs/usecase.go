@@ -30,6 +30,12 @@ type AttachmentsCopier interface {
 	CopyOwnerWithIDs(ctx context.Context, fromDocID, toDocID string, idMap map[string]string) error
 }
 
+// LiveSessions fences a body write against the doc's open editing session and resets the session after it, so the
+// write wins; docs never imports collab (ADR 0017).
+type LiveSessions interface {
+	Reset(ctx context.Context, docID string, write func(context.Context) error) error
+}
+
 // snippetRunes bounds a list item's preview; the row truncates it to one line anyway.
 const snippetRunes = 140
 
@@ -38,12 +44,18 @@ type Service struct {
 	repo        Repo
 	access      AccessChecker
 	attachments AttachmentsCopier
+	live        LiveSessions
 	now         func() time.Time
 }
 
 // NewService wires the docs use-cases over the given repo, access checker, and attachment copier (for Clone).
 func NewService(repo Repo, access AccessChecker, attachments AttachmentsCopier) *Service {
 	return &Service{repo: repo, access: access, attachments: attachments, now: time.Now}
+}
+
+// SetLiveSessions wires the editing sessions a body write must win over; without it a write touches only the doc.
+func (s *Service) SetLiveSessions(live LiveSessions) {
+	s.live = live
 }
 
 // Create validates and persists a new doc in its project's default folder; see CreateInFolder.
@@ -277,14 +289,26 @@ func (s *Service) Update(ctx context.Context, id, title, body string) (*Doc, err
 		return nil, errLocked(current.ID)
 	}
 	mentioned := richtext.AddedPersonMentions(current.Body, body)
+	bodyChanged := body != current.Body
 	current.Title = title
 	current.Body = body
 	current.Version++
 	current.UpdatedAt = s.now().UTC()
-	if err := s.repo.Update(ctx, current, actorID(ctx), eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: UpdatedEvent{Doc: *current, ActorID: actorID(ctx), MentionedUserIDs: mentioned}}); err != nil {
+	if err := s.persistUpdate(ctx, current, bodyChanged, mentioned); err != nil {
 		return nil, fmt.Errorf("update doc %s: %w", id, err)
 	}
 	return current, nil
+}
+
+// persistUpdate saves an edit; a new body goes through the live session reset, so an open editor cannot overwrite it.
+func (s *Service) persistUpdate(ctx context.Context, d *Doc, bodyChanged bool, mentioned []string) error {
+	write := func(ctx context.Context) error {
+		return s.repo.Update(ctx, d, actorID(ctx), eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: UpdatedEvent{Doc: *d, ActorID: actorID(ctx), MentionedUserIDs: mentioned}})
+	}
+	if !bodyChanged || s.live == nil {
+		return write(ctx)
+	}
+	return s.live.Reset(ctx, d.ID, write)
 }
 
 // Archive marks a doc archived (hidden from search), requiring the archive bit; Restore is the inverse.

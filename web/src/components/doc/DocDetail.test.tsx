@@ -128,61 +128,46 @@ describe("DocDetail", () => {
     expect(framesOf(socket, "presence").length).toBeGreaterThan(0);
   });
 
-  it("seeds a fresh doc body once the server confirms it has no state", async () => {
+  // Two editors opening a doc nobody had a live state for each seeded the empty room, so the body showed twice.
+  it("seeds an empty room only once the server picks this editor", async () => {
     const socket = new FakeSocket();
     await renderDetail(socket);
     socket.onopen?.({});
-    socket.dispatch(
-      JSON.stringify({ type: "init", seq: 0, snapshot: null, updates: [], presence: [] }),
-    );
+    act(() => socket.dispatch(JSON.stringify({ type: "init", seq: 0, snapshot: null, updates: [], presence: [] })));
+    expect(framesOf(socket, "update")).toHaveLength(0);
 
-    await waitFor(() => expect(framesOf(socket, "update").length).toBeGreaterThan(0));
+    act(() => socket.dispatch(JSON.stringify({ type: "seed" })));
+    await waitFor(() => expect(framesOf(socket, "update")).toHaveLength(1));
   });
 
-  it("does not seed when the server replays stored state", async () => {
-    const socket = new FakeSocket();
-    await renderDetail(socket);
-    socket.onopen?.({});
-    socket.dispatch(
-      JSON.stringify({
-        type: "init",
-        seq: 4,
-        snapshot: { seq: 4, kind: "snapshot", actor_id: "bob", payload: "bm8tYm9keQ==" },
-        updates: [],
-        presence: [],
-      }),
-    );
-
-    await waitFor(() => expect(framesOf(socket, "update")).toHaveLength(0));
-  });
-
-  it("commits the converged title and body on the commit cadence", async () => {
-    vi.useFakeTimers();
+  it("commits nothing for opening a doc, then commits a body edit with the untouched title left empty", async () => {
+    // Only the commit loop's interval is faked, so typing and the deferred connect() keep real timers.
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
     try {
+      const user = userEvent.setup();
       const socket = new FakeSocket();
-      renderDetailRaw(socket);
-      // Fake timers own setTimeout here, so flush the deferred connect() by advancing
-      // the clock instead of flushConnect()'s real-timer wait.
-      await act(async () => {
-        vi.advanceTimersByTime(0);
-      });
+      await renderDetail(socket);
       socket.onopen?.({});
       await act(async () => {
-        socket.dispatch(
-          JSON.stringify({ type: "init", seq: 0, snapshot: null, updates: [], presence: [] }),
-        );
+        socket.dispatch(JSON.stringify({ type: "init", seq: 0, snapshot: null, updates: [], presence: [] }));
+        socket.dispatch(JSON.stringify({ type: "seed" }));
       });
-      // Let the seed + body onChange settle, then cross one commit interval.
       await act(async () => {
         vi.advanceTimersByTime(6000);
       });
+      expect(framesOf(socket, "commit")).toHaveLength(0);
 
+      await user.click(screen.getByLabelText("Body"));
+      await user.keyboard("x");
+      await act(async () => {
+        vi.advanceTimersByTime(6000);
+      });
       const commits = framesOf(socket, "commit") as unknown as { title?: string; body: string }[];
-      expect(commits.length).toBeGreaterThan(0);
+      expect(commits).toHaveLength(1);
       // An untouched title is omitted from commits ("" → unchanged), so this
       // client's mount-time title can never clobber a peer's rename.
       expect(commits[0]?.title ?? "").toBe("");
-      expect(commits[0]?.body).toContain("doc");
+      expect(commits[0]?.body).toContain("SQLite is the spine.");
     } finally {
       vi.useRealTimers();
     }

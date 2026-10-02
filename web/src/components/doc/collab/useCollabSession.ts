@@ -1,10 +1,13 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import * as Y from "yjs";
 
 import type { LiveSocket } from "@/api/ws";
+import { getDocKey } from "@/hooks/DocHooks";
 import { buildCollabURL } from "@/lib/collab/url";
 import { RelayCollabProvider } from "@/lib/collab/provider";
+import type { Doc } from "@/models/Doc";
 
 // Cool-hue palette only, keyed by y client id, so cursors read as part of the black+blue canvas.
 const PRESENCE_COLORS = [
@@ -42,8 +45,8 @@ export interface CollabSession {
   doc: Y.Doc;
   provider: RelayCollabProvider;
   user: CollabUser;
-  serverReady: boolean;
-  hasServerState: boolean;
+  /** The server picked this session to load the doc's body into its empty room. */
+  seed: boolean;
   connected: boolean;
   participants: CollabParticipant[];
   applyError: boolean;
@@ -67,8 +70,8 @@ export const useCollabSession = (
   const [session, setSession] = useState<{ doc: Y.Doc; provider: RelayCollabProvider; user: CollabUser } | null>(
     null,
   );
-  const [serverReady, setServerReady] = useState(false);
-  const [hasServerState, setHasServerState] = useState(false);
+  const queryClient = useQueryClient();
+  const [seededDoc, setSeededDoc] = useState<Y.Doc | null>(null);
   const [connected, setConnected] = useState(false);
   const [applyError, setApplyError] = useState(false);
   const [participants, setParticipants] = useState<CollabParticipant[]>([]);
@@ -92,9 +95,18 @@ export const useCollabSession = (
       wsFactory: opts.wsFactory ?? ((u) => new WebSocket(u) as unknown as LiveSocket),
       getState: () => getStateRef.current?.() ?? null,
       onRemoteTitle: (title) => remoteTitleRef.current?.(title),
-      onInit: (init) => {
-        setServerReady(true);
-        setHasServerState(init.snapshot !== null || init.updates.length > 0);
+      onSeed: () => setSeededDoc(doc),
+      // A server-side write replaced the body: reload it first, so the fresh session seeds the new one, not the old.
+      onReset: () => {
+        const key = [getDocKey, docId];
+        void queryClient
+          .invalidateQueries({ queryKey: key })
+          .then(() => {
+            const fresh = queryClient.getQueryData<Doc>(key);
+            if (fresh) remoteTitleRef.current?.(fresh.title);
+          })
+          .catch(() => undefined)
+          .then(() => setSessionKey((k) => k + 1));
       },
       onStatus: (status) => setConnected(status === "connected"),
       onApplyError: () => setApplyError(true),
@@ -134,7 +146,7 @@ export const useCollabSession = (
       provider.destroy();
       setSession(null);
     };
-  }, [docId, mode, name, token, sessionKey, opts.wsFactory, opts.avatar]);
+  }, [docId, mode, name, token, sessionKey, opts.wsFactory, opts.avatar, queryClient]);
 
   const setGetState = useCallback(
     (fn: (() => { title: string; body: string } | null) | null) => {
@@ -156,8 +168,7 @@ export const useCollabSession = (
     doc: session.doc,
     provider: session.provider,
     user: session.user,
-    serverReady,
-    hasServerState,
+    seed: seededDoc === session.doc,
     connected,
     participants,
     applyError,

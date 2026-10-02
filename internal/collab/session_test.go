@@ -24,6 +24,7 @@ type fakeStore struct {
 	failAppend bool
 	loadErr    error
 	trimErr    error
+	resetErr   error
 }
 
 func newFakeStore() *fakeStore {
@@ -80,6 +81,17 @@ func (f *fakeStore) TrimUpdates(_ context.Context, docID string, baseSeq int64) 
 	}
 	f.byDoc[docID] = kept
 	return nil
+}
+
+func (f *fakeStore) Reset(_ context.Context, docID string) (int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.resetErr != nil {
+		return 0, f.resetErr
+	}
+	delete(f.byDoc, docID)
+	f.seq++
+	return f.seq, nil
 }
 
 // fakeWriter records canonical-body commits.

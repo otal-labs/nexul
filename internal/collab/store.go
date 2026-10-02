@@ -39,6 +39,8 @@ type Store interface {
 	LoadReplay(ctx context.Context, docID string) (Replay, error)
 	// TrimUpdates only trims up to the seq the snapshot's author applied, so no missed payload is dropped.
 	TrimUpdates(ctx context.Context, docID string, baseSeq int64) error
+	// Reset drops a doc's stored state and returns a seq above every seq it held, which the next replay reports.
+	Reset(ctx context.Context, docID string) (int64, error)
 }
 
 // AccessChecker enforces the matching permission bit per participant; access is never frontend-only (ADR 0042).

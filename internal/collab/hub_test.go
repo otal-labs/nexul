@@ -3,6 +3,8 @@ package collab
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -283,4 +285,85 @@ func TestHubRoomReclaimedAfterLastLeave(t *testing.T) {
 		_, ok := hub.sessions["doc-1"]
 		return !ok
 	}, time.Second, 10*time.Millisecond)
+}
+
+// TestHubSeedsAnEmptyRoomOnce guards against a body shown twice: of two editors opening a doc with no stored state
+// only the first loads the body into the room, and if it leaves before doing so the other takes over.
+func TestHubSeedsAnEmptyRoomOnce(t *testing.T) {
+	hub := NewHub(testLogger(), newFakeStore(), &fakeAccess{allowed: true}, &fakeWriter{})
+	srv := serveHub(t, hub, "alice")
+
+	alice := dial(t, srv, "/ws/collab/doc-1?mode=edit")
+	assert.Equal(t, msgInit, recv(t, alice).Type)
+	assert.Equal(t, msgSeed, recv(t, alice).Type)
+	bob := dial(t, srv, "/ws/collab/doc-1?mode=edit")
+	assert.Equal(t, msgInit, recv(t, bob).Type)
+
+	// alice's presence relay is bob's next frame, so bob was never told to seed.
+	sendJSON(t, alice, ClientMsg{Type: msgHello, ClientID: 1})
+	sendJSON(t, alice, ClientMsg{Type: msgPresence, ClientID: 1, Payload: "cA=="})
+	assert.Equal(t, msgPresence, recv(t, bob).Type)
+
+	require.NoError(t, alice.Close(websocket.StatusNormalClosure, ""))
+	assert.Equal(t, msgLeave, recv(t, bob).Type)
+	assert.Equal(t, msgSeed, recv(t, bob).Type, "the seed passes to the editor still waiting")
+}
+
+// TestHubRejoinAfterAMissedResetIsToldToReset covers an editor that was offline when a server-side write reset the
+// room: merging its old state into the reseeded room would show the doc twice, so it is told to reset instead.
+func TestHubRejoinAfterAMissedResetIsToldToReset(t *testing.T) {
+	writer := &fakeWriter{}
+	hub := NewHub(testLogger(), newFakeStore(), &fakeAccess{allowed: true}, writer)
+	srv := serveHub(t, hub, "alice")
+	alice := dial(t, srv, "/ws/collab/doc-1?mode=edit")
+	before := recv(t, alice)
+	require.Equal(t, msgSeed, recv(t, alice).Type)
+
+	require.NoError(t, hub.Reset(t.Context(), "doc-1", func(context.Context) error { return nil }))
+	reset := recv(t, alice)
+	require.Equal(t, msgReset, reset.Type)
+
+	stale := dial(t, srv, fmt.Sprintf("/ws/collab/doc-1?mode=edit&since=%d", before.Seq))
+	assert.Equal(t, msgReset, recv(t, stale).Type)
+	current := dial(t, srv, fmt.Sprintf("/ws/collab/doc-1?mode=edit&since=%d", reset.Seq))
+	assert.Equal(t, msgInit, recv(t, current).Type)
+
+	// A page that rejoins without naming its seq still cannot commit state from before the reset.
+	legacy := dial(t, srv, "/ws/collab/doc-1?mode=edit")
+	recv(t, legacy) // init
+	sendJSON(t, legacy, ClientMsg{Type: msgCommit, Update: "b2xk", BaseSeq: before.Seq, Body: `{"type":"doc"}`})
+	sendJSON(t, legacy, ClientMsg{Type: msgHello, ClientID: 3})
+	sendJSON(t, legacy, ClientMsg{Type: msgPresence, ClientID: 3, Payload: "cA=="})
+	for frame := recv(t, current); frame.Type != msgPresence; frame = recv(t, current) {
+		assert.NotEqual(t, msgCommit, frame.Type)
+	}
+	assert.Zero(t, writer.count())
+}
+
+func TestHubResetFailures(t *testing.T) {
+	writeErr := errors.New("disk full")
+	tests := []struct {
+		name     string
+		write    error
+		resetErr error
+		want     error
+	}{
+		{"a failed write leaves the room alone", writeErr, nil, writeErr},
+		{"a failed store reset is reported", nil, writeErr, writeErr},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			store := newFakeStore()
+			store.resetErr = tt.resetErr
+			_, err := store.AppendUpdate(t.Context(), "doc-1", "alice", KindUpdate, "dXA=")
+			require.NoError(t, err)
+			hub := NewHub(testLogger(), store, &fakeAccess{allowed: true}, &fakeWriter{})
+
+			err = hub.Reset(t.Context(), "doc-1", func(context.Context) error { return tt.write })
+			require.ErrorIs(t, err, tt.want)
+			replay, err := store.LoadReplay(t.Context(), "doc-1")
+			require.NoError(t, err)
+			assert.Len(t, replay.Increments, 1, "the stored state survives a reset that did not happen")
+		})
+	}
 }

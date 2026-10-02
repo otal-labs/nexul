@@ -1,12 +1,27 @@
-import { StrictMode } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { StrictMode, type ReactNode } from "react";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { Awareness, encodeAwarenessUpdate } from "y-protocols/awareness";
 import { Doc } from "yjs";
 
+import { api } from "@/api/client";
 import { useCollabSession } from "@/components/doc/collab/useCollabSession";
+import { useFetchDoc } from "@/hooks/DocHooks";
 import type { LiveSocket } from "@/api/ws";
+
+vi.mock("@/api/client", () => ({
+  api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
+  resolveWSBase: vi.fn(() => "ws://test"),
+  errorMessage: vi.fn(),
+}));
+
+const withClient = ({ children }: { children: ReactNode }) => (
+  <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    {children}
+  </QueryClientProvider>
+);
 
 class FakeSocket implements LiveSocket {
   onopen: ((ev: unknown) => void) | null = null;
@@ -45,7 +60,9 @@ const remotePresence = () => {
 describe("useCollabSession", () => {
   it("stays null and never opens a socket without a token (buildCollabURL requires one)", async () => {
     const { socket, factory } = makeSocket();
-    const { result } = renderHook(() => useCollabSession("doc-1", "edit", "Alice", null, { wsFactory: factory }));
+    const { result } = renderHook(() => useCollabSession("doc-1", "edit", "Alice", null, { wsFactory: factory }), {
+      wrapper: withClient,
+    });
     expect(result.current).toBeNull();
     await flushConnect();
     expect(socket.send).not.toHaveBeenCalled();
@@ -53,7 +70,9 @@ describe("useCollabSession", () => {
 
   it("creates the session with a colored presence for the acting user", async () => {
     const { socket, factory } = makeSocket();
-    const { result } = renderHook(() => useCollabSession("doc-1", "edit", "Alice", "token-1", { wsFactory: factory }));
+    const { result } = renderHook(() => useCollabSession("doc-1", "edit", "Alice", "token-1", { wsFactory: factory }), {
+      wrapper: withClient,
+    });
     expect(result.current).not.toBeNull();
     const session = result.current!;
     expect(session.user.name).toBe("Alice");
@@ -67,7 +86,9 @@ describe("useCollabSession", () => {
 
   it("derives participants from relayed awareness (viewers included)", async () => {
     const { socket, factory } = makeSocket();
-    const { result } = renderHook(() => useCollabSession("doc-1", "view", "Alice", "token-1", { wsFactory: factory }));
+    const { result } = renderHook(() => useCollabSession("doc-1", "view", "Alice", "token-1", { wsFactory: factory }), {
+      wrapper: withClient,
+    });
     await flushConnect();
     act(() => socket.onopen?.({}));
     socket.dispatch(JSON.stringify({ type: "presence", from: "bob", client_id: 7, payload: remotePresence() }));
@@ -79,7 +100,9 @@ describe("useCollabSession", () => {
 
   it("flags unresolvable payloads and resets to a fresh session", async () => {
     const { socket, factory } = makeSocket();
-    const { result } = renderHook(() => useCollabSession("doc-1", "edit", "Alice", "token-1", { wsFactory: factory }));
+    const { result } = renderHook(() => useCollabSession("doc-1", "edit", "Alice", "token-1", { wsFactory: factory }), {
+      wrapper: withClient,
+    });
     const first = result.current!;
     await flushConnect();
     act(() => socket.onopen?.({}));
@@ -97,7 +120,9 @@ describe("useCollabSession", () => {
 
   it("feeds the registered state getter into commits", async () => {
     const { socket, factory } = makeSocket();
-    const { result } = renderHook(() => useCollabSession("doc-1", "edit", "Alice", "token-1", { wsFactory: factory }));
+    const { result } = renderHook(() => useCollabSession("doc-1", "edit", "Alice", "token-1", { wsFactory: factory }), {
+      wrapper: withClient,
+    });
     act(() => result.current?.setGetState(() => ({ title: "Spec", body: '{"type":"doc"}' })));
     await flushConnect();
     act(() => socket.onopen?.({}));
@@ -114,6 +139,35 @@ describe("useCollabSession", () => {
     });
   });
 
+  // A reset means a server-side write replaced the body; rejoining before it reloads would seed the old body again.
+  it("on a reset, reloads the doc and passes its title on before starting a fresh session", async () => {
+    const { socket, factory } = makeSocket();
+    vi.mocked(api.get).mockResolvedValueOnce({ data: { id: "doc-1", title: "Plan", body: "{}" } });
+    const { result } = renderHook(
+      () => {
+        useFetchDoc("doc-1");
+        return useCollabSession("doc-1", "edit", "Alice", "token-1", { wsFactory: factory });
+      },
+      { wrapper: withClient },
+    );
+    await waitFor(() => expect(api.get).toHaveBeenCalledTimes(1));
+    const first = result.current!;
+    const onRemoteTitle = vi.fn();
+    act(() => first.setOnRemoteTitle(onRemoteTitle));
+    await flushConnect();
+    act(() => socket.onopen?.({}));
+
+    let reload: (doc: unknown) => void = () => {};
+    vi.mocked(api.get).mockReturnValueOnce(new Promise((resolve) => (reload = resolve)));
+    act(() => socket.dispatch(JSON.stringify({ type: "reset" })));
+    await waitFor(() => expect(api.get).toHaveBeenCalledTimes(2));
+    expect(result.current?.doc).toBe(first.doc);
+
+    await act(async () => reload({ data: { id: "doc-1", title: "Agent title", body: "{}" } }));
+    await waitFor(() => expect(result.current?.doc).not.toBe(first.doc));
+    expect(onRemoteTitle).toHaveBeenCalledWith("Agent title");
+  });
+
   // Guards two regressions: StrictMode's double-invoke permanently killing the session, and the
   // throwaway instance that fix left opening a real socket of its own.
   it("reconnects cleanly through a StrictMode double-invoke instead of dying on the synthetic cleanup", async () => {
@@ -126,7 +180,7 @@ describe("useCollabSession", () => {
 
     const { result } = renderHook(
       () => useCollabSession("doc-1", "edit", "Alice", "token-1", { wsFactory: factory }),
-      { wrapper: StrictMode },
+      { wrapper: ({ children }) => <StrictMode>{withClient({ children })}</StrictMode> },
     );
     expect(result.current).not.toBeNull();
 

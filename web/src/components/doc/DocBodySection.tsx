@@ -19,6 +19,7 @@ export const DocBodySection = ({ doc, session, onBodyChange, onHeadingsChange }:
     {session && (
       <>
         <RichTextEditor
+          key={session.key}
           value={doc.body}
           onChange={onBodyChange}
           onHeadingsChange={onHeadingsChange}
@@ -28,8 +29,7 @@ export const DocBodySection = ({ doc, session, onBodyChange, onHeadingsChange }:
             doc: session.doc,
             provider: session.provider,
             user: session.user,
-            serverReady: session.serverReady,
-            hasServerState: session.hasServerState,
+            seed: session.seed,
           }}
         />
         {session.applyError && (
