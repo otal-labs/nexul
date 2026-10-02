@@ -171,10 +171,10 @@ docs, deploys and runners on a phone, signed in by scanning a QR code,
 with push notifications and over-the-air updates. It is built and in device
 testing ahead of its first release; the map is in `.scratch/native-app/`.
 
-Being charted: **ticket flow**. A ticket's thread moves into a resizable
+Planned and sliced: **ticket flow**. A ticket's thread moves into a resizable
 pane beside the body on wide screens, and agents leave notes instead of
 growing the body: one message in the thread with a markdown file, opened
-and edited live in a dialog. The wayfinder map is in
+and edited live in a dialog. The map and its build tickets are in
 `.scratch/ticket-flow/`.
 
 Parked until the repository migration lands: **bots**, webhook-driven bots
