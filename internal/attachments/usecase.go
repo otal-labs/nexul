@@ -124,8 +124,7 @@ func (s *Service) List(ctx context.Context, owner Owner) ([]*Attachment, error) 
 	return as, nil
 }
 
-// Delete leaves any body still referencing this attachment with a dangling image. A conversation's file is
-// deleted only by whoever uploaded it, the way a message is (chat DeleteMessage).
+// Delete leaves bodies referencing it with a dangling image; a conversation's file goes only by its uploader's hand.
 func (s *Service) Delete(ctx context.Context, id string) error {
 	if strings.TrimSpace(id) == "" {
 		return fmt.Errorf("%w: id is required", apperrs.ErrInvalid)

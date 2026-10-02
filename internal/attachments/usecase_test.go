@@ -360,8 +360,6 @@ func TestConversationAttachment_GoesThroughReadingTheConversation(t *testing.T) 
 	assert.Empty(t, access.calls, "a conversation's file never asks the doc check")
 }
 
-// TestConversationAttachment_OnlyTheUploaderDeletes: reading a conversation is enough to see and fetch its files
-// but not to delete one somebody else posted, the way a message is deletable by its author alone.
 func TestConversationAttachment_OnlyTheUploaderDeletes(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo, &fakeAccess{can: false})
