@@ -55,6 +55,13 @@ describe("useFetchProjects", () => {
     await waitFor(() => expect(result.current.data).toEqual([project]));
     expect(api.get).toHaveBeenCalledWith("/api/projects", { params: { workspace_id: "ws-1" } });
   });
+
+  it("does not request projects before a workspace is selected", async () => {
+    useWorkspaceStore.setState({ selectedWorkspaceId: "" });
+    const { result } = renderHook(() => useFetchProjects(), { wrapper });
+    await waitFor(() => expect(result.current.fetchStatus).toBe("idle"));
+    expect(api.get).not.toHaveBeenCalled();
+  });
 });
 
 describe("useFetchProjectDeleteImpact", () => {

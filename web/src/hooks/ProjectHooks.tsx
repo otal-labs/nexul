@@ -16,7 +16,7 @@ export const useFetchWorkspaceProjects = (workspaceId: string, enabled = true) =
   useQuery({
     queryKey: [getProjectsKey, workspaceId],
     queryFn: async () => (await api.get<Project[]>("/api/projects", { params: { workspace_id: workspaceId } })).data,
-    enabled,
+    enabled: enabled && !!workspaceId,
   });
 
 // Reads selectedWorkspaceId internally so the key refetches on workspace switch with no per-caller wiring.

@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import { DocPage } from "@/pages/DocPage";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 vi.mock("@/components/doc/collab/useCollabSession", () => ({
   useCollabSession: () => null,
@@ -61,6 +62,7 @@ const ticketData = (id: string, title: string, docId: string) => ({
 });
 
 beforeEach(() => {
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   vi.mocked(api.get).mockReset();
   vi.mocked(api.put).mockReset();
   vi.mocked(api.post).mockReset();

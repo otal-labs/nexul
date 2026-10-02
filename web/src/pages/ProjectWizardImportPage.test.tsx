@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ProjectWizardImportPage } from "@/pages/ProjectWizardImportPage";
 import { pickOption } from "@/test/pickOption";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 const access = vi.hoisted(() => ({ areas: ["topology"] as string[] }));
 vi.mock("@/hooks/AccessHooks", () => ({ useAreaAccess: () => (area: string) => access.areas.includes(area) }));
@@ -44,6 +45,7 @@ const renderPage = () => {
 };
 
 beforeEach(() => {
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   mocks.get.mockReset();
   mocks.post.mockReset();
   mocks.get.mockImplementation(async (url: string) => {

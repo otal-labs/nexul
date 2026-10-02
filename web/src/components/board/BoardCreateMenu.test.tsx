@@ -2,10 +2,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ContextAwareConfirmation } from "react-confirm";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import { BoardCreateMenu } from "@/components/board/BoardCreateMenu";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn() },
@@ -36,6 +37,10 @@ const renderWithDialogs = () =>
       <ContextAwareConfirmation.ConfirmationRoot />
     </QueryClientProvider>,
   );
+
+beforeEach(() => {
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
+});
 
 describe("BoardCreateMenu", () => {
   it("fires onNewTicket from the menu and closes it", async () => {

@@ -8,6 +8,7 @@ import { api } from "@/api/client";
 import { TicketLinksSection } from "@/components/ticket/TicketLinksSection";
 import type { Ticket } from "@/models/Ticket";
 import type { LinkedTicket, TicketLinkSet } from "@/models/TicketLink";
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
@@ -87,6 +88,7 @@ const renderSection = (overrides: Partial<Ticket> = {}) => {
 };
 
 beforeEach(() => {
+  useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   vi.resetAllMocks();
 });
 
