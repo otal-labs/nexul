@@ -146,7 +146,7 @@ func ticketKey(prefix string, number int) string {
 type ticketListIn struct {
 	ProjectID   string `json:"project_id,omitempty" jsonschema:"Only tickets in this project, by its id from project_list."`
 	DocID       string `json:"doc_id,omitempty" jsonschema:"Only tickets filed from this doc, by its id."`
-	Query       string `json:"query,omitempty" jsonschema:"Full-text search over titles and bodies, for example login timeout. Results are ordered by relevance."`
+	Query       string `json:"query,omitempty" jsonschema:"Full-text search over titles, bodies, and the text of notes on the ticket's thread, for example login timeout. Title and body matches come first, by relevance, then note-only matches."`
 	BlockedOnly bool   `json:"blocked_only,omitzero" jsonschema:"Only tickets still waiting on a blocker that has not reached a done-stage column."`
 	mcptool.PageArgs
 }

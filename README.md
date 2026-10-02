@@ -107,7 +107,7 @@ Everything below is in the AGPL edition and runs on your own servers. The
 | Automations | ✅ | Event-driven TypeScript against `@nexul/sdk`, placed on the bundled automations host or a named one on any machine, or run anywhere that can dial in. Each automation acts through its own scoped token and reads a shared secrets pool. |
 | Connectors and integrations | ✅ | Instance-wide credentials for GitHub, Cloudflare, and LiveKit. Third-party integrations get scoped tokens, signed outgoing webhooks, and an OpenAPI 3 spec at `/openapi.json`. |
 | Access | ✅ | Private invitation links, owner-configured OAuth sign-in, custom roles per workspace, per-user permission overwrites, and personal access tokens, all checked against one `<domain>:<action>` vocabulary. |
-| Search | ✅ | Full-text search over doc and ticket titles and bodies, from the docs page, the API, and MCP. |
+| Search | ✅ | Full-text search over doc and ticket titles and bodies and the notes on a ticket, from the docs page, the API, and MCP. |
 | MCP server | ✅ | 98 task-shaped tools on the official MCP Go SDK, plus doc, ticket, and topology resources and workflow prompts, over stateless Streamable HTTP at `/mcp`. Every tool is annotated for read-only or destructive, lists are paginated, and failures come back as errors the agent can act on. |
 | Logs | ✅ | Every server log line goes to the OpenObserve that `nexul install` sets up, served at `/openobserve/` on the same port, or to any OTLP/HTTP backend, and the browser's console errors are forwarded into the same stream. |
 | Desktop app | ✅ | An Electron shell that imports a connection token, keeps a list of instances, and loads the web app from the one you pick. |

@@ -738,7 +738,7 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-// Search runs an FTS5 query over ticket titles and bodies.
+// Search runs an FTS5 query over ticket titles and bodies, then the text of their notes.
 func (s *Service) Search(ctx context.Context, query string, limit int) ([]SearchResult, error) {
 	query = strings.TrimSpace(query)
 	if query == "" {
