@@ -15,13 +15,13 @@ vi.mock("@/api/client", () => ({
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
-const renderPage = (entry = "/tickets/t-1") => {
+const renderPage = (entry = "/tickets/t-1", embeddedTicketId?: string) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[entry]}>
         <Routes>
-          <Route path="/tickets/:ticketId" element={<TicketPage />} />
+          <Route path="/tickets/:ticketId" element={<TicketPage {...(embeddedTicketId ? { ticketId: embeddedTicketId } : {})} />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -169,7 +169,7 @@ describe("TicketPage sections", () => {
     expect(screen.queryByRole("heading", { name: "Trail" })).not.toBeInTheDocument();
   });
 
-  it("shows the thread under the body with no tab row, and every rail section says something when empty", async () => {
+  it("shows the thread with no tab row, and every rail section says something when empty", async () => {
     mockTicket();
     renderPage();
 
@@ -180,6 +180,17 @@ describe("TicketPage sections", () => {
     expect(await screen.findByText("No blockers or found-in links.")).toBeInTheDocument();
     expect(await screen.findByText("No bugs reported.")).toBeInTheDocument();
     expect(await screen.findByText("No plays have run on this ticket yet.")).toBeInTheDocument();
+  });
+
+  it("gives the thread a resizable pane on the page and keeps it under the body in a split view", async () => {
+    mockTicket();
+    const page = renderPage();
+    expect(await screen.findByRole("separator", { name: "Resize thread" })).toBeInTheDocument();
+    page.unmount();
+
+    renderPage("/tickets/t-1", "t-1");
+    expect(await screen.findByRole("heading", { name: "Thread" })).toBeInTheDocument();
+    expect(screen.queryByRole("separator", { name: "Resize thread" })).not.toBeInTheDocument();
   });
 
   it("puts Plays directly under Properties, above Development", async () => {

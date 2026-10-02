@@ -179,6 +179,12 @@ body {
   initial-value: 300px;
 }
 
+/* Set on the ticket grid and read only by its first track; "*" lets an unset value fall back to the column's share of the page. */
+@property --thread-pane-width {
+  syntax: "*";
+  inherits: false;
+}
+
 /* Tight tracking on headings; balanced display text. */
 h1,
 h2,
