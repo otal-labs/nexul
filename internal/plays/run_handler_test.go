@@ -151,6 +151,14 @@ func TestRunHandler_Active(t *testing.T) {
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
 	assert.Equal(t, map[string]string{"t-1": tr.ID}, body.Active)
 
+	rec = do(t, h, http.MethodGet, "/api/plays/runs/active?ticket_ids=t-1,t-2,", "", starter)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.JSONEq(t, `{"active":{"t-1":"`+tr.ID+`"}}`, rec.Body.String(), "the older ticket_ids form keeps answering as before")
+
+	rec = do(t, h, http.MethodGet, "/api/plays/runs/active?ticket_ids=", "", starter)
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.JSONEq(t, `{"active":{}}`, rec.Body.String())
+
 	rec = do(t, h, http.MethodGet, "/api/plays/runs/active?target_type=ticket&target_ids=t-1", "", "stranger")
 	require.Equal(t, http.StatusOK, rec.Code)
 	assert.JSONEq(t, `{"active":{}}`, rec.Body.String(), "a caller without plays:read sees no trail rather than an error")
