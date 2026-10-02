@@ -8,6 +8,7 @@ import type { Awareness } from "y-protocols/awareness";
 import type * as Y from "yjs";
 
 import { FormatBubbleMenu } from "@/components/doc/FormatBubbleMenu";
+import { TableBubbleMenu } from "@/components/doc/TableBubbleMenu";
 import { extractHeadingsFromJSON, type DocHeading } from "@/components/doc/docHeadings";
 import {
   buildEditorExtensions,
@@ -182,6 +183,7 @@ export const RichTextEditor = ({
       )}
       <EditorContent editor={editor} />
       {editor && <FormatBubbleMenu editor={editor} />}
+      {editor && <TableBubbleMenu editor={editor} />}
     </div>
   );
 };

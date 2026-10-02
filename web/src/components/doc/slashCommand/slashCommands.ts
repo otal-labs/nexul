@@ -8,6 +8,7 @@ import {
   ListOrderedIcon,
   MinusIcon,
   QuoteIcon,
+  TableIcon,
   TerminalIcon,
   TypeIcon,
 } from "lucide-react";
@@ -84,6 +85,13 @@ export const slashCommandItems: SlashCommandItem[] = [
     icon: TerminalIcon,
     keywords: ["code"],
     run: (editor, range) => chain(editor, range).toggleCodeBlock().run(),
+  },
+  {
+    id: "table",
+    label: "Table",
+    icon: TableIcon,
+    keywords: ["table", "grid", "rows", "columns"],
+    run: (editor, range) => chain(editor, range).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
   },
   {
     id: "image",

@@ -592,6 +592,44 @@ h3 {
   margin: 1.5em 0;
 }
 
+/* A wide table scrolls inside its own wrapper so the card around the body never overflows. */
+.prose-rich .tableWrapper {
+  margin: 0.75em 0;
+  overflow-x: auto;
+}
+
+.prose-rich table {
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.prose-rich :is(th, td) {
+  position: relative;
+  min-width: 6rem;
+  border: 1px solid var(--border);
+  padding: 0.375em 0.75em;
+  text-align: left;
+  vertical-align: top;
+}
+
+.prose-rich th {
+  background: var(--muted);
+  font-weight: 600;
+}
+
+.prose-rich :is(th, td) p {
+  margin: 0;
+}
+
+.prose-rich .selectedCell::after {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in oklab, var(--ring) 10%, transparent);
+  content: "";
+  pointer-events: none;
+}
+
 /* Editor surface: the page is the editor — no box, no toolbar; the writing
    area breathes and the caret is the blue accent. The placeholder hint is a
    React overlay (.doc-editor.is-empty), so no extension needed. */

@@ -1,4 +1,4 @@
-import { Extension } from "@tiptap/core";
+import { Extension, type Editor } from "@tiptap/core";
 import { ReactRenderer } from "@tiptap/react";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
@@ -26,6 +26,10 @@ const renderSlashMenu = () => {
   };
 };
 
+// The menu at the caret: Image needs an upload owner, and Table is never offered in a cell, since markdown can't nest tables.
+export const slashItemsFor = (query: string, editor: Editor): SlashCommandItem[] =>
+  filterSlashCommands(query, canUploadAttachments(editor)).filter((item) => item.id !== "table" || !editor.isActive("table"));
+
 // "/" trigger opens the same block-insert menu as the gutter's PlusMenuExtension button.
 export const SlashCommandExtension = Extension.create({
   name: "slashCommand",
@@ -36,7 +40,7 @@ export const SlashCommandExtension = Extension.create({
         editor: this.editor,
         char: "/",
         pluginKey: new PluginKey("slash-command"),
-        items: ({ query, editor }) => filterSlashCommands(query, canUploadAttachments(editor)),
+        items: ({ query, editor }) => slashItemsFor(query, editor),
         command: ({ editor, range, props }) => (props as SlashCommandItem).run(editor, range),
         render: renderSlashMenu,
       }),

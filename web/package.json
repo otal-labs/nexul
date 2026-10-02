@@ -28,6 +28,7 @@
     "@tiptap/extension-collaboration": "3.31.3",
     "@tiptap/extension-image": "3.31.3",
     "@tiptap/extension-mention": "3.31.3",
+    "@tiptap/extension-table": "3.31.3",
     "@tiptap/html": "3.31.3",
     "@tiptap/markdown": "3.31.3",
     "@tiptap/pm": "3.31.3",
