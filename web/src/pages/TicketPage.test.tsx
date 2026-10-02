@@ -70,7 +70,8 @@ const reviewData = [
   },
 ];
 
-const mockTicket = () => vi.mocked(api.get).mockImplementation((url: string) => {
+const mockTicket = (overrides: Record<string, unknown> = {}) => vi.mocked(api.get).mockImplementation((url: string) => {
+  if (url in overrides) return Promise.resolve({ data: overrides[url] });
   if (url === "/api/tickets/t-1") return Promise.resolve({ data: ticketData });
   if (url.startsWith("/api/projects")) return Promise.resolve({ data: projectData });
   if (url === "/api/statuses") return Promise.resolve({ data: statusData });
@@ -179,5 +180,19 @@ describe("TicketPage sections", () => {
     expect(await screen.findByText("No blockers or found-in links.")).toBeInTheDocument();
     expect(await screen.findByText("No bugs reported.")).toBeInTheDocument();
     expect(await screen.findByText("No plays have run on this ticket yet.")).toBeInTheDocument();
+  });
+
+  it("puts Plays directly under Properties, above Development", async () => {
+    mockTicket({
+      "/api/workspaces/ws-1/me": { role_name: "Member", permissions: ["plays:run"] },
+      "/api/workspaces/ws-1/plays/applicable": [{ id: "play-1", label: "Fix with AI", type: "ticket", description: "", show_when_stage: "progress" }],
+    });
+    renderPage();
+
+    const headings = async () => (await screen.findAllByRole("heading", { level: 2 })).map((h) => h.textContent);
+    await screen.findByRole("button", { name: /Fix with AI/ });
+    const rail = await headings();
+    const properties = rail.indexOf("Properties");
+    expect(rail.slice(properties, properties + 3)).toEqual(["Properties", "Plays", "Development"]);
   });
 });

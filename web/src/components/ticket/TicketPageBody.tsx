@@ -46,6 +46,7 @@ export const TicketPageBody = ({
       onAddLabel={onAddLabel}
       onRemoveLabel={onRemoveLabel}
     >
+      <PlaysRailSection ticket={ticket} />
       <DevelopmentSection ticketId={ticket.id} />
       <ReviewPanel ticketId={ticket.id} />
       <AttachmentsSection owner={{ ticket_id: ticket.id }} className="px-2" actionPlacement="end" />
@@ -62,7 +63,6 @@ export const TicketPageBody = ({
           className="border-t-0 pt-0"
         />
       )}
-      <PlaysRailSection ticket={ticket} />
     </TicketPropertiesPanel>
   </div>
 );
