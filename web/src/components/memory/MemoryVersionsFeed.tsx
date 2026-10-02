@@ -7,16 +7,18 @@ interface MemoryVersionsFeedProps {
   memoryId: string;
   currentVersion: number;
   canRevert: boolean;
+  /** Passed to each row; "stacked" suits a narrow column. */
+  rowLayout?: "inline" | "stacked";
 }
 
 // Newest first, matching GET /api/memories/{id}/versions; the current version has no revert action.
-export const MemoryVersionsFeed = ({ memoryId, currentVersion, canRevert }: MemoryVersionsFeedProps) => {
+export const MemoryVersionsFeed = ({ memoryId, currentVersion, canRevert, rowLayout = "inline" }: MemoryVersionsFeedProps) => {
   const { data, error, isPending } = useFetchMemoryVersions(memoryId);
 
   return (
-    <section className="space-y-3" aria-label="Version history">
+    <section className="space-y-3" aria-label="Versions">
       <h2 className="font-mono text-[11px] font-semibold tracking-[0.08em] text-muted-foreground/80 uppercase">
-        Version history
+        Versions
       </h2>
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
@@ -29,6 +31,7 @@ export const MemoryVersionsFeed = ({ memoryId, currentVersion, canRevert }: Memo
               version={version}
               isCurrent={version.version === currentVersion}
               canRevert={canRevert}
+              layout={rowLayout}
             />
           ))}
         </ul>

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { describe, expect, it, vi } from "vitest";
@@ -64,15 +64,27 @@ const renderDetail = (overrides: Partial<React.ComponentProps<typeof MemoryDetai
 };
 
 describe("MemoryDetail", () => {
-  it("opens on Attachments and switches to version history for every reader", async () => {
+  it("opens the tabs on Attachments and switches to version history for every reader", async () => {
     const user = userEvent.setup();
     renderDetail();
-    expect(screen.getByTestId("attachments-section")).toBeInTheDocument();
-    expect(screen.queryByTestId("versions-feed")).not.toBeInTheDocument();
+    const panel = screen.getByRole("tabpanel");
+    expect(within(panel).getByTestId("attachments-section")).toBeInTheDocument();
+    expect(within(panel).queryByTestId("versions-feed")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("tab", { name: "Versions" }));
-    expect(screen.getByTestId("versions-feed")).toBeInTheDocument();
-    expect(screen.queryByTestId("attachments-section")).not.toBeInTheDocument();
+    expect(within(screen.getByRole("tabpanel")).getByTestId("versions-feed")).toBeInTheDocument();
+    expect(within(screen.getByRole("tabpanel")).queryByTestId("attachments-section")).not.toBeInTheDocument();
+  });
+
+  it("keeps both sections in the rail whichever tab is open", async () => {
+    const user = userEvent.setup();
+    renderDetail();
+    expect(screen.getAllByTestId("attachments-section")).toHaveLength(2);
+    expect(screen.getAllByTestId("versions-feed")).toHaveLength(1);
+
+    await user.click(screen.getByRole("tab", { name: "Versions" }));
+    expect(screen.getAllByTestId("attachments-section")).toHaveLength(1);
+    expect(screen.getAllByTestId("versions-feed")).toHaveLength(2);
   });
 
   it("hides Clone to… without memories:clone", () => {

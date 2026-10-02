@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
 import { useRevertMemory } from "@/hooks/MemoryHooks";
 import { usePerson } from "@/hooks/PeopleHooks";
+import { cn } from "@/lib/utils";
 import type { MemoryVersion } from "@/models/MemoryVersion";
 import { personLabel } from "@/models/Person";
 import { formatRelativeTime } from "@/utils/TimeUtility";
@@ -13,13 +14,16 @@ interface MemoryVersionRowProps {
   version: MemoryVersion;
   isCurrent: boolean;
   canRevert: boolean;
+  /** "stacked" puts the title under the version number and the revert button under the author, for a column too narrow for one line. */
+  layout?: "inline" | "stacked";
 }
 
 // authorLabel names who saved the version; an MCP-tagged save reads "Agent via <user>" (ADR 0049).
 const authorLabel = (version: MemoryVersion, author: string): string =>
   version.author_via === "mcp" ? `Agent via ${author}` : author;
 
-export const MemoryVersionRow = ({ memoryId, version, isCurrent, canRevert }: MemoryVersionRowProps) => {
+export const MemoryVersionRow = ({ memoryId, version, isCurrent, canRevert, layout = "inline" }: MemoryVersionRowProps) => {
+  const stacked = layout === "stacked";
   const revert = useRevertMemory();
   const author = usePerson(version.author_id);
   const { open: confirm } = useConfirmationDialog();
@@ -33,7 +37,7 @@ export const MemoryVersionRow = ({ memoryId, version, isCurrent, canRevert }: Me
   };
 
   return (
-    <li className="flex flex-wrap items-center gap-3 px-4 py-3">
+    <li className={cn("flex gap-3", stacked ? "flex-col gap-1 px-3 py-2" : "flex-wrap items-center px-4 py-3")}>
       <span className="font-mono text-sm">v{version.version}</span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm">{version.title}</p>
@@ -42,7 +46,7 @@ export const MemoryVersionRow = ({ memoryId, version, isCurrent, canRevert }: Me
         </p>
       </div>
       {!isCurrent && canRevert && (
-        <Button type="button" variant="outline" size="sm" onClick={onRevert} loading={revert.isPending}>
+        <Button type="button" variant="outline" size="sm" className={cn(stacked && "self-start")} onClick={onRevert} loading={revert.isPending}>
           <RotateCcw className="size-4" />
           Revert
         </Button>
