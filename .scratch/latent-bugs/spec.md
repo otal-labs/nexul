@@ -101,3 +101,23 @@ When a service's container does not exist, `docker logs` fails with a daemon err
 ## A removed person's voice join token still works until it expires
 
 Removal from a private voice channel disconnects the person, and they cannot get a new join token, but one they already hold stays valid for its six-hour lifetime, so a hand-built client could reconnect. LiveKit's RemoveParticipant accepts a token-revocation timestamp that would close this on servers new enough to support it; the other lever is a shorter token lifetime with refresh. Removal from the workspace and switching someone to restricted publish no channel membership change, so neither ends a call either.
+
+## A doc's live replay skips updates that landed before another editor's snapshot
+
+Replay sends only the updates after a room's newest snapshot. When one editor
+commits a snapshot whose base predates another editor's updates, those
+updates are not replayed to new joiners until their author commits again.
+Seen while fixing the server-write reset (ADR 0109).
+
+## Renaming a doc over MCP leaves the old title in open editors
+
+A `doc_update` that changes only the title does not reset the live room (a
+title-only edit is deliberately excluded from the reset), so editors already
+open keep showing the old title until they reload.
+
+## A doc's seed is not handed on when the seeder drops as a slow connection
+
+Only the first editor of an empty room seeds it, and the seed passes to
+another editor when the seeder leaves normally. When the hub drops the
+seeder as a slow connection instead, nobody else is told to seed, so the
+room can stay empty until someone reloads.
