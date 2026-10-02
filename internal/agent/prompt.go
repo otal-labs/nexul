@@ -74,6 +74,10 @@ type TicketContext struct {
 	Body  string
 }
 
+// ticketBodyRule follows the ticket body on every turn in its thread, mentions and play runs alike (ADR 0108).
+const ticketBodyRule = "The ticket body above is its spec: change it only when a person asks. Add anything lasting you learn " +
+	"afterwards as a note with message_post's file, and if the spec looks wrong, say so and suggest the person edit it."
+
 // DocContext is a doc thread's doc, included in the prompt as markdown; trimmed with a note when oversized.
 type DocContext struct {
 	Title string
@@ -118,7 +122,7 @@ func ComposePrompt(in PromptInput) string {
 	// trimmed today, a doc's is, since only the doc thread ticket calls for it.
 	targetBlock := ""
 	if in.Ticket != nil {
-		targetBlock = fmt.Sprintf("Ticket: %s\n\n%s", in.Ticket.Title, in.Ticket.Body)
+		targetBlock = fmt.Sprintf("Ticket: %s\n\n%s\n\n%s", in.Ticket.Title, in.Ticket.Body, ticketBodyRule)
 	}
 	if in.Doc != nil {
 		targetBlock = docContextBlock(in.Doc, instructions, request)
