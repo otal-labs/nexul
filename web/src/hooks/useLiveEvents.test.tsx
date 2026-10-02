@@ -475,6 +475,16 @@ describe("useLiveEvents dispatch", () => {
     expect(useAgentStreamStore.getState().streams.c1).toBeDefined();
   });
 
+  it("refetches a note's file and its thread's files when the note's message updates", async () => {
+    setup();
+    const socket = await connectedSocket();
+    const spy = invalidate();
+    const note = { id: "m1", conversation_id: "c1", author_kind: "agent", attachment_id: "f1", body: "plan" };
+    act(() => socket.message(JSON.stringify({ topic: "chat.message.updated", type: "event", payload: { message: note } })));
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["getNoteText", "f1"] });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["getAttachments", { conversation_id: "c1" }] });
+  });
+
   it("leaves the agent stream store alone for a plain user message", async () => {
     setup();
     const socket = await connectedSocket();
