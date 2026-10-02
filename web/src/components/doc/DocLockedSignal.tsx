@@ -8,9 +8,9 @@ interface DocLockedSignalProps {
   docId: string;
 }
 
-// Says the doc is read-only and offers the way back to whoever may edit it.
+// Says the doc is read-only and offers the way back to whoever may unlock it.
 export const DocLockedSignal = ({ docId }: DocLockedSignalProps) => {
-  const canWrite = useHasPermission("docs:write");
+  const canLock = useHasPermission("docs:lock");
   const setLocked = useSetDocLocked();
   return (
     <span className="flex items-center gap-1">
@@ -18,7 +18,7 @@ export const DocLockedSignal = ({ docId }: DocLockedSignalProps) => {
         <LockIcon className="size-3.5" aria-hidden />
         Locked
       </span>
-      {canWrite && (
+      {canLock && (
         <Button
           variant="ghost"
           size="sm"

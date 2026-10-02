@@ -22,6 +22,7 @@ const (
 	DocsDelete         Action = "docs:delete"
 	DocsThread         Action = "docs:thread"
 	DocsClone          Action = "docs:clone"
+	DocsLock           Action = "docs:lock"
 	PermissionsWrite   Action = "permissions:write"
 	ProjectsRead       Action = "projects:read"
 	ProjectsWrite      Action = "projects:write"
@@ -89,6 +90,7 @@ const (
 	run    = "run"
 	clone  = "clone"
 	thread = "thread"
+	lock   = "lock"
 	create = "create"
 	logs   = "logs"
 )
@@ -100,6 +102,7 @@ var verbLabel = map[Action]string{
 	RolesClone:    "Clone roles to another workspace",
 	DocsThread:    "See doc threads",
 	DocsClone:     "Clone docs into another project",
+	DocsLock:      "Lock and unlock docs",
 	StacksLogs:    "Read container logs",
 	// The creator owns what they create, and an Owner holds every permission, so this one is as strong as Owner.
 	WorkspacesCreate: "Create workspaces",
@@ -125,7 +128,7 @@ type domainInfo struct {
 
 // domainTable is the single source every catalog, valid-action set, and web grid derives from (display order).
 var domainTable = []domainInfo{
-	{"docs", "docs", []string{read, write, delete, thread, clone}, AreaProject},
+	{"docs", "docs", []string{read, write, delete, thread, clone, lock}, AreaProject},
 	{"attachments", "attachments", []string{read, write, delete}, AreaProject},
 	{"plays", "plays", []string{read, write, delete, run}, AreaWorkspace},
 	{"memories", "memories", []string{read, write, delete, clone}, AreaProject},
@@ -271,8 +274,8 @@ func SetOfStrings(values []string) Set {
 	return SetOf(actions...)
 }
 
-// CreatorGrant is what a document creator receives: every docs action plus the right to share it.
-var CreatorGrant = SetOf(DocsRead, DocsWrite, DocsDelete, PermissionsWrite)
+// CreatorGrant is what a document creator receives: reading, editing, locking, and deleting it, plus the right to share it.
+var CreatorGrant = SetOf(DocsRead, DocsWrite, DocsDelete, DocsLock, PermissionsWrite)
 
 // Has reports whether the set includes action.
 func (s Set) Has(action Action) bool {

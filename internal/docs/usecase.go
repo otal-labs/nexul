@@ -315,7 +315,7 @@ func (s *Service) setArchived(ctx context.Context, id string, archived bool) (*D
 	return current, nil
 }
 
-// Lock makes a doc read-only for everyone until Unlock, requiring docs:write; archive, clone, and delete still work.
+// Lock makes a doc read-only for everyone until Unlock, requiring docs:lock; archive, clone, and delete still work.
 func (s *Service) Lock(ctx context.Context, id string) (*Doc, error) {
 	return s.setLocked(ctx, id, true)
 }
@@ -332,14 +332,37 @@ func (s *Service) setLocked(ctx context.Context, id string, locked bool) (*Doc, 
 	if err != nil {
 		return nil, fmt.Errorf("get doc %s: %w", id, err)
 	}
-	if err := s.require(ctx, current.ID, permissions.DocsWrite); err != nil {
+	if err := s.require(ctx, current.ID, permissions.DocsLock); err != nil {
 		return nil, err
 	}
-	current.Locked = locked
-	if err := s.repo.SetLocked(ctx, current.ID, locked, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: UpdatedEvent{Doc: *current, ActorID: actorID(ctx)}}); err != nil {
-		return nil, fmt.Errorf("lock doc %s: %w", id, err)
+	if err := s.persistLocked(ctx, current, locked); err != nil {
+		return nil, err
 	}
 	return current, nil
+}
+
+// LockForPlay locks a doc as a doc play starts on it, with no check of its own: the run's start already checked the
+// starter, and the lock comes with the run (ADR 0107). It reports whether the doc was unlocked until now.
+func (s *Service) LockForPlay(ctx context.Context, id string) (bool, error) {
+	current, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return false, fmt.Errorf("get doc %s: %w", id, err)
+	}
+	if current.Locked {
+		return false, nil
+	}
+	if err := s.persistLocked(ctx, current, true); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (s *Service) persistLocked(ctx context.Context, d *Doc, locked bool) error {
+	d.Locked = locked
+	if err := s.repo.SetLocked(ctx, d.ID, locked, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicUpdated, Payload: UpdatedEvent{Doc: *d, ActorID: actorID(ctx)}}); err != nil {
+		return fmt.Errorf("lock doc %s: %w", d.ID, err)
+	}
+	return nil
 }
 
 // Locked reports whether a doc refuses edits; the collab relay asks per update, having checked access at join.

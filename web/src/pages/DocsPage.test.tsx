@@ -125,10 +125,19 @@ describe("DocsPage", () => {
     expect(screen.queryByRole("button", { name: "New doc" })).not.toBeInTheDocument();
   });
 
+  it("leaves Lock out for a writer without docs:lock", async () => {
+    const user = userEvent.setup();
+    renderPage("/acme/docs", ["docs:read", "docs:write"]);
+
+    await user.click(await screen.findByRole("button", { name: "More actions for Rollback plan" }));
+    expect(await screen.findByRole("menuitem", { name: "Move to folder" })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "Lock" })).not.toBeInTheDocument();
+  });
+
   it("locks and unlocks a doc from its row menu", async () => {
     const user = userEvent.setup();
     vi.mocked(api.post).mockResolvedValue({ data: {} });
-    renderPage("/acme/docs", ["docs:read", "docs:write", "docs:clone", "docs:delete"]);
+    renderPage("/acme/docs", ["docs:read", "docs:write", "docs:clone", "docs:delete", "docs:lock"]);
 
     await user.click(await screen.findByRole("button", { name: "More actions for Rollback plan" }));
     const items = await screen.findAllByRole("menuitem");

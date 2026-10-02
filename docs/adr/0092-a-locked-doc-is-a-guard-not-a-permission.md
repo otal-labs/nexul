@@ -24,3 +24,6 @@ Also: the relay now refuses writes from a participant who joined in view mode, w
 relaying although the join only checked `docs:read`.
 
 Decided 2026-09-30.
+
+Superseded in part by ADR 0107: locking and unlocking take `docs:lock`, and a doc play locks its doc when its run
+starts. The rejected `docs:lock` bit was adopted.

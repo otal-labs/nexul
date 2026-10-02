@@ -22,7 +22,7 @@ export const DocActionsMenu = ({
   onArchive,
   onRestore,
 }: DocActionsMenuProps) => {
-  const canWrite = useHasPermission("docs:write");
+  const canLock = useHasPermission("docs:lock");
   const setLocked = useSetDocLocked();
   return (
     <Popover>
@@ -38,12 +38,12 @@ export const DocActionsMenu = ({
         <Button variant="ghost" size="sm" className="w-full justify-start" onClick={onPermissions}>
           Permissions
         </Button>
-        {canWrite && !doc.locked && (
+        {canLock && !doc.locked && (
           <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => setLocked.mutate({ id: doc.id, locked: true })}>
             Lock
           </Button>
         )}
-        {canWrite && doc.locked && (
+        {canLock && doc.locked && (
           <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => setLocked.mutate({ id: doc.id, locked: false })}>
             Unlock
           </Button>

@@ -30,3 +30,6 @@ doc clone before, so no role is backfilled.
 Amended 2026-09-30: `stacks:logs` joins them (ADR 0091). A container's output carries secrets a stack reader should
 not see, so reading it is neither `stacks:read` nor editing the stack. Every role that held `stacks:write` was
 backfilled with it.
+
+Amended 2026-10-02: `docs:lock` joins them (ADR 0107). Locking and unlocking a doc need it, and every role,
+overwrite, invitation, install, and automation holding `docs:write` was given it, so no writer lost the lock.

@@ -229,8 +229,10 @@ _Avoid_: Comment, addendum, memory (a memory is written for agents)
 **Locked doc**:
 A doc set read-only for everyone as a guard against accidental edits: its
 title and body refuse every change, from people and agents alike, until it
-is unlocked. Anyone who may write the doc locks or unlocks it; archiving,
-cloning, and deleting still work, and a clone starts unlocked.
+is unlocked. Locking and unlocking take `docs:lock`, a permission of its own
+apart from editing. Starting a doc play locks its doc, whatever the starter
+holds, and the doc stays locked after the run ends. Archiving, cloning, and
+deleting still work, and a clone starts unlocked.
 _Avoid_: Frozen, protected, read-only doc
 
 **Watcher**:
@@ -535,7 +537,7 @@ _Avoid_: Global template, default template (that is the code's), master copy
 One capability, written `<domain>:<action>` where the action is `read`,
 `write`, or `delete` (`docs:write`, `members:delete`), or a verb the domain
 declares for an act that is neither (`plays:run`, `memories:clone`,
-`roles:clone`, `docs:thread`, `docs:clone`, `stacks:logs`). One vocabulary for every actor: a role, a
+`roles:clone`, `docs:thread`, `docs:clone`, `docs:lock`, `stacks:logs`). One vocabulary for every actor: a role, a
 scoped token, and the agent are checked against the same values. Checked in
 the workspace the entity belongs to; runners, the topology, machines, DNS,
 connectors, the instance's own stacks, and the instance itself (its settings,
@@ -724,7 +726,7 @@ internals.
 **Access** — what an actor may do. Permissions and access control. A
 permission is `<domain>:<read|write|delete>` (`docs:write`,
 `members:delete`), or a verb a domain declares beside those three
-(`plays:run`, `memories:clone`, `roles:clone`, `docs:thread`, `docs:clone`, `stacks:logs`), one
+(`plays:run`, `memories:clone`, `roles:clone`, `docs:thread`, `docs:clone`, `docs:lock`, `stacks:logs`), one
 vocabulary shared by roles, token scopes, and the agent. Distinct from auth.
 
 **Auth** — who a user is. Identity and device sessions, via an owner-configured OAuth provider.
