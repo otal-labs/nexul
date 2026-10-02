@@ -30,3 +30,6 @@ Amends ADR 0050: the note dialog edits live in place like a doc page, but inside
 a thread rather than a page of its own.
 
 Decided 2026-10-02.
+
+Amended 2026-10-02: the editor has GFM tables, so a table in a note's file keeps its rows, columns, alignment, and inline marks through
+a save; raw HTML other than `<br>`, front matter, and reference links are still flattened.

@@ -3,6 +3,7 @@ import { Markdown } from "@tiptap/markdown";
 import Mention from "@tiptap/extension-mention";
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
 import Image from "@tiptap/extension-image";
+import { renderTableToMarkdown, Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
 import { ReactNodeViewRenderer, ReactRenderer } from "@tiptap/react";
 import type { SuggestionKeyDownProps, SuggestionProps } from "@tiptap/suggestion";
 import type { JSONContent } from "@tiptap/core";
@@ -108,6 +109,14 @@ export function buildEditorExtensions({
       },
     }).configure({ lowlight }),
     Markdown,
+    Table.extend({
+      // The stock serializer leaves a pipe in cell text bare, so the next parse splits that cell in two.
+      renderMarkdown: (node, h) =>
+        renderTableToMarkdown(node, { ...h, renderChildren: (nodes, sep) => h.renderChildren(nodes, sep).replace(/\|/g, "\\|") }),
+    }),
+    TableRow,
+    TableHeader,
+    TableCell,
     Image.extend({
       addNodeView() {
         return ReactNodeViewRenderer(AttachmentImageView);

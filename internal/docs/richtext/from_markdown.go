@@ -3,6 +3,7 @@ package richtext
 import (
 	"bytes"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/yuin/goldmark"
@@ -10,7 +11,10 @@ import (
 	"github.com/yuin/goldmark/extension"
 	gast "github.com/yuin/goldmark/extension/ast"
 	"github.com/yuin/goldmark/text"
+	"github.com/yuin/goldmark/util"
 )
+
+var brTag = regexp.MustCompile(`(?i)^<br\s*/?>$`)
 
 // MarkdownToDoc parses CommonMark/GFM into a Tiptap document; unmappable content flattens to text, never dropped.
 func MarkdownToDoc(md string) (*Doc, error) {
@@ -61,6 +65,8 @@ func block(n ast.Node, source []byte) (Node, error) {
 		return Node{Type: "horizontalRule"}, nil
 	case *ast.AutoLink:
 		return blockAutoLink(v, source), nil
+	case *gast.Table:
+		return blockTable(v, source)
 	default:
 		return blockFallback(n, source), nil
 	}
@@ -145,7 +151,36 @@ func blockAutoLink(v *ast.AutoLink, source []byte) Node {
 	return Node{Type: "text", Text: url, Marks: []Mark{{Type: "link", Attrs: map[string]any{"href": url}}}}
 }
 
-// blockFallback flattens unhandled nodes to their text so content is never silently dropped (images, task lists, tables).
+// blockTable maps a GFM table to the editor's table nodes: one paragraph per cell, the header row as tableHeader cells.
+func blockTable(v *gast.Table, source []byte) (Node, error) {
+	var rows []Node
+	for row := v.FirstChild(); row != nil; row = row.NextSibling() {
+		cellType := "tableCell"
+		if _, ok := row.(*gast.TableHeader); ok {
+			cellType = "tableHeader"
+		}
+		var cells []Node
+		for c := row.FirstChild(); c != nil; c = c.NextSibling() {
+			cell, ok := c.(*gast.TableCell)
+			if !ok {
+				continue
+			}
+			inline, err := inlines(cell, source, nil)
+			if err != nil {
+				return Node{}, err
+			}
+			n := Node{Type: cellType, Content: []Node{{Type: "paragraph", Content: inline}}}
+			if cell.Alignment != gast.AlignNone {
+				n.Attrs = map[string]any{"align": cell.Alignment.String()}
+			}
+			cells = append(cells, n)
+		}
+		rows = append(rows, Node{Type: "tableRow", Content: cells})
+	}
+	return Node{Type: "table", Content: rows}, nil
+}
+
+// blockFallback flattens unhandled nodes to their text so content is never silently dropped (task lists, raw HTML).
 func blockFallback(n ast.Node, source []byte) Node {
 	var b bytes.Buffer
 	_ = ast.Walk(n, func(node ast.Node, entering bool) (ast.WalkStatus, error) {
@@ -222,8 +257,9 @@ func inlineNodes(child ast.Node, source []byte, marks []Mark) ([]Node, error) {
 	}
 }
 
+// inlineTextNode drops backslash escapes, which goldmark leaves in the text for its HTML renderer to resolve.
 func inlineTextNode(v *ast.Text, source []byte, marks []Mark) []Node {
-	text := string(v.Value(source))
+	text := string(util.UnescapePunctuations(v.Value(source)))
 	if v.HardLineBreak() {
 		var out []Node
 		if text != "" {
@@ -280,11 +316,14 @@ func inlineAutoLink(v *ast.AutoLink, source []byte, marks []Mark) Node {
 	return Node{Type: "text", Text: url, Marks: append(cloneMarks(marks), Mark{Type: "link", Attrs: map[string]any{"href": url}})}
 }
 
-// inlineRawHTML matches the Tiptap markdown pipeline, which turns inline HTML into text.
+// inlineRawHTML matches the Tiptap markdown pipeline, which reads <br> as a hard break and other inline HTML as text.
 func inlineRawHTML(v *ast.RawHTML, source []byte, marks []Mark) []Node {
 	text := strings.TrimSpace(string(v.Segments.Value(source)))
 	if text == "" {
 		return nil
+	}
+	if brTag.MatchString(text) {
+		return []Node{{Type: "hardBreak"}}
 	}
 	return []Node{{Type: "text", Text: text, Marks: cloneMarks(marks)}}
 }

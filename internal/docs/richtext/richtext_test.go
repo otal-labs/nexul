@@ -66,6 +66,8 @@ func TestMarkdownToJSON_RoundTrip(t *testing.T) {
 		{"nested blockquote", "> outer\n>\n> > inner"},
 		{"list with code", "- item\n\n  ```go\n  x\n  ```"},
 		{"emphasis mixed", "a **b *c* d** e"},
+		{"table with marks, pipes, and alignment", "| Step | **Owner** |\n|:--|:-:|\n| `a \\| b` | [runbook](https://example.com) |\n| x \\| y | one<br>two |"},
+		{"table between paragraphs", "before\n\n| H |\n|---|\n| v |\n\nafter"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -355,4 +357,33 @@ func TestSnippet(t *testing.T) {
 			assert.Equal(t, tt.want, Snippet(tt.body, tt.limit))
 		})
 	}
+}
+
+// The editor's own JSON for a table carries span and width attrs on every cell; a note's save renders it through here.
+func TestJSONToMarkdown_EditorTable_RendersGFMTable(t *testing.T) {
+	cell := func(typ, align string, content ...Node) Node {
+		attrs := map[string]any{"colspan": 1.0, "rowspan": 1.0, "colwidth": nil, "align": nil}
+		if align != "" {
+			attrs["align"] = align
+		}
+		return Node{Type: typ, Attrs: attrs, Content: []Node{{Type: "paragraph", Content: content}}}
+	}
+	text := func(s string, marks ...string) Node {
+		n := Node{Type: "text", Text: s}
+		for _, m := range marks {
+			n.Marks = append(n.Marks, Mark{Type: m})
+		}
+		return n
+	}
+	doc := &Doc{Type: "doc", Content: []Node{{Type: "table", Content: []Node{
+		{Type: "tableRow", Content: []Node{cell("tableHeader", "", text("Step")), cell("tableHeader", "right", text("Owner", "bold"))}},
+		{Type: "tableRow", Content: []Node{cell("tableCell", "", text("a|b", "code")), cell("tableCell", "", text("x | y"), Node{Type: "hardBreak"}, text("z"))}},
+		{Type: "tableRow", Content: []Node{cell("tableCell", ""), cell("tableCell", "", Node{Type: "text", Text: "docs", Marks: []Mark{{Type: "link", Attrs: map[string]any{"href": "https://example.com"}}}})}},
+	}}}}
+	body, err := MarshalJSON(doc)
+	require.NoError(t, err)
+
+	got, err := JSONToMarkdown(body)
+	require.NoError(t, err)
+	assert.Equal(t, "| Step | **Owner** |\n| --- | ---: |\n| `a\\|b` | x \\| y<br>z |\n|  | [docs](https://example.com) |", got)
 }

@@ -74,3 +74,25 @@ describe("mentions", () => {
     expect(html).toContain('href="https://example.com"');
   });
 });
+
+describe("tables", () => {
+  const markdown = "| Step | **Owner** |\n|:--|--:|\n| `a | b` | [runbook](https://example.com) |\n| x \\| y | one<br>two |";
+
+  it("parses a GFM table into table nodes and writes it back as a table that reparses the same", () => {
+    const doc = parseBodyToJSON(markdown);
+    const table = doc.content[0];
+    expect(table.type).toBe("table");
+    const cellText = table.content.map((row: { content: { content: { content?: { text?: string }[] }[] }[] }) =>
+      row.content.map((cell) => (cell.content[0]?.content ?? []).map((n) => n.text ?? "\n").join("")),
+    );
+    expect(cellText).toEqual([
+      ["Step", "Owner"],
+      ["a | b", "runbook"],
+      ["x | y", "one\ntwo"],
+    ]);
+
+    const written = bodyToMarkdown(JSON.stringify(doc));
+    expect(parseBodyToJSON(written)).toEqual(doc);
+    expect(bodyToMarkdown(JSON.stringify(parseBodyToJSON(written)))).toBe(written);
+  });
+});

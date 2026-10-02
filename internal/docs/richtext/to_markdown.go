@@ -2,6 +2,7 @@ package richtext
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 )
 
@@ -38,6 +39,8 @@ func renderBlock(n Node) (string, error) {
 		return "---", nil
 	case "image":
 		return renderImage(n), nil
+	case "table":
+		return renderTable(n)
 	case "text":
 		return renderInline([]Node{n}), nil
 	default:
@@ -124,6 +127,77 @@ func renderUnknownBlock(n Node) string {
 		b.WriteString(renderInline([]Node{c}))
 	}
 	return b.String()
+}
+
+// renderTable writes a GFM table as the editor does: a blank header when the first row has none, one line per cell.
+func renderTable(n Node) (string, error) {
+	var rows [][]string
+	aligns := []string{}
+	hasHeader := false
+	for r, row := range n.Content {
+		var cells []string
+		for c, cell := range row.Content {
+			text, err := renderTableCell(cell)
+			if err != nil {
+				return "", err
+			}
+			cells = append(cells, text)
+			if c >= len(aligns) {
+				aligns = append(aligns, "")
+			}
+			if align, _ := cell.Attrs["align"].(string); aligns[c] == "" {
+				aligns[c] = align
+			}
+			if r == 0 && cell.Type == "tableHeader" {
+				hasHeader = true
+			}
+		}
+		rows = append(rows, cells)
+	}
+	if len(aligns) == 0 {
+		return "", nil
+	}
+	header := make([]string, len(aligns))
+	body := rows
+	if hasHeader {
+		copy(header, rows[0])
+		body = rows[1:]
+	}
+	delimiter := make([]string, len(aligns))
+	for i, align := range aligns {
+		delimiter[i] = "---"
+		if d, ok := tableDelimiters[align]; ok {
+			delimiter[i] = d
+		}
+	}
+	lines := []string{tableLine(header, len(aligns)), tableLine(delimiter, len(aligns))}
+	for _, cells := range body {
+		lines = append(lines, tableLine(cells, len(aligns)))
+	}
+	return strings.Join(lines, "\n"), nil
+}
+
+var tableDelimiters = map[string]string{"left": ":---", "center": ":---:", "right": "---:"}
+
+var cellLineBreak = regexp.MustCompile(`[ \t]*\r?\n[ \t]*`)
+
+func renderTableCell(cell Node) (string, error) {
+	var parts []string
+	for _, block := range cell.Content {
+		rendered, err := renderBlock(block)
+		if err != nil {
+			return "", err
+		}
+		parts = append(parts, rendered)
+	}
+	text := cellLineBreak.ReplaceAllString(strings.Join(parts, "\n"), "<br>")
+	return strings.ReplaceAll(strings.Join(strings.Fields(text), " "), "|", `\|`), nil
+}
+
+func tableLine(cells []string, width int) string {
+	padded := make([]string, width)
+	copy(padded, cells)
+	return "| " + strings.Join(padded, " | ") + " |"
 }
 
 func renderListItem(item Node, marker string) (string, error) {

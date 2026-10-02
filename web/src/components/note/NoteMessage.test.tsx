@@ -106,15 +106,13 @@ describe("A note in the thread", () => {
     expect(screen.getByRole("button", { name: /delete/i })).toBeInTheDocument();
   });
 
-  it("keeps a note with a table read-only for a writer, so no save can drop it, but still offers delete", async () => {
+  it("gives a ticket writer the editor for a note whose file has a table", async () => {
     renderNote(["tickets:read", "tickets:write"], "| Push | Build |\n|---|---|\n| 1 | 2m 41s |");
     const { dialog } = await openNote();
 
-    expect(await screen.findByText("Tables can't be edited here yet, so this note is read-only.")).toBeInTheDocument();
-    expect(dialog).toHaveTextContent("read only");
-    expect(screen.queryByLabelText("Note")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /delete/i })).toBeInTheDocument();
-    expect(sockets).toEqual([]);
+    expect(await screen.findByLabelText("Note")).toBeInTheDocument();
+    expect(dialog).not.toHaveTextContent("read only");
+    await waitFor(() => expect(sockets).toHaveLength(1));
   });
 
   it("deletes the note's message only once the writer confirms", async () => {
