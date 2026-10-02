@@ -171,6 +171,12 @@ docs, deploys and runners on a phone, signed in by scanning a QR code,
 with push notifications and over-the-air updates. It is built and in device
 testing ahead of its first release; the map is in `.scratch/native-app/`.
 
+Being charted: **ticket flow**. A ticket's thread moves into a column beside
+the body on wide screens, and agents leave notes instead of growing the
+body: one message in the thread with a markdown file attached to the ticket,
+opened, edited, and saved in a dialog. The wayfinder map is in
+`.scratch/ticket-flow/`.
+
 Parked until the repository migration lands: **bots**, webhook-driven bots
 that post into any conversation with Discord's payload and get their own tab
 in Settings. The wayfinder map in `.scratch/bots/` has the Discord contract,

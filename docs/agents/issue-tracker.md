@@ -79,6 +79,10 @@ git history, and anything durable it decided is an ADR.
   charted 2026-09-16, tickets 01 to 03 resolved, parked 2026-09-20 until the
   repository migration lands; resumes at ticket 04. Research findings in
   `research/`.
+- `.scratch/ticket-flow/` — the thread as a left column beside a ticket's
+  body, and notes: an agent's additions as an Agent message with a markdown
+  file attached to the ticket, instead of edits to the body. Wayfinder map
+  charted 2026-10-02, tickets 01 to 06 open.
 - `.scratch/mcp-parity/` — web capabilities no MCP tool reaches yet, one
   bullet each, `needs-triage`.
 - `.scratch/pre-release/` — four standing pre-release items, all open.
