@@ -15,7 +15,7 @@ import { AgentStreamBubble } from "@/components/chat/AgentStreamBubble";
 import { MessageRow } from "@/components/chat/MessageRow";
 import { NoDataDisplay } from "@/components/NoDataDisplay";
 import { useThreadTrailBlocks } from "@/hooks/TrailHooks";
-import { isContinuation, type Conversation, type Message } from "@/models/Chat";
+import { isContinuation, isNote, type Conversation, type Message } from "@/models/Chat";
 import type { Person } from "@/models/Person";
 import { useAgentStreamStore } from "@/stores/agentStreamStore";
 import { trailBlockFor } from "@/utils/ThreadTrailUtility";
@@ -57,7 +57,9 @@ const OwnMessageScroller = ({ newestId, isOwn }: { newestId: string; isOwn: bool
 
 // A question is answered once the thread moved past it: the user's "Answered" reply, or the Agent speaking again.
 const answeredAfter = (messages: Message[], index: number): boolean =>
-  messages.slice(index + 1).some((m) => m.author_kind === "agent" || (m.author_kind === "user" && m.body.startsWith("Answered")));
+  messages
+    .slice(index + 1)
+    .some((m) => (m.author_kind === "agent" && !isNote(m)) || (m.author_kind === "user" && m.body.startsWith("Answered")));
 
 // MessageScroller follows the live edge while streamed text grows, and releases the moment the reader scrolls away.
 export const MessageList = ({

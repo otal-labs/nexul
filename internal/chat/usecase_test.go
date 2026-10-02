@@ -26,6 +26,7 @@ type fakeRepo struct {
 	conversations map[string]*Conversation
 	participants  map[string]map[string]bool // conversationID -> userID -> true
 	messages      map[string]*Message
+	files         map[string]*NoteFile
 	unreadState   map[string]map[string]int64 // conversationID -> userID -> last_read_at unix
 	events        []eventbus.OutboxEvent
 
@@ -45,6 +46,7 @@ func newFakeRepo() *fakeRepo {
 		participants:  map[string]map[string]bool{},
 		messages:      map[string]*Message{},
 		unreadState:   map[string]map[string]int64{},
+		files:         map[string]*NoteFile{},
 	}
 }
 
@@ -379,6 +381,45 @@ func (f *fakeRepo) DeleteMessage(_ context.Context, id string, deletedAt time.Ti
 	m.UpdatedAt = deletedAt
 	f.events = append(f.events, evts...)
 	return nil
+}
+
+func (f *fakeRepo) CreateNote(ctx context.Context, m *Message, file *NoteFile, evts ...eventbus.OutboxEvent) error {
+	if err := f.CreateMessage(ctx, m, evts...); err != nil {
+		return err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.files[file.ID] = file
+	return nil
+}
+
+func (f *fakeRepo) ListNoteFiles(_ context.Context, ids []string) ([]*NoteFile, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []*NoteFile
+	for _, id := range ids {
+		if file, ok := f.files[id]; ok {
+			out = append(out, file)
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeRepo) DeleteNote(ctx context.Context, m *Message, imageIDs []string, deletedAt time.Time, evts ...eventbus.OutboxEvent) error {
+	if err := f.DeleteMessage(ctx, m.ID, deletedAt, evts...); err != nil {
+		return err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	delete(f.files, m.AttachmentID)
+	return nil
+}
+
+func (f *fakeRepo) IsNoteFile(_ context.Context, _, attachmentID string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	_, ok := f.files[attachmentID]
+	return ok, nil
 }
 
 func (f *fakeRepo) MarkRead(_ context.Context, conversationID, userID string, at time.Time) error {

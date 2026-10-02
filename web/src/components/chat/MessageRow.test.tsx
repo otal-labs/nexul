@@ -78,7 +78,7 @@ describe("MessageRow author_kind rendering", () => {
     expect(screen.queryByLabelText("Delete message")).not.toBeInTheDocument();
   });
 
-  it("renders a system note as a muted line with no avatar and no author header", () => {
+  it("renders a system message as a muted line with no avatar and no author header", () => {
     const onEdit = vi.fn();
     renderRow(
       <MessageRow

@@ -75,7 +75,7 @@ one interface, `harness.Client`, with one implementation per kind. An image
 embedded in a ticket body, a doc body, or an always-included memory an
 `@Agent` turn inlines travels to the harness as an attachment, capped at
 10 MiB per image and 25 MiB per turn; an oversized or non-image reference
-becomes an "attachment omitted" note.
+becomes an "attachment omitted" line. A Note's file reaches the turn as text.
 _Avoid_: Backend (that is the Go server), Runtime, Driver
 
 **Model options**:
@@ -119,7 +119,7 @@ the new version for every confirmed provider there and confirms nothing.
 _Avoid_: Onboarded, verified, setup flag
 
 **Memory**:
-A note written for agents, not people: a title, a one-line when-to-use
+Knowledge written for agents, not people: a title, a one-line when-to-use
 phrase, and a rich-text body, belonging to exactly one project. It reaches
 only that project's turns: an Agent turn on a ticket, doc, or interview
 carries the index of its project's memories, a play run names the ones
@@ -194,11 +194,11 @@ transcript is the Agent's turn as a conversation: the starter's "Started
 <play>" message, one collapsible "Worked for" group per turn holding what
 the Agent said between actions and each action as a row (a command names
 its command, a file change its path, an MCP call its server and tool), the question card and the answer
-where they happened, the final reply as prose, and the notes about the run
+where they happened, the final reply as prose, and the lines about the run
 itself (a skipped move, a stop, a reconnect) as muted lines.
 Persisted, never ephemeral; the "Trail" section on a
 ticket, doc, or Interview page lists them, and the target's thread shows the same turn
-groups above the Agent's reply, question, or closing note, so the run reads
+groups above the Agent's reply, question, or closing line, so the run reads
 the same way in the conversation it landed in. States: `starting` at the press, `running` once
 the harness accepts, `waiting` while the Agent's question to the starter is
 unanswered (the ticket stays put, the silence clock pauses, answering runs

@@ -57,6 +57,14 @@ type ConversationMessage struct {
 	AuthorKind string
 	Body       string
 	CreatedAt  time.Time
+	// Note is the markdown file a note carries, nil for any other message (ADR 0108).
+	Note *NoteFile
+}
+
+// NoteFile is a note's markdown file, read as text: it never travels as an attachment.
+type NoteFile struct {
+	Name     string
+	Markdown string
 }
 
 // Conversations is the pipeline's consumer-side seam onto chat (ADR 0017).
@@ -67,7 +75,7 @@ type Conversations interface {
 	MarkSynced(ctx context.Context, conversationID string, at time.Time) error
 	// PostAgentReply returns the posted message's id so a caller keeping its own record can point at the reply.
 	PostAgentReply(ctx context.Context, conversationID, viaUserID, body string) (string, error)
-	PostSystemNote(ctx context.Context, conversationID, viaUserID, body string) error
+	PostSystemMessage(ctx context.Context, conversationID, viaUserID, body string) error
 	// PostUserMessage posts as userID themselves: the answer to an Agent question is the user's own message.
 	PostUserMessage(ctx context.Context, conversationID, userID, body string) error
 }
@@ -248,7 +256,7 @@ func (s *Service) HandleMessageCreated(_ context.Context, ev eventbus.Event) err
 	}
 	// ponytail: fire-and-forget, a turn runs minutes and must not block the bus handler.
 	go func() {
-		// A hung subscription must surface as a system note, not fail silently forever.
+		// A hung subscription must surface as a system message, not fail silently forever.
 		ctx, cancel := context.WithTimeout(context.Background(), maxTurnDuration)
 		defer cancel()
 		s.RunTurn(ctx, TurnRequest{ConversationID: p.Message.ConversationID, ViaUserID: p.Message.AuthorID, RequestBody: p.Message.Body})
@@ -282,7 +290,7 @@ type TurnRequest struct {
 	Observer Observer
 }
 
-// RunTurn runs one Agent turn and blocks until it ends; every failure surfaces as a system note or a log line.
+// RunTurn runs one Agent turn and blocks until it ends; every failure surfaces as a system message or a log line.
 func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 	obs := req.Observer
 	if obs == nil {
@@ -317,7 +325,7 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 	client, ok := s.harnesses[target.Computer.Kind]
 	if !ok {
 		reason := fmt.Sprintf("no client for harness kind %q", target.Computer.Kind)
-		s.postSystemNote(ctx, conversationID, viaUserID, "Agent turn failed to start: "+reason)
+		s.postSystemMessage(ctx, conversationID, viaUserID, "Agent turn failed to start: "+reason)
 		failed(reason)
 		return
 	}
@@ -345,7 +353,7 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 
 	result, err := client.StartTurn(ctx, turn.target, title, prompts)
 	if err != nil {
-		s.postSystemNote(ctx, conversationID, viaUserID, fmt.Sprintf("Agent turn failed to start: %v", err))
+		s.postSystemMessage(ctx, conversationID, viaUserID, fmt.Sprintf("Agent turn failed to start: %v", err))
 		failed(err.Error())
 		return
 	}
@@ -438,19 +446,28 @@ func (s *Service) buildTurnPrompts(ctx context.Context, conv Conversation, ticke
 	return harness.TurnPrompts{Full: ComposePrompt(full), Incremental: ComposeIncrementalPrompt(incremental), Attachments: attachments}, sentThrough, nil
 }
 
-// contextMessages resolves history; others drops the Agent's own replies, which a live session already holds.
+// contextMessages resolves history; others drops the Agent's own replies, which a live session already holds, but
+// keeps notes, which were left over MCP rather than written in this session.
 func (s *Service) contextMessages(ctx context.Context, history []ConversationMessage) (all, others []ContextMessage, newest time.Time) {
 	for _, m := range history {
-		cm := ContextMessage{Author: s.authorLabel(ctx, m.AuthorID, m.AuthorKind), Body: m.Body, At: m.CreatedAt}
+		cm := ContextMessage{Author: s.authorLabel(ctx, m.AuthorID, m.AuthorKind), Body: noteBody(m), At: m.CreatedAt}
 		all = append(all, cm)
 		if m.CreatedAt.After(newest) {
 			newest = m.CreatedAt
 		}
-		if m.AuthorKind != "agent" {
+		if m.AuthorKind != "agent" || m.Note != nil {
 			others = append(others, cm)
 		}
 	}
 	return all, others, newest
+}
+
+// noteBody follows a note's one-liner with its file, so the turn reads the note rather than a pointer to it.
+func noteBody(m ConversationMessage) string {
+	if m.Note == nil {
+		return m.Body
+	}
+	return fmt.Sprintf("%s\n\nNote file %s:\n%s", m.Body, m.Note.Name, m.Note.Markdown)
 }
 
 // markSent advances the cursor once the harness has the prompt, so a mention mid-turn sends only what came after.
@@ -573,7 +590,7 @@ func (s *Service) drainTurn(ctx context.Context, conversationID, viaUserID strin
 			}
 			obs.OnQuestion(*u.Question)
 		case u.Approval != nil:
-			s.postSystemNote(ctx, conversationID, viaUserID, fmt.Sprintf(
+			s.postSystemMessage(ctx, conversationID, viaUserID, fmt.Sprintf(
 				"Agent's environment asked for approval (%s: %s) — auto-declined; adjust its runtime mode if you want it to proceed unattended.",
 				u.Approval.Kind, u.Approval.Summary))
 		case u.Terminal != nil:
@@ -638,11 +655,11 @@ func (s *Service) finishTurn(ctx context.Context, conversationID, viaUserID, fin
 			replyID = id
 		}
 		if term.State == harness.TurnInterrupted {
-			s.postSystemNote(ctx, conversationID, viaUserID, "Agent turn interrupted.")
+			s.postSystemMessage(ctx, conversationID, viaUserID, "Agent turn interrupted.")
 		}
 	case harness.TurnError:
 		if !cancelledWithCause(ctx) {
-			s.postSystemNote(ctx, conversationID, viaUserID, fmt.Sprintf("Agent turn failed: %s", term.LastError))
+			s.postSystemMessage(ctx, conversationID, viaUserID, fmt.Sprintf("Agent turn failed: %s", term.LastError))
 		}
 	}
 	obs.OnFinished(*term, replyID)
@@ -660,7 +677,7 @@ func (s *Service) replyNotConfigured(ctx context.Context, conversationID, viaUse
 	var nc *pairing.NotConfiguredError
 	if !errors.As(err, &nc) {
 		s.log.Error("agent: resolve target failed", "conversation", conversationID, "error", err)
-		s.postSystemNote(ctx, conversationID, viaUserID, msg)
+		s.postSystemMessage(ctx, conversationID, viaUserID, msg)
 		return
 	}
 	switch nc.Reason {
@@ -675,7 +692,7 @@ func (s *Service) replyNotConfigured(ctx context.Context, conversationID, viaUse
 	case pairing.ReasonSetupRequired, pairing.ReasonOffline:
 		msg = nc.Error()
 	}
-	s.postSystemNote(ctx, conversationID, viaUserID, msg)
+	s.postSystemMessage(ctx, conversationID, viaUserID, msg)
 }
 
 // warnVersionIfChanged warns, never blocks, when the live harness version differs from pairing time.
@@ -691,7 +708,7 @@ func (s *Service) warnVersionIfChanged(ctx context.Context, conversationID, viaU
 	if baseRelease(live) == baseRelease(computer.HarnessVersion) {
 		return
 	}
-	s.postSystemNote(ctx, conversationID, viaUserID, fmt.Sprintf(
+	s.postSystemMessage(ctx, conversationID, viaUserID, fmt.Sprintf(
 		"This computer's agent harness changed release since it was paired (%s → %s) — if the agent misbehaves, re-pair or check Settings → Pairing.",
 		computer.HarnessVersion, live))
 }
@@ -735,9 +752,9 @@ func (s *Service) authorLabel(ctx context.Context, userID, kind string) string {
 	return login
 }
 
-func (s *Service) postSystemNote(ctx context.Context, conversationID, viaUserID, body string) {
-	if err := s.conversations.PostSystemNote(ctx, conversationID, viaUserID, body); err != nil {
-		s.log.Error("agent: post system note failed", "conversation", conversationID, "error", err)
+func (s *Service) postSystemMessage(ctx context.Context, conversationID, viaUserID, body string) {
+	if err := s.conversations.PostSystemMessage(ctx, conversationID, viaUserID, body); err != nil {
+		s.log.Error("agent: post system message failed", "conversation", conversationID, "error", err)
 	}
 }
 

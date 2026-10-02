@@ -41,8 +41,20 @@ type messageListIn struct {
 
 type messagePostIn struct {
 	messageTarget
-	WorkspaceID string `json:"workspace_id,omitempty" jsonschema:"The workspace of the doc, ticket, or project; needed only when its thread does not exist yet."`
-	Body        string `json:"body" jsonschema:"The message as markdown. @login mentions a member and @Agent starts an agent turn."`
+	WorkspaceID string      `json:"workspace_id,omitempty" jsonschema:"The workspace of the doc, ticket, or project; needed only when its thread does not exist yet."`
+	Body        string      `json:"body" jsonschema:"The message as markdown. @login mentions a member and @Agent starts an agent turn."`
+	File        *noteFileIn `json:"file,omitempty" jsonschema:"A markdown file to carry with the message, which makes the post a note; only a ticket's thread takes one."`
+}
+
+type noteFileIn struct {
+	Name     string `json:"name" jsonschema:"The file's name, such as handoff.md; it always ends in .md."`
+	Markdown string `json:"markdown" jsonschema:"The file's content as markdown."`
+}
+
+type noteFileResult struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Markdown string `json:"markdown"`
 }
 
 type conversationUpdateIn struct {
@@ -78,8 +90,10 @@ type messageResult struct {
 	AuthorKind     AuthorKind `json:"author_kind"`
 	Body           string     `json:"body"`
 	Mentions       []Mention  `json:"mentions,omitempty"`
-	EditedAt       *time.Time `json:"edited_at,omitempty"`
-	CreatedAt      time.Time  `json:"created_at"`
+	// File is a note's markdown file; only a note carries one.
+	File      *noteFileResult `json:"file,omitempty"`
+	EditedAt  *time.Time      `json:"edited_at,omitempty"`
+	CreatedAt time.Time       `json:"created_at"`
 }
 
 // MCPTools returns the chat tools; each acts as the caller the identity context carries.
@@ -192,7 +206,7 @@ func messageListTool(s *Service) mcptool.Tool {
 		"Lists a conversation's messages newest first, so the first page is the latest; page back with offset for older ones. "+
 			"Name the conversation by conversation_id, or by exactly one of doc_id, ticket_id, or project_id for that doc's, ticket's, "+
 			"or project interview's thread; a thread nobody has started yet lists as empty and is not created. "+
-			"Deleted messages are left out. Reply with message_post.",
+			"Deleted messages are left out, and a note carries its markdown file in file. Reply with message_post.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in messageListIn) (any, error) {
 			caller, err := callerID(ctx)
@@ -210,13 +224,22 @@ func messageListTool(s *Service) mcptool.Tool {
 			if err != nil {
 				return nil, err
 			}
-			out := make([]messageResult, 0, len(ms))
+			live := make([]*Message, 0, len(ms))
 			for _, m := range slices.Backward(ms) {
 				if m.DeletedAt == nil {
-					out = append(out, toMessageResult(m))
+					live = append(live, m)
 				}
 			}
-			return mcptool.Paginate(out, in.PageArgs), nil
+			page := mcptool.Paginate(live, in.PageArgs)
+			files, err := s.NoteFiles(ctx, page.Items)
+			if err != nil {
+				return nil, err
+			}
+			out := mcptool.Page[messageResult]{Items: make([]messageResult, 0, len(page.Items)), Total: page.Total, HasMore: page.HasMore, NextOffset: page.NextOffset}
+			for _, m := range page.Items {
+				out.Items = append(out.Items, toMessageResult(m, files[m.AttachmentID]))
+			}
+			return out, nil
 		})
 }
 
@@ -225,7 +248,10 @@ func messagePostTool(s *Service) mcptool.Tool {
 		"Posts a markdown message as you to a conversation, or to a doc's, ticket's, or project interview's thread, "+
 			"starting that thread if it does not exist yet (which needs workspace_id). "+
 			"Name the target the same way as message_list: conversation_id, or exactly one of doc_id, ticket_id, or project_id. "+
-			"Mentioning @Agent starts an agent turn on your own paired computer. Returns the posted message and its conversation_id.",
+			"Mentioning @Agent starts an agent turn on your own paired computer. "+
+			"With file, the post is a note on a ticket's thread: it shows as the Agent on your behalf, starts no turn, "+
+			"needs tickets:write on the ticket, and carries the file; message_list returns it. "+
+			"Returns the posted message and its conversation_id.",
 		mcptool.Hints{},
 		func(ctx context.Context, in messagePostIn) (any, error) {
 			caller, err := callerID(ctx)
@@ -236,11 +262,18 @@ func messagePostTool(s *Service) mcptool.Tool {
 			if err != nil {
 				return nil, err
 			}
-			m, err := s.PostMessage(ctx, id, caller, in.Body)
+			if in.File == nil {
+				m, err := s.PostMessage(ctx, id, caller, in.Body)
+				if err != nil {
+					return nil, err
+				}
+				return toMessageResult(m, nil), nil
+			}
+			m, file, err := s.PostNote(ctx, id, caller, in.Body, NoteFileInput{Name: in.File.Name, Markdown: in.File.Markdown})
 			if err != nil {
 				return nil, err
 			}
-			return toMessageResult(m), nil
+			return toMessageResult(m, file), nil
 		})
 }
 
@@ -314,11 +347,15 @@ func conversationByID(ctx context.Context, s *Service, id string) (string, error
 	return c.ID, nil
 }
 
-func toMessageResult(m *Message) messageResult {
-	return messageResult{
+func toMessageResult(m *Message, file *NoteFile) messageResult {
+	out := messageResult{
 		ID: m.ID, ConversationID: m.ConversationID, AuthorID: m.AuthorID, AuthorKind: m.AuthorKind, Body: m.Body,
 		Mentions: m.Mentions, EditedAt: m.EditedAt, CreatedAt: m.CreatedAt,
 	}
+	if file != nil {
+		out.File = &noteFileResult{ID: file.ID, Name: file.Name, Markdown: file.Markdown}
+	}
+	return out
 }
 
 // callerID is the authenticated user; an argument never names who reads or posts.

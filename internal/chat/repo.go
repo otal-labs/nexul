@@ -58,6 +58,15 @@ type Repo interface {
 	// DeleteMessage soft-deletes so thread ordering survives; enqueues outbox events in the same transaction.
 	DeleteMessage(ctx context.Context, id string, deletedAt time.Time, evts ...eventbus.OutboxEvent) error
 
+	// CreateNote stores a note's file as an attachment of m's conversation and m pointing at it, in one transaction.
+	CreateNote(ctx context.Context, m *Message, file *NoteFile, evts ...eventbus.OutboxEvent) error
+	// ListNoteFiles returns the note files with the given attachment ids; an id with no file is left out.
+	ListNoteFiles(ctx context.Context, attachmentIDs []string) ([]*NoteFile, error)
+	// DeleteNote soft-deletes m with its file and the images of its conversation named by imageIDs, in one transaction.
+	DeleteNote(ctx context.Context, m *Message, imageIDs []string, deletedAt time.Time, evts ...eventbus.OutboxEvent) error
+	// IsNoteFile reports whether a message of the conversation carries attachmentID as its note's file.
+	IsNoteFile(ctx context.Context, conversationID, attachmentID string) (bool, error)
+
 	// MarkRead advances userID's read cursor on conversationID to at (upsert).
 	MarkRead(ctx context.Context, conversationID, userID string, at time.Time) error
 	// UnreadCounts includes a conversation with zero unread rather than omitting it.

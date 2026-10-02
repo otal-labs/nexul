@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
+import { api } from "@/api/client";
 import { MessageList } from "@/components/chat/MessageList";
 import { getTrailsKey } from "@/hooks/TrailHooks";
 import type { Conversation, Message } from "@/models/Chat";
@@ -178,6 +179,18 @@ describe("MessageList agent question", () => {
     expect(screen.getByRole("radio", { name: "Yes" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Send answer" })).toBeInTheDocument();
     expect(screen.queryByText(/nexul-question/)).not.toBeInTheDocument();
+  });
+
+  it("a note shows its file under its one-liner and leaves the question before it open", async () => {
+    const file = { id: "f1", conversation_id: "c1", name: "handoff.md", content_type: "text/markdown; charset=utf-8", size: 12, uploaded_by: "u1", created_at: "2026-08-26T00:00:00Z" };
+    vi.mocked(api.get).mockResolvedValueOnce({ data: [file] });
+    renderWithClient([
+      message({ id: "q", author_kind: "agent", body: questionBody }),
+      message({ id: "n", author_kind: "agent", body: "Left a handoff", attachment_id: "f1" }),
+    ]);
+    expect(await screen.findByText("handoff.md")).toBeInTheDocument();
+    expect(screen.getByText("Left a handoff")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Send answer" })).toBeInTheDocument();
   });
 
   it("a question the thread already answered is read-only", () => {

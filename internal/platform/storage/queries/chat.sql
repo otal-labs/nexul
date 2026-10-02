@@ -69,7 +69,16 @@ SELECT * FROM messages WHERE conversation_id = ? AND deleted_at IS NULL AND crea
 UPDATE messages SET body = ?, mentions = ?, edited_at = ?, updated_at = ? WHERE id = ?;
 
 -- name: DeleteMessage :execrows
-UPDATE messages SET body = '', mentions = '[]', deleted_at = ?, updated_at = ? WHERE id = ?;
+UPDATE messages SET body = '', mentions = '[]', attachment_id = NULL, deleted_at = ?, updated_at = ? WHERE id = ?;
+
+-- name: ListNoteFiles :many
+SELECT id, name, data FROM attachments WHERE id IN (sqlc.slice('ids'));
+
+-- name: DeleteNoteImages :exec
+DELETE FROM attachments WHERE conversation_id = sqlc.arg(conversation_id) AND content_type LIKE 'image/%' AND id IN (sqlc.slice('ids'));
+
+-- name: IsNoteFile :one
+SELECT EXISTS (SELECT 1 FROM messages WHERE conversation_id = ? AND attachment_id = ?);
 
 -- name: MarkRead :exec
 INSERT INTO conversation_unread_state (user_id, conversation_id, last_read_at) VALUES (?, ?, ?)

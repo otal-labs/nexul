@@ -195,7 +195,7 @@ func Preview(s string, n int) string {
 	return string([]rune(s)[:n]) + "…"
 }
 
-// Approval surfaces a stray prompt the harness already auto-declined, for the pipeline's system note.
+// Approval surfaces a stray prompt the harness already auto-declined, for the pipeline's system message.
 type Approval struct {
 	Kind    string
 	Summary string

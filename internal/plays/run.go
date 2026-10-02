@@ -136,7 +136,7 @@ type Threads interface {
 	GetOrCreateDocThread(ctx context.Context, workspaceID, docID, userID string) (string, error)
 	GetOrCreateInterviewThread(ctx context.Context, workspaceID, projectID, userID string) (string, error)
 	PostMessage(ctx context.Context, conversationID, authorID, body string) (string, error)
-	PostSystemNote(ctx context.Context, conversationID, viaUserID, body string) error
+	PostSystemMessage(ctx context.Context, conversationID, viaUserID, body string) error
 }
 
 // TurnRunner is the runner's seam onto the agent pipeline: start a turn, stop or answer the one on a conversation.
@@ -889,8 +889,8 @@ func (r *Runner) note(ctx context.Context, trail *Trail, body string) {
 	if trail.ConversationID == "" {
 		return
 	}
-	if err := r.threads.PostSystemNote(ctx, trail.ConversationID, trail.StarterID, body); err != nil {
-		r.log.Error("plays: post system note failed", "trail", trail.ID, "error", err)
+	if err := r.threads.PostSystemMessage(ctx, trail.ConversationID, trail.StarterID, body); err != nil {
+		r.log.Error("plays: post system message failed", "trail", trail.ID, "error", err)
 	}
 }
 

@@ -291,7 +291,7 @@ func (h *Harness) forward(ctx context.Context, client rpcConn, threadID string, 
 		case u.Activity != nil:
 			out <- harness.Update{Activity: u.Activity}
 		case u.Approval != nil:
-			// The full-access default auto-declines stray approvals; the pipeline layer turns this into a system note.
+			// The full-access default auto-declines stray approvals; the pipeline layer turns this into a system message.
 			_ = client.RespondApproval(ctx, threadID, u.Approval.RequestID, DecisionDecline)
 			out <- harness.Update{Approval: &harness.Approval{Kind: u.Approval.Kind, Summary: u.Approval.Summary}}
 		case u.Question != nil:

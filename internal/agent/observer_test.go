@@ -183,7 +183,7 @@ func TestRunTurn_Observer_ResolveFailure_FinishesFailed(t *testing.T) {
 	assert.Equal(t, "no computer", obs.result.LastError)
 }
 
-func TestRunTurn_CancelledWithCause_LeavesTheNoteToTheCanceller(t *testing.T) {
+func TestRunTurn_CancelledWithCause_LeavesTheMessageToTheCanceller(t *testing.T) {
 	conv := newFakeConversations(Conversation{ID: "conv-1"})
 	client := &fakeHarness{startResult: harness.StartResult{SessionID: "sess-1", Updates: make(chan harness.Update)}}
 	svc := NewService(Config{Conversations: conv, Targets: &fakeTargets{target: testTarget()}, Harnesses: registryOf(client), Live: &fakeLive{}})
@@ -193,13 +193,13 @@ func TestRunTurn_CancelledWithCause_LeavesTheNoteToTheCanceller(t *testing.T) {
 
 	svc.RunTurn(ctx, TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "go", Observer: obs})
 
-	_, notes := conv.snapshot()
-	assert.Empty(t, notes, "the canceller already told the thread why")
+	_, systemPosts := conv.snapshot()
+	assert.Empty(t, systemPosts, "the canceller already told the thread why")
 	require.NotNil(t, obs.result)
 	assert.Equal(t, harness.TurnError, obs.result.State)
 }
 
-func TestRunTurn_PlainCancel_StillPostsTheFailureNote(t *testing.T) {
+func TestRunTurn_PlainCancel_StillPostsTheFailureMessage(t *testing.T) {
 	conv := newFakeConversations(Conversation{ID: "conv-1"})
 	client := &fakeHarness{startResult: harness.StartResult{SessionID: "sess-1", Updates: make(chan harness.Update)}}
 	svc := NewService(Config{Conversations: conv, Targets: &fakeTargets{target: testTarget()}, Harnesses: registryOf(client), Live: &fakeLive{}})
@@ -208,9 +208,9 @@ func TestRunTurn_PlainCancel_StillPostsTheFailureNote(t *testing.T) {
 
 	svc.RunTurn(ctx, TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "go"})
 
-	_, notes := conv.snapshot()
-	require.Len(t, notes, 1)
-	assert.Contains(t, notes[0].body, "Agent turn failed")
+	_, systemPosts := conv.snapshot()
+	require.Len(t, systemPosts, 1)
+	assert.Contains(t, systemPosts[0].body, "Agent turn failed")
 }
 
 func TestRunTurn_NoObserver_StillRuns(t *testing.T) {
@@ -308,7 +308,7 @@ func TestAnswerFromChat_TurnGone_PostsTheAnswerAndResumesAFreshTurn(t *testing.T
 
 	conv.mu.Lock()
 	require.Len(t, conv.userPosts, 1)
-	assert.Equal(t, fakeNote{"conv-1", "u-2", "Answered: Yes"}, conv.userPosts[0])
+	assert.Equal(t, fakePost{"conv-1", "u-2", "Answered: Yes"}, conv.userPosts[0])
 	conv.mu.Unlock()
 	waitFor(t, time.Second, func() bool { replies, _ := conv.snapshot(); return len(replies) == 1 })
 	assert.Contains(t, client.snapshotPrompt(), "Answered: Yes", "the fresh turn carries the answer as its request")

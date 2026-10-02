@@ -73,6 +73,12 @@ id leaves. `message_list` and `message_post` also take a `doc_id`,
 `ticket_id`, or interview `project_id` instead of a conversation id, and
 posting starts that thread the first time.
 
+On a ticket's thread, `message_post` (and the HTTP post route) also takes a
+`file` with a `name` and `markdown`, which makes the post a note: it shows as
+the Agent on your behalf, starts no agent turn, and needs `tickets:write` on
+the ticket. `message_list` returns a note's markdown in `file`. Deleting a
+note's message needs `tickets:write` and deletes its file with it.
+
 ## Voice channels
 
 A voice channel is a conversation with a LiveKit room attached. Create one

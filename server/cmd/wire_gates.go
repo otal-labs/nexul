@@ -407,6 +407,10 @@ func (g chatAttachmentConversations) RequireRead(ctx context.Context, conversati
 	return err
 }
 
+func (g chatAttachmentConversations) IsNoteFile(ctx context.Context, conversationID, attachmentID string) (bool, error) {
+	return g.svc.IsNoteFile(ctx, conversationID, attachmentID)
+}
+
 // memoryAttachmentsAccessGate checks a memory's file through its project for attachments' MemoryAccessChecker
 // seam (ADR 0017, ADR 0099); the actor comes from ctx, the same one attachments read the user id from.
 type memoryAttachmentsAccessGate struct {

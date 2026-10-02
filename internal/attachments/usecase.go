@@ -31,9 +31,11 @@ type MemoryAccessChecker interface {
 	Can(ctx context.Context, userID, memoryID string, action permissions.Action) (bool, error)
 }
 
-// ConversationReader checks a conversation-owned file through reading the conversation (ADR 0098).
+// ConversationReader checks a conversation-owned file through reading the conversation (ADR 0098), and names the
+// files that are notes', which go only with their message (ADR 0108).
 type ConversationReader interface {
 	RequireRead(ctx context.Context, conversationID string) error
+	IsNoteFile(ctx context.Context, conversationID, attachmentID string) (bool, error)
 }
 
 // TicketAccess lets attachments check a ticket's own bits, in its project, for ticket-owned files (ADR 0017).
@@ -124,7 +126,8 @@ func (s *Service) List(ctx context.Context, owner Owner) ([]*Attachment, error) 
 	return as, nil
 }
 
-// Delete leaves bodies referencing it with a dangling image; a conversation's file goes only by its uploader's hand.
+// Delete leaves bodies referencing it with a dangling image; a conversation's file goes only by its uploader's hand,
+// and a note's file only with its message.
 func (s *Service) Delete(ctx context.Context, id string) error {
 	if strings.TrimSpace(id) == "" {
 		return fmt.Errorf("%w: id is required", apperrs.ErrInvalid)
@@ -135,6 +138,9 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 	}
 	actor, err := s.requireOwner(ctx, a.Owner(), permissions.DocsWrite, permissions.MemoriesWrite)
 	if err != nil {
+		return err
+	}
+	if err := s.refuseNoteFile(ctx, a); err != nil {
 		return err
 	}
 	if a.ConversationID != "" && a.UploadedBy != actor.ID {
@@ -198,6 +204,20 @@ func (s *Service) requireMemory(ctx context.Context, userID, memoryID string, ac
 	allowed, err := s.memoryAccess.Can(ctx, userID, memoryID, action)
 	if err != nil || !allowed {
 		return fmt.Errorf("%w: no %s permission on memory %s", apperrs.ErrForbidden, action, memoryID)
+	}
+	return nil
+}
+
+func (s *Service) refuseNoteFile(ctx context.Context, a *Attachment) error {
+	if a.ConversationID == "" {
+		return nil
+	}
+	note, err := s.conversations.IsNoteFile(ctx, a.ConversationID, a.ID)
+	if err != nil {
+		return fmt.Errorf("delete attachment %s: %w", a.ID, err)
+	}
+	if note {
+		return fmt.Errorf("%w: %s is a note's file; delete the note's message instead", apperrs.ErrInvalid, a.Name)
 	}
 	return nil
 }

@@ -15,8 +15,8 @@ func (r redactedConversations) PostAgentReply(ctx context.Context, conversationI
 	return r.Conversations.PostAgentReply(ctx, conversationID, viaUserID, redact.Tokens(body))
 }
 
-func (r redactedConversations) PostSystemNote(ctx context.Context, conversationID, viaUserID, body string) error {
-	return r.Conversations.PostSystemNote(ctx, conversationID, viaUserID, redact.Tokens(body))
+func (r redactedConversations) PostSystemMessage(ctx context.Context, conversationID, viaUserID, body string) error {
+	return r.Conversations.PostSystemMessage(ctx, conversationID, viaUserID, redact.Tokens(body))
 }
 
 func (r redactedConversations) PostUserMessage(ctx context.Context, conversationID, userID, body string) error {

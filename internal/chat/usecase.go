@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -903,12 +905,27 @@ func (s *Service) PostAgentMessage(ctx context.Context, conversationID, viaUserI
 	return s.postMessage(ctx, conversationID, viaUserID, body, AuthorAgent)
 }
 
-// PostSystemMessage posts an inline system note attributed to the user it's for.
+// PostSystemMessage posts an inline system message attributed to the user it's for.
 func (s *Service) PostSystemMessage(ctx context.Context, conversationID, viaUserID, body string) (*Message, error) {
 	return s.postMessage(ctx, conversationID, viaUserID, body, AuthorSystem)
 }
 
 func (s *Service) postMessage(ctx context.Context, conversationID, authorID, body string, kind AuthorKind) (*Message, error) {
+	m, err := s.newMessage(conversationID, authorID, body, kind)
+	if err != nil {
+		return nil, err
+	}
+	membersOnly, err := s.MembersOnly(ctx, m.ConversationID)
+	if err != nil {
+		return nil, fmt.Errorf("post message to conversation %s: %w", m.ConversationID, err)
+	}
+	if err := s.repo.CreateMessage(ctx, m, messageCreated(m, membersOnly)); err != nil {
+		return nil, fmt.Errorf("post message to conversation %s: %w", m.ConversationID, err)
+	}
+	return m, nil
+}
+
+func (s *Service) newMessage(conversationID, authorID, body string, kind AuthorKind) (*Message, error) {
 	conversationID = strings.TrimSpace(conversationID)
 	if conversationID == "" {
 		return nil, fmt.Errorf("%w: conversation id is required", apperrs.ErrInvalid)
@@ -921,12 +938,8 @@ func (s *Service) postMessage(ctx context.Context, conversationID, authorID, bod
 	if body == "" {
 		return nil, fmt.Errorf("%w: message body is required", apperrs.ErrInvalid)
 	}
-	membersOnly, err := s.MembersOnly(ctx, conversationID)
-	if err != nil {
-		return nil, fmt.Errorf("post message to conversation %s: %w", conversationID, err)
-	}
 	now := s.now().UTC()
-	m := &Message{
+	return &Message{
 		ID:             ids.New(),
 		ConversationID: conversationID,
 		AuthorID:       authorID,
@@ -935,12 +948,105 @@ func (s *Service) postMessage(ctx context.Context, conversationID, authorID, bod
 		Mentions:       ParseMentions(body),
 		CreatedAt:      now,
 		UpdatedAt:      now,
+	}, nil
+}
+
+func messageCreated(m *Message, membersOnly bool) eventbus.OutboxEvent {
+	return eventbus.OutboxEvent{ID: ids.New(), Topic: TopicMessageCreated, Payload: MessageCreatedEvent{Message: *m, MembersOnly: membersOnly}}
+}
+
+// maxNoteFileBytes matches the attachment cap (ADR 0027), since a note's file is stored as an attachment.
+const maxNoteFileBytes = 10 << 20
+
+const maxNoteNameLen = 252
+
+// PostNote posts a note: an Agent message on a ticket's thread, on callerID's behalf, carrying a markdown file
+// (ADR 0108). It takes tickets:write on the ticket, and starts no turn, since only a person's message does.
+func (s *Service) PostNote(ctx context.Context, conversationID, callerID, body string, in NoteFileInput) (*Message, *NoteFile, error) {
+	m, err := s.newMessage(conversationID, callerID, body, AuthorAgent)
+	if err != nil {
+		return nil, nil, err
 	}
-	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicMessageCreated, Payload: MessageCreatedEvent{Message: *m, MembersOnly: membersOnly}}
-	if err := s.repo.CreateMessage(ctx, m, evt); err != nil {
-		return nil, fmt.Errorf("post message to conversation %s: %w", conversationID, err)
+	c, err := s.noteThread(ctx, m.ConversationID, m.AuthorID)
+	if err != nil {
+		return nil, nil, err
 	}
-	return m, nil
+	file, err := newNoteFile(in)
+	if err != nil {
+		return nil, nil, err
+	}
+	m.AttachmentID = file.ID
+	if err := s.repo.CreateNote(ctx, m, file, messageCreated(m, c.membersOnly())); err != nil {
+		return nil, nil, fmt.Errorf("post note to conversation %s: %w", c.ID, err)
+	}
+	return m, file, nil
+}
+
+// noteThread checks, in order, that callerID reads the conversation, that it is a ticket's thread, and tickets:write.
+func (s *Service) noteThread(ctx context.Context, conversationID, callerID string) (*Conversation, error) {
+	c, err := s.repo.GetConversation(ctx, conversationID)
+	if err != nil {
+		return nil, fmt.Errorf("get conversation %s: %w", conversationID, err)
+	}
+	if err := s.requireRead(ctx, c, callerID); err != nil {
+		return nil, err
+	}
+	if c.Kind != KindTicketThread {
+		return nil, fmt.Errorf("%w: only a ticket's thread takes a note's file, not a %s", apperrs.ErrInvalid, c.Kind)
+	}
+	if s.threads == nil {
+		return c, s.require(ctx, c.WorkspaceID, permissions.TicketsWrite)
+	}
+	return c, s.threads.RequireTicket(ctx, c.TicketID, permissions.TicketsWrite)
+}
+
+func newNoteFile(in NoteFileInput) (*NoteFile, error) {
+	if strings.TrimSpace(in.Markdown) == "" {
+		return nil, fmt.Errorf("%w: a note's file needs its markdown", apperrs.ErrInvalid)
+	}
+	if len(in.Markdown) > maxNoteFileBytes {
+		return nil, fmt.Errorf("%w: a note's file exceeds %d bytes", apperrs.ErrInvalid, maxNoteFileBytes)
+	}
+	return &NoteFile{ID: ids.New(), Name: noteFileName(in.Name), Markdown: in.Markdown}, nil
+}
+
+// noteFileName keeps the base name, so a path never reaches storage, and makes sure it ends in .md.
+func noteFileName(name string) string {
+	name = path.Base(strings.TrimSpace(strings.ReplaceAll(name, "\\", "/")))
+	if name == "." || name == "/" {
+		name = "note"
+	}
+	if strings.EqualFold(path.Ext(name), ".md") {
+		name = strings.TrimSuffix(name, path.Ext(name))
+	}
+	if len(name) > maxNoteNameLen {
+		name = name[:maxNoteNameLen]
+	}
+	return name + ".md"
+}
+
+// NoteFiles returns the files of the notes among ms, by attachment id; ms come from a call that already checked the read.
+func (s *Service) NoteFiles(ctx context.Context, ms []*Message) (map[string]*NoteFile, error) {
+	var attachmentIDs []string
+	for _, m := range ms {
+		if m.AttachmentID != "" {
+			attachmentIDs = append(attachmentIDs, m.AttachmentID)
+		}
+	}
+	files, err := s.repo.ListNoteFiles(ctx, attachmentIDs)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]*NoteFile, len(files))
+	for _, f := range files {
+		out[f.ID] = f
+	}
+	return out, nil
+}
+
+// IsNoteFile reports whether a conversation's file is a note's, which goes only with its message; the server's own seam.
+func (s *Service) IsNoteFile(ctx context.Context, conversationID, attachmentID string) (bool, error) {
+	return s.repo.IsNoteFile(ctx, conversationID, attachmentID)
 }
 
 // MembersOnly reports whether a conversation is read by its members alone; the server's own seam, so unchecked.
@@ -993,7 +1099,7 @@ func (s *Service) EditMessage(ctx context.Context, messageID, authorID, body str
 	return &updated, nil
 }
 
-// DeleteMessage soft-deletes a message (author-only); deleting an already-deleted one is a no-op.
+// DeleteMessage soft-deletes a message (author-only, a note under tickets:write); deleting an already-deleted one is a no-op.
 func (s *Service) DeleteMessage(ctx context.Context, messageID, authorID string) error {
 	messageID = strings.TrimSpace(messageID)
 	if messageID == "" {
@@ -1010,6 +1116,9 @@ func (s *Service) DeleteMessage(ctx context.Context, messageID, authorID string)
 	if current.DeletedAt != nil {
 		return nil
 	}
+	if current.AttachmentID != "" {
+		return s.deleteNote(ctx, current, authorID)
+	}
 	if current.AuthorID != authorID {
 		return fmt.Errorf("%w: only the author may delete this message", apperrs.ErrForbidden)
 	}
@@ -1021,6 +1130,33 @@ func (s *Service) DeleteMessage(ctx context.Context, messageID, authorID string)
 	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicMessageDeleted, Payload: MessageDeletedEvent{ConversationID: current.ConversationID, MessageID: messageID, DeletedAt: now, MembersOnly: membersOnly}}
 	if err := s.repo.DeleteMessage(ctx, messageID, now, evt); err != nil {
 		return fmt.Errorf("delete message %s: %w", messageID, err)
+	}
+	return nil
+}
+
+// noteImageRef finds the attachment ids a note's markdown points at, the images pasted into it.
+var noteImageRef = regexp.MustCompile(`/api/attachments/([\w-]+)`)
+
+// deleteNote takes tickets:write rather than authorship, and takes the note's file and its images with it.
+func (s *Service) deleteNote(ctx context.Context, m *Message, callerID string) error {
+	c, err := s.noteThread(ctx, m.ConversationID, callerID)
+	if err != nil {
+		return err
+	}
+	files, err := s.repo.ListNoteFiles(ctx, []string{m.AttachmentID})
+	if err != nil {
+		return fmt.Errorf("delete note %s: %w", m.ID, err)
+	}
+	var images []string
+	for _, f := range files {
+		for _, ref := range noteImageRef.FindAllStringSubmatch(f.Markdown, -1) {
+			images = append(images, ref[1])
+		}
+	}
+	now := s.now().UTC()
+	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicMessageDeleted, Payload: MessageDeletedEvent{ConversationID: c.ID, MessageID: m.ID, DeletedAt: now, MembersOnly: c.membersOnly()}}
+	if err := s.repo.DeleteNote(ctx, m, slices.Compact(slices.Sorted(slices.Values(images))), now, evt); err != nil {
+		return fmt.Errorf("delete note %s: %w", m.ID, err)
 	}
 	return nil
 }

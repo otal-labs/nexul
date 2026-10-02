@@ -22,7 +22,7 @@ import (
 
 // --- fakes -----------------------------------------------------------------
 
-type fakeNote struct {
+type fakePost struct {
 	conversationID, viaUserID, body string
 }
 
@@ -34,15 +34,15 @@ type fakeConversations struct {
 	history []ConversationMessage
 	histErr error
 
-	threads   map[string]string
-	syncedAt  map[string]time.Time
-	replies   []fakeNote
-	notes     []fakeNote
-	userPosts []fakeNote
+	threads     map[string]string
+	syncedAt    map[string]time.Time
+	replies     []fakePost
+	systemPosts []fakePost
+	userPosts   []fakePost
 	// now, when set, stamps each posted Agent reply into history the way chat stores it.
 	now           func() time.Time
 	postReplyErr  error
-	postNoteErr   error
+	postSystemErr error
 	setThreadErr  error
 	markSyncedErr error
 }
@@ -105,34 +105,34 @@ func (f *fakeConversations) PostAgentReply(_ context.Context, conversationID, vi
 	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.replies = append(f.replies, fakeNote{conversationID, viaUserID, body})
+	f.replies = append(f.replies, fakePost{conversationID, viaUserID, body})
 	if f.now != nil {
 		f.history = append(f.history, ConversationMessage{AuthorID: viaUserID, AuthorKind: "agent", Body: body, CreatedAt: f.now()})
 	}
 	return fmt.Sprintf("reply-%d", len(f.replies)), nil
 }
 
-func (f *fakeConversations) PostSystemNote(_ context.Context, conversationID, viaUserID, body string) error {
-	if f.postNoteErr != nil {
-		return f.postNoteErr
+func (f *fakeConversations) PostSystemMessage(_ context.Context, conversationID, viaUserID, body string) error {
+	if f.postSystemErr != nil {
+		return f.postSystemErr
 	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.notes = append(f.notes, fakeNote{conversationID, viaUserID, body})
+	f.systemPosts = append(f.systemPosts, fakePost{conversationID, viaUserID, body})
 	return nil
 }
 
 func (f *fakeConversations) PostUserMessage(_ context.Context, conversationID, userID, body string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.userPosts = append(f.userPosts, fakeNote{conversationID, userID, body})
+	f.userPosts = append(f.userPosts, fakePost{conversationID, userID, body})
 	return nil
 }
 
-func (f *fakeConversations) snapshot() ([]fakeNote, []fakeNote) {
+func (f *fakeConversations) snapshot() ([]fakePost, []fakePost) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return append([]fakeNote{}, f.replies...), append([]fakeNote{}, f.notes...)
+	return append([]fakePost{}, f.replies...), append([]fakePost{}, f.systemPosts...)
 }
 
 type fakeTargets struct {
@@ -318,9 +318,9 @@ func TestHandleMessageCreated_IgnoresNonUserAuthors(t *testing.T) {
 		ev := messageCreatedEventKind(t, "conv-1", "user-1", kind, "@Agent needs a paired T3 Code computer", true)
 		require.NoError(t, svc.HandleMessageCreated(context.Background(), ev))
 		time.Sleep(20 * time.Millisecond)
-		replies, notes := conv.snapshot()
+		replies, systemPosts := conv.snapshot()
 		assert.Empty(t, replies, "author_kind %q must not trigger a turn", kind)
-		assert.Empty(t, notes, "author_kind %q must not trigger a turn", kind)
+		assert.Empty(t, systemPosts, "author_kind %q must not trigger a turn", kind)
 		_ = client
 	}
 }
@@ -336,9 +336,9 @@ func TestHandleMessageCreated_IgnoresNonMentionMessages(t *testing.T) {
 	})
 	require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "just chatting", false)))
 	time.Sleep(20 * time.Millisecond)
-	replies, notes := conv.snapshot()
+	replies, systemPosts := conv.snapshot()
 	assert.Empty(t, replies)
-	assert.Empty(t, notes)
+	assert.Empty(t, systemPosts)
 }
 
 func TestRunTurn_EmptyFinalizeFrameDoesNotWipeTheReply(t *testing.T) {
@@ -351,9 +351,9 @@ func TestRunTurn_EmptyFinalizeFrameDoesNotWipeTheReply(t *testing.T) {
 	svc := NewService(Config{Conversations: conv, Targets: &fakeTargets{target: testTarget()}, Harnesses: registryOf(client), Live: &fakeLive{}})
 	require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent hi", true)))
 	waitFor(t, time.Second, func() bool { replies, _ := conv.snapshot(); return len(replies) == 1 })
-	replies, notes := conv.snapshot()
+	replies, systemPosts := conv.snapshot()
 	assert.Equal(t, "the actual reply", replies[0].body)
-	assert.Empty(t, notes)
+	assert.Empty(t, systemPosts)
 }
 
 // --- resolution failure -> system reply -------------------------------------
@@ -387,10 +387,10 @@ func TestRunTurn_ResolveTargetNotConfigured_PostsSystemReply(t *testing.T) {
 				Live:          &fakeLive{},
 			})
 			require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent help", true)))
-			waitFor(t, time.Second, func() bool { _, notes := conv.snapshot(); return len(notes) == 1 })
-			_, notes := conv.snapshot()
-			assert.Contains(t, notes[0].body, tc.want)
-			assert.Equal(t, "u-1", notes[0].viaUserID)
+			waitFor(t, time.Second, func() bool { _, systemPosts := conv.snapshot(); return len(systemPosts) == 1 })
+			_, systemPosts := conv.snapshot()
+			assert.Contains(t, systemPosts[0].body, tc.want)
+			assert.Equal(t, "u-1", systemPosts[0].viaUserID)
 		})
 	}
 }
@@ -429,11 +429,11 @@ func TestRunTurn_HappyPath_StreamsFramesAndPersistsFinalReply(t *testing.T) {
 	assert.Equal(t, StreamFrame{ConversationID: "conv-1", MessageID: "m-1", Text: "wor", Streaming: true, Activity: "Bash", ActivityKind: harness.ActivityToolResult, ActivityTool: "Bash"}, frames[3], "a tool step keeps the text so far")
 	assert.False(t, frames[5].Streaming)
 
-	replies, notes := conv.snapshot()
+	replies, systemPosts := conv.snapshot()
 	require.Len(t, replies, 1)
 	assert.Equal(t, "done!", replies[0].body)
 	assert.Equal(t, "u-1", replies[0].viaUserID)
-	assert.Empty(t, notes)
+	assert.Empty(t, systemPosts)
 
 	assert.Equal(t, "thread-new", conv.threads["conv-1"])
 	assert.Contains(t, client.lastPrompt, "New message from")
@@ -486,7 +486,7 @@ func TestRunTurn_MemoriesLookupFailure_IsBestEffort(t *testing.T) {
 	assert.Contains(t, client.snapshotPrompt(), "no memories saved yet", "a failed lookup falls back to an empty index rather than blocking the turn")
 }
 
-func TestRunTurn_TurnError_PostsSystemNoteWithLastError(t *testing.T) {
+func TestRunTurn_TurnError_PostsSystemMessageWithLastError(t *testing.T) {
 	conv := newFakeConversations(Conversation{ID: "conv-1"})
 	client := &fakeHarness{startResult: harness.StartResult{
 		SessionID: "thread-1",
@@ -502,11 +502,11 @@ func TestRunTurn_TurnError_PostsSystemNoteWithLastError(t *testing.T) {
 	})
 	require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
 	waitFor(t, time.Second, func() bool { _, n := conv.snapshot(); return len(n) == 1 })
-	_, notes := conv.snapshot()
-	assert.Contains(t, notes[0].body, "provider unreachable")
+	_, systemPosts := conv.snapshot()
+	assert.Contains(t, systemPosts[0].body, "provider unreachable")
 }
 
-func TestRunTurn_StartTurnFails_PostsSystemNote(t *testing.T) {
+func TestRunTurn_StartTurnFails_PostsSystemMessage(t *testing.T) {
 	conv := newFakeConversations(Conversation{ID: "conv-1"})
 	client := &fakeHarness{startErr: errors.New("connect refused")}
 	svc := NewService(Config{
@@ -517,13 +517,13 @@ func TestRunTurn_StartTurnFails_PostsSystemNote(t *testing.T) {
 	})
 	require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
 	waitFor(t, time.Second, func() bool { _, n := conv.snapshot(); return len(n) == 1 })
-	_, notes := conv.snapshot()
-	assert.Contains(t, notes[0].body, "connect refused")
+	_, systemPosts := conv.snapshot()
+	assert.Contains(t, systemPosts[0].body, "connect refused")
 }
 
 // --- approval decline ---------------------------------------------------------
 
-func TestRunTurn_ApprovalUpdate_PostsSystemNote(t *testing.T) {
+func TestRunTurn_ApprovalUpdate_PostsSystemMessage(t *testing.T) {
 	conv := newFakeConversations(Conversation{ID: "conv-1"})
 	client := &fakeHarness{startResult: harness.StartResult{
 		SessionID: "thread-1",
@@ -540,9 +540,9 @@ func TestRunTurn_ApprovalUpdate_PostsSystemNote(t *testing.T) {
 	})
 	require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
 	waitFor(t, time.Second, func() bool { _, n := conv.snapshot(); return len(n) == 1 })
-	_, notes := conv.snapshot()
-	assert.Contains(t, notes[0].body, "auto-declined")
-	assert.Contains(t, notes[0].body, "shell")
+	_, systemPosts := conv.snapshot()
+	assert.Contains(t, systemPosts[0].body, "auto-declined")
+	assert.Contains(t, systemPosts[0].body, "shell")
 }
 
 // --- version warning -----------------------------------------------------------
@@ -559,11 +559,11 @@ func TestRunTurn_VersionCheck_WarnsOnlyOnBaseReleaseChange(t *testing.T) {
 			Live:          &fakeLive{},
 		})
 		svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent go"})
-		_, notes := conv.snapshot()
-		assert.Empty(t, notes)
+		_, systemPosts := conv.snapshot()
+		assert.Empty(t, systemPosts)
 	})
 
-	t.Run("a base release change warns with a system note", func(t *testing.T) {
+	t.Run("a base release change warns with a system message", func(t *testing.T) {
 		conv := newFakeConversations(Conversation{ID: "conv-1"})
 		client := &fakeHarness{startResult: harness.StartResult{SessionID: "t-1", Updates: updatesChan(harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}})}}
 		client.VersionFn = func(context.Context, string) (string, error) { return "0.0.35", nil }
@@ -575,10 +575,10 @@ func TestRunTurn_VersionCheck_WarnsOnlyOnBaseReleaseChange(t *testing.T) {
 		})
 		require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
 		waitFor(t, time.Second, func() bool { _, n := conv.snapshot(); return len(n) == 1 })
-		_, notes := conv.snapshot()
-		require.Len(t, notes, 1)
-		assert.Contains(t, notes[0].body, "0.0.34")
-		assert.Contains(t, notes[0].body, "0.0.35")
+		_, systemPosts := conv.snapshot()
+		require.Len(t, systemPosts, 1)
+		assert.Contains(t, systemPosts[0].body, "0.0.34")
+		assert.Contains(t, systemPosts[0].body, "0.0.35")
 	})
 }
 
@@ -733,8 +733,8 @@ func TestRunTurn_ExtraRequestBlocksLandInBothPrompts(t *testing.T) {
 	assert.True(t, strings.HasSuffix(got.Incremental, wantTail), "incremental prompt tail:\n%s", got.Incremental)
 	assert.Contains(t, got.Incremental, "New message from u-1", "a reused session still gets the request block")
 	assert.NotContains(t, got.Incremental, "You are Agent")
-	_, notes := conv.snapshot()
-	assert.Empty(t, notes)
+	_, systemPosts := conv.snapshot()
+	assert.Empty(t, systemPosts)
 }
 
 func TestRunTurn_TargetOverride_ResolvedThroughTheOverrideSeam(t *testing.T) {
@@ -994,4 +994,24 @@ func TestRunTurn_FollowUpOnALostSession_FullPromptRebuildsIt(t *testing.T) {
 	conv.mu.Lock()
 	defer conv.mu.Unlock()
 	assert.Equal(t, "thread-2", conv.threads["conv-1"], "the next mention reuses the replacement session")
+}
+
+func TestRunTurn_FollowUp_CarriesANoteLeftSinceTheLastTurn(t *testing.T) {
+	h := &followUpHarness{sessionIDs: []string{"thread-1"}, updates: []<-chan harness.Update{replyThenDone("first answer"), replyThenDone("second answer")}}
+	svc, conv := ticketThreadWithStandingRules(h)
+	conv.history = []ConversationMessage{{AuthorID: "u-1", AuthorKind: "user", Body: "@Agent first", CreatedAt: minuteOf(32)}}
+	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent first"})
+
+	conv.history = append(conv.history,
+		ConversationMessage{AuthorID: "u-2", AuthorKind: "agent", Body: "Left a handoff", CreatedAt: minuteOf(34),
+			Note: &NoteFile{Name: "handoff.md", Markdown: "# Handoff\nLogin retries twice."}},
+		ConversationMessage{AuthorID: "u-1", AuthorKind: "user", Body: "@Agent second", CreatedAt: minuteOf(35)},
+	)
+	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent second"})
+
+	turns := h.started()
+	require.Len(t, turns, 2)
+	note := "Agent: Left a handoff\n\nNote file handoff.md:\n# Handoff\nLogin retries twice."
+	assert.Contains(t, turns[1].prompts.Incremental, note, "a note was left over MCP, so the live session never saw it")
+	assert.Contains(t, turns[1].prompts.Full, note)
 }

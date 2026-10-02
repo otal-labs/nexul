@@ -117,7 +117,7 @@ func (q *Queries) DeleteConversationParticipants(ctx context.Context, conversati
 }
 
 const deleteMessage = `-- name: DeleteMessage :execrows
-UPDATE messages SET body = '', mentions = '[]', deleted_at = ?, updated_at = ? WHERE id = ?
+UPDATE messages SET body = '', mentions = '[]', attachment_id = NULL, deleted_at = ?, updated_at = ? WHERE id = ?
 `
 
 type DeleteMessageParams struct {
@@ -132,6 +132,31 @@ func (q *Queries) DeleteMessage(ctx context.Context, arg DeleteMessageParams) (i
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+const deleteNoteImages = `-- name: DeleteNoteImages :exec
+DELETE FROM attachments WHERE conversation_id = ?1 AND content_type LIKE 'image/%' AND id IN (/*SLICE:ids*/?)
+`
+
+type DeleteNoteImagesParams struct {
+	ConversationID sql.NullString
+	Ids            []string
+}
+
+func (q *Queries) DeleteNoteImages(ctx context.Context, arg DeleteNoteImagesParams) error {
+	query := deleteNoteImages
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.ConversationID)
+	if len(arg.Ids) > 0 {
+		for _, v := range arg.Ids {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(arg.Ids))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
+	}
+	_, err := q.db.ExecContext(ctx, query, queryParams...)
+	return err
 }
 
 const getChannelByName = `-- name: GetChannelByName :one
@@ -313,6 +338,22 @@ func (q *Queries) InsertConversationParticipant(ctx context.Context, arg InsertC
 	return err
 }
 
+const isNoteFile = `-- name: IsNoteFile :one
+SELECT EXISTS (SELECT 1 FROM messages WHERE conversation_id = ? AND attachment_id = ?)
+`
+
+type IsNoteFileParams struct {
+	ConversationID string
+	AttachmentID   sql.NullString
+}
+
+func (q *Queries) IsNoteFile(ctx context.Context, arg IsNoteFileParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, isNoteFile, arg.ConversationID, arg.AttachmentID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const listConversationsForUser = `-- name: ListConversationsForUser :many
 SELECT DISTINCT c.id, c.workspace_id, c.kind, c.name, c.ticket_id, c.parent_message_id, c.created_by, c.created_at, c.updated_at, c.agent_thread_id, c.agent_synced_at, c.doc_id, c.project_id, c.is_general, c.private FROM conversations c
 LEFT JOIN conversation_participants p ON p.conversation_id = c.id AND p.user_id = ?
@@ -439,6 +480,49 @@ func (q *Queries) ListMessagesSince(ctx context.Context, arg ListMessagesSincePa
 			&i.UpdatedAt,
 			&i.AuthorKind,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listNoteFiles = `-- name: ListNoteFiles :many
+SELECT id, name, data FROM attachments WHERE id IN (/*SLICE:ids*/?)
+`
+
+type ListNoteFilesRow struct {
+	ID   string
+	Name string
+	Data []byte
+}
+
+func (q *Queries) ListNoteFiles(ctx context.Context, ids []string) ([]ListNoteFilesRow, error) {
+	query := listNoteFiles
+	var queryParams []interface{}
+	if len(ids) > 0 {
+		for _, v := range ids {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(ids))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
+	}
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListNoteFilesRow
+	for rows.Next() {
+		var i ListNoteFilesRow
+		if err := rows.Scan(&i.ID, &i.Name, &i.Data); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

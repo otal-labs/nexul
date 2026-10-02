@@ -394,7 +394,7 @@ func (f *fakeThreads) PostMessage(_ context.Context, conversationID, authorID, b
 	return "msg-1", nil
 }
 
-func (f *fakeThreads) PostSystemNote(_ context.Context, conversationID, viaUserID, body string) error {
+func (f *fakeThreads) PostSystemMessage(_ context.Context, conversationID, viaUserID, body string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.notes = append(f.notes, fakePost{conversationID, viaUserID, body})
@@ -525,7 +525,7 @@ func (a *agentConvs) PostAgentReply(_ context.Context, _, _, body string) (strin
 	return "reply-1", nil
 }
 
-func (a *agentConvs) PostSystemNote(_ context.Context, _, _, body string) error {
+func (a *agentConvs) PostSystemMessage(_ context.Context, _, _, body string) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.notes = append(a.notes, body)

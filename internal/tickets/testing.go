@@ -134,13 +134,13 @@ func (s *Service) TestPass(ctx context.Context, id string, viaMCP bool) (*Ticket
 		return nil, err
 	}
 	actor, _ := identity.ActorFromCtx(ctx)
-	if err := s.testing.Threads.PostToTicketThread(ctx, moved, actor.ID, passedNote(signedBy(tester, viaMCP), target.URL)); err != nil {
+	if err := s.testing.Threads.PostToTicketThread(ctx, moved, actor.ID, passedMessage(signedBy(tester, viaMCP), target.URL)); err != nil {
 		return nil, fmt.Errorf("post test result to ticket %s: %w", id, err)
 	}
 	return moved, nil
 }
 
-func passedNote(tester, url string) string {
+func passedMessage(tester, url string) string {
 	if url == "" {
 		return "Passed by " + tester
 	}
