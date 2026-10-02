@@ -214,8 +214,8 @@ and an 18rem rail beside it from 1024px, stacked under them below. The rail
 is a run of sections, each a mono uppercase microheader with its one action
 trailing as a ghost `+`, compact rows, and a muted one-line sentence
 when empty ("No bugs reported."): Properties, Plays, Development, Reviews,
-Attachments, Links, Testing, Bugs, Trail. Plays is stage-bound, so a ticket
-in a stage no play targets still shows it, saying "No plays for this stage." A linked ticket is its
+Attachments, Links, Testing, Bugs, Trail. Plays is stage-bound, so it is
+absent, not empty, when no play applies to the ticket's stage. A linked ticket is its
 status icon and mono key only; hovering or focusing the key opens a hover
 card with the title, two clamped lines of description, and the status, and a
 remove `×` shows on the row's hover and focus. `TicketPageBody` is the
