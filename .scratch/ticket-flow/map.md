@@ -59,6 +59,10 @@ step after this map.
   the file with no history; only notes are editable.
 - [What agents are told about the body and notes](issues/06-what-agents-are-told.md):
   the tool descriptions and one line in every agent turn on a ticket.
+- [Live editing a note](issues/07-live-editing-a-note.md): a second collab
+  hub keyed on the note's message, the markdown file the only thing stored,
+  live state in memory; an agent's edit replaces the file and resets the
+  room; images can be pasted in.
 
 ## Not yet specified
 
