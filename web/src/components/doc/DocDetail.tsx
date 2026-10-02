@@ -109,13 +109,21 @@ export const DocDetail = ({
   return (
     <div className="@container animate-in fade-in-0 slide-in-from-bottom-1 mx-auto w-full max-w-6xl duration-200 ease-out">
       <div className="@4xl:flex @4xl:gap-8">
-        {headings.length > 0 && (
-          <div className="hidden w-56 shrink-0 pt-16 @4xl:block">
-            <div className="sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto">
-              <DocToc headings={headings} />
-            </div>
+        {/* Hidden below @4xl; the has() rule keeps the column from reserving 14rem when neither section renders. */}
+        <div className="hidden w-56 shrink-0 pt-16 @4xl:has-[section]:block">
+          <div className="sticky top-6 -mx-2 flex max-h-[calc(100vh-3rem)] flex-col gap-8 overflow-y-auto px-2">
+            <DocToc headings={headings} />
+            {canThread && (
+              <TrailSection
+                workspaceId={workspaceId}
+                targetType="doc"
+                targetId={doc.id}
+                rowLayout="stacked"
+                className="-mx-2 border-t-0 pt-0"
+              />
+            )}
           </div>
-        )}
+        </div>
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between">
@@ -182,7 +190,12 @@ export const DocDetail = ({
             />
           </article>
 
-          {canThread && <TrailSection workspaceId={workspaceId} targetType="doc" targetId={doc.id} />}
+          {/* The rail holds the trail from @4xl; both read the same query, so there is one request. */}
+          {canThread && (
+            <div className="@4xl:hidden">
+              <TrailSection workspaceId={workspaceId} targetType="doc" targetId={doc.id} />
+            </div>
+          )}
         </div>
       </div>
     </div>

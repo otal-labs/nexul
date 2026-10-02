@@ -13,6 +13,8 @@ interface TrailSectionProps {
   targetId: string;
   /** Said in place of the list once the trail loads empty. */
   emptyMessage?: string;
+  /** Passed to each row; "stacked" suits a narrow column. */
+  rowLayout?: "inline" | "stacked";
   className?: string;
 }
 
@@ -20,7 +22,7 @@ const microheaderClass =
   "px-2 pb-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-muted-foreground/80 uppercase";
 
 // Renders nothing with zero trails unless given emptyMessage, so a doc nobody has run a play on shows no empty section.
-export const TrailSection = ({ workspaceId, targetType, targetId, emptyMessage, className }: TrailSectionProps) => {
+export const TrailSection = ({ workspaceId, targetType, targetId, emptyMessage, rowLayout = "inline", className }: TrailSectionProps) => {
   const { data: trails, error } = useFetchTrails(targetType, targetId);
   const [openTrailId, setOpenTrailId] = useState<string | null>(null);
 
@@ -36,7 +38,7 @@ export const TrailSection = ({ workspaceId, targetType, targetId, emptyMessage, 
       {trails && trails.length > 0 && (
         <ul className="flex flex-col">
           {trails.map((trail) => (
-            <TrailRow key={trail.id} workspaceId={workspaceId} trail={trail} onOpen={setOpenTrailId} />
+            <TrailRow key={trail.id} workspaceId={workspaceId} trail={trail} onOpen={setOpenTrailId} layout={rowLayout} />
           ))}
         </ul>
       )}
