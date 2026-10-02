@@ -25,15 +25,6 @@ written over MCP while open, and deleting a note. Open:
   file stays byte-identical, but the read-only render shows no table at all:
   the heading and paragraphs around it render, the rows are dropped. Readers
   see the same. Recheck once the editor supports tables.
-- A doc or note whose last block is an image opens with the editor's
-  selection on that image. Tabbing into the editor and typing replaces the
-  image with the typed text, and the next commit writes that loss to the
-  file; typing straight after a click can do the same before the click's
-  selection lands. Repro: post a note ending in `![x](https://example.com/x.png)`,
-  open it, press Tab once, type, wait for the save. Same on a doc, so it is
-  the shared editor, not notes. Needs a choice between moving the selection
-  off the image after a seed, sync, or reset, and keeping a trailing
-  paragraph after a block image (which changes the stored markdown).
 - Every fresh page load asks `GET /api/projects?workspace_id=` before a
   workspace is selected and gets a 400. Gating the query on a workspace id
   fixes it, but about twenty component and page tests render without a

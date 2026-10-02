@@ -8,6 +8,7 @@ import { ReactNodeViewRenderer, ReactRenderer } from "@tiptap/react";
 import type { SuggestionKeyDownProps, SuggestionProps } from "@tiptap/suggestion";
 import type { JSONContent } from "@tiptap/core";
 
+import { CaretOffNodes } from "@/components/doc/caretOffNodes";
 import { CodeBlockView } from "@/components/doc/codeBlock/CodeBlockView";
 import { AttachmentImageView } from "@/components/doc/image/AttachmentImageView";
 import { AttachmentUpload, type AttachmentUploadOptions } from "@/components/doc/image/attachmentUpload";
@@ -122,6 +123,7 @@ export function buildEditorExtensions({
         return ReactNodeViewRenderer(AttachmentImageView);
       },
     }),
+    CaretOffNodes,
     AttachmentUpload.configure({ owner: attachTo, stage, ...(onUploaded ? { onUploaded } : {}) }),
     SlashCommandExtension,
     ...(plusMenu ? [PlusMenuExtension] : []),
