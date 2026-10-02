@@ -58,7 +58,7 @@ func TestCollabReset_ServerWriteWinsOverLiveSession(t *testing.T) {
 	require.NoError(t, err)
 
 	mux := http.NewServeMux()
-	mux.Handle("GET /ws/collab/{docID}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("GET /ws/collab/{id}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		svc.collabHub.ServeHTTP(w, r.WithContext(identity.WithActor(r.Context(), identity.Actor{ID: "u-onik"})))
 	}))
 	srv := httptest.NewServer(mux)

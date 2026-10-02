@@ -1,5 +1,5 @@
-import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useQueryClient, type QueryKey } from "@tanstack/react-query";
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 
 import * as Y from "yjs";
 
@@ -58,13 +58,21 @@ export interface CollabSession {
   dismissApplyError: () => void;
 }
 
+export interface CollabSessionOptions {
+  wsFactory?: (url: string) => LiveSocket;
+  avatar?: string;
+  /** The query a reset reloads before the fresh session starts; a doc room reloads its doc. */
+  reloadKey?: QueryKey;
+}
+
 // Owns a Y.Doc + provider pair; presence derives from awareness, not a domain event.
+// room is the path below /ws/collab: a doc's id, or notes/<message id> for a note's file.
 export const useCollabSession = (
-  docId: string | undefined,
+  room: string | undefined,
   mode: "edit" | "view",
   name: string,
   token: string | null,
-  opts: { wsFactory?: (url: string) => LiveSocket; avatar?: string } = {},
+  opts: CollabSessionOptions = {},
 ): CollabSession | null => {
   const [sessionKey, setSessionKey] = useState(0);
   const [session, setSession] = useState<{ doc: Y.Doc; provider: RelayCollabProvider; user: CollabUser } | null>(
@@ -77,11 +85,13 @@ export const useCollabSession = (
   const [participants, setParticipants] = useState<CollabParticipant[]>([]);
   const getStateRef = useRef<(() => { title: string; body: string } | null) | null>(null);
   const remoteTitleRef = useRef<((title: string) => void) | null>(null);
+  // An effect event, so a caller's inline key array never reconnects the session.
+  const reloadKey = useEffectEvent((): QueryKey => opts.reloadKey ?? [getDocKey, room]);
 
   // One effect (not split) keeps StrictMode's double-invoke setup/cleanup symmetric.
   useEffect(() => {
-    // No doc id or token yet means no connection; the effect re-runs once the token dependency lands.
-    if (!docId || !token) return;
+    // No room or token yet means no connection; the effect re-runs once the token dependency lands.
+    if (!room || !token) return;
     const doc = new Y.Doc();
     const user: CollabUser = {
       name: name || "You",
@@ -90,7 +100,7 @@ export const useCollabSession = (
       ...(opts.avatar ? { avatar: opts.avatar } : {}),
     };
     const provider = new RelayCollabProvider({
-      url: buildCollabURL(docId, token, mode),
+      url: buildCollabURL(room, token, mode),
       doc,
       wsFactory: opts.wsFactory ?? ((u) => new WebSocket(u) as unknown as LiveSocket),
       getState: () => getStateRef.current?.() ?? null,
@@ -98,12 +108,12 @@ export const useCollabSession = (
       onSeed: () => setSeededDoc(doc),
       // A server-side write replaced the body: reload it first, so the fresh session seeds the new one, not the old.
       onReset: () => {
-        const key = [getDocKey, docId];
+        const key = reloadKey();
         void queryClient
           .invalidateQueries({ queryKey: key })
           .then(() => {
-            const fresh = queryClient.getQueryData<Doc>(key);
-            if (fresh) remoteTitleRef.current?.(fresh.title);
+            const fresh = queryClient.getQueryData<Partial<Doc>>(key);
+            if (typeof fresh?.title === "string") remoteTitleRef.current?.(fresh.title);
           })
           .catch(() => undefined)
           .then(() => setSessionKey((k) => k + 1));
@@ -146,7 +156,7 @@ export const useCollabSession = (
       provider.destroy();
       setSession(null);
     };
-  }, [docId, mode, name, token, sessionKey, opts.wsFactory, opts.avatar, queryClient]);
+  }, [room, mode, name, token, sessionKey, opts.wsFactory, opts.avatar, queryClient]);
 
   const setGetState = useCallback(
     (fn: (() => { title: string; body: string } | null) | null) => {

@@ -17,7 +17,7 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
-// Mode gates the join permission: edit needs the doc's edit bit, view needs the read bit (ADR 0042).
+// Mode gates the join permission: edit needs the hub's edit action, view its view action (ADR 0042).
 type Mode string
 
 const (
@@ -39,14 +39,16 @@ type Hub struct {
 	store  Store
 	access AccessChecker
 	writer DocWriter
+	edit   permissions.Action
+	view   permissions.Action
 
 	mu       sync.Mutex
 	sessions map[string]*session
 	resets   map[string]int64 // room id → last reset seq, kept past the room; ponytail: lost on restart, persist it if that bites
 }
 
-// NewHub wires a collab hub. A nil logger defaults to slog.Default().
-func NewHub(logger *slog.Logger, store Store, access AccessChecker, writer DocWriter) *Hub {
+// NewHub wires a collab hub whose rooms join under the edit and view actions. A nil logger defaults to slog.Default().
+func NewHub(logger *slog.Logger, store Store, access AccessChecker, writer DocWriter, edit, view permissions.Action) *Hub {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -55,24 +57,26 @@ func NewHub(logger *slog.Logger, store Store, access AccessChecker, writer DocWr
 		store:    store,
 		access:   access,
 		writer:   writer,
+		edit:     edit,
+		view:     view,
 		sessions: make(map[string]*session),
 		resets:   make(map[string]int64),
 	}
 }
 
-// ServeHTTP assumes the caller already authenticated (mount behind RequireWS).
+// ServeHTTP serves the room named by the {id} wildcard; it assumes the caller already authenticated (RequireWS).
 func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	actor, ok := identity.ActorFromCtx(r.Context())
 	if !ok || actor.ID == "" {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	docID := strings.TrimSpace(r.PathValue("docID"))
+	docID := strings.TrimSpace(r.PathValue("id"))
 	if docID == "" {
-		http.Error(w, "missing doc id", http.StatusBadRequest)
+		http.Error(w, "missing room id", http.StatusBadRequest)
 		return
 	}
-	mode, action, err := modeAction(r.URL.Query().Get("mode"))
+	mode, action, err := h.modeAction(r.URL.Query().Get("mode"))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -240,13 +244,13 @@ func (h *Hub) removeSession(docID string) {
 	}
 }
 
-// modeAction maps the requested mode to its permission bit.
-func modeAction(mode string) (Mode, permissions.Action, error) {
+// modeAction maps the requested mode to the hub's permission bit for it.
+func (h *Hub) modeAction(mode string) (Mode, permissions.Action, error) {
 	switch Mode(mode) {
 	case ModeEdit:
-		return ModeEdit, permissions.DocsWrite, nil
+		return ModeEdit, h.edit, nil
 	case ModeView:
-		return ModeView, permissions.DocsRead, nil
+		return ModeView, h.view, nil
 	default:
 		return "", "", errUnknownMode
 	}

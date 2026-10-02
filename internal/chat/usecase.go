@@ -25,8 +25,17 @@ type Service struct {
 	threads   ThreadGate
 	standing  Standing
 	members   Membership
+	noteLive  NoteLive
 	now       func() time.Time
 }
+
+// NoteLive fences a note file write against the note's live room, then resets the room so the write wins (ADR 0109).
+type NoteLive interface {
+	Reset(ctx context.Context, messageID string, write func(context.Context) error) error
+}
+
+// SetNoteLive wires the live rooms a note file write must win over; without it a write touches only the file.
+func (s *Service) SetNoteLive(l NoteLive) { s.noteLive = l }
 
 // Membership answers who belongs to a workspace, so a DM or a private channel only ever holds its own members.
 type Membership interface {
@@ -984,6 +993,11 @@ func (s *Service) PostNote(ctx context.Context, conversationID, callerID, body s
 
 // noteThread checks, in order, that callerID reads the conversation, that it is a ticket's thread, and tickets:write.
 func (s *Service) noteThread(ctx context.Context, conversationID, callerID string) (*Conversation, error) {
+	return s.noteThreadFor(ctx, conversationID, callerID, permissions.TicketsWrite)
+}
+
+// noteThreadFor is noteThread with the ticket action to require.
+func (s *Service) noteThreadFor(ctx context.Context, conversationID, callerID string, action permissions.Action) (*Conversation, error) {
 	c, err := s.repo.GetConversation(ctx, conversationID)
 	if err != nil {
 		return nil, fmt.Errorf("get conversation %s: %w", conversationID, err)
@@ -995,19 +1009,123 @@ func (s *Service) noteThread(ctx context.Context, conversationID, callerID strin
 		return nil, fmt.Errorf("%w: only a ticket's thread takes a note's file, not a %s", apperrs.ErrInvalid, c.Kind)
 	}
 	if s.threads == nil {
-		return c, s.require(ctx, c.WorkspaceID, permissions.TicketsWrite)
+		return c, s.require(ctx, c.WorkspaceID, action)
 	}
-	return c, s.threads.RequireTicket(ctx, c.TicketID, permissions.TicketsWrite)
+	return c, s.threads.RequireTicket(ctx, c.TicketID, action)
 }
 
 func newNoteFile(in NoteFileInput) (*NoteFile, error) {
 	if strings.TrimSpace(in.Markdown) == "" {
 		return nil, fmt.Errorf("%w: a note's file needs its markdown", apperrs.ErrInvalid)
 	}
-	if len(in.Markdown) > maxNoteFileBytes {
-		return nil, fmt.Errorf("%w: a note's file exceeds %d bytes", apperrs.ErrInvalid, maxNoteFileBytes)
+	if err := noteFileFits(in.Markdown); err != nil {
+		return nil, err
 	}
 	return &NoteFile{ID: ids.New(), Name: noteFileName(in.Name), Markdown: in.Markdown}, nil
+}
+
+func noteFileFits(markdown string) error {
+	if len(markdown) > maxNoteFileBytes {
+		return fmt.Errorf("%w: a note's file exceeds %d bytes", apperrs.ErrInvalid, maxNoteFileBytes)
+	}
+	return nil
+}
+
+// ReplaceNote replaces a note's file from outside its live room under tickets:write; open editors reload from it.
+func (s *Service) ReplaceNote(ctx context.Context, messageID, callerID, markdown string) (*Message, *NoteFile, error) {
+	if strings.TrimSpace(markdown) == "" {
+		return nil, nil, fmt.Errorf("%w: a note's file needs its markdown", apperrs.ErrInvalid)
+	}
+	if err := noteFileFits(markdown); err != nil {
+		return nil, nil, err
+	}
+	m, err := s.repo.GetMessage(ctx, strings.TrimSpace(messageID))
+	if err != nil {
+		return nil, nil, fmt.Errorf("replace note %s: %w", messageID, err)
+	}
+	c, err := s.noteThread(ctx, m.ConversationID, callerID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if m.DeletedAt != nil {
+		return nil, nil, fmt.Errorf("%w: message %s was deleted", apperrs.ErrNotFound, m.ID)
+	}
+	if m.AttachmentID == "" {
+		return nil, nil, fmt.Errorf("%w: message %s is not a note, so it has no file to replace", apperrs.ErrInvalid, m.ID)
+	}
+	files, err := s.repo.ListNoteFiles(ctx, []string{m.AttachmentID})
+	if err != nil {
+		return nil, nil, fmt.Errorf("replace note %s: %w", m.ID, err)
+	}
+	if len(files) == 0 {
+		return nil, nil, fmt.Errorf("replace note %s: %w", m.ID, apperrs.ErrNotFound)
+	}
+	write := func(ctx context.Context) error { return s.writeNote(ctx, m, c.membersOnly(), markdown) }
+	if err := s.fenceNote(ctx, m.ID, write); err != nil {
+		return nil, nil, err
+	}
+	return m, &NoteFile{ID: files[0].ID, Name: files[0].Name, Markdown: markdown}, nil
+}
+
+// fenceNote runs write through the note's live room when one is wired, so open editors cannot overwrite it.
+func (s *Service) fenceNote(ctx context.Context, messageID string, write func(context.Context) error) error {
+	if s.noteLive == nil {
+		return write(ctx)
+	}
+	return s.noteLive.Reset(ctx, messageID, write)
+}
+
+// CommitNote writes a note's live room into its file; joining the room already took tickets:write.
+func (s *Service) CommitNote(ctx context.Context, messageID, markdown string) error {
+	if err := noteFileFits(markdown); err != nil {
+		return err
+	}
+	m, err := s.repo.GetMessage(ctx, messageID)
+	if err != nil {
+		return fmt.Errorf("commit note %s: %w", messageID, err)
+	}
+	if m.DeletedAt != nil || m.AttachmentID == "" {
+		return fmt.Errorf("%w: note %s was deleted", apperrs.ErrConflict, messageID)
+	}
+	membersOnly, err := s.MembersOnly(ctx, m.ConversationID)
+	if err != nil {
+		return fmt.Errorf("commit note %s: %w", messageID, err)
+	}
+	return s.writeNote(ctx, m, membersOnly, markdown)
+}
+
+// writeNote replaces m's file and publishes chat.message.updated in the same transaction.
+func (s *Service) writeNote(ctx context.Context, m *Message, membersOnly bool, markdown string) error {
+	m.UpdatedAt = s.now().UTC()
+	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicMessageUpdated, Payload: MessageUpdatedEvent{Message: *m, MembersOnly: membersOnly}}
+	if err := s.repo.ReplaceNoteFile(ctx, m, markdown, m.UpdatedAt, evt); err != nil {
+		return fmt.Errorf("replace note %s: %w", m.ID, err)
+	}
+	return nil
+}
+
+// NoteLocked reports a message whose file refuses live edits: one that is deleted or is not a note.
+func (s *Service) NoteLocked(ctx context.Context, messageID string) (bool, error) {
+	m, err := s.repo.GetMessage(ctx, messageID)
+	if err != nil {
+		return false, err
+	}
+	return m.DeletedAt != nil || m.AttachmentID == "", nil
+}
+
+// CanJoinNote reports whether userID may join a note's live room under action, checked on the note's ticket.
+func (s *Service) CanJoinNote(ctx context.Context, userID, messageID string, action permissions.Action) (bool, error) {
+	m, err := s.repo.GetMessage(ctx, messageID)
+	if err != nil {
+		return false, err
+	}
+	if m.DeletedAt != nil || m.AttachmentID == "" {
+		return false, nil
+	}
+	if _, err := s.noteThreadFor(ctx, m.ConversationID, userID, action); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // noteFileName keeps the base name, so a path never reaches storage, and makes sure it ends in .md.

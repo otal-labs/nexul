@@ -79,6 +79,12 @@ the Agent on your behalf, starts no agent turn, and needs `tickets:write` on
 the ticket. `message_list` returns a note's markdown in `file`. Deleting a
 note's message needs `tickets:write` and deletes its file with it.
 
+To change a note's file, pass `file` with the note's `note_id` and the new
+`markdown` and nothing else, or call `PUT /api/chat/messages/{id}/note` with
+`{"markdown": "..."}`. Both need `tickets:write`. The new file wins over
+anyone editing the note live: their room reloads from it, and whatever they
+typed in the last few seconds is dropped.
+
 ## Voice channels
 
 A voice channel is a conversation with a LiveKit room attached. Create one

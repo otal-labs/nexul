@@ -62,6 +62,8 @@ type Repo interface {
 	CreateNote(ctx context.Context, m *Message, file *NoteFile, evts ...eventbus.OutboxEvent) error
 	// ListNoteFiles returns the note files with the given attachment ids; an id with no file is left out.
 	ListNoteFiles(ctx context.Context, attachmentIDs []string) ([]*NoteFile, error)
+	// ReplaceNoteFile overwrites m's file with markdown and moves m's updated_at to at; ErrNotFound once m is deleted.
+	ReplaceNoteFile(ctx context.Context, m *Message, markdown string, at time.Time, evts ...eventbus.OutboxEvent) error
 	// DeleteNote soft-deletes m with its file and the images of its conversation named by imageIDs, in one transaction.
 	DeleteNote(ctx context.Context, m *Message, imageIDs []string, deletedAt time.Time, evts ...eventbus.OutboxEvent) error
 	// IsNoteFile reports whether a message of the conversation carries attachmentID as its note's file.

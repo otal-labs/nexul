@@ -19,11 +19,11 @@ import (
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
-// serveHub wraps a hub in an httptest server that injects the acting actor and mounts the docID wildcard exactly like production (RequireWS + withIdentity + GET /ws/collab/{docID}).
+// serveHub wraps a hub in an httptest server that injects the acting actor and mounts the id wildcard exactly like production (RequireWS + withIdentity + GET /ws/collab/{id}).
 func serveHub(t *testing.T, hub *Hub, actorID string) *httptest.Server {
 	t.Helper()
 	mux := http.NewServeMux()
-	mux.Handle("GET /ws/collab/{docID}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("GET /ws/collab/{id}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		r = r.WithContext(identity.WithActor(r.Context(), identity.Actor{ID: actorID}))
 		hub.ServeHTTP(w, r)
 	}))
@@ -84,17 +84,17 @@ func dialExpectError(t *testing.T, srv *httptest.Server, path string, wantStatus
 }
 
 func TestHubRejectsJoinWithoutPermission(t *testing.T) {
-	hub := NewHub(testLogger(), newFakeStore(), &fakeAccess{allowed: false, err: nil}, &fakeWriter{})
+	hub := NewHub(testLogger(), newFakeStore(), &fakeAccess{allowed: false, err: nil}, &fakeWriter{}, permissions.DocsWrite, permissions.DocsRead)
 	srv := serveHub(t, hub, "alice")
 
 	dialExpectError(t, srv, "/ws/collab/doc-1?mode=edit", http.StatusForbidden)
 }
 
 func TestHubRejectsUnknownMode(t *testing.T) {
-	hub := NewHub(testLogger(), newFakeStore(), &fakeAccess{allowed: true}, &fakeWriter{})
+	hub := NewHub(testLogger(), newFakeStore(), &fakeAccess{allowed: true}, &fakeWriter{}, permissions.DocsWrite, permissions.DocsRead)
 	srv := serveHub(t, hub, "alice")
 
-	// The ServeMux pattern requires a non-empty {docID}, so the "missing doc id" guard is unreachable through routing; the unknown-mode guard is reachable and enforced before the join gate.
+	// The ServeMux pattern requires a non-empty {id}, so the "missing room id" guard is unreachable through routing; the unknown-mode guard is reachable and enforced before the join gate.
 	dialExpectError(t, srv, "/ws/collab/doc-1?mode=admin", http.StatusBadRequest)
 }
 
@@ -102,7 +102,7 @@ func TestHubRejectsUnknownMode(t *testing.T) {
 func TestHubRelayAndCommit(t *testing.T) {
 	store := newFakeStore()
 	writer := &fakeWriter{}
-	hub := NewHub(testLogger(), store, &fakeAccess{allowed: true}, writer)
+	hub := NewHub(testLogger(), store, &fakeAccess{allowed: true}, writer, permissions.DocsWrite, permissions.DocsRead)
 	srv := serveHub(t, hub, "alice")
 
 	alice := dial(t, srv, "/ws/collab/doc-1?mode=edit")
@@ -150,7 +150,7 @@ func TestHubRelayAndCommit(t *testing.T) {
 // TestHubInitSnapshotWireShapeMatchesFrontendContract pins the ws-25 conflict-banner bug scenario (commit persists a snapshot, a fresh session replays it) and inspects the raw wire bytes because the browser (protocol.ts) reads init.snapshot.payload as a case-sensitive JS property with no server-side renaming, so a round-trip through ServerMsg (as recv does) would not catch a wrong-case regression since Go's json.Unmarshal matches untagged fields case-insensitively.
 func TestHubInitSnapshotWireShapeMatchesFrontendContract(t *testing.T) {
 	store := newFakeStore()
-	hub := NewHub(testLogger(), store, &fakeAccess{allowed: true}, &fakeWriter{})
+	hub := NewHub(testLogger(), store, &fakeAccess{allowed: true}, &fakeWriter{}, permissions.DocsWrite, permissions.DocsRead)
 	srv := serveHub(t, hub, "alice")
 
 	alice := dial(t, srv, "/ws/collab/doc-1?mode=edit")
@@ -185,7 +185,7 @@ func TestHubInitSnapshotWireShapeMatchesFrontendContract(t *testing.T) {
 }
 
 func TestHubPresenceRosterAndLeave(t *testing.T) {
-	hub := NewHub(testLogger(), newFakeStore(), &fakeAccess{allowed: true}, &fakeWriter{})
+	hub := NewHub(testLogger(), newFakeStore(), &fakeAccess{allowed: true}, &fakeWriter{}, permissions.DocsWrite, permissions.DocsRead)
 	srv := serveHub(t, hub, "alice")
 
 	alice := dial(t, srv, "/ws/collab/doc-1?mode=edit")
@@ -234,7 +234,7 @@ func (s *switchableAccess) set(allowed bool) {
 
 func TestHubDeniesSecondUserWithoutEditBit(t *testing.T) {
 	access := &switchableAccess{allowed: true}
-	hub := NewHub(testLogger(), newFakeStore(), access, &fakeWriter{})
+	hub := NewHub(testLogger(), newFakeStore(), access, &fakeWriter{}, permissions.DocsWrite, permissions.DocsRead)
 	srv := serveHub(t, hub, "alice")
 
 	alice := dial(t, srv, "/ws/collab/doc-1?mode=edit")
@@ -247,7 +247,7 @@ func TestHubDeniesSecondUserWithoutEditBit(t *testing.T) {
 }
 
 func TestHubDispatchGuards(t *testing.T) {
-	hub := NewHub(testLogger(), newFakeStore(), &fakeAccess{allowed: true}, &fakeWriter{})
+	hub := NewHub(testLogger(), newFakeStore(), &fakeAccess{allowed: true}, &fakeWriter{}, permissions.DocsWrite, permissions.DocsRead)
 	srv := serveHub(t, hub, "alice")
 
 	alice := dial(t, srv, "/ws/collab/doc-1?mode=edit")
@@ -266,13 +266,13 @@ func TestHubDispatchGuards(t *testing.T) {
 }
 
 func TestNewHubDefaultsLogger(t *testing.T) {
-	hub := NewHub(nil, newFakeStore(), &fakeAccess{allowed: true}, &fakeWriter{})
+	hub := NewHub(nil, newFakeStore(), &fakeAccess{allowed: true}, &fakeWriter{}, permissions.DocsWrite, permissions.DocsRead)
 	require.NotNil(t, hub)
 	require.NotNil(t, hub.log)
 }
 
 func TestHubRoomReclaimedAfterLastLeave(t *testing.T) {
-	hub := NewHub(testLogger(), newFakeStore(), &fakeAccess{allowed: true}, &fakeWriter{})
+	hub := NewHub(testLogger(), newFakeStore(), &fakeAccess{allowed: true}, &fakeWriter{}, permissions.DocsWrite, permissions.DocsRead)
 	srv := serveHub(t, hub, "alice")
 
 	alice := dial(t, srv, "/ws/collab/doc-1?mode=edit")
@@ -290,7 +290,7 @@ func TestHubRoomReclaimedAfterLastLeave(t *testing.T) {
 // TestHubSeedsAnEmptyRoomOnce guards against a body shown twice: of two editors opening a doc with no stored state
 // only the first loads the body into the room, and if it leaves before doing so the other takes over.
 func TestHubSeedsAnEmptyRoomOnce(t *testing.T) {
-	hub := NewHub(testLogger(), newFakeStore(), &fakeAccess{allowed: true}, &fakeWriter{})
+	hub := NewHub(testLogger(), newFakeStore(), &fakeAccess{allowed: true}, &fakeWriter{}, permissions.DocsWrite, permissions.DocsRead)
 	srv := serveHub(t, hub, "alice")
 
 	alice := dial(t, srv, "/ws/collab/doc-1?mode=edit")
@@ -313,7 +313,7 @@ func TestHubSeedsAnEmptyRoomOnce(t *testing.T) {
 // room: merging its old state into the reseeded room would show the doc twice, so it is told to reset instead.
 func TestHubRejoinAfterAMissedResetIsToldToReset(t *testing.T) {
 	writer := &fakeWriter{}
-	hub := NewHub(testLogger(), newFakeStore(), &fakeAccess{allowed: true}, writer)
+	hub := NewHub(testLogger(), newFakeStore(), &fakeAccess{allowed: true}, writer, permissions.DocsWrite, permissions.DocsRead)
 	srv := serveHub(t, hub, "alice")
 	alice := dial(t, srv, "/ws/collab/doc-1?mode=edit")
 	before := recv(t, alice)
@@ -357,7 +357,7 @@ func TestHubResetFailures(t *testing.T) {
 			store.resetErr = tt.resetErr
 			_, err := store.AppendUpdate(t.Context(), "doc-1", "alice", KindUpdate, "dXA=")
 			require.NoError(t, err)
-			hub := NewHub(testLogger(), store, &fakeAccess{allowed: true}, &fakeWriter{})
+			hub := NewHub(testLogger(), store, &fakeAccess{allowed: true}, &fakeWriter{}, permissions.DocsWrite, permissions.DocsRead)
 
 			err = hub.Reset(t.Context(), "doc-1", func(context.Context) error { return tt.write })
 			require.ErrorIs(t, err, tt.want)

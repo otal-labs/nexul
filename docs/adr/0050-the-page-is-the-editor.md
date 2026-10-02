@@ -27,3 +27,5 @@ product, so a new one follows the pattern rather than inventing its own.
 
 Superseded in part by ADR 0104: the create-ticket dialog uses the editor too, holding pasted files until the ticket
 exists.
+
+Amended by ADR 0110: a note is edited live in a dialog, the one modal editing surface.
