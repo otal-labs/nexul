@@ -13,7 +13,9 @@ import {
   useUpdateTicket,
   useUpdateTicketStatus,
 } from "@/hooks/TicketHooks";
+import { useThreadVariant } from "@/components/ticket/threadVariants";
 import { useTicketPageResolution } from "@/hooks/useTicketPageResolution";
+import { cn } from "@/lib/utils";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 interface TicketPageProps {
@@ -34,11 +36,12 @@ export const TicketPage = ({ ticketId: ticketIdProp }: TicketPageProps = {}) => 
   const setType = useSetTicketType();
   const addLabel = useAddLabel();
   const removeLabel = useRemoveLabel();
+  const wide = useThreadVariant(ticketIdProp !== undefined).wide === true;
 
   const project = data && projects.find((p) => p.id === data.project_id);
 
   return (
-    <Container className="p-6">
+    <Container className={cn("p-6", wide && "@container max-w-none")}>
       {(isPending || resolving) && <LoadingDisplay />}
       {error && <DetailErrorDisplay error={error} embedded={ticketIdProp !== undefined} />}
       {notFound && <ErrorScreen />}
