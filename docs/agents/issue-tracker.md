@@ -83,6 +83,10 @@ git history, and anything durable it decided is an ADR.
   ticket's body, and notes: an agent's additions as an Agent message in the
   thread with a markdown file, instead of edits to the body. Wayfinder map
   complete 2026-10-02 and sliced into implementation tickets 08–15.
+- `.scratch/t3-orchestrator-v2/` — T3 Code's new orchestrator (protocol 2):
+  a second T3 client under its own harness kind, a one-way switch per
+  computer, and handed-off agents as pills on the Agent's reply. Spec and
+  tickets 01–19 written 2026-10-03; wire research in `research/`.
 - `.scratch/mcp-parity/` — web capabilities no MCP tool reaches yet, one
   bullet each, `needs-triage`.
 - `.scratch/pre-release/` — four standing pre-release items, all open.
