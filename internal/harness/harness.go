@@ -113,11 +113,13 @@ func CleanOptions(settings []OptionSetting) ([]OptionSetting, error) {
 }
 
 // Provider is a usable provider instance; ID is what a turn routes on, Driver the kind setup is confirmed under.
+// Version is the provider CLI's version as the harness reports it, "" when unknown; setup reads it and the wire does not carry it.
 type Provider struct {
-	ID     string          `json:"id"`
-	Driver string          `json:"driver"`
-	Name   string          `json:"name"`
-	Models []ProviderModel `json:"models"`
+	ID      string          `json:"id"`
+	Driver  string          `json:"driver"`
+	Name    string          `json:"name"`
+	Version string          `json:"-"`
+	Models  []ProviderModel `json:"models"`
 }
 
 // Target names the computer, harness-side project, model choice and durable session a turn runs against.

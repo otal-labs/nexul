@@ -16,5 +16,14 @@ fallback.
 
 Read first: `practices/go.md`, `practices/testing.md`, the spec.
 
-- [ ] Golden-string tests per branch; Pi 0.98 → the update message; Pi null version → steps
-- [ ] The confirm session stays fail-closed (existing tests)
+- [x] Golden-string tests per branch; Pi 0.98 → the update message; Pi null version → steps
+- [x] The confirm session stays fail-closed (existing tests)
+
+## Comments
+
+- `harness.Provider` gained `Version` (not on the wire). Protocol 1's `Providers()` fills it from `server.getConfig`'s nullable
+  `version`; ticket 01 moves that parser to `internal/t3rpc` and must carry the field over, and protocol 2's `Providers()` must set it too.
+- The Pi gate sits in `runSetupTurn`, so the failed turn carries the update message and no session starts. Retry goes through the same path.
+- The Grok step removes `nexul` first (`grok mcp remove`, documented), as the Claude step does, so a re-run replaces the token. `pi mcp add`
+  replaces an existing entry on its own.
+- Ticket 17 documents: Pi needs 0.99 or later, Antigravity keeps the generic text and is unsupported for setup.

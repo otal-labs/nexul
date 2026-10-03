@@ -386,6 +386,9 @@ func (s *Service) runSetupTurn(ctx context.Context, userID string, run SetupRun,
 	if err != nil {
 		return s.endSetupTurn(turn, SetupTurnFailed, err.Error())
 	}
+	if reason := setupBlocker(p); reason != "" {
+		return s.endSetupTurn(turn, SetupTurnFailed, reason)
+	}
 	if reason := s.runSetupSession(ctx, client, ht, &turn, "Nexul setup: "+p.Name, prepareInstructions(prompt)); reason != "" {
 		return s.endSetupTurn(turn, SetupTurnFailed, reason)
 	}
