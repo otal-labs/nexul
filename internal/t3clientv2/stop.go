@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/otal-labs/nexul/internal/harness"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -30,7 +32,67 @@ type runCommand struct {
 	Reason    string `json:"reason,omitempty"`
 }
 
-// Interrupt implements harness.Client: it stops the run of the turn watching the thread, else its newest unfinished run.
+// disposeCommand drops a delegated task's undelivered result, so the task's end cannot wake its parent thread.
+type disposeCommand struct {
+	Type           string `json:"type"`
+	CommandID      string `json:"commandId"`
+	ParentThreadID string `json:"parentThreadId"`
+	TaskID         string `json:"taskId"`
+}
+
+// settledDeliveries are the states of a delegated task's result that can no longer wake its parent.
+var settledDeliveries = []string{"acknowledged", "delivered", "disposed"}
+
+// live is a turn as Stop sees it from its own connection, while the turn's pump owns the watch.
+type live struct {
+	messageID string
+	// halted ends the pump's wait on T3 once Stop has stopped the turn.
+	halted context.Context
+	halt   context.CancelFunc
+	mu     sync.Mutex
+	work   handoffs
+	// notes are what Stop could not stop, for the turn to show before it ends.
+	notes []string
+}
+
+// handoffs is what a turn follows besides its own run: the runs its hand-offs woke, and every followed run's subagents.
+type handoffs struct {
+	runs      []string
+	subagents []subagent
+}
+
+func newLive(ctx context.Context, messageID string) *live {
+	halted, halt := context.WithCancel(ctx)
+	return &live{messageID: messageID, halted: halted, halt: halt}
+}
+
+func (l *live) publish(work handoffs) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.work = work
+}
+
+func (l *live) handoffs() handoffs {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.work
+}
+
+func (l *live) note(summary string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.notes = append(l.notes, summary)
+}
+
+func (l *live) takeNotes() []string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	notes := l.notes
+	l.notes = nil
+	return notes
+}
+
+// Interrupt implements harness.Client: it stops the watching turn's handed-off work, then its run, and ends it interrupted.
 func (h *Harness) Interrupt(ctx context.Context, target harness.Target) (err error) {
 	if target.SessionID == "" {
 		return fmt.Errorf("%w: no active session to interrupt", apperrs.ErrInvalid)
@@ -46,22 +108,103 @@ func (h *Harness) Interrupt(ctx context.Context, target harness.Target) (err err
 	if err != nil {
 		return err
 	}
-	messageID, _ := h.messages.Load(target.SessionID)
-	id, _ := messageID.(string)
-	return stopRun(ctx, c, target.SessionID, p.Runs, id)
+	found, _ := h.turns.Load(target.SessionID)
+	l, ok := found.(*live)
+	if !ok {
+		return stopRun(ctx, c, target.SessionID, p.Runs, "")
+	}
+	runs, handedOff, err := l.stopHandoffs(ctx, c, target.SessionID, p.Runs, h.log())
+	if err != nil {
+		return err
+	}
+	err = stopRun(ctx, c, target.SessionID, runs, l.messageID)
+	if errors.Is(err, errNothingToStop) && handedOff {
+		err = nil
+	}
+	if err != nil {
+		return err
+	}
+	l.halt()
+	return nil
 }
 
-// stopRun stops the run Stop is for; a waiting run already replied, so only the latest one has background work to stop.
+// stopHandoffs stops handed-off work in ADR 0116's order, noting failures; it returns the runs as they then stand, and true if any stopped.
+func (l *live) stopHandoffs(ctx context.Context, c *t3rpc.Conn, threadID string, runs []run, log *slog.Logger) ([]run, bool, error) {
+	work := l.handoffs()
+	stopped := false
+	tally := func(err error) {
+		stopped = stopped || err == nil
+		if err == nil || errors.Is(err, errNothingToStop) {
+			return
+		}
+		log.Warn("t3clientv2: could not stop handed-off work", "thread", threadID, "error", err)
+		l.note(fmt.Sprintf("Could not stop handed-off work in T3 Code: %v", err))
+	}
+	for _, s := range work.subagents {
+		if s.Origin == "app_owned" && (s.CompletionDelivery == nil || !slices.Contains(settledDeliveries, s.CompletionDelivery.State)) {
+			tally(dispose(ctx, c, threadID, s.ID))
+		}
+	}
+	for _, s := range work.subagents {
+		if slices.Contains(openItems, s.Status) && s.ChildThreadID != "" {
+			tally(interruptChild(ctx, c, s.ChildThreadID))
+		}
+	}
+	if len(work.subagents) > 0 {
+		// Dropping the last result of a queued wake cancels that wake in T3, which then refuses to cancel it again.
+		p, err := readProjection(ctx, c, threadID)
+		if err != nil {
+			return nil, stopped, err
+		}
+		runs = p.Runs
+	}
+	for _, id := range work.runs {
+		if i := slices.IndexFunc(runs, func(r run) bool { return r.ID == id }); i >= 0 {
+			tally(halt(ctx, c, threadID, runs[i], i == len(runs)-1))
+		}
+	}
+	return runs, stopped, nil
+}
+
+func dispose(ctx context.Context, c *t3rpc.Conn, threadID, taskID string) error {
+	_, err := c.Call(ctx, dispatchCommand, disposeCommand{Type: "delegated_task.completion-delivery.dispose", CommandID: ids.New(),
+		ParentThreadID: threadID, TaskID: taskID})
+	if err != nil {
+		return refused("drop a handed-off result", err)
+	}
+	return nil
+}
+
+// interruptChild interrupts the newest started run of a handed-off agent's own thread.
+func interruptChild(ctx context.Context, c *t3rpc.Conn, childThreadID string) error {
+	p, err := readProjection(ctx, c, childThreadID)
+	if err != nil {
+		return err
+	}
+	for i := len(p.Runs) - 1; i >= 0; i-- {
+		if p.Runs[i].Status != runQueued && slices.Contains(workingRuns, p.Runs[i].Status) {
+			return halt(ctx, c, childThreadID, p.Runs[i], i == len(p.Runs)-1)
+		}
+	}
+	return errNothingToStop
+}
+
+// stopRun stops the run Stop is for.
 func stopRun(ctx context.Context, c *t3rpc.Conn, threadID string, runs []run, messageID string) error {
 	r, ok := toStop(runs, messageID)
 	if !ok {
 		return errNothingToStop
 	}
+	return halt(ctx, c, threadID, r, r.ID == runs[len(runs)-1].ID)
+}
+
+// halt cancels a queued run or interrupts a live one; a waiting run already replied, so only the latest has background work to stop.
+func halt(ctx context.Context, c *t3rpc.Conn, threadID string, r run, latest bool) error {
+	if !slices.Contains(liveRuns, r.Status) || (r.Status == runWaiting && !latest) {
+		return errNothingToStop
+	}
 	if r.Status == runQueued {
 		return cancelRun(ctx, c, threadID, r.ID)
-	}
-	if r.Status == runWaiting && r.ID != runs[len(runs)-1].ID {
-		return errNothingToStop
 	}
 	_, err := c.Call(ctx, dispatchCommand, runCommand{Type: "run.interrupt", CommandID: ids.New(), ThreadID: threadID, RunID: r.ID, Reason: stopReason})
 	if r.Status == runWaiting && strings.HasSuffix(t3Message(err), " is not interruptible.") {
@@ -73,11 +216,11 @@ func stopRun(ctx context.Context, c *t3rpc.Conn, threadID string, runs []run, me
 	return nil
 }
 
-// toStop is the run messageID started, else the thread's newest unfinished run; ok is false when that run is over.
+// toStop is the run messageID started, else the thread's newest unfinished run.
 func toStop(runs []run, messageID string) (run, bool) {
 	for i := len(runs) - 1; i >= 0 && messageID != ""; i-- {
 		if runs[i].UserMessageID == messageID {
-			return runs[i], slices.Contains(liveRuns, runs[i].Status)
+			return runs[i], true
 		}
 	}
 	for i := len(runs) - 1; i >= 0; i-- {

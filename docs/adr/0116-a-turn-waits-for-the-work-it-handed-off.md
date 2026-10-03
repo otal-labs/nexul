@@ -29,6 +29,12 @@ Decision: a turn follows the runs its own run's handed-off work caused, and repl
   Code".
 - **The cap.** 60 minutes after Nexul's run reached `waiting`, T3's own longest wait, the turn ends done and the
   stored reply ends with "Part of this work is still running in T3 Code." A play still ends done.
+- **Stop.** Interrupting Nexul's run leaves T3's delegated children running, so Stop first drops each followed
+  T3-owned task's undelivered result, so no child's end can wake the thread, then interrupts the newest started run
+  of each working child's thread, then cancels a queued wake run or interrupts a live one, and only then stops
+  Nexul's own run as ADR 0114 says. A step T3 refuses is noted on the turn and the rest still goes. Once Stop has
+  stopped anything, the turn ends interrupted at once: a stopped waiting run can stay waiting, and dropped work
+  reports no end, so nothing is followed after Stop.
 - **More than one turn on a conversation.** The pipeline keeps each in-flight turn on its own, so a second mention
   that ends first leaves the first one reachable. Stop reaches every live turn of the conversation, and an answer is
   tried on each, newest first, until a harness takes it.

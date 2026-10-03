@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -51,9 +52,11 @@ type Server struct {
 	// CommandCauses fails only the dispatchCommands of the command types it names, and the image upload when it names
 	// assets.persistChatAttachments; set it before connect.
 	CommandCauses map[string]any
-	// Projection is what orchestration.getThreadProjection answers, unless ProjectionCause fails it; set before connect.
-	Projection      any
+	// Projections answers getThreadProjection per thread id; an unnamed thread fails as T3 fails one it cannot load.
+	Projections     map[string]any
 	ProjectionCause any
+	// AfterCommand swaps in Projections entries once a command of the named type lands, as T3's events for it would.
+	AfterCommand map[string]map[string]any
 
 	connMu sync.Mutex
 	conn   *websocket.Conn
@@ -201,11 +204,7 @@ func (f *Server) handleRequest(env clientEnv) {
 	case "orchestration.dispatchCommand":
 		f.handleDispatch(env)
 	case "orchestration.getThreadProjection":
-		if f.ProjectionCause != nil {
-			f.writeFailure(env, f.ProjectionCause)
-			return
-		}
-		f.Write(ExitSuccess(idString(env.ID), f.Projection))
+		f.handleProjection(env)
 	case persistRPC:
 		f.handlePersist(env)
 	case "orchestration.subscribeThread":
@@ -258,8 +257,29 @@ func (f *Server) handleDispatch(env clientEnv) {
 		f.writeFailure(env, cause)
 		return
 	}
+	maps.Copy(f.Projections, f.AfterCommand[fmt.Sprint(cmd["type"])])
 	f.Write(ExitSuccess(idString(env.ID), map[string]any{"sequence": 1}))
 	f.Dispatched <- cmd
+}
+
+func (f *Server) handleProjection(env clientEnv) {
+	if f.ProjectionCause != nil {
+		f.writeFailure(env, f.ProjectionCause)
+		return
+	}
+	var in struct {
+		ThreadID string `json:"threadId"`
+	}
+	if err := json.Unmarshal(env.Payload, &in); err != nil {
+		f.t.Errorf("fake: undecodable projection payload: %v", err)
+	}
+	p, ok := f.Projections[in.ThreadID]
+	if !ok {
+		f.writeFailure(env, []any{map[string]any{"_tag": "Fail", "error": map[string]any{"_tag": "OrchestrationV2GetThreadProjectionError",
+			"threadId": in.ThreadID, "message": "Failed to load orchestration V2 thread " + in.ThreadID}}})
+		return
+	}
+	f.Write(ExitSuccess(idString(env.ID), p))
 }
 
 // handlePersist stores nothing and answers the way T3 does: one reference per image, with an id the server mints.

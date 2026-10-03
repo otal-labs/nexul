@@ -35,6 +35,7 @@ type pump struct {
 	open    func(ctx context.Context, after int64) (source, error)
 	decline func(ctx context.Context, requestID string) error
 	log     *slog.Logger
+	live    *live
 	// failures counts resubscribes since the stream last delivered anything.
 	failures int
 	// note is the standing note last shown, due when it is shown again.
@@ -63,8 +64,12 @@ func (p *pump) drain(ctx context.Context, src source, out chan<- harness.Update)
 		if p.capped(ctx, out) || !p.remind(ctx, out) {
 			return true, nil
 		}
-		values, err := p.next(ctx, src)
+		values, err := p.next(p.live.halted, src)
 		if ctx.Err() != nil {
+			return true, nil
+		}
+		if p.live.halted.Err() != nil {
+			p.finish(ctx, out, p.w.stop())
 			return true, nil
 		}
 		if errors.Is(err, context.DeadlineExceeded) {
@@ -105,11 +110,22 @@ func (p *pump) fold(ctx context.Context, values []json.RawMessage, out chan<- ha
 			}
 		}
 		if end != nil {
-			send(ctx, out, harness.Update{Terminal: end})
+			p.finish(ctx, out, end)
 			return true
 		}
 	}
+	p.live.publish(p.w.handoffs())
 	return false
+}
+
+// finish ends the turn with end, after the notes of what Stop could not stop.
+func (p *pump) finish(ctx context.Context, out chan<- harness.Update, end *harness.TurnResult) {
+	for _, summary := range p.live.takeNotes() {
+		if !send(ctx, out, note(summary)) {
+			return
+		}
+	}
+	send(ctx, out, harness.Update{Terminal: end})
 }
 
 // declineApprovals refuses the approvals the watch just raised before they are forwarded, as protocol 1's client does.
@@ -149,7 +165,7 @@ func (p *pump) capped(ctx context.Context, out chan<- harness.Update) bool {
 	if time.Now().Before(p.capAt) {
 		return false
 	}
-	send(ctx, out, harness.Update{Terminal: p.w.leave()})
+	p.finish(ctx, out, p.w.leave())
 	return true
 }
 

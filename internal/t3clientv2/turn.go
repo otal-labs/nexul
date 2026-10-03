@@ -122,15 +122,16 @@ func (h *Harness) StartTurn(ctx context.Context, target harness.Target, title st
 		t.close()
 		return harness.StartResult{}, err
 	}
-	h.messages.Store(t.threadID, t.messageID)
+	l := newLive(ctx, t.messageID)
+	h.turns.Store(t.threadID, l)
 	updates := make(chan harness.Update, 16)
 	for _, n := range notes {
 		updates <- n
 	}
-	p := &pump{w: w, open: t.open, decline: t.decline, log: h.log()}
+	p := &pump{w: w, open: t.open, decline: t.decline, log: h.log(), live: l}
 	go func() {
 		p.run(ctx, src, updates)
-		t.end(ctx, w)
+		t.end(ctx, w, l)
 	}()
 	return harness.StartResult{SessionID: t.threadID, Updates: updates, PromptSent: t.prompted}, nil
 }
@@ -345,9 +346,10 @@ func (t *turn) live(ctx context.Context) (*t3rpc.Conn, error) {
 }
 
 // end lets the thread go once the pump stops; a run T3 still holds queued is cancelled, since nobody would read its reply.
-func (t *turn) end(ctx context.Context, w *watch) {
+func (t *turn) end(ctx context.Context, w *watch, l *live) {
 	defer t.close()
-	t.h.messages.CompareAndDelete(t.threadID, t.messageID)
+	l.halt() // frees the context only Stop would have cancelled
+	t.h.turns.CompareAndDelete(t.threadID, l)
 	if !w.queued() {
 		return
 	}
