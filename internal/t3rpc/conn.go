@@ -455,8 +455,8 @@ func (c *Conn) Stream(ctx context.Context, method string, payload any) (*Stream,
 	return &Stream{c: c, id: id, method: method, ch: ch}, nil
 }
 
-// Next acks the chunk it returned last, then waits for the next one. A clean end is io.EOF, a failed one
-// wraps ErrInvalid, and a dead connection wraps ErrConnectionLost.
+// Next acks the chunk it returned last, then waits for the next one. A clean end is io.EOF, a failed one an
+// *ExitError, and a dead connection wraps ErrConnectionLost.
 func (s *Stream) Next(ctx context.Context) ([]json.RawMessage, error) {
 	if s.unacked {
 		s.unacked = false
@@ -485,13 +485,53 @@ func (s *Stream) Close() {
 	_ = s.c.send(s.c.ctx, interruptEnvelope{Tag: "Interrupt", RequestID: s.id})
 }
 
+// ExitError is an RPC that ended in an Effect Failure; it matches apperrs.ErrInvalid.
+type ExitError struct {
+	Method string
+	// Causes are the failure's cause entries, so a caller can tell a typed failure from a defect.
+	Causes []ExitCause
+	cause  json.RawMessage
+}
+
+// ExitCause is one cause entry: Tag is Fail, Die or Interrupt, and a Fail carries its typed error.
+type ExitCause struct {
+	Tag   string `json:"_tag"`
+	Error struct {
+		Tag     string `json:"_tag"`
+		Message string `json:"message"`
+	} `json:"error"`
+}
+
+func (e *ExitError) Error() string {
+	return fmt.Sprintf("%s: %s failed: %s", apperrs.ErrInvalid, e.Method, Snippet(e.cause))
+}
+
+func (e *ExitError) Unwrap() error { return apperrs.ErrInvalid }
+
+// Failed reports whether a Fail cause carries the typed error errorTag, such as OrchestrationV2GetThreadProjectionError.
+func (e *ExitError) Failed(errorTag string) bool {
+	for _, c := range e.Causes {
+		if c.Tag == "Fail" && c.Error.Tag == errorTag {
+			return true
+		}
+	}
+	return false
+}
+
+func newExitError(method string, cause json.RawMessage) *ExitError {
+	e := &ExitError{Method: method, cause: cause}
+	// An undecodable cause still fails the call; only the typed checks lose it, and Error keeps the raw text.
+	_ = json.Unmarshal(cause, &e.Causes)
+	return e
+}
+
 func decodeExit(method string, raw, chunkResult json.RawMessage) (json.RawMessage, error) {
 	var exit exitBody
 	if err := json.Unmarshal(raw, &exit); err != nil {
 		return nil, fmt.Errorf("%s: malformed exit frame: %w", method, err)
 	}
 	if exit.Tag != "Success" {
-		return nil, fmt.Errorf("%w: %s failed: %s", apperrs.ErrInvalid, method, Snippet(exit.Cause))
+		return nil, newExitError(method, exit.Cause)
 	}
 	if len(exit.Value) > 0 && !bytes.Equal(bytes.TrimSpace(exit.Value), []byte("null")) {
 		return exit.Value, nil

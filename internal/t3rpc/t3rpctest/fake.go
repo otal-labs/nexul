@@ -47,6 +47,8 @@ type Server struct {
 	Dispatched  chan map[string]any // payload of each dispatchCommand (auto-acked)
 	// DispatchCause fails every dispatchCommand when set; set it before connect.
 	DispatchCause any
+	// CommandCauses fails only the dispatchCommands of the command types it names; set it before connect.
+	CommandCauses map[string]any
 
 	connMu sync.Mutex
 	conn   *websocket.Conn
@@ -231,9 +233,13 @@ func (f *Server) handleDispatch(env clientEnv) {
 		f.t.Errorf("fake: undecodable dispatch payload: %v", err)
 		return
 	}
-	if f.DispatchCause != nil {
+	cause := f.DispatchCause
+	if c, ok := f.CommandCauses[fmt.Sprint(cmd["type"])]; ok {
+		cause = c
+	}
+	if cause != nil {
 		f.Write(map[string]any{"_tag": "Exit", "requestId": idString(env.ID),
-			"exit": map[string]any{"_tag": "Failure", "cause": f.DispatchCause}})
+			"exit": map[string]any{"_tag": "Failure", "cause": cause}})
 		return
 	}
 	f.Write(ExitSuccess(idString(env.ID), map[string]any{"sequence": 1}))

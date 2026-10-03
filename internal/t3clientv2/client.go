@@ -18,8 +18,8 @@ import (
 // protocol is the orchestration protocol this client speaks.
 const protocol = 2
 
-// errTurnsNotYet answers the turn calls this client cannot run yet.
-var errTurnsNotYet = fmt.Errorf("%w: turns on this T3 Code version need a newer Nexul", apperrs.ErrInvalid)
+// errTurnsNotYet answers the turn calls this client cannot make yet.
+var errTurnsNotYet = fmt.Errorf("%w: stopping or answering a turn on this T3 Code version needs a newer Nexul", apperrs.ErrInvalid)
 
 // Harness is the harness.Client for T3 Code servers running T3's orchestrator V2.
 type Harness struct {
@@ -90,11 +90,6 @@ func (h *Harness) Hold(ctx context.Context, s harness.Session) (harness.Conn, er
 		return nil, err
 	}
 	return c, nil
-}
-
-// StartTurn implements harness.Client.
-func (h *Harness) StartTurn(context.Context, harness.Target, string, harness.TurnPrompts) (harness.StartResult, error) {
-	return harness.StartResult{}, errTurnsNotYet
 }
 
 // Interrupt implements harness.Client.
