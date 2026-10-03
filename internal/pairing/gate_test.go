@@ -136,6 +136,32 @@ func TestRequireSetup_HarnessAndStoreFailures_NeverPass(t *testing.T) {
 		assert.ErrorIs(t, err, errBoom, "the harness failure stays in the chain for logs")
 	})
 
+	t.Run("harness went back to a protocol Nexul left reads as that, not offline", func(t *testing.T) {
+		t.Parallel()
+		f := newGateFixture(t)
+		f.exch.ListProvidersFn = func(context.Context, harness.Session) ([]harness.Provider, error) {
+			return nil, harness.ProtocolRefusal(wentBack)
+		}
+		_, err := f.svc.ResolveTarget(t.Context(), "u1", "")
+		require.ErrorIs(t, err, harness.ErrProtocol)
+		assert.EqualError(t, err, wentBack, "running T3 Code is not the fix, updating it is")
+		var nc *NotConfiguredError
+		assert.NotErrorAs(t, err, &nc)
+		assert.ErrorIs(t, err, apperrs.ErrInvalid, "the play press and MCP play run surface it as a bad request with this message")
+	})
+
+	t.Run("computer store fails after the harness answered", func(t *testing.T) {
+		t.Parallel()
+		f := newGateFixture(t)
+		providers := f.exch.ListProvidersFn
+		f.exch.ListProvidersFn = func(ctx context.Context, s harness.Session) ([]harness.Provider, error) {
+			f.repo.getErr = errBoom
+			return providers(ctx, s)
+		}
+		_, err := f.svc.ResolveTarget(t.Context(), "u1", "")
+		require.ErrorIs(t, err, errBoom)
+	})
+
 	t.Run("harness lists no provider for an empty choice", func(t *testing.T) {
 		t.Parallel()
 		f := newGateFixture(t)

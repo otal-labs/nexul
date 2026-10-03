@@ -274,6 +274,7 @@ var livePushTopics = []string{
 	pairing.TopicSetupTurnChanged,
 	pairing.TopicSetupFinished,
 	pairing.TopicSetupTurnActivity,
+	pairing.TopicHarnessSwitched,
 	auth.TopicTokenMinted,
 	auth.TopicTokenRevoked,
 	auth.TopicSessionCreated,

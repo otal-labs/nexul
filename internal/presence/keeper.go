@@ -221,6 +221,19 @@ func (k *Keeper) reconcile(userID string) {
 	}
 }
 
+// logDialFailure logs a failed dial and reports whether a protocol refusal has been logged since the last connection.
+func (k *Keeper) logDialFailure(ctx context.Context, userID, computer string, backoff time.Duration, err error, refused bool) bool {
+	refusal := errors.Is(err, harness.ErrProtocol)
+	// Transient failures retry, but silently invisible ones cost a debugging session.
+	level := slog.LevelWarn
+	// A protocol refusal lasts until T3 Code is updated, so the retries after its first warning stay quiet.
+	if refused && refusal {
+		level = slog.LevelDebug
+	}
+	k.log.Log(ctx, level, "presence: dial failed, retrying", "user", userID, "computer", computer, "backoff", backoff, "error", err)
+	return refused || refusal
+}
+
 // maintain holds one connection open, redialing with backoff, and removes itself from p.computers on return.
 func (k *Keeper) maintain(ctx context.Context, userID string, p *presence, self *loop, computer pairing.Computer) {
 	defer func() {
@@ -236,6 +249,7 @@ func (k *Keeper) maintain(ctx context.Context, userID string, p *presence, self 
 		return
 	}
 	backoff := initialBackoff
+	refused := false
 	for {
 		if !computer.TokenExpiresAt.After(time.Now()) {
 			return
@@ -248,13 +262,13 @@ func (k *Keeper) maintain(ctx context.Context, userID string, p *presence, self 
 				k.log.Warn("presence: harness rejected session, giving up until re-pair", "user", userID, "computer", computer.Name)
 				return
 			}
-			// Transient failures retry, but silently invisible ones cost a debugging session.
-			k.log.Warn("presence: dial failed, retrying", "user", userID, "computer", computer.Name, "backoff", backoff, "error", err)
+			refused = k.logDialFailure(ctx, userID, computer.Name, backoff, err, refused)
 		}
 		if err == nil {
 			k.log.Debug("presence: connected", "user", userID, "computer", computer.Name)
 			k.setState(self, StateConnected)
 			backoff = initialBackoff
+			refused = false
 			if conn == nil {
 				// Nothing to hold for this harness: stay connected until the user's presence is torn down.
 				<-ctx.Done()

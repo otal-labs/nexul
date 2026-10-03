@@ -1,5 +1,9 @@
 # An `@Agent` turn runs on the mentioning user's own paired environment, with only that user's permissions
 
+Amended by ADR 0113: a release change is still only a warning, except that Nexul refuses a T3 Code that went back to
+its old orchestrator after moving to the new one, with a message saying to update it. A computer that moves forward
+records the version it moved to, so its first turn after the move warns about nothing.
+
 `@Agent` is not a service account and Nexul holds no model credentials.
 Mentioning the agent starts a turn on the T3 Code environment that the
 mentioning user paired to their own account, and that turn reaches back into

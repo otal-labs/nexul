@@ -26,7 +26,7 @@ const (
 // ErrProtocol marks a harness speaking a protocol Nexul cannot follow; the refusal's text is the message to show.
 var ErrProtocol = errors.New("unsupported harness protocol")
 
-// ProtocolRefusal is an error matching ErrProtocol whose text is msg alone, so callers show it as is.
+// ProtocolRefusal is an error matching ErrProtocol and ErrInvalid whose text is msg alone, so callers show it as is.
 func ProtocolRefusal(msg string) error {
 	return protocolRefusal(msg)
 }
@@ -34,10 +34,21 @@ func ProtocolRefusal(msg string) error {
 type protocolRefusal string
 
 func (r protocolRefusal) Error() string { return string(r) }
-func (protocolRefusal) Unwrap() error   { return ErrProtocol }
+
+// Unwrap includes ErrInvalid so the HTTP gateway and MCP show the refusal instead of hiding it as an internal error.
+func (protocolRefusal) Unwrap() []error { return []error{ErrProtocol, apperrs.ErrInvalid} }
+
+// MovedError is a client finding its harness moved on to the protocol kind To's client speaks; Forward follows it.
+type MovedError struct {
+	To Kind
+}
+
+func (e *MovedError) Error() string { return fmt.Sprintf("the harness moved on to %s", e.To) }
 
 // Session is what every authenticated call needs to reach one paired computer; BearerToken is plaintext here.
 type Session struct {
+	// ComputerID names the paired computer, so a client that finds its harness moved on can say which one.
+	ComputerID  string
 	Name        string
 	ServerURL   string
 	BearerToken string

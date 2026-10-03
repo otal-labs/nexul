@@ -87,6 +87,22 @@ func (f *fakeRepo) DeleteComputer(_ context.Context, userID, id string, evts ...
 	return nil
 }
 
+func (f *fakeRepo) SwitchComputerKind(_ context.Context, id string, from, to harness.Kind, harnessVersion string, at time.Time, evt func(userID string) eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.saveErr != nil {
+		return f.saveErr
+	}
+	c, ok := f.computers[id]
+	if !ok || c.Kind != from {
+		return nil
+	}
+	c.Kind, c.HarnessVersion, c.UpdatedAt = to, harnessVersion, at
+	f.computers[id] = c
+	f.outbox = append(f.outbox, evt(c.UserID))
+	return nil
+}
+
 func (f *fakeRepo) GetDefaults(_ context.Context, userID string) (Defaults, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

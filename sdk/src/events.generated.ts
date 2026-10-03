@@ -21,6 +21,7 @@ export interface EventPayloads {
   "chat.message.deleted": { "conversation_id": string; "message_id": string; "deleted_at": string; "members_only"?: boolean; };
   "chat.message.reactions_changed": { "conversation_id": string; "message_id": string; "user_id": string; "emoji": string; "reacted": boolean; "members_only"?: boolean; };
   "chat.message.updated": { "message": Record<string, unknown>; "members_only"?: boolean; };
+  "computer.harness_switched": { "computer_id": string; "user_id": string; "from_kind": string; "to_kind": string; "harness_version": string; };
   "computer.paired": { "computer_id": string; "user_id": string; "server_url": string; "harness_version"?: string; "token_expires_at": string; };
   "computer.setup_confirmed": { "computer_id": string; "user_id": string; "provider"?: string; "confirmed_at"?: string; "skills"?: string[]; };
   "computer.setup_finished": { "computer_id": string; "user_id": string; "run_id": string; "confirmed": boolean; "providers": { "provider": string; "state": "running" | "confirmed" | "failed"; "status": string; }[]; };
@@ -142,6 +143,7 @@ export const TOPICS: Topic[] = [
   "chat.message.deleted",
   "chat.message.reactions_changed",
   "chat.message.updated",
+  "computer.harness_switched",
   "computer.paired",
   "computer.setup_confirmed",
   "computer.setup_finished",
@@ -261,6 +263,7 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "chat.message.deleted": {"conversation_id":"fixture-conversation_id","message_id":"fixture-message_id","deleted_at":"2026-01-01T00:00:00Z","members_only":false},
   "chat.message.reactions_changed": {"conversation_id":"fixture-conversation_id","message_id":"fixture-message_id","user_id":"fixture-user_id","emoji":"fixture-emoji","reacted":false,"members_only":false},
   "chat.message.updated": {"message":{},"members_only":false},
+  "computer.harness_switched": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","from_kind":"fixture-from_kind","to_kind":"fixture-to_kind","harness_version":"fixture-harness_version"},
   "computer.paired": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","server_url":"fixture-server_url","harness_version":"fixture-harness_version","token_expires_at":"2026-01-01T00:00:00Z"},
   "computer.setup_confirmed": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","provider":"fixture-provider","confirmed_at":"2026-01-01T00:00:00Z","skills":["fixture-skills"]},
   "computer.setup_finished": {"computer_id":"fixture-computer_id","user_id":"fixture-user_id","run_id":"fixture-run_id","confirmed":false,"providers":[{"provider":"fixture-provider","state":"running","status":"fixture-status"}]},

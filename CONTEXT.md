@@ -71,7 +71,10 @@ through MCP.
 **Harness**:
 The agent tool running on a user's paired computer that executes an Agent
 turn (T3 Code today, others later). The server talks to every harness through
-one interface, `harness.Client`, with one implementation per kind. A turn's
+one interface, `harness.Client`, with one implementation per kind. T3 Code is
+two kinds, `t3code` for its original orchestrator and `t3code-v2` for
+orchestrator V2; a computer moves from the first to the second once, on its
+first call after T3 Code updates, and never back. A turn's
 prompt names its ticket, doc, and memories for the agent to read through MCP
 rather than carrying them; an image embedded in the body of the ticket or doc
 a turn is about still travels to the harness as an attachment, capped at

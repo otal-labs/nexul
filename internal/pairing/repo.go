@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/otal-labs/nexul/internal/harness"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 )
 
@@ -19,6 +20,8 @@ type Repo interface {
 	ListComputers(ctx context.Context, userID string) ([]Computer, error)
 	// DeleteComputer removes one of userID's own computers and writes its events in one transaction, or ErrNotFound.
 	DeleteComputer(ctx context.Context, userID, id string, evts ...eventbus.OutboxEvent) error
+	// SwitchComputerKind moves computer id from kind from to to with evt's event for its owner; one not on from is untouched.
+	SwitchComputerKind(ctx context.Context, id string, from, to harness.Kind, harnessVersion string, at time.Time, evt func(userID string) eventbus.OutboxEvent) error
 
 	// GetDefaults returns userID's defaults, or a zero Defaults if never set (not an error, defaults are optional).
 	GetDefaults(ctx context.Context, userID string) (Defaults, error)

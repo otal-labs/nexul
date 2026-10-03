@@ -2,8 +2,11 @@ package presence
 
 import (
 	"context"
+	"log/slog"
+	"slices"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -269,4 +272,71 @@ func TestKeeper_OnlineFollowsFirstSocketAndLingerEnd(t *testing.T) {
 		t.Fatal("going offline after the linger window was not announced")
 	}
 	assert.Empty(t, k.Online())
+}
+
+// dialLevels records the level of every failed-dial log line.
+type dialLevels struct {
+	mu  sync.Mutex
+	got []slog.Level
+}
+
+func (d *dialLevels) Enabled(context.Context, slog.Level) bool { return true }
+func (d *dialLevels) WithAttrs([]slog.Attr) slog.Handler       { return d }
+func (d *dialLevels) WithGroup(string) slog.Handler            { return d }
+
+func (d *dialLevels) Handle(_ context.Context, r slog.Record) error {
+	if r.Message == "presence: dial failed, retrying" {
+		d.mu.Lock()
+		d.got = append(d.got, r.Level)
+		d.mu.Unlock()
+	}
+	return nil
+}
+
+func (d *dialLevels) levels() []slog.Level {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return slices.Clone(d.got)
+}
+
+func TestKeeper_ProtocolRefusal_KeepsRetryingButWarnsOncePerRefusal(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		sessions := &sessionsFunc{}
+		sessions.set(computer("c1"))
+		t3 := newFakeT3()
+		refuse := func(on bool) {
+			t3.mu.Lock()
+			defer t3.mu.Unlock()
+			delete(t3.dialErrs, "c1")
+			if on {
+				t3.dialErrs["c1"] = harness.ProtocolRefusal("T3 Code on c1 went back to its old orchestrator; Nexul only moves forward. Update T3 Code there.")
+			}
+		}
+		logs := &dialLevels{}
+		k := New(Config{Sessions: sessions.list, Harnesses: harnesstest.Registry(&harnesstest.Client{HoldFn: t3.hold}), Logger: slog.New(logs), Linger: time.Millisecond})
+
+		refuse(true)
+		k.Connected("u1")
+		time.Sleep(5 * time.Minute)
+		synctest.Wait()
+		refused := t3.dialCount("c1")
+		assert.Greater(t, refused, 3, "keeps retrying, so updating T3 Code recovers on its own")
+		levels := logs.levels()
+		require.Len(t, levels, refused)
+		assert.Equal(t, slog.LevelWarn, levels[0])
+		assert.Equal(t, slices.Repeat([]slog.Level{slog.LevelDebug}, refused-1), levels[1:])
+
+		refuse(false)
+		time.Sleep(2 * time.Minute)
+		synctest.Wait()
+		require.Equal(t, map[string]string{"c1": StateConnected}, k.Status("u1"), "the update was picked up without a re-pair")
+		refuse(true)
+		t3.conn("c1").dropServerSide()
+		time.Sleep(time.Minute)
+		synctest.Wait()
+		assert.Equal(t, slog.LevelWarn, logs.levels()[refused], "going back again after a connection is a new refusal, said once")
+
+		k.Disconnected("u1")
+		time.Sleep(time.Second)
+	})
 }

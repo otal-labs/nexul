@@ -560,3 +560,30 @@ func (q *Queries) SetPairingComputerSetupMCPToken(ctx context.Context, arg SetPa
 	}
 	return result.RowsAffected()
 }
+
+const switchPairingComputerKind = `-- name: SwitchPairingComputerKind :one
+UPDATE pairing_computers SET kind = ?1, harness_version = ?2, updated_at = ?3
+WHERE id = ?4 AND kind = ?5
+RETURNING user_id
+`
+
+type SwitchPairingComputerKindParams struct {
+	ToKind         string
+	HarnessVersion string
+	UpdatedAt      int64
+	ID             string
+	FromKind       string
+}
+
+func (q *Queries) SwitchPairingComputerKind(ctx context.Context, arg SwitchPairingComputerKindParams) (string, error) {
+	row := q.db.QueryRowContext(ctx, switchPairingComputerKind,
+		arg.ToKind,
+		arg.HarnessVersion,
+		arg.UpdatedAt,
+		arg.ID,
+		arg.FromKind,
+	)
+	var user_id string
+	err := row.Scan(&user_id)
+	return user_id, err
+}
