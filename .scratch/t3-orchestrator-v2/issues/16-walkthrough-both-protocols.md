@@ -1,27 +1,27 @@
 # 16 — Walkthrough on both protocols
 
-**What to build:** End to end on a box launched from the `t3-dual` image (ticket 04), with a local
-Nexul (dev login) paired to T3 `0.0.45` on 3773 and nightly `2632` on 3774 inside the box.
-- On both: an @Agent mention and a follow-up; a mention mid-turn that queues and gets its own reply; a
-  ticket with an image; a play question answered live and one answered after a Nexul restart; Stop on a
-  running and on a queued run; a Claude setup turn.
-- Protocol 2 only: an agent that uses `delegate_task` (async) — the reply waits, carries a pill, and the
-  pill shows the helper's conversation; a Claude native subagent gets a pill too; Stop during the wait
-  leaves nothing running in T3.
-- Flip: copy the 0.0.45 home and start the nightly on 3773 — the computer switches with no re-pair and
-  no drift warning, and an imported thread's first turn gets the Full prompt; start 0.0.45 again — the
-  "went back" message in the turn and on the settings row, no loop; start the nightly again — it
-  recovers.
-- Record real provider frames ticket 04 could not, and re-record any fixture that disagrees.
-- Check trails, chat and pills at 768, 1024 and 1440 px. Findings become fix-up tickets here. Delete
-  the box afterwards.
+**What to build:** The owner walks the effort end to end on his own paired computer, once tickets 14, 19
+and 20 have merged and the instance runs a build with them: first on T3 stable, then after updating his
+T3 Code to the nightly. No Incus box and no provider token; his own T3 and providers are the test bed.
 
-**Blocked by:** 06, 09, 12, 14, 15
+- On stable: an @Agent mention and a play still work as before.
+- Update T3 Code to the nightly. The computer switches to the new client with no re-pair, the settings row
+  shows it connected with the nightly version, and the first turn posts no drift warning.
+- Chat: a mention and a follow-up; a mention while the first runs queues and gets its own reply; an old
+  thread's first turn after the update still knows its context.
+- A ticket with an image, run as a play: the agent sees it.
+- A play question answered live, and one answered after a Nexul restart.
+- Stop on a running and on a queued turn.
+- An agent that hands work to another agent: the reply waits, carries a pill, and the pill opens the
+  helper's conversation; a Claude subagent gets a pill too; Stop during the wait leaves nothing running in T3.
+- The phone app shows the same pill (with a build that has ticket 19).
+- Optional: a computer setup turn on the nightly confirms.
+
+Findings become fix-up tickets here. Going back to stable is not part of the walkthrough; its message is
+covered by tests.
+
+**Blocked by:** 13, 14, 19, 20
 
 **Status:** ready-for-human
 
-Needs the owner: the two host firewall rules for the box's internet, and one provider login on the box.
-
 - [ ] Every step passes or has a fix-up ticket
-- [ ] No turn waits for a timeout; nothing runs in T3 after Stop
-- [ ] The box is deleted
