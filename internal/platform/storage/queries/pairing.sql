@@ -16,6 +16,11 @@ SELECT * FROM pairing_computers WHERE user_id = ? ORDER BY created_at DESC;
 -- name: PairingComputerTunnelHostnameExists :one
 SELECT EXISTS (SELECT 1 FROM pairing_computers WHERE tunnel_hostname = ? AND tunnel_hostname != '');
 
+-- name: SwitchPairingComputerKind :one
+UPDATE pairing_computers SET kind = sqlc.arg(to_kind), harness_version = sqlc.arg(harness_version), updated_at = sqlc.arg(updated_at)
+WHERE id = sqlc.arg(id) AND kind = sqlc.arg(from_kind)
+RETURNING user_id;
+
 -- name: DeletePairingComputer :execrows
 DELETE FROM pairing_computers WHERE id = ? AND user_id = ?;
 

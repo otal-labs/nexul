@@ -935,6 +935,18 @@ var catalogSchemas = map[string]string{
 			"token_expires_at": {"type": "string", "format": "date-time"}
 		}
 	}`,
+	"computer.harness_switched": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["computer_id", "user_id", "from_kind", "to_kind", "harness_version"],
+		"properties": {
+			"computer_id": {"type": "string"},
+			"user_id": {"type": "string"},
+			"from_kind": {"type": "string", "description": "The harness kind the computer was stored under, for example t3code."},
+			"to_kind": {"type": "string", "description": "The harness kind it moved forward to, for example t3code-v2; a computer never moves back."},
+			"harness_version": {"type": "string", "description": "The harness version read when the computer moved."}
+		}
+	}`,
 	"computer.setup_confirmed": `{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",
 		"type": "object",

@@ -1,5 +1,9 @@
 # 0054. One harness client interface per kind
 
+Amended by ADR 0113: T3 Code is two kinds, `t3code` on protocol 1 (`internal/t3client`) and `t3code-v2` on protocol 2
+(`internal/t3clientv2`), over a transport they share (`internal/t3rpc`), and T3's protocols stay inside those three
+packages. The separate OpenCode 2 harness is dropped, because T3 Code runs OpenCode 2 as an ordinary provider.
+
 The code that talks to a paired computer's agent tool used to be six seams,
 each shaped differently and each T3-only: the turn interface in `agent`
 (`Backend`), the token exchange in `pairing`, two lister callbacks, the

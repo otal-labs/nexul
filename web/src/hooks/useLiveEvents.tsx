@@ -92,6 +92,8 @@ const pushTopics: Record<string, string[]> = {
   "computer.setup_finished": [getComputerSetupKey, getHarnessProvidersKey],
   // A computer row goes from pairing in progress to paired, or appears and leaves, without a refresh.
   "computer.paired": [getComputersKey, getHarnessResolveKey],
+  // A computer whose T3 Code moved to its new orchestrator shows its new version without a refresh.
+  "computer.harness_switched": [getComputersKey, getHarnessResolveKey],
   "computer.tunnel_created": [getComputersKey],
   "computer.tunnel_removed": [getComputersKey, getHarnessResolveKey],
   // A computer row's MCP token line follows a mint or revoke from setup, the row, or an MCP tool.

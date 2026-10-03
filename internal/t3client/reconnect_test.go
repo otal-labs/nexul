@@ -3,6 +3,7 @@ package t3client
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -151,4 +152,34 @@ func closedUpdates() chan Update {
 	ch := make(chan Update)
 	close(ch)
 	return ch
+}
+
+func TestHarness_ReconnectFindsT3Updated_EndsTheTurnAtOnce(t *testing.T) {
+	t.Parallel()
+	for _, protocol := range []int{2, 3} {
+		t.Run(fmt.Sprintf("426 naming protocol %d", protocol), func(t *testing.T) {
+			t.Parallel()
+			f := t3rpctest.New(t)
+			f.Protocol = protocol
+			dropped := &fakeT3Client{subscription: &fakeSubscription{ch: closedUpdates(), dropped: &turnWatch{}}}
+			dials := 0
+			h := NewHarness(Options{HTTPClient: f.Client(), RPCTimeout: 5 * time.Second})
+			h.connect = func(ctx context.Context, s harness.Session, opts Options) (rpcConn, error) {
+				dials++
+				if dials == 1 {
+					return dropped, nil
+				}
+				return connect(ctx, s, opts)
+			}
+
+			result, err := h.StartTurn(testCtx(t), harness.Target{Session: f.Session(), SessionID: "th-1"}, "title", testPrompts())
+			require.NoError(t, err)
+			updates := drain(t, result.Updates)
+
+			require.Len(t, updates, 2, "the reconnect note, then the end: %+v", updates)
+			assert.Equal(t, reconnectingNote, updates[0].Activity.Summary)
+			assert.Equal(t, harness.TurnResult{State: harness.TurnError, LastError: "T3 Code was updated during this turn; ask again"}, *updates[1].Terminal)
+			assert.Equal(t, 2, dials, "no redial: the protocol-1 watch cannot resume on another protocol")
+		})
+	}
 }

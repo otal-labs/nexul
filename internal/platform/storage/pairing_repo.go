@@ -88,6 +88,21 @@ func (r *PairingRepo) DeleteComputer(ctx context.Context, userID, id string, evt
 	})
 }
 
+func (r *PairingRepo) SwitchComputerKind(ctx context.Context, id string, from, to harness.Kind, harnessVersion string, at time.Time, evt func(userID string) eventbus.OutboxEvent) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		userID, err := r.q.WithTx(tx).SwitchPairingComputerKind(ctx, sqlcgen.SwitchPairingComputerKindParams{
+			ToKind: string(to), HarnessVersion: harnessVersion, UpdatedAt: at.Unix(), ID: id, FromKind: string(from),
+		})
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("switch computer %s to %s: %w", id, to, err)
+		}
+		return insertOutboxRows(ctx, tx, []eventbus.OutboxEvent{evt(userID)})
+	})
+}
+
 func (r *PairingRepo) GetProjectLink(ctx context.Context, userID, projectID string) (pairing.ProjectLink, error) {
 	row, err := r.q.GetPairingProjectLink(ctx, sqlcgen.GetPairingProjectLinkParams{UserID: userID, ProjectID: projectID})
 	if err != nil {

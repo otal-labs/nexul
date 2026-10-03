@@ -2,9 +2,12 @@ package storage
 
 import (
 	"context"
+	"encoding/json"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -514,4 +517,47 @@ func TestPairingRepo_ListLatestSetupTurns_NewestPerProvider(t *testing.T) {
 	none, err := s.Pairing.ListLatestSetupTurns(t.Context(), "other")
 	require.NoError(t, err)
 	assert.Empty(t, none)
+}
+
+func switchedEvt(userID string) eventbus.OutboxEvent {
+	return eventbus.OutboxEvent{ID: uuid.NewString(), Topic: pairing.TopicHarnessSwitched, Payload: pairing.HarnessSwitchedEvent{ComputerID: "c1", UserID: userID}}
+}
+
+func TestPairingRepo_SwitchComputerKind_MovesOnlyAComputerStillOnTheOldKind(t *testing.T) {
+	t.Parallel()
+	s := newSetupTestStore(t)
+	at := time.Unix(1_800_000_000, 0).UTC()
+
+	require.NoError(t, s.Pairing.SwitchComputerKind(t.Context(), "gone", harness.KindT3Code, harness.KindT3CodeV2, "0.0.46", at, switchedEvt))
+	require.NoError(t, s.Pairing.SwitchComputerKind(t.Context(), "c1", harness.KindT3Code, harness.KindT3CodeV2, "0.0.46", at, switchedEvt))
+	require.NoError(t, s.Pairing.SwitchComputerKind(t.Context(), "c1", harness.KindT3Code, harness.KindT3CodeV2, "0.0.47", at, switchedEvt))
+
+	got, err := s.Pairing.GetComputer(t.Context(), "u1", "c1")
+	require.NoError(t, err)
+	assert.Equal(t, harness.KindT3CodeV2, got.Kind)
+	assert.Equal(t, "0.0.46", got.HarnessVersion, "a computer already moved keeps its row")
+	assert.Equal(t, at, got.UpdatedAt)
+	assert.Equal(t, "encrypted-token-c1", got.BearerToken, "no re-pair: the bearer session carries over")
+	entries, err := s.Outbox.Unpublished(t.Context(), 10)
+	require.NoError(t, err)
+	require.Len(t, entries, 1)
+	var payload pairing.HarnessSwitchedEvent
+	require.NoError(t, json.Unmarshal(entries[0].Payload, &payload))
+	assert.Equal(t, "u1", payload.UserID, "the event names the owner the update returned")
+}
+
+func TestPairingRepo_SwitchComputerKind_ConcurrentSwitchesWriteOneEvent(t *testing.T) {
+	t.Parallel()
+	s := newSetupTestStore(t)
+	var wg sync.WaitGroup
+	for range 8 {
+		wg.Go(func() {
+			assert.NoError(t, s.Pairing.SwitchComputerKind(t.Context(), "c1", harness.KindT3Code, harness.KindT3CodeV2, "0.0.46", time.Now(), switchedEvt))
+		})
+	}
+	wg.Wait()
+
+	entries, err := s.Outbox.Unpublished(t.Context(), 20)
+	require.NoError(t, err)
+	assert.Len(t, entries, 1, "every caller that found the computer already moved wrote nothing")
 }

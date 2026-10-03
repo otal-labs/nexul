@@ -200,6 +200,28 @@ func (e *ProtocolMismatchError) Error() string {
 	return fmt.Sprintf("T3 Code refused the connection: it speaks orchestration protocol %d", e.Version)
 }
 
+// NewerNeeded is the refusal for a T3 Code on where that speaks a protocol past every client Nexul has.
+func NewerNeeded(where string) error {
+	return harness.ProtocolRefusal(fmt.Sprintf("T3 Code on %s needs a newer Nexul.", where))
+}
+
+// ComputerName names a session's computer for a refusal, its server's host when it has no name.
+func ComputerName(s harness.Session) string {
+	if s.Name != "" {
+		return s.Name
+	}
+	return Host(s.ServerURL)
+}
+
+// Host is serverURL's host and port, or serverURL itself when it does not parse as one.
+func Host(serverURL string) string {
+	u, err := url.Parse(serverURL)
+	if err != nil || u.Host == "" {
+		return serverURL
+	}
+	return u.Host
+}
+
 // protocolMismatch reads the version T3 names in its 426 body.
 func protocolMismatch(body io.Reader) *ProtocolMismatchError {
 	var refusal struct {
