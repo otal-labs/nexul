@@ -2,6 +2,7 @@ package plays
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -280,4 +281,91 @@ func TestSilence_PausedWhileWaiting_AnswerRestartsTheClock(t *testing.T) {
 		assert.Equal(t, "Answered: Yes", posts[len(posts)-1].body)
 		assert.Empty(t, f.threads.noteBodies(), "no silence failure")
 	})
+}
+
+func interviewRun() RunInput {
+	return RunInput{PlayID: intPlayID, TargetType: TargetInterview, TargetID: projectID, Via: ViaWeb}
+}
+
+func followUpRound(requestID string) harness.Question {
+	return harness.Question{RequestID: requestID, Questions: []harness.QuestionItem{
+		{ID: "runner", Text: "Which test runner? ci.yml runs both bun test and vitest.", Header: "Tests",
+			Options: []harness.QuestionOption{{Label: "Vitest (Recommended)", Description: "web/", Value: "vitest"}, {Label: "Bun"}}},
+		{ID: "gates", Text: "Which gates block a merge?\nYou skipped this in the template.", Header: "Gates", MultiSelect: true,
+			Options: []harness.QuestionOption{{Label: "Lint"}, {Label: "Coverage"}}},
+		{ID: "floor", Text: "What coverage floor?", Header: "Coverage"},
+	}}
+}
+
+func TestAnswer_InterviewRun_RecordsEachRoundInOrder(t *testing.T) {
+	f := heldFixture(t)
+	trail, obs := driveTurn(t, f, interviewRun())
+	obs.OnStarted("sess-1")
+
+	obs.OnQuestion(followUpRound("req-1"))
+	_, err := f.runner.Answer(ctxAs(starter), trail.ID, harness.QuestionAnswer{Answers: map[string]harness.AnswerValue{
+		"runner": {Selected: []string{"vitest"}}, "gates": {Selected: []string{"Lint", "Coverage"}}, "floor": {},
+	}})
+	require.NoError(t, err)
+
+	obs.OnQuestion(harness.Question{RequestID: "req-2", Questions: []harness.QuestionItem{{ID: "q", Text: "Keep the 80 floor?"}}})
+	obs.OnFinished(harness.TurnResult{State: harness.TurnDone}, "")
+	_, err = f.runner.Answer(ctxAs(starter), trail.ID, harness.QuestionAnswer{Answers: map[string]harness.AnswerValue{"q": {Text: "Raise it to 85"}}})
+	require.NoError(t, err)
+
+	round1 := followUpRound("req-1").Questions
+	assert.Equal(t, []fakeRound{
+		{projectID: projectID, answeredBy: starter, followUps: []FollowUp{
+			{Question: "Which test runner?", Why: "ci.yml runs both bun test and vitest.", Options: round1[0].Options, Selected: []string{"Vitest (Recommended)"}},
+			{Question: "Which gates block a merge?", Why: "You skipped this in the template.", Options: round1[1].Options, MultiSelect: true, Selected: []string{"Lint", "Coverage"}},
+			{Question: "What coverage floor?", Selected: []string{}},
+		}},
+		{projectID: projectID, answeredBy: starter, followUps: []FollowUp{{Question: "Keep the 80 floor?", Selected: []string{}, Text: "Raise it to 85"}}},
+	}, f.answers.snapshot(), "a live answer and one that resumes the run each land as the next round, the why split off the text and never taken from the header, picks named by label, an empty answer left for the store to skip")
+}
+
+func TestAnswer_TicketAndDocRuns_RecordNoFollowUps(t *testing.T) {
+	for name, in := range map[string]RunInput{"ticket": ticketRun(), "doc": {PlayID: docPlayID, TargetType: TargetDoc, TargetID: docID, Via: ViaWeb}} {
+		t.Run(name, func(t *testing.T) {
+			f := heldFixture(t)
+			trail, obs := driveTurn(t, f, in)
+			obs.OnStarted("sess-1")
+			obs.OnQuestion(askedQuestion())
+
+			_, err := f.runner.Answer(ctxAs(starter), trail.ID, yesAnswer())
+			require.NoError(t, err)
+			assert.Empty(t, f.answers.snapshot())
+		})
+	}
+}
+
+func TestAnswer_InterviewRecordFails_TheRunStillGetsItsAnswer(t *testing.T) {
+	f := heldFixture(t)
+	f.answers.err = errors.New("database is locked")
+	trail, obs := driveTurn(t, f, interviewRun())
+	obs.OnStarted("sess-1")
+	obs.OnQuestion(askedQuestion())
+
+	got, err := f.runner.Answer(ctxAs(starter), trail.ID, yesAnswer())
+	require.NoError(t, err)
+	assert.Equal(t, TrailRunning, got.State)
+	assert.Equal(t, []harness.QuestionAnswer{yesAnswer()}, f.turns.answered)
+}
+
+func TestSplitWhy(t *testing.T) {
+	tests := []struct {
+		name, text, question, why string
+	}{
+		{"no question mark", "Pick a runner", "Pick a runner", ""},
+		{"question mark at the end", "Which runner?", "Which runner?", ""},
+		{"question then why", "When are tests written? You skipped this, and most commits add a test file.", "When are tests written?", "You skipped this, and most commits add a test file."},
+		{"question mark inside a word", "Is it e.g.?x or y? Both appear in ci.yml.", "Is it e.g.?x or y?", "Both appear in ci.yml."},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			question, why := splitWhy(tt.text)
+			assert.Equal(t, tt.question, question)
+			assert.Equal(t, tt.why, why)
+		})
+	}
 }

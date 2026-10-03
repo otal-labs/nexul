@@ -140,18 +140,21 @@ another project. Plural in the UI: "memories".
 _Avoid_: Doc (docs are for clients and requirements), skill, note
 
 **Interview**:
-The conversation that establishes a project's rules for agents: its stack,
-paradigm, testing strategy, principles, and vocabulary, asked one question
-at a time by the Interview play and answered by a person, with the agent
-able to read the codebase for answers first. Its questions start from the
-workspace's Interview template, which is the instance template until the
-workspace edits its own. It happens in the project's interview
-thread, a conversation of its own that no page shows; the project's Interview
-page holds the questions, their stored answers, and the memory.
-Re-running it amends the interview memory rather than starting over.
-The interview's answers are stored per project, one per question, apart from
-the interview memory: deleting the memory keeps them, deleting the project
-removes them.
+How a project's rules for agents are established: its stack, paradigm,
+testing strategy, principles, and vocabulary. A person answers the
+workspace's Interview template, a list of questions, on the project's
+Interview page, with no agent involved; the template is the instance
+template until the workspace edits its own. Then the Interview play reads
+those answers and the codebase, asks follow-ups about skipped questions,
+gaps, and anything the code contradicts, a round at a time on the same page,
+and writes the interview memory. The page holds the questions, their stored
+answers, and the memory. Running it again changes only what the changed
+answers change. The answers are stored per project, one per question per
+round (round 0 the template's, then one round per batch of follow-ups),
+apart from the interview memory: deleting the memory keeps them, deleting the
+project removes them. The project's interview thread is plumbing that holds
+the run's harness session, which no page shows, not where the interview
+happens.
 _Avoid_: Onboarding, questionnaire, setup
 
 **Interview memory**:
@@ -186,7 +189,7 @@ instructions, an enabled switch, and an excluded-projects list; a ticket
 play also names the one stage it shows in. No default memories live on the
 definition — the run dialog picks those per run, footer memories among
 them. Runs on the clicking user's own paired harness and posts into the
-target's thread; a play never moves its ticket itself, the agent does, as
+target's thread, which for an interview is hidden plumbing; a play never moves its ticket itself, the agent does, as
 its footer memories say. Every workspace,
 new or existing, is seeded with the same four, "Fix with AI" (ticket,
 progress stage), "To tickets via AI" (doc), "Interview" (interview), and

@@ -9,6 +9,7 @@ import type { InterviewAnswer } from "@/models/InterviewAnswer";
 import type { InterviewQuestion } from "@/models/InterviewTemplate";
 import type { Memory } from "@/models/Memory";
 import type { Play } from "@/models/Play";
+import type { Trail } from "@/models/Trail";
 import { InterviewPage } from "@/pages/InterviewPage";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
@@ -102,17 +103,40 @@ interface Setup {
   questions?: InterviewQuestion[];
   answers?: InterviewAnswer[];
   plays?: Play[];
+  trails?: () => Trail[];
 }
 
-const mockApi = ({ memories = [], questions = [organised, testing], answers = [], plays = [] }: Setup = {}) =>
+const mockApi = ({ memories = [], questions = [organised, testing], answers = [], plays = [], trails = () => [] }: Setup = {}) =>
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/projects") return { data: [project] };
+    if (url === "/api/plays/runs") return { data: trails() };
     if (url === "/api/memories") return { data: memories };
     if (url === "/api/memories/interview-template") return { data: { questions } };
     if (url === "/api/memories/interview-answers") return { data: answers };
     if (url === "/api/workspaces/ws-1/plays/applicable") return { data: plays };
     return { data: [] };
   });
+
+const waitingTrail = (patch: Partial<Trail> = {}): Trail => ({
+  id: "tr-1", workspace_id: "ws-1", play_id: "play-interview", play_label: "Interview", target_type: "interview", target_id: "p-1",
+  project_id: "p-1", conversation_id: "c-1", starter_id: "u-1", via: "web", selected_memory_ids: [], custom_instructions: "",
+  computer_id: "", provider: "", model: "", harness_session_id: "", state: "waiting", started_at: "", ended_at: null, last_error: "",
+  failure_reason: "", reply_message_id: "", activity: [],
+  question: {
+    request_id: "req-1",
+    asked_at: "",
+    questions: [
+      {
+        id: "runner",
+        text: "Which test runner? ci.yml runs both bun test and vitest.",
+        header: "Tests",
+        options: [{ label: "Vitest (Recommended)", value: "vitest" }, { label: "Bun" }],
+      },
+      { id: "floor", text: "What coverage floor?", header: "Coverage", options: [] },
+    ],
+  },
+  ...patch,
+});
 
 const section = (name: RegExp) => screen.findByRole("button", { name });
 
@@ -236,5 +260,55 @@ describe("InterviewPage", () => {
     expect(screen.getByText("## Stack")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Initial questions/ })).toHaveTextContent("0 of 2 answered");
     expect(await screen.findByRole("button", { name: /Regenerate/ })).toBeInTheDocument();
+  });
+
+  it("shows a waiting run's question as the next round, opened with its recommended option picked", async () => {
+    mockApi({ answers: [stored(0, organised.text), stored(0, testing.text)], trails: () => [waitingTrail()] });
+    renderPage();
+
+    expect(await section(/Which test runner\?/)).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: /Follow-ups from the agent 1/ })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: /Initial questions/ })).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByText("Follow-up 1 of 2")).toBeInTheDocument();
+    expect(screen.getByText("ci.yml runs both bun test and vitest.")).toBeInTheDocument();
+    expect(screen.queryByText("Tests")).not.toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Vitest (Recommended)" })).toBeChecked();
+    expect(screen.queryByRole("button", { name: /Done/ })).not.toBeInTheDocument();
+  });
+
+  it("sends the whole round on the trail, then shows the stored round in its place", async () => {
+    let trail = waitingTrail();
+    let answers = [stored(0, organised.text), stored(0, testing.text)];
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === "/api/projects") return { data: [project] };
+      if (url === "/api/plays/runs") return { data: [trail] };
+      if (url === "/api/memories/interview-template") return { data: { questions: [organised, testing] } };
+      if (url === "/api/memories/interview-answers") return { data: answers };
+      return { data: [] };
+    });
+    vi.mocked(api.post).mockImplementation(async () => {
+      trail = waitingTrail({ state: "running", question: null });
+      answers = [
+        ...answers,
+        stored(1, "Which test runner?", { why: "ci.yml runs both bun test and vitest.", selected: ["Vitest (Recommended)"], text: "" }),
+        stored(1, "What coverage floor?", { text: "85" }),
+      ];
+      return { data: trail };
+    });
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Next" }));
+    expect(api.post).not.toHaveBeenCalled();
+    expect(await section(/What coverage floor\?/)).toHaveAttribute("aria-expanded", "true");
+    await user.type(screen.getByRole("textbox", { name: "Your answer" }), "85");
+    await user.click(screen.getByRole("button", { name: "Next" }));
+
+    expect(api.post).toHaveBeenCalledWith("/api/plays/runs/tr-1/answer", {
+      answers: { runner: { selected: ["vitest"] }, floor: { text: "85" } },
+    });
+    expect(await screen.findByText("85")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Follow-ups from the agent 1/ })).toHaveTextContent("2 of 2 answered");
+    expect(screen.queryByRole("radio", { name: "Vitest (Recommended)" })).not.toBeInTheDocument();
   });
 });

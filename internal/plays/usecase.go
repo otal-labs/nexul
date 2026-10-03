@@ -31,16 +31,14 @@ const (
 		"context, acceptance criteria, and a pointer to the doc section it came from. Create each with " +
 		"`ticket_create`, passing the doc id so the ticket links back. Put them in the backlog column. Reply " +
 		"with the list of tickets created and anything in the doc you deliberately did not turn into a ticket."
-	interviewInstructions = "Run this project's interview, the conversation that records its rules for agents; the project and the answers it already records are named below. " +
-		"Start by calling `memory_create` with the project id and `kind` `interview`: it returns the interview memory, created from the workspace's Interview template the first time. " +
-		"If the memory already holds rules, this is a re-run: amend it, never start over. Ask first what has changed, keep every rule that still holds, and change only what the answers change. " +
-		"Ask one question at a time with your question tool, never a batch, and give every question your recommended answer as its first option, labelled (Recommended), so the person can accept it or type their own. " +
-		"Your first question asks whether to scan the codebase for answers first. If they say yes, read the checkout you are running in (manifests and lockfiles, CI config, linter and formatter config, tests, README, docs and decision records), draft an answer for each category, then grill them on it: one question per finding, saying what you found and where, until each is confirmed or corrected. Never record a finding they have not confirmed. " +
-		"Work through the categories in the interview's headings in order. Do not ask again what the project already records, such as where its tests live, unless the person changes it; record a change there with `project_update` and `tests_location` as well. " +
-		"Save the interview with `memory_update` after each category, passing its id and the full markdown body, so progress survives a stop. " +
-		"Write rules, not a transcript: short imperative lines under each heading, with no questions, answers, or narration. Replace each heading's prompt line with its rules, and leave out a heading the project has no rule for. " +
-		"The body is capped at 8,000 characters of markdown and every agent turn in the project carries it in full, so keep it well under the cap: tighten wording and drop what a linter or the code already enforces. " +
-		"Reply with a short summary of what the interview now says and what this run changed."
+	interviewInstructions = "Run this project's interview follow-ups: the person has answered the workspace's Interview template on the project's Interview page, and you ask about what is still open, then write the interview memory; the project and the answers it already records are named below. " +
+		"Start by calling `memory_create` with the project id and `kind` `interview`: it returns the interview memory, whose body is the project's current rules (empty the first time), its `questions` (the Interview template's questions), and its `answers` (the stored answers: round 0 answers the template's questions, round 1 and up are earlier follow-ups). An answer to a question no longer in `questions` answers an earlier wording of one; use it too. " +
+		"Then read the checkout you are running in: manifests and lockfiles, CI config, linter and formatter config, tests, README, docs and decision records. " +
+		"Ask about every skipped or unanswered question, every gap the answers leave that the code cannot settle, and anything the code contradicts. Ask with your own question tool, never through another agent, one round at a time: all of a round's questions in one call, each with your recommended answer as its first option, labelled (Recommended), and a header of at most 12 characters naming its topic, such as Testing. Write each question's text as the question followed by one sentence on why you are asking that names what you found and where, such as: When are tests written? You skipped this, and most commits in the last month add a test file beside the code they change. Keep asking rounds until nothing is left open. Never record something from the code the person did not confirm, and never ask whether to scan the codebase. " +
+		"Do not ask again what the project already records, such as where its tests live, unless the person changes it; record a change there with `project_update` and `tests_location` as well. " +
+		"Then write the memory with `memory_update`, passing its id and the full markdown body: rules, not a transcript, as short imperative lines under headings you choose, with no questions, answers, or narration. Keep every existing rule no answer contradicts, and change only what the answers change. " +
+		"The body is capped at 8,000 characters and every agent turn in the project reads it first, so keep it well under the cap: tighten wording and drop what a linter or the code already enforces. " +
+		"Reply with a short summary of what the memory now says and what this run changed."
 	testWithAIInstructions = "Test this ticket the way a tester would, then pass or fail it. Read it with `ticket_get`, which also carries its links and where to test; its acceptance criteria are what you test against. " +
 		"Follow the testing strategy in this project's interview memory, which comes with this run. With no interview, check each criterion on the live URL and run the tests the project already has, and add none. " +
 		"Where to test is the `test_target` in that result. Test nowhere else: never production, and never anything that shares production's services. If its url is empty, the only place to test is production: stop without passing or failing the ticket, and reply that it needs a deploy branch on its own network. " +
@@ -248,7 +246,7 @@ func Builtins() []Builtin {
 			Description:  "Splits a doc into tickets a developer could pick up independently.",
 			Instructions: toTicketsInstructions},
 		{Key: "interview", Label: "Interview", Type: TypeInterview,
-			Description:  "Asks one question at a time to record this project's rules for agents, and amends them on a re-run.",
+			Description:  "Asks follow-ups about what the Interview answers and the code leave open, then writes this project's rules for agents.",
 			Instructions: interviewInstructions},
 		{Key: "test-with-ai", Label: "Test with AI", Type: TypeTicket, ShowWhenStage: &testingStage,
 			Description:  "Tests the ticket on its test environment against its acceptance criteria, then passes or fails it.",

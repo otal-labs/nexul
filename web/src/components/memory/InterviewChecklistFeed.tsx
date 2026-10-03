@@ -4,6 +4,8 @@ import { InterviewDoneRow } from "@/components/memory/InterviewDoneRow";
 import { InterviewQuestionForm } from "@/components/memory/InterviewQuestionForm";
 import { InterviewQuestionRow } from "@/components/memory/InterviewQuestionRow";
 import { InterviewSection } from "@/components/memory/InterviewSection";
+import { useInterviewLiveRound } from "@/hooks/useInterviewLiveRound";
+import type { AnswerValue } from "@/models/Question";
 import { countLine, firstPendingKey, nextPendingKey, rowStatus, type InterviewRow, type InterviewSectionData } from "@/models/InterviewAnswer";
 
 interface InterviewChecklistFeedProps {
@@ -15,12 +17,18 @@ interface InterviewChecklistFeedProps {
 }
 
 // The questions as numbered rows in foldable sections; one row is open at a time, the first unanswered on load.
-export const InterviewChecklistFeed = ({ projectId, sections, readOnly, memoryWithoutAnswers }: InterviewChecklistFeedProps) => {
+export const InterviewChecklistFeed = ({ projectId, sections: stored, readOnly, memoryWithoutAnswers }: InterviewChecklistFeedProps) => {
+  const live = useInterviewLiveRound(projectId, stored);
+  const sections = live.section ? [...stored, live.section] : stored;
   const rows = sections.flatMap((s) => s.rows);
   // Chosen once, so someone else's answer arriving live never moves the row this person is typing in.
   const [openKey, setOpenKey] = useState<string | null>(() => firstPendingKey(rows));
+  // A new live round opens its first question once, until this person moves.
+  const [openFor, setOpenFor] = useState<string | undefined>();
   const [folds, setFolds] = useState<Record<string, boolean>>({});
-  const current = readOnly ? null : openKey;
+  const roundArrived = live.section !== null && openFor !== live.section.key;
+  const opened = roundArrived ? firstPendingKey(live.section?.rows ?? []) : openKey;
+  const current = readOnly ? null : opened;
   const newest = sections.at(-1)?.key;
   const initial = sections[0];
   const templateDone = initial !== undefined && initial.rows.every((r) => rowStatus(r) !== "pending");
@@ -30,6 +38,7 @@ export const InterviewChecklistFeed = ({ projectId, sections, readOnly, memoryWi
 
   const move = (key: string | null) => {
     setOpenKey(key);
+    setOpenFor(live.section?.key);
     const section = sections.find((s) => s.rows.some((r) => r.key === key));
     if (section) setFolds((f) => ({ ...f, [section.key]: false }));
   };
@@ -37,7 +46,9 @@ export const InterviewChecklistFeed = ({ projectId, sections, readOnly, memoryWi
   const formProps = (section: InterviewSectionData, row: InterviewRow, i: number) => {
     const at = rows.indexOf(row);
     const progress = section.key === "0" ? `Question ${i + 1} of ${section.rows.length}` : `Follow-up ${i + 1} of ${section.rows.length}`;
-    return { row, projectId, progress, prevKey: rows[at - 1]?.key ?? null, nextKey: nextPendingKey(rows, row.key), onMove: move };
+    const prevKey = rows[at - 1]?.key ?? null;
+    const onAnswer = row.live && ((value: AnswerValue) => live.answer(row, value));
+    return { row, projectId, progress, prevKey, nextKey: nextPendingKey(rows, row.key), onMove: move, onAnswer, pending: live.pending };
   };
 
   return (
@@ -71,7 +82,7 @@ export const InterviewChecklistFeed = ({ projectId, sections, readOnly, memoryWi
           </ol>
         </InterviewSection>
       ))}
-      {templateDone && sections.length === 1 && <InterviewDoneRow projectId={projectId} />}
+      {templateDone && stored.length === 1 && !live.section && <InterviewDoneRow projectId={projectId} />}
     </div>
   );
 };

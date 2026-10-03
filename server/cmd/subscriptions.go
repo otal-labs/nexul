@@ -363,6 +363,7 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 		Live:     liveHub,
 		Users:    agentUserReader{users: store.Users},
 		Links:    playsLinkReader{tickets: svc.ticketsSvc},
+		Answers:  playsInterviewAnswers{svc: svc.memoriesSvc},
 		Logger:   logger,
 	})
 
