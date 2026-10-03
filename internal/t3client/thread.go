@@ -138,6 +138,13 @@ type threadTurnInterruptCommand struct {
 	CreatedAt string `json:"createdAt"`
 }
 
+// threadSettleCommand carries no createdAt: protocol 1's thread.settle schema has none, unlike the turn commands.
+type threadSettleCommand struct {
+	Type      string `json:"type"`
+	CommandID string `json:"commandId"`
+	ThreadID  string `json:"threadId"`
+}
+
 type threadApprovalRespondCommand struct {
 	Type      string `json:"type"`
 	CommandID string `json:"commandId"`
@@ -216,6 +223,11 @@ func (c *conn) Interrupt(ctx context.Context, threadID string) error {
 		ThreadID:  threadID,
 		CreatedAt: isoNow(),
 	})
+}
+
+// Settle moves the thread to T3's settled list; T3 refuses while a turn runs or a question waits.
+func (c *conn) Settle(ctx context.Context, threadID string) error {
+	return c.dispatch(ctx, threadSettleCommand{Type: "thread.settle", CommandID: ids.New(), ThreadID: threadID})
 }
 
 // RespondApproval answers a provider approval request (auto-decline with DecisionDecline).

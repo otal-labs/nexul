@@ -126,7 +126,7 @@ export const MessageRow = ({ message, author, isOwn, continuation = false, quest
     <>
       {isSystem && <SystemMessageRow body={message.body} trailBlock={trailBlock} />}
       {!isSystem && (
-        <Message align={align} className={cn("group px-3", message.pending && "opacity-60")}>
+        <Message align={align} className={cn("group px-3 py-0.5 transition-colors duration-150 ease-standard hover:bg-accent/40", message.pending && "opacity-60")}>
           {align === "start" && !continuation && (
             <MessageAvatar className="size-6 self-start bg-transparent">
               <MessageRowAvatar isAgent={isAgent} author={author} />

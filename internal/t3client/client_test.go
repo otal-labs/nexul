@@ -200,6 +200,21 @@ func TestRespondUserInput_Rejections(t *testing.T) {
 	}
 }
 
+func TestSettle_DispatchesProtocolOneShape(t *testing.T) {
+	t.Parallel()
+	f := t3rpctest.New(t)
+	ctx := testCtx(t)
+	c := connectFake(t, ctx, f)
+
+	require.NoError(t, c.Settle(ctx, "th-1"))
+	cmd := t3rpctest.WaitFor(t, f.Dispatched, "thread.settle dispatch")
+	assert.Equal(t, "thread.settle", cmd["type"])
+	assert.Equal(t, "th-1", cmd["threadId"])
+	assert.NotEmpty(t, cmd["commandId"])
+	_, hasCreatedAt := cmd["createdAt"]
+	assert.False(t, hasCreatedAt, "thread.settle's schema has no createdAt")
+}
+
 func TestInterrupt_DispatchesAndTerminalIsInterrupted(t *testing.T) {
 	t.Parallel()
 	f := t3rpctest.New(t)
