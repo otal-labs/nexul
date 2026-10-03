@@ -17,7 +17,7 @@ export const MemoryPickSection = ({ title, emptyMessage, memories, selected, onT
     <h3 className={microheaderClass}>{title}</h3>
     {memories.length === 0 && <EmptyRow className="py-3">{emptyMessage}</EmptyRow>}
     {memories.length > 0 && (
-      <div className="rounded-md border border-border">
+      <div className="max-h-72 overflow-y-auto overscroll-contain rounded-md border border-border">
         {memories.map((memory) => (
           <MemoryPickRow
             key={memory.id}
