@@ -93,7 +93,7 @@ export const MessageList = ({
                 {messages.map((message, i) => {
                   const continuation = isContinuation(messages[i - 1], message);
                   return (
-                    // Only @Agent turns anchor to the viewport top; anchoring every message shoved chatter to the top.
+                    // Only the newest message, when it is an @Agent turn, anchors: the scroller jumps to any older anchor on a same-count swap (pending row confirmed, stream bubble replaced).
                     <MessageScrollerItem
                       key={message.id}
                       messageId={message.id}
@@ -103,7 +103,9 @@ export const MessageList = ({
                         continuation ? "[overflow-clip-margin:1rem]" : "pt-4",
                         i === messages.length - 1 && "[content-visibility:visible]",
                       )}
-                      scrollAnchor={message.author_kind === "user" && (message.mentions ?? []).some((m) => m.kind === "agent")}
+                      scrollAnchor={
+                        i === messages.length - 1 && message.author_kind === "user" && (message.mentions ?? []).some((m) => m.kind === "agent")
+                      }
                     >
                       <MessageRow
                         message={message}
