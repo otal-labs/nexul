@@ -8,12 +8,11 @@ import (
 	"github.com/otal-labs/nexul/internal/workspace"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
-	"github.com/otal-labs/nexul/internal/platform/storage"
 )
 
 // deployProjectStore adapts workspace projects to deploy's ProjectStore seam so deploy never imports workspace (ADR 0017).
 type deployProjectStore struct {
-	projects *storage.ProjectsRepo
+	projects workspace.Repo
 }
 
 func (a deployProjectStore) ProjectExists(ctx context.Context, projectID string) (bool, error) {

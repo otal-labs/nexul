@@ -189,7 +189,7 @@ func TestCreateWebhook(t *testing.T) {
 			assert.Equal(t, "/repos/acme/app/hooks", r.URL.Path)
 			var hook githubapi.Hook
 			require.NoError(t, json.NewDecoder(r.Body).Decode(&hook))
-			assert.Equal(t, []string{"pull_request"}, hook.Events)
+			assert.Equal(t, []string{"pull_request", "pull_request_review", "pull_request_review_comment", "issue_comment", "push"}, hook.Events)
 			assert.Equal(t, "https://example.com/hook", hook.Config.GetURL())
 			assert.Equal(t, "json", hook.Config.GetContentType())
 			assert.Equal(t, "s3cret", hook.Config.GetSecret())
@@ -209,6 +209,32 @@ func TestCreateWebhook(t *testing.T) {
 	t.Run("unauthorized maps to ErrUnauthorized", func(t *testing.T) {
 		c := newTestClient(t, errorHandler(http.StatusForbidden))
 		_, err := c.CreateWebhook(context.Background(), "acme", "app", gitprovider.WebhookConfig{URL: "https://example.com/hook"})
+		assertErrorIs(t, err, apperrs.ErrUnauthorized)
+	})
+}
+
+func TestListWebhooks(t *testing.T) {
+	t.Run("lists every page with id and url", func(t *testing.T) {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/repos/acme/app/hooks", func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Query().Get("page") == "2" {
+				_, _ = fmt.Fprintln(w, `[{"id":2,"config":{"url":"https://b.example/hooks/github"}}]`) // test server: write errors are irrelevant
+				return
+			}
+			w.Header().Set("Link", `<http://x/repos/acme/app/hooks?page=2>; rel="next"`)
+			_, _ = fmt.Fprintln(w, `[{"id":1,"config":{"url":"https://a.example/hooks/github"}}]`) // test server: write errors are irrelevant
+		})
+		c := newTestClient(t, mux)
+		hooks, err := c.ListWebhooks(t.Context(), "acme", "app")
+		require.NoError(t, err)
+		assert.Equal(t, []gitprovider.Webhook{
+			{ID: "1", URL: "https://a.example/hooks/github"},
+			{ID: "2", URL: "https://b.example/hooks/github"},
+		}, hooks)
+	})
+	t.Run("forbidden maps to ErrUnauthorized", func(t *testing.T) {
+		c := newTestClient(t, errorHandler(http.StatusForbidden))
+		_, err := c.ListWebhooks(t.Context(), "acme", "app")
 		assertErrorIs(t, err, apperrs.ErrUnauthorized)
 	})
 }

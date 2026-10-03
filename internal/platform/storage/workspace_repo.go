@@ -248,6 +248,19 @@ func (r *ProjectsRepo) ListRepos(ctx context.Context, projectID string) ([]works
 	return out, nil
 }
 
+// ListAllRepos lists every repository attached to any project.
+func (r *ProjectsRepo) ListAllRepos(ctx context.Context) ([]workspace.RepoRef, error) {
+	rows, err := r.q.ListAllProjectRepos(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list all project repos: %w", err)
+	}
+	out := make([]workspace.RepoRef, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, workspace.RepoRef{Owner: row.Owner, Name: row.Name, FullName: row.FullName, ConnectorID: row.ConnectorID, Role: workspace.RepoRole(row.Role)})
+	}
+	return out, nil
+}
+
 // GetRepoByFullName reverse-looks-up the RepoRef linked under owner/name, across all projects, for the git router.
 func (r *ProjectsRepo) GetRepoByFullName(ctx context.Context, owner, name string) (workspace.RepoRef, error) {
 	row, err := r.q.GetProjectRepoByOwnerAndName(ctx, sqlcgen.GetProjectRepoByOwnerAndNameParams{Owner: owner, Name: name})

@@ -125,6 +125,10 @@ func (f *fakeProvider) CreateWebhook(context.Context, string, string, WebhookCon
 	return f.hookID, nil
 }
 
+func (f *fakeProvider) ListWebhooks(context.Context, string, string) ([]Webhook, error) {
+	return nil, f.err
+}
+
 func (f *fakeProvider) DeleteWebhook(context.Context, string, string, string) error {
 	return f.err
 }

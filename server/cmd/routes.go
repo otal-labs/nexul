@@ -220,7 +220,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	httpMux.Handle("/mcp", svc.authSvc.RequireAuth(withIdentity(mcpServer)))
 	// No OAuth authorization server: a client probing OAuth discovery gets a clean 404, not the web app's HTML.
 	httpMux.Handle("/.well-known/", http.NotFoundHandler())
-	httpMux.Handle("/hooks/github", gitprovider.NewWebhookHandler(cfg.AuthSecret, bus))
+	httpMux.Handle("/hooks/github", gitprovider.NewWebhookHandler(githubWebhookSecret(cfg.AuthSecret), bus))
 	httpMux.Handle("/hooks/livekit", svc.voiceWebhookHandler)
 	mountLogsProxy(httpMux, cfg.LogsURL, logger)
 	routes := append(httpx.RoutesOf(apiMux), httpx.RoutesOf(httpMux)...)
