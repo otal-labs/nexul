@@ -51,14 +51,13 @@ describe("DevelopmentSection", () => {
     expect(await screen.findByText("No branches or PRs linked yet.")).toBeInTheDocument();
   });
 
-  it("lists linked prs with state and branches", async () => {
+  it("lists linked branches and prs under their repo", async () => {
     vi.mocked(api.get).mockResolvedValue({ data: links });
     renderSection();
-    expect(await screen.findByText("acme/app#42")).toBeInTheDocument();
-    expect(screen.getByText("acme/app#43")).toBeInTheDocument();
-    expect(screen.getByText("open")).toBeInTheDocument();
-    expect(screen.getByText("merged")).toBeInTheDocument();
-    expect(screen.getByText("acme/app:ticket/1")).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "acme/app" })).toHaveAttribute("href", "https://github.com/acme/app");
+    expect(screen.getByRole("link", { name: "ticket/1" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "#42 Fix login, open" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "#43 Fix auth, merged" })).toBeInTheDocument();
   });
 
   it("links an existing branch", async () => {

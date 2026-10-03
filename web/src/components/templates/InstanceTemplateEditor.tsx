@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useResetInstanceTemplate, useSaveInstanceTemplate } from "@/hooks/TemplateHooks";
 import { useCloneTemplateDialog } from "@/hooks/useCloneTemplateDialog";
 import { useConfirmationDialog } from "@/hooks/useConfirmationDialog";
-import { INSTANCE, type Template } from "@/models/Template";
+import { BELOW_SCOPE, INSTANCE, type Template } from "@/models/Template";
 
 interface InstanceTemplateEditorProps {
   template: Template;
@@ -32,9 +32,11 @@ export const InstanceTemplateEditor = ({ template }: InstanceTemplateEditorProps
     <div className="space-y-3 pt-3">
       <TemplateBodyField kind={kind} id={`instance-template-${kind}-${key}`} value={body} onChange={setBody} />
       <div className="flex flex-wrap items-center justify-end gap-2">
-        <Button type="button" variant="ghost" size="sm" onClick={() => void openClone({ kind, key, name, from: INSTANCE })}>
-          Clone to…
-        </Button>
+        {BELOW_SCOPE[kind] && (
+          <Button type="button" variant="ghost" size="sm" onClick={() => void openClone({ kind, key, name, from: INSTANCE })}>
+            Clone to…
+          </Button>
+        )}
         <Button type="button" variant="ghost" size="sm" disabled={!template.edited} loading={reset.isPending} onClick={() => void onReset()}>
           Reset to default
         </Button>

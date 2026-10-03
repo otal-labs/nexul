@@ -25,27 +25,16 @@ func runnerWithLinks(f *runnerFixture, links *fakeLinks) {
 	f.runner.links = links
 }
 
-func TestRun_BugPlay_CarriesOneHopOfOriginContext(t *testing.T) {
+func TestRun_BugPlay_NamesItsOriginOneHop(t *testing.T) {
 	f := newRunnerFixture()
-	runnerWithLinks(f, &fakeLinks{links: TicketLinks{Origin: &OriginContext{
-		LinkedTicket: LinkedTicket{Key: "NEX-7", Title: "Login page", Done: true},
-		Body:         "## Acceptance criteria\nlogs in",
-		DocTitle:     "Auth spec",
-		DocBody:      "sessions last a day",
-		PRs:          []PullRequest{{Owner: "otal", Repo: "nexul", Number: 12, Title: "Add login", State: "merged"}},
-	}}})
+	runnerWithLinks(f, &fakeLinks{links: TicketLinks{Origin: &LinkedTicket{Key: "NEX-7", Title: "Login page", Done: true}}})
 
 	_, err := f.runner.Run(ctxAs(starter), ticketRun())
 	require.NoError(t, err)
 	<-f.turns.done
 
-	blocks := f.turns.last().ExtraRequestBlocks
-	require.Len(t, blocks, 3, "the play, the origin, then the memories to read")
-	origin := blocks[1]
-	assert.Contains(t, origin, `This bug was found in NEX-7 "Login page"`)
-	assert.Contains(t, origin, "Origin ticket body:\n## Acceptance criteria\nlogs in")
-	assert.Contains(t, origin, "Origin doc \"Auth spec\":\nsessions last a day")
-	assert.Contains(t, origin, `- otal/nexul#12 "Add login" (merged)`)
+	assert.Equal(t, []string{`This bug was found in NEX-7 "Login page", a ticket whose work is recorded; fix the bug without rewriting that record. ` +
+		"Read it with ticket_get for its body, doc, and pull requests, one hop only."}, f.turns.last().Play.Blocks)
 }
 
 func TestRun_BugPlay_OriginUnknown_SaysSo(t *testing.T) {
@@ -57,10 +46,10 @@ func TestRun_BugPlay_OriginUnknown_SaysSo(t *testing.T) {
 	require.NoError(t, err)
 	<-f.turns.done
 
-	blocks := f.turns.last().ExtraRequestBlocks
-	require.Len(t, blocks, 2)
-	assert.Contains(t, blocks[1], "origin is unknown")
-	assert.Contains(t, blocks[1], "Do not guess one")
+	blocks := f.turns.last().Play.Blocks
+	require.Len(t, blocks, 1)
+	assert.Contains(t, blocks[0], "origin is unknown")
+	assert.Contains(t, blocks[0], "Do not guess one")
 }
 
 func TestRun_BlockedTicket_ListsEachBlockerAndWhetherDone(t *testing.T) {
@@ -75,11 +64,11 @@ func TestRun_BlockedTicket_ListsEachBlockerAndWhetherDone(t *testing.T) {
 	require.NoError(t, err)
 	<-f.turns.done
 
-	blocks := f.turns.last().ExtraRequestBlocks
-	require.Len(t, blocks, 2)
+	blocks := f.turns.last().Play.Blocks
+	require.Len(t, blocks, 1)
 	assert.Equal(t, "This ticket is blocked by these tickets; the user chose to run the play before they are all done:\n"+
 		`- NEX-3 "backend /books": not done`+"\n"+
-		`- NEX-4 "schema": done`, blocks[1])
+		`- NEX-4 "schema": done`, blocks[0])
 }
 
 func TestRun_LinkReadFails_RefusesWithoutTrail(t *testing.T) {
@@ -108,14 +97,4 @@ func TestRenderLinkBlocks(t *testing.T) {
 	allDone := renderLinkBlocks(TicketLinks{Blockers: []LinkedTicket{{Key: "NEX-4", Title: "schema", Done: true}}})
 	require.Len(t, allDone, 1)
 	assert.True(t, strings.HasPrefix(allDone[0], "This ticket was blocked by these tickets, all now done:"))
-
-	bare := renderLinkBlocks(TicketLinks{Origin: &OriginContext{LinkedTicket: LinkedTicket{Key: "NEX-7", Title: "Login"}}})
-	require.Len(t, bare, 1)
-	assert.Contains(t, bare[0], "Origin ticket body:\n(empty)")
-	assert.Contains(t, bare[0], "Origin pull requests: (none)")
-	assert.NotContains(t, bare[0], "Origin doc")
-
-	huge := renderOrigin(OriginContext{Body: strings.Repeat("é", originCharCap)})
-	assert.Contains(t, huge, "(trimmed to fit the turn size limit)")
-	assert.Less(t, len(huge), originCharCap+500)
 }

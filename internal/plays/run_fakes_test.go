@@ -308,19 +308,6 @@ func (f *fakeMemories) ListForProject(_ context.Context, projectID string) ([]Me
 	return f.byProject[projectID], f.err
 }
 
-// fakeAttachmentReader is the runner's AttachmentReader seam, keyed by attachment id.
-type fakeAttachmentReader struct {
-	items map[string]agent.StoredAttachment
-	err   map[string]error
-}
-
-func (f *fakeAttachmentReader) Get(_ context.Context, id string) (agent.StoredAttachment, error) {
-	if err, ok := f.err[id]; ok {
-		return agent.StoredAttachment{}, err
-	}
-	return f.items[id], nil
-}
-
 type fakePost struct {
 	conversationID, authorID, body string
 }
@@ -473,13 +460,14 @@ func (fakeUsers) UserID(_ context.Context, login string) (string, error) {
 
 type agentConvs struct {
 	projectID string
+	ticketID  string
 	mu        sync.Mutex
 	replies   []string
 	notes     []string
 }
 
 func (a *agentConvs) GetConversation(_ context.Context, id string) (agent.Conversation, error) {
-	return agent.Conversation{ID: id, ProjectID: a.projectID}, nil
+	return agent.Conversation{ID: id, ProjectID: a.projectID, IsTicketThread: a.ticketID != "", TicketID: a.ticketID}, nil
 }
 
 func (a *agentConvs) MessagesSince(context.Context, string, time.Time) ([]agent.ConversationMessage, error) {
@@ -522,10 +510,10 @@ func (agentTargets) ResolveTargetOverride(_ context.Context, _, _, computerID, p
 	return &pairing.ResolvedTarget{Computer: pairing.Computer{ID: computerID, Kind: "t3code"}, HarnessProjectID: "hp-1", Provider: provider, Model: model}, nil
 }
 
-type agentMems struct{ index agent.MemoriesIndex }
+type agentTickets struct{}
 
-func (a agentMems) ListMemories(context.Context, string) (agent.MemoriesIndex, error) {
-	return a.index, nil
+func (agentTickets) Get(context.Context, string) (agent.Ticket, error) {
+	return agent.Ticket{ProjectID: projectID, Key: "NEX-1", Title: "Login fails"}, nil
 }
 
 type agentLive struct{}

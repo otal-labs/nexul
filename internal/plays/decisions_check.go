@@ -23,7 +23,7 @@ const decisionsCheckInstructions = "This ticket just reached done. Decide whethe
 	"a library added or dropped, a rule or an earlier decision reversed. Routine work that follows the existing patterns " +
 	"changes nothing. Read the ticket and its linked pull requests with `ticket_get`, each pull request with " +
 	"`pull_request_get`, and " +
-	"the project's decisions log, the memory of kind `decisions_log` in your memory index, with `memory_get`. If nothing " +
+	"the project's decisions log, the memory of kind `decisions_log` that `memory_list` finds, with `memory_get`. If nothing " +
 	"changed, reply \"No decision recorded\" with one line on why, and write nothing. Otherwise add one entry of at most " +
 	"three lines as its own paragraph at the end of the log: `<YYYY-MM-DD> — <the decision in one line>`, then " +
 	"`Why: <one line>`, then `Ticket: [<ticket key>](/tickets/<ticket id>)`. When the decision reverses an earlier entry, " +
@@ -227,7 +227,7 @@ func (r *Runner) decisionsStarter(ctx context.Context, m ticketMove) (string, er
 }
 
 // DefaultInstructions returns every built-in instruction text a run hands the agent, the seeded plays', the decisions
-// check's, and the memories block's opening; they name MCP tools.
+// check's, and the origin line; they name MCP tools.
 func DefaultInstructions() []string {
-	return []string{fixWithAIInstructions, toTicketsInstructions, interviewInstructions, testWithAIInstructions, decisionsCheckInstructions, memoriesReadFirst, memoriesFooter}
+	return []string{fixWithAIInstructions, toTicketsInstructions, interviewInstructions, testWithAIInstructions, decisionsCheckInstructions, originLine}
 }

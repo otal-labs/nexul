@@ -173,16 +173,16 @@ type fakeMemories struct {
 	mu            sync.Mutex
 	called        bool
 	calledProject string
-	idx           MemoriesIndex
+	items         []MemoryItem
 	err           error
 }
 
-func (f *fakeMemories) ListMemories(_ context.Context, projectID string) (MemoriesIndex, error) {
+func (f *fakeMemories) ListMemories(_ context.Context, projectID string) ([]MemoryItem, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.called = true
 	f.calledProject = projectID
-	return f.idx, f.err
+	return f.items, f.err
 }
 
 type fakeHarness struct {
@@ -356,6 +356,43 @@ func TestRunTurn_EmptyFinalizeFrameDoesNotWipeTheReply(t *testing.T) {
 	assert.Empty(t, systemPosts)
 }
 
+func TestRunTurn_MessageFinishedMidTurn_KeepsStreaming(t *testing.T) {
+	live := &fakeLive{}
+	client := &fakeHarness{startResult: harness.StartResult{SessionID: "th-1", Updates: updatesChan(
+		harness.Update{Snapshot: &harness.Snapshot{MessageID: "m-1", Text: "Reading the handler.", Streaming: false}},
+		harness.Update{Activity: &harness.Activity{Kind: harness.ActivityToolCall, Tool: "Read", Summary: "Read main.go"}},
+		harness.Update{Snapshot: &harness.Snapshot{MessageID: "m-2", Text: "", Streaming: false}},
+		harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}},
+	)}}
+	conv := newFakeConversations(Conversation{ID: "conv-1"})
+	svc := NewService(Config{Conversations: conv, Targets: &fakeTargets{target: testTarget()}, Harnesses: registryOf(client), Live: live})
+	require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
+	waitFor(t, time.Second, func() bool { r, _ := conv.snapshot(); return len(r) == 1 })
+
+	frames := live.snapshot()
+	require.Len(t, frames, 4)
+	for _, f := range frames {
+		assert.True(t, f.Streaming, "a finished message or an empty close marker mid-turn must not end the bubble: %+v", f)
+	}
+	assert.Equal(t, "Read main.go", frames[2].Activity)
+}
+
+func TestRunTurn_ReplyPersistFails_ClearsTheBubble(t *testing.T) {
+	live := &fakeLive{}
+	client := &fakeHarness{startResult: harness.StartResult{SessionID: "th-1", Updates: updatesChan(
+		harness.Update{Snapshot: &harness.Snapshot{MessageID: "m-1", Text: "done!", Streaming: false}},
+		harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}},
+	)}}
+	conv := newFakeConversations(Conversation{ID: "conv-1"})
+	conv.postReplyErr = errors.New("disk full")
+	svc := NewService(Config{Conversations: conv, Targets: &fakeTargets{target: testTarget()}, Harnesses: registryOf(client), Live: live})
+	require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
+	waitFor(t, time.Second, func() bool { f := live.snapshot(); return len(f) > 0 && !f[len(f)-1].Streaming })
+
+	frames := live.snapshot()
+	assert.Equal(t, StreamFrame{ConversationID: "conv-1", Streaming: false}, frames[len(frames)-1])
+}
+
 // --- resolution failure -> system reply -------------------------------------
 
 func TestRunTurn_ResolveTargetNotConfigured_PostsSystemReply(t *testing.T) {
@@ -427,7 +464,7 @@ func TestRunTurn_HappyPath_StreamsFramesAndPersistsFinalReply(t *testing.T) {
 	assert.Equal(t, StreamFrame{ConversationID: "conv-1", Streaming: true, Activity: "Read main.go started", ActivityKind: harness.ActivityToolCall, ActivityTool: "Read"}, frames[1], "a tool step publishes before any text")
 	assert.Equal(t, StreamFrame{ConversationID: "conv-1", MessageID: "m-1", Text: "wor", Streaming: true}, frames[2], "text clears the stale tool step")
 	assert.Equal(t, StreamFrame{ConversationID: "conv-1", MessageID: "m-1", Text: "wor", Streaming: true, Activity: "Bash", ActivityKind: harness.ActivityToolResult, ActivityTool: "Bash"}, frames[3], "a tool step keeps the text so far")
-	assert.False(t, frames[5].Streaming)
+	assert.Equal(t, StreamFrame{ConversationID: "conv-1", MessageID: "m-1", Text: "done!", Streaming: true}, frames[5], "the persisted reply, not the last snapshot, ends the bubble")
 
 	replies, systemPosts := conv.snapshot()
 	require.Len(t, replies, 1)
@@ -441,12 +478,12 @@ func TestRunTurn_HappyPath_StreamsFramesAndPersistsFinalReply(t *testing.T) {
 
 // --- memories index wiring ---------------------------------------------
 
-func TestRunTurn_PlainChat_CarriesNoMemoryIndex(t *testing.T) {
+func TestRunTurn_PlainChat_NamesNoMemories(t *testing.T) {
 	conv := newFakeConversations(Conversation{ID: "conv-1", WorkspaceID: "workspace-default"})
 	client := &fakeHarness{startResult: harness.StartResult{
 		Updates: updatesChan(harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}}),
 	}}
-	mem := &fakeMemories{idx: MemoriesIndex{Project: []MemoryItem{{Name: "Coding style", WhenToUse: "always"}}}}
+	mem := &fakeMemories{items: []MemoryItem{{ID: "m-1", Name: "Coding style", AlwaysIncluded: true}}}
 	svc := NewService(Config{
 		Conversations: conv,
 		Targets:       &fakeTargets{target: testTarget()},
@@ -460,7 +497,7 @@ func TestRunTurn_PlainChat_CarriesNoMemoryIndex(t *testing.T) {
 
 	assert.False(t, mem.called, "a conversation with no ticket or doc has no project, so no memories (ADR 0099)")
 	assert.NotContains(t, client.snapshotPrompt(), "Coding style")
-	assert.Contains(t, client.snapshotPrompt(), "no memories saved yet")
+	assert.NotContains(t, client.snapshotPrompt(), memoriesLine)
 }
 
 func TestRunTurn_MemoriesLookupFailure_IsBestEffort(t *testing.T) {
@@ -483,7 +520,7 @@ func TestRunTurn_MemoriesLookupFailure_IsBestEffort(t *testing.T) {
 	mem.mu.Lock()
 	defer mem.mu.Unlock()
 	require.True(t, mem.called)
-	assert.Contains(t, client.snapshotPrompt(), "no memories saved yet", "a failed lookup falls back to an empty index rather than blocking the turn")
+	assert.NotContains(t, client.snapshotPrompt(), memoriesLine, "a failed lookup names no memories rather than blocking the turn")
 }
 
 func TestRunTurn_TurnError_PostsSystemMessageWithLastError(t *testing.T) {
@@ -659,7 +696,7 @@ func TestRunTurn_SessionTitle_NamesWhatTheConversationIsAbout(t *testing.T) {
 
 // --- doc thread context ---------------------------------------------------------
 
-func TestRunTurn_DocThread_PromptIncludesDocTitleAndBody(t *testing.T) {
+func TestRunTurn_DocThread_PromptNamesTheDocWithoutItsBody(t *testing.T) {
 	conv := newFakeConversations(Conversation{ID: "conv-1", IsDocThread: true, DocID: "doc-1"})
 	client := &fakeHarness{startResult: harness.StartResult{SessionID: "t-1", Updates: updatesChan(harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}})}}
 	svc := NewService(Config{
@@ -671,24 +708,9 @@ func TestRunTurn_DocThread_PromptIncludesDocTitleAndBody(t *testing.T) {
 	})
 	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent go"})
 
-	assert.Contains(t, client.lastPrompt, "Doc: Runbook")
-	assert.Contains(t, client.lastPrompt, "Restart the service like so.")
-}
-
-func TestRunTurn_DocThread_OversizedBodyIsTrimmedWithNote(t *testing.T) {
-	conv := newFakeConversations(Conversation{ID: "conv-1", IsDocThread: true, DocID: "doc-1"})
-	client := &fakeHarness{startResult: harness.StartResult{SessionID: "t-1", Updates: updatesChan(harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}})}}
-	svc := NewService(Config{
-		Conversations: conv,
-		Targets:       &fakeTargets{target: testTarget()},
-		Harnesses:     registryOf(client),
-		Docs:          &fakeDocs{doc: Doc{ProjectID: "proj-9", Title: "Huge doc", BodyMarkdown: strings.Repeat("x", MaxPromptChars*2)}},
-		Live:          &fakeLive{},
-	})
-	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent go"})
-
-	assert.LessOrEqual(t, len(client.lastPrompt), MaxPromptChars)
-	assert.Contains(t, client.lastPrompt, docTrimNote)
+	assert.Contains(t, client.lastPrompt, `Doc: "Runbook" (id doc-1). Read it with doc_get before you start.`)
+	assert.NotContains(t, client.lastPrompt, "Restart the service like so.")
+	assert.NotContains(t, client.lastPrompt, imagesLine, "no image was attached")
 }
 
 func TestRunTurn_DocThread_NoDocReader_RunsWithoutDocContext(t *testing.T) {
@@ -706,36 +728,6 @@ func TestRunTurn_DocThread_NoDocReader_RunsWithoutDocContext(t *testing.T) {
 }
 
 // --- RunTurn as a use-case ---------------------------------------------------
-
-func TestRunTurn_ExtraRequestBlocksLandInBothPrompts(t *testing.T) {
-	conv := newFakeConversations(Conversation{ID: "conv-1", ThreadID: "thread-reused"})
-	var got harness.TurnPrompts
-	client := &harnesstest.Client{StartTurnFn: func(_ context.Context, _ harness.Target, _ string, prompts harness.TurnPrompts) (harness.StartResult, error) {
-		got = prompts
-		return harness.StartResult{SessionID: "thread-reused", Updates: updatesChan(harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}})}, nil
-	}}
-	svc := NewService(Config{
-		Conversations: conv,
-		Targets:       &fakeTargets{target: testTarget()},
-		Harnesses:     harnesstest.Registry(client),
-		Live:          &fakeLive{},
-	})
-
-	svc.RunTurn(context.Background(), TurnRequest{
-		ConversationID:     "conv-1",
-		ViaUserID:          "u-1",
-		RequestBody:        "Started Fix with AI",
-		ExtraRequestBlocks: []string{"Play: Fix with AI\nDo the fix.", "Instructions from u-1 for this run:\nkeep it small"},
-	})
-
-	wantTail := "Started Fix with AI\n\nPlay: Fix with AI\nDo the fix.\n\nInstructions from u-1 for this run:\nkeep it small"
-	assert.True(t, strings.HasSuffix(got.Full, wantTail), "full prompt tail:\n%s", got.Full)
-	assert.True(t, strings.HasSuffix(got.Incremental, wantTail), "incremental prompt tail:\n%s", got.Incremental)
-	assert.Contains(t, got.Incremental, "New message from u-1", "a reused session still gets the request block")
-	assert.NotContains(t, got.Incremental, "You are Agent")
-	_, systemPosts := conv.snapshot()
-	assert.Empty(t, systemPosts)
-}
 
 func TestRunTurn_TargetOverride_ResolvedThroughTheOverrideSeam(t *testing.T) {
 	conv := newFakeConversations(Conversation{ID: "conv-1"})
@@ -763,33 +755,7 @@ func TestRunTurn_TargetOverride_ResolvedThroughTheOverrideSeam(t *testing.T) {
 	assert.Equal(t, []harness.OptionSetting{{ID: "effort", Value: "high"}}, gotTarget.ModelOptions, "the resolved options reach the harness turn")
 }
 
-func TestRunTurn_TicketThread_EmbeddedImage_AttachesAndRewritesPrompt(t *testing.T) {
-	conv := newFakeConversations(Conversation{ID: "conv-1", IsTicketThread: true, TicketID: "tix-1"})
-	var got harness.TurnPrompts
-	client := &harnesstest.Client{StartTurnFn: func(_ context.Context, _ harness.Target, _ string, prompts harness.TurnPrompts) (harness.StartResult, error) {
-		got = prompts
-		return harness.StartResult{SessionID: "thread-1", Updates: updatesChan(harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}})}, nil
-	}}
-	reader := newFakeAttachmentReader()
-	reader.items["att-1"] = StoredAttachment{Name: "shot.png", MIME: "image/png", Bytes: []byte{1, 2, 3}}
-	svc := NewService(Config{
-		Conversations: conv,
-		Targets:       &fakeTargets{target: testTarget()},
-		Harnesses:     harnesstest.Registry(client),
-		Tickets:       &fakeTickets{ticket: Ticket{ProjectID: "proj-1", Title: "Bug", Body: "before ![shot](/api/attachments/att-1) after"}},
-		Attachments:   reader,
-		Live:          &fakeLive{},
-	})
-
-	svc.RunTurn(context.Background(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent look"})
-
-	require.Len(t, got.Attachments, 1)
-	assert.Equal(t, "shot.png", got.Attachments[0].Name)
-	assert.Equal(t, "image/png", got.Attachments[0].MIME)
-	assert.Contains(t, got.Full, "before [image: shot.png, attached to this turn] after")
-}
-
-func TestRunTurn_TicketThread_PDFReference_OmittedWithNoAttachment(t *testing.T) {
+func TestRunTurn_TicketThread_PDFReference_AttachesNothing(t *testing.T) {
 	conv := newFakeConversations(Conversation{ID: "conv-1", IsTicketThread: true, TicketID: "tix-1"})
 	var got harness.TurnPrompts
 	client := &harnesstest.Client{StartTurnFn: func(_ context.Context, _ harness.Target, _ string, prompts harness.TurnPrompts) (harness.StartResult, error) {
@@ -810,7 +776,7 @@ func TestRunTurn_TicketThread_PDFReference_OmittedWithNoAttachment(t *testing.T)
 	svc.RunTurn(context.Background(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent look"})
 
 	assert.Empty(t, got.Attachments)
-	assert.Contains(t, got.Full, "see [attachment omitted: spec.pdf]")
+	assert.NotContains(t, got.Full, imagesLine, "the images line promises only what was attached")
 }
 
 // --- interrupt -------------------------------------------------------------
@@ -909,9 +875,9 @@ func ticketThreadWithStandingRules(h *followUpHarness) (*Service, *fakeConversat
 		Conversations: conv,
 		Targets:       &fakeTargets{target: testTarget()},
 		Harnesses:     harnesstest.Registry(h.client()),
-		Tickets:       &fakeTickets{ticket: Ticket{ProjectID: "proj-1", Title: "Login broken", Body: "Steps to reproduce"}},
+		Tickets:       &fakeTickets{ticket: Ticket{ProjectID: "proj-1", Key: "NEX-1", Title: "Login broken", Body: "Steps to reproduce"}},
 		Memories: &fakeProjectMemories{byProject: map[string][]MemoryItem{"proj-1": {
-			{Name: "Working here", AlwaysIncluded: true, Body: "Standing rule body text."},
+			{ID: "m-work", Name: "Working here", AlwaysIncluded: true},
 		}}},
 		Live: &fakeLive{},
 		Now:  func() time.Time { return minuteOf(40) },
@@ -930,6 +896,7 @@ func TestRunTurn_TicketThread_SecondMention_ReusesTheSessionWithOnlyWhatIsNew(t 
 
 	conv.history = append(conv.history,
 		ConversationMessage{AuthorID: "u-2", AuthorKind: "user", Body: "looks good", CreatedAt: minuteOf(34)},
+		ConversationMessage{AuthorID: "u-1", AuthorKind: "system", Body: "Agent turn failed: provider unreachable", CreatedAt: minuteOf(34)},
 		ConversationMessage{AuthorID: "u-1", AuthorKind: "user", Body: "@Agent second", CreatedAt: minuteOf(35)},
 	)
 	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent second"})
@@ -937,12 +904,8 @@ func TestRunTurn_TicketThread_SecondMention_ReusesTheSessionWithOnlyWhatIsNew(t 
 	turns := h.started()
 	require.Len(t, turns, 2)
 	assert.Equal(t, "thread-1", turns[1].sessionID, "the second mention runs on the first one's session")
-	follow := turns[1].prompts.Incremental
-	assert.NotContains(t, follow, "You are Agent", "the session already holds the instructions")
-	assert.NotContains(t, follow, "Standing rule body text.", "the session already holds the always-included memories")
-	assert.NotContains(t, follow, "Steps to reproduce", "the session already holds the ticket")
-	assert.Equal(t, "New messages since your last turn:\n[2026-10-02 15:34] u-2: looks good\n\nNew message from u-1 at 2026-10-02 15:40:\n@Agent second", follow,
-		"only what was posted after the first turn, without the Agent's own reply or the request twice")
+	assert.Equal(t, "New messages since your last turn:\n[2026-10-02 15:34] u-2: looks good\n\nNew message from u-1 at 2026-10-02 15:40:\n@Agent second", turns[1].prompts.Incremental,
+		"only what was posted after the first turn, without the Agent's own reply, a system notice, or the request twice")
 }
 
 func TestRunTurn_MentionWhileTheLastTurnRuns_SendsOnlyMessagesAfterThatTurnsPrompt(t *testing.T) {
@@ -988,8 +951,8 @@ func TestRunTurn_FollowUpOnALostSession_FullPromptRebuildsIt(t *testing.T) {
 	require.Len(t, turns, 2)
 	full := turns[1].prompts.Full
 	assert.Contains(t, full, "You are Agent")
-	assert.Contains(t, full, "Standing rule body text.")
-	assert.Contains(t, full, "Ticket: Login broken\n\nSteps to reproduce")
+	assert.Contains(t, full, "- Working here (id m-work)")
+	assert.Contains(t, full, `Ticket: NEX-1 "Login broken". Read it with ticket_get before you start.`)
 	assert.Contains(t, full, "Agent: first answer", "a replacement session never saw the Agent's own reply")
 	assert.Equal(t, 1, strings.Count(full, "@Agent second"), "the request is not repeated in the history")
 	conv.mu.Lock()
@@ -1015,4 +978,26 @@ func TestRunTurn_FollowUp_CarriesANoteLeftSinceTheLastTurn(t *testing.T) {
 	note := "Agent: Left a handoff\n\nNote file handoff.md:\n# Handoff\nLogin retries twice."
 	assert.Contains(t, turns[1].prompts.Incremental, note, "a note was left over MCP, so the live session never saw it")
 	assert.Contains(t, turns[1].prompts.Full, note)
+}
+
+func TestRunTurn_PlayStart_CarriesNoHistoryButAdvancesTheCursor(t *testing.T) {
+	h := &followUpHarness{sessionIDs: []string{"thread-1"}, updates: []<-chan harness.Update{replyThenDone("fixed")}}
+	svc, conv := ticketThreadWithStandingRules(h)
+	conv.history = []ConversationMessage{
+		{AuthorID: "u-2", AuthorKind: "user", Body: "context from before", CreatedAt: minuteOf(30)},
+		{AuthorID: "u-1", AuthorKind: "user", Body: "Started Fix with AI", CreatedAt: minuteOf(32)},
+	}
+
+	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", Play: &PlayContext{Label: "Fix with AI", Instructions: "Fix it."}})
+
+	turns := h.started()
+	require.Len(t, turns, 1)
+	for name, prompt := range map[string]string{"full": turns[0].prompts.Full, "incremental": turns[0].prompts.Incremental} {
+		assert.NotContains(t, prompt, "context from before", name)
+		assert.NotContains(t, prompt, "Started Fix with AI", name)
+		assert.NotContains(t, prompt, "New message from", name)
+	}
+	conv.mu.Lock()
+	defer conv.mu.Unlock()
+	assert.Equal(t, minuteOf(32), conv.syncedAt["conv-1"], "a later mention on the session does not resend what the run skipped")
 }

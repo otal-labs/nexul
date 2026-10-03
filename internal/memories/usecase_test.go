@@ -412,12 +412,11 @@ func TestListMemoryItems_NoActorInContext_ReturnsTheProjectsItems(t *testing.T) 
 	_, err = s.Create(testCtx(), "project-2", "Other project", "when to use", "body", false, "")
 	require.NoError(t, err)
 
-	// The turn pipeline reads the index on the server's behalf; this seam carries no permission check by design.
+	// The turn pipeline reads the memories on the server's behalf; this seam carries no permission check by design.
 	items, err := newDenyService(repo).ListMemoryItems(context.Background(), "project-1")
 	require.NoError(t, err)
 	require.Len(t, items, 1)
 	assert.Equal(t, "Deploy quirks", items[0].Title)
-	assert.Equal(t, "when to use", items[0].WhenToUse)
 }
 
 func TestUpdate_EmptyID_IsInvalid(t *testing.T) {

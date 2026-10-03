@@ -50,6 +50,7 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-info: var(--info);
+  --color-merged: var(--merged);
   --color-surface-2: var(--surface-2);
   --font-sans: var(--font-sans-stack);
   --font-mono: var(--font-mono-stack);
@@ -103,6 +104,7 @@
   --success: #15803d;
   --warning: #b45309;
   --info: #0369a1;
+  --merged: #8250df;
   --destructive: #dc2626;
 
   /* hairlines — neutral gray, no blue undertone */
@@ -149,6 +151,7 @@
   --success: #4ade80;
   --warning: #fbbf24;
   --info: #5cc8f5;
+  --merged: #a371f7;
   --destructive: #f97066;
 
   --border: #262626;

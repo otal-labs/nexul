@@ -30,7 +30,7 @@ export const CloneTemplateForm = ({ source }: CloneTemplateFormProps) => {
 
   const scopes = [
     ...(canWriteInstance && source.from.scope !== "instance" ? [{ value: "instance", label: "Instance (make it the default)" }] : []),
-    { value: below, label: below === "workspace" ? "A workspace" : "A project" },
+    ...(below ? [{ value: below, label: below === "workspace" ? "A workspace" : "A project" }] : []),
   ];
 
   // A cancelled overwrite keeps the dialog open so another target can be picked.

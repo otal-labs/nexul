@@ -33,6 +33,8 @@ const templates: Template[] = [
   template({ kind: "mention_chip", name: "Mention chip", body: "{ticket.Ticket}", default_body: "{ticket.Ticket}" }),
   template({ kind: "play_instructions", key: "fix-with-ai", name: "Fix with AI", body: "Fix it", default_body: "Fix it", follows: false }),
   template({ kind: "ticket_body", key: "bug", name: "bug", body: "## Steps", default_body: "## Steps", follows: false }),
+  template({ kind: "agent_prompt", key: "intro", name: "Intro", body: "You are the Agent.", default_body: "You are the Agent.", follows: false }),
+  template({ kind: "agent_prompt", key: "footer", name: "Footer", body: "Reply when done.", default_body: "Reply when done.", follows: false }),
 ];
 
 // The target the clone dialog reads before overwriting; edited decides whether it asks first.
@@ -90,6 +92,9 @@ describe("InstanceTemplatesSection", () => {
     expect(plays.getByText("Fix with AI")).toBeInTheDocument();
     expect(plays.getByText("Default")).toBeInTheDocument();
     expect(within(screen.getByRole("region", { name: "Ticket bodies" })).getByText("bug body")).toBeInTheDocument();
+    const prompt = within(screen.getByRole("region", { name: "Agent prompt" }));
+    expect(prompt.getByText("Intro")).toBeInTheDocument();
+    expect(prompt.getByText("Footer")).toBeInTheDocument();
   });
 
   it("saves an edited instance template", async () => {
@@ -100,6 +105,17 @@ describe("InstanceTemplatesSection", () => {
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     expect(mocks.put).toHaveBeenCalledWith("/api/templates/interview", { key: "", body: "## Ours!" });
+  });
+
+  it("edits an Agent prompt template and offers no clone, since it lives only at the instance", async () => {
+    mocks.put.mockResolvedValue({ data: {} });
+    const user = await openEditor("Footer");
+
+    await user.type(screen.getByLabelText("Text"), "!");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(mocks.put).toHaveBeenCalledWith("/api/templates/agent_prompt", { key: "footer", body: "Reply when done.!" });
+    expect(screen.queryByRole("button", { name: "Clone to…" })).not.toBeInTheDocument();
   });
 
   it("resets an edited instance template to the default only after a confirm", async () => {

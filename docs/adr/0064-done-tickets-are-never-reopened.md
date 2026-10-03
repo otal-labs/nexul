@@ -1,5 +1,8 @@
 # Done tickets are never reopened; a bug after done is a new ticket found in it
 
+Amended by ADR 0111: the agent fixing a bug is told the origin ticket's key and title and reads its body, doc, and
+pull requests itself with `ticket_get`, still one hop.
+
 A ticket in a done column carries its why: its doc, its merged PR, its
 thread, and possibly a decisions-log entry. Reopening it would rewrite that
 record and make the merged PR stop being the implementation record. So a bug

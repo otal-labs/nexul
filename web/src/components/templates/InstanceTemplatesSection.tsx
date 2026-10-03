@@ -12,7 +12,7 @@ export const InstanceTemplatesSection = () => {
     <SettingsCard
       id="instance-templates"
       title="Templates"
-      description="What every workspace and project starts from. The Interview and mention chip templates follow these until a workspace edits its own; play instructions and ticket bodies are copied when a workspace or project is created."
+      description="What every workspace and project starts from. The Interview and mention chip templates follow these until a workspace edits its own; play instructions and ticket bodies are copied when a workspace or project is created. The Agent prompt's intro and footer open and close every prompt the Agent receives."
     >
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}

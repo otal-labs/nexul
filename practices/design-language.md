@@ -41,10 +41,11 @@ never a hard-coded palette class.
 | `muted-foreground` | `#9a9a9a` | `#656565` | secondary text, meta lines |
 | `primary` | `#f5f5f5` | `#0a0a0a` | near-white in dark, near-black in light; no hue |
 | `primary-foreground` | `#0a0a0a` | `#f5f5f5` | ink on primary, inverted per theme |
-| `success` | `#4ade80` | `#15803d` | health and success only |
+| `success` | `#4ade80` | `#15803d` | health, success, and open pull requests |
 | `warning` | `#fbbf24` | `#b45309` | in-flight states |
 | `info` | `#5cc8f5` | `#0369a1` | open and informational states |
-| `destructive` | `#f97066` | `#dc2626` | errors, danger zone |
+| `merged` | `#a371f7` | `#8250df` | merged pull requests only |
+| `destructive` | `#f97066` | `#dc2626` | errors, danger zone, closed pull requests |
 | `border` / `input` | `#262626` / `#333333` | `#d9d9d9` / `#cccccc` | hairlines |
 | `ring` | `#f5f5f5` | `#0a0a0a` | focus and selection |
 

@@ -10,7 +10,7 @@ import (
 // Scope is the layer a template lives at.
 type Scope string
 
-// The layers, top to bottom; a kind lives at the instance and at exactly one layer below it.
+// The layers, top to bottom; a kind lives at the instance and at most one layer below it.
 const (
 	ScopeInstance  Scope = "instance"
 	ScopeWorkspace Scope = "workspace"
@@ -74,12 +74,13 @@ type Layer interface {
 // Kind registers one kind of template: its keys and code defaults, the layer below the instance, and how it is read.
 type Kind struct {
 	Name string
-	// Below is the scope of the layer under the instance: workspace or project.
+	// Below is the scope of the layer under the instance, workspace or project; empty for a kind only the instance holds.
 	Below Scope
 	// Follows is true when the lower layer is stored only once edited, so an unedited one reads the instance live.
 	Follows  bool
 	Defaults []Default
 	// Check validates a body before it is stored at the instance; nil accepts any text.
 	Check func(body string) error
+	// Layer is nil for an instance-only kind.
 	Layer Layer
 }

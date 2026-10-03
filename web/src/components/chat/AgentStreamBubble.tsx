@@ -18,7 +18,7 @@ interface AgentStreamBubbleProps {
 
 // The turn group carries its own clock, so the header only speaks up once the reply starts streaming.
 const streamingLabel = (frame: AgentStreamFrame, elapsed: number, hasTurns: boolean): string | null => {
-  if (frame.text) return "is replying…";
+  if (frame.text && !frame.activity) return "is replying…";
   if (hasTurns) return null;
   return `Working for ${elapsed}s`;
 };
@@ -50,7 +50,8 @@ export const AgentStreamBubble = ({ frame, onInterrupt, live }: AgentStreamBubbl
         </div>
         {live !== null && <MessageTrailTurns turns={live.turns} />}
         {frame.text && <p className="px-1 py-1 text-sm break-words whitespace-pre-wrap">{frame.text}</p>}
-        {live === null && !frame.text && frame.activity && (
+        {/* A snapshot clears the step, so a step in the frame is newer than the text above it. */}
+        {live === null && frame.activity && (
           <ul className="max-w-[85%]">
             <TrailActionRow entry={latestStep(frame)} live />
           </ul>

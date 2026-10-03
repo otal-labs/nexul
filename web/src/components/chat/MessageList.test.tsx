@@ -109,6 +109,24 @@ describe("MessageList agent stream bubble lifecycle", () => {
     expect(screen.getByRole("img", { name: "file" })).toBeInTheDocument();
   });
 
+  it("shows a tool step that follows the Agent's text, still working with a stop button", () => {
+    act(() =>
+      useAgentStreamStore.getState().setStream("c1", {
+        messageId: "m-1",
+        text: "Reading the handler.",
+        streaming: true,
+        activity: '{"file_path":"main.go"}',
+        activityKind: "tool_call",
+        activityTool: "Read",
+      }),
+    );
+    renderList([message({})]);
+    expect(screen.getByText("Reading the handler.")).toBeInTheDocument();
+    expect(screen.getByText("Read: main.go")).toBeInTheDocument();
+    expect(screen.getByText(/Working for \d+s/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Stop agent")).toBeInTheDocument();
+  });
+
   it("hides the stop button once the frame stops streaming", () => {
     act(() => useAgentStreamStore.getState().setStream("c1", { messageId: "stream-1", text: "done", streaming: false }));
     renderList([message({})]);

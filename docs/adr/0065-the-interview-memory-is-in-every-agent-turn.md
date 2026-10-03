@@ -2,7 +2,9 @@
 
 Superseded in part by ADR 0105: a play run names the interview memory for the agent to read first instead of
 carrying it in full; an `@Agent` mention still carries it in full. Superseded in part by ADR 0106: a follow-up
-mention on a live session does not repeat it, the session already holds it.
+mention on a live session does not repeat it, the session already holds it. Superseded by ADR 0111: an `@Agent`
+mention names the interview memory and the other always-included memories to read first instead of carrying them,
+so no turn carries a memory's body any more.
 
 A project's interview memory holds its stack, paradigm, testing strategy,
 principles, and vocabulary, written as rules. It is included in full in

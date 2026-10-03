@@ -6,12 +6,16 @@ interface BranchRowProps {
   branch: BranchLink;
 }
 
-// One-line row, no card/border of its own — the list it sits in owns the shape.
 export const BranchRow = ({ branch }: BranchRowProps) => (
-  <li className="flex items-center gap-2 rounded-md px-2 py-1 transition-colors duration-150 ease-standard hover:bg-muted/50">
-    <GitBranchIcon className="size-3.5 shrink-0 text-muted-foreground" />
-    <span className="min-w-0 flex-1 truncate font-mono text-xs">
-      {branch.owner}/{branch.repo}:{branch.branch}
-    </span>
+  <li>
+    <a
+      href={`https://github.com/${branch.owner}/${branch.repo}/tree/${branch.branch}`}
+      target="_blank"
+      rel="noreferrer"
+      className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
+    >
+      <GitBranchIcon className="size-3 shrink-0" aria-hidden />
+      <span className="min-w-0 truncate font-mono text-xs">{branch.branch}</span>
+    </a>
   </li>
 );

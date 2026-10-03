@@ -24,13 +24,11 @@ selector, and every memory belongs to the project picked there.
 
 Each memory has a **Title**, a one-line **When to use** hint, a rich-text body,
 and the **Required** switch on its row in the list. Required memories are
-standing context: an `@Agent` mention sends them in full when it starts the
-Agent's session, a follow-up in the same conversation does not repeat them, and
-a play run names them for the Agent to read first. Other memories appear in the turn's index;
-the Agent can select one when it needs the body. An `@Agent` mention inlines at
-most 20,000 characters of one memory and 60,000 of all of them together,
-dropping the last ones past that. A play run has no such limit, because the
-Agent reads each memory itself.
+standing context: every Agent turn in the project names them, by title and id,
+for the Agent to read with `memory_get` before it starts, and a follow-up in
+the same conversation does not name them again. No turn carries a memory's
+body, so memory size never limits a turn. The Agent finds the other memories
+with `memory_list` when their when-to-use fits the task.
 
 A memory in the **Footer** folder concludes a play run; move one there with the
 row's **Move to**. A play's run dialog lists footer memories in their own
@@ -40,7 +38,7 @@ done to conclude the run: for example, which column the ticket now belongs in.
 The interview and the decisions log always stay in Main.
 
 The [setup wizard](/docs/guide/computer-setup/) installs the nexul-memory
-skill, which carries the same protocol, on every paired computer. It points
+skill, which carries the fuller protocol, on every paired computer. It points
 agents to `memory_list` and `memory_get`, and tells them when to use
 `memory_create` or `memory_update`. It carries a version, so a Nexul release
 that changes it gets rewritten on the next setup, or by the skill itself
@@ -57,9 +55,9 @@ workspace's Interview template into a new interview memory. The page's
 Agent asks one question at a time and writes the memory for you, and
 **Re-run the interview** amends it later. See [Plays](/docs/guide/plays/).
 
-The interview memory reaches every Agent turn in the project: an `@Agent`
-mention carries it in full, ahead of the other always-included memories, and
-every play names it for the Agent to read before anything else. It has no
+The interview memory reaches every Agent turn in the project: every mention and
+every play names it, ahead of the other always-included memories, for the Agent
+to read before anything else. It has no
 always-included switch and cannot be left out of a play run. It is capped at 8,000 characters of markdown; the editor counts against
 the cap, and a save over it is refused with the count. It versions and
 reverts like any memory. A clone of it is an ordinary memory.
@@ -80,7 +78,8 @@ interview, and editing an interview never changes the template.
 ## Templates
 
 Four kinds of text start a workspace or project off, and each has an instance
-version every workspace and project starts from:
+version every workspace and project starts from. A fifth, `agent_prompt`, lives
+only at the instance:
 
 | Kind | Key | Lives below the instance in | Below the instance |
 |---|---|---|---|
@@ -88,6 +87,12 @@ version every workspace and project starts from:
 | `mention_chip`, how a ticket mention chip renders | none | each workspace | follows the instance until edited |
 | `play_instructions`, a built-in play's instructions | the play's built-in key | each workspace's play | copied when the workspace is created |
 | `ticket_body`, a ticket type's body template | the type's name (`task`, `bug`, `feature`) | each project's type | copied when the project is created |
+| `agent_prompt`, the Intro and Footer every full Agent prompt opens and closes with | `intro` or `footer` | nowhere | the instance's text is used for every turn |
+
+The Intro tells the Agent who it is and to check it can reach Nexul; the Footer
+holds the standing rules for ticket bodies and memories. An emptied one leaves
+its part out of the prompt, and it cannot be cloned anywhere, because there is
+no layer below the instance to clone it to.
 
 A template resolves the code default, then the instance's, then the
 workspace's or project's. One nobody edited at the instance is the code
@@ -105,8 +110,9 @@ by name, ignoring case; when the target has no match the clone fails and says
 so.
 
 The instance templates are edited in **Settings → Templates**, under Instance
-settings, which shows to anyone holding `templates:write`. It lists the nine
-templates under Interview, Mention chip, Play instructions, and Ticket bodies,
+settings, which shows to anyone holding `templates:write`. It lists the eleven
+templates under Interview, Mention chip, Play instructions, Ticket bodies, and
+Agent prompt,
 each marked Default or with who edited it and when. Each opens the same editor
 its kind has in a workspace or project, with **Save**, **Reset to default**,
 and **Clone to…**. **Clone to…** also sits beside the workspace and project
@@ -147,7 +153,7 @@ reverses an entry, the old entry stays and its first line is marked
 
 The log is written by the decisions check (see Plays), not by hand, though it
 edits, versions, and reverts like any memory. It is created on its first
-entry. It is never always included: it sits in the memory index and an Agent
+entry. It is never always included: an Agent finds it with `memory_list` and
 reads it when it needs the why, since the interview already takes the
 every-turn slot.
 
