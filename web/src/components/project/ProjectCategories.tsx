@@ -1,3 +1,14 @@
+import {
+  closestCenter,
+  DndContext,
+  KeyboardSensor,
+  MouseSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { PlusIcon } from "lucide-react";
 
 import { AddCategoryForm } from "@/components/project/AddCategoryForm";
@@ -21,16 +32,22 @@ export const ProjectCategories = ({ projectId }: ProjectCategoriesProps) => {
   const countFor = (categoryId: string) =>
     (tickets ?? []).filter((t) => t.category_id === categoryId).length;
 
-  const move = (index: number, direction: -1 | 1) => {
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 2 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const reorder = (from: number, to: number) => {
     const ids = (categories ?? []).map((c) => c.id);
-    if (ids.length === 0) return;
-    const target = index + direction;
-    const from = ids[index];
-    const to = ids[target];
-    if (target < 0 || target >= ids.length || from === undefined || to === undefined) return;
-    ids[index] = to;
-    ids[target] = from;
-    void reorderCategories.mutateAsync({ project_id: projectId, ids });
+    if (from === to || to < 0 || to >= ids.length) return;
+    reorderCategories.mutate({ project_id: projectId, ids: arrayMove(ids, from, to) });
+  };
+
+  const onDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!over || !categories) return;
+    const ids = categories.map((c) => c.id);
+    reorder(ids.indexOf(String(active.id)), ids.indexOf(String(over.id)));
   };
 
   const onAdd = async () => {
@@ -58,19 +75,23 @@ export const ProjectCategories = ({ projectId }: ProjectCategoriesProps) => {
         </p>
       )}
       {categories && categories.length > 0 && (
-        <ul className="mt-2 divide-y divide-border">
-          {categories.map((category, index) => (
-            <CategoryRow
-              key={category.id}
-              category={category}
-              count={countFor(category.id)}
-              first={index === 0}
-              last={index === categories.length - 1}
-              onMoveUp={() => move(index, -1)}
-              onMoveDown={() => move(index, 1)}
-            />
-          ))}
-        </ul>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+          <SortableContext items={categories.map((c) => c.id)} strategy={verticalListSortingStrategy}>
+            <ul className="mt-2 divide-y divide-border">
+              {categories.map((category, index) => (
+                <CategoryRow
+                  key={category.id}
+                  category={category}
+                  count={countFor(category.id)}
+                  first={index === 0}
+                  last={index === categories.length - 1}
+                  onMoveUp={() => reorder(index, index - 1)}
+                  onMoveDown={() => reorder(index, index + 1)}
+                />
+              ))}
+            </ul>
+          </SortableContext>
+        </DndContext>
       )}
     </div>
   );
