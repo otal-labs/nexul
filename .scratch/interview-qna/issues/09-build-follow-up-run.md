@@ -24,18 +24,18 @@ the interview thread.
 
 **Blocked by:** 07, 08
 
-**Status:** claimed
+**Status:** resolved
 
-- [ ] A run on a fake harness: rounds land as stored answers, the memory is
+- [x] A run on a fake harness: rounds land as stored answers, the memory is
       written, existing rules survive
-- [ ] The page shows each round's live question and folds earlier sections
-- [ ] Instructions migration leaves an edited workspace play untouched
-- [ ] CONTEXT.md and the ADR updated
+- [x] The page shows each round's live question and folds earlier sections
+- [x] Instructions migration leaves an edited workspace play untouched
+- [x] CONTEXT.md and the ADR updated
 
-## Progress
+## Answer
 
-- Server half in its own pull request: the rewritten Interview play
-  instructions (code default and instance template), migration 0062 for
-  unedited workspace plays, `Runner.Answer` storing each answered follow-up
-  round, `CONTEXT.md`, and ADR 0115. The page wiring of the live question
-  follows ticket 08.
+Built in PR #362: the rewritten Interview play instructions with migration
+0062, `Runner.Answer` storing each answered follow-up round, the live
+question of a waiting run as the next follow-up section on the Interview
+page (answered on the trail, replaced by the stored round), `CONTEXT.md`,
+and ADR 0115.
