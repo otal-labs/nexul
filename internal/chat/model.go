@@ -146,8 +146,7 @@ func NewHandoff(h harness.Handoff) Handoff {
 // maxHandoffBytes caps the hand-offs one reply stores, as JSON.
 const maxHandoffBytes = 256 << 10
 
-// storedHandoffs is hs as a reply stores them, nil for none, dropping the oldest steps until they fit maxHandoffBytes.
-// ponytail: replies alone can still pass the cap (20 of T3's 32 KiB results); cut replies too if that ever shows up.
+// storedHandoffs is hs as a reply stores them, nil for none, within maxHandoffBytes: the oldest steps go first, then the longest replies.
 func storedHandoffs(hs []harness.Handoff) ([]Handoff, error) {
 	if len(hs) == 0 {
 		return nil, nil
@@ -193,7 +192,36 @@ func storedHandoffs(hs []harness.Handoff) ([]Handoff, error) {
 		}
 		out[i].Steps = kept
 	}
+	cutReplies(out, size)
 	return out, nil
+}
+
+// cutReplies cuts out's longest replies to even shares of what the rest leaves under maxHandoffBytes, size being out's JSON length.
+func cutReplies(out []Handoff, size int) {
+	if size <= maxHandoffBytes {
+		return
+	}
+	lens, order := make([]int, len(out)), make([]int, len(out))
+	budget := maxHandoffBytes - size
+	for i, h := range out {
+		lens[i], order[i] = jsonLen(h.Reply), i
+		budget += lens[i]
+	}
+	slices.SortFunc(order, func(a, b int) int { return lens[a] - lens[b] })
+	for k, i := range order {
+		share := budget / (len(order) - k)
+		if lens[i] > share {
+			// An escape never shrinks a byte, so cutting the excess as raw bytes cuts at least as much JSON.
+			out[i].Reply = harness.CapBytes(out[i].Reply, max(len(out[i].Reply)-(lens[i]-share), 0))
+			lens[i] = share
+		}
+		budget -= lens[i]
+	}
+}
+
+func jsonLen(s string) int {
+	raw, _ := json.Marshal(s) // marshalling a string cannot fail
+	return len(raw)
 }
 
 // Reaction is one emoji on a message and the people who reacted with it, earliest first.

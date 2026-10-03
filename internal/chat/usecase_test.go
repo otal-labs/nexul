@@ -1318,12 +1318,12 @@ func TestPostAgentAndSystemMessages(t *testing.T) {
 	assert.Equal(t, AuthorUser, userMsg.AuthorKind)
 }
 
-// fullHandoffs is the most a turn hands over: 20 hand-offs of 200 steps of 2 KiB detail, step j at minute j.
-func fullHandoffs() []harness.Handoff {
+// fullHandoffs is the most a turn hands over: 20 hand-offs replying reply, of 200 steps of 2 KiB detail, step j at minute j.
+func fullHandoffs(reply string) []harness.Handoff {
 	hs := make([]harness.Handoff, 20)
 	for i := range hs {
 		hs[i] = harness.Handoff{ID: fmt.Sprintf("task-%d", i), Driver: "claudeAgent", Model: "claude-opus-5-5", Title: "Audit",
-			Prompt: "Audit the handlers.", State: harness.HandoffDone, Reply: "Three issues."}
+			Prompt: "Audit the handlers.", State: harness.HandoffDone, Reply: reply}
 		for j := range 200 {
 			hs[i].Steps = append(hs[i].Steps, harness.Activity{Kind: harness.ActivityToolResult, CallID: fmt.Sprintf("c-%d", j), Tool: "Shell",
 				Summary: "go test ./...", Detail: strings.Repeat("x", 2<<10), At: fixedNow.Add(time.Duration(j) * time.Minute)})
@@ -1338,7 +1338,7 @@ func TestPostAgentMessage_Handoffs_StoredWithTheReplyAndCutToTheirNewestSteps(t 
 	c, err := s.CreateChannel(t.Context(), "w-1", "u-1", "eng")
 	require.NoError(t, err)
 
-	m, err := s.PostAgentMessage(t.Context(), c.ID, "u-1", "Done.", fullHandoffs())
+	m, err := s.PostAgentMessage(t.Context(), c.ID, "u-1", "Done.", fullHandoffs("Three issues."))
 	require.NoError(t, err)
 
 	stored := repo.messages[m.ID].Handoffs
@@ -1356,6 +1356,35 @@ func TestPostAgentMessage_Handoffs_StoredWithTheReplyAndCutToTheirNewestSteps(t 
 	assert.Less(t, len(stored[0].Steps), 200)
 	created := repo.events[len(repo.events)-1].Payload.(MessageCreatedEvent)
 	assert.Equal(t, stored, created.Message.Handoffs, "chat.message.created carries what the reply stores")
+}
+
+func TestPostAgentMessage_HandoffsWithLongReplies_CutTheLongestRepliesOnceNoStepIsLeft(t *testing.T) {
+	repo := newFakeRepo()
+	s := newTestService(repo)
+	c, err := s.CreateChannel(t.Context(), "w-1", "u-1", "eng")
+	require.NoError(t, err)
+	// Each line's '<' and newline take more bytes as JSON than as text.
+	long := strings.Repeat("if a < b { return a }\n", 1<<10)
+	hs := fullHandoffs(long)
+	hs[0].Reply = "Three issues."
+
+	m, err := s.PostAgentMessage(t.Context(), c.ID, "u-1", "Done.", hs)
+	require.NoError(t, err)
+
+	stored := repo.messages[m.ID].Handoffs
+	raw, err := json.Marshal(stored)
+	require.NoError(t, err)
+	assert.LessOrEqual(t, len(raw), 256<<10)
+	require.Len(t, stored, 20, "every hand-off stays")
+	assert.Equal(t, "Three issues.", stored[0].Reply, "a short reply stays whole")
+	for _, h := range stored {
+		assert.Empty(t, h.Steps, "every step goes before a reply is cut")
+	}
+	for _, h := range stored[1:] {
+		assert.NotEmpty(t, h.Reply)
+		assert.Less(t, len(h.Reply), len(long))
+		assert.True(t, strings.HasPrefix(long, h.Reply), "a cut reply keeps its start")
+	}
 }
 
 func TestUnreadCounts(t *testing.T) {

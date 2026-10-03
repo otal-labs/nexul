@@ -43,7 +43,7 @@ Decision: a turn follows the runs its own run's handed-off work caused, and repl
   steps inside it, one level only. The live stream pushes each hand-off as it changes, and the reply stores the final
   set, redacted like its body, in the nullable `messages.handoffs` column, so the record survives the computer going
   offline; deleting the reply clears it. Caps: 20 hand-offs, the newest 200 steps of each with 2 KiB of detail, a
-  2 KiB prompt, and 256 KiB per reply, the oldest steps going first.
+  2 KiB prompt, and 256 KiB per reply, the oldest steps going first and then the longest final replies.
 - **More than one turn on a conversation.** The pipeline keeps each in-flight turn on its own, so a second mention
   that ends first leaves the first one reachable. Stop reaches every live turn of the conversation, and an answer is
   tried on each, newest first, until a harness takes it.

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -165,6 +166,7 @@ func TestPills_Caps(t *testing.T) {
 		}))
 	}
 	rows[0].Prompt = strings.Repeat("é", maxPrompt)
+	rows[0].Title = strings.Repeat("Audit the handlers. ", 20)
 	var ps pills
 	ps.rows(rows)
 	require.Len(t, ps.order, maxChildren, "a reply carries at most 20 hand-offs, the first T3 started")
@@ -187,4 +189,5 @@ func TestPills_Caps(t *testing.T) {
 	assert.True(t, strings.HasPrefix(`{"input":"`+long, h.Steps[0].Detail))
 	assert.Len(t, h.Prompt, maxPrompt, "cut on a rune boundary")
 	assert.Equal(t, strings.Repeat("é", maxPrompt/2), h.Prompt)
+	assert.Equal(t, summaryRunes+1, utf8.RuneCountInString(h.Title), "a long title is cut to a one-line label")
 }

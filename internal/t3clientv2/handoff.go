@@ -170,10 +170,8 @@ func (p *pill) handoff() harness.Handoff {
 	if h.Model == "" {
 		h.Model = p.model
 	}
-	if h.Title == "" {
-		line, _, _ := strings.Cut(strings.TrimSpace(prompt), "\n")
-		h.Title = harness.Preview(line, summaryRunes)
-	}
+	line, _, _ := strings.Cut(strings.TrimSpace(prompt), "\n")
+	h.Title = harness.Preview(cmp.Or(h.Title, line), summaryRunes)
 	if h.Reply == "" {
 		h.Reply = p.text
 	}

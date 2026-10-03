@@ -67,8 +67,11 @@ Read first: `practices/go.md`, `practices/testing.md`, `practices/architecture.m
     frame and the stored reply use it, and `PostAgentReply` and `PostAgentMessage` take `[]harness.Handoff` as the
     ticket says.
   - The 256 KiB cut is in `chat.PostAgentMessage`, the owner of the stored shape, so the row and
-    `chat.message.created` carry the same set. The oldest steps by time go first across all hand-offs; replies are
-    never cut (a `ponytail:` note names that ceiling).
+    `chat.message.created` carry the same set. The oldest steps by time go first across all hand-offs. Once no step
+    is left, the longest replies are cut to even shares of what the rest leaves, measured as stored JSON; a reply
+    within its share stays whole. T3 cuts only the parent's `subagent` turn item at 32 KiB, never the subagent row
+    (`WireProjection.ts`), so a row's `result` is the child's whole final text and nothing else bounds it. The live
+    frame still carries the whole reply; only the stored set is cut.
   - A child's approval is handled like its question: a step plus the turn note, never auto-declined, since T3 made
     that thread under its own runtime mode and a person can answer it in T3. The note reads "A handed-off agent is
     waiting for an answer in T3 Code", once per request.
@@ -76,11 +79,13 @@ Read first: `practices/go.md`, `practices/testing.md`, `practices/architecture.m
     run that failed or was interrupted in T3); Stop makes it `interrupted`. Only a done or interrupted turn with text
     stores a reply, so a turn that fails keeps no pills, as before.
   - The child's assistant messages are not steps (the mapper skips them); the newest by ordinal is the reply when the
-    row has no `result`. The title fallback is the prompt's first line through `harness.Preview` (160 runes).
+    row has no `result`. The title, the row's or else the prompt's first line, goes through `harness.Preview`
+    (160 runes), so a long row title cannot crowd the stored set.
   - A child subscription that fails is logged at Warn and left closed: the pill keeps its row's state and reply,
     and its steps stop. All child subscriptions reopen from their cursors after the turn's own stream resubscribes.
   - A hand-off update counts as a play's heartbeat (`Observer.OnSnapshot`).
-  - The `message_list` summary keeps the whole reply; the 10,000-token check is over the worst case of steps.
+  - The `message_list` summary keeps the first 1 KiB of each reply, and its description says so: 20 whole replies
+    could pass 10,000 tokens on their own. The check is over 20 hand-offs with 4 KiB replies.
   - `bun run generate:events` ran and changed nothing: the catalog types `message` as an open object, and only its
     description gained `handoffs`. ADR 0116 gained "What the reply carries"; the `CONTEXT.md` term stays with
     ticket 17.
