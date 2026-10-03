@@ -283,7 +283,8 @@ Not adopted, on purpose, until a ticket asks for one:
     `docs/adr/0029-the-agent-turn-runs-on-the-mentioning-users-own-environment.md` (Nexul refuses a T3
     that went back) and `docs/adr/0054-one-harness-client-interface-per-kind.md` (two T3 kinds, no
     OpenCode 2 harness).
-  - ADR 0114 (ticket 11): a turn waits for the work it handed off, and the reply carries it.
+  - ADR 0116 (ticket 11; 0114 is the protocol-2 turn): a turn waits for the work it handed off, and the
+    reply carries it.
   - Re-check both numbers against `origin/master` before writing.
   - Note ADR 0106 (imported threads get the Full prompt).
   - `CONTEXT.md`: Harness, Trail, hand-off.

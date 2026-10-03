@@ -109,11 +109,13 @@ func TestHandleMessageCreated_PendingQuestion_PausesTheWindowUntilAnswered(t *te
 		svc, conv, ch := chatTurn(t)
 		q := question()
 		ch <- harness.Update{Question: &q}
+		time.Sleep(time.Minute)
+		ch <- harness.Update{Activity: &harness.Activity{Kind: harness.ActivityNote, CallID: "handoff:run-1", Summary: "Waiting for work handed off in T3 Code"}}
 
 		time.Sleep(45 * time.Minute)
 		synctest.Wait()
 		replies, systemPosts := conv.snapshot()
-		require.Empty(t, systemPosts, "the user's silence is not the harness's")
+		require.Empty(t, systemPosts, "the user's silence is not the harness's, and an update under the question does not restart the window")
 		require.Len(t, replies, 1, "only the question card")
 
 		answer := harness.QuestionAnswer{Answers: map[string]harness.AnswerValue{"q1": {Selected: []string{"Yes"}}}}

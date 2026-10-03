@@ -3,6 +3,8 @@ package t3clientv2
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -358,4 +360,173 @@ func TestWatch_ResubscribeSnapshotOfAWaitingRun_EndsOnce(t *testing.T) {
 		fold(t, w, []json.RawMessage{snapshot}), "the reply missed while away, then the end")
 	assert.Empty(t, fold(t, w, []json.RawMessage{snapshot, event(41, "run.updated", runOf("msg-1", runCompleted))}),
 		"a second snapshot and the completion after it change nothing")
+}
+
+const wakeMessage = "message:delegated-completion:msg-1:1"
+
+// merged is a fixture-shaped payload with T3's optional keys added, the way they appear only when set.
+func merged(payload map[string]any, keys map[string]any) map[string]any {
+	maps.Copy(payload, keys)
+	return payload
+}
+
+// userMessage is a message.updated payload: a user message in run n, carrying whichever link keys T3 set.
+func userMessage(id string, n int, keys map[string]any) map[string]any {
+	return merged(map[string]any{"id": id, "threadId": "th-1", "runId": fmt.Sprintf("run:thread:th-1:ordinal:%d", n),
+		"nodeId": nil, "role": "user", "text": "Delegated task reached a terminal state.", "attachments": []any{}, "streaming": false,
+		"createdBy": "agent", "creationSource": "server", "createdAt": "2026-10-03T16:00:00.000Z", "updatedAt": "2026-10-03T16:00:00.000Z"}, keys)
+}
+
+// handedOff is a subagent.updated payload for work run 1 handed off; childThreadId is th-2.
+func handedOff(id, origin, status string, keys map[string]any) map[string]any {
+	return merged(map[string]any{"id": id, "threadId": "th-1", "runId": runOne, "parentNodeId": "node:tool-1", "origin": origin,
+		"driver": "claudeAgent", "providerInstanceId": "claudeAgent", "providerThreadId": nil, "childThreadId": "th-2",
+		"prompt": "Audit the handlers.", "title": "Audit", "model": nil, "status": status, "result": nil,
+		"startedAt": "2026-10-03T16:00:01.000Z", "completedAt": nil, "updatedAt": "2026-10-03T16:00:01.000Z"}, keys)
+}
+
+func delivery(state string) map[string]any {
+	return map[string]any{"completionDelivery": map[string]any{"state": state, "observedByRunId": nil}}
+}
+
+// replyIn is run n's finished assistant message.
+func replyIn(n int, text string) map[string]any {
+	return map[string]any{"id": fmt.Sprintf("turn-item:provider:claudeAgent:native-item:reply-%d", n), "threadId": "th-1",
+		"runId": fmt.Sprintf("run:thread:th-1:ordinal:%d", n), "nodeId": "node:reply", "ordinal": n * 1000, "status": "completed",
+		"type": "assistant_message", "messageId": fmt.Sprintf("message:reply-%d", n), "text": text, "streaming": false}
+}
+
+// story numbers events from sequence 2, the way one subscription delivers them.
+func story(events ...[2]any) []json.RawMessage {
+	out := make([]json.RawMessage, 0, len(events))
+	for i, e := range events {
+		out = append(out, event(i+2, e[0].(string), e[1]))
+	}
+	return out
+}
+
+func labels(updates []harness.Update) []string {
+	var got []string
+	for _, u := range updates {
+		switch {
+		case u.Snapshot != nil:
+			got = append(got, "reply "+u.Snapshot.Text)
+		case u.Activity != nil:
+			got = append(got, string(u.Activity.Kind)+" "+u.Activity.Summary)
+		case u.Terminal != nil:
+			got = append(got, "end "+string(u.Terminal.State))
+		}
+	}
+	return got
+}
+
+func TestWatch_HandedOffWork(t *testing.T) {
+	t.Parallel()
+	// Nexul's run hands an audit to T3's delegate_task and replies before the audit is done.
+	handsOff := [][2]any{
+		{"run.created", runOf("msg-1", "running")},
+		{"subagent.updated", handedOff("task-1", "app_owned", "running", map[string]any{"completionWake": "always"})},
+		{"turn-item.updated", replyIn(1, "Handed the audit off.")},
+		{"run.updated", runOf("msg-1", runWaiting)},
+	}
+	linkedToRunOne := map[string]any{"delegatedCompletion": map[string]any{"parentRunId": runOne, "generation": 1, "taskIds": []any{"task-1"}}}
+	wakeReplies := [][2]any{
+		{"run.updated", runAt(2, wakeMessage, "running")},
+		{"turn-item.updated", replyIn(2, "The audit found three issues.")},
+		{"subagent.updated", handedOff("task-1", "app_owned", "completed", delivery("delivered"))},
+		{"run.updated", runAt(2, wakeMessage, runWaiting)},
+	}
+	tests := []struct {
+		name   string
+		events [][2]any
+		want   []string
+	}{
+		{name: "an async delegate's wake joins and the turn ends on the wake's reply",
+			events: slices.Concat(handsOff, [][2]any{
+				{"subagent.updated", handedOff("task-1", "app_owned", "completed", delivery("pending"))},
+				{"run.updated", merged(runOf("msg-1", runCompleted), map[string]any{"delegatedCompletion": map[string]any{
+					"disposition": "open", "nextGeneration": 2, "delivery": map[string]any{"generation": 1, "messageId": wakeMessage, "taskIds": []any{"task-1"}}}})},
+				{"run.created", runAt(2, wakeMessage, "starting")},
+				{"run.updated", runOf("msg-1", runCompleted)},
+				{"subagent.updated", handedOff("task-1", "app_owned", "completed", delivery("claimed"))},
+			}, wakeReplies),
+			want: []string{"reply Handed the audit off.", "reply The audit found three issues.", "end done"}},
+		{name: "a queued wake whose run.created precedes its message is adopted once the message links it",
+			events: slices.Concat(handsOff, [][2]any{
+				{"subagent.updated", handedOff("task-1", "app_owned", "completed", delivery("pending"))},
+				{"run.created", runAt(2, wakeMessage, runQueued)},
+				{"message.updated", userMessage(wakeMessage, 2, linkedToRunOne)},
+			}, wakeReplies),
+			want: []string{"reply Handed the audit off.", "reply The audit found three issues.", "end done"}},
+		{name: "a provider's own background subagent joins through its notification wake",
+			events: [][2]any{
+				{"run.created", runOf("msg-1", "running")},
+				{"subagent.updated", handedOff("native-1", "provider_native", "running", nil)},
+				{"turn-item.updated", replyIn(1, "Started a background agent.")},
+				{"run.updated", runOf("msg-1", runWaiting)},
+				{"run.created", runAt(2, "message:provider-continuation:native-9", runQueued)},
+				{"message.updated", userMessage("message:provider-continuation:native-9", 2, map[string]any{"creationSource": "provider",
+					"notification": map[string]any{"source": map[string]any{"kind": "background_task", "work": "subagent", "childThreadId": "th-2"},
+						"outcome": "completed", "summary": "Background agent finished"}})},
+				{"run.updated", runAt(2, "message:provider-continuation:native-9", "running")},
+				// T3 replays the buffered notification inside the wake run, so the subagent ends only then.
+				{"subagent.updated", handedOff("native-1", "provider_native", "completed", nil)},
+				{"turn-item.updated", replyIn(2, "The background agent found two callers.")},
+				{"run.updated", runAt(2, "message:provider-continuation:native-9", runWaiting)},
+			},
+			want: []string{"reply Started a background agent.", "reply The background agent found two callers.", "end done"}},
+		{name: "a PR-watch wake, a scheduled run, another thread's send, a command's notice and a run typed in T3 are not the turn's",
+			events: slices.Concat(handsOff, [][2]any{
+				{"run.created", runAt(2, "message:pr-watch:3f2a", "running")},
+				{"message.updated", userMessage("message:pr-watch:3f2a", 2, map[string]any{
+					"notification": map[string]any{"source": map[string]any{"kind": "monitor"}, "outcome": "updated", "summary": "Checks passed"}})},
+				{"turn-item.updated", replyIn(2, "The PR is green.")},
+				{"run.updated", runAt(2, "message:pr-watch:3f2a", runWaiting)},
+				{"run.created", runAt(3, "scheduled-task-message:st-1:1:cron", "running")},
+				{"message.updated", userMessage("scheduled-task-message:st-1:1:cron", 3, map[string]any{"scheduledTaskId": "st-1", "creationSource": "mcp"})},
+				{"turn-item.updated", replyIn(3, "Nightly report.")},
+				{"run.updated", runAt(3, "scheduled-task-message:st-1:1:cron", runWaiting)},
+				{"run.created", runAt(4, "msg-other", "running")},
+				{"message.updated", userMessage("msg-other", 4, map[string]any{"senderThreadId": "th-9"})},
+				{"turn-item.updated", replyIn(4, "Sent from another thread.")},
+				{"run.updated", runAt(4, "msg-other", runWaiting)},
+				{"run.created", runAt(5, "message:provider-continuation:native-3", "running")},
+				{"message.updated", userMessage("message:provider-continuation:native-3", 5, map[string]any{"creationSource": "provider",
+					"notification": map[string]any{"source": map[string]any{"kind": "background_command"}, "outcome": "completed", "summary": "npm test finished"}})},
+				{"turn-item.updated", replyIn(5, "Tests passed.")},
+				{"run.updated", runAt(5, "message:provider-continuation:native-3", runWaiting)},
+				{"run.created", runAt(6, "msg-typed", "running")},
+				{"message.updated", userMessage("msg-typed", 6, map[string]any{"createdBy": "user", "creationSource": "web"})},
+				{"turn-item.updated", replyIn(6, "Typed in T3.")},
+				{"run.updated", runAt(6, "msg-typed", runWaiting)},
+				{"subagent.updated", handedOff("task-1", "app_owned", "completed", delivery("disposed"))},
+			}),
+			want: []string{"reply Handed the audit off.", "end done"}},
+		{name: "a result T3 steered into a later run ends the wait with a note",
+			events: slices.Concat(handsOff, [][2]any{
+				{"subagent.updated", handedOff("task-1", "app_owned", "completed", delivery("pending"))},
+				{"run.created", runAt(2, "msg-typed", "running")},
+				{"message.updated", userMessage(wakeMessage, 2, linkedToRunOne)},
+				{"turn-item.updated", replyIn(2, "Answering the typed message, with the audit.")},
+			}),
+			want: []string{"reply Handed the audit off.", "note " + steeredNote, "end done"}},
+		{name: "a wake T3 continues after a restart joins through the continuation",
+			events: slices.Concat(handsOff, [][2]any{
+				{"subagent.updated", handedOff("task-1", "app_owned", "completed", delivery("claimed"))},
+				{"run.created", runAt(2, wakeMessage, "running")},
+				{"message.updated", userMessage(wakeMessage, 2, linkedToRunOne)},
+				{"run.updated", runAt(2, wakeMessage, "interrupted")},
+				{"run.created", merged(runAt(3, "message:restart-continuation:run-2", runQueued), map[string]any{"restartContinuationOfRunId": runTwo})},
+				{"turn-item.updated", replyIn(3, "Picking the audit up again: three issues.")},
+				{"subagent.updated", handedOff("task-1", "app_owned", "completed", delivery("delivered"))},
+				{"run.updated", runAt(3, "message:restart-continuation:run-2", runWaiting)},
+			}),
+			want: []string{"reply Handed the audit off.", "reply Picking the audit up again: three issues.", "end done"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.want, labels(fold(t, newWatch("msg-1"), story(tt.events...))))
+		})
+	}
 }

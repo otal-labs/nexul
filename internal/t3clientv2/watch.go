@@ -32,6 +32,8 @@ type projection struct {
 	ProviderSessions []providerSession `json:"providerSessions"`
 	RuntimeRequests  []runtimeRequest  `json:"runtimeRequests"`
 	Nodes            []node            `json:"nodes"`
+	Subagents        []subagent        `json:"subagents"`
+	Messages         []message         `json:"messages"`
 }
 
 type appThread struct {
@@ -47,11 +49,55 @@ type appThread struct {
 }
 
 type run struct {
-	ID            string `json:"id"`
-	UserMessageID string `json:"userMessageId"`
-	RootNodeID    string `json:"rootNodeId"`
-	Status        string `json:"status"`
-	QueueHeld     bool   `json:"queueHeld"`
+	ID                         string `json:"id"`
+	UserMessageID              string `json:"userMessageId"`
+	RootNodeID                 string `json:"rootNodeId"`
+	Status                     string `json:"status"`
+	QueueHeld                  bool   `json:"queueHeld"`
+	RestartContinuationOfRunID string `json:"restartContinuationOfRunId"`
+	// DelegatedCompletion names the message that will carry the run's delegated results back, once T3 dispatches it.
+	DelegatedCompletion *struct {
+		Delivery *struct {
+			MessageID string `json:"messageId"`
+		} `json:"delivery"`
+	} `json:"delegatedCompletion"`
+}
+
+// subagent is work a run handed to another agent: T3's own delegated task (app_owned) or a provider's subagent.
+type subagent struct {
+	ID                 string `json:"id"`
+	RunID              string `json:"runId"`
+	Origin             string `json:"origin"`
+	Status             string `json:"status"`
+	ChildThreadID      string `json:"childThreadId"`
+	CompletionDelivery *struct {
+		State string `json:"state"`
+	} `json:"completionDelivery"`
+}
+
+// message is a user message's link back to handed-off work: a delegated task's result, or a notice about a subagent.
+type message struct {
+	ID                  string `json:"id"`
+	RunID               string `json:"runId"`
+	Role                string `json:"role"`
+	DelegatedCompletion *struct {
+		ParentRunID string `json:"parentRunId"`
+	} `json:"delegatedCompletion"`
+	Notification *struct {
+		Source struct {
+			Kind          string `json:"kind"`
+			Work          string `json:"work"`
+			ChildThreadID string `json:"childThreadId"`
+		} `json:"source"`
+	} `json:"notification"`
+}
+
+// subagentThread is the child thread a subagent's notice is about, "" for any other message.
+func (m message) subagentThread() string {
+	if m.Notification == nil || m.Notification.Source.Kind != "background_task" || m.Notification.Source.Work != "subagent" {
+		return ""
+	}
+	return m.Notification.Source.ChildThreadID
 }
 
 type failure struct {
@@ -86,13 +132,21 @@ const (
 	runCompleted = "completed"
 )
 
+// workingRuns are the statuses of a run whose reply is still to come.
+var workingRuns = []string{runQueued, "preparing", "starting", "running"}
+
 // liveRuns are the statuses that make a thread busy: T3 queues a new message behind them.
-var liveRuns = []string{runQueued, "preparing", "starting", "running", runWaiting}
+var liveRuns = append(slices.Clone(workingRuns), runWaiting)
+
+// undelivered are the states of a delegated task's result T3 has yet to hand back to its parent.
+var undelivered = []string{"pending", "claimed"}
 
 const (
-	queuedNote = "Queued in T3 Code behind another run on this thread"
-	heldNote   = "Held in T3 Code's queue; resume it in T3 Code or stop it here"
-	noReason   = "T3 Code reported the run failed without saying why."
+	queuedNote  = "Queued in T3 Code behind another run on this thread"
+	heldNote    = "Held in T3 Code's queue; resume it in T3 Code or stop it here"
+	handoffNote = "Waiting for work handed off in T3 Code"
+	steeredNote = "The handed-off result went to a later reply in T3 Code"
+	noReason    = "T3 Code reported the run failed without saying why."
 )
 
 // watch folds one thread's stream into the updates of the turn whose run carries messageID; it does no I/O.
@@ -105,6 +159,13 @@ type watch struct {
 	runs map[string]run
 	// run is the turn's own run, its ID empty until T3 reports it.
 	run run
+	// followed is the turn's own run and every run its handed-off work woke; their items are the turn's (ADR 0116).
+	followed map[string]bool
+	// deliveries maps each wake message id a run's delegatedCompletion named to that run.
+	deliveries map[string]string
+	// messages are the user messages that may link a wake run to handed-off work, kept beyond any snapshot's window.
+	messages  map[string]message
+	subagents map[string]subagent
 	// failures holds the newest failed error of each node of the turn's run; the root node's is the turn's failure.
 	failures     map[string]failure
 	sessionError string
@@ -119,7 +180,8 @@ type watch struct {
 }
 
 func newWatch(messageID string) *watch {
-	return &watch{messageID: messageID, runs: map[string]run{}, failures: map[string]failure{}, sent: map[string]harness.Snapshot{},
+	return &watch{messageID: messageID, runs: map[string]run{}, followed: map[string]bool{}, deliveries: map[string]string{},
+		messages: map[string]message{}, subagents: map[string]subagent{}, failures: map[string]failure{}, sent: map[string]harness.Snapshot{},
 		steps: map[string]harness.Activity{}, asked: map[string]bool{}}
 }
 
@@ -144,6 +206,15 @@ func (w *watch) reset(p projection) ([]harness.Update, *harness.TurnResult) {
 	for _, r := range p.Runs {
 		w.track(r)
 	}
+	// Every working subagent is in a bounded snapshot, so one missing from it is no longer working.
+	w.subagents = map[string]subagent{}
+	for _, s := range p.Subagents {
+		w.subagents[s.ID] = s
+	}
+	for _, m := range p.Messages {
+		w.message(m)
+	}
+	w.link()
 	for _, s := range p.ProviderSessions {
 		w.sessionLastError(s)
 	}
@@ -153,7 +224,8 @@ func (w *watch) reset(p projection) ([]harness.Update, *harness.TurnResult) {
 	for _, it := range items {
 		out = append(out, w.item(it)...)
 	}
-	return out, w.end()
+	notes, end := w.end()
+	return append(out, notes...), end
 }
 
 func (w *watch) event(e wireEvent) ([]harness.Update, *harness.TurnResult) {
@@ -164,7 +236,24 @@ func (w *watch) event(e wireEvent) ([]harness.Update, *harness.TurnResult) {
 			return nil, nil
 		}
 		w.track(r)
-		return nil, w.end()
+		w.link()
+		return w.end()
+	case e.Type == "message.updated":
+		var m message
+		if !decode(e, &m) {
+			return nil, nil
+		}
+		w.message(m)
+		w.link()
+		return w.end()
+	case e.Type == "subagent.updated":
+		var s subagent
+		if !decode(e, &s) {
+			return nil, nil
+		}
+		w.subagents[s.ID] = s
+		w.link()
+		return w.end()
 	case e.Type == "turn-item.updated":
 		var it turnItem
 		if !decode(e, &it) {
@@ -191,9 +280,23 @@ func decode(e wireEvent, into any) bool {
 }
 
 func (w *watch) track(r run) {
+	// T3 leaves delegatedCompletion out of a run.updated that does not change it.
+	if r.DelegatedCompletion == nil {
+		r.DelegatedCompletion = w.runs[r.ID].DelegatedCompletion
+	}
+	if d := r.DelegatedCompletion; d != nil && d.Delivery != nil {
+		w.deliveries[d.Delivery.MessageID] = r.ID
+	}
 	w.runs[r.ID] = r
 	if r.UserMessageID == w.messageID || (w.run.ID != "" && r.ID == w.run.ID) {
-		w.run = r
+		w.own(r)
+	}
+}
+
+func (w *watch) own(r run) {
+	w.run = r
+	if r.ID != "" {
+		w.followed[r.ID] = true
 	}
 }
 
@@ -202,9 +305,83 @@ func (w *watch) follow(messageID string) {
 	w.messageID = messageID
 	for _, r := range w.runs {
 		if r.UserMessageID == messageID {
-			w.run = r
+			w.own(r)
 		}
 	}
+}
+
+// message keeps a user message that could link a run to handed-off work; no other message changes what the turn follows.
+func (w *watch) message(m message) {
+	if m.Role == "user" && (m.DelegatedCompletion != nil || m.subagentThread() != "") {
+		w.messages[m.ID] = m
+	}
+}
+
+// link grows the followed set by every run the followed runs' handed-off work caused, until nothing more joins.
+func (w *watch) link() {
+	for grew := true; grew; {
+		grew = false
+		for _, r := range w.runs {
+			if !w.followed[r.ID] && w.caused(r) {
+				w.followed[r.ID], grew = true, true
+			}
+		}
+	}
+}
+
+// caused is a run that carries a followed run's handed-off result back, or continues a followed run after a restart.
+func (w *watch) caused(r run) bool {
+	if w.followed[r.RestartContinuationOfRunID] || w.followed[w.deliveries[r.UserMessageID]] {
+		return true
+	}
+	m, ok := w.messages[r.UserMessageID]
+	return ok && w.linked(m)
+}
+
+// linked is a message carrying back work a followed run handed off: its delegated result, or a notice about its subagent.
+func (w *watch) linked(m message) bool {
+	if m.DelegatedCompletion != nil && w.followed[m.DelegatedCompletion.ParentRunID] {
+		return true
+	}
+	child := m.subagentThread()
+	for _, s := range w.subagents {
+		if child != "" && s.ChildThreadID == child && w.followed[s.RunID] {
+			return true
+		}
+	}
+	return false
+}
+
+// steered is whether T3 steered a handed-off result into a run outside the turn, which will reply with it instead.
+func (w *watch) steered() bool {
+	for _, m := range w.messages {
+		r, ok := w.runs[m.RunID]
+		if ok && r.UserMessageID != m.ID && !w.followed[r.ID] && w.linked(m) {
+			return true
+		}
+	}
+	return false
+}
+
+// pending is whether work the turn handed off is still running or its result is still on its way back.
+func (w *watch) pending() bool {
+	for id := range w.followed {
+		if id != w.run.ID && slices.Contains(workingRuns, w.runs[id].Status) {
+			return true
+		}
+	}
+	for _, s := range w.subagents {
+		if !w.followed[s.RunID] {
+			continue
+		}
+		if slices.Contains(openItems, s.Status) {
+			return true
+		}
+		if s.Origin == "app_owned" && s.CompletionDelivery != nil && slices.Contains(undelivered, s.CompletionDelivery.State) {
+			return true
+		}
+	}
+	return false
 }
 
 func (w *watch) sessionLastError(s providerSession) {
@@ -213,13 +390,13 @@ func (w *watch) sessionLastError(s providerSession) {
 	}
 }
 
-// item maps one turn item of the turn's own run; T3 sends an assistant message's whole text each time, never a delta.
+// item maps one turn item of a followed run; T3 sends an assistant message's whole text each time, never a delta.
 func (w *watch) item(it turnItem) []harness.Update {
 	// A message T3 steered into a running run gets no run of its own; its item names the run that took it.
 	if w.run.ID == "" && it.Type == "user_message" && it.MessageID == w.messageID {
-		w.run = w.runs[it.RunID]
+		w.own(w.runs[it.RunID])
 	}
-	if w.run.ID == "" || it.RunID != w.run.ID {
+	if w.ended || w.run.ID == "" || !w.followed[it.RunID] {
 		return nil
 	}
 	if it.Type == "error" && it.Status == "failed" && it.Failure != nil {
@@ -260,20 +437,38 @@ func (w *watch) step(it turnItem) []harness.Update {
 	return []harness.Update{u}
 }
 
-// end is the turn's terminal result the first time its run reaches one; a run that stopped reports its end twice.
-func (w *watch) end() *harness.TurnResult {
+// end is the turn's terminal result, once: at its run's end, but for a done run only after the work it handed off.
+func (w *watch) end() ([]harness.Update, *harness.TurnResult) {
 	if w.ended || w.run.ID == "" {
-		return nil
+		return nil, nil
 	}
 	result := terminal(w.run.Status)
 	if result == nil {
-		return nil
+		return nil, nil
 	}
 	if result.State == harness.TurnError {
 		result.LastError = w.failure()
 	}
+	if result.State == harness.TurnDone && w.steered() {
+		w.ended = true
+		return []harness.Update{note(steeredNote)}, result
+	}
+	if result.State == harness.TurnDone && w.pending() {
+		return nil, nil
+	}
 	w.ended = true
-	return result
+	return nil, result
+}
+
+// waiting is whether the turn's own run is done and only the work it handed off keeps the turn open.
+func (w *watch) waiting() bool {
+	return !w.ended && (w.run.Status == runWaiting || w.run.Status == runCompleted)
+}
+
+// leave ends a turn that stopped waiting for the work it handed off, which T3 still runs.
+func (w *watch) leave() *harness.TurnResult {
+	w.ended = true
+	return &harness.TurnResult{State: harness.TurnDone, LeftRunning: true}
 }
 
 // terminal maps a run status to the turn's end; waiting is done, since T3 only captures a checkpoint after it.
@@ -327,16 +522,19 @@ func (w *watch) queued() bool {
 	return !w.ended && w.run.Status == runQueued
 }
 
-// queueNote is the note for the turn's run while T3 holds it in the thread's queue, nil otherwise.
-func (w *watch) queueNote() *harness.Activity {
-	if !w.queued() {
+// standingNote is the note a waiting turn repeats: its run held in T3's queue, or handed-off work still pending.
+func (w *watch) standingNote() *harness.Activity {
+	if w.queued() {
+		summary := queuedNote
+		if w.run.QueueHeld {
+			summary = heldNote
+		}
+		return &harness.Activity{Kind: harness.ActivityNote, CallID: "queue:" + w.run.ID, Summary: summary}
+	}
+	if w.ended || w.run.ID == "" || !w.pending() {
 		return nil
 	}
-	summary := queuedNote
-	if w.run.QueueHeld {
-		summary = heldNote
-	}
-	return &harness.Activity{Kind: harness.ActivityNote, CallID: "queue:" + w.run.ID, Summary: summary}
+	return &harness.Activity{Kind: harness.ActivityNote, CallID: "handoff:" + w.run.ID, Summary: handoffNote}
 }
 
 // busy is whether a run on the thread is queued or live, which a runtime-mode change would detach.

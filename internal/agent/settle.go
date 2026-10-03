@@ -19,10 +19,10 @@ type endedTurn struct {
 	turn           activeTurn
 }
 
-// endTurn clears the conversation's live turn, then settles the ticket's harness session if the ticket is done.
+// endTurn clears this turn from the live ones, then settles the ticket's harness session if the ticket is done.
 // ponytail: last turns live in memory, so a restart forgets them; persist the computer per conversation if that matters.
 func (s *Service) endTurn(ctx context.Context, conv Conversation, turn *activeTurn) {
-	s.clearActive(conv.ID)
+	s.clearActive(conv.ID, turn)
 	if !conv.IsTicketThread || conv.TicketID == "" || s.tickets == nil || turn.target.SessionID == "" {
 		return
 	}
@@ -56,7 +56,7 @@ func (s *Service) HandleTicketStatusChanged(ctx context.Context, ev eventbus.Eve
 func (s *Service) settleTicket(ctx context.Context, ticketID string) {
 	s.mu.Lock()
 	e, ok := s.ended[ticketID]
-	_, running := s.active[e.conversationID]
+	running := len(s.active[e.conversationID]) > 0
 	s.mu.Unlock()
 	if !ok || running {
 		return
