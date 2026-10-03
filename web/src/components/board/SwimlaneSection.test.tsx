@@ -1,11 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Swimlane } from "@/components/board/KanbanBoard";
 import { SwimlaneSection } from "@/components/board/SwimlaneSection";
 import { useBoardStore } from "@/stores/boardStore";
+import { usePlayRunStore } from "@/stores/playRunStore";
 import type { BoardStatus } from "@/models/Status";
 import type { Ticket, TicketStatus } from "@/models/Ticket";
 
@@ -69,7 +70,34 @@ const renderSection = (props: Partial<Parameters<typeof SwimlaneSection>[0]> = {
 
 describe("SwimlaneSection", () => {
   // The board store is module-global and persisted; reset so a collapse in one test can't leak into the next.
-  beforeEach(() => useBoardStore.setState({ collapsedLaneKeys: [] }));
+  beforeEach(() => {
+    useBoardStore.setState({ collapsedLaneKeys: [] });
+    usePlayRunStore.setState({ frames: {}, steps: {}, activeByTarget: {} });
+  });
+
+  const frame = (ticketId: string, state: "running" | "waiting" | "done") =>
+    act(() =>
+      usePlayRunStore.getState().applyFrame({
+        trail_id: `tr-${ticketId}`, play_id: "play-1", target_type: "ticket", target_id: ticketId, state, activity: null, ended_at: null, last_error: "",
+      }),
+    );
+
+  it("counts the lane's running and waiting runs in the header, and hides them once none are active", () => {
+    renderSection({ lane: lane("c-1", [ticket("t-1", "Fix login", "open"), ticket("t-2", "Wire FTS", "open"), ticket("t-3", "Add tests", "done")]) });
+    expect(screen.queryByLabelText("Running")).not.toBeInTheDocument();
+
+    frame("t-1", "running");
+    frame("t-2", "running");
+    frame("t-3", "waiting");
+    expect(screen.getByRole("button", { name: "Sprint 1 Running 2 tickets Waiting for an answer 1 ticket 3 tickets" })).toBeInTheDocument();
+
+    frame("t-1", "done");
+    frame("t-2", "done");
+    expect(screen.getByRole("button", { name: "Sprint 1 Running 0 tickets Waiting for an answer 1 ticket 3 tickets" })).toBeInTheDocument();
+
+    frame("t-3", "done");
+    expect(screen.getByRole("button", { name: "Sprint 1 3 tickets" })).toBeInTheDocument();
+  });
 
   it("collapses and expands the columns from the whole header row", async () => {
     const user = userEvent.setup();
