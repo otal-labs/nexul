@@ -16,9 +16,10 @@ import (
 // fakeSubscription is a threadSub test double: pump reads it in a
 // goroutine, so buffer generously and close it explicitly per test.
 type fakeSubscription struct {
-	ch      chan Update
-	closed  bool
-	dropped *turnWatch
+	ch       chan Update
+	closed   bool
+	dropped  *turnWatch
+	readyErr error
 }
 
 func newFakeSubscription(updates ...Update) *fakeSubscription {
@@ -30,9 +31,10 @@ func newFakeSubscription(updates ...Update) *fakeSubscription {
 	return &fakeSubscription{ch: ch}
 }
 
-func (f *fakeSubscription) Updates() <-chan Update { return f.ch }
-func (f *fakeSubscription) Close()                 { f.closed = true }
-func (f *fakeSubscription) Dropped() *turnWatch    { return f.dropped }
+func (f *fakeSubscription) Updates() <-chan Update      { return f.ch }
+func (f *fakeSubscription) Close()                      { f.closed = true }
+func (f *fakeSubscription) Dropped() *turnWatch         { return f.dropped }
+func (f *fakeSubscription) Ready(context.Context) error { return f.readyErr }
 
 // fakeT3Client is a rpcConn test double letting tests script per-call
 // behavior without a real T3 server (mirrors ticket 12's own fake_test.go

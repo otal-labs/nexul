@@ -45,13 +45,13 @@ var oldReply = map[string]any{"id": "m-old", "role": "assistant", "text": "an ea
 func startDroppableTurn(t *testing.T, f *t3rpctest.Server) <-chan harness.Update {
 	t.Helper()
 	h := NewHarness(Options{HTTPClient: f.Client(), RPCTimeout: 5 * time.Second})
-	result, err := h.StartTurn(testCtx(t), harness.Target{Session: f.Session(), SessionID: "th-1"}, "title", testPrompts())
-	require.NoError(t, err)
+	started := startTurnAsync(t, h, harness.Target{Session: f.Session(), SessionID: "th-1"})
 	subID := t3rpctest.WaitFor(t, f.Subscribed, "first subscribeThread")
 	assert.NotContains(t, t3rpctest.WaitFor(t, f.SubscribeIn, "first subscribe input"), "afterSequence", "a fresh watch starts from the snapshot")
-	t3rpctest.WaitFor(t, f.Dispatched, "thread.turn.start dispatch")
-
 	f.Write(t3rpctest.Chunk(subID, snapshotItem(10, []map[string]any{oldReply}, nil, "ready")))
+	t3rpctest.WaitFor(t, f.Dispatched, "thread.turn.start dispatch")
+	result := t3rpctest.WaitFor(t, started, "StartTurn")
+
 	f.Write(t3rpctest.Chunk(subID,
 		sequenced(11, sessionSet("th-1", "running", "turn-1", nil)),
 		sequenced(12, toolEvent(namedTool("act-a", "Read main.go", "2026-10-02T11:00:01Z"))),
@@ -65,6 +65,57 @@ func startDroppableTurn(t *testing.T, f *t3rpctest.Server) <-chan harness.Update
 	require.NotNil(t, note)
 	assert.Equal(t, harness.Activity{Kind: harness.ActivityNote, Summary: "Reconnecting to T3 Code…", At: note.At}, *note)
 	return result.Updates
+}
+
+// startTurnAsync runs StartTurn beside the test, which has to answer the subscribe before StartTurn can return.
+func startTurnAsync(t *testing.T, h *Harness, target harness.Target) <-chan harness.StartResult {
+	t.Helper()
+	started := make(chan harness.StartResult, 1)
+	go func() {
+		result, err := h.StartTurn(testCtx(t), target, "title", testPrompts())
+		assert.NoError(t, err)
+		started <- result
+	}()
+	return started
+}
+
+func TestHarness_StoredThreadGoneInT3_IsRecreatedBeforeTheTurnIsSent(t *testing.T) {
+	t.Parallel()
+	deleted := snapshotItem(5, nil, nil, "idle")
+	deleted["snapshot"].(map[string]any)["thread"].(map[string]any)["deletedAt"] = "2026-10-03T09:00:00Z"
+	tests := []struct {
+		name   string
+		answer func(f *t3rpctest.Server, subID string)
+	}{
+		{"T3 no longer has the thread", func(f *t3rpctest.Server, subID string) {
+			// Captured from T3 Code 0.0.45-nightly.20261001.2525 once the stored thread had been removed there.
+			f.Write(map[string]any{"_tag": "Exit", "requestId": subID, "exit": map[string]any{"_tag": "Failure", "cause": []any{map[string]any{
+				"_tag": "Fail", "error": map[string]any{"_tag": "OrchestrationGetSnapshotError", "message": "Thread th-gone was not found", "cause": "th-gone"},
+			}}}})
+		}},
+		{"the thread was deleted in T3", func(f *t3rpctest.Server, subID string) {
+			f.Write(t3rpctest.Chunk(subID, deleted))
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			f := t3rpctest.New(t)
+			h := NewHarness(Options{HTTPClient: f.Client(), RPCTimeout: 5 * time.Second})
+			started := startTurnAsync(t, h, harness.Target{Session: f.Session(), SessionID: "th-gone", Provider: "claudeAgent", Model: "claude-opus-5-5"})
+
+			tt.answer(f, t3rpctest.WaitFor(t, f.Subscribed, "subscribe to the stored thread"))
+			create := t3rpctest.WaitFor(t, f.Dispatched, "thread.create dispatch")
+			assert.Equal(t, "thread.create", create["type"], "nothing is sent to the gone thread")
+
+			fresh := t3rpctest.WaitFor(t, f.Subscribed, "subscribe to the new thread")
+			f.Write(t3rpctest.Chunk(fresh, snapshotItem(1, nil, nil, "idle")))
+			start := t3rpctest.WaitFor(t, f.Dispatched, "thread.turn.start dispatch")
+			assert.Equal(t, create["threadId"], start["threadId"])
+			assert.Equal(t, "full-prompt", start["message"].(map[string]any)["text"], "the new thread has no history, so it gets the full prompt")
+			assert.Equal(t, create["threadId"], t3rpctest.WaitFor(t, started, "StartTurn").SessionID)
+		})
+	}
 }
 
 func TestHarness_ConnectionDropsMidTurn_ResumesFromTheLastSequenceWithoutGapsOrDuplicates(t *testing.T) {
