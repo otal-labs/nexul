@@ -144,7 +144,8 @@ func docGetTool(s *Service) mcptool.Tool {
 func docCreateTool(s *Service) mcptool.Tool {
 	return mcptool.New("doc_create", "Create doc",
 		"Creates a doc in a project from a markdown title and body, or copies one with clone_from_id, and makes you its owner. "+
-			"Use it for documentation and requirements people read; notes meant for agents belong in memory_create instead. "+
+			"Use it for what people read to decide what to build: requirements, product scope, acceptance criteria, business processes, and plans. "+
+			"Reusable technical guidance meant to steer implementation, such as research, architecture, coding standards, and library choices, belongs in memory_create instead, however long or cited it is, unless the person asked for a doc; a mixed deliverable splits into a doc and a memory that link each other. "+
 			"Every doc lives in exactly one folder of its project: a new doc goes in folder_id, or the project's default folder Main when omitted, and a copy goes in the destination's default folder, or beside the original within its own project. "+
 			"project_get lists a project's folders and project_update creates them. "+
 			"Copying needs docs:clone on the source and docs:write in the destination project. "+

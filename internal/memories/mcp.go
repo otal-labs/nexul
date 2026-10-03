@@ -176,6 +176,7 @@ func memoryCreateTool(s *Service) mcptool.Tool {
 	return mcptool.New("memory_create", "Create memory",
 		"Saves a note for agents in a project, or copies one into it with clone_from_id; every memory belongs to one project. "+
 			"Save a durable fact worth remembering; if a memory already covers the ground, change it with memory_update instead. "+
+			"A memory holds reusable technical guidance for agents, such as research, architecture, coding standards, and library choices, while requirements, scope, and business processes people read go in doc_create. "+
 			"kind decisions_log creates the project's decisions log (one per project, never sent every turn), and kind interview returns the project's interview memory, "+
 			"creating it empty the first time, with the questions of the workspace's Interview template. "+
 			"Copying needs memories:clone on the source and memories:write at the destination. "+
