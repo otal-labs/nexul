@@ -294,6 +294,11 @@ const dispatch = (client: ReturnType<typeof useQueryClient>, router: RouterFollo
     void client.invalidateQueries({ queryKey: [getTrailsKey, p.target_type, p.target_id] });
     void client.invalidateQueries({ queryKey: [getTrailKey, p.trail_id] });
     void client.invalidateQueries({ queryKey: [getActiveTrailsKey] });
+    // A finished interview run has written the memory and recorded its rounds; the page shows both without a reload.
+    if (p.target_type === "interview" && !isTrailActive(p.state)) {
+      void client.invalidateQueries({ queryKey: [getMemoriesKey] });
+      void client.invalidateQueries({ queryKey: [getInterviewAnswersKey, p.target_id] });
+    }
     if (p.target_type !== "ticket") return;
     // Starting shows the Thread section's Started message in place of "Start chat" without a reload.
     if (p.state === "starting") void client.invalidateQueries({ queryKey: [getChatTicketThreadStatusKey, p.target_id] });

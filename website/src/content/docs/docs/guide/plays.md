@@ -119,14 +119,15 @@ state from its trail.
 The Agent is told the project's name and id and the answers the project
 already records, such as where its tests live from the project wizard. It
 opens the interview memory with `memory_create` and `kind` `interview`, which creates it
-empty the first time and returns the workspace's Interview template questions. It asks one question at a time,
-each with its recommended answer as the first option. Its first question asks
-whether to scan the codebase for answers; if so, it reads the checkout, then
-asks about each finding until it is confirmed or corrected. It saves the
-interview memory with `memory_update` after each category, as rules rather
-than a transcript, under the 8,000-character cap. A re-run amends the existing
-interview instead of starting over, and memory versioning makes any amendment
-revertible.
+empty the first time and returns the workspace's Interview template questions
+and the project's stored answers. It reads the checkout, then asks about
+skipped questions, gaps, and anything the code contradicts, a round of
+questions at a time, each with its recommended answer as the first option and
+a line on why it is asked. Each answered round is stored with the project's
+answers. It records nothing from the code that was not confirmed, then writes
+the interview memory with `memory_update` as rules rather than a transcript,
+under the 8,000-character cap, keeping every existing rule no answer
+contradicts. Memory versioning makes any change revertible.
 
 The last step of the project wizard offers the interview while the project has
 none. Skipping it, or leaving the wizard without starting it, asks "are you

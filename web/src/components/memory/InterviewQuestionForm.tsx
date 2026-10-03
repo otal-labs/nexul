@@ -3,7 +3,7 @@ import { useId, useState, type KeyboardEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { QuestionStep } from "@/components/play/QuestionStep";
 import { useSaveInterviewAnswer } from "@/hooks/MemoryHooks";
-import { answerValue, type InterviewRow } from "@/models/InterviewAnswer";
+import { answerValue, recommendedDraft, type InterviewRow } from "@/models/InterviewAnswer";
 import type { AnswerValue } from "@/models/Question";
 
 interface InterviewQuestionFormProps {
@@ -13,19 +13,27 @@ interface InterviewQuestionFormProps {
   prevKey: string | null;
   nextKey: string | null;
   onMove: (key: string | null) => void;
+  // Given, the answer joins the run's live round instead of being saved, and returns the row to open next.
+  onAnswer?: ((value: AnswerValue) => string | null) | undefined;
+  pending?: boolean;
 }
 
 const hasAnswer = (draft: AnswerValue | undefined): boolean =>
   (draft?.text?.trim() ?? "") !== "" || (draft?.selected?.length ?? 0) > 0;
 
 // The open row's body: the question's options flush under its title, with Back, Skip, and Next; Next and Skip save.
-export const InterviewQuestionForm = ({ row, projectId, progress, prevKey, nextKey, onMove }: InterviewQuestionFormProps) => {
-  const [draft, setDraft] = useState<AnswerValue | undefined>(answerValue(row.answer));
+export const InterviewQuestionForm = ({ row, projectId, progress, prevKey, nextKey, onMove, onAnswer, pending = false }: InterviewQuestionFormProps) => {
+  const [draft, setDraft] = useState<AnswerValue | undefined>(answerValue(row.answer) ?? recommendedDraft(row.item));
   const save = useSaveInterviewAnswer();
   const idPrefix = useId();
-  const canNext = hasAnswer(draft) && !save.isPending;
+  const busy = save.isPending || pending;
+  const canNext = hasAnswer(draft) && !busy;
 
   const submit = (skip: boolean) => {
+    if (onAnswer) {
+      onMove(onAnswer(skip ? {} : (draft ?? {})));
+      return;
+    }
     const input = {
       project_id: projectId,
       round: row.round,
@@ -59,10 +67,10 @@ export const InterviewQuestionForm = ({ row, projectId, progress, prevKey, nextK
             Back
           </Button>
         )}
-        <Button variant="ghost" size="sm" disabled={save.isPending} onClick={() => submit(true)}>
+        <Button variant="ghost" size="sm" disabled={busy} onClick={() => submit(true)}>
           Skip
         </Button>
-        <Button size="sm" loading={save.isPending} disabled={!canNext} onClick={() => submit(false)}>
+        <Button size="sm" loading={busy} disabled={!canNext} onClick={() => submit(false)}>
           Next
         </Button>
       </div>

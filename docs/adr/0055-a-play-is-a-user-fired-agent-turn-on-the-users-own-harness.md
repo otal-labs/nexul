@@ -2,6 +2,9 @@
 
 Its move-on-success consequence is superseded by ADR 0112: a play never moves its ticket; footer memories tell the agent where it goes.
 
+Superseded in part by ADR 0115: an interview run's thread is hidden plumbing holding its session; the run is read on the
+project's Interview page, not as a conversation.
+
 A play is a pre-configured Agent turn a user fires from a ticket, a doc, or
 a project's interview with one button: "Fix with AI", "To tickets via AI",
 "Run the interview". It is not an automation

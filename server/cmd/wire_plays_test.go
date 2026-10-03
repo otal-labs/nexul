@@ -7,9 +7,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/otal-labs/nexul/internal/harness"
+	"github.com/otal-labs/nexul/internal/memories"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 	"github.com/otal-labs/nexul/internal/platform/storage"
+	"github.com/otal-labs/nexul/internal/plays"
 	"github.com/otal-labs/nexul/internal/tickets"
+	"github.com/otal-labs/nexul/internal/workspace"
 )
 
 // allowTickets lets every ticket and chat call through, for tests about what the adapters do past the permission check.
@@ -47,4 +51,28 @@ func TestIntegration_PlaysLinkReader_OneHop(t *testing.T) {
 	require.Len(t, got.Blockers, 1)
 	assert.Equal(t, "older work", got.Blockers[0].Title)
 	assert.False(t, got.Blockers[0].Done)
+}
+
+func TestPlaysInterviewAnswers_RoundsLandInOrderAsStoredAnswers(t *testing.T) {
+	svc, store := newWired(t)
+	ctx := t.Context()
+	require.NoError(t, store.Projects.Create(ctx, &workspace.Project{ID: "p-web", WorkspaceID: "workspace-default", Name: "Web", Prefix: "WEB"}))
+	a := playsInterviewAnswers{svc: svc.memoriesSvc}
+
+	require.NoError(t, a.RecordRound(ctx, "p-web", "u-1", []plays.FollowUp{
+		{Question: "Which test runner?", Why: "ci.yml runs both", Options: []harness.QuestionOption{{Label: "Vitest", Description: "web/", Value: "vitest"}, {Label: "Bun"}}, Selected: []string{"Vitest"}},
+		{Question: "What coverage floor?", Selected: []string{}},
+	}))
+	require.NoError(t, a.RecordRound(ctx, "p-web", "u-1", []plays.FollowUp{{Question: "Keep the 80 floor?", Text: "Raise it to 85"}}))
+
+	got, err := store.Memories.ListAnswers(ctx, "p-web")
+	require.NoError(t, err)
+	require.Len(t, got, 3)
+	assert.Equal(t, []int{1, 1, 2}, []int{got[0].Round, got[1].Round, got[2].Round})
+	assert.Equal(t, []memories.AnswerOption{{Label: "Vitest", Description: "web/"}, {Label: "Bun"}}, got[0].Options)
+	assert.Equal(t, "ci.yml runs both", got[0].Why)
+	assert.Equal(t, []string{"Vitest"}, got[0].Selected)
+	assert.True(t, got[1].Skipped, "an empty answer is stored as skipped")
+	assert.Equal(t, "Raise it to 85", got[2].Text)
+	assert.Equal(t, "u-1", got[2].AnsweredBy)
 }

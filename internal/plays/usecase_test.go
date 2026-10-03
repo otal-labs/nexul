@@ -198,7 +198,7 @@ func TestSeedDefaults_CreatesTheFourDefaultPlays(t *testing.T) {
 	}{
 		{"Fix with AI", TypeTicket, &progress, []string{"ticket_update", "link_pr"}},
 		{"To tickets via AI", TypeDoc, nil, []string{"project_get", "ticket_list", "ticket_create"}},
-		{"Interview", TypeInterview, nil, []string{"`kind` `interview`", "one question at a time"}},
+		{"Interview", TypeInterview, nil, []string{"`kind` `interview`", "one round at a time", "memory_update"}},
 		{"Test with AI", TypeTicket, &testingStage, []string{"test_target", "project_get", "ticket_test_report", "never production"}},
 	}
 	for _, tt := range tests {

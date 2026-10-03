@@ -24,10 +24,18 @@ the interview thread.
 
 **Blocked by:** 07, 08
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] A run on a fake harness: rounds land as stored answers, the memory is
+- [x] A run on a fake harness: rounds land as stored answers, the memory is
       written, existing rules survive
-- [ ] The page shows each round's live question and folds earlier sections
-- [ ] Instructions migration leaves an edited workspace play untouched
-- [ ] CONTEXT.md and the ADR updated
+- [x] The page shows each round's live question and folds earlier sections
+- [x] Instructions migration leaves an edited workspace play untouched
+- [x] CONTEXT.md and the ADR updated
+
+## Answer
+
+Built in PR #362: the rewritten Interview play instructions with migration
+0062, `Runner.Answer` storing each answered follow-up round, the live
+question of a waiting run as the next follow-up section on the Interview
+page (answered on the trail, replaced by the stored round), `CONTEXT.md`,
+and ADR 0115.
