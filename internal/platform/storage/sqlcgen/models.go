@@ -551,6 +551,13 @@ type Message struct {
 	AuthorKind     string
 }
 
+type MessageReaction struct {
+	MessageID string
+	Emoji     string
+	UserID    string
+	CreatedAt int64
+}
+
 type Notification struct {
 	ID           string
 	UserID       string

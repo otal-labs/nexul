@@ -11,7 +11,9 @@ import (
 
 	"github.com/otal-labs/nexul/internal/chat"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/identity"
+	"github.com/otal-labs/nexul/internal/platform/ids"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
 )
 
@@ -533,4 +535,31 @@ func TestChatChannels_EveryChangeIsWrittenToTheOutboxWithIt(t *testing.T) {
 	var messages int
 	require.NoError(t, s.db.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM messages WHERE conversation_id = ?`, created.ID).Scan(&messages))
 	assert.Zero(t, messages, "its messages are deleted with it")
+}
+
+func TestChatRepo_SetReaction_GroupsByFirstUseAndWritesOnlyRealChanges(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	for _, u := range []string{"u-1", "u-2"} {
+		seedChatUser(t, s, u)
+	}
+	require.NoError(t, s.Chat.CreateConversation(t.Context(), newTestConversation("conv-1", chat.KindChannel, "general", "", "u-1"), []string{"u-1"}))
+	require.NoError(t, s.Chat.CreateMessage(t.Context(), &chat.Message{ID: "msg-1", ConversationID: "conv-1", AuthorID: "u-1", Body: "hi", CreatedAt: chatFixedNow, UpdatedAt: chatFixedNow}))
+	evt := func() eventbus.OutboxEvent {
+		return eventbus.OutboxEvent{ID: ids.New(), Topic: chat.TopicMessageReactionsChanged, Payload: map[string]string{}}
+	}
+	for i, r := range []struct{ user, emoji string }{{"u-2", "👍"}, {"u-1", "🎉"}, {"u-1", "👍"}, {"u-1", "👍"}} {
+		require.NoError(t, s.Chat.SetReaction(t.Context(), "msg-1", r.user, r.emoji, true, chatFixedNow.Add(time.Duration(i)*time.Second), evt()))
+	}
+	require.NoError(t, s.Chat.SetReaction(t.Context(), "msg-1", "u-2", "🎉", false, chatFixedNow, evt()))
+
+	got, err := s.Chat.ListMessages(t.Context(), "conv-1", 10)
+	require.NoError(t, err)
+	assert.Equal(t, []chat.Reaction{{Emoji: "👍", UserIDs: []string{"u-2", "u-1"}}, {Emoji: "🎉", UserIDs: []string{"u-1"}}}, got[0].Reactions)
+	assert.Len(t, outboxPayload(t, s, chat.TopicMessageReactionsChanged), 3, "a repeated add and a remove of nothing write no event")
+
+	require.NoError(t, s.Chat.DeleteMessage(t.Context(), "msg-1", chatFixedNow))
+	deleted, err := s.Chat.GetMessage(t.Context(), "msg-1")
+	require.NoError(t, err)
+	assert.Empty(t, deleted.Reactions)
 }

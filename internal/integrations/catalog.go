@@ -1262,6 +1262,19 @@ var catalogSchemas = map[string]string{
 			"members_only": {"type": "boolean", "description": "Set on a DM or private channel's message, which is never delivered to integrations or automations."}
 		}
 	}`,
+	"chat.message.reactions_changed": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["conversation_id", "message_id", "user_id", "emoji", "reacted"],
+		"properties": {
+			"conversation_id": {"type": "string"},
+			"message_id": {"type": "string"},
+			"user_id": {"type": "string", "description": "The person who added or removed the reaction."},
+			"emoji": {"type": "string", "description": "The emoji itself, such as 👍."},
+			"reacted": {"type": "boolean", "description": "True when the reaction was added, false when it was removed."},
+			"members_only": {"type": "boolean", "description": "Set on a DM or private channel's message, which is never delivered to integrations or automations."}
+		}
+	}`,
 	"voice.occupancy.changed": `{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",
 		"type": "object",

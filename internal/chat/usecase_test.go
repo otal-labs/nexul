@@ -3,6 +3,7 @@ package chat
 import (
 	"context"
 	"errors"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -380,6 +381,37 @@ func (f *fakeRepo) DeleteMessage(_ context.Context, id string, deletedAt time.Ti
 	m.DeletedAt = &deletedAt
 	m.UpdatedAt = deletedAt
 	f.events = append(f.events, evts...)
+	return nil
+}
+
+func (f *fakeRepo) SetReaction(_ context.Context, messageID, userID, emoji string, reacted bool, _ time.Time, evts ...eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	m, ok := f.messages[messageID]
+	if !ok {
+		return apperrs.ErrNotFound
+	}
+	var next []Reaction
+	changed := false
+	for _, r := range m.Reactions {
+		users := slices.DeleteFunc(slices.Clone(r.UserIDs), func(id string) bool { return !reacted && r.Emoji == emoji && id == userID })
+		changed = changed || len(users) != len(r.UserIDs)
+		if r.Emoji == emoji && reacted && !slices.Contains(users, userID) {
+			users = append(users, userID)
+			changed = true
+		}
+		if len(users) > 0 {
+			next = append(next, Reaction{Emoji: r.Emoji, UserIDs: users})
+		}
+	}
+	if reacted && !slices.ContainsFunc(m.Reactions, func(r Reaction) bool { return r.Emoji == emoji }) {
+		next = append(next, Reaction{Emoji: emoji, UserIDs: []string{userID}})
+		changed = true
+	}
+	m.Reactions = next
+	if changed {
+		f.events = append(f.events, evts...)
+	}
 	return nil
 }
 
@@ -1085,6 +1117,63 @@ func TestEditMessage(t *testing.T) {
 		assert.Len(t, got.Mentions, 1)
 		require.NotNil(t, got.EditedAt)
 		require.Len(t, repo.eventsFor(TopicMessageUpdated), 1)
+	})
+}
+
+func TestReact(t *testing.T) {
+	setup := func(t *testing.T) (*fakeRepo, *Service, *Message) {
+		t.Helper()
+		repo := newFakeRepo()
+		s := newTestService(repo)
+		c, err := s.CreateDM(t.Context(), "w-1", "u-1", []string{"u-2"})
+		require.NoError(t, err)
+		m, err := s.PostMessage(t.Context(), c.ID, "u-1", "hi")
+		require.NoError(t, err)
+		return repo, s, m
+	}
+	refusals := []struct {
+		name    string
+		message func(m *Message) string
+		caller  string
+		emoji   string
+		want    error
+	}{
+		{"empty message id", func(*Message) string { return "" }, "u-2", "👍", apperrs.ErrInvalid},
+		{"empty caller", func(m *Message) string { return m.ID }, "", "👍", apperrs.ErrInvalid},
+		{"blank emoji", func(m *Message) string { return m.ID }, "u-2", " ", apperrs.ErrInvalid},
+		{"text with a space", func(m *Message) string { return m.ID }, "u-2", "thumbs up", apperrs.ErrInvalid},
+		{"oversized emoji", func(m *Message) string { return m.ID }, "u-2", strings.Repeat("👍", 17), apperrs.ErrInvalid},
+		{"missing message", func(*Message) string { return "missing" }, "u-2", "👍", apperrs.ErrNotFound},
+		{"someone outside the DM", func(m *Message) string { return m.ID }, "u-3", "👍", apperrs.ErrNotFound},
+	}
+	for _, tt := range refusals {
+		t.Run(tt.name+" is refused", func(t *testing.T) {
+			repo, s, m := setup(t)
+			_, err := s.React(t.Context(), tt.message(m), tt.caller, tt.emoji, true)
+			require.ErrorIs(t, err, tt.want)
+			assert.Empty(t, repo.eventsFor(TopicMessageReactionsChanged))
+		})
+	}
+	t.Run("a deleted message takes no reaction", func(t *testing.T) {
+		_, s, m := setup(t)
+		require.NoError(t, s.DeleteMessage(t.Context(), m.ID, "u-1"))
+		_, err := s.React(t.Context(), m.ID, "u-2", "👍", true)
+		require.ErrorIs(t, err, apperrs.ErrInvalid)
+	})
+	t.Run("adds once, removes, and publishes only real changes as members-only deltas", func(t *testing.T) {
+		repo, s, m := setup(t)
+		got, err := s.React(t.Context(), m.ID, "u-2", "👍", true)
+		require.NoError(t, err)
+		assert.Equal(t, []Reaction{{Emoji: "👍", UserIDs: []string{"u-2"}}}, got.Reactions)
+		_, err = s.React(t.Context(), m.ID, "u-2", "👍", true)
+		require.NoError(t, err)
+		got, err = s.React(t.Context(), m.ID, "u-2", "👍", false)
+		require.NoError(t, err)
+		assert.Empty(t, got.Reactions)
+		evts := repo.eventsFor(TopicMessageReactionsChanged)
+		require.Len(t, evts, 2)
+		assert.Equal(t, MessageReactionsChangedEvent{ConversationID: m.ConversationID, MessageID: m.ID, UserID: "u-2", Emoji: "👍", Reacted: true, MembersOnly: true}, evts[0].Payload)
+		assert.False(t, evts[1].Payload.(MessageReactionsChangedEvent).Reacted)
 	})
 }
 

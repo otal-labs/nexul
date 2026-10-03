@@ -97,3 +97,13 @@ LEFT JOIN conversation_unread_state u ON u.conversation_id = c.id AND u.user_id 
 LEFT JOIN messages m ON m.conversation_id = c.id AND m.deleted_at IS NULL AND m.author_id != sqlc.arg(user_id) AND m.created_at > COALESCE(u.last_read_at, 0)
 WHERE c.workspace_id = sqlc.arg(workspace_id) AND (c.kind IN ('channel', 'voice_channel', 'doc_thread') OR p.user_id IS NOT NULL)
 GROUP BY c.id;
+
+-- name: InsertMessageReaction :execrows
+INSERT INTO message_reactions (message_id, emoji, user_id, created_at) VALUES (?, ?, ?, ?)
+    ON CONFLICT(message_id, emoji, user_id) DO NOTHING;
+
+-- name: DeleteMessageReaction :execrows
+DELETE FROM message_reactions WHERE message_id = ? AND emoji = ? AND user_id = ?;
+
+-- name: ListMessageReactions :many
+SELECT message_id, emoji, user_id FROM message_reactions WHERE message_id IN (sqlc.slice('ids')) ORDER BY created_at, rowid;

@@ -44,6 +44,13 @@ type messagePostIn struct {
 	WorkspaceID string      `json:"workspace_id,omitempty" jsonschema:"The workspace of the doc, ticket, or project; needed only when its thread does not exist yet."`
 	Body        string      `json:"body,omitempty" jsonschema:"The message as markdown, required for a post. @login mentions a member and @Agent starts an agent turn."`
 	File        *noteFileIn `json:"file,omitempty" jsonschema:"A markdown file to carry with the message, which makes the post a note; only a ticket's thread takes one. Lasting context on a ticket goes here, since the ticket body is the person's spec. With note_id it replaces that note's file instead."`
+	Reaction    *reactionIn `json:"reaction,omitempty" jsonschema:"Reacts to an existing message with an emoji instead of posting, and leaves out the target, body, and file."`
+}
+
+type reactionIn struct {
+	MessageID string `json:"message_id" jsonschema:"The message's id, from message_list."`
+	Emoji     string `json:"emoji" jsonschema:"One emoji, such as 👍."`
+	Remove    bool   `json:"remove,omitempty" jsonschema:"Removes your reaction with this emoji instead of adding it."`
 }
 
 type noteFileIn struct {
@@ -95,6 +102,7 @@ type messageResult struct {
 	File      *noteFileResult `json:"file,omitempty"`
 	EditedAt  *time.Time      `json:"edited_at,omitempty"`
 	CreatedAt time.Time       `json:"created_at"`
+	Reactions []Reaction      `json:"reactions,omitempty"`
 }
 
 // MCPTools returns the chat tools; each acts as the caller the identity context carries.
@@ -253,7 +261,8 @@ func messagePostTool(s *Service) mcptool.Tool {
 			"With file, the post is a note on a ticket's thread: it shows as the Agent on your behalf, starts no turn, "+
 			"needs tickets:write on the ticket, and carries the file; message_list returns it. "+
 			"With file.note_id it replaces that note's file instead, even while people are editing it live; their unsaved typing is dropped. "+
-			"Returns the posted or replaced message and its conversation_id.",
+			"With reaction it adds or removes your emoji reaction on a message instead of posting. "+
+			"Returns the posted, replaced, or reacted-to message and its conversation_id.",
 		mcptool.Hints{},
 		func(ctx context.Context, in messagePostIn) (any, error) {
 			caller, err := callerID(ctx)
@@ -262,6 +271,9 @@ func messagePostTool(s *Service) mcptool.Tool {
 			}
 			if in.File != nil && in.File.NoteID != "" {
 				return replaceNote(ctx, s, in, caller)
+			}
+			if in.Reaction != nil {
+				return react(ctx, s, in, caller)
 			}
 			id, err := threadFor(ctx, s, in.messageTarget, in.WorkspaceID, caller)
 			if err != nil {
@@ -292,6 +304,18 @@ func replaceNote(ctx context.Context, s *Service, in messagePostIn, caller strin
 		return nil, err
 	}
 	return toMessageResult(m, file), nil
+}
+
+// react is message_post with reaction: the message gains or loses the caller's emoji, and nothing is posted.
+func react(ctx context.Context, s *Service, in messagePostIn, caller string) (any, error) {
+	if in.Body != "" || in.File != nil || in.messageTarget != (messageTarget{}) {
+		return nil, fmt.Errorf("%w: with reaction, pass only reaction; the message already has its conversation", apperrs.ErrInvalid)
+	}
+	m, err := s.React(ctx, in.Reaction.MessageID, caller, in.Reaction.Emoji, !in.Reaction.Remove)
+	if err != nil {
+		return nil, err
+	}
+	return toMessageResult(m, nil), nil
 }
 
 // target returns the thread kind and id named, an empty kind for a conversation id, or ErrInvalid unless exactly one is set.
@@ -367,7 +391,7 @@ func conversationByID(ctx context.Context, s *Service, id string) (string, error
 func toMessageResult(m *Message, file *NoteFile) messageResult {
 	out := messageResult{
 		ID: m.ID, ConversationID: m.ConversationID, AuthorID: m.AuthorID, AuthorKind: m.AuthorKind, Body: m.Body,
-		Mentions: m.Mentions, EditedAt: m.EditedAt, CreatedAt: m.CreatedAt,
+		Mentions: m.Mentions, EditedAt: m.EditedAt, CreatedAt: m.CreatedAt, Reactions: m.Reactions,
 	}
 	if file != nil {
 		out.File = &noteFileResult{ID: file.ID, Name: file.Name, Markdown: file.Markdown}

@@ -101,6 +101,14 @@ type Message struct {
 	DeletedAt *time.Time `json:"deleted_at,omitempty"`
 	CreatedAt time.Time  `json:"created_at"`
 	UpdatedAt time.Time  `json:"updated_at"`
+	// Reactions are filled on reads, in the order each emoji was first used; a deleted message has none.
+	Reactions []Reaction `json:"reactions,omitempty"`
+}
+
+// Reaction is one emoji on a message and the people who reacted with it, earliest first.
+type Reaction struct {
+	Emoji   string   `json:"emoji"`
+	UserIDs []string `json:"user_ids"`
 }
 
 // NoteFileInput is the markdown file a note carries, as posted; Name is forced to end in .md.
