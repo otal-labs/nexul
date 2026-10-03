@@ -25,7 +25,7 @@ export const DocListRow = ({ doc, projectToken, selected }: DocListRowProps) => 
       leading={
         <>
           {runState === "waiting" && (
-            <CircleHelpIcon className="ml-4.5 size-3.5 shrink-0 text-warning" role="img" aria-label="Play waiting for an answer" />
+            <CircleHelpIcon className="ml-4.5 size-3.5 shrink-0 text-info" role="img" aria-label="Play waiting for an answer" />
           )}
           {runState !== undefined && runState !== "waiting" && (
             <LoaderCircleIcon className="ml-4.5 size-3.5 shrink-0 animate-spin text-warning motion-reduce:animate-none" role="img" aria-label="Play running" />
