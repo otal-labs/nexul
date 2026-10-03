@@ -41,10 +41,11 @@ export const useFetchLatestChoices = (playId: string, projectId: string) =>
     enabled: playId !== "" && projectId !== "",
   });
 
-// Target id to trail id; waiting holds the subset stopped on a question to the user.
+// Target id to trail id; waiting holds the subset stopped on a question to the user, started each run's start time.
 interface ActiveTargets {
   active: Record<string, string>;
   waiting: Record<string, string>;
+  started: Record<string, string>;
 }
 
 // One request per project and target type: every row of a board or list shares the key.
@@ -53,7 +54,7 @@ const useFetchActiveTargets = (targetType: PlayType, projectId: string | undefin
     queryKey: [getActiveTrailsKey, targetType, projectId, ids],
     queryFn: async (): Promise<ActiveTargets> => {
       const { data } = await api.get<Partial<ActiveTargets>>("/api/plays/runs/active", { params: { target_type: targetType, target_ids: ids.join(",") } });
-      return { active: data.active ?? {}, waiting: data.waiting ?? {} };
+      return { active: data.active ?? {}, waiting: data.waiting ?? {}, started: data.started ?? {} };
     },
     enabled: !!projectId && ids.length > 0,
   });
@@ -208,6 +209,10 @@ const useRunState = (targetType: PlayType, targetId: string, known: ActiveTarget
 // The board card's question: no run, a run going, or a run waiting on an answer.
 export const useTicketRunState = (projectId: string, ticketId: string): TrailState | undefined =>
   useRunState("ticket", ticketId, useFetchActiveTrails(projectId).data);
+
+// When the ticket's run started, for the card's timer; undefined until the batch answer carries it.
+export const useTicketRunStartedAt = (projectId: string, ticketId: string): string | undefined =>
+  useFetchActiveTrails(projectId).data?.started[ticketId];
 
 // A swimlane header's question: how many of its tickets have a run going, and how many wait on an answer.
 export const useTicketRunCounts = (projectId: string | undefined, ticketIds: string[]) => {
