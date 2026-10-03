@@ -3,10 +3,11 @@ package agent
 import (
 	"bytes"
 	"context"
-	"fmt"
+	"errors"
 	"log/slog"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,8 +22,8 @@ type fakeProjectMemories struct {
 	byProject map[string][]MemoryItem
 }
 
-func (f *fakeProjectMemories) ListMemories(_ context.Context, projectID string) (MemoriesIndex, error) {
-	return MemoriesIndex{Project: f.byProject[projectID]}, nil
+func (f *fakeProjectMemories) ListMemories(_ context.Context, projectID string) ([]MemoryItem, error) {
+	return f.byProject[projectID], nil
 }
 
 // captureFullAndIncremental wires a Service whose harness client records both prompts StartTurn was called with.
@@ -46,130 +47,81 @@ func captureFullAndIncremental(t *testing.T, cfg Config) (svc *Service, got *har
 	return NewService(cfg), got
 }
 
-func TestRunTurn_TicketThread_AlwaysIncludedMemoryInlinedInFull(t *testing.T) {
-	conv := newFakeConversations(Conversation{ID: "conv-1", IsTicketThread: true, TicketID: "t-1", ThreadID: "thread-reused"})
-	mem := &fakeProjectMemories{byProject: map[string][]MemoryItem{
-		"proj-1": {
-			{Name: "Working in this project", WhenToUse: "always", AlwaysIncluded: true, Body: "Standing rule body text."},
-		},
-	}}
-	svc, got := captureFullAndIncremental(t, Config{
-		Conversations: conv,
-		Tickets:       &fakeTickets{ticket: Ticket{ProjectID: "proj-1", Title: "Ticket title", Body: "Ticket body"}},
-		Memories:      mem,
-	})
-
-	svc.RunTurn(context.Background(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent go"})
-
-	assert.Contains(t, got.Full, "Always-included memories, follow them:")
-	assert.Contains(t, got.Full, "### Working in this project\nStanding rule body text.")
-}
-
-func TestRunTurn_MemoriesIndex_ExcludesAlwaysIncludedMemories(t *testing.T) {
+func TestRunTurn_TicketThreadMention_NamesItsContextInsteadOfCarryingIt(t *testing.T) {
 	conv := newFakeConversations(Conversation{ID: "conv-1", IsTicketThread: true, TicketID: "t-1"})
-	mem := &fakeProjectMemories{byProject: map[string][]MemoryItem{
-		"proj-1": {
-			{Name: "Working in this project", WhenToUse: "always rules", AlwaysIncluded: true, Body: "Standing rule body text."},
-			{Name: "Deploy quirks", WhenToUse: "use this if touching deploy config"},
-		},
-	}}
-	svc, got := captureFullAndIncremental(t, Config{
-		Conversations: conv,
-		Tickets:       &fakeTickets{ticket: Ticket{ProjectID: "proj-1"}},
-		Memories:      mem,
-	})
-
-	svc.RunTurn(context.Background(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent go"})
-
-	assert.Contains(t, got.Full, "- Deploy quirks: use this if touching deploy config")
-	assert.NotContains(t, got.Full, "- Working in this project:", "an always-included memory is inlined, never listed in the index")
-}
-
-func TestRunTurn_OverCeilingAlwaysIncludedMemories_TrimmedWithNoteLoggedTurnStillRuns(t *testing.T) {
-	var logBuf bytes.Buffer
-	log := slog.New(slog.NewTextHandler(&logBuf, nil))
-
-	// Four memories at 19,000 chars each: each is under the 20,000 per-memory ceiling on its own, but the
-	// four together (76,000) are well over the 60,000 per-run ceiling, forcing a drop from the end.
-	items := make([]MemoryItem, 4)
-	for i := range items {
-		items[i] = MemoryItem{Name: fmt.Sprintf("Memory %d", i), WhenToUse: "always", AlwaysIncluded: true, Body: strings.Repeat("x", 19_000)}
+	conv.history = []ConversationMessage{
+		{AuthorID: "u-2", AuthorKind: "user", Body: "it 500s on submit", CreatedAt: time.Date(2026, 10, 3, 12, 18, 0, 0, time.UTC)},
+		{AuthorID: "u-1", AuthorKind: "system", Body: "This computer's agent harness changed release", CreatedAt: time.Date(2026, 10, 3, 12, 19, 0, 0, time.UTC)},
+		{AuthorID: "u-1", AuthorKind: "user", Body: "@Agent why?", CreatedAt: time.Date(2026, 10, 3, 12, 20, 0, 0, time.UTC)},
 	}
-	conv := newFakeConversations(Conversation{ID: "conv-1", IsTicketThread: true, TicketID: "t-1"})
-	mem := &fakeProjectMemories{byProject: map[string][]MemoryItem{"proj-1": items}}
+	reader := newFakeAttachmentReader()
+	reader.items["att-1"] = StoredAttachment{Name: "shot.png", MIME: "image/png", Bytes: []byte{1, 2, 3}}
 	svc, got := captureFullAndIncremental(t, Config{
 		Conversations: conv,
-		Tickets:       &fakeTickets{ticket: Ticket{ProjectID: "proj-1"}},
-		Memories:      mem,
-		Logger:        log,
+		Tickets:       &fakeTickets{ticket: Ticket{ProjectID: "proj-1", Key: "SRC-3", Title: "Login fails", Body: "Steps ![shot](/api/attachments/att-1) spec body"}},
+		Memories: &fakeProjectMemories{byProject: map[string][]MemoryItem{"proj-1": {
+			{ID: "m-work", Name: "Working here", AlwaysIncluded: true},
+			{ID: "m-deploy", Name: "Deploy quirks"},
+			{ID: "m-int", Name: "Interview", AlwaysIncluded: true, Interview: true},
+		}}},
+		Attachments: reader,
+		Now:         func() time.Time { return time.Date(2026, 10, 3, 12, 21, 0, 0, time.UTC) },
 	})
 
-	svc.RunTurn(context.Background(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent go"})
+	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent why?"})
 
-	assert.Contains(t, got.Full, "[always-included memories trimmed to fit: 3 of 4 inlined]")
-	assert.Contains(t, logBuf.String(), "trimmed to fit ceiling")
-	assert.Contains(t, logBuf.String(), "level=WARN")
-
-	// RunTurn blocks until the turn ends; by the time it returns the trim must not have kept the turn from
-	// completing normally.
-	replies, systemPosts := conv.snapshot()
-	assert.Empty(t, systemPosts, "the turn must complete normally despite the trim, not fail")
-	assert.NotEmpty(t, replies)
-}
-
-func TestRunTurn_AlwaysIncludedMemoryImage_TravelsAsAttachment(t *testing.T) {
-	conv := newFakeConversations(Conversation{ID: "conv-1", IsTicketThread: true, TicketID: "t-1"})
-	mem := &fakeProjectMemories{byProject: map[string][]MemoryItem{
-		"proj-1": {
-			{Name: "Working in this project", AlwaysIncluded: true, Body: "Layout: ![diagram](/api/attachments/att-9) end"},
-		},
-	}}
-	reader := newFakeAttachmentReader()
-	reader.items["att-9"] = StoredAttachment{Name: "diagram.png", MIME: "image/png", Bytes: []byte{9}}
-	var got harness.TurnPrompts
-	client := &harnesstest.Client{StartTurnFn: func(_ context.Context, _ harness.Target, _ string, prompts harness.TurnPrompts) (harness.StartResult, error) {
-		got = prompts
-		return harness.StartResult{SessionID: "thread-1", Updates: updatesChan(harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}})}, nil
-	}}
-	svc := NewService(Config{
-		Conversations: conv,
-		Targets:       &fakeTargets{target: testTarget()},
-		Harnesses:     harnesstest.Registry(client),
-		Tickets:       &fakeTickets{ticket: Ticket{ProjectID: "proj-1", Title: "Ticket", Body: "plain"}},
-		Memories:      mem,
-		Attachments:   reader,
-		Live:          &fakeLive{},
-	})
-
-	svc.RunTurn(context.Background(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent go"})
-
+	assert.Equal(t, DefaultIntro+"\n\n"+
+		"Right now you are running @Agent in a chat, mentioned by u-1.\n\n"+
+		"Ticket: SRC-3 \"Login fails\". Read it with ticket_get before you start.\n"+
+		"The images in its body are attached to this message, in order.\n\n"+
+		"Read these memories with memory_get before you start; they are your context:\n"+
+		"- Interview (id m-int)\n- Working here (id m-work)\n\n"+
+		"Conversation so far:\n[2026-10-03 12:18] u-2: it 500s on submit\n\n"+
+		"New message from u-1 at 2026-10-03 12:21:\n@Agent why?\n\n"+
+		DefaultFooter, got.Full)
 	require.Len(t, got.Attachments, 1)
-	assert.Equal(t, "diagram.png", got.Attachments[0].Name)
-	assert.Contains(t, got.Full, "Layout: [image: diagram.png, attached to this turn] end")
+	assert.Equal(t, "shot.png", got.Attachments[0].Name)
 }
 
-func TestSplitAlwaysIncluded_InterviewLeads_SoATrimNeverDropsIt(t *testing.T) {
-	_, always := splitAlwaysIncluded(MemoriesIndex{
-		Project: []MemoryItem{
-			{Name: "Team tone", AlwaysIncluded: true, Body: strings.Repeat("w", MaxMemoryChars)},
-			{Name: "Working here", AlwaysIncluded: true, Body: "p"},
-			{Name: "Interview", AlwaysIncluded: true, Interview: true, Body: "Go only."},
-		},
-	})
-	require.Len(t, always, 3)
-	assert.Equal(t, "Interview", always[0].Title)
-
-	block := InlineMemoriesTrimmed(always, InlineLimits{PerMemory: MaxMemoryChars, PerRun: MaxMemoryChars}, slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)))
-	assert.Contains(t, block, "### Interview\nGo only.")
+// promptTemplates is the Templates seam: a body per key, or one error for every read.
+type promptTemplates struct {
+	bodies map[string]string
+	err    error
 }
 
-func TestRunTurn_FreshSessionBlocks_InTheFullPromptOnly(t *testing.T) {
-	svc, got := captureFullAndIncremental(t, Config{Conversations: newFakeConversations(Conversation{ID: "conv-1", ThreadID: "thread-reused"})})
+func (p promptTemplates) Effective(_ context.Context, kind, key string) (string, error) {
+	if kind != TemplateKind {
+		return "", errors.New("wrong kind " + kind)
+	}
+	return p.bodies[key], p.err
+}
 
-	svc.RunTurn(context.Background(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "Answered: Yes",
-		ExtraRequestBlocks: []string{"every prompt"}, FreshSessionBlocks: []string{"Memories to read first: m-1"}})
+func TestRunTurn_PromptTemplates_FrameTheFullPrompt(t *testing.T) {
+	tests := []struct {
+		name       string
+		templates  promptTemplates
+		wantPrefix string
+		wantSuffix string
+		wantWarn   bool
+	}{
+		{"edited intro, emptied footer", promptTemplates{bodies: map[string]string{TemplateIntro: "Be terse.", TemplateFooter: ""}}, "Be terse.\n\nRight now", "@Agent go", false},
+		{"a failed read falls back to the code defaults", promptTemplates{err: errors.New("db down")}, DefaultIntro + "\n\n", DefaultFooter, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var logs bytes.Buffer
+			svc, got := captureFullAndIncremental(t, Config{
+				Conversations: newFakeConversations(Conversation{ID: "conv-1"}),
+				Templates:     tt.templates,
+				Logger:        slog.New(slog.NewTextHandler(&logs, nil)),
+			})
 
-	assert.Contains(t, got.Full, "Answered: Yes\n\nevery prompt\n\nMemories to read first: m-1")
-	assert.Contains(t, got.Incremental, "every prompt")
-	assert.NotContains(t, got.Incremental, "Memories to read first", "a live session already read them")
+			svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent go"})
+
+			assert.True(t, strings.HasPrefix(got.Full, tt.wantPrefix), "full prompt:\n%s", got.Full)
+			assert.True(t, strings.HasSuffix(got.Full, tt.wantSuffix), "full prompt:\n%s", got.Full)
+			assert.NotContains(t, got.Incremental, "Be terse.", "a live session already holds the intro")
+			assert.Equal(t, tt.wantWarn, bytes.Contains(logs.Bytes(), []byte("read prompt template failed")))
+		})
+	}
 }

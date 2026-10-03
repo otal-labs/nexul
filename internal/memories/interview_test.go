@@ -218,7 +218,6 @@ func TestListMemoryItems_CarriesTheKind(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, projectItems, 1)
 	assert.Equal(t, KindInterview, projectItems[0].Kind)
-	assert.NotEmpty(t, projectItems[0].Body)
 }
 
 func TestInterviewTemplate_NeverSaved_ReturnsTheDefault(t *testing.T) {

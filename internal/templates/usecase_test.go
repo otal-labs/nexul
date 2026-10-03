@@ -218,6 +218,22 @@ func TestService_RefusesWhatItCannotPlace(t *testing.T) {
 	assert.Empty(t, f.repo.events, "nothing refused was written")
 }
 
+func TestService_InstanceOnlyKind(t *testing.T) {
+	svc := NewService(newFakeRepo(), fakeGate{"admin": true}, Kind{Name: "frame", Defaults: []Default{{Key: "intro", Name: "Intro", Body: "hello"}}})
+
+	_, err := svc.Update(as("admin"), "frame", "intro", Instance, "")
+	require.NoError(t, err)
+	body, err := svc.Effective(context.Background(), "frame", "intro")
+	require.NoError(t, err)
+	assert.Empty(t, body, "an emptied template reads as empty, not as the code default")
+
+	_, err = svc.Clone(as("admin"), "frame", "intro", Instance, Location{Scope: ScopeWorkspace, WorkspaceID: "ws-1"})
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
+	assert.ErrorContains(t, err, "frame templates live only at the instance")
+	_, err = svc.Reset(as("admin"), "frame", "intro", Location{Scope: ScopeProject, ProjectID: "p-1"})
+	assert.ErrorContains(t, err, "frame templates live only at the instance")
+}
+
 func TestService_StorageFailuresSurface(t *testing.T) {
 	f := newFixture()
 	boom := errors.New("disk")

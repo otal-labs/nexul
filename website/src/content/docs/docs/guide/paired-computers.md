@@ -98,8 +98,8 @@ providers already hold, so re-running it on a confirmed computer only
 re-checks. The nexul-memory skill is Nexul's own and carries a version: setup
 replaces a copy whose version is older, and a provider confirmed with an older
 copy shows **skills out of date** in its row. That is a signal,
-not a block; agent work keeps running, and turns follow the current memory
-protocol from their own prompt until the skill is refreshed. A yellow dot on the
+not a block; agent work keeps running on the standing rules every turn's prompt
+closes with until the skill is refreshed. A yellow dot on the
 settings gear and on **T3 pairing** says one of your computers needs it. When
 skills are the only thing out of date, the row's main button is **Update skills**:
 one short turn on the computer's first confirmed provider fetches each Nexul skill

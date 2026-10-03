@@ -59,9 +59,10 @@ needs a usable computer. If no computer is paired, expired, offline, missing
 a T3 project, or ambiguous because no default was chosen, the UI shows the
 reason instead of firing a turn.
 
-A ticket play also tells the Agent about the ticket's links. On a bug it
-receives one hop of origin context: the body of the ticket the bug was found
-in, that ticket's doc, and its pull requests, never the origin's own origin.
+A ticket play also tells the Agent about the ticket's links. On a bug it is
+told which ticket the bug was found in and reads that ticket's body, doc, and
+pull requests itself with `ticket_get`, one hop only, never the origin's own
+origin.
 A bug filed with its origin unknown is run with that said plainly. A play on a
 blocked ticket asks "are you sure?" before it runs, and the Agent is told each
 blocker and whether it is done.
@@ -90,14 +91,16 @@ the run ends as the Agent ended it. Only a connection that stays down past
 those five minutes fails the run. A trail keeps the newest 300 activity
 entries.
 
-The run's prompt carries no memory bodies. It names the interview memory,
-then the other always-included memories, then the ones picked for the run,
-each with its id, and the Agent reads each one with `memory_get` before it
-starts.
-A memory it cannot read is named in its first message and skipped, so memory
-size never stops a run. Images passed through a turn are limited to 10 MiB each
-and 25 MiB in total. An oversized or
-non-image attachment is recorded as omitted.
+The run's prompt names its context instead of carrying it: the play and its
+instructions, the ticket or doc by key or id and title for the Agent to read
+with `ticket_get` or `doc_get`, then the interview memory, the other
+always-included memories, and the ones picked for the run, each with its id,
+for the Agent to read with `memory_get` before it starts, and last your custom
+instructions. It carries no memory body and none of the thread's earlier
+messages, so memory size never stops a run. The "Started" message still lands
+in the thread. Images embedded in the ticket or doc body travel with the turn,
+limited to 10 MiB each and 25 MiB in total; an oversized or non-image
+attachment is left out.
 
 ## The Interview play
 

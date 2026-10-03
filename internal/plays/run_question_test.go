@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/otal-labs/nexul/internal/agent"
 	"github.com/otal-labs/nexul/internal/harness"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 )
@@ -109,10 +110,9 @@ func TestAnswer_TurnGone_ResumesAFreshTurnOnTheSameTrail(t *testing.T) {
 	assert.Equal(t, "Answered: Yes", req.RequestBody, "the answer is the fresh turn's request")
 	assert.Equal(t, trail.ConversationID, req.ConversationID)
 	assert.Equal(t, starter, req.ViaUserID)
-	assert.Empty(t, req.ExtraRequestBlocks)
-	assert.True(t, req.MemoriesByReference, "a resumed play turn inlines no memory either")
-	assert.Equal(t, []string{readFirst + "\n- Working here (id m-always)\n- Deploy quirks (id m-pick): use this when deploying"},
-		req.FreshSessionBlocks, "a session the harness lost hears the recorded memories again")
+	assert.Equal(t, &agent.PlayContext{Label: "Fix with AI", Instructions: "Fix the ticket.",
+		Memories: []agent.MemoryRef{{ID: alwaysMem, Name: "Working here"}, {ID: pickedMem, Name: "Deploy quirks"}}},
+		req.Play, "a session the harness lost hears the play and the recorded memories again")
 	assert.Len(t, f.trails.all(), 1, "same trail")
 	assert.Empty(t, f.turns.answered, "nothing to answer on a turn that is gone")
 
@@ -123,6 +123,23 @@ func TestAnswer_TurnGone_ResumesAFreshTurnOnTheSameTrail(t *testing.T) {
 	assert.Equal(t, TrailDone, final.State)
 	assert.Equal(t, "reply-2", final.ReplyMessageID)
 	assert.Len(t, f.trails.eventsFor(TopicRunFinished), 1)
+}
+
+func TestAnswer_TurnGone_PlayDeletedSince_ResumesWithoutThePlay(t *testing.T) {
+	f := heldFixture(t)
+	trail, obs := driveTurn(t, f, ticketRun())
+	obs.OnStarted("sess-1")
+	obs.OnQuestion(askedQuestion())
+	obs.OnFinished(harness.TurnResult{State: harness.TurnDone}, "")
+	delete(f.plays.byID, fixPlayID)
+
+	_, err := f.runner.Answer(ctxAs(starter), trail.ID, yesAnswer())
+	require.NoError(t, err)
+	<-f.turns.done
+	play := f.turns.last().Play
+	require.NotNil(t, play, "still a play turn, so its prompt says so")
+	assert.Empty(t, play.Label)
+	assert.Equal(t, []agent.MemoryRef{{ID: alwaysMem, Name: "Working here"}}, play.Memories)
 }
 
 func TestAnswer_PipelineLostTheTurn_ResumesAFreshTurn(t *testing.T) {
