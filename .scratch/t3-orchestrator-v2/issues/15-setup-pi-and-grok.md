@@ -12,7 +12,7 @@ fallback.
 
 **Blocked by:** None — can start immediately
 
-**Status:** ready-for-agent
+**Status:** done
 
 Read first: `practices/go.md`, `practices/testing.md`, the spec.
 

@@ -6,7 +6,13 @@
 - `Pair` probes the descriptor first (never spend the one-time token on a protocol-1 server), then
   exchanges and sets `PairResult.Kind = KindT3CodeV2`. Add `Kind` to `harness.PairResult`;
   `t3client.Pair` sets `KindT3Code`.
-- `Version`, `ListProviders`, `ListProjects`, `Hold` work against a protocol-2 server.
+- `Version`, `ListProviders`, `ListProjects`, `Hold` work against a protocol-2 server. `0.0.45` accepts a
+  dial carrying `orchestrationProtocol=2` and speaks protocol 1 on it (ticket 04 Findings 11), so the
+  refusal below must come from the handshake's protocol, never from the dial alone. `Providers()` sets
+  `harness.Provider.Version` as protocol 1 does (ticket 15 Comments). The nightly's shell snapshot has
+  `schemaVersion: 2` and a second snapshot with `resolvedRepositoryIdentityRoots`; project rows are
+  unchanged.
+- `t3rpctest` gains single-use pairing tokens and an exchange counter (ticket 01 Comments).
 - Add `harness.ErrProtocol` (a sentinel wrapped with `%w`). A protocol-1 handshake or descriptor →
   ErrProtocol "T3 Code on <computer> went back to its old orchestrator; Nexul only moves forward.
   Update T3 Code there." (for `Pair`/`Version`, name the server URL's host). A 426 naming a protocol
@@ -25,7 +31,7 @@
 
 **Status:** ready-for-agent
 
-Read first: `practices/go.md`, `practices/testing.md`, `practices/architecture.md`, the spec, and `research/protocol-2-wire.md`.
+Read first: `practices/go.md`, `practices/testing.md`, `practices/architecture.md`, the spec, `research/protocol-2-wire.md`, ticket 04's Findings and ticket 01's Comments.
 
 - [ ] Error paths first: protocol-1 handshake → `errors.Is(err, harness.ErrProtocol)`, not Retryable, message names the computer; 426 naming 3 → ErrProtocol; ticket mint 401 → ErrUnauthorized
 - [ ] `Pair` on a protocol-1 descriptor never calls `/oauth/token` (the fake counts exchanges)

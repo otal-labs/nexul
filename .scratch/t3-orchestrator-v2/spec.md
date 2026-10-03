@@ -139,8 +139,9 @@ Technical decisions:
     - Send `Full` plus attachments when Nexul just created the thread, or when the thread is an
       import (`historyOrigin == "v1_import"`) with no `completed` run yet. T3 gives that thread only
       an excerpt of its old history.
-    - A reused thread that is gone (initial subscribe fails, the snapshot has `deletedAt`, or the
-      dispatch fails) is recreated once with `Full`. Otherwise send `Incremental` (ADR 0106).
+    - A reused thread that is gone (the initial subscribe fails, or the snapshot or a live event shows
+      `deletedAt`) is recreated once with `Full`. A soft-deleted thread still accepts a dispatch, so a
+      dispatch failure is a turn error, not a gone thread. Otherwise send `Incremental` (ADR 0106).
     - Images go through `assets.persistChatAttachments` first. Only gif, jpeg, png and webp; anything
       else is skipped with a note.
 12. **Runs Nexul did not start are not followed,** except runs caused by its own run's handed-off

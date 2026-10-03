@@ -28,7 +28,7 @@ only what its source says.
 
 **Blocked by:** None — can start immediately
 
-**Status:** ready-for-agent
+**Status:** done
 
 Read first: the spec, `research/protocol-2-wire.md`, and the Incus box notes in the owner's memory.
 Never touch the host's port 3773 or the owner's `~/.t3`.

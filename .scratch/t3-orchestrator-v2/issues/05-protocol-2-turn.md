@@ -6,8 +6,18 @@
   `{"type":"thread.create","createdBy":"user","creationSource":"web","commandId":…,"threadId":…,"projectId":…,"title":<non-empty>,"modelSelection":{"instanceId":…,"model":…,"options":[…]},"runtimeMode":"full-access","interactionMode":"default","branch":null,"worktreePath":null}`.
 - Subscribe to `orchestration.subscribeThread` with `acceptBoundedSnapshot: true` and wait for the
   first snapshot before dispatching. The reused thread is gone when the initial subscribe fails with
-  `OrchestrationV2GetThreadProjectionError`, when the snapshot's `thread.deletedAt` is set, or when
-  dispatch on it fails: recreate it once with the Full prompt.
+  `OrchestrationV2GetThreadProjectionError`, or when the snapshot's `thread.deletedAt` is set or a
+  `thread.deleted` event arrives before dispatch: recreate it once with the Full prompt. Dispatch on a
+  soft-deleted thread succeeds (ticket 04 Findings 1), so a dispatch failure is a turn error, not a gone
+  thread.
+- Ticket 04 Findings: the `{"sequence":N}` reply to `message.dispatch` can arrive before the stream's
+  `run.created`, so the watch must not assume order; optional keys (`historyOrigin`, `queueHeld`,
+  `delegatedCompletion`, …) are absent rather than null, and absent `historyOrigin` means native; a
+  failed run can carry an `assistant_message` (Claude's "Not logged in") whose text must not become
+  the reply, the root error's message is the reply; the provider session's `lastError` is often null.
+- `t3rpc.Stream.Next` reports a failed Exit only as text today: add a typed exit error carrying the
+  cause's `_tag` values (ticket 01 Comments). An Exit whose cause is `Interrupt` after Nexul closed its
+  own stream is a normal close.
 - Prompt: `Full` + attachments for a new thread, or for `historyOrigin == "v1_import"` with no run in
   status `completed`; otherwise `Incremental`.
 - `thread.runtime-mode.set` to `full-access` only when the snapshot has no queued, preparing, starting,
@@ -36,9 +46,9 @@
 
 **Status:** ready-for-agent
 
-Read first: `practices/go.md`, `practices/testing.md`, `practices/architecture.md`, the spec, and `research/protocol-2-wire.md`.
+Read first: `practices/go.md`, `practices/testing.md`, `practices/architecture.md`, the spec, `research/protocol-2-wire.md`, ticket 04's Findings and the fixtures in `internal/t3clientv2/testdata`, and ticket 01's Comments.
 
-- [ ] Error paths first: dispatch Exit failure on a new thread → StartTurn error; gone reused thread (subscribe failure, `deletedAt`, dispatch failure) recreated exactly once with Full; failure-message precedence; running error item is not a failure; three failed resubscribes → TurnError; protocol change on reconnect → TurnError
+- [ ] Error paths first: dispatch Exit failure → StartTurn error; gone reused thread (subscribe failure, `deletedAt`, `thread.deleted` before dispatch) recreated exactly once with Full; a failed run's assistant text is not the reply; failure-message precedence; running error item is not a failure; three failed resubscribes → TurnError; protocol change on reconnect → TurnError
 - [ ] `thread.create` frame carries every required key (`branch` and `worktreePath` present as null)
 - [ ] Reducer table over fixtures: waiting → done once, later completed/checkpoint/delivery updates emit nothing; completed without waiting → done; interrupted/cancelled/rolled_back → interrupted; queued → note repeating under one CallID; a resubscribe answered with a snapshot whose run is already waiting → done once; a Die mid-stream → resubscribe; foreign runs emit nothing
 - [ ] Imported thread with no completed run → Full; with a completed run → Incremental; a reused thread with a running run gets no runtime-mode.set

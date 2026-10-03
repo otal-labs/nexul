@@ -571,6 +571,8 @@ Implementation pitfalls for the V2 path in internal/t3client:
 
 ## Still unknown
 
+Ticket 04's Findings (captures from nightly 2632) settle the root-error ordering for Claude start and auth failures, correct the shell `schemaVersion` to 2, and add what the source did not show; read them before relying on this file.
+
 - Exact per-adapter ordering of the root `error` turn item relative to run.updated(failed). If failed can arrive first, LastError must be resolved late (from a later item, provider-session lastError, or a getThreadProjection read). I did not trace this for every adapter.
 - Whether a failed run always has either a root error item or a provider-session lastError. Some setup failures may surface only in shell lastError.
 - Claude AskUserQuestion options with an empty description violate TrimmedNonEmptyString on the wire schema (ClaudeAdapterV2.ts:2811-2816 vs orchestrationV2.ts:1074). Whether the server's encode fails, stripping or killing that event, is untested.
