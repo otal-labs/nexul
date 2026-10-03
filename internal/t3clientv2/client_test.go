@@ -54,6 +54,12 @@ var sessionCalls = []struct {
 		_, err := h.StartTurn(ctx, harness.Target{Session: s, SessionID: "th-1"}, "title", testPrompts)
 		return err
 	}},
+	{"Interrupt", func(ctx context.Context, h *Harness, s harness.Session) error {
+		return h.Interrupt(ctx, harness.Target{Session: s, SessionID: "th-1"})
+	}},
+	{"Answer", func(ctx context.Context, h *Harness, s harness.Session) error {
+		return h.Answer(ctx, harness.Target{Session: s, SessionID: "th-1"}, "rq-1", harness.QuestionAnswer{})
+	}},
 }
 
 func TestSessionCalls_ServerItCannotFollow_RefusedWithTheMessageToShow(t *testing.T) {

@@ -26,6 +26,8 @@ const (
 	notFullAccess = "This T3 thread is not in full access"
 	// defaultTitle stands in for an empty title, which thread.create refuses.
 	defaultTitle = "Nexul chat"
+	// cancelWithin bounds cancelling the queued run of a turn that stopped watching, whose own context may be over.
+	cancelWithin = 10 * time.Second
 )
 
 // errThreadGone is a reused thread that no longer exists or was deleted in T3 Code.
@@ -78,6 +80,14 @@ type runtimeModeSet struct {
 	RuntimeMode string `json:"runtimeMode"`
 }
 
+type runtimeRequestRespond struct {
+	Type      string `json:"type"`
+	CommandID string `json:"commandId"`
+	ThreadID  string `json:"threadId"`
+	RequestID string `json:"requestId"`
+	Decision  string `json:"decision"`
+}
+
 type subscribeInput struct {
 	ThreadID              string `json:"threadId"`
 	AfterSequence         *int64 `json:"afterSequence,omitempty"`
@@ -105,14 +115,15 @@ func (h *Harness) StartTurn(ctx context.Context, target harness.Target, title st
 		t.close()
 		return harness.StartResult{}, err
 	}
+	h.messages.Store(t.threadID, t.messageID)
 	updates := make(chan harness.Update, 16)
 	for _, n := range notes {
 		updates <- n
 	}
-	p := &pump{w: w, open: t.open, log: h.log()}
+	p := &pump{w: w, open: t.open, decline: t.decline, log: h.log()}
 	go func() {
 		p.run(ctx, src, updates)
-		t.close()
+		t.end(ctx, w)
 	}()
 	return harness.StartResult{SessionID: t.threadID, Updates: updates}, nil
 }
@@ -290,8 +301,17 @@ func note(summary string) harness.Update {
 
 // open resubscribes after cursor, redialing first when the turn's connection died.
 func (t *turn) open(ctx context.Context, after int64) (source, error) {
+	c, err := t.live(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return c.Stream(ctx, subscribeThread, subscribeInput{ThreadID: t.threadID, AfterSequence: &after, AcceptBoundedSnapshot: true})
+}
+
+// live is the turn's connection, redialed when it died.
+func (t *turn) live(ctx context.Context) (*t3rpc.Conn, error) {
 	if t.conn != nil && !closed(t.conn.Done()) {
-		return t.conn.Stream(ctx, subscribeThread, subscribeInput{ThreadID: t.threadID, AfterSequence: &after, AcceptBoundedSnapshot: true})
+		return t.conn, nil
 	}
 	t.close()
 	c, err := t.h.connect(ctx, t.target.Session)
@@ -299,7 +319,36 @@ func (t *turn) open(ctx context.Context, after int64) (source, error) {
 		return nil, err
 	}
 	t.conn = c
-	return c.Stream(ctx, subscribeThread, subscribeInput{ThreadID: t.threadID, AfterSequence: &after, AcceptBoundedSnapshot: true})
+	return c, nil
+}
+
+// end lets the thread go once the pump stops; a run T3 still holds queued is cancelled, since nobody would read its reply.
+func (t *turn) end(ctx context.Context, w *watch) {
+	defer t.close()
+	t.h.messages.CompareAndDelete(t.threadID, t.messageID)
+	if !w.queued() {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cancelWithin)
+	defer cancel()
+	c, err := t.live(ctx)
+	if err == nil {
+		err = cancelRun(ctx, c, t.threadID, w.run.ID)
+	}
+	if err != nil {
+		t.h.log().Warn("t3clientv2: could not cancel the turn's queued run", "thread", t.threadID, "run", w.run.ID, "error", err)
+	}
+}
+
+// decline refuses an approval, since an unattended turn has nobody to grant it.
+func (t *turn) decline(ctx context.Context, requestID string) error {
+	_, err := t.conn.Call(ctx, dispatchCommand, runtimeRequestRespond{
+		Type: "runtime-request.respond", CommandID: ids.New(), ThreadID: t.threadID, RequestID: requestID, Decision: "decline",
+	})
+	if err != nil {
+		return refused("decline the T3 approval", err)
+	}
+	return nil
 }
 
 func (t *turn) close() {
@@ -322,16 +371,24 @@ func closed(done <-chan struct{}) bool {
 
 // refused is a failed command's error carrying T3's own message when it gave one, so a person reads why.
 func refused(what string, err error) error {
+	if msg := t3Message(err); msg != "" {
+		return fmt.Errorf("%w: %s: %s", apperrs.ErrInvalid, what, msg)
+	}
+	return fmt.Errorf("%s: %w", what, err)
+}
+
+// t3Message is the message T3 refused a call with, "" when the call failed another way or not at all.
+func t3Message(err error) string {
 	var exit *t3rpc.ExitError
 	if !errors.As(err, &exit) {
-		return fmt.Errorf("%s: %w", what, err)
+		return ""
 	}
 	for _, c := range exit.Causes {
 		if c.Error.Message != "" {
-			return fmt.Errorf("%w: %s: %s", apperrs.ErrInvalid, what, c.Error.Message)
+			return c.Error.Message
 		}
 	}
-	return fmt.Errorf("%s: %w", what, err)
+	return ""
 }
 
 // decodeItem reads one stream item; one that does not decode is skipped and leaves the cursor where it was.

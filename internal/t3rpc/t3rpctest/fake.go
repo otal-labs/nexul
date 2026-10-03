@@ -51,6 +51,9 @@ type Server struct {
 	// CommandCauses fails only the dispatchCommands of the command types it names, and the image upload when it names
 	// assets.persistChatAttachments; set it before connect.
 	CommandCauses map[string]any
+	// Projection is what orchestration.getThreadProjection answers, unless ProjectionCause fails it; set before connect.
+	Projection      any
+	ProjectionCause any
 
 	connMu sync.Mutex
 	conn   *websocket.Conn
@@ -197,6 +200,12 @@ func (f *Server) handleRequest(env clientEnv) {
 		}}}))
 	case "orchestration.dispatchCommand":
 		f.handleDispatch(env)
+	case "orchestration.getThreadProjection":
+		if f.ProjectionCause != nil {
+			f.writeFailure(env, f.ProjectionCause)
+			return
+		}
+		f.Write(ExitSuccess(idString(env.ID), f.Projection))
 	case persistRPC:
 		f.handlePersist(env)
 	case "orchestration.subscribeThread":

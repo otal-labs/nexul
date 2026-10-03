@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
+	"sync"
 
 	"github.com/otal-labs/nexul/internal/harness"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
@@ -18,12 +19,11 @@ import (
 // protocol is the orchestration protocol this client speaks.
 const protocol = 2
 
-// errTurnsNotYet answers the turn calls this client cannot make yet.
-var errTurnsNotYet = fmt.Errorf("%w: stopping or answering a turn on this T3 Code version needs a newer Nexul", apperrs.ErrInvalid)
-
 // Harness is the harness.Client for T3 Code servers running T3's orchestrator V2.
 type Harness struct {
 	Options t3rpc.Options
+	// messages maps a thread id to the message id whose run that thread's live turn watches, for Stop.
+	messages sync.Map
 }
 
 // NewHarness wires a Harness dialing real T3 servers.
@@ -90,16 +90,6 @@ func (h *Harness) Hold(ctx context.Context, s harness.Session) (harness.Conn, er
 		return nil, err
 	}
 	return c, nil
-}
-
-// Interrupt implements harness.Client.
-func (h *Harness) Interrupt(context.Context, harness.Target) error {
-	return errTurnsNotYet
-}
-
-// Answer implements harness.Client.
-func (h *Harness) Answer(context.Context, harness.Target, string, harness.QuestionAnswer) error {
-	return errTurnsNotYet
 }
 
 // settleCommand is protocol 1's thread.settle shape, which protocol 2 kept; settledAt is optional and left out.
