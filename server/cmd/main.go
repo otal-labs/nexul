@@ -269,6 +269,8 @@ var livePushTopics = []string{
 	memories.TopicCreated,
 	memories.TopicUpdated,
 	memories.TopicDeleted,
+	memories.TopicAnswerSaved,
+	memories.TopicAnswerCleared,
 	pairing.TopicSetupTurnChanged,
 	pairing.TopicSetupFinished,
 	pairing.TopicSetupTurnActivity,
