@@ -26,9 +26,14 @@ type started struct {
 // begin starts a turn the way the pipeline does; StartTurn returns only once the message is out, so it runs aside.
 func begin(t *testing.T, h *Harness, s harness.Session, sessionID string) <-chan started {
 	t.Helper()
+	return beginWith(t, h, s, sessionID, testPrompts)
+}
+
+func beginWith(t *testing.T, h *Harness, s harness.Session, sessionID string, prompts harness.TurnPrompts) <-chan started {
+	t.Helper()
 	ch := make(chan started, 1)
 	go func() {
-		r, err := h.StartTurn(t.Context(), harness.Target{Session: s, ProjectID: "pr-1", Provider: "claudeAgent", SessionID: sessionID}, "Fix login", testPrompts)
+		r, err := h.StartTurn(t.Context(), harness.Target{Session: s, ProjectID: "pr-1", Provider: "claudeAgent", SessionID: sessionID}, "Fix login", prompts)
 		ch <- started{r, err}
 	}()
 	return ch
@@ -185,6 +190,104 @@ func TestStartTurn_NeverSteers(t *testing.T) {
 		"threadId": "th-1", "messageId": dispatch["messageId"], "text": "what is new", "attachments": []any{},
 		"dispatchMode": map[string]any{"type": "queue_after_active"},
 	}, dispatch, "queued behind the running run, never steered into it, so the message gets a run of its own")
+	assert.Empty(t, f.Persisted, "a turn with no images makes no upload")
+}
+
+func TestStartTurn_Images_AreUploadedFirstAndTheirReferencesSentVerbatim(t *testing.T) {
+	t.Parallel()
+	f, h := newFake(t, 2)
+	prompts := testPrompts
+	prompts.Attachments = []harness.Attachment{
+		{Name: "shot.png", MIME: "image/png", Bytes: []byte{0x89, 'P', 'N', 'G'}},
+		{Name: "photo.JPG", MIME: "IMAGE/JPEG", Bytes: []byte{0xff, 0xd8, 0xff}},
+	}
+	done := beginWith(t, h, laptop(f), "", prompts)
+	threadID, _ := t3rpctest.WaitFor(t, f.Dispatched, "thread.create")["threadId"].(string)
+	f.Write(t3rpctest.Chunk(t3rpctest.WaitFor(t, f.Subscribed, "subscribeThread"), snapshotWith(t, nil)))
+
+	dispatch := t3rpctest.WaitFor(t, f.Dispatched, "message.dispatch")
+	assert.Equal(t, map[string]any{"threadId": threadID, "messageId": dispatch["messageId"], "attachments": []any{
+		map[string]any{"type": "image", "name": "shot.png", "mimeType": "image/png", "sizeBytes": float64(4), "dataUrl": "data:image/png;base64,iVBORw=="},
+		map[string]any{"type": "image", "name": "photo.JPG", "mimeType": "image/jpeg", "sizeBytes": float64(3), "dataUrl": "data:image/jpeg;base64,/9j/"},
+	}}, t3rpctest.WaitFor(t, f.Persisted, "the upload"), "T3 reads the mime off the data URL and wants it lowercased to match mimeType")
+	assert.Equal(t, []any{
+		map[string]any{"type": "image", "id": threadID + "-ref-0", "name": "shot.png", "mimeType": "image/png", "sizeBytes": float64(4)},
+		map[string]any{"type": "image", "id": threadID + "-ref-1", "name": "photo.JPG", "mimeType": "image/jpeg", "sizeBytes": float64(3)},
+	}, dispatch["attachments"], "the message carries what T3 answered, ids it alone can mint")
+	assert.Equal(t, "full prompt", dispatch["text"])
+	require.NoError(t, (<-done).err)
+}
+
+func TestStartTurn_Images_OnlyWhatTheSentPromptRefersToAndT3Takes(t *testing.T) {
+	t.Parallel()
+	svg := harness.Attachment{Name: "logo.svg", MIME: "image/svg+xml", Bytes: []byte("<svg/>")}
+	bmp := harness.Attachment{Name: "scan.bmp", MIME: "image/bmp", Bytes: []byte("BM")}
+	gif := harness.Attachment{Name: "loop.gif", MIME: "image/gif", Bytes: []byte("GIF")}
+	webp := harness.Attachment{Name: "page.webp", MIME: "image/webp", Bytes: []byte("RIFF")}
+	tests := []struct {
+		name      string
+		sessionID string
+		thread    map[string]any
+		images    []harness.Attachment
+		uploaded  []string
+		note      string
+	}{
+		{"an unsupported type is left out and noted", "", nil, []harness.Attachment{svg, gif, bmp, webp},
+			[]string{"loop.gif", "page.webp"}, "Not sent to T3 Code: logo.svg, scan.bmp. It takes only gif, jpeg, png and webp images."},
+		{"nothing supported means no upload", "", nil, []harness.Attachment{svg},
+			nil, "Not sent to T3 Code: logo.svg. It takes only gif, jpeg, png and webp images."},
+		{"a reused thread already holds them", "th-1", nil, []harness.Attachment{gif}, nil, ""},
+		{"an imported thread gets them with its full prompt", "th-1", map[string]any{"historyOrigin": "v1_import"}, []harness.Attachment{gif},
+			[]string{"loop.gif"}, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			f, h := newFake(t, 2)
+			prompts := testPrompts
+			prompts.Attachments = tt.images
+			done := beginWith(t, h, laptop(f), tt.sessionID, prompts)
+			f.Write(t3rpctest.Chunk(t3rpctest.WaitFor(t, f.Subscribed, "subscribeThread"), snapshotWith(t, tt.thread)))
+			commands := commandsUntil(t, f, "message.dispatch")
+			dispatch := commands[len(commands)-1]
+
+			var uploaded []string
+			for len(f.Persisted) > 0 {
+				for _, a := range (<-f.Persisted)["attachments"].([]any) {
+					uploaded = append(uploaded, a.(map[string]any)["name"].(string))
+				}
+			}
+			assert.Equal(t, tt.uploaded, uploaded)
+			assert.Len(t, dispatch["attachments"], len(tt.uploaded))
+			s := <-done
+			require.NoError(t, s.err)
+			notes := collect(s.result.Updates)
+			if tt.note == "" {
+				assert.Empty(t, notes)
+				return
+			}
+			require.Len(t, notes, 1)
+			assert.Equal(t, harness.ActivityNote, notes[0].Activity.Kind)
+			assert.Equal(t, tt.note, notes[0].Activity.Summary)
+		})
+	}
+}
+
+func TestStartTurn_ImageUploadRefused_FailsWithT3sMessageAndSendsNothing(t *testing.T) {
+	t.Parallel()
+	f, h := newFake(t, 2)
+	f.CommandCauses = map[string]any{"assets.persistChatAttachments": []any{map[string]any{"_tag": "Fail", "error": map[string]any{
+		"_tag": "PersistChatAttachmentsError", "message": "Attachment shot.png has an invalid image payload."}}}}
+	prompts := testPrompts
+	prompts.Attachments = []harness.Attachment{{Name: "shot.png", MIME: "image/png", Bytes: []byte{1}}}
+	done := beginWith(t, h, laptop(f), "th-1", prompts)
+	f.Write(t3rpctest.Chunk(t3rpctest.WaitFor(t, f.Subscribed, "subscribeThread"), snapshotWith(t, map[string]any{"historyOrigin": "v1_import"})))
+
+	s := <-done
+	require.ErrorIs(t, s.err, apperrs.ErrInvalid)
+	assert.EqualError(t, s.err, "invalid: upload the images to T3 Code: Attachment shot.png has an invalid image payload.")
+	assert.Len(t, f.Persisted, 1)
+	assert.Empty(t, f.Dispatched, "the agent never gets a prompt that points at images it cannot see")
 }
 
 // missingThreadCause is the recorded failure of a subscribe to a thread that never existed.
