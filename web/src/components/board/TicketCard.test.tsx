@@ -169,15 +169,17 @@ describe("TicketCard", () => {
     expect(await screen.findByLabelText("Has a chat thread")).toBeInTheDocument();
   });
 
-  it("shows a spinner beside the id while a play runs on the ticket, and drops it when the run ends", async () => {
+  it("shows a spinner and the run's elapsed time beside the id while a play runs, and drops both when the run ends", async () => {
+    const started = new Date(Date.now() - 125_000).toISOString();
     vi.mocked(api.get).mockImplementation(async (url: string) => {
       if (url === "/api/projects/p-1") return { data: { id: "p-1", name: "Reference", prefix: "REF", position: 0, created_at: "", updated_at: "" } };
       if (url === "/api/tickets") return { data: [ticket("t-1", "Fix login", "open")] };
-      if (url === "/api/plays/runs/active") return { data: { active: { "t-1": "tr-1" } } };
+      if (url === "/api/plays/runs/active") return { data: { active: { "t-1": "tr-1" }, started: { "t-1": started } } };
       return { data: [] };
     });
     renderCard(<TicketCard ticket={ticket("t-1", "Fix login", "open")} />);
     expect(await screen.findByLabelText("A play is running")).toBeInTheDocument();
+    expect(await screen.findByText(/^2m \d+s$/)).toBeInTheDocument();
 
     act(() =>
       usePlayRunStore.getState().applyFrame({
@@ -185,6 +187,7 @@ describe("TicketCard", () => {
       }),
     );
     expect(screen.queryByLabelText("A play is running")).not.toBeInTheDocument();
+    expect(screen.queryByText(/^2m \d+s$/)).not.toBeInTheDocument();
   });
 
   it("shows a question mark instead of the spinner while the run waits on an answer", async () => {
