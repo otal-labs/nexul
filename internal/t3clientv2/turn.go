@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"reflect"
+	"slices"
 	"strings"
 	"time"
 
@@ -63,6 +65,7 @@ type messageDispatch struct {
 	MessageID      string            `json:"messageId"`
 	Text           string            `json:"text"`
 	Attachments    []json.RawMessage `json:"attachments"`
+	ModelSelection *modelSelection   `json:"modelSelection,omitempty"`
 	DispatchMode   dispatchMode      `json:"dispatchMode"`
 }
 
@@ -75,6 +78,14 @@ type runtimeModeSet struct {
 	CommandID   string `json:"commandId"`
 	ThreadID    string `json:"threadId"`
 	RuntimeMode string `json:"runtimeMode"`
+}
+
+type runtimeRequestRespond struct {
+	Type      string `json:"type"`
+	CommandID string `json:"commandId"`
+	ThreadID  string `json:"threadId"`
+	RequestID string `json:"requestId"`
+	Decision  string `json:"decision"`
 }
 
 type subscribeInput struct {
@@ -116,7 +127,7 @@ func (h *Harness) StartTurn(ctx context.Context, target harness.Target, title st
 	for _, n := range notes {
 		updates <- n
 	}
-	p := &pump{w: w, open: t.open, log: h.log()}
+	p := &pump{w: w, open: t.open, decline: t.decline, log: h.log()}
 	go func() {
 		p.run(ctx, src, updates)
 		t.end(ctx, w)
@@ -163,23 +174,17 @@ func (t *turn) start(ctx context.Context, title string, prompts harness.TurnProm
 	return src, w, notes, nil
 }
 
-// create makes the turn's thread, resolving an empty model to the provider's default first.
+// create makes the turn's thread on the target's model and options.
 func (t *turn) create(ctx context.Context, title string) error {
-	model := t.target.Model
-	if model == "" {
-		providers, err := t.conn.Providers()
-		if err != nil {
-			return fmt.Errorf("list t3 providers: %w", err)
-		}
-		if model, err = t3rpc.DefaultModel(providers, t.target.Provider); err != nil {
-			return err
-		}
+	model, err := t.model()
+	if err != nil {
+		return err
 	}
 	if strings.TrimSpace(title) == "" {
 		title = defaultTitle
 	}
 	t.threadID = ids.New()
-	_, err := t.conn.Call(ctx, dispatchCommand, threadCreate{
+	_, err = t.conn.Call(ctx, dispatchCommand, threadCreate{
 		Type: "thread.create", CreatedBy: "user", CreationSource: "web", CommandID: ids.New(), ThreadID: t.threadID,
 		ProjectID: t.target.ProjectID, Title: title,
 		ModelSelection: modelSelection{InstanceID: t.target.Provider, Model: model, Options: t.target.ModelOptions},
@@ -227,8 +232,13 @@ func (t *turn) subscribe(ctx context.Context) (source, *watch, error) {
 
 // dispatch uploads the prompt's images, then sends the prompt the snapshot calls for once the thread is in full access or noted as not.
 func (t *turn) dispatch(ctx context.Context, w *watch, fresh bool, prompts harness.TurnPrompts) ([]harness.Update, error) {
+	selection, switched, err := t.selection(w, fresh)
+	if err != nil {
+		return nil, err
+	}
 	text, images := prompts.Incremental, []harness.Attachment(nil)
-	if fresh || w.imported() {
+	// T3 gives a new provider instance only a summary of the thread, as it gives an imported thread an excerpt.
+	if fresh || switched || w.imported() {
 		text, images = prompts.Full, prompts.Attachments
 	}
 	// Uploaded before anything touches the thread, so a refused upload leaves it as it was.
@@ -242,13 +252,54 @@ func (t *turn) dispatch(ctx context.Context, w *watch, fresh bool, prompts harne
 	}
 	_, err = t.conn.Call(ctx, dispatchCommand, messageDispatch{
 		Type: "message.dispatch", CreatedBy: "user", CreationSource: "web", CommandID: ids.New(), ThreadID: t.threadID,
-		MessageID: t.messageID, Text: text, Attachments: refs, DispatchMode: dispatchMode{Type: "queue_after_active"},
+		MessageID: t.messageID, Text: text, Attachments: refs, ModelSelection: selection, DispatchMode: dispatchMode{Type: "queue_after_active"},
 	})
 	if err != nil {
 		return nil, refused("send the message to T3 Code", err)
 	}
 	t.prompted = true
 	return append(notes, more...), nil
+}
+
+// selection is what a reused thread must switch to for the target, nil if it already runs on it; switched is another provider instance.
+func (t *turn) selection(w *watch, fresh bool) (selection *modelSelection, switched bool, err error) {
+	if fresh {
+		return nil, false, nil
+	}
+	current := w.thread.ModelSelection
+	switched = t.target.Provider != current.InstanceID
+	model := t.target.Model
+	if model == "" && !switched {
+		model = current.Model
+	}
+	if model == "" {
+		if model, err = t.model(); err != nil {
+			return nil, false, err
+		}
+	}
+	if !switched && model == current.Model && (len(t.target.ModelOptions) == 0 || sameOptions(t.target.ModelOptions, current.Options)) {
+		return nil, false, nil
+	}
+	return &modelSelection{InstanceID: t.target.Provider, Model: model, Options: t.target.ModelOptions}, switched, nil
+}
+
+// model is the target's model, or its provider's default when it names none, since T3 rejects an empty one.
+func (t *turn) model() (string, error) {
+	if t.target.Model != "" {
+		return t.target.Model, nil
+	}
+	providers, err := t.conn.Providers()
+	if err != nil {
+		return "", fmt.Errorf("list t3 providers: %w", err)
+	}
+	return t3rpc.DefaultModel(providers, t.target.Provider)
+}
+
+// sameOptions is whether two lists set the same options to the same values, in any order.
+func sameOptions(a, b []harness.OptionSetting) bool {
+	return len(a) == len(b) && !slices.ContainsFunc(a, func(x harness.OptionSetting) bool {
+		return !slices.ContainsFunc(b, func(y harness.OptionSetting) bool { return x.ID == y.ID && reflect.DeepEqual(x.Value, y.Value) })
+	})
 }
 
 // fullAccess sets the thread to full access, unless that would detach a queued or live run; then it notes it.
@@ -309,6 +360,17 @@ func (t *turn) end(ctx context.Context, w *watch) {
 	if err != nil {
 		t.h.log().Warn("t3clientv2: could not cancel the turn's queued run", "thread", t.threadID, "run", w.run.ID, "error", err)
 	}
+}
+
+// decline refuses an approval, since an unattended turn has nobody to grant it.
+func (t *turn) decline(ctx context.Context, requestID string) error {
+	_, err := t.conn.Call(ctx, dispatchCommand, runtimeRequestRespond{
+		Type: "runtime-request.respond", CommandID: ids.New(), ThreadID: t.threadID, RequestID: requestID, Decision: "decline",
+	})
+	if err != nil {
+		return refused("decline the T3 approval", err)
+	}
+	return nil
 }
 
 func (t *turn) close() {

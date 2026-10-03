@@ -31,9 +31,14 @@ func begin(t *testing.T, h *Harness, s harness.Session, sessionID string) <-chan
 
 func beginWith(t *testing.T, h *Harness, s harness.Session, sessionID string, prompts harness.TurnPrompts) <-chan started {
 	t.Helper()
+	return beginAs(t, h, harness.Target{Session: s, ProjectID: "pr-1", Provider: "claudeAgent", SessionID: sessionID}, prompts)
+}
+
+func beginAs(t *testing.T, h *Harness, target harness.Target, prompts harness.TurnPrompts) <-chan started {
+	t.Helper()
 	ch := make(chan started, 1)
 	go func() {
-		r, err := h.StartTurn(t.Context(), harness.Target{Session: s, ProjectID: "pr-1", Provider: "claudeAgent", SessionID: sessionID}, "Fix login", prompts)
+		r, err := h.StartTurn(t.Context(), target, "Fix login", prompts)
 		ch <- started{r, err}
 	}()
 	return ch
@@ -193,6 +198,85 @@ func TestStartTurn_NeverSteers(t *testing.T) {
 	assert.Empty(t, f.Persisted, "a turn with no images makes no upload")
 }
 
+// threadOn is the selection a snapshot's thread runs on: its provider instance, model and options.
+func threadOn(instance, model string, options ...map[string]any) map[string]any {
+	selection := map[string]any{"instanceId": instance, "model": model}
+	if options != nil {
+		selection["options"] = options
+	}
+	return map[string]any{"providerInstanceId": instance, "modelSelection": selection}
+}
+
+func opt(id string, value any) map[string]any { return map[string]any{"id": id, "value": value} }
+
+func TestStartTurn_ReusedThread_SendsTheSelectionOnlyWhenTheTargetAsksForAnother(t *testing.T) {
+	t.Parallel()
+	const old, other = "claude-fable-5-1", "claude-opus-5-5"
+	effort, fast := opt("effort", "high"), opt("fastMode", true)
+	tests := []struct {
+		name    string
+		thread  map[string]any
+		model   string
+		options []harness.OptionSetting
+		want    map[string]any
+		text    string
+	}{
+		{"the thread's own model and options are not sent again", threadOn("claudeAgent", old, effort), old,
+			[]harness.OptionSetting{{ID: "effort", Value: "high"}}, nil, "what is new"},
+		{"no model and no options keep the thread's", threadOn("claudeAgent", old, effort), "", nil, nil, "what is new"},
+		{"the same options in another order are not another selection", threadOn("claudeAgent", old, effort, fast), "",
+			[]harness.OptionSetting{{ID: "fastMode", Value: true}, {ID: "effort", Value: "high"}}, nil, "what is new"},
+		{"another model is sent", threadOn("claudeAgent", old), other, nil,
+			map[string]any{"instanceId": "claudeAgent", "model": other}, "what is new"},
+		{"another model starts on its own defaults, not the old model's options", threadOn("claudeAgent", old, effort), other, nil,
+			map[string]any{"instanceId": "claudeAgent", "model": other}, "what is new"},
+		{"other options on an unnamed model are sent with the thread's model", threadOn("claudeAgent", old, effort), "",
+			[]harness.OptionSetting{{ID: "effort", Value: "low"}},
+			map[string]any{"instanceId": "claudeAgent", "model": old, "options": []any{opt("effort", "low")}}, "what is new"},
+		{"an option left out goes back to its default", threadOn("claudeAgent", old, effort, fast), "",
+			[]harness.OptionSetting{{ID: "effort", Value: "high"}},
+			map[string]any{"instanceId": "claudeAgent", "model": old, "options": []any{effort}}, "what is new"},
+		{"another provider instance gets its default model, no options, and the full prompt", threadOn("codex", "gpt-6", effort), "", nil,
+			map[string]any{"instanceId": "claudeAgent", "model": other}, "full prompt"},
+		{"another provider instance gets the model and options as picked, and the full prompt", threadOn("codex", "gpt-6"), other,
+			[]harness.OptionSetting{{ID: "effort", Value: "max"}},
+			map[string]any{"instanceId": "claudeAgent", "model": other, "options": []any{opt("effort", "max")}}, "full prompt"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			f, h := newFake(t, 2)
+			done := beginAs(t, h, harness.Target{Session: laptop(f), ProjectID: "pr-1", Provider: "claudeAgent", Model: tt.model,
+				ModelOptions: tt.options, SessionID: "th-1"}, testPrompts)
+			f.Write(t3rpctest.Chunk(t3rpctest.WaitFor(t, f.Subscribed, "subscribeThread"), snapshotWith(t, tt.thread)))
+
+			dispatch := t3rpctest.WaitFor(t, f.Dispatched, "message.dispatch")
+			require.NoError(t, (<-done).err)
+			if tt.want == nil {
+				assert.NotContains(t, dispatch, "modelSelection")
+			} else {
+				assert.Equal(t, tt.want, dispatch["modelSelection"])
+			}
+			assert.Equal(t, tt.text, dispatch["text"])
+		})
+	}
+}
+
+func TestStartTurn_ReusedThreadOnAnotherProviderThatIsNotThere_FailsBeforeUploadingOrSending(t *testing.T) {
+	t.Parallel()
+	f, h := newFake(t, 2)
+	prompts := testPrompts
+	prompts.Attachments = []harness.Attachment{{Name: "shot.png", MIME: "image/png", Bytes: []byte{1}}}
+	done := beginAs(t, h, harness.Target{Session: laptop(f), ProjectID: "pr-1", Provider: "codex", SessionID: "th-1"}, prompts)
+	f.Write(t3rpctest.Chunk(t3rpctest.WaitFor(t, f.Subscribed, "subscribeThread"), snapshotWith(t, nil)))
+
+	s := <-done
+	require.ErrorIs(t, s.err, apperrs.ErrInvalid)
+	assert.EqualError(t, s.err, "invalid: provider codex not found")
+	assert.Empty(t, f.Persisted, "the images stay with the caller")
+	assert.Empty(t, f.Dispatched, "an empty model would reach T3, which rejects it, so nothing is sent")
+}
+
 func TestStartTurn_Images_AreUploadedFirstAndTheirReferencesSentVerbatim(t *testing.T) {
 	t.Parallel()
 	f, h := newFake(t, 2)
@@ -238,6 +322,8 @@ func TestStartTurn_Images_OnlyWhatTheSentPromptRefersToAndT3Takes(t *testing.T) 
 			nil, "Not sent to T3 Code: logo.svg. It takes only gif, jpeg, png and webp images."},
 		{"a reused thread already holds them", "th-1", nil, []harness.Attachment{gif}, nil, ""},
 		{"an imported thread gets them with its full prompt", "th-1", map[string]any{"historyOrigin": "v1_import"}, []harness.Attachment{gif},
+			[]string{"loop.gif"}, ""},
+		{"a thread on another provider instance gets them with its full prompt", "th-1", threadOn("codex", "gpt-6"), []harness.Attachment{gif},
 			[]string{"loop.gif"}, ""},
 	}
 	for _, tt := range tests {
@@ -434,6 +520,49 @@ func TestStartTurn_NewThreadNotCreated_FailsWithTheReason(t *testing.T) {
 			require.ErrorIs(t, err, apperrs.ErrInvalid)
 			assert.EqualError(t, err, tt.want)
 			assert.Empty(t, f.Subscribed, "nothing to watch")
+		})
+	}
+}
+
+func TestStartTurn_ApprovalRequest_IsDeclinedOnce(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name   string
+		causes map[string]any
+	}{
+		{"T3 takes the decline", nil},
+		{"a refused decline still lets the turn finish", map[string]any{"runtime-request.respond": []any{map[string]any{"_tag": "Fail", "error": map[string]any{
+			"_tag": "OrchestrationV2DispatchCommandError", "commandType": "runtime-request.respond", "message": "Runtime request is resolved."}}}}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			f, h := newFake(t, 2)
+			f.CommandCauses = tt.causes
+			done := begin(t, h, laptop(f), "th-1")
+			subID := t3rpctest.WaitFor(t, f.Subscribed, "subscribeThread")
+			f.Write(t3rpctest.Chunk(subID, snapshotWith(t, nil)))
+			messageID, _ := t3rpctest.WaitFor(t, f.Dispatched, "message.dispatch")["messageId"].(string)
+			s := <-done
+			require.NoError(t, s.err)
+
+			asking := recordedItem(t, toolSteps, approvalItem, "waiting")
+			declined := recordedItem(t, toolSteps, approvalItem, "cancelled")
+			asking.RunID, declined.RunID = runOne, runOne
+			f.Write(t3rpctest.Chunk(subID,
+				event(3, "run.created", runOf(messageID, "running")),
+				event(4, "turn-item.updated", asking), event(5, "turn-item.updated", asking), event(6, "turn-item.updated", declined),
+				event(7, "run.updated", runOf(messageID, runWaiting)),
+			))
+			assert.Equal(t, []harness.Update{{Approval: &harness.Approval{Kind: "command", Summary: approvalPrompt}}, ended(harness.TurnDone, "")},
+				drainUpdates(t, s.result.Updates))
+			if tt.causes != nil {
+				return
+			}
+			respond := t3rpctest.WaitFor(t, f.Dispatched, "runtime-request.respond")
+			assert.Equal(t, map[string]any{"type": "runtime-request.respond", "commandId": respond["commandId"], "threadId": "th-1",
+				"requestId": approval1, "decision": "decline"}, respond)
+			assert.Empty(t, f.Dispatched, "declined once")
 		})
 	}
 }

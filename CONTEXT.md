@@ -90,7 +90,11 @@ window, and fast mode: whatever the harness lists for that model, with its
 defaults, read live from the harness and never kept as a list in Nexul. They
 are picked beside a model and stored with it (pairing defaults, a project link,
 a play's trail, a computer's setup choices); an option left unset runs on the
-harness default, and picking another model starts it on its own defaults.
+harness default, and picking another model starts it on its own defaults. A
+run's pick also holds on a thread that already exists: on T3 Code's
+orchestrator V2 a follow-up switches the thread to the run's model and options
+when they differ, and a run that names no model or options leaves the thread's
+as they are.
 _Avoid_: Traits, knobs, model settings
 
 **Paired computer**:
