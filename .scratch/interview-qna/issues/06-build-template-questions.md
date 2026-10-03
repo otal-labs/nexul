@@ -25,4 +25,4 @@ memory) goes: creating the interview memory starts it empty.
 
 ## Answer
 
-Built in PR_URL.
+Built in https://github.com/otal-labs/nexul/pull/360.
