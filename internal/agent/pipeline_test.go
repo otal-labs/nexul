@@ -356,6 +356,43 @@ func TestRunTurn_EmptyFinalizeFrameDoesNotWipeTheReply(t *testing.T) {
 	assert.Empty(t, systemPosts)
 }
 
+func TestRunTurn_MessageFinishedMidTurn_KeepsStreaming(t *testing.T) {
+	live := &fakeLive{}
+	client := &fakeHarness{startResult: harness.StartResult{SessionID: "th-1", Updates: updatesChan(
+		harness.Update{Snapshot: &harness.Snapshot{MessageID: "m-1", Text: "Reading the handler.", Streaming: false}},
+		harness.Update{Activity: &harness.Activity{Kind: harness.ActivityToolCall, Tool: "Read", Summary: "Read main.go"}},
+		harness.Update{Snapshot: &harness.Snapshot{MessageID: "m-2", Text: "", Streaming: false}},
+		harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}},
+	)}}
+	conv := newFakeConversations(Conversation{ID: "conv-1"})
+	svc := NewService(Config{Conversations: conv, Targets: &fakeTargets{target: testTarget()}, Harnesses: registryOf(client), Live: live})
+	require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
+	waitFor(t, time.Second, func() bool { r, _ := conv.snapshot(); return len(r) == 1 })
+
+	frames := live.snapshot()
+	require.Len(t, frames, 4)
+	for _, f := range frames {
+		assert.True(t, f.Streaming, "a finished message or an empty close marker mid-turn must not end the bubble: %+v", f)
+	}
+	assert.Equal(t, "Read main.go", frames[2].Activity)
+}
+
+func TestRunTurn_ReplyPersistFails_ClearsTheBubble(t *testing.T) {
+	live := &fakeLive{}
+	client := &fakeHarness{startResult: harness.StartResult{SessionID: "th-1", Updates: updatesChan(
+		harness.Update{Snapshot: &harness.Snapshot{MessageID: "m-1", Text: "done!", Streaming: false}},
+		harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}},
+	)}}
+	conv := newFakeConversations(Conversation{ID: "conv-1"})
+	conv.postReplyErr = errors.New("disk full")
+	svc := NewService(Config{Conversations: conv, Targets: &fakeTargets{target: testTarget()}, Harnesses: registryOf(client), Live: live})
+	require.NoError(t, svc.HandleMessageCreated(context.Background(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
+	waitFor(t, time.Second, func() bool { f := live.snapshot(); return len(f) > 0 && !f[len(f)-1].Streaming })
+
+	frames := live.snapshot()
+	assert.Equal(t, StreamFrame{ConversationID: "conv-1", Streaming: false}, frames[len(frames)-1])
+}
+
 // --- resolution failure -> system reply -------------------------------------
 
 func TestRunTurn_ResolveTargetNotConfigured_PostsSystemReply(t *testing.T) {
@@ -427,7 +464,7 @@ func TestRunTurn_HappyPath_StreamsFramesAndPersistsFinalReply(t *testing.T) {
 	assert.Equal(t, StreamFrame{ConversationID: "conv-1", Streaming: true, Activity: "Read main.go started", ActivityKind: harness.ActivityToolCall, ActivityTool: "Read"}, frames[1], "a tool step publishes before any text")
 	assert.Equal(t, StreamFrame{ConversationID: "conv-1", MessageID: "m-1", Text: "wor", Streaming: true}, frames[2], "text clears the stale tool step")
 	assert.Equal(t, StreamFrame{ConversationID: "conv-1", MessageID: "m-1", Text: "wor", Streaming: true, Activity: "Bash", ActivityKind: harness.ActivityToolResult, ActivityTool: "Bash"}, frames[3], "a tool step keeps the text so far")
-	assert.False(t, frames[5].Streaming)
+	assert.Equal(t, StreamFrame{ConversationID: "conv-1", MessageID: "m-1", Text: "done!", Streaming: true}, frames[5], "the persisted reply, not the last snapshot, ends the bubble")
 
 	replies, systemPosts := conv.snapshot()
 	require.Len(t, replies, 1)

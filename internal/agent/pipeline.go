@@ -584,7 +584,8 @@ func (s *Service) drainTurn(ctx context.Context, conversationID, viaUserID strin
 			if u.Snapshot.Text != "" {
 				finalText = u.Snapshot.Text
 			}
-			frame.MessageID, frame.Text, frame.Streaming = u.Snapshot.MessageID, u.Snapshot.Text, u.Snapshot.Streaming
+			// One message finishing is not the turn finishing; the frame streams until finishTurn clears it.
+			frame.MessageID, frame.Text = u.Snapshot.MessageID, u.Snapshot.Text
 			frame.Activity, frame.ActivityKind, frame.ActivityTool = "", "", ""
 			publish()
 			obs.OnSnapshot()
@@ -654,11 +655,9 @@ func (s *Service) finishTurn(ctx context.Context, conversationID, viaUserID, fin
 	if term == nil {
 		term = &harness.TurnResult{State: harness.TurnError, LastError: "turn ended without a terminal result"}
 	}
-	// Every exit but done-with-text must clear the ephemeral bubble itself, or it spins forever.
+	// Every exit but a persisted done-with-text must clear the ephemeral bubble itself, or it spins forever.
 	if term.State != harness.TurnDone || strings.TrimSpace(finalText) == "" {
-		if err := s.live.Publish(ctx, TopicAgentStream, StreamFrame{ConversationID: conversationID, Streaming: false}); err != nil {
-			s.log.Warn("agent: publish clearing frame failed", "conversation", conversationID, "error", err)
-		}
+		s.clearStream(ctx, conversationID)
 	}
 	replyID := ""
 	switch term.State {
@@ -667,6 +666,7 @@ func (s *Service) finishTurn(ctx context.Context, conversationID, viaUserID, fin
 			id, err := s.conversations.PostAgentReply(ctx, conversationID, viaUserID, finalText)
 			if err != nil {
 				s.log.Error("agent: persist reply failed", "conversation", conversationID, "error", err)
+				s.clearStream(ctx, conversationID)
 			}
 			replyID = id
 		}
@@ -679,6 +679,13 @@ func (s *Service) finishTurn(ctx context.Context, conversationID, viaUserID, fin
 		}
 	}
 	obs.OnFinished(*term, replyID)
+}
+
+// clearStream publishes the empty non-streaming frame that removes the ephemeral bubble.
+func (s *Service) clearStream(ctx context.Context, conversationID string) {
+	if err := s.live.Publish(ctx, TopicAgentStream, StreamFrame{ConversationID: conversationID, Streaming: false}); err != nil {
+		s.log.Warn("agent: publish clearing frame failed", "conversation", conversationID, "error", err)
+	}
 }
 
 // cancelledWithCause is true when the caller cancelled the turn with its own reason; that caller owns the thread note.
