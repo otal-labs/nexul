@@ -2,34 +2,37 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { THREAD_PANE_MAX, THREAD_PANE_MIN, useThreadPaneStore } from "@/stores/threadPaneStore";
 
-const savedWidth = () => JSON.parse(localStorage.getItem("thread-pane") ?? "{}").state?.width;
+const savedWidths = () => JSON.parse(localStorage.getItem("thread-pane") ?? "{}").state?.widths;
+const width = (ticketId: string) => useThreadPaneStore.getState().widths[ticketId];
 
 describe("threadPaneStore", () => {
   beforeEach(() => {
     localStorage.clear();
-    useThreadPaneStore.getState().reset();
+    useThreadPaneStore.setState({ widths: {} });
   });
 
-  it("has no width until one is chosen, so the pane keeps its share of the page", () => {
-    expect(useThreadPaneStore.getState().width).toBeNull();
+  it("has no width for a ticket until one is chosen, so the pane keeps its share of the page", () => {
+    expect(width("t1")).toBeUndefined();
   });
 
-  it("clamps a chosen width, saves it to the browser, and reset goes back to no width", () => {
-    useThreadPaneStore.getState().setWidth(THREAD_PANE_MIN - 100);
-    expect(useThreadPaneStore.getState().width).toBe(THREAD_PANE_MIN);
-    useThreadPaneStore.getState().setWidth(THREAD_PANE_MAX + 100);
-    expect(savedWidth()).toBe(THREAD_PANE_MAX);
-    useThreadPaneStore.getState().reset();
-    expect(useThreadPaneStore.getState().width).toBeNull();
-    expect(savedWidth()).toBeNull();
+  it("keeps a width per ticket, clamped and saved to the browser, and reset clears only that ticket", () => {
+    useThreadPaneStore.getState().setWidth("t1", THREAD_PANE_MIN - 100);
+    useThreadPaneStore.getState().setWidth("t2", THREAD_PANE_MAX + 100);
+    expect(savedWidths()).toEqual({ t1: THREAD_PANE_MIN, t2: THREAD_PANE_MAX });
+    useThreadPaneStore.getState().reset("t1");
+    expect(savedWidths()).toEqual({ t2: THREAD_PANE_MAX });
   });
 
-  it.each([
-    ["an out-of-range number", 9000, THREAD_PANE_MAX],
-    ["a value that is not a number", "wide", null],
-  ])("reads %s back from the browser without breaking the grid", async (_name, stored, expected) => {
-    localStorage.setItem("thread-pane", JSON.stringify({ state: { width: stored }, version: 0 }));
+  it("reads saved widths back without breaking the grid on bad values", async () => {
+    const stored = { widths: { t1: 9000, t2: "wide" } };
+    localStorage.setItem("thread-pane", JSON.stringify({ state: stored, version: 0 }));
     await useThreadPaneStore.persist.rehydrate();
-    expect(useThreadPaneStore.getState().width).toBe(expected);
+    expect(useThreadPaneStore.getState().widths).toEqual({ t1: THREAD_PANE_MAX });
+  });
+
+  it("drops the old single width shared by every ticket", async () => {
+    localStorage.setItem("thread-pane", JSON.stringify({ state: { width: 400 }, version: 0 }));
+    await useThreadPaneStore.persist.rehydrate();
+    expect(useThreadPaneStore.getState().widths).toEqual({});
   });
 });
