@@ -308,6 +308,34 @@ func (f *fakeMemories) ListForProject(_ context.Context, projectID string) ([]Me
 	return f.byProject[projectID], f.err
 }
 
+// fakeAnswers records each round of follow-ups the runner stores, or fails with err.
+type fakeAnswers struct {
+	mu     sync.Mutex
+	err    error
+	rounds []fakeRound
+}
+
+type fakeRound struct {
+	projectID, answeredBy string
+	followUps             []FollowUp
+}
+
+func (f *fakeAnswers) RecordRound(_ context.Context, projectID, answeredBy string, followUps []FollowUp) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.err != nil {
+		return f.err
+	}
+	f.rounds = append(f.rounds, fakeRound{projectID, answeredBy, followUps})
+	return nil
+}
+
+func (f *fakeAnswers) snapshot() []fakeRound {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]fakeRound{}, f.rounds...)
+}
+
 type fakePost struct {
 	conversationID, authorID, body string
 }

@@ -101,6 +101,26 @@ func (a playsMemoryReader) ListForProject(ctx context.Context, projectID string)
 	return out, nil
 }
 
+// playsInterviewAnswers adapts the memories domain's stored answers to the runner's InterviewAnswers seam.
+type playsInterviewAnswers struct {
+	svc *memories.Service
+}
+
+func (a playsInterviewAnswers) RecordRound(ctx context.Context, projectID, answeredBy string, followUps []plays.FollowUp) error {
+	rows := make([]memories.InterviewAnswer, 0, len(followUps))
+	for _, f := range followUps {
+		options := make([]memories.AnswerOption, 0, len(f.Options))
+		for _, o := range f.Options {
+			options = append(options, memories.AnswerOption{Label: o.Label, Description: o.Description})
+		}
+		rows = append(rows, memories.InterviewAnswer{
+			Question: f.Question, Why: f.Why, Options: options, MultiSelect: f.MultiSelect, Selected: f.Selected, Text: f.Text,
+		})
+	}
+	_, err := a.svc.RecordRound(ctx, projectID, answeredBy, rows)
+	return err
+}
+
 // playsThreads adapts chat to the runner's Threads seam (ADR 0017: plays never imports chat).
 type playsThreads struct {
 	svc *chat.Service

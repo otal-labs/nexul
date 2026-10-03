@@ -49,6 +49,7 @@ type runnerFixture struct {
 	threads *fakeThreads
 	turns   *fakeTurns
 	live    *fakeLive
+	answers *fakeAnswers
 	clock   time.Time
 }
 
@@ -62,6 +63,7 @@ func newRunnerFixture() *runnerFixture {
 		turns:   newFakeTurns(),
 		live:    &fakeLive{},
 		locks:   &fakeDocLocks{locked: map[string]bool{}},
+		answers: &fakeAnswers{},
 		clock:   fixedNow,
 	}
 	f.targets = &fakeTargets{
@@ -94,7 +96,7 @@ func newRunnerFixture() *runnerFixture {
 			projects:   map[string]ProjectTarget{projectID: {Name: "Nexul", TestsLocation: "separate"}, otherProj: {Name: "Other"}},
 		},
 		Harness: f.harness, Memories: f.mems, Threads: f.threads, Turns: f.turns, Live: f.live, Users: fakeUsers{},
-		Now: func() time.Time { return f.clock },
+		Answers: f.answers, Now: func() time.Time { return f.clock },
 	})
 	return f
 }

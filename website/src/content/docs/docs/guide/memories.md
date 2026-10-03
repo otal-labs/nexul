@@ -52,7 +52,8 @@ strategy, principles, and vocabulary, written as rules. Open it from
 The page lists the Interview template's questions, one open at a time: each
 **Next** or **Skip** saves, and any answered or skipped question opens again on
 a click. Once every question is answered or skipped, **Done** runs the
-workspace's Interview play, which writes the memory shown beside the questions;
+workspace's Interview play: an Agent asks follow-ups about what your answers
+and the code leave open, then writes the memory shown beside the questions;
 **Regenerate** runs it again later. Follow-ups the Agent asked appear under the
 questions, one section per round. See [Plays](/docs/guide/plays/).
 

@@ -117,6 +117,21 @@ type MemoryReader interface {
 	ListForProject(ctx context.Context, projectID string) ([]Memory, error)
 }
 
+// FollowUp is one question an interview run asked and the answer it got; no picks and no text is a skip.
+type FollowUp struct {
+	Question    string
+	Why         string
+	Options     []harness.QuestionOption
+	MultiSelect bool
+	Selected    []string
+	Text        string
+}
+
+// InterviewAnswers is the runner's seam onto the stored interview answers (ADR 0017), one round per answered question.
+type InterviewAnswers interface {
+	RecordRound(ctx context.Context, projectID, answeredBy string, followUps []FollowUp) error
+}
+
 // Threads is the runner's seam onto chat: the target's thread, the starter's request in it, and the run's notes.
 type Threads interface {
 	GetOrCreateTicketThread(ctx context.Context, workspaceID, ticketID, userID string) (string, error)
@@ -163,9 +178,11 @@ type RunnerConfig struct {
 	Live     LivePublisher
 	Users    UserReader
 	// Links is optional; nil means a ticket play runs without its found-in and blocked-by context.
-	Links  LinkReader
-	Logger *slog.Logger
-	Now    func() time.Time
+	Links LinkReader
+	// Answers is optional; nil means an interview run's follow-ups live only on the trail.
+	Answers InterviewAnswers
+	Logger  *slog.Logger
+	Now     func() time.Time
 	// SilenceTimeout defaults to HarnessSilenceTimeout; tests shorten it.
 	SilenceTimeout time.Duration
 }
@@ -185,6 +202,7 @@ type Runner struct {
 	live     LivePublisher
 	users    UserReader
 	links    LinkReader
+	answers  InterviewAnswers
 	log      *slog.Logger
 	now      func() time.Time
 	silence  time.Duration
@@ -210,7 +228,7 @@ func NewRunner(cfg RunnerConfig) *Runner {
 	return &Runner{
 		plays: cfg.Plays, trails: redactedTrails{cfg.Trails}, perm: cfg.Perm, targets: cfg.Targets, docs: cfg.Docs, projects: cfg.Projects,
 		harness: cfg.Harness, memories: cfg.Memories, threads: redactedThreads{cfg.Threads}, turns: cfg.Turns,
-		live: cfg.Live, users: cfg.Users, links: cfg.Links, log: cfg.Logger, now: cfg.Now, silence: cfg.SilenceTimeout,
+		live: cfg.Live, users: cfg.Users, links: cfg.Links, answers: cfg.Answers, log: cfg.Logger, now: cfg.Now, silence: cfg.SilenceTimeout,
 		runs: map[string]*trailObserver{},
 	}
 }
@@ -379,6 +397,7 @@ func (r *Runner) Answer(ctx context.Context, trailID string, answer harness.Ques
 	if o := r.run(trailID); o != nil {
 		err := o.answer(ctx, answer)
 		if err == nil {
+			r.recordFollowUps(ctx, trail, actor, answer)
 			return r.trails.GetTrail(ctx, trailID)
 		}
 		if !errors.Is(err, errTurnGone) {
@@ -388,6 +407,7 @@ func (r *Runner) Answer(ctx context.Context, trailID string, answer harness.Ques
 	trail.Question.Answer = &answer
 	trail.State = TrailRunning
 	r.save(ctx, trail)
+	r.recordFollowUps(ctx, trail, actor, answer)
 	tgt, err := r.readTarget(ctx, trail.TargetType, trail.TargetID)
 	if err != nil {
 		r.log.Warn("plays: answer could not read the target", "trail", trailID, "error", err)
@@ -400,6 +420,38 @@ func (r *Runner) Answer(ctx context.Context, trailID string, answer harness.Ques
 		Target: &agent.TargetOverride{ComputerID: trail.ComputerID, Provider: trail.Provider, Model: trail.Model, ModelOptions: trail.ModelOptions},
 	}, true)
 	return &snapshot, nil
+}
+
+// recordFollowUps keeps an interview run's answered question as the project's next round; a failed record is only logged.
+func (r *Runner) recordFollowUps(ctx context.Context, trail *Trail, answeredBy string, answer harness.QuestionAnswer) {
+	if r.answers == nil || trail.TargetType != TargetInterview {
+		return
+	}
+	items := trail.Question.Questions
+	followUps := make([]FollowUp, 0, len(items))
+	for _, item := range items {
+		v := answer.Answers[item.ID]
+		followUps = append(followUps, FollowUp{
+			Question: item.Text, Why: item.Header, Options: item.Options, MultiSelect: item.MultiSelect,
+			Selected: optionLabels(item.Options, v.Selected), Text: v.Text,
+		})
+	}
+	if err := r.answers.RecordRound(ctx, trail.TargetID, answeredBy, followUps); err != nil {
+		r.log.Error("plays: record interview follow-ups failed", "trail", trail.ID, "project", trail.TargetID, "error", err)
+	}
+}
+
+// optionLabels names each pick by its option's label, which is what the stored options keep; a value no option has stays as given.
+func optionLabels(options []harness.QuestionOption, selected []string) []string {
+	out := make([]string, 0, len(selected))
+	for _, v := range selected {
+		i := slices.IndexFunc(options, func(o harness.QuestionOption) bool { return o.Value != "" && o.Value == v })
+		if i >= 0 {
+			v = options[i].Label
+		}
+		out = append(out, v)
+	}
+	return out
 }
 
 // checkPlayAndTarget is the run's first gate: the play, its type against the target, the workspace, enabled,

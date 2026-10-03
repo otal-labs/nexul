@@ -2,6 +2,7 @@ package plays
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -280,4 +281,73 @@ func TestSilence_PausedWhileWaiting_AnswerRestartsTheClock(t *testing.T) {
 		assert.Equal(t, "Answered: Yes", posts[len(posts)-1].body)
 		assert.Empty(t, f.threads.noteBodies(), "no silence failure")
 	})
+}
+
+func interviewRun() RunInput {
+	return RunInput{PlayID: intPlayID, TargetType: TargetInterview, TargetID: projectID, Via: ViaWeb}
+}
+
+func followUpRound(requestID string) harness.Question {
+	return harness.Question{RequestID: requestID, Questions: []harness.QuestionItem{
+		{ID: "runner", Text: "Which test runner?", Header: "ci.yml runs both bun test and vitest",
+			Options: []harness.QuestionOption{{Label: "Vitest (Recommended)", Description: "web/", Value: "vitest"}, {Label: "Bun"}}},
+		{ID: "gates", Text: "Which gates block a merge?", Header: "Skipped in the template", MultiSelect: true,
+			Options: []harness.QuestionOption{{Label: "Lint"}, {Label: "Coverage"}}},
+		{ID: "floor", Text: "What coverage floor?", Header: "Makefile says 80"},
+	}}
+}
+
+func TestAnswer_InterviewRun_RecordsEachRoundInOrder(t *testing.T) {
+	f := heldFixture(t)
+	trail, obs := driveTurn(t, f, interviewRun())
+	obs.OnStarted("sess-1")
+
+	obs.OnQuestion(followUpRound("req-1"))
+	_, err := f.runner.Answer(ctxAs(starter), trail.ID, harness.QuestionAnswer{Answers: map[string]harness.AnswerValue{
+		"runner": {Selected: []string{"vitest"}}, "gates": {Selected: []string{"Lint", "Coverage"}}, "floor": {},
+	}})
+	require.NoError(t, err)
+
+	obs.OnQuestion(harness.Question{RequestID: "req-2", Questions: []harness.QuestionItem{{ID: "q", Text: "Keep the 80 floor?"}}})
+	obs.OnFinished(harness.TurnResult{State: harness.TurnDone}, "")
+	_, err = f.runner.Answer(ctxAs(starter), trail.ID, harness.QuestionAnswer{Answers: map[string]harness.AnswerValue{"q": {Text: "Raise it to 85"}}})
+	require.NoError(t, err)
+
+	round1 := followUpRound("req-1").Questions
+	assert.Equal(t, []fakeRound{
+		{projectID: projectID, answeredBy: starter, followUps: []FollowUp{
+			{Question: "Which test runner?", Why: "ci.yml runs both bun test and vitest", Options: round1[0].Options, Selected: []string{"Vitest (Recommended)"}},
+			{Question: "Which gates block a merge?", Why: "Skipped in the template", Options: round1[1].Options, MultiSelect: true, Selected: []string{"Lint", "Coverage"}},
+			{Question: "What coverage floor?", Why: "Makefile says 80", Selected: []string{}},
+		}},
+		{projectID: projectID, answeredBy: starter, followUps: []FollowUp{{Question: "Keep the 80 floor?", Selected: []string{}, Text: "Raise it to 85"}}},
+	}, f.answers.snapshot(), "a live answer and one that resumes the run each land as the next round, picks named by label, an empty answer left for the store to skip")
+}
+
+func TestAnswer_TicketAndDocRuns_RecordNoFollowUps(t *testing.T) {
+	for name, in := range map[string]RunInput{"ticket": ticketRun(), "doc": {PlayID: docPlayID, TargetType: TargetDoc, TargetID: docID, Via: ViaWeb}} {
+		t.Run(name, func(t *testing.T) {
+			f := heldFixture(t)
+			trail, obs := driveTurn(t, f, in)
+			obs.OnStarted("sess-1")
+			obs.OnQuestion(askedQuestion())
+
+			_, err := f.runner.Answer(ctxAs(starter), trail.ID, yesAnswer())
+			require.NoError(t, err)
+			assert.Empty(t, f.answers.snapshot())
+		})
+	}
+}
+
+func TestAnswer_InterviewRecordFails_TheRunStillGetsItsAnswer(t *testing.T) {
+	f := heldFixture(t)
+	f.answers.err = errors.New("database is locked")
+	trail, obs := driveTurn(t, f, interviewRun())
+	obs.OnStarted("sess-1")
+	obs.OnQuestion(askedQuestion())
+
+	got, err := f.runner.Answer(ctxAs(starter), trail.ID, yesAnswer())
+	require.NoError(t, err)
+	assert.Equal(t, TrailRunning, got.State)
+	assert.Equal(t, []harness.QuestionAnswer{yesAnswer()}, f.turns.answered)
 }
