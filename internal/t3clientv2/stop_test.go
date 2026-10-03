@@ -71,9 +71,11 @@ func TestInterrupt_StopsTheRunTheTurnIsFor(t *testing.T) {
 		watching string
 		runs     []any
 		causes   map[string]any
-		want     map[string]any // the command sent, commandId aside; nil for none
-		wantErr  string
-		errIs    error
+		// after is th-1's runs once a command of the named type arrives, taken or refused.
+		after   map[string][]any
+		want    map[string]any // the command sent, commandId aside; nil for none
+		wantErr string
+		errIs   error
 	}{
 		{name: "the turn's own live run is interrupted without holding the queue behind it", watching: "msg-1",
 			runs: []any{runAt(1, "msg-1", "running"), runAt(2, "msg-x", runQueued)},
@@ -97,6 +99,15 @@ func TestInterrupt_StopsTheRunTheTurnIsFor(t *testing.T) {
 			runs:    []any{runAt(1, "msg-1", "running")},
 			causes:  map[string]any{"run.interrupt": rejected("run.interrupt", notInterruptible)},
 			wantErr: "invalid: stop the T3 run: " + notInterruptible, errIs: apperrs.ErrInvalid},
+		{name: "a queued run that started before its cancel landed is read again and interrupted", watching: "msg-1",
+			runs:   []any{runAt(1, "msg-1", runQueued)},
+			causes: map[string]any{"queued-run.cancel": rejected("queued-run.cancel", "Run run:thread:th-1:ordinal:1 is not queued.")},
+			after:  map[string][]any{"queued-run.cancel": {runAt(1, "msg-1", "running")}},
+			want:   interrupt(1)},
+		{name: "a live run that replied before its interrupt landed is read again and has nothing left to stop", watching: "msg-1",
+			runs:   []any{runAt(1, "msg-1", "running")},
+			causes: map[string]any{"run.interrupt": rejected("run.interrupt", notInterruptible)},
+			after:  map[string][]any{"run.interrupt": {runAt(1, "msg-1", runWaiting)}}},
 		{name: "a waiting run with a run after it is past stopping", watching: "msg-1",
 			runs:    []any{runAt(1, "msg-1", runWaiting), runAt(2, "msg-x", runQueued)},
 			wantErr: "conflict: nothing is running on this T3 thread", errIs: apperrs.ErrConflict},
@@ -113,8 +124,12 @@ func TestInterrupt_StopsTheRunTheTurnIsFor(t *testing.T) {
 			f, h := newFake(t, 2)
 			f.Projections = map[string]any{"th-1": projectionWith(t, tt.runs)}
 			f.CommandCauses = tt.causes
+			f.AfterCommand = map[string]map[string]any{}
+			for command, runs := range tt.after {
+				f.AfterCommand[command] = map[string]any{"th-1": projectionWith(t, runs)}
+			}
 			if tt.watching != "" {
-				h.turns.Store("th-1", newLive(t.Context(), tt.watching))
+				h.turns.Store("th-1", newRunningTurn(t.Context(), tt.watching))
 			}
 
 			err := h.Interrupt(t.Context(), harness.Target{Session: laptop(f), SessionID: "th-1"})
@@ -167,9 +182,9 @@ func TestInterrupt_AfterStartTurn_StopsThatTurnsRunNotTheNewest(t *testing.T) {
 	assert.Equal(t, "run:thread:th-1:ordinal:1", cmd["runId"], "the turn's own run, though a newer one is queued")
 }
 
-func TestStartTurn_ContextEndsWhileQueued_CancelsOwnRun(t *testing.T) {
-	t.Parallel()
-	f, h := newFake(t, 2)
+// endQueuedTurn ends a turn T3 queued behind msg-0's run on th-1, returning its message id and the command sent next.
+func endQueuedTurn(t *testing.T, f *t3rpctest.Server, h *Harness) (string, map[string]any) {
+	t.Helper()
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan started, 1)
 	go func() {
@@ -187,10 +202,50 @@ func TestStartTurn_ContextEndsWhileQueued_CancelsOwnRun(t *testing.T) {
 	require.Equal(t, queuedNote, note.Activity.Summary)
 
 	cancel()
-	cmd := t3rpctest.WaitFor(t, f.Dispatched, "queued-run.cancel")
+	return messageID, t3rpctest.WaitFor(t, f.Dispatched, "the command sent once the turn let the thread go")
+}
+
+func TestStartTurn_ContextEndsWhileQueued_CancelsOwnRun(t *testing.T) {
+	t.Parallel()
+	f, h := newFake(t, 2)
+	_, cmd := endQueuedTurn(t, f, h)
 	assert.Equal(t, map[string]any{"type": "queued-run.cancel", "commandId": cmd["commandId"], "threadId": "th-1",
 		"runId": "run:thread:th-1:ordinal:2"}, cmd, "nobody will read the reply of a run T3 starts later")
 }
+
+func TestInterrupt_TurnsWatchEnded_StopsTheNewestUnfinishedRun(t *testing.T) {
+	t.Parallel()
+	f, h := newFake(t, 2)
+	messageID, _ := endQueuedTurn(t, f, h)
+	f.Projections = map[string]any{"th-1": projectionWith(t, []any{runAt(1, "msg-0", "running"), runAt(2, messageID, "cancelled")})}
+
+	require.NoError(t, h.Interrupt(t.Context(), harness.Target{Session: laptop(f), SessionID: "th-1"}))
+	cmd := t3rpctest.WaitFor(t, f.Dispatched, "run.interrupt")
+	assert.Equal(t, "run.interrupt", cmd["type"])
+	assert.Equal(t, "run:thread:th-1:ordinal:1", cmd["runId"], "no turn watches the thread any more, so its own finished run is not the one")
+}
+
+// waitingOnHandoff starts a turn on th-1 and streams events until the turn says it waits for handed-off work.
+func waitingOnHandoff(t *testing.T, f *t3rpctest.Server, h *Harness, events func(messageID string) []json.RawMessage) (string, <-chan harness.Update) {
+	t.Helper()
+	done := begin(t, h, laptop(f), "th-1")
+	subID := t3rpctest.WaitFor(t, f.Subscribed, "subscribeThread")
+	f.Write(t3rpctest.Chunk(subID, snapshotWith(t, nil)))
+	messageID, _ := t3rpctest.WaitFor(t, f.Dispatched, "message.dispatch")["messageId"].(string)
+	s := <-done
+	require.NoError(t, s.err)
+	values := []any{}
+	for _, e := range events(messageID) {
+		values = append(values, e)
+	}
+	f.Write(t3rpctest.Chunk(subID, values...))
+	waiting := t3rpctest.WaitFor(t, s.result.Updates, "the waiting step")
+	require.NotNil(t, waiting.Activity)
+	require.Equal(t, handoffNote, waiting.Activity.Summary)
+	return messageID, s.result.Updates
+}
+
+const childUnreadable = "Could not stop handed-off work in T3 Code: read the T3 thread: Failed to load orchestration V2 thread th-2"
 
 func TestInterrupt_TurnWaitingOnHandedOffWork_StopsItBeforeItsOwnRunAndEndsInterrupted(t *testing.T) {
 	t.Parallel()
@@ -230,7 +285,7 @@ func TestInterrupt_TurnWaitingOnHandedOffWork_StopsItBeforeItsOwnRunAndEndsInter
 			},
 			ownRuns: func(id string) []any { return []any{runOf(id, runWaiting)} },
 			want:    []map[string]any{interrupt("th-1", runOne)},
-			notes:   []string{"Could not stop handed-off work in T3 Code: invalid: read the T3 thread: Failed to load orchestration V2 thread th-2"}},
+			notes:   []string{childUnreadable}},
 		{name: "a queued wake T3 cancels with its dropped result is not cancelled again, and Stop succeeds though the turn's own run is over",
 			events: func(id string) []json.RawMessage {
 				return story([2]any{"run.created", runOf(id, "running")},
@@ -243,6 +298,16 @@ func TestInterrupt_TurnWaitingOnHandedOffWork_StopsItBeforeItsOwnRunAndEndsInter
 			disposed: func(id string) []any { return []any{runOf(id, runCompleted), runAt(2, wakeMessage, "cancelled")} },
 			causes:   map[string]any{"queued-run.cancel": rejected("queued-run.cancel", "Run "+runTwo+" is not queued.")},
 			want:     []map[string]any{dispose}},
+		{name: "every hand-off step refused while the turn's own run is over fails Stop with the first refusal, and the turn runs on",
+			events: func(id string) []json.RawMessage {
+				return story([2]any{"run.created", runOf(id, "running")},
+					[2]any{"subagent.updated", handedOff("task-1", "app_owned", "running", map[string]any{"completionWake": "always"})},
+					[2]any{"run.updated", runOf(id, runCompleted)})
+			},
+			ownRuns: func(id string) []any { return []any{runOf(id, runCompleted)} },
+			causes: map[string]any{"delegated_task.completion-delivery.dispose": rejected("delegated_task.completion-delivery.dispose",
+				"Delegated task task-1 was not found.")},
+			wantErr: "invalid: drop a handed-off result: Delegated task task-1 was not found."},
 		{name: "a thread T3 cannot read again once the hand-offs are stopped fails Stop before the turn's own run, and the turn runs on",
 			events: func(id string) []json.RawMessage {
 				return story([2]any{"run.created", runOf(id, "running")},
@@ -259,20 +324,7 @@ func TestInterrupt_TurnWaitingOnHandedOffWork_StopsItBeforeItsOwnRunAndEndsInter
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			f, h := newFake(t, 2)
-			done := begin(t, h, laptop(f), "th-1")
-			subID := t3rpctest.WaitFor(t, f.Subscribed, "subscribeThread")
-			f.Write(t3rpctest.Chunk(subID, snapshotWith(t, nil)))
-			messageID, _ := t3rpctest.WaitFor(t, f.Dispatched, "message.dispatch")["messageId"].(string)
-			s := <-done
-			require.NoError(t, s.err)
-			values := []any{}
-			for _, e := range tt.events(messageID) {
-				values = append(values, e)
-			}
-			f.Write(t3rpctest.Chunk(subID, values...))
-			waiting := t3rpctest.WaitFor(t, s.result.Updates, "the waiting step")
-			require.NotNil(t, waiting.Activity)
-			require.Equal(t, handoffNote, waiting.Activity.Summary)
+			messageID, updates := waitingOnHandoff(t, f, h, tt.events)
 			f.Projections = map[string]any{"th-1": projectionWith(t, tt.ownRuns(messageID))}
 			if tt.child != nil {
 				f.Projections["th-2"] = tt.child
@@ -294,7 +346,7 @@ func TestInterrupt_TurnWaitingOnHandedOffWork_StopsItBeforeItsOwnRunAndEndsInter
 			if tt.wantErr != "" {
 				assert.ErrorContains(t, err, tt.wantErr)
 				found, _ := h.turns.Load("th-1")
-				assert.NoError(t, found.(*live).halted.Err(), "a Stop that failed leaves the turn to end on its own")
+				assert.NoError(t, found.(*runningTurn).halted.Err(), "a Stop that failed leaves the turn to end on its own")
 				return
 			}
 			require.NoError(t, err)
@@ -303,9 +355,28 @@ func TestInterrupt_TurnWaitingOnHandedOffWork_StopsItBeforeItsOwnRunAndEndsInter
 				want = append(want, "note "+n)
 			}
 			want = append(want, "end "+string(harness.TurnInterrupted))
-			assert.Equal(t, want, labels(drainUpdates(t, s.result.Updates)),
+			assert.Equal(t, want, labels(drainUpdates(t, updates)),
 				"the turn ends at Stop, whatever T3 reports next, so no later wake is followed")
 			assert.Empty(t, f.Dispatched)
 		})
 	}
+}
+
+func TestInterrupt_StoppedAgainAfterARefusal_NotesWhatItCouldNotStopOnce(t *testing.T) {
+	t.Parallel()
+	f, h := newFake(t, 2)
+	messageID, updates := waitingOnHandoff(t, f, h, func(id string) []json.RawMessage {
+		return story([2]any{"run.created", runOf(id, "running")},
+			[2]any{"subagent.updated", handedOff("task-1", "app_owned", "running", delivery("disposed"))},
+			[2]any{"run.updated", runOf(id, runWaiting)})
+	})
+	f.Projections = map[string]any{"th-1": projectionWith(t, []any{runOf(messageID, runWaiting)})}
+	f.CommandCauses = map[string]any{"run.interrupt": rejected("run.interrupt", "Provider session ps-1 is restarting.")}
+	target := harness.Target{Session: laptop(f), SessionID: "th-1"}
+	require.ErrorContains(t, h.Interrupt(t.Context(), target), "Provider session ps-1 is restarting.")
+
+	f.CommandCauses = nil
+	require.NoError(t, h.Interrupt(t.Context(), target))
+	assert.Equal(t, []string{"note " + childUnreadable, "end " + string(harness.TurnInterrupted)}, labels(drainUpdates(t, updates)),
+		"the child both Stops could not reach is noted once")
 }

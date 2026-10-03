@@ -80,14 +80,6 @@ type runtimeModeSet struct {
 	RuntimeMode string `json:"runtimeMode"`
 }
 
-type runtimeRequestRespond struct {
-	Type      string `json:"type"`
-	CommandID string `json:"commandId"`
-	ThreadID  string `json:"threadId"`
-	RequestID string `json:"requestId"`
-	Decision  string `json:"decision"`
-}
-
 type subscribeInput struct {
 	ThreadID              string `json:"threadId"`
 	AfterSequence         *int64 `json:"afterSequence,omitempty"`
@@ -122,7 +114,7 @@ func (h *Harness) StartTurn(ctx context.Context, target harness.Target, title st
 		t.close()
 		return harness.StartResult{}, err
 	}
-	l := newLive(ctx, t.messageID)
+	l := newRunningTurn(ctx, t.messageID)
 	h.turns.Store(t.threadID, l)
 	updates := make(chan harness.Update, 16)
 	for _, n := range notes {
@@ -346,7 +338,7 @@ func (t *turn) live(ctx context.Context) (*t3rpc.Conn, error) {
 }
 
 // end lets the thread go once the pump stops; a run T3 still holds queued is cancelled, since nobody would read its reply.
-func (t *turn) end(ctx context.Context, w *watch, l *live) {
+func (t *turn) end(ctx context.Context, w *watch, l *runningTurn) {
 	defer t.close()
 	l.halt() // frees the context only Stop would have cancelled
 	t.h.turns.CompareAndDelete(t.threadID, l)
@@ -366,7 +358,11 @@ func (t *turn) end(ctx context.Context, w *watch, l *live) {
 
 // decline refuses an approval, since an unattended turn has nobody to grant it.
 func (t *turn) decline(ctx context.Context, requestID string) error {
-	_, err := t.conn.Call(ctx, dispatchCommand, runtimeRequestRespond{
+	c, err := t.live(ctx)
+	if err != nil {
+		return err
+	}
+	_, err = c.Call(ctx, dispatchCommand, requestRespond{
 		Type: "runtime-request.respond", CommandID: ids.New(), ThreadID: t.threadID, RequestID: requestID, Decision: "decline",
 	})
 	if err != nil {

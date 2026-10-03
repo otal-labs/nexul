@@ -52,9 +52,11 @@ Decision: Nexul mints the message id, and the turn is the run whose `userMessage
   its message, does it fall back to the thread's newest unfinished run. A queued run is cancelled. A live one gets
   `run.interrupt` without `holdQueue`: T3's own Stop sends it, and it would hold every later Nexul message until
   someone resumes the queue in T3. A `waiting` run has already replied; only the thread's latest one can still have
-  background work to stop, and T3 calling it not interruptible means nothing is left. With nothing to stop, Stop is a
-  conflict. Work the turn handed off is stopped first (ADR 0116). A turn that stops watching while its run is still queued cancels that run, since nobody would read its
-  reply.
+  background work to stop, and T3 calling it not interruptible means nothing is left. When T3 refuses because the run
+  started or replied after Stop read it ("is not queued", "is not interruptible"), Stop reads the thread once more and
+  acts on what it finds. With nothing to stop, Stop is a conflict. Work the turn handed off is stopped first
+  (ADR 0116). A Stop that succeeds ends the turn interrupted at once, without waiting for T3 to report the run's end.
+  A turn that stops watching while its run is still queued cancels that run, since nobody would read its reply.
 - **Answers.** A question is answered with `runtime-request.respond`, keyed by question id. A request T3 resumes by
   dispatching the answer as a message of its own (`responseCapability` `message`) takes one non-empty string per
   question, with multi-select choices joined by ", ".
@@ -64,7 +66,8 @@ Decision: Nexul mints the message id, and the turn is the run whose `userMessage
   for a `message` request the `async-answer:<requestId>` run T3 starts, or the live run T3 steered the answer into;
   it sends no prompt, so the conversation's unsent messages wait for the next one. A request T3 already resolved ends
   the turn with "Already answered in T3 Code". An expired, cancelled, unknown or unresumable one goes as an ordinary
-  message. T3's refusal of the respond decides only when the request changed after the snapshot.
+  message, and so does a live one whose run the snapshot does not hold, since the turn would have no run to follow.
+  T3's refusal of the respond decides only when the request changed after the snapshot.
 
 Rejected: ending the turn at `completed`, which adds checkpoint latency to every reply and hangs when the capture
 target is incomplete; following every run on the thread, which would reply to T3's own wakes, watches and schedules

@@ -313,13 +313,19 @@ func (s *Service) SwitchHarness(ctx context.Context, sess harness.Session, to ha
 		return err
 	}
 	from := kindOrder[step-1]
+	// The repo asks for the event only when the row changed, so a computer already moved notifies nobody.
+	owner := ""
 	evt := func(userID string) eventbus.OutboxEvent {
+		owner = userID
 		return eventbus.OutboxEvent{ID: ids.New(), Topic: TopicHarnessSwitched, Payload: HarnessSwitchedEvent{
 			ComputerID: sess.ComputerID, UserID: userID, FromKind: from, ToKind: to, HarnessVersion: version,
 		}}
 	}
 	if err := s.repo.SwitchComputerKind(ctx, sess.ComputerID, from, to, version, s.now().UTC(), evt); err != nil {
 		return fmt.Errorf("switch computer %s to %s: %w", sess.ComputerID, to, err)
+	}
+	if owner != "" {
+		s.notifyComputersChanged(owner)
 	}
 	return nil
 }

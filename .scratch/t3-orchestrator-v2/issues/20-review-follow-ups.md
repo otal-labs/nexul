@@ -37,12 +37,52 @@ where it is; re-read the code first, since line numbers drift.
 
 **Blocked by:** None — can start immediately
 
-**Status:** ready-for-agent
+**Status:** done
 
 Read first: `practices/go.md`, `practices/testing.md`, `practices/architecture.md`, the spec, `research/protocol-2-wire.md`.
 
-- [ ] The race test passes `-race -count=2000`
-- [ ] A `subagent.updated` without `completionDelivery` keeps the pending state (test)
-- [ ] Stop: all hand-off steps failing returns the first error; a second Stop adds no notes; a refused cancel or interrupt on Nexul's own run re-reads once (tests)
-- [ ] One respond struct; the Interrupt fallback row; a switch calls `notifyComputersChanged` once (test)
-- [ ] `make lint`, `make vet`, `make coverage` green; protocol-1 scenarios unchanged
+- [x] The race test passes `-race -count=2000`
+- [x] A `subagent.updated` without `completionDelivery` keeps the pending state (test)
+- [x] Stop: all hand-off steps failing returns the first error; a second Stop adds no notes; a refused cancel or interrupt on Nexul's own run re-reads once (tests)
+- [x] One respond struct; the Interrupt fallback row; a switch calls `notifyComputersChanged` once (test)
+- [x] `make lint`, `make vet`, `make coverage` green; protocol-1 scenarios unchanged
+
+## Comments
+
+- **1, the race.** Already fixed on master by #366, which reads the sequence before the resumed subscription starts;
+  this ticket's review predates it. Putting the old read back reproduces the report (`reconnect` against
+  `eventUpdate`, about once in 8,000 runs here), and master passes the named test at `-race -count=2000` (and 12,000
+  runs across six processes). `internal/t3client` is unchanged, so protocol 1 behaves exactly as before.
+- **2, hand-off state.** `watch.subagent` keeps a row's known `completionDelivery` when `subagent.updated` leaves it
+  out. The run `delegatedCompletion` carry-forward is gone: `deliveries` is never cleared, so an update without one
+  already keeps the mapping. A resubscribe snapshot still replaces the subagent rows (spec decision 9), and a bounded
+  snapshot keeps a finished subagent only while its run is in the window. Ticket 13 should keep a pill's last known
+  state rather than reading it back from `w.subagents` after a snapshot.
+- **3, Stop.**
+  - `stopHandoffs` returns the hand-off outcome as an error (a `tally`): nil once a step stopped something, else the
+    first failure, else `errNothingToStop`. `Interrupt` uses it only when Nexul's own run had nothing to stop.
+  - Each Stop replaces the turn's notes with its own failures, so a second Stop neither repeats a note nor keeps one
+    for work it then stopped. A note keeps the step's words and T3's message, without the `invalid:` prefix ("Could not
+    stop handed-off work in T3 Code: read the T3 thread: Failed to load orchestration V2 thread th-2").
+  - `movedOn` marks "is not queued." on a cancel and "is not interruptible." on an interrupt of a run read as live.
+    `stopRun` then reads the thread once more and acts on the fresh status. It applies to the run Stop is for, also
+    when no turn is watching. Wake and child runs are not re-read; their refusal is a noted failure as before.
+  - `live` is now `runningTurn` (`newRunningTurn`); `Harness.turns` holds `*runningTurn`.
+- **4, one respond shape.** `requestRespond` in `answer.go` carries `decision` and `answers`, both `omitempty`;
+  `turn.decline` goes through `t.live(ctx)`. The existing payload tests pin both shapes.
+- **5, answer fallback.** `deliver` works out the run to follow before responding; a live request whose run the
+  snapshot does not hold is sent as a message, so nothing is answered twice.
+- **6, the fallback after the watch ended.** A separate test, not a table row: the table seeds `Harness.turns`
+  directly, and only a real turn ending runs `CompareAndDelete`. The test ends a queued turn through its context, so
+  T3's `queued-run.cancel` (sent after the delete) is the signal to wait on. With the delete removed, Stop answers
+  "nothing is running" and the test fails.
+- **7, presence.** Judgment call: the notification alone did not restart anything, because the keeper's `reconcile`
+  kept any running loop by computer id. A loop now remembers its kind, and `reconcile` replaces one whose computer's
+  kind changed. Without that, a loop started under `t3code` kept holding through `Forward`'s protocol-1 client and
+  showed a computer that went back to stable as connected. A re-pair that raises the kind gets the same restart.
+- **8, docs.** CONTEXT.md's Model options entry, the `Session.ComputerID` and `supportedImages` comments, ADR 0113's
+  pointer to 0114 (and the presence restart), ADR 0114's Stop bullet (Stop ends the turn at once, and the re-read) and
+  its answer fallback, ADR 0116's Stop bullet (first refusal, notes replaced) and `completionDelivery` kept, and the
+  spec's Docs list.
+- **Fake server.** `t3rpctest.Server.AfterCommand` now applies when the command arrives, refused or taken, so a test
+  can model a run that moved on before the command landed.

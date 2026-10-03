@@ -458,6 +458,14 @@ func TestWatch_HandedOffWork(t *testing.T) {
 				{"message.updated", userMessage(wakeMessage, 2, linkedToRunOne)},
 			}, wakeReplies),
 			want: []string{"reply Handed the audit off.", "reply The audit found three issues.", "end done"}},
+		{name: "a subagent update that leaves out its result's delivery keeps that result pending",
+			events: slices.Concat(handsOff, [][2]any{
+				{"subagent.updated", handedOff("task-1", "app_owned", "completed", delivery("pending"))},
+				{"subagent.updated", handedOff("task-1", "app_owned", "completed", map[string]any{"result": "Three issues."})},
+				{"run.created", runAt(2, wakeMessage, runQueued)},
+				{"message.updated", userMessage(wakeMessage, 2, linkedToRunOne)},
+			}, wakeReplies),
+			want: []string{"reply Handed the audit off.", "reply The audit found three issues.", "end done"}},
 		{name: "a provider's own background subagent joins through its notification wake",
 			events: [][2]any{
 				{"run.created", runOf("msg-1", "running")},

@@ -17,7 +17,8 @@ client with the protocol-2 one. When the protocol-1 client finds protocol 2 (T3 
 environment descriptor names 2), it returns `harness.MovedError`. Forward then runs the switch once and retries the
 same call on the protocol-2 client. The switch is the pairing use-case's one conditional update: it moves the computer
 from `t3code` to `t3code-v2` with the version the descriptor reports and writes `computer.harness_switched` in the same
-transaction. Two calls racing it write one event, because the update only matches a computer still on `t3code`.
+transaction. Two calls racing it write one event, because the update only matches a computer still on `t3code`. A
+switch that changed the computer tells the presence keeper, which then holds it through the new kind's client.
 Pairing reads the descriptor before it spends the one-time `t3 pair` token, so pairing a fresh computer on a nightly
 lands on `t3code-v2` with one token. A turn that loses its connection and finds T3 updated when it redials ends at once
 with "T3 Code was updated during this turn; ask again"; the next mention runs on the new kind.
@@ -34,5 +35,7 @@ the new client, and removing protocol 1 once T3 Code ships protocol 2 as stable 
 of deleting `internal/t3client` and its registry entry. Also rejected: following a computer back to protocol 1. T3
 copies its old state to the new orchestrator once, so threads created after the update exist only on the new side, and
 a computer that went back would point its stored threads at a T3 Code that never saw them.
+
+Where a turn on `t3code-v2` starts and ends, the protocol-2 turn, is ADR 0114.
 
 Decided 2026-10-03.

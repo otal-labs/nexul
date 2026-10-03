@@ -279,13 +279,12 @@ Not adopted, on purpose, until a ticket asks for one:
   - Going back to protocol 1 is refused by design and said plainly, and updating T3 again recovers
     on its own.
 - **Docs:**
-  - ADR 0113 (ticket 03): two kinds for T3 Code, the one-way switch, the protocol-2 turn. It amends
+  - ADR 0113 (ticket 03): two kinds for T3 Code and the one-way switch. It amends
     `docs/adr/0029-the-agent-turn-runs-on-the-mentioning-users-own-environment.md` (Nexul refuses a T3
     that went back) and `docs/adr/0054-one-harness-client-interface-per-kind.md` (two T3 kinds, no
     OpenCode 2 harness).
-  - ADR 0116 (ticket 11; 0114 is the protocol-2 turn): a turn waits for the work it handed off, and the
-    reply carries it.
-  - Re-check both numbers against `origin/master` before writing.
+  - ADR 0114 (ticket 05): the protocol-2 turn, the run Nexul's message starts, with its Stop and answers.
+  - ADR 0116 (ticket 11): a turn waits for the work it handed off, and the reply carries it.
   - Note ADR 0106 (imported threads get the Full prompt).
   - `CONTEXT.md`: Harness, Trail, hand-off.
   - `website/` paired-computers and computer-setup guides.

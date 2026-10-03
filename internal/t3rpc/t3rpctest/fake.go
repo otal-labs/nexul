@@ -55,7 +55,7 @@ type Server struct {
 	// Projections answers getThreadProjection per thread id; an unnamed thread fails as T3 fails one it cannot load.
 	Projections     map[string]any
 	ProjectionCause any
-	// AfterCommand swaps in Projections entries once a command of the named type lands, as T3's events for it would.
+	// AfterCommand swaps in Projections entries when a command of the named type arrives, taken or refused.
 	AfterCommand map[string]map[string]any
 
 	connMu sync.Mutex
@@ -249,6 +249,7 @@ func (f *Server) handleDispatch(env clientEnv) {
 		f.t.Errorf("fake: undecodable dispatch payload: %v", err)
 		return
 	}
+	maps.Copy(f.Projections, f.AfterCommand[fmt.Sprint(cmd["type"])])
 	cause := f.DispatchCause
 	if c, ok := f.CommandCauses[fmt.Sprint(cmd["type"])]; ok {
 		cause = c
@@ -257,7 +258,6 @@ func (f *Server) handleDispatch(env clientEnv) {
 		f.writeFailure(env, cause)
 		return
 	}
-	maps.Copy(f.Projections, f.AfterCommand[fmt.Sprint(cmd["type"])])
 	f.Write(ExitSuccess(idString(env.ID), map[string]any{"sequence": 1}))
 	f.Dispatched <- cmd
 }

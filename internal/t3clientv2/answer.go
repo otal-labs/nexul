@@ -17,12 +17,14 @@ const answeredNote = "Already answered in T3 Code"
 // errAnswered is a pending answer T3 already holds; the turn ends before it sends anything.
 var errAnswered = errors.New("already answered in T3 Code")
 
+// requestRespond answers a question with answers or an approval with a decision, never both.
 type requestRespond struct {
 	Type      string         `json:"type"`
 	CommandID string         `json:"commandId"`
 	ThreadID  string         `json:"threadId"`
 	RequestID string         `json:"requestId"`
-	Answers   map[string]any `json:"answers"`
+	Decision  string         `json:"decision,omitempty"`
+	Answers   map[string]any `json:"answers,omitempty"`
 }
 
 // Answer implements harness.Client with runtime-request.respond, encoded for how T3 resumes that request.
@@ -78,6 +80,14 @@ func (t *turn) deliver(ctx context.Context, w *watch, a harness.PendingAnswer) (
 	if !ok || req.Status != "pending" || (capability != "live" && capability != "message") {
 		return false, nil
 	}
+	// T3 runs a message-mode answer as a message of its own, queued or steered into the live run.
+	messageID := "async-answer:" + a.RequestID
+	if capability == "live" {
+		messageID = w.runs[t.snapshot.runOf(req.NodeID)].UserMessageID
+	}
+	if messageID == "" {
+		return false, nil
+	}
 	_, err := t.conn.Call(ctx, dispatchCommand, requestRespond{Type: "runtime-request.respond", CommandID: ids.New(),
 		ThreadID: t.threadID, RequestID: a.RequestID, Answers: encodeAnswers(a.Answer, capability == "message")})
 	// The request can change after the snapshot; only then does T3's refusal decide.
@@ -90,11 +100,6 @@ func (t *turn) deliver(ctx context.Context, w *watch, a harness.PendingAnswer) (
 	}
 	if err != nil {
 		return false, refused("answer the T3 question", err)
-	}
-	// T3 runs a message-mode answer as a message of its own, queued or steered into the live run.
-	messageID := "async-answer:" + a.RequestID
-	if capability == "live" {
-		messageID = w.runs[t.snapshot.runOf(req.NodeID)].UserMessageID
 	}
 	t.messageID = messageID
 	w.follow(messageID)
@@ -110,7 +115,7 @@ func answeredTurn(threadID string) harness.StartResult {
 	return harness.StartResult{SessionID: threadID, Updates: updates}
 }
 
-// request is the runtime request id, if the projection holds it.
+// request is the runtime request with id, if the projection holds it.
 func (p projection) request(id string) (runtimeRequest, bool) {
 	i := slices.IndexFunc(p.RuntimeRequests, func(r runtimeRequest) bool { return r.ID == id })
 	if i < 0 {

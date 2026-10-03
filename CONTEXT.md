@@ -93,8 +93,9 @@ a play's trail, a computer's setup choices); an option left unset runs on the
 harness default, and picking another model starts it on its own defaults. A
 run's pick also holds on a thread that already exists: on T3 Code's
 orchestrator V2 a follow-up switches the thread to the run's model and options
-when they differ, and a run that names no model or options leaves the thread's
-as they are.
+when they differ. A run on the same provider that names no model keeps the
+thread's model, one on the same model that names no options keeps its options,
+and another model starts on its own defaults.
 _Avoid_: Traits, knobs, model settings
 
 **Paired computer**:

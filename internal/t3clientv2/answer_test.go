@@ -198,6 +198,8 @@ func TestStartTurn_PendingAnswer_GoesAsAMessageOnlyWhenT3CannotTakeIt(t *testing
 		{name: "a cancelled question goes as a message", request: with("cancelled", "message"), sent: []string{"message.dispatch"}},
 		{name: "a question its session cannot resume goes as a message", request: with("pending", "not_resumable"), sent: []string{"message.dispatch"}},
 		{name: "a question T3 does not list goes as a message", sent: []string{"message.dispatch"}},
+		{name: "a live question whose run the snapshot does not hold goes as a message",
+			request: merged(with("pending", "live"), map[string]any{"nodeId": "node-9"}), sent: []string{"message.dispatch"}},
 		{name: "answered in T3 after the snapshot ends the turn with a note", request: with("pending", "live"),
 			refusal: "Runtime request rq-1 is resolved.", answered: true},
 		{name: "expired after the snapshot goes as a message", request: with("pending", "live"),

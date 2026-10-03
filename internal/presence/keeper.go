@@ -56,6 +56,7 @@ type presence struct {
 type loop struct {
 	cancel context.CancelFunc
 	state  string
+	kind   harness.Kind
 }
 
 // Presence states surfaced per computer (Status); no entry means nothing is held.
@@ -211,11 +212,16 @@ func (k *Keeper) reconcile(userID string) {
 		}
 	}
 	for id, computer := range desired {
-		if _, ok := p.computers[id]; ok {
+		held, ok := p.computers[id]
+		if ok && held.kind == computer.Kind {
 			continue
 		}
+		// A computer that moved to another harness kind is held again through that kind's client.
+		if ok {
+			held.cancel()
+		}
 		ctx, cancel := context.WithCancel(p.ctx)
-		l := &loop{cancel: cancel, state: StateConnecting}
+		l := &loop{cancel: cancel, state: StateConnecting, kind: computer.Kind}
 		p.computers[id] = l
 		go k.maintain(ctx, userID, p, l, computer)
 	}

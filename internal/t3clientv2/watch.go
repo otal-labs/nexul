@@ -161,7 +161,7 @@ type watch struct {
 	run run
 	// followed is the turn's own run and every run its handed-off work woke; their items are the turn's (ADR 0116).
 	followed map[string]bool
-	// deliveries maps each wake message id a run's delegatedCompletion named to that run.
+	// deliveries maps each wake message id a run's delegatedCompletion named to that run; a run.updated without one keeps it.
 	deliveries map[string]string
 	// messages are the user messages that may link a wake run to handed-off work, kept beyond any snapshot's window.
 	messages  map[string]message
@@ -206,7 +206,7 @@ func (w *watch) reset(p projection) ([]harness.Update, *harness.TurnResult) {
 	for _, r := range p.Runs {
 		w.track(r)
 	}
-	// Every working subagent is in a bounded snapshot, so one missing from it is no longer working.
+	// A bounded snapshot holds every working subagent, but a finished one only while its run is in the snapshot's window.
 	w.subagents = map[string]subagent{}
 	for _, s := range p.Subagents {
 		w.subagents[s.ID] = s
@@ -251,7 +251,7 @@ func (w *watch) event(e wireEvent) ([]harness.Update, *harness.TurnResult) {
 		if !decode(e, &s) {
 			return nil, nil
 		}
-		w.subagents[s.ID] = s
+		w.subagent(s)
 		w.link()
 		return w.end()
 	case e.Type == "turn-item.updated":
@@ -280,10 +280,6 @@ func decode(e wireEvent, into any) bool {
 }
 
 func (w *watch) track(r run) {
-	// T3 leaves delegatedCompletion out of a run.updated that does not change it.
-	if r.DelegatedCompletion == nil {
-		r.DelegatedCompletion = w.runs[r.ID].DelegatedCompletion
-	}
 	if d := r.DelegatedCompletion; d != nil && d.Delivery != nil {
 		w.deliveries[d.Delivery.MessageID] = r.ID
 	}
@@ -308,6 +304,14 @@ func (w *watch) follow(messageID string) {
 			w.own(r)
 		}
 	}
+}
+
+// subagent keeps a row's known completionDelivery when an update leaves it out, as T3's own projection does.
+func (w *watch) subagent(s subagent) {
+	if s.CompletionDelivery == nil {
+		s.CompletionDelivery = w.subagents[s.ID].CompletionDelivery
+	}
+	w.subagents[s.ID] = s
 }
 
 // message keeps a user message that could link a run to handed-off work; no other message changes what the turn follows.
