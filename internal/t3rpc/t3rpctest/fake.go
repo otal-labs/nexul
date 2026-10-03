@@ -38,6 +38,8 @@ type Server struct {
 	SubscribeIn chan map[string]any // payload of each subscribeThread request
 	Acks        chan string         // requestId of each Ack frame received
 	Dispatched  chan map[string]any // payload of each dispatchCommand (auto-acked)
+	// DispatchCause fails every dispatchCommand when set; set it before connect.
+	DispatchCause any
 
 	connMu sync.Mutex
 	conn   *websocket.Conn
@@ -149,13 +151,7 @@ func (f *Server) handleRequest(env clientEnv) {
 		f.ConfigCalls.Add(1)
 		f.Write(ExitSuccess(idString(env.ID), map[string]any{"ok": true, "environment": f.descriptor()}))
 	case "orchestration.dispatchCommand":
-		var cmd map[string]any
-		if err := json.Unmarshal(env.Payload, &cmd); err != nil {
-			f.t.Errorf("fake: undecodable dispatch payload: %v", err)
-			return
-		}
-		f.Write(ExitSuccess(idString(env.ID), map[string]any{"sequence": 1}))
-		f.Dispatched <- cmd
+		f.handleDispatch(env)
 	case "orchestration.subscribeThread":
 		var in map[string]any
 		if err := json.Unmarshal(env.Payload, &in); err != nil {
@@ -178,6 +174,21 @@ func (f *Server) handleRequest(env clientEnv) {
 	default:
 		f.t.Errorf("fake: unexpected RPC %q", env.RPCTag)
 	}
+}
+
+func (f *Server) handleDispatch(env clientEnv) {
+	var cmd map[string]any
+	if err := json.Unmarshal(env.Payload, &cmd); err != nil {
+		f.t.Errorf("fake: undecodable dispatch payload: %v", err)
+		return
+	}
+	if f.DispatchCause != nil {
+		f.Write(map[string]any{"_tag": "Exit", "requestId": idString(env.ID),
+			"exit": map[string]any{"_tag": "Failure", "cause": f.DispatchCause}})
+		return
+	}
+	f.Write(ExitSuccess(idString(env.ID), map[string]any{"sequence": 1}))
+	f.Dispatched <- cmd
 }
 
 // Write pushes one frame to the connected client.

@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/otal-labs/nexul/internal/harness"
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/t3rpc/t3rpctest"
 )
 
@@ -171,6 +172,32 @@ func TestRespondUserInput_DispatchesTheAnswersInT3sShape(t *testing.T) {
 	assert.NotEmpty(t, cmd["createdAt"])
 	assert.Equal(t, map[string]any{"one": "Yes", "many": []any{"A", "B"}, "typed": "something else"}, cmd["answers"],
 		"free text wins, one pick is a string, several are an array")
+}
+
+func TestRespondUserInput_Rejections(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name    string
+		message string
+		want    error
+	}{
+		{"already answered", "Orchestration command invariant failed (thread.user-input.respond): This question has already been answered.", apperrs.ErrConflict},
+		{"any other failure", "Orchestration command invariant failed (thread.user-input.respond): Unknown thread.", apperrs.ErrInvalid},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			f := t3rpctest.New(t)
+			f.DispatchCause = []map[string]any{{"_tag": "Fail", "error": map[string]any{
+				"_tag": "OrchestrationDispatchCommandError", "message": tt.message,
+			}}}
+			ctx := testCtx(t)
+			c := connectFake(t, ctx, f)
+
+			err := c.RespondUserInput(ctx, "th-1", "req-1", harness.QuestionAnswer{Answers: map[string]harness.AnswerValue{"q1": {Text: "x"}}})
+			require.ErrorIs(t, err, tt.want)
+		})
+	}
 }
 
 func TestInterrupt_DispatchesAndTerminalIsInterrupted(t *testing.T) {

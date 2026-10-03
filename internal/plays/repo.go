@@ -30,7 +30,7 @@ type TrailRepo interface {
 	UpdateTrail(ctx context.Context, t *Trail, evts ...eventbus.OutboxEvent) error
 	// ListTrailsByTarget returns newest first.
 	ListTrailsByTarget(ctx context.Context, targetType TargetType, targetID string) ([]*Trail, error)
-	// ListActiveTrailsByTargets returns the starting or running trails on any of the given targets.
+	// ListActiveTrailsByTargets returns the starting, running, or waiting trails on any of the given targets.
 	ListActiveTrailsByTargets(ctx context.Context, targetType TargetType, targetIDs []string) ([]*Trail, error)
 	// LatestTrailForChoices returns the starter's newest trail of one play in one project, ErrNotFound when none.
 	LatestTrailForChoices(ctx context.Context, starterID, playID, projectID string) (*Trail, error)

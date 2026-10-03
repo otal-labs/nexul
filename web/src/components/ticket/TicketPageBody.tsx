@@ -43,7 +43,7 @@ export const TicketPageBody = ({
   embedded,
 }: TicketPageBodyProps) => {
   const layout = ticketPageLayout(embedded);
-  const threadWidth = useThreadPaneStore((s) => s.width);
+  const threadWidth = useThreadPaneStore((s) => s.widths[ticket.id]?.width ?? null);
   const gridStyle = !embedded && threadWidth !== null ? ({ "--thread-pane-width": `${threadWidth}px` } as CSSProperties) : undefined;
   return (
     <div className={layout.grid} data-thread-grid="" style={gridStyle}>
@@ -53,7 +53,7 @@ export const TicketPageBody = ({
       {workspaceId !== "" && (
         <div className={layout.thread}>
           <TicketThreadSection workspaceId={workspaceId} ticketId={ticket.id} pane={!embedded} />
-          {!embedded && <ThreadPaneResizeHandle />}
+          {!embedded && <ThreadPaneResizeHandle ticketId={ticket.id} />}
         </div>
       )}
       <div className={layout.rail}>

@@ -57,6 +57,12 @@ type WebhookConfig struct {
 	Secret string
 }
 
+// Webhook is a webhook already registered on a repository.
+type Webhook struct {
+	ID  string
+	URL string
+}
+
 // PRRef identifies a pull request for ticket linking.
 type PRRef struct {
 	Owner  string `json:"owner"`
