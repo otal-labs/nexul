@@ -3,6 +3,7 @@ package t3client
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -62,6 +63,8 @@ type fakeT3Client struct {
 	respondApprovalCalls []string                          // requestIDs
 	answered             map[string]harness.QuestionAnswer // requestID -> answer
 	answeredThreadID     string
+	dismissed            []string // requestIDs
+	dismissErr           error
 
 	providers    []harness.Provider
 	providersErr error
@@ -115,6 +118,11 @@ func (f *fakeT3Client) RespondUserInput(_ context.Context, threadID, requestID s
 	f.answeredThreadID = threadID
 	f.answered[requestID] = answer
 	return nil
+}
+
+func (f *fakeT3Client) DismissUserInput(_ context.Context, _, requestID string) error {
+	f.dismissed = append(f.dismissed, requestID)
+	return f.dismissErr
 }
 
 func (f *fakeT3Client) SubscribeThread(_ context.Context, _ string) (threadSub, error) {
@@ -188,6 +196,55 @@ func TestHarness_StartTurn_ReusesStoredSessionID(t *testing.T) {
 	assert.Equal(t, 0, fake.createThreadCalls)
 	assert.Equal(t, []string{"incremental-prompt"}, fake.sentPrompts, "a reused thread already holds the instructions and history")
 	drain(t, result.Updates)
+}
+
+func TestHarness_StartTurn_PendingAnswer(t *testing.T) {
+	tests := []struct {
+		name          string
+		sessionID     string
+		dismissErr    error
+		wantDismissed []string
+		wantPrompts   []string
+	}{
+		{"clears the question, then sends the answer turn", "thread-existing", nil, []string{"req-1"}, []string{"incremental-prompt"}},
+		{"a native question T3 refuses to dismiss still gets the turn", "thread-existing", fmt.Errorf("%w: needs an answer", apperrs.ErrInvalid), []string{"req-1"}, []string{"incremental-prompt"}},
+		{"already answered in T3 starts no second turn", "thread-existing", apperrs.ErrConflict, []string{"req-1"}, nil},
+		{"a fresh thread has no question to clear", "", nil, nil, []string{"full-prompt"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fake := &fakeT3Client{
+				nextThreadID: "thread-new",
+				dismissErr:   tt.dismissErr,
+				subscription: newFakeSubscription(Update{Terminal: &TurnResult{State: TurnDone}}),
+			}
+			prompts := testPrompts()
+			prompts.Answer = &harness.PendingAnswer{RequestID: "req-1"}
+
+			result, err := harnessWithFake(fake).StartTurn(t.Context(), harness.Target{SessionID: tt.sessionID}, "title", prompts)
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantDismissed, fake.dismissed)
+			assert.Equal(t, tt.wantPrompts, fake.sentPrompts)
+			updates := drain(t, result.Updates)
+			require.NotEmpty(t, updates)
+			assert.Equal(t, harness.TurnDone, updates[len(updates)-1].Terminal.State)
+			assert.True(t, fake.closed)
+		})
+	}
+}
+
+func TestHarness_StartTurn_AlreadyAnsweredInT3_SaysSo(t *testing.T) {
+	fake := &fakeT3Client{dismissErr: apperrs.ErrConflict}
+	prompts := testPrompts()
+	prompts.Answer = &harness.PendingAnswer{RequestID: "req-1"}
+
+	result, err := harnessWithFake(fake).StartTurn(t.Context(), harness.Target{SessionID: "thread-existing"}, "title", prompts)
+	require.NoError(t, err)
+	assert.Equal(t, "thread-existing", result.SessionID)
+	updates := drain(t, result.Updates)
+	require.Len(t, updates, 2)
+	assert.Equal(t, answeredInT3Note, updates[0].Activity.Summary)
+	assert.Equal(t, 0, fake.subscribeCalls)
 }
 
 func TestHarness_StartTurn_RecreatesGoneThreadAndRetriesOnce(t *testing.T) {

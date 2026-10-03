@@ -314,6 +314,8 @@ func TestAnswerFromChat_TurnGone_PostsTheAnswerAndResumesAFreshTurn(t *testing.T
 	assert.Contains(t, client.snapshotPrompt(), "Answered: Yes", "the fresh turn carries the answer as its request")
 	client.mu.Lock()
 	assert.Equal(t, "sess-old", client.lastTarget.SessionID, "the fresh turn reuses the conversation's session")
+	assert.Equal(t, &harness.PendingAnswer{RequestID: "req-1", Answer: answer}, client.lastAnswer,
+		"the harness resolves the question the ended turn left open")
 	client.mu.Unlock()
 }
 

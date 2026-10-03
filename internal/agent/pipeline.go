@@ -307,6 +307,8 @@ type TurnRequest struct {
 	Observer Observer
 	// Silence ends the turn after this long without a harness update, paused while a question waits; zero means the caller times it.
 	Silence time.Duration
+	// Answer is set when the turn delivers an answer to a question its earlier turn ended under.
+	Answer *harness.PendingAnswer
 }
 
 // RunTurn runs one Agent turn and blocks until it ends; every failure surfaces as a system message or a log line.
@@ -474,7 +476,7 @@ func (s *Service) buildTurnPrompts(ctx context.Context, conv Conversation, targe
 	in.ContextMessages = all
 	in.Intro = s.template(ctx, TemplateIntro, DefaultIntro)
 	in.Footer = s.template(ctx, TemplateFooter, DefaultFooter)
-	return harness.TurnPrompts{Full: ComposePrompt(in), Incremental: ComposeIncrementalPrompt(incremental), Attachments: attachments}, sentThrough, nil
+	return harness.TurnPrompts{Full: ComposePrompt(in), Incremental: ComposeIncrementalPrompt(incremental), Attachments: attachments, Answer: req.Answer}, sentThrough, nil
 }
 
 // contextMessages resolves history; others drops the Agent's own replies, which a live session already holds, but
@@ -937,7 +939,8 @@ func (s *Service) AnswerFromChat(ctx context.Context, conversationID, userID, re
 	if !errors.Is(err, apperrs.ErrNotFound) {
 		return err
 	}
-	go s.runChatTurn(TurnRequest{ConversationID: conversationID, ViaUserID: userID, RequestBody: body})
+	go s.runChatTurn(TurnRequest{ConversationID: conversationID, ViaUserID: userID, RequestBody: body,
+		Answer: &harness.PendingAnswer{RequestID: requestID, Answer: answer}})
 	return nil
 }
 
