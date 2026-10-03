@@ -796,15 +796,6 @@ func (s *Service) LinkBranch(ctx context.Context, id, owner, repo, branch string
 	return nil
 }
 
-// OpenPRs lists the PRs still linked as open, for the background state sweep; it has no caller to gate on.
-func (s *Service) OpenPRs(ctx context.Context) ([]PRRef, error) {
-	refs, err := s.repo.ListOpenPRs(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("list open prs: %w", err)
-	}
-	return refs, nil
-}
-
 // ListByPR returns the tickets a pull request is linked to.
 func (s *Service) ListByPR(ctx context.Context, owner, repo string, number int) ([]*Ticket, error) {
 	if owner == "" || repo == "" || number < 1 {

@@ -39,7 +39,6 @@ type PR struct {
 	Title           string   `json:"title"`
 	Body            string   `json:"body"`
 	State           PRState  `json:"state"`
-	Merged          bool     `json:"merged"`
 	HeadSHA         string   `json:"head_sha"`
 	BaseBranch      string   `json:"base_branch"`
 	Author          string   `json:"author"`
