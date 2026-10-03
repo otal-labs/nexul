@@ -57,6 +57,13 @@ Decision: Nexul mints the message id, and the turn is the run whose `userMessage
 - **Answers.** A question is answered with `runtime-request.respond`, keyed by question id. A request T3 resumes by
   dispatching the answer as a message of its own (`responseCapability` `message`) takes one non-empty string per
   question, with multi-select choices joined by ", ".
+- **An answer after the turn ended.** The next turn carries it, and reads the request in its snapshot before sending
+  anything. A request still pending gets `runtime-request.respond`, not a message: a live question keeps its run
+  `running`, and a message would queue behind it forever. That turn then follows the run the question held open, or
+  for a `message` request the `async-answer:<requestId>` run T3 starts, or the live run T3 steered the answer into;
+  it sends no prompt, so the conversation's unsent messages wait for the next one. A request T3 already resolved ends
+  the turn with "Already answered in T3 Code". An expired, cancelled, unknown or unresumable one goes as an ordinary
+  message. T3's refusal of the respond decides only when the request changed after the snapshot.
 
 Rejected: ending the turn at `completed`, which adds checkpoint latency to every reply and hangs when the capture
 target is incomplete; following every run on the thread, which would reply to T3's own wakes, watches and schedules

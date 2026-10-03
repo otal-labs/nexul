@@ -382,7 +382,9 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 		return
 	}
 	s.announceTurnStarted(ctx, conversationID, conv.ThreadID, &turn, result)
-	s.markSent(ctx, conversationID, sentThrough)
+	if result.PromptSent {
+		s.markSent(ctx, conversationID, sentThrough)
+	}
 	obs.OnStarted(turn.target.SessionID)
 
 	finalText, term := s.drainTurn(ctx, conversationID, viaUserID, result.Updates, obs, newSilenceWindow(req.Silence, turn.answered))

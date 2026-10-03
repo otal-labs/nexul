@@ -31,6 +31,7 @@ type projection struct {
 	TurnItems        []turnItem        `json:"turnItems"`
 	ProviderSessions []providerSession `json:"providerSessions"`
 	RuntimeRequests  []runtimeRequest  `json:"runtimeRequests"`
+	Nodes            []node            `json:"nodes"`
 }
 
 type appThread struct {
@@ -62,9 +63,17 @@ type failure struct {
 // runtimeRequest is a question or approval T3 holds open; capability "message" answers it with a run of its own.
 type runtimeRequest struct {
 	ID                 string `json:"id"`
+	NodeID             string `json:"nodeId"`
+	Status             string `json:"status"`
 	ResponseCapability struct {
 		Type string `json:"type"`
 	} `json:"responseCapability"`
+}
+
+// node is one step of a run; a pending request's node is always in a snapshot, which names the request's run.
+type node struct {
+	ID    string `json:"id"`
+	RunID string `json:"runId"`
 }
 
 type providerSession struct {
@@ -92,8 +101,8 @@ type watch struct {
 	cursor    int64
 	synced    bool
 	thread    appThread
-	// runs is every run's status by id, for the checks made before dispatching.
-	runs map[string]string
+	// runs is every run by id, for the checks made before dispatching and the run an answer resumes.
+	runs map[string]run
 	// run is the turn's own run, its ID empty until T3 reports it.
 	run run
 	// failures holds the newest failed error of each node of the turn's run; the root node's is the turn's failure.
@@ -110,7 +119,7 @@ type watch struct {
 }
 
 func newWatch(messageID string) *watch {
-	return &watch{messageID: messageID, runs: map[string]string{}, failures: map[string]failure{}, sent: map[string]harness.Snapshot{},
+	return &watch{messageID: messageID, runs: map[string]run{}, failures: map[string]failure{}, sent: map[string]harness.Snapshot{},
 		steps: map[string]harness.Activity{}, asked: map[string]bool{}}
 }
 
@@ -131,7 +140,7 @@ func (w *watch) apply(item streamItem) ([]harness.Update, *harness.TurnResult) {
 func (w *watch) reset(p projection) ([]harness.Update, *harness.TurnResult) {
 	w.synced = true
 	w.thread = p.Thread
-	w.runs = map[string]string{}
+	w.runs = map[string]run{}
 	for _, r := range p.Runs {
 		w.track(r)
 	}
@@ -182,9 +191,19 @@ func decode(e wireEvent, into any) bool {
 }
 
 func (w *watch) track(r run) {
-	w.runs[r.ID] = r.Status
-	if r.UserMessageID == w.messageID {
+	w.runs[r.ID] = r
+	if r.UserMessageID == w.messageID || (w.run.ID != "" && r.ID == w.run.ID) {
 		w.run = r
+	}
+}
+
+// follow makes the turn the run messageID starts or is steered into, for an answer that resumes a run of T3's own.
+func (w *watch) follow(messageID string) {
+	w.messageID = messageID
+	for _, r := range w.runs {
+		if r.UserMessageID == messageID {
+			w.run = r
+		}
 	}
 }
 
@@ -196,6 +215,10 @@ func (w *watch) sessionLastError(s providerSession) {
 
 // item maps one turn item of the turn's own run; T3 sends an assistant message's whole text each time, never a delta.
 func (w *watch) item(it turnItem) []harness.Update {
+	// A message T3 steered into a running run gets no run of its own; its item names the run that took it.
+	if w.run.ID == "" && it.Type == "user_message" && it.MessageID == w.messageID {
+		w.run = w.runs[it.RunID]
+	}
 	if w.run.ID == "" || it.RunID != w.run.ID {
 		return nil
 	}
@@ -318,8 +341,8 @@ func (w *watch) queueNote() *harness.Activity {
 
 // busy is whether a run on the thread is queued or live, which a runtime-mode change would detach.
 func (w *watch) busy() bool {
-	for _, status := range w.runs {
-		if slices.Contains(liveRuns, status) {
+	for _, r := range w.runs {
+		if slices.Contains(liveRuns, r.Status) {
 			return true
 		}
 	}
@@ -331,8 +354,8 @@ func (w *watch) imported() bool {
 	if w.thread.HistoryOrigin != "v1_import" {
 		return false
 	}
-	for _, status := range w.runs {
-		if status == runCompleted {
+	for _, r := range w.runs {
+		if r.Status == runCompleted {
 			return false
 		}
 	}

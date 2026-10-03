@@ -850,6 +850,8 @@ type followUpHarness struct {
 	turns      []startedTurn
 	sessionIDs []string
 	updates    []<-chan harness.Update
+	// answersInPlace has a turn carrying a pending answer send no prompt, as a harness resuming the asking run does.
+	answersInPlace bool
 }
 
 func (h *followUpHarness) client() *harnesstest.Client {
@@ -858,7 +860,8 @@ func (h *followUpHarness) client() *harnesstest.Client {
 		defer h.mu.Unlock()
 		i := len(h.turns)
 		h.turns = append(h.turns, startedTurn{sessionID: target.SessionID, prompts: prompts})
-		return harness.StartResult{SessionID: h.sessionIDs[min(i, len(h.sessionIDs)-1)], Updates: h.updates[i]}, nil
+		return harness.StartResult{SessionID: h.sessionIDs[min(i, len(h.sessionIDs)-1)], Updates: h.updates[i],
+			PromptSent: prompts.Answer == nil || !h.answersInPlace}, nil
 	}}
 }
 
@@ -989,6 +992,28 @@ func TestRunTurn_FollowUp_CarriesANoteLeftSinceTheLastTurn(t *testing.T) {
 	note := "Agent: Left a handoff\n\nNote file handoff.md:\n# Handoff\nLogin retries twice."
 	assert.Contains(t, turns[1].prompts.Incremental, note, "a note was left over MCP, so the live session never saw it")
 	assert.Contains(t, turns[1].prompts.Full, note)
+}
+
+func TestRunTurn_AnswerTakenInPlace_KeepsTheMessagesSinceForTheNextPrompt(t *testing.T) {
+	h := &followUpHarness{sessionIDs: []string{"thread-1"}, answersInPlace: true,
+		updates: []<-chan harness.Update{replyThenDone("which db?"), replyThenDone("used sqlite"), replyThenDone("second answer")}}
+	svc, conv := ticketThreadWithStandingRules(h)
+	conv.history = []ConversationMessage{{AuthorID: "u-1", AuthorKind: "user", Body: "@Agent first", CreatedAt: minuteOf(32)}}
+	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent first"})
+
+	conv.history = append(conv.history,
+		ConversationMessage{AuthorID: "u-2", AuthorKind: "user", Body: "while it asked", CreatedAt: minuteOf(34)},
+		ConversationMessage{AuthorID: "u-1", AuthorKind: "user", Body: "Answered: sqlite", CreatedAt: minuteOf(35)},
+	)
+	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "Answered: sqlite",
+		Answer: &harness.PendingAnswer{RequestID: "rq-1"}})
+	conv.history = append(conv.history, ConversationMessage{AuthorID: "u-1", AuthorKind: "user", Body: "@Agent second", CreatedAt: minuteOf(36)})
+	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent second"})
+
+	turns := h.started()
+	require.Len(t, turns, 3)
+	assert.Contains(t, turns[2].prompts.Incremental, "u-2: while it asked",
+		"only the answer reached the harness, so the next prompt still carries what was posted meanwhile")
 }
 
 func TestRunTurn_PlayStart_CarriesNoHistoryButAdvancesTheCursor(t *testing.T) {
