@@ -102,7 +102,11 @@ func TestWebhookHandler_Merged(t *testing.T) {
 	rec := serveWebhook(t, h, signedWebhookRequest(t, "shhh", "pull_request", prEventPayload("closed", true)))
 
 	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Equal(t, TopicPRMerged, bus.lastPublished().Topic)
+	ev := bus.lastPublished()
+	assert.Equal(t, TopicPRMerged, ev.Topic)
+	var got PREvent
+	require.NoError(t, json.Unmarshal(ev.Payload, &got))
+	assert.True(t, got.PR.Merged)
 }
 
 func TestWebhookHandler_ClosedWithoutMerge_PublishesPRClosed(t *testing.T) {

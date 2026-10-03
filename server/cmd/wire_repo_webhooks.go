@@ -24,6 +24,8 @@ type repoWebhooks struct {
 	git         gitprovider.GitProvider
 	instanceURL func(ctx context.Context) (string, error)
 	secret      string
+	openPRs     func(ctx context.Context, owner, name string) ([]int, error)
+	bus         gitprovider.Publisher
 }
 
 func (h repoWebhooks) hookURL(ctx context.Context) (string, error) {
@@ -77,7 +79,45 @@ func (h repoWebhooks) remove(ctx context.Context, owner, name string) error {
 	return nil
 }
 
-// ensureAll registers the webhook on every attached repository, covering repos attached before this existed.
+// catchUp publishes the merge or close of every PR a ticket still links as open, for deliveries no webhook was there to receive.
+func (h repoWebhooks) catchUp(ctx context.Context, owner, name string) error {
+	numbers, err := h.openPRs(ctx, owner, name)
+	if err != nil {
+		return err
+	}
+	var errs []error
+	for _, n := range numbers {
+		pr, err := h.git.GetPR(ctx, owner, name, n)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+		if pr.State != gitprovider.PRStateClosed {
+			continue
+		}
+		topic := gitprovider.TopicPRClosed
+		if pr.Merged {
+			topic = gitprovider.TopicPRMerged
+		}
+		if err := h.bus.Publish(ctx, topic, gitprovider.PREvent{Owner: owner, Repo: name, PR: *pr}); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
+}
+
+// track registers the webhook, then catches up on what it missed; registering first leaves no gap between the two.
+func (h repoWebhooks) track(ctx context.Context, owner, name string, logger *slog.Logger) {
+	repo := owner + "/" + name
+	if err := h.ensure(ctx, owner, name); err != nil {
+		logger.Warn("repo webhooks: register failed", "repo", repo, "error", err)
+	}
+	if err := h.catchUp(ctx, owner, name); err != nil {
+		logger.Warn("repo webhooks: pull request catch-up failed", "repo", repo, "error", err)
+	}
+}
+
+// ensureAll tracks every attached repository, covering repos attached before this existed and merges missed while down.
 func (h repoWebhooks) ensureAll(ctx context.Context, list func(context.Context) ([]workspace.RepoRef, error), logger *slog.Logger) {
 	repos, err := list(ctx)
 	if err != nil {
@@ -85,13 +125,11 @@ func (h repoWebhooks) ensureAll(ctx context.Context, list func(context.Context) 
 		return
 	}
 	for _, r := range repos {
-		if err := h.ensure(ctx, r.Owner, r.Name); err != nil {
-			logger.Warn("repo webhooks: register failed", "repo", r.FullName, "error", err)
-		}
+		h.track(ctx, r.Owner, r.Name, logger)
 	}
 }
 
-// hookedProjects wraps every repo attach and detach path; a webhook failure is logged, never fails the attach.
+// hookedProjects wraps every repo attach and detach path; a webhook or catch-up failure is logged, never fails the attach.
 type hookedProjects struct {
 	workspace.Repo
 	hooks repoWebhooks
@@ -101,9 +139,7 @@ func (p hookedProjects) AddRepo(ctx context.Context, projectID string, r workspa
 	if err := p.Repo.AddRepo(ctx, projectID, r); err != nil {
 		return err
 	}
-	if err := p.hooks.ensure(ctx, r.Owner, r.Name); err != nil {
-		logging.FromCtx(ctx).Warn("repo webhooks: register failed", "repo", r.Owner+"/"+r.Name, "error", err)
-	}
+	p.hooks.track(ctx, r.Owner, r.Name, logging.FromCtx(ctx))
 	return nil
 }
 

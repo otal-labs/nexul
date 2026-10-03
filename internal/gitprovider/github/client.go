@@ -334,6 +334,7 @@ func toPR(p *githubapi.PullRequest) *gitprovider.PR {
 		Title:           p.GetTitle(),
 		Body:            p.GetBody(),
 		State:           gitprovider.PRState(p.GetState()),
+		Merged:          !p.GetMergedAt().IsZero(),
 		HeadSHA:         p.GetHead().GetSHA(),
 		BaseBranch:      p.GetBase().GetRef(),
 		Author:          p.GetUser().GetLogin(),

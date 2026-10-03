@@ -146,6 +146,8 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		git:         gitProviderRouter{workspace: store.Projects, connectors: connectorsSvc, appConfigs: store.ConnectorAppConfig},
 		instanceURL: dnsSettingsAdapter{store.Settings}.GetInstanceURL,
 		secret:      githubWebhookSecret(cfg.AuthSecret),
+		openPRs:     store.Tickets.ListOpenPRNumbers,
+		bus:         bus,
 	}
 	projects := hookedProjects{Repo: store.Projects, hooks: repoHooks}
 	topoSvc := topology.NewService(store.Topology)
