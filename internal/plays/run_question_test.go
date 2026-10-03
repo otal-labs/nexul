@@ -289,11 +289,11 @@ func interviewRun() RunInput {
 
 func followUpRound(requestID string) harness.Question {
 	return harness.Question{RequestID: requestID, Questions: []harness.QuestionItem{
-		{ID: "runner", Text: "Which test runner?", Header: "ci.yml runs both bun test and vitest",
+		{ID: "runner", Text: "Which test runner? ci.yml runs both bun test and vitest.", Header: "Tests",
 			Options: []harness.QuestionOption{{Label: "Vitest (Recommended)", Description: "web/", Value: "vitest"}, {Label: "Bun"}}},
-		{ID: "gates", Text: "Which gates block a merge?", Header: "Skipped in the template", MultiSelect: true,
+		{ID: "gates", Text: "Which gates block a merge?\nYou skipped this in the template.", Header: "Gates", MultiSelect: true,
 			Options: []harness.QuestionOption{{Label: "Lint"}, {Label: "Coverage"}}},
-		{ID: "floor", Text: "What coverage floor?", Header: "Makefile says 80"},
+		{ID: "floor", Text: "What coverage floor?", Header: "Coverage"},
 	}}
 }
 
@@ -316,12 +316,12 @@ func TestAnswer_InterviewRun_RecordsEachRoundInOrder(t *testing.T) {
 	round1 := followUpRound("req-1").Questions
 	assert.Equal(t, []fakeRound{
 		{projectID: projectID, answeredBy: starter, followUps: []FollowUp{
-			{Question: "Which test runner?", Why: "ci.yml runs both bun test and vitest", Options: round1[0].Options, Selected: []string{"Vitest (Recommended)"}},
-			{Question: "Which gates block a merge?", Why: "Skipped in the template", Options: round1[1].Options, MultiSelect: true, Selected: []string{"Lint", "Coverage"}},
-			{Question: "What coverage floor?", Why: "Makefile says 80", Selected: []string{}},
+			{Question: "Which test runner?", Why: "ci.yml runs both bun test and vitest.", Options: round1[0].Options, Selected: []string{"Vitest (Recommended)"}},
+			{Question: "Which gates block a merge?", Why: "You skipped this in the template.", Options: round1[1].Options, MultiSelect: true, Selected: []string{"Lint", "Coverage"}},
+			{Question: "What coverage floor?", Selected: []string{}},
 		}},
 		{projectID: projectID, answeredBy: starter, followUps: []FollowUp{{Question: "Keep the 80 floor?", Selected: []string{}, Text: "Raise it to 85"}}},
-	}, f.answers.snapshot(), "a live answer and one that resumes the run each land as the next round, picks named by label, an empty answer left for the store to skip")
+	}, f.answers.snapshot(), "a live answer and one that resumes the run each land as the next round, the why split off the text and never taken from the header, picks named by label, an empty answer left for the store to skip")
 }
 
 func TestAnswer_TicketAndDocRuns_RecordNoFollowUps(t *testing.T) {
@@ -350,4 +350,22 @@ func TestAnswer_InterviewRecordFails_TheRunStillGetsItsAnswer(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, TrailRunning, got.State)
 	assert.Equal(t, []harness.QuestionAnswer{yesAnswer()}, f.turns.answered)
+}
+
+func TestSplitWhy(t *testing.T) {
+	tests := []struct {
+		name, text, question, why string
+	}{
+		{"no question mark", "Pick a runner", "Pick a runner", ""},
+		{"question mark at the end", "Which runner?", "Which runner?", ""},
+		{"question then why", "When are tests written? You skipped this, and most commits add a test file.", "When are tests written?", "You skipped this, and most commits add a test file."},
+		{"question mark inside a word", "Is it e.g.?x or y? Both appear in ci.yml.", "Is it e.g.?x or y?", "Both appear in ci.yml."},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			question, why := splitWhy(tt.text)
+			assert.Equal(t, tt.question, question)
+			assert.Equal(t, tt.why, why)
+		})
+	}
 }

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/otal-labs/nexul/internal/agent"
 	"github.com/otal-labs/nexul/internal/harness"
@@ -431,14 +432,25 @@ func (r *Runner) recordFollowUps(ctx context.Context, trail *Trail, answeredBy s
 	followUps := make([]FollowUp, 0, len(items))
 	for _, item := range items {
 		v := answer.Answers[item.ID]
+		question, why := splitWhy(item.Text)
 		followUps = append(followUps, FollowUp{
-			Question: item.Text, Why: item.Header, Options: item.Options, MultiSelect: item.MultiSelect,
+			Question: question, Why: why, Options: item.Options, MultiSelect: item.MultiSelect,
 			Selected: optionLabels(item.Options, v.Selected), Text: v.Text,
 		})
 	}
 	if err := r.answers.RecordRound(ctx, trail.TargetID, answeredBy, followUps); err != nil {
 		r.log.Error("plays: record interview follow-ups failed", "trail", trail.ID, "project", trail.TargetID, "error", err)
 	}
+}
+
+// splitWhy splits a follow-up's text at the first "?" followed by whitespace: the question, then the why sentence after it.
+func splitWhy(text string) (question, why string) {
+	for i := 0; i+1 < len(text); i++ {
+		if text[i] == '?' && unicode.IsSpace(rune(text[i+1])) {
+			return text[:i+1], strings.TrimSpace(text[i+1:])
+		}
+	}
+	return text, ""
 }
 
 // optionLabels names each pick by its option's label, which is what the stored options keep; a value no option has stays as given.
