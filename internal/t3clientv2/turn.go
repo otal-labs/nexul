@@ -152,7 +152,7 @@ func (h *Harness) StartTurn(ctx context.Context, target harness.Target, title st
 	for _, n := range notes {
 		updates <- n
 	}
-	p := &pump{w: w, open: t.open, decline: t.decline, log: h.log(), live: l}
+	p := &pump{w: w, open: t.open, openChild: t.openThread, decline: t.decline, log: h.log(), live: l}
 	go func() {
 		p.run(ctx, src, updates)
 		t.end(ctx, w, l)
@@ -409,11 +409,20 @@ func note(summary string) harness.Update {
 
 // open resubscribes after cursor, redialing first when the turn's connection died.
 func (t *turn) open(ctx context.Context, after int64) (source, error) {
+	return t.openThread(ctx, t.threadID, after)
+}
+
+// openThread subscribes to threadID after a sequence, from a snapshot when after is 0, on the turn's connection.
+func (t *turn) openThread(ctx context.Context, threadID string, after int64) (source, error) {
 	c, err := t.live(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return c.Stream(ctx, subscribeThread, subscribeInput{ThreadID: t.threadID, AfterSequence: &after, AcceptBoundedSnapshot: true})
+	in := subscribeInput{ThreadID: threadID, AcceptBoundedSnapshot: true}
+	if after > 0 {
+		in.AfterSequence = &after
+	}
+	return c.Stream(ctx, subscribeThread, in)
 }
 
 // live is the turn's connection, redialed when it died.

@@ -70,6 +70,12 @@ type subagent struct {
 	Origin             string `json:"origin"`
 	Status             string `json:"status"`
 	ChildThreadID      string `json:"childThreadId"`
+	Driver             string `json:"driver"`
+	Model              string `json:"model"`
+	Title              string `json:"title"`
+	Prompt             string `json:"prompt"`
+	Result             string `json:"result"`
+	StartedAt          string `json:"startedAt"`
 	CompletionDelivery *struct {
 		State string `json:"state"`
 	} `json:"completionDelivery"`

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/otal-labs/nexul/internal/harness"
@@ -31,11 +32,13 @@ var resubscribeBackoff = []time.Duration{time.Second, 5 * time.Second, 25 * time
 
 // pump feeds a turn's stream through its watch until the watch ends the turn, resubscribing when the stream ends.
 type pump struct {
-	w       *watch
-	open    func(ctx context.Context, after int64) (source, error)
-	decline func(ctx context.Context, requestID string) error
-	log     *slog.Logger
-	live    *runningTurn
+	w    *watch
+	open func(ctx context.Context, after int64) (source, error)
+	// openChild subscribes to a handed-off agent's own thread, from a snapshot when after is 0.
+	openChild func(ctx context.Context, threadID string, after int64) (source, error)
+	decline   func(ctx context.Context, requestID string) error
+	log       *slog.Logger
+	live      *runningTurn
 	// failures counts resubscribes since the stream last delivered anything.
 	failures int
 	// note is the standing note last shown, due when it is shown again.
@@ -43,10 +46,17 @@ type pump struct {
 	due  time.Time
 	// capAt is when the turn stops waiting for handed-off work, zero until its own run is done.
 	capAt time.Time
+	pills pills
+	// feeds are the hand-offs' own threads by subagent id, each read into inbox by its own goroutine; nil once ended.
+	feeds   map[string]source
+	inbox   inbox
+	reading sync.WaitGroup
 }
 
 func (p *pump) run(ctx context.Context, src source, out chan<- harness.Update) {
 	defer close(out)
+	ctx, cancel := context.WithCancel(ctx)
+	defer p.unfollow(cancel)
 	for src != nil {
 		done, err := p.drain(ctx, src, out)
 		src.Close()
@@ -61,7 +71,7 @@ func (p *pump) run(ctx context.Context, src source, out chan<- harness.Update) {
 // drain reads src until the turn is over (true) or the stream ends (its error).
 func (p *pump) drain(ctx context.Context, src source, out chan<- harness.Update) (bool, error) {
 	for {
-		if p.capped(ctx, out) || !p.remind(ctx, out) {
+		if p.capped(ctx, out) || !p.remind(ctx, out) || !p.hear(ctx, out) {
 			return true, nil
 		}
 		values, err := p.next(p.live.halted, src)
@@ -72,7 +82,7 @@ func (p *pump) drain(ctx context.Context, src source, out chan<- harness.Update)
 			p.finish(ctx, out, p.w.stop())
 			return true, nil
 		}
-		if errors.Is(err, context.DeadlineExceeded) {
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 			continue
 		}
 		if err != nil {
@@ -85,8 +95,13 @@ func (p *pump) drain(ctx context.Context, src source, out chan<- harness.Update)
 	}
 }
 
-// next waits for the stream's next items, but only until the standing note is due again or the cap is reached.
+// next waits for the stream's next items, until the standing note is due, the cap, or news from a hand-off's thread.
 func (p *pump) next(ctx context.Context, src source) ([]json.RawMessage, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	if !p.inbox.wait(cancel) {
+		return nil, context.Canceled
+	}
 	deadline := p.due
 	if !p.capAt.IsZero() && (deadline.IsZero() || p.capAt.Before(deadline)) {
 		deadline = p.capAt
@@ -94,8 +109,8 @@ func (p *pump) next(ctx context.Context, src source) ([]json.RawMessage, error) 
 	if deadline.IsZero() {
 		return src.Next(ctx)
 	}
-	waitCtx, cancel := context.WithDeadline(ctx, deadline)
-	defer cancel()
+	waitCtx, stop := context.WithDeadline(ctx, deadline)
+	defer stop()
 	return src.Next(waitCtx)
 }
 
@@ -114,12 +129,25 @@ func (p *pump) fold(ctx context.Context, values []json.RawMessage, out chan<- ha
 			return true
 		}
 	}
-	p.live.publish(p.w.handoffs())
-	return false
+	work := p.w.handoffs()
+	p.pills.rows(work.subagents)
+	p.follow(ctx)
+	p.live.publish(work)
+	return !p.hear(ctx, out)
 }
 
-// finish ends the turn with end, after the notes of what Stop could not stop.
+// finish ends the turn with end, after its hand-offs' last state and the notes of what Stop could not stop.
 func (p *pump) finish(ctx context.Context, out chan<- harness.Update, end *harness.TurnResult) {
+	p.pills.rows(p.w.handoffs().subagents)
+	state := harness.HandoffLeftRunning
+	if p.live.halted.Err() != nil {
+		state = harness.HandoffInterrupted
+	}
+	for _, u := range append(p.heard(), p.pills.end(state)...) {
+		if !send(ctx, out, u) {
+			return
+		}
+	}
 	for _, summary := range p.live.takeNotes() {
 		if !send(ctx, out, note(summary)) {
 			return
@@ -184,6 +212,7 @@ func (p *pump) resubscribe(ctx context.Context, cause error, out chan<- harness.
 			return nil
 		}
 		if err == nil {
+			p.refollow()
 			return src
 		}
 		p.log.Warn("t3clientv2: resubscribe failed", "attempt", p.failures, "error", err)
@@ -192,6 +221,132 @@ func (p *pump) resubscribe(ctx context.Context, cause error, out chan<- harness.
 	send(ctx, out, harness.Update{Terminal: &harness.TurnResult{State: harness.TurnError, LastError: fmt.Sprintf(
 		"Lost the connection to T3 Code and couldn't resume the turn after %d tries: %v", p.failures, cause)}})
 	return nil
+}
+
+// follow subscribes to each handed-off agent's own thread once T3 names it, on the turn's connection.
+func (p *pump) follow(ctx context.Context) {
+	if p.feeds == nil {
+		p.feeds = map[string]source{}
+	}
+	for _, c := range p.pills.order {
+		id := c.row.ID
+		if _, tried := p.feeds[id]; tried || c.row.ChildThreadID == "" {
+			continue
+		}
+		src, err := p.openChild(ctx, c.row.ChildThreadID, c.cursor)
+		if err != nil {
+			p.log.Warn("t3clientv2: could not follow a handed-off agent's thread", "thread", c.row.ChildThreadID, "error", err)
+			p.feeds[id] = nil
+			continue
+		}
+		p.feeds[id] = src
+		p.reading.Go(func() { p.read(ctx, id, src) })
+	}
+}
+
+// read hands one handed-off agent's thread items to the pump until that subscription ends.
+func (p *pump) read(ctx context.Context, id string, src source) {
+	for {
+		values, err := src.Next(ctx)
+		if ctx.Err() != nil {
+			return
+		}
+		p.inbox.put(childItems{id: id, src: src, values: values, err: err})
+		if err != nil {
+			return
+		}
+	}
+}
+
+// refollow drops every hand-off subscription, since they share the turn's connection; the next fold opens them again.
+func (p *pump) refollow() {
+	for id, src := range p.feeds {
+		if src != nil {
+			src.Close()
+		}
+		delete(p.feeds, id)
+	}
+}
+
+// unfollow ends every hand-off subscription once the turn is over.
+func (p *pump) unfollow(cancel context.CancelFunc) {
+	cancel()
+	p.reading.Wait()
+	p.refollow()
+}
+
+// heard folds what the hand-offs' threads sent into their pills; it returns the notes they raised.
+func (p *pump) heard() []harness.Update {
+	var notes []harness.Update
+	for _, c := range p.inbox.take() {
+		if p.feeds[c.id] != c.src {
+			continue // from a subscription refollow already replaced
+		}
+		if c.err != nil {
+			p.log.Warn("t3clientv2: a handed-off agent's thread stream ended", "subagent", c.id, "error", c.err)
+			c.src.Close()
+			p.feeds[c.id] = nil
+			continue
+		}
+		for _, raw := range c.values {
+			notes = append(notes, p.pills.apply(c.id, decodeItem(p.log, raw))...)
+		}
+	}
+	return notes
+}
+
+// hear forwards what the hand-offs' threads sent: their notes, then each pill that changed; false once ctx ended.
+func (p *pump) hear(ctx context.Context, out chan<- harness.Update) bool {
+	for _, u := range append(p.heard(), p.pills.changed()...) {
+		if !send(ctx, out, u) {
+			return false
+		}
+	}
+	return true
+}
+
+// childItems is one read of a handed-off agent's thread, tagged with the subscription it came from.
+type childItems struct {
+	id     string
+	src    source
+	values []json.RawMessage
+	err    error
+}
+
+// inbox is what the hand-offs' readers hand the pump; a put wakes the pump from its wait on the turn's own thread.
+// ponytail: unbounded while the pump is busy; give each reader back-pressure if a child thread ever floods it.
+type inbox struct {
+	mu    sync.Mutex
+	items []childItems
+	wake  context.CancelFunc
+}
+
+func (b *inbox) put(c childItems) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.items = append(b.items, c)
+	if b.wake != nil {
+		b.wake()
+	}
+}
+
+// wait arms wake for the pump's next read of its own thread; false when items already wait.
+func (b *inbox) wait(wake context.CancelFunc) bool {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if len(b.items) > 0 {
+		return false
+	}
+	b.wake = wake
+	return true
+}
+
+func (b *inbox) take() []childItems {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	items := b.items
+	b.items, b.wake = nil, nil
+	return items
 }
 
 func send(ctx context.Context, out chan<- harness.Update, u harness.Update) bool {

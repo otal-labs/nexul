@@ -37,6 +37,13 @@ Decision: a turn follows the runs its own run's handed-off work caused, and repl
   fails with the first refusal rather than saying nothing is running. Once Stop has stopped anything, the turn ends
   interrupted at once: a stopped waiting run can stay waiting, and dropped work reports no end, so nothing is followed
   after Stop.
+- **What the reply carries.** Each handed-off agent is a hand-off on the reply: its provider, model, title, prompt,
+  state (running, done, failed, interrupted, or left running when the turn stopped waiting), final reply and steps,
+  read from its subagent row and its own thread with the same step mapping as the turn's. A helper's own hand-offs are
+  steps inside it, one level only. The live stream pushes each hand-off as it changes, and the reply stores the final
+  set, redacted like its body, in the nullable `messages.handoffs` column, so the record survives the computer going
+  offline; deleting the reply clears it. Caps: 20 hand-offs, the newest 200 steps of each with 2 KiB of detail, a
+  2 KiB prompt, and 256 KiB per reply, the oldest steps going first and then the longest final replies.
 - **More than one turn on a conversation.** The pipeline keeps each in-flight turn on its own, so a second mention
   that ends first leaves the first one reachable. Stop reaches every live turn of the conversation, and an answer is
   tried on each, newest first, until a harness takes it.

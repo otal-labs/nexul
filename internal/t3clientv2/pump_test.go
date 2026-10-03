@@ -51,6 +51,9 @@ func (s *fakeSource) Close() { s.closed.Store(true) }
 
 func items(values ...json.RawMessage) chunkOrEnd { return chunkOrEnd{values: values} }
 
+// silentThread is a handed-off agent's thread that sends nothing.
+func silentThread(context.Context, string, int64) (source, error) { return newFakeSource(), nil }
+
 // collect takes every update the pump has sent so far without waiting for more.
 func collect(out <-chan harness.Update) []harness.Update {
 	var got []harness.Update
@@ -184,7 +187,7 @@ func TestPump_HandedOffWorkStillRunning_StepRepeatsUntilTheCapEndsTheTurnDone(t 
 			event(3, "subagent.updated", handedOff("task-1", "app_owned", "running", map[string]any{"completionWake": "settled_only"})),
 		))
 		out := make(chan harness.Update, 32)
-		p := &pump{w: newWatch("msg-1"), log: slog.Default(), live: newRunningTurn(t.Context(), "msg-1")}
+		p := &pump{w: newWatch("msg-1"), log: slog.Default(), live: newRunningTurn(t.Context(), "msg-1"), openChild: silentThread}
 		start := time.Now()
 		go p.run(t.Context(), src, out)
 
@@ -192,6 +195,9 @@ func TestPump_HandedOffWorkStillRunning_StepRepeatsUntilTheCapEndsTheTurnDone(t 
 		time.Sleep(40 * time.Minute)
 		synctest.Wait()
 		steps := collect(out)
+		require.NotEmpty(t, steps)
+		assert.Equal(t, harness.HandoffRunning, steps[0].Handoff.State, "the pill shows first")
+		steps = steps[1:]
 		require.Len(t, steps, 9, "at once, then every five minutes: well inside chat's and plays' 15-minute silence windows")
 		for i, u := range steps {
 			require.NotNil(t, u.Activity, "nothing ends the turn while the handed-off work runs")
@@ -209,7 +215,109 @@ func TestPump_HandedOffWorkStillRunning_StepRepeatsUntilTheCapEndsTheTurnDone(t 
 
 		time.Sleep(time.Second)
 		synctest.Wait()
-		assert.Equal(t, []harness.Update{{Terminal: &harness.TurnResult{State: harness.TurnDone, LeftRunning: true}}}, collect(out))
+		last := collect(out)
+		require.Len(t, last, 2)
+		assert.Equal(t, harness.HandoffLeftRunning, last[0].Handoff.State, "the pill still running at the cap")
+		assert.Equal(t, harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone, LeftRunning: true}}, last[1])
 		assert.True(t, src.closed.Load())
+	})
+}
+
+func TestPump_HandedOffAgentsThread_StreamsIntoItsPillUntilTheTurnEnds(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		running := childRow(nil)
+		row := map[string]any{"id": running.ID, "threadId": "th-1", "runId": runOne, "origin": running.Origin, "driver": running.Driver,
+			"status": "running", "title": running.Title, "childThreadId": "th-2", "prompt": running.Prompt, "result": nil}
+		first := newFakeSource(items(event(2, "run.created", runOf("msg-1", "running")), event(3, "subagent.updated", row)))
+		lost := fmt.Errorf("orchestration.subscribeThread: %w", t3rpc.ErrConnectionLost)
+		children := []*fakeSource{newFakeSource(), newFakeSource()}
+		type opened struct {
+			thread string
+			after  int64
+		}
+		var opens []opened
+		second := newFakeSource()
+		p := &pump{w: newWatch("msg-1"), log: slog.Default(), live: newRunningTurn(t.Context(), "msg-1"),
+			open: func(context.Context, int64) (source, error) { return second, nil },
+			openChild: func(_ context.Context, thread string, after int64) (source, error) {
+				opens = append(opens, opened{thread, after})
+				return children[len(opens)-1], nil
+			}}
+		out := make(chan harness.Update, 32)
+		go p.run(t.Context(), first, out)
+		synctest.Wait()
+		require.Equal(t, []opened{{"th-2", 0}}, opens, "the agent's own thread is followed from a snapshot")
+		collect(out)
+
+		children[0].ch <- items(recorded(t, childThread)...)
+		synctest.Wait()
+		pills := handoffsIn(collect(out))
+		require.Len(t, pills, 1, "the child's thread wakes the turn while its own stream is quiet")
+		assert.Equal(t, "Two callers: watch.step and the child map.", pills[0].Reply)
+		assert.Equal(t, "Shell", pills[0].Steps[0].Tool)
+
+		first.ch <- chunkOrEnd{err: lost}
+		time.Sleep(time.Second)
+		second.ch <- items(event(4, "run.updated", runOf("msg-1", runWaiting)))
+		synctest.Wait()
+		assert.Equal(t, []opened{{"th-2", 0}, {"th-2", 560}}, opens, "once the connection is back, the child's thread resumes after its cursor")
+		assert.True(t, children[0].closed.Load())
+
+		row["status"], row["result"] = "completed", "Two callers."
+		second.ch <- items(event(5, "subagent.updated", row))
+		synctest.Wait()
+		last := collect(out)
+		require.Len(t, last, 2)
+		assert.Equal(t, harness.HandoffDone, last[0].Handoff.State, "the pill's last state comes before the end")
+		assert.Equal(t, "Two callers.", last[0].Handoff.Reply)
+		assert.Equal(t, ended(harness.TurnDone, ""), last[1])
+		assert.True(t, children[1].closed.Load(), "the child's thread is let go with the turn")
+	})
+}
+
+func handoffsIn(updates []harness.Update) []harness.Handoff {
+	var got []harness.Handoff
+	for _, u := range updates {
+		if u.Handoff != nil {
+			got = append(got, *u.Handoff)
+		}
+	}
+	return got
+}
+
+func TestPump_HandedOffAgentsThreadUnreadable_ItsPillComesFromItsRowAndTheTurnGoesOn(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		row := func(id, thread, status string, result any) map[string]any {
+			return map[string]any{"id": id, "threadId": "th-1", "runId": runOne, "origin": "app_owned", "driver": "codex", "status": status,
+				"title": "Audit " + id, "childThreadId": thread, "prompt": "Audit.", "result": result}
+		}
+		src := newFakeSource(items(event(2, "run.created", runOf("msg-1", "running")),
+			event(3, "subagent.updated", row("task-1", "th-2", "running", nil)), event(4, "subagent.updated", row("task-2", "th-3", "running", nil))))
+		missing := newFakeSource(chunkOrEnd{err: &t3rpc.ExitError{Method: subscribeThread, Causes: []t3rpc.ExitCause{{Tag: "Fail"}}}})
+		p := &pump{w: newWatch("msg-1"), log: slog.Default(), live: newRunningTurn(t.Context(), "msg-1"),
+			openChild: func(_ context.Context, thread string, _ int64) (source, error) {
+				if thread == "th-2" {
+					return nil, errors.New("dial T3 websocket: connection refused")
+				}
+				return missing, nil
+			}}
+		out := make(chan harness.Update, 32)
+		go p.run(t.Context(), src, out)
+		synctest.Wait()
+		assert.True(t, missing.closed.Load(), "a thread T3 cannot stream is let go")
+
+		src.ch <- items(event(5, "subagent.updated", row("task-1", "th-2", "completed", "One issue.")),
+			event(6, "subagent.updated", row("task-2", "th-3", "failed", nil)), event(7, "run.updated", runOf("msg-1", runWaiting)))
+		synctest.Wait()
+		got := collect(out)
+		require.NotEmpty(t, got)
+		assert.Equal(t, ended(harness.TurnDone, ""), got[len(got)-1], "neither thread fails the turn")
+		pills := map[string]harness.Handoff{}
+		for _, h := range handoffsIn(got) {
+			pills[h.ID] = h
+		}
+		assert.Equal(t, harness.Handoff{ID: "task-1", Driver: "codex", Title: "Audit task-1", Prompt: "Audit.", State: harness.HandoffDone,
+			Reply: "One issue."}, pills["task-1"])
+		assert.Equal(t, harness.HandoffFailed, pills["task-2"].State)
 	})
 }

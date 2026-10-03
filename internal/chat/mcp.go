@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/otal-labs/nexul/internal/harness"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
@@ -103,6 +104,21 @@ type messageResult struct {
 	EditedAt  *time.Time      `json:"edited_at,omitempty"`
 	CreatedAt time.Time       `json:"created_at"`
 	Reactions []Reaction      `json:"reactions,omitempty"`
+	// Handoffs leave out each hand-off's steps, which would crowd an agent's context.
+	Handoffs []handoffSummary `json:"handoffs,omitempty"`
+}
+
+// maxSummaryReply keeps the 20 hand-off summaries of one reply under 10,000 tokens.
+const maxSummaryReply = 1 << 10
+
+type handoffSummary struct {
+	ID        string `json:"id"`
+	Driver    string `json:"driver"`
+	Model     string `json:"model"`
+	Title     string `json:"title"`
+	State     string `json:"state"`
+	Reply     string `json:"reply"`
+	StepCount int    `json:"step_count"`
 }
 
 // MCPTools returns the chat tools; each acts as the caller the identity context carries.
@@ -215,7 +231,9 @@ func messageListTool(s *Service) mcptool.Tool {
 		"Lists a conversation's messages newest first, so the first page is the latest; page back with offset for older ones. "+
 			"Name the conversation by conversation_id, or by exactly one of doc_id, ticket_id, or project_id for that doc's, ticket's, "+
 			"or project interview's thread; a thread nobody has started yet lists as empty and is not created. "+
-			"Deleted messages are left out, and a note carries its markdown file in file. Reply with message_post.",
+			"Deleted messages are left out, and a note carries its markdown file in file. "+
+			"An Agent reply that handed off work carries handoffs: each helper's provider, model, title, state and the first 1 KiB of its final reply. "+
+			"Reply with message_post.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in messageListIn) (any, error) {
 			caller, err := callerID(ctx)
@@ -395,6 +413,10 @@ func toMessageResult(m *Message, file *NoteFile) messageResult {
 	}
 	if file != nil {
 		out.File = &noteFileResult{ID: file.ID, Name: file.Name, Markdown: file.Markdown}
+	}
+	for _, h := range m.Handoffs {
+		out.Handoffs = append(out.Handoffs, handoffSummary{ID: h.ID, Driver: h.Driver, Model: h.Model, Title: h.Title, State: h.State,
+			Reply: harness.CapBytes(h.Reply, maxSummaryReply), StepCount: len(h.Steps)})
 	}
 	return out
 }

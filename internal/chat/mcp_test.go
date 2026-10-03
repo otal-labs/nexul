@@ -3,6 +3,7 @@ package chat
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -151,6 +152,28 @@ func TestMessagePost_ReactsAndListsTheReaction(t *testing.T) {
 	removed, err := callTool(as("u-2"), t, s, "message_post", `{"reaction":{"message_id":"`+m.ID+`","emoji":"🎉","remove":true}}`)
 	require.NoError(t, err)
 	assert.Empty(t, removed.(messageResult).Reactions)
+}
+
+func TestMessageList_ReplyWithHandoffs_SummarisesThemWithoutSteps(t *testing.T) {
+	s := newTestService(newFakeRepo())
+	c, err := s.CreateChannel(t.Context(), "w-1", "u-1", "eng")
+	require.NoError(t, err)
+	reply := strings.Repeat("The handler writes to a nil map. ", 128)
+	_, err = s.PostAgentMessage(t.Context(), c.ID, "u-1", "Done.", fullHandoffs(reply))
+	require.NoError(t, err)
+
+	out, err := callTool(as("u-1"), t, s, "message_list", `{"conversation_id":"`+c.ID+`"}`)
+	require.NoError(t, err)
+	page := out.(mcptool.Page[messageResult])
+	require.Len(t, page.Items[0].Handoffs, 20)
+	first := page.Items[0].Handoffs[0]
+	assert.Equal(t, handoffSummary{ID: "task-0", Driver: "claudeAgent", Model: "claude-opus-5-5", Title: "Audit", State: "done",
+		Reply: reply[:1<<10], StepCount: first.StepCount}, first, "the first 1 KiB of each reply")
+	assert.Positive(t, first.StepCount)
+	raw, err := json.Marshal(out)
+	require.NoError(t, err)
+	assert.NotContains(t, string(raw), `"steps"`)
+	assert.Less(t, len(raw), 40_000, "well under 10,000 tokens")
 }
 
 func TestMessageList_NewestFirstWithoutDeletedMessages(t *testing.T) {

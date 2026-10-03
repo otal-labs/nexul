@@ -246,10 +246,18 @@ func insertMessage(ctx context.Context, q *sqlcgen.Queries, m *chat.Message) err
 	if authorKind == "" {
 		authorKind = chat.AuthorUser
 	}
+	var handoffs sql.NullString
+	if len(m.Handoffs) > 0 {
+		raw, err := json.Marshal(m.Handoffs)
+		if err != nil {
+			return fmt.Errorf("marshal hand-offs: %w", err)
+		}
+		handoffs = sql.NullString{String: string(raw), Valid: true}
+	}
 	err = q.CreateMessage(ctx, sqlcgen.CreateMessageParams{
 		ID: m.ID, ConversationID: m.ConversationID, AuthorID: m.AuthorID, AuthorKind: string(authorKind),
 		Body: m.Body, Mentions: string(mentionsJSON), AttachmentID: sql.NullString{String: m.AttachmentID, Valid: m.AttachmentID != ""},
-		CreatedAt: m.CreatedAt.Unix(), UpdatedAt: m.UpdatedAt.Unix(),
+		Handoffs: handoffs, CreatedAt: m.CreatedAt.Unix(), UpdatedAt: m.UpdatedAt.Unix(),
 	})
 	if err != nil {
 		return fmt.Errorf("insert message %s: %w", m.ID, classifyWriteErr(err))
@@ -549,6 +557,11 @@ func toMessage(row sqlcgen.Message) (*chat.Message, error) {
 	}
 	if err := json.Unmarshal([]byte(row.Mentions), &m.Mentions); err != nil {
 		return nil, fmt.Errorf("unmarshal mentions for message %s: %w", m.ID, err)
+	}
+	if row.Handoffs.Valid {
+		if err := json.Unmarshal([]byte(row.Handoffs.String), &m.Handoffs); err != nil {
+			return nil, fmt.Errorf("unmarshal hand-offs for message %s: %w", m.ID, err)
+		}
 	}
 	if row.EditedAt.Valid {
 		m.EditedAt = atPtr(time.Unix(row.EditedAt.Int64, 0).UTC())
