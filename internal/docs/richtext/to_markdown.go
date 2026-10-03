@@ -3,6 +3,7 @@ package richtext
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -264,7 +265,10 @@ func renderInline(nodes []Node) string {
 
 // renderTextRun writes one text run, closing ended marks and opening new ones, keeping the shared prefix open.
 func renderTextRun(b *strings.Builder, text string, marks []Mark, open []Mark) []Mark {
-	text = escapeMarkdownText(text)
+	// Code spans take no backslash escapes, so an escape there would read back as a literal backslash.
+	if !slices.ContainsFunc(marks, func(m Mark) bool { return m.Type == "code" }) {
+		text = escapeMarkdownText(text)
+	}
 	shared := sharedMarks(open, marks)
 
 	closeMarks(b, open, shared)
