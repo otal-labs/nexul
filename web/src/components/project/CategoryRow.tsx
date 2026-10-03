@@ -1,3 +1,5 @@
+import { useSortable } from "@dnd-kit/sortable";
+import { GripVerticalIcon } from "lucide-react";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 
@@ -27,6 +29,10 @@ export const CategoryRow = ({ category, count, first, last, onMoveUp, onMoveDown
   const renameCategory = useRenameCategory();
   const deleteCategory = useDeleteCategory();
   const [editing, setEditing] = useState(false);
+  const { setNodeRef, setActivatorNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
+    id: category.id,
+    disabled: editing,
+  });
   const form = useForm<{ name: string; color: string }>({
     defaultValues: { name: category.name, color: category.color },
   });
@@ -44,7 +50,7 @@ export const CategoryRow = ({ category, count, first, last, onMoveUp, onMoveDown
 
   if (editing) {
     return (
-      <li className="flex flex-col gap-1.5 py-1.5">
+      <li ref={setNodeRef} className="flex flex-col gap-1.5 py-1.5">
         <Controller
           control={form.control}
           name="name"
@@ -82,7 +88,27 @@ export const CategoryRow = ({ category, count, first, last, onMoveUp, onMoveDown
   }
 
   return (
-    <li className="-mx-2 flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors duration-[120ms] ease-standard hover:bg-accent/40">
+    <li
+      ref={setNodeRef}
+      style={{
+        transform: transform ? `translate3d(0, ${Math.round(transform.y)}px, 0)` : undefined,
+        transition,
+      }}
+      className={cn(
+        "-mx-2 flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors duration-[120ms] ease-standard hover:bg-accent/40",
+        isDragging && "relative z-10 bg-card shadow-elevated",
+      )}
+    >
+      <button
+        ref={setActivatorNodeRef}
+        type="button"
+        aria-label={`Reorder ${category.name}`}
+        className="-ml-1 cursor-grab rounded p-0.5 text-muted-foreground/60 hover:text-foreground active:cursor-grabbing focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVerticalIcon className="size-3.5" aria-hidden />
+      </button>
       {/* Always occupies the dot column so names align whether or not a category has a color. */}
       <span
         className={cn(

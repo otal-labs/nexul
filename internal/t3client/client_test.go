@@ -200,6 +200,45 @@ func TestRespondUserInput_Rejections(t *testing.T) {
 	}
 }
 
+func TestDismissUserInput(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name    string
+		message string
+		want    error
+	}{
+		{"dismissed", "", nil},
+		{"already answered", "Orchestration command invariant failed (thread.user-input.dismiss): This question has already been answered.", apperrs.ErrConflict},
+		{"a question the provider waits on", "Orchestration command invariant failed (thread.user-input.dismiss): This question needs an answer. Answer it or stop the turn.", apperrs.ErrInvalid},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			f := t3rpctest.New(t)
+			if tt.message != "" {
+				f.DispatchCause = []map[string]any{{"_tag": "Fail", "error": map[string]any{
+					"_tag": "OrchestrationDispatchCommandError", "message": tt.message,
+				}}}
+			}
+			ctx := testCtx(t)
+			c := connectFake(t, ctx, f)
+
+			err := c.DismissUserInput(ctx, "th-1", "req-1")
+			if tt.want != nil {
+				require.ErrorIs(t, err, tt.want)
+				return
+			}
+			require.NoError(t, err)
+			cmd := t3rpctest.WaitFor(t, f.Dispatched, "thread.user-input.dismiss dispatch")
+			assert.Equal(t, "thread.user-input.dismiss", cmd["type"])
+			assert.Equal(t, "th-1", cmd["threadId"])
+			assert.Equal(t, "req-1", cmd["requestId"])
+			assert.NotEmpty(t, cmd["commandId"])
+			assert.NotEmpty(t, cmd["createdAt"])
+		})
+	}
+}
+
 func TestSettle_DispatchesProtocolOneShape(t *testing.T) {
 	t.Parallel()
 	f := t3rpctest.New(t)

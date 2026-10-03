@@ -1,10 +1,11 @@
 import { useDroppable } from "@dnd-kit/core";
 import { horizontalListSortingStrategy, SortableContext } from "@dnd-kit/sortable";
-import { ChevronDownIcon } from "lucide-react";
+import { ChevronDownIcon, CircleHelp, LoaderCircle } from "lucide-react";
 
 import { KanbanColumn } from "@/components/board/KanbanColumn";
 import type { Swimlane } from "@/components/board/KanbanBoard";
 import type { DropTargetData } from "@/components/board/dragMove";
+import { useTicketRunCounts } from "@/hooks/TrailHooks";
 import { cn } from "@/lib/utils";
 import type { BoardStatus } from "@/models/Status";
 import { useBoardStore } from "@/stores/boardStore";
@@ -18,6 +19,7 @@ interface SwimlaneSectionProps {
 export const SwimlaneSection = ({ lane, columns, onAddTicket }: SwimlaneSectionProps) => {
   const collapsed = useBoardStore((s) => s.collapsedLaneKeys.includes(lane.key));
   const toggleLane = useBoardStore((s) => s.toggleLane);
+  const runs = useTicketRunCounts(lane.tickets[0]?.project_id, lane.tickets.map((t) => t.id));
   const { setNodeRef, isOver } = useDroppable(
     lane.categoryId === null
       ? { id: `lane-${lane.key}`, disabled: true }
@@ -34,15 +36,29 @@ export const SwimlaneSection = ({ lane, columns, onAddTicket }: SwimlaneSectionP
         isOver && "ring-1 ring-inset ring-ring",
       )}
     >
-      <h3 className="border-b border-border pb-1.5">
+      <h3 className="border-b border-border pb-1">
         {/* The whole header row toggles collapse; label and count stay sticky against the horizontal scroll. */}
         <button
           type="button"
           aria-expanded={!collapsed}
           onClick={() => toggleLane(lane.key)}
-          className="group/lane flex w-full cursor-pointer items-center justify-between gap-2 rounded-sm px-0.5 text-left"
+          className="group/lane flex w-full cursor-pointer items-center justify-between gap-2 rounded-sm px-1.5 py-1 text-left transition-colors duration-150 ease-standard hover:bg-accent/40"
         >
-          <span className="sticky left-0 min-w-0 truncate text-sm font-semibold">{lane.label}</span>{" "}
+          <span className="sticky left-0 flex min-w-0 items-center gap-3">
+            <span className="min-w-0 truncate text-sm font-semibold">{lane.label}</span>{" "}
+            {runs.running + runs.waiting > 0 && (
+              <span className="flex shrink-0 items-center gap-2.5 font-mono text-xs text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <LoaderCircle className="size-3 animate-spin text-warning motion-reduce:animate-none" role="img" aria-label="Running" />{" "}
+                  {runs.running} {runs.running === 1 ? "ticket" : "tickets"}
+                </span>{" "}
+                <span className="flex items-center gap-1">
+                  <CircleHelp className="size-3 text-info" role="img" aria-label="Waiting for an answer" />{" "}
+                  {runs.waiting} {runs.waiting === 1 ? "ticket" : "tickets"}
+                </span>
+              </span>
+            )}
+          </span>{" "}
           <span className="sticky right-0 flex shrink-0 items-center gap-1 font-mono text-xs text-muted-foreground transition-colors group-hover/lane:text-foreground">
             {lane.tickets.length} tickets
             <ChevronDownIcon

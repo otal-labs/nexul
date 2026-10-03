@@ -11,7 +11,6 @@ import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { personLabel } from "@/models/Person";
 import type { Project } from "@/models/Project";
 import { reporterLabel, type Ticket } from "@/models/Ticket";
-import { parseBodyToJSON } from "@/utils/RichtextUtility";
 
 const AUTOSAVE_DEBOUNCE_MS = 800;
 
@@ -30,9 +29,6 @@ export const TicketDetail = ({ ticket, project, onSave }: TicketDetailProps) => 
   const titleRef = useRef(ticket.title);
   const bodyRef = useRef(ticket.body);
   const dirtyRef = useRef(false);
-  // Matched by value, not count, so the editor's initial-content echo doesn't autosave an unchanged ticket.
-  const bodySeeded = useRef(false);
-  const initialBodyJSON = useRef(JSON.stringify(parseBodyToJSON(ticket.body)));
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onSaveRef = useRef(onSave);
   useLayoutEffect(() => {
@@ -125,10 +121,7 @@ export const TicketDetail = ({ ticket, project, onSave }: TicketDetailProps) => 
             aria-label="Ticket description"
             attachTo={{ ticket_id: ticket.id }}
             onChange={(json) => {
-              const isInitialApplication = !bodySeeded.current && json === initialBodyJSON.current;
-              bodySeeded.current = true;
               bodyRef.current = json;
-              if (isInitialApplication) return;
               schedule();
             }}
           />

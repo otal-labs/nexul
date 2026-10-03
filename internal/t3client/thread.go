@@ -165,6 +165,14 @@ type threadUserInputRespondCommand struct {
 	CreatedAt string         `json:"createdAt"`
 }
 
+type threadUserInputDismissCommand struct {
+	Type      string `json:"type"`
+	CommandID string `json:"commandId"`
+	ThreadID  string `json:"threadId"`
+	RequestID string `json:"requestId"`
+	CreatedAt string `json:"createdAt"`
+}
+
 type subscribeThreadInput struct {
 	ThreadID string `json:"threadId"`
 	// AfterSequence makes T3 replay this thread's events after that global sequence instead of sending a snapshot.
@@ -254,6 +262,22 @@ func (c *conn) RespondUserInput(ctx context.Context, threadID, requestID string,
 		ThreadID:  threadID,
 		RequestID: requestID,
 		Answers:   encodeAnswers(answer),
+		CreatedAt: isoNow(),
+	})
+	if err != nil && strings.Contains(err.Error(), alreadyAnswered) {
+		return fmt.Errorf("%w: question %s was already answered", apperrs.ErrConflict, requestID)
+	}
+	return err
+}
+
+// DismissUserInput resolves an async question without answering it in T3; ErrConflict when T3 already holds an
+// answer, ErrInvalid for a question the provider is still blocked on.
+func (c *conn) DismissUserInput(ctx context.Context, threadID, requestID string) error {
+	err := c.dispatch(ctx, threadUserInputDismissCommand{
+		Type:      "thread.user-input.dismiss",
+		CommandID: ids.New(),
+		ThreadID:  threadID,
+		RequestID: requestID,
 		CreatedAt: isoNow(),
 	})
 	if err != nil && strings.Contains(err.Error(), alreadyAnswered) {

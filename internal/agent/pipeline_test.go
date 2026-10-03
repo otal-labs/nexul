@@ -202,6 +202,7 @@ type fakeHarness struct {
 	lastTitle       string
 	lastPrompt      string
 	lastIncremental string
+	lastAnswer      *harness.PendingAnswer
 }
 
 func (f *fakeHarness) StartTurn(_ context.Context, target harness.Target, title string, prompts harness.TurnPrompts) (harness.StartResult, error) {
@@ -210,6 +211,7 @@ func (f *fakeHarness) StartTurn(_ context.Context, target harness.Target, title 
 	f.lastTitle = title
 	f.lastPrompt = prompts.Full
 	f.lastIncremental = prompts.Incremental
+	f.lastAnswer = prompts.Answer
 	f.mu.Unlock()
 	return f.startResult, f.startErr
 }

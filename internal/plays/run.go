@@ -395,6 +395,7 @@ func (r *Runner) Answer(ctx context.Context, trailID string, answer harness.Ques
 	snapshot := *trail
 	r.startTurn(ctx, trail, tgt.title, agent.TurnRequest{
 		ConversationID: trail.ConversationID, ViaUserID: trail.StarterID, RequestBody: body,
+		Answer: &harness.PendingAnswer{RequestID: trail.Question.RequestID, Answer: answer},
 		Play:   r.answerContext(ctx, trail),
 		Target: &agent.TargetOverride{ComputerID: trail.ComputerID, Provider: trail.Provider, Model: trail.Model, ModelOptions: trail.ModelOptions},
 	}, true)

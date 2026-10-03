@@ -183,7 +183,7 @@ describe("useFetchActiveTrails / useTicketRunState", () => {
   it("asks once per project for every ticket id on the board", async () => {
     mockBoard({ "t-1": "tr-1" });
     const { result } = renderHook(() => useFetchActiveTrails("p-1"), { wrapper });
-    await waitFor(() => expect(result.current.data).toEqual({ active: { "t-1": "tr-1" }, waiting: {} }));
+    await waitFor(() => expect(result.current.data).toEqual({ active: { "t-1": "tr-1" }, waiting: {}, started: {} }));
     expect(api.get).toHaveBeenCalledWith("/api/plays/runs/active", { params: { target_type: "ticket", target_ids: "t-1,t-2" } });
   });
 

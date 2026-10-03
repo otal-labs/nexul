@@ -46,12 +46,12 @@ interface RichTextEditorProps {
 }
 
 // Structured JSON bodies load as-is; anything else is legacy markdown.
-const setBody = (editor: Editor, value: string) => {
+const setBody = (editor: Editor, value: string, emitUpdate = true) => {
   if (isStructuredBody(value)) {
-    editor.commands.setContent(JSON.parse(value));
+    editor.commands.setContent(JSON.parse(value), { emitUpdate });
     return;
   }
-  editor.commands.setContent(value, { contentType: "markdown" });
+  editor.commands.setContent(value, { contentType: "markdown", emitUpdate });
 };
 
 // Wires y-prosemirror's cursor plugin to session awareness so remote cursors render live.
@@ -114,12 +114,12 @@ export const RichTextEditor = ({
     [collab ? collab.doc : "plain"],
   );
 
-  // Apply the initial / external value: structured JSON, or legacy markdown.
+  // Applied silently: loading a body is not an edit, and its normalized echo would autosave an untouched record.
   useEffect(() => {
     if (!editor || collab) return;
     if (appliedValue.current === value) return;
     appliedValue.current = value;
-    setBody(editor, value);
+    setBody(editor, value, false);
   }, [editor, collab, value]);
 
   // Only the editor the server picks seeds an empty room; two seeding it would show the body twice.

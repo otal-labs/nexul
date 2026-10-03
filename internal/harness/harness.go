@@ -281,6 +281,12 @@ func (a QuestionAnswer) Summary(q *Question) string {
 	return strings.Join(lines, "\n")
 }
 
+// PendingAnswer is an answer to a question whose turn already ended; the next turn carries it to the harness.
+type PendingAnswer struct {
+	RequestID string
+	Answer    QuestionAnswer
+}
+
 // String renders one answer: the free text, else the chosen values comma-joined.
 func (v AnswerValue) String() string {
 	if v.Text != "" {
@@ -327,6 +333,8 @@ type TurnPrompts struct {
 	Incremental string
 	// Attachments belong to Full: they are the images its ticket, doc, and memory bodies refer to.
 	Attachments []Attachment
+	// Answer resolves the question still open on a reused session before the prompt is sent.
+	Answer *PendingAnswer
 }
 
 // StartResult is what starting a turn hands back: the session id actually used, plus the update stream.

@@ -105,6 +105,8 @@ func TestAnswer_TurnGone_ResumesAFreshTurnOnTheSameTrail(t *testing.T) {
 	<-f.turns.done
 	req := f.turns.last()
 	assert.Equal(t, "Answered: Yes", req.RequestBody, "the answer is the fresh turn's request")
+	assert.Equal(t, &harness.PendingAnswer{RequestID: "req-1", Answer: yesAnswer()}, req.Answer,
+		"the harness resolves the question the ended turn left open")
 	assert.Equal(t, trail.ConversationID, req.ConversationID)
 	assert.Equal(t, starter, req.ViaUserID)
 	assert.Equal(t, &agent.PlayContext{Label: "Fix with AI", Instructions: "Fix the ticket.",
