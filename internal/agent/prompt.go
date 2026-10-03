@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"strings"
 	"time"
-
-	"github.com/otal-labs/nexul/internal/platform/skills"
 )
 
 // MaxPromptChars is the harness turn-input ceiling (T3 Code's limit today); oldest context is truncated first to stay under it.
@@ -18,74 +16,69 @@ const (
 	MaxTurnAttachmentBytes = 25 << 20
 )
 
-// MaxMemoryChars caps one memory inlined in full; MaxInlinedMemoryChars caps a turn's always-included memories together.
-const (
-	MaxMemoryChars        = 20_000
-	MaxInlinedMemoryChars = 60_000
-)
-
 // truncationNote is inserted when oldest context had to be dropped to fit MaxPromptChars.
 const truncationNote = "(earlier messages omitted to fit the turn size limit)"
 
-// MaxMemoriesIndexChars caps the rendered memories index well below MaxPromptChars.
-const MaxMemoriesIndexChars = 4_000
+// TemplateKind is the instance-only template kind holding the full prompt's Intro and Footer (ADR 0111).
+const (
+	TemplateKind   = "agent_prompt"
+	TemplateIntro  = "intro"
+	TemplateFooter = "footer"
+)
 
-// memoriesTruncationNote is appended when the memories index had to drop entries to fit MaxMemoriesIndexChars.
-const memoriesTruncationNote = "(older memories omitted — curate the memory set if this happens often)"
+// DefaultIntro opens every full prompt until the instance edits its Intro template.
+const DefaultIntro = "You are Agent, Nexul's in-chat assistant. You reply as the \"Agent\" participant, shown as \"via <user>\" " +
+	"for whoever mentioned you or started the run, and you act only within that user's own Nexul permissions through " +
+	"Nexul's MCP server.\n\n" +
+	"Before doing anything else, call the MCP server's account_get tool with no arguments to confirm you can reach " +
+	"Nexul. If it fails, say so plainly instead of guessing or acting further."
 
-// MemoryItem is one memory available to a turn. Most carry only a name and a when-to-use line for the index;
-// an always-included memory also carries its full markdown Body, inlined rather than indexed (ticket 27).
+// DefaultFooter closes every full prompt until the instance edits its Footer template.
+const DefaultFooter = "Standing rules:\n" +
+	"- A ticket's body is its spec: change it only when a person asks. Put anything lasting you learn in a note with " +
+	"message_post's file, and if the spec looks wrong, say so and suggest the person edit it.\n" +
+	"- Memories are the team's shared notes for agents, one project each. Save a durable fact worth keeping with " +
+	"memory_create, or memory_update the one that already covers it, passing the project's project_id; always save one " +
+	"when someone says \"remember X\". Find others with memory_list and read them with memory_get when a task needs them."
+
+// The fixed lines naming a turn's context by reference; each names the tool that reads it (ADR 0111).
+const (
+	ticketLine   = "Ticket: %s %q. Read it with ticket_get before you start."
+	docLine      = "Doc: %q (id %s). Read it with doc_get before you start."
+	imagesLine   = "The images in its body are attached to this message, in order."
+	memoriesLine = "Read these memories with memory_get before you start; they are your context:"
+)
+
+// PromptTexts returns the fixed texts a prompt hands the agent, so the MCP surface test can check the tools they name.
+func PromptTexts() []string {
+	return []string{DefaultIntro, DefaultFooter, ticketLine, docLine, memoriesLine}
+}
+
+// MemoryItem is one of a project's memories as the pipeline sees it: enough to name it, never its body.
 type MemoryItem struct {
+	ID             string
 	Name           string
-	WhenToUse      string
 	AlwaysIncluded bool
-	// Interview marks the project's interview memory, inlined first so a trim never drops it (ADR 0065).
+	// Interview marks the project's interview memory, named first (ADR 0065).
 	Interview bool
-	Body      string
 }
 
-// MemoriesIndex is every memory available to a turn: the current project's memories, none for a plain chat with
-// no ticket or doc (ADR 0099). The zero value is nil-safe and renders as "no memories saved yet". Callers building
-// a prompt split this with splitAlwaysIncluded before handing it to instructionsBlock/memoriesBlock, which render
-// the index of the rest only.
-type MemoriesIndex struct {
-	Project []MemoryItem
+// MemoryRef names one memory for the agent to read with memory_get.
+type MemoryRef struct {
+	ID   string
+	Name string
 }
 
-// splitAlwaysIncluded separates always-included memories from the index; the project's interview leads them.
-func splitAlwaysIncluded(mem MemoriesIndex) (index MemoriesIndex, always []InlinedMemory) {
-	for _, m := range mem.Project {
-		if !m.AlwaysIncluded {
-			index.Project = append(index.Project, m)
-			continue
-		}
-		if m.Interview {
-			always = append([]InlinedMemory{{Title: m.Name, Body: m.Body}}, always...)
-			continue
-		}
-		always = append(always, InlinedMemory{Title: m.Name, Body: m.Body})
-	}
-	return index, always
+// PlayContext is a play run's part of a turn: the play, its link blocks, the memories it names, and the starter's
+// instructions for the run. A play turn carries no conversation history (ADR 0111).
+type PlayContext struct {
+	// Label and Instructions are the play's; an empty Label leaves the play block out.
+	Label        string
+	Instructions string
+	Blocks       []string
+	Memories     []MemoryRef
+	Custom       string
 }
-
-// TicketContext is a ticket thread's ticket, included in the prompt.
-type TicketContext struct {
-	Title string
-	Body  string
-}
-
-// ticketBodyRule follows the ticket body on every turn in its thread, mentions and play runs alike (ADR 0108).
-const ticketBodyRule = "The ticket body above is its spec: change it only when a person asks. Add anything lasting you learn " +
-	"afterwards as a note with message_post's file, and if the spec looks wrong, say so and suggest the person edit it."
-
-// DocContext is a doc thread's doc, included in the prompt as markdown; trimmed with a note when oversized.
-type DocContext struct {
-	Title string
-	Body  string
-}
-
-// docTrimNote is appended when a doc's body had to be cut to fit MaxPromptChars.
-const docTrimNote = "\n\n(doc body trimmed to fit the turn size limit)"
 
 // ContextMessage is one resolved context line; Author is already a display label, not a raw id.
 type ContextMessage struct {
@@ -95,167 +88,103 @@ type ContextMessage struct {
 	At time.Time
 }
 
-// PromptInput is everything ComposePrompt needs: the instructions, context, and request blocks.
+// PromptInput is everything the composers need; empty fields render nothing.
 type PromptInput struct {
-	// Ticket is non-nil only for a ticket thread.
-	Ticket *TicketContext
-	// Doc is non-nil only for a doc thread; mutually exclusive with Ticket.
-	Doc *DocContext
-	// ContextMessages are new messages since the last mention, oldest-first.
+	Intro  string
+	Footer string
+	// Target is the thread's ticket or doc line, "" for any other thread.
+	Target string
+	// Play is non-nil for a play run.
+	Play            *PlayContext
+	Memories        []MemoryRef
 	ContextMessages []ContextMessage
-	// Memories is the turn's index; zero value renders as "no memories saved yet", not an error.
-	Memories      MemoriesIndex
+	// RequestAuthor is whoever mentioned the Agent or started the run; RequestBody is "" for a play run's start.
 	RequestAuthor string
 	RequestBody   string
-	// RequestAt timestamps the triggering mention in the request block.
-	RequestAt time.Time
-	// ExtraRequestBlocks follow the request body inside the request block, so a reused session still receives them.
-	ExtraRequestBlocks []string
+	RequestAt     time.Time
 }
 
-// ComposePrompt builds one turn's prompt: instructions, context, and request, oldest context dropped first.
+// ComposePrompt builds a fresh session's prompt: intro, what is running, its context by reference, the conversation
+// (oldest lines dropped first to fit), the request, and the footer.
 func ComposePrompt(in PromptInput) string {
-	instructions := instructionsBlock(in.Memories)
+	head := append([]string{in.Intro}, contextSections(in)...)
+	tail := []string{requestBlock(in), in.Footer}
+	header := "Conversation so far:"
+	fixed := len(joinSections(append(append([]string{}, head...), tail...)...))
+	budget := MaxPromptChars - fixed - len("\n\n") - len(header) - len("\n") - len(truncationNote)
+	conversation := conversationBlock(header, in.ContextMessages, budget)
+	return joinSections(append(append(head, conversation), tail...)...)
+}
+
+// ComposeIncrementalPrompt is the prompt for a reused harness session (ADR 0106): no intro or footer, only what is new.
+// A play run's start sends its context sections; any other turn sends the new messages and the request.
+func ComposeIncrementalPrompt(in PromptInput) string {
+	if in.Play != nil && in.RequestBody == "" {
+		return joinSections(contextSections(in)...)
+	}
 	request := requestBlock(in)
-
-	// Ticket and Doc are mutually exclusive (one thread carries one target); a ticket's body is never
-	// trimmed today, a doc's is, since only the doc thread ticket calls for it.
-	targetBlock := ""
-	if in.Ticket != nil {
-		targetBlock = fmt.Sprintf("Ticket: %s\n\n%s\n\n%s", in.Ticket.Title, in.Ticket.Body, ticketBodyRule)
-	}
-	if in.Doc != nil {
-		targetBlock = docContextBlock(in.Doc, instructions, request)
-	}
-
-	// fixedLen mirrors the assembly below exactly, so the context-line budget is exact, not a guess.
-	fixedLen := len(instructions) + len("\n\nConversation so far:") + len("\n\n") + len(request)
-	if targetBlock != "" {
-		fixedLen += len("\n\n") + len(targetBlock)
-	}
-	budget := MaxPromptChars - fixedLen - (len("\n") + len(truncationNote))
-	lines, truncated := fitContext(in.ContextMessages, budget)
-
-	var b strings.Builder
-	b.WriteString(instructions)
-	if targetBlock != "" {
-		b.WriteString("\n\n")
-		b.WriteString(targetBlock)
-	}
-	b.WriteString("\n\nConversation so far:")
-	if truncated {
-		b.WriteString("\n")
-		b.WriteString(truncationNote)
-	}
-	for _, l := range lines {
-		b.WriteString("\n")
-		b.WriteString(l)
-	}
-	b.WriteString("\n\n")
-	b.WriteString(request)
-	return b.String()
+	header := "New messages since your last turn:"
+	budget := MaxPromptChars - len(request) - len("\n\n") - len(header) - len("\n") - len(truncationNote)
+	return joinSections(conversationBlock(header, in.ContextMessages, budget), request)
 }
 
-// docContextBlock renders a doc thread's doc. History is trimmed first (fitContext, above); this only
-// trims the doc body, with a note, on the rarer turn where even zero history wouldn't make it fit.
-func docContextBlock(doc *DocContext, instructions, request string) string {
-	full := fmt.Sprintf("Doc: %s\n\n%s", doc.Title, doc.Body)
-	fixed := len(instructions) + len("\n\n") + len("\n\nConversation so far:") + len("\n\n") + len(request)
-	budget := MaxPromptChars - fixed
-	if len(full) <= budget {
-		return full
+// contextSections is what is running and its context, every part named for the agent to read itself.
+func contextSections(in PromptInput) []string {
+	if in.Play == nil {
+		source := fmt.Sprintf("Right now you are running @Agent in a chat, mentioned by %s.", in.RequestAuthor)
+		return []string{source, in.Target, memoriesBlock(in.Memories)}
 	}
-	prefix := fmt.Sprintf("Doc: %s\n\n", doc.Title)
-	bodyBudget := budget - len(prefix) - len(docTrimNote)
-	if bodyBudget < 0 {
-		bodyBudget = 0
+	sections := []string{fmt.Sprintf("Right now you are running a play, started by %s.", in.RequestAuthor)}
+	if in.Play.Label != "" {
+		sections = append(sections, "Play: "+in.Play.Label+"\n"+in.Play.Instructions)
 	}
-	body := doc.Body
-	if len(body) > bodyBudget {
-		body = body[:bodyBudget]
+	sections = append(sections, in.Target)
+	sections = append(sections, in.Play.Blocks...)
+	sections = append(sections, memoriesBlock(in.Memories))
+	if in.Play.Custom != "" {
+		sections = append(sections, fmt.Sprintf("Instructions for this run from %s; where they conflict with the play's, these win:\n%s", in.RequestAuthor, in.Play.Custom))
 	}
-	return prefix + body + docTrimNote
+	return sections
 }
 
-// instructionsBlock is the turn's fixed text: agent identity, the account_get check, and the memories protocol.
-func instructionsBlock(mem MemoriesIndex) string {
-	return "You are Agent, Nexul's in-chat assistant. You reply as the " +
-		"\"Agent\" participant, shown as \"via <user>\" for whoever mentioned " +
-		"you, and you act only within that user's own Nexul permissions " +
-		"through Nexul's MCP server.\n\n" +
-		"Before doing anything else, call the MCP server's account_get tool " +
-		"with no arguments to confirm you can reach Nexul. If it fails, say so plainly " +
-		"instead of guessing or acting further.\n\n" +
-		memoriesBlock(mem)
-}
-
-// memoriesBlock's fallback text is duplicated in the nexul-memory skill file; edit both together.
-func memoriesBlock(mem MemoriesIndex) string {
-	fallback := "Memories: durable notes for agents, shared across the team, " +
-		"not per-user. A memory belongs to one project and reaches only that " +
-		"project's turns; a chat with no ticket or doc has none. Always-included " +
-		"memories are standing rules to follow: this prompt either carries them " +
-		"in full or names them to read first with memory_get. The index below " +
-		"lists the rest by title and when-to-use only — fetch one's full " +
-		"content with the memory_get MCP tool using its id when its " +
-		"when-to-use matches. Save a new one, or update an existing " +
-		"one, with memory_create/memory_update, passing the project's " +
-		"project_id. Use your judgment to save a durable fact worth remembering, " +
-		"and always save one when a user says something like \"@Agent remember " +
-		"X\". Keep the set curated — update an existing memory instead of " +
-		"creating a near-duplicate. (If your installed nexul-memory skill's " +
-		"metadata.version is \"" + skills.NexulMemory.Version + "\", follow its " +
-		"fuller protocol instead of this summary. A copy with any other version " +
-		"is out of date: follow this summary, and refresh the skill with the " +
-		"skill_get tool.)"
-
-	lines, truncated := fitMemoriesIndex(mem, MaxMemoriesIndexChars-len(fallback)-len("\n\n"))
-	if len(lines) == 0 {
-		return fallback + "\n\nThis turn's memories index: no memories saved yet."
+func memoriesBlock(refs []MemoryRef) string {
+	if len(refs) == 0 {
+		return ""
 	}
 	var b strings.Builder
-	b.WriteString(fallback)
-	b.WriteString("\n\nThis turn's memories index:")
-	if truncated {
-		b.WriteString("\n")
-		b.WriteString(memoriesTruncationNote)
-	}
-	for _, l := range lines {
-		b.WriteString("\n")
-		b.WriteString(l)
+	b.WriteString(memoriesLine)
+	for _, m := range refs {
+		fmt.Fprintf(&b, "\n- %s (id %s)", m.Name, m.ID)
 	}
 	return b.String()
 }
 
-// ponytail: fitMemoriesIndex drops newest-first by a greedy trim, not relevance ranking; upgrade if this bites.
-func fitMemoriesIndex(mem MemoriesIndex, budget int) ([]string, bool) {
-	if budget < 0 {
-		budget = 0
+// conversationBlock renders msgs under header within budget; nothing to show, and nothing dropped, renders "".
+func conversationBlock(header string, msgs []ContextMessage, budget int) string {
+	lines, truncated := fitContext(msgs, budget)
+	if len(lines) == 0 && !truncated {
+		return ""
 	}
-	var lines []string
-	if len(mem.Project) > 0 {
-		lines = append(lines, "This project's memories:")
-		for _, m := range mem.Project {
-			lines = append(lines, memoryLine(m))
+	var b strings.Builder
+	b.WriteString(header)
+	if truncated {
+		b.WriteString("\n" + truncationNote)
+	}
+	for _, l := range lines {
+		b.WriteString("\n" + l)
+	}
+	return b.String()
+}
+
+// joinSections joins the non-empty sections with a blank line between them.
+func joinSections(sections ...string) string {
+	kept := make([]string, 0, len(sections))
+	for _, s := range sections {
+		if s != "" {
+			kept = append(kept, s)
 		}
 	}
-	total := 0
-	for _, l := range lines {
-		total += len(l) + 1
-	}
-	if total <= budget {
-		return lines, false
-	}
-	end := len(lines)
-	for end > 0 && total > budget {
-		end--
-		total -= len(lines[end]) + 1
-	}
-	return lines[:end], true
-}
-
-func memoryLine(m MemoryItem) string {
-	return fmt.Sprintf("- %s: %s", m.Name, m.WhenToUse)
+	return strings.Join(kept, "\n\n")
 }
 
 // ponytail: fitContext drops oldest lines by a greedy trim, not a summarizer; upgrade if this bites.
@@ -289,13 +218,10 @@ func stamp(at time.Time) string {
 }
 
 func requestBlock(in PromptInput) string {
-	var b strings.Builder
-	fmt.Fprintf(&b, "New message from %s%s:\n%s", in.RequestAuthor, requestStamp(in.RequestAt), in.RequestBody)
-	for _, block := range in.ExtraRequestBlocks {
-		b.WriteString("\n\n")
-		b.WriteString(block)
+	if in.RequestBody == "" {
+		return ""
 	}
-	return b.String()
+	return fmt.Sprintf("New message from %s%s:\n%s", in.RequestAuthor, requestStamp(in.RequestAt), in.RequestBody)
 }
 
 func requestStamp(at time.Time) string {
@@ -303,28 +229,4 @@ func requestStamp(at time.Time) string {
 		return ""
 	}
 	return " at " + at.UTC().Format("2006-01-02 15:04")
-}
-
-// ComposeIncrementalPrompt is ComposePrompt's shape for a reused harness session: only what's new goes over.
-func ComposeIncrementalPrompt(in PromptInput) string {
-	request := requestBlock(in)
-	header := "New messages since your last turn:"
-	budget := MaxPromptChars - len(header) - len("\n\n") - len(request) - (len("\n") + len(truncationNote))
-	lines, truncated := fitContext(in.ContextMessages, budget)
-
-	var b strings.Builder
-	if len(lines) > 0 {
-		b.WriteString(header)
-		if truncated {
-			b.WriteString("\n")
-			b.WriteString(truncationNote)
-		}
-		for _, l := range lines {
-			b.WriteString("\n")
-			b.WriteString(l)
-		}
-		b.WriteString("\n\n")
-	}
-	b.WriteString(request)
-	return b.String()
 }

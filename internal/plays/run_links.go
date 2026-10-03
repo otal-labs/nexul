@@ -6,8 +6,9 @@ import (
 	"strings"
 )
 
-// originCharCap bounds the origin's body and doc each, so one hop of context never crowds out the turn's own request.
-const originCharCap = 20_000
+// originLine names a bug's origin for the agent to read itself, one hop only (ADR 0064, ADR 0111).
+const originLine = "This bug was found in %s %q, a ticket whose work is recorded; fix the bug without rewriting that record. " +
+	"Read it with ticket_get for its body, doc, and pull requests, one hop only."
 
 // LinkedTicket is a ticket at the other end of a found-in or blocked-by link, as the prompt names it.
 type LinkedTicket struct {
@@ -16,27 +17,10 @@ type LinkedTicket struct {
 	Done  bool
 }
 
-// PullRequest is one PR linked to a bug's origin ticket.
-type PullRequest struct {
-	Owner  string
-	Repo   string
-	Number int
-	Title  string
-	State  string
-}
-
-// OriginContext is the one hop a bug's play receives (ADR 0064): the ticket it was found in, that ticket's doc, and its PRs.
-type OriginContext struct {
-	LinkedTicket
-	Body     string
-	DocTitle string
-	DocBody  string
-	PRs      []PullRequest
-}
-
 // TicketLinks is what a ticket play's prompt is told about the ticket's found-in and blocked-by links.
 type TicketLinks struct {
-	Origin        *OriginContext
+	// Origin is the ticket a bug was found in, named rather than carried.
+	Origin        *LinkedTicket
 	OriginUnknown bool
 	Blockers      []LinkedTicket
 }
@@ -61,7 +45,7 @@ func (r *Runner) linkBlocks(ctx context.Context, targetType TargetType, targetID
 func renderLinkBlocks(l TicketLinks) []string {
 	var blocks []string
 	if l.Origin != nil {
-		blocks = append(blocks, renderOrigin(*l.Origin))
+		blocks = append(blocks, fmt.Sprintf(originLine, l.Origin.Key, l.Origin.Title))
 	}
 	if l.OriginUnknown {
 		blocks = append(blocks, "This bug's origin is unknown: its reporter could not say which ticket it was found in. Do not guess one.")
@@ -70,23 +54,6 @@ func renderLinkBlocks(l TicketLinks) []string {
 		blocks = append(blocks, renderBlockers(l.Blockers))
 	}
 	return blocks
-}
-
-func renderOrigin(o OriginContext) string {
-	var b strings.Builder
-	fmt.Fprintf(&b, "This bug was found in %s %q, a ticket whose work is recorded; fix the bug without rewriting that record. Its context, one hop only:", o.Key, o.Title)
-	fmt.Fprintf(&b, "\n\nOrigin ticket body:\n%s", orNone(capChars(o.Body)))
-	if o.DocTitle != "" {
-		fmt.Fprintf(&b, "\n\nOrigin doc %q:\n%s", o.DocTitle, orNone(capChars(o.DocBody)))
-	}
-	b.WriteString("\n\nOrigin pull requests:")
-	if len(o.PRs) == 0 {
-		b.WriteString(" (none)")
-	}
-	for _, pr := range o.PRs {
-		fmt.Fprintf(&b, "\n- %s/%s#%d %q (%s)", pr.Owner, pr.Repo, pr.Number, pr.Title, pr.State)
-	}
-	return b.String()
 }
 
 func renderBlockers(blockers []LinkedTicket) string {
@@ -106,18 +73,4 @@ func renderBlockers(blockers []LinkedTicket) string {
 		fmt.Fprintf(&b, "\n- %s %q: %s", t.Key, t.Title, state)
 	}
 	return b.String()
-}
-
-func orNone(s string) string {
-	if strings.TrimSpace(s) == "" {
-		return "(empty)"
-	}
-	return s
-}
-
-func capChars(s string) string {
-	if len(s) <= originCharCap {
-		return s
-	}
-	return strings.ToValidUTF8(s[:originCharCap], "") + "\n(trimmed to fit the turn size limit)"
 }

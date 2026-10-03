@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/otal-labs/nexul/internal/agent"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
 	"github.com/otal-labs/nexul/internal/plays"
 )
@@ -84,6 +85,9 @@ func TestSurface_TextsAgentsReadNameOnlyRegisteredTools(t *testing.T) {
 	}
 	for i, text := range plays.DefaultInstructions() {
 		texts["built-in play text "+string(rune('a'+i))] = text
+	}
+	for i, text := range agent.PromptTexts() {
+		texts["agent prompt text "+string(rune('a'+i))] = text
 	}
 	for _, tool := range surface() {
 		texts["description of "+tool.Name] = tool.Description

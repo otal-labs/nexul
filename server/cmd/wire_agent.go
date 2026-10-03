@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/otal-labs/nexul/internal/agent"
 	"github.com/otal-labs/nexul/internal/attachments"
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/docs"
+	"github.com/otal-labs/nexul/internal/docs/richtext"
 	"github.com/otal-labs/nexul/internal/memories"
 	"github.com/otal-labs/nexul/internal/platform/storage"
 	"github.com/otal-labs/nexul/internal/tickets"
@@ -97,9 +99,11 @@ func (a agentConversations) PostUserMessage(ctx context.Context, conversationID,
 	return err
 }
 
-// agentTicketReader adapts tickets to the agent's TicketReader seam: turn context needs only title/body/project.
+// agentTicketReader adapts tickets to the agent's TicketReader seam: the key and title name the ticket, and the body
+// as markdown is where its images are found.
 type agentTicketReader struct {
-	svc *tickets.Service
+	svc      *tickets.Service
+	projects *storage.ProjectsRepo
 }
 
 func (a agentTicketReader) Get(ctx context.Context, id string) (agent.Ticket, error) {
@@ -107,7 +111,23 @@ func (a agentTicketReader) Get(ctx context.Context, id string) (agent.Ticket, er
 	if err != nil {
 		return agent.Ticket{}, err
 	}
-	return agent.Ticket{ProjectID: t.ProjectID, Title: t.Title, Body: t.Body}, nil
+	body, err := richtext.ToMarkdown(t.Body)
+	if err != nil {
+		return agent.Ticket{}, err
+	}
+	prefix := ""
+	if p, err := a.projects.Get(ctx, t.ProjectID); err == nil {
+		prefix = p.Prefix
+	}
+	return agent.Ticket{ProjectID: t.ProjectID, Key: ticketKey(prefix, t.Number, t.ID), Title: t.Title, Body: body}, nil
+}
+
+// ticketKey renders PREFIX-NUMBER (ADR 0004), or the id for a ticket whose project has no prefix.
+func ticketKey(prefix string, number int, id string) string {
+	if prefix == "" {
+		return id
+	}
+	return fmt.Sprintf("%s-%d", prefix, number)
 }
 
 // agentDocReader adapts docs to the agent's DocReader seam: turn context needs the title, project, and
@@ -154,25 +174,20 @@ type agentMemories struct {
 	svc *memories.Service
 }
 
-func (a agentMemories) ListMemories(ctx context.Context, projectID string) (agent.MemoriesIndex, error) {
+func (a agentMemories) ListMemories(ctx context.Context, projectID string) ([]agent.MemoryItem, error) {
 	items, err := a.svc.ListMemoryItems(ctx, projectID)
 	if err != nil {
-		return agent.MemoriesIndex{}, err
+		return nil, err
 	}
-	return agent.MemoriesIndex{Project: toAgentMemoryItems(items)}, nil
-}
-
-func toAgentMemoryItems(items []memories.MemoryItem) []agent.MemoryItem {
 	out := make([]agent.MemoryItem, len(items))
 	for i, m := range items {
-		out[i] = agent.MemoryItem{Name: m.Title, WhenToUse: m.WhenToUse, AlwaysIncluded: m.AlwaysIncluded, Interview: m.Kind == memories.KindInterview, Body: m.Body}
+		out[i] = agent.MemoryItem{ID: m.ID, Name: m.Title, AlwaysIncluded: m.AlwaysIncluded, Interview: m.Kind == memories.KindInterview}
 	}
-	return out
+	return out, nil
 }
 
-// agentAttachmentReader adapts attachments to the agent pipeline's (and plays runner's) AttachmentReader
-// seam (ADR 0017): ctx already carries the mentioning or run-starting user's actor, so Get's owner check
-// runs under their own permissions, the same as agentDocReader above.
+// agentAttachmentReader adapts attachments to the agent pipeline's AttachmentReader seam (ADR 0017): ctx already
+// carries the mentioning or run-starting user's actor, so Get's owner check runs under their own permissions.
 type agentAttachmentReader struct {
 	svc *attachments.Service
 }

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -116,11 +115,14 @@ type TargetOverride struct {
 	ModelOptions []harness.OptionSetting
 }
 
-// Ticket is the slice of a ticket the pipeline needs for a ticket thread's prompt context and project resolution.
+// Ticket is the slice of a ticket the pipeline needs to name it, attach its images, and resolve its project.
 type Ticket struct {
 	ProjectID string
-	Title     string
-	Body      string
+	// Key is the ticket's key, or its id when its project has no prefix.
+	Key   string
+	Title string
+	// Body is markdown, read only for the images it embeds.
+	Body string
 }
 
 // TicketReader is the agent pipeline's seam onto tickets (ADR 0017).
@@ -128,7 +130,7 @@ type TicketReader interface {
 	Get(ctx context.Context, id string) (Ticket, error)
 }
 
-// Doc is the slice of a doc the pipeline needs for a doc thread's prompt context and project resolution.
+// Doc is the slice of a doc the pipeline needs to name it, attach its images, and resolve its project.
 type Doc struct {
 	ProjectID    string
 	Title        string
@@ -147,7 +149,12 @@ type UserReader interface {
 
 // MemoriesReader is the pipeline's seam onto memories (ADR 0017); a memory belongs to one project (ADR 0099).
 type MemoriesReader interface {
-	ListMemories(ctx context.Context, projectID string) (MemoriesIndex, error)
+	ListMemories(ctx context.Context, projectID string) ([]MemoryItem, error)
+}
+
+// Templates reads the instance's agent_prompt templates; templates.Service satisfies it.
+type Templates interface {
+	Effective(ctx context.Context, kind, key string) (string, error)
 }
 
 // LivePublisher is the ephemeral live-hub seam; streaming bypasses the outbox.
@@ -165,13 +172,15 @@ type Config struct {
 	// Docs is optional; a nil Docs means doc threads run without doc context rather than failing the turn.
 	Docs  DocReader
 	Users UserReader
-	// Memories is optional; a nil Memories means turns run without a memories index rather than failing the turn.
+	// Memories is optional; a nil Memories means a mention names no memories rather than failing the turn.
 	Memories MemoriesReader
-	// Attachments is optional; nil means images embedded in a ticket or doc body are left as markdown, unresolved.
+	// Attachments is optional; nil means images embedded in a ticket or doc body are not attached.
 	Attachments AttachmentReader
-	Live        LivePublisher
-	Logger      *slog.Logger
-	Now         func() time.Time
+	// Templates is optional; nil, or a failed read, means the code's DefaultIntro and DefaultFooter.
+	Templates Templates
+	Live      LivePublisher
+	Logger    *slog.Logger
+	Now       func() time.Time
 }
 
 // Service is the agent pipeline: reacts to @Agent mentions and runs a turn.
@@ -184,6 +193,7 @@ type Service struct {
 	users         UserReader
 	memories      MemoriesReader
 	attachments   AttachmentReader
+	templates     Templates
 	live          LivePublisher
 	log           *slog.Logger
 	now           func() time.Time
@@ -215,6 +225,7 @@ func NewService(cfg Config) *Service {
 		users:         cfg.Users,
 		memories:      cfg.Memories,
 		attachments:   cfg.Attachments,
+		templates:     cfg.Templates,
 		live:          redact.Live{Publisher: cfg.Live},
 		log:           cfg.Logger,
 		now:           cfg.Now,
@@ -277,13 +288,10 @@ func mentionsAgent(mentions []mentionPayload) bool {
 type TurnRequest struct {
 	ConversationID string
 	ViaUserID      string
-	RequestBody    string
-	// ExtraRequestBlocks are appended inside the request block, in order, after the request body.
-	ExtraRequestBlocks []string
-	// FreshSessionBlocks follow ExtraRequestBlocks in the full prompt only: what a resumed run's lost session needs again.
-	FreshSessionBlocks []string
-	// MemoriesByReference means the caller names the turn's memories for the agent to read, so none is inlined (a play run, ADR 0105).
-	MemoriesByReference bool
+	// RequestBody is the message the turn answers; empty for a play run's start, whose request is the play itself.
+	RequestBody string
+	// Play is set for a play run: it names the run's memories and replaces the conversation history (ADR 0111).
+	Play *PlayContext
 	// Target is optional; nil means resolve the caller's own project link or pairing defaults as usual.
 	Target *TargetOverride
 	// Observer is optional; nil means nobody keeps a record beyond the conversation itself.
@@ -307,11 +315,7 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 		return
 	}
 
-	ticket, projectID := s.loadTicketContext(ctx, conv)
-	doc, docProjectID := s.loadDocContext(ctx, conv, viaUserID)
-	if projectID == "" {
-		projectID = docProjectID
-	}
+	thread, projectID := s.loadThreadTarget(ctx, conv, viaUserID)
 	if projectID == "" {
 		projectID = conv.ProjectID
 	}
@@ -331,14 +335,14 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 	}
 	s.warnVersionIfChanged(ctx, conversationID, viaUserID, client, target.Computer)
 
-	prompts, sentThrough, err := s.buildTurnPrompts(ctx, conv, ticket, doc, projectID, req)
+	prompts, sentThrough, err := s.buildTurnPrompts(ctx, conv, thread, projectID, req)
 	if err != nil {
 		s.log.Error("agent: list context messages failed", "conversation", conversationID, "error", err)
 		failed(fmt.Sprintf("list context messages: %v", err))
 		return
 	}
 
-	title := threadTitle(conv, ticket, doc)
+	title := threadTitle(conv, thread)
 
 	turn := activeTurn{client: client, target: harness.Target{
 		Session:      target.Computer.Session(),
@@ -367,12 +371,9 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 }
 
 // threadTitle names a freshly created harness session after what the conversation is about, never its raw id.
-func threadTitle(conv Conversation, ticket *TicketContext, doc *DocContext) string {
-	if ticket != nil && ticket.Title != "" {
-		return ticket.Title
-	}
-	if doc != nil && doc.Title != "" {
-		return doc.Title
+func threadTitle(conv Conversation, target *threadTarget) string {
+	if target != nil && target.title != "" {
+		return target.title
 	}
 	if conv.ProjectName != "" {
 		return "Interview: " + conv.ProjectName
@@ -391,22 +392,24 @@ func (s *Service) resolveTarget(ctx context.Context, userID, projectID string, o
 	return s.targets.ResolveTargetOverride(ctx, userID, projectID, override.ComputerID, override.Provider, override.Model, override.ModelOptions)
 }
 
-// loadTicketContext fetches the thread's linked ticket, if any, for prompt context.
-func (s *Service) loadTicketContext(ctx context.Context, conv Conversation) (*TicketContext, string) {
-	if !conv.IsTicketThread || conv.TicketID == "" || s.tickets == nil {
-		return nil, ""
-	}
-	t, err := s.tickets.Get(ctx, conv.TicketID)
-	if err != nil {
-		s.log.Warn("agent: get ticket for thread context failed", "ticket", conv.TicketID, "error", err)
-		return nil, ""
-	}
-	return &TicketContext{Title: t.Title, Body: t.Body}, t.ProjectID
+// threadTarget is the ticket or doc a thread belongs to: the prompt line naming it, its title, and the markdown
+// body its images are attached from.
+type threadTarget struct {
+	line  string
+	title string
+	body  string
 }
 
-// loadDocContext fetches the thread's linked doc, if any, for prompt context; the read is checked
-// against viaUserID's own docs:read, matching "acts only within that user's own Nexul permissions".
-func (s *Service) loadDocContext(ctx context.Context, conv Conversation, viaUserID string) (*DocContext, string) {
+// loadThreadTarget reads the thread's ticket or doc, if any; a doc is read as viaUserID, under their own docs:read.
+func (s *Service) loadThreadTarget(ctx context.Context, conv Conversation, viaUserID string) (*threadTarget, string) {
+	if conv.IsTicketThread && conv.TicketID != "" && s.tickets != nil {
+		t, err := s.tickets.Get(ctx, conv.TicketID)
+		if err != nil {
+			s.log.Warn("agent: get ticket for thread context failed", "ticket", conv.TicketID, "error", err)
+			return nil, ""
+		}
+		return &threadTarget{line: fmt.Sprintf(ticketLine, t.Key, t.Title), title: t.Title, body: t.Body}, t.ProjectID
+	}
 	if !conv.IsDocThread || conv.DocID == "" || s.docs == nil {
 		return nil, ""
 	}
@@ -415,47 +418,47 @@ func (s *Service) loadDocContext(ctx context.Context, conv Conversation, viaUser
 		s.log.Warn("agent: get doc for thread context failed", "doc", conv.DocID, "error", err)
 		return nil, ""
 	}
-	return &DocContext{Title: d.Title, Body: d.BodyMarkdown}, d.ProjectID
+	return &threadTarget{line: fmt.Sprintf(docLine, d.Title, conv.DocID), title: d.Title, body: d.BodyMarkdown}, d.ProjectID
 }
 
-// buildTurnPrompts assembles both prompts from unsent history plus the request, and returns the newest time it sends.
-func (s *Service) buildTurnPrompts(ctx context.Context, conv Conversation, ticket *TicketContext, doc *DocContext, projectID string, req TurnRequest) (harness.TurnPrompts, time.Time, error) {
+// buildTurnPrompts assembles both prompts and returns the newest message time the conversation has, sent or not.
+func (s *Service) buildTurnPrompts(ctx context.Context, conv Conversation, target *threadTarget, projectID string, req TurnRequest) (harness.TurnPrompts, time.Time, error) {
 	history, err := s.conversations.MessagesSince(ctx, conv.ID, conv.SyncedAt)
 	if err != nil {
 		return harness.TurnPrompts{}, time.Time{}, err
 	}
 	all, others, sentThrough := s.contextMessages(ctx, history, req)
-	budget := NewAttachmentBudget()
 	actorCtx := identity.WithActor(ctx, identity.Actor{ID: req.ViaUserID})
-	index, alwaysIncludedBlock, memoryAttachments := s.splitMemories(actorCtx, projectID, budget, req.MemoriesByReference)
-	targetAttachments := s.extractTargetAttachments(actorCtx, ticket, doc, budget)
-	full := PromptInput{
-		Ticket:             ticket,
-		Doc:                doc,
-		ContextMessages:    all,
-		Memories:           index,
-		RequestAuthor:      s.authorLabel(ctx, req.ViaUserID, "user"),
-		RequestBody:        req.RequestBody,
-		RequestAt:          s.now().UTC(),
-		ExtraRequestBlocks: append(prependBlock(alwaysIncludedBlock, slices.Clone(req.ExtraRequestBlocks)), req.FreshSessionBlocks...),
+	in := PromptInput{
+		Play:          req.Play,
+		RequestAuthor: s.authorLabel(ctx, req.ViaUserID, "user"),
+		RequestBody:   req.RequestBody,
+		RequestAt:     s.now().UTC(),
 	}
-	incremental := full
+	in.Memories = s.turnMemories(actorCtx, projectID, req.Play)
+	if req.Play != nil {
+		all, others = nil, nil
+	}
+	attachments := s.targetAttachments(actorCtx, target)
+	in.Target = targetSection(target, len(attachments))
+	incremental := in
 	incremental.ContextMessages = others
-	incremental.ExtraRequestBlocks = req.ExtraRequestBlocks
-	attachments := append(append([]harness.Attachment{}, memoryAttachments...), targetAttachments...)
-	return harness.TurnPrompts{Full: ComposePrompt(full), Incremental: ComposeIncrementalPrompt(incremental), Attachments: attachments}, sentThrough, nil
+	in.ContextMessages = all
+	in.Intro = s.template(ctx, TemplateIntro, DefaultIntro)
+	in.Footer = s.template(ctx, TemplateFooter, DefaultFooter)
+	return harness.TurnPrompts{Full: ComposePrompt(in), Incremental: ComposeIncrementalPrompt(incremental), Attachments: attachments}, sentThrough, nil
 }
 
 // contextMessages resolves history; others drops the Agent's own replies, which a live session already holds, but
 // keeps notes, which were left over MCP rather than written in this session. The request's own message is left out,
-// since the request block already carries it.
+// since the request block already carries it, and so are system messages, which are the server's notices to people.
 func (s *Service) contextMessages(ctx context.Context, history []ConversationMessage, req TurnRequest) (all, others []ContextMessage, newest time.Time) {
 	skip := requestMessageIndex(history, req)
 	for i, m := range history {
 		if m.CreatedAt.After(newest) {
 			newest = m.CreatedAt
 		}
-		if i == skip {
+		if i == skip || m.AuthorKind == "system" {
 			continue
 		}
 		cm := ContextMessage{Author: s.authorLabel(ctx, m.AuthorID, m.AuthorKind), Body: noteBody(m), At: m.CreatedAt}
@@ -496,50 +499,61 @@ func (s *Service) markSent(ctx context.Context, conversationID string, through t
 	}
 }
 
-// extractTargetAttachments rewrites the ticket or doc body's embedded attachment references in place (they
-// are mutually exclusive, one thread carries one target) and returns the images among them for the harness.
-func (s *Service) extractTargetAttachments(ctx context.Context, ticket *TicketContext, doc *DocContext, budget *AttachmentBudget) []harness.Attachment {
-	if s.attachments == nil {
+// targetAttachments collects the images the ticket or doc body embeds; the body itself never enters the prompt.
+func (s *Service) targetAttachments(ctx context.Context, target *threadTarget) []harness.Attachment {
+	if target == nil || s.attachments == nil {
 		return nil
 	}
-	if ticket != nil {
-		rewritten, atts := ExtractAttachments(ctx, ticket.Body, s.attachments, budget)
-		ticket.Body = rewritten
-		return atts
-	}
-	if doc != nil {
-		rewritten, atts := ExtractAttachments(ctx, doc.Body, s.attachments, budget)
-		doc.Body = rewritten
-		return atts
-	}
-	return nil
+	_, atts := ExtractAttachments(ctx, target.body, s.attachments, NewAttachmentBudget())
+	return atts
 }
 
-// splitMemories loads a turn's memories index (the project's memories) and separates its always-included
-// memories, inlined in full as an extra request block with their images extracted for the harness, from the
-// index of the rest; byReference leaves them out, for a caller that names them to read instead.
-func (s *Service) splitMemories(ctx context.Context, projectID string, budget *AttachmentBudget, byReference bool) (MemoriesIndex, string, []harness.Attachment) {
-	index, always := splitAlwaysIncluded(s.loadMemories(ctx, projectID))
-	if len(always) == 0 || byReference {
-		return index, "", nil
+// targetSection is the line naming the thread's ticket or doc, with the images line when any image was attached.
+func targetSection(target *threadTarget, images int) string {
+	if target == nil {
+		return ""
 	}
-	var attachments []harness.Attachment
-	if s.attachments != nil {
-		for i := range always {
-			body, atts := ExtractAttachments(ctx, always[i].Body, s.attachments, budget)
-			always[i].Body = body
-			attachments = append(attachments, atts...)
+	if images == 0 {
+		return target.line
+	}
+	return target.line + "\n" + imagesLine
+}
+
+// turnMemories is what a play names, or for a mention the project's always-included memories.
+func (s *Service) turnMemories(ctx context.Context, projectID string, play *PlayContext) []MemoryRef {
+	if play != nil {
+		return play.Memories
+	}
+	return alwaysIncludedRefs(s.loadMemories(ctx, projectID))
+}
+
+// alwaysIncludedRefs names a project's always-included memories for a mention, the interview memory first (ADR 0065).
+func alwaysIncludedRefs(items []MemoryItem) []MemoryRef {
+	var refs []MemoryRef
+	for _, m := range items {
+		ref := MemoryRef{ID: m.ID, Name: m.Name}
+		if m.Interview {
+			refs = append([]MemoryRef{ref}, refs...)
+			continue
+		}
+		if m.AlwaysIncluded {
+			refs = append(refs, ref)
 		}
 	}
-	return index, "Always-included memories, follow them:\n" + InlineMemoriesTrimmed(always, DefaultInlineLimits(), s.log), attachments
+	return refs
 }
 
-// prependBlock puts b first among extra request blocks, if non-empty; a play run's own blocks follow it.
-func prependBlock(b string, blocks []string) []string {
-	if b == "" {
-		return blocks
+// template reads one of the instance's agent_prompt templates, falling back to the code default on any failure.
+func (s *Service) template(ctx context.Context, key, fallback string) string {
+	if s.templates == nil {
+		return fallback
 	}
-	return append([]string{b}, blocks...)
+	body, err := s.templates.Effective(ctx, TemplateKind, key)
+	if err != nil {
+		s.log.Warn("agent: read prompt template failed", "key", key, "error", err)
+		return fallback
+	}
+	return body
 }
 
 // announceTurnStarted shows a "working" indicator immediately and persists a new session id, if any.
@@ -736,18 +750,18 @@ func (s *Service) warnVersionIfChanged(ctx context.Context, conversationID, viaU
 		computer.HarnessVersion, live))
 }
 
-// loadMemories fetches the memories index, best-effort: a failure logs and returns empty, never blocks the turn.
-// A turn with no project (a plain chat) carries no memories (ADR 0099).
-func (s *Service) loadMemories(ctx context.Context, projectID string) MemoriesIndex {
+// loadMemories lists the project's memories, best-effort: a failure logs and returns none, never blocks the turn.
+// A turn with no project (a plain chat) names no memories (ADR 0099).
+func (s *Service) loadMemories(ctx context.Context, projectID string) []MemoryItem {
 	if s.memories == nil || projectID == "" {
-		return MemoriesIndex{}
+		return nil
 	}
-	idx, err := s.memories.ListMemories(ctx, projectID)
+	items, err := s.memories.ListMemories(ctx, projectID)
 	if err != nil {
-		s.log.Warn("agent: load memories index failed", "project", projectID, "error", err)
-		return MemoriesIndex{}
+		s.log.Warn("agent: load memories failed", "project", projectID, "error", err)
+		return nil
 	}
-	return idx
+	return items
 }
 
 // baseRelease strips a nightly suffix ("v0.0.34" in "v0.0.34-nightly.5").

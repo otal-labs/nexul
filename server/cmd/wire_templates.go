@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/otal-labs/nexul/internal/agent"
 	"github.com/otal-labs/nexul/internal/memories"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/storage"
@@ -14,8 +15,8 @@ import (
 	"github.com/otal-labs/nexul/internal/workspace"
 )
 
-// wireTemplates builds the instance layer over the four template kinds and points each owning domain at it
-// (ADR 0103); the domains seed and resolve, the templates domain only stores the instance text and clones.
+// wireTemplates builds the instance layer over the template kinds and points each owning domain at it (ADR 0103);
+// the domains seed and resolve, the templates domain only stores the instance text and clones.
 func wireTemplates(store *storage.Store, gate templates.Gate, mem *memories.Service, ten *tenancy.Service, pl *plays.Service, ws *workspace.Service) *templates.Service {
 	builtins := plays.Builtins()
 	playDefaults := make([]templates.Default, len(builtins))
@@ -39,6 +40,10 @@ func wireTemplates(store *storage.Store, gate templates.Gate, mem *memories.Serv
 		},
 		templates.Kind{Name: plays.TemplateKind, Below: templates.ScopeWorkspace, Defaults: playDefaults, Layer: playLayer{svc: pl}},
 		templates.Kind{Name: workspace.TemplateKind, Below: templates.ScopeProject, Defaults: typeDefaults, Layer: ticketBodyLayer{svc: ws}},
+		templates.Kind{Name: agent.TemplateKind, Defaults: []templates.Default{
+			{Key: agent.TemplateIntro, Name: "Intro", Body: agent.DefaultIntro},
+			{Key: agent.TemplateFooter, Name: "Footer", Body: agent.DefaultFooter},
+		}},
 	)
 	mem.SetInstanceTemplates(svc)
 	ten.SetInstanceTemplates(svc)

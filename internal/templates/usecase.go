@@ -284,6 +284,8 @@ func checkLocation(k *Kind, at Location) error {
 	switch {
 	case at.Scope == ScopeInstance:
 		return nil
+	case k.Below == "":
+		return fmt.Errorf("%w: %s templates live only at the instance", apperrs.ErrInvalid, k.Name)
 	case at.Scope != k.Below:
 		return fmt.Errorf("%w: %s templates live at the instance or a %s, not %q", apperrs.ErrInvalid, k.Name, k.Below, at.Scope)
 	case at.Scope == ScopeWorkspace && strings.TrimSpace(at.WorkspaceID) == "":

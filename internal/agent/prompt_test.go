@@ -3,97 +3,43 @@ package agent
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
-	"github.com/otal-labs/nexul/internal/platform/skills"
 )
 
-func TestComposePrompt_IncludesInstructionsContextAndRequest(t *testing.T) {
-	out := ComposePrompt(PromptInput{
-		ContextMessages: []ContextMessage{
-			{Author: "onik97", Body: "first message"},
-			{Author: "Agent", Body: "previous reply"},
-		},
-		RequestAuthor: "onik97",
-		RequestBody:   "@Agent do the thing",
-	})
-	assert.Contains(t, out, "account_get tool")
-	assert.Contains(t, out, "memories index")
-	assert.Contains(t, out, "onik97: first message")
-	assert.Contains(t, out, "Agent: previous reply")
-	assert.Contains(t, out, "New message from onik97:\n@Agent do the thing")
-	assert.NotContains(t, out, truncationNote)
-}
-
-func TestComposePrompt_ExtraRequestBlocksFollowTheBody(t *testing.T) {
-	tests := []struct {
-		name   string
-		blocks []string
-		want   string
-	}{
-		{"none", nil, "New message from onik97:\n@Agent go"},
-		{"one", []string{"Play: Fix with AI"}, "New message from onik97:\n@Agent go\n\nPlay: Fix with AI"},
-		{"two in order", []string{"Play: Fix with AI", "Instructions from onik97:\nbe brief"}, "New message from onik97:\n@Agent go\n\nPlay: Fix with AI\n\nInstructions from onik97:\nbe brief"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			out := ComposePrompt(PromptInput{RequestAuthor: "onik97", RequestBody: "@Agent go", ExtraRequestBlocks: tt.blocks})
-			assert.True(t, strings.HasSuffix(out, "\n\n"+tt.want), "prompt must end with the request block, got:\n%s", out)
-		})
+// playAnswer is a resumed play run on a session the harness lost: the play, the target, the memories, and the answer.
+func playAnswer() PromptInput {
+	return PromptInput{
+		Intro: "INTRO", Footer: "FOOTER",
+		Target:        `Ticket: SRC-3 "Fix login". Read it with ticket_get before you start.`,
+		Play:          &PlayContext{Label: "Fix with AI", Instructions: "Fix the ticket.", Memories: []MemoryRef{{ID: "m-1", Name: "Interview"}}},
+		Memories:      []MemoryRef{{ID: "m-1", Name: "Interview"}},
+		RequestAuthor: "onik97", RequestBody: "Answered: Yes", RequestAt: time.Date(2026, 10, 3, 12, 30, 0, 0, time.UTC),
 	}
 }
 
-func TestComposePrompt_TicketThreadIncludesTicket(t *testing.T) {
-	out := ComposePrompt(PromptInput{
-		Ticket:        &TicketContext{Title: "Fix the thing", Body: "It's broken."},
-		RequestAuthor: "onik97",
-		RequestBody:   "@Agent status?",
-	})
-	assert.Contains(t, out, "Ticket: Fix the thing")
-	assert.Contains(t, out, "It's broken.")
-	assert.Contains(t, out, "It's broken.\n\nThe ticket body above is its spec: change it only when a person asks.")
+func TestComposePrompt_PlayAnswer_CarriesThePlayAndTheAnswer(t *testing.T) {
+	assert.Equal(t, "INTRO\n\n"+
+		"Right now you are running a play, started by onik97.\n\n"+
+		"Play: Fix with AI\nFix the ticket.\n\n"+
+		`Ticket: SRC-3 "Fix login". Read it with ticket_get before you start.`+"\n\n"+
+		"Read these memories with memory_get before you start; they are your context:\n- Interview (id m-1)\n\n"+
+		"New message from onik97 at 2026-10-03 12:30:\nAnswered: Yes\n\n"+
+		"FOOTER", ComposePrompt(playAnswer()))
 }
 
-func TestComposePrompt_NoTicketOmitsTicketBlock(t *testing.T) {
-	out := ComposePrompt(PromptInput{RequestAuthor: "onik97", RequestBody: "hi"})
-	assert.NotContains(t, out, "Ticket:")
-	assert.NotContains(t, out, "change it only when a person asks")
-}
-
-func TestComposePrompt_DocThreadIncludesDoc(t *testing.T) {
-	out := ComposePrompt(PromptInput{
-		Doc:           &DocContext{Title: "Runbook", Body: "Restart the service like so."},
-		RequestAuthor: "onik97",
-		RequestBody:   "@Agent status?",
-	})
-	assert.Contains(t, out, "Doc: Runbook")
-	assert.Contains(t, out, "Restart the service like so.")
-	assert.NotContains(t, out, docTrimNote)
-	assert.NotContains(t, out, "change it only when a person asks")
-}
-
-func TestComposePrompt_NoDocOmitsDocBlock(t *testing.T) {
-	out := ComposePrompt(PromptInput{RequestAuthor: "onik97", RequestBody: "hi"})
-	assert.NotContains(t, out, "Doc:")
-}
-
-func TestComposePrompt_OversizedDocBodyIsTrimmedWithNote(t *testing.T) {
-	out := ComposePrompt(PromptInput{
-		Doc:           &DocContext{Title: "Huge doc", Body: strings.Repeat("x", MaxPromptChars*2)},
-		RequestAuthor: "onik97",
-		RequestBody:   "@Agent summarize",
-	})
-	assert.LessOrEqual(t, len(out), MaxPromptChars)
-	assert.Contains(t, out, "Doc: Huge doc")
-	assert.Contains(t, out, docTrimNote)
-	assert.Contains(t, out, "New message from onik97:\n@Agent summarize")
+func TestComposePrompt_EmptyTemplatesAndAnUnreadPlayAreLeftOut(t *testing.T) {
+	in := playAnswer()
+	in.Intro, in.Footer = "", ""
+	in.Play.Label, in.Play.Instructions = "", ""
+	got := ComposePrompt(in)
+	assert.True(t, strings.HasPrefix(got, "Right now you are running a play"), got)
+	assert.True(t, strings.HasSuffix(got, "Answered: Yes"), got)
+	assert.NotContains(t, got, "Play:")
 }
 
 func TestComposePrompt_TruncatesOldestContextFirstToFitCap(t *testing.T) {
-	// Build enough context that the whole thing can't fit MaxPromptChars, and
-	// assert the newest lines survive while the oldest are dropped with a note.
 	var msgs []ContextMessage
 	for i := 0; i < 2000; i++ {
 		msgs = append(msgs, ContextMessage{Author: "onik97", Body: strings.Repeat("x", 100)})
@@ -101,6 +47,7 @@ func TestComposePrompt_TruncatesOldestContextFirstToFitCap(t *testing.T) {
 	msgs = append(msgs, ContextMessage{Author: "onik97", Body: "the newest line, must survive"})
 
 	out := ComposePrompt(PromptInput{
+		Intro: DefaultIntro, Footer: DefaultFooter,
 		ContextMessages: msgs,
 		RequestAuthor:   "onik97",
 		RequestBody:     "@Agent go",
@@ -109,75 +56,7 @@ func TestComposePrompt_TruncatesOldestContextFirstToFitCap(t *testing.T) {
 	assert.LessOrEqual(t, len(out), MaxPromptChars)
 	assert.Contains(t, out, truncationNote)
 	assert.Contains(t, out, "the newest line, must survive")
-}
-
-func TestComposePrompt_HugeTicketBodyStillDropsAllContext(t *testing.T) {
-	// ponytail: a pathologically huge ticket/request can still blow the cap
-	// even after dropping all context — known ceiling, not handled beyond
-	// that (the composer never truncates the ticket or request themselves).
-	out := ComposePrompt(PromptInput{
-		Ticket: &TicketContext{Title: "T", Body: strings.Repeat("y", MaxPromptChars)},
-		ContextMessages: []ContextMessage{
-			{Author: "onik97", Body: strings.Repeat("z", 500)},
-		},
-		RequestAuthor: "onik97",
-		RequestBody:   "@Agent go",
-	})
-	assert.NotContains(t, out, "zzz")
-	assert.Contains(t, out, truncationNote)
-}
-
-func TestComposePrompt_MemoriesIndexRendersTheProjectScope(t *testing.T) {
-	out := ComposePrompt(PromptInput{
-		Memories: MemoriesIndex{
-			Project: []MemoryItem{{Name: "Deploy quirks", WhenToUse: "use this if you are touching deploy config"}},
-		},
-		RequestAuthor: "onik97",
-		RequestBody:   "@Agent go",
-	})
-	assert.Contains(t, out, "This project's memories:")
-	assert.Contains(t, out, "- Deploy quirks: use this if you are touching deploy config")
-	assert.Contains(t, out, "memory_get")
-	assert.Contains(t, out, "@Agent remember")
-}
-
-func TestComposePrompt_NoMemoriesFallsBackGracefully(t *testing.T) {
-	out := ComposePrompt(PromptInput{RequestAuthor: "onik97", RequestBody: "@Agent go"})
-	assert.Contains(t, out, "no memories saved yet")
-	assert.Contains(t, out, "nexul-memory skill")
-	assert.Contains(t, out, "metadata.version is \""+skills.NexulMemory.Version+"\"", "a turn follows only the current skill")
-	assert.Contains(t, out, "skill_get")
-}
-
-func TestComposePrompt_MemoriesIndexIsCappedRegardlessOfPromptBudget(t *testing.T) {
-	var items []MemoryItem
-	for i := 0; i < 500; i++ {
-		items = append(items, MemoryItem{Name: "Memory", WhenToUse: strings.Repeat("x", 100)})
-	}
-	out := ComposePrompt(PromptInput{
-		Memories:      MemoriesIndex{Project: items},
-		RequestAuthor: "onik97",
-		RequestBody:   "@Agent go",
-	})
-	// The memories section itself must respect MaxMemoriesIndexChars even
-	// though the overall prompt has ample room under MaxPromptChars.
-	idxStart := strings.Index(out, "This turn's memories index:")
-	require.GreaterOrEqual(t, idxStart, 0)
-	assert.Contains(t, out, memoriesTruncationNote)
-	assert.Less(t, len(out)-idxStart, MaxMemoriesIndexChars+1000)
-}
-
-func TestFitMemoriesIndex_KeepsEverythingWhenItFits(t *testing.T) {
-	lines, truncated := fitMemoriesIndex(MemoriesIndex{Project: []MemoryItem{{Name: "a", WhenToUse: "b"}}}, 1000)
-	assert.False(t, truncated)
-	assert.Equal(t, []string{"This project's memories:", "- a: b"}, lines)
-}
-
-func TestFitMemoriesIndex_DropsFromTheEndWhenOverBudget(t *testing.T) {
-	mem := MemoriesIndex{Project: []MemoryItem{{Name: "a", WhenToUse: "b"}, {Name: "c", WhenToUse: "d"}}}
-	lines, truncated := fitMemoriesIndex(mem, len("This project's memories:")+1+len("- a: b")+1)
-	assert.True(t, truncated)
-	assert.Equal(t, []string{"This project's memories:", "- a: b"}, lines)
+	assert.True(t, strings.HasSuffix(out, DefaultFooter))
 }
 
 func TestFitContext_KeepsEverythingWhenItFits(t *testing.T) {

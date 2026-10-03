@@ -80,7 +80,7 @@ func newRunnerFixture() *runnerFixture {
 	}
 	f.mems = &fakeMemories{byProject: map[string][]Memory{
 		projectID: {
-			{ID: pickedMem, Title: "Deploy quirks", WhenToUse: "use this when deploying"},
+			{ID: pickedMem, Title: "Deploy quirks"},
 			{ID: alwaysMem, Title: "Working here", AlwaysIncluded: true},
 		},
 		otherProj: {{ID: otherMem, Title: "Elsewhere"}},
@@ -328,11 +328,11 @@ func TestRun_StartsTurnWithBlocksInOrder(t *testing.T) {
 	req := f.turns.last()
 	assert.Equal(t, trail.ConversationID, req.ConversationID)
 	assert.Equal(t, starter, req.ViaUserID)
-	assert.Equal(t, posts[0].body, req.RequestBody)
-	require.Len(t, req.ExtraRequestBlocks, 3)
-	assert.Equal(t, "Play: Fix with AI\nFix the ticket.", req.ExtraRequestBlocks[0])
-	assert.Equal(t, readFirst+"\n- Working here (id m-always)\n- Deploy quirks (id m-pick): use this when deploying", req.ExtraRequestBlocks[1])
-	assert.Equal(t, "Instructions from login-u-1 for this run; where these conflict with the play's instructions, these win:\nTouch only the docs.", req.ExtraRequestBlocks[2])
+	assert.Empty(t, req.RequestBody, "the started message is the thread's; the play is the turn's request")
+	assert.Equal(t, &agent.PlayContext{
+		Label: "Fix with AI", Instructions: "Fix the ticket.", Custom: "Touch only the docs.",
+		Memories: []agent.MemoryRef{{ID: alwaysMem, Name: "Working here"}, {ID: pickedMem, Name: "Deploy quirks"}},
+	}, req.Play)
 	require.NotNil(t, req.Observer)
 }
 
@@ -388,18 +388,6 @@ func TestRun_HarnessChoice_ComputerNotOwnedByCaller_FailsTrail(t *testing.T) {
 	require.Len(t, trails, 1)
 	assert.Equal(t, TrailFailed, trails[0].State)
 	assert.Empty(t, trails[0].ComputerID, "a refused choice leaves nothing to record")
-}
-
-func TestRun_NoMemoriesNoCustom_OmitsEmptyBlocks(t *testing.T) {
-	f := newRunnerFixture()
-	f.mems.byProject[projectID] = nil
-	_, err := f.runner.Run(ctxAs(starter), ticketRun())
-	require.NoError(t, err)
-	<-f.turns.done
-
-	req := f.turns.last()
-	assert.Equal(t, []string{"Play: Fix with AI\nFix the ticket."}, req.ExtraRequestBlocks)
-	assert.Equal(t, "Started Fix with AI", req.RequestBody)
 }
 
 func TestRun_DocPlay_UsesDocThread(t *testing.T) {
@@ -475,8 +463,10 @@ func TestRun_InterviewPlay_PostsInTheInterviewThreadWithTheProjectsAnswers(t *te
 			assert.Equal(t, "conv-interview-"+tt.project, trail.ConversationID)
 			assert.Equal(t, TargetInterview, trail.TargetType)
 			assert.Equal(t, tt.project, trail.ProjectID)
-			blocks := strings.Join(f.turns.last().ExtraRequestBlocks, "\n")
-			assert.Contains(t, blocks, "Play: Interview\nInterview them.")
+			play := f.turns.last().Play
+			require.NotNil(t, play)
+			assert.Equal(t, "Interview", play.Label)
+			blocks := strings.Join(play.Blocks, "\n")
 			assert.Contains(t, blocks, fmt.Sprintf("(project id %s)", tt.project))
 			assert.Contains(t, blocks, "Where its tests live, as answered in the project wizard: "+tt.want+".")
 		})
@@ -485,8 +475,8 @@ func TestRun_InterviewPlay_PostsInTheInterviewThreadWithTheProjectsAnswers(t *te
 
 // newHarnessRunner swaps the fake turn runner for the real pipeline over harnesstest.Client.
 func newHarnessRunner(f *runnerFixture, client *harnesstest.Client) *agentConvs {
-	convs := &agentConvs{}
-	svc := agent.NewService(agent.Config{Conversations: convs, Targets: agentTargets{}, Harnesses: harnesstest.Registry(client), Live: agentLive{}})
+	convs := &agentConvs{ticketID: ticketID}
+	svc := agent.NewService(agent.Config{Conversations: convs, Targets: agentTargets{}, Harnesses: harnesstest.Registry(client), Tickets: agentTickets{}, Live: agentLive{}})
 	f.runner.turns = svc
 	return convs
 }
@@ -528,13 +518,14 @@ func TestRun_AgainstHarness_TrailFollowsTheTurn(t *testing.T) {
 	assert.Equal(t, []string{"Opened PR #7"}, convs.replies)
 	assert.Equal(t, []TrailState{TrailStarting, TrailRunning, TrailRunning, TrailRunning, TrailRunning, TrailDone}, f.trails.recordedStates())
 
-	for name, prompt := range map[string]string{"full": full, "incremental": incremental} {
-		play := strings.Index(prompt, "Play: Fix with AI\nFix the ticket.")
-		mems := strings.Index(prompt, readFirst)
-		custom := strings.Index(prompt, "Instructions from login-u-1 for this run; where these conflict with the play's instructions, these win:\nTouch only the docs.")
-		request := strings.Index(prompt, "Started Fix with AI")
-		assert.True(t, request >= 0 && request < play && play < mems && mems < custom, "%s prompt orders request, play, memories, custom: %d %d %d %d", name, request, play, mems, custom)
-	}
+	context := "Right now you are running a play, started by u-1.\n\n" +
+		"Play: Fix with AI\nFix the ticket.\n\n" +
+		"Ticket: NEX-1 \"Login fails\". Read it with ticket_get before you start.\n\n" +
+		"Read these memories with memory_get before you start; they are your context:\n" +
+		"- Working here (id m-always)\n- Deploy quirks (id m-pick)\n\n" +
+		"Instructions for this run from u-1; where they conflict with the play's, these win:\nTouch only the docs."
+	assert.Equal(t, agent.DefaultIntro+"\n\n"+context+"\n\n"+agent.DefaultFooter, full, "no history and no request: the play is the request")
+	assert.Equal(t, context, incremental)
 }
 
 func TestRun_AgainstHarness_StartTurnError_TrailFailedWithReason(t *testing.T) {
@@ -577,58 +568,24 @@ func TestRun_AgainstHarness_Interrupted(t *testing.T) {
 	assert.Empty(t, final.ReplyMessageID)
 }
 
-func doneUpdates() chan harness.Update {
-	ch := make(chan harness.Update, 1)
-	ch <- harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}}
-	close(ch)
-	return ch
-}
-
-const readFirst = "Memories to read first: before doing anything else, read each memory below in full with `memory_get`, " +
-	"passing its `id`, and follow them as standing rules for this run. If one cannot be read, say which in your first " +
-	"message and carry on without it."
-
-func TestRun_Memories_NamedToReadFirstInOrder_NoBodyHoweverLarge(t *testing.T) {
+func TestRun_Memories_NamedInReadingOrder(t *testing.T) {
 	f := newRunnerFixture()
-	huge := strings.Repeat("x", 70_000)
 	f.mems.byProject[projectID] = []Memory{
-		{ID: "m-int", Title: "Interview", WhenToUse: "the project's rules", AlwaysIncluded: true, Interview: true},
-		{ID: "m-b", Title: "Release notes", WhenToUse: "use this when releasing"},
+		{ID: "m-int", Title: "Interview", AlwaysIncluded: true, Interview: true},
+		{ID: "m-b", Title: "Release notes"},
 		{ID: alwaysMem, Title: "Working here", AlwaysIncluded: true},
-		{ID: "m-a", Title: "Deploy quirks", WhenToUse: "use this when deploying"},
+		{ID: "m-a", Title: "Deploy quirks"},
 	}
-	var got harness.TurnPrompts
-	client := &harnesstest.Client{StartTurnFn: func(_ context.Context, _ harness.Target, _ string, prompts harness.TurnPrompts) (harness.StartResult, error) {
-		got = prompts
-		return harness.StartResult{SessionID: "sess-1", Updates: doneUpdates()}, nil
-	}}
-	f.runner.turns = agent.NewService(agent.Config{
-		Conversations: &agentConvs{projectID: projectID}, Targets: agentTargets{}, Harnesses: harnesstest.Registry(client), Live: agentLive{},
-		Memories: agentMems{agent.MemoriesIndex{Project: []agent.MemoryItem{
-			{Name: "Interview", AlwaysIncluded: true, Interview: true, Body: "interview body " + huge},
-			{Name: "Working here", AlwaysIncluded: true, Body: "always body ![shot](/api/attachments/att-1) " + huge},
-			{Name: "Deploy quirks", WhenToUse: "use this when deploying"},
-		}}},
-		Attachments: &fakeAttachmentReader{items: map[string]agent.StoredAttachment{"att-1": {Name: "shot.png", MIME: "image/png", Bytes: []byte{1}}}},
-	})
 	in := ticketRun()
 	in.MemoryIDs = []string{"m-b", "m-a", "m-int"}
 
 	trail, err := f.runner.Run(ctxAs(starter), in)
 	require.NoError(t, err)
-	final := <-f.trails.terminal
+	<-f.turns.done
 
-	assert.Equal(t, TrailDone, final.State, "a selection the inlining ceilings refused now runs")
 	assert.Equal(t, []string{"m-int", alwaysMem, "m-a", "m-b"}, trail.SelectedMemoryIDs, "the trail records the selection in the order the agent reads it")
-	block := readFirst + "\n- Interview (id m-int): the project's rules\n- Working here (id m-always)\n" +
-		"- Deploy quirks (id m-a): use this when deploying\n- Release notes (id m-b): use this when releasing"
-	for name, prompt := range map[string]string{"full": got.Full, "incremental": got.Incremental} {
-		assert.Contains(t, prompt, block, name)
-		assert.NotContains(t, prompt, "interview body", name)
-		assert.NotContains(t, prompt, "always body", name)
-		assert.NotContains(t, prompt, "Always-included memories, follow them:", name)
-	}
-	assert.Empty(t, got.Attachments, "an image in a memory is the agent's to fetch, not the run's to attach")
+	assert.Equal(t, []agent.MemoryRef{{ID: "m-int", Name: "Interview"}, {ID: alwaysMem, Name: "Working here"}, {ID: "m-a", Name: "Deploy quirks"}, {ID: "m-b", Name: "Release notes"}},
+		f.turns.last().Play.Memories, "the interview memory, then the other always-included ones, then the picked ones in project order")
 }
 
 func TestTrail_AppendActivity_CapsAtMaxDroppingOldest(t *testing.T) {

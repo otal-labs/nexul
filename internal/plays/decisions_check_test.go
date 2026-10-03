@@ -63,8 +63,9 @@ func TestHandleTicketStatusChanged_EnteringDone_FiresExactlyOneCheck(t *testing.
 	assert.Equal(t, ViaWeb, trails[0].Via)
 	req := f.turns.last()
 	assert.Equal(t, starter, req.ViaUserID)
-	assert.Contains(t, req.ExtraRequestBlocks[0], "Play: Decisions check")
-	assert.Contains(t, req.ExtraRequestBlocks[0], "decisions_log")
+	require.NotNil(t, req.Play)
+	assert.Equal(t, decisionsCheckLabel, req.Play.Label)
+	assert.Contains(t, req.Play.Instructions, "decisions_log")
 	assert.Equal(t, "Started Decisions check", f.threads.snapshot()[0].body)
 }
 

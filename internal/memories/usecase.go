@@ -162,8 +162,8 @@ func (s *Service) ListForProject(ctx context.Context, projectID string) ([]*Memo
 	return ms, nil
 }
 
-// ListMemoryItems returns a turn's memory index for the agent prompt: the project's memories, none for a turn
-// with no project (ADR 0099). It carries no permission check: the turn pipeline reads it on the server's behalf.
+// ListMemoryItems returns the project's memories for an agent turn to name, none for a turn with no project
+// (ADR 0099). It carries no permission check: the turn pipeline reads it on the server's behalf.
 func (s *Service) ListMemoryItems(ctx context.Context, projectID string) ([]MemoryItem, error) {
 	projectID = strings.TrimSpace(projectID)
 	if projectID == "" {
@@ -175,28 +175,9 @@ func (s *Service) ListMemoryItems(ctx context.Context, projectID string) ([]Memo
 	}
 	out := make([]MemoryItem, len(ms))
 	for i, m := range ms {
-		item, err := toMemoryItem(m)
-		if err != nil {
-			return nil, err
-		}
-		out[i] = item
+		out[i] = MemoryItem{ID: m.ID, Title: m.Title, AlwaysIncluded: m.AlwaysIncluded, Kind: m.Kind}
 	}
 	return out, nil
-}
-
-// toMemoryItem renders one memory as a lean index entry, except an always-included memory, which also carries
-// its full markdown body since the turn inlines it (ticket 27).
-func toMemoryItem(m *Memory) (MemoryItem, error) {
-	item := MemoryItem{ID: m.ID, Title: m.Title, WhenToUse: m.WhenToUse, AlwaysIncluded: m.AlwaysIncluded, Kind: m.Kind}
-	if !m.AlwaysIncluded {
-		return item, nil
-	}
-	md, err := richtext.ToMarkdown(m.Body)
-	if err != nil {
-		return MemoryItem{}, fmt.Errorf("export always-included memory %s: %w", m.ID, err)
-	}
-	item.Body = md
-	return item, nil
 }
 
 // Update replaces title/when-to-use/body/always-included and appends a version; requires memories:write on the
@@ -221,7 +202,7 @@ func (s *Service) Update(ctx context.Context, id, title, whenToUse, body string,
 	if err != nil {
 		return nil, fmt.Errorf("%w: body is not valid document content", apperrs.ErrInvalid)
 	}
-	// The decisions log is pulled from the index, never sent every turn (ADR 0065).
+	// The decisions log is found with memory_list, never named every turn (ADR 0065).
 	if current.Kind == KindDecisionsLog {
 		alwaysIncluded = false
 	}
