@@ -37,6 +37,7 @@ type rpcConn interface {
 	Settle(ctx context.Context, threadID string) error
 	RespondApproval(ctx context.Context, threadID, requestID, decision string) error
 	RespondUserInput(ctx context.Context, threadID, requestID string, answer harness.QuestionAnswer) error
+	DismissUserInput(ctx context.Context, threadID, requestID string) error
 	SubscribeThread(ctx context.Context, threadID string) (threadSub, error)
 	ResumeThread(ctx context.Context, threadID string, w *turnWatch) (threadSub, error)
 	Providers() ([]harness.Provider, error)
@@ -150,6 +151,10 @@ func (h *Harness) StartTurn(ctx context.Context, target harness.Target, title st
 		}
 		prompt, attachments = prompts.Full, prompts.Attachments
 	}
+	if usedStored && prompts.Answer != nil && h.answeredInT3(ctx, client, threadID, prompts.Answer.RequestID) {
+		_ = client.Close() // nothing was sent on it; the close error says nothing about the result
+		return answeredTurn(threadID), nil
+	}
 
 	sub, err := h.subscribeAndStart(ctx, client, threadID, prompt, attachments)
 	if err != nil && usedStored {
@@ -188,6 +193,31 @@ func (h *Harness) createThread(ctx context.Context, client rpcConn, target harne
 		return "", fmt.Errorf("create t3 thread: %w", err)
 	}
 	return threadID, nil
+}
+
+// answeredInT3Note is the line a turn shows when the person had already answered the question in T3 Code.
+const answeredInT3Note = "Already answered in T3 Code"
+
+// answeredInT3 clears the question an ended turn left open, since the answer travels as the next turn's prompt and
+// T3 would show it pending forever; true when T3 already holds an answer, so a second turn would repeat it.
+func (h *Harness) answeredInT3(ctx context.Context, client rpcConn, threadID, requestID string) bool {
+	err := client.DismissUserInput(ctx, threadID, requestID)
+	if errors.Is(err, apperrs.ErrConflict) {
+		return true
+	}
+	if err != nil {
+		logger(h.Options).Warn("t3client: clearing the answered question failed", "thread", threadID, "request", requestID, "error", err)
+	}
+	return false
+}
+
+// answeredTurn ends the turn before it starts: the run T3 began from its own answer carries on there.
+func answeredTurn(threadID string) harness.StartResult {
+	updates := make(chan harness.Update, 2)
+	updates <- harness.Update{Activity: &harness.Activity{Kind: harness.ActivityNote, Summary: answeredInT3Note, At: time.Now().UTC()}}
+	updates <- harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}}
+	close(updates)
+	return harness.StartResult{SessionID: threadID, Updates: updates}
 }
 
 // subscribeAndStart opens the subscription before starting the turn, so no events are missed.
