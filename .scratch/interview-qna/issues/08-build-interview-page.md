@@ -24,4 +24,4 @@ Built at 768px first, verified at 768, 1024, and 1440.
 
 ## Answer
 
-Built in PR_URL.
+Built in [#363](https://github.com/otal-labs/nexul/pull/363).
