@@ -1,0 +1,5 @@
+{"dir":"dial","path":"/ws","query":{}}
+{"dir":"send","frame":{"_tag":"Request","id":"1","tag":"orchestration.subscribeShell","payload":{},"headers":[]}}
+{"dir":"recv","frame":{"_tag":"Chunk","requestId":"1","values":[{"kind":"snapshot","snapshot":{"snapshotSequence":1,"projects":[{"id":"pr-1","title":"demo","workspaceRoot":"/workspace/demo","repositoryIdentity":null,"defaultModelSelection":null,"defaultThreadEnvMode":null,"autoPull":false,"faviconPath":null,"projectIcon":null,"scripts":[],"createdAt":"2026-10-03T15:10:56.000Z","updatedAt":"2026-10-03T15:10:56.000Z"}],"threads":[],"updatedAt":"2026-10-03T15:10:56.000Z"}}]}}
+{"dir":"send","frame":{"_tag":"Interrupt","requestId":"1"}}
+{"dir":"recv","frame":{"_tag":"Exit","requestId":"1","exit":{"_tag":"Failure","cause":[{"_tag":"Interrupt","fiberId":873}]}}}

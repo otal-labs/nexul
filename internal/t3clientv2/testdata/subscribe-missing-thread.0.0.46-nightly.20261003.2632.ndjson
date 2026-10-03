@@ -1,0 +1,3 @@
+{"dir":"dial","path":"/ws","query":{"orchestrationProtocol":"2"}}
+{"dir":"send","frame":{"_tag":"Request","id":"1","tag":"orchestration.subscribeThread","payload":{"threadId":"th-1","acceptBoundedSnapshot":true},"headers":[]}}
+{"dir":"recv","frame":{"_tag":"Exit","requestId":"1","exit":{"_tag":"Failure","cause":[{"_tag":"Fail","error":{"_tag":"OrchestrationV2GetThreadProjectionError","threadId":"th-1","message":"Failed to load orchestration V2 thread th-1","cause":{"name":"OrchestratorProjectionError","message":"Failed to load orchestration projection for thread th-1.","cause":{"name":"ProjectionStoreThreadNotFoundError","message":"No orchestration projection exists for thread th-1."}}}}]}}}
