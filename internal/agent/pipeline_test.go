@@ -750,6 +750,7 @@ func TestRunTurn_TargetOverride_ResolvedThroughTheOverrideSeam(t *testing.T) {
 	targets := &fakeTargets{target: &pairing.ResolvedTarget{
 		Computer:         pairing.Computer{ID: "c-2", Kind: harness.KindT3Code, ServerURL: "http://t3.local"},
 		HarnessProjectID: "proj-1", Provider: "claude", Model: "sonnet-5", ModelOptions: []harness.OptionSetting{{ID: "effort", Value: "high"}},
+		Worktree: true,
 	}}
 	svc := NewService(Config{Conversations: conv, Targets: targets, Harnesses: harnesstest.Registry(client), Live: &fakeLive{}})
 
@@ -764,6 +765,7 @@ func TestRunTurn_TargetOverride_ResolvedThroughTheOverrideSeam(t *testing.T) {
 	assert.Equal(t, "claude", gotTarget.Provider)
 	assert.Equal(t, "sonnet-5", gotTarget.Model)
 	assert.Equal(t, []harness.OptionSetting{{ID: "effort", Value: "high"}}, gotTarget.ModelOptions, "the resolved options reach the harness turn")
+	assert.True(t, gotTarget.Worktree, "the person's start_in reaches the harness turn")
 }
 
 func TestRunTurn_TicketThread_PDFReference_AttachesNothing(t *testing.T) {

@@ -105,12 +105,21 @@ already reach, by URL. Owned by one user; nobody else can run on it.
 _Avoid_: Device, host, runner (a runner builds and deploys)
 
 **Project link**:
-One person's choice of paired computer, T3 project, provider, model, and
-model options for one project they can open, set in Your settings → T3
-pairing → Projects. Each person has their own; nobody else's turns use it.
+One person's choice of paired computer, T3 project, provider, model, model
+options, and start-in for one project they can open, set in Your settings →
+T3 pairing → Projects. Each person has their own; nobody else's turns use it.
 A person with no link for a project runs there on their own pairing
 defaults (ADR 0102).
 _Avoid_: Project pairing, shared link
+
+**Start-in**:
+Where a T3 thread Nexul creates for a person begins: the T3 project's folder,
+or a new git worktree off the branch that folder is on, so play runs and
+chats running side by side never edit the same files. Set in the pairing
+defaults; a project link can override it or follow the defaults. A reused
+thread stays where it began, and a T3 Code that cannot launch a worktree
+starts the thread in the folder and says so.
+_Avoid_: Workspace (that is the tenant boundary), env mode
 
 **Computer tunnel**:
 The outbound connection a paired computer keeps open to the instance's own

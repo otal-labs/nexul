@@ -287,6 +287,8 @@ type Defaults struct {
 	Model             string `json:"model,omitempty"`
 	// ModelOptions are the options picked with Model; unset ones are the harness's defaults.
 	ModelOptions []harness.OptionSetting `json:"model_options,omitempty"`
+	// StartIn is where new harness threads start; empty is the T3 project's folder.
+	StartIn StartIn `json:"start_in,omitempty"`
 }
 
 // ProjectLink is one person's pairing config for one project (ADR 0102); a zero value falls through to their defaults.
@@ -298,7 +300,26 @@ type ProjectLink struct {
 	Provider         string                  `json:"provider,omitempty"`
 	Model            string                  `json:"model,omitempty"`
 	ModelOptions     []harness.OptionSetting `json:"model_options,omitempty"`
-	UpdatedAt        time.Time               `json:"updated_at,omitempty"`
+	// StartIn overrides the defaults' StartIn for this project; empty falls through to them.
+	StartIn   StartIn   `json:"start_in,omitempty"`
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
+}
+
+// StartIn is where a new harness thread starts: the T3 project's own folder, or a fresh git worktree of it.
+type StartIn string
+
+const (
+	StartInFolder   StartIn = "folder"
+	StartInWorktree StartIn = "worktree"
+)
+
+// validateStartIn accepts the two places and empty, which defers to the next level down.
+func validateStartIn(s StartIn) (StartIn, error) {
+	s = StartIn(strings.TrimSpace(string(s)))
+	if s == "" || s == StartInFolder || s == StartInWorktree {
+		return s, nil
+	}
+	return "", fmt.Errorf("%w: start_in must be %q or %q", apperrs.ErrInvalid, StartInFolder, StartInWorktree)
 }
 
 // NotConfiguredReason distinguishes why ResolveTarget failed, for a specific reply, not one generic message.

@@ -6,7 +6,14 @@ import { FormSelect } from "@/components/ticket/FormSelect";
 import { HarnessProjectField } from "@/components/settings/HarnessProjectField";
 import { HarnessProviderModelFields } from "@/components/settings/HarnessProviderModelFields";
 import { useUpdatePairingDefaults } from "@/hooks/PairingHooks";
-import { PairingDefaultsFormSchema, type Computer, type PairingDefaults, type PairingDefaultsFormData } from "@/models/Pairing";
+import {
+  PairingDefaultsFormSchema,
+  START_IN_OPTIONS,
+  StartIn,
+  type Computer,
+  type PairingDefaults,
+  type PairingDefaultsFormData,
+} from "@/models/Pairing";
 
 interface PairingDefaultsFormProps {
   defaults: PairingDefaults;
@@ -24,6 +31,7 @@ export const PairingDefaultsForm = ({ defaults, computers }: PairingDefaultsForm
       provider: defaults.provider ?? "",
       model: defaults.model ?? "",
       model_options: defaults.model_options ?? [],
+      start_in: defaults.start_in ?? StartIn.Folder,
     },
     resolver: zodResolver(PairingDefaultsFormSchema),
   });
@@ -37,6 +45,7 @@ export const PairingDefaultsForm = ({ defaults, computers }: PairingDefaultsForm
         provider: saved.provider ?? "",
         model: saved.model ?? "",
         model_options: saved.model_options ?? [],
+        start_in: saved.start_in ?? StartIn.Folder,
       });
     } catch {
       // Error is surfaced by the hook's toast; the form stays open to retry.
@@ -71,6 +80,7 @@ export const PairingDefaultsForm = ({ defaults, computers }: PairingDefaultsForm
           form.setValue("model_options", options, { shouldDirty: true });
         }}
       />
+      <FormSelect control={form.control} name="start_in" label="New threads start in" options={START_IN_OPTIONS} />
       <Button type="submit" loading={form.formState.isSubmitting}>
         Save defaults
       </Button>

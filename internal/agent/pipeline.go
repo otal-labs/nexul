@@ -371,6 +371,7 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 		Model:        target.Model,
 		ModelOptions: target.ModelOptions,
 		SessionID:    conv.ThreadID,
+		Worktree:     target.Worktree,
 	}}
 	s.setActive(conversationID, turn)
 	defer s.endTurn(ctx, conv, turn)

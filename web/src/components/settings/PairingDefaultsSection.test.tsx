@@ -89,6 +89,7 @@ describe("PairingDefaultsSection", () => {
     await pickOption(user, /default computer/i, "vps");
     await user.type(screen.getByLabelText(/fallback t3 project/i), "proj-9");
     await user.type(screen.getByLabelText(/^provider$/i), "opencode");
+    await pickOption(user, /new threads start in/i, "New worktree per thread");
     await user.click(screen.getByRole("button", { name: /save defaults/i }));
 
     await waitFor(() =>
@@ -98,6 +99,7 @@ describe("PairingDefaultsSection", () => {
         provider: "opencode",
         model: "",
         model_options: [],
+        start_in: "worktree",
       }),
     );
   });

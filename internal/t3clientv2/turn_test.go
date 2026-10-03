@@ -524,6 +524,76 @@ func TestStartTurn_NewThreadNotCreated_FailsWithTheReason(t *testing.T) {
 	}
 }
 
+func worktreeTarget(f *t3rpctest.Server) harness.Target {
+	return harness.Target{Session: laptop(f), ProjectID: "proj-live", Provider: "claudeAgent", Worktree: true}
+}
+
+func TestStartTurn_Worktree_LaunchesOnTheFoldersBranchWithThePromptAndWatchesItsRun(t *testing.T) {
+	t.Parallel()
+	f, h := newFake(t, 2)
+	f.Branches = map[string]string{"/home/me/app": "master"}
+	done := beginAs(t, h, worktreeTarget(f), testPrompts)
+
+	launch := t3rpctest.WaitFor(t, f.Launched, "launchThread")
+	threadID, _ := launch["threadId"].(string)
+	message, _ := launch["initialMessage"].(map[string]any)
+	messageID, _ := message["messageId"].(string)
+	require.NotEmpty(t, threadID)
+	require.NotEmpty(t, messageID)
+	assert.Equal(t, map[string]any{
+		"commandId": launch["commandId"], "creationSource": "web", "threadId": threadID, "projectId": "proj-live", "title": "Fix login",
+		"modelSelection": map[string]any{"instanceId": "claudeAgent", "model": "claude-opus-5-5"},
+		"runtimeMode":    "full-access", "interactionMode": "default",
+		"workspaceStrategy": map[string]any{"type": "worktree", "baseRef": "master"},
+		"initialMessage":    map[string]any{"messageId": messageID, "text": "full prompt", "attachments": []any{}},
+	}, launch, "T3 holds back only a launched message until the worktree is ready")
+
+	subID := t3rpctest.WaitFor(t, f.Subscribed, "subscribeThread")
+	f.Write(t3rpctest.Chunk(subID, snapshotWith(t, nil)))
+	s := <-done
+	require.NoError(t, s.err)
+	assert.Equal(t, threadID, s.result.SessionID)
+	assert.True(t, s.result.PromptSent)
+	assert.Empty(t, f.Dispatched, "the prompt went with the launch, so nothing is created or dispatched")
+
+	f.Write(t3rpctest.Chunk(subID,
+		event(3, "run.created", runOf(messageID, "preparing")),
+		event(4, "run.updated", runOf(messageID, "running")),
+		event(5, "turn-item.updated", assistantItem("Done.", false)),
+		event(6, "run.updated", runOf(messageID, runWaiting)),
+	))
+	assert.Equal(t, []harness.Update{snapshotOf(codexMessage, "Done.", false), ended(harness.TurnDone, "")}, drainUpdates(t, s.result.Updates))
+}
+
+func TestStartTurn_WorktreeButFolderOnNoBranch_StartsInTheFolderWithANote(t *testing.T) {
+	t.Parallel()
+	f, h := newFake(t, 2)
+	done := beginAs(t, h, worktreeTarget(f), testPrompts)
+
+	t3rpctest.WaitFor(t, f.Dispatched, "thread.create")
+	subID := t3rpctest.WaitFor(t, f.Subscribed, "subscribeThread")
+	f.Write(t3rpctest.Chunk(subID, snapshotWith(t, nil)))
+	assert.Equal(t, "full prompt", t3rpctest.WaitFor(t, f.Dispatched, "message.dispatch")["text"])
+	s := <-done
+	require.NoError(t, s.err)
+	assert.Empty(t, f.Launched)
+	first := <-s.result.Updates
+	require.NotNil(t, first.Activity)
+	assert.Equal(t, noBranchNote, first.Activity.Summary)
+}
+
+func TestStartTurn_WorktreeLaunchRefused_FailsWithT3sMessage(t *testing.T) {
+	t.Parallel()
+	f, h := newFake(t, 2)
+	f.Branches = map[string]string{"/home/me/app": "master"}
+	f.CommandCauses = map[string]any{"orchestration.launchThread": []any{map[string]any{"_tag": "Fail", "error": map[string]any{
+		"_tag": "ThreadLaunchError", "message": "Thread launch failed during provision-worktree."}}}}
+	_, err := h.StartTurn(t.Context(), worktreeTarget(f), "Fix login", testPrompts)
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
+	assert.EqualError(t, err, "invalid: start the t3 thread in a new worktree: Thread launch failed during provision-worktree.")
+	assert.Empty(t, f.Subscribed, "nothing to watch")
+}
+
 func TestStartTurn_ApprovalRequest_IsDeclinedOnce(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

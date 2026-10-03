@@ -137,7 +137,7 @@ func toProjectLink(row sqlcgen.PairingProjectLink) (pairing.ProjectLink, error) 
 	}
 	return pairing.ProjectLink{
 		UserID: row.UserID, ProjectID: row.ProjectID, ComputerID: row.ComputerID, HarnessProjectID: row.HarnessProjectID,
-		Provider: row.Provider, Model: row.Model, ModelOptions: options, UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
+		Provider: row.Provider, Model: row.Model, ModelOptions: options, StartIn: pairing.StartIn(row.StartIn), UpdatedAt: time.Unix(row.UpdatedAt, 0).UTC(),
 	}, nil
 }
 
@@ -149,7 +149,7 @@ func (r *PairingRepo) SaveProjectLink(ctx context.Context, l pairing.ProjectLink
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		err := r.q.WithTx(tx).SavePairingProjectLink(ctx, sqlcgen.SavePairingProjectLinkParams{
 			UserID: l.UserID, ProjectID: l.ProjectID, ComputerID: l.ComputerID, HarnessProjectID: l.HarnessProjectID,
-			Provider: l.Provider, Model: l.Model, ModelOptions: options, UpdatedAt: l.UpdatedAt.Unix(),
+			Provider: l.Provider, Model: l.Model, ModelOptions: options, StartIn: string(l.StartIn), UpdatedAt: l.UpdatedAt.Unix(),
 		})
 		if err != nil {
 			return fmt.Errorf("save project link %s: %w", l.ProjectID, classifyWriteErr(err))
@@ -185,6 +185,7 @@ func (r *PairingRepo) GetDefaults(ctx context.Context, userID string) (pairing.D
 		Provider:          row.Provider,
 		Model:             row.Model,
 		ModelOptions:      options,
+		StartIn:           pairing.StartIn(row.StartIn),
 	}, nil
 }
 
@@ -201,6 +202,7 @@ func (r *PairingRepo) SaveDefaults(ctx context.Context, d pairing.Defaults) erro
 			Provider:          d.Provider,
 			Model:             d.Model,
 			ModelOptions:      options,
+			StartIn:           string(d.StartIn),
 		})
 		if err != nil {
 			return fmt.Errorf("save defaults for %s: %w", d.UserID, classifyWriteErr(err))

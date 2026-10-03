@@ -186,6 +186,31 @@ func TestHarness_StartTurn_CreatesThreadWhenSessionEmpty(t *testing.T) {
 	assert.True(t, fake.closed)
 }
 
+func TestHarness_StartTurn_Worktree_NotesTheNewThreadStartsInTheFolder(t *testing.T) {
+	tests := []struct {
+		name      string
+		sessionID string
+		wantNote  bool
+	}{
+		{"new thread", "", true},
+		{"reused thread already has its place", "thread-existing", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fake := &fakeT3Client{nextThreadID: "thread-new", subscription: newFakeSubscription(Update{Terminal: &TurnResult{State: TurnDone}})}
+			result, err := harnessWithFake(fake).StartTurn(t.Context(), harness.Target{SessionID: tt.sessionID, Worktree: true}, "title", testPrompts())
+			require.NoError(t, err)
+			updates := drain(t, result.Updates)
+			if !tt.wantNote {
+				require.Len(t, updates, 1)
+				return
+			}
+			require.Len(t, updates, 2)
+			assert.Equal(t, noWorktreeNote, updates[0].Activity.Summary)
+		})
+	}
+}
+
 func TestHarness_StartTurn_ReusesStoredSessionID(t *testing.T) {
 	fake := &fakeT3Client{
 		subscription: newFakeSubscription(Update{Terminal: &TurnResult{State: TurnDone}}),

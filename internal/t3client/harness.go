@@ -202,6 +202,9 @@ func (h *Harness) StartTurn(ctx context.Context, target harness.Target, title st
 	}
 
 	updates := make(chan harness.Update, 16)
+	if target.Worktree && threadID != target.SessionID {
+		updates <- harness.Update{Activity: &harness.Activity{Kind: harness.ActivityNote, Summary: noWorktreeNote, At: time.Now().UTC()}}
+	}
 	go h.pump(ctx, target.Session, client, threadID, sub, updates)
 	return harness.StartResult{SessionID: threadID, Updates: updates, PromptSent: true}, nil
 }
@@ -223,6 +226,9 @@ func (h *Harness) createThread(ctx context.Context, client rpcConn, target harne
 	}
 	return threadID, nil
 }
+
+// noWorktreeNote is the line a new thread shows when the person asked for a worktree, which protocol 1 cannot start.
+const noWorktreeNote = "Started in the T3 project's folder: update T3 Code to start new threads in a worktree"
 
 // answeredInT3Note is the line a turn shows when the person had already answered the question in T3 Code.
 const answeredInT3Note = "Already answered in T3 Code"

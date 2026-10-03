@@ -334,6 +334,54 @@ func TestService_ResolveTarget_UsesProjectLinkOverDefaults(t *testing.T) {
 	assert.Equal(t, "secret-token", target.Computer.BearerToken, "resolution decrypts the bearer token for internal use")
 }
 
+func TestService_ResolveTarget_StartIn_ProjectLinkOverridesDefaults(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name         string
+		defaults     StartIn
+		link         StartIn
+		pinned       bool
+		wantWorktree bool
+	}{
+		{"nothing set starts in the folder", "", "", false, false},
+		{"defaults ask for a worktree", StartInWorktree, "", false, true},
+		{"the link keeps a project in its folder", StartInWorktree, StartInFolder, false, false},
+		{"the link asks for a worktree", "", StartInWorktree, false, true},
+		{"a run pinned to a computer keeps the link's choice", "", StartInWorktree, true, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			svc := newTestService(newFakeRepo(), &fakeExchanger{result: harness.PairResult{BearerToken: "b"}, version: "0.0.34"})
+			c, err := svc.Pair(t.Context(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+			require.NoError(t, err)
+			_, err = svc.SetDefaults(t.Context(), "u1", Defaults{DefaultComputerID: c.ID, FallbackProjectID: "default-proj", StartIn: tt.defaults})
+			require.NoError(t, err)
+			_, err = svc.SetProjectLink(t.Context(), "u1", "proj-1", ProjectLink{ComputerID: c.ID, HarnessProjectID: "linked-proj", StartIn: tt.link})
+			require.NoError(t, err)
+
+			target, err := svc.resolveTarget(t.Context(), "u1", "proj-1")
+			if tt.pinned {
+				target, err = svc.resolveTargetOverride(t.Context(), "u1", "proj-1", c.ID, modelPick{})
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantWorktree, target.Worktree)
+		})
+	}
+}
+
+func TestService_SetStartIn_RejectsAnUnknownPlace(t *testing.T) {
+	t.Parallel()
+	svc := newTestService(newFakeRepo(), &fakeExchanger{result: harness.PairResult{BearerToken: "b"}, version: "0.0.34"})
+	c, err := svc.Pair(t.Context(), "u1", harness.KindT3Code, "Home", "https://h.example.com", "tok")
+	require.NoError(t, err)
+
+	_, err = svc.SetDefaults(t.Context(), "u1", Defaults{StartIn: "docker"})
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
+	_, err = svc.SetProjectLink(t.Context(), "u1", "proj-1", ProjectLink{ComputerID: c.ID, HarnessProjectID: "p", StartIn: "docker"})
+	require.ErrorIs(t, err, apperrs.ErrInvalid)
+}
+
 func TestService_ResolveTarget_FallsBackToUserDefaults(t *testing.T) {
 	t.Parallel()
 	repo := newFakeRepo()

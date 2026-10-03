@@ -80,7 +80,7 @@ func (q *Queries) GetPairingComputer(ctx context.Context, arg GetPairingComputer
 }
 
 const getPairingDefaults = `-- name: GetPairingDefaults :one
-SELECT default_computer_id, fallback_project_id, provider, model, model_options FROM pairing_user_defaults WHERE user_id = ?
+SELECT default_computer_id, fallback_project_id, provider, model, model_options, start_in FROM pairing_user_defaults WHERE user_id = ?
 `
 
 type GetPairingDefaultsRow struct {
@@ -89,6 +89,7 @@ type GetPairingDefaultsRow struct {
 	Provider          string
 	Model             string
 	ModelOptions      string
+	StartIn           string
 }
 
 func (q *Queries) GetPairingDefaults(ctx context.Context, userID string) (GetPairingDefaultsRow, error) {
@@ -100,12 +101,13 @@ func (q *Queries) GetPairingDefaults(ctx context.Context, userID string) (GetPai
 		&i.Provider,
 		&i.Model,
 		&i.ModelOptions,
+		&i.StartIn,
 	)
 	return i, err
 }
 
 const getPairingProjectLink = `-- name: GetPairingProjectLink :one
-SELECT user_id, project_id, computer_id, harness_project_id, provider, model, model_options, updated_at FROM pairing_project_links WHERE user_id = ? AND project_id = ?
+SELECT user_id, project_id, computer_id, harness_project_id, provider, model, model_options, updated_at, start_in FROM pairing_project_links WHERE user_id = ? AND project_id = ?
 `
 
 type GetPairingProjectLinkParams struct {
@@ -125,6 +127,7 @@ func (q *Queries) GetPairingProjectLink(ctx context.Context, arg GetPairingProje
 		&i.Model,
 		&i.ModelOptions,
 		&i.UpdatedAt,
+		&i.StartIn,
 	)
 	return i, err
 }
@@ -179,7 +182,7 @@ func (q *Queries) ListPairingComputers(ctx context.Context, userID string) ([]Pa
 }
 
 const listPairingProjectLinks = `-- name: ListPairingProjectLinks :many
-SELECT user_id, project_id, computer_id, harness_project_id, provider, model, model_options, updated_at FROM pairing_project_links WHERE user_id = ? ORDER BY project_id
+SELECT user_id, project_id, computer_id, harness_project_id, provider, model, model_options, updated_at, start_in FROM pairing_project_links WHERE user_id = ? ORDER BY project_id
 `
 
 func (q *Queries) ListPairingProjectLinks(ctx context.Context, userID string) ([]PairingProjectLink, error) {
@@ -200,6 +203,7 @@ func (q *Queries) ListPairingProjectLinks(ctx context.Context, userID string) ([
 			&i.Model,
 			&i.ModelOptions,
 			&i.UpdatedAt,
+			&i.StartIn,
 		); err != nil {
 			return nil, err
 		}
@@ -364,11 +368,11 @@ func (q *Queries) SavePairingComputer(ctx context.Context, arg SavePairingComput
 }
 
 const savePairingDefaults = `-- name: SavePairingDefaults :exec
-INSERT INTO pairing_user_defaults (user_id, default_computer_id, fallback_project_id, provider, model, model_options)
-VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO pairing_user_defaults (user_id, default_computer_id, fallback_project_id, provider, model, model_options, start_in)
+VALUES (?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(user_id) DO UPDATE SET
   default_computer_id = excluded.default_computer_id, fallback_project_id = excluded.fallback_project_id,
-  provider = excluded.provider, model = excluded.model, model_options = excluded.model_options
+  provider = excluded.provider, model = excluded.model, model_options = excluded.model_options, start_in = excluded.start_in
 `
 
 type SavePairingDefaultsParams struct {
@@ -378,6 +382,7 @@ type SavePairingDefaultsParams struct {
 	Provider          string
 	Model             string
 	ModelOptions      string
+	StartIn           string
 }
 
 func (q *Queries) SavePairingDefaults(ctx context.Context, arg SavePairingDefaultsParams) error {
@@ -388,16 +393,18 @@ func (q *Queries) SavePairingDefaults(ctx context.Context, arg SavePairingDefaul
 		arg.Provider,
 		arg.Model,
 		arg.ModelOptions,
+		arg.StartIn,
 	)
 	return err
 }
 
 const savePairingProjectLink = `-- name: SavePairingProjectLink :exec
-INSERT INTO pairing_project_links (user_id, project_id, computer_id, harness_project_id, provider, model, model_options, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO pairing_project_links (user_id, project_id, computer_id, harness_project_id, provider, model, model_options, start_in, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(user_id, project_id) DO UPDATE SET
   computer_id = excluded.computer_id, harness_project_id = excluded.harness_project_id,
-  provider = excluded.provider, model = excluded.model, model_options = excluded.model_options, updated_at = excluded.updated_at
+  provider = excluded.provider, model = excluded.model, model_options = excluded.model_options, start_in = excluded.start_in,
+  updated_at = excluded.updated_at
 `
 
 type SavePairingProjectLinkParams struct {
@@ -408,6 +415,7 @@ type SavePairingProjectLinkParams struct {
 	Provider         string
 	Model            string
 	ModelOptions     string
+	StartIn          string
 	UpdatedAt        int64
 }
 
@@ -420,6 +428,7 @@ func (q *Queries) SavePairingProjectLink(ctx context.Context, arg SavePairingPro
 		arg.Provider,
 		arg.Model,
 		arg.ModelOptions,
+		arg.StartIn,
 		arg.UpdatedAt,
 	)
 	return err

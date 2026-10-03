@@ -31,24 +31,25 @@ SELECT * FROM pairing_project_links WHERE user_id = ? AND project_id = ?;
 SELECT * FROM pairing_project_links WHERE user_id = ? ORDER BY project_id;
 
 -- name: SavePairingProjectLink :exec
-INSERT INTO pairing_project_links (user_id, project_id, computer_id, harness_project_id, provider, model, model_options, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO pairing_project_links (user_id, project_id, computer_id, harness_project_id, provider, model, model_options, start_in, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(user_id, project_id) DO UPDATE SET
   computer_id = excluded.computer_id, harness_project_id = excluded.harness_project_id,
-  provider = excluded.provider, model = excluded.model, model_options = excluded.model_options, updated_at = excluded.updated_at;
+  provider = excluded.provider, model = excluded.model, model_options = excluded.model_options, start_in = excluded.start_in,
+  updated_at = excluded.updated_at;
 
 -- name: DeletePairingProjectLink :exec
 DELETE FROM pairing_project_links WHERE user_id = ? AND project_id = ?;
 
 -- name: GetPairingDefaults :one
-SELECT default_computer_id, fallback_project_id, provider, model, model_options FROM pairing_user_defaults WHERE user_id = ?;
+SELECT default_computer_id, fallback_project_id, provider, model, model_options, start_in FROM pairing_user_defaults WHERE user_id = ?;
 
 -- name: SavePairingDefaults :exec
-INSERT INTO pairing_user_defaults (user_id, default_computer_id, fallback_project_id, provider, model, model_options)
-VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO pairing_user_defaults (user_id, default_computer_id, fallback_project_id, provider, model, model_options, start_in)
+VALUES (?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(user_id) DO UPDATE SET
   default_computer_id = excluded.default_computer_id, fallback_project_id = excluded.fallback_project_id,
-  provider = excluded.provider, model = excluded.model, model_options = excluded.model_options;
+  provider = excluded.provider, model = excluded.model, model_options = excluded.model_options, start_in = excluded.start_in;
 
 -- name: SetPairingComputerSetupConfirmedAt :execrows
 UPDATE pairing_computers SET setup_confirmed_at = ? WHERE id = ? AND user_id = ?;
