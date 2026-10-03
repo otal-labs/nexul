@@ -1,4 +1,4 @@
-package t3client
+package t3rpc
 
 import (
 	"encoding/json"
@@ -11,9 +11,9 @@ import (
 )
 
 // The fixture is trimmed from real T3 provider snapshots (Claude and OpenCode instances).
-func TestClient_Providers_ParsesConfig(t *testing.T) {
+func TestConn_Providers_ParsesConfig(t *testing.T) {
 	t.Parallel()
-	c := &Client{config: json.RawMessage(`{"providers":[
+	c := &Conn{config: json.RawMessage(`{"providers":[
 		{"instanceId":"claudeAgent","driver":"claudeAgent","displayName":"Claude","enabled":true,"installed":true,
 		 "models":[
 			{"slug":"claude-opus-5-5","name":"Claude Opus 5.5","badge":"new","isCustom":false,"capabilities":{"optionDescriptors":[
@@ -60,9 +60,9 @@ func TestClient_Providers_ParsesConfig(t *testing.T) {
 	}, providers[1].Models, "with no marked default, the current value is the default")
 }
 
-func TestClient_Providers_DriverNameFallback(t *testing.T) {
+func TestConn_Providers_DriverNameFallback(t *testing.T) {
 	t.Parallel()
-	c := &Client{config: json.RawMessage(`{"providers":[{"instanceId":"x","driver":"opencode","enabled":true,"installed":true,"models":[]}]}`)}
+	c := &Conn{config: json.RawMessage(`{"providers":[{"instanceId":"x","driver":"opencode","enabled":true,"installed":true,"models":[]}]}`)}
 	providers, err := c.Providers()
 	require.NoError(t, err)
 	require.Len(t, providers, 1)

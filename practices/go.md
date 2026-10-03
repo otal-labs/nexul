@@ -49,7 +49,8 @@ internal/
   repository/            # repo scanning for the project wizard
   roles/                 # role entity, permission catalog, protected Owner role
   runner/                # runner protocol domain (WS server side)
-  t3client/              # T3 Effect RPC client over one WebSocket
+  t3client/              # T3 Code harness client, orchestration protocol 1
+  t3rpc/                 # T3 Effect RPC transport over one WebSocket, shared by both protocols
   tenancy/               # workspace entity and membership
   tickets/               # tickets domain
   topology/              # topology model and canvas JSON schema
@@ -335,8 +336,8 @@ func TestParseDeployStatus(t *testing.T) {
   for the philosophy.
 - Run locally: `go test -coverprofile=coverage.out ./... && go tool cover -func=coverage.out`
 - `make coverage` filters the coverage profile before computing the
-  percentage, dropping paths containing `/cmd/`, `/testutil/`, or
-  `/sqlcgen/`.
+  percentage, dropping paths containing `/cmd/`, `/testutil/`, `/sqlcgen/`,
+  or `/t3rpctest/`.
 - Packages with no executable statements, such as wire-type-only packages,
   never appear in the coverage profile at all, so they never count against
   the denominator.

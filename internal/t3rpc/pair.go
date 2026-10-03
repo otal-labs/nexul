@@ -1,4 +1,4 @@
-package t3client
+package t3rpc
 
 import (
 	"context"
@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/otal-labs/nexul/internal/harness"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 )
 
@@ -23,33 +22,14 @@ const clientScopes = "orchestration:read orchestration:operate terminal:operate 
 
 const maxResponseBytes = 1 << 20 // 1MiB: generous for a token/JSON response, small enough to bound a hostile/broken server.
 
-// exchangeResult is the bearer session returned by the RFC 8693 token exchange.
-type exchangeResult struct {
-	BearerToken string
-	ExpiresIn   time.Duration
-}
-
 type tokenExchangeResponse struct {
 	AccessToken string `json:"access_token"`
 	TokenType   string `json:"token_type"`
 	ExpiresIn   int64  `json:"expires_in"`
 }
 
-// Pair implements harness.Client: the `t3 pair` one-time token is traded for a bearer session, then the version is read.
-func (h *Harness) Pair(ctx context.Context, serverURL, secret string) (harness.PairResult, error) {
-	ex, err := h.exchange(ctx, serverURL, secret)
-	if err != nil {
-		return harness.PairResult{}, fmt.Errorf("exchange pairing token: %w", err)
-	}
-	version, err := h.Version(ctx, serverURL)
-	if err != nil {
-		return harness.PairResult{}, fmt.Errorf("read T3 version: %w", err)
-	}
-	return harness.PairResult{BearerToken: ex.BearerToken, ExpiresIn: ex.ExpiresIn, Version: version}, nil
-}
-
-// exchange trades a `t3 pair` one-time token for a bearer session (RFC 8693 token-exchange grant).
-func (h *Harness) exchange(ctx context.Context, serverURL, oneTimeToken string) (exchangeResult, error) {
+// Exchange trades a `t3 pair` one-time token for a bearer session (RFC 8693 token-exchange grant).
+func Exchange(ctx context.Context, client *http.Client, serverURL, oneTimeToken string) (bearerToken string, expiresIn time.Duration, err error) {
 	form := url.Values{
 		"grant_type":           {"urn:ietf:params:oauth:grant-type:token-exchange"},
 		"subject_token":        {oneTimeToken},
@@ -62,54 +42,65 @@ func (h *Harness) exchange(ctx context.Context, serverURL, oneTimeToken string) 
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, serverURL+"/oauth/token", strings.NewReader(form.Encode()))
 	if err != nil {
-		return exchangeResult{}, fmt.Errorf("build token exchange request: %w", err)
+		return "", 0, fmt.Errorf("build token exchange request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	body, err := h.do(req)
+	body, err := do(client, req)
 	if err != nil {
-		return exchangeResult{}, err
+		return "", 0, err
 	}
 	var out tokenExchangeResponse
 	if err := json.Unmarshal(body, &out); err != nil {
-		return exchangeResult{}, fmt.Errorf("decode T3 token exchange response: %w", err)
+		return "", 0, fmt.Errorf("decode T3 token exchange response: %w", err)
 	}
 	if out.AccessToken == "" {
-		return exchangeResult{}, fmt.Errorf("%w: T3 token exchange returned no access token", apperrs.ErrInvalid)
+		return "", 0, fmt.Errorf("%w: T3 token exchange returned no access token", apperrs.ErrInvalid)
 	}
-	expiresIn := time.Duration(out.ExpiresIn) * time.Second
+	expiresIn = time.Duration(out.ExpiresIn) * time.Second
 	if expiresIn <= 0 {
 		expiresIn = 30 * 24 * time.Hour // T3's DEFAULT_SESSION_TTL: plain bearer sessions are 30 days.
 	}
-	return exchangeResult{BearerToken: out.AccessToken, ExpiresIn: expiresIn}, nil
+	return out.AccessToken, expiresIn, nil
 }
 
-type environmentDescriptor struct {
+// Descriptor is what T3's environment descriptor says about the server; getConfig's environment carries the same.
+type Descriptor struct {
 	ServerVersion string `json:"serverVersion"`
+	Protocol      int    `json:"orchestrationProtocolVersion"`
 }
 
-// Version implements harness.Client via the unauthenticated well-known probe.
-func (h *Harness) Version(ctx context.Context, serverURL string) (string, error) {
+// Describe reads the unauthenticated well-known descriptor, the one probe that works before any credential exists.
+func Describe(ctx context.Context, client *http.Client, serverURL string) (Descriptor, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(serverURL, "/")+wellKnownEnvironmentPath, nil)
 	if err != nil {
-		return "", fmt.Errorf("build version probe request: %w", err)
+		return Descriptor{}, fmt.Errorf("build version probe request: %w", err)
 	}
-	body, err := h.do(req)
+	body, err := do(client, req)
 	if err != nil {
-		return "", err
+		return Descriptor{}, err
 	}
-	var out environmentDescriptor
+	var out Descriptor
 	if err := json.Unmarshal(body, &out); err != nil {
-		return "", fmt.Errorf("decode T3 environment descriptor: %w", err)
+		return Descriptor{}, fmt.Errorf("decode T3 environment descriptor: %w", err)
 	}
 	if out.ServerVersion == "" {
-		return "", fmt.Errorf("%w: T3 environment descriptor has no serverVersion", apperrs.ErrInvalid)
+		return Descriptor{}, fmt.Errorf("%w: T3 environment descriptor has no serverVersion", apperrs.ErrInvalid)
 	}
-	return out.ServerVersion, nil
+	out.Protocol = protocolOrOne(out.Protocol)
+	return out, nil
+}
+
+// protocolOrOne reads an absent orchestration protocol as 1: T3 before protocol negotiation sends none.
+func protocolOrOne(protocol int) int {
+	if protocol == 0 {
+		return 1
+	}
+	return protocol
 }
 
 // do maps unreachable-server failures to ErrRetryable and non-200 responses to ErrInvalid (retrying won't help).
-func (h *Harness) do(req *http.Request) (body []byte, err error) {
-	resp, err := h.httpClient().Do(req)
+func do(client *http.Client, req *http.Request) (body []byte, err error) {
+	resp, err := httpClient(client).Do(req)
 	if err != nil {
 		return nil, apperrs.Retryable(fmt.Errorf("reach T3 server: %w", err))
 	}
@@ -124,11 +115,4 @@ func (h *Harness) do(req *http.Request) (body []byte, err error) {
 		return nil, fmt.Errorf("%w: T3 server responded %d: %s", apperrs.ErrInvalid, resp.StatusCode, strings.TrimSpace(string(body)))
 	}
 	return body, nil
-}
-
-func (h *Harness) httpClient() *http.Client {
-	if h.Options.HTTPClient == nil {
-		return http.DefaultClient
-	}
-	return h.Options.HTTPClient
 }
