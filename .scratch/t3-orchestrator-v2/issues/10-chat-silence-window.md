@@ -29,5 +29,7 @@ Read first: `practices/go.md`, `practices/testing.md`, the spec.
   deadline gone, that cancel is what releases the harness stream after the window ends a turn.
 - `maxTurnDuration` is deleted. A cancelled context now ends a turn with "turn cancelled: <cause>". The no-signal
   text reads "after 15m0s of silence".
-- With the ten-minute deadline gone, a chat turn's setup has no overall bound either, the same as a play's today. The
-  T3 dial and each RPC still have `RPCTimeout`, but the version probe's HTTP client has no timeout.
+- Setup gets the same window. Target resolution, the version probe and `StartTurn` run before the stream exists, and
+  their HTTP calls have no timeout, so `setupWindow` cancels them after 15 minutes. The turn then fails with "the
+  harness did not answer within 15m0s". A play's setup is already bounded: its timer is armed before `RunTurn`, and
+  `onSilence` cancels the run.

@@ -327,7 +327,10 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 		projectID = conv.ProjectID
 	}
 
-	target, err := s.resolveTarget(ctx, viaUserID, projectID, req.Target)
+	// Failure posts stay on ctx: the window cancels setupCtx when it cuts setup off, and a post on it would fail.
+	setupCtx, disarm := setupWindow(ctx, req.Silence)
+	defer disarm()
+	target, err := s.resolveTarget(setupCtx, viaUserID, projectID, req.Target)
 	if err != nil {
 		s.replyNotConfigured(ctx, conversationID, viaUserID, err)
 		failed(err.Error())
@@ -340,7 +343,7 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 		failed(reason)
 		return
 	}
-	s.warnVersionIfChanged(ctx, conversationID, viaUserID, client, target.Computer)
+	s.warnVersionIfChanged(setupCtx, conversationID, viaUserID, client, target.Computer)
 
 	prompts, sentThrough, err := s.buildTurnPrompts(ctx, conv, thread, projectID, req)
 	if err != nil {
@@ -362,8 +365,12 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 	s.setActive(conversationID, turn)
 	defer s.clearActive(conversationID)
 
-	result, err := client.StartTurn(ctx, turn.target, title, prompts)
+	result, err := client.StartTurn(setupCtx, turn.target, title, prompts)
+	disarm()
 	if err != nil {
+		if setupCtx.Err() != nil && ctx.Err() == nil {
+			err = context.Cause(setupCtx)
+		}
 		s.postSystemMessage(ctx, conversationID, viaUserID, fmt.Sprintf("Agent turn failed to start: %v", err))
 		failed(err.Error())
 		return
@@ -375,6 +382,16 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 	finalText, term := s.drainTurn(ctx, conversationID, viaUserID, result.Updates, obs, newSilenceWindow(req.Silence, turn.answered))
 
 	s.finishTurn(ctx, conversationID, viaUserID, finalText, term, obs)
+}
+
+// setupWindow cuts off the harness calls made before the stream exists, which have no HTTP timeout, after d; zero is no bound.
+func setupWindow(ctx context.Context, d time.Duration) (context.Context, func() bool) {
+	if d <= 0 {
+		return ctx, func() bool { return false }
+	}
+	bounded, cancel := context.WithCancelCause(ctx)
+	t := time.AfterFunc(d, func() { cancel(fmt.Errorf("the harness did not answer within %s", d)) })
+	return bounded, t.Stop
 }
 
 // threadTitle names a freshly created harness session after what the conversation is about, never its raw id.

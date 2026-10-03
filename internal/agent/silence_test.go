@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/otal-labs/nexul/internal/harness"
+	"github.com/otal-labs/nexul/internal/harness/harnesstest"
 )
 
 const noSignalReply = "Agent turn failed: turn gave no completion signal"
@@ -59,6 +61,47 @@ func TestHandleMessageCreated_FifteenMinutesOfSilence_PostsTheNoSignalMessage(t 
 		require.Len(t, systemPosts, 1)
 		assert.Contains(t, systemPosts[0].body, noSignalReply)
 	})
+}
+
+func TestHandleMessageCreated_HarnessNeverAnswersDuringSetup_FailsAtFifteenMinutes(t *testing.T) {
+	startHangs := func(ctx context.Context, _ harness.Target, _ string, _ harness.TurnPrompts) (harness.StartResult, error) {
+		<-ctx.Done()
+		return harness.StartResult{}, ctx.Err()
+	}
+	tests := []struct {
+		name    string
+		targets *fakeTargets
+		client  *harnesstest.Client
+		want    string
+	}{
+		{"target check", &fakeTargets{hang: true}, &harnesstest.Client{}, "Agent isn't configured to run yet"},
+		{"version probe", &fakeTargets{target: testTarget()}, &harnesstest.Client{
+			VersionFn:   func(ctx context.Context, _ string) (string, error) { <-ctx.Done(); return "", ctx.Err() },
+			StartTurnFn: startHangs,
+		}, "Agent turn failed to start: the harness did not answer within 15m0s"},
+		{"turn start", &fakeTargets{target: testTarget()}, &harnesstest.Client{StartTurnFn: startHangs},
+			"Agent turn failed to start: the harness did not answer within 15m0s"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				conv := newFakeConversations(Conversation{ID: "conv-1"})
+				svc := NewService(Config{Conversations: conv, Targets: tt.targets, Harnesses: harnesstest.Registry(tt.client), Live: &fakeLive{}})
+				require.NoError(t, svc.HandleMessageCreated(t.Context(), messageCreatedEvent(t, "conv-1", "u-1", "@Agent go", true)))
+
+				time.Sleep(15*time.Minute - time.Second)
+				synctest.Wait()
+				_, systemPosts := conv.snapshot()
+				require.Empty(t, systemPosts, "setup gets the whole window")
+
+				time.Sleep(time.Second)
+				synctest.Wait()
+				_, systemPosts = conv.snapshot()
+				require.Len(t, systemPosts, 1, "a harness that never answers fails the turn instead of hanging it")
+				assert.Contains(t, systemPosts[0].body, tt.want)
+			})
+		})
+	}
 }
 
 func TestHandleMessageCreated_PendingQuestion_PausesTheWindowUntilAnswered(t *testing.T) {

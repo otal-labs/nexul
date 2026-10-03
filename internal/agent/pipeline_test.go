@@ -140,9 +140,14 @@ type fakeTargets struct {
 	err    error
 	// override records the last ResolveTargetOverride call, so a test can assert an override reached the seam.
 	override *TargetOverride
+	hang     bool
 }
 
-func (f *fakeTargets) ResolveTarget(_ context.Context, _, _ string) (*pairing.ResolvedTarget, error) {
+func (f *fakeTargets) ResolveTarget(ctx context.Context, _, _ string) (*pairing.ResolvedTarget, error) {
+	if f.hang {
+		<-ctx.Done()
+		return nil, ctx.Err()
+	}
 	return f.target, f.err
 }
 
