@@ -38,5 +38,13 @@ export const TemplateBodyField = ({ kind, id, value, onChange }: TemplateBodyFie
         />
       </div>
     )}
+    {kind === "agent_prompt" && (
+      <div className="space-y-2">
+        <label htmlFor={id} className="text-sm font-medium">
+          Text
+        </label>
+        <Textarea id={id} value={value} onChange={(e) => onChange(e.target.value)} rows={8} placeholder="What the Agent reads at this point in every prompt" />
+      </div>
+    )}
   </>
 );
