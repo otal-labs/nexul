@@ -23,7 +23,7 @@ protocol-1 methods. The fake T3 server moves from `fake_test.go` to an importabl
 
 **Blocked by:** None — can start immediately
 
-**Status:** ready-for-agent
+**Status:** done
 
 Read first: `practices/go.md`, `practices/testing.md`, `practices/architecture.md`, the spec, and `research/protocol-2-wire.md`.
 

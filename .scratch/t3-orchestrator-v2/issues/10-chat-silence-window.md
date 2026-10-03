@@ -9,7 +9,7 @@ no-signal failure. This lets ticket 11 wait for handed-off work without being cu
 
 **Blocked by:** None — can start immediately
 
-**Status:** ready-for-agent
+**Status:** done
 
 Read first: `practices/go.md`, `practices/testing.md`, the spec.
 

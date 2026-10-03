@@ -1,7 +1,6 @@
 # 13 — Hand-off conversations travel with the Agent's reply
 
-**What to build:** Spec decisions 16–17, server side. **Needs the owner's OK on the column before it
-starts.**
+**What to build:** Spec decisions 16–17, server side. The owner approved the column on 2026-10-03.
 - `harness`: `Handoff{ID, Driver, Model, Title, Prompt, State, Reply string; Steps []Activity}` with
   State one of running, done, failed, interrupted, left_running; `Update.Handoff`. Protocol 1 never
   emits it.
@@ -28,9 +27,9 @@ starts.**
   off work carries handoffs: each helper's provider, model, title, state and final reply."; the
   `chat.message.created` catalog description mentions `handoffs`; regenerate the SDK.
 
-**Blocked by:** 07, 11, and the owner's OK on the column
+**Blocked by:** 07, 11
 
-**Status:** needs-info
+**Status:** ready-for-agent
 
 Read first: `practices/go.md`, `practices/testing.md`, `practices/architecture.md`, the spec, `research/protocol-2-wire.md` and `research/runs-nexul-did-not-start.md`. Also `practices/mcp.md`.
 
