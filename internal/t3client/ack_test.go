@@ -5,6 +5,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/otal-labs/nexul/internal/t3rpc/t3rpctest"
 )
 
 // The real server parks each stream on a latch that only an Ack opens
@@ -13,24 +15,24 @@ import (
 // after the first is withheld until the previous one is acked, so a client
 // that stops acking hangs this test instead of passing silently.
 func TestSubscription_AcksEveryChunkSoTheLatchedStreamKeepsFlowing(t *testing.T) {
-	f := newFakeT3(t)
-	c := f.connect(t, testCtx(t))
+	f := t3rpctest.New(t)
+	c := connectFake(t, testCtx(t), f)
 
 	sub, err := c.SubscribeThread(testCtx(t), "thread-1")
 	require.NoError(t, err)
-	reqID := waitFor(t, f.subscribed, "subscription")
+	reqID := t3rpctest.WaitFor(t, f.Subscribed, "subscription")
 
 	// Chunk 1: the initial thread snapshot (skipped by the client, but it
 	// must still be acked or nothing else ever arrives).
-	f.write(chunk(reqID, map[string]any{"kind": "snapshot", "snapshot": map[string]any{"turns": []any{}}}))
-	waitFor(t, f.acks, "ack for the snapshot chunk")
+	f.Write(t3rpctest.Chunk(reqID, map[string]any{"kind": "snapshot", "snapshot": map[string]any{"turns": []any{}}}))
+	t3rpctest.WaitFor(t, f.Acks, "ack for the snapshot chunk")
 
 	// Chunk 2: a streaming assistant snapshot, latched behind ack #1.
-	f.write(chunk(reqID, messageSent("thread-1", "m-1", "assistant", "hello", true)))
-	waitFor(t, f.acks, "ack for the streaming chunk")
+	f.Write(t3rpctest.Chunk(reqID, messageSent("thread-1", "m-1", "assistant", "hello", true)))
+	t3rpctest.WaitFor(t, f.Acks, "ack for the streaming chunk")
 
 	// Chunk 3: final text + settled session, latched behind ack #2.
-	f.write(chunk(reqID,
+	f.Write(t3rpctest.Chunk(reqID,
 		messageSent("thread-1", "m-1", "assistant", "hello there", false),
 		sessionSet("thread-1", "idle", nil, nil),
 	))

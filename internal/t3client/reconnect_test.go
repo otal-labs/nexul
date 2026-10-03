@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/otal-labs/nexul/internal/harness"
+	"github.com/otal-labs/nexul/internal/t3rpc/t3rpctest"
 )
 
 // sequenced stamps a stream item's event with T3's global event sequence, the cursor a resume replays after.
@@ -40,44 +41,44 @@ func snapshotItem(sequence int, messages, activities []map[string]any, status st
 var oldReply = map[string]any{"id": "m-old", "role": "assistant", "text": "an earlier turn's reply", "streaming": false, "updatedAt": "2026-10-02T10:00:00Z"}
 
 // startDroppableTurn runs a real Harness turn against the fake up to a half-streamed reply, then drops the socket.
-func startDroppableTurn(t *testing.T, f *fakeT3) <-chan harness.Update {
+func startDroppableTurn(t *testing.T, f *t3rpctest.Server) <-chan harness.Update {
 	t.Helper()
-	h := NewHarness(Options{HTTPClient: f.srv.Client(), RPCTimeout: 5 * time.Second})
-	result, err := h.StartTurn(testCtx(t), harness.Target{Session: f.session(), SessionID: "th-1"}, "title", testPrompts())
+	h := NewHarness(Options{HTTPClient: f.Client(), RPCTimeout: 5 * time.Second})
+	result, err := h.StartTurn(testCtx(t), harness.Target{Session: f.Session(), SessionID: "th-1"}, "title", testPrompts())
 	require.NoError(t, err)
-	subID := waitFor(t, f.subscribed, "first subscribeThread")
-	assert.NotContains(t, waitFor(t, f.subscribeIn, "first subscribe input"), "afterSequence", "a fresh watch starts from the snapshot")
-	waitFor(t, f.dispatched, "thread.turn.start dispatch")
+	subID := t3rpctest.WaitFor(t, f.Subscribed, "first subscribeThread")
+	assert.NotContains(t, t3rpctest.WaitFor(t, f.SubscribeIn, "first subscribe input"), "afterSequence", "a fresh watch starts from the snapshot")
+	t3rpctest.WaitFor(t, f.Dispatched, "thread.turn.start dispatch")
 
-	f.write(chunk(subID, snapshotItem(10, []map[string]any{oldReply}, nil, "ready")))
-	f.write(chunk(subID,
+	f.Write(t3rpctest.Chunk(subID, snapshotItem(10, []map[string]any{oldReply}, nil, "ready")))
+	f.Write(t3rpctest.Chunk(subID,
 		sequenced(11, sessionSet("th-1", "running", "turn-1", nil)),
 		sequenced(12, toolEvent(namedTool("act-a", "Read main.go", "2026-10-02T11:00:01Z"))),
 		sequenced(13, messageSent("th-1", "m1", "assistant", "Hel", true)),
 	))
-	assert.Equal(t, "Read main.go", waitFor(t, result.Updates, "first step").Activity.Summary)
-	assert.Equal(t, "Hel", waitFor(t, result.Updates, "first reply chunk").Snapshot.Text)
+	assert.Equal(t, "Read main.go", t3rpctest.WaitFor(t, result.Updates, "first step").Activity.Summary)
+	assert.Equal(t, "Hel", t3rpctest.WaitFor(t, result.Updates, "first reply chunk").Snapshot.Text)
 
-	f.drop()
-	note := waitFor(t, result.Updates, "reconnect note").Activity
+	f.Drop()
+	note := t3rpctest.WaitFor(t, result.Updates, "reconnect note").Activity
 	require.NotNil(t, note)
 	assert.Equal(t, harness.Activity{Kind: harness.ActivityNote, Summary: "Reconnecting to T3 Code…", At: note.At}, *note)
 	return result.Updates
 }
 
 func TestHarness_ConnectionDropsMidTurn_ResumesFromTheLastSequenceWithoutGapsOrDuplicates(t *testing.T) {
-	f := newFakeT3(t)
+	f := t3rpctest.New(t)
 	updates := startDroppableTurn(t, f)
 
-	subID := waitFor(t, f.subscribed, "resubscribe after the drop")
-	assert.Equal(t, map[string]any{"threadId": "th-1", "afterSequence": float64(13)}, waitFor(t, f.subscribeIn, "resume input"))
+	subID := t3rpctest.WaitFor(t, f.Subscribed, "resubscribe after the drop")
+	assert.Equal(t, map[string]any{"threadId": "th-1", "afterSequence": float64(13)}, t3rpctest.WaitFor(t, f.SubscribeIn, "resume input"))
 	// T3 replays what happened while away; the live tail may overlap the replay, as its own clients expect.
-	f.write(chunk(subID,
+	f.Write(t3rpctest.Chunk(subID,
 		sequenced(13, messageSent("th-1", "m1", "assistant", "Hel", true)),
 		sequenced(14, toolEvent(namedTool("act-b", "Bash go test", "2026-10-02T11:00:05Z"))),
 		sequenced(15, messageSent("th-1", "m1", "assistant", "lo", true)),
 	))
-	f.write(chunk(subID,
+	f.Write(t3rpctest.Chunk(subID,
 		sequenced(15, messageSent("th-1", "m1", "assistant", "lo", true)),
 		sequenced(16, messageSent("th-1", "m1", "assistant", "", false)),
 		sequenced(17, sessionSet("th-1", "ready", nil, nil)),
@@ -92,13 +93,13 @@ func TestHarness_ConnectionDropsMidTurn_ResumesFromTheLastSequenceWithoutGapsOrD
 }
 
 func TestHarness_TurnFinishedWhileDisconnected_TakesTheEndFromTheResumeSnapshot(t *testing.T) {
-	f := newFakeT3(t)
+	f := t3rpctest.New(t)
 	updates := startDroppableTurn(t, f)
 
-	subID := waitFor(t, f.subscribed, "resubscribe after the drop")
-	waitFor(t, f.subscribeIn, "resume input")
+	subID := t3rpctest.WaitFor(t, f.Subscribed, "resubscribe after the drop")
+	t3rpctest.WaitFor(t, f.SubscribeIn, "resume input")
 	// Too far behind to replay, T3 answers with the whole thread instead.
-	f.write(chunk(subID, snapshotItem(2000,
+	f.Write(t3rpctest.Chunk(subID, snapshotItem(2000,
 		[]map[string]any{
 			oldReply,
 			{"id": "m-user", "role": "user", "text": "do it", "streaming": false, "updatedAt": "2026-10-02T11:00:00Z"},

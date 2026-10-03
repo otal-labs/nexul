@@ -46,7 +46,7 @@ vuln:
 
 coverage:
 	go test -race -coverprofile=coverage.out -covermode=atomic ./...
-	LC_ALL=C awk 'BEGIN { print "mode: atomic" } /^mode:/ { next } $$1 ~ /\/cmd\/|\/testutil\/|\/sqlcgen\// { next } { print }' coverage.out > coverage.filtered.out
+	LC_ALL=C awk 'BEGIN { print "mode: atomic" } /^mode:/ { next } $$1 ~ /\/cmd\/|\/testutil\/|\/sqlcgen\/|\/t3rpctest\// { next } { print }' coverage.out > coverage.filtered.out
 	LC_ALL=C awk '/^mode:/ { next } { total += $$2; if ($$3 > 0) covered += $$2 } END { c = total ? covered * 100 / total : 100; printf "Coverage (exempt paths excluded): %.1f%% (threshold 80%%)\n", c; exit !(c >= 80) }' coverage.filtered.out
 	go tool cover -html=coverage.filtered.out -o coverage.html
 

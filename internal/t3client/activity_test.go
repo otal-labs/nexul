@@ -38,7 +38,7 @@ const (
 const capturedUserInput = `{"type":"thread.activity-appended","payload":{"threadId":"th-1","activity":{"id":"cd7ac269","createdAt":"2026-09-18T09:29:24.732Z","tone":"info","kind":"user-input.requested","summary":"User input requested","payload":{"requestId":"f33d416d-24b9","questions":[{"id":"How do you want to proceed?","header":"Nexul MCP down","question":"How do you want to proceed?","options":[{"label":"Proceed without Nexul tools","description":"Skip the ticket links."},{"label":"Stop and wait","description":"Do nothing yet."}],"multiSelect":false}]},"turnId":"0f302641"}}}`
 
 func TestEventUpdate_UserInputRequested_MapsToAQuestion(t *testing.T) {
-	c := &Client{log: slog.Default()}
+	c := &conn{log: slog.Default()}
 	var w turnWatch
 	update, terminal := c.eventUpdate(json.RawMessage(capturedUserInput), &w)
 	require.Nil(t, terminal, "a question is not terminal: the turn stays open until it is answered")
@@ -51,7 +51,7 @@ func TestEventUpdate_UserInputRequested_MapsToAQuestion(t *testing.T) {
 }
 
 func TestEventUpdate_UserInputRequested_WithoutRequestID_IsSkipped(t *testing.T) {
-	c := &Client{log: slog.Default()}
+	c := &conn{log: slog.Default()}
 	var w turnWatch
 	frame := strings.Replace(capturedUserInput, `"requestId":"f33d416d-24b9",`, "", 1)
 	update, terminal := c.eventUpdate(json.RawMessage(frame), &w)
@@ -61,7 +61,7 @@ func TestEventUpdate_UserInputRequested_WithoutRequestID_IsSkipped(t *testing.T)
 
 func activityOf(t *testing.T, frame string) *harness.Activity {
 	t.Helper()
-	c := &Client{log: slog.Default()}
+	c := &conn{log: slog.Default()}
 	var w turnWatch
 	update, terminal := c.eventUpdate(json.RawMessage(frame), &w)
 	require.Nil(t, terminal)

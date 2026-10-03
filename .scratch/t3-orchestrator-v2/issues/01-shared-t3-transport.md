@@ -27,7 +27,24 @@ protocol-1 methods. The fake T3 server moves from `fake_test.go` to an importabl
 
 Read first: `practices/go.md`, `practices/testing.md`, `practices/architecture.md`, the spec, and `research/protocol-2-wire.md`.
 
-- [ ] The same test scenarios and assertions pass; only receivers, constructors and imports change
-- [ ] Table test: descriptor and getConfig with protocol absent → 1, 1 → 1, 2 → 2; a 426 body naming 2 → `ProtocolMismatchError{Version: 2}`
-- [ ] `t3rpctest` is listed as coverage-exempt the way `testutil/` is
-- [ ] `make lint`, `make vet`, `make coverage` green
+- [x] The same test scenarios and assertions pass; only receivers, constructors and imports change
+- [x] Table test: descriptor and getConfig with protocol absent → 1, 1 → 1, 2 → 2; a 426 body naming 2 → `ProtocolMismatchError{Version: 2}`
+- [x] `t3rpctest` is listed as coverage-exempt the way `testutil/` is
+- [x] `make lint`, `make vet`, `make coverage` green
+
+## Comments
+
+- `t3rpc` API as built: `Connect`, `Options{HTTPClient, Logger, RPCTimeout, Query}`, `(*Conn).Call`, `Stream`,
+  `Done`, `Err`, `Config`, `Protocol`, `Providers`, `ListProjects`, `Close`; `Exchange` returns
+  `(bearerToken, expiresIn, err)`; `Describe` returns `Descriptor{ServerVersion, Protocol}`; `DefaultModel(providers,
+  providerID)` is a pure function over `Providers()`; `Snippet` bounds wire data in logs.
+- `Stream.Next` acks the chunk it returned last before it waits. It ends with `io.EOF` on a clean Exit, an
+  `ErrInvalid` error carrying the cause on a failed one, and an error wrapping `ErrConnectionLost` when the socket
+  dies. Ticket 05 needs the cause's `_tag` (a missing thread vs `LiveStreamBufferError`); today the cause is only in
+  the error text, so that ticket should add a typed exit error.
+- `*ProtocolMismatchError` is not `ErrRetryable`. Callers only branch on `ErrUnauthorized` or "any error" today, so
+  nothing changes until ticket 03 turns it into `MovedError` or `ErrProtocol`.
+- `t3rpctest.Server.Protocol` sets `orchestrationProtocolVersion` in the descriptor and in getConfig's
+  `environment`; from 2 it answers a dial without `orchestrationProtocol=<n>` with T3's 426 body. Single-use pairing
+  tokens and an exchange counter are not in the fake yet; ticket 02 needs them.
+- Left for ticket 03: ADR 0054 still says only `internal/t3client` names T3.

@@ -68,7 +68,7 @@ these win.
    through it. Today it is in-process channels; a broker adapter can replace
    it without touching a domain.
 5. Coverage is a floor (80%), not a goal. Test error paths first. Exempt:
-   `cmd/*`, generated code, wire types, `testutil/`, `components/ui/`.
+   `cmd/*`, generated code, wire types, `testutil/`, `t3rpctest/`, `components/ui/`.
 6. No barrels. No `index.ts` re-exports. Import by full path.
 7. Early return, no `else`, in Go and TypeScript alike.
 8. Structured logging: `slog` in Go, console with a propagated `trace_id` in
