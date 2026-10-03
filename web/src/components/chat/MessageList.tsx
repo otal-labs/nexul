@@ -96,7 +96,8 @@ export const MessageList = ({
                     <MessageScrollerItem
                       key={message.id}
                       messageId={message.id}
-                      className={continuation ? "pt-0.5" : "pt-5"}
+                      // The item's content-visibility clips paint to its box; the margin lets the Edit/Delete pill rise into the gap above.
+                      className={continuation ? "pt-0.5 [overflow-clip-margin:1rem]" : "pt-5"}
                       scrollAnchor={message.author_kind === "user" && (message.mentions ?? []).some((m) => m.kind === "agent")}
                     >
                       <MessageRow
