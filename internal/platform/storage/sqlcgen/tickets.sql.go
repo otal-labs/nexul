@@ -369,6 +369,38 @@ func (q *Queries) ListTicketLabelsForTickets(ctx context.Context, ids []string) 
 	return items, nil
 }
 
+const listTicketOpenPRNumbers = `-- name: ListTicketOpenPRNumbers :many
+SELECT DISTINCT pr_number FROM ticket_pr_links WHERE pr_owner = ? AND pr_repo = ? AND pr_state = 'open' ORDER BY pr_number
+`
+
+type ListTicketOpenPRNumbersParams struct {
+	PrOwner string
+	PrRepo  string
+}
+
+func (q *Queries) ListTicketOpenPRNumbers(ctx context.Context, arg ListTicketOpenPRNumbersParams) ([]int64, error) {
+	rows, err := q.db.QueryContext(ctx, listTicketOpenPRNumbers, arg.PrOwner, arg.PrRepo)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int64
+	for rows.Next() {
+		var pr_number int64
+		if err := rows.Scan(&pr_number); err != nil {
+			return nil, err
+		}
+		items = append(items, pr_number)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTicketPRLinks = `-- name: ListTicketPRLinks :many
 SELECT pr_owner, pr_repo, pr_number, pr_title, pr_sha, pr_state FROM ticket_pr_links WHERE ticket_id = ? ORDER BY linked_at
 `

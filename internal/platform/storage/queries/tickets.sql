@@ -54,6 +54,9 @@ SELECT ticket_id, pr_owner, pr_repo, pr_number, pr_title, pr_sha, pr_state FROM 
 -- name: ListTicketIDsByPR :many
 SELECT ticket_id FROM ticket_pr_links WHERE pr_owner = ? AND pr_repo = ? AND pr_number = ?;
 
+-- name: ListTicketOpenPRNumbers :many
+SELECT DISTINCT pr_number FROM ticket_pr_links WHERE pr_owner = ? AND pr_repo = ? AND pr_state = 'open' ORDER BY pr_number;
+
 -- name: UpdateTicketPRState :exec
 UPDATE ticket_pr_links SET pr_state = ? WHERE pr_owner = ? AND pr_repo = ? AND pr_number = ?;
 

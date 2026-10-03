@@ -22,6 +22,7 @@ type fakeHookHost struct {
 	created []gitprovider.WebhookConfig
 	deleted []string
 	calls   []string
+	prs     map[int]*gitprovider.PR
 }
 
 func (f *fakeHookHost) ListWebhooks(context.Context, string, string) ([]gitprovider.Webhook, error) {
@@ -41,11 +42,88 @@ func (f *fakeHookHost) DeleteWebhook(_ context.Context, _, _, id string) error {
 	return nil
 }
 
+func (f *fakeHookHost) GetPR(_ context.Context, _, _ string, number int) (*gitprovider.PR, error) {
+	f.calls = append(f.calls, "get")
+	pr, ok := f.prs[number]
+	if !ok {
+		return nil, errors.New("not found")
+	}
+	return pr, nil
+}
+
+// fakePublisher records published topics in order, failing every publish when err is set.
+type fakePublisher struct {
+	topics []string
+	events []gitprovider.PREvent
+	err    error
+}
+
+func (f *fakePublisher) Publish(_ context.Context, topic string, payload any) error {
+	if f.err != nil {
+		return f.err
+	}
+	f.topics = append(f.topics, topic)
+	f.events = append(f.events, payload.(gitprovider.PREvent))
+	return nil
+}
+
 func newTestRepoWebhooks(host *fakeHookHost, instanceURL string) repoWebhooks {
 	return repoWebhooks{
 		git:         host,
 		instanceURL: func(context.Context) (string, error) { return instanceURL, nil },
 		secret:      "derived",
+		openPRs:     func(context.Context, string, string) ([]int, error) { return nil, nil },
+		bus:         &fakePublisher{},
+	}
+}
+
+func TestRepoWebhooksCatchUp(t *testing.T) {
+	merged := &gitprovider.PR{Number: 1, State: gitprovider.PRStateClosed, Merged: true}
+	closed := &gitprovider.PR{Number: 2, State: gitprovider.PRStateClosed}
+	open := &gitprovider.PR{Number: 3, State: gitprovider.PRStateOpen}
+	tests := []struct {
+		name       string
+		open       []int
+		openErr    error
+		prs        map[int]*gitprovider.PR
+		publishErr error
+		wantErr    bool
+		wantTopics []string
+	}{
+		{"merged and closed PRs publish their outcome, open ones nothing", []int{1, 2, 3},
+			nil, map[int]*gitprovider.PR{1: merged, 2: closed, 3: open}, nil, false,
+			[]string{gitprovider.TopicPRMerged, gitprovider.TopicPRClosed}},
+		{"one unreadable PR still lets the rest catch up", []int{9, 1},
+			nil, map[int]*gitprovider.PR{1: merged}, nil, true, []string{gitprovider.TopicPRMerged}},
+		{"nothing linked open asks the provider nothing", nil, nil, nil, nil, false, nil},
+		{"listing failure asks the provider nothing", nil, errors.New("db"), nil, nil, true, nil},
+		{"publish failure is reported", []int{1}, nil, map[int]*gitprovider.PR{1: merged}, errors.New("bus"), true, nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			host := &fakeHookHost{prs: tt.prs}
+			pub := &fakePublisher{err: tt.publishErr}
+			h := newTestRepoWebhooks(host, "https://nexul.example")
+			h.openPRs = func(_ context.Context, owner, name string) ([]int, error) {
+				assert.Equal(t, "acme/app", owner+"/"+name)
+				return tt.open, tt.openErr
+			}
+			h.bus = pub
+
+			err := h.catchUp(t.Context(), "acme", "app")
+			if tt.wantErr {
+				require.Error(t, err)
+			}
+			if !tt.wantErr {
+				require.NoError(t, err)
+			}
+			assert.Equal(t, tt.wantTopics, pub.topics)
+			assert.Len(t, host.calls, len(tt.open))
+			for _, ev := range pub.events {
+				assert.Equal(t, "acme", ev.Owner)
+				assert.Equal(t, "app", ev.Repo)
+			}
+		})
 	}
 }
 
@@ -113,6 +191,17 @@ func TestHookedProjects_AddRepo_WebhookFailureStillAttaches(t *testing.T) {
 
 	require.NoError(t, p.AddRepo(t.Context(), "p1", workspace.RepoRef{Owner: "acme", Name: "app"}))
 	assert.Equal(t, []string{"attach", "list"}, host.calls)
+}
+
+func TestHookedProjects_AddRepo_CatchesUpAfterRegistering(t *testing.T) {
+	host := &fakeHookHost{prs: map[int]*gitprovider.PR{4: {Number: 4, State: gitprovider.PRStateClosed, Merged: true}}}
+	hooks := newTestRepoWebhooks(host, "https://nexul.example")
+	hooks.openPRs = func(context.Context, string, string) ([]int, error) { return []int{4}, nil }
+	p := hookedProjects{Repo: fakeProjectRepos{calls: &host.calls}, hooks: hooks}
+
+	require.NoError(t, p.AddRepo(t.Context(), "p1", workspace.RepoRef{Owner: "acme", Name: "app"}))
+	assert.Equal(t, []string{"attach", "list", "create", "get"}, host.calls)
+	assert.Equal(t, []string{gitprovider.TopicPRMerged}, hooks.bus.(*fakePublisher).topics)
 }
 
 func TestHookedProjects_AddRepo_FailedAttachRegistersNothing(t *testing.T) {

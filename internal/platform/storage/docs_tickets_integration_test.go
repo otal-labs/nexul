@@ -228,6 +228,40 @@ func TestIntegration_TicketDevStatusBatchesAcrossTickets(t *testing.T) {
 	assert.Equal(t, tickets.DevStatusCounts{}, got["does-not-exist"])
 }
 
+func TestIntegration_TicketsListOpenPRNumbers_OnlyOpenLinksOnThatRepo(t *testing.T) {
+	ctx := context.Background()
+	db := newDB(t)
+	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
+	svc := tickets.NewService(s.Tickets, s.Statuses, nil)
+
+	a, err := svc.Create(ctx, "project-general", "A", "", "", "")
+	require.NoError(t, err)
+	b, err := svc.Create(ctx, "project-general", "B", "", "", "")
+	require.NoError(t, err)
+	for _, link := range []struct {
+		id  string
+		ref tickets.PRRef
+	}{
+		{a.ID, tickets.PRRef{Owner: "acme", Repo: "app", Number: 3}},
+		{b.ID, tickets.PRRef{Owner: "acme", Repo: "app", Number: 3}},
+		{a.ID, tickets.PRRef{Owner: "acme", Repo: "app", Number: 1}},
+		{a.ID, tickets.PRRef{Owner: "acme", Repo: "app", Number: 2}},
+		{a.ID, tickets.PRRef{Owner: "acme", Repo: "web", Number: 5}},
+	} {
+		require.NoError(t, svc.LinkPR(ctx, link.id, link.ref))
+	}
+	_, err = s.Tickets.MarkPRState(ctx, "acme", "app", 2, tickets.PRStateMerged)
+	require.NoError(t, err)
+
+	got, err := s.Tickets.ListOpenPRNumbers(ctx, "acme", "app")
+	require.NoError(t, err)
+	assert.Equal(t, []int{1, 3}, got)
+
+	got, err = s.Tickets.ListOpenPRNumbers(ctx, "acme", "nothing-linked")
+	require.NoError(t, err)
+	assert.Empty(t, got)
+}
+
 // Acceptance criterion (ADR 0002): a ticket's manual position persists
 // within its (status, category) pair, and moving it to a new status or
 // category resets its position to the end of the new pair rather than

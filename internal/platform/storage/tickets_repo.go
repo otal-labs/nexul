@@ -314,6 +314,19 @@ func (r *TicketsRepo) ListIDsByPR(ctx context.Context, owner, repo string, numbe
 	return ids, nil
 }
 
+// ListOpenPRNumbers returns the repository's PR numbers some ticket still links as open.
+func (r *TicketsRepo) ListOpenPRNumbers(ctx context.Context, owner, repo string) ([]int, error) {
+	rows, err := r.q.ListTicketOpenPRNumbers(ctx, sqlcgen.ListTicketOpenPRNumbersParams{PrOwner: owner, PrRepo: repo})
+	if err != nil {
+		return nil, fmt.Errorf("list open linked prs for %s/%s: %w", owner, repo, err)
+	}
+	out := make([]int, 0, len(rows))
+	for _, n := range rows {
+		out = append(out, int(n))
+	}
+	return out, nil
+}
+
 func (r *TicketsRepo) SetFinishedAt(ctx context.Context, id string, at time.Time, evts ...eventbus.OutboxEvent) (bool, error) {
 	var set bool
 	err := r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {

@@ -51,9 +51,13 @@ func repoJSON(owner, name string) string {
 }
 
 func prJSON(number int, title, body, state string, merged bool) string {
+	mergedAt := "null"
+	if merged {
+		mergedAt = `"2026-10-03T22:12:53Z"`
+	}
 	return fmt.Sprintf(
-		`{"number":%d,"title":%q,"body":%q,"state":%q,"merged":%t,"head":{"ref":"feature/fix","sha":"abc123"},"base":{"ref":"main"},"user":{"login":"onik97"}}`,
-		number, title, body, state, merged,
+		`{"number":%d,"title":%q,"body":%q,"state":%q,"merged_at":%s,"head":{"ref":"feature/fix","sha":"abc123"},"base":{"ref":"main"},"user":{"login":"onik97"}}`,
+		number, title, body, state, mergedAt,
 	)
 }
 
@@ -156,6 +160,16 @@ func TestGetPR(t *testing.T) {
 		assert.Equal(t, "abc123", pr.HeadSHA)
 		assert.Equal(t, "main", pr.BaseBranch)
 		assert.Equal(t, "onik97", pr.Author)
+		assert.False(t, pr.Merged)
+	})
+	t.Run("merged PR reads as closed and merged", func(t *testing.T) {
+		c := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = fmt.Fprintln(w, prJSON(7, "Fix login", "", "closed", true)) // test server: write errors are irrelevant
+		}))
+		pr, err := c.GetPR(context.Background(), "acme", "app", 7)
+		require.NoError(t, err)
+		assert.Equal(t, gitprovider.PRStateClosed, pr.State)
+		assert.True(t, pr.Merged)
 	})
 	t.Run("not found maps to ErrNotFound", func(t *testing.T) {
 		c := newTestClient(t, errorHandler(http.StatusNotFound))

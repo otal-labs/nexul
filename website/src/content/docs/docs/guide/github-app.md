@@ -25,7 +25,7 @@ Go to GitHub → Settings → Developer settings → **GitHub Apps** → New Git
 | Callback URLs | `<instance>/auth/callback` (sign-in) and `<instance>/auth/connectors/github/callback` (connector). For local dev, add the same two paths under `http://localhost:5173` and `http://localhost`. |
 | Expire user authorization tokens | On — Nexul refreshes tokens itself. |
 | Request user authorization (OAuth) during installation | On. |
-| Webhook | Leave inactive. Nexul registers a webhook on each repository when it is attached to a project, and removes it when the repository is detached. |
+| Webhook | Leave inactive. Nexul registers a webhook on each repository when it is attached to a project, and removes it when the repository is detached. A pull request merged or closed while no webhook could reach Nexul catches up when the repository is attached and on every server start. |
 
 Set these repository permissions:
 
