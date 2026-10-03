@@ -941,8 +941,8 @@ func TestRunTurn_TicketThread_SecondMention_ReusesTheSessionWithOnlyWhatIsNew(t 
 	assert.NotContains(t, follow, "You are Agent", "the session already holds the instructions")
 	assert.NotContains(t, follow, "Standing rule body text.", "the session already holds the always-included memories")
 	assert.NotContains(t, follow, "Steps to reproduce", "the session already holds the ticket")
-	assert.True(t, strings.HasPrefix(follow, "New messages since your last turn:\n[2026-10-02 15:34] u-2: looks good\n[2026-10-02 15:35] u-1: @Agent second\n\n"),
-		"only what was posted after the first turn, without the Agent's own reply: %q", follow)
+	assert.Equal(t, "New messages since your last turn:\n[2026-10-02 15:34] u-2: looks good\n\nNew message from u-1 at 2026-10-02 15:40:\n@Agent second", follow,
+		"only what was posted after the first turn, without the Agent's own reply or the request twice")
 }
 
 func TestRunTurn_MentionWhileTheLastTurnRuns_SendsOnlyMessagesAfterThatTurnsPrompt(t *testing.T) {
@@ -971,7 +971,7 @@ func TestRunTurn_MentionWhileTheLastTurnRuns_SendsOnlyMessagesAfterThatTurnsProm
 	turns := h.started()
 	require.Len(t, turns, 2)
 	assert.Equal(t, "thread-1", turns[1].sessionID)
-	assert.True(t, strings.HasPrefix(turns[1].prompts.Incremental, "New messages since your last turn:\n[2026-10-02 15:33] u-2: while you work\n[2026-10-02 15:34] u-1: @Agent second\n\n"),
+	assert.True(t, strings.HasPrefix(turns[1].prompts.Incremental, "New messages since your last turn:\n[2026-10-02 15:33] u-2: while you work\n\nNew message from"),
 		"the running turn's messages were already sent: %q", turns[1].prompts.Incremental)
 }
 
@@ -991,6 +991,7 @@ func TestRunTurn_FollowUpOnALostSession_FullPromptRebuildsIt(t *testing.T) {
 	assert.Contains(t, full, "Standing rule body text.")
 	assert.Contains(t, full, "Ticket: Login broken\n\nSteps to reproduce")
 	assert.Contains(t, full, "Agent: first answer", "a replacement session never saw the Agent's own reply")
+	assert.Equal(t, 1, strings.Count(full, "@Agent second"), "the request is not repeated in the history")
 	conv.mu.Lock()
 	defer conv.mu.Unlock()
 	assert.Equal(t, "thread-2", conv.threads["conv-1"], "the next mention reuses the replacement session")

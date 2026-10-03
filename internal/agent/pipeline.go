@@ -424,7 +424,7 @@ func (s *Service) buildTurnPrompts(ctx context.Context, conv Conversation, ticke
 	if err != nil {
 		return harness.TurnPrompts{}, time.Time{}, err
 	}
-	all, others, sentThrough := s.contextMessages(ctx, history)
+	all, others, sentThrough := s.contextMessages(ctx, history, req)
 	budget := NewAttachmentBudget()
 	actorCtx := identity.WithActor(ctx, identity.Actor{ID: req.ViaUserID})
 	index, alwaysIncludedBlock, memoryAttachments := s.splitMemories(actorCtx, projectID, budget, req.MemoriesByReference)
@@ -447,19 +447,35 @@ func (s *Service) buildTurnPrompts(ctx context.Context, conv Conversation, ticke
 }
 
 // contextMessages resolves history; others drops the Agent's own replies, which a live session already holds, but
-// keeps notes, which were left over MCP rather than written in this session.
-func (s *Service) contextMessages(ctx context.Context, history []ConversationMessage) (all, others []ContextMessage, newest time.Time) {
-	for _, m := range history {
-		cm := ContextMessage{Author: s.authorLabel(ctx, m.AuthorID, m.AuthorKind), Body: noteBody(m), At: m.CreatedAt}
-		all = append(all, cm)
+// keeps notes, which were left over MCP rather than written in this session. The request's own message is left out,
+// since the request block already carries it.
+func (s *Service) contextMessages(ctx context.Context, history []ConversationMessage, req TurnRequest) (all, others []ContextMessage, newest time.Time) {
+	skip := requestMessageIndex(history, req)
+	for i, m := range history {
 		if m.CreatedAt.After(newest) {
 			newest = m.CreatedAt
 		}
+		if i == skip {
+			continue
+		}
+		cm := ContextMessage{Author: s.authorLabel(ctx, m.AuthorID, m.AuthorKind), Body: noteBody(m), At: m.CreatedAt}
+		all = append(all, cm)
 		if m.AuthorKind != "agent" || m.Note != nil {
 			others = append(others, cm)
 		}
 	}
 	return all, others, newest
+}
+
+// requestMessageIndex finds the newest message that is the request itself, or -1 when the request was never posted.
+func requestMessageIndex(history []ConversationMessage, req TurnRequest) int {
+	for i := len(history) - 1; i >= 0; i-- {
+		m := history[i]
+		if m.AuthorKind == "user" && m.AuthorID == req.ViaUserID && m.Body == req.RequestBody {
+			return i
+		}
+	}
+	return -1
 }
 
 // noteBody follows a note's one-liner with its file, so the turn reads the note rather than a pointer to it.
