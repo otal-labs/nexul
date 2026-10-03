@@ -298,9 +298,11 @@ func (h *Harness) reconnect(ctx context.Context, s harness.Session, threadID str
 	deadline := time.Now().Add(reconnectWindow)
 	backoff := reconnectMinBackoff
 	for {
+		// Read before resuming: once the watch resumes, its subscription goroutine owns lastSeq.
+		after := w.lastSeq
 		client, sub, err := h.resume(ctx, deadline, s, threadID, w)
 		if err == nil {
-			logger(h.Options).Info("t3client: turn resumed after a dropped connection", "thread", threadID, "after_sequence", w.lastSeq)
+			logger(h.Options).Info("t3client: turn resumed after a dropped connection", "thread", threadID, "after_sequence", after)
 			return client, sub
 		}
 		logger(h.Options).Warn("t3client: reconnect failed", "thread", threadID, "error", err)
