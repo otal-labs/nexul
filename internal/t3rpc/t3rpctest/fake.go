@@ -52,12 +52,10 @@ type Server struct {
 	// CommandCauses fails only the dispatchCommands of the command types it names, and the image upload when it names
 	// assets.persistChatAttachments; set it before connect.
 	CommandCauses map[string]any
-	// Projections is what orchestration.getThreadProjection answers per thread id, unless ProjectionCause fails every
-	// read; a thread it does not name fails the way T3 fails one it cannot load. Set it before connect.
+	// Projections answers getThreadProjection per thread id; an unnamed thread fails as T3 fails one it cannot load.
 	Projections     map[string]any
 	ProjectionCause any
-	// AfterCommand replaces Projections entries once a command of the named type lands, as the events T3 emits for it
-	// would. Set it before connect.
+	// AfterCommand swaps in Projections entries once a command of the named type lands, as T3's events for it would.
 	AfterCommand map[string]map[string]any
 
 	connMu sync.Mutex
