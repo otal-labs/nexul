@@ -1,6 +1,10 @@
 package pairing
 
-import "time"
+import (
+	"time"
+
+	"github.com/otal-labs/nexul/internal/harness"
+)
 
 // Topics published by the pairing domain.
 const (
@@ -15,13 +19,14 @@ const (
 	TopicSetupFinished       = "computer.setup_finished"
 	// TopicSetupTurnActivity is ephemeral: the running turn's latest step, never written to the outbox.
 	TopicSetupTurnActivity = "computer.setup_turn_activity"
+	TopicHarnessSwitched   = "computer.harness_switched"
 )
 
 // Topics returns every topic the pairing domain publishes.
 func Topics() []string {
 	return []string{
 		TopicComputerPaired, TopicSetupConfirmed, TopicSetupUnconfirmed, TopicTunnelCreated, TopicTunnelRemoved, TopicTunnelStatusChanged,
-		TopicSetupTurnChanged, TopicSetupFinished, TopicSetupTurnActivity,
+		TopicSetupTurnChanged, TopicSetupFinished, TopicSetupTurnActivity, TopicHarnessSwitched,
 	}
 }
 
@@ -58,6 +63,15 @@ type ComputerPairedEvent struct {
 	ServerURL      string    `json:"server_url"`
 	HarnessVersion string    `json:"harness_version,omitempty"`
 	TokenExpiresAt time.Time `json:"token_expires_at"`
+}
+
+// HarnessSwitchedEvent is a computer's stored kind moving forward, because its harness moved on (ADR 0113).
+type HarnessSwitchedEvent struct {
+	ComputerID     string       `json:"computer_id"`
+	UserID         string       `json:"user_id"`
+	FromKind       harness.Kind `json:"from_kind"`
+	ToKind         harness.Kind `json:"to_kind"`
+	HarnessVersion string       `json:"harness_version"`
 }
 
 // SetupTurnChangedEvent is one provider's setup turn starting, confirming, or failing, with its short status line.

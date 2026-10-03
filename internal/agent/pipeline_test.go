@@ -404,7 +404,7 @@ func TestRunTurn_ReplyPersistFails_ClearsTheBubble(t *testing.T) {
 
 func TestRunTurn_ResolveTargetNotConfigured_PostsSystemReply(t *testing.T) {
 	cases := []struct {
-		err  *pairing.NotConfiguredError
+		err  error
 		want string
 	}{
 		{&pairing.NotConfiguredError{Reason: pairing.ReasonUnpaired}, "connect one in Settings"},
@@ -419,9 +419,13 @@ func TestRunTurn_ResolveTargetNotConfigured_PostsSystemReply(t *testing.T) {
 			&pairing.NotConfiguredError{Reason: pairing.ReasonOffline, Computer: "Onik's laptop"},
 			"@Agent can't reach Onik's laptop — is T3 Code running there?",
 		},
+		{
+			harness.ProtocolRefusal("T3 Code on Onik's laptop went back to its old orchestrator; Nexul only moves forward. Update T3 Code there."),
+			"T3 Code on Onik's laptop went back to its old orchestrator; Nexul only moves forward. Update T3 Code there.",
+		},
 	}
 	for _, tc := range cases {
-		t.Run(string(tc.err.Reason), func(t *testing.T) {
+		t.Run(tc.want, func(t *testing.T) {
 			conv := newFakeConversations(Conversation{ID: "conv-1"})
 			client := &fakeHarness{}
 			svc := NewService(Config{

@@ -195,7 +195,9 @@ Filter bar. A horizontal row of pill controls directly under the page header:
 a search field, then filter pills (`h-9 rounded-md border border-border
 bg-card px-3 text-sm`, with a chevron if it opens a popover), an `×`-removable
 chip per active filter, and an optional saved-view or sort control trailing
-right. `BoardFilterBar` and `FilterChipRow` in `web/src/components/board/` are
+right. The board's bar centres its search field with a labelled Create button
+beside it, the filters on its left, and stacks the two under each other when
+the board is narrow. `BoardFilterBar` and `FilterChipRow` in `web/src/components/board/` are
 the reference; every list page converges on this shape. A filter popover is a
 `bg-popover` panel with a checkable row list (icon, label, checkmark) anchored
 below its trigger.

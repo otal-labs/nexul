@@ -1,14 +1,16 @@
-import { InterviewLengthMeter } from "@/components/memory/InterviewLengthMeter";
+import { errorMessage } from "@/api/client";
 import { Textarea } from "@/components/ui/textarea";
 
 interface InterviewTemplateFieldProps {
   id: string;
   value: string;
   onChange: (value: string) => void;
+  questionCount: number;
+  error: Error | null;
   readOnly?: boolean;
 }
 
-export const InterviewTemplateField = ({ id, value, onChange, readOnly = false }: InterviewTemplateFieldProps) => (
+export const InterviewTemplateField = ({ id, value, onChange, questionCount, error, readOnly = false }: InterviewTemplateFieldProps) => (
   <div className="space-y-3">
     <label htmlFor={id} className="block text-xs font-medium text-muted-foreground">
       Template (markdown)
@@ -22,6 +24,13 @@ export const InterviewTemplateField = ({ id, value, onChange, readOnly = false }
       spellCheck={false}
       className="font-mono text-xs"
     />
-    <InterviewLengthMeter length={value.length} />
+    <p className="font-mono text-xs tabular-nums text-muted-foreground">
+      {questionCount} {questionCount === 1 ? "question" : "questions"}
+    </p>
+    {error && (
+      <p role="alert" className="font-mono text-xs text-destructive">
+        {errorMessage(error)}
+      </p>
+    )}
   </div>
 );

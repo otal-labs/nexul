@@ -382,3 +382,57 @@ func TestVersion_ProbesWellKnownEndpoint(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "0.0.34", version)
 }
+
+func TestSessionCalls_T3RefusesTheProtocol1Dial_MovesOnOrRefuses(t *testing.T) {
+	t.Parallel()
+	calls := []struct {
+		name string
+		call func(ctx context.Context, h *Harness, s harness.Session) error
+	}{
+		{"ListProjects", func(ctx context.Context, h *Harness, s harness.Session) error {
+			_, err := h.ListProjects(ctx, s)
+			return err
+		}},
+		{"ListProviders", func(ctx context.Context, h *Harness, s harness.Session) error {
+			_, err := h.ListProviders(ctx, s)
+			return err
+		}},
+		{"Hold", func(ctx context.Context, h *Harness, s harness.Session) error {
+			_, err := h.Hold(ctx, s)
+			return err
+		}},
+		{"Settle", func(ctx context.Context, h *Harness, s harness.Session) error {
+			return h.Settle(ctx, harness.Target{Session: s, SessionID: "th-1"})
+		}},
+	}
+	refusals := []struct {
+		name     string
+		protocol int
+		check    func(t *testing.T, err error)
+	}{
+		{"426 naming protocol 2 hands the call to the protocol-2 client", 2, func(t *testing.T, err error) {
+			var moved *harness.MovedError
+			require.ErrorAs(t, err, &moved)
+			assert.Equal(t, harness.KindT3CodeV2, moved.To)
+		}},
+		{"426 naming protocol 3 is past every client Nexul has", 3, func(t *testing.T, err error) {
+			require.ErrorIs(t, err, harness.ErrProtocol)
+			assert.ErrorContains(t, err, "T3 Code on Onik's laptop needs a newer Nexul.")
+			assert.NotErrorIs(t, err, apperrs.ErrRetryable)
+		}},
+	}
+	for _, r := range refusals {
+		for _, c := range calls {
+			t.Run(r.name+"/"+c.name, func(t *testing.T) {
+				t.Parallel()
+				f := t3rpctest.New(t)
+				f.Protocol = r.protocol
+				s := f.Session()
+				s.Name = "Onik's laptop"
+				h := NewHarness(Options{HTTPClient: f.Client(), RPCTimeout: 5 * time.Second})
+
+				r.check(t, c.call(testCtx(t), h, s))
+			})
+		}
+	}
+}

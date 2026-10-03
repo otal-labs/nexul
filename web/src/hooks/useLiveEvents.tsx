@@ -19,7 +19,7 @@ import { getProjectAccessKey } from "@/hooks/ProjectHooks";
 import { followWorkspaceUpdate, getMyRoleKey, getWorkspacesKey } from "@/hooks/WorkspaceHooks";
 import { getTeamKey } from "@/models/Team";
 import type { MyWorkspaceInfo } from "@/models/Permission";
-import { getMemoriesKey, getMemoryKey, getMemoryVersionsKey } from "@/hooks/MemoryHooks";
+import { getInterviewAnswersKey, getMemoriesKey, getMemoryKey, getMemoryVersionsKey } from "@/hooks/MemoryHooks";
 import { getNotificationsKey, getUnreadCountKey } from "@/hooks/NotificationHooks";
 import { getMeKey, getPATsKey, getSessionsKey } from "@/hooks/AuthHooks";
 import { getAttachmentsKey } from "@/hooks/AttachmentHooks";
@@ -92,6 +92,8 @@ const pushTopics: Record<string, string[]> = {
   "computer.setup_finished": [getComputerSetupKey, getHarnessProvidersKey],
   // A computer row goes from pairing in progress to paired, or appears and leaves, without a refresh.
   "computer.paired": [getComputersKey, getHarnessResolveKey],
+  // A computer whose T3 Code moved to its new orchestrator shows its new version without a refresh.
+  "computer.harness_switched": [getComputersKey, getHarnessResolveKey],
   "computer.tunnel_created": [getComputersKey],
   "computer.tunnel_removed": [getComputersKey, getHarnessResolveKey],
   // A computer row's MCP token line follows a mint or revoke from setup, the row, or an MCP tool.
@@ -144,6 +146,8 @@ const pushTopics: Record<string, string[]> = {
   "memory.created": [getMemoriesKey],
   "memory.updated": [getMemoriesKey, getMemoryKey, getMemoryVersionsKey],
   "memory.deleted": [getMemoriesKey, getMemoryKey],
+  "interview_answer.saved": [getInterviewAnswersKey],
+  "interview_answer.cleared": [getInterviewAnswersKey],
   // The Team list and a person's detail follow account and membership changes made anywhere, MCP included.
   "account.admitted": [getTeamKey],
   "account.disabled": [getTeamKey],

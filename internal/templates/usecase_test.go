@@ -399,3 +399,29 @@ func TestHandler_GetBelowTheInstance_ReadsThatLocation(t *testing.T) {
 func TestTopics(t *testing.T) {
 	assert.Equal(t, []string{"instance_template.updated"}, Topics())
 }
+
+func TestService_QuestionsKind_ParsesEveryRead(t *testing.T) {
+	layer := &fakeLayer{follows: true, texts: map[string]string{}}
+	svc := NewService(newFakeRepo(), fakeGate{"admin": true}, Kind{
+		Name: "interview", Below: ScopeWorkspace, Follows: true, Defaults: []Default{{Name: "Interview", Body: "a\nb"}}, Layer: layer,
+		Questions: func(body string) any { return strings.Split(body, "\n") },
+	})
+	ws := Location{Scope: ScopeWorkspace, WorkspaceID: "ws-1"}
+
+	got, err := svc.Get(as("admin"), "interview", "", Instance)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"a", "b"}, got.Questions)
+	got, err = svc.Update(as("admin"), "interview", "", Instance, "c")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"c"}, got.Questions)
+	got, err = svc.Update(as("admin"), "interview", "", ws, "x\ny")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"x", "y"}, got.Questions)
+	list, err := svc.List(as("admin"))
+	require.NoError(t, err)
+	assert.Equal(t, []string{"c"}, list[0].Questions)
+
+	plain, err := newFixture().svc.Get(as("admin"), "note", "", Instance)
+	require.NoError(t, err)
+	assert.Nil(t, plain.Questions)
+}

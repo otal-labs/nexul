@@ -215,13 +215,12 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	harnessHTTP := &http.Client{Transport: &cloudflare.AccessTransport{
 		Credentials: computerTunnelAccess{hosts: store.Pairing, dns: dnsSvc}.Credentials,
 	}}
-	harnessOpts := t3rpc.Options{Logger: logger, HTTPClient: harnessHTTP}
-	harnesses := harness.Registry{
-		harness.KindT3Code:   t3client.NewHarness(harnessOpts),
-		harness.KindT3CodeV2: t3clientv2.NewHarness(harnessOpts),
-	}
+	var pairingSvc *pairing.Service // constructed below; a harness only moves a computer once requests start flowing
+	harnesses := harnessRegistry(t3rpc.Options{Logger: logger, HTTPClient: harnessHTTP}, func(ctx context.Context, s harness.Session, to harness.Kind) error {
+		return pairingSvc.SwitchHarness(ctx, s, to)
+	})
 	var presenceKeeper *presence.Keeper // constructed below; pairing only fires the callback after requests start flowing
-	pairingSvc := pairing.NewService(pairing.Config{
+	pairingSvc = pairing.NewService(pairing.Config{
 		Repo:               store.Pairing,
 		Harnesses:          harnesses,
 		EncryptionKey:      encKey,
@@ -371,6 +370,15 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 
 		notifSvc:   notifSvc,
 		pushSender: pushSender,
+	}
+}
+
+// harnessRegistry holds one client per kind; a protocol-1 computer whose T3 Code moved on switches through moved (ADR 0113).
+func harnessRegistry(opts t3rpc.Options, moved func(ctx context.Context, s harness.Session, to harness.Kind) error) harness.Registry {
+	v2 := t3clientv2.NewHarness(opts)
+	return harness.Registry{
+		harness.KindT3Code:   harness.Forward(t3client.NewHarness(opts), v2, moved),
+		harness.KindT3CodeV2: v2,
 	}
 }
 

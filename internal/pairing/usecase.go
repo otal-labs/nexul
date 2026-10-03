@@ -202,7 +202,7 @@ func (s *Service) PairComputer(ctx context.Context, userID, computerID, secret s
 	return s.pair(ctx, *existing, existing.address(), secret)
 }
 
-// Repair re-runs the pairing flow against an existing computer row, updating it in place; the kind never changes.
+// Repair re-runs the pairing flow against an existing computer row, updating it in place; the kind only moves forward.
 func (s *Service) Repair(ctx context.Context, userID, id, name, serverURL, secret string) (*Computer, error) {
 	existing, err := s.ownComputer(ctx, userID, id)
 	if err != nil {
@@ -240,12 +240,20 @@ func (s *Service) pair(ctx context.Context, base Computer, serverURL, secret str
 	if err != nil {
 		return nil, pairFailure(serverURL, err)
 	}
+	kind := base.Kind
+	if result.Kind != "" {
+		kind = result.Kind
+	}
+	if base.ID != "" && kindStep(kind) < kindStep(base.Kind) {
+		return nil, fmt.Errorf("%w: %s already moved forward to a newer harness protocol, and Nexul never moves a computer back", apperrs.ErrConflict, name)
+	}
 	encrypted, err := crypto.Encrypt(s.key, []byte(result.BearerToken))
 	if err != nil {
 		return nil, fmt.Errorf("encrypt bearer token: %w", err)
 	}
 	now := s.now().UTC()
 	computer := base
+	computer.Kind = kind
 	computer.Name = name
 	computer.ServerURL = serverURL
 	computer.BearerToken = encrypted
@@ -256,10 +264,15 @@ func (s *Service) pair(ctx context.Context, base Computer, serverURL, secret str
 		computer.ID = ids.New()
 		computer.CreatedAt = now
 	}
-	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicComputerPaired, Payload: ComputerPairedEvent{
+	evts := []eventbus.OutboxEvent{{ID: ids.New(), Topic: TopicComputerPaired, Payload: ComputerPairedEvent{
 		ComputerID: computer.ID, UserID: computer.UserID, ServerURL: serverURL, HarnessVersion: result.Version, TokenExpiresAt: computer.TokenExpiresAt,
-	}}
-	if err := s.repo.SaveComputer(ctx, computer, evt); err != nil {
+	}}}
+	if base.ID != "" && kindStep(kind) > kindStep(base.Kind) {
+		evts = append(evts, eventbus.OutboxEvent{ID: ids.New(), Topic: TopicHarnessSwitched, Payload: HarnessSwitchedEvent{
+			ComputerID: computer.ID, UserID: computer.UserID, FromKind: base.Kind, ToKind: kind, HarnessVersion: result.Version,
+		}})
+	}
+	if err := s.repo.SaveComputer(ctx, computer, evts...); err != nil {
 		return nil, fmt.Errorf("save computer: %w", err)
 	}
 	s.notifyComputersChanged(computer.UserID)
@@ -267,12 +280,48 @@ func (s *Service) pair(ctx context.Context, base Computer, serverURL, secret str
 	return &computer, nil
 }
 
-// pairFailure blames the address when the harness could not be reached, and the token when it answered and refused.
+// pairFailure blames the address for a harness it could not reach or follow, and the token when the harness refused it.
 func pairFailure(serverURL string, err error) error {
+	if errors.Is(err, harness.ErrProtocol) {
+		return &FieldError{Field: "server_url", Err: err}
+	}
 	if errors.Is(err, apperrs.ErrRetryable) {
 		return &FieldError{Field: "server_url", Err: fmt.Errorf("couldn't reach the harness at %s: %w", serverURL, err)}
 	}
 	return &FieldError{Field: "token", Err: fmt.Errorf("the harness refused this token, run t3 pair for a fresh one: %w", err)}
+}
+
+// kindOrder is the order a computer's kind moves in, one step at a time and never back (ADR 0113).
+var kindOrder = []harness.Kind{harness.KindT3Code, harness.KindT3CodeV2}
+
+func kindStep(kind harness.Kind) int {
+	return slices.Index(kindOrder, kind)
+}
+
+// SwitchHarness is harness.Forward's moved callback: sess's computer moves up to kind to, once (ADR 0113).
+func (s *Service) SwitchHarness(ctx context.Context, sess harness.Session, to harness.Kind) error {
+	step := kindStep(to)
+	if step < 1 {
+		return fmt.Errorf("%w: no computer moves forward to harness kind %q", apperrs.ErrInvalid, to)
+	}
+	client, err := s.client(to)
+	if err != nil {
+		return err
+	}
+	version, err := client.Version(ctx, sess.ServerURL)
+	if err != nil {
+		return err
+	}
+	from := kindOrder[step-1]
+	evt := func(userID string) eventbus.OutboxEvent {
+		return eventbus.OutboxEvent{ID: ids.New(), Topic: TopicHarnessSwitched, Payload: HarnessSwitchedEvent{
+			ComputerID: sess.ComputerID, UserID: userID, FromKind: from, ToKind: to, HarnessVersion: version,
+		}}
+	}
+	if err := s.repo.SwitchComputerKind(ctx, sess.ComputerID, from, to, version, s.now().UTC(), evt); err != nil {
+		return fmt.Errorf("switch computer %s to %s: %w", sess.ComputerID, to, err)
+	}
+	return nil
 }
 
 // ActiveSessions hands out plaintext bearer tokens for the presence keeper; never expose on a response.
@@ -533,9 +582,18 @@ func (s *Service) requireSetup(ctx context.Context, target *ResolvedTarget) (*Re
 		return nil, err
 	}
 	providers, err := client.ListProviders(ctx, target.Computer.Session())
+	if errors.Is(err, harness.ErrProtocol) {
+		return nil, err
+	}
 	if err != nil {
 		return nil, &NotConfiguredError{Reason: ReasonOffline, Computer: target.Computer.Name, ComputerID: target.Computer.ID, Err: err}
 	}
+	// The call may have moved the computer to a newer kind; the turn and its version-drift check read what it holds now.
+	stored, err := s.repo.GetComputer(ctx, target.Computer.UserID, target.Computer.ID)
+	if err != nil {
+		return nil, fmt.Errorf("get computer %s: %w", target.Computer.ID, err)
+	}
+	target.Computer.Kind, target.Computer.HarnessVersion = stored.Kind, stored.HarnessVersion
 	provider, err := pickProvider(providers, target.Provider)
 	if err != nil {
 		return nil, err

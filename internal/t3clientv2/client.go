@@ -53,7 +53,7 @@ func (h *Harness) Version(ctx context.Context, serverURL string) (string, error)
 	if err != nil {
 		return "", fmt.Errorf("read T3 version: %w", err)
 	}
-	if err := refusal(hostOf(serverURL), d.Protocol); err != nil {
+	if err := refusal(t3rpc.Host(serverURL), d.Protocol); err != nil {
 		return "", err
 	}
 	return d.ServerVersion, nil
@@ -132,12 +132,12 @@ func (h *Harness) Settle(ctx context.Context, target harness.Target) (err error)
 func (h *Harness) connect(ctx context.Context, s harness.Session) (*t3rpc.Conn, error) {
 	opts := h.Options
 	opts.Query = url.Values{"orchestrationProtocol": {strconv.Itoa(protocol)}, "clientAppVersion": {"nexul/" + version.Version}}
-	where := computerName(s)
+	where := t3rpc.ComputerName(s)
 	c, err := t3rpc.Connect(ctx, s, opts)
 	var mismatch *t3rpc.ProtocolMismatchError
 	if errors.As(err, &mismatch) {
 		// Only a server past protocol 2 answers a protocol-2 dial with 426 Upgrade Required.
-		return nil, newerNeeded(where)
+		return nil, t3rpc.NewerNeeded(where)
 	}
 	if err != nil {
 		return nil, err
@@ -152,32 +152,12 @@ func (h *Harness) connect(ctx context.Context, s harness.Session) (*t3rpc.Conn, 
 // refusal is the ErrProtocol for a T3 Code on where speaking protocol p, nil when p is the one this client speaks.
 func refusal(where string, p int) error {
 	if p > protocol {
-		return newerNeeded(where)
+		return t3rpc.NewerNeeded(where)
 	}
 	if p < protocol {
 		return harness.ProtocolRefusal(fmt.Sprintf("T3 Code on %s went back to its old orchestrator; Nexul only moves forward. Update T3 Code there.", where))
 	}
 	return nil
-}
-
-func newerNeeded(where string) error {
-	return harness.ProtocolRefusal(fmt.Sprintf("T3 Code on %s needs a newer Nexul.", where))
-}
-
-// computerName names a session's computer for a refusal, its server's host when it has no name.
-func computerName(s harness.Session) string {
-	if s.Name != "" {
-		return s.Name
-	}
-	return hostOf(s.ServerURL)
-}
-
-func hostOf(serverURL string) string {
-	u, err := url.Parse(serverURL)
-	if err != nil || u.Host == "" {
-		return serverURL
-	}
-	return u.Host
 }
 
 var _ harness.Client = (*Harness)(nil)

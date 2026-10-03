@@ -32,7 +32,7 @@ type memoryCreateIn struct {
 	WhenToUse      string `json:"when_to_use,omitempty" jsonschema:"One short line saying when the memory applies, for example use this if you are writing React code."`
 	Body           string `json:"body,omitempty" jsonschema:"The memory's body as markdown."`
 	AlwaysIncluded bool   `json:"always_included,omitzero" jsonschema:"true names the memory, to read first, in every agent turn in its project. Defaults to false."`
-	Kind           string `json:"kind,omitempty" jsonschema:"Omit for an ordinary memory. decisions_log creates the project's decisions log; interview, sent with project_id alone, returns the project's interview memory, creating it from the Interview template the first time."`
+	Kind           string `json:"kind,omitempty" jsonschema:"Omit for an ordinary memory. decisions_log creates the project's decisions log; interview, sent with project_id alone, returns the project's interview memory, creating it empty the first time."`
 	CloneFromID    string `json:"clone_from_id,omitempty" jsonschema:"The id of a memory to copy, from memory_list, with its attachments, into project_id instead of writing a new one."`
 }
 
@@ -44,6 +44,15 @@ type memoryUpdateIn struct {
 	AlwaysIncluded  *bool   `json:"always_included,omitempty" jsonschema:"Whether every agent turn in its project names the memory to read first. Omit to keep the current setting."`
 	Footer          *bool   `json:"footer,omitempty" jsonschema:"Whether the memory sits in the Footer folder: a play run names it last, to read once its work is done and conclude the run, for example which column the ticket belongs in. Ordinary memories only. Omit to keep the current setting."`
 	RevertToVersion *int    `json:"revert_to_version,omitempty" jsonschema:"Restore this version's title, when-to-use, body, and flag as a new version. Send it without the other fields."`
+
+	Answers []answerIn `json:"answers,omitempty" jsonschema:"Interview memory only: answers to the Interview template's questions, each replacing that question's stored answer. Follow-up rounds are recorded by the run, not here."`
+}
+
+type answerIn struct {
+	Question string   `json:"question" jsonschema:"The question's text exactly as the interview memory's questions list it, for example Testing."`
+	Selected []string `json:"selected,omitempty" jsonschema:"The picked options' labels."`
+	Text     string   `json:"text,omitempty" jsonschema:"A free-text answer, alone or beside the picked options."`
+	Skip     bool     `json:"skip,omitzero" jsonschema:"true skips the question instead of answering it; omit selected and text."`
 }
 
 type memoryDeleteIn struct {
@@ -77,6 +86,22 @@ type memoryResult struct {
 	UpdatedBy      string              `json:"updated_by"`
 	UpdatedAt      time.Time           `json:"updated_at"`
 	Versions       []memoryVersionInfo `json:"versions,omitempty"`
+	Questions      []Question          `json:"questions,omitempty"`
+	Answers        []answerResult      `json:"answers,omitzero"`
+}
+
+// answerResult is one stored interview answer; options and why are set on follow-ups only.
+type answerResult struct {
+	Round       int            `json:"round"`
+	Question    string         `json:"question"`
+	Options     []AnswerOption `json:"options,omitempty"`
+	MultiSelect bool           `json:"multi_select,omitempty"`
+	Why         string         `json:"why,omitempty"`
+	Selected    []string       `json:"selected"`
+	Text        string         `json:"text"`
+	Skipped     bool           `json:"skipped"`
+	AnsweredBy  string         `json:"answered_by"`
+	AnsweredAt  time.Time      `json:"answered_at"`
 }
 
 type memoryVersionInfo struct {
@@ -117,8 +142,9 @@ func memoryListTool(s *Service) mcptool.Tool {
 
 func memoryGetTool(s *Service) mcptool.Tool {
 	return mcptool.New("memory_get", "Get memory",
-		"Returns one memory with its full body as markdown and its newest 50 versions (number, title, author, and time). "+
+		"Returns one memory with its full body as markdown and its newest 50 versions (number, title, author, and time); the interview memory also carries the questions of the workspace's Interview template. "+
 			"With version it returns that version's title, when-to-use, body, and flag instead, and current_version says which is live. "+
+			"For the interview memory, answers holds the project's stored answers, round 0 for the template's questions and 1 and up for follow-up rounds. "+
 			"Use memory_list to find ids, and memory_update with revert_to_version to restore an old version.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in memoryGetIn) (any, error) {
@@ -130,7 +156,7 @@ func memoryGetTool(s *Service) mcptool.Tool {
 			if err != nil {
 				return nil, err
 			}
-			out, err := toMemoryResult(m)
+			out, err := memoryOut(ctx, s, m)
 			if err != nil {
 				return nil, err
 			}
@@ -151,7 +177,7 @@ func memoryCreateTool(s *Service) mcptool.Tool {
 		"Saves a note for agents in a project, or copies one into it with clone_from_id; every memory belongs to one project. "+
 			"Save a durable fact worth remembering; if a memory already covers the ground, change it with memory_update instead. "+
 			"kind decisions_log creates the project's decisions log (one per project, never sent every turn), and kind interview returns the project's interview memory, "+
-			"creating it from the Interview template the first time. "+
+			"creating it empty the first time, with the questions of the workspace's Interview template. "+
 			"Copying needs memories:clone on the source and memories:write at the destination. "+
 			"Returns the memory with its body as markdown.",
 		mcptool.Hints{Additive: true, Local: true},
@@ -160,7 +186,7 @@ func memoryCreateTool(s *Service) mcptool.Tool {
 			if err != nil {
 				return nil, err
 			}
-			return toMemoryResult(m)
+			return memoryOut(ctx, s, m)
 		})
 }
 
@@ -193,6 +219,7 @@ func memoryUpdateTool(s *Service) mcptool.Tool {
 		"Changes a memory's title, when-to-use line, body, or always-included flag; only the fields you send change, and each save adds a version. "+
 			"revert_to_version restores an earlier version as a new one; memory_get lists the versions. "+
 			"The interview memory stays always included and its body is capped at 8,000 characters of markdown; the decisions log is never always included. "+
+			"answers saves or skips the interview's answers to the template's questions without adding a version. "+
 			"Returns the memory as it now stands.",
 		mcptool.Hints{Idempotent: true, Local: true},
 		func(ctx context.Context, in memoryUpdateIn) (any, error) {
@@ -200,19 +227,22 @@ func memoryUpdateTool(s *Service) mcptool.Tool {
 			if err != nil {
 				return nil, err
 			}
-			return toMemoryResult(m)
+			return memoryOut(ctx, s, m)
 		})
 }
 
 func updateMemory(ctx context.Context, s *Service, in memoryUpdateIn) (*Memory, error) {
 	if in.RevertToVersion != nil {
-		if in.Title != nil || in.WhenToUse != nil || in.Body != nil || in.AlwaysIncluded != nil || in.Footer != nil {
+		if in.Title != nil || in.WhenToUse != nil || in.Body != nil || in.AlwaysIncluded != nil || in.Footer != nil || in.Answers != nil {
 			return nil, fmt.Errorf("%w: revert_to_version restores that version's whole content; send it alone, then update again", apperrs.ErrInvalid)
 		}
 		return s.Revert(ctx, in.ID, *in.RevertToVersion, viaMCP)
 	}
 	m, err := s.Get(ctx, in.ID)
 	if err != nil {
+		return nil, err
+	}
+	if err := saveAnswers(ctx, s, m, in.Answers); err != nil {
 		return nil, err
 	}
 	if in.Title == nil && in.WhenToUse == nil && in.Body == nil && in.AlwaysIncluded == nil && in.Footer == nil {
@@ -234,6 +264,46 @@ func memoryDeleteTool(s *Service) mcptool.Tool {
 			}
 			return mcptool.Gone(in.ID), nil
 		})
+}
+
+// saveAnswers stores an agent's answers to the template's questions, stopping at the first refused one.
+func saveAnswers(ctx context.Context, s *Service, m *Memory, answers []answerIn) error {
+	if len(answers) == 0 {
+		return nil
+	}
+	if m.Kind != KindInterview {
+		return fmt.Errorf("%w: answers belong to the interview memory; memory_list shows which memory has kind interview", apperrs.ErrInvalid)
+	}
+	for i, a := range answers {
+		_, err := s.SaveAnswer(ctx, InterviewAnswer{ProjectID: m.ProjectID, Question: a.Question, Selected: a.Selected, Text: a.Text, Skipped: a.Skip})
+		if err != nil {
+			return fmt.Errorf("answer %d of %d (%q), the ones before it are saved: %w", i+1, len(answers), a.Question, err)
+		}
+	}
+	return nil
+}
+
+// memoryOut shapes a memory for a tool result, with the questions and stored answers when it is the interview memory.
+func memoryOut(ctx context.Context, s *Service, m *Memory) (memoryResult, error) {
+	out, err := toMemoryResult(m)
+	if err != nil || m.Kind != KindInterview {
+		return out, err
+	}
+	if out.Questions, err = s.InterviewQuestions(ctx, m); err != nil {
+		return memoryResult{}, err
+	}
+	as, err := s.ListAnswers(ctx, m.ProjectID)
+	if err != nil {
+		return memoryResult{}, err
+	}
+	out.Answers = make([]answerResult, 0, len(as))
+	for _, a := range as {
+		out.Answers = append(out.Answers, answerResult{
+			Round: a.Round, Question: a.Question, Options: a.Options, MultiSelect: a.MultiSelect, Why: a.Why,
+			Selected: a.Selected, Text: a.Text, Skipped: a.Skipped, AnsweredBy: a.AnsweredBy, AnsweredAt: a.AnsweredAt,
+		})
+	}
+	return out, nil
 }
 
 func deref[T any](p *T, fallback T) T {

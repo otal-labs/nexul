@@ -911,6 +911,32 @@ var catalogSchemas = map[string]string{
 			"updated_at": {"type": "string", "format": "date-time"}
 		}
 	}`,
+	"interview_answer.saved": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["workspace_id", "project_id", "round", "question", "author_id"],
+		"properties": {
+			"workspace_id": {"type": "string"},
+			"project_id": {"type": "string"},
+			"round": {"type": "integer", "minimum": 0},
+			"question": {"type": "string"},
+			"author_id": {"type": "string"},
+			"at": {"type": "string", "format": "date-time"}
+		}
+	}`,
+	"interview_answer.cleared": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["workspace_id", "project_id", "round", "question", "author_id"],
+		"properties": {
+			"workspace_id": {"type": "string"},
+			"project_id": {"type": "string"},
+			"round": {"type": "integer", "minimum": 0},
+			"question": {"type": "string"},
+			"author_id": {"type": "string"},
+			"at": {"type": "string", "format": "date-time"}
+		}
+	}`,
 	"instance_template.updated": `{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",
 		"type": "object",
@@ -933,6 +959,18 @@ var catalogSchemas = map[string]string{
 			"server_url": {"type": "string"},
 			"harness_version": {"type": "string"},
 			"token_expires_at": {"type": "string", "format": "date-time"}
+		}
+	}`,
+	"computer.harness_switched": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["computer_id", "user_id", "from_kind", "to_kind", "harness_version"],
+		"properties": {
+			"computer_id": {"type": "string"},
+			"user_id": {"type": "string"},
+			"from_kind": {"type": "string", "description": "The harness kind the computer was stored under, for example t3code."},
+			"to_kind": {"type": "string", "description": "The harness kind it moved forward to, for example t3code-v2; a computer never moves back."},
+			"harness_version": {"type": "string", "description": "The harness version read when the computer moved."}
 		}
 	}`,
 	"computer.setup_confirmed": `{

@@ -792,6 +792,10 @@ func cancelledWithCause(ctx context.Context) bool {
 // replyNotConfigured turns a ResolveTarget failure into a specific, never-silent system reply.
 func (s *Service) replyNotConfigured(ctx context.Context, conversationID, viaUserID string, err error) {
 	msg := "Agent isn't configured to run yet — check Settings → Pairing."
+	if errors.Is(err, harness.ErrProtocol) {
+		s.postSystemMessage(ctx, conversationID, viaUserID, err.Error())
+		return
+	}
 	var nc *pairing.NotConfiguredError
 	if !errors.As(err, &nc) {
 		s.log.Error("agent: resolve target failed", "conversation", conversationID, "error", err)

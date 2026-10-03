@@ -12,6 +12,7 @@ export interface BoardFilters {
   statusIds: string[];
   developers: string[];
   waitingForMeToTest: boolean;
+  search: string;
 }
 
 export interface FilterRow {

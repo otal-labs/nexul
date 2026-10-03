@@ -3,6 +3,7 @@ package plays
 import (
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/otal-labs/nexul/internal/harness"
 	"github.com/otal-labs/nexul/internal/platform/httpx"
@@ -126,8 +127,8 @@ func (h *RunHandler) list(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, list)
 }
 
-// active answers the one batched question per project: which of these targets has a run going, and which of those
-// runs waits on an answer. ticket_ids alone stays accepted as target_type=ticket (ADR 0082: the HTTP API only grows).
+// active answers the one batched question per project: which of these targets has a run going, when it started, and
+// which of those runs waits on an answer. ticket_ids alone stays accepted as target_type=ticket (ADR 0082: the HTTP API only grows).
 func (h *RunHandler) active(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	targetType, raw := TargetType(q.Get("target_type")), q.Get("target_ids")
@@ -143,14 +144,15 @@ func (h *RunHandler) active(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	active, waiting := map[string]string{}, map[string]string{}
+	active, waiting, started := map[string]string{}, map[string]string{}, map[string]time.Time{}
 	for target, t := range trails {
 		active[target] = t.ID
+		started[target] = t.StartedAt
 		if t.State == TrailWaiting {
 			waiting[target] = t.ID
 		}
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"active": active, "waiting": waiting})
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"active": active, "waiting": waiting, "started": started})
 }
 
 func (h *RunHandler) latestChoices(w http.ResponseWriter, r *http.Request) {

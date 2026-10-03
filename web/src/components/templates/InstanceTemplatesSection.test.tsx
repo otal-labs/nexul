@@ -29,7 +29,13 @@ const template = (over: Partial<Template>): Template => ({
 });
 
 const templates: Template[] = [
-  template({ body: "## Ours", edited: true, updated_by: "u-1", updated_at: new Date().toISOString() }),
+  template({
+    body: "## Ours",
+    questions: [{ text: "Ours", hint: "", multi_select: false, options: [] }],
+    edited: true,
+    updated_by: "u-1",
+    updated_at: new Date().toISOString(),
+  }),
   template({ kind: "mention_chip", name: "Mention chip", body: "{ticket.Ticket}", default_body: "{ticket.Ticket}" }),
   template({ kind: "play_instructions", key: "fix-with-ai", name: "Fix with AI", body: "Fix it", default_body: "Fix it", follows: false }),
   template({ kind: "ticket_body", key: "bug", name: "bug", body: "## Steps", default_body: "## Steps", follows: false }),
@@ -100,6 +106,7 @@ describe("InstanceTemplatesSection", () => {
   it("saves an edited instance template", async () => {
     mocks.put.mockResolvedValue({ data: {} });
     const user = await openEditor("Interview");
+    expect(screen.getByText("1 question")).toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Template (markdown)"), "!");
     await user.click(screen.getByRole("button", { name: "Save" }));

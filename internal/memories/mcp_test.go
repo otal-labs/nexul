@@ -3,6 +3,7 @@ package memories
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 
@@ -166,7 +167,8 @@ func TestMemoryCreate(t *testing.T) {
 	t.Run("the interview memory is get-or-create", func(t *testing.T) {
 		first := mustCall(t, s, "memory_create", `{"project_id":"project-1","kind":"interview"}`).(memoryResult)
 		assert.Equal(t, KindInterview, first.Kind)
-		assert.Contains(t, first.Body, "Stack and versions")
+		assert.Empty(t, strings.TrimSpace(first.Body))
+		assert.Len(t, first.Questions, 12)
 		again := mustCall(t, s, "memory_create", `{"project_id":"project-1","kind":"interview"}`).(memoryResult)
 		assert.Equal(t, first.ID, again.ID)
 	})
@@ -244,4 +246,25 @@ func TestMemoryDelete_ReturnsWhatItDeleted(t *testing.T) {
 	assert.Equal(t, mcptool.Gone(m.ID), mustCall(t, s, "memory_delete", `{"id":"`+m.ID+`"}`))
 	_, err := s.Get(testCtx(), m.ID)
 	require.ErrorIs(t, err, apperrs.ErrNotFound)
+}
+
+func TestMemoryGet_InterviewCarriesTheTemplateQuestions(t *testing.T) {
+	repo := newFakeRepo()
+	s := newTestService(repo)
+	_, err := s.SaveInterviewTemplate(testCtx(), "workspace-1", "## Stack?\n## Merge?\n- Squash")
+	require.NoError(t, err)
+	interview, err := s.CreateInterview(testCtx(), "project-1", "")
+	require.NoError(t, err)
+	ordinary := mustMemory(t, s, "project-1", "Title", "when", "body", false)
+
+	got := mustCall(t, s, "memory_get", `{"id":"`+interview.ID+`"}`).(memoryResult)
+	require.Len(t, got.Questions, 2)
+	assert.Equal(t, []Option{{Label: "Squash"}}, got.Questions[1].Options)
+	assert.Nil(t, mustCall(t, s, "memory_get", `{"id":"`+ordinary.ID+`"}`).(memoryResult).Questions)
+
+	repo.templateErr = errors.New("disk")
+	_, err = callTool(testCtx(), t, s, "memory_get", `{"id":"`+interview.ID+`"}`)
+	require.Error(t, err)
+	_, err = callTool(testCtx(), t, s, "memory_create", `{"project_id":"project-1","kind":"interview"}`)
+	require.Error(t, err)
 }

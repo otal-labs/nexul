@@ -8,7 +8,7 @@ const KindInterview = "interview"
 // KindDecisionsLog marks a project's decisions log: one per project, found with memory_list, never named every turn.
 const KindDecisionsLog = "decisions_log"
 
-// MaxInterviewChars caps the interview memory and the Interview template, measured as exported markdown.
+// MaxInterviewChars caps the interview memory, measured as exported markdown; the template has its own limit.
 const MaxInterviewChars = 8_000
 
 // Memory is an agent-facing note (ADR 0056): own entity, never a doc, always in one project (ADR 0099).
@@ -57,14 +57,40 @@ type MemoryVersion struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// InterviewTemplate is the markdown a project's interview memory is copied from once, at creation.
+// InterviewTemplate is the markdown list of questions a project's interview asks.
 type InterviewTemplate struct {
-	WorkspaceID string `json:"workspace_id"`
-	Body        string `json:"body"`
+	WorkspaceID string     `json:"workspace_id"`
+	Body        string     `json:"body"`
+	Questions   []Question `json:"questions"`
 	// DefaultBody is the instance's Interview template, what an unedited workspace follows and a reset returns to.
 	DefaultBody string `json:"default_body"`
 	// Edited is true once the workspace saved its own; until then Body follows the instance's live.
 	Edited    bool      `json:"edited"`
 	UpdatedBy string    `json:"updated_by"`
 	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// InterviewAnswer is one stored answer on the Interview page, matched to its question by text; round 0 is the
+// template's questions, 1 and up the follow-up run's rounds. Kept apart from the interview memory row.
+type InterviewAnswer struct {
+	ID          string `json:"id"`
+	WorkspaceID string `json:"workspace_id"`
+	ProjectID   string `json:"project_id"`
+	Round       int    `json:"round"`
+	Question    string `json:"question"`
+	// Options, MultiSelect, and Why are the follow-up as the run asked it; empty in round 0.
+	Options     []AnswerOption `json:"options,omitempty"`
+	MultiSelect bool           `json:"multi_select,omitempty"`
+	Why         string         `json:"why,omitempty"`
+	Selected    []string       `json:"selected"`
+	Text        string         `json:"text"`
+	Skipped     bool           `json:"skipped"`
+	AnsweredBy  string         `json:"answered_by"`
+	AnsweredAt  time.Time      `json:"answered_at"`
+}
+
+// AnswerOption is one choice a follow-up offered.
+type AnswerOption struct {
+	Label       string `json:"label"`
+	Description string `json:"description,omitempty"`
 }

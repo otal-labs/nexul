@@ -8,12 +8,16 @@ interface TemplateBodyFieldProps {
   id: string;
   value: string;
   onChange: (value: string) => void;
+  questionCount?: number;
+  error?: Error | null;
 }
 
 // The same field each kind is edited with in a workspace or project, so the instance editor reads the same.
-export const TemplateBodyField = ({ kind, id, value, onChange }: TemplateBodyFieldProps) => (
+export const TemplateBodyField = ({ kind, id, value, onChange, questionCount = 0, error = null }: TemplateBodyFieldProps) => (
   <>
-    {kind === "interview" && <InterviewTemplateField id={id} value={value} onChange={onChange} />}
+    {kind === "interview" && (
+      <InterviewTemplateField id={id} value={value} onChange={onChange} questionCount={questionCount} error={error} />
+    )}
     {kind === "mention_chip" && <MentionChipField id={id} value={value} onChange={onChange} />}
     {kind === "play_instructions" && (
       <div className="space-y-2">

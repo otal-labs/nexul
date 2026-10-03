@@ -71,7 +71,10 @@ through MCP.
 **Harness**:
 The agent tool running on a user's paired computer that executes an Agent
 turn (T3 Code today, others later). The server talks to every harness through
-one interface, `harness.Client`, with one implementation per kind. A turn's
+one interface, `harness.Client`, with one implementation per kind. T3 Code is
+two kinds, `t3code` for its original orchestrator and `t3code-v2` for
+orchestrator V2; a computer moves from the first to the second once, on its
+first call after T3 Code updates, and never back. A turn's
 prompt names its ticket, doc, and memories for the agent to read through MCP
 rather than carrying them; an image embedded in the body of the ticket or doc
 a turn is about still travels to the harness as an attachment, capped at
@@ -143,8 +146,12 @@ at a time by the Interview play and answered by a person, with the agent
 able to read the codebase for answers first. Its questions start from the
 workspace's Interview template, which is the instance template until the
 workspace edits its own. It happens in the project's interview
-thread, a conversation of its own shown on the project's Interview page.
+thread, a conversation of its own that no page shows; the project's Interview
+page holds the questions, their stored answers, and the memory.
 Re-running it amends the interview memory rather than starting over.
+The interview's answers are stored per project, one per question, apart from
+the interview memory: deleting the memory keeps them, deleting the project
+removes them.
 _Avoid_: Onboarding, questionnaire, setup
 
 **Interview memory**:

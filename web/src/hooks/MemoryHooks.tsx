@@ -3,6 +3,7 @@ import { toast } from "sonner";
 
 import { api, errorMessage } from "@/api/client";
 import { useFetchWorkspaces } from "@/hooks/WorkspaceHooks";
+import type { InterviewAnswer, SaveInterviewAnswerInput } from "@/models/InterviewAnswer";
 import type { InterviewTemplate } from "@/models/InterviewTemplate";
 import type { CreateMemoryFormData, Memory } from "@/models/Memory";
 import type { MemoryVersion } from "@/models/MemoryVersion";
@@ -13,6 +14,7 @@ export const getMemoriesKey = "getMemories";
 export const getMemoryKey = "getMemory";
 export const getMemoryVersionsKey = "getMemoryVersions";
 export const getInterviewTemplateKey = "getInterviewTemplate";
+export const getInterviewAnswersKey = "getInterviewAnswers";
 const getProjectsKeyForClone = "getProjectsForClone";
 
 // Workspace-wide list for the Memories page; the page groups these by project client-side.
@@ -157,20 +159,6 @@ export const useCloneMemory = () => {
   });
 };
 
-// Returns the project's interview memory, creating it from the workspace's Interview template the first time.
-export const useCreateInterview = () => {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: async (projectId: string) =>
-      (await api.post<Memory>("/api/memories/interview", { project_id: projectId })).data,
-    onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: [getMemoriesKey] });
-      toast.success("Interview started from the template");
-    },
-    onError: (error) => toast.error(errorMessage(error)),
-  });
-};
-
 export const useFetchInterviewTemplate = (workspaceId: string) =>
   useQuery({
     queryKey: [getInterviewTemplateKey, workspaceId],
@@ -188,6 +176,35 @@ export const useSaveInterviewTemplate = () => {
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: [getInterviewTemplateKey] });
       toast.success("Interview template saved");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
+export const useFetchInterviewAnswers = (projectId: string) =>
+  useQuery({
+    queryKey: [getInterviewAnswersKey, projectId],
+    queryFn: async () =>
+      (await api.get<InterviewAnswer[]>("/api/memories/interview-answers", { params: { project_id: projectId } })).data,
+    enabled: projectId !== "",
+  });
+
+// No success toast: every Next and Skip saves, and the row ticking over is the confirmation.
+export const useSaveInterviewAnswer = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ skip, ...input }: SaveInterviewAnswerInput) => {
+      if (skip) return (await api.post<InterviewAnswer>("/api/memories/interview-answers/skip", input)).data;
+      return (await api.put<InterviewAnswer>("/api/memories/interview-answers", input)).data;
+    },
+    onSuccess: async (saved) => {
+      client.setQueryData<InterviewAnswer[]>([getInterviewAnswersKey, saved.project_id], (list) => {
+        if (!list) return list;
+        const same = (a: InterviewAnswer) => a.round === saved.round && a.question === saved.question;
+        if (list.some(same)) return list.map((a) => (same(a) ? saved : a));
+        return [...list, saved];
+      });
+      await client.invalidateQueries({ queryKey: [getInterviewAnswersKey, saved.project_id] });
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

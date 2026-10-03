@@ -104,7 +104,7 @@ func (c Computer) address() string {
 
 // Session is the harness-facing view of a computer; only call it on a decrypted copy.
 func (c Computer) Session() harness.Session {
-	return harness.Session{Name: c.Name, ServerURL: c.ServerURL, BearerToken: c.BearerToken}
+	return harness.Session{ComputerID: c.ID, Name: c.Name, ServerURL: c.ServerURL, BearerToken: c.BearerToken}
 }
 
 // Setup is a computer's setup confirmation, overall and per provider (ADR 0063).

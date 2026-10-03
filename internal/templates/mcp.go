@@ -28,7 +28,7 @@ type templateUpdateIn struct {
 	Kind string `json:"kind" jsonschema:"The template kind: interview, mention_chip, play_instructions, ticket_body, or agent_prompt (the Intro and Footer every full agent turn prompt opens and closes with)."`
 	Key  string `json:"key,omitempty" jsonschema:"Which template of the kind: a built-in play's key (fix-with-ai, to-tickets-via-ai, interview, test-with-ai) or a ticket type's name (task, bug, feature at the instance), or intro or footer for agent_prompt. Empty for interview and mention_chip."`
 	locationIn
-	Body      *string     `json:"body,omitempty" jsonschema:"The new text, markdown except for mention_chip, which uses {ticket.Field} tokens such as {ticket.Ticket} {ticket.Status}. The interview is capped at 8,000 characters."`
+	Body      *string     `json:"body,omitempty" jsonschema:"The new text, markdown except for mention_chip, which uses {ticket.Field} tokens such as {ticket.Ticket} {ticket.Status}. The interview is one ## heading per question, a hint under it, then - single-choice or - [ ] multi-select options, at most 32,000 characters."`
 	Reset     bool        `json:"reset,omitempty" jsonschema:"true returns this place to its default: the instance to the code default, a workspace or project to the instance's current text."`
 	CloneFrom *locationIn `json:"clone_from,omitempty" jsonschema:"Copy the same template's text from this place over this one, matching plays by key and ticket types by name."`
 }
@@ -40,7 +40,7 @@ func MCPTools(s *Service) []mcptool.Tool {
 
 func templateGetTool(s *Service) mcptool.Tool {
 	return mcptool.New("template_get", "Get template",
-		"Returns one template's text at one layer, with default_body (what a reset there gives) and edited (false while it shows that default). "+
+		"Returns one template's text at one layer, with default_body (what a reset there gives) and edited (false while it shows that default); the interview also returns its parsed questions. "+
 			"Templates resolve code default, then instance, then workspace or project: an unedited workspace's interview and mention_chip follow the instance live, "+
 			"while play_instructions and ticket_body are copied into each new workspace or project and never rewritten afterwards. "+
 			"agent_prompt lives only at the instance, and an empty body leaves its part out of the prompt. "+

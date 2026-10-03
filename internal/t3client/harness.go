@@ -1,4 +1,4 @@
-// Package t3client is the harness.Client for T3 Code servers on orchestration protocol 1, over the t3rpc transport.
+// Package t3client is the harness.Client for T3 Code on orchestration protocol 1; a T3 past it answers harness.MovedError.
 package t3client
 
 import (
@@ -55,11 +55,35 @@ func (a clientAdapter) ResumeThread(ctx context.Context, threadID string, w *tur
 }
 
 func connect(ctx context.Context, s harness.Session, opts Options) (rpcConn, error) {
-	c, err := t3rpc.Connect(ctx, s, opts)
+	c, err := dial(ctx, s, opts)
 	if err != nil {
 		return nil, err
 	}
 	return clientAdapter{&conn{Conn: c, log: logger(opts)}}, nil
+}
+
+// dial connects on protocol 1; T3 refuses that dial only once it speaks a later protocol, whatever its body names.
+func dial(ctx context.Context, s harness.Session, opts Options) (*t3rpc.Conn, error) {
+	c, err := t3rpc.Connect(ctx, s, opts)
+	var mismatch *t3rpc.ProtocolMismatchError
+	if errors.As(err, &mismatch) {
+		return nil, movedOn(t3rpc.ComputerName(s), max(mismatch.Version, protocolV2))
+	}
+	return c, err
+}
+
+// protocolV2 is the orchestration protocol harness.KindT3CodeV2's client speaks.
+const protocolV2 = 2
+
+// movedOn is nil for a T3 Code on where speaking protocol 1, a MovedError for protocol 2, and a refusal past that.
+func movedOn(where string, protocol int) error {
+	if protocol > protocolV2 {
+		return t3rpc.NewerNeeded(where)
+	}
+	if protocol == protocolV2 {
+		return &harness.MovedError{To: harness.KindT3CodeV2}
+	}
+	return nil
 }
 
 // Harness is the harness.Client for T3 Code servers; every T3 concept stays inside this package.
@@ -78,23 +102,26 @@ func NewHarness(opts Options) *Harness {
 // Kind implements harness.Client.
 func (h *Harness) Kind() harness.Kind { return harness.KindT3Code }
 
-// Pair implements harness.Client: the `t3 pair` one-time token is traded for a bearer session, then the version is read.
+// Pair implements harness.Client; it reads the descriptor first, so a T3 that moved on keeps its one-time token unspent.
 func (h *Harness) Pair(ctx context.Context, serverURL, secret string) (harness.PairResult, error) {
+	version, err := h.Version(ctx, serverURL)
+	if err != nil {
+		return harness.PairResult{}, err
+	}
 	token, expiresIn, err := t3rpc.Exchange(ctx, h.Options.HTTPClient, serverURL, secret)
 	if err != nil {
 		return harness.PairResult{}, fmt.Errorf("exchange pairing token: %w", err)
 	}
-	version, err := h.Version(ctx, serverURL)
-	if err != nil {
-		return harness.PairResult{}, fmt.Errorf("read T3 version: %w", err)
-	}
 	return harness.PairResult{BearerToken: token, ExpiresIn: expiresIn, Version: version, Kind: harness.KindT3Code}, nil
 }
 
-// Version implements harness.Client via the unauthenticated well-known probe.
+// Version implements harness.Client via the unauthenticated well-known probe, which also says whether T3 moved on.
 func (h *Harness) Version(ctx context.Context, serverURL string) (string, error) {
 	d, err := t3rpc.Describe(ctx, h.Options.HTTPClient, serverURL)
 	if err != nil {
+		return "", fmt.Errorf("read T3 version: %w", err)
+	}
+	if err := movedOn(t3rpc.Host(serverURL), d.Protocol); err != nil {
 		return "", err
 	}
 	return d.ServerVersion, nil
@@ -102,7 +129,7 @@ func (h *Harness) Version(ctx context.Context, serverURL string) (string, error)
 
 // ListProjects implements harness.Client: connect, read the registry, close.
 func (h *Harness) ListProjects(ctx context.Context, s harness.Session) (projects []harness.Project, err error) {
-	c, err := t3rpc.Connect(ctx, s, h.Options)
+	c, err := dial(ctx, s, h.Options)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +141,7 @@ func (h *Harness) ListProjects(ctx context.Context, s harness.Session) (projects
 
 // ListProviders implements harness.Client: connect, parse the handshake config, close.
 func (h *Harness) ListProviders(ctx context.Context, s harness.Session) (providers []harness.Provider, err error) {
-	c, err := t3rpc.Connect(ctx, s, h.Options)
+	c, err := dial(ctx, s, h.Options)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +153,7 @@ func (h *Harness) ListProviders(ctx context.Context, s harness.Session) (provide
 
 // Hold implements harness.Client: the WebSocket itself is the presence signal T3 shows for a paired client.
 func (h *Harness) Hold(ctx context.Context, s harness.Session) (harness.Conn, error) {
-	c, err := t3rpc.Connect(ctx, s, h.Options)
+	c, err := dial(ctx, s, h.Options)
 	if err != nil {
 		return nil, err
 	}
@@ -243,6 +270,9 @@ const (
 // reconnectingNote is the muted line a turn shows while its connection is being redialed.
 const reconnectingNote = "Reconnecting to T3 Code…"
 
+// updatedMidTurn ends a turn whose T3 Code moved to another protocol while it ran; the protocol-1 watch cannot resume there.
+const updatedMidTurn = "T3 Code was updated during this turn; ask again"
+
 // pump forwards one turn's updates; a dropped connection is redialed and the watch resumed, never surfaced as an end.
 func (h *Harness) pump(ctx context.Context, s harness.Session, client rpcConn, threadID string, sub threadSub, out chan<- harness.Update) {
 	defer close(out)
@@ -274,6 +304,10 @@ func (h *Harness) reconnect(ctx context.Context, s harness.Session, threadID str
 			return client, sub
 		}
 		logger(h.Options).Warn("t3client: reconnect failed", "thread", threadID, "error", err)
+		if errors.Is(err, harness.ErrProtocol) || errors.As(err, new(*harness.MovedError)) {
+			out <- giveUp(updatedMidTurn)
+			return nil, nil
+		}
 		if errors.Is(err, apperrs.ErrUnauthorized) {
 			out <- giveUp(fmt.Sprintf("Lost the connection to T3 Code and it refused to reconnect: %v", err))
 			return nil, nil
