@@ -875,6 +875,24 @@ func (r *Runner) Stop(ctx context.Context, trailID string) (*Trail, error) {
 	return trail, nil
 }
 
+// EndRunsCutOffByRestart closes the runs whose turns only the previous process watched; call it at boot, before any run starts.
+func (r *Runner) EndRunsCutOffByRestart(ctx context.Context) error {
+	trails, err := r.trails.ListRunningTrails(ctx)
+	if err != nil {
+		return fmt.Errorf("list running trails: %w", err)
+	}
+	const reason = "Nexul restarted during the run"
+	for _, trail := range trails {
+		tgt, err := r.readTarget(ctx, trail.TargetType, trail.TargetID)
+		if err != nil {
+			r.log.Warn("plays: restart cleanup could not read the target", "trail", trail.ID, "error", err)
+		}
+		r.finish(ctx, trail, tgt.title, harness.TurnResult{State: harness.TurnInterrupted, LastError: reason}, "",
+			reason+"; the harness may have finished it, check its own thread for the outcome.")
+	}
+	return nil
+}
+
 // finish is the run's terminal step; note is the runner's own reason for the thread, empty when the pipeline already posted one.
 func (r *Runner) finish(ctx context.Context, trail *Trail, targetTitle string, result harness.TurnResult, replyMessageID, note string) {
 	now := r.now().UTC()

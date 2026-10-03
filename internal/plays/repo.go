@@ -32,6 +32,8 @@ type TrailRepo interface {
 	ListTrailsByTarget(ctx context.Context, targetType TargetType, targetID string) ([]*Trail, error)
 	// ListActiveTrailsByTargets returns the starting, running, or waiting trails on any of the given targets.
 	ListActiveTrailsByTargets(ctx context.Context, targetType TargetType, targetIDs []string) ([]*Trail, error)
+	// ListRunningTrails returns the starting or running trails across every workspace.
+	ListRunningTrails(ctx context.Context) ([]*Trail, error)
 	// LatestTrailForChoices returns the starter's newest trail of one play in one project, ErrNotFound when none.
 	LatestTrailForChoices(ctx context.Context, starterID, playID, projectID string) (*Trail, error)
 }

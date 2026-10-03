@@ -249,3 +249,22 @@ func TestPlayTrailsRepo_ListActiveByTargets(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, none)
 }
+
+func TestPlayTrailsRepo_ListRunning_SkipsWaitingAndEnded(t *testing.T) {
+	t.Parallel()
+	s := newTrailStore(t)
+	now := time.Now()
+	for id, state := range map[string]plays.TrailState{"starting": plays.TrailStarting, "running": plays.TrailRunning, "waiting": plays.TrailWaiting, "done": plays.TrailDone} {
+		tr := newTestTrail(id, now)
+		tr.State = state
+		require.NoError(t, s.PlayTrails.CreateTrail(t.Context(), tr))
+	}
+
+	got, err := s.PlayTrails.ListRunningTrails(t.Context())
+	require.NoError(t, err)
+	ids := make([]string, 0, len(got))
+	for _, tr := range got {
+		ids = append(ids, tr.ID)
+	}
+	assert.ElementsMatch(t, []string{"starting", "running"}, ids)
+}
