@@ -49,9 +49,12 @@ through the `skill_get` tool.
 Each project has one **interview memory**: its stack, paradigm, testing
 strategy, principles, and vocabulary, written as rules. Open it from
 **Interview** under the project in the sidebar (`/<workspace>/projects/<prefix>/interview`).
-The page's **Run the interview** button runs the workspace's Interview play: an
-Agent asks one question at a time and writes the memory for you, and
-**Re-run the interview** amends it later. See [Plays](/docs/guide/plays/).
+The page lists the Interview template's questions, one open at a time: each
+**Next** or **Skip** saves, and any answered or skipped question opens again on
+a click. Once every question is answered or skipped, **Done** runs the
+workspace's Interview play, which writes the memory shown beside the questions;
+**Regenerate** runs it again later. Follow-ups the Agent asked appear under the
+questions, one section per round. See [Plays](/docs/guide/plays/).
 
 The interview memory reaches every Agent turn in the project: every mention and
 every play names it, ahead of the other always-included memories, for the Agent

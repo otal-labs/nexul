@@ -109,11 +109,12 @@ attachment is left out.
 ## The Interview play
 
 The Interview play runs on a project's Interview page
-(`/<workspace>/projects/<prefix>/interview`), where the button reads **Run the interview**,
-or **Re-run the interview** once the project's interview memory exists. Its
-target is the project: `target_type` is `interview` and `target_id` is the
-project id. The run posts into the project's interview thread, a conversation
-of its own that the Interview page shows once a run has created it.
+(`/<workspace>/projects/<prefix>/interview`), from **Done** once every question
+is answered or skipped, or **Regenerate** once the project's interview memory
+exists. Its target is the project: `target_type` is `interview` and
+`target_id` is the project id. The run posts into the project's interview
+thread, a conversation of its own that no page shows; the page shows the run's
+state from its trail.
 
 The Agent is told the project's name and id and the answers the project
 already records, such as where its tests live from the project wizard. It

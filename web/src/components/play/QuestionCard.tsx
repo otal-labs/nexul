@@ -67,7 +67,15 @@ export const QuestionCard = ({ question, answer, onSubmit, pending = false, clas
       className={cn("rounded-lg border border-border bg-card p-3 outline-none focus-visible:ring-2 focus-visible:ring-ring", className)}
     >
       {readOnly && <QuestionAnsweredList question={question} answer={answer} />}
-      {!readOnly && item && <QuestionStep item={item} index={index} total={items.length} draft={draft} onDraft={setDraft} />}
+      {!readOnly && item && (
+        <div>
+          <p className="font-mono text-[11px] text-info">
+            Question {index + 1} of {items.length}
+          </p>
+          <h4 className="mt-1 text-sm font-medium text-balance">{item.text}</h4>
+          <QuestionStep item={item} idPrefix={`question-${index}`} draft={draft} onDraft={setDraft} />
+        </div>
+      )}
       {!readOnly && item && (
         <div className="mt-3 flex items-center justify-end gap-2">
           {index > 0 && (

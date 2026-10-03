@@ -16,8 +16,12 @@ Built at 768px first, verified at 768, 1024, and 1440.
 
 **Blocked by:** 06, 07
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Every state in 05 renders from real data at the three widths
-- [ ] Answers save per step and survive a reload; two browsers see each other
-- [ ] Conversation section and "Start from the template" removed
+- [x] Every state in 05 renders from real data at the three widths
+- [x] Answers save per step and survive a reload; two browsers see each other
+- [x] Conversation section and "Start from the template" removed
+
+## Answer
+
+Built in PR_URL.

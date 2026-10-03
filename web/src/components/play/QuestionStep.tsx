@@ -7,8 +7,8 @@ import { optionValue, type AnswerValue, type QuestionItem } from "@/models/Quest
 
 interface QuestionStepProps {
   item: QuestionItem;
-  index: number;
-  total: number;
+  // Unique per rendered step, so each option's label points at its own control.
+  idPrefix: string;
   draft: AnswerValue | undefined;
   onDraft: (value: AnswerValue) => void;
 }
@@ -22,19 +22,15 @@ export const toggleOption = (item: QuestionItem, draft: AnswerValue | undefined,
 
 const listClass = "mt-2 divide-y divide-border overflow-hidden rounded-md border border-border";
 
-// One question of the card: the progress line, the question as title, its hint muted, the option rows, and the free text.
-export const QuestionStep = ({ item, index, total, draft, onDraft }: QuestionStepProps) => {
+// The answering part of one question, under whatever title its host gives it: the hint muted, the option rows, the free text.
+export const QuestionStep = ({ item, idPrefix, draft, onDraft }: QuestionStepProps) => {
   const selected = draft?.selected ?? [];
-  const rowId = (i: number) => `question-${index}-option-${i}`;
+  const rowId = (i: number) => `${idPrefix}-option-${i}`;
   return (
     <div>
-      <p className="font-mono text-[11px] text-info">
-        Question {index + 1} of {total}
-      </p>
-      <h4 className="mt-1 text-sm font-medium text-balance">{item.text}</h4>
       {item.header && <p className="text-xs text-muted-foreground">{item.header}</p>}
       {item.options.length > 0 && !item.multi_select && (
-        <RadioGroup asChild value={selected[0] ?? ""} onValueChange={(value) => onDraft(toggleOption(item, draft, value))}>
+        <RadioGroup asChild className="gap-0" value={selected[0] ?? ""} onValueChange={(value) => onDraft(toggleOption(item, draft, value))}>
           <ul className={listClass}>
             {item.options.map((option, i) => (
               <QuestionOptionRow
