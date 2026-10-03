@@ -15,9 +15,13 @@ the interview memory keeps the answers; deleting the project removes them.
 
 **Blocked by:** None — can start immediately
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Migration tested by upgrading from the previous schema
-- [ ] Use-case tests: permissions, project access, skip, clear, re-answer
-- [ ] Event catalog row, outbox write, live push
-- [ ] MCP read and write through the existing memory tools
+- [x] Migration tested by upgrading from the previous schema
+- [x] Use-case tests: permissions, project access, skip, clear, re-answer
+- [x] Event catalog row, outbox write, live push
+- [x] MCP read and write through the existing memory tools
+
+## Answer
+
+Built in [#361](https://github.com/otal-labs/nexul/pull/361).

@@ -198,3 +198,14 @@ publishes `interview_template.updated`. `memory_create` and
 a second one is refused, and `memory_update` adds to the existing one.
 `memory.created`, `memory.updated`, and `memory.deleted` also reach the browser
 live, so the Interview page shows the Agent's writes as they land.
+
+The interview's answers are stored per project, one per question, apart from
+the interview memory: deleting the memory keeps them, deleting the project
+removes them. `GET /api/memories/interview-answers?project_id=` lists them,
+`PUT /api/memories/interview-answers` saves one, and
+`POST /api/memories/interview-answers/skip` and `/clear` skip or clear one;
+reading needs `memories:read` and answering `memories:write`. `memory_get` on
+the interview memory returns them as `answers`, and `memory_update` takes
+`answers` to save or skip the template's questions. Each change publishes
+`interview_answer.saved` or `interview_answer.cleared`, naming the question and
+its author but never the answer, and reaches the project's readers live.

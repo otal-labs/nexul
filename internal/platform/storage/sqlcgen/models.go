@@ -446,6 +446,22 @@ type IntegrationToken struct {
 	RevokedAt  sql.NullInt64
 }
 
+type InterviewAnswer struct {
+	ID          string
+	WorkspaceID string
+	ProjectID   string
+	Round       int64
+	Question    string
+	Options     sql.NullString
+	MultiSelect int64
+	Why         sql.NullString
+	Selected    string
+	FreeText    string
+	Skipped     int64
+	AnsweredBy  string
+	AnsweredAt  int64
+}
+
 type InterviewTemplate struct {
 	WorkspaceID string
 	Body        string

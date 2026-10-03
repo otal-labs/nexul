@@ -145,6 +145,9 @@ workspace's Interview template, which is the instance template until the
 workspace edits its own. It happens in the project's interview
 thread, a conversation of its own shown on the project's Interview page.
 Re-running it amends the interview memory rather than starting over.
+The interview's answers are stored per project, one per question, apart from
+the interview memory: deleting the memory keeps them, deleting the project
+removes them.
 _Avoid_: Onboarding, questionnaire, setup
 
 **Interview memory**:

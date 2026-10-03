@@ -911,6 +911,32 @@ var catalogSchemas = map[string]string{
 			"updated_at": {"type": "string", "format": "date-time"}
 		}
 	}`,
+	"interview_answer.saved": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["workspace_id", "project_id", "round", "question", "author_id"],
+		"properties": {
+			"workspace_id": {"type": "string"},
+			"project_id": {"type": "string"},
+			"round": {"type": "integer", "minimum": 0},
+			"question": {"type": "string"},
+			"author_id": {"type": "string"},
+			"at": {"type": "string", "format": "date-time"}
+		}
+	}`,
+	"interview_answer.cleared": `{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		"required": ["workspace_id", "project_id", "round", "question", "author_id"],
+		"properties": {
+			"workspace_id": {"type": "string"},
+			"project_id": {"type": "string"},
+			"round": {"type": "integer", "minimum": 0},
+			"question": {"type": "string"},
+			"author_id": {"type": "string"},
+			"at": {"type": "string", "format": "date-time"}
+		}
+	}`,
 	"instance_template.updated": `{
 		"$schema": "https://json-schema.org/draft/2020-12/schema",
 		"type": "object",

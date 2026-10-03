@@ -50,6 +50,10 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("POST /api/memories/interview", h.createInterview)
 	mux.HandleFunc("GET /api/memories/interview-template", h.getInterviewTemplate)
 	mux.HandleFunc("PUT /api/memories/interview-template", h.saveInterviewTemplate)
+	mux.HandleFunc("GET /api/memories/interview-answers", h.listAnswers)
+	mux.HandleFunc("PUT /api/memories/interview-answers", h.saveAnswer)
+	mux.HandleFunc("POST /api/memories/interview-answers/skip", h.skipAnswer)
+	mux.HandleFunc("POST /api/memories/interview-answers/clear", h.clearAnswer)
 	return mux
 }
 
@@ -216,4 +220,58 @@ func (h *Handler) saveInterviewTemplate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, t)
+}
+
+func (h *Handler) listAnswers(w http.ResponseWriter, r *http.Request) {
+	as, err := h.svc.ListAnswers(r.Context(), r.URL.Query().Get("project_id"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, as)
+}
+
+type answerRequest struct {
+	ProjectID string   `json:"project_id"`
+	Round     int      `json:"round"`
+	Question  string   `json:"question"`
+	Selected  []string `json:"selected"`
+	Text      string   `json:"text"`
+}
+
+func (h *Handler) saveAnswer(w http.ResponseWriter, r *http.Request) {
+	h.writeAnswer(w, r, false)
+}
+
+func (h *Handler) skipAnswer(w http.ResponseWriter, r *http.Request) {
+	h.writeAnswer(w, r, true)
+}
+
+func (h *Handler) writeAnswer(w http.ResponseWriter, r *http.Request, skip bool) {
+	var req answerRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	a, err := h.svc.SaveAnswer(r.Context(), InterviewAnswer{
+		ProjectID: req.ProjectID, Round: req.Round, Question: req.Question, Selected: req.Selected, Text: req.Text, Skipped: skip,
+	})
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, a)
+}
+
+func (h *Handler) clearAnswer(w http.ResponseWriter, r *http.Request) {
+	var req answerRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	if err := h.svc.ClearAnswer(r.Context(), req.ProjectID, req.Round, req.Question); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

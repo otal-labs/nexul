@@ -33,6 +33,8 @@ type fakeRepo struct {
 	deleteErr   error
 	templates   map[string]*InterviewTemplate
 	templateErr error
+	answers     []*InterviewAnswer
+	answerErr   error
 }
 
 func newFakeRepo() *fakeRepo {
