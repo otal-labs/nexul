@@ -113,8 +113,11 @@ func (h *Harness) Interrupt(ctx context.Context, target harness.Target) (err err
 	if !ok {
 		return stopRun(ctx, c, target.SessionID, p.Runs, "")
 	}
-	handedOff := l.stopHandoffs(ctx, c, target.SessionID, p.Runs, h.log())
-	err = stopRun(ctx, c, target.SessionID, p.Runs, l.messageID)
+	runs, handedOff, err := l.stopHandoffs(ctx, c, target.SessionID, p.Runs, h.log())
+	if err != nil {
+		return err
+	}
+	err = stopRun(ctx, c, target.SessionID, runs, l.messageID)
 	if errors.Is(err, errNothingToStop) && handedOff {
 		err = nil
 	}
@@ -125,8 +128,8 @@ func (h *Harness) Interrupt(ctx context.Context, target harness.Target) (err err
 	return nil
 }
 
-// stopHandoffs drops wakeable results, then stops children's runs, then wake runs (ADR 0116), noting failures; true if any stopped.
-func (l *live) stopHandoffs(ctx context.Context, c *t3rpc.Conn, threadID string, runs []run, log *slog.Logger) bool {
+// stopHandoffs stops handed-off work in ADR 0116's order, noting failures; it returns the runs as they then stand, and true if any stopped.
+func (l *live) stopHandoffs(ctx context.Context, c *t3rpc.Conn, threadID string, runs []run, log *slog.Logger) ([]run, bool, error) {
 	work := l.handoffs()
 	stopped := false
 	tally := func(err error) {
@@ -147,12 +150,20 @@ func (l *live) stopHandoffs(ctx context.Context, c *t3rpc.Conn, threadID string,
 			tally(interruptChild(ctx, c, s.ChildThreadID))
 		}
 	}
+	if len(work.subagents) > 0 {
+		// Dropping the last result of a queued wake cancels that wake in T3, which then refuses to cancel it again.
+		p, err := readProjection(ctx, c, threadID)
+		if err != nil {
+			return nil, stopped, err
+		}
+		runs = p.Runs
+	}
 	for _, id := range work.runs {
 		if i := slices.IndexFunc(runs, func(r run) bool { return r.ID == id }); i >= 0 {
 			tally(halt(ctx, c, threadID, runs[i], i == len(runs)-1))
 		}
 	}
-	return stopped
+	return runs, stopped, nil
 }
 
 func dispose(ctx context.Context, c *t3rpc.Conn, threadID, taskID string) error {

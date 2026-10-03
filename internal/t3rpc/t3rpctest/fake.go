@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -55,6 +56,9 @@ type Server struct {
 	// read; a thread it does not name fails the way T3 fails one it cannot load. Set it before connect.
 	Projections     map[string]any
 	ProjectionCause any
+	// AfterCommand replaces Projections entries once a command of the named type lands, as the events T3 emits for it
+	// would. Set it before connect.
+	AfterCommand map[string]map[string]any
 
 	connMu sync.Mutex
 	conn   *websocket.Conn
@@ -255,6 +259,7 @@ func (f *Server) handleDispatch(env clientEnv) {
 		f.writeFailure(env, cause)
 		return
 	}
+	maps.Copy(f.Projections, f.AfterCommand[fmt.Sprint(cmd["type"])])
 	f.Write(ExitSuccess(idString(env.ID), map[string]any{"sequence": 1}))
 	f.Dispatched <- cmd
 }

@@ -31,11 +31,14 @@ Read first: `practices/go.md`, `practices/testing.md`, `practices/architecture.m
   `interruptChild` reads the child thread first. `pump.fold` publishes `watch.handoffs()` after each batch;
   `pump.finish` sends Stop's notes before any Terminal; `drain` ends the turn with `watch.stop()` once `halt` runs.
 - **Fake server.** `t3rpctest.Server.Projections` answers `getThreadProjection` per thread id and replaces
-  `Projection`; a thread it does not name fails the way T3 fails a thread it cannot load.
+  `Projection`; a thread it does not name fails the way T3 fails a thread it cannot load. `AfterCommand` swaps in a
+  thread's projection once a command lands, as T3's own follow-up events would.
 - **Judgment calls.**
   - The followed set comes from the turn's own watch, published by the pump, not rebuilt from `getThreadProjection`:
     the projection's window can drop the link messages and a finished task whose result is still undelivered. Run
-    statuses for steps 3 and 4 come from the fresh projection, which holds every live run.
+    statuses for steps 3 and 4 come from a projection read after steps 1 and 2, which holds every live run: dropping
+    the last result of a queued wake cancels that wake in T3, and T3 refuses to cancel it again ("is not queued").
+    That second read is taken only when the turn handed off work, and its failure fails Stop like the first read's.
   - Once Stop has stopped anything, the turn ends interrupted at once, without waiting for T3's own report: an
     interrupted waiting run with background work can stay waiting and then complete, and a dropped result reports no
     end. This also applies to a plain Stop with nothing handed off, so text T3 streams after Stop is not shown.
@@ -59,6 +62,9 @@ Read first: `practices/go.md`, `practices/testing.md`, `practices/architecture.m
 - **Tests.** `TestInterrupt_TurnWaitingOnHandedOffWork_StopsItBeforeItsOwnRunAndEndsInterrupted` drives a real turn
   through the fake: an async child (dispose, then the child's interrupt, then the parent's), a child that cannot be
   read (noted, the parent still interrupted, an already disposed result not disposed again), and a queued wake after
-  Nexul's run completed (dispose, then `queued-run.cancel`, Stop succeeds). Each case ends interrupted with the update
-  stream closed. On ticket 08's `Interrupt` all three fail (two never end, one is `ErrConflict`).
+  Nexul's run completed that T3 cancels with the dropped result (dispose only, no note, Stop succeeds, though T3
+  refuses a second cancel). Each case ends interrupted with the update stream closed. On ticket 08's `Interrupt` all
+  three fail (two never end, one is `ErrConflict`); deciding step 3 from the read before the dispose fails the third
+  with a false "Could not stop handed-off work" note. A fourth case fails the read after steps 1 and 2: Stop fails
+  before Nexul's own run and the turn runs on.
 - **ADR.** ADR 0116 gained a Stop bullet; ADR 0114's Stop bullet points at it.

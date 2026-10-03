@@ -205,9 +205,13 @@ func TestInterrupt_TurnWaitingOnHandedOffWork_StopsItBeforeItsOwnRunAndEndsInter
 		// events follow the turn's own run, given its message id; ownRuns is that run and those after it in the projection.
 		events  func(messageID string) []json.RawMessage
 		ownRuns func(messageID string) []any
-		child   any // th-2's projection; nil fails its read
-		want    []map[string]any
-		notes   []string
+		// disposed is th-1's runs once T3 has dropped the result, nil when the drop changes none.
+		disposed func(messageID string) []any
+		causes   map[string]any
+		child    any // th-2's projection; nil fails its read
+		want     []map[string]any
+		notes    []string
+		wantErr  string
 	}{
 		{name: "an async child's result is dropped before its run is interrupted, then the turn's own waiting run",
 			events: func(id string) []json.RawMessage {
@@ -227,7 +231,7 @@ func TestInterrupt_TurnWaitingOnHandedOffWork_StopsItBeforeItsOwnRunAndEndsInter
 			ownRuns: func(id string) []any { return []any{runOf(id, runWaiting)} },
 			want:    []map[string]any{interrupt("th-1", runOne)},
 			notes:   []string{"Could not stop handed-off work in T3 Code: invalid: read the T3 thread: Failed to load orchestration V2 thread th-2"}},
-		{name: "a queued wake is cancelled, though the turn's own run is over",
+		{name: "a queued wake T3 cancels with its dropped result is not cancelled again, and Stop succeeds though the turn's own run is over",
 			events: func(id string) []json.RawMessage {
 				return story([2]any{"run.created", runOf(id, "running")},
 					[2]any{"subagent.updated", handedOff("task-1", "app_owned", "completed", delivery("claimed"))},
@@ -235,9 +239,21 @@ func TestInterrupt_TurnWaitingOnHandedOffWork_StopsItBeforeItsOwnRunAndEndsInter
 						"delivery": map[string]any{"generation": 1, "messageId": wakeMessage, "taskIds": []any{"task-1"}}}})},
 					[2]any{"run.created", runAt(2, wakeMessage, runQueued)})
 			},
-			ownRuns: func(id string) []any { return []any{runOf(id, runCompleted), runAt(2, wakeMessage, runQueued)} },
-			want: []map[string]any{dispose,
-				{"type": "queued-run.cancel", "threadId": "th-1", "runId": runTwo}}},
+			ownRuns:  func(id string) []any { return []any{runOf(id, runCompleted), runAt(2, wakeMessage, runQueued)} },
+			disposed: func(id string) []any { return []any{runOf(id, runCompleted), runAt(2, wakeMessage, "cancelled")} },
+			causes:   map[string]any{"queued-run.cancel": rejected("queued-run.cancel", "Run "+runTwo+" is not queued.")},
+			want:     []map[string]any{dispose}},
+		{name: "a thread T3 cannot read again once the hand-offs are stopped fails Stop before the turn's own run, and the turn runs on",
+			events: func(id string) []json.RawMessage {
+				return story([2]any{"run.created", runOf(id, "running")},
+					[2]any{"subagent.updated", handedOff("task-1", "app_owned", "running", map[string]any{"completionWake": "always"})},
+					[2]any{"run.updated", runOf(id, runWaiting)})
+			},
+			ownRuns:  func(id string) []any { return []any{runOf(id, runWaiting)} },
+			disposed: func(string) []any { return []any{"unreadable"} },
+			child:    running,
+			want:     []map[string]any{dispose, interrupt("th-2", childRun)},
+			wantErr:  "decode the T3 thread th-1"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -261,8 +277,13 @@ func TestInterrupt_TurnWaitingOnHandedOffWork_StopsItBeforeItsOwnRunAndEndsInter
 			if tt.child != nil {
 				f.Projections["th-2"] = tt.child
 			}
+			if tt.disposed != nil {
+				f.AfterCommand = map[string]map[string]any{
+					"delegated_task.completion-delivery.dispose": {"th-1": projectionWith(t, tt.disposed(messageID))}}
+			}
+			f.CommandCauses = tt.causes
 
-			require.NoError(t, h.Interrupt(t.Context(), harness.Target{Session: laptop(f), SessionID: "th-1"}))
+			err := h.Interrupt(t.Context(), harness.Target{Session: laptop(f), SessionID: "th-1"})
 			var sent []map[string]any
 			for range tt.want {
 				cmd := t3rpctest.WaitFor(t, f.Dispatched, "a stop command")
@@ -270,6 +291,13 @@ func TestInterrupt_TurnWaitingOnHandedOffWork_StopsItBeforeItsOwnRunAndEndsInter
 				sent = append(sent, cmd)
 			}
 			assert.Equal(t, tt.want, sent, "in T3's order, so no child's end can wake the thread")
+			if tt.wantErr != "" {
+				assert.ErrorContains(t, err, tt.wantErr)
+				found, _ := h.turns.Load("th-1")
+				assert.NoError(t, found.(*live).halted.Err(), "a Stop that failed leaves the turn to end on its own")
+				return
+			}
+			require.NoError(t, err)
 			want := []string{}
 			for _, n := range tt.notes {
 				want = append(want, "note "+n)
