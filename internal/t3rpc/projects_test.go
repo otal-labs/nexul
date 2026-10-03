@@ -1,4 +1,4 @@
-package t3client
+package t3rpc
 
 import (
 	"testing"
@@ -7,12 +7,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/otal-labs/nexul/internal/harness"
+	"github.com/otal-labs/nexul/internal/t3rpc/t3rpctest"
 )
 
 func TestListProjects_ReturnsLiveRegistryFromShellSnapshot(t *testing.T) {
 	t.Parallel()
-	f := newFakeT3(t)
-	c := f.connect(t, testCtx(t))
+	c := connectFake(t, t3rpctest.New(t))
 
 	projects, err := c.ListProjects(testCtx(t))
 	require.NoError(t, err)

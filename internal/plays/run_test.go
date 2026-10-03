@@ -748,7 +748,7 @@ func TestActiveTrails(t *testing.T) {
 
 	got, err := f.runner.ActiveTrails(ctxAs(starter), TargetTicket, []string{ticketID, "t-2", " ", "t-3"})
 	require.NoError(t, err)
-	assert.Equal(t, map[string]string{"t-2": "tr-run"}, got, "only starting or running trails count")
+	assert.Equal(t, map[string]*Trail{"t-2": running}, got, "only starting, running, or waiting trails count")
 
 	got, err = f.runner.ActiveTrails(ctxAs("stranger"), TargetTicket, []string{"t-2"})
 	require.NoError(t, err)

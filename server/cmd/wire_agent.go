@@ -99,11 +99,12 @@ func (a agentConversations) PostUserMessage(ctx context.Context, conversationID,
 	return err
 }
 
-// agentTicketReader adapts tickets to the agent's TicketReader seam: the key and title name the ticket, and the body
-// as markdown is where its images are found.
+// agentTicketReader adapts tickets to the agent's TicketReader seam: the key and title name the ticket, the body
+// as markdown is where its images are found, and its column's stage says whether it is done.
 type agentTicketReader struct {
 	svc      *tickets.Service
 	projects *storage.ProjectsRepo
+	statuses *storage.StatusesRepo
 }
 
 func (a agentTicketReader) Get(ctx context.Context, id string) (agent.Ticket, error) {
@@ -119,7 +120,11 @@ func (a agentTicketReader) Get(ctx context.Context, id string) (agent.Ticket, er
 	if p, err := a.projects.Get(ctx, t.ProjectID); err == nil {
 		prefix = p.Prefix
 	}
-	return agent.Ticket{ProjectID: t.ProjectID, Key: ticketKey(prefix, t.Number, t.ID), Title: t.Title, Body: body}, nil
+	done := false
+	if st, err := a.statuses.Get(ctx, string(t.Status)); err == nil {
+		done = st.Kind == workspace.StatusKindDone
+	}
+	return agent.Ticket{ProjectID: t.ProjectID, Key: ticketKey(prefix, t.Number, t.ID), Title: t.Title, Body: body, Done: done}, nil
 }
 
 // ticketKey renders PREFIX-NUMBER (ADR 0004), or the id for a ticket whose project has no prefix.

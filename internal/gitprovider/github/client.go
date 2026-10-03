@@ -103,10 +103,13 @@ func (c *Client) PRsForCommit(ctx context.Context, owner, name, sha string) ([]*
 	return out, nil
 }
 
+// webhookEvents are the delivery types the /hooks/github receiver dispatches; push also carries branch deletes.
+var webhookEvents = []string{"pull_request", "pull_request_review", "pull_request_review_comment", "issue_comment", "push"}
+
 // CreateWebhook implements gitprovider.GitProvider, returning the hook id.
 func (c *Client) CreateWebhook(ctx context.Context, owner, name string, cfg gitprovider.WebhookConfig) (string, error) {
 	hook, _, err := c.gh.Repositories.CreateHook(ctx, owner, name, &githubapi.Hook{
-		Events: []string{"pull_request"},
+		Events: webhookEvents,
 		Config: &githubapi.HookConfig{
 			URL:         &cfg.URL,
 			ContentType: githubapi.Ptr("json"),
@@ -117,6 +120,25 @@ func (c *Client) CreateWebhook(ctx context.Context, owner, name string, cfg gitp
 		return "", fmt.Errorf("create webhook %s/%s: %w", owner, name, mapErr(err))
 	}
 	return strconv.FormatInt(hook.GetID(), 10), nil
+}
+
+// ListWebhooks implements gitprovider.GitProvider.
+func (c *Client) ListWebhooks(ctx context.Context, owner, name string) ([]gitprovider.Webhook, error) {
+	var out []gitprovider.Webhook
+	opts := &githubapi.ListOptions{PerPage: 100}
+	for {
+		hooks, resp, err := c.gh.Repositories.ListHooks(ctx, owner, name, opts)
+		if err != nil {
+			return nil, fmt.Errorf("list webhooks %s/%s: %w", owner, name, mapErr(err))
+		}
+		for _, h := range hooks {
+			out = append(out, gitprovider.Webhook{ID: strconv.FormatInt(h.GetID(), 10), URL: h.GetConfig().GetURL()})
+		}
+		if resp.NextPage == 0 {
+			return out, nil
+		}
+		opts.Page = resp.NextPage
+	}
 }
 
 // DeleteWebhook implements gitprovider.GitProvider.

@@ -126,8 +126,8 @@ func (h *RunHandler) list(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, list)
 }
 
-// active answers the one batched question per project: which of these targets has a run going. ticket_ids alone
-// stays accepted as target_type=ticket (ADR 0082: the HTTP API only grows).
+// active answers the one batched question per project: which of these targets has a run going, and which of those
+// runs waits on an answer. ticket_ids alone stays accepted as target_type=ticket (ADR 0082: the HTTP API only grows).
 func (h *RunHandler) active(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	targetType, raw := TargetType(q.Get("target_type")), q.Get("target_ids")
@@ -138,12 +138,19 @@ func (h *RunHandler) active(w http.ResponseWriter, r *http.Request) {
 	if raw != "" {
 		ids = strings.Split(raw, ",")
 	}
-	active, err := h.runner.ActiveTrails(r.Context(), targetType, ids)
+	trails, err := h.runner.ActiveTrails(r.Context(), targetType, ids)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"active": active})
+	active, waiting := map[string]string{}, map[string]string{}
+	for target, t := range trails {
+		active[target] = t.ID
+		if t.State == TrailWaiting {
+			waiting[target] = t.ID
+		}
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"active": active, "waiting": waiting})
 }
 
 func (h *RunHandler) latestChoices(w http.ResponseWriter, r *http.Request) {

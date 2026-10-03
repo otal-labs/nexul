@@ -8,7 +8,7 @@ import { useFetchTicketsByProject } from "@/hooks/TicketHooks";
 import { conversationPlayTarget, type Conversation } from "@/models/Chat";
 import type { PlayType } from "@/models/Play";
 import type { QuestionAnswers } from "@/models/Question";
-import { DECISIONS_CHECK_PLAY_ID, isTrailActive, mergeLiveSteps, type ActivityEntry, type LatestChoices, type RunPlayInput, type Trail, type TrailQuestion } from "@/models/Trail";
+import { DECISIONS_CHECK_PLAY_ID, isTrailActive, mergeLiveSteps, type ActivityEntry, type LatestChoices, type RunPlayInput, type Trail, type TrailQuestion, type TrailState } from "@/models/Trail";
 import { targetKey, usePlayRunStore } from "@/stores/playRunStore";
 import { threadTrailBlocks, type ThreadTrailBlocks } from "@/utils/ThreadTrailUtility";
 
@@ -40,13 +40,20 @@ export const useFetchLatestChoices = (playId: string, projectId: string) =>
     enabled: playId !== "" && projectId !== "",
   });
 
+// Target id to trail id; waiting holds the subset stopped on a question to the user.
+interface ActiveTargets {
+  active: Record<string, string>;
+  waiting: Record<string, string>;
+}
+
 // One request per project and target type: every row of a board or list shares the key.
 const useFetchActiveTargets = (targetType: PlayType, projectId: string | undefined, ids: string[]) =>
   useQuery({
     queryKey: [getActiveTrailsKey, targetType, projectId, ids],
-    queryFn: async () =>
-      (await api.get<{ active: Record<string, string> }>("/api/plays/runs/active", { params: { target_type: targetType, target_ids: ids.join(",") } }))
-        .data.active ?? {},
+    queryFn: async (): Promise<ActiveTargets> => {
+      const { data } = await api.get<Partial<ActiveTargets>>("/api/plays/runs/active", { params: { target_type: targetType, target_ids: ids.join(",") } });
+      return { active: data.active ?? {}, waiting: data.waiting ?? {} };
+    },
     enabled: !!projectId && ids.length > 0,
   });
 
@@ -186,20 +193,20 @@ export const useActiveTrail = (targetType: PlayType, targetId: string): Trail | 
   return trails?.find((t) => isTrailActive(frames[t.id]?.state ?? t.state));
 };
 
-// Joins the on-load batch answer with live frames so a start or end flips it without a refetch.
-const useRunActive = (targetType: PlayType, targetId: string, active: Record<string, string> | undefined): boolean => {
-  const knownTrailId = active?.[targetId];
+// Joins the on-load batch answer with live frames so a start, a question, or an end flips it without a refetch.
+const useRunState = (targetType: PlayType, targetId: string, known: ActiveTargets | undefined): TrailState | undefined => {
   const liveTrailId = usePlayRunStore((s) => s.activeByTarget[targetKey(targetType, targetId)]);
-  const knownFrameState = usePlayRunStore((s) => (knownTrailId ? s.frames[knownTrailId]?.state : undefined));
-  if (liveTrailId) return true;
-  if (knownFrameState) return isTrailActive(knownFrameState);
-  return knownTrailId !== undefined;
+  const trailId = liveTrailId ?? known?.active[targetId];
+  const frameState = usePlayRunStore((s) => (trailId ? s.frames[trailId]?.state : undefined));
+  if (!trailId) return undefined;
+  const state = frameState ?? (known?.waiting[targetId] === trailId ? "waiting" : "running");
+  return isTrailActive(state) ? state : undefined;
 };
 
-// The board card's question.
-export const useIsTicketRunActive = (projectId: string, ticketId: string): boolean =>
-  useRunActive("ticket", ticketId, useFetchActiveTrails(projectId).data);
+// The board card's question: no run, a run going, or a run waiting on an answer.
+export const useTicketRunState = (projectId: string, ticketId: string): TrailState | undefined =>
+  useRunState("ticket", ticketId, useFetchActiveTrails(projectId).data);
 
 // The doc list row's question.
-export const useIsDocRunActive = (projectId: string, docId: string): boolean =>
-  useRunActive("doc", docId, useFetchActiveDocTrails(projectId).data);
+export const useDocRunState = (projectId: string, docId: string): TrailState | undefined =>
+  useRunState("doc", docId, useFetchActiveDocTrails(projectId).data);

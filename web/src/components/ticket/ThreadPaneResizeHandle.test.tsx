@@ -7,7 +7,7 @@ import { THREAD_PANE_MAX, useThreadPaneStore } from "@/stores/threadPaneStore";
 
 const separator = () => screen.getByRole("separator", { name: "Resize thread" });
 const grid = () => document.querySelector<HTMLElement>("[data-thread-grid]");
-const savedWidth = () => useThreadPaneStore.getState().width;
+const savedWidth = () => useThreadPaneStore.getState().widths.t1?.width;
 
 // jsdom measures nothing; the pane is the handle's parent, so give that element the width the layout would show.
 let paneWidth = 0;
@@ -20,13 +20,13 @@ const measurePane = () =>
 describe("ThreadPaneResizeHandle", () => {
   beforeEach(() => {
     localStorage.clear();
-    useThreadPaneStore.getState().reset();
+    useThreadPaneStore.setState({ widths: {} });
     paneWidth = 400;
     measurePane();
     render(
       <div data-thread-grid="">
         <div>
-          <ThreadPaneResizeHandle />
+          <ThreadPaneResizeHandle ticketId="t1" />
         </div>
       </div>,
     );
@@ -55,7 +55,7 @@ describe("ThreadPaneResizeHandle", () => {
   it("keeps the pane following the page when the handle is only clicked", async () => {
     const user = userEvent.setup();
     await user.click(separator());
-    expect(savedWidth()).toBeNull();
+    expect(savedWidth()).toBeUndefined();
   });
 
   it("goes back to the pane's share of the page on double-click", async () => {

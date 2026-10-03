@@ -1,3 +1,4 @@
+// Package t3client is the harness.Client for T3 Code servers on orchestration protocol 1, over the t3rpc transport.
 package t3client
 
 import (
@@ -9,7 +10,17 @@ import (
 
 	"github.com/otal-labs/nexul/internal/harness"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/t3rpc"
 )
+
+// Options configures every connection the harness opens.
+type Options = t3rpc.Options
+
+// conn carries the protocol-1 thread methods (thread.go) on a shared T3 connection.
+type conn struct {
+	*t3rpc.Conn
+	log *slog.Logger
+}
 
 // threadSub narrows *Subscription so Harness is testable with a fake.
 type threadSub interface {
@@ -18,11 +29,12 @@ type threadSub interface {
 	Dropped() *turnWatch
 }
 
-// rpcConn is the slice of *Client Harness needs; clientAdapter narrows SubscribeThread's return type.
+// rpcConn is the slice of *conn Harness needs; clientAdapter narrows SubscribeThread's return type.
 type rpcConn interface {
 	CreateThread(ctx context.Context, t3ProjectID, title, providerInstanceID, model string, options []harness.OptionSetting, runtimeMode string) (string, error)
 	StartTurn(ctx context.Context, threadID, text, runtimeMode string, attachments []harness.Attachment) error
 	Interrupt(ctx context.Context, threadID string) error
+	Settle(ctx context.Context, threadID string) error
 	RespondApproval(ctx context.Context, threadID, requestID, decision string) error
 	RespondUserInput(ctx context.Context, threadID, requestID string, answer harness.QuestionAnswer) error
 	SubscribeThread(ctx context.Context, threadID string) (threadSub, error)
@@ -31,22 +43,22 @@ type rpcConn interface {
 	Close() error
 }
 
-type clientAdapter struct{ *Client }
+type clientAdapter struct{ *conn }
 
 func (a clientAdapter) SubscribeThread(ctx context.Context, threadID string) (threadSub, error) {
-	return a.Client.SubscribeThread(ctx, threadID)
+	return a.conn.SubscribeThread(ctx, threadID)
 }
 
 func (a clientAdapter) ResumeThread(ctx context.Context, threadID string, w *turnWatch) (threadSub, error) {
-	return a.Client.ResumeThread(ctx, threadID, w)
+	return a.conn.ResumeThread(ctx, threadID, w)
 }
 
 func connect(ctx context.Context, s harness.Session, opts Options) (rpcConn, error) {
-	c, err := Connect(ctx, s, opts)
+	c, err := t3rpc.Connect(ctx, s, opts)
 	if err != nil {
 		return nil, err
 	}
-	return clientAdapter{c}, nil
+	return clientAdapter{&conn{Conn: c, log: logger(opts)}}, nil
 }
 
 // Harness is the harness.Client for T3 Code servers; every T3 concept stays inside this package.
@@ -65,9 +77,31 @@ func NewHarness(opts Options) *Harness {
 // Kind implements harness.Client.
 func (h *Harness) Kind() harness.Kind { return harness.KindT3Code }
 
+// Pair implements harness.Client: the `t3 pair` one-time token is traded for a bearer session, then the version is read.
+func (h *Harness) Pair(ctx context.Context, serverURL, secret string) (harness.PairResult, error) {
+	token, expiresIn, err := t3rpc.Exchange(ctx, h.Options.HTTPClient, serverURL, secret)
+	if err != nil {
+		return harness.PairResult{}, fmt.Errorf("exchange pairing token: %w", err)
+	}
+	version, err := h.Version(ctx, serverURL)
+	if err != nil {
+		return harness.PairResult{}, fmt.Errorf("read T3 version: %w", err)
+	}
+	return harness.PairResult{BearerToken: token, ExpiresIn: expiresIn, Version: version}, nil
+}
+
+// Version implements harness.Client via the unauthenticated well-known probe.
+func (h *Harness) Version(ctx context.Context, serverURL string) (string, error) {
+	d, err := t3rpc.Describe(ctx, h.Options.HTTPClient, serverURL)
+	if err != nil {
+		return "", err
+	}
+	return d.ServerVersion, nil
+}
+
 // ListProjects implements harness.Client: connect, read the registry, close.
 func (h *Harness) ListProjects(ctx context.Context, s harness.Session) (projects []harness.Project, err error) {
-	c, err := Connect(ctx, s, h.Options)
+	c, err := t3rpc.Connect(ctx, s, h.Options)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +113,7 @@ func (h *Harness) ListProjects(ctx context.Context, s harness.Session) (projects
 
 // ListProviders implements harness.Client: connect, parse the handshake config, close.
 func (h *Harness) ListProviders(ctx context.Context, s harness.Session) (providers []harness.Provider, err error) {
-	c, err := Connect(ctx, s, h.Options)
+	c, err := t3rpc.Connect(ctx, s, h.Options)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +125,7 @@ func (h *Harness) ListProviders(ctx context.Context, s harness.Session) (provide
 
 // Hold implements harness.Client: the WebSocket itself is the presence signal T3 shows for a paired client.
 func (h *Harness) Hold(ctx context.Context, s harness.Session) (harness.Conn, error) {
-	c, err := Connect(ctx, s, h.Options)
+	c, err := t3rpc.Connect(ctx, s, h.Options)
 	if err != nil {
 		return nil, err
 	}
@@ -140,43 +174,20 @@ func (h *Harness) StartTurn(ctx context.Context, target harness.Target, title st
 
 func (h *Harness) createThread(ctx context.Context, client rpcConn, target harness.Target, title string) (string, error) {
 	if target.Model == "" && target.Provider != "" {
-		resolved, err := defaultModelFor(client, target.Provider)
+		providers, err := client.Providers()
+		if err != nil {
+			return "", fmt.Errorf("list t3 providers: %w", err)
+		}
+		target.Model, err = t3rpc.DefaultModel(providers, target.Provider)
 		if err != nil {
 			return "", err
 		}
-		target.Model = resolved
 	}
 	threadID, err := client.CreateThread(ctx, target.ProjectID, title, target.Provider, target.Model, target.ModelOptions, RuntimeModeFullAccess)
 	if err != nil {
 		return "", fmt.Errorf("create t3 thread: %w", err)
 	}
 	return threadID, nil
-}
-
-// defaultModelFor picks providerID's default model, falling back to its first current one, so an empty target.Model never
-// reaches T3, which rejects an empty modelSelection.model as a defect.
-func defaultModelFor(client rpcConn, providerID string) (string, error) {
-	providers, err := client.Providers()
-	if err != nil {
-		return "", fmt.Errorf("list t3 providers: %w", err)
-	}
-	for _, p := range providers {
-		if p.ID != providerID {
-			continue
-		}
-		for _, m := range p.Models {
-			if m.IsDefault {
-				return m.Slug, nil
-			}
-		}
-		for _, m := range p.Models {
-			if !m.IsLegacy {
-				return m.Slug, nil
-			}
-		}
-		return "", fmt.Errorf("%w: provider %s has no models", apperrs.ErrInvalid, providerID)
-	}
-	return "", fmt.Errorf("%w: provider %s not found", apperrs.ErrInvalid, providerID)
 }
 
 // subscribeAndStart opens the subscription before starting the turn, so no events are missed.
@@ -229,10 +240,10 @@ func (h *Harness) reconnect(ctx context.Context, s harness.Session, threadID str
 	for {
 		client, sub, err := h.resume(ctx, deadline, s, threadID, w)
 		if err == nil {
-			h.logger().Info("t3client: turn resumed after a dropped connection", "thread", threadID, "after_sequence", w.lastSeq)
+			logger(h.Options).Info("t3client: turn resumed after a dropped connection", "thread", threadID, "after_sequence", w.lastSeq)
 			return client, sub
 		}
-		h.logger().Warn("t3client: reconnect failed", "thread", threadID, "error", err)
+		logger(h.Options).Warn("t3client: reconnect failed", "thread", threadID, "error", err)
 		if errors.Is(err, apperrs.ErrUnauthorized) {
 			out <- giveUp(fmt.Sprintf("Lost the connection to T3 Code and it refused to reconnect: %v", err))
 			return nil, nil
@@ -267,9 +278,9 @@ func (h *Harness) resume(ctx context.Context, deadline time.Time, s harness.Sess
 	return client, sub, nil
 }
 
-func (h *Harness) logger() *slog.Logger {
-	if h.Options.Logger != nil {
-		return h.Options.Logger
+func logger(opts Options) *slog.Logger {
+	if opts.Logger != nil {
+		return opts.Logger
 	}
 	return slog.Default()
 }
@@ -331,6 +342,22 @@ func (h *Harness) Answer(ctx context.Context, target harness.Target, requestID s
 	defer func() { _ = client.Close() }()
 	if err := client.RespondUserInput(ctx, target.SessionID, requestID, answer); err != nil {
 		return fmt.Errorf("answer t3 question: %w", err)
+	}
+	return nil
+}
+
+// Settle settles target's thread over its own connection, like Interrupt.
+func (h *Harness) Settle(ctx context.Context, target harness.Target) error {
+	if target.SessionID == "" {
+		return fmt.Errorf("%w: no session to settle", apperrs.ErrInvalid)
+	}
+	client, err := h.connect(ctx, target.Session, h.Options)
+	if err != nil {
+		return fmt.Errorf("connect t3: %w", err)
+	}
+	defer func() { _ = client.Close() }()
+	if err := client.Settle(ctx, target.SessionID); err != nil {
+		return fmt.Errorf("settle t3 thread: %w", err)
 	}
 	return nil
 }

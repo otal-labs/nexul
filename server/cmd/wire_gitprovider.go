@@ -119,6 +119,14 @@ func (g gitProviderRouter) CreateWebhook(ctx context.Context, owner, name string
 	return p.CreateWebhook(ctx, owner, name, cfg)
 }
 
+func (g gitProviderRouter) ListWebhooks(ctx context.Context, owner, name string) ([]gitprovider.Webhook, error) {
+	p, err := g.resolve(ctx, owner, name)
+	if err != nil {
+		return nil, err
+	}
+	return p.ListWebhooks(ctx, owner, name)
+}
+
 func (g gitProviderRouter) DeleteWebhook(ctx context.Context, owner, name, hookID string) error {
 	p, err := g.resolve(ctx, owner, name)
 	if err != nil {

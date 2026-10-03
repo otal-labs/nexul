@@ -31,6 +31,9 @@ DELETE FROM project_repos WHERE owner = ? AND name = ?;
 -- name: ListProjectRepos :many
 SELECT owner, name, full_name, connector_id, role FROM project_repos WHERE project_id = ? ORDER BY name;
 
+-- name: ListAllProjectRepos :many
+SELECT owner, name, full_name, connector_id, role FROM project_repos ORDER BY full_name;
+
 -- name: GetProjectRepoByOwnerAndName :one
 SELECT project_id, owner, name, full_name, connector_id, role FROM project_repos WHERE owner = ? AND name = ?;
 

@@ -1,5 +1,5 @@
-// Package t3client speaks T3's internal Effect RPC protocol over one WebSocket, pinned to v0.0.34.
-package t3client
+// Package t3rpc speaks T3 Code's Effect RPC protocol over one WebSocket: the transport both orchestration protocols share.
+package t3rpc
 
 import (
 	"bytes"
@@ -29,8 +29,6 @@ const (
 
 	// maxFrameBytes bounds inbound WS frames well above T3's own payload caps.
 	maxFrameBytes = 1 << 25
-
-	maxHTTPResponseBytes = 1 << 20
 )
 
 // Options configures Connect. The zero value is usable: http.DefaultClient, slog.Default, 30s per-RPC timeout.
@@ -39,15 +37,18 @@ type Options struct {
 	Logger     *slog.Logger
 	// RPCTimeout bounds each unary RPC round-trip and each WS write.
 	RPCTimeout time.Duration
+	// Query rides on the /ws dial beside wsTicket.
+	Query url.Values
 }
 
-// Client is one authenticated Effect RPC session; safe for concurrent use, Close ends it.
-type Client struct {
+// Conn is one authenticated Effect RPC session; safe for concurrent use, Close ends it.
+type Conn struct {
 	conn    *websocket.Conn
 	log     *slog.Logger
 	timeout time.Duration
 	// config is the server.getConfig handshake result, kept so providers can be read without a second RPC (providers.go).
-	config json.RawMessage
+	config   json.RawMessage
+	protocol int
 
 	// writeMu serializes WS writes: a websocket.Conn allows only one writer at a time (concurrent writers corrupt frames).
 	writeMu sync.Mutex
@@ -84,12 +85,12 @@ type ackEnvelope struct {
 }
 
 // ack releases the next chunk; a failure just logs, a dead connection surfaces via c.done anyway.
-func (c *Client) ack(id string) {
+func (c *Conn) ack(id string) {
 	if err := c.send(c.ctx, ackEnvelope{Tag: "Ack", RequestID: id}); err != nil {
-		c.log.Warn("t3client: ack failed", "request", id, "error", err)
+		c.log.Warn("t3rpc: ack failed", "request", id, "error", err)
 		return
 	}
-	c.log.Debug("t3client: ack sent", "request", id)
+	c.log.Debug("t3rpc: ack sent", "request", id)
 }
 
 type pongEnvelope struct {
@@ -129,11 +130,8 @@ type exitBody struct {
 }
 
 // Connect mints a wsTicket, opens the WS, and completes the server.getConfig handshake. Callers own Close.
-func Connect(ctx context.Context, s harness.Session, opts Options) (*Client, error) {
-	httpClient := opts.HTTPClient
-	if httpClient == nil {
-		httpClient = http.DefaultClient
-	}
+func Connect(ctx context.Context, s harness.Session, opts Options) (*Conn, error) {
+	client := httpClient(opts.HTTPClient)
 	log := opts.Logger
 	if log == nil {
 		log = slog.Default()
@@ -144,22 +142,29 @@ func Connect(ctx context.Context, s harness.Session, opts Options) (*Client, err
 	}
 	serverURL := strings.TrimRight(s.ServerURL, "/")
 
-	ticket, err := mintWSTicket(ctx, httpClient, serverURL, s.BearerToken)
+	ticket, err := mintWSTicket(ctx, client, serverURL, s.BearerToken)
 	if err != nil {
 		return nil, err
 	}
 
 	dialCtx, cancelDial := context.WithTimeout(ctx, timeout)
 	defer cancelDial()
-	wsURL := serverURL + wsPath + "?wsTicket=" + url.QueryEscape(ticket)
-	conn, _, err := websocket.Dial(dialCtx, wsURL, &websocket.DialOptions{HTTPClient: httpClient})
+	query := url.Values{}
+	for k, v := range opts.Query {
+		query[k] = v
+	}
+	query.Set("wsTicket", ticket)
+	conn, resp, err := websocket.Dial(dialCtx, serverURL+wsPath+"?"+query.Encode(), &websocket.DialOptions{HTTPClient: client})
+	if resp != nil && resp.StatusCode == http.StatusUpgradeRequired {
+		return nil, protocolMismatch(resp.Body)
+	}
 	if err != nil {
 		return nil, apperrs.Retryable(fmt.Errorf("dial T3 websocket: %w", err))
 	}
 	conn.SetReadLimit(maxFrameBytes)
 
 	connCtx, cancel := context.WithCancel(context.Background())
-	c := &Client{
+	c := &Conn{
 		conn:    conn,
 		log:     log,
 		timeout: timeout,
@@ -170,25 +175,67 @@ func Connect(ctx context.Context, s harness.Session, opts Options) (*Client, err
 	}
 	go c.readLoop()
 
-	config, err := c.call(ctx, "server.getConfig", nil)
+	config, err := c.Call(ctx, "server.getConfig", nil)
 	if err != nil {
 		_ = c.Close()
 		return nil, fmt.Errorf("server.getConfig handshake: %w", err)
 	}
-	c.config = config
-	c.log.Debug("t3client: connected", "server", serverURL, "config", snippet(config))
+	var handshake struct {
+		Environment Descriptor `json:"environment"`
+	}
+	if err := json.Unmarshal(config, &handshake); err != nil {
+		c.log.Debug("t3rpc: handshake environment not decoded, assuming protocol 1", "error", err)
+	}
+	c.config, c.protocol = config, protocolOrOne(handshake.Environment.Protocol)
+	c.log.Debug("t3rpc: connected", "server", serverURL, "protocol", c.protocol, "config", Snippet(config))
 	return c, nil
 }
 
+// ProtocolMismatchError is T3 refusing the dial (HTTP 426) because it speaks orchestration protocol Version.
+type ProtocolMismatchError struct {
+	Version int
+}
+
+func (e *ProtocolMismatchError) Error() string {
+	return fmt.Sprintf("T3 Code refused the connection: it speaks orchestration protocol %d", e.Version)
+}
+
+// protocolMismatch reads the version T3 names in its 426 body.
+func protocolMismatch(body io.Reader) *ProtocolMismatchError {
+	var refusal struct {
+		Version int `json:"orchestrationProtocolVersion"`
+	}
+	// An unreadable body is still a refusal; Version stays 0, meaning unknown.
+	_ = json.NewDecoder(body).Decode(&refusal)
+	return &ProtocolMismatchError{Version: refusal.Version}
+}
+
 // Close ends the session; in-flight calls and subscriptions fail/close.
-func (c *Client) Close() error {
+func (c *Conn) Close() error {
 	c.cancel()
 	return c.conn.Close(websocket.StatusNormalClosure, "")
 }
 
 // Done is closed once the session is dead (read error or Close); the presence keeper redials on it.
-func (c *Client) Done() <-chan struct{} {
+func (c *Conn) Done() <-chan struct{} {
 	return c.done
+}
+
+// Err is why the session died, nil while it is alive.
+func (c *Conn) Err() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.err
+}
+
+// Config is the raw server.getConfig handshake result.
+func (c *Conn) Config() json.RawMessage {
+	return c.config
+}
+
+// Protocol is the orchestration protocol the handshake's environment names, 1 when it names none.
+func (c *Conn) Protocol() int {
+	return c.protocol
 }
 
 type wsTicketResponse struct {
@@ -211,7 +258,7 @@ func mintWSTicket(ctx context.Context, client *http.Client, serverURL, bearerTok
 	defer func() {
 		err = errors.Join(err, resp.Body.Close())
 	}()
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxHTTPResponseBytes))
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
 	if err != nil {
 		return "", fmt.Errorf("read websocket-ticket response: %w", err)
 	}
@@ -230,29 +277,29 @@ func mintWSTicket(ctx context.Context, client *http.Client, serverURL, bearerTok
 			return ticket, nil
 		}
 	}
-	return "", fmt.Errorf("%w: T3 websocket-ticket response has no recognizable ticket field: %s", apperrs.ErrInvalid, snippet(body))
+	return "", fmt.Errorf("%w: T3 websocket-ticket response has no recognizable ticket field: %s", apperrs.ErrInvalid, Snippet(body))
 }
 
 // readLoop is the single reader demultiplexing frames to pending requests.
-func (c *Client) readLoop() {
+func (c *Conn) readLoop() {
 	for {
 		_, data, err := c.conn.Read(c.ctx)
 		if err != nil {
 			c.fail(err)
 			return
 		}
-		c.log.Debug("t3client: frame received", "raw", snippet(data))
+		c.log.Debug("t3rpc: frame received", "raw", Snippet(data))
 		c.handleFrame(data)
 	}
 }
 
 // handleFrame accepts either one envelope or a JSON array batch of envelopes.
-func (c *Client) handleFrame(data []byte) {
+func (c *Conn) handleFrame(data []byte) {
 	data = bytes.TrimSpace(data)
 	if len(data) > 0 && data[0] == '[' {
 		var batch []json.RawMessage
 		if err := json.Unmarshal(data, &batch); err != nil {
-			c.log.Warn("t3client: malformed batch frame skipped", "error", err, "frame", snippet(data))
+			c.log.Warn("t3rpc: malformed batch frame skipped", "error", err, "frame", Snippet(data))
 			return
 		}
 		for _, one := range batch {
@@ -263,10 +310,10 @@ func (c *Client) handleFrame(data []byte) {
 	c.handleEnvelope(data)
 }
 
-func (c *Client) handleEnvelope(data []byte) {
+func (c *Conn) handleEnvelope(data []byte) {
 	var env serverEnvelope
 	if err := json.Unmarshal(data, &env); err != nil {
-		c.log.Warn("t3client: malformed frame skipped", "error", err, "frame", snippet(data))
+		c.log.Warn("t3rpc: malformed frame skipped", "error", err, "frame", Snippet(data))
 		return
 	}
 	switch env.Tag {
@@ -274,35 +321,35 @@ func (c *Client) handleEnvelope(data []byte) {
 		c.deliver(env)
 	case "Defect":
 		// A Defect is connection-fatal in Effect RPC: fail everything in flight.
-		c.log.Error("t3client: server defect", "defect", snippet(env.Defect))
-		c.fail(fmt.Errorf("t3 server defect: %s", snippet(env.Defect)))
+		c.log.Error("t3rpc: server defect", "defect", Snippet(env.Defect))
+		c.fail(fmt.Errorf("t3 server defect: %s", Snippet(env.Defect)))
 	case "Ping":
 		// Ping is documented as client→server only, but T3's Effect patch adds ping/pong hooks; answer just in case.
 		_ = c.send(c.ctx, pongEnvelope{Tag: "Pong"})
 	case "Pong":
 	default:
-		c.log.Debug("t3client: unknown frame tag skipped", "tag", env.Tag, "frame", snippet(data))
+		c.log.Debug("t3rpc: unknown frame tag skipped", "tag", env.Tag, "frame", Snippet(data))
 	}
 }
 
-func (c *Client) deliver(env serverEnvelope) {
+func (c *Conn) deliver(env serverEnvelope) {
 	c.mu.Lock()
 	ch := c.pending[string(env.RequestID)]
 	c.mu.Unlock()
 	if ch == nil {
-		c.log.Debug("t3client: frame for unknown request skipped", "request_id", string(env.RequestID), "tag", env.Tag)
+		c.log.Debug("t3rpc: frame for unknown request skipped", "request_id", string(env.RequestID), "tag", env.Tag)
 		return
 	}
 	select {
 	case ch <- env:
 	default:
 		// ponytail: drop-on-full, snapshots are cumulative so this self-heals; block-with-disconnect if drops bite.
-		c.log.Warn("t3client: dropping frame, consumer too slow", "request_id", string(env.RequestID), "tag", env.Tag)
+		c.log.Warn("t3rpc: dropping frame, consumer too slow", "request_id", string(env.RequestID), "tag", env.Tag)
 	}
 }
 
 // fail records the first connection error and wakes every waiter.
-func (c *Client) fail(err error) {
+func (c *Conn) fail(err error) {
 	c.mu.Lock()
 	if c.err == nil {
 		c.err = err
@@ -312,7 +359,7 @@ func (c *Client) fail(err error) {
 	c.cancel()
 }
 
-func (c *Client) register() (string, chan serverEnvelope) {
+func (c *Conn) register() (string, chan serverEnvelope) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.nextID++
@@ -322,14 +369,14 @@ func (c *Client) register() (string, chan serverEnvelope) {
 	return id, ch
 }
 
-func (c *Client) unregister(id string) {
+func (c *Conn) unregister(id string) {
 	c.mu.Lock()
 	delete(c.pending, id)
 	c.mu.Unlock()
 }
 
 // send writes one frame under the write mutex with the client's timeout.
-func (c *Client) send(ctx context.Context, v any) error {
+func (c *Conn) send(ctx context.Context, v any) error {
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
 	c.writeMu.Lock()
@@ -337,20 +384,37 @@ func (c *Client) send(ctx context.Context, v any) error {
 	return wsjson.Write(ctx, c.conn, v)
 }
 
-// call performs one unary RPC; a result may arrive in the Exit or a preceding Chunk, both accepted.
-func (c *Client) call(ctx context.Context, method string, payload any) (json.RawMessage, error) {
+// ErrConnectionLost wraps the error of a call or stream whose connection died under it.
+var ErrConnectionLost = errors.New("T3 connection lost")
+
+// request opens one RPC: it registers the id the server's frames come back under, then sends the Request frame.
+func (c *Conn) request(ctx context.Context, method string, payload any) (string, chan serverEnvelope, error) {
 	if payload == nil {
 		// A missing payload dies on upstream ≥0.0.35; no-input calls must still carry {}.
 		payload = struct{}{}
 	}
-	ctx, cancel := context.WithTimeout(ctx, c.timeout)
-	defer cancel()
 	id, ch := c.register()
-	defer c.unregister(id)
 	env := requestEnvelope{Tag: "Request", ID: id, RPCTag: method, Payload: payload, Headers: [][]string{}}
 	if err := c.send(ctx, env); err != nil {
-		return nil, apperrs.Retryable(fmt.Errorf("send %s: %w", method, err))
+		c.unregister(id)
+		return "", nil, apperrs.Retryable(fmt.Errorf("send %s: %w", method, err))
 	}
+	return id, ch, nil
+}
+
+func (c *Conn) lost(method string) error {
+	return apperrs.Retryable(fmt.Errorf("%s: %w: %w", method, ErrConnectionLost, c.Err()))
+}
+
+// Call performs one unary RPC; a result may arrive in the Exit or a preceding Chunk, both accepted.
+func (c *Conn) Call(ctx context.Context, method string, payload any) (json.RawMessage, error) {
+	ctx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
+	id, ch, err := c.request(ctx, method, payload)
+	if err != nil {
+		return nil, err
+	}
+	defer c.unregister(id)
 	var chunkResult json.RawMessage
 	for {
 		select {
@@ -367,9 +431,58 @@ func (c *Client) call(ctx context.Context, method string, payload any) (json.Raw
 			_ = c.send(c.ctx, interruptEnvelope{Tag: "Interrupt", RequestID: id})
 			return nil, fmt.Errorf("%s: %w", method, ctx.Err())
 		case <-c.done:
-			return nil, apperrs.Retryable(fmt.Errorf("%s: T3 connection lost: %w", method, c.err))
+			return nil, c.lost(method)
 		}
 	}
+}
+
+// Stream is one streaming RPC; Next hands over each Chunk's values, Close interrupts it server-side.
+type Stream struct {
+	c      *Conn
+	id     string
+	method string
+	ch     chan serverEnvelope
+	// unacked is set while the caller holds a chunk; the server sends the next one only after its Ack.
+	unacked bool
+}
+
+// Stream opens method as a stream; the caller owns Close.
+func (c *Conn) Stream(ctx context.Context, method string, payload any) (*Stream, error) {
+	id, ch, err := c.request(ctx, method, payload)
+	if err != nil {
+		return nil, err
+	}
+	return &Stream{c: c, id: id, method: method, ch: ch}, nil
+}
+
+// Next acks the chunk it returned last, then waits for the next one. A clean end is io.EOF, a failed one
+// wraps ErrInvalid, and a dead connection wraps ErrConnectionLost.
+func (s *Stream) Next(ctx context.Context) ([]json.RawMessage, error) {
+	if s.unacked {
+		s.unacked = false
+		s.c.ack(s.id)
+	}
+	select {
+	case in := <-s.ch:
+		if in.Tag == "Exit" {
+			if _, err := decodeExit(s.method, in.Exit, nil); err != nil {
+				return nil, err
+			}
+			return nil, io.EOF
+		}
+		s.unacked = true
+		return in.Values, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-s.c.done:
+		return nil, s.c.lost(s.method)
+	}
+}
+
+// Close stops the stream; the Interrupt is best-effort, since a dead connection has already ended it.
+func (s *Stream) Close() {
+	s.c.unregister(s.id)
+	_ = s.c.send(s.c.ctx, interruptEnvelope{Tag: "Interrupt", RequestID: s.id})
 }
 
 func decodeExit(method string, raw, chunkResult json.RawMessage) (json.RawMessage, error) {
@@ -378,7 +491,7 @@ func decodeExit(method string, raw, chunkResult json.RawMessage) (json.RawMessag
 		return nil, fmt.Errorf("%s: malformed exit frame: %w", method, err)
 	}
 	if exit.Tag != "Success" {
-		return nil, fmt.Errorf("%w: %s failed: %s", apperrs.ErrInvalid, method, snippet(exit.Cause))
+		return nil, fmt.Errorf("%w: %s failed: %s", apperrs.ErrInvalid, method, Snippet(exit.Cause))
 	}
 	if len(exit.Value) > 0 && !bytes.Equal(bytes.TrimSpace(exit.Value), []byte("null")) {
 		return exit.Value, nil
@@ -386,11 +499,19 @@ func decodeExit(method string, raw, chunkResult json.RawMessage) (json.RawMessag
 	return chunkResult, nil
 }
 
-// snippet bounds raw wire data for log/error messages.
-func snippet(b []byte) string {
+// Snippet bounds raw wire data for log and error messages.
+func Snippet(b []byte) string {
 	const max = 512
 	if len(b) > max {
 		return string(b[:max]) + "…"
 	}
 	return string(b)
+}
+
+// httpClient is client, or http.DefaultClient when the caller left it nil.
+func httpClient(client *http.Client) *http.Client {
+	if client == nil {
+		return http.DefaultClient
+	}
+	return client
 }

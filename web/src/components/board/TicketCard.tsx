@@ -1,5 +1,5 @@
 import { useSortable } from "@dnd-kit/sortable";
-import { LoaderCircle, MessageSquare } from "lucide-react";
+import { CircleHelp, LoaderCircle, MessageSquare } from "lucide-react";
 import { memo, useState, type CSSProperties } from "react";
 import { useNavigate } from "react-router";
 
@@ -14,7 +14,7 @@ import { useFetchProject } from "@/hooks/ProjectHooks";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
 import { useFetchLabelColors } from "@/hooks/TicketHooks";
 import { useFetchProjectTicketTypes } from "@/hooks/TicketTypeHooks";
-import { useIsTicketRunActive } from "@/hooks/TrailHooks";
+import { useTicketRunState } from "@/hooks/TrailHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { cn } from "@/lib/utils";
 import { personLabel } from "@/models/Person";
@@ -45,7 +45,7 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
   const person = cardPerson(ticket, statuses?.find((s) => s.id === ticket.status)?.kind);
   const shown = usePerson(person.login);
   const hasThread = threadIndicators?.[ticket.id] === true;
-  const runActive = useIsTicketRunActive(ticket.project_id, ticket.id);
+  const runState = useTicketRunState(ticket.project_id, ticket.id);
   const prefix = project?.prefix ?? "";
   const ticketType = ticketTypes?.find((t) => t.id === ticket.type_id);
   const type = ticketType?.name ?? "";
@@ -89,7 +89,10 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
           ))}
         </span>
         <span className="flex shrink-0 items-center gap-1.5 font-mono text-[10.5px] text-muted-foreground">
-          {runActive && (
+          {runState === "waiting" && (
+            <CircleHelp className="size-3 shrink-0 text-info" role="img" aria-label="A play is waiting for an answer" />
+          )}
+          {runState !== undefined && runState !== "waiting" && (
             <LoaderCircle className="size-3 shrink-0 animate-spin motion-reduce:animate-none text-warning" role="img" aria-label="A play is running" />
           )}
           {prefix}-{ticket.number}

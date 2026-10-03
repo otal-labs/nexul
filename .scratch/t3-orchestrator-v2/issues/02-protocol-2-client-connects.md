@@ -11,6 +11,8 @@
   ErrProtocol "T3 Code on <computer> went back to its old orchestrator; Nexul only moves forward.
   Update T3 Code there." (for `Pair`/`Version`, name the server URL's host). A 426 naming a protocol
   above 2 → ErrProtocol "T3 Code on <computer> needs a newer Nexul".
+- `Settle` dispatches `thread.settle` with `commandId` and `threadId`, the protocol-1 shape (`settledAt` is
+  optional and left out). T3 V2's sidebar hides handed-off child threads, so only the thread itself is settled.
 - `StartTurn`, `Interrupt`, `Answer` return ErrInvalid "turns on this T3 Code version need a newer
   Nexul" until ticket 05 (Interrupt/Answer until 08).
 - Register the kind in `server/cmd/services.go`; add `"t3code-v2": "T3 Code"` to `HARNESS_LABELS`
