@@ -76,7 +76,9 @@ prompt names its ticket, doc, and memories for the agent to read through MCP
 rather than carrying them; an image embedded in the body of the ticket or doc
 a turn is about still travels to the harness as an attachment, capped at
 10 MiB per image and 25 MiB per turn, and an oversized or non-image one is
-left out. A Note's file reaches the turn as text.
+left out. A Note's file reaches the turn as text. Once a ticket is done and no
+turn runs on its thread, the harness session is settled, which moves it out of
+the harness's active list until new work wakes it.
 _Avoid_: Backend (that is the Go server), Runtime, Driver
 
 **Model options**:

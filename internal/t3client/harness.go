@@ -23,6 +23,7 @@ type rpcConn interface {
 	CreateThread(ctx context.Context, t3ProjectID, title, providerInstanceID, model string, options []harness.OptionSetting, runtimeMode string) (string, error)
 	StartTurn(ctx context.Context, threadID, text, runtimeMode string, attachments []harness.Attachment) error
 	Interrupt(ctx context.Context, threadID string) error
+	Settle(ctx context.Context, threadID string) error
 	RespondApproval(ctx context.Context, threadID, requestID, decision string) error
 	RespondUserInput(ctx context.Context, threadID, requestID string, answer harness.QuestionAnswer) error
 	SubscribeThread(ctx context.Context, threadID string) (threadSub, error)
@@ -331,6 +332,22 @@ func (h *Harness) Answer(ctx context.Context, target harness.Target, requestID s
 	defer func() { _ = client.Close() }()
 	if err := client.RespondUserInput(ctx, target.SessionID, requestID, answer); err != nil {
 		return fmt.Errorf("answer t3 question: %w", err)
+	}
+	return nil
+}
+
+// Settle settles target's thread over its own connection, like Interrupt.
+func (h *Harness) Settle(ctx context.Context, target harness.Target) error {
+	if target.SessionID == "" {
+		return fmt.Errorf("%w: no session to settle", apperrs.ErrInvalid)
+	}
+	client, err := h.connect(ctx, target.Session, h.Options)
+	if err != nil {
+		return fmt.Errorf("connect t3: %w", err)
+	}
+	defer func() { _ = client.Close() }()
+	if err := client.Settle(ctx, target.SessionID); err != nil {
+		return fmt.Errorf("settle t3 thread: %w", err)
 	}
 	return nil
 }

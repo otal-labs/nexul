@@ -321,6 +321,8 @@ type Client interface {
 	// Answer resolves the pending Question requestID on t's session so the turn continues; ErrConflict when the
 	// harness already holds an answer for it.
 	Answer(ctx context.Context, t Target, requestID string, answer QuestionAnswer) error
+	// Settle moves t's idle session out of the harness's active list; the harness wakes it on new activity.
+	Settle(ctx context.Context, t Target) error
 }
 
 // Registry maps each supported kind to its client; the composition root builds it once.

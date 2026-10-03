@@ -123,6 +123,8 @@ type Ticket struct {
 	Title string
 	// Body is markdown, read only for the images it embeds.
 	Body string
+	// Done is true when the ticket's column is in the done stage; its thread is then settled once no turn runs.
+	Done bool
 }
 
 // TicketReader is the agent pipeline's seam onto tickets (ADR 0017).
@@ -200,6 +202,7 @@ type Service struct {
 
 	mu     sync.Mutex
 	active map[string]activeTurn // conversationID -> in-flight turn, for Interrupt
+	ended  map[string]endedTurn  // ticketID -> its thread's last turn, until that thread is settled
 }
 
 // activeTurn is an in-flight turn: the client it runs on and the target to interrupt.
@@ -230,6 +233,7 @@ func NewService(cfg Config) *Service {
 		log:           cfg.Logger,
 		now:           cfg.Now,
 		active:        map[string]activeTurn{},
+		ended:         map[string]endedTurn{},
 	}
 }
 
@@ -353,7 +357,7 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 		SessionID:    conv.ThreadID,
 	}}
 	s.setActive(conversationID, turn)
-	defer s.clearActive(conversationID)
+	defer s.endTurn(ctx, conv, &turn)
 
 	result, err := client.StartTurn(ctx, turn.target, title, prompts)
 	if err != nil {
