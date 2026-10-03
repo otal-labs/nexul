@@ -32,7 +32,14 @@ export const InterviewTemplateForm = ({ template, canWrite }: InterviewTemplateF
         state={template.edited ? "edited" : "following"}
         canReset={canWrite}
       />
-      <InterviewTemplateField id="interview-template-body" value={body} onChange={setBody} readOnly={!canWrite} />
+      <InterviewTemplateField
+        id="interview-template-body"
+        value={body}
+        onChange={setBody}
+        questionCount={template.questions.length}
+        error={saveTemplate.error}
+        readOnly={!canWrite}
+      />
       <div className="flex flex-wrap items-center justify-end gap-2">
         <Button
           type="button"

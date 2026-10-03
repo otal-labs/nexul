@@ -49,9 +49,7 @@ through the `skill_get` tool.
 Each project has one **interview memory**: its stack, paradigm, testing
 strategy, principles, and vocabulary, written as rules. Open it from
 **Interview** under the project in the sidebar (`/<workspace>/projects/<prefix>/interview`).
-Until it exists the page offers **Start from the template**, which copies the
-workspace's Interview template into a new interview memory. The page's
-**Run the interview** button runs the workspace's Interview play instead: an
+The page's **Run the interview** button runs the workspace's Interview play: an
 Agent asks one question at a time and writes the memory for you, and
 **Re-run the interview** amends it later. See [Plays](/docs/guide/plays/).
 
@@ -62,18 +60,24 @@ always-included switch and cannot be left out of a play run. It is capped at 8,0
 the cap, and a save over it is refused with the count. It versions and
 reverts like any memory. A clone of it is an ordinary memory.
 
-The **Interview template** lives in **Configuration → Interview template**. Out
-of the box it has one heading per category: stack and versions,
-architecture, error handling and logging, testing, code style, dependency
-policy, security and secrets, performance budgets, CI gates, branching and
-commits, docs and decision records, UI, and vocabulary. It is markdown under
-the same cap. Until a workspace edits it, the workspace shows the instance's
+The **Interview template** lives in **Configuration → Interview template**. It
+is the list of questions the interview asks, in markdown: a `##` heading per
+question, the text under it as a hint, then `- ` bullets for single-choice
+options or `- [ ]` bullets for multi-select ones, with the text after `: `
+describing an option. A question with no bullets takes free text. Out of the
+box it asks twelve questions only a person can answer: languages and
+frameworks, how the code is organised, how errors travel, when tests are
+written and which a change needs, style rules, dependencies, secrets, how a
+change reaches the main branch, where decisions are written down, the user
+interface, and the project's own words. A save is refused, naming the line,
+when text comes before the first question, a heading is empty, a question is
+asked twice, or there are none. The template holds up to 32,000 characters,
+and the editor shows how many questions it has. Until a workspace edits it, the workspace shows the instance's
 Interview template and follows it as it changes, and a line over the editor
 says which: "Following the instance template" or "Edited for this workspace".
 **Reset to instance template** drops the workspace's own and follows the
-instance's again. A project's interview copies
-the template once, so editing the template never changes an existing
-interview, and editing an interview never changes the template.
+instance's again. The template is never copied into an interview memory, which
+starts empty, so editing one never changes the other.
 
 ## Templates
 

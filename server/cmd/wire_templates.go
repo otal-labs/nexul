@@ -32,6 +32,7 @@ func wireTemplates(store *storage.Store, gate templates.Gate, mem *memories.Serv
 			Name: memories.TemplateKind, Below: templates.ScopeWorkspace, Follows: true,
 			Defaults: []templates.Default{{Name: "Interview", Body: memories.DefaultInterviewTemplate}},
 			Check:    memories.CheckInterviewTemplate, Layer: interviewLayer{svc: mem},
+			Questions: func(body string) any { return memories.TemplateQuestions(body) },
 		},
 		templates.Kind{
 			Name: tenancy.TemplateKind, Below: templates.ScopeWorkspace, Follows: true,

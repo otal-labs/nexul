@@ -41,7 +41,9 @@ type Template struct {
 	// Edited is false while this location shows DefaultBody: never edited, following the instance, or reset.
 	Edited bool `json:"edited"`
 	// Follows says the kind's lower layer follows the instance live until edited, rather than copying it at creation.
-	Follows   bool       `json:"follows"`
+	Follows bool `json:"follows"`
+	// Questions is Body parsed, for a kind whose text is a list of questions (the Interview template).
+	Questions any        `json:"questions,omitempty"`
 	UpdatedBy string     `json:"updated_by,omitempty"`
 	UpdatedAt *time.Time `json:"updated_at,omitempty"`
 }
@@ -81,6 +83,8 @@ type Kind struct {
 	Defaults []Default
 	// Check validates a body before it is stored at the instance; nil accepts any text.
 	Check func(body string) error
+	// Questions parses a body for the reader; nil for a kind whose text is not a list of questions.
+	Questions func(body string) any
 	// Layer is nil for an instance-only kind.
 	Layer Layer
 }

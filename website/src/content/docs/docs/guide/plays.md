@@ -117,8 +117,8 @@ of its own that the Interview page shows once a run has created it.
 
 The Agent is told the project's name and id and the answers the project
 already records, such as where its tests live from the project wizard. It
-opens the interview memory with `memory_create` and `kind` `interview`, which copies the
-workspace's Interview template the first time. It asks one question at a time,
+opens the interview memory with `memory_create` and `kind` `interview`, which creates it
+empty the first time and returns the workspace's Interview template questions. It asks one question at a time,
 each with its recommended answer as the first option. Its first question asks
 whether to scan the codebase for answers; if so, it reads the checkout, then
 asks about each finding until it is confirmed or corrected. It saves the

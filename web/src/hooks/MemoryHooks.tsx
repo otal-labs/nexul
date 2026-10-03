@@ -157,20 +157,6 @@ export const useCloneMemory = () => {
   });
 };
 
-// Returns the project's interview memory, creating it from the workspace's Interview template the first time.
-export const useCreateInterview = () => {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: async (projectId: string) =>
-      (await api.post<Memory>("/api/memories/interview", { project_id: projectId })).data,
-    onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: [getMemoriesKey] });
-      toast.success("Interview started from the template");
-    },
-    onError: (error) => toast.error(errorMessage(error)),
-  });
-};
-
 export const useFetchInterviewTemplate = (workspaceId: string) =>
   useQuery({
     queryKey: [getInterviewTemplateKey, workspaceId],

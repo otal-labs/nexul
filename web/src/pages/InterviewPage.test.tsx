@@ -1,6 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -113,14 +112,12 @@ describe("InterviewPage", () => {
     expect(screen.queryByRole("link", { name: "Go to your board" })).not.toBeInTheDocument();
   });
 
-  it("offers to start from the template when the project has no interview", async () => {
-    const user = userEvent.setup();
+  it("says so when the project has no interview, with no copy of the template on offer", async () => {
     mockMemories([{ ...interview, id: "mem-other", kind: "", title: "Deploy quirks" }]);
-    vi.mocked(api.post).mockResolvedValue({ data: interview });
     renderPage();
 
-    await user.click(await screen.findByRole("button", { name: "Start from the template" }));
-    expect(api.post).toHaveBeenCalledWith("/api/memories/interview", { project_id: "p-1" });
+    expect(await screen.findByText("No interview yet")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Start from the template" })).not.toBeInTheDocument();
   });
 
   it("edits the existing interview", async () => {
