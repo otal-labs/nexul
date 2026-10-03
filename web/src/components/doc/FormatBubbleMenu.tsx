@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import { BubbleButton, BubbleDivider } from "@/components/doc/BubbleButton";
+import { isolateSelectedLines } from "@/components/doc/selectedLines";
 import { useEditorState } from "@tiptap/react";
 
 interface FormatBubbleMenuProps {
@@ -44,6 +45,8 @@ export const FormatBubbleMenu = ({ editor }: FormatBubbleMenuProps) => {
       };
     },
   });
+
+  const lines = () => editor.chain().focus().command(isolateSelectedLines);
 
   return (
     <BubbleMenu
@@ -96,21 +99,21 @@ export const FormatBubbleMenu = ({ editor }: FormatBubbleMenuProps) => {
       <BubbleButton
         label="Heading 1"
         active={state.h1}
-        onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+        onClick={() => lines().toggleHeading({ level: 1 }).run()}
       >
         <Heading1Icon className="size-3.5" />
       </BubbleButton>
       <BubbleButton
         label="Heading 2"
         active={state.h2}
-        onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+        onClick={() => lines().toggleHeading({ level: 2 }).run()}
       >
         <Heading2Icon className="size-3.5" />
       </BubbleButton>
       <BubbleButton
         label="Heading 3"
         active={state.h3}
-        onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+        onClick={() => lines().toggleHeading({ level: 3 }).run()}
       >
         <Heading3Icon className="size-3.5" />
       </BubbleButton>
@@ -118,28 +121,28 @@ export const FormatBubbleMenu = ({ editor }: FormatBubbleMenuProps) => {
       <BubbleButton
         label="Bullet list"
         active={state.bulletList}
-        onClick={() => editor.chain().focus().toggleBulletList().run()}
+        onClick={() => lines().toggleBulletList().run()}
       >
         <ListIcon className="size-3.5" />
       </BubbleButton>
       <BubbleButton
         label="Ordered list"
         active={state.orderedList}
-        onClick={() => editor.chain().focus().toggleOrderedList().run()}
+        onClick={() => lines().toggleOrderedList().run()}
       >
         <ListOrderedIcon className="size-3.5" />
       </BubbleButton>
       <BubbleButton
         label="Blockquote"
         active={state.blockquote}
-        onClick={() => editor.chain().focus().toggleBlockquote().run()}
+        onClick={() => lines().toggleBlockquote().run()}
       >
         <QuoteIcon className="size-3.5" />
       </BubbleButton>
       <BubbleButton
         label="Code block"
         active={state.codeBlock}
-        onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+        onClick={() => lines().toggleCodeBlock().run()}
       >
         <TerminalIcon className="size-3.5" />
       </BubbleButton>
