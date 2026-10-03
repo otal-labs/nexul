@@ -227,9 +227,13 @@ func (c *Client) RespondApproval(ctx context.Context, threadID, requestID, decis
 	})
 }
 
-// RespondUserInput answers the question requestID on the thread with thread.user-input.respond.
+// alreadyAnswered is T3's invariant message for a question resolved elsewhere, in T3 itself or by an earlier answer.
+const alreadyAnswered = "This question has already been answered"
+
+// RespondUserInput answers the question requestID on the thread with thread.user-input.respond; ErrConflict when
+// T3 already holds an answer for it.
 func (c *Client) RespondUserInput(ctx context.Context, threadID, requestID string, answer harness.QuestionAnswer) error {
-	return c.dispatch(ctx, threadUserInputRespondCommand{
+	err := c.dispatch(ctx, threadUserInputRespondCommand{
 		Type:      "thread.user-input.respond",
 		CommandID: ids.New(),
 		ThreadID:  threadID,
@@ -237,6 +241,10 @@ func (c *Client) RespondUserInput(ctx context.Context, threadID, requestID strin
 		Answers:   encodeAnswers(answer),
 		CreatedAt: isoNow(),
 	})
+	if err != nil && strings.Contains(err.Error(), alreadyAnswered) {
+		return fmt.Errorf("%w: question %s was already answered", apperrs.ErrConflict, requestID)
+	}
+	return err
 }
 
 // encodeAnswers mirrors T3's composer: free text wins, one selection is a string, several are an array.

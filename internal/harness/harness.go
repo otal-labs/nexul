@@ -318,7 +318,8 @@ type Client interface {
 	StartTurn(ctx context.Context, t Target, title string, prompts TurnPrompts) (StartResult, error)
 	// Interrupt aborts whatever turn is active on t's session.
 	Interrupt(ctx context.Context, t Target) error
-	// Answer resolves the pending Question requestID on t's session so the turn continues.
+	// Answer resolves the pending Question requestID on t's session so the turn continues; ErrConflict when the
+	// harness already holds an answer for it.
 	Answer(ctx context.Context, t Target, requestID string, answer QuestionAnswer) error
 }
 

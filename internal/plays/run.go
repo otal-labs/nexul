@@ -706,7 +706,8 @@ func (o *trailObserver) answer(ctx context.Context, answer harness.QuestionAnswe
 	if errors.Is(err, apperrs.ErrNotFound) {
 		return errTurnGone
 	}
-	if err != nil {
+	// Answered already, in the harness or by a racing submit: the turn has its answer, so the run carries on.
+	if err != nil && !errors.Is(err, apperrs.ErrConflict) {
 		return fmt.Errorf("answer harness question: %w", err)
 	}
 	o.trail.Question.Answer = &answer

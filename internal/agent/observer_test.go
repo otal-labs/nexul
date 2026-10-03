@@ -317,6 +317,30 @@ func TestAnswerFromChat_TurnGone_PostsTheAnswerAndResumesAFreshTurn(t *testing.T
 	client.mu.Unlock()
 }
 
+func TestAnswerFromChat_HarnessAlreadyAnswered_LeavesTheLiveTurnAlone(t *testing.T) {
+	conv := newFakeConversations(Conversation{ID: "conv-1"})
+	updates := make(chan harness.Update)
+	client := &fakeHarness{startResult: harness.StartResult{SessionID: "sess-1", Updates: updates}}
+	client.AnswerFn = func(context.Context, harness.Target, string, harness.QuestionAnswer) error {
+		return apperrs.ErrConflict
+	}
+	svc := NewService(Config{Conversations: conv, Targets: &fakeTargets{target: testTarget()}, Harnesses: registryOf(client), Live: &fakeLive{}})
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent go"})
+	}()
+	waitFor(t, time.Second, func() bool { svc.mu.Lock(); defer svc.mu.Unlock(); return len(svc.active) == 1 })
+
+	answer := harness.QuestionAnswer{Answers: map[string]harness.AnswerValue{"q1": {Selected: []string{"Yes"}}}}
+	require.NoError(t, svc.AnswerFromChat(t.Context(), "conv-1", "u-2", "req-1", answer))
+	assert.NotContains(t, client.snapshotPrompt(), "Answered: Yes", "no fresh turn; the live one already has its answer")
+
+	updates <- harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}}
+	close(updates)
+	<-done
+}
+
 func TestAnswerFromChat_Refusals(t *testing.T) {
 	svc := NewService(Config{Conversations: newFakeConversations(Conversation{ID: "conv-1"}), Live: &fakeLive{}})
 	answer := harness.QuestionAnswer{Answers: map[string]harness.AnswerValue{"q1": {Text: "x"}}}

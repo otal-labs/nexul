@@ -198,6 +198,32 @@ func TestRespondUserInput_DispatchesTheAnswersInT3sShape(t *testing.T) {
 		"free text wins, one pick is a string, several are an array")
 }
 
+func TestRespondUserInput_Rejections(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name    string
+		message string
+		want    error
+	}{
+		{"already answered", "Orchestration command invariant failed (thread.user-input.respond): This question has already been answered.", apperrs.ErrConflict},
+		{"any other failure", "Orchestration command invariant failed (thread.user-input.respond): Unknown thread.", apperrs.ErrInvalid},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			f := newFakeT3(t)
+			f.dispatchCause = []map[string]any{{"_tag": "Fail", "error": map[string]any{
+				"_tag": "OrchestrationDispatchCommandError", "message": tt.message,
+			}}}
+			ctx := testCtx(t)
+			c := f.connect(t, ctx)
+
+			err := c.RespondUserInput(ctx, "th-1", "req-1", harness.QuestionAnswer{Answers: map[string]harness.AnswerValue{"q1": {Text: "x"}}})
+			require.ErrorIs(t, err, tt.want)
+		})
+	}
+}
+
 func TestInterrupt_DispatchesAndTerminalIsInterrupted(t *testing.T) {
 	t.Parallel()
 	f := newFakeT3(t)

@@ -844,6 +844,9 @@ func (s *Service) AnswerFromChat(ctx context.Context, conversationID, userID, re
 		return fmt.Errorf("post answer: %w", err)
 	}
 	err := s.Answer(ctx, conversationID, requestID, answer)
+	if errors.Is(err, apperrs.ErrConflict) {
+		return nil
+	}
 	if !errors.Is(err, apperrs.ErrNotFound) {
 		return err
 	}

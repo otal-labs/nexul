@@ -31,6 +31,8 @@ type fakeT3 struct {
 	subscribeIn chan map[string]any // payload of each subscribeThread request
 	acks        chan string         // requestId of each Ack frame received
 	dispatched  chan map[string]any // payload of each dispatchCommand (auto-acked)
+	// dispatchCause fails every dispatchCommand when set; set it before connect.
+	dispatchCause any
 
 	connMu sync.Mutex
 	conn   *websocket.Conn
@@ -118,13 +120,7 @@ func (f *fakeT3) handleWS(w http.ResponseWriter, r *http.Request) {
 			f.configCalls.Add(1)
 			f.write(exitSuccess(idString(env.ID), map[string]any{"ok": true}))
 		case "orchestration.dispatchCommand":
-			var cmd map[string]any
-			if err := json.Unmarshal(env.Payload, &cmd); err != nil {
-				f.t.Errorf("fake: undecodable dispatch payload: %v", err)
-				continue
-			}
-			f.write(exitSuccess(idString(env.ID), map[string]any{"sequence": 1}))
-			f.dispatched <- cmd
+			f.handleDispatch(env)
 		case "orchestration.subscribeThread":
 			var in map[string]any
 			if err := json.Unmarshal(env.Payload, &in); err != nil {
@@ -148,6 +144,21 @@ func (f *fakeT3) handleWS(w http.ResponseWriter, r *http.Request) {
 			f.t.Errorf("fake: unexpected RPC %q", env.RPCTag)
 		}
 	}
+}
+
+func (f *fakeT3) handleDispatch(env clientEnv) {
+	var cmd map[string]any
+	if err := json.Unmarshal(env.Payload, &cmd); err != nil {
+		f.t.Errorf("fake: undecodable dispatch payload: %v", err)
+		return
+	}
+	if f.dispatchCause != nil {
+		f.write(map[string]any{"_tag": "Exit", "requestId": idString(env.ID),
+			"exit": map[string]any{"_tag": "Failure", "cause": f.dispatchCause}})
+		return
+	}
+	f.write(exitSuccess(idString(env.ID), map[string]any{"sequence": 1}))
+	f.dispatched <- cmd
 }
 
 func (f *fakeT3) write(v any) {
