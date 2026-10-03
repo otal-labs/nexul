@@ -22,7 +22,7 @@ type memoryListIn struct {
 }
 
 type memoryGetIn struct {
-	ID      string `json:"id" jsonschema:"The memory's id, from memory_list or the turn's memories index."`
+	ID      string `json:"id" jsonschema:"The memory's id, from memory_list or the memories a turn names."`
 	Version int    `json:"version,omitzero" jsonschema:"A version number from 1 up, to read that version's content instead of the current one."`
 }
 
@@ -31,7 +31,7 @@ type memoryCreateIn struct {
 	Title          string `json:"title,omitempty" jsonschema:"The memory's title, for example Deploy quirks. Required for an ordinary memory."`
 	WhenToUse      string `json:"when_to_use,omitempty" jsonschema:"One short line saying when the memory applies, for example use this if you are writing React code."`
 	Body           string `json:"body,omitempty" jsonschema:"The memory's body as markdown."`
-	AlwaysIncluded bool   `json:"always_included,omitzero" jsonschema:"true puts the memory in every agent turn it reaches: in full in an @Agent turn, named to read first in a play run. Defaults to false."`
+	AlwaysIncluded bool   `json:"always_included,omitzero" jsonschema:"true names the memory, to read first, in every agent turn in its project. Defaults to false."`
 	Kind           string `json:"kind,omitempty" jsonschema:"Omit for an ordinary memory. decisions_log creates the project's decisions log; interview, sent with project_id alone, returns the project's interview memory, creating it from the Interview template the first time."`
 	CloneFromID    string `json:"clone_from_id,omitempty" jsonschema:"The id of a memory to copy, from memory_list, with its attachments, into project_id instead of writing a new one."`
 }
@@ -41,7 +41,7 @@ type memoryUpdateIn struct {
 	Title           *string `json:"title,omitempty" jsonschema:"New title. Omit to keep the current one."`
 	WhenToUse       *string `json:"when_to_use,omitempty" jsonschema:"New when-to-use line; an empty string clears it. Omit to keep the current one."`
 	Body            *string `json:"body,omitempty" jsonschema:"New body as markdown, replacing the whole body. Omit to keep the current body."`
-	AlwaysIncluded  *bool   `json:"always_included,omitempty" jsonschema:"Whether every agent turn carries the memory, in full or named to read first. Omit to keep the current setting."`
+	AlwaysIncluded  *bool   `json:"always_included,omitempty" jsonschema:"Whether every agent turn in its project names the memory to read first. Omit to keep the current setting."`
 	RevertToVersion *int    `json:"revert_to_version,omitempty" jsonschema:"Restore this version's title, when-to-use, body, and flag as a new version. Send it without the other fields."`
 }
 

@@ -9,7 +9,7 @@ import (
 )
 
 type locationIn struct {
-	Scope       string `json:"scope" jsonschema:"The layer: instance, workspace (interview, mention_chip, play_instructions), or project (ticket_body)."`
+	Scope       string `json:"scope" jsonschema:"The layer: instance (every kind; the only layer of agent_prompt), workspace (interview, mention_chip, play_instructions), or project (ticket_body)."`
 	WorkspaceID string `json:"workspace_id,omitempty" jsonschema:"The workspace's id, when scope is workspace."`
 	ProjectID   string `json:"project_id,omitempty" jsonschema:"The project's id, when scope is project."`
 }
@@ -19,14 +19,14 @@ func (l locationIn) location() Location {
 }
 
 type templateGetIn struct {
-	Kind string `json:"kind" jsonschema:"The template kind: interview, mention_chip, play_instructions, or ticket_body."`
-	Key  string `json:"key,omitempty" jsonschema:"Which template of the kind: a built-in play's key (fix-with-ai, to-tickets-via-ai, interview, test-with-ai) or a ticket type's name (task, bug, feature at the instance). Empty for interview and mention_chip."`
+	Kind string `json:"kind" jsonschema:"The template kind: interview, mention_chip, play_instructions, ticket_body, or agent_prompt (the Intro and Footer every full agent turn prompt opens and closes with)."`
+	Key  string `json:"key,omitempty" jsonschema:"Which template of the kind: a built-in play's key (fix-with-ai, to-tickets-via-ai, interview, test-with-ai) or a ticket type's name (task, bug, feature at the instance), or intro or footer for agent_prompt. Empty for interview and mention_chip."`
 	locationIn
 }
 
 type templateUpdateIn struct {
-	Kind string `json:"kind" jsonschema:"The template kind: interview, mention_chip, play_instructions, or ticket_body."`
-	Key  string `json:"key,omitempty" jsonschema:"Which template of the kind: a built-in play's key (fix-with-ai, to-tickets-via-ai, interview, test-with-ai) or a ticket type's name (task, bug, feature at the instance). Empty for interview and mention_chip."`
+	Kind string `json:"kind" jsonschema:"The template kind: interview, mention_chip, play_instructions, ticket_body, or agent_prompt (the Intro and Footer every full agent turn prompt opens and closes with)."`
+	Key  string `json:"key,omitempty" jsonschema:"Which template of the kind: a built-in play's key (fix-with-ai, to-tickets-via-ai, interview, test-with-ai) or a ticket type's name (task, bug, feature at the instance), or intro or footer for agent_prompt. Empty for interview and mention_chip."`
 	locationIn
 	Body      *string     `json:"body,omitempty" jsonschema:"The new text, markdown except for mention_chip, which uses {ticket.Field} tokens such as {ticket.Ticket} {ticket.Status}. The interview is capped at 8,000 characters."`
 	Reset     bool        `json:"reset,omitempty" jsonschema:"true returns this place to its default: the instance to the code default, a workspace or project to the instance's current text."`
@@ -43,6 +43,7 @@ func templateGetTool(s *Service) mcptool.Tool {
 		"Returns one template's text at one layer, with default_body (what a reset there gives) and edited (false while it shows that default). "+
 			"Templates resolve code default, then instance, then workspace or project: an unedited workspace's interview and mention_chip follow the instance live, "+
 			"while play_instructions and ticket_body are copied into each new workspace or project and never rewritten afterwards. "+
+			"agent_prompt lives only at the instance, and an empty body leaves its part out of the prompt. "+
 			"Use scope instance for the defaults every new workspace and project starts from; change any layer with template_update.",
 		mcptool.Hints{ReadOnly: true, Local: true},
 		func(ctx context.Context, in templateGetIn) (any, error) {

@@ -336,11 +336,12 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 		Conversations: agentConversations{svc: svc.chatSvc, projects: svc.workspaceSvc},
 		Targets:       svc.pairingSvc,
 		Harnesses:     svc.harnesses,
-		Tickets:       agentTicketReader{svc: svc.ticketsSvc},
+		Tickets:       agentTicketReader{svc: svc.ticketsSvc, projects: store.Projects},
 		Docs:          agentDocReader{svc: svc.docsSvc},
 		Users:         agentUserReader{users: store.Users},
 		Memories:      agentMemories{svc: svc.memoriesSvc},
 		Attachments:   agentAttachmentReader{svc: svc.attachmentsSvc},
+		Templates:     svc.templatesSvc,
 		Live:          liveHub,
 		Logger:        logger,
 	})
@@ -361,7 +362,7 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 		Tickets:  playsStatusMover{svc: svc.ticketsSvc},
 		Live:     liveHub,
 		Users:    agentUserReader{users: store.Users},
-		Links:    playsLinkReader{tickets: svc.ticketsSvc, docs: agentDocReader{svc: svc.docsSvc}},
+		Links:    playsLinkReader{tickets: svc.ticketsSvc},
 		Logger:   logger,
 	})
 
