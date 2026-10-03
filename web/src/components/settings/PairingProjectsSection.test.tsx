@@ -67,7 +67,7 @@ const oneWorkspace: Fixture = {
   computers: [computer("c1", "home")],
   workspaces: [workspace("w1", "Acme")],
   projects: { w1: [project("p-web", "Web"), project("p-api", "Api")] },
-  links: [{ project_id: "p-web", computer_id: "c1", harness_project_id: "t3-app", provider: "claude", model: "sonnet-5" }],
+  links: [{ project_id: "p-web", computer_id: "c1", harness_project_id: "t3-app", provider: "claude", model: "sonnet-5", start_in: "worktree" }],
 };
 
 const row = (name: string) => screen.getByText(name, { selector: "p" }).closest("li") as HTMLElement;
@@ -84,7 +84,7 @@ describe("PairingProjectsSection", () => {
     serve(oneWorkspace);
     renderTab();
 
-    expect(await screen.findByText("home · app · Sonnet 5")).toBeInTheDocument();
+    expect(await screen.findByText("home · app · Sonnet 5 · New worktree")).toBeInTheDocument();
     expect(within(row("Api")).getByText("Uses your defaults")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Acme" }), "one workspace needs no group label").not.toBeInTheDocument();
   });

@@ -284,6 +284,8 @@ export const START_IN_OPTIONS = [
   { value: StartIn.Worktree, label: "New worktree per thread" },
 ];
 
+export const START_IN_SHORT_LABELS: Record<StartIn, string> = { [StartIn.Folder]: "Project folder", [StartIn.Worktree]: "New worktree" };
+
 // A user's pairing defaults, for chats outside a project and projects they haven't linked.
 export interface PairingDefaults {
   default_computer_id?: string;

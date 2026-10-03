@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { api, errorMessage } from "@/api/client";
 import { getHarnessResolveKey, useFetchHarnessProjects, useFetchHarnessProviders, useListComputers } from "@/hooks/PairingHooks";
 import { findModel } from "@/models/ModelPick";
-import type { ProjectLink, ProjectLinkFormData } from "@/models/Pairing";
+import { START_IN_SHORT_LABELS, type ProjectLink, type ProjectLinkFormData } from "@/models/Pairing";
 
 export const getProjectLinksKey = "getProjectLinks";
 
@@ -49,7 +49,7 @@ export const useClearProjectLink = (projectId: string, projectName: string) => {
   });
 };
 
-// "onik-desktop · nexul · Sonnet 5": names from the live harness where it answers, the stored ids where it doesn't.
+// "onik-desktop · nexul · Sonnet 5 · New worktree": names from the live harness where it answers, the stored ids where it doesn't.
 export const useProjectLinkSummary = (link: ProjectLink | undefined): string => {
   const computerId = link?.computer_id ?? "";
   const { data: computers } = useListComputers();
@@ -62,5 +62,6 @@ export const useProjectLinkSummary = (link: ProjectLink | undefined): string => 
   const pick = { provider: link.provider ?? "", model: link.model ?? "" };
   const providerName = providers?.find((p) => p.id === pick.provider)?.name ?? pick.provider;
   const model = findModel(providers ?? [], pick)?.name ?? (pick.model || providerName);
-  return [computer, project, model].filter(Boolean).join(" · ");
+  const startIn = link.start_in && START_IN_SHORT_LABELS[link.start_in];
+  return [computer, project, model, startIn].filter(Boolean).join(" · ");
 };
