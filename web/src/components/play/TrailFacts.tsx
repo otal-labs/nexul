@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 
 import { useFetchMemoriesByProject } from "@/hooks/MemoryHooks";
 import { usePersonLookup } from "@/hooks/PeopleHooks";
-import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
 import { personLabel } from "@/models/Person";
 import type { Trail } from "@/models/Trail";
 
@@ -28,10 +27,8 @@ const formatTimestamp = (iso: string) => new Date(iso).toLocaleString();
 export const TrailFacts = ({ trail }: TrailFactsProps) => {
   const lookup = usePersonLookup(trail.workspace_id);
   const { data: memories } = useFetchMemoriesByProject(trail.project_id);
-  const { data: columns } = useFetchProjectStatuses(trail.project_id);
 
   const memoryTitles = trail.selected_memory_ids.map((id) => memories?.find((m) => m.id === id)?.title ?? id);
-  const column = columns?.find((c) => c.id === trail.move_to_status_id);
 
   return (
     <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
@@ -51,10 +48,6 @@ export const TrailFacts = ({ trail }: TrailFactsProps) => {
       <Fact label="Memories">
         {memoryTitles.length === 0 && <span className="text-muted-foreground">None</span>}
         {memoryTitles.length > 0 && memoryTitles.join(", ")}
-      </Fact>
-      <Fact label="Move to">
-        {trail.move_to_status_id === "" && <span className="text-muted-foreground">No move</span>}
-        {trail.move_to_status_id !== "" && (column?.name ?? trail.move_to_status_id)}
       </Fact>
       <div className="sm:col-span-2">
         <Fact label="Instructions">

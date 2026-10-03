@@ -46,7 +46,6 @@ const runningTrail = (starterId: string): Trail => ({
   via: "web",
   selected_memory_ids: [],
   custom_instructions: "",
-  move_to_status_id: "",
   computer_id: "",
   provider: "",
   model: "",
@@ -77,7 +76,7 @@ const mockApi = ({ permissions = ["plays:run"], resolve = { ok: true, computer_i
     if (url === "/api/pairing/computers/c-1/providers") return { data: { providers: [] } };
     if (url === "/api/plays/runs") return { data: trails };
     if (url === "/api/plays/latest-choices")
-      return { data: { memory_ids: [], move_to_status_id: "", computer_id: "", provider: "", model: "" } };
+      return { data: { memory_ids: [], computer_id: "", provider: "", model: "" } };
     return { data: [] };
   });
 

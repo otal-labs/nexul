@@ -123,8 +123,12 @@ func TestMemoryUpdate_OmittedFieldsKeepTheirValues(t *testing.T) {
 	assert.Empty(t, got.WhenToUse, "an empty string clears the when-to-use line")
 	assert.Equal(t, "**v1**", got.Body)
 
+	got = mustCall(t, s, "memory_update", `{"id":"`+m.ID+`","footer":true}`).(memoryResult)
+	assert.True(t, got.Footer)
+	assert.Equal(t, "**v1**", got.Body)
+
 	got = mustCall(t, s, "memory_update", `{"id":"`+m.ID+`"}`).(memoryResult)
-	assert.Equal(t, 4, got.Version, "an empty update saves no version")
+	assert.Equal(t, 5, got.Version, "an empty update saves no version")
 }
 
 func TestMemoryUpdate_RevertToVersion(t *testing.T) {

@@ -39,6 +39,7 @@ const interview: Memory = {
   when_to_use: "",
   body: "## Stack",
   always_included: true,
+  footer: false,
   version: 1,
   created_by: "u-1",
   created_at: "",

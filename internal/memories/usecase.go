@@ -180,9 +180,15 @@ func (s *Service) ListMemoryItems(ctx context.Context, projectID string) ([]Memo
 	return out, nil
 }
 
-// Update replaces title/when-to-use/body/always-included and appends a version; requires memories:write on the
-// memory's project. via is "mcp" for an MCP tool call (ADR 0049), empty for the browser.
+// Update replaces title/when-to-use/body/always-included and appends a version, keeping the footer flag; requires
+// memories:write on the memory's project. via is "mcp" for an MCP tool call (ADR 0049), empty for the browser.
 func (s *Service) Update(ctx context.Context, id, title, whenToUse, body string, alwaysIncluded bool, via string) (*Memory, error) {
+	return s.UpdateWithFooter(ctx, id, title, whenToUse, body, alwaysIncluded, nil, via)
+}
+
+// UpdateWithFooter is Update that also sets whether a play run names the memory last, to conclude it (ADR 0112); a
+// nil footer keeps the current setting, and only an ordinary memory can be one.
+func (s *Service) UpdateWithFooter(ctx context.Context, id, title, whenToUse, body string, alwaysIncluded bool, footer *bool, via string) (*Memory, error) {
 	if strings.TrimSpace(id) == "" {
 		return nil, fmt.Errorf("%w: id is required", apperrs.ErrInvalid)
 	}
@@ -205,6 +211,9 @@ func (s *Service) Update(ctx context.Context, id, title, whenToUse, body string,
 	// The decisions log is found with memory_list, never named every turn (ADR 0065).
 	if current.Kind == KindDecisionsLog {
 		alwaysIncluded = false
+	}
+	if footer != nil {
+		current.Footer = *footer && current.Kind == ""
 	}
 	// The interview memory is never switched off and stays under its cap (ADR 0065).
 	if current.Kind == KindInterview {
@@ -358,6 +367,7 @@ func (s *Service) Clone(ctx context.Context, id, destinationProjectID string) (*
 		WhenToUse:      source.WhenToUse,
 		Body:           body,
 		AlwaysIncluded: source.AlwaysIncluded,
+		Footer:         source.Footer,
 		Version:        1,
 		CreatedBy:      actor.ID,
 		CreatedAt:      now,

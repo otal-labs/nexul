@@ -120,6 +120,14 @@ func TestMemoriesHandler_Update(t *testing.T) {
 		assert.Equal(t, "use it", m.WhenToUse)
 		assert.True(t, m.AlwaysIncluded)
 	})
+	t.Run("sets the footer, and a save without it keeps it", func(t *testing.T) {
+		rec := serve(t, h, http.MethodPut, "/api/memories/"+created.ID, `{"title":"B","footer":true}`)
+		require.Equal(t, http.StatusOK, rec.Code)
+		assert.True(t, decodeMemory(t, rec).Footer)
+		rec = serve(t, h, http.MethodPut, "/api/memories/"+created.ID, `{"title":"C"}`)
+		require.Equal(t, http.StatusOK, rec.Code)
+		assert.True(t, decodeMemory(t, rec).Footer)
+	})
 	t.Run("missing memory is 404", func(t *testing.T) {
 		rec := serve(t, h, http.MethodPut, "/api/memories/nope", `{"title":"B"}`)
 		assert.Equal(t, http.StatusNotFound, rec.Code)

@@ -11,8 +11,8 @@ import (
 )
 
 const createMemory = `-- name: CreateMemory :exec
-INSERT INTO memories (id, workspace_id, project_id, kind, title, when_to_use, body, always_included, version, created_by, created_at, updated_by, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO memories (id, workspace_id, project_id, kind, title, when_to_use, body, always_included, footer, version, created_by, created_at, updated_by, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateMemoryParams struct {
@@ -24,6 +24,7 @@ type CreateMemoryParams struct {
 	WhenToUse      string
 	Body           string
 	AlwaysIncluded int64
+	Footer         int64
 	Version        int64
 	CreatedBy      string
 	CreatedAt      int64
@@ -41,6 +42,7 @@ func (q *Queries) CreateMemory(ctx context.Context, arg CreateMemoryParams) erro
 		arg.WhenToUse,
 		arg.Body,
 		arg.AlwaysIncluded,
+		arg.Footer,
 		arg.Version,
 		arg.CreatedBy,
 		arg.CreatedAt,
@@ -88,7 +90,7 @@ func (q *Queries) GetInterviewTemplate(ctx context.Context, workspaceID string) 
 }
 
 const getMemory = `-- name: GetMemory :one
-SELECT id, workspace_id, project_id, title, when_to_use, body, always_included, version, created_by, created_at, updated_by, updated_at, kind FROM memories WHERE id = ?
+SELECT id, workspace_id, project_id, title, when_to_use, body, always_included, version, created_by, created_at, updated_by, updated_at, kind, footer FROM memories WHERE id = ?
 `
 
 func (q *Queries) GetMemory(ctx context.Context, id string) (Memory, error) {
@@ -108,12 +110,13 @@ func (q *Queries) GetMemory(ctx context.Context, id string) (Memory, error) {
 		&i.UpdatedBy,
 		&i.UpdatedAt,
 		&i.Kind,
+		&i.Footer,
 	)
 	return i, err
 }
 
 const getMemoryByProjectKind = `-- name: GetMemoryByProjectKind :one
-SELECT id, workspace_id, project_id, title, when_to_use, body, always_included, version, created_by, created_at, updated_by, updated_at, kind FROM memories WHERE project_id = ? AND kind = ?
+SELECT id, workspace_id, project_id, title, when_to_use, body, always_included, version, created_by, created_at, updated_by, updated_at, kind, footer FROM memories WHERE project_id = ? AND kind = ?
 `
 
 type GetMemoryByProjectKindParams struct {
@@ -138,6 +141,7 @@ func (q *Queries) GetMemoryByProjectKind(ctx context.Context, arg GetMemoryByPro
 		&i.UpdatedBy,
 		&i.UpdatedAt,
 		&i.Kind,
+		&i.Footer,
 	)
 	return i, err
 }
@@ -205,7 +209,7 @@ func (q *Queries) InsertMemoryVersion(ctx context.Context, arg InsertMemoryVersi
 }
 
 const listMemoriesByProject = `-- name: ListMemoriesByProject :many
-SELECT id, workspace_id, project_id, title, when_to_use, body, always_included, version, created_by, created_at, updated_by, updated_at, kind FROM memories WHERE project_id = ? ORDER BY created_at
+SELECT id, workspace_id, project_id, title, when_to_use, body, always_included, version, created_by, created_at, updated_by, updated_at, kind, footer FROM memories WHERE project_id = ? ORDER BY created_at
 `
 
 func (q *Queries) ListMemoriesByProject(ctx context.Context, projectID sql.NullString) ([]Memory, error) {
@@ -231,6 +235,7 @@ func (q *Queries) ListMemoriesByProject(ctx context.Context, projectID sql.NullS
 			&i.UpdatedBy,
 			&i.UpdatedAt,
 			&i.Kind,
+			&i.Footer,
 		); err != nil {
 			return nil, err
 		}
@@ -246,7 +251,7 @@ func (q *Queries) ListMemoriesByProject(ctx context.Context, projectID sql.NullS
 }
 
 const listMemoriesByWorkspace = `-- name: ListMemoriesByWorkspace :many
-SELECT id, workspace_id, project_id, title, when_to_use, body, always_included, version, created_by, created_at, updated_by, updated_at, kind FROM memories WHERE workspace_id = ? ORDER BY project_id, created_at
+SELECT id, workspace_id, project_id, title, when_to_use, body, always_included, version, created_by, created_at, updated_by, updated_at, kind, footer FROM memories WHERE workspace_id = ? ORDER BY project_id, created_at
 `
 
 func (q *Queries) ListMemoriesByWorkspace(ctx context.Context, workspaceID string) ([]Memory, error) {
@@ -272,6 +277,7 @@ func (q *Queries) ListMemoriesByWorkspace(ctx context.Context, workspaceID strin
 			&i.UpdatedBy,
 			&i.UpdatedAt,
 			&i.Kind,
+			&i.Footer,
 		); err != nil {
 			return nil, err
 		}
@@ -326,7 +332,7 @@ func (q *Queries) ListMemoryVersions(ctx context.Context, memoryID string) ([]Me
 }
 
 const updateMemory = `-- name: UpdateMemory :execrows
-UPDATE memories SET title = ?, when_to_use = ?, body = ?, always_included = ?, version = ?, updated_by = ?, updated_at = ? WHERE id = ?
+UPDATE memories SET title = ?, when_to_use = ?, body = ?, always_included = ?, footer = ?, version = ?, updated_by = ?, updated_at = ? WHERE id = ?
 `
 
 type UpdateMemoryParams struct {
@@ -334,6 +340,7 @@ type UpdateMemoryParams struct {
 	WhenToUse      string
 	Body           string
 	AlwaysIncluded int64
+	Footer         int64
 	Version        int64
 	UpdatedBy      string
 	UpdatedAt      int64
@@ -346,6 +353,7 @@ func (q *Queries) UpdateMemory(ctx context.Context, arg UpdateMemoryParams) (int
 		arg.WhenToUse,
 		arg.Body,
 		arg.AlwaysIncluded,
+		arg.Footer,
 		arg.Version,
 		arg.UpdatedBy,
 		arg.UpdatedAt,

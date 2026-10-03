@@ -230,34 +230,6 @@ func (f *fakeTargets) setTicketStage(id string, stage Stage) {
 	f.tickets[id] = t
 }
 
-type fakeMove struct {
-	ticketID, statusID string
-	actor              PlayActor
-}
-
-// fakeMover records the runner's move-to calls.
-type fakeMover struct {
-	mu    sync.Mutex
-	moves []fakeMove
-	err   error
-}
-
-func (f *fakeMover) MoveTicket(_ context.Context, ticketID, statusID string, actor PlayActor) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	if f.err != nil {
-		return f.err
-	}
-	f.moves = append(f.moves, fakeMove{ticketID, statusID, actor})
-	return nil
-}
-
-func (f *fakeMover) snapshot() []fakeMove {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	return append([]fakeMove{}, f.moves...)
-}
-
 // fakeLive records every frame published on the live topic.
 type fakeLive struct {
 	mu     sync.Mutex

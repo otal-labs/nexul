@@ -23,6 +23,8 @@ type Memory struct {
 	Body      string `json:"body"`
 	// AlwaysIncluded marks a memory every agent turn in its project names for the agent to read first (ADR 0111).
 	AlwaysIncluded bool `json:"always_included"`
+	// Footer marks a memory a play run names last, to read once the work is done (ADR 0112).
+	Footer bool `json:"footer"`
 	// Version is the current pointer into memory_versions; every save appends a row and bumps this (ticket 17).
 	Version   int       `json:"version"`
 	CreatedBy string    `json:"created_by"`

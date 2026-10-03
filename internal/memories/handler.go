@@ -24,6 +24,8 @@ type saveMemoryRequest struct {
 	WhenToUse      string `json:"when_to_use"`
 	Body           string `json:"body"`
 	AlwaysIncluded bool   `json:"always_included"`
+	// Footer is update only; omitted keeps the memory's current setting.
+	Footer *bool `json:"footer"`
 	// Kind is empty for an ordinary memory or decisions_log for the project's decisions log; create only.
 	Kind string `json:"kind"`
 }
@@ -99,7 +101,7 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err)
 		return
 	}
-	m, err := h.svc.Update(r.Context(), r.PathValue("id"), req.Title, req.WhenToUse, req.Body, req.AlwaysIncluded, "")
+	m, err := h.svc.UpdateWithFooter(r.Context(), r.PathValue("id"), req.Title, req.WhenToUse, req.Body, req.AlwaysIncluded, req.Footer, "")
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

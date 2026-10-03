@@ -29,6 +29,15 @@ func TestComposePrompt_PlayAnswer_CarriesThePlayAndTheAnswer(t *testing.T) {
 		"FOOTER", ComposePrompt(playAnswer()))
 }
 
+func TestComposePrompt_FooterMemories_FollowTheRunInstructions(t *testing.T) {
+	in := playAnswer()
+	in.RequestBody = ""
+	in.Play.Custom = "Touch only the docs."
+	in.Play.Conclude = []MemoryRef{{ID: "m-9", Name: "Where tickets go"}}
+	assert.True(t, strings.HasSuffix(ComposePrompt(in), "Touch only the docs.\n\n"+
+		concludeLine+"\n- Where tickets go (id m-9)\n\nFOOTER"))
+}
+
 func TestComposePrompt_EmptyTemplatesAndAnUnreadPlayAreLeftOut(t *testing.T) {
 	in := playAnswer()
 	in.Intro, in.Footer = "", ""

@@ -158,7 +158,6 @@ type Trail struct {
 	Via                Via        `json:"via"`
 	SelectedMemoryIDs  []string   `json:"selected_memory_ids"`
 	CustomInstructions string     `json:"custom_instructions"`
-	MoveToStatusID     string     `json:"move_to_status_id"`
 	ComputerID         string     `json:"computer_id"`
 	Provider           string     `json:"provider"`
 	Model              string     `json:"model"`

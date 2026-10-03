@@ -53,7 +53,6 @@ export interface Trail {
   via: "web" | "mcp";
   selected_memory_ids: string[];
   custom_instructions: string;
-  move_to_status_id: string;
   computer_id: string;
   provider: string;
   model: string;
@@ -89,7 +88,6 @@ export interface RunFrame {
 // computer_id means never run; the pre-selection falls back to the resolved target instead.
 export interface LatestChoices {
   memory_ids: string[];
-  move_to_status_id: string;
   computer_id: string;
   provider: string;
   model: string;
@@ -101,7 +99,6 @@ export interface RunPlayInput {
   target_id: string;
   memory_ids: string[];
   custom_instructions: string;
-  move_to_status_id: string;
   computer_id: string;
   provider: string;
   model: string;

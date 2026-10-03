@@ -48,7 +48,6 @@ type runnerFixture struct {
 	mems    *fakeMemories
 	threads *fakeThreads
 	turns   *fakeTurns
-	mover   *fakeMover
 	live    *fakeLive
 	clock   time.Time
 }
@@ -61,7 +60,6 @@ func newRunnerFixture() *runnerFixture {
 		harness: &fakeHarnessResolver{},
 		threads: &fakeThreads{},
 		turns:   newFakeTurns(),
-		mover:   &fakeMover{},
 		live:    &fakeLive{},
 		locks:   &fakeDocLocks{locked: map[string]bool{}},
 		clock:   fixedNow,
@@ -95,7 +93,7 @@ func newRunnerFixture() *runnerFixture {
 			workspaces: map[string]string{projectID: workspaceID, otherProj: workspaceID, foreignPrj: foreignWS},
 			projects:   map[string]ProjectTarget{projectID: {Name: "Nexul", TestsLocation: "separate"}, otherProj: {Name: "Other"}},
 		},
-		Harness: f.harness, Memories: f.mems, Threads: f.threads, Turns: f.turns, Tickets: f.mover, Live: f.live, Users: fakeUsers{},
+		Harness: f.harness, Memories: f.mems, Threads: f.threads, Turns: f.turns, Live: f.live, Users: fakeUsers{},
 		Now: func() time.Time { return f.clock },
 	})
 	return f
@@ -236,7 +234,6 @@ func TestRun_HarnessNotReady_ReturnsReasonAndLeavesFailedTrail(t *testing.T) {
 			in := ticketRun()
 			in.MemoryIDs = []string{pickedMem}
 			in.CustomInstructions = "careful"
-			in.MoveToStatusID = "st-review"
 
 			_, err := f.runner.Run(ctxAs(starter), in)
 
@@ -250,7 +247,6 @@ func TestRun_HarnessNotReady_ReturnsReasonAndLeavesFailedTrail(t *testing.T) {
 			assert.Equal(t, "pairing not configured: "+string(reason), tr.LastError)
 			assert.Equal(t, []string{pickedMem}, tr.SelectedMemoryIDs)
 			assert.Equal(t, "careful", tr.CustomInstructions)
-			assert.Equal(t, "st-review", tr.MoveToStatusID)
 			assert.Equal(t, "Fix with AI", tr.PlayLabel)
 			assert.Equal(t, starter, tr.StarterID)
 			require.NotNil(t, tr.EndedAt)
@@ -308,7 +304,6 @@ func TestRun_StartsTurnWithBlocksInOrder(t *testing.T) {
 	in := ticketRun()
 	in.MemoryIDs = []string{pickedMem}
 	in.CustomInstructions = "Touch only the docs."
-	in.MoveToStatusID = "st-review"
 
 	trail, err := f.runner.Run(ctxAs(starter), in)
 	require.NoError(t, err)
@@ -334,6 +329,25 @@ func TestRun_StartsTurnWithBlocksInOrder(t *testing.T) {
 		Memories: []agent.MemoryRef{{ID: alwaysMem, Name: "Working here"}, {ID: pickedMem, Name: "Deploy quirks"}},
 	}, req.Play)
 	require.NotNil(t, req.Observer)
+}
+
+func TestRun_FooterMemories_ConcludeTheRun(t *testing.T) {
+	f := newRunnerFixture()
+	f.mems.byProject[projectID] = append(f.mems.byProject[projectID],
+		Memory{ID: "m-conclude", Title: "Conclude", Footer: true},
+		Memory{ID: "m-report", Title: "Report", AlwaysIncluded: true, Footer: true})
+	in := ticketRun()
+	in.MemoryIDs = []string{"m-conclude", pickedMem}
+
+	trail, err := f.runner.Run(ctxAs(starter), in)
+	require.NoError(t, err)
+	<-f.turns.done
+
+	assert.Equal(t, []string{alwaysMem, pickedMem, "m-report", "m-conclude"}, trail.SelectedMemoryIDs)
+	play := f.turns.last().Play
+	assert.Equal(t, []agent.MemoryRef{{ID: alwaysMem, Name: "Working here"}, {ID: pickedMem, Name: "Deploy quirks"}}, play.Memories)
+	assert.Equal(t, []agent.MemoryRef{{ID: "m-report", Name: "Report"}, {ID: "m-conclude", Name: "Conclude"}}, play.Conclude,
+		"a required footer concludes the run too")
 }
 
 func TestRun_HarnessChoice_PassedToTheResolverAndRecordedOnTheTrail(t *testing.T) {
@@ -636,7 +650,7 @@ func TestDecodeActivity_ReadsEntriesAndLegacyLines(t *testing.T) {
 
 func seededTrail(f *runnerFixture, id string, targetType TargetType, targetID string, startedAt time.Time) *Trail {
 	tr := &Trail{ID: id, WorkspaceID: workspaceID, PlayID: fixPlayID, TargetType: targetType, TargetID: targetID, ProjectID: projectID,
-		StarterID: starter, State: TrailDone, StartedAt: startedAt, SelectedMemoryIDs: []string{alwaysMem}, MoveToStatusID: "st-" + id}
+		StarterID: starter, State: TrailDone, StartedAt: startedAt, SelectedMemoryIDs: []string{alwaysMem}, ComputerID: "comp-" + id}
 	_ = f.trails.CreateTrail(context.Background(), tr)
 	<-f.trails.terminal
 	return tr
@@ -698,7 +712,7 @@ func TestLatestChoices(t *testing.T) {
 	seededTrail(f, "newer", TargetTicket, "t-2", fixedNow)
 	got, err := f.runner.LatestChoices(ctxAs(starter), starter, fixPlayID, projectID)
 	require.NoError(t, err)
-	assert.Equal(t, &Choices{MemoryIDs: []string{alwaysMem}, MoveToStatusID: "st-newer"}, got)
+	assert.Equal(t, &Choices{MemoryIDs: []string{alwaysMem}, ComputerID: "comp-newer"}, got)
 
 	_, err = f.runner.LatestChoices(ctxAs(starter), "", fixPlayID, projectID)
 	assert.ErrorIs(t, err, apperrs.ErrInvalid)

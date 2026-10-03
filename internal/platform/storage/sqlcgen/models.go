@@ -521,6 +521,7 @@ type Memory struct {
 	UpdatedBy      string
 	UpdatedAt      int64
 	Kind           string
+	Footer         int64
 }
 
 type MemoryVersion struct {
@@ -691,7 +692,6 @@ type PlayTrail struct {
 	Via                string
 	SelectedMemoryIds  string
 	CustomInstructions string
-	MoveToStatusID     sql.NullString
 	HarnessSessionID   string
 	State              string
 	StartedAt          int64

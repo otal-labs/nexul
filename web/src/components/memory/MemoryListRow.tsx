@@ -5,6 +5,8 @@ import { ListPaneRow } from "@/components/listpane/ListPaneRow";
 import { RowActions } from "@/components/listpane/RowActions";
 import { CloneMemoryDialog } from "@/components/memory/CloneMemoryDialog";
 import { MemoryPinSwitch } from "@/components/memory/MemoryPinSwitch";
+import { memoryFolderOptions } from "@/components/memory/memoryGroups";
+import { useSetMemoryFlag } from "@/hooks/MemoryHooks";
 import { useConfirmDeleteMemory } from "@/hooks/useConfirmDeleteMemory";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
@@ -22,11 +24,22 @@ export const MemoryListRow = ({ memory, projectToken, selected }: MemoryListRowP
   const [cloneOpen, setCloneOpen] = useState(false);
   const canClone = useHasPermission("memories:clone");
   const canDelete = useHasPermission("memories:delete");
+  const canWrite = useHasPermission("memories:write");
+  const setFooter = useSetMemoryFlag("footer");
   const confirmDelete = useConfirmDeleteMemory();
   const wsPath = useWorkspacePath();
   const snippet = useMemo(() => bodySnippet(memory.body), [memory.body]);
   const onClone = canClone ? () => setCloneOpen(true) : undefined;
   const onDelete = canDelete ? () => void confirmDelete(memory, selected) : undefined;
+  const moveTo =
+    canWrite && memory.kind === ""
+      ? {
+          label: "Move to",
+          options: memoryFolderOptions,
+          currentId: memory.footer ? "footer" : "main",
+          onMove: (id: string) => setFooter.mutate({ memory, value: id === "footer" }),
+        }
+      : undefined;
 
   return (
     <>
@@ -42,13 +55,17 @@ export const MemoryListRow = ({ memory, projectToken, selected }: MemoryListRowP
             </span>
             {memory.always_included && (
               <span className="rounded-full bg-muted px-1.5 py-px text-[10px] whitespace-nowrap text-muted-foreground">
-                always in context
+                required
               </span>
             )}
           </span>
         }
-        actions={(onClone || onDelete) && <RowActions itemLabel={memory.title} onClone={onClone} onDelete={onDelete} />}
-        trailing={<MemoryPinSwitch memory={memory} label={`Always include ${memory.title}`} size="sm" />}
+        actions={
+          (moveTo || onClone || onDelete) && (
+            <RowActions itemLabel={memory.title} moveTo={moveTo} onClone={onClone} onDelete={onDelete} />
+          )
+        }
+        trailing={<MemoryPinSwitch memory={memory} label={`Require ${memory.title}`} size="sm" />}
       />
       {cloneOpen && <CloneMemoryDialog memoryId={memory.id} open onClose={() => setCloneOpen(false)} />}
     </>

@@ -26,7 +26,6 @@ const trail = (overrides: Partial<Trail>): Trail => ({
   via: "web",
   selected_memory_ids: [],
   custom_instructions: "",
-  move_to_status_id: "",
   computer_id: "",
   provider: "",
   model: "",

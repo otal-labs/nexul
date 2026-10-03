@@ -23,7 +23,6 @@ type runRequest struct {
 	TargetID           string                  `json:"target_id"`
 	MemoryIDs          []string                `json:"memory_ids"`
 	CustomInstructions string                  `json:"custom_instructions"`
-	MoveToStatusID     string                  `json:"move_to_status_id"`
 	ComputerID         string                  `json:"computer_id"`
 	Provider           string                  `json:"provider"`
 	Model              string                  `json:"model"`
@@ -98,8 +97,8 @@ func (h *RunHandler) run(w http.ResponseWriter, r *http.Request) {
 	}
 	trail, err := h.runner.Run(r.Context(), RunInput{
 		PlayID: r.PathValue("id"), TargetType: req.TargetType, TargetID: req.TargetID, MemoryIDs: req.MemoryIDs,
-		CustomInstructions: req.CustomInstructions, MoveToStatusID: req.MoveToStatusID,
-		ComputerID: req.ComputerID, Provider: req.Provider, Model: req.Model, ModelOptions: req.ModelOptions, Via: ViaWeb,
+		CustomInstructions: req.CustomInstructions,
+		ComputerID:         req.ComputerID, Provider: req.Provider, Model: req.Model, ModelOptions: req.ModelOptions, Via: ViaWeb,
 	})
 	if err != nil {
 		httpx.WriteError(w, err)

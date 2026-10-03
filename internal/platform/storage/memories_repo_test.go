@@ -120,6 +120,7 @@ func TestMemoriesRepo_Update_PersistsFieldsAndAppendsVersion(t *testing.T) {
 	m.WhenToUse = "updated hint"
 	m.Body = "New body"
 	m.AlwaysIncluded = true
+	m.Footer = true
 	m.Version = 2
 	m.UpdatedBy = "user-2"
 	m.UpdatedAt = m.UpdatedAt.Add(time.Hour)
@@ -131,6 +132,7 @@ func TestMemoriesRepo_Update_PersistsFieldsAndAppendsVersion(t *testing.T) {
 	assert.Equal(t, "updated hint", got.WhenToUse)
 	assert.Equal(t, "New body", got.Body)
 	assert.True(t, got.AlwaysIncluded)
+	assert.True(t, got.Footer)
 	assert.Equal(t, 2, got.Version)
 	assert.Equal(t, "user-2", got.UpdatedBy)
 

@@ -467,6 +467,32 @@ func TestUpdate_ReplacesFields_AndPublishesUpdated(t *testing.T) {
 	require.Len(t, repo.eventsFor(TopicUpdated), 1)
 }
 
+func TestUpdateWithFooter_SetsIt_NilKeepsIt(t *testing.T) {
+	s := newTestService(newFakeRepo())
+	m, err := s.Create(testCtx(), "project-1", "Conclude", "", "body", false, "")
+	require.NoError(t, err)
+	footer := true
+
+	got, err := s.UpdateWithFooter(testCtx(), m.ID, m.Title, "", "body", false, &footer, "")
+	require.NoError(t, err)
+	assert.True(t, got.Footer)
+
+	got, err = s.Update(testCtx(), m.ID, "Renamed", "", "body", false, "")
+	require.NoError(t, err)
+	assert.True(t, got.Footer, "a save that does not name the footer keeps it")
+}
+
+func TestUpdateWithFooter_SpecialKinds_NeverFooters(t *testing.T) {
+	s := newTestService(newFakeRepo())
+	log, err := s.CreateWithKind(testCtx(), KindDecisionsLog, "project-1", "", "", "x", false, "")
+	require.NoError(t, err)
+	footer := true
+
+	got, err := s.UpdateWithFooter(testCtx(), log.ID, log.Title, log.WhenToUse, "x", false, &footer, "")
+	require.NoError(t, err)
+	assert.False(t, got.Footer)
+}
+
 func TestDelete_EmptyID_IsInvalid(t *testing.T) {
 	s := newTestService(newFakeRepo())
 	err := s.Delete(testCtx(), " ")

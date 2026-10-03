@@ -42,6 +42,7 @@ type memoryUpdateIn struct {
 	WhenToUse       *string `json:"when_to_use,omitempty" jsonschema:"New when-to-use line; an empty string clears it. Omit to keep the current one."`
 	Body            *string `json:"body,omitempty" jsonschema:"New body as markdown, replacing the whole body. Omit to keep the current body."`
 	AlwaysIncluded  *bool   `json:"always_included,omitempty" jsonschema:"Whether every agent turn in its project names the memory to read first. Omit to keep the current setting."`
+	Footer          *bool   `json:"footer,omitempty" jsonschema:"Whether the memory sits in the Footer folder: a play run names it last, to read once its work is done and conclude the run, for example which column the ticket belongs in. Ordinary memories only. Omit to keep the current setting."`
 	RevertToVersion *int    `json:"revert_to_version,omitempty" jsonschema:"Restore this version's title, when-to-use, body, and flag as a new version. Send it without the other fields."`
 }
 
@@ -57,6 +58,7 @@ type memoryListItem struct {
 	Title          string `json:"title"`
 	WhenToUse      string `json:"when_to_use"`
 	AlwaysIncluded bool   `json:"always_included"`
+	Footer         bool   `json:"footer"`
 }
 
 // memoryResult is a memory with its body as markdown; CurrentVersion is set only when an older version is shown.
@@ -69,6 +71,7 @@ type memoryResult struct {
 	WhenToUse      string              `json:"when_to_use"`
 	Body           string              `json:"body"`
 	AlwaysIncluded bool                `json:"always_included"`
+	Footer         bool                `json:"footer"`
 	Version        int                 `json:"version"`
 	CurrentVersion int                 `json:"current_version,omitempty"`
 	UpdatedBy      string              `json:"updated_by"`
@@ -105,7 +108,7 @@ func memoryListTool(s *Service) mcptool.Tool {
 			items := make([]memoryListItem, 0, len(ms))
 			for _, m := range ms {
 				items = append(items, memoryListItem{
-					ID: m.ID, ProjectID: m.ProjectID, Kind: m.Kind, Title: m.Title, WhenToUse: m.WhenToUse, AlwaysIncluded: m.AlwaysIncluded,
+					ID: m.ID, ProjectID: m.ProjectID, Kind: m.Kind, Title: m.Title, WhenToUse: m.WhenToUse, AlwaysIncluded: m.AlwaysIncluded, Footer: m.Footer,
 				})
 			}
 			return mcptool.Paginate(items, in.PageArgs), nil
@@ -203,7 +206,7 @@ func memoryUpdateTool(s *Service) mcptool.Tool {
 
 func updateMemory(ctx context.Context, s *Service, in memoryUpdateIn) (*Memory, error) {
 	if in.RevertToVersion != nil {
-		if in.Title != nil || in.WhenToUse != nil || in.Body != nil || in.AlwaysIncluded != nil {
+		if in.Title != nil || in.WhenToUse != nil || in.Body != nil || in.AlwaysIncluded != nil || in.Footer != nil {
 			return nil, fmt.Errorf("%w: revert_to_version restores that version's whole content; send it alone, then update again", apperrs.ErrInvalid)
 		}
 		return s.Revert(ctx, in.ID, *in.RevertToVersion, viaMCP)
@@ -212,11 +215,11 @@ func updateMemory(ctx context.Context, s *Service, in memoryUpdateIn) (*Memory, 
 	if err != nil {
 		return nil, err
 	}
-	if in.Title == nil && in.WhenToUse == nil && in.Body == nil && in.AlwaysIncluded == nil {
+	if in.Title == nil && in.WhenToUse == nil && in.Body == nil && in.AlwaysIncluded == nil && in.Footer == nil {
 		return m, nil
 	}
-	return s.Update(ctx, in.ID, deref(in.Title, m.Title), deref(in.WhenToUse, m.WhenToUse), deref(in.Body, m.Body),
-		deref(in.AlwaysIncluded, m.AlwaysIncluded), viaMCP)
+	return s.UpdateWithFooter(ctx, in.ID, deref(in.Title, m.Title), deref(in.WhenToUse, m.WhenToUse), deref(in.Body, m.Body),
+		deref(in.AlwaysIncluded, m.AlwaysIncluded), in.Footer, viaMCP)
 }
 
 func memoryDeleteTool(s *Service) mcptool.Tool {
@@ -247,7 +250,7 @@ func toMemoryResult(m *Memory) (memoryResult, error) {
 	}
 	return memoryResult{
 		ID: m.ID, WorkspaceID: m.WorkspaceID, ProjectID: m.ProjectID, Kind: m.Kind, Title: m.Title, WhenToUse: m.WhenToUse,
-		Body: md, AlwaysIncluded: m.AlwaysIncluded, Version: m.Version, UpdatedBy: m.UpdatedBy, UpdatedAt: m.UpdatedAt,
+		Body: md, AlwaysIncluded: m.AlwaysIncluded, Footer: m.Footer, Version: m.Version, UpdatedBy: m.UpdatedBy, UpdatedAt: m.UpdatedAt,
 	}, nil
 }
 

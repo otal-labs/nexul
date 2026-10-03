@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ContextAwareConfirmation } from "react-confirm";
 import { MemoryRouter } from "react-router";
@@ -39,15 +39,10 @@ const play: Play = {
 };
 
 const memories = [
-  { id: "m-always", title: "Working in this project", when_to_use: "Always", always_included: true },
-  { id: "m-react", title: "React guide", when_to_use: "Any change under web/", always_included: false },
-  { id: "m-go", title: "Go practices", when_to_use: "Any change under internal/", always_included: false },
-];
-
-const columns = [
-  { id: "st-progress", name: "In progress", kind: "progress", position: 1 },
-  { id: "st-review", name: "In review", kind: "review", position: 2 },
-  { id: "st-done", name: "Done", kind: "done", position: 3 },
+  { id: "m-always", title: "Working in this project", when_to_use: "Always", always_included: true, footer: false },
+  { id: "m-react", title: "React guide", when_to_use: "Any change under web/", always_included: false, footer: false },
+  { id: "m-go", title: "Go practices", when_to_use: "Any change under internal/", always_included: false, footer: false },
+  { id: "m-conclude", title: "Where tickets go next", when_to_use: "Concluding a run", always_included: false, footer: true },
 ];
 
 const computers = [
@@ -64,7 +59,6 @@ const mockApi = (permissions: string[], memoriesOverride: unknown[] = memories) 
   vi.mocked(api.get).mockImplementation(async (url: string) => {
     if (url === "/api/workspaces/ws-1/me") return { data: { role_name: "Member", permissions } };
     if (url === "/api/memories") return { data: memoriesOverride };
-    if (url === "/api/statuses") return { data: columns };
     if (url === "/api/plays/latest-choices") return { data: choices };
     if (url === "/api/pairing/resolve") return { data: resolve };
     if (url === "/api/pairing/presence") return { data: { computers: presence } };
@@ -90,26 +84,30 @@ beforeEach(() => {
   vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
-  choices = { memory_ids: ["m-always", "m-react"], move_to_status_id: "st-review", computer_id: "", provider: "", model: "" };
+  choices = { memory_ids: ["m-always", "m-react"], computer_id: "", provider: "", model: "" };
   resolve = { ok: true, computer_id: "c-1", provider: "claude", model: "sonnet-5" };
   presence = { "c-1": "connected", "c-2": "connecting" };
 });
 
 describe("PlayRunDialog", () => {
-  it("pre-selects the remembered memories and column, locking the always-included memory", async () => {
+  it("pre-selects the remembered memories, locking the always-included memory, and lists footer memories apart", async () => {
     mockApi(["plays:run", "tickets:write"]);
     renderDialog();
 
     const always = await screen.findByRole("checkbox", { name: "Working in this project" });
     expect(always).toBeChecked();
     expect(always).toBeDisabled();
-    expect(screen.getByLabelText("Always included")).toBeInTheDocument();
+    expect(screen.getByLabelText("Required")).toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: "React guide" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Go practices" })).not.toBeChecked();
     expect(screen.getByText("Any change under web/")).toBeInTheDocument();
-    expect(screen.getByRole("combobox", { name: "On success, move to" })).toHaveTextContent("In review");
-    expect(screen.getByRole("button", { name: "Run Fix with AI · then In review" })).toBeInTheDocument();
-    expect(screen.getByText(/Never moves backwards/)).toBeInTheDocument();
+    const memoriesSection = screen.getByRole("heading", { name: "Main" }).closest("section")!;
+    const footerSection = screen.getByRole("heading", { name: "Footer" }).closest("section")!;
+    expect(within(memoriesSection).queryByRole("checkbox", { name: "Where tickets go next" })).not.toBeInTheDocument();
+    expect(within(footerSection).getByRole("checkbox", { name: "Where tickets go next" })).not.toBeChecked();
+    expect(within(footerSection).queryByRole("checkbox", { name: "React guide" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "On success, move to" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Run Fix with AI" })).toBeInTheDocument();
   });
 
   it("normalises a description ending in a period instead of doubling the full stop", async () => {
@@ -130,14 +128,13 @@ describe("PlayRunDialog", () => {
     expect(await screen.findByText("Reads the ticket and opens a pull request. Runs on your paired harness as you.")).toBeInTheDocument();
   });
 
-  it("posts the chosen memories, instructions, and column, then pre-selects them on the next open", async () => {
+  it("posts the chosen memories, footer memories, and instructions, then pre-selects them on the next open", async () => {
     const user = userEvent.setup();
     mockApi(["plays:run", "tickets:write"]);
     vi.mocked(api.post).mockImplementation(async (_url: string, body: unknown) => {
-      const input = body as { memory_ids: string[]; move_to_status_id: string; computer_id: string; provider: string; model: string };
+      const input = body as { memory_ids: string[]; computer_id: string; provider: string; model: string };
       choices = {
         memory_ids: ["m-always", ...input.memory_ids],
-        move_to_status_id: input.move_to_status_id,
         computer_id: input.computer_id,
         provider: input.provider,
         model: input.model,
@@ -149,15 +146,14 @@ describe("PlayRunDialog", () => {
     await user.click(await screen.findByRole("checkbox", { name: "React guide" }));
     await user.click(screen.getByRole("checkbox", { name: "Go practices" }));
     await user.type(screen.getByLabelText("Instructions for this run"), "React-only fix");
-    await pickOption(user, "On success, move to", "Done");
-    await user.click(screen.getByRole("button", { name: "Run Fix with AI · then Done" }));
+    await user.click(screen.getByRole("checkbox", { name: "Where tickets go next" }));
+    await user.click(screen.getByRole("button", { name: "Run Fix with AI" }));
 
     expect(api.post).toHaveBeenCalledWith("/api/plays/play-1/run", {
       target_type: "ticket",
       target_id: "t-1",
-      memory_ids: ["m-go"],
+      memory_ids: ["m-go", "m-conclude"],
       custom_instructions: "React-only fix",
-      move_to_status_id: "st-done",
       computer_id: "c-1",
       provider: "claude",
       model: "sonnet-5",
@@ -169,28 +165,13 @@ describe("PlayRunDialog", () => {
     reopen();
     expect(await screen.findByRole("checkbox", { name: "Go practices" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "React guide" })).not.toBeChecked();
-    expect(screen.getByRole("combobox", { name: "On success, move to" })).toHaveTextContent("Done");
+    expect(screen.getByRole("checkbox", { name: "Where tickets go next" })).toBeChecked();
   });
 
-  it("falls back to no move when the remembered column no longer exists", async () => {
-    choices = { memory_ids: [], move_to_status_id: "st-deleted", computer_id: "", provider: "", model: "" };
-    mockApi(["plays:run", "tickets:write"]);
+ it("says so when the project has no footer memories", async () => {
+    mockApi(["plays:run"], memories.filter((m) => !m.footer));
     renderDialog();
-    expect(await screen.findByRole("combobox", { name: "On success, move to" })).toHaveTextContent("Don't move");
-    expect(screen.getByRole("button", { name: "Run Fix with AI" })).toBeInTheDocument();
-  });
-
-  it("disables move-to with a reason without tickets:write and runs with no move", async () => {
-    const user = userEvent.setup();
-    mockApi(["plays:run"]);
-    vi.mocked(api.post).mockResolvedValue({ data: { id: "tr-2", target_type: "ticket", target_id: "t-1", play_label: "Fix with AI" } });
-    renderDialog();
-
-    const select = await screen.findByRole("combobox", { name: "On success, move to" });
-    expect(select).toBeDisabled();
-    expect(screen.getByText("You can't move tickets in this project.")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Run Fix with AI" }));
-    expect(api.post).toHaveBeenCalledWith("/api/plays/play-1/run", expect.objectContaining({ move_to_status_id: "" }));
+    expect(await screen.findByText("No footer memories. Move a memory to the Footer folder to conclude runs with it.")).toBeInTheDocument();
   });
 
   it("shows a refusal inside the dialog and keeps it open", async () => {
@@ -201,7 +182,7 @@ describe("PlayRunDialog", () => {
     });
     const { onClose } = renderDialog();
 
-    await user.click(await screen.findByRole("button", { name: "Run Fix with AI · then In review" }));
+    await user.click(await screen.findByRole("button", { name: "Run Fix with AI" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("memory m-9 is not in this project");
     expect(onClose).not.toHaveBeenCalled();
     expect(screen.getByRole("dialog")).toBeInTheDocument();
@@ -229,7 +210,7 @@ describe("PlayRunDialog", () => {
       </MemoryRouter>,
     );
 
-    await user.click(await screen.findByRole("button", { name: "Run Fix with AI · then In review" }));
+    await user.click(await screen.findByRole("button", { name: "Run Fix with AI" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("until its setup is done");
     expect(screen.getByRole("link", { name: "Set up Onik's PC" })).toHaveAttribute("href", "/settings/pairing?setup=c-1");
   });
@@ -242,7 +223,7 @@ describe("PlayRunDialog", () => {
     });
     renderDialog();
 
-    await user.click(await screen.findByRole("button", { name: "Run Fix with AI · then In review" }));
+    await user.click(await screen.findByRole("button", { name: "Run Fix with AI" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("pairing not configured");
     expect(screen.queryByRole("link", { name: /Set up/ })).not.toBeInTheDocument();
   });
@@ -270,7 +251,7 @@ describe("PlayRunDialog", () => {
 
     await user.click(await screen.findByRole("button", { name: "Onik's PC · Claude · Sonnet 5" }));
     await pickOption(user, "Computer", "VPS");
-    await user.click(await screen.findByRole("button", { name: "Run Fix with AI · then In review" }));
+    await user.click(await screen.findByRole("button", { name: "Run Fix with AI" }));
 
     expect(api.post).toHaveBeenCalledWith(
       "/api/plays/play-1/run",
@@ -311,7 +292,7 @@ describe("PlayRunDialog", () => {
       </QueryClientProvider>,
     );
 
-    const run = await screen.findByRole("button", { name: "Run Fix with AI · then In review" });
+    const run = await screen.findByRole("button", { name: "Run Fix with AI" });
     await user.click(run);
     expect(await screen.findByText("This ticket is blocked")).toBeInTheDocument();
     expect(screen.getByText("It still waits on BKS-2. Run Fix with AI anyway?")).toBeInTheDocument();

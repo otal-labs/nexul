@@ -24,7 +24,7 @@ vi.mock("@/pages/MemoryPage", async () => {
 
 const project = { id: "p-1", name: "Backend", prefix: "BE", position: 0, created_at: "", updated_at: "" };
 
-const memory = (id: string, title: string, alwaysIncluded: boolean) => ({
+const memory = (id: string, title: string, alwaysIncluded: boolean, footer = false) => ({
   id,
   workspace_id: "ws-1",
   project_id: "p-1",
@@ -33,6 +33,7 @@ const memory = (id: string, title: string, alwaysIncluded: boolean) => ({
   when_to_use: "",
   body: `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"${title} body"}]}]}`,
   always_included: alwaysIncluded,
+  footer,
   version: 1,
   created_by: "u-1",
   created_at: "2026-09-16T12:00:00Z",
@@ -40,7 +41,11 @@ const memory = (id: string, title: string, alwaysIncluded: boolean) => ({
   updated_at: "2026-09-16T12:00:00Z",
 });
 
-const memories = [memory("mem-1", "Deploy quirks", true), memory("mem-2", "Naming rules", false)];
+const memories = [
+  memory("mem-1", "Deploy quirks", true),
+  memory("mem-2", "Naming rules", false),
+  memory("mem-3", "Where tickets go", false, true),
+];
 
 const renderPage = (path: string, permissions: string[], overrides: Record<string, unknown> = {}) => {
   const endpoints: Record<string, unknown> = {
@@ -67,7 +72,7 @@ const renderPage = (path: string, permissions: string[], overrides: Record<strin
   );
 };
 
-const rowSwitch = (title: string) => screen.findByRole("switch", { name: `Always include ${title}` });
+const rowSwitch = (title: string) => screen.findByRole("switch", { name: `Require ${title}` });
 
 beforeEach(() => {
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1", selectedProjectId: "" });
@@ -76,16 +81,33 @@ beforeEach(() => {
 });
 
 describe("MemoriesPage", () => {
-  it("pins always-included memories first and opens the one the URL names", async () => {
+  it("files memories into Main and Footer, required first, and opens the one the URL names", async () => {
     renderPage("/memories/BE/mem-2", ["memories:read"]);
 
-    const pinned = await screen.findByRole("region", { name: "Pinned" });
-    expect(within(pinned).getByRole("link", { name: /Deploy quirks/ })).toBeInTheDocument();
-    expect(within(pinned).getByText("always in context")).toBeInTheDocument();
-    expect(within(pinned).getByText("Deploy quirks body")).toBeInTheDocument();
-    const other = screen.getByRole("region", { name: "Other" });
-    expect(within(other).getByRole("link", { name: /Naming rules/ })).toHaveAttribute("aria-current", "page");
+    const main = await screen.findByRole("region", { name: "Main" });
+    const [first, second] = within(main).getAllByRole("link");
+    expect(first).toHaveAccessibleName(/Deploy quirks/);
+    expect(within(main).getByText("required")).toBeInTheDocument();
+    expect(second).toHaveAttribute("aria-current", "page");
+    const footer = screen.getByRole("region", { name: "Footer" });
+    expect(within(footer).getByRole("link", { name: /Where tickets go/ })).toBeInTheDocument();
+    expect(within(footer).queryByRole("link", { name: /Naming rules/ })).not.toBeInTheDocument();
     expect(await screen.findByText("editing mem-2")).toBeInTheDocument();
+  });
+
+  it("moves a memory to the Footer folder from its row menu", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.put).mockResolvedValue({ data: {} });
+    renderPage("/memories", ["memories:read", "memories:write"]);
+
+    await user.click(await screen.findByRole("button", { name: "More actions for Naming rules" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Move to" }));
+    (await screen.findByRole("menuitemradio", { name: "Footer" })).focus();
+    await user.keyboard("{Enter}");
+
+    await vi.waitFor(() =>
+      expect(api.put).toHaveBeenCalledWith("/api/memories/mem-2", expect.objectContaining({ title: "Naming rules", footer: true })),
+    );
   });
 
   it("the row switch saves always-included at once and rolls back when the save fails", async () => {

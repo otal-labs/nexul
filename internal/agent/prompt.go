@@ -47,11 +47,13 @@ const (
 	docLine      = "Doc: %q (id %s). Read it with doc_get before you start."
 	imagesLine   = "The images in its body are attached to this message, in order."
 	memoriesLine = "Read these memories with memory_get before you start; they are your context:"
+	concludeLine = "When the work is done, before your final reply, read these memories with memory_get and follow them to " +
+		"conclude the run, for example to decide which column the ticket now belongs in:"
 )
 
 // PromptTexts returns the fixed texts a prompt hands the agent, so the MCP surface test can check the tools they name.
 func PromptTexts() []string {
-	return []string{DefaultIntro, DefaultFooter, ticketLine, docLine, memoriesLine}
+	return []string{DefaultIntro, DefaultFooter, ticketLine, docLine, memoriesLine, concludeLine}
 }
 
 // MemoryItem is one of a project's memories as the pipeline sees it: enough to name it, never its body.
@@ -78,6 +80,8 @@ type PlayContext struct {
 	Blocks       []string
 	Memories     []MemoryRef
 	Custom       string
+	// Conclude are the run's footer memories, named after its instructions (ADR 0112).
+	Conclude []MemoryRef
 }
 
 // ContextMessage is one resolved context line; Author is already a display label, not a raw id.
@@ -144,15 +148,20 @@ func contextSections(in PromptInput) []string {
 	if in.Play.Custom != "" {
 		sections = append(sections, fmt.Sprintf("Instructions for this run from %s; where they conflict with the play's, these win:\n%s", in.RequestAuthor, in.Play.Custom))
 	}
-	return sections
+	return append(sections, memoryList(concludeLine, in.Play.Conclude))
 }
 
 func memoriesBlock(refs []MemoryRef) string {
+	return memoryList(memoriesLine, refs)
+}
+
+// memoryList names each memory under its opening line, empty when there is none to name.
+func memoryList(opening string, refs []MemoryRef) string {
 	if len(refs) == 0 {
 		return ""
 	}
 	var b strings.Builder
-	b.WriteString(memoriesLine)
+	b.WriteString(opening)
 	for _, m := range refs {
 		fmt.Fprintf(&b, "\n- %s (id %s)", m.Name, m.ID)
 	}
