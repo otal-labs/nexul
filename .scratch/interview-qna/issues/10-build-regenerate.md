@@ -13,3 +13,10 @@ once it has answers. Nothing regenerates on its own.
 
 - [x] Changing one answer under a memory shows the signal; regenerating clears it
 - [x] The existing-memory project path works end to end
+
+## Answer
+
+Built in PR #364: the warning dot and "Regenerate the memory" when an answer was
+saved after the last finished interview run (a hand edit to the memory does not
+clear it), Done offered again after a failed or stopped run, and a skipped live
+follow-up sent as "Skipped" and stored as a skip.
