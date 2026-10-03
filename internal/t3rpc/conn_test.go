@@ -140,3 +140,46 @@ func TestStream_AcksEachChunkBeforeWaitingAndNamesHowItEnded(t *testing.T) {
 		})
 	}
 }
+
+// A missing thread and a stream T3 gave up on both fail the subscription; only the cause tells them apart.
+func TestStream_FailedExit_NamesItsCauses(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name      string
+		cause     any
+		wantTags  []string
+		missing   bool
+		wantInErr string
+	}{
+		{"a typed failure", []any{map[string]any{"_tag": "Fail", "error": map[string]any{
+			"_tag": "OrchestrationV2GetThreadProjectionError", "threadId": "th-1", "message": "Failed to load orchestration V2 thread th-1"}}},
+			[]string{"Fail"}, true, "Failed to load orchestration V2 thread th-1"},
+		{"a defect, as LiveStreamBufferError arrives", []any{map[string]any{"_tag": "Die", "defect": "LiveStreamBufferError"}},
+			[]string{"Die"}, false, "LiveStreamBufferError"},
+		{"an undecodable cause still fails", "not a cause", nil, false, "not a cause"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			f := t3rpctest.New(t)
+			c := connectFake(t, f)
+			stream, err := c.Stream(testCtx(t), "orchestration.subscribeThread", map[string]any{"threadId": "th-1"})
+			require.NoError(t, err)
+			t.Cleanup(stream.Close)
+			id := t3rpctest.WaitFor(t, f.Subscribed, "subscription")
+			f.Write(map[string]any{"_tag": "Exit", "requestId": id, "exit": map[string]any{"_tag": "Failure", "cause": tt.cause}})
+
+			_, err = stream.Next(testCtx(t))
+			var exit *ExitError
+			require.ErrorAs(t, err, &exit)
+			assert.ErrorIs(t, err, apperrs.ErrInvalid)
+			var tags []string
+			for _, c := range exit.Causes {
+				tags = append(tags, c.Tag)
+			}
+			assert.Equal(t, tt.wantTags, tags)
+			assert.Equal(t, tt.missing, exit.Failed("OrchestrationV2GetThreadProjectionError"))
+			assert.Contains(t, err.Error(), tt.wantInErr)
+		})
+	}
+}

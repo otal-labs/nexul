@@ -47,6 +47,8 @@ type Server struct {
 	Dispatched  chan map[string]any // payload of each dispatchCommand (auto-acked)
 	// DispatchCause fails every dispatchCommand when set; set it before connect.
 	DispatchCause any
+	// CommandCauses fails only the dispatchCommands of the command types it names; set it before connect.
+	CommandCauses map[string]any
 
 	connMu sync.Mutex
 	conn   *websocket.Conn
@@ -56,10 +58,11 @@ type Server struct {
 }
 
 type clientEnv struct {
-	Tag     string          `json:"_tag"`
-	ID      json.RawMessage `json:"id"`
-	RPCTag  string          `json:"tag"`
-	Payload json.RawMessage `json:"payload"`
+	Tag       string          `json:"_tag"`
+	ID        json.RawMessage `json:"id"`
+	RequestID string          `json:"requestId"`
+	RPCTag    string          `json:"tag"`
+	Payload   json.RawMessage `json:"payload"`
 }
 
 // New starts a fake T3 server that t's cleanup stops.
@@ -167,7 +170,7 @@ func (f *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 		}
 		if env.Tag == "Ack" {
 			select {
-			case f.Acks <- idString(env.ID):
+			case f.Acks <- env.RequestID:
 			default:
 			}
 			continue
@@ -231,9 +234,13 @@ func (f *Server) handleDispatch(env clientEnv) {
 		f.t.Errorf("fake: undecodable dispatch payload: %v", err)
 		return
 	}
-	if f.DispatchCause != nil {
+	cause := f.DispatchCause
+	if c, ok := f.CommandCauses[fmt.Sprint(cmd["type"])]; ok {
+		cause = c
+	}
+	if cause != nil {
 		f.Write(map[string]any{"_tag": "Exit", "requestId": idString(env.ID),
-			"exit": map[string]any{"_tag": "Failure", "cause": f.DispatchCause}})
+			"exit": map[string]any{"_tag": "Failure", "cause": cause}})
 		return
 	}
 	f.Write(ExitSuccess(idString(env.ID), map[string]any{"sequence": 1}))

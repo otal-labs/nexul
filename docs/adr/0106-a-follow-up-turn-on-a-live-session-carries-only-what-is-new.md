@@ -4,6 +4,9 @@ Amended by ADR 0111: the full prompt names the ticket or doc and the memories in
 messages are left out of every prompt, and a play run's start on a live session sends its play part without the
 Intro and Footer.
 
+Amended by ADR 0114: on T3 Code's protocol 2, a thread T3 imported from protocol 1 gets the full prompt until one of
+its runs completes, because T3 hands it only an excerpt of its old history.
+
 Supersedes ADR 0065 in part: the interview memory and the other always-included memories reach every session in
 full, not every turn.
 
