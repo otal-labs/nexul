@@ -15,6 +15,7 @@ import { AgentStreamBubble } from "@/components/chat/AgentStreamBubble";
 import { MessageRow } from "@/components/chat/MessageRow";
 import { NoDataDisplay } from "@/components/NoDataDisplay";
 import { useThreadTrailBlocks } from "@/hooks/TrailHooks";
+import { cn } from "@/lib/utils";
 import { isContinuation, isNote, type Conversation, type Message } from "@/models/Chat";
 import type { Person } from "@/models/Person";
 import { useAgentStreamStore } from "@/stores/agentStreamStore";
@@ -97,7 +98,11 @@ export const MessageList = ({
                       key={message.id}
                       messageId={message.id}
                       // The item's content-visibility clips paint to its box; the margin lets the Edit/Delete pill rise into the gap above.
-                      className={continuation ? "[overflow-clip-margin:1rem]" : "pt-4"}
+                      // The newest row renders eagerly: its 10rem placeholder would park a just-sent message above the bottom edge.
+                      className={cn(
+                        continuation ? "[overflow-clip-margin:1rem]" : "pt-4",
+                        i === messages.length - 1 && "[content-visibility:visible]",
+                      )}
                       scrollAnchor={message.author_kind === "user" && (message.mentions ?? []).some((m) => m.kind === "agent")}
                     >
                       <MessageRow
@@ -115,7 +120,7 @@ export const MessageList = ({
                   );
                 })}
                 {stream && (
-                  <MessageScrollerItem messageId={`stream-${conversation.id}`} className="pt-5">
+                  <MessageScrollerItem messageId={`stream-${conversation.id}`} className="pt-5 [content-visibility:visible]">
                     <AgentStreamBubble frame={stream} onInterrupt={onInterruptAgent} live={blocks.live} />
                   </MessageScrollerItem>
                 )}
