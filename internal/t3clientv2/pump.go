@@ -18,8 +18,10 @@ type source interface {
 }
 
 const (
-	// noteEvery repeats the queued note, which keeps the callers' silence windows open while T3 holds the run.
+	// noteEvery repeats the standing note, which keeps the callers' silence windows open while the turn waits on T3.
 	noteEvery = 5 * time.Minute
+	// handoffCap is how long a turn whose run is done waits for the work it handed off.
+	handoffCap = 60 * time.Minute
 	// updatedNote ends a turn whose resubscribe finds T3 Code on another protocol.
 	updatedNote = "T3 Code was updated during this turn; ask again"
 )
@@ -35,9 +37,11 @@ type pump struct {
 	log     *slog.Logger
 	// failures counts resubscribes since the stream last delivered anything.
 	failures int
-	// note is the queued note last shown, due when it is shown again.
+	// note is the standing note last shown, due when it is shown again.
 	note string
 	due  time.Time
+	// capAt is when the turn stops waiting for handed-off work, zero until its own run is done.
+	capAt time.Time
 }
 
 func (p *pump) run(ctx context.Context, src source, out chan<- harness.Update) {
@@ -56,7 +60,7 @@ func (p *pump) run(ctx context.Context, src source, out chan<- harness.Update) {
 // drain reads src until the turn is over (true) or the stream ends (its error).
 func (p *pump) drain(ctx context.Context, src source, out chan<- harness.Update) (bool, error) {
 	for {
-		if !p.remind(ctx, out) {
+		if p.capped(ctx, out) || !p.remind(ctx, out) {
 			return true, nil
 		}
 		values, err := p.next(ctx, src)
@@ -76,12 +80,16 @@ func (p *pump) drain(ctx context.Context, src source, out chan<- harness.Update)
 	}
 }
 
-// next waits for the stream's next items, but only until the queued note is due again.
+// next waits for the stream's next items, but only until the standing note is due again or the cap is reached.
 func (p *pump) next(ctx context.Context, src source) ([]json.RawMessage, error) {
-	if p.due.IsZero() {
+	deadline := p.due
+	if !p.capAt.IsZero() && (deadline.IsZero() || p.capAt.Before(deadline)) {
+		deadline = p.capAt
+	}
+	if deadline.IsZero() {
 		return src.Next(ctx)
 	}
-	waitCtx, cancel := context.WithDeadline(ctx, p.due)
+	waitCtx, cancel := context.WithDeadline(ctx, deadline)
 	defer cancel()
 	return src.Next(waitCtx)
 }
@@ -114,9 +122,9 @@ func (p *pump) declineApprovals(ctx context.Context) {
 	p.w.declines = nil
 }
 
-// remind shows the queued note when it changes and again every noteEvery while T3 holds the run; false once ctx ends.
+// remind shows the standing note when it changes and again every noteEvery while it stands; false once ctx ends.
 func (p *pump) remind(ctx context.Context, out chan<- harness.Update) bool {
-	note := p.w.queueNote()
+	note := p.w.standingNote()
 	if note == nil {
 		p.note, p.due = "", time.Time{}
 		return true
@@ -128,6 +136,21 @@ func (p *pump) remind(ctx context.Context, out chan<- harness.Update) bool {
 	p.note, p.due = note.Summary, now.Add(noteEvery)
 	note.At = now.UTC()
 	return send(ctx, out, harness.Update{Activity: note})
+}
+
+// capped ends the turn done handoffCap after its own run finished, while work it handed off still runs; true once it did.
+func (p *pump) capped(ctx context.Context, out chan<- harness.Update) bool {
+	if !p.w.waiting() {
+		return false
+	}
+	if p.capAt.IsZero() {
+		p.capAt = time.Now().Add(handoffCap)
+	}
+	if time.Now().Before(p.capAt) {
+		return false
+	}
+	send(ctx, out, harness.Update{Terminal: p.w.leave()})
+	return true
 }
 
 // resubscribe opens the stream again after the cursor, ending the turn when it cannot.

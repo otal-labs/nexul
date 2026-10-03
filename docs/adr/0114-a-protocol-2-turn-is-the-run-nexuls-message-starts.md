@@ -12,7 +12,8 @@ Decision: Nexul mints the message id, and the turn is the run whose `userMessage
   steered or restarting dispatch merges the message into another run, so no run would carry the id and the watch
   would never end. On a busy thread the run queues; while it is queued, or held by T3 after a restart, the turn
   shows a note again every five minutes under one call id, so the callers' silence windows wait as long as T3 holds
-  it. Runs with any other `userMessageId` are T3's own and produce nothing.
+  it. Runs with any other `userMessageId` are T3's own and produce nothing, except the runs that carry back work the
+  turn's run handed off (ADR 0116).
 - **Before dispatching.** The turn subscribes with a bounded snapshot and waits for it. A reused thread that is
   missing (the first subscribe fails with `OrchestrationV2GetThreadProjectionError`) or deleted (`deletedAt` in the
   snapshot, or a `thread.deleted` with it) is recreated once. T3 still runs a message sent to a deleted thread, so a
@@ -69,6 +70,6 @@ Rejected: ending the turn at `completed`, which adds checkpoint latency to every
 target is incomplete; following every run on the thread, which would reply to T3's own wakes, watches and schedules
 as if Nexul had asked; and treating a failed dispatch as a missing thread, which the captures disproved.
 
-A turn that hands work to another agent waits for it past `waiting`; that is a later decision, not this one.
+A turn that hands work to another agent waits for it past `waiting`: ADR 0116.
 
 Decided 2026-10-03.

@@ -308,6 +308,8 @@ const (
 type TurnResult struct {
 	State     TurnState
 	LastError string
+	// LeftRunning is a done turn that stopped waiting for work it handed off, which still runs in the harness.
+	LeftRunning bool
 }
 
 // Update is one item off a turn's stream, exactly one field set; a Terminal update is always last.

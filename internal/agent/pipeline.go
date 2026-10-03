@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -201,8 +202,8 @@ type Service struct {
 	now           func() time.Time
 
 	mu     sync.Mutex
-	active map[string]activeTurn // conversationID -> in-flight turn, for Interrupt
-	ended  map[string]endedTurn  // ticketID -> its thread's last turn, until that thread is settled
+	active map[string][]*activeTurn // conversationID -> its in-flight turns, oldest first, for Interrupt and Answer
+	ended  map[string]endedTurn     // ticketID -> its thread's last turn, until that thread is settled
 }
 
 // activeTurn is an in-flight turn: the client it runs on and the target to interrupt.
@@ -234,7 +235,7 @@ func NewService(cfg Config) *Service {
 		live:          redact.Live{Publisher: cfg.Live},
 		log:           cfg.Logger,
 		now:           cfg.Now,
-		active:        map[string]activeTurn{},
+		active:        map[string][]*activeTurn{},
 		ended:         map[string]endedTurn{},
 	}
 }
@@ -257,6 +258,9 @@ type messageCreatedPayload struct {
 
 // mentionAgentKind mirrors chat.MentionAgent's wire value.
 const mentionAgentKind = "agent"
+
+// leftRunningLine closes a reply whose turn stopped waiting for work it handed off (ADR 0116).
+const leftRunningLine = "Part of this work is still running in T3 Code."
 
 // chatSilence ends a chat turn whose harness has sent nothing for this long; a turn that keeps reporting has no ceiling.
 const chatSilence = 15 * time.Minute
@@ -360,7 +364,7 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 
 	title := threadTitle(conv, thread)
 
-	turn := activeTurn{client: client, answered: make(chan struct{}, 1), target: harness.Target{
+	turn := &activeTurn{client: client, answered: make(chan struct{}, 1), target: harness.Target{
 		Session:      target.Computer.Session(),
 		ProjectID:    target.HarnessProjectID,
 		Provider:     target.Provider,
@@ -369,7 +373,7 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 		SessionID:    conv.ThreadID,
 	}}
 	s.setActive(conversationID, turn)
-	defer s.endTurn(ctx, conv, &turn)
+	defer s.endTurn(ctx, conv, turn)
 
 	result, err := client.StartTurn(setupCtx, turn.target, title, prompts)
 	disarm()
@@ -381,7 +385,7 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 		failed(err.Error())
 		return
 	}
-	s.announceTurnStarted(ctx, conversationID, conv.ThreadID, &turn, result)
+	s.announceTurnStarted(ctx, conversationID, conv.ThreadID, turn, result)
 	if result.PromptSent {
 		s.markSent(ctx, conversationID, sentThrough)
 	}
@@ -599,8 +603,9 @@ func (s *Service) announceTurnStarted(ctx context.Context, conversationID, prior
 	if err := s.conversations.SetThread(ctx, conversationID, result.SessionID); err != nil {
 		s.log.Error("agent: persist thread id failed", "conversation", conversationID, "error", err)
 	}
+	s.mu.Lock()
 	turn.target.SessionID = result.SessionID
-	s.setActive(conversationID, *turn)
+	s.mu.Unlock()
 }
 
 // drainTurn reads a turn's updates to completion, forwarding snapshots and approvals live.
@@ -752,6 +757,9 @@ func (s *Service) finishTurn(ctx context.Context, conversationID, viaUserID, fin
 	if term == nil {
 		term = &harness.TurnResult{State: harness.TurnError, LastError: "turn ended without a terminal result"}
 	}
+	if term.LeftRunning {
+		finalText = strings.TrimSpace(finalText + "\n\n" + leftRunningLine)
+	}
 	// Every exit but a persisted done-with-text must clear the ephemeral bubble itself, or it spins forever.
 	if term.State != harness.TurnDone || strings.TrimSpace(finalText) == "" {
 		s.clearStream(ctx, conversationID)
@@ -882,16 +890,33 @@ func (s *Service) postSystemMessage(ctx context.Context, conversationID, viaUser
 	}
 }
 
-func (s *Service) setActive(conversationID string, t activeTurn) {
+func (s *Service) setActive(conversationID string, t *activeTurn) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.active[conversationID] = t
+	s.active[conversationID] = append(s.active[conversationID], t)
 }
 
-func (s *Service) clearActive(conversationID string) {
+// clearActive drops only t, so a turn ending first never orphans another turn's Stop or Answer.
+func (s *Service) clearActive(conversationID string, t *activeTurn) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	delete(s.active, conversationID)
+	turns := slices.DeleteFunc(s.active[conversationID], func(a *activeTurn) bool { return a == t })
+	if len(turns) == 0 {
+		delete(s.active, conversationID)
+		return
+	}
+	s.active[conversationID] = turns
+}
+
+// liveTurns copies the conversation's in-flight turns, newest first.
+func (s *Service) liveTurns(conversationID string) []activeTurn {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	turns := make([]activeTurn, 0, len(s.active[conversationID]))
+	for _, t := range slices.Backward(s.active[conversationID]) {
+		turns = append(turns, *t)
+	}
+	return turns
 }
 
 // questionFence marks an Agent message whose body is a Question as JSON; the web renders it as the card.
@@ -906,23 +931,38 @@ func QuestionMessageBody(q harness.Question) string {
 	return questionFence + string(b) + "\n```"
 }
 
-// Answer resolves a pending question on the conversation's live turn; ErrNotFound when no turn is running here.
+// Answer resolves a pending question through the conversation's live turns, newest first; ErrNotFound when none runs here.
 func (s *Service) Answer(ctx context.Context, conversationID, requestID string, answer harness.QuestionAnswer) error {
-	s.mu.Lock()
-	t, ok := s.active[conversationID]
-	s.mu.Unlock()
-	if !ok {
+	turns := s.liveTurns(conversationID)
+	if len(turns) == 0 {
 		return fmt.Errorf("%w: no active agent turn on conversation %s", apperrs.ErrNotFound, conversationID)
 	}
-	if err := t.client.Answer(ctx, t.target, requestID, answer); err != nil {
-		return err
+	var first error
+	for _, t := range turns {
+		err := t.client.Answer(ctx, t.target, requestID, answer)
+		if errors.Is(err, apperrs.ErrConflict) {
+			return err
+		}
+		if err == nil {
+			wakeAll(turns)
+			return nil
+		}
+		if first == nil {
+			first = err
+		}
 	}
-	// A wake already pending covers this answer too.
-	select {
-	case t.answered <- struct{}{}:
-	default:
+	return first
+}
+
+// wakeAll restarts the silence window of every turn, since whichever asked is the one paused on the question.
+func wakeAll(turns []activeTurn) {
+	for _, t := range turns {
+		// A wake already pending covers this answer too.
+		select {
+		case t.answered <- struct{}{}:
+		default:
+		}
 	}
-	return nil
 }
 
 // AnswerFromChat posts the answer as userID's message and resolves the live turn; a turn the harness already closed
@@ -950,16 +990,26 @@ func (s *Service) AnswerFromChat(ctx context.Context, conversationID, userID, re
 	return nil
 }
 
-// Interrupt stops the in-flight turn on a conversation, if any (stop control); the caller must be able to read it.
+// Interrupt stops every in-flight turn on a conversation (stop control); the caller must be able to read it.
 func (s *Service) Interrupt(ctx context.Context, conversationID string) error {
 	if _, err := s.conversations.GetConversation(ctx, conversationID); err != nil {
 		return fmt.Errorf("interrupt agent turn: %w", err)
 	}
-	s.mu.Lock()
-	t, ok := s.active[conversationID]
-	s.mu.Unlock()
-	if !ok {
+	turns := s.liveTurns(conversationID)
+	if len(turns) == 0 {
 		return fmt.Errorf("%w: no active agent turn on conversation %s", apperrs.ErrNotFound, conversationID)
 	}
-	return t.client.Interrupt(ctx, t.target)
+	var first error
+	stopped := false
+	for _, t := range turns {
+		err := t.client.Interrupt(ctx, t.target)
+		stopped = stopped || err == nil
+		if first == nil {
+			first = err
+		}
+	}
+	if stopped {
+		return nil
+	}
+	return first
 }

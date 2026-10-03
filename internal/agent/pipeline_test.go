@@ -837,6 +837,77 @@ func TestInterrupt_CallsHarnessWithTheActiveTarget(t *testing.T) {
 	close(release)
 }
 
+func TestInterruptAndAnswer_TwoMentionsInOneConversation_ReachEveryLiveTurn(t *testing.T) {
+	first, second := make(chan harness.Update), make(chan harness.Update)
+	h := &followUpHarness{sessionIDs: []string{"thread-1", "thread-2"}, updates: []<-chan harness.Update{first, second}}
+	var mu sync.Mutex
+	var interrupted, answered []string
+	client := h.client()
+	client.InterruptFn = func(_ context.Context, target harness.Target) error {
+		mu.Lock()
+		defer mu.Unlock()
+		interrupted = append(interrupted, target.SessionID)
+		return nil
+	}
+	client.AnswerFn = func(_ context.Context, target harness.Target, _ string, _ harness.QuestionAnswer) error {
+		mu.Lock()
+		defer mu.Unlock()
+		answered = append(answered, target.SessionID)
+		if target.SessionID == "thread-2" {
+			return fmt.Errorf("%w: runtime request req-1 was not found", apperrs.ErrInvalid)
+		}
+		return nil
+	}
+	svc := NewService(Config{Conversations: newFakeConversations(Conversation{ID: "conv-1"}), Targets: &fakeTargets{target: testTarget()},
+		Harnesses: harnesstest.Registry(client), Live: &fakeLive{}})
+	run := func(updates chan harness.Update, body string) <-chan struct{} {
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			svc.RunTurn(context.Background(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: body})
+		}()
+		// Taken once the turn drains, so it is registered under its own session by then.
+		updates <- harness.Update{Activity: &harness.Activity{Kind: harness.ActivityToolCall, Summary: "Read main.go"}}
+		return done
+	}
+	firstDone := run(first, "@Agent first")
+	secondDone := run(second, "@Agent second")
+	require.Len(t, h.started(), 2)
+
+	require.NoError(t, svc.Interrupt(t.Context(), "conv-1"))
+	assert.Equal(t, []string{"thread-2", "thread-1"}, interrupted, "Stop reaches every live turn, newest first")
+	answer := harness.QuestionAnswer{Answers: map[string]harness.AnswerValue{"q1": {Selected: []string{"Yes"}}}}
+	require.NoError(t, svc.Answer(t.Context(), "conv-1", "req-1", answer))
+	assert.Equal(t, []string{"thread-2", "thread-1"}, answered, "a turn whose harness does not know the question passes it to the next")
+
+	second <- harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}}
+	close(second)
+	<-secondDone
+	interrupted, answered = nil, nil
+	require.NoError(t, svc.Interrupt(t.Context(), "conv-1"))
+	require.NoError(t, svc.Answer(t.Context(), "conv-1", "req-1", answer))
+	assert.Equal(t, []string{"thread-1"}, interrupted, "the second turn's end left the first one reachable")
+	assert.Equal(t, []string{"thread-1"}, answered)
+
+	close(first)
+	<-firstDone
+}
+
+func TestRunTurn_HandedOffWorkLeftRunning_ReplyEndsWithTheLine(t *testing.T) {
+	conv := newFakeConversations(Conversation{ID: "conv-1"})
+	client := &fakeHarness{startResult: harness.StartResult{SessionID: "th-1", Updates: updatesChan(
+		harness.Update{Snapshot: &harness.Snapshot{MessageID: "m-1", Text: "I handed the audit to another agent.", Streaming: false}},
+		harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone, LeftRunning: true}},
+	)}}
+	svc := NewService(Config{Conversations: conv, Targets: &fakeTargets{target: testTarget()}, Harnesses: registryOf(client), Live: &fakeLive{}})
+	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent audit"})
+
+	replies, systemPosts := conv.snapshot()
+	require.Len(t, replies, 1)
+	assert.Equal(t, "I handed the audit to another agent.\n\nPart of this work is still running in T3 Code.", replies[0].body)
+	assert.Empty(t, systemPosts, "a turn that stopped waiting is done, not failed")
+}
+
 // --- follow-up turns on a live session -------------------------------------------
 
 type startedTurn struct {

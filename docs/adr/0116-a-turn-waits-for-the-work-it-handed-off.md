@@ -1,0 +1,41 @@
+# A turn on T3 Code waits for the work it handed off, and its reply carries it
+
+On T3 Code's orchestrator V2 an agent can hand work to another agent: T3's own `delegate_task`, or a provider's
+own subagent such as Claude's background Task. T3's tool text tells the agent to end its turn after an async
+hand-off and let the result wake it later, in a run of T3's own on the same thread. Under ADR 0114 the Nexul turn is
+the run its message started, so an `@Agent` mention or play that delegated would reply "I handed this off" and the
+real answer would land in T3 Code only.
+
+Decision: a turn follows the runs its own run's handed-off work caused, and replies once that work is over.
+
+- **What the turn follows.** Nexul's run, plus every run that carries its handed-off work back: a run whose user
+  message has `delegatedCompletion.parentRunId` in the set, a run whose `userMessageId` a followed run named in
+  `delegatedCompletion.delivery.messageId`, a run whose user message is a subagent notice
+  (`notification.source` `{kind: "background_task", work: "subagent"}`) naming the child thread of a followed run's
+  subagent, and a run whose `restartContinuationOfRunId` is in the set. A run seen before the message that links it
+  waits until that message arrives. Nothing else is followed: pull-request watches, scheduled tasks, another thread's
+  sends, command and monitor notices, and runs typed in T3 have no causal link to Nexul's run.
+- **When it is over.** A followed run's items stream into the same turn, so a wake's reply becomes the turn's reply.
+  The turn stays open while a followed run other than Nexul's is queued or working, while a subagent of a followed
+  run (either origin) is pending, running or waiting, and while a T3-owned task's result is still to be delivered
+  (`completionDelivery` `pending` or `claimed`). Only a done run waits: an interrupted or failed one ends the turn as
+  before. A provider's own subagent stays running in T3's projection until its wake run replays the notice, so the
+  turn cannot end in the gap between the two.
+- **While it waits.** The step "Waiting for work handed off in T3 Code" repeats every five minutes under one call id
+  while anything is pending, whatever Nexul's run is doing, because a wait-mode delegation keeps that run running with
+  no events for as long as the child works. It keeps chat's and plays' silence windows open.
+- **A result T3 steered elsewhere.** A linked message that lands in a run outside the set went into a later turn of
+  the thread, which will reply with it. The wait ends done with "The handed-off result went to a later reply in T3
+  Code".
+- **The cap.** 60 minutes after Nexul's run reached `waiting`, T3's own longest wait, the turn ends done and the
+  stored reply ends with "Part of this work is still running in T3 Code." A play still ends done.
+- **More than one turn on a conversation.** The pipeline keeps each in-flight turn on its own, so a second mention
+  that ends first leaves the first one reachable. Stop reaches every live turn of the conversation, and an answer is
+  tried on each, newest first, until a harness takes it.
+
+Rejected: ignoring the hand-off, which makes placeholder replies the normal case because T3 tells agents to end the
+turn; telling the agent to use wait mode, which fights T3's own tool text and cannot reach a provider's own
+background subagents; and mirroring the whole T3 thread into Nexul, which would post replies nobody asked for and
+echo the person's own T3 turns.
+
+Builds on ADR 0114. Decided 2026-10-03.
