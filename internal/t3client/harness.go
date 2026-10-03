@@ -201,7 +201,7 @@ func (h *Harness) StartTurn(ctx context.Context, target harness.Target, title st
 
 	updates := make(chan harness.Update, 16)
 	go h.pump(ctx, target.Session, client, threadID, sub, updates)
-	return harness.StartResult{SessionID: threadID, Updates: updates}, nil
+	return harness.StartResult{SessionID: threadID, Updates: updates, PromptSent: true}, nil
 }
 
 func (h *Harness) createThread(ctx context.Context, client rpcConn, target harness.Target, title string) (string, error) {
@@ -244,7 +244,7 @@ func answeredTurn(threadID string) harness.StartResult {
 	updates <- harness.Update{Activity: &harness.Activity{Kind: harness.ActivityNote, Summary: answeredInT3Note, At: time.Now().UTC()}}
 	updates <- harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}}
 	close(updates)
-	return harness.StartResult{SessionID: threadID, Updates: updates}
+	return harness.StartResult{SessionID: threadID, Updates: updates, PromptSent: true}
 }
 
 // subscribeAndStart opens the subscription before starting the turn, so no events are missed.

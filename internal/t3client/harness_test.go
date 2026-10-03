@@ -229,6 +229,7 @@ func TestHarness_StartTurn_PendingAnswer(t *testing.T) {
 			require.NotEmpty(t, updates)
 			assert.Equal(t, harness.TurnDone, updates[len(updates)-1].Terminal.State)
 			assert.True(t, fake.closed)
+			assert.True(t, result.PromptSent, "the conversation is marked synced after the turn, as before protocol 2")
 		})
 	}
 }

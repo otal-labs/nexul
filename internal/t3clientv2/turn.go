@@ -90,6 +90,9 @@ type turn struct {
 	conn      *t3rpc.Conn
 	threadID  string
 	messageID string
+	// snapshot is the thread's first snapshot, which says how a pending answer reaches T3.
+	snapshot projection
+	prompted bool
 }
 
 // StartTurn implements harness.Client: the message goes out after the thread's snapshot, and its run is the turn.
@@ -100,6 +103,10 @@ func (h *Harness) StartTurn(ctx context.Context, target harness.Target, title st
 	}
 	t := &turn{h: h, target: target, conn: c, messageID: ids.New()}
 	src, w, notes, err := t.start(ctx, title, prompts)
+	if errors.Is(err, errAnswered) {
+		t.close()
+		return answeredTurn(t.threadID), nil
+	}
 	if err != nil {
 		t.close()
 		return harness.StartResult{}, err
@@ -114,7 +121,7 @@ func (h *Harness) StartTurn(ctx context.Context, target harness.Target, title st
 		p.run(ctx, src, updates)
 		t.end(ctx, w)
 	}()
-	return harness.StartResult{SessionID: t.threadID, Updates: updates}, nil
+	return harness.StartResult{SessionID: t.threadID, Updates: updates, PromptSent: t.prompted}, nil
 }
 
 // start creates or reuses the thread, reads its snapshot, and dispatches the prompt that snapshot calls for.
@@ -137,6 +144,16 @@ func (t *turn) start(ctx context.Context, title string, prompts harness.TurnProm
 	}
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("watch t3 thread %s: %w", t.threadID, err)
+	}
+	if prompts.Answer != nil && !fresh {
+		responded, err := t.deliver(ctx, w, *prompts.Answer)
+		if err != nil {
+			src.Close()
+			return nil, nil, nil, err
+		}
+		if responded {
+			return src, w, nil, nil
+		}
 	}
 	notes, err := t.dispatch(ctx, w, fresh, prompts)
 	if err != nil {
@@ -193,7 +210,11 @@ func (t *turn) subscribe(ctx context.Context) (source, *watch, error) {
 			return nil, nil, err
 		}
 		for _, raw := range values {
-			w.apply(decodeItem(t.h.log(), raw))
+			item := decodeItem(t.h.log(), raw)
+			if item.Kind == "snapshot" {
+				t.snapshot = item.Projection
+			}
+			w.apply(item)
 		}
 	}
 	// A deleted thread still takes a message, so only its snapshot or a delete event says it is gone.
@@ -226,6 +247,7 @@ func (t *turn) dispatch(ctx context.Context, w *watch, fresh bool, prompts harne
 	if err != nil {
 		return nil, refused("send the message to T3 Code", err)
 	}
+	t.prompted = true
 	return append(notes, more...), nil
 }
 

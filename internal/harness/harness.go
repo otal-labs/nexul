@@ -341,6 +341,8 @@ type TurnPrompts struct {
 type StartResult struct {
 	SessionID string
 	Updates   <-chan Update
+	// PromptSent is false when the harness only resolved a pending answer, so the messages since are still unsent.
+	PromptSent bool
 }
 
 // Client is everything Nexul asks of one harness kind. Harness-specific concepts stay behind it.
