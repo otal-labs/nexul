@@ -56,12 +56,20 @@ export const useReorderCategories = () => {
   return useMutation({
     mutationFn: async ({ project_id, ids }: { project_id: string; ids: string[] }) =>
       api.post("/api/categories/reorder", { project_id, ids }),
-    onSuccess: async () => {
+    // Applied before the request so a dropped row stays where it landed instead of snapping back until the refetch.
+    onMutate: async ({ project_id, ids }) => {
+      const key = [getProjectCategoriesKey, project_id];
+      await client.cancelQueries({ queryKey: key });
+      client.setQueryData<Category[]>(key, (current) =>
+        current && [...current].sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id)),
+      );
+    },
+    onSuccess: () => toast.success("Category order updated"),
+    onError: (error) => toast.error(errorMessage(error)),
+    onSettled: async () => {
       await client.invalidateQueries({ queryKey: [getCategoriesKey] });
       await client.invalidateQueries({ queryKey: [getProjectCategoriesKey] });
-      toast.success("Category order updated");
     },
-    onError: (error) => toast.error(errorMessage(error)),
   });
 };
 
