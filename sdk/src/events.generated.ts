@@ -68,9 +68,9 @@ export interface EventPayloads {
   "invitation.deleted": { "invitation_id"?: string; "reason"?: string; };
   "invitation.redeemed": { "invitation_id"?: string; "user_id"?: string; };
   "invitation.revoked": { "invitation_id"?: string; "actor_id"?: string; };
-  "memory.created": { "memory": { "id": string; "workspace_id": string; "project_id": string; "kind"?: string; "title": string; "when_to_use"?: string; "always_included"?: boolean; "updated_at"?: string; }; "author_id": string; };
+  "memory.created": { "memory": { "id": string; "workspace_id": string; "project_id": string; "kind"?: string; "title": string; "when_to_use"?: string; "always_included"?: boolean; "footer"?: boolean; "updated_at"?: string; }; "author_id": string; };
   "memory.deleted": { "id": string; "workspace_id"?: string; "project_id"?: string; "title": string; "author_id": string; };
-  "memory.updated": { "memory": { "id": string; "workspace_id": string; "project_id": string; "kind"?: string; "title": string; "when_to_use"?: string; "always_included"?: boolean; "updated_at"?: string; }; "author_id": string; };
+  "memory.updated": { "memory": { "id": string; "workspace_id": string; "project_id": string; "kind"?: string; "title": string; "when_to_use"?: string; "always_included"?: boolean; "footer"?: boolean; "updated_at"?: string; }; "author_id": string; };
   "notification.created": Record<string, unknown>;
   "notification.push_requested": { "notifications": { "id": string; "user_id": string; "workspace_id"?: string; }[]; };
   "personal_access_token.minted": { "token_id": string; "user_id": string; "name": string; "computer_id"?: string; };
@@ -302,9 +302,9 @@ export const eventFixtures: { [K in Topic]: EventPayloads[K] } = {
   "invitation.deleted": {"invitation_id":"fixture-invitation_id","reason":"fixture-reason"},
   "invitation.redeemed": {"invitation_id":"fixture-invitation_id","user_id":"fixture-user_id"},
   "invitation.revoked": {"invitation_id":"fixture-invitation_id","actor_id":"fixture-actor_id"},
-  "memory.created": {"memory":{"id":"fixture-id","workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","kind":"fixture-kind","title":"fixture-title","when_to_use":"fixture-when_to_use","always_included":false,"updated_at":"2026-01-01T00:00:00Z"},"author_id":"fixture-author_id"},
+  "memory.created": {"memory":{"id":"fixture-id","workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","kind":"fixture-kind","title":"fixture-title","when_to_use":"fixture-when_to_use","always_included":false,"footer":false,"updated_at":"2026-01-01T00:00:00Z"},"author_id":"fixture-author_id"},
   "memory.deleted": {"id":"fixture-id","workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","title":"fixture-title","author_id":"fixture-author_id"},
-  "memory.updated": {"memory":{"id":"fixture-id","workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","kind":"fixture-kind","title":"fixture-title","when_to_use":"fixture-when_to_use","always_included":false,"updated_at":"2026-01-01T00:00:00Z"},"author_id":"fixture-author_id"},
+  "memory.updated": {"memory":{"id":"fixture-id","workspace_id":"fixture-workspace_id","project_id":"fixture-project_id","kind":"fixture-kind","title":"fixture-title","when_to_use":"fixture-when_to_use","always_included":false,"footer":false,"updated_at":"2026-01-01T00:00:00Z"},"author_id":"fixture-author_id"},
   "notification.created": {},
   "notification.push_requested": {"notifications":[{"id":"fixture-id","user_id":"fixture-user_id","workspace_id":"fixture-workspace_id"}]},
   "personal_access_token.minted": {"token_id":"fixture-token_id","user_id":"fixture-user_id","name":"fixture-name","computer_id":"fixture-computer_id"},

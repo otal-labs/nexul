@@ -358,7 +358,6 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 		Memories: playsMemoryReader{svc: svc.memoriesSvc},
 		Threads:  playsThreads{svc: svc.chatSvc},
 		Turns:    agentSvc,
-		Tickets:  playsStatusMover{svc: svc.ticketsSvc},
 		Live:     liveHub,
 		Users:    agentUserReader{users: store.Users},
 		Links:    playsLinkReader{tickets: svc.ticketsSvc, docs: agentDocReader{svc: svc.docsSvc}},

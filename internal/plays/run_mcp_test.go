@@ -92,7 +92,7 @@ func TestPlayRun_ThenTrailList(t *testing.T) {
 	ctx := ctxAs(starter)
 
 	out, err := callTool(t, tools, ctx, "play_run", `{"play_id":"play-fix","target_type":"ticket","target_id":"t-1",`+
-		`"memory_ids":["m-pick"],"custom_instructions":"go","move_to_status_id":"st-1"}`)
+		`"memory_ids":["m-pick"],"custom_instructions":"go"}`)
 	require.NoError(t, err)
 	<-f.turns.done
 	run := out.(trailSummary)
@@ -119,7 +119,6 @@ func TestPlayRun_ThenTrailList(t *testing.T) {
 		assert.Equal(t, run.ID, got.ID)
 		assert.Equal(t, []string{alwaysMem, pickedMem}, got.SelectedMemoryIDs)
 		assert.Equal(t, "go", got.CustomInstructions)
-		assert.Equal(t, "st-1", got.MoveToStatusID)
 	})
 }
 

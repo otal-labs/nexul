@@ -124,7 +124,9 @@ phrase, and a rich-text body, belonging to exactly one project. It reaches
 only that project's turns: an Agent turn on a ticket, doc, or interview
 carries the index of its project's memories, a play run names the ones
 the user picked for the agent to read first, and a plain chat with no
-ticket or doc carries none.
+ticket or doc carries none. A memory marked footer is named last in a play
+run instead, for the agent to read once the work is done and conclude the
+run, such as deciding which column the ticket now belongs in.
 Agents may write memories too. Every save appends a version with its
 author, and any version can be reverted to. Cloned, never shared, to
 another project. Plural in the UI: "memories".
@@ -171,9 +173,10 @@ AI", "Run the interview"). Defined per workspace with a label, a type
 (ticket, doc, or interview), a one-line description, base
 instructions, an enabled switch, and an excluded-projects list; a ticket
 play also names the one stage it shows in. No default memories live on the
-definition — the run dialog picks those per run. Runs on the clicking
-user's own paired harness and posts into the target's thread; the column
-the ticket moves to on success is chosen at run time. Every workspace,
+definition — the run dialog picks those per run, footer memories among
+them. Runs on the clicking user's own paired harness and posts into the
+target's thread; a play never moves its ticket itself, the agent does, as
+its footer memories say. Every workspace,
 new or existing, is seeded with the same four, "Fix with AI" (ticket,
 progress stage), "To tickets via AI" (doc), "Interview" (interview), and
 "Test with AI" (ticket, testing stage), as ordinary plays a member
@@ -195,7 +198,7 @@ transcript is the Agent's turn as a conversation: the starter's "Started
 the Agent said between actions and each action as a row (a command names
 its command, a file change its path, an MCP call its server and tool), the question card and the answer
 where they happened, the final reply as prose, and the lines about the run
-itself (a skipped move, a stop, a reconnect) as muted lines.
+itself (a stop, a reconnect) as muted lines.
 Persisted, never ephemeral; the "Trail" section on a
 ticket, doc, or Interview page lists them, and the target's thread shows the same turn
 groups above the Agent's reply, question, or closing line, so the run reads
@@ -206,8 +209,7 @@ on again in the same trail and session), then one of `done`, `failed`, or
 `interrupted`. Stop (the starter or a `plays:write` holder) interrupts it,
 from `waiting` too; fifteen minutes of harness silence fails it. A dropped
 harness connection does not: the turn is redialed and resumed where it left
-off, and fails only if it stays down for five minutes. A ticket
-move it makes carries actor kind `play`.
+off, and fails only if it stays down for five minutes.
 Also records the computer, provider, and model the run used, whether the
 starter picked them in the run dialog or they came from the starter's own
 project link or pairing defaults (ADR 0058).

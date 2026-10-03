@@ -36,7 +36,6 @@ func yesAnswer() harness.QuestionAnswer {
 func TestObserver_Question_ParksTheRunWithoutOutcomes(t *testing.T) {
 	f := heldFixture(t)
 	in := ticketRun()
-	in.MoveToStatusID = "st-review"
 	trail, obs := driveTurn(t, f, in)
 	obs.OnStarted("sess-1")
 
@@ -52,7 +51,6 @@ func TestObserver_Question_ParksTheRunWithoutOutcomes(t *testing.T) {
 	assert.Len(t, f.trails.eventsFor(TopicRunWaiting), 1, "the starter is told the run needs them")
 	assert.Equal(t, trail.ID, f.trails.eventsFor(TopicRunWaiting)[0].Payload.(RunWaitingEvent).TrailID)
 	assert.Empty(t, f.trails.eventsFor(TopicRunFinished), "waiting is not an outcome")
-	assert.Empty(t, f.mover.snapshot(), "the ticket does not move")
 	frames := f.live.snapshot()
 	last := frames[len(frames)-1]
 	assert.Equal(t, TrailWaiting, last.State)
@@ -62,7 +60,6 @@ func TestObserver_Question_ParksTheRunWithoutOutcomes(t *testing.T) {
 	got = f.trails.all()[0]
 	assert.Equal(t, TrailWaiting, got.State, "the harness closing the turn under the question keeps the run waiting")
 	assert.Empty(t, f.trails.eventsFor(TopicRunFinished))
-	assert.Empty(t, f.mover.snapshot())
 
 	_, err := f.runner.Run(ctxAs(starter), ticketRun())
 	assert.ErrorIs(t, err, apperrs.ErrConflict, "a waiting run still occupies its target")

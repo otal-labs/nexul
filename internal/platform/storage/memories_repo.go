@@ -33,6 +33,7 @@ func (r *MemoriesRepo) Create(ctx context.Context, m *memories.Memory, authorVia
 			WhenToUse:      m.WhenToUse,
 			Body:           m.Body,
 			AlwaysIncluded: int64(boolInt(m.AlwaysIncluded)),
+			Footer:         int64(boolInt(m.Footer)),
 			Version:        int64(m.Version),
 			CreatedBy:      m.CreatedBy,
 			CreatedAt:      m.CreatedAt.Unix(),
@@ -118,6 +119,7 @@ func (r *MemoriesRepo) Update(ctx context.Context, m *memories.Memory, authorVia
 		n, err := q.UpdateMemory(ctx, sqlcgen.UpdateMemoryParams{
 			Title: m.Title, WhenToUse: m.WhenToUse, Body: m.Body,
 			AlwaysIncluded: int64(boolInt(m.AlwaysIncluded)),
+			Footer:         int64(boolInt(m.Footer)),
 			Version:        int64(m.Version),
 			UpdatedBy:      m.UpdatedBy, UpdatedAt: m.UpdatedAt.Unix(), ID: m.ID,
 		})
@@ -211,6 +213,7 @@ func toMemory(row sqlcgen.Memory) *memories.Memory {
 		WhenToUse:      row.WhenToUse,
 		Body:           row.Body,
 		AlwaysIncluded: row.AlwaysIncluded != 0,
+		Footer:         row.Footer != 0,
 		Version:        int(row.Version),
 		CreatedBy:      row.CreatedBy,
 		CreatedAt:      time.Unix(row.CreatedAt, 0).UTC(),

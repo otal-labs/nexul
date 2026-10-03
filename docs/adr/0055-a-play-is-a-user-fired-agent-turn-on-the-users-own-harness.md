@@ -1,5 +1,7 @@
 # 0055. A play is a user-fired Agent turn that runs on the user's own harness
 
+Its move-on-success consequence is superseded by ADR 0111: a play never moves its ticket; footer memories tell the agent where it goes.
+
 A play is a pre-configured Agent turn a user fires from a ticket, a doc, or
 a project's interview with one button: "Fix with AI", "To tickets via AI",
 "Run the interview". It is not an automation

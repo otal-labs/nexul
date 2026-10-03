@@ -13,7 +13,7 @@ func TestRunHandler_Run_Accepted(t *testing.T) {
 	f := newRunnerFixture()
 	h := NewRunHandler(f.runner).Routes()
 	rec := do(t, h, http.MethodPost, "/api/plays/"+fixPlayID+"/run",
-		`{"target_type":"ticket","target_id":"t-1","memory_ids":["m-pick"],"custom_instructions":"go","move_to_status_id":"st-1"}`, starter)
+		`{"target_type":"ticket","target_id":"t-1","memory_ids":["m-pick"],"custom_instructions":"go"}`, starter)
 	require.Equal(t, http.StatusAccepted, rec.Code, rec.Body.String())
 	<-f.turns.done
 
@@ -21,7 +21,6 @@ func TestRunHandler_Run_Accepted(t *testing.T) {
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &tr))
 	assert.Equal(t, TrailStarting, tr.State)
 	assert.Equal(t, ViaWeb, tr.Via)
-	assert.Equal(t, "st-1", tr.MoveToStatusID)
 	assert.Equal(t, []string{alwaysMem, pickedMem}, tr.SelectedMemoryIDs)
 }
 
@@ -128,7 +127,7 @@ func TestRunHandler_LatestChoices(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	var c Choices
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &c))
-	assert.Equal(t, Choices{MemoryIDs: []string{alwaysMem}, MoveToStatusID: "st-tr-1"}, c)
+	assert.Equal(t, Choices{MemoryIDs: []string{alwaysMem}, ComputerID: "comp-tr-1"}, c)
 
 	assert.Equal(t, http.StatusBadRequest, do(t, h, http.MethodGet, "/api/plays/latest-choices?play_id="+fixPlayID, "", starter).Code)
 	assert.Equal(t, http.StatusForbidden, do(t, h, http.MethodGet, "/api/plays/latest-choices?play_id="+fixPlayID+"&project_id="+projectID, "", "stranger").Code)

@@ -859,6 +859,7 @@ var catalogSchemas = map[string]string{
 					"title": {"type": "string"},
 					"when_to_use": {"type": "string"},
 					"always_included": {"type": "boolean"},
+					"footer": {"type": "boolean"},
 					"updated_at": {"type": "string", "format": "date-time"}
 				}
 			},
@@ -881,6 +882,7 @@ var catalogSchemas = map[string]string{
 					"title": {"type": "string"},
 					"when_to_use": {"type": "string"},
 					"always_included": {"type": "boolean"},
+					"footer": {"type": "boolean"},
 					"updated_at": {"type": "string", "format": "date-time"}
 				}
 			},

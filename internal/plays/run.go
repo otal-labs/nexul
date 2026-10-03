@@ -64,19 +64,6 @@ type DocLocker interface {
 	LockForPlay(ctx context.Context, docID string) (bool, error)
 }
 
-// PlayActor is the provenance a play's ticket move carries: the play's label, the trail, who started it, and how.
-type PlayActor struct {
-	PlayLabel string
-	TrailID   string
-	StarterID string
-	Via       Via
-}
-
-// StatusMover is the runner's seam onto tickets' status setter (ADR 0017).
-type StatusMover interface {
-	MoveTicket(ctx context.Context, ticketID, statusID string, actor PlayActor) error
-}
-
 // ProjectTarget is the slice of a project an interview run needs; TestsLocation is the wizard's answer, "" when unanswered.
 type ProjectTarget struct {
 	Name          string
@@ -123,6 +110,7 @@ type Memory struct {
 	WhenToUse      string
 	AlwaysIncluded bool
 	Interview      bool
+	Footer         bool
 }
 
 // MemoryReader is the runner's seam onto memories (ADR 0017).
@@ -173,7 +161,6 @@ type RunnerConfig struct {
 	Memories MemoryReader
 	Threads  Threads
 	Turns    TurnRunner
-	Tickets  StatusMover
 	Live     LivePublisher
 	Users    UserReader
 	// Links is optional; nil means a ticket play runs without its found-in and blocked-by context.
@@ -196,7 +183,6 @@ type Runner struct {
 	memories MemoryReader
 	threads  Threads
 	turns    TurnRunner
-	tickets  StatusMover
 	live     LivePublisher
 	users    UserReader
 	links    LinkReader
@@ -224,7 +210,7 @@ func NewRunner(cfg RunnerConfig) *Runner {
 	}
 	return &Runner{
 		plays: cfg.Plays, trails: redactedTrails{cfg.Trails}, perm: cfg.Perm, targets: cfg.Targets, docs: cfg.Docs, projects: cfg.Projects,
-		harness: cfg.Harness, memories: cfg.Memories, threads: redactedThreads{cfg.Threads}, turns: cfg.Turns, tickets: cfg.Tickets,
+		harness: cfg.Harness, memories: cfg.Memories, threads: redactedThreads{cfg.Threads}, turns: cfg.Turns,
 		live: cfg.Live, users: cfg.Users, links: cfg.Links, log: cfg.Logger, now: cfg.Now, silence: cfg.SilenceTimeout,
 		runs: map[string]*trailObserver{},
 	}
@@ -238,7 +224,6 @@ type RunInput struct {
 	TargetID           string
 	MemoryIDs          []string
 	CustomInstructions string
-	MoveToStatusID     string
 	ComputerID         string
 	Provider           string
 	Model              string
@@ -248,12 +233,11 @@ type RunInput struct {
 
 // Choices is what the run dialog pre-selects from the starter's latest trail of a play in a project.
 type Choices struct {
-	MemoryIDs      []string                `json:"memory_ids"`
-	MoveToStatusID string                  `json:"move_to_status_id"`
-	ComputerID     string                  `json:"computer_id"`
-	Provider       string                  `json:"provider"`
-	Model          string                  `json:"model"`
-	ModelOptions   []harness.OptionSetting `json:"model_options"`
+	MemoryIDs    []string                `json:"memory_ids"`
+	ComputerID   string                  `json:"computer_id"`
+	Provider     string                  `json:"provider"`
+	Model        string                  `json:"model"`
+	ModelOptions []harness.OptionSetting `json:"model_options"`
 }
 
 // target is what the runner read about a ticket, doc, or interview at press time.
@@ -279,8 +263,8 @@ func (r *Runner) Run(ctx context.Context, in RunInput) (*Trail, error) {
 		ID: ids.New(), WorkspaceID: play.WorkspaceID, PlayID: play.ID, PlayLabel: play.Label,
 		TargetType: in.TargetType, TargetID: strings.TrimSpace(in.TargetID), ProjectID: tgt.projectID,
 		StarterID: starter, Via: in.Via, SelectedMemoryIDs: normalizeIDs(in.MemoryIDs),
-		CustomInstructions: strings.TrimSpace(in.CustomInstructions), MoveToStatusID: strings.TrimSpace(in.MoveToStatusID),
-		State: TrailStarting, StartedAt: r.now().UTC(), Activity: []ActivityEntry{},
+		CustomInstructions: strings.TrimSpace(in.CustomInstructions),
+		State:              TrailStarting, StartedAt: r.now().UTC(), Activity: []ActivityEntry{},
 	}
 	options, err := harness.CleanOptions(in.ModelOptions)
 	if err != nil {
@@ -311,7 +295,7 @@ func (r *Runner) launch(ctx context.Context, play *Play, trail *Trail, tgt targe
 	if err := r.refuseIfActive(ctx, trail.TargetType, trail.TargetID); err != nil {
 		return refuse(err)
 	}
-	memoriesBlock, memoryIDs, err := r.memoriesToRead(ctx, trail.ProjectID, trail.SelectedMemoryIDs)
+	memories, memoryIDs, err := r.memoriesToRead(ctx, trail.ProjectID, trail.SelectedMemoryIDs)
 	if err != nil {
 		return refuse(err)
 	}
@@ -344,7 +328,7 @@ func (r *Runner) launch(ctx context.Context, play *Play, trail *Trail, tgt targe
 	snapshot := *trail
 	r.startTurn(ctx, trail, targetTitle, agent.TurnRequest{
 		ConversationID: conversationID, ViaUserID: trail.StarterID, RequestBody: body, MemoriesByReference: true,
-		ExtraRequestBlocks: requestBlocks(play, links, memoriesBlock, r.login(ctx, trail.StarterID), trail.CustomInstructions),
+		ExtraRequestBlocks: requestBlocks(play, links, memories, r.login(ctx, trail.StarterID), trail.CustomInstructions),
 		Target:             &agent.TargetOverride{ComputerID: choice.ComputerID, Provider: choice.Provider, Model: choice.Model, ModelOptions: choice.ModelOptions},
 	}, false)
 	return &snapshot, nil
@@ -513,18 +497,30 @@ const memoriesReadFirst = "Memories to read first: before doing anything else, r
 	"passing its `id`, and follow them as standing rules for this run. If one cannot be read, say which in your first " +
 	"message and carry on without it."
 
+// memoriesFooter opens a run's footer block, named last so the agent concludes with it (ADR 0111).
+const memoriesFooter = "Footer: once the work above is done, before your final reply, read each memory below in full with `memory_get`, " +
+	"passing its `id`, and follow it to conclude the run, for example to decide which column the ticket now belongs in. " +
+	"If one cannot be read, say which in your final reply."
+
+// memoryBlocks are a run's memories as the request names them: read first, and the footer to conclude with.
+type memoryBlocks struct {
+	readFirst string
+	footer    string
+}
+
 // memoriesToRead names the run's memories for the agent to read itself, refusing an id outside the project: the
-// interview memory, then the other always-included ones, then the rest of the selection. The ids come back in that order.
-func (r *Runner) memoriesToRead(ctx context.Context, projectID string, selected []string) (string, []string, error) {
+// interview memory, then the other always-included ones, then the rest of the selection, footers last. The ids come
+// back in that order.
+func (r *Runner) memoriesToRead(ctx context.Context, projectID string, selected []string) (memoryBlocks, []string, error) {
 	all, err := r.memories.ListForProject(ctx, projectID)
 	if err != nil {
-		return "", nil, fmt.Errorf("list memories for project %s: %w", projectID, err)
+		return memoryBlocks{}, nil, fmt.Errorf("list memories for project %s: %w", projectID, err)
 	}
-	block, ids, missing := readFirstBlock(all, selected)
+	blocks, ids, missing := readFirstBlock(all, selected)
 	if len(missing) > 0 {
-		return "", nil, fmt.Errorf("%w: memory %s is not in this project", apperrs.ErrInvalid, missing[0])
+		return memoryBlocks{}, nil, fmt.Errorf("%w: memory %s is not in this project", apperrs.ErrInvalid, missing[0])
 	}
-	return block, ids, nil
+	return blocks, ids, nil
 }
 
 // recordedMemoriesBlock renders a trail's recorded selection again, read as its starter as the turn runs; a memory deleted
@@ -535,16 +531,19 @@ func (r *Runner) recordedMemoriesBlock(ctx context.Context, trail *Trail) []stri
 		r.log.Warn("plays: answer could not list the run's memories", "trail", trail.ID, "error", err)
 		return nil
 	}
-	block, _, _ := readFirstBlock(all, trail.SelectedMemoryIDs)
-	if block == "" {
-		return nil
+	blocks, _, _ := readFirstBlock(all, trail.SelectedMemoryIDs)
+	var out []string
+	for _, b := range []string{blocks.readFirst, blocks.footer} {
+		if b != "" {
+			out = append(out, b)
+		}
 	}
-	return []string{block}
+	return out
 }
 
-// readFirstBlock renders the memories block from the project's memories and a selection, and the selected ids it
+// readFirstBlock renders the memory blocks from the project's memories and a selection, and the selected ids it
 // could not find there.
-func readFirstBlock(all []Memory, selected []string) (string, []string, []string) {
+func readFirstBlock(all []Memory, selected []string) (memoryBlocks, []string, []string) {
 	byID := make(map[string]Memory, len(all))
 	var ordered []Memory
 	for _, m := range all {
@@ -569,20 +568,29 @@ func readFirstBlock(all []Memory, selected []string) (string, []string, []string
 			ordered = append(ordered, m)
 		}
 	}
-	ids := make([]string, 0, len(ordered))
-	if len(ordered) == 0 {
-		return "", ids, missing
+	readFirst := slices.DeleteFunc(slices.Clone(ordered), func(m Memory) bool { return m.Footer })
+	footer := slices.DeleteFunc(ordered, func(m Memory) bool { return !m.Footer })
+	ids := make([]string, 0, len(readFirst)+len(footer))
+	for _, m := range slices.Concat(readFirst, footer) {
+		ids = append(ids, m.ID)
+	}
+	return memoryBlocks{readFirst: memoryList(memoriesReadFirst, readFirst), footer: memoryList(memoriesFooter, footer)}, ids, missing
+}
+
+// memoryList names each memory under its opening line, empty when there is none to name.
+func memoryList(opening string, ms []Memory) string {
+	if len(ms) == 0 {
+		return ""
 	}
 	var b strings.Builder
-	b.WriteString(memoriesReadFirst)
-	for _, m := range ordered {
-		ids = append(ids, m.ID)
+	b.WriteString(opening)
+	for _, m := range ms {
 		fmt.Fprintf(&b, "\n- %s (id %s)", m.Title, m.ID)
 		if m.WhenToUse != "" {
 			b.WriteString(": " + m.WhenToUse)
 		}
 	}
-	return b.String(), ids, missing
+	return b.String()
 }
 
 func (r *Runner) openThread(ctx context.Context, workspaceID string, targetType TargetType, targetID, starter string) (string, error) {
@@ -814,43 +822,6 @@ func (r *Runner) finish(ctx context.Context, trail *Trail, targetTitle string, r
 		r.note(ctx, trail, note)
 	}
 	r.save(ctx, trail, r.finishedEvent(trail, targetTitle))
-	if trail.State != TrailDone {
-		return
-	}
-	if skipped := r.moveOnDone(ctx, trail); skipped != "" {
-		r.note(ctx, trail, skipped)
-		r.save(ctx, trail)
-	}
-}
-
-// moveOnDone applies the chosen column, never backwards (ADR 0055); it returns the note for a skipped or failed
-// move, empty when the ticket moved or there was nothing to move.
-func (r *Runner) moveOnDone(ctx context.Context, trail *Trail) string {
-	if trail.TargetType != TargetTicket || trail.MoveToStatusID == "" || r.tickets == nil {
-		return ""
-	}
-	column, err := r.targets.GetStatus(ctx, trail.MoveToStatusID)
-	if errors.Is(err, apperrs.ErrNotFound) {
-		return "Chosen column no longer exists; ticket left where it is"
-	}
-	if err != nil {
-		r.log.Error("plays: read move-to column failed", "trail", trail.ID, "status", trail.MoveToStatusID, "error", err)
-		return ""
-	}
-	ticket, err := r.targets.GetTicket(ctx, trail.TargetID)
-	if err != nil {
-		r.log.Error("plays: read ticket for move-to failed", "trail", trail.ID, "ticket", trail.TargetID, "error", err)
-		return ""
-	}
-	if slices.Index(stages, column.Stage) < slices.Index(stages, ticket.Stage) {
-		return fmt.Sprintf("Ticket is already in %s; not moving it back to %s", ticket.Stage, column.Name)
-	}
-	actor := PlayActor{PlayLabel: trail.PlayLabel, TrailID: trail.ID, StarterID: trail.StarterID, Via: trail.Via}
-	if err := r.tickets.MoveTicket(ctx, trail.TargetID, trail.MoveToStatusID, actor); err != nil {
-		r.log.Error("plays: move-to failed", "trail", trail.ID, "status", trail.MoveToStatusID, "error", err)
-		return fmt.Sprintf("Could not move the ticket to %s: %v", column.Name, err)
-	}
-	return ""
 }
 
 func (r *Runner) createFailed(ctx context.Context, trail *Trail, targetTitle, reason string) {
@@ -945,14 +916,17 @@ func startedMessage(label, custom string) string {
 	return "Started " + label + "\n\n" + custom
 }
 
-// requestBlocks is the play material that rides inside the request block: play, memories, custom, in that order.
-func requestBlocks(play *Play, links []string, memoriesBlock, login, custom string) []string {
+// requestBlocks is the play material that rides inside the request block: play, memories, custom, footer, in that order.
+func requestBlocks(play *Play, links []string, memories memoryBlocks, login, custom string) []string {
 	blocks := append([]string{"Play: " + play.Label + "\n" + play.Instructions}, links...)
-	if memoriesBlock != "" {
-		blocks = append(blocks, memoriesBlock)
+	if memories.readFirst != "" {
+		blocks = append(blocks, memories.readFirst)
 	}
 	if custom != "" {
 		blocks = append(blocks, fmt.Sprintf("Instructions from %s for this run; where these conflict with the play's instructions, these win:\n%s", login, custom))
+	}
+	if memories.footer != "" {
+		blocks = append(blocks, memories.footer)
 	}
 	return blocks
 }
@@ -1096,7 +1070,7 @@ func (r *Runner) LatestChoices(ctx context.Context, starterID, playID, projectID
 	if err != nil {
 		return nil, fmt.Errorf("latest trail for play %s: %w", playID, err)
 	}
-	return &Choices{MemoryIDs: t.SelectedMemoryIDs, MoveToStatusID: t.MoveToStatusID, ComputerID: t.ComputerID, Provider: t.Provider, Model: t.Model, ModelOptions: t.ModelOptions}, nil
+	return &Choices{MemoryIDs: t.SelectedMemoryIDs, ComputerID: t.ComputerID, Provider: t.Provider, Model: t.Model, ModelOptions: t.ModelOptions}, nil
 }
 
 func (r *Runner) requireTrailAccess(ctx context.Context, workspaceID string, targetType TargetType, targetID string) error {

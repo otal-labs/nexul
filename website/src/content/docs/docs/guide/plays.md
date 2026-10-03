@@ -48,10 +48,14 @@ Use the play button on a ticket or document. The run dialog can choose:
 
 - memories for the Agent to read first;
 - custom instructions;
-- the ticket column to move to on success;
+- footer memories, which the Agent reads once the work is done to conclude
+  the run, such as deciding which column the ticket now belongs in;
 - a paired computer, provider, and model.
 
-The memory selection and success column start with the starter's latest
+A play never moves the ticket by itself. Where the ticket goes is the Agent's
+call, guided by the footer memories picked for the run.
+
+The memory selection starts with the starter's latest
 choices for this play and project. Custom instructions start blank. The
 harness choice also reuses the starter's latest choice; if there is no prior
 choice, it falls back to the resolved project or user pairing choice. A run
@@ -144,8 +148,8 @@ outcomes do what the panel's buttons do, signed "Nexul · from" the person who r
 the play. A pass posts "Passed by Nexul · from <login>" and moves the card to
 the first Done column. A fail posts the bug template (steps to reproduce,
 expected result, actual result) under "Test failed by Nexul · from <login>" to
-the ticket's thread and moves the card back to In progress. Leave the run dialog's success column empty for this play, because
-the result already moves the card.
+the ticket's thread and moves the card back to In progress. Leave out footer memories that move the card for this play,
+because the result already moves it.
 
 ## The decisions check
 

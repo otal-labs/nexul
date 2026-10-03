@@ -1,6 +1,6 @@
 -- name: CreateMemory :exec
-INSERT INTO memories (id, workspace_id, project_id, kind, title, when_to_use, body, always_included, version, created_by, created_at, updated_by, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO memories (id, workspace_id, project_id, kind, title, when_to_use, body, always_included, footer, version, created_by, created_at, updated_by, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetMemory :one
 SELECT * FROM memories WHERE id = ?;
@@ -12,7 +12,7 @@ SELECT * FROM memories WHERE workspace_id = ? ORDER BY project_id, created_at;
 SELECT * FROM memories WHERE project_id = ? ORDER BY created_at;
 
 -- name: UpdateMemory :execrows
-UPDATE memories SET title = ?, when_to_use = ?, body = ?, always_included = ?, version = ?, updated_by = ?, updated_at = ? WHERE id = ?;
+UPDATE memories SET title = ?, when_to_use = ?, body = ?, always_included = ?, footer = ?, version = ?, updated_by = ?, updated_at = ? WHERE id = ?;
 
 -- name: DeleteMemory :execrows
 DELETE FROM memories WHERE id = ?;

@@ -18,7 +18,7 @@ func newTestTrail(id string, startedAt time.Time) *plays.Trail {
 	return &plays.Trail{
 		ID: id, WorkspaceID: "ws-1", PlayID: "play-1", PlayLabel: "Fix with AI", TargetType: plays.TargetTicket,
 		TargetID: "t-1", ProjectID: "proj-1", ConversationID: "conv-1", StarterID: "u-1", Via: plays.ViaWeb,
-		SelectedMemoryIDs: []string{"m-2", "m-1"}, CustomInstructions: "careful", MoveToStatusID: "st-review",
+		SelectedMemoryIDs: []string{"m-2", "m-1"}, CustomInstructions: "careful",
 		State: plays.TrailStarting, StartedAt: startedAt, Activity: []plays.ActivityEntry{},
 	}
 }
@@ -46,7 +46,6 @@ func TestPlayTrailsRepo_Create_Get_RoundTrip(t *testing.T) {
 	assert.Equal(t, plays.ViaWeb, got.Via)
 	assert.Equal(t, []string{"m-2", "m-1"}, got.SelectedMemoryIDs, "the repo keeps the order it was handed")
 	assert.Equal(t, "careful", got.CustomInstructions)
-	assert.Equal(t, "st-review", got.MoveToStatusID)
 	assert.Equal(t, plays.TrailStarting, got.State)
 	assert.Equal(t, startedAt, got.StartedAt)
 	assert.Nil(t, got.EndedAt)
@@ -67,17 +66,15 @@ func TestPlayTrailsRepo_Create_FailureReasonRoundTrips(t *testing.T) {
 	assert.Equal(t, "codex", got.Provider)
 }
 
-func TestPlayTrailsRepo_Create_EmptyMoveTo_IsNull(t *testing.T) {
+func TestPlayTrailsRepo_Create_NoMemories_ReadsBackEmpty(t *testing.T) {
 	t.Parallel()
 	s := newTrailStore(t)
 	tr := newTestTrail("tr-1", time.Now())
-	tr.MoveToStatusID = ""
 	tr.SelectedMemoryIDs = nil
 	require.NoError(t, s.PlayTrails.CreateTrail(context.Background(), tr))
 
 	got, err := s.PlayTrails.GetTrail(context.Background(), "tr-1")
 	require.NoError(t, err)
-	assert.Empty(t, got.MoveToStatusID)
 	assert.Equal(t, []string{}, got.SelectedMemoryIDs)
 }
 
@@ -213,10 +210,8 @@ func TestPlayTrailsRepo_LatestForChoices(t *testing.T) {
 
 	base := time.Date(2026, 9, 17, 9, 0, 0, 0, time.UTC)
 	older := newTestTrail("older", base)
-	older.MoveToStatusID = "st-old"
 	require.NoError(t, s.PlayTrails.CreateTrail(context.Background(), older))
 	newer := newTestTrail("newer", base.Add(time.Minute))
-	newer.MoveToStatusID = "st-new"
 	require.NoError(t, s.PlayTrails.CreateTrail(context.Background(), newer))
 	someoneElse := newTestTrail("theirs", base.Add(time.Hour))
 	someoneElse.StarterID = "u-2"
@@ -225,7 +220,6 @@ func TestPlayTrailsRepo_LatestForChoices(t *testing.T) {
 	got, err := s.PlayTrails.LatestTrailForChoices(context.Background(), "u-1", "play-1", "proj-1")
 	require.NoError(t, err)
 	assert.Equal(t, "newer", got.ID)
-	assert.Equal(t, "st-new", got.MoveToStatusID)
 }
 
 func TestPlayTrailsRepo_ListActiveByTargets(t *testing.T) {

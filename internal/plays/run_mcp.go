@@ -37,7 +37,6 @@ type trailDetail struct {
 	trailSummary
 	SelectedMemoryIDs  []string                `json:"selected_memory_ids"`
 	CustomInstructions string                  `json:"custom_instructions,omitempty"`
-	MoveToStatusID     string                  `json:"move_to_status_id,omitempty"`
 	ComputerID         string                  `json:"computer_id"`
 	Provider           string                  `json:"provider"`
 	Model              string                  `json:"model"`
@@ -70,7 +69,7 @@ func toTrailDetail(t *Trail, steps int) trailDetail {
 	tail := t.Activity[max(len(t.Activity)-steps, 0):]
 	out := trailDetail{
 		trailSummary: toTrailSummary(t), SelectedMemoryIDs: t.SelectedMemoryIDs, CustomInstructions: t.CustomInstructions,
-		MoveToStatusID: t.MoveToStatusID, ComputerID: t.ComputerID, Provider: t.Provider, Model: t.Model, ModelOptions: t.ModelOptions,
+		ComputerID: t.ComputerID, Provider: t.Provider, Model: t.Model, ModelOptions: t.ModelOptions,
 		ReplyMessageID: t.ReplyMessageID, Question: t.Question, Steps: make([]trailStep, 0, len(tail)), StepsTotal: len(t.Activity),
 	}
 	for _, e := range tail {
@@ -86,7 +85,6 @@ type playRunIn struct {
 	TargetID           string                  `json:"target_id" jsonschema:"The ticket's or doc's id (a UUID, not a ticket key such as REF-102), or for an interview the project's id."`
 	MemoryIDs          []string                `json:"memory_ids,omitempty" jsonschema:"Ids of the target project's memories the agent reads before the run, from memory_list; the project's always-included memories come along anyway."`
 	CustomInstructions string                  `json:"custom_instructions,omitempty" jsonschema:"Extra instructions for this run only; they win over the play's where the two conflict."`
-	MoveToStatusID     string                  `json:"move_to_status_id,omitempty" jsonschema:"Ticket plays only: the status column to move the ticket to when the run ends done, from project_get."`
 	ComputerID         string                  `json:"computer_id,omitempty" jsonschema:"One of the caller's own paired computers, from computer_list. Omit to use the caller's own link for this project, else their pairing defaults."`
 	Provider           string                  `json:"provider,omitempty" jsonschema:"The harness provider to run on, for example claude. Omit to use the computer's default."`
 	Model              string                  `json:"model,omitempty" jsonschema:"The model to run, for example sonnet-5. Omit to use the provider's default."`
@@ -191,11 +189,11 @@ func runPlay(ctx context.Context, r *Runner, in playRunIn) (*Trail, error) {
 		}
 		return r.Run(ctx, RunInput{
 			PlayID: in.PlayID, TargetType: in.TargetType, TargetID: in.TargetID, MemoryIDs: in.MemoryIDs,
-			CustomInstructions: in.CustomInstructions, MoveToStatusID: in.MoveToStatusID,
-			ComputerID: in.ComputerID, Provider: in.Provider, Model: in.Model, ModelOptions: in.ModelOptions, Via: ViaMCP,
+			CustomInstructions: in.CustomInstructions,
+			ComputerID:         in.ComputerID, Provider: in.Provider, Model: in.Model, ModelOptions: in.ModelOptions, Via: ViaMCP,
 		})
 	}
-	choices := in.PlayID != "" || len(in.MemoryIDs) > 0 || in.CustomInstructions != "" || in.MoveToStatusID != "" ||
+	choices := in.PlayID != "" || len(in.MemoryIDs) > 0 || in.CustomInstructions != "" ||
 		in.ComputerID != "" || in.Provider != "" || in.Model != "" || len(in.ModelOptions) > 0
 	if choices || in.TargetType != TargetTicket {
 		return nil, fmt.Errorf("%w: decisions_check takes only target_type ticket and target_id; it runs with its own "+

@@ -32,6 +32,12 @@ most 20,000 characters of one memory and 60,000 of all of them together,
 dropping the last ones past that. A play run has no such limit, because the
 Agent reads each memory itself.
 
+A memory can also be a **Footer**, switched on from the memory's page. A play's
+run dialog lists footer memories in their own **Footer** section at the bottom.
+A run names the picked ones last, after its instructions, and the Agent reads
+them once the work is done to conclude the run: for example, which column the
+ticket now belongs in. The interview and the decisions log cannot be footers.
+
 The [setup wizard](/docs/guide/computer-setup/) installs the nexul-memory
 skill, which carries the same protocol, on every paired computer. It points
 agents to `memory_list` and `memory_get`, and tells them when to use

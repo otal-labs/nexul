@@ -25,6 +25,7 @@ type MemoryRef struct {
 	Title          string    `json:"title"`
 	WhenToUse      string    `json:"when_to_use"`
 	AlwaysIncluded bool      `json:"always_included"`
+	Footer         bool      `json:"footer"`
 	Version        int       `json:"version"`
 	UpdatedAt      time.Time `json:"updated_at"`
 }
@@ -68,6 +69,7 @@ func toRef(m *Memory) MemoryRef {
 		Title:          m.Title,
 		WhenToUse:      m.WhenToUse,
 		AlwaysIncluded: m.AlwaysIncluded,
+		Footer:         m.Footer,
 		Version:        m.Version,
 		UpdatedAt:      m.UpdatedAt,
 	}

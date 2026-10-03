@@ -229,5 +229,5 @@ func (r *Runner) decisionsStarter(ctx context.Context, m ticketMove) (string, er
 // DefaultInstructions returns every built-in instruction text a run hands the agent, the seeded plays', the decisions
 // check's, and the memories block's opening; they name MCP tools.
 func DefaultInstructions() []string {
-	return []string{fixWithAIInstructions, toTicketsInstructions, interviewInstructions, testWithAIInstructions, decisionsCheckInstructions, memoriesReadFirst}
+	return []string{fixWithAIInstructions, toTicketsInstructions, interviewInstructions, testWithAIInstructions, decisionsCheckInstructions, memoriesReadFirst, memoriesFooter}
 }

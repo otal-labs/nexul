@@ -68,20 +68,6 @@ func (a playsProjectLookup) GetProject(ctx context.Context, projectID string) (p
 	return plays.ProjectTarget{Name: p.Name, TestsLocation: string(p.TestsLocation)}, nil
 }
 
-// playsStatusMover adapts tickets' status setter to the runner's move-to seam; an MCP-started run carries the :mcp suffix (ADR 0049).
-type playsStatusMover struct {
-	svc *tickets.Service
-}
-
-func (a playsStatusMover) MoveTicket(ctx context.Context, ticketID, statusID string, actor plays.PlayActor) error {
-	kind := tickets.ActorKindPlay
-	if actor.Via == plays.ViaMCP {
-		kind += ":mcp"
-	}
-	_, err := a.svc.SetStatusAs(ctx, ticketID, tickets.Status(statusID), tickets.Actor{Kind: kind, PlayLabel: actor.PlayLabel, TrailID: actor.TrailID, UserID: actor.StarterID}, "")
-	return err
-}
-
 // playsHarnessResolver adapts pairing's ResolveTarget/ResolveTargetOverride to the runner's seam: an empty
 // choice resolves the caller's own project link or pairing defaults, same as a chat mention.
 type playsHarnessResolver struct {
@@ -112,7 +98,7 @@ func (a playsMemoryReader) ListForProject(ctx context.Context, projectID string)
 	}
 	out := make([]plays.Memory, 0, len(ms))
 	for _, m := range ms {
-		out = append(out, plays.Memory{ID: m.ID, Title: m.Title, WhenToUse: m.WhenToUse, AlwaysIncluded: m.AlwaysIncluded, Interview: m.Kind == memories.KindInterview})
+		out = append(out, plays.Memory{ID: m.ID, Title: m.Title, WhenToUse: m.WhenToUse, AlwaysIncluded: m.AlwaysIncluded, Interview: m.Kind == memories.KindInterview, Footer: m.Footer})
 	}
 	return out, nil
 }
