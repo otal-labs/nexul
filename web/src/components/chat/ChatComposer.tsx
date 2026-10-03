@@ -143,7 +143,7 @@ export const ChatComposer = ({ workspaceId, conversationId, placeholder = "Messa
   };
 
   return (
-    <div className="border-t border-border py-2" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
+    <div className="border-t border-border py-3" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
       <div className="relative w-full px-3">
         {trigger && matches.length > 0 && (
           <ComposerMentionSuggestions matches={matches} selectedIndex={selectedIndex} onPick={pickMention} />
@@ -164,7 +164,7 @@ export const ChatComposer = ({ workspaceId, conversationId, placeholder = "Messa
             size="icon"
             variant="ghost"
             aria-label="Attach image"
-            className="mt-1"
+            className="mt-0.5"
             onClick={() => fileInputRef.current?.click()}
           >
             <ImagePlus className="size-4" aria-hidden />
@@ -179,7 +179,7 @@ export const ChatComposer = ({ workspaceId, conversationId, placeholder = "Messa
             onClick={handleClickOrKeyUp}
             onPaste={handlePaste}
             rows={1}
-            className="quiet-focus field-sizing-content max-h-[50dvh] min-h-11 flex-1 resize-none py-2.5 text-sm focus-visible:border-ring/40 focus-visible:ring-0"
+            className="quiet-focus field-sizing-content max-h-[50dvh] min-h-10 flex-1 resize-none text-sm focus-visible:border-ring/40 focus-visible:ring-0"
           />
         </div>
       </div>
