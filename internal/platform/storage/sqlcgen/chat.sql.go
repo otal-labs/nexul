@@ -134,6 +134,24 @@ func (q *Queries) DeleteMessage(ctx context.Context, arg DeleteMessageParams) (i
 	return result.RowsAffected()
 }
 
+const deleteMessageReaction = `-- name: DeleteMessageReaction :execrows
+DELETE FROM message_reactions WHERE message_id = ? AND emoji = ? AND user_id = ?
+`
+
+type DeleteMessageReactionParams struct {
+	MessageID string
+	Emoji     string
+	UserID    string
+}
+
+func (q *Queries) DeleteMessageReaction(ctx context.Context, arg DeleteMessageReactionParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteMessageReaction, arg.MessageID, arg.Emoji, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const deleteNoteImages = `-- name: DeleteNoteImages :exec
 DELETE FROM attachments WHERE conversation_id = ?1 AND content_type LIKE 'image/%' AND id IN (/*SLICE:ids*/?)
 `
@@ -338,6 +356,31 @@ func (q *Queries) InsertConversationParticipant(ctx context.Context, arg InsertC
 	return err
 }
 
+const insertMessageReaction = `-- name: InsertMessageReaction :execrows
+INSERT INTO message_reactions (message_id, emoji, user_id, created_at) VALUES (?, ?, ?, ?)
+    ON CONFLICT(message_id, emoji, user_id) DO NOTHING
+`
+
+type InsertMessageReactionParams struct {
+	MessageID string
+	Emoji     string
+	UserID    string
+	CreatedAt int64
+}
+
+func (q *Queries) InsertMessageReaction(ctx context.Context, arg InsertMessageReactionParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, insertMessageReaction,
+		arg.MessageID,
+		arg.Emoji,
+		arg.UserID,
+		arg.CreatedAt,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const isNoteFile = `-- name: IsNoteFile :one
 SELECT EXISTS (SELECT 1 FROM messages WHERE conversation_id = ? AND attachment_id = ?)
 `
@@ -392,6 +435,49 @@ func (q *Queries) ListConversationsForUser(ctx context.Context, arg ListConversa
 			&i.IsGeneral,
 			&i.Private,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMessageReactions = `-- name: ListMessageReactions :many
+SELECT message_id, emoji, user_id FROM message_reactions WHERE message_id IN (/*SLICE:ids*/?) ORDER BY created_at, rowid
+`
+
+type ListMessageReactionsRow struct {
+	MessageID string
+	Emoji     string
+	UserID    string
+}
+
+func (q *Queries) ListMessageReactions(ctx context.Context, ids []string) ([]ListMessageReactionsRow, error) {
+	query := listMessageReactions
+	var queryParams []interface{}
+	if len(ids) > 0 {
+		for _, v := range ids {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(ids))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
+	}
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMessageReactionsRow
+	for rows.Next() {
+		var i ListMessageReactionsRow
+		if err := rows.Scan(&i.MessageID, &i.Emoji, &i.UserID); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

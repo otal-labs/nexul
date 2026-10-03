@@ -57,6 +57,8 @@ type Repo interface {
 	UpdateMessage(ctx context.Context, id, body string, mentions []Mention, editedAt time.Time, evts ...eventbus.OutboxEvent) error
 	// DeleteMessage soft-deletes so thread ordering survives; enqueues outbox events in the same transaction.
 	DeleteMessage(ctx context.Context, id string, deletedAt time.Time, evts ...eventbus.OutboxEvent) error
+	// SetReaction adds or removes userID's emoji on a message; the events are enqueued only when that changed a row.
+	SetReaction(ctx context.Context, messageID, userID, emoji string, reacted bool, at time.Time, evts ...eventbus.OutboxEvent) error
 
 	// CreateNote stores a note's file as an attachment of m's conversation and m pointing at it, in one transaction.
 	CreateNote(ctx context.Context, m *Message, file *NoteFile, evts ...eventbus.OutboxEvent) error

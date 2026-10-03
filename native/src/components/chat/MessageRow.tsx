@@ -1,6 +1,7 @@
 import { View } from "react-native";
 
 import { MessageBody } from "@/components/chat/MessageBody";
+import { MessageReactions } from "@/components/chat/MessageReactions";
 import { NoteFilePill } from "@/components/chat/NoteFilePill";
 import { Text } from "@/components/ui/text";
 import { RelativeTime } from "@/components/RelativeTime";
@@ -30,6 +31,7 @@ export const MessageRow = ({ message, authorName, continuation = false }: Messag
       )}
       {!isSystem && <MessageBody body={message.body} />}
       {isNote(message) && <NoteFilePill conversationId={message.conversation_id} attachmentId={message.attachment_id ?? ""} />}
+      {message.reactions && message.reactions.length > 0 && <MessageReactions reactions={message.reactions} />}
     </View>
   );
 };

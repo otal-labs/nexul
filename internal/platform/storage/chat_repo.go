@@ -378,7 +378,14 @@ func (r *ChatRepo) GetMessage(ctx context.Context, id string) (*chat.Message, er
 	if err != nil {
 		return nil, fmt.Errorf("get message %s: %w", id, notFoundIfNoRows(err))
 	}
-	return toMessage(row)
+	m, err := toMessage(row)
+	if err != nil {
+		return nil, err
+	}
+	if err := r.attachReactions(ctx, []*chat.Message{m}); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 func (r *ChatRepo) ListMessages(ctx context.Context, conversationID string, limit int) ([]*chat.Message, error) {
@@ -388,7 +395,57 @@ func (r *ChatRepo) ListMessages(ctx context.Context, conversationID string, limi
 	}
 	// The query takes the newest rows so a long thread keeps its latest messages; callers read them oldest-first.
 	slices.Reverse(rows)
-	return toMessages(rows)
+	ms, err := toMessages(rows)
+	if err != nil {
+		return nil, err
+	}
+	if err := r.attachReactions(ctx, ms); err != nil {
+		return nil, err
+	}
+	return ms, nil
+}
+
+// attachReactions batch-fills Reactions on every live message, one query for the page; a deleted message keeps none.
+func (r *ChatRepo) attachReactions(ctx context.Context, ms []*chat.Message) error {
+	byID := make(map[string]*chat.Message, len(ms))
+	ids := make([]string, 0, len(ms))
+	for _, m := range ms {
+		if m.DeletedAt != nil {
+			continue
+		}
+		byID[m.ID] = m
+		ids = append(ids, m.ID)
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	rows, err := r.q.ListMessageReactions(ctx, ids)
+	if err != nil {
+		return fmt.Errorf("list message reactions: %w", err)
+	}
+	for _, row := range rows {
+		m := byID[row.MessageID]
+		i := slices.IndexFunc(m.Reactions, func(re chat.Reaction) bool { return re.Emoji == row.Emoji })
+		if i < 0 {
+			m.Reactions = append(m.Reactions, chat.Reaction{Emoji: row.Emoji})
+			i = len(m.Reactions) - 1
+		}
+		m.Reactions[i].UserIDs = append(m.Reactions[i].UserIDs, row.UserID)
+	}
+	return nil
+}
+
+func (r *ChatRepo) SetReaction(ctx context.Context, messageID, userID, emoji string, reacted bool, at time.Time, evts ...eventbus.OutboxEvent) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		n, err := writeReaction(ctx, r.q.WithTx(tx), messageID, userID, emoji, reacted, at)
+		if err != nil {
+			return fmt.Errorf("set reaction %s on message %s: %w", emoji, messageID, classifyWriteErr(err))
+		}
+		if n == 0 {
+			return nil
+		}
+		return enqueueChatOutbox(ctx, tx, evts)
+	})
 }
 
 // ListMessagesSince returns a conversation's non-deleted messages created strictly after since, oldest-first.
@@ -418,6 +475,13 @@ func (r *ChatRepo) UpdateMessage(ctx context.Context, id, body string, mentions 
 		}
 		return enqueueChatOutbox(ctx, tx, evts)
 	})
+}
+
+func writeReaction(ctx context.Context, q *sqlcgen.Queries, messageID, userID, emoji string, reacted bool, at time.Time) (int64, error) {
+	if !reacted {
+		return q.DeleteMessageReaction(ctx, sqlcgen.DeleteMessageReactionParams{MessageID: messageID, Emoji: emoji, UserID: userID})
+	}
+	return q.InsertMessageReaction(ctx, sqlcgen.InsertMessageReactionParams{MessageID: messageID, Emoji: emoji, UserID: userID, CreatedAt: at.Unix()})
 }
 
 // DeleteMessage soft-deletes: body/mentions cleared, deleted_at stamped, row stays to keep message order.

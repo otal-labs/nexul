@@ -4,6 +4,7 @@ import { ChatQuestionCard } from "@/components/chat/ChatQuestionCard";
 import { MessageActions } from "@/components/chat/MessageActions";
 import { MessageBody } from "@/components/chat/MessageBody";
 import { MessageEditForm } from "@/components/chat/MessageEditForm";
+import { MessageReactions } from "@/components/chat/MessageReactions";
 import { MessageContinuationTime, MessageRowAvatar, MessageRowHeader, type MessageAlign } from "@/components/chat/MessageRowHeader";
 import { MessageTrailTurns } from "@/components/chat/MessageTrailTurns";
 import { NoteMessage } from "@/components/note/NoteMessage";
@@ -150,11 +151,20 @@ export const MessageRow = ({ message, author, isOwn, continuation = false, quest
                 message={message}
                 align={align}
                 timeOnHover={continuation && align === "end"}
-                actions={canEditOrDelete && <MessageActions onEdit={startEdit} onDelete={() => void remove()} />}
+                actions={
+                  !message.pending && (
+                    <MessageActions
+                      message={message}
+                      onEdit={canEditOrDelete ? startEdit : undefined}
+                      onDelete={canEditOrDelete ? () => void remove() : undefined}
+                    />
+                  )
+                }
               />
             )}
             {!editing && isAgent && <AgentMessageBody message={message} trailBlock={trailBlock} questionAnswered={questionAnswered} />}
             {!editing && isNote(message) && <NoteMessage message={message} ticketId={ticketId} />}
+            {!editing && <MessageReactions message={message} />}
           </MessageContent>
         </Message>
       )}

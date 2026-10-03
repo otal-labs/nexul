@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  applyReaction,
   attachmentMarkdown,
   buildMentionCandidates,
   composeMessageBody,
@@ -269,5 +270,19 @@ describe("isContinuation", () => {
     ["arrives before the previous one", message({ created_at: at(10, 5) }), message({ created_at: at(10, 4) }), false],
   ])("a message that %s", (_name, prev, curr, expected) => {
     expect(isContinuation(prev, curr)).toBe(expected);
+  });
+});
+
+describe("applyReaction", () => {
+  const thumbs = { emoji: "👍", user_ids: ["u1"] };
+  it.each([
+    ["adds a new emoji last", [thumbs], "🎉", "u2", true, [thumbs, { emoji: "🎉", user_ids: ["u2"] }]],
+    ["joins an emoji already there", [thumbs], "👍", "u2", true, [{ emoji: "👍", user_ids: ["u1", "u2"] }]],
+    ["an echoed add changes nothing", [thumbs], "👍", "u1", true, [thumbs]],
+    ["removing the last person drops the emoji", [thumbs], "👍", "u1", false, []],
+    ["removing a reaction nobody made changes nothing", [thumbs], "🎉", "u1", false, [thumbs]],
+    ["a message with no reactions yet", undefined, "👍", "u1", true, [thumbs]],
+  ])("%s", (_name, reactions, emoji, userId, reacted, want) => {
+    expect(applyReaction(reactions, emoji, userId, reacted)).toEqual(want);
   });
 });

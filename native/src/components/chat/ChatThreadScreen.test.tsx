@@ -127,6 +127,16 @@ describe("ChatThreadScreen", () => {
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/chat/note/[id]", params: { id: "f1", name: "findings.md" } });
   });
 
+  test("a reacted message shows each emoji with its count, and a reaction push refetches the thread", async () => {
+    thread = [{ ...message("m1", "shipped", 1), reactions: [{ emoji: "👍", user_ids: ["ana", "me"] }] }];
+    const client = await renderThread();
+
+    expect(await screen.findByLabelText("👍 2")).toBeTruthy();
+    thread = [{ ...message("m1", "shipped", 1), reactions: [{ emoji: "👍", user_ids: ["ana"] }] }];
+    await act(async () => dispatch(client)({ topic: "chat.message.reactions_changed", type: "event", payload: { conversation_id: "c1" } }));
+    expect(await screen.findByLabelText("👍 1")).toBeTruthy();
+  });
+
   test("an agent message without a file shows no pill", async () => {
     thread = [{ ...message("n1", "Just a reply", 1), author_kind: "agent" }];
     await renderThread();

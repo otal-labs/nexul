@@ -32,6 +32,7 @@ const pushTopics: Record<string, string[]> = {
   "chat.message.created": [getChatMessagesKey, getChatUnreadKey],
   "chat.message.updated": [getChatMessagesKey],
   "chat.message.deleted": [getChatMessagesKey, getChatUnreadKey],
+  "chat.message.reactions_changed": [getChatMessagesKey],
   "ticket.created": [getTicketsByProjectKey],
   "ticket.updated": [getTicketsByProjectKey, getTicketKey],
   "ticket.status_changed": [getTicketsByProjectKey, getTicketKey],

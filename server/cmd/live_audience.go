@@ -117,6 +117,7 @@ var liveRules = map[string]liveRule{
 	chat.TopicMessageCreated:             conversationFrame,
 	chat.TopicMessageUpdated:             conversationFrame,
 	chat.TopicMessageDeleted:             conversationFrame,
+	chat.TopicMessageReactionsChanged:    conversationFrame,
 	voice.TopicOccupancyChanged:          conversationFrame,
 	agent.TopicAgentStream:               conversationFrame,
 	plays.TopicPlayRun:                   playRunFrame,
