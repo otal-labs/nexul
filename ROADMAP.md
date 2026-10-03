@@ -181,6 +181,12 @@ and edited live in a dialog. Built and walked through on a real install;
 the phone check and one editor fix remain, tracked in `.scratch/ticket-flow/`.
 Docs, ticket bodies, memories, and notes also gained editable tables.
 
+In progress: **the interview as questions**. A project's interview stops
+being a chat: the Interview page steps through the template's questions as
+cards, then an agent reads the answers and the code, asks follow-ups about
+the gaps, and writes the interview memory. Answers stay on the page, so a
+re-run means changing what changed. The map is in `.scratch/interview-qna/`.
+
 Parked until the repository migration lands: **bots**, webhook-driven bots
 that post into any conversation with Discord's payload and get their own tab
 in Settings. The wayfinder map in `.scratch/bots/` has the Discord contract,
