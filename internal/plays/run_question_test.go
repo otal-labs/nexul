@@ -153,6 +153,19 @@ func TestAnswer_PipelineLostTheTurn_ResumesAFreshTurn(t *testing.T) {
 	assert.Equal(t, "Answered: Yes", f.turns.last().RequestBody)
 }
 
+func TestAnswer_HarnessAlreadyAnswered_RunCarriesOn(t *testing.T) {
+	f := heldFixture(t)
+	f.turns.answerErr = apperrs.ErrConflict
+	trail, obs := driveTurn(t, f, ticketRun())
+	obs.OnStarted("sess-1")
+	obs.OnQuestion(askedQuestion())
+
+	got, err := f.runner.Answer(ctxAs(starter), trail.ID, yesAnswer())
+	require.NoError(t, err)
+	assert.Equal(t, TrailRunning, got.State)
+	assert.Len(t, f.turns.reqs, 1, "the live turn already has its answer; no fresh turn is started")
+}
+
 func TestAnswer_Refusals(t *testing.T) {
 	f := heldFixture(t)
 	trail, obs := driveTurn(t, f, ticketRun())

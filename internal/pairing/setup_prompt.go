@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/otal-labs/nexul/internal/harness"
 	"github.com/otal-labs/nexul/internal/platform/skills"
 )
 
@@ -18,8 +19,26 @@ type setupPrompt struct {
 	Token        string
 }
 
-// skillLocations are where the default set goes: Claude Code and opencode read the first, Codex and opencode the second.
+// skillLocations are where the default set goes: Claude Code reads the first, Codex and Pi the second, Cursor and opencode both.
 const skillLocations = "~/.claude/skills/ and ~/.agents/skills/"
+
+// piMCPMinMinor is the first 0.x Pi release with an MCP client.
+const piMCPMinMinor = 99
+
+// setupBlocker is why a provider cannot be set up at all, "" when it can; an unreadable version passes so the provider's own CLI decides.
+func setupBlocker(p harness.Provider) string {
+	if !strings.EqualFold(p.Driver, "pi") {
+		return ""
+	}
+	var major, minor int
+	if n, _ := fmt.Sscanf(p.Version, "%d.%d", &major, &minor); n != 2 {
+		return ""
+	}
+	if major == 0 && minor < piMCPMinMinor {
+		return fmt.Sprintf("Update Pi to 0.%d or later; earlier Pi has no MCP client", piMCPMinMinor)
+	}
+	return ""
+}
 
 // prepareInstructions is the first session: connect Nexul's MCP server and install the skills, both idempotently.
 func prepareInstructions(p setupPrompt) string {
@@ -73,6 +92,12 @@ func mcpConfigStep(p setupPrompt) string {
 	}
 	if driver == "opencode" {
 		return fmt.Sprintf("   Edit ~/.config/opencode/opencode.json, keeping everything else in it, so its `mcp` object has this `nexul` entry:\n\n   ```json\n   \"nexul\": { \"type\": \"remote\", \"url\": \"%s\", \"headers\": { \"Authorization\": \"Bearer %s\" }, \"enabled\": true }\n   ```\n", p.MCPURL, p.Token)
+	}
+	if driver == "pi" {
+		return fmt.Sprintf("   Use the CLI: `pi mcp add nexul --url %s --header \"Authorization=Bearer %s\" --exposure direct`, then `pi mcp list` and check that `nexul` is listed and connects. Keep `--exposure direct`: it declares the tools to the model.\n", p.MCPURL, p.Token)
+	}
+	if driver == "grok" {
+		return fmt.Sprintf("   Use the CLI: `grok mcp remove nexul` (ignore a not-found error), then `grok mcp add --transport http nexul %s --header \"Authorization: Bearer %s\"`.\n", p.MCPURL, p.Token)
 	}
 	if strings.HasPrefix(driver, "cursor") {
 		return fmt.Sprintf("   Edit ~/.cursor/mcp.json, keeping everything else in it, so its `mcpServers` object has this `nexul` entry:\n\n   ```json\n   \"nexul\": { \"url\": \"%s\", \"headers\": { \"Authorization\": \"Bearer %s\" } }\n   ```\n", p.MCPURL, p.Token)

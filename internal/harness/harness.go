@@ -114,10 +114,11 @@ func CleanOptions(settings []OptionSetting) ([]OptionSetting, error) {
 
 // Provider is a usable provider instance; ID is what a turn routes on, Driver the kind setup is confirmed under.
 type Provider struct {
-	ID     string          `json:"id"`
-	Driver string          `json:"driver"`
-	Name   string          `json:"name"`
-	Models []ProviderModel `json:"models"`
+	ID      string          `json:"id"`
+	Driver  string          `json:"driver"`
+	Name    string          `json:"name"`
+	Version string          `json:"-"` // the provider CLI's version, "" when unknown
+	Models  []ProviderModel `json:"models"`
 }
 
 // Target names the computer, harness-side project, model choice and durable session a turn runs against.
@@ -318,8 +319,11 @@ type Client interface {
 	StartTurn(ctx context.Context, t Target, title string, prompts TurnPrompts) (StartResult, error)
 	// Interrupt aborts whatever turn is active on t's session.
 	Interrupt(ctx context.Context, t Target) error
-	// Answer resolves the pending Question requestID on t's session so the turn continues.
+	// Answer resolves the pending Question requestID on t's session so the turn continues; ErrConflict when the
+	// harness already holds an answer for it.
 	Answer(ctx context.Context, t Target, requestID string, answer QuestionAnswer) error
+	// Settle moves t's idle session out of the harness's active list; the harness wakes it on new activity.
+	Settle(ctx context.Context, t Target) error
 }
 
 // Registry maps each supported kind to its client; the composition root builds it once.

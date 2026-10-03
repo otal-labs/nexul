@@ -60,7 +60,7 @@ Which domains this covers, as the tree stands:
   `gitprovider` and `voice` have no `repo.go` but do publish events. Each
   follows the layers it has and grows into the full shape when it needs one.
 - Protocol and infrastructure packages: `agent`, `collab`, `eventcatalog`,
-  `harness`, `livekit`, `mcp`, `presence`, `t3client`, `platform`. Shaped by
+  `harness`, `livekit`, `mcp`, `presence`, `t3client`, `t3rpc`, `platform`. Shaped by
   their protocol, not by this template. They still obey the dependency
   direction. `harness` declares the one `harness.Client` interface the server
   talks to every agent harness through, with one implementation per kind
@@ -244,6 +244,7 @@ type GitProvider interface {
     GetPR(ctx context.Context, owner, name string, number int) (*PR, error)
     PRsForCommit(ctx context.Context, owner, name, sha string) ([]*PR, error)
     CreateWebhook(ctx context.Context, owner, name string, cfg WebhookConfig) (string, error)
+    ListWebhooks(ctx context.Context, owner, name string) ([]Webhook, error)
     DeleteWebhook(ctx context.Context, owner, name, hookID string) error
     ListInstallationRepos(ctx context.Context) ([]*Repo, error)
     GetTree(ctx context.Context, owner, name, ref string) ([]TreeEntry, error)

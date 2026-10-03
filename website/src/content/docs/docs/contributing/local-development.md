@@ -115,7 +115,7 @@ make coverage
 ```
 
 It runs `go test -race -coverprofile=coverage.out -covermode=atomic ./...`.
-The Makefile filters `cmd/*`, `testutil/`, and `sqlcgen/` from the profile,
+The Makefile filters `cmd/*`, `testutil/`, `sqlcgen/`, and `t3rpctest/` from the profile,
 computes the percentage over the remaining statements, and fails below 80%.
 It writes `coverage.filtered.out` and `coverage.html`, the same artifacts CI
 uploads. See

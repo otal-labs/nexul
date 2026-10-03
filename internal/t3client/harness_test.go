@@ -57,6 +57,8 @@ type fakeT3Client struct {
 	interruptErr      error
 	interruptThreadID string
 
+	settledThreadID string
+
 	respondApprovalCalls []string                          // requestIDs
 	answered             map[string]harness.QuestionAnswer // requestID -> answer
 	answeredThreadID     string
@@ -94,6 +96,11 @@ func (f *fakeT3Client) StartTurn(_ context.Context, _, text, _ string, attachmen
 func (f *fakeT3Client) Interrupt(_ context.Context, threadID string) error {
 	f.interruptThreadID = threadID
 	return f.interruptErr
+}
+
+func (f *fakeT3Client) Settle(_ context.Context, threadID string) error {
+	f.settledThreadID = threadID
+	return nil
 }
 
 func (f *fakeT3Client) RespondApproval(_ context.Context, _, requestID, _ string) error {
@@ -336,6 +343,14 @@ func TestHarness_Interrupt_CallsClientWithSessionID(t *testing.T) {
 	b := harnessWithFake(fake)
 	require.NoError(t, b.Interrupt(context.Background(), harness.Target{SessionID: "thread-1"}))
 	assert.Equal(t, "thread-1", fake.interruptThreadID)
+	assert.True(t, fake.closed)
+}
+
+func TestHarness_Settle_SettlesTheSessionAndCloses(t *testing.T) {
+	fake := &fakeT3Client{}
+	b := harnessWithFake(fake)
+	require.NoError(t, b.Settle(t.Context(), harness.Target{SessionID: "thread-1"}))
+	assert.Equal(t, "thread-1", fake.settledThreadID)
 	assert.True(t, fake.closed)
 }
 

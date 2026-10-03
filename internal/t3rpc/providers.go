@@ -1,4 +1,4 @@
-package t3client
+package t3rpc
 
 import (
 	"encoding/json"
@@ -6,12 +6,14 @@ import (
 	"slices"
 
 	"github.com/otal-labs/nexul/internal/harness"
+	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 )
 
 type configProvider struct {
 	InstanceID   string        `json:"instanceId"`
 	Driver       string        `json:"driver"`
 	DisplayName  string        `json:"displayName"`
+	Version      string        `json:"version"`
 	Enabled      bool          `json:"enabled"`
 	Installed    bool          `json:"installed"`
 	Availability string        `json:"availability"`
@@ -48,7 +50,7 @@ type optionDescriptor struct {
 }
 
 // Providers reads usable provider instances from the handshake's config, no extra RPC.
-func (c *Client) Providers() ([]harness.Provider, error) {
+func (c *Conn) Providers() ([]harness.Provider, error) {
 	var config struct {
 		Providers []configProvider `json:"providers"`
 	}
@@ -71,7 +73,7 @@ func (c *Client) Providers() ([]harness.Provider, error) {
 			}
 			models = append(models, providerModel(m))
 		}
-		providers = append(providers, harness.Provider{ID: p.InstanceID, Driver: p.Driver, Name: name, Models: models})
+		providers = append(providers, harness.Provider{ID: p.InstanceID, Driver: p.Driver, Name: name, Version: p.Version, Models: models})
 	}
 	return providers, nil
 }
@@ -111,4 +113,26 @@ func modelOption(d optionDescriptor) (harness.ModelOption, bool) {
 		})
 	}
 	return option, d.ID != "" && len(option.Choices) > 0
+}
+
+// DefaultModel picks providerID's default model, falling back to its first current one, so an empty model never
+// reaches T3, which rejects an empty modelSelection.model as a defect.
+func DefaultModel(providers []harness.Provider, providerID string) (string, error) {
+	for _, p := range providers {
+		if p.ID != providerID {
+			continue
+		}
+		for _, m := range p.Models {
+			if m.IsDefault {
+				return m.Slug, nil
+			}
+		}
+		for _, m := range p.Models {
+			if !m.IsLegacy {
+				return m.Slug, nil
+			}
+		}
+		return "", fmt.Errorf("%w: provider %s has no models", apperrs.ErrInvalid, providerID)
+	}
+	return "", fmt.Errorf("%w: provider %s not found", apperrs.ErrInvalid, providerID)
 }

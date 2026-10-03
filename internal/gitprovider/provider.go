@@ -10,6 +10,7 @@ type GitProvider interface {
 	// PRsForCommit lists the pull requests with a commit: the merged one that introduced it, else the open ones carrying it.
 	PRsForCommit(ctx context.Context, owner, name, sha string) ([]*PR, error)
 	CreateWebhook(ctx context.Context, owner, name string, cfg WebhookConfig) (string, error)
+	ListWebhooks(ctx context.Context, owner, name string) ([]Webhook, error)
 	DeleteWebhook(ctx context.Context, owner, name, hookID string) error
 	// ListInstallationRepos lists every repository the connected user's App installations grant.
 	ListInstallationRepos(ctx context.Context) ([]*Repo, error)

@@ -18,6 +18,7 @@ type Client struct {
 	StartTurnFn     func(ctx context.Context, t harness.Target, title string, prompts harness.TurnPrompts) (harness.StartResult, error)
 	InterruptFn     func(ctx context.Context, t harness.Target) error
 	AnswerFn        func(ctx context.Context, t harness.Target, requestID string, answer harness.QuestionAnswer) error
+	SettleFn        func(ctx context.Context, t harness.Target) error
 }
 
 // Registry wraps c as the sole client of its kind (KindT3Code when unset).
@@ -86,4 +87,11 @@ func (c *Client) Answer(ctx context.Context, t harness.Target, requestID string,
 		return nil
 	}
 	return c.AnswerFn(ctx, t, requestID, answer)
+}
+
+func (c *Client) Settle(ctx context.Context, t harness.Target) error {
+	if c.SettleFn == nil {
+		return nil
+	}
+	return c.SettleFn(ctx, t)
 }

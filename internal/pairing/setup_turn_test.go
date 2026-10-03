@@ -65,7 +65,7 @@ type setupFixture struct {
 	interrupted int
 }
 
-var setupDrivers = map[string]string{"codex-main": "codex", "codex-2": "codex", "claude": "claudeAgent"}
+var setupDrivers = map[string]string{"codex-main": "codex", "codex-2": "codex", "claude": "claudeAgent", "pi": "pi"}
 
 func newSetupFixture(t *testing.T) *setupFixture {
 	t.Helper()
@@ -244,6 +244,45 @@ func TestStartSetup_FreshComputer_ConfirmsEveryProviderAndAPlayRuns(t *testing.T
 
 	for _, provider := range []string{"codex-main", "claude"} {
 		require.NoError(t, f.resolveForPlay(t, provider), "the gate lets %s run once setup confirmed it", provider)
+	}
+}
+
+func TestStartSetup_ProviderVersion_GatesOnlyPiBelowItsFirstMCPRelease(t *testing.T) {
+	t.Parallel()
+	const refusal = "Update Pi to 0.99 or later; earlier Pi has no MCP client"
+	tests := []struct {
+		name    string
+		id      string
+		driver  string
+		version string
+		blocked bool
+	}{
+		{"pi before MCP", "pi", "pi", "0.98.3", true},
+		{"pi first MCP release", "pi", "pi", "0.99.0", false},
+		{"pi 1.0", "pi", "pi", "1.0.1", false},
+		{"pi version unknown", "pi", "pi", "", false},
+		{"another provider on a low minor", "codex-main", "codex", "0.53.0", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			f := newSetupFixture(t)
+			f.exch.ListProvidersFn = func(context.Context, harness.Session) ([]harness.Provider, error) {
+				return []harness.Provider{{ID: tt.id, Driver: tt.driver, Name: tt.driver, Version: tt.version}}, nil
+			}
+
+			run := f.start(t)
+
+			turn := f.turns(run.RunID)[tt.driver]
+			if tt.blocked {
+				assert.Equal(t, SetupTurnFailed, turn.State)
+				assert.Equal(t, refusal, turn.Status)
+				assert.Empty(t, f.sessionTitles(), "no session starts for a provider that cannot take the steps")
+				return
+			}
+			assert.Equal(t, SetupTurnConfirmed, turn.State)
+			assert.Len(t, f.sessionTitles(), 2, "prepare and check sessions both ran")
+		})
 	}
 }
 
@@ -596,18 +635,21 @@ func TestSetupInstructions_PerDriver(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		driver string
+		name   string
 		want   string
 	}{
-		{"claudeAgent", "claude mcp add --scope user --transport http nexul https://n.example.com/mcp --header \"Authorization: Bearer dep_x\""},
-		{"codex", "[mcp_servers.nexul]"},
-		{"opencode", "~/.config/opencode/opencode.json"},
-		{"cursor", "~/.cursor/mcp.json"},
-		{"grok", "Grok's own user-level MCP configuration"},
+		{"claudeAgent", "Claude", "claude mcp add --scope user --transport http nexul https://n.example.com/mcp --header \"Authorization: Bearer dep_x\""},
+		{"codex", "Codex", "[mcp_servers.nexul]"},
+		{"opencode", "OpenCode", "~/.config/opencode/opencode.json"},
+		{"cursor", "Cursor", "~/.cursor/mcp.json"},
+		{"pi", "Pi", "`pi mcp add nexul --url https://n.example.com/mcp --header \"Authorization=Bearer dep_x\" --exposure direct`, then `pi mcp list`"},
+		{"grok", "Grok", "`grok mcp remove nexul` (ignore a not-found error), then `grok mcp add --transport http nexul https://n.example.com/mcp --header \"Authorization: Bearer dep_x\"`"},
+		{"antigravity", "Antigravity", "Add it to Antigravity's own user-level MCP configuration"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.driver, func(t *testing.T) {
 			t.Parallel()
-			p := setupPrompt{ComputerID: "c1", ComputerName: "Laptop", Driver: tt.driver, ProviderName: "Grok", MCPURL: "https://n.example.com/mcp", Token: "dep_x"}
+			p := setupPrompt{ComputerID: "c1", ComputerName: "Laptop", Driver: tt.driver, ProviderName: tt.name, MCPURL: "https://n.example.com/mcp", Token: "dep_x"}
 			prepare := prepareInstructions(p)
 			assert.Contains(t, prepare, tt.want)
 			assert.Contains(t, prepare, "~/.claude/skills/ and ~/.agents/skills/")

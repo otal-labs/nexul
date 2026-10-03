@@ -24,7 +24,8 @@ codebase with 95% coverage and no error-path tests is worse than one with
 
 ### What the gate exempts
 
-- Go coverage drops paths containing `/cmd/`, `/testutil/`, or `/sqlcgen/`.
+- Go coverage drops paths containing `/cmd/`, `/testutil/`, `/sqlcgen/`, or
+  `/t3rpctest/` (the fake T3 server the T3 clients' tests share).
 - Pure wire types (structs with no methods, no validation) never appear in
   the coverage profile at all, since `go test` only emits statements for
   executable code.
@@ -163,8 +164,8 @@ that mock and assert the full flow: load, display, interact, mutate, toast.
 
 The `coverage` target in the `Makefile` is the source of record for the exact filtering and
 threshold logic. It runs `go test` with `-race` and a coverage profile over
-`./...`, excludes paths containing `/cmd/`, `/testutil/`, or `/sqlcgen/` from
-the profile, then fails the build below 80%. `golangci-lint` (config in
+`./...`, excludes paths containing `/cmd/`, `/testutil/`, `/sqlcgen/`, or
+`/t3rpctest/` from the profile, then fails the build below 80%. `golangci-lint` (config in
 `.golangci.yml`) and `govulncheck` run as their own steps in the same Go CI
 job, alongside `go vet` and `go build`. `coverage.filtered.out` and
 `coverage.html` upload as the `go-coverage` CI artifact.

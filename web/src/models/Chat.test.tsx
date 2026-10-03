@@ -187,6 +187,28 @@ describe("splitMessageBody", () => {
     const body = "![a diagram](https://example.com/diagram.png)";
     expect(splitMessageBody(body)).toEqual([{ kind: "text", text: body }]);
   });
+
+  it("turns a one-line fence into a code block", () => {
+    expect(splitMessageBody("```Hello World```")).toEqual([{ kind: "code", code: "Hello World" }]);
+  });
+
+  it("drops the language hint and keeps indentation and attachment lines inside a multi-line fence", () => {
+    const body = "try this\n```go\nif err != nil {\n  return err\n}\n![shot.png](/api/attachments/a-9)\n```\nthen run it";
+    expect(splitMessageBody(body)).toEqual([
+      { kind: "text", text: "try this" },
+      { kind: "code", code: "if err != nil {\n  return err\n}\n![shot.png](/api/attachments/a-9)" },
+      { kind: "text", text: "then run it" },
+    ]);
+  });
+
+  it("keeps code on the fence lines when they carry more than a language hint", () => {
+    expect(splitMessageBody("```const a = 1;\nconst b = 2;```")).toEqual([{ kind: "code", code: "const a = 1;\nconst b = 2;" }]);
+  });
+
+  it("leaves an unclosed fence as plain text", () => {
+    const body = "```go\nfmt.Println()";
+    expect(splitMessageBody(body)).toEqual([{ kind: "text", text: body }]);
+  });
 });
 
 describe("composeMessageBody", () => {

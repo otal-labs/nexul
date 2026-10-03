@@ -12,6 +12,7 @@ import (
 
 	"github.com/otal-labs/nexul/internal/harness"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
+	"github.com/otal-labs/nexul/internal/t3rpc/t3rpctest"
 )
 
 func testCtx(t *testing.T) context.Context {
@@ -22,13 +23,13 @@ func testCtx(t *testing.T) context.Context {
 
 func TestStartTurn_EncodesAttachmentsAsDataURLs(t *testing.T) {
 	t.Parallel()
-	f := newFakeT3(t)
+	f := t3rpctest.New(t)
 	ctx := testCtx(t)
-	c := f.connect(t, ctx)
+	c := connectFake(t, ctx, f)
 
 	png := []byte{0x89, 'P', 'N', 'G', 0, 1, 2}
 	require.NoError(t, c.StartTurn(ctx, "th-1", "look at this", "", []harness.Attachment{{Name: "shot.png", MIME: "image/png", Bytes: png}}))
-	cmd := waitFor(t, f.dispatched, "thread.turn.start dispatch")
+	cmd := t3rpctest.WaitFor(t, f.Dispatched, "thread.turn.start dispatch")
 	msg, ok := cmd["message"].(map[string]any)
 	require.True(t, ok)
 	assert.Equal(t, []any{map[string]any{
@@ -40,43 +41,18 @@ func TestStartTurn_EncodesAttachmentsAsDataURLs(t *testing.T) {
 	}}, msg["attachments"])
 }
 
-func TestConnect_HandshakeMintsTicketAndCallsGetConfig(t *testing.T) {
-	t.Parallel()
-	f := newFakeT3(t)
-	f.connect(t, testCtx(t))
-	assert.Equal(t, int32(1), f.configCalls.Load())
-}
-
-func TestConnect_AcceptsAlternateTicketFieldName(t *testing.T) {
-	t.Parallel()
-	f := newFakeT3(t)
-	f.ticketField = "wsTicket"
-	f.connect(t, testCtx(t))
-	assert.Equal(t, int32(1), f.configCalls.Load())
-}
-
-func TestConnect_RejectedBearerIsUnauthorized(t *testing.T) {
-	t.Parallel()
-	f := newFakeT3(t)
-	computer := f.session()
-	computer.BearerToken = "wrong"
-	_, err := Connect(testCtx(t), computer, Options{HTTPClient: f.srv.Client()})
-	require.Error(t, err)
-	assert.ErrorIs(t, err, apperrs.ErrUnauthorized)
-}
-
 func TestCreateThread_DispatchesThreadCreate(t *testing.T) {
 	t.Parallel()
-	f := newFakeT3(t)
+	f := t3rpctest.New(t)
 	ctx := testCtx(t)
-	c := f.connect(t, ctx)
+	c := connectFake(t, ctx, f)
 
 	options := []harness.OptionSetting{{ID: "effort", Value: "high"}, {ID: "fastMode", Value: true}}
 	threadID, err := c.CreateThread(ctx, "proj-1", "Chat: #general", "claude-code", "opus-4", options, "")
 	require.NoError(t, err)
 	require.NotEmpty(t, threadID)
 
-	cmd := waitFor(t, f.dispatched, "thread.create dispatch")
+	cmd := t3rpctest.WaitFor(t, f.Dispatched, "thread.create dispatch")
 	assert.Equal(t, "thread.create", cmd["type"])
 	assert.Equal(t, threadID, cmd["threadId"])
 	assert.Equal(t, "proj-1", cmd["projectId"])
@@ -96,16 +72,16 @@ func TestCreateThread_DispatchesThreadCreate(t *testing.T) {
 
 func TestFullTurn_CumulativeSnapshotsThenDone(t *testing.T) {
 	t.Parallel()
-	f := newFakeT3(t)
+	f := t3rpctest.New(t)
 	ctx := testCtx(t)
-	c := f.connect(t, ctx)
+	c := connectFake(t, ctx, f)
 
 	sub, err := c.SubscribeThread(ctx, "th-1")
 	require.NoError(t, err)
-	subID := waitFor(t, f.subscribed, "subscribeThread request")
+	subID := t3rpctest.WaitFor(t, f.Subscribed, "subscribeThread request")
 
 	require.NoError(t, c.StartTurn(ctx, "th-1", "hello agent", "", nil))
-	cmd := waitFor(t, f.dispatched, "thread.turn.start dispatch")
+	cmd := t3rpctest.WaitFor(t, f.Dispatched, "thread.turn.start dispatch")
 	assert.Equal(t, "thread.turn.start", cmd["type"])
 	assert.Equal(t, "th-1", cmd["threadId"])
 	msg, ok := cmd["message"].(map[string]any)
@@ -116,20 +92,20 @@ func TestFullTurn_CumulativeSnapshotsThenDone(t *testing.T) {
 	assert.Equal(t, []any{}, msg["attachments"])
 
 	// Initial state + snapshot item must not terminate the watch prematurely.
-	f.write(chunk(subID, map[string]any{"kind": "snapshot", "snapshot": map[string]any{"thread": map[string]any{"id": "th-1"}}}))
-	f.write(chunk(subID, sessionSet("th-1", "ready", nil, nil)))
-	f.write(chunk(subID, sessionSet("th-1", "running", "turn-1", nil)))
+	f.Write(t3rpctest.Chunk(subID, map[string]any{"kind": "snapshot", "snapshot": map[string]any{"thread": map[string]any{"id": "th-1"}}}))
+	f.Write(t3rpctest.Chunk(subID, sessionSet("th-1", "ready", nil, nil)))
+	f.Write(t3rpctest.Chunk(subID, sessionSet("th-1", "running", "turn-1", nil)))
 	// The user message echo is not an assistant snapshot.
-	f.write(chunk(subID, messageSent("th-1", "m-user", "user", "hello agent", false)))
+	f.Write(t3rpctest.Chunk(subID, messageSent("th-1", "m-user", "user", "hello agent", false)))
 	// T3 streams deltas (thread.message.assistant.delta -> message-sent{streaming:true}); the close carries "".
-	f.write(chunk(subID,
+	f.Write(t3rpctest.Chunk(subID,
 		messageSent("th-1", "m1", "assistant", "Hel", true),
 		messageSent("th-1", "m1", "assistant", "lo wor", true),
 	))
-	f.write(chunk(subID, toolActivity("th-1", "tool.started", "Read main.go started")))
-	f.write(chunk(subID, messageSent("th-1", "m1", "assistant", "ld", true)))
-	f.write(chunk(subID, messageSent("th-1", "m1", "assistant", "", false)))
-	f.write(chunk(subID, sessionSet("th-1", "idle", nil, nil)))
+	f.Write(t3rpctest.Chunk(subID, toolActivity("th-1", "tool.started", "Read main.go started")))
+	f.Write(t3rpctest.Chunk(subID, messageSent("th-1", "m1", "assistant", "ld", true)))
+	f.Write(t3rpctest.Chunk(subID, messageSent("th-1", "m1", "assistant", "", false)))
+	f.Write(t3rpctest.Chunk(subID, sessionSet("th-1", "idle", nil, nil)))
 
 	snaps, activities, approvals, terminal := collect(t, sub)
 	require.Equal(t, []MessageSnapshot{
@@ -152,21 +128,21 @@ func TestFullTurn_CumulativeSnapshotsThenDone(t *testing.T) {
 // must not end the watch, or the reply never reaches chat.
 func TestFullTurn_SessionSettlesBeforeReply_WaitsForReplyClose(t *testing.T) {
 	t.Parallel()
-	f := newFakeT3(t)
+	f := t3rpctest.New(t)
 	ctx := testCtx(t)
-	c := f.connect(t, ctx)
+	c := connectFake(t, ctx, f)
 
 	sub, err := c.SubscribeThread(ctx, "th-1")
 	require.NoError(t, err)
-	subID := waitFor(t, f.subscribed, "subscribeThread request")
+	subID := t3rpctest.WaitFor(t, f.Subscribed, "subscribeThread request")
 	require.NoError(t, c.StartTurn(ctx, "th-1", "hello agent", "", nil))
-	waitFor(t, f.dispatched, "thread.turn.start dispatch")
+	t3rpctest.WaitFor(t, f.Dispatched, "thread.turn.start dispatch")
 
-	f.write(chunk(subID, sessionSet("th-1", "starting", nil, nil)))
-	f.write(chunk(subID, sessionSet("th-1", "running", "turn-1", nil)))
-	f.write(chunk(subID, sessionSet("th-1", "ready", nil, nil)))
-	f.write(chunk(subID, messageSent("th-1", "m1", "assistant", "Hello world", true)))
-	f.write(chunk(subID, messageSent("th-1", "m1", "assistant", "", false)))
+	f.Write(t3rpctest.Chunk(subID, sessionSet("th-1", "starting", nil, nil)))
+	f.Write(t3rpctest.Chunk(subID, sessionSet("th-1", "running", "turn-1", nil)))
+	f.Write(t3rpctest.Chunk(subID, sessionSet("th-1", "ready", nil, nil)))
+	f.Write(t3rpctest.Chunk(subID, messageSent("th-1", "m1", "assistant", "Hello world", true)))
+	f.Write(t3rpctest.Chunk(subID, messageSent("th-1", "m1", "assistant", "", false)))
 
 	snaps, _, _, terminal := collect(t, sub)
 	require.Equal(t, []MessageSnapshot{
@@ -179,16 +155,16 @@ func TestFullTurn_SessionSettlesBeforeReply_WaitsForReplyClose(t *testing.T) {
 
 func TestRespondUserInput_DispatchesTheAnswersInT3sShape(t *testing.T) {
 	t.Parallel()
-	f := newFakeT3(t)
+	f := t3rpctest.New(t)
 	ctx := testCtx(t)
-	c := f.connect(t, ctx)
+	c := connectFake(t, ctx, f)
 
 	require.NoError(t, c.RespondUserInput(ctx, "th-1", "req-1", harness.QuestionAnswer{Answers: map[string]harness.AnswerValue{
 		"one":   {Selected: []string{"Yes"}},
 		"many":  {Selected: []string{"A", "B"}},
 		"typed": {Selected: []string{"ignored"}, Text: "something else"},
 	}}))
-	cmd := waitFor(t, f.dispatched, "thread.user-input.respond dispatch")
+	cmd := t3rpctest.WaitFor(t, f.Dispatched, "thread.user-input.respond dispatch")
 	assert.Equal(t, "thread.user-input.respond", cmd["type"])
 	assert.Equal(t, "th-1", cmd["threadId"])
 	assert.Equal(t, "req-1", cmd["requestId"])
@@ -198,24 +174,65 @@ func TestRespondUserInput_DispatchesTheAnswersInT3sShape(t *testing.T) {
 		"free text wins, one pick is a string, several are an array")
 }
 
+func TestRespondUserInput_Rejections(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name    string
+		message string
+		want    error
+	}{
+		{"already answered", "Orchestration command invariant failed (thread.user-input.respond): This question has already been answered.", apperrs.ErrConflict},
+		{"any other failure", "Orchestration command invariant failed (thread.user-input.respond): Unknown thread.", apperrs.ErrInvalid},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			f := t3rpctest.New(t)
+			f.DispatchCause = []map[string]any{{"_tag": "Fail", "error": map[string]any{
+				"_tag": "OrchestrationDispatchCommandError", "message": tt.message,
+			}}}
+			ctx := testCtx(t)
+			c := connectFake(t, ctx, f)
+
+			err := c.RespondUserInput(ctx, "th-1", "req-1", harness.QuestionAnswer{Answers: map[string]harness.AnswerValue{"q1": {Text: "x"}}})
+			require.ErrorIs(t, err, tt.want)
+		})
+	}
+}
+
+func TestSettle_DispatchesProtocolOneShape(t *testing.T) {
+	t.Parallel()
+	f := t3rpctest.New(t)
+	ctx := testCtx(t)
+	c := connectFake(t, ctx, f)
+
+	require.NoError(t, c.Settle(ctx, "th-1"))
+	cmd := t3rpctest.WaitFor(t, f.Dispatched, "thread.settle dispatch")
+	assert.Equal(t, "thread.settle", cmd["type"])
+	assert.Equal(t, "th-1", cmd["threadId"])
+	assert.NotEmpty(t, cmd["commandId"])
+	_, hasCreatedAt := cmd["createdAt"]
+	assert.False(t, hasCreatedAt, "thread.settle's schema has no createdAt")
+}
+
 func TestInterrupt_DispatchesAndTerminalIsInterrupted(t *testing.T) {
 	t.Parallel()
-	f := newFakeT3(t)
+	f := t3rpctest.New(t)
 	ctx := testCtx(t)
-	c := f.connect(t, ctx)
+	c := connectFake(t, ctx, f)
 
 	sub, err := c.SubscribeThread(ctx, "th-1")
 	require.NoError(t, err)
-	subID := waitFor(t, f.subscribed, "subscribeThread request")
+	subID := t3rpctest.WaitFor(t, f.Subscribed, "subscribeThread request")
 
 	require.NoError(t, c.Interrupt(ctx, "th-1"))
-	cmd := waitFor(t, f.dispatched, "thread.turn.interrupt dispatch")
+	cmd := t3rpctest.WaitFor(t, f.Dispatched, "thread.turn.interrupt dispatch")
 	assert.Equal(t, "thread.turn.interrupt", cmd["type"])
 	assert.Equal(t, "th-1", cmd["threadId"])
 	_, hasTurnID := cmd["turnId"]
 	assert.False(t, hasTurnID, "turnId omitted = interrupt whatever's active (ticket 03)")
 
-	f.write(chunk(subID, sessionSet("th-1", "interrupted", nil, nil)))
+	f.Write(t3rpctest.Chunk(subID, sessionSet("th-1", "interrupted", nil, nil)))
 	_, _, _, terminal := collect(t, sub)
 	require.NotNil(t, terminal)
 	assert.Equal(t, TurnInterrupted, terminal.State)
@@ -233,36 +250,36 @@ func approvalActivity(threadID, activityID string, payload any) map[string]any {
 
 func TestApproval_SurfacedAndAutoDeclined(t *testing.T) {
 	t.Parallel()
-	f := newFakeT3(t)
+	f := t3rpctest.New(t)
 	ctx := testCtx(t)
-	c := f.connect(t, ctx)
+	c := connectFake(t, ctx, f)
 
 	sub, err := c.SubscribeThread(ctx, "th-1")
 	require.NoError(t, err)
-	subID := waitFor(t, f.subscribed, "subscribeThread request")
+	subID := t3rpctest.WaitFor(t, f.Subscribed, "subscribeThread request")
 
 	// The upstream approval payload shape is unknown: one plausible shape with
 	// a requestId, one hostile shape without — neither may crash the client.
-	f.write(chunk(subID, approvalActivity("th-1", "act-1", map[string]any{"requestId": "apr-1", "command": "rm -rf /tmp/x"})))
-	f.write(chunk(subID, approvalActivity("th-1", "act-2", "some opaque string payload")))
+	f.Write(t3rpctest.Chunk(subID, approvalActivity("th-1", "act-1", map[string]any{"requestId": "apr-1", "command": "rm -rf /tmp/x"})))
+	f.Write(t3rpctest.Chunk(subID, approvalActivity("th-1", "act-2", "some opaque string payload")))
 
-	first := waitFor(t, sub.Updates(), "first approval update")
+	first := t3rpctest.WaitFor(t, sub.Updates(), "first approval update")
 	require.NotNil(t, first.Approval)
 	assert.Equal(t, "apr-1", first.Approval.RequestID)
 	assert.Equal(t, "command", first.Approval.Kind)
 
-	second := waitFor(t, sub.Updates(), "second approval update")
+	second := t3rpctest.WaitFor(t, sub.Updates(), "second approval update")
 	require.NotNil(t, second.Approval)
 	assert.Equal(t, "act-2", second.Approval.RequestID, "no requestId in payload falls back to the activity id")
 
 	require.NoError(t, c.RespondApproval(ctx, "th-1", first.Approval.RequestID, DecisionDecline))
-	cmd := waitFor(t, f.dispatched, "thread.approval.respond dispatch")
+	cmd := t3rpctest.WaitFor(t, f.Dispatched, "thread.approval.respond dispatch")
 	assert.Equal(t, "thread.approval.respond", cmd["type"])
 	assert.Equal(t, "th-1", cmd["threadId"])
 	assert.Equal(t, "apr-1", cmd["requestId"])
 	assert.Equal(t, "decline", cmd["decision"])
 
-	f.write(chunk(subID, sessionSet("th-1", "error", nil, "declined and gave up")))
+	f.Write(t3rpctest.Chunk(subID, sessionSet("th-1", "error", nil, "declined and gave up")))
 	_, _, _, terminal := collect(t, sub)
 	require.NotNil(t, terminal)
 	assert.Equal(t, TurnError, terminal.State)
@@ -270,15 +287,15 @@ func TestApproval_SurfacedAndAutoDeclined(t *testing.T) {
 
 func TestErrorSession_TerminalCarriesLastError(t *testing.T) {
 	t.Parallel()
-	f := newFakeT3(t)
+	f := t3rpctest.New(t)
 	ctx := testCtx(t)
-	c := f.connect(t, ctx)
+	c := connectFake(t, ctx, f)
 
 	sub, err := c.SubscribeThread(ctx, "th-1")
 	require.NoError(t, err)
-	subID := waitFor(t, f.subscribed, "subscribeThread request")
+	subID := t3rpctest.WaitFor(t, f.Subscribed, "subscribeThread request")
 
-	f.write(chunk(subID, sessionSet("th-1", "error", nil, "provider exploded")))
+	f.Write(t3rpctest.Chunk(subID, sessionSet("th-1", "error", nil, "provider exploded")))
 	snaps, _, _, terminal := collect(t, sub)
 	assert.Empty(t, snaps)
 	require.NotNil(t, terminal)
@@ -288,26 +305,26 @@ func TestErrorSession_TerminalCarriesLastError(t *testing.T) {
 
 func TestMalformedAndUnknownFrames_AreSkippedNotFatal(t *testing.T) {
 	t.Parallel()
-	f := newFakeT3(t)
+	f := t3rpctest.New(t)
 	ctx := testCtx(t)
-	c := f.connect(t, ctx)
+	c := connectFake(t, ctx, f)
 
 	sub, err := c.SubscribeThread(ctx, "th-1")
 	require.NoError(t, err)
-	subID := waitFor(t, f.subscribed, "subscribeThread request")
+	subID := t3rpctest.WaitFor(t, f.Subscribed, "subscribeThread request")
 
 	// Garbage and drift, all of which the protocol WILL eventually produce.
-	f.writeRaw(`{this is not json`)
-	f.writeRaw(`"just a string frame"`)
-	f.write(map[string]any{"_tag": "SomeFutureFrame", "requestId": subID})
-	f.write(chunk(subID, map[string]any{"kind": "mystery", "data": 42}))
-	f.write(chunk(subID, eventItem("thread.pinned", map[string]any{"threadId": "th-1"})))
-	f.write(chunk(subID, map[string]any{"kind": "event", "event": map[string]any{"payload": map[string]any{}}}))
+	f.WriteRaw(`{this is not json`)
+	f.WriteRaw(`"just a string frame"`)
+	f.Write(map[string]any{"_tag": "SomeFutureFrame", "requestId": subID})
+	f.Write(t3rpctest.Chunk(subID, map[string]any{"kind": "mystery", "data": 42}))
+	f.Write(t3rpctest.Chunk(subID, eventItem("thread.pinned", map[string]any{"threadId": "th-1"})))
+	f.Write(t3rpctest.Chunk(subID, map[string]any{"kind": "event", "event": map[string]any{"payload": map[string]any{}}}))
 	// A batched frame (JSON array) must also decode.
-	batch, err := json.Marshal([]any{chunk(subID, messageSent("th-1", "m1", "assistant", "still alive", false))})
+	batch, err := json.Marshal([]any{t3rpctest.Chunk(subID, messageSent("th-1", "m1", "assistant", "still alive", false))})
 	require.NoError(t, err)
-	f.writeRaw(string(batch))
-	f.write(chunk(subID, sessionSet("th-1", "idle", nil, nil)))
+	f.WriteRaw(string(batch))
+	f.Write(t3rpctest.Chunk(subID, sessionSet("th-1", "idle", nil, nil)))
 
 	snaps, _, _, terminal := collect(t, sub)
 	require.Equal(t, []MessageSnapshot{{MessageID: "m1", Text: "still alive", Streaming: false}}, snaps)
@@ -316,13 +333,13 @@ func TestMalformedAndUnknownFrames_AreSkippedNotFatal(t *testing.T) {
 
 	// The connection survived all of it: a follow-up RPC still round-trips.
 	require.NoError(t, c.Interrupt(ctx, "th-1"))
-	waitFor(t, f.dispatched, "post-garbage dispatch")
+	t3rpctest.WaitFor(t, f.Dispatched, "post-garbage dispatch")
 }
 
 func TestVersion_ProbesWellKnownEndpoint(t *testing.T) {
 	t.Parallel()
-	f := newFakeT3(t)
-	version, err := NewHarness(Options{HTTPClient: f.srv.Client()}).Version(testCtx(t), f.srv.URL)
+	f := t3rpctest.New(t)
+	version, err := NewHarness(Options{HTTPClient: f.Client()}).Version(testCtx(t), f.URL)
 	require.NoError(t, err)
 	assert.Equal(t, "0.0.34", version)
 }

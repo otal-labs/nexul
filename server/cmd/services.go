@@ -98,6 +98,7 @@ type coreServices struct {
 	templatesSvc *templates.Service
 
 	gitRouter         gitProviderRouter
+	repoHooks         repoWebhooks
 	repositoryScanner repositoryScanner
 
 	integrationsSvc *integrations.Service
@@ -128,8 +129,25 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		Projects:    mentionProjectSource{repo: store.Projects},
 		TicketTypes: mentionTicketTypeSource{repo: store.TicketTypes},
 	})
+	// Built before dnsSvc since dns's Cloudflare token comes from connectorsSvc; livekit gets a Verifier, not OAuth.
+	connectorsRegistry := connectors.Registry()
+	wireConnectorOAuth(connectorsRegistry, store)
+	connectorsSvc := connectors.NewService(connectors.Config{
+		Store:          store.Connectors,
+		AppConfigStore: store.ConnectorAppConfig,
+		Gate:           accessSvc,
+		Settings:       dnsSettingsAdapter{store.Settings},
+		Registry:       connectorsRegistry,
+	})
+	connectorsHandler := connectors.NewHandler(connectorsSvc)
+	repoHooks := repoWebhooks{
+		git:         gitProviderRouter{workspace: store.Projects, connectors: connectorsSvc, appConfigs: store.ConnectorAppConfig},
+		instanceURL: dnsSettingsAdapter{store.Settings}.GetInstanceURL,
+		secret:      githubWebhookSecret(cfg.AuthSecret),
+	}
+	projects := hookedProjects{Repo: store.Projects, hooks: repoHooks}
 	topoSvc := topology.NewService(store.Topology)
-	deploySvc := deploy.NewService(store.Deploys, store.Stacks, store.Services, deployProjectStore{projects: store.Projects})
+	deploySvc := deploy.NewService(store.Deploys, store.Stacks, store.Services, deployProjectStore{projects: projects})
 	topoSvc.SetGate(accessSvc)
 	deploySvc.SetGate(accessSvc)
 	reviewSvc := codereview.NewService(store.CodeReviews)
@@ -165,17 +183,6 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	invitationSvc := tenancy.NewInvitationService(store.Invitations, authSvc)
 	invitationHandler := tenancy.NewInvitationHandler(invitationSvc)
 	authSvc.SetInvitationGate(invitationAuthGate{svc: invitationSvc})
-	// Built before dnsSvc since dns's Cloudflare token comes from connectorsSvc; livekit gets a Verifier, not OAuth.
-	connectorsRegistry := connectors.Registry()
-	wireConnectorOAuth(connectorsRegistry, store)
-	connectorsSvc := connectors.NewService(connectors.Config{
-		Store:          store.Connectors,
-		AppConfigStore: store.ConnectorAppConfig,
-		Gate:           accessSvc,
-		Settings:       dnsSettingsAdapter{store.Settings},
-		Registry:       connectorsRegistry,
-	})
-	connectorsHandler := connectors.NewHandler(connectorsSvc)
 	dnsSvc := dns.NewService(dns.Config{
 		Repo: store.DNS,
 		NewProvider: func(_ context.Context, token string) (dns.DNSProvider, error) {
@@ -245,7 +252,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	rolesSvc.SetPermissionGate(workspacePermissionGate{svc: accessSvc})
 	authSvc.SetDefaultWorkspace(defaultWorkspaceGate{svc: tenancySvc})
 	authSvc.SetPendingInviteResolver(pendingInviteResolverGate{svc: tenancySvc})
-	workspaceSvc := workspace.NewService(store.Projects, store.Categories, store.TicketTypes, store.Statuses, accessSvc, workspaceGate{svc: tenancySvc})
+	workspaceSvc := workspace.NewService(projects, store.Categories, store.TicketTypes, store.Statuses, accessSvc, workspaceGate{svc: tenancySvc})
 	workspaceSvc.SetTicketProjects(workspaceTicketProjects{tickets: store.Tickets})
 	memoriesSvc := memories.NewService(store.Memories, accessSvc, memoriesProjectLookup{projects: store.Projects}, memoriesAttachmentsGate{svc: attachmentsSvc})
 	templatesSvc := wireTemplates(store, accessSvc, memoriesSvc, tenancySvc, playsSvc, workspaceSvc)
@@ -351,6 +358,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		templatesSvc: templatesSvc,
 
 		gitRouter:         gitRouter,
+		repoHooks:         repoHooks,
 		repositoryScanner: repoScanner,
 
 		integrationsSvc: integrationsSvc,
