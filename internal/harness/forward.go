@@ -5,8 +5,7 @@ import (
 	"errors"
 )
 
-// Forward is from until from returns a *MovedError: a session call then runs moved once and retries on to, while
-// Pair and Version, which have no session, retry on to alone. A failed moved is returned and to is not called.
+// Forward is from until it returns a *MovedError: session calls then run moved once and retry on to; Pair and Version retry on to.
 func Forward(from, to Client, moved func(ctx context.Context, s Session, to Kind) error) Client {
 	return forward{from: from, to: to, moved: moved}
 }
