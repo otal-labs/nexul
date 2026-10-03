@@ -1,5 +1,5 @@
 import { Users } from "lucide-react";
-import { useNavigate } from "react-router";
+import { useMatch, useNavigate } from "react-router";
 
 import { ChannelSidebarRow } from "@/components/sidebar/ChannelSidebarRow";
 import { ChatSidebarRow } from "@/components/sidebar/ChatSidebarRow";
@@ -10,6 +10,7 @@ import { sectionLabelClass } from "@/components/SidebarNav";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFetchMe } from "@/hooks/AuthHooks";
 import { useFetchChatUnread, useFetchConversations } from "@/hooks/ChatHooks";
+import { useHiddenThreads } from "@/hooks/useHiddenThreads";
 import { useNewConversationDialogs } from "@/hooks/useNewConversationDialogs";
 import { usePersonLookup } from "@/hooks/PeopleHooks";
 import { useVoiceOccupancy } from "@/hooks/VoiceHooks";
@@ -31,6 +32,8 @@ export const ChatSidebarSection = ({ collapsed }: ChatSidebarSectionProps) => {
   const navigate = useNavigate();
   const wsPath = useWorkspacePath();
   const occupancy = useVoiceOccupancy(!collapsed);
+  const { hiddenIds } = useHiddenThreads();
+  const openId = useMatch("/:workspace/chat/:conversationId")?.params.conversationId;
   const can = useAreaAccess();
   const canCreateChannel = can?.("editChannels") ?? false;
   const canCreateDM = can?.("newConversation") ?? false;
@@ -44,6 +47,8 @@ export const ChatSidebarSection = ({ collapsed }: ChatSidebarSectionProps) => {
 
   const dmCtx: DMLabelContext = { currentUserId: me?.user.id, resolvePerson };
   const { channels, voiceChannels, dms, docThreads } = groupConversations(conversations ?? []);
+  // A removed thread comes back while it is open or has unread messages, so nothing new is missed.
+  const shownThreads = docThreads.filter((c) => !hiddenIds.includes(c.id) || c.id === openId || (unread?.[c.id] ?? 0) > 0);
 
   return (
     <div className="flex flex-col gap-0.5">
@@ -89,10 +94,10 @@ export const ChatSidebarSection = ({ collapsed }: ChatSidebarSectionProps) => {
         ))}
       </div>
       {/* No +: a thread is started from its doc, so the group only shows once one exists. */}
-      {docThreads.length > 0 && (
+      {shownThreads.length > 0 && (
         <div className="flex flex-col gap-0.5">
           <p className={sectionLabelClass}>Threads</p>
-          {docThreads.map((conversation) => (
+          {shownThreads.map((conversation) => (
             <DocThreadSidebarRow key={conversation.id} conversation={conversation} unreadCount={unread?.[conversation.id] ?? 0} />
           ))}
         </div>

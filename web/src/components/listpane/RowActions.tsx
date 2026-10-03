@@ -1,5 +1,7 @@
 import {
   CopyIcon,
+  EyeIcon,
+  EyeOffIcon,
   FolderInputIcon,
   LockIcon,
   LockOpenIcon,
@@ -31,6 +33,8 @@ interface RowActionsProps {
   /** Pin and Unpin are a personal view setting, so nothing gates them; hidden when omitted. */
   pin?: { pinned: boolean; onToggle: () => void } | undefined;
   lock?: { locked: boolean; onToggle: () => void } | undefined;
+  /** Removing from the sidebar is personal too: the item stays, only the viewer's sidebar drops it. */
+  sidebar?: { hidden: boolean; onToggle: () => void } | undefined;
   /** The places the item can move to, the current one checked. */
   moveTo?: { label: string; options: { id: string; name: string }[]; currentId: string; onMove: (id: string) => void } | undefined;
   onSettings?: (() => void) | undefined;
@@ -39,7 +43,7 @@ interface RowActionsProps {
   onDelete?: (() => void) | undefined;
 }
 
-export const RowActions = ({ itemLabel, pin, lock, moveTo, onSettings, onRename, onClone, onDelete }: RowActionsProps) => (
+export const RowActions = ({ itemLabel, pin, lock, sidebar, moveTo, onSettings, onRename, onClone, onDelete }: RowActionsProps) => (
   <DropdownMenu>
     <DropdownMenuTrigger asChild>
       <Button variant="ghost" size="icon" className="size-7" aria-label={`More actions for ${itemLabel}`}>
@@ -57,6 +61,18 @@ export const RowActions = ({ itemLabel, pin, lock, moveTo, onSettings, onRename,
         <DropdownMenuItem onSelect={pin.onToggle}>
           {pin.pinned ? <PinOffIcon aria-hidden /> : <PinIcon aria-hidden />}
           {pin.pinned ? "Unpin" : "Pin"}
+        </DropdownMenuItem>
+      )}
+      {sidebar && !sidebar.hidden && (
+        <DropdownMenuItem onSelect={sidebar.onToggle}>
+          <EyeOffIcon aria-hidden />
+          Remove from sidebar
+        </DropdownMenuItem>
+      )}
+      {sidebar?.hidden && (
+        <DropdownMenuItem onSelect={sidebar.onToggle}>
+          <EyeIcon aria-hidden />
+          Show in sidebar
         </DropdownMenuItem>
       )}
       {lock && !lock.locked && (
@@ -100,7 +116,7 @@ export const RowActions = ({ itemLabel, pin, lock, moveTo, onSettings, onRename,
           Clone
         </DropdownMenuItem>
       )}
-      {onDelete && (!!onSettings || !!pin || !!lock || !!moveTo || !!onRename || !!onClone) && <DropdownMenuSeparator />}
+      {onDelete && (!!onSettings || !!pin || !!sidebar || !!lock || !!moveTo || !!onRename || !!onClone) && <DropdownMenuSeparator />}
       {onDelete && (
         <DropdownMenuItem variant="destructive" onSelect={onDelete}>
           <Trash2Icon aria-hidden />
