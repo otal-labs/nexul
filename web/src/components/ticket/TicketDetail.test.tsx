@@ -149,9 +149,9 @@ describe("TicketDetail", () => {
     });
   });
 
-  it("does not autosave an untouched ticket — the editor's initial content application is not an edit", async () => {
+  it("does not autosave an untouched ticket, even when the editor normalizes its markdown body", async () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
-    renderDetail(ticket, { onSave });
+    renderDetail({ ...ticket, body: "## Goal\n\nsee [Fix](/tickets/t-2) and https://x.io\n\n- one\n- two" }, { onSave });
     await screen.findByLabelText("Ticket description");
     await new Promise((resolve) => setTimeout(resolve, 1200));
     expect(onSave).not.toHaveBeenCalled();
