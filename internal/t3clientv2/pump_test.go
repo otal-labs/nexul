@@ -71,7 +71,7 @@ func TestPump_QueuedRun_NoteRepeatsEveryFiveMinutesUnderOneCallID(t *testing.T) 
 	synctest.Test(t, func(t *testing.T) {
 		src := newFakeSource(items(event(2, "run.created", runOf("msg-1", runQueued))))
 		out := make(chan harness.Update, 16)
-		p := &pump{w: newWatch("msg-1"), log: slog.Default(), live: newLive(t.Context(), "msg-1")}
+		p := &pump{w: newWatch("msg-1"), log: slog.Default(), live: newRunningTurn(t.Context(), "msg-1")}
 		start := time.Now()
 		go p.run(t.Context(), src, out)
 
@@ -156,7 +156,7 @@ func TestPump_StreamEndsMidTurn(t *testing.T) {
 					chunkOrEnd{err: tt.end},
 				)
 				var afters []int64
-				p := &pump{w: newWatch("msg-1"), log: slog.Default(), live: newLive(t.Context(), "msg-1"), open: func(_ context.Context, after int64) (source, error) {
+				p := &pump{w: newWatch("msg-1"), log: slog.Default(), live: newRunningTurn(t.Context(), "msg-1"), open: func(_ context.Context, after int64) (source, error) {
 					afters = append(afters, after)
 					return tt.opens[len(afters)-1]()
 				}}
@@ -184,7 +184,7 @@ func TestPump_HandedOffWorkStillRunning_StepRepeatsUntilTheCapEndsTheTurnDone(t 
 			event(3, "subagent.updated", handedOff("task-1", "app_owned", "running", map[string]any{"completionWake": "settled_only"})),
 		))
 		out := make(chan harness.Update, 32)
-		p := &pump{w: newWatch("msg-1"), log: slog.Default(), live: newLive(t.Context(), "msg-1")}
+		p := &pump{w: newWatch("msg-1"), log: slog.Default(), live: newRunningTurn(t.Context(), "msg-1")}
 		start := time.Now()
 		go p.run(t.Context(), src, out)
 

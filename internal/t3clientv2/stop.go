@@ -43,15 +43,15 @@ type disposeCommand struct {
 // settledDeliveries are the states of a delegated task's result that can no longer wake its parent.
 var settledDeliveries = []string{"acknowledged", "delivered", "disposed"}
 
-// live is a turn as Stop sees it from its own connection, while the turn's pump owns the watch.
-type live struct {
+// runningTurn is a turn as Stop sees it from its own connection, while the turn's pump owns the watch.
+type runningTurn struct {
 	messageID string
 	// halted ends the pump's wait on T3 once Stop has stopped the turn.
 	halted context.Context
 	halt   context.CancelFunc
 	mu     sync.Mutex
 	work   handoffs
-	// notes are what Stop could not stop, for the turn to show before it ends.
+	// notes are what the latest Stop could not stop, for the turn to show before it ends.
 	notes []string
 }
 
@@ -61,30 +61,30 @@ type handoffs struct {
 	subagents []subagent
 }
 
-func newLive(ctx context.Context, messageID string) *live {
+func newRunningTurn(ctx context.Context, messageID string) *runningTurn {
 	halted, halt := context.WithCancel(ctx)
-	return &live{messageID: messageID, halted: halted, halt: halt}
+	return &runningTurn{messageID: messageID, halted: halted, halt: halt}
 }
 
-func (l *live) publish(work handoffs) {
+func (l *runningTurn) publish(work handoffs) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.work = work
 }
 
-func (l *live) handoffs() handoffs {
+func (l *runningTurn) handoffs() handoffs {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	return l.work
 }
 
-func (l *live) note(summary string) {
+func (l *runningTurn) setNotes(notes []string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	l.notes = append(l.notes, summary)
+	l.notes = notes
 }
 
-func (l *live) takeNotes() []string {
+func (l *runningTurn) takeNotes() []string {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	notes := l.notes
@@ -109,7 +109,7 @@ func (h *Harness) Interrupt(ctx context.Context, target harness.Target) (err err
 		return err
 	}
 	found, _ := h.turns.Load(target.SessionID)
-	l, ok := found.(*live)
+	l, ok := found.(*runningTurn)
 	if !ok {
 		return stopRun(ctx, c, target.SessionID, p.Runs, "")
 	}
@@ -118,8 +118,8 @@ func (h *Harness) Interrupt(ctx context.Context, target harness.Target) (err err
 		return err
 	}
 	err = stopRun(ctx, c, target.SessionID, runs, l.messageID)
-	if errors.Is(err, errNothingToStop) && handedOff {
-		err = nil
+	if errors.Is(err, errNothingToStop) {
+		err = handedOff
 	}
 	if err != nil {
 		return err
@@ -128,42 +128,67 @@ func (h *Harness) Interrupt(ctx context.Context, target harness.Target) (err err
 	return nil
 }
 
-// stopHandoffs stops handed-off work in ADR 0116's order, noting failures; it returns the runs as they then stand, and true if any stopped.
-func (l *live) stopHandoffs(ctx context.Context, c *t3rpc.Conn, threadID string, runs []run, log *slog.Logger) ([]run, bool, error) {
+// stopHandoffs stops handed-off work in ADR 0116's order; it returns the runs as they then stand and the steps' outcome.
+func (l *runningTurn) stopHandoffs(ctx context.Context, c *t3rpc.Conn, threadID string, runs []run, log *slog.Logger) (_ []run, handedOff, err error) {
 	work := l.handoffs()
-	stopped := false
-	tally := func(err error) {
-		stopped = stopped || err == nil
-		if err == nil || errors.Is(err, errNothingToStop) {
-			return
-		}
-		log.Warn("t3clientv2: could not stop handed-off work", "thread", threadID, "error", err)
-		l.note(fmt.Sprintf("Could not stop handed-off work in T3 Code: %v", err))
-	}
+	steps := &tally{log: log, threadID: threadID}
+	defer func() { l.setNotes(steps.notes) }()
 	for _, s := range work.subagents {
 		if s.Origin == "app_owned" && (s.CompletionDelivery == nil || !slices.Contains(settledDeliveries, s.CompletionDelivery.State)) {
-			tally(dispose(ctx, c, threadID, s.ID))
+			steps.count(dispose(ctx, c, threadID, s.ID))
 		}
 	}
 	for _, s := range work.subagents {
 		if slices.Contains(openItems, s.Status) && s.ChildThreadID != "" {
-			tally(interruptChild(ctx, c, s.ChildThreadID))
+			steps.count(interruptChild(ctx, c, s.ChildThreadID))
 		}
 	}
 	if len(work.subagents) > 0 {
 		// Dropping the last result of a queued wake cancels that wake in T3, which then refuses to cancel it again.
 		p, err := readProjection(ctx, c, threadID)
 		if err != nil {
-			return nil, stopped, err
+			return nil, steps.outcome(), err
 		}
 		runs = p.Runs
 	}
 	for _, id := range work.runs {
 		if i := slices.IndexFunc(runs, func(r run) bool { return r.ID == id }); i >= 0 {
-			tally(halt(ctx, c, threadID, runs[i], i == len(runs)-1))
+			steps.count(halt(ctx, c, threadID, runs[i], i == len(runs)-1))
 		}
 	}
-	return runs, stopped, nil
+	return runs, steps.outcome(), nil
+}
+
+// tally is what Stop's hand-off steps came to: whether any stopped something, the first failure, a note per failure.
+type tally struct {
+	log      *slog.Logger
+	threadID string
+	stopped  bool
+	first    error
+	notes    []string
+}
+
+func (t *tally) count(err error) {
+	t.stopped = t.stopped || err == nil
+	if err == nil || errors.Is(err, errNothingToStop) {
+		return
+	}
+	t.log.Warn("t3clientv2: could not stop handed-off work", "thread", t.threadID, "error", err)
+	if t.first == nil {
+		t.first = err
+	}
+	t.notes = append(t.notes, "Could not stop handed-off work in T3 Code: "+strings.TrimPrefix(err.Error(), apperrs.ErrInvalid.Error()+": "))
+}
+
+// outcome is nil once a step stopped something, else the first failure, else errNothingToStop.
+func (t *tally) outcome() error {
+	if t.stopped {
+		return nil
+	}
+	if t.first != nil {
+		return t.first
+	}
+	return errNothingToStop
 }
 
 func dispose(ctx context.Context, c *t3rpc.Conn, threadID, taskID string) error {
@@ -189,8 +214,25 @@ func interruptChild(ctx context.Context, c *t3rpc.Conn, childThreadID string) er
 	return errNothingToStop
 }
 
-// stopRun stops the run Stop is for.
+// movedOn is T3 refusing to stop a run that started or replied since Stop read it.
+type movedOn struct{ error }
+
+func (m movedOn) Unwrap() error { return m.error }
+
+// stopRun stops the run Stop is for, reading the thread once more when that run moved on before the command landed.
 func stopRun(ctx context.Context, c *t3rpc.Conn, threadID string, runs []run, messageID string) error {
+	err := stopRunIn(ctx, c, threadID, runs, messageID)
+	if !errors.As(err, new(movedOn)) {
+		return err
+	}
+	p, err := readProjection(ctx, c, threadID)
+	if err != nil {
+		return err
+	}
+	return stopRunIn(ctx, c, threadID, p.Runs, messageID)
+}
+
+func stopRunIn(ctx context.Context, c *t3rpc.Conn, threadID string, runs []run, messageID string) error {
 	r, ok := toStop(runs, messageID)
 	if !ok {
 		return errNothingToStop
@@ -207,8 +249,11 @@ func halt(ctx context.Context, c *t3rpc.Conn, threadID string, r run, latest boo
 		return cancelRun(ctx, c, threadID, r.ID)
 	}
 	_, err := c.Call(ctx, dispatchCommand, runCommand{Type: "run.interrupt", CommandID: ids.New(), ThreadID: threadID, RunID: r.ID, Reason: stopReason})
-	if r.Status == runWaiting && strings.HasSuffix(t3Message(err), " is not interruptible.") {
-		return nil
+	if strings.HasSuffix(t3Message(err), " is not interruptible.") {
+		if r.Status == runWaiting {
+			return nil
+		}
+		return movedOn{refused("stop the T3 run", err)}
 	}
 	if err != nil {
 		return refused("stop the T3 run", err)
@@ -233,6 +278,9 @@ func toStop(runs []run, messageID string) (run, bool) {
 
 func cancelRun(ctx context.Context, c *t3rpc.Conn, threadID, runID string) error {
 	_, err := c.Call(ctx, dispatchCommand, runCommand{Type: "queued-run.cancel", CommandID: ids.New(), ThreadID: threadID, RunID: runID})
+	if strings.HasSuffix(t3Message(err), " is not queued.") {
+		return movedOn{refused("cancel the queued T3 run", err)}
+	}
 	if err != nil {
 		return refused("cancel the queued T3 run", err)
 	}

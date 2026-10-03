@@ -13,7 +13,7 @@ import (
 
 const persistAttachments = "assets.persistChatAttachments"
 
-// supportedImages are the types T3's providers take; message.dispatch refuses any other.
+// supportedImages are the types T3's providers take natively; Claude fails the run on any other.
 var supportedImages = []string{"image/gif", "image/jpeg", "image/png", "image/webp"}
 
 type persistInput struct {

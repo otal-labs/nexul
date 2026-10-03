@@ -212,6 +212,30 @@ func TestKeeper_RefreshPicksUpNewComputerAndDropsDeleted(t *testing.T) {
 	}
 }
 
+func TestKeeper_RefreshAfterAKindSwitch_HoldsTheComputerOnItsNewKind(t *testing.T) {
+	t.Parallel()
+	sessions := &sessionsFunc{}
+	sessions.set(computer("c1"))
+	v1, v2 := newFakeT3(), newFakeT3()
+	k := New(Config{Sessions: sessions.list, Linger: 20 * time.Millisecond, Harnesses: harness.Registry{
+		harness.KindT3Code:   &harnesstest.Client{KindValue: harness.KindT3Code, HoldFn: v1.hold},
+		harness.KindT3CodeV2: &harnesstest.Client{KindValue: harness.KindT3CodeV2, HoldFn: v2.hold},
+	}})
+
+	k.Connected("u1")
+	waitDial(t, v1, "c1")
+	moved := computer("c1")
+	moved.Kind = harness.KindT3CodeV2
+	sessions.set(moved)
+	k.Refresh("u1")
+	waitDial(t, v2, "c1")
+	select {
+	case <-v1.conn("c1").done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("the connection held under the old kind was not closed")
+	}
+}
+
 func TestKeeper_UnauthorizedStopsRedialUntilRefresh(t *testing.T) {
 	t.Parallel()
 	sessions := &sessionsFunc{}

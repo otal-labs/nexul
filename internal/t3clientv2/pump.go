@@ -35,7 +35,7 @@ type pump struct {
 	open    func(ctx context.Context, after int64) (source, error)
 	decline func(ctx context.Context, requestID string) error
 	log     *slog.Logger
-	live    *live
+	live    *runningTurn
 	// failures counts resubscribes since the stream last delivered anything.
 	failures int
 	// note is the standing note last shown, due when it is shown again.

@@ -78,6 +78,8 @@ func TestSwitchHarness_MovesTheComputerOnce_WithTheNewVersion(t *testing.T) {
 	svc, repo, _, _ := twoKinds(t)
 	c, err := svc.Pair(t.Context(), "u1", harness.KindT3Code, "Onik's laptop", "https://h.example.com", "tok")
 	require.NoError(t, err)
+	var changed []string
+	svc.changed = func(userID string) { changed = append(changed, userID) }
 
 	require.NoError(t, svc.SwitchHarness(t.Context(), c.Session(), harness.KindT3CodeV2))
 	require.NoError(t, svc.SwitchHarness(t.Context(), c.Session(), harness.KindT3CodeV2), "a computer already moved is a no-op")
@@ -90,6 +92,7 @@ func TestSwitchHarness_MovesTheComputerOnce_WithTheNewVersion(t *testing.T) {
 	assert.Equal(t, HarnessSwitchedEvent{
 		ComputerID: c.ID, UserID: "u1", FromKind: harness.KindT3Code, ToKind: harness.KindT3CodeV2, HarnessVersion: "0.0.46-nightly.20261003.2632",
 	}, repo.outbox[1].Payload)
+	assert.Equal(t, []string{"u1"}, changed, "presence hears of the move once, so it holds the computer on its new kind")
 }
 
 func TestPair_KindOnlyMovesForward(t *testing.T) {

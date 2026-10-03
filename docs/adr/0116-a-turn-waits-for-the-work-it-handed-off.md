@@ -18,9 +18,9 @@ Decision: a turn follows the runs its own run's handed-off work caused, and repl
 - **When it is over.** A followed run's items stream into the same turn, so a wake's reply becomes the turn's reply.
   The turn stays open while a followed run other than Nexul's is queued or working, while a subagent of a followed
   run (either origin) is pending, running or waiting, and while a T3-owned task's result is still to be delivered
-  (`completionDelivery` `pending` or `claimed`). Only a done run waits: an interrupted or failed one ends the turn as
-  before. A provider's own subagent stays running in T3's projection until its wake run replays the notice, so the
-  turn cannot end in the gap between the two.
+  (`completionDelivery` `pending` or `claimed`, kept when an update leaves it out). Only a done run waits: an
+  interrupted or failed one ends the turn as before. A provider's own subagent stays running in T3's projection until
+  its wake run replays the notice, so the turn cannot end in the gap between the two.
 - **While it waits.** The step "Waiting for work handed off in T3 Code" repeats every five minutes under one call id
   while anything is pending, whatever Nexul's run is doing, because a wait-mode delegation keeps that run running with
   no events for as long as the child works. It keeps chat's and plays' silence windows open.
@@ -32,9 +32,11 @@ Decision: a turn follows the runs its own run's handed-off work caused, and repl
 - **Stop.** Interrupting Nexul's run leaves T3's delegated children running, so Stop first drops each followed
   T3-owned task's undelivered result, so no child's end can wake the thread, then interrupts the newest started run
   of each working child's thread, then cancels a queued wake run or interrupts a live one, and only then stops
-  Nexul's own run as ADR 0114 says. A step T3 refuses is noted on the turn and the rest still goes. Once Stop has
-  stopped anything, the turn ends interrupted at once: a stopped waiting run can stay waiting, and dropped work
-  reports no end, so nothing is followed after Stop.
+  Nexul's own run as ADR 0114 says. A step T3 refuses is noted on the turn and the rest still goes; a second Stop
+  replaces those notes instead of adding to them. If every step was refused and Nexul's own run is already over, Stop
+  fails with the first refusal rather than saying nothing is running. Once Stop has stopped anything, the turn ends
+  interrupted at once: a stopped waiting run can stay waiting, and dropped work reports no end, so nothing is followed
+  after Stop.
 - **More than one turn on a conversation.** The pipeline keeps each in-flight turn on its own, so a second mention
   that ends first leaves the first one reachable. Stop reaches every live turn of the conversation, and an answer is
   tried on each, newest first, until a harness takes it.

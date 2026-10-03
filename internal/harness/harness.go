@@ -47,7 +47,7 @@ func (e *MovedError) Error() string { return fmt.Sprintf("the harness moved on t
 
 // Session is what every authenticated call needs to reach one paired computer; BearerToken is plaintext here.
 type Session struct {
-	// ComputerID names the paired computer, so a client that finds its harness moved on can say which one.
+	// ComputerID names the paired computer, so Forward's moved callback knows which row to switch.
 	ComputerID  string
 	Name        string
 	ServerURL   string
