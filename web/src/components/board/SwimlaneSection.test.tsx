@@ -99,6 +99,15 @@ describe("SwimlaneSection", () => {
     expect(screen.getByRole("button", { name: "Sprint 1 3 tickets" })).toBeInTheDocument();
   });
 
+  it("ticks the header only once every ticket in the lane is in a done status", () => {
+    const { unmount } = renderSection({ lane: lane("c-1", [ticket("t-1", "Fix login", "done"), ticket("t-2", "Wire FTS", "open")]) });
+    expect(screen.queryByLabelText("All done")).not.toBeInTheDocument();
+    unmount();
+
+    renderSection({ lane: lane("c-1", [ticket("t-1", "Fix login", "done"), ticket("t-2", "Wire FTS", "done")]) });
+    expect(screen.getByLabelText("All done")).toBeInTheDocument();
+  });
+
   it("collapses and expands the columns from the whole header row", async () => {
     const user = userEvent.setup();
     renderSection();

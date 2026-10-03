@@ -1,6 +1,6 @@
 import { useDroppable } from "@dnd-kit/core";
 import { horizontalListSortingStrategy, SortableContext } from "@dnd-kit/sortable";
-import { ChevronDownIcon, CircleHelp, LoaderCircle } from "lucide-react";
+import { ChevronDownIcon, CircleCheckBig, CircleHelp, LoaderCircle } from "lucide-react";
 
 import { KanbanColumn } from "@/components/board/KanbanColumn";
 import type { Swimlane } from "@/components/board/KanbanBoard";
@@ -20,6 +20,8 @@ export const SwimlaneSection = ({ lane, columns, onAddTicket }: SwimlaneSectionP
   const collapsed = useBoardStore((s) => s.collapsedLaneKeys.includes(lane.key));
   const toggleLane = useBoardStore((s) => s.toggleLane);
   const runs = useTicketRunCounts(lane.tickets[0]?.project_id, lane.tickets.map((t) => t.id));
+  const doneStatusIds = new Set(columns.filter((c) => c.kind === "done").map((c) => c.id));
+  const allDone = lane.tickets.length > 0 && lane.tickets.every((t) => doneStatusIds.has(t.status));
   const { setNodeRef, isOver } = useDroppable(
     lane.categoryId === null
       ? { id: `lane-${lane.key}`, disabled: true }
@@ -46,6 +48,7 @@ export const SwimlaneSection = ({ lane, columns, onAddTicket }: SwimlaneSectionP
         >
           <span className="sticky left-0 flex min-w-0 items-center gap-3">
             <span className="min-w-0 truncate text-sm font-semibold">{lane.label}</span>{" "}
+            {allDone && <CircleCheckBig className="size-3 shrink-0 text-success" role="img" aria-label="All done" />}{" "}
             {runs.running + runs.waiting > 0 && (
               <span className="flex shrink-0 items-center gap-2.5 font-mono text-xs text-muted-foreground">
                 <span className="flex items-center gap-1">

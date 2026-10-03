@@ -74,6 +74,10 @@ type Subscription struct {
 	cancel  context.CancelFunc
 	// dropped is set before updates closes when the connection died mid-turn; ResumeThread continues from it.
 	dropped *turnWatch
+	// ready closes once the first snapshot is in, or with err once the stream ended before one.
+	ready   chan struct{}
+	isReady bool
+	err     error
 }
 
 // Updates yields snapshots/approvals and finally one Terminal, then closes; a dropped connection closes it without one.
@@ -84,6 +88,25 @@ func (s *Subscription) Close() { s.cancel() }
 
 // Dropped is the watch to resume once Updates has closed without a Terminal because the connection died; nil otherwise.
 func (s *Subscription) Dropped() *turnWatch { return s.dropped }
+
+// Ready waits for the thread's first snapshot; an error when the stream ended first, as it does for a thread T3 no longer has.
+func (s *Subscription) Ready(ctx context.Context) error {
+	select {
+	case <-s.ready:
+		return s.err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+// markReady is called only from the subscription's own goroutine; the first call decides.
+func (s *Subscription) markReady(err error) {
+	if s.isReady {
+		return
+	}
+	s.isReady, s.err = true, err
+	close(s.ready)
+}
 
 type modelSelection struct {
 	InstanceID string                  `json:"instanceId"`
@@ -318,7 +341,10 @@ func (c *conn) subscribe(ctx context.Context, threadID string, w *turnWatch) (*S
 		return nil, fmt.Errorf("subscribe thread: %w", err)
 	}
 	subCtx, cancel := context.WithCancel(ctx)
-	sub := &Subscription{updates: make(chan Update, 16), cancel: cancel}
+	sub := &Subscription{updates: make(chan Update, 16), cancel: cancel, ready: make(chan struct{})}
+	if w.synced {
+		sub.markReady(nil)
+	}
 	go c.runSubscription(subCtx, stream, sub, w)
 	return sub, nil
 }
@@ -326,6 +352,7 @@ func (c *conn) subscribe(ctx context.Context, threadID string, w *turnWatch) (*S
 func (c *conn) runSubscription(ctx context.Context, stream *t3rpc.Stream, sub *Subscription, w *turnWatch) {
 	defer func() {
 		stream.Close()
+		sub.markReady(errors.New("the thread stream ended before its snapshot"))
 		close(sub.updates)
 	}()
 	emit := func(u Update) bool {
@@ -343,15 +370,23 @@ func (c *conn) runSubscription(ctx context.Context, stream *t3rpc.Stream, sub *S
 		}
 		if errors.Is(err, t3rpc.ErrConnectionLost) {
 			c.log.Warn("t3client: connection lost mid-turn", "last_sequence", w.lastSeq, "error", c.Err())
+			sub.markReady(err)
 			sub.dropped = w
 			return
 		}
 		if err != nil {
+			sub.markReady(err)
 			emit(Update{Terminal: &TurnResult{State: TurnError, LastError: exitReason(err)}})
 			return
 		}
 		for _, raw := range values {
 			updates, terminal := c.streamItemUpdates(raw, w)
+			if terminal != nil {
+				sub.markReady(errors.New(terminal.LastError))
+			}
+			if w.synced {
+				sub.markReady(nil)
+			}
 			for _, u := range updates {
 				if !emit(u) {
 					return
@@ -681,6 +716,9 @@ func (c *conn) snapshotUpdates(raw json.RawMessage, w *turnWatch) ([]Update, *Tu
 	if err := json.Unmarshal(raw, &s); err != nil {
 		c.log.Warn("t3client: malformed thread snapshot skipped", "error", err, "snapshot", t3rpc.Snippet(raw))
 		return nil, nil
+	}
+	if !w.synced && s.Thread.DeletedAt != nil {
+		return nil, &TurnResult{State: TurnError, LastError: "the thread was deleted in T3 Code"}
 	}
 	if !w.synced {
 		w.synced = true

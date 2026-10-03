@@ -348,3 +348,17 @@ describe("MessageList grouping", () => {
     expect(screen.getAllByLabelText("Delete message")).toHaveLength(3);
   });
 });
+
+describe("MessageList scroll anchors", () => {
+  const anchors = () => [...document.querySelectorAll('[data-scroll-anchor="true"]')].map((el) => el.getAttribute("data-message-id"));
+  const askAgent = (id: string) => message({ id, body: "@Agent look", mentions: [{ kind: "agent", handle: "Agent" }] });
+
+  it("anchors only the newest @Agent turn, so confirming a later message cannot jump back to an old one", () => {
+    const { unmount } = renderList([askAgent("old"), message({ id: "reply", author_kind: "agent" }), askAgent("new")]);
+    expect(anchors()).toEqual(["new"]);
+    unmount();
+
+    renderList([askAgent("old"), message({ id: "chatter" })]);
+    expect(anchors()).toEqual([]);
+  });
+});
