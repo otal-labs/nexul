@@ -1,4 +1,5 @@
 import { SwitcherMenu, SwitcherMenuItem } from "@/components/SwitcherMenu";
+import { useFetchUnreadByWorkspace } from "@/hooks/NotificationHooks";
 import type { Workspace } from "@/models/Workspace";
 
 interface WorkspaceSwitcherMenuProps {
@@ -15,16 +16,20 @@ export const WorkspaceSwitcherMenu = ({
   onSelect,
   canCreateWorkspace,
   onCreate,
-}: WorkspaceSwitcherMenuProps) => (
-  <SwitcherMenu createLabel="New Workspace" onCreate={canCreateWorkspace ? onCreate : undefined}>
-    {workspaces?.map((ws) => (
-      <SwitcherMenuItem
-        key={ws.id}
-        tile={ws.name[0] ?? ""}
-        name={ws.name}
-        selected={ws.id === selectedWorkspaceId}
-        onSelect={() => onSelect(ws.id)}
-      />
-    ))}
-  </SwitcherMenu>
-);
+}: WorkspaceSwitcherMenuProps) => {
+  const { data: unread } = useFetchUnreadByWorkspace();
+  return (
+    <SwitcherMenu createLabel="New Workspace" onCreate={canCreateWorkspace ? onCreate : undefined}>
+      {workspaces?.map((ws) => (
+        <SwitcherMenuItem
+          key={ws.id}
+          tile={ws.name[0] ?? ""}
+          name={ws.name}
+          selected={ws.id === selectedWorkspaceId}
+          onSelect={() => onSelect(ws.id)}
+          unreadCount={unread?.[ws.id] ?? 0}
+        />
+      ))}
+    </SwitcherMenu>
+  );
+};

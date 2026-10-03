@@ -44,18 +44,27 @@ func (h *NotificationHandler) list(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, ns)
 }
 
+type unreadCountResponse struct {
+	Count      int            `json:"count"`
+	Workspaces map[string]int `json:"workspaces"`
+}
+
 func (h *NotificationHandler) unreadCount(w http.ResponseWriter, r *http.Request) {
 	userID := h.currentUser(r)
 	if userID == "" {
 		httpx.WriteError(w, apperrs.ErrUnauthorized)
 		return
 	}
-	n, err := h.svc.UnreadCount(r.Context(), userID, r.URL.Query().Get("workspace_id"))
+	byWorkspace, err := h.svc.UnreadByWorkspace(r.Context(), userID, r.URL.Query().Get("workspace_id"))
 	if err != nil {
 		httpx.WriteError(w, err)
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]int{"count": n})
+	n := 0
+	for _, c := range byWorkspace {
+		n += c
+	}
+	httpx.WriteJSON(w, http.StatusOK, unreadCountResponse{Count: n, Workspaces: byWorkspace})
 }
 
 func (h *NotificationHandler) markRead(w http.ResponseWriter, r *http.Request) {
