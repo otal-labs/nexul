@@ -57,6 +57,7 @@ build tickets graduate from the fog and are worked here too.
 
 ## Decisions so far
 
+- [How a question is written in the template](issues/01-how-a-question-is-written.md): `##` heading per question, hint below, `- ` single and `- [ ]` multi options, no recommended option, matched to answers by text, parsed on the server, 8,000 cap moves off the template.
 - [How the follow-up run asks on the Interview page](issues/04-follow-ups-on-the-page.md): the page shows the run's live question with the existing trail question body, answers go through the run route and are also written to the stored answers, and the thread stays as hidden plumbing for now.
 
 ## Not yet specified
