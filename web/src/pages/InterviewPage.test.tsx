@@ -43,9 +43,8 @@ const interview: Memory = {
   updated_at: "",
 };
 
-const renderPage = (entry = "/acme/projects/BE/interview") => {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+const renderPage = (entry = "/acme/projects/BE/interview", client = new QueryClient({ defaultOptions: { queries: { retry: false } } })) =>
+  render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[entry]}>
         <Routes>
@@ -54,7 +53,6 @@ const renderPage = (entry = "/acme/projects/BE/interview") => {
       </MemoryRouter>
     </QueryClientProvider>,
   );
-};
 
 const interviewPlay: Play = {
   id: "play-interview",
@@ -262,6 +260,75 @@ describe("InterviewPage", () => {
     expect(await screen.findByRole("button", { name: /Regenerate/ })).toBeInTheDocument();
   });
 
+  it("marks the memory out of date once an answer changes, and clears it once a run regenerates it", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    let trails = [waitingTrail({ id: "tr-0", state: "done", question: null, ended_at: "2026-10-03T10:00:00Z" })];
+    let answers = [stored(0, organised.text, { answered_at: "2026-10-03T09:00:00Z" }), stored(0, testing.text, { answered_at: "2026-10-03T09:00:00Z" })];
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === "/api/projects") return { data: [project] };
+      if (url === "/api/plays/runs") return { data: trails };
+      if (url === "/api/memories") return { data: [{ ...interview, updated_at: "2026-10-03T10:00:00Z" }] };
+      if (url === "/api/memories/interview-template") return { data: { questions: [organised, testing] } };
+      if (url === "/api/memories/interview-answers") return { data: answers };
+      if (url === "/api/workspaces/ws-1/plays/applicable") return { data: [interviewPlay] };
+      return { data: [] };
+    });
+    vi.mocked(api.put).mockImplementation(async () => {
+      answers = [stored(0, organised.text, { text: "", selected: ["Feature folders"], answered_at: "2026-10-03T11:00:00Z" }), answers[1]!];
+      return { data: answers[0] };
+    });
+    const user = userEvent.setup();
+    renderPage(undefined, client);
+
+    expect(await screen.findByRole("button", { name: /^Regenerate$/ })).toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: "out of date" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /How is the code organised\?/ }));
+    await user.click(screen.getByRole("radio", { name: "Feature folders" }));
+    await user.click(screen.getByRole("button", { name: "Next" }));
+
+    expect(await screen.findByRole("button", { name: /Regenerate the memory/ })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "out of date" })).toBeInTheDocument();
+    expect(screen.getByText("· 1 answer changed")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Done" })).not.toBeInTheDocument();
+
+    trails = [waitingTrail({ id: "tr-1", state: "done", question: null, ended_at: "2026-10-03T11:05:00Z" }), ...trails];
+    await client.invalidateQueries();
+
+    expect(await screen.findByRole("button", { name: /^Regenerate$/ })).toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: "out of date" })).not.toBeInTheDocument();
+  });
+
+  it("keeps the memory out of date after a hand edit, since only a run reads the changed answer", async () => {
+    mockApi({
+      memories: [{ ...interview, updated_at: "2026-10-03T12:00:00Z" }],
+      answers: [stored(0, organised.text, { answered_at: "2026-10-03T11:00:00Z" })],
+      plays: [interviewPlay],
+      trails: () => [waitingTrail({ state: "done", question: null, ended_at: "2026-10-03T10:00:00Z" })],
+    });
+    renderPage();
+    expect(await screen.findByRole("button", { name: /Regenerate the memory/ })).toBeInTheDocument();
+  });
+
+  it("offers Regenerate the memory for a memory from before its questions once one is answered", async () => {
+    mockApi({ memories: [interview], answers: [stored(0, organised.text, { answered_at: "2026-10-03T11:00:00Z" })], plays: [interviewPlay] });
+    renderPage();
+    expect(await screen.findByRole("button", { name: /Regenerate the memory/ })).toBeInTheDocument();
+    expect(screen.getByText("· 1 answer changed")).toBeInTheDocument();
+  });
+
+  it("offers Done again after a run that failed before writing the memory", async () => {
+    mockApi({
+      answers: [stored(0, organised.text), stored(0, testing.text), stored(1, "Where do fixtures live?", { text: "test/" })],
+      plays: [interviewPlay],
+      trails: () => [waitingTrail({ state: "failed", question: null, ended_at: "2026-10-03T10:00:00Z" })],
+    });
+    renderPage();
+    expect(await screen.findByText("Run failed")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Done" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Regenerate/ })).not.toBeInTheDocument();
+  });
+
   it("shows a waiting run's question as the next round, opened with its recommended option picked", async () => {
     mockApi({ answers: [stored(0, organised.text), stored(0, testing.text)], trails: () => [waitingTrail()] });
     renderPage();
@@ -310,5 +377,22 @@ describe("InterviewPage", () => {
     expect(await screen.findByText("85")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Follow-ups from the agent 1/ })).toHaveTextContent("2 of 2 answered");
     expect(screen.queryByRole("radio", { name: "Vitest (Recommended)" })).not.toBeInTheDocument();
+  });
+
+  it("sends a skipped live follow-up as Skipped, which the harness accepts where an empty answer may not be", async () => {
+    mockApi({ answers: [stored(0, organised.text), stored(0, testing.text)], trails: () => [waitingTrail()] });
+    vi.mocked(api.post).mockResolvedValue({ data: waitingTrail({ state: "running", question: null }) });
+    const user = userEvent.setup();
+    renderPage();
+
+    await section(/Which test runner\?/);
+    await user.click(screen.getByRole("button", { name: "Skip" }));
+    expect(await section(/Which test runner\?/)).toHaveTextContent("Skipped");
+    await user.type(screen.getByRole("textbox", { name: "Your answer" }), "85");
+    await user.click(screen.getByRole("button", { name: "Next" }));
+
+    expect(api.post).toHaveBeenCalledWith("/api/plays/runs/tr-1/answer", {
+      answers: { runner: { text: "Skipped" }, floor: { text: "85" } },
+    });
   });
 });

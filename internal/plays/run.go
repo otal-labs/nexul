@@ -118,6 +118,9 @@ type MemoryReader interface {
 	ListForProject(ctx context.Context, projectID string) ([]Memory, error)
 }
 
+// skippedAnswer is the text the Interview page sends for a skipped follow-up, since a harness may refuse an empty answer.
+const skippedAnswer = "Skipped"
+
 // FollowUp is one question an interview run asked and the answer it got; no picks and no text is a skip.
 type FollowUp struct {
 	Question    string
@@ -432,6 +435,9 @@ func (r *Runner) recordFollowUps(ctx context.Context, trail *Trail, answeredBy s
 	followUps := make([]FollowUp, 0, len(items))
 	for _, item := range items {
 		v := answer.Answers[item.ID]
+		if len(v.Selected) == 0 && strings.TrimSpace(v.Text) == skippedAnswer {
+			v.Text = ""
+		}
 		question, why := splitWhy(item.Text)
 		followUps = append(followUps, FollowUp{
 			Question: question, Why: why, Options: item.Options, MultiSelect: item.MultiSelect,

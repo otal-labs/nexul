@@ -12,12 +12,14 @@ interface InterviewChecklistFeedProps {
   projectId: string;
   sections: InterviewSectionData[];
   readOnly: boolean;
+  // With a memory, the memory column's Regenerate starts the run; without one, Done does, also after a run that failed.
+  hasMemory: boolean;
   // The project has a memory from before its questions were answered.
   memoryWithoutAnswers: boolean;
 }
 
 // The questions as numbered rows in foldable sections; one row is open at a time, the first unanswered on load.
-export const InterviewChecklistFeed = ({ projectId, sections: stored, readOnly, memoryWithoutAnswers }: InterviewChecklistFeedProps) => {
+export const InterviewChecklistFeed = ({ projectId, sections: stored, readOnly, hasMemory, memoryWithoutAnswers }: InterviewChecklistFeedProps) => {
   const live = useInterviewLiveRound(projectId, stored);
   const sections = live.section ? [...stored, live.section] : stored;
   const rows = sections.flatMap((s) => s.rows);
@@ -82,7 +84,7 @@ export const InterviewChecklistFeed = ({ projectId, sections: stored, readOnly, 
           </ol>
         </InterviewSection>
       ))}
-      {templateDone && stored.length === 1 && !live.section && <InterviewDoneRow projectId={projectId} />}
+      {templateDone && !hasMemory && !live.section && <InterviewDoneRow projectId={projectId} />}
     </div>
   );
 };

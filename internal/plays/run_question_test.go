@@ -324,6 +324,34 @@ func TestAnswer_InterviewRun_RecordsEachRoundInOrder(t *testing.T) {
 	}, f.answers.snapshot(), "a live answer and one that resumes the run each land as the next round, the why split off the text and never taken from the header, picks named by label, an empty answer left for the store to skip")
 }
 
+func TestAnswer_InterviewRun_RecordsTheSkipTextAsASkip(t *testing.T) {
+	tests := []struct {
+		name   string
+		answer harness.AnswerValue
+		want   FollowUp
+	}{
+		{"empty answer", harness.AnswerValue{}, FollowUp{Question: "What coverage floor?", Selected: []string{}}},
+		{"the skip text", harness.AnswerValue{Text: "Skipped"}, FollowUp{Question: "What coverage floor?", Selected: []string{}}},
+		{"the skip text padded", harness.AnswerValue{Text: " Skipped\n"}, FollowUp{Question: "What coverage floor?", Selected: []string{}}},
+		{"the skip text inside an answer", harness.AnswerValue{Text: "Skipped for now"}, FollowUp{Question: "What coverage floor?", Selected: []string{}, Text: "Skipped for now"}},
+		{"the skip text beside a pick", harness.AnswerValue{Selected: []string{"80"}, Text: "Skipped"}, FollowUp{Question: "What coverage floor?", Selected: []string{"80"}, Text: "Skipped"}},
+		{"the skip text in lower case", harness.AnswerValue{Text: "skipped"}, FollowUp{Question: "What coverage floor?", Selected: []string{}, Text: "skipped"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := heldFixture(t)
+			trail, obs := driveTurn(t, f, interviewRun())
+			obs.OnStarted("sess-1")
+			obs.OnQuestion(harness.Question{RequestID: "req-1", Questions: []harness.QuestionItem{{ID: "floor", Text: "What coverage floor?"}}})
+
+			_, err := f.runner.Answer(ctxAs(starter), trail.ID, harness.QuestionAnswer{Answers: map[string]harness.AnswerValue{"floor": tt.answer}})
+			require.NoError(t, err)
+			assert.Equal(t, []fakeRound{{projectID: projectID, answeredBy: starter, followUps: []FollowUp{tt.want}}}, f.answers.snapshot())
+			assert.Equal(t, []harness.QuestionAnswer{{Answers: map[string]harness.AnswerValue{"floor": tt.answer}}}, f.turns.answered, "the harness gets the answer as sent")
+		})
+	}
+}
+
 func TestAnswer_TicketAndDocRuns_RecordNoFollowUps(t *testing.T) {
 	for name, in := range map[string]RunInput{"ticket": ticketRun(), "doc": {PlayID: docPlayID, TargetType: TargetDoc, TargetID: docID, Via: ViaWeb}} {
 		t.Run(name, func(t *testing.T) {
