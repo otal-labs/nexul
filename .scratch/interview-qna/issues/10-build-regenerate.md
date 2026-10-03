@@ -9,7 +9,7 @@ once it has answers. Nothing regenerates on its own.
 
 **Blocked by:** 08, 09
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Changing one answer under a memory shows the signal; regenerating clears it
-- [ ] The existing-memory project path works end to end
+- [x] Changing one answer under a memory shows the signal; regenerating clears it
+- [x] The existing-memory project path works end to end

@@ -3,7 +3,7 @@ import { useId, useState, type KeyboardEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { QuestionStep } from "@/components/play/QuestionStep";
 import { useSaveInterviewAnswer } from "@/hooks/MemoryHooks";
-import { answerValue, recommendedDraft, type InterviewRow } from "@/models/InterviewAnswer";
+import { answerValue, recommendedDraft, SKIPPED_ANSWER, type InterviewRow } from "@/models/InterviewAnswer";
 import type { AnswerValue } from "@/models/Question";
 
 interface InterviewQuestionFormProps {
@@ -31,7 +31,7 @@ export const InterviewQuestionForm = ({ row, projectId, progress, prevKey, nextK
 
   const submit = (skip: boolean) => {
     if (onAnswer) {
-      onMove(onAnswer(skip ? {} : (draft ?? {})));
+      onMove(onAnswer(skip ? { text: SKIPPED_ANSWER } : (draft ?? {})));
       return;
     }
     const input = {
