@@ -6,8 +6,7 @@ import { useForm } from "react-hook-form";
 import { FormInput } from "@/components/FormInput";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { BranchRow } from "@/components/ticket/BranchRow";
-import { PRRow } from "@/components/ticket/PRRow";
+import { RepoLinksRow } from "@/components/ticket/RepoLinksRow";
 import { menuItemClass } from "@/components/ticket/ticketFormPillStyles";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -19,6 +18,7 @@ import {
   type LinkPRFormData,
   type TicketLinks,
 } from "@/models/Ticket";
+import { groupLinksByRepo } from "@/utils/TicketLinksUtility";
 
 interface DevelopmentSectionProps {
   ticketId: string;
@@ -155,11 +155,8 @@ export const DevelopmentSection = ({ ticketId }: DevelopmentSectionProps) => {
           {!hasLinks && <p className="px-2 text-xs text-muted-foreground">No branches or PRs linked yet.</p>}
           {hasLinks && (
             <ul className="flex flex-col">
-              {branches.map((branch) => (
-                <BranchRow key={`${branch.owner}/${branch.repo}/${branch.branch}`} branch={branch} />
-              ))}
-              {prs.map((pr) => (
-                <PRRow key={`${pr.owner}/${pr.repo}#${pr.number}`} pr={pr} />
+              {groupLinksByRepo({ prs, branches }).map((links) => (
+                <RepoLinksRow key={`${links.owner}/${links.repo}`} links={links} />
               ))}
             </ul>
           )}
