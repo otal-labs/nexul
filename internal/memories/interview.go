@@ -24,48 +24,78 @@ const (
 // TemplateKind names the Interview template among the instance templates (ADR 0103).
 const TemplateKind = "interview"
 
-// DefaultInterviewTemplate is the code default of the Interview template, one heading per category.
-const DefaultInterviewTemplate = `## Stack and versions
-Languages, frameworks, and the versions this project pins.
+// DefaultInterviewTemplate is the code default of the Interview template: what only a person knows, one ## per question.
+const DefaultInterviewTemplate = `## What languages and frameworks does this project use?
+Name versions only where they are pinned on purpose.
 
-## Architecture
-Paradigm (ECS, OOP, composition, or functional) and module boundaries.
+## How is the code organised?
+- Layers (routes, logic, storage)
+- Feature folders
+- Entities and systems
+- Functional core with a thin outer shell
 
-## Error handling and logging
-How errors travel and what gets logged, at which level.
+## How do errors travel?
+And what gets logged, at which level.
+- Returned and wrapped
+- Thrown and caught at the edge
+- Result types
 
-## Testing
-Unit or integration, e2e in this repo or a separate one, the coverage floor, and whether tests come first.
+## When are tests written?
+- Before the code
+- With the change
+- Only for bugs
+- No tests yet
 
-## Code style
-Early return, naming, and comment density.
+## Which tests does a change need?
+And the coverage floor, if any.
+- [ ] Unit
+- [ ] Integration against real dependencies
+- [ ] End-to-end in this repo
+- [ ] End-to-end in a separate repo
 
-## Dependency policy
-When a new dependency is allowed and which ones are settled.
+## Which style rules matter most?
+Skip what a linter already enforces.
+- [ ] Early return, no else
+- [ ] Small functions
+- [ ] Comments only for why
+- [ ] Strict types, no any
 
-## Security and secrets
-Where secrets live and what must never be committed or logged.
+## When may a change add a dependency?
+- Freely
+- When it saves real code
+- Only after asking
+- Only with a written decision
 
-## Performance budgets
-The limits a change must stay within.
+## Where do secrets live?
+And what must never be committed or logged.
+- Environment variables
+- A secrets manager
+- An encrypted file in the repo
 
-## CI gates
-What must pass before a change merges.
+## How does a change reach the main branch?
+And how commit messages are written.
+- Pull request, squash merge
+- Pull request, merge commit
+- Straight to main
 
-## Branching, PRs, and commits
-Branch names, PR rules, and commit message style.
+## Where are decisions written down?
+- Decision records in the repo
+- A docs folder
+- A wiki outside the repo
+- Nowhere yet
 
-## Docs and decision records
-What gets documented and where decisions are recorded.
+## Does this project have a user interface?
+If yes, the design system, screen sizes, and accessibility rules.
+- Web
+- Mobile
+- Both
+- None
 
-## UI
-Design system, mobile-first, and accessibility.
-
-## Vocabulary
-The project's own terms and what they mean.
+## Which words mean something specific here?
+One per line, the term then what it means.
 `
 
-// CreateInterview returns the project's interview memory, copying the Interview template on first need.
+// CreateInterview returns the project's interview memory, creating it empty the first time.
 func (s *Service) CreateInterview(ctx context.Context, projectID, via string) (*Memory, error) {
 	projectID = strings.TrimSpace(projectID)
 	if projectID == "" {
@@ -86,13 +116,9 @@ func (s *Service) CreateInterview(ctx context.Context, projectID, via string) (*
 	if !errors.Is(err, apperrs.ErrNotFound) {
 		return nil, fmt.Errorf("get interview for project %s: %w", projectID, err)
 	}
-	tmpl, err := s.loadTemplate(ctx, workspaceID)
+	body, err := richtext.Normalize("")
 	if err != nil {
-		return nil, err
-	}
-	body, err := richtext.Normalize(tmpl.Body)
-	if err != nil {
-		return nil, fmt.Errorf("%w: the Interview template is not valid document content", apperrs.ErrInvalid)
+		return nil, fmt.Errorf("normalize an empty interview body: %w", err)
 	}
 	now := s.now().UTC()
 	m := &Memory{
@@ -105,6 +131,19 @@ func (s *Service) CreateInterview(ctx context.Context, projectID, via string) (*
 		return nil, fmt.Errorf("create interview for project %s: %w", projectID, err)
 	}
 	return m, nil
+}
+
+// InterviewQuestions returns the questions of the workspace's effective Interview template for an interview memory,
+// nil for any other memory; the caller has already read the memory.
+func (s *Service) InterviewQuestions(ctx context.Context, m *Memory) ([]Question, error) {
+	if m.Kind != KindInterview {
+		return nil, nil
+	}
+	t, err := s.loadTemplate(ctx, m.WorkspaceID)
+	if err != nil {
+		return nil, err
+	}
+	return t.Questions, nil
 }
 
 // InterviewTemplate returns the workspace's Interview template, the instance's until the workspace saves its own.
@@ -162,11 +201,6 @@ func (s *Service) ResetInterviewTemplate(ctx context.Context, workspaceID string
 	return s.loadTemplate(ctx, workspaceID)
 }
 
-// CheckInterviewTemplate refuses an Interview template over the interview memory's cap, at any layer.
-func CheckInterviewTemplate(body string) error {
-	return checkInterviewLength("Interview template", body)
-}
-
 func (s *Service) templateEvent(workspaceID, authorID string, at time.Time) eventbus.OutboxEvent {
 	return eventbus.OutboxEvent{ID: ids.New(), Topic: TopicInterviewTemplateUpdated, Payload: InterviewTemplateUpdatedEvent{
 		WorkspaceID: workspaceID, AuthorID: authorID, UpdatedAt: at,
@@ -180,12 +214,12 @@ func (s *Service) loadTemplate(ctx context.Context, workspaceID string) (*Interv
 	}
 	t, err := s.repo.GetInterviewTemplate(ctx, workspaceID)
 	if errors.Is(err, apperrs.ErrNotFound) {
-		return &InterviewTemplate{WorkspaceID: workspaceID, Body: instance, DefaultBody: instance}, nil
+		return &InterviewTemplate{WorkspaceID: workspaceID, Body: instance, DefaultBody: instance, Questions: TemplateQuestions(instance)}, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("get interview template for workspace %s: %w", workspaceID, err)
 	}
-	t.DefaultBody, t.Edited = instance, true
+	t.DefaultBody, t.Edited, t.Questions = instance, true, TemplateQuestions(t.Body)
 	return t, nil
 }
 
@@ -206,13 +240,9 @@ func checkInterviewBody(body string) error {
 	if err != nil {
 		return fmt.Errorf("export interview body: %w", err)
 	}
-	return checkInterviewLength("interview", md)
-}
-
-func checkInterviewLength(what, markdown string) error {
-	n := utf8.RuneCountInString(markdown)
+	n := utf8.RuneCountInString(md)
 	if n <= MaxInterviewChars {
 		return nil
 	}
-	return fmt.Errorf("%w: the %s is %d characters, over the %d-character cap; keep it to rules, not a transcript", apperrs.ErrInvalid, what, n, MaxInterviewChars)
+	return fmt.Errorf("%w: the interview is %d characters, over the %d-character cap; keep it to rules, not a transcript", apperrs.ErrInvalid, n, MaxInterviewChars)
 }

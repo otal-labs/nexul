@@ -30,7 +30,14 @@ export const InstanceTemplateEditor = ({ template }: InstanceTemplateEditorProps
 
   return (
     <div className="space-y-3 pt-3">
-      <TemplateBodyField kind={kind} id={`instance-template-${kind}-${key}`} value={body} onChange={setBody} />
+      <TemplateBodyField
+        kind={kind}
+        id={`instance-template-${kind}-${key}`}
+        value={body}
+        onChange={setBody}
+        questionCount={template.questions?.length ?? 0}
+        error={save.error}
+      />
       <div className="flex flex-wrap items-center justify-end gap-2">
         {BELOW_SCOPE[kind] && (
           <Button type="button" variant="ghost" size="sm" onClick={() => void openClone({ kind, key, name, from: INSTANCE })}>

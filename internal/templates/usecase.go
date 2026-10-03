@@ -218,7 +218,14 @@ func (s *Service) view(ctx context.Context, k *Kind, key string, at Location) (*
 	if !k.Follows {
 		t.Edited = body != t.DefaultBody
 	}
-	return t, nil
+	return withQuestions(k, t), nil
+}
+
+func withQuestions(k *Kind, t *Template) *Template {
+	if k.Questions != nil {
+		t.Questions = k.Questions(t.Body)
+	}
+	return t
 }
 
 func (s *Service) record(ctx context.Context, kind, key string) (*Record, error) {
@@ -273,11 +280,11 @@ func instanceDefault(k *Kind, key string) (Default, error) {
 func instanceView(k *Kind, d Default, rec *Record) *Template {
 	t := &Template{Kind: k.Name, Key: d.Key, Name: d.Name, Scope: ScopeInstance, Body: d.Body, DefaultBody: d.Body, Follows: k.Follows}
 	if rec == nil {
-		return t
+		return withQuestions(k, t)
 	}
 	at := rec.UpdatedAt
 	t.Body, t.Edited, t.UpdatedBy, t.UpdatedAt = rec.Body, true, rec.UpdatedBy, &at
-	return t
+	return withQuestions(k, t)
 }
 
 func checkLocation(k *Kind, at Location) error {

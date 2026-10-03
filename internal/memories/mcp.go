@@ -32,7 +32,7 @@ type memoryCreateIn struct {
 	WhenToUse      string `json:"when_to_use,omitempty" jsonschema:"One short line saying when the memory applies, for example use this if you are writing React code."`
 	Body           string `json:"body,omitempty" jsonschema:"The memory's body as markdown."`
 	AlwaysIncluded bool   `json:"always_included,omitzero" jsonschema:"true names the memory, to read first, in every agent turn in its project. Defaults to false."`
-	Kind           string `json:"kind,omitempty" jsonschema:"Omit for an ordinary memory. decisions_log creates the project's decisions log; interview, sent with project_id alone, returns the project's interview memory, creating it from the Interview template the first time."`
+	Kind           string `json:"kind,omitempty" jsonschema:"Omit for an ordinary memory. decisions_log creates the project's decisions log; interview, sent with project_id alone, returns the project's interview memory, creating it empty the first time."`
 	CloneFromID    string `json:"clone_from_id,omitempty" jsonschema:"The id of a memory to copy, from memory_list, with its attachments, into project_id instead of writing a new one."`
 }
 
@@ -77,6 +77,7 @@ type memoryResult struct {
 	UpdatedBy      string              `json:"updated_by"`
 	UpdatedAt      time.Time           `json:"updated_at"`
 	Versions       []memoryVersionInfo `json:"versions,omitempty"`
+	Questions      []Question          `json:"questions,omitempty"`
 }
 
 type memoryVersionInfo struct {
@@ -117,7 +118,7 @@ func memoryListTool(s *Service) mcptool.Tool {
 
 func memoryGetTool(s *Service) mcptool.Tool {
 	return mcptool.New("memory_get", "Get memory",
-		"Returns one memory with its full body as markdown and its newest 50 versions (number, title, author, and time). "+
+		"Returns one memory with its full body as markdown and its newest 50 versions (number, title, author, and time); the interview memory also carries the questions of the workspace's Interview template. "+
 			"With version it returns that version's title, when-to-use, body, and flag instead, and current_version says which is live. "+
 			"Use memory_list to find ids, and memory_update with revert_to_version to restore an old version.",
 		mcptool.Hints{ReadOnly: true, Local: true},
@@ -135,6 +136,9 @@ func memoryGetTool(s *Service) mcptool.Tool {
 				return nil, err
 			}
 			out.Versions = versionInfos(vs)
+			if out.Questions, err = s.InterviewQuestions(ctx, m); err != nil {
+				return nil, err
+			}
 			if in.Version == 0 {
 				return out, nil
 			}
@@ -151,7 +155,7 @@ func memoryCreateTool(s *Service) mcptool.Tool {
 		"Saves a note for agents in a project, or copies one into it with clone_from_id; every memory belongs to one project. "+
 			"Save a durable fact worth remembering; if a memory already covers the ground, change it with memory_update instead. "+
 			"kind decisions_log creates the project's decisions log (one per project, never sent every turn), and kind interview returns the project's interview memory, "+
-			"creating it from the Interview template the first time. "+
+			"creating it empty the first time, with the questions of the workspace's Interview template. "+
 			"Copying needs memories:clone on the source and memories:write at the destination. "+
 			"Returns the memory with its body as markdown.",
 		mcptool.Hints{Additive: true, Local: true},
@@ -160,7 +164,12 @@ func memoryCreateTool(s *Service) mcptool.Tool {
 			if err != nil {
 				return nil, err
 			}
-			return toMemoryResult(m)
+			out, err := toMemoryResult(m)
+			if err != nil {
+				return nil, err
+			}
+			out.Questions, err = s.InterviewQuestions(ctx, m)
+			return out, err
 		})
 }
 

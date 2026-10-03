@@ -8,7 +8,7 @@ const KindInterview = "interview"
 // KindDecisionsLog marks a project's decisions log: one per project, found with memory_list, never named every turn.
 const KindDecisionsLog = "decisions_log"
 
-// MaxInterviewChars caps the interview memory and the Interview template, measured as exported markdown.
+// MaxInterviewChars caps the interview memory, measured as exported markdown; the template has its own limit.
 const MaxInterviewChars = 8_000
 
 // Memory is an agent-facing note (ADR 0056): own entity, never a doc, always in one project (ADR 0099).
@@ -57,10 +57,11 @@ type MemoryVersion struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// InterviewTemplate is the markdown a project's interview memory is copied from once, at creation.
+// InterviewTemplate is the markdown list of questions a project's interview asks.
 type InterviewTemplate struct {
-	WorkspaceID string `json:"workspace_id"`
-	Body        string `json:"body"`
+	WorkspaceID string     `json:"workspace_id"`
+	Body        string     `json:"body"`
+	Questions   []Question `json:"questions"`
 	// DefaultBody is the instance's Interview template, what an unedited workspace follows and a reset returns to.
 	DefaultBody string `json:"default_body"`
 	// Edited is true once the workspace saved its own; until then Body follows the instance's live.
