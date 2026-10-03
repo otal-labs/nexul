@@ -1,12 +1,15 @@
 import { useDroppable } from "@dnd-kit/core";
 import { horizontalListSortingStrategy, SortableContext } from "@dnd-kit/sortable";
 import { ChevronDownIcon, CircleCheckBig, CircleHelp, LoaderCircle } from "lucide-react";
+import { useParams } from "react-router";
 
 import { KanbanColumn } from "@/components/board/KanbanColumn";
 import type { Swimlane } from "@/components/board/KanbanBoard";
 import type { DropTargetData } from "@/components/board/dragMove";
+import { useFetchProjects } from "@/hooks/ProjectHooks";
 import { useTicketRunCounts } from "@/hooks/TrailHooks";
 import { cn } from "@/lib/utils";
+import { resolveProject } from "@/models/Project";
 import type { BoardStatus } from "@/models/Status";
 import { useBoardStore } from "@/stores/boardStore";
 
@@ -17,7 +20,10 @@ interface SwimlaneSectionProps {
 }
 
 export const SwimlaneSection = ({ lane, columns, onAddTicket }: SwimlaneSectionProps) => {
-  const collapsed = useBoardStore((s) => s.collapsedLaneKeys.includes(lane.key));
+  const { projectId: routeParam = "" } = useParams();
+  const { data: projects = [] } = useFetchProjects();
+  const projectId = resolveProject(projects, routeParam)?.id ?? routeParam;
+  const collapsed = useBoardStore((s) => s.collapsedLanes[projectId]?.includes(lane.key) ?? false);
   const toggleLane = useBoardStore((s) => s.toggleLane);
   const runs = useTicketRunCounts(lane.tickets[0]?.project_id, lane.tickets.map((t) => t.id));
   const doneStatusIds = new Set(columns.filter((c) => c.kind === "done").map((c) => c.id));
@@ -43,7 +49,7 @@ export const SwimlaneSection = ({ lane, columns, onAddTicket }: SwimlaneSectionP
         <button
           type="button"
           aria-expanded={!collapsed}
-          onClick={() => toggleLane(lane.key)}
+          onClick={() => toggleLane(projectId, lane.key)}
           className="group/lane flex w-full cursor-pointer items-center justify-between gap-2 rounded-sm px-1.5 py-1 text-left transition-colors duration-150 ease-standard hover:bg-accent/40"
         >
           <span className="sticky left-0 flex min-w-0 items-center gap-3">

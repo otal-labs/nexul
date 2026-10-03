@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Swimlane } from "@/components/board/KanbanBoard";
@@ -54,16 +55,25 @@ const lane = (categoryId: string | null, tickets: Ticket[]): Swimlane => ({
   tickets,
 });
 
-const renderSection = (props: Partial<Parameters<typeof SwimlaneSection>[0]> = {}) => {
+const renderSection = (props: Partial<Parameters<typeof SwimlaneSection>[0]> = {}, path = "/board/WEB") => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <SwimlaneSection
-        lane={lane("c-1", [ticket("t-1", "Fix login", "open")])}
-        columns={columns}
-        onAddTicket={() => {}}
-        {...props}
-      />
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route
+            path="/board/:projectId"
+            element={
+              <SwimlaneSection
+                lane={lane("c-1", [ticket("t-1", "Fix login", "open")])}
+                columns={columns}
+                onAddTicket={() => {}}
+                {...props}
+              />
+            }
+          />
+        </Routes>
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 };
@@ -71,7 +81,7 @@ const renderSection = (props: Partial<Parameters<typeof SwimlaneSection>[0]> = {
 describe("SwimlaneSection", () => {
   // The board store is module-global and persisted; reset so a collapse in one test can't leak into the next.
   beforeEach(() => {
-    useBoardStore.setState({ collapsedLaneKeys: [] });
+    useBoardStore.setState({ collapsedLanes: {} });
     usePlayRunStore.setState({ frames: {}, steps: {}, activeByTarget: {} });
   });
 
@@ -120,6 +130,17 @@ describe("SwimlaneSection", () => {
 
     await user.click(toggle);
     expect(screen.getByRole("region", { name: "Open column in Sprint 1" })).toBeInTheDocument();
+  });
+
+  it("keeps a lane's collapse to its own project when another project has a same-named lane", async () => {
+    const user = userEvent.setup();
+    const { unmount } = renderSection({}, "/board/WEB");
+    await user.click(screen.getByRole("button", { name: "Sprint 1 1 tickets" }));
+    expect(screen.getByRole("button", { name: "Sprint 1 1 tickets" })).toHaveAttribute("aria-expanded", "false");
+    unmount();
+
+    renderSection({}, "/board/API");
+    expect(screen.getByRole("button", { name: "Sprint 1 1 tickets" })).toHaveAttribute("aria-expanded", "true");
   });
 
   it("renders the lane label and ticket count", () => {
