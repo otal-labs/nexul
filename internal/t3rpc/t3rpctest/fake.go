@@ -45,9 +45,11 @@ type Server struct {
 	SubscribeIn chan map[string]any // payload of each subscribeThread request
 	Acks        chan string         // requestId of each Ack frame received
 	Dispatched  chan map[string]any // payload of each dispatchCommand (auto-acked)
+	Persisted   chan map[string]any // payload of each assets.persistChatAttachments call, answered with one reference per image
 	// DispatchCause fails every dispatchCommand when set; set it before connect.
 	DispatchCause any
-	// CommandCauses fails only the dispatchCommands of the command types it names; set it before connect.
+	// CommandCauses fails only the dispatchCommands of the command types it names, and the image upload when it names
+	// assets.persistChatAttachments; set it before connect.
 	CommandCauses map[string]any
 
 	connMu sync.Mutex
@@ -56,6 +58,8 @@ type Server struct {
 	pairMu    sync.Mutex
 	pairSpent bool
 }
+
+const persistRPC = "assets.persistChatAttachments"
 
 type clientEnv struct {
 	Tag       string          `json:"_tag"`
@@ -78,6 +82,7 @@ func New(t testing.TB) *Server {
 		SubscribeIn: make(chan map[string]any, 4),
 		Acks:        make(chan string, 16),
 		Dispatched:  make(chan map[string]any, 16),
+		Persisted:   make(chan map[string]any, 4),
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/oauth/token", f.handleExchange)
@@ -192,6 +197,8 @@ func (f *Server) handleRequest(env clientEnv) {
 		}}}))
 	case "orchestration.dispatchCommand":
 		f.handleDispatch(env)
+	case persistRPC:
+		f.handlePersist(env)
 	case "orchestration.subscribeThread":
 		var in map[string]any
 		if err := json.Unmarshal(env.Payload, &in); err != nil {
@@ -239,12 +246,38 @@ func (f *Server) handleDispatch(env clientEnv) {
 		cause = c
 	}
 	if cause != nil {
-		f.Write(map[string]any{"_tag": "Exit", "requestId": idString(env.ID),
-			"exit": map[string]any{"_tag": "Failure", "cause": cause}})
+		f.writeFailure(env, cause)
 		return
 	}
 	f.Write(ExitSuccess(idString(env.ID), map[string]any{"sequence": 1}))
 	f.Dispatched <- cmd
+}
+
+// handlePersist stores nothing and answers the way T3 does: one reference per image, with an id the server mints.
+func (f *Server) handlePersist(env clientEnv) {
+	var in map[string]any
+	if err := json.Unmarshal(env.Payload, &in); err != nil {
+		f.t.Errorf("fake: undecodable persist payload: %v", err)
+		return
+	}
+	f.Persisted <- in
+	if cause, ok := f.CommandCauses[persistRPC]; ok {
+		f.writeFailure(env, cause)
+		return
+	}
+	refs := []map[string]any{}
+	images, _ := in["attachments"].([]any)
+	for i, raw := range images {
+		image, _ := raw.(map[string]any)
+		refs = append(refs, map[string]any{"type": "image", "id": fmt.Sprintf("%v-ref-%d", in["threadId"], i),
+			"name": image["name"], "mimeType": image["mimeType"], "sizeBytes": image["sizeBytes"]})
+	}
+	f.Write(ExitSuccess(idString(env.ID), map[string]any{"attachments": refs}))
+}
+
+func (f *Server) writeFailure(env clientEnv, cause any) {
+	f.Write(map[string]any{"_tag": "Exit", "requestId": idString(env.ID),
+		"exit": map[string]any{"_tag": "Failure", "cause": cause}})
 }
 
 // Write pushes one frame to the connected client.
