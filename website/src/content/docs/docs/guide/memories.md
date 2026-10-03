@@ -9,6 +9,12 @@ A **Memory** is a note for Agent, not a document for clients or requirements.
 It has its own page, storage, search boundary, and permission domain. Memories
 are not listed with docs.
 
+The choice follows purpose, not format. Requirements, product scope, acceptance
+criteria, and business processes are docs. Technical research, architecture
+guidance, coding standards, and library recommendations meant to guide the
+build are memories, even as a long report with citations. A deliverable with
+both is split into a doc and a memory that link to each other.
+
 ## Scope and use
 
 Open **Memories** under the project in the sidebar (`/<workspace>/memories`). The list has two

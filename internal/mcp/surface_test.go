@@ -12,12 +12,13 @@ import (
 
 	"github.com/otal-labs/nexul/internal/agent"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
+	"github.com/otal-labs/nexul/internal/platform/skills"
 	"github.com/otal-labs/nexul/internal/plays"
 )
 
 // The rules below are practices/mcp.md sections 4 to 6, checked so they cannot drift.
 // toolBudget is raised only by an ADR naming why no existing tool could carry the capability (ADR 0081).
-const toolBudget = 105
+const toolBudget = 107
 
 var (
 	toolName = regexp.MustCompile(`^[a-z][a-z0-9_]{0,51}$`)
@@ -75,7 +76,7 @@ func TestSurface_TextsAgentsReadNameOnlyRegisteredTools(t *testing.T) {
 	for _, tool := range surface() {
 		registered[tool.Name] = true
 	}
-	texts := map[string]string{"server instructions": instructions}
+	texts := map[string]string{"server instructions": instructions, "nexul-memory skill": skills.NexulMemory.Content}
 	for _, p := range workflowPrompts() {
 		args := map[string]string{}
 		for _, a := range p.args {
@@ -97,6 +98,17 @@ func TestSurface_TextsAgentsReadNameOnlyRegisteredTools(t *testing.T) {
 			assert.True(t, registered[name], "%s names %s, which is not a tool", source, name)
 		}
 	}
+}
+
+func TestSurface_DocAndMemoryCreatePointAtEachOther(t *testing.T) {
+	descriptions := map[string]string{}
+	for _, tool := range surface() {
+		descriptions[tool.Name] = tool.Description
+	}
+	assert.Contains(t, descriptions["doc_create"], "memory_create", "technical guidance goes to a memory")
+	assert.Contains(t, descriptions["memory_create"], "doc_create", "requirements go to a doc")
+	assert.Contains(t, skills.NexulMemory.Content, "doc_create", "the skill routes requirements to a doc")
+	assert.Contains(t, skills.NexulMemory.Content, "memory_create")
 }
 
 func sentences(text string) int {

@@ -144,6 +144,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 
 	mcpServer := mcp.New(mcp.RegistryOptions{
 		Docs:                    svc.docsSvc,
+		Attachments:             svc.attachmentsSvc,
 		Memories:                svc.memoriesSvc,
 		Templates:               svc.templatesSvc,
 		Tickets:                 svc.ticketsSvc,

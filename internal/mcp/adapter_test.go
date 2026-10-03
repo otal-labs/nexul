@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/time/rate"
 
+	"github.com/otal-labs/nexul/internal/attachments"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/mcptool"
@@ -315,4 +316,73 @@ func TestResultText(t *testing.T) {
 	require.Error(t, err)
 	var syntax *json.UnsupportedTypeError
 	assert.ErrorAs(t, err, &syntax)
+}
+
+func TestResultContent_FilesArriveAsWhatTheModelCanUse(t *testing.T) {
+	png := []byte("\x89PNG\r\n\x1a\n")
+	tests := []struct {
+		name  string
+		file  mcptool.File
+		check func(t *testing.T, c sdk.Content)
+	}{
+		{"a raster image is an image", mcptool.File{MIMEType: "image/png", Data: png}, func(t *testing.T, c sdk.Content) {
+			img, ok := c.(*sdk.ImageContent)
+			require.True(t, ok)
+			assert.Equal(t, "image/png", img.MIMEType)
+			assert.Equal(t, png, img.Data)
+		}},
+		{"text is text", mcptool.File{MIMEType: "text/plain; charset=utf-8", Data: []byte("hello")}, func(t *testing.T, c sdk.Content) {
+			text, ok := c.(*sdk.TextContent)
+			require.True(t, ok)
+			assert.Equal(t, "hello", text.Text)
+		}},
+		{"an image models cannot read is a blob", mcptool.File{URI: "attachments://a-1", MIMEType: "image/bmp", Data: []byte("BM")}, func(t *testing.T, c sdk.Content) {
+			res, ok := c.(*sdk.EmbeddedResource)
+			require.True(t, ok)
+			assert.Equal(t, "attachments://a-1", res.Resource.URI)
+			assert.Equal(t, []byte("BM"), res.Resource.Blob)
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.file.Meta = map[string]string{"id": "a-1"}
+			content, err := resultContent(tt.file)
+			require.NoError(t, err)
+			require.Len(t, content, 2)
+			meta, ok := content[0].(*sdk.TextContent)
+			require.True(t, ok)
+			assert.JSONEq(t, `{"id":"a-1"}`, meta.Text)
+			tt.check(t, content[1])
+		})
+	}
+	t.Run("unserializable metadata fails", func(t *testing.T) {
+		_, err := resultContent(mcptool.File{Meta: make(chan int)})
+		require.Error(t, err)
+	})
+}
+
+func TestAdapter_AnImageResultReachesTheClientAsAnImage(t *testing.T) {
+	s := fakeServer()
+	s.tools = append(s.tools, mcptool.New("thing_picture_get", "Get picture", "Returns a picture. Used by the adapter tests. Always succeeds.",
+		mcptool.Hints{ReadOnly: true, Local: true},
+		func(context.Context, struct{}) (any, error) {
+			return mcptool.File{Meta: map[string]string{"id": "a-1"}, MIMEType: "image/png", Data: []byte("\x89PNG\r\n\x1a\n")}, nil
+		}))
+	srv := httptest.NewServer(asCaller(s.handler(func(context.Context) (string, error) { return testInstanceURL, nil })))
+	t.Cleanup(srv.Close)
+	res, err := connect(t, srv.URL+"/mcp", revisions[0]).CallTool(t.Context(), &sdk.CallToolParams{Name: "thing_picture_get", Arguments: map[string]any{}})
+	require.NoError(t, err)
+	require.False(t, res.IsError)
+	require.Len(t, res.Content, 2)
+	img, ok := res.Content[1].(*sdk.ImageContent)
+	require.True(t, ok)
+	assert.Equal(t, []byte("\x89PNG\r\n\x1a\n"), img.Data)
+}
+
+func TestAdapter_TakesARequestTheSizeOfAnEncodedUpload(t *testing.T) {
+	session := connect(t, newTestEndpoint(t).URL+"/mcp", revisions[0])
+	encodedUpload := strings.Repeat("A", attachments.MaxSize/3*4)
+	res, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "thing_get", Arguments: map[string]any{"fail": encodedUpload}})
+	require.NoError(t, err)
+	assert.False(t, res.IsError)
 }

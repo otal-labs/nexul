@@ -86,6 +86,27 @@ func TestMarkdownToJSON_RoundTrip(t *testing.T) {
 	}
 }
 
+func TestMarkdownRoundTrip_KeepsSourceText(t *testing.T) {
+	tests := []struct {
+		name string
+		md   string
+	}{
+		{"code span with underscores", "call `ticket_list` then `memory_get`"},
+		{"code span with markdown punctuation", "use `*args`, `[x]`, `#tag`, `a~b` and `C:\\path`"},
+		{"prose underscores stay escaped", "plain ticket\\_list and `ticket_list`"},
+		{"table", "| Role | Nexul label | Meaning |\n| --- | --- | --- |\n| needs-triage | `needs_triage` | Needs evaluation |"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stored, err := Normalize(tt.md)
+			require.NoError(t, err)
+			back, err := ToMarkdown(stored)
+			require.NoError(t, err)
+			assert.Equal(t, tt.md, back)
+		})
+	}
+}
+
 func TestIsStructured(t *testing.T) {
 	assert.True(t, IsStructured(`{"type":"doc","content":[{"type":"paragraph"}]}`))
 	assert.True(t, IsStructured(`[{"type":"paragraph"}]`))
