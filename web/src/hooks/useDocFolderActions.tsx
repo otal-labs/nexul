@@ -8,7 +8,7 @@ import { DocFolderFormSchema, type DocFolder, type DocFolderFormData } from "@/m
 
 const moveLine = (n: number, to: string) => (n === 1 ? `1 doc moves to ${to}` : `${n} docs move to ${to}`);
 
-// A folder row's New doc, Rename, and Delete, each undefined without docs:write; Delete is never offered on the default folder.
+// A folder row's New doc, Rename, and Delete, each undefined without docs:write; the default folder offers only Rename, the header's + files there.
 export const useDocFolderActions = (folder: DocFolder, total: number) => {
   const canWrite = useHasPermission("docs:write");
   const onNewDoc = useCreateDocDialog(folder.project_id, folder.id);
@@ -34,7 +34,7 @@ export const useDocFolderActions = (folder: DocFolder, total: number) => {
   };
 
   return {
-    onNewDoc,
+    onNewDoc: folder.is_default ? undefined : onNewDoc,
     onRename: canWrite ? rename : undefined,
     onDelete: canWrite && !folder.is_default ? () => void remove() : undefined,
   };
