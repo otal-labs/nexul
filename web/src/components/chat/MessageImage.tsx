@@ -1,3 +1,5 @@
+import { ImageDialog } from "@/components/attachment/ImageDialog";
+
 import { useAttachmentBlob } from "@/hooks/AttachmentHooks";
 
 interface MessageImageProps {
@@ -20,9 +22,7 @@ export const MessageImage = ({ src, alt }: MessageImageProps) => {
         </span>
       )}
       {!error && blobUrl && (
-        <a href={blobUrl} target="_blank" rel="noreferrer" className="inline-block">
-          <img src={blobUrl} alt={alt} className="max-h-64 max-w-full rounded-md border border-border" />
-        </a>
+        <ImageDialog src={blobUrl} alt={alt} link={src} className="max-h-64 max-w-full rounded-md border border-border" />
       )}
       {!error && !blobUrl && (
         <span
