@@ -178,6 +178,13 @@ and edited live in a dialog. Built and walked through on a real install;
 the phone check and one editor fix remain, tracked in `.scratch/ticket-flow/`.
 Docs, ticket bodies, memories, and notes also gained editable tables.
 
+In progress: **T3 Code orchestrator V2**. A computer whose T3 Code moves to
+T3's new orchestrator keeps working without re-pairing, and never goes back.
+An agent that hands work to other agents replies with the finished result,
+and each helper shows as a pill on the reply that opens its conversation.
+OpenCode 2 runs as a provider inside T3 Code, so it needs no harness of its
+own. Tracked in `.scratch/t3-orchestrator-v2/`.
+
 Parked until the repository migration lands: **bots**, webhook-driven bots
 that post into any conversation with Discord's payload and get their own tab
 in Settings. The wayfinder map in `.scratch/bots/` has the Discord contract,
@@ -232,9 +239,6 @@ without changing the core architecture.
   health-check probe was dropped with nothing replacing it); a requested
   review notifies nobody, though sign-in already guarantees every user a
   linked provider identity to notify.
-- **Second agent harness (OpenCode 2)** — once OpenCode 2 leaves beta. The
-  seam is in place (`internal/harness`, ADR 0054): implement `harness.Client`
-  for it, register the kind, and let the pair form pick a kind.
 
 **Exit criterion:** agents connect from the desktop app with a connection token.
 

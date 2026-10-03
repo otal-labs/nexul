@@ -1,5 +1,5 @@
-// Package t3rpctest is a fake T3 Code server every T3 client's tests share: the wsTicket mint, the /ws Effect RPC
-// socket, and the environment descriptor.
+// Package t3rpctest is a fake T3 Code server every T3 client's tests share: the pairing exchange, the wsTicket mint,
+// the /ws Effect RPC socket, and the environment descriptor.
 package t3rpctest
 
 import (
@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -33,7 +34,13 @@ type Server struct {
 	// negotiation does. From 2 the /ws dial needs a matching orchestrationProtocol query, or it is refused with 426.
 	Protocol int
 
+	// PairToken is the one-time `t3 pair` token /oauth/token accepts, once.
+	PairToken string
+	// Exchanges counts /oauth/token requests, spent or refused.
+	Exchanges atomic.Int32
+
 	ConfigCalls atomic.Int32
+	Dialed      chan url.Values     // query of each /ws dial, the ticket left out
 	Subscribed  chan string         // requestId of each subscribeThread stream
 	SubscribeIn chan map[string]any // payload of each subscribeThread request
 	Acks        chan string         // requestId of each Ack frame received
@@ -43,6 +50,9 @@ type Server struct {
 
 	connMu sync.Mutex
 	conn   *websocket.Conn
+
+	pairMu    sync.Mutex
+	pairSpent bool
 }
 
 type clientEnv struct {
@@ -59,12 +69,15 @@ func New(t testing.TB) *Server {
 		bearer:      "bearer-token",
 		ticket:      "ws-ticket-1",
 		TicketField: "ticket",
+		PairToken:   "pair-token",
+		Dialed:      make(chan url.Values, 8),
 		Subscribed:  make(chan string, 4),
 		SubscribeIn: make(chan map[string]any, 4),
 		Acks:        make(chan string, 16),
 		Dispatched:  make(chan map[string]any, 16),
 	}
 	mux := http.NewServeMux()
+	mux.HandleFunc("/oauth/token", f.handleExchange)
 	mux.HandleFunc("/api/auth/websocket-ticket", f.handleTicket)
 	mux.HandleFunc("/ws", f.handleWS)
 	mux.HandleFunc("/.well-known/t3/environment", func(w http.ResponseWriter, _ *http.Request) {
@@ -86,6 +99,21 @@ func (f *Server) descriptor() map[string]any {
 		d["orchestrationProtocolVersion"] = f.Protocol
 	}
 	return d
+}
+
+// handleExchange spends PairToken on its first exchange, as T3 does with a one-time token.
+func (f *Server) handleExchange(w http.ResponseWriter, r *http.Request) {
+	f.Exchanges.Add(1)
+	f.pairMu.Lock()
+	ok := r.PostFormValue("subject_token") == f.PairToken && !f.pairSpent
+	f.pairSpent = f.pairSpent || ok
+	f.pairMu.Unlock()
+	if !ok {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]any{"error": "invalid_grant"})
+		return
+	}
+	_ = json.NewEncoder(w).Encode(map[string]any{"access_token": f.bearer, "token_type": "Bearer", "expires_in": 2592000})
 }
 
 func (f *Server) handleTicket(w http.ResponseWriter, r *http.Request) {
@@ -112,6 +140,12 @@ func (f *Server) refuseProtocol(w http.ResponseWriter, r *http.Request) bool {
 }
 
 func (f *Server) handleWS(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+	query.Del("wsTicket")
+	select {
+	case f.Dialed <- query:
+	default:
+	}
 	if f.refuseProtocol(w, r) {
 		return
 	}
@@ -149,7 +183,10 @@ func (f *Server) handleRequest(env clientEnv) {
 	switch env.RPCTag {
 	case "server.getConfig":
 		f.ConfigCalls.Add(1)
-		f.Write(ExitSuccess(idString(env.ID), map[string]any{"ok": true, "environment": f.descriptor()}))
+		f.Write(ExitSuccess(idString(env.ID), map[string]any{"environment": f.descriptor(), "providers": []map[string]any{{
+			"instanceId": "claudeAgent", "driver": "claudeAgent", "displayName": "Claude", "enabled": true, "installed": true,
+			"version": "2.1.288", "models": []map[string]any{{"slug": "claude-opus-5-5", "name": "Claude Opus 5.5", "isDefault": true}},
+		}}}))
 	case "orchestration.dispatchCommand":
 		f.handleDispatch(env)
 	case "orchestration.subscribeThread":
@@ -163,17 +200,29 @@ func (f *Server) handleRequest(env clientEnv) {
 		}
 		f.Subscribed <- idString(env.ID)
 	case "orchestration.subscribeShell":
-		f.Write(Chunk(idString(env.ID), map[string]any{"kind": "snapshot", "snapshot": map[string]any{
-			"snapshotSequence": 1,
-			"projects": []map[string]any{
-				{"id": "proj-live", "title": "My App", "workspaceRoot": "/home/me/app", "deletedAt": nil},
-				{"id": "proj-gone", "title": "Old", "deletedAt": "2026-01-01T00:00:00Z"},
-				{"id": "proj-two", "title": "Second", "workspaceRoot": "/home/me/second"},
-			},
-		}}))
+		f.writeShell(idString(env.ID))
 	default:
 		f.t.Errorf("fake: unexpected RPC %q", env.RPCTag)
 	}
+}
+
+// writeShell sends the shell snapshot; from protocol 2 it is schemaVersion 2 and a second snapshot follows.
+func (f *Server) writeShell(requestID string) {
+	snapshot := map[string]any{
+		"snapshotSequence": 1,
+		"projects": []map[string]any{
+			{"id": "proj-live", "title": "My App", "workspaceRoot": "/home/me/app", "deletedAt": nil},
+			{"id": "proj-gone", "title": "Old", "deletedAt": "2026-01-01T00:00:00Z"},
+			{"id": "proj-two", "title": "Second", "workspaceRoot": "/home/me/second"},
+		},
+	}
+	if f.Protocol < 2 {
+		f.Write(Chunk(requestID, map[string]any{"kind": "snapshot", "snapshot": snapshot}))
+		return
+	}
+	snapshot["schemaVersion"] = 2
+	f.Write(Chunk(requestID, map[string]any{"kind": "snapshot", "snapshot": snapshot}))
+	f.Write(Chunk(requestID, map[string]any{"kind": "snapshot", "snapshot": snapshot, "resolvedRepositoryIdentityRoots": []string{"/home/me/app"}}))
 }
 
 func (f *Server) handleDispatch(env clientEnv) {

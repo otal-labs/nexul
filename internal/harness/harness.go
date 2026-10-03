@@ -4,6 +4,7 @@ package harness
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -15,8 +16,25 @@ import (
 // Kind names a harness implementation; it is stored on every paired computer and picks the Client from a Registry.
 type Kind string
 
-// KindT3Code is the T3 Code desktop app's server.
-const KindT3Code Kind = "t3code"
+const (
+	// KindT3Code is the T3 Code desktop app's server on orchestration protocol 1.
+	KindT3Code Kind = "t3code"
+	// KindT3CodeV2 is the same server once it runs T3's orchestrator V2, protocol 2.
+	KindT3CodeV2 Kind = "t3code-v2"
+)
+
+// ErrProtocol marks a harness speaking a protocol Nexul cannot follow; the refusal's text is the message to show.
+var ErrProtocol = errors.New("unsupported harness protocol")
+
+// ProtocolRefusal is an error matching ErrProtocol whose text is msg alone, so callers show it as is.
+func ProtocolRefusal(msg string) error {
+	return protocolRefusal(msg)
+}
+
+type protocolRefusal string
+
+func (r protocolRefusal) Error() string { return string(r) }
+func (protocolRefusal) Unwrap() error   { return ErrProtocol }
 
 // Session is what every authenticated call needs to reach one paired computer; BearerToken is plaintext here.
 type Session struct {
@@ -30,6 +48,8 @@ type PairResult struct {
 	BearerToken string
 	ExpiresIn   time.Duration
 	Version     string
+	// Kind is the client the pairing landed on, which a caller stores on the computer.
+	Kind Kind
 }
 
 // Project is one entry of a computer's project registry, for the settings UI's picker.
