@@ -1,0 +1,6 @@
+{"dir":"dial","path":"/ws","query":{"orchestrationProtocol":"2"}}
+{"dir":"send","frame":{"_tag":"Request","id":"1","tag":"orchestration.subscribeShell","payload":{},"headers":[]}}
+{"dir":"recv","frame":{"_tag":"Chunk","requestId":"1","values":[{"kind":"snapshot","snapshot":{"schemaVersion":2,"snapshotSequence":1,"threads":[],"archivedThreads":[],"projects":[{"id":"pr-1","title":"demo","workspaceRoot":"/workspace/demo","repositoryIdentity":null,"defaultModelSelection":null,"defaultThreadEnvMode":null,"autoPull":false,"faviconPath":null,"projectIcon":null,"scripts":[],"createdAt":"2026-10-03T15:10:57.444Z","updatedAt":"2026-10-03T15:10:57.444Z"}]}}]}}
+{"dir":"recv","frame":{"_tag":"Chunk","requestId":"1","values":[{"kind":"snapshot","snapshot":{"schemaVersion":2,"snapshotSequence":1,"threads":[],"archivedThreads":[],"projects":[{"id":"pr-1","title":"demo","workspaceRoot":"/workspace/demo","repositoryIdentity":null,"defaultModelSelection":null,"defaultThreadEnvMode":null,"autoPull":false,"faviconPath":null,"projectIcon":null,"scripts":[],"createdAt":"2026-10-03T15:10:57.444Z","updatedAt":"2026-10-03T15:10:57.444Z"}]},"resolvedRepositoryIdentityRoots":["/workspace/demo"]}]}}
+{"dir":"send","frame":{"_tag":"Interrupt","requestId":"1"}}
+{"dir":"recv","frame":{"_tag":"Exit","requestId":"1","exit":{"_tag":"Failure","cause":[{"_tag":"Interrupt","fiberId":4309}]}}}
