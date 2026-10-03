@@ -146,7 +146,8 @@ at a time by the Interview play and answered by a person, with the agent
 able to read the codebase for answers first. Its questions start from the
 workspace's Interview template, which is the instance template until the
 workspace edits its own. It happens in the project's interview
-thread, a conversation of its own shown on the project's Interview page.
+thread, a conversation of its own that no page shows; the project's Interview
+page holds the questions, their stored answers, and the memory.
 Re-running it amends the interview memory rather than starting over.
 The interview's answers are stored per project, one per question, apart from
 the interview memory: deleting the memory keeps them, deleting the project

@@ -19,7 +19,7 @@ import { getProjectAccessKey } from "@/hooks/ProjectHooks";
 import { followWorkspaceUpdate, getMyRoleKey, getWorkspacesKey } from "@/hooks/WorkspaceHooks";
 import { getTeamKey } from "@/models/Team";
 import type { MyWorkspaceInfo } from "@/models/Permission";
-import { getMemoriesKey, getMemoryKey, getMemoryVersionsKey } from "@/hooks/MemoryHooks";
+import { getInterviewAnswersKey, getMemoriesKey, getMemoryKey, getMemoryVersionsKey } from "@/hooks/MemoryHooks";
 import { getNotificationsKey, getUnreadCountKey } from "@/hooks/NotificationHooks";
 import { getMeKey, getPATsKey, getSessionsKey } from "@/hooks/AuthHooks";
 import { getAttachmentsKey } from "@/hooks/AttachmentHooks";
@@ -146,6 +146,8 @@ const pushTopics: Record<string, string[]> = {
   "memory.created": [getMemoriesKey],
   "memory.updated": [getMemoriesKey, getMemoryKey, getMemoryVersionsKey],
   "memory.deleted": [getMemoriesKey, getMemoryKey],
+  "interview_answer.saved": [getInterviewAnswersKey],
+  "interview_answer.cleared": [getInterviewAnswersKey],
   // The Team list and a person's detail follow account and membership changes made anywhere, MCP included.
   "account.admitted": [getTeamKey],
   "account.disabled": [getTeamKey],
