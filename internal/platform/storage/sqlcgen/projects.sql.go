@@ -131,6 +131,47 @@ func (q *Queries) GetProjectRepoByOwnerAndName(ctx context.Context, arg GetProje
 	return i, err
 }
 
+const listAllProjectRepos = `-- name: ListAllProjectRepos :many
+SELECT owner, name, full_name, connector_id, role FROM project_repos ORDER BY full_name
+`
+
+type ListAllProjectReposRow struct {
+	Owner       string
+	Name        string
+	FullName    string
+	ConnectorID string
+	Role        string
+}
+
+func (q *Queries) ListAllProjectRepos(ctx context.Context) ([]ListAllProjectReposRow, error) {
+	rows, err := q.db.QueryContext(ctx, listAllProjectRepos)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAllProjectReposRow
+	for rows.Next() {
+		var i ListAllProjectReposRow
+		if err := rows.Scan(
+			&i.Owner,
+			&i.Name,
+			&i.FullName,
+			&i.ConnectorID,
+			&i.Role,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listProjectRepos = `-- name: ListProjectRepos :many
 SELECT owner, name, full_name, connector_id, role FROM project_repos WHERE project_id = ? ORDER BY name
 `
