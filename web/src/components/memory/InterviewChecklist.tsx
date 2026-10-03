@@ -19,6 +19,7 @@ export const InterviewChecklist = ({ projectId }: InterviewChecklistProps) => {
   const template = useFetchInterviewTemplate(workspaceId);
   const answers = useFetchInterviewAnswers(projectId);
   const { data: memories } = useFetchMemoriesByProject(projectId);
+  const hasMemory = !!memories && hasInterview(memories, projectId);
   const isPending = template.isPending || answers.isPending;
   const error = template.error ?? answers.error;
   const sections = useMemo(
@@ -35,7 +36,8 @@ export const InterviewChecklist = ({ projectId }: InterviewChecklistProps) => {
           projectId={projectId}
           sections={sections}
           readOnly={!canWrite}
-          memoryWithoutAnswers={answers.data?.length === 0 && !!memories && hasInterview(memories, projectId)}
+          hasMemory={hasMemory}
+          memoryWithoutAnswers={answers.data?.length === 0 && hasMemory}
         />
       )}
     </div>
