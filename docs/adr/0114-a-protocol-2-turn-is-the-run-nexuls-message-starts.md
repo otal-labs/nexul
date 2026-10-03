@@ -34,6 +34,16 @@ Decision: Nexul mints the message id, and the turn is the run whose `userMessage
   any end of the stream, a defect such as `LiveStreamBufferError` included, resubscribes after the cursor, up to three
   times in a row with backoff, and then the turn ends in error. A reconnect that finds T3 Code on another protocol
   ends the turn at once: "T3 Code was updated during this turn; ask again".
+- **Stop.** Stop acts on the run of the turn watching the thread. Only when no turn is watching, or T3 has no run for
+  its message, does it fall back to the thread's newest unfinished run. A queued run is cancelled. A live one gets
+  `run.interrupt` without `holdQueue`: T3's own Stop sends it, and it would hold every later Nexul message until
+  someone resumes the queue in T3. A `waiting` run has already replied; only the thread's latest one can still have
+  background work to stop, and T3 calling it not interruptible means nothing is left. With nothing to stop, Stop is a
+  conflict. A turn that stops watching while its run is still queued cancels that run, since nobody would read its
+  reply.
+- **Answers.** A question is answered with `runtime-request.respond`, keyed by question id. A request T3 resumes by
+  dispatching the answer as a message of its own (`responseCapability` `message`) takes one non-empty string per
+  question, with multi-select choices joined by ", ".
 
 Rejected: ending the turn at `completed`, which adds checkpoint latency to every reply and hangs when the capture
 target is incomplete; following every run on the thread, which would reply to T3's own wakes, watches and schedules

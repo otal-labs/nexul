@@ -49,6 +49,9 @@ type Server struct {
 	DispatchCause any
 	// CommandCauses fails only the dispatchCommands of the command types it names; set it before connect.
 	CommandCauses map[string]any
+	// Projection is what orchestration.getThreadProjection answers, unless ProjectionCause fails it; set before connect.
+	Projection      any
+	ProjectionCause any
 
 	connMu sync.Mutex
 	conn   *websocket.Conn
@@ -192,6 +195,12 @@ func (f *Server) handleRequest(env clientEnv) {
 		}}}))
 	case "orchestration.dispatchCommand":
 		f.handleDispatch(env)
+	case "orchestration.getThreadProjection":
+		if f.ProjectionCause != nil {
+			f.fail(idString(env.ID), f.ProjectionCause)
+			return
+		}
+		f.Write(ExitSuccess(idString(env.ID), f.Projection))
 	case "orchestration.subscribeThread":
 		var in map[string]any
 		if err := json.Unmarshal(env.Payload, &in); err != nil {
@@ -239,12 +248,16 @@ func (f *Server) handleDispatch(env clientEnv) {
 		cause = c
 	}
 	if cause != nil {
-		f.Write(map[string]any{"_tag": "Exit", "requestId": idString(env.ID),
-			"exit": map[string]any{"_tag": "Failure", "cause": cause}})
+		f.fail(idString(env.ID), cause)
 		return
 	}
 	f.Write(ExitSuccess(idString(env.ID), map[string]any{"sequence": 1}))
 	f.Dispatched <- cmd
+}
+
+// fail ends requestID with an Effect Failure carrying cause.
+func (f *Server) fail(requestID string, cause any) {
+	f.Write(map[string]any{"_tag": "Exit", "requestId": requestID, "exit": map[string]any{"_tag": "Failure", "cause": cause}})
 }
 
 // Write pushes one frame to the connected client.
