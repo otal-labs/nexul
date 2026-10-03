@@ -302,7 +302,6 @@ func mapPREvent(e *githubapi.PullRequestEvent) (PREvent, bool) {
 			Title:           p.GetTitle(),
 			Body:            p.GetBody(),
 			State:           PRState(p.GetState()),
-			Merged:          p.GetMerged(),
 			HeadSHA:         p.GetHead().GetSHA(),
 			BaseBranch:      p.GetBase().GetRef(),
 			Author:          p.GetUser().GetLogin(),

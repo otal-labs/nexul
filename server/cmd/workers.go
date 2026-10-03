@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/otal-labs/nexul/internal/automations"
-	"github.com/otal-labs/nexul/internal/gitprovider"
 	"github.com/otal-labs/nexul/internal/platform/config"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/inprocess"
 	"github.com/otal-labs/nexul/internal/platform/eventbus/outbox"
@@ -27,8 +26,6 @@ func startBackgroundWorkers(ctx context.Context, cfg *config.Config, store *stor
 	}()
 	// The sole occupancy feed on localhost/dev, where LiveKit's webhook can't reach back to this instance.
 	go svc.voiceSvc.RunReconciliation(ctx, logger)
-	// Merges reach linked tickets even when the git host's webhook is off or cannot reach this instance.
-	go gitprovider.RunPRReconciliation(ctx, openPRLister{svc: svc.ticketsSvc}, sweepPRReader{router: svc.gitRouter}, bus, logger)
 	// Cloudflare never pushes connector status, so a computer mid-pairing is polled and each change pushed live.
 	go svc.pairingSvc.RunTunnelWatch(ctx)
 

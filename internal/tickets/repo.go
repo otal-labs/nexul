@@ -90,8 +90,6 @@ type Repo interface {
 	ListPRLinksBatch(ctx context.Context, ids []string) (map[string][]PRLink, error)
 	// MarkPRState returns the ids of tickets affected by the PR identity, for the completion fan-out (ADR 0021).
 	MarkPRState(ctx context.Context, owner, repo string, number int, state PRState) ([]string, error)
-	// ListOpenPRs returns each PR identity some ticket still links as open, once.
-	ListOpenPRs(ctx context.Context) ([]PRRef, error)
 	// ListIDsByPR returns the ids of the tickets linked to one PR.
 	ListIDsByPR(ctx context.Context, owner, repo string, number int) ([]string, error)
 	// SetFinishedAt returns false if already set, keeping ticket.finished exactly-once.
