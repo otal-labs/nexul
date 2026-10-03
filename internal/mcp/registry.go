@@ -9,6 +9,7 @@ import (
 	"slices"
 
 	"github.com/otal-labs/nexul/internal/access"
+	"github.com/otal-labs/nexul/internal/attachments"
 	"github.com/otal-labs/nexul/internal/auth"
 	"github.com/otal-labs/nexul/internal/automations"
 	"github.com/otal-labs/nexul/internal/chat"
@@ -38,6 +39,7 @@ import (
 // RegistryOptions wires every domain use-case layer the MCP adapter exposes (ADR 0019).
 type RegistryOptions struct {
 	Docs          *docs.Service
+	Attachments   *attachments.Service
 	Memories      *memories.Service
 	Templates     *templates.Service
 	Tickets       *tickets.Service
@@ -91,6 +93,7 @@ func New(opts RegistryOptions) http.Handler {
 func registryTools(opts RegistryOptions) []mcptool.Tool {
 	return slices.Concat(
 		docs.MCPTools(opts.Docs),
+		composite.AttachmentTools(opts.Attachments, opts.Tickets),
 		memories.MCPTools(opts.Memories),
 		templates.MCPTools(opts.Templates),
 		composite.TicketTools(opts.Tickets, opts.Workspace, opts.Reviews),

@@ -246,6 +246,14 @@ edited. Message and file are one thing: deleting the message deletes the
 file. The body stays the ticket's spec and changes only when a person asks.
 _Avoid_: Comment, addendum, memory (a memory is written for agents)
 
+**Attachment**:
+A file uploaded onto exactly one doc, ticket, conversation, or memory, and
+embedded in a body or message by its `/api/attachments/<id>` link: a raster
+image renders inline, any other file is a download link. Reading one takes
+read on its owner, uploading one takes change; people and agents (through
+`attachment_create` and `attachment_get`) share the same 10 MiB cap.
+_Avoid_: Upload, asset, blob
+
 **Reaction**:
 One person's emoji on a chat message, shown as a chip with the emoji and how
 many reacted with it. Anyone who reads the conversation may react; reacting

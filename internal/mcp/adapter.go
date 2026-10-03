@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"net/http"
 	"runtime/debug"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -18,6 +19,7 @@ import (
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 	"golang.org/x/time/rate"
 
+	"github.com/otal-labs/nexul/internal/attachments"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/identity"
 	"github.com/otal-labs/nexul/internal/platform/logging"
@@ -73,6 +75,7 @@ func (s server) handler(instanceURL func(context.Context) (string, error)) http.
 		Stateless:                    true,
 		JSONResponse:                 true,
 		PropagateRequestCancellation: true,
+		MaxRequestBodyBytes:          maxRequestBody,
 		// Bearer auth on every request makes DNS rebinding useless, and the guard would 403 a same-host reverse proxy.
 		DisableLocalhostProtection: true,
 	})
@@ -104,6 +107,9 @@ func recoverPanics(logger *slog.Logger) sdk.Middleware {
 		}
 	}
 }
+
+// maxRequestBody fits attachment_create carrying a whole upload as base64, so an agent's cap matches a person's.
+const maxRequestBody = attachments.MaxSize/3*4 + 1<<20
 
 func sdkTool(t mcptool.Tool) *sdk.Tool {
 	// A read changes nothing, so it is neither destructive nor at risk from a repeat, whatever the other hints say.
@@ -149,13 +155,13 @@ func toolHandler(t mcptool.Tool, limits *limiters, logger *slog.Logger) sdk.Tool
 			log.Info("mcp tool call refused", "duration", time.Since(start), "outcome", errorClass(err))
 			return errorResult(message), nil
 		}
-		text, err := resultText(out)
+		content, err := resultContent(out)
 		if err != nil {
 			log.Error("mcp tool result not serializable", "err", err)
 			return errorResult(internalMessage(traceID)), nil
 		}
 		log.Info("mcp tool call", "duration", time.Since(start))
-		return &sdk.CallToolResult{Content: []sdk.Content{&sdk.TextContent{Text: text}}}, nil
+		return &sdk.CallToolResult{Content: content}, nil
 	}
 }
 
@@ -189,6 +195,35 @@ func errorClass(err error) string {
 
 func internalMessage(traceID string) string {
 	return "internal error (trace " + traceID + ")"
+}
+
+func resultContent(out any) ([]sdk.Content, error) {
+	f, isFile := out.(mcptool.File)
+	if isFile {
+		out = f.Meta
+	}
+	text, err := resultText(out)
+	if err != nil {
+		return nil, err
+	}
+	content := []sdk.Content{&sdk.TextContent{Text: text}}
+	if !isFile {
+		return content, nil
+	}
+	return append(content, fileContent(f)), nil
+}
+
+// modelImageTypes are the image formats model APIs accept; any other image travels as a blob.
+var modelImageTypes = []string{"image/png", "image/jpeg", "image/gif", "image/webp"}
+
+func fileContent(f mcptool.File) sdk.Content {
+	if slices.Contains(modelImageTypes, f.MIMEType) {
+		return &sdk.ImageContent{Data: f.Data, MIMEType: f.MIMEType}
+	}
+	if strings.HasPrefix(f.MIMEType, "text/") {
+		return &sdk.TextContent{Text: string(f.Data)}
+	}
+	return &sdk.EmbeddedResource{Resource: &sdk.ResourceContents{URI: f.URI, MIMEType: f.MIMEType, Blob: f.Data}}
 }
 
 func resultText(out any) (string, error) {
