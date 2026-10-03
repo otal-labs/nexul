@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { toast } from "sonner";
+import { useShallow } from "zustand/react/shallow";
 
 import { api, errorMessage } from "@/api/client";
 import { useFetchDocsByProject } from "@/hooks/DocHooks";
@@ -9,7 +10,7 @@ import { conversationPlayTarget, type Conversation } from "@/models/Chat";
 import type { PlayType } from "@/models/Play";
 import type { QuestionAnswers } from "@/models/Question";
 import { DECISIONS_CHECK_PLAY_ID, isTrailActive, mergeLiveSteps, type ActivityEntry, type LatestChoices, type RunPlayInput, type Trail, type TrailQuestion, type TrailState } from "@/models/Trail";
-import { targetKey, usePlayRunStore } from "@/stores/playRunStore";
+import { targetKey, usePlayRunStore, type PlayRunStore } from "@/stores/playRunStore";
 import { threadTrailBlocks, type ThreadTrailBlocks } from "@/utils/ThreadTrailUtility";
 
 export const getTrailsKey = "getTrails";
@@ -194,18 +195,33 @@ export const useActiveTrail = (targetType: PlayType, targetId: string): Trail | 
 };
 
 // Joins the on-load batch answer with live frames so a start, a question, or an end flips it without a refetch.
-const useRunState = (targetType: PlayType, targetId: string, known: ActiveTargets | undefined): TrailState | undefined => {
-  const liveTrailId = usePlayRunStore((s) => s.activeByTarget[targetKey(targetType, targetId)]);
-  const trailId = liveTrailId ?? known?.active[targetId];
-  const frameState = usePlayRunStore((s) => (trailId ? s.frames[trailId]?.state : undefined));
+const runStateOf = (s: PlayRunStore, targetType: PlayType, targetId: string, known: ActiveTargets | undefined): TrailState | undefined => {
+  const trailId = s.activeByTarget[targetKey(targetType, targetId)] ?? known?.active[targetId];
   if (!trailId) return undefined;
-  const state = frameState ?? (known?.waiting[targetId] === trailId ? "waiting" : "running");
+  const state = s.frames[trailId]?.state ?? (known?.waiting[targetId] === trailId ? "waiting" : "running");
   return isTrailActive(state) ? state : undefined;
 };
+
+const useRunState = (targetType: PlayType, targetId: string, known: ActiveTargets | undefined): TrailState | undefined =>
+  usePlayRunStore((s) => runStateOf(s, targetType, targetId, known));
 
 // The board card's question: no run, a run going, or a run waiting on an answer.
 export const useTicketRunState = (projectId: string, ticketId: string): TrailState | undefined =>
   useRunState("ticket", ticketId, useFetchActiveTrails(projectId).data);
+
+// A swimlane header's question: how many of its tickets have a run going, and how many wait on an answer.
+export const useTicketRunCounts = (projectId: string | undefined, ticketIds: string[]) => {
+  const known = useFetchActiveTrails(projectId).data;
+  return usePlayRunStore(
+    useShallow((s) => {
+      const states = ticketIds.map((id) => runStateOf(s, "ticket", id, known));
+      return {
+        running: states.filter((state) => state !== undefined && state !== "waiting").length,
+        waiting: states.filter((state) => state === "waiting").length,
+      };
+    }),
+  );
+};
 
 // The doc list row's question.
 export const useDocRunState = (projectId: string, docId: string): TrailState | undefined =>
