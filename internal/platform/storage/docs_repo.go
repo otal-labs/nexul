@@ -175,7 +175,7 @@ func (r *DocsRepo) Delete(ctx context.Context, id string, evts ...eventbus.Outbo
 	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
 		n, err := r.q.WithTx(tx).DeleteDoc(ctx, id)
 		if err != nil {
-			return fmt.Errorf("delete doc %s: %w", id, err)
+			return fmt.Errorf("delete doc %s: %w", id, classifyWriteErr(err))
 		}
 		if n == 0 {
 			return fmt.Errorf("delete doc %s: %w", id, apperrs.ErrNotFound)
