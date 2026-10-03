@@ -209,6 +209,8 @@ type Service struct {
 type activeTurn struct {
 	client harness.Client
 	target harness.Target
+	// answered wakes the turn's silence window once an answer has reached the harness.
+	answered chan struct{}
 }
 
 // NewService wires the agent pipeline.
@@ -256,8 +258,8 @@ type messageCreatedPayload struct {
 // mentionAgentKind mirrors chat.MentionAgent's wire value.
 const mentionAgentKind = "agent"
 
-// maxTurnDuration bounds a turn; hitting it means the completion signal was lost, not a slow turn.
-const maxTurnDuration = 10 * time.Minute
+// chatSilence ends a chat turn whose harness has sent nothing for this long; a turn that keeps reporting has no ceiling.
+const chatSilence = 15 * time.Minute
 
 // HandleMessageCreated is the chat.message.created bus subscription.
 func (s *Service) HandleMessageCreated(_ context.Context, ev eventbus.Event) error {
@@ -270,13 +272,16 @@ func (s *Service) HandleMessageCreated(_ context.Context, ev eventbus.Event) err
 		return nil
 	}
 	// ponytail: fire-and-forget, a turn runs minutes and must not block the bus handler.
-	go func() {
-		// A hung subscription must surface as a system message, not fail silently forever.
-		ctx, cancel := context.WithTimeout(context.Background(), maxTurnDuration)
-		defer cancel()
-		s.RunTurn(ctx, TurnRequest{ConversationID: p.Message.ConversationID, ViaUserID: p.Message.AuthorID, RequestBody: p.Message.Body})
-	}()
+	go s.runChatTurn(TurnRequest{ConversationID: p.Message.ConversationID, ViaUserID: p.Message.AuthorID, RequestBody: p.Message.Body})
 	return nil
+}
+
+// runChatTurn runs a chat-started turn under chat's silence window; cancelling on return releases a turn the window ended.
+func (s *Service) runChatTurn(req TurnRequest) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	req.Silence = chatSilence
+	s.RunTurn(ctx, req)
 }
 
 func mentionsAgent(mentions []mentionPayload) bool {
@@ -300,6 +305,8 @@ type TurnRequest struct {
 	Target *TargetOverride
 	// Observer is optional; nil means nobody keeps a record beyond the conversation itself.
 	Observer Observer
+	// Silence ends the turn after this long without a harness update, paused while a question waits; zero means the caller times it.
+	Silence time.Duration
 }
 
 // RunTurn runs one Agent turn and blocks until it ends; every failure surfaces as a system message or a log line.
@@ -324,7 +331,10 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 		projectID = conv.ProjectID
 	}
 
-	target, err := s.resolveTarget(ctx, viaUserID, projectID, req.Target)
+	// Failure posts stay on ctx: the window cancels setupCtx when it cuts setup off, and a post on it would fail.
+	setupCtx, disarm := setupWindow(ctx, req.Silence)
+	defer disarm()
+	target, err := s.resolveTarget(setupCtx, viaUserID, projectID, req.Target)
 	if err != nil {
 		s.replyNotConfigured(ctx, conversationID, viaUserID, err)
 		failed(err.Error())
@@ -337,7 +347,7 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 		failed(reason)
 		return
 	}
-	s.warnVersionIfChanged(ctx, conversationID, viaUserID, client, target.Computer)
+	s.warnVersionIfChanged(setupCtx, conversationID, viaUserID, client, target.Computer)
 
 	prompts, sentThrough, err := s.buildTurnPrompts(ctx, conv, thread, projectID, req)
 	if err != nil {
@@ -348,7 +358,7 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 
 	title := threadTitle(conv, thread)
 
-	turn := activeTurn{client: client, target: harness.Target{
+	turn := activeTurn{client: client, answered: make(chan struct{}, 1), target: harness.Target{
 		Session:      target.Computer.Session(),
 		ProjectID:    target.HarnessProjectID,
 		Provider:     target.Provider,
@@ -359,8 +369,12 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 	s.setActive(conversationID, turn)
 	defer s.endTurn(ctx, conv, &turn)
 
-	result, err := client.StartTurn(ctx, turn.target, title, prompts)
+	result, err := client.StartTurn(setupCtx, turn.target, title, prompts)
+	disarm()
 	if err != nil {
+		if setupCtx.Err() != nil && ctx.Err() == nil {
+			err = context.Cause(setupCtx)
+		}
 		s.postSystemMessage(ctx, conversationID, viaUserID, fmt.Sprintf("Agent turn failed to start: %v", err))
 		failed(err.Error())
 		return
@@ -369,9 +383,19 @@ func (s *Service) RunTurn(ctx context.Context, req TurnRequest) {
 	s.markSent(ctx, conversationID, sentThrough)
 	obs.OnStarted(turn.target.SessionID)
 
-	finalText, term := s.drainTurn(ctx, conversationID, viaUserID, result.Updates, obs)
+	finalText, term := s.drainTurn(ctx, conversationID, viaUserID, result.Updates, obs, newSilenceWindow(req.Silence, turn.answered))
 
 	s.finishTurn(ctx, conversationID, viaUserID, finalText, term, obs)
+}
+
+// setupWindow cuts off the harness calls made before the stream exists, which have no HTTP timeout, after d; zero is no bound.
+func setupWindow(ctx context.Context, d time.Duration) (context.Context, func() bool) {
+	if d <= 0 {
+		return ctx, func() bool { return false }
+	}
+	bounded, cancel := context.WithCancelCause(ctx)
+	t := time.AfterFunc(d, func() { cancel(fmt.Errorf("the harness did not answer within %s", d)) })
+	return bounded, t.Stop
 }
 
 // threadTitle names a freshly created harness session after what the conversation is about, never its raw id.
@@ -576,7 +600,7 @@ func (s *Service) announceTurnStarted(ctx context.Context, conversationID, prior
 }
 
 // drainTurn reads a turn's updates to completion, forwarding snapshots and approvals live.
-func (s *Service) drainTurn(ctx context.Context, conversationID, viaUserID string, updates <-chan harness.Update, obs Observer) (finalText string, term *harness.TurnResult) {
+func (s *Service) drainTurn(ctx context.Context, conversationID, viaUserID string, updates <-chan harness.Update, obs Observer, window *silenceWindow) (finalText string, term *harness.TurnResult) {
 	frame := StreamFrame{ConversationID: conversationID, Streaming: true}
 	publish := func() {
 		if err := s.live.Publish(ctx, TopicAgentStream, frame); err != nil {
@@ -585,16 +609,12 @@ func (s *Service) drainTurn(ctx context.Context, conversationID, viaUserID strin
 	}
 	var seg textSegments
 	for {
-		var u harness.Update
-		var ok bool
-		select {
-		case u, ok = <-updates:
-			if !ok {
-				return finalText, term
-			}
-		case <-ctx.Done():
-			return finalText, &harness.TurnResult{State: harness.TurnError, LastError: fmt.Sprintf(
-				"turn gave no completion signal within %s — the harness may have finished without our client seeing it; check the server log's harness client warnings", maxTurnDuration)}
+		u, end, ok := window.receive(ctx, updates)
+		if end != nil {
+			return finalText, end
+		}
+		if !ok {
+			return finalText, term
 		}
 		switch {
 		case u.Snapshot != nil:
@@ -632,6 +652,61 @@ func (s *Service) drainTurn(ctx context.Context, conversationID, viaUserID strin
 			term = u.Terminal
 		}
 	}
+}
+
+// silenceWindow ends a turn after d without a harness update; a question pauses it until answered, and a zero d never fires.
+type silenceWindow struct {
+	d        time.Duration
+	timer    *time.Timer
+	paused   bool
+	answered <-chan struct{}
+}
+
+func newSilenceWindow(d time.Duration, answered <-chan struct{}) *silenceWindow {
+	w := &silenceWindow{d: d, answered: answered}
+	if d > 0 {
+		w.timer = time.NewTimer(d)
+	}
+	return w
+}
+
+// receive returns the next update and whether the stream is still open, or end when the window or ctx closed the turn first.
+func (w *silenceWindow) receive(ctx context.Context, updates <-chan harness.Update) (u harness.Update, end *harness.TurnResult, ok bool) {
+	var expired <-chan time.Time
+	if w.timer != nil {
+		expired = w.timer.C
+	}
+	for {
+		select {
+		case u, ok = <-updates:
+			w.heard(u.Question != nil)
+			return u, nil, ok
+		case <-w.answered:
+			w.paused = false
+			w.heard(false)
+		case <-expired:
+			return u, &harness.TurnResult{State: harness.TurnError, LastError: fmt.Sprintf(
+				"turn gave no completion signal after %s of silence — the harness may have finished without our client seeing it; check the server log's harness client warnings", w.d)}, false
+		case <-ctx.Done():
+			return u, &harness.TurnResult{State: harness.TurnError, LastError: "turn cancelled: " + context.Cause(ctx).Error()}, false
+		}
+	}
+}
+
+// heard restarts the window; a question stops it, since the user's silence is not the harness's.
+func (w *silenceWindow) heard(question bool) {
+	if w.timer == nil {
+		return
+	}
+	if question {
+		w.paused = true
+		w.timer.Stop()
+		return
+	}
+	if w.paused {
+		return
+	}
+	w.timer.Reset(w.d)
 }
 
 // textSegments cuts one growing reply into the pieces written between tool calls, so a trail reads what the
@@ -831,7 +906,15 @@ func (s *Service) Answer(ctx context.Context, conversationID, requestID string, 
 	if !ok {
 		return fmt.Errorf("%w: no active agent turn on conversation %s", apperrs.ErrNotFound, conversationID)
 	}
-	return t.client.Answer(ctx, t.target, requestID, answer)
+	if err := t.client.Answer(ctx, t.target, requestID, answer); err != nil {
+		return err
+	}
+	// A wake already pending covers this answer too.
+	select {
+	case t.answered <- struct{}{}:
+	default:
+	}
+	return nil
 }
 
 // AnswerFromChat posts the answer as userID's message and resolves the live turn; a turn the harness already closed
@@ -854,11 +937,7 @@ func (s *Service) AnswerFromChat(ctx context.Context, conversationID, userID, re
 	if !errors.Is(err, apperrs.ErrNotFound) {
 		return err
 	}
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), maxTurnDuration)
-		defer cancel()
-		s.RunTurn(ctx, TurnRequest{ConversationID: conversationID, ViaUserID: userID, RequestBody: body})
-	}()
+	go s.runChatTurn(TurnRequest{ConversationID: conversationID, ViaUserID: userID, RequestBody: body})
 	return nil
 }
 

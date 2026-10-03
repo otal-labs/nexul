@@ -262,7 +262,8 @@ func TestSilence_PausedWhileWaiting_AnswerRestartsTheClock(t *testing.T) {
 		synctest.Wait()
 		parked := f.trails.all()[0]
 		assert.Equal(t, TrailWaiting, parked.State, "the silence clock does not run while the user is the one being waited on")
-		replies, _ := convs.snapshot()
+		replies, pipelineNotes := convs.snapshot()
+		assert.Empty(t, pipelineNotes, "the pipeline posts nothing while a play waits on its question")
 		require.Len(t, replies, 1)
 		assert.Contains(t, replies[0], "```nexul-question", "the question is the Agent's message in the thread")
 
