@@ -13,6 +13,7 @@ type configProvider struct {
 	InstanceID   string        `json:"instanceId"`
 	Driver       string        `json:"driver"`
 	DisplayName  string        `json:"displayName"`
+	Version      string        `json:"version"`
 	Enabled      bool          `json:"enabled"`
 	Installed    bool          `json:"installed"`
 	Availability string        `json:"availability"`
@@ -72,7 +73,7 @@ func (c *Conn) Providers() ([]harness.Provider, error) {
 			}
 			models = append(models, providerModel(m))
 		}
-		providers = append(providers, harness.Provider{ID: p.InstanceID, Driver: p.Driver, Name: name, Models: models})
+		providers = append(providers, harness.Provider{ID: p.InstanceID, Driver: p.Driver, Name: name, Version: p.Version, Models: models})
 	}
 	return providers, nil
 }
