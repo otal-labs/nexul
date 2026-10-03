@@ -11,8 +11,34 @@ summary. Update the `harness.Target.ModelOptions` doc comment and `CONTEXT.md` m
 
 **Blocked by:** 05
 
-**Status:** ready-for-agent
+**Status:** done
 
 Read first: `practices/go.md`, `practices/testing.md`, `practices/architecture.md`, the spec, `research/protocol-2-wire.md` and `research/runs-nexul-did-not-start.md`.
 
-- [ ] Table: model changed → sent; provider changed → sent with Full prompt and a resolved model; unchanged → no `modelSelection` key; empty model, same provider → not sent; empty options → thread options kept
+- [x] Table: model changed → sent; provider changed → sent with Full prompt and a resolved model; unchanged → no `modelSelection` key; empty model, same provider → not sent; empty options → thread options kept
+
+## Comments
+
+- **Where it lives.** `turn.selection` in `internal/t3clientv2/turn.go` decides, from the snapshot thread's
+  `modelSelection` (now read by `appThread`), what `message.dispatch` carries; `turn.model` is the empty-model
+  resolution `create` used to do inline, now shared. A thread this turn just created is never compared, since it was
+  made on the target's pick.
+- **Rule as built.** Another provider instance, another model, or options that differ as a set (order ignored, a
+  missing option counts as different) send `modelSelection`; otherwise the key is absent. Empty `Model` keeps the
+  thread's, unless the provider differs, and then the provider's default is resolved, so a sent model is never empty.
+  A target whose provider is not on the computer fails the turn with "provider X not found" before any upload or
+  command.
+- **Judgment call: empty options.** The ticket says empty `ModelOptions` keep the thread's options. Built so while the
+  provider and model stay the same (nothing is sent). When the model or provider changes, a selection with no options
+  is sent, so the new model starts on its own defaults as CONTEXT.md's Model options entry says. The old options were
+  chosen for another model, and T3 does not check options against a model.
+- **Consequences later tickets should know.**
+  - Nexul's pick wins over a model someone changed in T3 Code's own composer: the next Nexul turn with a different
+    model puts the thread back on the pick.
+  - Setting only options on a thread cannot be undone by sending none, since none means "leave them".
+  - A switch of provider instance sends the Full prompt with its images, so a conversation that moves provider
+    re-sends its whole context once.
+- **Docs.** ADR 0114 gained "The model" bullet and the provider-switch Full prompt; ADRs 0058 and 0106 carry an
+  amendment line; CONTEXT.md's Model options entry and the `harness.Target.ModelOptions` comment now say the pick holds
+  on a reused thread (protocol 1 keeps its session's own, since it stays frozen).
+- **Not done.** Protocol 1 is untouched, so on `t3code` a reused session still keeps its own model.
