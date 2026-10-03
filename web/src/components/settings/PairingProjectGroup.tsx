@@ -22,7 +22,9 @@ export const PairingProjectGroup = ({ workspace, labelled, openId, onToggle }: P
       {labelled && <Microheader className="mb-1.5">{workspace.name}</Microheader>}
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
-      {projects && projects.length === 0 && <EmptyRow>No projects you can open in {workspace.name}.</EmptyRow>}
+      {projects && projects.length === 0 && (
+        <EmptyRow className="rounded-none border-x-0 border-b-0 px-0 py-3 text-left">No projects you can open here.</EmptyRow>
+      )}
       {projects && projects.length > 0 && (
         <ul className="divide-y divide-border border-t border-border">
           {projects.map((project) => (
