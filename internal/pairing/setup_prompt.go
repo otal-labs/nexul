@@ -35,7 +35,7 @@ func setupBlocker(p harness.Provider) string {
 		return ""
 	}
 	if major == 0 && minor < piMCPMinMinor {
-		return "Update Pi to 0.99 or later; earlier Pi has no MCP client"
+		return fmt.Sprintf("Update Pi to 0.%d or later; earlier Pi has no MCP client", piMCPMinMinor)
 	}
 	return ""
 }
