@@ -329,3 +329,32 @@ func TestFormatDuration(t *testing.T) {
 	assert.Equal(t, "30s", formatDuration(30*time.Second))
 	assert.Equal(t, "1m30s", formatDuration(90*time.Second))
 }
+
+func TestEndRunsCutOffByRestart_ClosesOnlyRunsNoTurnWatches(t *testing.T) {
+	f := newRunnerFixture()
+	for id, state := range map[string]TrailState{"tr-running": TrailRunning, "tr-starting": TrailStarting, "tr-waiting": TrailWaiting, "tr-done": TrailDone} {
+		f.trails.byID[id] = &Trail{ID: id, WorkspaceID: workspaceID, PlayID: fixPlayID, TargetType: TargetTicket, TargetID: ticketID,
+			ConversationID: "conv-" + id, StarterID: starter, State: state, StartedAt: fixedNow}
+	}
+
+	require.NoError(t, f.runner.EndRunsCutOffByRestart(t.Context()))
+
+	for id, want := range map[string]TrailState{"tr-running": TrailInterrupted, "tr-starting": TrailInterrupted, "tr-waiting": TrailWaiting, "tr-done": TrailDone} {
+		got, err := f.trails.GetTrail(t.Context(), id)
+		require.NoError(t, err)
+		assert.Equal(t, want, got.State, id)
+	}
+	ended, err := f.trails.GetTrail(t.Context(), "tr-running")
+	require.NoError(t, err)
+	assert.Equal(t, "Nexul restarted during the run", ended.LastError)
+	assert.NotNil(t, ended.EndedAt)
+	assert.Len(t, f.threads.noteBodies(), 2, "each closed run says why in its thread")
+	assert.Len(t, f.trails.eventsFor(TopicRunFinished), 2)
+}
+
+func TestEndRunsCutOffByRestart_ListFails_ReturnsTheError(t *testing.T) {
+	f := newRunnerFixture()
+	f.trails.listErr = errors.New("db down")
+
+	assert.ErrorContains(t, f.runner.EndRunsCutOffByRestart(t.Context()), "db down")
+}

@@ -125,6 +125,22 @@ func (r *PlayTrailsRepo) ListActiveTrailsByTargets(ctx context.Context, targetTy
 	return out, nil
 }
 
+func (r *PlayTrailsRepo) ListRunningTrails(ctx context.Context) ([]*plays.Trail, error) {
+	rows, err := r.q.ListRunningPlayTrails(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list running trails: %w", err)
+	}
+	out := make([]*plays.Trail, 0, len(rows))
+	for _, row := range rows {
+		t, err := toTrail(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, t)
+	}
+	return out, nil
+}
+
 func (r *PlayTrailsRepo) LatestTrailForChoices(ctx context.Context, starterID, playID, projectID string) (*plays.Trail, error) {
 	row, err := r.q.LatestPlayTrailForChoices(ctx, sqlcgen.LatestPlayTrailForChoicesParams{StarterID: starterID, PlayID: playID, ProjectID: projectID})
 	if err != nil {
