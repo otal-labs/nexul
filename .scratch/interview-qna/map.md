@@ -59,6 +59,7 @@ build tickets graduate from the fog and are worked here too.
 
 - [How a question is written in the template](issues/01-how-a-question-is-written.md): `##` heading per question, hint below, `- ` single and `- [ ]` multi options, no recommended option, matched to answers by text, parsed on the server, 8,000 cap moves off the template.
 - [The default questions](issues/02-the-default-questions.md): twelve questions on what only a person knows; CI gates and performance budgets left to the follow-up run.
+- [Where the answers live](issues/03-where-answers-live.md): a new memories-domain table, saved per question with Skip, `memories:read`/`write`, live push, read and written through the existing interview memory tools, old threads untouched.
 - [How the follow-up run asks on the Interview page](issues/04-follow-ups-on-the-page.md): the page shows the run's live question with the existing trail question body, answers go through the run route and are also written to the stored answers, and the thread stays as hidden plumbing for now.
 
 ## Not yet specified
