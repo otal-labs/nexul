@@ -17,6 +17,7 @@ import { EmojiPickerPopover } from "@/components/chat/EmojiPickerPopover";
 import { ComposerMentionSuggestions } from "@/components/chat/ComposerMentionSuggestions";
 import { useComposerAttachments } from "@/hooks/ComposerAttachmentHooks";
 import { useFetchWorkspacePeople } from "@/hooks/PeopleHooks";
+import { useChatDraftStore } from "@/stores/chatDraftStore";
 import {
   buildMentionCandidates,
   composeMessageBody,
@@ -36,7 +37,9 @@ interface ChatComposerProps {
 
 // ponytail: mention picker anchors to the composer, not the caret; upgrade to text-mirror measurement if felt.
 export const ChatComposer = ({ workspaceId, conversationId, placeholder = "Message…", onSend }: ChatComposerProps) => {
-  const [value, setValue] = useState("");
+  const value = useChatDraftStore((s) => s.drafts[conversationId] ?? "");
+  const setDraft = useChatDraftStore((s) => s.setDraft);
+  const setValue = (text: string) => setDraft(conversationId, text);
   const [trigger, setTrigger] = useState<MentionTriggerState | undefined>(undefined);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [sending, setSending] = useState(false);
