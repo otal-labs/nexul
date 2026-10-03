@@ -193,9 +193,34 @@ export const findMentionTrigger = (textBeforeCaret: string): MentionTriggerState
 export const attachmentMarkdown = (attachment: Attachment): string =>
   `![${attachment.name}](${attachmentPath(attachment.id)})`;
 
-export type MessageBodySegment = { kind: "text"; text: string } | { kind: "image"; src: string; alt: string };
+export type MessageBodySegment =
+  | { kind: "text"; text: string }
+  | { kind: "image"; src: string; alt: string }
+  | { kind: "code"; code: string };
 
 const imageLinePattern = /^!\[([^\]]*)\]\((.+)\)$/;
+const fence = "```";
+const languageHintPattern = /^[\w+#.-]*$/;
+
+// Discord-style fences: ```code``` on one line, or ```lang through a line ending in ```; unclosed stays text.
+const readCodeBlock = (lines: string[], start: number): { code: string; end: number } | null => {
+  const opening = lines[start]?.trim() ?? "";
+  if (!opening.startsWith(fence)) return null;
+  const rest = opening.slice(fence.length);
+  if (rest.length > fence.length && rest.endsWith(fence)) return { code: rest.slice(0, -fence.length), end: start };
+  const body = languageHintPattern.test(rest) ? [] : [rest];
+  for (let i = start + 1; i < lines.length; i++) {
+    const line = lines[i] ?? "";
+    if (!line.trimEnd().endsWith(fence)) {
+      body.push(line);
+      continue;
+    }
+    const last = line.trimEnd().slice(0, -fence.length);
+    if (last.trim() !== "") body.push(last);
+    return { code: body.join("\n"), end: i };
+  }
+  return null;
+};
 
 const flushTextLines = (lines: string[]): string | null => {
   let start = 0;
@@ -214,7 +239,16 @@ export const splitMessageBody = (body: string): MessageBodySegment[] => {
     if (text !== null) segments.push({ kind: "text", text });
     buffer = [];
   };
-  for (const line of body.split("\n")) {
+  const lines = body.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i] ?? "";
+    const block = readCodeBlock(lines, i);
+    if (block) {
+      flush();
+      segments.push({ kind: "code", code: block.code });
+      i = block.end;
+      continue;
+    }
     const match = line.match(imageLinePattern);
     if (match?.[2] && isAttachmentPath(match[2])) {
       flush();
