@@ -1,4 +1,4 @@
-import { ImagePlus } from "lucide-react";
+import { Smile } from "lucide-react";
 import {
   useRef,
   useState,
@@ -11,7 +11,9 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { ComposerAttachButton } from "@/components/chat/ComposerAttachButton";
 import { ComposerAttachmentStrip } from "@/components/chat/ComposerAttachmentStrip";
+import { EmojiPickerPopover } from "@/components/chat/EmojiPickerPopover";
 import { ComposerMentionSuggestions } from "@/components/chat/ComposerMentionSuggestions";
 import { useComposerAttachments } from "@/hooks/ComposerAttachmentHooks";
 import { useFetchWorkspacePeople } from "@/hooks/PeopleHooks";
@@ -39,7 +41,6 @@ export const ChatComposer = ({ workspaceId, conversationId, placeholder = "Messa
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [sending, setSending] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: people } = useFetchWorkspacePeople(workspaceId);
   const { pending, isUploading, addFiles, remove, reset } = useComposerAttachments(conversationId);
@@ -74,6 +75,19 @@ export const ChatComposer = ({ workspaceId, conversationId, placeholder = "Messa
     requestAnimationFrame(() => textareaRef.current?.setSelectionRange(cursor, cursor));
   };
 
+  // The textarea keeps its selection while the picker has focus, so the emoji lands where the caret was.
+  const insertEmoji = (emoji: string) => {
+    const el = textareaRef.current;
+    const start = el?.selectionStart ?? value.length;
+    const end = el?.selectionEnd ?? value.length;
+    setValue(value.slice(0, start) + emoji + value.slice(end));
+    const cursor = start + emoji.length;
+    requestAnimationFrame(() => {
+      el?.focus();
+      el?.setSelectionRange(cursor, cursor);
+    });
+  };
+
   const send = async () => {
     const body = value.trim();
     if ((body === "" && pending.length === 0) || sending || isUploading) return;
@@ -103,13 +117,6 @@ export const ChatComposer = ({ workspaceId, conversationId, placeholder = "Messa
     const files = Array.from(event.dataTransfer?.files ?? []);
     if (files.length === 0) return;
     event.preventDefault();
-    addFiles(files);
-  };
-
-  const handleFileInputChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files ?? []);
-    event.target.value = "";
-    if (files.length === 0) return;
     addFiles(files);
   };
 
@@ -150,25 +157,7 @@ export const ChatComposer = ({ workspaceId, conversationId, placeholder = "Messa
         )}
         {pending.length > 0 && <ComposerAttachmentStrip pending={pending} onRemove={remove} />}
         <div className="flex items-start gap-2">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            className="sr-only"
-            aria-label="Choose image files"
-            onChange={handleFileInputChange}
-          />
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            aria-label="Attach image"
-            className="mt-0.5"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <ImagePlus className="size-4" aria-hidden />
-          </Button>
+          <ComposerAttachButton onFiles={addFiles} />
           <Textarea
             ref={textareaRef}
             aria-label="Message"
@@ -181,6 +170,11 @@ export const ChatComposer = ({ workspaceId, conversationId, placeholder = "Messa
             rows={1}
             className="quiet-focus field-sizing-content max-h-[50dvh] min-h-10 flex-1 resize-none text-sm focus-visible:border-ring/40 focus-visible:ring-0"
           />
+          <EmojiPickerPopover onPick={insertEmoji} align="end" restoreFocus={false}>
+            <Button type="button" size="icon" variant="ghost" aria-label="Add emoji" className="mt-0.5">
+              <Smile className="size-4" aria-hidden />
+            </Button>
+          </EmojiPickerPopover>
         </div>
       </div>
     </div>

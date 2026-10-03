@@ -232,6 +232,13 @@ edited. Message and file are one thing: deleting the message deletes the
 file. The body stays the ticket's spec and changes only when a person asks.
 _Avoid_: Comment, addendum, memory (a memory is written for agents)
 
+**Reaction**:
+One person's emoji on a chat message, shown as a chip with the emoji and how
+many reacted with it. Anyone who reads the conversation may react; reacting
+again with the same emoji takes it back. A reaction is not an edit: it never
+marks the message edited and publishes its own event.
+_Avoid_: Like, vote, emoji reply
+
 **Locked doc**:
 A doc set read-only for everyone as a guard against accidental edits: its
 title and body refuse every change, from people and agents alike, until it

@@ -258,6 +258,7 @@ var livePushTopics = []string{
 	chat.TopicMessageCreated,
 	chat.TopicMessageUpdated,
 	chat.TopicMessageDeleted,
+	chat.TopicMessageReactionsChanged,
 	voice.TopicOccupancyChanged,
 	pairing.TopicSetupConfirmed,
 	pairing.TopicSetupUnconfirmed,

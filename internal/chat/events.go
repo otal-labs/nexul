@@ -12,14 +12,26 @@ const (
 	TopicMessageCreated             = "chat.message.created"
 	TopicMessageUpdated             = "chat.message.updated"
 	TopicMessageDeleted             = "chat.message.deleted"
+	// TopicMessageReactionsChanged is its own topic so a reaction never reads as an edit to a consumer of updated.
+	TopicMessageReactionsChanged = "chat.message.reactions_changed"
 )
 
 // Topics returns every topic the chat domain publishes.
 func Topics() []string {
 	return []string{
 		TopicConversationCreated, TopicConversationUpdated, TopicConversationDeleted, TopicConversationMembersChanged,
-		TopicMessageCreated, TopicMessageUpdated, TopicMessageDeleted,
+		TopicMessageCreated, TopicMessageUpdated, TopicMessageDeleted, TopicMessageReactionsChanged,
 	}
+}
+
+// MessageReactionsChangedEvent is one person adding or removing one emoji, a delta so concurrent reactions never overwrite each other.
+type MessageReactionsChangedEvent struct {
+	ConversationID string `json:"conversation_id"`
+	MessageID      string `json:"message_id"`
+	UserID         string `json:"user_id"`
+	Emoji          string `json:"emoji"`
+	Reacted        bool   `json:"reacted"`
+	MembersOnly    bool   `json:"members_only,omitempty"`
 }
 
 // ConversationCreatedEvent field names are part of the published contract (ADR 0044) and are additive-only.

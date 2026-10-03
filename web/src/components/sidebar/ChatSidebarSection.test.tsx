@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import { ChatSidebarSection } from "@/components/sidebar/ChatSidebarSection";
+import { useHiddenThreadStore } from "@/stores/hiddenThreadStore";
 import { useVoiceCallStore } from "@/stores/voiceCallStore";
 import { useVoiceOccupancyStore } from "@/stores/voiceOccupancyStore";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
@@ -61,6 +62,7 @@ beforeEach(() => {
   permissions = ["chat:write", "channels:write"];
   useVoiceCallStore.setState({ activeConversationId: null });
   useVoiceOccupancyStore.setState({ occupancy: {} });
+  useHiddenThreadStore.setState({ hidden: {} });
   localStorage.clear();
   useWorkspaceStore.setState({ selectedWorkspaceId: "ws-1" });
   vi.mocked(api.get).mockReset();
@@ -246,6 +248,48 @@ describe("ChatSidebarSection", () => {
 
       await waitFor(() => expect(api.delete).toHaveBeenCalledWith("/api/chat/conversations/c5"));
       expect(await screen.findByText("chat-home")).toBeInTheDocument();
+    });
+  });
+
+  describe("removing a thread from the sidebar", () => {
+    const mockThread = (unread: Record<string, number>) =>
+      vi.mocked(api.get).mockImplementation(async (url: string) => {
+        if (url === "/api/chat/conversations") {
+          return { data: [{ id: "c4", workspace_id: "ws-1", kind: "doc_thread", doc_id: "doc-1", created_by: "u1", created_at: "", updated_at: "" }] };
+        }
+        if (url === "/api/chat/unread") return { data: unread };
+        if (url === "/api/docs/doc-1") return { data: { id: "doc-1", title: "Runbook" } };
+        if (url === "/api/auth/me") return { data: meResponse };
+        return { data: {} };
+      });
+
+    it("drops the row and the empty Threads group", async () => {
+      mockThread({});
+      const user = userEvent.setup();
+      renderSection();
+      await user.click(await screen.findByRole("button", { name: "More actions for Runbook" }));
+      await user.click(await screen.findByRole("menuitem", { name: "Remove from sidebar" }));
+
+      await waitFor(() => expect(screen.queryByText("Runbook")).not.toBeInTheDocument());
+      expect(screen.queryByText("Threads")).not.toBeInTheDocument();
+    });
+
+    it("keeps a removed thread while it is open and offers to show it again", async () => {
+      mockThread({});
+      useHiddenThreadStore.setState({ hidden: { "ws-1": ["c4"] } });
+      const user = userEvent.setup();
+      renderSection(false, "/acme/chat/c4");
+      await user.click(await screen.findByRole("button", { name: "More actions for Runbook" }));
+      await user.click(await screen.findByRole("menuitem", { name: "Show in sidebar" }));
+
+      expect(useHiddenThreadStore.getState().hidden["ws-1"]).toEqual([]);
+    });
+
+    it("brings a removed thread back while it has unread messages", async () => {
+      mockThread({ c4: 2 });
+      useHiddenThreadStore.setState({ hidden: { "ws-1": ["c4"] } });
+      renderSection();
+      expect(await screen.findByText("Runbook")).toBeInTheDocument();
     });
   });
 });

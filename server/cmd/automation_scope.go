@@ -58,7 +58,8 @@ var scopeRules = map[string]scopeRule{
 	"memory.created": nestedWorkspaceScope("memory"), "memory.updated": nestedWorkspaceScope("memory"),
 	"chat.conversation.created": nestedWorkspaceScope("conversation"),
 	"chat.message.created":      conversationScope, "chat.message.updated": conversationScope,
-	"chat.message.deleted": conversationScope, "voice.occupancy.changed": conversationScope,
+	"chat.message.deleted": conversationScope, "chat.message.reactions_changed": conversationScope,
+	"voice.occupancy.changed": conversationScope,
 
 	"ticket.created": nestedProjectScope("ticket"), "ticket.updated": nestedProjectScope("ticket"),
 	"ticket.status_changed": nestedProjectScope("ticket"), "ticket.finished": nestedProjectScope("ticket"),

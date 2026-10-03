@@ -44,8 +44,15 @@ export interface Message {
   deleted_at?: string;
   created_at: string;
   updated_at: string;
+  reactions?: Reaction[];
   // Client-only: the optimistic row shown until the server confirms the post.
   pending?: boolean;
+}
+
+// Reaction is one emoji on a message and who reacted with it, earliest first.
+export interface Reaction {
+  emoji: string;
+  user_ids: string[];
 }
 
 const CONTINUATION_WINDOW_MS = 5 * 60_000;

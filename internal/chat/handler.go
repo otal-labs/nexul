@@ -74,6 +74,11 @@ type postMessageRequest struct {
 	File *NoteFileInput `json:"file,omitempty"`
 }
 
+type reactRequest struct {
+	Emoji   string `json:"emoji"`
+	Reacted bool   `json:"reacted"`
+}
+
 type replaceNoteRequest struct {
 	Markdown string `json:"markdown"`
 }
@@ -102,6 +107,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("PATCH /api/chat/messages/{id}", h.editMessage)
 	mux.HandleFunc("DELETE /api/chat/messages/{id}", h.deleteMessage)
 	mux.HandleFunc("PUT /api/chat/messages/{id}/note", h.replaceNote)
+	mux.HandleFunc("PUT /api/chat/messages/{id}/reactions", h.react)
 	return mux
 }
 
@@ -311,6 +317,20 @@ func (h *Handler) editMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	m, err := h.svc.EditMessage(r.Context(), r.PathValue("id"), UserIDFromCtx(r.Context()), req.Body)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, m)
+}
+
+func (h *Handler) react(w http.ResponseWriter, r *http.Request) {
+	var req reactRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	m, err := h.svc.React(r.Context(), r.PathValue("id"), UserIDFromCtx(r.Context()), req.Emoji, req.Reacted)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

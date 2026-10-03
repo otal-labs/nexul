@@ -48,6 +48,7 @@ import {
   markCachedMessageDeleted,
   upsertCachedMessage,
 } from "@/hooks/ChatHooks";
+import { applyCachedReaction } from "@/hooks/ReactionHooks";
 import { isNote, type ConversationDeleted, type Message } from "@/models/Chat";
 import type { MeResponse, SessionClient } from "@/models/User";
 import { getServerVersionKey, notifyIfServerUpdated } from "@/hooks/VersionHooks";
@@ -207,6 +208,14 @@ interface MessagePayload {
   message: Message;
 }
 
+interface MessageReactionsChangedPayload {
+  conversation_id: string;
+  message_id: string;
+  user_id: string;
+  emoji: string;
+  reacted: boolean;
+}
+
 interface MessageDeletedPayload {
   conversation_id: string;
   message_id: string;
@@ -307,6 +316,11 @@ const dispatch = (client: ReturnType<typeof useQueryClient>, router: RouterFollo
   if (frame.topic === "chat.message.deleted") {
     const p = frame.payload as MessageDeletedPayload;
     if (p.message_id) markCachedMessageDeleted(client, p.conversation_id, p.message_id, p.deleted_at);
+  }
+  if (frame.topic === "chat.message.reactions_changed") {
+    const p = frame.payload as MessageReactionsChangedPayload;
+    applyCachedReaction(client, p.conversation_id, { messageId: p.message_id, userId: p.user_id, emoji: p.emoji, reacted: p.reacted });
+    return;
   }
   if (frame.topic === "computer.tunnel_status_changed") {
     setCachedTunnelStatus(client, frame.payload as TunnelStatusChangedPayload);

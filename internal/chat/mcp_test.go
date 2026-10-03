@@ -46,7 +46,7 @@ func TestMCPTools_Surface(t *testing.T) {
 		assert.NotEmpty(t, tool.Title, tool.Name)
 		assert.NotEmpty(t, tool.Description, tool.Name)
 		if tool.Name == "message_post" {
-			assert.ElementsMatch(t, []string{"conversation_id", "doc_id", "ticket_id", "project_id", "workspace_id", "body", "file"}, keys(tool.InputSchema.Properties))
+			assert.ElementsMatch(t, []string{"conversation_id", "doc_id", "ticket_id", "project_id", "workspace_id", "body", "file", "reaction"}, keys(tool.InputSchema.Properties))
 			assert.Empty(t, tool.InputSchema.Required, "a replace through file.note_id needs no body")
 		}
 	}
@@ -94,6 +94,9 @@ func TestMCPTools_Errors(t *testing.T) {
 		{"list conversations without a caller", context.Background(), "conversation_list", `{"workspace_id":"w-1"}`, apperrs.ErrUnauthorized},
 		{"list messages without a caller", context.Background(), "message_list", `{"ticket_id":"t-1"}`, apperrs.ErrUnauthorized},
 		{"post without a caller", context.Background(), "message_post", `{"ticket_id":"t-1","body":"hi"}`, apperrs.ErrUnauthorized},
+		{"react with a body", as("u-1"), "message_post", `{"body":"hi","reaction":{"message_id":"m-1","emoji":"👍"}}`, apperrs.ErrInvalid},
+		{"react with a target", as("u-1"), "message_post", `{"ticket_id":"t-1","reaction":{"message_id":"m-1","emoji":"👍"}}`, apperrs.ErrInvalid},
+		{"react to a missing message", as("u-1"), "message_post", `{"reaction":{"message_id":"nope","emoji":"👍"}}`, apperrs.ErrNotFound},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -131,6 +134,23 @@ func TestMessagePost_StartsTheThreadOnce(t *testing.T) {
 		})
 	}
 	assert.Len(t, repo.eventsFor(TopicConversationCreated), 3)
+}
+
+func TestMessagePost_ReactsAndListsTheReaction(t *testing.T) {
+	s := newTestService(newFakeRepo())
+	c, err := s.CreateChannel(t.Context(), "w-1", "u-1", "eng")
+	require.NoError(t, err)
+	m, err := s.PostMessage(t.Context(), c.ID, "u-1", "hi")
+	require.NoError(t, err)
+	reacted, err := callTool(as("u-2"), t, s, "message_post", `{"reaction":{"message_id":"`+m.ID+`","emoji":"🎉"}}`)
+	require.NoError(t, err)
+	assert.Equal(t, []Reaction{{Emoji: "🎉", UserIDs: []string{"u-2"}}}, reacted.(messageResult).Reactions)
+	listed, err := callTool(as("u-1"), t, s, "message_list", `{"conversation_id":"`+c.ID+`"}`)
+	require.NoError(t, err)
+	assert.Equal(t, reacted.(messageResult).Reactions, listed.(mcptool.Page[messageResult]).Items[0].Reactions)
+	removed, err := callTool(as("u-2"), t, s, "message_post", `{"reaction":{"message_id":"`+m.ID+`","emoji":"🎉","remove":true}}`)
+	require.NoError(t, err)
+	assert.Empty(t, removed.(messageResult).Reactions)
 }
 
 func TestMessageList_NewestFirstWithoutDeletedMessages(t *testing.T) {

@@ -77,9 +77,29 @@ export interface Message {
   deleted_at?: string;
   created_at: string;
   updated_at: string;
+  reactions?: Reaction[];
   // Client-only: an optimistic row shown before the server acks the post.
   pending?: boolean;
 }
+
+// Reaction is one emoji on a message and who reacted with it, earliest first.
+export interface Reaction {
+  emoji: string;
+  user_ids: string[];
+}
+
+// applyReaction adds or removes one person's emoji; applying the same change twice is a no-op, so a push may echo our own.
+export const applyReaction = (reactions: Reaction[] | undefined, emoji: string, userId: string, reacted: boolean): Reaction[] => {
+  const list = reactions ?? [];
+  const existing = list.find((r) => r.emoji === emoji);
+  if (reacted && !existing) return [...list, { emoji, user_ids: [userId] }];
+  return list
+    .map((r) => {
+      if (r.emoji !== emoji || r.user_ids.includes(userId) === reacted) return r;
+      return { ...r, user_ids: reacted ? [...r.user_ids, userId] : r.user_ids.filter((id) => id !== userId) };
+    })
+    .filter((r) => r.user_ids.length > 0);
+};
 
 // A note is an Agent message carrying a markdown file; it is left mid-turn, so it neither ends a turn nor answers one.
 export const isNote = (message: Message): boolean => message.author_kind === "agent" && !!message.attachment_id;

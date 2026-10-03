@@ -41,6 +41,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "elkjs": "^0.12.0",
+    "frimousse": "^0.4.0",
     "livekit-client": "^2.22.3",
     "lowlight": "^3.3.0",
     "lucide-react": "1.48.0",

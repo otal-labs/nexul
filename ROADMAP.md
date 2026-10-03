@@ -123,7 +123,10 @@ default, and a switched-off automation receives no events.
 
 Links in messages are clickable, and links to this instance open in the app as
 pills. A call can share the screen full screen, and leaves on its own after
-five minutes with nobody else in it. The composer is simpler: Enter sends.
+five minutes with nobody else in it. The composer is simpler: Enter sends,
+and an emoji button opens a searchable picker. Anyone who reads a
+conversation can react to a message with an emoji, from the browser or MCP,
+and the phone app shows the reactions.
 A computer's setup transcript reads like a play run.
 
 ### Project access and private channels
@@ -215,8 +218,8 @@ without changing the core architecture.
   (`.scratch/ticket-workflow-depth/`); creating a branch from the ticket page
   (`.scratch/branch-from-ticket/`); one search box across every entity
   (`.scratch/global-search/`).
-- **Chat and voice depth** — the message features v1 left out (emoji
-  reactions, read receipts, typing indicators), interactive
+- **Chat and voice depth** — the message features still missing (read
+  receipts, typing indicators), interactive
   in-chat approvals instead of today's auto-decline, per-user memories and
   multiple named agents, and on the voice side DM and group calls, `@Agent` in
   a call, and recordings for standups.

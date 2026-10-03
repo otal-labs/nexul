@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode"
 
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
@@ -1215,6 +1216,50 @@ func (s *Service) EditMessage(ctx context.Context, messageID, authorID, body str
 		return nil, fmt.Errorf("edit message %s: %w", messageID, err)
 	}
 	return &updated, nil
+}
+
+// maxEmojiBytes fits the longest emoji sequences, such as a family joined with skin tones.
+const maxEmojiBytes = 64
+
+// React adds or removes callerID's emoji on a message; whoever reads its conversation may react, never on a deleted one.
+func (s *Service) React(ctx context.Context, messageID, callerID, emoji string, reacted bool) (*Message, error) {
+	messageID = strings.TrimSpace(messageID)
+	if messageID == "" {
+		return nil, fmt.Errorf("%w: message id is required", apperrs.ErrInvalid)
+	}
+	callerID = strings.TrimSpace(callerID)
+	if callerID == "" {
+		return nil, fmt.Errorf("%w: user id is required", apperrs.ErrInvalid)
+	}
+	emoji = strings.TrimSpace(emoji)
+	if emoji == "" || len(emoji) > maxEmojiBytes || strings.ContainsFunc(emoji, unicode.IsSpace) {
+		return nil, fmt.Errorf("%w: emoji must be a single emoji such as 👍", apperrs.ErrInvalid)
+	}
+	current, err := s.repo.GetMessage(ctx, messageID)
+	if err != nil {
+		return nil, fmt.Errorf("react to message %s: %w", messageID, err)
+	}
+	if current.DeletedAt != nil {
+		return nil, fmt.Errorf("%w: cannot react to a deleted message", apperrs.ErrInvalid)
+	}
+	if err := s.requireConversation(ctx, current.ConversationID, callerID); err != nil {
+		return nil, err
+	}
+	membersOnly, err := s.MembersOnly(ctx, current.ConversationID)
+	if err != nil {
+		return nil, fmt.Errorf("react to message %s: %w", messageID, err)
+	}
+	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicMessageReactionsChanged, Payload: MessageReactionsChangedEvent{
+		ConversationID: current.ConversationID, MessageID: messageID, UserID: callerID, Emoji: emoji, Reacted: reacted, MembersOnly: membersOnly,
+	}}
+	if err := s.repo.SetReaction(ctx, messageID, callerID, emoji, reacted, s.now().UTC(), evt); err != nil {
+		return nil, fmt.Errorf("react to message %s: %w", messageID, err)
+	}
+	m, err := s.repo.GetMessage(ctx, messageID)
+	if err != nil {
+		return nil, fmt.Errorf("react to message %s: %w", messageID, err)
+	}
+	return m, nil
 }
 
 // DeleteMessage soft-deletes a message (author-only, a note under tickets:write); deleting an already-deleted one is a no-op.
