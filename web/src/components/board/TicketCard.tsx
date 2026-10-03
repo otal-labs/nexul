@@ -90,7 +90,7 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
         </span>
         <span className="flex shrink-0 items-center gap-1.5 font-mono text-[10.5px] text-muted-foreground">
           {runState === "waiting" && (
-            <CircleHelp className="size-3 shrink-0 text-warning" role="img" aria-label="A play is waiting for an answer" />
+            <CircleHelp className="size-3 shrink-0 text-info" role="img" aria-label="A play is waiting for an answer" />
           )}
           {runState !== undefined && runState !== "waiting" && (
             <LoaderCircle className="size-3 shrink-0 animate-spin motion-reduce:animate-none text-warning" role="img" aria-label="A play is running" />
