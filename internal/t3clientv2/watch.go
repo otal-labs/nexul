@@ -30,6 +30,7 @@ type projection struct {
 	Runs             []run             `json:"runs"`
 	TurnItems        []turnItem        `json:"turnItems"`
 	ProviderSessions []providerSession `json:"providerSessions"`
+	RuntimeRequests  []runtimeRequest  `json:"runtimeRequests"`
 }
 
 type appThread struct {
@@ -68,6 +69,14 @@ type failure struct {
 	Class   string  `json:"class"`
 	Message string  `json:"message"`
 	ResetAt *string `json:"resetAt"`
+}
+
+// runtimeRequest is a question or approval T3 holds open; capability "message" answers it with a run of its own.
+type runtimeRequest struct {
+	ID                 string `json:"id"`
+	ResponseCapability struct {
+		Type string `json:"type"`
+	} `json:"responseCapability"`
 }
 
 type providerSession struct {
@@ -272,9 +281,14 @@ func readableTime(iso string) string {
 	return t.UTC().Format("2006-01-02 15:04 UTC")
 }
 
+// queued is whether T3 still holds the turn's run in the thread's queue.
+func (w *watch) queued() bool {
+	return !w.ended && w.run.Status == runQueued
+}
+
 // queueNote is the note for the turn's run while T3 holds it in the thread's queue, nil otherwise.
 func (w *watch) queueNote() *harness.Activity {
-	if w.ended || w.run.Status != runQueued {
+	if !w.queued() {
 		return nil
 	}
 	summary := queuedNote
