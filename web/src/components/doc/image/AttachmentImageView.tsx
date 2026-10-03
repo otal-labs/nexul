@@ -1,5 +1,7 @@
 import { NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
 
+import { ImageDialog } from "@/components/attachment/ImageDialog";
+
 import { useAttachmentBlob } from "@/hooks/AttachmentHooks";
 import { isAttachmentPath } from "@/models/Attachment";
 import { cn } from "@/lib/utils";
@@ -10,12 +12,18 @@ const resolvedSrcOf = (attachmentSrc: string | null, blobUrl: string | undefined
   attachmentSrc ? blobUrl : rawSrc;
 
 // Attachment sources load through the authenticated client (useAttachmentBlob); other URLs render as-is.
-export const AttachmentImageView = ({ node, selected }: NodeViewProps) => {
+export const AttachmentImageView = ({ node, selected, editor }: NodeViewProps) => {
   const rawSrc = (node.attrs.src as string | null) ?? "";
   const attachmentSrc = attachmentSrcOf(rawSrc);
   const { data: blobUrl, error } = useAttachmentBlob(attachmentSrc);
   const resolved = resolvedSrcOf(attachmentSrc, blobUrl, rawSrc);
   const alt = (node.attrs.alt as string | null) ?? "";
+  // Focus goes back to the editor, not the image button, so Backspace still deletes the selected image.
+  const refocusEditor = (event: Event) => {
+    if (!editor.isEditable) return;
+    event.preventDefault();
+    editor.commands.focus();
+  };
   return (
     <NodeViewWrapper as="figure" className={cn("doc-image", selected && "is-selected")} data-drag-handle>
       {error && (
@@ -23,7 +31,7 @@ export const AttachmentImageView = ({ node, selected }: NodeViewProps) => {
           Image unavailable
         </span>
       )}
-      {!error && resolved && <img src={resolved} alt={alt} title={(node.attrs.title as string | null) ?? undefined} />}
+      {!error && resolved && <ImageDialog src={resolved} alt={alt} link={rawSrc} onCloseAutoFocus={refocusEditor} />}
       {!error && !resolved && <span className="doc-image-loading" role="status" aria-label="Loading image" />}
     </NodeViewWrapper>
   );
