@@ -107,9 +107,11 @@ var liveRules = map[string]liveRule{
 	docs.TopicFolderDeleted:   docFolderFrame,
 	docs.TopicWatchersChanged: docFrame,
 
-	memories.TopicCreated: memoryFrame,
-	memories.TopicUpdated: memoryFrame,
-	memories.TopicDeleted: memoryDeletedFrame,
+	memories.TopicCreated:       memoryFrame,
+	memories.TopicUpdated:       memoryFrame,
+	memories.TopicDeleted:       memoryProjectFrame,
+	memories.TopicAnswerSaved:   memoryProjectFrame,
+	memories.TopicAnswerCleared: memoryProjectFrame,
 
 	chat.TopicConversationCreated:        conversationFrame,
 	chat.TopicConversationUpdated:        conversationFrame,
@@ -291,8 +293,8 @@ func memoryFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool 
 	return decode(raw, &p) && a.access.RequireProject(ctx, p.Memory.ProjectID, permissions.MemoriesRead) == nil
 }
 
-// memoryDeletedFrame reads the project the memory lived in; a frame from before it carried one reaches nobody.
-func memoryDeletedFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
+// memoryProjectFrame reads a memories frame's top-level project; a frame without one reaches nobody.
+func memoryProjectFrame(ctx context.Context, a liveAudience, raw json.RawMessage) bool {
 	var p struct {
 		ProjectID string `json:"project_id"`
 	}

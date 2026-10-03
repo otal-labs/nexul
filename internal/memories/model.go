@@ -69,3 +69,28 @@ type InterviewTemplate struct {
 	UpdatedBy string    `json:"updated_by"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
+
+// InterviewAnswer is one stored answer on the Interview page, matched to its question by text; round 0 is the
+// template's questions, 1 and up the follow-up run's rounds. Kept apart from the interview memory row.
+type InterviewAnswer struct {
+	ID          string `json:"id"`
+	WorkspaceID string `json:"workspace_id"`
+	ProjectID   string `json:"project_id"`
+	Round       int    `json:"round"`
+	Question    string `json:"question"`
+	// Options, MultiSelect, and Why are the follow-up as the run asked it; empty in round 0.
+	Options     []AnswerOption `json:"options,omitempty"`
+	MultiSelect bool           `json:"multi_select,omitempty"`
+	Why         string         `json:"why,omitempty"`
+	Selected    []string       `json:"selected"`
+	Text        string         `json:"text"`
+	Skipped     bool           `json:"skipped"`
+	AnsweredBy  string         `json:"answered_by"`
+	AnsweredAt  time.Time      `json:"answered_at"`
+}
+
+// AnswerOption is one choice a follow-up offered.
+type AnswerOption struct {
+	Label       string `json:"label"`
+	Description string `json:"description,omitempty"`
+}
