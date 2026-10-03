@@ -1,7 +1,7 @@
 # 03: Where the answers live
 
 Type: grilling
-Status: open
+Status: claimed
 Blocked by: None — can start immediately
 
 ## Question
