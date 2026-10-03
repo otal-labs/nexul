@@ -1,5 +1,9 @@
 import type { InterviewQuestion } from "@/models/InterviewTemplate";
 import { optionValue, type AnswerValue, type HarnessQuestion, type QuestionAnswers, type QuestionItem } from "@/models/Question";
+import type { Trail } from "@/models/Trail";
+
+// Mirrors internal/plays skippedAnswer: a skipped live follow-up is sent as this text, since a harness may refuse an empty answer.
+export const SKIPPED_ANSWER = "Skipped";
 
 // Mirrors memories.InterviewAnswer: round 0 answers the template's questions, 1 and up are the agent's follow-up rounds.
 export interface InterviewAnswer {
@@ -140,7 +144,7 @@ const draftAnswer = (round: number, question: string, value: AnswerValue): Inter
   const text = value.text ?? "";
   return {
     id: "", workspace_id: "", project_id: "", round, question, selected, text,
-    skipped: selected.length === 0 && text.trim() === "", answered_by: "", answered_at: "",
+    skipped: selected.length === 0 && (text.trim() === "" || text.trim() === SKIPPED_ANSWER), answered_by: "", answered_at: "",
   };
 };
 
@@ -163,4 +167,11 @@ export const liveSection = (question: HarnessQuestion, stored: InterviewSectionD
       };
     }),
   };
+};
+
+// Answers saved after the last finished interview run, the one that wrote the memory; a hand edit is not a regeneration.
+export const answersChangedSinceRun = (answers: InterviewAnswer[], trails: Trail[]): number => {
+  const generated = trails.find((t) => t.state === "done" && t.ended_at !== null)?.ended_at;
+  if (!generated) return answers.length;
+  return answers.filter((a) => Date.parse(a.answered_at) > Date.parse(generated)).length;
 };

@@ -24,6 +24,8 @@ const (
 	notFullAccess = "This T3 thread is not in full access"
 	// defaultTitle stands in for an empty title, which thread.create refuses.
 	defaultTitle = "Nexul chat"
+	// cancelWithin bounds cancelling the queued run of a turn that stopped watching, whose own context may be over.
+	cancelWithin = 10 * time.Second
 )
 
 // errThreadGone is a reused thread that no longer exists or was deleted in T3 Code.
@@ -110,6 +112,7 @@ func (h *Harness) StartTurn(ctx context.Context, target harness.Target, title st
 		t.close()
 		return harness.StartResult{}, err
 	}
+	h.messages.Store(t.threadID, t.messageID)
 	updates := make(chan harness.Update, 16)
 	for _, n := range notes {
 		updates <- n
@@ -117,7 +120,7 @@ func (h *Harness) StartTurn(ctx context.Context, target harness.Target, title st
 	p := &pump{w: w, open: t.open, decline: t.decline, log: h.log()}
 	go func() {
 		p.run(ctx, src, updates)
-		t.close()
+		t.end(ctx, w)
 	}()
 	return harness.StartResult{SessionID: t.threadID, Updates: updates}, nil
 }
@@ -209,24 +212,29 @@ func (t *turn) subscribe(ctx context.Context) (source, *watch, error) {
 	return src, w, nil
 }
 
-// dispatch sends the prompt the snapshot calls for, once the thread is in full access or noted as not.
+// dispatch uploads the prompt's images, then sends the prompt the snapshot calls for once the thread is in full access or noted as not.
 func (t *turn) dispatch(ctx context.Context, w *watch, fresh bool, prompts harness.TurnPrompts) ([]harness.Update, error) {
-	notes, err := t.fullAccess(ctx, w)
+	text, images := prompts.Incremental, []harness.Attachment(nil)
+	if fresh || w.imported() {
+		text, images = prompts.Full, prompts.Attachments
+	}
+	// Uploaded before anything touches the thread, so a refused upload leaves it as it was.
+	refs, notes, err := t.persistImages(ctx, images)
 	if err != nil {
 		return nil, err
 	}
-	text := prompts.Incremental
-	if fresh || w.imported() {
-		text = prompts.Full
+	more, err := t.fullAccess(ctx, w)
+	if err != nil {
+		return nil, err
 	}
 	_, err = t.conn.Call(ctx, dispatchCommand, messageDispatch{
 		Type: "message.dispatch", CreatedBy: "user", CreationSource: "web", CommandID: ids.New(), ThreadID: t.threadID,
-		MessageID: t.messageID, Text: text, Attachments: []json.RawMessage{}, DispatchMode: dispatchMode{Type: "queue_after_active"},
+		MessageID: t.messageID, Text: text, Attachments: refs, DispatchMode: dispatchMode{Type: "queue_after_active"},
 	})
 	if err != nil {
 		return nil, refused("send the message to T3 Code", err)
 	}
-	return notes, nil
+	return append(notes, more...), nil
 }
 
 // fullAccess sets the thread to full access, unless that would detach a queued or live run; then it notes it.
@@ -235,7 +243,7 @@ func (t *turn) fullAccess(ctx context.Context, w *watch) ([]harness.Update, erro
 		return nil, nil
 	}
 	if w.busy() {
-		return []harness.Update{{Activity: &harness.Activity{Kind: harness.ActivityNote, Summary: notFullAccess, At: time.Now().UTC()}}}, nil
+		return []harness.Update{note(notFullAccess)}, nil
 	}
 	_, err := t.conn.Call(ctx, dispatchCommand, runtimeModeSet{Type: "thread.runtime-mode.set", CommandID: ids.New(), ThreadID: t.threadID, RuntimeMode: fullAccess})
 	if err != nil {
@@ -244,10 +252,23 @@ func (t *turn) fullAccess(ctx context.Context, w *watch) ([]harness.Update, erro
 	return nil, nil
 }
 
+func note(summary string) harness.Update {
+	return harness.Update{Activity: &harness.Activity{Kind: harness.ActivityNote, Summary: summary, At: time.Now().UTC()}}
+}
+
 // open resubscribes after cursor, redialing first when the turn's connection died.
 func (t *turn) open(ctx context.Context, after int64) (source, error) {
+	c, err := t.live(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return c.Stream(ctx, subscribeThread, subscribeInput{ThreadID: t.threadID, AfterSequence: &after, AcceptBoundedSnapshot: true})
+}
+
+// live is the turn's connection, redialed when it died.
+func (t *turn) live(ctx context.Context) (*t3rpc.Conn, error) {
 	if t.conn != nil && !closed(t.conn.Done()) {
-		return t.conn.Stream(ctx, subscribeThread, subscribeInput{ThreadID: t.threadID, AfterSequence: &after, AcceptBoundedSnapshot: true})
+		return t.conn, nil
 	}
 	t.close()
 	c, err := t.h.connect(ctx, t.target.Session)
@@ -255,7 +276,25 @@ func (t *turn) open(ctx context.Context, after int64) (source, error) {
 		return nil, err
 	}
 	t.conn = c
-	return c.Stream(ctx, subscribeThread, subscribeInput{ThreadID: t.threadID, AfterSequence: &after, AcceptBoundedSnapshot: true})
+	return c, nil
+}
+
+// end lets the thread go once the pump stops; a run T3 still holds queued is cancelled, since nobody would read its reply.
+func (t *turn) end(ctx context.Context, w *watch) {
+	defer t.close()
+	t.h.messages.CompareAndDelete(t.threadID, t.messageID)
+	if !w.queued() {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cancelWithin)
+	defer cancel()
+	c, err := t.live(ctx)
+	if err == nil {
+		err = cancelRun(ctx, c, t.threadID, w.run.ID)
+	}
+	if err != nil {
+		t.h.log().Warn("t3clientv2: could not cancel the turn's queued run", "thread", t.threadID, "run", w.run.ID, "error", err)
+	}
 }
 
 // decline refuses an approval, since an unattended turn has nobody to grant it.
@@ -289,16 +328,24 @@ func closed(done <-chan struct{}) bool {
 
 // refused is a failed command's error carrying T3's own message when it gave one, so a person reads why.
 func refused(what string, err error) error {
+	if msg := t3Message(err); msg != "" {
+		return fmt.Errorf("%w: %s: %s", apperrs.ErrInvalid, what, msg)
+	}
+	return fmt.Errorf("%s: %w", what, err)
+}
+
+// t3Message is the message T3 refused a call with, "" when the call failed another way or not at all.
+func t3Message(err error) string {
 	var exit *t3rpc.ExitError
 	if !errors.As(err, &exit) {
-		return fmt.Errorf("%s: %w", what, err)
+		return ""
 	}
 	for _, c := range exit.Causes {
 		if c.Error.Message != "" {
-			return fmt.Errorf("%w: %s: %s", apperrs.ErrInvalid, what, c.Error.Message)
+			return c.Error.Message
 		}
 	}
-	return fmt.Errorf("%s: %w", what, err)
+	return ""
 }
 
 // decodeItem reads one stream item; one that does not decode is skipped and leaves the cursor where it was.
