@@ -87,7 +87,7 @@ func (h *Harness) Pair(ctx context.Context, serverURL, secret string) (harness.P
 	if err != nil {
 		return harness.PairResult{}, fmt.Errorf("read T3 version: %w", err)
 	}
-	return harness.PairResult{BearerToken: token, ExpiresIn: expiresIn, Version: version}, nil
+	return harness.PairResult{BearerToken: token, ExpiresIn: expiresIn, Version: version, Kind: harness.KindT3Code}, nil
 }
 
 // Version implements harness.Client via the unauthenticated well-known probe.

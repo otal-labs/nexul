@@ -29,5 +29,5 @@ func TestHarness_Pair_ExchangesThenReadsVersion(t *testing.T) {
 	h := NewHarness(Options{HTTPClient: srv.Client()})
 	result, err := h.Pair(context.Background(), srv.URL, "tok")
 	require.NoError(t, err)
-	assert.Equal(t, harness.PairResult{BearerToken: "bearer-xyz", ExpiresIn: time.Hour, Version: "0.0.34"}, result)
+	assert.Equal(t, harness.PairResult{BearerToken: "bearer-xyz", ExpiresIn: time.Hour, Version: "0.0.34", Kind: harness.KindT3Code}, result)
 }

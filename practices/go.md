@@ -50,6 +50,7 @@ internal/
   roles/                 # role entity, permission catalog, protected Owner role
   runner/                # runner protocol domain (WS server side)
   t3client/              # T3 Code harness client, orchestration protocol 1
+  t3clientv2/            # T3 Code harness client, orchestration protocol 2
   t3rpc/                 # T3 Effect RPC transport over one WebSocket, shared by both protocols
   tenancy/               # workspace entity and membership
   tickets/               # tickets domain

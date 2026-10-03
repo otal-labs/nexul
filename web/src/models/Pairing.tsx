@@ -272,7 +272,7 @@ export const CreateComputerTunnelFormSchema = z.object({
 export type CreateComputerTunnelFormData = z.infer<typeof CreateComputerTunnelFormSchema>;
 
 // Labels for the harness kinds a computer can be paired with; keys match the Go harness.Kind values.
-export const HARNESS_LABELS: Record<string, string> = { t3code: "T3 Code" };
+export const HARNESS_LABELS: Record<string, string> = { t3code: "T3 Code", "t3code-v2": "T3 Code" };
 export const harnessLabel = (kind: string) => HARNESS_LABELS[kind] ?? kind;
 
 // A user's pairing defaults, for chats outside a project and projects they haven't linked.
