@@ -4,7 +4,7 @@ import { Container } from "@/components/Container";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
-import { ProjectInterview } from "@/components/memory/ProjectInterview";
+import { InterviewPrototype } from "@/components/memory/prototype/InterviewPrototype";
 import { Button } from "@/components/ui/button";
 import { useAreaAccess } from "@/hooks/AccessHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
@@ -34,7 +34,7 @@ export const InterviewPage = () => {
           }
         />
       )}
-      {project && <ProjectInterview project={project} />}
+      {project && <InterviewPrototype project={project} />}
     </Container>
   );
 };
