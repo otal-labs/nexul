@@ -68,8 +68,7 @@ func encodeAnswers(answer harness.QuestionAnswer, asMessage bool) map[string]any
 	return out
 }
 
-// deliver answers the question an ended turn left open by responding to it, since a message would queue behind the run
-// the question holds; false when the answer has to go as a message instead, errAnswered when T3 already holds one.
+// deliver responds to the question an ended turn left open; false means send it as a message, errAnswered means T3 holds one.
 func (t *turn) deliver(ctx context.Context, w *watch, a harness.PendingAnswer) (bool, error) {
 	req, ok := t.snapshot.request(a.RequestID)
 	if ok && req.Status == "resolved" {
