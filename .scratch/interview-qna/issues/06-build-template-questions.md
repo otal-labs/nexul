@@ -15,10 +15,14 @@ memory) goes: creating the interview memory starts it empty.
 
 **Blocked by:** None — can start immediately
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Parser table tests: every rule in 01, plus an edited pre-change
+- [x] Parser table tests: every rule in 01, plus an edited pre-change
       template (heading and prompt line) parsing as free-text questions
-- [ ] Code default is the twelve questions, parsing cleanly
-- [ ] HTTP and MCP return the questions; the settings field shows the count
-- [ ] The memory no longer starts as a copy of the template
+- [x] Code default is the twelve questions, parsing cleanly
+- [x] HTTP and MCP return the questions; the settings field shows the count
+- [x] The memory no longer starts as a copy of the template
+
+## Answer
+
+Built in https://github.com/otal-labs/nexul/pull/360.

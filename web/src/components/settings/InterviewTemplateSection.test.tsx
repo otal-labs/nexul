@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { ContextAwareConfirmation } from "react-confirm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { api } from "@/api/client";
+import { api, errorMessage } from "@/api/client";
 import { InterviewTemplateSection } from "@/components/settings/InterviewTemplateSection";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
@@ -21,7 +21,8 @@ vi.mock("@/hooks/WorkspaceHooks", async (importOriginal) => ({
 const template = {
   workspace_id: "ws-1",
   body: "## Mine",
-  default_body: "## Stack and versions",
+  questions: [{ text: "Mine", hint: "", multi_select: false, options: [] }],
+  default_body: "## What languages and frameworks does this project use?",
   edited: true,
   updated_by: "u-1",
   updated_at: "2026-09-24T12:00:00Z",
@@ -87,9 +88,19 @@ describe("InterviewTemplateSection", () => {
     });
   });
 
-  it("warns once the template is over the cap", async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: { ...template, body: "x".repeat(8001) } });
+  it("counts the saved template's questions", async () => {
     renderSection();
-    expect(await screen.findByRole("alert")).toHaveTextContent("over the cap");
+    expect(await screen.findByText("1 question")).toBeInTheDocument();
+  });
+
+  it("shows a refused save inline, naming the line", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.put).mockRejectedValue(new Error("refused"));
+    vi.mocked(errorMessage).mockReturnValue("line 1: text before the first ## question heading");
+    renderSection();
+
+    await user.type(await screen.findByLabelText("Template (markdown)"), "!");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("line 1: text before the first ## question heading");
   });
 });

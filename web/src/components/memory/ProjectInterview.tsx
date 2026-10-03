@@ -37,7 +37,7 @@ export const ProjectInterview = ({ project }: ProjectInterviewProps) => {
       <InterviewThreadSection projectId={project.id} />
       {isPending && <LoadingDisplay />}
       {error && <ErrorDisplay error={error} />}
-      {memories && !interview && <InterviewEmptyState projectId={project.id} canWrite={canWrite} />}
+      {memories && !interview && <InterviewEmptyState />}
       {interview && (
         <MemoryDetail
           key={`${interview.id}:${interview.version}`}

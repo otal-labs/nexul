@@ -74,16 +74,18 @@ func markdownOf(t *testing.T, body string) string {
 	return md
 }
 
-func TestCreateInterview_NoInterviewYet_CopiesTheDefaultTemplate(t *testing.T) {
+func TestCreateInterview_NoInterviewYet_StartsEmpty_EvenWithASavedTemplate(t *testing.T) {
 	repo := newFakeRepo()
 	s := newTestService(repo)
+	_, err := s.SaveInterviewTemplate(testCtx(), "workspace-1", "## Our stack\nGo only.")
+	require.NoError(t, err)
 
 	m, err := s.CreateInterview(testCtx(), "project-1", "")
 	require.NoError(t, err)
 	assert.Equal(t, KindInterview, m.Kind)
 	assert.True(t, m.AlwaysIncluded)
 	assert.Equal(t, "workspace-1", m.WorkspaceID)
-	assert.Contains(t, markdownOf(t, m.Body), "Stack and versions")
+	assert.Empty(t, strings.TrimSpace(markdownOf(t, m.Body)))
 	require.Len(t, repo.eventsFor(TopicCreated), 1)
 }
 
@@ -97,23 +99,6 @@ func TestCreateInterview_ExistingInterview_ReturnsItUnchanged(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, first.ID, again.ID)
 	assert.Len(t, repo.eventsFor(TopicCreated), 1)
-}
-
-func TestCreateInterview_StartsFromTheSavedTemplate_AndLaterTemplateEditsLeaveItAlone(t *testing.T) {
-	repo := newFakeRepo()
-	s := newTestService(repo)
-	_, err := s.SaveInterviewTemplate(testCtx(), "workspace-1", "## Our stack\nGo only.")
-	require.NoError(t, err)
-
-	m, err := s.CreateInterview(testCtx(), "project-1", "")
-	require.NoError(t, err)
-	assert.Contains(t, markdownOf(t, m.Body), "Go only.")
-
-	_, err = s.SaveInterviewTemplate(testCtx(), "workspace-1", "## Changed")
-	require.NoError(t, err)
-	got, err := s.Get(testCtx(), m.ID)
-	require.NoError(t, err)
-	assert.Contains(t, markdownOf(t, got.Body), "Go only.")
 }
 
 func TestCreateInterview_Errors(t *testing.T) {
@@ -131,11 +116,6 @@ func TestCreateInterview_Errors(t *testing.T) {
 		{"lookup fails", func() *Service {
 			repo := newFakeRepo()
 			repo.getErr = errors.New("disk")
-			return newTestService(repo)
-		}, testCtx(), "project-1", nil},
-		{"template read fails", func() *Service {
-			repo := newFakeRepo()
-			repo.templateErr = errors.New("disk")
 			return newTestService(repo)
 		}, testCtx(), "project-1", nil},
 		{"create fails", func() *Service {
@@ -196,7 +176,7 @@ func TestRevert_InterviewMemory_WorksLikeAnyMemory(t *testing.T) {
 	got, err := s.Revert(testCtx(), m.ID, 1, "")
 	require.NoError(t, err)
 	assert.Equal(t, 3, got.Version)
-	assert.Contains(t, markdownOf(t, got.Body), "Stack and versions")
+	assert.NotContains(t, markdownOf(t, got.Body), "Rust")
 }
 
 func TestClone_InterviewMemory_BecomesAnOrdinaryMemory(t *testing.T) {
@@ -273,12 +253,16 @@ func TestInterviewTemplate_Errors(t *testing.T) {
 			_, err := newDenyService(newFakeRepo()).SaveInterviewTemplate(testCtx(), "workspace-1", "x")
 			return err
 		}, apperrs.ErrForbidden},
-		{"save: over the cap", func() error {
-			_, err := newTestService(newFakeRepo()).SaveInterviewTemplate(testCtx(), "workspace-1", strings.Repeat("a", MaxInterviewChars+1))
+		{"save: over the template limit", func() error {
+			_, err := newTestService(newFakeRepo()).SaveInterviewTemplate(testCtx(), "workspace-1", "## A\n"+strings.Repeat("a", MaxInterviewTemplateChars))
+			return err
+		}, apperrs.ErrInvalid},
+		{"save: not questions", func() error {
+			_, err := newTestService(newFakeRepo()).SaveInterviewTemplate(testCtx(), "workspace-1", "x")
 			return err
 		}, apperrs.ErrInvalid},
 		{"save: repo fails", func() error {
-			_, err := newTestService(failing).SaveInterviewTemplate(testCtx(), "workspace-1", "x")
+			_, err := newTestService(failing).SaveInterviewTemplate(testCtx(), "workspace-1", "## x")
 			return err
 		}, nil},
 	}
@@ -307,13 +291,16 @@ func TestInterviewHandlers(t *testing.T) {
 
 	rec = serve(t, h, http.MethodGet, "/api/memories/interview-template?workspace_id=workspace-1", "")
 	require.Equal(t, http.StatusOK, rec.Code)
-	assert.Contains(t, rec.Body.String(), "Stack and versions")
+	assert.Contains(t, rec.Body.String(), `"questions":[{"text":"What languages and frameworks does this project use?"`)
 	rec = serve(t, h, http.MethodGet, "/api/memories/interview-template", "")
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 
 	rec = serve(t, h, http.MethodPut, "/api/memories/interview-template", `{"workspace_id":"workspace-1","body":"## Mine"}`)
 	require.Equal(t, http.StatusOK, rec.Code)
-	assert.Contains(t, rec.Body.String(), "## Mine")
+	assert.Contains(t, rec.Body.String(), `"questions":[{"text":"Mine","hint":"","multi_select":false,"options":[]}]`)
+	rec = serve(t, h, http.MethodPut, "/api/memories/interview-template", `{"workspace_id":"workspace-1","body":"Intro\n## Mine"}`)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "line 1")
 	rec = serve(t, h, http.MethodPut, "/api/memories/interview-template", `{"workspace_id":""}`)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 	rec = serve(t, h, http.MethodPut, "/api/memories/interview-template", `{`)

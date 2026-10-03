@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import type { InterviewQuestion } from "@/models/InterviewTemplate";
+
 // Mirrors internal/templates/model.go (ADR 0103): a template resolves code default, then instance, then workspace or project.
 export const TEMPLATE_KINDS = ["interview", "mention_chip", "play_instructions", "ticket_body", "agent_prompt"] as const;
 export type TemplateKind = (typeof TEMPLATE_KINDS)[number];
@@ -25,6 +27,8 @@ export interface Template {
   edited: boolean;
   // The workspace layer follows the instance live until edited (interview, chip) rather than copying it at creation.
   follows: boolean;
+  // The body parsed into questions, for the interview kind only.
+  questions?: InterviewQuestion[];
   updated_by?: string;
   updated_at?: string;
 }
