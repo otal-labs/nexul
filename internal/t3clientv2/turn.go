@@ -77,6 +77,14 @@ type runtimeModeSet struct {
 	RuntimeMode string `json:"runtimeMode"`
 }
 
+type runtimeRequestRespond struct {
+	Type      string `json:"type"`
+	CommandID string `json:"commandId"`
+	ThreadID  string `json:"threadId"`
+	RequestID string `json:"requestId"`
+	Decision  string `json:"decision"`
+}
+
 type subscribeInput struct {
 	ThreadID              string `json:"threadId"`
 	AfterSequence         *int64 `json:"afterSequence,omitempty"`
@@ -109,7 +117,7 @@ func (h *Harness) StartTurn(ctx context.Context, target harness.Target, title st
 	for _, n := range notes {
 		updates <- n
 	}
-	p := &pump{w: w, open: t.open, log: h.log()}
+	p := &pump{w: w, open: t.open, decline: t.decline, log: h.log()}
 	go func() {
 		p.run(ctx, src, updates)
 		t.end(ctx, w)
@@ -287,6 +295,17 @@ func (t *turn) end(ctx context.Context, w *watch) {
 	if err != nil {
 		t.h.log().Warn("t3clientv2: could not cancel the turn's queued run", "thread", t.threadID, "run", w.run.ID, "error", err)
 	}
+}
+
+// decline refuses an approval, since an unattended turn has nobody to grant it.
+func (t *turn) decline(ctx context.Context, requestID string) error {
+	_, err := t.conn.Call(ctx, dispatchCommand, runtimeRequestRespond{
+		Type: "runtime-request.respond", CommandID: ids.New(), ThreadID: t.threadID, RequestID: requestID, Decision: "decline",
+	})
+	if err != nil {
+		return refused("decline the T3 approval", err)
+	}
+	return nil
 }
 
 func (t *turn) close() {

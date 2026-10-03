@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -191,12 +192,66 @@ func TestWatch_AnotherRunCancelledMidTurn_IsNotTheTurnsEnd(t *testing.T) {
 		return item.Sequence > 64
 	})
 	w := newWatch("msg-1")
-	assert.Empty(t, fold(t, w, items[:split]), "msg-2's cancel ends nothing")
-	assert.Equal(t, []harness.Update{ended(harness.TurnInterrupted, "")}, fold(t, w, items[split:]), "msg-1's own interrupt does")
+	ends := func(u harness.Update) bool { return u.Terminal != nil }
+	assert.False(t, slices.ContainsFunc(fold(t, w, items[:split]), ends), "msg-2's cancel ends nothing")
+	after := fold(t, w, items[split:])
+	require.NotEmpty(t, after)
+	assert.Equal(t, ended(harness.TurnInterrupted, ""), after[len(after)-1], "msg-1's own interrupt does")
+}
+
+func TestWatch_RecordedToolSteps_ShowEachChangeOfTheTurnsOwnItems(t *testing.T) {
+	t.Parallel()
+	label := func(u harness.Update) string {
+		switch {
+		case u.Activity != nil:
+			return string(u.Activity.Kind) + " " + strings.TrimPrefix(u.Activity.CallID, claudeItem)
+		case u.Question != nil:
+			return "asks " + u.Question.RequestID
+		case u.Approval != nil:
+			return "approval " + u.Approval.Summary
+		case u.Snapshot != nil:
+			return "reply " + u.Snapshot.Text
+		}
+		return "end " + string(u.Terminal.State)
+	}
+	var got []string
+	for _, u := range fold(t, newWatch("msg-1"), recorded(t, toolSteps)) {
+		got = append(got, label(u))
+	}
+	assert.Equal(t, []string{
+		"tool_call native-1", "tool_result native-1", "tool_result native-2", "tool_result native-3", "tool_result native-4",
+		"tool_result native-5", "tool_result native-6", "question native-7", "asks " + question1, "question native-7",
+		"approval " + approvalPrompt, "tool_call native-8", "tool_result native-8", "reply Done.", "end done",
+	}, got, "the answered question and the declined approval are not raised again, and the runs typed in T3 show nothing")
+}
+
+func TestWatch_ItemSentAgain_EmitsOnce(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		item turnItem
+	}{
+		{"a step", recordedItem(t, toolSteps, claudeItem+"native-1", "running")},
+		{"a question", recordedItem(t, toolSteps, questionItem, "waiting")},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			it := tt.item
+			it.RunID = runOne
+			resubscribed := snapshotItem(9, map[string]any{"thread": map[string]any{"id": "th-1", "runtimeMode": "full-access"},
+				"runs": []any{runOf("msg-1", "running")}, "turnItems": []any{it}, "providerSessions": []any{}})
+			got := fold(t, newWatch("msg-1"), []json.RawMessage{
+				event(2, "run.created", runOf("msg-1", "running")),
+				event(3, "turn-item.updated", it), event(4, "turn-item.updated", it), resubscribed,
+			})
+			assert.Len(t, got, 1, "re-sent by T3 and again by a resubscribe's snapshot")
+		})
+	}
 }
 
 // event is a fixture-shaped event item; the payload keys follow the captures.
-func event(seq int, typ string, payload map[string]any) json.RawMessage {
+func event(seq int, typ string, payload any) json.RawMessage {
 	b, err := json.Marshal(map[string]any{"kind": "event", "sequence": seq, "event": map[string]any{
 		"id": "ev-x", "threadId": "th-1", "occurredAt": "2026-10-03T16:00:00.000Z", "type": typ, "payload": payload}})
 	if err != nil {

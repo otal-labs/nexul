@@ -52,19 +52,6 @@ type run struct {
 	QueueHeld     bool   `json:"queueHeld"`
 }
 
-type turnItem struct {
-	ID        string   `json:"id"`
-	RunID     string   `json:"runId"`
-	NodeID    string   `json:"nodeId"`
-	Ordinal   int      `json:"ordinal"`
-	Status    string   `json:"status"`
-	Type      string   `json:"type"`
-	MessageID string   `json:"messageId"`
-	Text      string   `json:"text"`
-	Streaming bool     `json:"streaming"`
-	Failure   *failure `json:"failure"`
-}
-
 type failure struct {
 	Class   string  `json:"class"`
 	Message string  `json:"message"`
@@ -112,11 +99,18 @@ type watch struct {
 	failures     map[string]failure
 	sessionError string
 	sent         map[string]harness.Snapshot
-	ended        bool
+	// steps is the step last emitted per item, so an item a snapshot re-sends unchanged emits nothing.
+	steps map[string]harness.Activity
+	// asked holds the request ids of the questions and approvals already raised.
+	asked map[string]bool
+	// declines are the approvals raised since the pump last answered them.
+	declines []string
+	ended    bool
 }
 
 func newWatch(messageID string) *watch {
-	return &watch{messageID: messageID, runs: map[string]string{}, failures: map[string]failure{}, sent: map[string]harness.Snapshot{}}
+	return &watch{messageID: messageID, runs: map[string]string{}, failures: map[string]failure{}, sent: map[string]harness.Snapshot{},
+		steps: map[string]harness.Activity{}, asked: map[string]bool{}}
 }
 
 // apply folds one stream item into the watch and returns what the harness should emit for it.
@@ -209,7 +203,7 @@ func (w *watch) item(it turnItem) []harness.Update {
 		return nil
 	}
 	if it.Type != "assistant_message" {
-		return nil
+		return w.step(it)
 	}
 	snap := harness.Snapshot{MessageID: it.MessageID, Text: it.Text, Streaming: it.Streaming}
 	if w.sent[it.MessageID] == snap {
@@ -217,6 +211,29 @@ func (w *watch) item(it turnItem) []harness.Update {
 	}
 	w.sent[it.MessageID] = snap
 	return []harness.Update{{Snapshot: &snap}}
+}
+
+// step emits what the mapper makes of an item: a step each time it changes, a question or approval once per request.
+func (w *watch) step(it turnItem) []harness.Update {
+	u, ok := mapItem(it)
+	if !ok {
+		return nil
+	}
+	if u.Activity != nil {
+		if w.steps[it.ID] == *u.Activity {
+			return nil
+		}
+		w.steps[it.ID] = *u.Activity
+		return []harness.Update{u}
+	}
+	if w.asked[it.RequestID] {
+		return nil
+	}
+	w.asked[it.RequestID] = true
+	if u.Approval != nil {
+		w.declines = append(w.declines, it.RequestID)
+	}
+	return []harness.Update{u}
 }
 
 // end is the turn's terminal result the first time its run reaches one; a run that stopped reports its end twice.

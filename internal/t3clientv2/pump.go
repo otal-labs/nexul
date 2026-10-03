@@ -29,9 +29,10 @@ var resubscribeBackoff = []time.Duration{time.Second, 5 * time.Second, 25 * time
 
 // pump feeds a turn's stream through its watch until the watch ends the turn, resubscribing when the stream ends.
 type pump struct {
-	w    *watch
-	open func(ctx context.Context, after int64) (source, error)
-	log  *slog.Logger
+	w       *watch
+	open    func(ctx context.Context, after int64) (source, error)
+	decline func(ctx context.Context, requestID string) error
+	log     *slog.Logger
 	// failures counts resubscribes since the stream last delivered anything.
 	failures int
 	// note is the queued note last shown, due when it is shown again.
@@ -89,6 +90,7 @@ func (p *pump) next(ctx context.Context, src source) ([]json.RawMessage, error) 
 func (p *pump) fold(ctx context.Context, values []json.RawMessage, out chan<- harness.Update) bool {
 	for _, raw := range values {
 		updates, end := p.w.apply(decodeItem(p.log, raw))
+		p.declineApprovals(ctx)
 		for _, u := range updates {
 			if !send(ctx, out, u) {
 				return true
@@ -100,6 +102,16 @@ func (p *pump) fold(ctx context.Context, values []json.RawMessage, out chan<- ha
 		}
 	}
 	return false
+}
+
+// declineApprovals refuses the approvals the watch just raised before they are forwarded, as protocol 1's client does.
+func (p *pump) declineApprovals(ctx context.Context) {
+	for _, id := range p.w.declines {
+		if err := p.decline(ctx, id); err != nil {
+			p.log.Warn("t3clientv2: auto-decline failed", "request", id, "error", err)
+		}
+	}
+	p.w.declines = nil
 }
 
 // remind shows the queued note when it changes and again every noteEvery while T3 holds the run; false once ctx ends.
