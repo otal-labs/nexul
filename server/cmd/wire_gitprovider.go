@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 
@@ -20,6 +21,45 @@ type ticketLinker struct {
 
 func (l ticketLinker) LinkPR(ctx context.Context, ticketID string, ref gitprovider.PRRef) error {
 	return l.svc.LinkPR(ctx, ticketID, tickets.PRRef{Owner: ref.Owner, Repo: ref.Repo, Number: ref.Number, Title: ref.Title, SHA: ref.SHA})
+}
+
+// openPRLister adapts tickets.PRRef to gitprovider.PRRef for the PR state sweep.
+type openPRLister struct {
+	svc *tickets.Service
+}
+
+func (l openPRLister) ListOpenPRs(ctx context.Context) ([]gitprovider.PRRef, error) {
+	refs, err := l.svc.OpenPRs(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]gitprovider.PRRef, 0, len(refs))
+	for _, r := range refs {
+		out = append(out, gitprovider.PRRef{Owner: r.Owner, Repo: r.Repo, Number: r.Number})
+	}
+	return out, nil
+}
+
+// sweepPRReader reads a linked PR whether or not its repo is attached to a project, since a ticket can link any
+// repo the installation reaches.
+type sweepPRReader struct {
+	router gitProviderRouter
+}
+
+func (r sweepPRReader) GetPR(ctx context.Context, owner, name string, number int) (*gitprovider.PR, error) {
+	connectorID := "github"
+	ref, err := r.router.workspace.GetRepoByFullName(ctx, owner, name)
+	if err != nil && !errors.Is(err, apperrs.ErrNotFound) {
+		return nil, fmt.Errorf("resolve git provider for %s/%s: %w", owner, name, err)
+	}
+	if err == nil {
+		connectorID = ref.ConnectorID
+	}
+	p, err := r.router.resolveConnector(ctx, connectorID)
+	if err != nil {
+		return nil, err
+	}
+	return p.GetPR(ctx, owner, name, number)
 }
 
 // gitProviderRouter resolves, per repo, which connector backs it; built fresh per call, never cached.

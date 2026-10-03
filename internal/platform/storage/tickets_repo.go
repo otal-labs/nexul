@@ -306,6 +306,18 @@ func (r *TicketsRepo) MarkPRState(ctx context.Context, owner, repo string, numbe
 	return affected, nil
 }
 
+func (r *TicketsRepo) ListOpenPRs(ctx context.Context) ([]tickets.PRRef, error) {
+	rows, err := r.q.ListOpenTicketPRs(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list open pr links: %w", err)
+	}
+	out := make([]tickets.PRRef, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, tickets.PRRef{Owner: row.PrOwner, Repo: row.PrRepo, Number: int(row.PrNumber)})
+	}
+	return out, nil
+}
+
 func (r *TicketsRepo) ListIDsByPR(ctx context.Context, owner, repo string, number int) ([]string, error) {
 	ids, err := r.q.ListTicketIDsByPR(ctx, sqlcgen.ListTicketIDsByPRParams{PrOwner: owner, PrRepo: repo, PrNumber: int64(number)})
 	if err != nil {

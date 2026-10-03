@@ -239,6 +239,39 @@ func (q *Queries) ListLabelColors(ctx context.Context, arg ListLabelColorsParams
 	return items, nil
 }
 
+const listOpenTicketPRs = `-- name: ListOpenTicketPRs :many
+SELECT DISTINCT pr_owner, pr_repo, pr_number FROM ticket_pr_links WHERE pr_state = 'open'
+`
+
+type ListOpenTicketPRsRow struct {
+	PrOwner  string
+	PrRepo   string
+	PrNumber int64
+}
+
+func (q *Queries) ListOpenTicketPRs(ctx context.Context) ([]ListOpenTicketPRsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listOpenTicketPRs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListOpenTicketPRsRow
+	for rows.Next() {
+		var i ListOpenTicketPRsRow
+		if err := rows.Scan(&i.PrOwner, &i.PrRepo, &i.PrNumber); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTicketBranchLinks = `-- name: ListTicketBranchLinks :many
 SELECT branch_owner, branch_repo, branch_name FROM ticket_branch_links WHERE ticket_id = ? ORDER BY linked_at
 `

@@ -264,6 +264,8 @@ func (f *fakeRepo) MarkPRState(_ context.Context, owner, repo string, number int
 	return affected, nil
 }
 
+func (f *fakeRepo) ListOpenPRs(context.Context) ([]PRRef, error) { return nil, nil }
+
 func (f *fakeRepo) ListIDsByPR(_ context.Context, owner, repo string, number int) ([]string, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

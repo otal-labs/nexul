@@ -228,6 +228,32 @@ func TestIntegration_TicketDevStatusBatchesAcrossTickets(t *testing.T) {
 	assert.Equal(t, tickets.DevStatusCounts{}, got["does-not-exist"])
 }
 
+func TestIntegration_OpenPRs_ListsEachOpenPROnceAndDropsItOnceMerged(t *testing.T) {
+	ctx := context.Background()
+	db := newDB(t)
+	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
+	svc := tickets.NewService(s.Tickets, s.Statuses, nil)
+
+	a, err := svc.Create(ctx, "project-general", "A", "", "", "")
+	require.NoError(t, err)
+	b, err := svc.Create(ctx, "project-general", "B", "", "", "")
+	require.NoError(t, err)
+	require.NoError(t, svc.LinkPR(ctx, a.ID, tickets.PRRef{Owner: "acme", Repo: "app", Number: 1}))
+	require.NoError(t, svc.LinkPR(ctx, b.ID, tickets.PRRef{Owner: "acme", Repo: "app", Number: 1}))
+
+	open, err := svc.OpenPRs(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, []tickets.PRRef{{Owner: "acme", Repo: "app", Number: 1}}, open)
+
+	require.NoError(t, svc.HandlePRMerged(ctx, eventbus.Event{
+		Topic:   "git.pr_merged",
+		Payload: json.RawMessage(`{"owner":"acme","repo":"app","pr":{"number":1,"linked_ticket_ids":[]}}`),
+	}))
+	open, err = svc.OpenPRs(ctx)
+	require.NoError(t, err)
+	assert.Empty(t, open)
+}
+
 // Acceptance criterion (ADR 0002): a ticket's manual position persists
 // within its (status, category) pair, and moving it to a new status or
 // category resets its position to the end of the new pair rather than
