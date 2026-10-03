@@ -7,7 +7,8 @@ applied it afterwards, never backwards. The owner found the picker getting in th
 depends on how the work went, which nobody knows at the press, and the never-backwards rule then skipped the move
 with a note whenever the default automations had already moved the card.
 
-Decision: the run dialog has no column picker and the runner never moves a ticket. A memory can be marked a footer.
+Decision: the run dialog has no column picker and the runner never moves a ticket. Memories sit in two folders,
+Main and Footer, and a memory moves between them from the list.
 The run dialog lists footer memories in their own section at the bottom, and a run names the picked ones, and any
 always-included footer, last in the request, after the run's own instructions, telling the agent to read them once
 the work is done and follow them to conclude the run. A footer memory says where the ticket goes and anything else

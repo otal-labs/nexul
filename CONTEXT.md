@@ -124,8 +124,8 @@ phrase, and a rich-text body, belonging to exactly one project. It reaches
 only that project's turns: an Agent turn on a ticket, doc, or interview
 carries the index of its project's memories, a play run names the ones
 the user picked for the agent to read first, and a plain chat with no
-ticket or doc carries none. A memory marked footer is named last in a play
-run instead, for the agent to read once the work is done and conclude the
+ticket or doc carries none. Memories sit in two folders, Main and Footer; a
+footer memory is named last in a play run instead, for the agent to read once the work is done and conclude the
 run, such as deciding which column the ticket now belongs in.
 Agents may write memories too. Every save appends a version with its
 author, and any version can be reverted to. Cloned, never shared, to
