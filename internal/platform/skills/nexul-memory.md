@@ -39,6 +39,36 @@ each, or copied with `clone_from_id`. Update an existing one with
 edit memories directly on the Memories page — that's the safety valve for a
 wrong or stale memory.
 
+## Doc or memory
+
+Route by purpose, never by format or length. Ask who the content is for and
+what it is meant to do:
+
+- A doc (`doc_create`) is for people deciding what to build: requirements,
+  product scope, acceptance criteria, business processes, and
+  project-management deliverables such as a plan or a status report.
+- A memory (`memory_create`) is for agents building it: reusable technical
+  research, architecture guidance, coding standards, dependency and library
+  recommendations, and practices within a library.
+
+A long technical report with citations is still a memory when its purpose is
+to guide implementation, such as research into a C++ architecture, which
+libraries to use, and how to use them. A short list of what a client's
+checkout must do is still a doc. A deliverable that holds both is split: the
+requirements go in a doc, the technical guidance in a memory, and each body
+links the other: the doc names the memory's title and id, the memory names the
+doc's title and id.
+
+- A destination the person named, a doc or a doc folder, wins over this rule.
+- Give a technical memory a when-to-use line narrow enough that it is read
+  only when relevant, and link it from where the work starts: the ticket's
+  thread with a note, or the project's rules when it applies to most work.
+- Saving keeps meaning: a recommendation stays a recommendation, not a
+  decision.
+- Scope follows the request. A research request ends with the findings
+  saved; an implementation request includes the dependency and schema choices
+  it needs, with no separate approval round.
+
 ## Curate
 
 Keep the set small and specific. Prefer updating an existing memory over
