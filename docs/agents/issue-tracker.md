@@ -87,6 +87,10 @@ git history, and anything durable it decided is an ADR.
   a second T3 client under its own harness kind, a one-way switch per
   computer, and handed-off agents as pills on the Agent's reply. Spec and
   tickets 01–19 written 2026-10-03; wire research in `research/`.
+- `.scratch/interview-qna/` — the interview as question cards on the
+  Interview page with no agent, then a play run that asks follow-ups about
+  the gaps and writes the interview memory. Wayfinder map charted
+  2026-10-03; carries the build. Research findings in `research/`.
 - `.scratch/mcp-parity/` — web capabilities no MCP tool reaches yet, one
   bullet each, `needs-triage`.
 - `.scratch/pre-release/` — four standing pre-release items, all open.

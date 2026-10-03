@@ -188,6 +188,12 @@ and each helper shows as a pill on the reply that opens its conversation.
 OpenCode 2 runs as a provider inside T3 Code, so it needs no harness of its
 own. Tracked in `.scratch/t3-orchestrator-v2/`.
 
+In progress: **the interview as questions**. A project's interview stops
+being a chat: the Interview page steps through the template's questions as
+cards, then an agent reads the answers and the code, asks follow-ups about
+the gaps, and writes the interview memory. Answers stay on the page, so a
+re-run means changing what changed. The map is in `.scratch/interview-qna/`.
+
 Parked until the repository migration lands: **bots**, webhook-driven bots
 that post into any conversation with Discord's payload and get their own tab
 in Settings. The wayfinder map in `.scratch/bots/` has the Discord contract,
