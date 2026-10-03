@@ -336,7 +336,7 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 		Conversations: agentConversations{svc: svc.chatSvc, projects: svc.workspaceSvc},
 		Targets:       svc.pairingSvc,
 		Harnesses:     svc.harnesses,
-		Tickets:       agentTicketReader{svc: svc.ticketsSvc, projects: store.Projects},
+		Tickets:       agentTicketReader{svc: svc.ticketsSvc, projects: store.Projects, statuses: store.Statuses},
 		Docs:          agentDocReader{svc: svc.docsSvc},
 		Users:         agentUserReader{users: store.Users},
 		Memories:      agentMemories{svc: svc.memoriesSvc},
@@ -346,6 +346,7 @@ func wireLiveHubAndAgent(ctx context.Context, bus *inprocess.Bus, store *storage
 		Logger:        logger,
 	})
 	mustSubscribe(ctx, bus, "agent.mention", chat.TopicMessageCreated, " for agent pipeline", agentSvc.HandleMessageCreated)
+	mustSubscribe(ctx, bus, "agent.settle", tickets.TopicStatusChanged, " to settle a done ticket's harness session", agentSvc.HandleTicketStatusChanged)
 	agentHandler := agent.NewHandler(agentSvc)
 	// A play run is an Agent turn with a trail (ADR 0055), so the runner sits on the same pipeline the mentions use.
 	svc.playsRunner = plays.NewRunner(plays.RunnerConfig{
