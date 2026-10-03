@@ -21,6 +21,11 @@ Decision: Nexul mints the message id, and the turn is the run whose `userMessage
 - **The prompt.** The full prompt goes to a new thread, and to a thread T3 imported from protocol 1
   (`historyOrigin: v1_import`) until one of its runs completes, since T3 hands such a thread only an excerpt of its
   old history. Anything else gets the incremental prompt (ADR 0106).
+- **The images.** A full prompt's images are uploaded first with `assets.persistChatAttachments`, under the thread
+  and message ids, as gif, jpeg, png or webp data URLs, and `message.dispatch` carries the references T3 returns.
+  Any other type is left out with a note, since T3's providers take only those four. A refused upload fails the
+  turn before anything is sent, because the prompt points at images the agent would not see. An incremental prompt
+  carries none: the thread already holds them.
 - **The end.** The turn is done at its run's first `waiting`, or at `completed` if `waiting` was missed. T3 persists
   a finished provider turn as `waiting` and moves it to `completed` once its checkpoint is captured; the reply is
   final at `waiting`, and the checkpoint is T3's own rollback bookkeeping, which can lag or stall. `interrupted`,

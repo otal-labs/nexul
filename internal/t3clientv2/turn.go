@@ -201,24 +201,29 @@ func (t *turn) subscribe(ctx context.Context) (source, *watch, error) {
 	return src, w, nil
 }
 
-// dispatch sends the prompt the snapshot calls for, once the thread is in full access or noted as not.
+// dispatch uploads the prompt's images, then sends the prompt the snapshot calls for once the thread is in full access or noted as not.
 func (t *turn) dispatch(ctx context.Context, w *watch, fresh bool, prompts harness.TurnPrompts) ([]harness.Update, error) {
-	notes, err := t.fullAccess(ctx, w)
+	text, images := prompts.Incremental, []harness.Attachment(nil)
+	if fresh || w.imported() {
+		text, images = prompts.Full, prompts.Attachments
+	}
+	// Uploaded before anything touches the thread, so a refused upload leaves it as it was.
+	refs, notes, err := t.persistImages(ctx, images)
 	if err != nil {
 		return nil, err
 	}
-	text := prompts.Incremental
-	if fresh || w.imported() {
-		text = prompts.Full
+	more, err := t.fullAccess(ctx, w)
+	if err != nil {
+		return nil, err
 	}
 	_, err = t.conn.Call(ctx, dispatchCommand, messageDispatch{
 		Type: "message.dispatch", CreatedBy: "user", CreationSource: "web", CommandID: ids.New(), ThreadID: t.threadID,
-		MessageID: t.messageID, Text: text, Attachments: []json.RawMessage{}, DispatchMode: dispatchMode{Type: "queue_after_active"},
+		MessageID: t.messageID, Text: text, Attachments: refs, DispatchMode: dispatchMode{Type: "queue_after_active"},
 	})
 	if err != nil {
 		return nil, refused("send the message to T3 Code", err)
 	}
-	return notes, nil
+	return append(notes, more...), nil
 }
 
 // fullAccess sets the thread to full access, unless that would detach a queued or live run; then it notes it.
@@ -227,13 +232,17 @@ func (t *turn) fullAccess(ctx context.Context, w *watch) ([]harness.Update, erro
 		return nil, nil
 	}
 	if w.busy() {
-		return []harness.Update{{Activity: &harness.Activity{Kind: harness.ActivityNote, Summary: notFullAccess, At: time.Now().UTC()}}}, nil
+		return []harness.Update{note(notFullAccess)}, nil
 	}
 	_, err := t.conn.Call(ctx, dispatchCommand, runtimeModeSet{Type: "thread.runtime-mode.set", CommandID: ids.New(), ThreadID: t.threadID, RuntimeMode: fullAccess})
 	if err != nil {
 		return nil, refused("set the t3 thread to full access", err)
 	}
 	return nil, nil
+}
+
+func note(summary string) harness.Update {
+	return harness.Update{Activity: &harness.Activity{Kind: harness.ActivityNote, Summary: summary, At: time.Now().UTC()}}
 }
 
 // open resubscribes after cursor, redialing first when the turn's connection died.
