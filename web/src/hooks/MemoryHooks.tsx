@@ -107,6 +107,42 @@ export const useSetMemoryAlwaysIncluded = () => {
   });
 };
 
+// Saves the memory as it stands with footer flipped; the caches patch first and roll back on failure.
+export const useSetMemoryFooter = () => {
+  const client = useQueryClient();
+  const patchLists = (id: string, footer: boolean) => {
+    client.setQueriesData<Memory[]>({ queryKey: [getMemoriesKey] }, (list) =>
+      list?.map((m) => (m.id === id ? { ...m, footer } : m)),
+    );
+    client.setQueryData<Memory>([getMemoryKey, id], (m) => m && { ...m, footer });
+  };
+  return useMutation({
+    mutationFn: async ({ memory, footer }: { memory: Memory; footer: boolean }) =>
+      (
+        await api.put<Memory>(`/api/memories/${memory.id}`, {
+          title: memory.title,
+          when_to_use: memory.when_to_use,
+          body: memory.body,
+          always_included: memory.always_included,
+          footer,
+        })
+      ).data,
+    onMutate: async ({ memory, footer }) => {
+      await client.cancelQueries({ queryKey: [getMemoriesKey] });
+      await client.cancelQueries({ queryKey: [getMemoryKey, memory.id] });
+      patchLists(memory.id, footer);
+    },
+    onError: (error, { memory }) => {
+      patchLists(memory.id, memory.footer);
+      toast.error(errorMessage(error));
+    },
+    onSettled: async (_, __, { memory }) => {
+      await client.invalidateQueries({ queryKey: [getMemoriesKey] });
+      await client.invalidateQueries({ queryKey: [getMemoryKey, memory.id] });
+    },
+  });
+};
+
 export const useDeleteMemory = () => {
   const client = useQueryClient();
   return useMutation({

@@ -10,6 +10,8 @@ export interface Memory {
   when_to_use: string;
   body: string;
   always_included: boolean;
+  /** Read when a play run ends, to conclude it. */
+  footer: boolean;
   version: number;
   created_by: string;
   created_at: string;

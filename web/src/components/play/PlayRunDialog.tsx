@@ -4,9 +4,7 @@ import { PlayRunForm } from "@/components/play/PlayRunForm";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useFetchMemoriesByProject } from "@/hooks/MemoryHooks";
 import { useHarnessReadiness } from "@/hooks/PairingHooks";
-import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
 import { useFetchLatestChoices } from "@/hooks/TrailHooks";
-import { useHasPermission } from "@/hooks/WorkspaceHooks";
 import type { Play, PlayType } from "@/models/Play";
 
 interface PlayRunDialogProps {
@@ -29,13 +27,11 @@ interface PlayRunDialogBodyProps {
 // Loads what the form is seeded from; the form mounts once everything is here so its initial state needs no effect.
 const PlayRunDialogBody = ({ play, projectId, targetType, targetId, onDone }: PlayRunDialogBodyProps) => {
   const memories = useFetchMemoriesByProject(projectId);
-  const statuses = useFetchProjectStatuses(projectId);
   const choices = useFetchLatestChoices(play.id, projectId);
   // Shares the resolve query's cache with the play button that gated this dialog open, so this costs no extra call.
   const readiness = useHarnessReadiness(projectId);
-  const canMoveTickets = useHasPermission("tickets:write");
-  const isPending = memories.isPending || statuses.isPending || choices.isPending || readiness === undefined;
-  const error = memories.error ?? statuses.error ?? choices.error;
+  const isPending = memories.isPending || choices.isPending || readiness === undefined;
+  const error = memories.error ?? choices.error;
   const resolvedHarness =
     readiness?.state === "ready"
       ? { computer_id: readiness.computerId, provider: readiness.provider, model: readiness.model, model_options: readiness.modelOptions }
@@ -45,16 +41,14 @@ const PlayRunDialogBody = ({ play, projectId, targetType, targetId, onDone }: Pl
     <div className="space-y-5">
       {isPending && <LoadingDisplay label="Loading choices…" />}
       {error && <ErrorDisplay error={error} title="Failed to load the run choices" />}
-      {memories.data && statuses.data && choices.data && readiness && (
+      {memories.data && choices.data && readiness && (
         <PlayRunForm
           play={play}
           targetType={targetType}
           targetId={targetId}
           memories={memories.data}
-          columns={statuses.data}
           choices={choices.data}
           resolvedHarness={resolvedHarness}
-          canMoveTickets={canMoveTickets}
           onDone={onDone}
         />
       )}

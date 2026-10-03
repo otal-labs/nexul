@@ -45,6 +45,11 @@ export const MemoryListRow = ({ memory, projectToken, selected }: MemoryListRowP
                 always in context
               </span>
             )}
+            {memory.footer && (
+              <span className="rounded-full bg-muted px-1.5 py-px text-[10px] whitespace-nowrap text-muted-foreground">
+                footer
+              </span>
+            )}
           </span>
         }
         actions={(onClone || onDelete) && <RowActions itemLabel={memory.title} onClone={onClone} onDelete={onDelete} />}

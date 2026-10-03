@@ -43,7 +43,6 @@ const trail = (overrides: Partial<Trail>): Trail => ({
   via: "web",
   selected_memory_ids: [],
   custom_instructions: "Touch only the docs.",
-  move_to_status_id: "",
   harness_session_id: "sess-1",
   state: "done",
   started_at: "2026-09-18T10:00:00Z",
