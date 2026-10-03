@@ -3,6 +3,7 @@ import { LockIcon, type LucideIcon } from "lucide-react";
 import { NavLink } from "react-router";
 
 import { navLinkClass } from "@/components/SidebarNav";
+import { UnreadBadge } from "@/components/UnreadBadge";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { cn } from "@/lib/utils";
 
@@ -40,16 +41,7 @@ export const ChatSidebarRow = ({ conversationId, label, icon: Icon, isPrivate, u
         </span>
         <span className="min-w-0 flex-1 truncate text-left">{label}</span>
         {isPrivate && <LockIcon role="img" className="size-3 shrink-0 text-muted-foreground/70" aria-label="Private" />}
-        {unreadCount > 0 && (
-          <span
-            className={cn(
-              "flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground",
-              !!actions && revealed,
-            )}
-          >
-            {unreadCount > 99 ? "99+" : unreadCount}
-          </span>
-        )}
+        <UnreadBadge count={unreadCount} className={actions ? revealed : undefined} />
       </NavLink>
       {!!actions && (
         <div className="absolute inset-y-0 right-1 hidden items-center group-has-[:focus-visible]/row:flex group-hover/row:flex has-[[data-state=open]]:flex">

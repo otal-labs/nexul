@@ -50,6 +50,14 @@ export const useFetchUnreadCount = (enabled = true) => {
   });
 };
 
+// Every workspace's unread count at once, for the switcher; shares the badge's key prefix so the same invalidations reach it.
+export const useFetchUnreadByWorkspace = () =>
+  useQuery({
+    queryKey: [getUnreadCountKey],
+    queryFn: async () => (await api.get<UnreadCount>("/api/notifications/unread-count")).data,
+    select: (d) => d.workspaces,
+  });
+
 export const useMarkNotificationsRead = () => {
   const client = useQueryClient();
   return useMutation({

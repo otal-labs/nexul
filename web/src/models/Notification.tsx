@@ -38,4 +38,6 @@ export interface Notification {
 
 export interface UnreadCount {
   count: number;
+  /** Unread per workspace id; a workspace with none is absent. */
+  workspaces: Record<string, number>;
 }
