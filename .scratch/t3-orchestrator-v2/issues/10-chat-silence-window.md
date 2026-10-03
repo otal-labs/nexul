@@ -13,6 +13,21 @@ no-signal failure. This lets ticket 11 wait for handed-off work without being cu
 
 Read first: `practices/go.md`, `practices/testing.md`, the spec.
 
-- [ ] With `testing/synctest` and channel-backed fakes (`harnesstest`, never the WebSocket fake): chat updates keep arriving past ten minutes → not cut; 15 minutes of silence → the no-signal message; a chat turn with a pending question is not ended at 15 minutes
-- [ ] A play turn waiting on a question for 45 minutes is not ended by the pipeline and posts nothing
-- [ ] `make lint`, `make coverage` green
+- [x] With `testing/synctest` and channel-backed fakes (`harnesstest`, never the WebSocket fake): chat updates keep arriving past ten minutes → not cut; 15 minutes of silence → the no-signal message; a chat turn with a pending question is not ended at 15 minutes
+- [x] A play turn waiting on a question for 45 minutes is not ended by the pipeline and posts nothing
+- [x] `make lint`, `make coverage` green
+
+## Comments
+
+- The window lives in `internal/agent/pipeline.go` as `silenceWindow`. Every update restarts it: snapshot, activity,
+  approval or terminal. A Question stops it. It runs again only when `Service.Answer` has delivered an answer to that
+  turn, as plays do. Updates that arrive while a question is pending do not restart it, so ticket 11's five-minute
+  "waiting" step cannot restart the window under a pending question.
+- The answer wake is `activeTurn.answered`, a 1-buffered channel. When ticket 11 keys the active map per turn, the
+  channel moves with the entry and needs nothing else.
+- Chat callers go through `runChatTurn`, which sets `Silence` and cancels the turn context on return. With the fixed
+  deadline gone, that cancel is what releases the harness stream after the window ends a turn.
+- `maxTurnDuration` is deleted. A cancelled context now ends a turn with "turn cancelled: <cause>". The no-signal
+  text reads "after 15m0s of silence".
+- With the ten-minute deadline gone, a chat turn's setup has no overall bound either, the same as a play's today. The
+  T3 dial and each RPC still have `RPCTimeout`, but the version probe's HTTP client has no timeout.

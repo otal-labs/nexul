@@ -608,7 +608,7 @@ func (r *Runner) openThread(ctx context.Context, workspaceID string, targetType 
 }
 
 // startTurn runs the turn detached from the request's cancellation: it outlives the HTTP call, and chat's
-// ten-minute cap is chat's, not a play's. A resumed turn continues an existing trail, so it announces no start.
+// silence window is chat's, not a play's. A resumed turn continues an existing trail, so it announces no start.
 func (r *Runner) startTurn(ctx context.Context, trail *Trail, targetTitle string, req agent.TurnRequest, resumed bool) {
 	runCtx, cancel := context.WithCancelCause(context.WithoutCancel(ctx))
 	o := &trailObserver{r: r, trail: trail, targetTitle: targetTitle, ctx: context.WithoutCancel(runCtx), cancel: cancel, resumed: resumed}
