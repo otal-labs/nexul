@@ -43,7 +43,7 @@ export const TicketPageBody = ({
   embedded,
 }: TicketPageBodyProps) => {
   const layout = ticketPageLayout(embedded);
-  const threadWidth = useThreadPaneStore((s) => s.widths[ticket.id] ?? null);
+  const threadWidth = useThreadPaneStore((s) => s.widths[ticket.id]?.width ?? null);
   const gridStyle = !embedded && threadWidth !== null ? ({ "--thread-pane-width": `${threadWidth}px` } as CSSProperties) : undefined;
   return (
     <div className={layout.grid} data-thread-grid="" style={gridStyle}>

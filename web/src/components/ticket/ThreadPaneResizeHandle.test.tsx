@@ -7,7 +7,7 @@ import { THREAD_PANE_MAX, useThreadPaneStore } from "@/stores/threadPaneStore";
 
 const separator = () => screen.getByRole("separator", { name: "Resize thread" });
 const grid = () => document.querySelector<HTMLElement>("[data-thread-grid]");
-const savedWidth = () => useThreadPaneStore.getState().widths.t1;
+const savedWidth = () => useThreadPaneStore.getState().widths.t1?.width;
 
 // jsdom measures nothing; the pane is the handle's parent, so give that element the width the layout would show.
 let paneWidth = 0;
