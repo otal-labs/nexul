@@ -27,9 +27,11 @@
   off work carries handoffs: each helper's provider, model, title, state and final reply."; the
   `chat.message.created` catalog description mentions `handoffs`; regenerate the SDK.
 
-**Blocked by:** 07, 11
+**Blocked by:** 07, 11, 20
 
 **Status:** ready-for-agent
+
+Note: ticket 20 makes a `subagent.updated` without `completionDelivery` keep the known state; build the child state on that.
 
 Read first: `practices/go.md`, `practices/testing.md`, `practices/architecture.md`, the spec, `research/protocol-2-wire.md` and `research/runs-nexul-did-not-start.md`. Also `practices/mcp.md`.
 
