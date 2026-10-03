@@ -3,7 +3,7 @@ import { ChevronsUpDownIcon } from "lucide-react";
 import { PopoverTrigger } from "@/components/ui/popover";
 import type { MyWorkspaceInfo } from "@/models/Permission";
 import { cn } from "@/lib/utils";
-import { effectiveAvatar } from "@/models/User";
+import { effectiveAvatar, userLabel } from "@/models/User";
 import type { User } from "@/models/User";
 
 const initials = (name: string) =>
@@ -24,8 +24,8 @@ export const AccountMenuTrigger = ({ user, role, collapsed }: AccountMenuTrigger
   <PopoverTrigger asChild>
     <button
       type="button"
-      aria-label={collapsed ? `Account menu for @${user.login}` : undefined}
-      title={collapsed ? `@${user.login}` : undefined}
+      aria-label={collapsed ? `Account menu for ${userLabel(user)}` : undefined}
+      title={collapsed ? userLabel(user) : `@${user.login}`}
       className={cn(
         "flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left outline-none transition-colors duration-150 ease-standard hover:bg-accent/60 focus-visible:ring-[3px] focus-visible:ring-ring/40",
         collapsed && "justify-center",
@@ -41,13 +41,13 @@ export const AccountMenuTrigger = ({ user, role, collapsed }: AccountMenuTrigger
       )}
       {effectiveAvatar(user) === "" && (
         <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent text-[12px] font-semibold text-primary">
-          {initials(user.login)}
+          {initials(userLabel(user))}
         </span>
       )}
       {!collapsed && (
         <>
           <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <span className="truncate text-[13px] font-medium">@{user.login}</span>
+            <span className="truncate text-[13px] font-medium">{userLabel(user)}</span>
             {role && <span className="truncate text-[11px] text-muted-foreground">{role.role_name}</span>}
           </span>
           <ChevronsUpDownIcon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
