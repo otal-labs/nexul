@@ -149,7 +149,7 @@ export const ChatComposer = ({ workspaceId, conversationId, placeholder = "Messa
           <ComposerMentionSuggestions matches={matches} selectedIndex={selectedIndex} onPick={pickMention} />
         )}
         {pending.length > 0 && <ComposerAttachmentStrip pending={pending} onRemove={remove} />}
-        <div className="flex items-end gap-2">
+        <div className="flex items-start gap-2">
           <input
             ref={fileInputRef}
             type="file"
@@ -164,6 +164,7 @@ export const ChatComposer = ({ workspaceId, conversationId, placeholder = "Messa
             size="icon"
             variant="ghost"
             aria-label="Attach image"
+            className="mt-0.5"
             onClick={() => fileInputRef.current?.click()}
           >
             <ImagePlus className="size-4" aria-hidden />
@@ -178,7 +179,7 @@ export const ChatComposer = ({ workspaceId, conversationId, placeholder = "Messa
             onClick={handleClickOrKeyUp}
             onPaste={handlePaste}
             rows={1}
-            className="quiet-focus min-h-10 flex-1 resize-none text-sm focus-visible:border-ring/40 focus-visible:ring-0"
+            className="quiet-focus field-sizing-content max-h-[50dvh] min-h-10 flex-1 resize-none text-sm focus-visible:border-ring/40 focus-visible:ring-0"
           />
         </div>
       </div>
