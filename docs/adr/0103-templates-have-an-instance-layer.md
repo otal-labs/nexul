@@ -52,3 +52,6 @@ a play run or a new ticket reads; a separate clone tool or a `template_list` too
 for when `template_update` and `template_get` already name the place.
 
 Decided 2026-10-01. Amends ADR 0088's table with `templates:write`.
+
+Amended by ADR 0111: the `agent_prompt` kind, the Intro and Footer of every full agent prompt, lives only at the
+instance, with no layer below it and nothing to clone to.

@@ -1,5 +1,9 @@
 # A follow-up turn on a live session carries only what is new
 
+Amended by ADR 0111: the full prompt names the ticket or doc and the memories instead of carrying them, system
+messages are left out of every prompt, and a play run's start on a live session sends its play part without the
+Intro and Footer.
+
 Supersedes ADR 0065 in part: the interview memory and the other always-included memories reach every session in
 full, not every turn.
 

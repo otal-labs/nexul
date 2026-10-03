@@ -71,11 +71,12 @@ through MCP.
 **Harness**:
 The agent tool running on a user's paired computer that executes an Agent
 turn (T3 Code today, others later). The server talks to every harness through
-one interface, `harness.Client`, with one implementation per kind. An image
-embedded in a ticket body, a doc body, or an always-included memory an
-`@Agent` turn inlines travels to the harness as an attachment, capped at
-10 MiB per image and 25 MiB per turn; an oversized or non-image reference
-becomes an "attachment omitted" line. A Note's file reaches the turn as text.
+one interface, `harness.Client`, with one implementation per kind. A turn's
+prompt names its ticket, doc, and memories for the agent to read through MCP
+rather than carrying them; an image embedded in the body of the ticket or doc
+a turn is about still travels to the harness as an attachment, capped at
+10 MiB per image and 25 MiB per turn, and an oversized or non-image one is
+left out. A Note's file reaches the turn as text.
 _Avoid_: Backend (that is the Go server), Runtime, Driver
 
 **Model options**:
@@ -121,10 +122,10 @@ _Avoid_: Onboarded, verified, setup flag
 **Memory**:
 Knowledge written for agents, not people: a title, a one-line when-to-use
 phrase, and a rich-text body, belonging to exactly one project. It reaches
-only that project's turns: an Agent turn on a ticket, doc, or interview
-carries the index of its project's memories, a play run names the ones
-the user picked for the agent to read first, and a plain chat with no
-ticket or doc carries none.
+only that project's turns, by name and never by body: every Agent turn there
+names the always-included ones for the agent to read first, a play run adds
+the ones the user picked, the agent finds the rest itself, and a plain chat
+with no ticket or doc names none.
 Agents may write memories too. Every save appends a version with its
 author, and any version can be reverted to. Cloned, never shared, to
 another project. Plural in the UI: "memories".
@@ -143,15 +144,15 @@ _Avoid_: Onboarding, questionnaire, setup
 
 **Interview memory**:
 The project memory an interview produces, written as rules and kept short,
-and included in full in every `@Agent` turn in that project; a play run
-names it for the agent to read first.
+and named first, for the agent to read before anything else, in every Agent
+turn in that project.
 _Avoid_: Practices doc, guidelines, rules file
 
 **Decisions log**:
 A project memory recording only the tickets that changed how the project
 works, three lines at most per entry, with reversed decisions marked
-superseded so it reads as what is true now. Pulled from the memory index
-when relevant, never sent every turn.
+superseded so it reads as what is true now. Found among the project's
+memories when relevant, never named every turn.
 _Avoid_: Changelog, history, release notes
 
 **Decisions check**:
@@ -525,7 +526,9 @@ _Avoid_: Ticket template, form, checklist
 **Instance template**:
 The instance's own version of a template that every workspace or project
 starts from: the Interview template, the mention chip template, each built-in
-play's instructions, and each default ticket type's body template. A template
+play's instructions, and each default ticket type's body template. The Intro
+and Footer every full Agent prompt opens and closes with are instance
+templates too, but live only at the instance, with nothing below. A template
 resolves code default, then instance template, then workspace or project; one
 nobody edited at the instance is the code default. A workspace's Interview and
 mention chip templates follow the instance's until the workspace edits its

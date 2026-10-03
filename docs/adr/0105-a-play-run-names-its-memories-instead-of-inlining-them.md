@@ -3,6 +3,9 @@
 Supersedes ADR 0065 for plays; an `@Agent` mention still inlines the interview memory and the other always-included
 memories in full.
 
+Amended by ADR 0111: an `@Agent` mention names its always-included memories the same way, no turn carries a memories
+index, and a memory's line is its name and id, without its when-to-use.
+
 A play run used to carry the full markdown of every memory it took: the always-included ones, the interview memory,
 and the ones picked in the run dialog. The prompt grew with the memories, so a selection had to fit character
 ceilings, a run over them was refused before it started, and images in a memory had to be resolved into the turn.
