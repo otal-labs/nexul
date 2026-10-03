@@ -5,6 +5,7 @@ import { useNavigate } from "react-router";
 
 import { PersonAvatar } from "@/components/PersonAvatar";
 import type { DropTargetData } from "@/components/board/dragMove";
+import { RunTimer } from "@/components/board/RunTimer";
 import { TicketBlockedLine } from "@/components/board/TicketBlockedLine";
 import { labelDotColor, pillClass, ticketTypeColor } from "@/components/board/ticketTypeColor";
 import { TicketTypeIcon } from "@/components/board/ticketTypeIcon";
@@ -14,7 +15,7 @@ import { useFetchProject } from "@/hooks/ProjectHooks";
 import { useFetchProjectStatuses } from "@/hooks/StatusHooks";
 import { useFetchLabelColors } from "@/hooks/TicketHooks";
 import { useFetchProjectTicketTypes } from "@/hooks/TicketTypeHooks";
-import { useTicketRunState } from "@/hooks/TrailHooks";
+import { useTicketRunStartedAt, useTicketRunState } from "@/hooks/TrailHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { cn } from "@/lib/utils";
 import { personLabel } from "@/models/Person";
@@ -46,6 +47,7 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
   const shown = usePerson(person.login);
   const hasThread = threadIndicators?.[ticket.id] === true;
   const runState = useTicketRunState(ticket.project_id, ticket.id);
+  const runStartedAt = useTicketRunStartedAt(ticket.project_id, ticket.id);
   const prefix = project?.prefix ?? "";
   const ticketType = ticketTypes?.find((t) => t.id === ticket.type_id);
   const type = ticketType?.name ?? "";
@@ -93,7 +95,10 @@ export const TicketCardBody = memo(({ ticket }: TicketCardBodyProps) => {
             <CircleHelp className="size-3 shrink-0 text-info" role="img" aria-label="A play is waiting for an answer" />
           )}
           {runState !== undefined && runState !== "waiting" && (
-            <LoaderCircle className="size-3 shrink-0 animate-spin motion-reduce:animate-none text-warning" role="img" aria-label="A play is running" />
+            <span className="flex items-center gap-1">
+              <LoaderCircle className="size-3 shrink-0 animate-spin motion-reduce:animate-none text-warning" role="img" aria-label="A play is running" />
+              {runStartedAt !== undefined && <RunTimer startedAt={runStartedAt} />}
+            </span>
           )}
           {prefix}-{ticket.number}
         </span>
