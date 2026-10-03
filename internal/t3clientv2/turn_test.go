@@ -294,6 +294,12 @@ func TestStartTurn_ConnectionDropsMidTurn_RedialsAndResumesAfterTheCursor(t *tes
 	s := <-done
 	require.NoError(t, s.err)
 	f.Write(t3rpctest.Chunk(subID, event(7, "run.created", runOf(messageID, "running"))))
+	// A chunk is acked on the pump's next read, after the watch applied it: the snapshot's ack, then event 7's.
+	for acked := 0; acked < 2; {
+		if t3rpctest.WaitFor(t, f.Acks, "acks for the snapshot and event 7") == subID {
+			acked++
+		}
+	}
 
 	f.Drop()
 	subID = t3rpctest.WaitFor(t, f.Subscribed, "resubscribe on a new connection")

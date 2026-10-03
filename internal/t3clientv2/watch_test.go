@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -160,8 +161,6 @@ func TestWatch_RecordedTurns(t *testing.T) {
 			want: []harness.Update{ended(harness.TurnError, "Provider turn failed.")}},
 		{name: "a queued run cancelled in T3 is interrupted", fixture: "queued-run-cancel" + nightly, messageID: "msg-2",
 			want: []harness.Update{ended(harness.TurnInterrupted, "")}},
-		{name: "another run queued and cancelled on the thread emits nothing", fixture: "queued-run-cancel" + nightly, messageID: "msg-1",
-			want: []harness.Update{ended(harness.TurnInterrupted, "")}},
 		{name: "a resume replays events without a snapshot", fixture: "subscribe-resume" + nightly, messageID: "msg-1", after: 51,
 			want: []harness.Update{
 				snapshotOf("message:provider:claudeAgent:native-item:native-2", "Not logged in · Please run /login", false),
@@ -180,6 +179,20 @@ func TestWatch_RecordedTurns(t *testing.T) {
 			assert.Equal(t, tt.want, fold(t, w, items))
 		})
 	}
+}
+
+func TestWatch_AnotherRunCancelledMidTurn_IsNotTheTurnsEnd(t *testing.T) {
+	t.Parallel()
+	items := recorded(t, "queued-run-cancel"+nightly)
+	// msg-2's queued run is cancelled at sequence 64, while msg-1's own run is still preparing.
+	split := slices.IndexFunc(items, func(raw json.RawMessage) bool {
+		var item streamItem
+		require.NoError(t, json.Unmarshal(raw, &item))
+		return item.Sequence > 64
+	})
+	w := newWatch("msg-1")
+	assert.Empty(t, fold(t, w, items[:split]), "msg-2's cancel ends nothing")
+	assert.Equal(t, []harness.Update{ended(harness.TurnInterrupted, "")}, fold(t, w, items[split:]), "msg-1's own interrupt does")
 }
 
 // event is a fixture-shaped event item; the payload keys follow the captures.

@@ -58,10 +58,11 @@ type Server struct {
 }
 
 type clientEnv struct {
-	Tag     string          `json:"_tag"`
-	ID      json.RawMessage `json:"id"`
-	RPCTag  string          `json:"tag"`
-	Payload json.RawMessage `json:"payload"`
+	Tag       string          `json:"_tag"`
+	ID        json.RawMessage `json:"id"`
+	RequestID string          `json:"requestId"`
+	RPCTag    string          `json:"tag"`
+	Payload   json.RawMessage `json:"payload"`
 }
 
 // New starts a fake T3 server that t's cleanup stops.
@@ -169,7 +170,7 @@ func (f *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 		}
 		if env.Tag == "Ack" {
 			select {
-			case f.Acks <- idString(env.ID):
+			case f.Acks <- env.RequestID:
 			default:
 			}
 			continue
