@@ -39,7 +39,6 @@ const trail = (overrides: Partial<Trail>): Trail => ({
   via: "web",
   selected_memory_ids: ["m-always"],
   custom_instructions: "Keep the sensors as they are.",
-  move_to_status_id: "st-review",
   computer_id: "",
   provider: "",
   model: "",
@@ -64,7 +63,6 @@ const mockApi = (trails: Trail[]) =>
     if (url === "/api/plays/runs/tr-run") return { data: trails.find((t) => t.id === "tr-run") };
     if (url === "/api/workspaces/ws-1/people") return { data: { people: [{ user_id: "u-1", login: "onik97", display_name: "", avatar_url: "" }, { user_id: "u-2", login: "sara", display_name: "", avatar_url: "" }] } };
     if (url === "/api/memories") return { data: [{ id: "m-always", title: "Working in this project", always_included: true }] };
-    if (url === "/api/statuses") return { data: [{ id: "st-review", name: "In review", kind: "review", position: 2 }] };
     return { data: [] };
   });
 
@@ -150,7 +148,6 @@ describe("TrailSection", () => {
     const dialog = await screen.findByRole("dialog");
     expect(dialog).toHaveTextContent("Working in this project");
     expect(dialog).toHaveTextContent("Keep the sensors as they are.");
-    expect(dialog).toHaveTextContent("In review");
     await waitFor(() => expect(dialog).toHaveTextContent("Started byonik97"));
 
     expect(within(dialog).getByText("Started Fix with AI Keep the sensors as they are.", { normalizer: (s) => s.replace(/\s+/g, " ").trim() })).toBeInTheDocument();

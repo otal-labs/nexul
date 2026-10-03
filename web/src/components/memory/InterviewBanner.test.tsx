@@ -23,6 +23,7 @@ const memory = (kind: string): Memory => ({
   when_to_use: "",
   body: "",
   always_included: kind === "interview",
+  footer: false,
   version: 1,
   created_by: "u-1",
   created_at: "",

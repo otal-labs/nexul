@@ -29,6 +29,7 @@ const memory: Memory = {
   when_to_use: "when deploying",
   body: "body",
   always_included: false,
+  footer: false,
   version: 3,
   created_by: "user-1",
   created_at: "2026-09-16T12:00:00Z",
@@ -121,6 +122,7 @@ describe("MemoryDetail", () => {
   it("locks the interview memory on and counts it against the cap", () => {
     renderDetail({ canWrite: true, memory: { ...memory, kind: "interview", always_included: true, body: "x".repeat(8001) } });
     expect(screen.queryByLabelText("Always included")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Footer")).not.toBeInTheDocument();
     expect(screen.getByText(/can't be switched off/)).toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent("8,001 / 8,000 characters");
   });
@@ -134,6 +136,7 @@ describe("MemoryDetail", () => {
   it("shows no cap for an ordinary memory", () => {
     renderDetail({ canWrite: true });
     expect(screen.getByLabelText("Always included")).toBeInTheDocument();
+    expect(screen.getByLabelText("Footer")).toBeInTheDocument();
     expect(screen.queryByText(/characters/)).not.toBeInTheDocument();
   });
 });

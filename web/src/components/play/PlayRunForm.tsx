@@ -1,18 +1,15 @@
 import { useState } from "react";
 
-import { EmptyRow } from "@/components/EmptyRow";
 import { HarnessPickerPill, type HarnessPick } from "@/components/play/HarnessPickerPill";
-import { MemoryPickRow } from "@/components/play/MemoryPickRow";
+import { MemoryPickSection } from "@/components/play/MemoryPickSection";
 import { PlayRunError } from "@/components/play/PlayRunError";
 import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useRunPlay } from "@/hooks/TrailHooks";
 import { useConfirmBlockedRun } from "@/hooks/useConfirmBlockedRun";
 import type { Memory } from "@/models/Memory";
 import type { Play, PlayType } from "@/models/Play";
-import type { BoardStatus } from "@/models/Status";
 import type { LatestChoices } from "@/models/Trail";
 
 interface PlayRunFormProps {
@@ -20,28 +17,21 @@ interface PlayRunFormProps {
   targetType: PlayType;
   targetId: string;
   memories: Memory[];
-  columns: BoardStatus[];
   choices: LatestChoices;
   resolvedHarness: HarnessPick;
-  canMoveTickets: boolean;
   onDone: () => void;
 }
 
-// Radix Select reserves "" for clearing, so "don't move" travels as this sentinel and leaves the request empty.
-const NO_MOVE = "none";
-
 const microheaderClass = "font-mono text-[11px] font-semibold tracking-[0.08em] text-muted-foreground/80 uppercase";
 
-// Mounted once per open, so the seed from the caller's latest trail needs no effect; a vanished column means no move.
+// Mounted once per open, so the seed from the caller's latest trail needs no effect.
 export const PlayRunForm = ({
   play,
   targetType,
   targetId,
   memories,
-  columns,
   choices,
   resolvedHarness,
-  canMoveTickets,
   onDone,
 }: PlayRunFormProps) => {
   const runPlay = useRunPlay();
@@ -50,18 +40,14 @@ export const PlayRunForm = ({
     choices.memory_ids.filter((id) => memories.some((m) => m.id === id && !m.always_included)),
   );
   const [instructions, setInstructions] = useState("");
-  const [moveTo, setMoveTo] = useState(() =>
-    canMoveTickets && columns.some((c) => c.id === choices.move_to_status_id) ? choices.move_to_status_id : NO_MOVE,
-  );
   // Last choice for this user, play, and project wins; else the resolved target (spec.md, "the run dialog").
   const [harness, setHarness] = useState<HarnessPick>(() =>
     choices.computer_id !== ""
       ? { computer_id: choices.computer_id, provider: choices.provider, model: choices.model, model_options: choices.model_options ?? [] }
       : resolvedHarness,
   );
-  const isTicket = play.type === "ticket";
-  const column = isTicket && moveTo !== NO_MOVE && columns.find((c) => c.id === moveTo);
-  const confirmLabel = column ? `Run ${play.label} · then ${column.name}` : `Run ${play.label}`;
+  const regular = memories.filter((m) => !m.footer);
+  const footers = memories.filter((m) => m.footer);
 
   const toggle = (id: string) =>
     setSelected((current) => (current.includes(id) ? current.filter((m) => m !== id) : [...current, id]));
@@ -76,7 +62,6 @@ export const PlayRunForm = ({
           target_id: targetId,
           memory_ids: selected,
           custom_instructions: instructions,
-          move_to_status_id: column ? column.id : "",
           computer_id: harness.computer_id,
           provider: harness.provider,
           model: harness.model,
@@ -89,22 +74,13 @@ export const PlayRunForm = ({
 
   return (
     <>
-      <section className="space-y-2">
-        <h3 className={microheaderClass}>Memories</h3>
-        {memories.length === 0 && <EmptyRow className="py-3">No memories in this project yet.</EmptyRow>}
-        {memories.length > 0 && (
-          <div className="rounded-md border border-border">
-            {memories.map((memory) => (
-              <MemoryPickRow
-                key={memory.id}
-                memory={memory}
-                checked={memory.always_included || selected.includes(memory.id)}
-                onToggle={() => toggle(memory.id)}
-              />
-            ))}
-          </div>
-        )}
-      </section>
+      <MemoryPickSection
+        title="Memories"
+        emptyMessage="No memories in this project yet."
+        memories={regular}
+        selected={selected}
+        onToggle={toggle}
+      />
 
       <section className="space-y-2">
         <h3 className={microheaderClass}>Instructions for this run</h3>
@@ -117,32 +93,13 @@ export const PlayRunForm = ({
         />
       </section>
 
-      {isTicket && (
-        <section className="space-y-2">
-          <h3 className={microheaderClass}>On success, move to</h3>
-          <Select value={moveTo} onValueChange={setMoveTo} disabled={!canMoveTickets}>
-            <SelectTrigger className="w-full" aria-label="On success, move to">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NO_MOVE}>Don't move</SelectItem>
-              {columns.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {!canMoveTickets && (
-            <p className="font-mono text-[11px] text-muted-foreground">You can't move tickets in this project.</p>
-          )}
-          {canMoveTickets && (
-            <p className="font-mono text-[11px] text-muted-foreground">
-              Never moves backwards; skipped with a note if the ticket has already moved on.
-            </p>
-          )}
-        </section>
-      )}
+      <MemoryPickSection
+        title="Footer"
+        emptyMessage="No footer memories. Mark a memory as a footer to conclude runs with it."
+        memories={footers}
+        selected={selected}
+        onToggle={toggle}
+      />
 
       {runPlay.error && <PlayRunError error={runPlay.error} />}
 
@@ -155,7 +112,7 @@ export const PlayRunForm = ({
           Cancel
         </Button>
         <Button onClick={() => void submit()} loading={runPlay.isPending}>
-          {confirmLabel}
+          Run {play.label}
         </Button>
       </DialogFooter>
     </>

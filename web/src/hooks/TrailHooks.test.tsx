@@ -36,7 +36,6 @@ const trail = (overrides: Partial<Trail> = {}): Trail => ({
   via: "web",
   selected_memory_ids: [],
   custom_instructions: "",
-  move_to_status_id: "",
   computer_id: "",
   provider: "",
   model: "",
@@ -71,13 +70,12 @@ describe("useFetchTrails / useFetchLatestChoices", () => {
 
   it("reads the caller's latest choices for a play in a project", async () => {
     vi.mocked(api.get).mockResolvedValue({
-      data: { memory_ids: ["m-1"], move_to_status_id: "st-1", computer_id: "c-1", provider: "claude", model: "sonnet-5" },
+      data: { memory_ids: ["m-1"], computer_id: "c-1", provider: "claude", model: "sonnet-5" },
     });
     const { result } = renderHook(() => useFetchLatestChoices("play-1", "p-1"), { wrapper });
     await waitFor(() =>
       expect(result.current.data).toEqual({
         memory_ids: ["m-1"],
-        move_to_status_id: "st-1",
         computer_id: "c-1",
         provider: "claude",
         model: "sonnet-5",
@@ -102,7 +100,6 @@ describe("useRunPlay", () => {
         target_id: "t-1",
         memory_ids: ["m-1"],
         custom_instructions: "go",
-        move_to_status_id: "st-1",
         computer_id: "c-1",
         provider: "claude",
         model: "sonnet-5",
@@ -115,7 +112,6 @@ describe("useRunPlay", () => {
       target_id: "t-1",
       memory_ids: ["m-1"],
       custom_instructions: "go",
-      move_to_status_id: "st-1",
       computer_id: "c-1",
       provider: "claude",
       model: "sonnet-5",
@@ -136,7 +132,6 @@ describe("useRunPlay", () => {
           target_id: "t-1",
           memory_ids: [],
           custom_instructions: "",
-          move_to_status_id: "",
           computer_id: "",
           provider: "",
           model: "",
