@@ -36,6 +36,11 @@ interface MessageSegmentProps {
 const MessageSegment = ({ segment, mentionHandles }: MessageSegmentProps) => (
   <>
     {segment.kind === "image" && <MessageImage src={segment.src} alt={segment.alt} />}
+    {segment.kind === "code" && (
+      <pre className="overflow-x-auto rounded-md border border-border bg-surface-2 px-2.5 py-1.5 font-mono text-xs leading-relaxed">
+        <code>{segment.code}</code>
+      </pre>
+    )}
     {segment.kind === "text" && (
       <p className="whitespace-pre-wrap" onCopy={copyPillUrls}>
         {tokenizeMessageText(segment.text, mentionHandles).map((part, i) => (
