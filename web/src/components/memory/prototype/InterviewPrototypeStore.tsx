@@ -16,6 +16,7 @@ export interface ProtoSnapshot {
   changed: string[];
   memoryDot: boolean;
   drafts: Record<string, AnswerValue>;
+  collapsed: string[];
 }
 
 interface ProtoStore extends ProtoSnapshot {
@@ -26,6 +27,7 @@ interface ProtoStore extends ProtoSnapshot {
   save: (id: string, value: AnswerValue | null) => void;
   regenerate: () => void;
   seenMemory: () => void;
+  toggleSection: (key: string) => void;
 }
 
 export const STATES = ["Empty", "Answering", "Agent reading", "Agent asking", "Memory ready", "Changing an answer", "Existing memory, no answers"];
@@ -50,7 +52,7 @@ const FOLLOW_UP_ANSWERS: Record<string, AnswerValue> = {
   f2: pick("Add them here as the project grows (Recommended)"),
 };
 
-const blank: ProtoSnapshot = { answers: {}, skipped: [], openId: "q1", followUps: 0, run: "idle", memory: "none", changed: [], memoryDot: false, drafts: {} };
+const blank: ProtoSnapshot = { answers: {}, skipped: [], openId: "q1", followUps: 0, run: "idle", memory: "none", changed: [], memoryDot: false, drafts: {}, collapsed: [] };
 
 const done = { answers: ALL_ANSWERS, skipped: ["q4", "q10"], openId: null };
 
@@ -58,7 +60,7 @@ const snapshots: ProtoSnapshot[] = [
   blank,
   { ...blank, answers: { q1: ALL_ANSWERS.q1!, q2: ALL_ANSWERS.q2!, q3: ALL_ANSWERS.q3! }, skipped: ["q4"], openId: "q5", drafts: { q5: ALL_ANSWERS.q5! } },
   { ...blank, ...done, run: "reading" },
-  { ...blank, ...done, run: "asking", followUps: 2, openId: "f1", drafts: { f1: FOLLOW_UP_ANSWERS.f1! } },
+  { ...blank, ...done, run: "asking", followUps: 2, openId: "f1", drafts: { f1: FOLLOW_UP_ANSWERS.f1! }, collapsed: ["initial"] },
   { ...blank, ...done, answers: { ...ALL_ANSWERS, ...FOLLOW_UP_ANSWERS }, followUps: 2, run: "ready", memory: "fresh", memoryDot: true },
   {
     ...blank,
@@ -75,6 +77,8 @@ const snapshots: ProtoSnapshot[] = [
 ];
 
 export const rowsOf = (followUps: number): ProtoQuestion[] => [...TEMPLATE, ...FOLLOW_UPS.slice(0, followUps)];
+
+export const sectionOf = (id: string): string => (id.startsWith("f") ? "followups" : "initial");
 
 const isDone = (s: ProtoSnapshot, id: string) => s.answers[id] !== undefined || s.skipped.includes(id);
 
@@ -94,7 +98,7 @@ export const useInterviewPrototypeStore = create<ProtoStore>((set, get) => {
   };
   const startReading = () => {
     set({ run: "reading", openId: null });
-    later(() => set({ run: "asking", followUps: 2, openId: "f1", drafts: { f1: FOLLOW_UP_ANSWERS.f1! } }));
+    later(() => set({ run: "asking", followUps: 2, openId: "f1", drafts: { f1: FOLLOW_UP_ANSWERS.f1! }, collapsed: ["initial"] }));
   };
   const startWriting = () => {
     set({ run: "writing", openId: null, changed: [] });
@@ -105,11 +109,12 @@ export const useInterviewPrototypeStore = create<ProtoStore>((set, get) => {
     ...blank,
     epoch: 0,
     reset: (state) => set((s) => ({ ...(snapshots[state - 1] ?? blank), epoch: s.epoch + 1 })),
-    open: (id) => set({ openId: id }),
+    open: (id) => set((s) => ({ openId: id, collapsed: s.collapsed.filter((k) => k !== sectionOf(id)) })),
     back: (id) => {
       const rows = rowsOf(get().followUps);
       const i = rows.findIndex((q) => q.id === id);
-      set({ openId: rows[Math.max(0, i - 1)]?.id ?? id });
+      const openId = rows[Math.max(0, i - 1)]?.id ?? id;
+      set((s) => ({ openId, collapsed: s.collapsed.filter((k) => k !== sectionOf(openId)) }));
     },
     save: (id, value) => {
       const s = get();
@@ -127,6 +132,8 @@ export const useInterviewPrototypeStore = create<ProtoStore>((set, get) => {
     },
     regenerate: startWriting,
     seenMemory: () => set({ memoryDot: false }),
+    toggleSection: (key) =>
+      set((s) => ({ collapsed: s.collapsed.includes(key) ? s.collapsed.filter((k) => k !== key) : [...s.collapsed, key] })),
   };
 });
 

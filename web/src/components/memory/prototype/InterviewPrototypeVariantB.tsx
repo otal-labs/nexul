@@ -20,10 +20,10 @@ export const InterviewPrototypeVariantB = () => {
   return (
     <div className="@container">
       <div className="grid gap-12 @5xl:grid-cols-[minmax(0,36rem)_minmax(0,1fr)] @5xl:items-start @5xl:gap-10">
-        <InterviewPrototypeChecklist />
+        <InterviewPrototypeChecklist grouped />
         <section className="min-w-0">
           <header className="flex min-h-9 flex-wrap items-center gap-3 border-b border-border pb-3">
-            <RunLine className="flex-1" />
+            <RunLine className="flex-1" trailIcons />
             <RegenerateButton />
           </header>
           {waiting && <EmptyState size="compact" icon={NotebookPen} title="No memory yet" message={message} className="mt-4" />}

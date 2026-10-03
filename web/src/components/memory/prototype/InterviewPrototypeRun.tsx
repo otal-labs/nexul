@@ -1,8 +1,10 @@
 import { useShallow } from "zustand/react/shallow";
 
 import { Button } from "@/components/ui/button";
+import { TrailStateIcon } from "@/components/play/TrailStateIcon";
 import { TEMPLATE } from "@/components/memory/prototype/InterviewPrototypeData";
 import { useInterviewPrototypeStore, type ProtoSnapshot } from "@/components/memory/prototype/InterviewPrototypeStore";
+import type { TrailState } from "@/models/Trail";
 import { cn } from "@/lib/utils";
 
 export type StepTone = "done" | "person" | "agent" | "stale" | "upcoming";
@@ -13,7 +15,7 @@ export interface RunStep {
   tone: StepTone;
 }
 
-type RunView = Omit<ProtoSnapshot, "drafts">;
+type RunView = Omit<ProtoSnapshot, "drafts" | "collapsed">;
 
 const LABELS = ["Answering", "Agent reading", "Agent asking", "Memory ready"];
 
@@ -79,12 +81,20 @@ export const RunDot = ({ tone, className }: { tone: StepTone; className?: string
   <span aria-hidden className={cn("inline-block size-2 shrink-0 rounded-full", DOT[tone], className)} />
 );
 
-// The run state as one line: the dot, the step, and its detail; for a header or a strip.
-export const RunLine = ({ className }: { className?: string }) => {
+const trailStateOf = (step: RunStep): TrailState | null => {
+  if (step.tone === "done") return "done";
+  if (step.tone !== "agent") return null;
+  return step.label === "Agent asking" ? "waiting" : "running";
+};
+
+// The run state as one line: the dot, the step, and its detail; trailIcons swaps the dot for the trail rows' state icon.
+export const RunLine = ({ className, trailIcons = false }: { className?: string; trailIcons?: boolean }) => {
   const { current } = useRunSteps();
+  const trailState = trailIcons ? trailStateOf(current) : null;
   return (
     <p className={cn("flex min-w-0 items-center gap-2 text-sm", className)}>
-      <RunDot tone={current.tone} />
+      {trailState && <TrailStateIcon state={trailState} />}
+      {!trailState && <RunDot tone={current.tone} />}
       <span className="shrink-0 font-medium">{current.label}</span>
       {current.detail && <span className="truncate text-muted-foreground">· {current.detail}</span>}
     </p>
