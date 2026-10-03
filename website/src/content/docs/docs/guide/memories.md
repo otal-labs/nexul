@@ -11,10 +11,10 @@ are not listed with docs.
 
 ## Scope and use
 
-Open **Memories** under the project in the sidebar (`/<workspace>/memories`). The list puts
-always-included memories first under **Pinned**; each row's switch turns
-**Always included in every turn** on or off at once, and hovering a row shows
-**Clone** and a menu with **Delete**. The **New memory** dialog has a **Project**
+Open **Memories** under the project in the sidebar (`/<workspace>/memories`). The list has two
+folders, **Main** and **Footer**, with required memories first in each. Each row's switch marks
+the memory **Required** at once, and hovering a row shows a menu with **Move to**, **Clone**, and
+**Delete**. The **New memory** dialog has a **Project**
 selector, and every memory belongs to the project picked there.
 
 - A memory reaches Agent turns for its project: a ticket, a doc, or the
@@ -23,7 +23,7 @@ selector, and every memory belongs to the project picked there.
 - A rule meant for several projects is cloned into each of them.
 
 Each memory has a **Title**, a one-line **When to use** hint, a rich-text body,
-and an **Always included in every turn** switch. Always-included memories are
+and the **Required** switch on its row in the list. Required memories are
 standing context: an `@Agent` mention sends them in full when it starts the
 Agent's session, a follow-up in the same conversation does not repeat them, and
 a play run names them for the Agent to read first. Other memories appear in the turn's index;
@@ -32,11 +32,12 @@ most 20,000 characters of one memory and 60,000 of all of them together,
 dropping the last ones past that. A play run has no such limit, because the
 Agent reads each memory itself.
 
-A memory can also be a **Footer**, switched on from the memory's page. A play's
-run dialog lists footer memories in their own **Footer** section at the bottom.
-A run names the picked ones last, after its instructions, and the Agent reads
-them once the work is done to conclude the run: for example, which column the
-ticket now belongs in. The interview and the decisions log cannot be footers.
+A memory in the **Footer** folder concludes a play run; move one there with the
+row's **Move to**. A play's run dialog lists footer memories in their own
+**Footer** section at the bottom. A run names the picked ones, and any required
+one, last, after its instructions, and the Agent reads them once the work is
+done to conclude the run: for example, which column the ticket now belongs in.
+The interview and the decisions log always stay in Main.
 
 The [setup wizard](/docs/guide/computer-setup/) installs the nexul-memory
 skill, which carries the same protocol, on every paired computer. It points
@@ -152,7 +153,7 @@ every-turn slot.
 
 ## Edit and version
 
-Open a memory from the list to edit its title, hint, switch, and body. Editing
+Open a memory from the list to edit its title, hint, and body. Editing
 is explicit: select **Save**. A memory is not live-collaborative like a doc.
 Every save appends a version. The version list supports **Revert**, which writes
 a new version rather than deleting history.

@@ -97,11 +97,11 @@ describe("PlayRunDialog", () => {
     const always = await screen.findByRole("checkbox", { name: "Working in this project" });
     expect(always).toBeChecked();
     expect(always).toBeDisabled();
-    expect(screen.getByLabelText("Always included")).toBeInTheDocument();
+    expect(screen.getByLabelText("Required")).toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: "React guide" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Go practices" })).not.toBeChecked();
     expect(screen.getByText("Any change under web/")).toBeInTheDocument();
-    const memoriesSection = screen.getByRole("heading", { name: "Memories" }).closest("section")!;
+    const memoriesSection = screen.getByRole("heading", { name: "Main" }).closest("section")!;
     const footerSection = screen.getByRole("heading", { name: "Footer" }).closest("section")!;
     expect(within(memoriesSection).queryByRole("checkbox", { name: "Where tickets go next" })).not.toBeInTheDocument();
     expect(within(footerSection).getByRole("checkbox", { name: "Where tickets go next" })).not.toBeChecked();
@@ -171,7 +171,7 @@ describe("PlayRunDialog", () => {
  it("says so when the project has no footer memories", async () => {
     mockApi(["plays:run"], memories.filter((m) => !m.footer));
     renderDialog();
-    expect(await screen.findByText("No footer memories. Mark a memory as a footer to conclude runs with it.")).toBeInTheDocument();
+    expect(await screen.findByText("No footer memories. Move a memory to the Footer folder to conclude runs with it.")).toBeInTheDocument();
   });
 
   it("shows a refusal inside the dialog and keeps it open", async () => {

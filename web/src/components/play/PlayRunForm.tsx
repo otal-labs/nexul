@@ -75,7 +75,7 @@ export const PlayRunForm = ({
   return (
     <>
       <MemoryPickSection
-        title="Memories"
+        title="Main"
         emptyMessage="No memories in this project yet."
         memories={regular}
         selected={selected}
@@ -95,7 +95,7 @@ export const PlayRunForm = ({
 
       <MemoryPickSection
         title="Footer"
-        emptyMessage="No footer memories. Mark a memory as a footer to conclude runs with it."
+        emptyMessage="No footer memories. Move a memory to the Footer folder to conclude runs with it."
         memories={footers}
         selected={selected}
         onToggle={toggle}

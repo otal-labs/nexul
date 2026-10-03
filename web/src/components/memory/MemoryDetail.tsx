@@ -6,8 +6,6 @@ import { DocBodyView } from "@/components/doc/DocBodyView";
 import { RichTextEditor } from "@/components/doc/RichTextEditor";
 import { CloneMemoryDialog } from "@/components/memory/CloneMemoryDialog";
 import { InterviewLengthMeter } from "@/components/memory/InterviewLengthMeter";
-import { MemoryFooterSwitch } from "@/components/memory/MemoryFooterSwitch";
-import { MemoryPinSwitch } from "@/components/memory/MemoryPinSwitch";
 import { MemoryRail } from "@/components/memory/MemoryRail";
 import { MemoryVersionsFeed } from "@/components/memory/MemoryVersionsFeed";
 import { PageTabs, PageTabsContent } from "@/components/PageTabs";
@@ -90,18 +88,6 @@ export const MemoryDetail = ({ memory, canWrite, canDelete, canClone, onSave, on
                   aria-label="When to use"
                   className="text-sm"
                 />
-                {!interview && !decisionsLog && (
-                  <label className="flex items-center gap-2 text-sm font-medium">
-                    <MemoryPinSwitch memory={memory} label="Always included" />
-                    Always included in every turn
-                  </label>
-                )}
-                {!interview && !decisionsLog && (
-                  <label className="flex items-center gap-2 text-sm font-medium">
-                    <MemoryFooterSwitch memory={memory} label="Footer" />
-                    Footer: read when a play run ends, to conclude it
-                  </label>
-                )}
                 {interview && (
                   <p className="text-sm text-muted-foreground">
                     Always included in every agent turn in this project; it can't be switched off.

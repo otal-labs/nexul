@@ -1,15 +1,27 @@
 import type { Memory } from "@/models/Memory";
 
-export interface MemoryGroup {
+export type MemoryFolderId = "main" | "footer";
+
+export interface MemoryFolder {
+  id: MemoryFolderId;
   label: string;
   memories: Memory[];
 }
 
-// Always-included memories lead as Pinned, since they reach every turn; each group is newest first.
-export const groupMemoriesByPin = (memories: Memory[]): MemoryGroup[] => {
-  const newestFirst = [...memories].sort((a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at));
-  return [
-    { label: "Pinned", memories: newestFirst.filter((m) => m.always_included) },
-    { label: "Other", memories: newestFirst.filter((m) => !m.always_included) },
-  ].filter((group) => group.memories.length > 0);
+export const memoryFolderOptions: { id: MemoryFolderId; name: string }[] = [
+  { id: "main", name: "Main" },
+  { id: "footer", name: "Footer" },
+];
+
+const requiredFirst = (a: Memory, b: Memory) =>
+  Number(b.always_included) - Number(a.always_included) || Date.parse(b.updated_at) - Date.parse(a.updated_at);
+
+// Main holds what a run reads first, Footer what it concludes with; required memories lead each, then newest first.
+export const groupMemoriesByFolder = (memories: Memory[]): MemoryFolder[] => {
+  const sorted = [...memories].sort(requiredFirst);
+  return memoryFolderOptions.map(({ id, name }) => ({
+    id,
+    label: name,
+    memories: sorted.filter((m) => m.footer === (id === "footer")),
+  }));
 };
