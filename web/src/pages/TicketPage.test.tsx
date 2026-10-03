@@ -174,7 +174,7 @@ describe("TicketPage sections", () => {
     expect(await screen.findByRole("heading", { name: "Thread" })).toBeInTheDocument();
     expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
     expect(await screen.findByText("Pass and fail open in a Testing column.")).toBeInTheDocument();
-    expect(await screen.findByText("No blockers or found-in links.")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Source" })).toBeInTheDocument();
     expect(await screen.findByText("No bugs reported.")).toBeInTheDocument();
     expect(await screen.findByText("No plays have run on this ticket yet.")).toBeInTheDocument();
   });

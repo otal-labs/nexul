@@ -816,6 +816,24 @@ func (q *Queries) UpdateTicketDeveloper(ctx context.Context, arg UpdateTicketDev
 	return result.RowsAffected()
 }
 
+const updateTicketDoc = `-- name: UpdateTicketDoc :execrows
+UPDATE tickets SET doc_id = ?, updated_at = ? WHERE id = ?
+`
+
+type UpdateTicketDocParams struct {
+	DocID     sql.NullString
+	UpdatedAt int64
+	ID        string
+}
+
+func (q *Queries) UpdateTicketDoc(ctx context.Context, arg UpdateTicketDocParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateTicketDoc, arg.DocID, arg.UpdatedAt, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const updateTicketPRState = `-- name: UpdateTicketPRState :exec
 UPDATE ticket_pr_links SET pr_state = ? WHERE pr_owner = ? AND pr_repo = ? AND pr_number = ?
 `

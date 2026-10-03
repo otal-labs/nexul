@@ -119,6 +119,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	ticketsSvc := tickets.NewService(store.Tickets, store.Statuses, workspaceUserStore{users: store.Users})
 	ticketsSvc.SetTicketTypes(store.TicketTypes)
 	ticketsSvc.SetGate(accessSvc)
+	ticketsSvc.SetSourceDocs(ticketSourceDocs{svc: docsSvc})
 	mentionsSvc := mentions.New(mentions.Config{
 		Tickets:     mentionTicketSource{repo: store.Tickets},
 		Docs:        mentionDocSource{repo: store.Docs},

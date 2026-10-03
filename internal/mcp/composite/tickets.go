@@ -454,6 +454,7 @@ type ticketUpdateIn struct {
 	CategoryID       *string       `json:"category_id,omitempty" jsonschema:"The category's id, from project_get; an empty string uncategorizes the ticket."`
 	Developer        *string       `json:"developer,omitempty" jsonschema:"The member login who builds it; an empty string clears it."`
 	Tester           *string       `json:"tester,omitempty" jsonschema:"The member login who tests it; an empty string clears it."`
+	DocID            *string       `json:"doc_id,omitempty" jsonschema:"The id of the doc this ticket is derived from, its source, from doc_list; an empty string clears it."`
 	AddLabels        []string      `json:"add_labels,omitempty" jsonschema:"Labels to attach, for example urgent."`
 	RemoveLabels     []string      `json:"remove_labels,omitempty" jsonschema:"Labels to detach."`
 	FoundInID        string        `json:"found_in_id,omitempty" jsonschema:"The id or key of the ticket this bug was found in; replaces any earlier found-in."`
@@ -487,8 +488,8 @@ type ticketUpdateResult struct {
 func ticketUpdateTool(t *tickets.Service, w *workspace.Service) mcptool.Tool {
 	return mcptool.New("ticket_update", "Update ticket",
 		"Changes a ticket: its title and body, project, status column and place in it, type, category, developer "+
-			"and tester, labels, found-in link, blockers, and linked pull request or branch. Only the fields you send "+
-			"change; an omitted field keeps its value. The changes apply in the order the fields are listed here and "+
+			"and tester, source doc, labels, found-in link, blockers, and linked pull request or branch. Only the fields "+
+			"you send change; an omitted field keeps its value. The changes apply in the order the fields are listed here and "+
 			"stop at the first failure, whose message names the field and the ones already applied. To record a test "+
 			"result, which also moves the ticket, use ticket_test_report; to remove a ticket, ticket_delete. Returns "+
 			"the updated ticket and the list of fields applied.",
@@ -567,6 +568,7 @@ func (u ticketUpdate) steps(in ticketUpdateIn) []step {
 		{in.Tester != nil, step{"tester", "", func(ctx context.Context) error {
 			return discard(u.t.SetPerson(ctx, u.id, tickets.RoleTester, *in.Tester))
 		}}},
+		{in.DocID != nil, step{"doc_id", "doc_list lists the docs", func(ctx context.Context) error { return discard(u.t.SetSource(ctx, u.id, *in.DocID)) }}},
 	}
 	for _, f := range fields {
 		if f.sent {

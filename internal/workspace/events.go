@@ -94,7 +94,7 @@ type ticketCreatedEvent struct {
 	MentionedUserIDs []string  `json:"mentioned_user_ids"`
 }
 
-// ticketUpdatedEvent mirrors ticket.updated: a title or body edit and the people it newly mentions.
+// ticketUpdatedEvent mirrors ticket.updated: a title, body, or source doc edit and the people it newly mentions.
 type ticketUpdatedEvent struct {
 	Ticket           ticketRef `json:"ticket"`
 	ActorID          string    `json:"actor_id"`

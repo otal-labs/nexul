@@ -13,6 +13,7 @@ import (
 	"github.com/otal-labs/nexul/internal/automations"
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/connectors"
+	"github.com/otal-labs/nexul/internal/docs"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/githubapp"
 	"github.com/otal-labs/nexul/internal/platform/permissions"
@@ -331,6 +332,16 @@ func (g docsAttachmentsGate) ListOwnerIDs(ctx context.Context, docID string) ([]
 
 func (g docsAttachmentsGate) CopyOwnerWithIDs(ctx context.Context, fromDocID, toDocID string, idMap map[string]string) error {
 	return g.svc.CopyAttachmentsWithIDs(ctx, attachments.Owner{DocID: fromDocID}, attachments.Owner{DocID: toDocID}, idMap)
+}
+
+// ticketSourceDocs adapts docs to tickets' source doc check: the doc must exist and the caller must be able to read it.
+type ticketSourceDocs struct {
+	svc *docs.Service
+}
+
+func (g ticketSourceDocs) RequireReadable(ctx context.Context, docID string) error {
+	_, err := g.svc.Get(ctx, docID)
+	return err
 }
 
 // membershipGate adapts tenancy's raw membership store to chat's membership seam (a DM's participants), ADR 0017.

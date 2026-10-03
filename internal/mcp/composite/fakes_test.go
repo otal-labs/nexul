@@ -324,6 +324,10 @@ func (r ticketRepo) UpdateType(_ context.Context, id, typeID string) error {
 	return r.edit(id, func(t *tickets.Ticket) { t.TypeID = typeID })
 }
 
+func (r ticketRepo) UpdateDoc(_ context.Context, id, docID string, _ ...eventbus.OutboxEvent) error {
+	return r.edit(id, func(t *tickets.Ticket) { t.DocID = docID })
+}
+
 func (r ticketRepo) UpdatePerson(_ context.Context, id string, role tickets.Role, login string, _ ...eventbus.OutboxEvent) error {
 	return r.edit(id, func(t *tickets.Ticket) {
 		if role == tickets.RoleTester {

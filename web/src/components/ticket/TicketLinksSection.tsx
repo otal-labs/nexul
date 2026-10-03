@@ -4,6 +4,8 @@ import { AddTicketLinkMenu } from "@/components/ticket/AddTicketLinkMenu";
 import { LinkGroupSection } from "@/components/ticket/LinkGroupSection";
 import { LinkedTicketRow } from "@/components/ticket/LinkedTicketRow";
 import { OriginUnknownRow } from "@/components/ticket/OriginUnknownRow";
+import { TicketSourceRow } from "@/components/ticket/TicketSourceRow";
+import { useSetTicketSource } from "@/hooks/TicketHooks";
 import { useFetchTicketLinkSet, useRemoveBlocker, useRemoveFoundIn } from "@/hooks/TicketLinkHooks";
 import type { Ticket } from "@/models/Ticket";
 
@@ -14,23 +16,29 @@ interface TicketLinksSectionProps {
   ticket: Ticket;
 }
 
-// Blockers and the found-in origin; the bugs found in this ticket are their own rail section.
+// The source doc, blockers, and the found-in origin; the bugs found in this ticket are their own rail section.
 export const TicketLinksSection = ({ ticket }: TicketLinksSectionProps) => {
   const ticketId = ticket.id;
   const { data: links, error, isPending } = useFetchTicketLinkSet(ticketId);
   const removeBlocker = useRemoveBlocker();
   const removeFoundIn = useRemoveFoundIn();
-  const empty = links && !links.found_in && !links.origin_unknown && links.blocked_by.length + links.blocks.length === 0;
+  const setSource = useSetTicketSource();
+  const empty = links && !ticket.doc_id && !links.found_in && !links.origin_unknown && links.blocked_by.length + links.blocks.length === 0;
 
   return (
     <section className="space-y-2">
       <div className="flex items-center justify-between px-2">
         <h2 className={microheaderClass}>Links</h2>
-        <AddTicketLinkMenu ticketId={ticketId} />
+        <AddTicketLinkMenu ticket={ticket} />
       </div>
       {isPending && <LoadingDisplay label="Loading linked tickets…" />}
       {error && <ErrorDisplay error={error} title="Failed to load linked tickets." />}
-      {empty && <p className="px-2 text-xs text-muted-foreground">No blockers or found-in links.</p>}
+      {empty && <p className="px-2 text-xs text-muted-foreground">No source doc, blockers, or found-in links.</p>}
+      {ticket.doc_id && (
+        <LinkGroupSection title="Source">
+          <TicketSourceRow docId={ticket.doc_id} onRemove={() => setSource.mutate({ id: ticketId, docId: "" })} />
+        </LinkGroupSection>
+      )}
       {links && links.blocked_by.length > 0 && (
         <LinkGroupSection title={links.blocked ? "Blocked by" : "Blocked by (all done)"}>
           {links.blocked_by.map((t) => (

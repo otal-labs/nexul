@@ -11,7 +11,7 @@ import type { LinkedTicket, TicketLinkSet } from "@/models/TicketLink";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 
 vi.mock("@/api/client", () => ({
-  api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
+  api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
   errorMessage: vi.fn(() => "that would form a cycle"),
 }));
 
@@ -72,6 +72,17 @@ const mockApi = (set: TicketLinkSet) => {
       return { data: [{ id: "t-1", project_id: "p-1", number: 1, title: "frontend /books" }, { id: "t-2", project_id: "p-1", number: 2, title: "backend /books" }] };
     }
     if (url === "/api/projects") return { data: [{ id: "p-1", prefix: "BKS", name: "Books" }] };
+    if (url === "/api/docs/doc-1") return { data: { id: "doc-1", project_id: "p-1", title: "Books spec" } };
+    if (url === "/api/docs") {
+      return {
+        data: [
+          { id: "doc-1", project_id: "p-1", title: "Books spec", can_open: true, archived: false },
+          { id: "doc-2", project_id: "p-1", title: "Books research", can_open: true, archived: false },
+          { id: "doc-3", project_id: "p-1", title: "Books archive", can_open: true, archived: true },
+          { id: "doc-4", project_id: "p-1", title: "Books private", can_open: false, archived: false },
+        ],
+      };
+    }
     return { data: [] };
   });
 };
@@ -96,7 +107,7 @@ describe("TicketLinksSection", () => {
   it("shows an empty row with no links", async () => {
     mockApi(emptySet);
     renderSection();
-    expect(await screen.findByText("No blockers or found-in links.")).toBeInTheDocument();
+    expect(await screen.findByText("No source doc, blockers, or found-in links.")).toBeInTheDocument();
   });
 
   it("shows both directions and marks which blockers are done", async () => {
@@ -157,7 +168,7 @@ describe("TicketLinksSection", () => {
     vi.mocked(api.post).mockResolvedValue({ data: emptySet });
     const user = userEvent.setup();
     renderSection();
-    await user.click(await screen.findByRole("button", { name: "Link a ticket" }));
+    await user.click(await screen.findByRole("button", { name: "Add a link" }));
     await user.click(screen.getByRole("button", { name: /Blocked by/ }));
     await user.type(screen.getByRole("textbox", { name: "Search tickets" }), "books");
     const options = await screen.findAllByRole("button", { name: /BKS-/ });
@@ -172,10 +183,37 @@ describe("TicketLinksSection", () => {
     vi.mocked(api.put).mockRejectedValue(new Error("conflict"));
     const user = userEvent.setup();
     renderSection();
-    await user.click(await screen.findByRole("button", { name: "Link a ticket" }));
+    await user.click(await screen.findByRole("button", { name: "Add a link" }));
     await user.click(screen.getByRole("button", { name: /Found in/ }));
     await user.click(await screen.findByRole("button", { name: /BKS-2/ }));
     expect(api.put).toHaveBeenCalledWith("/api/tickets/t-1/found-in", { origin_id: "t-2" });
     await vi.waitFor(() => expect(toast.error).toHaveBeenCalledWith("that would form a cycle"));
+  });
+
+  it("shows the source doc as a link to it and clears it", async () => {
+    mockApi(emptySet);
+    vi.mocked(api.patch).mockResolvedValue({ data: { ...ticket, doc_id: "" } });
+    const user = userEvent.setup();
+    renderSection({ doc_id: "doc-1" });
+    expect(await screen.findByRole("link", { name: "Books spec" })).toHaveAttribute("href", "/acme/docs/BKS/doc-1");
+    expect(screen.queryByText("No source doc, blockers, or found-in links.")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Remove source doc" }));
+    expect(api.patch).toHaveBeenCalledWith("/api/tickets/t-1/source", { doc_id: "" });
+    await vi.waitFor(() => expect(toast.success).toHaveBeenCalledWith("Source removed"));
+  });
+
+  it("sets the source from the project's open docs, leaving out the current, archived, and unopenable ones", async () => {
+    mockApi(emptySet);
+    vi.mocked(api.patch).mockResolvedValue({ data: { ...ticket, doc_id: "doc-2" } });
+    const user = userEvent.setup();
+    renderSection({ doc_id: "doc-1" });
+    await user.click(await screen.findByRole("button", { name: "Add a link" }));
+    await user.click(screen.getByRole("button", { name: /Source doc/ }));
+    await user.type(screen.getByRole("textbox", { name: "Search docs" }), "books");
+    const options = await screen.findAllByRole("button", { name: /Books/ });
+    expect(options.map((o) => o.textContent)).toEqual(["Books research"]);
+    await user.click(options[0]!);
+    expect(api.patch).toHaveBeenCalledWith("/api/tickets/t-1/source", { doc_id: "doc-2" });
+    await vi.waitFor(() => expect(toast.success).toHaveBeenCalledWith("Source updated"));
   });
 });

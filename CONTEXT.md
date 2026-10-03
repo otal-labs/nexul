@@ -504,6 +504,12 @@ found after done is a new ticket found in it. A bug is a ticket whose type is
 named `bug`; a type renamed away from it is an ordinary type.
 _Avoid_: Regression of, caused by, parent
 
+**Source** (ticket):
+The doc a ticket was derived from, at most one and optional. Set when the
+ticket is filed from a doc, and changed or cleared later from the ticket.
+Only a doc can be a source.
+_Avoid_: Origin (that is Found in), parent doc, spec link
+
 **Blocked by**:
 A ticket's link to another ticket that must reach done first. It shows on
 the card and warns before a play runs, but never stops a card moving.
