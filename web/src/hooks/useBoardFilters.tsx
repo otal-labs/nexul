@@ -14,12 +14,20 @@ const EMPTY_FILTERS: BoardFilters = {
   statusIds: [],
   developers: [],
   waitingForMeToTest: false,
+  search: "",
 };
 
 const matchesCategory = (ticket: Ticket, categoryId: BoardFilters["categoryId"]) => {
   if (categoryId === "uncategorized") return ticket.category_id === "";
   if (categoryId) return ticket.category_id === categoryId;
   return true;
+};
+
+// Matches the title, or the number typed bare or as the full key ("12", "WEB-12").
+const matchesSearch = (ticket: Ticket, search: string) => {
+  const query = search.trim().toLowerCase();
+  if (query === "") return true;
+  return ticket.title.toLowerCase().includes(query) || query.replace(/^[a-z]+-/, "") === String(ticket.number);
 };
 
 const ticketMatchesFilters = (ticket: Ticket, filters: BoardFilters, sets: FilterSets) =>
@@ -29,7 +37,8 @@ const ticketMatchesFilters = (ticket: Ticket, filters: BoardFilters, sets: Filte
   (filters.statusIds.length === 0 || sets.statusIds.has(ticket.status)) &&
   (filters.labels.length === 0 || (ticket.labels ?? []).some((l) => sets.labels.has(l))) &&
   (filters.developers.length === 0 || sets.developers.has(ticket.developer)) &&
-  (!filters.waitingForMeToTest || (ticket.tester === sets.myLogin && sets.testingStatusIds.has(ticket.status)));
+  (!filters.waitingForMeToTest || (ticket.tester === sets.myLogin && sets.testingStatusIds.has(ticket.status))) &&
+  matchesSearch(ticket, filters.search);
 
 interface FilterSets {
   projectIds: Set<string>;
@@ -114,6 +123,8 @@ export const useBoardFilters = (tickets: Ticket[] | undefined, projectId?: strin
   const toggleWaitingForMeToTest = () =>
     setFilters((current) => ({ ...current, waitingForMeToTest: !current.waitingForMeToTest }));
 
+  const setSearch = (search: string) => setFilters((current) => ({ ...current, search }));
+
   const clearAll = () => setFilters(EMPTY_FILTERS);
 
   return {
@@ -128,6 +139,7 @@ export const useBoardFilters = (tickets: Ticket[] | undefined, projectId?: strin
     toggleStatus,
     toggleDeveloper,
     toggleWaitingForMeToTest,
+    setSearch,
     clearAll,
   };
 };

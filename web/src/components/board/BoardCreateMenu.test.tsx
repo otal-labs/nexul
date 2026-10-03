@@ -48,7 +48,7 @@ describe("BoardCreateMenu", () => {
     const onNewTicket = vi.fn();
     render(<BoardCreateMenu onNewTicket={onNewTicket} onNewCategory={() => {}} />);
 
-    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(screen.getByRole("button", { name: "Create" }));
     await user.click(await screen.findByRole("button", { name: "New ticket" }));
 
     expect(onNewTicket).toHaveBeenCalledOnce();
@@ -60,7 +60,7 @@ describe("BoardCreateMenu", () => {
     const onNewCategory = vi.fn();
     render(<BoardCreateMenu onNewTicket={() => {}} onNewCategory={onNewCategory} />);
 
-    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(screen.getByRole("button", { name: "Create" }));
     await user.click(await screen.findByRole("button", { name: "New category" }));
 
     expect(onNewCategory).toHaveBeenCalledOnce();
@@ -72,7 +72,7 @@ describe("BoardCreateMenu", () => {
     const user = userEvent.setup();
     renderWithDialogs();
 
-    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(screen.getByRole("button", { name: "Create" }));
     await user.click(await screen.findByRole("button", { name: "Report a bug" }));
     const dialog = await screen.findByRole("dialog");
     await vi.waitFor(() => expect(within(dialog).getByLabelText("Body")).toHaveTextContent("Steps to reproduce"));
@@ -97,7 +97,7 @@ describe("BoardCreateMenu", () => {
     const user = userEvent.setup();
     renderWithDialogs();
 
-    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(screen.getByRole("button", { name: "Create" }));
     await user.click(await screen.findByRole("button", { name: "Report a bug" }));
     const dialog = await screen.findByRole("dialog");
     await user.type(await within(dialog).findByRole("textbox", { name: "Title" }), "books 500s");
