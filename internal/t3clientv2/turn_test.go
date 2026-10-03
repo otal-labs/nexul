@@ -334,3 +334,46 @@ func TestStartTurn_NewThreadNotCreated_FailsWithTheReason(t *testing.T) {
 		})
 	}
 }
+
+func TestStartTurn_ApprovalRequest_IsDeclinedOnce(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name   string
+		causes map[string]any
+	}{
+		{"T3 takes the decline", nil},
+		{"a refused decline still lets the turn finish", map[string]any{"runtime-request.respond": []any{map[string]any{"_tag": "Fail", "error": map[string]any{
+			"_tag": "OrchestrationV2DispatchCommandError", "commandType": "runtime-request.respond", "message": "Runtime request is resolved."}}}}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			f, h := newFake(t, 2)
+			f.CommandCauses = tt.causes
+			done := begin(t, h, laptop(f), "th-1")
+			subID := t3rpctest.WaitFor(t, f.Subscribed, "subscribeThread")
+			f.Write(t3rpctest.Chunk(subID, snapshotWith(t, nil)))
+			messageID, _ := t3rpctest.WaitFor(t, f.Dispatched, "message.dispatch")["messageId"].(string)
+			s := <-done
+			require.NoError(t, s.err)
+
+			asking := recordedItem(t, toolSteps, approvalItem, "waiting")
+			declined := recordedItem(t, toolSteps, approvalItem, "cancelled")
+			asking.RunID, declined.RunID = runOne, runOne
+			f.Write(t3rpctest.Chunk(subID,
+				event(3, "run.created", runOf(messageID, "running")),
+				event(4, "turn-item.updated", asking), event(5, "turn-item.updated", asking), event(6, "turn-item.updated", declined),
+				event(7, "run.updated", runOf(messageID, runWaiting)),
+			))
+			assert.Equal(t, []harness.Update{{Approval: &harness.Approval{Kind: "command", Summary: approvalPrompt}}, ended(harness.TurnDone, "")},
+				drainUpdates(t, s.result.Updates))
+			if tt.causes != nil {
+				return
+			}
+			respond := t3rpctest.WaitFor(t, f.Dispatched, "runtime-request.respond")
+			assert.Equal(t, map[string]any{"type": "runtime-request.respond", "commandId": respond["commandId"], "threadId": "th-1",
+				"requestId": approval1, "decision": "decline"}, respond)
+			assert.Empty(t, f.Dispatched, "declined once")
+		})
+	}
+}
