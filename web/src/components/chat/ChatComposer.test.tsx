@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "@/api/client";
 import { ChatComposer } from "@/components/chat/ChatComposer";
+import { useChatDraftStore } from "@/stores/chatDraftStore";
 
 vi.mock("@/api/client", () => ({
   api: { get: vi.fn(), post: vi.fn(), delete: vi.fn() },
@@ -37,6 +38,7 @@ const renderComposer = (onSend = vi.fn(async () => {})) => {
 const pngFile = (name = "shot.png") => new File(["png"], name, { type: "image/png" });
 
 beforeEach(() => {
+  useChatDraftStore.setState({ drafts: {} });
   vi.mocked(api.get).mockReset();
   vi.mocked(api.get).mockResolvedValue({ data: people });
   vi.mocked(api.post).mockReset();
@@ -49,6 +51,17 @@ beforeEach(() => {
 });
 
 describe("ChatComposer", () => {
+  it("keeps each conversation's unsent text when switching away and back", async () => {
+    const user = userEvent.setup();
+    const { rerender, unmount, onSend } = renderComposer();
+    await user.type(screen.getByLabelText("Message"), "half a thought");
+    rerender(<ChatComposer workspaceId="ws-1" conversationId="c-2" onSend={onSend} />);
+    expect(screen.getByLabelText("Message")).toHaveValue("");
+    unmount();
+    renderComposer(onSend);
+    expect(screen.getByLabelText("Message")).toHaveValue("half a thought");
+  });
+
   it("sends the trimmed body on Enter and clears the input", async () => {
     const user = userEvent.setup();
     const { onSend } = renderComposer();
