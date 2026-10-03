@@ -993,8 +993,8 @@ func (r *Runner) ListTrails(ctx context.Context, targetType TargetType, targetID
 	return list, nil
 }
 
-// ActiveTrails maps each target with an active trail to its id; targets the caller cannot read are left out, not refused.
-func (r *Runner) ActiveTrails(ctx context.Context, targetType TargetType, targetIDs []string) (map[string]string, error) {
+// ActiveTrails maps each target with an active trail to that trail; targets the caller cannot read are left out, not refused.
+func (r *Runner) ActiveTrails(ctx context.Context, targetType TargetType, targetIDs []string) (map[string]*Trail, error) {
 	if !targetType.valid() {
 		return nil, fmt.Errorf("%w: target type (ticket, doc, or interview) is required", apperrs.ErrInvalid)
 	}
@@ -1004,7 +1004,7 @@ func (r *Runner) ActiveTrails(ctx context.Context, targetType TargetType, target
 			ids = append(ids, id)
 		}
 	}
-	out := map[string]string{}
+	out := map[string]*Trail{}
 	if len(ids) == 0 {
 		return out, nil
 	}
@@ -1021,7 +1021,7 @@ func (r *Runner) ActiveTrails(ctx context.Context, targetType TargetType, target
 			readable[t.WorkspaceID] = ok
 		}
 		if ok && r.opensProject(ctx, t) {
-			out[t.TargetID] = t.ID
+			out[t.TargetID] = t
 		}
 	}
 	return out, nil

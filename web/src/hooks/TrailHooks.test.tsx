@@ -9,9 +9,9 @@ import {
   useFetchActiveTrails,
   useFetchLatestChoices,
   useFetchTrails,
-  useIsTicketRunActive,
   useRunPlay,
   useStopTrail,
+  useTicketRunState,
 } from "@/hooks/TrailHooks";
 import type { Trail } from "@/models/Trail";
 import { usePlayRunStore } from "@/stores/playRunStore";
@@ -172,31 +172,44 @@ describe("useActiveTrail", () => {
   });
 });
 
-describe("useFetchActiveTrails / useIsTicketRunActive", () => {
-  const mockBoard = (active: Record<string, string>) =>
+describe("useFetchActiveTrails / useTicketRunState", () => {
+  const mockBoard = (active: Record<string, string>, waiting?: Record<string, string>) =>
     vi.mocked(api.get).mockImplementation(async (url: string) => {
       if (url === "/api/tickets") return { data: [{ id: "t-1", project_id: "p-1" }, { id: "t-2", project_id: "p-1" }] };
-      if (url === "/api/plays/runs/active") return { data: { active } };
+      if (url === "/api/plays/runs/active") return { data: { active, waiting } };
       return { data: [] };
     });
 
   it("asks once per project for every ticket id on the board", async () => {
     mockBoard({ "t-1": "tr-1" });
     const { result } = renderHook(() => useFetchActiveTrails("p-1"), { wrapper });
-    await waitFor(() => expect(result.current.data).toEqual({ "t-1": "tr-1" }));
+    await waitFor(() => expect(result.current.data).toEqual({ active: { "t-1": "tr-1" }, waiting: {} }));
     expect(api.get).toHaveBeenCalledWith("/api/plays/runs/active", { params: { target_type: "ticket", target_ids: "t-1,t-2" } });
   });
 
   it("reads the on-load answer, then follows live frames without a refetch", async () => {
     mockBoard({ "t-1": "tr-1" });
-    const { result } = renderHook(() => ({ t1: useIsTicketRunActive("p-1", "t-1"), t2: useIsTicketRunActive("p-1", "t-2") }), { wrapper });
-    await waitFor(() => expect(result.current.t1).toBe(true));
-    expect(result.current.t2).toBe(false);
+    const { result } = renderHook(() => ({ t1: useTicketRunState("p-1", "t-1"), t2: useTicketRunState("p-1", "t-2") }), { wrapper });
+    await waitFor(() => expect(result.current.t1).toBe("running"));
+    expect(result.current.t2).toBeUndefined();
 
     const base = { play_id: "play-1", target_type: "ticket" as const, activity: null, ended_at: null, last_error: "" };
     usePlayRunStore.getState().applyFrame({ ...base, trail_id: "tr-1", target_id: "t-1", state: "done" });
     usePlayRunStore.getState().applyFrame({ ...base, trail_id: "tr-2", target_id: "t-2", state: "starting" });
-    await waitFor(() => expect(result.current.t1).toBe(false));
-    expect(result.current.t2).toBe(true);
+    await waitFor(() => expect(result.current.t1).toBeUndefined());
+    expect(result.current.t2).toBe("starting");
+  });
+
+  it("reports a run stopped on a question as waiting, on load and from a live frame", async () => {
+    mockBoard({ "t-1": "tr-1", "t-2": "tr-2" }, { "t-1": "tr-1" });
+    const { result } = renderHook(() => ({ t1: useTicketRunState("p-1", "t-1"), t2: useTicketRunState("p-1", "t-2") }), { wrapper });
+    await waitFor(() => expect(result.current.t1).toBe("waiting"));
+    expect(result.current.t2).toBe("running");
+
+    const base = { play_id: "play-1", target_type: "ticket" as const, activity: null, ended_at: null, last_error: "" };
+    usePlayRunStore.getState().applyFrame({ ...base, trail_id: "tr-1", target_id: "t-1", state: "running" });
+    usePlayRunStore.getState().applyFrame({ ...base, trail_id: "tr-2", target_id: "t-2", state: "waiting" });
+    await waitFor(() => expect(result.current.t1).toBe("running"));
+    expect(result.current.t2).toBe("waiting");
   });
 });

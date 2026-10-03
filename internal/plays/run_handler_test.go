@@ -145,30 +145,36 @@ func TestRunHandler_Active(t *testing.T) {
 	rec = do(t, h, http.MethodGet, "/api/plays/runs/active?target_type=ticket&target_ids=t-1,t-2,", "", starter)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	var body struct {
-		Active map[string]string `json:"active"`
+		Active  map[string]string `json:"active"`
+		Waiting map[string]string `json:"waiting"`
 	}
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
 	assert.Equal(t, map[string]string{"t-1": tr.ID}, body.Active)
+	assert.Empty(t, body.Waiting)
 
+	waiting := &Trail{ID: "tr-wait", WorkspaceID: workspaceID, PlayID: fixPlayID, TargetType: TargetTicket, TargetID: "t-2", ProjectID: projectID,
+		StarterID: starter, State: TrailWaiting, StartedAt: fixedNow}
+	require.NoError(t, f.trails.CreateTrail(t.Context(), waiting))
 	rec = do(t, h, http.MethodGet, "/api/plays/runs/active?ticket_ids=t-1,t-2,", "", starter)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.JSONEq(t, `{"active":{"t-1":"`+tr.ID+`"}}`, rec.Body.String(), "the older ticket_ids form keeps answering as before")
+	assert.JSONEq(t, `{"active":{"t-1":"`+tr.ID+`","t-2":"tr-wait"},"waiting":{"t-2":"tr-wait"}}`, rec.Body.String(),
+		"a run stopped on a question stays active and is also listed as waiting")
 
 	rec = do(t, h, http.MethodGet, "/api/plays/runs/active?ticket_ids=", "", starter)
 	require.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `{"active":{}}`, rec.Body.String())
+	assert.JSONEq(t, `{"active":{},"waiting":{}}`, rec.Body.String())
 
 	rec = do(t, h, http.MethodGet, "/api/plays/runs/active?target_type=ticket&target_ids=t-1", "", "stranger")
 	require.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `{"active":{}}`, rec.Body.String(), "a caller without plays:read sees no trail rather than an error")
+	assert.JSONEq(t, `{"active":{},"waiting":{}}`, rec.Body.String(), "a caller without plays:read sees no trail rather than an error")
 
 	rec = do(t, h, http.MethodGet, "/api/plays/runs/active?target_type=ticket", "", starter)
 	require.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `{"active":{}}`, rec.Body.String())
+	assert.JSONEq(t, `{"active":{},"waiting":{}}`, rec.Body.String())
 
 	rec = do(t, h, http.MethodGet, "/api/plays/runs/active?target_type=doc&target_ids=t-1", "", starter)
 	require.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `{"active":{}}`, rec.Body.String(), "a ticket's run is not reported for a doc with the same id")
+	assert.JSONEq(t, `{"active":{},"waiting":{}}`, rec.Body.String(), "a ticket's run is not reported for a doc with the same id")
 
 	assert.Equal(t, http.StatusBadRequest, do(t, h, http.MethodGet, "/api/plays/runs/active?target_ids=t-1", "", starter).Code)
 }
