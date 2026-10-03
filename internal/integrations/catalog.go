@@ -1276,7 +1276,7 @@ var catalogSchemas = map[string]string{
 		"type": "object",
 		"required": ["message"],
 		"properties": {
-			"message": {"type": "object", "description": "The message as chat stores it. Its attachment_id is set only on a note: an Agent message on a ticket's thread, posted on the author_id person's behalf, whose markdown file is that attachment of the conversation."},
+			"message": {"type": "object", "description": "The message as chat stores it. Its attachment_id is set only on a note: an Agent message on a ticket's thread, posted on the author_id person's behalf, whose markdown file is that attachment of the conversation. Its handoffs are set only on an Agent reply that handed work to other agents: each one's id, driver, model, title, prompt, state (running, done, failed, interrupted or left_running), final reply and steps."},
 			"members_only": {"type": "boolean", "description": "Set on a DM or private channel's message, which is never delivered to integrations or automations."}
 		}
 	}`,

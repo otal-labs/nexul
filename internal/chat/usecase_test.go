@@ -2,7 +2,9 @@ package chat
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"slices"
 	"sort"
 	"strings"
@@ -13,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/otal-labs/nexul/internal/harness"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/identity"
@@ -1300,10 +1303,11 @@ func TestPostAgentAndSystemMessages(t *testing.T) {
 	c, err := s.CreateChannel(context.Background(), "w-1", "u-1", "eng")
 	require.NoError(t, err)
 
-	agentMsg, err := s.PostAgentMessage(context.Background(), c.ID, "u-1", "here's the reply")
+	agentMsg, err := s.PostAgentMessage(context.Background(), c.ID, "u-1", "here's the reply", nil)
 	require.NoError(t, err)
 	assert.Equal(t, AuthorAgent, agentMsg.AuthorKind)
 	assert.Equal(t, "u-1", agentMsg.AuthorID)
+	assert.Nil(t, agentMsg.Handoffs, "a reply that handed nothing off stores none")
 
 	sysMsg, err := s.PostSystemMessage(context.Background(), c.ID, "u-1", "connect T3 Code in settings")
 	require.NoError(t, err)
@@ -1312,6 +1316,46 @@ func TestPostAgentAndSystemMessages(t *testing.T) {
 	userMsg, err := s.PostMessage(context.Background(), c.ID, "u-1", "hi")
 	require.NoError(t, err)
 	assert.Equal(t, AuthorUser, userMsg.AuthorKind)
+}
+
+// fullHandoffs is the most a turn hands over: 20 hand-offs of 200 steps of 2 KiB detail, step j at minute j.
+func fullHandoffs() []harness.Handoff {
+	hs := make([]harness.Handoff, 20)
+	for i := range hs {
+		hs[i] = harness.Handoff{ID: fmt.Sprintf("task-%d", i), Driver: "claudeAgent", Model: "claude-opus-5-5", Title: "Audit",
+			Prompt: "Audit the handlers.", State: harness.HandoffDone, Reply: "Three issues."}
+		for j := range 200 {
+			hs[i].Steps = append(hs[i].Steps, harness.Activity{Kind: harness.ActivityToolResult, CallID: fmt.Sprintf("c-%d", j), Tool: "Shell",
+				Summary: "go test ./...", Detail: strings.Repeat("x", 2<<10), At: fixedNow.Add(time.Duration(j) * time.Minute)})
+		}
+	}
+	return hs
+}
+
+func TestPostAgentMessage_Handoffs_StoredWithTheReplyAndCutToTheirNewestSteps(t *testing.T) {
+	repo := newFakeRepo()
+	s := newTestService(repo)
+	c, err := s.CreateChannel(t.Context(), "w-1", "u-1", "eng")
+	require.NoError(t, err)
+
+	m, err := s.PostAgentMessage(t.Context(), c.ID, "u-1", "Done.", fullHandoffs())
+	require.NoError(t, err)
+
+	stored := repo.messages[m.ID].Handoffs
+	raw, err := json.Marshal(stored)
+	require.NoError(t, err)
+	assert.LessOrEqual(t, len(raw), 256<<10)
+	require.Len(t, stored, 20, "every hand-off stays, with its reply")
+	oldestKept := stored[0].Steps[0].At
+	for _, h := range stored {
+		assert.Equal(t, "Three issues.", h.Reply)
+		require.NotEmpty(t, h.Steps)
+		assert.Equal(t, "c-199", h.Steps[len(h.Steps)-1].CallID, "the newest steps stay")
+		assert.False(t, h.Steps[0].At.Before(oldestKept.Add(-time.Minute)), "the oldest steps go first, across hand-offs")
+	}
+	assert.Less(t, len(stored[0].Steps), 200)
+	created := repo.events[len(repo.events)-1].Payload.(MessageCreatedEvent)
+	assert.Equal(t, stored, created.Message.Handoffs, "chat.message.created carries what the reply stores")
 }
 
 func TestUnreadCounts(t *testing.T) {

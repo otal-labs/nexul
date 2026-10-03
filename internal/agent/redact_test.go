@@ -16,7 +16,7 @@ func TestRedactedConversations_EverySavedMessageHidesTheToken(t *testing.T) {
 	convs := redactedConversations{inner}
 	ctx := t.Context()
 
-	_, err := convs.PostAgentReply(ctx, "conv-1", "u1", "Connected with "+token)
+	_, err := convs.PostAgentReply(ctx, "conv-1", "u1", "Connected with "+token, nil)
 	require.NoError(t, err)
 	require.NoError(t, convs.PostSystemMessage(ctx, "conv-1", "u1", "Agent turn failed: "+token))
 	require.NoError(t, convs.PostUserMessage(ctx, "conv-1", "u1", "use "+token))

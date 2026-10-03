@@ -18,12 +18,14 @@ import (
 	"github.com/otal-labs/nexul/internal/pairing"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
+	"github.com/otal-labs/nexul/internal/platform/redact"
 )
 
 // --- fakes -----------------------------------------------------------------
 
 type fakePost struct {
 	conversationID, viaUserID, body string
+	handoffs                        []harness.Handoff
 }
 
 type fakeConversations struct {
@@ -99,13 +101,13 @@ func (f *fakeConversations) MarkSynced(_ context.Context, conversationID string,
 	return nil
 }
 
-func (f *fakeConversations) PostAgentReply(_ context.Context, conversationID, viaUserID, body string) (string, error) {
+func (f *fakeConversations) PostAgentReply(_ context.Context, conversationID, viaUserID, body string, handoffs []harness.Handoff) (string, error) {
 	if f.postReplyErr != nil {
 		return "", f.postReplyErr
 	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.replies = append(f.replies, fakePost{conversationID, viaUserID, body})
+	f.replies = append(f.replies, fakePost{conversationID, viaUserID, body, handoffs})
 	if f.now != nil {
 		f.history = append(f.history, ConversationMessage{AuthorID: viaUserID, AuthorKind: "agent", Body: body, CreatedAt: f.now()})
 	}
@@ -118,14 +120,14 @@ func (f *fakeConversations) PostSystemMessage(_ context.Context, conversationID,
 	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.systemPosts = append(f.systemPosts, fakePost{conversationID, viaUserID, body})
+	f.systemPosts = append(f.systemPosts, fakePost{conversationID: conversationID, viaUserID: viaUserID, body: body})
 	return nil
 }
 
 func (f *fakeConversations) PostUserMessage(_ context.Context, conversationID, userID, body string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.userPosts = append(f.userPosts, fakePost{conversationID, userID, body})
+	f.userPosts = append(f.userPosts, fakePost{conversationID: conversationID, viaUserID: userID, body: body})
 	return nil
 }
 
@@ -481,6 +483,7 @@ func TestRunTurn_HappyPath_StreamsFramesAndPersistsFinalReply(t *testing.T) {
 	require.Len(t, replies, 1)
 	assert.Equal(t, "done!", replies[0].body)
 	assert.Equal(t, "u-1", replies[0].viaUserID)
+	assert.Nil(t, replies[0].handoffs, "a turn that handed nothing off stores none")
 	assert.Empty(t, systemPosts)
 
 	assert.Equal(t, "thread-new", conv.threads["conv-1"])
@@ -908,6 +911,42 @@ func TestRunTurn_HandedOffWorkLeftRunning_ReplyEndsWithTheLine(t *testing.T) {
 	require.Len(t, replies, 1)
 	assert.Equal(t, "I handed the audit to another agent.\n\nPart of this work is still running in T3 Code.", replies[0].body)
 	assert.Empty(t, systemPosts, "a turn that stopped waiting is done, not failed")
+}
+
+func TestRunTurn_Handoffs_EachFrameCarriesOneAndTheReplyKeepsTheFinalSetRedacted(t *testing.T) {
+	token := "dep_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNO-_"
+	at := time.Date(2026, 10, 3, 17, 0, 0, 0, time.UTC)
+	audit := harness.Handoff{ID: "task-1", Driver: "claudeAgent", Title: "Audit", Prompt: "Audit the handlers.", State: harness.HandoffRunning,
+		Steps: []harness.Activity{{Kind: harness.ActivityToolResult, CallID: "c-1", Tool: "Shell", Summary: "curl -H 'Authorization: Bearer " + token + "'", At: at}}}
+	callers := harness.Handoff{ID: "native-8", Driver: "claudeAgent", Title: "Find callers", State: harness.HandoffRunning}
+	audited := audit
+	audited.State, audited.Reply = harness.HandoffDone, "Three issues."
+	conv := newFakeConversations(Conversation{ID: "conv-1"})
+	live := &fakeLive{}
+	client := &fakeHarness{startResult: harness.StartResult{SessionID: "th-1", Updates: updatesChan(
+		harness.Update{Handoff: &audit},
+		harness.Update{Handoff: &callers},
+		harness.Update{Snapshot: &harness.Snapshot{MessageID: "m-1", Text: "Both helpers are done.", Streaming: false}},
+		harness.Update{Handoff: &audited},
+		harness.Update{Terminal: &harness.TurnResult{State: harness.TurnDone}},
+	)}}
+	svc := NewService(Config{Conversations: conv, Targets: &fakeTargets{target: testTarget()}, Harnesses: registryOf(client), Live: live})
+	svc.RunTurn(t.Context(), TurnRequest{ConversationID: "conv-1", ViaUserID: "u-1", RequestBody: "@Agent audit"})
+
+	var pushed []string
+	for _, f := range live.snapshot() {
+		if f.Handoff != nil {
+			pushed = append(pushed, f.Handoff.ID+" "+f.Handoff.State)
+		}
+	}
+	assert.Equal(t, []string{"task-1 running", "native-8 running", "task-1 done"}, pushed, "one hand-off per frame, as it changed")
+	redacted := "curl -H 'Authorization: Bearer " + redact.Placeholder + "'"
+	assert.Equal(t, redacted, live.snapshot()[1].Handoff.Steps[0].Summary, "the live frame leaves redacted")
+
+	replies, _ := conv.snapshot()
+	require.Len(t, replies, 1)
+	audited.Steps = []harness.Activity{{Kind: harness.ActivityToolResult, CallID: "c-1", Tool: "Shell", Summary: redacted, At: at}}
+	assert.Equal(t, []harness.Handoff{audited, callers}, replies[0].handoffs, "the latest of each, in the order they started, stored redacted")
 }
 
 // --- follow-up turns on a live session -------------------------------------------

@@ -240,9 +240,22 @@ func waitingOnHandoff(t *testing.T, f *t3rpctest.Server, h *Harness, events func
 	}
 	f.Write(t3rpctest.Chunk(subID, values...))
 	waiting := t3rpctest.WaitFor(t, s.result.Updates, "the waiting step")
+	for waiting.Handoff != nil {
+		waiting = t3rpctest.WaitFor(t, s.result.Updates, "the waiting step")
+	}
 	require.NotNil(t, waiting.Activity)
 	require.Equal(t, handoffNote, waiting.Activity.Summary)
 	return messageID, s.result.Updates
+}
+
+func pillStates(updates []harness.Update) []string {
+	var got []string
+	for _, u := range updates {
+		if u.Handoff != nil {
+			got = append(got, u.Handoff.State)
+		}
+	}
+	return got
 }
 
 const childUnreadable = "Could not stop handed-off work in T3 Code: read the T3 thread: Failed to load orchestration V2 thread th-2"
@@ -266,7 +279,9 @@ func TestInterrupt_TurnWaitingOnHandedOffWork_StopsItBeforeItsOwnRunAndEndsInter
 		child    any // th-2's projection; nil fails its read
 		want     []map[string]any
 		notes    []string
-		wantErr  string
+		// pills are the hand-off states the turn's end sends.
+		pills   []string
+		wantErr string
 	}{
 		{name: "an async child's result is dropped before its run is interrupted, then the turn's own waiting run",
 			events: func(id string) []json.RawMessage {
@@ -276,7 +291,8 @@ func TestInterrupt_TurnWaitingOnHandedOffWork_StopsItBeforeItsOwnRunAndEndsInter
 			},
 			ownRuns: func(id string) []any { return []any{runOf(id, runWaiting)} },
 			child:   running,
-			want:    []map[string]any{dispose, interrupt("th-2", childRun), interrupt("th-1", runOne)}},
+			want:    []map[string]any{dispose, interrupt("th-2", childRun), interrupt("th-1", runOne)},
+			pills:   []string{harness.HandoffInterrupted}},
 		{name: "a child that cannot be stopped is noted and the turn's own run is still interrupted; a dropped result is not dropped again",
 			events: func(id string) []json.RawMessage {
 				return story([2]any{"run.created", runOf(id, "running")},
@@ -285,7 +301,8 @@ func TestInterrupt_TurnWaitingOnHandedOffWork_StopsItBeforeItsOwnRunAndEndsInter
 			},
 			ownRuns: func(id string) []any { return []any{runOf(id, runWaiting)} },
 			want:    []map[string]any{interrupt("th-1", runOne)},
-			notes:   []string{childUnreadable}},
+			notes:   []string{childUnreadable},
+			pills:   []string{harness.HandoffInterrupted}},
 		{name: "a queued wake T3 cancels with its dropped result is not cancelled again, and Stop succeeds though the turn's own run is over",
 			events: func(id string) []json.RawMessage {
 				return story([2]any{"run.created", runOf(id, "running")},
@@ -355,8 +372,9 @@ func TestInterrupt_TurnWaitingOnHandedOffWork_StopsItBeforeItsOwnRunAndEndsInter
 				want = append(want, "note "+n)
 			}
 			want = append(want, "end "+string(harness.TurnInterrupted))
-			assert.Equal(t, want, labels(drainUpdates(t, updates)),
-				"the turn ends at Stop, whatever T3 reports next, so no later wake is followed")
+			got := drainUpdates(t, updates)
+			assert.Equal(t, want, labels(got), "the turn ends at Stop, whatever T3 reports next, so no later wake is followed")
+			assert.Equal(t, tt.pills, pillStates(got), "a hand-off still running at Stop ends interrupted, a finished one as it was")
 			assert.Empty(t, f.Dispatched)
 		})
 	}

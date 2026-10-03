@@ -10,6 +10,7 @@ import (
 	"github.com/otal-labs/nexul/internal/chat"
 	"github.com/otal-labs/nexul/internal/docs"
 	"github.com/otal-labs/nexul/internal/docs/richtext"
+	"github.com/otal-labs/nexul/internal/harness"
 	"github.com/otal-labs/nexul/internal/memories"
 	"github.com/otal-labs/nexul/internal/platform/storage"
 	"github.com/otal-labs/nexul/internal/tickets"
@@ -81,8 +82,8 @@ func (a agentConversations) MarkSynced(ctx context.Context, conversationID strin
 	return a.svc.MarkAgentSynced(ctx, conversationID, at)
 }
 
-func (a agentConversations) PostAgentReply(ctx context.Context, conversationID, viaUserID, body string) (string, error) {
-	m, err := a.svc.PostAgentMessage(ctx, conversationID, viaUserID, body)
+func (a agentConversations) PostAgentReply(ctx context.Context, conversationID, viaUserID, body string, handoffs []harness.Handoff) (string, error) {
+	m, err := a.svc.PostAgentMessage(ctx, conversationID, viaUserID, body, handoffs)
 	if err != nil {
 		return "", err
 	}

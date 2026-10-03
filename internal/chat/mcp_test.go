@@ -153,6 +153,27 @@ func TestMessagePost_ReactsAndListsTheReaction(t *testing.T) {
 	assert.Empty(t, removed.(messageResult).Reactions)
 }
 
+func TestMessageList_ReplyWithHandoffs_SummarisesThemWithoutSteps(t *testing.T) {
+	s := newTestService(newFakeRepo())
+	c, err := s.CreateChannel(t.Context(), "w-1", "u-1", "eng")
+	require.NoError(t, err)
+	_, err = s.PostAgentMessage(t.Context(), c.ID, "u-1", "Done.", fullHandoffs())
+	require.NoError(t, err)
+
+	out, err := callTool(as("u-1"), t, s, "message_list", `{"conversation_id":"`+c.ID+`"}`)
+	require.NoError(t, err)
+	page := out.(mcptool.Page[messageResult])
+	require.Len(t, page.Items[0].Handoffs, 20)
+	first := page.Items[0].Handoffs[0]
+	assert.Equal(t, handoffSummary{ID: "task-0", Driver: "claudeAgent", Model: "claude-opus-5-5", Title: "Audit", State: "done",
+		Reply: "Three issues.", StepCount: first.StepCount}, first)
+	assert.Positive(t, first.StepCount)
+	raw, err := json.Marshal(out)
+	require.NoError(t, err)
+	assert.NotContains(t, string(raw), `"steps"`)
+	assert.Less(t, len(raw), 40_000, "well under 10,000 tokens")
+}
+
 func TestMessageList_NewestFirstWithoutDeletedMessages(t *testing.T) {
 	repo := newFakeRepo()
 	s := ticking(newTestService(repo))

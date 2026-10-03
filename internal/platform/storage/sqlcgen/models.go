@@ -565,6 +565,7 @@ type Message struct {
 	CreatedAt      int64
 	UpdatedAt      int64
 	AuthorKind     string
+	Handoffs       sql.NullString
 }
 
 type MessageReaction struct {

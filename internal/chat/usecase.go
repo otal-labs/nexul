@@ -11,6 +11,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/otal-labs/nexul/internal/harness"
 	apperrs "github.com/otal-labs/nexul/internal/platform/errors"
 	"github.com/otal-labs/nexul/internal/platform/eventbus"
 	"github.com/otal-labs/nexul/internal/platform/identity"
@@ -910,9 +911,16 @@ func (s *Service) PostMessage(ctx context.Context, conversationID, authorID, bod
 	return s.postMessage(ctx, conversationID, authorID, body, AuthorUser)
 }
 
-// PostAgentMessage persists the Agent's final turn reply; in-progress text only streams live.
-func (s *Service) PostAgentMessage(ctx context.Context, conversationID, viaUserID, body string) (*Message, error) {
-	return s.postMessage(ctx, conversationID, viaUserID, body, AuthorAgent)
+// PostAgentMessage persists the Agent's final turn reply with the work it handed off; in-progress text only streams live.
+func (s *Service) PostAgentMessage(ctx context.Context, conversationID, viaUserID, body string, handoffs []harness.Handoff) (*Message, error) {
+	m, err := s.newMessage(conversationID, viaUserID, body, AuthorAgent)
+	if err != nil {
+		return nil, err
+	}
+	if m.Handoffs, err = storedHandoffs(handoffs); err != nil {
+		return nil, err
+	}
+	return s.create(ctx, m)
 }
 
 // PostSystemMessage posts an inline system message attributed to the user it's for.
@@ -925,6 +933,10 @@ func (s *Service) postMessage(ctx context.Context, conversationID, authorID, bod
 	if err != nil {
 		return nil, err
 	}
+	return s.create(ctx, m)
+}
+
+func (s *Service) create(ctx context.Context, m *Message) (*Message, error) {
 	membersOnly, err := s.MembersOnly(ctx, m.ConversationID)
 	if err != nil {
 		return nil, fmt.Errorf("post message to conversation %s: %w", m.ConversationID, err)
