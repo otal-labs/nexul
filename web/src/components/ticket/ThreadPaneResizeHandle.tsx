@@ -3,7 +3,7 @@ import { clampThreadPaneWidth, THREAD_PANE_MAX, THREAD_PANE_MIN, useThreadPaneSt
 
 // Sits in the gap right of the thread column; the width lives on the ticket grid, whose first track reads it.
 export const ThreadPaneResizeHandle = ({ ticketId }: { ticketId: string }) => {
-  const width = useThreadPaneStore((s) => s.widths[ticketId] ?? null);
+  const width = useThreadPaneStore((s) => s.widths[ticketId]?.width ?? null);
   const setWidth = useThreadPaneStore((s) => s.setWidth);
   const reset = useThreadPaneStore((s) => s.reset);
   return (
