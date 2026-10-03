@@ -350,6 +350,26 @@ func TestIntegration_ListDocsByProjectFiltersCorrectly(t *testing.T) {
 	assert.Equal(t, "project-general", items[0].ProjectID)
 }
 
+func TestIntegration_DeleteDocWithTicketsFiledFromItIsConflict(t *testing.T) {
+	ctx := actorCtx()
+	db := newDB(t)
+	s := storage.New(db, []byte("0123456789abcdef0123456789abcdef"))
+	docsSvc := docs.NewService(s.Docs, allowAll{}, nil)
+	ticketsSvc := tickets.NewService(s.Tickets, s.Statuses, nil)
+	ticketsSvc.SetGate(allowAll{})
+	doc, err := docsSvc.Create(ctx, "project-general", "Spec", "body")
+	require.NoError(t, err)
+	_, err = ticketsSvc.Create(ctx, "project-general", "Build it", "", doc.ID, "")
+	require.NoError(t, err)
+
+	err = docsSvc.Delete(ctx, doc.ID)
+
+	require.ErrorIs(t, err, apperrs.ErrConflict)
+	assert.Contains(t, err.Error(), "tickets")
+	_, err = docsSvc.Get(ctx, doc.ID)
+	require.NoError(t, err, "a refused delete leaves the doc in place")
+}
+
 func TestIntegration_CreateTicketWithUnknownDocIsConflict(t *testing.T) {
 	ctx := context.Background()
 	db := newDB(t)

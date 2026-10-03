@@ -2,6 +2,7 @@ package docs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -402,7 +403,7 @@ func errLocked(id string) error {
 	return fmt.Errorf("%w: doc %s is locked; unlock it before changing its title or body", apperrs.ErrConflict, id)
 }
 
-// Delete removes a doc, requiring the delete bit, and publishes doc.deleted; referencing tickets reject via FK.
+// Delete removes a doc, requiring the delete bit, and publishes doc.deleted; tickets filed from it refuse it as a conflict.
 func (s *Service) Delete(ctx context.Context, id string) error {
 	if strings.TrimSpace(id) == "" {
 		return fmt.Errorf("%w: id is required", apperrs.ErrInvalid)
@@ -415,7 +416,11 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 		return err
 	}
 	evt := eventbus.OutboxEvent{ID: ids.New(), Topic: TopicDeleted, Payload: DeletedEvent{ID: d.ID, Title: d.Title, ProjectID: d.ProjectID}}
-	if err := s.repo.Delete(ctx, id, evt); err != nil {
+	err = s.repo.Delete(ctx, id, evt)
+	if errors.Is(err, apperrs.ErrConflict) {
+		return fmt.Errorf("%w: doc %s is the source of tickets; clear their source doc first", apperrs.ErrConflict, id)
+	}
+	if err != nil {
 		return fmt.Errorf("delete doc %s: %w", id, err)
 	}
 	if s.access != nil {
