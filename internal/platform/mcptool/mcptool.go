@@ -144,3 +144,12 @@ type Deleted struct {
 func Gone(id string) Deleted {
 	return Deleted{ID: id, Deleted: true}
 }
+
+// File is a result that carries a file: Meta goes out as JSON text beside the bytes, which the adapter shows by
+// MIMEType as an image the model can see, as text, or as a binary resource at URI.
+type File struct {
+	Meta     any
+	URI      string
+	MIMEType string
+	Data     []byte
+}

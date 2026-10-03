@@ -11,7 +11,7 @@ user whose token authenticates the connection.
 
 ## What it exposes
 
-**Tools** — 104 of them, each covering one task an agent does rather than one
+**Tools** — 106 of them, each covering one task an agent does rather than one
 button, named `<object>_<verb>`. Updates are patches: send only the fields
 you mean to change, and omitted ones keep their values. Lists take `limit`
 and `offset` and return `items`, `total`, `has_more`, and `next_offset`.
@@ -22,6 +22,7 @@ and `offset` and return `items`, `total`, `has_more`, and `next_offset`.
 | Tickets | `ticket_list`, `ticket_get`, `ticket_create`, `ticket_update`, `ticket_delete`, `ticket_test_report` |
 | Docs | `doc_list`, `doc_get`, `doc_create`, `doc_update` |
 | Memories | `memory_list`, `memory_get`, `memory_create`, `memory_update`, `memory_delete` |
+| Attachments | `attachment_create`, `attachment_get` |
 | Templates | `template_get`, `template_update` |
 | Chat and notifications | `conversation_list`, `conversation_update`, `conversation_delete`, `message_list`, `message_post`, `mention_search`, `notification_list`, `notification_update` |
 | Stacks and deploys | `stack_list`, `stack_get`, `stack_create`, `stack_update`, `stack_delete`, `stack_deploy`, `deploy_list`, `deploy_get`, `deploy_cancel` |
@@ -126,6 +127,17 @@ attachment ids to the ticket's thread under "Test failed by Nexul · from
 done ticket, which takes a new bug found in it instead. Both record the move
 as made by `user:mcp`. The Pass and Fail buttons sign with the person's own
 login instead.
+
+`attachment_create` puts a file on a doc, ticket, conversation, or memory the
+same way an upload in the web app does: it needs permission to change that
+owner, holds to the same 10 MiB cap, and reads the content type from the bytes.
+Send the file base64-encoded in `content` with a `name`, or copy one that
+already exists with `from_attachment_id`, such as an image posted in chat. It
+returns the attachment's `id`, `url`, and a `markdown` line; on a line of its
+own in a body or message, an image shows inline and any other file as a
+download link. `attachment_get` returns an attachment's name, type, and size
+with its contents: an image the agent can look at, a text file as text, and
+anything else as a base64 resource.
 
 **Resources** expose readable entities by URI, for attaching one to a
 conversation: `docs://{id}`, `tickets://{id}`, and `topology://current`.
