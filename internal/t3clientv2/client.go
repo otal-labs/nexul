@@ -22,8 +22,8 @@ const protocol = 2
 // Harness is the harness.Client for T3 Code servers running T3's orchestrator V2.
 type Harness struct {
 	Options t3rpc.Options
-	// messages maps a thread id to the message id whose run that thread's live turn watches, for Stop.
-	messages sync.Map
+	// turns maps a thread id to the *live turn watching it, for Stop.
+	turns sync.Map
 }
 
 // NewHarness wires a Harness dialing real T3 servers.

@@ -471,6 +471,28 @@ func (w *watch) leave() *harness.TurnResult {
 	return &harness.TurnResult{State: harness.TurnDone, LeftRunning: true}
 }
 
+// stop ends a turn without waiting on T3, since a stopped waiting run can stay waiting and dropped work reports no end.
+func (w *watch) stop() *harness.TurnResult {
+	w.ended = true
+	return &harness.TurnResult{State: harness.TurnInterrupted}
+}
+
+// handoffs is what Stop must reach besides the turn's own run.
+func (w *watch) handoffs() handoffs {
+	var h handoffs
+	for id := range w.followed {
+		if id != w.run.ID {
+			h.runs = append(h.runs, id)
+		}
+	}
+	for _, s := range w.subagents {
+		if w.followed[s.RunID] {
+			h.subagents = append(h.subagents, s)
+		}
+	}
+	return h
+}
+
 // terminal maps a run status to the turn's end; waiting is done, since T3 only captures a checkpoint after it.
 func terminal(status string) *harness.TurnResult {
 	switch status {

@@ -40,7 +40,7 @@ func TestAnswer_EncodesForHowT3ResumesTheRequest(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			f, h := newFake(t, 2)
-			f.Projection = projectionWith(t, []any{runAt(1, "msg-1", "running")}, tt.requests...)
+			f.Projections = map[string]any{"th-1": projectionWith(t, []any{runAt(1, "msg-1", "running")}, tt.requests...)}
 
 			require.NoError(t, h.Answer(t.Context(), harness.Target{Session: laptop(f), SessionID: "th-1"}, "rq-1", multiAnswer))
 			cmd := t3rpctest.WaitFor(t, f.Dispatched, "runtime-request.respond")
@@ -67,7 +67,7 @@ func TestAnswer_Refused(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			f, h := newFake(t, 2)
-			f.Projection = projectionWith(t, []any{runAt(1, "msg-1", "running")}, pendingRequest("live"))
+			f.Projections = map[string]any{"th-1": projectionWith(t, []any{runAt(1, "msg-1", "running")}, pendingRequest("live"))}
 			f.CommandCauses = map[string]any{"runtime-request.respond": rejected("runtime-request.respond", tt.message)}
 
 			err := h.Answer(t.Context(), harness.Target{Session: laptop(f), SessionID: "th-1"}, "rq-1", multiAnswer)
