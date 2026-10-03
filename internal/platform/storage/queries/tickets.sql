@@ -79,6 +79,9 @@ UPDATE tickets SET tester = ?, updated_at = ? WHERE id = ?;
 -- name: UpdateTicketTitleBody :execrows
 UPDATE tickets SET title = ?, body = ?, updated_at = ? WHERE id = ?;
 
+-- name: UpdateTicketDoc :execrows
+UPDATE tickets SET doc_id = ?, updated_at = ? WHERE id = ?;
+
 -- name: MoveTicketCategory :execrows
 UPDATE tickets SET category_id = ?, position = ?, updated_at = ? WHERE id = ?;
 

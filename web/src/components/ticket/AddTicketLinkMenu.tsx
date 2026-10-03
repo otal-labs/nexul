@@ -1,23 +1,28 @@
-import { Ban, Bug, PlusIcon } from "lucide-react";
+import { Ban, Bug, FileText, PlusIcon } from "lucide-react";
 import { useState } from "react";
 
+import { DocPickerList } from "@/components/doc/DocPickerList";
 import { TicketPickerList } from "@/components/ticket/TicketPickerList";
 import { menuItemClass } from "@/components/ticket/ticketFormPillStyles";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useSetTicketSource } from "@/hooks/TicketHooks";
 import { useAddBlocker, useSetFoundIn } from "@/hooks/TicketLinkHooks";
+import type { Ticket } from "@/models/Ticket";
 
-type PickKind = "blocked_by" | "found_in";
+type PickKind = "blocked_by" | "found_in" | "source";
 
 interface AddTicketLinkMenuProps {
-  ticketId: string;
+  ticket: Ticket;
 }
 
-// "+" menu: pick the link kind, then the ticket; a new found-in replaces the old one.
-export const AddTicketLinkMenu = ({ ticketId }: AddTicketLinkMenuProps) => {
+// "+" menu: pick the link kind, then the ticket or doc; a new found-in or source replaces the old one.
+export const AddTicketLinkMenu = ({ ticket }: AddTicketLinkMenuProps) => {
+  const ticketId = ticket.id;
   const [open, setOpen] = useState(false);
   const [kind, setKind] = useState<PickKind | null>(null);
   const addBlocker = useAddBlocker();
   const setFoundIn = useSetFoundIn();
+  const setSource = useSetTicketSource();
 
   const close = (next: boolean) => {
     setOpen(next);
@@ -27,6 +32,7 @@ export const AddTicketLinkMenu = ({ ticketId }: AddTicketLinkMenuProps) => {
   const pick = (otherId: string) => {
     if (kind === "blocked_by") addBlocker.mutate({ id: ticketId, blockerId: otherId });
     if (kind === "found_in") setFoundIn.mutate({ id: ticketId, originId: otherId });
+    if (kind === "source") setSource.mutate({ id: ticketId, docId: otherId });
     close(false);
   };
 
@@ -35,7 +41,7 @@ export const AddTicketLinkMenu = ({ ticketId }: AddTicketLinkMenuProps) => {
       <PopoverTrigger asChild>
         <button
           type="button"
-          aria-label="Link a ticket"
+          aria-label="Add a link"
           className="flex size-5 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 ease-standard hover:bg-muted/50 hover:text-foreground"
         >
           <PlusIcon className="size-3.5" aria-hidden />
@@ -50,9 +56,13 @@ export const AddTicketLinkMenu = ({ ticketId }: AddTicketLinkMenuProps) => {
             <button type="button" className={menuItemClass} onClick={() => setKind("found_in")}>
               <Bug className="size-3.5" aria-hidden /> Found in…
             </button>
+            <button type="button" className={menuItemClass} onClick={() => setKind("source")}>
+              <FileText className="size-3.5" aria-hidden /> Source doc…
+            </button>
           </div>
         )}
-        {kind !== null && <TicketPickerList excludeId={ticketId} onSelect={pick} />}
+        {(kind === "blocked_by" || kind === "found_in") && <TicketPickerList excludeId={ticketId} onSelect={pick} />}
+        {kind === "source" && <DocPickerList projectId={ticket.project_id} excludeId={ticket.doc_id} onSelect={pick} />}
       </PopoverContent>
     </Popover>
   );

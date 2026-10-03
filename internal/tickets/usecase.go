@@ -28,6 +28,7 @@ type Service struct {
 	types    TicketTypes
 	testing  Testing
 	gate     Gate
+	docs     SourceDocs
 	people   ProjectPeople
 	now      func() time.Time
 }
@@ -171,6 +172,10 @@ func (s *Service) Create(ctx context.Context, projectID, title, body, docID, dev
 	if err := s.requirePerson(ctx, projectID, RoleTester, strings.TrimSpace(opt.Tester)); err != nil {
 		return nil, fmt.Errorf("create ticket: %w", err)
 	}
+	docID = strings.TrimSpace(docID)
+	if err := s.requireSource(ctx, docID); err != nil {
+		return nil, fmt.Errorf("create ticket: %w", err)
+	}
 	body, err = s.defaultBody(ctx, body, opt)
 	if err != nil {
 		return nil, fmt.Errorf("create ticket: %w", err)
@@ -184,7 +189,7 @@ func (s *Service) Create(ctx context.Context, projectID, title, body, docID, dev
 		Title:      title,
 		Body:       body,
 		Status:     status,
-		DocID:      strings.TrimSpace(docID),
+		DocID:      docID,
 		Developer:  strings.TrimSpace(developer),
 		Tester:     strings.TrimSpace(opt.Tester),
 		Reporter:   s.reporter(ctx, opt.ViaMCP),

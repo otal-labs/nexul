@@ -110,6 +110,21 @@ export const useSetTicketPerson = () => {
   });
 };
 
+export const useSetTicketSource = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, docId }: { id: string; docId: string }) =>
+      (await api.patch<Ticket>(`/api/tickets/${id}/source`, { doc_id: docId })).data,
+    onSuccess: async (_, vars) => {
+      await client.invalidateQueries({ queryKey: [getTicketsKey] });
+      await client.invalidateQueries({ queryKey: [getTicketKey, vars.id] });
+      await client.invalidateQueries({ queryKey: [getTicketsByDocKey] });
+      toast.success(vars.docId ? "Source updated" : "Source removed");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+};
+
 export const useSetTicketType = () => {
   const client = useQueryClient();
   return useMutation({

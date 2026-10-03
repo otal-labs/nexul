@@ -45,6 +45,10 @@ type setTypeRequest struct {
 	TypeID string `json:"type_id"`
 }
 
+type setSourceRequest struct {
+	DocID string `json:"doc_id"`
+}
+
 type setPersonRequest struct {
 	Login string `json:"login"`
 }
@@ -109,6 +113,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("PATCH /api/tickets/{id}/type", h.setType)
 	mux.HandleFunc("PATCH /api/tickets/{id}/developer", h.setPerson(RoleDeveloper))
 	mux.HandleFunc("PATCH /api/tickets/{id}/tester", h.setPerson(RoleTester))
+	mux.HandleFunc("PATCH /api/tickets/{id}/source", h.setSource)
 	mux.HandleFunc("GET /api/tickets/{id}/labels", h.listLabels)
 	mux.HandleFunc("POST /api/tickets/{id}/labels", h.addLabel)
 	mux.HandleFunc("DELETE /api/tickets/{id}/labels/{label}", h.removeLabel)
@@ -246,6 +251,21 @@ func (h *Handler) setType(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	t, err := h.svc.SetType(r.Context(), r.PathValue("id"), req.TypeID)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, t)
+}
+
+// setSource sets the doc the ticket was derived from; an empty doc_id clears it.
+func (h *Handler) setSource(w http.ResponseWriter, r *http.Request) {
+	var req setSourceRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	t, err := h.svc.SetSource(r.Context(), r.PathValue("id"), req.DocID)
 	if err != nil {
 		httpx.WriteError(w, err)
 		return

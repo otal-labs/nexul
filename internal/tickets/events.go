@@ -28,7 +28,7 @@ type CreatedEvent struct {
 	MentionedUserIDs []string `json:"mentioned_user_ids,omitempty"`
 }
 
-// UpdatedEvent is the payload for ticket.updated: a title/body edit; Ticket reflects the post-edit state.
+// UpdatedEvent is the payload for ticket.updated: a title, body, or source doc edit; Ticket reflects the post-edit state.
 type UpdatedEvent struct {
 	Ticket Ticket `json:"ticket"`
 	// ActorID is the user who made the edit; empty for an automation.

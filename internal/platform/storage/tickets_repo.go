@@ -416,6 +416,22 @@ func (r *TicketsRepo) UpdateTicket(ctx context.Context, id, title, body string, 
 	})
 }
 
+// UpdateDoc sets or clears a ticket's source doc, enqueueing the events in the same transaction.
+func (r *TicketsRepo) UpdateDoc(ctx context.Context, id, docID string, evts ...eventbus.OutboxEvent) error {
+	return r.w.WithTx(ctx, r.db, func(tx *sql.Tx) error {
+		n, err := r.q.WithTx(tx).UpdateTicketDoc(ctx, sqlcgen.UpdateTicketDocParams{
+			DocID: sql.NullString{String: docID, Valid: docID != ""}, UpdatedAt: time.Now().Unix(), ID: id,
+		})
+		if err != nil {
+			return fmt.Errorf("update ticket %s doc: %w", id, classifyWriteErr(err))
+		}
+		if n == 0 {
+			return fmt.Errorf("update ticket %s doc: %w", id, apperrs.ErrNotFound)
+		}
+		return enqueueTicketsOutbox(ctx, tx, evts)
+	})
+}
+
 // moveTicketCategory runs in an existing transaction; used by SetTicketCategory to write the shared row.
 func moveTicketCategory(ctx context.Context, tx *sql.Tx, ticketID, categoryID string) error {
 	q := sqlcgen.New(tx)

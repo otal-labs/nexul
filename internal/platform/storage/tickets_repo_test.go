@@ -93,6 +93,31 @@ func TestTicketsRepo_Create_GetByID_RoundTrip(t *testing.T) {
 	assert.Equal(t, want.Reporter, got.Reporter)
 }
 
+func TestTicketsRepo_UpdateDoc(t *testing.T) {
+	t.Parallel()
+	s := newTestStore(t)
+	require.NoError(t, s.Docs.Create(t.Context(), newTestDoc("doc-1")))
+	require.NoError(t, s.Docs.Create(t.Context(), newTestDoc("doc-2")))
+	require.NoError(t, s.Tickets.Create(t.Context(), newTestTicket("t-1", "doc-1")))
+
+	require.ErrorIs(t, s.Tickets.UpdateDoc(t.Context(), "missing", "doc-1"), apperrs.ErrNotFound)
+
+	require.NoError(t, s.Tickets.UpdateDoc(t.Context(), "t-1", "doc-2"))
+	got, err := s.Tickets.GetByID(t.Context(), "t-1")
+	require.NoError(t, err)
+	assert.Equal(t, "doc-2", got.DocID)
+
+	require.NoError(t, s.Tickets.UpdateDoc(t.Context(), "t-1", ""))
+	got, err = s.Tickets.GetByID(t.Context(), "t-1")
+	require.NoError(t, err)
+	assert.Empty(t, got.DocID)
+	for _, docID := range []string{"doc-1", "doc-2"} {
+		listed, err := s.Tickets.ListByDoc(t.Context(), docID)
+		require.NoError(t, err)
+		assert.Empty(t, listed, "a cleared source leaves the doc's ticket list")
+	}
+}
+
 func TestTicketsRepo_UpdatePerson(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)

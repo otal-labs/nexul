@@ -421,6 +421,21 @@ func (f *fakeRepo) UpdateTicket(_ context.Context, id, title, body string, evts 
 	return nil
 }
 
+func (f *fakeRepo) UpdateDoc(_ context.Context, id, docID string, evts ...eventbus.OutboxEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.updateErr != nil {
+		return f.updateErr
+	}
+	t, ok := f.tickets[id]
+	if !ok {
+		return apperrs.ErrNotFound
+	}
+	t.DocID = docID
+	f.events = append(f.events, evts...)
+	return nil
+}
+
 func (f *fakeRepo) SetPosition(_ context.Context, id string, position int) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()

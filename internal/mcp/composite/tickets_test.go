@@ -281,12 +281,12 @@ func TestTicketUpdate_EveryField(t *testing.T) {
 
 	got, err := call(t, asUser(t.Context()), f.ticketTools(), "ticket_update", `{
 		"id":"REF-1","title":"New","body":"Body","status_id":"st-doing","position":0,"type_id":"tt-bug","category_id":"",
-		"developer":"","tester":"lena","add_labels":["backend"],"remove_labels":["urgent"],"found_in_id":"REF-2",
+		"developer":"","tester":"lena","doc_id":"doc-1","add_labels":["backend"],"remove_labels":["urgent"],"found_in_id":"REF-2",
 		"add_blocker_ids":["REF-3"],"remove_blocker_ids":["REF-2"],
 		"link_pr":{"owner":"otal-labs","repo":"nexul","number":7},"link_branch":{"owner":"otal-labs","repo":"nexul","branch":"fix/x"}}`)
 	require.NoError(t, err)
 	res := got.(ticketUpdateResult)
-	assert.Equal(t, []string{"title, body", "status_id", "type_id", "category_id", "position", "developer", "tester",
+	assert.Equal(t, []string{"title, body", "status_id", "type_id", "category_id", "position", "developer", "tester", "doc_id",
 		"add_labels[0]", "remove_labels[0]", "found_in", "add_blocker_ids[0]", "remove_blocker_ids[0]", "link_pr", "link_branch"}, res.Applied)
 	tk := res.Ticket
 	assert.Equal(t, "New", tk.Title)
@@ -295,6 +295,7 @@ func TestTicketUpdate_EveryField(t *testing.T) {
 	assert.Empty(t, tk.CategoryID)
 	assert.Empty(t, tk.Developer)
 	assert.Equal(t, "lena", tk.Tester)
+	assert.Equal(t, "doc-1", tk.DocID)
 	assert.Equal(t, []string{"backend"}, tk.Labels)
 
 	detail, err := call(t, t.Context(), f.ticketTools(), "ticket_get", `{"id":"t-1"}`)

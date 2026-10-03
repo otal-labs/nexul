@@ -68,6 +68,8 @@ type Repo interface {
 	UpdatePerson(ctx context.Context, id string, role Role, login string, evts ...eventbus.OutboxEvent) error
 	// UpdateTicket edits a ticket's title and body in place, keeping its identity; the ticket must exist.
 	UpdateTicket(ctx context.Context, id, title, body string, evts ...eventbus.OutboxEvent) error
+	// UpdateDoc sets the ticket's source doc; empty clears it. The ticket must exist.
+	UpdateDoc(ctx context.Context, id, docID string, evts ...eventbus.OutboxEvent) error
 	// SetPosition orders a ticket within its current (status, category) pair (ADR 0002).
 	SetPosition(ctx context.Context, id string, position int) error
 	// AddLabel attaches a cross-cutting tag; a duplicate is a no-op.
