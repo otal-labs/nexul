@@ -100,4 +100,22 @@ describe("useBoardFilters", () => {
     await waitFor(() => expect(api.get).toHaveBeenCalledWith("/api/auth/me"));
     expect(result.current.showWaitingForMeToTest).toBe(false);
   });
+
+  it("search matches the title, the bare number, or the full key", () => {
+    const tickets = [
+      ticket("login", "p-1", { title: "Fix the Login page", number: 12 }),
+      ticket("other", "p-1", { title: "Ship logs", number: 3 }),
+    ];
+    const { result } = renderHook(() => useBoardFilters(tickets, "p-1"), { wrapper });
+    const ids = () => result.current.filteredTickets.map((t) => t.id);
+
+    act(() => result.current.setSearch("  login "));
+    expect(ids()).toEqual(["login"]);
+    act(() => result.current.setSearch("12"));
+    expect(ids()).toEqual(["login"]);
+    act(() => result.current.setSearch("WEB-3"));
+    expect(ids()).toEqual(["other"]);
+    act(() => result.current.setSearch(""));
+    expect(ids()).toEqual(["login", "other"]);
+  });
 });

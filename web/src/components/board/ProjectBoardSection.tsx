@@ -26,6 +26,7 @@ interface ProjectBoardSectionProps {
   onToggleStatus: (statusId: string) => void;
   onToggleDeveloper: (developer: string) => void;
   onToggleWaitingForMeToTest: () => void;
+  onSearch: (search: string) => void;
   onClear: () => void;
   onNewTicket: () => void;
   onNewCategory: () => void;
@@ -53,6 +54,7 @@ export const ProjectBoardSection = ({
   onToggleStatus,
   onToggleDeveloper,
   onToggleWaitingForMeToTest,
+  onSearch,
   onClear,
   onNewTicket,
   onNewCategory,
@@ -79,6 +81,7 @@ export const ProjectBoardSection = ({
         onToggleStatus={onToggleStatus}
         onToggleDeveloper={onToggleDeveloper}
         onToggleWaitingForMeToTest={onToggleWaitingForMeToTest}
+        onSearch={onSearch}
         onClear={onClear}
         onNewTicket={onNewTicket}
         onNewCategory={onNewCategory}
@@ -91,6 +94,7 @@ export const ProjectBoardSection = ({
           filters.categoryId ||
           filters.typeId ||
           filters.waitingForMeToTest ||
+          filters.search.trim() !== "" ||
           filters.labels.length + filters.statusIds.length + filters.developers.length > 0
             ? "No tickets match the active filters."
             : "No tickets yet — create the first one."

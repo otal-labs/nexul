@@ -65,7 +65,7 @@ const openFilterPopover = async (user: ReturnType<typeof userEvent.setup>) =>
   user.click(await screen.findByRole("button", { name: /^Filter/ }));
 
 const openCreateMenuItem = async (user: ReturnType<typeof userEvent.setup>, label: "New ticket" | "New category") => {
-  await user.click(await screen.findByRole("button", { name: "Add" }));
+  await user.click(await screen.findByRole("button", { name: "Create" }));
   await user.click(await screen.findByRole("button", { name: label }));
 };
 

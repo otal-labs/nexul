@@ -60,6 +60,7 @@ const filters = (overrides: Partial<BoardFilters> = {}): BoardFilters => ({
   statusIds: [],
   developers: [],
   waitingForMeToTest: false,
+  search: "",
   ...overrides,
 });
 
@@ -75,6 +76,7 @@ const baseProps = {
   onToggleStatus: () => {},
   onToggleDeveloper: () => {},
   onToggleWaitingForMeToTest: () => {},
+  onSearch: () => {},
   onClear: () => {},
   onNewTicket: () => {},
   onNewCategory: () => {},
@@ -111,7 +113,7 @@ describe("BoardFilterBar", () => {
 
   it("renders the create menu next to the filter trigger", async () => {
     renderFilterBar();
-    expect(await screen.findByRole("button", { name: "Add" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Create" })).toBeInTheDocument();
   });
 
   it("leaves the create menu out on a project where the viewer may only read tickets", async () => {
@@ -125,7 +127,7 @@ describe("BoardFilterBar", () => {
     renderFilterBar();
     expect(await screen.findByRole("button", { name: /^Filter/ })).toBeInTheDocument();
     await vi.waitFor(() => expect(api.get).toHaveBeenCalledWith("/api/workspaces/ws-1/me"));
-    expect(screen.queryByRole("button", { name: "Add" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Create" })).not.toBeInTheDocument();
   });
 
   it("hides the Projects filter row and toggle when the board is project-scoped", async () => {

@@ -1,4 +1,4 @@
-import { FilterIcon, FlaskConicalIcon } from "lucide-react";
+import { FilterIcon, FlaskConicalIcon, SearchIcon } from "lucide-react";
 
 import { BoardCreateMenu } from "@/components/board/BoardCreateMenu";
 import { BoardFilterMenu } from "@/components/board/BoardFilterMenu";
@@ -15,6 +15,7 @@ import {
 } from "@/components/board/boardFilterChipBuilders";
 import { DeveloperStack } from "@/components/board/DeveloperStack";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Popover, PopoverTrigger } from "@/components/ui/popover";
 import { useFetchCategories } from "@/hooks/CategoryHooks";
 import { useFetchProjects } from "@/hooks/ProjectHooks";
@@ -41,6 +42,7 @@ interface BoardFilterBarProps {
   onToggleStatus: (statusId: string) => void;
   onToggleDeveloper: (developer: string) => void;
   onToggleWaitingForMeToTest: () => void;
+  onSearch: (search: string) => void;
   onClear: () => void;
   onNewTicket: () => void;
   onNewCategory: () => void;
@@ -60,6 +62,7 @@ export const BoardFilterBar = ({
   onToggleStatus,
   onToggleDeveloper,
   onToggleWaitingForMeToTest,
+  onSearch,
   onClear,
   onNewTicket,
   onNewCategory,
@@ -89,33 +92,51 @@ export const BoardFilterBar = ({
   });
 
   return (
-    <div className="animate-in fade-in-0 flex flex-wrap items-center gap-x-2 gap-y-2 rounded-md border border-border bg-card px-3 py-2 shadow-card duration-150 ease-out motion-reduce:animate-none">
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className="h-9 px-3 text-xs">
-            <FilterIcon className="size-3.5" />
-            {activeCount > 0 ? `Filter (${activeCount})` : "Filter"}
-          </Button>
-        </PopoverTrigger>
-        <BoardFilterMenu filterRows={filterRows} activeCount={activeCount} onClear={onClear} />
-      </Popover>
-      {developers.length > 0 && (
-        <DeveloperStack developers={developers} selected={filters.developers} onToggle={onToggleDeveloper} />
-      )}
-      {showWaitingForMeToTest && (
-        <Button
-          variant={filters.waitingForMeToTest ? "default" : "outline"}
-          size="sm"
-          aria-pressed={filters.waitingForMeToTest}
-          onClick={onToggleWaitingForMeToTest}
-          className="h-9 px-3 text-xs"
-        >
-          <FlaskConicalIcon className="size-3.5" />
-          Waiting for me to test
-        </Button>
-      )}
-      {summaryLabel && <span className="whitespace-nowrap text-xs text-muted-foreground">{summaryLabel}</span>}
-      {canCreate && <BoardCreateMenu onNewTicket={onNewTicket} onNewCategory={onNewCategory} className="ml-auto" />}
+    <div className="@container animate-in fade-in-0 rounded-md border border-border bg-card px-3 py-2 shadow-card duration-150 ease-out motion-reduce:animate-none">
+      {/* Equal side tracks centre search and Create on the board; a narrow board stacks them under the filters instead. */}
+      <div className="grid grid-cols-1 items-center gap-2 @2xl:grid-cols-[minmax(max-content,1fr)_minmax(16rem,36rem)_1fr]">
+        <div className="flex items-center gap-2 *:shrink-0">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 px-3 text-xs">
+                <FilterIcon className="size-3.5" />
+                {activeCount > 0 ? `Filter (${activeCount})` : "Filter"}
+              </Button>
+            </PopoverTrigger>
+            <BoardFilterMenu filterRows={filterRows} activeCount={activeCount} onClear={onClear} />
+          </Popover>
+          {developers.length > 0 && (
+            <DeveloperStack developers={developers} selected={filters.developers} onToggle={onToggleDeveloper} />
+          )}
+          {showWaitingForMeToTest && (
+            <Button
+              variant={filters.waitingForMeToTest ? "default" : "outline"}
+              size="sm"
+              aria-pressed={filters.waitingForMeToTest}
+              onClick={onToggleWaitingForMeToTest}
+              className="h-9 px-3 text-xs"
+            >
+              <FlaskConicalIcon className="size-3.5" />
+              Waiting for me to test
+            </Button>
+          )}
+          {summaryLabel && <span className="whitespace-nowrap text-xs text-muted-foreground">{summaryLabel}</span>}
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
+            <Input
+              type="search"
+              aria-label="Search tickets"
+              placeholder="Search"
+              value={filters.search}
+              onChange={(e) => onSearch(e.target.value)}
+              className="h-9 pl-8 text-sm"
+            />
+          </div>
+          {canCreate && <BoardCreateMenu onNewTicket={onNewTicket} onNewCategory={onNewCategory} />}
+        </div>
+      </div>
     </div>
   );
 };
