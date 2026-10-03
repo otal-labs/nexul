@@ -60,14 +60,17 @@ build tickets graduate from the fog and are worked here too.
 - [How a question is written in the template](issues/01-how-a-question-is-written.md): `##` heading per question, hint below, `- ` single and `- [ ]` multi options, no recommended option, matched to answers by text, parsed on the server, 8,000 cap moves off the template.
 - [The default questions](issues/02-the-default-questions.md): twelve questions on what only a person knows; CI gates and performance budgets left to the follow-up run.
 - [Where the answers live](issues/03-where-answers-live.md): a new memories-domain table, saved per question with Skip, `memories:read`/`write`, live push, read and written through the existing interview memory tools, old threads untouched.
+- [The Interview page](issues/05-the-interview-page.md): the checklist beside the memory as its own column, initial questions and each follow-up round as collapsible sections, trail icons for the run state.
 - [How the follow-up run asks on the Interview page](issues/04-follow-ups-on-the-page.md): the page shows the run's live question with the existing trail question body, answers go through the run route and are also written to the stored answers, and the thread stays as hidden plumbing for now.
+
+## Build
+
+Decisions complete 2026-10-03. Build tickets 06–11 in `issues/`, worked here
+per the destination: the template as questions, stored answers, the page,
+the follow-up run, regenerate, and the walkthrough.
 
 ## Not yet specified
 
-- The build tickets: storage and migration, the template parser, the
-  page, the follow-up run's instructions, removing the conversation and
-  "Start from the template", the MCP surface, and the `CONTEXT.md` and ADR
-  updates. They graduate once the decision tickets are resolved.
 - Removing the hidden interview thread once the T3 protocol 2 changes
   (`.scratch/t3-orchestrator-v2/`) have merged: it still carries the
   session id, and its messages pile up unseen until then.
