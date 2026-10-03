@@ -391,6 +391,9 @@ func (s *Service) SetDefaults(ctx context.Context, userID string, d Defaults) (D
 		return Defaults{}, err
 	}
 	d.ModelOptions = options
+	if d.StartIn, err = validateStartIn(d.StartIn); err != nil {
+		return Defaults{}, err
+	}
 	if err := s.repo.SaveDefaults(ctx, d); err != nil {
 		return Defaults{}, fmt.Errorf("save defaults: %w", err)
 	}
@@ -459,6 +462,9 @@ func (s *Service) SetProjectLink(ctx context.Context, userID, projectID string, 
 	if err != nil {
 		return ProjectLink{}, err
 	}
+	if link.StartIn, err = validateStartIn(link.StartIn); err != nil {
+		return ProjectLink{}, err
+	}
 	link.UpdatedAt = s.now().UTC()
 	if err := s.repo.SaveProjectLink(ctx, link); err != nil {
 		return ProjectLink{}, fmt.Errorf("save project link %s: %w", projectID, err)
@@ -503,6 +509,8 @@ type ResolvedTarget struct {
 	Provider         string
 	Model            string
 	ModelOptions     []harness.OptionSetting
+	// Worktree starts a new harness thread in a fresh git worktree instead of the T3 project's folder.
+	Worktree bool
 }
 
 // modelPick keeps a model's options beside it: they only mean something for the model they were picked with.
@@ -656,9 +664,33 @@ func (s *Service) resolveTarget(ctx context.Context, userID, projectID string) (
 	if err != nil {
 		return nil, fmt.Errorf("decrypt bearer token for computer %s: %w", computer.ID, err)
 	}
+	worktree, err := s.startsInWorktree(ctx, userID, projectID)
+	if err != nil {
+		return nil, err
+	}
 	resolved := *computer
 	resolved.BearerToken = string(decrypted)
-	return &ResolvedTarget{Computer: resolved, HarnessProjectID: harnessProjectID, Provider: pick.provider, Model: pick.model, ModelOptions: pick.options}, nil
+	return &ResolvedTarget{
+		Computer: resolved, HarnessProjectID: harnessProjectID, Provider: pick.provider, Model: pick.model, ModelOptions: pick.options, Worktree: worktree,
+	}, nil
+}
+
+// startsInWorktree is the caller's project link's start_in, else their defaults'; a run's pinned computer keeps it.
+func (s *Service) startsInWorktree(ctx context.Context, userID, projectID string) (bool, error) {
+	if projectID = strings.TrimSpace(projectID); projectID != "" {
+		link, err := s.repo.GetProjectLink(ctx, userID, projectID)
+		if err != nil {
+			return false, fmt.Errorf("get project link %s: %w", projectID, err)
+		}
+		if link.StartIn != "" {
+			return link.StartIn == StartInWorktree, nil
+		}
+	}
+	defaults, err := s.repo.GetDefaults(ctx, userID)
+	if err != nil {
+		return false, fmt.Errorf("get defaults: %w", err)
+	}
+	return defaults.StartIn == StartInWorktree, nil
 }
 
 // resolveTargetSource: the user's own project link, then their defaults, then their sole paired computer if unambiguous.
@@ -727,9 +759,15 @@ func (s *Service) resolveTargetOverride(ctx context.Context, userID, projectID, 
 	if err != nil {
 		return nil, fmt.Errorf("decrypt bearer token for computer %s: %w", computer.ID, err)
 	}
+	worktree, err := s.startsInWorktree(ctx, userID, projectID)
+	if err != nil {
+		return nil, err
+	}
 	resolved := *computer
 	resolved.BearerToken = string(decrypted)
-	return &ResolvedTarget{Computer: resolved, HarnessProjectID: harnessProjectID, Provider: pick.provider, Model: pick.model, ModelOptions: pick.options}, nil
+	return &ResolvedTarget{
+		Computer: resolved, HarnessProjectID: harnessProjectID, Provider: pick.provider, Model: pick.model, ModelOptions: pick.options, Worktree: worktree,
+	}, nil
 }
 
 // overrideProjectAndModel fills in the harness project and any blank provider/model from the caller's project link

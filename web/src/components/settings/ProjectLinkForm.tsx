@@ -6,7 +6,13 @@ import { FormSelect } from "@/components/ticket/FormSelect";
 import { HarnessProjectField } from "@/components/settings/HarnessProjectField";
 import { HarnessProviderModelFields } from "@/components/settings/HarnessProviderModelFields";
 import { useClearProjectLink, useSetProjectLink } from "@/hooks/PairingProjectHooks";
-import { ProjectLinkFormSchema, type Computer, type ProjectLink, type ProjectLinkFormData } from "@/models/Pairing";
+import {
+  ProjectLinkFormSchema,
+  START_IN_OPTIONS,
+  type Computer,
+  type ProjectLink,
+  type ProjectLinkFormData,
+} from "@/models/Pairing";
 
 interface ProjectLinkFormProps {
   projectId: string;
@@ -28,6 +34,7 @@ export const ProjectLinkForm = ({ projectId, projectName, link, computers }: Pro
       provider: link.provider ?? "",
       model: link.model ?? "",
       model_options: link.model_options ?? [],
+      start_in: link.start_in ?? "",
     },
     resolver: zodResolver(ProjectLinkFormSchema),
   });
@@ -41,6 +48,7 @@ export const ProjectLinkForm = ({ projectId, projectName, link, computers }: Pro
         provider: saved.provider ?? "",
         model: saved.model ?? "",
         model_options: saved.model_options ?? [],
+        start_in: saved.start_in ?? "",
       });
     } catch {
       // Error is surfaced by the hook's toast; the form stays open to retry.
@@ -50,7 +58,7 @@ export const ProjectLinkForm = ({ projectId, projectName, link, computers }: Pro
   const onClear = async () => {
     try {
       await clearLink.mutateAsync();
-      form.reset({ computer_id: "", harness_project_id: "", provider: "", model: "", model_options: [] });
+      form.reset({ computer_id: "", harness_project_id: "", provider: "", model: "", model_options: [], start_in: "" });
     } catch {
       // Error is surfaced by the hook's toast.
     }
@@ -83,6 +91,13 @@ export const ProjectLinkForm = ({ projectId, projectName, link, computers }: Pro
           form.setValue("model", model, { shouldDirty: true });
           form.setValue("model_options", options, { shouldDirty: true });
         }}
+      />
+      <FormSelect
+        control={form.control}
+        name="start_in"
+        label="New threads start in"
+        placeholder="Same as my defaults"
+        options={START_IN_OPTIONS}
       />
       <div className="flex flex-wrap gap-2">
         <Button type="submit" loading={form.formState.isSubmitting}>

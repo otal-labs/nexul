@@ -162,6 +162,8 @@ type Target struct {
 	ModelOptions []OptionSetting
 	// SessionID is the harness-side thread; empty means create one.
 	SessionID string
+	// Worktree creates a new thread in a fresh git worktree of the project rather than in its folder.
+	Worktree bool
 }
 
 // Conn is a held connection; Done fires when the server drops it.

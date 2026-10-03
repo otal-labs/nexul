@@ -47,10 +47,13 @@ type Server struct {
 	Acks        chan string         // requestId of each Ack frame received
 	Dispatched  chan map[string]any // payload of each dispatchCommand (auto-acked)
 	Persisted   chan map[string]any // payload of each assets.persistChatAttachments call, answered with one reference per image
+	Launched    chan map[string]any // payload of each orchestration.launchThread call (auto-acked)
+	// Branches answers vcs.refreshStatus per folder with the branch it is on; an unnamed folder is not a git repository.
+	Branches map[string]string
 	// DispatchCause fails every dispatchCommand when set; set it before connect.
 	DispatchCause any
-	// CommandCauses fails only the dispatchCommands of the command types it names, and the image upload when it names
-	// assets.persistChatAttachments; set it before connect.
+	// CommandCauses fails only the dispatchCommands of the command types it names, and the image upload or the thread
+	// launch when it names assets.persistChatAttachments or orchestration.launchThread; set it before connect.
 	CommandCauses map[string]any
 	// Projections answers getThreadProjection per thread id; an unnamed thread fails as T3 fails one it cannot load.
 	Projections     map[string]any
@@ -65,7 +68,10 @@ type Server struct {
 	pairSpent bool
 }
 
-const persistRPC = "assets.persistChatAttachments"
+const (
+	persistRPC = "assets.persistChatAttachments"
+	launchRPC  = "orchestration.launchThread"
+)
 
 type clientEnv struct {
 	Tag       string          `json:"_tag"`
@@ -89,6 +95,7 @@ func New(t testing.TB) *Server {
 		Acks:        make(chan string, 16),
 		Dispatched:  make(chan map[string]any, 16),
 		Persisted:   make(chan map[string]any, 4),
+		Launched:    make(chan map[string]any, 4),
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/oauth/token", f.handleExchange)
@@ -207,6 +214,10 @@ func (f *Server) handleRequest(env clientEnv) {
 		f.handleProjection(env)
 	case persistRPC:
 		f.handlePersist(env)
+	case launchRPC:
+		f.handleLaunch(env)
+	case "vcs.refreshStatus":
+		f.handleStatus(env)
 	case "orchestration.subscribeThread":
 		var in map[string]any
 		if err := json.Unmarshal(env.Payload, &in); err != nil {
@@ -302,6 +313,35 @@ func (f *Server) handlePersist(env clientEnv) {
 			"name": image["name"], "mimeType": image["mimeType"], "sizeBytes": image["sizeBytes"]})
 	}
 	f.Write(ExitSuccess(idString(env.ID), map[string]any{"attachments": refs}))
+}
+
+func (f *Server) handleLaunch(env clientEnv) {
+	var in map[string]any
+	if err := json.Unmarshal(env.Payload, &in); err != nil {
+		f.t.Errorf("fake: undecodable launch payload: %v", err)
+		return
+	}
+	if cause, ok := f.CommandCauses[launchRPC]; ok {
+		f.writeFailure(env, cause)
+		return
+	}
+	f.Write(ExitSuccess(idString(env.ID), map[string]any{"threadId": in["threadId"], "resumed": false}))
+	f.Launched <- in
+}
+
+func (f *Server) handleStatus(env clientEnv) {
+	var in struct {
+		Cwd string `json:"cwd"`
+	}
+	if err := json.Unmarshal(env.Payload, &in); err != nil {
+		f.t.Errorf("fake: undecodable status payload: %v", err)
+	}
+	branch, ok := f.Branches[in.Cwd]
+	if !ok {
+		f.Write(ExitSuccess(idString(env.ID), map[string]any{"isRepo": false, "refName": nil}))
+		return
+	}
+	f.Write(ExitSuccess(idString(env.ID), map[string]any{"isRepo": true, "refName": branch}))
 }
 
 func (f *Server) writeFailure(env clientEnv, cause any) {

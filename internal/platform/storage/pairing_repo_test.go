@@ -166,6 +166,7 @@ func TestPairingRepo_ProjectLink_RoundTrip(t *testing.T) {
 		UserID: "u1", ProjectID: "proj-1", ComputerID: "c1", HarnessProjectID: "t3-proj-1",
 		Provider: "claude", Model: "sonnet", UpdatedAt: time.Unix(1_000_000_000, 0).UTC(),
 		ModelOptions: []harness.OptionSetting{{ID: "effort", Value: "high"}, {ID: "fastMode", Value: true}},
+		StartIn:      pairing.StartInWorktree,
 	}
 	require.NoError(t, s.Pairing.SaveProjectLink(ctx, link))
 
@@ -228,7 +229,7 @@ func TestPairingRepo_Defaults_RoundTrip(t *testing.T) {
 	assert.Equal(t, pairing.Defaults{}, empty, "no row yet is a zero value, not an error")
 
 	d := pairing.Defaults{UserID: "u1", DefaultComputerID: "c1", FallbackProjectID: "proj-1", Provider: "claude", Model: "sonnet",
-		ModelOptions: []harness.OptionSetting{{ID: "contextWindow", Value: "1m"}}}
+		ModelOptions: []harness.OptionSetting{{ID: "contextWindow", Value: "1m"}}, StartIn: pairing.StartInWorktree}
 	require.NoError(t, s.Pairing.SaveDefaults(ctx, d))
 
 	got, err := s.Pairing.GetDefaults(ctx, "u1")
@@ -238,6 +239,7 @@ func TestPairingRepo_Defaults_RoundTrip(t *testing.T) {
 	assert.Equal(t, "claude", got.Provider)
 	assert.Equal(t, "sonnet", got.Model)
 	assert.Equal(t, d.ModelOptions, got.ModelOptions)
+	assert.Equal(t, pairing.StartInWorktree, got.StartIn)
 }
 
 func TestPairingRepo_SaveDefaults_UpsertUpdatesInPlace(t *testing.T) {

@@ -628,6 +628,7 @@ type PairingProjectLink struct {
 	Model            string
 	ModelOptions     string
 	UpdatedAt        int64
+	StartIn          string
 }
 
 type PairingProviderSetup struct {
@@ -662,6 +663,7 @@ type PairingUserDefault struct {
 	Provider          string
 	Model             string
 	ModelOptions      string
+	StartIn           string
 }
 
 type PermissionOverwrite struct {

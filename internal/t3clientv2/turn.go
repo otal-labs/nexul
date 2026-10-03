@@ -20,10 +20,13 @@ import (
 const (
 	dispatchCommand = "orchestration.dispatchCommand"
 	subscribeThread = "orchestration.subscribeThread"
+	launchThread    = "orchestration.launchThread"
+	refreshStatus   = "vcs.refreshStatus"
 	fullAccess      = "full-access"
 	// missingThread is the failure an initial subscribe ends with when the thread does not exist.
 	missingThread = "OrchestrationV2GetThreadProjectionError"
 	notFullAccess = "This T3 thread is not in full access"
+	noBranchNote  = "Started in the T3 project's folder: it is not on a git branch, so there is nothing to base a worktree on"
 	// defaultTitle stands in for an empty title, which thread.create refuses.
 	defaultTitle = "Nexul chat"
 	// cancelWithin bounds cancelling the queued run of a turn that stopped watching, whose own context may be over.
@@ -53,6 +56,35 @@ type threadCreate struct {
 	InteractionMode string         `json:"interactionMode"`
 	Branch          *string        `json:"branch"`
 	WorktreePath    *string        `json:"worktreePath"`
+}
+
+// threadLaunch creates a thread in a fresh worktree of baseRef, holding its initial message until the worktree is ready.
+type threadLaunch struct {
+	CommandID         string            `json:"commandId"`
+	CreationSource    string            `json:"creationSource"`
+	ThreadID          string            `json:"threadId"`
+	ProjectID         string            `json:"projectId"`
+	Title             string            `json:"title"`
+	ModelSelection    modelSelection    `json:"modelSelection"`
+	RuntimeMode       string            `json:"runtimeMode"`
+	InteractionMode   string            `json:"interactionMode"`
+	WorkspaceStrategy workspaceStrategy `json:"workspaceStrategy"`
+	InitialMessage    launchMessage     `json:"initialMessage"`
+}
+
+type workspaceStrategy struct {
+	Type    string `json:"type"`
+	BaseRef string `json:"baseRef"`
+}
+
+type launchMessage struct {
+	MessageID   string            `json:"messageId"`
+	Text        string            `json:"text"`
+	Attachments []json.RawMessage `json:"attachments"`
+}
+
+type statusInput struct {
+	Cwd string `json:"cwd"`
 }
 
 // messageDispatch always queues behind an active run: a steered message gets no run of its own to watch.
@@ -132,8 +164,10 @@ func (h *Harness) StartTurn(ctx context.Context, target harness.Target, title st
 func (t *turn) start(ctx context.Context, title string, prompts harness.TurnPrompts) (source, *watch, []harness.Update, error) {
 	fresh := t.target.SessionID == ""
 	t.threadID = t.target.SessionID
+	var notes []harness.Update
+	var err error
 	if fresh {
-		if err := t.create(ctx, title); err != nil {
+		if notes, err = t.create(ctx, title, prompts); err != nil {
 			return nil, nil, nil, err
 		}
 	}
@@ -141,13 +175,16 @@ func (t *turn) start(ctx context.Context, title string, prompts harness.TurnProm
 	if errors.Is(err, errThreadGone) && !fresh {
 		t.h.log().Info("t3clientv2: reused thread is gone, creating a new one", "thread", t.threadID)
 		fresh = true
-		if err := t.create(ctx, title); err != nil {
+		if notes, err = t.create(ctx, title, prompts); err != nil {
 			return nil, nil, nil, err
 		}
 		src, w, err = t.subscribe(ctx)
 	}
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("watch t3 thread %s: %w", t.threadID, err)
+	}
+	if t.prompted {
+		return src, w, notes, nil
 	}
 	if prompts.Answer != nil && !fresh {
 		responded, err := t.deliver(ctx, w, *prompts.Answer)
@@ -159,34 +196,90 @@ func (t *turn) start(ctx context.Context, title string, prompts harness.TurnProm
 			return src, w, nil, nil
 		}
 	}
-	notes, err := t.dispatch(ctx, w, fresh, prompts)
+	more, err := t.dispatch(ctx, w, fresh, prompts)
 	if err != nil {
 		src.Close()
 		return nil, nil, nil, err
 	}
-	return src, w, notes, nil
+	return src, w, append(notes, more...), nil
 }
 
-// create makes the turn's thread on the target's model and options.
-func (t *turn) create(ctx context.Context, title string) error {
+// create makes the turn's thread on the target's model and options, launching it with the prompt for a worktree.
+func (t *turn) create(ctx context.Context, title string, prompts harness.TurnPrompts) ([]harness.Update, error) {
 	model, err := t.model()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if strings.TrimSpace(title) == "" {
 		title = defaultTitle
 	}
 	t.threadID = ids.New()
+	selection := modelSelection{InstanceID: t.target.Provider, Model: model, Options: t.target.ModelOptions}
+	var notes []harness.Update
+	if t.target.Worktree {
+		base, err := t.worktreeBase(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if base != "" {
+			return t.launch(ctx, title, base, selection, prompts)
+		}
+		notes = append(notes, note(noBranchNote))
+	}
 	_, err = t.conn.Call(ctx, dispatchCommand, threadCreate{
 		Type: "thread.create", CreatedBy: "user", CreationSource: "web", CommandID: ids.New(), ThreadID: t.threadID,
-		ProjectID: t.target.ProjectID, Title: title,
-		ModelSelection: modelSelection{InstanceID: t.target.Provider, Model: model, Options: t.target.ModelOptions},
-		RuntimeMode:    fullAccess, InteractionMode: "default",
+		ProjectID: t.target.ProjectID, Title: title, ModelSelection: selection, RuntimeMode: fullAccess, InteractionMode: "default",
 	})
 	if err != nil {
-		return refused("create t3 thread", err)
+		return nil, refused("create t3 thread", err)
 	}
-	return nil
+	return notes, nil
+}
+
+// launch creates the thread in a new worktree of base with the full prompt; T3 holds back only a launched message until the worktree is ready.
+func (t *turn) launch(ctx context.Context, title, base string, selection modelSelection, prompts harness.TurnPrompts) ([]harness.Update, error) {
+	refs, notes, err := t.persistImages(ctx, prompts.Attachments)
+	if err != nil {
+		return nil, err
+	}
+	_, err = t.conn.Call(ctx, launchThread, threadLaunch{
+		CommandID: ids.New(), CreationSource: "web", ThreadID: t.threadID, ProjectID: t.target.ProjectID, Title: title,
+		ModelSelection: selection, RuntimeMode: fullAccess, InteractionMode: "default",
+		WorkspaceStrategy: workspaceStrategy{Type: "worktree", BaseRef: base},
+		InitialMessage:    launchMessage{MessageID: t.messageID, Text: prompts.Full, Attachments: refs},
+	})
+	if err != nil {
+		return nil, refused("start the t3 thread in a new worktree", err)
+	}
+	t.prompted = true
+	return notes, nil
+}
+
+// worktreeBase is the branch the T3 project's folder is on, which T3 bases its own new worktrees on; "" when there is none.
+func (t *turn) worktreeBase(ctx context.Context) (string, error) {
+	projects, err := t.conn.ListProjects(ctx)
+	if err != nil {
+		return "", fmt.Errorf("list t3 projects: %w", err)
+	}
+	i := slices.IndexFunc(projects, func(p harness.Project) bool { return p.ID == t.target.ProjectID })
+	// An unknown project is left to thread.create, which refuses it in T3's own words.
+	if i < 0 {
+		return "", nil
+	}
+	out, err := t.conn.Call(ctx, refreshStatus, statusInput{Cwd: projects[i].Path})
+	if err != nil {
+		return "", refused("read the t3 project's branch", err)
+	}
+	var status struct {
+		RefName *string `json:"refName"`
+	}
+	if err := json.Unmarshal(out, &status); err != nil {
+		return "", fmt.Errorf("read the t3 project's branch: %w", err)
+	}
+	if status.RefName == nil {
+		return "", nil
+	}
+	return *status.RefName, nil
 }
 
 // subscribe opens the watch and reads up to the thread's first snapshot; errThreadGone when there is no live thread.

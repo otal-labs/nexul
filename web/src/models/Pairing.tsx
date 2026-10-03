@@ -275,6 +275,15 @@ export type CreateComputerTunnelFormData = z.infer<typeof CreateComputerTunnelFo
 export const HARNESS_LABELS: Record<string, string> = { t3code: "T3 Code", "t3code-v2": "T3 Code" };
 export const harnessLabel = (kind: string) => HARNESS_LABELS[kind] ?? kind;
 
+// Where a new T3 thread starts: the T3 project's folder, or a fresh git worktree so parallel runs never share files.
+export const StartIn = { Folder: "folder", Worktree: "worktree" } as const;
+export type StartIn = (typeof StartIn)[keyof typeof StartIn];
+
+export const START_IN_OPTIONS = [
+  { value: StartIn.Folder, label: "Project folder" },
+  { value: StartIn.Worktree, label: "New worktree per thread" },
+];
+
 // A user's pairing defaults, for chats outside a project and projects they haven't linked.
 export interface PairingDefaults {
   default_computer_id?: string;
@@ -282,6 +291,7 @@ export interface PairingDefaults {
   provider?: string;
   model?: string;
   model_options?: OptionSetting[];
+  start_in?: StartIn;
 }
 
 // The caller's own link for one project (ADR 0102); an empty computer_id means they never set one.
@@ -292,6 +302,8 @@ export interface ProjectLink {
   provider?: string;
   model?: string;
   model_options?: OptionSetting[];
+  // Unset falls through to the person's pairing defaults.
+  start_in?: StartIn;
 }
 
 export interface HarnessProject {
@@ -361,6 +373,7 @@ export const PairingDefaultsFormSchema = z.object({
   provider: z.string(),
   model: z.string(),
   model_options: z.array(z.object({ id: z.string(), value: z.union([z.string(), z.boolean()]) })),
+  start_in: z.enum([StartIn.Folder, StartIn.Worktree]),
 });
 
 export type PairingDefaultsFormData = z.infer<typeof PairingDefaultsFormSchema>;
@@ -371,6 +384,7 @@ export const ProjectLinkFormSchema = z.object({
   provider: z.string().trim(),
   model: z.string().trim(),
   model_options: z.array(z.object({ id: z.string(), value: z.union([z.string(), z.boolean()]) })),
+  start_in: z.enum(["", StartIn.Folder, StartIn.Worktree]),
 });
 
 export type ProjectLinkFormData = z.infer<typeof ProjectLinkFormSchema>;

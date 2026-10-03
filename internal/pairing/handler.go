@@ -358,6 +358,7 @@ type defaultsRequest struct {
 	Provider          string                  `json:"provider"`
 	Model             string                  `json:"model"`
 	ModelOptions      []harness.OptionSetting `json:"model_options"`
+	StartIn           StartIn                 `json:"start_in"`
 }
 
 func (h *Handler) setDefaults(w http.ResponseWriter, r *http.Request) {
@@ -372,6 +373,7 @@ func (h *Handler) setDefaults(w http.ResponseWriter, r *http.Request) {
 		Provider:          req.Provider,
 		Model:             req.Model,
 		ModelOptions:      req.ModelOptions,
+		StartIn:           req.StartIn,
 	})
 	if err != nil {
 		httpx.WriteError(w, err)
@@ -404,6 +406,7 @@ type projectLinkRequest struct {
 	Provider         string                  `json:"provider"`
 	Model            string                  `json:"model"`
 	ModelOptions     []harness.OptionSetting `json:"model_options"`
+	StartIn          StartIn                 `json:"start_in"`
 }
 
 func (h *Handler) setProjectLink(w http.ResponseWriter, r *http.Request) {
@@ -418,6 +421,7 @@ func (h *Handler) setProjectLink(w http.ResponseWriter, r *http.Request) {
 		Provider:         req.Provider,
 		Model:            req.Model,
 		ModelOptions:     req.ModelOptions,
+		StartIn:          req.StartIn,
 	})
 	if err != nil {
 		httpx.WriteError(w, err)

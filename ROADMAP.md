@@ -148,6 +148,13 @@ live, each editor says whether it follows, matches, or differs, and any
 template can be cloned to the instance, another workspace, or another project.
 ADR 0103.
 
+### A worktree per thread
+
+Each person chooses where the T3 threads Nexul starts for them begin: the T3
+project's folder, or a new git worktree off the branch that folder is on, so
+plays and chats running at the same time never edit the same files. The choice
+sits beside the model in pairing defaults, and a project link can override it.
+
 ### The design pass
 
 A monochrome identity — "The Mono Console", light and dark as true inversions
