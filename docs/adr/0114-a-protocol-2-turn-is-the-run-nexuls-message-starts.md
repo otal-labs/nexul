@@ -18,9 +18,17 @@ Decision: Nexul mints the message id, and the turn is the run whose `userMessage
   snapshot, or a `thread.deleted` with it) is recreated once. T3 still runs a message sent to a deleted thread, so a
   failed dispatch is a turn error, never a sign the thread is gone. A thread outside full access is set to it only
   when no run is queued or live, because changing the mode detaches provider sessions; otherwise the turn notes it.
-- **The prompt.** The full prompt goes to a new thread, and to a thread T3 imported from protocol 1
+- **The prompt.** The full prompt goes to a new thread, to a thread T3 imported from protocol 1
   (`historyOrigin: v1_import`) until one of its runs completes, since T3 hands such a thread only an excerpt of its
-  old history. Anything else gets the incremental prompt (ADR 0106).
+  old history, and to a thread the turn moves to another provider instance, since T3 hands the new provider only a
+  summary. Anything else gets the incremental prompt (ADR 0106).
+- **The model.** The run's pick holds on a reused thread (ADR 0058). `message.dispatch` carries a `modelSelection` when
+  the target names another provider instance, a model that differs from the thread's, or options that differ from its
+  options as a set; otherwise the key is left out. A target with no model keeps the thread's, unless the provider
+  differs, and then the provider's default is resolved first, so a sent selection never has an empty model. A target
+  with no options keeps the thread's while the provider and model stay the same, and otherwise starts the new model on
+  its own defaults, since the old options were chosen for another model. A new thread is created on the target's pick,
+  so it needs none.
 - **The images.** A full prompt's images are uploaded first with `assets.persistChatAttachments`, under the thread
   and message ids, as gif, jpeg, png or webp data URLs, and `message.dispatch` carries the references T3 returns.
   Any other type is left out with a note, since T3's providers take only those four. A refused upload fails the

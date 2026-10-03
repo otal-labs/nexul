@@ -158,7 +158,7 @@ type Target struct {
 	ProjectID string
 	Provider  string
 	Model     string
-	// ModelOptions ride with Model when the session is created; a reused session keeps its own.
+	// ModelOptions ride with Model; a reused protocol-2 thread switches to them when they differ, a protocol-1 session keeps its own.
 	ModelOptions []OptionSetting
 	// SessionID is the harness-side thread; empty means create one.
 	SessionID string
