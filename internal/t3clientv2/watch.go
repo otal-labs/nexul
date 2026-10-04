@@ -167,6 +167,8 @@ type watch struct {
 	runs map[string]run
 	// run is the turn's own run, its ID empty until T3 reports it.
 	run run
+	// ownReplied is whether the turn's own run reached waiting or completed, which a later restart cancel hides.
+	ownReplied bool
 	// followed is the turn's own run and every run its handed-off work woke; their items are the turn's (ADR 0116).
 	followed map[string]bool
 	// deliveries maps each wake message id a run's delegatedCompletion named to that run; a run.updated without one keeps it.
@@ -299,6 +301,7 @@ func (w *watch) track(r run) {
 
 func (w *watch) own(r run) {
 	w.run = r
+	w.ownReplied = w.ownReplied || replied(r)
 	if r.ID != "" {
 		w.followed[r.ID] = true
 	}
@@ -482,7 +485,7 @@ func (w *watch) end() ([]harness.Update, *harness.TurnResult) {
 	if result.State == harness.TurnDone && w.pending() {
 		return nil, nil
 	}
-	if w.cut() && !w.woken(replied) {
+	if w.cut() && !w.ownReplied && !w.woken(replied) {
 		result.State = harness.TurnInterrupted
 	}
 	w.ended = true

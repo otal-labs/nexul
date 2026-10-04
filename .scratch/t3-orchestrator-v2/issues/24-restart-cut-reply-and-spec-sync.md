@@ -18,10 +18,31 @@
 
 **Blocked by:** None — can start immediately
 
-**Status:** ready-for-agent
+**Status:** done
 
 Read first: `practices/go.md`, `practices/testing.md`, the spec, ADR 0116, ticket 23's ticket file and Comments.
 
-- [ ] Own run waiting, then restart-cancelled, child ends with no woken reply: the turn ends done with its own reply (watch_test row, fails on master)
-- [ ] Cut path, woken run arrives completed without waiting: ends done with that reply (watch_test row)
-- [ ] Spec and comments updated; `make lint`, `make vet`, `make coverage` green; protocol 1 untouched
+- [x] Own run waiting, then restart-cancelled, child ends with no woken reply: the turn ends done with its own reply (watch_test row, fails on master)
+- [x] Cut path, woken run arrives completed without waiting: ends done with that reply (watch_test row)
+- [x] Spec and comments updated; `make lint`, `make vet`, `make coverage` green; protocol 1 untouched
+
+## Comments
+
+- **Where it lives.** `t3clientv2/watch.go`: `watch.ownReplied` is set in `own()` once the turn's own run is seen
+  `waiting` or `completed` and is never cleared, so it survives the restart's cancel and any later snapshot. `end()`
+  ends a cut turn interrupted only when neither `ownReplied` nor `woken(replied)` holds. The reply itself needs no
+  change: the own run's text was already emitted, and nothing after the cut replaces it unless a woken run streams.
+- **Tests.** Two `TestWatch_HandedOffWork` rows. "a run that replied before a T3 restart cut it ends done on its own
+  reply when no woken run replies" fails on the code before this change (`end interrupted`). "a cut run's wake seen
+  only once completed, its waiting missed, ends done on that reply" passes before and after, and fails when
+  `replied()` is narrowed to `runWaiting`; no other test catches that.
+- **Judgment calls.**
+  - The completed-without-waiting row drops the wake's `waiting` update from the event stream instead of sending a
+    snapshot, the way `TestWatch_RecordedTurns/done at completed when waiting was missed` models a missed `waiting`.
+    `reset()` reaches the same `end()`, and the table stays events only.
+  - In the regression row the woken run fails rather than its result being disposed, so the child's work does end
+    and only the woken reply is missing, mirroring ticket 23's "ends interrupted" row with `waiting` reached first.
+  - ADR 0116's "When it is over" said a cut turn is done only "if a run it woke replied"; it now names Nexul's own
+    reply before the restart too. The research file's status mapping and ADR 0114's pointer stay accurate as they are.
+- **Still open.** Ticket 23's three known limits stand. A Watch that starts on a snapshot where its run is already
+  cut never saw `waiting`, so it still ends interrupted when no woken run replies.

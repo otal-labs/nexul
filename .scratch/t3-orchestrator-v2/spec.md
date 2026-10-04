@@ -121,7 +121,10 @@ Technical decisions:
    - **When it is done.** At that run's first `waiting`, or `completed` if `waiting` was missed.
      Terminal is emitted exactly once, because a stopped run reports its end twice and delivery
      bookkeeping re-sends `run.updated`.
-   - **Interrupted:** `interrupted`, `cancelled` and `rolled_back`.
+   - **Interrupted:** `interrupted`, `cancelled` and `rolled_back`. A run cancelled by a T3 restart is the
+     exception: it waits for its handed-off work like a done run (decision 15), since the restart leaves that work
+     running. Only Stop, a failure or a deleted thread end the turn at once. Once nothing is pending, the cut turn
+     is done if Nexul's run replied before the cut or a run it woke replied, and interrupted otherwise.
    - **Error:** `failed`. The message comes from the root error item, a usage limit names its reset
      time, and error items with status `running` are retries.
    - **Queued or held:** a note re-emitted every five minutes under one call id, so the turn waits as
@@ -181,12 +184,13 @@ Technical decisions:
       - an `app_owned` one's completion is `pending` or `claimed`.
     - The step "Waiting for work handed off in T3 Code" is re-emitted every five minutes under one
       call id while anything is pending, whatever the parent run's status. It keeps chat's and
-      plays' silence windows alive.
+      plays' silence windows alive. While T3 holds a woken run in its queue (`queueHeld`), the step
+      shows the held note under the same call id instead.
     - If a linked result lands in a run outside the set (T3 steered it into a later turn), the wait
       ends done with the note "The handed-off result went to a later reply in T3 Code".
-    - Cap: 60 minutes after Nexul's own run reached `waiting`. The watch then ends done, and the
-      pipeline appends this exact line to the stored reply: "Part of this work is still running in
-      T3 Code." A play still ends `done`.
+    - Cap: 60 minutes after Nexul's own run reached `waiting`, or after a T3 restart cut it. The
+      watch then ends done, and the pipeline appends this exact line to the stored reply: "Part of
+      this work is still running in T3 Code." A play still ends `done`.
     - The pipeline's in-flight turn map is keyed per turn, so a second mention in the same
       conversation cannot orphan the first one's Stop or Answer.
     - Chat's fixed ten-minute ceiling becomes a 15-minute silence window for chat callers only.

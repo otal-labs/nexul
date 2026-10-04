@@ -562,6 +562,19 @@ func TestWatch_HandedOffWork(t *testing.T) {
 				{"run.updated", runAt(2, wakeMessage, "failed")},
 			}),
 			want: []string{"reply Handing the audit off.", "reply Reading the audit", "end interrupted"}},
+		{name: "a run that replied before a T3 restart cut it ends done on its own reply when no woken run replies",
+			events: slices.Concat(handsOff, cutWhileHandingOff[3:], wakeQueued, [][2]any{
+				{"subagent.updated", handedOff("task-1", "app_owned", "completed", delivery("delivered"))},
+				{"run.updated", runAt(2, wakeMessage, "failed")},
+			}),
+			want: []string{"reply Handed the audit off.", "end done"}},
+		{name: "a cut run's wake seen only once completed, its waiting missed, ends done on that reply",
+			events: slices.Concat(cutWhileHandingOff, wakeQueued, [][2]any{
+				{"turn-item.updated", replyIn(2, "The audit found three issues.")},
+				{"subagent.updated", handedOff("task-1", "app_owned", "completed", delivery("delivered"))},
+				{"run.updated", runAt(2, wakeMessage, runCompleted)},
+			}),
+			want: []string{"reply Handing the audit off.", "reply The audit found three issues.", "end done"}},
 		{name: "a wake held in T3's queue says so under the hand-off's call id",
 			events: slices.Concat(handsOff, wakeQueued[:1], [][2]any{
 				{"run.created", heldWake},
