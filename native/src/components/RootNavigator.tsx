@@ -28,6 +28,10 @@ export const RootNavigator = () => {
           <Stack.Screen name="(sheets)/more/settings/appearance" options={sheetOptions} />
           <Stack.Screen name="(sheets)/more/settings/workspace" options={sheetOptions} />
           <Stack.Screen name="(sheets)/more/settings/sign-out" options={sheetOptions} />
+          <Stack.Screen
+            name="(sheets)/more/docs/prototype-questions"
+            options={{ ...sheetOptions, sheetAllowedDetents: [0.6, 0.95], sheetGrabberVisible: true, sheetCornerRadius: 12 }}
+          />
         </Stack.Protected>
         <Stack.Protected guard={!signedIn}>
           <Stack.Screen name="connect" />

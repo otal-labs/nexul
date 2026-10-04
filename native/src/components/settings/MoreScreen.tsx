@@ -19,6 +19,7 @@ export const MoreScreen = () => {
         <SettingsRow label="Docs" onPress={() => router.push("/more/docs")} />
         {canReadRunners && <SettingsRow label="Runners" onPress={() => router.push("/more/runners")} />}
         <SettingsRow label="Your settings" onPress={() => router.push("/more/settings")} />
+        {__DEV__ && <SettingsRow label="Prototype" meta="doc questions" onPress={() => router.push("/more/docs/prototype")} />}
       </View>
       <View className="items-center gap-1 px-4 py-6">
         {host && (
