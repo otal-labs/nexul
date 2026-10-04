@@ -18,14 +18,14 @@ ADR 0121). A clone starts with none; deleting the doc deletes it.
 
 **Blocked by:** None — can start immediately
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Migration tested by upgrading from the previous schema
-- [ ] Use-case tests: permission refusals first (a Restricted member without
+- [x] Migration tested by upgrading from the previous schema
+- [x] Use-case tests: permission refusals first (a Restricted member without
       the doc, a reader answering, a non-starter posting a round, a post with
       no round running), then the paths
-- [ ] Lock tests: answers saved on a locked doc; the no-gaps body accepted
+- [x] Lock tests: answers saved on a locked doc; the no-gaps body accepted
       from the running round's starter and refused from anyone else
-- [ ] Catalog rows, automation scope, live audience entries
-- [ ] MCP surface test still under the ceiling; tool descriptions updated
-- [ ] `CONTEXT.md` and `practices/mcp.md` checked
+- [x] Catalog rows, automation scope, live audience entries
+- [x] MCP surface test still under the ceiling; tool descriptions updated
+- [x] `CONTEXT.md` and `practices/mcp.md` checked

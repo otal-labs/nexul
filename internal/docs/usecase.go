@@ -46,6 +46,7 @@ type Service struct {
 	access      AccessChecker
 	attachments AttachmentsCopier
 	live        LiveSessions
+	clarify     ClarifyGate
 	now         func() time.Time
 }
 

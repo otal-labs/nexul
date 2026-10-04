@@ -60,6 +60,11 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /api/docs/{id}/watchers", h.listWatchers)
 	mux.HandleFunc("PUT /api/docs/{id}/watchers/me", h.watch)
 	mux.HandleFunc("DELETE /api/docs/{id}/watchers/me", h.unwatch)
+	mux.HandleFunc("GET /api/docs/{id}/clarification", h.getClarification)
+	mux.HandleFunc("PUT /api/docs/{id}/clarification/questions/{questionId}", h.answerQuestion)
+	mux.HandleFunc("DELETE /api/docs/{id}/clarification/questions/{questionId}", h.clearAnswer)
+	mux.HandleFunc("PUT /api/docs/{id}/clarification/rounds/{round}/anything-else", h.saveAnythingElse)
+	mux.HandleFunc("POST /api/docs/{id}/clarification/close", h.closeClarification)
 	mux.HandleFunc("GET /api/docs/{id}", h.get)
 	mux.HandleFunc("PUT /api/docs/{id}", h.update)
 	mux.HandleFunc("DELETE /api/docs/{id}", h.delete)
@@ -278,4 +283,68 @@ func (h *Handler) setWatching(w http.ResponseWriter, r *http.Request, watching b
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, ws)
+}
+
+type anythingElseRequest struct {
+	Text string `json:"text"`
+}
+
+func (h *Handler) getClarification(w http.ResponseWriter, r *http.Request) {
+	c, err := h.svc.Clarification(r.Context(), r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, c)
+}
+
+func (h *Handler) answerQuestion(w http.ResponseWriter, r *http.Request) {
+	var req Answer
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	q, err := h.svc.AnswerQuestion(r.Context(), r.PathValue("id"), r.PathValue("questionId"), req)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, q)
+}
+
+func (h *Handler) clearAnswer(w http.ResponseWriter, r *http.Request) {
+	q, err := h.svc.ClearAnswer(r.Context(), r.PathValue("id"), r.PathValue("questionId"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, q)
+}
+
+func (h *Handler) saveAnythingElse(w http.ResponseWriter, r *http.Request) {
+	round, err := strconv.Atoi(r.PathValue("round"))
+	if err != nil || round < 1 {
+		httpx.WriteError(w, fmt.Errorf("%w: round must be a positive integer", apperrs.ErrInvalid))
+		return
+	}
+	var req anythingElseRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	saved, err := h.svc.SaveAnythingElse(r.Context(), r.PathValue("id"), round, req.Text)
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, saved)
+}
+
+func (h *Handler) closeClarification(w http.ResponseWriter, r *http.Request) {
+	c, err := h.svc.CloseClarification(r.Context(), r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, c)
 }
