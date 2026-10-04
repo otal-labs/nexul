@@ -95,11 +95,6 @@ git history, and anything durable it decided is an ADR.
   as rounds of question cards on the doc page and in the phone app, the
   client answers, and a round with no gaps left writes the doc. Wayfinder
   map charted 2026-10-04; carries the build.
-- `.scratch/interview-sources/` — interview sources: a project's interview
-  pointed at what it already has (a practices folder, docs, a predecessor
-  project), an agent drafting answers the person confirms, redrafting when
-  a source changes, and an audit of a predecessor. Wayfinder map charted
-  2026-10-04; carries the build. Research findings in `research/`.
 - `.scratch/mcp-parity/` — web capabilities no MCP tool reaches yet, one
   bullet each, `needs-triage`.
 - `.scratch/pre-release/` — four standing pre-release items, all open.
