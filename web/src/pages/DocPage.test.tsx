@@ -20,6 +20,8 @@ vi.mock("@/api/client", () => ({
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
+const noClarification = { rounds: [], running: false, closed: false, can_close: false };
+
 const renderPage = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
@@ -79,6 +81,7 @@ describe("DocPage", () => {
         return Promise.resolve({ data: [{ id: "ticket-type-task", name: "task", position: 0, created_at: "", updated_at: "" }] });
       if (url === "/api/pairing/presence") return Promise.resolve({ data: { computers: {} } });
       if (url === "/api/docs/doc-1/watchers") return Promise.resolve({ data: { watchers: [], watching: false } });
+      if (url === "/api/docs/doc-1/clarification") return Promise.resolve({ data: noClarification });
       return Promise.resolve({ data: [] });
     });
 
@@ -99,6 +102,7 @@ describe("DocPage", () => {
         return Promise.resolve({ data: [{ id: "ticket-type-task", name: "task", position: 0, created_at: "", updated_at: "" }] });
       if (url === "/api/pairing/presence") return Promise.resolve({ data: { computers: {} } });
       if (url === "/api/docs/doc-1/watchers") return Promise.resolve({ data: { watchers: [], watching: false } });
+      if (url === "/api/docs/doc-1/clarification") return Promise.resolve({ data: noClarification });
       return Promise.resolve({ data: [] });
     });
     vi.mocked(api.post).mockResolvedValue({ data: ticketData("t-1", "New task", "doc-1") });

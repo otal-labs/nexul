@@ -2,7 +2,8 @@ import { Button } from "@/components/ui/button";
 import { InterviewDraftFrom } from "@/components/memory/InterviewDraftFrom";
 import { useDismissInterviewDraft } from "@/hooks/InterviewSourceHooks";
 import { useSaveInterviewAnswer } from "@/hooks/MemoryHooks";
-import { answerLine, valueLine, type InterviewRow, type RowDraft } from "@/models/InterviewAnswer";
+import type { InterviewRow, RowDraft } from "@/models/InterviewAnswer";
+import { answerLine, valueLine } from "@/models/QuestionChecklist";
 
 interface InterviewSuggestionCardProps {
   row: InterviewRow;

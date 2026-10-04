@@ -4,7 +4,7 @@ import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { InterviewDraftButton } from "@/components/memory/InterviewDraftButton";
 import { InterviewDraftRunLine } from "@/components/memory/InterviewDraftRunLine";
-import { InterviewSection } from "@/components/memory/InterviewSection";
+import { QuestionSection } from "@/components/questions/QuestionSection";
 import { InterviewSourceList } from "@/components/memory/InterviewSourceList";
 import { useFetchInterviewSources } from "@/hooks/InterviewSourceHooks";
 import { useHasPermission } from "@/hooks/WorkspaceHooks";
@@ -22,7 +22,7 @@ export const InterviewSourcesSection = ({ projectId }: InterviewSourcesSectionPr
   const onlyQuestion = !!sources && sources.length > 0 && sources.every((s) => s.stance === "question");
 
   return (
-    <InterviewSection
+    <QuestionSection
       label="Sources"
       meta={sources ? sourcesMeta(sources) : ""}
       folded={folded}
@@ -38,6 +38,6 @@ export const InterviewSourcesSection = ({ projectId }: InterviewSourcesSectionPr
         )}
         {sources && <InterviewSourceList projectId={projectId} sources={sources} readOnly={!canWrite} />}
       </div>
-    </InterviewSection>
+    </QuestionSection>
   );
 };

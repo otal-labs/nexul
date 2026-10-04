@@ -12,8 +12,8 @@ wording. Built at 768px first, verified at 768, 1024, and 1440.
 
 **Blocked by:** 02, 07
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Component tests: client view with no agent wording, permission-gated
+- [x] Component tests: client view with no agent wording, permission-gated
       developer controls, a locked doc still answerable
-- [ ] The F1–F7 self-review in `practices/react-guide.md`
+- [x] The F1–F7 self-review in `practices/react-guide.md`

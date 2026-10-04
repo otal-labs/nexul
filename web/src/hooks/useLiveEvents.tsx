@@ -11,7 +11,7 @@ import {
 import { useFlowStore } from "@/stores/flowStore";
 import { getDeployKey, getDeployLogKey } from "@/hooks/DeployHooks";
 import { getDnsExposuresKey, getDnsGatewaysKey } from "@/hooks/DnsHooks";
-import { getDocKey, getDocsKey, getDocWatchersKey } from "@/hooks/DocHooks";
+import { getDocClarificationKey, getDocKey, getDocsKey, getDocWatchersKey } from "@/hooks/DocHooks";
 import { getDocFoldersKey } from "@/hooks/DocFolderHooks";
 import { getInstanceUpgradeKey } from "@/hooks/InstanceUpgradeHooks";
 import { getProjectPeopleKey, getWorkspacePeopleKey } from "@/hooks/PeopleHooks";
@@ -112,6 +112,14 @@ const pushTopics: Record<string, string[]> = {
   // An edit makes its editor a watcher, which the Watch control's count shows; an interview source names the doc and dates its change.
   "doc.updated": [getDocsKey, getDocKey, getDocWatchersKey, getInterviewSourcesKey],
   "doc.watchers.changed": [getDocWatchersKey],
+  "doc.clarification.round_started": [getDocClarificationKey],
+  "doc.clarification.round_posted": [getDocClarificationKey],
+  "doc.clarification.round_ended": [getDocClarificationKey],
+  "doc.clarification.round_answered": [getDocClarificationKey],
+  "doc.clarification.answer_saved": [getDocClarificationKey],
+  "doc.clarification.answer_cleared": [getDocClarificationKey],
+  "doc.clarification.anything_else_saved": [getDocClarificationKey],
+  "doc.clarification.closed": [getDocClarificationKey],
   // The inbox groups doc rows by the folder each doc is in now, so a move, rename, or delete regroups it.
   "doc.moved": [getDocsKey, getDocKey, getDocFoldersKey, getNotificationsKey],
   "doc.folder.created": [getDocFoldersKey],

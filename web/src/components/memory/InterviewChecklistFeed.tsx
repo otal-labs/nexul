@@ -2,12 +2,13 @@ import { useState } from "react";
 
 import { InterviewDoneRow } from "@/components/memory/InterviewDoneRow";
 import { InterviewQuestionForm } from "@/components/memory/InterviewQuestionForm";
-import { InterviewQuestionRow } from "@/components/memory/InterviewQuestionRow";
-import { InterviewSection } from "@/components/memory/InterviewSection";
 import { InterviewSuggestionCard } from "@/components/memory/InterviewSuggestionCard";
+import { QuestionChecklistRow } from "@/components/questions/QuestionChecklistRow";
+import { QuestionSection } from "@/components/questions/QuestionSection";
 import { useInterviewLiveRound } from "@/hooks/useInterviewLiveRound";
 import type { AnswerValue } from "@/models/Question";
-import { countLine, firstPendingKey, nextPendingKey, rowStatus, type InterviewRow, type InterviewSectionData } from "@/models/InterviewAnswer";
+import type { InterviewRow, InterviewSectionData } from "@/models/InterviewAnswer";
+import { countLine, firstPendingKey, nextPendingKey, rowStatus } from "@/models/QuestionChecklist";
 
 interface InterviewChecklistFeedProps {
   projectId: string;
@@ -65,7 +66,7 @@ export const InterviewChecklistFeed = ({ projectId, sections: stored, readOnly, 
         </p>
       )}
       {sections.map((section) => (
-        <InterviewSection
+        <QuestionSection
           key={section.key}
           label={section.label}
           meta={countLine(section.rows)}
@@ -74,7 +75,7 @@ export const InterviewChecklistFeed = ({ projectId, sections: stored, readOnly, 
         >
           <ol>
             {section.rows.map((row, i) => (
-              <InterviewQuestionRow
+              <QuestionChecklistRow
                 key={row.key}
                 row={row}
                 number={rows.indexOf(row) + 1}
@@ -86,10 +87,10 @@ export const InterviewChecklistFeed = ({ projectId, sections: stored, readOnly, 
                   <InterviewSuggestionCard row={row} draft={row.draft} projectId={projectId} progress={progressOf(section, i)} onMove={move} />
                 )}
                 {row.draft?.state !== "suggested" && <InterviewQuestionForm {...formProps(section, row, i)} />}
-              </InterviewQuestionRow>
+              </QuestionChecklistRow>
             ))}
           </ol>
-        </InterviewSection>
+        </QuestionSection>
       ))}
       {templateDone && !hasMemory && !live.section && <InterviewDoneRow projectId={projectId} />}
     </div>

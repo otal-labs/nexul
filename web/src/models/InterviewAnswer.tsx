@@ -1,6 +1,7 @@
 import type { InterviewQuestion } from "@/models/InterviewTemplate";
 import { draftValue, sourceName, type InterviewDraft, type InterviewSource } from "@/models/InterviewSource";
 import { optionValue, type AnswerValue, type HarnessQuestion, type QuestionAnswers, type QuestionItem } from "@/models/Question";
+import type { ChecklistDraft, ChecklistRow } from "@/models/QuestionChecklist";
 import type { Trail } from "@/models/Trail";
 
 // Mirrors internal/plays skippedAnswer: a skipped live follow-up is sent as this text, since a harness may refuse an empty answer.
@@ -32,24 +33,14 @@ export interface SaveInterviewAnswerInput {
   skip: boolean;
 }
 
-export type InterviewRowStatus = "answered" | "skipped" | "pending";
-
-// open: a draft waiting on an unanswered or skipped question; confirmed: the answer is the draft; suggested: newer and different.
-export type RowDraftState = "open" | "confirmed" | "suggested";
-
-export interface RowDraft {
+export interface RowDraft extends ChecklistDraft {
   id: string;
   value: AnswerValue;
-  from: string;
   where: string;
-  state: RowDraftState;
 }
 
-export interface InterviewRow {
-  key: string;
+export interface InterviewRow extends ChecklistRow {
   round: number;
-  item: QuestionItem;
-  why: string;
   answer: InterviewAnswer | undefined;
   draft?: RowDraft | undefined;
   // A follow-up of the run's live question, answered on the trail with the rest of its round rather than saved alone.
@@ -63,13 +54,6 @@ export interface InterviewSectionData {
 }
 
 const rowKey = (round: number, question: string): string => `${round}:${question}`;
-
-export const rowStatus = (row: InterviewRow): InterviewRowStatus => {
-  if (!row.answer) return "pending";
-  if (row.answer.skipped) return "skipped";
-  if (row.answer.selected.length > 0 || row.answer.text !== "") return "answered";
-  return "pending";
-};
 
 const sameValue = (draft: InterviewDraft, answer: InterviewAnswer): boolean =>
   draft.text.trim() === answer.text.trim() && [...draft.selected].sort().join("\n") === [...answer.selected].sort().join("\n");
@@ -141,35 +125,6 @@ export const buildSections = (
   });
   return sections;
 };
-
-export const countLine = (rows: InterviewRow[]): string => {
-  const answered = rows.filter((r) => rowStatus(r) === "answered").length;
-  const skipped = rows.filter((r) => rowStatus(r) === "skipped").length;
-  const drafted = rows.filter((r) => r.draft?.state === "open").length;
-  const suggested = rows.filter((r) => r.draft?.state === "suggested").length;
-  const head = skipped === 0 ? `${answered} of ${rows.length} answered` : `${answered} answered · ${skipped} skipped`;
-  return [head, drafted > 0 && `${drafted} drafted`, suggested > 0 && `${suggested} suggested`].filter(Boolean).join(" · ");
-};
-
-export const firstPendingKey = (rows: InterviewRow[]): string | null =>
-  rows.find((r) => rowStatus(r) === "pending")?.key ?? null;
-
-// The next row still pending once the row at key is done, wrapping round to the first one left.
-export const nextPendingKey = (rows: InterviewRow[], key: string): string | null => {
-  const at = rows.findIndex((r) => r.key === key);
-  const ordered = [...rows.slice(at + 1), ...rows.slice(0, Math.max(at, 0))];
-  return firstPendingKey(ordered);
-};
-
-export const answerValue = (answer: InterviewAnswer | undefined): AnswerValue | undefined => {
-  if (!answer || answer.skipped) return undefined;
-  return { selected: answer.selected, text: answer.text };
-};
-
-export const valueLine = (value: AnswerValue | undefined): string =>
-  value ? [...(value.selected ?? []), value.text ?? ""].filter((part) => part !== "").join(" · ").replaceAll("\n", " · ") : "";
-
-export const answerLine = (answer: InterviewAnswer | undefined): string => valueLine(answer);
 
 // Mirrors internal/plays splitWhy: a follow-up's text is the question up to the first "?" followed by whitespace, then why it is asked.
 export const splitWhy = (text: string): { question: string; why: string } => {

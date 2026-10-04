@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 
-import { DraftedTag, QuestionOptionRow } from "@/components/play/QuestionOptionRow";
+import { DraftedTag, QuestionOptionRow } from "@/components/questions/QuestionOptionRow";
 import { optionValue, type AnswerValue, type QuestionItem, type QuestionOption } from "@/models/Question";
 import { cn } from "@/lib/utils";
 
