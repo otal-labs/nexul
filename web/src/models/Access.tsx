@@ -17,6 +17,7 @@ export const AREA_PERMISSION = {
   newProject: "projects:write",
   newDoc: "docs:write",
   editNotes: "tickets:write",
+  editTickets: "tickets:write",
 } as const;
 
 export type Area = keyof typeof AREA_PERMISSION;

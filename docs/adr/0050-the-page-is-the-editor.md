@@ -29,3 +29,5 @@ Superseded in part by ADR 0104: the create-ticket dialog uses the editor too, ho
 exists.
 
 Amended by ADR 0110: a note is edited live in a dialog, the one modal editing surface.
+
+Amended by ADR 0124: a ticket is edited live like a doc, with presence and Live in place of Saving/Saved.

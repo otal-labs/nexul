@@ -1,80 +1,49 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 
+import type { LiveSocket } from "@/api/ws";
 import { DocBodyView } from "@/components/doc/DocBodyView";
-import { RichTextEditor } from "@/components/doc/RichTextEditor";
+import { DocPresenceBar } from "@/components/doc/DocPresenceBar";
+import { CollabRichTextEditor } from "@/components/doc/collab/CollabRichTextEditor";
+import { useCollabCommit } from "@/components/doc/collab/useCollabCommit";
+import { useCollabSession } from "@/components/doc/collab/useCollabSession";
 import { formatUpdatedAgo } from "@/components/doc/docTime";
 import { TicketStatusBadge } from "@/components/ticket/TicketStatusBadge";
 import { TitleTextarea } from "@/components/TitleTextarea";
+import { useAreaAccess } from "@/hooks/AccessHooks";
+import { useFetchMe } from "@/hooks/AuthHooks";
 import { usePerson } from "@/hooks/PeopleHooks";
+import { getTicketKey } from "@/hooks/TicketHooks";
 import { useWorkspacePath } from "@/hooks/useWorkspacePath";
 import { personLabel } from "@/models/Person";
 import type { Project } from "@/models/Project";
 import { reporterLabel, type Ticket } from "@/models/Ticket";
-
-const AUTOSAVE_DEBOUNCE_MS = 800;
+import { effectiveAvatar } from "@/models/User";
+import { useSessionStore } from "@/stores/sessionStore";
 
 interface TicketDetailProps {
   ticket: Ticket;
   project?: Project;
-  onSave?: (title: string, body: string) => Promise<void> | void;
+  /** Test seam: the session's socket factory. */
+  wsFactory?: (url: string) => LiveSocket;
 }
 
-// Mounted with key={ticket.id}: title/body seed once, so switching tickets must remount, not update in place.
-export const TicketDetail = ({ ticket, project, onSave }: TicketDetailProps) => {
-  const [title, setTitle] = useState(ticket.title);
-  // Frozen at mount — refetched body matches what's already applied; reapplying would yank the cursor.
-  const [initialBody] = useState(ticket.body);
-  const [saveState, setSaveState] = useState<"idle" | "dirty" | "saving" | "saved">("idle");
-  const titleRef = useRef(ticket.title);
-  const bodyRef = useRef(ticket.body);
-  const dirtyRef = useRef(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const onSaveRef = useRef(onSave);
-  useLayoutEffect(() => {
-    onSaveRef.current = onSave;
+// Mounted with key={ticket.id}: the title seeds once, so switching tickets must remount, not update in place.
+// A writer edits the title and body live in the ticket's room, the way a doc is edited; a reader sees them static.
+export const TicketDetail = ({ ticket, project, wsFactory }: TicketDetailProps) => {
+  const token = useSessionStore((s) => s.token);
+  const { data: me } = useFetchMe();
+  const canEdit = useAreaAccess(ticket.project_id)?.("editTickets") ?? false;
+  const avatar = me?.user ? effectiveAvatar(me.user) : "";
+  // Joins once the viewer's name is known, so presence never shows a placeholder that reconnects a moment later.
+  const session = useCollabSession(canEdit && me ? `tickets/${ticket.id}` : undefined, "edit", me?.user?.name ?? "", token, {
+    reloadKey: [getTicketKey, ticket.id],
+    ...(wsFactory ? { wsFactory } : {}),
+    ...(avatar ? { avatar } : {}),
   });
+  const { title, titleInputRef, onTitleChange, confirmTitle, onBodyChange } = useCollabCommit(session, ticket.title, ticket.body);
   const reporterPerson = usePerson(ticket.reporter.login ?? "");
   const wsPath = useWorkspacePath();
   const reporter = reporterLabel(ticket.reporter, () => personLabel(reporterPerson));
-
-  const flush = async () => {
-    if (timer.current) {
-      clearTimeout(timer.current);
-      timer.current = null;
-    }
-    const save = onSaveRef.current;
-    // An empty title never saves; the edit stays dirty until the title is restored.
-    if (!save || !dirtyRef.current || titleRef.current.trim() === "") return;
-    dirtyRef.current = false;
-    setSaveState("saving");
-    try {
-      await save(titleRef.current, bodyRef.current);
-      setSaveState("saved");
-    } catch {
-      // The mutation hook toasts the failure; dirty keeps the state honest.
-      dirtyRef.current = true;
-      setSaveState("dirty");
-    }
-  };
-
-  const schedule = () => {
-    dirtyRef.current = true;
-    setSaveState("dirty");
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => void flush(), AUTOSAVE_DEBOUNCE_MS);
-  };
-
-  // A pending debounce fires directly on unmount instead of via state (no updates after unmount).
-  useEffect(
-    () => () => {
-      if (!timer.current) return;
-      clearTimeout(timer.current);
-      const save = onSaveRef.current;
-      if (save && titleRef.current.trim() !== "") void save(titleRef.current, bodyRef.current);
-    },
-    [],
-  );
 
   return (
     <div className="space-y-6">
@@ -91,42 +60,39 @@ export const TicketDetail = ({ ticket, project, onSave }: TicketDetailProps) => 
           </span>
           <TicketStatusBadge ticket={ticket} />
         </div>
-        {onSave && (
+        {session && (
           <h1>
             <TitleTextarea
+              ref={titleInputRef}
               value={title}
-              onValueChange={(value) => {
-                setTitle(value);
-                titleRef.current = value;
-                schedule();
-              }}
-              onBlur={() => void flush()}
+              onValueChange={onTitleChange}
+              onBlur={confirmTitle}
+              blurOnEnter
               aria-label="Ticket title"
               className="text-3xl sm:text-4xl"
             />
           </h1>
         )}
-        {!onSave && <h1 className="text-center text-3xl font-semibold tracking-tight sm:text-4xl">{ticket.title}</h1>}
-        <p className="font-mono text-xs text-muted-foreground">
-          created {formatUpdatedAgo(ticket.created_at)}
-          {reporter && ` by ${reporter}`} · updated {formatUpdatedAgo(ticket.updated_at)}
-          {saveState === "saving" && " · saving…"}
-          {saveState === "saved" && " · saved"}
-        </p>
+        {!session && <h1 className="text-center text-3xl font-semibold tracking-tight sm:text-4xl">{ticket.title}</h1>}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <p className="font-mono text-xs text-muted-foreground">
+            created {formatUpdatedAgo(ticket.created_at)}
+            {reporter && ` by ${reporter}`}
+          </p>
+          <DocPresenceBar participants={session?.participants ?? []} connected={session?.connected} updatedAt={ticket.updated_at} />
+        </div>
       </div>
-      <div className="rounded-2xl border border-border bg-card p-6 shadow-card sm:p-10" onBlur={() => void flush()}>
-        {onSave && (
-          <RichTextEditor
-            value={initialBody}
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-card sm:p-10">
+        {session && (
+          <CollabRichTextEditor
+            session={session}
+            value={ticket.body}
+            onChange={onBodyChange}
             aria-label="Ticket description"
             attachTo={{ ticket_id: ticket.id }}
-            onChange={(json) => {
-              bodyRef.current = json;
-              schedule();
-            }}
           />
         )}
-        {!onSave && <DocBodyView body={ticket.body} />}
+        {!session && <DocBodyView body={ticket.body} />}
       </div>
     </div>
   );

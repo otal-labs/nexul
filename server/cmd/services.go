@@ -55,6 +55,7 @@ type coreServices struct {
 	attachmentsSvc *attachments.Service
 	collabHub      *collab.Hub
 	notesHub       *collab.Hub
+	ticketsHub     *collab.Hub
 
 	ticketsSvc  *tickets.Service
 	mentionsSvc *mentions.Service
@@ -280,6 +281,9 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 	// A note's file is its only stored state, so its live rooms keep theirs in memory; readers never join (ADR 0110).
 	notesHub := collab.NewHub(logger, collab.NewMemoryStore(), collabNoteRooms{chatSvc}, collabNoteRooms{chatSvc}, permissions.TicketsWrite, permissions.TicketsWrite)
 	chatSvc.SetNoteLive(notesHub)
+	// A ticket's body is its only stored state, so its live rooms keep theirs in memory like a note's.
+	ticketsHub := collab.NewHub(logger, collab.NewMemoryStore(), collabTicketRooms{ticketsSvc}, ticketsSvc, permissions.TicketsWrite, permissions.TicketsRead)
+	ticketsSvc.SetLiveSessions(ticketsHub)
 	ticketsSvc.SetProjectPeople(ticketProjectPeople{users: userLookupGate{svc: authSvc}, access: accessSvc})
 	ticketsSvc.SetTesting(tickets.Testing{
 		Stages:  ticketStages{statuses: store.Statuses},
@@ -324,6 +328,7 @@ func wireCoreServices(cfg *config.Config, store *storage.Store, encKey []byte, b
 		attachmentsSvc: attachmentsSvc,
 		collabHub:      collabHub,
 		notesHub:       notesHub,
+		ticketsHub:     ticketsHub,
 
 		ticketsSvc:  ticketsSvc,
 		mentionsSvc: mentionsSvc,

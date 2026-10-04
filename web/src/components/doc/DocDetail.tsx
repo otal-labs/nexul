@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 import { DocThreadButton } from "@/components/chat/DocThreadButton";
 import { DocActionsMenu } from "@/components/doc/DocActionsMenu";
@@ -13,6 +13,7 @@ import { DocQuestionsPanel } from "@/components/doc/clarification/DocQuestionsPa
 import { DocViewSwitch } from "@/components/doc/clarification/DocViewSwitch";
 import { PointerOverlay } from "@/components/doc/collab/PointerOverlay";
 import { useArticlePointer } from "@/components/doc/collab/useArticlePointer";
+import { useCollabCommit } from "@/components/doc/collab/useCollabCommit";
 import { useCollabSession } from "@/components/doc/collab/useCollabSession";
 import { extractDocHeadings, type DocHeading } from "@/components/doc/docHeadings";
 import { PlaysMenu } from "@/components/play/PlaysMenu";
@@ -58,49 +59,10 @@ export const DocDetail = ({ doc, workspaceId, onCreateTicket, onPermissions, onA
   });
   const [headings, setHeadings] = useState<DocHeading[]>(() => extractDocHeadings(doc.body));
   const participants = session?.participants ?? [];
-  const [title, setTitle] = useState(doc.title);
-  const titleRef = useRef(doc.title);
-  const bodyRef = useRef(doc.body);
-  // Only the renaming client sends a title; empty title on the wire means "unchanged".
-  const titleDirtyRef = useRef(false);
-  const lastCommittedTitleRef = useRef(doc.title);
-  const titleInputRef = useRef<HTMLTextAreaElement | null>(null);
   const { articleRef, onPointerMove, onPointerLeave } = useArticlePointer(session);
   const { switchable, waiting, view, setView } = useDocView(doc);
 
-  // Refs skip a re-render per keystroke; reading title clears dirty to avoid stomping peer renames.
-  useEffect(() => {
-    if (!session) return;
-    session.setGetState(() => {
-      const dirty = titleDirtyRef.current;
-      titleDirtyRef.current = false;
-      if (dirty) lastCommittedTitleRef.current = titleRef.current;
-      return { title: dirty ? titleRef.current : "", body: bodyRef.current };
-    });
-    session.setOnRemoteTitle((remote) => {
-      lastCommittedTitleRef.current = remote;
-      // A peer renamed. Their title wins unless this input is mid-edit.
-      if (document.activeElement === titleInputRef.current) return;
-      setTitle(remote);
-      titleRef.current = remote;
-      titleDirtyRef.current = false;
-    });
-    return () => {
-      // Mark dirty on unmount so an unconfirmed rename isn't lost when navigating away.
-      if (titleRef.current !== lastCommittedTitleRef.current) {
-        titleDirtyRef.current = true;
-        session.provider.markDirty();
-      }
-    };
-  }, [session]);
-
-  // Confirms on blur/Enter only — per-keystroke commits used to spam doc.updated.
-  const confirmTitle = () => {
-    if (!session || titleRef.current === lastCommittedTitleRef.current) return;
-    titleDirtyRef.current = true;
-    session.provider.markDirty();
-    session.provider.flushCommit();
-  };
+  const { title, titleInputRef, onTitleChange, confirmTitle, onBodyChange } = useCollabCommit(session, doc.title, doc.body);
 
   return (
     <div className="@container animate-in fade-in-0 slide-in-from-bottom-1 mx-auto w-full max-w-6xl duration-200 ease-out">
@@ -162,10 +124,7 @@ export const DocDetail = ({ doc, workspaceId, onCreateTicket, onPermissions, onA
               editable={!!session}
               title={title}
               staticTitle={doc.title}
-              onChange={(value) => {
-                setTitle(value);
-                titleRef.current = value;
-              }}
+              onChange={onTitleChange}
               onBlur={confirmTitle}
               inputRef={titleInputRef}
             />
@@ -173,9 +132,7 @@ export const DocDetail = ({ doc, workspaceId, onCreateTicket, onPermissions, onA
             <DocBodySection
               doc={doc}
               session={session}
-              onBodyChange={(json) => {
-                bodyRef.current = json;
-              }}
+              onBodyChange={onBodyChange}
               onHeadingsChange={setHeadings}
             />
           </article>

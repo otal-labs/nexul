@@ -215,6 +215,7 @@ func buildRoutes(cfg *config.Config, bus *inprocess.Bus, store *storage.Store, s
 	httpMux.Handle("/ws/events", svc.authSvc.RequireWS(withIdentity(liveEventsHandler(svc.presenceKeeper, liveHub))))
 	httpMux.Handle("GET /ws/collab/{id}", svc.authSvc.RequireWS(withIdentity(svc.collabHub)))
 	httpMux.Handle("GET /ws/collab/notes/{id}", svc.authSvc.RequireWS(withIdentity(svc.notesHub)))
+	httpMux.Handle("GET /ws/collab/tickets/{id}", svc.authSvc.RequireWS(withIdentity(svc.ticketsHub)))
 	httpMux.Handle("GET /ws/stacks/{id}/services/{name}/logs", svc.authSvc.RequireWS(withIdentity(http.HandlerFunc(deploy.NewHandler(svc.deploySvc).LogsSocket))))
 	httpMux.Handle("/ws/automations", automationsDialin)
 	httpMux.Handle("/ws/runner", wsHandler)
