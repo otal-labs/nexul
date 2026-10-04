@@ -7,6 +7,7 @@ import { MessageEditForm } from "@/components/chat/MessageEditForm";
 import { MessageReactions } from "@/components/chat/MessageReactions";
 import { MessageContinuationTime, MessageRowAvatar, MessageRowHeader, type MessageAlign } from "@/components/chat/MessageRowHeader";
 import { MessageTrailTurns } from "@/components/chat/MessageTrailTurns";
+import { HandoffPills } from "@/components/handoff/HandoffPills";
 import { NoteMessage } from "@/components/note/NoteMessage";
 import { TrailQuestionBody } from "@/components/play/TrailQuestionCard";
 import { TrailReplyProse } from "@/components/play/TrailReplyProse";
@@ -164,6 +165,7 @@ export const MessageRow = ({ message, author, isOwn, continuation = false, quest
             )}
             {!editing && isAgent && <AgentMessageBody message={message} trailBlock={trailBlock} questionAnswered={questionAnswered} />}
             {!editing && isNote(message) && <NoteMessage message={message} ticketId={ticketId} />}
+            {!editing && message.handoffs && message.handoffs.length > 0 && <HandoffPills handoffs={message.handoffs} />}
             {!editing && <MessageReactions message={message} />}
           </MessageContent>
         </Message>

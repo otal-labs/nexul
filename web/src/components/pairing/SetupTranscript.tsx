@@ -12,32 +12,17 @@ import {
 import { EmptyRow } from "@/components/EmptyRow";
 import { LoadingDisplay } from "@/components/LoadingDisplay";
 import { SetupStateGlyph } from "@/components/pairing/SetupStateGlyph";
-import { TrailReplyProse } from "@/components/play/TrailReplyProse";
-import { TrailTurnGroup } from "@/components/play/TrailTurnGroup";
+import { TurnSegment } from "@/components/play/TurnSegment";
 import { useSetupActivityStore } from "@/stores/setupActivityStore";
 import { SETUP_STATE_LABEL, type SetupRunRow } from "@/models/Pairing";
 import type { ActivityEntry } from "@/models/Trail";
 import { cn } from "@/lib/utils";
-import { segmentSetupTurn, type TranscriptSegment } from "@/utils/TrailTranscriptUtility";
+import { segmentSetupTurn } from "@/utils/TrailTranscriptUtility";
 
 const EMPTY: ActivityEntry[] = [];
 
 // A folded group or a short message; the scroller's default 10rem placeholder would inflate an off-screen transcript.
 const SEGMENT_ITEM = "[contain-intrinsic-size:auto_3rem]";
-
-interface SetupSegmentProps {
-  segment: TranscriptSegment;
-}
-
-// The group is keyed by whether it runs, so it folds shut once the agent moves on or the turn ends.
-const SetupSegment = ({ segment }: SetupSegmentProps) => (
-  <>
-    {segment.kind === "turn" && (
-      <TrailTurnGroup key={String(segment.running)} entries={segment.entries} running={segment.running} from={segment.from} until={segment.until} />
-    )}
-    {segment.kind === "reply" && <TrailReplyProse text={segment.entry.detail || segment.entry.summary} />}
-  </>
-);
 
 interface SetupOutcomeProps {
   row: SetupRunRow;
@@ -104,7 +89,7 @@ export const SetupTranscript = ({ row, runningName, retryDisabled, onRetry }: Se
               <MessageScrollerContent role="log" aria-live="polite" aria-label={`${row.name} steps`} className="gap-1 px-3 py-3">
                 {segments.map((segment, i) => (
                   <MessageScrollerItem key={i} messageId={`${row.provider}-${i}`} className={SEGMENT_ITEM}>
-                    <SetupSegment segment={segment} />
+                    <TurnSegment segment={segment} />
                   </MessageScrollerItem>
                 ))}
                 {row.state === "running" && steps.length === 0 && <LoadingDisplay label={row.status} className="justify-start p-0" />}

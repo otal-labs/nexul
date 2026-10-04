@@ -1,6 +1,7 @@
 import { Bot, Square } from "lucide-react";
 
 import { MessageTrailTurns } from "@/components/chat/MessageTrailTurns";
+import { HandoffPills } from "@/components/handoff/HandoffPills";
 import { TrailActionRow } from "@/components/play/TrailActionRow";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -56,6 +57,7 @@ export const AgentStreamBubble = ({ frame, onInterrupt, live }: AgentStreamBubbl
             <TrailActionRow entry={latestStep(frame)} live />
           </ul>
         )}
+        {frame.handoffs.length > 0 && <HandoffPills handoffs={frame.handoffs} />}
         {live === null && !frame.text && !frame.activity && (
           <p className="max-w-[85%] rounded-2xl rounded-bl-md bg-accent px-3 py-2 text-sm text-muted-foreground animate-pulse">…</p>
         )}

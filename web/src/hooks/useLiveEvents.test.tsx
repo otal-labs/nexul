@@ -418,6 +418,28 @@ describe("useLiveEvents dispatch", () => {
     expect(useAgentStreamStore.getState().streams.c1).toMatchObject({ activity: "Read main.go started", activityKind: "tool_call", activityTool: "Read", streaming: true });
   });
 
+  it("merges chat.agent.stream hand-offs by id, keeping earlier ones across frames that carry none", async () => {
+    setup();
+    const socket = await connectedSocket();
+    const helper = (id: string, state: string) => ({ id, driver: "codex", model: "gpt-5-codex", title: id, prompt: "Review it", state, reply: "", steps: [] });
+    const frame = (payload: object) =>
+      act(() =>
+        socket.message(
+          JSON.stringify({ topic: "chat.agent.stream", type: "event", payload: { conversation_id: "c1", message_id: "", text: "", streaming: true, ...payload } }),
+        ),
+      );
+
+    frame({ handoff: helper("sa-1", "running") });
+    frame({ handoff: helper("sa-2", "running") });
+    frame({ text: "Waiting on the helpers" });
+    frame({ handoff: helper("sa-1", "done") });
+
+    expect(useAgentStreamStore.getState().streams.c1?.handoffs.map((h) => [h.id, h.state])).toEqual([
+      ["sa-1", "done"],
+      ["sa-2", "running"],
+    ]);
+  });
+
   it("writes chat.agent.stream frames straight into the agent stream store, keyed by conversation", async () => {
     setup();
     const socket = await connectedSocket();
