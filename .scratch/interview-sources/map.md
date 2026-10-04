@@ -86,9 +86,10 @@ decision tickets are resolved, the build tickets graduate from the fog.
 
 ## Build
 
-Decisions complete 2026-10-04. Build tickets 07–12 in `issues/`: storage
-and surfaces, the drafting run, the follow-up run reading question
-sources, the page, the audit, and the walkthrough on Clutch Hub.
+Decisions complete 2026-10-04. Built the same day: storage and surfaces
+(#435), the drafting run (#438), the page (#437), the follow-up run
+reading question sources (#439), and the audit (#440). Left: the
+walkthrough on Clutch Hub (`issues/12-build-walkthrough.md`).
 
 ## Not yet specified
 

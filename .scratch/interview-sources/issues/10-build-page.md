@@ -17,8 +17,15 @@ controls. Built at 768px first, verified at 768, 1024, and 1440.
 
 **Blocked by:** 07, 08
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] Component tests for the add form refusals and the default stance,
       draft confirm, accept, and dismiss
 - [ ] Verified in a browser at 768, 1024, and 1440px
+
+## Answer
+
+Built in PR #437: the Sources section with the stance control, add form,
+gone and not-visible rows, Draft answers with its warning dot and the
+drafting state line, drafted rows, suggested changes with Accept and
+Dismiss, and a growing text box for questions with no options.
